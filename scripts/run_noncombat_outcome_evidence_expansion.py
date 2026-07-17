@@ -3,12 +3,132 @@
 
 from __future__ import annotations
 
-import argparse
+import base64
 import hashlib
-import json
 import os
-import subprocess
 import sys
+
+QUALIFICATION_RUNNER_SHA256_ENV = (
+    "STS_OUTCOME_EVIDENCE_QUALIFICATION_RUNNER_SHA256"
+)
+QUALIFICATION_RUNNER_RELATIVE_PATH = (
+    "scripts/run_noncombat_outcome_evidence_expansion.py"
+)
+_QUALIFICATION_TRUSTED_LAUNCHER_PAYLOAD = (
+    "import hashlib,os,stat,sys\n"
+    "from pathlib import Path\n"
+    "def reject(message):\n"
+    " sys.stderr.write('qualification trusted launcher rejected: '+message+'\\n')\n"
+    " raise SystemExit(2)\n"
+    "if len(sys.argv)<3: reject('arguments are invalid')\n"
+    "runner=Path(sys.argv[1])\n"
+    "expected=sys.argv[2]\n"
+    "if (not runner.is_absolute()) or str(runner).startswith('\\\\\\\\'): "
+    "reject('runner path must be local absolute')\n"
+    "if any(':' in part for part in runner.parts[1:]): "
+    "reject('runner path contains an alternate data stream')\n"
+    "if any(part.endswith(('.', ' ')) for part in runner.parts[1:]): "
+    "reject('runner path contains a Win32 alias component')\n"
+    "runner=Path(os.path.abspath(str(runner)))\n"
+    "if len(expected)!=64 or any(c not in '0123456789abcdef' for c in expected): "
+    "reject('runner SHA-256 is invalid')\n"
+    "current=Path(runner.anchor)\n"
+    "for part in runner.parts[1:]:\n"
+    " current/=part\n"
+    " try: metadata=current.lstat()\n"
+    " except OSError as exc: reject('cannot inspect runner path: '+str(exc))\n"
+    " attributes=getattr(metadata,'st_file_attributes',0)\n"
+    " reparse=getattr(stat,'FILE_ATTRIBUTE_REPARSE_POINT',0)\n"
+    " if stat.S_ISLNK(metadata.st_mode) or bool(attributes & reparse): "
+    "reject('runner path contains a link or reparse point')\n"
+    "if not stat.S_ISREG(runner.lstat().st_mode): "
+    "reject('runner is not a regular file')\n"
+    "try: source=runner.read_bytes()\n"
+    "except OSError as exc: reject('cannot read runner bytes: '+str(exc))\n"
+    "if hashlib.sha256(source).hexdigest()!=expected: "
+    "reject('runner SHA-256 mismatch')\n"
+    f"os.environ[{QUALIFICATION_RUNNER_SHA256_ENV!r}]=expected\n"
+    "sys.argv=[str(runner),*sys.argv[3:]]\n"
+    "scope={'__name__':'__main__','__file__':str(runner),"
+    "'__package__':None,'__cached__':None,'__spec__':None,'__loader__':None}\n"
+    "exec(compile(source,str(runner),'exec'),scope)\n"
+)
+_QUALIFICATION_TRUSTED_LAUNCHER_PAYLOAD_B64 = base64.b64encode(
+    _QUALIFICATION_TRUSTED_LAUNCHER_PAYLOAD.encode("utf-8")
+).decode("ascii")
+QUALIFICATION_TRUSTED_LAUNCHER_CODE = (
+    "exec(compile(__import__('base64').b64decode('"
+    + _QUALIFICATION_TRUSTED_LAUNCHER_PAYLOAD_B64
+    + "'),'<qualification-launcher>','exec'))"
+)
+
+_QUALIFICATION_CLI_REQUESTED = (
+    len(sys.argv) > 1
+    and sys.argv[1] == "qualify"
+)
+if _QUALIFICATION_CLI_REQUESTED:
+    sys.dont_write_bytecode = True
+    sys.pycache_prefix = os.path.join(
+        os.devnull,
+        "sts-qualification-pycache",
+    )
+
+if (
+    __name__ == "__main__"
+    and _QUALIFICATION_CLI_REQUESTED
+    and (not sys.flags.isolated or not sys.flags.no_site)
+):
+    sys.stderr.write(
+        "qualification runner requires isolated no-site Python startup "
+        "(-I -S)\n"
+    )
+    raise SystemExit(2)
+
+
+def _qualification_require_trusted_launcher() -> None:
+    anchor = os.environ.get(QUALIFICATION_RUNNER_SHA256_ENV)
+    original_arguments = tuple(sys.orig_argv)
+    runner_path = os.path.abspath(__file__)
+    valid_shape = (
+        isinstance(anchor, str)
+        and len(original_arguments) >= 8
+        and original_arguments[1:5]
+        == ("-I", "-S", "-c", QUALIFICATION_TRUSTED_LAUNCHER_CODE)
+        and os.path.abspath(original_arguments[5]) == runner_path
+        and original_arguments[6] == anchor
+        and original_arguments[7:] == tuple(sys.argv[1:])
+    )
+    if not valid_shape:
+        sys.stderr.write(
+            "qualification trusted launcher command is required\n"
+        )
+        raise SystemExit(2)
+    try:
+        with open(runner_path, "rb") as runner_stream:
+            runner_bytes = runner_stream.read()
+    except OSError as exc:
+        sys.stderr.write(
+            f"qualification trusted launcher cannot reread runner: {exc}\n"
+        )
+        raise SystemExit(2) from exc
+    if hashlib.sha256(runner_bytes).hexdigest() != anchor:
+        sys.stderr.write(
+            "qualification trusted launcher runner SHA-256 changed\n"
+        )
+        raise SystemExit(2)
+
+
+if (
+    __name__ == "__main__"
+    and _QUALIFICATION_CLI_REQUESTED
+):
+    _qualification_require_trusted_launcher()
+
+import argparse
+import importlib.machinery
+import json
+import stat
+import subprocess
 import tempfile
 import time
 from collections.abc import Callable, Mapping, Sequence
@@ -18,6 +138,664 @@ from types import MappingProxyType
 from typing import Any
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
+
+
+def _qualification_install_source_only_repo_imports(repo_root: Path) -> None:
+    lexical_root = os.path.normcase(os.path.abspath(repo_root))
+
+    def is_repo_path(path_value: object) -> bool:
+        try:
+            lexical_path = os.path.normcase(
+                os.path.abspath(os.fspath(path_value))
+            )
+            return os.path.commonpath((lexical_root, lexical_path)) == lexical_root
+        except (OSError, TypeError, ValueError):
+            return False
+
+    class NoFollowSourceLoader(importlib.machinery.SourceFileLoader):
+        def get_data(self, path_value: str) -> bytes:
+            lexical_path = os.path.abspath(path_value)
+            if not is_repo_path(lexical_path):
+                raise OSError(
+                    "qualification repository loader refuses bytecode cache"
+                )
+            current = Path(lexical_path).anchor
+            current_path = Path(current)
+            for part in Path(lexical_path).parts[1:]:
+                current_path /= part
+                metadata = current_path.lstat()
+                file_attributes = getattr(metadata, "st_file_attributes", 0)
+                reparse_flag = getattr(
+                    stat,
+                    "FILE_ATTRIBUTE_REPARSE_POINT",
+                    0,
+                )
+                if stat.S_ISLNK(metadata.st_mode) or bool(
+                    file_attributes & reparse_flag
+                ):
+                    raise ImportError(
+                        "qualification repository source contains a symbolic "
+                        f"link or reparse point: {current_path}"
+                    )
+            if not stat.S_ISREG(current_path.lstat().st_mode):
+                raise ImportError(
+                    "qualification repository source is not a regular file: "
+                    f"{current_path}"
+                )
+            return super().get_data(lexical_path)
+
+    def source_only_path_hook(path_value: str):
+        if not is_repo_path(path_value):
+            raise ImportError
+        return importlib.machinery.FileFinder(
+            path_value,
+            (
+                NoFollowSourceLoader,
+                importlib.machinery.SOURCE_SUFFIXES,
+            ),
+        )
+
+    sys.path_hooks.insert(0, source_only_path_hook)
+    for cached_path in tuple(sys.path_importer_cache):
+        if is_repo_path(cached_path):
+            sys.path_importer_cache.pop(cached_path, None)
+
+
+if _QUALIFICATION_CLI_REQUESTED:
+    _qualification_install_source_only_repo_imports(REPO_ROOT)
+
+
+class _QualificationBootstrapError(RuntimeError):
+    pass
+
+
+_QUALIFICATION_BOOTSTRAP_GIT = Path(r"C:\Program Files\Git\cmd\git.exe")
+_QUALIFICATION_INERT_SUFFIXES = {
+    ".csv",
+    ".json",
+    ".jsonl",
+    ".log",
+    ".md",
+    ".tsv",
+    ".txt",
+}
+def _qualification_bootstrap_is_link_or_reparse(metadata: os.stat_result) -> bool:
+    file_attributes = getattr(metadata, "st_file_attributes", 0)
+    reparse_flag = getattr(stat, "FILE_ATTRIBUTE_REPARSE_POINT", 0)
+    return stat.S_ISLNK(metadata.st_mode) or bool(file_attributes & reparse_flag)
+
+
+def _qualification_bootstrap_require_path(
+    path_value: Path | str,
+    label: str,
+    *,
+    expected_kind: str,
+) -> Path:
+    supplied_path = Path(os.fspath(path_value))
+    supplied_components = (
+        supplied_path.parts[1:] if supplied_path.anchor else supplied_path.parts
+    )
+    if any(":" in part for part in supplied_components):
+        raise _QualificationBootstrapError(
+            f"qualification bootstrap {label} contains an alternate data "
+            "stream"
+        )
+    if any(part.endswith((".", " ")) for part in supplied_components):
+        raise _QualificationBootstrapError(
+            f"qualification bootstrap {label} contains a Win32 alias "
+            "component"
+        )
+    lexical_path = Path(os.path.abspath(supplied_path))
+    if lexical_path.drive.startswith("\\\\"):
+        raise _QualificationBootstrapError(
+            f"qualification bootstrap {label} must use a local drive"
+        )
+    current_path = Path(lexical_path.anchor)
+    for part in lexical_path.parts[1:]:
+        current_path /= part
+        try:
+            metadata = current_path.lstat()
+        except OSError as exc:
+            raise _QualificationBootstrapError(
+                f"cannot inspect qualification bootstrap {label}: "
+                f"{current_path}: {exc}"
+            ) from exc
+        if _qualification_bootstrap_is_link_or_reparse(metadata):
+            raise _QualificationBootstrapError(
+                f"qualification bootstrap {label} contains a symbolic link "
+                f"or reparse point: {current_path}"
+            )
+    metadata = lexical_path.lstat()
+    expected = (
+        stat.S_ISDIR(metadata.st_mode)
+        if expected_kind == "directory"
+        else stat.S_ISREG(metadata.st_mode)
+    )
+    if not expected:
+        raise _QualificationBootstrapError(
+            f"qualification bootstrap {label} is not a regular {expected_kind}"
+        )
+    return lexical_path
+
+
+def _qualification_bootstrap_entry_exists(path: Path) -> bool:
+    try:
+        path.lstat()
+    except FileNotFoundError:
+        return False
+    except OSError as exc:
+        raise _QualificationBootstrapError(
+            f"cannot inspect qualification bootstrap path: {path}: {exc}"
+        ) from exc
+    return True
+
+
+def _qualification_bootstrap_walk(
+    root: Path,
+    *,
+    skip_root_git: bool = False,
+):
+    pending = [root]
+    while pending:
+        current = _qualification_bootstrap_require_path(
+            pending.pop(),
+            "source directory",
+            expected_kind="directory",
+        )
+        try:
+            with os.scandir(current) as iterator:
+                children = list(iterator)
+        except OSError as exc:
+            raise _QualificationBootstrapError(
+                f"cannot traverse qualification bootstrap source: {current}: {exc}"
+            ) from exc
+        for child in children:
+            if skip_root_git and current == root and child.name == ".git":
+                continue
+            try:
+                metadata = child.stat(follow_symlinks=False)
+            except OSError as exc:
+                raise _QualificationBootstrapError(
+                    "cannot inspect qualification bootstrap source entry: "
+                    f"{child.path}: {exc}"
+                ) from exc
+            path = Path(child.path)
+            if _qualification_bootstrap_is_link_or_reparse(metadata):
+                raise _QualificationBootstrapError(
+                    "qualification bootstrap source contains a symbolic link "
+                    f"or reparse point: {path}"
+                )
+            yield path, metadata
+            if stat.S_ISDIR(metadata.st_mode):
+                pending.append(path)
+
+
+def _qualification_bootstrap_validate_git_metadata(repo_root: Path) -> Path:
+    git_root = _qualification_bootstrap_require_path(
+        repo_root / ".git",
+        "Git metadata root",
+        expected_kind="directory",
+    )
+    for _path, _metadata in _qualification_bootstrap_walk(git_root):
+        pass
+    for relative_path, label in (
+        ("info/grafts", "grafts"),
+        ("info/attributes", "info attributes"),
+        ("commondir", "common directory"),
+        ("objects/info/alternates", "object alternates"),
+        ("objects/info/http-alternates", "HTTP object alternates"),
+        ("refs/replace", "replacement refs"),
+    ):
+        if _qualification_bootstrap_entry_exists(git_root / relative_path):
+            raise _QualificationBootstrapError(
+                f"qualification bootstrap Git {label} are forbidden"
+            )
+    packed_refs_path = git_root / "packed-refs"
+    if _qualification_bootstrap_entry_exists(packed_refs_path):
+        packed_refs_path = _qualification_bootstrap_require_path(
+            packed_refs_path,
+            "packed refs",
+            expected_kind="file",
+        )
+        try:
+            packed_refs = packed_refs_path.read_text(encoding="utf-8")
+        except (OSError, UnicodeError) as exc:
+            raise _QualificationBootstrapError(
+                f"cannot inspect qualification bootstrap packed refs: {exc}"
+            ) from exc
+        if any(
+            row[-1].startswith("refs/replace/")
+            for line in packed_refs.splitlines()
+            if line and not line.startswith(("#", "^"))
+            if len(row := line.split()) >= 2
+        ):
+            raise _QualificationBootstrapError(
+                "qualification bootstrap Git replacement refs are forbidden"
+            )
+    forbidden_config_tokens = (
+        "[include",
+        "fsmonitor",
+        "hookspath",
+        "external=",
+        "filter",
+        "clean=",
+        "process=",
+        "attributesfile",
+        "textconv",
+        "sshcommand",
+        "partialclone",
+        "promisor",
+        "[protocol",
+        "protocol.ext.allow",
+        "ext::",
+    )
+    for config_name in ("config", "config.worktree"):
+        config_path = git_root / config_name
+        if not _qualification_bootstrap_entry_exists(config_path):
+            continue
+        config_path = _qualification_bootstrap_require_path(
+            config_path,
+            config_name,
+            expected_kind="file",
+        )
+        try:
+            normalized_config = "".join(
+                config_path.read_text(encoding="utf-8").casefold().split()
+            )
+        except (OSError, UnicodeError) as exc:
+            raise _QualificationBootstrapError(
+                f"cannot inspect qualification bootstrap Git config: {exc}"
+            ) from exc
+        if any(token in normalized_config for token in forbidden_config_tokens):
+            raise _QualificationBootstrapError(
+                "qualification bootstrap Git config contains an unsafe directive"
+            )
+    return git_root
+
+
+def _qualification_bootstrap_git_environment(
+    repo_root: Path,
+    git_root: Path,
+) -> dict[str, str]:
+    environment = {
+        key: value
+        for key in ("SystemRoot", "WINDIR", "COMSPEC", "TEMP", "TMP")
+        if (value := os.environ.get(key))
+    }
+    environment.update(
+        {
+            "GIT_ATTR_NOSYSTEM": "1",
+            "GIT_CONFIG_GLOBAL": os.devnull,
+            "GIT_CONFIG_NOSYSTEM": "1",
+            "GIT_DIR": str(git_root),
+            "GIT_NO_REPLACE_OBJECTS": "1",
+            "GIT_NO_LAZY_FETCH": "1",
+            "GIT_OPTIONAL_LOCKS": "0",
+            "GIT_TERMINAL_PROMPT": "0",
+            "GIT_WORK_TREE": str(repo_root),
+            "LC_ALL": "C",
+        }
+    )
+    return environment
+
+
+def _qualification_bootstrap_git_output(
+    repo_root: Path,
+    git_root: Path,
+    *arguments: str,
+    binary: bool = False,
+    input_bytes: bytes | None = None,
+) -> str | bytes:
+    git_executable = _qualification_bootstrap_require_path(
+        _QUALIFICATION_BOOTSTRAP_GIT,
+        "Git executable",
+        expected_kind="file",
+    )
+    command = [
+        str(git_executable),
+        "--no-pager",
+        "--no-replace-objects",
+        "--no-lazy-fetch",
+        "-c",
+        "core.fsmonitor=false",
+        "-c",
+        "core.hooksPath=NUL",
+        "-c",
+        "diff.external=",
+        "-c",
+        "color.ui=false",
+        *arguments,
+    ]
+    try:
+        completed = subprocess.run(
+            command,
+            cwd=repo_root,
+            capture_output=True,
+            check=False,
+            env=_qualification_bootstrap_git_environment(repo_root, git_root),
+            input=input_bytes,
+            text=not binary,
+            encoding=None if binary else "utf-8",
+        )
+    except OSError as exc:
+        raise _QualificationBootstrapError(
+            f"cannot inspect qualification bootstrap source: {exc}"
+        ) from exc
+    stderr = completed.stderr
+    stderr_text = (
+        stderr.decode("utf-8", errors="replace")
+        if isinstance(stderr, bytes)
+        else str(stderr or "")
+    ).strip()
+    if completed.returncode != 0 or stderr_text:
+        detail = stderr_text or f"exit code {completed.returncode}"
+        raise _QualificationBootstrapError(
+            "cannot inspect qualification bootstrap source: "
+            f"git {' '.join(arguments)}: {detail}"
+        )
+    return completed.stdout
+
+
+def _qualification_bootstrap_review_commit(
+    arguments: Sequence[str],
+) -> str:
+    option = "--review-commit"
+    values = []
+    index = 0
+    while index < len(arguments):
+        argument = arguments[index]
+        if argument == option:
+            index += 1
+            if index >= len(arguments):
+                raise _QualificationBootstrapError(
+                    "qualification bootstrap review commit is missing"
+                )
+            values.append(arguments[index])
+        elif argument.startswith(f"{option}="):
+            values.append(argument.partition("=")[2])
+        index += 1
+    if len(values) != 1:
+        raise _QualificationBootstrapError(
+            "qualification bootstrap requires exactly one review commit"
+        )
+    review_commit = values[0]
+    if (
+        len(review_commit) != 40
+        or any(character not in "0123456789abcdef" for character in review_commit)
+    ):
+        raise _QualificationBootstrapError(
+            "qualification bootstrap review commit is invalid"
+        )
+    return review_commit
+
+
+def _qualification_bootstrap_path_may_execute(relative_path: str) -> bool:
+    return (
+        Path(relative_path).suffix.casefold()
+        not in _QUALIFICATION_INERT_SUFFIXES
+    )
+
+
+def _qualification_bootstrap_path_requires_reviewed_bytes(
+    relative_path: str,
+) -> bool:
+    return _qualification_bootstrap_path_may_execute(relative_path)
+
+
+def _qualification_bootstrap_validate_reviewed_source_bytes(
+    repo_root: Path,
+    git_root: Path,
+    review_commit: str,
+) -> None:
+    tree_raw = _qualification_bootstrap_git_output(
+        repo_root,
+        git_root,
+        "ls-tree",
+        "-r",
+        "-z",
+        "--full-tree",
+        review_commit,
+        binary=True,
+    )
+    if not isinstance(tree_raw, bytes):
+        raise _QualificationBootstrapError(
+            "qualification bootstrap review tree is invalid"
+        )
+    try:
+        tree_entries = []
+        for row in tree_raw.split(b"\0"):
+            if not row:
+                continue
+            metadata, separator, raw_path = row.partition(b"\t")
+            fields = metadata.split(b" ")
+            if not separator or len(fields) != 3:
+                raise _QualificationBootstrapError(
+                    "qualification bootstrap review tree row is invalid"
+                )
+            _mode, object_type, object_id = fields
+            relative_path = raw_path.decode("utf-8")
+            if object_type != b"blob" or len(object_id) != 40:
+                raise _QualificationBootstrapError(
+                    "qualification bootstrap reviewed source is not a Git blob: "
+                    f"{relative_path}"
+                )
+            relative = Path(relative_path)
+            if (
+                relative.is_absolute()
+                or relative.as_posix() != relative_path
+                or any(part in {"", ".", ".."} for part in relative.parts)
+            ):
+                raise _QualificationBootstrapError(
+                    "qualification bootstrap reviewed source path is invalid: "
+                    f"{relative_path}"
+                )
+            tree_entries.append((relative_path, relative, object_id))
+
+        tracked_paths = {relative_path for relative_path, _relative, _oid in tree_entries}
+        for path, _metadata in _qualification_bootstrap_walk(
+            repo_root,
+            skip_root_git=True,
+        ):
+            if (
+                path.name.casefold() == ".gitattributes"
+                and path.relative_to(repo_root).as_posix() not in tracked_paths
+            ):
+                raise _QualificationBootstrapError(
+                    "qualification bootstrap unreviewed worktree attributes "
+                    "are forbidden"
+                )
+
+        allowed_attribute_tokens = {
+            "-text",
+            "eol=crlf",
+            "eol=lf",
+            "text",
+            "whitespace=cr-at-eol",
+        }
+        for relative_path, relative, object_id in tree_entries:
+            if not _qualification_bootstrap_path_requires_reviewed_bytes(
+                relative_path
+            ):
+                continue
+            source_path = _qualification_bootstrap_require_path(
+                repo_root / relative,
+                f"reviewed source {relative_path}",
+                expected_kind="file",
+            )
+            try:
+                source_bytes = source_path.read_bytes()
+            except OSError as exc:
+                raise _QualificationBootstrapError(
+                    "cannot read qualification bootstrap reviewed source bytes: "
+                    f"{relative_path}: {exc}"
+                ) from exc
+            if source_path.name.casefold() == ".gitattributes":
+                raw_object_id = hashlib.sha1(
+                    b"blob "
+                    + str(len(source_bytes)).encode("ascii")
+                    + b"\0"
+                    + source_bytes
+                ).hexdigest().encode("ascii")
+                if raw_object_id != object_id:
+                    raise _QualificationBootstrapError(
+                        "qualification bootstrap reviewed source bytes changed: "
+                        f"{relative_path}"
+                    )
+                try:
+                    attribute_text = source_bytes.decode("utf-8")
+                except UnicodeDecodeError as exc:
+                    raise _QualificationBootstrapError(
+                        "qualification bootstrap worktree attributes are not "
+                        "UTF-8"
+                    ) from exc
+                for line in attribute_text.splitlines():
+                    stripped = line.strip()
+                    if not stripped or stripped.startswith("#"):
+                        continue
+                    tokens = stripped.split()
+                    if (
+                        len(tokens) < 2
+                        or tokens[0].casefold().startswith("[attr]")
+                        or any(
+                            token.casefold() not in allowed_attribute_tokens
+                            for token in tokens[1:]
+                        )
+                    ):
+                        raise _QualificationBootstrapError(
+                            "qualification bootstrap worktree attributes contain "
+                            "an unsafe directive"
+                        )
+                continue
+            canonical_object_id = _qualification_bootstrap_git_output(
+                repo_root,
+                git_root,
+                "-c",
+                "core.autocrlf=true",
+                "hash-object",
+                f"--path={relative_path}",
+                "--stdin",
+                binary=True,
+                input_bytes=source_bytes,
+            )
+            if not isinstance(canonical_object_id, bytes):
+                raise _QualificationBootstrapError(
+                    "qualification bootstrap reviewed source hash is invalid"
+                )
+            if canonical_object_id.strip() != object_id:
+                raise _QualificationBootstrapError(
+                    "qualification bootstrap reviewed source bytes changed: "
+                    f"{relative_path}"
+                )
+    except UnicodeDecodeError as exc:
+        raise _QualificationBootstrapError(
+            f"qualification bootstrap review tree path is not UTF-8: {exc}"
+        ) from exc
+
+
+def _qualification_bootstrap_validate_source(
+    repo_root: Path,
+    *,
+    expected_review_commit: str,
+) -> None:
+    repo_root = _qualification_bootstrap_require_path(
+        repo_root,
+        "repository root",
+        expected_kind="directory",
+    )
+    git_root = _qualification_bootstrap_validate_git_metadata(repo_root)
+    observed_head = _qualification_bootstrap_git_output(
+        repo_root,
+        git_root,
+        "rev-parse",
+        "--verify",
+        "HEAD^{commit}",
+    )
+    if (
+        not isinstance(observed_head, str)
+        or observed_head.strip() != expected_review_commit
+    ):
+        raise _QualificationBootstrapError(
+            "qualification bootstrap HEAD does not match the review commit"
+        )
+    _qualification_bootstrap_validate_reviewed_source_bytes(
+        repo_root,
+        git_root,
+        expected_review_commit,
+    )
+    status = _qualification_bootstrap_git_output(
+        repo_root,
+        git_root,
+        "status",
+        "--porcelain=v1",
+        "--untracked-files=no",
+    )
+    if status:
+        raise _QualificationBootstrapError(
+            "qualification bootstrap source has tracked changes"
+        )
+    tracked_raw = _qualification_bootstrap_git_output(
+        repo_root,
+        git_root,
+        "ls-files",
+        "-v",
+        "-z",
+        binary=True,
+    )
+    if not isinstance(tracked_raw, bytes):
+        raise _QualificationBootstrapError(
+            "qualification bootstrap tracked inventory is invalid"
+        )
+    tracked_paths = set()
+    try:
+        for row in tracked_raw.split(b"\0"):
+            if not row:
+                continue
+            if len(row) < 3 or row[1:2] != b" ":
+                raise _QualificationBootstrapError(
+                    "qualification bootstrap index row is invalid"
+                )
+            status_tag = chr(row[0])
+            if status_tag != "H":
+                raise _QualificationBootstrapError(
+                    "qualification bootstrap source has a forbidden index flag: "
+                    f"{status_tag}"
+                )
+            tracked_paths.add(row[2:].decode("utf-8"))
+    except UnicodeDecodeError as exc:
+        raise _QualificationBootstrapError(
+            f"qualification bootstrap source path is not UTF-8: {exc}"
+        ) from exc
+    untracked_executable = []
+    for path, metadata in _qualification_bootstrap_walk(
+        repo_root,
+        skip_root_git=True,
+    ):
+        relative_path = path.relative_to(repo_root).as_posix()
+        if relative_path in tracked_paths or not stat.S_ISREG(metadata.st_mode):
+            continue
+        if _qualification_bootstrap_path_may_execute(relative_path):
+            untracked_executable.append(relative_path)
+    if untracked_executable:
+        raise _QualificationBootstrapError(
+            "qualification bootstrap source has untracked executable paths: "
+            + ", ".join(sorted(untracked_executable))
+        )
+
+
+if _QUALIFICATION_CLI_REQUESTED:
+    try:
+        _qualification_bootstrap_validate_source(
+            REPO_ROOT,
+            expected_review_commit=_qualification_bootstrap_review_commit(
+                tuple(sys.argv[2:])
+            ),
+        )
+    except Exception as exc:
+        sys.stderr.write(
+            "qualification source bootstrap rejected: "
+            f"{type(exc).__name__}: {exc}\n"
+        )
+        raise SystemExit(2)
 
 
 def _contains_project_package(search_root: str) -> bool:
@@ -67,6 +845,7 @@ from spirecomm.communication.study_handshake import (
     build_release_record,
     load_attempt_record,
     load_ready_record,
+    load_release_record,
     publish_record_once,
     validate_ready_record,
 )
@@ -74,9 +853,24 @@ from spirecomm.communication.study_handshake import (
 
 LEDGER_SCHEMA_VERSION = "noncombat-outcome-evidence-ledger-v1"
 MONITOR_SCHEMA_VERSION = "noncombat-outcome-evidence-blinded-monitor-v2"
+QUALIFICATION_REQUEST_SCHEMA_VERSION = (
+    "noncombat-outcome-evidence-qualification-request-v1"
+)
+QUALIFICATION_RESULT_SCHEMA_VERSION = (
+    "noncombat-outcome-evidence-qualification-result-v1"
+)
+QUALIFICATION_REVIEW_BINDING_SCHEMA_VERSION = (
+    "noncombat-outcome-evidence-qualification-review-binding-v1"
+)
+QUALIFICATION_ATTEMPT_HASH_ENV = (
+    "STS_OUTCOME_EVIDENCE_QUALIFICATION_ATTEMPT_HASH"
+)
+QUALIFICATION_LOG_PATH_ENV = "STS_AI_LOG_FILE"
+QUALIFICATION_GIT_EXECUTABLE = Path(r"C:\Program Files\Git\cmd\git.exe")
 _SHA256_LENGTH = 64
 _GIT_COMMIT_LENGTH = 40
 _PROCESS_TERMINATION_TIMEOUT_SECONDS = 5
+_ZERO_RUN_LOCK_HASH = "0" * _SHA256_LENGTH
 
 
 class OutcomeEvidenceRunnerError(RuntimeError):
@@ -104,6 +898,2762 @@ class RegisteredSlotLaunch:
             "config_record",
             MappingProxyType(json.loads(_canonical_json(self.config_record))),
         )
+
+
+def build_qualification_request(
+    *,
+    registration_path: Path | str,
+    qualification_id: str,
+    qualification_root: Path | str,
+    config_path: Path | str,
+    marker_path: Path | str,
+    request_source_path: Path | str,
+    review_allowed_paths: Sequence[str] | None = None,
+    created_unix_ns: int | None = None,
+) -> dict[str, Any]:
+    """Build one pre-lock qualification request without publishing it."""
+
+    resolved_registration_path = _qualification_require_no_follow_path(
+        registration_path,
+        "registration",
+        expected_kind="file",
+    )
+    registration = _load_qualification_registration(
+        resolved_registration_path
+    )
+    repo_root = _qualification_require_no_follow_path(
+        registration.repo_root,
+        "repository root",
+        expected_kind="directory",
+    )
+    resolved_root = _qualification_require_no_follow_path(
+        qualification_root,
+        "root",
+        expected_kind="directory",
+    )
+    resolved_config_path = _qualification_require_no_follow_path(
+        config_path,
+        "config",
+        expected_kind="file",
+    )
+    resolved_marker_path = _qualification_require_no_follow_path(
+        marker_path,
+        "marker",
+        expected_kind="file",
+        allow_missing=True,
+    )
+    resolved_request_source_path = _qualification_require_no_follow_path(
+        request_source_path,
+        "request source",
+        expected_kind="file",
+        allow_missing=True,
+    )
+    try:
+        request_source_relative = resolved_request_source_path.relative_to(
+            repo_root
+        ).as_posix()
+    except ValueError as exc:
+        raise OutcomeEvidenceRunnerError(
+            "qualification request source is outside the source repository"
+        ) from exc
+    _validate_qualification_id(qualification_id)
+    source_commit = _tracked_source_commit(repo_root)
+    _require_committed_qualification_registration(
+        resolved_registration_path,
+        repo_root,
+        source_commit,
+    )
+    bindings = _qualification_request_bindings(
+        registration=registration,
+        registration_path=resolved_registration_path,
+        qualification_id=qualification_id,
+        qualification_root=resolved_root,
+        config_path=resolved_config_path,
+        marker_path=resolved_marker_path,
+        source_commit=source_commit,
+    )
+    registration_relative = resolved_registration_path.relative_to(
+        repo_root
+    ).as_posix()
+    allowed_review_paths = _validate_qualification_review_allowed_paths(
+        [request_source_relative]
+        if review_allowed_paths is None
+        else review_allowed_paths,
+        request_source_relative=request_source_relative,
+        protected_paths={
+            registration_relative,
+            *registration.to_record()["integrity_rules"][
+                "implementation_paths"
+            ],
+        },
+    )
+    if resolved_request_source_path == Path(bindings["request_path"]):
+        raise OutcomeEvidenceRunnerError(
+            "qualification request source must differ from its active path"
+        )
+    control_paths = _qualification_control_paths(bindings)
+    _require_paths_absent(
+        control_paths,
+        "qualification control artifact exists before request",
+    )
+    forbidden_paths = tuple(Path(path) for path in bindings["forbidden_paths"])
+    _require_paths_absent(
+        forbidden_paths,
+        "forbidden qualification output exists before request",
+    )
+    preexisting_files = _qualification_root_inventory(
+        resolved_root,
+        excluded_paths={*control_paths, *forbidden_paths},
+    )
+    record = {
+        "child_command": bindings["child_command"],
+        "completion_path": bindings["completion_path"],
+        "config": bindings["config"],
+        "created_unix_ns": _timestamp(created_unix_ns),
+        "failure_path": bindings["failure_path"],
+        "forbidden_paths": bindings["forbidden_paths"],
+        "handshake": bindings["handshake"],
+        "implementation_sha256": bindings["implementation_sha256"],
+        "marker": bindings["marker"],
+        "preexisting_files": preexisting_files,
+        "qualification_id": qualification_id,
+        "qualification_root": str(resolved_root),
+        "registration": bindings["registration"],
+        "request_hash": None,
+        "request_path": bindings["request_path"],
+        "request_source_path": str(resolved_request_source_path),
+        "review_allowed_paths": allowed_review_paths,
+        "schema_version": QUALIFICATION_REQUEST_SCHEMA_VERSION,
+        "source_commit": source_commit,
+    }
+    record["request_hash"] = _self_hash(record, "request_hash")
+    return json.loads(_canonical_json(record))
+
+
+def load_qualification_request(
+    path: Path | str,
+    *,
+    registration_path: Path | str,
+    _source_mode: bool = False,
+    _expected_request_hash: str | None = None,
+    _expected_review_commit: str | None = None,
+    _expected_request_file_sha256: str | None = None,
+    _expected_request_size: int | None = None,
+) -> dict[str, Any]:
+    """Strictly replay a canonical request against current source and files."""
+
+    request_path = _qualification_require_no_follow_path(
+        path,
+        "request",
+        expected_kind="file",
+    )
+    try:
+        raw = request_path.read_bytes()
+        record = json.loads(
+            raw.decode("utf-8"),
+            object_pairs_hook=_reject_duplicate_keys,
+            parse_constant=_reject_json_constant,
+        )
+    except OutcomeEvidenceRunnerError:
+        raise
+    except (OSError, UnicodeError, json.JSONDecodeError, ValueError) as exc:
+        raise OutcomeEvidenceRunnerError(
+            f"cannot load qualification request: {exc}"
+        ) from exc
+    if not isinstance(record, dict):
+        raise OutcomeEvidenceRunnerError("qualification request must be an object")
+    if raw != (_canonical_json(record) + "\n").encode("utf-8"):
+        raise OutcomeEvidenceRunnerError("qualification request is not canonical")
+    expected_fields = {
+        "child_command",
+        "completion_path",
+        "config",
+        "created_unix_ns",
+        "failure_path",
+        "forbidden_paths",
+        "handshake",
+        "implementation_sha256",
+        "marker",
+        "preexisting_files",
+        "qualification_id",
+        "qualification_root",
+        "registration",
+        "request_hash",
+        "request_path",
+        "request_source_path",
+        "review_allowed_paths",
+        "schema_version",
+        "source_commit",
+    }
+    if set(record) != expected_fields:
+        raise OutcomeEvidenceRunnerError("qualification request fields mismatch")
+    if record["schema_version"] != QUALIFICATION_REQUEST_SCHEMA_VERSION:
+        raise OutcomeEvidenceRunnerError("qualification request schema mismatch")
+    supplied_hash = record["request_hash"]
+    if not isinstance(supplied_hash, str) or not _is_lower_hex(
+        supplied_hash,
+        _SHA256_LENGTH,
+    ):
+        raise OutcomeEvidenceRunnerError("qualification request hash is invalid")
+    if supplied_hash != _self_hash(record, "request_hash"):
+        raise OutcomeEvidenceRunnerError("qualification request hash mismatch")
+    if (
+        _expected_request_hash is not None
+        and supplied_hash != _expected_request_hash
+    ):
+        raise OutcomeEvidenceRunnerError(
+            "qualification request differs from the reviewed hash"
+        )
+    _timestamp(record["created_unix_ns"])
+    qualification_id = record["qualification_id"]
+    _validate_qualification_id(qualification_id)
+    qualification_root = _resolved_absolute_path(
+        record["qualification_root"],
+        "qualification_root",
+    )
+    qualification_root = _qualification_require_no_follow_path(
+        qualification_root,
+        "root",
+        expected_kind="directory",
+    )
+    bound_request_path = _resolved_absolute_path(
+        record["request_path"],
+        "qualification request path",
+    )
+    bound_request_source_path = _resolved_absolute_path(
+        record["request_source_path"],
+        "qualification request source path",
+    )
+    if bound_request_path.parent != qualification_root:
+        raise OutcomeEvidenceRunnerError(
+            "qualification request is outside its bound root"
+        )
+    if bound_request_source_path == bound_request_path:
+        raise OutcomeEvidenceRunnerError(
+            "qualification request source must differ from its active path"
+        )
+    if not _source_mode and bound_request_path != request_path:
+        raise OutcomeEvidenceRunnerError("qualification request path mismatch")
+    if _source_mode and bound_request_source_path != request_path:
+        raise OutcomeEvidenceRunnerError(
+            "qualification request source path mismatch"
+        )
+
+    resolved_registration_path = _qualification_require_no_follow_path(
+        registration_path,
+        "registration",
+        expected_kind="file",
+    )
+    registration = _load_qualification_registration(
+        resolved_registration_path
+    )
+    source_commit = record["source_commit"]
+    if not isinstance(source_commit, str) or not _is_lower_hex(
+        source_commit,
+        _GIT_COMMIT_LENGTH,
+    ):
+        raise OutcomeEvidenceRunnerError(
+            "qualification source commit is invalid"
+        )
+    repo_root = _qualification_require_no_follow_path(
+        registration.repo_root,
+        "repository root",
+        expected_kind="directory",
+    )
+    try:
+        request_source_relative = bound_request_source_path.relative_to(
+            repo_root
+        ).as_posix()
+        registration_relative = resolved_registration_path.relative_to(
+            repo_root
+        ).as_posix()
+    except ValueError as exc:
+        raise OutcomeEvidenceRunnerError(
+            "qualification review path is outside the source repository"
+        ) from exc
+    _validate_qualification_review_allowed_paths(
+        record["review_allowed_paths"],
+        request_source_relative=request_source_relative,
+        protected_paths={
+            registration_relative,
+            *registration.to_record()["integrity_rules"][
+                "implementation_paths"
+            ],
+        },
+    )
+    if _source_mode:
+        _validate_qualification_review_chain(
+            request=record,
+            request_source_path=bound_request_source_path,
+            expected_request_bytes=raw,
+            expected_review_commit=_expected_review_commit,
+            expected_request_file_sha256=_expected_request_file_sha256,
+            expected_request_size=_expected_request_size,
+            registration=registration,
+            registration_path=resolved_registration_path,
+            implementation_sha256=record["implementation_sha256"],
+        )
+    config_record = record["config"]
+    marker_record = record["marker"]
+    if not isinstance(config_record, Mapping) or set(config_record) != {
+        "path",
+        "sha256",
+    }:
+        raise OutcomeEvidenceRunnerError("qualification config binding is invalid")
+    if not isinstance(marker_record, Mapping) or set(marker_record) != {
+        "path",
+        "start_count",
+    }:
+        raise OutcomeEvidenceRunnerError("qualification marker binding is invalid")
+    bindings = _qualification_request_bindings(
+        registration=registration,
+        registration_path=resolved_registration_path,
+        qualification_id=qualification_id,
+        qualification_root=qualification_root,
+        config_path=_resolved_absolute_path(
+            config_record["path"],
+            "qualification config path",
+        ),
+        marker_path=_resolved_absolute_path(
+            marker_record["path"],
+            "qualification marker path",
+        ),
+        source_commit=source_commit,
+    )
+    for field in (
+        "child_command",
+        "completion_path",
+        "config",
+        "failure_path",
+        "forbidden_paths",
+        "handshake",
+        "implementation_sha256",
+        "marker",
+        "registration",
+        "request_path",
+    ):
+        if record[field] != bindings[field]:
+            raise OutcomeEvidenceRunnerError(
+                f"qualification {field.replace('_', ' ')} mismatch"
+            )
+    control_paths = _qualification_control_paths(bindings)
+    _require_paths_absent(
+        control_paths if _source_mode else control_paths[1:],
+        "qualification control artifact exists before launch",
+    )
+    forbidden_paths = tuple(Path(path) for path in bindings["forbidden_paths"])
+    _require_paths_absent(
+        forbidden_paths,
+        "forbidden qualification output exists before launch",
+    )
+    expected_inventory = _qualification_root_inventory(
+        qualification_root,
+        excluded_paths={*control_paths, *forbidden_paths},
+    )
+    if record["preexisting_files"] != expected_inventory:
+        raise OutcomeEvidenceRunnerError(
+            "qualification preexisting file inventory mismatch"
+        )
+    return json.loads(_canonical_json(record))
+
+
+def load_qualification_request_source(
+    path: Path | str,
+    *,
+    registration_path: Path | str,
+    expected_request_hash: str,
+    expected_review_commit: str,
+    expected_request_file_sha256: str,
+    expected_request_size: int,
+) -> dict[str, Any]:
+    if not isinstance(expected_request_hash, str) or not _is_lower_hex(
+        expected_request_hash,
+        _SHA256_LENGTH,
+    ):
+        raise OutcomeEvidenceRunnerError(
+            "reviewed qualification request hash is invalid"
+        )
+    return load_qualification_request(
+        path,
+        registration_path=registration_path,
+        _source_mode=True,
+        _expected_request_hash=expected_request_hash,
+        _expected_review_commit=expected_review_commit,
+        _expected_request_file_sha256=expected_request_file_sha256,
+        _expected_request_size=expected_request_size,
+    )
+
+
+def _validate_qualification_review_allowed_paths(
+    value: Any,
+    *,
+    request_source_relative: str,
+    protected_paths: set[str],
+) -> list[str]:
+    if isinstance(value, (str, bytes)) or not isinstance(value, Sequence):
+        raise OutcomeEvidenceRunnerError(
+            "qualification review allowed paths must be a list"
+        )
+    paths = list(value)
+    if (
+        not paths
+        or any(not isinstance(path, str) or not path for path in paths)
+        or paths != sorted(set(paths))
+    ):
+        raise OutcomeEvidenceRunnerError(
+            "qualification review allowed paths are invalid"
+        )
+    for path in paths:
+        candidate = Path(path)
+        if (
+            candidate.is_absolute()
+            or "\\" in path
+            or candidate.as_posix() != path
+            or any(part in {"", ".", ".."} for part in candidate.parts)
+        ):
+            raise OutcomeEvidenceRunnerError(
+                "qualification review allowed path is not canonical"
+            )
+        if _qualification_review_path_is_executable(path):
+            raise OutcomeEvidenceRunnerError(
+                "qualification review allowlist contains an executable path"
+            )
+    if request_source_relative not in paths:
+        raise OutcomeEvidenceRunnerError(
+            "qualification request source is absent from the review allowlist"
+        )
+    overlap = set(paths) & protected_paths
+    if overlap:
+        raise OutcomeEvidenceRunnerError(
+            "qualification review allowlist contains protected paths"
+        )
+    return paths
+
+
+def _qualification_review_path_is_executable(relative_path: str) -> bool:
+    return _qualification_bootstrap_path_may_execute(relative_path)
+
+
+def _qualification_request_bindings(
+    *,
+    registration: OutcomeEvidenceRegistration,
+    registration_path: Path,
+    qualification_id: str,
+    qualification_root: Path,
+    config_path: Path,
+    marker_path: Path,
+    source_commit: str,
+) -> dict[str, Any]:
+    qualification_root = _qualification_require_no_follow_path(
+        qualification_root,
+        "root",
+        expected_kind="directory",
+    )
+    config_path = _qualification_require_no_follow_path(
+        config_path,
+        "config",
+        expected_kind="file",
+    )
+    marker_path = _qualification_require_no_follow_path(
+        marker_path,
+        "marker",
+        expected_kind="file",
+        allow_missing=True,
+    )
+    checkpoint_root = _qualification_require_no_follow_path(
+        registration.checkpoint_root,
+        "checkpoint root",
+        expected_kind="directory",
+        allow_missing=True,
+    )
+    expected_marker_path = (
+        checkpoint_root.parent
+        / "runs"
+        / "ai_games.txt"
+    )
+    if marker_path != expected_marker_path:
+        raise OutcomeEvidenceRunnerError(
+            "qualification marker path does not match the registered game root"
+        )
+    if not config_path.is_relative_to(qualification_root):
+        raise OutcomeEvidenceRunnerError(
+            "qualification config must be inside the qualification root"
+        )
+    config = _load_qualification_exploration_config(config_path)
+    registered_behavior = registration.to_record()["behavior"]
+    if (
+        list(config.enabled_categories)
+        != registered_behavior["enabled_categories"]
+        or dict(config.category_rates_bps)
+        != registered_behavior["category_rates_bps"]
+        or config.per_run_alternative_budget
+        != registered_behavior["per_run_alternative_budget"]
+    ):
+        raise OutcomeEvidenceRunnerError(
+            "qualification configuration behavior differs from registration"
+        )
+    session_id = f"{qualification_id}-s01"
+    if (
+        config.session_id != session_id
+        or config.source_commit != source_commit
+        or config.study_id != qualification_id
+        or config.study_slot_number != 1
+        or config.study_registration_hash != registration.registration_hash
+        or config.study_run_lock_hash != _ZERO_RUN_LOCK_HASH
+    ):
+        raise OutcomeEvidenceRunnerError(
+            "qualification exploration config binding mismatch"
+        )
+    rules = registration_handshake_rules(registration)
+    if rules is None:
+        raise OutcomeEvidenceRunnerError(
+            "launchable registration has no handshake rules"
+        )
+    attempt_path = Path(
+        os.path.abspath(
+            qualification_root / "qualification-communication-attempt.json"
+        )
+    )
+    ready_path = Path(
+        os.path.abspath(
+            qualification_root / "qualification-communication-ready.json"
+        )
+    )
+    release_path = Path(
+        os.path.abspath(
+            qualification_root / "qualification-communication-release.json"
+        )
+    )
+    completion_path = Path(
+        os.path.abspath(qualification_root / "qualification-completion.json")
+    )
+    failure_path = Path(
+        os.path.abspath(qualification_root / "qualification-failure.json")
+    )
+    request_path = Path(
+        os.path.abspath(qualification_root / "qualification-request.json")
+    )
+    registered_root = _qualification_require_no_follow_path(
+        registration.artifact_root,
+        "registered artifact root",
+        expected_kind="directory",
+        allow_missing=True,
+    )
+    forbidden_paths = sorted(
+        {
+            str(registered_root),
+            str(Path(os.path.abspath(registered_root / "run-lock.json"))),
+            str(Path(os.path.abspath(registered_root / "study-ledger.jsonl"))),
+            str(config.manifest_path),
+            str(config.trace_path),
+        }
+    )
+    return {
+        "child_command": _qualification_child_command(registration),
+        "completion_path": str(completion_path),
+        "config": {
+            "path": str(config_path),
+            "sha256": _path_sha256(config_path, "qualification config"),
+        },
+        "failure_path": str(failure_path),
+        "forbidden_paths": forbidden_paths,
+        "handshake": {
+            "attempt_path": str(attempt_path),
+            "protocol_version": rules["protocol_version"],
+            "readiness_timeout_seconds": rules["readiness_timeout_seconds"],
+            "ready_path": str(ready_path),
+            "release_path": str(release_path),
+            "release_timeout_seconds": rules["release_timeout_seconds"],
+            "run_lock_hash": _ZERO_RUN_LOCK_HASH,
+            "session_id": session_id,
+            "slot_number": 1,
+        },
+        "implementation_sha256": _qualification_implementation_sha256(
+            registration
+        ),
+        "marker": {
+            "path": str(marker_path),
+            "start_count": _ai_marker_count(marker_path),
+        },
+        "registration": {
+            "canonical_hash": registration.registration_hash,
+            "file_sha256": _path_sha256(
+                registration_path,
+                "qualification registration",
+            ),
+            "path": str(registration_path),
+        },
+        "request_path": str(request_path),
+    }
+
+
+def _load_qualification_exploration_config(path: Path):
+    try:
+        payload = json.loads(
+            path.read_bytes().decode("utf-8"),
+            object_pairs_hook=_reject_duplicate_keys,
+            parse_constant=_reject_json_constant,
+        )
+    except OutcomeEvidenceRunnerError:
+        raise
+    except (OSError, UnicodeError, json.JSONDecodeError, ValueError) as exc:
+        raise OutcomeEvidenceRunnerError(
+            f"qualification config is invalid: {exc}"
+        ) from exc
+    expected_fields = {
+        "category_rates_bps",
+        "enabled_categories",
+        "manifest_path",
+        "per_run_alternative_budget",
+        "schema_version",
+        "seed",
+        "session_id",
+        "source_commit",
+        "study_id",
+        "study_registration_hash",
+        "study_run_lock_hash",
+        "study_slot_number",
+        "trace_path",
+    }
+    if not isinstance(payload, Mapping) or set(payload) != expected_fields:
+        raise OutcomeEvidenceRunnerError(
+            "qualification configuration fields mismatch"
+        )
+    for field in ("manifest_path", "trace_path"):
+        _qualification_require_no_follow_path(
+            payload[field],
+            f"configuration {field}",
+            expected_kind="file",
+            allow_missing=True,
+        )
+    try:
+        return parse_exploration_config(payload, config_path=path)
+    except ExplorationConfigurationError as exc:
+        raise OutcomeEvidenceRunnerError(
+            f"qualification config is invalid: {exc}"
+        ) from exc
+
+
+def _qualification_control_paths(bindings: Mapping[str, Any]) -> tuple[Path, ...]:
+    handshake = bindings["handshake"]
+    return (
+        Path(bindings["request_path"]),
+        Path(handshake["attempt_path"]),
+        Path(handshake["ready_path"]),
+        Path(handshake["release_path"]),
+        Path(bindings["completion_path"]),
+        Path(bindings["failure_path"]),
+    )
+
+
+def _qualification_root_inventory(
+    root: Path,
+    *,
+    excluded_paths: set[Path],
+    deadline: float | None = None,
+    monotonic: Callable[[], float] = time.monotonic,
+) -> dict[str, str]:
+    excluded = {
+        Path(os.path.abspath(path)) for path in excluded_paths
+    }
+    inventory = {}
+    for path, metadata, is_link_or_reparse in _qualification_no_follow_entries(
+        root,
+        deadline=deadline,
+        monotonic=monotonic,
+    ):
+        lexical_path = Path(os.path.abspath(path))
+        if is_link_or_reparse:
+            raise OutcomeEvidenceRunnerError(
+                "qualification root contains a symbolic link or reparse "
+                f"point: {path}"
+            )
+        if lexical_path in excluded or not stat.S_ISREG(metadata.st_mode):
+            continue
+        inventory[str(lexical_path)] = _path_sha256(
+            path,
+            "qualification preexisting file",
+            deadline=deadline,
+            monotonic=monotonic,
+        )
+    return inventory
+
+
+def _qualification_metadata_is_link_or_reparse(
+    metadata: os.stat_result,
+) -> bool:
+    file_attributes = getattr(metadata, "st_file_attributes", 0)
+    reparse_flag = getattr(stat, "FILE_ATTRIBUTE_REPARSE_POINT", 0)
+    return stat.S_ISLNK(metadata.st_mode) or bool(
+        file_attributes & reparse_flag
+    )
+
+
+def _qualification_require_no_follow_path(
+    path: Path | str,
+    label: str,
+    *,
+    expected_kind: str | None,
+    allow_missing: bool = False,
+) -> Path:
+    supplied_path = Path(os.fspath(path))
+    supplied_components = (
+        supplied_path.parts[1:] if supplied_path.anchor else supplied_path.parts
+    )
+    if any(":" in part for part in supplied_components):
+        raise OutcomeEvidenceRunnerError(
+            f"qualification {label} contains an alternate data stream"
+        )
+    if any(part.endswith((".", " ")) for part in supplied_components):
+        raise OutcomeEvidenceRunnerError(
+            f"qualification {label} contains a Win32 alias component"
+        )
+    lexical_path = Path(os.path.abspath(supplied_path))
+    if lexical_path.drive.startswith("\\\\"):
+        raise OutcomeEvidenceRunnerError(
+            f"qualification {label} must use a local drive; UNC and device "
+            "paths are forbidden"
+        )
+    if expected_kind not in {None, "directory", "file"}:
+        raise OutcomeEvidenceRunnerError(
+            "qualification path expected kind is invalid"
+        )
+    current = Path(lexical_path.anchor)
+    for part in lexical_path.parts[1:]:
+        current /= part
+        try:
+            metadata = current.lstat()
+        except FileNotFoundError as exc:
+            if allow_missing:
+                return lexical_path
+            raise OutcomeEvidenceRunnerError(
+                f"qualification {label} is missing: {current}"
+            ) from exc
+        except OSError as exc:
+            raise OutcomeEvidenceRunnerError(
+                f"cannot inspect qualification {label}: {current}: {exc}"
+            ) from exc
+        if _qualification_metadata_is_link_or_reparse(metadata):
+            raise OutcomeEvidenceRunnerError(
+                f"qualification {label} contains a symbolic link or reparse "
+                f"point: {current}"
+            )
+    try:
+        metadata = lexical_path.lstat()
+    except FileNotFoundError as exc:
+        if allow_missing:
+            return lexical_path
+        raise OutcomeEvidenceRunnerError(
+            f"qualification {label} is missing: {lexical_path}"
+        ) from exc
+    except OSError as exc:
+        raise OutcomeEvidenceRunnerError(
+            f"cannot inspect qualification {label}: {lexical_path}: {exc}"
+        ) from exc
+    if expected_kind is None:
+        return lexical_path
+    expected_mode = (
+        stat.S_ISDIR(metadata.st_mode)
+        if expected_kind == "directory"
+        else stat.S_ISREG(metadata.st_mode)
+    )
+    if not expected_mode:
+        raise OutcomeEvidenceRunnerError(
+            f"qualification {label} is not a regular {expected_kind}: "
+            f"{lexical_path}"
+        )
+    return lexical_path
+
+
+def _qualification_git_executable() -> str:
+    return str(
+        _qualification_require_no_follow_path(
+            QUALIFICATION_GIT_EXECUTABLE,
+            "Git executable",
+            expected_kind="file",
+        )
+    )
+
+
+def _qualification_git_environment(
+    *,
+    repo_root: Path,
+    git_root: Path,
+) -> dict[str, str]:
+    environment = {
+        key: value
+        for key in ("SystemRoot", "WINDIR", "COMSPEC", "TEMP", "TMP")
+        if (value := os.environ.get(key))
+    }
+    environment.update(
+        {
+            "GIT_CONFIG_GLOBAL": os.devnull,
+            "GIT_CONFIG_NOSYSTEM": "1",
+            "GIT_ATTR_NOSYSTEM": "1",
+            "GIT_DIR": str(git_root),
+            "GIT_NO_REPLACE_OBJECTS": "1",
+            "GIT_NO_LAZY_FETCH": "1",
+            "GIT_OPTIONAL_LOCKS": "0",
+            "GIT_TERMINAL_PROMPT": "0",
+            "GIT_WORK_TREE": str(repo_root),
+            "LC_ALL": "C",
+        }
+    )
+    return environment
+
+
+def _qualification_git_command(*arguments: str) -> list[str]:
+    return [
+        _qualification_git_executable(),
+        "--no-pager",
+        "--no-replace-objects",
+        "--no-lazy-fetch",
+        "-c",
+        "core.fsmonitor=false",
+        "-c",
+        "core.hooksPath=NUL",
+        "-c",
+        "diff.external=",
+        "-c",
+        "color.ui=false",
+        *arguments,
+    ]
+
+
+def _qualification_registration_absolute_paths(value: Any):
+    if isinstance(value, Mapping):
+        for child in value.values():
+            yield from _qualification_registration_absolute_paths(child)
+    elif isinstance(value, list):
+        for child in value:
+            yield from _qualification_registration_absolute_paths(child)
+    elif isinstance(value, str) and Path(value).is_absolute():
+        yield value
+
+
+def _load_qualification_registration(
+    path: Path | str,
+) -> OutcomeEvidenceRegistration:
+    registration_path = _qualification_require_no_follow_path(
+        path,
+        "registration",
+        expected_kind="file",
+    )
+    try:
+        payload = json.loads(
+            registration_path.read_bytes().decode("utf-8"),
+            object_pairs_hook=_reject_duplicate_keys,
+            parse_constant=_reject_json_constant,
+        )
+    except OutcomeEvidenceRunnerError:
+        raise
+    except (OSError, UnicodeError, json.JSONDecodeError, ValueError) as exc:
+        raise OutcomeEvidenceRunnerError(
+            f"qualification registration is invalid: {exc}"
+        ) from exc
+    if not isinstance(payload, Mapping):
+        raise OutcomeEvidenceRunnerError(
+            "qualification registration must be an object"
+        )
+    for raw_path in _qualification_registration_absolute_paths(payload):
+        _qualification_require_no_follow_path(
+            raw_path,
+            "registered path",
+            expected_kind=None,
+            allow_missing=True,
+        )
+    raw_repo_root = payload.get("repo_root")
+    if not isinstance(raw_repo_root, str) or not Path(raw_repo_root).is_absolute():
+        raise OutcomeEvidenceRunnerError(
+            "qualification registration repository root is invalid"
+        )
+    repo_root = _qualification_require_no_follow_path(
+        raw_repo_root,
+        "registered repository root",
+        expected_kind="directory",
+    )
+    integrity = payload.get("integrity_rules")
+    implementation_paths = (
+        integrity.get("implementation_paths")
+        if isinstance(integrity, Mapping)
+        else None
+    )
+    if not isinstance(implementation_paths, list):
+        raise OutcomeEvidenceRunnerError(
+            "qualification registration implementation paths are invalid"
+        )
+    for relative_path in implementation_paths:
+        if not isinstance(relative_path, str):
+            raise OutcomeEvidenceRunnerError(
+                "qualification registration implementation path is invalid"
+            )
+        _qualification_require_no_follow_path(
+            repo_root / relative_path,
+            f"implementation file {relative_path}",
+            expected_kind="file",
+        )
+    return _require_launchable_runner_registration(
+        _load_runner_registration(registration_path)
+    )
+
+
+def _qualification_no_follow_entries(
+    root: Path,
+    *,
+    skip_root_git: bool = False,
+    deadline: float | None = None,
+    monotonic: Callable[[], float] = time.monotonic,
+) -> list[tuple[Path, os.stat_result, bool]]:
+    root = Path(root)
+    try:
+        root_metadata = root.lstat()
+    except OSError as exc:
+        raise OutcomeEvidenceRunnerError(
+            f"cannot inspect qualification filesystem root: {exc}"
+        ) from exc
+    if (
+        _qualification_metadata_is_link_or_reparse(root_metadata)
+        or not stat.S_ISDIR(root_metadata.st_mode)
+    ):
+        raise OutcomeEvidenceRunnerError(
+            "qualification filesystem root is not a regular directory"
+        )
+    pending = [root]
+    entries = []
+    while pending:
+        if deadline is not None and monotonic() >= deadline:
+            raise OutcomeEvidenceRunnerError(
+                "qualification live source validation exceeded its release budget"
+            )
+        directory = pending.pop()
+        try:
+            with os.scandir(directory) as iterator:
+                children = sorted(iterator, key=lambda entry: entry.name)
+        except OSError as exc:
+            raise OutcomeEvidenceRunnerError(
+                f"cannot inspect qualification source filesystem: {exc}"
+            ) from exc
+        for child in children:
+            if skip_root_git and child.name == ".git" and directory == root:
+                continue
+            if deadline is not None and monotonic() >= deadline:
+                raise OutcomeEvidenceRunnerError(
+                    "qualification live source validation exceeded its release budget"
+                )
+            try:
+                metadata = child.stat(follow_symlinks=False)
+            except OSError as exc:
+                raise OutcomeEvidenceRunnerError(
+                    f"cannot inspect qualification source filesystem: {exc}"
+                ) from exc
+            path = Path(child.path)
+            is_link_or_reparse = _qualification_metadata_is_link_or_reparse(
+                metadata
+            )
+            entries.append((path, metadata, is_link_or_reparse))
+            if stat.S_ISDIR(metadata.st_mode) and not is_link_or_reparse:
+                pending.append(path)
+    return sorted(entries, key=lambda row: str(row[0]))
+
+
+def _qualification_validate_git_metadata(
+    repo_root: Path,
+    *,
+    deadline: float | None = None,
+    monotonic: Callable[[], float] = time.monotonic,
+) -> Path:
+    def require_budget() -> None:
+        if deadline is not None and monotonic() >= deadline:
+            raise OutcomeEvidenceRunnerError(
+                "qualification live source validation exceeded its release budget"
+            )
+
+    require_budget()
+    repo_root = _qualification_require_no_follow_path(
+        repo_root,
+        "Git repository root",
+        expected_kind="directory",
+    )
+    git_root = _qualification_require_no_follow_path(
+        repo_root / ".git",
+        "Git metadata root",
+        expected_kind="directory",
+    )
+    for path, _metadata, is_link_or_reparse in (
+        _qualification_no_follow_entries(
+            git_root,
+            deadline=deadline,
+            monotonic=monotonic,
+        )
+    ):
+        if is_link_or_reparse:
+            raise OutcomeEvidenceRunnerError(
+                "qualification Git metadata contains a symbolic link or "
+                f"reparse point: {path}"
+            )
+    grafts_path = git_root / "info" / "grafts"
+    if _qualification_path_entry_exists(grafts_path):
+        raise OutcomeEvidenceRunnerError(
+            "qualification Git graft metadata is forbidden"
+        )
+    attributes_path = git_root / "info" / "attributes"
+    if _qualification_path_entry_exists(attributes_path):
+        raise OutcomeEvidenceRunnerError(
+            "qualification Git info attributes are forbidden"
+        )
+    for relative_path in (
+        "commondir",
+        "objects/info/alternates",
+        "objects/info/http-alternates",
+    ):
+        if _qualification_path_entry_exists(git_root / relative_path):
+            raise OutcomeEvidenceRunnerError(
+                "qualification Git metadata indirection is forbidden: "
+                f"{relative_path}"
+            )
+    replace_path = git_root / "refs" / "replace"
+    if _qualification_path_entry_exists(replace_path):
+        raise OutcomeEvidenceRunnerError(
+            "qualification Git replacement refs are forbidden"
+        )
+    packed_refs_path = git_root / "packed-refs"
+    if _qualification_path_entry_exists(packed_refs_path):
+        require_budget()
+        packed_refs_path = _qualification_require_no_follow_path(
+            packed_refs_path,
+            "Git packed refs",
+            expected_kind="file",
+        )
+        try:
+            packed_refs = packed_refs_path.read_text(encoding="utf-8")
+        except (OSError, UnicodeError) as exc:
+            raise OutcomeEvidenceRunnerError(
+                f"cannot inspect qualification Git packed refs: {exc}"
+            ) from exc
+        require_budget()
+        if any(
+            line.partition(" ")[2].startswith("refs/replace/")
+            for line in packed_refs.splitlines()
+            if line and not line.startswith(("#", "^"))
+        ):
+            raise OutcomeEvidenceRunnerError(
+                "qualification Git packed replacement refs are forbidden"
+            )
+    for config_name in ("config", "config.worktree"):
+        config_path = git_root / config_name
+        if not _qualification_path_entry_exists(config_path):
+            continue
+        config_path = _qualification_require_no_follow_path(
+            config_path,
+            f"Git repository {config_name}",
+            expected_kind="file",
+        )
+        require_budget()
+        try:
+            config_text = config_path.read_text(encoding="utf-8")
+        except (OSError, UnicodeError) as exc:
+            raise OutcomeEvidenceRunnerError(
+                f"cannot inspect qualification Git config: {exc}"
+            ) from exc
+        require_budget()
+        normalized_config = "".join(config_text.casefold().split())
+        forbidden_config_tokens = (
+            "[include",
+            "fsmonitor",
+            "hookspath",
+            "external=",
+            "filter",
+            "clean=",
+            "process=",
+            "attributesfile",
+            "textconv",
+            "sshcommand",
+            "partialclone",
+            "promisor",
+            "[protocol",
+            "protocol.ext.allow",
+            "ext::",
+        )
+        if any(
+            token in normalized_config for token in forbidden_config_tokens
+        ):
+            raise OutcomeEvidenceRunnerError(
+                "qualification Git repository config contains an unsafe "
+                "execution directive"
+            )
+    return git_root
+
+
+def _qualification_implementation_sha256(
+    registration: OutcomeEvidenceRegistration,
+) -> dict[str, str]:
+    repo_root = _qualification_require_no_follow_path(
+        registration.repo_root,
+        "repository root",
+        expected_kind="directory",
+    )
+    raw_paths = registration.to_record()["integrity_rules"]["implementation_paths"]
+    result = {}
+    for relative_path in raw_paths:
+        path = _qualification_require_no_follow_path(
+            repo_root / relative_path,
+            f"implementation file {relative_path}",
+            expected_kind="file",
+        )
+        if not path.is_relative_to(repo_root):
+            raise OutcomeEvidenceRunnerError(
+                f"qualification implementation file is invalid: {relative_path}"
+            )
+        result[relative_path] = _path_sha256(
+            path,
+            "qualification implementation file",
+        )
+    return result
+
+
+def _qualification_git_source_output(
+    repo_root: Path,
+    *arguments: str,
+    binary: bool = False,
+    deadline: float | None = None,
+    monotonic: Callable[[], float] = time.monotonic,
+) -> str | bytes:
+    git_root = _qualification_validate_git_metadata(
+        repo_root,
+        deadline=deadline,
+        monotonic=monotonic,
+    )
+    timeout = None
+    if deadline is not None:
+        timeout = deadline - monotonic()
+        if timeout <= 0:
+            raise OutcomeEvidenceRunnerError(
+                "qualification live source validation exceeded its release budget"
+            )
+    try:
+        completed = subprocess.run(
+            _qualification_git_command(*arguments),
+            cwd=repo_root,
+            capture_output=True,
+            check=False,
+            env=_qualification_git_environment(
+                repo_root=Path(repo_root),
+                git_root=git_root,
+            ),
+            text=not binary,
+            encoding=None if binary else "utf-8",
+            timeout=timeout,
+        )
+    except (OSError, subprocess.TimeoutExpired) as exc:
+        raise OutcomeEvidenceRunnerError(
+            f"cannot inspect qualification source: {exc}"
+        ) from exc
+    stderr = completed.stderr
+    stderr_text = (
+        stderr.decode("utf-8", errors="replace")
+        if isinstance(stderr, bytes)
+        else str(stderr or "")
+    ).strip()
+    if completed.returncode != 0 or stderr_text:
+        detail = stderr_text or f"exit code {completed.returncode}"
+        raise OutcomeEvidenceRunnerError(
+            f"cannot inspect qualification source: git {' '.join(arguments)}: "
+            f"{detail}"
+        )
+    return completed.stdout
+
+
+def _qualification_untracked_executable_paths(
+    repo_root: Path,
+    *,
+    tracked_paths: set[str],
+    deadline: float | None = None,
+    monotonic: Callable[[], float] = time.monotonic,
+) -> list[str]:
+    executable_paths = []
+    for path, metadata, is_link_or_reparse in _qualification_no_follow_entries(
+        repo_root,
+        skip_root_git=True,
+        deadline=deadline,
+        monotonic=monotonic,
+    ):
+        relative_path = path.relative_to(repo_root).as_posix()
+        if relative_path in tracked_paths:
+            continue
+        if is_link_or_reparse or (
+            stat.S_ISREG(metadata.st_mode)
+            and _qualification_review_path_is_executable(relative_path)
+        ):
+            executable_paths.append(relative_path)
+    return sorted(set(executable_paths))
+
+
+def _tracked_source_commit(
+    repo_root: Path,
+    *,
+    deadline: float | None = None,
+    monotonic: Callable[[], float] = time.monotonic,
+) -> str:
+    repo_root = _qualification_require_no_follow_path(
+        repo_root,
+        "repository root",
+        expected_kind="directory",
+    )
+    try:
+        status = _qualification_git_source_output(
+            repo_root,
+            "status",
+            "--porcelain=v1",
+            "--untracked-files=no",
+            deadline=deadline,
+            monotonic=monotonic,
+        )
+        commit = str(
+            _qualification_git_source_output(
+                repo_root,
+                "rev-parse",
+                "HEAD",
+                deadline=deadline,
+                monotonic=monotonic,
+            )
+        ).strip().lower()
+        tracked_raw = _qualification_git_source_output(
+            repo_root,
+            "ls-files",
+            "-v",
+            "-z",
+            binary=True,
+            deadline=deadline,
+            monotonic=monotonic,
+        )
+    except OutcomeEvidenceRunnerError:
+        raise
+    if status:
+        raise OutcomeEvidenceRunnerError(
+            "qualification source has tracked changes"
+        )
+    if not _is_lower_hex(commit, _GIT_COMMIT_LENGTH):
+        raise OutcomeEvidenceRunnerError(
+            "qualification source commit is invalid"
+        )
+    if not isinstance(tracked_raw, bytes):
+        raise OutcomeEvidenceRunnerError(
+            "qualification tracked source inventory is invalid"
+        )
+    try:
+        tracked_paths = set()
+        for row in tracked_raw.split(b"\0"):
+            if not row:
+                continue
+            if len(row) < 3 or row[1:2] != b" ":
+                raise OutcomeEvidenceRunnerError(
+                    "qualification tracked source index row is invalid"
+                )
+            status_tag = chr(row[0])
+            if status_tag != "H":
+                raise OutcomeEvidenceRunnerError(
+                    "qualification tracked source has a forbidden index flag: "
+                    f"{status_tag}"
+                )
+            tracked_paths.add(row[2:].decode("utf-8"))
+    except UnicodeDecodeError as exc:
+        raise OutcomeEvidenceRunnerError(
+            f"qualification tracked source path is not UTF-8: {exc}"
+        ) from exc
+    executable_untracked = _qualification_untracked_executable_paths(
+        repo_root,
+        tracked_paths=tracked_paths,
+        deadline=deadline,
+        monotonic=monotonic,
+    )
+    if executable_untracked:
+        raise OutcomeEvidenceRunnerError(
+            "qualification source has untracked executable paths: "
+            + ", ".join(executable_untracked)
+        )
+    return commit
+
+
+def _require_committed_qualification_registration(
+    registration_path: Path,
+    repo_root: Path,
+    source_commit: str,
+) -> None:
+    resolved_root = _qualification_require_no_follow_path(
+        repo_root,
+        "repository root",
+        expected_kind="directory",
+    )
+    resolved_registration = _qualification_require_no_follow_path(
+        registration_path,
+        "registration",
+        expected_kind="file",
+    )
+    try:
+        relative_path = resolved_registration.relative_to(resolved_root).as_posix()
+    except ValueError as exc:
+        raise OutcomeEvidenceRunnerError(
+            "qualification registration is outside the source repository"
+        ) from exc
+    try:
+        _qualification_git_source_output(
+            resolved_root,
+            "ls-files",
+            "--error-unmatch",
+            "--",
+            relative_path,
+        )
+        committed_bytes = _qualification_git_source_output(
+            resolved_root,
+            "show",
+            f"{source_commit}:{relative_path}",
+            binary=True,
+        )
+        current_bytes = resolved_registration.read_bytes()
+    except (OSError, OutcomeEvidenceRunnerError) as exc:
+        raise OutcomeEvidenceRunnerError(
+            f"qualification registration is not committed: {exc}"
+        ) from exc
+    if current_bytes != committed_bytes:
+        raise OutcomeEvidenceRunnerError(
+            "qualification registration differs from the source commit"
+        )
+
+
+def _require_committed_qualification_request_source(
+    request_source_path: Path,
+    repo_root: Path,
+    review_commit: str,
+    expected_request_bytes: bytes,
+) -> None:
+    resolved_root = _qualification_require_no_follow_path(
+        repo_root,
+        "repository root",
+        expected_kind="directory",
+    )
+    resolved_source = _qualification_require_no_follow_path(
+        request_source_path,
+        "request source",
+        expected_kind="file",
+    )
+    try:
+        relative_path = resolved_source.relative_to(resolved_root).as_posix()
+    except ValueError as exc:
+        raise OutcomeEvidenceRunnerError(
+            "qualification request source is outside the source repository"
+        ) from exc
+    try:
+        _qualification_git_source_output(
+            resolved_root,
+            "ls-files",
+            "--error-unmatch",
+            "--",
+            relative_path,
+        )
+        committed_bytes = _qualification_git_source_output(
+            resolved_root,
+            "show",
+            f"{review_commit}:{relative_path}",
+            binary=True,
+        )
+        current_bytes = resolved_source.read_bytes()
+    except OutcomeEvidenceRunnerError:
+        raise
+    except (OSError, OutcomeEvidenceRunnerError) as exc:
+        raise OutcomeEvidenceRunnerError(
+            f"qualification request source is not committed: {exc}"
+        ) from exc
+    if (
+        current_bytes != committed_bytes
+        or current_bytes != expected_request_bytes
+    ):
+        raise OutcomeEvidenceRunnerError(
+            "qualification request source differs from the reviewed commit"
+        )
+
+
+def _qualification_committed_bytes(
+    repo_root: Path,
+    commit: str,
+    relative_path: str,
+    label: str,
+) -> bytes:
+    try:
+        return _qualification_git_source_output(
+            repo_root,
+            "show",
+            f"{commit}:{relative_path}",
+            binary=True,
+        )
+    except (OSError, OutcomeEvidenceRunnerError) as exc:
+        raise OutcomeEvidenceRunnerError(
+            f"cannot read committed {label}: {exc}"
+        ) from exc
+
+
+def _validate_qualification_review_chain(
+    *,
+    request: Mapping[str, Any],
+    request_source_path: Path,
+    expected_request_bytes: bytes,
+    expected_review_commit: Any,
+    expected_request_file_sha256: Any,
+    expected_request_size: Any,
+    registration: OutcomeEvidenceRegistration,
+    registration_path: Path,
+    implementation_sha256: Any,
+) -> dict[str, Any]:
+    repo_root = _qualification_require_no_follow_path(
+        registration.repo_root,
+        "repository root",
+        expected_kind="directory",
+    )
+    if not isinstance(expected_review_commit, str) or not _is_lower_hex(
+        expected_review_commit,
+        _GIT_COMMIT_LENGTH,
+    ):
+        raise OutcomeEvidenceRunnerError(
+            "expected qualification review commit is invalid"
+        )
+    if not isinstance(expected_request_file_sha256, str) or not _is_lower_hex(
+        expected_request_file_sha256,
+        _SHA256_LENGTH,
+    ):
+        raise OutcomeEvidenceRunnerError(
+            "expected qualification request file hash is invalid"
+        )
+    if type(expected_request_size) is not int or expected_request_size <= 0:
+        raise OutcomeEvidenceRunnerError(
+            "expected qualification request byte count is invalid"
+        )
+    observed_file_sha256 = hashlib.sha256(expected_request_bytes).hexdigest()
+    if (
+        observed_file_sha256 != expected_request_file_sha256
+        or len(expected_request_bytes) != expected_request_size
+    ):
+        raise OutcomeEvidenceRunnerError(
+            "qualification request file binding differs from reviewed values"
+        )
+    review_head = _tracked_source_commit(repo_root)
+    if review_head != expected_review_commit:
+        raise OutcomeEvidenceRunnerError(
+            "qualification launch HEAD differs from the reviewed commit"
+        )
+    source_commit = request["source_commit"]
+    try:
+        parent_row = str(
+            _qualification_git_source_output(
+                repo_root,
+                "rev-list",
+                "--parents",
+                "-n",
+                "1",
+                expected_review_commit,
+            )
+        ).strip().lower().split()
+        diff_paths = sorted(
+            path
+            for path in str(
+                _qualification_git_source_output(
+                    repo_root,
+                    "diff",
+                    "--no-ext-diff",
+                    "--no-textconv",
+                    "--name-only",
+                    "--no-renames",
+                    source_commit,
+                    expected_review_commit,
+                )
+            ).splitlines()
+            if path
+        )
+    except (OSError, OutcomeEvidenceRunnerError) as exc:
+        raise OutcomeEvidenceRunnerError(
+            f"cannot verify qualification review commit: {exc}"
+        ) from exc
+    if parent_row != [expected_review_commit, source_commit]:
+        raise OutcomeEvidenceRunnerError(
+            "qualification review commit is not a direct child of the source commit"
+        )
+    if diff_paths != request["review_allowed_paths"]:
+        raise OutcomeEvidenceRunnerError(
+            "qualification review commit differs from the allowed path set"
+        )
+    _require_committed_qualification_request_source(
+        request_source_path,
+        repo_root,
+        expected_review_commit,
+        expected_request_bytes,
+    )
+    _require_committed_qualification_registration(
+        registration_path,
+        repo_root,
+        source_commit,
+    )
+    try:
+        registration_relative = registration_path.relative_to(
+            repo_root
+        ).as_posix()
+    except ValueError as exc:
+        raise OutcomeEvidenceRunnerError(
+            "qualification registration is outside the source repository"
+        ) from exc
+    registration_bytes = registration_path.read_bytes()
+    for commit in {expected_review_commit}:
+        if _qualification_committed_bytes(
+            repo_root,
+            commit,
+            registration_relative,
+            "qualification registration",
+        ) != registration_bytes:
+            raise OutcomeEvidenceRunnerError(
+                "qualification registration changed after the source commit"
+            )
+
+    relative_paths = registration.to_record()["integrity_rules"][
+        "implementation_paths"
+    ]
+    if not isinstance(implementation_sha256, Mapping) or set(
+        implementation_sha256
+    ) != set(relative_paths):
+        raise OutcomeEvidenceRunnerError(
+            "qualification implementation binding is invalid"
+        )
+    for relative_path in relative_paths:
+        current_path = _qualification_require_no_follow_path(
+            repo_root / relative_path,
+            f"implementation file {relative_path}",
+            expected_kind="file",
+        )
+        if not current_path.is_relative_to(repo_root):
+            raise OutcomeEvidenceRunnerError(
+                f"qualification implementation file is invalid: {relative_path}"
+            )
+        try:
+            current_bytes = current_path.read_bytes()
+        except OSError as exc:
+            raise OutcomeEvidenceRunnerError(
+                f"cannot read qualification implementation file: {exc}"
+            ) from exc
+        expected_hash = implementation_sha256[relative_path]
+        if (
+            not isinstance(expected_hash, str)
+            or not _is_lower_hex(expected_hash, _SHA256_LENGTH)
+            or hashlib.sha256(current_bytes).hexdigest() != expected_hash
+        ):
+            raise OutcomeEvidenceRunnerError(
+                f"qualification implementation hash mismatch: {relative_path}"
+            )
+        for commit in {source_commit, expected_review_commit}:
+            if _qualification_committed_bytes(
+                repo_root,
+                commit,
+                relative_path,
+                f"qualification implementation {relative_path}",
+            ) != current_bytes:
+                raise OutcomeEvidenceRunnerError(
+                    "qualification implementation changed across review: "
+                    f"{relative_path}"
+                )
+    return _build_qualification_review_binding(
+        request=request,
+        review_commit=expected_review_commit,
+        request_source_path=request_source_path,
+        request_source_relative=request_source_path.relative_to(
+            repo_root
+        ).as_posix(),
+        request_bytes=expected_request_bytes,
+    )
+
+
+def _build_qualification_review_binding(
+    *,
+    request: Mapping[str, Any],
+    review_commit: str,
+    request_source_path: Path,
+    request_source_relative: str,
+    request_bytes: bytes,
+) -> dict[str, Any]:
+    file_sha256 = hashlib.sha256(request_bytes).hexdigest()
+    implementation_map_sha256 = hashlib.sha256(
+        _canonical_json(request["implementation_sha256"]).encode("utf-8")
+    ).hexdigest()
+    record = {
+        "active_request": {
+            "file_sha256": file_sha256,
+            "path": request["request_path"],
+            "request_hash": request["request_hash"],
+            "size": len(request_bytes),
+        },
+        "allowed_review_paths": list(request["review_allowed_paths"]),
+        "implementation_map_sha256": implementation_map_sha256,
+        "registration": dict(request["registration"]),
+        "request_source": {
+            "file_sha256": file_sha256,
+            "path": str(request_source_path),
+            "relative_path": request_source_relative,
+            "request_hash": request["request_hash"],
+            "size": len(request_bytes),
+        },
+        "review_binding_hash": None,
+        "review_commit": review_commit,
+        "schema_version": QUALIFICATION_REVIEW_BINDING_SCHEMA_VERSION,
+        "source_commit": request["source_commit"],
+    }
+    record["review_binding_hash"] = _self_hash(
+        record,
+        "review_binding_hash",
+    )
+    return json.loads(_canonical_json(record))
+
+
+def _validate_qualification_live_review_boundaries(
+    *,
+    request: Mapping[str, Any],
+    registration: OutcomeEvidenceRegistration,
+    review_binding: Mapping[str, Any],
+    deadline: float,
+    monotonic: Callable[[], float],
+) -> None:
+    repo_root = _qualification_require_no_follow_path(
+        registration.repo_root,
+        "repository root",
+        expected_kind="directory",
+    )
+    review_commit = review_binding["review_commit"]
+    observed_head = _tracked_source_commit(
+        repo_root,
+        deadline=deadline,
+        monotonic=monotonic,
+    )
+    if observed_head != review_commit:
+        raise OutcomeEvidenceRunnerError(
+            "qualification launch HEAD changed before release"
+        )
+    request_source_path = _qualification_require_no_follow_path(
+        request["request_source_path"],
+        "request source",
+        expected_kind="file",
+    )
+    try:
+        request_source_bytes = request_source_path.read_bytes()
+    except OSError as exc:
+        raise OutcomeEvidenceRunnerError(
+            f"cannot reread qualification request source: {exc}"
+        ) from exc
+    expected_request_bytes = (_canonical_json(request) + "\n").encode("utf-8")
+    if request_source_bytes != expected_request_bytes:
+        raise OutcomeEvidenceRunnerError(
+            "qualification request source changed before release"
+        )
+    registration_path = _qualification_require_no_follow_path(
+        request["registration"]["path"],
+        "registration",
+        expected_kind="file",
+    )
+    if request["registration"]["file_sha256"] != _path_sha256(
+        registration_path,
+        "qualification registration",
+        deadline=deadline,
+        monotonic=monotonic,
+    ):
+        raise OutcomeEvidenceRunnerError(
+            "qualification registration changed before release"
+        )
+    for relative_path, expected_hash in request["implementation_sha256"].items():
+        if deadline is not None and monotonic() >= deadline:
+            raise OutcomeEvidenceRunnerError(
+                "qualification live source validation exceeded its release budget"
+            )
+        implementation_path = _qualification_require_no_follow_path(
+            repo_root / relative_path,
+            f"implementation file {relative_path}",
+            expected_kind="file",
+        )
+        if _path_sha256(
+            implementation_path,
+            f"qualification implementation {relative_path}",
+            deadline=deadline,
+            monotonic=monotonic,
+        ) != expected_hash:
+            raise OutcomeEvidenceRunnerError(
+                "qualification implementation changed before release: "
+                f"{relative_path}"
+            )
+    try:
+        request_source_relative = request_source_path.relative_to(
+            repo_root
+        ).as_posix()
+    except ValueError as exc:
+        raise OutcomeEvidenceRunnerError(
+            "qualification request source left the source repository"
+        ) from exc
+    observed_binding = _build_qualification_review_binding(
+        request=request,
+        review_commit=review_commit,
+        request_source_path=request_source_path,
+        request_source_relative=request_source_relative,
+        request_bytes=request_source_bytes,
+    )
+    if observed_binding != dict(review_binding):
+        raise OutcomeEvidenceRunnerError(
+            "qualification review binding changed before release"
+        )
+    if monotonic() >= deadline:
+        raise OutcomeEvidenceRunnerError(
+            "qualification live source validation exceeded its release budget"
+        )
+
+
+def _qualification_release_validation_deadline(
+    *,
+    ready_created_unix_ns: int,
+    observed_unix_ns: int,
+    release_timeout_seconds: int,
+    monotonic_now: float,
+) -> float:
+    elapsed_seconds = max(
+        0.0,
+        (observed_unix_ns - ready_created_unix_ns) / 1_000_000_000,
+    )
+    remaining_seconds = release_timeout_seconds - elapsed_seconds
+    validation_budget = min(5.0, remaining_seconds)
+    if validation_budget <= 0:
+        raise OutcomeEvidenceRunnerError(
+            "qualification live source validation exceeded its release budget"
+        )
+    return monotonic_now + validation_budget
+
+
+def _require_qualification_release_validation_budget(
+    deadline: float,
+    monotonic: Callable[[], float],
+) -> None:
+    if monotonic() >= deadline:
+        raise OutcomeEvidenceRunnerError(
+            "qualification live source validation exceeded its release budget"
+        )
+
+
+def _validate_qualification_id(value: Any) -> str:
+    if (
+        not isinstance(value, str)
+        or not value
+        or value[0] not in "abcdefghijklmnopqrstuvwxyz0123456789"
+        or any(
+            character not in "abcdefghijklmnopqrstuvwxyz0123456789-"
+            for character in value
+        )
+    ):
+        raise OutcomeEvidenceRunnerError("qualification_id is invalid")
+    return value
+
+
+def _resolved_absolute_path(value: Any, field: str) -> Path:
+    if not isinstance(value, str) or not value:
+        raise OutcomeEvidenceRunnerError(f"{field} must be nonempty")
+    path = Path(value)
+    lexical_path = Path(os.path.abspath(path))
+    if not path.is_absolute() or str(lexical_path) != value:
+        raise OutcomeEvidenceRunnerError(f"{field} must be resolved absolute")
+    return lexical_path
+
+
+def _path_sha256(
+    path: Path,
+    label: str,
+    *,
+    deadline: float | None = None,
+    monotonic: Callable[[], float] = time.monotonic,
+) -> str:
+    def require_budget() -> None:
+        if deadline is not None and monotonic() >= deadline:
+            raise OutcomeEvidenceRunnerError(
+                "qualification live source validation exceeded its release budget"
+            )
+
+    try:
+        digest = hashlib.sha256()
+        with Path(path).open("rb") as source:
+            while True:
+                require_budget()
+                block = source.read(1024 * 1024)
+                if not block:
+                    break
+                digest.update(block)
+        require_budget()
+        return digest.hexdigest()
+    except OSError as exc:
+        raise OutcomeEvidenceRunnerError(f"cannot read {label}: {exc}") from exc
+
+
+def _self_hash(record: Mapping[str, Any], field: str) -> str:
+    if field not in record:
+        raise OutcomeEvidenceRunnerError(f"self-hash field is missing: {field}")
+    payload = dict(record)
+    payload[field] = None
+    return hashlib.sha256(_canonical_json(payload).encode("utf-8")).hexdigest()
+
+
+def execute_prelock_qualification(
+    *,
+    registration_path: Path | str,
+    request_path: Path | str,
+    expected_request_hash: str,
+    expected_review_commit: str,
+    expected_request_file_sha256: str,
+    expected_request_size: int,
+    process_starter: Callable[[Sequence[str], Mapping[str, str]], Any],
+    monotonic: Callable[[], float] = time.monotonic,
+    sleep: Callable[[float], None] = time.sleep,
+    time_ns: Callable[[], int] = time.time_ns,
+) -> dict[str, Any]:
+    """Run one request-bound child through release without study state."""
+
+    if not callable(process_starter):
+        raise OutcomeEvidenceRunnerError("qualification process_starter must be callable")
+    request = load_qualification_request_source(
+        request_path,
+        registration_path=registration_path,
+        expected_request_hash=expected_request_hash,
+        expected_review_commit=expected_review_commit,
+        expected_request_file_sha256=expected_request_file_sha256,
+        expected_request_size=expected_request_size,
+    )
+    if _QUALIFICATION_CLI_REQUESTED:
+        runner_anchor = os.environ.get(QUALIFICATION_RUNNER_SHA256_ENV)
+        expected_runner_anchor = request["implementation_sha256"].get(
+            QUALIFICATION_RUNNER_RELATIVE_PATH
+        )
+        if (
+            not isinstance(expected_runner_anchor, str)
+            or runner_anchor != expected_runner_anchor
+        ):
+            raise OutcomeEvidenceRunnerError(
+                "qualification trusted launcher anchor does not match the "
+                "reviewed runner implementation"
+            )
+    request_source_path = _qualification_require_no_follow_path(
+        request["request_source_path"],
+        "request source",
+        expected_kind="file",
+    )
+    request_source_bytes = request_source_path.read_bytes()
+    resolved_registration_path = _qualification_require_no_follow_path(
+        registration_path,
+        "registration",
+        expected_kind="file",
+    )
+    registration = _load_qualification_registration(
+        resolved_registration_path
+    )
+    review_binding = _validate_qualification_review_chain(
+        request=request,
+        request_source_path=request_source_path,
+        expected_request_bytes=request_source_bytes,
+        expected_review_commit=expected_review_commit,
+        expected_request_file_sha256=expected_request_file_sha256,
+        expected_request_size=expected_request_size,
+        registration=registration,
+        registration_path=resolved_registration_path,
+        implementation_sha256=request["implementation_sha256"],
+    )
+    active_request_path = Path(request["request_path"])
+    _publish_text_once(
+        active_request_path,
+        _canonical_json(request) + "\n",
+        "qualification request",
+    )
+    request = load_qualification_request(
+        active_request_path,
+        registration_path=registration_path,
+    )
+    handshake = request["handshake"]
+    paths = HandshakePaths(
+        attempt=Path(handshake["attempt_path"]),
+        ready=Path(handshake["ready_path"]),
+        release=Path(handshake["release_path"]),
+    )
+    started_unix_ns = request["created_unix_ns"]
+    process = None
+    child_pid = None
+    exit_code = None
+    launch_count = 0
+    stage = "build_attempt"
+    try:
+        started_unix_ns = _positive_time_ns(time_ns)
+        attempt = build_attempt_record(
+            study_id=request["qualification_id"],
+            registration_hash=request["registration"]["canonical_hash"],
+            run_lock_hash=handshake["run_lock_hash"],
+            slot_number=handshake["slot_number"],
+            session_id=handshake["session_id"],
+            config_path=Path(request["config"]["path"]),
+            config_sha256=request["config"]["sha256"],
+            marker_start_count=request["marker"]["start_count"],
+            paths=paths,
+            readiness_timeout_seconds=handshake["readiness_timeout_seconds"],
+            release_timeout_seconds=handshake["release_timeout_seconds"],
+            created_unix_ns=started_unix_ns,
+        )
+        stage = "publish_attempt"
+        publish_record_once(paths.attempt, attempt)
+        stage = "start_child"
+        child_environment = _qualification_child_environment(
+            config_path=request["config"]["path"],
+            attempt_path=str(paths.attempt),
+            attempt_hash=attempt["attempt_hash"],
+        )
+        launch_count = 1
+        process = process_starter(
+            tuple(request["child_command"]),
+            MappingProxyType(child_environment),
+        )
+        child_pid = _child_process_pid(process)
+        stage = "wait_for_ready"
+        ready = _wait_for_child_readiness(
+            process=process,
+            child_pid=child_pid,
+            attempt=attempt,
+            ready_path=paths.ready,
+            ready_path_validator=lambda path: (
+                _qualification_require_no_follow_path(
+                    path,
+                    "ready artifact",
+                    expected_kind="file",
+                )
+            ),
+            timeout_seconds=handshake["readiness_timeout_seconds"],
+            monotonic=monotonic,
+            sleep=sleep,
+        )
+        stage = "pre_release_validation"
+        release_validation_deadline = _qualification_release_validation_deadline(
+            ready_created_unix_ns=ready["created_unix_ns"],
+            observed_unix_ns=_positive_time_ns(time_ns),
+            release_timeout_seconds=handshake["release_timeout_seconds"],
+            monotonic_now=monotonic(),
+        )
+        _validate_qualification_runtime_boundaries(
+            request=request,
+            registration=registration,
+            attempt=attempt,
+            review_binding=review_binding,
+            release_allowed=False,
+            release_validation_deadline=release_validation_deadline,
+            monotonic=monotonic,
+        )
+        _require_child_running(process, stage="qualification release")
+        _require_qualification_release_validation_budget(
+            release_validation_deadline,
+            monotonic,
+        )
+        stage = "publish_release"
+        release = build_release_record(
+            attempt,
+            ready,
+            created_unix_ns=_positive_time_ns(time_ns),
+        )
+        publish_record_once(paths.release, release)
+        stage = "wait_for_qualification_exit"
+        try:
+            exit_code = process.wait(
+                timeout=handshake["release_timeout_seconds"]
+            )
+        except subprocess.TimeoutExpired as exc:
+            raise OutcomeEvidenceRunnerError(
+                "qualification child did not exit within "
+                f"{handshake['release_timeout_seconds']} seconds"
+            ) from exc
+        if type(exit_code) is not int:
+            raise OutcomeEvidenceRunnerError(
+                "qualification child returned a non-integer exit code"
+            )
+        if exit_code != 0:
+            raise OutcomeEvidenceRunnerError(
+                f"qualification child exited with code {exit_code}"
+            )
+        stage = "post_exit_validation"
+        _validate_qualification_runtime_boundaries(
+            request=request,
+            registration=registration,
+            attempt=attempt,
+            review_binding=review_binding,
+            release_allowed=True,
+        )
+        ended_unix_ns = _positive_time_ns(time_ns)
+        result = _build_qualification_result(
+            request=request,
+            review_binding=review_binding,
+            status="passed",
+            started_unix_ns=started_unix_ns,
+            ended_unix_ns=ended_unix_ns,
+            launch_count=launch_count,
+            child_pid=child_pid,
+            exit_code=exit_code,
+            cleanup_attempted=False,
+            cleanup_error=None,
+            failure=None,
+        )
+        stage = "publish_completion"
+        _require_paths_absent(
+            (Path(request["failure_path"]),),
+            "qualification failure terminal exists before completion",
+        )
+        publish_qualification_result_once(
+            Path(request["completion_path"]),
+            result,
+        )
+        return result
+    except BaseException as exc:
+        cleanup_attempted = _child_cleanup_required(process)
+        cleanup_error = _terminate_child_process(process)
+        if exit_code is None:
+            exit_code = _safe_process_exit_code(process)
+        ended_unix_ns = _safe_time_ns(time_ns)
+        if ended_unix_ns is None:
+            ended_unix_ns = started_unix_ns
+        failure = {
+            "exception_type": type(exc).__name__,
+            "message": str(exc),
+            "stage": stage,
+        }
+        if stage == "publish_completion":
+            suffix = (
+                f"; child cleanup failed: {cleanup_error}"
+                if cleanup_error is not None
+                else ""
+            )
+            raise OutcomeEvidenceRunnerError(
+                "publish_completion: completion publication failed; "
+                "the consumed evidence remains partial and must be sealed "
+                f"without a failure relabel{suffix}"
+            ) from exc
+        if stage == "post_exit_validation":
+            suffix = (
+                f"; child cleanup failed: {cleanup_error}"
+                if cleanup_error is not None
+                else ""
+            )
+            raise OutcomeEvidenceRunnerError(
+                "post_exit_validation: post-exit validation failed; "
+                "the consumed release evidence remains partial and must be "
+                f"sealed without a failure relabel{suffix}"
+            ) from exc
+        try:
+            result = _build_qualification_result(
+                request=request,
+                review_binding=review_binding,
+                status="failed",
+                started_unix_ns=started_unix_ns,
+                ended_unix_ns=ended_unix_ns,
+                launch_count=launch_count,
+                child_pid=child_pid,
+                exit_code=exit_code,
+                cleanup_attempted=cleanup_attempted,
+                cleanup_error=cleanup_error,
+                failure=failure,
+            )
+            _require_paths_absent(
+                (Path(request["completion_path"]),),
+                "qualification completion terminal exists before failure",
+            )
+            publish_qualification_result_once(
+                Path(request["failure_path"]),
+                result,
+            )
+        except BaseException as result_exc:
+            raise OutcomeEvidenceRunnerError(
+                f"{stage}: {type(exc).__name__}: {exc}; "
+                "qualification failure publication failed: "
+                f"{type(result_exc).__name__}: {result_exc}"
+            ) from exc
+        suffix = (
+            f"; child cleanup failed: {cleanup_error}"
+            if cleanup_error is not None
+            else ""
+        )
+        raise OutcomeEvidenceRunnerError(
+            f"{stage}: {type(exc).__name__}: {exc}{suffix}"
+        ) from exc
+
+
+def publish_qualification_result_once(
+    path: Path | str,
+    result: Mapping[str, Any],
+) -> None:
+    validated = _validate_qualification_result(dict(result))
+    _publish_text_once(
+        Path(os.path.abspath(os.fspath(path))),
+        _canonical_json(validated) + "\n",
+        "qualification result",
+    )
+
+
+def _build_qualification_result(
+    *,
+    request: Mapping[str, Any],
+    review_binding: Mapping[str, Any],
+    status: str,
+    started_unix_ns: int,
+    ended_unix_ns: int,
+    launch_count: int,
+    child_pid: int | None,
+    exit_code: int | None,
+    cleanup_attempted: bool,
+    cleanup_error: str | None,
+    failure: Mapping[str, Any] | None,
+) -> dict[str, Any]:
+    handshake = request["handshake"]
+    marker_end_count = _safe_marker_count(Path(request["marker"]["path"]))
+    record = {
+        "authority": {
+            "causal_claim": False,
+            "collection": False,
+            "gameplay_policy_change": False,
+            "run_lock": False,
+            "study_start": False,
+            "training": False,
+        },
+        "child_command": list(request["child_command"]),
+        "config": dict(request["config"]),
+        "created_unix_ns": started_unix_ns,
+        "ended_unix_ns": ended_unix_ns,
+        "failure": None if failure is None else dict(failure),
+        "forbidden_paths": {
+            path: _qualification_path_entry_exists(Path(path))
+            for path in request["forbidden_paths"]
+        },
+        "handshake": {
+            name: {
+                "path": handshake[f"{name}_path"],
+                "sha256": _optional_path_sha256(Path(handshake[f"{name}_path"])),
+            }
+            for name in ("attempt", "ready", "release")
+        },
+        "implementation_sha256": dict(request["implementation_sha256"]),
+        "marker": {
+            "end_count": marker_end_count,
+            "path": request["marker"]["path"],
+            "start_count": request["marker"]["start_count"],
+        },
+        "process": {
+            "cleanup_attempted": cleanup_attempted,
+            "cleanup_error": cleanup_error,
+            "exit_code": exit_code,
+            "launch_count": launch_count,
+            "pid": child_pid,
+        },
+        "registration": dict(request["registration"]),
+        "request": {
+            "hash": request["request_hash"],
+            "path": request["request_path"],
+        },
+        "review_binding": dict(review_binding),
+        "result_hash": None,
+        "schema_version": QUALIFICATION_RESULT_SCHEMA_VERSION,
+        "source_commit": request["source_commit"],
+        "status": status,
+    }
+    record["result_hash"] = _self_hash(record, "result_hash")
+    return _validate_qualification_result(record)
+
+
+def _validate_qualification_result(record: Mapping[str, Any]) -> dict[str, Any]:
+    expected_fields = {
+        "authority",
+        "child_command",
+        "config",
+        "created_unix_ns",
+        "ended_unix_ns",
+        "failure",
+        "forbidden_paths",
+        "handshake",
+        "implementation_sha256",
+        "marker",
+        "process",
+        "registration",
+        "request",
+        "review_binding",
+        "result_hash",
+        "schema_version",
+        "source_commit",
+        "status",
+    }
+    if not isinstance(record, Mapping) or set(record) != expected_fields:
+        raise OutcomeEvidenceRunnerError("qualification result fields mismatch")
+    if record["schema_version"] != QUALIFICATION_RESULT_SCHEMA_VERSION:
+        raise OutcomeEvidenceRunnerError("qualification result schema mismatch")
+    status = record["status"]
+    if status not in {"passed", "failed"}:
+        raise OutcomeEvidenceRunnerError("qualification result status is invalid")
+    created = _timestamp(record["created_unix_ns"])
+    ended = _timestamp(record["ended_unix_ns"])
+    if ended < created:
+        raise OutcomeEvidenceRunnerError("qualification result timestamps regress")
+    supplied_hash = record["result_hash"]
+    if not isinstance(supplied_hash, str) or not _is_lower_hex(
+        supplied_hash,
+        _SHA256_LENGTH,
+    ):
+        raise OutcomeEvidenceRunnerError("qualification result hash is invalid")
+    if supplied_hash != _self_hash(record, "result_hash"):
+        raise OutcomeEvidenceRunnerError("qualification result hash mismatch")
+    _validate_qualification_review_binding(record["review_binding"])
+    authority = record["authority"]
+    expected_authority_fields = {
+        "causal_claim",
+        "collection",
+        "gameplay_policy_change",
+        "run_lock",
+        "study_start",
+        "training",
+    }
+    if (
+        not isinstance(authority, Mapping)
+        or set(authority) != expected_authority_fields
+        or any(
+            type(value) is not bool or value is not False
+            for value in authority.values()
+        )
+    ):
+        raise OutcomeEvidenceRunnerError("qualification authority must be false")
+    process = record["process"]
+    if not isinstance(process, Mapping) or set(process) != {
+        "cleanup_attempted",
+        "cleanup_error",
+        "exit_code",
+        "launch_count",
+        "pid",
+    }:
+        raise OutcomeEvidenceRunnerError("qualification process evidence is invalid")
+    launch_count = process["launch_count"]
+    if type(launch_count) is not int or launch_count not in {0, 1}:
+        raise OutcomeEvidenceRunnerError("qualification launch count is invalid")
+    pid = process["pid"]
+    if pid is not None and (type(pid) is not int or pid <= 0):
+        raise OutcomeEvidenceRunnerError("qualification child PID is invalid")
+    exit_code = process["exit_code"]
+    if exit_code is not None and type(exit_code) is not int:
+        raise OutcomeEvidenceRunnerError("qualification exit code is invalid")
+    if type(process["cleanup_attempted"]) is not bool:
+        raise OutcomeEvidenceRunnerError("qualification cleanup flag is invalid")
+    cleanup_error = process["cleanup_error"]
+    if cleanup_error is not None and (
+        not isinstance(cleanup_error, str) or not cleanup_error
+    ):
+        raise OutcomeEvidenceRunnerError("qualification cleanup error is invalid")
+    handshake = record["handshake"]
+    if not isinstance(handshake, Mapping) or set(handshake) != {
+        "attempt",
+        "ready",
+        "release",
+    }:
+        raise OutcomeEvidenceRunnerError("qualification handshake evidence is invalid")
+    for name in ("attempt", "ready", "release"):
+        binding = handshake[name]
+        if not isinstance(binding, Mapping) or set(binding) != {"path", "sha256"}:
+            raise OutcomeEvidenceRunnerError(
+                f"qualification {name} evidence is invalid"
+            )
+        _resolved_absolute_path(binding["path"], f"qualification {name} path")
+        sha256 = binding["sha256"]
+        if sha256 is not None and (
+            not isinstance(sha256, str)
+            or not _is_lower_hex(sha256, _SHA256_LENGTH)
+        ):
+            raise OutcomeEvidenceRunnerError(
+                f"qualification {name} hash is invalid"
+            )
+    attempt_hash = handshake["attempt"]["sha256"]
+    ready_hash = handshake["ready"]["sha256"]
+    release_hash = handshake["release"]["sha256"]
+    if launch_count == 1 and attempt_hash is None:
+        raise OutcomeEvidenceRunnerError(
+            "qualification launched child lacks attempt evidence"
+        )
+    if launch_count == 0 and any(
+        (
+            pid is not None,
+            exit_code is not None,
+            process["cleanup_attempted"],
+            cleanup_error is not None,
+            ready_hash is not None,
+            release_hash is not None,
+        )
+    ):
+        raise OutcomeEvidenceRunnerError(
+            "qualification process evidence contradicts launch count"
+        )
+    if ready_hash is not None and (
+        launch_count != 1 or pid is None or attempt_hash is None
+    ):
+        raise OutcomeEvidenceRunnerError(
+            "qualification ready evidence requires one launched child"
+        )
+    if release_hash is not None and ready_hash is None:
+        raise OutcomeEvidenceRunnerError(
+            "qualification release evidence lacks ready evidence"
+        )
+    marker = record["marker"]
+    if not isinstance(marker, Mapping) or set(marker) != {
+        "end_count",
+        "path",
+        "start_count",
+    }:
+        raise OutcomeEvidenceRunnerError("qualification marker evidence is invalid")
+    _resolved_absolute_path(marker["path"], "qualification marker result path")
+    for field in ("start_count", "end_count"):
+        value = marker[field]
+        if value is not None and (type(value) is not int or value < 0):
+            raise OutcomeEvidenceRunnerError(
+                f"qualification marker {field} is invalid"
+            )
+    forbidden = record["forbidden_paths"]
+    if not isinstance(forbidden, Mapping) or any(
+        not isinstance(path, str) or type(exists) is not bool
+        for path, exists in forbidden.items()
+    ):
+        raise OutcomeEvidenceRunnerError(
+            "qualification forbidden-path evidence is invalid"
+        )
+    _validate_qualification_result_lifecycle(record)
+    success_evidence_complete = (
+        launch_count == 1
+        and pid is not None
+        and exit_code == 0
+        and process["cleanup_attempted"] is False
+        and cleanup_error is None
+        and marker["end_count"] == marker["start_count"]
+        and not any(forbidden.values())
+        and all(handshake[name]["sha256"] is not None for name in handshake)
+    )
+    if status == "passed":
+        if record["failure"] is not None or not success_evidence_complete:
+            raise OutcomeEvidenceRunnerError(
+                "qualification passed result contradicts evidence"
+            )
+    else:
+        failure = record["failure"]
+        if not isinstance(failure, Mapping) or set(failure) != {
+            "exception_type",
+            "message",
+            "stage",
+        }:
+            raise OutcomeEvidenceRunnerError(
+                "qualification failed result lacks failure evidence"
+            )
+        if any(not isinstance(value, str) or not value for value in failure.values()):
+            raise OutcomeEvidenceRunnerError(
+                "qualification failure evidence is invalid"
+            )
+        if success_evidence_complete:
+            raise OutcomeEvidenceRunnerError(
+                "qualification failed result does not contradict success evidence"
+            )
+    return json.loads(_canonical_json(record))
+
+
+def _validate_qualification_review_binding(value: Any) -> dict[str, Any]:
+    expected_fields = {
+        "active_request",
+        "allowed_review_paths",
+        "implementation_map_sha256",
+        "registration",
+        "request_source",
+        "review_binding_hash",
+        "review_commit",
+        "schema_version",
+        "source_commit",
+    }
+    if not isinstance(value, Mapping) or set(value) != expected_fields:
+        raise OutcomeEvidenceRunnerError(
+            "qualification review binding fields mismatch"
+        )
+    if value["schema_version"] != QUALIFICATION_REVIEW_BINDING_SCHEMA_VERSION:
+        raise OutcomeEvidenceRunnerError(
+            "qualification review binding schema mismatch"
+        )
+    for field in ("source_commit", "review_commit"):
+        if not isinstance(value[field], str) or not _is_lower_hex(
+            value[field],
+            _GIT_COMMIT_LENGTH,
+        ):
+            raise OutcomeEvidenceRunnerError(
+                f"qualification review binding {field} is invalid"
+            )
+    for field in ("implementation_map_sha256", "review_binding_hash"):
+        if not isinstance(value[field], str) or not _is_lower_hex(
+            value[field],
+            _SHA256_LENGTH,
+        ):
+            raise OutcomeEvidenceRunnerError(
+                f"qualification review binding {field} is invalid"
+            )
+    if value["review_binding_hash"] != _self_hash(
+        value,
+        "review_binding_hash",
+    ):
+        raise OutcomeEvidenceRunnerError(
+            "qualification review binding hash mismatch"
+        )
+    allowed = value["allowed_review_paths"]
+    if (
+        isinstance(allowed, (str, bytes))
+        or not isinstance(allowed, Sequence)
+        or list(allowed) != sorted(set(allowed))
+        or any(not isinstance(path, str) or not path for path in allowed)
+    ):
+        raise OutcomeEvidenceRunnerError(
+            "qualification review binding path set is invalid"
+        )
+    source = value["request_source"]
+    active = value["active_request"]
+    if not isinstance(source, Mapping) or set(source) != {
+        "file_sha256",
+        "path",
+        "relative_path",
+        "request_hash",
+        "size",
+    }:
+        raise OutcomeEvidenceRunnerError(
+            "qualification request-source review binding is invalid"
+        )
+    if not isinstance(active, Mapping) or set(active) != {
+        "file_sha256",
+        "path",
+        "request_hash",
+        "size",
+    }:
+        raise OutcomeEvidenceRunnerError(
+            "qualification active-request review binding is invalid"
+        )
+    _resolved_absolute_path(source["path"], "reviewed request source path")
+    _resolved_absolute_path(active["path"], "active request review path")
+    for binding in (source, active):
+        if (
+            not isinstance(binding["file_sha256"], str)
+            or not _is_lower_hex(binding["file_sha256"], _SHA256_LENGTH)
+            or not isinstance(binding["request_hash"], str)
+            or not _is_lower_hex(binding["request_hash"], _SHA256_LENGTH)
+            or type(binding["size"]) is not int
+            or binding["size"] <= 0
+        ):
+            raise OutcomeEvidenceRunnerError(
+                "qualification request review file binding is invalid"
+            )
+    if (
+        source["file_sha256"] != active["file_sha256"]
+        or source["request_hash"] != active["request_hash"]
+        or source["size"] != active["size"]
+    ):
+        raise OutcomeEvidenceRunnerError(
+            "qualification source/active request review binding differs"
+        )
+    if not isinstance(value["registration"], Mapping):
+        raise OutcomeEvidenceRunnerError(
+            "qualification registration review binding is invalid"
+        )
+    return json.loads(_canonical_json(value))
+
+
+def _validate_qualification_result_lifecycle(
+    record: Mapping[str, Any],
+) -> None:
+    request_binding = record["request"]
+    if not isinstance(request_binding, Mapping) or set(request_binding) != {
+        "hash",
+        "path",
+    }:
+        raise OutcomeEvidenceRunnerError(
+            "qualification result request binding is invalid"
+        )
+    request_path = _resolved_absolute_path(
+        request_binding["path"],
+        "qualification result request path",
+    )
+    request_path = _qualification_require_no_follow_path(
+        request_path,
+        "active request",
+        expected_kind="file",
+    )
+    try:
+        raw_request = request_path.read_bytes()
+        request = json.loads(
+            raw_request.decode("utf-8"),
+            object_pairs_hook=_reject_duplicate_keys,
+            parse_constant=_reject_json_constant,
+        )
+    except OutcomeEvidenceRunnerError:
+        raise
+    except (OSError, UnicodeError, json.JSONDecodeError, ValueError) as exc:
+        raise OutcomeEvidenceRunnerError(
+            f"cannot replay qualification result request: {exc}"
+        ) from exc
+    if (
+        not isinstance(request, Mapping)
+        or raw_request != (_canonical_json(request) + "\n").encode("utf-8")
+        or request.get("request_hash") != request_binding["hash"]
+        or request.get("request_hash") != _self_hash(request, "request_hash")
+        or request.get("request_path") != str(request_path)
+    ):
+        raise OutcomeEvidenceRunnerError(
+            "qualification result request binding mismatch"
+        )
+    review_binding = _validate_qualification_review_binding(
+        record["review_binding"]
+    )
+    if (
+        review_binding["source_commit"] != request["source_commit"]
+        or review_binding["request_source"]["path"]
+        != request["request_source_path"]
+        or review_binding["request_source"]["request_hash"]
+        != request["request_hash"]
+        or review_binding["active_request"]["path"]
+        != request["request_path"]
+        or review_binding["allowed_review_paths"]
+        != request["review_allowed_paths"]
+        or review_binding["registration"] != request["registration"]
+    ):
+        raise OutcomeEvidenceRunnerError(
+            "qualification result review binding mismatch"
+        )
+
+    request_created = _timestamp(request.get("created_unix_ns"))
+    result_started = _timestamp(record["created_unix_ns"])
+    result_ended = _timestamp(record["ended_unix_ns"])
+    ordered = request_created <= result_started
+    previous = result_started
+    loaders = {
+        "attempt": load_attempt_record,
+        "ready": load_ready_record,
+        "release": load_release_record,
+    }
+    for name in ("attempt", "ready", "release"):
+        binding = record["handshake"][name]
+        if binding["sha256"] is None:
+            continue
+        path = _qualification_require_no_follow_path(
+            binding["path"],
+            f"{name} artifact",
+            expected_kind="file",
+        )
+        if _path_sha256(path, f"qualification {name}") != binding["sha256"]:
+            raise OutcomeEvidenceRunnerError(
+                f"qualification {name} result hash mismatch"
+            )
+        handshake_record = loaders[name](path)
+        created = _timestamp(handshake_record.get("created_unix_ns"))
+        if name == "attempt":
+            ordered = ordered and result_started == created
+        else:
+            ordered = ordered and previous <= created
+        previous = created
+    ordered = ordered and previous <= result_ended
+    if not ordered:
+        raise OutcomeEvidenceRunnerError(
+            "qualification lifecycle timestamp order is invalid"
+        )
+
+
+def _validate_qualification_runtime_boundaries(
+    *,
+    request: Mapping[str, Any],
+    registration: OutcomeEvidenceRegistration,
+    attempt: Mapping[str, Any],
+    review_binding: Mapping[str, Any],
+    release_allowed: bool,
+    release_validation_deadline: float | None = None,
+    monotonic: Callable[[], float] = time.monotonic,
+) -> None:
+    def require_release_budget() -> None:
+        if release_allowed:
+            return
+        if release_validation_deadline is None:
+            raise OutcomeEvidenceRunnerError(
+                "qualification pre-release validation has no deadline"
+            )
+        _require_qualification_release_validation_budget(
+            release_validation_deadline,
+            monotonic,
+        )
+
+    require_release_budget()
+    handshake = request["handshake"]
+    attempt_path = _qualification_require_no_follow_path(
+        handshake["attempt_path"],
+        "attempt artifact",
+        expected_kind="file",
+    )
+    if load_attempt_record(attempt_path) != dict(attempt):
+        raise OutcomeEvidenceRunnerError("qualification attempt changed")
+    require_release_budget()
+    if not release_allowed and _qualification_path_entry_exists(
+        Path(handshake["release_path"])
+    ):
+        raise OutcomeEvidenceRunnerError(
+            "qualification release exists before parent publication"
+        )
+    if release_allowed:
+        observed_review_binding = _validate_qualification_review_chain(
+            request=request,
+            request_source_path=Path(request["request_source_path"]),
+            expected_request_bytes=(
+                _canonical_json(request) + "\n"
+            ).encode("utf-8"),
+            expected_review_commit=review_binding["review_commit"],
+            expected_request_file_sha256=review_binding["request_source"][
+                "file_sha256"
+            ],
+            expected_request_size=review_binding["request_source"]["size"],
+            registration=registration,
+            registration_path=Path(request["registration"]["path"]),
+            implementation_sha256=request["implementation_sha256"],
+        )
+        if observed_review_binding != dict(review_binding):
+            raise OutcomeEvidenceRunnerError(
+                "qualification review binding changed during launch"
+            )
+    else:
+        _validate_qualification_live_review_boundaries(
+            request=request,
+            registration=registration,
+            review_binding=review_binding,
+            deadline=release_validation_deadline,
+            monotonic=monotonic,
+        )
+        require_release_budget()
+    registration_path = _qualification_require_no_follow_path(
+        request["registration"]["path"],
+        "registration",
+        expected_kind="file",
+    )
+    if request["registration"]["file_sha256"] != _path_sha256(
+        registration_path,
+        "qualification registration",
+        deadline=None if release_allowed else release_validation_deadline,
+        monotonic=monotonic,
+    ):
+        raise OutcomeEvidenceRunnerError("qualification registration changed")
+    require_release_budget()
+    config_path = _qualification_require_no_follow_path(
+        request["config"]["path"],
+        "config",
+        expected_kind="file",
+    )
+    if request["config"]["sha256"] != _path_sha256(
+        config_path,
+        "qualification config",
+        deadline=None if release_allowed else release_validation_deadline,
+        monotonic=monotonic,
+    ):
+        raise OutcomeEvidenceRunnerError("qualification config changed")
+    require_release_budget()
+    marker_path = _qualification_require_no_follow_path(
+        request["marker"]["path"],
+        "marker",
+        expected_kind="file",
+        allow_missing=True,
+    )
+    if _ai_marker_count(marker_path) != request["marker"][
+        "start_count"
+    ]:
+        raise OutcomeEvidenceRunnerError("qualification marker count changed")
+    require_release_budget()
+    control_paths = {
+        Path(request["request_path"]),
+        Path(handshake["attempt_path"]),
+        Path(handshake["ready_path"]),
+        Path(handshake["release_path"]),
+        Path(request["completion_path"]),
+        Path(request["failure_path"]),
+    }
+    _require_paths_absent(
+        (
+            Path(request["completion_path"]),
+            Path(request["failure_path"]),
+        ),
+        "qualification terminal artifact exists before publication",
+    )
+    require_release_budget()
+    forbidden_paths = {Path(path) for path in request["forbidden_paths"]}
+    _require_paths_absent(
+        tuple(forbidden_paths),
+        "forbidden qualification output exists",
+    )
+    require_release_budget()
+    inventory = _qualification_root_inventory(
+        Path(request["qualification_root"]),
+        excluded_paths={*control_paths, *forbidden_paths},
+        deadline=None if release_allowed else release_validation_deadline,
+        monotonic=monotonic,
+    )
+    if inventory != request["preexisting_files"]:
+        raise OutcomeEvidenceRunnerError(
+            "qualification preexisting file inventory changed"
+        )
+    require_release_budget()
+    expected_request_bytes = (_canonical_json(request) + "\n").encode("utf-8")
+    active_request_path = _qualification_require_no_follow_path(
+        request["request_path"],
+        "active request",
+        expected_kind="file",
+    )
+    try:
+        observed_request_bytes = active_request_path.read_bytes()
+    except OSError as exc:
+        raise OutcomeEvidenceRunnerError(
+            f"cannot reread qualification request: {exc}"
+        ) from exc
+    if observed_request_bytes != expected_request_bytes:
+        raise OutcomeEvidenceRunnerError("qualification request changed")
+    require_release_budget()
+
+
+def _optional_path_sha256(path: Path) -> str | None:
+    if not _qualification_path_entry_exists(path):
+        return None
+    try:
+        regular_path = _qualification_require_no_follow_path(
+            path,
+            "handshake artifact",
+            expected_kind="file",
+        )
+        return hashlib.sha256(regular_path.read_bytes()).hexdigest()
+    except (OSError, OutcomeEvidenceRunnerError):
+        return None
+
+
+def _safe_marker_count(path: Path) -> int | None:
+    try:
+        marker_path = _qualification_require_no_follow_path(
+            path,
+            "marker",
+            expected_kind="file",
+            allow_missing=True,
+        )
+        return _ai_marker_count(marker_path)
+    except BaseException:
+        return None
+
+
+def _safe_process_exit_code(process: Any) -> int | None:
+    if process is None:
+        return None
+    try:
+        value = process.poll()
+    except BaseException:
+        return None
+    return value if type(value) is int else None
+
+
+def _child_cleanup_required(process: Any) -> bool:
+    if process is None:
+        return False
+    try:
+        return process.poll() is None
+    except BaseException:
+        return True
 
 
 def build_slot_launch(
@@ -483,6 +4033,7 @@ def _wait_for_child_readiness(
     child_pid: int,
     attempt: Mapping[str, Any],
     ready_path: Path,
+    ready_path_validator: Callable[[Path], Path] | None = None,
     timeout_seconds: int,
     monotonic: Callable[[], float],
     sleep: Callable[[float], None],
@@ -491,14 +4042,19 @@ def _wait_for_child_readiness(
     while True:
         if monotonic() >= deadline:
             raise OutcomeEvidenceRunnerError("child readiness deadline exceeded")
-        if ready_path.exists():
+        if _qualification_path_entry_exists(ready_path):
             if monotonic() >= deadline:
                 raise OutcomeEvidenceRunnerError("child readiness deadline exceeded")
             if process.poll() is not None:
                 raise OutcomeEvidenceRunnerError(
                     "child exited before readiness verification"
                 )
-            ready = load_ready_record(ready_path)
+            guarded_ready_path = (
+                ready_path_validator(ready_path)
+                if ready_path_validator is not None
+                else ready_path
+            )
+            ready = load_ready_record(guarded_ready_path)
             validated = validate_ready_record(
                 ready,
                 attempt=attempt,
@@ -532,7 +4088,7 @@ def _validate_preclaim_handshake_state(
         raise OutcomeEvidenceRunnerError(
             f"handshake attempt changed before {boundary}"
         )
-    if paths.release.exists():
+    if _qualification_path_entry_exists(paths.release):
         raise OutcomeEvidenceRunnerError(f"release exists before {boundary}")
     _require_paths_absent(
         output_paths,
@@ -693,9 +4249,23 @@ def _child_process_pid(process: Any) -> int:
 
 
 def _require_paths_absent(paths: Sequence[Path], message: str) -> None:
-    existing = [str(path) for path in paths if path.exists()]
+    existing = [
+        str(path) for path in paths if _qualification_path_entry_exists(path)
+    ]
     if existing:
         raise OutcomeEvidenceRunnerError(f"{message}: {existing[0]}")
+
+
+def _qualification_path_entry_exists(path: Path) -> bool:
+    try:
+        Path(path).lstat()
+    except FileNotFoundError:
+        return False
+    except OSError as exc:
+        raise OutcomeEvidenceRunnerError(
+            f"cannot inspect qualification path entry {path}: {exc}"
+        ) from exc
+    return True
 
 
 def _handshake_file_sha256(path: Path, label: str) -> str:
@@ -1874,6 +5444,32 @@ def _registered_command(registration: OutcomeEvidenceRegistration) -> list[str]:
     ]
 
 
+def _qualification_child_command(
+    registration: OutcomeEvidenceRegistration,
+) -> list[str]:
+    command = _registered_command(registration)
+    return [command[0], "-I", "-S", *command[1:]]
+
+
+def _qualification_child_environment(
+    *,
+    config_path: str,
+    attempt_path: str,
+    attempt_hash: str,
+) -> dict[str, str]:
+    environment = {
+        key: value
+        for key, value in os.environ.items()
+        if not key.upper().startswith(("PYTHON", "GIT_"))
+    }
+    environment[CONFIG_ENV] = config_path
+    environment[HANDSHAKE_ATTEMPT_ENV] = attempt_path
+    environment[QUALIFICATION_ATTEMPT_HASH_ENV] = attempt_hash
+    environment[QUALIFICATION_LOG_PATH_ENV] = os.devnull
+    environment["PYTHONDONTWRITEBYTECODE"] = "1"
+    return environment
+
+
 def _validate_ledger_record(
     record: Any,
     *,
@@ -2276,6 +5872,10 @@ def _dry_run_handshake_record(
 
 
 def _run_next_command(registration_path: Path) -> dict[str, Any]:
+    if QUALIFICATION_ATTEMPT_HASH_ENV in os.environ:
+        raise OutcomeEvidenceRunnerError(
+            "run-next refuses ambient qualification environment"
+        )
     registration = _load_runner_registration(registration_path)
     registration = _require_launchable_runner_registration(registration)
     command = _registered_command(registration)
@@ -2333,6 +5933,47 @@ def _run_next_command(registration_path: Path) -> dict[str, Any]:
             repo_root=registration.repo_root,
             child_command=command,
         ),
+    )
+
+
+def _qualify_command(
+    registration_path: Path,
+    request_path: Path,
+    request_hash: str,
+    request_file_sha256: str,
+    request_size: int,
+    review_commit: str,
+) -> dict[str, Any]:
+    registration = _load_qualification_registration(registration_path)
+    checkpoint_root = _qualification_require_no_follow_path(
+        registration.checkpoint_root,
+        "checkpoint root",
+        expected_kind="directory",
+        allow_missing=True,
+    )
+    game_directory = checkpoint_root.parent
+
+    def process_starter(
+        command: Sequence[str],
+        child_environment: Mapping[str, str],
+    ) -> subprocess.Popen:
+        return subprocess.Popen(
+            list(command),
+            env=dict(child_environment),
+            cwd=str(game_directory),
+            stdin=sys.stdin,
+            stdout=sys.stdout,
+            stderr=sys.stderr,
+        )
+
+    return execute_prelock_qualification(
+        registration_path=registration_path,
+        request_path=request_path,
+        expected_request_hash=request_hash,
+        expected_review_commit=review_commit,
+        expected_request_file_sha256=request_file_sha256,
+        expected_request_size=request_size,
+        process_starter=process_starter,
     )
 
 
@@ -2482,6 +6123,13 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
     for name in ("start", "dry-run", "run-next", "monitor", "finalize"):
         subparser = subparsers.add_parser(name)
         subparser.add_argument("--registration", type=Path, required=True)
+    qualification_parser = subparsers.add_parser("qualify")
+    qualification_parser.add_argument("--registration", type=Path, required=True)
+    qualification_parser.add_argument("--request", type=Path, required=True)
+    qualification_parser.add_argument("--request-hash", required=True)
+    qualification_parser.add_argument("--request-file-sha256", required=True)
+    qualification_parser.add_argument("--request-size", type=int, required=True)
+    qualification_parser.add_argument("--review-commit", required=True)
     return parser.parse_args(argv)
 
 
@@ -2494,11 +6142,24 @@ def main(argv: Sequence[str] | None = None) -> int:
             result = _dry_run_command(args.registration)
         elif args.subcommand == "run-next":
             result = _run_next_command(args.registration)
+        elif args.subcommand == "qualify":
+            result = _qualify_command(
+                args.registration,
+                args.request,
+                args.request_hash,
+                args.request_file_sha256,
+                args.request_size,
+                args.review_commit,
+            )
         elif args.subcommand == "monitor":
             result = _monitor_command(args.registration)
         else:
             result = _finalize_gate_command(args.registration)
-        output_stream = sys.stderr if args.subcommand == "run-next" else sys.stdout
+        output_stream = (
+            sys.stderr
+            if args.subcommand in {"qualify", "run-next"}
+            else sys.stdout
+        )
         print(_canonical_json(result), file=output_stream)
         return 0
     except Exception as exc:

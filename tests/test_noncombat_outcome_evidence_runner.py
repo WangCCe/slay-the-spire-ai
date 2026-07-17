@@ -2,6 +2,8 @@ import importlib
 import hashlib
 import json
 import os
+import py_compile
+import shutil
 import subprocess
 import sys
 import zipfile
@@ -31,6 +33,7 @@ STUDY_ID = "noncombat-outcome-evidence-expansion-20260715"
 SEED_BASE = 2_026_071_500
 WINDOWS_PYTHON = Path(r"D:\anaconda\envs\stsai\python.exe")
 SOURCE_COMMIT = "a" * 40
+REVIEW_COMMIT = "c" * 40
 RUN_LOCK_HASH = "b" * 64
 REPO_ROOT = Path(__file__).resolve().parents[1]
 
@@ -42,6 +45,41 @@ def _module():
         )
     except ModuleNotFoundError as exc:
         pytest.fail(f"outcome evidence runner is missing: {exc}")
+
+
+def _trusted_qualification_command(runner_path, *arguments):
+    runner_path = Path(runner_path)
+    return [
+        sys.executable,
+        "-I",
+        "-S",
+        "-c",
+        _module().QUALIFICATION_TRUSTED_LAUNCHER_CODE,
+        str(runner_path),
+        hashlib.sha256(runner_path.read_bytes()).hexdigest(),
+        *arguments,
+    ]
+
+
+def _create_directory_junction(link_path, target_path):
+    completed = subprocess.run(
+        ["cmd.exe", "/c", "mklink", "/J", str(link_path), str(target_path)],
+        capture_output=True,
+        check=False,
+        text=True,
+    )
+    assert completed.returncode == 0, completed.stderr or completed.stdout
+
+
+def _qualification_review_kwargs(request):
+    source_bytes = Path(request["request_source_path"]).read_bytes()
+    return {
+        "expected_request_file_sha256": hashlib.sha256(
+            source_bytes
+        ).hexdigest(),
+        "expected_request_size": len(source_bytes),
+        "expected_review_commit": REVIEW_COMMIT,
+    }
 
 
 def test_runner_supports_direct_script_execution(tmp_path):
@@ -79,6 +117,1044 @@ def test_runner_supports_direct_script_execution(tmp_path):
 
     assert completed.returncode == 0, completed.stderr
     assert "dry-run" in completed.stdout
+
+
+def test_qualification_cli_requires_isolation_before_argparse(tmp_path):
+    script_path = (
+        REPO_ROOT / "scripts" / "run_noncombat_outcome_evidence_expansion.py"
+    )
+    shadow_root = tmp_path / "shadow"
+    shadow_root.mkdir()
+    marker_path = tmp_path / "argparse-imported.txt"
+    (shadow_root / "argparse.py").write_text(
+        "from pathlib import Path\n"
+        f"Path({str(marker_path)!r}).write_text('executed')\n"
+        "raise RuntimeError('shadow argparse executed')\n",
+        encoding="utf-8",
+        newline="",
+    )
+    environment = os.environ.copy()
+    environment["PYTHONPATH"] = str(shadow_root)
+
+    completed = subprocess.run(
+        [sys.executable, str(script_path), "qualify"],
+        cwd=REPO_ROOT,
+        capture_output=True,
+        check=False,
+        env=environment,
+        text=True,
+    )
+
+    assert completed.returncode == 2
+    assert "isolated" in completed.stderr.lower()
+    assert not marker_path.exists()
+
+
+def test_qualification_cli_rejects_site_enabled_trusted_launcher():
+    module = _module()
+    runner_path = Path(module.__file__).resolve()
+
+    completed = subprocess.run(
+        [
+            sys.executable,
+            "-I",
+            "-c",
+            module.QUALIFICATION_TRUSTED_LAUNCHER_CODE,
+            str(runner_path),
+            hashlib.sha256(runner_path.read_bytes()).hexdigest(),
+            "qualify",
+            "--review-commit",
+            REVIEW_COMMIT,
+        ],
+        cwd=REPO_ROOT,
+        capture_output=True,
+        check=False,
+        text=True,
+    )
+
+    assert completed.returncode == 2
+    assert "no-site" in completed.stderr.lower()
+
+
+def test_trusted_qualification_launcher_rejects_stat_clean_runner_tamper(
+    tmp_path,
+):
+    module = _module()
+    runner_path = tmp_path / "qualification_runner.py"
+    marker_path = tmp_path / "tampered-runner-executed.txt"
+    malicious_prefix = (
+        "from pathlib import Path\n"
+        f"Path({str(marker_path)!r}).write_text('executed')\n"
+    ).encode("utf-8")
+    safe_prefix = b"raise SystemExit(0)\n"
+    byte_count = max(len(malicious_prefix), len(safe_prefix)) + 32
+    safe_bytes = safe_prefix + b"#" * (byte_count - len(safe_prefix))
+    malicious_bytes = malicious_prefix + b"#" * (
+        byte_count - len(malicious_prefix)
+    )
+    runner_path.write_bytes(safe_bytes)
+    old_timestamp_ns = 1_700_000_000_000_000_000
+    os.utime(runner_path, ns=(old_timestamp_ns, old_timestamp_ns))
+    expected_sha256 = hashlib.sha256(safe_bytes).hexdigest()
+    runner_path.write_bytes(malicious_bytes)
+    os.utime(runner_path, ns=(old_timestamp_ns, old_timestamp_ns))
+
+    completed = subprocess.run(
+        [
+            sys.executable,
+            "-I",
+            "-S",
+            "-c",
+            module.QUALIFICATION_TRUSTED_LAUNCHER_CODE,
+            str(runner_path),
+            expected_sha256,
+        ],
+        cwd=tmp_path,
+        capture_output=True,
+        check=False,
+        text=True,
+    )
+
+    assert completed.returncode == 2
+    assert "sha-256" in completed.stderr.lower()
+    assert not marker_path.exists()
+
+
+def test_trusted_qualification_launcher_rejects_relative_runner_path(
+    tmp_path,
+):
+    module = _module()
+    runner_path = tmp_path / "qualification_runner.py"
+    runner_bytes = b"raise SystemExit(0)\n"
+    runner_path.write_bytes(runner_bytes)
+
+    completed = subprocess.run(
+        [
+            sys.executable,
+            "-I",
+            "-S",
+            "-c",
+            module.QUALIFICATION_TRUSTED_LAUNCHER_CODE,
+            runner_path.name,
+            hashlib.sha256(runner_bytes).hexdigest(),
+        ],
+        cwd=tmp_path,
+        capture_output=True,
+        check=False,
+        text=True,
+    )
+
+    assert completed.returncode == 2
+    assert "local absolute" in completed.stderr.lower()
+
+
+def test_trusted_qualification_launcher_rejects_runner_ads(tmp_path):
+    module = _module()
+    runner_path = tmp_path / "qualification_runner.py"
+    runner_bytes = b"raise SystemExit(0)\n"
+    runner_path.write_bytes(runner_bytes)
+
+    completed = subprocess.run(
+        [
+            sys.executable,
+            "-I",
+            "-S",
+            "-c",
+            module.QUALIFICATION_TRUSTED_LAUNCHER_CODE,
+            f"{runner_path}:qualification-runner",
+            hashlib.sha256(runner_bytes).hexdigest(),
+        ],
+        cwd=tmp_path,
+        capture_output=True,
+        check=False,
+        text=True,
+    )
+
+    assert completed.returncode == 2
+    assert "alternate data stream" in completed.stderr.lower()
+
+
+@pytest.mark.parametrize("suffix", [".", " "])
+def test_trusted_qualification_launcher_rejects_win32_alias(
+    tmp_path,
+    suffix,
+):
+    module = _module()
+    runner_path = tmp_path / "qualification_runner.py"
+    runner_bytes = b"raise SystemExit(0)\n"
+    runner_path.write_bytes(runner_bytes)
+
+    completed = subprocess.run(
+        [
+            sys.executable,
+            "-I",
+            "-S",
+            "-c",
+            module.QUALIFICATION_TRUSTED_LAUNCHER_CODE,
+            f"{runner_path}{suffix}",
+            hashlib.sha256(runner_bytes).hexdigest(),
+        ],
+        cwd=tmp_path,
+        capture_output=True,
+        check=False,
+        text=True,
+    )
+
+    assert completed.returncode == 2
+    assert "win32 alias" in completed.stderr.lower()
+
+
+def test_trusted_qualification_launcher_survives_communicationmod_split(
+    tmp_path,
+):
+    module = _module()
+    runner_path = tmp_path / "qualification_runner.py"
+    runner_bytes = b"raise SystemExit(0)\n"
+    runner_path.write_bytes(runner_bytes)
+    command = [
+        sys.executable,
+        "-I",
+        "-S",
+        "-c",
+        module.QUALIFICATION_TRUSTED_LAUNCHER_CODE,
+        str(runner_path),
+        hashlib.sha256(runner_bytes).hexdigest(),
+    ]
+    communicationmod_command = " ".join(command)
+    split_command = communicationmod_command.split()
+
+    assert split_command == command
+    completed = subprocess.run(
+        split_command,
+        cwd=tmp_path,
+        capture_output=True,
+        check=False,
+        text=True,
+    )
+    assert completed.returncode == 0, completed.stderr
+
+
+def test_qualification_cli_rejects_direct_unanchored_runner():
+    script_path = (
+        REPO_ROOT / "scripts" / "run_noncombat_outcome_evidence_expansion.py"
+    )
+
+    completed = subprocess.run(
+        [
+            sys.executable,
+            "-I",
+            "-S",
+            str(script_path),
+            "qualify",
+            "--review-commit",
+            "a" * 40,
+        ],
+        cwd=REPO_ROOT,
+        capture_output=True,
+        check=False,
+        text=True,
+    )
+
+    assert completed.returncode == 2
+    assert "trusted launcher command is required" in completed.stderr.lower()
+
+
+@pytest.mark.parametrize("index_flag", (None, "--assume-unchanged"))
+def test_qualification_cli_validates_source_before_project_imports(
+    tmp_path,
+    index_flag,
+):
+    repo_root = tmp_path / "repo"
+    repo_root.mkdir()
+    ignored = shutil.ignore_patterns("__pycache__", "*.pyc")
+    for directory_name in ("analysis_scripts", "scripts", "spirecomm"):
+        shutil.copytree(
+            REPO_ROOT / directory_name,
+            repo_root / directory_name,
+            ignore=ignored,
+        )
+    for command in (
+        ("git", "init", "--object-format=sha1"),
+        ("git", "config", "user.email", "runner@example.invalid"),
+        ("git", "config", "user.name", "Runner Fixture"),
+        ("git", "add", "."),
+        ("git", "commit", "-m", "source snapshot"),
+    ):
+        subprocess.run(
+            command,
+            cwd=repo_root,
+            capture_output=True,
+            check=True,
+            text=True,
+        )
+    review_commit = subprocess.run(
+        ("git", "rev-parse", "HEAD"),
+        cwd=repo_root,
+        capture_output=True,
+        check=True,
+        text=True,
+    ).stdout.strip()
+    imported_source = repo_root / "analysis_scripts" / (
+        "noncombat_outcome_evidence_expansion.py"
+    )
+    if index_flag is not None:
+        subprocess.run(
+            [
+                "git",
+                "update-index",
+                index_flag,
+                imported_source.relative_to(repo_root).as_posix(),
+            ],
+            cwd=repo_root,
+            capture_output=True,
+            check=True,
+            text=True,
+        )
+    marker_path = tmp_path / "drifted-project-source-executed.txt"
+    imported_source.write_text(
+        "from pathlib import Path\n"
+        f"Path({str(marker_path)!r}).write_text('executed')\n"
+        "raise RuntimeError('drifted project source executed')\n",
+        encoding="utf-8",
+        newline="",
+    )
+    runner_path = repo_root / "scripts" / (
+        "run_noncombat_outcome_evidence_expansion.py"
+    )
+
+    completed = subprocess.run(
+        _trusted_qualification_command(
+            runner_path,
+            "qualify",
+            "--review-commit",
+            review_commit,
+        ),
+        cwd=repo_root,
+        capture_output=True,
+        check=False,
+        text=True,
+    )
+
+    assert completed.returncode == 2
+    assert not marker_path.exists()
+    assert "source" in completed.stderr.lower()
+
+
+def test_qualification_cli_rejects_clean_wrong_head_before_project_imports(
+    tmp_path,
+):
+    repo_root = tmp_path / "repo"
+    repo_root.mkdir()
+    ignored = shutil.ignore_patterns("__pycache__", "*.pyc")
+    for directory_name in ("analysis_scripts", "scripts", "spirecomm"):
+        shutil.copytree(
+            REPO_ROOT / directory_name,
+            repo_root / directory_name,
+            ignore=ignored,
+        )
+    for command in (
+        ("git", "init", "--object-format=sha1"),
+        ("git", "config", "user.email", "runner@example.invalid"),
+        ("git", "config", "user.name", "Runner Fixture"),
+        ("git", "add", "."),
+        ("git", "commit", "-m", "review commit"),
+    ):
+        subprocess.run(
+            command,
+            cwd=repo_root,
+            capture_output=True,
+            check=True,
+            text=True,
+        )
+    review_commit = subprocess.run(
+        ("git", "rev-parse", "HEAD"),
+        cwd=repo_root,
+        capture_output=True,
+        check=True,
+        text=True,
+    ).stdout.strip()
+    imported_source = repo_root / "analysis_scripts" / (
+        "noncombat_outcome_evidence_expansion.py"
+    )
+    marker_path = tmp_path / "wrong-head-project-source-executed.txt"
+    imported_source.write_text(
+        "from pathlib import Path\n"
+        f"Path({str(marker_path)!r}).write_text('executed')\n"
+        "raise RuntimeError('wrong-head project source executed')\n",
+        encoding="utf-8",
+        newline="",
+    )
+    subprocess.run(
+        ("git", "add", imported_source.relative_to(repo_root).as_posix()),
+        cwd=repo_root,
+        capture_output=True,
+        check=True,
+        text=True,
+    )
+    subprocess.run(
+        ("git", "commit", "-m", "wrong head"),
+        cwd=repo_root,
+        capture_output=True,
+        check=True,
+        text=True,
+    )
+    runner_path = repo_root / "scripts" / (
+        "run_noncombat_outcome_evidence_expansion.py"
+    )
+
+    completed = subprocess.run(
+        _trusted_qualification_command(
+            runner_path,
+            "qualify",
+            "--review-commit",
+            review_commit,
+        ),
+        cwd=repo_root,
+        capture_output=True,
+        check=False,
+        text=True,
+    )
+
+    assert completed.returncode == 2
+    assert not marker_path.exists()
+    assert "review commit" in completed.stderr.lower()
+
+
+def test_qualification_cli_hashes_stat_clean_source_before_project_imports(
+    tmp_path,
+):
+    repo_root = tmp_path / "repo"
+    repo_root.mkdir()
+    ignored = shutil.ignore_patterns("__pycache__", "*.pyc")
+    for directory_name in ("analysis_scripts", "scripts", "spirecomm"):
+        shutil.copytree(
+            REPO_ROOT / directory_name,
+            repo_root / directory_name,
+            ignore=ignored,
+        )
+    imported_source = repo_root / "analysis_scripts" / (
+        "noncombat_outcome_evidence_expansion.py"
+    )
+    original_bytes = imported_source.read_bytes()
+    old_timestamp_ns = 1_700_000_000_000_000_000
+    os.utime(
+        imported_source,
+        ns=(old_timestamp_ns, old_timestamp_ns),
+    )
+    for command in (
+        ("git", "init", "--object-format=sha1"),
+        ("git", "config", "user.email", "runner@example.invalid"),
+        ("git", "config", "user.name", "Runner Fixture"),
+        ("git", "add", "."),
+        ("git", "commit", "-m", "review commit"),
+    ):
+        subprocess.run(
+            command,
+            cwd=repo_root,
+            capture_output=True,
+            check=True,
+            text=True,
+        )
+    review_commit = subprocess.run(
+        ("git", "rev-parse", "HEAD"),
+        cwd=repo_root,
+        capture_output=True,
+        check=True,
+        text=True,
+    ).stdout.strip()
+    marker_path = tmp_path / "stat-clean-project-source-executed.txt"
+    malicious_prefix = (
+        "from pathlib import Path\n"
+        f"Path({str(marker_path)!r}).write_text('executed')\n"
+        "raise RuntimeError('stat-clean project source executed')\n"
+    ).encode("utf-8")
+    assert len(malicious_prefix) < len(original_bytes)
+    imported_source.write_bytes(
+        malicious_prefix
+        + b"#" * (len(original_bytes) - len(malicious_prefix))
+    )
+    os.utime(
+        imported_source,
+        ns=(old_timestamp_ns, old_timestamp_ns),
+    )
+    status = subprocess.run(
+        ("git", "status", "--porcelain=v1", "--untracked-files=no"),
+        cwd=repo_root,
+        capture_output=True,
+        check=True,
+        text=True,
+    )
+    assert status.stdout == ""
+    runner_path = repo_root / "scripts" / (
+        "run_noncombat_outcome_evidence_expansion.py"
+    )
+
+    completed = subprocess.run(
+        _trusted_qualification_command(
+            runner_path,
+            "qualify",
+            "--review-commit",
+            review_commit,
+        ),
+        cwd=repo_root,
+        capture_output=True,
+        check=False,
+        text=True,
+    )
+
+    assert completed.returncode == 2
+    assert not marker_path.exists()
+    assert "reviewed source bytes" in completed.stderr.lower()
+
+
+def test_qualification_cli_hashes_stat_clean_powershell_before_imports(
+    tmp_path,
+):
+    repo_root = tmp_path / "repo"
+    repo_root.mkdir()
+    ignored = shutil.ignore_patterns("__pycache__", "*.pyc")
+    for directory_name in ("analysis_scripts", "scripts", "spirecomm"):
+        shutil.copytree(
+            REPO_ROOT / directory_name,
+            repo_root / directory_name,
+            ignore=ignored,
+        )
+    powershell_path = repo_root / "scripts" / "restart_sts_modded.ps1"
+    original_bytes = powershell_path.read_bytes()
+    old_timestamp_ns = 1_700_000_000_000_000_000
+    os.utime(
+        powershell_path,
+        ns=(old_timestamp_ns, old_timestamp_ns),
+    )
+    for command in (
+        ("git", "init", "--object-format=sha1"),
+        ("git", "config", "user.email", "runner@example.invalid"),
+        ("git", "config", "user.name", "Runner Fixture"),
+        ("git", "add", "."),
+        ("git", "commit", "-m", "review commit"),
+    ):
+        subprocess.run(
+            command,
+            cwd=repo_root,
+            capture_output=True,
+            check=True,
+            text=True,
+        )
+    review_commit = subprocess.run(
+        ("git", "rev-parse", "HEAD"),
+        cwd=repo_root,
+        capture_output=True,
+        check=True,
+        text=True,
+    ).stdout.strip()
+    malicious_prefix = b"throw 'stat-clean PowerShell executed'\r\n"
+    assert len(malicious_prefix) < len(original_bytes)
+    powershell_path.write_bytes(
+        malicious_prefix
+        + b"#" * (len(original_bytes) - len(malicious_prefix))
+    )
+    os.utime(
+        powershell_path,
+        ns=(old_timestamp_ns, old_timestamp_ns),
+    )
+    status = subprocess.run(
+        ("git", "status", "--porcelain=v1", "--untracked-files=no"),
+        cwd=repo_root,
+        capture_output=True,
+        check=True,
+        text=True,
+    )
+    assert status.stdout == ""
+    runner_path = repo_root / "scripts" / (
+        "run_noncombat_outcome_evidence_expansion.py"
+    )
+
+    completed = subprocess.run(
+        _trusted_qualification_command(
+            runner_path,
+            "qualify",
+            "--review-commit",
+            review_commit,
+        ),
+        cwd=repo_root,
+        capture_output=True,
+        check=False,
+        text=True,
+    )
+
+    assert completed.returncode == 2
+    assert "reviewed source bytes" in completed.stderr.lower()
+    assert "restart_sts_modded.ps1" in completed.stderr
+
+
+def test_runner_real_subprocess_does_not_self_pollute_source_guard(tmp_path):
+    repo_root = tmp_path / "repo"
+    repo_root.mkdir()
+    ignored = shutil.ignore_patterns("__pycache__", "*.pyc")
+    for directory_name in ("analysis_scripts", "scripts", "spirecomm"):
+        shutil.copytree(
+            REPO_ROOT / directory_name,
+            repo_root / directory_name,
+            ignore=ignored,
+        )
+    for command in (
+        ("git", "init", "--object-format=sha1"),
+        ("git", "config", "user.email", "runner@example.invalid"),
+        ("git", "config", "user.name", "Runner Fixture"),
+        ("git", "add", "."),
+        ("git", "commit", "-m", "source snapshot"),
+    ):
+        subprocess.run(
+            command,
+            cwd=repo_root,
+            capture_output=True,
+            check=True,
+            text=True,
+        )
+    review_commit = subprocess.run(
+        ("git", "rev-parse", "HEAD"),
+        cwd=repo_root,
+        capture_output=True,
+        check=True,
+        text=True,
+    ).stdout.strip()
+    environment = os.environ.copy()
+    environment.pop("PYTHONDONTWRITEBYTECODE", None)
+    completed = subprocess.run(
+            [
+                sys.executable,
+                "-I",
+                "-S",
+                "-c",
+                (
+                    "import runpy,sys; from pathlib import Path; "
+                    "sys.argv = ['runner', 'qualify', '--review-commit', "
+                    f"{review_commit!r}]; "
+                    "runner = runpy.run_path("
+                "'scripts/run_noncombat_outcome_evidence_expansion.py', "
+                "run_name='qualification_source_guard'); "
+                    "print(runner['_tracked_source_commit'](Path.cwd())); "
+                    "print(sys.pycache_prefix)"
+            ),
+        ],
+        cwd=repo_root,
+        capture_output=True,
+        check=False,
+        env=environment,
+        text=True,
+    )
+
+    assert completed.returncode == 0, completed.stderr
+    output_lines = completed.stdout.splitlines()
+    assert len(output_lines[0]) == 40
+    assert output_lines[1] == os.path.join(
+        os.devnull,
+        "sts-qualification-pycache",
+    )
+    assert list(repo_root.rglob("*.pyc")) == []
+
+
+def test_qualification_runner_does_not_execute_repository_bytecode(tmp_path):
+    repo_root = tmp_path / "repo"
+    repo_root.mkdir()
+    ignored = shutil.ignore_patterns("__pycache__", "*.pyc")
+    for directory_name in ("analysis_scripts", "scripts", "spirecomm"):
+        shutil.copytree(
+            REPO_ROOT / directory_name,
+            repo_root / directory_name,
+            ignore=ignored,
+        )
+    for command in (
+        ("git", "init", "--object-format=sha1"),
+        ("git", "config", "user.email", "runner@example.invalid"),
+        ("git", "config", "user.name", "Runner Fixture"),
+        ("git", "add", "."),
+        ("git", "commit", "-m", "source snapshot"),
+    ):
+        subprocess.run(
+            command,
+            cwd=repo_root,
+            capture_output=True,
+            check=True,
+            text=True,
+        )
+
+    source_path = repo_root / "analysis_scripts" / (
+        "noncombat_outcome_evidence_expansion.py"
+    )
+    marker_path = tmp_path / "repository-pyc-executed.txt"
+    malicious_bytes = (
+        "from pathlib import Path\n"
+        f"Path({str(marker_path)!r}).write_text('executed')\n"
+        "raise RuntimeError('repository bytecode executed')\n"
+    ).encode("utf-8")
+    source_path.write_bytes(malicious_bytes)
+    py_compile.compile(
+        str(source_path),
+        cfile=str(source_path.with_suffix(".pyc")),
+        doraise=True,
+    )
+    source_path.unlink()
+
+    completed = subprocess.run(
+        [
+            sys.executable,
+            "-I",
+            "-S",
+            "-c",
+            (
+                "import runpy,sys; from pathlib import Path; "
+                "sys.argv = ['runner', 'qualify']; "
+                "runner = runpy.run_path("
+                "'scripts/run_noncombat_outcome_evidence_expansion.py', "
+                "run_name='qualification_source_guard'); "
+                "runner['_tracked_source_commit'](Path.cwd())"
+            ),
+        ],
+        cwd=repo_root,
+        capture_output=True,
+        check=False,
+        text=True,
+    )
+
+    assert completed.returncode != 0
+    assert not marker_path.exists()
+
+
+def test_qualification_bootstrap_accepts_git_normalized_autocrlf_text(tmp_path):
+    module = _module()
+    repo_root = tmp_path / "repo"
+    repo_root.mkdir()
+    source_path = repo_root / "settings.yaml"
+    source_path.write_bytes(b"alpha\nbeta\n")
+    (repo_root / ".gitattributes").write_bytes(
+        b".gitattributes text eol=lf\n*.yaml text eol=crlf\n"
+    )
+    for arguments in (
+        ("init", "--object-format=sha1"),
+        ("config", "user.email", "runner@example.invalid"),
+        ("config", "user.name", "Runner Fixture"),
+        ("config", "core.autocrlf", "false"),
+        ("add", "."),
+        ("commit", "-m", "source snapshot"),
+    ):
+        subprocess.run(
+            ["git", "-C", str(repo_root), *arguments],
+            capture_output=True,
+            check=True,
+            text=True,
+        )
+    review_commit = subprocess.run(
+        ["git", "-C", str(repo_root), "rev-parse", "HEAD"],
+        capture_output=True,
+        check=True,
+        text=True,
+    ).stdout.strip()
+    subprocess.run(
+        ["git", "-C", str(repo_root), "config", "core.autocrlf", "true"],
+        capture_output=True,
+        check=True,
+        text=True,
+    )
+    source_path.write_bytes(b"alpha\r\nbeta\r\n")
+    git_root = module._qualification_bootstrap_validate_git_metadata(repo_root)
+
+    module._qualification_bootstrap_validate_reviewed_source_bytes(
+        repo_root,
+        git_root,
+        review_commit,
+    )
+
+
+def test_qualification_bootstrap_does_not_normalize_binary_tamper(tmp_path):
+    module = _module()
+    repo_root = tmp_path / "repo"
+    repo_root.mkdir()
+    source_path = repo_root / "payload.bin"
+    source_path.write_bytes(b"\x00alpha\nbeta\n")
+    for arguments in (
+        ("init", "--object-format=sha1"),
+        ("config", "user.email", "runner@example.invalid"),
+        ("config", "user.name", "Runner Fixture"),
+        ("config", "core.autocrlf", "true"),
+        ("add", "payload.bin"),
+        ("commit", "-m", "binary snapshot"),
+    ):
+        subprocess.run(
+            ["git", "-C", str(repo_root), *arguments],
+            capture_output=True,
+            check=True,
+            text=True,
+        )
+    review_commit = subprocess.run(
+        ["git", "-C", str(repo_root), "rev-parse", "HEAD"],
+        capture_output=True,
+        check=True,
+        text=True,
+    ).stdout.strip()
+    source_path.write_bytes(b"\x00alpha\r\nbeta\r\n")
+    git_root = module._qualification_bootstrap_validate_git_metadata(repo_root)
+
+    with pytest.raises(
+        module._QualificationBootstrapError,
+        match="reviewed source bytes changed",
+    ):
+        module._qualification_bootstrap_validate_reviewed_source_bytes(
+            repo_root,
+            git_root,
+            review_commit,
+        )
+
+
+def test_qualification_bootstrap_rejects_worktree_attributes(tmp_path):
+    module = _module()
+    repo_root = tmp_path / "repo"
+    repo_root.mkdir()
+    source_path = repo_root / "source.py"
+    source_path.write_text("VALUE = 1\n", encoding="utf-8", newline="")
+    for arguments in (
+        ("init", "--object-format=sha1"),
+        ("config", "user.email", "runner@example.invalid"),
+        ("config", "user.name", "Runner Fixture"),
+        ("add", "source.py"),
+        ("commit", "-m", "source snapshot"),
+    ):
+        subprocess.run(
+            ["git", "-C", str(repo_root), *arguments],
+            capture_output=True,
+            check=True,
+            text=True,
+        )
+    review_commit = subprocess.run(
+        ["git", "-C", str(repo_root), "rev-parse", "HEAD"],
+        capture_output=True,
+        check=True,
+        text=True,
+    ).stdout.strip()
+    (repo_root / ".gitattributes").write_text(
+        "*.py filter=untrusted\n",
+        encoding="utf-8",
+        newline="",
+    )
+    git_root = module._qualification_bootstrap_validate_git_metadata(repo_root)
+
+    with pytest.raises(
+        module._QualificationBootstrapError,
+        match="worktree attributes are forbidden",
+    ):
+        module._qualification_bootstrap_validate_reviewed_source_bytes(
+            repo_root,
+            git_root,
+            review_commit,
+        )
+
+
+@pytest.mark.parametrize(
+    "module_name",
+    (
+        "scripts.run_noncombat_outcome_evidence_expansion",
+        "main",
+        "analysis_scripts.verify_noncombat_outcome_evidence_expansion",
+    ),
+)
+def test_qualification_source_loader_rejects_package_junction_before_read(
+    tmp_path,
+    module_name,
+):
+    import_root = tmp_path / "import-root"
+    import_root.mkdir()
+    package_target = tmp_path / "package-target"
+    package_target.mkdir()
+    marker_path = tmp_path / "junction-source-executed.txt"
+    (package_target / "__init__.py").write_text(
+        "from pathlib import Path\n"
+        f"Path({str(marker_path)!r}).write_text('executed')\n",
+        encoding="utf-8",
+        newline="",
+    )
+    package_alias = import_root / "qualification_alias_package"
+    _create_directory_junction(package_alias, package_target)
+    probe = (
+        "import importlib,sys; from pathlib import Path; "
+        f"sys.path.insert(0, {str(REPO_ROOT)!r}); "
+        "module=importlib.import_module(sys.argv[1]); "
+        "root=Path(sys.argv[2]); "
+        "module._qualification_install_source_only_repo_imports(root); "
+        "sys.path.insert(0, str(root)); "
+        "import qualification_alias_package"
+    )
+
+    try:
+        completed = subprocess.run(
+            [sys.executable, "-I", "-c", probe, module_name, str(import_root)],
+            cwd=tmp_path,
+            capture_output=True,
+            check=False,
+            text=True,
+        )
+    finally:
+        os.rmdir(package_alias)
+
+    assert completed.returncode != 0
+    assert not marker_path.exists()
+
+
+def test_qualification_cli_keeps_result_off_communication_stdout(
+    tmp_path,
+    monkeypatch,
+    capsys,
+):
+    module = _module()
+    registration_path = tmp_path / "registration.json"
+    request_path = tmp_path / "qualification-request.json"
+    request_hash = "a" * 64
+    request_file_sha256 = "b" * 64
+    request_size = 123
+    review_commit = "c" * 40
+    result = {"schema_version": "sentinel", "status": "passed"}
+    monkeypatch.setattr(
+        module,
+        "_qualify_command",
+        lambda observed_registration, observed_request, observed_hash,
+        observed_file_hash, observed_size, observed_review_commit: (
+            result
+            if (
+                observed_registration == registration_path
+                and observed_request == request_path
+                and observed_hash == request_hash
+                and observed_file_hash == request_file_sha256
+                and observed_size == request_size
+                and observed_review_commit == review_commit
+            )
+            else pytest.fail("qualify CLI paths changed")
+        ),
+        raising=False,
+    )
+
+    exit_code = module.main(
+        [
+            "qualify",
+            "--registration",
+            str(registration_path),
+            "--request",
+            str(request_path),
+            "--request-hash",
+            request_hash,
+            "--request-file-sha256",
+            request_file_sha256,
+            "--request-size",
+            str(request_size),
+            "--review-commit",
+            review_commit,
+        ]
+    )
+
+    captured = capsys.readouterr()
+    assert exit_code == 0
+    assert captured.out == ""
+    assert json.loads(captured.err) == result
+
+
+def test_qualification_request_uses_isolated_child_command(
+    tmp_path,
+    monkeypatch,
+):
+    _module_value, _registration_path, _source_path, request = (
+        _qualification_request_fixture(
+            tmp_path,
+            monkeypatch,
+            source_only=True,
+        )
+    )
+
+    assert request["child_command"][1:3] == ["-I", "-S"]
+
+
+def test_qualification_child_environment_drops_ambient_python(monkeypatch):
+    module = _module()
+    monkeypatch.setenv("PYTHONPATH", r"C:\untrusted")
+    monkeypatch.setenv("PYTHONHOME", r"C:\untrusted-python")
+    monkeypatch.setenv("PYTHONINSPECT", "1")
+    monkeypatch.setenv("GIT_WORK_TREE", r"C:\untrusted-worktree")
+
+    environment = module._qualification_child_environment(
+        config_path=r"D:\qualification\config.json",
+        attempt_path=r"D:\qualification\attempt.json",
+        attempt_hash="a" * 64,
+    )
+
+    assert not any(
+        key.upper().startswith("PYTHON")
+        for key in environment
+        if key != "PYTHONDONTWRITEBYTECODE"
+    )
+    assert environment["PYTHONDONTWRITEBYTECODE"] == "1"
+    assert not any(key.upper().startswith("GIT_") for key in environment)
+
+
+def test_qualify_default_child_inherits_communication_streams(
+    tmp_path,
+    monkeypatch,
+):
+    module = _module()
+    registration, _run_lock = _study(tmp_path)
+    registration_path = tmp_path / "registration.json"
+    registration_path.write_text(
+        render_registration_json(registration),
+        encoding="utf-8",
+        newline="",
+    )
+    sentinel_process = object()
+    popen_calls = []
+
+    monkeypatch.setattr(
+        module,
+        "_load_runner_registration",
+        lambda _path: registration,
+    )
+
+    def fake_popen(command, **kwargs):
+        popen_calls.append((command, kwargs))
+        return sentinel_process
+
+    monkeypatch.setattr(module.subprocess, "Popen", fake_popen)
+
+    def fake_execute(**kwargs):
+        assert kwargs["expected_request_hash"] == "a" * 64
+        assert kwargs["expected_request_file_sha256"] == "b" * 64
+        assert kwargs["expected_request_size"] == 123
+        assert kwargs["expected_review_commit"] == "c" * 40
+        process = kwargs["process_starter"](
+            ("python.exe", "main.py"),
+            {"BOUND": "1"},
+        )
+        assert process is sentinel_process
+        return {"status": "passed"}
+
+    monkeypatch.setattr(module, "execute_prelock_qualification", fake_execute)
+
+    result = module._qualify_command(
+        registration_path,
+        tmp_path / "qualification-request.json",
+        "a" * 64,
+        "b" * 64,
+        123,
+        "c" * 40,
+    )
+
+    assert result == {"status": "passed"}
+    assert popen_calls == [
+        (
+            ["python.exe", "main.py"],
+            {
+                "cwd": str(Path(registration.checkpoint_root).parent),
+                "env": {"BOUND": "1"},
+                "stderr": sys.stderr,
+                "stdin": sys.stdin,
+                "stdout": sys.stdout,
+            },
+        )
+    ]
 
 
 def test_dry_run_rejects_registration_for_another_checkout(tmp_path):
@@ -152,6 +1228,25 @@ def test_dry_run_keeps_legacy_v1_read_only_support(tmp_path):
     assert result["launch_count"] == 24
 
 
+def test_run_next_rejects_ambient_qualification_before_registration_access(
+    tmp_path,
+    monkeypatch,
+):
+    module = _module()
+    monkeypatch.setenv(module.QUALIFICATION_ATTEMPT_HASH_ENV, "a" * 64)
+    monkeypatch.setattr(
+        module,
+        "_load_runner_registration",
+        lambda _path: pytest.fail("run-next loaded registration before env guard"),
+    )
+
+    with pytest.raises(
+        module.OutcomeEvidenceRunnerError,
+        match="ambient qualification",
+    ):
+        module._run_next_command(tmp_path / "registration.json")
+
+
 def _study(tmp_path):
     registration = build_registration(
         study_id=STUDY_ID,
@@ -169,6 +1264,1473 @@ def _study(tmp_path):
         "study_id": STUDY_ID,
     }
     return registration, run_lock
+
+
+def _qualification_request_fixture(
+    tmp_path,
+    monkeypatch,
+    *,
+    source_only=False,
+):
+    module = _module()
+    registration, _run_lock = _study(tmp_path)
+    registration_path = tmp_path / "registration.json"
+    registration_path.write_text(
+        render_registration_json(registration),
+        encoding="utf-8",
+        newline="",
+    )
+    qualification_root = tmp_path / "qualification-r4"
+    qualification_root.mkdir()
+    qualification_id = f"{STUDY_ID}-qualification-r4"
+    config_path = qualification_root / "qualification-config.json"
+    config_path.write_text(
+        json.dumps(
+            {
+                "category_rates_bps": {"card_reward": 300, "shop": 1000},
+                "enabled_categories": ["card_reward", "shop"],
+                "manifest_path": str(
+                    (qualification_root / "qualification-manifest.json").resolve()
+                ),
+                "per_run_alternative_budget": 2,
+                "schema_version": "noncombat-exploration-config-v1",
+                "seed": SEED_BASE + 1,
+                "session_id": f"{qualification_id}-s01",
+                "source_commit": SOURCE_COMMIT,
+                "study_id": qualification_id,
+                "study_registration_hash": registration.registration_hash,
+                "study_run_lock_hash": "0" * 64,
+                "study_slot_number": 1,
+                "trace_path": str(
+                    (qualification_root / "qualification-trace.jsonl").resolve()
+                ),
+            },
+            allow_nan=False,
+            ensure_ascii=True,
+            separators=(",", ":"),
+            sort_keys=True,
+        )
+        + "\n",
+        encoding="utf-8",
+        newline="",
+    )
+    marker_path = tmp_path / "runs" / "ai_games.txt"
+    marker_path.parent.mkdir()
+    marker_path.write_text("10\n11\n", encoding="utf-8", newline="")
+    current_commit = [SOURCE_COMMIT]
+    monkeypatch.setattr(
+        module,
+        "_tracked_source_commit",
+        lambda _repo_root, **_kwargs: current_commit[0],
+        raising=False,
+    )
+    monkeypatch.setattr(
+        module,
+        "_require_committed_qualification_registration",
+        lambda _registration_path, _repo_root, _source_commit: None,
+        raising=False,
+    )
+    monkeypatch.setattr(
+        module,
+        "_require_committed_qualification_request_source",
+        lambda *_args, **_kwargs: REVIEW_COMMIT,
+        raising=False,
+    )
+    def validate_review_chain(**kwargs):
+        request_record = kwargs["request"]
+        if request_record["source_commit"] != SOURCE_COMMIT:
+            raise module.OutcomeEvidenceRunnerError(
+                "qualification source commit mismatch"
+            )
+        source_path = Path(request_record["request_source_path"])
+        source_bytes = source_path.read_bytes()
+        if (
+            kwargs["expected_review_commit"] != REVIEW_COMMIT
+            or kwargs["expected_request_file_sha256"]
+            != hashlib.sha256(source_bytes).hexdigest()
+            or kwargs["expected_request_size"] != len(source_bytes)
+        ):
+            raise module.OutcomeEvidenceRunnerError(
+                "qualification external review binding mismatch"
+            )
+        return module._build_qualification_review_binding(
+            request=request_record,
+            review_commit=REVIEW_COMMIT,
+            request_source_path=source_path,
+            request_source_relative=source_path.relative_to(REPO_ROOT).as_posix(),
+            request_bytes=source_bytes,
+        )
+
+    monkeypatch.setattr(
+        module,
+        "_validate_qualification_review_chain",
+        validate_review_chain,
+        raising=False,
+    )
+    reviewed_request_path = (tmp_path / "reviewed-qualification-request.json").resolve()
+    request = module.build_qualification_request(
+        registration_path=registration_path,
+        qualification_id=qualification_id,
+        qualification_root=qualification_root,
+        config_path=config_path,
+        marker_path=marker_path,
+        request_source_path=reviewed_request_path,
+        created_unix_ns=100,
+    )
+    current_commit[0] = REVIEW_COMMIT
+    request_path = Path(request["request_path"])
+    reviewed_request_path.write_text(
+        module._canonical_json(request) + "\n",
+        encoding="utf-8",
+        newline="",
+    )
+    if not source_only:
+        request_path.write_bytes(reviewed_request_path.read_bytes())
+    return (
+        module,
+        registration_path,
+        reviewed_request_path if source_only else request_path,
+        request,
+    )
+
+
+def test_qualification_request_round_trips_exact_current_bindings(
+    tmp_path,
+    monkeypatch,
+):
+    module, registration_path, request_path, request = (
+        _qualification_request_fixture(tmp_path, monkeypatch)
+    )
+
+    loaded = module.load_qualification_request(
+        request_path,
+        registration_path=registration_path,
+    )
+
+    assert loaded == request
+    assert loaded["schema_version"] == (
+        "noncombat-outcome-evidence-qualification-request-v1"
+    )
+    assert loaded["source_commit"] == SOURCE_COMMIT
+    assert loaded["request_source_path"] == str(
+        (tmp_path / "reviewed-qualification-request.json").resolve()
+    )
+    assert loaded["registration"]["canonical_hash"]
+    assert loaded["implementation_sha256"] == {
+        relative_path: hashlib.sha256((REPO_ROOT / relative_path).read_bytes()).hexdigest()
+        for relative_path in build_registration(
+            study_id=STUDY_ID,
+            artifact_root=tmp_path / "unused-study",
+            repo_root=REPO_ROOT,
+            seed_base=SEED_BASE,
+            python_executable=WINDOWS_PYTHON,
+            communication_config_path=tmp_path / "unused.properties",
+            checkpoint_root=tmp_path / "unused-checkpoints",
+        ).to_record()["integrity_rules"]["implementation_paths"]
+    }
+    assert loaded["handshake"]["readiness_timeout_seconds"] == 120
+    assert loaded["handshake"]["release_timeout_seconds"] == 10
+    assert loaded["marker"]["start_count"] == 2
+
+
+def test_qualification_cli_binds_launcher_anchor_to_reviewed_runner(
+    tmp_path,
+    monkeypatch,
+):
+    module, registration_path, request_path, request = (
+        _qualification_request_fixture(
+            tmp_path,
+            monkeypatch,
+            source_only=True,
+        )
+    )
+    monkeypatch.setattr(module, "_QUALIFICATION_CLI_REQUESTED", True)
+    monkeypatch.setenv(module.QUALIFICATION_RUNNER_SHA256_ENV, "f" * 64)
+
+    with pytest.raises(
+        module.OutcomeEvidenceRunnerError,
+        match="launcher anchor.*reviewed runner",
+    ):
+        module.execute_prelock_qualification(
+            registration_path=registration_path,
+            request_path=request_path,
+            expected_request_hash=request["request_hash"],
+            **_qualification_review_kwargs(request),
+            process_starter=lambda *_args: pytest.fail(
+                "mismatched launcher anchor started a child"
+            ),
+        )
+
+
+def test_qualification_request_rejects_rehashed_source_drift(
+    tmp_path,
+    monkeypatch,
+):
+    module, registration_path, request_path, request = (
+        _qualification_request_fixture(tmp_path, monkeypatch)
+    )
+    request["source_commit"] = "f" * 40
+    request["request_hash"] = module._self_hash(request, "request_hash")
+    request_path.write_text(
+        module._canonical_json(request) + "\n",
+        encoding="utf-8",
+        newline="",
+    )
+
+    with pytest.raises(
+        module.OutcomeEvidenceRunnerError,
+        match="source commit|config binding",
+    ):
+        module.load_qualification_request(
+            request_path,
+            registration_path=registration_path,
+        )
+
+
+def test_qualification_request_rejects_noncanonical_bytes(
+    tmp_path,
+    monkeypatch,
+):
+    module, registration_path, request_path, request = (
+        _qualification_request_fixture(tmp_path, monkeypatch)
+    )
+    request_path.write_text(
+        json.dumps(request, indent=2) + "\n",
+        encoding="utf-8",
+        newline="",
+    )
+
+    with pytest.raises(module.OutcomeEvidenceRunnerError, match="canonical"):
+        module.load_qualification_request(
+            request_path,
+            registration_path=registration_path,
+        )
+
+
+@pytest.mark.parametrize(
+    ("case", "message"),
+    (
+        ("implementation", "implementation"),
+        ("child_command", "child command"),
+        ("config", "config"),
+        ("config_behavior", "configuration behavior"),
+        ("config_extra", "configuration fields"),
+        ("marker", "marker"),
+        ("marker_path", "marker path"),
+        ("handshake", "handshake"),
+        ("registration", "registration"),
+    ),
+)
+def test_qualification_request_rejects_rehashed_binding_drift(
+    tmp_path,
+    monkeypatch,
+    case,
+    message,
+):
+    module, registration_path, request_path, request = (
+        _qualification_request_fixture(tmp_path, monkeypatch)
+    )
+    if case == "implementation":
+        request["implementation_sha256"]["main.py"] = "f" * 64
+    elif case == "child_command":
+        request["child_command"].append("--train")
+    elif case == "config":
+        request["config"]["sha256"] = "f" * 64
+    elif case == "config_behavior":
+        config_path = Path(request["config"]["path"])
+        config = json.loads(config_path.read_text(encoding="utf-8"))
+        config["category_rates_bps"]["card_reward"] = 299
+        config_path.write_text(
+            module._canonical_json(config) + "\n",
+            encoding="utf-8",
+            newline="",
+        )
+        config_sha256 = hashlib.sha256(config_path.read_bytes()).hexdigest()
+        request["config"]["sha256"] = config_sha256
+        request["preexisting_files"][str(config_path.resolve())] = config_sha256
+    elif case == "config_extra":
+        config_path = Path(request["config"]["path"])
+        config = json.loads(config_path.read_text(encoding="utf-8"))
+        config["unexpected"] = True
+        config_path.write_text(
+            module._canonical_json(config) + "\n",
+            encoding="utf-8",
+            newline="",
+        )
+        config_sha256 = hashlib.sha256(config_path.read_bytes()).hexdigest()
+        request["config"]["sha256"] = config_sha256
+        request["preexisting_files"][str(config_path.resolve())] = config_sha256
+    elif case == "marker":
+        request["marker"]["start_count"] += 1
+    elif case == "marker_path":
+        decoy_marker = (tmp_path / "decoy" / "ai_games.txt").resolve()
+        decoy_marker.parent.mkdir()
+        decoy_marker.write_text("10\n11\n", encoding="utf-8", newline="")
+        request["marker"]["path"] = str(decoy_marker)
+    elif case == "handshake":
+        request["handshake"]["release_timeout_seconds"] = 11
+    else:
+        request["registration"]["file_sha256"] = "f" * 64
+    request["request_hash"] = module._self_hash(request, "request_hash")
+    request_path.write_text(
+        module._canonical_json(request) + "\n",
+        encoding="utf-8",
+        newline="",
+    )
+
+    with pytest.raises(module.OutcomeEvidenceRunnerError, match=message):
+        module.load_qualification_request(
+            request_path,
+            registration_path=registration_path,
+        )
+
+
+def test_qualification_request_rejects_duplicate_json_key(
+    tmp_path,
+    monkeypatch,
+):
+    module, registration_path, request_path, _request = (
+        _qualification_request_fixture(tmp_path, monkeypatch)
+    )
+    raw = request_path.read_text(encoding="utf-8")
+    needle = f'"source_commit":"{SOURCE_COMMIT}"'
+    request_path.write_text(
+        raw.replace(needle, f'{needle},{needle}'),
+        encoding="utf-8",
+        newline="",
+    )
+
+    with pytest.raises(module.OutcomeEvidenceRunnerError, match="duplicate JSON key"):
+        module.load_qualification_request(
+            request_path,
+            registration_path=registration_path,
+        )
+
+
+def test_qualification_request_rejects_stale_attempt(
+    tmp_path,
+    monkeypatch,
+):
+    module, registration_path, request_path, request = (
+        _qualification_request_fixture(tmp_path, monkeypatch)
+    )
+    Path(request["handshake"]["attempt_path"]).write_text(
+        "{}\n",
+        encoding="utf-8",
+        newline="",
+    )
+
+    with pytest.raises(module.OutcomeEvidenceRunnerError, match="control artifact"):
+        module.load_qualification_request(
+            request_path,
+            registration_path=registration_path,
+        )
+
+
+def test_qualification_request_rejects_unregistered_preexisting_file(
+    tmp_path,
+    monkeypatch,
+):
+    module, registration_path, request_path, request = (
+        _qualification_request_fixture(tmp_path, monkeypatch)
+    )
+    (Path(request["qualification_root"]) / "unexpected.txt").write_text(
+        "unexpected\n",
+        encoding="utf-8",
+        newline="",
+    )
+
+    with pytest.raises(module.OutcomeEvidenceRunnerError, match="inventory"):
+        module.load_qualification_request(
+            request_path,
+            registration_path=registration_path,
+        )
+
+
+def test_qualification_request_rejects_registered_study_root(
+    tmp_path,
+    monkeypatch,
+):
+    module, registration_path, request_path, _request = (
+        _qualification_request_fixture(tmp_path, monkeypatch)
+    )
+    (tmp_path / "study").mkdir()
+
+    with pytest.raises(module.OutcomeEvidenceRunnerError, match="forbidden"):
+        module.load_qualification_request(
+            request_path,
+            registration_path=registration_path,
+        )
+
+
+def test_qualification_registration_must_be_committed_in_source_repository(tmp_path):
+    module = _module()
+    registration_path = (tmp_path / "registration.json").resolve()
+    registration_path.write_text("{}\n", encoding="utf-8", newline="")
+
+    with pytest.raises(
+        module.OutcomeEvidenceRunnerError,
+        match="outside the source repository|not committed",
+    ):
+        module._require_committed_qualification_registration(
+            registration_path,
+            REPO_ROOT,
+            SOURCE_COMMIT,
+        )
+
+
+def test_qualification_request_source_accepts_exact_tracked_commit_bytes(
+    tmp_path,
+    monkeypatch,
+):
+    module = _module()
+    repo_root = (tmp_path / "repo").resolve()
+    repo_root.mkdir()
+    request_source_path = (repo_root / "reviewed-request.json").resolve()
+    committed_bytes = b'{"reviewed":true}\n'
+    request_source_path.write_bytes(committed_bytes)
+    observed_commands = []
+
+    def fake_git_source_output(root, *arguments, binary=False, **_kwargs):
+        observed_commands.append((root, arguments, binary))
+        assert root == repo_root
+        if arguments[0] == "ls-files":
+            assert binary is False
+            return "reviewed-request.json\n"
+        assert arguments == (
+            "show",
+            f"{REVIEW_COMMIT}:reviewed-request.json",
+        )
+        assert binary is True
+        return committed_bytes
+
+    monkeypatch.setattr(
+        module,
+        "_qualification_git_source_output",
+        fake_git_source_output,
+    )
+
+    module._require_committed_qualification_request_source(
+        request_source_path,
+        repo_root,
+        REVIEW_COMMIT,
+        committed_bytes,
+    )
+
+    assert len(observed_commands) == 2
+
+
+@pytest.mark.parametrize(
+    "case",
+    ("outside", "untracked", "drift"),
+)
+def test_qualification_request_source_rejects_unreviewed_bytes(
+    tmp_path,
+    monkeypatch,
+    case,
+):
+    module = _module()
+    repo_root = (tmp_path / "repo").resolve()
+    repo_root.mkdir()
+    request_source_path = (
+        (tmp_path / "outside-request.json").resolve()
+        if case == "outside"
+        else (repo_root / "reviewed-request.json").resolve()
+    )
+    request_source_path.write_bytes(b'{"reviewed":false}\n')
+
+    def fake_git_source_output(_root, *arguments, **_kwargs):
+        if case == "untracked" and arguments[0] == "ls-files":
+            raise module.OutcomeEvidenceRunnerError("not committed")
+        if arguments[0] == "ls-files":
+            return "reviewed-request.json\n"
+        return b'{"reviewed":true}\n'
+
+    monkeypatch.setattr(
+        module,
+        "_qualification_git_source_output",
+        fake_git_source_output,
+    )
+
+    with pytest.raises(
+        module.OutcomeEvidenceRunnerError,
+        match=(
+            "outside the source repository|not committed|differs|"
+            "review must follow|unrelated"
+        ),
+    ):
+        module._require_committed_qualification_request_source(
+            request_source_path,
+            repo_root,
+            REVIEW_COMMIT,
+            b'{"reviewed":false}\n',
+        )
+
+
+@pytest.mark.parametrize(
+    "case",
+    (
+        "clean",
+        "registration_drift",
+        "implementation_drift",
+        "wrong_parent",
+        "extra_diff",
+    ),
+)
+def test_qualification_review_chain_allows_only_review_material_changes(
+    tmp_path,
+    monkeypatch,
+    case,
+):
+    module = _module()
+    registration, _run_lock = _study(tmp_path)
+    registration_path = (tmp_path / "registration.json").resolve()
+    registration_path.write_text(
+        render_registration_json(registration),
+        encoding="utf-8",
+        newline="",
+    )
+    request_source_path = (tmp_path / "reviewed-request.json").resolve()
+    request_bytes = b'{"request":true}\n'
+    request_source_path.write_bytes(request_bytes)
+    review_head = REVIEW_COMMIT
+    implementation_paths = registration.to_record()["integrity_rules"][
+        "implementation_paths"
+    ]
+    implementation_sha256 = {
+        relative_path: hashlib.sha256(
+            (REPO_ROOT / relative_path).read_bytes()
+        ).hexdigest()
+        for relative_path in implementation_paths
+    }
+    registration_relative = registration_path.relative_to(REPO_ROOT).as_posix()
+    request_source_relative = request_source_path.relative_to(REPO_ROOT).as_posix()
+    drift_path = implementation_paths[0]
+    request = {
+        "implementation_sha256": implementation_sha256,
+        "registration": {
+            "canonical_hash": registration.registration_hash,
+            "file_sha256": hashlib.sha256(
+                registration_path.read_bytes()
+            ).hexdigest(),
+            "path": str(registration_path),
+        },
+        "request_hash": "e" * 64,
+        "request_path": str((tmp_path / "active-request.json").resolve()),
+        "request_source_path": str(request_source_path),
+        "review_allowed_paths": [request_source_relative],
+        "source_commit": SOURCE_COMMIT,
+    }
+    monkeypatch.setattr(
+        module,
+        "_tracked_source_commit",
+        lambda _repo_root, **_kwargs: review_head,
+    )
+    monkeypatch.setattr(
+        module,
+        "_require_committed_qualification_request_source",
+        lambda *_args, **_kwargs: None,
+    )
+    monkeypatch.setattr(
+        module,
+        "_require_committed_qualification_registration",
+        lambda *_args, **_kwargs: None,
+    )
+
+    def committed_bytes(_repo_root, commit, relative_path, _label):
+        if relative_path == registration_relative:
+            if case == "registration_drift" and commit == REVIEW_COMMIT:
+                return b"registration drift"
+            return registration_path.read_bytes()
+        if (
+            case == "implementation_drift"
+            and commit == REVIEW_COMMIT
+            and relative_path == drift_path
+        ):
+            return b"implementation drift"
+        return (REPO_ROOT / relative_path).read_bytes()
+
+    monkeypatch.setattr(
+        module,
+        "_qualification_committed_bytes",
+        committed_bytes,
+    )
+    monkeypatch.setattr(
+        module,
+        "_qualification_git_source_output",
+        lambda _root, *arguments, **_kwargs: (
+            (
+                f"{REVIEW_COMMIT} "
+                f"{('f' * 40) if case == 'wrong_parent' else SOURCE_COMMIT}\n"
+            )
+            if arguments[0] == "rev-list"
+            else (
+                f"{request_source_relative}\nreports/unreviewed.json\n"
+                if case == "extra_diff"
+                else f"{request_source_relative}\n"
+            )
+        ),
+    )
+
+    call = lambda: module._validate_qualification_review_chain(
+        request=request,
+        request_source_path=request_source_path,
+        expected_request_bytes=request_bytes,
+        expected_review_commit=REVIEW_COMMIT,
+        expected_request_file_sha256=hashlib.sha256(request_bytes).hexdigest(),
+        expected_request_size=len(request_bytes),
+        registration=registration,
+        registration_path=registration_path,
+        implementation_sha256=implementation_sha256,
+    )
+
+    if case == "clean":
+        review_binding = call()
+        assert review_binding["source_commit"] == SOURCE_COMMIT
+        assert review_binding["review_commit"] == REVIEW_COMMIT
+        assert review_binding["request_source"]["file_sha256"] == (
+            hashlib.sha256(request_bytes).hexdigest()
+        )
+    else:
+        with pytest.raises(
+            module.OutcomeEvidenceRunnerError,
+            match=(
+                "registration changed|implementation changed|"
+                "direct child|allowed path set"
+            ),
+        ):
+            call()
+
+
+@pytest.mark.parametrize(
+    ("untracked_path", "allowed"),
+    (
+        ("reports/local-note.json", True),
+        ("scripts/untracked_launcher.py", False),
+        ("spirecomm/untracked_native.pyd", False),
+        ("ops/untracked_launcher.ps1", False),
+        ("ops/untracked_launcher.scr", False),
+        ("ops/untracked_launcher", False),
+    ),
+)
+def test_qualification_live_source_rejects_untracked_executable_paths(
+    tmp_path,
+    monkeypatch,
+    untracked_path,
+    allowed,
+):
+    module = _module()
+    path = tmp_path / untracked_path
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_bytes(b"untracked")
+
+    def fake_git_source_output(_repo_root, *arguments, **_kwargs):
+        if arguments[0] == "status":
+            return ""
+        if arguments[0] == "rev-parse":
+            return REVIEW_COMMIT + "\n"
+        return b""
+
+    monkeypatch.setattr(
+        module,
+        "_qualification_git_source_output",
+        fake_git_source_output,
+    )
+
+    if allowed:
+        assert module._tracked_source_commit(tmp_path) == REVIEW_COMMIT
+    else:
+        with pytest.raises(
+            module.OutcomeEvidenceRunnerError,
+            match="untracked executable",
+        ):
+            module._tracked_source_commit(tmp_path)
+
+
+@pytest.mark.parametrize(
+    "executable_path",
+    (
+        "ops/qualification-launch.ps1",
+        "ops/qualification-launch.cmd",
+        "ops/qualification-launch.pyz",
+        "ops/qualification-launch.whl",
+        "ops/qualification-launch.scr",
+        "ops/qualification-launch",
+    ),
+)
+def test_qualification_review_allowlist_rejects_all_executable_suffixes(
+    executable_path,
+):
+    module = _module()
+    request_source = "reports/qualification-request.json"
+
+    with pytest.raises(
+        module.OutcomeEvidenceRunnerError,
+        match="executable path",
+    ):
+        module._validate_qualification_review_allowed_paths(
+            sorted((executable_path, request_source)),
+            request_source_relative=request_source,
+            protected_paths=set(),
+        )
+
+
+def test_qualification_live_source_rejects_ignored_importable_paths(tmp_path):
+    module = _module()
+    subprocess.run(
+        ["git", "init", "--object-format=sha1", str(tmp_path)],
+        check=True,
+        capture_output=True,
+        text=True,
+    )
+    for key, value in (
+        ("user.email", "guard@example.invalid"),
+        ("user.name", "Guard Fixture"),
+    ):
+        subprocess.run(
+            ["git", "-C", str(tmp_path), "config", key, value],
+            check=True,
+            capture_output=True,
+            text=True,
+        )
+    (tmp_path / ".gitignore").write_text(
+        "*.pyc\n",
+        encoding="utf-8",
+        newline="",
+    )
+    (tmp_path / "tracked.txt").write_text(
+        "tracked\n",
+        encoding="utf-8",
+        newline="",
+    )
+    subprocess.run(
+        ["git", "-C", str(tmp_path), "add", ".gitignore", "tracked.txt"],
+        check=True,
+        capture_output=True,
+        text=True,
+    )
+    subprocess.run(
+        ["git", "-C", str(tmp_path), "commit", "-m", "guard fixture"],
+        check=True,
+        capture_output=True,
+        text=True,
+    )
+    (tmp_path / "ignored_module.pyc").write_bytes(b"unbound bytecode")
+
+    with pytest.raises(
+        module.OutcomeEvidenceRunnerError,
+        match="untracked executable",
+    ):
+        module._tracked_source_commit(tmp_path)
+
+
+def test_qualification_live_source_rejects_untracked_directory_junction(
+    tmp_path,
+):
+    module = _module()
+    repo_root = tmp_path / "repo"
+    repo_root.mkdir()
+    (repo_root / "tracked.txt").write_text(
+        "tracked\n",
+        encoding="utf-8",
+        newline="",
+    )
+    for command in (
+        ("git", "init", "--object-format=sha1"),
+        ("git", "config", "user.email", "junction@example.invalid"),
+        ("git", "config", "user.name", "Junction Fixture"),
+        ("git", "add", "."),
+        ("git", "commit", "-m", "source snapshot"),
+    ):
+        subprocess.run(
+            command,
+            cwd=repo_root,
+            capture_output=True,
+            check=True,
+            text=True,
+        )
+    target_path = tmp_path / "outside-source"
+    target_path.mkdir()
+    junction_path = repo_root / "ignored-junction"
+    _create_directory_junction(junction_path, target_path)
+    try:
+        with pytest.raises(
+            module.OutcomeEvidenceRunnerError,
+            match="untracked executable paths.*ignored-junction",
+        ):
+            module._tracked_source_commit(repo_root)
+    finally:
+        os.rmdir(junction_path)
+
+
+def test_qualification_root_inventory_rejects_directory_junction(tmp_path):
+    module = _module()
+    qualification_root = tmp_path / "qualification"
+    qualification_root.mkdir()
+    target_path = tmp_path / "outside-root"
+    target_path.mkdir()
+    (target_path / "outside.txt").write_text(
+        "outside\n",
+        encoding="utf-8",
+        newline="",
+    )
+    junction_path = qualification_root / "linked-directory"
+    _create_directory_junction(junction_path, target_path)
+    try:
+        with pytest.raises(
+            module.OutcomeEvidenceRunnerError,
+            match="symbolic link|reparse",
+        ):
+            module._qualification_root_inventory(
+                qualification_root,
+                excluded_paths=set(),
+            )
+    finally:
+        os.rmdir(junction_path)
+
+
+def test_qualification_request_rejects_root_junction_before_target_read(
+    tmp_path,
+    monkeypatch,
+):
+    module = _module()
+    registration, _run_lock = _study(tmp_path)
+    registration_path = tmp_path / "registration.json"
+    registration_path.write_text(
+        render_registration_json(registration),
+        encoding="utf-8",
+        newline="",
+    )
+    qualification_target = tmp_path / "qualification-target"
+    qualification_target.mkdir()
+    qualification_root = tmp_path / "qualification-junction"
+    _create_directory_junction(qualification_root, qualification_target)
+    qualification_id = f"{STUDY_ID}-qualification-r4"
+    config_path = qualification_target / "qualification-config.json"
+    config_path.write_text(
+        json.dumps(
+            {
+                "category_rates_bps": {"card_reward": 300, "shop": 1000},
+                "enabled_categories": ["card_reward", "shop"],
+                "manifest_path": str(
+                    qualification_target / "qualification-manifest.json"
+                ),
+                "per_run_alternative_budget": 2,
+                "schema_version": "noncombat-exploration-config-v1",
+                "seed": SEED_BASE + 1,
+                "session_id": f"{qualification_id}-s01",
+                "source_commit": SOURCE_COMMIT,
+                "study_id": qualification_id,
+                "study_registration_hash": registration.registration_hash,
+                "study_run_lock_hash": "0" * 64,
+                "study_slot_number": 1,
+                "trace_path": str(
+                    qualification_target / "qualification-trace.jsonl"
+                ),
+            },
+            allow_nan=False,
+            ensure_ascii=True,
+            separators=(",", ":"),
+            sort_keys=True,
+        )
+        + "\n",
+        encoding="utf-8",
+        newline="",
+    )
+    marker_path = tmp_path / "runs" / "ai_games.txt"
+    marker_path.parent.mkdir()
+    marker_path.write_text("10\n11\n", encoding="utf-8", newline="")
+    monkeypatch.setattr(
+        module,
+        "_tracked_source_commit",
+        lambda _repo_root, **_kwargs: SOURCE_COMMIT,
+    )
+    monkeypatch.setattr(
+        module,
+        "_require_committed_qualification_registration",
+        lambda *_args, **_kwargs: None,
+    )
+
+    try:
+        with pytest.raises(
+            module.OutcomeEvidenceRunnerError,
+            match="symbolic link|reparse",
+        ):
+            module.build_qualification_request(
+                registration_path=registration_path,
+                qualification_id=qualification_id,
+                qualification_root=qualification_root,
+                config_path=qualification_root / config_path.name,
+                marker_path=marker_path,
+                request_source_path=(
+                    tmp_path / "reviewed-qualification-request.json"
+                ),
+                created_unix_ns=100,
+            )
+    finally:
+        os.rmdir(qualification_root)
+
+
+def test_qualification_request_source_rejects_junction_alias_before_read(
+    tmp_path,
+    monkeypatch,
+):
+    module, registration_path, request_source_path, request = (
+        _qualification_request_fixture(
+            tmp_path,
+            monkeypatch,
+            source_only=True,
+        )
+    )
+    source_alias = tmp_path / "reviewed-source-alias"
+    _create_directory_junction(source_alias, tmp_path)
+
+    try:
+        with pytest.raises(
+            module.OutcomeEvidenceRunnerError,
+            match="symbolic link|reparse",
+        ):
+            module.load_qualification_request_source(
+                source_alias / request_source_path.name,
+                registration_path=registration_path,
+                expected_request_hash=request["request_hash"],
+                **_qualification_review_kwargs(request),
+            )
+    finally:
+        os.rmdir(source_alias)
+
+
+def test_qualification_absence_check_rejects_dangling_junction(tmp_path):
+    module = _module()
+    target_path = tmp_path / "junction-target"
+    target_path.mkdir()
+    junction_path = tmp_path / "qualification-attempt.json"
+    _create_directory_junction(junction_path, target_path)
+    target_path.rmdir()
+    try:
+        with pytest.raises(
+            module.OutcomeEvidenceRunnerError,
+            match="control artifact",
+        ):
+            module._require_paths_absent(
+                (junction_path,),
+                "qualification control artifact exists",
+            )
+    finally:
+        os.rmdir(junction_path)
+
+
+def test_qualification_live_source_rejects_git_warning(
+    tmp_path,
+    monkeypatch,
+):
+    module = _module()
+    (tmp_path / ".git").mkdir()
+    monkeypatch.setattr(
+        module.subprocess,
+        "run",
+        lambda *_args, **_kwargs: subprocess.CompletedProcess(
+            args=["git"],
+            returncode=0,
+            stdout="",
+            stderr="warning: source traversal incomplete",
+        ),
+    )
+
+    with pytest.raises(
+        module.OutcomeEvidenceRunnerError,
+        match="source traversal incomplete",
+    ):
+        module._tracked_source_commit(tmp_path)
+
+
+def test_qualification_git_uses_pinned_absolute_executable(
+    tmp_path,
+    monkeypatch,
+):
+    module = _module()
+    (tmp_path / ".git").mkdir()
+    observed = {}
+
+    def run(command, **_kwargs):
+        observed["command"] = list(command)
+        return subprocess.CompletedProcess(
+            args=command,
+            returncode=0,
+            stdout="",
+            stderr="",
+        )
+
+    monkeypatch.setattr(module.subprocess, "run", run)
+
+    module._qualification_git_source_output(tmp_path, "status")
+
+    executable = Path(observed["command"][0])
+    assert executable.is_absolute()
+    assert executable == module.QUALIFICATION_GIT_EXECUTABLE
+
+
+def test_qualification_git_uses_sterile_environment(tmp_path, monkeypatch):
+    module = _module()
+    (tmp_path / ".git").mkdir()
+    observed = {}
+    monkeypatch.setenv("GIT_DIR", r"C:\untrusted-git")
+    monkeypatch.setenv("GIT_CONFIG_GLOBAL", r"C:\untrusted.gitconfig")
+    monkeypatch.setenv("HOME", r"C:\untrusted-home")
+
+    def run(command, **kwargs):
+        observed["command"] = list(command)
+        observed["environment"] = dict(kwargs["env"])
+        return subprocess.CompletedProcess(
+            args=command,
+            returncode=0,
+            stdout="",
+            stderr="",
+        )
+
+    monkeypatch.setattr(module.subprocess, "run", run)
+
+    module._qualification_git_source_output(tmp_path, "status")
+
+    assert "--no-replace-objects" in observed["command"]
+    assert "--no-lazy-fetch" in observed["command"]
+    assert "core.fsmonitor=false" in observed["command"]
+    assert observed["environment"]["GIT_DIR"] == str(tmp_path / ".git")
+    assert observed["environment"]["GIT_WORK_TREE"] == str(tmp_path)
+    assert "HOME" not in observed["environment"]
+    assert observed["environment"]["GIT_CONFIG_NOSYSTEM"] == "1"
+    assert observed["environment"]["GIT_NO_REPLACE_OBJECTS"] == "1"
+    assert observed["environment"]["GIT_NO_LAZY_FETCH"] == "1"
+
+
+def test_qualification_git_ignores_ambient_work_tree(tmp_path, monkeypatch):
+    module = _module()
+    repo_root = tmp_path / "repo"
+    repo_root.mkdir()
+    for command in (
+        ("git", "init", "--object-format=sha1"),
+        ("git", "config", "user.email", "runner@example.invalid"),
+        ("git", "config", "user.name", "Runner Fixture"),
+    ):
+        subprocess.run(
+            command,
+            cwd=repo_root,
+            capture_output=True,
+            check=True,
+            text=True,
+        )
+    tracked_path = repo_root / "tracked.txt"
+    tracked_path.write_text("source\n", encoding="utf-8", newline="")
+    subprocess.run(
+        ["git", "add", "tracked.txt"],
+        cwd=repo_root,
+        capture_output=True,
+        check=True,
+        text=True,
+    )
+    subprocess.run(
+        ["git", "commit", "-m", "source"],
+        cwd=repo_root,
+        capture_output=True,
+        check=True,
+        text=True,
+    )
+    shadow_work_tree = tmp_path / "shadow-work-tree"
+    shadow_work_tree.mkdir()
+    (shadow_work_tree / "tracked.txt").write_text(
+        "source\n",
+        encoding="utf-8",
+        newline="",
+    )
+    tracked_path.write_text("drift\n", encoding="utf-8", newline="")
+    monkeypatch.setenv("GIT_WORK_TREE", str(shadow_work_tree))
+
+    status = module._qualification_git_source_output(
+        repo_root,
+        "status",
+        "--short",
+        "--untracked-files=no",
+    )
+
+    assert "tracked.txt" in status
+
+
+@pytest.mark.parametrize(
+    "index_flag",
+    ("--assume-unchanged", "--skip-worktree"),
+)
+def test_qualification_source_rejects_hidden_git_index_flags(
+    tmp_path,
+    index_flag,
+):
+    module = _module()
+    repo_root = tmp_path / "repo"
+    repo_root.mkdir()
+    tracked_path = repo_root / "tracked.py"
+    tracked_path.write_text("VALUE = 'reviewed'\n", encoding="utf-8", newline="")
+    for command in (
+        ("git", "init", "--object-format=sha1"),
+        ("git", "config", "user.email", "runner@example.invalid"),
+        ("git", "config", "user.name", "Runner Fixture"),
+        ("git", "add", "tracked.py"),
+        ("git", "commit", "-m", "source"),
+        ("git", "update-index", index_flag, "tracked.py"),
+    ):
+        subprocess.run(
+            command,
+            cwd=repo_root,
+            capture_output=True,
+            check=True,
+            text=True,
+        )
+    tracked_path.write_text(
+        "VALUE = 'unreviewed'\n",
+        encoding="utf-8",
+        newline="",
+    )
+
+    with pytest.raises(
+        module.OutcomeEvidenceRunnerError,
+        match="index flag|assume|skip-worktree",
+    ):
+        module._tracked_source_commit(repo_root)
+
+
+def test_qualification_source_rejects_clean_filter_before_execution(tmp_path):
+    module = _module()
+    repo_root = tmp_path / "repo"
+    repo_root.mkdir()
+    tracked_path = repo_root / "tracked.txt"
+    tracked_path.write_text("reviewed\n", encoding="utf-8", newline="")
+    for command in (
+        ("git", "init", "--object-format=sha1"),
+        ("git", "config", "user.email", "runner@example.invalid"),
+        ("git", "config", "user.name", "Runner Fixture"),
+        ("git", "add", "tracked.txt"),
+        ("git", "commit", "-m", "source"),
+    ):
+        subprocess.run(
+            command,
+            cwd=repo_root,
+            capture_output=True,
+            check=True,
+            text=True,
+        )
+    marker_path = tmp_path / "clean-filter-executed.txt"
+    filter_path = tmp_path / "clean_filter.py"
+    filter_path.write_text(
+        "import pathlib,sys\n"
+        f"pathlib.Path({str(marker_path)!r}).write_text('executed')\n"
+        "sys.stdout.buffer.write(sys.stdin.buffer.read())\n",
+        encoding="utf-8",
+        newline="",
+    )
+    filter_command = f'"{sys.executable}" "{filter_path}"'
+    subprocess.run(
+        ["git", "config", "filter.sideeffect.clean", filter_command],
+        cwd=repo_root,
+        capture_output=True,
+        check=True,
+        text=True,
+    )
+    info_attributes = repo_root / ".git" / "info" / "attributes"
+    info_attributes.write_text(
+        "tracked.txt filter=sideeffect\n",
+        encoding="utf-8",
+        newline="",
+    )
+    tracked_path.write_text("drifted\n", encoding="utf-8", newline="")
+
+    with pytest.raises(module.OutcomeEvidenceRunnerError, match="unsafe|attribute"):
+        module._tracked_source_commit(repo_root)
+
+    assert not marker_path.exists()
+
+
+def test_qualification_git_rejects_promisor_helper_before_missing_blob_fetch(
+    tmp_path,
+):
+    module = _module()
+    repo_root = tmp_path / "repo"
+    repo_root.mkdir()
+    tracked_path = repo_root / "tracked.py"
+    tracked_path.write_text("VALUE = 'reviewed'\n", encoding="utf-8", newline="")
+    for command in (
+        ("git", "init", "--object-format=sha1"),
+        ("git", "config", "user.email", "runner@example.invalid"),
+        ("git", "config", "user.name", "Runner Fixture"),
+        ("git", "add", "tracked.py"),
+        ("git", "commit", "-m", "source"),
+    ):
+        subprocess.run(
+            command,
+            cwd=repo_root,
+            capture_output=True,
+            check=True,
+            text=True,
+        )
+    blob_oid = subprocess.run(
+        ("git", "rev-parse", "HEAD:tracked.py"),
+        cwd=repo_root,
+        capture_output=True,
+        check=True,
+        text=True,
+    ).stdout.strip()
+    object_path = repo_root / ".git" / "objects" / blob_oid[:2] / blob_oid[2:]
+    assert object_path.is_file()
+    os.chmod(object_path, 0o666)
+    object_path.unlink()
+    marker_path = tmp_path / "promisor-helper-executed.txt"
+    helper_path = tmp_path / "promisor-helper.cmd"
+    helper_path.write_text(
+        f'@echo executed>"{marker_path}"\r\n@exit /b 1\r\n',
+        encoding="utf-8",
+        newline="",
+    )
+    for key, value in (
+        ("extensions.partialClone", "origin"),
+        ("remote.origin.promisor", "true"),
+        ("remote.origin.partialCloneFilter", "blob:none"),
+        ("protocol.ext.allow", "always"),
+        ("remote.origin.url", f"ext::{helper_path}"),
+    ):
+        subprocess.run(
+            ("git", "config", key, value),
+            cwd=repo_root,
+            capture_output=True,
+            check=True,
+            text=True,
+        )
+
+    with pytest.raises(
+        module.OutcomeEvidenceRunnerError,
+        match="unsafe.*directive",
+    ):
+        module._qualification_git_source_output(
+            repo_root,
+            "show",
+            "HEAD:tracked.py",
+        )
+
+    assert not marker_path.exists()
+
+
+def test_qualification_git_rejects_metadata_junction_before_run(
+    tmp_path,
+    monkeypatch,
+):
+    module = _module()
+    repo_root = tmp_path / "repo"
+    repo_root.mkdir()
+    metadata_target = tmp_path / "metadata-target"
+    metadata_target.mkdir()
+    metadata_path = repo_root / ".git"
+    _create_directory_junction(metadata_path, metadata_target)
+    monkeypatch.setattr(
+        module.subprocess,
+        "run",
+        lambda *_args, **_kwargs: pytest.fail(
+            "Git ran before metadata validation"
+        ),
+    )
+
+    try:
+        with pytest.raises(
+            module.OutcomeEvidenceRunnerError,
+            match="symbolic link|reparse",
+        ):
+            module._qualification_git_source_output(repo_root, "status")
+    finally:
+        os.rmdir(metadata_path)
+
+
+def test_qualification_git_rejects_grafts_before_run(tmp_path, monkeypatch):
+    module = _module()
+    git_root = tmp_path / ".git"
+    (git_root / "info").mkdir(parents=True)
+    (git_root / "info" / "grafts").write_text(
+        "a" * 40 + " " + "b" * 40 + "\n",
+        encoding="ascii",
+        newline="",
+    )
+    monkeypatch.setattr(
+        module.subprocess,
+        "run",
+        lambda *_args, **_kwargs: pytest.fail(
+            "Git ran with graft metadata present"
+        ),
+    )
+
+    with pytest.raises(module.OutcomeEvidenceRunnerError, match="graft"):
+        module._qualification_git_source_output(tmp_path, "status")
+
+
+@pytest.mark.parametrize(
+    "metadata_relative_path",
+    (
+        "commondir",
+        "objects/info/alternates",
+        "objects/info/http-alternates",
+    ),
+)
+def test_qualification_git_rejects_metadata_indirection_before_run(
+    tmp_path,
+    monkeypatch,
+    metadata_relative_path,
+):
+    module = _module()
+    metadata_path = tmp_path / ".git" / metadata_relative_path
+    metadata_path.parent.mkdir(parents=True, exist_ok=True)
+    metadata_path.write_text(
+        r"C:\untrusted-git-metadata" + "\n",
+        encoding="utf-8",
+        newline="",
+    )
+    monkeypatch.setattr(
+        module.subprocess,
+        "run",
+        lambda *_args, **_kwargs: pytest.fail(
+            "Git ran with metadata indirection present"
+        ),
+    )
+
+    with pytest.raises(
+        module.OutcomeEvidenceRunnerError,
+        match="indirection",
+    ):
+        module._qualification_git_source_output(tmp_path, "status")
+
+
+@pytest.mark.parametrize("config_name", ("config", "config.worktree"))
+def test_qualification_git_rejects_spaced_external_config_before_run(
+    tmp_path,
+    monkeypatch,
+    config_name,
+):
+    module = _module()
+    config_path = tmp_path / ".git" / config_name
+    config_path.parent.mkdir(parents=True)
+    config_path.write_text(
+        "[diff]\n\texternal    = untrusted-command\n",
+        encoding="utf-8",
+        newline="",
+    )
+    monkeypatch.setattr(
+        module.subprocess,
+        "run",
+        lambda *_args, **_kwargs: pytest.fail(
+            "Git ran with unsafe repository config"
+        ),
+    )
+
+    with pytest.raises(module.OutcomeEvidenceRunnerError, match="unsafe"):
+        module._qualification_git_source_output(tmp_path, "status")
+
+
+@pytest.mark.parametrize(
+    "config_text",
+    (
+        "[extensions]\n\tpartialClone = origin\n",
+        '[remote "origin"]\n\tpromisor = true\n',
+        '[protocol "ext"]\n\tallow = always\n',
+    ),
+)
+def test_qualification_git_rejects_lazy_fetch_config_before_run(
+    tmp_path,
+    monkeypatch,
+    config_text,
+):
+    module = _module()
+    config_path = tmp_path / ".git" / "config"
+    config_path.parent.mkdir(parents=True)
+    config_path.write_text(config_text, encoding="utf-8", newline="")
+    monkeypatch.setattr(
+        module.subprocess,
+        "run",
+        lambda *_args, **_kwargs: pytest.fail(
+            "Git ran with lazy-fetch repository config"
+        ),
+    )
+
+    with pytest.raises(module.OutcomeEvidenceRunnerError, match="unsafe"):
+        module._qualification_git_source_output(tmp_path, "status")
+
+
+def test_qualify_command_rejects_registration_junction_before_load(
+    tmp_path,
+    monkeypatch,
+):
+    module, registration_path, request_source_path, request = (
+        _qualification_request_fixture(
+            tmp_path,
+            monkeypatch,
+            source_only=True,
+        )
+    )
+    registration_alias = tmp_path / "registration-alias"
+    _create_directory_junction(registration_alias, tmp_path)
+    monkeypatch.setattr(
+        module,
+        "execute_prelock_qualification",
+        lambda **_kwargs: {"status": "unexpected"},
+    )
+
+    try:
+        with pytest.raises(
+            module.OutcomeEvidenceRunnerError,
+            match="symbolic link|reparse",
+        ):
+            module._qualify_command(
+                registration_alias / registration_path.name,
+                request_source_path,
+                request["request_hash"],
+                hashlib.sha256(request_source_path.read_bytes()).hexdigest(),
+                request_source_path.stat().st_size,
+                REVIEW_COMMIT,
+            )
+    finally:
+        os.rmdir(registration_alias)
+
+
+def test_qualification_safe_marker_count_does_not_follow_junction(tmp_path):
+    module = _module()
+    marker_target = tmp_path / "marker-target"
+    marker_target.mkdir()
+    (marker_target / "ai_games.txt").write_text(
+        "10\n11\n",
+        encoding="utf-8",
+        newline="",
+    )
+    marker_parent = tmp_path / "marker-parent"
+    _create_directory_junction(marker_parent, marker_target)
+
+    try:
+        assert module._safe_marker_count(
+            marker_parent / "ai_games.txt"
+        ) is None
+    finally:
+        os.rmdir(marker_parent)
+
+
+def test_qualification_live_source_rejects_filesystem_walk_error(
+    tmp_path,
+    monkeypatch,
+):
+    module = _module()
+
+    def fail_walk(*_args, **_kwargs):
+        raise PermissionError("source directory denied")
+
+    monkeypatch.setattr(module.os, "scandir", fail_walk)
+
+    with pytest.raises(
+        module.OutcomeEvidenceRunnerError,
+        match="source directory denied",
+    ):
+        module._qualification_untracked_executable_paths(
+            tmp_path,
+            tracked_paths=set(),
+        )
 
 
 def _ledger(tmp_path):
@@ -198,13 +2760,11 @@ class _FakeHandshakeChild:
 
     def wait(self, timeout=None):
         self.wait_calls.append(timeout)
-        if timeout is not None:
-            if self.returncode is None:
-                raise subprocess.TimeoutExpired("fake-child", timeout)
-            return self.returncode
         if self.on_wait is not None:
             callback, self.on_wait = self.on_wait, None
             callback()
+        if self.returncode is not None:
+            return self.returncode
         self.returncode = self.exit_code
         return self.returncode
 
@@ -215,6 +2775,140 @@ class _FakeHandshakeChild:
     def kill(self):
         self.killed = True
         self.returncode = -9
+
+
+def test_qualification_ready_guard_runs_before_handshake_loader(
+    tmp_path,
+    monkeypatch,
+):
+    module = _module()
+    ready_target = tmp_path / "ready-target"
+    ready_target.mkdir()
+    ready_path = tmp_path / "qualification-ready.json"
+    _create_directory_junction(ready_path, ready_target)
+    monkeypatch.setattr(
+        module,
+        "load_ready_record",
+        lambda _path: pytest.fail("ready loader followed an unguarded path"),
+    )
+
+    try:
+        with pytest.raises(
+            module.OutcomeEvidenceRunnerError,
+            match="symbolic link|reparse",
+        ):
+            module._wait_for_child_readiness(
+                process=_FakeHandshakeChild(initial_returncode=None),
+                child_pid=321,
+                attempt={},
+                ready_path=ready_path,
+                ready_path_validator=lambda path: (
+                    module._qualification_require_no_follow_path(
+                        path,
+                        "ready artifact",
+                        expected_kind="file",
+                    )
+                ),
+                timeout_seconds=120,
+                monotonic=lambda: 0.0,
+                sleep=lambda _seconds: None,
+            )
+    finally:
+        os.rmdir(ready_path)
+
+
+def test_qualification_runner_rejects_unc_before_filesystem_probe(
+    monkeypatch,
+):
+    module = _module()
+    monkeypatch.setattr(
+        Path,
+        "lstat",
+        lambda _path: pytest.fail("qualification attempted a UNC probe"),
+    )
+
+    with pytest.raises(
+        module.OutcomeEvidenceRunnerError,
+        match="UNC|local drive",
+    ):
+        module._qualification_require_no_follow_path(
+            r"\\qualification.invalid\share\ready.json",
+            "ready artifact",
+            expected_kind="file",
+        )
+
+
+def test_qualification_runner_rejects_ads_before_filesystem_probe(
+    tmp_path,
+    monkeypatch,
+):
+    module = _module()
+    source_path = tmp_path / "ready.json"
+    monkeypatch.setattr(
+        Path,
+        "lstat",
+        lambda _path: pytest.fail("qualification attempted an ADS probe"),
+    )
+
+    with pytest.raises(
+        module.OutcomeEvidenceRunnerError,
+        match="alternate data stream",
+    ):
+        module._qualification_require_no_follow_path(
+            f"{source_path}:qualification-ready",
+            "ready artifact",
+            expected_kind="file",
+            allow_missing=True,
+        )
+
+
+def test_qualification_bootstrap_rejects_ads_before_filesystem_probe(
+    tmp_path,
+    monkeypatch,
+):
+    module = _module()
+    source_path = tmp_path / "request.json"
+    monkeypatch.setattr(
+        Path,
+        "lstat",
+        lambda _path: pytest.fail("qualification attempted an ADS probe"),
+    )
+
+    with pytest.raises(
+        module._QualificationBootstrapError,
+        match="alternate data stream",
+    ):
+        module._qualification_bootstrap_require_path(
+            f"{source_path}:qualification-request",
+            "request source",
+            expected_kind="file",
+        )
+
+
+@pytest.mark.parametrize("suffix", [".", " "])
+def test_qualification_runner_rejects_win32_alias_before_filesystem_probe(
+    tmp_path,
+    monkeypatch,
+    suffix,
+):
+    module = _module()
+    source_path = tmp_path / f"ready.json{suffix}"
+    monkeypatch.setattr(
+        Path,
+        "lstat",
+        lambda _path: pytest.fail("qualification attempted an alias probe"),
+    )
+
+    with pytest.raises(
+        module.OutcomeEvidenceRunnerError,
+        match="Win32 alias",
+    ):
+        module._qualification_require_no_follow_path(
+            source_path,
+            "ready artifact",
+            expected_kind="file",
+            allow_missing=True,
+        )
 
 
 def _handshake_slot(tmp_path):
@@ -234,12 +2928,1154 @@ def _publish_ready_from_environment(environment, *, child_pid, mutate=None):
     ready = build_ready_record(
         attempt,
         child_pid=child_pid,
-        created_unix_ns=175,
+        created_unix_ns=attempt["created_unix_ns"] + 1,
     )
     if mutate is not None:
         ready = mutate(attempt, ready)
     publish_handshake_record_once(Path(attempt["ready_path"]), ready)
     return attempt
+
+
+def test_qualification_orchestrator_accepts_ready_published_during_owned_start(
+    tmp_path,
+    monkeypatch,
+):
+    module, registration_path, request_path, request = (
+        _qualification_request_fixture(tmp_path, monkeypatch, source_only=True)
+    )
+    forbidden_study_path = lambda *_args, **_kwargs: pytest.fail(
+        "qualification entered a registered study path"
+    )
+    monkeypatch.setattr(module, "_start_command", forbidden_study_path)
+    monkeypatch.setattr(module, "StudyLedger", forbidden_study_path)
+    monkeypatch.setattr(
+        module,
+        "execute_handshaken_registered_slot",
+        forbidden_study_path,
+    )
+    events = []
+    release_path = Path(request["handshake"]["release_path"])
+
+    def observe_release_and_exit():
+        assert release_path.is_file()
+        events.extend(("release", "exit"))
+
+    child = _FakeHandshakeChild(pid=321, on_wait=observe_release_and_exit)
+
+    def process_starter(command, environment):
+        assert list(command) == request["child_command"]
+        assert Path(request["handshake"]["attempt_path"]).is_file()
+        events.append("start")
+        attempt = _publish_ready_from_environment(
+            environment,
+            child_pid=child.pid,
+        )
+        assert environment[module.QUALIFICATION_ATTEMPT_HASH_ENV] == (
+            attempt["attempt_hash"]
+        )
+        assert environment[module.QUALIFICATION_LOG_PATH_ENV] == os.devnull
+        assert environment["PYTHONDONTWRITEBYTECODE"] == "1"
+        events.append("ready")
+        return child
+
+    timestamps = iter(range(200, 220))
+    result = module.execute_prelock_qualification(
+        registration_path=registration_path,
+        request_path=request_path,
+        expected_request_hash=request["request_hash"],
+        **_qualification_review_kwargs(request),
+        process_starter=process_starter,
+        time_ns=lambda: next(timestamps),
+    )
+
+    assert events == ["start", "ready", "release", "exit"]
+    assert result["status"] == "passed"
+    assert result["process"] == {
+        "cleanup_attempted": False,
+        "cleanup_error": None,
+        "exit_code": 0,
+        "launch_count": 1,
+        "pid": child.pid,
+    }
+    assert all(result["handshake"][name]["sha256"] for name in (
+        "attempt",
+        "ready",
+        "release",
+    ))
+    assert set(result["authority"].values()) == {False}
+    assert Path(request["completion_path"]).is_file()
+    assert not Path(request["failure_path"]).exists()
+    numeric_authority = json.loads(json.dumps(result))
+    numeric_authority["authority"]["study_start"] = 0
+    numeric_authority["result_hash"] = module._self_hash(
+        numeric_authority,
+        "result_hash",
+    )
+    with pytest.raises(module.OutcomeEvidenceRunnerError, match="authority"):
+        module._validate_qualification_result(numeric_authority)
+    relabelled_failure = json.loads(json.dumps(result))
+    relabelled_failure["status"] = "failed"
+    relabelled_failure["failure"] = {
+        "exception_type": "RuntimeError",
+        "message": "invented failure",
+        "stage": "wait_for_qualification_exit",
+    }
+    relabelled_failure["result_hash"] = module._self_hash(
+        relabelled_failure,
+        "result_hash",
+    )
+    with pytest.raises(
+        module.OutcomeEvidenceRunnerError,
+        match="failed result does not contradict success evidence",
+    ):
+        module._validate_qualification_result(relabelled_failure)
+    forged_launch_count = json.loads(json.dumps(relabelled_failure))
+    forged_launch_count["process"]["launch_count"] = 0
+    forged_launch_count["result_hash"] = module._self_hash(
+        forged_launch_count,
+        "result_hash",
+    )
+    with pytest.raises(
+        module.OutcomeEvidenceRunnerError,
+        match="launch|process",
+    ):
+        module._validate_qualification_result(forged_launch_count)
+    forged_missing_attempt = json.loads(json.dumps(relabelled_failure))
+    for name in ("attempt", "ready", "release"):
+        forged_missing_attempt["handshake"][name]["sha256"] = None
+    forged_missing_attempt["result_hash"] = module._self_hash(
+        forged_missing_attempt,
+        "result_hash",
+    )
+    with pytest.raises(
+        module.OutcomeEvidenceRunnerError,
+        match="attempt|launch",
+    ):
+        module._validate_qualification_result(forged_missing_attempt)
+    active_request_path = Path(request["request_path"])
+    reordered_request = json.loads(
+        active_request_path.read_text(encoding="utf-8")
+    )
+    reordered_request["created_unix_ns"] = result["ended_unix_ns"] + 1
+    reordered_request["request_hash"] = module._self_hash(
+        reordered_request,
+        "request_hash",
+    )
+    active_request_path.write_text(
+        module._canonical_json(reordered_request) + "\n",
+        encoding="utf-8",
+        newline="",
+    )
+    reordered_result = json.loads(json.dumps(result))
+    reordered_result["request"]["hash"] = reordered_request["request_hash"]
+    reordered_bytes = (
+        module._canonical_json(reordered_request) + "\n"
+    ).encode("utf-8")
+    reordered_file_hash = hashlib.sha256(reordered_bytes).hexdigest()
+    for binding_name in ("request_source", "active_request"):
+        reordered_result["review_binding"][binding_name][
+            "request_hash"
+        ] = reordered_request["request_hash"]
+        reordered_result["review_binding"][binding_name][
+            "file_sha256"
+        ] = reordered_file_hash
+        reordered_result["review_binding"][binding_name]["size"] = len(
+            reordered_bytes
+        )
+    reordered_result["review_binding"]["review_binding_hash"] = (
+        module._self_hash(
+            reordered_result["review_binding"],
+            "review_binding_hash",
+        )
+    )
+    reordered_result["result_hash"] = module._self_hash(
+        reordered_result,
+        "result_hash",
+    )
+    with pytest.raises(
+        module.OutcomeEvidenceRunnerError,
+        match="lifecycle timestamp order",
+    ):
+        module._validate_qualification_result(reordered_result)
+    active_request_path.write_text(
+        module._canonical_json(request) + "\n",
+        encoding="utf-8",
+        newline="",
+    )
+
+    with pytest.raises(
+        module.OutcomeEvidenceRunnerError,
+        match="control artifact",
+    ):
+        module.execute_prelock_qualification(
+            registration_path=registration_path,
+            request_path=request_path,
+            expected_request_hash=request["request_hash"],
+            **_qualification_review_kwargs(request),
+            process_starter=lambda _command, _environment: pytest.fail(
+                "completed qualification retried a child"
+            ),
+        )
+
+
+def test_qualification_pre_release_uses_bounded_live_source_validation(
+    tmp_path,
+    monkeypatch,
+):
+    module, registration_path, reviewed_request_path, request = (
+        _qualification_request_fixture(tmp_path, monkeypatch, source_only=True)
+    )
+    release_path = Path(request["handshake"]["release_path"])
+    active_request_path = Path(request["request_path"])
+    original_review = module._validate_qualification_review_chain
+
+    def guard_immutable_review(**kwargs):
+        if active_request_path.exists() and not release_path.exists():
+            pytest.fail("pre-release path replayed immutable S/R Git blobs")
+        return original_review(**kwargs)
+
+    live_calls = []
+
+    def validate_live_review(**kwargs):
+        live_calls.append(kwargs)
+        assert kwargs["deadline"] == 7.0
+        assert kwargs["monotonic"]() == 2.0
+
+    monkeypatch.setattr(
+        module,
+        "_validate_qualification_review_chain",
+        guard_immutable_review,
+    )
+    monkeypatch.setattr(
+        module,
+        "_validate_qualification_live_review_boundaries",
+        validate_live_review,
+        raising=False,
+    )
+    child = _FakeHandshakeChild(pid=654, exit_code=0)
+
+    def process_starter(_command, environment):
+        _publish_ready_from_environment(environment, child_pid=child.pid)
+        return child
+
+    timestamps = iter(range(250, 280))
+    result = module.execute_prelock_qualification(
+        registration_path=registration_path,
+        request_path=reviewed_request_path,
+        expected_request_hash=request["request_hash"],
+        **_qualification_review_kwargs(request),
+        process_starter=process_starter,
+        monotonic=lambda: 2.0,
+        time_ns=lambda: next(timestamps),
+    )
+
+    assert result["status"] == "passed"
+    assert len(live_calls) == 1
+    assert live_calls[0]["request"] == request
+    assert release_path.is_file()
+
+
+def test_qualification_git_metadata_scan_receives_release_deadline(
+    tmp_path,
+    monkeypatch,
+):
+    module = _module()
+    (tmp_path / ".git").mkdir()
+    observed = {}
+
+    def bounded_scan(_root, **kwargs):
+        observed.update(kwargs)
+        raise module.OutcomeEvidenceRunnerError(
+            "qualification live source validation exceeded its release budget"
+        )
+
+    monkeypatch.setattr(
+        module,
+        "_qualification_no_follow_entries",
+        bounded_scan,
+    )
+    monkeypatch.setattr(
+        module.subprocess,
+        "run",
+        lambda *_args, **_kwargs: pytest.fail(
+            "Git ran after metadata scan exhausted its budget"
+        ),
+    )
+
+    with pytest.raises(module.OutcomeEvidenceRunnerError, match="release budget"):
+        module._qualification_git_source_output(
+            tmp_path,
+            "status",
+            deadline=7.0,
+            monotonic=lambda: 2.0,
+        )
+
+    assert observed["deadline"] == 7.0
+    assert observed["monotonic"]() == 2.0
+
+
+def test_qualification_root_inventory_hash_receives_release_deadline(
+    tmp_path,
+    monkeypatch,
+):
+    module = _module()
+    evidence_path = tmp_path / "evidence.json"
+    evidence_path.write_text("{}\n", encoding="utf-8", newline="")
+    observed = {}
+
+    def bounded_hash(_path, _label, **kwargs):
+        observed.update(kwargs)
+        raise module.OutcomeEvidenceRunnerError(
+            "qualification live source validation exceeded its release budget"
+        )
+
+    monkeypatch.setattr(module, "_path_sha256", bounded_hash)
+
+    with pytest.raises(module.OutcomeEvidenceRunnerError, match="release budget"):
+        module._qualification_root_inventory(
+            tmp_path,
+            excluded_paths=set(),
+            deadline=7.0,
+            monotonic=lambda: 2.0,
+        )
+
+    assert observed["deadline"] == 7.0
+    assert observed["monotonic"]() == 2.0
+
+
+def test_qualification_pre_release_budget_uses_ready_timestamp(
+    tmp_path,
+    monkeypatch,
+):
+    module, registration_path, reviewed_request_path, request = (
+        _qualification_request_fixture(tmp_path, monkeypatch, source_only=True)
+    )
+    captured_deadlines = []
+
+    def capture_live_deadline(**kwargs):
+        captured_deadlines.append(kwargs["deadline"])
+        raise module.OutcomeEvidenceRunnerError("stop after budget capture")
+
+    monkeypatch.setattr(
+        module,
+        "_validate_qualification_live_review_boundaries",
+        capture_live_deadline,
+    )
+    child = _FakeHandshakeChild(pid=655, exit_code=0)
+
+    def process_starter(_command, environment):
+        _publish_ready_from_environment(environment, child_pid=child.pid)
+        return child
+
+    timestamps = iter(
+        (
+            1_000_000_000,
+            9_000_000_000,
+            10_000_000_000,
+            11_000_000_000,
+        )
+    )
+    with pytest.raises(
+        module.OutcomeEvidenceRunnerError,
+        match="stop after budget capture",
+    ):
+        module.execute_prelock_qualification(
+            registration_path=registration_path,
+            request_path=reviewed_request_path,
+            expected_request_hash=request["request_hash"],
+            **_qualification_review_kwargs(request),
+            process_starter=process_starter,
+            monotonic=lambda: 2.0,
+            time_ns=lambda: next(timestamps),
+        )
+
+    assert captured_deadlines == [pytest.approx(4.000000001)]
+    assert not Path(request["handshake"]["release_path"]).exists()
+
+
+def test_qualification_pre_release_rejects_budget_expiry_after_source_check(
+    tmp_path,
+    monkeypatch,
+):
+    module, registration_path, reviewed_request_path, request = (
+        _qualification_request_fixture(tmp_path, monkeypatch, source_only=True)
+    )
+    clock = [2.0]
+
+    def exhaust_budget(**_kwargs):
+        clock[0] = 7.0
+
+    monkeypatch.setattr(
+        module,
+        "_validate_qualification_live_review_boundaries",
+        exhaust_budget,
+    )
+    child = _FakeHandshakeChild(pid=656, exit_code=0)
+
+    def process_starter(_command, environment):
+        _publish_ready_from_environment(environment, child_pid=child.pid)
+        return child
+
+    timestamps = iter(range(260, 290))
+    with pytest.raises(
+        module.OutcomeEvidenceRunnerError,
+        match="release budget",
+    ):
+        module.execute_prelock_qualification(
+            registration_path=registration_path,
+            request_path=reviewed_request_path,
+            expected_request_hash=request["request_hash"],
+            **_qualification_review_kwargs(request),
+            process_starter=process_starter,
+            monotonic=lambda: clock[0],
+            time_ns=lambda: next(timestamps),
+        )
+
+    failure = json.loads(
+        Path(request["failure_path"]).read_text(encoding="utf-8")
+    )
+    assert failure["failure"]["stage"] == "pre_release_validation"
+    assert not Path(request["handshake"]["release_path"]).exists()
+
+
+def test_qualification_pre_release_rechecks_budget_immediately_before_release(
+    tmp_path,
+    monkeypatch,
+):
+    module, registration_path, reviewed_request_path, request = (
+        _qualification_request_fixture(tmp_path, monkeypatch, source_only=True)
+    )
+    clock = [2.0]
+    original_require_child_running = module._require_child_running
+
+    def exhaust_budget_before_release(process, *, stage):
+        original_require_child_running(process, stage=stage)
+        if stage == "qualification release":
+            clock[0] = 7.0
+
+    monkeypatch.setattr(
+        module,
+        "_require_child_running",
+        exhaust_budget_before_release,
+    )
+    child = _FakeHandshakeChild(pid=657, exit_code=0)
+
+    def process_starter(_command, environment):
+        _publish_ready_from_environment(environment, child_pid=child.pid)
+        return child
+
+    timestamps = iter(range(270, 300))
+    with pytest.raises(
+        module.OutcomeEvidenceRunnerError,
+        match="release budget",
+    ):
+        module.execute_prelock_qualification(
+            registration_path=registration_path,
+            request_path=reviewed_request_path,
+            expected_request_hash=request["request_hash"],
+            **_qualification_review_kwargs(request),
+            process_starter=process_starter,
+            monotonic=lambda: clock[0],
+            time_ns=lambda: next(timestamps),
+        )
+
+    assert not Path(request["handshake"]["release_path"]).exists()
+
+
+def test_qualification_publishes_reviewed_request_once_before_launch(
+    tmp_path,
+    monkeypatch,
+):
+    module, registration_path, request_source_path, request = (
+        _qualification_request_fixture(
+            tmp_path,
+            monkeypatch,
+            source_only=True,
+        )
+    )
+    child = _FakeHandshakeChild(pid=323)
+
+    def process_starter(_command, environment):
+        _publish_ready_from_environment(environment, child_pid=child.pid)
+        return child
+
+    timestamps = iter(range(280, 310))
+    result = module.execute_prelock_qualification(
+        registration_path=registration_path,
+        request_path=request_source_path,
+            expected_request_hash=request["request_hash"],
+            **_qualification_review_kwargs(request),
+            process_starter=process_starter,
+        time_ns=lambda: next(timestamps),
+    )
+
+    active_request_path = Path(request["request_path"])
+    assert result["status"] == "passed"
+    assert active_request_path.read_bytes() == request_source_path.read_bytes()
+
+    with pytest.raises(
+        module.OutcomeEvidenceRunnerError,
+        match="request.*already exists|control artifact",
+    ):
+        module.execute_prelock_qualification(
+            registration_path=registration_path,
+            request_path=request_source_path,
+            expected_request_hash=request["request_hash"],
+            **_qualification_review_kwargs(request),
+            process_starter=lambda *_args: pytest.fail(
+                "consumed request launched another child"
+            ),
+        )
+
+
+def test_qualification_request_only_host_crash_cannot_be_retried(
+    tmp_path,
+    monkeypatch,
+):
+    module, registration_path, request_source_path, request = (
+        _qualification_request_fixture(
+            tmp_path,
+            monkeypatch,
+            source_only=True,
+        )
+    )
+    active_request_path = Path(request["request_path"])
+    real_load = module.load_qualification_request
+
+    def crash_after_active_request(path, **kwargs):
+        if Path(path).resolve() == active_request_path:
+            raise SystemExit("simulated host crash after request publication")
+        return real_load(path, **kwargs)
+
+    monkeypatch.setattr(
+        module,
+        "load_qualification_request",
+        crash_after_active_request,
+    )
+    with pytest.raises(SystemExit, match="simulated host crash"):
+        module.execute_prelock_qualification(
+            registration_path=registration_path,
+            request_path=request_source_path,
+            expected_request_hash=request["request_hash"],
+            **_qualification_review_kwargs(request),
+            process_starter=lambda *_args: pytest.fail(
+                "request-only crash started a child"
+            ),
+        )
+
+    assert active_request_path.is_file()
+    assert not Path(request["handshake"]["attempt_path"]).exists()
+    assert not Path(request["completion_path"]).exists()
+    assert not Path(request["failure_path"]).exists()
+
+    monkeypatch.setattr(module, "load_qualification_request", real_load)
+    with pytest.raises(
+        module.OutcomeEvidenceRunnerError,
+        match="control artifact",
+    ):
+        module.execute_prelock_qualification(
+            registration_path=registration_path,
+            request_path=request_source_path,
+            expected_request_hash=request["request_hash"],
+            **_qualification_review_kwargs(request),
+            process_starter=lambda *_args: pytest.fail(
+                "request-only identity launched another child"
+            ),
+        )
+
+
+def test_qualification_rejects_unreviewed_request_hash_before_publication(
+    tmp_path,
+    monkeypatch,
+):
+    module, registration_path, request_source_path, request = (
+        _qualification_request_fixture(
+            tmp_path,
+            monkeypatch,
+            source_only=True,
+        )
+    )
+
+    with pytest.raises(
+        module.OutcomeEvidenceRunnerError,
+        match="reviewed hash",
+    ):
+        module.execute_prelock_qualification(
+            registration_path=registration_path,
+            request_path=request_source_path,
+            expected_request_hash="f" * 64,
+            **_qualification_review_kwargs(request),
+            process_starter=lambda *_args: pytest.fail(
+                "unreviewed request launched a child"
+            ),
+        )
+
+    assert not Path(request["request_path"]).exists()
+    assert not Path(request["handshake"]["attempt_path"]).exists()
+
+
+@pytest.mark.parametrize("case", ("review_commit", "file_hash", "size"))
+def test_qualification_rejects_external_review_anchor_drift_before_publication(
+    tmp_path,
+    monkeypatch,
+    case,
+):
+    module, registration_path, request_source_path, request = (
+        _qualification_request_fixture(
+            tmp_path,
+            monkeypatch,
+            source_only=True,
+        )
+    )
+    review = _qualification_review_kwargs(request)
+    if case == "review_commit":
+        review["expected_review_commit"] = "f" * 40
+    elif case == "file_hash":
+        review["expected_request_file_sha256"] = "f" * 64
+    else:
+        review["expected_request_size"] += 1
+
+    with pytest.raises(
+        module.OutcomeEvidenceRunnerError,
+        match="external review binding|file binding|review commit",
+    ):
+        module.execute_prelock_qualification(
+            registration_path=registration_path,
+            request_path=request_source_path,
+            expected_request_hash=request["request_hash"],
+            **review,
+            process_starter=lambda *_args: pytest.fail(
+                "unreviewed external anchor launched a child"
+            ),
+        )
+
+    assert not Path(request["request_path"]).exists()
+    assert not Path(request["handshake"]["attempt_path"]).exists()
+
+
+def test_qualification_orchestrator_rejects_runtime_terminal_collision(
+    tmp_path,
+    monkeypatch,
+):
+    module, registration_path, request_path, request = (
+        _qualification_request_fixture(tmp_path, monkeypatch, source_only=True)
+    )
+    failure_path = Path(request["failure_path"])
+
+    def inject_failure_branch_after_release():
+        failure_path.write_text(
+            "{\"external\":true}\n",
+            encoding="utf-8",
+            newline="",
+        )
+
+    child = _FakeHandshakeChild(
+        pid=322,
+        on_wait=inject_failure_branch_after_release,
+    )
+
+    def process_starter(_command, environment):
+        _publish_ready_from_environment(environment, child_pid=child.pid)
+        return child
+
+    timestamps = iter(range(250, 280))
+    with pytest.raises(
+        module.OutcomeEvidenceRunnerError,
+        match="post_exit_validation.*partial",
+    ):
+        module.execute_prelock_qualification(
+            registration_path=registration_path,
+            request_path=request_path,
+            expected_request_hash=request["request_hash"],
+            **_qualification_review_kwargs(request),
+            process_starter=process_starter,
+            time_ns=lambda: next(timestamps),
+        )
+
+    assert failure_path.read_text(encoding="utf-8") == "{\"external\":true}\n"
+    assert Path(request["handshake"]["release_path"]).is_file()
+    assert not Path(request["completion_path"]).exists()
+
+
+def test_qualification_completion_publication_failure_remains_partial(
+    tmp_path,
+    monkeypatch,
+):
+    module, registration_path, request_source_path, request = (
+        _qualification_request_fixture(tmp_path, monkeypatch, source_only=True)
+    )
+    child = _FakeHandshakeChild(pid=324)
+
+    def process_starter(_command, environment):
+        _publish_ready_from_environment(environment, child_pid=child.pid)
+        return child
+
+    def fail_completion(path, _result):
+        assert Path(path) == Path(request["completion_path"])
+        raise OSError("forced completion publication failure")
+
+    monkeypatch.setattr(
+        module,
+        "publish_qualification_result_once",
+        fail_completion,
+    )
+    timestamps = iter(range(330, 360))
+
+    with pytest.raises(
+        module.OutcomeEvidenceRunnerError,
+        match="consumed evidence remains partial",
+    ):
+        module.execute_prelock_qualification(
+            registration_path=registration_path,
+            request_path=request_source_path,
+            expected_request_hash=request["request_hash"],
+            **_qualification_review_kwargs(request),
+            process_starter=process_starter,
+            time_ns=lambda: next(timestamps),
+        )
+
+    assert Path(request["handshake"]["release_path"]).is_file()
+    assert not Path(request["completion_path"]).exists()
+    assert not Path(request["failure_path"]).exists()
+
+
+def test_qualification_orchestrator_timeout_terminates_once_without_release(
+    tmp_path,
+    monkeypatch,
+):
+    module, registration_path, request_path, request = (
+        _qualification_request_fixture(tmp_path, monkeypatch, source_only=True)
+    )
+    child = _FakeHandshakeChild(pid=654)
+    starts = []
+    clock = [0.0]
+
+    def process_starter(_command, _environment):
+        starts.append(child.pid)
+        return child
+
+    def sleep(_seconds):
+        clock[0] = 121.0
+
+    timestamps = iter(range(300, 320))
+    with pytest.raises(
+        module.OutcomeEvidenceRunnerError,
+        match="readiness.*deadline",
+    ):
+        module.execute_prelock_qualification(
+            registration_path=registration_path,
+            request_path=request_path,
+            expected_request_hash=request["request_hash"],
+            **_qualification_review_kwargs(request),
+            process_starter=process_starter,
+            monotonic=lambda: clock[0],
+            sleep=sleep,
+            time_ns=lambda: next(timestamps),
+        )
+
+    failure = json.loads(Path(request["failure_path"]).read_text(encoding="utf-8"))
+    assert starts == [child.pid]
+    assert child.terminated is True
+    assert not Path(request["handshake"]["release_path"]).exists()
+    assert not Path(request["completion_path"]).exists()
+    assert failure["status"] == "failed"
+    assert failure["process"]["launch_count"] == 1
+    assert failure["failure"]["stage"] == "wait_for_ready"
+    assert set(failure["authority"].values()) == {False}
+
+    with pytest.raises(
+        module.OutcomeEvidenceRunnerError,
+        match="control artifact",
+    ):
+        module.execute_prelock_qualification(
+            registration_path=registration_path,
+            request_path=request_path,
+            expected_request_hash=request["request_hash"],
+            **_qualification_review_kwargs(request),
+            process_starter=lambda _command, _environment: pytest.fail(
+                "failed qualification retried a child"
+            ),
+        )
+
+
+def test_qualification_orchestrator_bounds_post_release_child_exit(
+    tmp_path,
+    monkeypatch,
+):
+    module, registration_path, request_path, request = (
+        _qualification_request_fixture(tmp_path, monkeypatch, source_only=True)
+    )
+
+    class StuckAfterReleaseChild:
+        pid = 655
+
+        def __init__(self):
+            self.returncode = None
+            self.terminated = False
+            self.wait_calls = []
+
+        def poll(self):
+            return self.returncode
+
+        def wait(self, timeout=None):
+            self.wait_calls.append(timeout)
+            if self.returncode is not None:
+                return self.returncode
+            if timeout is None:
+                self.returncode = 0
+                return 0
+            raise subprocess.TimeoutExpired("stuck-after-release", timeout)
+
+        def terminate(self):
+            self.terminated = True
+            self.returncode = -15
+
+        def kill(self):
+            self.returncode = -9
+
+    child = StuckAfterReleaseChild()
+
+    def process_starter(_command, environment):
+        _publish_ready_from_environment(environment, child_pid=child.pid)
+        return child
+
+    timestamps = iter(range(350, 380))
+    with pytest.raises(
+        module.OutcomeEvidenceRunnerError,
+        match="wait_for_qualification_exit.*did not exit within 10 seconds",
+    ):
+        module.execute_prelock_qualification(
+            registration_path=registration_path,
+            request_path=request_path,
+            expected_request_hash=request["request_hash"],
+            **_qualification_review_kwargs(request),
+            process_starter=process_starter,
+            time_ns=lambda: next(timestamps),
+        )
+
+    failure = json.loads(
+        Path(request["failure_path"]).read_text(encoding="utf-8")
+    )
+    assert child.wait_calls == [10, 5.0]
+    assert child.terminated is True
+    assert Path(request["handshake"]["release_path"]).is_file()
+    assert failure["failure"]["stage"] == "wait_for_qualification_exit"
+    assert failure["process"]["cleanup_attempted"] is True
+    assert not Path(request["completion_path"]).exists()
+
+
+@pytest.mark.parametrize(
+    ("case", "expected_stage", "release_expected", "cleanup_expected"),
+    (
+        ("early_exit", "wait_for_ready", False, False),
+        ("pid_mismatch", "wait_for_ready", False, True),
+        ("config_drift", "pre_release_validation", False, True),
+        ("release_failure", "publish_release", False, True),
+        ("nonzero_exit", "wait_for_qualification_exit", True, False),
+    ),
+)
+def test_qualification_orchestrator_failure_matrix_is_one_shot(
+    tmp_path,
+    monkeypatch,
+    case,
+    expected_stage,
+    release_expected,
+    cleanup_expected,
+):
+    module, registration_path, request_path, request = (
+        _qualification_request_fixture(tmp_path, monkeypatch, source_only=True)
+    )
+    child = _FakeHandshakeChild(
+        pid=777,
+        exit_code=9 if case == "nonzero_exit" else 0,
+        initial_returncode=17 if case == "early_exit" else None,
+    )
+    starts = []
+
+    def process_starter(_command, environment):
+        starts.append(child.pid)
+        if case != "early_exit":
+            _publish_ready_from_environment(
+                environment,
+                child_pid=child.pid + (1 if case == "pid_mismatch" else 0),
+            )
+        if case == "config_drift":
+            Path(request["config"]["path"]).write_text(
+                "{\"changed\":true}\n",
+                encoding="utf-8",
+                newline="",
+            )
+        return child
+
+    if case == "release_failure":
+        real_publish = module.publish_record_once
+
+        def fail_release(path, record):
+            if Path(path) == Path(request["handshake"]["release_path"]):
+                raise module.OutcomeEvidenceRunnerError(
+                    "forced qualification release failure"
+                )
+            return real_publish(path, record)
+
+        monkeypatch.setattr(module, "publish_record_once", fail_release)
+
+    timestamps = iter(range(400, 430))
+    with pytest.raises(module.OutcomeEvidenceRunnerError):
+        module.execute_prelock_qualification(
+            registration_path=registration_path,
+            request_path=request_path,
+            expected_request_hash=request["request_hash"],
+            **_qualification_review_kwargs(request),
+            process_starter=process_starter,
+            time_ns=lambda: next(timestamps),
+        )
+
+    failure_path = Path(request["failure_path"])
+    failure = json.loads(failure_path.read_text(encoding="utf-8"))
+    assert starts == [child.pid]
+    assert failure["status"] == "failed"
+    assert failure["failure"]["stage"] == expected_stage
+    assert failure["process"]["launch_count"] == 1
+    assert failure["process"]["cleanup_attempted"] is cleanup_expected
+    assert Path(request["handshake"]["release_path"]).exists() is release_expected
+    assert not Path(request["completion_path"]).exists()
+    assert not (tmp_path / "study").exists()
+    assert not Path(request["forbidden_paths"][-1]).exists()
+    assert set(failure["authority"].values()) == {False}
+
+
+def test_qualification_post_exit_validation_failure_remains_partial(
+    tmp_path,
+    monkeypatch,
+):
+    module, registration_path, request_path, request = (
+        _qualification_request_fixture(tmp_path, monkeypatch, source_only=True)
+    )
+    child = _FakeHandshakeChild(
+        pid=778,
+        exit_code=0,
+        on_wait=lambda: Path(request["config"]["path"]).write_text(
+            "{\"changed\":true}\n",
+            encoding="utf-8",
+            newline="",
+        ),
+    )
+
+    def process_starter(_command, environment):
+        _publish_ready_from_environment(environment, child_pid=child.pid)
+        return child
+
+    timestamps = iter(range(430, 460))
+    with pytest.raises(
+        module.OutcomeEvidenceRunnerError,
+        match="post_exit_validation.*partial",
+    ):
+        module.execute_prelock_qualification(
+            registration_path=registration_path,
+            request_path=request_path,
+            expected_request_hash=request["request_hash"],
+            **_qualification_review_kwargs(request),
+            process_starter=process_starter,
+            time_ns=lambda: next(timestamps),
+        )
+
+    assert Path(request["handshake"]["release_path"]).is_file()
+    assert not Path(request["completion_path"]).exists()
+    assert not Path(request["failure_path"]).exists()
+
+
+def test_qualification_post_exit_dangling_forbidden_entry_remains_partial(
+    tmp_path,
+    monkeypatch,
+):
+    module, registration_path, request_path, request = (
+        _qualification_request_fixture(tmp_path, monkeypatch, source_only=True)
+    )
+    qualification_root = Path(request["qualification_root"])
+    forbidden_path = next(
+        Path(path)
+        for path in request["forbidden_paths"]
+        if (
+            not Path(path).is_relative_to(qualification_root)
+            and Path(path).parent.exists()
+        )
+    )
+    target_path = tmp_path / "dangling-forbidden-target"
+    original_validate = module._validate_qualification_runtime_boundaries
+
+    def create_forbidden_after_validation(**kwargs):
+        original_validate(**kwargs)
+        if kwargs["release_allowed"]:
+            target_path.mkdir()
+            _create_directory_junction(forbidden_path, target_path)
+            target_path.rmdir()
+
+    monkeypatch.setattr(
+        module,
+        "_validate_qualification_runtime_boundaries",
+        create_forbidden_after_validation,
+    )
+    child = _FakeHandshakeChild(pid=779, exit_code=0)
+
+    def process_starter(_command, environment):
+        _publish_ready_from_environment(environment, child_pid=child.pid)
+        return child
+
+    timestamps = iter(range(460, 490))
+    try:
+        with pytest.raises(
+            module.OutcomeEvidenceRunnerError,
+            match="post_exit_validation.*partial",
+        ):
+            module.execute_prelock_qualification(
+                registration_path=registration_path,
+                request_path=request_path,
+                expected_request_hash=request["request_hash"],
+                **_qualification_review_kwargs(request),
+                process_starter=process_starter,
+                time_ns=lambda: next(timestamps),
+            )
+    finally:
+        os.rmdir(forbidden_path)
+
+    assert Path(request["handshake"]["release_path"]).is_file()
+    assert not Path(request["completion_path"]).exists()
+    assert not Path(request["failure_path"]).exists()
+
+
+def test_qualification_orchestrator_surfaces_cleanup_failure(
+    tmp_path,
+    monkeypatch,
+):
+    module, registration_path, request_path, request = (
+        _qualification_request_fixture(tmp_path, monkeypatch, source_only=True)
+    )
+    clock = [0.0]
+
+    class UnstoppableChild:
+        pid = 888
+
+        def poll(self):
+            return None
+
+        def terminate(self):
+            raise RuntimeError("terminate denied")
+
+        def kill(self):
+            raise RuntimeError("kill denied")
+
+        def wait(self, timeout=None):
+            raise subprocess.TimeoutExpired("unstoppable", timeout)
+
+    child = UnstoppableChild()
+
+    def advance_clock(_seconds):
+        clock[0] = 121.0
+
+    timestamps = iter(range(500, 530))
+    with pytest.raises(
+        module.OutcomeEvidenceRunnerError,
+        match="child cleanup failed",
+    ):
+        module.execute_prelock_qualification(
+            registration_path=registration_path,
+            request_path=request_path,
+            expected_request_hash=request["request_hash"],
+            **_qualification_review_kwargs(request),
+            process_starter=lambda _command, _environment: child,
+            monotonic=lambda: clock[0],
+            sleep=advance_clock,
+            time_ns=lambda: next(timestamps),
+        )
+
+    failure = json.loads(
+        Path(request["failure_path"]).read_text(encoding="utf-8")
+    )
+    assert failure["status"] == "failed"
+    assert failure["process"]["cleanup_attempted"] is True
+    assert "terminate denied" in failure["process"]["cleanup_error"]
+    assert "kill denied" in failure["process"]["cleanup_error"]
+    assert not Path(request["handshake"]["release_path"]).exists()
+
+
+def test_qualification_orchestrator_records_child_start_exception(
+    tmp_path,
+    monkeypatch,
+):
+    module, registration_path, request_path, request = (
+        _qualification_request_fixture(tmp_path, monkeypatch, source_only=True)
+    )
+
+    def fail_start(_command, _environment):
+        raise OSError("forced child start failure")
+
+    timestamps = iter(range(600, 630))
+    with pytest.raises(
+        module.OutcomeEvidenceRunnerError,
+        match="start_child.*forced child start failure",
+    ):
+        module.execute_prelock_qualification(
+            registration_path=registration_path,
+            request_path=request_path,
+            expected_request_hash=request["request_hash"],
+            **_qualification_review_kwargs(request),
+            process_starter=fail_start,
+            time_ns=lambda: next(timestamps),
+        )
+
+    failure = json.loads(
+        Path(request["failure_path"]).read_text(encoding="utf-8")
+    )
+    assert failure["failure"]["stage"] == "start_child"
+    assert failure["process"] == {
+        "cleanup_attempted": False,
+        "cleanup_error": None,
+        "exit_code": None,
+        "launch_count": 1,
+        "pid": None,
+    }
+    assert Path(request["handshake"]["attempt_path"]).is_file()
+    assert not Path(request["handshake"]["ready_path"]).exists()
+    assert not Path(request["handshake"]["release_path"]).exists()
+
+
+def test_qualification_orchestrator_records_attempt_build_exception(
+    tmp_path,
+    monkeypatch,
+):
+    module, registration_path, request_path, request = (
+        _qualification_request_fixture(tmp_path, monkeypatch, source_only=True)
+    )
+    starts = []
+
+    with pytest.raises(
+        module.OutcomeEvidenceRunnerError,
+        match="build_attempt.*invalid timestamp",
+    ):
+        module.execute_prelock_qualification(
+            registration_path=registration_path,
+            request_path=request_path,
+            expected_request_hash=request["request_hash"],
+            **_qualification_review_kwargs(request),
+            process_starter=lambda *_args: starts.append(True),
+            time_ns=lambda: 0,
+        )
+
+    failure = json.loads(
+        Path(request["failure_path"]).read_text(encoding="utf-8")
+    )
+    assert starts == []
+    assert failure["failure"]["stage"] == "build_attempt"
+    assert failure["process"] == {
+        "cleanup_attempted": False,
+        "cleanup_error": None,
+        "exit_code": None,
+        "launch_count": 0,
+        "pid": None,
+    }
+    assert not Path(request["handshake"]["attempt_path"]).exists()
+    assert not Path(request["handshake"]["ready_path"]).exists()
+    assert not Path(request["handshake"]["release_path"]).exists()
 
 
 def test_slot_launch_uses_exact_registered_eval_command_and_config(tmp_path):

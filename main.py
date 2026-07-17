@@ -1,17 +1,109 @@
 import argparse
+import importlib.machinery
 import os
 import sys
 import logging
 import glob
 import shutil
+import stat
 import time
+import re
 from pathlib import Path
 from logging.handlers import RotatingFileHandler
 from importlib.util import find_spec
 
+QUALIFICATION_ATTEMPT_HASH_ENV = (
+    "STS_OUTCOME_EVIDENCE_QUALIFICATION_ATTEMPT_HASH"
+)
+
+if QUALIFICATION_ATTEMPT_HASH_ENV in os.environ:
+    if not sys.flags.isolated or not sys.flags.no_site:
+        sys.stderr.write(
+            "qualification child requires isolated no-site Python startup "
+            "(-I -S)\n"
+        )
+        raise SystemExit(2)
+    sys.dont_write_bytecode = True
+    sys.pycache_prefix = os.path.join(
+        os.devnull,
+        "sts-qualification-pycache",
+    )
+
+_REPO_ROOT = os.path.dirname(os.path.abspath(__file__))
+
+
+def _qualification_install_source_only_repo_imports(repo_root):
+    lexical_root = os.path.normcase(os.path.abspath(repo_root))
+
+    def is_repo_path(path_value):
+        try:
+            lexical_path = os.path.normcase(
+                os.path.abspath(os.fspath(path_value))
+            )
+            return os.path.commonpath((lexical_root, lexical_path)) == lexical_root
+        except (OSError, TypeError, ValueError):
+            return False
+
+    class NoFollowSourceLoader(importlib.machinery.SourceFileLoader):
+        def get_data(self, path_value):
+            lexical_path = os.path.abspath(path_value)
+            if not is_repo_path(lexical_path):
+                raise OSError(
+                    "qualification repository loader refuses bytecode cache"
+                )
+            current_path = Path(Path(lexical_path).anchor)
+            for part in Path(lexical_path).parts[1:]:
+                current_path /= part
+                metadata = current_path.lstat()
+                file_attributes = getattr(metadata, "st_file_attributes", 0)
+                reparse_flag = getattr(
+                    stat,
+                    "FILE_ATTRIBUTE_REPARSE_POINT",
+                    0,
+                )
+                if stat.S_ISLNK(metadata.st_mode) or bool(
+                    file_attributes & reparse_flag
+                ):
+                    raise ImportError(
+                        "qualification repository source contains a symbolic "
+                        f"link or reparse point: {current_path}"
+                    )
+            if not stat.S_ISREG(current_path.lstat().st_mode):
+                raise ImportError(
+                    "qualification repository source is not a regular file: "
+                    f"{current_path}"
+                )
+            return super().get_data(lexical_path)
+
+    def source_only_path_hook(path_value):
+        if not is_repo_path(path_value):
+            raise ImportError
+        return importlib.machinery.FileFinder(
+            path_value,
+            (
+                NoFollowSourceLoader,
+                importlib.machinery.SOURCE_SUFFIXES,
+            ),
+        )
+
+    sys.path_hooks.insert(0, source_only_path_hook)
+    for cached_path in tuple(sys.path_importer_cache):
+        if is_repo_path(cached_path):
+            sys.path_importer_cache.pop(cached_path, None)
+
+
+if QUALIFICATION_ATTEMPT_HASH_ENV in os.environ:
+    _qualification_install_source_only_repo_imports(_REPO_ROOT)
+
+if _REPO_ROOT not in sys.path:
+    sys.path.insert(0, _REPO_ROOT)
+
 from spirecomm.communication.coordinator import Coordinator
 from spirecomm.ai.agent import SimpleAgent, OptimizedAgent, OPTIMIZED_AI_AVAILABLE
 from spirecomm.spire.character import PlayerClass
+
+class QualificationChildComplete(Exception):
+    """Stop a released qualification child before exploration and agents."""
 
 def _optional_dependency_available(name):
     return find_spec(name) is not None
@@ -559,6 +651,92 @@ def initialize_study_handshake_if_configured(coordinator, *, environ=None):
     )
 
 
+def _qualification_require_no_follow_file(path_value):
+    path = Path(path_value)
+    path_components = path.parts[1:] if path.anchor else path.parts
+    if any(":" in part for part in path_components):
+        raise ValueError(
+            "qualification handshake attempt path contains an alternate "
+            "data stream"
+        )
+    if any(part.endswith((".", " ")) for part in path_components):
+        raise ValueError(
+            "qualification handshake attempt path contains a Win32 alias "
+            "component"
+        )
+    lexical_path = Path(os.path.abspath(path_value))
+    if not path.is_absolute() or str(lexical_path) != path_value:
+        raise ValueError(
+            "qualification handshake attempt path is not resolved absolute"
+        )
+    if lexical_path.drive.startswith("\\\\"):
+        raise ValueError(
+            "qualification handshake attempt path must use a local drive; "
+            "UNC and device paths are forbidden"
+        )
+    current = Path(lexical_path.anchor)
+    for part in lexical_path.parts[1:]:
+        current /= part
+        try:
+            metadata = current.lstat()
+        except FileNotFoundError as exc:
+            raise ValueError(
+                f"qualification handshake attempt path is missing: {current}"
+            ) from exc
+        except OSError as exc:
+            raise ValueError(
+                "cannot inspect qualification handshake attempt path: "
+                f"{current}: {exc}"
+            ) from exc
+        file_attributes = getattr(metadata, "st_file_attributes", 0)
+        reparse_flag = getattr(stat, "FILE_ATTRIBUTE_REPARSE_POINT", 0)
+        if stat.S_ISLNK(metadata.st_mode) or bool(
+            file_attributes & reparse_flag
+        ):
+            raise ValueError(
+                "qualification handshake attempt path contains a symbolic "
+                f"link or reparse point: {current}"
+            )
+    if not stat.S_ISREG(lexical_path.lstat().st_mode):
+        raise ValueError(
+            "qualification handshake attempt path is not a regular file"
+        )
+    return lexical_path
+
+
+def _qualification_attempt_binding_if_requested(*, environ=None):
+    environment = os.environ if environ is None else environ
+    token = environment.get(QUALIFICATION_ATTEMPT_HASH_ENV)
+    if token is None:
+        return None
+    from spirecomm.communication.study_handshake import (
+        HANDSHAKE_ATTEMPT_ENV,
+    )
+
+    attempt_path = environment.get(HANDSHAKE_ATTEMPT_ENV)
+    if attempt_path is None:
+        raise ValueError("qualification exit requires a study handshake")
+    if not isinstance(token, str) or re.fullmatch(r"[0-9a-f]{64}", token) is None:
+        raise ValueError("qualification attempt-hash binding is invalid")
+    if not isinstance(attempt_path, str) or not attempt_path.strip():
+        raise ValueError("qualification handshake attempt path is invalid")
+    guarded_attempt_path = _qualification_require_no_follow_file(attempt_path)
+    return token, guarded_attempt_path
+
+
+def qualification_exit_requested(*, environ=None):
+    binding = _qualification_attempt_binding_if_requested(environ=environ)
+    if binding is None:
+        return False
+    token, guarded_attempt_path = binding
+    from spirecomm.communication.study_handshake import load_attempt_record
+
+    attempt = load_attempt_record(guarded_attempt_path)
+    if token != attempt["attempt_hash"]:
+        raise ValueError("qualification attempt-hash binding mismatch")
+    return True
+
+
 def initialize_pre_agent_runtime(
     *,
     agent_type,
@@ -590,13 +768,21 @@ def initialize_pre_agent_runtime(
     if "environ" in exploration_arguments:
         raise ValueError("exploration_kwargs must not override environ")
 
+    _qualification_attempt_binding_if_requested(environ=environment)
     handshake_configured = is_study_handshake_configured(environment)
     if handshake_configured:
         coordinator, input_thread_deferred = coordinator_factory(
             agent_type,
             force_input_thread=True,
         )
-        handshake_initializer(coordinator, environ=environment)
+        handshake_completed = handshake_initializer(
+            coordinator,
+            environ=environment,
+        )
+        if handshake_completed and qualification_exit_requested(
+            environ=environment,
+        ):
+            raise QualificationChildComplete
         exploration_runtime = exploration_initializer(
             environ=environment,
             **exploration_arguments,
@@ -923,6 +1109,19 @@ if __name__ == "__main__":
     logging.info(f"Elite route mode: {elite_route_mode}")
 
     handshake_configured = is_study_handshake_configured(os.environ)
+    if (
+        QUALIFICATION_ATTEMPT_HASH_ENV in os.environ
+        and not handshake_configured
+    ):
+        try:
+            qualification_exit_requested(environ=os.environ)
+        except Exception as exc:
+            logging.critical(
+                "Qualification startup rejected: %s: %s",
+                type(exc).__name__,
+                exc,
+            )
+            sys.exit(2)
     exploration_kwargs = {
         "repo_root": Path(__file__).resolve().parent,
         "command": [
@@ -972,6 +1171,11 @@ if __name__ == "__main__":
                 exploration_kwargs=exploration_kwargs,
             )
         )
+    except QualificationChildComplete:
+        logging.info(
+            "Qualification child consumed release before exploration startup"
+        )
+        sys.exit(0)
     except Exception as exc:
         logging.critical(
             "Pre-agent runtime startup rejected: %s: %s",

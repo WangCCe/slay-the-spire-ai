@@ -2,14 +2,42 @@
 
 from __future__ import annotations
 
+import os
+import sys
+
+_QUALIFICATION_REQUEST_OPTIONS = (
+    "--qualification-request-source",
+    "--qualification-request",
+)
+_QUALIFICATION_CLI_REQUESTED = any(
+    argument == option or argument.startswith(f"{option}=")
+    for argument in sys.argv[1:]
+    for option in _QUALIFICATION_REQUEST_OPTIONS
+)
+if _QUALIFICATION_CLI_REQUESTED:
+    sys.dont_write_bytecode = True
+    sys.pycache_prefix = os.path.join(
+        os.devnull,
+        "sts-qualification-pycache",
+    )
+    if __name__ == "__main__" and (
+        not sys.flags.isolated or not sys.flags.no_site
+    ):
+        sys.stderr.write(
+            "qualification verifier requires isolated no-site Python startup "
+            "(-I -S)\n"
+        )
+        raise SystemExit(2)
+
 import argparse
 import fnmatch
 import hashlib
+import importlib.machinery
 import json
 import math
 import re
+import stat
 import subprocess
-import sys
 from collections import Counter, defaultdict
 from collections.abc import Mapping, Sequence
 from copy import deepcopy
@@ -21,15 +49,82 @@ if __package__ in {None, ""}:
     repo_root = str(Path(__file__).resolve().parents[1])
     if repo_root not in sys.path:
         sys.path.insert(0, repo_root)
+else:
+    repo_root = str(Path(__file__).resolve().parents[1])
 
-from analysis_scripts.verify_noncombat_ope_artifacts import (
-    ArtifactVerificationError,
-    verify_artifact_pair,
-)
-from analysis_scripts.verify_noncombat_ope_estimates import (
-    EstimateVerificationError,
-    verify_estimate_artifact,
-)
+
+def _qualification_install_source_only_repo_imports(repo_root_value: str) -> None:
+    lexical_root = os.path.normcase(os.path.abspath(repo_root_value))
+
+    def is_repo_path(path_value: object) -> bool:
+        try:
+            lexical_path = os.path.normcase(
+                os.path.abspath(os.fspath(path_value))
+            )
+            return os.path.commonpath((lexical_root, lexical_path)) == lexical_root
+        except (OSError, TypeError, ValueError):
+            return False
+
+    class NoFollowSourceLoader(importlib.machinery.SourceFileLoader):
+        def get_data(self, path_value: str) -> bytes:
+            lexical_path = os.path.abspath(path_value)
+            if not is_repo_path(lexical_path):
+                raise OSError(
+                    "qualification repository loader refuses bytecode cache"
+                )
+            current_path = Path(Path(lexical_path).anchor)
+            for part in Path(lexical_path).parts[1:]:
+                current_path /= part
+                metadata = current_path.lstat()
+                file_attributes = getattr(metadata, "st_file_attributes", 0)
+                reparse_flag = getattr(
+                    stat,
+                    "FILE_ATTRIBUTE_REPARSE_POINT",
+                    0,
+                )
+                if stat.S_ISLNK(metadata.st_mode) or bool(
+                    file_attributes & reparse_flag
+                ):
+                    raise ImportError(
+                        "qualification repository source contains a symbolic "
+                        f"link or reparse point: {current_path}"
+                    )
+            if not stat.S_ISREG(current_path.lstat().st_mode):
+                raise ImportError(
+                    "qualification repository source is not a regular file: "
+                    f"{current_path}"
+                )
+            return super().get_data(lexical_path)
+
+    def source_only_path_hook(path_value: str):
+        if not is_repo_path(path_value):
+            raise ImportError
+        return importlib.machinery.FileFinder(
+            path_value,
+            (
+                NoFollowSourceLoader,
+                importlib.machinery.SOURCE_SUFFIXES,
+            ),
+        )
+
+    sys.path_hooks.insert(0, source_only_path_hook)
+    for cached_path in tuple(sys.path_importer_cache):
+        if is_repo_path(cached_path):
+            sys.path_importer_cache.pop(cached_path, None)
+
+
+if _QUALIFICATION_CLI_REQUESTED:
+    _qualification_install_source_only_repo_imports(repo_root)
+
+if not _QUALIFICATION_CLI_REQUESTED:
+    from analysis_scripts.verify_noncombat_ope_artifacts import (
+        ArtifactVerificationError,
+        verify_artifact_pair,
+    )
+    from analysis_scripts.verify_noncombat_ope_estimates import (
+        EstimateVerificationError,
+        verify_estimate_artifact,
+    )
 
 
 AUDIT_SCHEMA_VERSION = "noncombat-outcome-evidence-verification-audit-v1"
@@ -51,6 +146,18 @@ HANDSHAKE_READY_SCHEMA_VERSION = "noncombat-outcome-evidence-handshake-ready-v1"
 HANDSHAKE_RELEASE_SCHEMA_VERSION = (
     "noncombat-outcome-evidence-handshake-release-v1"
 )
+QUALIFICATION_REQUEST_SCHEMA_VERSION = (
+    "noncombat-outcome-evidence-qualification-request-v1"
+)
+QUALIFICATION_RESULT_SCHEMA_VERSION = (
+    "noncombat-outcome-evidence-qualification-result-v1"
+)
+QUALIFICATION_AUDIT_SCHEMA_VERSION = (
+    "noncombat-outcome-evidence-qualification-verification-audit-v1"
+)
+QUALIFICATION_REVIEW_BINDING_SCHEMA_VERSION = (
+    "noncombat-outcome-evidence-qualification-review-binding-v1"
+)
 BLOCKED_ESTIMATE_SCHEMA_VERSION = (
     "noncombat-outcome-evidence-estimate-blocked-v1"
 )
@@ -61,6 +168,16 @@ SCHEDULED_ATTEMPTS = SLOT_COUNT * GAMES_PER_SLOT
 DRAW_BUCKET_COUNT = 10_000
 OUTCOME_JOIN_TOLERANCE_SECONDS = 30
 WINDOWS_PYTHON = str(Path(r"D:\anaconda\envs\stsai\python.exe").resolve())
+QUALIFICATION_GIT_EXECUTABLE = Path(r"C:\Program Files\Git\cmd\git.exe")
+QUALIFICATION_INERT_SUFFIXES = {
+    ".csv",
+    ".json",
+    ".jsonl",
+    ".log",
+    ".md",
+    ".tsv",
+    ".txt",
+}
 SELECTION_SCHEMA_VERSION = "noncombat-exploration-selection-v1"
 COMMAND_ARGUMENTS = (
     "--agent",
@@ -116,6 +233,2384 @@ class _Checks:
         self.count += 1
         if condition is not True:
             raise OutcomeEvidenceVerificationError(message)
+
+
+def _qualification_metadata_is_link_or_reparse(
+    metadata: os.stat_result,
+) -> bool:
+    file_attributes = getattr(metadata, "st_file_attributes", 0)
+    reparse_flag = getattr(stat, "FILE_ATTRIBUTE_REPARSE_POINT", 0)
+    return stat.S_ISLNK(metadata.st_mode) or bool(
+        file_attributes & reparse_flag
+    )
+
+
+def _qualification_lstat(path: Path) -> os.stat_result | None:
+    try:
+        return Path(path).lstat()
+    except FileNotFoundError:
+        return None
+    except OSError as exc:
+        raise OutcomeEvidenceVerificationError(
+            f"cannot inspect qualification path entry {path}: {exc}"
+        ) from exc
+
+
+def _qualification_path_entry_exists(path: Path) -> bool:
+    return _qualification_lstat(path) is not None
+
+
+def _qualification_path_is_link_or_reparse(path: Path) -> bool:
+    metadata = _qualification_lstat(path)
+    return metadata is not None and _qualification_metadata_is_link_or_reparse(
+        metadata
+    )
+
+
+def _qualification_path_is_regular_file(path: Path) -> bool:
+    metadata = _qualification_lstat(path)
+    return (
+        metadata is not None
+        and not _qualification_metadata_is_link_or_reparse(metadata)
+        and stat.S_ISREG(metadata.st_mode)
+    )
+
+
+def _qualification_require_no_follow_path(
+    path: Path | str,
+    label: str,
+    *,
+    expected_kind: str | None,
+    allow_missing: bool = False,
+) -> Path:
+    supplied_path = Path(os.fspath(path))
+    supplied_components = (
+        supplied_path.parts[1:] if supplied_path.anchor else supplied_path.parts
+    )
+    if any(":" in part for part in supplied_components):
+        raise OutcomeEvidenceVerificationError(
+            f"qualification {label} contains an alternate data stream"
+        )
+    if any(part.endswith((".", " ")) for part in supplied_components):
+        raise OutcomeEvidenceVerificationError(
+            f"qualification {label} contains a Win32 alias component"
+        )
+    lexical_path = Path(os.path.abspath(supplied_path))
+    if lexical_path.drive.startswith("\\\\"):
+        raise OutcomeEvidenceVerificationError(
+            f"qualification {label} must use a local drive; UNC and device "
+            "paths are forbidden"
+        )
+    if expected_kind not in {None, "directory", "file"}:
+        raise OutcomeEvidenceVerificationError(
+            "qualification path expected kind is invalid"
+        )
+    current = Path(lexical_path.anchor)
+    for part in lexical_path.parts[1:]:
+        current /= part
+        metadata = _qualification_lstat(current)
+        if metadata is None:
+            if allow_missing:
+                return lexical_path
+            raise OutcomeEvidenceVerificationError(
+                f"qualification {label} is missing: {current}"
+            )
+        if _qualification_metadata_is_link_or_reparse(metadata):
+            raise OutcomeEvidenceVerificationError(
+                f"qualification {label} contains a symbolic link or reparse "
+                f"point: {current}"
+            )
+    metadata = _qualification_lstat(lexical_path)
+    if metadata is None:
+        if allow_missing:
+            return lexical_path
+        raise OutcomeEvidenceVerificationError(
+            f"qualification {label} is missing: {lexical_path}"
+        )
+    if expected_kind is None:
+        return lexical_path
+    expected_mode = (
+        stat.S_ISDIR(metadata.st_mode)
+        if expected_kind == "directory"
+        else stat.S_ISREG(metadata.st_mode)
+    )
+    if not expected_mode:
+        raise OutcomeEvidenceVerificationError(
+            f"qualification {label} is not a regular {expected_kind}: "
+            f"{lexical_path}"
+        )
+    return lexical_path
+
+
+def _qualification_git_executable() -> str:
+    return str(
+        _qualification_require_no_follow_path(
+            QUALIFICATION_GIT_EXECUTABLE,
+            "Git executable",
+            expected_kind="file",
+        )
+    )
+
+
+def _qualification_git_environment(
+    *,
+    repo_root: Path,
+    git_root: Path,
+) -> dict[str, str]:
+    environment = {
+        key: value
+        for key in ("SystemRoot", "WINDIR", "COMSPEC", "TEMP", "TMP")
+        if (value := os.environ.get(key))
+    }
+    environment.update(
+        {
+            "GIT_CONFIG_GLOBAL": os.devnull,
+            "GIT_CONFIG_NOSYSTEM": "1",
+            "GIT_ATTR_NOSYSTEM": "1",
+            "GIT_DIR": str(git_root),
+            "GIT_NO_REPLACE_OBJECTS": "1",
+            "GIT_NO_LAZY_FETCH": "1",
+            "GIT_OPTIONAL_LOCKS": "0",
+            "GIT_TERMINAL_PROMPT": "0",
+            "GIT_WORK_TREE": str(repo_root),
+            "LC_ALL": "C",
+        }
+    )
+    return environment
+
+
+def _qualification_git_command(*arguments: str) -> list[str]:
+    return [
+        _qualification_git_executable(),
+        "--no-pager",
+        "--no-replace-objects",
+        "--no-lazy-fetch",
+        "-c",
+        "core.fsmonitor=false",
+        "-c",
+        "core.hooksPath=NUL",
+        "-c",
+        "diff.external=",
+        "-c",
+        "color.ui=false",
+        *arguments,
+    ]
+
+
+def _qualification_lexical_absolute_path(value: Any, field: str) -> Path:
+    raw = _required_string(value, field)
+    path = Path(raw)
+    path_components = path.parts[1:] if path.anchor else path.parts
+    if any(":" in part for part in path_components):
+        raise OutcomeEvidenceVerificationError(
+            f"{field} contains an alternate data stream"
+        )
+    if any(part.endswith((".", " ")) for part in path_components):
+        raise OutcomeEvidenceVerificationError(
+            f"{field} contains a Win32 alias component"
+        )
+    lexical_path = Path(os.path.abspath(raw))
+    if not path.is_absolute() or str(lexical_path) != raw:
+        raise OutcomeEvidenceVerificationError(
+            f"{field} must be lexical absolute"
+        )
+    if lexical_path.drive.startswith("\\\\"):
+        raise OutcomeEvidenceVerificationError(
+            f"{field} must use a local drive; UNC and device paths are "
+            "forbidden"
+        )
+    return lexical_path
+
+
+def _qualification_registration_absolute_paths(value: Any):
+    if isinstance(value, Mapping):
+        for child in value.values():
+            yield from _qualification_registration_absolute_paths(child)
+    elif isinstance(value, list):
+        for child in value:
+            yield from _qualification_registration_absolute_paths(child)
+    elif isinstance(value, str) and Path(value).is_absolute():
+        yield value
+
+
+def _verify_qualification_registration_paths(
+    registration: Mapping[str, Any],
+    *,
+    repo_root: Path,
+) -> Path:
+    for raw_path in _qualification_registration_absolute_paths(registration):
+        _qualification_require_no_follow_path(
+            _qualification_lexical_absolute_path(
+                raw_path,
+                "qualification registered path",
+            ),
+            "registered path",
+            expected_kind=None,
+            allow_missing=True,
+        )
+    registered_repo_root = _qualification_require_no_follow_path(
+        _qualification_lexical_absolute_path(
+            registration.get("repo_root"),
+            "qualification registration repository root",
+        ),
+        "registered repository root",
+        expected_kind="directory",
+    )
+    if registered_repo_root != repo_root:
+        raise OutcomeEvidenceVerificationError(
+            "qualification registration repository root mismatch"
+        )
+    integrity_rules = registration.get("integrity_rules")
+    implementation_paths = (
+        integrity_rules.get("implementation_paths")
+        if isinstance(integrity_rules, Mapping)
+        else None
+    )
+    if not isinstance(implementation_paths, list):
+        raise OutcomeEvidenceVerificationError(
+            "qualification registration implementation paths are invalid"
+        )
+    for relative_path in implementation_paths:
+        candidate = Path(relative_path) if isinstance(relative_path, str) else None
+        if (
+            candidate is None
+            or candidate.is_absolute()
+            or "\\" in relative_path
+            or candidate.as_posix() != relative_path
+            or any(part in {"", ".", ".."} for part in candidate.parts)
+        ):
+            raise OutcomeEvidenceVerificationError(
+                "qualification registration implementation path is invalid"
+            )
+        _qualification_require_no_follow_path(
+            registered_repo_root / candidate,
+            f"registered implementation path {relative_path}",
+            expected_kind=None,
+            allow_missing=True,
+        )
+    return registered_repo_root
+
+
+def _qualification_irregular_path_reason(path: Path) -> str | None:
+    if not _qualification_path_entry_exists(path):
+        return None
+    if _qualification_path_is_regular_file(path):
+        return None
+    if _qualification_path_is_link_or_reparse(path):
+        return "is a symbolic link or reparse point"
+    return "is not a regular file"
+
+
+def _qualification_declared_paths(
+    request: Mapping[str, Any],
+    *,
+    qualification_root: Path,
+) -> dict[str, Any]:
+    handshake = _mapping(
+        request.get("handshake"),
+        "qualification handshake",
+    )
+    declared = {
+        "attempt": _qualification_lexical_absolute_path(
+            handshake.get("attempt_path"),
+            "qualification attempt path",
+        ),
+        "completion": _qualification_lexical_absolute_path(
+            request.get("completion_path"),
+            "qualification completion path",
+        ),
+        "failure": _qualification_lexical_absolute_path(
+            request.get("failure_path"),
+            "qualification failure path",
+        ),
+        "ready": _qualification_lexical_absolute_path(
+            handshake.get("ready_path"),
+            "qualification ready path",
+        ),
+        "release": _qualification_lexical_absolute_path(
+            handshake.get("release_path"),
+            "qualification release path",
+        ),
+        "request": _qualification_lexical_absolute_path(
+            request.get("request_path"),
+            "qualification active request path",
+        ),
+    }
+    expected = {
+        "attempt": "qualification-communication-attempt.json",
+        "completion": "qualification-completion.json",
+        "failure": "qualification-failure.json",
+        "ready": "qualification-communication-ready.json",
+        "release": "qualification-communication-release.json",
+        "request": "qualification-request.json",
+    }
+    expected_paths = {
+        name: Path(os.path.abspath(qualification_root / filename))
+        for name, filename in expected.items()
+    }
+    if declared != expected_paths:
+        raise OutcomeEvidenceVerificationError(
+            "qualification declared path binding mismatch"
+        )
+    for name, path in declared.items():
+        _qualification_require_no_follow_path(
+            path.parent,
+            f"{name} path parent",
+            expected_kind="directory",
+        )
+    return declared
+
+
+def _qualification_no_follow_entries(
+    root: Path,
+) -> list[tuple[Path, os.stat_result, bool]]:
+    root = _qualification_require_no_follow_path(
+        root,
+        "filesystem root",
+        expected_kind="directory",
+    )
+    root_metadata = _qualification_lstat(root)
+    if root_metadata is None:
+        return []
+    if (
+        _qualification_metadata_is_link_or_reparse(root_metadata)
+        or not stat.S_ISDIR(root_metadata.st_mode)
+    ):
+        raise OutcomeEvidenceVerificationError(
+            "qualification root is not a regular directory"
+        )
+    pending = [root]
+    entries = []
+    while pending:
+        directory = pending.pop()
+        try:
+            with os.scandir(directory) as iterator:
+                children = sorted(iterator, key=lambda entry: entry.name)
+        except OSError as exc:
+            raise OutcomeEvidenceVerificationError(
+                f"cannot inspect qualification root: {exc}"
+            ) from exc
+        for child in children:
+            try:
+                metadata = child.stat(follow_symlinks=False)
+            except OSError as exc:
+                raise OutcomeEvidenceVerificationError(
+                    f"cannot inspect qualification artifact {child.path}: {exc}"
+                ) from exc
+            path = Path(child.path)
+            is_link_or_reparse = _qualification_metadata_is_link_or_reparse(
+                metadata
+            )
+            entries.append((path, metadata, is_link_or_reparse))
+            if stat.S_ISDIR(metadata.st_mode) and not is_link_or_reparse:
+                pending.append(path)
+    return sorted(entries, key=lambda row: str(row[0]))
+
+
+def _qualification_validate_git_metadata(repo_root: Path) -> Path:
+    repo_root = _qualification_require_no_follow_path(
+        repo_root,
+        "Git repository root",
+        expected_kind="directory",
+    )
+    git_root = _qualification_require_no_follow_path(
+        repo_root / ".git",
+        "Git metadata root",
+        expected_kind="directory",
+    )
+    for path, _metadata, is_link_or_reparse in (
+        _qualification_no_follow_entries(git_root)
+    ):
+        if is_link_or_reparse:
+            raise OutcomeEvidenceVerificationError(
+                "qualification Git metadata contains a symbolic link or "
+                f"reparse point: {path}"
+            )
+    grafts_path = git_root / "info" / "grafts"
+    if _qualification_path_entry_exists(grafts_path):
+        raise OutcomeEvidenceVerificationError(
+            "qualification Git graft metadata is forbidden"
+        )
+    attributes_path = git_root / "info" / "attributes"
+    if _qualification_path_entry_exists(attributes_path):
+        raise OutcomeEvidenceVerificationError(
+            "qualification Git info attributes are forbidden"
+        )
+    for relative_path in (
+        "commondir",
+        "objects/info/alternates",
+        "objects/info/http-alternates",
+    ):
+        if _qualification_path_entry_exists(git_root / relative_path):
+            raise OutcomeEvidenceVerificationError(
+                "qualification Git metadata indirection is forbidden: "
+                f"{relative_path}"
+            )
+    replace_path = git_root / "refs" / "replace"
+    if _qualification_path_entry_exists(replace_path):
+        raise OutcomeEvidenceVerificationError(
+            "qualification Git replacement refs are forbidden"
+        )
+    packed_refs_path = git_root / "packed-refs"
+    if _qualification_path_entry_exists(packed_refs_path):
+        packed_refs_path = _qualification_require_no_follow_path(
+            packed_refs_path,
+            "Git packed refs",
+            expected_kind="file",
+        )
+        try:
+            packed_refs = packed_refs_path.read_text(encoding="utf-8")
+        except (OSError, UnicodeError) as exc:
+            raise OutcomeEvidenceVerificationError(
+                f"cannot inspect qualification Git packed refs: {exc}"
+            ) from exc
+        if any(
+            line.partition(" ")[2].startswith("refs/replace/")
+            for line in packed_refs.splitlines()
+            if line and not line.startswith(("#", "^"))
+        ):
+            raise OutcomeEvidenceVerificationError(
+                "qualification Git packed replacement refs are forbidden"
+            )
+    for config_name in ("config", "config.worktree"):
+        config_path = git_root / config_name
+        if not _qualification_path_entry_exists(config_path):
+            continue
+        config_path = _qualification_require_no_follow_path(
+            config_path,
+            f"Git repository {config_name}",
+            expected_kind="file",
+        )
+        try:
+            config_text = config_path.read_text(encoding="utf-8")
+        except (OSError, UnicodeError) as exc:
+            raise OutcomeEvidenceVerificationError(
+                f"cannot inspect qualification Git config: {exc}"
+            ) from exc
+        normalized_config = "".join(config_text.casefold().split())
+        forbidden_config_tokens = (
+            "[include",
+            "fsmonitor",
+            "hookspath",
+            "external=",
+            "filter",
+            "clean=",
+            "process=",
+            "attributesfile",
+            "textconv",
+            "sshcommand",
+            "partialclone",
+            "promisor",
+            "[protocol",
+            "protocol.ext.allow",
+            "ext::",
+        )
+        if any(
+            token in normalized_config for token in forbidden_config_tokens
+        ):
+            raise OutcomeEvidenceVerificationError(
+                "qualification Git repository config contains an unsafe "
+                "execution directive"
+            )
+    return git_root
+
+
+def verify_prelock_qualification(
+    request_source_path: Path | str,
+    result_path: Path | str | None = None,
+    *,
+    expected_review_commit: str,
+    expected_request_hash: str,
+    expected_request_file_sha256: str,
+    expected_request_size: int,
+    expected_result_hash: str | None = None,
+    expected_result_file_sha256: str | None = None,
+    expected_result_size: int | None = None,
+    audit_output_path: Path | str | None = None,
+) -> dict[str, Any]:
+    """Independently replay one tracked pre-lock qualification evidence chain."""
+
+    result_anchors = _qualification_result_anchors(
+        result_path=result_path,
+        expected_result_hash=expected_result_hash,
+        expected_result_file_sha256=expected_result_file_sha256,
+        expected_result_size=expected_result_size,
+    )
+    checks = _Checks()
+    reviewed_source_path = _qualification_require_no_follow_path(
+        request_source_path,
+        "request source",
+        expected_kind="file",
+        allow_missing=True,
+    )
+    review = _load_historical_qualification_review(
+        reviewed_source_path,
+        expected_review_commit=expected_review_commit,
+        expected_request_hash=expected_request_hash,
+        expected_request_file_sha256=expected_request_file_sha256,
+        expected_request_size=expected_request_size,
+        checks=checks,
+    )
+    request = review["request"]
+    qualification_root = _qualification_require_no_follow_path(
+        _qualification_lexical_absolute_path(
+            request.get("qualification_root"),
+            "qualification_root",
+        ),
+        "root",
+        expected_kind="directory",
+    )
+
+    def finish_audit(**audit_fields: Any) -> dict[str, Any]:
+        audit = _qualification_audit(**audit_fields)
+        if audit_output_path is not None:
+            bound_paths = tuple(
+                Path(path)
+                for path in _qualification_registration_absolute_paths(request)
+            )
+            raw_forbidden_roots = request.get("forbidden_paths")
+            forbidden_roots = tuple(
+                Path(path)
+                for path in (
+                    raw_forbidden_roots
+                    if isinstance(raw_forbidden_roots, list)
+                    else ()
+                )
+                if isinstance(path, str) and Path(path).is_absolute()
+            )
+            _qualification_write_audit_once(
+                audit_output_path,
+                render_verification_audit(audit),
+                qualification_root=qualification_root,
+                protected_paths=bound_paths,
+                protected_roots=forbidden_roots,
+            )
+        return audit
+    declared_paths = _qualification_declared_paths(
+        request,
+        qualification_root=qualification_root,
+    )
+    request_path = declared_paths["request"]
+    completion_path = declared_paths["completion"]
+    failure_path = declared_paths["failure"]
+    control_paths = tuple(
+        declared_paths[name]
+        for name in ("attempt", "ready", "release")
+    ) + (completion_path, failure_path)
+    irregular_control_paths = [
+        (path, reason)
+        for path in control_paths
+        if (reason := _qualification_irregular_path_reason(path)) is not None
+    ]
+    artifact_inventory = _qualification_audit_inventory(request)
+    if irregular_control_paths:
+        irregular_path, irregular_reason = irregular_control_paths[0]
+        evidence_error = (
+            f"qualification control path {irregular_reason}: {irregular_path}"
+        )
+        if result_path is not None:
+            raise OutcomeEvidenceVerificationError(evidence_error)
+        return finish_audit(
+            checks=checks,
+            review_binding=review["review_binding"],
+            request_hash=request["request_hash"],
+            result_hash=None,
+            qualification_status="invalid_partial",
+            status="sealed_invalid",
+            partial_stage="invalid_control_path",
+            consumed=True,
+            evidence_valid=False,
+            evidence_error=evidence_error,
+            artifact_inventory=artifact_inventory,
+        )
+
+    request_path_exists = _qualification_path_entry_exists(request_path)
+    request_path_is_regular = _qualification_path_is_regular_file(request_path)
+    if not request_path_is_regular:
+        malformed_active = request_path_exists
+        control_exists = any(
+            _qualification_path_entry_exists(
+                Path(request["handshake"][f"{name}_path"])
+            )
+            for name in ("attempt", "ready", "release")
+        ) or any(
+            _qualification_path_entry_exists(path)
+            for path in (completion_path, failure_path)
+        )
+        consumed = malformed_active or control_exists
+        if result_path is not None:
+            reason = (
+                "not a regular file"
+                if malformed_active
+                else "missing"
+            )
+            raise OutcomeEvidenceVerificationError(
+                f"active qualification request is {reason}"
+            )
+        if not consumed:
+            _verify_qualification_request(
+                request,
+                request_path=request_path,
+                registration=review["registration"],
+                registration_bytes=review["registration_bytes"],
+                request_review=review["review_binding"],
+                checks=checks,
+            )
+        return finish_audit(
+            checks=checks,
+            review_binding=review["review_binding"],
+            request_hash=request["request_hash"],
+            result_hash=None,
+            qualification_status=(
+                "invalid_partial" if consumed else "not_attempted"
+            ),
+            status="sealed_invalid" if consumed else "reviewed_prepared",
+            partial_stage=(
+                "malformed_active_request"
+                if malformed_active
+                else (
+                    "orphan_control_artifacts"
+                    if control_exists
+                    else "source_only"
+                )
+            ),
+            consumed=consumed,
+            evidence_valid=not consumed,
+            evidence_error=(
+                "active qualification request is not a regular file"
+                if malformed_active
+                else (
+                    "qualification control artifacts exist without an active request"
+                    if control_exists
+                    else None
+                )
+            ),
+            artifact_inventory=artifact_inventory,
+        )
+    try:
+        active_request_bytes = request_path.read_bytes()
+    except OSError as exc:
+        if result_path is not None:
+            raise OutcomeEvidenceVerificationError(
+                f"cannot read active qualification request: {exc}"
+            ) from exc
+        return finish_audit(
+            checks=checks,
+            review_binding=review["review_binding"],
+            request_hash=request["request_hash"],
+            result_hash=None,
+            qualification_status="invalid_partial",
+            status="sealed_invalid",
+            partial_stage="malformed_active_request",
+            consumed=True,
+            evidence_valid=False,
+            evidence_error=f"cannot read active qualification request: {exc}",
+            artifact_inventory=artifact_inventory,
+        )
+    if active_request_bytes != review["request_bytes"]:
+        if result_path is not None:
+            raise OutcomeEvidenceVerificationError(
+                "active request differs from reviewed source bytes"
+            )
+        return finish_audit(
+            checks=checks,
+            review_binding=review["review_binding"],
+            request_hash=request["request_hash"],
+            result_hash=None,
+            qualification_status="invalid_partial",
+            status="sealed_invalid",
+            partial_stage="malformed_active_request",
+            consumed=True,
+            evidence_valid=False,
+            evidence_error="active request differs from reviewed source bytes",
+            artifact_inventory=artifact_inventory,
+        )
+
+    try:
+        context = _verify_qualification_request(
+            request,
+            request_path=request_path,
+            registration=review["registration"],
+            registration_bytes=review["registration_bytes"],
+            request_review=review["review_binding"],
+            checks=checks,
+        )
+    except OutcomeEvidenceVerificationError as exc:
+        if result_path is not None:
+            raise
+        return finish_audit(
+            checks=checks,
+            review_binding=review["review_binding"],
+            request_hash=request["request_hash"],
+            result_hash=None,
+            qualification_status="invalid_partial",
+            status="sealed_invalid",
+            partial_stage="invalid_active_request",
+            consumed=True,
+            evidence_valid=False,
+            evidence_error=str(exc),
+            artifact_inventory=artifact_inventory,
+        )
+
+    if result_path is None:
+        if _qualification_path_entry_exists(
+            completion_path
+        ) or _qualification_path_entry_exists(failure_path):
+            return finish_audit(
+                checks=checks,
+                review_binding=review["review_binding"],
+                request_hash=request["request_hash"],
+                result_hash=None,
+                qualification_status="invalid_partial",
+                status="sealed_invalid",
+                partial_stage="terminal_present_without_result",
+                consumed=True,
+                evidence_valid=False,
+                evidence_error="terminal evidence requires explicit replay",
+                artifact_inventory=artifact_inventory,
+            )
+        try:
+            partial_stage = _verify_partial_qualification_prefix(
+                request,
+                context=context,
+                checks=checks,
+            )
+        except OutcomeEvidenceVerificationError as exc:
+            return finish_audit(
+                checks=checks,
+                review_binding=review["review_binding"],
+                request_hash=request["request_hash"],
+                result_hash=None,
+                qualification_status="invalid_partial",
+                status="sealed_invalid",
+                partial_stage="invalid_control_prefix",
+                consumed=True,
+                evidence_valid=False,
+                evidence_error=str(exc),
+                artifact_inventory=artifact_inventory,
+            )
+        return finish_audit(
+            checks=checks,
+            review_binding=review["review_binding"],
+            request_hash=request["request_hash"],
+            result_hash=None,
+            qualification_status="partial",
+            status="sealed_partial",
+            partial_stage=partial_stage,
+            consumed=True,
+            evidence_valid=True,
+            evidence_error=None,
+            artifact_inventory=artifact_inventory,
+        )
+
+    resolved_result_path = _qualification_require_no_follow_path(
+        result_path,
+        "result",
+        expected_kind="file",
+    )
+    checks.require(
+        resolved_result_path in {completion_path, failure_path},
+        "qualification result path does not match a terminal branch",
+    )
+    try:
+        result_bytes = resolved_result_path.read_bytes()
+    except OSError as exc:
+        raise OutcomeEvidenceVerificationError(
+            f"cannot read qualification result: {exc}"
+        ) from exc
+    checks.require(
+        len(result_bytes) == result_anchors["size"],
+        "qualification result byte-count anchor mismatch",
+    )
+    checks.require(
+        hashlib.sha256(result_bytes).hexdigest()
+        == result_anchors["file_sha256"],
+        "qualification result file-SHA anchor mismatch",
+    )
+    result = _load_qualification_record_bytes(
+        result_bytes,
+        path=resolved_result_path,
+        schema_version=QUALIFICATION_RESULT_SCHEMA_VERSION,
+        hash_field="result_hash",
+        label="qualification result",
+    )
+    checks.require(
+        result["result_hash"] == result_anchors["result_hash"],
+        "qualification result self-hash anchor mismatch",
+    )
+    _verify_qualification_result(
+        result,
+        result_path=resolved_result_path,
+        request=request,
+        context=context,
+        checks=checks,
+    )
+    return finish_audit(
+        checks=checks,
+        review_binding=review["review_binding"],
+        request_hash=request["request_hash"],
+        result_hash=result["result_hash"],
+        qualification_status=result["status"],
+        status="verified",
+        partial_stage=None,
+        consumed=True,
+        evidence_valid=True,
+        evidence_error=None,
+        artifact_inventory=artifact_inventory,
+        result_file_sha256=result_anchors["file_sha256"],
+        result_size=result_anchors["size"],
+    )
+
+
+def _qualification_result_anchors(
+    *,
+    result_path: Path | str | None,
+    expected_result_hash: Any,
+    expected_result_file_sha256: Any,
+    expected_result_size: Any,
+) -> dict[str, Any] | None:
+    values = (
+        expected_result_hash,
+        expected_result_file_sha256,
+        expected_result_size,
+    )
+    if result_path is None:
+        if any(value is not None for value in values):
+            raise OutcomeEvidenceVerificationError(
+                "qualification result anchors require terminal evidence"
+            )
+        return None
+    if any(value is None for value in values):
+        raise OutcomeEvidenceVerificationError(
+            "qualification terminal replay requires all result anchors"
+        )
+    if not _is_sha256(expected_result_hash):
+        raise OutcomeEvidenceVerificationError(
+            "qualification result self-hash anchor is invalid"
+        )
+    if not _is_sha256(expected_result_file_sha256):
+        raise OutcomeEvidenceVerificationError(
+            "qualification result file-SHA anchor is invalid"
+        )
+    if type(expected_result_size) is not int or expected_result_size <= 0:
+        raise OutcomeEvidenceVerificationError(
+            "qualification result byte-count anchor is invalid"
+        )
+    return {
+        "file_sha256": expected_result_file_sha256,
+        "result_hash": expected_result_hash,
+        "size": expected_result_size,
+    }
+
+
+def _qualification_audit(
+    *,
+    checks: _Checks,
+    review_binding: Mapping[str, Any],
+    request_hash: str,
+    result_hash: str | None,
+    qualification_status: str,
+    status: str,
+    partial_stage: str | None,
+    consumed: bool,
+    evidence_valid: bool,
+    evidence_error: str | None,
+    artifact_inventory: Mapping[str, Any],
+    result_file_sha256: str | None = None,
+    result_size: int | None = None,
+) -> dict[str, Any]:
+    audit = {
+        "audit_hash": None,
+        "artifact_inventory": dict(artifact_inventory),
+        "causal_claim_authorized": False,
+        "check_count": checks.count,
+        "collection_authorized": False,
+        "consumed": consumed,
+        "evidence_error": evidence_error,
+        "evidence_valid": evidence_valid,
+        "partial_stage": partial_stage,
+        "passed": True,
+        "qualification_status": qualification_status,
+        "request_hash": request_hash,
+        "review_binding": dict(review_binding),
+        "result_hash": result_hash,
+        "result_file_sha256": result_file_sha256,
+        "result_size": result_size,
+        "gameplay_policy_change_authorized": False,
+        "run_lock_authorized": False,
+        "schema_version": QUALIFICATION_AUDIT_SCHEMA_VERSION,
+        "status": status,
+        "study_start_authorized": False,
+        "training_authorized": False,
+        "verifier_implementation_sha256": _file_sha256(Path(__file__)),
+    }
+    audit["audit_hash"] = _self_hash(audit, "audit_hash")
+    return json.loads(_canonical_json(audit))
+
+
+def _qualification_write_audit_once(
+    output_path: Path | str,
+    rendered: str,
+    *,
+    qualification_root: Path,
+    protected_paths: Sequence[Path] = (),
+    protected_roots: Sequence[Path] = (),
+) -> None:
+    root = _qualification_require_no_follow_path(
+        qualification_root,
+        "root",
+        expected_kind="directory",
+    )
+    output = _qualification_lexical_absolute_path(
+        os.fspath(output_path),
+        "qualification audit output path",
+    )
+    output_parent = _qualification_require_no_follow_path(
+        output.parent,
+        "audit output parent",
+        expected_kind="directory",
+    )
+
+    def canonical_path(path: Path, label: str) -> Path:
+        guarded = _qualification_require_no_follow_path(
+            path,
+            label,
+            expected_kind=None,
+            allow_missing=True,
+        )
+        try:
+            return Path(os.path.realpath(guarded))
+        except OSError as exc:
+            raise OutcomeEvidenceVerificationError(
+                f"cannot canonicalize qualification {label}: {exc}"
+            ) from exc
+
+    def same_path(left: Path, right: Path) -> bool:
+        return os.path.normcase(os.path.normpath(left)) == os.path.normcase(
+            os.path.normpath(right)
+        )
+
+    def is_within(path: Path, parent: Path) -> bool:
+        try:
+            common = os.path.commonpath((path, parent))
+        except ValueError:
+            return False
+        return same_path(Path(common), parent)
+
+    canonical_output = canonical_path(
+        output_parent,
+        "audit output parent",
+    ) / output.name
+    canonical_root = canonical_path(root, "root")
+    if is_within(canonical_output, canonical_root):
+        raise OutcomeEvidenceVerificationError(
+            "qualification audit output must be outside qualification root"
+        )
+    for protected_path in protected_paths:
+        if same_path(
+            canonical_output,
+            canonical_path(protected_path, "request-bound output path"),
+        ):
+            raise OutcomeEvidenceVerificationError(
+                "qualification audit output matches a request-bound or "
+                "forbidden path"
+            )
+    for protected_root in protected_roots:
+        if is_within(
+            canonical_output,
+            canonical_path(protected_root, "forbidden output path"),
+        ):
+            raise OutcomeEvidenceVerificationError(
+                "qualification audit output matches a request-bound or "
+                "forbidden path"
+            )
+    metadata = _qualification_lstat(output)
+    if metadata is not None:
+        if _qualification_metadata_is_link_or_reparse(metadata):
+            raise OutcomeEvidenceVerificationError(
+                "qualification audit output is a symbolic link or reparse point"
+            )
+        raise OutcomeEvidenceVerificationError(
+            "qualification audit output already exists"
+        )
+    flags = os.O_WRONLY | os.O_CREAT | os.O_EXCL
+    if hasattr(os, "O_BINARY"):
+        flags |= os.O_BINARY
+    try:
+        descriptor = os.open(output, flags, 0o600)
+    except FileExistsError as exc:
+        raise OutcomeEvidenceVerificationError(
+            "qualification audit output already exists"
+        ) from exc
+    except OSError as exc:
+        raise OutcomeEvidenceVerificationError(
+            f"cannot create qualification audit output: {exc}"
+        ) from exc
+    try:
+        with os.fdopen(descriptor, "wb") as stream:
+            stream.write(rendered.encode("utf-8"))
+            stream.flush()
+            os.fsync(stream.fileno())
+    except OSError as exc:
+        raise OutcomeEvidenceVerificationError(
+            f"cannot publish qualification audit output: {exc}"
+        ) from exc
+
+
+def _qualification_audit_inventory(
+    request: Mapping[str, Any],
+) -> dict[str, dict[str, Any]]:
+    root = Path(str(request["qualification_root"]))
+    inventory = {}
+    for path, metadata, is_link_or_reparse in _qualification_no_follow_entries(
+        root
+    ):
+        lexical_path = str(Path(os.path.abspath(path)))
+        if is_link_or_reparse:
+            inventory[lexical_path] = {
+                "kind": "link_or_reparse",
+                "sha256": None,
+                "size": metadata.st_size,
+            }
+        elif stat.S_ISREG(metadata.st_mode):
+            inventory[lexical_path] = {
+                "kind": "file",
+                "sha256": _file_sha256(path),
+                "size": metadata.st_size,
+            }
+        else:
+            inventory[lexical_path] = {
+                "kind": (
+                    "directory"
+                    if stat.S_ISDIR(metadata.st_mode)
+                    else "other"
+                ),
+                "sha256": None,
+                "size": None,
+            }
+    return inventory
+
+
+def _load_qualification_record(
+    path: Path,
+    *,
+    schema_version: str,
+    hash_field: str,
+    label: str,
+) -> dict[str, Any]:
+    try:
+        raw = path.read_bytes()
+    except OSError as exc:
+        raise OutcomeEvidenceVerificationError(
+            f"cannot read {label}: {exc}"
+        ) from exc
+    return _load_qualification_record_bytes(
+        raw,
+        path=path,
+        schema_version=schema_version,
+        hash_field=hash_field,
+        label=label,
+    )
+
+
+def _load_qualification_record_bytes(
+    raw: bytes,
+    *,
+    path: Path,
+    schema_version: str,
+    hash_field: str,
+    label: str,
+) -> dict[str, Any]:
+    record = _load_mapping_bytes(raw, path)
+    if raw != (_canonical_json(record) + "\n").encode("utf-8"):
+        raise OutcomeEvidenceVerificationError(f"{label} is not canonical")
+    if record.get("schema_version") != schema_version:
+        raise OutcomeEvidenceVerificationError(f"{label} schema mismatch")
+    if not _is_sha256(record.get(hash_field)):
+        raise OutcomeEvidenceVerificationError(f"{label} self-hash is invalid")
+    if record[hash_field] != _self_hash(record, hash_field):
+        raise OutcomeEvidenceVerificationError(f"{label} self-hash mismatch")
+    return record
+
+
+def _existing_qualification_git_anchor(path: Path) -> Path:
+    candidate = path
+    while True:
+        metadata = _qualification_lstat(candidate)
+        if metadata is not None:
+            if _qualification_metadata_is_link_or_reparse(metadata):
+                raise OutcomeEvidenceVerificationError(
+                    "qualification request repository anchor contains a "
+                    "symbolic link or reparse point"
+                )
+            if stat.S_ISDIR(metadata.st_mode):
+                return candidate
+        parent = candidate.parent
+        if parent == candidate:
+            raise OutcomeEvidenceVerificationError(
+                "qualification request repository anchor is unavailable"
+            )
+        candidate = parent
+
+
+def _qualification_find_repository_root(path: Path) -> Path:
+    candidate = _existing_qualification_git_anchor(path)
+    while True:
+        if _qualification_path_entry_exists(candidate / ".git"):
+            _qualification_validate_git_metadata(candidate)
+            return _qualification_require_no_follow_path(
+                candidate,
+                "repository root",
+                expected_kind="directory",
+            )
+        parent = candidate.parent
+        if parent == candidate:
+            raise OutcomeEvidenceVerificationError(
+                "qualification request repository is unavailable"
+            )
+        candidate = parent
+
+
+def _load_historical_qualification_review(
+    request_source_path: Path,
+    *,
+    expected_review_commit: str,
+    expected_request_hash: str,
+    expected_request_file_sha256: str,
+    expected_request_size: int,
+    checks: _Checks,
+) -> dict[str, Any]:
+    checks.require(
+        _COMMIT_PATTERN.fullmatch(expected_review_commit) is not None,
+        "expected qualification review commit is invalid",
+    )
+    checks.require(
+        _is_sha256(expected_request_hash),
+        "expected qualification request hash is invalid",
+    )
+    checks.require(
+        _is_sha256(expected_request_file_sha256),
+        "expected qualification request file hash is invalid",
+    )
+    checks.require(
+        type(expected_request_size) is int and expected_request_size > 0,
+        "expected qualification request byte count is invalid",
+    )
+    repo_root = _qualification_find_repository_root(
+        request_source_path.parent
+    )
+    try:
+        request_source_relative = request_source_path.relative_to(
+            repo_root
+        ).as_posix()
+    except ValueError as exc:
+        raise OutcomeEvidenceVerificationError(
+            "qualification request source is outside the source repository"
+        ) from exc
+    checks.require(
+        _qualification_git_text(
+            repo_root,
+            "rev-parse",
+            f"{expected_review_commit}^{{commit}}",
+        ).lower()
+        == expected_review_commit,
+        "qualification review commit is unavailable",
+    )
+    request_bytes = _qualification_git_blob(
+        repo_root,
+        expected_review_commit,
+        request_source_relative,
+    )
+    checks.require(
+        hashlib.sha256(request_bytes).hexdigest()
+        == expected_request_file_sha256
+        and len(request_bytes) == expected_request_size,
+        "qualification request source file binding mismatch",
+    )
+    request = _load_qualification_record_bytes(
+        request_bytes,
+        path=request_source_path,
+        schema_version=QUALIFICATION_REQUEST_SCHEMA_VERSION,
+        hash_field="request_hash",
+        label="qualification request source",
+    )
+    checks.require(
+        request["request_hash"] == expected_request_hash
+        and request.get("request_source_path") == str(request_source_path),
+        "qualification request source anchor mismatch",
+    )
+    source_commit = request.get("source_commit")
+    checks.require(
+        isinstance(source_commit, str)
+        and _COMMIT_PATTERN.fullmatch(source_commit) is not None,
+        "qualification source commit is invalid",
+    )
+    parent_row = _qualification_git_text(
+        repo_root,
+        "rev-list",
+        "--parents",
+        "-n",
+        "1",
+        expected_review_commit,
+    ).lower().split()
+    checks.require(
+        parent_row == [expected_review_commit, source_commit],
+        "qualification review commit is not a direct child of the source commit",
+    )
+
+    registration_binding = _mapping(
+        request.get("registration"),
+        "qualification registration",
+    )
+    checks.require(
+        set(registration_binding) == {"canonical_hash", "file_sha256", "path"},
+        "qualification registration fields mismatch",
+    )
+    registration_path = _qualification_require_no_follow_path(
+        _qualification_lexical_absolute_path(
+            registration_binding.get("path"),
+            "qualification registration path",
+        ),
+        "registration path",
+        expected_kind=None,
+        allow_missing=True,
+    )
+    try:
+        registration_relative = registration_path.relative_to(
+            repo_root
+        ).as_posix()
+    except ValueError as exc:
+        raise OutcomeEvidenceVerificationError(
+            "qualification registration is outside the source repository"
+        ) from exc
+    registration_source_bytes = _qualification_git_blob(
+        repo_root,
+        source_commit,
+        registration_relative,
+    )
+    registration_review_bytes = _qualification_git_blob(
+        repo_root,
+        expected_review_commit,
+        registration_relative,
+    )
+    checks.require(
+        registration_source_bytes == registration_review_bytes
+        and hashlib.sha256(registration_review_bytes).hexdigest()
+        == registration_binding["file_sha256"],
+        "qualification registration changed during request review",
+    )
+    registration = _load_mapping_bytes(
+        registration_review_bytes,
+        registration_path,
+    )
+    registration_repo_root = _verify_qualification_registration_paths(
+        registration,
+        repo_root=repo_root,
+    )
+    _verify_registration(registration, checks)
+    checks.require(
+        registration["registration_hash"]
+        == registration_binding["canonical_hash"]
+        and registration_repo_root == repo_root,
+        "qualification registration review binding mismatch",
+    )
+
+    implementation_paths = _registered_implementation_paths(registration)
+    implementation = _mapping(
+        request.get("implementation_sha256"),
+        "qualification implementation_sha256",
+    )
+    checks.require(
+        set(implementation) == set(implementation_paths),
+        "qualification implementation review fields mismatch",
+    )
+    for relative_path in implementation_paths:
+        source_bytes = _qualification_git_blob(
+            repo_root,
+            source_commit,
+            relative_path,
+        )
+        review_bytes = _qualification_git_blob(
+            repo_root,
+            expected_review_commit,
+            relative_path,
+        )
+        checks.require(
+            source_bytes == review_bytes
+            and hashlib.sha256(source_bytes).hexdigest()
+            == implementation[relative_path],
+            "qualification implementation changed during request review: "
+            f"{relative_path}",
+        )
+    allowed_paths = _verify_qualification_review_allowed_paths(
+        request.get("review_allowed_paths"),
+        request_source_relative=request_source_relative,
+        protected_paths={registration_relative, *implementation_paths},
+        checks=checks,
+    )
+    diff_paths = sorted(
+        path
+        for path in _qualification_git_text(
+            repo_root,
+            "diff",
+            "--name-only",
+            "--no-renames",
+            source_commit,
+            expected_review_commit,
+        ).splitlines()
+        if path
+    )
+    checks.require(
+        diff_paths == allowed_paths,
+        "qualification review commit differs from the allowed path set",
+    )
+    review_binding = _expected_qualification_review_binding(
+        request=request,
+        review_commit=expected_review_commit,
+        request_source_path=request_source_path,
+        request_source_relative=request_source_relative,
+        request_bytes=request_bytes,
+    )
+    return {
+        "registration": registration,
+        "registration_bytes": registration_review_bytes,
+        "repo_root": repo_root,
+        "request": request,
+        "request_bytes": request_bytes,
+        "review_binding": review_binding,
+    }
+
+
+def _verify_qualification_review_allowed_paths(
+    value: Any,
+    *,
+    request_source_relative: str,
+    protected_paths: set[str],
+    checks: _Checks,
+) -> list[str]:
+    paths = _sequence(value, "qualification review allowed paths")
+    normalized = list(paths)
+    checks.require(
+        bool(normalized)
+        and all(isinstance(path, str) and path for path in normalized)
+        and normalized == sorted(set(normalized)),
+        "qualification review allowed paths are invalid",
+    )
+    for value_path in normalized:
+        candidate = Path(value_path)
+        checks.require(
+            not candidate.is_absolute()
+            and "\\" not in value_path
+            and candidate.as_posix() == value_path
+            and all(part not in {"", ".", ".."} for part in candidate.parts),
+            "qualification review allowed path is not canonical",
+        )
+        checks.require(
+            not _qualification_review_path_is_executable(value_path),
+            "qualification review allowlist contains an executable path",
+        )
+    checks.require(
+        request_source_relative in normalized
+        and not (set(normalized) & protected_paths),
+        "qualification review allowlist source/protected binding mismatch",
+    )
+    return normalized
+
+
+def _qualification_review_path_is_executable(relative_path: str) -> bool:
+    return Path(relative_path).suffix.casefold() not in QUALIFICATION_INERT_SUFFIXES
+
+
+def _expected_qualification_review_binding(
+    *,
+    request: Mapping[str, Any],
+    review_commit: str,
+    request_source_path: Path,
+    request_source_relative: str,
+    request_bytes: bytes,
+) -> dict[str, Any]:
+    file_sha256 = hashlib.sha256(request_bytes).hexdigest()
+    record = {
+        "active_request": {
+            "file_sha256": file_sha256,
+            "path": request["request_path"],
+            "request_hash": request["request_hash"],
+            "size": len(request_bytes),
+        },
+        "allowed_review_paths": list(request["review_allowed_paths"]),
+        "implementation_map_sha256": hashlib.sha256(
+            _canonical_json(request["implementation_sha256"]).encode("utf-8")
+        ).hexdigest(),
+        "registration": dict(request["registration"]),
+        "request_source": {
+            "file_sha256": file_sha256,
+            "path": str(request_source_path),
+            "relative_path": request_source_relative,
+            "request_hash": request["request_hash"],
+            "size": len(request_bytes),
+        },
+        "review_binding_hash": None,
+        "review_commit": review_commit,
+        "schema_version": QUALIFICATION_REVIEW_BINDING_SCHEMA_VERSION,
+        "source_commit": request["source_commit"],
+    }
+    record["review_binding_hash"] = _self_hash(
+        record,
+        "review_binding_hash",
+    )
+    return json.loads(_canonical_json(record))
+
+
+def _verify_qualification_request(
+    request: Mapping[str, Any],
+    *,
+    request_path: Path,
+    registration: Mapping[str, Any],
+    registration_bytes: bytes,
+    request_review: Mapping[str, Any],
+    checks: _Checks,
+) -> dict[str, Any]:
+    expected_fields = {
+        "child_command",
+        "completion_path",
+        "config",
+        "created_unix_ns",
+        "failure_path",
+        "forbidden_paths",
+        "handshake",
+        "implementation_sha256",
+        "marker",
+        "preexisting_files",
+        "qualification_id",
+        "qualification_root",
+        "registration",
+        "request_hash",
+        "request_path",
+        "request_source_path",
+        "review_allowed_paths",
+        "schema_version",
+        "source_commit",
+    }
+    checks.require(
+        set(request) == expected_fields,
+        "qualification request fields mismatch",
+    )
+    created = _exact_int(
+        request.get("created_unix_ns"),
+        "qualification request created_unix_ns",
+    )
+    checks.require(created > 0, "qualification request timestamp is invalid")
+    qualification_id = _required_string(
+        request.get("qualification_id"),
+        "qualification_id",
+    )
+    checks.require(
+        _STUDY_PATTERN.fullmatch(qualification_id) is not None,
+        "qualification_id is invalid",
+    )
+    qualification_root = _qualification_require_no_follow_path(
+        _qualification_lexical_absolute_path(
+            request.get("qualification_root"),
+            "qualification_root",
+        ),
+        "root",
+        expected_kind="directory",
+    )
+    expected_request_path = Path(
+        os.path.abspath(qualification_root / "qualification-request.json")
+    )
+    checks.require(
+        qualification_root.is_dir()
+        and request_path == expected_request_path
+        and request.get("request_path") == str(request_path),
+        "qualification request root/path mismatch",
+    )
+    request_source_path = _qualification_lexical_absolute_path(
+        request.get("request_source_path"),
+        "qualification request source path",
+    )
+    checks.require(
+        request_source_path != request_path,
+        "qualification request source matches its active path",
+    )
+
+    registration_binding = _mapping(
+        request.get("registration"),
+        "qualification registration",
+    )
+    checks.require(
+        set(registration_binding) == {"canonical_hash", "file_sha256", "path"},
+        "qualification registration fields mismatch",
+    )
+    registration_path = _qualification_require_no_follow_path(
+        _qualification_lexical_absolute_path(
+            registration_binding.get("path"),
+            "qualification registration path",
+        ),
+        "registration path",
+        expected_kind=None,
+        allow_missing=True,
+    )
+    checks.require(
+        registration_binding
+        == {
+            "canonical_hash": registration["registration_hash"],
+            "file_sha256": hashlib.sha256(registration_bytes).hexdigest(),
+            "path": str(registration_path),
+        },
+        "qualification registration binding mismatch",
+    )
+
+    source_commit = request.get("source_commit")
+    checks.require(
+        isinstance(source_commit, str)
+        and _COMMIT_PATTERN.fullmatch(source_commit) is not None,
+        "qualification source commit is invalid",
+    )
+    repo_root = _qualification_require_no_follow_path(
+        _qualification_lexical_absolute_path(
+            registration.get("repo_root"),
+            "qualification registration repository root",
+        ),
+        "registered repository root",
+        expected_kind="directory",
+    )
+    implementation = _mapping(
+        request.get("implementation_sha256"),
+        "qualification implementation_sha256",
+    )
+    checks.require(
+        set(implementation) == set(_registered_implementation_paths(registration))
+        and all(_is_sha256(value) for value in implementation.values()),
+        "qualification implementation binding mismatch",
+    )
+    checks.require(
+        request_review
+        == _expected_qualification_review_binding(
+            request=request,
+            review_commit=str(request_review["review_commit"]),
+            request_source_path=request_source_path,
+            request_source_relative=str(
+                request_review["request_source"]["relative_path"]
+            ),
+            request_bytes=(
+                _canonical_json(request) + "\n"
+            ).encode("utf-8"),
+        ),
+        "qualification request review binding mismatch",
+    )
+
+    command_record = _mapping(registration.get("command"), "registered command")
+    expected_command = [
+        command_record["python_executable"],
+        "-I",
+        "-S",
+        command_record["main_path"],
+        *_sequence(command_record["arguments"], "registered arguments"),
+    ]
+    checks.require(
+        request.get("child_command") == expected_command,
+        "qualification child command mismatch",
+    )
+    config_binding = _mapping(request.get("config"), "qualification config")
+    checks.require(
+        set(config_binding) == {"path", "sha256"},
+        "qualification config fields mismatch",
+    )
+    config_path = _qualification_require_no_follow_path(
+        _qualification_lexical_absolute_path(
+            config_binding.get("path"),
+            "qualification config path",
+        ),
+        "config",
+        expected_kind="file",
+    )
+    checks.require(
+        _qualification_path_is_regular_file(config_path)
+        and config_path.is_relative_to(qualification_root)
+        and config_binding.get("sha256") == _file_sha256(config_path),
+        "qualification config binding mismatch",
+    )
+    config = _load_mapping(config_path)
+    _verify_qualification_config(
+        config,
+        config_path=config_path,
+        qualification_id=qualification_id,
+        registration=registration,
+        source_commit=source_commit,
+        checks=checks,
+    )
+
+    marker_binding = _mapping(request.get("marker"), "qualification marker")
+    checks.require(
+        set(marker_binding) == {"path", "start_count"},
+        "qualification marker fields mismatch",
+    )
+    marker_path = _qualification_lexical_absolute_path(
+        marker_binding.get("path"),
+        "qualification marker path",
+    )
+    integrity_rules = _mapping(
+        registration.get("integrity_rules"),
+        "registration integrity rules",
+    )
+    checkpoint_inventory = _mapping(
+        integrity_rules.get("checkpoint_inventory"),
+        "registration checkpoint inventory",
+    )
+    checkpoint_root = _qualification_require_no_follow_path(
+        _qualification_lexical_absolute_path(
+            checkpoint_inventory.get("root"),
+            "registration checkpoint root",
+        ),
+        "registered checkpoint root",
+        expected_kind=None,
+        allow_missing=True,
+    )
+    expected_marker_path = Path(
+        os.path.abspath(checkpoint_root.parent / "runs" / "ai_games.txt")
+    )
+    checks.require(
+        marker_path == expected_marker_path,
+        "qualification marker path does not match the registered game root",
+    )
+    marker_count = _qualification_marker_count(marker_path)
+    checks.require(
+        marker_binding.get("start_count") == marker_count,
+        "qualification marker binding mismatch",
+    )
+
+    handshake = _mapping(request.get("handshake"), "qualification handshake")
+    expected_handshake = _expected_qualification_handshake(
+        qualification_root=qualification_root,
+        qualification_id=qualification_id,
+        registration=registration,
+    )
+    checks.require(
+        dict(handshake) == expected_handshake,
+        "qualification handshake binding mismatch",
+    )
+    completion_path = Path(
+        os.path.abspath(qualification_root / "qualification-completion.json")
+    )
+    failure_path = Path(
+        os.path.abspath(qualification_root / "qualification-failure.json")
+    )
+    checks.require(
+        request.get("completion_path") == str(completion_path)
+        and request.get("failure_path") == str(failure_path),
+        "qualification terminal path mismatch",
+    )
+    artifact_root = _qualification_lexical_absolute_path(
+        registration.get("artifact_root"),
+        "qualification artifact root",
+    )
+    expected_forbidden = sorted(
+        {
+            str(artifact_root),
+            str(Path(os.path.abspath(artifact_root / "run-lock.json"))),
+            str(Path(os.path.abspath(artifact_root / "study-ledger.jsonl"))),
+            str(
+                _qualification_lexical_absolute_path(
+                    config["manifest_path"],
+                    "qualification manifest path",
+                )
+            ),
+            str(
+                _qualification_lexical_absolute_path(
+                    config["trace_path"],
+                    "qualification trace path",
+                )
+            ),
+        }
+    )
+    checks.require(
+        request.get("forbidden_paths") == expected_forbidden,
+        "qualification forbidden-path binding mismatch",
+    )
+    for forbidden_path in expected_forbidden:
+        _qualification_require_no_follow_path(
+            forbidden_path,
+            "forbidden path",
+            expected_kind=None,
+            allow_missing=True,
+        )
+    checks.require(
+        not any(
+            _qualification_path_entry_exists(Path(path))
+            for path in expected_forbidden
+        ),
+        "qualification forbidden path exists",
+    )
+    excluded_paths = {
+        request_path,
+        completion_path,
+        failure_path,
+        *(Path(handshake[f"{name}_path"]) for name in ("attempt", "ready", "release")),
+        *(Path(path) for path in expected_forbidden),
+    }
+    expected_inventory = _qualification_file_inventory(
+        qualification_root,
+        excluded_paths=excluded_paths,
+    )
+    checks.require(
+        request.get("preexisting_files") == expected_inventory,
+        "qualification preexisting file inventory mismatch",
+    )
+    return {
+        "config": config,
+        "handshake": expected_handshake,
+        "marker_count": marker_count,
+        "registration": registration,
+        "request_review": request_review,
+    }
+
+
+def _verify_partial_qualification_prefix(
+    request: Mapping[str, Any],
+    *,
+    context: Mapping[str, Any],
+    checks: _Checks,
+) -> str:
+    completion_path = Path(str(request["completion_path"]))
+    failure_path = Path(str(request["failure_path"]))
+    checks.require(
+        not _qualification_path_entry_exists(completion_path)
+        and not _qualification_path_entry_exists(failure_path),
+        "partial qualification has a terminal result",
+    )
+
+    request_handshake = _mapping(
+        request.get("handshake"),
+        "qualification handshake",
+    )
+    paths = {
+        name: Path(str(request_handshake[f"{name}_path"]))
+        for name in ("attempt", "ready", "release")
+    }
+    records = {}
+    for name, path in paths.items():
+        if _qualification_path_entry_exists(path):
+            checks.require(
+                _qualification_path_is_regular_file(path),
+                f"qualification {name} artifact is not a regular file",
+            )
+            records[name] = _load_canonical_handshake_record(
+                path,
+                f"qualification {name}",
+            )
+    checks.require(
+        "ready" not in records or "attempt" in records,
+        "qualification ready exists without attempt",
+    )
+    checks.require(
+        "release" not in records or "ready" in records,
+        "qualification release exists without ready",
+    )
+
+    attempt = None
+    ready = None
+    if "attempt" in records:
+        synthetic_registration = dict(context["registration"])
+        synthetic_registration["study_id"] = request["qualification_id"]
+        attempt = _verify_handshake_attempt(
+            records["attempt"],
+            registration=synthetic_registration,
+            run_lock={"run_lock_hash": "0" * 64},
+            slot={
+                "config_path": request["config"]["path"],
+                "session_id": request_handshake["session_id"],
+                "slot_number": 1,
+            },
+            paths=paths,
+            rules={
+                "readiness_timeout_seconds": 120,
+                "release_timeout_seconds": 10,
+            },
+            expected_marker_start=request["marker"]["start_count"],
+            checks=checks,
+        )
+    if "ready" in records:
+        ready = _verify_handshake_ready(
+            records["ready"],
+            attempt=attempt,
+            checks=checks,
+        )
+    if "release" in records:
+        _verify_handshake_release(
+            records["release"],
+            attempt=attempt,
+            ready=ready,
+            checks=checks,
+        )
+    _verify_partial_qualification_timestamps(
+        request=request,
+        handshake_records=records,
+        checks=checks,
+    )
+    if "release" in records:
+        return "release_without_result"
+    if "ready" in records:
+        return "ready_without_release"
+    if "attempt" in records:
+        return "attempt_only"
+    return "request_only"
+
+
+def _verify_partial_qualification_timestamps(
+    *,
+    request: Mapping[str, Any],
+    handshake_records: Mapping[str, Mapping[str, Any]],
+    checks: _Checks,
+) -> None:
+    previous = _exact_int(
+        request.get("created_unix_ns"),
+        "qualification request created_unix_ns",
+    )
+    ordered = True
+    for name in ("attempt", "ready", "release"):
+        record = handshake_records.get(name)
+        if record is None:
+            continue
+        created = _exact_int(
+            record.get("created_unix_ns"),
+            f"qualification {name} created_unix_ns",
+        )
+        ordered = ordered and previous <= created
+        previous = created
+    checks.require(
+        ordered,
+        "partial qualification lifecycle timestamp order is invalid",
+    )
+
+
+def _verify_qualification_result(
+    result: Mapping[str, Any],
+    *,
+    result_path: Path,
+    request: Mapping[str, Any],
+    context: Mapping[str, Any],
+    checks: _Checks,
+) -> None:
+    expected_fields = {
+        "authority",
+        "child_command",
+        "config",
+        "created_unix_ns",
+        "ended_unix_ns",
+        "failure",
+        "forbidden_paths",
+        "handshake",
+        "implementation_sha256",
+        "marker",
+        "process",
+        "registration",
+        "request",
+        "review_binding",
+        "result_hash",
+        "schema_version",
+        "source_commit",
+        "status",
+    }
+    checks.require(
+        set(result) == expected_fields,
+        "qualification result fields mismatch",
+    )
+    status = result.get("status")
+    checks.require(status in {"passed", "failed"}, "qualification status invalid")
+    expected_result_path = Path(
+        request["completion_path"] if status == "passed" else request["failure_path"]
+    )
+    opposite_result_path = Path(
+        request["failure_path"] if status == "passed" else request["completion_path"]
+    )
+    checks.require(
+        result_path == expected_result_path,
+        "qualification result path contradicts status",
+    )
+    checks.require(
+        not _qualification_path_entry_exists(opposite_result_path),
+        "qualification terminal branches are not exclusive",
+    )
+    created = _exact_int(result.get("created_unix_ns"), "qualification result start")
+    ended = _exact_int(result.get("ended_unix_ns"), "qualification result end")
+    checks.require(
+        created > 0 and ended >= created,
+        "qualification result timestamps are invalid",
+    )
+    checks.require(
+        result.get("request")
+        == {"hash": request["request_hash"], "path": request["request_path"]},
+        "qualification result request binding mismatch",
+    )
+    for field in (
+        "child_command",
+        "config",
+        "implementation_sha256",
+        "registration",
+        "source_commit",
+    ):
+        checks.require(
+            result.get(field) == request[field],
+            f"qualification result {field} binding mismatch",
+        )
+    checks.require(
+        result.get("review_binding") == context["request_review"],
+        "qualification result review binding mismatch",
+    )
+    authority = _mapping(result.get("authority"), "qualification authority")
+    checks.require(
+        set(authority)
+        == {
+            "causal_claim",
+            "collection",
+            "gameplay_policy_change",
+            "run_lock",
+            "study_start",
+            "training",
+        }
+        and all(
+            type(value) is bool and value is False
+            for value in authority.values()
+        ),
+        "qualification authority must remain false",
+    )
+    forbidden = _mapping(
+        result.get("forbidden_paths"),
+        "qualification forbidden-path evidence",
+    )
+    expected_forbidden = {
+        path: _qualification_path_entry_exists(Path(path))
+        for path in request["forbidden_paths"]
+    }
+    checks.require(
+        set(forbidden) == set(expected_forbidden)
+        and all(
+            type(forbidden[path]) is bool
+            and forbidden[path] is expected_forbidden[path]
+            for path in expected_forbidden
+        ),
+        "qualification forbidden-path result mismatch",
+    )
+    marker = _mapping(result.get("marker"), "qualification marker result")
+    checks.require(
+        marker
+        == {
+            "end_count": context["marker_count"],
+            "path": request["marker"]["path"],
+            "start_count": request["marker"]["start_count"],
+        },
+        "qualification marker result mismatch",
+    )
+    process = _mapping(result.get("process"), "qualification process result")
+    checks.require(
+        set(process)
+        == {
+            "cleanup_attempted",
+            "cleanup_error",
+            "exit_code",
+            "launch_count",
+            "pid",
+        },
+        "qualification process fields mismatch",
+    )
+    process_pid = process.get("pid")
+    checks.require(
+        process_pid is None or (type(process_pid) is int and process_pid > 0),
+        "qualification process PID is invalid",
+    )
+    checks.require(
+        type(process.get("launch_count")) is int
+        and process["launch_count"] in {0, 1},
+        "qualification launch count is invalid",
+    )
+    exit_code = process.get("exit_code")
+    checks.require(
+        exit_code is None or type(exit_code) is int,
+        "qualification process exit code is invalid",
+    )
+    cleanup_attempted = process.get("cleanup_attempted")
+    cleanup_error = process.get("cleanup_error")
+    checks.require(
+        type(cleanup_attempted) is bool,
+        "qualification cleanup flag is invalid",
+    )
+    checks.require(
+        cleanup_error is None
+        or (isinstance(cleanup_error, str) and bool(cleanup_error)),
+        "qualification cleanup error is invalid",
+    )
+    checks.require(
+        cleanup_error is None or cleanup_attempted is True,
+        "qualification cleanup error lacks an attempted cleanup",
+    )
+    handshake_records = _verify_qualification_handshake_result(
+        result,
+        request=request,
+        registration=context["registration"],
+        checks=checks,
+    )
+    _verify_qualification_lifecycle_timestamps(
+        request=request,
+        result=result,
+        handshake_records=handshake_records,
+        checks=checks,
+    )
+    handshake_complete = all(
+        _mapping(result["handshake"][name], f"qualification {name} result").get(
+            "sha256"
+        )
+        is not None
+        for name in ("attempt", "ready", "release")
+    )
+    attempt_hash = result["handshake"]["attempt"]["sha256"]
+    ready_hash = result["handshake"]["ready"]["sha256"]
+    release_hash = result["handshake"]["release"]["sha256"]
+    checks.require(
+        process["launch_count"] != 1 or attempt_hash is not None,
+        "qualification launched child lacks attempt evidence",
+    )
+    checks.require(
+        process["launch_count"] != 0
+        or not any(
+            (
+                process_pid is not None,
+                exit_code is not None,
+                cleanup_attempted,
+                cleanup_error is not None,
+                ready_hash is not None,
+                release_hash is not None,
+            )
+        ),
+        "qualification process evidence contradicts launch count",
+    )
+    checks.require(
+        ready_hash is None
+        or (
+            process["launch_count"] == 1
+            and process_pid is not None
+            and attempt_hash is not None
+        ),
+        "qualification ready evidence requires one launched child",
+    )
+    checks.require(
+        release_hash is None or ready_hash is not None,
+        "qualification release evidence lacks ready evidence",
+    )
+    success_evidence_complete = (
+        process["launch_count"] == 1
+        and process_pid is not None
+        and process.get("exit_code") == 0
+        and process.get("cleanup_attempted") is False
+        and process.get("cleanup_error") is None
+        and context["marker_count"] == request["marker"]["start_count"]
+        and not any(forbidden.values())
+        and handshake_complete
+    )
+    if status == "passed":
+        checks.require(
+            result.get("failure") is None and success_evidence_complete,
+            "qualification passed result contradicts evidence",
+        )
+    else:
+        failure = _mapping(result.get("failure"), "qualification failure")
+        checks.require(
+            set(failure) == {"exception_type", "message", "stage"}
+            and all(isinstance(value, str) and value for value in failure.values()),
+            "qualification failure evidence is invalid",
+        )
+        checks.require(
+            not success_evidence_complete,
+            "qualification failed result does not contradict success evidence",
+        )
+
+
+def _verify_qualification_handshake_result(
+    result: Mapping[str, Any],
+    *,
+    request: Mapping[str, Any],
+    registration: Mapping[str, Any],
+    checks: _Checks,
+) -> dict[str, dict[str, Any]]:
+    handshake_result = _mapping(
+        result.get("handshake"),
+        "qualification handshake result",
+    )
+    checks.require(
+        set(handshake_result) == {"attempt", "ready", "release"},
+        "qualification handshake result fields mismatch",
+    )
+    request_handshake = request["handshake"]
+    records = {}
+    for name in ("attempt", "ready", "release"):
+        binding = _mapping(
+            handshake_result.get(name),
+            f"qualification {name} result",
+        )
+        path = Path(request_handshake[f"{name}_path"])
+        path_is_regular = _qualification_path_is_regular_file(path)
+        expected_sha = _file_sha256(path) if path_is_regular else None
+        checks.require(
+            binding == {"path": str(path), "sha256": expected_sha},
+            f"qualification {name} result hash mismatch",
+        )
+        if path_is_regular:
+            records[name] = _load_canonical_handshake_record(
+                path,
+                f"qualification {name}",
+            )
+    if "attempt" not in records:
+        checks.require(
+            result["status"] == "failed" and not records,
+            "qualification ready/release exists without attempt",
+        )
+        return records
+    synthetic_registration = dict(registration)
+    synthetic_registration["study_id"] = request["qualification_id"]
+    paths = {
+        name: Path(request_handshake[f"{name}_path"])
+        for name in ("attempt", "ready", "release")
+    }
+    slot = {
+        "config_path": request["config"]["path"],
+        "session_id": request_handshake["session_id"],
+        "slot_number": 1,
+    }
+    attempt = _verify_handshake_attempt(
+        records["attempt"],
+        registration=synthetic_registration,
+        run_lock={"run_lock_hash": "0" * 64},
+        slot=slot,
+        paths=paths,
+        rules={
+            "readiness_timeout_seconds": 120,
+            "release_timeout_seconds": 10,
+        },
+        expected_marker_start=request["marker"]["start_count"],
+        checks=checks,
+    )
+    if "ready" not in records:
+        checks.require(
+            result["status"] == "failed" and "release" not in records,
+            "qualification release exists without ready",
+        )
+        return records
+    ready = _verify_handshake_ready(records["ready"], attempt=attempt, checks=checks)
+    checks.require(
+        result["process"]["pid"] == ready["child_pid"],
+        "qualification child PID differs from ready",
+    )
+    if "release" not in records:
+        checks.require(
+            result["status"] == "failed",
+            "passed qualification release is missing",
+        )
+        return records
+    _verify_handshake_release(
+        records["release"],
+        attempt=attempt,
+        ready=ready,
+        checks=checks,
+    )
+    return records
+
+
+def _verify_qualification_lifecycle_timestamps(
+    *,
+    request: Mapping[str, Any],
+    result: Mapping[str, Any],
+    handshake_records: Mapping[str, Mapping[str, Any]],
+    checks: _Checks,
+) -> None:
+    request_created = _exact_int(
+        request.get("created_unix_ns"),
+        "qualification request created_unix_ns",
+    )
+    result_started = _exact_int(
+        result.get("created_unix_ns"),
+        "qualification result start",
+    )
+    result_ended = _exact_int(
+        result.get("ended_unix_ns"),
+        "qualification result end",
+    )
+    ordered = request_created <= result_started
+    previous = result_started
+    attempt = handshake_records.get("attempt")
+    if attempt is not None:
+        attempt_created = _exact_int(
+            attempt.get("created_unix_ns"),
+            "qualification attempt created_unix_ns",
+        )
+        ordered = ordered and result_started == attempt_created
+        previous = attempt_created
+    for name in ("ready", "release"):
+        record = handshake_records.get(name)
+        if record is None:
+            continue
+        created = _exact_int(
+            record.get("created_unix_ns"),
+            f"qualification {name} created_unix_ns",
+        )
+        ordered = ordered and previous <= created
+        previous = created
+    ordered = ordered and previous <= result_ended
+    checks.require(ordered, "qualification lifecycle timestamp order is invalid")
+
+
+def _verify_qualification_config(
+    config: Mapping[str, Any],
+    *,
+    config_path: Path,
+    qualification_id: str,
+    registration: Mapping[str, Any],
+    source_commit: str,
+    checks: _Checks,
+) -> None:
+    expected_fields = {
+        "category_rates_bps",
+        "enabled_categories",
+        "manifest_path",
+        "per_run_alternative_budget",
+        "schema_version",
+        "seed",
+        "session_id",
+        "source_commit",
+        "study_id",
+        "study_registration_hash",
+        "study_run_lock_hash",
+        "study_slot_number",
+        "trace_path",
+    }
+    checks.require(
+        set(config) == expected_fields
+        and config.get("schema_version") == "noncombat-exploration-config-v1"
+        and config.get("enabled_categories") == ["card_reward", "shop"]
+        and config.get("category_rates_bps")
+        == {"card_reward": 300, "shop": 1000}
+        and config.get("per_run_alternative_budget") == 2
+        and config.get("session_id") == f"{qualification_id}-s01"
+        and config.get("source_commit") == source_commit
+        and config.get("study_id") == qualification_id
+        and config.get("study_slot_number") == 1
+        and config.get("study_registration_hash")
+        == registration["registration_hash"]
+        and config.get("study_run_lock_hash") == "0" * 64,
+        "qualification exploration config mismatch",
+    )
+    seed = _exact_int(config.get("seed"), "qualification seed")
+    checks.require(
+        0 <= seed <= 2**63 - 1,
+        "qualification seed is outside the supported range",
+    )
+    trace_path = _qualification_lexical_absolute_path(
+        config.get("trace_path"),
+        "qualification trace",
+    )
+    manifest_path = _qualification_lexical_absolute_path(
+        config.get("manifest_path"),
+        "qualification manifest",
+    )
+    checks.require(
+        config_path not in {trace_path, manifest_path}
+        and trace_path != manifest_path,
+        "qualification config/output paths overlap",
+    )
+
+
+def _expected_qualification_handshake(
+    *,
+    qualification_root: Path,
+    qualification_id: str,
+    registration: Mapping[str, Any],
+) -> dict[str, Any]:
+    rules = registration["integrity_rules"]["communication_handshake"]
+    return {
+        "attempt_path": str(
+            Path(
+                os.path.abspath(
+                    qualification_root
+                    / "qualification-communication-attempt.json"
+                )
+            )
+        ),
+        "protocol_version": HANDSHAKE_SCHEMA_VERSION,
+        "readiness_timeout_seconds": rules["readiness_timeout_seconds"],
+        "ready_path": str(
+            Path(
+                os.path.abspath(
+                    qualification_root
+                    / "qualification-communication-ready.json"
+                )
+            )
+        ),
+        "release_path": str(
+            Path(
+                os.path.abspath(
+                    qualification_root
+                    / "qualification-communication-release.json"
+                )
+            )
+        ),
+        "release_timeout_seconds": rules["release_timeout_seconds"],
+        "run_lock_hash": "0" * 64,
+        "session_id": f"{qualification_id}-s01",
+        "slot_number": 1,
+    }
+
+
+def _qualification_file_inventory(
+    root: Path,
+    *,
+    excluded_paths: set[Path],
+) -> dict[str, str]:
+    excluded = {
+        Path(os.path.abspath(path)) for path in excluded_paths
+    }
+    inventory = {}
+    for path, metadata, is_link_or_reparse in _qualification_no_follow_entries(
+        root
+    ):
+        lexical_path = Path(os.path.abspath(path))
+        if is_link_or_reparse:
+            raise OutcomeEvidenceVerificationError(
+                "qualification root contains a symbolic link or reparse "
+                f"point: {path}"
+            )
+        if lexical_path in excluded or not stat.S_ISREG(metadata.st_mode):
+            continue
+        inventory[str(lexical_path)] = _file_sha256(path)
+    return inventory
+
+
+def _qualification_marker_count(path: Path) -> int:
+    guarded_path = _qualification_require_no_follow_path(
+        path,
+        "marker file",
+        expected_kind="file",
+        allow_missing=True,
+    )
+    if not _qualification_path_entry_exists(guarded_path):
+        return 0
+    if not _qualification_path_is_regular_file(guarded_path):
+        raise OutcomeEvidenceVerificationError(
+            "qualification marker path is not a regular file"
+        )
+    try:
+        markers = [
+            line.strip()
+            for line in guarded_path.read_text(encoding="utf-8").splitlines()
+            if line.strip()
+        ]
+    except (OSError, UnicodeError) as exc:
+        raise OutcomeEvidenceVerificationError(
+            f"cannot read qualification marker file: {exc}"
+        ) from exc
+    if any(not marker.isdigit() for marker in markers):
+        raise OutcomeEvidenceVerificationError(
+            "qualification marker file is invalid"
+        )
+    return len(markers)
 
 
 def verify_outcome_evidence_expansion(
@@ -712,7 +3207,7 @@ def _verify_handshake_attempt(
     }
     expected["attempt_hash"] = _self_hash(expected, "attempt_hash")
     checks.require(
-        record == expected,
+        _canonical_json(record) == _canonical_json(expected),
         f"slot {slot_number} handshake attempt mismatch",
     )
     return expected
@@ -758,7 +3253,7 @@ def _verify_handshake_ready(
     }
     expected["ready_hash"] = _self_hash(expected, "ready_hash")
     checks.require(
-        record == expected,
+        _canonical_json(record) == _canonical_json(expected),
         f"slot {slot_number} handshake ready mismatch",
     )
     return expected
@@ -798,7 +3293,7 @@ def _verify_handshake_release(
     }
     expected["release_hash"] = _self_hash(expected, "release_hash")
     checks.require(
-        record == expected,
+        _canonical_json(record) == _canonical_json(expected),
         f"slot {slot_number} handshake release mismatch",
     )
 
@@ -1179,7 +3674,12 @@ def _verify_live_git_anchor(
 
 def _git_text(repo_root: Path, *arguments: str) -> str:
     completed = subprocess.run(
-        ["git", "-C", str(repo_root), *arguments],
+        [
+            _qualification_git_executable(),
+            "-C",
+            str(repo_root),
+            *arguments,
+        ],
         capture_output=True,
         check=False,
         text=True,
@@ -1192,9 +3692,38 @@ def _git_text(repo_root: Path, *arguments: str) -> str:
     return completed.stdout.strip()
 
 
+def _qualification_git_text(repo_root: Path, *arguments: str) -> str:
+    git_root = _qualification_validate_git_metadata(repo_root)
+    completed = subprocess.run(
+        _qualification_git_command("-C", str(repo_root), *arguments),
+        capture_output=True,
+        check=False,
+        env=_qualification_git_environment(
+            repo_root=Path(repo_root),
+            git_root=git_root,
+        ),
+        text=True,
+    )
+    stderr = (completed.stderr or "").strip()
+    if completed.returncode != 0 or stderr:
+        detail = stderr or (completed.stdout or "").strip()
+        if not detail:
+            detail = f"exit code {completed.returncode}"
+        raise OutcomeEvidenceVerificationError(
+            f"qualification Git {' '.join(arguments)} failed: {detail}"
+        )
+    return completed.stdout.strip()
+
+
 def _git_blob(repo_root: Path, commit: str, relative_path: str) -> bytes:
     completed = subprocess.run(
-        ["git", "-C", str(repo_root), "show", f"{commit}:{relative_path}"],
+        [
+            _qualification_git_executable(),
+            "-C",
+            str(repo_root),
+            "show",
+            f"{commit}:{relative_path}",
+        ],
         capture_output=True,
         check=False,
     )
@@ -1202,6 +3731,36 @@ def _git_blob(repo_root: Path, commit: str, relative_path: str) -> bytes:
         detail = completed.stderr.decode("utf-8", errors="replace").strip()
         raise OutcomeEvidenceVerificationError(
             f"cannot read committed Git blob {relative_path}: {detail}"
+        )
+    return completed.stdout
+
+
+def _qualification_git_blob(
+    repo_root: Path,
+    commit: str,
+    relative_path: str,
+) -> bytes:
+    git_root = _qualification_validate_git_metadata(repo_root)
+    completed = subprocess.run(
+        _qualification_git_command(
+            "-C",
+            str(repo_root),
+            "show",
+            f"{commit}:{relative_path}",
+        ),
+        capture_output=True,
+        check=False,
+        env=_qualification_git_environment(
+            repo_root=Path(repo_root),
+            git_root=git_root,
+        ),
+    )
+    stderr = completed.stderr.decode("utf-8", errors="replace").strip()
+    if completed.returncode != 0 or stderr:
+        detail = stderr or f"exit code {completed.returncode}"
+        raise OutcomeEvidenceVerificationError(
+            f"cannot read committed qualification Git blob "
+            f"{relative_path}: {detail}"
         )
     return completed.stdout
 
@@ -3758,15 +6317,94 @@ def _sample_sort_key(sample: Mapping[str, Any]) -> tuple[int, int, str]:
 
 def main(argv: Sequence[str] | None = None) -> int:
     parser = argparse.ArgumentParser(
-        description="Independently verify a non-combat outcome-evidence study."
+        description="Independently verify a non-combat outcome-evidence study.",
+        allow_abbrev=False,
     )
-    parser.add_argument("--registration", type=Path, required=True)
+    source = parser.add_mutually_exclusive_group(required=True)
+    source.add_argument("--registration", type=Path)
+    source.add_argument(
+        "--qualification-request-source",
+        "--qualification-request",
+        dest="qualification_request_source",
+        type=Path,
+    )
+    parser.add_argument("--qualification-result", type=Path)
+    parser.add_argument("--qualification-request-hash")
+    parser.add_argument("--qualification-request-file-sha256")
+    parser.add_argument("--qualification-request-size", type=int)
+    parser.add_argument("--qualification-review-commit")
+    parser.add_argument("--qualification-result-hash")
+    parser.add_argument("--qualification-result-file-sha256")
+    parser.add_argument("--qualification-result-size", type=int)
     parser.add_argument("--output", type=Path)
     args = parser.parse_args(argv)
+    qualification_anchor_names = (
+        "qualification_request_hash",
+        "qualification_request_file_sha256",
+        "qualification_request_size",
+        "qualification_review_commit",
+    )
+    supplied_anchors = [
+        getattr(args, name) is not None for name in qualification_anchor_names
+    ]
+    qualification_result_anchor_names = (
+        "qualification_result_hash",
+        "qualification_result_file_sha256",
+        "qualification_result_size",
+    )
+    supplied_result_anchors = [
+        getattr(args, name) is not None
+        for name in qualification_result_anchor_names
+    ]
+    if args.registration is not None and (
+        args.qualification_result is not None
+        or any(supplied_anchors)
+        or any(supplied_result_anchors)
+    ):
+        parser.error("qualification replay options require a request source")
+    if args.qualification_request_source is not None and not all(
+        supplied_anchors
+    ):
+        parser.error(
+            "qualification replay requires request hash, file hash, byte count, "
+            "and review commit"
+        )
+    if args.qualification_result is not None and not all(
+        supplied_result_anchors
+    ):
+        parser.error(
+            "qualification terminal replay requires result hash, file hash, "
+            "and byte count"
+        )
+    if args.qualification_result is None and any(supplied_result_anchors):
+        parser.error("qualification result anchors require terminal evidence")
     try:
-        audit = verify_outcome_evidence_expansion(args.registration)
+        if args.registration is not None:
+            audit = verify_outcome_evidence_expansion(args.registration)
+        else:
+            audit_output_kwargs = (
+                {"audit_output_path": args.output}
+                if args.output is not None
+                else {}
+            )
+            audit = verify_prelock_qualification(
+                args.qualification_request_source,
+                args.qualification_result,
+                expected_review_commit=args.qualification_review_commit,
+                expected_request_hash=args.qualification_request_hash,
+                expected_request_file_sha256=(
+                    args.qualification_request_file_sha256
+                ),
+                expected_request_size=args.qualification_request_size,
+                expected_result_hash=args.qualification_result_hash,
+                expected_result_file_sha256=(
+                    args.qualification_result_file_sha256
+                ),
+                expected_result_size=args.qualification_result_size,
+                **audit_output_kwargs,
+            )
         rendered = render_verification_audit(audit)
-        if args.output is not None:
+        if args.output is not None and args.registration is not None:
             args.output.parent.mkdir(parents=True, exist_ok=True)
             args.output.write_text(rendered, encoding="utf-8", newline="")
         print(rendered, end="")

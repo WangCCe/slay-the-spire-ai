@@ -53,6 +53,14 @@ V2_REGISTRATION_FILE_SHA256 = (
     "a0e282699ede7d1ea38b2d81f029ce5e823b924d81c5ca7cdbc9a45ddc2eb6c2"
 )
 V2_REGISTRATION_BYTE_COUNT = 19_796
+V2_R3_HISTORICAL_IMPLEMENTATION_COMMIT = (
+    "79cf98f892ec19294cc85cf592ae70b4be425fba"
+)
+QUALIFIER_IMPLEMENTATION_DRIFT_PATHS = {
+    "analysis_scripts/verify_noncombat_outcome_evidence_expansion.py",
+    "main.py",
+    "scripts/run_noncombat_outcome_evidence_expansion.py",
+}
 
 
 def _module():
@@ -318,7 +326,7 @@ def test_committed_v2_registration_is_canonical_and_isolated_from_v1():
     assert not [value for value in forbidden_v1_bindings if value in actual_text]
 
 
-def test_v2_registration_review_uses_complete_commit_and_sha_digests():
+def test_v2_r3_registration_review_preserves_historical_sha_digests():
     module = _module()
     review = V2_REGISTRATION_REVIEW_PATH.read_text(encoding="utf-8")
     long_hex_values = re.findall(r"`([0-9a-f]{32,})`", review)
@@ -326,14 +334,23 @@ def test_v2_registration_review_uses_complete_commit_and_sha_digests():
     implementation_paths = registration.to_record()["integrity_rules"][
         "implementation_paths"
     ]
-    expected_implementation_rows = [
-        (
-            relative_path,
-            hashlib.sha256((REPO_ROOT / relative_path).read_bytes()).hexdigest(),
-            str((REPO_ROOT / relative_path).stat().st_size),
+    expected_implementation_rows = []
+    for relative_path in implementation_paths:
+        historical_bytes = subprocess.check_output(
+            [
+                "git",
+                "show",
+                f"{V2_R3_HISTORICAL_IMPLEMENTATION_COMMIT}:{relative_path}",
+            ],
+            cwd=REPO_ROOT,
         )
-        for relative_path in implementation_paths
-    ]
+        expected_implementation_rows.append(
+            (
+                relative_path,
+                hashlib.sha256(historical_bytes).hexdigest(),
+                str(len(historical_bytes)),
+            )
+        )
     observed_implementation_rows = re.findall(
         r"^\| `([^`]+)` \| `([0-9a-f]+)` \| `(\d+)` \|$",
         review,
@@ -343,6 +360,18 @@ def test_v2_registration_review_uses_complete_commit_and_sha_digests():
     assert long_hex_values
     assert [value for value in long_hex_values if len(value) not in {40, 64}] == []
     assert observed_implementation_rows == expected_implementation_rows
+    current_drift_paths = {
+        relative_path
+        for relative_path, historical_sha256, historical_size in (
+            observed_implementation_rows
+        )
+        if (
+            hashlib.sha256((REPO_ROOT / relative_path).read_bytes()).hexdigest()
+            != historical_sha256
+            or str((REPO_ROOT / relative_path).stat().st_size) != historical_size
+        )
+    }
+    assert current_drift_paths == QUALIFIER_IMPLEMENTATION_DRIFT_PATHS
 
 
 def test_legacy_registration_is_read_only_and_byte_distinct_from_v2(tmp_path):

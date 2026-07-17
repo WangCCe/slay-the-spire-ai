@@ -2,6 +2,7 @@ import ast
 import hashlib
 import importlib
 import json
+import os
 import shutil
 import subprocess
 import sys
@@ -28,6 +29,8 @@ from spirecomm.communication.study_handshake import (
 REPO_ROOT = Path(__file__).resolve().parents[1]
 STUDY_ID = "noncombat-outcome-evidence-expansion-20260715"
 SEED_BASE = 2_026_071_500
+QUALIFICATION_SOURCE_COMMIT = "c" * 40
+QUALIFICATION_REVIEW_COMMIT = "d" * 40
 
 
 def _verifier():
@@ -37,6 +40,75 @@ def _verifier():
         )
     except ModuleNotFoundError as exc:
         pytest.fail(f"outcome evidence verifier is missing: {exc}")
+
+
+def _create_directory_junction(link_path, target_path):
+    completed = subprocess.run(
+        ["cmd.exe", "/c", "mklink", "/J", str(link_path), str(target_path)],
+        capture_output=True,
+        check=False,
+        text=True,
+    )
+    assert completed.returncode == 0, completed.stderr or completed.stdout
+
+
+def _qualification_review_kwargs(request):
+    source_bytes = Path(request["request_source_path"]).read_bytes()
+    return {
+        "expected_request_file_sha256": hashlib.sha256(
+            source_bytes
+        ).hexdigest(),
+        "expected_request_size": len(source_bytes),
+        "expected_review_commit": QUALIFICATION_REVIEW_COMMIT,
+    }
+
+
+def _qualification_result_kwargs(result_path):
+    try:
+        result_bytes = Path(result_path).read_bytes()
+    except OSError:
+        return {
+            "expected_result_file_sha256": "0" * 64,
+            "expected_result_hash": "0" * 64,
+            "expected_result_size": 1,
+        }
+    try:
+        result = json.loads(result_bytes.decode("utf-8"))
+        result_hash = result.get("result_hash")
+    except (UnicodeError, json.JSONDecodeError, AttributeError):
+        result_hash = None
+    if not isinstance(result_hash, str) or len(result_hash) != 64:
+        result_hash = "0" * 64
+    return {
+        "expected_result_file_sha256": hashlib.sha256(
+            result_bytes
+        ).hexdigest(),
+        "expected_result_hash": result_hash,
+        "expected_result_size": len(result_bytes),
+    }
+
+
+def _verify_qualification(
+    verifier,
+    request,
+    result_path=None,
+    **result_anchor_overrides,
+):
+    source_path = Path(request["request_source_path"])
+    reviewed_request = json.loads(source_path.read_text(encoding="utf-8"))
+    result_kwargs = (
+        _qualification_result_kwargs(result_path)
+        if result_path is not None
+        else {}
+    )
+    result_kwargs.update(result_anchor_overrides)
+    return verifier.verify_prelock_qualification(
+        source_path,
+        result_path,
+        expected_request_hash=reviewed_request["request_hash"],
+        **result_kwargs,
+        **_qualification_review_kwargs(request),
+    )
 
 
 def _canonical_json(value):
@@ -425,6 +497,1950 @@ def _publish_preclaim_handshake(registration, run_lock, slot, launch, marker_sta
     )
     publish_record_once(paths.ready, ready)
     return paths, attempt, ready
+
+
+def _build_qualification_evidence(tmp_path, monkeypatch, *, status="passed"):
+    registration = expansion.build_registration(
+        study_id=STUDY_ID,
+        artifact_root=tmp_path / "study",
+        repo_root=REPO_ROOT,
+        seed_base=SEED_BASE,
+        python_executable=Path(r"D:\anaconda\envs\stsai\python.exe"),
+        communication_config_path=tmp_path / "config.properties",
+        checkpoint_root=tmp_path / "checkpoints",
+    )
+    registration_path = tmp_path / "registration.json"
+    registration_path.write_text(
+        expansion.render_registration_json(registration),
+        encoding="utf-8",
+        newline="",
+    )
+    qualification_root = tmp_path / "qualification-r4"
+    qualification_root.mkdir()
+    qualification_id = f"{STUDY_ID}-qualification-r4"
+    config_path = qualification_root / "qualification-config.json"
+    config_path.write_text(
+        _canonical_json(
+            {
+                "category_rates_bps": {"card_reward": 300, "shop": 1000},
+                "enabled_categories": ["card_reward", "shop"],
+                "manifest_path": str(
+                    (qualification_root / "qualification-manifest.json").resolve()
+                ),
+                "per_run_alternative_budget": 2,
+                "schema_version": "noncombat-exploration-config-v1",
+                "seed": SEED_BASE + 1,
+                "session_id": f"{qualification_id}-s01",
+                "source_commit": QUALIFICATION_SOURCE_COMMIT,
+                "study_id": qualification_id,
+                "study_registration_hash": registration.registration_hash,
+                "study_run_lock_hash": "0" * 64,
+                "study_slot_number": 1,
+                "trace_path": str(
+                    (qualification_root / "qualification-trace.jsonl").resolve()
+                ),
+            }
+        )
+        + "\n",
+        encoding="utf-8",
+        newline="",
+    )
+    marker_path = tmp_path / "runs" / "ai_games.txt"
+    marker_path.parent.mkdir()
+    marker_path.write_text("10\n11\n", encoding="utf-8", newline="")
+    current_commit = [QUALIFICATION_SOURCE_COMMIT]
+    monkeypatch.setattr(
+        runner,
+        "_tracked_source_commit",
+        lambda _repo_root, **_kwargs: current_commit[0],
+    )
+    monkeypatch.setattr(
+        runner,
+        "_require_committed_qualification_registration",
+        lambda _registration_path, _repo_root, _source_commit: None,
+        raising=False,
+    )
+    monkeypatch.setattr(
+        runner,
+        "_require_committed_qualification_request_source",
+        lambda *_args, **_kwargs: QUALIFICATION_REVIEW_COMMIT,
+        raising=False,
+    )
+    def validate_runner_review_chain(**kwargs):
+        request_record = kwargs["request"]
+        if request_record["source_commit"] != QUALIFICATION_SOURCE_COMMIT:
+            raise runner.OutcomeEvidenceRunnerError(
+                "qualification source commit mismatch"
+            )
+        source_path = Path(request_record["request_source_path"])
+        source_bytes = source_path.read_bytes()
+        return runner._build_qualification_review_binding(
+            request=request_record,
+            review_commit=QUALIFICATION_REVIEW_COMMIT,
+            request_source_path=source_path,
+            request_source_relative=source_path.relative_to(REPO_ROOT).as_posix(),
+            request_bytes=source_bytes,
+        )
+
+    monkeypatch.setattr(
+        runner,
+        "_validate_qualification_review_chain",
+        validate_runner_review_chain,
+        raising=False,
+    )
+    request_source_path = (tmp_path / "reviewed-qualification-request.json").resolve()
+    request = runner.build_qualification_request(
+        registration_path=registration_path,
+        qualification_id=qualification_id,
+        qualification_root=qualification_root,
+        config_path=config_path,
+        marker_path=marker_path,
+        request_source_path=request_source_path,
+        created_unix_ns=100,
+    )
+    current_commit[0] = QUALIFICATION_REVIEW_COMMIT
+    request_path = Path(request["request_path"])
+    _write_json(request_source_path, request)
+    reviewed_request = deepcopy(request)
+
+    def load_historical_review(source_path, **kwargs):
+        assert Path(source_path) == request_source_path
+        assert kwargs["expected_review_commit"] == QUALIFICATION_REVIEW_COMMIT
+        assert kwargs["expected_request_hash"] == reviewed_request["request_hash"]
+        source_bytes = request_source_path.read_bytes()
+        assert kwargs["expected_request_file_sha256"] == hashlib.sha256(
+            source_bytes
+        ).hexdigest()
+        assert kwargs["expected_request_size"] == len(source_bytes)
+        review_binding = runner._build_qualification_review_binding(
+            request=reviewed_request,
+            review_commit=QUALIFICATION_REVIEW_COMMIT,
+            request_source_path=request_source_path,
+            request_source_relative=request_source_path.relative_to(
+                REPO_ROOT
+            ).as_posix(),
+            request_bytes=source_bytes,
+        )
+        return {
+            "registration": registration.to_record(),
+            "registration_bytes": registration_path.read_bytes(),
+            "repo_root": REPO_ROOT,
+            "request": reviewed_request,
+            "request_bytes": source_bytes,
+            "review_binding": review_binding,
+        }
+
+    monkeypatch.setattr(
+        _verifier(),
+        "_load_historical_qualification_review",
+        load_historical_review,
+        raising=False,
+    )
+
+    class QualificationChild:
+        pid = 4321
+
+        def __init__(self):
+            self.returncode = None
+
+        def poll(self):
+            return self.returncode
+
+        def wait(self, timeout=None):
+            self.returncode = 0
+            return self.returncode
+
+        def terminate(self):
+            self.returncode = -15
+
+        def kill(self):
+            self.returncode = -9
+
+    child = QualificationChild()
+
+    def process_starter(_command, environment):
+        if status == "passed":
+            attempt = runner.load_attempt_record(
+                Path(environment[runner.HANDSHAKE_ATTEMPT_ENV])
+            )
+            ready = build_ready_record(
+                attempt,
+                child_pid=child.pid,
+                created_unix_ns=201,
+            )
+            publish_record_once(Path(attempt["ready_path"]), ready)
+        return child
+
+    timestamps = iter(range(200, 220))
+    if status == "passed":
+        result = runner.execute_prelock_qualification(
+            registration_path=registration_path,
+            request_path=request_source_path,
+            expected_request_hash=request["request_hash"],
+            **_qualification_review_kwargs(request),
+            process_starter=process_starter,
+            time_ns=lambda: next(timestamps),
+        )
+        result_path = Path(request["completion_path"])
+    else:
+        clock = [0.0]
+
+        def advance_clock(_seconds):
+            clock[0] = 121.0
+
+        with pytest.raises(runner.OutcomeEvidenceRunnerError, match="readiness"):
+            runner.execute_prelock_qualification(
+                registration_path=registration_path,
+                request_path=request_source_path,
+                expected_request_hash=request["request_hash"],
+                **_qualification_review_kwargs(request),
+                process_starter=process_starter,
+                monotonic=lambda: clock[0],
+                sleep=advance_clock,
+                time_ns=lambda: next(timestamps),
+            )
+        result_path = Path(request["failure_path"])
+        result = json.loads(result_path.read_text(encoding="utf-8"))
+    return request_path, result_path, request, result
+
+
+def test_qualification_verifier_rejects_unanchored_terminal_evidence(
+    tmp_path,
+    monkeypatch,
+):
+    verifier = _verifier()
+    _request_path, result_path, request, _result = (
+        _build_qualification_evidence(tmp_path, monkeypatch)
+    )
+    source_path = Path(request["request_source_path"])
+    reviewed_request = json.loads(source_path.read_text(encoding="utf-8"))
+
+    with pytest.raises(
+        verifier.OutcomeEvidenceVerificationError,
+        match="result anchors",
+    ):
+        verifier.verify_prelock_qualification(
+            source_path,
+            result_path,
+            expected_request_hash=reviewed_request["request_hash"],
+            **_qualification_review_kwargs(request),
+        )
+
+
+def test_qualification_verifier_rejects_reviewed_source_junction_alias(
+    tmp_path,
+    monkeypatch,
+):
+    verifier = _verifier()
+    _request_path, result_path, request, _result = (
+        _build_qualification_evidence(tmp_path, monkeypatch)
+    )
+    source_path = Path(request["request_source_path"])
+    source_alias = tmp_path / "reviewed-source-alias"
+    _create_directory_junction(source_alias, tmp_path)
+    reviewed_request = json.loads(source_path.read_text(encoding="utf-8"))
+
+    try:
+        with pytest.raises(
+            verifier.OutcomeEvidenceVerificationError,
+            match="symbolic link|reparse",
+        ):
+            verifier.verify_prelock_qualification(
+                source_alias / source_path.name,
+                result_path,
+                expected_request_hash=reviewed_request["request_hash"],
+                **_qualification_result_kwargs(result_path),
+                **_qualification_review_kwargs(request),
+            )
+    finally:
+        os.rmdir(source_alias)
+
+
+def test_qualification_verifier_guards_root_before_control_classification(
+    tmp_path,
+    monkeypatch,
+):
+    verifier = _verifier()
+    _request_path, _result_path, request, _result = (
+        _build_qualification_evidence(tmp_path, monkeypatch)
+    )
+    qualification_root = Path(request["qualification_root"])
+    qualification_target = tmp_path / "qualification-target"
+    qualification_root.rename(qualification_target)
+    _create_directory_junction(qualification_root, qualification_target)
+    monkeypatch.setattr(
+        verifier,
+        "_qualification_irregular_path_reason",
+        lambda _path: pytest.fail(
+            "control path classified before qualification root guard"
+        ),
+    )
+
+    try:
+        with pytest.raises(
+            verifier.OutcomeEvidenceVerificationError,
+            match="symbolic link|reparse",
+        ):
+            _verify_qualification(verifier, request)
+    finally:
+        os.rmdir(qualification_root)
+
+
+@pytest.mark.parametrize(
+    "declared_path",
+    ("request", "attempt", "completion"),
+)
+def test_qualification_verifier_binds_declared_paths_before_probe(
+    tmp_path,
+    monkeypatch,
+    declared_path,
+):
+    verifier = _verifier()
+    _request_path, _result_path, request, _result = (
+        _build_qualification_evidence(tmp_path, monkeypatch)
+    )
+    outside_target = tmp_path / "outside-target"
+    outside_target.mkdir()
+    outside_alias = tmp_path / "outside-alias"
+    _create_directory_junction(outside_alias, outside_target)
+    outside_path = outside_alias / f"{declared_path}.json"
+    original_review_loader = verifier._load_historical_qualification_review
+
+    def load_review(*args, **kwargs):
+        review = deepcopy(original_review_loader(*args, **kwargs))
+        if declared_path == "request":
+            review["request"]["request_path"] = str(outside_path)
+        elif declared_path == "attempt":
+            review["request"]["handshake"]["attempt_path"] = str(
+                outside_path
+            )
+        else:
+            review["request"]["completion_path"] = str(outside_path)
+        return review
+
+    original_entry_exists = verifier._qualification_path_entry_exists
+
+    def reject_probe(path):
+        if Path(path) == outside_path:
+            pytest.fail("verifier probed a path before root binding")
+        return original_entry_exists(path)
+
+    monkeypatch.setattr(
+        verifier,
+        "_load_historical_qualification_review",
+        load_review,
+    )
+    monkeypatch.setattr(
+        verifier,
+        "_qualification_path_entry_exists",
+        reject_probe,
+    )
+
+    try:
+        with pytest.raises(
+            verifier.OutcomeEvidenceVerificationError,
+            match="declared path binding",
+        ):
+            _verify_qualification(verifier, request)
+    finally:
+        os.rmdir(outside_alias)
+
+
+def test_qualification_verifier_rejects_reviewed_registration_junction(
+    tmp_path,
+):
+    verifier = _verifier()
+    repo_target = tmp_path / "repo-target"
+    repo_target.mkdir()
+    repo_alias = tmp_path / "repo-alias"
+    _create_directory_junction(repo_alias, repo_target)
+    registration = {
+        "artifact_root": str(tmp_path / "artifacts"),
+        "integrity_rules": {"implementation_paths": []},
+        "repo_root": str(repo_alias),
+    }
+
+    try:
+        with pytest.raises(
+            verifier.OutcomeEvidenceVerificationError,
+            match="symbolic link|reparse",
+        ):
+            verifier._verify_qualification_registration_paths(
+                registration,
+                repo_root=repo_target,
+            )
+    finally:
+        os.rmdir(repo_alias)
+
+
+def test_qualification_marker_count_rejects_ancestor_junction(tmp_path):
+    verifier = _verifier()
+    marker_target = tmp_path / "marker-target"
+    marker_target.mkdir()
+    (marker_target / "ai_games.txt").write_text(
+        "10\n11\n",
+        encoding="utf-8",
+        newline="",
+    )
+    marker_alias = tmp_path / "marker-alias"
+    _create_directory_junction(marker_alias, marker_target)
+
+    try:
+        with pytest.raises(
+            verifier.OutcomeEvidenceVerificationError,
+            match="symbolic link|reparse",
+        ):
+            verifier._qualification_marker_count(
+                marker_alias / "ai_games.txt"
+            )
+    finally:
+        os.rmdir(marker_alias)
+
+
+def test_qualification_verifier_rejects_unc_before_filesystem_probe(
+    monkeypatch,
+):
+    verifier = _verifier()
+    monkeypatch.setattr(
+        Path,
+        "lstat",
+        lambda _path: pytest.fail("qualification attempted a UNC probe"),
+    )
+
+    with pytest.raises(
+        verifier.OutcomeEvidenceVerificationError,
+        match="UNC|local drive",
+    ):
+        verifier._qualification_require_no_follow_path(
+            r"\\qualification.invalid\share\result.json",
+            "result",
+            expected_kind="file",
+        )
+
+
+def test_qualification_verifier_rejects_ads_before_filesystem_probe(
+    tmp_path,
+    monkeypatch,
+):
+    verifier = _verifier()
+    source_path = tmp_path / "result.json"
+    monkeypatch.setattr(
+        Path,
+        "lstat",
+        lambda _path: pytest.fail("qualification attempted an ADS probe"),
+    )
+
+    with pytest.raises(
+        verifier.OutcomeEvidenceVerificationError,
+        match="alternate data stream",
+    ):
+        verifier._qualification_require_no_follow_path(
+            f"{source_path}:qualification-result",
+            "result",
+            expected_kind="file",
+            allow_missing=True,
+        )
+
+
+def test_qualification_verifier_rejects_ads_lexically(tmp_path):
+    verifier = _verifier()
+    output_path = tmp_path / "verification-audit.json"
+
+    with pytest.raises(
+        verifier.OutcomeEvidenceVerificationError,
+        match="alternate data stream",
+    ):
+        verifier._qualification_lexical_absolute_path(
+            f"{output_path}:qualification-audit",
+            "qualification audit output path",
+        )
+
+
+def test_qualification_verifier_git_uses_pinned_absolute_executable(
+    tmp_path,
+    monkeypatch,
+):
+    verifier = _verifier()
+    (tmp_path / ".git").mkdir()
+    observed = {}
+
+    def run(command, **_kwargs):
+        observed["command"] = list(command)
+        return subprocess.CompletedProcess(
+            args=command,
+            returncode=0,
+            stdout="ok\n",
+            stderr="",
+        )
+
+    monkeypatch.setattr(verifier.subprocess, "run", run)
+
+    assert verifier._qualification_git_text(tmp_path, "status") == "ok"
+    executable = Path(observed["command"][0])
+    assert executable.is_absolute()
+    assert executable == verifier.QUALIFICATION_GIT_EXECUTABLE
+
+
+def test_qualification_verifier_rejects_successful_git_warning(
+    tmp_path,
+    monkeypatch,
+):
+    verifier = _verifier()
+    (tmp_path / ".git").mkdir()
+    monkeypatch.setattr(
+        verifier.subprocess,
+        "run",
+        lambda command, **_kwargs: subprocess.CompletedProcess(
+            args=command,
+            returncode=0,
+            stdout="ok\n",
+            stderr="warning: graft file is deprecated\n",
+        ),
+    )
+
+    with pytest.raises(
+        verifier.OutcomeEvidenceVerificationError,
+        match="graft file is deprecated",
+    ):
+        verifier._qualification_git_text(tmp_path, "status")
+
+
+def test_qualification_verifier_git_uses_sterile_environment(
+    tmp_path,
+    monkeypatch,
+):
+    verifier = _verifier()
+    (tmp_path / ".git").mkdir()
+    observed = {}
+    monkeypatch.setenv("GIT_DIR", r"C:\untrusted-git")
+    monkeypatch.setenv("GIT_CONFIG_GLOBAL", r"C:\untrusted.gitconfig")
+
+    def run(command, **kwargs):
+        observed["command"] = list(command)
+        observed["environment"] = dict(kwargs["env"])
+        return subprocess.CompletedProcess(
+            args=command,
+            returncode=0,
+            stdout="ok\n",
+            stderr="",
+        )
+
+    monkeypatch.setattr(verifier.subprocess, "run", run)
+
+    assert verifier._qualification_git_text(tmp_path, "status") == "ok"
+    assert "--no-replace-objects" in observed["command"]
+    assert "--no-lazy-fetch" in observed["command"]
+    assert "core.fsmonitor=false" in observed["command"]
+    assert observed["environment"]["GIT_DIR"] == str(tmp_path / ".git")
+    assert observed["environment"]["GIT_WORK_TREE"] == str(tmp_path)
+    assert observed["environment"]["GIT_CONFIG_NOSYSTEM"] == "1"
+    assert observed["environment"]["GIT_NO_LAZY_FETCH"] == "1"
+
+
+def test_qualification_verifier_rejects_promisor_helper_before_lazy_fetch(
+    tmp_path,
+):
+    verifier = _verifier()
+    repo_root = tmp_path / "repo"
+    repo_root.mkdir()
+    tracked_path = repo_root / "tracked.py"
+    tracked_path.write_text("VALUE = 'reviewed'\n", encoding="utf-8", newline="")
+    _git(repo_root, "init", "--object-format=sha1")
+    _git(repo_root, "config", "user.email", "verifier@example.invalid")
+    _git(repo_root, "config", "user.name", "Verifier Fixture")
+    _git(repo_root, "add", "tracked.py")
+    _git(repo_root, "commit", "-m", "source")
+    blob_oid = _git(repo_root, "rev-parse", "HEAD:tracked.py")
+    object_path = repo_root / ".git" / "objects" / blob_oid[:2] / blob_oid[2:]
+    assert object_path.is_file()
+    os.chmod(object_path, 0o666)
+    object_path.unlink()
+    marker_path = tmp_path / "verifier-promisor-helper-executed.txt"
+    helper_path = tmp_path / "verifier-promisor-helper.cmd"
+    helper_path.write_text(
+        f'@echo executed>"{marker_path}"\r\n@exit /b 1\r\n',
+        encoding="utf-8",
+        newline="",
+    )
+    for key, value in (
+        ("extensions.partialClone", "origin"),
+        ("remote.origin.promisor", "true"),
+        ("remote.origin.partialCloneFilter", "blob:none"),
+        ("protocol.ext.allow", "always"),
+        ("remote.origin.url", f"ext::{helper_path}"),
+    ):
+        _git(repo_root, "config", key, value)
+
+    with pytest.raises(
+        verifier.OutcomeEvidenceVerificationError,
+        match="unsafe.*directive",
+    ):
+        verifier._qualification_git_text(
+            repo_root,
+            "show",
+            "HEAD:tracked.py",
+        )
+
+    assert not marker_path.exists()
+
+
+def test_qualification_verifier_rejects_git_metadata_junction_before_run(
+    tmp_path,
+    monkeypatch,
+):
+    verifier = _verifier()
+    repo_root = tmp_path / "repo"
+    repo_root.mkdir()
+    metadata_target = tmp_path / "metadata-target"
+    metadata_target.mkdir()
+    metadata_path = repo_root / ".git"
+    _create_directory_junction(metadata_path, metadata_target)
+    monkeypatch.setattr(
+        verifier.subprocess,
+        "run",
+        lambda *_args, **_kwargs: pytest.fail(
+            "Git ran before metadata validation"
+        ),
+    )
+
+    try:
+        with pytest.raises(
+            verifier.OutcomeEvidenceVerificationError,
+            match="symbolic link|reparse",
+        ):
+            verifier._qualification_git_text(repo_root, "status")
+    finally:
+        os.rmdir(metadata_path)
+
+
+@pytest.mark.parametrize("config_name", ("config", "config.worktree"))
+def test_qualification_verifier_rejects_spaced_external_config_before_run(
+    tmp_path,
+    monkeypatch,
+    config_name,
+):
+    verifier = _verifier()
+    config_path = tmp_path / ".git" / config_name
+    config_path.parent.mkdir(parents=True)
+    config_path.write_text(
+        "[diff]\n\texternal    = untrusted-command\n",
+        encoding="utf-8",
+        newline="",
+    )
+    monkeypatch.setattr(
+        verifier.subprocess,
+        "run",
+        lambda *_args, **_kwargs: pytest.fail(
+            "Git ran with unsafe repository config"
+        ),
+    )
+
+    with pytest.raises(
+        verifier.OutcomeEvidenceVerificationError,
+        match="unsafe",
+    ):
+        verifier._qualification_git_text(tmp_path, "status")
+
+
+@pytest.mark.parametrize(
+    "config_text",
+    (
+        "[extensions]\n\tpartialClone = origin\n",
+        '[remote "origin"]\n\tpromisor = true\n',
+        '[protocol "ext"]\n\tallow = always\n',
+    ),
+)
+def test_qualification_verifier_rejects_lazy_fetch_config_before_run(
+    tmp_path,
+    monkeypatch,
+    config_text,
+):
+    verifier = _verifier()
+    config_path = tmp_path / ".git" / "config"
+    config_path.parent.mkdir(parents=True)
+    config_path.write_text(config_text, encoding="utf-8", newline="")
+    monkeypatch.setattr(
+        verifier.subprocess,
+        "run",
+        lambda *_args, **_kwargs: pytest.fail(
+            "Git ran with lazy-fetch repository config"
+        ),
+    )
+
+    with pytest.raises(
+        verifier.OutcomeEvidenceVerificationError,
+        match="unsafe",
+    ):
+        verifier._qualification_git_text(tmp_path, "status")
+
+
+@pytest.mark.parametrize(
+    "executable_path",
+    (
+        "ops/qualification-launch.ps1",
+        "ops/qualification-launch.cmd",
+        "ops/qualification-launch.pyz",
+        "ops/qualification-launch.whl",
+        "ops/qualification-launch.scr",
+        "ops/qualification-launch",
+    ),
+)
+def test_qualification_verifier_review_allowlist_rejects_all_executable_suffixes(
+    executable_path,
+):
+    verifier = _verifier()
+    request_source = "reports/qualification-request.json"
+
+    with pytest.raises(
+        verifier.OutcomeEvidenceVerificationError,
+        match="executable path",
+    ):
+        verifier._verify_qualification_review_allowed_paths(
+            sorted((executable_path, request_source)),
+            request_source_relative=request_source,
+            protected_paths=set(),
+            checks=verifier._Checks(),
+        )
+
+
+def test_qualification_inert_suffix_contract_matches_producer():
+    verifier = _verifier()
+
+    assert (
+        verifier.QUALIFICATION_INERT_SUFFIXES
+        == runner._QUALIFICATION_INERT_SUFFIXES
+    )
+
+
+def test_qualification_verifier_output_cannot_mutate_qualification_root(
+    tmp_path,
+    monkeypatch,
+):
+    verifier = _verifier()
+    request_path, result_path, request, _result = _build_qualification_evidence(
+        tmp_path,
+        monkeypatch,
+    )
+    request_bytes = request_path.read_bytes()
+    output_path = Path(request["qualification_root"]) / "verification-audit.json"
+
+    with pytest.raises(
+        verifier.OutcomeEvidenceVerificationError,
+        match="outside qualification root",
+    ):
+        _verify_qualification(
+            verifier,
+            request,
+            result_path,
+            audit_output_path=output_path,
+        )
+
+    assert request_path.read_bytes() == request_bytes
+    assert not output_path.exists()
+
+
+def test_qualification_verifier_output_is_exclusive(tmp_path, monkeypatch):
+    verifier = _verifier()
+    _request_path, result_path, request, _result = (
+        _build_qualification_evidence(tmp_path, monkeypatch)
+    )
+    output_path = (tmp_path / "audit-output" / "verification.json").resolve()
+    output_path.parent.mkdir()
+
+    audit = _verify_qualification(
+        verifier,
+        request,
+        result_path,
+        audit_output_path=output_path,
+    )
+
+    assert output_path.read_text(encoding="utf-8") == (
+        verifier.render_verification_audit(audit)
+    )
+    with pytest.raises(
+        verifier.OutcomeEvidenceVerificationError,
+        match="already exists",
+    ):
+        _verify_qualification(
+            verifier,
+            request,
+            result_path,
+            audit_output_path=output_path,
+        )
+
+
+def test_qualification_verifier_output_rejects_forbidden_path(
+    tmp_path,
+    monkeypatch,
+):
+    verifier = _verifier()
+    _request_path, result_path, request, _result = (
+        _build_qualification_evidence(tmp_path, monkeypatch)
+    )
+    output_path = next(
+        Path(path)
+        for path in request["forbidden_paths"]
+        if Path(path).name == "study"
+    )
+    assert output_path.parent.is_dir()
+    assert not output_path.exists()
+
+    with pytest.raises(
+        verifier.OutcomeEvidenceVerificationError,
+        match="request-bound or forbidden",
+    ):
+        _verify_qualification(
+            verifier,
+            request,
+            result_path,
+            audit_output_path=output_path,
+        )
+
+    assert not output_path.exists()
+
+
+@pytest.mark.parametrize("suffix", [".", " "])
+def test_qualification_verifier_output_rejects_final_win32_alias(
+    tmp_path,
+    monkeypatch,
+    suffix,
+):
+    verifier = _verifier()
+    _request_path, result_path, request, _result = (
+        _build_qualification_evidence(tmp_path, monkeypatch)
+    )
+    forbidden_path = next(
+        Path(path)
+        for path in request["forbidden_paths"]
+        if Path(path).name == "study"
+    )
+    output_path = Path(f"{forbidden_path}{suffix}")
+    assert not forbidden_path.exists()
+
+    with pytest.raises(
+        verifier.OutcomeEvidenceVerificationError,
+        match="Win32 alias",
+    ):
+        _verify_qualification(
+            verifier,
+            request,
+            result_path,
+            audit_output_path=output_path,
+        )
+
+    assert not forbidden_path.exists()
+
+
+def test_qualification_verifier_output_rejects_trailing_dot_root_alias(
+    tmp_path,
+    monkeypatch,
+):
+    verifier = _verifier()
+    _request_path, result_path, request, _result = (
+        _build_qualification_evidence(tmp_path, monkeypatch)
+    )
+    qualification_root = Path(request["qualification_root"])
+    output_path = Path(str(qualification_root) + ".") / "alias-audit.json"
+
+    with pytest.raises(
+        verifier.OutcomeEvidenceVerificationError,
+        match="lexical absolute|Win32 alias|qualification root",
+    ):
+        _verify_qualification(
+            verifier,
+            request,
+            result_path,
+            audit_output_path=output_path,
+        )
+
+    assert not (qualification_root / "alias-audit.json").exists()
+
+
+def test_qualification_verifier_output_rejects_canonical_parent_alias(
+    tmp_path,
+    monkeypatch,
+):
+    verifier = _verifier()
+    _request_path, result_path, request, _result = (
+        _build_qualification_evidence(tmp_path, monkeypatch)
+    )
+    qualification_root = Path(request["qualification_root"])
+    alias_parent = (tmp_path / "canonical-alias").resolve()
+    alias_parent.mkdir()
+    output_path = alias_parent / "alias-audit.json"
+    original_realpath = verifier.os.path.realpath
+
+    def canonicalize(path):
+        if os.path.normcase(os.path.abspath(path)) == os.path.normcase(
+            str(alias_parent)
+        ):
+            return str(qualification_root)
+        return original_realpath(path)
+
+    monkeypatch.setattr(verifier.os.path, "realpath", canonicalize)
+
+    with pytest.raises(
+        verifier.OutcomeEvidenceVerificationError,
+        match="qualification root",
+    ):
+        _verify_qualification(
+            verifier,
+            request,
+            result_path,
+            audit_output_path=output_path,
+        )
+
+    assert not output_path.exists()
+
+
+def test_qualification_verifier_replays_passed_terminal_evidence(
+    tmp_path,
+    monkeypatch,
+):
+    verifier = _verifier()
+    request_path, result_path, request, result = _build_qualification_evidence(
+        tmp_path,
+        monkeypatch,
+    )
+    audit = _verify_qualification(verifier, request, result_path)
+
+    assert audit["status"] == "verified"
+    assert audit["qualification_status"] == "passed"
+    assert audit["request_hash"] == request["request_hash"]
+    assert audit["result_hash"] == result["result_hash"]
+    assert audit["result_file_sha256"] == hashlib.sha256(
+        result_path.read_bytes()
+    ).hexdigest()
+    assert audit["result_size"] == result_path.stat().st_size
+    assert audit["review_binding"]["review_commit"] == QUALIFICATION_REVIEW_COMMIT
+    assert audit["review_binding"]["request_source"]["path"] == (
+        request["request_source_path"]
+    )
+    assert audit["study_start_authorized"] is False
+    assert audit["collection_authorized"] is False
+    assert audit["gameplay_policy_change_authorized"] is False
+    assert audit["causal_claim_authorized"] is False
+    assert audit["check_count"] > 0
+
+
+def test_qualification_verifier_replays_failed_terminal_without_authority(
+    tmp_path,
+    monkeypatch,
+):
+    verifier = _verifier()
+    request_path, result_path, request, result = _build_qualification_evidence(
+        tmp_path,
+        monkeypatch,
+        status="failed",
+    )
+    audit = _verify_qualification(verifier, request, result_path)
+
+    assert audit["status"] == "verified"
+    assert audit["qualification_status"] == "failed"
+    assert audit["request_hash"] == request["request_hash"]
+    assert audit["result_hash"] == result["result_hash"]
+    assert audit["study_start_authorized"] is False
+    assert audit["run_lock_authorized"] is False
+
+
+def test_qualification_verifier_rejects_mismatched_terminal_file_anchor(
+    tmp_path,
+    monkeypatch,
+):
+    verifier = _verifier()
+    _request_path, result_path, request, _result = (
+        _build_qualification_evidence(tmp_path, monkeypatch)
+    )
+
+    with pytest.raises(
+        verifier.OutcomeEvidenceVerificationError,
+        match="file-SHA anchor mismatch",
+    ):
+        _verify_qualification(
+            verifier,
+            request,
+            result_path,
+            expected_result_file_sha256="0" * 64,
+        )
+
+
+@pytest.mark.parametrize(
+    ("partial_stage", "retained_handshake"),
+    (
+        ("request_only", ()),
+        ("attempt_only", ("attempt",)),
+        ("ready_without_release", ("attempt", "ready")),
+        ("release_without_result", ("attempt", "ready", "release")),
+    ),
+)
+def test_qualification_verifier_seals_valid_partial_prefix_without_authority(
+    tmp_path,
+    monkeypatch,
+    partial_stage,
+    retained_handshake,
+):
+    verifier = _verifier()
+    request_path, result_path, request, _result = _build_qualification_evidence(
+        tmp_path,
+        monkeypatch,
+    )
+    result_path.unlink()
+    for name in ("attempt", "ready", "release"):
+        if name not in retained_handshake:
+            Path(request["handshake"][f"{name}_path"]).unlink()
+
+    audit = _verify_qualification(verifier, request)
+
+    assert request_path.is_file()
+    assert not Path(request["completion_path"]).exists()
+    assert not Path(request["failure_path"]).exists()
+    assert audit["status"] == "sealed_partial"
+    assert audit["qualification_status"] == "partial"
+    assert audit["partial_stage"] == partial_stage
+    assert audit["request_hash"] == request["request_hash"]
+    assert audit["result_hash"] is None
+    assert audit["review_binding"]["review_commit"] == QUALIFICATION_REVIEW_COMMIT
+    assert audit["passed"] is True
+    assert audit["study_start_authorized"] is False
+    assert audit["run_lock_authorized"] is False
+    assert audit["training_authorized"] is False
+
+
+@pytest.mark.parametrize(
+    ("case", "expected_status", "consumed", "partial_stage"),
+    (
+        ("prepared", "reviewed_prepared", False, "source_only"),
+        ("orphan_attempt", "sealed_invalid", True, "orphan_control_artifacts"),
+        ("malformed_active", "sealed_invalid", True, "malformed_active_request"),
+        ("active_directory", "sealed_invalid", True, "malformed_active_request"),
+    ),
+)
+def test_qualification_verifier_seals_prepared_or_invalid_consumption_state(
+    tmp_path,
+    monkeypatch,
+    case,
+    expected_status,
+    consumed,
+    partial_stage,
+):
+    verifier = _verifier()
+    request_path, result_path, request, _result = _build_qualification_evidence(
+        tmp_path,
+        monkeypatch,
+    )
+    result_path.unlink()
+    for name in ("ready", "release"):
+        Path(request["handshake"][f"{name}_path"]).unlink()
+    if case != "orphan_attempt":
+        Path(request["handshake"]["attempt_path"]).unlink()
+    if case in {"prepared", "orphan_attempt"}:
+        request_path.unlink()
+    elif case == "active_directory":
+        request_path.unlink()
+        request_path.mkdir()
+    else:
+        request_path.write_text(
+            "{\"malformed\":true}\n",
+            encoding="utf-8",
+            newline="",
+        )
+
+    audit = _verify_qualification(verifier, request)
+
+    assert audit["status"] == expected_status
+    assert audit["consumed"] is consumed
+    assert audit["partial_stage"] == partial_stage
+    assert audit["qualification_status"] == (
+        "not_attempted" if case == "prepared" else "invalid_partial"
+    )
+    assert audit["evidence_valid"] is (case == "prepared")
+    assert audit["study_start_authorized"] is False
+    assert audit["run_lock_authorized"] is False
+
+
+def test_qualification_verifier_seals_dangling_control_symlink_as_consumed(
+    tmp_path,
+    monkeypatch,
+):
+    verifier = _verifier()
+    request_path, result_path, request, _result = _build_qualification_evidence(
+        tmp_path,
+        monkeypatch,
+    )
+    result_path.unlink()
+    request_path.unlink()
+    for name in ("attempt", "ready", "release"):
+        Path(request["handshake"][f"{name}_path"]).unlink()
+    dangling_path = Path(request["handshake"]["attempt_path"])
+    original_exists = verifier._qualification_path_entry_exists
+    original_is_regular = verifier._qualification_path_is_regular_file
+    classification_seen = {"value": False}
+
+    def entry_exists(path):
+        if path == dangling_path:
+            return True
+        return original_exists(path)
+
+    def classify_regular_file(path):
+        if path == dangling_path:
+            classification_seen["value"] = True
+            return False
+        return original_is_regular(path)
+
+    original_inventory = verifier._qualification_audit_inventory
+
+    def inventory_after_classification(value):
+        assert classification_seen["value"] is True
+        return original_inventory(value)
+
+    monkeypatch.setattr(
+        verifier,
+        "_qualification_path_entry_exists",
+        entry_exists,
+    )
+    monkeypatch.setattr(
+        verifier,
+        "_qualification_path_is_regular_file",
+        classify_regular_file,
+    )
+    monkeypatch.setattr(
+        verifier,
+        "_qualification_audit_inventory",
+        inventory_after_classification,
+    )
+
+    audit = _verify_qualification(verifier, request)
+
+    assert audit["status"] == "sealed_invalid"
+    assert audit["qualification_status"] == "invalid_partial"
+    assert audit["partial_stage"] == "invalid_control_path"
+    assert audit["consumed"] is True
+    assert audit["evidence_valid"] is False
+    assert "regular file" in audit["evidence_error"]
+
+
+def test_qualification_verifier_seals_real_dangling_control_junction(
+    tmp_path,
+    monkeypatch,
+):
+    verifier = _verifier()
+    request_path, result_path, request, _result = _build_qualification_evidence(
+        tmp_path,
+        monkeypatch,
+    )
+    result_path.unlink()
+    request_path.unlink()
+    for name in ("attempt", "ready", "release"):
+        Path(request["handshake"][f"{name}_path"]).unlink()
+    target_path = tmp_path / "junction-target"
+    target_path.mkdir()
+    junction_path = Path(request["handshake"]["attempt_path"])
+    _create_directory_junction(junction_path, target_path)
+    target_path.rmdir()
+    try:
+        audit = _verify_qualification(verifier, request)
+    finally:
+        os.rmdir(junction_path)
+
+    assert audit["status"] == "sealed_invalid"
+    assert audit["qualification_status"] == "invalid_partial"
+    assert audit["partial_stage"] == "invalid_control_path"
+    assert audit["consumed"] is True
+    assert audit["evidence_valid"] is False
+    assert "reparse" in audit["evidence_error"]
+
+
+def test_qualification_verifier_rejects_control_directory_in_terminal_replay(
+    tmp_path,
+    monkeypatch,
+):
+    verifier = _verifier()
+    _request_path, result_path, request, _result = (
+        _build_qualification_evidence(tmp_path, monkeypatch, status="failed")
+    )
+    ready_path = Path(request["handshake"]["ready_path"])
+    assert not ready_path.exists()
+    ready_path.mkdir()
+
+    with pytest.raises(
+        verifier.OutcomeEvidenceVerificationError,
+        match="control path.*regular|regular.*control path",
+    ):
+        _verify_qualification(verifier, request, result_path)
+
+
+def test_qualification_verifier_rejects_dangling_forbidden_junction(
+    tmp_path,
+    monkeypatch,
+):
+    verifier = _verifier()
+    _request_path, result_path, request, _result = (
+        _build_qualification_evidence(tmp_path, monkeypatch)
+    )
+    qualification_root = Path(request["qualification_root"])
+    forbidden_path = next(
+        Path(path)
+        for path in request["forbidden_paths"]
+        if (
+            not Path(path).is_relative_to(qualification_root)
+            and Path(path).parent.exists()
+        )
+    )
+    target_path = tmp_path / "dangling-forbidden-target"
+    target_path.mkdir()
+    _create_directory_junction(forbidden_path, target_path)
+    target_path.rmdir()
+    try:
+        with pytest.raises(
+            verifier.OutcomeEvidenceVerificationError,
+            match="forbidden",
+        ):
+            _verify_qualification(verifier, request, result_path)
+    finally:
+        os.rmdir(forbidden_path)
+
+
+def test_qualification_verifier_rejects_terminal_without_active_request(
+    tmp_path,
+    monkeypatch,
+):
+    verifier = _verifier()
+    request_path, result_path, request, _result = _build_qualification_evidence(
+        tmp_path,
+        monkeypatch,
+    )
+    request_path.unlink()
+
+    with pytest.raises(
+        verifier.OutcomeEvidenceVerificationError,
+        match="active qualification request is missing",
+    ):
+        _verify_qualification(verifier, request, result_path)
+
+
+def test_qualification_verifier_requires_prepared_source_preflight(
+    tmp_path,
+    monkeypatch,
+):
+    verifier = _verifier()
+    request_path, result_path, request, _result = _build_qualification_evidence(
+        tmp_path,
+        monkeypatch,
+    )
+    result_path.unlink()
+    request_path.unlink()
+    for name in ("attempt", "ready", "release"):
+        Path(request["handshake"][f"{name}_path"]).unlink()
+    Path(request["config"]["path"]).write_text(
+        "{}\n",
+        encoding="utf-8",
+        newline="",
+    )
+
+    with pytest.raises(
+        verifier.OutcomeEvidenceVerificationError,
+        match="configuration|config",
+    ):
+        _verify_qualification(verifier, request)
+
+
+@pytest.mark.parametrize("case", ("terminal_exists", "ready_gap", "attempt_tamper"))
+def test_qualification_verifier_rejects_invalid_partial_prefix(
+    tmp_path,
+    monkeypatch,
+    case,
+):
+    verifier = _verifier()
+    request_path, result_path, request, _result = _build_qualification_evidence(
+        tmp_path,
+        monkeypatch,
+    )
+    if case != "terminal_exists":
+        result_path.unlink()
+    if case == "ready_gap":
+        Path(request["handshake"]["attempt_path"]).unlink()
+        Path(request["handshake"]["release_path"]).unlink()
+    elif case == "attempt_tamper":
+        attempt_path = Path(request["handshake"]["attempt_path"])
+        attempt = json.loads(attempt_path.read_text(encoding="utf-8"))
+        attempt["marker_start_count"] += 1
+        attempt["attempt_hash"] = _self_hash(attempt, "attempt_hash")
+        _write_json(attempt_path, attempt)
+        Path(request["handshake"]["ready_path"]).unlink()
+        Path(request["handshake"]["release_path"]).unlink()
+
+    audit = _verify_qualification(verifier, request)
+
+    assert audit["status"] == "sealed_invalid"
+    assert audit["qualification_status"] == "invalid_partial"
+    assert audit["consumed"] is True
+    assert audit["evidence_valid"] is False
+    assert audit["evidence_error"]
+    assert audit["study_start_authorized"] is False
+
+
+def test_qualification_verifier_rejects_failed_terminal_relabelled_passed(
+    tmp_path,
+    monkeypatch,
+):
+    verifier = _verifier()
+    request_path, result_path, request, result = _build_qualification_evidence(
+        tmp_path,
+        monkeypatch,
+        status="failed",
+    )
+    completion_path = result_path.with_name("qualification-completion.json")
+    result["status"] = "passed"
+    result["result_hash"] = _self_hash(result, "result_hash")
+    _write_json(completion_path, result)
+    result_path.unlink()
+
+    with pytest.raises(
+        verifier.OutcomeEvidenceVerificationError,
+        match="release|passed result",
+    ):
+        _verify_qualification(verifier, request, completion_path)
+
+
+def test_qualification_verifier_rejects_passed_terminal_relabelled_failed(
+    tmp_path,
+    monkeypatch,
+):
+    verifier = _verifier()
+    request_path, completion_path, request, result = (
+        _build_qualification_evidence(tmp_path, monkeypatch)
+    )
+    failure_path = Path(request["failure_path"])
+    result["status"] = "failed"
+    result["failure"] = {
+        "exception_type": "RuntimeError",
+        "message": "invented failure",
+        "stage": "wait_for_qualification_exit",
+    }
+    result["result_hash"] = _self_hash(result, "result_hash")
+    _write_json(failure_path, result)
+    completion_path.unlink()
+
+    with pytest.raises(
+        verifier.OutcomeEvidenceVerificationError,
+        match="failed result does not contradict success evidence",
+    ):
+        _verify_qualification(verifier, request, failure_path)
+
+
+def test_qualification_verifier_rejects_relabel_with_forged_launch_count(
+    tmp_path,
+    monkeypatch,
+):
+    verifier = _verifier()
+    _request_path, completion_path, request, result = (
+        _build_qualification_evidence(tmp_path, monkeypatch)
+    )
+    failure_path = Path(request["failure_path"])
+    result["status"] = "failed"
+    result["failure"] = {
+        "exception_type": "RuntimeError",
+        "message": "invented failure",
+        "stage": "wait_for_qualification_exit",
+    }
+    result["process"]["launch_count"] = 0
+    result["result_hash"] = _self_hash(result, "result_hash")
+    _write_json(failure_path, result)
+    completion_path.unlink()
+
+    with pytest.raises(
+        verifier.OutcomeEvidenceVerificationError,
+        match="launch|process",
+    ):
+        _verify_qualification(verifier, request, failure_path)
+
+
+def test_qualification_verifier_rejects_launch_without_attempt_evidence(
+    tmp_path,
+    monkeypatch,
+):
+    verifier = _verifier()
+    _request_path, result_path, request, result = (
+        _build_qualification_evidence(tmp_path, monkeypatch, status="failed")
+    )
+    attempt_path = Path(request["handshake"]["attempt_path"])
+    attempt_path.unlink()
+    result["handshake"]["attempt"]["sha256"] = None
+    result["result_hash"] = _self_hash(result, "result_hash")
+    _write_json(result_path, result)
+
+    with pytest.raises(
+        verifier.OutcomeEvidenceVerificationError,
+        match="attempt|launch",
+    ):
+        _verify_qualification(verifier, request, result_path)
+
+
+def test_qualification_verifier_rejects_unproven_post_exit_validation_failure(
+    tmp_path,
+    monkeypatch,
+):
+    verifier = _verifier()
+    _request_path, completion_path, request, result = (
+        _build_qualification_evidence(tmp_path, monkeypatch)
+    )
+    failure_path = Path(request["failure_path"])
+    result["status"] = "failed"
+    result["failure"] = {
+        "exception_type": "OutcomeEvidenceRunnerError",
+        "message": "qualification config changed",
+        "stage": "post_exit_validation",
+    }
+    result["result_hash"] = _self_hash(result, "result_hash")
+    _write_json(failure_path, result)
+    completion_path.unlink()
+
+    with pytest.raises(
+        verifier.OutcomeEvidenceVerificationError,
+        match="failed result does not contradict success evidence",
+    ):
+        _verify_qualification(verifier, request, failure_path)
+
+
+def test_qualification_verifier_rejects_dual_terminal_branches(
+    tmp_path,
+    monkeypatch,
+):
+    verifier = _verifier()
+    request_path, result_path, request, _result = _build_qualification_evidence(
+        tmp_path,
+        monkeypatch,
+    )
+    Path(request["failure_path"]).write_text(
+        "{\"external\":true}\n",
+        encoding="utf-8",
+        newline="",
+    )
+
+    with pytest.raises(
+        verifier.OutcomeEvidenceVerificationError,
+        match="terminal branches are not exclusive",
+    ):
+        _verify_qualification(verifier, request, result_path)
+
+
+@pytest.mark.parametrize(
+    ("case", "message"),
+    (
+        ("implementation", "active request differs"),
+        ("pid", "PID"),
+        ("launch_count", "launch count|passed result"),
+        ("marker", "marker"),
+        ("marker_path", "active request differs"),
+        ("attempt", "attempt"),
+        ("authority_zero", "authority"),
+        ("forbidden_zero", "forbidden"),
+        ("ready_boolean_alias", "ready"),
+        ("timestamp_order", "active request differs"),
+        ("cleanup_type", "cleanup flag"),
+        ("noncanonical_result", "canonical"),
+    ),
+)
+def test_qualification_verifier_rejects_cross_artifact_laundering(
+    tmp_path,
+    monkeypatch,
+    case,
+    message,
+):
+    verifier = _verifier()
+    request_path, result_path, request, result = _build_qualification_evidence(
+        tmp_path,
+        monkeypatch,
+    )
+    if case == "implementation":
+        request["implementation_sha256"]["main.py"] = "f" * 64
+        request["request_hash"] = _self_hash(request, "request_hash")
+        _write_json(request_path, request)
+        result["implementation_sha256"]["main.py"] = "f" * 64
+        result["request"]["hash"] = request["request_hash"]
+    elif case == "pid":
+        result["process"]["pid"] += 1
+    elif case == "launch_count":
+        result["process"]["launch_count"] = 0
+    elif case == "marker":
+        result["marker"]["end_count"] += 1
+    elif case == "marker_path":
+        decoy_marker = (tmp_path / "decoy" / "ai_games.txt").resolve()
+        decoy_marker.parent.mkdir()
+        decoy_marker.write_text("10\n11\n", encoding="utf-8", newline="")
+        request["marker"]["path"] = str(decoy_marker)
+        request["request_hash"] = _self_hash(request, "request_hash")
+        _write_json(request_path, request)
+        result["marker"]["path"] = str(decoy_marker)
+        result["request"]["hash"] = request["request_hash"]
+    elif case == "attempt":
+        attempt_path = Path(request["handshake"]["attempt_path"])
+        attempt = json.loads(attempt_path.read_text(encoding="utf-8"))
+        attempt["config_sha256"] = "f" * 64
+        attempt["attempt_hash"] = _self_hash(attempt, "attempt_hash")
+        _write_json(attempt_path, attempt)
+        result["handshake"]["attempt"]["sha256"] = hashlib.sha256(
+            attempt_path.read_bytes()
+        ).hexdigest()
+    elif case == "authority_zero":
+        result["authority"]["study_start"] = 0
+    elif case == "forbidden_zero":
+        forbidden_path = next(iter(result["forbidden_paths"]))
+        result["forbidden_paths"][forbidden_path] = 0
+    elif case == "ready_boolean_alias":
+        ready_path = Path(request["handshake"]["ready_path"])
+        ready = json.loads(ready_path.read_text(encoding="utf-8"))
+        ready["communication_state_received"] = 1
+        _write_json(ready_path, ready)
+        result["handshake"]["ready"]["sha256"] = hashlib.sha256(
+            ready_path.read_bytes()
+        ).hexdigest()
+    elif case == "timestamp_order":
+        request["created_unix_ns"] = result["ended_unix_ns"] + 1
+        request["request_hash"] = _self_hash(request, "request_hash")
+        _write_json(request_path, request)
+        result["request"]["hash"] = request["request_hash"]
+    elif case == "cleanup_type":
+        result["process"]["cleanup_attempted"] = "false"
+    else:
+        result["result_hash"] = _self_hash(result, "result_hash")
+        result_path.write_text(
+            json.dumps(result, indent=2) + "\n",
+            encoding="utf-8",
+            newline="",
+        )
+        with pytest.raises(
+            verifier.OutcomeEvidenceVerificationError,
+            match=message,
+        ):
+            _verify_qualification(verifier, request, result_path)
+        return
+    result["result_hash"] = _self_hash(result, "result_hash")
+    _write_json(result_path, result)
+
+    with pytest.raises(
+        verifier.OutcomeEvidenceVerificationError,
+        match=message,
+    ):
+        _verify_qualification(verifier, request, result_path)
+
+
+@pytest.mark.parametrize("case", ("authority", "release_hash"))
+def test_qualification_verifier_rejects_rehashed_semantic_tamper(
+    tmp_path,
+    monkeypatch,
+    case,
+):
+    verifier = _verifier()
+    request_path, result_path, request, _result = _build_qualification_evidence(
+        tmp_path,
+        monkeypatch,
+    )
+    result = json.loads(result_path.read_text(encoding="utf-8"))
+    if case == "authority":
+        result["authority"]["study_start"] = True
+    else:
+        result["handshake"]["release"]["sha256"] = "f" * 64
+    result["result_hash"] = _self_hash(result, "result_hash")
+    _write_json(result_path, result)
+
+    with pytest.raises(
+        verifier.OutcomeEvidenceVerificationError,
+        match="authority|release",
+    ):
+        _verify_qualification(verifier, request, result_path)
+
+
+def test_qualification_verifier_cli_selects_request_and_result(
+    tmp_path,
+    monkeypatch,
+    capsys,
+):
+    verifier = _verifier()
+    request_path = tmp_path / "qualification-request.json"
+    result_path = tmp_path / "qualification-completion.json"
+    audit = {
+        "passed": True,
+        "schema_version": "qualification-audit-sentinel",
+        "status": "verified",
+    }
+    def verify(observed_request, observed_result, **kwargs):
+        assert observed_request == request_path
+        assert observed_result == result_path
+        assert kwargs == {
+            "expected_request_file_sha256": "b" * 64,
+            "expected_request_hash": "a" * 64,
+            "expected_request_size": 123,
+            "expected_review_commit": QUALIFICATION_REVIEW_COMMIT,
+            "expected_result_file_sha256": "e" * 64,
+            "expected_result_hash": "f" * 64,
+            "expected_result_size": 456,
+        }
+        return audit
+
+    monkeypatch.setattr(verifier, "verify_prelock_qualification", verify)
+
+    exit_code = verifier.main(
+        [
+            "--qualification-request-source",
+            str(request_path),
+            "--qualification-result",
+            str(result_path),
+            "--qualification-request-hash",
+            "a" * 64,
+            "--qualification-request-file-sha256",
+            "b" * 64,
+            "--qualification-request-size",
+            "123",
+            "--qualification-review-commit",
+            QUALIFICATION_REVIEW_COMMIT,
+            "--qualification-result-hash",
+            "f" * 64,
+            "--qualification-result-file-sha256",
+            "e" * 64,
+            "--qualification-result-size",
+            "456",
+        ]
+    )
+
+    captured = capsys.readouterr()
+    assert exit_code == 0
+    assert json.loads(captured.out) == audit
+    assert captured.err == ""
+
+
+def test_qualification_verifier_cli_selects_request_only_partial_replay(
+    tmp_path,
+    monkeypatch,
+    capsys,
+):
+    verifier = _verifier()
+    request_path = tmp_path / "qualification-request.json"
+    audit = {
+        "passed": True,
+        "schema_version": "qualification-audit-sentinel",
+        "status": "sealed_partial",
+    }
+    def verify(observed_request, observed_result=None, **kwargs):
+        assert observed_request == request_path
+        assert observed_result is None
+        assert kwargs == {
+            "expected_request_file_sha256": "b" * 64,
+            "expected_request_hash": "a" * 64,
+            "expected_request_size": 123,
+            "expected_review_commit": QUALIFICATION_REVIEW_COMMIT,
+            "expected_result_file_sha256": None,
+            "expected_result_hash": None,
+            "expected_result_size": None,
+        }
+        return audit
+
+    monkeypatch.setattr(verifier, "verify_prelock_qualification", verify)
+
+    exit_code = verifier.main(
+        [
+            "--qualification-request-source",
+            str(request_path),
+            "--qualification-request-hash",
+            "a" * 64,
+            "--qualification-request-file-sha256",
+            "b" * 64,
+            "--qualification-request-size",
+            "123",
+            "--qualification-review-commit",
+            QUALIFICATION_REVIEW_COMMIT,
+        ]
+    )
+
+    captured = capsys.readouterr()
+    assert exit_code == 0
+    assert json.loads(captured.out) == audit
+    assert captured.err == ""
+
+
+def test_qualification_verifier_cli_rejects_abbreviated_request_option(
+    tmp_path,
+    monkeypatch,
+):
+    verifier = _verifier()
+    monkeypatch.setattr(
+        verifier,
+        "verify_prelock_qualification",
+        lambda *_args, **_kwargs: pytest.fail(
+            "abbreviated option entered qualification replay"
+        ),
+    )
+
+    with pytest.raises(SystemExit) as exc_info:
+        verifier.main(
+            [
+                "--qualification-request-so",
+                str(tmp_path / "request.json"),
+                "--qualification-request-hash",
+                "a" * 64,
+                "--qualification-request-file-sha256",
+                "b" * 64,
+                "--qualification-request-size",
+                "123",
+                "--qualification-review-commit",
+                QUALIFICATION_REVIEW_COMMIT,
+            ]
+        )
+
+    assert exc_info.value.code == 2
+
+
+def _build_historical_qualification_review_fixture(
+    tmp_path,
+    monkeypatch,
+    *,
+    review_case="clean",
+):
+    repo_root = tmp_path / "repo"
+    repo_root.mkdir()
+    _copy_registered_sources(repo_root)
+    communication_path = (tmp_path / "config.properties").resolve()
+    communication_path.write_text(
+        "command=python main.py\nclientTimeout=30\n",
+        encoding="iso-8859-1",
+    )
+    checkpoint_root = (tmp_path / "game" / "checkpoints").resolve()
+    checkpoint_root.mkdir(parents=True)
+    marker_path = checkpoint_root.parent / "runs" / "ai_games.txt"
+    marker_path.parent.mkdir()
+    marker_path.write_text("10\n11\n", encoding="utf-8", newline="")
+    registration = expansion.build_registration(
+        study_id=STUDY_ID,
+        artifact_root=tmp_path / "study",
+        repo_root=repo_root,
+        seed_base=SEED_BASE,
+        python_executable=Path(r"D:\anaconda\envs\stsai\python.exe"),
+        communication_config_path=communication_path,
+        checkpoint_root=checkpoint_root,
+    )
+    registration_path = (repo_root / "reports" / "registration.json").resolve()
+    registration_path.parent.mkdir()
+    registration_path.write_text(
+        expansion.render_registration_json(registration),
+        encoding="utf-8",
+        newline="",
+    )
+    monkeypatch.setattr(runner, "REPO_ROOT", repo_root.resolve())
+    _git(repo_root, "init", "--object-format=sha1")
+    _git(repo_root, "config", "core.autocrlf", "false")
+    _git(repo_root, "config", "user.email", "verifier@example.invalid")
+    _git(repo_root, "config", "user.name", "Verifier Fixture")
+    _git(repo_root, "add", ".")
+    _git(repo_root, "commit", "-m", "implementation snapshot")
+    source_commit = _git(repo_root, "rev-parse", "HEAD")
+
+    qualification_root = (tmp_path / "qualification-r4").resolve()
+    qualification_root.mkdir()
+    qualification_id = f"{STUDY_ID}-qualification-r4"
+    config_path = qualification_root / "qualification-config.json"
+    _write_json(
+        config_path,
+        {
+            "category_rates_bps": {"card_reward": 300, "shop": 1000},
+            "enabled_categories": ["card_reward", "shop"],
+            "manifest_path": str(
+                (qualification_root / "qualification-manifest.json").resolve()
+            ),
+            "per_run_alternative_budget": 2,
+            "schema_version": "noncombat-exploration-config-v1",
+            "seed": SEED_BASE + 1,
+            "session_id": f"{qualification_id}-s01",
+            "source_commit": source_commit,
+            "study_id": qualification_id,
+            "study_registration_hash": registration.registration_hash,
+            "study_run_lock_hash": "0" * 64,
+            "study_slot_number": 1,
+            "trace_path": str(
+                (qualification_root / "qualification-trace.jsonl").resolve()
+            ),
+        },
+    )
+    request_source_path = (
+        repo_root / "reports" / "reviewed-qualification-request.json"
+    ).resolve()
+    request = runner.build_qualification_request(
+        registration_path=registration_path,
+        qualification_id=qualification_id,
+        qualification_root=qualification_root,
+        config_path=config_path,
+        marker_path=marker_path,
+        request_source_path=request_source_path,
+        created_unix_ns=100,
+    )
+    assert request["source_commit"] == source_commit
+    if review_case == "non_direct":
+        (repo_root / "review-note.txt").write_text(
+            "intermediate review note\n",
+            encoding="utf-8",
+            newline="",
+        )
+        _git(repo_root, "add", ".")
+        _git(repo_root, "commit", "-m", "intermediate review commit")
+    _write_json(request_source_path, request)
+    if review_case == "extra_diff":
+        (repo_root / "review-note.txt").write_text(
+            "unregistered review note\n",
+            encoding="utf-8",
+            newline="",
+        )
+    elif review_case == "implementation_drift":
+        (repo_root / "main.py").write_text(
+            "# implementation drift during review\n",
+            encoding="utf-8",
+            newline="",
+        )
+    elif review_case not in {"clean", "non_direct"}:
+        raise AssertionError(f"unsupported review case: {review_case}")
+    request_bytes = request_source_path.read_bytes()
+    _git(repo_root, "add", ".")
+    _git(repo_root, "commit", "-m", "review qualification request")
+    review_commit = _git(repo_root, "rev-parse", "HEAD")
+    return {
+        "repo_root": repo_root,
+        "request": request,
+        "request_bytes": request_bytes,
+        "request_source_path": request_source_path,
+        "review_commit": review_commit,
+        "source_commit": source_commit,
+    }
+
+
+def _load_historical_review(verifier, fixture, **overrides):
+    kwargs = {
+        "expected_review_commit": fixture["review_commit"],
+        "expected_request_hash": fixture["request"]["request_hash"],
+        "expected_request_file_sha256": hashlib.sha256(
+            fixture["request_bytes"]
+        ).hexdigest(),
+        "expected_request_size": len(fixture["request_bytes"]),
+    }
+    kwargs.update(overrides)
+    return verifier._load_historical_qualification_review(
+        fixture["request_source_path"],
+        checks=verifier._Checks(),
+        **kwargs,
+    )
+
+
+def test_qualification_verifier_replays_historical_two_commit_review_chain(
+    tmp_path,
+    monkeypatch,
+):
+    verifier = _verifier()
+    fixture = _build_historical_qualification_review_fixture(
+        tmp_path,
+        monkeypatch,
+    )
+    repo_root = fixture["repo_root"]
+    request = fixture["request"]
+    request_source_path = fixture["request_source_path"]
+    review_commit = fixture["review_commit"]
+    source_commit = fixture["source_commit"]
+
+    review = _load_historical_review(verifier, fixture)
+    assert review["request"] == request
+    assert review["review_binding"]["source_commit"] == source_commit
+    assert review["review_binding"]["review_commit"] == review_commit
+
+    (repo_root / "main.py").write_text(
+        "# later implementation drift\n",
+        encoding="utf-8",
+        newline="",
+    )
+    request_source_path.write_text(
+        "{\"later\":\"request drift\"}\n",
+        encoding="utf-8",
+        newline="",
+    )
+    _git(repo_root, "add", ".")
+    _git(repo_root, "commit", "-m", "advance current head")
+    assert _git(repo_root, "rev-parse", "HEAD") != review_commit
+
+    replayed = _load_historical_review(verifier, fixture)
+    assert replayed == review
+
+
+def test_qualification_verifier_replays_when_current_request_parent_is_removed(
+    tmp_path,
+    monkeypatch,
+):
+    verifier = _verifier()
+    fixture = _build_historical_qualification_review_fixture(
+        tmp_path,
+        monkeypatch,
+    )
+
+    shutil.rmtree(fixture["request_source_path"].parent)
+
+    review = _load_historical_review(verifier, fixture)
+    assert review["request"] == fixture["request"]
+    assert (
+        review["review_binding"]["review_commit"]
+        == fixture["review_commit"]
+    )
+
+
+@pytest.mark.parametrize(
+    ("override", "message"),
+    (
+        ({"expected_request_hash": "f" * 64}, "source anchor mismatch"),
+        (
+            {"expected_request_file_sha256": "f" * 64},
+            "source file binding mismatch",
+        ),
+        ({"expected_request_size": 1}, "source file binding mismatch"),
+    ),
+)
+def test_qualification_verifier_rejects_wrong_external_review_anchors(
+    tmp_path,
+    monkeypatch,
+    override,
+    message,
+):
+    verifier = _verifier()
+    fixture = _build_historical_qualification_review_fixture(
+        tmp_path,
+        monkeypatch,
+    )
+
+    with pytest.raises(
+        verifier.OutcomeEvidenceVerificationError,
+        match=message,
+    ):
+        _load_historical_review(verifier, fixture, **override)
+
+
+@pytest.mark.parametrize(
+    ("review_case", "message"),
+    (
+        ("non_direct", "not a direct child"),
+        ("extra_diff", "allowed path set"),
+        ("implementation_drift", "implementation changed"),
+    ),
+)
+def test_qualification_verifier_rejects_invalid_historical_review_chain(
+    tmp_path,
+    monkeypatch,
+    review_case,
+    message,
+):
+    verifier = _verifier()
+    fixture = _build_historical_qualification_review_fixture(
+        tmp_path,
+        monkeypatch,
+        review_case=review_case,
+    )
+
+    with pytest.raises(
+        verifier.OutcomeEvidenceVerificationError,
+        match=message,
+    ):
+        _load_historical_review(verifier, fixture)
 
 
 def test_verifier_requires_independent_120_second_handshake_contract(tmp_path):
@@ -1475,6 +3491,128 @@ def test_verifier_supports_direct_cli_execution():
 
     assert completed.returncode == 0, completed.stderr
     assert "--registration" in completed.stdout
+
+
+def test_qualification_verifier_cli_requires_isolation_before_argparse(tmp_path):
+    verifier_path = (
+        REPO_ROOT
+        / "analysis_scripts"
+        / "verify_noncombat_outcome_evidence_expansion.py"
+    )
+    shadow_root = tmp_path / "shadow"
+    shadow_root.mkdir()
+    marker_path = tmp_path / "argparse-imported.txt"
+    (shadow_root / "argparse.py").write_text(
+        "from pathlib import Path\n"
+        f"Path({str(marker_path)!r}).write_text('executed')\n"
+        "raise RuntimeError('shadow argparse executed')\n",
+        encoding="utf-8",
+        newline="",
+    )
+    environment = os.environ.copy()
+    environment["PYTHONPATH"] = str(shadow_root)
+
+    completed = subprocess.run(
+        [
+            sys.executable,
+            str(verifier_path),
+            "--qualification-request-source",
+            str(tmp_path / "request.json"),
+        ],
+        cwd=REPO_ROOT,
+        capture_output=True,
+        check=False,
+        env=environment,
+        text=True,
+    )
+
+    assert completed.returncode == 2
+    assert "isolated" in completed.stderr.lower()
+    assert not marker_path.exists()
+
+
+def test_qualification_verifier_rejects_site_enabled_isolated_startup(tmp_path):
+    verifier_path = (
+        REPO_ROOT
+        / "analysis_scripts"
+        / "verify_noncombat_outcome_evidence_expansion.py"
+    )
+
+    completed = subprocess.run(
+        [
+            sys.executable,
+            "-I",
+            str(verifier_path),
+            "--qualification-request-source",
+            str(tmp_path / "request.json"),
+        ],
+        cwd=tmp_path,
+        capture_output=True,
+        check=False,
+        text=True,
+    )
+
+    assert completed.returncode == 2
+    assert "no-site" in completed.stderr.lower()
+
+
+def test_qualification_verifier_redirects_bytecode_cache_before_imports(
+    tmp_path,
+):
+    verifier_path = (
+        REPO_ROOT
+        / "analysis_scripts"
+        / "verify_noncombat_outcome_evidence_expansion.py"
+    )
+    probe = (
+        "import json,runpy,sys; path=sys.argv[1]; "
+        "sys.argv=['verifier','--qualification-request-source','request.json']; "
+        "runpy.run_path(path, run_name='qualification_verifier_probe'); "
+        "print(json.dumps([sys.dont_write_bytecode, sys.pycache_prefix]))"
+    )
+
+    completed = subprocess.run(
+        [sys.executable, "-I", "-S", "-c", probe, str(verifier_path)],
+        cwd=tmp_path,
+        capture_output=True,
+        check=False,
+        text=True,
+    )
+
+    assert completed.returncode == 0, completed.stderr
+    assert json.loads(completed.stdout) == [
+        True,
+        os.path.join(os.devnull, "sts-qualification-pycache"),
+    ]
+
+
+def test_qualification_verifier_does_not_import_ordinary_audit_helpers(
+    tmp_path,
+):
+    verifier_path = (
+        REPO_ROOT
+        / "analysis_scripts"
+        / "verify_noncombat_outcome_evidence_expansion.py"
+    )
+    probe = (
+        "import json,runpy,sys; path=sys.argv[1]; "
+        "sys.argv=['verifier','--qualification-request-source','request.json']; "
+        "runpy.run_path(path, run_name='qualification_verifier_probe'); "
+        "print(json.dumps([name for name in sys.modules "
+        "if name in {'analysis_scripts.verify_noncombat_ope_artifacts',"
+        "'analysis_scripts.verify_noncombat_ope_estimates'}]))"
+    )
+
+    completed = subprocess.run(
+        [sys.executable, "-I", "-S", "-c", probe, str(verifier_path)],
+        cwd=tmp_path,
+        capture_output=True,
+        check=False,
+        text=True,
+    )
+
+    assert completed.returncode == 0, completed.stderr
+    assert json.loads(completed.stdout) == []
 
 
 def test_verifier_replay_and_render_are_deterministic(tmp_path, monkeypatch):
