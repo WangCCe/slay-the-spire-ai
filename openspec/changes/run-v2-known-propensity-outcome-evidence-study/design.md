@@ -9,6 +9,13 @@ The candidate study identity is fixed as:
 - Study ID: `noncombat-outcome-evidence-expansion-20260716-v2`
 - Registration: `reports/noncombat_outcome_evidence_expansion_20260716_v2_registration.json`
 - Artifact root: `D:\SteamLibrary\steamapps\common\SlayTheSpire\noncombat_outcome_evidence_expansion_20260716_v2`
+- Prepared active qualification root: `D:\SteamLibrary\steamapps\common\SlayTheSpire\noncombat_outcome_evidence_expansion_20260716_v2_qualification_r5` (canonical static config only; never launched or consumed)
+- Prepared request source: `reports/noncombat_outcome_evidence_expansion_20260716_v2_r5_qualification_request.json`
+- Isolation-repair source snapshot S: `22cfd8b0c235af51b12911c0cb949f7e28a31ce6`
+- Prepared request-v2 self-hash: `b80b5311018c6c39de6df55c8e1d9090826e07bbd606711b4d0c4d68b4d1cfce`
+- Prepared request-v2 file SHA-256: `40e978059c31f90c2da52435d50193deea95b1f3f19c28a865ef96f80c20ed26`
+- Prepared request-v2 size: `8813`
+- Prepared request-v2 isolation baseline hash: `f9902d1403bdc73101a1c665e06dd3e1d717c1d4a86faa02744fd168ffbfea43`
 - Prepared obsolete qualification root: `D:\SteamLibrary\steamapps\common\SlayTheSpire\noncombat_outcome_evidence_expansion_20260716_v2_qualification_r4` (static config only; never launched or consumed)
 - Preserved r3 failure root: `D:\SteamLibrary\steamapps\common\SlayTheSpire\noncombat_outcome_evidence_expansion_20260716_v2_qualification_r3`
 - r3 failure-record self-hash: `e495ce302f0ddf9628962e0d4147614a0cf9b9c7c010f256662a98eae76b033d`
@@ -27,10 +34,12 @@ The candidate study identity is fixed as:
 - Obsolete prep-only request self-hash: `f21313b80fedfccdea76c0e69d3d3d44f06289ba033159537d73f0202f3c039e`
 - Obsolete prep-only request file SHA-256: `1e04b2a378e434c16f45cdb8a389dd527d2419ae6625d6a141e1a9fb0be4792c`
 - Obsolete prep-only request size: `5996`
-- Active qualification root/source/request: none until the isolation repair is committed and a later reviewed amendment binds a previously absent replacement root
+- Direct-child review commit R: unset until the seven-path r5 amendment is committed; its full value must be pinned externally
 - Seed base: `2026071600`
 
-The registered study root remains absent. The r4 root was created only with its canonical static config; the obsolete request was never committed as R or copied into the root, and no active request, attempt, child, handshake, or terminal exists. Independent review found that its v1 request/result contract did not machine-bind broad isolation, so r4 is permanently non-launchable and non-authorizing. The r1, r2, and r3 qualification roots remain immutable failures: r1 stopped on an external log-sharing failure, r2 exposed the old 30-second cold-start implementation defect, and r3 preserved valid attempt/ready evidence but no release. Any replacement must follow the isolation repair with a fresh source snapshot, regenerated registration bindings, a v2 request, a direct-child review commit, and a previously absent root.
+The registered study root remains absent. The r4 root was created only with its canonical static config; the obsolete request was never committed as R or copied into the root, and no active request, attempt, child, handshake, or terminal exists there. Independent review found that its v1 request/result contract did not machine-bind broad isolation, so r4 is permanently non-launchable and non-authorizing. The r1, r2, and r3 qualification roots remain immutable failures: r1 stopped on an external log-sharing failure, r2 exposed the old 30-second cold-start implementation defect, and r3 preserved valid attempt/ready evidence but no release.
+
+The separate `bind-qualification-isolation-evidence` repair is now committed as S `22cfd8b0c235af51b12911c0cb949f7e28a31ce6`. The previously absent r5 root now contains only its 949-byte canonical static config, and request v2 binds that root plus the current CommunicationMod bytes, marker, recursive run inventory, registered checkpoint-pattern inventory, and global logs. The request exists only as an inert review source in the repository; it has not been copied to the active root or consumed. Live qualification remains blocked until the exact seven-path amendment is committed as direct-child R, independently reviewed, and launched from tracked-clean `HEAD == R` with all external anchors.
 
 ## Goals / Non-Goals
 
@@ -59,7 +68,7 @@ If registration replay, dry-run, the no-action smoke, focused tests, full tests,
 
 The r2 qualification exposed such a defect: CommunicationMod received protocol `ready`, but its first callback-free state arrived after the registered 30-second readiness deadline. `fix-cold-start-study-handshake-timeout` reproduced the defect at 45 simulated seconds, changed the fixed launchable contract to 120 seconds, added exact/late deadline rejection, passed focused and full tests, and committed the fix separately as `79cf98f89`.
 
-The old 30-second registration is therefore superseded pre-lock evidence and cannot be launched. The post-orchestrator task 7.1 replay re-rendered the then-current 120-second registration byte-for-byte and retained canonical hash `7df8036e111fb55ece15154796d494ea857a74984c9d1a224c2b61f8fc710ace`, file SHA-256 `a0e282699ede7d1ea38b2d81f029ce5e823b924d81c5ca7cdbc9a45ddc2eb6c2`, and size 19796. The historical r3-era review and obsolete r4 preparation remain immutable context only. Because `bind-qualification-isolation-evidence` changes registration-bound implementation bytes and qualification schemas, a later amendment must canonically re-render the registration and bind the new source snapshot before any replacement request is reviewed.
+The old 30-second registration is therefore superseded pre-lock evidence and cannot be launched. The post-orchestrator task 7.1 replay re-rendered the then-current 120-second registration byte-for-byte and retained canonical hash `7df8036e111fb55ece15154796d494ea857a74984c9d1a224c2b61f8fc710ace`, file SHA-256 `a0e282699ede7d1ea38b2d81f029ce5e823b924d81c5ca7cdbc9a45ddc2eb6c2`, and size 19796. The historical r3-era review and obsolete r4 preparation remain immutable context only. After `bind-qualification-isolation-evidence` changed registration-bound implementation bytes and qualification schemas, the registration was canonically re-rendered with unchanged bytes while the r5 request regenerated the implementation map against S.
 
 Alternative considered: retain the old registration and override only the r3 timeout. Rejected because qualification would then test a different contract from the registered study and its implementation hashes.
 
@@ -67,7 +76,7 @@ Alternative considered: retain the old registration and override only the r3 tim
 
 The regenerated v2 registration will use the fixed identity above, schema v2, the Windows production Python, the existing 24-by-25 schedule, `card_reward=300` basis points, `shop=1000` basis points, two alternative attempts per run, deterministic Current, the existing thresholds and estimator calibration, readiness 120, and release 10. Slot IDs and seeds derive only from the fixed study ID and seed base.
 
-The replacement qualification, run lock, ledger, configs, traces, manifests, pool, estimates, and closeout will reference only a final v2 candidate regenerated after the isolation repair. The three preserved failed qualification roots and prepared r4 root are pre-lock operational history and can never enter the v2 pool or satisfy a launch gate. The immutable v1 study root may be verified read-only as a historical compatibility check, but no v1 trajectory or decision may enter the v2 pool.
+The r5 qualification is the only active prepared replacement candidate. Any later run lock, ledger, configs, traces, manifests, pool, estimates, and closeout will reference only the final v2 candidate regenerated after the isolation repair. The three preserved failed qualification roots and prepared r4 root are pre-lock operational history and can never enter the v2 pool or satisfy a launch gate. The immutable v1 study root may be verified read-only as a historical compatibility check, but no v1 trajectory or decision may enter the v2 pool.
 
 Alternative considered: retain the unlaunched v1 slots or combine structurally valid v1 trajectories with v2. Rejected because the v1 global stop permanently invalidated continuation and all-slot attribution under that registration.
 
@@ -76,8 +85,8 @@ Alternative considered: retain the unlaunched v1 slots or combine structurally v
 Qualification happens before `start` creates a run lock or ledger:
 
 1. Preserve and replay r1, r2, and r3 from their immutable roots, and preserve the prepared r4 config plus obsolete request anchors as non-authorizing history. Require the registered study root to remain absent.
-2. Complete `bind-qualification-isolation-evidence` offline and commit it as a fresh source snapshot S. Re-render the canonical registration against S and review every changed implementation binding.
-3. In a later tracked amendment, name a previously absent replacement qualification root, build a request-v2 baseline that binds CommunicationMod bytes, marker state, run/checkpoint inventories, and global logs, and commit only the declared inert allowlist as direct-child R.
+2. Replay the completed `bind-qualification-isolation-evidence` repair at source snapshot S `22cfd8b0c235af51b12911c0cb949f7e28a31ce6`. Re-render the canonical registration against S and review every changed implementation binding.
+3. Use the previously absent r5 root and canonical request v2. Commit only its declared seven-path inert allowlist as direct-child R; R must contain no runtime terminal, active request, implementation, registration, or executable change.
 4. From tracked-clean `HEAD == R`, point CommunicationMod only at the fixed stdlib `python -I -S -c` trusted launcher and invoke `qualify` with externally preserved S/R/request anchors. The bootstrap must prove the exact chain and unchanged registration/implementation bytes before publishing an active request or starting a child.
 5. Let the tracked qualifier own request publication, the single child, attempt/ready/release, exact CommunicationMod restoration, terminal isolation recollection, child-death proof, and exclusive completion/failure sealing. No external monitor may own or race the protocol.
 6. Preserve terminal self-hash, file SHA-256, and size externally, then run the independent verifier with exact S/R/request/terminal anchors. The verifier must independently recollect the restored resources and reject any drift, schema mismatch, or live/ambiguous child PID.
@@ -117,8 +126,8 @@ After the run-lock window closes, the repository may record the closeout, update
 1. Keep the archived v1 change and external v1 root immutable; replay its blocked verifier as a compatibility baseline.
 2. Generate the fixed v2 registration and review artifact, add exact-byte regressions if needed, and run focused/full offline verification.
 3. Preserve and replay r1/r2/r3 and preserve the r4 config/request preparation as obsolete, unconsumed, and non-authorizing.
-4. Complete and commit the request-bound isolation repair as fresh S, then in a separate reviewed amendment re-render the registration, name a previously absent replacement root, create request v2, and commit exactly the declared inert paths as direct-child R.
-5. From tracked-clean `HEAD == R`, pin the full R and request anchors externally, run the 24-launch dry-run, invoke the tracked qualifier exactly once through real CommunicationMod, and independently replay its terminal without changing tracked source.
+4. Preserve the completed request-bound isolation repair as fresh S, re-render the unchanged registration, prepare the previously absent r5 root and canonical request v2, and commit exactly the declared inert paths as direct-child R.
+5. From tracked-clean `HEAD == R`, pin the full R and request anchors externally, replay the 24-launch dry-run, invoke the tracked qualifier exactly once through real CommunicationMod, and independently replay its terminal without changing tracked source.
 6. Replay all historical roots plus the successful replacement terminal and independent attestation; require the exact qualified HEAD and all static/live bindings; only then create the run lock and ledger without an intervening commit.
 7. Execute slots 01-24 in order with blinded structural monitoring and no tracked edits; stop permanently on a global integrity condition.
 8. Finalize exactly once, run the standalone verifier, restore and compare live isolation state, then record the deterministic closeout.
@@ -128,4 +137,4 @@ Before `start`, rollback means preserving every qualification identity, request/
 
 ## Open Questions
 
-The study identity, schedule, rates, thresholds, target, estimator, three preserved failed qualification identities, 120/10 handshake bounds, stop behavior, and authority limits remain fixed. The active replacement qualification root and new S/direct-child-R/request-v2 anchors are intentionally unset until the isolation repair lands and a later amendment reviews them.
+The study identity, schedule, rates, thresholds, target, estimator, three preserved failed qualification identities, obsolete r4 boundary, 120/10 handshake bounds, stop behavior, and authority limits remain fixed. The r5 root, S, and request-v2 anchors are fixed above. Only the full direct-child R and later terminal/attestation anchors remain unset; no live authority exists before they are independently pinned and replayed.

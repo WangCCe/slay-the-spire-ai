@@ -35,6 +35,12 @@ The system SHALL keep a newly registered v2 outcome-evidence study independent f
 - **THEN** the static-config-only r4 root and prep-only request anchors SHALL remain unconsumed historical context and SHALL NOT authorize a live launch
 - **AND** any replacement SHALL use a new source snapshot, regenerated implementation bindings, request v2, a direct-child review commit, and a previously absent qualification root
 
+#### Scenario: The r5 replacement is prepared offline
+- **WHEN** the isolation repair is committed as S `22cfd8b0c235af51b12911c0cb949f7e28a31ce6` and the previously absent r5 root is prepared
+- **THEN** that root SHALL contain only its canonical static config before review commit R
+- **AND** canonical request v2 SHALL bind S, the unchanged registration, all registration-bound implementation hashes, CommunicationMod bytes and semantic properties, marker bytes and line count, recursive run inventory, registered checkpoint-pattern inventory, global logs, and the exact seven-path inert review allowlist
+- **AND** the request source SHALL remain unconsumed and no active request, child, handshake, terminal, study artifact, run lock, ledger, collection, OPE, training, or policy authority SHALL exist before tracked-clean `HEAD == R` passes independent replay
+
 #### Scenario: A qualification exposes an implementation defect
 - **WHEN** a failed pre-lock qualification proves that a registration-bound implementation or handshake contract is defective before any registered study artifact exists
 - **THEN** the failed qualification root and superseded registration bytes SHALL remain immutable pre-lock evidence
@@ -47,7 +53,7 @@ The system SHALL require a source-bound, outcome-free launch qualification befor
 
 #### Scenario: Candidate qualifies for launch
 - **WHEN** the canonical v2 registration and registration-bound implementation are ready for pre-collection review
-- **THEN** qualification SHALL replay the canonical registration bytes regenerated after the isolation repair and all preserved historical identities, verify all 24 dry-run launches, and complete one real-child no-action CommunicationMod attempt/ready/release/zero-exit lifecycle in a newly reviewed replacement qualification root outside the registered study root
+- **THEN** qualification SHALL replay the canonical registration bytes regenerated after the isolation repair and all preserved historical identities, verify all 24 dry-run launches, and complete one real-child no-action CommunicationMod attempt/ready/release/zero-exit lifecycle in the reviewed r5 qualification root outside the registered study root
 - **AND** the committed request SHALL bind source snapshot S, exact registration and implementation hashes, and one sorted inert review allowlist
 - **AND** launch SHALL prove `HEAD == R`, supply the full R plus request self-hash/file-SHA/size as external anchors, and use the fixed stdlib `python -I -S -c` trusted launcher before the qualifier publishes any active request, attempt, or child process
 - **AND** the registration and attempt SHALL bind the fixed 120-second readiness deadline and unchanged 10-second release deadline
