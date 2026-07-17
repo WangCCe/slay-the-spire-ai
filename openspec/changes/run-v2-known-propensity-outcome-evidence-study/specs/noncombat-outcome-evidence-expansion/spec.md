@@ -25,6 +25,16 @@ The system SHALL keep a newly registered v2 outcome-evidence study independent f
 - **AND** when no implementation binding changed, the unchanged canonical registration, study root, seed schedule, behavior policy, and thresholds SHALL remain fixed
 - **AND** the new root SHALL repeat the complete dry-run, snapshot, real-child attempt/ready/release smoke, restoration, isolation, and independent-attestation gate
 
+#### Scenario: The r3 evidence boundary is carried forward
+- **WHEN** the preserved r3 root replays a valid attempt and ready, an absent release, failure-record self-hash `e495ce302f0ddf9628962e0d4147614a0cf9b9c7c010f256662a98eae76b033d`, file SHA-256 `5a3c47f5b93d7c1f66b5de6c32d3af139188b60735fa36733c6b3c6ee772cfec`, and final inventory `2a63cf3b7505ebf6d9e2f605eade7deec3c0afdaaa4da90ca6a99b517c82cb16`
+- **THEN** the system SHALL preserve r3 as an immutable release-side external orchestration failure with no implementation-defect finding, retry authority, or start authority
+- **AND** it SHALL NOT rely on a narrower unpreserved monitor mechanism to design, justify, or interpret any replacement qualification
+
+#### Scenario: The prepared r4 candidate is superseded before launch
+- **WHEN** independent review finds that the unlaunched r4 request/result contract does not bind broad isolation into independently replayable evidence
+- **THEN** the static-config-only r4 root and prep-only request anchors SHALL remain unconsumed historical context and SHALL NOT authorize a live launch
+- **AND** any replacement SHALL use a new source snapshot, regenerated implementation bindings, request v2, a direct-child review commit, and a previously absent qualification root
+
 #### Scenario: A qualification exposes an implementation defect
 - **WHEN** a failed pre-lock qualification proves that a registration-bound implementation or handshake contract is defective before any registered study artifact exists
 - **THEN** the failed qualification root and superseded registration bytes SHALL remain immutable pre-lock evidence
@@ -37,20 +47,23 @@ The system SHALL require a source-bound, outcome-free launch qualification befor
 
 #### Scenario: Candidate qualifies for launch
 - **WHEN** the canonical v2 registration and registration-bound implementation are ready for pre-collection review
-- **THEN** qualification SHALL replay the regenerated registration bytes and both preserved failure identities, verify all 24 dry-run launches, and complete one real-child no-action CommunicationMod attempt/ready/release smoke in the active reviewed r3 qualification root outside the registered study root
+- **THEN** qualification SHALL replay the canonical registration bytes regenerated after the isolation repair and all preserved historical identities, verify all 24 dry-run launches, and complete one real-child no-action CommunicationMod attempt/ready/release/zero-exit lifecycle in a newly reviewed replacement qualification root outside the registered study root
+- **AND** the committed request SHALL bind source snapshot S, exact registration and implementation hashes, and one sorted inert review allowlist
+- **AND** launch SHALL prove `HEAD == R`, supply the full R plus request self-hash/file-SHA/size as external anchors, and use the fixed stdlib `python -I -S -c` trusted launcher before the qualifier publishes any active request, attempt, or child process
 - **AND** the registration and attempt SHALL bind the fixed 120-second readiness deadline and unchanged 10-second release deadline
 - **AND** it SHALL prove that no ledger, exploration manifest, trace, gameplay action, AI marker, checkpoint mutation, persistent CommunicationMod drift, or surviving process resulted from the smoke
-- **AND** transient Windows sharing violations while reading a live child log SHALL be retried without changing handshake state, while CommunicationMod configuration SHALL be compared semantically during execution and restored byte-for-byte afterward
+- **AND** the owner-controlled qualifier SHALL own request publication, attempt, the only child launch, immediate-ready acceptance, release, zero-exit wait, cleanup, and terminal sealing without any external ready/release monitor, while CommunicationMod configuration SHALL be compared semantically during execution and restored byte-for-byte afterward
 
 #### Scenario: Qualification evidence is reviewed
 - **WHEN** the no-action qualification succeeds
-- **THEN** its external report SHALL be exclusively published with a self-hash and SHALL bind both failed qualification records, the regenerated registration hash, source commit, registration-bound implementation hashes, command, Windows Python path, dry-run digest, pre-smoke CommunicationMod baseline, approved study-launch CommunicationMod semantics, checkpoint snapshot, handshake record hashes, and isolation result
-- **AND** an independent review SHALL exclusively publish a self-hashed attestation bound to the qualification-report hash before `start` is permitted
-- **AND** the report, attestation, handshake records, isolation result, and every bound source or runtime value SHALL replay exactly immediately before `start`
-- **AND** no tracked qualification artifact SHALL be written until the run-lock window has closed and the study has been independently verified
+- **THEN** its canonical completion SHALL be exclusively published with a self-hash and SHALL bind the request/review chain, registration hash, source and implementation hashes, command, Windows Python path, configuration, marker boundary, handshake hashes, one-launch process evidence, forbidden paths, cleanup, and uniformly false study/training/policy authority
+- **AND** the terminal result self-hash, file SHA-256, size, R, request self-hash, request file SHA-256, and request size SHALL be preserved externally before independent replay
+- **AND** an independent verifier SHALL exclusively publish an attestation outside the qualification root and every request-bound or forbidden path before `start` is permitted
+- **AND** the request, completion, attestation, handshake records, isolation result, and every bound source or runtime value SHALL replay exactly immediately before `start`
+- **AND** only the reviewed inert request/amendment paths MAY be tracked before qualification; no runtime terminal or attestation artifact SHALL be tracked until the run-lock window has closed and the study has been independently verified
 
 #### Scenario: Qualified candidate drifts before start
-- **WHEN** the qualification report or reviewer attestation bytes, their self-hashes, a handshake-record hash, isolation result, source commit, registration bytes, registration-bound implementation file, command, Python path, approved study-launch CommunicationMod semantic record, checkpoint snapshot, or any other qualification binding differs after review
+- **WHEN** S/R ancestry or diff, request or reviewer-attestation bytes, request/terminal self-hash/file-SHA/size anchors, a handshake-record hash, isolation result, registration bytes, registration-bound implementation file, command, Python path, approved study-launch CommunicationMod semantic record, checkpoint snapshot, or any other qualification binding differs after review
 - **THEN** the candidate SHALL require a new qualification and review before run-lock creation
 - **AND** no prior smoke or favorable test result SHALL authorize launch of the changed candidate
 

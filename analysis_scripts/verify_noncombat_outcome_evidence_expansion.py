@@ -30,6 +30,7 @@ if _QUALIFICATION_CLI_REQUESTED:
         raise SystemExit(2)
 
 import argparse
+import base64
 import fnmatch
 import hashlib
 import importlib.machinery
@@ -146,14 +147,26 @@ HANDSHAKE_READY_SCHEMA_VERSION = "noncombat-outcome-evidence-handshake-ready-v1"
 HANDSHAKE_RELEASE_SCHEMA_VERSION = (
     "noncombat-outcome-evidence-handshake-release-v1"
 )
-QUALIFICATION_REQUEST_SCHEMA_VERSION = (
+LEGACY_QUALIFICATION_REQUEST_SCHEMA_VERSION = (
     "noncombat-outcome-evidence-qualification-request-v1"
 )
-QUALIFICATION_RESULT_SCHEMA_VERSION = (
+QUALIFICATION_REQUEST_SCHEMA_VERSION = (
+    "noncombat-outcome-evidence-qualification-request-v2"
+)
+LEGACY_QUALIFICATION_RESULT_SCHEMA_VERSION = (
     "noncombat-outcome-evidence-qualification-result-v1"
 )
+QUALIFICATION_RESULT_SCHEMA_VERSION = (
+    "noncombat-outcome-evidence-qualification-result-v2"
+)
+QUALIFICATION_ISOLATION_SCHEMA_VERSION = (
+    "noncombat-outcome-evidence-qualification-isolation-v1"
+)
+QUALIFICATION_ISOLATION_OBSERVATION_SCHEMA_VERSION = (
+    "noncombat-outcome-evidence-qualification-isolation-observation-v1"
+)
 QUALIFICATION_AUDIT_SCHEMA_VERSION = (
-    "noncombat-outcome-evidence-qualification-verification-audit-v1"
+    "noncombat-outcome-evidence-qualification-verification-audit-v2"
 )
 QUALIFICATION_REVIEW_BINDING_SCHEMA_VERSION = (
     "noncombat-outcome-evidence-qualification-review-binding-v1"
@@ -607,6 +620,752 @@ def _qualification_no_follow_entries(
     return sorted(entries, key=lambda row: str(row[0]))
 
 
+def _qualification_read_file_bytes(path: Path, label: str) -> bytes:
+    guarded_path = _qualification_require_no_follow_path(
+        path,
+        label,
+        expected_kind="file",
+    )
+    try:
+        before = guarded_path.lstat()
+        with open(guarded_path, "rb") as stream:
+            handle_before = os.fstat(stream.fileno())
+            opened_path = guarded_path.lstat()
+            raw = stream.read()
+            handle_after = os.fstat(stream.fileno())
+        guarded_after = _qualification_require_no_follow_path(
+            guarded_path,
+            label,
+            expected_kind="file",
+        )
+        after = guarded_after.lstat()
+    except OSError as exc:
+        raise OutcomeEvidenceVerificationError(
+            f"cannot read qualification {label}: {exc}"
+        ) from exc
+
+    metadata_rows = (
+        before,
+        handle_before,
+        opened_path,
+        handle_after,
+        after,
+    )
+    signatures = {
+        (
+            metadata.st_size,
+            metadata.st_mtime_ns,
+            metadata.st_ctime_ns,
+        )
+        for metadata in metadata_rows
+    }
+    if (
+        any(
+            _qualification_metadata_is_link_or_reparse(metadata)
+            or not stat.S_ISREG(metadata.st_mode)
+            for metadata in metadata_rows
+        )
+        or any(
+            not os.path.samestat(before, metadata)
+            for metadata in metadata_rows[1:]
+        )
+        or len(signatures) != 1
+        or len(raw) != handle_after.st_size
+    ):
+        raise OutcomeEvidenceVerificationError(
+            f"qualification {label} changed while being read"
+        )
+    return raw
+
+
+def _qualification_file_observation(
+    path: Path,
+    *,
+    label: str,
+    allow_missing: bool,
+) -> dict[str, Any]:
+    observation, _raw = _qualification_file_observation_bytes(
+        path,
+        label=label,
+        allow_missing=allow_missing,
+    )
+    return observation
+
+
+def _qualification_file_observation_bytes(
+    path: Path,
+    *,
+    label: str,
+    allow_missing: bool,
+) -> tuple[dict[str, Any], bytes | None]:
+    guarded_path = _qualification_require_no_follow_path(
+        path,
+        label,
+        expected_kind="file",
+        allow_missing=allow_missing,
+    )
+    if not _qualification_path_entry_exists(guarded_path):
+        return (
+            {
+                "exists": False,
+                "path": str(guarded_path),
+                "sha256": None,
+                "size": None,
+            },
+            None,
+        )
+    raw = _qualification_read_file_bytes(guarded_path, label)
+    return (
+        {
+            "exists": True,
+            "path": str(guarded_path),
+            "sha256": hashlib.sha256(raw).hexdigest(),
+            "size": len(raw),
+        },
+        raw,
+    )
+
+
+def _qualification_marker_count_from_bytes(raw: bytes | None) -> int:
+    if raw is None:
+        return 0
+    try:
+        lines = raw.decode("utf-8").splitlines()
+    except UnicodeError as exc:
+        raise OutcomeEvidenceVerificationError(
+            f"cannot decode qualification marker file: {exc}"
+        ) from exc
+    markers = [line.strip() for line in lines if line.strip()]
+    if any(not marker.isdigit() for marker in markers):
+        raise OutcomeEvidenceVerificationError(
+            "qualification marker file is invalid"
+        )
+    return len(markers)
+
+
+def _qualification_inventory_observation(
+    root: Path,
+    *,
+    patterns: Sequence[str] | None = None,
+) -> dict[str, Any]:
+    guarded_root = _qualification_require_no_follow_path(
+        root,
+        "isolation inventory root",
+        expected_kind="directory",
+    )
+    normalized_patterns = None if patterns is None else list(patterns)
+    if normalized_patterns is not None and (
+        not normalized_patterns
+        or normalized_patterns != sorted(set(normalized_patterns))
+        or any(
+            not isinstance(pattern, str)
+            or not pattern
+            or "/" in pattern
+            or "\\" in pattern
+            or pattern in {".", ".."}
+            for pattern in normalized_patterns
+        )
+    ):
+        raise OutcomeEvidenceVerificationError(
+            "qualification isolation inventory patterns are invalid"
+        )
+    rows = []
+    for path, metadata, is_link_or_reparse in _qualification_no_follow_entries(
+        guarded_root
+    ):
+        if is_link_or_reparse:
+            raise OutcomeEvidenceVerificationError(
+                "qualification isolation inventory contains a symbolic link "
+                "or reparse point"
+            )
+        if stat.S_ISDIR(metadata.st_mode):
+            continue
+        if not stat.S_ISREG(metadata.st_mode):
+            raise OutcomeEvidenceVerificationError(
+                "qualification isolation inventory contains a non-regular entry"
+            )
+        if normalized_patterns is not None and not any(
+            path.match(pattern) for pattern in normalized_patterns
+        ):
+            continue
+        raw = _qualification_read_file_bytes(path, "isolation inventory file")
+        rows.append(
+            {
+                "kind": "file",
+                "path": path.relative_to(guarded_root).as_posix(),
+                "sha256": hashlib.sha256(raw).hexdigest(),
+                "size": len(raw),
+            }
+        )
+    rows.sort(key=lambda row: row["path"])
+    return {
+        "entry_count": len(rows),
+        "inventory_sha256": hashlib.sha256(
+            _canonical_json(rows).encode("utf-8")
+        ).hexdigest(),
+        "patterns": normalized_patterns,
+        "root": str(guarded_root),
+        "total_bytes": sum(row["size"] for row in rows),
+    }
+
+
+def _qualification_parse_java_properties(raw: bytes) -> dict[str, str]:
+    content = raw.decode("iso-8859-1")
+    lines = content.replace("\r\n", "\n").replace("\r", "\n").split("\n")
+    properties: dict[str, str] = {}
+    for logical_line in _qualification_java_properties_logical_lines(lines):
+        parsed = _qualification_parse_java_property(logical_line)
+        if parsed is None:
+            continue
+        key, value = parsed
+        if key in properties:
+            raise OutcomeEvidenceVerificationError(
+                "qualification CommunicationMod config contains a duplicate "
+                "property"
+            )
+        properties[key] = value
+    return properties
+
+
+def _qualification_java_properties_logical_lines(lines: Sequence[str]):
+    pending = ""
+    continuing = False
+    for natural_line in lines:
+        if not continuing and natural_line.lstrip(" \t\f").startswith(("#", "!")):
+            yield natural_line
+            continue
+        piece = natural_line.lstrip(" \t\f") if continuing else natural_line
+        pending += piece
+        trailing_backslashes = len(pending) - len(pending.rstrip("\\"))
+        if trailing_backslashes % 2 == 1:
+            pending = pending[:-1]
+            continuing = True
+            continue
+        yield pending
+        pending = ""
+        continuing = False
+    if pending or continuing:
+        yield pending
+
+
+def _qualification_parse_java_property(line: str) -> tuple[str, str] | None:
+    content = line.lstrip(" \t\f")
+    if not content or content.startswith(("#", "!")):
+        return None
+    key_end = len(content)
+    value_start = len(content)
+    escaped = False
+    for index, character in enumerate(content):
+        if escaped:
+            escaped = False
+            continue
+        if character == "\\":
+            escaped = True
+            continue
+        if character in "=: \t\f":
+            key_end = index
+            value_start = index
+            break
+    while value_start < len(content) and content[value_start] in " \t\f":
+        value_start += 1
+    if value_start < len(content) and content[value_start] in "=:":
+        value_start += 1
+    while value_start < len(content) and content[value_start] in " \t\f":
+        value_start += 1
+    return (
+        _qualification_decode_java_property_escapes(content[:key_end]),
+        _qualification_decode_java_property_escapes(content[value_start:]),
+    )
+
+
+def _qualification_decode_java_property_escapes(value: str) -> str:
+    decoded = []
+    index = 0
+    escapes = {"t": "\t", "n": "\n", "r": "\r", "f": "\f"}
+    while index < len(value):
+        character = value[index]
+        if character != "\\":
+            decoded.append(character)
+            index += 1
+            continue
+        index += 1
+        if index >= len(value):
+            raise OutcomeEvidenceVerificationError(
+                "invalid trailing escape in qualification CommunicationMod config"
+            )
+        escaped = value[index]
+        if escaped == "u":
+            digits = value[index + 1 : index + 5]
+            if len(digits) != 4 or any(
+                digit not in "0123456789abcdefABCDEF" for digit in digits
+            ):
+                raise OutcomeEvidenceVerificationError(
+                    "invalid Unicode escape in qualification CommunicationMod config"
+                )
+            decoded.append(chr(int(digits, 16)))
+            index += 5
+            continue
+        decoded.append(escapes.get(escaped, escaped))
+        index += 1
+    return "".join(decoded)
+
+
+def _qualification_expected_isolation_observation(
+    baseline: Mapping[str, Any],
+) -> dict[str, Any]:
+    communication = baseline["communication_mod"]
+    record = {
+        "checkpoints": dict(baseline["checkpoints"]),
+        "communication_mod": {
+            "exists": True,
+            "path": communication["path"],
+            "properties": dict(communication["properties"]),
+            "sha256": communication["sha256"],
+            "size": communication["size"],
+        },
+        "global_logs": {
+            path: dict(observation)
+            for path, observation in baseline["global_logs"].items()
+        },
+        "marker": dict(baseline["marker"]),
+        "observation_hash": None,
+        "runs": dict(baseline["runs"]),
+        "schema_version": QUALIFICATION_ISOLATION_OBSERVATION_SCHEMA_VERSION,
+    }
+    record["observation_hash"] = _self_hash(record, "observation_hash")
+    return record
+
+
+def _qualification_isolation_mismatches(
+    expected: Mapping[str, Any],
+    observed: Mapping[str, Any],
+) -> list[str]:
+    mismatches = []
+    for name in ("communication_mod", "marker", "runs", "checkpoints"):
+        if observed[name] != expected[name]:
+            mismatches.append(name)
+    for path, expected_log in expected["global_logs"].items():
+        if observed["global_logs"].get(path) != expected_log:
+            mismatches.append(f"global_log:{path}")
+    return sorted(mismatches)
+
+
+def _qualification_collect_isolation(
+    request: Mapping[str, Any],
+) -> dict[str, Any]:
+    baseline = _mapping(request.get("isolation"), "qualification isolation")
+    communication_path = Path(baseline["communication_mod"]["path"])
+    communication, communication_bytes = _qualification_file_observation_bytes(
+        communication_path,
+        label="CommunicationMod observation",
+        allow_missing=True,
+    )
+    communication["properties"] = (
+        _qualification_parse_java_properties(
+            communication_bytes
+        )
+        if communication["exists"]
+        else None
+    )
+    marker_path = Path(baseline["marker"]["path"])
+    marker, marker_bytes = _qualification_file_observation_bytes(
+        marker_path,
+        label="marker observation",
+        allow_missing=True,
+    )
+    marker["line_count"] = _qualification_marker_count_from_bytes(marker_bytes)
+    checkpoints = baseline["checkpoints"]
+    runs = baseline["runs"]
+    record = {
+        "checkpoints": _qualification_inventory_observation(
+            Path(checkpoints["root"]),
+            patterns=checkpoints["patterns"],
+        ),
+        "communication_mod": communication,
+        "global_logs": {
+            path: _qualification_file_observation(
+                Path(path),
+                label="global-log observation",
+                allow_missing=True,
+            )
+            for path in baseline["global_logs"]
+        },
+        "marker": marker,
+        "observation_hash": None,
+        "runs": _qualification_inventory_observation(
+            Path(runs["root"]),
+            patterns=runs["patterns"],
+        ),
+        "schema_version": QUALIFICATION_ISOLATION_OBSERVATION_SCHEMA_VERSION,
+    }
+    record["observation_hash"] = _self_hash(record, "observation_hash")
+    return json.loads(_canonical_json(record))
+
+
+def _verify_qualification_file_observation(
+    value: Any,
+    *,
+    expected_path: Path,
+    label: str,
+    checks: "_Checks",
+    extra_fields: set[str] | None = None,
+) -> Mapping[str, Any]:
+    observation = _mapping(value, f"qualification {label} observation")
+    extras = set() if extra_fields is None else set(extra_fields)
+    checks.require(
+        set(observation) == {"exists", "path", "sha256", "size", *extras},
+        f"qualification {label} observation fields mismatch",
+    )
+    observed_path = _qualification_require_no_follow_path(
+        _qualification_lexical_absolute_path(
+            observation.get("path"),
+            f"qualification {label} observation path",
+        ),
+        f"{label} observation path",
+        expected_kind="file",
+        allow_missing=True,
+    )
+    checks.require(
+        observed_path == Path(expected_path),
+        f"qualification {label} observation path mismatch",
+    )
+    exists = observation.get("exists")
+    checks.require(
+        type(exists) is bool,
+        f"qualification {label} observation existence is invalid",
+    )
+    if exists:
+        checks.require(
+            type(observation.get("size")) is int
+            and observation["size"] >= 0
+            and _is_sha256(observation.get("sha256")),
+            f"qualification {label} observation fingerprint is invalid",
+        )
+    else:
+        checks.require(
+            observation.get("size") is None
+            and observation.get("sha256") is None,
+            f"qualification absent {label} observation fingerprint is invalid",
+        )
+    return observation
+
+
+def _verify_qualification_inventory_observation(
+    value: Any,
+    *,
+    expected_root: Path,
+    expected_patterns: Sequence[str] | None,
+    label: str,
+    checks: "_Checks",
+) -> Mapping[str, Any]:
+    observation = _mapping(value, f"qualification {label} inventory")
+    checks.require(
+        set(observation)
+        == {
+            "entry_count",
+            "inventory_sha256",
+            "patterns",
+            "root",
+            "total_bytes",
+        },
+        f"qualification {label} inventory fields mismatch",
+    )
+    root = _qualification_require_no_follow_path(
+        _qualification_lexical_absolute_path(
+            observation.get("root"),
+            f"qualification {label} inventory root",
+        ),
+        f"{label} inventory root",
+        expected_kind="directory",
+    )
+    normalized_patterns = (
+        None if expected_patterns is None else list(expected_patterns)
+    )
+    checks.require(
+        root == Path(expected_root)
+        and observation.get("patterns") == normalized_patterns
+        and type(observation.get("entry_count")) is int
+        and observation["entry_count"] >= 0
+        and type(observation.get("total_bytes")) is int
+        and observation["total_bytes"] >= 0
+        and _is_sha256(observation.get("inventory_sha256")),
+        f"qualification {label} inventory binding mismatch",
+    )
+    return observation
+
+
+def _verify_qualification_isolation_baseline(
+    value: Any,
+    *,
+    registration: Mapping[str, Any],
+    marker_path: Path,
+    marker_start_count: int,
+    checks: "_Checks",
+) -> dict[str, Any]:
+    baseline = _mapping(value, "qualification isolation baseline")
+    checks.require(
+        set(baseline)
+        == {
+            "baseline_hash",
+            "checkpoints",
+            "communication_mod",
+            "global_logs",
+            "marker",
+            "runs",
+            "schema_version",
+        },
+        "qualification isolation baseline fields mismatch",
+    )
+    checks.require(
+        baseline.get("schema_version") == QUALIFICATION_ISOLATION_SCHEMA_VERSION,
+        "qualification isolation baseline schema mismatch",
+    )
+    checks.require(
+        _is_sha256(baseline.get("baseline_hash"))
+        and baseline["baseline_hash"] == _self_hash(baseline, "baseline_hash"),
+        "qualification isolation baseline hash mismatch",
+    )
+    integrity = _mapping(
+        registration.get("integrity_rules"),
+        "registration integrity rules",
+    )
+    checkpoint_rule = _mapping(
+        integrity.get("checkpoint_inventory"),
+        "registration checkpoint inventory",
+    )
+    checkpoint_root = _qualification_lexical_absolute_path(
+        checkpoint_rule.get("root"),
+        "registration checkpoint root",
+    )
+    checkpoint_patterns = _sequence(
+        checkpoint_rule.get("patterns"),
+        "registration checkpoint patterns",
+    )
+    game_root = checkpoint_root.parent
+    run_root = Path(os.path.abspath(game_root / "runs"))
+    _verify_qualification_inventory_observation(
+        baseline.get("checkpoints"),
+        expected_root=checkpoint_root,
+        expected_patterns=checkpoint_patterns,
+        label="checkpoint",
+        checks=checks,
+    )
+    _verify_qualification_inventory_observation(
+        baseline.get("runs"),
+        expected_root=run_root,
+        expected_patterns=None,
+        label="run",
+        checks=checks,
+    )
+
+    communication = _mapping(
+        baseline.get("communication_mod"),
+        "qualification CommunicationMod isolation binding",
+    )
+    checks.require(
+        set(communication)
+        == {"original_bytes_b64", "path", "properties", "sha256", "size"},
+        "qualification CommunicationMod isolation fields mismatch",
+    )
+    communication_path = _qualification_lexical_absolute_path(
+        communication.get("path"),
+        "qualification CommunicationMod isolation path",
+    )
+    expected_communication_path = _qualification_lexical_absolute_path(
+        integrity.get("communication_config_path"),
+        "registration CommunicationMod config path",
+    )
+    checks.require(
+        communication_path == expected_communication_path,
+        "qualification CommunicationMod isolation path mismatch",
+    )
+    try:
+        original_bytes = base64.b64decode(
+            communication.get("original_bytes_b64"),
+            validate=True,
+        )
+    except (TypeError, ValueError) as exc:
+        raise OutcomeEvidenceVerificationError(
+            "qualification CommunicationMod original bytes are invalid"
+        ) from exc
+    properties = _mapping(
+        communication.get("properties"),
+        "qualification CommunicationMod properties",
+    )
+    checks.require(
+        type(communication.get("size")) is int
+        and communication["size"] >= 0
+        and len(original_bytes) == communication["size"]
+        and hashlib.sha256(original_bytes).hexdigest()
+        == communication.get("sha256")
+        and dict(properties) == _qualification_parse_java_properties(original_bytes),
+        "qualification CommunicationMod original-byte binding mismatch",
+    )
+
+    marker = _verify_qualification_file_observation(
+        baseline.get("marker"),
+        expected_path=marker_path,
+        label="marker",
+        checks=checks,
+        extra_fields={"line_count"},
+    )
+    checks.require(
+        type(marker.get("line_count")) is int
+        and marker["line_count"] >= 0
+        and marker["line_count"] == marker_start_count,
+        "qualification isolation marker count mismatch",
+    )
+    global_logs = _mapping(
+        baseline.get("global_logs"),
+        "qualification global-log isolation",
+    )
+    expected_logs = {
+        str(Path(os.path.abspath(game_root / "ai_debug.log"))),
+        str(Path(os.path.abspath(game_root / "communication_mod_errors.log"))),
+    }
+    checks.require(
+        set(global_logs) == expected_logs,
+        "qualification global-log isolation paths mismatch",
+    )
+    for path, observation in global_logs.items():
+        _verify_qualification_file_observation(
+            observation,
+            expected_path=Path(path),
+            label="global log",
+            checks=checks,
+        )
+    return json.loads(_canonical_json(baseline))
+
+
+def _verify_qualification_isolation_observation(
+    value: Any,
+    *,
+    baseline: Mapping[str, Any],
+    checks: "_Checks",
+) -> dict[str, Any]:
+    observation = _mapping(value, "qualification isolation observation")
+    checks.require(
+        set(observation)
+        == {
+            "checkpoints",
+            "communication_mod",
+            "global_logs",
+            "marker",
+            "observation_hash",
+            "runs",
+            "schema_version",
+        },
+        "qualification isolation observation fields mismatch",
+    )
+    checks.require(
+        observation.get("schema_version")
+        == QUALIFICATION_ISOLATION_OBSERVATION_SCHEMA_VERSION,
+        "qualification isolation observation schema mismatch",
+    )
+    checks.require(
+        _is_sha256(observation.get("observation_hash"))
+        and observation["observation_hash"]
+        == _self_hash(observation, "observation_hash"),
+        "qualification isolation observation hash mismatch",
+    )
+    communication = _verify_qualification_file_observation(
+        observation.get("communication_mod"),
+        expected_path=Path(baseline["communication_mod"]["path"]),
+        label="CommunicationMod",
+        checks=checks,
+        extra_fields={"properties"},
+    )
+    if communication["exists"]:
+        _mapping(
+            communication.get("properties"),
+            "qualification CommunicationMod observed properties",
+        )
+    else:
+        checks.require(
+            communication.get("properties") is None,
+            "qualification absent CommunicationMod properties are invalid",
+        )
+    marker = _verify_qualification_file_observation(
+        observation.get("marker"),
+        expected_path=Path(baseline["marker"]["path"]),
+        label="marker",
+        checks=checks,
+        extra_fields={"line_count"},
+    )
+    checks.require(
+        type(marker.get("line_count")) is int and marker["line_count"] >= 0,
+        "qualification marker observation count is invalid",
+    )
+    for name in ("checkpoints", "runs"):
+        expected = baseline[name]
+        _verify_qualification_inventory_observation(
+            observation.get(name),
+            expected_root=Path(expected["root"]),
+            expected_patterns=expected["patterns"],
+            label=name,
+            checks=checks,
+        )
+    global_logs = _mapping(
+        observation.get("global_logs"),
+        "qualification global-log observation",
+    )
+    checks.require(
+        set(global_logs) == set(baseline["global_logs"]),
+        "qualification global-log observation paths mismatch",
+    )
+    for path, file_observation in global_logs.items():
+        _verify_qualification_file_observation(
+            file_observation,
+            expected_path=Path(path),
+            label="global log",
+            checks=checks,
+        )
+    return json.loads(_canonical_json(observation))
+
+
+def _qualification_pid_is_alive(pid: int) -> bool:
+    if type(pid) is not int or pid <= 0:
+        raise OutcomeEvidenceVerificationError(
+            "qualification child PID is invalid"
+        )
+    if os.name == "nt":
+        import ctypes
+
+        process_query_limited_information = 0x1000
+        kernel32 = ctypes.WinDLL("kernel32", use_last_error=True)
+        open_process = kernel32.OpenProcess
+        open_process.argtypes = (
+            ctypes.c_uint32,
+            ctypes.c_int,
+            ctypes.c_uint32,
+        )
+        open_process.restype = ctypes.c_void_p
+        close_handle = kernel32.CloseHandle
+        close_handle.argtypes = (ctypes.c_void_p,)
+        close_handle.restype = ctypes.c_int
+        handle = open_process(
+            process_query_limited_information,
+            False,
+            pid,
+        )
+        if handle:
+            close_handle(handle)
+            return True
+        error = ctypes.get_last_error()
+        if error == 87:
+            return False
+        return True
+    try:
+        os.kill(pid, 0)
+    except ProcessLookupError:
+        return False
+    except PermissionError:
+        return True
+    except OSError:
+        return True
+    return True
+
+
 def _qualification_validate_git_metadata(repo_root: Path) -> Path:
     repo_root = _qualification_require_no_follow_path(
         repo_root,
@@ -1030,7 +1789,11 @@ def verify_prelock_qualification(
     result = _load_qualification_record_bytes(
         result_bytes,
         path=resolved_result_path,
-        schema_version=QUALIFICATION_RESULT_SCHEMA_VERSION,
+        schema_version=(
+            QUALIFICATION_RESULT_SCHEMA_VERSION
+            if request["schema_version"] == QUALIFICATION_REQUEST_SCHEMA_VERSION
+            else LEGACY_QUALIFICATION_RESULT_SCHEMA_VERSION
+        ),
         hash_field="result_hash",
         label="qualification result",
     )
@@ -1038,7 +1801,7 @@ def verify_prelock_qualification(
         result["result_hash"] == result_anchors["result_hash"],
         "qualification result self-hash anchor mismatch",
     )
-    _verify_qualification_result(
+    result_verification = _verify_qualification_result(
         result,
         result_path=resolved_result_path,
         request=request,
@@ -1059,6 +1822,14 @@ def verify_prelock_qualification(
         artifact_inventory=artifact_inventory,
         result_file_sha256=result_anchors["file_sha256"],
         result_size=result_anchors["size"],
+        isolation_bound=result_verification["isolation_bound"],
+        launch_qualified=result_verification["launch_qualified"],
+        isolation_baseline_hash=result_verification[
+            "isolation_baseline_hash"
+        ],
+        isolation_post_observation_hash=result_verification[
+            "isolation_post_observation_hash"
+        ],
     )
 
 
@@ -1118,6 +1889,10 @@ def _qualification_audit(
     artifact_inventory: Mapping[str, Any],
     result_file_sha256: str | None = None,
     result_size: int | None = None,
+    isolation_bound: bool = False,
+    launch_qualified: bool = False,
+    isolation_baseline_hash: str | None = None,
+    isolation_post_observation_hash: str | None = None,
 ) -> dict[str, Any]:
     audit = {
         "audit_hash": None,
@@ -1128,6 +1903,10 @@ def _qualification_audit(
         "consumed": consumed,
         "evidence_error": evidence_error,
         "evidence_valid": evidence_valid,
+        "isolation_baseline_hash": isolation_baseline_hash,
+        "isolation_bound": isolation_bound,
+        "isolation_post_observation_hash": isolation_post_observation_hash,
+        "launch_qualified": launch_qualified,
         "partial_stage": partial_stage,
         "passed": True,
         "qualification_status": qualification_status,
@@ -1294,7 +2073,7 @@ def _qualification_audit_inventory(
 def _load_qualification_record(
     path: Path,
     *,
-    schema_version: str,
+    schema_version: str | Sequence[str],
     hash_field: str,
     label: str,
 ) -> dict[str, Any]:
@@ -1317,14 +2096,19 @@ def _load_qualification_record_bytes(
     raw: bytes,
     *,
     path: Path,
-    schema_version: str,
+    schema_version: str | Sequence[str],
     hash_field: str,
     label: str,
 ) -> dict[str, Any]:
     record = _load_mapping_bytes(raw, path)
     if raw != (_canonical_json(record) + "\n").encode("utf-8"):
         raise OutcomeEvidenceVerificationError(f"{label} is not canonical")
-    if record.get("schema_version") != schema_version:
+    accepted_schema_versions = (
+        (schema_version,)
+        if isinstance(schema_version, str)
+        else tuple(schema_version)
+    )
+    if record.get("schema_version") not in accepted_schema_versions:
         raise OutcomeEvidenceVerificationError(f"{label} schema mismatch")
     if not _is_sha256(record.get(hash_field)):
         raise OutcomeEvidenceVerificationError(f"{label} self-hash is invalid")
@@ -1430,7 +2214,10 @@ def _load_historical_qualification_review(
     request = _load_qualification_record_bytes(
         request_bytes,
         path=request_source_path,
-        schema_version=QUALIFICATION_REQUEST_SCHEMA_VERSION,
+        schema_version=(
+            LEGACY_QUALIFICATION_REQUEST_SCHEMA_VERSION,
+            QUALIFICATION_REQUEST_SCHEMA_VERSION,
+        ),
         hash_field="request_hash",
         label="qualification request source",
     )
@@ -1670,6 +2457,15 @@ def _verify_qualification_request(
     request_review: Mapping[str, Any],
     checks: _Checks,
 ) -> dict[str, Any]:
+    schema_version = request.get("schema_version")
+    checks.require(
+        schema_version
+        in {
+            LEGACY_QUALIFICATION_REQUEST_SCHEMA_VERSION,
+            QUALIFICATION_REQUEST_SCHEMA_VERSION,
+        },
+        "qualification request schema is unsupported",
+    )
     expected_fields = {
         "child_command",
         "completion_path",
@@ -1691,6 +2487,8 @@ def _verify_qualification_request(
         "schema_version",
         "source_commit",
     }
+    if schema_version == QUALIFICATION_REQUEST_SCHEMA_VERSION:
+        expected_fields.add("isolation")
     checks.require(
         set(request) == expected_fields,
         "qualification request fields mismatch",
@@ -1875,10 +2673,20 @@ def _verify_qualification_request(
         "qualification marker path does not match the registered game root",
     )
     marker_count = _qualification_marker_count(marker_path)
-    checks.require(
-        marker_binding.get("start_count") == marker_count,
-        "qualification marker binding mismatch",
-    )
+    if schema_version == LEGACY_QUALIFICATION_REQUEST_SCHEMA_VERSION:
+        checks.require(
+            marker_binding.get("start_count") == marker_count,
+            "qualification marker binding mismatch",
+        )
+    isolation = None
+    if schema_version == QUALIFICATION_REQUEST_SCHEMA_VERSION:
+        isolation = _verify_qualification_isolation_baseline(
+            request.get("isolation"),
+            registration=registration,
+            marker_path=marker_path,
+            marker_start_count=marker_binding["start_count"],
+            checks=checks,
+        )
 
     handshake = _mapping(request.get("handshake"), "qualification handshake")
     expected_handshake = _expected_qualification_handshake(
@@ -1963,6 +2771,9 @@ def _verify_qualification_request(
         "marker_count": marker_count,
         "registration": registration,
         "request_review": request_review,
+        "isolation": isolation,
+        "isolation_bound": isolation is not None,
+        "request_schema_version": schema_version,
     }
 
 
@@ -2084,6 +2895,128 @@ def _verify_partial_qualification_timestamps(
     )
 
 
+def _verify_qualification_result_isolation(
+    result: Mapping[str, Any],
+    *,
+    request: Mapping[str, Any],
+    context: Mapping[str, Any],
+    process_pid: int | None,
+    checks: _Checks,
+) -> dict[str, Any]:
+    baseline = _mapping(context.get("isolation"), "qualification isolation baseline")
+    isolation = _mapping(
+        result.get("isolation"),
+        "qualification result isolation",
+    )
+    checks.require(
+        set(isolation)
+        == {
+            "baseline_hash",
+            "child_alive",
+            "communication_restored",
+            "matched",
+            "mismatches",
+            "observation_error",
+            "post_observation",
+            "post_observation_hash",
+            "restoration_error",
+        },
+        "qualification result isolation fields mismatch",
+    )
+    checks.require(
+        isolation.get("baseline_hash") == baseline["baseline_hash"],
+        "qualification result isolation baseline binding mismatch",
+    )
+    for field in ("communication_restored", "matched"):
+        checks.require(
+            type(isolation.get(field)) is bool,
+            f"qualification result isolation {field} flag is invalid",
+        )
+    mismatches = _sequence(
+        isolation.get("mismatches"),
+        "qualification result isolation mismatches",
+    )
+    checks.require(
+        list(mismatches) == sorted(set(mismatches))
+        and all(isinstance(item, str) and item for item in mismatches),
+        "qualification result isolation mismatches are invalid",
+    )
+    for field in ("observation_error", "restoration_error"):
+        error = isolation.get(field)
+        checks.require(
+            error is None or (isinstance(error, str) and bool(error)),
+            f"qualification result isolation {field} is invalid",
+        )
+    checks.require(
+        isolation.get("observation_error") is None,
+        "qualification result isolation observation is incomplete",
+    )
+    post_observation = _verify_qualification_isolation_observation(
+        isolation.get("post_observation"),
+        baseline=baseline,
+        checks=checks,
+    )
+    checks.require(
+        isolation.get("post_observation_hash")
+        == post_observation["observation_hash"],
+        "qualification result post-observation binding mismatch",
+    )
+    current_observation = _qualification_collect_isolation(request)
+    checks.require(
+        current_observation == post_observation,
+        "qualification restored isolation resource drift",
+    )
+    expected_observation = _qualification_expected_isolation_observation(
+        baseline
+    )
+    expected_mismatches = _qualification_isolation_mismatches(
+        expected_observation,
+        post_observation,
+    )
+    communication_restored = isolation["communication_restored"]
+    if not communication_restored:
+        expected_mismatches.append("communication_restore")
+    child_alive = isolation.get("child_alive")
+    checks.require(
+        child_alive is False,
+        "qualification result child PID liveness is ambiguous or alive",
+    )
+    independently_alive = (
+        False if process_pid is None else _qualification_pid_is_alive(process_pid)
+    )
+    checks.require(
+        independently_alive is False,
+        "qualification owned child PID is still alive",
+    )
+    expected_mismatches = sorted(set(expected_mismatches))
+    checks.require(
+        list(mismatches) == expected_mismatches,
+        "qualification result isolation mismatch labels differ",
+    )
+    matched = (
+        not expected_mismatches
+        and communication_restored is True
+        and isolation.get("restoration_error") is None
+    )
+    checks.require(
+        isolation["matched"] is matched,
+        "qualification result isolation comparison flag differs",
+    )
+    isolation_complete = matched and post_observation == expected_observation
+    launch_qualified = (
+        result.get("status") == "passed" and isolation_complete
+    )
+    return {
+        "isolation_complete": isolation_complete,
+        "isolation_baseline_hash": baseline["baseline_hash"],
+        "isolation_bound": True,
+        "isolation_post_observation_hash": post_observation[
+            "observation_hash"
+        ],
+        "launch_qualified": launch_qualified,
+    }
+
+
 def _verify_qualification_result(
     result: Mapping[str, Any],
     *,
@@ -2091,7 +3024,18 @@ def _verify_qualification_result(
     request: Mapping[str, Any],
     context: Mapping[str, Any],
     checks: _Checks,
-) -> None:
+) -> dict[str, Any]:
+    result_schema_version = result.get("schema_version")
+    expected_result_schema = (
+        QUALIFICATION_RESULT_SCHEMA_VERSION
+        if context["request_schema_version"]
+        == QUALIFICATION_REQUEST_SCHEMA_VERSION
+        else LEGACY_QUALIFICATION_RESULT_SCHEMA_VERSION
+    )
+    checks.require(
+        result_schema_version == expected_result_schema,
+        "qualification result schema does not match request",
+    )
     expected_fields = {
         "authority",
         "child_command",
@@ -2112,6 +3056,8 @@ def _verify_qualification_result(
         "source_commit",
         "status",
     }
+    if result_schema_version == QUALIFICATION_RESULT_SCHEMA_VERSION:
+        expected_fields.add("isolation")
     checks.require(
         set(result) == expected_fields,
         "qualification result fields mismatch",
@@ -2244,6 +3190,22 @@ def _verify_qualification_result(
         cleanup_error is None or cleanup_attempted is True,
         "qualification cleanup error lacks an attempted cleanup",
     )
+    if result_schema_version == QUALIFICATION_RESULT_SCHEMA_VERSION:
+        isolation_verification = _verify_qualification_result_isolation(
+            result,
+            request=request,
+            context=context,
+            process_pid=process_pid,
+            checks=checks,
+        )
+    else:
+        isolation_verification = {
+            "isolation_complete": False,
+            "isolation_baseline_hash": None,
+            "isolation_bound": False,
+            "isolation_post_observation_hash": None,
+            "launch_qualified": False,
+        }
     handshake_records = _verify_qualification_handshake_result(
         result,
         request=request,
@@ -2306,6 +3268,10 @@ def _verify_qualification_result(
         and context["marker_count"] == request["marker"]["start_count"]
         and not any(forbidden.values())
         and handshake_complete
+        and (
+            result_schema_version == LEGACY_QUALIFICATION_RESULT_SCHEMA_VERSION
+            or isolation_verification["isolation_complete"] is True
+        )
     )
     if status == "passed":
         checks.require(
@@ -2323,6 +3289,7 @@ def _verify_qualification_result(
             not success_evidence_complete,
             "qualification failed result does not contradict success evidence",
         )
+    return isolation_verification
 
 
 def _verify_qualification_handshake_result(

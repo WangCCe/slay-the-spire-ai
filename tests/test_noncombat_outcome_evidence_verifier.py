@@ -63,6 +63,73 @@ def _qualification_review_kwargs(request):
     }
 
 
+def test_qualification_file_reader_rejects_path_identity_change(
+    tmp_path,
+    monkeypatch,
+):
+    verifier = _verifier()
+    evidence_path = tmp_path / "evidence.log"
+    evidence_path.write_bytes(b"stable evidence\n")
+    monkeypatch.setattr(verifier.os.path, "samestat", lambda *_args: False)
+
+    with pytest.raises(
+        verifier.OutcomeEvidenceVerificationError,
+        match="changed while being read",
+    ):
+        verifier._qualification_read_file_bytes(
+            evidence_path,
+            "isolation evidence",
+        )
+
+
+def test_qualification_collector_reads_communication_bytes_once(
+    tmp_path,
+    monkeypatch,
+):
+    verifier = _verifier()
+    _request_path, _result_path, request, _result = (
+        _build_qualification_evidence(tmp_path, monkeypatch)
+    )
+    communication_path = Path(
+        request["isolation"]["communication_mod"]["path"]
+    )
+    original_reader = verifier._qualification_read_file_bytes
+    read_count = 0
+
+    def read_once(path, label):
+        nonlocal read_count
+        if Path(path) == communication_path:
+            read_count += 1
+            if read_count > 1:
+                pytest.fail("CommunicationMod was reread for derived fields")
+        return original_reader(path, label)
+
+    monkeypatch.setattr(verifier, "_qualification_read_file_bytes", read_once)
+
+    verifier._qualification_collect_isolation(request)
+
+    assert read_count == 1
+
+
+def test_qualification_collector_derives_marker_count_from_hashed_bytes(
+    tmp_path,
+    monkeypatch,
+):
+    verifier = _verifier()
+    _request_path, _result_path, request, _result = (
+        _build_qualification_evidence(tmp_path, monkeypatch)
+    )
+    monkeypatch.setattr(
+        verifier,
+        "_qualification_marker_count",
+        lambda _path: pytest.fail("marker was reread for line_count"),
+    )
+
+    observation = verifier._qualification_collect_isolation(request)
+
+    assert observation["marker"]["line_count"] == 2
+
+
 def _qualification_result_kwargs(result_path):
     try:
         result_bytes = Path(result_path).read_bytes()
@@ -500,14 +567,28 @@ def _publish_preclaim_handshake(registration, run_lock, slot, launch, marker_sta
 
 
 def _build_qualification_evidence(tmp_path, monkeypatch, *, status="passed"):
+    communication_path = tmp_path / "config.properties"
+    communication_path.write_bytes(
+        b"verbose=false\ncommand=normal-agent\nrunAtGameStart=true\n"
+    )
+    checkpoint_root = tmp_path / "checkpoints"
+    checkpoint_root.mkdir()
+    (checkpoint_root / "rl_model_ep1.pth").write_bytes(b"checkpoint-v1\n")
+    run_root = tmp_path / "runs"
+    (run_root / "IRONCLAD").mkdir(parents=True)
+    (run_root / "IRONCLAD" / "100.run").write_bytes(b'{"victory":false}\n')
+    (tmp_path / "ai_debug.log").write_bytes(b"existing debug log\n")
+    (tmp_path / "communication_mod_errors.log").write_bytes(
+        b"existing communication log\n"
+    )
     registration = expansion.build_registration(
         study_id=STUDY_ID,
         artifact_root=tmp_path / "study",
         repo_root=REPO_ROOT,
         seed_base=SEED_BASE,
         python_executable=Path(r"D:\anaconda\envs\stsai\python.exe"),
-        communication_config_path=tmp_path / "config.properties",
-        checkpoint_root=tmp_path / "checkpoints",
+        communication_config_path=communication_path,
+        checkpoint_root=checkpoint_root,
     )
     registration_path = tmp_path / "registration.json"
     registration_path.write_text(
@@ -546,7 +627,7 @@ def _build_qualification_evidence(tmp_path, monkeypatch, *, status="passed"):
         newline="",
     )
     marker_path = tmp_path / "runs" / "ai_games.txt"
-    marker_path.parent.mkdir()
+    marker_path.parent.mkdir(exist_ok=True)
     marker_path.write_text("10\n11\n", encoding="utf-8", newline="")
     current_commit = [QUALIFICATION_SOURCE_COMMIT]
     monkeypatch.setattr(
@@ -636,6 +717,12 @@ def _build_qualification_evidence(tmp_path, monkeypatch, *, status="passed"):
         load_historical_review,
         raising=False,
     )
+    monkeypatch.setattr(
+        _verifier(),
+        "_qualification_pid_is_alive",
+        lambda _pid: False,
+        raising=False,
+    )
 
     class QualificationChild:
         pid = 4321
@@ -702,6 +789,72 @@ def _build_qualification_evidence(tmp_path, monkeypatch, *, status="passed"):
         result_path = Path(request["failure_path"])
         result = json.loads(result_path.read_text(encoding="utf-8"))
     return request_path, result_path, request, result
+
+
+def _downgrade_qualification_evidence_to_v1(
+    verifier,
+    request,
+    result_path,
+    monkeypatch,
+):
+    legacy_request = deepcopy(request)
+    legacy_request.pop("isolation")
+    legacy_request["schema_version"] = (
+        runner.LEGACY_QUALIFICATION_REQUEST_SCHEMA_VERSION
+    )
+    legacy_request["request_hash"] = _self_hash(
+        legacy_request,
+        "request_hash",
+    )
+    request_source_path = Path(legacy_request["request_source_path"])
+    active_request_path = Path(legacy_request["request_path"])
+    _write_json(request_source_path, legacy_request)
+    _write_json(active_request_path, legacy_request)
+    request_bytes = request_source_path.read_bytes()
+    review_binding = runner._build_qualification_review_binding(
+        request=legacy_request,
+        review_commit=QUALIFICATION_REVIEW_COMMIT,
+        request_source_path=request_source_path,
+        request_source_relative=request_source_path.relative_to(REPO_ROOT).as_posix(),
+        request_bytes=request_bytes,
+    )
+
+    legacy_result = json.loads(Path(result_path).read_text(encoding="utf-8"))
+    legacy_result.pop("isolation")
+    legacy_result["schema_version"] = (
+        runner.LEGACY_QUALIFICATION_RESULT_SCHEMA_VERSION
+    )
+    legacy_result["request"]["hash"] = legacy_request["request_hash"]
+    legacy_result["review_binding"] = review_binding
+    legacy_result["result_hash"] = _self_hash(legacy_result, "result_hash")
+    _write_json(result_path, legacy_result)
+
+    registration_path = Path(legacy_request["registration"]["path"])
+    registration_bytes = registration_path.read_bytes()
+    registration = json.loads(registration_bytes.decode("utf-8"))
+
+    def load_historical_review(source_path, **kwargs):
+        assert Path(source_path) == request_source_path
+        assert kwargs["expected_request_hash"] == legacy_request["request_hash"]
+        assert kwargs["expected_request_file_sha256"] == hashlib.sha256(
+            request_bytes
+        ).hexdigest()
+        assert kwargs["expected_request_size"] == len(request_bytes)
+        return {
+            "registration": registration,
+            "registration_bytes": registration_bytes,
+            "repo_root": REPO_ROOT,
+            "request": legacy_request,
+            "request_bytes": request_bytes,
+            "review_binding": review_binding,
+        }
+
+    monkeypatch.setattr(
+        verifier,
+        "_load_historical_qualification_review",
+        load_historical_review,
+    )
+    return legacy_request, legacy_result
 
 
 def test_qualification_verifier_rejects_unanchored_terminal_evidence(
@@ -1420,7 +1573,187 @@ def test_qualification_verifier_replays_passed_terminal_evidence(
     assert audit["collection_authorized"] is False
     assert audit["gameplay_policy_change_authorized"] is False
     assert audit["causal_claim_authorized"] is False
+    assert audit["isolation_bound"] is True
+    assert audit["launch_qualified"] is True
+    assert audit["isolation_baseline_hash"] == request["isolation"][
+        "baseline_hash"
+    ]
+    assert audit["isolation_post_observation_hash"] == result["isolation"][
+        "post_observation_hash"
+    ]
     assert audit["check_count"] > 0
+
+
+def test_qualification_verifier_replays_v1_as_historical_unqualified_evidence(
+    tmp_path,
+    monkeypatch,
+):
+    verifier = _verifier()
+    _request_path, result_path, request, _result = (
+        _build_qualification_evidence(tmp_path, monkeypatch)
+    )
+    legacy_request, legacy_result = _downgrade_qualification_evidence_to_v1(
+        verifier,
+        request,
+        result_path,
+        monkeypatch,
+    )
+
+    audit = _verify_qualification(verifier, legacy_request, result_path)
+
+    assert audit["status"] == "verified"
+    assert audit["qualification_status"] == "passed"
+    assert audit["result_hash"] == legacy_result["result_hash"]
+    assert audit["isolation_bound"] is False
+    assert audit["launch_qualified"] is False
+    assert audit["isolation_baseline_hash"] is None
+    assert audit["isolation_post_observation_hash"] is None
+
+
+def test_qualification_verifier_rejects_v1_result_for_v2_request(
+    tmp_path,
+    monkeypatch,
+):
+    verifier = _verifier()
+    _request_path, result_path, request, _result = (
+        _build_qualification_evidence(tmp_path, monkeypatch)
+    )
+    mixed_result = json.loads(result_path.read_text(encoding="utf-8"))
+    mixed_result.pop("isolation")
+    mixed_result["schema_version"] = (
+        runner.LEGACY_QUALIFICATION_RESULT_SCHEMA_VERSION
+    )
+    mixed_result["result_hash"] = _self_hash(mixed_result, "result_hash")
+    _write_json(result_path, mixed_result)
+
+    with pytest.raises(
+        verifier.OutcomeEvidenceVerificationError,
+        match="schema",
+    ):
+        _verify_qualification(verifier, request, result_path)
+
+
+def test_qualification_verifier_rejects_v2_result_for_v1_request(
+    tmp_path,
+    monkeypatch,
+):
+    verifier = _verifier()
+    _request_path, result_path, request, result = (
+        _build_qualification_evidence(tmp_path, monkeypatch)
+    )
+    legacy_request, legacy_result = _downgrade_qualification_evidence_to_v1(
+        verifier,
+        request,
+        result_path,
+        monkeypatch,
+    )
+    mixed_result = deepcopy(legacy_result)
+    mixed_result["schema_version"] = runner.QUALIFICATION_RESULT_SCHEMA_VERSION
+    mixed_result["isolation"] = result["isolation"]
+    mixed_result["result_hash"] = _self_hash(mixed_result, "result_hash")
+    _write_json(result_path, mixed_result)
+
+    with pytest.raises(
+        verifier.OutcomeEvidenceVerificationError,
+        match="schema",
+    ):
+        _verify_qualification(verifier, legacy_request, result_path)
+
+
+def test_qualification_verifier_collector_matches_runner_fixture_vector(
+    tmp_path,
+    monkeypatch,
+):
+    verifier = _verifier()
+    _request_path, _result_path, request, _result = (
+        _build_qualification_evidence(tmp_path, monkeypatch)
+    )
+
+    assert verifier._qualification_collect_isolation(request) == (
+        runner._qualification_observe_isolation(request["isolation"])
+    )
+
+
+@pytest.mark.parametrize(
+    "resource",
+    (
+        "communication_mod",
+        "marker",
+        "runs",
+        "checkpoints",
+        "ai_debug_log",
+        "communication_error_log",
+    ),
+)
+def test_qualification_verifier_rejects_restored_resource_drift(
+    tmp_path,
+    monkeypatch,
+    resource,
+):
+    verifier = _verifier()
+    _request_path, result_path, request, _result = (
+        _build_qualification_evidence(tmp_path, monkeypatch)
+    )
+    baseline = request["isolation"]
+    if resource == "communication_mod":
+        Path(baseline["communication_mod"]["path"]).write_bytes(
+            b"command=changed-agent\n"
+        )
+    elif resource == "marker":
+        Path(baseline["marker"]["path"]).write_text(
+            "10\n11\n12\n",
+            encoding="utf-8",
+            newline="",
+        )
+    elif resource == "runs":
+        (Path(baseline["runs"]["root"]) / "IRONCLAD" / "100.run").write_bytes(
+            b'{"drift":true}\n'
+        )
+    elif resource == "checkpoints":
+        (
+            Path(baseline["checkpoints"]["root"]) / "rl_model_ep1.pth"
+        ).write_bytes(b"checkpoint-drift\n")
+    elif resource == "ai_debug_log":
+        Path(next(iter(baseline["global_logs"]))).write_bytes(b"debug drift\n")
+    else:
+        Path(list(baseline["global_logs"])[1]).write_bytes(
+            b"communication drift\n"
+        )
+
+    with pytest.raises(
+        verifier.OutcomeEvidenceVerificationError,
+        match="isolation|restored|resource|marker",
+    ):
+        _verify_qualification(verifier, request, result_path)
+
+
+def test_qualification_verifier_rejects_live_owned_child_pid(
+    tmp_path,
+    monkeypatch,
+):
+    verifier = _verifier()
+    _request_path, result_path, request, result = (
+        _build_qualification_evidence(tmp_path, monkeypatch)
+    )
+    monkeypatch.setattr(
+        verifier,
+        "_qualification_pid_is_alive",
+        lambda pid: pid == result["process"]["pid"],
+        raising=False,
+    )
+
+    with pytest.raises(
+        verifier.OutcomeEvidenceVerificationError,
+        match="PID|pid|live|alive",
+    ):
+        _verify_qualification(verifier, request, result_path)
+
+
+def test_qualification_pid_probe_distinguishes_current_and_missing_process():
+    verifier = _verifier()
+
+    assert verifier._qualification_pid_is_alive(os.getpid()) is True
+    assert verifier._qualification_pid_is_alive(2_147_483_647) is False
 
 
 def test_qualification_verifier_replays_failed_terminal_without_authority(
@@ -1554,6 +1887,10 @@ def test_qualification_verifier_seals_prepared_or_invalid_consumption_state(
         "not_attempted" if case == "prepared" else "invalid_partial"
     )
     assert audit["evidence_valid"] is (case == "prepared")
+    assert audit["isolation_bound"] is False
+    assert audit["launch_qualified"] is False
+    assert audit["isolation_baseline_hash"] is None
+    assert audit["isolation_post_observation_hash"] is None
     assert audit["study_start_authorized"] is False
     assert audit["run_lock_authorized"] is False
 
@@ -1616,6 +1953,8 @@ def test_qualification_verifier_seals_dangling_control_symlink_as_consumed(
     assert audit["partial_stage"] == "invalid_control_path"
     assert audit["consumed"] is True
     assert audit["evidence_valid"] is False
+    assert audit["isolation_bound"] is False
+    assert audit["launch_qualified"] is False
     assert "regular file" in audit["evidence_error"]
 
 

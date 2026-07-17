@@ -17,8 +17,8 @@ QUALIFICATION_RUNNER_RELATIVE_PATH = (
 _QUALIFICATION_TRUSTED_LAUNCHER_PAYLOAD = (
     "import hashlib,os,stat,sys\n"
     "from pathlib import Path\n"
+    "sys.stderr=open(os.devnull,'w')\n"
     "def reject(message):\n"
-    " sys.stderr.write('qualification trusted launcher rejected: '+message+'\\n')\n"
     " raise SystemExit(2)\n"
     "if len(sys.argv)<3: reject('arguments are invalid')\n"
     "runner=Path(sys.argv[1])\n"
@@ -66,6 +66,44 @@ _QUALIFICATION_CLI_REQUESTED = (
     len(sys.argv) > 1
     and sys.argv[1] == "qualify"
 )
+
+
+class _QualificationSilentStream:
+    def __init__(self, stream):
+        self._stream = stream
+
+    @property
+    def buffer(self):
+        return self
+
+    @property
+    def encoding(self):
+        return getattr(self._stream, "encoding", None)
+
+    @property
+    def errors(self):
+        return getattr(self._stream, "errors", None)
+
+    def fileno(self):
+        return self._stream.fileno()
+
+    def flush(self):
+        return None
+
+    def isatty(self):
+        return False
+
+    def write(self, value):
+        try:
+            return len(value)
+        except TypeError:
+            return 0
+
+
+if __name__ == "__main__" and _QUALIFICATION_CLI_REQUESTED:
+    sys.stdout = _QualificationSilentStream(sys.stdout)
+    sys.stderr = _QualificationSilentStream(sys.stderr)
+
 if _QUALIFICATION_CLI_REQUESTED:
     sys.dont_write_bytecode = True
     sys.pycache_prefix = os.path.join(
@@ -78,10 +116,6 @@ if (
     and _QUALIFICATION_CLI_REQUESTED
     and (not sys.flags.isolated or not sys.flags.no_site)
 ):
-    sys.stderr.write(
-        "qualification runner requires isolated no-site Python startup "
-        "(-I -S)\n"
-    )
     raise SystemExit(2)
 
 
@@ -99,22 +133,13 @@ def _qualification_require_trusted_launcher() -> None:
         and original_arguments[7:] == tuple(sys.argv[1:])
     )
     if not valid_shape:
-        sys.stderr.write(
-            "qualification trusted launcher command is required\n"
-        )
         raise SystemExit(2)
     try:
         with open(runner_path, "rb") as runner_stream:
             runner_bytes = runner_stream.read()
     except OSError as exc:
-        sys.stderr.write(
-            f"qualification trusted launcher cannot reread runner: {exc}\n"
-        )
         raise SystemExit(2) from exc
     if hashlib.sha256(runner_bytes).hexdigest() != anchor:
-        sys.stderr.write(
-            "qualification trusted launcher runner SHA-256 changed\n"
-        )
         raise SystemExit(2)
 
 
@@ -790,11 +815,7 @@ if _QUALIFICATION_CLI_REQUESTED:
                 tuple(sys.argv[2:])
             ),
         )
-    except Exception as exc:
-        sys.stderr.write(
-            "qualification source bootstrap rejected: "
-            f"{type(exc).__name__}: {exc}\n"
-        )
+    except Exception:
         raise SystemExit(2)
 
 
@@ -853,11 +874,23 @@ from spirecomm.communication.study_handshake import (
 
 LEDGER_SCHEMA_VERSION = "noncombat-outcome-evidence-ledger-v1"
 MONITOR_SCHEMA_VERSION = "noncombat-outcome-evidence-blinded-monitor-v2"
-QUALIFICATION_REQUEST_SCHEMA_VERSION = (
+LEGACY_QUALIFICATION_REQUEST_SCHEMA_VERSION = (
     "noncombat-outcome-evidence-qualification-request-v1"
 )
-QUALIFICATION_RESULT_SCHEMA_VERSION = (
+QUALIFICATION_REQUEST_SCHEMA_VERSION = (
+    "noncombat-outcome-evidence-qualification-request-v2"
+)
+QUALIFICATION_ISOLATION_SCHEMA_VERSION = (
+    "noncombat-outcome-evidence-qualification-isolation-v1"
+)
+QUALIFICATION_ISOLATION_OBSERVATION_SCHEMA_VERSION = (
+    "noncombat-outcome-evidence-qualification-isolation-observation-v1"
+)
+LEGACY_QUALIFICATION_RESULT_SCHEMA_VERSION = (
     "noncombat-outcome-evidence-qualification-result-v1"
+)
+QUALIFICATION_RESULT_SCHEMA_VERSION = (
+    "noncombat-outcome-evidence-qualification-result-v2"
 )
 QUALIFICATION_REVIEW_BINDING_SCHEMA_VERSION = (
     "noncombat-outcome-evidence-qualification-review-binding-v1"
@@ -1014,6 +1047,10 @@ def build_qualification_request(
         "forbidden_paths": bindings["forbidden_paths"],
         "handshake": bindings["handshake"],
         "implementation_sha256": bindings["implementation_sha256"],
+        "isolation": _qualification_build_isolation_baseline(
+            registration,
+            resolved_marker_path,
+        ),
         "marker": bindings["marker"],
         "preexisting_files": preexisting_files,
         "qualification_id": qualification_id,
@@ -1064,6 +1101,8 @@ def load_qualification_request(
         raise OutcomeEvidenceRunnerError("qualification request must be an object")
     if raw != (_canonical_json(record) + "\n").encode("utf-8"):
         raise OutcomeEvidenceRunnerError("qualification request is not canonical")
+    if record.get("schema_version") != QUALIFICATION_REQUEST_SCHEMA_VERSION:
+        raise OutcomeEvidenceRunnerError("qualification request schema mismatch")
     expected_fields = {
         "child_command",
         "completion_path",
@@ -1073,6 +1112,7 @@ def load_qualification_request(
         "forbidden_paths",
         "handshake",
         "implementation_sha256",
+        "isolation",
         "marker",
         "preexisting_files",
         "qualification_id",
@@ -1087,8 +1127,6 @@ def load_qualification_request(
     }
     if set(record) != expected_fields:
         raise OutcomeEvidenceRunnerError("qualification request fields mismatch")
-    if record["schema_version"] != QUALIFICATION_REQUEST_SCHEMA_VERSION:
-        raise OutcomeEvidenceRunnerError("qualification request schema mismatch")
     supplied_hash = record["request_hash"]
     if not isinstance(supplied_hash, str) or not _is_lower_hex(
         supplied_hash,
@@ -1219,6 +1257,12 @@ def load_qualification_request(
             "qualification marker path",
         ),
         source_commit=source_commit,
+    )
+    _validate_qualification_isolation_baseline(
+        record["isolation"],
+        registration=registration,
+        marker_path=Path(bindings["marker"]["path"]),
+        marker_start_count=bindings["marker"]["start_count"],
     )
     for field in (
         "child_command",
@@ -1484,6 +1528,1049 @@ def _qualification_request_bindings(
             "path": str(registration_path),
         },
         "request_path": str(request_path),
+    }
+
+
+def _qualification_build_isolation_baseline(
+    registration: OutcomeEvidenceRegistration,
+    marker_path: Path,
+) -> dict[str, Any]:
+    checkpoint_root = _qualification_require_no_follow_path(
+        registration.checkpoint_root,
+        "qualification checkpoint isolation root",
+        expected_kind="directory",
+    )
+    game_root = checkpoint_root.parent
+    run_root = _qualification_require_no_follow_path(
+        game_root / "runs",
+        "qualification run isolation root",
+        expected_kind="directory",
+    )
+    resolved_marker_path = _qualification_require_no_follow_path(
+        marker_path,
+        "qualification isolation marker",
+        expected_kind="file",
+        allow_missing=True,
+    )
+    if resolved_marker_path != run_root / "ai_games.txt":
+        raise OutcomeEvidenceRunnerError(
+            "qualification isolation marker does not match the run root"
+        )
+    communication_path = _qualification_require_no_follow_path(
+        registration.communication_config_path,
+        "qualification CommunicationMod config",
+        expected_kind="file",
+    )
+    communication_bytes = _qualification_read_file_bytes(
+        communication_path,
+        "qualification CommunicationMod config",
+    )
+    communication = {
+        "original_bytes_b64": base64.b64encode(communication_bytes).decode(
+            "ascii"
+        ),
+        "path": str(communication_path),
+        "properties": _qualification_parse_java_properties(
+            communication_bytes
+        ),
+        "sha256": hashlib.sha256(communication_bytes).hexdigest(),
+        "size": len(communication_bytes),
+    }
+    marker, marker_bytes = _qualification_file_observation_bytes(
+        resolved_marker_path,
+        label="qualification isolation marker",
+        allow_missing=True,
+    )
+    marker["line_count"] = _qualification_marker_count_from_bytes(
+        marker_bytes
+    )
+    checkpoint_patterns = tuple(
+        registration.to_record()["integrity_rules"]["checkpoint_inventory"][
+            "patterns"
+        ]
+    )
+    log_paths = (
+        game_root / "ai_debug.log",
+        game_root / "communication_mod_errors.log",
+    )
+    record = {
+        "baseline_hash": None,
+        "checkpoints": _qualification_inventory_observation(
+            checkpoint_root,
+            patterns=checkpoint_patterns,
+        ),
+        "communication_mod": communication,
+        "global_logs": {
+            str(Path(os.path.abspath(path))): _qualification_file_observation(
+                path,
+                label="qualification global log",
+                allow_missing=True,
+            )
+            for path in log_paths
+        },
+        "marker": marker,
+        "runs": _qualification_inventory_observation(run_root),
+        "schema_version": QUALIFICATION_ISOLATION_SCHEMA_VERSION,
+    }
+    record["baseline_hash"] = _self_hash(record, "baseline_hash")
+    return _validate_qualification_isolation_baseline(
+        record,
+        registration=registration,
+        marker_path=resolved_marker_path,
+        marker_start_count=marker["line_count"],
+    )
+
+
+def _qualification_file_observation(
+    path: Path,
+    *,
+    label: str,
+    allow_missing: bool,
+) -> dict[str, Any]:
+    observation, _raw = _qualification_file_observation_bytes(
+        path,
+        label=label,
+        allow_missing=allow_missing,
+    )
+    return observation
+
+
+def _qualification_file_observation_bytes(
+    path: Path,
+    *,
+    label: str,
+    allow_missing: bool,
+) -> tuple[dict[str, Any], bytes | None]:
+    guarded_path = _qualification_require_no_follow_path(
+        path,
+        label,
+        expected_kind="file",
+        allow_missing=allow_missing,
+    )
+    if not _qualification_path_entry_exists(guarded_path):
+        return (
+            {
+                "exists": False,
+                "path": str(guarded_path),
+                "sha256": None,
+                "size": None,
+            },
+            None,
+        )
+    raw = _qualification_read_file_bytes(guarded_path, label)
+    return (
+        {
+            "exists": True,
+            "path": str(guarded_path),
+            "sha256": hashlib.sha256(raw).hexdigest(),
+            "size": len(raw),
+        },
+        raw,
+    )
+
+
+def _qualification_marker_count_from_bytes(raw: bytes | None) -> int:
+    if raw is None:
+        return 0
+    try:
+        lines = raw.decode("utf-8").splitlines()
+    except UnicodeError as exc:
+        raise OutcomeEvidenceRunnerError(
+            f"cannot decode qualification AI marker file: {exc}"
+        ) from exc
+    markers = [line.strip() for line in lines if line.strip()]
+    if any(not marker.isdigit() for marker in markers):
+        raise OutcomeEvidenceRunnerError(
+            "qualification AI marker file contains an invalid marker"
+        )
+    return len(markers)
+
+
+def _qualification_inventory_observation(
+    root: Path,
+    *,
+    patterns: Sequence[str] | None = None,
+) -> dict[str, Any]:
+    guarded_root = _qualification_require_no_follow_path(
+        root,
+        "qualification isolation inventory root",
+        expected_kind="directory",
+    )
+    normalized_patterns = None
+    if patterns is not None:
+        normalized_patterns = list(patterns)
+        if (
+            not normalized_patterns
+            or normalized_patterns != sorted(set(normalized_patterns))
+            or any(
+                not isinstance(pattern, str)
+                or not pattern
+                or "/" in pattern
+                or "\\" in pattern
+                or pattern in {".", ".."}
+                for pattern in normalized_patterns
+            )
+        ):
+            raise OutcomeEvidenceRunnerError(
+                "qualification isolation inventory patterns are invalid"
+            )
+    rows = []
+    for path, metadata, is_link_or_reparse in _qualification_no_follow_entries(
+        guarded_root
+    ):
+        if is_link_or_reparse:
+            raise OutcomeEvidenceRunnerError(
+                "qualification isolation inventory contains a link or "
+                "reparse point"
+            )
+        if stat.S_ISDIR(metadata.st_mode):
+            continue
+        if not stat.S_ISREG(metadata.st_mode):
+            raise OutcomeEvidenceRunnerError(
+                "qualification isolation inventory contains a non-regular "
+                "entry"
+            )
+        if normalized_patterns is not None and not any(
+            path.match(pattern) for pattern in normalized_patterns
+        ):
+            continue
+        raw = _qualification_read_file_bytes(
+            path,
+            "qualification isolation inventory file",
+        )
+        rows.append(
+            {
+                "kind": "file",
+                "path": path.relative_to(guarded_root).as_posix(),
+                "sha256": hashlib.sha256(raw).hexdigest(),
+                "size": len(raw),
+            }
+        )
+    rows.sort(key=lambda row: row["path"])
+    return {
+        "entry_count": len(rows),
+        "inventory_sha256": hashlib.sha256(
+            _canonical_json(rows).encode("utf-8")
+        ).hexdigest(),
+        "patterns": normalized_patterns,
+        "root": str(guarded_root),
+        "total_bytes": sum(row["size"] for row in rows),
+    }
+
+
+def _qualification_read_file_bytes(path: Path, label: str) -> bytes:
+    guarded_path = _qualification_require_no_follow_path(
+        path,
+        label,
+        expected_kind="file",
+    )
+    try:
+        before = guarded_path.lstat()
+        with open(guarded_path, "rb") as stream:
+            handle_before = os.fstat(stream.fileno())
+            opened_path = guarded_path.lstat()
+            raw = stream.read()
+            handle_after = os.fstat(stream.fileno())
+        guarded_after = _qualification_require_no_follow_path(
+            guarded_path,
+            label,
+            expected_kind="file",
+        )
+        after = guarded_after.lstat()
+    except OSError as exc:
+        raise OutcomeEvidenceRunnerError(f"cannot read {label}: {exc}") from exc
+
+    metadata_rows = (
+        before,
+        handle_before,
+        opened_path,
+        handle_after,
+        after,
+    )
+    signatures = {
+        (
+            metadata.st_size,
+            metadata.st_mtime_ns,
+            metadata.st_ctime_ns,
+        )
+        for metadata in metadata_rows
+    }
+    if (
+        any(
+            _qualification_metadata_is_link_or_reparse(metadata)
+            or not stat.S_ISREG(metadata.st_mode)
+            for metadata in metadata_rows
+        )
+        or any(
+            not os.path.samestat(before, metadata)
+            for metadata in metadata_rows[1:]
+        )
+        or len(signatures) != 1
+        or len(raw) != handle_after.st_size
+    ):
+        raise OutcomeEvidenceRunnerError(
+            f"qualification {label} changed while being read"
+        )
+    return raw
+
+
+def _qualification_parse_java_properties(raw: bytes) -> dict[str, str]:
+    content = raw.decode("iso-8859-1")
+    natural_lines = (
+        content.replace("\r\n", "\n").replace("\r", "\n").split("\n")
+    )
+    properties: dict[str, str] = {}
+    for logical_line in _qualification_java_properties_logical_lines(
+        natural_lines
+    ):
+        parsed = _qualification_parse_java_property(logical_line)
+        if parsed is None:
+            continue
+        key, value = parsed
+        if key in properties:
+            raise OutcomeEvidenceRunnerError(
+                "qualification CommunicationMod config contains a duplicate "
+                "property"
+            )
+        properties[key] = value
+    return properties
+
+
+def _qualification_java_properties_logical_lines(
+    lines: Sequence[str],
+):
+    pending = ""
+    continuing = False
+    for natural_line in lines:
+        if not continuing and natural_line.lstrip(" \t\f").startswith(
+            ("#", "!")
+        ):
+            yield natural_line
+            continue
+        piece = natural_line.lstrip(" \t\f") if continuing else natural_line
+        pending += piece
+        trailing_backslashes = len(pending) - len(pending.rstrip("\\"))
+        if trailing_backslashes % 2 == 1:
+            pending = pending[:-1]
+            continuing = True
+            continue
+        yield pending
+        pending = ""
+        continuing = False
+    if pending or continuing:
+        yield pending
+
+
+def _qualification_parse_java_property(
+    line: str,
+) -> tuple[str, str] | None:
+    content = line.lstrip(" \t\f")
+    if not content or content.startswith(("#", "!")):
+        return None
+    key_end = len(content)
+    value_start = len(content)
+    escaped = False
+    for index, character in enumerate(content):
+        if escaped:
+            escaped = False
+            continue
+        if character == "\\":
+            escaped = True
+            continue
+        if character in "=: \t\f":
+            key_end = index
+            value_start = index
+            break
+    while value_start < len(content) and content[value_start] in " \t\f":
+        value_start += 1
+    if value_start < len(content) and content[value_start] in "=:":
+        value_start += 1
+    while value_start < len(content) and content[value_start] in " \t\f":
+        value_start += 1
+    return (
+        _qualification_decode_java_property_escapes(content[:key_end]),
+        _qualification_decode_java_property_escapes(content[value_start:]),
+    )
+
+
+def _qualification_decode_java_property_escapes(value: str) -> str:
+    decoded = []
+    index = 0
+    escapes = {"t": "\t", "n": "\n", "r": "\r", "f": "\f"}
+    while index < len(value):
+        character = value[index]
+        if character != "\\":
+            decoded.append(character)
+            index += 1
+            continue
+        index += 1
+        if index >= len(value):
+            raise OutcomeEvidenceRunnerError(
+                "invalid trailing escape in CommunicationMod config"
+            )
+        escaped = value[index]
+        if escaped == "u":
+            digits = value[index + 1 : index + 5]
+            if len(digits) != 4 or any(
+                digit not in "0123456789abcdefABCDEF" for digit in digits
+            ):
+                raise OutcomeEvidenceRunnerError(
+                    "invalid Unicode escape in CommunicationMod config"
+                )
+            decoded.append(chr(int(digits, 16)))
+            index += 5
+            continue
+        decoded.append(escapes.get(escaped, escaped))
+        index += 1
+    return "".join(decoded)
+
+
+def _validate_qualification_isolation_baseline(
+    value: Any,
+    *,
+    registration: OutcomeEvidenceRegistration,
+    marker_path: Path,
+    marker_start_count: int,
+) -> dict[str, Any]:
+    expected_fields = {
+        "baseline_hash",
+        "checkpoints",
+        "communication_mod",
+        "global_logs",
+        "marker",
+        "runs",
+        "schema_version",
+    }
+    if not isinstance(value, Mapping) or set(value) != expected_fields:
+        raise OutcomeEvidenceRunnerError(
+            "qualification isolation baseline fields mismatch"
+        )
+    record = dict(value)
+    if record["schema_version"] != QUALIFICATION_ISOLATION_SCHEMA_VERSION:
+        raise OutcomeEvidenceRunnerError(
+            "qualification isolation baseline schema mismatch"
+        )
+    baseline_hash = record["baseline_hash"]
+    if (
+        not isinstance(baseline_hash, str)
+        or not _is_lower_hex(baseline_hash, _SHA256_LENGTH)
+        or baseline_hash != _self_hash(record, "baseline_hash")
+    ):
+        raise OutcomeEvidenceRunnerError(
+            "qualification isolation baseline hash mismatch"
+        )
+    checkpoint_root = Path(registration.checkpoint_root)
+    game_root = checkpoint_root.parent
+    _validate_qualification_inventory_observation(
+        record["checkpoints"],
+        expected_root=checkpoint_root,
+        expected_patterns=registration.to_record()["integrity_rules"][
+            "checkpoint_inventory"
+        ]["patterns"],
+        label="checkpoint",
+    )
+    _validate_qualification_inventory_observation(
+        record["runs"],
+        expected_root=game_root / "runs",
+        expected_patterns=None,
+        label="run",
+    )
+    communication = record["communication_mod"]
+    if not isinstance(communication, Mapping) or set(communication) != {
+        "original_bytes_b64",
+        "path",
+        "properties",
+        "sha256",
+        "size",
+    }:
+        raise OutcomeEvidenceRunnerError(
+            "qualification CommunicationMod isolation binding is invalid"
+        )
+    communication_path = _resolved_absolute_path(
+        communication["path"],
+        "qualification CommunicationMod isolation path",
+    )
+    if communication_path != Path(registration.communication_config_path):
+        raise OutcomeEvidenceRunnerError(
+            "qualification CommunicationMod isolation path mismatch"
+        )
+    try:
+        original_bytes = base64.b64decode(
+            communication["original_bytes_b64"],
+            validate=True,
+        )
+    except (TypeError, ValueError) as exc:
+        raise OutcomeEvidenceRunnerError(
+            "qualification CommunicationMod original bytes are invalid"
+        ) from exc
+    if (
+        type(communication["size"]) is not int
+        or communication["size"] < 0
+        or len(original_bytes) != communication["size"]
+        or not isinstance(communication["sha256"], str)
+        or hashlib.sha256(original_bytes).hexdigest()
+        != communication["sha256"]
+        or not isinstance(communication["properties"], Mapping)
+        or dict(communication["properties"])
+        != _qualification_parse_java_properties(original_bytes)
+    ):
+        raise OutcomeEvidenceRunnerError(
+            "qualification CommunicationMod original-byte binding mismatch"
+        )
+    marker = record["marker"]
+    _validate_qualification_file_observation(
+        marker,
+        expected_path=marker_path,
+        label="marker",
+        extra_fields={"line_count"},
+    )
+    if (
+        type(marker["line_count"]) is not int
+        or marker["line_count"] < 0
+        or marker["line_count"] != marker_start_count
+    ):
+        raise OutcomeEvidenceRunnerError(
+            "qualification isolation marker count mismatch"
+        )
+    global_logs = record["global_logs"]
+    expected_logs = {
+        str(Path(os.path.abspath(game_root / "ai_debug.log"))),
+        str(
+            Path(
+                os.path.abspath(game_root / "communication_mod_errors.log")
+            )
+        ),
+    }
+    if not isinstance(global_logs, Mapping) or set(global_logs) != expected_logs:
+        raise OutcomeEvidenceRunnerError(
+            "qualification global-log isolation paths mismatch"
+        )
+    for path, observation in global_logs.items():
+        _validate_qualification_file_observation(
+            observation,
+            expected_path=Path(path),
+            label="global log",
+        )
+    return json.loads(_canonical_json(record))
+
+
+def _validate_qualification_file_observation(
+    value: Any,
+    *,
+    expected_path: Path,
+    label: str,
+    extra_fields: set[str] | None = None,
+) -> None:
+    extras = set() if extra_fields is None else set(extra_fields)
+    if not isinstance(value, Mapping) or set(value) != {
+        "exists",
+        "path",
+        "sha256",
+        "size",
+        *extras,
+    }:
+        raise OutcomeEvidenceRunnerError(
+            f"qualification {label} isolation observation is invalid"
+        )
+    observed_path = _resolved_absolute_path(
+        value["path"],
+        f"qualification {label} isolation path",
+    )
+    if observed_path != Path(expected_path):
+        raise OutcomeEvidenceRunnerError(
+            f"qualification {label} isolation path mismatch"
+        )
+    exists = value["exists"]
+    if type(exists) is not bool:
+        raise OutcomeEvidenceRunnerError(
+            f"qualification {label} isolation existence is invalid"
+        )
+    if exists:
+        if (
+            type(value["size"]) is not int
+            or value["size"] < 0
+            or not isinstance(value["sha256"], str)
+            or not _is_lower_hex(value["sha256"], _SHA256_LENGTH)
+        ):
+            raise OutcomeEvidenceRunnerError(
+                f"qualification {label} isolation fingerprint is invalid"
+            )
+    elif value["size"] is not None or value["sha256"] is not None:
+        raise OutcomeEvidenceRunnerError(
+            f"qualification absent {label} isolation fingerprint is invalid"
+        )
+
+
+def _validate_qualification_inventory_observation(
+    value: Any,
+    *,
+    expected_root: Path,
+    expected_patterns: Sequence[str] | None,
+    label: str,
+) -> None:
+    if not isinstance(value, Mapping) or set(value) != {
+        "entry_count",
+        "inventory_sha256",
+        "patterns",
+        "root",
+        "total_bytes",
+    }:
+        raise OutcomeEvidenceRunnerError(
+            f"qualification {label} isolation inventory is invalid"
+        )
+    root = _resolved_absolute_path(
+        value["root"],
+        f"qualification {label} isolation root",
+    )
+    normalized_expected_patterns = (
+        None if expected_patterns is None else list(expected_patterns)
+    )
+    if (
+        root != Path(expected_root)
+        or value["patterns"] != normalized_expected_patterns
+        or type(value["entry_count"]) is not int
+        or value["entry_count"] < 0
+        or type(value["total_bytes"]) is not int
+        or value["total_bytes"] < 0
+        or not isinstance(value["inventory_sha256"], str)
+        or not _is_lower_hex(value["inventory_sha256"], _SHA256_LENGTH)
+    ):
+        raise OutcomeEvidenceRunnerError(
+            f"qualification {label} isolation inventory binding mismatch"
+        )
+
+
+def _qualification_expected_isolation_observation(
+    baseline: Mapping[str, Any],
+) -> dict[str, Any]:
+    communication = baseline["communication_mod"]
+    record = {
+        "checkpoints": dict(baseline["checkpoints"]),
+        "communication_mod": {
+            "exists": True,
+            "path": communication["path"],
+            "properties": dict(communication["properties"]),
+            "sha256": communication["sha256"],
+            "size": communication["size"],
+        },
+        "global_logs": {
+            path: dict(observation)
+            for path, observation in baseline["global_logs"].items()
+        },
+        "marker": dict(baseline["marker"]),
+        "observation_hash": None,
+        "runs": dict(baseline["runs"]),
+        "schema_version": QUALIFICATION_ISOLATION_OBSERVATION_SCHEMA_VERSION,
+    }
+    record["observation_hash"] = _self_hash(record, "observation_hash")
+    return record
+
+
+def _qualification_observe_isolation(
+    baseline: Mapping[str, Any],
+) -> dict[str, Any]:
+    communication_baseline = baseline["communication_mod"]
+    communication_path = Path(communication_baseline["path"])
+    communication, communication_bytes = _qualification_file_observation_bytes(
+        communication_path,
+        label="qualification CommunicationMod observation",
+        allow_missing=True,
+    )
+    if communication["exists"]:
+        communication["properties"] = _qualification_parse_java_properties(
+            communication_bytes
+        )
+    else:
+        communication["properties"] = None
+
+    marker_path = Path(baseline["marker"]["path"])
+    marker, marker_bytes = _qualification_file_observation_bytes(
+        marker_path,
+        label="qualification marker observation",
+        allow_missing=True,
+    )
+    marker["line_count"] = _qualification_marker_count_from_bytes(marker_bytes)
+
+    checkpoint_baseline = baseline["checkpoints"]
+    run_baseline = baseline["runs"]
+    record = {
+        "checkpoints": _qualification_inventory_observation(
+            Path(checkpoint_baseline["root"]),
+            patterns=checkpoint_baseline["patterns"],
+        ),
+        "communication_mod": communication,
+        "global_logs": {
+            path: _qualification_file_observation(
+                Path(path),
+                label="qualification global-log observation",
+                allow_missing=True,
+            )
+            for path in baseline["global_logs"]
+        },
+        "marker": marker,
+        "observation_hash": None,
+        "runs": _qualification_inventory_observation(
+            Path(run_baseline["root"]),
+            patterns=run_baseline["patterns"],
+        ),
+        "schema_version": QUALIFICATION_ISOLATION_OBSERVATION_SCHEMA_VERSION,
+    }
+    record["observation_hash"] = _self_hash(record, "observation_hash")
+    return _validate_qualification_isolation_observation(record, baseline)
+
+
+def _validate_qualification_isolation_observation(
+    value: Any,
+    baseline: Mapping[str, Any],
+) -> dict[str, Any]:
+    expected_fields = {
+        "checkpoints",
+        "communication_mod",
+        "global_logs",
+        "marker",
+        "observation_hash",
+        "runs",
+        "schema_version",
+    }
+    if not isinstance(value, Mapping) or set(value) != expected_fields:
+        raise OutcomeEvidenceRunnerError(
+            "qualification isolation observation fields mismatch"
+        )
+    record = dict(value)
+    if (
+        record["schema_version"]
+        != QUALIFICATION_ISOLATION_OBSERVATION_SCHEMA_VERSION
+    ):
+        raise OutcomeEvidenceRunnerError(
+            "qualification isolation observation schema mismatch"
+        )
+    observation_hash = record["observation_hash"]
+    if (
+        not isinstance(observation_hash, str)
+        or not _is_lower_hex(observation_hash, _SHA256_LENGTH)
+        or observation_hash != _self_hash(record, "observation_hash")
+    ):
+        raise OutcomeEvidenceRunnerError(
+            "qualification isolation observation hash mismatch"
+        )
+
+    communication = record["communication_mod"]
+    _validate_qualification_file_observation(
+        communication,
+        expected_path=Path(baseline["communication_mod"]["path"]),
+        label="CommunicationMod",
+        extra_fields={"properties"},
+    )
+    if communication["exists"]:
+        if not isinstance(communication["properties"], Mapping):
+            raise OutcomeEvidenceRunnerError(
+                "qualification CommunicationMod properties are invalid"
+            )
+    elif communication["properties"] is not None:
+        raise OutcomeEvidenceRunnerError(
+            "qualification absent CommunicationMod properties are invalid"
+        )
+
+    marker = record["marker"]
+    _validate_qualification_file_observation(
+        marker,
+        expected_path=Path(baseline["marker"]["path"]),
+        label="marker",
+        extra_fields={"line_count"},
+    )
+    if type(marker["line_count"]) is not int or marker["line_count"] < 0:
+        raise OutcomeEvidenceRunnerError(
+            "qualification marker observation count is invalid"
+        )
+
+    for name in ("checkpoints", "runs"):
+        inventory_baseline = baseline[name]
+        _validate_qualification_inventory_observation(
+            record[name],
+            expected_root=Path(inventory_baseline["root"]),
+            expected_patterns=inventory_baseline["patterns"],
+            label=name,
+        )
+    global_logs = record["global_logs"]
+    if (
+        not isinstance(global_logs, Mapping)
+        or set(global_logs) != set(baseline["global_logs"])
+    ):
+        raise OutcomeEvidenceRunnerError(
+            "qualification global-log observation paths mismatch"
+        )
+    for path, observation in global_logs.items():
+        _validate_qualification_file_observation(
+            observation,
+            expected_path=Path(path),
+            label="global log",
+        )
+    return json.loads(_canonical_json(record))
+
+
+def _qualification_isolation_mismatches(
+    expected: Mapping[str, Any],
+    observed: Mapping[str, Any],
+) -> list[str]:
+    mismatches = []
+    for name in ("communication_mod", "marker", "runs", "checkpoints"):
+        if observed[name] != expected[name]:
+            mismatches.append(name)
+    for path, expected_log in expected["global_logs"].items():
+        if observed["global_logs"].get(path) != expected_log:
+            mismatches.append(f"global_log:{path}")
+    return sorted(mismatches)
+
+
+def _qualification_validate_prelaunch_isolation(
+    request: Mapping[str, Any],
+    qualification_launch_command: Sequence[str] | None,
+) -> dict[str, Any]:
+    baseline = request["isolation"]
+    expected = _qualification_expected_isolation_observation(baseline)
+    observed = _qualification_observe_isolation(baseline)
+    mismatches = _qualification_isolation_mismatches(expected, observed)
+    if qualification_launch_command is not None:
+        mismatches = [
+            mismatch
+            for mismatch in mismatches
+            if mismatch != "communication_mod"
+        ]
+        baseline_properties = dict(
+            baseline["communication_mod"]["properties"]
+        )
+        observed_communication = observed["communication_mod"]
+        observed_properties = observed_communication["properties"]
+        command_matches = False
+        non_command_matches = False
+        if observed_communication["exists"] and isinstance(
+            observed_properties,
+            Mapping,
+        ):
+            current_properties = dict(observed_properties)
+            current_command = current_properties.pop("command", None)
+            baseline_command = baseline_properties.pop("command", None)
+            command_matches = (
+                isinstance(current_command, str)
+                and baseline_command is not None
+                and current_command.strip().split()
+                == list(qualification_launch_command)
+            )
+            non_command_matches = current_properties == baseline_properties
+        if not command_matches or not non_command_matches:
+            mismatches.append("communication_mod")
+    if mismatches:
+        raise OutcomeEvidenceRunnerError(
+            "qualification prelaunch isolation mismatch: "
+            + ", ".join(sorted(set(mismatches)))
+        )
+    return observed
+
+
+def _qualification_restore_communication_config(
+    baseline: Mapping[str, Any],
+) -> dict[str, Any]:
+    communication = baseline["communication_mod"]
+    try:
+        original_bytes = base64.b64decode(
+            communication["original_bytes_b64"],
+            validate=True,
+        )
+    except (TypeError, ValueError) as exc:
+        raise OutcomeEvidenceRunnerError(
+            "qualification CommunicationMod restoration bytes are invalid"
+        ) from exc
+    target = _qualification_require_no_follow_path(
+        communication["path"],
+        "CommunicationMod restoration target",
+        expected_kind="file",
+        allow_missing=True,
+    )
+    _qualification_require_no_follow_path(
+        target.parent,
+        "CommunicationMod restoration parent",
+        expected_kind="directory",
+    )
+    restoration_parent = target.parent
+    try:
+        parent_before = restoration_parent.lstat()
+    except OSError as exc:
+        raise OutcomeEvidenceRunnerError(
+            "qualification CommunicationMod restoration parent cannot be "
+            f"inspected: {exc}"
+        ) from exc
+    descriptor = -1
+    temporary_path: Path | None = None
+    try:
+        descriptor, temporary_name = tempfile.mkstemp(
+            prefix=f".{target.name}.qualification-",
+            dir=str(restoration_parent),
+        )
+        temporary_path = Path(temporary_name)
+        with os.fdopen(descriptor, "wb") as stream:
+            descriptor = -1
+            stream.write(original_bytes)
+            stream.flush()
+            os.fsync(stream.fileno())
+        _qualification_require_no_follow_path(
+            temporary_path,
+            "CommunicationMod restoration temporary file",
+            expected_kind="file",
+        )
+        temporary_before = temporary_path.lstat()
+        _qualification_require_no_follow_path(
+            target,
+            "CommunicationMod restoration target",
+            expected_kind="file",
+            allow_missing=True,
+        )
+        _qualification_require_no_follow_path(
+            restoration_parent,
+            "CommunicationMod restoration parent",
+            expected_kind="directory",
+        )
+        parent_before_replace = restoration_parent.lstat()
+        temporary_before_replace = temporary_path.lstat()
+        if (
+            not os.path.samestat(parent_before, parent_before_replace)
+            or _qualification_metadata_is_link_or_reparse(
+                parent_before_replace
+            )
+            or not stat.S_ISDIR(parent_before_replace.st_mode)
+        ):
+            raise OutcomeEvidenceRunnerError(
+                "qualification CommunicationMod restoration parent changed "
+                "during restoration"
+            )
+        if (
+            not os.path.samestat(
+                temporary_before,
+                temporary_before_replace,
+            )
+            or _qualification_metadata_is_link_or_reparse(
+                temporary_before_replace
+            )
+            or not stat.S_ISREG(temporary_before_replace.st_mode)
+        ):
+            raise OutcomeEvidenceRunnerError(
+                "qualification CommunicationMod restoration temporary file "
+                "changed during restoration"
+            )
+        os.replace(temporary_path, target)
+        temporary_path = None
+        _qualification_require_no_follow_path(
+            restoration_parent,
+            "CommunicationMod restoration parent",
+            expected_kind="directory",
+        )
+        restored_path = _qualification_require_no_follow_path(
+            target,
+            "restored CommunicationMod config",
+            expected_kind="file",
+        )
+        parent_after = restoration_parent.lstat()
+        restored_metadata = restored_path.lstat()
+        if not os.path.samestat(parent_before, parent_after):
+            raise OutcomeEvidenceRunnerError(
+                "qualification CommunicationMod restoration parent changed "
+                "during restoration"
+            )
+        if not os.path.samestat(temporary_before, restored_metadata):
+            raise OutcomeEvidenceRunnerError(
+                "qualification CommunicationMod restoration target identity "
+                "mismatch"
+            )
+        restored_bytes = _qualification_read_file_bytes(
+            restored_path,
+            "restored CommunicationMod config",
+        )
+        if restored_bytes != original_bytes:
+            raise OutcomeEvidenceRunnerError(
+                "qualification CommunicationMod restoration byte mismatch"
+            )
+        observation = _qualification_file_observation(
+            restored_path,
+            label="restored CommunicationMod config",
+            allow_missing=False,
+        )
+        observation["properties"] = _qualification_parse_java_properties(
+            restored_bytes
+        )
+        return observation
+    except OSError as exc:
+        raise OutcomeEvidenceRunnerError(
+            f"qualification CommunicationMod restoration failed: {exc}"
+        ) from exc
+    finally:
+        if descriptor >= 0:
+            os.close(descriptor)
+        if temporary_path is not None:
+            try:
+                temporary_path.unlink(missing_ok=True)
+            except OSError:
+                pass
+
+
+def _qualification_child_alive(process: Any) -> bool | None:
+    if process is None:
+        return False
+    try:
+        return process.poll() is None
+    except BaseException:
+        return None
+
+
+def _qualification_finalize_isolation(
+    request: Mapping[str, Any],
+    process: Any,
+) -> dict[str, Any]:
+    baseline = request["isolation"]
+    restoration_error = None
+    observation_error = None
+    communication_restored = False
+    observed = None
+    try:
+        _qualification_restore_communication_config(baseline)
+        communication_restored = True
+    except BaseException as exc:
+        restoration_error = f"{type(exc).__name__}: {exc}"
+    try:
+        observed = _qualification_observe_isolation(baseline)
+    except BaseException as exc:
+        observation_error = f"{type(exc).__name__}: {exc}"
+
+    child_alive = _qualification_child_alive(process)
+    mismatches = []
+    if observed is None:
+        mismatches.append("observation_error")
+    else:
+        mismatches.extend(
+            _qualification_isolation_mismatches(
+                _qualification_expected_isolation_observation(baseline),
+                observed,
+            )
+        )
+    if not communication_restored:
+        mismatches.append("communication_restore")
+    if child_alive is not False:
+        mismatches.append("child_process")
+    mismatches = sorted(set(mismatches))
+    return {
+        "baseline_hash": baseline["baseline_hash"],
+        "child_alive": child_alive,
+        "communication_restored": communication_restored,
+        "matched": (
+            not mismatches
+            and restoration_error is None
+            and observation_error is None
+        ),
+        "mismatches": mismatches,
+        "observation_error": observation_error,
+        "post_observation": observed,
+        "post_observation_hash": (
+            None if observed is None else observed["observation_hash"]
+        ),
+        "restoration_error": restoration_error,
     }
 
 
@@ -2704,6 +3791,7 @@ def execute_prelock_qualification(
     expected_request_file_sha256: str,
     expected_request_size: int,
     process_starter: Callable[[Sequence[str], Mapping[str, str]], Any],
+    qualification_launch_command: Sequence[str] | None = None,
     monotonic: Callable[[], float] = time.monotonic,
     sleep: Callable[[float], None] = time.sleep,
     time_ns: Callable[[], int] = time.time_ns,
@@ -2759,28 +3847,36 @@ def execute_prelock_qualification(
         implementation_sha256=request["implementation_sha256"],
     )
     active_request_path = Path(request["request_path"])
-    _publish_text_once(
-        active_request_path,
-        _canonical_json(request) + "\n",
-        "qualification request",
-    )
-    request = load_qualification_request(
-        active_request_path,
-        registration_path=registration_path,
-    )
-    handshake = request["handshake"]
-    paths = HandshakePaths(
-        attempt=Path(handshake["attempt_path"]),
-        ready=Path(handshake["ready_path"]),
-        release=Path(handshake["release_path"]),
-    )
     started_unix_ns = request["created_unix_ns"]
     process = None
     child_pid = None
     exit_code = None
     launch_count = 0
-    stage = "build_attempt"
+    request_consumed = False
+    stage = "prelaunch_validation"
     try:
+        _qualification_validate_prelaunch_isolation(
+            request,
+            qualification_launch_command,
+        )
+        stage = "publish_request"
+        _publish_text_once(
+            active_request_path,
+            _canonical_json(request) + "\n",
+            "qualification request",
+        )
+        request_consumed = True
+        request = load_qualification_request(
+            active_request_path,
+            registration_path=registration_path,
+        )
+        handshake = request["handshake"]
+        paths = HandshakePaths(
+            attempt=Path(handshake["attempt_path"]),
+            ready=Path(handshake["ready_path"]),
+            release=Path(handshake["release_path"]),
+        )
+        stage = "build_attempt"
         started_unix_ns = _positive_time_ns(time_ns)
         attempt = build_attempt_record(
             study_id=request["qualification_id"],
@@ -2881,6 +3977,17 @@ def execute_prelock_qualification(
             review_binding=review_binding,
             release_allowed=True,
         )
+        stage = "restore_isolation"
+        isolation_evidence = _qualification_finalize_isolation(
+            request,
+            process,
+        )
+        if not isolation_evidence["matched"]:
+            raise OutcomeEvidenceRunnerError(
+                "qualification post isolation mismatch: "
+                + ", ".join(isolation_evidence["mismatches"])
+            )
+        stage = "post_exit_validation"
         ended_unix_ns = _positive_time_ns(time_ns)
         result = _build_qualification_result(
             request=request,
@@ -2894,6 +4001,7 @@ def execute_prelock_qualification(
             cleanup_attempted=False,
             cleanup_error=None,
             failure=None,
+            isolation=isolation_evidence,
         )
         stage = "publish_completion"
         _require_paths_absent(
@@ -2908,6 +4016,12 @@ def execute_prelock_qualification(
     except BaseException as exc:
         cleanup_attempted = _child_cleanup_required(process)
         cleanup_error = _terminate_child_process(process)
+        isolation_evidence = _qualification_finalize_isolation(
+            request,
+            process,
+        )
+        if not isinstance(exc, Exception):
+            raise
         if exit_code is None:
             exit_code = _safe_process_exit_code(process)
         ended_unix_ns = _safe_time_ns(time_ns)
@@ -2918,6 +4032,15 @@ def execute_prelock_qualification(
             "message": str(exc),
             "stage": stage,
         }
+        if not request_consumed:
+            suffix = (
+                f"; child cleanup failed: {cleanup_error}"
+                if cleanup_error is not None
+                else ""
+            )
+            raise OutcomeEvidenceRunnerError(
+                f"{stage}: {type(exc).__name__}: {exc}{suffix}"
+            ) from exc
         if stage == "publish_completion":
             suffix = (
                 f"; child cleanup failed: {cleanup_error}"
@@ -2953,6 +4076,7 @@ def execute_prelock_qualification(
                 cleanup_attempted=cleanup_attempted,
                 cleanup_error=cleanup_error,
                 failure=failure,
+                isolation=isolation_evidence,
             )
             _require_paths_absent(
                 (Path(request["completion_path"]),),
@@ -3003,6 +4127,7 @@ def _build_qualification_result(
     cleanup_attempted: bool,
     cleanup_error: str | None,
     failure: Mapping[str, Any] | None,
+    isolation: Mapping[str, Any],
 ) -> dict[str, Any]:
     handshake = request["handshake"]
     marker_end_count = _safe_marker_count(Path(request["marker"]["path"]))
@@ -3032,6 +4157,7 @@ def _build_qualification_result(
             for name in ("attempt", "ready", "release")
         },
         "implementation_sha256": dict(request["implementation_sha256"]),
+        "isolation": dict(isolation),
         "marker": {
             "end_count": marker_end_count,
             "path": request["marker"]["path"],
@@ -3059,6 +4185,109 @@ def _build_qualification_result(
     return _validate_qualification_result(record)
 
 
+def _validate_qualification_result_isolation(value: Any) -> dict[str, Any]:
+    expected_fields = {
+        "baseline_hash",
+        "child_alive",
+        "communication_restored",
+        "matched",
+        "mismatches",
+        "observation_error",
+        "post_observation",
+        "post_observation_hash",
+        "restoration_error",
+    }
+    if not isinstance(value, Mapping) or set(value) != expected_fields:
+        raise OutcomeEvidenceRunnerError(
+            "qualification result isolation fields mismatch"
+        )
+    record = dict(value)
+    if not isinstance(record["baseline_hash"], str) or not _is_lower_hex(
+        record["baseline_hash"],
+        _SHA256_LENGTH,
+    ):
+        raise OutcomeEvidenceRunnerError(
+            "qualification result isolation baseline hash is invalid"
+        )
+    if record["child_alive"] is not None and type(record["child_alive"]) is not bool:
+        raise OutcomeEvidenceRunnerError(
+            "qualification result child liveness is invalid"
+        )
+    for field in ("communication_restored", "matched"):
+        if type(record[field]) is not bool:
+            raise OutcomeEvidenceRunnerError(
+                f"qualification result isolation {field} flag is invalid"
+            )
+    mismatches = record["mismatches"]
+    if (
+        isinstance(mismatches, (str, bytes))
+        or not isinstance(mismatches, Sequence)
+        or list(mismatches) != sorted(set(mismatches))
+        or any(not isinstance(item, str) or not item for item in mismatches)
+    ):
+        raise OutcomeEvidenceRunnerError(
+            "qualification result isolation mismatches are invalid"
+        )
+    for field in ("observation_error", "restoration_error"):
+        error = record[field]
+        if error is not None and (not isinstance(error, str) or not error):
+            raise OutcomeEvidenceRunnerError(
+                f"qualification result isolation {field} is invalid"
+            )
+    post_observation = record["post_observation"]
+    post_hash = record["post_observation_hash"]
+    if post_observation is None:
+        if post_hash is not None:
+            raise OutcomeEvidenceRunnerError(
+                "qualification result absent post-observation has a hash"
+            )
+    elif (
+        not isinstance(post_observation, Mapping)
+        or not isinstance(post_hash, str)
+        or not _is_lower_hex(post_hash, _SHA256_LENGTH)
+        or post_observation.get("observation_hash") != post_hash
+        or post_hash != _self_hash(post_observation, "observation_hash")
+    ):
+        raise OutcomeEvidenceRunnerError(
+            "qualification result post-observation hash is invalid"
+        )
+    mismatch_set = set(mismatches)
+    observation_error = record["observation_error"]
+    restoration_error = record["restoration_error"]
+    if (observation_error is None) != (post_observation is not None) or (
+        ("observation_error" in mismatch_set) != (observation_error is not None)
+    ):
+        raise OutcomeEvidenceRunnerError(
+            "qualification result isolation observation evidence contradicts"
+        )
+    if (restoration_error is None) != record["communication_restored"] or (
+        ("communication_restore" in mismatch_set)
+        != (record["communication_restored"] is False)
+    ):
+        raise OutcomeEvidenceRunnerError(
+            "qualification result isolation restoration evidence contradicts"
+        )
+    if ("child_process" in mismatch_set) != (
+        record["child_alive"] is not False
+    ):
+        raise OutcomeEvidenceRunnerError(
+            "qualification result isolation child evidence contradicts"
+        )
+    expected_matched = (
+        record["child_alive"] is False
+        and record["communication_restored"] is True
+        and not mismatches
+        and observation_error is None
+        and restoration_error is None
+        and post_observation is not None
+    )
+    if record["matched"] is not expected_matched:
+        raise OutcomeEvidenceRunnerError(
+            "qualification result isolation matched flag contradicts evidence"
+        )
+    return json.loads(_canonical_json(record))
+
+
 def _validate_qualification_result(record: Mapping[str, Any]) -> dict[str, Any]:
     expected_fields = {
         "authority",
@@ -3070,6 +4299,7 @@ def _validate_qualification_result(record: Mapping[str, Any]) -> dict[str, Any]:
         "forbidden_paths",
         "handshake",
         "implementation_sha256",
+        "isolation",
         "marker",
         "process",
         "registration",
@@ -3100,6 +4330,7 @@ def _validate_qualification_result(record: Mapping[str, Any]) -> dict[str, Any]:
     if supplied_hash != _self_hash(record, "result_hash"):
         raise OutcomeEvidenceRunnerError("qualification result hash mismatch")
     _validate_qualification_review_binding(record["review_binding"])
+    isolation = _validate_qualification_result_isolation(record["isolation"])
     authority = record["authority"]
     expected_authority_fields = {
         "causal_claim",
@@ -3227,6 +4458,13 @@ def _validate_qualification_result(record: Mapping[str, Any]) -> dict[str, Any]:
         and marker["end_count"] == marker["start_count"]
         and not any(forbidden.values())
         and all(handshake[name]["sha256"] is not None for name in handshake)
+        and isolation["matched"] is True
+        and isolation["communication_restored"] is True
+        and isolation["child_alive"] is False
+        and isolation["mismatches"] == []
+        and isolation["observation_error"] is None
+        and isolation["restoration_error"] is None
+        and isolation["post_observation"] is not None
     )
     if status == "passed":
         if record["failure"] is not None or not success_evidence_complete:
@@ -3399,6 +4637,60 @@ def _validate_qualification_result_lifecycle(
     ):
         raise OutcomeEvidenceRunnerError(
             "qualification result request binding mismatch"
+        )
+    if request.get("schema_version") != QUALIFICATION_REQUEST_SCHEMA_VERSION:
+        raise OutcomeEvidenceRunnerError(
+            "qualification result requires a v2 request"
+        )
+    registration = _load_qualification_registration(
+        request["registration"]["path"]
+    )
+    baseline = _validate_qualification_isolation_baseline(
+        request.get("isolation"),
+        registration=registration,
+        marker_path=Path(request["marker"]["path"]),
+        marker_start_count=request["marker"]["start_count"],
+    )
+    isolation = _validate_qualification_result_isolation(record["isolation"])
+    if isolation["baseline_hash"] != baseline["baseline_hash"]:
+        raise OutcomeEvidenceRunnerError(
+            "qualification result isolation baseline binding mismatch"
+        )
+    post_observation = isolation["post_observation"]
+    if post_observation is not None:
+        post_observation = _validate_qualification_isolation_observation(
+            post_observation,
+            baseline,
+        )
+        if post_observation["observation_hash"] != isolation[
+            "post_observation_hash"
+        ]:
+            raise OutcomeEvidenceRunnerError(
+                "qualification result post-observation binding mismatch"
+            )
+    expected_isolation_mismatches = []
+    if post_observation is not None:
+        expected_isolation_mismatches.extend(
+            _qualification_isolation_mismatches(
+                _qualification_expected_isolation_observation(baseline),
+                post_observation,
+            )
+        )
+    if isolation["observation_error"] is not None:
+        expected_isolation_mismatches.append("observation_error")
+    if isolation["communication_restored"] is False:
+        expected_isolation_mismatches.append("communication_restore")
+    if isolation["child_alive"] is not False:
+        expected_isolation_mismatches.append("child_process")
+    if isolation["mismatches"] != sorted(set(expected_isolation_mismatches)):
+        raise OutcomeEvidenceRunnerError(
+            "qualification result isolation mismatch labels differ"
+        )
+    if record["status"] == "passed" and post_observation != (
+        _qualification_expected_isolation_observation(baseline)
+    ):
+        raise OutcomeEvidenceRunnerError(
+            "qualification passed result has isolation drift"
         )
     review_binding = _validate_qualification_review_binding(
         record["review_binding"]
@@ -5974,6 +7266,7 @@ def _qualify_command(
         expected_request_file_sha256=request_file_sha256,
         expected_request_size=request_size,
         process_starter=process_starter,
+        qualification_launch_command=tuple(sys.orig_argv),
     )
 
 
@@ -6155,15 +7448,15 @@ def main(argv: Sequence[str] | None = None) -> int:
             result = _monitor_command(args.registration)
         else:
             result = _finalize_gate_command(args.registration)
-        output_stream = (
-            sys.stderr
-            if args.subcommand in {"qualify", "run-next"}
-            else sys.stdout
-        )
-        print(_canonical_json(result), file=output_stream)
+        if args.subcommand != "qualify":
+            output_stream = (
+                sys.stderr if args.subcommand == "run-next" else sys.stdout
+            )
+            print(_canonical_json(result), file=output_stream)
         return 0
     except Exception as exc:
-        print(f"[outcome-evidence] {exc}", file=sys.stderr)
+        if args.subcommand != "qualify":
+            print(f"[outcome-evidence] {exc}", file=sys.stderr)
         return 2
 
 

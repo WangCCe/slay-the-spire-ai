@@ -1,3 +1,4 @@
+import base64
 import importlib
 import hashlib
 import json
@@ -61,6 +62,12 @@ def _trusted_qualification_command(runner_path, *arguments):
     ]
 
 
+def _assert_silent_qualification_failure(completed):
+    assert completed.returncode == 2
+    assert completed.stdout == ""
+    assert completed.stderr == ""
+
+
 def _create_directory_junction(link_path, target_path):
     completed = subprocess.run(
         ["cmd.exe", "/c", "mklink", "/J", str(link_path), str(target_path)],
@@ -80,6 +87,73 @@ def _qualification_review_kwargs(request):
         "expected_request_size": len(source_bytes),
         "expected_review_commit": REVIEW_COMMIT,
     }
+
+
+def test_qualification_file_reader_rejects_path_identity_change(
+    tmp_path,
+    monkeypatch,
+):
+    module = _module()
+    evidence_path = tmp_path / "evidence.log"
+    evidence_path.write_bytes(b"stable evidence\n")
+    monkeypatch.setattr(module.os.path, "samestat", lambda *_args: False)
+
+    with pytest.raises(
+        module.OutcomeEvidenceRunnerError,
+        match="changed while being read",
+    ):
+        module._qualification_read_file_bytes(
+            evidence_path,
+            "isolation evidence",
+        )
+
+
+def test_qualification_observation_reads_communication_bytes_once(
+    tmp_path,
+    monkeypatch,
+):
+    module, _registration_path, _request_path, request = (
+        _qualification_request_fixture(tmp_path, monkeypatch, source_only=True)
+    )
+    communication_path = Path(
+        request["isolation"]["communication_mod"]["path"]
+    )
+    original_reader = module._qualification_read_file_bytes
+    read_count = 0
+
+    def read_once(path, label):
+        nonlocal read_count
+        if Path(path) == communication_path:
+            read_count += 1
+            if read_count > 1:
+                pytest.fail("CommunicationMod was reread for derived fields")
+        return original_reader(path, label)
+
+    monkeypatch.setattr(module, "_qualification_read_file_bytes", read_once)
+
+    module._qualification_observe_isolation(request["isolation"])
+
+    assert read_count == 1
+
+
+def test_qualification_observation_derives_marker_count_from_hashed_bytes(
+    tmp_path,
+    monkeypatch,
+):
+    module, _registration_path, _request_path, request = (
+        _qualification_request_fixture(tmp_path, monkeypatch, source_only=True)
+    )
+    monkeypatch.setattr(
+        module,
+        "_ai_marker_count",
+        lambda _path: pytest.fail("marker was reread for line_count"),
+    )
+
+    observation = module._qualification_observe_isolation(
+        request["isolation"]
+    )
+
+    assert observation["marker"]["line_count"] == 2
 
 
 def test_runner_supports_direct_script_execution(tmp_path):
@@ -145,8 +219,7 @@ def test_qualification_cli_requires_isolation_before_argparse(tmp_path):
         text=True,
     )
 
-    assert completed.returncode == 2
-    assert "isolated" in completed.stderr.lower()
+    _assert_silent_qualification_failure(completed)
     assert not marker_path.exists()
 
 
@@ -172,8 +245,7 @@ def test_qualification_cli_rejects_site_enabled_trusted_launcher():
         text=True,
     )
 
-    assert completed.returncode == 2
-    assert "no-site" in completed.stderr.lower()
+    _assert_silent_qualification_failure(completed)
 
 
 def test_trusted_qualification_launcher_rejects_stat_clean_runner_tamper(
@@ -215,8 +287,7 @@ def test_trusted_qualification_launcher_rejects_stat_clean_runner_tamper(
         text=True,
     )
 
-    assert completed.returncode == 2
-    assert "sha-256" in completed.stderr.lower()
+    _assert_silent_qualification_failure(completed)
     assert not marker_path.exists()
 
 
@@ -244,8 +315,7 @@ def test_trusted_qualification_launcher_rejects_relative_runner_path(
         text=True,
     )
 
-    assert completed.returncode == 2
-    assert "local absolute" in completed.stderr.lower()
+    _assert_silent_qualification_failure(completed)
 
 
 def test_trusted_qualification_launcher_rejects_runner_ads(tmp_path):
@@ -270,8 +340,7 @@ def test_trusted_qualification_launcher_rejects_runner_ads(tmp_path):
         text=True,
     )
 
-    assert completed.returncode == 2
-    assert "alternate data stream" in completed.stderr.lower()
+    _assert_silent_qualification_failure(completed)
 
 
 @pytest.mark.parametrize("suffix", [".", " "])
@@ -300,8 +369,7 @@ def test_trusted_qualification_launcher_rejects_win32_alias(
         text=True,
     )
 
-    assert completed.returncode == 2
-    assert "win32 alias" in completed.stderr.lower()
+    _assert_silent_qualification_failure(completed)
 
 
 def test_trusted_qualification_launcher_survives_communicationmod_split(
@@ -355,8 +423,58 @@ def test_qualification_cli_rejects_direct_unanchored_runner():
         text=True,
     )
 
-    assert completed.returncode == 2
-    assert "trusted launcher command is required" in completed.stderr.lower()
+    _assert_silent_qualification_failure(completed)
+
+
+def test_trusted_qualification_cli_silences_argparse_rejection(tmp_path):
+    repo_root = tmp_path / "repo"
+    repo_root.mkdir()
+    ignored = shutil.ignore_patterns("__pycache__", "*.pyc")
+    for directory_name in ("analysis_scripts", "scripts", "spirecomm"):
+        shutil.copytree(
+            REPO_ROOT / directory_name,
+            repo_root / directory_name,
+            ignore=ignored,
+        )
+    for command in (
+        ("git", "init", "--object-format=sha1"),
+        ("git", "config", "user.email", "runner@example.invalid"),
+        ("git", "config", "user.name", "Runner Fixture"),
+        ("git", "add", "."),
+        ("git", "commit", "-m", "source snapshot"),
+    ):
+        subprocess.run(
+            command,
+            cwd=repo_root,
+            capture_output=True,
+            check=True,
+            text=True,
+        )
+    review_commit = subprocess.run(
+        ("git", "rev-parse", "HEAD"),
+        cwd=repo_root,
+        capture_output=True,
+        check=True,
+        text=True,
+    ).stdout.strip()
+    runner_path = repo_root / "scripts" / (
+        "run_noncombat_outcome_evidence_expansion.py"
+    )
+
+    completed = subprocess.run(
+        _trusted_qualification_command(
+            runner_path,
+            "qualify",
+            "--review-commit",
+            review_commit,
+        ),
+        cwd=repo_root,
+        capture_output=True,
+        check=False,
+        text=True,
+    )
+
+    _assert_silent_qualification_failure(completed)
 
 
 @pytest.mark.parametrize("index_flag", (None, "--assume-unchanged"))
@@ -435,9 +553,8 @@ def test_qualification_cli_validates_source_before_project_imports(
         text=True,
     )
 
-    assert completed.returncode == 2
+    _assert_silent_qualification_failure(completed)
     assert not marker_path.exists()
-    assert "source" in completed.stderr.lower()
 
 
 def test_qualification_cli_rejects_clean_wrong_head_before_project_imports(
@@ -515,9 +632,8 @@ def test_qualification_cli_rejects_clean_wrong_head_before_project_imports(
         text=True,
     )
 
-    assert completed.returncode == 2
+    _assert_silent_qualification_failure(completed)
     assert not marker_path.exists()
-    assert "review commit" in completed.stderr.lower()
 
 
 def test_qualification_cli_hashes_stat_clean_source_before_project_imports(
@@ -602,9 +718,8 @@ def test_qualification_cli_hashes_stat_clean_source_before_project_imports(
         text=True,
     )
 
-    assert completed.returncode == 2
+    _assert_silent_qualification_failure(completed)
     assert not marker_path.exists()
-    assert "reviewed source bytes" in completed.stderr.lower()
 
 
 def test_qualification_cli_hashes_stat_clean_powershell_before_imports(
@@ -682,9 +797,7 @@ def test_qualification_cli_hashes_stat_clean_powershell_before_imports(
         text=True,
     )
 
-    assert completed.returncode == 2
-    assert "reviewed source bytes" in completed.stderr.lower()
-    assert "restart_sts_modded.ps1" in completed.stderr
+    _assert_silent_qualification_failure(completed)
 
 
 def test_runner_real_subprocess_does_not_self_pollute_source_guard(tmp_path):
@@ -1052,7 +1165,43 @@ def test_qualification_cli_keeps_result_off_communication_stdout(
     captured = capsys.readouterr()
     assert exit_code == 0
     assert captured.out == ""
-    assert json.loads(captured.err) == result
+    assert captured.err == ""
+
+
+def test_qualification_cli_keeps_failure_off_communication_streams(
+    tmp_path,
+    monkeypatch,
+    capsys,
+):
+    module = _module()
+
+    def reject_qualification(*_args):
+        raise module.OutcomeEvidenceRunnerError("prelaunch isolation drift")
+
+    monkeypatch.setattr(module, "_qualify_command", reject_qualification)
+
+    exit_code = module.main(
+        [
+            "qualify",
+            "--registration",
+            str(tmp_path / "registration.json"),
+            "--request",
+            str(tmp_path / "qualification-request.json"),
+            "--request-hash",
+            "a" * 64,
+            "--request-file-sha256",
+            "b" * 64,
+            "--request-size",
+            "123",
+            "--review-commit",
+            "c" * 40,
+        ]
+    )
+
+    captured = capsys.readouterr()
+    assert exit_code == 2
+    assert captured.out == ""
+    assert captured.err == ""
 
 
 def test_qualification_request_uses_isolated_child_command(
@@ -1280,6 +1429,18 @@ def _qualification_request_fixture(
         encoding="utf-8",
         newline="",
     )
+    communication_path = tmp_path / "config.properties"
+    communication_path.write_bytes(
+        b"verbose=false\ncommand=normal-agent\nrunAtGameStart=true\n"
+    )
+    checkpoint_root = tmp_path / "checkpoints"
+    checkpoint_root.mkdir()
+    (checkpoint_root / "rl_model_ep1.pth").write_bytes(b"checkpoint")
+    run_root = tmp_path / "runs"
+    (run_root / "IRONCLAD").mkdir(parents=True)
+    (run_root / "IRONCLAD" / "100.run").write_bytes(b"{}\n")
+    (tmp_path / "ai_debug.log").write_bytes(b"debug baseline\n")
+    (tmp_path / "communication_mod_errors.log").write_bytes(b"")
     qualification_root = tmp_path / "qualification-r4"
     qualification_root.mkdir()
     qualification_id = f"{STUDY_ID}-qualification-r4"
@@ -1315,7 +1476,7 @@ def _qualification_request_fixture(
         newline="",
     )
     marker_path = tmp_path / "runs" / "ai_games.txt"
-    marker_path.parent.mkdir()
+    marker_path.parent.mkdir(exist_ok=True)
     marker_path.write_text("10\n11\n", encoding="utf-8", newline="")
     current_commit = [SOURCE_COMMIT]
     monkeypatch.setattr(
@@ -1409,7 +1570,7 @@ def test_qualification_request_round_trips_exact_current_bindings(
 
     assert loaded == request
     assert loaded["schema_version"] == (
-        "noncombat-outcome-evidence-qualification-request-v1"
+        "noncombat-outcome-evidence-qualification-request-v2"
     )
     assert loaded["source_commit"] == SOURCE_COMMIT
     assert loaded["request_source_path"] == str(
@@ -1417,7 +1578,9 @@ def test_qualification_request_round_trips_exact_current_bindings(
     )
     assert loaded["registration"]["canonical_hash"]
     assert loaded["implementation_sha256"] == {
-        relative_path: hashlib.sha256((REPO_ROOT / relative_path).read_bytes()).hexdigest()
+        relative_path: hashlib.sha256(
+            (REPO_ROOT / relative_path).read_bytes()
+        ).hexdigest()
         for relative_path in build_registration(
             study_id=STUDY_ID,
             artifact_root=tmp_path / "unused-study",
@@ -1431,6 +1594,83 @@ def test_qualification_request_round_trips_exact_current_bindings(
     assert loaded["handshake"]["readiness_timeout_seconds"] == 120
     assert loaded["handshake"]["release_timeout_seconds"] == 10
     assert loaded["marker"]["start_count"] == 2
+
+
+def test_live_qualification_rejects_v1_request_before_consumption(
+    tmp_path,
+    monkeypatch,
+):
+    module, registration_path, request_path, request = (
+        _qualification_request_fixture(tmp_path, monkeypatch, source_only=True)
+    )
+    legacy_request = json.loads(json.dumps(request))
+    legacy_request.pop("isolation")
+    legacy_request["schema_version"] = (
+        module.LEGACY_QUALIFICATION_REQUEST_SCHEMA_VERSION
+    )
+    legacy_request["request_hash"] = module._self_hash(
+        legacy_request,
+        "request_hash",
+    )
+    request_path.write_text(
+        module._canonical_json(legacy_request) + "\n",
+        encoding="utf-8",
+        newline="",
+    )
+
+    with pytest.raises(
+        module.OutcomeEvidenceRunnerError,
+        match="schema",
+    ):
+        module.execute_prelock_qualification(
+            registration_path=registration_path,
+            request_path=request_path,
+            expected_request_hash=legacy_request["request_hash"],
+            **_qualification_review_kwargs(legacy_request),
+            process_starter=lambda *_args, **_kwargs: pytest.fail(
+                "v1 request started a qualification child"
+            ),
+        )
+
+    assert not Path(legacy_request["request_path"]).exists()
+    assert not Path(legacy_request["handshake"]["attempt_path"]).exists()
+    assert not Path(legacy_request["completion_path"]).exists()
+    assert not Path(legacy_request["failure_path"]).exists()
+
+
+def test_qualification_request_binds_complete_isolation_baseline(
+    tmp_path,
+    monkeypatch,
+):
+    _module_value, _registration_path, _source_path, request = (
+        _qualification_request_fixture(
+            tmp_path,
+            monkeypatch,
+            source_only=True,
+        )
+    )
+
+    isolation = request["isolation"]
+    assert set(isolation) == {
+        "baseline_hash",
+        "checkpoints",
+        "communication_mod",
+        "global_logs",
+        "marker",
+        "runs",
+        "schema_version",
+    }
+    assert base64.b64decode(
+        isolation["communication_mod"]["original_bytes_b64"],
+        validate=True,
+    ) == (tmp_path / "config.properties").read_bytes()
+    assert isolation["marker"]["line_count"] == 2
+    assert isolation["runs"]["entry_count"] == 2
+    assert isolation["checkpoints"]["entry_count"] == 1
+    assert set(isolation["global_logs"]) == {
+        str((tmp_path / "ai_debug.log").resolve()),
+        str((tmp_path / "communication_mod_errors.log").resolve()),
+    }
 
 
 def test_qualification_cli_binds_launcher_anchor_to_reviewed_runner(
@@ -2990,6 +3230,20 @@ def test_qualification_orchestrator_accepts_ready_published_during_owned_start(
 
     assert events == ["start", "ready", "release", "exit"]
     assert result["status"] == "passed"
+    assert result["schema_version"] == (
+        "noncombat-outcome-evidence-qualification-result-v2"
+    )
+    assert result["isolation"]["baseline_hash"] == (
+        request["isolation"]["baseline_hash"]
+    )
+    assert result["isolation"]["communication_restored"] is True
+    assert result["isolation"]["child_alive"] is False
+    assert result["isolation"]["matched"] is True
+    assert result["isolation"]["mismatches"] == []
+    assert (tmp_path / "config.properties").read_bytes() == base64.b64decode(
+        request["isolation"]["communication_mod"]["original_bytes_b64"],
+        validate=True,
+    )
     assert result["process"] == {
         "cleanup_attempted": False,
         "cleanup_error": None,
@@ -3116,6 +3370,395 @@ def test_qualification_orchestrator_accepts_ready_published_during_owned_start(
                 "completed qualification retried a child"
             ),
         )
+
+
+@pytest.mark.parametrize(
+    "case",
+    ("child_alive", "restoration_error", "observation_error", "unmatched_exact"),
+)
+def test_qualification_result_rejects_contradictory_isolation_evidence(
+    tmp_path,
+    monkeypatch,
+    case,
+):
+    module, registration_path, request_path, request = (
+        _qualification_request_fixture(tmp_path, monkeypatch, source_only=True)
+    )
+    child = _FakeHandshakeChild(pid=327)
+
+    def process_starter(_command, environment):
+        _publish_ready_from_environment(environment, child_pid=child.pid)
+        return child
+
+    timestamps = iter(range(700, 740))
+    result = module.execute_prelock_qualification(
+        registration_path=registration_path,
+        request_path=request_path,
+        expected_request_hash=request["request_hash"],
+        **_qualification_review_kwargs(request),
+        process_starter=process_starter,
+        time_ns=lambda: next(timestamps),
+    )
+    forged = json.loads(json.dumps(result))
+    forged["status"] = "failed"
+    forged["failure"] = {
+        "exception_type": "RuntimeError",
+        "message": "invented isolation failure",
+        "stage": "restore_isolation",
+    }
+    forged["isolation"]["matched"] = False
+    if case == "child_alive":
+        forged["isolation"]["child_alive"] = True
+    elif case == "restoration_error":
+        forged["isolation"]["restoration_error"] = "invented restore error"
+    elif case == "observation_error":
+        forged["isolation"]["observation_error"] = "invented observe error"
+    forged["result_hash"] = module._self_hash(forged, "result_hash")
+
+    with pytest.raises(module.OutcomeEvidenceRunnerError, match="isolation"):
+        module._validate_qualification_result(forged)
+
+
+def test_qualification_rejects_run_drift_before_attempt_publication(
+    tmp_path,
+    monkeypatch,
+):
+    module, registration_path, request_path, request = (
+        _qualification_request_fixture(tmp_path, monkeypatch, source_only=True)
+    )
+    (tmp_path / "runs" / "IRONCLAD" / "100.run").write_bytes(
+        b'{"drift":true}\n'
+    )
+
+    with pytest.raises(
+        module.OutcomeEvidenceRunnerError,
+        match="isolation.*run|run.*isolation",
+    ):
+        module.execute_prelock_qualification(
+            registration_path=registration_path,
+            request_path=request_path,
+            expected_request_hash=request["request_hash"],
+            **_qualification_review_kwargs(request),
+            process_starter=lambda *_args, **_kwargs: pytest.fail(
+                "qualification launched after preflight isolation drift"
+            ),
+        )
+
+    assert not Path(request["request_path"]).exists()
+    assert not Path(request["handshake"]["attempt_path"]).exists()
+    assert not Path(request["failure_path"]).exists()
+
+
+@pytest.mark.parametrize(
+    "resource",
+    ("marker", "checkpoints", "ai_debug_log", "communication_error_log"),
+)
+def test_qualification_rejects_other_isolation_drift_before_attempt(
+    tmp_path,
+    monkeypatch,
+    resource,
+):
+    module, registration_path, request_path, request = (
+        _qualification_request_fixture(tmp_path, monkeypatch, source_only=True)
+    )
+    baseline = request["isolation"]
+    if resource == "marker":
+        Path(baseline["marker"]["path"]).write_text(
+            "10\n11\n12\n",
+            encoding="utf-8",
+            newline="",
+        )
+    elif resource == "checkpoints":
+        (
+            Path(baseline["checkpoints"]["root"]) / "rl_model_ep1.pth"
+        ).write_bytes(b"checkpoint-drift\n")
+    else:
+        suffix = (
+            "ai_debug.log"
+            if resource == "ai_debug_log"
+            else "communication_mod_errors.log"
+        )
+        log_path = next(
+            Path(path)
+            for path in baseline["global_logs"]
+            if Path(path).name == suffix
+        )
+        log_path.write_bytes(b"prelaunch log drift\n")
+
+    with pytest.raises(
+        module.OutcomeEvidenceRunnerError,
+        match="prelaunch isolation mismatch|isolation marker count mismatch",
+    ):
+        module.execute_prelock_qualification(
+            registration_path=registration_path,
+            request_path=request_path,
+            expected_request_hash=request["request_hash"],
+            **_qualification_review_kwargs(request),
+            process_starter=lambda *_args, **_kwargs: pytest.fail(
+                "qualification launched after preflight isolation drift"
+            ),
+        )
+
+    assert not Path(request["request_path"]).exists()
+    assert not Path(request["handshake"]["attempt_path"]).exists()
+    assert not Path(request["failure_path"]).exists()
+
+
+def test_qualification_restores_live_communication_config_exactly(
+    tmp_path,
+    monkeypatch,
+):
+    module, registration_path, request_path, request = (
+        _qualification_request_fixture(tmp_path, monkeypatch, source_only=True)
+    )
+    launch_command = ("python.exe", "-I", "-S", "qualification")
+    communication_path = tmp_path / "config.properties"
+    communication_path.write_bytes(
+        (
+            "verbose=false\n"
+            f"command={' '.join(launch_command)}\n"
+            "runAtGameStart=true\n"
+        ).encode("iso-8859-1")
+    )
+    child = _FakeHandshakeChild(pid=322)
+
+    def process_starter(_command, environment):
+        _publish_ready_from_environment(
+            environment,
+            child_pid=child.pid,
+        )
+        return child
+
+    timestamps = iter(range(300, 320))
+    result = module.execute_prelock_qualification(
+        registration_path=registration_path,
+        request_path=request_path,
+        expected_request_hash=request["request_hash"],
+        **_qualification_review_kwargs(request),
+        process_starter=process_starter,
+        qualification_launch_command=launch_command,
+        time_ns=lambda: next(timestamps),
+    )
+
+    assert result["status"] == "passed"
+    assert communication_path.read_bytes() == base64.b64decode(
+        request["isolation"]["communication_mod"]["original_bytes_b64"],
+        validate=True,
+    )
+
+
+def test_qualification_restoration_rejects_parent_identity_change(
+    tmp_path,
+    monkeypatch,
+):
+    module, _registration_path, _request_path, request = (
+        _qualification_request_fixture(tmp_path, monkeypatch, source_only=True)
+    )
+    original_samestat = module.os.path.samestat
+
+    def reject_directory_identity(left, right):
+        if module.stat.S_ISDIR(left.st_mode):
+            return False
+        return original_samestat(left, right)
+
+    monkeypatch.setattr(
+        module.os.path,
+        "samestat",
+        reject_directory_identity,
+    )
+
+    with pytest.raises(
+        module.OutcomeEvidenceRunnerError,
+        match="parent changed during restoration",
+    ):
+        module._qualification_restore_communication_config(
+            request["isolation"]
+        )
+
+
+def test_qualification_restores_communication_config_after_ordinary_failure(
+    tmp_path,
+    monkeypatch,
+):
+    module, registration_path, request_path, request = (
+        _qualification_request_fixture(tmp_path, monkeypatch, source_only=True)
+    )
+    launch_command = ("python.exe", "-I", "-S", "qualification")
+    communication_path = tmp_path / "config.properties"
+    communication_path.write_bytes(
+        (
+            "verbose=false\n"
+            f"command={' '.join(launch_command)}\n"
+            "runAtGameStart=true\n"
+        ).encode("iso-8859-1")
+    )
+    child = _FakeHandshakeChild(pid=324)
+    clock = [0.0]
+
+    with pytest.raises(module.OutcomeEvidenceRunnerError, match="readiness"):
+        module.execute_prelock_qualification(
+            registration_path=registration_path,
+            request_path=request_path,
+            expected_request_hash=request["request_hash"],
+            **_qualification_review_kwargs(request),
+            process_starter=lambda _command, _environment: child,
+            qualification_launch_command=launch_command,
+            monotonic=lambda: clock[0],
+            sleep=lambda _seconds: clock.__setitem__(0, 121.0),
+        )
+
+    assert communication_path.read_bytes() == base64.b64decode(
+        request["isolation"]["communication_mod"]["original_bytes_b64"],
+        validate=True,
+    )
+    failure = json.loads(Path(request["failure_path"]).read_text(encoding="utf-8"))
+    assert failure["isolation"]["communication_restored"] is True
+    assert failure["isolation"]["child_alive"] is False
+
+
+def test_qualification_rejects_global_log_drift_after_child_exit(
+    tmp_path,
+    monkeypatch,
+):
+    module, registration_path, request_path, request = (
+        _qualification_request_fixture(tmp_path, monkeypatch, source_only=True)
+    )
+
+    def mutate_log_after_release():
+        assert Path(request["handshake"]["release_path"]).is_file()
+        (tmp_path / "ai_debug.log").write_bytes(b"unexpected log output\n")
+
+    child = _FakeHandshakeChild(pid=323, on_wait=mutate_log_after_release)
+
+    def process_starter(_command, environment):
+        _publish_ready_from_environment(
+            environment,
+            child_pid=child.pid,
+        )
+        return child
+
+    timestamps = iter(range(400, 440))
+    with pytest.raises(
+        module.OutcomeEvidenceRunnerError,
+        match="isolation.*global|global.*log|post.*isolation",
+    ):
+        module.execute_prelock_qualification(
+            registration_path=registration_path,
+            request_path=request_path,
+            expected_request_hash=request["request_hash"],
+            **_qualification_review_kwargs(request),
+            process_starter=process_starter,
+            time_ns=lambda: next(timestamps),
+        )
+
+    assert not Path(request["completion_path"]).exists()
+    assert Path(request["failure_path"]).is_file()
+
+
+@pytest.mark.parametrize(
+    "resource",
+    ("marker", "runs", "checkpoints", "communication_error_log"),
+)
+def test_qualification_rejects_other_isolation_drift_after_child_exit(
+    tmp_path,
+    monkeypatch,
+    resource,
+):
+    module, registration_path, request_path, request = (
+        _qualification_request_fixture(tmp_path, monkeypatch, source_only=True)
+    )
+    baseline = request["isolation"]
+
+    def mutate_after_release():
+        assert Path(request["handshake"]["release_path"]).is_file()
+        if resource == "marker":
+            Path(baseline["marker"]["path"]).write_text(
+                "10\n11\n12\n",
+                encoding="utf-8",
+                newline="",
+            )
+        elif resource == "runs":
+            (
+                Path(baseline["runs"]["root"]) / "IRONCLAD" / "100.run"
+            ).write_bytes(b'{"drift":true}\n')
+        elif resource == "checkpoints":
+            (
+                Path(baseline["checkpoints"]["root"]) / "rl_model_ep1.pth"
+            ).write_bytes(b"checkpoint-drift\n")
+        else:
+            log_path = next(
+                Path(path)
+                for path in baseline["global_logs"]
+                if Path(path).name == "communication_mod_errors.log"
+            )
+            log_path.write_bytes(b"post-exit log drift\n")
+
+    child = _FakeHandshakeChild(pid=325, on_wait=mutate_after_release)
+
+    def process_starter(_command, environment):
+        _publish_ready_from_environment(environment, child_pid=child.pid)
+        return child
+
+    timestamps = iter(range(500, 540))
+    with pytest.raises(
+        module.OutcomeEvidenceRunnerError,
+        match="post isolation mismatch|post_exit_validation.*partial",
+    ):
+        module.execute_prelock_qualification(
+            registration_path=registration_path,
+            request_path=request_path,
+            expected_request_hash=request["request_hash"],
+            **_qualification_review_kwargs(request),
+            process_starter=process_starter,
+            time_ns=lambda: next(timestamps),
+        )
+
+    assert not Path(request["completion_path"]).exists()
+    if resource == "marker":
+        assert not Path(request["failure_path"]).exists()
+    else:
+        assert Path(request["failure_path"]).is_file()
+
+
+def test_qualification_rejects_child_that_remains_alive_after_zero_exit(
+    tmp_path,
+    monkeypatch,
+):
+    module, registration_path, request_path, request = (
+        _qualification_request_fixture(tmp_path, monkeypatch, source_only=True)
+    )
+
+    class StubbornChild(_FakeHandshakeChild):
+        def wait(self, timeout=None):
+            self.wait_calls.append(timeout)
+            if self.on_wait is not None:
+                callback, self.on_wait = self.on_wait, None
+                callback()
+            return 0
+
+    child = StubbornChild(pid=326)
+
+    def process_starter(_command, environment):
+        _publish_ready_from_environment(environment, child_pid=child.pid)
+        return child
+
+    timestamps = iter(range(600, 640))
+    with pytest.raises(
+        module.OutcomeEvidenceRunnerError,
+        match="post isolation mismatch.*child_process",
+    ):
+        module.execute_prelock_qualification(
+            registration_path=registration_path,
+            request_path=request_path,
+            expected_request_hash=request["request_hash"],
+            **_qualification_review_kwargs(request),
+            process_starter=process_starter,
+            time_ns=lambda: next(timestamps),
+        )
+
+    assert child.terminated is True
+    assert not Path(request["completion_path"]).exists()
+    assert Path(request["failure_path"]).is_file()
 
 
 def test_qualification_pre_release_uses_bounded_live_source_validation(
