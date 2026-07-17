@@ -36,7 +36,7 @@
 - [x] 6.2 Run the full Windows pytest suite with cache disabled and a fresh writable basetemp. If the failed r3 candidate's current-byte review guard detects deliberate implementation drift, preserve its historical rows and add an explicit historical-versus-active binding distinction rather than rewriting r3 as current or weakening digest validation.
 - [x] 6.3 Run compile/import checks for runner, main, verifier, and unchanged handshake; run `openspec validate --all --strict`, `git diff --check`, registration render comparison, and scans proving no handshake deadline/schema, behavior rate, seed, schedule, estimator, threshold, policy, checkpoint, training, Java, or gameplay change entered the diff.
 - [x] 6.4 Obtain an independent read-only code and governance review, fix every Critical or Important finding with a red regression, rerun focused and full verification, and require an explicit ready-to-commit verdict.
-- [ ] 6.5 Commit and push the orchestrator implementation as a separate source-fix commit while the v2 study, r4 identity, run lock, collection, and training remain blocked.
+- [x] 6.5 Commit and push the orchestrator implementation as a separate source-fix commit while the v2 study, r4 identity, run lock, collection, and training remain blocked.
 
 ## 7. Binding Refresh And Live Handoff
 
