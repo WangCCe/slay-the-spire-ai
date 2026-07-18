@@ -65,11 +65,86 @@ def _qualification_review_kwargs(request):
 
 def _write_bootstrap_phase(request, *, stage_count, handoff=False):
     bootstrap = request["bootstrap"]
-    Path(bootstrap["claim_path"]).write_bytes(b"claim phase fixture\n")
+    request_bytes = (_canonical_json(request) + "\n").encode("ascii")
+    runner_sha256 = request["implementation_sha256"][
+        runner.QUALIFICATION_RUNNER_RELATIVE_PATH
+    ]
+    envelope = runner._qualification_bootstrap_envelope(
+        request=request,
+        expected_request_file_sha256=hashlib.sha256(
+            request_bytes
+        ).hexdigest(),
+        expected_request_size=len(request_bytes),
+        review_commit=QUALIFICATION_REVIEW_COMMIT,
+        runner_sha256=runner_sha256,
+    )
+    anchors = {
+        "envelope_sha256": hashlib.sha256(
+            _canonical_json(envelope).encode("ascii")
+        ).hexdigest(),
+        "launch_token": runner._qualification_bootstrap_token(envelope),
+        "qualification_id": request["qualification_id"],
+        "request_file_sha256": hashlib.sha256(request_bytes).hexdigest(),
+        "request_hash": request["request_hash"],
+        "request_size": len(request_bytes),
+        "review_commit": QUALIFICATION_REVIEW_COMMIT,
+        "runner_sha256": runner_sha256,
+        "source_commit": request["source_commit"],
+    }
+    claim = runner._qualification_bootstrap_record(
+        anchors=anchors,
+        created_unix_ns=1,
+        payload={},
+        pid=4321,
+        previous_hash=None,
+        record_type="claim",
+        stage_index=0,
+        stage_name="claim",
+    )
+
+    def write_record(path, record):
+        Path(path).write_bytes(
+            _canonical_json(record).encode("ascii") + b"\n"
+        )
+
+    write_record(bootstrap["claim_path"], claim)
+    stages = []
+    previous_hash = claim["record_hash"]
     for stage in bootstrap["stage_paths"][:stage_count]:
-        Path(stage["path"]).write_bytes(b"stage phase fixture\n")
+        record = runner._qualification_bootstrap_record(
+            anchors=anchors,
+            created_unix_ns=stage["index"] + 1,
+            payload={},
+            pid=4321,
+            previous_hash=previous_hash,
+            record_type="stage",
+            stage_index=stage["index"],
+            stage_name=stage["name"],
+        )
+        write_record(stage["path"], record)
+        stages.append(record)
+        previous_hash = record["record_hash"]
     if handoff:
-        Path(bootstrap["handoff_path"]).write_bytes(b"handoff phase fixture\n")
+        assert stage_count == len(runner.QUALIFICATION_BOOTSTRAP_STAGE_NAMES)
+        record = runner._qualification_bootstrap_record(
+            anchors=anchors,
+            created_unix_ns=7,
+            payload={
+                "active_request_file_sha256": hashlib.sha256(
+                    request_bytes
+                ).hexdigest(),
+                "active_request_size": len(request_bytes),
+                "claim_hash": claim["record_hash"],
+                "final_stage_hash": stages[-1]["record_hash"],
+                "request_hash": request["request_hash"],
+            },
+            pid=4321,
+            previous_hash=stages[-1]["record_hash"],
+            record_type="handoff",
+            stage_index=6,
+            stage_name="active_request_handoff",
+        )
+        write_record(bootstrap["handoff_path"], record)
 
 
 def _qualification_schema_fixture_review(request, request_bytes, schema_version):

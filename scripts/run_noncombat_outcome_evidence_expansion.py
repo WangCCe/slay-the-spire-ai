@@ -980,6 +980,10 @@ def _qualification_bootstrap_lexical_root(
     return Path(os.path.abspath(supplied))
 
 
+def _qualification_bootstrap_path_identity(path: Path | str) -> str:
+    return os.path.normcase(str(_qualification_bootstrap_lexical_root(path)))
+
+
 def _qualification_bootstrap_paths(qualification_root: Path) -> dict[str, Any]:
     """Return the fixed direct-child bootstrap artifacts for a guarded root."""
 
@@ -1733,16 +1737,29 @@ def load_qualification_request(
                 f"qualification {field.replace('_', ' ')} mismatch"
             )
     control_paths = _qualification_control_paths(bindings)
-    bootstrap_paths = set(
-        _qualification_bootstrap_declared_paths(bindings["bootstrap"])
-    )
+    bootstrap_paths = {
+        _qualification_bootstrap_path_identity(path)
+        for path in _qualification_bootstrap_declared_paths(
+            bindings["bootstrap"]
+        )
+    }
     non_bootstrap_control_paths = tuple(
-        path for path in control_paths if path not in bootstrap_paths
+        path
+        for path in control_paths
+        if _qualification_bootstrap_path_identity(path) not in bootstrap_paths
     )
     _validate_qualification_bootstrap_lifecycle(
         bindings["bootstrap"],
         source_mode=_source_mode,
     )
+    if not _source_mode:
+        _validate_qualification_bootstrap_active_chain(
+            record,
+            raw,
+            expected_review_commit=_expected_review_commit,
+            expected_request_file_sha256=_expected_request_file_sha256,
+            expected_request_size=_expected_request_size,
+        )
     _require_paths_absent(
         (
             non_bootstrap_control_paths
@@ -1960,20 +1977,26 @@ def _qualification_request_bindings(
     )
     bootstrap = _qualification_bootstrap_paths(qualification_root)
     bootstrap_paths = {
-        bootstrap["claim_path"],
-        bootstrap["failure_path"],
-        bootstrap["handoff_path"],
-        *(stage["path"] for stage in bootstrap["stage_paths"]),
+        _qualification_bootstrap_path_identity(path)
+        for path in (
+            bootstrap["claim_path"],
+            bootstrap["failure_path"],
+            bootstrap["handoff_path"],
+            *(stage["path"] for stage in bootstrap["stage_paths"]),
+        )
     }
     reserved_paths = {
-        str(request_path),
-        str(attempt_path),
-        str(ready_path),
-        str(release_path),
-        str(completion_path),
-        str(failure_path),
-        str(config_path),
-        *forbidden_paths,
+        _qualification_bootstrap_path_identity(path)
+        for path in (
+            request_path,
+            attempt_path,
+            ready_path,
+            release_path,
+            completion_path,
+            failure_path,
+            config_path,
+            *forbidden_paths,
+        )
     }
     if bootstrap_paths & reserved_paths:
         raise OutcomeEvidenceRunnerError("qualification bootstrap path collision")
@@ -3141,16 +3164,31 @@ def _validate_qualification_bootstrap_lifecycle(
     source_mode: bool,
 ) -> None:
     declared_paths = _qualification_bootstrap_declared_paths(bootstrap)
-    declared = {Path(os.path.abspath(path)) for path in declared_paths}
+    declared = {
+        _qualification_bootstrap_path_identity(path): str(
+            _qualification_bootstrap_lexical_root(path)
+        )
+        for path in declared_paths
+    }
     root = Path(bootstrap["claim_path"]).parent
     try:
         with os.scandir(root) as entries:
-            unexpected = [
-                entry.path
-                for entry in entries
-                if entry.name.startswith("qualification-bootstrap-")
-                and Path(os.path.abspath(entry.path)) not in declared
-            ]
+            unexpected = []
+            case_aliases = []
+            prefix = os.path.normcase("qualification-bootstrap-")
+            for entry in entries:
+                if not os.path.normcase(entry.name).startswith(prefix):
+                    continue
+                entry_path = str(
+                    _qualification_bootstrap_lexical_root(entry.path)
+                )
+                expected_path = declared.get(
+                    _qualification_bootstrap_path_identity(entry.path)
+                )
+                if expected_path is None:
+                    unexpected.append(entry_path)
+                elif entry_path != expected_path:
+                    case_aliases.append(entry_path)
     except OSError as exc:
         raise OutcomeEvidenceRunnerError(
             f"cannot inspect qualification bootstrap lifecycle: {exc}"
@@ -3158,6 +3196,10 @@ def _validate_qualification_bootstrap_lifecycle(
     if unexpected:
         raise OutcomeEvidenceRunnerError(
             "qualification bootstrap lifecycle has an unexpected entry"
+        )
+    if case_aliases:
+        raise OutcomeEvidenceRunnerError(
+            "qualification bootstrap lifecycle has a case alias"
         )
     claim_exists = _qualification_path_entry_exists(declared_paths[0])
     stage_exists = [
@@ -3189,6 +3231,195 @@ def _validate_qualification_bootstrap_lifecycle(
         )
 
 
+def _load_qualification_bootstrap_record(
+    path: Path,
+    label: str,
+) -> dict[str, Any]:
+    raw = _qualification_read_file_bytes(path, f"bootstrap {label}")
+    try:
+        record = json.loads(
+            raw.decode("ascii"),
+            object_pairs_hook=_reject_duplicate_keys,
+            parse_constant=_reject_json_constant,
+        )
+    except OutcomeEvidenceRunnerError as exc:
+        raise OutcomeEvidenceRunnerError(
+            f"qualification bootstrap {label} JSON is invalid"
+        ) from exc
+    except (UnicodeError, ValueError, json.JSONDecodeError) as exc:
+        raise OutcomeEvidenceRunnerError(
+            f"qualification bootstrap {label} JSON is invalid"
+        ) from exc
+    expected_fields = {
+        "anchors",
+        "created_unix_ns",
+        "payload",
+        "pid",
+        "previous_hash",
+        "record_hash",
+        "record_type",
+        "schema_version",
+        "stage_index",
+        "stage_name",
+    }
+    if not isinstance(record, Mapping) or set(record) != expected_fields:
+        raise OutcomeEvidenceRunnerError(
+            f"qualification bootstrap {label} record fields are invalid"
+        )
+    try:
+        canonical = _canonical_json(record).encode("ascii") + b"\n"
+    except (TypeError, ValueError, UnicodeError) as exc:
+        raise OutcomeEvidenceRunnerError(
+            f"qualification bootstrap {label} record is invalid"
+        ) from exc
+    if raw != canonical:
+        raise OutcomeEvidenceRunnerError(
+            f"qualification bootstrap {label} record is not canonical"
+        )
+    try:
+        rebuilt = _qualification_bootstrap_record(
+            anchors=record["anchors"],
+            created_unix_ns=record["created_unix_ns"],
+            payload=record["payload"],
+            pid=record["pid"],
+            previous_hash=record["previous_hash"],
+            record_type=record["record_type"],
+            stage_index=record["stage_index"],
+            stage_name=record["stage_name"],
+        )
+    except OutcomeEvidenceRunnerError as exc:
+        raise OutcomeEvidenceRunnerError(
+            f"qualification bootstrap {label} record shape is invalid"
+        ) from exc
+    if dict(record) != rebuilt:
+        raise OutcomeEvidenceRunnerError(
+            f"qualification bootstrap {label} record hash mismatch"
+        )
+    return rebuilt
+
+
+def _validate_qualification_bootstrap_active_chain(
+    request: Mapping[str, Any],
+    request_bytes: bytes,
+    *,
+    expected_review_commit: str | None,
+    expected_request_file_sha256: str | None,
+    expected_request_size: int | None,
+) -> None:
+    bootstrap = request["bootstrap"]
+    claim = _load_qualification_bootstrap_record(
+        Path(bootstrap["claim_path"]),
+        "claim",
+    )
+    stages = [
+        _load_qualification_bootstrap_record(
+            Path(stage["path"]),
+            f"stage {stage['index']}",
+        )
+        for stage in bootstrap["stage_paths"]
+    ]
+    handoff = _load_qualification_bootstrap_record(
+        Path(bootstrap["handoff_path"]),
+        "handoff",
+    )
+    if (
+        claim["record_type"] != "claim"
+        or claim["stage_index"] != 0
+        or claim["stage_name"] != "claim"
+        or claim["previous_hash"] is not None
+        or claim["payload"] != {}
+    ):
+        raise OutcomeEvidenceRunnerError(
+            "qualification bootstrap claim shape mismatch"
+        )
+
+    request_file_sha256 = hashlib.sha256(request_bytes).hexdigest()
+    request_size = len(request_bytes)
+    if (
+        expected_request_file_sha256 is not None
+        and request_file_sha256 != expected_request_file_sha256
+    ) or (
+        expected_request_size is not None
+        and request_size != expected_request_size
+    ):
+        raise OutcomeEvidenceRunnerError(
+            "qualification bootstrap active request external binding mismatch"
+        )
+    review_commit = claim["anchors"]["review_commit"]
+    if (
+        expected_review_commit is not None
+        and review_commit != expected_review_commit
+    ):
+        raise OutcomeEvidenceRunnerError(
+            "qualification bootstrap review commit mismatch"
+        )
+    runner_sha256 = request["implementation_sha256"].get(
+        QUALIFICATION_RUNNER_RELATIVE_PATH
+    )
+    if not isinstance(runner_sha256, str) or not _is_lower_hex(
+        runner_sha256,
+        _SHA256_LENGTH,
+    ):
+        raise OutcomeEvidenceRunnerError(
+            "qualification bootstrap runner anchor is invalid"
+        )
+    envelope = _qualification_bootstrap_envelope(
+        request=request,
+        expected_request_file_sha256=request_file_sha256,
+        expected_request_size=request_size,
+        review_commit=review_commit,
+        runner_sha256=runner_sha256,
+    )
+    expected_anchors = {
+        "envelope_sha256": hashlib.sha256(
+            _canonical_json(envelope).encode("ascii")
+        ).hexdigest(),
+        "launch_token": _qualification_bootstrap_token(envelope),
+        "qualification_id": request["qualification_id"],
+        "request_file_sha256": request_file_sha256,
+        "request_hash": request["request_hash"],
+        "request_size": request_size,
+        "review_commit": review_commit,
+        "runner_sha256": runner_sha256,
+        "source_commit": request["source_commit"],
+    }
+    records = (claim, *stages, handoff)
+    if any(record["anchors"] != expected_anchors for record in records):
+        raise OutcomeEvidenceRunnerError(
+            "qualification bootstrap static anchors mismatch"
+        )
+
+    previous_hash = claim["record_hash"]
+    for expected_stage, record in zip(bootstrap["stage_paths"], stages):
+        if (
+            record["record_type"] != "stage"
+            or record["stage_index"] != expected_stage["index"]
+            or record["stage_name"] != expected_stage["name"]
+            or record["previous_hash"] != previous_hash
+        ):
+            raise OutcomeEvidenceRunnerError(
+                "qualification bootstrap stage chain mismatch"
+            )
+        previous_hash = record["record_hash"]
+    expected_handoff_payload = {
+        "active_request_file_sha256": request_file_sha256,
+        "active_request_size": request_size,
+        "claim_hash": claim["record_hash"],
+        "final_stage_hash": previous_hash,
+        "request_hash": request["request_hash"],
+    }
+    if (
+        handoff["record_type"] != "handoff"
+        or handoff["stage_index"] != 6
+        or handoff["stage_name"] != "active_request_handoff"
+        or handoff["previous_hash"] != previous_hash
+        or handoff["payload"] != expected_handoff_payload
+    ):
+        raise OutcomeEvidenceRunnerError(
+            "qualification bootstrap handoff payload or chain mismatch"
+        )
+
+
 def _qualification_root_inventory(
     root: Path,
     *,
@@ -3197,7 +3428,8 @@ def _qualification_root_inventory(
     monotonic: Callable[[], float] = time.monotonic,
 ) -> dict[str, str]:
     excluded = {
-        Path(os.path.abspath(path)) for path in excluded_paths
+        _qualification_bootstrap_path_identity(path)
+        for path in excluded_paths
     }
     inventory = {}
     for path, metadata, is_link_or_reparse in _qualification_no_follow_entries(
@@ -3205,13 +3437,16 @@ def _qualification_root_inventory(
         deadline=deadline,
         monotonic=monotonic,
     ):
-        lexical_path = Path(os.path.abspath(path))
+        lexical_path = _qualification_bootstrap_lexical_root(path)
         if is_link_or_reparse:
             raise OutcomeEvidenceRunnerError(
                 "qualification root contains a symbolic link or reparse "
                 f"point: {path}"
             )
-        if lexical_path in excluded or not stat.S_ISREG(metadata.st_mode):
+        if (
+            _qualification_bootstrap_path_identity(lexical_path) in excluded
+            or not stat.S_ISREG(metadata.st_mode)
+        ):
             continue
         inventory[str(lexical_path)] = _path_sha256(
             path,
@@ -4425,6 +4660,10 @@ def execute_prelock_qualification(
         request = load_qualification_request(
             active_request_path,
             registration_path=registration_path,
+            _expected_request_hash=expected_request_hash,
+            _expected_review_commit=expected_review_commit,
+            _expected_request_file_sha256=expected_request_file_sha256,
+            _expected_request_size=expected_request_size,
         )
         handshake = request["handshake"]
         paths = HandshakePaths(

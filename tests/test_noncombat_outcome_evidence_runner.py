@@ -1669,14 +1669,114 @@ def _write_bootstrap_phase(
     handoff=False,
     failure=False,
 ):
+    module = _module()
     bootstrap = request["bootstrap"]
-    Path(bootstrap["claim_path"]).write_bytes(b"claim phase fixture\n")
+    request_bytes = (
+        module._canonical_json(request) + "\n"
+    ).encode("ascii")
+    runner_sha256 = request["implementation_sha256"][
+        module.QUALIFICATION_RUNNER_RELATIVE_PATH
+    ]
+    envelope = module._qualification_bootstrap_envelope(
+        request=request,
+        expected_request_file_sha256=hashlib.sha256(
+            request_bytes
+        ).hexdigest(),
+        expected_request_size=len(request_bytes),
+        review_commit=REVIEW_COMMIT,
+        runner_sha256=runner_sha256,
+    )
+    anchors = {
+        "envelope_sha256": hashlib.sha256(
+            module._canonical_json(envelope).encode("ascii")
+        ).hexdigest(),
+        "launch_token": module._qualification_bootstrap_token(envelope),
+        "qualification_id": request["qualification_id"],
+        "request_file_sha256": hashlib.sha256(request_bytes).hexdigest(),
+        "request_hash": request["request_hash"],
+        "request_size": len(request_bytes),
+        "review_commit": REVIEW_COMMIT,
+        "runner_sha256": runner_sha256,
+        "source_commit": request["source_commit"],
+    }
+    claim = module._qualification_bootstrap_record(
+        anchors=anchors,
+        created_unix_ns=1,
+        payload={},
+        pid=1234,
+        previous_hash=None,
+        record_type="claim",
+        stage_index=0,
+        stage_name="claim",
+    )
+
+    def write_record(path, record):
+        Path(path).write_bytes(
+            module._canonical_json(record).encode("ascii") + b"\n"
+        )
+
+    write_record(bootstrap["claim_path"], claim)
+    stages = []
+    previous_hash = claim["record_hash"]
     for stage in bootstrap["stage_paths"][:stage_count]:
-        Path(stage["path"]).write_bytes(b"stage phase fixture\n")
+        record = module._qualification_bootstrap_record(
+            anchors=anchors,
+            created_unix_ns=stage["index"] + 1,
+            payload={},
+            pid=1234,
+            previous_hash=previous_hash,
+            record_type="stage",
+            stage_index=stage["index"],
+            stage_name=stage["name"],
+        )
+        write_record(stage["path"], record)
+        stages.append(record)
+        previous_hash = record["record_hash"]
     if handoff:
-        Path(bootstrap["handoff_path"]).write_bytes(b"handoff phase fixture\n")
+        assert stage_count == len(module.QUALIFICATION_BOOTSTRAP_STAGE_NAMES)
+        record = module._qualification_bootstrap_record(
+            anchors=anchors,
+            created_unix_ns=7,
+            payload={
+                "active_request_file_sha256": hashlib.sha256(
+                    request_bytes
+                ).hexdigest(),
+                "active_request_size": len(request_bytes),
+                "claim_hash": claim["record_hash"],
+                "final_stage_hash": stages[-1]["record_hash"],
+                "request_hash": request["request_hash"],
+            },
+            pid=1234,
+            previous_hash=stages[-1]["record_hash"],
+            record_type="handoff",
+            stage_index=6,
+            stage_name="active_request_handoff",
+        )
+        write_record(bootstrap["handoff_path"], record)
     if failure:
-        Path(bootstrap["failure_path"]).write_bytes(b"failure phase fixture\n")
+        last_stage_index = len(stages)
+        last_stage_name = (
+            "claim"
+            if not stages
+            else module.QUALIFICATION_BOOTSTRAP_STAGE_NAMES[last_stage_index - 1]
+        )
+        record = module._qualification_bootstrap_record(
+            anchors=anchors,
+            created_unix_ns=7,
+            payload={
+                "code": "source_validation_failed",
+                "detail": "reviewed source validation failed",
+                "errno": None,
+                "exception_type": "OutcomeEvidenceRunnerError",
+                "winerror": None,
+            },
+            pid=1234,
+            previous_hash=previous_hash,
+            record_type="failure",
+            stage_index=last_stage_index,
+            stage_name=last_stage_name,
+        )
+        write_record(bootstrap["failure_path"], record)
 
 
 def test_qualification_request_round_trips_exact_current_bindings(
@@ -1861,6 +1961,7 @@ def test_bootstrap_collision_rejects_config_and_forbidden_paths(
     "collision_name",
     (
         "qualification-request.json",
+        "QUALIFICATION-REQUEST.JSON",
         "qualification-communication-attempt.json",
         "qualification-communication-ready.json",
         "qualification-communication-release.json",
@@ -1935,7 +2036,10 @@ def test_bootstrap_phase_active_mode_requires_complete_handoff(
     assert loaded == request
 
 
-@pytest.mark.parametrize("unexpected", ("gap", "failure", "handoff", "entry"))
+@pytest.mark.parametrize(
+    "unexpected",
+    ("gap", "failure", "handoff", "entry", "case_entry"),
+)
 def test_bootstrap_phase_rejects_gaps_and_unexpected_entries(
     tmp_path,
     monkeypatch,
@@ -1953,7 +2057,12 @@ def test_bootstrap_phase_rejects_gaps_and_unexpected_entries(
     elif unexpected == "handoff":
         _write_bootstrap_phase(request, stage_count=5, handoff=True)
     else:
-        Path(request["qualification_root"], "qualification-bootstrap-extra.json").write_bytes(
+        entry_name = (
+            "QUALIFICATION-BOOTSTRAP-EXTRA.JSON"
+            if unexpected == "case_entry"
+            else "qualification-bootstrap-extra.json"
+        )
+        Path(request["qualification_root"], entry_name).write_bytes(
             b"unexpected\n"
         )
 
@@ -1986,6 +2095,271 @@ def test_bootstrap_phase_active_mode_rejects_missing_handoff(
             request_path,
             registration_path=registration_path,
         )
+
+
+def _rewrite_bootstrap_record(module, path, mutate, *, canonical=True):
+    record = json.loads(Path(path).read_text(encoding="ascii"))
+    mutate(record)
+    if canonical:
+        raw = module._canonical_json(record).encode("ascii") + b"\n"
+    else:
+        raw = json.dumps(
+            record,
+            allow_nan=False,
+            ensure_ascii=True,
+            indent=2,
+            sort_keys=True,
+        ).encode("ascii") + b"\n"
+    Path(path).write_bytes(raw)
+
+
+@pytest.mark.parametrize(
+    "case",
+    (
+        "arbitrary_text",
+        "malformed_json",
+        "noncanonical_json",
+        "claim_shape",
+        "self_hash",
+        "anchors",
+        "previous_hash",
+        "handoff_payload",
+    ),
+)
+def test_bootstrap_active_load_rejects_invalid_chain_bytes(
+    tmp_path,
+    monkeypatch,
+    case,
+):
+    module, registration_path, request_path, request = (
+        _qualification_request_fixture(tmp_path, monkeypatch)
+    )
+    bootstrap = request["bootstrap"]
+    if case == "arbitrary_text":
+        Path(bootstrap["claim_path"]).write_bytes(b"arbitrary text\n")
+    elif case == "malformed_json":
+        Path(bootstrap["claim_path"]).write_bytes(b'{"anchors":\n')
+    elif case == "noncanonical_json":
+        _rewrite_bootstrap_record(
+            module,
+            bootstrap["claim_path"],
+            lambda _record: None,
+            canonical=False,
+        )
+    elif case == "claim_shape":
+        claim = json.loads(
+            Path(bootstrap["claim_path"]).read_text(encoding="ascii")
+        )
+        previous = module._qualification_bootstrap_record(
+            anchors=claim["anchors"],
+            created_unix_ns=claim["created_unix_ns"],
+            payload={},
+            pid=claim["pid"],
+            previous_hash="0" * 64,
+            record_type="stage",
+            stage_index=1,
+            stage_name="launcher_verified",
+        )
+        Path(bootstrap["claim_path"]).write_bytes(
+            module._canonical_json(previous).encode("ascii") + b"\n"
+        )
+        claim_hash = previous["record_hash"]
+        for stage in bootstrap["stage_paths"]:
+            original = json.loads(
+                Path(stage["path"]).read_text(encoding="ascii")
+            )
+            previous = module._qualification_bootstrap_record(
+                anchors=original["anchors"],
+                created_unix_ns=original["created_unix_ns"],
+                payload={},
+                pid=original["pid"],
+                previous_hash=previous["record_hash"],
+                record_type="stage",
+                stage_index=stage["index"],
+                stage_name=stage["name"],
+            )
+            Path(stage["path"]).write_bytes(
+                module._canonical_json(previous).encode("ascii") + b"\n"
+            )
+        handoff_path = Path(bootstrap["handoff_path"])
+        original_handoff = json.loads(
+            handoff_path.read_text(encoding="ascii")
+        )
+        handoff = module._qualification_bootstrap_record(
+            anchors=original_handoff["anchors"],
+            created_unix_ns=original_handoff["created_unix_ns"],
+            payload={
+                **original_handoff["payload"],
+                "claim_hash": claim_hash,
+                "final_stage_hash": previous["record_hash"],
+            },
+            pid=original_handoff["pid"],
+            previous_hash=previous["record_hash"],
+            record_type="handoff",
+            stage_index=6,
+            stage_name="active_request_handoff",
+        )
+        handoff_path.write_bytes(
+            module._canonical_json(handoff).encode("ascii") + b"\n"
+        )
+    elif case == "self_hash":
+        _rewrite_bootstrap_record(
+            module,
+            bootstrap["claim_path"],
+            lambda record: record.__setitem__("record_hash", "f" * 64),
+        )
+    elif case == "anchors":
+        _rewrite_bootstrap_record(
+            module,
+            bootstrap["stage_paths"][1]["path"],
+            lambda record: (
+                record["anchors"].__setitem__("review_commit", "d" * 40),
+                record.__setitem__(
+                    "record_hash",
+                    module._self_hash(record, "record_hash"),
+                ),
+            ),
+        )
+    elif case == "previous_hash":
+        _rewrite_bootstrap_record(
+            module,
+            bootstrap["stage_paths"][2]["path"],
+            lambda record: (
+                record.__setitem__("previous_hash", "f" * 64),
+                record.__setitem__(
+                    "record_hash",
+                    module._self_hash(record, "record_hash"),
+                ),
+            ),
+        )
+    else:
+        _rewrite_bootstrap_record(
+            module,
+            bootstrap["handoff_path"],
+            lambda record: (
+                record["payload"].__setitem__(
+                    "active_request_size",
+                    record["payload"]["active_request_size"] + 1,
+                ),
+                record.__setitem__(
+                    "record_hash",
+                    module._self_hash(record, "record_hash"),
+                ),
+            ),
+        )
+
+    with pytest.raises(
+        module.OutcomeEvidenceRunnerError,
+        match="bootstrap",
+    ):
+        module.load_qualification_request(
+            request_path,
+            registration_path=registration_path,
+        )
+
+
+@pytest.mark.parametrize("entry_kind", ("directory", "junction"))
+def test_bootstrap_active_load_rejects_nonregular_or_reparse_record(
+    tmp_path,
+    monkeypatch,
+    entry_kind,
+):
+    module, registration_path, request_path, request = (
+        _qualification_request_fixture(tmp_path, monkeypatch)
+    )
+    claim_path = Path(request["bootstrap"]["claim_path"])
+    claim_path.unlink()
+    target_path = tmp_path / "bootstrap-record-target"
+    if entry_kind == "directory":
+        claim_path.mkdir()
+    else:
+        target_path.mkdir()
+        _create_directory_junction(claim_path, target_path)
+
+    try:
+        with pytest.raises(
+            module.OutcomeEvidenceRunnerError,
+            match="bootstrap claim.*(?:regular file|reparse|symbolic link)",
+        ):
+            module.load_qualification_request(
+                request_path,
+                registration_path=registration_path,
+            )
+    finally:
+        os.rmdir(claim_path)
+        if target_path.exists():
+            target_path.rmdir()
+
+
+def test_bootstrap_active_load_rejects_case_aliased_record_name(
+    tmp_path,
+    monkeypatch,
+):
+    module, registration_path, request_path, request = (
+        _qualification_request_fixture(tmp_path, monkeypatch)
+    )
+    claim_path = Path(request["bootstrap"]["claim_path"])
+    aliased_path = claim_path.with_name(claim_path.name.upper())
+    claim_path.rename(aliased_path)
+    assert aliased_path.name in {
+        entry.name for entry in os.scandir(aliased_path.parent)
+    }
+
+    try:
+        with pytest.raises(
+            module.OutcomeEvidenceRunnerError,
+            match="bootstrap.*case alias",
+        ):
+            module.load_qualification_request(
+                request_path,
+                registration_path=registration_path,
+            )
+    finally:
+        aliased_path.rename(claim_path)
+
+
+def test_bootstrap_invalid_handoff_blocks_attempt_and_child_start(
+    tmp_path,
+    monkeypatch,
+):
+    module, registration_path, request_source_path, request = (
+        _qualification_request_fixture(tmp_path, monkeypatch, source_only=True)
+    )
+    publish_with_handoff = module._publish_text_once
+
+    def publish_corrupt_handoff(path, text, label):
+        result = publish_with_handoff(path, text, label)
+        if label == "qualification request":
+            _rewrite_bootstrap_record(
+                module,
+                request["bootstrap"]["handoff_path"],
+                lambda record: (
+                    record["payload"].__setitem__("claim_hash", "f" * 64),
+                    record.__setitem__(
+                        "record_hash",
+                        module._self_hash(record, "record_hash"),
+                    ),
+                ),
+            )
+        return result
+
+    monkeypatch.setattr(module, "_publish_text_once", publish_corrupt_handoff)
+
+    with pytest.raises(
+        module.OutcomeEvidenceRunnerError,
+        match="bootstrap",
+    ):
+        module.execute_prelock_qualification(
+            registration_path=registration_path,
+            request_path=request_source_path,
+            expected_request_hash=request["request_hash"],
+            **_qualification_review_kwargs(request),
+            process_starter=lambda *_args, **_kwargs: pytest.fail(
+                "invalid handoff started a qualification child"
+            ),
+        )
+
+    assert not Path(request["handshake"]["attempt_path"]).exists()
 
 
 def test_bootstrap_token_is_frozen_and_binds_every_contract_anchor():
@@ -2126,6 +2500,16 @@ def test_bootstrap_record_schema_and_self_hash_bytes_are_frozen():
         stage_index=1,
         stage_name="launcher_verified",
     )
+    stage_two = module._qualification_bootstrap_record(
+        anchors=anchors,
+        created_unix_ns=1,
+        payload={},
+        pid=1,
+        previous_hash=stage["record_hash"],
+        record_type="stage",
+        stage_index=2,
+        stage_name="runner_entered",
+    )
     failure = module._qualification_bootstrap_record(
         anchors=anchors,
         created_unix_ns=1,
@@ -2137,10 +2521,10 @@ def test_bootstrap_record_schema_and_self_hash_bytes_are_frozen():
             "winerror": None,
         },
         pid=1,
-        previous_hash=stage["record_hash"],
+        previous_hash=stage_two["record_hash"],
         record_type="failure",
-        stage_index=3,
-        stage_name="source_verified",
+        stage_index=2,
+        stage_name="runner_entered",
     )
     handoff = module._qualification_bootstrap_record(
         anchors=anchors,
@@ -2181,15 +2565,20 @@ def test_bootstrap_record_schema_and_self_hash_bytes_are_frozen():
         "prelaunch_isolation_failed": "prelaunch isolation validation failed",
         "unexpected_pre_request_failure": "unexpected pre-request failure",
     }
+    assert failure["stage_index"] == stage_two["stage_index"]
+    assert failure["stage_name"] == stage_two["stage_name"]
+    assert failure["previous_hash"] == stage_two["record_hash"]
     expected = {
         "claim": b'{"anchors":{"envelope_sha256":"0000000000000000000000000000000000000000000000000000000000000000","launch_token":"0000000000000000000000000000000000000000000000000000000000000000","qualification_id":"fixture-qualification","request_file_sha256":"0000000000000000000000000000000000000000000000000000000000000000","request_hash":"0000000000000000000000000000000000000000000000000000000000000000","request_size":1,"review_commit":"1111111111111111111111111111111111111111","runner_sha256":"0000000000000000000000000000000000000000000000000000000000000000","source_commit":"1111111111111111111111111111111111111111"},"created_unix_ns":1,"payload":{},"pid":1,"previous_hash":null,"record_hash":"6f50bfdced41d515ae33f7f402a36d38d337c39ccbecba1ca8dec926c69c42b5","record_type":"claim","schema_version":"noncombat-outcome-evidence-qualification-bootstrap-evidence-v1","stage_index":0,"stage_name":"claim"}\n',
         "stage": b'{"anchors":{"envelope_sha256":"0000000000000000000000000000000000000000000000000000000000000000","launch_token":"0000000000000000000000000000000000000000000000000000000000000000","qualification_id":"fixture-qualification","request_file_sha256":"0000000000000000000000000000000000000000000000000000000000000000","request_hash":"0000000000000000000000000000000000000000000000000000000000000000","request_size":1,"review_commit":"1111111111111111111111111111111111111111","runner_sha256":"0000000000000000000000000000000000000000000000000000000000000000","source_commit":"1111111111111111111111111111111111111111"},"created_unix_ns":1,"payload":{},"pid":1,"previous_hash":"6f50bfdced41d515ae33f7f402a36d38d337c39ccbecba1ca8dec926c69c42b5","record_hash":"c3543ab7758923ef33d7570468127267aace386d73bb3ee408cc4ef4c014058f","record_type":"stage","schema_version":"noncombat-outcome-evidence-qualification-bootstrap-evidence-v1","stage_index":1,"stage_name":"launcher_verified"}\n',
-        "failure": b'{"anchors":{"envelope_sha256":"0000000000000000000000000000000000000000000000000000000000000000","launch_token":"0000000000000000000000000000000000000000000000000000000000000000","qualification_id":"fixture-qualification","request_file_sha256":"0000000000000000000000000000000000000000000000000000000000000000","request_hash":"0000000000000000000000000000000000000000000000000000000000000000","request_size":1,"review_commit":"1111111111111111111111111111111111111111","runner_sha256":"0000000000000000000000000000000000000000000000000000000000000000","source_commit":"1111111111111111111111111111111111111111"},"created_unix_ns":1,"payload":{"code":"source_validation_failed","detail":"reviewed source validation failed","errno":null,"exception_type":"OutcomeEvidenceRunnerError","winerror":null},"pid":1,"previous_hash":"c3543ab7758923ef33d7570468127267aace386d73bb3ee408cc4ef4c014058f","record_hash":"e899aa4faf5cbbb956b17cbe15dc04665fd3764c0e9aea2ff391e14f31a5045a","record_type":"failure","schema_version":"noncombat-outcome-evidence-qualification-bootstrap-evidence-v1","stage_index":3,"stage_name":"source_verified"}\n',
+        "stage_two": b'{"anchors":{"envelope_sha256":"0000000000000000000000000000000000000000000000000000000000000000","launch_token":"0000000000000000000000000000000000000000000000000000000000000000","qualification_id":"fixture-qualification","request_file_sha256":"0000000000000000000000000000000000000000000000000000000000000000","request_hash":"0000000000000000000000000000000000000000000000000000000000000000","request_size":1,"review_commit":"1111111111111111111111111111111111111111","runner_sha256":"0000000000000000000000000000000000000000000000000000000000000000","source_commit":"1111111111111111111111111111111111111111"},"created_unix_ns":1,"payload":{},"pid":1,"previous_hash":"c3543ab7758923ef33d7570468127267aace386d73bb3ee408cc4ef4c014058f","record_hash":"8a7de07962f96dd0d41a4b8dbdca1a3325949fa0a625ba33eb183960fb1336af","record_type":"stage","schema_version":"noncombat-outcome-evidence-qualification-bootstrap-evidence-v1","stage_index":2,"stage_name":"runner_entered"}\n',
+        "failure": b'{"anchors":{"envelope_sha256":"0000000000000000000000000000000000000000000000000000000000000000","launch_token":"0000000000000000000000000000000000000000000000000000000000000000","qualification_id":"fixture-qualification","request_file_sha256":"0000000000000000000000000000000000000000000000000000000000000000","request_hash":"0000000000000000000000000000000000000000000000000000000000000000","request_size":1,"review_commit":"1111111111111111111111111111111111111111","runner_sha256":"0000000000000000000000000000000000000000000000000000000000000000","source_commit":"1111111111111111111111111111111111111111"},"created_unix_ns":1,"payload":{"code":"source_validation_failed","detail":"reviewed source validation failed","errno":null,"exception_type":"OutcomeEvidenceRunnerError","winerror":null},"pid":1,"previous_hash":"8a7de07962f96dd0d41a4b8dbdca1a3325949fa0a625ba33eb183960fb1336af","record_hash":"cb574c32306810c1ac9538a20ce34a37f23b777449b245db62d0258b27944e7c","record_type":"failure","schema_version":"noncombat-outcome-evidence-qualification-bootstrap-evidence-v1","stage_index":2,"stage_name":"runner_entered"}\n',
         "handoff": b'{"anchors":{"envelope_sha256":"0000000000000000000000000000000000000000000000000000000000000000","launch_token":"0000000000000000000000000000000000000000000000000000000000000000","qualification_id":"fixture-qualification","request_file_sha256":"0000000000000000000000000000000000000000000000000000000000000000","request_hash":"0000000000000000000000000000000000000000000000000000000000000000","request_size":1,"review_commit":"1111111111111111111111111111111111111111","runner_sha256":"0000000000000000000000000000000000000000000000000000000000000000","source_commit":"1111111111111111111111111111111111111111"},"created_unix_ns":1,"payload":{"active_request_file_sha256":"0000000000000000000000000000000000000000000000000000000000000000","active_request_size":1,"claim_hash":"6f50bfdced41d515ae33f7f402a36d38d337c39ccbecba1ca8dec926c69c42b5","final_stage_hash":"0000000000000000000000000000000000000000000000000000000000000000","request_hash":"0000000000000000000000000000000000000000000000000000000000000000"},"pid":1,"previous_hash":"0000000000000000000000000000000000000000000000000000000000000000","record_hash":"a56eaffd46dc7aa6af84bac9313a0cb325c0c535d446dc1101a7568873d79d65","record_type":"handoff","schema_version":"noncombat-outcome-evidence-qualification-bootstrap-evidence-v1","stage_index":6,"stage_name":"active_request_handoff"}\n',
     }
     for name, record in (
         ("claim", claim),
         ("stage", stage),
+        ("stage_two", stage_two),
         ("failure", failure),
         ("handoff", handoff),
     ):
