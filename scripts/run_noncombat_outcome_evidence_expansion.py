@@ -1693,6 +1693,16 @@ def _qualification_bootstrap_publish_bytes_once(
         raise OutcomeEvidenceRunnerError(str(exc)) from exc
 
 
+def _qualification_bootstrap_active_request_absence_proven(path: Path) -> bool:
+    try:
+        _parent, final = _QUALIFICATION_BOOTSTRAP_LIBRARY_RUNTIME[
+            "_qualification_bootstrap_lstat_components"
+        ](os.fspath(path), True)
+    except BaseException:
+        return False
+    return final is None
+
+
 def _qualification_bootstrap_record_bytes(
     record: Mapping[str, Any],
 ) -> bytes:
@@ -1977,6 +1987,8 @@ def _qualification_bootstrap_decode_envelope(encoded: str) -> dict[str, Any]:
 def _qualification_bootstrap_validate_prefix_for_request(
     state: Mapping[str, object],
     request: Mapping[str, Any],
+    *,
+    expected_stage_index: int = 3,
 ) -> None:
     try:
         current = _qualification_bootstrap_require_state(state)
@@ -1984,10 +1996,17 @@ def _qualification_bootstrap_validate_prefix_for_request(
         raise OutcomeEvidenceRunnerError(
             "qualification bootstrap state is invalid"
         ) from exc
+    if not (
+        1 <= expected_stage_index <= len(QUALIFICATION_BOOTSTRAP_STAGE_NAMES)
+    ):
+        raise OutcomeEvidenceRunnerError(
+            "qualification bootstrap request prefix is invalid"
+        )
     if (
         current["consumed"]
-        or current["last_stage_index"] != 3
-        or current["last_stage_name"] != "source_verified"
+        or current["last_stage_index"] != expected_stage_index
+        or current["last_stage_name"]
+        != QUALIFICATION_BOOTSTRAP_STAGE_NAMES[expected_stage_index - 1]
     ):
         raise OutcomeEvidenceRunnerError(
             "qualification bootstrap request prefix is invalid"
@@ -5583,9 +5602,15 @@ def execute_prelock_qualification(
     """Run one request-bound child through release without study state."""
 
     global _QUALIFICATION_BOOTSTRAP_STATE
-    bootstrap_state = (
-        _QUALIFICATION_BOOTSTRAP_STATE if _QUALIFICATION_CLI_REQUESTED else None
-    )
+    if (
+        not _QUALIFICATION_CLI_REQUESTED
+        or _QUALIFICATION_BOOTSTRAP_STATE is None
+    ):
+        raise OutcomeEvidenceRunnerError(
+            "current v3 qualification requires trusted in-memory bootstrap state"
+        )
+    bootstrap_state = _QUALIFICATION_BOOTSTRAP_STATE
+    prefix_ready_for_active_request = False
     try:
         if not callable(process_starter):
             raise OutcomeEvidenceRunnerError(
@@ -5601,22 +5626,33 @@ def execute_prelock_qualification(
             expected_request_size=expected_request_size,
             _validated_context=validated_context,
         )
-        if _QUALIFICATION_CLI_REQUESTED:
-            runner_anchor = os.environ.get(QUALIFICATION_RUNNER_SHA256_ENV)
-            expected_runner_anchor = request["implementation_sha256"].get(
-                QUALIFICATION_RUNNER_RELATIVE_PATH
+        runner_anchor = os.environ.get(QUALIFICATION_RUNNER_SHA256_ENV)
+        expected_runner_anchor = request["implementation_sha256"].get(
+            QUALIFICATION_RUNNER_RELATIVE_PATH
+        )
+        if (
+            not isinstance(expected_runner_anchor, str)
+            or runner_anchor != expected_runner_anchor
+        ):
+            raise OutcomeEvidenceRunnerError(
+                "qualification trusted launcher anchor does not match the "
+                "reviewed runner implementation"
             )
-            if (
-                not isinstance(expected_runner_anchor, str)
-                or runner_anchor != expected_runner_anchor
-            ):
-                raise OutcomeEvidenceRunnerError(
-                    "qualification trusted launcher anchor does not match the "
-                    "reviewed runner implementation"
-                )
         registration = validated_context["registration"]
         review_binding = validated_context["review_binding"]
-        if bootstrap_state is not None:
+        prefix_ready_for_active_request = (
+            bootstrap_state.get("last_stage_index")
+            == len(QUALIFICATION_BOOTSTRAP_STAGE_NAMES)
+            and bootstrap_state.get("last_stage_name")
+            == QUALIFICATION_BOOTSTRAP_STAGE_NAMES[-1]
+        )
+        if prefix_ready_for_active_request:
+            _qualification_bootstrap_validate_prefix_for_request(
+                bootstrap_state,
+                request,
+                expected_stage_index=len(QUALIFICATION_BOOTSTRAP_STAGE_NAMES),
+            )
+        else:
             _qualification_bootstrap_validate_prefix_for_request(
                 bootstrap_state,
                 request,
@@ -5627,21 +5663,22 @@ def execute_prelock_qualification(
             )
             _QUALIFICATION_BOOTSTRAP_STATE = bootstrap_state
     except BaseException as exc:
-        if bootstrap_state is not None:
-            active_request_path = Path(
-                bootstrap_state["paths"]["claim_path"]
-            ).parent / "qualification-request.json"
-            if not _qualification_path_entry_exists(active_request_path):
-                code = (
-                    "request_validation_failed"
-                    if isinstance(exc, OutcomeEvidenceRunnerError)
-                    else "unexpected_pre_request_failure"
-                )
-                _qualification_bootstrap_publish_failure(
-                    bootstrap_state,
-                    code,
-                    exc,
-                )
+        active_request_path = Path(
+            bootstrap_state["paths"]["claim_path"]
+        ).parent / "qualification-request.json"
+        if _qualification_bootstrap_active_request_absence_proven(
+            active_request_path
+        ):
+            code = (
+                "request_validation_failed"
+                if isinstance(exc, OutcomeEvidenceRunnerError)
+                else "unexpected_pre_request_failure"
+            )
+            _qualification_bootstrap_publish_failure(
+                bootstrap_state,
+                code,
+                exc,
+            )
         raise
     active_request_path = Path(request["request_path"])
     started_unix_ns = request["created_unix_ns"]
@@ -5656,14 +5693,16 @@ def execute_prelock_qualification(
             request,
             qualification_launch_command,
         )
-        if bootstrap_state is not None:
+        if not prefix_ready_for_active_request:
             bootstrap_state = _qualification_bootstrap_publish_stage(
                 bootstrap_state,
                 "isolation_verified",
             )
             _QUALIFICATION_BOOTSTRAP_STATE = bootstrap_state
     except BaseException as exc:
-        if bootstrap_state is not None:
+        if _qualification_bootstrap_active_request_absence_proven(
+            active_request_path
+        ):
             code = (
                 "prelaunch_isolation_failed"
                 if isinstance(exc, OutcomeEvidenceRunnerError)
@@ -5675,91 +5714,69 @@ def execute_prelock_qualification(
                 exc,
             )
         raise
-    if bootstrap_state is not None:
-        _qualification_bootstrap_inventory(
-            bootstrap_state,
-            include_handoff=False,
+    _qualification_bootstrap_inventory(
+        bootstrap_state,
+        include_handoff=False,
+    )
+    active_request_bytes = validated_context["request_source_bytes"]
+    if not isinstance(active_request_bytes, bytes):
+        raise OutcomeEvidenceRunnerError(
+            "qualification reviewed request bytes are invalid"
         )
-        active_request_bytes = validated_context["request_source_bytes"]
-        if not isinstance(active_request_bytes, bytes):
-            raise OutcomeEvidenceRunnerError(
-                "qualification reviewed request bytes are invalid"
-            )
-        stage = "publish_request"
+    stage = "publish_request"
+    try:
         _qualification_bootstrap_publish_bytes_once(
             str(active_request_path),
             active_request_bytes,
         )
-        request_consumed = True
-        if _qualification_read_file_bytes(
-            active_request_path,
-            "bootstrap active request",
-        ) != active_request_bytes:
-            raise OutcomeEvidenceRunnerError(
-                "qualification bootstrap active request changed after publication"
+    except BaseException as exc:
+        if _qualification_bootstrap_active_request_absence_proven(
+            active_request_path
+        ):
+            _qualification_bootstrap_publish_failure(
+                bootstrap_state,
+                "unexpected_pre_request_failure",
+                exc,
             )
-        stage = "publish_bootstrap_handoff"
-        bootstrap_state = _qualification_bootstrap_publish_handoff(
-            bootstrap_state,
+            raise
+        if not isinstance(exc, Exception):
+            raise
+        raise OutcomeEvidenceRunnerError(
+            "qualification active_request_partial publication failure"
+        ) from exc
+    request_consumed = True
+    if _qualification_read_file_bytes(
+        active_request_path,
+        "bootstrap active request",
+    ) != active_request_bytes:
+        raise OutcomeEvidenceRunnerError(
+            "qualification bootstrap active request changed after publication"
+        )
+    stage = "publish_bootstrap_handoff"
+    bootstrap_state = _qualification_bootstrap_publish_handoff(
+        bootstrap_state,
+        active_request_bytes,
+    )
+    _QUALIFICATION_BOOTSTRAP_STATE = bootstrap_state
+    stage = "validate_bootstrap_handoff"
+    validated_bootstrap_state = (
+        _validate_qualification_bootstrap_active_chain(
+            request,
             active_request_bytes,
+            expected_review_commit=expected_review_commit,
+            expected_request_file_sha256=expected_request_file_sha256,
+            expected_request_size=expected_request_size,
         )
-        _QUALIFICATION_BOOTSTRAP_STATE = bootstrap_state
-        stage = "validate_bootstrap_handoff"
-        validated_bootstrap_state = (
-            _validate_qualification_bootstrap_active_chain(
-                request,
-                active_request_bytes,
-                expected_review_commit=expected_review_commit,
-                expected_request_file_sha256=expected_request_file_sha256,
-                expected_request_size=expected_request_size,
-            )
-        )
-        bootstrap_summary = _qualification_bootstrap_inventory(
-            validated_bootstrap_state,
-            include_handoff=True,
-        )
-        review_binding = _qualification_review_binding_with_bootstrap(
-            review_binding,
-            bootstrap_summary,
-        )
+    )
+    bootstrap_summary = _qualification_bootstrap_inventory(
+        validated_bootstrap_state,
+        include_handoff=True,
+    )
+    review_binding = _qualification_review_binding_with_bootstrap(
+        review_binding,
+        bootstrap_summary,
+    )
     try:
-        if bootstrap_state is None:
-            stage = "publish_request"
-            _publish_text_once(
-                active_request_path,
-                _canonical_json(request) + "\n",
-                "qualification request",
-            )
-            request_consumed = True
-            request = load_qualification_request(
-                active_request_path,
-                registration_path=registration_path,
-                _expected_request_hash=expected_request_hash,
-                _expected_review_commit=expected_review_commit,
-                _expected_request_file_sha256=expected_request_file_sha256,
-                _expected_request_size=expected_request_size,
-            )
-            active_request_bytes = _qualification_read_file_bytes(
-                active_request_path,
-                "active request",
-            )
-            active_bootstrap_state = (
-                _validate_qualification_bootstrap_active_chain(
-                    request,
-                    active_request_bytes,
-                    expected_review_commit=expected_review_commit,
-                    expected_request_file_sha256=expected_request_file_sha256,
-                    expected_request_size=expected_request_size,
-                )
-            )
-            bootstrap_summary = _qualification_bootstrap_inventory(
-                active_bootstrap_state,
-                include_handoff=True,
-            )
-            review_binding = _qualification_review_binding_with_bootstrap(
-                review_binding,
-                bootstrap_summary,
-            )
         handshake = request["handshake"]
         paths = HandshakePaths(
             attempt=Path(handshake["attempt_path"]),

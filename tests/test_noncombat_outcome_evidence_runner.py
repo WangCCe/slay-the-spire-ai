@@ -2191,7 +2191,7 @@ def _qualification_request_fixture(
     monkeypatch,
     *,
     source_only=False,
-    inject_bootstrap_handoff=True,
+    trusted_runtime=False,
     config_name="qualification-config.json",
     manifest_name="qualification-manifest.json",
 ):
@@ -2319,24 +2319,12 @@ def _qualification_request_fixture(
         encoding="utf-8",
         newline="",
     )
-    if source_only and inject_bootstrap_handoff:
-        original_publish_text_once = module._publish_text_once
-        active_request_path = Path(request["request_path"])
-
-        def publish_with_bootstrap_handoff(path, text, label):
-            result = original_publish_text_once(path, text, label)
-            if Path(path) == active_request_path and label == "qualification request":
-                _write_bootstrap_phase(request, stage_count=5, handoff=True)
-            return result
-
-        monkeypatch.setattr(
-            module,
-            "_publish_text_once",
-            publish_with_bootstrap_handoff,
-        )
     if not source_only:
         request_path.write_bytes(reviewed_request_path.read_bytes())
         _write_bootstrap_phase(request, stage_count=5, handoff=True)
+    if trusted_runtime:
+        assert source_only
+        _enable_task4_bootstrap_runtime(module, monkeypatch, request)
     return (
         module,
         registration_path,
@@ -2499,6 +2487,16 @@ def _bootstrap_runtime_state(request, *, stage_count):
 
 def _enable_task4_bootstrap_runtime(module, monkeypatch, request):
     state = _bootstrap_runtime_state(request, stage_count=3)
+    state = module._qualification_bootstrap_publish_stage(
+        state,
+        "request_reviewed",
+        created_unix_ns=5,
+    )
+    state = module._qualification_bootstrap_publish_stage(
+        state,
+        "isolation_verified",
+        created_unix_ns=6,
+    )
     monkeypatch.setattr(module, "_QUALIFICATION_CLI_REQUESTED", True)
     monkeypatch.setattr(module, "_QUALIFICATION_BOOTSTRAP_STATE", state)
     monkeypatch.setenv(
@@ -2508,6 +2506,15 @@ def _enable_task4_bootstrap_runtime(module, monkeypatch, request):
         ],
     )
     return state
+
+
+def _trusted_qualification_lifecycle_fixture(tmp_path, monkeypatch):
+    return _qualification_request_fixture(
+        tmp_path,
+        monkeypatch,
+        source_only=True,
+        trusted_runtime=True,
+    )
 
 
 def test_qualification_request_round_trips_exact_current_bindings(
@@ -3054,27 +3061,30 @@ def test_bootstrap_invalid_handoff_blocks_attempt_and_child_start(
     monkeypatch,
 ):
     module, registration_path, request_source_path, request = (
-        _qualification_request_fixture(tmp_path, monkeypatch, source_only=True)
+        _trusted_qualification_lifecycle_fixture(tmp_path, monkeypatch)
     )
-    publish_with_handoff = module._publish_text_once
+    publish_handoff = module._qualification_bootstrap_publish_handoff
 
-    def publish_corrupt_handoff(path, text, label):
-        result = publish_with_handoff(path, text, label)
-        if label == "qualification request":
-            _rewrite_bootstrap_record(
-                module,
-                request["bootstrap"]["handoff_path"],
-                lambda record: (
-                    record["payload"].__setitem__("claim_hash", "f" * 64),
-                    record.__setitem__(
-                        "record_hash",
-                        module._self_hash(record, "record_hash"),
-                    ),
+    def publish_corrupt_handoff(state, active_request_bytes):
+        result = publish_handoff(state, active_request_bytes)
+        _rewrite_bootstrap_record(
+            module,
+            request["bootstrap"]["handoff_path"],
+            lambda record: (
+                record["payload"].__setitem__("claim_hash", "f" * 64),
+                record.__setitem__(
+                    "record_hash",
+                    module._self_hash(record, "record_hash"),
                 ),
-            )
+            ),
+        )
         return result
 
-    monkeypatch.setattr(module, "_publish_text_once", publish_corrupt_handoff)
+    monkeypatch.setattr(
+        module,
+        "_qualification_bootstrap_publish_handoff",
+        publish_corrupt_handoff,
+    )
 
     with pytest.raises(
         module.OutcomeEvidenceRunnerError,
@@ -3706,7 +3716,6 @@ def test_pre_request_stage_boundary_success_reaches_valid_handoff_once(
             tmp_path,
             monkeypatch,
             source_only=True,
-            inject_bootstrap_handoff=False,
         )
     )
     state = _bootstrap_runtime_state(request, stage_count=3)
@@ -3784,6 +3793,194 @@ def test_pre_request_stage_boundary_success_reaches_valid_handoff_once(
     assert capsys.readouterr() == ("", "")
 
 
+def test_current_v3_non_cli_execution_cannot_publish_active_request(
+    tmp_path,
+    monkeypatch,
+):
+    module, registration_path, request_source_path, request = (
+        _qualification_request_fixture(
+            tmp_path,
+            monkeypatch,
+            source_only=True,
+        )
+    )
+    disk_prefix = _bootstrap_runtime_state(request, stage_count=5)
+    monkeypatch.setattr(module, "_QUALIFICATION_CLI_REQUESTED", False)
+    monkeypatch.setattr(module, "_QUALIFICATION_BOOTSTRAP_STATE", disk_prefix)
+    starter_calls = []
+
+    with pytest.raises(
+        module.OutcomeEvidenceRunnerError,
+        match="trusted.*bootstrap|bootstrap.*trusted",
+    ):
+        module.execute_prelock_qualification(
+            registration_path=registration_path,
+            request_path=request_source_path,
+            expected_request_hash=request["request_hash"],
+            **_qualification_review_kwargs(request),
+            process_starter=lambda *_args, **_kwargs: starter_calls.append(
+                "start"
+            ),
+        )
+
+    assert starter_calls == []
+    assert not Path(request["request_path"]).exists()
+    assert Path(request["bootstrap"]["stage_paths"][4]["path"]).is_file()
+    assert not Path(request["bootstrap"]["failure_path"]).exists()
+    assert not Path(request["bootstrap"]["handoff_path"]).exists()
+    assert not Path(request["handshake"]["attempt_path"]).exists()
+    assert not Path(request["completion_path"]).exists()
+    assert not Path(request["failure_path"]).exists()
+
+
+def test_active_request_publication_preopen_failure_records_stage_five_failure(
+    tmp_path,
+    monkeypatch,
+):
+    module, registration_path, request_source_path, request = (
+        _trusted_qualification_lifecycle_fixture(tmp_path, monkeypatch)
+    )
+    active_request_path = Path(request["request_path"])
+    publish_bytes = module._qualification_bootstrap_publish_bytes_once
+
+    def fail_before_open(path_text, raw):
+        if Path(path_text) == active_request_path:
+            raise module.OutcomeEvidenceRunnerError(
+                "fixed pre-open publication failure"
+            )
+        return publish_bytes(path_text, raw)
+
+    monkeypatch.setattr(
+        module,
+        "_qualification_bootstrap_publish_bytes_once",
+        fail_before_open,
+    )
+    starter_calls = []
+
+    with pytest.raises(
+        module.OutcomeEvidenceRunnerError,
+        match="pre-open publication failure",
+    ):
+        module.execute_prelock_qualification(
+            registration_path=registration_path,
+            request_path=request_source_path,
+            expected_request_hash=request["request_hash"],
+            **_qualification_review_kwargs(request),
+            process_starter=lambda *_args, **_kwargs: starter_calls.append(
+                "start"
+            ),
+        )
+
+    isolation_stage = json.loads(
+        Path(request["bootstrap"]["stage_paths"][4]["path"]).read_text(
+            encoding="ascii"
+        )
+    )
+    _assert_bootstrap_failure(
+        request["bootstrap"],
+        code="unexpected_pre_request_failure",
+        previous_record=isolation_stage,
+        stage_index=5,
+        stage_name="isolation_verified",
+    )
+    assert starter_calls == []
+    assert not active_request_path.exists()
+    assert not Path(request["bootstrap"]["handoff_path"]).exists()
+    assert not Path(request["handshake"]["attempt_path"]).exists()
+    assert not Path(request["failure_path"]).exists()
+
+
+def test_active_request_publication_collision_preserves_partial_without_failure(
+    tmp_path,
+    monkeypatch,
+):
+    module, registration_path, request_source_path, request = (
+        _trusted_qualification_lifecycle_fixture(tmp_path, monkeypatch)
+    )
+    active_request_path = Path(request["request_path"])
+    collision_bytes = b"preexisting active request collision\n"
+    publish_bytes = module._qualification_bootstrap_publish_bytes_once
+
+    def collide_during_publication(path_text, raw):
+        if Path(path_text) == active_request_path:
+            active_request_path.write_bytes(collision_bytes)
+        return publish_bytes(path_text, raw)
+
+    monkeypatch.setattr(
+        module,
+        "_qualification_bootstrap_publish_bytes_once",
+        collide_during_publication,
+    )
+
+    with pytest.raises(
+        module.OutcomeEvidenceRunnerError,
+        match="active_request_partial",
+    ) as raised:
+        module.execute_prelock_qualification(
+            registration_path=registration_path,
+            request_path=request_source_path,
+            expected_request_hash=request["request_hash"],
+            **_qualification_review_kwargs(request),
+            process_starter=lambda *_args, **_kwargs: pytest.fail(
+                "colliding active request started a child"
+            ),
+        )
+
+    assert isinstance(raised.value.__cause__, FileExistsError)
+    assert active_request_path.read_bytes() == collision_bytes
+    assert not Path(request["bootstrap"]["failure_path"]).exists()
+    assert not Path(request["bootstrap"]["handoff_path"]).exists()
+    assert not Path(request["handshake"]["attempt_path"]).exists()
+    assert not Path(request["failure_path"]).exists()
+
+
+def test_active_request_publication_postwrite_failure_preserves_partial_bytes(
+    tmp_path,
+    monkeypatch,
+):
+    module, registration_path, request_source_path, request = (
+        _trusted_qualification_lifecycle_fixture(tmp_path, monkeypatch)
+    )
+    active_request_path = Path(request["request_path"])
+    partial_bytes = request_source_path.read_bytes()[:37]
+    publish_bytes = module._qualification_bootstrap_publish_bytes_once
+
+    def fail_after_partial_write(path_text, raw):
+        if Path(path_text) == active_request_path:
+            active_request_path.write_bytes(partial_bytes)
+            raise module.OutcomeEvidenceRunnerError(
+                "fixed post-write publication failure"
+            )
+        return publish_bytes(path_text, raw)
+
+    monkeypatch.setattr(
+        module,
+        "_qualification_bootstrap_publish_bytes_once",
+        fail_after_partial_write,
+    )
+
+    with pytest.raises(
+        module.OutcomeEvidenceRunnerError,
+        match="active_request_partial",
+    ) as raised:
+        module.execute_prelock_qualification(
+            registration_path=registration_path,
+            request_path=request_source_path,
+            expected_request_hash=request["request_hash"],
+            **_qualification_review_kwargs(request),
+            process_starter=lambda *_args, **_kwargs: pytest.fail(
+                "partial active request started a child"
+            ),
+        )
+
+    assert "post-write publication failure" in str(raised.value.__cause__)
+    assert active_request_path.read_bytes() == partial_bytes
+    assert not Path(request["bootstrap"]["failure_path"]).exists()
+    assert not Path(request["bootstrap"]["handoff_path"]).exists()
+    assert not Path(request["handshake"]["attempt_path"]).exists()
+    assert not Path(request["failure_path"]).exists()
+
+
 def test_bootstrap_handoff_requires_stage_five_and_exact_active_request(
     tmp_path,
     monkeypatch,
@@ -3793,7 +3990,6 @@ def test_bootstrap_handoff_requires_stage_five_and_exact_active_request(
             tmp_path,
             monkeypatch,
             source_only=True,
-            inject_bootstrap_handoff=False,
         )
     )
     publish_handoff = getattr(
@@ -3858,7 +4054,6 @@ def test_bootstrap_handoff_preexisting_identity_fails_closed(
             tmp_path,
             monkeypatch,
             source_only=True,
-            inject_bootstrap_handoff=False,
         )
     )
     publish_handoff = getattr(
@@ -3929,7 +4124,6 @@ def test_bootstrap_handoff_orders_active_request_before_attempt_and_child(
             tmp_path,
             monkeypatch,
             source_only=True,
-            inject_bootstrap_handoff=False,
         )
     )
     _enable_task4_bootstrap_runtime(module, monkeypatch, request)
@@ -4038,19 +4232,13 @@ def test_bootstrap_handoff_orders_active_request_before_attempt_and_child(
             module._validate_qualification_result(forged)
 
 
-def test_active_request_partial_is_immutable_and_retry_refuses(
+def test_active_request_publication_then_handoff_failure_is_partial_and_retry_refuses(
     tmp_path,
     monkeypatch,
 ):
     module, registration_path, request_source_path, request = (
-        _qualification_request_fixture(
-            tmp_path,
-            monkeypatch,
-            source_only=True,
-            inject_bootstrap_handoff=False,
-        )
+        _trusted_qualification_lifecycle_fixture(tmp_path, monkeypatch)
     )
-    _enable_task4_bootstrap_runtime(module, monkeypatch, request)
     publish_handoff = getattr(
         module,
         "_qualification_bootstrap_publish_handoff",
@@ -4125,7 +4313,6 @@ def test_bootstrap_handoff_changed_active_request_binding_blocks_terminal(
             tmp_path,
             monkeypatch,
             source_only=True,
-            inject_bootstrap_handoff=False,
         )
     )
     _enable_task4_bootstrap_runtime(module, monkeypatch, request)
@@ -4183,7 +4370,6 @@ def test_bootstrap_terminal_failure_remains_post_handoff_lifecycle_owned(
             tmp_path,
             monkeypatch,
             source_only=True,
-            inject_bootstrap_handoff=False,
         )
     )
     _enable_task4_bootstrap_runtime(module, monkeypatch, request)
@@ -4215,7 +4401,7 @@ def test_live_qualification_rejects_v1_request_before_consumption(
     monkeypatch,
 ):
     module, registration_path, request_path, request = (
-        _qualification_request_fixture(tmp_path, monkeypatch, source_only=True)
+        _trusted_qualification_lifecycle_fixture(tmp_path, monkeypatch)
     )
     legacy_request = json.loads(json.dumps(request))
     legacy_request.pop("isolation")
@@ -5824,7 +6010,7 @@ def test_qualification_orchestrator_accepts_ready_published_during_owned_start(
     monkeypatch,
 ):
     module, registration_path, request_path, request = (
-        _qualification_request_fixture(tmp_path, monkeypatch, source_only=True)
+        _trusted_qualification_lifecycle_fixture(tmp_path, monkeypatch)
     )
     forbidden_study_path = lambda *_args, **_kwargs: pytest.fail(
         "qualification entered a registered study path"
@@ -6025,7 +6211,7 @@ def test_qualification_result_rejects_contradictory_isolation_evidence(
     case,
 ):
     module, registration_path, request_path, request = (
-        _qualification_request_fixture(tmp_path, monkeypatch, source_only=True)
+        _trusted_qualification_lifecycle_fixture(tmp_path, monkeypatch)
     )
     child = _FakeHandshakeChild(pid=327)
 
@@ -6067,7 +6253,7 @@ def test_qualification_rejects_run_drift_before_attempt_publication(
     monkeypatch,
 ):
     module, registration_path, request_path, request = (
-        _qualification_request_fixture(tmp_path, monkeypatch, source_only=True)
+        _trusted_qualification_lifecycle_fixture(tmp_path, monkeypatch)
     )
     (tmp_path / "runs" / "IRONCLAD" / "100.run").write_bytes(
         b'{"drift":true}\n'
@@ -6102,7 +6288,7 @@ def test_qualification_rejects_other_isolation_drift_before_attempt(
     resource,
 ):
     module, registration_path, request_path, request = (
-        _qualification_request_fixture(tmp_path, monkeypatch, source_only=True)
+        _trusted_qualification_lifecycle_fixture(tmp_path, monkeypatch)
     )
     baseline = request["isolation"]
     if resource == "marker":
@@ -6152,7 +6338,7 @@ def test_qualification_restores_live_communication_config_exactly(
     monkeypatch,
 ):
     module, registration_path, request_path, request = (
-        _qualification_request_fixture(tmp_path, monkeypatch, source_only=True)
+        _trusted_qualification_lifecycle_fixture(tmp_path, monkeypatch)
     )
     launch_command = ("python.exe", "-I", "-S", "qualification")
     communication_path = tmp_path / "config.properties"
@@ -6224,7 +6410,7 @@ def test_qualification_restores_communication_config_after_ordinary_failure(
     monkeypatch,
 ):
     module, registration_path, request_path, request = (
-        _qualification_request_fixture(tmp_path, monkeypatch, source_only=True)
+        _trusted_qualification_lifecycle_fixture(tmp_path, monkeypatch)
     )
     launch_command = ("python.exe", "-I", "-S", "qualification")
     communication_path = tmp_path / "config.properties"
@@ -6264,7 +6450,7 @@ def test_qualification_rejects_global_log_drift_after_child_exit(
     monkeypatch,
 ):
     module, registration_path, request_path, request = (
-        _qualification_request_fixture(tmp_path, monkeypatch, source_only=True)
+        _trusted_qualification_lifecycle_fixture(tmp_path, monkeypatch)
     )
 
     def mutate_log_after_release():
@@ -6308,7 +6494,7 @@ def test_qualification_rejects_other_isolation_drift_after_child_exit(
     resource,
 ):
     module, registration_path, request_path, request = (
-        _qualification_request_fixture(tmp_path, monkeypatch, source_only=True)
+        _trusted_qualification_lifecycle_fixture(tmp_path, monkeypatch)
     )
     baseline = request["isolation"]
 
@@ -6368,7 +6554,7 @@ def test_qualification_rejects_child_that_remains_alive_after_zero_exit(
     monkeypatch,
 ):
     module, registration_path, request_path, request = (
-        _qualification_request_fixture(tmp_path, monkeypatch, source_only=True)
+        _trusted_qualification_lifecycle_fixture(tmp_path, monkeypatch)
     )
 
     class StubbornChild(_FakeHandshakeChild):
@@ -6409,7 +6595,7 @@ def test_qualification_pre_release_uses_bounded_live_source_validation(
     monkeypatch,
 ):
     module, registration_path, reviewed_request_path, request = (
-        _qualification_request_fixture(tmp_path, monkeypatch, source_only=True)
+        _trusted_qualification_lifecycle_fixture(tmp_path, monkeypatch)
     )
     release_path = Path(request["handshake"]["release_path"])
     active_request_path = Path(request["request_path"])
@@ -6534,7 +6720,7 @@ def test_qualification_pre_release_budget_uses_ready_timestamp(
     monkeypatch,
 ):
     module, registration_path, reviewed_request_path, request = (
-        _qualification_request_fixture(tmp_path, monkeypatch, source_only=True)
+        _trusted_qualification_lifecycle_fixture(tmp_path, monkeypatch)
     )
     captured_deadlines = []
 
@@ -6584,7 +6770,7 @@ def test_qualification_pre_release_rejects_budget_expiry_after_source_check(
     monkeypatch,
 ):
     module, registration_path, reviewed_request_path, request = (
-        _qualification_request_fixture(tmp_path, monkeypatch, source_only=True)
+        _trusted_qualification_lifecycle_fixture(tmp_path, monkeypatch)
     )
     clock = [2.0]
 
@@ -6629,7 +6815,7 @@ def test_qualification_pre_release_rechecks_budget_immediately_before_release(
     monkeypatch,
 ):
     module, registration_path, reviewed_request_path, request = (
-        _qualification_request_fixture(tmp_path, monkeypatch, source_only=True)
+        _trusted_qualification_lifecycle_fixture(tmp_path, monkeypatch)
     )
     clock = [2.0]
     original_require_child_running = module._require_child_running
@@ -6668,16 +6854,12 @@ def test_qualification_pre_release_rechecks_budget_immediately_before_release(
     assert not Path(request["handshake"]["release_path"]).exists()
 
 
-def test_qualification_publishes_reviewed_request_once_before_launch(
+def test_qualification_orchestrator_rejects_second_launch_after_terminal(
     tmp_path,
     monkeypatch,
 ):
     module, registration_path, request_source_path, request = (
-        _qualification_request_fixture(
-            tmp_path,
-            monkeypatch,
-            source_only=True,
-        )
+        _trusted_qualification_lifecycle_fixture(tmp_path, monkeypatch)
     )
     child = _FakeHandshakeChild(pid=323)
 
@@ -6701,7 +6883,7 @@ def test_qualification_publishes_reviewed_request_once_before_launch(
 
     with pytest.raises(
         module.OutcomeEvidenceRunnerError,
-        match="request.*already exists|control artifact",
+        match="qualification bootstrap lifecycle phase mismatch",
     ):
         module.execute_prelock_qualification(
             registration_path=registration_path,
@@ -6714,72 +6896,12 @@ def test_qualification_publishes_reviewed_request_once_before_launch(
         )
 
 
-def test_qualification_request_only_host_crash_cannot_be_retried(
-    tmp_path,
-    monkeypatch,
-):
-    module, registration_path, request_source_path, request = (
-        _qualification_request_fixture(
-            tmp_path,
-            monkeypatch,
-            source_only=True,
-        )
-    )
-    active_request_path = Path(request["request_path"])
-    real_load = module.load_qualification_request
-
-    def crash_after_active_request(path, **kwargs):
-        if Path(path).resolve() == active_request_path:
-            raise SystemExit("simulated host crash after request publication")
-        return real_load(path, **kwargs)
-
-    monkeypatch.setattr(
-        module,
-        "load_qualification_request",
-        crash_after_active_request,
-    )
-    with pytest.raises(SystemExit, match="simulated host crash"):
-        module.execute_prelock_qualification(
-            registration_path=registration_path,
-            request_path=request_source_path,
-            expected_request_hash=request["request_hash"],
-            **_qualification_review_kwargs(request),
-            process_starter=lambda *_args: pytest.fail(
-                "request-only crash started a child"
-            ),
-        )
-
-    assert active_request_path.is_file()
-    assert not Path(request["handshake"]["attempt_path"]).exists()
-    assert not Path(request["completion_path"]).exists()
-    assert not Path(request["failure_path"]).exists()
-
-    monkeypatch.setattr(module, "load_qualification_request", real_load)
-    with pytest.raises(
-        module.OutcomeEvidenceRunnerError,
-        match="bootstrap lifecycle",
-    ):
-        module.execute_prelock_qualification(
-            registration_path=registration_path,
-            request_path=request_source_path,
-            expected_request_hash=request["request_hash"],
-            **_qualification_review_kwargs(request),
-            process_starter=lambda *_args: pytest.fail(
-                "request-only identity launched another child"
-            ),
-        )
-
-
 def test_qualification_rejects_unreviewed_request_hash_before_publication(
     tmp_path,
     monkeypatch,
 ):
     module, registration_path, request_source_path, request = (
-        _qualification_request_fixture(
-            tmp_path,
-            monkeypatch,
-            source_only=True,
-        )
+        _trusted_qualification_lifecycle_fixture(tmp_path, monkeypatch)
     )
 
     with pytest.raises(
@@ -6807,11 +6929,7 @@ def test_qualification_rejects_external_review_anchor_drift_before_publication(
     case,
 ):
     module, registration_path, request_source_path, request = (
-        _qualification_request_fixture(
-            tmp_path,
-            monkeypatch,
-            source_only=True,
-        )
+        _trusted_qualification_lifecycle_fixture(tmp_path, monkeypatch)
     )
     review = _qualification_review_kwargs(request)
     if case == "review_commit":
@@ -6844,7 +6962,7 @@ def test_qualification_orchestrator_rejects_runtime_terminal_collision(
     monkeypatch,
 ):
     module, registration_path, request_path, request = (
-        _qualification_request_fixture(tmp_path, monkeypatch, source_only=True)
+        _trusted_qualification_lifecycle_fixture(tmp_path, monkeypatch)
     )
     failure_path = Path(request["failure_path"])
 
@@ -6888,7 +7006,7 @@ def test_qualification_completion_publication_failure_remains_partial(
     monkeypatch,
 ):
     module, registration_path, request_source_path, request = (
-        _qualification_request_fixture(tmp_path, monkeypatch, source_only=True)
+        _trusted_qualification_lifecycle_fixture(tmp_path, monkeypatch)
     )
     child = _FakeHandshakeChild(pid=324)
 
@@ -6930,7 +7048,7 @@ def test_qualification_orchestrator_timeout_terminates_once_without_release(
     monkeypatch,
 ):
     module, registration_path, request_path, request = (
-        _qualification_request_fixture(tmp_path, monkeypatch, source_only=True)
+        _trusted_qualification_lifecycle_fixture(tmp_path, monkeypatch)
     )
     child = _FakeHandshakeChild(pid=654)
     starts = []
@@ -6989,7 +7107,7 @@ def test_qualification_orchestrator_bounds_post_release_child_exit(
     monkeypatch,
 ):
     module, registration_path, request_path, request = (
-        _qualification_request_fixture(tmp_path, monkeypatch, source_only=True)
+        _trusted_qualification_lifecycle_fixture(tmp_path, monkeypatch)
     )
 
     class StuckAfterReleaseChild:
@@ -7069,7 +7187,7 @@ def test_qualification_orchestrator_failure_matrix_is_one_shot(
     cleanup_expected,
 ):
     module, registration_path, request_path, request = (
-        _qualification_request_fixture(tmp_path, monkeypatch, source_only=True)
+        _trusted_qualification_lifecycle_fixture(tmp_path, monkeypatch)
     )
     child = _FakeHandshakeChild(
         pid=777,
@@ -7135,7 +7253,7 @@ def test_qualification_post_exit_validation_failure_remains_partial(
     monkeypatch,
 ):
     module, registration_path, request_path, request = (
-        _qualification_request_fixture(tmp_path, monkeypatch, source_only=True)
+        _trusted_qualification_lifecycle_fixture(tmp_path, monkeypatch)
     )
     child = _FakeHandshakeChild(
         pid=778,
@@ -7175,7 +7293,7 @@ def test_qualification_post_exit_dangling_forbidden_entry_remains_partial(
     monkeypatch,
 ):
     module, registration_path, request_path, request = (
-        _qualification_request_fixture(tmp_path, monkeypatch, source_only=True)
+        _trusted_qualification_lifecycle_fixture(tmp_path, monkeypatch)
     )
     qualification_root = Path(request["qualification_root"])
     forbidden_path = next(
@@ -7234,7 +7352,7 @@ def test_qualification_orchestrator_surfaces_cleanup_failure(
     monkeypatch,
 ):
     module, registration_path, request_path, request = (
-        _qualification_request_fixture(tmp_path, monkeypatch, source_only=True)
+        _trusted_qualification_lifecycle_fixture(tmp_path, monkeypatch)
     )
     clock = [0.0]
 
@@ -7289,7 +7407,7 @@ def test_qualification_orchestrator_records_child_start_exception(
     monkeypatch,
 ):
     module, registration_path, request_path, request = (
-        _qualification_request_fixture(tmp_path, monkeypatch, source_only=True)
+        _trusted_qualification_lifecycle_fixture(tmp_path, monkeypatch)
     )
 
     def fail_start(_command, _environment):
@@ -7330,7 +7448,7 @@ def test_qualification_orchestrator_records_attempt_build_exception(
     monkeypatch,
 ):
     module, registration_path, request_path, request = (
-        _qualification_request_fixture(tmp_path, monkeypatch, source_only=True)
+        _trusted_qualification_lifecycle_fixture(tmp_path, monkeypatch)
     )
     starts = []
 
