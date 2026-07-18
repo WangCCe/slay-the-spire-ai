@@ -210,13 +210,36 @@ def _qualification_bootstrap_record_bytes(record):
 def _qualification_bootstrap_publish_record_once(path, record):
     _qualification_bootstrap_publish_bytes_once(os.fspath(path), _qualification_bootstrap_record_bytes(record))
 '''
-exec(_QUALIFICATION_BOOTSTRAP_LIBRARY_SOURCE, globals())
-_qualification_bootstrap_library_record = _qualification_bootstrap_record
+_qualification_bootstrap_library_namespace = {}
+exec(
+    _QUALIFICATION_BOOTSTRAP_LIBRARY_SOURCE,
+    _qualification_bootstrap_library_namespace,
+)
+_QUALIFICATION_BOOTSTRAP_LIBRARY_RUNTIME = {
+    name: value
+    for name, value in _qualification_bootstrap_library_namespace.items()
+    if name != "__builtins__"
+}
+del _qualification_bootstrap_library_namespace
+_QualificationBootstrapLibraryError = (
+    _QUALIFICATION_BOOTSTRAP_LIBRARY_RUNTIME[
+        "_QualificationBootstrapLibraryError"
+    ]
+)
+_qualification_bootstrap_library_record = (
+    _QUALIFICATION_BOOTSTRAP_LIBRARY_RUNTIME[
+        "_qualification_bootstrap_record"
+    ]
+)
 _qualification_bootstrap_library_record_bytes = (
-    _qualification_bootstrap_record_bytes
+    _QUALIFICATION_BOOTSTRAP_LIBRARY_RUNTIME[
+        "_qualification_bootstrap_record_bytes"
+    ]
 )
 _qualification_bootstrap_library_publish_bytes_once = (
-    _qualification_bootstrap_publish_bytes_once
+    _QUALIFICATION_BOOTSTRAP_LIBRARY_RUNTIME[
+        "_qualification_bootstrap_publish_bytes_once"
+    ]
 )
 
 _QUALIFICATION_TRUSTED_LAUNCHER_PAYLOAD = (
@@ -234,7 +257,7 @@ _QUALIFICATION_TRUSTED_LAUNCHER_PAYLOAD = (
     " return result\n"
     "def invalid_constant(_value): reject()\n"
     "def launch():\n"
-    " if len(sys.argv)!=18: reject()\n"
+    " if len(sys.argv)<5: reject()\n"
     " runner,expected,encoded,token=sys.argv[1:5]\n"
     " if not isinstance(encoded,str) or not encoded or any(c.isspace() for c in encoded): reject()\n"
     " try:\n"
@@ -259,6 +282,7 @@ _QUALIFICATION_TRUSTED_LAUNCHER_PAYLOAD = (
     " claim=_qualification_bootstrap_record(record_type='claim',anchors=anchors,created_unix_ns=time.time_ns(),pid=os.getpid(),previous_hash=None,stage_index=0,stage_name='claim',payload={})\n"
     " try: _qualification_bootstrap_publish_record_once(expected_bootstrap['claim_path'],claim)\n"
     " except BaseException: reject()\n"
+    " if len(sys.argv)!=18: reject()\n"
     " if not _qualification_bootstrap_is_lower_hex(expected,64) or expected!=envelope['runner_sha256']: reject()\n"
     " try: source=_qualification_bootstrap_read_bytes_no_follow(runner)\n"
     " except BaseException: reject()\n"

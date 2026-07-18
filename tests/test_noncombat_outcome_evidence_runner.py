@@ -302,6 +302,54 @@ def test_bootstrap_publisher_source_builds_exact_ascii_lf_self_hashed_record():
     assert json.loads(raw) == record
 
 
+def test_bootstrap_library_runtime_is_bound_to_private_namespace(
+    tmp_path,
+    monkeypatch,
+):
+    module = _module()
+    assert module._qualification_bootstrap_library_record.__globals__ is not (
+        module.__dict__
+    )
+    monkeypatch.setattr(module, "hashlib", None)
+    monkeypatch.setattr(module, "stat", None)
+    monkeypatch.setattr(
+        module,
+        "QUALIFICATION_BOOTSTRAP_EVIDENCE_SCHEMA_VERSION",
+        "tampered-module-schema",
+    )
+    monkeypatch.setattr(module, "QUALIFICATION_BOOTSTRAP_STAGE_NAMES", ())
+    anchors = {
+        "envelope_sha256": "0" * 64,
+        "launch_token": "1" * 64,
+        "qualification_id": "fixture-qualification",
+        "request_file_sha256": "2" * 64,
+        "request_hash": "3" * 64,
+        "request_size": 17,
+        "review_commit": "4" * 40,
+        "runner_sha256": "5" * 64,
+        "source_commit": "6" * 40,
+    }
+
+    record = module._qualification_bootstrap_record(
+        record_type="claim",
+        anchors=anchors,
+        created_unix_ns=1,
+        pid=2,
+        previous_hash=None,
+        stage_index=0,
+        stage_name="claim",
+        payload={},
+    )
+    raw = module._qualification_bootstrap_record_bytes(record)
+    target = (tmp_path / "qualification-bootstrap-claim.json").resolve()
+    module._qualification_bootstrap_publish_bytes_once(str(target), raw)
+
+    assert record["schema_version"] == (
+        "noncombat-outcome-evidence-qualification-bootstrap-evidence-v1"
+    )
+    assert target.read_bytes() == raw
+
+
 def test_bootstrap_publisher_uses_exclusive_same_descriptor_durable_write(
     tmp_path,
     monkeypatch,
@@ -539,6 +587,45 @@ def test_bootstrap_publisher_rejects_parent_identity_drift_and_keeps_bytes(
         return result
 
     monkeypatch.setattr(namespace["os"], "lstat", drift_parent)
+
+    with pytest.raises(Exception):
+        namespace["_qualification_bootstrap_publish_bytes_once"](
+            str(target),
+            raw,
+        )
+
+    assert target.read_bytes() == raw
+
+
+def test_bootstrap_publisher_rejects_final_identity_drift_and_keeps_bytes(
+    tmp_path,
+    monkeypatch,
+):
+    namespace = _bootstrap_library_namespace()
+    target = (tmp_path / "qualification-bootstrap-claim.json").resolve()
+    raw = b'{"claim":true}\n'
+    real_lstat = os.lstat
+
+    class DriftedStat:
+        def __init__(self, original):
+            self.__dict__.update(
+                {
+                    name: getattr(original, name)
+                    for name in dir(original)
+                    if name.startswith("st_")
+                }
+            )
+            self.st_ino = original.st_ino + 1
+
+    def drift_final(path):
+        result = real_lstat(path)
+        if os.path.normcase(os.path.abspath(path)) == os.path.normcase(
+            os.path.abspath(target)
+        ):
+            return DriftedStat(result)
+        return result
+
+    monkeypatch.setattr(namespace["os"], "lstat", drift_final)
 
     with pytest.raises(Exception):
         namespace["_qualification_bootstrap_publish_bytes_once"](
@@ -793,153 +880,141 @@ def test_qualification_cli_requires_isolation_before_argparse(tmp_path):
     assert not marker_path.exists()
 
 
-def test_qualification_cli_rejects_site_enabled_trusted_launcher():
-    module = _module()
-    runner_path = Path(module.__file__).resolve()
-
-    completed = subprocess.run(
-        [
-            sys.executable,
-            "-I",
-            "-c",
-            module.QUALIFICATION_TRUSTED_LAUNCHER_CODE,
-            str(runner_path),
-            hashlib.sha256(runner_path.read_bytes()).hexdigest(),
-            "qualify",
-            "--review-commit",
-            REVIEW_COMMIT,
-        ],
-        cwd=REPO_ROOT,
-        capture_output=True,
-        check=False,
-        text=True,
-    )
-
-    _assert_silent_qualification_failure(completed)
-
-
-def test_trusted_qualification_launcher_rejects_stat_clean_runner_tamper(
+@pytest.mark.parametrize(
+    "case",
+    (
+        "missing_qualifier_arguments",
+        "extra_qualifier_argument",
+        "empty_runner",
+        "empty_runner_hash",
+        "tampered_runner",
+        "relative_runner",
+        "runner_ads",
+        "runner_win32_alias",
+        "runner_win32_alias_space",
+        "malformed_qualifier_order",
+    ),
+)
+def test_trusted_qualification_launcher_post_claim_rejection_consumes_identity(
     tmp_path,
+    case,
 ):
-    module = _module()
-    runner_path = tmp_path / "qualification_runner.py"
-    marker_path = tmp_path / "tampered-runner-executed.txt"
-    malicious_prefix = (
-        "from pathlib import Path\n"
-        f"Path({str(marker_path)!r}).write_text('executed')\n"
-    ).encode("utf-8")
-    safe_prefix = b"raise SystemExit(0)\n"
-    byte_count = max(len(malicious_prefix), len(safe_prefix)) + 32
-    safe_bytes = safe_prefix + b"#" * (byte_count - len(safe_prefix))
-    malicious_bytes = malicious_prefix + b"#" * (
-        byte_count - len(malicious_prefix)
-    )
-    runner_path.write_bytes(safe_bytes)
-    old_timestamp_ns = 1_700_000_000_000_000_000
-    os.utime(runner_path, ns=(old_timestamp_ns, old_timestamp_ns))
-    expected_sha256 = hashlib.sha256(safe_bytes).hexdigest()
-    runner_path.write_bytes(malicious_bytes)
-    os.utime(runner_path, ns=(old_timestamp_ns, old_timestamp_ns))
+    fixture = _bootstrap_launcher_fixture(tmp_path)
+    command = list(fixture["command"])
+    if case == "missing_qualifier_arguments":
+        command = command[:9]
+    elif case == "extra_qualifier_argument":
+        command.append("--unexpected")
+    elif case == "empty_runner":
+        command[5] = ""
+    elif case == "empty_runner_hash":
+        command[6] = ""
+    elif case == "tampered_runner":
+        original = fixture["runner_path"].read_bytes()
+        metadata = fixture["runner_path"].stat()
+        malicious_prefix = (
+            "from pathlib import Path\n"
+            f"Path({str(fixture['marker_path'])!r}).write_bytes(b'tampered\\n')\n"
+        ).encode("ascii")
+        assert len(malicious_prefix) < len(original)
+        fixture["runner_path"].write_bytes(
+            malicious_prefix + b"#" * (len(original) - len(malicious_prefix))
+        )
+        os.utime(
+            fixture["runner_path"],
+            ns=(metadata.st_atime_ns, metadata.st_mtime_ns),
+        )
+    elif case == "relative_runner":
+        command[5] = fixture["runner_path"].name
+    elif case == "runner_ads":
+        command[5] = f"{fixture['runner_path']}:qualification-runner"
+    elif case == "runner_win32_alias":
+        command[5] = f"{fixture['runner_path']}."
+    elif case == "runner_win32_alias_space":
+        command[5] = f"{fixture['runner_path']} "
+    else:
+        command[10] = "--request"
 
-    completed = subprocess.run(
-        [
-            sys.executable,
-            "-I",
-            "-S",
-            "-c",
-            module.QUALIFICATION_TRUSTED_LAUNCHER_CODE,
-            str(runner_path),
-            expected_sha256,
-        ],
+    first = subprocess.run(
+        command,
         cwd=tmp_path,
         capture_output=True,
         check=False,
-        text=True,
+        env=fixture["environment"],
     )
 
-    _assert_silent_qualification_failure(completed)
-    assert not marker_path.exists()
+    bootstrap = fixture["envelope"]["bootstrap"]
+    claim_path = Path(bootstrap["claim_path"])
+    assert first.returncode == 2
+    assert first.stdout == b""
+    assert first.stderr == b""
+    assert claim_path.is_file()
+    claim_bytes = claim_path.read_bytes()
+    claim = json.loads(claim_bytes)
+    assert claim["record_type"] == "claim"
+    assert claim["anchors"]["launch_token"] == fixture["command"][8]
+    assert not fixture["marker_path"].exists()
+    assert not Path(bootstrap["failure_path"]).exists()
+    assert all(not Path(stage["path"]).exists() for stage in bootstrap["stage_paths"])
 
-
-def test_trusted_qualification_launcher_rejects_relative_runner_path(
-    tmp_path,
-):
-    module = _module()
-    runner_path = tmp_path / "qualification_runner.py"
-    runner_bytes = b"raise SystemExit(0)\n"
-    runner_path.write_bytes(runner_bytes)
-
-    completed = subprocess.run(
-        [
-            sys.executable,
-            "-I",
-            "-S",
-            "-c",
-            module.QUALIFICATION_TRUSTED_LAUNCHER_CODE,
-            runner_path.name,
-            hashlib.sha256(runner_bytes).hexdigest(),
-        ],
+    second = subprocess.run(
+        command,
         cwd=tmp_path,
         capture_output=True,
         check=False,
-        text=True,
+        env=fixture["environment"],
     )
 
-    _assert_silent_qualification_failure(completed)
+    assert second.returncode == 2
+    assert second.stdout == b""
+    assert second.stderr == b""
+    assert claim_path.read_bytes() == claim_bytes
+    assert not fixture["marker_path"].exists()
+    assert not Path(bootstrap["failure_path"]).exists()
+    assert all(not Path(stage["path"]).exists() for stage in bootstrap["stage_paths"])
 
 
-def test_trusted_qualification_launcher_rejects_runner_ads(tmp_path):
-    module = _module()
-    runner_path = tmp_path / "qualification_runner.py"
-    runner_bytes = b"raise SystemExit(0)\n"
-    runner_path.write_bytes(runner_bytes)
+def test_site_enabled_v3_launcher_claims_before_runner_entry_rejection(tmp_path):
+    fixture = _bootstrap_launcher_fixture(tmp_path)
+    command = [
+        fixture["command"][0],
+        fixture["command"][1],
+        *fixture["command"][3:],
+    ]
 
-    completed = subprocess.run(
-        [
-            sys.executable,
-            "-I",
-            "-S",
-            "-c",
-            module.QUALIFICATION_TRUSTED_LAUNCHER_CODE,
-            f"{runner_path}:qualification-runner",
-            hashlib.sha256(runner_bytes).hexdigest(),
-        ],
+    first = subprocess.run(
+        command,
         cwd=tmp_path,
         capture_output=True,
         check=False,
-        text=True,
+        env=fixture["environment"],
     )
 
-    _assert_silent_qualification_failure(completed)
+    bootstrap = fixture["envelope"]["bootstrap"]
+    claim_path = Path(bootstrap["claim_path"])
+    launcher_stage_path = Path(bootstrap["stage_paths"][0]["path"])
+    assert first.returncode == 2
+    assert first.stdout == b""
+    assert first.stderr == b""
+    claim_bytes = claim_path.read_bytes()
+    launcher_stage_bytes = launcher_stage_path.read_bytes()
+    assert not fixture["marker_path"].exists()
+    assert not Path(bootstrap["stage_paths"][1]["path"]).exists()
 
-
-@pytest.mark.parametrize("suffix", [".", " "])
-def test_trusted_qualification_launcher_rejects_win32_alias(
-    tmp_path,
-    suffix,
-):
-    module = _module()
-    runner_path = tmp_path / "qualification_runner.py"
-    runner_bytes = b"raise SystemExit(0)\n"
-    runner_path.write_bytes(runner_bytes)
-
-    completed = subprocess.run(
-        [
-            sys.executable,
-            "-I",
-            "-S",
-            "-c",
-            module.QUALIFICATION_TRUSTED_LAUNCHER_CODE,
-            f"{runner_path}{suffix}",
-            hashlib.sha256(runner_bytes).hexdigest(),
-        ],
+    second = subprocess.run(
+        command,
         cwd=tmp_path,
         capture_output=True,
         check=False,
-        text=True,
+        env=fixture["environment"],
     )
 
-    _assert_silent_qualification_failure(completed)
+    assert second.returncode == 2
+    assert second.stdout == b""
+    assert second.stderr == b""
+    assert claim_path.read_bytes() == claim_bytes
+    assert launcher_stage_path.read_bytes() == launcher_stage_bytes
+    assert not Path(bootstrap["stage_paths"][1]["path"]).exists()
 
 
 def test_trusted_qualification_launcher_survives_communicationmod_split(
