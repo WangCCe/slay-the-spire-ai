@@ -241,6 +241,404 @@ _qualification_bootstrap_library_publish_bytes_once = (
         "_qualification_bootstrap_publish_bytes_once"
     ]
 )
+_qualification_bootstrap_library_canonical_json = (
+    _QUALIFICATION_BOOTSTRAP_LIBRARY_RUNTIME[
+        "_qualification_bootstrap_canonical_json"
+    ]
+)
+_qualification_bootstrap_library_read_bytes_no_follow = (
+    _QUALIFICATION_BOOTSTRAP_LIBRARY_RUNTIME[
+        "_qualification_bootstrap_read_bytes_no_follow"
+    ]
+)
+_qualification_bootstrap_library_split_path = (
+    _QUALIFICATION_BOOTSTRAP_LIBRARY_RUNTIME[
+        "_qualification_bootstrap_split_path"
+    ]
+)
+_qualification_bootstrap_library_json = _QUALIFICATION_BOOTSTRAP_LIBRARY_RUNTIME[
+    "json"
+]
+_qualification_bootstrap_library_time = _QUALIFICATION_BOOTSTRAP_LIBRARY_RUNTIME[
+    "time"
+]
+
+
+def _qualification_bootstrap_require_state(
+    state: Mapping[str, object],
+) -> dict[str, object]:
+    fields = {
+        "anchors",
+        "claim_hash",
+        "consumed",
+        "envelope",
+        "last_record_hash",
+        "last_stage_index",
+        "last_stage_name",
+        "paths",
+    }
+    try:
+        record = dict(state)
+    except (TypeError, ValueError) as exc:
+        raise _QualificationBootstrapLibraryError(
+            "qualification bootstrap state is invalid"
+        ) from exc
+    if set(record) != fields or type(record["consumed"]) is not bool:
+        raise _QualificationBootstrapLibraryError(
+            "qualification bootstrap state is invalid"
+        )
+    if (
+        type(record["last_stage_index"]) is not int
+        or record["last_stage_index"] < 0
+        or not isinstance(record["last_stage_name"], str)
+        or not isinstance(record["claim_hash"], str)
+        or not isinstance(record["last_record_hash"], str)
+    ):
+        raise _QualificationBootstrapLibraryError(
+            "qualification bootstrap state is invalid"
+        )
+    return record
+
+
+def _qualification_bootstrap_load_early_record(path_text, label):
+    try:
+        raw = _qualification_bootstrap_library_read_bytes_no_follow(path_text)
+
+        def unique(pairs):
+            result = {}
+            for key, value in pairs:
+                if key in result:
+                    raise _QualificationBootstrapLibraryError(
+                        f"qualification bootstrap {label} has duplicate fields"
+                    )
+                result[key] = value
+            return result
+
+        record = _qualification_bootstrap_library_json.loads(
+            raw.decode("ascii"),
+            object_pairs_hook=unique,
+            parse_constant=lambda _value: (_ for _ in ()).throw(
+                _QualificationBootstrapLibraryError(
+                    f"qualification bootstrap {label} has a JSON constant"
+                )
+            ),
+        )
+        if raw != (
+            _qualification_bootstrap_library_canonical_json(record).encode("ascii")
+            + b"\n"
+        ):
+            raise _QualificationBootstrapLibraryError(
+                f"qualification bootstrap {label} is not canonical"
+            )
+        rebuilt = _qualification_bootstrap_library_record(
+            record_type=record["record_type"],
+            anchors=record["anchors"],
+            created_unix_ns=record["created_unix_ns"],
+            pid=record["pid"],
+            previous_hash=record["previous_hash"],
+            stage_index=record["stage_index"],
+            stage_name=record["stage_name"],
+            payload=record["payload"],
+        )
+    except _QualificationBootstrapLibraryError:
+        raise
+    except BaseException as exc:
+        raise _QualificationBootstrapLibraryError(
+            f"qualification bootstrap {label} is invalid"
+        ) from exc
+    if record != rebuilt:
+        raise _QualificationBootstrapLibraryError(
+            f"qualification bootstrap {label} hash is invalid"
+        )
+    return rebuilt
+
+
+def _qualification_bootstrap_state_from_environment() -> dict[str, object]:
+    encoded = os.environ.get(QUALIFICATION_BOOTSTRAP_ENVELOPE_ENV)
+    token = os.environ.get(QUALIFICATION_BOOTSTRAP_LAUNCH_TOKEN_ENV)
+    try:
+        if (
+            not isinstance(encoded, str)
+            or not encoded
+            or any(character.isspace() for character in encoded)
+            or not isinstance(token, str)
+        ):
+            raise _QualificationBootstrapLibraryError(
+                "qualification bootstrap environment is invalid"
+            )
+
+        def unique(pairs):
+            result = {}
+            for key, value in pairs:
+                if key in result:
+                    raise _QualificationBootstrapLibraryError(
+                        "qualification bootstrap envelope has duplicate fields"
+                    )
+                result[key] = value
+            return result
+
+        raw = base64.b64decode(encoded, validate=True)
+        envelope = _qualification_bootstrap_library_json.loads(
+            raw.decode("ascii"),
+            object_pairs_hook=unique,
+            parse_constant=lambda _value: (_ for _ in ()).throw(
+                _QualificationBootstrapLibraryError(
+                    "qualification bootstrap envelope has a JSON constant"
+                )
+            ),
+        )
+        expected_fields = {
+            "bootstrap",
+            "qualification_id",
+            "qualification_root",
+            "request_file_sha256",
+            "request_hash",
+            "request_size",
+            "review_commit",
+            "runner_sha256",
+            "schema_version",
+            "source_commit",
+        }
+        if not isinstance(envelope, dict) or set(envelope) != expected_fields:
+            raise _QualificationBootstrapLibraryError(
+                "qualification bootstrap envelope fields are invalid"
+            )
+        canonical = _qualification_bootstrap_library_canonical_json(envelope).encode(
+            "ascii"
+        )
+        if raw != canonical or base64.b64encode(raw).decode("ascii") != encoded:
+            raise _QualificationBootstrapLibraryError(
+                "qualification bootstrap envelope is not canonical"
+            )
+        if envelope["schema_version"] != (
+            _QUALIFICATION_BOOTSTRAP_LIBRARY_RUNTIME[
+                "QUALIFICATION_BOOTSTRAP_TOKEN_SCHEMA_VERSION"
+            ]
+        ):
+            raise _QualificationBootstrapLibraryError(
+                "qualification bootstrap envelope schema is invalid"
+            )
+        is_lower_hex = _QUALIFICATION_BOOTSTRAP_LIBRARY_RUNTIME[
+            "_qualification_bootstrap_is_lower_hex"
+        ]
+        if (
+            not isinstance(envelope["qualification_id"], str)
+            or not envelope["qualification_id"]
+            or type(envelope["request_size"]) is not int
+            or envelope["request_size"] <= 0
+            or any(
+                not is_lower_hex(envelope[field], 64)
+                for field in (
+                    "request_file_sha256",
+                    "request_hash",
+                    "runner_sha256",
+                )
+            )
+            or any(
+                not is_lower_hex(envelope[field], 40)
+                for field in ("review_commit", "source_commit")
+            )
+        ):
+            raise _QualificationBootstrapLibraryError(
+                "qualification bootstrap envelope anchors are invalid"
+            )
+        root = envelope["qualification_root"]
+        _qualification_bootstrap_library_split_path(
+            os.path.join(root, "qualification-bootstrap-claim.json")
+        )
+        if root != os.path.abspath(root):
+            raise _QualificationBootstrapLibraryError(
+                "qualification bootstrap root is invalid"
+            )
+        names = _QUALIFICATION_BOOTSTRAP_LIBRARY_RUNTIME[
+            "QUALIFICATION_BOOTSTRAP_STAGE_NAMES"
+        ]
+        paths = {
+            "claim_path": os.path.join(
+                root, "qualification-bootstrap-claim.json"
+            ),
+            "failure_path": os.path.join(
+                root, "qualification-bootstrap-failure.json"
+            ),
+            "handoff_path": os.path.join(
+                root, "qualification-bootstrap-handoff.json"
+            ),
+            "schema_version": _QUALIFICATION_BOOTSTRAP_LIBRARY_RUNTIME[
+                "QUALIFICATION_BOOTSTRAP_EVIDENCE_SCHEMA_VERSION"
+            ],
+            "stage_paths": [
+                {
+                    "index": index,
+                    "name": name,
+                    "path": os.path.join(
+                        root,
+                        "qualification-bootstrap-stage-%02d-%s.json"
+                        % (index, name.replace("_", "-")),
+                    ),
+                }
+                for index, name in enumerate(names, start=1)
+            ],
+            "token_schema_version": _QUALIFICATION_BOOTSTRAP_LIBRARY_RUNTIME[
+                "QUALIFICATION_BOOTSTRAP_TOKEN_SCHEMA_VERSION"
+            ],
+        }
+        if envelope["bootstrap"] != paths:
+            raise _QualificationBootstrapLibraryError(
+                "qualification bootstrap paths are invalid"
+            )
+        expected_token = hashlib.sha256(
+            b"noncombat-outcome-evidence-qualification-bootstrap-token-v1\x00"
+            + raw
+        ).hexdigest()
+        if token != expected_token:
+            raise _QualificationBootstrapLibraryError(
+                "qualification bootstrap token is invalid"
+            )
+        anchors = {
+            "envelope_sha256": hashlib.sha256(raw).hexdigest(),
+            "launch_token": token,
+            "qualification_id": envelope["qualification_id"],
+            "request_file_sha256": envelope["request_file_sha256"],
+            "request_hash": envelope["request_hash"],
+            "request_size": envelope["request_size"],
+            "review_commit": envelope["review_commit"],
+            "runner_sha256": envelope["runner_sha256"],
+            "source_commit": envelope["source_commit"],
+        }
+        claim = _qualification_bootstrap_load_early_record(
+            paths["claim_path"], "claim"
+        )
+        launcher_stage = _qualification_bootstrap_load_early_record(
+            paths["stage_paths"][0]["path"], "launcher stage"
+        )
+        if (
+            claim["record_type"] != "claim"
+            or claim["anchors"] != anchors
+            or launcher_stage["record_type"] != "stage"
+            or launcher_stage["anchors"] != anchors
+            or launcher_stage["stage_index"] != 1
+            or launcher_stage["stage_name"] != "launcher_verified"
+            or launcher_stage["previous_hash"] != claim["record_hash"]
+        ):
+            raise _QualificationBootstrapLibraryError(
+                "qualification bootstrap launcher prefix is invalid"
+            )
+    except _QualificationBootstrapLibraryError:
+        raise
+    except BaseException as exc:
+        raise _QualificationBootstrapLibraryError(
+            "qualification bootstrap environment is invalid"
+        ) from exc
+    return {
+        "anchors": anchors,
+        "claim_hash": claim["record_hash"],
+        "consumed": False,
+        "envelope": envelope,
+        "last_record_hash": launcher_stage["record_hash"],
+        "last_stage_index": 1,
+        "last_stage_name": "launcher_verified",
+        "paths": paths,
+    }
+
+
+def _qualification_bootstrap_publish_stage(
+    state: Mapping[str, object],
+    stage_name: str,
+    *,
+    created_unix_ns: int | None = None,
+) -> dict[str, object]:
+    current = _qualification_bootstrap_require_state(state)
+    names = _QUALIFICATION_BOOTSTRAP_LIBRARY_RUNTIME[
+        "QUALIFICATION_BOOTSTRAP_STAGE_NAMES"
+    ]
+    next_index = current["last_stage_index"] + 1
+    if (
+        current["consumed"]
+        or not 1 <= next_index <= len(names)
+        or stage_name != names[next_index - 1]
+    ):
+        raise _QualificationBootstrapLibraryError(
+            "qualification bootstrap stage transition is invalid"
+        )
+    created = (
+        _qualification_bootstrap_library_time.time_ns()
+        if created_unix_ns is None
+        else created_unix_ns
+    )
+    record = _qualification_bootstrap_library_record(
+        record_type="stage",
+        anchors=current["anchors"],
+        created_unix_ns=created,
+        pid=os.getpid(),
+        previous_hash=current["last_record_hash"],
+        stage_index=next_index,
+        stage_name=stage_name,
+        payload={},
+    )
+    stage_path = current["paths"]["stage_paths"][next_index - 1]["path"]
+    _qualification_bootstrap_library_publish_bytes_once(
+        stage_path,
+        _qualification_bootstrap_library_record_bytes(record),
+    )
+    transitioned = dict(current)
+    transitioned.update(
+        {
+            "last_record_hash": record["record_hash"],
+            "last_stage_index": next_index,
+            "last_stage_name": stage_name,
+        }
+    )
+    return transitioned
+
+
+def _qualification_bootstrap_publish_failure(state, code, exc) -> str | None:
+    try:
+        current = _qualification_bootstrap_require_state(state)
+        if current["consumed"]:
+            return None
+        failure_codes = _QUALIFICATION_BOOTSTRAP_LIBRARY_RUNTIME[
+            "QUALIFICATION_BOOTSTRAP_FAILURE_CODES"
+        ]
+        if code not in failure_codes:
+            code = "unexpected_pre_request_failure"
+        exception_type = type(exc).__name__
+        if (
+            not isinstance(exception_type, str)
+            or not exception_type.isascii()
+            or not exception_type.isidentifier()
+            or len(exception_type) > 64
+        ):
+            exception_type = "Exception"
+
+        def integer_attribute(name):
+            value = getattr(exc, name, None)
+            return value if type(value) is int else None
+
+        record = _qualification_bootstrap_library_record(
+            record_type="failure",
+            anchors=current["anchors"],
+            created_unix_ns=_qualification_bootstrap_library_time.time_ns(),
+            pid=os.getpid(),
+            previous_hash=current["last_record_hash"],
+            stage_index=current["last_stage_index"],
+            stage_name=current["last_stage_name"],
+            payload={
+                "code": code,
+                "detail": _QUALIFICATION_BOOTSTRAP_LIBRARY_RUNTIME[
+                    "QUALIFICATION_BOOTSTRAP_FAILURE_DETAILS"
+                ][code],
+                "errno": integer_attribute("errno"),
+                "exception_type": exception_type,
+                "winerror": integer_attribute("winerror"),
+            },
+        )
+        _qualification_bootstrap_library_publish_bytes_once(
+            current["paths"]["failure_path"],
+            _qualification_bootstrap_library_record_bytes(record),
+        )
+        return record["record_hash"]
+    except BaseException:
+        return None
 
 _QUALIFICATION_TRUSTED_LAUNCHER_TEMPLATE = (
     "_qualification_payload_b64={payload!r};"
@@ -379,41 +777,60 @@ if (
     raise SystemExit(2)
 
 
-def _qualification_require_trusted_launcher() -> None:
-    runner_anchor = os.environ.get(QUALIFICATION_RUNNER_SHA256_ENV)
-    envelope_anchor = os.environ.get(QUALIFICATION_BOOTSTRAP_ENVELOPE_ENV)
-    token_anchor = os.environ.get(QUALIFICATION_BOOTSTRAP_LAUNCH_TOKEN_ENV)
-    original_arguments = tuple(sys.orig_argv)
-    runner_path = os.path.abspath(__file__)
-    valid_shape = (
-        isinstance(runner_anchor, str)
-        and isinstance(envelope_anchor, str)
-        and isinstance(token_anchor, str)
-        and len(original_arguments) >= 10
-        and original_arguments[1:5]
-        == ("-I", "-S", "-c", QUALIFICATION_TRUSTED_LAUNCHER_CODE)
-        and os.path.abspath(original_arguments[5]) == runner_path
-        and original_arguments[6] == runner_anchor
-        and original_arguments[7] == envelope_anchor
-        and original_arguments[8] == token_anchor
-        and original_arguments[9:] == tuple(sys.argv[1:])
-    )
-    if not valid_shape:
-        raise SystemExit(2)
+def _qualification_require_trusted_launcher() -> dict[str, object]:
+    state = None
     try:
-        with open(runner_path, "rb") as runner_stream:
-            runner_bytes = runner_stream.read()
-    except OSError as exc:
+        state = _qualification_bootstrap_state_from_environment()
+        runner_anchor = os.environ.get(QUALIFICATION_RUNNER_SHA256_ENV)
+        envelope_anchor = os.environ.get(QUALIFICATION_BOOTSTRAP_ENVELOPE_ENV)
+        token_anchor = os.environ.get(QUALIFICATION_BOOTSTRAP_LAUNCH_TOKEN_ENV)
+        original_arguments = tuple(sys.orig_argv)
+        runner_path = os.path.abspath(__file__)
+        valid_shape = (
+            isinstance(runner_anchor, str)
+            and isinstance(envelope_anchor, str)
+            and isinstance(token_anchor, str)
+            and len(original_arguments) >= 10
+            and original_arguments[1:5]
+            == ("-I", "-S", "-c", QUALIFICATION_TRUSTED_LAUNCHER_CODE)
+            and os.path.abspath(original_arguments[5]) == runner_path
+            and original_arguments[6] == runner_anchor
+            and original_arguments[7] == envelope_anchor
+            and original_arguments[8] == token_anchor
+            and original_arguments[9:] == tuple(sys.argv[1:])
+        )
+        if not valid_shape:
+            raise _QualificationBootstrapLibraryError(
+                "qualification runner entry vector is invalid"
+            )
+        runner_bytes = _qualification_bootstrap_library_read_bytes_no_follow(
+            runner_path
+        )
+        if hashlib.sha256(runner_bytes).hexdigest() != runner_anchor:
+            raise _QualificationBootstrapLibraryError(
+                "qualification runner entry bytes are invalid"
+            )
+        return _qualification_bootstrap_publish_stage(
+            state,
+            "runner_entered",
+        )
+    except BaseException as exc:
+        if state is not None:
+            _qualification_bootstrap_publish_failure(
+                state,
+                "runner_entry_validation_failed",
+                exc,
+            )
         raise SystemExit(2) from exc
-    if hashlib.sha256(runner_bytes).hexdigest() != runner_anchor:
-        raise SystemExit(2)
 
+
+_QUALIFICATION_BOOTSTRAP_STATE = None
 
 if (
     __name__ == "__main__"
     and _QUALIFICATION_CLI_REQUESTED
 ):
-    _qualification_require_trusted_launcher()
+    _QUALIFICATION_BOOTSTRAP_STATE = _qualification_require_trusted_launcher()
 
 import argparse
 import importlib.machinery
@@ -1073,16 +1490,47 @@ def _qualification_bootstrap_validate_source(
         )
 
 
-if _QUALIFICATION_CLI_REQUESTED:
+def _qualification_bootstrap_verify_source(
+    state: Mapping[str, object],
+    repo_root: Path,
+    *,
+    expected_review_commit: str,
+) -> dict[str, object]:
     try:
         _qualification_bootstrap_validate_source(
-            REPO_ROOT,
-            expected_review_commit=_qualification_bootstrap_review_commit(
-                tuple(sys.argv[2:])
-            ),
+            repo_root,
+            expected_review_commit=expected_review_commit,
         )
-    except Exception:
-        raise SystemExit(2)
+    except BaseException as exc:
+        code = (
+            "source_validation_failed"
+            if isinstance(exc, (_QualificationBootstrapError, OSError, ValueError))
+            else "unexpected_pre_request_failure"
+        )
+        _qualification_bootstrap_publish_failure(state, code, exc)
+        raise SystemExit(2) from exc
+    try:
+        return _qualification_bootstrap_publish_stage(
+            state,
+            "source_verified",
+        )
+    except BaseException as exc:
+        _qualification_bootstrap_publish_failure(
+            state,
+            "unexpected_pre_request_failure",
+            exc,
+        )
+        raise SystemExit(2) from exc
+
+
+if _QUALIFICATION_CLI_REQUESTED:
+    _QUALIFICATION_BOOTSTRAP_STATE = _qualification_bootstrap_verify_source(
+        _QUALIFICATION_BOOTSTRAP_STATE,
+        REPO_ROOT,
+        expected_review_commit=_qualification_bootstrap_review_commit(
+            tuple(sys.argv[2:])
+        ),
+    )
 
 
 def _contains_project_package(search_root: str) -> bool:
@@ -1513,6 +1961,57 @@ def _qualification_bootstrap_decode_envelope(encoded: str) -> dict[str, Any]:
     return validated
 
 
+def _qualification_bootstrap_validate_prefix_for_request(
+    state: Mapping[str, object],
+    request: Mapping[str, Any],
+) -> None:
+    try:
+        current = _qualification_bootstrap_require_state(state)
+    except _QualificationBootstrapLibraryError as exc:
+        raise OutcomeEvidenceRunnerError(
+            "qualification bootstrap state is invalid"
+        ) from exc
+    if (
+        current["consumed"]
+        or current["last_stage_index"] != 3
+        or current["last_stage_name"] != "source_verified"
+    ):
+        raise OutcomeEvidenceRunnerError(
+            "qualification bootstrap request prefix is invalid"
+        )
+    if not isinstance(request, Mapping):
+        raise OutcomeEvidenceRunnerError(
+            "qualification bootstrap request prefix is invalid"
+        )
+    anchors = current["anchors"]
+    runner_sha256 = request.get("implementation_sha256", {}).get(
+        QUALIFICATION_RUNNER_RELATIVE_PATH
+    )
+    if (
+        request.get("bootstrap") != current["paths"]
+        or request.get("qualification_id") != anchors["qualification_id"]
+        or request.get("qualification_root")
+        != current["envelope"]["qualification_root"]
+        or request.get("request_hash") != anchors["request_hash"]
+        or request.get("source_commit") != anchors["source_commit"]
+        or runner_sha256 != anchors["runner_sha256"]
+    ):
+        raise OutcomeEvidenceRunnerError(
+            "qualification bootstrap request anchors mismatch"
+        )
+    expected_envelope = _qualification_bootstrap_envelope(
+        request=request,
+        expected_request_file_sha256=anchors["request_file_sha256"],
+        expected_request_size=anchors["request_size"],
+        review_commit=anchors["review_commit"],
+        runner_sha256=runner_sha256,
+    )
+    if expected_envelope != current["envelope"]:
+        raise OutcomeEvidenceRunnerError(
+            "qualification bootstrap request envelope mismatch"
+        )
+
+
 @dataclass(frozen=True)
 class RegisteredSlotLaunch:
     slot_number: int
@@ -1680,6 +2179,7 @@ def load_qualification_request(
     _expected_review_commit: str | None = None,
     _expected_request_file_sha256: str | None = None,
     _expected_request_size: int | None = None,
+    _validated_context: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     """Strictly replay a canonical request against current source and files."""
 
@@ -1828,8 +2328,9 @@ def load_qualification_request(
             ],
         },
     )
+    review_binding = None
     if _source_mode:
-        _validate_qualification_review_chain(
+        review_binding = _validate_qualification_review_chain(
             request=record,
             request_source_path=bound_request_source_path,
             expected_request_bytes=raw,
@@ -1935,7 +2436,22 @@ def load_qualification_request(
         raise OutcomeEvidenceRunnerError(
             "qualification preexisting file inventory mismatch"
         )
-    return json.loads(_canonical_json(record))
+    validated = json.loads(_canonical_json(record))
+    if _source_mode and _validated_context is not None:
+        if _validated_context:
+            raise OutcomeEvidenceRunnerError(
+                "qualification validated context must start empty"
+            )
+        _validated_context.update(
+            {
+                "registration": registration,
+                "registration_path": resolved_registration_path,
+                "request_source_bytes": raw,
+                "request_source_path": bound_request_source_path,
+                "review_binding": review_binding,
+            }
+        )
+    return validated
 
 
 def load_qualification_request_source(
@@ -1946,6 +2462,7 @@ def load_qualification_request_source(
     expected_review_commit: str,
     expected_request_file_sha256: str,
     expected_request_size: int,
+    _validated_context: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     if not isinstance(expected_request_hash, str) or not _is_lower_hex(
         expected_request_hash,
@@ -1962,6 +2479,7 @@ def load_qualification_request_source(
         _expected_review_commit=expected_review_commit,
         _expected_request_file_sha256=expected_request_file_sha256,
         _expected_request_size=expected_request_size,
+        _validated_context=_validated_context,
     )
 
 
@@ -4743,54 +5261,63 @@ def execute_prelock_qualification(
 ) -> dict[str, Any]:
     """Run one request-bound child through release without study state."""
 
-    if not callable(process_starter):
-        raise OutcomeEvidenceRunnerError("qualification process_starter must be callable")
-    request = load_qualification_request_source(
-        request_path,
-        registration_path=registration_path,
-        expected_request_hash=expected_request_hash,
-        expected_review_commit=expected_review_commit,
-        expected_request_file_sha256=expected_request_file_sha256,
-        expected_request_size=expected_request_size,
+    global _QUALIFICATION_BOOTSTRAP_STATE
+    bootstrap_state = (
+        _QUALIFICATION_BOOTSTRAP_STATE if _QUALIFICATION_CLI_REQUESTED else None
     )
-    if _QUALIFICATION_CLI_REQUESTED:
-        runner_anchor = os.environ.get(QUALIFICATION_RUNNER_SHA256_ENV)
-        expected_runner_anchor = request["implementation_sha256"].get(
-            QUALIFICATION_RUNNER_RELATIVE_PATH
-        )
-        if (
-            not isinstance(expected_runner_anchor, str)
-            or runner_anchor != expected_runner_anchor
-        ):
+    try:
+        if not callable(process_starter):
             raise OutcomeEvidenceRunnerError(
-                "qualification trusted launcher anchor does not match the "
-                "reviewed runner implementation"
+                "qualification process_starter must be callable"
             )
-    request_source_path = _qualification_require_no_follow_path(
-        request["request_source_path"],
-        "request source",
-        expected_kind="file",
-    )
-    request_source_bytes = request_source_path.read_bytes()
-    resolved_registration_path = _qualification_require_no_follow_path(
-        registration_path,
-        "registration",
-        expected_kind="file",
-    )
-    registration = _load_qualification_registration(
-        resolved_registration_path
-    )
-    review_binding = _validate_qualification_review_chain(
-        request=request,
-        request_source_path=request_source_path,
-        expected_request_bytes=request_source_bytes,
-        expected_review_commit=expected_review_commit,
-        expected_request_file_sha256=expected_request_file_sha256,
-        expected_request_size=expected_request_size,
-        registration=registration,
-        registration_path=resolved_registration_path,
-        implementation_sha256=request["implementation_sha256"],
-    )
+        validated_context: dict[str, Any] = {}
+        request = load_qualification_request_source(
+            request_path,
+            registration_path=registration_path,
+            expected_request_hash=expected_request_hash,
+            expected_review_commit=expected_review_commit,
+            expected_request_file_sha256=expected_request_file_sha256,
+            expected_request_size=expected_request_size,
+            _validated_context=validated_context,
+        )
+        if _QUALIFICATION_CLI_REQUESTED:
+            runner_anchor = os.environ.get(QUALIFICATION_RUNNER_SHA256_ENV)
+            expected_runner_anchor = request["implementation_sha256"].get(
+                QUALIFICATION_RUNNER_RELATIVE_PATH
+            )
+            if (
+                not isinstance(expected_runner_anchor, str)
+                or runner_anchor != expected_runner_anchor
+            ):
+                raise OutcomeEvidenceRunnerError(
+                    "qualification trusted launcher anchor does not match the "
+                    "reviewed runner implementation"
+                )
+        registration = validated_context["registration"]
+        review_binding = validated_context["review_binding"]
+        if bootstrap_state is not None:
+            _qualification_bootstrap_validate_prefix_for_request(
+                bootstrap_state,
+                request,
+            )
+            bootstrap_state = _qualification_bootstrap_publish_stage(
+                bootstrap_state,
+                "request_reviewed",
+            )
+            _QUALIFICATION_BOOTSTRAP_STATE = bootstrap_state
+    except BaseException as exc:
+        if bootstrap_state is not None:
+            code = (
+                "request_validation_failed"
+                if isinstance(exc, OutcomeEvidenceRunnerError)
+                else "unexpected_pre_request_failure"
+            )
+            _qualification_bootstrap_publish_failure(
+                bootstrap_state,
+                code,
+                exc,
+            )
+        raise
     active_request_path = Path(request["request_path"])
     started_unix_ns = request["created_unix_ns"]
     process = None
@@ -4804,6 +5331,29 @@ def execute_prelock_qualification(
             request,
             qualification_launch_command,
         )
+        if bootstrap_state is not None:
+            bootstrap_state = _qualification_bootstrap_publish_stage(
+                bootstrap_state,
+                "isolation_verified",
+            )
+            _QUALIFICATION_BOOTSTRAP_STATE = bootstrap_state
+    except BaseException as exc:
+        if bootstrap_state is not None:
+            code = (
+                "prelaunch_isolation_failed"
+                if isinstance(exc, OutcomeEvidenceRunnerError)
+                else "unexpected_pre_request_failure"
+            )
+            _qualification_bootstrap_publish_failure(
+                bootstrap_state,
+                code,
+                exc,
+            )
+        raise
+    if bootstrap_state is not None:
+        # Task 4 owns active-request publication and the bootstrap handoff.
+        raise SystemExit(2)
+    try:
         stage = "publish_request"
         _publish_text_once(
             active_request_path,

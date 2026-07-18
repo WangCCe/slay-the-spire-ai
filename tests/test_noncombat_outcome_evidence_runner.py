@@ -2346,6 +2346,41 @@ def _write_bootstrap_phase(
         write_record(bootstrap["failure_path"], record)
 
 
+def _bootstrap_runtime_state(request, *, stage_count):
+    module = _module()
+    bootstrap = request["bootstrap"]
+    _write_bootstrap_phase(request, stage_count=stage_count)
+    claim = json.loads(Path(bootstrap["claim_path"]).read_text(encoding="ascii"))
+    if stage_count:
+        last = json.loads(
+            Path(bootstrap["stage_paths"][stage_count - 1]["path"]).read_text(
+                encoding="ascii"
+            )
+        )
+    else:
+        last = claim
+    request_bytes = (module._canonical_json(request) + "\n").encode("ascii")
+    envelope = module._qualification_bootstrap_envelope(
+        request=request,
+        expected_request_file_sha256=hashlib.sha256(request_bytes).hexdigest(),
+        expected_request_size=len(request_bytes),
+        review_commit=REVIEW_COMMIT,
+        runner_sha256=request["implementation_sha256"][
+            module.QUALIFICATION_RUNNER_RELATIVE_PATH
+        ],
+    )
+    return {
+        "anchors": claim["anchors"],
+        "claim_hash": claim["record_hash"],
+        "consumed": False,
+        "envelope": envelope,
+        "last_record_hash": last["record_hash"],
+        "last_stage_index": last["stage_index"],
+        "last_stage_name": last["stage_name"],
+        "paths": bootstrap,
+    }
+
+
 def test_qualification_request_round_trips_exact_current_bindings(
     tmp_path,
     monkeypatch,
@@ -3150,6 +3185,396 @@ def test_bootstrap_record_schema_and_self_hash_bytes_are_frozen():
         ("handoff", handoff),
     ):
         assert module._canonical_json(record).encode("ascii") + b"\n" == expected[name]
+
+
+def test_bootstrap_stage_publication_is_immutable_contiguous_and_anchor_stable(
+    tmp_path,
+    monkeypatch,
+):
+    module, _registration_path, _request_path, request = (
+        _qualification_request_fixture(tmp_path, monkeypatch, source_only=True)
+    )
+    state = _bootstrap_runtime_state(request, stage_count=1)
+    original = json.loads(json.dumps(state))
+    states = [state]
+
+    for created_unix_ns, stage_name in enumerate(
+        module.QUALIFICATION_BOOTSTRAP_STAGE_NAMES[1:],
+        start=20,
+    ):
+        states.append(
+            module._qualification_bootstrap_publish_stage(
+                states[-1],
+                stage_name,
+                created_unix_ns=created_unix_ns,
+            )
+        )
+
+    assert state == original
+    assert [item["last_stage_index"] for item in states] == [1, 2, 3, 4, 5]
+    assert [item["last_stage_name"] for item in states] == list(
+        module.QUALIFICATION_BOOTSTRAP_STAGE_NAMES
+    )
+    previous_hash = json.loads(
+        Path(request["bootstrap"]["claim_path"]).read_text(encoding="ascii")
+    )["record_hash"]
+    for stage, expected_state in zip(
+        request["bootstrap"]["stage_paths"],
+        states,
+        strict=True,
+    ):
+        record = json.loads(Path(stage["path"]).read_text(encoding="ascii"))
+        assert record["anchors"] == state["anchors"]
+        assert record["previous_hash"] == previous_hash
+        assert record["record_hash"] == expected_state["last_record_hash"]
+        previous_hash = record["record_hash"]
+    assert not Path(request["bootstrap"]["failure_path"]).exists()
+    assert not Path(request["bootstrap"]["handoff_path"]).exists()
+    assert not Path(request["request_path"]).exists()
+    assert not Path(request["handshake"]["attempt_path"]).exists()
+
+
+def test_bootstrap_controlled_failure_is_sanitized_and_never_overwrites(
+    tmp_path,
+    monkeypatch,
+):
+    module, _registration_path, _request_path, request = (
+        _qualification_request_fixture(tmp_path, monkeypatch, source_only=True)
+    )
+    state = _bootstrap_runtime_state(request, stage_count=2)
+    failure_path = Path(request["bootstrap"]["failure_path"])
+    secret = "SECRET=do-not-publish gameplay=victory"
+    error = OSError(5, secret)
+    error.winerror = 123
+
+    published_hash = module._qualification_bootstrap_publish_failure(
+        state,
+        "source_validation_failed",
+        error,
+    )
+    first_bytes = failure_path.read_bytes()
+    failure = json.loads(first_bytes)
+
+    assert published_hash == failure["record_hash"]
+    assert failure["stage_index"] == 2
+    assert failure["stage_name"] == "runner_entered"
+    assert failure["previous_hash"] == state["last_record_hash"]
+    assert failure["anchors"] == state["anchors"]
+    assert failure["payload"] == {
+        "code": "source_validation_failed",
+        "detail": "reviewed source validation failed",
+        "errno": 5,
+        "exception_type": "OSError",
+        "winerror": 123,
+    }
+    assert secret.encode("ascii") not in first_bytes
+    assert module._qualification_bootstrap_publish_failure(
+        state,
+        "unexpected_pre_request_failure",
+        RuntimeError("SECOND_SECRET"),
+    ) is None
+    assert failure_path.read_bytes() == first_bytes
+
+
+def test_bootstrap_controlled_failure_keeps_partial_entry_consumed(
+    tmp_path,
+    monkeypatch,
+):
+    module, _registration_path, _request_path, request = (
+        _qualification_request_fixture(tmp_path, monkeypatch, source_only=True)
+    )
+    state = _bootstrap_runtime_state(request, stage_count=3)
+    failure_path = Path(request["bootstrap"]["failure_path"])
+    failure_path.write_bytes(b"{")
+
+    assert module._qualification_bootstrap_publish_failure(
+        state,
+        "unexpected_pre_request_failure",
+        RuntimeError("must remain private"),
+    ) is None
+    assert failure_path.read_bytes() == b"{"
+
+
+def test_bootstrap_controlled_failure_maps_unexpected_without_private_detail(
+    tmp_path,
+    monkeypatch,
+):
+    module, _registration_path, _request_path, request = (
+        _qualification_request_fixture(tmp_path, monkeypatch, source_only=True)
+    )
+    state = _bootstrap_runtime_state(request, stage_count=3)
+
+    module._qualification_bootstrap_publish_failure(
+        state,
+        "not-a-public-code",
+        RuntimeError("SECRET unexpected exception detail"),
+    )
+
+    raw = Path(request["bootstrap"]["failure_path"]).read_bytes()
+    failure = json.loads(raw)
+    assert failure["payload"] == {
+        "code": "unexpected_pre_request_failure",
+        "detail": "unexpected pre-request failure",
+        "errno": None,
+        "exception_type": "RuntimeError",
+        "winerror": None,
+    }
+    assert b"SECRET" not in raw
+
+
+def test_pre_request_stage_boundary_runner_entry_failure_links_launcher_stage(
+    tmp_path,
+    monkeypatch,
+    capsys,
+):
+    module, _registration_path, _request_path, request = (
+        _qualification_request_fixture(tmp_path, monkeypatch, source_only=True)
+    )
+    state = _bootstrap_runtime_state(request, stage_count=1)
+    envelope_b64 = module._qualification_bootstrap_encode_envelope(
+        state["envelope"]
+    )
+    token = state["anchors"]["launch_token"]
+    runner_path = Path(module.__file__).resolve()
+    runner_sha256 = hashlib.sha256(runner_path.read_bytes()).hexdigest()
+    qualifier_arguments = (
+        "qualify",
+        "--registration",
+        str((tmp_path / "registration.json").resolve()),
+        "--request",
+        str((tmp_path / "reviewed-request.json").resolve()),
+        "--request-hash",
+        state["anchors"]["request_hash"],
+        "--request-file-sha256",
+        state["anchors"]["request_file_sha256"],
+        "--request-size",
+        str(state["anchors"]["request_size"]),
+        "--review-commit",
+        state["anchors"]["review_commit"],
+    )
+    monkeypatch.setenv(module.QUALIFICATION_RUNNER_SHA256_ENV, runner_sha256)
+    monkeypatch.setenv(module.QUALIFICATION_BOOTSTRAP_ENVELOPE_ENV, envelope_b64)
+    monkeypatch.setenv(module.QUALIFICATION_BOOTSTRAP_LAUNCH_TOKEN_ENV, token)
+    monkeypatch.setattr(
+        module.sys,
+        "orig_argv",
+        [
+            sys.executable,
+            "-I",
+            "-S",
+            "-c",
+            module.QUALIFICATION_TRUSTED_LAUNCHER_CODE,
+            str(runner_path),
+            runner_sha256,
+            envelope_b64,
+            token,
+            *qualifier_arguments,
+        ],
+    )
+    monkeypatch.setattr(
+        module.sys,
+        "argv",
+        [str(runner_path), *qualifier_arguments, "--unexpected"],
+    )
+
+    with pytest.raises(SystemExit) as raised:
+        module._qualification_require_trusted_launcher()
+
+    assert raised.value.code == 2
+    failure = json.loads(
+        Path(request["bootstrap"]["failure_path"]).read_text(encoding="ascii")
+    )
+    assert failure["stage_index"] == 1
+    assert failure["stage_name"] == "launcher_verified"
+    assert failure["payload"]["code"] == "runner_entry_validation_failed"
+    assert not Path(request["bootstrap"]["stage_paths"][1]["path"]).exists()
+    assert not Path(request["request_path"]).exists()
+    assert not Path(request["handshake"]["attempt_path"]).exists()
+    assert capsys.readouterr() == ("", "")
+
+
+def test_pre_request_stage_boundary_source_failure_links_runner_stage(
+    tmp_path,
+    monkeypatch,
+    capsys,
+):
+    module, _registration_path, _request_path, request = (
+        _qualification_request_fixture(tmp_path, monkeypatch, source_only=True)
+    )
+    state = _bootstrap_runtime_state(request, stage_count=2)
+    monkeypatch.setattr(
+        module,
+        "_qualification_bootstrap_validate_source",
+        lambda *_args, **_kwargs: (_ for _ in ()).throw(
+            module._QualificationBootstrapError("tracked bytes drift")
+        ),
+    )
+
+    with pytest.raises(SystemExit) as raised:
+        module._qualification_bootstrap_verify_source(
+            state,
+            module.REPO_ROOT,
+            expected_review_commit=REVIEW_COMMIT,
+        )
+
+    assert raised.value.code == 2
+    failure = json.loads(
+        Path(request["bootstrap"]["failure_path"]).read_text(encoding="ascii")
+    )
+    assert failure["stage_index"] == 2
+    assert failure["stage_name"] == "runner_entered"
+    assert failure["payload"]["code"] == "source_validation_failed"
+    assert not Path(request["bootstrap"]["stage_paths"][2]["path"]).exists()
+    assert not Path(request["request_path"]).exists()
+    assert not Path(request["handshake"]["attempt_path"]).exists()
+    assert capsys.readouterr() == ("", "")
+
+
+@pytest.mark.parametrize(
+    ("boundary", "last_stage", "failure_code"),
+    (
+        ("request", "source_verified", "request_validation_failed"),
+        ("isolation", "request_reviewed", "prelaunch_isolation_failed"),
+    ),
+)
+def test_pre_request_stage_boundary_request_and_isolation_failures(
+    tmp_path,
+    monkeypatch,
+    boundary,
+    last_stage,
+    failure_code,
+    capsys,
+):
+    module, registration_path, request_source_path, request = (
+        _qualification_request_fixture(tmp_path, monkeypatch, source_only=True)
+    )
+    state = _bootstrap_runtime_state(request, stage_count=3)
+    monkeypatch.setattr(module, "_QUALIFICATION_CLI_REQUESTED", True)
+    monkeypatch.setattr(module, "_QUALIFICATION_BOOTSTRAP_STATE", state)
+    monkeypatch.setenv(
+        module.QUALIFICATION_RUNNER_SHA256_ENV,
+        request["implementation_sha256"][module.QUALIFICATION_RUNNER_RELATIVE_PATH],
+    )
+    protected_paths = (
+        Path(request["isolation"]["communication_mod"]["path"]),
+        Path(request["isolation"]["marker"]["path"]),
+        Path(request["isolation"]["runs"]["root"]) / "IRONCLAD" / "100.run",
+        Path(request["isolation"]["checkpoints"]["root"]) / "rl_model_ep1.pth",
+        *(Path(path) for path in request["isolation"]["global_logs"]),
+        Path(registration_path),
+        Path(request["config"]["path"]),
+    )
+    protected_before = {path: path.read_bytes() for path in protected_paths}
+    if boundary == "request":
+        request_source_path.write_bytes(b"{\n")
+    else:
+        run_path = Path(request["isolation"]["runs"]["root"]) / "IRONCLAD" / "100.run"
+        run_path.write_bytes(b'{"drift":true}\n')
+        protected_before[run_path] = run_path.read_bytes()
+
+    with pytest.raises(module.OutcomeEvidenceRunnerError):
+        module.execute_prelock_qualification(
+            registration_path=registration_path,
+            request_path=request_source_path,
+            expected_request_hash=request["request_hash"],
+            **_qualification_review_kwargs(request),
+            process_starter=lambda *_args, **_kwargs: pytest.fail(
+                "pre-request failure started a child"
+            ),
+        )
+
+    failure = json.loads(
+        Path(request["bootstrap"]["failure_path"]).read_text(encoding="ascii")
+    )
+    assert failure["stage_name"] == last_stage
+    assert failure["payload"]["code"] == failure_code
+    assert not Path(request["request_path"]).exists()
+    assert not Path(request["handshake"]["attempt_path"]).exists()
+    assert not Path(request["handshake"]["ready_path"]).exists()
+    assert not Path(request["handshake"]["release_path"]).exists()
+    assert not Path(request["completion_path"]).exists()
+    assert not Path(request["failure_path"]).exists()
+    assert not Path(request["bootstrap"]["handoff_path"]).exists()
+    assert all(not Path(path).exists() for path in request["forbidden_paths"])
+    assert {path: path.read_bytes() for path in protected_paths} == protected_before
+    assert capsys.readouterr() == ("", "")
+
+
+def test_pre_request_stage_boundary_success_stops_after_isolation_stage(
+    tmp_path,
+    monkeypatch,
+    capsys,
+):
+    module, registration_path, request_source_path, request = (
+        _qualification_request_fixture(tmp_path, monkeypatch, source_only=True)
+    )
+    state = _bootstrap_runtime_state(request, stage_count=3)
+    monkeypatch.setattr(module, "_QUALIFICATION_CLI_REQUESTED", True)
+    monkeypatch.setattr(module, "_QUALIFICATION_BOOTSTRAP_STATE", state)
+    monkeypatch.setenv(
+        module.QUALIFICATION_RUNNER_SHA256_ENV,
+        request["implementation_sha256"][module.QUALIFICATION_RUNNER_RELATIVE_PATH],
+    )
+    counts = {
+        "inventory": 0,
+        "isolation": 0,
+        "registration": 0,
+        "review": 0,
+    }
+
+    def count_call(name, function):
+        def counted(*args, **kwargs):
+            counts[name] += 1
+            return function(*args, **kwargs)
+
+        return counted
+
+    for name, function_name in (
+        ("inventory", "_qualification_root_inventory"),
+        ("isolation", "_qualification_observe_isolation"),
+        ("registration", "_load_qualification_registration"),
+        ("review", "_validate_qualification_review_chain"),
+    ):
+        monkeypatch.setattr(
+            module,
+            function_name,
+            count_call(name, getattr(module, function_name)),
+        )
+
+    with pytest.raises(SystemExit) as raised:
+        module.execute_prelock_qualification(
+            registration_path=registration_path,
+            request_path=request_source_path,
+            expected_request_hash=request["request_hash"],
+            **_qualification_review_kwargs(request),
+            process_starter=lambda *_args, **_kwargs: pytest.fail(
+                "Task 3 started a child"
+            ),
+        )
+
+    assert raised.value.code == 2
+    bootstrap = request["bootstrap"]
+    isolation_stage = json.loads(
+        Path(bootstrap["stage_paths"][4]["path"]).read_text(encoding="ascii")
+    )
+    assert isolation_stage["stage_index"] == 5
+    assert isolation_stage["stage_name"] == "isolation_verified"
+    assert not Path(bootstrap["failure_path"]).exists()
+    assert not Path(bootstrap["handoff_path"]).exists()
+    assert not Path(request["request_path"]).exists()
+    assert not Path(request["handshake"]["attempt_path"]).exists()
+    assert not Path(request["handshake"]["ready_path"]).exists()
+    assert not Path(request["handshake"]["release_path"]).exists()
+    assert not Path(request["completion_path"]).exists()
+    assert not Path(request["failure_path"]).exists()
+    assert all(not Path(path).exists() for path in request["forbidden_paths"])
+    assert counts == {
+        "inventory": 1,
+        "isolation": 1,
+        "registration": 1,
+        "review": 1,
+    }
+    assert capsys.readouterr() == ("", "")
 
 
 def test_live_qualification_rejects_v1_request_before_consumption(
