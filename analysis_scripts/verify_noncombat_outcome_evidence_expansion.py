@@ -286,6 +286,7 @@ class _DuplicateJsonKeyError(ValueError):
 class _Checks:
     def __init__(self) -> None:
         self.count = 0
+        self.guarded_root_snapshot: dict[str, Any] | None = None
 
     def require(self, condition: bool, message: str) -> None:
         self.count += 1
@@ -1021,13 +1022,14 @@ def _qualification_verify_bootstrap_prefix(
         expected_kind="directory",
     )
 
+    guarded_snapshot = _qualification_guarded_root_snapshot(qualification_root)
+    checks.guarded_root_snapshot = guarded_snapshot
     observed_metadata: dict[Path, tuple[os.stat_result, bool]] = {}
     raw_by_path: dict[Path, bytes] = {}
-    invalid_reasons: list[str] = []
-    for path, metadata, is_link_or_reparse in _qualification_no_follow_entries(
-        qualification_root
-    ):
-        lexical_path = Path(os.path.abspath(path))
+    invalid_reasons = list(guarded_snapshot["errors"])
+    for lexical_path, snapshot_row in guarded_snapshot["entries"].items():
+        metadata = snapshot_row["metadata"]
+        is_link_or_reparse = snapshot_row["is_link_or_reparse"]
         observed_metadata[lexical_path] = (metadata, is_link_or_reparse)
         expected_lexical = exact_paths.get(os.path.normcase(str(lexical_path)))
         if expected_lexical is not None and str(lexical_path) != expected_lexical:
@@ -1044,16 +1046,9 @@ def _qualification_verify_bootstrap_prefix(
             continue
         if lexical_path not in dynamic_paths and lexical_path not in preexisting_paths:
             invalid_reasons.append(f"unexpected guarded-root entry: {lexical_path}")
-        if lexical_path == request_path:
-            if active_request_bytes is None or len(active_request_bytes) != metadata.st_size:
-                invalid_reasons.append("active request bytes are unavailable")
-            else:
-                raw_by_path[lexical_path] = active_request_bytes
+        raw = snapshot_row["raw"]
+        if raw is None:
             continue
-        raw = _qualification_read_file_bytes(
-            lexical_path,
-            f"guarded-root entry {lexical_path.name}",
-        )
         raw_by_path[lexical_path] = raw
         expected_hash = preexisting_paths.get(lexical_path)
         if expected_hash is not None and hashlib.sha256(raw).hexdigest() != expected_hash:
@@ -1063,6 +1058,18 @@ def _qualification_verify_bootstrap_prefix(
     for path in preexisting_paths:
         if path not in observed_metadata:
             invalid_reasons.append(f"preexisting file is missing: {path}")
+    captured_active_request_bytes = raw_by_path.get(request_path)
+    if active_exists := request_path in observed_metadata:
+        if captured_active_request_bytes is None:
+            invalid_reasons.append("active request bytes are unavailable")
+        elif (
+            active_request_bytes is not None
+            and active_request_bytes != captured_active_request_bytes
+        ):
+            invalid_reasons.append(
+                "active request changed between supplied bytes and guarded snapshot"
+            )
+    active_request_bytes = captured_active_request_bytes
 
     inventory_entries = []
     for path in bootstrap_paths:
@@ -1088,7 +1095,6 @@ def _qualification_verify_bootstrap_prefix(
     }
     bootstrap_exists = any(path in observed_metadata for path in bootstrap_paths)
     control_exists = any(path in observed_metadata for path in lifecycle_paths)
-    active_exists = request_path in observed_metadata
     consumed = bootstrap_exists or control_exists or active_exists or bool(
         invalid_reasons
     )
@@ -1171,6 +1177,10 @@ def _qualification_verify_bootstrap_prefix(
                 raw_by_path[declared[name]],
                 label=name,
             )
+            if stage["pid"] != claim["pid"]:
+                raise OutcomeEvidenceVerificationError(
+                    "qualification bootstrap stage PID differs from claim"
+                )
             if (
                 stage["record_type"] != "stage"
                 or stage["stage_index"] != index + 1
@@ -1201,6 +1211,10 @@ def _qualification_verify_bootstrap_prefix(
             )
             failure_payload = dict(failure["payload"])
             failure_code = failure_payload.get("code")
+            if failure["pid"] != claim["pid"]:
+                raise OutcomeEvidenceVerificationError(
+                    "qualification bootstrap failure PID differs from claim"
+                )
             expected_stage_name = (
                 "claim"
                 if contiguous_count == 0
@@ -1313,6 +1327,17 @@ def _qualification_verify_bootstrap_prefix(
             raw_by_path[declared["handoff"]],
             label="handoff",
         )
+        if handoff["pid"] != claim["pid"]:
+            return result(
+                "sealed_invalid",
+                partial_stage="invalid_bootstrap_prefix",
+                evidence_valid=False,
+                evidence_error=(
+                    "qualification bootstrap handoff PID differs from claim"
+                ),
+                claim_hash=claim["record_hash"],
+                final_stage_hash=final_stage_hash,
+            )
         expected_payload = {
             "active_request_file_sha256": hashlib.sha256(
                 active_request_bytes
@@ -1383,13 +1408,12 @@ def _qualification_no_follow_entries(
                 f"cannot inspect qualification root: {exc}"
             ) from exc
         for child in children:
-            try:
-                metadata = child.stat(follow_symlinks=False)
-            except OSError as exc:
-                raise OutcomeEvidenceVerificationError(
-                    f"cannot inspect qualification artifact {child.path}: {exc}"
-                ) from exc
             path = Path(child.path)
+            metadata = _qualification_lstat(path)
+            if metadata is None:
+                raise OutcomeEvidenceVerificationError(
+                    f"qualification artifact disappeared during root scan: {path}"
+                )
             is_link_or_reparse = _qualification_metadata_is_link_or_reparse(
                 metadata
             )
@@ -1453,6 +1477,126 @@ def _qualification_read_file_bytes(path: Path, label: str) -> bytes:
     ):
         raise OutcomeEvidenceVerificationError(
             f"qualification {label} changed while being read"
+        )
+    return raw
+
+
+def _qualification_snapshot_metadata_matches(
+    expected: os.stat_result,
+    observed: os.stat_result,
+) -> bool:
+    return os.path.samestat(expected, observed) and (
+        expected.st_size,
+        expected.st_mtime_ns,
+        expected.st_ctime_ns,
+        getattr(expected, "st_file_attributes", 0),
+    ) == (
+        observed.st_size,
+        observed.st_mtime_ns,
+        observed.st_ctime_ns,
+        getattr(observed, "st_file_attributes", 0),
+    )
+
+
+def _qualification_snapshot_file_bytes(
+    path: Path,
+    *,
+    expected_metadata: os.stat_result,
+) -> bytes:
+    before = _qualification_lstat(path)
+    if before is None:
+        raise OutcomeEvidenceVerificationError(
+            f"qualification guarded-root entry disappeared before snapshot read: {path}"
+        )
+    if not _qualification_snapshot_metadata_matches(expected_metadata, before):
+        raise OutcomeEvidenceVerificationError(
+            f"qualification guarded-root entry changed before snapshot read: {path}"
+        )
+    raw = _qualification_read_file_bytes(
+        path,
+        f"guarded-root entry {path.name}",
+    )
+    after = _qualification_lstat(path)
+    if after is None:
+        raise OutcomeEvidenceVerificationError(
+            f"qualification guarded-root entry disappeared during snapshot read: {path}"
+        )
+    if not _qualification_snapshot_metadata_matches(expected_metadata, after):
+        raise OutcomeEvidenceVerificationError(
+            f"qualification guarded-root entry changed during snapshot read: {path}"
+        )
+    return raw
+
+
+def _qualification_guarded_root_snapshot(root: Path) -> dict[str, Any]:
+    entries: dict[Path, dict[str, Any]] = {}
+    errors: list[str] = []
+    for path, metadata, is_link_or_reparse in _qualification_no_follow_entries(
+        root
+    ):
+        lexical_path = Path(os.path.abspath(path))
+        raw = None
+        if not is_link_or_reparse and stat.S_ISREG(metadata.st_mode):
+            try:
+                raw = _qualification_snapshot_file_bytes(
+                    lexical_path,
+                    expected_metadata=metadata,
+                )
+            except OutcomeEvidenceVerificationError as exc:
+                errors.append(str(exc))
+        entries[lexical_path] = {
+            "is_link_or_reparse": is_link_or_reparse,
+            "metadata": metadata,
+            "raw": raw,
+        }
+    return {
+        "entries": entries,
+        "errors": errors,
+        "root": Path(os.path.abspath(root)),
+    }
+
+
+def _qualification_snapshot_entry(
+    guarded_snapshot: Mapping[str, Any],
+    path: Path,
+) -> Mapping[str, Any] | None:
+    entries = guarded_snapshot.get("entries")
+    if not isinstance(entries, Mapping):
+        raise OutcomeEvidenceVerificationError(
+            "qualification guarded-root snapshot entries are invalid"
+        )
+    row = entries.get(Path(os.path.abspath(path)))
+    if row is not None and not isinstance(row, Mapping):
+        raise OutcomeEvidenceVerificationError(
+            "qualification guarded-root snapshot row is invalid"
+        )
+    return row
+
+
+def _qualification_snapshot_regular_file_bytes(
+    guarded_snapshot: Mapping[str, Any],
+    path: Path,
+    *,
+    label: str,
+    allow_missing: bool = False,
+) -> bytes | None:
+    row = _qualification_snapshot_entry(guarded_snapshot, path)
+    if row is None:
+        if allow_missing:
+            return None
+        raise OutcomeEvidenceVerificationError(
+            f"qualification {label} is missing from guarded snapshot"
+        )
+    metadata = row.get("metadata")
+    raw = row.get("raw")
+    if (
+        not isinstance(metadata, os.stat_result)
+        or row.get("is_link_or_reparse") is not False
+        or not stat.S_ISREG(metadata.st_mode)
+        or not isinstance(raw, bytes)
+    ):
+        raise OutcomeEvidenceVerificationError(
+            f"qualification {label} is not a stable regular snapshot file"
         )
     return raw
 
@@ -2345,18 +2489,17 @@ def verify_prelock_qualification(
         for name in ("attempt", "ready", "release")
     ) + (completion_path, failure_path)
     if current_v3:
-        active_request_bytes = None
-        if _qualification_path_is_regular_file(request_path):
-            active_request_bytes = _qualification_read_file_bytes(
-                request_path,
-                "active qualification request",
-            )
         bootstrap_verification = _qualification_verify_bootstrap_prefix(
             request,
             review,
-            active_request_bytes=active_request_bytes,
+            active_request_bytes=None,
             checks=checks,
         )
+        guarded_snapshot = checks.guarded_root_snapshot
+        if guarded_snapshot is None:
+            raise OutcomeEvidenceVerificationError(
+                "qualification guarded-root snapshot is unavailable"
+            )
         artifact_inventory = {
             str(qualification_root / row["path"]): {
                 "kind": "file" if row["sha256"] is not None else "other",
@@ -2372,10 +2515,11 @@ def verify_prelock_qualification(
                     request,
                     request_path=request_path,
                     registration=review["registration"],
-                    registration_bytes=review["registration_bytes"],
-                    request_review=review["review_binding"],
-                    checks=checks,
-                )
+                        registration_bytes=review["registration_bytes"],
+                        request_review=review["review_binding"],
+                        checks=checks,
+                        guarded_snapshot=guarded_snapshot,
+                    )
             if result_path is not None:
                 raise OutcomeEvidenceVerificationError(
                     "qualification terminal evidence lacks a complete bootstrap handoff"
@@ -2400,14 +2544,18 @@ def verify_prelock_qualification(
             registration_bytes=review["registration_bytes"],
             request_review=review["review_binding"],
             checks=checks,
+            guarded_snapshot=guarded_snapshot,
         )
         if result_path is not None:
             raise OutcomeEvidenceVerificationError(
                 "qualification terminal-v3 verification is not implemented"
             )
-        if _qualification_path_entry_exists(
-            completion_path
-        ) or _qualification_path_entry_exists(failure_path):
+        if (
+            _qualification_snapshot_entry(guarded_snapshot, completion_path)
+            is not None
+            or _qualification_snapshot_entry(guarded_snapshot, failure_path)
+            is not None
+        ):
             return finish_audit(
                 checks=checks,
                 review_binding=review["review_binding"],
@@ -2426,6 +2574,7 @@ def verify_prelock_qualification(
                 request,
                 context=context,
                 checks=checks,
+                guarded_snapshot=guarded_snapshot,
             )
         except OutcomeEvidenceVerificationError as exc:
             return finish_audit(
@@ -3377,6 +3526,7 @@ def _verify_qualification_request(
     registration_bytes: bytes,
     request_review: Mapping[str, Any],
     checks: _Checks,
+    guarded_snapshot: Mapping[str, Any] | None = None,
 ) -> dict[str, Any]:
     schema_version = request.get("schema_version")
     checks.require(
@@ -3542,21 +3692,40 @@ def _verify_qualification_request(
         set(config_binding) == {"path", "sha256"},
         "qualification config fields mismatch",
     )
-    config_path = _qualification_require_no_follow_path(
-        _qualification_lexical_absolute_path(
-            config_binding.get("path"),
-            "qualification config path",
-        ),
-        "config",
-        expected_kind="file",
+    config_path = _qualification_lexical_absolute_path(
+        config_binding.get("path"),
+        "qualification config path",
     )
-    checks.require(
-        _qualification_path_is_regular_file(config_path)
-        and config_path.is_relative_to(qualification_root)
-        and config_binding.get("sha256") == _file_sha256(config_path),
-        "qualification config binding mismatch",
-    )
-    config = _load_mapping(config_path)
+    if guarded_snapshot is None:
+        config_path = _qualification_require_no_follow_path(
+            config_path,
+            "config",
+            expected_kind="file",
+        )
+        checks.require(
+            _qualification_path_is_regular_file(config_path)
+            and config_path.is_relative_to(qualification_root)
+            and config_binding.get("sha256") == _file_sha256(config_path),
+            "qualification config binding mismatch",
+        )
+        config = _load_mapping(config_path)
+    else:
+        config_raw = _qualification_snapshot_regular_file_bytes(
+            guarded_snapshot,
+            config_path,
+            label="config",
+        )
+        if config_raw is None:
+            raise OutcomeEvidenceVerificationError(
+                "qualification config snapshot is missing"
+            )
+        checks.require(
+            config_path.is_relative_to(qualification_root)
+            and config_binding.get("sha256")
+            == hashlib.sha256(config_raw).hexdigest(),
+            "qualification config binding mismatch",
+        )
+        config = _load_mapping_bytes(config_raw, config_path)
     _verify_qualification_config(
         config,
         config_path=config_path,
@@ -3697,6 +3866,7 @@ def _verify_qualification_request(
     expected_inventory = _qualification_file_inventory(
         qualification_root,
         excluded_paths=excluded_paths,
+        guarded_snapshot=guarded_snapshot,
     )
     checks.require(
         request.get("preexisting_files") == expected_inventory,
@@ -3719,12 +3889,23 @@ def _verify_partial_qualification_prefix(
     *,
     context: Mapping[str, Any],
     checks: _Checks,
+    guarded_snapshot: Mapping[str, Any] | None = None,
 ) -> str:
     completion_path = Path(str(request["completion_path"]))
     failure_path = Path(str(request["failure_path"]))
+    if guarded_snapshot is None:
+        terminal_exists = _qualification_path_entry_exists(
+            completion_path
+        ) or _qualification_path_entry_exists(failure_path)
+    else:
+        terminal_exists = (
+            _qualification_snapshot_entry(guarded_snapshot, completion_path)
+            is not None
+            or _qualification_snapshot_entry(guarded_snapshot, failure_path)
+            is not None
+        )
     checks.require(
-        not _qualification_path_entry_exists(completion_path)
-        and not _qualification_path_entry_exists(failure_path),
+        not terminal_exists,
         "partial qualification has a terminal result",
     )
 
@@ -3738,7 +3919,9 @@ def _verify_partial_qualification_prefix(
     }
     records = {}
     for name, path in paths.items():
-        if _qualification_path_entry_exists(path):
+        if guarded_snapshot is None:
+            if not _qualification_path_entry_exists(path):
+                continue
             checks.require(
                 _qualification_path_is_regular_file(path),
                 f"qualification {name} artifact is not a regular file",
@@ -3747,6 +3930,19 @@ def _verify_partial_qualification_prefix(
                 path,
                 f"qualification {name}",
             )
+        else:
+            raw = _qualification_snapshot_regular_file_bytes(
+                guarded_snapshot,
+                path,
+                label=f"{name} artifact",
+                allow_missing=True,
+            )
+            if raw is not None:
+                records[name] = _load_canonical_handshake_record_bytes(
+                    raw,
+                    path=path,
+                    label=f"qualification {name}",
+                )
     checks.require(
         "ready" not in records or "attempt" in records,
         "qualification ready exists without attempt",
@@ -3761,6 +3957,13 @@ def _verify_partial_qualification_prefix(
     if "attempt" in records:
         synthetic_registration = dict(context["registration"])
         synthetic_registration["study_id"] = request["qualification_id"]
+        config_bytes = None
+        if guarded_snapshot is not None:
+            config_bytes = _qualification_snapshot_regular_file_bytes(
+                guarded_snapshot,
+                Path(str(request["config"]["path"])),
+                label="config",
+            )
         attempt = _verify_handshake_attempt(
             records["attempt"],
             registration=synthetic_registration,
@@ -3777,6 +3980,7 @@ def _verify_partial_qualification_prefix(
             },
             expected_marker_start=request["marker"]["start_count"],
             checks=checks,
+            config_bytes=config_bytes,
         )
     if "ready" in records:
         ready = _verify_handshake_ready(
@@ -4474,14 +4678,29 @@ def _qualification_file_inventory(
     root: Path,
     *,
     excluded_paths: set[Path],
+    guarded_snapshot: Mapping[str, Any] | None = None,
 ) -> dict[str, str]:
     excluded = {
         Path(os.path.abspath(path)) for path in excluded_paths
     }
     inventory = {}
-    for path, metadata, is_link_or_reparse in _qualification_no_follow_entries(
-        root
-    ):
+    if guarded_snapshot is None:
+        rows = _qualification_no_follow_entries(root)
+    else:
+        snapshot_root = guarded_snapshot.get("root")
+        if Path(os.path.abspath(snapshot_root)) != Path(os.path.abspath(root)):
+            raise OutcomeEvidenceVerificationError(
+                "qualification guarded snapshot root mismatch"
+            )
+        rows = [
+            (
+                path,
+                row["metadata"],
+                row["is_link_or_reparse"],
+            )
+            for path, row in guarded_snapshot["entries"].items()
+        ]
+    for path, metadata, is_link_or_reparse in rows:
         lexical_path = Path(os.path.abspath(path))
         if is_link_or_reparse:
             raise OutcomeEvidenceVerificationError(
@@ -4490,7 +4709,19 @@ def _qualification_file_inventory(
             )
         if lexical_path in excluded or not stat.S_ISREG(metadata.st_mode):
             continue
-        inventory[str(lexical_path)] = _file_sha256(path)
+        if guarded_snapshot is None:
+            inventory[str(lexical_path)] = _file_sha256(path)
+        else:
+            raw = _qualification_snapshot_regular_file_bytes(
+                guarded_snapshot,
+                lexical_path,
+                label=f"preexisting file {lexical_path}",
+            )
+            if raw is None:
+                raise OutcomeEvidenceVerificationError(
+                    f"qualification preexisting snapshot is missing: {lexical_path}"
+                )
+            inventory[str(lexical_path)] = hashlib.sha256(raw).hexdigest()
     return inventory
 
 
@@ -5063,6 +5294,7 @@ def _verify_handshake_attempt(
     rules: Mapping[str, Any],
     expected_marker_start: int | None,
     checks: _Checks,
+    config_bytes: bytes | None = None,
 ) -> dict[str, Any]:
     slot_number = _exact_int(slot.get("slot_number"), "slot_number")
     created_unix_ns = _exact_int(
@@ -5083,12 +5315,15 @@ def _verify_handshake_attempt(
             f"slot {slot_number} handshake marker boundary mismatch",
         )
     config_path = Path(str(slot["config_path"])).resolve()
-    try:
-        config_sha256 = _file_sha256(config_path)
-    except OSError as exc:
-        raise OutcomeEvidenceVerificationError(
-            f"slot {slot_number} handshake config is unreadable: {exc}"
-        ) from exc
+    if config_bytes is None:
+        try:
+            config_sha256 = _file_sha256(config_path)
+        except OSError as exc:
+            raise OutcomeEvidenceVerificationError(
+                f"slot {slot_number} handshake config is unreadable: {exc}"
+            ) from exc
+    else:
+        config_sha256 = hashlib.sha256(config_bytes).hexdigest()
     token = _derive_handshake_slot_token(
         registration_hash=str(registration["registration_hash"]),
         run_lock_hash=str(run_lock["run_lock_hash"]),
@@ -5238,6 +5473,19 @@ def _load_canonical_handshake_record(
         raise OutcomeEvidenceVerificationError(
             f"{label} is missing or unreadable: {exc}"
         ) from exc
+    return _load_canonical_handshake_record_bytes(
+        data,
+        path=path,
+        label=label,
+    )
+
+
+def _load_canonical_handshake_record_bytes(
+    data: bytes,
+    *,
+    path: Path,
+    label: str,
+) -> dict[str, Any]:
     value = _load_mapping_bytes(data, path)
     if data != (_canonical_json(value) + "\n").encode("utf-8"):
         raise OutcomeEvidenceVerificationError(f"{label} is not canonical JSON")
