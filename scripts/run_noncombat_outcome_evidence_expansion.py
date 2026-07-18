@@ -242,13 +242,19 @@ _qualification_bootstrap_library_publish_bytes_once = (
     ]
 )
 
+_QUALIFICATION_TRUSTED_LAUNCHER_TEMPLATE = (
+    "_qualification_payload_b64={payload!r};"
+    "exec(compile(__import__('base64').b64decode(_qualification_payload_b64),"
+    "'<qualification-launcher>','exec'))"
+)
 _QUALIFICATION_TRUSTED_LAUNCHER_PAYLOAD = (
     "import os,sys\n"
     "sys.stdout=open(os.devnull,'w')\n"
     "sys.stderr=open(os.devnull,'w')\n"
     + _QUALIFICATION_BOOTSTRAP_LIBRARY_SOURCE
     + "\nimport base64\n"
-    "def reject(*_args): raise SystemExit(2)\n"
+    + f"_qualification_trusted_launcher_template={_QUALIFICATION_TRUSTED_LAUNCHER_TEMPLATE!r}\n"
+    + "def reject(*_args): raise SystemExit(2)\n"
     "def unique(pairs):\n"
     " result={}\n"
     " for key,value in pairs:\n"
@@ -282,6 +288,7 @@ _QUALIFICATION_TRUSTED_LAUNCHER_PAYLOAD = (
     " claim=_qualification_bootstrap_record(record_type='claim',anchors=anchors,created_unix_ns=time.time_ns(),pid=os.getpid(),previous_hash=None,stage_index=0,stage_name='claim',payload={})\n"
     " try: _qualification_bootstrap_publish_record_once(expected_bootstrap['claim_path'],claim)\n"
     " except BaseException: reject()\n"
+    " if len(sys.orig_argv)<5 or tuple(sys.orig_argv[1:4])!=('-I','-S','-c') or sys.orig_argv[4]!=_qualification_trusted_launcher_template.format(payload=_qualification_payload_b64): reject()\n"
     " if len(sys.argv)!=18: reject()\n"
     " if not _qualification_bootstrap_is_lower_hex(expected,64) or expected!=envelope['runner_sha256']: reject()\n"
     " try: source=_qualification_bootstrap_read_bytes_no_follow(runner)\n"
@@ -311,10 +318,8 @@ _QUALIFICATION_TRUSTED_LAUNCHER_PAYLOAD = (
 _QUALIFICATION_TRUSTED_LAUNCHER_PAYLOAD_B64 = base64.b64encode(
     _QUALIFICATION_TRUSTED_LAUNCHER_PAYLOAD.encode("utf-8")
 ).decode("ascii")
-QUALIFICATION_TRUSTED_LAUNCHER_CODE = (
-    "exec(compile(__import__('base64').b64decode('"
-    + _QUALIFICATION_TRUSTED_LAUNCHER_PAYLOAD_B64
-    + "'),'<qualification-launcher>','exec'))"
+QUALIFICATION_TRUSTED_LAUNCHER_CODE = _QUALIFICATION_TRUSTED_LAUNCHER_TEMPLATE.format(
+    payload=_QUALIFICATION_TRUSTED_LAUNCHER_PAYLOAD_B64
 )
 
 _QUALIFICATION_CLI_REQUESTED = (

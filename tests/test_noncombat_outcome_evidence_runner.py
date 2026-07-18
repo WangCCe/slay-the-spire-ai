@@ -974,14 +974,7 @@ def test_trusted_qualification_launcher_post_claim_rejection_consumes_identity(
     assert all(not Path(stage["path"]).exists() for stage in bootstrap["stage_paths"])
 
 
-def test_site_enabled_v3_launcher_claims_before_runner_entry_rejection(tmp_path):
-    fixture = _bootstrap_launcher_fixture(tmp_path)
-    command = [
-        fixture["command"][0],
-        fixture["command"][1],
-        *fixture["command"][3:],
-    ]
-
+def _assert_launcher_vector_claim_only_rejection(tmp_path, fixture, command):
     first = subprocess.run(
         command,
         cwd=tmp_path,
@@ -992,14 +985,17 @@ def test_site_enabled_v3_launcher_claims_before_runner_entry_rejection(tmp_path)
 
     bootstrap = fixture["envelope"]["bootstrap"]
     claim_path = Path(bootstrap["claim_path"])
-    launcher_stage_path = Path(bootstrap["stage_paths"][0]["path"])
     assert first.returncode == 2
     assert first.stdout == b""
     assert first.stderr == b""
+    assert claim_path.is_file()
     claim_bytes = claim_path.read_bytes()
-    launcher_stage_bytes = launcher_stage_path.read_bytes()
+    claim = json.loads(claim_bytes)
+    assert claim["record_type"] == "claim"
+    assert claim["anchors"]["launch_token"] == fixture["command"][8]
     assert not fixture["marker_path"].exists()
-    assert not Path(bootstrap["stage_paths"][1]["path"]).exists()
+    assert not Path(bootstrap["failure_path"]).exists()
+    assert all(not Path(stage["path"]).exists() for stage in bootstrap["stage_paths"])
 
     second = subprocess.run(
         command,
@@ -1013,8 +1009,30 @@ def test_site_enabled_v3_launcher_claims_before_runner_entry_rejection(tmp_path)
     assert second.stdout == b""
     assert second.stderr == b""
     assert claim_path.read_bytes() == claim_bytes
-    assert launcher_stage_path.read_bytes() == launcher_stage_bytes
-    assert not Path(bootstrap["stage_paths"][1]["path"]).exists()
+    assert not fixture["marker_path"].exists()
+    assert not Path(bootstrap["failure_path"]).exists()
+    assert all(not Path(stage["path"]).exists() for stage in bootstrap["stage_paths"])
+
+
+def test_site_enabled_v3_launcher_claims_only_before_vector_rejection(tmp_path):
+    fixture = _bootstrap_launcher_fixture(tmp_path)
+    command = [
+        fixture["command"][0],
+        fixture["command"][1],
+        *fixture["command"][3:],
+    ]
+
+    _assert_launcher_vector_claim_only_rejection(tmp_path, fixture, command)
+
+
+def test_modified_trusted_launcher_code_claims_only_before_identity_rejection(
+    tmp_path,
+):
+    fixture = _bootstrap_launcher_fixture(tmp_path)
+    command = list(fixture["command"])
+    command[4] += ";pass"
+
+    _assert_launcher_vector_claim_only_rejection(tmp_path, fixture, command)
 
 
 def test_trusted_qualification_launcher_survives_communicationmod_split(
