@@ -1689,7 +1689,50 @@ class OutcomeEvidenceRunnerError(RuntimeError):
     """Raised when a registered launch or ledger transition is invalid."""
 
 
-_QUALIFICATION_ACTIVE_PUBLICATION_LATCHES: set[tuple[str, str, str]] = set()
+_QUALIFICATION_ACTIVE_PUBLICATION_LATCHES: dict[
+    tuple[str, str], object
+] = {}
+
+
+def _qualification_bootstrap_publication_identity(
+    state: Mapping[str, object],
+) -> tuple[str, str]:
+    base_fields = {
+        "anchors",
+        "claim_hash",
+        "consumed",
+        "envelope",
+        "last_record_hash",
+        "last_stage_index",
+        "last_stage_name",
+        "paths",
+    }
+    try:
+        supplied = dict(state)
+        current = _qualification_bootstrap_require_state(
+            {field: supplied[field] for field in base_fields}
+        )
+        anchors = dict(current["anchors"])
+        identity = (anchors["launch_token"], current["claim_hash"])
+    except (
+        KeyError,
+        TypeError,
+        ValueError,
+        _QualificationBootstrapLibraryError,
+    ) as exc:
+        raise OutcomeEvidenceRunnerError(
+            "qualification bootstrap publication identity is invalid"
+        ) from exc
+    if any(
+        not isinstance(value, str)
+        or len(value) != _SHA256_LENGTH
+        or any(character not in "0123456789abcdef" for character in value)
+        for value in identity
+    ):
+        raise OutcomeEvidenceRunnerError(
+            "qualification bootstrap publication identity is invalid"
+        )
+    return identity
 
 
 class _QualificationBootstrapPublicationHistory:
@@ -5664,6 +5707,30 @@ def execute_prelock_qualification(
             "current v3 qualification requires trusted in-memory bootstrap state"
         )
     bootstrap_state = _QUALIFICATION_BOOTSTRAP_STATE
+    publication_identity = _qualification_bootstrap_publication_identity(
+        bootstrap_state
+    )
+    publication_owner = object()
+    existing_owner = _QUALIFICATION_ACTIVE_PUBLICATION_LATCHES.get(
+        publication_identity
+    )
+    if existing_owner is not None:
+        raise OutcomeEvidenceRunnerError(
+            "qualification bootstrap lifecycle phase mismatch: "
+            "active request publication already attempted"
+        )
+
+    def bind_publication_owner() -> None:
+        owner = _QUALIFICATION_ACTIVE_PUBLICATION_LATCHES.setdefault(
+            publication_identity,
+            publication_owner,
+        )
+        if owner is not publication_owner:
+            raise OutcomeEvidenceRunnerError(
+                "qualification bootstrap lifecycle phase mismatch: "
+                "active request publication already attempted"
+            )
+
     prefix_ready_for_active_request = False
     try:
         if not callable(process_starter):
@@ -5768,19 +5835,10 @@ def execute_prelock_qualification(
                 exc,
             )
         raise
-    bootstrap_inventory = _qualification_bootstrap_inventory(
+    _qualification_bootstrap_inventory(
         bootstrap_state,
         include_handoff=False,
     )
-    publication_identity = (
-        bootstrap_inventory["launch_token"],
-        bootstrap_inventory["claim_hash"],
-        bootstrap_inventory["final_stage_hash"],
-    )
-    if publication_identity in _QUALIFICATION_ACTIVE_PUBLICATION_LATCHES:
-        raise OutcomeEvidenceRunnerError(
-            "qualification active request publication already attempted"
-        )
     active_request_bytes = validated_context["request_source_bytes"]
     if not isinstance(active_request_bytes, bytes):
         raise OutcomeEvidenceRunnerError(
@@ -5792,7 +5850,7 @@ def execute_prelock_qualification(
     def observe_publication_phase(phase: str) -> None:
         publication_history.observe(phase)
         if publication_history.latch_required:
-            _QUALIFICATION_ACTIVE_PUBLICATION_LATCHES.add(publication_identity)
+            bind_publication_owner()
 
     try:
         _qualification_bootstrap_publish_bytes_once(
@@ -5813,12 +5871,13 @@ def execute_prelock_qualification(
                 exc,
             )
             raise
-        _QUALIFICATION_ACTIVE_PUBLICATION_LATCHES.add(publication_identity)
+        bind_publication_owner()
         if not isinstance(exc, Exception):
             raise
         raise OutcomeEvidenceRunnerError(
             "qualification active_request_partial publication failure"
         ) from exc
+    bind_publication_owner()
     request_consumed = True
     if _qualification_read_file_bytes(
         active_request_path,

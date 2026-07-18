@@ -4222,6 +4222,159 @@ def test_active_request_indeterminate_failure_latches_second_invocation(
     assert not Path(request["failure_path"]).exists()
 
 
+def test_latched_second_invocation_rejects_before_isolation_drift_failure(
+    tmp_path,
+    monkeypatch,
+):
+    module, registration_path, request_source_path, request = (
+        _trusted_qualification_lifecycle_fixture(tmp_path, monkeypatch)
+    )
+    active_request_path = Path(request["request_path"])
+    publish_bytes = module._qualification_bootstrap_publish_bytes_once
+    publication_calls = []
+    starter_calls = []
+
+    def fail_after_create_attempted(path_text, raw, *, phase_callback=None):
+        if Path(path_text) == active_request_path:
+            publication_calls.append(path_text)
+            assert phase_callback is not None
+            phase_callback("pre_create")
+            phase_callback("create_attempted")
+            raise module.OutcomeEvidenceRunnerError(
+                "fixed create-attempted publication failure"
+            )
+        return publish_bytes(
+            path_text,
+            raw,
+            phase_callback=phase_callback,
+        )
+
+    monkeypatch.setattr(
+        module,
+        "_qualification_bootstrap_publish_bytes_once",
+        fail_after_create_attempted,
+    )
+
+    def execute():
+        return module.execute_prelock_qualification(
+            registration_path=registration_path,
+            request_path=request_source_path,
+            expected_request_hash=request["request_hash"],
+            **_qualification_review_kwargs(request),
+            process_starter=lambda *_args, **_kwargs: starter_calls.append(
+                "start"
+            ),
+        )
+
+    with pytest.raises(
+        module.OutcomeEvidenceRunnerError,
+        match="active_request_partial",
+    ):
+        execute()
+    prefix_bytes = _qualification_bootstrap_prefix_bytes(request)
+    Path(request["isolation"]["communication_mod"]["path"]).write_bytes(
+        b"verbose=false\ncommand=drifted-agent\nrunAtGameStart=true\n"
+    )
+
+    with pytest.raises(
+        module.OutcomeEvidenceRunnerError,
+        match="publication already attempted",
+    ):
+        execute()
+
+    assert publication_calls == [str(active_request_path)]
+    assert _qualification_bootstrap_prefix_bytes(request) == prefix_bytes
+    assert starter_calls == []
+    assert not active_request_path.exists()
+    assert not Path(request["bootstrap"]["failure_path"]).exists()
+    assert not Path(request["bootstrap"]["handoff_path"]).exists()
+    assert not Path(request["handshake"]["attempt_path"]).exists()
+    assert not Path(request["completion_path"]).exists()
+    assert not Path(request["failure_path"]).exists()
+
+
+def test_latched_bootstrap_identity_does_not_block_new_identity(
+    tmp_path,
+    monkeypatch,
+):
+    first_root = tmp_path / "first"
+    first_root.mkdir()
+    module, first_registration, first_source, first_request = (
+        _trusted_qualification_lifecycle_fixture(first_root, monkeypatch)
+    )
+    first_active_path = Path(first_request["request_path"])
+    publish_bytes = module._qualification_bootstrap_publish_bytes_once
+    first_publication_calls = []
+
+    def latch_first_identity(path_text, raw, *, phase_callback=None):
+        if Path(path_text) == first_active_path:
+            first_publication_calls.append(path_text)
+            assert phase_callback is not None
+            phase_callback("pre_create")
+            phase_callback("create_attempted")
+            raise module.OutcomeEvidenceRunnerError(
+                "fixed first-identity publication failure"
+            )
+        return publish_bytes(
+            path_text,
+            raw,
+            phase_callback=phase_callback,
+        )
+
+    monkeypatch.setattr(
+        module,
+        "_qualification_bootstrap_publish_bytes_once",
+        latch_first_identity,
+    )
+    with pytest.raises(
+        module.OutcomeEvidenceRunnerError,
+        match="active_request_partial",
+    ):
+        module.execute_prelock_qualification(
+            registration_path=first_registration,
+            request_path=first_source,
+            expected_request_hash=first_request["request_hash"],
+            **_qualification_review_kwargs(first_request),
+            process_starter=lambda *_args, **_kwargs: pytest.fail(
+                "first identity started a child"
+            ),
+        )
+
+    second_root = tmp_path / "second"
+    second_root.mkdir()
+    module, second_registration, second_source, second_request = (
+        _trusted_qualification_lifecycle_fixture(second_root, monkeypatch)
+    )
+    child = _FakeHandshakeChild(pid=432)
+    starter_calls = []
+
+    def process_starter(_command, environment):
+        starter_calls.append(child.pid)
+        _publish_ready_from_environment(environment, child_pid=child.pid)
+        return child
+
+    timestamps = iter(range(950, 990))
+    result = module.execute_prelock_qualification(
+        registration_path=second_registration,
+        request_path=second_source,
+        expected_request_hash=second_request["request_hash"],
+        **_qualification_review_kwargs(second_request),
+        process_starter=process_starter,
+        time_ns=lambda: next(timestamps),
+    )
+
+    assert result["status"] == "passed"
+    assert first_publication_calls == [str(first_active_path)]
+    assert starter_calls == [child.pid]
+    assert not first_active_path.exists()
+    assert not Path(first_request["bootstrap"]["failure_path"]).exists()
+    assert not Path(first_request["bootstrap"]["handoff_path"]).exists()
+    assert not Path(first_request["handshake"]["attempt_path"]).exists()
+    assert Path(second_request["bootstrap"]["handoff_path"]).is_file()
+    assert Path(second_request["handshake"]["attempt_path"]).is_file()
+    assert Path(second_request["completion_path"]).is_file()
+
+
 def test_bootstrap_handoff_requires_stage_five_and_exact_active_request(
     tmp_path,
     monkeypatch,
