@@ -9,14 +9,15 @@ The candidate study identity is fixed as:
 - Study ID: `noncombat-outcome-evidence-expansion-20260716-v2`
 - Registration: `reports/noncombat_outcome_evidence_expansion_20260716_v2_registration.json`
 - Artifact root: `D:\SteamLibrary\steamapps\common\SlayTheSpire\noncombat_outcome_evidence_expansion_20260716_v2`
-- Prepared active qualification root: `D:\SteamLibrary\steamapps\common\SlayTheSpire\noncombat_outcome_evidence_expansion_20260716_v2_qualification_r6` (canonical static config only; never launched or consumed)
+- Retired r6 qualification root: `D:\SteamLibrary\steamapps\common\SlayTheSpire\noncombat_outcome_evidence_expansion_20260716_v2_qualification_r6` (static config only after one real 120-second pre-request launcher timeout; no active request or terminal)
 - Prepared request source: `reports/noncombat_outcome_evidence_expansion_20260716_v2_r6_qualification_request.json`
+- R6 outcome report: `reports/noncombat_outcome_evidence_expansion_20260716_v2_r6_qualification_outcome.md`
 - R6 source snapshot S: `2936c547bd7917fdbbc487470326716129e3fbe2`
 - Prepared request-v2 self-hash: `fc5332ffca8b00a1e5132047d07538825369f187db030d9e080a91d37fa8496c`
 - Prepared request-v2 file SHA-256: `28c174d6fba875ba110b107c92da5d522664ead81d9bf5c0db71db6fc3748b69`
 - Prepared request-v2 size: `8886`
 - Prepared request-v2 isolation baseline hash: `a37a8e64fff42339b9d13bcede2dba5370d678c9e08b74d1e31107ccb4d7aed4`
-- Prepared r6 CommunicationMod baseline: SHA-256 `a404525790c925423d6298b639322b370ccf37414f9808362bd24a8dc9feb202`, size 535, explicit `maxInitializationTimeout=120`
+- Request-bound r6 CommunicationMod baseline: SHA-256 `a404525790c925423d6298b639322b370ccf37414f9808362bd24a8dc9feb202`, size 535, explicit `maxInitializationTimeout=120`
 - Retired r5 qualification root: `D:\SteamLibrary\steamapps\common\SlayTheSpire\noncombat_outcome_evidence_expansion_20260716_v2_qualification_r5` (static config only after one real pre-request launcher timeout; no active request or terminal)
 - R5 request-v2 self-hash: `b80b5311018c6c39de6df55c8e1d9090826e07bbd606711b4d0c4d68b4d1cfce`
 - R5 request-v2 file SHA-256: `40e978059c31f90c2da52435d50193deea95b1f3f19c28a865ef96f80c20ed26`
@@ -39,14 +40,14 @@ The candidate study identity is fixed as:
 - Obsolete prep-only request self-hash: `f21313b80fedfccdea76c0e69d3d3d44f06289ba033159537d73f0202f3c039e`
 - Obsolete prep-only request file SHA-256: `1e04b2a378e434c16f45cdb8a389dd527d2419ae6625d6a141e1a9fb0be4792c`
 - Obsolete prep-only request size: `5996`
-- Direct-child review commit R: unset until the seven-path r6 amendment is committed; its full value must be pinned externally
+- Direct-child review commit R: `9542af3aae8f93fa29eeaeefabcc5a1860a0107a`
 - Seed base: `2026071600`
 
 The registered study root remains absent. The r4 root was created only with its canonical static config; the obsolete request was never committed as R or copied into the root, and no active request, attempt, child, handshake, or terminal exists there. Independent review found that its v1 request/result contract did not machine-bind broad isolation, so r4 is permanently non-launchable and non-authorizing. The r1, r2, and r3 qualification roots remain immutable failures: r1 stopped on an external log-sharing failure, r2 exposed the old 30-second cold-start implementation defect, and r3 preserved valid attempt/ready evidence but no release.
 
 The separate `bind-qualification-isolation-evidence` repair remains frozen at `22cfd8b0c235af51b12911c0cb949f7e28a31ce6`. Its r5 direct-child review commit `2936c547bd7917fdbbc487470326716129e3fbe2` passed the source-only independent verifier, after which one real ModTheSpire launch was attempted. CommunicationMod killed the external process before the qualifier published its active request because the file omitted `maxInitializationTimeout`, so the mod applied its 10-second default while the bound Git/isolation preflight required about 17 seconds. R5 produced no active request, attempt, ready, release, terminal, marker, run, checkpoint, log, study-root, run-lock, or ledger change; its root still contains only the 949-byte static config. The original 505-byte CommunicationMod baseline was restored exactly and r5 is retired without retry.
 
-The previously absent r6 root now contains only its 949-byte canonical static config. Its request v2 binds source snapshot S `2936c547bd7917fdbbc487470326716129e3fbe2`, the unchanged registration and implementation map, and a deliberate 535-byte CommunicationMod baseline that differs from the original only by explicit `maxInitializationTimeout=120`. The request exists only as an inert review source in the repository; it has not been copied to the active root or consumed. Live qualification remains blocked until the exact seven-path r6 amendment is committed as direct-child R, independently reviewed, and launched from tracked-clean `HEAD == R` with all external anchors.
+The previously absent r6 root still contains only its 949-byte canonical static config. Its request v2 binds source snapshot S `2936c547bd7917fdbbc487470326716129e3fbe2`, the unchanged registration and implementation map, and a deliberate 535-byte CommunicationMod baseline that differs from the original only by explicit `maxInitializationTimeout=120`. Direct-child R `9542af3aae8f93fa29eeaeefabcc5a1860a0107a` passed 95 source-only verifier checks and was pushed before one real launch. CommunicationMod parsed the reviewed 20-token command and explicit timeout, waited 120 seconds without receiving `ready`, and killed the silent external process before the active request was published. R6 produced no active request, attempt, ready, release, terminal, marker, run, checkpoint, global-log, study-root, run-lock, or ledger change. After Java stopped, the exact 535-byte baseline and zero-drift request-bound isolation were restored. R6 is retired without retry, and there is no active replacement candidate.
 
 ## Goals / Non-Goals
 
@@ -83,7 +84,7 @@ Alternative considered: retain the old registration and override only the r3 tim
 
 The regenerated v2 registration will use the fixed identity above, schema v2, the Windows production Python, the existing 24-by-25 schedule, `card_reward=300` basis points, `shop=1000` basis points, two alternative attempts per run, deterministic Current, the existing thresholds and estimator calibration, readiness 120, and release 10. Slot IDs and seeds derive only from the fixed study ID and seed base.
 
-The r6 qualification is the only active prepared replacement candidate. Any later run lock, ledger, configs, traces, manifests, pool, estimates, and closeout will reference only the final v2 candidate regenerated after the isolation repair. The three preserved failed qualification roots, prepared r4 root, and retired r5 root are pre-lock operational history and can never enter the v2 pool or satisfy a launch gate. The immutable v1 study root may be verified read-only as a historical compatibility check, but no v1 trajectory or decision may enter the v2 pool.
+There is no active prepared replacement candidate. Any later run lock, ledger, configs, traces, manifests, pool, estimates, and closeout may reference only a future candidate reviewed after the pre-request observability gap is handled explicitly. The three protocol-era failed qualification roots, obsolete r4 root, and retired r5/r6 roots are pre-lock operational history and can never enter the v2 pool or satisfy a launch gate. The immutable v1 study root may be verified read-only as a historical compatibility check, but no v1 trajectory or decision may enter the v2 pool.
 
 Alternative considered: retain the unlaunched v1 slots or combine structurally valid v1 trajectories with v2. Rejected because the v1 global stop permanently invalidated continuation and all-slot attribution under that registration.
 
@@ -91,15 +92,15 @@ Alternative considered: retain the unlaunched v1 slots or combine structurally v
 
 Qualification happens before `start` creates a run lock or ledger:
 
-1. Preserve and replay r1, r2, and r3 from their immutable roots, preserve the prepared r4 config plus obsolete request anchors, and preserve the retired static-only r5 root plus its source-only verifier and pre-request timeout evidence. Require the registered study root to remain absent.
-2. Replay the completed `bind-qualification-isolation-evidence` repair and unchanged registration-bound implementation map at r6 source snapshot S `2936c547bd7917fdbbc487470326716129e3fbe2`.
-3. Use the previously absent r6 root and canonical request v2. Require the request-bound CommunicationMod baseline to contain exact `maxInitializationTimeout=120`, preserve the pre-r6 505-byte baseline externally, and commit only the declared seven-path inert allowlist as direct-child R; R must contain no runtime terminal, active request, implementation, registration, or executable change.
-4. From tracked-clean `HEAD == R`, point CommunicationMod only at the fixed stdlib `python -I -S -c` trusted launcher and invoke `qualify` with externally preserved S/R/request anchors. The bootstrap must prove the exact chain and unchanged registration/implementation bytes before publishing an active request or starting a child.
-5. Let the tracked qualifier own request publication, the single child, attempt/ready/release, exact CommunicationMod restoration, terminal isolation recollection, child-death proof, and exclusive completion/failure sealing. No external monitor may own or race the protocol.
-6. Preserve terminal self-hash, file SHA-256, and size externally, then run the independent verifier with exact S/R/request/terminal anchors. The verifier must independently recollect the restored resources and reject any drift, schema mismatch, or live/ambiguous child PID.
-7. A passing v2 completion and independent attestation authorize only a later `start` decision after exact replay. Any failure or partial prefix makes the replacement root immutable, forbids retry and start, and requires another explicit amendment.
+1. Preserve and replay r1, r2, and r3 from their immutable roots, preserve the obsolete r4 preparation, and preserve retired r5/r6 plus their exact source/request/operational evidence. Require the registered study root to remain absent.
+2. Preserve the completed `bind-qualification-isolation-evidence` repair, unchanged registration-bound implementation map, r6 source snapshot S `2936c547bd7917fdbbc487470326716129e3fbe2`, and review commit R `9542af3aae8f93fa29eeaeefabcc5a1860a0107a` as historical bindings only.
+3. Complete a separate reviewed change that makes the lifecycle between trusted launcher entry and active request publication durably diagnosable, or approve an equivalent evidence-backed mechanism. Do not use timeout tuning or an r6 retry as diagnosis.
+4. Only after that gate, prepare a previously absent replacement root and canonical request with regenerated source and implementation bindings, an exact CommunicationMod baseline, and a new direct-child review commit.
+5. From tracked-clean reviewed source, let the tracked qualifier own request publication, the single child, attempt/ready/release, exact CommunicationMod restoration, terminal isolation recollection, child-death proof, and exclusive completion/failure sealing. No external monitor may own or race the protocol.
+6. Preserve terminal self-hash, file SHA-256, and size externally, then run the independent verifier with exact source/review/request/terminal anchors. The verifier must independently recollect the restored resources and reject any drift, schema mismatch, or live/ambiguous child PID.
+7. A passing replacement completion and independent attestation authorize only a later `start` decision after exact replay. Any failure or partial prefix makes that root immutable, forbids retry and start, and requires another explicit amendment.
 
-All qualification attempts are operational evidence, not registered slots or outcome samples. The r1/r2/r3 roots are immutable failures, r4 is an unconsumed preparation that can never become active, and r5 is a retired pre-request launcher timeout that cannot be retried. A future r6 terminal remains immutable during any run-lock window. None weakens the real per-slot preclaim handshake, which remains the authority for slot launch.
+All qualification attempts are operational evidence, not registered slots or outcome samples. The r1/r2/r3 roots are immutable failures, r4 is an unconsumed preparation that can never become active, and r5/r6 are retired pre-request launcher timeouts that cannot be retried. R6 has no terminal to reinterpret. None weakens the real per-slot preclaim handshake, which remains the authority for slot launch.
 
 Alternative considered: launch the already prepared r4 request and rely on external snapshots. Rejected because the request/result/verifier chain cannot independently prove broad isolation. External operator observations may supplement diagnostics but cannot substitute for request-bound, terminal-bound, independently recollected evidence.
 
@@ -127,6 +128,7 @@ After the run-lock window closes, the repository may record the closeout, update
 - [Windows may transiently deny live log reads while the child opens or rotates its handler] -> Do not read live logs in the qualification protocol. The owner-controlled qualifier uses only canonical control files, inherited process state, and bounded source/isolation checks; inspect logs only after the child is stopped.
 - [CommunicationMod rewrites Java properties with a timestamp] -> Bind semantic properties during execution, preserve observed runtime bytes, and require byte-for-byte restoration of the pre-study baseline before exit.
 - [CommunicationMod defaults external-process initialization to 10 seconds when `maxInitializationTimeout` is absent] -> Bind explicit value 120 in the r6 baseline and launch configuration, require semantic equality before request publication, and restore the exact 535-byte r6 baseline after qualification. Preserve the original 505-byte configuration for final post-study restoration.
+- [A silent process can stop before active request publication and leave no independently replayable internal stage] -> Retire r6 at the externally supported boundary; require a separate observability change or equivalent reviewed evidence before preparing another identity, without retrying r6 or treating offline timing as live proof.
 - [Pre-start validation can fail after applying the study CommunicationMod command] -> Preserve the baseline bytes, restore and recheck them on every failure before study-artifact publication, and treat any published registered study artifact as the irreversible boundary.
 
 ## Migration Plan
@@ -135,8 +137,8 @@ After the run-lock window closes, the repository may record the closeout, update
 2. Generate the fixed v2 registration and review artifact, add exact-byte regressions if needed, and run focused/full offline verification.
 3. Preserve and replay r1/r2/r3, preserve the r4 config/request preparation as obsolete, and preserve r5 as a static-only pre-request launcher-timeout identity with exact baseline restoration and no retry.
 4. Preserve the completed request-bound isolation repair and unchanged registration at r6 S, prepare the previously absent r6 root, bind explicit CommunicationMod initialization timeout 120 in canonical request v2, and commit exactly the declared inert paths as direct-child R.
-5. From tracked-clean `HEAD == R`, pin the full R and request anchors externally, replay the 24-launch dry-run, invoke the tracked qualifier exactly once through real CommunicationMod, and independently replay its terminal without changing tracked source.
-6. Replay all historical roots plus the successful replacement terminal and independent attestation; require the exact qualified HEAD and all static/live bindings; only then create the run lock and ledger without an intervening commit.
+5. From tracked-clean `HEAD == R`, pin the full R and request anchors externally, replay the 24-launch dry-run, invoke r6 exactly once through real CommunicationMod, preserve its static-only pre-request timeout boundary, restore exact isolation, and retire r6 without retry.
+6. Complete a separate pre-request observability repair or equivalent explicit amendment, then prepare and qualify a previously absent replacement identity. Replay all historical roots plus that successful terminal and independent attestation; require the exact qualified HEAD and all static/live bindings; only then create the run lock and ledger without an intervening commit.
 7. Execute slots 01-24 in order with blinded structural monitoring and no tracked edits; stop permanently on a global integrity condition.
 8. Finalize exactly once, run the standalone verifier, restore and compare live isolation state, then record the deterministic closeout.
 9. After the lock window closes, run focused and full Windows pytest, strict OpenSpec validation, byte/whitespace checks, independent review, and archive the change.
@@ -145,4 +147,4 @@ Before `start`, rollback means preserving every qualification identity, request/
 
 ## Open Questions
 
-The study identity, schedule, rates, thresholds, target, estimator, three preserved failed qualification identities, obsolete r4 boundary, retired r5 boundary, 120/10 handshake bounds, stop behavior, and authority limits remain fixed. The r6 root, S, request-v2 anchors, and explicit CommunicationMod initialization timeout are fixed above. Only the full direct-child R and later terminal/attestation anchors remain unset; no live authority exists before they are independently pinned and replayed.
+The study identity, schedule, rates, thresholds, target, estimator, three protocol-era failed qualification identities, obsolete r4 boundary, retired r5/r6 boundaries, 120/10 handshake bounds, stop behavior, and authority limits remain fixed. The r6 root, S, R, request-v2 anchors, explicit CommunicationMod initialization timeout, and no-terminal outcome are fixed above. No active replacement, terminal, attestation, or live authority exists. The next open question is how to make the pre-request lifecycle independently diagnosable without weakening one-shot or isolation guarantees; that work belongs to a separate reviewed change.

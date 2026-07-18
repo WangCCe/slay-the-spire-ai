@@ -54,6 +54,13 @@ The system SHALL keep a newly registered v2 outcome-evidence study independent f
 - **AND** the launch configuration SHALL preserve that exact non-command property while replacing only `command` with the trusted qualifier launcher
 - **AND** the qualifier SHALL restore the exact 535-byte r6 baseline before terminal sealing, while the original 505-byte configuration remains preserved for final post-study restoration
 
+#### Scenario: The r6 launcher times out before active request publication
+- **WHEN** one real r6 ModTheSpire invocation uses reviewed R `9542af3aae8f93fa29eeaeefabcc5a1860a0107a`, the exact 20-token trusted launcher, and explicit `maxInitializationTimeout=120`, but CommunicationMod kills the silent external process before the active request is published
+- **THEN** r6 SHALL remain a static-config-only, unconsumed pre-request operational identity with no attempt, ready, release, completion, failure, study artifact, marker, run, checkpoint, global-log, run-lock, ledger, collection, OPE, training, or policy authority
+- **AND** the system SHALL preserve only the independently supported boundary that the process stopped between launch and active request publication; offline timing SHALL NOT be reinterpreted as proof of the unobserved live stage
+- **AND** the exact 535-byte CommunicationMod baseline SHALL be restored, all request-bound isolation resources SHALL match, the game SHALL be stopped, and r6 SHALL NOT be retried
+- **AND** no replacement identity SHALL be prepared until a separate reviewed change makes the pre-request stage durably diagnosable or another explicit amendment supplies equivalent evidence
+
 #### Scenario: A qualification exposes an implementation defect
 - **WHEN** a failed pre-lock qualification proves that a registration-bound implementation or handshake contract is defective before any registered study artifact exists
 - **THEN** the failed qualification root and superseded registration bytes SHALL remain immutable pre-lock evidence
@@ -66,7 +73,7 @@ The system SHALL require a source-bound, outcome-free launch qualification befor
 
 #### Scenario: Candidate qualifies for launch
 - **WHEN** the canonical v2 registration and registration-bound implementation are ready for pre-collection review
-- **THEN** qualification SHALL replay the canonical registration bytes regenerated after the isolation repair and all preserved historical identities through retired r5, verify all 24 dry-run launches, and complete one real-child no-action CommunicationMod attempt/ready/release/zero-exit lifecycle in the reviewed r6 qualification root outside the registered study root
+- **THEN** qualification SHALL replay the canonical registration bytes regenerated after the isolation repair and all preserved historical identities through retired r6, verify all 24 dry-run launches, and complete one real-child no-action CommunicationMod attempt/ready/release/zero-exit lifecycle in a separately reviewed, previously absent replacement qualification root outside the registered study root
 - **AND** the committed request SHALL bind source snapshot S, exact registration and implementation hashes, and one sorted inert review allowlist
 - **AND** launch SHALL prove `HEAD == R`, supply the full R plus request self-hash/file-SHA/size as external anchors, and use the fixed stdlib `python -I -S -c` trusted launcher before the qualifier publishes any active request, attempt, or child process
 - **AND** the registration and attempt SHALL bind the fixed 120-second readiness deadline and unchanged 10-second release deadline
