@@ -41,6 +41,19 @@ The system SHALL keep a newly registered v2 outcome-evidence study independent f
 - **AND** canonical request v2 SHALL bind S, the unchanged registration, all registration-bound implementation hashes, CommunicationMod bytes and semantic properties, marker bytes and line count, recursive run inventory, registered checkpoint-pattern inventory, global logs, and the exact seven-path inert review allowlist
 - **AND** the request source SHALL remain unconsumed and no active request, child, handshake, terminal, study artifact, run lock, ledger, collection, OPE, training, or policy authority SHALL exist before tracked-clean `HEAD == R` passes independent replay
 
+#### Scenario: The r5 launcher exits before active request publication
+- **WHEN** one real r5 ModTheSpire invocation applies CommunicationMod's implicit 10-second external-process initialization timeout and kills the qualifier before its longer reviewed preflight publishes the active request
+- **THEN** r5 SHALL remain a static-config-only, unconsumed pre-request operational identity with no attempt, ready, release, completion, failure, study artifact, marker, run, checkpoint, global-log, run-lock, ledger, collection, OPE, training, or policy authority
+- **AND** the exact pre-r5 CommunicationMod bytes SHALL be restored and all request-bound isolation resources SHALL match before the game process is stopped
+- **AND** r5 SHALL NOT be retried or reinterpreted as a protocol failure terminal
+
+#### Scenario: The r6 replacement binds an explicit CommunicationMod initialization timeout
+- **WHEN** the previously absent r6 root and request v2 are prepared at source snapshot S `2936c547bd7917fdbbc487470326716129e3fbe2`
+- **THEN** the r6 root SHALL contain only its canonical static config before review commit R
+- **AND** the request-bound 535-byte CommunicationMod baseline SHALL equal the preserved 505-byte pre-r6 baseline plus exactly `maxInitializationTimeout=120`
+- **AND** the launch configuration SHALL preserve that exact non-command property while replacing only `command` with the trusted qualifier launcher
+- **AND** the qualifier SHALL restore the exact 535-byte r6 baseline before terminal sealing, while the original 505-byte configuration remains preserved for final post-study restoration
+
 #### Scenario: A qualification exposes an implementation defect
 - **WHEN** a failed pre-lock qualification proves that a registration-bound implementation or handshake contract is defective before any registered study artifact exists
 - **THEN** the failed qualification root and superseded registration bytes SHALL remain immutable pre-lock evidence
@@ -53,7 +66,7 @@ The system SHALL require a source-bound, outcome-free launch qualification befor
 
 #### Scenario: Candidate qualifies for launch
 - **WHEN** the canonical v2 registration and registration-bound implementation are ready for pre-collection review
-- **THEN** qualification SHALL replay the canonical registration bytes regenerated after the isolation repair and all preserved historical identities, verify all 24 dry-run launches, and complete one real-child no-action CommunicationMod attempt/ready/release/zero-exit lifecycle in the reviewed r5 qualification root outside the registered study root
+- **THEN** qualification SHALL replay the canonical registration bytes regenerated after the isolation repair and all preserved historical identities through retired r5, verify all 24 dry-run launches, and complete one real-child no-action CommunicationMod attempt/ready/release/zero-exit lifecycle in the reviewed r6 qualification root outside the registered study root
 - **AND** the committed request SHALL bind source snapshot S, exact registration and implementation hashes, and one sorted inert review allowlist
 - **AND** launch SHALL prove `HEAD == R`, supply the full R plus request self-hash/file-SHA/size as external anchors, and use the fixed stdlib `python -I -S -c` trusted launcher before the qualifier publishes any active request, attempt, or child process
 - **AND** the registration and attempt SHALL bind the fixed 120-second readiness deadline and unchanged 10-second release deadline
