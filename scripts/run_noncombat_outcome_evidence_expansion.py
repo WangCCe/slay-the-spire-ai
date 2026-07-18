@@ -3983,6 +3983,262 @@ def _load_qualification_bootstrap_record(
     return rebuilt
 
 
+def _qualification_bootstrap_inventory(
+    state: Mapping[str, object],
+    *,
+    include_handoff: bool,
+) -> dict[str, Any]:
+    """Reread and bind one exact ordered bootstrap prefix."""
+
+    base_fields = {
+        "anchors",
+        "claim_hash",
+        "consumed",
+        "envelope",
+        "last_record_hash",
+        "last_stage_index",
+        "last_stage_name",
+        "paths",
+    }
+    try:
+        supplied = dict(state)
+        current = _qualification_bootstrap_require_state(
+            {field: supplied[field] for field in base_fields}
+        )
+    except (KeyError, TypeError, ValueError, _QualificationBootstrapLibraryError) as exc:
+        raise OutcomeEvidenceRunnerError(
+            "qualification bootstrap inventory state is invalid"
+        ) from exc
+    handoff_fields = {
+        "active_request_file_sha256",
+        "active_request_size",
+        "final_stage_hash",
+        "handoff_hash",
+        "launch_token",
+        "request_hash",
+    }
+    expected_fields = base_fields | (handoff_fields if include_handoff else set())
+    if set(supplied) != expected_fields:
+        raise OutcomeEvidenceRunnerError(
+            "qualification bootstrap inventory state fields mismatch"
+        )
+    if (
+        current["last_stage_index"] != len(QUALIFICATION_BOOTSTRAP_STAGE_NAMES)
+        or current["last_stage_name"] != QUALIFICATION_BOOTSTRAP_STAGE_NAMES[-1]
+    ):
+        raise OutcomeEvidenceRunnerError(
+            "qualification bootstrap inventory prefix is incomplete"
+        )
+    if current["paths"] != current["envelope"].get("bootstrap"):
+        raise OutcomeEvidenceRunnerError(
+            "qualification bootstrap inventory paths mismatch"
+        )
+    _validate_qualification_bootstrap_lifecycle(
+        current["paths"],
+        source_mode=not include_handoff,
+    )
+
+    bootstrap = current["paths"]
+    ordered_paths = (
+        Path(bootstrap["claim_path"]),
+        *(Path(stage["path"]) for stage in bootstrap["stage_paths"]),
+    )
+    records = [
+        _load_qualification_bootstrap_record(path, path.name)
+        for path in ordered_paths
+    ]
+    claim = records[0]
+    stages = records[1:]
+    if (
+        claim["record_type"] != "claim"
+        or claim["stage_index"] != 0
+        or claim["stage_name"] != "claim"
+        or claim["previous_hash"] is not None
+        or claim["payload"] != {}
+        or claim["anchors"] != current["anchors"]
+        or claim["record_hash"] != current["claim_hash"]
+    ):
+        raise OutcomeEvidenceRunnerError(
+            "qualification bootstrap inventory claim mismatch"
+        )
+    previous_hash = claim["record_hash"]
+    for expected, record in zip(
+        bootstrap["stage_paths"],
+        stages,
+        strict=True,
+    ):
+        if (
+            record["record_type"] != "stage"
+            or record["stage_index"] != expected["index"]
+            or record["stage_name"] != expected["name"]
+            or record["previous_hash"] != previous_hash
+            or record["payload"] != {}
+            or record["anchors"] != current["anchors"]
+        ):
+            raise OutcomeEvidenceRunnerError(
+                "qualification bootstrap inventory stage chain mismatch"
+            )
+        previous_hash = record["record_hash"]
+    if previous_hash != current["last_record_hash"]:
+        raise OutcomeEvidenceRunnerError(
+            "qualification bootstrap inventory final stage mismatch"
+        )
+
+    if include_handoff:
+        handoff_path = Path(bootstrap["handoff_path"])
+        handoff = _load_qualification_bootstrap_record(
+            handoff_path,
+            "handoff",
+        )
+        expected_payload = {
+            "active_request_file_sha256": supplied[
+                "active_request_file_sha256"
+            ],
+            "active_request_size": supplied["active_request_size"],
+            "claim_hash": current["claim_hash"],
+            "final_stage_hash": supplied["final_stage_hash"],
+            "request_hash": supplied["request_hash"],
+        }
+        if (
+            handoff["record_type"] != "handoff"
+            or handoff["stage_index"] != 6
+            or handoff["stage_name"] != "active_request_handoff"
+            or handoff["previous_hash"] != previous_hash
+            or handoff["anchors"] != current["anchors"]
+            or handoff["payload"] != expected_payload
+            or supplied["final_stage_hash"] != previous_hash
+            or supplied["handoff_hash"] != handoff["record_hash"]
+            or supplied["launch_token"] != current["anchors"]["launch_token"]
+        ):
+            raise OutcomeEvidenceRunnerError(
+                "qualification bootstrap inventory handoff mismatch"
+            )
+        ordered_paths = (*ordered_paths, handoff_path)
+        records.append(handoff)
+
+    inventory = []
+    for path, record in zip(ordered_paths, records, strict=True):
+        raw = _qualification_bootstrap_record_bytes(record)
+        inventory.append(
+            {
+                "path": path.name,
+                "sha256": hashlib.sha256(raw).hexdigest(),
+                "size": len(raw),
+            }
+        )
+    return {
+        "claim_hash": current["claim_hash"],
+        "failure_hash": None,
+        "final_stage_hash": previous_hash,
+        "handoff_hash": supplied.get("handoff_hash"),
+        "inventory": inventory,
+        "launch_token": current["anchors"]["launch_token"],
+        "schema_version": QUALIFICATION_BOOTSTRAP_EVIDENCE_SCHEMA_VERSION,
+    }
+
+
+def _qualification_bootstrap_publish_handoff(
+    state: Mapping[str, object],
+    active_request_bytes: bytes,
+) -> dict[str, object]:
+    """Publish one request-bound handoff after exact active bytes exist."""
+
+    try:
+        current = _qualification_bootstrap_require_state(state)
+    except _QualificationBootstrapLibraryError as exc:
+        raise OutcomeEvidenceRunnerError(
+            "qualification bootstrap handoff state is invalid"
+        ) from exc
+    if current["consumed"]:
+        raise OutcomeEvidenceRunnerError(
+            "qualification bootstrap handoff state is consumed"
+        )
+    _qualification_bootstrap_inventory(current, include_handoff=False)
+    if not isinstance(active_request_bytes, bytes) or not active_request_bytes:
+        raise OutcomeEvidenceRunnerError(
+            "qualification bootstrap active request bytes are invalid"
+        )
+    try:
+        request = json.loads(
+            active_request_bytes.decode("ascii"),
+            object_pairs_hook=_reject_duplicate_keys,
+            parse_constant=_reject_json_constant,
+        )
+    except (UnicodeError, ValueError, json.JSONDecodeError) as exc:
+        raise OutcomeEvidenceRunnerError(
+            "qualification bootstrap active request bytes are invalid"
+        ) from exc
+    if (
+        not isinstance(request, Mapping)
+        or active_request_bytes
+        != (_canonical_json(request) + "\n").encode("ascii")
+        or request.get("bootstrap") != current["paths"]
+        or request.get("request_hash") != current["anchors"]["request_hash"]
+        or request.get("request_hash") != _self_hash(request, "request_hash")
+    ):
+        raise OutcomeEvidenceRunnerError(
+            "qualification bootstrap active request bytes mismatch"
+        )
+    active_request_path = _resolved_absolute_path(
+        request.get("request_path"),
+        "qualification bootstrap active request path",
+    )
+    expected_active_path = Path(current["paths"]["claim_path"]).parent / (
+        "qualification-request.json"
+    )
+    if active_request_path != expected_active_path:
+        raise OutcomeEvidenceRunnerError(
+            "qualification bootstrap active request path mismatch"
+        )
+    observed = _qualification_read_file_bytes(
+        active_request_path,
+        "bootstrap active request",
+    )
+    request_file_sha256 = hashlib.sha256(active_request_bytes).hexdigest()
+    request_size = len(active_request_bytes)
+    if (
+        observed != active_request_bytes
+        or request_file_sha256 != current["anchors"]["request_file_sha256"]
+        or request_size != current["anchors"]["request_size"]
+    ):
+        raise OutcomeEvidenceRunnerError(
+            "qualification bootstrap active request binding mismatch"
+        )
+    handoff = _qualification_bootstrap_record(
+        anchors=current["anchors"],
+        created_unix_ns=time.time_ns(),
+        payload={
+            "active_request_file_sha256": request_file_sha256,
+            "active_request_size": request_size,
+            "claim_hash": current["claim_hash"],
+            "final_stage_hash": current["last_record_hash"],
+            "request_hash": request["request_hash"],
+        },
+        pid=os.getpid(),
+        previous_hash=current["last_record_hash"],
+        record_type="handoff",
+        stage_index=6,
+        stage_name="active_request_handoff",
+    )
+    _qualification_bootstrap_publish_record_once(
+        Path(current["paths"]["handoff_path"]),
+        handoff,
+    )
+    transitioned = dict(current)
+    transitioned.update(
+        {
+            "active_request_file_sha256": request_file_sha256,
+            "active_request_size": request_size,
+            "consumed": True,
+            "final_stage_hash": current["last_record_hash"],
+            "handoff_hash": handoff["record_hash"],
+            "launch_token": current["anchors"]["launch_token"],
+            "request_hash": request["request_hash"],
+        }
+    )
+    return transitioned
+
+
 def _validate_qualification_bootstrap_active_chain(
     request: Mapping[str, Any],
     request_bytes: bytes,
@@ -3990,7 +4246,7 @@ def _validate_qualification_bootstrap_active_chain(
     expected_review_commit: str | None,
     expected_request_file_sha256: str | None,
     expected_request_size: int | None,
-) -> None:
+) -> dict[str, object]:
     bootstrap = request["bootstrap"]
     claim = _load_qualification_bootstrap_record(
         Path(bootstrap["claim_path"]),
@@ -4103,6 +4359,22 @@ def _validate_qualification_bootstrap_active_chain(
         raise OutcomeEvidenceRunnerError(
             "qualification bootstrap handoff payload or chain mismatch"
         )
+    return {
+        "active_request_file_sha256": request_file_sha256,
+        "active_request_size": request_size,
+        "anchors": expected_anchors,
+        "claim_hash": claim["record_hash"],
+        "consumed": True,
+        "envelope": envelope,
+        "final_stage_hash": previous_hash,
+        "handoff_hash": handoff["record_hash"],
+        "last_record_hash": previous_hash,
+        "last_stage_index": len(QUALIFICATION_BOOTSTRAP_STAGE_NAMES),
+        "last_stage_name": QUALIFICATION_BOOTSTRAP_STAGE_NAMES[-1],
+        "launch_token": expected_anchors["launch_token"],
+        "paths": bootstrap,
+        "request_hash": request["request_hash"],
+    }
 
 
 def _qualification_root_inventory(
@@ -5036,11 +5308,29 @@ def _build_qualification_review_binding(
     request_source_path: Path,
     request_source_relative: str,
     request_bytes: bytes,
+    bootstrap: Mapping[str, Any] | None = None,
 ) -> dict[str, Any]:
     file_sha256 = hashlib.sha256(request_bytes).hexdigest()
     implementation_map_sha256 = hashlib.sha256(
         _canonical_json(request["implementation_sha256"]).encode("utf-8")
     ).hexdigest()
+    if bootstrap is None and (
+        _qualification_path_entry_exists(Path(request["request_path"]))
+        and _qualification_path_entry_exists(
+            Path(request["bootstrap"]["handoff_path"])
+        )
+    ):
+        bootstrap_state = _validate_qualification_bootstrap_active_chain(
+            request,
+            request_bytes,
+            expected_review_commit=review_commit,
+            expected_request_file_sha256=file_sha256,
+            expected_request_size=len(request_bytes),
+        )
+        bootstrap = _qualification_bootstrap_inventory(
+            bootstrap_state,
+            include_handoff=True,
+        )
     record = {
         "active_request": {
             "file_sha256": file_sha256,
@@ -5063,11 +5353,29 @@ def _build_qualification_review_binding(
         "schema_version": QUALIFICATION_REVIEW_BINDING_SCHEMA_VERSION,
         "source_commit": request["source_commit"],
     }
+    if bootstrap is not None:
+        record["bootstrap"] = _validate_qualification_bootstrap_summary(
+            bootstrap
+        )
     record["review_binding_hash"] = _self_hash(
         record,
         "review_binding_hash",
     )
     return json.loads(_canonical_json(record))
+
+
+def _qualification_review_binding_with_bootstrap(
+    review_binding: Mapping[str, Any],
+    bootstrap: Mapping[str, Any],
+) -> dict[str, Any]:
+    record = dict(review_binding)
+    record["bootstrap"] = _validate_qualification_bootstrap_summary(bootstrap)
+    record["review_binding_hash"] = None
+    record["review_binding_hash"] = _self_hash(
+        record,
+        "review_binding_hash",
+    )
+    return _validate_qualification_review_binding(record)
 
 
 def _validate_qualification_live_review_boundaries(
@@ -5320,16 +5628,20 @@ def execute_prelock_qualification(
             _QUALIFICATION_BOOTSTRAP_STATE = bootstrap_state
     except BaseException as exc:
         if bootstrap_state is not None:
-            code = (
-                "request_validation_failed"
-                if isinstance(exc, OutcomeEvidenceRunnerError)
-                else "unexpected_pre_request_failure"
-            )
-            _qualification_bootstrap_publish_failure(
-                bootstrap_state,
-                code,
-                exc,
-            )
+            active_request_path = Path(
+                bootstrap_state["paths"]["claim_path"]
+            ).parent / "qualification-request.json"
+            if not _qualification_path_entry_exists(active_request_path):
+                code = (
+                    "request_validation_failed"
+                    if isinstance(exc, OutcomeEvidenceRunnerError)
+                    else "unexpected_pre_request_failure"
+                )
+                _qualification_bootstrap_publish_failure(
+                    bootstrap_state,
+                    code,
+                    exc,
+                )
         raise
     active_request_path = Path(request["request_path"])
     started_unix_ns = request["created_unix_ns"]
@@ -5364,24 +5676,90 @@ def execute_prelock_qualification(
             )
         raise
     if bootstrap_state is not None:
-        # Task 4 owns active-request publication and the bootstrap handoff.
-        raise SystemExit(2)
-    try:
+        _qualification_bootstrap_inventory(
+            bootstrap_state,
+            include_handoff=False,
+        )
+        active_request_bytes = validated_context["request_source_bytes"]
+        if not isinstance(active_request_bytes, bytes):
+            raise OutcomeEvidenceRunnerError(
+                "qualification reviewed request bytes are invalid"
+            )
         stage = "publish_request"
-        _publish_text_once(
-            active_request_path,
-            _canonical_json(request) + "\n",
-            "qualification request",
+        _qualification_bootstrap_publish_bytes_once(
+            str(active_request_path),
+            active_request_bytes,
         )
         request_consumed = True
-        request = load_qualification_request(
+        if _qualification_read_file_bytes(
             active_request_path,
-            registration_path=registration_path,
-            _expected_request_hash=expected_request_hash,
-            _expected_review_commit=expected_review_commit,
-            _expected_request_file_sha256=expected_request_file_sha256,
-            _expected_request_size=expected_request_size,
+            "bootstrap active request",
+        ) != active_request_bytes:
+            raise OutcomeEvidenceRunnerError(
+                "qualification bootstrap active request changed after publication"
+            )
+        stage = "publish_bootstrap_handoff"
+        bootstrap_state = _qualification_bootstrap_publish_handoff(
+            bootstrap_state,
+            active_request_bytes,
         )
+        _QUALIFICATION_BOOTSTRAP_STATE = bootstrap_state
+        stage = "validate_bootstrap_handoff"
+        validated_bootstrap_state = (
+            _validate_qualification_bootstrap_active_chain(
+                request,
+                active_request_bytes,
+                expected_review_commit=expected_review_commit,
+                expected_request_file_sha256=expected_request_file_sha256,
+                expected_request_size=expected_request_size,
+            )
+        )
+        bootstrap_summary = _qualification_bootstrap_inventory(
+            validated_bootstrap_state,
+            include_handoff=True,
+        )
+        review_binding = _qualification_review_binding_with_bootstrap(
+            review_binding,
+            bootstrap_summary,
+        )
+    try:
+        if bootstrap_state is None:
+            stage = "publish_request"
+            _publish_text_once(
+                active_request_path,
+                _canonical_json(request) + "\n",
+                "qualification request",
+            )
+            request_consumed = True
+            request = load_qualification_request(
+                active_request_path,
+                registration_path=registration_path,
+                _expected_request_hash=expected_request_hash,
+                _expected_review_commit=expected_review_commit,
+                _expected_request_file_sha256=expected_request_file_sha256,
+                _expected_request_size=expected_request_size,
+            )
+            active_request_bytes = _qualification_read_file_bytes(
+                active_request_path,
+                "active request",
+            )
+            active_bootstrap_state = (
+                _validate_qualification_bootstrap_active_chain(
+                    request,
+                    active_request_bytes,
+                    expected_review_commit=expected_review_commit,
+                    expected_request_file_sha256=expected_request_file_sha256,
+                    expected_request_size=expected_request_size,
+                )
+            )
+            bootstrap_summary = _qualification_bootstrap_inventory(
+                active_bootstrap_state,
+                include_handoff=True,
+            )
+            review_binding = _qualification_review_binding_with_bootstrap(
+                review_binding,
+                bootstrap_summary,
+            )
         handshake = request["handshake"]
         paths = HandshakePaths(
             attempt=Path(handshake["attempt_path"]),
@@ -5652,6 +6030,7 @@ def _build_qualification_result(
             "study_start": False,
             "training": False,
         },
+        "bootstrap": dict(review_binding["bootstrap"]),
         "child_command": list(request["child_command"]),
         "config": dict(request["config"]),
         "created_unix_ns": started_unix_ns,
@@ -5800,9 +6179,102 @@ def _validate_qualification_result_isolation(value: Any) -> dict[str, Any]:
     return json.loads(_canonical_json(record))
 
 
+def _validate_qualification_bootstrap_summary(value: Any) -> dict[str, Any]:
+    expected_fields = {
+        "claim_hash",
+        "failure_hash",
+        "final_stage_hash",
+        "handoff_hash",
+        "inventory",
+        "launch_token",
+        "schema_version",
+    }
+    if not isinstance(value, Mapping) or set(value) != expected_fields:
+        raise OutcomeEvidenceRunnerError(
+            "qualification bootstrap summary fields mismatch"
+        )
+    if value["schema_version"] != QUALIFICATION_BOOTSTRAP_EVIDENCE_SCHEMA_VERSION:
+        raise OutcomeEvidenceRunnerError(
+            "qualification bootstrap summary schema mismatch"
+        )
+    if value["failure_hash"] is not None:
+        raise OutcomeEvidenceRunnerError(
+            "qualification bootstrap summary cannot bind a failure"
+        )
+    for field in (
+        "claim_hash",
+        "final_stage_hash",
+        "handoff_hash",
+        "launch_token",
+    ):
+        if not isinstance(value[field], str) or not _is_lower_hex(
+            value[field],
+            _SHA256_LENGTH,
+        ):
+            raise OutcomeEvidenceRunnerError(
+                f"qualification bootstrap summary {field} is invalid"
+            )
+    inventory = value["inventory"]
+    if (
+        not isinstance(inventory, list)
+        or len(inventory) != len(QUALIFICATION_BOOTSTRAP_STAGE_NAMES) + 2
+    ):
+        raise OutcomeEvidenceRunnerError(
+            "qualification bootstrap summary inventory is invalid"
+        )
+    names = []
+    for row in inventory:
+        if not isinstance(row, Mapping) or set(row) != {
+            "path",
+            "sha256",
+            "size",
+        }:
+            raise OutcomeEvidenceRunnerError(
+                "qualification bootstrap summary inventory row is invalid"
+            )
+        path = row["path"]
+        if (
+            not isinstance(path, str)
+            or not path
+            or Path(path).name != path
+            or "/" in path
+            or "\\" in path
+            or not isinstance(row["sha256"], str)
+            or not _is_lower_hex(row["sha256"], _SHA256_LENGTH)
+            or type(row["size"]) is not int
+            or row["size"] <= 0
+        ):
+            raise OutcomeEvidenceRunnerError(
+                "qualification bootstrap summary inventory row is invalid"
+            )
+        names.append(path)
+    if len(names) != len(set(names)):
+        raise OutcomeEvidenceRunnerError(
+            "qualification bootstrap summary inventory paths repeat"
+        )
+    expected_names = [
+        "qualification-bootstrap-claim.json",
+        *(
+            f"qualification-bootstrap-stage-{index:02d}-"
+            f"{name.replace('_', '-')}.json"
+            for index, name in enumerate(
+                QUALIFICATION_BOOTSTRAP_STAGE_NAMES,
+                start=1,
+            )
+        ),
+        "qualification-bootstrap-handoff.json",
+    ]
+    if names != expected_names:
+        raise OutcomeEvidenceRunnerError(
+            "qualification bootstrap summary inventory order mismatch"
+        )
+    return json.loads(_canonical_json(value))
+
+
 def _validate_qualification_result(record: Mapping[str, Any]) -> dict[str, Any]:
     expected_fields = {
         "authority",
+        "bootstrap",
         "child_command",
         "config",
         "created_unix_ns",
@@ -5841,7 +6313,14 @@ def _validate_qualification_result(record: Mapping[str, Any]) -> dict[str, Any]:
         raise OutcomeEvidenceRunnerError("qualification result hash is invalid")
     if supplied_hash != _self_hash(record, "result_hash"):
         raise OutcomeEvidenceRunnerError("qualification result hash mismatch")
-    _validate_qualification_review_binding(record["review_binding"])
+    bootstrap = _validate_qualification_bootstrap_summary(record["bootstrap"])
+    review_binding = _validate_qualification_review_binding(
+        record["review_binding"]
+    )
+    if review_binding["bootstrap"] != bootstrap:
+        raise OutcomeEvidenceRunnerError(
+            "qualification result bootstrap review binding mismatch"
+        )
     isolation = _validate_qualification_result_isolation(record["isolation"])
     authority = record["authority"]
     expected_authority_fields = {
@@ -6008,6 +6487,7 @@ def _validate_qualification_review_binding(value: Any) -> dict[str, Any]:
     expected_fields = {
         "active_request",
         "allowed_review_paths",
+        "bootstrap",
         "implementation_map_sha256",
         "registration",
         "request_source",
@@ -6024,6 +6504,7 @@ def _validate_qualification_review_binding(value: Any) -> dict[str, Any]:
         raise OutcomeEvidenceRunnerError(
             "qualification review binding schema mismatch"
         )
+    _validate_qualification_bootstrap_summary(value["bootstrap"])
     for field in ("source_commit", "review_commit"):
         if not isinstance(value[field], str) or not _is_lower_hex(
             value[field],
@@ -6103,6 +6584,53 @@ def _validate_qualification_review_binding(value: Any) -> dict[str, Any]:
     if not isinstance(value["registration"], Mapping):
         raise OutcomeEvidenceRunnerError(
             "qualification registration review binding is invalid"
+        )
+    active_path = _qualification_require_no_follow_path(
+        active["path"],
+        "active request review binding",
+        expected_kind="file",
+    )
+    active_bytes = _qualification_read_file_bytes(
+        active_path,
+        "active request review binding",
+    )
+    try:
+        request = json.loads(
+            active_bytes.decode("ascii"),
+            object_pairs_hook=_reject_duplicate_keys,
+            parse_constant=_reject_json_constant,
+        )
+    except (UnicodeError, ValueError, json.JSONDecodeError) as exc:
+        raise OutcomeEvidenceRunnerError(
+            "qualification active request review binding is invalid"
+        ) from exc
+    if (
+        not isinstance(request, Mapping)
+        or active_bytes != (_canonical_json(request) + "\n").encode("ascii")
+        or request.get("schema_version") != QUALIFICATION_REQUEST_SCHEMA_VERSION
+        or request.get("request_path") != str(active_path)
+        or request.get("request_hash") != active["request_hash"]
+        or request.get("request_hash") != _self_hash(request, "request_hash")
+        or hashlib.sha256(active_bytes).hexdigest() != active["file_sha256"]
+        or len(active_bytes) != active["size"]
+    ):
+        raise OutcomeEvidenceRunnerError(
+            "qualification active request review binding mismatch"
+        )
+    bootstrap_state = _validate_qualification_bootstrap_active_chain(
+        request,
+        active_bytes,
+        expected_review_commit=value["review_commit"],
+        expected_request_file_sha256=active["file_sha256"],
+        expected_request_size=active["size"],
+    )
+    expected_bootstrap = _qualification_bootstrap_inventory(
+        bootstrap_state,
+        include_handoff=True,
+    )
+    if value["bootstrap"] != expected_bootstrap:
+        raise OutcomeEvidenceRunnerError(
+            "qualification review bootstrap binding mismatch"
         )
     return json.loads(_canonical_json(value))
 
@@ -6221,6 +6749,26 @@ def _validate_qualification_result_lifecycle(
     ):
         raise OutcomeEvidenceRunnerError(
             "qualification result review binding mismatch"
+        )
+    bootstrap_state = _validate_qualification_bootstrap_active_chain(
+        request,
+        raw_request,
+        expected_review_commit=review_binding["review_commit"],
+        expected_request_file_sha256=review_binding["active_request"][
+            "file_sha256"
+        ],
+        expected_request_size=review_binding["active_request"]["size"],
+    )
+    expected_bootstrap = _qualification_bootstrap_inventory(
+        bootstrap_state,
+        include_handoff=True,
+    )
+    if (
+        record["bootstrap"] != expected_bootstrap
+        or review_binding["bootstrap"] != expected_bootstrap
+    ):
+        raise OutcomeEvidenceRunnerError(
+            "qualification result bootstrap binding mismatch"
         )
 
     request_created = _timestamp(request.get("created_unix_ns"))

@@ -2191,6 +2191,7 @@ def _qualification_request_fixture(
     monkeypatch,
     *,
     source_only=False,
+    inject_bootstrap_handoff=True,
     config_name="qualification-config.json",
     manifest_name="qualification-manifest.json",
 ):
@@ -2318,7 +2319,7 @@ def _qualification_request_fixture(
         encoding="utf-8",
         newline="",
     )
-    if source_only:
+    if source_only and inject_bootstrap_handoff:
         original_publish_text_once = module._publish_text_once
         active_request_path = Path(request["request_path"])
 
@@ -2494,6 +2495,19 @@ def _bootstrap_runtime_state(request, *, stage_count):
         "last_stage_name": last["stage_name"],
         "paths": bootstrap,
     }
+
+
+def _enable_task4_bootstrap_runtime(module, monkeypatch, request):
+    state = _bootstrap_runtime_state(request, stage_count=3)
+    monkeypatch.setattr(module, "_QUALIFICATION_CLI_REQUESTED", True)
+    monkeypatch.setattr(module, "_QUALIFICATION_BOOTSTRAP_STATE", state)
+    monkeypatch.setenv(
+        module.QUALIFICATION_RUNNER_SHA256_ENV,
+        request["implementation_sha256"][
+            module.QUALIFICATION_RUNNER_RELATIVE_PATH
+        ],
+    )
+    return state
 
 
 def test_qualification_request_round_trips_exact_current_bindings(
@@ -3682,13 +3696,18 @@ def test_pre_request_stage_boundary_request_and_isolation_failures(
     assert capsys.readouterr() == ("", "")
 
 
-def test_pre_request_stage_boundary_success_stops_after_isolation_stage(
+def test_pre_request_stage_boundary_success_reaches_valid_handoff_once(
     tmp_path,
     monkeypatch,
     capsys,
 ):
     module, registration_path, request_source_path, request = (
-        _qualification_request_fixture(tmp_path, monkeypatch, source_only=True)
+        _qualification_request_fixture(
+            tmp_path,
+            monkeypatch,
+            source_only=True,
+            inject_bootstrap_handoff=False,
+        )
     )
     state = _bootstrap_runtime_state(request, stage_count=3)
     monkeypatch.setattr(module, "_QUALIFICATION_CLI_REQUESTED", True)
@@ -3723,15 +3742,19 @@ def test_pre_request_stage_boundary_success_stops_after_isolation_stage(
             count_call(name, getattr(module, function_name)),
         )
 
+    def stop_after_handoff(_command, _environment):
+        assert Path(request["request_path"]).is_file()
+        assert Path(request["bootstrap"]["handoff_path"]).is_file()
+        assert Path(request["handshake"]["attempt_path"]).is_file()
+        raise SystemExit(2)
+
     with pytest.raises(SystemExit) as raised:
         module.execute_prelock_qualification(
             registration_path=registration_path,
             request_path=request_source_path,
             expected_request_hash=request["request_hash"],
             **_qualification_review_kwargs(request),
-            process_starter=lambda *_args, **_kwargs: pytest.fail(
-                "Task 3 started a child"
-            ),
+            process_starter=stop_after_handoff,
         )
 
     assert raised.value.code == 2
@@ -3742,9 +3765,11 @@ def test_pre_request_stage_boundary_success_stops_after_isolation_stage(
     assert isolation_stage["stage_index"] == 5
     assert isolation_stage["stage_name"] == "isolation_verified"
     assert not Path(bootstrap["failure_path"]).exists()
-    assert not Path(bootstrap["handoff_path"]).exists()
-    assert not Path(request["request_path"]).exists()
-    assert not Path(request["handshake"]["attempt_path"]).exists()
+    assert Path(bootstrap["handoff_path"]).is_file()
+    assert Path(request["request_path"]).read_bytes() == (
+        request_source_path.read_bytes()
+    )
+    assert Path(request["handshake"]["attempt_path"]).is_file()
     assert not Path(request["handshake"]["ready_path"]).exists()
     assert not Path(request["handshake"]["release_path"]).exists()
     assert not Path(request["completion_path"]).exists()
@@ -3752,11 +3777,437 @@ def test_pre_request_stage_boundary_success_stops_after_isolation_stage(
     assert all(not Path(path).exists() for path in request["forbidden_paths"])
     assert counts == {
         "inventory": 1,
-        "isolation": 1,
+        "isolation": 2,
         "registration": 1,
         "review": 1,
     }
     assert capsys.readouterr() == ("", "")
+
+
+def test_bootstrap_handoff_requires_stage_five_and_exact_active_request(
+    tmp_path,
+    monkeypatch,
+):
+    module, _registration_path, request_source_path, request = (
+        _qualification_request_fixture(
+            tmp_path,
+            monkeypatch,
+            source_only=True,
+            inject_bootstrap_handoff=False,
+        )
+    )
+    publish_handoff = getattr(
+        module,
+        "_qualification_bootstrap_publish_handoff",
+        None,
+    )
+    assert callable(publish_handoff)
+    active_request_bytes = request_source_path.read_bytes()
+    state = _bootstrap_runtime_state(request, stage_count=4)
+    active_request_path = Path(request["request_path"])
+    handoff_path = Path(request["bootstrap"]["handoff_path"])
+
+    with pytest.raises(module.OutcomeEvidenceRunnerError, match="bootstrap"):
+        publish_handoff(state, active_request_bytes)
+    assert not active_request_path.exists()
+    assert not handoff_path.exists()
+
+    state = module._qualification_bootstrap_publish_stage(
+        state,
+        "isolation_verified",
+        created_unix_ns=50,
+    )
+    with pytest.raises(module.OutcomeEvidenceRunnerError, match="active request"):
+        publish_handoff(state, active_request_bytes)
+    assert not handoff_path.exists()
+
+    module._qualification_bootstrap_publish_bytes_once(
+        str(active_request_path),
+        active_request_bytes,
+    )
+    with pytest.raises(module.OutcomeEvidenceRunnerError, match="active request"):
+        publish_handoff(state, active_request_bytes + b" ")
+    assert not handoff_path.exists()
+
+    handoff_state = publish_handoff(state, active_request_bytes)
+    handoff = json.loads(handoff_path.read_text(encoding="ascii"))
+    assert handoff["previous_hash"] == state["last_record_hash"]
+    assert handoff["payload"] == {
+        "active_request_file_sha256": hashlib.sha256(
+            active_request_bytes
+        ).hexdigest(),
+        "active_request_size": len(active_request_bytes),
+        "claim_hash": state["claim_hash"],
+        "final_stage_hash": state["last_record_hash"],
+        "request_hash": request["request_hash"],
+    }
+    assert handoff_state["handoff_hash"] == handoff["record_hash"]
+
+
+@pytest.mark.parametrize(
+    "entry_kind",
+    ("malformed", "copied", "directory", "junction"),
+)
+def test_bootstrap_handoff_preexisting_identity_fails_closed(
+    tmp_path,
+    monkeypatch,
+    entry_kind,
+):
+    module, _registration_path, request_source_path, request = (
+        _qualification_request_fixture(
+            tmp_path,
+            monkeypatch,
+            source_only=True,
+            inject_bootstrap_handoff=False,
+        )
+    )
+    publish_handoff = getattr(
+        module,
+        "_qualification_bootstrap_publish_handoff",
+        None,
+    )
+    assert callable(publish_handoff)
+    state = _bootstrap_runtime_state(request, stage_count=5)
+    active_request_bytes = request_source_path.read_bytes()
+    module._qualification_bootstrap_publish_bytes_once(
+        request["request_path"],
+        active_request_bytes,
+    )
+    handoff_path = Path(request["bootstrap"]["handoff_path"])
+    junction_target = tmp_path / "handoff-junction-target"
+    if entry_kind == "malformed":
+        handoff_path.write_bytes(b"{")
+    elif entry_kind == "copied":
+        copied = module._qualification_bootstrap_record(
+            anchors=state["anchors"],
+            created_unix_ns=60,
+            payload={
+                "active_request_file_sha256": hashlib.sha256(
+                    active_request_bytes
+                ).hexdigest(),
+                "active_request_size": len(active_request_bytes),
+                "claim_hash": "f" * 64,
+                "final_stage_hash": state["last_record_hash"],
+                "request_hash": request["request_hash"],
+            },
+            pid=1234,
+            previous_hash=state["last_record_hash"],
+            record_type="handoff",
+            stage_index=6,
+            stage_name="active_request_handoff",
+        )
+        handoff_path.write_bytes(
+            module._canonical_json(copied).encode("ascii") + b"\n"
+        )
+    elif entry_kind == "directory":
+        handoff_path.mkdir()
+    else:
+        junction_target.mkdir()
+        _create_directory_junction(handoff_path, junction_target)
+
+    try:
+        with pytest.raises(module.OutcomeEvidenceRunnerError, match="bootstrap"):
+            publish_handoff(state, active_request_bytes)
+        if entry_kind in {"malformed", "copied"}:
+            assert handoff_path.is_file()
+        else:
+            assert handoff_path.is_dir()
+        assert not Path(request["handshake"]["attempt_path"]).exists()
+    finally:
+        if entry_kind in {"directory", "junction"}:
+            os.rmdir(handoff_path)
+        if junction_target.exists():
+            junction_target.rmdir()
+
+
+def test_bootstrap_handoff_orders_active_request_before_attempt_and_child(
+    tmp_path,
+    monkeypatch,
+):
+    module, registration_path, request_source_path, request = (
+        _qualification_request_fixture(
+            tmp_path,
+            monkeypatch,
+            source_only=True,
+            inject_bootstrap_handoff=False,
+        )
+    )
+    _enable_task4_bootstrap_runtime(module, monkeypatch, request)
+    active_request_path = Path(request["request_path"])
+    handoff_path = Path(request["bootstrap"]["handoff_path"])
+    attempt_path = Path(request["handshake"]["attempt_path"])
+    source_bytes = request_source_path.read_bytes()
+    events = []
+    publish_bootstrap_bytes = module._qualification_bootstrap_publish_bytes_once
+
+    def publish_bootstrap_in_order(path_text, raw):
+        path = Path(path_text)
+        if path == active_request_path:
+            assert all(
+                Path(stage["path"]).is_file()
+                for stage in request["bootstrap"]["stage_paths"]
+            )
+            assert not handoff_path.exists()
+            events.append("active_request")
+        elif path == handoff_path:
+            assert active_request_path.read_bytes() == source_bytes
+            events.append("handoff")
+        return publish_bootstrap_bytes(path_text, raw)
+
+    monkeypatch.setattr(
+        module,
+        "_qualification_bootstrap_publish_bytes_once",
+        publish_bootstrap_in_order,
+    )
+    publish_handshake = module.publish_record_once
+
+    def publish_handshake_in_order(path, record):
+        if Path(path) == attempt_path:
+            assert handoff_path.is_file()
+            module.load_qualification_request(
+                active_request_path,
+                registration_path=registration_path,
+            )
+            events.append("attempt")
+        return publish_handshake(path, record)
+
+    monkeypatch.setattr(module, "publish_record_once", publish_handshake_in_order)
+    child = _FakeHandshakeChild(pid=431)
+
+    def process_starter(_command, environment):
+        assert events == ["active_request", "handoff", "attempt"]
+        events.append("start")
+        _publish_ready_from_environment(environment, child_pid=child.pid)
+        return child
+
+    timestamps = iter(range(900, 940))
+    result = module.execute_prelock_qualification(
+        registration_path=registration_path,
+        request_path=request_source_path,
+        expected_request_hash=request["request_hash"],
+        **_qualification_review_kwargs(request),
+        process_starter=process_starter,
+        time_ns=lambda: next(timestamps),
+    )
+
+    assert events[:4] == ["active_request", "handoff", "attempt", "start"]
+    assert active_request_path.read_bytes() == source_bytes
+    expected_inventory = [
+        Path(request["bootstrap"]["claim_path"]).name,
+        *(Path(stage["path"]).name for stage in request["bootstrap"]["stage_paths"]),
+        handoff_path.name,
+    ]
+    assert [row["path"] for row in result["bootstrap"]["inventory"]] == (
+        expected_inventory
+    )
+    assert result["bootstrap"] == result["review_binding"]["bootstrap"]
+    assert result["bootstrap"]["claim_hash"]
+    assert result["bootstrap"]["final_stage_hash"]
+    assert result["bootstrap"]["handoff_hash"]
+    assert result["bootstrap"]["launch_token"]
+
+    for field in (
+        "claim_hash",
+        "final_stage_hash",
+        "handoff_hash",
+        "launch_token",
+    ):
+        forged = json.loads(json.dumps(result))
+        forged["bootstrap"][field] = "f" * 64
+        forged["result_hash"] = module._self_hash(forged, "result_hash")
+        with pytest.raises(module.OutcomeEvidenceRunnerError, match="bootstrap"):
+            module._validate_qualification_result(forged)
+
+    for mutation in ("path", "sha256", "size", "order"):
+        forged = json.loads(json.dumps(result))
+        inventory = forged["review_binding"]["bootstrap"]["inventory"]
+        if mutation == "path":
+            inventory[0]["path"] = "qualification-bootstrap-copied.json"
+        elif mutation == "sha256":
+            inventory[0]["sha256"] = "f" * 64
+        elif mutation == "size":
+            inventory[0]["size"] += 1
+        else:
+            inventory.reverse()
+        forged["review_binding"]["review_binding_hash"] = module._self_hash(
+            forged["review_binding"],
+            "review_binding_hash",
+        )
+        forged["result_hash"] = module._self_hash(forged, "result_hash")
+        with pytest.raises(module.OutcomeEvidenceRunnerError, match="bootstrap"):
+            module._validate_qualification_result(forged)
+
+
+def test_active_request_partial_is_immutable_and_retry_refuses(
+    tmp_path,
+    monkeypatch,
+):
+    module, registration_path, request_source_path, request = (
+        _qualification_request_fixture(
+            tmp_path,
+            monkeypatch,
+            source_only=True,
+            inject_bootstrap_handoff=False,
+        )
+    )
+    _enable_task4_bootstrap_runtime(module, monkeypatch, request)
+    publish_handoff = getattr(
+        module,
+        "_qualification_bootstrap_publish_handoff",
+        None,
+    )
+    assert callable(publish_handoff)
+    calls = []
+
+    def interrupt_handoff(_state, _active_request_bytes):
+        calls.append("handoff")
+        raise module.OutcomeEvidenceRunnerError(
+            "qualification bootstrap handoff interrupted"
+        )
+
+    monkeypatch.setattr(
+        module,
+        "_qualification_bootstrap_publish_handoff",
+        interrupt_handoff,
+    )
+    starter_calls = []
+
+    def process_starter(*_args, **_kwargs):
+        starter_calls.append("start")
+        pytest.fail("active-request partial started a child")
+
+    with pytest.raises(module.OutcomeEvidenceRunnerError, match="handoff"):
+        module.execute_prelock_qualification(
+            registration_path=registration_path,
+            request_path=request_source_path,
+            expected_request_hash=request["request_hash"],
+            **_qualification_review_kwargs(request),
+            process_starter=process_starter,
+        )
+
+    active_request_path = Path(request["request_path"])
+    first_bytes = active_request_path.read_bytes()
+    assert first_bytes == request_source_path.read_bytes()
+    assert calls == ["handoff"]
+    assert starter_calls == []
+    assert not Path(request["bootstrap"]["handoff_path"]).exists()
+    assert not Path(request["bootstrap"]["failure_path"]).exists()
+    assert not Path(request["handshake"]["attempt_path"]).exists()
+    assert not Path(request["completion_path"]).exists()
+    assert not Path(request["failure_path"]).exists()
+
+    with pytest.raises(module.OutcomeEvidenceRunnerError):
+        module.execute_prelock_qualification(
+            registration_path=registration_path,
+            request_path=request_source_path,
+            expected_request_hash=request["request_hash"],
+            **_qualification_review_kwargs(request),
+            process_starter=process_starter,
+        )
+    assert active_request_path.read_bytes() == first_bytes
+    assert calls == ["handoff"]
+    assert starter_calls == []
+    assert not Path(request["bootstrap"]["failure_path"]).exists()
+    assert not Path(request["failure_path"]).exists()
+
+
+@pytest.mark.parametrize(
+    "field",
+    ("active_request_file_sha256", "active_request_size"),
+)
+def test_bootstrap_handoff_changed_active_request_binding_blocks_terminal(
+    tmp_path,
+    monkeypatch,
+    field,
+):
+    module, registration_path, request_source_path, request = (
+        _qualification_request_fixture(
+            tmp_path,
+            monkeypatch,
+            source_only=True,
+            inject_bootstrap_handoff=False,
+        )
+    )
+    _enable_task4_bootstrap_runtime(module, monkeypatch, request)
+    publish_handoff = module._qualification_bootstrap_publish_handoff
+
+    def publish_changed_handoff(state, active_request_bytes):
+        transitioned = publish_handoff(state, active_request_bytes)
+        handoff_path = Path(request["bootstrap"]["handoff_path"])
+        handoff = json.loads(handoff_path.read_text(encoding="ascii"))
+        if field == "active_request_file_sha256":
+            handoff["payload"][field] = "f" * 64
+        else:
+            handoff["payload"][field] += 1
+        handoff["record_hash"] = module._self_hash(
+            handoff,
+            "record_hash",
+        )
+        handoff_path.write_bytes(
+            module._canonical_json(handoff).encode("ascii") + b"\n"
+        )
+        return transitioned
+
+    monkeypatch.setattr(
+        module,
+        "_qualification_bootstrap_publish_handoff",
+        publish_changed_handoff,
+    )
+    starter_calls = []
+    with pytest.raises(module.OutcomeEvidenceRunnerError, match="bootstrap"):
+        module.execute_prelock_qualification(
+            registration_path=registration_path,
+            request_path=request_source_path,
+            expected_request_hash=request["request_hash"],
+            **_qualification_review_kwargs(request),
+            process_starter=lambda *_args, **_kwargs: starter_calls.append(
+                "start"
+            ),
+        )
+
+    assert starter_calls == []
+    assert Path(request["request_path"]).is_file()
+    assert Path(request["bootstrap"]["handoff_path"]).is_file()
+    assert not Path(request["bootstrap"]["failure_path"]).exists()
+    assert not Path(request["handshake"]["attempt_path"]).exists()
+    assert not Path(request["completion_path"]).exists()
+    assert not Path(request["failure_path"]).exists()
+
+
+def test_bootstrap_terminal_failure_remains_post_handoff_lifecycle_owned(
+    tmp_path,
+    monkeypatch,
+):
+    module, registration_path, request_source_path, request = (
+        _qualification_request_fixture(
+            tmp_path,
+            monkeypatch,
+            source_only=True,
+            inject_bootstrap_handoff=False,
+        )
+    )
+    _enable_task4_bootstrap_runtime(module, monkeypatch, request)
+
+    with pytest.raises(module.OutcomeEvidenceRunnerError, match="start_child"):
+        module.execute_prelock_qualification(
+            registration_path=registration_path,
+            request_path=request_source_path,
+            expected_request_hash=request["request_hash"],
+            **_qualification_review_kwargs(request),
+            process_starter=lambda *_args, **_kwargs: (_ for _ in ()).throw(
+                RuntimeError("fixed child-start failure")
+            ),
+        )
+
+    terminal = json.loads(
+        Path(request["failure_path"]).read_text(encoding="ascii")
+    )
+    assert terminal["status"] == "failed"
+    assert terminal["failure"]["stage"] == "start_child"
+    assert terminal["bootstrap"] == terminal["review_binding"]["bootstrap"]
+    assert Path(request["bootstrap"]["handoff_path"]).is_file()
+    assert not Path(request["bootstrap"]["failure_path"]).exists()
+    assert not Path(request["completion_path"]).exists()
 
 
 def test_live_qualification_rejects_v1_request_before_consumption(
@@ -5540,7 +5991,7 @@ def test_qualification_orchestrator_accepts_ready_published_during_owned_start(
     )
     with pytest.raises(
         module.OutcomeEvidenceRunnerError,
-        match="lifecycle timestamp order",
+        match="bootstrap|lifecycle timestamp order",
     ):
         module._validate_qualification_result(reordered_result)
     active_request_path.write_text(
@@ -6520,7 +6971,7 @@ def test_qualification_orchestrator_timeout_terminates_once_without_release(
 
     with pytest.raises(
         module.OutcomeEvidenceRunnerError,
-        match="control artifact",
+        match="bootstrap lifecycle|control artifact",
     ):
         module.execute_prelock_qualification(
             registration_path=registration_path,

@@ -11,7 +11,7 @@
 - [x] 2.2 Implement request v3 construction/loading and validation for bootstrap schema, guarded root and fixed paths, ordered stages, token derivation inputs, external R/request/runner anchors, preexisting static inventory, and v1/v2 launch rejection.
 - [x] 2.3 Extend the trusted launcher and runner-entry boundary to validate fixed bootstrap anchors, publish `launcher_verified` and `runner_entered`, preserve isolated/no-site and source-only startup, and exit silently with a bounded pre-request failure when possible.
 - [x] 2.4 Publish `source_verified`, `request_reviewed`, and `isolation_verified` only after their existing checks complete; ensure recording a stage does not repeat Git/source/inventory/isolation work or mutate protected live state.
-- [ ] 2.5 Publish the exact active request followed by a request-bound handoff, forbid attempt or child launch before valid handoff, and bind the bootstrap inventory/final-stage/handoff hashes into v3 review and terminal records.
+- [x] 2.5 Publish the exact active request followed by a request-bound handoff, forbid attempt or child launch before valid handoff, and bind the bootstrap inventory/final-stage/handoff hashes into v3 review and terminal records.
 
 ## 3. Extend Independent Replay
 
