@@ -147,17 +147,23 @@ HANDSHAKE_READY_SCHEMA_VERSION = "noncombat-outcome-evidence-handshake-ready-v1"
 HANDSHAKE_RELEASE_SCHEMA_VERSION = (
     "noncombat-outcome-evidence-handshake-release-v1"
 )
-LEGACY_QUALIFICATION_REQUEST_SCHEMA_VERSION = (
+QUALIFICATION_REQUEST_V1_SCHEMA_VERSION = (
     "noncombat-outcome-evidence-qualification-request-v1"
 )
-QUALIFICATION_REQUEST_SCHEMA_VERSION = (
+QUALIFICATION_REQUEST_V2_SCHEMA_VERSION = (
     "noncombat-outcome-evidence-qualification-request-v2"
 )
-LEGACY_QUALIFICATION_RESULT_SCHEMA_VERSION = (
+QUALIFICATION_REQUEST_SCHEMA_VERSION = (
+    "noncombat-outcome-evidence-qualification-request-v3"
+)
+QUALIFICATION_RESULT_V1_SCHEMA_VERSION = (
     "noncombat-outcome-evidence-qualification-result-v1"
 )
-QUALIFICATION_RESULT_SCHEMA_VERSION = (
+QUALIFICATION_RESULT_V2_SCHEMA_VERSION = (
     "noncombat-outcome-evidence-qualification-result-v2"
+)
+QUALIFICATION_RESULT_SCHEMA_VERSION = (
+    "noncombat-outcome-evidence-qualification-result-v3"
 )
 QUALIFICATION_ISOLATION_SCHEMA_VERSION = (
     "noncombat-outcome-evidence-qualification-isolation-v1"
@@ -165,12 +171,51 @@ QUALIFICATION_ISOLATION_SCHEMA_VERSION = (
 QUALIFICATION_ISOLATION_OBSERVATION_SCHEMA_VERSION = (
     "noncombat-outcome-evidence-qualification-isolation-observation-v1"
 )
-QUALIFICATION_AUDIT_SCHEMA_VERSION = (
+QUALIFICATION_AUDIT_V2_SCHEMA_VERSION = (
     "noncombat-outcome-evidence-qualification-verification-audit-v2"
 )
-QUALIFICATION_REVIEW_BINDING_SCHEMA_VERSION = (
+QUALIFICATION_AUDIT_SCHEMA_VERSION = (
+    "noncombat-outcome-evidence-qualification-verification-audit-v3"
+)
+QUALIFICATION_REVIEW_BINDING_V1_SCHEMA_VERSION = (
     "noncombat-outcome-evidence-qualification-review-binding-v1"
 )
+QUALIFICATION_REVIEW_BINDING_SCHEMA_VERSION = (
+    "noncombat-outcome-evidence-qualification-review-binding-v3"
+)
+QUALIFICATION_BOOTSTRAP_EVIDENCE_SCHEMA_VERSION = (
+    "noncombat-outcome-evidence-qualification-bootstrap-evidence-v1"
+)
+QUALIFICATION_BOOTSTRAP_TOKEN_SCHEMA_VERSION = (
+    "noncombat-outcome-evidence-qualification-bootstrap-token-v1"
+)
+QUALIFICATION_BOOTSTRAP_STAGE_NAMES = (
+    "launcher_verified",
+    "runner_entered",
+    "source_verified",
+    "request_reviewed",
+    "isolation_verified",
+)
+QUALIFICATION_BOOTSTRAP_FAILURE_DETAILS = {
+    "bootstrap_envelope_invalid": "bootstrap envelope validation failed",
+    "bootstrap_claim_publish_failed": "bootstrap claim publication failed",
+    "runner_validation_failed": "reviewed runner validation failed",
+    "runner_entry_validation_failed": "runner entry validation failed",
+    "source_validation_failed": "reviewed source validation failed",
+    "request_validation_failed": "reviewed request validation failed",
+    "prelaunch_isolation_failed": "prelaunch isolation validation failed",
+    "unexpected_pre_request_failure": "unexpected pre-request failure",
+}
+QUALIFICATION_BOOTSTRAP_FAILURE_CODES = frozenset(
+    QUALIFICATION_BOOTSTRAP_FAILURE_DETAILS
+)
+QUALIFICATION_RUNNER_RELATIVE_PATH = (
+    "scripts/run_noncombat_outcome_evidence_expansion.py"
+)
+LEGACY_QUALIFICATION_REQUEST_SCHEMA_VERSION = (
+    QUALIFICATION_REQUEST_V1_SCHEMA_VERSION
+)
+LEGACY_QUALIFICATION_RESULT_SCHEMA_VERSION = QUALIFICATION_RESULT_V1_SCHEMA_VERSION
 BLOCKED_ESTIMATE_SCHEMA_VERSION = (
     "noncombat-outcome-evidence-estimate-blocked-v1"
 )
@@ -572,6 +617,740 @@ def _qualification_declared_paths(
             expected_kind="directory",
         )
     return declared
+
+
+def _qualification_bootstrap_declared_paths(
+    request: Mapping[str, Any],
+    qualification_root: Path,
+) -> dict[str, Path]:
+    root = _qualification_lexical_absolute_path(
+        str(qualification_root),
+        "qualification bootstrap root",
+    )
+    bootstrap = _mapping(
+        request.get("bootstrap"),
+        "qualification bootstrap",
+    )
+    checks = _Checks()
+    checks.require(
+        set(bootstrap)
+        == {
+            "claim_path",
+            "failure_path",
+            "handoff_path",
+            "schema_version",
+            "stage_paths",
+            "token_schema_version",
+        },
+        "qualification bootstrap fields mismatch",
+    )
+    checks.require(
+        bootstrap.get("schema_version")
+        == QUALIFICATION_BOOTSTRAP_EVIDENCE_SCHEMA_VERSION,
+        "qualification bootstrap schema mismatch",
+    )
+    checks.require(
+        bootstrap.get("token_schema_version")
+        == QUALIFICATION_BOOTSTRAP_TOKEN_SCHEMA_VERSION,
+        "qualification bootstrap token schema mismatch",
+    )
+    stage_rows = _sequence(
+        bootstrap.get("stage_paths"),
+        "qualification bootstrap stage paths",
+    )
+    checks.require(
+        len(stage_rows) == len(QUALIFICATION_BOOTSTRAP_STAGE_NAMES),
+        "qualification bootstrap stage count mismatch",
+    )
+    declared: dict[str, Path] = {
+        "claim": _qualification_lexical_absolute_path(
+            bootstrap.get("claim_path"),
+            "qualification bootstrap claim path",
+        )
+    }
+    for index, name in enumerate(QUALIFICATION_BOOTSTRAP_STAGE_NAMES, start=1):
+        row = _mapping(
+            stage_rows[index - 1],
+            f"qualification bootstrap stage {index}",
+        )
+        checks.require(
+            set(row) == {"index", "name", "path"}
+            and row.get("index") == index
+            and row.get("name") == name,
+            "qualification bootstrap stage declaration mismatch",
+        )
+        declared[name] = _qualification_lexical_absolute_path(
+            row.get("path"),
+            f"qualification bootstrap {name} path",
+        )
+    declared["failure"] = _qualification_lexical_absolute_path(
+        bootstrap.get("failure_path"),
+        "qualification bootstrap failure path",
+    )
+    declared["handoff"] = _qualification_lexical_absolute_path(
+        bootstrap.get("handoff_path"),
+        "qualification bootstrap handoff path",
+    )
+    expected_names = {
+        "claim": "qualification-bootstrap-claim.json",
+        **{
+            name: (
+                f"qualification-bootstrap-stage-{index:02d}-"
+                f"{name.replace('_', '-')}.json"
+            )
+            for index, name in enumerate(
+                QUALIFICATION_BOOTSTRAP_STAGE_NAMES,
+                start=1,
+            )
+        },
+        "failure": "qualification-bootstrap-failure.json",
+        "handoff": "qualification-bootstrap-handoff.json",
+    }
+    expected = {
+        name: Path(os.path.abspath(root / filename))
+        for name, filename in expected_names.items()
+    }
+    checks.require(
+        all(
+            str(declared[name]) == str(expected[name])
+            for name in expected_names
+        )
+        and len(set(declared.values())) == len(declared),
+        "qualification bootstrap declared path binding mismatch",
+    )
+    for name, path in declared.items():
+        checks.require(
+            path.parent == root,
+            f"qualification bootstrap {name} is not a direct child",
+        )
+    return declared
+
+
+def _qualification_bootstrap_expected_envelope(
+    *,
+    request: Mapping[str, Any],
+    expected_request_file_sha256: str,
+    expected_request_size: int,
+    review_commit: str,
+    runner_sha256: str,
+) -> dict[str, Any]:
+    qualification_root = _qualification_lexical_absolute_path(
+        request.get("qualification_root"),
+        "qualification_root",
+    )
+    _qualification_bootstrap_declared_paths(request, qualification_root)
+    if not _is_sha256(expected_request_file_sha256):
+        raise OutcomeEvidenceVerificationError(
+            "qualification bootstrap request file hash is invalid"
+        )
+    if type(expected_request_size) is not int or expected_request_size <= 0:
+        raise OutcomeEvidenceVerificationError(
+            "qualification bootstrap request size is invalid"
+        )
+    if not isinstance(review_commit, str) or not _COMMIT_PATTERN.fullmatch(
+        review_commit
+    ):
+        raise OutcomeEvidenceVerificationError(
+            "qualification bootstrap review commit is invalid"
+        )
+    if not _is_sha256(runner_sha256):
+        raise OutcomeEvidenceVerificationError(
+            "qualification bootstrap runner hash is invalid"
+        )
+    qualification_id = request.get("qualification_id")
+    source_commit = request.get("source_commit")
+    request_hash = request.get("request_hash")
+    if not isinstance(qualification_id, str) or not qualification_id:
+        raise OutcomeEvidenceVerificationError(
+            "qualification bootstrap qualification ID is invalid"
+        )
+    if not isinstance(source_commit, str) or not _COMMIT_PATTERN.fullmatch(
+        source_commit
+    ):
+        raise OutcomeEvidenceVerificationError(
+            "qualification bootstrap source commit is invalid"
+        )
+    if not _is_sha256(request_hash):
+        raise OutcomeEvidenceVerificationError(
+            "qualification bootstrap request hash is invalid"
+        )
+    envelope = {
+        "bootstrap": dict(request["bootstrap"]),
+        "qualification_id": qualification_id,
+        "qualification_root": str(qualification_root),
+        "request_file_sha256": expected_request_file_sha256,
+        "request_hash": request_hash,
+        "request_size": expected_request_size,
+        "review_commit": review_commit,
+        "runner_sha256": runner_sha256,
+        "schema_version": QUALIFICATION_BOOTSTRAP_TOKEN_SCHEMA_VERSION,
+        "source_commit": source_commit,
+    }
+    try:
+        return json.loads(_qualification_bootstrap_canonical_json(envelope))
+    except (TypeError, ValueError, UnicodeError) as exc:
+        raise OutcomeEvidenceVerificationError(
+            "qualification bootstrap envelope is invalid"
+        ) from exc
+
+
+def _qualification_bootstrap_canonical_json(value: Any) -> str:
+    return json.dumps(
+        value,
+        allow_nan=False,
+        ensure_ascii=True,
+        sort_keys=True,
+        separators=(",", ":"),
+    )
+
+
+def _qualification_bootstrap_load_record_bytes(
+    raw: bytes,
+    *,
+    label: str,
+) -> dict[str, Any]:
+    try:
+        record = json.loads(
+            raw.decode("ascii"),
+            object_pairs_hook=_reject_duplicate_keys,
+            parse_constant=_reject_constant,
+        )
+        canonical = _qualification_bootstrap_canonical_json(record).encode(
+            "ascii"
+        ) + b"\n"
+    except (UnicodeError, ValueError, TypeError, json.JSONDecodeError) as exc:
+        raise OutcomeEvidenceVerificationError(
+            f"qualification bootstrap {label} JSON is invalid"
+        ) from exc
+    expected_fields = {
+        "anchors",
+        "created_unix_ns",
+        "payload",
+        "pid",
+        "previous_hash",
+        "record_hash",
+        "record_type",
+        "schema_version",
+        "stage_index",
+        "stage_name",
+    }
+    if not isinstance(record, Mapping) or set(record) != expected_fields:
+        raise OutcomeEvidenceVerificationError(
+            f"qualification bootstrap {label} fields are invalid"
+        )
+    if raw != canonical:
+        raise OutcomeEvidenceVerificationError(
+            f"qualification bootstrap {label} is not canonical"
+        )
+    observed_hash = record.get("record_hash")
+    replay = dict(record)
+    replay["record_hash"] = None
+    if not _is_sha256(observed_hash) or observed_hash != hashlib.sha256(
+        _qualification_bootstrap_canonical_json(replay).encode("ascii")
+    ).hexdigest():
+        raise OutcomeEvidenceVerificationError(
+            f"qualification bootstrap {label} self-hash mismatch"
+        )
+    if (
+        record.get("schema_version")
+        != QUALIFICATION_BOOTSTRAP_EVIDENCE_SCHEMA_VERSION
+        or type(record.get("created_unix_ns")) is not int
+        or record["created_unix_ns"] <= 0
+        or type(record.get("pid")) is not int
+        or record["pid"] <= 0
+        or type(record.get("stage_index")) is not int
+        or record["stage_index"] < 0
+        or not isinstance(record.get("stage_name"), str)
+        or not record["stage_name"]
+        or (
+            record.get("previous_hash") is not None
+            and not _is_sha256(record["previous_hash"])
+        )
+        or not isinstance(record.get("anchors"), Mapping)
+        or not isinstance(record.get("payload"), Mapping)
+    ):
+        raise OutcomeEvidenceVerificationError(
+            f"qualification bootstrap {label} shape is invalid"
+        )
+    return dict(record)
+
+
+def _qualification_verify_bootstrap_prefix(
+    request: Mapping[str, Any],
+    review: Mapping[str, Any],
+    *,
+    active_request_bytes: bytes | None,
+    checks: _Checks,
+) -> dict[str, Any]:
+    qualification_root = _qualification_lexical_absolute_path(
+        request.get("qualification_root"),
+        "qualification_root",
+    )
+    declared = _qualification_bootstrap_declared_paths(
+        request,
+        qualification_root,
+    )
+    request_path = _qualification_lexical_absolute_path(
+        request.get("request_path"),
+        "qualification active request path",
+    )
+    checks.require(
+        request_path
+        == Path(os.path.abspath(qualification_root / "qualification-request.json")),
+        "qualification active request path mismatch",
+    )
+    reviewed_request_bytes = review.get("request_bytes")
+    review_binding = _mapping(
+        review.get("review_binding"),
+        "qualification review binding",
+    )
+    review_commit = review_binding.get("review_commit")
+    implementation = _mapping(
+        request.get("implementation_sha256"),
+        "qualification implementation_sha256",
+    )
+    runner_sha256 = implementation.get(QUALIFICATION_RUNNER_RELATIVE_PATH)
+    if not isinstance(reviewed_request_bytes, bytes):
+        raise OutcomeEvidenceVerificationError(
+            "qualification reviewed request bytes are invalid"
+        )
+    try:
+        reviewed_request = json.loads(
+            reviewed_request_bytes.decode("ascii"),
+            object_pairs_hook=_reject_duplicate_keys,
+            parse_constant=_reject_constant,
+        )
+    except (UnicodeError, ValueError, json.JSONDecodeError) as exc:
+        raise OutcomeEvidenceVerificationError(
+            "qualification reviewed request bytes are invalid"
+        ) from exc
+    checks.require(
+        isinstance(reviewed_request, Mapping)
+        and dict(reviewed_request) == dict(request)
+        and reviewed_request_bytes
+        == _qualification_bootstrap_canonical_json(reviewed_request).encode(
+            "ascii"
+        )
+        + b"\n",
+        "qualification reviewed request bytes are not canonical",
+    )
+    envelope = _qualification_bootstrap_expected_envelope(
+        request=request,
+        expected_request_file_sha256=hashlib.sha256(
+            reviewed_request_bytes
+        ).hexdigest(),
+        expected_request_size=len(reviewed_request_bytes),
+        review_commit=review_commit,
+        runner_sha256=runner_sha256,
+    )
+    canonical_envelope = _qualification_bootstrap_canonical_json(envelope).encode(
+        "ascii"
+    )
+    launch_token = hashlib.sha256(
+        b"noncombat-outcome-evidence-qualification-bootstrap-token-v1\x00"
+        + canonical_envelope
+    ).hexdigest()
+    expected_anchors = {
+        "envelope_sha256": hashlib.sha256(canonical_envelope).hexdigest(),
+        "launch_token": launch_token,
+        "qualification_id": request["qualification_id"],
+        "request_file_sha256": hashlib.sha256(
+            reviewed_request_bytes
+        ).hexdigest(),
+        "request_hash": request["request_hash"],
+        "request_size": len(reviewed_request_bytes),
+        "review_commit": review_commit,
+        "runner_sha256": runner_sha256,
+        "source_commit": request["source_commit"],
+    }
+
+    bootstrap_paths = list(declared.values())
+    bootstrap_path_set = set(bootstrap_paths)
+    lifecycle_paths: set[Path] = set()
+    handshake = request.get("handshake")
+    if isinstance(handshake, Mapping):
+        for name in ("attempt", "ready", "release"):
+            value = handshake.get(f"{name}_path")
+            if isinstance(value, str):
+                lifecycle_paths.add(
+                    _qualification_lexical_absolute_path(
+                        value,
+                        f"qualification {name} path",
+                    )
+                )
+    for field in ("completion_path", "failure_path"):
+        value = request.get(field)
+        if isinstance(value, str):
+            lifecycle_paths.add(
+                _qualification_lexical_absolute_path(
+                    value,
+                    f"qualification {field}",
+                )
+            )
+    dynamic_paths = bootstrap_path_set | lifecycle_paths | {request_path}
+    preexisting = _mapping(
+        request.get("preexisting_files"),
+        "qualification preexisting files",
+    )
+    preexisting_paths: dict[Path, str] = {}
+    for raw_path, expected_hash in preexisting.items():
+        path = _qualification_lexical_absolute_path(
+            raw_path,
+            "qualification preexisting file path",
+        )
+        checks.require(
+            path.is_relative_to(qualification_root)
+            and path not in dynamic_paths
+            and _is_sha256(expected_hash),
+            "qualification preexisting file binding is invalid",
+        )
+        preexisting_paths[path] = expected_hash
+    allowed_directories = {
+        parent
+        for path in preexisting_paths
+        for parent in path.parents
+        if parent != qualification_root and parent.is_relative_to(qualification_root)
+    }
+    exact_paths = {
+        os.path.normcase(str(path)): str(path)
+        for path in dynamic_paths | set(preexisting_paths) | allowed_directories
+    }
+    qualification_root = _qualification_require_no_follow_path(
+        qualification_root,
+        "root",
+        expected_kind="directory",
+    )
+
+    observed_metadata: dict[Path, tuple[os.stat_result, bool]] = {}
+    raw_by_path: dict[Path, bytes] = {}
+    invalid_reasons: list[str] = []
+    for path, metadata, is_link_or_reparse in _qualification_no_follow_entries(
+        qualification_root
+    ):
+        lexical_path = Path(os.path.abspath(path))
+        observed_metadata[lexical_path] = (metadata, is_link_or_reparse)
+        expected_lexical = exact_paths.get(os.path.normcase(str(lexical_path)))
+        if expected_lexical is not None and str(lexical_path) != expected_lexical:
+            invalid_reasons.append(f"case-aliased entry: {lexical_path}")
+        if is_link_or_reparse:
+            invalid_reasons.append(f"linked or reparse entry: {lexical_path}")
+            continue
+        if stat.S_ISDIR(metadata.st_mode):
+            if lexical_path not in allowed_directories:
+                invalid_reasons.append(f"unexpected directory: {lexical_path}")
+            continue
+        if not stat.S_ISREG(metadata.st_mode):
+            invalid_reasons.append(f"non-regular entry: {lexical_path}")
+            continue
+        if lexical_path not in dynamic_paths and lexical_path not in preexisting_paths:
+            invalid_reasons.append(f"unexpected guarded-root entry: {lexical_path}")
+        if lexical_path == request_path:
+            if active_request_bytes is None or len(active_request_bytes) != metadata.st_size:
+                invalid_reasons.append("active request bytes are unavailable")
+            else:
+                raw_by_path[lexical_path] = active_request_bytes
+            continue
+        raw = _qualification_read_file_bytes(
+            lexical_path,
+            f"guarded-root entry {lexical_path.name}",
+        )
+        raw_by_path[lexical_path] = raw
+        expected_hash = preexisting_paths.get(lexical_path)
+        if expected_hash is not None and hashlib.sha256(raw).hexdigest() != expected_hash:
+            invalid_reasons.append(
+                f"preexisting file hash mismatch: {lexical_path}"
+            )
+    for path in preexisting_paths:
+        if path not in observed_metadata:
+            invalid_reasons.append(f"preexisting file is missing: {path}")
+
+    inventory_entries = []
+    for path in bootstrap_paths:
+        metadata_row = observed_metadata.get(path)
+        if metadata_row is None:
+            continue
+        raw = raw_by_path.get(path)
+        inventory_entries.append(
+            {
+                "path": path.name,
+                "sha256": None if raw is None else hashlib.sha256(raw).hexdigest(),
+                "size": metadata_row[0].st_size,
+            }
+        )
+    bootstrap_inventory = {
+        "entries": inventory_entries,
+        "entry_count": len(inventory_entries),
+        "inventory_sha256": hashlib.sha256(
+            _qualification_bootstrap_canonical_json(inventory_entries).encode(
+                "ascii"
+            )
+        ).hexdigest(),
+    }
+    bootstrap_exists = any(path in observed_metadata for path in bootstrap_paths)
+    control_exists = any(path in observed_metadata for path in lifecycle_paths)
+    active_exists = request_path in observed_metadata
+    consumed = bootstrap_exists or control_exists or active_exists or bool(
+        invalid_reasons
+    )
+
+    def result(
+        qualification_status: str,
+        *,
+        partial_stage: str | None,
+        evidence_valid: bool,
+        evidence_error: str | None,
+        claim_hash: str | None = None,
+        final_stage_hash: str | None = None,
+        handoff_hash: str | None = None,
+    ) -> dict[str, Any]:
+        return {
+            "bootstrap_inventory": bootstrap_inventory,
+            "claim_hash": claim_hash,
+            "consumed": consumed,
+            "evidence_error": evidence_error,
+            "evidence_valid": evidence_valid,
+            "final_stage_hash": final_stage_hash,
+            "handoff_hash": handoff_hash,
+            "partial_stage": partial_stage,
+            "qualification_status": qualification_status,
+        }
+
+    if not consumed:
+        return result(
+            "reviewed_prepared",
+            partial_stage=None,
+            evidence_valid=True,
+            evidence_error=None,
+        )
+    if invalid_reasons:
+        return result(
+            "sealed_invalid",
+            partial_stage="invalid_bootstrap_prefix",
+            evidence_valid=False,
+            evidence_error="; ".join(invalid_reasons),
+        )
+    stage_paths = [declared[name] for name in QUALIFICATION_BOOTSTRAP_STAGE_NAMES]
+    stage_exists = [path in observed_metadata for path in stage_paths]
+    contiguous_count = 0
+    for exists in stage_exists:
+        if not exists:
+            break
+        contiguous_count += 1
+    malformed_prefix = stage_exists != (
+        [True] * contiguous_count
+        + [False] * (len(stage_exists) - contiguous_count)
+    )
+    if declared["claim"] not in observed_metadata or malformed_prefix:
+        return result(
+            "sealed_invalid",
+            partial_stage="invalid_bootstrap_prefix",
+            evidence_valid=False,
+            evidence_error="qualification bootstrap claim/stage prefix is not contiguous",
+        )
+    try:
+        claim = _qualification_bootstrap_load_record_bytes(
+            raw_by_path[declared["claim"]],
+            label="claim",
+        )
+        if (
+            claim["record_type"] != "claim"
+            or claim["stage_index"] != 0
+            or claim["stage_name"] != "claim"
+            or claim["previous_hash"] is not None
+            or dict(claim["payload"]) != {}
+            or dict(claim["anchors"]) != expected_anchors
+        ):
+            raise OutcomeEvidenceVerificationError(
+                "qualification bootstrap claim shape or anchors mismatch"
+            )
+        previous_hash = claim["record_hash"]
+        final_stage_hash = None
+        for index in range(contiguous_count):
+            name = QUALIFICATION_BOOTSTRAP_STAGE_NAMES[index]
+            stage = _qualification_bootstrap_load_record_bytes(
+                raw_by_path[declared[name]],
+                label=name,
+            )
+            if (
+                stage["record_type"] != "stage"
+                or stage["stage_index"] != index + 1
+                or stage["stage_name"] != name
+                or stage["previous_hash"] != previous_hash
+                or dict(stage["payload"]) != {}
+                or dict(stage["anchors"]) != expected_anchors
+            ):
+                raise OutcomeEvidenceVerificationError(
+                    "qualification bootstrap stage chain mismatch"
+                )
+            previous_hash = stage["record_hash"]
+            final_stage_hash = previous_hash
+    except (KeyError, OutcomeEvidenceVerificationError) as exc:
+        return result(
+            "sealed_invalid",
+            partial_stage="invalid_bootstrap_prefix",
+            evidence_valid=False,
+            evidence_error=str(exc),
+        )
+
+    failure = None
+    if declared["failure"] in observed_metadata:
+        try:
+            failure = _qualification_bootstrap_load_record_bytes(
+                raw_by_path[declared["failure"]],
+                label="failure",
+            )
+            failure_payload = dict(failure["payload"])
+            failure_code = failure_payload.get("code")
+            expected_stage_name = (
+                "claim"
+                if contiguous_count == 0
+                else QUALIFICATION_BOOTSTRAP_STAGE_NAMES[contiguous_count - 1]
+            )
+            if (
+                failure["record_type"] != "failure"
+                or failure["stage_index"] != contiguous_count
+                or failure["stage_name"] != expected_stage_name
+                or failure["previous_hash"] != previous_hash
+                or dict(failure["anchors"]) != expected_anchors
+                or set(failure_payload)
+                != {"code", "detail", "errno", "exception_type", "winerror"}
+                or failure_code not in QUALIFICATION_BOOTSTRAP_FAILURE_CODES
+                or failure_payload["detail"]
+                != QUALIFICATION_BOOTSTRAP_FAILURE_DETAILS[failure_code]
+                or not isinstance(failure_payload["exception_type"], str)
+                or not failure_payload["exception_type"]
+                or not failure_payload["exception_type"].isascii()
+                or not failure_payload["exception_type"].isidentifier()
+                or len(failure_payload["exception_type"]) > 64
+                or any(
+                    value is not None and type(value) is not int
+                    for value in (
+                        failure_payload["errno"],
+                        failure_payload["winerror"],
+                    )
+                )
+            ):
+                raise OutcomeEvidenceVerificationError(
+                    "qualification bootstrap failure record mismatch"
+                )
+        except (KeyError, OutcomeEvidenceVerificationError) as exc:
+            return result(
+                "sealed_invalid",
+                partial_stage="invalid_bootstrap_prefix",
+                evidence_valid=False,
+                evidence_error=str(exc),
+                claim_hash=claim["record_hash"],
+                final_stage_hash=final_stage_hash,
+            )
+
+    handoff_exists = declared["handoff"] in observed_metadata
+    if not active_exists:
+        if handoff_exists or control_exists:
+            return result(
+                "sealed_invalid",
+                partial_stage="invalid_bootstrap_prefix",
+                evidence_valid=False,
+                evidence_error="later qualification evidence exists before active request",
+                claim_hash=claim["record_hash"],
+                final_stage_hash=final_stage_hash,
+            )
+        if failure is not None:
+            return result(
+                "pre_request_partial",
+                partial_stage=str(failure["payload"]["code"]),
+                evidence_valid=True,
+                evidence_error=None,
+                claim_hash=claim["record_hash"],
+                final_stage_hash=final_stage_hash,
+            )
+        last_name = (
+            "claim"
+            if contiguous_count == 0
+            else QUALIFICATION_BOOTSTRAP_STAGE_NAMES[contiguous_count - 1]
+        )
+        return result(
+            "pre_request_partial",
+            partial_stage=f"abrupt_after_{last_name}",
+            evidence_valid=True,
+            evidence_error=None,
+            claim_hash=claim["record_hash"],
+            final_stage_hash=final_stage_hash,
+        )
+    if failure is not None or contiguous_count != len(
+        QUALIFICATION_BOOTSTRAP_STAGE_NAMES
+    ):
+        return result(
+            "sealed_invalid",
+            partial_stage="invalid_bootstrap_prefix",
+            evidence_valid=False,
+            evidence_error="active request follows an incomplete bootstrap prefix",
+            claim_hash=claim["record_hash"],
+            final_stage_hash=final_stage_hash,
+        )
+    if (
+        active_request_bytes != reviewed_request_bytes
+        or request.get("request_hash") != _self_hash(request, "request_hash")
+    ):
+        return result(
+            "active_request_partial",
+            partial_stage="invalid_active_request",
+            evidence_valid=False,
+            evidence_error="active request differs from reviewed canonical bytes",
+            claim_hash=claim["record_hash"],
+            final_stage_hash=final_stage_hash,
+        )
+    if not handoff_exists:
+        return result(
+            "active_request_partial",
+            partial_stage="missing_handoff",
+            evidence_valid=True,
+            evidence_error=None,
+            claim_hash=claim["record_hash"],
+            final_stage_hash=final_stage_hash,
+        )
+    try:
+        handoff = _qualification_bootstrap_load_record_bytes(
+            raw_by_path[declared["handoff"]],
+            label="handoff",
+        )
+        expected_payload = {
+            "active_request_file_sha256": hashlib.sha256(
+                active_request_bytes
+            ).hexdigest(),
+            "active_request_size": len(active_request_bytes),
+            "claim_hash": claim["record_hash"],
+            "final_stage_hash": final_stage_hash,
+            "request_hash": request["request_hash"],
+        }
+        if (
+            handoff["record_type"] != "handoff"
+            or handoff["stage_index"] != 6
+            or handoff["stage_name"] != "active_request_handoff"
+            or handoff["previous_hash"] != final_stage_hash
+            or dict(handoff["anchors"]) != expected_anchors
+            or dict(handoff["payload"]) != expected_payload
+        ):
+            raise OutcomeEvidenceVerificationError(
+                "qualification bootstrap handoff mismatch"
+            )
+    except (KeyError, OutcomeEvidenceVerificationError) as exc:
+        return result(
+            "active_request_partial",
+            partial_stage="invalid_handoff",
+            evidence_valid=False,
+            evidence_error=str(exc),
+            claim_hash=claim["record_hash"],
+            final_stage_hash=final_stage_hash,
+        )
+    return result(
+        "handoff_complete",
+        partial_stage=None,
+        evidence_valid=True,
+        evidence_error=None,
+        claim_hash=claim["record_hash"],
+        final_stage_hash=final_stage_hash,
+        handoff_hash=handoff["record_hash"],
+    )
 
 
 def _qualification_no_follow_entries(
@@ -1511,6 +2290,9 @@ def verify_prelock_qualification(
         checks=checks,
     )
     request = review["request"]
+    request_schema_version = request.get("schema_version")
+    current_v3 = request_schema_version == QUALIFICATION_REQUEST_SCHEMA_VERSION
+    bootstrap_verification: dict[str, Any] | None = None
     qualification_root = _qualification_require_no_follow_path(
         _qualification_lexical_absolute_path(
             request.get("qualification_root"),
@@ -1521,6 +2303,12 @@ def verify_prelock_qualification(
     )
 
     def finish_audit(**audit_fields: Any) -> dict[str, Any]:
+        audit_fields["audit_schema_version"] = (
+            QUALIFICATION_AUDIT_SCHEMA_VERSION
+            if current_v3
+            else QUALIFICATION_AUDIT_V2_SCHEMA_VERSION
+        )
+        audit_fields["bootstrap_verification"] = bootstrap_verification
         audit = _qualification_audit(**audit_fields)
         if audit_output_path is not None:
             bound_paths = tuple(
@@ -1556,6 +2344,116 @@ def verify_prelock_qualification(
         declared_paths[name]
         for name in ("attempt", "ready", "release")
     ) + (completion_path, failure_path)
+    if current_v3:
+        active_request_bytes = None
+        if _qualification_path_is_regular_file(request_path):
+            active_request_bytes = _qualification_read_file_bytes(
+                request_path,
+                "active qualification request",
+            )
+        bootstrap_verification = _qualification_verify_bootstrap_prefix(
+            request,
+            review,
+            active_request_bytes=active_request_bytes,
+            checks=checks,
+        )
+        artifact_inventory = {
+            str(qualification_root / row["path"]): {
+                "kind": "file" if row["sha256"] is not None else "other",
+                "sha256": row["sha256"],
+                "size": row["size"],
+            }
+            for row in bootstrap_verification["bootstrap_inventory"]["entries"]
+        }
+        bootstrap_status = bootstrap_verification["qualification_status"]
+        if bootstrap_status != "handoff_complete":
+            if bootstrap_status == "reviewed_prepared":
+                _verify_qualification_request(
+                    request,
+                    request_path=request_path,
+                    registration=review["registration"],
+                    registration_bytes=review["registration_bytes"],
+                    request_review=review["review_binding"],
+                    checks=checks,
+                )
+            if result_path is not None:
+                raise OutcomeEvidenceVerificationError(
+                    "qualification terminal evidence lacks a complete bootstrap handoff"
+                )
+            return finish_audit(
+                checks=checks,
+                review_binding=review["review_binding"],
+                request_hash=request["request_hash"],
+                result_hash=None,
+                qualification_status=bootstrap_status,
+                status=bootstrap_status,
+                partial_stage=bootstrap_verification["partial_stage"],
+                consumed=bootstrap_verification["consumed"],
+                evidence_valid=bootstrap_verification["evidence_valid"],
+                evidence_error=bootstrap_verification["evidence_error"],
+                artifact_inventory=artifact_inventory,
+            )
+        context = _verify_qualification_request(
+            request,
+            request_path=request_path,
+            registration=review["registration"],
+            registration_bytes=review["registration_bytes"],
+            request_review=review["review_binding"],
+            checks=checks,
+        )
+        if result_path is not None:
+            raise OutcomeEvidenceVerificationError(
+                "qualification terminal-v3 verification is not implemented"
+            )
+        if _qualification_path_entry_exists(
+            completion_path
+        ) or _qualification_path_entry_exists(failure_path):
+            return finish_audit(
+                checks=checks,
+                review_binding=review["review_binding"],
+                request_hash=request["request_hash"],
+                result_hash=None,
+                qualification_status="sealed_invalid",
+                status="sealed_invalid",
+                partial_stage="terminal_present_without_result",
+                consumed=True,
+                evidence_valid=False,
+                evidence_error="terminal evidence requires explicit replay",
+                artifact_inventory=artifact_inventory,
+            )
+        try:
+            partial_stage = _verify_partial_qualification_prefix(
+                request,
+                context=context,
+                checks=checks,
+            )
+        except OutcomeEvidenceVerificationError as exc:
+            return finish_audit(
+                checks=checks,
+                review_binding=review["review_binding"],
+                request_hash=request["request_hash"],
+                result_hash=None,
+                qualification_status="sealed_invalid",
+                status="sealed_invalid",
+                partial_stage="invalid_control_prefix",
+                consumed=True,
+                evidence_valid=False,
+                evidence_error=str(exc),
+                artifact_inventory=artifact_inventory,
+            )
+        return finish_audit(
+            checks=checks,
+            review_binding=review["review_binding"],
+            request_hash=request["request_hash"],
+            result_hash=None,
+            qualification_status="partial",
+            status="sealed_partial",
+            partial_stage=partial_stage,
+            consumed=True,
+            evidence_valid=True,
+            evidence_error=None,
+            artifact_inventory=artifact_inventory,
+        )
     irregular_control_paths = [
         (path, reason)
         for path in control_paths
@@ -1789,11 +2687,11 @@ def verify_prelock_qualification(
     result = _load_qualification_record_bytes(
         result_bytes,
         path=resolved_result_path,
-        schema_version=(
-            QUALIFICATION_RESULT_SCHEMA_VERSION
-            if request["schema_version"] == QUALIFICATION_REQUEST_SCHEMA_VERSION
-            else LEGACY_QUALIFICATION_RESULT_SCHEMA_VERSION
-        ),
+        schema_version={
+            QUALIFICATION_REQUEST_V1_SCHEMA_VERSION: QUALIFICATION_RESULT_V1_SCHEMA_VERSION,
+            QUALIFICATION_REQUEST_V2_SCHEMA_VERSION: QUALIFICATION_RESULT_V2_SCHEMA_VERSION,
+            QUALIFICATION_REQUEST_SCHEMA_VERSION: QUALIFICATION_RESULT_SCHEMA_VERSION,
+        }[request["schema_version"]],
         hash_field="result_hash",
         label="qualification result",
     )
@@ -1893,6 +2791,8 @@ def _qualification_audit(
     launch_qualified: bool = False,
     isolation_baseline_hash: str | None = None,
     isolation_post_observation_hash: str | None = None,
+    audit_schema_version: str = QUALIFICATION_AUDIT_V2_SCHEMA_VERSION,
+    bootstrap_verification: Mapping[str, Any] | None = None,
 ) -> dict[str, Any]:
     audit = {
         "audit_hash": None,
@@ -1917,12 +2817,28 @@ def _qualification_audit(
         "result_size": result_size,
         "gameplay_policy_change_authorized": False,
         "run_lock_authorized": False,
-        "schema_version": QUALIFICATION_AUDIT_SCHEMA_VERSION,
+        "schema_version": audit_schema_version,
         "status": status,
         "study_start_authorized": False,
         "training_authorized": False,
         "verifier_implementation_sha256": _file_sha256(Path(__file__)),
     }
+    if audit_schema_version == QUALIFICATION_AUDIT_SCHEMA_VERSION:
+        if bootstrap_verification is None:
+            raise OutcomeEvidenceVerificationError(
+                "qualification v3 audit requires bootstrap verification"
+            )
+        audit.update(
+            {
+                "bootstrap_inventory": dict(
+                    bootstrap_verification["bootstrap_inventory"]
+                ),
+                "claim_hash": bootstrap_verification["claim_hash"],
+                "final_stage_hash": bootstrap_verification["final_stage_hash"],
+                "handoff_hash": bootstrap_verification["handoff_hash"],
+                "retry_allowed": False,
+            }
+        )
     audit["audit_hash"] = _self_hash(audit, "audit_hash")
     return json.loads(_canonical_json(audit))
 
@@ -2215,7 +3131,8 @@ def _load_historical_qualification_review(
         request_bytes,
         path=request_source_path,
         schema_version=(
-            LEGACY_QUALIFICATION_REQUEST_SCHEMA_VERSION,
+            QUALIFICATION_REQUEST_V1_SCHEMA_VERSION,
+            QUALIFICATION_REQUEST_V2_SCHEMA_VERSION,
             QUALIFICATION_REQUEST_SCHEMA_VERSION,
         ),
         hash_field="request_hash",
@@ -2438,7 +3355,11 @@ def _expected_qualification_review_binding(
         },
         "review_binding_hash": None,
         "review_commit": review_commit,
-        "schema_version": QUALIFICATION_REVIEW_BINDING_SCHEMA_VERSION,
+        "schema_version": (
+            QUALIFICATION_REVIEW_BINDING_SCHEMA_VERSION
+            if request.get("schema_version") == QUALIFICATION_REQUEST_SCHEMA_VERSION
+            else QUALIFICATION_REVIEW_BINDING_V1_SCHEMA_VERSION
+        ),
         "source_commit": request["source_commit"],
     }
     record["review_binding_hash"] = _self_hash(
@@ -2461,7 +3382,8 @@ def _verify_qualification_request(
     checks.require(
         schema_version
         in {
-            LEGACY_QUALIFICATION_REQUEST_SCHEMA_VERSION,
+            QUALIFICATION_REQUEST_V1_SCHEMA_VERSION,
+            QUALIFICATION_REQUEST_V2_SCHEMA_VERSION,
             QUALIFICATION_REQUEST_SCHEMA_VERSION,
         },
         "qualification request schema is unsupported",
@@ -2487,8 +3409,13 @@ def _verify_qualification_request(
         "schema_version",
         "source_commit",
     }
-    if schema_version == QUALIFICATION_REQUEST_SCHEMA_VERSION:
+    if schema_version in {
+        QUALIFICATION_REQUEST_V2_SCHEMA_VERSION,
+        QUALIFICATION_REQUEST_SCHEMA_VERSION,
+    }:
         expected_fields.add("isolation")
+    if schema_version == QUALIFICATION_REQUEST_SCHEMA_VERSION:
+        expected_fields.add("bootstrap")
     checks.require(
         set(request) == expected_fields,
         "qualification request fields mismatch",
@@ -2673,13 +3600,16 @@ def _verify_qualification_request(
         "qualification marker path does not match the registered game root",
     )
     marker_count = _qualification_marker_count(marker_path)
-    if schema_version == LEGACY_QUALIFICATION_REQUEST_SCHEMA_VERSION:
+    if schema_version == QUALIFICATION_REQUEST_V1_SCHEMA_VERSION:
         checks.require(
             marker_binding.get("start_count") == marker_count,
             "qualification marker binding mismatch",
         )
     isolation = None
-    if schema_version == QUALIFICATION_REQUEST_SCHEMA_VERSION:
+    if schema_version in {
+        QUALIFICATION_REQUEST_V2_SCHEMA_VERSION,
+        QUALIFICATION_REQUEST_SCHEMA_VERSION,
+    }:
         isolation = _verify_qualification_isolation_baseline(
             request.get("isolation"),
             registration=registration,
@@ -2757,6 +3687,13 @@ def _verify_qualification_request(
         *(Path(handshake[f"{name}_path"]) for name in ("attempt", "ready", "release")),
         *(Path(path) for path in expected_forbidden),
     }
+    if schema_version == QUALIFICATION_REQUEST_SCHEMA_VERSION:
+        excluded_paths.update(
+            _qualification_bootstrap_declared_paths(
+                request,
+                qualification_root,
+            ).values()
+        )
     expected_inventory = _qualification_file_inventory(
         qualification_root,
         excluded_paths=excluded_paths,
@@ -3027,10 +3964,11 @@ def _verify_qualification_result(
 ) -> dict[str, Any]:
     result_schema_version = result.get("schema_version")
     expected_result_schema = (
-        QUALIFICATION_RESULT_SCHEMA_VERSION
-        if context["request_schema_version"]
-        == QUALIFICATION_REQUEST_SCHEMA_VERSION
-        else LEGACY_QUALIFICATION_RESULT_SCHEMA_VERSION
+        {
+            QUALIFICATION_REQUEST_V1_SCHEMA_VERSION: QUALIFICATION_RESULT_V1_SCHEMA_VERSION,
+            QUALIFICATION_REQUEST_V2_SCHEMA_VERSION: QUALIFICATION_RESULT_V2_SCHEMA_VERSION,
+            QUALIFICATION_REQUEST_SCHEMA_VERSION: QUALIFICATION_RESULT_SCHEMA_VERSION,
+        }[context["request_schema_version"]]
     )
     checks.require(
         result_schema_version == expected_result_schema,
@@ -3056,7 +3994,10 @@ def _verify_qualification_result(
         "source_commit",
         "status",
     }
-    if result_schema_version == QUALIFICATION_RESULT_SCHEMA_VERSION:
+    if result_schema_version in {
+        QUALIFICATION_RESULT_V2_SCHEMA_VERSION,
+        QUALIFICATION_RESULT_SCHEMA_VERSION,
+    }:
         expected_fields.add("isolation")
     checks.require(
         set(result) == expected_fields,
@@ -3190,7 +4131,10 @@ def _verify_qualification_result(
         cleanup_error is None or cleanup_attempted is True,
         "qualification cleanup error lacks an attempted cleanup",
     )
-    if result_schema_version == QUALIFICATION_RESULT_SCHEMA_VERSION:
+    if result_schema_version in {
+        QUALIFICATION_RESULT_V2_SCHEMA_VERSION,
+        QUALIFICATION_RESULT_SCHEMA_VERSION,
+    }:
         isolation_verification = _verify_qualification_result_isolation(
             result,
             request=request,
@@ -3269,7 +4213,7 @@ def _verify_qualification_result(
         and not any(forbidden.values())
         and handshake_complete
         and (
-            result_schema_version == LEGACY_QUALIFICATION_RESULT_SCHEMA_VERSION
+            result_schema_version == QUALIFICATION_RESULT_V1_SCHEMA_VERSION
             or isolation_verification["isolation_complete"] is True
         )
     )

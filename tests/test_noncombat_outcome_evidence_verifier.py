@@ -31,6 +31,35 @@ STUDY_ID = "noncombat-outcome-evidence-expansion-20260715"
 SEED_BASE = 2_026_071_500
 QUALIFICATION_SOURCE_COMMIT = "c" * 40
 QUALIFICATION_REVIEW_COMMIT = "d" * 40
+QUALIFICATION_BOOTSTRAP_EVIDENCE_SCHEMA = (
+    "noncombat-outcome-evidence-qualification-bootstrap-evidence-v1"
+)
+QUALIFICATION_BOOTSTRAP_TOKEN_SCHEMA = (
+    "noncombat-outcome-evidence-qualification-bootstrap-token-v1"
+)
+QUALIFICATION_REQUEST_V3_SCHEMA = (
+    "noncombat-outcome-evidence-qualification-request-v3"
+)
+QUALIFICATION_RUNNER_RELATIVE_PATH = (
+    "scripts/run_noncombat_outcome_evidence_expansion.py"
+)
+QUALIFICATION_BOOTSTRAP_STAGE_NAMES = (
+    "launcher_verified",
+    "runner_entered",
+    "source_verified",
+    "request_reviewed",
+    "isolation_verified",
+)
+QUALIFICATION_BOOTSTRAP_FAILURE_DETAILS = {
+    "bootstrap_envelope_invalid": "bootstrap envelope validation failed",
+    "bootstrap_claim_publish_failed": "bootstrap claim publication failed",
+    "runner_validation_failed": "reviewed runner validation failed",
+    "runner_entry_validation_failed": "runner entry validation failed",
+    "source_validation_failed": "reviewed source validation failed",
+    "request_validation_failed": "reviewed request validation failed",
+    "prelaunch_isolation_failed": "prelaunch isolation validation failed",
+    "unexpected_pre_request_failure": "unexpected pre-request failure",
+}
 
 
 def _verifier():
@@ -63,88 +92,206 @@ def _qualification_review_kwargs(request):
     }
 
 
-def _write_bootstrap_phase(request, *, stage_count, handoff=False):
-    bootstrap = request["bootstrap"]
+def _independent_bootstrap_paths(qualification_root):
+    root = Path(qualification_root)
+    return {
+        "claim_path": str(root / "qualification-bootstrap-claim.json"),
+        "failure_path": str(root / "qualification-bootstrap-failure.json"),
+        "handoff_path": str(root / "qualification-bootstrap-handoff.json"),
+        "schema_version": QUALIFICATION_BOOTSTRAP_EVIDENCE_SCHEMA,
+        "stage_paths": [
+            {
+                "index": index,
+                "name": name,
+                "path": str(
+                    root
+                    / f"qualification-bootstrap-stage-{index:02d}-"
+                    f"{name.replace('_', '-')}.json"
+                ),
+            }
+            for index, name in enumerate(
+                QUALIFICATION_BOOTSTRAP_STAGE_NAMES,
+                start=1,
+            )
+        ],
+        "token_schema_version": QUALIFICATION_BOOTSTRAP_TOKEN_SCHEMA,
+    }
+
+
+def _independent_bootstrap_request(tmp_path):
+    qualification_root = (tmp_path / "qualification-root").resolve()
+    qualification_root.mkdir()
+    request = {
+        "bootstrap": _independent_bootstrap_paths(qualification_root),
+        "implementation_sha256": {
+            QUALIFICATION_RUNNER_RELATIVE_PATH: "a" * 64,
+        },
+        "preexisting_files": {},
+        "qualification_id": "fixture-qualification",
+        "qualification_root": str(qualification_root),
+        "request_hash": None,
+        "request_path": str(qualification_root / "qualification-request.json"),
+        "schema_version": QUALIFICATION_REQUEST_V3_SCHEMA,
+        "source_commit": QUALIFICATION_SOURCE_COMMIT,
+    }
+    request["request_hash"] = _self_hash(request, "request_hash")
     request_bytes = (_canonical_json(request) + "\n").encode("ascii")
-    runner_sha256 = request["implementation_sha256"][
-        runner.QUALIFICATION_RUNNER_RELATIVE_PATH
-    ]
-    envelope = runner._qualification_bootstrap_envelope(
-        request=request,
-        expected_request_file_sha256=hashlib.sha256(
-            request_bytes
-        ).hexdigest(),
-        expected_request_size=len(request_bytes),
-        review_commit=QUALIFICATION_REVIEW_COMMIT,
-        runner_sha256=runner_sha256,
-    )
-    anchors = {
-        "envelope_sha256": hashlib.sha256(
-            _canonical_json(envelope).encode("ascii")
-        ).hexdigest(),
-        "launch_token": runner._qualification_bootstrap_token(envelope),
+    review = {
+        "request_bytes": request_bytes,
+        "review_binding": {"review_commit": QUALIFICATION_REVIEW_COMMIT},
+    }
+    return request, review
+
+
+def _independent_bootstrap_envelope(request, review):
+    request_bytes = review["request_bytes"]
+    return {
+        "bootstrap": request["bootstrap"],
         "qualification_id": request["qualification_id"],
+        "qualification_root": request["qualification_root"],
         "request_file_sha256": hashlib.sha256(request_bytes).hexdigest(),
         "request_hash": request["request_hash"],
         "request_size": len(request_bytes),
         "review_commit": QUALIFICATION_REVIEW_COMMIT,
-        "runner_sha256": runner_sha256,
+        "runner_sha256": request["implementation_sha256"][
+            QUALIFICATION_RUNNER_RELATIVE_PATH
+        ],
+        "schema_version": QUALIFICATION_BOOTSTRAP_TOKEN_SCHEMA,
         "source_commit": request["source_commit"],
     }
-    claim = runner._qualification_bootstrap_record(
+
+
+def _independent_bootstrap_anchors(request, review):
+    envelope = _independent_bootstrap_envelope(request, review)
+    canonical_envelope = _canonical_json(envelope).encode("ascii")
+    token_domain = (
+        b"noncombat-outcome-evidence-qualification-bootstrap-token-v1\x00"
+    )
+    return {
+        "envelope_sha256": hashlib.sha256(canonical_envelope).hexdigest(),
+        "launch_token": hashlib.sha256(
+            token_domain + canonical_envelope
+        ).hexdigest(),
+        "qualification_id": request["qualification_id"],
+        "request_file_sha256": hashlib.sha256(review["request_bytes"]).hexdigest(),
+        "request_hash": request["request_hash"],
+        "request_size": len(review["request_bytes"]),
+        "review_commit": QUALIFICATION_REVIEW_COMMIT,
+        "runner_sha256": request["implementation_sha256"][
+            QUALIFICATION_RUNNER_RELATIVE_PATH
+        ],
+        "source_commit": request["source_commit"],
+    }
+
+
+def _independent_bootstrap_record_bytes(
+    *,
+    anchors,
+    created_unix_ns,
+    payload,
+    previous_hash,
+    record_type,
+    stage_index,
+    stage_name,
+):
+    record = {
+        "anchors": dict(anchors),
+        "created_unix_ns": created_unix_ns,
+        "payload": dict(payload),
+        "pid": 4321,
+        "previous_hash": previous_hash,
+        "record_hash": None,
+        "record_type": record_type,
+        "schema_version": QUALIFICATION_BOOTSTRAP_EVIDENCE_SCHEMA,
+        "stage_index": stage_index,
+        "stage_name": stage_name,
+    }
+    record["record_hash"] = hashlib.sha256(
+        _canonical_json(record).encode("ascii")
+    ).hexdigest()
+    raw = _canonical_json(record).encode("ascii") + b"\n"
+    return record, raw
+
+
+def _write_bootstrap_phase(
+    request,
+    review,
+    *,
+    stage_count,
+    failure_code=None,
+    handoff=False,
+):
+    bootstrap = request["bootstrap"]
+    anchors = _independent_bootstrap_anchors(request, review)
+    claim, raw = _independent_bootstrap_record_bytes(
         anchors=anchors,
         created_unix_ns=1,
         payload={},
-        pid=4321,
         previous_hash=None,
         record_type="claim",
         stage_index=0,
         stage_name="claim",
     )
-
-    def write_record(path, record):
-        Path(path).write_bytes(
-            _canonical_json(record).encode("ascii") + b"\n"
-        )
-
-    write_record(bootstrap["claim_path"], claim)
-    stages = []
+    Path(bootstrap["claim_path"]).write_bytes(raw)
+    records = [claim]
     previous_hash = claim["record_hash"]
     for stage in bootstrap["stage_paths"][:stage_count]:
-        record = runner._qualification_bootstrap_record(
+        record, raw = _independent_bootstrap_record_bytes(
             anchors=anchors,
             created_unix_ns=stage["index"] + 1,
             payload={},
-            pid=4321,
             previous_hash=previous_hash,
             record_type="stage",
             stage_index=stage["index"],
             stage_name=stage["name"],
         )
-        write_record(stage["path"], record)
-        stages.append(record)
+        Path(stage["path"]).write_bytes(raw)
+        records.append(record)
         previous_hash = record["record_hash"]
-    if handoff:
-        assert stage_count == len(runner.QUALIFICATION_BOOTSTRAP_STAGE_NAMES)
-        record = runner._qualification_bootstrap_record(
+    if failure_code is not None:
+        failure, raw = _independent_bootstrap_record_bytes(
             anchors=anchors,
             created_unix_ns=7,
             payload={
+                "code": failure_code,
+                "detail": QUALIFICATION_BOOTSTRAP_FAILURE_DETAILS[failure_code],
+                "errno": None,
+                "exception_type": "OutcomeEvidenceRunnerError",
+                "winerror": None,
+            },
+            previous_hash=previous_hash,
+            record_type="failure",
+            stage_index=stage_count,
+            stage_name=(
+                "claim"
+                if stage_count == 0
+                else QUALIFICATION_BOOTSTRAP_STAGE_NAMES[stage_count - 1]
+            ),
+        )
+        Path(bootstrap["failure_path"]).write_bytes(raw)
+        records.append(failure)
+    if handoff:
+        assert stage_count == len(QUALIFICATION_BOOTSTRAP_STAGE_NAMES)
+        handoff_record, raw = _independent_bootstrap_record_bytes(
+            anchors=anchors,
+            created_unix_ns=8,
+            payload={
                 "active_request_file_sha256": hashlib.sha256(
-                    request_bytes
+                    review["request_bytes"]
                 ).hexdigest(),
-                "active_request_size": len(request_bytes),
+                "active_request_size": len(review["request_bytes"]),
                 "claim_hash": claim["record_hash"],
-                "final_stage_hash": stages[-1]["record_hash"],
+                "final_stage_hash": previous_hash,
                 "request_hash": request["request_hash"],
             },
-            pid=4321,
-            previous_hash=stages[-1]["record_hash"],
+            previous_hash=previous_hash,
             record_type="handoff",
             stage_index=6,
             stage_name="active_request_handoff",
         )
-        write_record(bootstrap["handoff_path"], record)
+        Path(bootstrap["handoff_path"]).write_bytes(raw)
+        records.append(handoff_record)
+    return records
 
 
 def _qualification_schema_fixture_review(request, request_bytes, schema_version):
@@ -370,6 +517,573 @@ def test_historical_schema_bytes_remain_explicit_and_unchanged():
             "size": 2096,
         },
     }
+
+
+def _verify_independent_bootstrap_prefix(verifier, request, review):
+    active_path = Path(request["request_path"])
+    active_bytes = (
+        active_path.read_bytes()
+        if active_path.is_file() and not active_path.is_symlink()
+        else None
+    )
+    return verifier._qualification_verify_bootstrap_prefix(
+        request,
+        review,
+        active_request_bytes=active_bytes,
+        checks=verifier._Checks(),
+    )
+
+
+def _rewrite_independent_bootstrap_record(path, mutate, *, recompute_hash=True):
+    path = Path(path)
+    record = json.loads(path.read_text(encoding="ascii"))
+    mutate(record)
+    if recompute_hash:
+        record["record_hash"] = None
+        record["record_hash"] = hashlib.sha256(
+            _canonical_json(record).encode("ascii")
+        ).hexdigest()
+    path.write_bytes(_canonical_json(record).encode("ascii") + b"\n")
+
+
+def test_qualification_bootstrap_prefix_reconstructs_declared_paths_and_envelope(
+    tmp_path,
+):
+    verifier = _verifier()
+    request, review = _independent_bootstrap_request(tmp_path)
+    qualification_root = Path(request["qualification_root"])
+
+    declared = verifier._qualification_bootstrap_declared_paths(
+        request,
+        qualification_root,
+    )
+    envelope = verifier._qualification_bootstrap_expected_envelope(
+        request=request,
+        expected_request_file_sha256=hashlib.sha256(
+            review["request_bytes"]
+        ).hexdigest(),
+        expected_request_size=len(review["request_bytes"]),
+        review_commit=QUALIFICATION_REVIEW_COMMIT,
+        runner_sha256="a" * 64,
+    )
+
+    assert list(declared) == [
+        "claim",
+        *QUALIFICATION_BOOTSTRAP_STAGE_NAMES,
+        "failure",
+        "handoff",
+    ]
+    assert declared == {
+        "claim": qualification_root / "qualification-bootstrap-claim.json",
+        "launcher_verified": qualification_root
+        / "qualification-bootstrap-stage-01-launcher-verified.json",
+        "runner_entered": qualification_root
+        / "qualification-bootstrap-stage-02-runner-entered.json",
+        "source_verified": qualification_root
+        / "qualification-bootstrap-stage-03-source-verified.json",
+        "request_reviewed": qualification_root
+        / "qualification-bootstrap-stage-04-request-reviewed.json",
+        "isolation_verified": qualification_root
+        / "qualification-bootstrap-stage-05-isolation-verified.json",
+        "failure": qualification_root / "qualification-bootstrap-failure.json",
+        "handoff": qualification_root / "qualification-bootstrap-handoff.json",
+    }
+    assert envelope == _independent_bootstrap_envelope(request, review)
+
+
+def test_qualification_bootstrap_prefix_rejects_case_aliased_declared_path(
+    tmp_path,
+):
+    verifier = _verifier()
+    request, _review = _independent_bootstrap_request(tmp_path)
+    request["bootstrap"]["claim_path"] = request["bootstrap"][
+        "claim_path"
+    ].replace("qualification-bootstrap-claim", "Qualification-Bootstrap-Claim")
+
+    with pytest.raises(
+        verifier.OutcomeEvidenceVerificationError,
+        match="path binding",
+    ):
+        verifier._qualification_bootstrap_declared_paths(
+            request,
+            Path(request["qualification_root"]),
+        )
+
+
+def test_qualification_bootstrap_expected_envelope_is_lexical_and_deterministic():
+    verifier = _verifier()
+    root = Path(r"D:\qualification-root")
+    request = {
+        "bootstrap": _independent_bootstrap_paths(root),
+        "qualification_id": "fixture-qualification",
+        "qualification_root": str(root),
+        "request_hash": "b" * 64,
+        "source_commit": "c" * 40,
+    }
+
+    envelope = verifier._qualification_bootstrap_expected_envelope(
+        request=request,
+        expected_request_file_sha256="e" * 64,
+        expected_request_size=123,
+        review_commit="d" * 40,
+        runner_sha256="a" * 64,
+    )
+    raw = _canonical_json(envelope).encode("ascii")
+    token = hashlib.sha256(
+        b"noncombat-outcome-evidence-qualification-bootstrap-token-v1\x00" + raw
+    ).hexdigest()
+
+    assert len(raw) == 1617
+    assert hashlib.sha256(raw).hexdigest() == (
+        "926af6b9addd083e2127050d09947d58e714aaa590988354b3639c0487c3aa42"
+    )
+    assert token == (
+        "17ba93387ea9ac596ab0a8b4fddcd3838b2ad11d3ed8fb2f5d8d83834ef6d34f"
+    )
+
+
+def test_qualification_bootstrap_prefix_rejects_lexical_path_before_probe(
+    tmp_path,
+    monkeypatch,
+):
+    verifier = _verifier()
+    request, review = _independent_bootstrap_request(tmp_path)
+    request["bootstrap"]["claim_path"] += ":alternate"
+    request["request_hash"] = None
+    request["request_hash"] = _self_hash(request, "request_hash")
+    review["request_bytes"] = (_canonical_json(request) + "\n").encode("ascii")
+    monkeypatch.setattr(
+        verifier,
+        "_qualification_lstat",
+        lambda _path: pytest.fail("filesystem probe preceded lexical validation"),
+    )
+
+    with pytest.raises(
+        verifier.OutcomeEvidenceVerificationError,
+        match="alternate data stream",
+    ):
+        verifier._qualification_verify_bootstrap_prefix(
+            request,
+            review,
+            active_request_bytes=None,
+            checks=verifier._Checks(),
+        )
+
+
+@pytest.mark.parametrize(
+    ("stage_count", "expected_status", "expected_partial_stage", "consumed"),
+    (
+        (None, "reviewed_prepared", None, False),
+        (0, "pre_request_partial", "abrupt_after_claim", True),
+        (1, "pre_request_partial", "abrupt_after_launcher_verified", True),
+        (2, "pre_request_partial", "abrupt_after_runner_entered", True),
+        (3, "pre_request_partial", "abrupt_after_source_verified", True),
+        (4, "pre_request_partial", "abrupt_after_request_reviewed", True),
+        (5, "pre_request_partial", "abrupt_after_isolation_verified", True),
+    ),
+)
+def test_qualification_bootstrap_prefix_classifies_reviewed_prepared_and_stages(
+    tmp_path,
+    stage_count,
+    expected_status,
+    expected_partial_stage,
+    consumed,
+):
+    verifier = _verifier()
+    request, review = _independent_bootstrap_request(tmp_path)
+    if stage_count is not None:
+        _write_bootstrap_phase(
+            request,
+            review,
+            stage_count=stage_count,
+        )
+
+    replay = _verify_independent_bootstrap_prefix(verifier, request, review)
+
+    assert replay["qualification_status"] == expected_status
+    assert replay["partial_stage"] == expected_partial_stage
+    assert replay["consumed"] is consumed
+    assert replay["evidence_valid"] is True
+    assert replay["evidence_error"] is None
+    assert replay["handoff_hash"] is None
+    assert replay["bootstrap_inventory"]["entry_count"] == (
+        0 if stage_count is None else stage_count + 1
+    )
+    if stage_count is None:
+        assert replay["claim_hash"] is None
+        assert replay["final_stage_hash"] is None
+        assert replay["bootstrap_inventory"]["inventory_sha256"] == (
+            "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c"
+            "2f11161202b945"
+        )
+
+
+@pytest.mark.parametrize(
+    "failure_code",
+    tuple(QUALIFICATION_BOOTSTRAP_FAILURE_DETAILS),
+)
+def test_qualification_bootstrap_prefix_classifies_fixed_failure_codes(
+    tmp_path,
+    failure_code,
+):
+    verifier = _verifier()
+    request, review = _independent_bootstrap_request(tmp_path)
+    _write_bootstrap_phase(
+        request,
+        review,
+        stage_count=2,
+        failure_code=failure_code,
+    )
+
+    replay = _verify_independent_bootstrap_prefix(verifier, request, review)
+
+    assert replay["qualification_status"] == "pre_request_partial"
+    assert replay["partial_stage"] == failure_code
+    assert replay["consumed"] is True
+    assert replay["evidence_valid"] is True
+    assert replay["evidence_error"] is None
+    assert replay["bootstrap_inventory"]["entry_count"] == 4
+
+
+@pytest.mark.parametrize(
+    "case",
+    (
+        "malformed_claim",
+        "noncanonical_claim",
+        "bad_self_hash",
+        "changed_anchors",
+        "stage_gap",
+        "stage_reorder",
+        "duplicate_stage",
+        "extra_stage",
+        "case_alias_entry",
+        "invalid_failure",
+        "invalid_failure_exception_type",
+    ),
+)
+def test_qualification_bootstrap_prefix_classifies_sealed_invalid_bytes(
+    tmp_path,
+    case,
+):
+    verifier = _verifier()
+    request, review = _independent_bootstrap_request(tmp_path)
+    bootstrap = request["bootstrap"]
+    _write_bootstrap_phase(request, review, stage_count=3)
+    claim_path = Path(bootstrap["claim_path"])
+    stage_paths = [Path(row["path"]) for row in bootstrap["stage_paths"]]
+    if case == "malformed_claim":
+        claim_path.write_bytes(b'{"anchors":')
+    elif case == "noncanonical_claim":
+        claim = json.loads(claim_path.read_text(encoding="ascii"))
+        claim_path.write_text(
+            json.dumps(claim, indent=2) + "\n",
+            encoding="ascii",
+            newline="",
+        )
+    elif case == "bad_self_hash":
+        _rewrite_independent_bootstrap_record(
+            claim_path,
+            lambda record: record.__setitem__("record_hash", "0" * 64),
+            recompute_hash=False,
+        )
+    elif case == "changed_anchors":
+        _rewrite_independent_bootstrap_record(
+            stage_paths[0],
+            lambda record: record["anchors"].__setitem__(
+                "qualification_id",
+                "changed-qualification",
+            ),
+        )
+    elif case == "stage_gap":
+        stage_paths[1].unlink()
+    elif case == "stage_reorder":
+        first_raw = stage_paths[0].read_bytes()
+        second_raw = stage_paths[1].read_bytes()
+        stage_paths[0].write_bytes(second_raw)
+        stage_paths[1].write_bytes(first_raw)
+    elif case == "duplicate_stage":
+        stage_paths[1].write_bytes(stage_paths[0].read_bytes())
+    elif case == "extra_stage":
+        (Path(request["qualification_root"]) / "qualification-bootstrap-extra.json").write_bytes(
+            b"{}\n"
+        )
+    elif case == "case_alias_entry":
+        claim_path.rename(
+            claim_path.with_name("Qualification-Bootstrap-Claim.json")
+        )
+    elif case in {"invalid_failure", "invalid_failure_exception_type"}:
+        stage_paths[2].unlink()
+        _write_bootstrap_phase(
+            request,
+            review,
+            stage_count=2,
+            failure_code="source_validation_failed",
+        )
+        _rewrite_independent_bootstrap_record(
+            bootstrap["failure_path"],
+            lambda record: record["payload"].__setitem__(
+                (
+                    "detail"
+                    if case == "invalid_failure"
+                    else "exception_type"
+                ),
+                (
+                    "unbounded producer detail"
+                    if case == "invalid_failure"
+                    else "X" * 65
+                ),
+            ),
+        )
+
+    replay = _verify_independent_bootstrap_prefix(verifier, request, review)
+
+    assert replay["qualification_status"] == "sealed_invalid"
+    assert replay["partial_stage"] == "invalid_bootstrap_prefix"
+    assert replay["consumed"] is True
+    assert replay["evidence_valid"] is False
+    assert replay["evidence_error"]
+    assert replay["handoff_hash"] is None
+
+
+@pytest.mark.parametrize("case", ("nonregular", "unexpected_root_entry"))
+def test_qualification_bootstrap_prefix_rejects_nonregular_or_unexpected_entry(
+    tmp_path,
+    case,
+):
+    verifier = _verifier()
+    request, review = _independent_bootstrap_request(tmp_path)
+    if case == "nonregular":
+        Path(request["bootstrap"]["claim_path"]).mkdir()
+    else:
+        (Path(request["qualification_root"]) / "unexpected.txt").write_bytes(
+            b"unexpected\n"
+        )
+
+    replay = _verify_independent_bootstrap_prefix(verifier, request, review)
+
+    assert replay["qualification_status"] == "sealed_invalid"
+    assert replay["partial_stage"] == "invalid_bootstrap_prefix"
+    assert replay["consumed"] is True
+    assert replay["evidence_valid"] is False
+
+
+def test_qualification_bootstrap_prefix_classifies_linked_entry_sealed_invalid(
+    tmp_path,
+):
+    verifier = _verifier()
+    request, review = _independent_bootstrap_request(tmp_path)
+    target = tmp_path / "bootstrap-link-target"
+    target.mkdir()
+    claim_path = Path(request["bootstrap"]["claim_path"])
+    _create_directory_junction(claim_path, target)
+    try:
+        replay = _verify_independent_bootstrap_prefix(verifier, request, review)
+    finally:
+        os.rmdir(claim_path)
+
+    assert replay["qualification_status"] == "sealed_invalid"
+    assert replay["partial_stage"] == "invalid_bootstrap_prefix"
+    assert replay["consumed"] is True
+    assert replay["evidence_valid"] is False
+    assert "link" in replay["evidence_error"] or "reparse" in replay[
+        "evidence_error"
+    ]
+
+
+@pytest.mark.parametrize("case", ("missing_handoff", "invalid_handoff"))
+def test_qualification_bootstrap_prefix_classifies_active_request_partial(
+    tmp_path,
+    case,
+):
+    verifier = _verifier()
+    request, review = _independent_bootstrap_request(tmp_path)
+    _write_bootstrap_phase(
+        request,
+        review,
+        stage_count=5,
+        handoff=case == "invalid_handoff",
+    )
+    Path(request["request_path"]).write_bytes(review["request_bytes"])
+    if case == "invalid_handoff":
+        Path(request["bootstrap"]["handoff_path"]).write_bytes(b'{"torn":')
+
+    replay = _verify_independent_bootstrap_prefix(verifier, request, review)
+
+    assert replay["qualification_status"] == "active_request_partial"
+    assert replay["partial_stage"] == (
+        "missing_handoff" if case == "missing_handoff" else "invalid_handoff"
+    )
+    assert replay["consumed"] is True
+    assert replay["evidence_valid"] is (case == "missing_handoff")
+    assert replay["handoff_hash"] is None
+
+
+def test_qualification_bootstrap_prefix_returns_complete_handoff_evidence(
+    tmp_path,
+):
+    verifier = _verifier()
+    request, review = _independent_bootstrap_request(tmp_path)
+    records = _write_bootstrap_phase(
+        request,
+        review,
+        stage_count=5,
+        handoff=True,
+    )
+    Path(request["request_path"]).write_bytes(review["request_bytes"])
+
+    replay = _verify_independent_bootstrap_prefix(verifier, request, review)
+
+    assert replay["qualification_status"] == "handoff_complete"
+    assert replay["partial_stage"] is None
+    assert replay["consumed"] is True
+    assert replay["evidence_valid"] is True
+    assert replay["evidence_error"] is None
+    assert replay["claim_hash"] == records[0]["record_hash"]
+    assert replay["final_stage_hash"] == records[-2]["record_hash"]
+    assert replay["handoff_hash"] == records[-1]["record_hash"]
+    assert replay["bootstrap_inventory"]["entry_count"] == 7
+
+
+def test_qualification_bootstrap_prefix_reads_each_candidate_once(
+    tmp_path,
+    monkeypatch,
+):
+    verifier = _verifier()
+    request, review = _independent_bootstrap_request(tmp_path)
+    _write_bootstrap_phase(
+        request,
+        review,
+        stage_count=5,
+        handoff=True,
+    )
+    Path(request["request_path"]).write_bytes(review["request_bytes"])
+    bootstrap_paths = {
+        Path(request["bootstrap"]["claim_path"]),
+        *(Path(row["path"]) for row in request["bootstrap"]["stage_paths"]),
+        Path(request["bootstrap"]["handoff_path"]),
+    }
+    counts = {path: 0 for path in bootstrap_paths}
+    original_reader = verifier._qualification_read_file_bytes
+
+    def read_once(path, label):
+        path = Path(path)
+        if path in counts:
+            counts[path] += 1
+        return original_reader(path, label)
+
+    monkeypatch.setattr(verifier, "_qualification_read_file_bytes", read_once)
+
+    replay = _verify_independent_bootstrap_prefix(verifier, request, review)
+
+    assert replay["qualification_status"] == "handoff_complete"
+    assert set(counts.values()) == {1}
+
+
+@pytest.mark.parametrize(
+    ("case", "expected_status", "expected_partial_stage", "consumed"),
+    (
+        ("prepared", "reviewed_prepared", None, False),
+        ("claim", "pre_request_partial", "abrupt_after_claim", True),
+        (
+            "active_without_handoff",
+            "active_request_partial",
+            "missing_handoff",
+            True,
+        ),
+    ),
+)
+def test_qualification_bootstrap_prefix_audit_has_no_authority_or_retry(
+    tmp_path,
+    monkeypatch,
+    case,
+    expected_status,
+    expected_partial_stage,
+    consumed,
+):
+    verifier = _verifier()
+    request, review = _independent_bootstrap_request(tmp_path)
+    root = Path(request["qualification_root"])
+    request.update(
+        {
+            "completion_path": str(root / "qualification-completion.json"),
+            "failure_path": str(root / "qualification-failure.json"),
+            "handshake": {
+                "attempt_path": str(
+                    root / "qualification-communication-attempt.json"
+                ),
+                "ready_path": str(root / "qualification-communication-ready.json"),
+                "release_path": str(
+                    root / "qualification-communication-release.json"
+                ),
+            },
+        }
+    )
+    request["request_hash"] = None
+    request["request_hash"] = _self_hash(request, "request_hash")
+    review["request_bytes"] = (_canonical_json(request) + "\n").encode("ascii")
+    request_source_path = (tmp_path / "reviewed-request.json").resolve()
+    request_source_path.write_bytes(review["request_bytes"])
+    if case == "claim":
+        _write_bootstrap_phase(request, review, stage_count=0)
+    elif case == "active_without_handoff":
+        _write_bootstrap_phase(request, review, stage_count=5)
+        Path(request["request_path"]).write_bytes(review["request_bytes"])
+
+    monkeypatch.setattr(
+        verifier,
+        "_load_historical_qualification_review",
+        lambda *_args, **_kwargs: {
+            **review,
+            "registration": {},
+            "registration_bytes": b"",
+            "repo_root": REPO_ROOT,
+            "request": request,
+        },
+    )
+    monkeypatch.setattr(
+        verifier,
+        "_verify_qualification_request",
+        lambda *_args, **_kwargs: {
+            "registration": {},
+            "request_review": review["review_binding"],
+        },
+    )
+    monkeypatch.setattr(
+        verifier,
+        "_qualification_audit_inventory",
+        lambda _request: {},
+    )
+
+    audit = verifier.verify_prelock_qualification(
+        request_source_path,
+        expected_review_commit=QUALIFICATION_REVIEW_COMMIT,
+        expected_request_hash=request["request_hash"],
+        expected_request_file_sha256=hashlib.sha256(
+            review["request_bytes"]
+        ).hexdigest(),
+        expected_request_size=len(review["request_bytes"]),
+    )
+
+    assert audit["schema_version"] == (
+        "noncombat-outcome-evidence-qualification-verification-audit-v3"
+    )
+    assert audit["status"] == expected_status
+    assert audit["qualification_status"] == expected_status
+    assert audit["partial_stage"] == expected_partial_stage
+    assert audit["consumed"] is consumed
+    assert audit["retry_allowed"] is False
+    assert audit["bootstrap_inventory"]["entry_count"] == (
+        0 if case == "prepared" else (1 if case == "claim" else 6)
+    )
+    for field in (
+        "causal_claim_authorized",
+        "collection_authorized",
+        "gameplay_policy_change_authorized",
+        "run_lock_authorized",
+        "study_start_authorized",
+        "training_authorized",
+    ):
+        assert audit[field] is False
 
 
 def test_qualification_file_reader_rejects_path_identity_change(
@@ -2007,6 +2721,9 @@ def test_qualification_verifier_replays_passed_terminal_evidence(
     )
     audit = _verify_qualification(verifier, request, result_path)
 
+    assert audit["schema_version"] == (
+        "noncombat-outcome-evidence-qualification-verification-audit-v2"
+    )
     assert audit["status"] == "verified"
     assert audit["qualification_status"] == "passed"
     assert audit["request_hash"] == request["request_hash"]
@@ -2051,6 +2768,9 @@ def test_qualification_verifier_replays_v1_as_historical_unqualified_evidence(
 
     audit = _verify_qualification(verifier, legacy_request, result_path)
 
+    assert audit["schema_version"] == (
+        "noncombat-outcome-evidence-qualification-verification-audit-v2"
+    )
     assert audit["status"] == "verified"
     assert audit["qualification_status"] == "passed"
     assert audit["result_hash"] == legacy_result["result_hash"]
@@ -4261,6 +4981,35 @@ def test_verifier_has_static_import_independence():
             "spirecomm.communication.study_handshake",
         }
     )
+
+
+def test_qualification_bootstrap_prefix_import_independence(tmp_path):
+    verifier_path = (
+        REPO_ROOT
+        / "analysis_scripts"
+        / "verify_noncombat_outcome_evidence_expansion.py"
+    )
+    probe = (
+        "import importlib.util,json,sys; "
+        "sys.modules['scripts.run_noncombat_outcome_evidence_expansion']=None; "
+        "spec=importlib.util.spec_from_file_location('source_only_verifier',sys.argv[1]); "
+        "module=importlib.util.module_from_spec(spec); spec.loader.exec_module(module); "
+        "print(json.dumps([hasattr(module,name) for name in "
+        "['_qualification_bootstrap_declared_paths',"
+        "'_qualification_bootstrap_expected_envelope',"
+        "'_qualification_verify_bootstrap_prefix']]))"
+    )
+
+    completed = subprocess.run(
+        [sys.executable, "-I", "-S", "-c", probe, str(verifier_path)],
+        cwd=tmp_path,
+        capture_output=True,
+        check=False,
+        text=True,
+    )
+
+    assert completed.returncode == 0, completed.stderr
+    assert json.loads(completed.stdout) == [True, True, True]
 
 
 def test_verifier_supports_direct_cli_execution():
