@@ -120,7 +120,9 @@ def _qualification_bootstrap_read_bytes_no_follow(path_text):
         raise _QualificationBootstrapLibraryError("file identity changed during read")
     return b"".join(blocks)
 
-def _qualification_bootstrap_publish_bytes_once(path_text, raw):
+def _qualification_bootstrap_publish_bytes_once(path_text, raw, phase_callback=None):
+    if phase_callback is not None:
+        phase_callback("pre_create")
     if not isinstance(raw, bytes):
         raise _QualificationBootstrapLibraryError("published value must be bytes")
     parent_path, final_before = _qualification_bootstrap_lstat_components(path_text, True)
@@ -131,8 +133,12 @@ def _qualification_bootstrap_publish_bytes_once(path_text, raw):
         raise _QualificationBootstrapLibraryError("publisher parent is unsafe")
     parent_identity = _qualification_bootstrap_identity(parent_before)
     flags = os.O_CREAT | os.O_EXCL | os.O_RDWR | getattr(os, "O_BINARY", 0)
+    if phase_callback is not None:
+        phase_callback("create_attempted")
     descriptor = os.open(path_text, flags, 0o600)
     try:
+        if phase_callback is not None:
+            phase_callback("created")
         offset = 0
         while offset < len(raw):
             written = os.write(descriptor, raw[offset:])
@@ -1683,12 +1689,45 @@ class OutcomeEvidenceRunnerError(RuntimeError):
     """Raised when a registered launch or ledger transition is invalid."""
 
 
+class _QualificationBootstrapPublicationHistory:
+    _PHASE_ORDER = {
+        "pre_create": 0,
+        "create_attempted": 1,
+        "created": 2,
+    }
+
+    def __init__(self) -> None:
+        self._phase: str | None = None
+        self._indeterminate = False
+
+    def observe(self, phase: str) -> None:
+        next_order = self._PHASE_ORDER.get(phase)
+        if next_order is None:
+            self._indeterminate = True
+            return
+        current_order = (
+            -1 if self._phase is None else self._PHASE_ORDER[self._phase]
+        )
+        if next_order > current_order:
+            self._phase = phase
+
+    @property
+    def definitely_pre_create(self) -> bool:
+        return not self._indeterminate and self._phase == "pre_create"
+
+
 def _qualification_bootstrap_publish_bytes_once(
     path_text: str,
     raw: bytes,
+    *,
+    phase_callback: Callable[[str], None] | None = None,
 ) -> None:
     try:
-        _qualification_bootstrap_library_publish_bytes_once(path_text, raw)
+        _qualification_bootstrap_library_publish_bytes_once(
+            path_text,
+            raw,
+            phase_callback,
+        )
     except _QualificationBootstrapLibraryError as exc:
         raise OutcomeEvidenceRunnerError(str(exc)) from exc
 
@@ -5724,14 +5763,19 @@ def execute_prelock_qualification(
             "qualification reviewed request bytes are invalid"
         )
     stage = "publish_request"
+    publication_history = _QualificationBootstrapPublicationHistory()
     try:
         _qualification_bootstrap_publish_bytes_once(
             str(active_request_path),
             active_request_bytes,
+            phase_callback=publication_history.observe,
         )
     except BaseException as exc:
-        if _qualification_bootstrap_active_request_absence_proven(
-            active_request_path
+        if (
+            publication_history.definitely_pre_create
+            and _qualification_bootstrap_active_request_absence_proven(
+                active_request_path
+            )
         ):
             _qualification_bootstrap_publish_failure(
                 bootstrap_state,

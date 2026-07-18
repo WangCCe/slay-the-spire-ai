@@ -3843,12 +3843,18 @@ def test_active_request_publication_preopen_failure_records_stage_five_failure(
     active_request_path = Path(request["request_path"])
     publish_bytes = module._qualification_bootstrap_publish_bytes_once
 
-    def fail_before_open(path_text, raw):
+    def fail_before_open(path_text, raw, *, phase_callback=None):
         if Path(path_text) == active_request_path:
+            if phase_callback is not None:
+                phase_callback("pre_create")
             raise module.OutcomeEvidenceRunnerError(
                 "fixed pre-open publication failure"
             )
-        return publish_bytes(path_text, raw)
+        return publish_bytes(
+            path_text,
+            raw,
+            phase_callback=phase_callback,
+        )
 
     monkeypatch.setattr(
         module,
@@ -3901,10 +3907,14 @@ def test_active_request_publication_collision_preserves_partial_without_failure(
     collision_bytes = b"preexisting active request collision\n"
     publish_bytes = module._qualification_bootstrap_publish_bytes_once
 
-    def collide_during_publication(path_text, raw):
+    def collide_during_publication(path_text, raw, *, phase_callback=None):
         if Path(path_text) == active_request_path:
             active_request_path.write_bytes(collision_bytes)
-        return publish_bytes(path_text, raw)
+        return publish_bytes(
+            path_text,
+            raw,
+            phase_callback=phase_callback,
+        )
 
     monkeypatch.setattr(
         module,
@@ -3945,13 +3955,17 @@ def test_active_request_publication_postwrite_failure_preserves_partial_bytes(
     partial_bytes = request_source_path.read_bytes()[:37]
     publish_bytes = module._qualification_bootstrap_publish_bytes_once
 
-    def fail_after_partial_write(path_text, raw):
+    def fail_after_partial_write(path_text, raw, *, phase_callback=None):
         if Path(path_text) == active_request_path:
             active_request_path.write_bytes(partial_bytes)
             raise module.OutcomeEvidenceRunnerError(
                 "fixed post-write publication failure"
             )
-        return publish_bytes(path_text, raw)
+        return publish_bytes(
+            path_text,
+            raw,
+            phase_callback=phase_callback,
+        )
 
     monkeypatch.setattr(
         module,
@@ -3976,6 +3990,54 @@ def test_active_request_publication_postwrite_failure_preserves_partial_bytes(
     assert "post-write publication failure" in str(raised.value.__cause__)
     assert active_request_path.read_bytes() == partial_bytes
     assert not Path(request["bootstrap"]["failure_path"]).exists()
+    assert not Path(request["bootstrap"]["handoff_path"]).exists()
+    assert not Path(request["handshake"]["attempt_path"]).exists()
+    assert not Path(request["failure_path"]).exists()
+
+
+def test_active_request_publication_success_then_removal_failure_remains_partial(
+    tmp_path,
+    monkeypatch,
+):
+    module, registration_path, request_source_path, request = (
+        _trusted_qualification_lifecycle_fixture(tmp_path, monkeypatch)
+    )
+    active_request_path = Path(request["request_path"])
+    publish_bytes = module._qualification_bootstrap_publish_bytes_once
+
+    def publish_remove_then_fail(path_text, raw, *, phase_callback=None):
+        publish_bytes(
+            path_text,
+            raw,
+            phase_callback=phase_callback,
+        )
+        if Path(path_text) == active_request_path:
+            active_request_path.unlink()
+            raise module.OutcomeEvidenceRunnerError(
+                "fixed post-create removal failure"
+            )
+
+    monkeypatch.setattr(
+        module,
+        "_qualification_bootstrap_publish_bytes_once",
+        publish_remove_then_fail,
+    )
+
+    with pytest.raises(module.OutcomeEvidenceRunnerError) as raised:
+        module.execute_prelock_qualification(
+            registration_path=registration_path,
+            request_path=request_source_path,
+            expected_request_hash=request["request_hash"],
+            **_qualification_review_kwargs(request),
+            process_starter=lambda *_args, **_kwargs: pytest.fail(
+                "removed active request started a child"
+            ),
+        )
+
+    assert not active_request_path.exists()
+    assert not Path(request["bootstrap"]["failure_path"]).exists()
+    assert "active_request_partial" in str(raised.value)
+    assert "post-create removal failure" in str(raised.value.__cause__)
     assert not Path(request["bootstrap"]["handoff_path"]).exists()
     assert not Path(request["handshake"]["attempt_path"]).exists()
     assert not Path(request["failure_path"]).exists()
@@ -4134,7 +4196,7 @@ def test_bootstrap_handoff_orders_active_request_before_attempt_and_child(
     events = []
     publish_bootstrap_bytes = module._qualification_bootstrap_publish_bytes_once
 
-    def publish_bootstrap_in_order(path_text, raw):
+    def publish_bootstrap_in_order(path_text, raw, *, phase_callback=None):
         path = Path(path_text)
         if path == active_request_path:
             assert all(
@@ -4146,7 +4208,11 @@ def test_bootstrap_handoff_orders_active_request_before_attempt_and_child(
         elif path == handoff_path:
             assert active_request_path.read_bytes() == source_bytes
             events.append("handoff")
-        return publish_bootstrap_bytes(path_text, raw)
+        return publish_bootstrap_bytes(
+            path_text,
+            raw,
+            phase_callback=phase_callback,
+        )
 
     monkeypatch.setattr(
         module,
