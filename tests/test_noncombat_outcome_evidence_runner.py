@@ -249,6 +249,39 @@ def _bootstrap_launcher_fixture(tmp_path, runner_bytes=None):
     }
 
 
+def _production_runner_with_entry_mutation(statement):
+    runner_path = REPO_ROOT / "scripts" / (
+        "run_noncombat_outcome_evidence_expansion.py"
+    )
+    source = runner_path.read_text(encoding="utf-8")
+    anchor = "import sys\n\nQUALIFICATION_RUNNER_SHA256_ENV"
+    assert source.count(anchor) == 1
+    return source.replace(
+        anchor,
+        f"import sys\n{statement}\n\nQUALIFICATION_RUNNER_SHA256_ENV",
+    ).encode("utf-8")
+
+
+def _assert_bootstrap_failure(
+    bootstrap,
+    *,
+    code,
+    previous_record,
+    stage_index,
+    stage_name,
+):
+    failure = json.loads(
+        Path(bootstrap["failure_path"]).read_text(encoding="ascii")
+    )
+    assert failure["record_type"] == "failure"
+    assert failure["anchors"] == previous_record["anchors"]
+    assert failure["previous_hash"] == previous_record["record_hash"]
+    assert failure["stage_index"] == stage_index
+    assert failure["stage_name"] == stage_name
+    assert failure["payload"]["code"] == code
+    return failure
+
+
 def _assert_silent_qualification_failure(completed):
     assert completed.returncode == 2
     assert completed.stdout == ""
@@ -954,7 +987,14 @@ def test_trusted_qualification_launcher_post_claim_rejection_consumes_identity(
     assert claim["record_type"] == "claim"
     assert claim["anchors"]["launch_token"] == fixture["command"][8]
     assert not fixture["marker_path"].exists()
-    assert not Path(bootstrap["failure_path"]).exists()
+    failure = _assert_bootstrap_failure(
+        bootstrap,
+        code="runner_validation_failed",
+        previous_record=claim,
+        stage_index=0,
+        stage_name="claim",
+    )
+    failure_bytes = Path(bootstrap["failure_path"]).read_bytes()
     assert all(not Path(stage["path"]).exists() for stage in bootstrap["stage_paths"])
 
     second = subprocess.run(
@@ -970,11 +1010,12 @@ def test_trusted_qualification_launcher_post_claim_rejection_consumes_identity(
     assert second.stderr == b""
     assert claim_path.read_bytes() == claim_bytes
     assert not fixture["marker_path"].exists()
-    assert not Path(bootstrap["failure_path"]).exists()
+    assert Path(bootstrap["failure_path"]).read_bytes() == failure_bytes
+    assert failure["payload"]["detail"] == "reviewed runner validation failed"
     assert all(not Path(stage["path"]).exists() for stage in bootstrap["stage_paths"])
 
 
-def _assert_launcher_vector_claim_only_rejection(tmp_path, fixture, command):
+def _assert_launcher_vector_runner_validation_failure(tmp_path, fixture, command):
     first = subprocess.run(
         command,
         cwd=tmp_path,
@@ -994,7 +1035,14 @@ def _assert_launcher_vector_claim_only_rejection(tmp_path, fixture, command):
     assert claim["record_type"] == "claim"
     assert claim["anchors"]["launch_token"] == fixture["command"][8]
     assert not fixture["marker_path"].exists()
-    assert not Path(bootstrap["failure_path"]).exists()
+    _assert_bootstrap_failure(
+        bootstrap,
+        code="runner_validation_failed",
+        previous_record=claim,
+        stage_index=0,
+        stage_name="claim",
+    )
+    failure_bytes = Path(bootstrap["failure_path"]).read_bytes()
     assert all(not Path(stage["path"]).exists() for stage in bootstrap["stage_paths"])
 
     second = subprocess.run(
@@ -1010,29 +1058,96 @@ def _assert_launcher_vector_claim_only_rejection(tmp_path, fixture, command):
     assert second.stderr == b""
     assert claim_path.read_bytes() == claim_bytes
     assert not fixture["marker_path"].exists()
-    assert not Path(bootstrap["failure_path"]).exists()
+    assert Path(bootstrap["failure_path"]).read_bytes() == failure_bytes
     assert all(not Path(stage["path"]).exists() for stage in bootstrap["stage_paths"])
 
 
-def test_site_enabled_v3_launcher_claims_only_before_vector_rejection(tmp_path):
+@pytest.mark.parametrize("missing_flag", ("-I", "-S"))
+def test_v3_launcher_missing_isolation_vector_records_runner_failure(
+    tmp_path,
+    missing_flag,
+):
     fixture = _bootstrap_launcher_fixture(tmp_path)
-    command = [
-        fixture["command"][0],
-        fixture["command"][1],
-        *fixture["command"][3:],
-    ]
+    command = list(fixture["command"])
+    command.remove(missing_flag)
 
-    _assert_launcher_vector_claim_only_rejection(tmp_path, fixture, command)
+    _assert_launcher_vector_runner_validation_failure(tmp_path, fixture, command)
 
 
-def test_modified_trusted_launcher_code_claims_only_before_identity_rejection(
+def test_modified_trusted_launcher_code_records_runner_validation_failure(
     tmp_path,
 ):
     fixture = _bootstrap_launcher_fixture(tmp_path)
     command = list(fixture["command"])
     command[4] += ";pass"
 
-    _assert_launcher_vector_claim_only_rejection(tmp_path, fixture, command)
+    _assert_launcher_vector_runner_validation_failure(tmp_path, fixture, command)
+
+
+@pytest.mark.parametrize(
+    "mutation",
+    (
+        "sys.flags=type('Flags',(),{'isolated':False,'no_site':True})()",
+        "sys.flags=type('Flags',(),{'isolated':True,'no_site':False})()",
+        "os.environ.pop('STS_OUTCOME_EVIDENCE_QUALIFICATION_BOOTSTRAP_LAUNCH_TOKEN',None)",
+    ),
+)
+def test_review_fix_runner_entry_subprocess_records_failure_after_launcher_stage(
+    tmp_path,
+    mutation,
+):
+    fixture = _bootstrap_launcher_fixture(
+        tmp_path,
+        runner_bytes=_production_runner_with_entry_mutation(mutation),
+    )
+
+    first = subprocess.run(
+        fixture["command"],
+        cwd=tmp_path,
+        capture_output=True,
+        check=False,
+        env=fixture["environment"],
+        text=True,
+    )
+
+    _assert_silent_qualification_failure(first)
+    bootstrap = fixture["envelope"]["bootstrap"]
+    claim = json.loads(
+        Path(bootstrap["claim_path"]).read_text(encoding="ascii")
+    )
+    launcher_stage = json.loads(
+        Path(bootstrap["stage_paths"][0]["path"]).read_text(encoding="ascii")
+    )
+    assert launcher_stage["previous_hash"] == claim["record_hash"]
+    _assert_bootstrap_failure(
+        bootstrap,
+        code="runner_entry_validation_failed",
+        previous_record=launcher_stage,
+        stage_index=1,
+        stage_name="launcher_verified",
+    )
+    claim_bytes = Path(bootstrap["claim_path"]).read_bytes()
+    launcher_bytes = Path(bootstrap["stage_paths"][0]["path"]).read_bytes()
+    failure_bytes = Path(bootstrap["failure_path"]).read_bytes()
+    assert not fixture["marker_path"].exists()
+    assert not Path(bootstrap["stage_paths"][1]["path"]).exists()
+    assert not Path(bootstrap["handoff_path"]).exists()
+
+    second = subprocess.run(
+        fixture["command"],
+        cwd=tmp_path,
+        capture_output=True,
+        check=False,
+        env=fixture["environment"],
+        text=True,
+    )
+
+    _assert_silent_qualification_failure(second)
+    assert Path(bootstrap["claim_path"]).read_bytes() == claim_bytes
+    assert Path(bootstrap["stage_paths"][0]["path"]).read_bytes() == launcher_bytes
+    assert Path(bootstrap["failure_path"]).read_bytes() == failure_bytes
+    assert not fixture["marker_path"].exists()
+    assert not Path(bootstrap["stage_paths"][1]["path"]).exists()
 
 
 def test_trusted_qualification_launcher_survives_communicationmod_split(
@@ -3430,6 +3545,73 @@ def test_pre_request_stage_boundary_source_failure_links_runner_stage(
     assert capsys.readouterr() == ("", "")
 
 
+def test_review_fix_main_registration_drift_records_request_failure(
+    tmp_path,
+    monkeypatch,
+    capsys,
+):
+    module, registration_path, request_source_path, request = (
+        _qualification_request_fixture(tmp_path, monkeypatch, source_only=True)
+    )
+    state = _bootstrap_runtime_state(request, stage_count=3)
+    review_kwargs = _qualification_review_kwargs(request)
+    monkeypatch.setattr(module, "_QUALIFICATION_CLI_REQUESTED", True)
+    monkeypatch.setattr(module, "_QUALIFICATION_BOOTSTRAP_STATE", state)
+    monkeypatch.setenv(
+        module.QUALIFICATION_RUNNER_SHA256_ENV,
+        request["implementation_sha256"][module.QUALIFICATION_RUNNER_RELATIVE_PATH],
+    )
+    monkeypatch.setattr(
+        module.subprocess,
+        "Popen",
+        lambda *_args, **_kwargs: pytest.fail(
+            "registration drift started a child"
+        ),
+    )
+    registration_path.write_bytes(b"{\n")
+
+    result = module.main(
+        [
+            "qualify",
+            "--registration",
+            str(registration_path),
+            "--request",
+            str(request_source_path),
+            "--request-hash",
+            request["request_hash"],
+            "--request-file-sha256",
+            review_kwargs["expected_request_file_sha256"],
+            "--request-size",
+            str(review_kwargs["expected_request_size"]),
+            "--review-commit",
+            review_kwargs["expected_review_commit"],
+        ]
+    )
+
+    assert result == 2
+    source_stage = json.loads(
+        Path(request["bootstrap"]["stage_paths"][2]["path"]).read_text(
+            encoding="ascii"
+        )
+    )
+    _assert_bootstrap_failure(
+        request["bootstrap"],
+        code="request_validation_failed",
+        previous_record=source_stage,
+        stage_index=3,
+        stage_name="source_verified",
+    )
+    assert not Path(request["bootstrap"]["stage_paths"][3]["path"]).exists()
+    assert not Path(request["bootstrap"]["handoff_path"]).exists()
+    assert not Path(request["request_path"]).exists()
+    assert not Path(request["handshake"]["attempt_path"]).exists()
+    assert not Path(request["handshake"]["ready_path"]).exists()
+    assert not Path(request["handshake"]["release_path"]).exists()
+    assert not Path(request["completion_path"]).exists()
+    assert not Path(request["failure_path"]).exists()
+    assert capsys.readouterr() == ("", "")
+
+
 @pytest.mark.parametrize(
     ("boundary", "last_stage", "failure_code"),
     (
@@ -4877,9 +5059,10 @@ def test_qualification_git_rejects_lazy_fetch_config_before_run(
         module._qualification_git_source_output(tmp_path, "status")
 
 
-def test_qualify_command_rejects_registration_junction_before_load(
+def test_qualify_command_routes_registration_junction_to_request_failure(
     tmp_path,
     monkeypatch,
+    capsys,
 ):
     module, registration_path, request_source_path, request = (
         _qualification_request_fixture(
@@ -4888,12 +5071,21 @@ def test_qualify_command_rejects_registration_junction_before_load(
             source_only=True,
         )
     )
+    state = _bootstrap_runtime_state(request, stage_count=3)
+    monkeypatch.setattr(module, "_QUALIFICATION_CLI_REQUESTED", True)
+    monkeypatch.setattr(module, "_QUALIFICATION_BOOTSTRAP_STATE", state)
+    monkeypatch.setenv(
+        module.QUALIFICATION_RUNNER_SHA256_ENV,
+        request["implementation_sha256"][module.QUALIFICATION_RUNNER_RELATIVE_PATH],
+    )
     registration_alias = tmp_path / "registration-alias"
     _create_directory_junction(registration_alias, tmp_path)
     monkeypatch.setattr(
-        module,
-        "execute_prelock_qualification",
-        lambda **_kwargs: {"status": "unexpected"},
+        module.subprocess,
+        "Popen",
+        lambda *_args, **_kwargs: pytest.fail(
+            "registration junction started a child"
+        ),
     )
 
     try:
@@ -4909,6 +5101,25 @@ def test_qualify_command_rejects_registration_junction_before_load(
                 request_source_path.stat().st_size,
                 REVIEW_COMMIT,
             )
+        source_stage = json.loads(
+            Path(request["bootstrap"]["stage_paths"][2]["path"]).read_text(
+                encoding="ascii"
+            )
+        )
+        _assert_bootstrap_failure(
+            request["bootstrap"],
+            code="request_validation_failed",
+            previous_record=source_stage,
+            stage_index=3,
+            stage_name="source_verified",
+        )
+        assert not Path(
+            request["bootstrap"]["stage_paths"][3]["path"]
+        ).exists()
+        assert not Path(request["bootstrap"]["handoff_path"]).exists()
+        assert not Path(request["request_path"]).exists()
+        assert not Path(request["handshake"]["attempt_path"]).exists()
+        assert capsys.readouterr() == ("", "")
     finally:
         os.rmdir(registration_alias)
 

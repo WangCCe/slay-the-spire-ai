@@ -354,9 +354,14 @@ def _qualification_bootstrap_load_early_record(path_text, label):
 
 
 def _qualification_bootstrap_state_from_environment() -> dict[str, object]:
-    encoded = os.environ.get(QUALIFICATION_BOOTSTRAP_ENVELOPE_ENV)
-    token = os.environ.get(QUALIFICATION_BOOTSTRAP_LAUNCH_TOKEN_ENV)
     try:
+        original_arguments = tuple(sys.orig_argv)
+        if len(original_arguments) < 9:
+            raise _QualificationBootstrapLibraryError(
+                "qualification bootstrap original arguments are invalid"
+            )
+        encoded = original_arguments[7]
+        token = original_arguments[8]
         if (
             not isinstance(encoded, str)
             or not encoded
@@ -653,6 +658,19 @@ _QUALIFICATION_TRUSTED_LAUNCHER_PAYLOAD = (
     + "\nimport base64\n"
     + f"_qualification_trusted_launcher_template={_QUALIFICATION_TRUSTED_LAUNCHER_TEMPLATE!r}\n"
     + "def reject(*_args): raise SystemExit(2)\n"
+    "def reject_runner(claim,anchors,paths,exc=None):\n"
+    " try:\n"
+    "  if _qualification_bootstrap_read_bytes_no_follow(paths['claim_path'])!=_qualification_bootstrap_record_bytes(claim): reject()\n"
+    "  if exc is None: exc=RuntimeError()\n"
+    "  exception_type=type(exc).__name__\n"
+    "  if not isinstance(exception_type,str) or not exception_type.isascii() or not exception_type.isidentifier() or len(exception_type)>64: exception_type='Exception'\n"
+    "  def integer(name):\n"
+    "   value=getattr(exc,name,None)\n"
+    "   return value if type(value) is int else None\n"
+    "  failure=_qualification_bootstrap_record(record_type='failure',anchors=anchors,created_unix_ns=time.time_ns(),pid=os.getpid(),previous_hash=claim['record_hash'],stage_index=0,stage_name='claim',payload={'code':'runner_validation_failed','detail':QUALIFICATION_BOOTSTRAP_FAILURE_DETAILS['runner_validation_failed'],'errno':integer('errno'),'exception_type':exception_type,'winerror':integer('winerror')})\n"
+    "  _qualification_bootstrap_publish_record_once(paths['failure_path'],failure)\n"
+    " except BaseException: pass\n"
+    " reject()\n"
     "def unique(pairs):\n"
     " result={}\n"
     " for key,value in pairs:\n"
@@ -686,23 +704,23 @@ _QUALIFICATION_TRUSTED_LAUNCHER_PAYLOAD = (
     " claim=_qualification_bootstrap_record(record_type='claim',anchors=anchors,created_unix_ns=time.time_ns(),pid=os.getpid(),previous_hash=None,stage_index=0,stage_name='claim',payload={})\n"
     " try: _qualification_bootstrap_publish_record_once(expected_bootstrap['claim_path'],claim)\n"
     " except BaseException: reject()\n"
-    " if len(sys.orig_argv)<5 or tuple(sys.orig_argv[1:4])!=('-I','-S','-c') or sys.orig_argv[4]!=_qualification_trusted_launcher_template.format(payload=_qualification_payload_b64): reject()\n"
-    " if len(sys.argv)!=18: reject()\n"
-    " if not _qualification_bootstrap_is_lower_hex(expected,64) or expected!=envelope['runner_sha256']: reject()\n"
+    " if len(sys.orig_argv)<5 or tuple(sys.orig_argv[1:4])!=('-I','-S','-c') or sys.orig_argv[4]!=_qualification_trusted_launcher_template.format(payload=_qualification_payload_b64): reject_runner(claim,anchors,expected_bootstrap)\n"
+    " if len(sys.argv)!=18: reject_runner(claim,anchors,expected_bootstrap)\n"
+    " if not _qualification_bootstrap_is_lower_hex(expected,64) or expected!=envelope['runner_sha256']: reject_runner(claim,anchors,expected_bootstrap)\n"
     " try: source=_qualification_bootstrap_read_bytes_no_follow(runner)\n"
-    " except BaseException: reject()\n"
-    " if hashlib.sha256(source).hexdigest()!=expected: reject()\n"
+    " except BaseException as exc: reject_runner(claim,anchors,expected_bootstrap,exc)\n"
+    " if hashlib.sha256(source).hexdigest()!=expected: reject_runner(claim,anchors,expected_bootstrap)\n"
     " arguments=sys.argv[5:]\n"
     " labels=('--registration','--request','--request-hash','--request-file-sha256','--request-size','--review-commit')\n"
-    " if arguments[0]!='qualify' or arguments[1::2]!=list(labels): reject()\n"
+    " if arguments[0]!='qualify' or arguments[1::2]!=list(labels): reject_runner(claim,anchors,expected_bootstrap)\n"
     " try:\n"
     "  _qualification_bootstrap_split_path(arguments[2])\n"
     "  _qualification_bootstrap_split_path(arguments[4])\n"
-    " except BaseException: reject()\n"
-    " if arguments[6]!=envelope['request_hash'] or arguments[8]!=envelope['request_file_sha256'] or arguments[10]!=str(envelope['request_size']) or arguments[12]!=envelope['review_commit']: reject()\n"
+    " except BaseException as exc: reject_runner(claim,anchors,expected_bootstrap,exc)\n"
+    " if arguments[6]!=envelope['request_hash'] or arguments[8]!=envelope['request_file_sha256'] or arguments[10]!=str(envelope['request_size']) or arguments[12]!=envelope['review_commit']: reject_runner(claim,anchors,expected_bootstrap)\n"
     " stage=_qualification_bootstrap_record(record_type='stage',anchors=anchors,created_unix_ns=time.time_ns(),pid=os.getpid(),previous_hash=claim['record_hash'],stage_index=1,stage_name='launcher_verified',payload={})\n"
     " try: _qualification_bootstrap_publish_record_once(expected_bootstrap['stage_paths'][0]['path'],stage)\n"
-    " except BaseException: reject()\n"
+    " except BaseException as exc: reject_runner(claim,anchors,expected_bootstrap,exc)\n"
     f" os.environ[{QUALIFICATION_RUNNER_SHA256_ENV!r}]=expected\n"
     f" os.environ[{QUALIFICATION_BOOTSTRAP_ENVELOPE_ENV!r}]=encoded\n"
     f" os.environ[{QUALIFICATION_BOOTSTRAP_LAUNCH_TOKEN_ENV!r}]=token\n"
@@ -769,14 +787,6 @@ if _QUALIFICATION_CLI_REQUESTED:
         "sts-qualification-pycache",
     )
 
-if (
-    __name__ == "__main__"
-    and _QUALIFICATION_CLI_REQUESTED
-    and (not sys.flags.isolated or not sys.flags.no_site)
-):
-    raise SystemExit(2)
-
-
 def _qualification_require_trusted_launcher() -> dict[str, object]:
     state = None
     try:
@@ -790,10 +800,13 @@ def _qualification_require_trusted_launcher() -> dict[str, object]:
             isinstance(runner_anchor, str)
             and isinstance(envelope_anchor, str)
             and isinstance(token_anchor, str)
+            and sys.flags.isolated == 1
+            and sys.flags.no_site == 1
             and len(original_arguments) >= 10
             and original_arguments[1:5]
             == ("-I", "-S", "-c", QUALIFICATION_TRUSTED_LAUNCHER_CODE)
             and os.path.abspath(original_arguments[5]) == runner_path
+            and original_arguments[6] == state["anchors"]["runner_sha256"]
             and original_arguments[6] == runner_anchor
             and original_arguments[7] == envelope_anchor
             and original_arguments[8] == token_anchor
@@ -8742,23 +8755,21 @@ def _qualify_command(
     request_size: int,
     review_commit: str,
 ) -> dict[str, Any]:
-    registration = _load_qualification_registration(registration_path)
-    checkpoint_root = _qualification_require_no_follow_path(
-        registration.checkpoint_root,
-        "checkpoint root",
-        expected_kind="directory",
-        allow_missing=True,
-    )
-    game_directory = checkpoint_root.parent
-
     def process_starter(
         command: Sequence[str],
         child_environment: Mapping[str, str],
     ) -> subprocess.Popen:
+        registration = _load_qualification_registration(registration_path)
+        checkpoint_root = _qualification_require_no_follow_path(
+            registration.checkpoint_root,
+            "checkpoint root",
+            expected_kind="directory",
+            allow_missing=True,
+        )
         return subprocess.Popen(
             list(command),
             env=dict(child_environment),
-            cwd=str(game_directory),
+            cwd=str(checkpoint_root.parent),
             stdin=sys.stdin,
             stdout=sys.stdout,
             stderr=sys.stderr,
