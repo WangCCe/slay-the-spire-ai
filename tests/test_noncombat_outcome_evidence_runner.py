@@ -37,6 +37,95 @@ SOURCE_COMMIT = "a" * 40
 REVIEW_COMMIT = "c" * 40
 RUN_LOCK_HASH = "b" * 64
 REPO_ROOT = Path(__file__).resolve().parents[1]
+BOOTSTRAP_VECTOR_ROOT = "C:\\qualification-bootstrap-fixture"
+BOOTSTRAP_VECTOR_REQUEST = {
+    "bootstrap": {
+        "claim_path": (
+            "C:\\qualification-bootstrap-fixture\\qualification-bootstrap-claim.json"
+        ),
+        "failure_path": (
+            "C:\\qualification-bootstrap-fixture\\qualification-bootstrap-failure.json"
+        ),
+        "handoff_path": (
+            "C:\\qualification-bootstrap-fixture\\qualification-bootstrap-handoff.json"
+        ),
+        "schema_version": (
+            "noncombat-outcome-evidence-qualification-bootstrap-evidence-v1"
+        ),
+        "stage_paths": [
+            {
+                "index": 1,
+                "name": "launcher_verified",
+                "path": (
+                    "C:\\qualification-bootstrap-fixture\\qualification-bootstrap-stage-01-launcher-verified.json"
+                ),
+            },
+            {
+                "index": 2,
+                "name": "runner_entered",
+                "path": (
+                    "C:\\qualification-bootstrap-fixture\\qualification-bootstrap-stage-02-runner-entered.json"
+                ),
+            },
+            {
+                "index": 3,
+                "name": "source_verified",
+                "path": (
+                    "C:\\qualification-bootstrap-fixture\\qualification-bootstrap-stage-03-source-verified.json"
+                ),
+            },
+            {
+                "index": 4,
+                "name": "request_reviewed",
+                "path": (
+                    "C:\\qualification-bootstrap-fixture\\qualification-bootstrap-stage-04-request-reviewed.json"
+                ),
+            },
+            {
+                "index": 5,
+                "name": "isolation_verified",
+                "path": (
+                    "C:\\qualification-bootstrap-fixture\\qualification-bootstrap-stage-05-isolation-verified.json"
+                ),
+            },
+        ],
+        "token_schema_version": (
+            "noncombat-outcome-evidence-qualification-bootstrap-token-v1"
+        ),
+    },
+    "qualification_id": "fixture-qualification",
+    "qualification_root": BOOTSTRAP_VECTOR_ROOT,
+    "request_hash": "a" * 64,
+    "source_commit": "b" * 40,
+}
+BOOTSTRAP_VECTOR_ENVELOPE_B64 = (
+    "eyJib290c3RyYXAiOnsiY2xhaW1fcGF0aCI6IkM6XFxxdWFsaWZpY2F0aW9uLWJvb3RzdHJhcC1maXh0dXJlXFxxdWFsaWZp"
+    "Y2F0aW9uLWJvb3RzdHJhcC1jbGFpbS5qc29uIiwiZmFpbHVyZV9wYXRoIjoiQzpcXHF1YWxpZmljYXRpb24tYm9vdHN0cmFw"
+    "LWZpeHR1cmVcXHF1YWxpZmljYXRpb24tYm9vdHN0cmFwLWZhaWx1cmUuanNvbiIsImhhbmRvZmZfcGF0aCI6IkM6XFxxdWFs"
+    "aWZpY2F0aW9uLWJvb3RzdHJhcC1maXh0dXJlXFxxdWFsaWZpY2F0aW9uLWJvb3RzdHJhcC1oYW5kb2ZmLmpzb24iLCJzY2hl"
+    "bWFfdmVyc2lvbiI6Im5vbmNvbWJhdC1vdXRjb21lLWV2aWRlbmNlLXF1YWxpZmljYXRpb24tYm9vdHN0cmFwLWV2aWRlbmNl"
+    "LXYxIiwic3RhZ2VfcGF0aHMiOlt7ImluZGV4IjoxLCJuYW1lIjoibGF1bmNoZXJfdmVyaWZpZWQiLCJwYXRoIjoiQzpcXHF1"
+    "YWxpZmljYXRpb24tYm9vdHN0cmFwLWZpeHR1cmVcXHF1YWxpZmljYXRpb24tYm9vdHN0cmFwLXN0YWdlLTAxLWxhdW5jaGVy"
+    "LXZlcmlmaWVkLmpzb24ifSx7ImluZGV4IjoyLCJuYW1lIjoicnVubmVyX2VudGVyZWQiLCJwYXRoIjoiQzpcXHF1YWxpZmlj"
+    "YXRpb24tYm9vdHN0cmFwLWZpeHR1cmVcXHF1YWxpZmljYXRpb24tYm9vdHN0cmFwLXN0YWdlLTAyLXJ1bm5lci1lbnRlcmVk"
+    "Lmpzb24ifSx7ImluZGV4IjozLCJuYW1lIjoic291cmNlX3ZlcmlmaWVkIiwicGF0aCI6IkM6XFxxdWFsaWZpY2F0aW9uLWJv"
+    "b3RzdHJhcC1maXh0dXJlXFxxdWFsaWZpY2F0aW9uLWJvb3RzdHJhcC1zdGFnZS0wMy1zb3VyY2UtdmVyaWZpZWQuanNvbiJ9"
+    "LHsiaW5kZXgiOjQsIm5hbWUiOiJyZXF1ZXN0X3Jldmlld2VkIiwicGF0aCI6IkM6XFxxdWFsaWZpY2F0aW9uLWJvb3RzdHJh"
+    "cC1maXh0dXJlXFxxdWFsaWZpY2F0aW9uLWJvb3RzdHJhcC1zdGFnZS0wNC1yZXF1ZXN0LXJldmlld2VkLmpzb24ifSx7Imlu"
+    "ZGV4Ijo1LCJuYW1lIjoiaXNvbGF0aW9uX3ZlcmlmaWVkIiwicGF0aCI6IkM6XFxxdWFsaWZpY2F0aW9uLWJvb3RzdHJhcC1m"
+    "aXh0dXJlXFxxdWFsaWZpY2F0aW9uLWJvb3RzdHJhcC1zdGFnZS0wNS1pc29sYXRpb24tdmVyaWZpZWQuanNvbiJ9XSwidG9r"
+    "ZW5fc2NoZW1hX3ZlcnNpb24iOiJub25jb21iYXQtb3V0Y29tZS1ldmlkZW5jZS1xdWFsaWZpY2F0aW9uLWJvb3RzdHJhcC10"
+    "b2tlbi12MSJ9LCJxdWFsaWZpY2F0aW9uX2lkIjoiZml4dHVyZS1xdWFsaWZpY2F0aW9uIiwicXVhbGlmaWNhdGlvbl9yb290"
+    "IjoiQzpcXHF1YWxpZmljYXRpb24tYm9vdHN0cmFwLWZpeHR1cmUiLCJyZXF1ZXN0X2ZpbGVfc2hhMjU2IjoiY2NjY2NjY2Nj"
+    "Y2NjY2NjY2NjY2NjY2NjY2NjY2NjY2NjY2NjY2NjY2NjY2NjY2NjY2NjY2NjY2NjY2NjY2NjYyIsInJlcXVlc3RfaGFzaCI6"
+    "ImFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWEiLCJyZXF1"
+    "ZXN0X3NpemUiOjEyMywicmV2aWV3X2NvbW1pdCI6ImRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGQi"
+    "LCJydW5uZXJfc2hhMjU2IjoiZWVlZWVlZWVlZWVlZWVlZWVlZWVlZWVlZWVlZWVlZWVlZWVlZWVlZWVlZWVlZWVlZWVlZWVl"
+    "ZWVlZWVlZWVlZSIsInNjaGVtYV92ZXJzaW9uIjoibm9uY29tYmF0LW91dGNvbWUtZXZpZGVuY2UtcXVhbGlmaWNhdGlvbi1i"
+    "b290c3RyYXAtdG9rZW4tdjEiLCJzb3VyY2VfY29tbWl0IjoiYmJiYmJiYmJiYmJiYmJiYmJiYmJiYmJiYmJiYmJiYmJiYmJi"
+    "YmJiYiJ9"
+)
+BOOTSTRAP_VECTOR_TOKEN = "6f21f2b4324bea5277ef12e03b87e2ab84f3ead09b1def0fda52d3f201aa4089"
 
 
 def _module():
@@ -1441,9 +1530,9 @@ def _qualification_request_fixture(
     (run_root / "IRONCLAD" / "100.run").write_bytes(b"{}\n")
     (tmp_path / "ai_debug.log").write_bytes(b"debug baseline\n")
     (tmp_path / "communication_mod_errors.log").write_bytes(b"")
-    qualification_root = tmp_path / "qualification-r4"
+    qualification_root = tmp_path / "qualification-bootstrap-fixture"
     qualification_root.mkdir()
-    qualification_id = f"{STUDY_ID}-qualification-r4"
+    qualification_id = f"{STUDY_ID}-qualification-bootstrap-fixture"
     config_path = qualification_root / "qualification-config.json"
     config_path.write_text(
         json.dumps(
@@ -1536,7 +1625,7 @@ def _qualification_request_fixture(
         config_path=config_path,
         marker_path=marker_path,
         request_source_path=reviewed_request_path,
-        created_unix_ns=100,
+        created_unix_ns=1,
     )
     current_commit[0] = REVIEW_COMMIT
     request_path = Path(request["request_path"])
@@ -1570,7 +1659,7 @@ def test_qualification_request_round_trips_exact_current_bindings(
 
     assert loaded == request
     assert loaded["schema_version"] == (
-        "noncombat-outcome-evidence-qualification-request-v2"
+        "noncombat-outcome-evidence-qualification-request-v3"
     )
     assert loaded["source_commit"] == SOURCE_COMMIT
     assert loaded["request_source_path"] == str(
@@ -1594,6 +1683,121 @@ def test_qualification_request_round_trips_exact_current_bindings(
     assert loaded["handshake"]["readiness_timeout_seconds"] == 120
     assert loaded["handshake"]["release_timeout_seconds"] == 10
     assert loaded["marker"]["start_count"] == 2
+
+
+def test_bootstrap_schema_locks_v3_request_fields_and_canonical_bytes(
+    tmp_path,
+    monkeypatch,
+):
+    module, _registration_path, request_path, request = (
+        _qualification_request_fixture(tmp_path, monkeypatch)
+    )
+
+    assert module.QUALIFICATION_REQUEST_V1_SCHEMA_VERSION == (
+        "noncombat-outcome-evidence-qualification-request-v1"
+    )
+    assert module.QUALIFICATION_REQUEST_V2_SCHEMA_VERSION == (
+        "noncombat-outcome-evidence-qualification-request-v2"
+    )
+    assert module.QUALIFICATION_REQUEST_SCHEMA_VERSION == (
+        "noncombat-outcome-evidence-qualification-request-v3"
+    )
+    assert set(request) == {
+        "bootstrap",
+        "child_command",
+        "completion_path",
+        "config",
+        "created_unix_ns",
+        "failure_path",
+        "forbidden_paths",
+        "handshake",
+        "implementation_sha256",
+        "isolation",
+        "marker",
+        "preexisting_files",
+        "qualification_id",
+        "qualification_root",
+        "registration",
+        "request_hash",
+        "request_path",
+        "request_source_path",
+        "review_allowed_paths",
+        "schema_version",
+        "source_commit",
+    }
+    assert request["created_unix_ns"] == 1
+    raw = request_path.read_bytes()
+    assert raw == module._canonical_json(request).encode("ascii") + b"\n"
+    assert raw.isascii()
+
+
+def test_bootstrap_paths_are_fixed_direct_children_and_do_not_collide(tmp_path):
+    module = _module()
+    qualification_root = (tmp_path / "qualification-bootstrap-fixture").resolve()
+    qualification_root.mkdir()
+
+    bootstrap = module._qualification_bootstrap_paths(qualification_root)
+
+    assert bootstrap["claim_path"] == str(
+        qualification_root / "qualification-bootstrap-claim.json"
+    )
+    assert bootstrap["failure_path"] == str(
+        qualification_root / "qualification-bootstrap-failure.json"
+    )
+    assert bootstrap["handoff_path"] == str(
+        qualification_root / "qualification-bootstrap-handoff.json"
+    )
+    assert [stage["index"] for stage in bootstrap["stage_paths"]] == [1, 2, 3, 4, 5]
+    assert [stage["name"] for stage in bootstrap["stage_paths"]] == list(
+        module.QUALIFICATION_BOOTSTRAP_STAGE_NAMES
+    )
+    paths = [
+        bootstrap["claim_path"],
+        bootstrap["failure_path"],
+        bootstrap["handoff_path"],
+        *(stage["path"] for stage in bootstrap["stage_paths"]),
+    ]
+    assert len(paths) == len(set(paths))
+    assert all(Path(path).parent == qualification_root for path in paths)
+
+
+def test_bootstrap_token_is_frozen_and_binds_every_contract_anchor():
+    module = _module()
+    envelope = module._qualification_bootstrap_envelope(
+        request=BOOTSTRAP_VECTOR_REQUEST,
+        expected_request_file_sha256="c" * 64,
+        expected_request_size=123,
+        review_commit="d" * 40,
+        runner_sha256="e" * 64,
+    )
+
+    encoded = module._qualification_bootstrap_encode_envelope(envelope)
+    token = module._qualification_bootstrap_token(envelope)
+
+    assert encoded == BOOTSTRAP_VECTOR_ENVELOPE_B64
+    assert token == BOOTSTRAP_VECTOR_TOKEN
+    assert module._qualification_bootstrap_decode_envelope(encoded) == envelope
+    assert module._qualification_bootstrap_token(dict(reversed(envelope.items()))) == token
+    for field, replacement in (
+        ("qualification_id", "different-qualification"),
+        ("qualification_root", "C:\\different-root"),
+        ("request_file_sha256", "f" * 64),
+        ("request_hash", "f" * 64),
+        ("request_size", 124),
+        ("review_commit", "f" * 40),
+        ("runner_sha256", "f" * 64),
+        ("source_commit", "f" * 40),
+        (
+            "schema_version",
+            "noncombat-outcome-evidence-qualification-bootstrap-token-v0",
+        ),
+    ):
+        changed = json.loads(json.dumps(envelope))
+        changed[field] = replacement
+        assert module._qualification_bootstrap_token(changed) != token
+    changed = json.loads(json.dumps(envelope))
+    changed["bootstrap"]["claim_path"] = "C:\\different-root\\claim.json"
+    assert module._qualification_bootstrap_token(changed) != token
 
 
 def test_live_qualification_rejects_v1_request_before_consumption(

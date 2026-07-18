@@ -874,11 +874,14 @@ from spirecomm.communication.study_handshake import (
 
 LEDGER_SCHEMA_VERSION = "noncombat-outcome-evidence-ledger-v1"
 MONITOR_SCHEMA_VERSION = "noncombat-outcome-evidence-blinded-monitor-v2"
-LEGACY_QUALIFICATION_REQUEST_SCHEMA_VERSION = (
+QUALIFICATION_REQUEST_V1_SCHEMA_VERSION = (
     "noncombat-outcome-evidence-qualification-request-v1"
 )
-QUALIFICATION_REQUEST_SCHEMA_VERSION = (
+QUALIFICATION_REQUEST_V2_SCHEMA_VERSION = (
     "noncombat-outcome-evidence-qualification-request-v2"
+)
+QUALIFICATION_REQUEST_SCHEMA_VERSION = (
+    "noncombat-outcome-evidence-qualification-request-v3"
 )
 QUALIFICATION_ISOLATION_SCHEMA_VERSION = (
     "noncombat-outcome-evidence-qualification-isolation-v1"
@@ -886,15 +889,36 @@ QUALIFICATION_ISOLATION_SCHEMA_VERSION = (
 QUALIFICATION_ISOLATION_OBSERVATION_SCHEMA_VERSION = (
     "noncombat-outcome-evidence-qualification-isolation-observation-v1"
 )
-LEGACY_QUALIFICATION_RESULT_SCHEMA_VERSION = (
+QUALIFICATION_RESULT_V1_SCHEMA_VERSION = (
     "noncombat-outcome-evidence-qualification-result-v1"
 )
-QUALIFICATION_RESULT_SCHEMA_VERSION = (
+QUALIFICATION_RESULT_V2_SCHEMA_VERSION = (
     "noncombat-outcome-evidence-qualification-result-v2"
 )
-QUALIFICATION_REVIEW_BINDING_SCHEMA_VERSION = (
+QUALIFICATION_RESULT_SCHEMA_VERSION = (
+    "noncombat-outcome-evidence-qualification-result-v3"
+)
+QUALIFICATION_REVIEW_BINDING_V1_SCHEMA_VERSION = (
     "noncombat-outcome-evidence-qualification-review-binding-v1"
 )
+QUALIFICATION_REVIEW_BINDING_SCHEMA_VERSION = (
+    "noncombat-outcome-evidence-qualification-review-binding-v3"
+)
+QUALIFICATION_BOOTSTRAP_EVIDENCE_SCHEMA_VERSION = (
+    "noncombat-outcome-evidence-qualification-bootstrap-evidence-v1"
+)
+QUALIFICATION_BOOTSTRAP_TOKEN_SCHEMA_VERSION = (
+    "noncombat-outcome-evidence-qualification-bootstrap-token-v1"
+)
+QUALIFICATION_BOOTSTRAP_STAGE_NAMES = (
+    "launcher_verified",
+    "runner_entered",
+    "source_verified",
+    "request_reviewed",
+    "isolation_verified",
+)
+LEGACY_QUALIFICATION_REQUEST_SCHEMA_VERSION = QUALIFICATION_REQUEST_V1_SCHEMA_VERSION
+LEGACY_QUALIFICATION_RESULT_SCHEMA_VERSION = QUALIFICATION_RESULT_V1_SCHEMA_VERSION
 QUALIFICATION_ATTEMPT_HASH_ENV = (
     "STS_OUTCOME_EVIDENCE_QUALIFICATION_ATTEMPT_HASH"
 )
@@ -908,6 +932,213 @@ _ZERO_RUN_LOCK_HASH = "0" * _SHA256_LENGTH
 
 class OutcomeEvidenceRunnerError(RuntimeError):
     """Raised when a registered launch or ledger transition is invalid."""
+
+
+def _qualification_bootstrap_paths(qualification_root: Path) -> dict[str, Any]:
+    """Return the fixed direct-child bootstrap artifacts for a guarded root."""
+
+    root = Path(os.path.abspath(qualification_root))
+    stage_paths = [
+        {
+            "index": index,
+            "name": name,
+            "path": str(
+                root
+                / f"qualification-bootstrap-stage-{index:02d}-"
+                f"{name.replace('_', '-')}.json"
+            ),
+        }
+        for index, name in enumerate(QUALIFICATION_BOOTSTRAP_STAGE_NAMES, start=1)
+    ]
+    return {
+        "claim_path": str(root / "qualification-bootstrap-claim.json"),
+        "failure_path": str(root / "qualification-bootstrap-failure.json"),
+        "handoff_path": str(root / "qualification-bootstrap-handoff.json"),
+        "schema_version": QUALIFICATION_BOOTSTRAP_EVIDENCE_SCHEMA_VERSION,
+        "stage_paths": stage_paths,
+        "token_schema_version": QUALIFICATION_BOOTSTRAP_TOKEN_SCHEMA_VERSION,
+    }
+
+
+def _validate_qualification_bootstrap(
+    value: Any,
+    *,
+    qualification_root: str,
+) -> dict[str, Any]:
+    expected_root = Path(os.path.abspath(qualification_root))
+    expected = _qualification_bootstrap_paths(expected_root)
+    if not isinstance(value, Mapping) or set(value) != set(expected):
+        raise OutcomeEvidenceRunnerError("qualification bootstrap fields mismatch")
+    if value["schema_version"] != QUALIFICATION_BOOTSTRAP_EVIDENCE_SCHEMA_VERSION:
+        raise OutcomeEvidenceRunnerError("qualification bootstrap schema mismatch")
+    if (
+        value["token_schema_version"]
+        != QUALIFICATION_BOOTSTRAP_TOKEN_SCHEMA_VERSION
+    ):
+        raise OutcomeEvidenceRunnerError(
+            "qualification bootstrap token schema mismatch"
+        )
+    if value["claim_path"] != expected["claim_path"] or value[
+        "failure_path"
+    ] != expected["failure_path"] or value["handoff_path"] != expected[
+        "handoff_path"
+    ]:
+        raise OutcomeEvidenceRunnerError("qualification bootstrap path mismatch")
+    stage_paths = value["stage_paths"]
+    if not isinstance(stage_paths, list) or stage_paths != expected["stage_paths"]:
+        raise OutcomeEvidenceRunnerError("qualification bootstrap stages mismatch")
+    all_paths = [
+        value["claim_path"],
+        value["failure_path"],
+        value["handoff_path"],
+        *(stage["path"] for stage in stage_paths),
+    ]
+    if (
+        len(all_paths) != len(set(all_paths))
+        or any(Path(path).parent != expected_root for path in all_paths)
+    ):
+        raise OutcomeEvidenceRunnerError("qualification bootstrap paths are unsafe")
+    return json.loads(_canonical_json(value))
+
+
+def _qualification_bootstrap_envelope(
+    *,
+    request: Mapping[str, Any],
+    expected_request_file_sha256: str,
+    expected_request_size: int,
+    review_commit: str,
+    runner_sha256: str,
+) -> dict[str, Any]:
+    """Bind static v3 request anchors for the trusted launcher."""
+
+    if not isinstance(request, Mapping):
+        raise OutcomeEvidenceRunnerError("qualification bootstrap request is invalid")
+    qualification_root = request.get("qualification_root")
+    if not isinstance(qualification_root, str):
+        raise OutcomeEvidenceRunnerError(
+            "qualification bootstrap qualification root is invalid"
+        )
+    bootstrap = _validate_qualification_bootstrap(
+        request.get("bootstrap"),
+        qualification_root=qualification_root,
+    )
+    envelope = {
+        "bootstrap": bootstrap,
+        "qualification_id": request.get("qualification_id"),
+        "qualification_root": qualification_root,
+        "request_file_sha256": expected_request_file_sha256,
+        "request_hash": request.get("request_hash"),
+        "request_size": expected_request_size,
+        "review_commit": review_commit,
+        "runner_sha256": runner_sha256,
+        "schema_version": QUALIFICATION_BOOTSTRAP_TOKEN_SCHEMA_VERSION,
+        "source_commit": request.get("source_commit"),
+    }
+    return _validate_qualification_bootstrap_envelope(envelope)
+
+
+def _validate_qualification_bootstrap_envelope(value: Any) -> dict[str, Any]:
+    expected_fields = {
+        "bootstrap",
+        "qualification_id",
+        "qualification_root",
+        "request_file_sha256",
+        "request_hash",
+        "request_size",
+        "review_commit",
+        "runner_sha256",
+        "schema_version",
+        "source_commit",
+    }
+    if not isinstance(value, Mapping) or set(value) != expected_fields:
+        raise OutcomeEvidenceRunnerError(
+            "qualification bootstrap envelope fields mismatch"
+        )
+    qualification_root = value["qualification_root"]
+    if not isinstance(qualification_root, str) or not Path(
+        qualification_root
+    ).is_absolute():
+        raise OutcomeEvidenceRunnerError(
+            "qualification bootstrap envelope root is invalid"
+        )
+    bootstrap = _validate_qualification_bootstrap(
+        value["bootstrap"],
+        qualification_root=qualification_root,
+    )
+    if value["schema_version"] != QUALIFICATION_BOOTSTRAP_TOKEN_SCHEMA_VERSION:
+        raise OutcomeEvidenceRunnerError(
+            "qualification bootstrap envelope schema mismatch"
+        )
+    if not isinstance(value["qualification_id"], str) or not value[
+        "qualification_id"
+    ]:
+        raise OutcomeEvidenceRunnerError(
+            "qualification bootstrap envelope qualification ID is invalid"
+        )
+    if type(value["request_size"]) is not int or value["request_size"] <= 0:
+        raise OutcomeEvidenceRunnerError(
+            "qualification bootstrap envelope request size is invalid"
+        )
+    for field, length in (
+        ("request_file_sha256", _SHA256_LENGTH),
+        ("request_hash", _SHA256_LENGTH),
+        ("runner_sha256", _SHA256_LENGTH),
+        ("review_commit", _GIT_COMMIT_LENGTH),
+        ("source_commit", _GIT_COMMIT_LENGTH),
+    ):
+        if not isinstance(value[field], str) or not _is_lower_hex(
+            value[field],
+            length,
+        ):
+            raise OutcomeEvidenceRunnerError(
+                f"qualification bootstrap envelope {field} is invalid"
+            )
+    record = dict(value)
+    record["bootstrap"] = bootstrap
+    return json.loads(_canonical_json(record))
+
+
+def _qualification_bootstrap_token(envelope: Mapping[str, Any]) -> str:
+    canonical = _canonical_json(envelope).encode("ascii")
+    domain = (
+        b"noncombat-outcome-evidence-qualification-bootstrap-token-v1\x00"
+    )
+    return hashlib.sha256(domain + canonical).hexdigest()
+
+
+def _qualification_bootstrap_encode_envelope(envelope: Mapping[str, Any]) -> str:
+    canonical = _canonical_json(
+        _validate_qualification_bootstrap_envelope(envelope)
+    ).encode("ascii")
+    return base64.b64encode(canonical).decode("ascii")
+
+
+def _qualification_bootstrap_decode_envelope(encoded: str) -> dict[str, Any]:
+    if not isinstance(encoded, str) or not encoded or any(
+        char.isspace() for char in encoded
+    ):
+        raise OutcomeEvidenceRunnerError(
+            "qualification bootstrap envelope encoding is invalid"
+        )
+    try:
+        raw = base64.b64decode(encoded, validate=True)
+        value = json.loads(
+            raw.decode("ascii"),
+            object_pairs_hook=_reject_duplicate_keys,
+            parse_constant=_reject_json_constant,
+        )
+    except (UnicodeError, ValueError, json.JSONDecodeError) as exc:
+        raise OutcomeEvidenceRunnerError(
+            "qualification bootstrap envelope encoding is invalid"
+        ) from exc
+    validated = _validate_qualification_bootstrap_envelope(value)
+    if raw != _canonical_json(validated).encode("ascii") or encoded != (
+        _qualification_bootstrap_encode_envelope(validated)
+    ):
+        raise OutcomeEvidenceRunnerError(
+            "qualification bootstrap envelope is not canonical"
+        )
+    return validated
 
 
 @dataclass(frozen=True)
@@ -1040,6 +1271,7 @@ def build_qualification_request(
     )
     record = {
         "child_command": bindings["child_command"],
+        "bootstrap": bindings["bootstrap"],
         "completion_path": bindings["completion_path"],
         "config": bindings["config"],
         "created_unix_ns": _timestamp(created_unix_ns),
@@ -1104,6 +1336,7 @@ def load_qualification_request(
     if record.get("schema_version") != QUALIFICATION_REQUEST_SCHEMA_VERSION:
         raise OutcomeEvidenceRunnerError("qualification request schema mismatch")
     expected_fields = {
+        "bootstrap",
         "child_command",
         "completion_path",
         "config",
@@ -1153,6 +1386,10 @@ def load_qualification_request(
         qualification_root,
         "root",
         expected_kind="directory",
+    )
+    _validate_qualification_bootstrap(
+        record["bootstrap"],
+        qualification_root=str(qualification_root),
     )
     bound_request_path = _resolved_absolute_path(
         record["request_path"],
@@ -1265,6 +1502,7 @@ def load_qualification_request(
         marker_start_count=bindings["marker"]["start_count"],
     )
     for field in (
+        "bootstrap",
         "child_command",
         "completion_path",
         "config",
@@ -1493,6 +1731,7 @@ def _qualification_request_bindings(
         }
     )
     return {
+        "bootstrap": _qualification_bootstrap_paths(qualification_root),
         "child_command": _qualification_child_command(registration),
         "completion_path": str(completion_path),
         "config": {
@@ -2623,8 +2862,13 @@ def _load_qualification_exploration_config(path: Path):
 
 def _qualification_control_paths(bindings: Mapping[str, Any]) -> tuple[Path, ...]:
     handshake = bindings["handshake"]
+    bootstrap = bindings["bootstrap"]
     return (
         Path(bindings["request_path"]),
+        Path(bootstrap["claim_path"]),
+        *(Path(stage["path"]) for stage in bootstrap["stage_paths"]),
+        Path(bootstrap["failure_path"]),
+        Path(bootstrap["handoff_path"]),
         Path(handshake["attempt_path"]),
         Path(handshake["ready_path"]),
         Path(handshake["release_path"]),

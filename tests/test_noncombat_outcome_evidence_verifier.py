@@ -63,6 +63,33 @@ def _qualification_review_kwargs(request):
     }
 
 
+def test_historical_schema_bytes_remain_explicit_and_unchanged():
+    expected = {
+        "request_v1": "noncombat-outcome-evidence-qualification-request-v1",
+        "request_v2": "noncombat-outcome-evidence-qualification-request-v2",
+        "result_v1": "noncombat-outcome-evidence-qualification-result-v1",
+        "result_v2": "noncombat-outcome-evidence-qualification-result-v2",
+        "review_v1": "noncombat-outcome-evidence-qualification-review-binding-v1",
+    }
+
+    observed = {
+        "request_v1": runner.QUALIFICATION_REQUEST_V1_SCHEMA_VERSION,
+        "request_v2": runner.QUALIFICATION_REQUEST_V2_SCHEMA_VERSION,
+        "result_v1": runner.QUALIFICATION_RESULT_V1_SCHEMA_VERSION,
+        "result_v2": runner.QUALIFICATION_RESULT_V2_SCHEMA_VERSION,
+        "review_v1": runner.QUALIFICATION_REVIEW_BINDING_V1_SCHEMA_VERSION,
+    }
+
+    assert observed == expected
+    assert _canonical_json(observed).encode("ascii") == (
+        b'{"request_v1":"noncombat-outcome-evidence-qualification-request-v1",'
+        b'"request_v2":"noncombat-outcome-evidence-qualification-request-v2",'
+        b'"result_v1":"noncombat-outcome-evidence-qualification-result-v1",'
+        b'"result_v2":"noncombat-outcome-evidence-qualification-result-v2",'
+        b'"review_v1":"noncombat-outcome-evidence-qualification-review-binding-v1"}'
+    )
+
+
 def test_qualification_file_reader_rejects_path_identity_change(
     tmp_path,
     monkeypatch,

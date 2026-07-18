@@ -1,6 +1,6 @@
 ## 1. Lock The Regression Contract
 
-- [ ] 1.1 Add exact schema and rendering fixtures for request/result/review-binding v3, bootstrap-evidence v1, deterministic launch-token derivation, fixed direct-child paths, canonical ASCII JSON, and self-hash fields while retaining immutable v1/v2 fixtures.
+- [x] 1.1 Add exact schema and rendering fixtures for request/result/review-binding v3, bootstrap-evidence v1, deterministic launch-token derivation, fixed direct-child paths, canonical ASCII JSON, and self-hash fields while retaining immutable v1/v2 fixtures.
 - [ ] 1.2 Add red producer tests proving the trusted launcher exclusively creates the claim before runner execution, treats every claim-path entry as consumed, rejects a second invocation, and remains silent on CommunicationMod stdout/stderr.
 - [ ] 1.3 Add red subprocess tests for runner hash/path rejection, wrong HEAD, tracked or executable-source drift, unsafe Git metadata/configuration, malformed request anchors, invalid S-to-R review, and request-bound isolation drift; require the exact last completed stage and no active request or child.
 - [ ] 1.4 Add red crash-matrix and verifier tests for termination after every stage, controlled failure records, missing failure records, malformed/torn claim bytes, stage gaps/reordering/hash drift, duplicate or extra entries, active-request-without-handoff, and uniformly false authority.
@@ -8,7 +8,7 @@
 ## 2. Implement V3 Pre-Request Evidence
 
 - [ ] 2.1 Implement one minimal pure-stdlib no-follow bootstrap publisher for exclusive durable claim/stage/failure records, canonical serialization, bounded sanitized diagnostics, parent/final identity rechecks, and never-overwrite semantics.
-- [ ] 2.2 Implement request v3 construction/loading and validation for bootstrap schema, guarded root and fixed paths, ordered stages, token derivation inputs, external R/request/runner anchors, preexisting static inventory, and v1/v2 launch rejection.
+- [x] 2.2 Implement request v3 construction/loading and validation for bootstrap schema, guarded root and fixed paths, ordered stages, token derivation inputs, external R/request/runner anchors, preexisting static inventory, and v1/v2 launch rejection.
 - [ ] 2.3 Extend the trusted launcher and runner-entry boundary to validate fixed bootstrap anchors, publish `launcher_verified` and `runner_entered`, preserve isolated/no-site and source-only startup, and exit silently with a bounded pre-request failure when possible.
 - [ ] 2.4 Publish `source_verified`, `request_reviewed`, and `isolation_verified` only after their existing checks complete; ensure recording a stage does not repeat Git/source/inventory/isolation work or mutate protected live state.
 - [ ] 2.5 Publish the exact active request followed by a request-bound handoff, forbid attempt or child launch before valid handoff, and bind the bootstrap inventory/final-stage/handoff hashes into v3 review and terminal records.
