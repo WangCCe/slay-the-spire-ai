@@ -2517,6 +2517,15 @@ def _trusted_qualification_lifecycle_fixture(tmp_path, monkeypatch):
     )
 
 
+def _qualification_bootstrap_prefix_bytes(request):
+    bootstrap = request["bootstrap"]
+    paths = [
+        Path(bootstrap["claim_path"]),
+        *(Path(stage["path"]) for stage in bootstrap["stage_paths"]),
+    ]
+    return {str(path): path.read_bytes() for path in paths}
+
+
 def test_qualification_request_round_trips_exact_current_bindings(
     tmp_path,
     monkeypatch,
@@ -3995,7 +4004,7 @@ def test_active_request_publication_postwrite_failure_preserves_partial_bytes(
     assert not Path(request["failure_path"]).exists()
 
 
-def test_active_request_publication_success_then_removal_failure_remains_partial(
+def test_active_request_create_attempted_without_entry_latches_second_invocation(
     tmp_path,
     monkeypatch,
 ):
@@ -4004,8 +4013,80 @@ def test_active_request_publication_success_then_removal_failure_remains_partial
     )
     active_request_path = Path(request["request_path"])
     publish_bytes = module._qualification_bootstrap_publish_bytes_once
+    publication_calls = []
+    starter_calls = []
+
+    def fail_after_create_attempted(path_text, raw, *, phase_callback=None):
+        if Path(path_text) == active_request_path:
+            publication_calls.append(path_text)
+            assert phase_callback is not None
+            phase_callback("pre_create")
+            phase_callback("create_attempted")
+            raise module.OutcomeEvidenceRunnerError(
+                "fixed create-attempted publication failure"
+            )
+        return publish_bytes(
+            path_text,
+            raw,
+            phase_callback=phase_callback,
+        )
+
+    monkeypatch.setattr(
+        module,
+        "_qualification_bootstrap_publish_bytes_once",
+        fail_after_create_attempted,
+    )
+
+    def execute():
+        return module.execute_prelock_qualification(
+            registration_path=registration_path,
+            request_path=request_source_path,
+            expected_request_hash=request["request_hash"],
+            **_qualification_review_kwargs(request),
+            process_starter=lambda *_args, **_kwargs: starter_calls.append(
+                "start"
+            ),
+        )
+
+    with pytest.raises(
+        module.OutcomeEvidenceRunnerError,
+        match="active_request_partial",
+    ):
+        execute()
+    prefix_bytes = _qualification_bootstrap_prefix_bytes(request)
+
+    with pytest.raises(
+        module.OutcomeEvidenceRunnerError,
+        match="publication already attempted",
+    ):
+        execute()
+
+    assert publication_calls == [str(active_request_path)]
+    assert _qualification_bootstrap_prefix_bytes(request) == prefix_bytes
+    assert starter_calls == []
+    assert not active_request_path.exists()
+    assert not Path(request["bootstrap"]["failure_path"]).exists()
+    assert not Path(request["bootstrap"]["handoff_path"]).exists()
+    assert not Path(request["handshake"]["attempt_path"]).exists()
+    assert not Path(request["completion_path"]).exists()
+    assert not Path(request["failure_path"]).exists()
+
+
+def test_active_request_publication_success_then_removal_failure_latches_second_invocation(
+    tmp_path,
+    monkeypatch,
+):
+    module, registration_path, request_source_path, request = (
+        _trusted_qualification_lifecycle_fixture(tmp_path, monkeypatch)
+    )
+    active_request_path = Path(request["request_path"])
+    publish_bytes = module._qualification_bootstrap_publish_bytes_once
+    publication_calls = []
+    starter_calls = []
 
     def publish_remove_then_fail(path_text, raw, *, phase_callback=None):
+        if Path(path_text) == active_request_path:
+            publication_calls.append(path_text)
         publish_bytes(
             path_text,
             raw,
@@ -4023,23 +4104,121 @@ def test_active_request_publication_success_then_removal_failure_remains_partial
         publish_remove_then_fail,
     )
 
-    with pytest.raises(module.OutcomeEvidenceRunnerError) as raised:
-        module.execute_prelock_qualification(
+    def execute():
+        return module.execute_prelock_qualification(
             registration_path=registration_path,
             request_path=request_source_path,
             expected_request_hash=request["request_hash"],
             **_qualification_review_kwargs(request),
-            process_starter=lambda *_args, **_kwargs: pytest.fail(
-                "removed active request started a child"
+            process_starter=lambda *_args, **_kwargs: starter_calls.append(
+                "start"
             ),
         )
+
+    with pytest.raises(module.OutcomeEvidenceRunnerError) as raised:
+        execute()
 
     assert not active_request_path.exists()
     assert not Path(request["bootstrap"]["failure_path"]).exists()
     assert "active_request_partial" in str(raised.value)
     assert "post-create removal failure" in str(raised.value.__cause__)
+    prefix_bytes = _qualification_bootstrap_prefix_bytes(request)
+
+    with pytest.raises(
+        module.OutcomeEvidenceRunnerError,
+        match="publication already attempted",
+    ):
+        execute()
+
+    assert publication_calls == [str(active_request_path)]
+    assert _qualification_bootstrap_prefix_bytes(request) == prefix_bytes
+    assert starter_calls == []
     assert not Path(request["bootstrap"]["handoff_path"]).exists()
     assert not Path(request["handshake"]["attempt_path"]).exists()
+    assert not Path(request["completion_path"]).exists()
+    assert not Path(request["failure_path"]).exists()
+
+
+@pytest.mark.parametrize(
+    "phase_signals",
+    (
+        (),
+        ("unknown_future_phase",),
+        ("pre_create", "create_attempted", "pre_create"),
+    ),
+    ids=("missing", "unknown", "backward"),
+)
+def test_active_request_indeterminate_failure_latches_second_invocation(
+    tmp_path,
+    monkeypatch,
+    phase_signals,
+):
+    module, registration_path, request_source_path, request = (
+        _trusted_qualification_lifecycle_fixture(tmp_path, monkeypatch)
+    )
+    active_request_path = Path(request["request_path"])
+    publish_bytes = module._qualification_bootstrap_publish_bytes_once
+    publication_calls = []
+    starter_calls = []
+
+    def fail_with_indeterminate_history(
+        path_text,
+        raw,
+        *,
+        phase_callback=None,
+    ):
+        if Path(path_text) == active_request_path:
+            publication_calls.append(path_text)
+            assert phase_callback is not None
+            for phase in phase_signals:
+                phase_callback(phase)
+            raise module.OutcomeEvidenceRunnerError(
+                "fixed indeterminate publication failure"
+            )
+        return publish_bytes(
+            path_text,
+            raw,
+            phase_callback=phase_callback,
+        )
+
+    monkeypatch.setattr(
+        module,
+        "_qualification_bootstrap_publish_bytes_once",
+        fail_with_indeterminate_history,
+    )
+
+    def execute():
+        return module.execute_prelock_qualification(
+            registration_path=registration_path,
+            request_path=request_source_path,
+            expected_request_hash=request["request_hash"],
+            **_qualification_review_kwargs(request),
+            process_starter=lambda *_args, **_kwargs: starter_calls.append(
+                "start"
+            ),
+        )
+
+    with pytest.raises(
+        module.OutcomeEvidenceRunnerError,
+        match="active_request_partial",
+    ):
+        execute()
+    prefix_bytes = _qualification_bootstrap_prefix_bytes(request)
+
+    with pytest.raises(
+        module.OutcomeEvidenceRunnerError,
+        match="publication already attempted",
+    ):
+        execute()
+
+    assert publication_calls == [str(active_request_path)]
+    assert _qualification_bootstrap_prefix_bytes(request) == prefix_bytes
+    assert starter_calls == []
+    assert not active_request_path.exists()
+    assert not Path(request["bootstrap"]["failure_path"]).exists()
+    assert not Path(request["bootstrap"]["handoff_path"]).exists()
+    assert not Path(request["handshake"]["attempt_path"]).exists()
+    assert not Path(request["completion_path"]).exists()
     assert not Path(request["failure_path"]).exists()
 
 

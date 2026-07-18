@@ -1689,6 +1689,9 @@ class OutcomeEvidenceRunnerError(RuntimeError):
     """Raised when a registered launch or ledger transition is invalid."""
 
 
+_QUALIFICATION_ACTIVE_PUBLICATION_LATCHES: set[tuple[str, str, str]] = set()
+
+
 class _QualificationBootstrapPublicationHistory:
     _PHASE_ORDER = {
         "pre_create": 0,
@@ -1699,17 +1702,29 @@ class _QualificationBootstrapPublicationHistory:
     def __init__(self) -> None:
         self._phase: str | None = None
         self._indeterminate = False
+        self._latch_required = False
 
     def observe(self, phase: str) -> None:
         next_order = self._PHASE_ORDER.get(phase)
         if next_order is None:
             self._indeterminate = True
+            self._latch_required = True
             return
         current_order = (
             -1 if self._phase is None else self._PHASE_ORDER[self._phase]
         )
+        if next_order < current_order:
+            self._indeterminate = True
+            self._latch_required = True
+            return
         if next_order > current_order:
             self._phase = phase
+        if next_order >= self._PHASE_ORDER["create_attempted"]:
+            self._latch_required = True
+
+    @property
+    def latch_required(self) -> bool:
+        return self._latch_required
 
     @property
     def definitely_pre_create(self) -> bool:
@@ -5753,10 +5768,19 @@ def execute_prelock_qualification(
                 exc,
             )
         raise
-    _qualification_bootstrap_inventory(
+    bootstrap_inventory = _qualification_bootstrap_inventory(
         bootstrap_state,
         include_handoff=False,
     )
+    publication_identity = (
+        bootstrap_inventory["launch_token"],
+        bootstrap_inventory["claim_hash"],
+        bootstrap_inventory["final_stage_hash"],
+    )
+    if publication_identity in _QUALIFICATION_ACTIVE_PUBLICATION_LATCHES:
+        raise OutcomeEvidenceRunnerError(
+            "qualification active request publication already attempted"
+        )
     active_request_bytes = validated_context["request_source_bytes"]
     if not isinstance(active_request_bytes, bytes):
         raise OutcomeEvidenceRunnerError(
@@ -5764,11 +5788,17 @@ def execute_prelock_qualification(
         )
     stage = "publish_request"
     publication_history = _QualificationBootstrapPublicationHistory()
+
+    def observe_publication_phase(phase: str) -> None:
+        publication_history.observe(phase)
+        if publication_history.latch_required:
+            _QUALIFICATION_ACTIVE_PUBLICATION_LATCHES.add(publication_identity)
+
     try:
         _qualification_bootstrap_publish_bytes_once(
             str(active_request_path),
             active_request_bytes,
-            phase_callback=publication_history.observe,
+            phase_callback=observe_publication_phase,
         )
     except BaseException as exc:
         if (
@@ -5783,6 +5813,7 @@ def execute_prelock_qualification(
                 exc,
             )
             raise
+        _QUALIFICATION_ACTIVE_PUBLICATION_LATCHES.add(publication_identity)
         if not isinstance(exc, Exception):
             raise
         raise OutcomeEvidenceRunnerError(
