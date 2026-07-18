@@ -992,19 +992,70 @@ def _build_qualification_evidence(tmp_path, monkeypatch, *, status="passed"):
     request_path = Path(request["request_path"])
     _write_json(request_source_path, request)
     reviewed_request = deepcopy(request)
-    original_publish_text_once = runner._publish_text_once
-
-    def publish_with_bootstrap_handoff(path, text, label):
-        result = original_publish_text_once(path, text, label)
-        if Path(path) == request_path and label == "qualification request":
-            _write_bootstrap_phase(request, stage_count=5, handoff=True)
-        return result
-
+    request_bytes = request_source_path.read_bytes()
+    runner_sha256 = request["implementation_sha256"][
+        runner.QUALIFICATION_RUNNER_RELATIVE_PATH
+    ]
+    envelope = runner._qualification_bootstrap_envelope(
+        request=request,
+        expected_request_file_sha256=hashlib.sha256(request_bytes).hexdigest(),
+        expected_request_size=len(request_bytes),
+        review_commit=QUALIFICATION_REVIEW_COMMIT,
+        runner_sha256=runner_sha256,
+    )
+    anchors = {
+        "envelope_sha256": hashlib.sha256(
+            _canonical_json(envelope).encode("ascii")
+        ).hexdigest(),
+        "launch_token": runner._qualification_bootstrap_token(envelope),
+        "qualification_id": request["qualification_id"],
+        "request_file_sha256": hashlib.sha256(request_bytes).hexdigest(),
+        "request_hash": request["request_hash"],
+        "request_size": len(request_bytes),
+        "review_commit": QUALIFICATION_REVIEW_COMMIT,
+        "runner_sha256": runner_sha256,
+        "source_commit": request["source_commit"],
+    }
+    claim = runner._qualification_bootstrap_record(
+        anchors=anchors,
+        created_unix_ns=101,
+        payload={},
+        pid=os.getpid(),
+        previous_hash=None,
+        record_type="claim",
+        stage_index=0,
+        stage_name="claim",
+    )
+    runner._qualification_bootstrap_publish_record_once(
+        Path(request["bootstrap"]["claim_path"]),
+        claim,
+    )
+    bootstrap_state = {
+        "anchors": anchors,
+        "claim_hash": claim["record_hash"],
+        "consumed": False,
+        "envelope": envelope,
+        "last_record_hash": claim["record_hash"],
+        "last_stage_index": 0,
+        "last_stage_name": "claim",
+        "paths": request["bootstrap"],
+    }
+    for stage_index, stage_name in enumerate(
+        runner.QUALIFICATION_BOOTSTRAP_STAGE_NAMES,
+        start=1,
+    ):
+        bootstrap_state = runner._qualification_bootstrap_publish_stage(
+            bootstrap_state,
+            stage_name,
+            created_unix_ns=101 + stage_index,
+        )
+    monkeypatch.setattr(runner, "_QUALIFICATION_CLI_REQUESTED", True)
     monkeypatch.setattr(
         runner,
-        "_publish_text_once",
-        publish_with_bootstrap_handoff,
+        "_QUALIFICATION_BOOTSTRAP_STATE",
+        bootstrap_state,
     )
+    monkeypatch.setenv(runner.QUALIFICATION_RUNNER_SHA256_ENV, runner_sha256)
 
     def load_historical_review(source_path, **kwargs):
         assert Path(source_path) == request_source_path
@@ -1110,6 +1161,83 @@ def _build_qualification_evidence(tmp_path, monkeypatch, *, status="passed"):
             )
         result_path = Path(request["failure_path"])
         result = json.loads(result_path.read_text(encoding="utf-8"))
+
+    # Task 5 owns v3 replay; retain this fixture's frozen v2 verifier surface.
+    historical_request = deepcopy(request)
+    bootstrap = historical_request.pop("bootstrap")
+    historical_request["schema_version"] = (
+        runner.QUALIFICATION_REQUEST_V2_SCHEMA_VERSION
+    )
+    historical_request["request_hash"] = _self_hash(
+        historical_request,
+        "request_hash",
+    )
+    _write_json(request_source_path, historical_request)
+    _write_json(request_path, historical_request)
+    historical_request_bytes = request_source_path.read_bytes()
+    bootstrap_paths = [
+        bootstrap["claim_path"],
+        *(stage["path"] for stage in bootstrap["stage_paths"]),
+        bootstrap["handoff_path"],
+        bootstrap["failure_path"],
+    ]
+    for bootstrap_path in bootstrap_paths:
+        Path(bootstrap_path).unlink(missing_ok=True)
+
+    production_review_binding_builder = (
+        runner._build_qualification_review_binding
+    )
+
+    def build_fixture_review_binding(**kwargs):
+        request_record = kwargs["request"]
+        if "bootstrap" in request_record:
+            return production_review_binding_builder(**kwargs)
+        compatibility_kwargs = dict(kwargs)
+        compatibility_request = deepcopy(request_record)
+        compatibility_request["bootstrap"] = bootstrap
+        compatibility_kwargs["request"] = compatibility_request
+        review_binding = production_review_binding_builder(
+            **compatibility_kwargs
+        )
+        review_binding["schema_version"] = (
+            runner.QUALIFICATION_REVIEW_BINDING_V1_SCHEMA_VERSION
+        )
+        review_binding["review_binding_hash"] = _self_hash(
+            review_binding,
+            "review_binding_hash",
+        )
+        return review_binding
+
+    monkeypatch.setattr(
+        runner,
+        "_build_qualification_review_binding",
+        build_fixture_review_binding,
+    )
+    historical_review_binding = runner._build_qualification_review_binding(
+        request=historical_request,
+        review_commit=QUALIFICATION_REVIEW_COMMIT,
+        request_source_path=request_source_path,
+        request_source_relative=request_source_path.relative_to(
+            REPO_ROOT
+        ).as_posix(),
+        request_bytes=historical_request_bytes,
+    )
+    historical_result = deepcopy(result)
+    historical_result.pop("bootstrap")
+    historical_result["request"]["hash"] = historical_request["request_hash"]
+    historical_result["review_binding"] = historical_review_binding
+    historical_result["schema_version"] = (
+        runner.QUALIFICATION_RESULT_V2_SCHEMA_VERSION
+    )
+    historical_result["result_hash"] = _self_hash(
+        historical_result,
+        "result_hash",
+    )
+    _write_json(result_path, historical_result)
+
+    reviewed_request = historical_request
+    request = historical_request
+    result = historical_result
     return request_path, result_path, request, result
 
 
