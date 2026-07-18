@@ -63,31 +63,238 @@ def _qualification_review_kwargs(request):
     }
 
 
-def test_historical_schema_bytes_remain_explicit_and_unchanged():
-    expected = {
-        "request_v1": "noncombat-outcome-evidence-qualification-request-v1",
-        "request_v2": "noncombat-outcome-evidence-qualification-request-v2",
-        "result_v1": "noncombat-outcome-evidence-qualification-result-v1",
-        "result_v2": "noncombat-outcome-evidence-qualification-result-v2",
-        "review_v1": "noncombat-outcome-evidence-qualification-review-binding-v1",
-    }
+def _write_bootstrap_phase(request, *, stage_count, handoff=False):
+    bootstrap = request["bootstrap"]
+    Path(bootstrap["claim_path"]).write_bytes(b"claim phase fixture\n")
+    for stage in bootstrap["stage_paths"][:stage_count]:
+        Path(stage["path"]).write_bytes(b"stage phase fixture\n")
+    if handoff:
+        Path(bootstrap["handoff_path"]).write_bytes(b"handoff phase fixture\n")
 
-    observed = {
-        "request_v1": runner.QUALIFICATION_REQUEST_V1_SCHEMA_VERSION,
-        "request_v2": runner.QUALIFICATION_REQUEST_V2_SCHEMA_VERSION,
-        "result_v1": runner.QUALIFICATION_RESULT_V1_SCHEMA_VERSION,
-        "result_v2": runner.QUALIFICATION_RESULT_V2_SCHEMA_VERSION,
-        "review_v1": runner.QUALIFICATION_REVIEW_BINDING_V1_SCHEMA_VERSION,
-    }
 
-    assert observed == expected
-    assert _canonical_json(observed).encode("ascii") == (
-        b'{"request_v1":"noncombat-outcome-evidence-qualification-request-v1",'
-        b'"request_v2":"noncombat-outcome-evidence-qualification-request-v2",'
-        b'"result_v1":"noncombat-outcome-evidence-qualification-result-v1",'
-        b'"result_v2":"noncombat-outcome-evidence-qualification-result-v2",'
-        b'"review_v1":"noncombat-outcome-evidence-qualification-review-binding-v1"}'
+def _qualification_schema_fixture_review(request, request_bytes, schema_version):
+    source_path = Path(request["request_source_path"])
+    review = runner._build_qualification_review_binding(
+        request=request,
+        review_commit=QUALIFICATION_REVIEW_COMMIT,
+        request_source_path=source_path,
+        request_source_relative=source_path.relative_to(REPO_ROOT).as_posix(),
+        request_bytes=request_bytes,
     )
+    review["schema_version"] = schema_version
+    review["review_binding_hash"] = _self_hash(
+        review,
+        "review_binding_hash",
+    )
+    return review
+
+
+def _qualification_schema_fixture_result(
+    request,
+    review,
+    schema_version,
+    *,
+    include_isolation,
+):
+    handshake = request["handshake"]
+    result = {
+        "authority": {
+            "causal_claim": False,
+            "collection": False,
+            "gameplay_policy_change": False,
+            "run_lock": False,
+            "study_start": False,
+            "training": False,
+        },
+        "child_command": list(request["child_command"]),
+        "config": dict(request["config"]),
+        "created_unix_ns": request["created_unix_ns"],
+        "ended_unix_ns": request["created_unix_ns"] + 1,
+        "failure": {
+            "exception_type": "OutcomeEvidenceRunnerError",
+            "message": "fixed qualification fixture failure",
+            "stage": "prelaunch_validation",
+        },
+        "forbidden_paths": {
+            path: False for path in request["forbidden_paths"]
+        },
+        "handshake": {
+            name: {
+                "path": handshake[f"{name}_path"],
+                "sha256": None,
+            }
+            for name in ("attempt", "ready", "release")
+        },
+        "implementation_sha256": dict(request["implementation_sha256"]),
+        "marker": {
+            "end_count": request["marker"]["start_count"],
+            "path": request["marker"]["path"],
+            "start_count": request["marker"]["start_count"],
+        },
+        "process": {
+            "cleanup_attempted": False,
+            "cleanup_error": None,
+            "exit_code": None,
+            "launch_count": 0,
+            "pid": None,
+        },
+        "registration": dict(request["registration"]),
+        "request": {
+            "hash": request["request_hash"],
+            "path": request["request_path"],
+        },
+        "review_binding": dict(review),
+        "result_hash": None,
+        "schema_version": schema_version,
+        "source_commit": request["source_commit"],
+        "status": "failed",
+    }
+    if include_isolation:
+        result["isolation"] = {
+            "baseline_hash": request["isolation"]["baseline_hash"],
+            "child_alive": False,
+            "communication_restored": True,
+            "matched": False,
+            "mismatches": ["observation_error"],
+            "observation_error": "fixed fixture observation unavailable",
+            "post_observation": None,
+            "post_observation_hash": None,
+            "restoration_error": None,
+        }
+    result["result_hash"] = _self_hash(result, "result_hash")
+    return result
+
+
+def _qualification_schema_fixture_records():
+    request_v2_path = (
+        REPO_ROOT
+        / "reports"
+        / "noncombat_outcome_evidence_expansion_20260716_v2_r6_qualification_request.json"
+    )
+    request_v2_bytes = request_v2_path.read_bytes()
+    request_v2 = json.loads(request_v2_bytes.decode("ascii"))
+
+    request_v1 = deepcopy(request_v2)
+    request_v1.pop("isolation")
+    request_v1["schema_version"] = runner.QUALIFICATION_REQUEST_V1_SCHEMA_VERSION
+    request_v1["request_hash"] = _self_hash(request_v1, "request_hash")
+    request_v1_bytes = _canonical_json(request_v1).encode("ascii") + b"\n"
+
+    request_v3 = deepcopy(request_v2)
+    request_v3["bootstrap"] = runner._qualification_bootstrap_paths(
+        Path(request_v3["qualification_root"])
+    )
+    request_v3["schema_version"] = runner.QUALIFICATION_REQUEST_SCHEMA_VERSION
+    request_v3["request_hash"] = _self_hash(request_v3, "request_hash")
+    request_v3_bytes = _canonical_json(request_v3).encode("ascii") + b"\n"
+
+    review_v1_for_request_v1 = _qualification_schema_fixture_review(
+        request_v1,
+        request_v1_bytes,
+        runner.QUALIFICATION_REVIEW_BINDING_V1_SCHEMA_VERSION,
+    )
+    review_v1 = _qualification_schema_fixture_review(
+        request_v2,
+        request_v2_bytes,
+        runner.QUALIFICATION_REVIEW_BINDING_V1_SCHEMA_VERSION,
+    )
+    review_v3 = _qualification_schema_fixture_review(
+        request_v3,
+        request_v3_bytes,
+        runner.QUALIFICATION_REVIEW_BINDING_SCHEMA_VERSION,
+    )
+    return {
+        "request_v1": request_v1,
+        "request_v2": request_v2,
+        "result_v1": _qualification_schema_fixture_result(
+            request_v1,
+            review_v1_for_request_v1,
+            runner.QUALIFICATION_RESULT_V1_SCHEMA_VERSION,
+            include_isolation=False,
+        ),
+        "result_v2": _qualification_schema_fixture_result(
+            request_v2,
+            review_v1,
+            runner.QUALIFICATION_RESULT_V2_SCHEMA_VERSION,
+            include_isolation=True,
+        ),
+        "review_v1": review_v1,
+        "result_v3": _qualification_schema_fixture_result(
+            request_v3,
+            review_v3,
+            runner.QUALIFICATION_RESULT_SCHEMA_VERSION,
+            include_isolation=True,
+        ),
+        "review_v3": review_v3,
+    }
+
+
+def test_historical_schema_bytes_remain_explicit_and_unchanged():
+    records = _qualification_schema_fixture_records()
+    assert set(records["request_v2"]) == set(records["request_v1"]) | {
+        "isolation"
+    }
+    assert set(records["result_v2"]) == set(records["result_v1"]) | {
+        "isolation"
+    }
+    assert set(records["result_v3"]) == set(records["result_v2"])
+    assert set(records["review_v3"]) == set(records["review_v1"])
+    hash_fields = {
+        "request_v1": "request_hash",
+        "request_v2": "request_hash",
+        "result_v1": "result_hash",
+        "result_v2": "result_hash",
+        "review_v1": "review_binding_hash",
+        "result_v3": "result_hash",
+        "review_v3": "review_binding_hash",
+    }
+    rendered = {
+        name: _canonical_json(record).encode("ascii") + b"\n"
+        for name, record in records.items()
+    }
+    for name, record in records.items():
+        assert record[hash_fields[name]] == _self_hash(
+            record,
+            hash_fields[name],
+        )
+        assert json.loads(rendered[name].decode("ascii")) == record
+    observed = {
+        name: {
+            "sha256": hashlib.sha256(raw).hexdigest(),
+            "size": len(raw),
+        }
+        for name, raw in rendered.items()
+    }
+    assert observed == {
+        "request_v1": {
+            "sha256": "fedb4c8d0fdf7d7f2c211455a42a794f0bddf18a7b392b62de89da8032f61936",
+            "size": 5996,
+        },
+        "request_v2": {
+            "sha256": "28c174d6fba875ba110b107c92da5d522664ead81d9bf5c0db71db6fc3748b69",
+            "size": 8886,
+        },
+        "result_v1": {
+            "sha256": "15bebc995815380d9adaed69533fd3d370763e6775c9f9298f51781a45186349",
+            "size": 6848,
+        },
+        "result_v2": {
+            "sha256": "401272257f085a23e17c62752e312d0dad5b0ba96d3d7982e1258f28285a9a86",
+            "size": 7184,
+        },
+        "review_v1": {
+            "sha256": "1e68c9c609e870107f47cf8484639420db26b7331288fc1e1b70b89a2833e044",
+            "size": 2094,
+        },
+        "result_v3": {
+            "sha256": "eb2b6dec533ad2a136ddccfeed54cd648a5a279fa5de9edf1153ed89c941a52a",
+            "size": 7186,
+        },
+        "review_v3": {
+            "sha256": "6c005d6da5f54ab3b176d35f1221241d346e2ba2b5b209c40d5233f2d1a61fe6",
+            "size": 2096,
+        },
+    }
 
 
 def test_qualification_file_reader_rejects_path_identity_change(
@@ -710,6 +917,19 @@ def _build_qualification_evidence(tmp_path, monkeypatch, *, status="passed"):
     request_path = Path(request["request_path"])
     _write_json(request_source_path, request)
     reviewed_request = deepcopy(request)
+    original_publish_text_once = runner._publish_text_once
+
+    def publish_with_bootstrap_handoff(path, text, label):
+        result = original_publish_text_once(path, text, label)
+        if Path(path) == request_path and label == "qualification request":
+            _write_bootstrap_phase(request, stage_count=5, handoff=True)
+        return result
+
+    monkeypatch.setattr(
+        runner,
+        "_publish_text_once",
+        publish_with_bootstrap_handoff,
+    )
 
     def load_historical_review(source_path, **kwargs):
         assert Path(source_path) == request_source_path

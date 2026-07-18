@@ -917,6 +917,28 @@ QUALIFICATION_BOOTSTRAP_STAGE_NAMES = (
     "request_reviewed",
     "isolation_verified",
 )
+QUALIFICATION_BOOTSTRAP_FAILURE_CODES = frozenset(
+    {
+        "bootstrap_envelope_invalid",
+        "bootstrap_claim_publish_failed",
+        "runner_validation_failed",
+        "runner_entry_validation_failed",
+        "source_validation_failed",
+        "request_validation_failed",
+        "prelaunch_isolation_failed",
+        "unexpected_pre_request_failure",
+    }
+)
+QUALIFICATION_BOOTSTRAP_FAILURE_DETAILS = {
+    "bootstrap_envelope_invalid": "bootstrap envelope validation failed",
+    "bootstrap_claim_publish_failed": "bootstrap claim publication failed",
+    "runner_validation_failed": "reviewed runner validation failed",
+    "runner_entry_validation_failed": "runner entry validation failed",
+    "source_validation_failed": "reviewed source validation failed",
+    "request_validation_failed": "reviewed request validation failed",
+    "prelaunch_isolation_failed": "prelaunch isolation validation failed",
+    "unexpected_pre_request_failure": "unexpected pre-request failure",
+}
 LEGACY_QUALIFICATION_REQUEST_SCHEMA_VERSION = QUALIFICATION_REQUEST_V1_SCHEMA_VERSION
 LEGACY_QUALIFICATION_RESULT_SCHEMA_VERSION = QUALIFICATION_RESULT_V1_SCHEMA_VERSION
 QUALIFICATION_ATTEMPT_HASH_ENV = (
@@ -934,10 +956,34 @@ class OutcomeEvidenceRunnerError(RuntimeError):
     """Raised when a registered launch or ledger transition is invalid."""
 
 
+def _qualification_bootstrap_lexical_root(
+    qualification_root: Path | str,
+) -> Path:
+    try:
+        supplied_text = os.fspath(qualification_root)
+    except TypeError as exc:
+        raise OutcomeEvidenceRunnerError(
+            "qualification bootstrap root is unsafe"
+        ) from exc
+    if not isinstance(supplied_text, str) or not supplied_text:
+        raise OutcomeEvidenceRunnerError("qualification bootstrap root is unsafe")
+    supplied = Path(supplied_text)
+    components = supplied.parts[1:] if supplied.anchor else supplied.parts
+    if (
+        not supplied.is_absolute()
+        or supplied.drive.startswith("\\\\")
+        or any(part in {"", ".", ".."} for part in components)
+        or any(":" in part for part in components)
+        or any(part.endswith((".", " ")) for part in components)
+    ):
+        raise OutcomeEvidenceRunnerError("qualification bootstrap root is unsafe")
+    return Path(os.path.abspath(supplied))
+
+
 def _qualification_bootstrap_paths(qualification_root: Path) -> dict[str, Any]:
     """Return the fixed direct-child bootstrap artifacts for a guarded root."""
 
-    root = Path(os.path.abspath(qualification_root))
+    root = _qualification_bootstrap_lexical_root(qualification_root)
     stage_paths = [
         {
             "index": index,
@@ -965,7 +1011,7 @@ def _validate_qualification_bootstrap(
     *,
     qualification_root: str,
 ) -> dict[str, Any]:
-    expected_root = Path(os.path.abspath(qualification_root))
+    expected_root = _qualification_bootstrap_lexical_root(qualification_root)
     expected = _qualification_bootstrap_paths(expected_root)
     if not isinstance(value, Mapping) or set(value) != set(expected):
         raise OutcomeEvidenceRunnerError("qualification bootstrap fields mismatch")
@@ -999,6 +1045,174 @@ def _validate_qualification_bootstrap(
     ):
         raise OutcomeEvidenceRunnerError("qualification bootstrap paths are unsafe")
     return json.loads(_canonical_json(value))
+
+
+def _qualification_bootstrap_record(
+    *,
+    anchors: Mapping[str, Any],
+    created_unix_ns: int,
+    payload: Mapping[str, Any],
+    pid: int,
+    previous_hash: str | None,
+    record_type: str,
+    stage_index: int,
+    stage_name: str,
+) -> dict[str, Any]:
+    """Build one canonical bootstrap record without publishing it."""
+
+    expected_anchor_fields = {
+        "envelope_sha256",
+        "launch_token",
+        "qualification_id",
+        "request_file_sha256",
+        "request_hash",
+        "request_size",
+        "review_commit",
+        "runner_sha256",
+        "source_commit",
+    }
+    if not isinstance(anchors, Mapping) or set(anchors) != expected_anchor_fields:
+        raise OutcomeEvidenceRunnerError(
+            "qualification bootstrap record anchors are invalid"
+        )
+    for field in (
+        "envelope_sha256",
+        "launch_token",
+        "request_file_sha256",
+        "request_hash",
+        "runner_sha256",
+    ):
+        if not isinstance(anchors[field], str) or not _is_lower_hex(
+            anchors[field],
+            _SHA256_LENGTH,
+        ):
+            raise OutcomeEvidenceRunnerError(
+                "qualification bootstrap record anchors are invalid"
+            )
+    for field in ("review_commit", "source_commit"):
+        if not isinstance(anchors[field], str) or not _is_lower_hex(
+            anchors[field],
+            _GIT_COMMIT_LENGTH,
+        ):
+            raise OutcomeEvidenceRunnerError(
+                "qualification bootstrap record anchors are invalid"
+            )
+    if (
+        not isinstance(anchors["qualification_id"], str)
+        or not anchors["qualification_id"]
+        or type(anchors["request_size"]) is not int
+        or anchors["request_size"] <= 0
+        or type(created_unix_ns) is not int
+        or created_unix_ns <= 0
+        or type(pid) is not int
+        or pid <= 0
+        or type(stage_index) is not int
+        or stage_index < 0
+        or not isinstance(stage_name, str)
+        or not stage_name
+        or not isinstance(payload, Mapping)
+        or (
+            previous_hash is not None
+            and (
+                not isinstance(previous_hash, str)
+                or not _is_lower_hex(previous_hash, _SHA256_LENGTH)
+            )
+        )
+    ):
+        raise OutcomeEvidenceRunnerError(
+            "qualification bootstrap record fields are invalid"
+        )
+    if record_type == "claim":
+        valid_shape = (
+            stage_index == 0
+            and stage_name == "claim"
+            and previous_hash is None
+            and not payload
+        )
+    elif record_type == "stage":
+        valid_shape = (
+            1 <= stage_index <= len(QUALIFICATION_BOOTSTRAP_STAGE_NAMES)
+            and stage_name == QUALIFICATION_BOOTSTRAP_STAGE_NAMES[stage_index - 1]
+            and previous_hash is not None
+            and not payload
+        )
+    elif record_type == "failure":
+        expected_failure_fields = {
+            "code",
+            "detail",
+            "errno",
+            "exception_type",
+            "winerror",
+        }
+        code = payload.get("code")
+        valid_stage = (
+            (stage_index == 0 and stage_name == "claim")
+            or (
+                1 <= stage_index <= len(QUALIFICATION_BOOTSTRAP_STAGE_NAMES)
+                and stage_name
+                == QUALIFICATION_BOOTSTRAP_STAGE_NAMES[stage_index - 1]
+            )
+        )
+        valid_shape = (
+            valid_stage
+            and previous_hash is not None
+            and set(payload) == expected_failure_fields
+            and code in QUALIFICATION_BOOTSTRAP_FAILURE_CODES
+            and payload.get("detail")
+            == QUALIFICATION_BOOTSTRAP_FAILURE_DETAILS[code]
+            and isinstance(payload.get("exception_type"), str)
+            and bool(payload.get("exception_type"))
+            and all(
+                value is None or type(value) is int
+                for value in (payload.get("errno"), payload.get("winerror"))
+            )
+        )
+    elif record_type == "handoff":
+        expected_handoff_fields = {
+            "active_request_file_sha256",
+            "active_request_size",
+            "claim_hash",
+            "final_stage_hash",
+            "request_hash",
+        }
+        valid_shape = (
+            stage_index == 6
+            and stage_name == "active_request_handoff"
+            and previous_hash is not None
+            and set(payload) == expected_handoff_fields
+            and type(payload.get("active_request_size")) is int
+            and payload["active_request_size"] > 0
+            and all(
+                isinstance(payload.get(field), str)
+                and _is_lower_hex(payload[field], _SHA256_LENGTH)
+                for field in (
+                    "active_request_file_sha256",
+                    "claim_hash",
+                    "final_stage_hash",
+                    "request_hash",
+                )
+            )
+        )
+    else:
+        valid_shape = False
+    if not valid_shape:
+        raise OutcomeEvidenceRunnerError(
+            "qualification bootstrap record shape is invalid"
+        )
+    record = {
+        "anchors": dict(anchors),
+        "created_unix_ns": created_unix_ns,
+        "payload": dict(payload),
+        "pid": pid,
+        "previous_hash": previous_hash,
+        "record_hash": None,
+        "record_type": record_type,
+        "schema_version": QUALIFICATION_BOOTSTRAP_EVIDENCE_SCHEMA_VERSION,
+        "stage_index": stage_index,
+        "stage_name": stage_name,
+    }
+    record["record_hash"] = _self_hash(record, "record_hash")
+    return json.loads(_canonical_json(record))
 
 
 def _qualification_bootstrap_envelope(
@@ -1519,8 +1733,22 @@ def load_qualification_request(
                 f"qualification {field.replace('_', ' ')} mismatch"
             )
     control_paths = _qualification_control_paths(bindings)
+    bootstrap_paths = set(
+        _qualification_bootstrap_declared_paths(bindings["bootstrap"])
+    )
+    non_bootstrap_control_paths = tuple(
+        path for path in control_paths if path not in bootstrap_paths
+    )
+    _validate_qualification_bootstrap_lifecycle(
+        bindings["bootstrap"],
+        source_mode=_source_mode,
+    )
     _require_paths_absent(
-        control_paths if _source_mode else control_paths[1:],
+        (
+            non_bootstrap_control_paths
+            if _source_mode
+            else non_bootstrap_control_paths[1:]
+        ),
         "qualification control artifact exists before launch",
     )
     forbidden_paths = tuple(Path(path) for path in bindings["forbidden_paths"])
@@ -1730,8 +1958,27 @@ def _qualification_request_bindings(
             str(config.trace_path),
         }
     )
+    bootstrap = _qualification_bootstrap_paths(qualification_root)
+    bootstrap_paths = {
+        bootstrap["claim_path"],
+        bootstrap["failure_path"],
+        bootstrap["handoff_path"],
+        *(stage["path"] for stage in bootstrap["stage_paths"]),
+    }
+    reserved_paths = {
+        str(request_path),
+        str(attempt_path),
+        str(ready_path),
+        str(release_path),
+        str(completion_path),
+        str(failure_path),
+        str(config_path),
+        *forbidden_paths,
+    }
+    if bootstrap_paths & reserved_paths:
+        raise OutcomeEvidenceRunnerError("qualification bootstrap path collision")
     return {
-        "bootstrap": _qualification_bootstrap_paths(qualification_root),
+        "bootstrap": bootstrap,
         "child_command": _qualification_child_command(registration),
         "completion_path": str(completion_path),
         "config": {
@@ -2875,6 +3122,71 @@ def _qualification_control_paths(bindings: Mapping[str, Any]) -> tuple[Path, ...
         Path(bindings["completion_path"]),
         Path(bindings["failure_path"]),
     )
+
+
+def _qualification_bootstrap_declared_paths(
+    bootstrap: Mapping[str, Any],
+) -> tuple[Path, ...]:
+    return (
+        Path(bootstrap["claim_path"]),
+        *(Path(stage["path"]) for stage in bootstrap["stage_paths"]),
+        Path(bootstrap["failure_path"]),
+        Path(bootstrap["handoff_path"]),
+    )
+
+
+def _validate_qualification_bootstrap_lifecycle(
+    bootstrap: Mapping[str, Any],
+    *,
+    source_mode: bool,
+) -> None:
+    declared_paths = _qualification_bootstrap_declared_paths(bootstrap)
+    declared = {Path(os.path.abspath(path)) for path in declared_paths}
+    root = Path(bootstrap["claim_path"]).parent
+    try:
+        with os.scandir(root) as entries:
+            unexpected = [
+                entry.path
+                for entry in entries
+                if entry.name.startswith("qualification-bootstrap-")
+                and Path(os.path.abspath(entry.path)) not in declared
+            ]
+    except OSError as exc:
+        raise OutcomeEvidenceRunnerError(
+            f"cannot inspect qualification bootstrap lifecycle: {exc}"
+        ) from exc
+    if unexpected:
+        raise OutcomeEvidenceRunnerError(
+            "qualification bootstrap lifecycle has an unexpected entry"
+        )
+    claim_exists = _qualification_path_entry_exists(declared_paths[0])
+    stage_exists = [
+        _qualification_path_entry_exists(path)
+        for path in declared_paths[1 : 1 + len(QUALIFICATION_BOOTSTRAP_STAGE_NAMES)]
+    ]
+    failure_exists = _qualification_path_entry_exists(declared_paths[-2])
+    handoff_exists = _qualification_path_entry_exists(declared_paths[-1])
+    contiguous = stage_exists == (
+        [True] * sum(stage_exists) + [False] * (len(stage_exists) - sum(stage_exists))
+    )
+    if source_mode:
+        valid = (
+            contiguous
+            and (claim_exists or not any(stage_exists))
+            and not failure_exists
+            and not handoff_exists
+        )
+    else:
+        valid = (
+            claim_exists
+            and all(stage_exists)
+            and not failure_exists
+            and handoff_exists
+        )
+    if not valid:
+        raise OutcomeEvidenceRunnerError(
+            "qualification bootstrap lifecycle phase mismatch"
+        )
 
 
 def _qualification_root_inventory(
@@ -5103,6 +5415,7 @@ def _validate_qualification_runtime_boundaries(
         Path(handshake["release_path"]),
         Path(request["completion_path"]),
         Path(request["failure_path"]),
+        *_qualification_bootstrap_declared_paths(request["bootstrap"]),
     }
     _require_paths_absent(
         (

@@ -1509,6 +1509,8 @@ def _qualification_request_fixture(
     monkeypatch,
     *,
     source_only=False,
+    config_name="qualification-config.json",
+    manifest_name="qualification-manifest.json",
 ):
     module = _module()
     registration, _run_lock = _study(tmp_path)
@@ -1533,14 +1535,14 @@ def _qualification_request_fixture(
     qualification_root = tmp_path / "qualification-bootstrap-fixture"
     qualification_root.mkdir()
     qualification_id = f"{STUDY_ID}-qualification-bootstrap-fixture"
-    config_path = qualification_root / "qualification-config.json"
+    config_path = qualification_root / config_name
     config_path.write_text(
         json.dumps(
             {
                 "category_rates_bps": {"card_reward": 300, "shop": 1000},
                 "enabled_categories": ["card_reward", "shop"],
                 "manifest_path": str(
-                    (qualification_root / "qualification-manifest.json").resolve()
+                    (qualification_root / manifest_name).resolve()
                 ),
                 "per_run_alternative_budget": 2,
                 "schema_version": "noncombat-exploration-config-v1",
@@ -1634,14 +1636,47 @@ def _qualification_request_fixture(
         encoding="utf-8",
         newline="",
     )
+    if source_only:
+        original_publish_text_once = module._publish_text_once
+        active_request_path = Path(request["request_path"])
+
+        def publish_with_bootstrap_handoff(path, text, label):
+            result = original_publish_text_once(path, text, label)
+            if Path(path) == active_request_path and label == "qualification request":
+                _write_bootstrap_phase(request, stage_count=5, handoff=True)
+            return result
+
+        monkeypatch.setattr(
+            module,
+            "_publish_text_once",
+            publish_with_bootstrap_handoff,
+        )
     if not source_only:
         request_path.write_bytes(reviewed_request_path.read_bytes())
+        _write_bootstrap_phase(request, stage_count=5, handoff=True)
     return (
         module,
         registration_path,
         reviewed_request_path if source_only else request_path,
         request,
     )
+
+
+def _write_bootstrap_phase(
+    request,
+    *,
+    stage_count,
+    handoff=False,
+    failure=False,
+):
+    bootstrap = request["bootstrap"]
+    Path(bootstrap["claim_path"]).write_bytes(b"claim phase fixture\n")
+    for stage in bootstrap["stage_paths"][:stage_count]:
+        Path(stage["path"]).write_bytes(b"stage phase fixture\n")
+    if handoff:
+        Path(bootstrap["handoff_path"]).write_bytes(b"handoff phase fixture\n")
+    if failure:
+        Path(bootstrap["failure_path"]).write_bytes(b"failure phase fixture\n")
 
 
 def test_qualification_request_round_trips_exact_current_bindings(
@@ -1759,6 +1794,198 @@ def test_bootstrap_paths_are_fixed_direct_children_and_do_not_collide(tmp_path):
     ]
     assert len(paths) == len(set(paths))
     assert all(Path(path).parent == qualification_root for path in paths)
+    reserved = {
+        str(qualification_root / "qualification-request.json"),
+        str(qualification_root / "qualification-communication-attempt.json"),
+        str(qualification_root / "qualification-communication-ready.json"),
+        str(qualification_root / "qualification-communication-release.json"),
+        str(qualification_root / "qualification-completion.json"),
+        str(qualification_root / "qualification-failure.json"),
+        str(qualification_root / "qualification-config.json"),
+        str(qualification_root / "qualification-manifest.json"),
+        str(qualification_root / "qualification-trace.jsonl"),
+    }
+    assert set(paths).isdisjoint(reserved)
+
+
+@pytest.mark.parametrize(
+    "unsafe_root",
+    (
+        r"\\server\share\qualification",
+        r"C:\qualification:stream",
+        r"C:\qualification.\root",
+        r"C:\safe\..\qualification",
+    ),
+)
+def test_bootstrap_unsafe_lexical_roots_are_rejected_before_normalization(
+    unsafe_root,
+):
+    module = _module()
+
+    with pytest.raises(
+        module.OutcomeEvidenceRunnerError,
+        match="bootstrap.*root|unsafe",
+    ):
+        module._qualification_bootstrap_paths(Path(unsafe_root))
+
+
+@pytest.mark.parametrize(
+    ("config_name", "manifest_name"),
+    (
+        ("qualification-bootstrap-claim.json", "qualification-manifest.json"),
+        ("qualification-config.json", "qualification-bootstrap-handoff.json"),
+    ),
+)
+def test_bootstrap_collision_rejects_config_and_forbidden_paths(
+    tmp_path,
+    monkeypatch,
+    config_name,
+    manifest_name,
+):
+    module = _module()
+
+    with pytest.raises(
+        module.OutcomeEvidenceRunnerError,
+        match="bootstrap path collision",
+    ):
+        _qualification_request_fixture(
+            tmp_path,
+            monkeypatch,
+            source_only=True,
+            config_name=config_name,
+            manifest_name=manifest_name,
+        )
+
+
+@pytest.mark.parametrize(
+    "collision_name",
+    (
+        "qualification-request.json",
+        "qualification-communication-attempt.json",
+        "qualification-communication-ready.json",
+        "qualification-communication-release.json",
+        "qualification-completion.json",
+        "qualification-failure.json",
+    ),
+)
+def test_bootstrap_collision_rejects_request_handshake_and_terminal_paths(
+    tmp_path,
+    monkeypatch,
+    collision_name,
+):
+    module = _module()
+    fixed_bootstrap_paths = module._qualification_bootstrap_paths
+
+    def colliding_bootstrap_paths(qualification_root):
+        bootstrap = fixed_bootstrap_paths(qualification_root)
+        bootstrap["claim_path"] = str(
+            Path(qualification_root) / collision_name
+        )
+        return bootstrap
+
+    monkeypatch.setattr(
+        module,
+        "_qualification_bootstrap_paths",
+        colliding_bootstrap_paths,
+    )
+
+    with pytest.raises(
+        module.OutcomeEvidenceRunnerError,
+        match="bootstrap path collision",
+    ):
+        _qualification_request_fixture(
+            tmp_path,
+            monkeypatch,
+            source_only=True,
+        )
+
+
+def test_bootstrap_phase_source_mode_allows_contiguous_stage_prefix(
+    tmp_path,
+    monkeypatch,
+):
+    module, registration_path, request_source_path, request = (
+        _qualification_request_fixture(tmp_path, monkeypatch, source_only=True)
+    )
+    _write_bootstrap_phase(request, stage_count=3)
+
+    loaded = module.load_qualification_request_source(
+        request_source_path,
+        registration_path=registration_path,
+        expected_request_hash=request["request_hash"],
+        **_qualification_review_kwargs(request),
+    )
+
+    assert loaded == request
+
+
+def test_bootstrap_phase_active_mode_requires_complete_handoff(
+    tmp_path,
+    monkeypatch,
+):
+    module, registration_path, request_path, request = (
+        _qualification_request_fixture(tmp_path, monkeypatch)
+    )
+
+    loaded = module.load_qualification_request(
+        request_path,
+        registration_path=registration_path,
+    )
+
+    assert loaded == request
+
+
+@pytest.mark.parametrize("unexpected", ("gap", "failure", "handoff", "entry"))
+def test_bootstrap_phase_rejects_gaps_and_unexpected_entries(
+    tmp_path,
+    monkeypatch,
+    unexpected,
+):
+    module, registration_path, request_source_path, request = (
+        _qualification_request_fixture(tmp_path, monkeypatch, source_only=True)
+    )
+    bootstrap = request["bootstrap"]
+    if unexpected == "gap":
+        Path(bootstrap["claim_path"]).write_bytes(b"claim\n")
+        Path(bootstrap["stage_paths"][1]["path"]).write_bytes(b"stage two\n")
+    elif unexpected == "failure":
+        _write_bootstrap_phase(request, stage_count=2, failure=True)
+    elif unexpected == "handoff":
+        _write_bootstrap_phase(request, stage_count=5, handoff=True)
+    else:
+        Path(request["qualification_root"], "qualification-bootstrap-extra.json").write_bytes(
+            b"unexpected\n"
+        )
+
+    with pytest.raises(
+        module.OutcomeEvidenceRunnerError,
+        match="bootstrap lifecycle",
+    ):
+        module.load_qualification_request_source(
+            request_source_path,
+            registration_path=registration_path,
+            expected_request_hash=request["request_hash"],
+            **_qualification_review_kwargs(request),
+        )
+
+
+def test_bootstrap_phase_active_mode_rejects_missing_handoff(
+    tmp_path,
+    monkeypatch,
+):
+    module, registration_path, request_path, request = (
+        _qualification_request_fixture(tmp_path, monkeypatch)
+    )
+    Path(request["bootstrap"]["handoff_path"]).unlink()
+
+    with pytest.raises(
+        module.OutcomeEvidenceRunnerError,
+        match="bootstrap lifecycle",
+    ):
+        module.load_qualification_request(
+            request_path,
+            registration_path=registration_path,
+        )
 
 
 def test_bootstrap_token_is_frozen_and_binds_every_contract_anchor():
@@ -1795,9 +2022,178 @@ def test_bootstrap_token_is_frozen_and_binds_every_contract_anchor():
         changed = json.loads(json.dumps(envelope))
         changed[field] = replacement
         assert module._qualification_bootstrap_token(changed) != token
+    bootstrap_mutations = [
+        (("claim_path",), "C:\\different-root\\claim.json"),
+        (("failure_path",), "C:\\different-root\\failure.json"),
+        (("handoff_path",), "C:\\different-root\\handoff.json"),
+        (("schema_version",), "qualification-bootstrap-evidence-v0"),
+        (("token_schema_version",), "qualification-bootstrap-token-v0"),
+        *(
+            (("stage_paths", index, "path"), f"C:\\different-root\\stage-{index}.json")
+            for index in range(5)
+        ),
+    ]
+    for location, replacement in bootstrap_mutations:
+        changed = json.loads(json.dumps(envelope))
+        target = changed["bootstrap"]
+        for part in location[:-1]:
+            target = target[part]
+        target[location[-1]] = replacement
+        assert module._qualification_bootstrap_token(changed) != token
+
+
+@pytest.mark.parametrize(
+    "unsafe_root",
+    (
+        r"\\server\share\qualification",
+        r"C:\qualification:stream",
+        r"C:\qualification.\root",
+        r"C:\safe\..\qualification",
+    ),
+)
+def test_bootstrap_unsafe_envelope_paths_are_rejected(unsafe_root):
+    module = _module()
+    envelope = module._qualification_bootstrap_envelope(
+        request=BOOTSTRAP_VECTOR_REQUEST,
+        expected_request_file_sha256="c" * 64,
+        expected_request_size=123,
+        review_commit="d" * 40,
+        runner_sha256="e" * 64,
+    )
     changed = json.loads(json.dumps(envelope))
-    changed["bootstrap"]["claim_path"] = "C:\\different-root\\claim.json"
-    assert module._qualification_bootstrap_token(changed) != token
+    changed["qualification_root"] = unsafe_root
+    root = Path(unsafe_root)
+    changed["bootstrap"] = {
+        **changed["bootstrap"],
+        "claim_path": str(root / "qualification-bootstrap-claim.json"),
+        "failure_path": str(root / "qualification-bootstrap-failure.json"),
+        "handoff_path": str(root / "qualification-bootstrap-handoff.json"),
+        "stage_paths": [
+            {
+                **stage,
+                "path": str(
+                    root
+                    / f"qualification-bootstrap-stage-{stage['index']:02d}-"
+                    f"{stage['name'].replace('_', '-')}.json"
+                ),
+            }
+            for stage in changed["bootstrap"]["stage_paths"]
+        ],
+    }
+    encoded = base64.b64encode(
+        module._canonical_json(changed).encode("ascii")
+    ).decode("ascii")
+
+    with pytest.raises(
+        module.OutcomeEvidenceRunnerError,
+        match="bootstrap.*root|unsafe",
+    ):
+        module._qualification_bootstrap_decode_envelope(encoded)
+
+
+def test_bootstrap_record_schema_and_self_hash_bytes_are_frozen():
+    module = _module()
+    sha256_vector = "0" * 64
+    commit_vector = "1" * 40
+    anchors = {
+        "envelope_sha256": sha256_vector,
+        "launch_token": sha256_vector,
+        "qualification_id": "fixture-qualification",
+        "request_file_sha256": sha256_vector,
+        "request_hash": sha256_vector,
+        "request_size": 1,
+        "review_commit": commit_vector,
+        "runner_sha256": sha256_vector,
+        "source_commit": commit_vector,
+    }
+    claim = module._qualification_bootstrap_record(
+        anchors=anchors,
+        created_unix_ns=1,
+        payload={},
+        pid=1,
+        previous_hash=None,
+        record_type="claim",
+        stage_index=0,
+        stage_name="claim",
+    )
+    stage = module._qualification_bootstrap_record(
+        anchors=anchors,
+        created_unix_ns=1,
+        payload={},
+        pid=1,
+        previous_hash=claim["record_hash"],
+        record_type="stage",
+        stage_index=1,
+        stage_name="launcher_verified",
+    )
+    failure = module._qualification_bootstrap_record(
+        anchors=anchors,
+        created_unix_ns=1,
+        payload={
+            "code": "source_validation_failed",
+            "detail": "reviewed source validation failed",
+            "errno": None,
+            "exception_type": "OutcomeEvidenceRunnerError",
+            "winerror": None,
+        },
+        pid=1,
+        previous_hash=stage["record_hash"],
+        record_type="failure",
+        stage_index=3,
+        stage_name="source_verified",
+    )
+    handoff = module._qualification_bootstrap_record(
+        anchors=anchors,
+        created_unix_ns=1,
+        payload={
+            "active_request_file_sha256": sha256_vector,
+            "active_request_size": 1,
+            "claim_hash": claim["record_hash"],
+            "final_stage_hash": sha256_vector,
+            "request_hash": sha256_vector,
+        },
+        pid=1,
+        previous_hash=sha256_vector,
+        record_type="handoff",
+        stage_index=6,
+        stage_name="active_request_handoff",
+    )
+
+    assert module.QUALIFICATION_BOOTSTRAP_FAILURE_CODES == frozenset(
+        {
+            "bootstrap_envelope_invalid",
+            "bootstrap_claim_publish_failed",
+            "runner_validation_failed",
+            "runner_entry_validation_failed",
+            "source_validation_failed",
+            "request_validation_failed",
+            "prelaunch_isolation_failed",
+            "unexpected_pre_request_failure",
+        }
+    )
+    assert module.QUALIFICATION_BOOTSTRAP_FAILURE_DETAILS == {
+        "bootstrap_envelope_invalid": "bootstrap envelope validation failed",
+        "bootstrap_claim_publish_failed": "bootstrap claim publication failed",
+        "runner_validation_failed": "reviewed runner validation failed",
+        "runner_entry_validation_failed": "runner entry validation failed",
+        "source_validation_failed": "reviewed source validation failed",
+        "request_validation_failed": "reviewed request validation failed",
+        "prelaunch_isolation_failed": "prelaunch isolation validation failed",
+        "unexpected_pre_request_failure": "unexpected pre-request failure",
+    }
+    expected = {
+        "claim": b'{"anchors":{"envelope_sha256":"0000000000000000000000000000000000000000000000000000000000000000","launch_token":"0000000000000000000000000000000000000000000000000000000000000000","qualification_id":"fixture-qualification","request_file_sha256":"0000000000000000000000000000000000000000000000000000000000000000","request_hash":"0000000000000000000000000000000000000000000000000000000000000000","request_size":1,"review_commit":"1111111111111111111111111111111111111111","runner_sha256":"0000000000000000000000000000000000000000000000000000000000000000","source_commit":"1111111111111111111111111111111111111111"},"created_unix_ns":1,"payload":{},"pid":1,"previous_hash":null,"record_hash":"6f50bfdced41d515ae33f7f402a36d38d337c39ccbecba1ca8dec926c69c42b5","record_type":"claim","schema_version":"noncombat-outcome-evidence-qualification-bootstrap-evidence-v1","stage_index":0,"stage_name":"claim"}\n',
+        "stage": b'{"anchors":{"envelope_sha256":"0000000000000000000000000000000000000000000000000000000000000000","launch_token":"0000000000000000000000000000000000000000000000000000000000000000","qualification_id":"fixture-qualification","request_file_sha256":"0000000000000000000000000000000000000000000000000000000000000000","request_hash":"0000000000000000000000000000000000000000000000000000000000000000","request_size":1,"review_commit":"1111111111111111111111111111111111111111","runner_sha256":"0000000000000000000000000000000000000000000000000000000000000000","source_commit":"1111111111111111111111111111111111111111"},"created_unix_ns":1,"payload":{},"pid":1,"previous_hash":"6f50bfdced41d515ae33f7f402a36d38d337c39ccbecba1ca8dec926c69c42b5","record_hash":"c3543ab7758923ef33d7570468127267aace386d73bb3ee408cc4ef4c014058f","record_type":"stage","schema_version":"noncombat-outcome-evidence-qualification-bootstrap-evidence-v1","stage_index":1,"stage_name":"launcher_verified"}\n',
+        "failure": b'{"anchors":{"envelope_sha256":"0000000000000000000000000000000000000000000000000000000000000000","launch_token":"0000000000000000000000000000000000000000000000000000000000000000","qualification_id":"fixture-qualification","request_file_sha256":"0000000000000000000000000000000000000000000000000000000000000000","request_hash":"0000000000000000000000000000000000000000000000000000000000000000","request_size":1,"review_commit":"1111111111111111111111111111111111111111","runner_sha256":"0000000000000000000000000000000000000000000000000000000000000000","source_commit":"1111111111111111111111111111111111111111"},"created_unix_ns":1,"payload":{"code":"source_validation_failed","detail":"reviewed source validation failed","errno":null,"exception_type":"OutcomeEvidenceRunnerError","winerror":null},"pid":1,"previous_hash":"c3543ab7758923ef33d7570468127267aace386d73bb3ee408cc4ef4c014058f","record_hash":"e899aa4faf5cbbb956b17cbe15dc04665fd3764c0e9aea2ff391e14f31a5045a","record_type":"failure","schema_version":"noncombat-outcome-evidence-qualification-bootstrap-evidence-v1","stage_index":3,"stage_name":"source_verified"}\n',
+        "handoff": b'{"anchors":{"envelope_sha256":"0000000000000000000000000000000000000000000000000000000000000000","launch_token":"0000000000000000000000000000000000000000000000000000000000000000","qualification_id":"fixture-qualification","request_file_sha256":"0000000000000000000000000000000000000000000000000000000000000000","request_hash":"0000000000000000000000000000000000000000000000000000000000000000","request_size":1,"review_commit":"1111111111111111111111111111111111111111","runner_sha256":"0000000000000000000000000000000000000000000000000000000000000000","source_commit":"1111111111111111111111111111111111111111"},"created_unix_ns":1,"payload":{"active_request_file_sha256":"0000000000000000000000000000000000000000000000000000000000000000","active_request_size":1,"claim_hash":"6f50bfdced41d515ae33f7f402a36d38d337c39ccbecba1ca8dec926c69c42b5","final_stage_hash":"0000000000000000000000000000000000000000000000000000000000000000","request_hash":"0000000000000000000000000000000000000000000000000000000000000000"},"pid":1,"previous_hash":"0000000000000000000000000000000000000000000000000000000000000000","record_hash":"a56eaffd46dc7aa6af84bac9313a0cb325c0c535d446dc1101a7568873d79d65","record_type":"handoff","schema_version":"noncombat-outcome-evidence-qualification-bootstrap-evidence-v1","stage_index":6,"stage_name":"active_request_handoff"}\n',
+    }
+    for name, record in (
+        ("claim", claim),
+        ("stage", stage),
+        ("failure", failure),
+        ("handoff", handoff),
+    ):
+        assert module._canonical_json(record).encode("ascii") + b"\n" == expected[name]
 
 
 def test_live_qualification_rejects_v1_request_before_consumption(
@@ -3435,7 +3831,7 @@ def test_qualification_orchestrator_accepts_ready_published_during_owned_start(
     assert events == ["start", "ready", "release", "exit"]
     assert result["status"] == "passed"
     assert result["schema_version"] == (
-        "noncombat-outcome-evidence-qualification-result-v2"
+        "noncombat-outcome-evidence-qualification-result-v3"
     )
     assert result["isolation"]["baseline_hash"] == (
         request["isolation"]["baseline_hash"]
@@ -3563,7 +3959,7 @@ def test_qualification_orchestrator_accepts_ready_published_during_owned_start(
 
     with pytest.raises(
         module.OutcomeEvidenceRunnerError,
-        match="control artifact",
+        match="bootstrap lifecycle",
     ):
         module.execute_prelock_qualification(
             registration_path=registration_path,
@@ -4318,7 +4714,7 @@ def test_qualification_request_only_host_crash_cannot_be_retried(
     monkeypatch.setattr(module, "load_qualification_request", real_load)
     with pytest.raises(
         module.OutcomeEvidenceRunnerError,
-        match="control artifact",
+        match="bootstrap lifecycle",
     ):
         module.execute_prelock_qualification(
             registration_path=registration_path,
