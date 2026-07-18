@@ -151,10 +151,491 @@ def _trusted_qualification_command(runner_path, *arguments):
     ]
 
 
+def _bootstrap_library_namespace():
+    namespace = {}
+    exec(_module()._QUALIFICATION_BOOTSTRAP_LIBRARY_SOURCE, namespace)
+    return namespace
+
+
+def _bootstrap_launcher_fixture(tmp_path, runner_bytes=None):
+    module = _module()
+    qualification_root = (tmp_path / "qualification").resolve()
+    qualification_root.mkdir()
+    marker_path = (tmp_path / "runner-entry.txt").resolve()
+    if runner_bytes is None:
+        runner_bytes = (
+            "import os, sys\n"
+            "from pathlib import Path\n"
+            "assert os.environ['STS_OUTCOME_EVIDENCE_QUALIFICATION_RUNNER_SHA256'] == sys.orig_argv[6]\n"
+            "assert os.environ['STS_OUTCOME_EVIDENCE_QUALIFICATION_BOOTSTRAP_ENVELOPE_B64'] == sys.orig_argv[7]\n"
+            "assert os.environ['STS_OUTCOME_EVIDENCE_QUALIFICATION_BOOTSTRAP_LAUNCH_TOKEN'] == sys.orig_argv[8]\n"
+            "assert sys.argv[1] == 'qualify'\n"
+            "assert sys.orig_argv[7] not in sys.argv\n"
+            "assert sys.orig_argv[8] not in sys.argv\n"
+            "claim = Path(os.environ['STS_TEST_CLAIM_PATH'])\n"
+            "stage = Path(os.environ['STS_TEST_STAGE_PATH'])\n"
+            "assert claim.is_file()\n"
+            "assert stage.is_file()\n"
+            "Path(os.environ['STS_TEST_MARKER_PATH']).write_bytes(b'entered\\n')\n"
+        ).encode("ascii")
+    runner_path = (tmp_path / "reviewed_runner.py").resolve()
+    runner_path.write_bytes(runner_bytes)
+    runner_sha256 = hashlib.sha256(runner_bytes).hexdigest()
+    request_bytes = b'{"reviewed":true}\n'
+    request_path = (tmp_path / "reviewed-request.json").resolve()
+    request_path.write_bytes(request_bytes)
+    request_hash = "a" * 64
+    review_commit = "b" * 40
+    request = {
+        "bootstrap": module._qualification_bootstrap_paths(qualification_root),
+        "qualification_id": "fixture-qualification",
+        "qualification_root": str(qualification_root),
+        "request_hash": request_hash,
+        "source_commit": "c" * 40,
+    }
+    envelope = module._qualification_bootstrap_envelope(
+        request=request,
+        expected_request_file_sha256=hashlib.sha256(request_bytes).hexdigest(),
+        expected_request_size=len(request_bytes),
+        review_commit=review_commit,
+        runner_sha256=runner_sha256,
+    )
+    envelope_b64 = module._qualification_bootstrap_encode_envelope(envelope)
+    launch_token = module._qualification_bootstrap_token(envelope)
+    qualifier_arguments = [
+        "qualify",
+        "--registration",
+        str((tmp_path / "registration.json").resolve()),
+        "--request",
+        str(request_path),
+        "--request-hash",
+        request_hash,
+        "--request-file-sha256",
+        hashlib.sha256(request_bytes).hexdigest(),
+        "--request-size",
+        str(len(request_bytes)),
+        "--review-commit",
+        review_commit,
+    ]
+    command = [
+        sys.executable,
+        "-I",
+        "-S",
+        "-c",
+        module.QUALIFICATION_TRUSTED_LAUNCHER_CODE,
+        str(runner_path),
+        runner_sha256,
+        envelope_b64,
+        launch_token,
+        *qualifier_arguments,
+    ]
+    environment = os.environ.copy()
+    environment.update(
+        {
+            "STS_TEST_CLAIM_PATH": envelope["bootstrap"]["claim_path"],
+            "STS_TEST_STAGE_PATH": envelope["bootstrap"]["stage_paths"][0][
+                "path"
+            ],
+            "STS_TEST_MARKER_PATH": str(marker_path),
+        }
+    )
+    return {
+        "command": command,
+        "envelope": envelope,
+        "environment": environment,
+        "marker_path": marker_path,
+        "qualification_root": qualification_root,
+        "runner_path": runner_path,
+    }
+
+
 def _assert_silent_qualification_failure(completed):
     assert completed.returncode == 2
     assert completed.stdout == ""
     assert completed.stderr == ""
+
+
+def test_bootstrap_publisher_source_builds_exact_ascii_lf_self_hashed_record():
+    namespace = _bootstrap_library_namespace()
+    anchors = {
+        "envelope_sha256": "0" * 64,
+        "launch_token": "1" * 64,
+        "qualification_id": "fixture-qualification",
+        "request_file_sha256": "2" * 64,
+        "request_hash": "3" * 64,
+        "request_size": 17,
+        "review_commit": "4" * 40,
+        "runner_sha256": "5" * 64,
+        "source_commit": "6" * 40,
+    }
+
+    record = namespace["_qualification_bootstrap_record"](
+        record_type="claim",
+        anchors=anchors,
+        created_unix_ns=1,
+        pid=2,
+        previous_hash=None,
+        stage_index=0,
+        stage_name="claim",
+        payload={},
+    )
+    raw = namespace["_qualification_bootstrap_record_bytes"](record)
+
+    assert raw.endswith(b"\n")
+    assert b"\r" not in raw
+    assert raw.decode("ascii").encode("ascii") == raw
+    assert {
+        name for name, value in namespace.items() if hasattr(value, "__spec__")
+    } == {"hashlib", "json", "os", "stat", "time"}
+    replay = dict(record)
+    replay["record_hash"] = None
+    expected_hash = hashlib.sha256(
+        json.dumps(
+            replay,
+            allow_nan=False,
+            ensure_ascii=True,
+            separators=(",", ":"),
+            sort_keys=True,
+        ).encode("ascii")
+    ).hexdigest()
+    assert record["record_hash"] == expected_hash
+    assert json.loads(raw) == record
+
+
+def test_bootstrap_publisher_uses_exclusive_same_descriptor_durable_write(
+    tmp_path,
+    monkeypatch,
+):
+    namespace = _bootstrap_library_namespace()
+    target = (tmp_path / "qualification-bootstrap-claim.json").resolve()
+    raw = b'{"claim":true}\n'
+    observed = []
+    real_open = os.open
+    real_write = os.write
+    real_fsync = os.fsync
+    real_lseek = os.lseek
+    real_read = os.read
+    real_fstat = os.fstat
+    real_close = os.close
+
+    def record_open(path, flags, mode=0o777):
+        observed.append(("open", path, flags))
+        return real_open(path, flags, mode)
+
+    def record_write(descriptor, block):
+        observed.append(("write", descriptor, bytes(block)))
+        return real_write(descriptor, block)
+
+    def record_fsync(descriptor):
+        observed.append(("fsync", descriptor))
+        return real_fsync(descriptor)
+
+    def record_fstat(descriptor):
+        observed.append(("fstat", descriptor))
+        return real_fstat(descriptor)
+
+    def record_lseek(descriptor, offset, whence):
+        observed.append(("lseek", descriptor, offset, whence))
+        return real_lseek(descriptor, offset, whence)
+
+    def record_read(descriptor, count):
+        observed.append(("read", descriptor, count))
+        return real_read(descriptor, count)
+
+    def record_close(descriptor):
+        observed.append(("close", descriptor))
+        return real_close(descriptor)
+
+    monkeypatch.setattr(namespace["os"], "open", record_open)
+    monkeypatch.setattr(namespace["os"], "write", record_write)
+    monkeypatch.setattr(namespace["os"], "fsync", record_fsync)
+    monkeypatch.setattr(namespace["os"], "fstat", record_fstat)
+    monkeypatch.setattr(namespace["os"], "lseek", record_lseek)
+    monkeypatch.setattr(namespace["os"], "read", record_read)
+    monkeypatch.setattr(namespace["os"], "close", record_close)
+
+    namespace["_qualification_bootstrap_publish_bytes_once"](str(target), raw)
+
+    assert target.read_bytes() == raw
+    assert sorted(tmp_path.iterdir()) == [target]
+    open_event = next(event for event in observed if event[0] == "open")
+    assert open_event[2] & os.O_CREAT
+    assert open_event[2] & os.O_EXCL
+    assert open_event[2] & os.O_RDWR
+    descriptor_events = [event[0] for event in observed if len(event) > 1]
+    assert descriptor_events.count("open") == 1
+    assert descriptor_events.count("fsync") == 1
+    assert descriptor_events.count("close") == 1
+    io_descriptors = {
+        event[1]
+        for event in observed
+        if event[0] in {"write", "fsync", "fstat", "lseek", "read", "close"}
+    }
+    assert len(io_descriptors) == 1
+
+
+@pytest.mark.parametrize("existing", (b"", b"{", b'{"partial":true}', b'{"valid":true}\n'))
+def test_claim_collision_consumes_identity_without_changing_existing_bytes(
+    tmp_path,
+    existing,
+):
+    namespace = _bootstrap_library_namespace()
+    target = (tmp_path / "qualification-bootstrap-claim.json").resolve()
+    target.write_bytes(existing)
+
+    with pytest.raises(FileExistsError):
+        namespace["_qualification_bootstrap_publish_bytes_once"](
+            str(target),
+            b'{"replacement":true}\n',
+        )
+
+    assert target.read_bytes() == existing
+    assert sorted(tmp_path.iterdir()) == [target]
+
+
+@pytest.mark.parametrize(
+    "path_text",
+    (
+        "relative\\qualification-bootstrap-claim.json",
+        r"\\server\share\qualification-bootstrap-claim.json",
+        r"C:\qualification\..\qualification-bootstrap-claim.json",
+        r"C:\qualification\qualification-bootstrap-claim.json:stream",
+        "C:\\qualification\\qualification-bootstrap-claim.json.",
+        "C:\\qualification\\qualification-bootstrap-claim.json ",
+    ),
+)
+def test_bootstrap_publisher_rejects_unsafe_lexical_paths_without_probe(
+    path_text,
+    monkeypatch,
+):
+    namespace = _bootstrap_library_namespace()
+    monkeypatch.setattr(
+        namespace["os"],
+        "lstat",
+        lambda _path: pytest.fail("unsafe publisher path reached filesystem"),
+    )
+
+    with pytest.raises(Exception):
+        namespace["_qualification_bootstrap_publish_bytes_once"](
+            path_text,
+            b"claim\n",
+        )
+
+
+def test_bootstrap_publisher_rejects_missing_parent_without_creating_it(tmp_path):
+    namespace = _bootstrap_library_namespace()
+    parent = tmp_path / "missing"
+    target = (parent / "qualification-bootstrap-claim.json").resolve()
+
+    with pytest.raises(OSError):
+        namespace["_qualification_bootstrap_publish_bytes_once"](
+            str(target),
+            b"claim\n",
+        )
+
+    assert not parent.exists()
+
+
+def test_bootstrap_publisher_rejects_linked_parent_without_writing_target(tmp_path):
+    namespace = _bootstrap_library_namespace()
+    target_parent = tmp_path / "outside"
+    target_parent.mkdir()
+    linked_parent = tmp_path / "linked-parent"
+    _create_directory_junction(linked_parent, target_parent)
+    target = linked_parent / "qualification-bootstrap-claim.json"
+
+    try:
+        with pytest.raises(Exception):
+            namespace["_qualification_bootstrap_publish_bytes_once"](
+                str(target),
+                b"claim\n",
+            )
+    finally:
+        os.rmdir(linked_parent)
+
+    assert list(target_parent.iterdir()) == []
+
+
+def test_bootstrap_publisher_rejects_linked_or_nonregular_final_entry(tmp_path):
+    namespace = _bootstrap_library_namespace()
+    target_directory = tmp_path / "outside"
+    target_directory.mkdir()
+    target = tmp_path / "qualification-bootstrap-claim.json"
+    _create_directory_junction(target, target_directory)
+
+    try:
+        with pytest.raises(Exception):
+            namespace["_qualification_bootstrap_publish_bytes_once"](
+                str(target),
+                b"claim\n",
+            )
+    finally:
+        os.rmdir(target)
+
+    assert target_directory.is_dir()
+    assert list(target_directory.iterdir()) == []
+
+
+@pytest.mark.parametrize("failure", ("short_write", "fsync", "reread"))
+def test_bootstrap_publisher_keeps_created_identity_after_io_failure(
+    tmp_path,
+    monkeypatch,
+    failure,
+):
+    namespace = _bootstrap_library_namespace()
+    target = (tmp_path / "qualification-bootstrap-claim.json").resolve()
+    raw = b'{"claim":true}\n'
+    if failure == "short_write":
+        monkeypatch.setattr(namespace["os"], "write", lambda *_args: 0)
+    elif failure == "fsync":
+        monkeypatch.setattr(
+            namespace["os"],
+            "fsync",
+            lambda _descriptor: (_ for _ in ()).throw(OSError("fsync failed")),
+        )
+    else:
+        monkeypatch.setattr(namespace["os"], "read", lambda *_args: b"mismatch")
+
+    with pytest.raises(Exception):
+        namespace["_qualification_bootstrap_publish_bytes_once"](
+            str(target),
+            raw,
+        )
+
+    assert target.exists()
+    assert sorted(tmp_path.iterdir()) == [target]
+
+
+def test_bootstrap_publisher_rejects_parent_identity_drift_and_keeps_bytes(
+    tmp_path,
+    monkeypatch,
+):
+    namespace = _bootstrap_library_namespace()
+    target = (tmp_path / "qualification-bootstrap-claim.json").resolve()
+    raw = b'{"claim":true}\n'
+    real_lstat = os.lstat
+    parent_calls = 0
+
+    class DriftedStat:
+        def __init__(self, original):
+            self.__dict__.update(
+                {
+                    name: getattr(original, name)
+                    for name in dir(original)
+                    if name.startswith("st_")
+                }
+            )
+            self.st_ino = original.st_ino + 1
+
+    def drift_parent(path):
+        nonlocal parent_calls
+        result = real_lstat(path)
+        if os.path.normcase(os.path.abspath(path)) == os.path.normcase(
+            os.path.abspath(tmp_path)
+        ):
+            parent_calls += 1
+            if parent_calls >= 3:
+                return DriftedStat(result)
+        return result
+
+    monkeypatch.setattr(namespace["os"], "lstat", drift_parent)
+
+    with pytest.raises(Exception):
+        namespace["_qualification_bootstrap_publish_bytes_once"](
+            str(target),
+            raw,
+        )
+
+    assert target.read_bytes() == raw
+
+
+def test_trusted_launcher_claim_precedes_runner_and_launcher_verified(tmp_path):
+    fixture = _bootstrap_launcher_fixture(tmp_path)
+
+    completed = subprocess.run(
+        fixture["command"],
+        cwd=tmp_path,
+        capture_output=True,
+        check=False,
+        env=fixture["environment"],
+    )
+
+    assert completed.returncode == 0
+    assert completed.stdout == b""
+    assert completed.stderr == b""
+    bootstrap = fixture["envelope"]["bootstrap"]
+    claim_path = Path(bootstrap["claim_path"])
+    launcher_stage_path = Path(bootstrap["stage_paths"][0]["path"])
+    assert claim_path.is_file()
+    assert launcher_stage_path.is_file()
+    assert fixture["marker_path"].read_bytes() == b"entered\n"
+    claim = json.loads(claim_path.read_bytes())
+    launcher_stage = json.loads(launcher_stage_path.read_bytes())
+    assert claim["record_type"] == "claim"
+    assert launcher_stage["stage_name"] == "launcher_verified"
+    assert launcher_stage["previous_hash"] == claim["record_hash"]
+    assert not Path(bootstrap["stage_paths"][1]["path"]).exists()
+
+
+@pytest.mark.parametrize("existing", (b"", b"{", b'{"wrong":true}\n'))
+def test_trusted_launcher_claim_collision_is_silent_and_stops_before_runner(
+    tmp_path,
+    existing,
+):
+    fixture = _bootstrap_launcher_fixture(tmp_path)
+    bootstrap = fixture["envelope"]["bootstrap"]
+    claim_path = Path(bootstrap["claim_path"])
+    claim_path.write_bytes(existing)
+
+    completed = subprocess.run(
+        fixture["command"],
+        cwd=tmp_path,
+        capture_output=True,
+        check=False,
+        env=fixture["environment"],
+    )
+
+    assert completed.returncode == 2
+    assert completed.stdout == b""
+    assert completed.stderr == b""
+    assert claim_path.read_bytes() == existing
+    assert not fixture["marker_path"].exists()
+    assert not Path(bootstrap["failure_path"]).exists()
+    assert all(not Path(stage["path"]).exists() for stage in bootstrap["stage_paths"])
+
+
+def test_trusted_launcher_second_claim_attempt_is_silent_and_creates_nothing_later(
+    tmp_path,
+):
+    fixture = _bootstrap_launcher_fixture(tmp_path)
+    first = subprocess.run(
+        fixture["command"],
+        cwd=tmp_path,
+        capture_output=True,
+        check=False,
+        env=fixture["environment"],
+    )
+    bootstrap = fixture["envelope"]["bootstrap"]
+    claim_path = Path(bootstrap["claim_path"])
+    first_claim = claim_path.read_bytes()
+    first_marker = fixture["marker_path"].read_bytes()
+
+    second = subprocess.run(
+        fixture["command"],
+        cwd=tmp_path,
+        capture_output=True,
+        check=False,
+        env=fixture["environment"],
+    )
+
+    assert first.returncode == 0
+    assert second.returncode == 2
+    assert second.stdout == b""
+    assert second.stderr == b""
+    assert claim_path.read_bytes() == first_claim
+    assert fixture["marker_path"].read_bytes() == first_marker
+    assert not Path(bootstrap["failure_path"]).exists()
+    assert not Path(bootstrap["stage_paths"][1]["path"]).exists()
 
 
 def _create_directory_junction(link_path, target_path):
@@ -464,19 +945,8 @@ def test_trusted_qualification_launcher_rejects_win32_alias(
 def test_trusted_qualification_launcher_survives_communicationmod_split(
     tmp_path,
 ):
-    module = _module()
-    runner_path = tmp_path / "qualification_runner.py"
-    runner_bytes = b"raise SystemExit(0)\n"
-    runner_path.write_bytes(runner_bytes)
-    command = [
-        sys.executable,
-        "-I",
-        "-S",
-        "-c",
-        module.QUALIFICATION_TRUSTED_LAUNCHER_CODE,
-        str(runner_path),
-        hashlib.sha256(runner_bytes).hexdigest(),
-    ]
+    fixture = _bootstrap_launcher_fixture(tmp_path)
+    command = fixture["command"]
     communicationmod_command = " ".join(command)
     split_command = communicationmod_command.split()
 
@@ -486,9 +956,13 @@ def test_trusted_qualification_launcher_survives_communicationmod_split(
         cwd=tmp_path,
         capture_output=True,
         check=False,
+        env=fixture["environment"],
         text=True,
     )
     assert completed.returncode == 0, completed.stderr
+    assert completed.stdout == ""
+    assert completed.stderr == ""
+    assert fixture["marker_path"].read_bytes() == b"entered\n"
 
 
 def test_qualification_cli_rejects_direct_unanchored_runner():
