@@ -32,5 +32,5 @@
 - [ ] 5.1 Run focused Windows pytest for qualification runner, verifier, handshake, and runtime-error slices with cache disabled and a writable repository basetemp.
 - [ ] 5.2 Run the complete Windows pytest suite with cache disabled and a writable repository basetemp; resolve every regression before review.
 - [ ] 5.3 Run `openspec validate --all --strict`, `git diff --check`, canonical byte/hash checks, stale-placeholder scans, and an independent source-only review of the exact implementation diff.
-- [ ] 5.4 Record an offline closeout containing test counts, v3 schema/hash fixtures, crash-matrix coverage, historical r1-r6 replay, isolation results, non-goals, rollback boundary, and all-false live/study/training authority.
+- [ ] 5.4 Record an offline closeout containing test counts, v3 schema/hash fixtures, crash-matrix coverage, the r1-r6 byte/absence inventory with evidence/governance classifications and eligible replay results, isolation results, non-goals, rollback boundary, and all-false live/study/training authority.
 - [ ] 5.5 Only after the implementation and closeout pass review, mark the pending observability tasks in `add-tracked-outcome-qualification-orchestrator` and `run-v2-known-propensity-outcome-evidence-study` complete; leave r7 preparation, game launch, live qualification, and `start` to a separate explicit amendment.

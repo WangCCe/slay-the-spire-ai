@@ -34,7 +34,7 @@
 **Test files**
 
 - Modify `tests/test_noncombat_outcome_evidence_runner.py`: exact byte fixtures, publisher/path tests, trusted-launcher and stage regressions, handoff ordering, failure/crash matrix, stream silence, isolation preservation, ordinary-start invariants, and production-Python smoke.
-- Modify `tests/test_noncombat_outcome_evidence_verifier.py`: independent prefix vectors, corrupt-root matrix, terminal binding, all-false authority, and r1-r6 replay.
+- Modify `tests/test_noncombat_outcome_evidence_verifier.py`: independent prefix vectors, corrupt-root matrix, terminal binding, all-false authority, and r1-r6 evidence-bounded compatibility.
 
 **Planning and closeout files**
 
@@ -732,7 +732,7 @@ git commit -m "feat: verify qualification bootstrap prefixes"
 
 ---
 
-### Task 6: Verify Complete V3 Terminals And Preserve R1-R6 Replay
+### Task 6: Verify Complete V3 Terminals And Preserve R1-R6 Compatibility
 
 **Files:**
 
@@ -799,7 +799,7 @@ Expected: zero selected failures; fixed historical SHA-256 values remain unchang
 - [ ] **Step 7: Check OpenSpec items 3.3 and 3.4; commit**
 
 ```powershell
-git commit -m "test: preserve historical qualification replay"
+git commit -m "test: preserve historical qualification compatibility"
 ```
 
 ---
