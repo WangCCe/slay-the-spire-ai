@@ -2992,6 +2992,7 @@ def _bootstrap_cluster_b_fixture(tmp_path, *, with_sentinels=False):
         sys.executable,
         "-I",
         "-S",
+        "-B",
         str(child_path),
     ]
     request["request_hash"] = None
@@ -3040,6 +3041,23 @@ def _bootstrap_cluster_b_fixture(tmp_path, *, with_sentinels=False):
         "request": request,
         "sentinel_path": sentinel_path,
     }
+
+
+def test_current_v3_cluster_fixture_uses_bytecode_disabled_child_command(tmp_path):
+    module = _module()
+
+    case = _bootstrap_cluster_b_fixture(tmp_path)
+
+    assert case["request"]["schema_version"] == (
+        module.QUALIFICATION_REQUEST_SCHEMA_VERSION
+    )
+    assert case["request"]["child_command"] == [
+        sys.executable,
+        "-I",
+        "-S",
+        "-B",
+        str((tmp_path / "no-action-child.py").resolve()),
+    ]
 
 
 def _bootstrap_protected_state_fixture(tmp_path):
@@ -3248,6 +3266,138 @@ def test_bootstrap_isolation_preserves_every_protected_state_before_request(
     _assert_no_post_handoff_artifacts(case)
 
 
+def _java_properties_escape_for_test(value, *, key):
+    escaped = []
+    for index, character in enumerate(value):
+        if character == " ":
+            escaped.append("\\ " if key or index == 0 else " ")
+        elif character == "\\":
+            escaped.append("\\\\")
+        elif character == "\t":
+            escaped.append("\\t")
+        elif character == "\n":
+            escaped.append("\\n")
+        elif character == "\r":
+            escaped.append("\\r")
+        elif character == "\f":
+            escaped.append("\\f")
+        elif character in "=:#!":
+            escaped.append("\\" + character)
+        elif ord(character) < 0x20 or ord(character) > 0x7E:
+            escaped.append(f"\\u{ord(character):04X}")
+        else:
+            escaped.append(character)
+    return "".join(escaped)
+
+
+def _java_properties_serialize_for_test(properties):
+    rows = []
+    for key, value in properties.items():
+        rows.append(
+            _java_properties_escape_for_test(key, key=True)
+            + "="
+            + _java_properties_escape_for_test(value, key=False)
+        )
+    return ("\n".join(rows) + "\n").encode("iso-8859-1")
+
+
+def _java_properties_logical_lines_for_test(raw):
+    logical_lines = []
+    pending = ""
+    continued = False
+    for natural_line in raw.decode("iso-8859-1").splitlines():
+        if continued:
+            natural_line = natural_line.lstrip(" \t\f")
+        candidate = pending + natural_line
+        trailing_backslashes = len(candidate) - len(candidate.rstrip("\\"))
+        if trailing_backslashes % 2:
+            pending = candidate[:-1]
+            continued = True
+            continue
+        logical_lines.append(candidate)
+        pending = ""
+        continued = False
+    if pending:
+        logical_lines.append(pending)
+    return logical_lines
+
+
+def _java_properties_unescape_for_test(value):
+    decoded = []
+    index = 0
+    escapes = {"f": "\f", "n": "\n", "r": "\r", "t": "\t"}
+    while index < len(value):
+        character = value[index]
+        if character != "\\":
+            decoded.append(character)
+            index += 1
+            continue
+        index += 1
+        if index == len(value):
+            decoded.append("\\")
+            break
+        escaped = value[index]
+        if escaped == "u":
+            digits = value[index + 1 : index + 5]
+            if len(digits) != 4 or any(
+                digit not in "0123456789abcdefABCDEF" for digit in digits
+            ):
+                raise ValueError("malformed Java Properties unicode escape")
+            decoded.append(chr(int(digits, 16)))
+            index += 5
+            continue
+        decoded.append(escapes.get(escaped, escaped))
+        index += 1
+    return "".join(decoded)
+
+
+def _java_properties_decode_for_test(raw):
+    properties = {}
+    for logical_line in _java_properties_logical_lines_for_test(raw):
+        start = 0
+        while start < len(logical_line) and logical_line[start] in " \t\f":
+            start += 1
+        if start == len(logical_line) or logical_line[start] in "#!":
+            continue
+        escaped = False
+        separator = len(logical_line)
+        separator_is_whitespace = False
+        for index in range(start, len(logical_line)):
+            character = logical_line[index]
+            if character == "\\":
+                escaped = not escaped
+                continue
+            if not escaped and (character in "=:" or character in " \t\f"):
+                separator = index
+                separator_is_whitespace = character in " \t\f"
+                break
+            escaped = False
+        value_start = separator
+        if separator < len(logical_line):
+            if separator_is_whitespace:
+                while (
+                    value_start < len(logical_line)
+                    and logical_line[value_start] in " \t\f"
+                ):
+                    value_start += 1
+                if (
+                    value_start < len(logical_line)
+                    and logical_line[value_start] in "=:"
+                ):
+                    value_start += 1
+            else:
+                value_start += 1
+            while (
+                value_start < len(logical_line)
+                and logical_line[value_start] in " \t\f"
+            ):
+                value_start += 1
+        key = _java_properties_unescape_for_test(logical_line[start:separator])
+        value = _java_properties_unescape_for_test(logical_line[value_start:])
+        properties[key] = value
+    return properties
+
+
 def test_communication_tokenization_reconstructs_exact_reviewed_launcher_vector(
     tmp_path,
 ):
@@ -3255,21 +3405,20 @@ def test_communication_tokenization_reconstructs_exact_reviewed_launcher_vector(
     module = _module()
     reviewed_vector = _trusted_bootstrap_retry_command(case)
     config_path = (tmp_path / "config.properties").resolve()
-    command_bytes = " ".join(reviewed_vector).encode("ascii")
     config_path.write_bytes(
-        b"verbose=false\ncommand="
-        + command_bytes
-        + b"\nrunAtGameStart=true\n"
+        _java_properties_serialize_for_test(
+            {
+                "verbose": "false",
+                "command": " ".join(reviewed_vector),
+                "runAtGameStart": "true",
+            }
+        )
     )
 
-    command_property = next(
-        line.partition(b"=")[2]
-        for line in config_path.read_bytes().splitlines()
-        if line.startswith(b"command=")
+    communicationmod_properties = _java_properties_decode_for_test(
+        config_path.read_bytes()
     )
-    communicationmod_tokens = [
-        token.decode("ascii") for token in command_property.strip().split()
-    ]
+    communicationmod_tokens = communicationmod_properties["command"].split()
 
     assert communicationmod_tokens == reviewed_vector
     assert reviewed_vector[4] == module.QUALIFICATION_TRUSTED_LAUNCHER_CODE
@@ -3296,6 +3445,33 @@ def test_communication_tokenization_reconstructs_exact_reviewed_launcher_vector(
         token and token.split() == [token]
         for token in reviewed_vector[4:]
     )
+
+
+def test_java_properties_equivalent_round_trip_preserves_windows_escapes():
+    reviewed_vector = [
+        r"D:\fixture\python.exe",
+        "-I",
+        "-S",
+        "-c",
+        "trusted-code",
+        r"D:\source\runner.py",
+        "runner-sha256",
+        "envelope-b64",
+        "launch-token",
+        "qualify",
+    ]
+    properties = {
+        "command": " ".join(reviewed_vector),
+        "fixture path": r"D:\fixture root\main.py:reviewed",
+    }
+
+    encoded = _java_properties_serialize_for_test(properties)
+    decoded = _java_properties_decode_for_test(encoded)
+
+    assert b"fixture\\ path=" in encoded
+    assert b"D\\:\\\\fixture root\\\\main.py\\:reviewed" in encoded
+    assert decoded == properties
+    assert decoded["command"].split() == reviewed_vector
 
 
 def _controlled_failure_runner_bytes(code, completed_stages):
@@ -4148,8 +4324,11 @@ def test_production_python_smoke_runs_reviewed_launcher_to_terminal_without_game
 ):
     fixture = _production_python_smoke_fixture(tmp_path)
     request = fixture["request"]
-    protected_before = _canonical_protected_state_snapshot(fixture["protected"])
     communication_path = Path(fixture["protected"]["config"])
+    original_communication_config_bytes = communication_path.read_bytes()
+    original_protected_snapshot = _canonical_protected_state_snapshot(
+        fixture["protected"]
+    )
     command_property = " ".join(fixture["command"]).replace("\\", "\\\\")
     communication_path.write_text(
         "verbose=false\n"
@@ -4157,6 +4336,11 @@ def test_production_python_smoke_runs_reviewed_launcher_to_terminal_without_game
         "runAtGameStart=true\n",
         encoding="ascii",
         newline="",
+    )
+    temporary_qualification_config_bytes = communication_path.read_bytes()
+    assert temporary_qualification_config_bytes != original_communication_config_bytes
+    assert _canonical_protected_state_snapshot(fixture["protected"]) != (
+        original_protected_snapshot
     )
     environment = os.environ.copy()
     environment["PYTHONDONTWRITEBYTECODE"] = "1"
@@ -4183,8 +4367,9 @@ def test_production_python_smoke_runs_reviewed_launcher_to_terminal_without_game
     )
     assert completed.stdout == b""
     assert completed.stderr == b""
+    assert communication_path.read_bytes() == original_communication_config_bytes
     assert _canonical_protected_state_snapshot(fixture["protected"]) == (
-        protected_before
+        original_protected_snapshot
     )
     bootstrap = request["bootstrap"]
     required_paths = [
