@@ -2,8 +2,8 @@
 
 - [x] 1.1 Add exact schema and rendering fixtures for request/result/review-binding v3, bootstrap-evidence v1, deterministic launch-token derivation, fixed direct-child paths, canonical ASCII JSON, and self-hash fields while retaining immutable v1/v2 fixtures.
 - [x] 1.2 Add red producer tests proving the trusted launcher exclusively creates the claim before runner execution, treats every claim-path entry as consumed, rejects a second invocation, and remains silent on CommunicationMod stdout/stderr.
-- [ ] 1.3 Add red subprocess tests for runner hash/path rejection, wrong HEAD, tracked or executable-source drift, unsafe Git metadata/configuration, malformed request anchors, invalid S-to-R review, and request-bound isolation drift; require the exact last completed stage and no active request or child.
-- [ ] 1.4 Add red crash-matrix and verifier tests for termination after every stage, controlled failure records, missing failure records, malformed/torn claim bytes, stage gaps/reordering/hash drift, duplicate or extra entries, active-request-without-handoff, and uniformly false authority.
+- [x] 1.3 Add red subprocess tests for runner hash/path rejection, wrong HEAD, tracked or executable-source drift, unsafe Git metadata/configuration, malformed request anchors, invalid S-to-R review, and request-bound isolation drift; require the exact last completed stage and no active request or child.
+- [x] 1.4 Add red crash-matrix and verifier tests for termination after every stage, controlled failure records, missing failure records, malformed/torn claim bytes, stage gaps/reordering/hash drift, duplicate or extra entries, active-request-without-handoff, and uniformly false authority.
 
 ## 2. Implement V3 Pre-Request Evidence
 
@@ -22,10 +22,10 @@
 
 ## 4. Prove Isolation And Compatibility
 
-- [ ] 4.1 Run the complete injected-failure matrix in subprocesses and prove each consumed identity rejects a second invocation before active request, attempt, or child creation.
-- [ ] 4.2 Prove every pre-request path preserves marker, run, checkpoint, global-log, registered-study-root, run-lock, ledger, manifest, trace, model, and policy state and never invokes `start` or a training command.
-- [ ] 4.3 Prove CommunicationMod-equivalent whitespace splitting reproduces the exact v3 launcher vector, qualification remains stream-silent, child stream ownership is unchanged after handoff, and ordinary gameplay/eval/training startup creates no bootstrap artifacts.
-- [ ] 4.4 Run a bounded production-Windows-Python subprocess smoke for reviewed launcher-to-handoff fixtures without Java or gameplay; record exact artifacts and keep real CommunicationMod validation deferred to a separate approved replacement amendment.
+- [x] 4.1 Run the complete injected-failure matrix in subprocesses and prove each consumed identity rejects a second invocation before active request, attempt, or child creation.
+- [x] 4.2 Prove every pre-request path preserves marker, run, checkpoint, global-log, registered-study-root, run-lock, ledger, manifest, trace, model, and policy state and never invokes `start` or a training command.
+- [x] 4.3 Prove CommunicationMod-equivalent whitespace splitting reproduces the exact v3 launcher vector, qualification remains stream-silent, child stream ownership is unchanged after handoff, and ordinary gameplay/eval/training startup creates no bootstrap artifacts.
+- [x] 4.4 Run a bounded production-Windows-Python subprocess smoke for reviewed launcher-to-handoff fixtures without Java or gameplay; record exact artifacts and keep real CommunicationMod validation deferred to a separate approved replacement amendment.
 
 ## 5. Verify And Close The Offline Change
 

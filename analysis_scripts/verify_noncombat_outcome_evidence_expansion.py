@@ -3694,6 +3694,29 @@ def _expected_qualification_review_binding(
     return json.loads(_canonical_json(record))
 
 
+def _expected_qualification_child_command(
+    registration: Mapping[str, Any],
+    request_schema_version: str,
+) -> list[str]:
+    command_record = _mapping(registration.get("command"), "registered command")
+    interpreter_flags = ["-I", "-S"]
+    if request_schema_version == QUALIFICATION_REQUEST_SCHEMA_VERSION:
+        interpreter_flags.append("-B")
+    elif request_schema_version not in {
+        QUALIFICATION_REQUEST_V1_SCHEMA_VERSION,
+        QUALIFICATION_REQUEST_V2_SCHEMA_VERSION,
+    }:
+        raise OutcomeEvidenceVerificationError(
+            "qualification request schema is unsupported"
+        )
+    return [
+        command_record["python_executable"],
+        *interpreter_flags,
+        command_record["main_path"],
+        *_sequence(command_record["arguments"], "registered arguments"),
+    ]
+
+
 def _verify_qualification_request(
     request: Mapping[str, Any],
     *,
@@ -3851,16 +3874,9 @@ def _verify_qualification_request(
         "qualification request review binding mismatch",
     )
 
-    command_record = _mapping(registration.get("command"), "registered command")
-    expected_command = [
-        command_record["python_executable"],
-        "-I",
-        "-S",
-        command_record["main_path"],
-        *_sequence(command_record["arguments"], "registered arguments"),
-    ]
     checks.require(
-        request.get("child_command") == expected_command,
+        request.get("child_command")
+        == _expected_qualification_child_command(registration, schema_version),
         "qualification child command mismatch",
     )
     config_binding = _mapping(request.get("config"), "qualification config")

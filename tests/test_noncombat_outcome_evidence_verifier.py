@@ -1076,7 +1076,13 @@ def _literal_v3_terminal_fixture(tmp_path):
     }
     request.update(
         {
-            "child_command": ["fixture-python", "-I", "-S", "fixture-main.py"],
+            "child_command": [
+                "fixture-python",
+                "-I",
+                "-S",
+                "-B",
+                "fixture-main.py",
+            ],
             "completion_path": str(root / "qualification-completion.json"),
             "config": {
                 "path": str(config_path),
@@ -2212,6 +2218,7 @@ def _build_source_only_v3_top_level_fixture(tmp_path):
             registration_record["command"]["python_executable"],
             "-I",
             "-S",
+            "-B",
             registration_record["command"]["main_path"],
             *registration_record["command"]["arguments"],
         ],
@@ -2626,6 +2633,51 @@ def _qualification_schema_fixture_review(request, request_bytes, schema_version)
     return review
 
 
+def test_qualification_verifier_child_command_contract_is_schema_specific():
+    verifier = _verifier()
+    registration = {
+        "command": {
+            "arguments": ["-a", "20", "--agent", "optimized"],
+            "main_path": r"D:\reviewed-source\main.py",
+            "python_executable": r"D:\python\python.exe",
+        }
+    }
+    historical = [
+        r"D:\python\python.exe",
+        "-I",
+        "-S",
+        r"D:\reviewed-source\main.py",
+        "-a",
+        "20",
+        "--agent",
+        "optimized",
+    ]
+    current_v3 = [
+        r"D:\python\python.exe",
+        "-I",
+        "-S",
+        "-B",
+        r"D:\reviewed-source\main.py",
+        "-a",
+        "20",
+        "--agent",
+        "optimized",
+    ]
+
+    assert verifier._expected_qualification_child_command(
+        registration,
+        verifier.QUALIFICATION_REQUEST_V1_SCHEMA_VERSION,
+    ) == historical
+    assert verifier._expected_qualification_child_command(
+        registration,
+        verifier.QUALIFICATION_REQUEST_V2_SCHEMA_VERSION,
+    ) == historical
+    assert verifier._expected_qualification_child_command(
+        registration,
+        verifier.QUALIFICATION_REQUEST_SCHEMA_VERSION,
+    ) == current_v3
+
+
 def _qualification_schema_fixture_result(
     request,
     review,
@@ -2718,6 +2770,7 @@ def _canonical_public_v1_v2_compatibility_vectors():
     request_v1_bytes = _canonical_json(request_v1).encode("ascii") + b"\n"
 
     request_v3 = deepcopy(request_v2)
+    request_v3["child_command"].insert(3, "-B")
     request_v3["bootstrap"] = runner._qualification_bootstrap_paths(
         Path(request_v3["qualification_root"])
     )
@@ -2779,6 +2832,12 @@ def test_canonical_public_v1_v2_compatibility_vectors_historical_schema_bytes_re
     }
     assert set(records["result_v3"]) == set(records["result_v2"])
     assert set(records["review_v3"]) == set(records["review_v1"])
+    assert records["request_v1"]["child_command"] == records["request_v2"][
+        "child_command"
+    ]
+    assert "-B" not in records["request_v1"]["child_command"]
+    assert "-B" not in records["result_v2"]["child_command"]
+    assert records["result_v3"]["child_command"][1:4] == ["-I", "-S", "-B"]
     hash_fields = {
         "request_v1": "request_hash",
         "request_v2": "request_hash",
@@ -2827,11 +2886,11 @@ def test_canonical_public_v1_v2_compatibility_vectors_historical_schema_bytes_re
             "size": 2094,
         },
         "result_v3": {
-            "sha256": "eb2b6dec533ad2a136ddccfeed54cd648a5a279fa5de9edf1153ed89c941a52a",
-            "size": 7186,
+            "sha256": "f8599566b724f652900c2756aa25469bd13db716d7635d1fca67c667cdf8c19b",
+            "size": 7191,
         },
         "review_v3": {
-            "sha256": "6c005d6da5f54ab3b176d35f1221241d346e2ba2b5b209c40d5233f2d1a61fe6",
+            "sha256": "5ac5716b1f08c75cbef6e6f9b969c3cddd24ae2dfc442e1882d530495d5e8441",
             "size": 2096,
         },
     }
@@ -4695,6 +4754,14 @@ def _build_qualification_evidence(tmp_path, monkeypatch, *, status="passed"):
     # Task 5 owns v3 replay; retain this fixture's frozen v2 verifier surface.
     historical_request = deepcopy(request)
     bootstrap = historical_request.pop("bootstrap")
+    command_record = registration.to_record()["command"]
+    historical_request["child_command"] = [
+        command_record["python_executable"],
+        "-I",
+        "-S",
+        command_record["main_path"],
+        *command_record["arguments"],
+    ]
     historical_request["schema_version"] = (
         runner.QUALIFICATION_REQUEST_V2_SCHEMA_VERSION
     )
@@ -4754,6 +4821,9 @@ def _build_qualification_evidence(tmp_path, monkeypatch, *, status="passed"):
     )
     historical_result = deepcopy(result)
     historical_result.pop("bootstrap")
+    historical_result["child_command"] = list(
+        historical_request["child_command"]
+    )
     historical_result["request"]["hash"] = historical_request["request_hash"]
     historical_result["review_binding"] = historical_review_binding
     historical_result["schema_version"] = (

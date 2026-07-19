@@ -8952,7 +8952,7 @@ def _qualification_child_command(
     registration: OutcomeEvidenceRegistration,
 ) -> list[str]:
     command = _registered_command(registration)
-    return [command[0], "-I", "-S", *command[1:]]
+    return [command[0], "-I", "-S", "-B", *command[1:]]
 
 
 def _qualification_child_environment(
@@ -9469,9 +9469,9 @@ def _qualify_command(
             list(command),
             env=dict(child_environment),
             cwd=str(checkpoint_root.parent),
-            stdin=sys.stdin,
-            stdout=sys.stdout,
-            stderr=sys.stderr,
+            stdin=sys.__stdin__ if sys.__stdin__ is not None else sys.stdin,
+            stdout=sys.__stdout__ if sys.__stdout__ is not None else sys.stdout,
+            stderr=sys.__stderr__ if sys.__stderr__ is not None else sys.stderr,
         )
 
     return execute_prelock_qualification(

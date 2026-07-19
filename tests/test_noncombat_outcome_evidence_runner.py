@@ -7,6 +7,7 @@ import py_compile
 import shutil
 import subprocess
 import sys
+import tempfile
 import zipfile
 from pathlib import Path
 
@@ -1987,7 +1988,7 @@ def test_qualification_request_uses_isolated_child_command(
         )
     )
 
-    assert request["child_command"][1:3] == ["-I", "-S"]
+    assert request["child_command"][1:4] == ["-I", "-S", "-B"]
 
 
 def test_qualification_child_environment_drops_ambient_python(monkeypatch):
@@ -2026,6 +2027,12 @@ def test_qualify_default_child_inherits_communication_streams(
     )
     sentinel_process = object()
     popen_calls = []
+    redirected_stdin = object()
+    redirected_stdout = object()
+    redirected_stderr = object()
+    monkeypatch.setattr(sys, "stdin", redirected_stdin)
+    monkeypatch.setattr(sys, "stdout", redirected_stdout)
+    monkeypatch.setattr(sys, "stderr", redirected_stderr)
 
     monkeypatch.setattr(
         module,
@@ -2069,9 +2076,21 @@ def test_qualify_default_child_inherits_communication_streams(
             {
                 "cwd": str(Path(registration.checkpoint_root).parent),
                 "env": {"BOUND": "1"},
-                "stderr": sys.stderr,
-                "stdin": sys.stdin,
-                "stdout": sys.stdout,
+                "stderr": (
+                    sys.__stderr__
+                    if sys.__stderr__ is not None
+                    else redirected_stderr
+                ),
+                "stdin": (
+                    sys.__stdin__
+                    if sys.__stdin__ is not None
+                    else redirected_stdin
+                ),
+                "stdout": (
+                    sys.__stdout__
+                    if sys.__stdout__ is not None
+                    else redirected_stdout
+                ),
             },
         )
     ]
@@ -2524,6 +2543,1673 @@ def _qualification_bootstrap_prefix_bytes(request):
         *(Path(stage["path"]) for stage in bootstrap["stage_paths"]),
     ]
     return {str(path): path.read_bytes() for path in paths}
+
+
+_BOOTSTRAP_CRASH_WORKER = r"""
+import hashlib
+import importlib.util
+import json
+import os
+import sys
+from pathlib import Path
+
+sys.dont_write_bytecode = True
+
+
+def load_source(path, name):
+    spec = importlib.util.spec_from_file_location(name, path)
+    if spec is None or spec.loader is None:
+        raise RuntimeError("cannot load production runner")
+    module = importlib.util.module_from_spec(spec)
+    sys.modules[name] = module
+    spec.loader.exec_module(module)
+    return module
+
+
+fixture = json.loads(Path(sys.argv[1]).read_text(encoding="ascii"))
+boundary = sys.argv[2]
+runner = load_source(fixture["runner_path"], "task7_crash_runner")
+if "sentinel_path" in fixture:
+    sentinel_path = Path(fixture["sentinel_path"])
+    call_counts = json.loads(sentinel_path.read_text(encoding="ascii"))
+
+    def forbidden_call(name):
+        def reject(*_args, **_kwargs):
+            call_counts[name] += 1
+            sentinel_path.write_text(
+                json.dumps(call_counts, separators=(",", ":"), sort_keys=True)
+                + "\n",
+                encoding="ascii",
+                newline="",
+            )
+            raise RuntimeError("forbidden pre-request entrypoint: " + name)
+
+        return reject
+
+    runner._start_command = forbidden_call("start_command")
+    runner.StudyLedger = forbidden_call("ledger_constructor")
+    runner.build_slot_launch = forbidden_call("registered_slot_build")
+    runner.execute_registered_slot = forbidden_call("registered_slot_launch")
+    runner.execute_handshaken_registered_slot = forbidden_call(
+        "handshaken_registered_slot_launch"
+    )
+    os.environ["STS_AI_LOG_FILE"] = fixture["main_log_path"]
+    gameplay = load_source(fixture["main_path"], "task7_crash_gameplay")
+    gameplay._load_rl_components = forbidden_call("training_component_load")
+    gameplay.create_agent = forbidden_call("training_agent_create")
+    gameplay.backup_latest_checkpoint = forbidden_call(
+        "training_checkpoint_backup"
+    )
+request = fixture["request"]
+request_bytes = (runner._canonical_json(request) + "\n").encode("ascii")
+runner_sha256 = request["implementation_sha256"][
+    runner.QUALIFICATION_RUNNER_RELATIVE_PATH
+]
+envelope = runner._qualification_bootstrap_envelope(
+    request=request,
+    expected_request_file_sha256=hashlib.sha256(request_bytes).hexdigest(),
+    expected_request_size=len(request_bytes),
+    review_commit=fixture["review_commit"],
+    runner_sha256=runner_sha256,
+)
+anchors = {
+    "envelope_sha256": hashlib.sha256(
+        runner._canonical_json(envelope).encode("ascii")
+    ).hexdigest(),
+    "launch_token": runner._qualification_bootstrap_token(envelope),
+    "qualification_id": request["qualification_id"],
+    "request_file_sha256": hashlib.sha256(request_bytes).hexdigest(),
+    "request_hash": request["request_hash"],
+    "request_size": len(request_bytes),
+    "review_commit": fixture["review_commit"],
+    "runner_sha256": runner_sha256,
+    "source_commit": request["source_commit"],
+}
+bootstrap = request["bootstrap"]
+claim = runner._qualification_bootstrap_record(
+    anchors=anchors,
+    created_unix_ns=1,
+    payload={},
+    pid=os.getpid(),
+    previous_hash=None,
+    record_type="claim",
+    stage_index=0,
+    stage_name="claim",
+)
+runner._qualification_bootstrap_publish_record_once(
+    Path(bootstrap["claim_path"]),
+    claim,
+)
+state = {
+    "anchors": anchors,
+    "claim_hash": claim["record_hash"],
+    "consumed": False,
+    "envelope": envelope,
+    "last_record_hash": claim["record_hash"],
+    "last_stage_index": 0,
+    "last_stage_name": "claim",
+    "paths": bootstrap,
+}
+
+
+def exit_after_record(path, expected_hash):
+    raw = runner._qualification_read_file_bytes(
+        Path(path),
+        "task 7 crash boundary",
+    )
+    record = json.loads(raw.decode("ascii"))
+    if raw != runner._qualification_bootstrap_record_bytes(record):
+        raise RuntimeError("durable crash record bytes changed")
+    if record["record_hash"] != expected_hash:
+        raise RuntimeError("durable crash record hash changed")
+    os._exit(97)
+
+
+if boundary == "claim":
+    exit_after_record(bootstrap["claim_path"], claim["record_hash"])
+
+for stage in bootstrap["stage_paths"]:
+    state = runner._qualification_bootstrap_publish_stage(
+        state,
+        stage["name"],
+        created_unix_ns=stage["index"] + 1,
+    )
+    if boundary == stage["name"]:
+        exit_after_record(stage["path"], state["last_record_hash"])
+
+active_request_path = Path(request["request_path"])
+runner._qualification_bootstrap_publish_bytes_once(
+    str(active_request_path),
+    request_bytes,
+)
+observed_request = runner._qualification_read_file_bytes(
+    active_request_path,
+    "task 7 active request crash boundary",
+)
+if observed_request != request_bytes:
+    raise RuntimeError("durable active request bytes changed")
+if boundary == "active_request":
+    os._exit(97)
+
+state = runner._qualification_bootstrap_publish_handoff(
+    state,
+    request_bytes,
+)
+if boundary == "handoff":
+    exit_after_record(bootstrap["handoff_path"], state["handoff_hash"])
+raise RuntimeError("unknown task 7 crash boundary")
+"""
+
+
+_BOOTSTRAP_CRASH_VERIFIER = r"""
+import importlib.util
+import json
+import sys
+from pathlib import Path
+
+sys.dont_write_bytecode = True
+
+
+def load_source(path, name):
+    spec = importlib.util.spec_from_file_location(name, path)
+    if spec is None or spec.loader is None:
+        raise RuntimeError("cannot load production verifier")
+    module = importlib.util.module_from_spec(spec)
+    sys.modules[name] = module
+    spec.loader.exec_module(module)
+    return module
+
+
+fixture = json.loads(Path(sys.argv[1]).read_text(encoding="ascii"))
+verifier = load_source(fixture["verifier_path"], "task7_crash_verifier")
+request = fixture["request"]
+request_bytes = (
+    verifier._qualification_bootstrap_canonical_json(request) + "\n"
+).encode("ascii")
+review = {
+    "request_bytes": request_bytes,
+    "review_binding": {"review_commit": fixture["review_commit"]},
+}
+checks = verifier._Checks()
+prefix = verifier._qualification_verify_bootstrap_prefix(
+    request,
+    review,
+    active_request_bytes=None,
+    checks=checks,
+)
+audit = verifier._qualification_audit(
+    checks=checks,
+    review_binding=review["review_binding"],
+    request_hash=request["request_hash"],
+    result_hash=None,
+    qualification_status=prefix["qualification_status"],
+    status="not_attempted",
+    partial_stage=prefix["partial_stage"],
+    consumed=prefix["consumed"],
+    evidence_valid=prefix["evidence_valid"],
+    evidence_error=prefix["evidence_error"],
+    artifact_inventory={},
+    audit_schema_version=verifier.QUALIFICATION_AUDIT_SCHEMA_VERSION,
+    bootstrap_verification=prefix,
+)
+print(json.dumps({"audit": audit, "prefix": prefix}, sort_keys=True))
+"""
+
+
+def _bootstrap_crash_fixture(tmp_path):
+    module = _module()
+    qualification_root = (tmp_path / "qualification").resolve()
+    qualification_root.mkdir()
+    runner_path = (
+        REPO_ROOT / "scripts" / "run_noncombat_outcome_evidence_expansion.py"
+    ).resolve()
+    verifier_path = (
+        REPO_ROOT
+        / "analysis_scripts"
+        / "verify_noncombat_outcome_evidence_expansion.py"
+    ).resolve()
+    request = {
+        "bootstrap": module._qualification_bootstrap_paths(qualification_root),
+        "completion_path": str(
+            qualification_root / "qualification-completion.json"
+        ),
+        "failure_path": str(qualification_root / "qualification-failure.json"),
+        "handshake": {
+            "attempt_path": str(
+                qualification_root / "qualification-communication-attempt.json"
+            ),
+            "ready_path": str(
+                qualification_root / "qualification-communication-ready.json"
+            ),
+            "release_path": str(
+                qualification_root / "qualification-communication-release.json"
+            ),
+        },
+        "implementation_sha256": {
+            module.QUALIFICATION_RUNNER_RELATIVE_PATH: hashlib.sha256(
+                runner_path.read_bytes()
+            ).hexdigest(),
+        },
+        "preexisting_files": {},
+        "qualification_id": "task-7-bootstrap-crash-fixture",
+        "qualification_root": str(qualification_root),
+        "request_hash": None,
+        "request_path": str(qualification_root / "qualification-request.json"),
+        "schema_version": module.QUALIFICATION_REQUEST_SCHEMA_VERSION,
+        "source_commit": "a" * 40,
+    }
+    request["request_hash"] = module._self_hash(request, "request_hash")
+    fixture = {
+        "request": request,
+        "review_commit": "b" * 40,
+        "runner_path": str(runner_path),
+        "verifier_path": str(verifier_path),
+    }
+    fixture_path = (tmp_path / "bootstrap-crash-fixture.json").resolve()
+    fixture_path.write_text(
+        module._canonical_json(fixture) + "\n",
+        encoding="ascii",
+        newline="",
+    )
+    return fixture_path, request
+
+
+@pytest.mark.parametrize(
+    ("boundary", "expected_status", "expected_partial_stage"),
+    (
+        ("claim", "pre_request_partial", "abrupt_after_claim"),
+        (
+            "launcher_verified",
+            "pre_request_partial",
+            "abrupt_after_launcher_verified",
+        ),
+        (
+            "runner_entered",
+            "pre_request_partial",
+            "abrupt_after_runner_entered",
+        ),
+        (
+            "source_verified",
+            "pre_request_partial",
+            "abrupt_after_source_verified",
+        ),
+        (
+            "request_reviewed",
+            "pre_request_partial",
+            "abrupt_after_request_reviewed",
+        ),
+        (
+            "isolation_verified",
+            "pre_request_partial",
+            "abrupt_after_isolation_verified",
+        ),
+        ("active_request", "active_request_partial", "missing_handoff"),
+        ("handoff", "handoff_complete", None),
+    ),
+)
+def test_bootstrap_crash_matrix_replays_every_durable_boundary_without_authority(
+    tmp_path,
+    boundary,
+    expected_status,
+    expected_partial_stage,
+):
+    fixture_path, request = _bootstrap_crash_fixture(tmp_path)
+
+    crashed = subprocess.run(
+        [
+            sys.executable,
+            "-I",
+            "-S",
+            "-c",
+            _BOOTSTRAP_CRASH_WORKER,
+            str(fixture_path),
+            boundary,
+        ],
+        cwd=tmp_path,
+        capture_output=True,
+        check=False,
+    )
+
+    assert crashed.returncode == 97
+    assert crashed.stdout == b""
+    assert crashed.stderr == b""
+
+    verified = subprocess.run(
+        [
+            sys.executable,
+            "-I",
+            "-S",
+            "-c",
+            _BOOTSTRAP_CRASH_VERIFIER,
+            str(fixture_path),
+        ],
+        cwd=tmp_path,
+        capture_output=True,
+        check=False,
+    )
+
+    assert verified.returncode == 0, verified.stderr.decode(
+        "utf-8", errors="replace"
+    )
+    replay = json.loads(verified.stdout.decode("ascii"))
+    prefix = replay["prefix"]
+    audit = replay["audit"]
+    assert prefix["qualification_status"] == expected_status
+    assert prefix["partial_stage"] == expected_partial_stage
+    assert prefix["consumed"] is True
+    assert prefix["evidence_valid"] is True
+    assert audit["qualification_status"] == expected_status
+    assert audit["partial_stage"] == expected_partial_stage
+    assert audit["consumed"] is True
+    assert audit["retry_allowed"] is False
+    assert audit["status"] == "not_attempted"
+    assert audit["launch_qualified"] is False
+    assert {
+        audit[field]
+        for field in (
+            "causal_claim_authorized",
+            "collection_authorized",
+            "gameplay_policy_change_authorized",
+            "run_lock_authorized",
+            "study_start_authorized",
+            "training_authorized",
+        )
+    } == {False}
+
+    bootstrap = request["bootstrap"]
+    assert not Path(bootstrap["failure_path"]).exists()
+    for path in (
+        request["handshake"]["attempt_path"],
+        request["handshake"]["ready_path"],
+        request["handshake"]["release_path"],
+        request["completion_path"],
+        request["failure_path"],
+    ):
+        assert not Path(path).exists()
+
+
+_BOOTSTRAP_CLUSTER_B_BOUNDARIES = (
+    "claim",
+    "launcher_verified",
+    "runner_entered",
+    "source_verified",
+    "request_reviewed",
+    "isolation_verified",
+    "active_request",
+    "handoff",
+)
+
+_BOOTSTRAP_ISOLATION_ZERO_CALLS = {
+    "handshaken_registered_slot_launch": 0,
+    "ledger_constructor": 0,
+    "registered_slot_build": 0,
+    "registered_slot_launch": 0,
+    "start_command": 0,
+    "training_agent_create": 0,
+    "training_checkpoint_backup": 0,
+    "training_component_load": 0,
+}
+
+
+def _canonical_recursive_path_bytes(root):
+    module = _module()
+    root = Path(root)
+    entries = []
+    for path in sorted(root.rglob("*"), key=lambda candidate: candidate.as_posix()):
+        relative = path.relative_to(root).as_posix()
+        if path.is_dir():
+            entries.append({"kind": "directory", "path": relative})
+            continue
+        raw = path.read_bytes()
+        entries.append(
+            {
+                "bytes_b64": base64.b64encode(raw).decode("ascii"),
+                "kind": "file",
+                "path": relative,
+                "sha256": hashlib.sha256(raw).hexdigest(),
+                "size": len(raw),
+            }
+        )
+    return (module._canonical_json(entries) + "\n").encode("ascii")
+
+
+def _bootstrap_cluster_b_fixture(tmp_path, *, with_sentinels=False):
+    module = _module()
+    fixture_path, request = _bootstrap_crash_fixture(tmp_path)
+    fixture = json.loads(fixture_path.read_text(encoding="ascii"))
+    child_marker_path = (tmp_path / "qualification-child-entered.bin").resolve()
+    child_path = (tmp_path / "no-action-child.py").resolve()
+    child_path.write_text(
+        "from pathlib import Path\n"
+        f"Path({str(child_marker_path)!r}).write_bytes(b'entered\\n')\n",
+        encoding="ascii",
+        newline="",
+    )
+    registration_path = (tmp_path / "registration.json").resolve()
+    registration_path.write_bytes(b"{}\n")
+    reviewed_request_path = (tmp_path / "reviewed-request.json").resolve()
+    request["child_command"] = [
+        sys.executable,
+        "-I",
+        "-S",
+        str(child_path),
+    ]
+    request["request_hash"] = None
+    request["request_hash"] = module._self_hash(request, "request_hash")
+    reviewed_request_path.write_text(
+        module._canonical_json(request) + "\n",
+        encoding="ascii",
+        newline="",
+    )
+    fixture.update(
+        {
+            "child_marker_path": str(child_marker_path),
+            "registration_path": str(registration_path),
+            "request": request,
+            "reviewed_request_path": str(reviewed_request_path),
+        }
+    )
+    if with_sentinels:
+        protected = _bootstrap_protected_state_fixture(tmp_path)
+        sentinel_path = (tmp_path / "pre-request-call-counts.json").resolve()
+        sentinel_path.write_text(
+            module._canonical_json(_BOOTSTRAP_ISOLATION_ZERO_CALLS) + "\n",
+            encoding="ascii",
+            newline="",
+        )
+        fixture.update(
+            {
+                "main_log_path": str(protected["global_logs"][0]),
+                "main_path": str((REPO_ROOT / "main.py").resolve()),
+                "sentinel_path": str(sentinel_path),
+            }
+        )
+    else:
+        protected = None
+        sentinel_path = None
+    fixture_path.write_text(
+        module._canonical_json(fixture) + "\n",
+        encoding="ascii",
+        newline="",
+    )
+    return {
+        "child_marker_path": child_marker_path,
+        "fixture": fixture,
+        "fixture_path": fixture_path,
+        "protected": protected,
+        "request": request,
+        "sentinel_path": sentinel_path,
+    }
+
+
+def _bootstrap_protected_state_fixture(tmp_path):
+    protected_root = (tmp_path / "protected-state").resolve()
+    game_root = protected_root / "game"
+    run_root = game_root / "runs"
+    marker_path = run_root / "ai_games.txt"
+    ironclad_root = run_root / "IRONCLAD"
+    checkpoint_root = game_root / "checkpoints"
+    registered_root = protected_root / "registered-study"
+    ironclad_root.mkdir(parents=True)
+    checkpoint_root.mkdir()
+    registered_root.mkdir(parents=True)
+    config_path = protected_root / "config.properties"
+    config_path.write_bytes(
+        b"verbose=false\ncommand=ordinary-agent\nrunAtGameStart=true\n"
+    )
+    marker_path.write_bytes(b"100\n101\n")
+    (ironclad_root / "100.run").write_bytes(b'{"victory":false}\n')
+    (checkpoint_root / "rl_combat_model_ep1.pth").write_bytes(
+        b"checkpoint-fixture\x00"
+    )
+    ai_log_path = game_root / "ai_debug.log"
+    communication_log_path = game_root / "communication_mod_errors.log"
+    ai_log_path.write_bytes(b"debug baseline\n")
+    communication_log_path.write_bytes(b"communication baseline\n")
+    run_lock_path = registered_root / "run-lock.json"
+    ledger_path = registered_root / "study-ledger.jsonl"
+    manifest_path = registered_root / "qualification-manifest.json"
+    trace_path = registered_root / "qualification-trace.jsonl"
+    model_path = registered_root / "model.pth"
+    policy_path = registered_root / "policy.json"
+    run_lock_path.write_bytes(b'{"run_lock":"fixture"}\n')
+    ledger_path.write_bytes(b'{"event":"fixture"}\n')
+    manifest_path.write_bytes(b'{"manifest":"fixture"}\n')
+    trace_path.write_bytes(b'{"trace":"fixture"}\n')
+    model_path.write_bytes(b"model-fixture\x00\xff")
+    policy_path.write_bytes(b'{"policy":"fixture"}\n')
+    return {
+        "checkpoints": checkpoint_root,
+        "config": config_path,
+        "global_logs": (ai_log_path, communication_log_path),
+        "ledger": ledger_path,
+        "manifest": manifest_path,
+        "marker": marker_path,
+        "model": model_path,
+        "policy": policy_path,
+        "registered_study_root": registered_root,
+        "run_lock": run_lock_path,
+        "runs": run_root,
+        "trace": trace_path,
+    }
+
+
+def _canonical_protected_state_snapshot(protected):
+    module = _module()
+    snapshots = {}
+    for name, value in sorted(protected.items()):
+        paths = value if isinstance(value, tuple) else (value,)
+        snapshots[name] = [
+            {
+                "inventory_b64": base64.b64encode(
+                    _canonical_recursive_path_bytes(path)
+                    if Path(path).is_dir()
+                    else (
+                        module._canonical_json(
+                            [
+                                {
+                                    "bytes_b64": base64.b64encode(
+                                        Path(path).read_bytes()
+                                    ).decode("ascii"),
+                                    "kind": "file",
+                                    "path": Path(path).name,
+                                    "sha256": hashlib.sha256(
+                                        Path(path).read_bytes()
+                                    ).hexdigest(),
+                                    "size": len(Path(path).read_bytes()),
+                                }
+                            ]
+                        )
+                        + "\n"
+                    ).encode("ascii")
+                ).decode("ascii"),
+                "path": str(path),
+            }
+            for path in paths
+        ]
+    return (module._canonical_json(snapshots) + "\n").encode("ascii")
+
+
+def _run_bootstrap_cluster_b_crash(case, boundary, tmp_path):
+    return subprocess.run(
+        [
+            sys.executable,
+            "-I",
+            "-S",
+            "-c",
+            _BOOTSTRAP_CRASH_WORKER,
+            str(case["fixture_path"]),
+            boundary,
+        ],
+        cwd=tmp_path,
+        capture_output=True,
+        check=False,
+    )
+
+
+def _trusted_bootstrap_retry_command(case):
+    module = _module()
+    fixture = case["fixture"]
+    request = case["request"]
+    request_bytes = (module._canonical_json(request) + "\n").encode("ascii")
+    runner_path = Path(fixture["runner_path"])
+    runner_sha256 = hashlib.sha256(runner_path.read_bytes()).hexdigest()
+    envelope = module._qualification_bootstrap_envelope(
+        request=request,
+        expected_request_file_sha256=hashlib.sha256(request_bytes).hexdigest(),
+        expected_request_size=len(request_bytes),
+        review_commit=fixture["review_commit"],
+        runner_sha256=runner_sha256,
+    )
+    return [
+        sys.executable,
+        "-I",
+        "-S",
+        "-c",
+        module.QUALIFICATION_TRUSTED_LAUNCHER_CODE,
+        str(runner_path),
+        runner_sha256,
+        module._qualification_bootstrap_encode_envelope(envelope),
+        module._qualification_bootstrap_token(envelope),
+        "qualify",
+        "--registration",
+        fixture["registration_path"],
+        "--request",
+        fixture["reviewed_request_path"],
+        "--request-hash",
+        request["request_hash"],
+        "--request-file-sha256",
+        hashlib.sha256(request_bytes).hexdigest(),
+        "--request-size",
+        str(len(request_bytes)),
+        "--review-commit",
+        fixture["review_commit"],
+    ]
+
+
+def _assert_no_post_handoff_artifacts(case):
+    request = case["request"]
+    bootstrap = request["bootstrap"]
+    assert not Path(bootstrap["failure_path"]).exists()
+    for path in (
+        request["handshake"]["attempt_path"],
+        request["handshake"]["ready_path"],
+        request["handshake"]["release_path"],
+        request["completion_path"],
+        request["failure_path"],
+        case["child_marker_path"],
+    ):
+        assert not Path(path).exists()
+
+
+@pytest.mark.parametrize("boundary", _BOOTSTRAP_CLUSTER_B_BOUNDARIES)
+def test_bootstrap_retry_refuses_every_consumed_crash_prefix_without_mutation(
+    tmp_path,
+    boundary,
+):
+    case = _bootstrap_cluster_b_fixture(tmp_path)
+    crashed = _run_bootstrap_cluster_b_crash(case, boundary, tmp_path)
+    assert crashed.returncode == 97
+    assert crashed.stdout == b""
+    assert crashed.stderr == b""
+    before = _canonical_recursive_path_bytes(tmp_path)
+
+    retried = subprocess.run(
+        _trusted_bootstrap_retry_command(case),
+        cwd=tmp_path,
+        capture_output=True,
+        check=False,
+    )
+
+    assert retried.returncode == 2
+    assert retried.stdout == b""
+    assert retried.stderr == b""
+    assert _canonical_recursive_path_bytes(tmp_path) == before
+    _assert_no_post_handoff_artifacts(case)
+
+
+@pytest.mark.parametrize("boundary", _BOOTSTRAP_CLUSTER_B_BOUNDARIES)
+def test_bootstrap_isolation_preserves_every_protected_state_before_request(
+    tmp_path,
+    boundary,
+):
+    case = _bootstrap_cluster_b_fixture(tmp_path, with_sentinels=True)
+    before = _canonical_protected_state_snapshot(case["protected"])
+
+    crashed = _run_bootstrap_cluster_b_crash(case, boundary, tmp_path)
+
+    assert crashed.returncode == 97
+    assert crashed.stdout == b""
+    assert crashed.stderr == b""
+    assert _canonical_protected_state_snapshot(case["protected"]) == before
+    assert json.loads(case["sentinel_path"].read_text(encoding="ascii")) == (
+        _BOOTSTRAP_ISOLATION_ZERO_CALLS
+    )
+    _assert_no_post_handoff_artifacts(case)
+
+
+def test_communication_tokenization_reconstructs_exact_reviewed_launcher_vector(
+    tmp_path,
+):
+    case = _bootstrap_cluster_b_fixture(tmp_path)
+    module = _module()
+    reviewed_vector = _trusted_bootstrap_retry_command(case)
+    config_path = (tmp_path / "config.properties").resolve()
+    command_bytes = " ".join(reviewed_vector).encode("ascii")
+    config_path.write_bytes(
+        b"verbose=false\ncommand="
+        + command_bytes
+        + b"\nrunAtGameStart=true\n"
+    )
+
+    command_property = next(
+        line.partition(b"=")[2]
+        for line in config_path.read_bytes().splitlines()
+        if line.startswith(b"command=")
+    )
+    communicationmod_tokens = [
+        token.decode("ascii") for token in command_property.strip().split()
+    ]
+
+    assert communicationmod_tokens == reviewed_vector
+    assert reviewed_vector[4] == module.QUALIFICATION_TRUSTED_LAUNCHER_CODE
+    assert reviewed_vector[5] == case["fixture"]["runner_path"]
+    assert reviewed_vector[6] == hashlib.sha256(
+        Path(reviewed_vector[5]).read_bytes()
+    ).hexdigest()
+    request_bytes = (
+        module._canonical_json(case["request"]) + "\n"
+    ).encode("ascii")
+    envelope = module._qualification_bootstrap_envelope(
+        request=case["request"],
+        expected_request_file_sha256=hashlib.sha256(request_bytes).hexdigest(),
+        expected_request_size=len(request_bytes),
+        review_commit=case["fixture"]["review_commit"],
+        runner_sha256=reviewed_vector[6],
+    )
+    assert reviewed_vector[7] == module._qualification_bootstrap_encode_envelope(
+        envelope
+    )
+    assert reviewed_vector[8] == module._qualification_bootstrap_token(envelope)
+    assert reviewed_vector[9] == "qualify"
+    assert all(
+        token and token.split() == [token]
+        for token in reviewed_vector[4:]
+    )
+
+
+def _controlled_failure_runner_bytes(code, completed_stages):
+    production_runner_path = (
+        REPO_ROOT / "scripts" / "run_noncombat_outcome_evidence_expansion.py"
+    ).resolve()
+    return (
+        "import importlib.util,sys\n"
+        "from pathlib import Path\n"
+        "def load(path):\n"
+        " spec=importlib.util.spec_from_file_location('task7_stream_runner',path)\n"
+        " module=importlib.util.module_from_spec(spec)\n"
+        " sys.modules[spec.name]=module\n"
+        " spec.loader.exec_module(module)\n"
+        " return module\n"
+        "saved=list(sys.argv)\n"
+        "sys.argv=[saved[0],'task7-stream-probe']\n"
+        f"runner=load({str(production_runner_path)!r})\n"
+        "sys.argv=saved\n"
+        "state=runner._qualification_bootstrap_state_from_environment()\n"
+        f"for index,name in enumerate({tuple(completed_stages)!r},start=2):\n"
+        " state=runner._qualification_bootstrap_publish_stage("
+        "state,name,created_unix_ns=index+1)\n"
+        f"published=runner._qualification_bootstrap_publish_failure("
+        f"state,{code!r},RuntimeError('controlled task 7 failure'))\n"
+        "assert published is not None\n"
+        "raise SystemExit(2)\n"
+    ).encode("ascii")
+
+
+@pytest.mark.parametrize(
+    "case_name",
+    (
+        "success",
+        "bootstrap_envelope_invalid",
+        "bootstrap_claim_publish_failed",
+        "runner_validation_failed",
+        "runner_entry_validation_failed",
+        "source_validation_failed",
+        "request_validation_failed",
+        "prelaunch_isolation_failed",
+        "unexpected_pre_request_failure",
+    ),
+)
+def test_stream_silence_binary_capture_covers_every_controlled_failure(
+    tmp_path,
+    case_name,
+):
+    controlled_stages = {
+        "source_validation_failed": ("runner_entered",),
+        "request_validation_failed": (
+            "runner_entered",
+            "source_verified",
+        ),
+        "prelaunch_isolation_failed": (
+            "runner_entered",
+            "source_verified",
+            "request_reviewed",
+        ),
+        "unexpected_pre_request_failure": (
+            "runner_entered",
+            "source_verified",
+            "request_reviewed",
+            "isolation_verified",
+        ),
+    }
+    if case_name in controlled_stages:
+        fixture = _bootstrap_launcher_fixture(
+            tmp_path,
+            runner_bytes=_controlled_failure_runner_bytes(
+                case_name,
+                controlled_stages[case_name],
+            ),
+        )
+    elif case_name == "runner_entry_validation_failed":
+        fixture = _bootstrap_launcher_fixture(
+            tmp_path,
+            runner_bytes=_production_runner_with_entry_mutation(
+                "sys.flags=type('Flags',(),{'isolated':False,'no_site':True})()"
+            ),
+        )
+    else:
+        fixture = _bootstrap_launcher_fixture(tmp_path)
+    command = list(fixture["command"])
+    bootstrap = fixture["envelope"]["bootstrap"]
+    if case_name == "bootstrap_envelope_invalid":
+        command[7] = "%%%malformed%%%"
+    elif case_name == "bootstrap_claim_publish_failed":
+        Path(bootstrap["claim_path"]).write_bytes(b"occupied\n")
+    elif case_name == "runner_validation_failed":
+        command[6] = "0" * 64
+
+    completed = subprocess.run(
+        command,
+        cwd=tmp_path,
+        capture_output=True,
+        check=False,
+        env=fixture["environment"],
+    )
+
+    assert completed.returncode == (0 if case_name == "success" else 2)
+    assert completed.stdout == b""
+    assert completed.stderr == b""
+    if case_name == "success":
+        assert fixture["marker_path"].read_bytes() == b"entered\n"
+    elif case_name in {
+        "runner_validation_failed",
+        "runner_entry_validation_failed",
+        *controlled_stages,
+    }:
+        failure = json.loads(
+            Path(bootstrap["failure_path"]).read_text(encoding="ascii")
+        )
+        assert failure["payload"]["code"] == case_name
+    else:
+        assert not Path(bootstrap["failure_path"]).exists()
+    assert not fixture["marker_path"].exists() or case_name == "success"
+
+
+_POST_HANDOFF_STREAM_RUNNER = r"""
+import hashlib
+import importlib.util
+import json
+import os
+import sys
+from pathlib import Path
+from types import SimpleNamespace
+
+sys.dont_write_bytecode = True
+
+
+def load_source(path, name):
+    spec = importlib.util.spec_from_file_location(name, path)
+    if spec is None or spec.loader is None:
+        raise RuntimeError("cannot load production runner")
+    module = importlib.util.module_from_spec(spec)
+    sys.modules[name] = module
+    spec.loader.exec_module(module)
+    return module
+
+
+fixture = json.loads(
+    Path(os.environ["STS_TASK7_STREAM_FIXTURE"]).read_text(encoding="ascii")
+)
+saved_argv = list(sys.argv)
+sys.argv = [saved_argv[0], "task7-stream-probe"]
+runner = load_source(fixture["production_runner_path"], "task7_stream_production")
+sys.argv = saved_argv
+request = fixture["request"]
+request_bytes = (runner._canonical_json(request) + "\n").encode("ascii")
+state = runner._qualification_bootstrap_state_from_environment()
+for index, name in enumerate(
+    (
+        "runner_entered",
+        "source_verified",
+        "request_reviewed",
+        "isolation_verified",
+    ),
+    start=2,
+):
+    state = runner._qualification_bootstrap_publish_stage(
+        state,
+        name,
+        created_unix_ns=index + 1,
+    )
+active_path = Path(request["request_path"])
+runner._qualification_bootstrap_publish_bytes_once(
+    str(active_path),
+    request_bytes,
+)
+assert runner._qualification_read_file_bytes(
+    active_path,
+    "task 7 stream active request",
+) == request_bytes
+state = runner._qualification_bootstrap_publish_handoff(state, request_bytes)
+runner._validate_qualification_bootstrap_active_chain(
+    request,
+    request_bytes,
+    expected_review_commit=fixture["review_commit"],
+    expected_request_file_sha256=hashlib.sha256(request_bytes).hexdigest(),
+    expected_request_size=len(request_bytes),
+)
+runner._load_qualification_registration = lambda _path: SimpleNamespace(
+    checkpoint_root=fixture["checkpoint_root"]
+)
+
+
+def execute_prelock_qualification(**kwargs):
+    child = kwargs["process_starter"](
+        fixture["child_command"],
+        dict(os.environ),
+    )
+    Path(fixture["child_pid_path"]).write_text(
+        str(child.pid) + "\n",
+        encoding="ascii",
+        newline="",
+    )
+    returncode = child.wait(timeout=10)
+    if returncode != 0:
+        raise RuntimeError("task 7 stream child failed")
+    return {"status": "passed"}
+
+
+runner.execute_prelock_qualification = execute_prelock_qualification
+result = runner._qualify_command(
+    Path(fixture["registration_path"]),
+    Path(fixture["reviewed_request_path"]),
+    request["request_hash"],
+    hashlib.sha256(request_bytes).hexdigest(),
+    len(request_bytes),
+    fixture["review_commit"],
+)
+if result != {"status": "passed"}:
+    raise RuntimeError("task 7 stream qualification result changed")
+"""
+
+
+def _post_handoff_stream_fixture(tmp_path):
+    module = _module()
+    qualification_root = (tmp_path / "qualification-stream").resolve()
+    qualification_root.mkdir()
+    child_input_path = (tmp_path / "child-stdin.bin").resolve()
+    child_pid_path = (tmp_path / "child-pid.txt").resolve()
+    child_path = (tmp_path / "stream-child.py").resolve()
+    child_path.write_text(
+        "import os,sys\n"
+        "from pathlib import Path\n"
+        "data=sys.stdin.buffer.read()\n"
+        "Path(os.environ['STS_TASK7_CHILD_INPUT']).write_bytes(data)\n"
+        "sys.stdout.buffer.write(b'child-stdout:' + data)\n"
+        "sys.stdout.buffer.flush()\n"
+        "sys.stderr.buffer.write(b'child-stderr:' + data)\n"
+        "sys.stderr.buffer.flush()\n",
+        encoding="ascii",
+        newline="",
+    )
+    stream_runner_path = (tmp_path / "stream-runner.py").resolve()
+    stream_runner_path.write_text(
+        _POST_HANDOFF_STREAM_RUNNER,
+        encoding="ascii",
+        newline="",
+    )
+    stream_runner_sha256 = hashlib.sha256(
+        stream_runner_path.read_bytes()
+    ).hexdigest()
+    request = {
+        "bootstrap": module._qualification_bootstrap_paths(qualification_root),
+        "completion_path": str(
+            qualification_root / "qualification-completion.json"
+        ),
+        "failure_path": str(qualification_root / "qualification-failure.json"),
+        "handshake": {
+            "attempt_path": str(
+                qualification_root / "qualification-communication-attempt.json"
+            ),
+            "ready_path": str(
+                qualification_root / "qualification-communication-ready.json"
+            ),
+            "release_path": str(
+                qualification_root / "qualification-communication-release.json"
+            ),
+        },
+        "implementation_sha256": {
+            module.QUALIFICATION_RUNNER_RELATIVE_PATH: stream_runner_sha256,
+        },
+        "preexisting_files": {},
+        "qualification_id": "task-7-post-handoff-stream-fixture",
+        "qualification_root": str(qualification_root),
+        "request_hash": None,
+        "request_path": str(qualification_root / "qualification-request.json"),
+        "schema_version": module.QUALIFICATION_REQUEST_SCHEMA_VERSION,
+        "source_commit": "a" * 40,
+    }
+    request["request_hash"] = module._self_hash(request, "request_hash")
+    request_bytes = (module._canonical_json(request) + "\n").encode("ascii")
+    reviewed_request_path = (tmp_path / "reviewed-stream-request.json").resolve()
+    reviewed_request_path.write_bytes(request_bytes)
+    registration_path = (tmp_path / "stream-registration.json").resolve()
+    registration_path.write_bytes(b"{}\n")
+    checkpoint_root = (tmp_path / "game" / "checkpoints").resolve()
+    checkpoint_root.mkdir(parents=True)
+    review_commit = "b" * 40
+    envelope = module._qualification_bootstrap_envelope(
+        request=request,
+        expected_request_file_sha256=hashlib.sha256(request_bytes).hexdigest(),
+        expected_request_size=len(request_bytes),
+        review_commit=review_commit,
+        runner_sha256=stream_runner_sha256,
+    )
+    fixture = {
+        "checkpoint_root": str(checkpoint_root),
+        "child_command": [sys.executable, "-I", "-S", str(child_path)],
+        "child_input_path": str(child_input_path),
+        "child_pid_path": str(child_pid_path),
+        "production_runner_path": str(
+            (
+                REPO_ROOT
+                / "scripts"
+                / "run_noncombat_outcome_evidence_expansion.py"
+            ).resolve()
+        ),
+        "registration_path": str(registration_path),
+        "request": request,
+        "review_commit": review_commit,
+        "reviewed_request_path": str(reviewed_request_path),
+    }
+    fixture_path = (tmp_path / "post-handoff-stream-fixture.json").resolve()
+    fixture_path.write_text(
+        module._canonical_json(fixture) + "\n",
+        encoding="ascii",
+        newline="",
+    )
+    command = [
+        sys.executable,
+        "-I",
+        "-S",
+        "-c",
+        module.QUALIFICATION_TRUSTED_LAUNCHER_CODE,
+        str(stream_runner_path),
+        stream_runner_sha256,
+        module._qualification_bootstrap_encode_envelope(envelope),
+        module._qualification_bootstrap_token(envelope),
+        "qualify",
+        "--registration",
+        str(registration_path),
+        "--request",
+        str(reviewed_request_path),
+        "--request-hash",
+        request["request_hash"],
+        "--request-file-sha256",
+        hashlib.sha256(request_bytes).hexdigest(),
+        "--request-size",
+        str(len(request_bytes)),
+        "--review-commit",
+        review_commit,
+    ]
+    environment = os.environ.copy()
+    environment.update(
+        {
+            "STS_TASK7_CHILD_INPUT": str(child_input_path),
+            "STS_TASK7_STREAM_FIXTURE": str(fixture_path),
+        }
+    )
+    return fixture, command, environment
+
+
+def test_stream_silence_post_handoff_child_owns_unchanged_binary_streams(
+    tmp_path,
+):
+    fixture, command, environment = _post_handoff_stream_fixture(tmp_path)
+    payload = b"communication-input\n"
+
+    completed = subprocess.run(
+        command,
+        cwd=tmp_path,
+        input=payload,
+        capture_output=True,
+        check=False,
+        env=environment,
+    )
+
+    assert completed.returncode == 0
+    assert Path(fixture["child_input_path"]).read_bytes() == payload
+    child_pid = int(
+        Path(fixture["child_pid_path"]).read_text(encoding="ascii").strip()
+    )
+    verifier = importlib.import_module(
+        "analysis_scripts.verify_noncombat_outcome_evidence_expansion"
+    )
+    assert verifier._qualification_pid_is_alive(child_pid) is False
+    assert completed.stdout == b"child-stdout:" + payload
+    assert completed.stderr == b"child-stderr:" + payload
+
+
+def _assert_zero_bootstrap_artifacts(root):
+    assert list(Path(root).rglob("qualification-bootstrap-*")) == []
+
+
+@pytest.mark.parametrize(
+    ("subcommand", "handler_name", "output_name"),
+    (
+        ("start", "_start_command", "stdout"),
+        ("dry-run", "_dry_run_command", "stdout"),
+        ("run-next", "_run_next_command", "stderr"),
+        ("monitor", "_monitor_command", "stdout"),
+        ("finalize", "_finalize_gate_command", "stdout"),
+    ),
+)
+def test_ordinary_startup_commands_keep_dispatch_and_stream_behavior(
+    tmp_path,
+    monkeypatch,
+    capsys,
+    subcommand,
+    handler_name,
+    output_name,
+):
+    module = _module()
+    for name in (
+        module.QUALIFICATION_RUNNER_SHA256_ENV,
+        module.QUALIFICATION_BOOTSTRAP_ENVELOPE_ENV,
+        module.QUALIFICATION_BOOTSTRAP_LAUNCH_TOKEN_ENV,
+        module.QUALIFICATION_ATTEMPT_HASH_ENV,
+        HANDSHAKE_ATTEMPT_ENV,
+    ):
+        monkeypatch.delenv(name, raising=False)
+    registration_path = (tmp_path / "registration.json").resolve()
+    result = {"command": subcommand, "ordinary": True}
+    calls = []
+
+    def handler(path):
+        calls.append(path)
+        return result
+
+    monkeypatch.setattr(module, handler_name, handler)
+    monkeypatch.setattr(
+        module,
+        "_qualify_command",
+        lambda *_args, **_kwargs: pytest.fail(
+            "ordinary startup entered qualification"
+        ),
+    )
+
+    returncode = module.main(
+        [subcommand, "--registration", str(registration_path)]
+    )
+
+    captured = capsys.readouterr()
+    expected = module._canonical_json(result) + "\n"
+    assert returncode == 0
+    assert calls == [registration_path]
+    assert captured.out == (expected if output_name == "stdout" else "")
+    assert captured.err == (expected if output_name == "stderr" else "")
+    _assert_zero_bootstrap_artifacts(tmp_path)
+
+
+def test_ordinary_startup_gameplay_keeps_existing_inert_order(tmp_path):
+    gameplay = importlib.import_module("main")
+    calls = []
+    coordinator = object()
+    exploration = object()
+
+    def initialize_exploration(**kwargs):
+        calls.append(("exploration", kwargs["environ"]))
+        return exploration
+
+    def create_coordinator(agent_type, *, force_input_thread):
+        calls.append(("coordinator", agent_type, force_input_thread))
+        return coordinator, False
+
+    def forbidden_handshake(*_args, **_kwargs):
+        pytest.fail("ordinary gameplay entered qualification handshake")
+
+    result = gameplay.initialize_pre_agent_runtime(
+        agent_type="optimized",
+        environ={},
+        exploration_initializer=initialize_exploration,
+        coordinator_factory=create_coordinator,
+        handshake_initializer=forbidden_handshake,
+    )
+
+    assert result == (coordinator, False, exploration)
+    assert calls == [
+        ("exploration", {}),
+        ("coordinator", "optimized", False),
+    ]
+    _assert_zero_bootstrap_artifacts(tmp_path)
+
+
+def test_ordinary_startup_registered_slot_plan_has_no_qualification_state(
+    tmp_path,
+    monkeypatch,
+):
+    module = _module()
+    for name in (
+        module.QUALIFICATION_RUNNER_SHA256_ENV,
+        module.QUALIFICATION_BOOTSTRAP_ENVELOPE_ENV,
+        module.QUALIFICATION_BOOTSTRAP_LAUNCH_TOKEN_ENV,
+        module.QUALIFICATION_ATTEMPT_HASH_ENV,
+        HANDSHAKE_ATTEMPT_ENV,
+    ):
+        monkeypatch.delenv(name, raising=False)
+    registration, run_lock = _study(tmp_path)
+
+    launch = module.build_slot_launch(registration, run_lock, 1)
+
+    assert launch.slot_number == 1
+    assert launch.command == tuple(module._registered_command(registration))
+    assert module.QUALIFICATION_ATTEMPT_HASH_ENV not in launch.environment
+    assert module.QUALIFICATION_RUNNER_SHA256_ENV not in launch.environment
+    assert module.QUALIFICATION_BOOTSTRAP_ENVELOPE_ENV not in launch.environment
+    assert module.QUALIFICATION_BOOTSTRAP_LAUNCH_TOKEN_ENV not in launch.environment
+    assert "--train" not in launch.command
+    _assert_zero_bootstrap_artifacts(tmp_path)
+
+
+def test_ordinary_startup_training_argument_conflict_stops_before_training(
+    tmp_path,
+):
+    log_path = (tmp_path / "ordinary-training-parse.log").resolve()
+    environment = os.environ.copy()
+    environment["PYTHONDONTWRITEBYTECODE"] = "1"
+    environment["STS_AI_LOG_FILE"] = str(log_path)
+    for name in (
+        "STS_OUTCOME_EVIDENCE_QUALIFICATION_RUNNER_SHA256",
+        "STS_OUTCOME_EVIDENCE_QUALIFICATION_BOOTSTRAP_ENVELOPE_B64",
+        "STS_OUTCOME_EVIDENCE_QUALIFICATION_BOOTSTRAP_LAUNCH_TOKEN",
+        "STS_OUTCOME_EVIDENCE_QUALIFICATION_ATTEMPT_HASH",
+        HANDSHAKE_ATTEMPT_ENV,
+    ):
+        environment.pop(name, None)
+
+    completed = subprocess.run(
+        [sys.executable, str((REPO_ROOT / "main.py").resolve()), "--eval", "--train"],
+        cwd=tmp_path,
+        capture_output=True,
+        check=False,
+        env=environment,
+    )
+
+    assert completed.returncode == 1
+    assert completed.stdout == b""
+    assert completed.stderr == b""
+    assert not (tmp_path / "checkpoints_archive").exists()
+    assert not (tmp_path / "training-child-entered.bin").exists()
+    _assert_zero_bootstrap_artifacts(tmp_path)
+
+
+def test_ordinary_startup_run_next_rejects_ambient_partial_environment(
+    tmp_path,
+    monkeypatch,
+):
+    module = _module()
+    calls = {"child": 0, "registration": 0, "start": 0, "training": 0}
+    monkeypatch.setenv(module.QUALIFICATION_ATTEMPT_HASH_ENV, "a" * 64)
+
+    def forbidden_registration(_path):
+        calls["registration"] += 1
+        pytest.fail("ambient qualification loaded ordinary registration")
+
+    monkeypatch.setattr(module, "_load_runner_registration", forbidden_registration)
+    monkeypatch.setattr(
+        module,
+        "_start_command",
+        lambda *_args, **_kwargs: calls.__setitem__("start", calls["start"] + 1),
+    )
+
+    with pytest.raises(
+        module.OutcomeEvidenceRunnerError,
+        match="ambient qualification",
+    ):
+        module._run_next_command(tmp_path / "registration.json")
+
+    assert calls == {"child": 0, "registration": 0, "start": 0, "training": 0}
+    _assert_zero_bootstrap_artifacts(tmp_path)
+
+
+@pytest.mark.parametrize(
+    "environment",
+    (
+        {"STS_OUTCOME_EVIDENCE_QUALIFICATION_ATTEMPT_HASH": "a" * 64},
+        {
+            "STS_OUTCOME_EVIDENCE_QUALIFICATION_ATTEMPT_HASH": "invalid",
+            HANDSHAKE_ATTEMPT_ENV: "{missing_attempt}",
+        },
+        {
+            "STS_OUTCOME_EVIDENCE_QUALIFICATION_ATTEMPT_HASH": "a" * 64,
+            HANDSHAKE_ATTEMPT_ENV: "{missing_attempt}",
+        },
+    ),
+)
+def test_ordinary_startup_gameplay_rejects_ambient_partial_environment(
+    tmp_path,
+    environment,
+):
+    gameplay = importlib.import_module("main")
+    missing_attempt = str((tmp_path / "missing-attempt.json").resolve())
+    bound_environment = {
+        key: value.format(missing_attempt=missing_attempt)
+        for key, value in environment.items()
+    }
+    calls = {"child": 0, "coordinator": 0, "start": 0, "training": 0}
+
+    def forbidden(name):
+        def reject(*_args, **_kwargs):
+            calls[name] += 1
+            pytest.fail(f"ambient qualification reached {name}")
+
+        return reject
+
+    with pytest.raises(ValueError):
+        gameplay.initialize_pre_agent_runtime(
+            agent_type="rl",
+            environ=bound_environment,
+            exploration_initializer=forbidden("training"),
+            coordinator_factory=forbidden("coordinator"),
+            handshake_initializer=forbidden("child"),
+        )
+
+    assert calls == {"child": 0, "coordinator": 0, "start": 0, "training": 0}
+    assert not Path(missing_attempt).exists()
+    _assert_zero_bootstrap_artifacts(tmp_path)
+
+
+_PRODUCTION_SMOKE_REQUEST_BUILDER = r"""
+import importlib.util
+import json
+import sys
+from pathlib import Path
+
+sys.dont_write_bytecode = True
+
+
+def load_source(path):
+    spec = importlib.util.spec_from_file_location("task7_production_smoke_runner", path)
+    if spec is None or spec.loader is None:
+        raise RuntimeError("cannot load reviewed production runner")
+    module = importlib.util.module_from_spec(spec)
+    sys.modules[spec.name] = module
+    spec.loader.exec_module(module)
+    return module
+
+
+fixture = json.loads(Path(sys.argv[1]).read_text(encoding="ascii"))
+runner = load_source(fixture["runner_path"])
+request = runner.build_qualification_request(
+    registration_path=Path(fixture["registration_path"]),
+    qualification_id=fixture["qualification_id"],
+    qualification_root=Path(fixture["qualification_root"]),
+    config_path=Path(fixture["config_path"]),
+    marker_path=Path(fixture["marker_path"]),
+    request_source_path=Path(fixture["request_source_path"]),
+    created_unix_ns=1,
+)
+Path(fixture["request_source_path"]).write_text(
+    runner._canonical_json(request) + "\n",
+    encoding="ascii",
+    newline="",
+)
+"""
+
+
+_PRODUCTION_SMOKE_NO_ACTION_MAIN = """\
+import sys
+from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from spirecomm.communication.study_handshake import perform_child_handshake_if_configured
+
+
+class NoActionCoordinator:
+    last_error = None
+    last_game_state = object()
+
+    def start_input_thread(self):
+        return None
+
+    def receive_game_state_update(self, *, block, perform_callbacks):
+        assert block is False
+        assert perform_callbacks is False
+        return True
+
+
+if not perform_child_handshake_if_configured(NoActionCoordinator()):
+    raise SystemExit(3)
+"""
+
+
+def _task7_git(repo_root, *arguments):
+    return subprocess.run(
+        ["git", "-C", str(repo_root), *arguments],
+        capture_output=True,
+        check=True,
+        text=True,
+    ).stdout.strip()
+
+
+def _copy_task7_production_smoke_source(repo_root):
+    ignored = shutil.ignore_patterns("__pycache__", "*.pyc", ".pytest_cache")
+    for directory_name in ("analysis_scripts", "scripts", "spirecomm"):
+        shutil.copytree(
+            REPO_ROOT / directory_name,
+            repo_root / directory_name,
+            ignore=ignored,
+        )
+    (repo_root / "main.py").write_text(
+        _PRODUCTION_SMOKE_NO_ACTION_MAIN,
+        encoding="ascii",
+        newline="",
+    )
+
+
+def _production_python_smoke_fixture(tmp_path):
+    module = _module()
+    basetemp = tmp_path.parent.resolve()
+    state_home = Path(tempfile.mkdtemp(prefix="s-", dir=basetemp)).resolve()
+    repo_root = Path(tempfile.mkdtemp(prefix="g-", dir=basetemp)).resolve()
+    assert state_home.parent == basetemp
+    assert repo_root.parent == basetemp
+    assert state_home.name.startswith("s-") and len(state_home.name) <= 12
+    assert repo_root.name.startswith("g-") and len(repo_root.name) <= 12
+    assert state_home != repo_root
+    _copy_task7_production_smoke_source(repo_root)
+
+    protected = _bootstrap_protected_state_fixture(state_home)
+    artifact_root = state_home / "study-target"
+    registration = build_registration(
+        study_id=STUDY_ID,
+        artifact_root=artifact_root,
+        repo_root=repo_root,
+        seed_base=SEED_BASE,
+        python_executable=WINDOWS_PYTHON,
+        communication_config_path=protected["config"],
+        checkpoint_root=protected["checkpoints"],
+    )
+    registration_path = (repo_root / "reports" / "task7-registration.json").resolve()
+    registration_path.parent.mkdir()
+    registration_path.write_text(
+        render_registration_json(registration),
+        encoding="ascii",
+        newline="",
+    )
+    _task7_git(repo_root, "init", "--object-format=sha1")
+    _task7_git(repo_root, "config", "core.autocrlf", "true")
+    _task7_git(repo_root, "config", "user.email", "task7@example.invalid")
+    _task7_git(repo_root, "config", "user.name", "Task 7 Fixture")
+    _task7_git(repo_root, "add", ".")
+    _task7_git(repo_root, "commit", "-m", "task 7 reviewed source")
+    source_commit = _task7_git(repo_root, "rev-parse", "HEAD")
+
+    qualification_root = (state_home / "qualification").resolve()
+    qualification_root.mkdir()
+    qualification_id = f"{STUDY_ID}-task7-production-smoke"
+    config_path = qualification_root / "qualification-config.json"
+    config_path.write_text(
+        module._canonical_json(
+            {
+                "category_rates_bps": {"card_reward": 300, "shop": 1000},
+                "enabled_categories": ["card_reward", "shop"],
+                "manifest_path": str(
+                    qualification_root / "qualification-manifest.json"
+                ),
+                "per_run_alternative_budget": 2,
+                "schema_version": "noncombat-exploration-config-v1",
+                "seed": SEED_BASE + 1,
+                "session_id": f"{qualification_id}-s01",
+                "source_commit": source_commit,
+                "study_id": qualification_id,
+                "study_registration_hash": registration.registration_hash,
+                "study_run_lock_hash": "0" * 64,
+                "study_slot_number": 1,
+                "trace_path": str(
+                    qualification_root / "qualification-trace.jsonl"
+                ),
+            }
+        )
+        + "\n",
+        encoding="ascii",
+        newline="",
+    )
+    request_source_path = (
+        repo_root / "reports" / "task7-reviewed-request.json"
+    ).resolve()
+    builder_fixture = {
+        "config_path": str(config_path),
+        "marker_path": str(protected["marker"]),
+        "qualification_id": qualification_id,
+        "qualification_root": str(qualification_root),
+        "registration_path": str(registration_path),
+        "request_source_path": str(request_source_path),
+        "runner_path": str(
+            (repo_root / "scripts" / "run_noncombat_outcome_evidence_expansion.py").resolve()
+        ),
+    }
+    builder_path = (state_home / "request-builder-fixture.json").resolve()
+    builder_path.write_text(
+        module._canonical_json(builder_fixture) + "\n",
+        encoding="ascii",
+        newline="",
+    )
+    built = subprocess.run(
+        [
+            str(WINDOWS_PYTHON),
+            "-I",
+            "-S",
+            "-c",
+            _PRODUCTION_SMOKE_REQUEST_BUILDER,
+            str(builder_path),
+        ],
+        cwd=repo_root,
+        capture_output=True,
+        check=False,
+    )
+    assert built.returncode == 0, built.stderr.decode("utf-8", errors="replace")
+    assert built.stdout == b""
+    assert built.stderr == b""
+    _task7_git(
+        repo_root,
+        "add",
+        request_source_path.relative_to(repo_root).as_posix(),
+    )
+    _task7_git(repo_root, "commit", "-m", "task 7 reviewed request")
+    review_commit = _task7_git(repo_root, "rev-parse", "HEAD")
+    request_bytes = request_source_path.read_bytes()
+    request = json.loads(request_bytes.decode("ascii"))
+    runner_path = Path(builder_fixture["runner_path"])
+    runner_sha256 = hashlib.sha256(runner_path.read_bytes()).hexdigest()
+    envelope = module._qualification_bootstrap_envelope(
+        request=request,
+        expected_request_file_sha256=hashlib.sha256(request_bytes).hexdigest(),
+        expected_request_size=len(request_bytes),
+        review_commit=review_commit,
+        runner_sha256=runner_sha256,
+    )
+    command = [
+        str(WINDOWS_PYTHON),
+        "-I",
+        "-S",
+        "-c",
+        module.QUALIFICATION_TRUSTED_LAUNCHER_CODE,
+        str(runner_path),
+        runner_sha256,
+        module._qualification_bootstrap_encode_envelope(envelope),
+        module._qualification_bootstrap_token(envelope),
+        "qualify",
+        "--registration",
+        str(registration_path),
+        "--request",
+        str(request_source_path),
+        "--request-hash",
+        request["request_hash"],
+        "--request-file-sha256",
+        hashlib.sha256(request_bytes).hexdigest(),
+        "--request-size",
+        str(len(request_bytes)),
+        "--review-commit",
+        review_commit,
+    ]
+    return {
+        "command": command,
+        "protected": protected,
+        "qualification_root": qualification_root,
+        "repo_root": repo_root,
+        "request": request,
+        "state_home": state_home,
+    }
+
+
+def test_production_python_smoke_runs_reviewed_launcher_to_terminal_without_game(
+    tmp_path,
+):
+    fixture = _production_python_smoke_fixture(tmp_path)
+    request = fixture["request"]
+    protected_before = _canonical_protected_state_snapshot(fixture["protected"])
+    communication_path = Path(fixture["protected"]["config"])
+    command_property = " ".join(fixture["command"]).replace("\\", "\\\\")
+    communication_path.write_text(
+        "verbose=false\n"
+        f"command={command_property}\n"
+        "runAtGameStart=true\n",
+        encoding="ascii",
+        newline="",
+    )
+    environment = os.environ.copy()
+    environment["PYTHONDONTWRITEBYTECODE"] = "1"
+    for name in (
+        "STS_OUTCOME_EVIDENCE_QUALIFICATION_RUNNER_SHA256",
+        "STS_OUTCOME_EVIDENCE_QUALIFICATION_BOOTSTRAP_ENVELOPE_B64",
+        "STS_OUTCOME_EVIDENCE_QUALIFICATION_BOOTSTRAP_LAUNCH_TOKEN",
+        "STS_OUTCOME_EVIDENCE_QUALIFICATION_ATTEMPT_HASH",
+        HANDSHAKE_ATTEMPT_ENV,
+    ):
+        environment.pop(name, None)
+
+    completed = subprocess.run(
+        fixture["command"],
+        cwd=fixture["repo_root"],
+        capture_output=True,
+        check=False,
+        env=environment,
+        timeout=120,
+    )
+
+    assert completed.returncode == 0, completed.stderr.decode(
+        "utf-8", errors="replace"
+    )
+    assert completed.stdout == b""
+    assert completed.stderr == b""
+    assert _canonical_protected_state_snapshot(fixture["protected"]) == (
+        protected_before
+    )
+    bootstrap = request["bootstrap"]
+    required_paths = [
+        bootstrap["claim_path"],
+        *(row["path"] for row in bootstrap["stage_paths"]),
+        request["request_path"],
+        bootstrap["handoff_path"],
+        request["handshake"]["attempt_path"],
+        request["handshake"]["ready_path"],
+        request["handshake"]["release_path"],
+        request["completion_path"],
+    ]
+    assert all(Path(path).is_file() for path in required_paths)
+    assert not Path(bootstrap["failure_path"]).exists()
+    assert not Path(request["failure_path"]).exists()
+    result = json.loads(Path(request["completion_path"]).read_text(encoding="ascii"))
+    assert result["status"] == "passed"
+    assert result["process"]["launch_count"] == 1
+    assert result["process"]["exit_code"] == 0
+    child_pid = result["process"]["pid"]
+    verifier = importlib.import_module(
+        "analysis_scripts.verify_noncombat_outcome_evidence_expansion"
+    )
+    assert verifier._qualification_pid_is_alive(child_pid) is False
+    assert not fixture["state_home"].joinpath("study-target").exists()
 
 
 def test_qualification_request_round_trips_exact_current_bindings(
