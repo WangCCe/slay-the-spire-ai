@@ -3266,7 +3266,9 @@ def test_bootstrap_isolation_preserves_every_protected_state_before_request(
     _assert_no_post_handoff_artifacts(case)
 
 
-def _java_properties_escape_for_test(value, *, key):
+def _ascii_java_properties_fixture_escape(value, *, key):
+    if not value.isascii():
+        raise ValueError("Task 7 Java Properties fixture must be ASCII")
     escaped = []
     for index, character in enumerate(value):
         if character == " ":
@@ -3290,22 +3292,24 @@ def _java_properties_escape_for_test(value, *, key):
     return "".join(escaped)
 
 
-def _java_properties_serialize_for_test(properties):
+def _ascii_java_properties_fixture_serialize(properties):
     rows = []
     for key, value in properties.items():
         rows.append(
-            _java_properties_escape_for_test(key, key=True)
+            _ascii_java_properties_fixture_escape(key, key=True)
             + "="
-            + _java_properties_escape_for_test(value, key=False)
+            + _ascii_java_properties_fixture_escape(value, key=False)
         )
-    return ("\n".join(rows) + "\n").encode("iso-8859-1")
+    return ("\n".join(rows) + "\n").encode("ascii")
 
 
-def _java_properties_logical_lines_for_test(raw):
+def _ascii_java_properties_fixture_logical_lines(raw):
+    if not raw.isascii():
+        raise ValueError("Task 7 Java Properties fixture must be ASCII")
     logical_lines = []
     pending = ""
     continued = False
-    for natural_line in raw.decode("iso-8859-1").splitlines():
+    for natural_line in raw.decode("ascii").splitlines():
         if continued:
             natural_line = natural_line.lstrip(" \t\f")
         candidate = pending + natural_line
@@ -3322,7 +3326,9 @@ def _java_properties_logical_lines_for_test(raw):
     return logical_lines
 
 
-def _java_properties_unescape_for_test(value):
+def _ascii_java_properties_fixture_unescape(value):
+    if not value.isascii():
+        raise ValueError("Task 7 Java Properties fixture must be ASCII")
     decoded = []
     index = 0
     escapes = {"f": "\f", "n": "\n", "r": "\r", "t": "\t"}
@@ -3343,7 +3349,10 @@ def _java_properties_unescape_for_test(value):
                 digit not in "0123456789abcdefABCDEF" for digit in digits
             ):
                 raise ValueError("malformed Java Properties unicode escape")
-            decoded.append(chr(int(digits, 16)))
+            codepoint = int(digits, 16)
+            if codepoint > 0x7F:
+                raise ValueError("Task 7 Java Properties fixture must be ASCII")
+            decoded.append(chr(codepoint))
             index += 5
             continue
         decoded.append(escapes.get(escaped, escaped))
@@ -3351,9 +3360,9 @@ def _java_properties_unescape_for_test(value):
     return "".join(decoded)
 
 
-def _java_properties_decode_for_test(raw):
+def _ascii_java_properties_fixture_decode(raw):
     properties = {}
-    for logical_line in _java_properties_logical_lines_for_test(raw):
+    for logical_line in _ascii_java_properties_fixture_logical_lines(raw):
         start = 0
         while start < len(logical_line) and logical_line[start] in " \t\f":
             start += 1
@@ -3392,8 +3401,12 @@ def _java_properties_decode_for_test(raw):
                 and logical_line[value_start] in " \t\f"
             ):
                 value_start += 1
-        key = _java_properties_unescape_for_test(logical_line[start:separator])
-        value = _java_properties_unescape_for_test(logical_line[value_start:])
+        key = _ascii_java_properties_fixture_unescape(
+            logical_line[start:separator]
+        )
+        value = _ascii_java_properties_fixture_unescape(
+            logical_line[value_start:]
+        )
         properties[key] = value
     return properties
 
@@ -3406,7 +3419,7 @@ def test_communication_tokenization_reconstructs_exact_reviewed_launcher_vector(
     reviewed_vector = _trusted_bootstrap_retry_command(case)
     config_path = (tmp_path / "config.properties").resolve()
     config_path.write_bytes(
-        _java_properties_serialize_for_test(
+        _ascii_java_properties_fixture_serialize(
             {
                 "verbose": "false",
                 "command": " ".join(reviewed_vector),
@@ -3415,7 +3428,7 @@ def test_communication_tokenization_reconstructs_exact_reviewed_launcher_vector(
         )
     )
 
-    communicationmod_properties = _java_properties_decode_for_test(
+    communicationmod_properties = _ascii_java_properties_fixture_decode(
         config_path.read_bytes()
     )
     communicationmod_tokens = communicationmod_properties["command"].split()
@@ -3447,7 +3460,7 @@ def test_communication_tokenization_reconstructs_exact_reviewed_launcher_vector(
     )
 
 
-def test_java_properties_equivalent_round_trip_preserves_windows_escapes():
+def test_ascii_java_properties_fixture_round_trip_preserves_windows_escapes():
     reviewed_vector = [
         r"D:\fixture\python.exe",
         "-I",
@@ -3465,13 +3478,19 @@ def test_java_properties_equivalent_round_trip_preserves_windows_escapes():
         "fixture path": r"D:\fixture root\main.py:reviewed",
     }
 
-    encoded = _java_properties_serialize_for_test(properties)
-    decoded = _java_properties_decode_for_test(encoded)
+    encoded = _ascii_java_properties_fixture_serialize(properties)
+    decoded = _ascii_java_properties_fixture_decode(encoded)
 
     assert b"fixture\\ path=" in encoded
     assert b"D\\:\\\\fixture root\\\\main.py\\:reviewed" in encoded
     assert decoded == properties
     assert decoded["command"].split() == reviewed_vector
+    with pytest.raises(ValueError, match="must be ASCII"):
+        _ascii_java_properties_fixture_serialize(
+            {"command": "qualify-\N{LATIN SMALL LETTER E WITH ACUTE}"}
+        )
+    with pytest.raises(ValueError, match="must be ASCII"):
+        _ascii_java_properties_fixture_decode(b"command=qualify-\\u00E9\n")
 
 
 def _controlled_failure_runner_bytes(code, completed_stages):
@@ -3499,6 +3518,36 @@ def _controlled_failure_runner_bytes(code, completed_stages):
         f"state,{code!r},RuntimeError('controlled task 7 failure'))\n"
         "assert published is not None\n"
         "raise SystemExit(2)\n"
+    ).encode("ascii")
+
+
+def _stage_collision_runner_bytes():
+    production_runner_path = (
+        REPO_ROOT / "scripts" / "run_noncombat_outcome_evidence_expansion.py"
+    ).resolve()
+    stages = (
+        "runner_entered",
+        "source_verified",
+        "request_reviewed",
+        "isolation_verified",
+    )
+    return (
+        "import importlib.util,os,sys\n"
+        "from pathlib import Path\n"
+        "def load(path):\n"
+        " spec=importlib.util.spec_from_file_location('task7_stage_collision',path)\n"
+        " module=importlib.util.module_from_spec(spec)\n"
+        " sys.modules[spec.name]=module\n"
+        " spec.loader.exec_module(module)\n"
+        " return module\n"
+        "saved=list(sys.argv)\n"
+        "sys.argv=[saved[0],'task7-stage-collision-probe']\n"
+        f"runner=load({str(production_runner_path)!r})\n"
+        "sys.argv=saved\n"
+        "state=runner._qualification_bootstrap_state_from_environment()\n"
+        f"for name in {stages!r}:\n"
+        " state=runner._qualification_bootstrap_publish_stage(state,name)\n"
+        "Path(os.environ['STS_TEST_MARKER_PATH']).write_bytes(b'entered\\n')\n"
     ).encode("ascii")
 
 
@@ -3589,6 +3638,92 @@ def test_stream_silence_binary_capture_covers_every_controlled_failure(
     else:
         assert not Path(bootstrap["failure_path"]).exists()
     assert not fixture["marker_path"].exists() or case_name == "success"
+
+
+@pytest.mark.parametrize(
+    "stage_name",
+    (
+        "launcher_verified",
+        "runner_entered",
+        "source_verified",
+        "request_reviewed",
+        "isolation_verified",
+    ),
+)
+def test_stream_silence_stage_path_collision_preserves_durable_prefix(
+    tmp_path,
+    stage_name,
+):
+    module = _module()
+    fixture = _bootstrap_launcher_fixture(
+        tmp_path,
+        runner_bytes=_stage_collision_runner_bytes(),
+    )
+    bootstrap = fixture["envelope"]["bootstrap"]
+    stage_names = tuple(
+        stage["name"] for stage in bootstrap["stage_paths"]
+    )
+    assert stage_names == module.QUALIFICATION_BOOTSTRAP_STAGE_NAMES
+    stage_index = stage_names.index(stage_name) + 1
+    collision_path = Path(bootstrap["stage_paths"][stage_index - 1]["path"])
+    collision_bytes = f"occupied:{stage_name}\n".encode("ascii")
+    collision_path.write_bytes(collision_bytes)
+
+    completed = subprocess.run(
+        fixture["command"],
+        cwd=tmp_path,
+        capture_output=True,
+        check=False,
+        env=fixture["environment"],
+    )
+
+    assert completed.returncode == 2
+    assert completed.stdout == b""
+    assert completed.stderr == b""
+    assert collision_path.read_bytes() == collision_bytes
+    prefix = [
+        ("claim", Path(bootstrap["claim_path"])),
+        *(
+            (stage["name"], Path(stage["path"]))
+            for stage in bootstrap["stage_paths"][: stage_index - 1]
+        ),
+    ]
+    previous_hash = None
+    for expected_index, (expected_name, path) in enumerate(prefix):
+        raw = path.read_bytes()
+        record = json.loads(raw.decode("ascii"))
+        assert raw == module._qualification_bootstrap_record_bytes(record)
+        assert record == module._qualification_bootstrap_record(
+            anchors=record["anchors"],
+            created_unix_ns=record["created_unix_ns"],
+            payload=record["payload"],
+            pid=record["pid"],
+            previous_hash=record["previous_hash"],
+            record_type=record["record_type"],
+            stage_index=record["stage_index"],
+            stage_name=record["stage_name"],
+        )
+        assert record["record_type"] == (
+            "claim" if expected_index == 0 else "stage"
+        )
+        assert record["stage_index"] == expected_index
+        assert record["stage_name"] == expected_name
+        assert record["previous_hash"] == previous_hash
+        previous_hash = record["record_hash"]
+    assert all(
+        not Path(stage["path"]).exists()
+        for stage in bootstrap["stage_paths"][stage_index:]
+    )
+    assert not Path(bootstrap["handoff_path"]).exists()
+    assert not fixture["marker_path"].exists()
+    for name in (
+        "qualification-communication-attempt.json",
+        "qualification-communication-ready.json",
+        "qualification-communication-release.json",
+        "qualification-completion.json",
+        "qualification-failure.json",
+    ):
+        assert not (fixture["qualification_root"] / name).exists()
 
 
 _POST_HANDOFF_STREAM_RUNNER = r"""
