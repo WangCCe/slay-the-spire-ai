@@ -1,0 +1,121 @@
+{
+  "base_commit": "b4487b6f039cc92a1f5caa69d269e043f35a3771",
+  "generated_utc": "2026-07-19T19:51:41.2173875Z",
+  "head_commit": "bef034c064c570f5db51684e95e2d39b38f46693",
+  "independent_review": {
+    "cli_version": "codex-cli 0.144.6",
+    "first_review": {
+      "finding": "P2 preserve validation-time file identity in the binding",
+      "path": "reports/pre_request_qualification_observability_20260720_independent_code_review_final.txt.gz",
+      "sha256": "b2a795882ee43d080a0ec29a11599506d98f82ff32935a3156e3281360d8ee3d",
+      "size": 130620,
+      "text_sha256": "43e7023d13b0fb7627981e9a17899581fcdd35492ffb51a23ba4c83ed3b82bc1",
+      "text_size": 648838,
+      "status": "changes_requested"
+    },
+    "re_review": {
+      "path": "reports/pre_request_qualification_observability_20260720_independent_code_re_review_final.txt.gz",
+      "sha256": "9ac5834e57f0b4e01e30471bee024498ff62cf686b5c3508622a62c302cbd24d",
+      "size": 264128,
+      "text_sha256": "72ec4c8492a5d8d4ad1cc0c0b5280b65754f103d2df2c1b6f84456564e2e801e",
+      "text_size": 1325478,
+      "status": "no_findings"
+    }
+  },
+  "input_files": [
+    {
+      "path": "analysis_scripts/verify_noncombat_outcome_evidence_expansion.py",
+      "sha256": "44095dba9fab2fedda8752eca798038594ef89d2f9bd0ee9153b5b73670483f8",
+      "size": 320131
+    },
+    {
+      "path": "scripts/run_noncombat_outcome_evidence_expansion.py",
+      "sha256": "19c1fa94f87f867ad0da0555b6e3183ce098e56700c40d0d78a4c44e11e62653",
+      "size": 363985
+    },
+    {
+      "path": "tests/test_noncombat_outcome_evidence_runner.py",
+      "sha256": "2dcb44ba4025de3c96ba26599acac21829090d24b8c313dfff3e3ef87521e283",
+      "size": 402817
+    },
+    {
+      "path": "tests/test_noncombat_outcome_evidence_verifier.py",
+      "sha256": "3e0cedda2a4f921944b0ebf1481cba18ec067269392dc7f462953c852d9a3d12",
+      "size": 292689
+    },
+    {
+      "path": "tests/test_main_runtime_errors.py",
+      "sha256": "114f28dab8f9db660d398fbdefbaa1af1ad7a7b09e88d210808e4e94475ec8bb",
+      "size": 18196
+    },
+    {
+      "path": "tests/test_study_handshake.py",
+      "sha256": "8bfd4ca5bd024f4c558bdbf8d71d3fc327d73a751188e327e195694b8fc5883d",
+      "size": 19507
+    }
+  ],
+  "post_review_renderer_correction": {
+    "finding": "P2 output beneath the renderer fixture root was deleted after a successful render",
+    "regression_test": {
+      "direct_result": "1 passed in 0.73s",
+      "path": "tests/test_pre_request_qualification_vector_renderer.py",
+      "pytest_exit_code": 0,
+      "sha256": "0e191ade401d5c56986312795685a3426a7a154beab1ac917e7b3ecb30868595",
+      "size": 805
+    },
+    "status": "fixed"
+  },
+  "schema_version": "pre-request-qualification-observability-verification-evidence-v1",
+  "suites": [
+    {
+      "deselected": 172,
+      "duration_seconds": 830.97,
+      "inputs_unchanged": true,
+      "name": "focused",
+      "passed": 593,
+      "pytest_exit_code": 0,
+      "transcript": {
+        "path": "reports/pre_request_qualification_observability_20260720_focused_pytest.txt",
+        "sha256": "ce89443d13d0075fccf969614151730b469e25453ecfdd4a0850dad80002f74b",
+        "size": 5192
+      }
+    },
+    {
+      "deselected": 0,
+      "duration_seconds": 1518.67,
+      "inputs_unchanged": true,
+      "name": "full",
+      "passed": 3455,
+      "pytest_exit_code": 0,
+      "transcript": {
+        "path": "reports/pre_request_qualification_observability_20260720_full_pytest.txt",
+        "sha256": "3b8c10a005c277bc978189d3c92cb454427c579a9d43867224296e73e4636dee",
+        "size": 9954
+      }
+    }
+  ],
+  "vector_render": {
+    "bundle_sha256": "f3f493b9ed767405ee5f23660af512c603b7107857e811f8ea2b21951bbaad3f",
+    "bundle_size": 434459,
+    "byte_identical": true,
+    "entry_count": 73,
+    "outputs": [
+      {
+        "path": "reports/pre_request_qualification_observability_20260720_vector_render_1.json",
+        "sha256": "9d4e3a7ee727e4668b331960492b080fc7e12bc6db393851556b3ad2137c4533",
+        "size": 11158
+      },
+      {
+        "path": "reports/pre_request_qualification_observability_20260720_vector_render_2.json",
+        "sha256": "9d4e3a7ee727e4668b331960492b080fc7e12bc6db393851556b3ad2137c4533",
+        "size": 11158
+      }
+    ],
+    "raw_payload_size": 430730,
+    "renderer": {
+      "path": "analysis_scripts/render_pre_request_qualification_observability_vectors.py",
+      "sha256": "b208e0d50eb2a0ae46a51ad7ea1e4880951f3aa77f14f8920c1a682883f5fdba",
+      "size": 11289
+    }
+  }
+}

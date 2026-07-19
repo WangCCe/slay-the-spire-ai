@@ -4582,6 +4582,7 @@ def _build_qualification_evidence(tmp_path, monkeypatch, *, status="passed"):
     _write_json(request_source_path, request)
     reviewed_request = deepcopy(request)
     request_bytes = request_source_path.read_bytes()
+    reviewed_source_bytes = request_bytes
     runner_sha256 = request["implementation_sha256"][
         runner.QUALIFICATION_RUNNER_RELATIVE_PATH
     ]
@@ -4649,12 +4650,19 @@ def _build_qualification_evidence(tmp_path, monkeypatch, *, status="passed"):
     def load_historical_review(source_path, **kwargs):
         assert Path(source_path) == request_source_path
         assert kwargs["expected_review_commit"] == QUALIFICATION_REVIEW_COMMIT
-        assert kwargs["expected_request_hash"] == reviewed_request["request_hash"]
-        source_bytes = request_source_path.read_bytes()
-        assert kwargs["expected_request_file_sha256"] == hashlib.sha256(
-            source_bytes
-        ).hexdigest()
-        assert kwargs["expected_request_size"] == len(source_bytes)
+        source_bytes = reviewed_source_bytes
+        if (
+            kwargs["expected_request_file_sha256"]
+            != hashlib.sha256(source_bytes).hexdigest()
+            or kwargs["expected_request_size"] != len(source_bytes)
+        ):
+            raise _verifier().OutcomeEvidenceVerificationError(
+                "qualification request source file binding mismatch"
+            )
+        if kwargs["expected_request_hash"] != reviewed_request["request_hash"]:
+            raise _verifier().OutcomeEvidenceVerificationError(
+                "qualification request source anchor mismatch"
+            )
         review_binding = runner._build_qualification_review_binding(
             request=reviewed_request,
             review_commit=QUALIFICATION_REVIEW_COMMIT,
@@ -4835,7 +4843,8 @@ def _build_qualification_evidence(tmp_path, monkeypatch, *, status="passed"):
     )
     _write_json(result_path, historical_result)
 
-    reviewed_request = historical_request
+    reviewed_source_bytes = historical_request_bytes
+    reviewed_request = deepcopy(historical_request)
     request = historical_request
     result = historical_result
     return request_path, result_path, request, result

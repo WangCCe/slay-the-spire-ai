@@ -25,6 +25,12 @@ The system SHALL publish only one contiguous immutable stage chain from trusted-
 - **WHEN** launcher, runner-entry, source, request/review-chain, and prelaunch-isolation checks complete in order
 - **THEN** the qualifier SHALL exclusively publish canonical self-hashed `launcher_verified`, `runner_entered`, `source_verified`, `request_reviewed`, and `isolation_verified` records in that order
 - **AND** every record SHALL bind the same qualification identity, launch token, request anchors, review commit, runner SHA-256, process PID, positive timestamp, stage index/name, and previous-record hash
+- **AND** before `source_verified`, the qualifier SHALL freeze the exact raw bytes and opened-file identities accepted by descriptor-bound no-follow reviewed-source reads and install both as immutable allowlists for subsequent project-source imports
+
+#### Scenario: Reviewed source changes after validation
+- **WHEN** a project source is replaced, linked, changed, restored, or newly introduced after reviewed-source validation and before or during a later import
+- **THEN** the source-only loader SHALL re-read the requested path through a no-follow descriptor with opened-file identity checks and require exact matches to both the immutable validated raw bytes and validation-time opened-file identity before compilation
+- **AND** any unbound path, unsafe identity, or byte mismatch SHALL stop before module code executes and SHALL NOT publish `request_reviewed`, an active request, an attempt, or a child
 
 #### Scenario: Controlled validation fails before active request
 - **WHEN** a controlled failure occurs after claim creation and before active-request publication

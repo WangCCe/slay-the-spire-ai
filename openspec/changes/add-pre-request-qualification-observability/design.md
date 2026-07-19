@@ -53,13 +53,15 @@ After the claim, the same qualification process will exclusively publish these o
 
 1. `launcher_verified`: runner path, runner bytes, launcher shape, and static bootstrap anchors passed.
 2. `runner_entered`: the in-memory runner verified isolated/no-site execution, original argv, and launcher environment anchor.
-3. `source_verified`: the pre-import Git metadata, HEAD/R, reviewed executable/importable bytes, tracked inventory, and untracked executable checks passed.
+3. `source_verified`: the pre-import Git metadata, HEAD/R, reviewed executable/importable bytes, tracked inventory, and untracked executable checks passed, and the exact accepted raw worktree bytes plus opened-file identities were installed as immutable source-only import bindings.
 4. `request_reviewed`: argument parsing, canonical request source, external request anchors, S-to-R review chain, registration, and implementation map passed.
 5. `isolation_verified`: request-bound CommunicationMod semantics and broad marker/run/checkpoint/global-log isolation passed immediately before active-request publication.
 
 Each canonical ASCII JSON record will contain the schema, qualification identity, launch token, stage index/name, process PID, positive timestamp, previous-record hash, static request/R/runner anchors, and its own self-hash. Static anchors must remain identical across the chain. A controlled failure may add one exclusive failure record containing the last completed stage, a fixed failure code, exception type, optional errno/winerror, and bounded sanitized detail. It must not include environment values, arbitrary process output, gameplay outcomes, or secrets.
 
 The earliest writer remains pure standard library and independent of project imports. Later code may use the same small primitive but may not rewrite earlier evidence. Temporary, duplicate, out-of-order, non-canonical, malformed, or extra entries make the root consumed and invalid.
+
+Publishing `source_verified` does not permit later imports to trust the path that was previously checked. The source-only repository loader must re-read each requested source through a no-follow descriptor, verify the opened file identity across the read, and compare both the returned bytes and opened-file identity exactly with the immutable values captured during reviewed-source validation. A replaced, linked, unbound, identity-drifted, or byte-drifted source therefore stops before module code executes and leaves `source_verified` as the last valid stage at most.
 
 Alternative considered: append JSONL records to one journal. Rejected because mutation, torn tails, append races, and recovery semantics would make independent replay materially harder than fixed publish-once artifacts.
 
@@ -105,6 +107,7 @@ Implementation will start from red unit and subprocess regressions, then add the
 - [The bootstrap command grows] -> Pass compact fixed anchors and a deterministic token, not request JSON or diagnostic text, and retain CommunicationMod-equivalent tokenization tests.
 - [Early diagnostics could expose sensitive state] -> Use fixed failure codes and bounded sanitized exception metadata; forbid environment values, stdout/stderr capture, gameplay outcomes, and arbitrary file content.
 - [Pure-stdlib publication duplicates an existing helper] -> Keep one minimal bootstrap primitive, test its bytes and path behavior directly, and reuse it after imports rather than maintaining divergent formats.
+- [A repository path can change after source validation but before import] -> Freeze the exact descriptor-read raw bytes and opened-file identity before publishing `source_verified`; require every source-only import to perform another descriptor-bound no-follow read and exact identity-plus-byte comparison before compilation.
 - [v3 support could change historical evidence or blur a governance decision into root-derived proof] -> Isolate the v3 branch, require exact r1-r6 byte and absence inventories, keep evidence and governance classifications distinct, and run complete public replay only for historically complete bundles.
 - [A valid prefix can still lack exact root cause after abrupt termination] -> Report only the last independently completed stage; do not infer the in-progress operation or use offline timing as live proof.
 

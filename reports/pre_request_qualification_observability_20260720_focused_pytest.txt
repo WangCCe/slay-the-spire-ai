@@ -1,0 +1,123 @@
+{
+  "schema_version": "pre-request-qualification-observability-verification-transcript-v1",
+  "suite": "focused",
+  "started_utc": "2026-07-19T17:47:27.8447024+00:00",
+  "base_commit": "b4487b6f039cc92a1f5caa69d269e043f35a3771",
+  "head_commit": "bef034c064c570f5db51684e95e2d39b38f46693",
+  "command": [
+    "D:\\anaconda\\envs\\stsai\\python.exe",
+    "-m",
+    "pytest",
+    "tests/test_noncombat_outcome_evidence_runner.py",
+    "tests/test_noncombat_outcome_evidence_verifier.py",
+    "tests/test_main_runtime_errors.py",
+    "tests/test_study_handshake.py",
+    "-k",
+    "qualification or bootstrap or handshake or runtime_error",
+    "-p",
+    "no:cacheprovider",
+    "--basetemp",
+    "D:\\PycharmProjects\\slay-the-spire-ai\\.pytest-tmp-pre-request-observability\\focused-final",
+    "-q"
+  ],
+  "inputs_before": [
+    {
+      "path": "analysis_scripts/verify_noncombat_outcome_evidence_expansion.py",
+      "size": 320131,
+      "sha256": "44095dba9fab2fedda8752eca798038594ef89d2f9bd0ee9153b5b73670483f8"
+    },
+    {
+      "path": "scripts/run_noncombat_outcome_evidence_expansion.py",
+      "size": 363985,
+      "sha256": "19c1fa94f87f867ad0da0555b6e3183ce098e56700c40d0d78a4c44e11e62653"
+    },
+    {
+      "path": "tests/test_noncombat_outcome_evidence_runner.py",
+      "size": 402817,
+      "sha256": "2dcb44ba4025de3c96ba26599acac21829090d24b8c313dfff3e3ef87521e283"
+    },
+    {
+      "path": "tests/test_noncombat_outcome_evidence_verifier.py",
+      "size": 292689,
+      "sha256": "3e0cedda2a4f921944b0ebf1481cba18ec067269392dc7f462953c852d9a3d12"
+    },
+    {
+      "path": "tests/test_main_runtime_errors.py",
+      "size": 18196,
+      "sha256": "114f28dab8f9db660d398fbdefbaa1af1ad7a7b09e88d210808e4e94475ec8bb"
+    },
+    {
+      "path": "tests/test_study_handshake.py",
+      "size": 19507,
+      "sha256": "8bfd4ca5bd024f4c558bdbf8d71d3fc327d73a751188e327e195694b8fc5883d"
+    }
+  ],
+  "tracked_status_before": [
+    " M openspec/changes/add-pre-request-qualification-observability/design.md",
+    " M openspec/changes/add-pre-request-qualification-observability/proposal.md",
+    " M openspec/changes/add-pre-request-qualification-observability/specs/pre-request-qualification-observability/spec.md",
+    " M openspec/changes/add-pre-request-qualification-observability/tasks.md",
+    " M scripts/run_noncombat_outcome_evidence_expansion.py",
+    " M tests/test_noncombat_outcome_evidence_runner.py",
+    " M tests/test_noncombat_outcome_evidence_verifier.py"
+  ]
+}
+--- pytest stdout/stderr ---
+........................................................................ [ 12%]
+........................................................................ [ 24%]
+........................................................................ [ 36%]
+........................................................................ [ 48%]
+........................................................................ [ 60%]
+........................................................................ [ 72%]
+........................................................................ [ 84%]
+........................................................................ [ 97%]
+.................                                                        [100%]
+593 passed, 172 deselected in 830.97s (0:13:50)
+--- verification footer ---
+{
+  "finished_utc": "2026-07-19T18:01:21.5009406+00:00",
+  "pytest_exit_code": 0,
+  "inputs_after": [
+    {
+      "path": "analysis_scripts/verify_noncombat_outcome_evidence_expansion.py",
+      "size": 320131,
+      "sha256": "44095dba9fab2fedda8752eca798038594ef89d2f9bd0ee9153b5b73670483f8"
+    },
+    {
+      "path": "scripts/run_noncombat_outcome_evidence_expansion.py",
+      "size": 363985,
+      "sha256": "19c1fa94f87f867ad0da0555b6e3183ce098e56700c40d0d78a4c44e11e62653"
+    },
+    {
+      "path": "tests/test_noncombat_outcome_evidence_runner.py",
+      "size": 402817,
+      "sha256": "2dcb44ba4025de3c96ba26599acac21829090d24b8c313dfff3e3ef87521e283"
+    },
+    {
+      "path": "tests/test_noncombat_outcome_evidence_verifier.py",
+      "size": 292689,
+      "sha256": "3e0cedda2a4f921944b0ebf1481cba18ec067269392dc7f462953c852d9a3d12"
+    },
+    {
+      "path": "tests/test_main_runtime_errors.py",
+      "size": 18196,
+      "sha256": "114f28dab8f9db660d398fbdefbaa1af1ad7a7b09e88d210808e4e94475ec8bb"
+    },
+    {
+      "path": "tests/test_study_handshake.py",
+      "size": 19507,
+      "sha256": "8bfd4ca5bd024f4c558bdbf8d71d3fc327d73a751188e327e195694b8fc5883d"
+    }
+  ],
+  "inputs_unchanged": true,
+  "head_commit_after": "bef034c064c570f5db51684e95e2d39b38f46693",
+  "tracked_status_after": [
+    " M openspec/changes/add-pre-request-qualification-observability/design.md",
+    " M openspec/changes/add-pre-request-qualification-observability/proposal.md",
+    " M openspec/changes/add-pre-request-qualification-observability/specs/pre-request-qualification-observability/spec.md",
+    " M openspec/changes/add-pre-request-qualification-observability/tasks.md",
+    " M scripts/run_noncombat_outcome_evidence_expansion.py",
+    " M tests/test_noncombat_outcome_evidence_runner.py",
+    " M tests/test_noncombat_outcome_evidence_verifier.py"
+  ]
+}

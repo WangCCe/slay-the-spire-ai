@@ -1572,7 +1572,7 @@ def test_qualification_cli_hashes_stat_clean_powershell_before_imports(
     _assert_silent_qualification_failure(completed)
 
 
-def test_runner_real_subprocess_does_not_self_pollute_source_guard(tmp_path):
+def test_qualification_preamble_disables_bytecode_before_state_rejection(tmp_path):
     repo_root = tmp_path / "repo"
     repo_root.mkdir()
     ignored = shutil.ignore_patterns("__pycache__", "*.pyc")
@@ -1603,25 +1603,26 @@ def test_runner_real_subprocess_does_not_self_pollute_source_guard(tmp_path):
         check=True,
         text=True,
     ).stdout.strip()
+    probe = (
+        "import runpy,sys\n"
+        f"sys.argv = ['runner', 'qualify', '--review-commit', {review_commit!r}]\n"
+        "try:\n"
+        "    runpy.run_path(\n"
+        "        'scripts/run_noncombat_outcome_evidence_expansion.py',\n"
+        "        run_name='qualification_source_guard',\n"
+        "    )\n"
+        "except SystemExit as exc:\n"
+        "    assert exc.code == 2\n"
+        "else:\n"
+        "    raise AssertionError('untrusted qualification state was accepted')\n"
+        "print(sys.dont_write_bytecode)\n"
+        "print(sys.pycache_prefix)\n"
+    )
     environment = os.environ.copy()
     environment.pop("PYTHONDONTWRITEBYTECODE", None)
+
     completed = subprocess.run(
-            [
-                sys.executable,
-                "-I",
-                "-S",
-                "-c",
-                (
-                    "import runpy,sys; from pathlib import Path; "
-                    "sys.argv = ['runner', 'qualify', '--review-commit', "
-                    f"{review_commit!r}]; "
-                    "runner = runpy.run_path("
-                "'scripts/run_noncombat_outcome_evidence_expansion.py', "
-                "run_name='qualification_source_guard'); "
-                    "print(runner['_tracked_source_commit'](Path.cwd())); "
-                    "print(sys.pycache_prefix)"
-            ),
-        ],
+        [sys.executable, "-I", "-S", "-c", probe],
         cwd=repo_root,
         capture_output=True,
         check=False,
@@ -1630,13 +1631,19 @@ def test_runner_real_subprocess_does_not_self_pollute_source_guard(tmp_path):
     )
 
     assert completed.returncode == 0, completed.stderr
-    output_lines = completed.stdout.splitlines()
-    assert len(output_lines[0]) == 40
-    assert output_lines[1] == os.path.join(
-        os.devnull,
-        "sts-qualification-pycache",
-    )
+    assert completed.stdout.splitlines() == [
+        "True",
+        os.path.join(os.devnull, "sts-qualification-pycache"),
+    ]
     assert list(repo_root.rglob("*.pyc")) == []
+    status = subprocess.run(
+        ("git", "status", "--porcelain=v1", "--untracked-files=all"),
+        cwd=repo_root,
+        capture_output=True,
+        check=True,
+        text=True,
+    )
+    assert status.stdout == ""
 
 
 def test_qualification_runner_does_not_execute_repository_bytecode(tmp_path):
@@ -1744,11 +1751,76 @@ def test_qualification_bootstrap_accepts_git_normalized_autocrlf_text(tmp_path):
     source_path.write_bytes(b"alpha\r\nbeta\r\n")
     git_root = module._qualification_bootstrap_validate_git_metadata(repo_root)
 
-    module._qualification_bootstrap_validate_reviewed_source_bytes(
-        repo_root,
-        git_root,
-        review_commit,
+    reviewed_source_bindings = (
+        module._qualification_bootstrap_validate_reviewed_source_bytes(
+            repo_root,
+            git_root,
+            review_commit,
+        )
     )
+
+    assert reviewed_source_bindings[
+        os.path.normcase(os.path.abspath(source_path))
+    ][0] == b"alpha\r\nbeta\r\n"
+
+
+def test_qualification_source_binding_precedes_source_verified_stage(
+    tmp_path,
+    monkeypatch,
+):
+    module = _module()
+    source_path = (tmp_path / "reviewed_source.py").resolve()
+    reviewed_bytes = b"VALUE = 'reviewed'\n"
+    reviewed_identity = (11, 12, 0)
+    normalized_path = os.path.normcase(os.path.abspath(source_path))
+    expected_state = {"stage": "source_verified"}
+    monkeypatch.setattr(
+        module,
+        "_QUALIFICATION_REVIEWED_REPO_SOURCE_BYTES",
+        None,
+    )
+    monkeypatch.setattr(
+        module,
+        "_QUALIFICATION_REVIEWED_REPO_SOURCE_IDENTITIES",
+        None,
+    )
+    monkeypatch.setattr(
+        module,
+        "_qualification_bootstrap_validate_source",
+        lambda *_args, **_kwargs: {
+            normalized_path: (reviewed_bytes, reviewed_identity)
+        },
+    )
+
+    def publish_stage(_state, stage_name):
+        assert stage_name == "source_verified"
+        byte_bindings = module._QUALIFICATION_REVIEWED_REPO_SOURCE_BYTES
+        identity_bindings = (
+            module._QUALIFICATION_REVIEWED_REPO_SOURCE_IDENTITIES
+        )
+        assert dict(byte_bindings) == {normalized_path: reviewed_bytes}
+        assert dict(identity_bindings) == {
+            normalized_path: reviewed_identity
+        }
+        with pytest.raises(TypeError):
+            byte_bindings[normalized_path] = b"replacement"
+        with pytest.raises(TypeError):
+            identity_bindings[normalized_path] = (21, 22, 0)
+        return expected_state
+
+    monkeypatch.setattr(
+        module,
+        "_qualification_bootstrap_publish_stage",
+        publish_stage,
+    )
+
+    result = module._qualification_bootstrap_verify_source(
+        {},
+        tmp_path,
+        expected_review_commit=REVIEW_COMMIT,
+    )
+
+    assert result is expected_state
 
 
 def test_qualification_bootstrap_does_not_normalize_binary_tamper(tmp_path):
@@ -1881,6 +1953,87 @@ def test_qualification_source_loader_rejects_package_junction_before_read(
         os.rmdir(package_alias)
 
     assert completed.returncode != 0
+    assert not marker_path.exists()
+
+
+def _qualification_source_replacement_probe(tmp_path, replacement_bytes):
+    import_root = tmp_path / "import-root"
+    import_root.mkdir()
+    source_path = import_root / "qualification_bound_source.py"
+    reviewed_bytes = b"VALUE = 'reviewed'\n"
+    source_path.write_bytes(reviewed_bytes)
+    marker_path = tmp_path / "replacement-source-executed.txt"
+    probe = (
+        "import importlib,os,sys; from pathlib import Path; "
+        f"sys.path.insert(0, {str(REPO_ROOT)!r}); "
+        "module=importlib.import_module("
+        "'scripts.run_noncombat_outcome_evidence_expansion'); "
+        "root=Path(sys.argv[1]); source=root/'qualification_bound_source.py'; "
+        "metadata=source.stat(); key=os.path.normcase(os.path.abspath(source)); "
+        "module._QUALIFICATION_REVIEWED_REPO_SOURCE_BYTES={"
+        "key:source.read_bytes()}; "
+        "module._QUALIFICATION_REVIEWED_REPO_SOURCE_IDENTITIES={"
+        "key:(metadata.st_dev,metadata.st_ino,"
+        "getattr(metadata,'st_file_attributes',0))}; "
+        "module._qualification_install_source_only_repo_imports(root); "
+        "replacement=root/'qualification_bound_source.replacement'; "
+        "replacement.write_bytes(bytes.fromhex(sys.argv[2])); "
+        "os.replace(replacement,source); "
+        "sys.path.insert(0, str(root)); "
+        "import qualification_bound_source"
+    )
+    environment = os.environ.copy()
+    environment["PYTHONDONTWRITEBYTECODE"] = "1"
+
+    completed = subprocess.run(
+        [
+            sys.executable,
+            "-I",
+            "-S",
+            "-c",
+            probe,
+            str(import_root),
+            replacement_bytes.hex(),
+        ],
+        cwd=tmp_path,
+        capture_output=True,
+        check=False,
+        env=environment,
+        text=True,
+    )
+
+    return completed, marker_path
+
+
+def test_qualification_source_loader_rejects_post_validation_replacement(
+    tmp_path,
+):
+    replacement_bytes = (
+        "from pathlib import Path\n"
+        f"Path({str(tmp_path / 'replacement-source-executed.txt')!r})"
+        ".write_text('executed')\n"
+    ).encode("utf-8")
+
+    completed, marker_path = _qualification_source_replacement_probe(
+        tmp_path,
+        replacement_bytes,
+    )
+
+    assert completed.returncode != 0
+    assert "does not match reviewed bytes" in completed.stderr
+    assert not marker_path.exists()
+
+
+def test_qualification_source_loader_rejects_same_byte_identity_replacement(
+    tmp_path,
+):
+    completed, marker_path = _qualification_source_replacement_probe(
+        tmp_path,
+        b"VALUE = 'reviewed'\n",
+    )
+
+    assert completed.returncode != 0
+    assert "identity does not match reviewed file" in completed.stderr
     assert not marker_path.exists()
 
 
@@ -4454,7 +4607,7 @@ def _production_python_smoke_fixture(tmp_path):
     }
 
 
-def test_production_python_smoke_runs_reviewed_launcher_to_terminal_without_game(
+def test_qualification_production_python_smoke_is_source_clean_without_inherited_guard(
     tmp_path,
 ):
     fixture = _production_python_smoke_fixture(tmp_path)
@@ -4478,7 +4631,7 @@ def test_production_python_smoke_runs_reviewed_launcher_to_terminal_without_game
         original_protected_snapshot
     )
     environment = os.environ.copy()
-    environment["PYTHONDONTWRITEBYTECODE"] = "1"
+    environment.pop("PYTHONDONTWRITEBYTECODE", None)
     for name in (
         "STS_OUTCOME_EVIDENCE_QUALIFICATION_RUNNER_SHA256",
         "STS_OUTCOME_EVIDENCE_QUALIFICATION_BOOTSTRAP_ENVELOPE_B64",
@@ -4487,6 +4640,8 @@ def test_production_python_smoke_runs_reviewed_launcher_to_terminal_without_game
         HANDSHAKE_ATTEMPT_ENV,
     ):
         environment.pop(name, None)
+    assert "-B" not in fixture["command"][:4]
+    assert "PYTHONDONTWRITEBYTECODE" not in environment
 
     completed = subprocess.run(
         fixture["command"],
@@ -4530,6 +4685,7 @@ def test_production_python_smoke_runs_reviewed_launcher_to_terminal_without_game
     )
     assert verifier._qualification_pid_is_alive(child_pid) is False
     assert not fixture["state_home"].joinpath("study-target").exists()
+    assert list(fixture["repo_root"].rglob("*.pyc")) == []
 
 
 def test_qualification_request_round_trips_exact_current_bindings(
@@ -6882,13 +7038,8 @@ def test_qualification_cli_binds_launcher_anchor_to_reviewed_runner(
     monkeypatch,
 ):
     module, registration_path, request_path, request = (
-        _qualification_request_fixture(
-            tmp_path,
-            monkeypatch,
-            source_only=True,
-        )
+        _trusted_qualification_lifecycle_fixture(tmp_path, monkeypatch)
     )
-    monkeypatch.setattr(module, "_QUALIFICATION_CLI_REQUESTED", True)
     monkeypatch.setenv(module.QUALIFICATION_RUNNER_SHA256_ENV, "f" * 64)
 
     with pytest.raises(

@@ -97,7 +97,7 @@ def _qualification_bootstrap_lstat_components(path_text, allow_missing_final):
             raise _QualificationBootstrapLibraryError("path parent is not a directory")
     return os.path.dirname(path_text), metadata
 
-def _qualification_bootstrap_read_bytes_no_follow(path_text):
+def _qualification_bootstrap_read_bytes_no_follow(path_text, include_identity=False):
     _parent, final_before = _qualification_bootstrap_lstat_components(path_text, False)
     if final_before is None or not stat.S_ISREG(final_before.st_mode):
         raise _QualificationBootstrapLibraryError("path is not a regular file")
@@ -118,7 +118,10 @@ def _qualification_bootstrap_read_bytes_no_follow(path_text):
     final_after = os.lstat(path_text)
     if _qualification_bootstrap_is_link_or_reparse(final_after) or not stat.S_ISREG(final_after.st_mode) or not os.path.samestat(opened, final_after):
         raise _QualificationBootstrapLibraryError("file identity changed during read")
-    return b"".join(blocks)
+    raw = b"".join(blocks)
+    if include_identity:
+        return raw, _qualification_bootstrap_identity(opened)
+    return raw
 
 def _qualification_bootstrap_publish_bytes_once(path_text, raw, phase_callback=None):
     if phase_callback is not None:
@@ -865,10 +868,18 @@ from types import MappingProxyType
 from typing import Any
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
+_QUALIFICATION_REVIEWED_REPO_SOURCE_BYTES: Mapping[str, bytes] | None = None
+_QUALIFICATION_REVIEWED_REPO_SOURCE_IDENTITIES: (
+    Mapping[str, tuple[int, int, int]] | None
+) = None
 
 
 def _qualification_install_source_only_repo_imports(repo_root: Path) -> None:
     lexical_root = os.path.normcase(os.path.abspath(repo_root))
+    source_suffixes = tuple(
+        os.path.normcase(suffix)
+        for suffix in importlib.machinery.SOURCE_SUFFIXES
+    )
 
     def is_repo_path(path_value: object) -> bool:
         try:
@@ -886,30 +897,62 @@ def _qualification_install_source_only_repo_imports(repo_root: Path) -> None:
                 raise OSError(
                     "qualification repository loader refuses bytecode cache"
                 )
-            current = Path(lexical_path).anchor
-            current_path = Path(current)
-            for part in Path(lexical_path).parts[1:]:
-                current_path /= part
-                metadata = current_path.lstat()
-                file_attributes = getattr(metadata, "st_file_attributes", 0)
-                reparse_flag = getattr(
-                    stat,
-                    "FILE_ATTRIBUTE_REPARSE_POINT",
-                    0,
+            normalized_path = os.path.normcase(lexical_path)
+            if not normalized_path.endswith(source_suffixes):
+                raise OSError(
+                    "qualification repository loader refuses bytecode cache"
                 )
-                if stat.S_ISLNK(metadata.st_mode) or bool(
-                    file_attributes & reparse_flag
-                ):
-                    raise ImportError(
-                        "qualification repository source contains a symbolic "
-                        f"link or reparse point: {current_path}"
+            try:
+                source_bytes, source_identity = (
+                    _qualification_bootstrap_library_read_bytes_no_follow(
+                        lexical_path,
+                        True,
                     )
-            if not stat.S_ISREG(current_path.lstat().st_mode):
-                raise ImportError(
-                    "qualification repository source is not a regular file: "
-                    f"{current_path}"
                 )
-            return super().get_data(lexical_path)
+            except (
+                _QualificationBootstrapLibraryError,
+                OSError,
+                ValueError,
+            ) as exc:
+                raise ImportError(
+                    "qualification repository source cannot be read without "
+                    f"following links: {lexical_path}"
+                ) from exc
+            reviewed_sources = _QUALIFICATION_REVIEWED_REPO_SOURCE_BYTES
+            reviewed_identities = (
+                _QUALIFICATION_REVIEWED_REPO_SOURCE_IDENTITIES
+            )
+            reviewed_bytes = (
+                reviewed_sources.get(normalized_path)
+                if reviewed_sources is not None
+                else None
+            )
+            reviewed_identity = (
+                reviewed_identities.get(normalized_path)
+                if reviewed_identities is not None
+                else None
+            )
+            if (
+                type(reviewed_bytes) is not bytes
+                or type(reviewed_identity) is not tuple
+                or len(reviewed_identity) != 3
+                or any(type(value) is not int for value in reviewed_identity)
+            ):
+                raise ImportError(
+                    "qualification repository source is not bound to reviewed "
+                    f"bytes: {lexical_path}"
+                )
+            if source_bytes != reviewed_bytes:
+                raise ImportError(
+                    "qualification repository source does not match reviewed "
+                    f"bytes: {lexical_path}"
+                )
+            if source_identity != reviewed_identity:
+                raise ImportError(
+                    "qualification repository source identity does not match "
+                    f"reviewed file: {lexical_path}"
+                )
+            return source_bytes
 
     def source_only_path_hook(path_value: str):
         if not is_repo_path(path_value):
@@ -934,6 +977,70 @@ if _QUALIFICATION_CLI_REQUESTED:
 
 class _QualificationBootstrapError(RuntimeError):
     pass
+
+
+def _qualification_bind_reviewed_repo_source_bytes(
+    repo_root: Path,
+    reviewed_sources: Mapping[
+        str,
+        tuple[bytes, tuple[int, int, int]],
+    ],
+) -> None:
+    lexical_root = os.path.normcase(os.path.abspath(repo_root))
+    try:
+        source_items = tuple(reviewed_sources.items())
+    except (AttributeError, TypeError, ValueError) as exc:
+        raise _QualificationBootstrapError(
+            "qualification bootstrap reviewed source bindings are invalid"
+        ) from exc
+    normalized_sources = {}
+    normalized_identities = {}
+    for path_value, source_binding in source_items:
+        try:
+            normalized_path = os.path.normcase(
+                os.path.abspath(os.fspath(path_value))
+            )
+            contained = (
+                os.path.commonpath((lexical_root, normalized_path))
+                == lexical_root
+            )
+        except (OSError, TypeError, ValueError) as exc:
+            raise _QualificationBootstrapError(
+                "qualification bootstrap reviewed source binding path is invalid"
+            ) from exc
+        if type(source_binding) is not tuple or len(source_binding) != 2:
+            raise _QualificationBootstrapError(
+                "qualification bootstrap reviewed source binding is invalid"
+            )
+        source_bytes, source_identity = source_binding
+        if (
+            not contained
+            or type(source_bytes) is not bytes
+            or type(source_identity) is not tuple
+            or len(source_identity) != 3
+            or any(type(value) is not int for value in source_identity)
+        ):
+            raise _QualificationBootstrapError(
+                "qualification bootstrap reviewed source binding is invalid"
+            )
+        if normalized_path in normalized_sources:
+            raise _QualificationBootstrapError(
+                "qualification bootstrap reviewed source binding is duplicated"
+            )
+        normalized_sources[normalized_path] = source_bytes
+        normalized_identities[normalized_path] = source_identity
+    if not normalized_sources:
+        raise _QualificationBootstrapError(
+            "qualification bootstrap reviewed source bindings are empty"
+        )
+    global _QUALIFICATION_REVIEWED_REPO_SOURCE_BYTES
+    global _QUALIFICATION_REVIEWED_REPO_SOURCE_IDENTITIES
+    _QUALIFICATION_REVIEWED_REPO_SOURCE_BYTES = MappingProxyType(
+        normalized_sources
+    )
+    _QUALIFICATION_REVIEWED_REPO_SOURCE_IDENTITIES = MappingProxyType(
+        normalized_identities
+    )
 
 
 _QUALIFICATION_BOOTSTRAP_GIT = Path(r"C:\Program Files\Git\cmd\git.exe")
@@ -1273,7 +1380,7 @@ def _qualification_bootstrap_validate_reviewed_source_bytes(
     repo_root: Path,
     git_root: Path,
     review_commit: str,
-) -> None:
+) -> dict[str, tuple[bytes, tuple[int, int, int]]]:
     tree_raw = _qualification_bootstrap_git_output(
         repo_root,
         git_root,
@@ -1332,6 +1439,7 @@ def _qualification_bootstrap_validate_reviewed_source_bytes(
                     "are forbidden"
                 )
 
+        reviewed_source_bindings = {}
         allowed_attribute_tokens = {
             "-text",
             "eol=crlf",
@@ -1350,12 +1458,29 @@ def _qualification_bootstrap_validate_reviewed_source_bytes(
                 expected_kind="file",
             )
             try:
-                source_bytes = source_path.read_bytes()
-            except OSError as exc:
+                source_bytes, source_identity = (
+                    _qualification_bootstrap_library_read_bytes_no_follow(
+                        os.fspath(source_path),
+                        True,
+                    )
+                )
+            except (_QualificationBootstrapLibraryError, OSError) as exc:
                 raise _QualificationBootstrapError(
                     "cannot read qualification bootstrap reviewed source bytes: "
                     f"{relative_path}: {exc}"
                 ) from exc
+            normalized_source_path = os.path.normcase(
+                os.path.abspath(source_path)
+            )
+            if normalized_source_path in reviewed_source_bindings:
+                raise _QualificationBootstrapError(
+                    "qualification bootstrap reviewed source path is duplicated: "
+                    f"{relative_path}"
+                )
+            reviewed_source_bindings[normalized_source_path] = (
+                source_bytes,
+                source_identity,
+            )
             if source_path.name.casefold() == ".gitattributes":
                 raw_object_id = hashlib.sha1(
                     b"blob "
@@ -1413,6 +1538,7 @@ def _qualification_bootstrap_validate_reviewed_source_bytes(
                     "qualification bootstrap reviewed source bytes changed: "
                     f"{relative_path}"
                 )
+        return reviewed_source_bindings
     except UnicodeDecodeError as exc:
         raise _QualificationBootstrapError(
             f"qualification bootstrap review tree path is not UTF-8: {exc}"
@@ -1423,7 +1549,7 @@ def _qualification_bootstrap_validate_source(
     repo_root: Path,
     *,
     expected_review_commit: str,
-) -> None:
+) -> dict[str, tuple[bytes, tuple[int, int, int]]]:
     repo_root = _qualification_bootstrap_require_path(
         repo_root,
         "repository root",
@@ -1444,10 +1570,12 @@ def _qualification_bootstrap_validate_source(
         raise _QualificationBootstrapError(
             "qualification bootstrap HEAD does not match the review commit"
         )
-    _qualification_bootstrap_validate_reviewed_source_bytes(
-        repo_root,
-        git_root,
-        expected_review_commit,
+    reviewed_source_bindings = (
+        _qualification_bootstrap_validate_reviewed_source_bytes(
+            repo_root,
+            git_root,
+            expected_review_commit,
+        )
     )
     status = _qualification_bootstrap_git_output(
         repo_root,
@@ -1507,6 +1635,7 @@ def _qualification_bootstrap_validate_source(
             "qualification bootstrap source has untracked executable paths: "
             + ", ".join(sorted(untracked_executable))
         )
+    return reviewed_source_bindings
 
 
 def _qualification_bootstrap_verify_source(
@@ -1516,9 +1645,13 @@ def _qualification_bootstrap_verify_source(
     expected_review_commit: str,
 ) -> dict[str, object]:
     try:
-        _qualification_bootstrap_validate_source(
+        reviewed_source_bindings = _qualification_bootstrap_validate_source(
             repo_root,
             expected_review_commit=expected_review_commit,
+        )
+        _qualification_bind_reviewed_repo_source_bytes(
+            repo_root,
+            reviewed_source_bindings,
         )
     except BaseException as exc:
         code = (
