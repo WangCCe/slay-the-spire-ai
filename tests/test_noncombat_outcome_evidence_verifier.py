@@ -7,6 +7,7 @@ import os
 import shutil
 import subprocess
 import sys
+import tempfile
 from copy import deepcopy
 from pathlib import Path
 
@@ -1413,6 +1414,16 @@ def test_qualification_bootstrap_terminal_source_only_replay_without_producer(
     tmp_path,
 ):
     fixture = _build_source_only_v3_top_level_fixture(tmp_path)
+    state_home = fixture["result_path"].parents[1]
+    repo_root = fixture["verifier_path"].parents[1]
+    basetemp = tmp_path.parent.resolve()
+    assert state_home.parent == basetemp
+    assert repo_root.parent == basetemp
+    assert state_home.name.startswith("s-")
+    assert repo_root.name.startswith("g-")
+    assert len(state_home.name) <= 12
+    assert len(repo_root.name) <= 12
+    assert state_home != repo_root
     verifier_path = fixture["verifier_path"]
     vector_path = tmp_path / "source-only-terminal-vector.json"
     vector_path.write_text(
@@ -2085,11 +2096,14 @@ def _portable_history_isolation(
 
 
 def _build_source_only_v3_top_level_fixture(tmp_path):
-    replay_home = (tmp_path / "source-only-v3").resolve()
+    replay_home = Path(
+        tempfile.mkdtemp(prefix="s-", dir=tmp_path.parent)
+    ).resolve()
     qualification_root = replay_home / "qualification-root"
     qualification_root.mkdir(parents=True)
-    repo_root = replay_home / "repo"
-    repo_root.mkdir()
+    repo_root = Path(
+        tempfile.mkdtemp(prefix="g-", dir=tmp_path.parent)
+    ).resolve()
     _copy_registered_sources(repo_root)
 
     game_root = replay_home / "game"
