@@ -1,0 +1,15 @@
+2026-07-16 23:53:22,720 - INFO - Startup: main=D:\PycharmProjects\slay-the-spire-ai\main.py python=D:\anaconda\envs\stsai\python.exe cwd=D:\SteamLibrary\steamapps\common\SlayTheSpire pid=47336
+2026-07-16 23:53:22,722 - INFO - Agent type set to: combat_rl
+2026-07-16 23:53:22,725 - INFO - Found latest checkpoint: checkpoints\rl_combat_model_ep9_steps11848.pth
+2026-07-16 23:53:22,726 - INFO -   Modified: 1780512290.0352542
+2026-07-16 23:53:22,727 - INFO - Evaluation mode auto-loading latest checkpoint: checkpoints\rl_combat_model_ep9_steps11848.pth
+2026-07-16 23:53:22,729 - INFO - RL Agent evaluation mode enabled
+2026-07-16 23:53:22,729 - INFO -   Epsilon: 0.050
+2026-07-16 23:53:22,730 - INFO - Loading RL model from: checkpoints\rl_combat_model_ep9_steps11848.pth
+2026-07-16 23:53:22,731 - INFO - Ascension level set to 0
+2026-07-16 23:53:22,733 - INFO - Max games set to 25
+2026-07-16 23:53:22,733 - INFO - Elite route mode: conservative
+2026-07-16 23:53:22,793 - INFO - Creating CommunicationMod coordinator
+2026-07-16 23:53:22,796 - INFO - CommunicationMod coordinator created; signaling ready
+2026-07-16 23:53:22,797 - INFO - CommunicationMod ready signal queued; creating agent (stdin reader deferred=False)
+2026-07-16 23:53:52,859 - CRITICAL - Pre-agent runtime startup rejected: StudyHandshakeError: child readiness deadline exceeded

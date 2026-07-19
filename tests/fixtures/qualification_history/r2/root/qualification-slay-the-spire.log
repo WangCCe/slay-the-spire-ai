@@ -1,0 +1,235 @@
+15:53:20.909 INFO basemod.BaseMod> initializeGson
+15:53:20.943 INFO basemod.BaseMod> initializeTypeMaps
+15:53:20.947 INFO basemod.BaseMod> Registered MonsterStrings
+15:53:20.952 INFO basemod.BaseMod> Registered PowerStrings
+15:53:20.954 INFO basemod.BaseMod> Registered CardStrings
+15:53:20.954 INFO basemod.BaseMod> Registered RelicStrings
+15:53:20.955 INFO basemod.BaseMod> Registered EventStrings
+15:53:20.964 INFO basemod.BaseMod> Registered PotionStrings
+15:53:20.965 INFO basemod.BaseMod> Registered CreditStrings
+15:53:20.965 INFO basemod.BaseMod> Registered TutorialStrings
+15:53:20.967 INFO basemod.BaseMod> Registered KeywordStrings
+15:53:20.979 INFO basemod.BaseMod> Registered ScoreBonusStrings
+15:53:20.981 INFO basemod.BaseMod> Registered CharacterStrings
+15:53:20.997 INFO basemod.BaseMod> Registered UIStrings
+15:53:20.999 INFO basemod.BaseMod> Registered OrbStrings
+15:53:21.000 INFO basemod.BaseMod> Registered StanceStrings
+15:53:21.001 INFO basemod.BaseMod> Registered RunModStrings
+15:53:21.013 INFO basemod.BaseMod> Registered BlightStrings
+15:53:21.013 INFO basemod.BaseMod> Registered AchievementStrings
+15:53:21.014 INFO basemod.BaseMod> initializePowerMap
+15:53:21.946 INFO basemod.BaseMod> initializeUnderscorePowerIDs
+15:53:21.974 ERROR basemod.DevConsole> Failed to load dev console history: java.nio.file.NoSuchFileException: C:\Users\20571\AppData\Local\ModTheSpire\BaseMod\console-history.txt
+15:53:22.798 INFO communicationmod.CommunicationMod> Received message from external process: ready
+15:53:22.825 INFO desktop.DesktopLauncher> time: 1784217202825
+15:53:22.826 INFO desktop.DesktopLauncher> version: 2022-12-18
+15:53:22.827 INFO desktop.DesktopLauncher> libgdx:  1.9.5
+15:53:22.828 INFO desktop.DesktopLauncher> default_locale: zh_CN
+15:53:22.829 INFO desktop.DesktopLauncher> default_charset: GBK
+15:53:22.830 INFO desktop.DesktopLauncher> default_encoding: GBK
+15:53:22.830 INFO desktop.DesktopLauncher> java_version: 1.8.0_144
+15:53:22.830 INFO desktop.DesktopLauncher> os_arch: amd64
+15:53:22.831 INFO desktop.DesktopLauncher> os_name: Windows 10
+15:53:22.832 INFO desktop.DesktopLauncher> os_version: 10.0
+15:53:22.835 INFO core.SystemStats> MEMORY STATS:
+Free Memory: 570Mb
+Max Memory: 7,250Mb
+Allocated Memory: 854Mb
+Unallocated Memory: 6,395Mb
+Total Free Memory: 6,965Mb
+Used Memory: 284Mb
+
+15:53:22.837 INFO core.SystemStats> DISK STATS:
+Total Space: 1,953,511Mb
+Usable Space: 533,358Mb
+Free Space: 533,358Mb
+
+15:53:22.844 INFO core.DisplayConfig> Reading info.displayconfig
+15:53:22.872 INFO core.DisplayConfig> DisplayConfig successfully read.
+15:53:22.874 INFO desktop.DesktopLauncher> [WINDOWED_MODE]
+15:53:22.875 INFO desktop.DesktopLauncher> Settings successfully loaded
+15:53:22.876 INFO desktop.DesktopLauncher> Launching application...
+15:53:25.391 INFO ststwitch.TwitchConfig> The 'twitchconfig.txt' already exists, not overwriting it.
+15:53:25.395 INFO core.CardCrawlGame> DistributorPlatform=steam
+15:53:25.396 INFO core.CardCrawlGame> isModded=true
+15:53:25.396 INFO core.CardCrawlGame> isBeta=false
+15:53:25.605 INFO steam.SteamIntegration> [FAILURE] Steam API failed to initialize correctly.
+15:53:25.611 INFO core.CardCrawlGame> No migration
+15:53:25.660 INFO core.Settings> Initializing display settings...
+15:53:25.661 INFO core.DisplayConfig> Reading info.displayconfig
+15:53:25.663 INFO core.DisplayConfig> DisplayConfig successfully read.
+15:53:25.664 INFO core.Settings> Initializing sound settings...
+15:53:25.683 INFO core.Settings> Initializing game settings...
+15:53:25.803 INFO localization.LocalizedStrings> Loc Strings load time: 62ms
+15:53:25.804 INFO basemod.BaseMod> begin editing localization strings
+15:53:25.811 INFO basemod.BaseMod> loadJsonStrings: com.megacrit.cardcrawl.localization.RunModStrings
+15:53:25.817 INFO basemod.BaseMod> loadJsonStrings: com.megacrit.cardcrawl.localization.UIStrings
+15:53:25.818 INFO basemod.BaseMod> loadJsonStrings: com.megacrit.cardcrawl.localization.UIStrings
+15:53:25.868 INFO audio.MusicMaster> Music Volume: 0.5
+15:53:25.873 INFO audio.SoundMaster> Sound Effect Volume: 0.5
+15:53:25.873 INFO audio.SoundMaster> Loaded 368 Sound Effects
+15:53:25.874 INFO audio.SoundMaster> SFX load time: 3ms
+15:53:25.875 INFO basemod.BaseMod> begin adding custom sounds
+15:53:25.876 INFO basemod.BaseMod> Added 0 sounds
+15:53:28.282 INFO cards.AbstractCard> Card Image load time: 2394ms
+15:53:28.284 INFO basemod.BaseMod> editing keywords
+15:53:30.348 INFO helpers.ImageMaster> Texture load time: 2060ms
+15:53:31.261 INFO helpers.FontHelper> Font load time: 740ms
+15:53:31.418 INFO unlock.UnlockTracker> RED UNLOCKS:   9/9
+15:53:31.420 INFO unlock.UnlockTracker> GREEN UNLOCKS: 9/9
+15:53:31.421 INFO unlock.UnlockTracker> BLUE UNLOCKS: 9/9
+15:53:31.421 INFO unlock.UnlockTracker> PURPLE UNLOCKS: 6/9
+15:53:31.421 INFO unlock.UnlockTracker> RELIC UNLOCKS: 12/24
+15:53:31.548 INFO unlock.UnlockTracker> CARDS SEEN:    358/0
+15:53:31.607 INFO unlock.UnlockTracker> RELICS SEEN:   168/0
+15:53:31.609 INFO basemod.BaseMod> publish post refresh - refreshing unlocks
+15:53:31.611 INFO basemod.BaseMod> begin editing cards
+15:53:32.460 INFO panels.TopPanel> Twitch Integration enabled due to presence of 'twitch.properties` file.
+15:53:32.480 INFO panels.TopPanel> Not starting twitch integration because enabled=false
+15:53:33.213 INFO core.DisplayConfig> Reading info.displayconfig
+15:53:33.215 INFO core.DisplayConfig> DisplayConfig successfully read.
+15:53:33.596 INFO helpers.CardLibrary> Card load time: 1985ms with 370 cards
+15:53:33.597 INFO basemod.BaseMod> begin editing relics
+15:53:33.973 INFO helpers.RelicLibrary> Relic load time: 374ms
+15:53:33.974 INFO input.InputHelper> Setting input processor to Scroller
+15:53:34.046 INFO unlock.UnlockTracker> Blue Candle should be unlocked.
+15:53:34.046 INFO unlock.UnlockTracker> Dead Branch should be unlocked.
+15:53:34.047 INFO unlock.UnlockTracker> Singing Bowl should be unlocked.
+15:53:34.048 INFO unlock.UnlockTracker> Havoc should be unlocked.
+15:53:34.049 INFO unlock.UnlockTracker> Sentinel should be unlocked.
+15:53:34.050 INFO unlock.UnlockTracker> Exhume should be unlocked.
+15:53:34.051 INFO unlock.UnlockTracker> Wild Strike should be unlocked.
+15:53:34.051 INFO unlock.UnlockTracker> Evolve should be unlocked.
+15:53:34.052 INFO unlock.UnlockTracker> Immolate should be unlocked.
+15:53:34.053 INFO unlock.UnlockTracker> Omamori should be unlocked.
+15:53:34.054 INFO unlock.UnlockTracker> Prayer Wheel should be unlocked.
+15:53:34.056 INFO unlock.UnlockTracker> Shovel should be unlocked.
+15:53:34.057 INFO unlock.UnlockTracker> Heavy Blade should be unlocked.
+15:53:34.058 INFO unlock.UnlockTracker> Spot Weakness should be unlocked.
+15:53:34.058 INFO unlock.UnlockTracker> Limit Break should be unlocked.
+15:53:34.059 INFO unlock.UnlockTracker> Concentrate should be unlocked.
+15:53:34.060 INFO unlock.UnlockTracker> Setup should be unlocked.
+15:53:34.060 INFO unlock.UnlockTracker> Grand Finale should be unlocked.
+15:53:34.062 INFO unlock.UnlockTracker> Art of War should be unlocked.
+15:53:34.063 INFO unlock.UnlockTracker> The Courier should be unlocked.
+15:53:34.063 INFO unlock.UnlockTracker> Pandora's Box should be unlocked.
+15:53:34.064 INFO unlock.UnlockTracker> Cloak And Dagger should be unlocked.
+15:53:34.065 INFO unlock.UnlockTracker> Accuracy should be unlocked.
+15:53:34.065 INFO unlock.UnlockTracker> Storm of Steel should be unlocked.
+15:53:34.067 INFO unlock.UnlockTracker> Du-Vu Doll should be unlocked.
+15:53:34.068 INFO unlock.UnlockTracker> Smiling Mask should be unlocked.
+15:53:34.068 INFO unlock.UnlockTracker> Tiny Chest should be unlocked.
+15:53:34.070 INFO unlock.UnlockTracker> Bane should be unlocked.
+15:53:34.071 INFO unlock.UnlockTracker> Catalyst should be unlocked.
+15:53:34.071 INFO unlock.UnlockTracker> Corpse Explosion should be unlocked.
+15:53:34.073 INFO unlock.UnlockTracker> Hyperbeam should be unlocked.
+15:53:34.073 INFO unlock.UnlockTracker> Recycle should be unlocked.
+15:53:34.074 INFO unlock.UnlockTracker> Core Surge should be unlocked.
+15:53:34.075 INFO unlock.UnlockTracker> Turbo should be unlocked.
+15:53:34.076 INFO unlock.UnlockTracker> Sunder should be unlocked.
+15:53:34.076 INFO unlock.UnlockTracker> Meteor Strike should be unlocked.
+15:53:34.078 INFO unlock.UnlockTracker> Rebound should be unlocked.
+15:53:34.079 INFO unlock.UnlockTracker> Undo should be unlocked.
+15:53:34.080 INFO unlock.UnlockTracker> Echo Form should be unlocked.
+15:53:34.081 INFO unlock.UnlockTracker> ForeignInfluence should be unlocked.
+15:53:34.082 INFO unlock.UnlockTracker> Alpha should be unlocked.
+15:53:34.082 INFO unlock.UnlockTracker> MentalFortress should be unlocked.
+15:53:34.085 INFO unlock.UnlockTracker> Prostrate should be unlocked.
+15:53:34.086 INFO unlock.UnlockTracker> Blasphemy should be unlocked.
+15:53:34.086 INFO unlock.UnlockTracker> Devotion should be unlocked.
+15:53:34.108 INFO steamInput.SteamInputHelper> Steam isn't running? SteamInput is disabled.
+15:53:34.111 INFO integrations.SteelSeries> enabled=false
+15:53:34.128 INFO basemod.BaseMod> postCreateStartingRelics for: IRONCLAD
+15:53:34.128 INFO basemod.BaseMod> postCreateStartingRelics adding [ Burning Blood ]
+15:54:00.542 INFO basemod.BaseMod> postCreateStartingRelics for: THE_SILENT
+15:54:00.543 INFO basemod.BaseMod> postCreateStartingRelics adding [ Ring of the Snake ]
+15:54:01.422 INFO basemod.BaseMod> postCreateStartingRelics for: DEFECT
+15:54:01.423 INFO basemod.BaseMod> postCreateStartingRelics adding [ Cracked Core ]
+15:54:01.788 INFO basemod.BaseMod> postCreateStartingRelics for: WATCHER
+15:54:01.789 INFO basemod.BaseMod> postCreateStartingRelics adding [ PureWater ]
+15:54:01.963 INFO basemod.BaseMod> begin editing characters
+15:54:01.977 INFO basemod.BaseMod> publishPostInitialize
+15:54:02.050 INFO basemod.BaseMod> registerModBadge : BaseMod
+15:54:02.051 INFO basemod.ModBadge> initialized mod badge for: BaseMod
+15:54:02.051 INFO basemod.ModBadge> setup hooks for BaseMod mod badge
+15:54:02.055 INFO basemod.BaseMod> initializeUnderscoreCardIDs
+15:54:02.056 INFO basemod.BaseMod> initializeUnderscorePotionIDs
+15:54:02.057 INFO basemod.BaseMod> initializeUnderscoreEventIDs
+15:54:02.057 INFO basemod.BaseMod> initializeUnderscoreRelicIDs
+15:54:02.058 INFO basemod.BaseMod> initializeEncounters
+15:54:02.220 INFO basemod.BaseMod> registerModBadge : Communication Mod
+15:54:02.220 INFO basemod.ModBadge> initialized mod badge for: Communication Mod
+15:54:02.221 INFO basemod.ModBadge> setup hooks for Communication Mod mod badge
+15:54:02.253 INFO basemod.BaseMod> registerModBadge : Spire Exporter
+15:54:02.253 INFO basemod.ModBadge> initialized mod badge for: Spire Exporter
+15:54:02.255 INFO basemod.ModBadge> setup hooks for Spire Exporter mod badge
+15:54:02.262 INFO controller.CInputHelper> [CONTROLLER] Utilizing DirectInput
+15:54:03.042 INFO controller.CInputHelper> [CONTROLLER] No controllers detected
+15:54:03.046 INFO communicationmod.CommunicationMod> Child process has died...
+15:54:03.046 INFO communicationmod.DataWriter> Communications writing thread interrupted.
+15:54:03.671 INFO stats.StatsScreen> Loading character stats.
+15:54:04.390 INFO steam.SteamIntegration> unlockAchievement: SHRUG_IT_OFF
+15:54:04.390 INFO steam.SteamIntegration> unlockAchievement: PURITY
+15:54:04.390 INFO steam.SteamIntegration> unlockAchievement: COME_AT_ME
+15:54:04.391 INFO steam.SteamIntegration> unlockAchievement: THE_PACT
+15:54:04.391 INFO steam.SteamIntegration> unlockAchievement: ADRENALINE
+15:54:04.391 INFO steam.SteamIntegration> unlockAchievement: POWERFUL
+15:54:04.391 INFO steam.SteamIntegration> unlockAchievement: JAXXED
+15:54:04.393 INFO steam.SteamIntegration> unlockAchievement: IMPERVIOUS
+15:54:04.393 INFO steam.SteamIntegration> unlockAchievement: PLAGUE
+15:54:04.393 INFO steam.SteamIntegration> unlockAchievement: NINJA
+15:54:04.394 INFO steam.SteamIntegration> unlockAchievement: INFINITY
+15:54:04.394 INFO steam.SteamIntegration> unlockAchievement: DONUT
+15:54:04.395 INFO steam.SteamIntegration> unlockAchievement: PERFECT
+15:54:04.395 INFO steam.SteamIntegration> unlockAchievement: ASCEND_0
+15:54:04.395 INFO steam.SteamIntegration> unlockAchievement: ASCEND_10
+15:54:04.395 INFO steam.SteamIntegration> unlockAchievement: TRANSIENT
+15:54:04.396 INFO steam.SteamIntegration> unlockAchievement: GUARDIAN
+15:54:04.396 INFO steam.SteamIntegration> unlockAchievement: GHOST_GUARDIAN
+15:54:04.397 INFO steam.SteamIntegration> unlockAchievement: SLIME_BOSS
+15:54:04.397 INFO steam.SteamIntegration> unlockAchievement: AUTOMATON
+15:54:04.398 INFO steam.SteamIntegration> unlockAchievement: COLLECTOR
+15:54:04.398 INFO steam.SteamIntegration> unlockAchievement: CHAMP
+15:54:04.398 INFO steam.SteamIntegration> unlockAchievement: CROW
+15:54:04.398 INFO steam.SteamIntegration> unlockAchievement: SHAPES
+15:54:04.399 INFO steam.SteamIntegration> unlockAchievement: TIME_EATER
+15:54:04.400 INFO steam.SteamIntegration> unlockAchievement: RUBY
+15:54:04.401 INFO steam.SteamIntegration> unlockAchievement: EMERALD
+15:54:04.401 INFO steam.SteamIntegration> unlockAchievement: SAPPHIRE
+15:54:04.402 INFO steam.SteamIntegration> unlockAchievement: AMETHYST
+15:54:04.402 INFO steam.SteamIntegration> unlockAchievement: RUBY_PLUS
+15:54:04.507 INFO basemod.BaseMod> publishAddCustomModeMods
+15:54:04.512 INFO core.DisplayConfig> Reading info.displayconfig
+15:54:04.514 INFO core.DisplayConfig> DisplayConfig successfully read.
+15:54:04.522 DEBUG steam.SteamIntegration> Setting Rich Presence: Main Menu
+15:54:04.879 INFO unlock.UnlockTracker> RED UNLOCKS:   9/9
+15:54:04.880 INFO unlock.UnlockTracker> GREEN UNLOCKS: 9/9
+15:54:04.881 INFO unlock.UnlockTracker> BLUE UNLOCKS: 9/9
+15:54:04.881 INFO unlock.UnlockTracker> PURPLE UNLOCKS: 6/9
+15:54:04.881 INFO unlock.UnlockTracker> RELIC UNLOCKS: 12/24
+15:54:04.883 INFO unlock.UnlockTracker> CARDS SEEN:    358/370
+15:54:04.884 INFO unlock.UnlockTracker> RELICS SEEN:   168/178
+15:54:04.884 INFO UnlockTracker.CountModdedUnlockCards> Counting modded unlocks.
+15:54:04.885 INFO basemod.BaseMod> publish post refresh - refreshing unlocks
+15:54:04.886 INFO UnlockTracker.CountModdedUnlockCards> Counting modded unlocks.
+15:54:04.886 INFO compendium.CardLibraryScreen> Initializing card library screen.
+15:54:04.899 INFO basemod.BaseMod> postCreateStartingRelics for: IRONCLAD
+15:54:04.901 INFO basemod.BaseMod> postCreateStartingRelics adding [ Burning Blood ]
+15:54:05.694 INFO characters.CharacterManager> Successfully recreated IRONCLAD
+15:54:05.695 INFO basemod.BaseMod> postCreateStartingRelics for: THE_SILENT
+15:54:05.696 INFO basemod.BaseMod> postCreateStartingRelics adding [ Ring of the Snake ]
+15:54:05.794 INFO characters.CharacterManager> Successfully recreated THE_SILENT
+15:54:05.794 INFO basemod.BaseMod> postCreateStartingRelics for: DEFECT
+15:54:05.795 INFO basemod.BaseMod> postCreateStartingRelics adding [ Cracked Core ]
+15:54:05.875 INFO characters.CharacterManager> Successfully recreated DEFECT
+15:54:05.876 INFO basemod.BaseMod> postCreateStartingRelics for: WATCHER
+15:54:05.876 INFO basemod.BaseMod> postCreateStartingRelics adding [ PureWater ]
+15:54:05.969 INFO characters.CharacterManager> Successfully recreated WATCHER
+15:54:05.981 INFO saveAndContinue.SaveAndContinue> IRONCLAD save does NOT exist!
+15:54:05.983 INFO saveAndContinue.SaveAndContinue> THE_SILENT save does NOT exist!
+15:54:05.983 INFO saveAndContinue.SaveAndContinue> DEFECT save does NOT exist!
+15:54:05.984 INFO saveAndContinue.SaveAndContinue> WATCHER save does NOT exist!
+15:55:20.812 INFO core.CardCrawlGame> PAUSE()
+15:55:22.162 INFO core.CardCrawlGame> RESUME()
+15:55:22.942 INFO core.CardCrawlGame> PAUSE()
+15:55:28.927 INFO core.CardCrawlGame> RESUME()

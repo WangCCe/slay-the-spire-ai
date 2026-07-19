@@ -1,0 +1,14 @@
+2026-07-16 21:45:29,647 - INFO - Startup: main=D:\PycharmProjects\slay-the-spire-ai\main.py python=D:\anaconda\envs\stsai\python.exe cwd=D:\SteamLibrary\steamapps\common\SlayTheSpire pid=55540
+2026-07-16 21:45:29,648 - INFO - Agent type set to: combat_rl
+2026-07-16 21:45:29,652 - INFO - Found latest checkpoint: checkpoints\rl_combat_model_ep9_steps11848.pth
+2026-07-16 21:45:29,653 - INFO -   Modified: 1780512290.0352542
+2026-07-16 21:45:29,653 - INFO - Evaluation mode auto-loading latest checkpoint: checkpoints\rl_combat_model_ep9_steps11848.pth
+2026-07-16 21:45:29,654 - INFO - RL Agent evaluation mode enabled
+2026-07-16 21:45:29,654 - INFO -   Epsilon: 0.050
+2026-07-16 21:45:29,655 - INFO - Loading RL model from: checkpoints\rl_combat_model_ep9_steps11848.pth
+2026-07-16 21:45:29,656 - INFO - Ascension level set to 0
+2026-07-16 21:45:29,656 - INFO - Max games set to 25
+2026-07-16 21:45:29,657 - INFO - Elite route mode: conservative
+2026-07-16 21:45:29,712 - INFO - Creating CommunicationMod coordinator
+2026-07-16 21:45:29,714 - INFO - CommunicationMod coordinator created; signaling ready
+2026-07-16 21:45:29,715 - INFO - CommunicationMod ready signal queued; creating agent (stdin reader deferred=False)

@@ -1,0 +1,5 @@
+#Tue Jul 14 19:31:42 CST 2026
+verbose=false
+waitForProcess=true
+command="D\:/anaconda/envs/stsai/python.exe" "D\:/PycharmProjects/slay-the-spire-ai/scripts/run_training_batch.py" --eval --max-games 25 --phase conservative --restart-guidance --truncate-log-after-backup --decision-trace-path "D\:/SteamLibrary/steamapps/common/SlayTheSpire/ai_decision_trace_clean.jsonl" --sim-divergence-trace-path "D\:/SteamLibrary/steamapps/common/SlayTheSpire/sim_divergence_trace_clean.jsonl"
+runAtGameStart=true
