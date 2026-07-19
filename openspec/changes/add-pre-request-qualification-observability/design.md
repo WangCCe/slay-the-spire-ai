@@ -15,7 +15,7 @@ The current qualification protocol already provides exclusive active-request, at
 - Let an independent verifier identify the last completed stage or fixed failure class using qualification-root artifacts alone.
 - Bind a complete pre-request prefix into active-request handoff, terminal evidence, and independent attestation.
 - Preserve CommunicationMod stdin/stdout compatibility, request-bound isolation, no-retry behavior, and uniformly false study/training/policy authority for every incomplete prefix.
-- Preserve r1-r6 and all request/result v1/v2 bytes and replay behavior.
+- Preserve every actually available r1-r6 request/result/review/audit/report/root byte, explicitly preserve every unavailable artifact as absent, and keep evidence-derived classification separate from any externally reviewed governance disposition. Require complete public v1/v2 replay only when the preserved bundle contains every request, review, and Git anchor required by that public path.
 
 **Non-Goals:**
 
@@ -32,6 +32,8 @@ The current qualification protocol already provides exclusive active-request, at
 Every future launchable qualification request, review binding, and result will use v3 and will bind one `qualification-bootstrap-evidence-v1` contract. Request v3 will declare the guarded qualification root, fixed direct-child claim/stage/failure/handoff paths, ordered stage names, token derivation inputs, and authority rules. Result v3 will bind the observed bootstrap inventory, final stage hash, and handoff hash.
 
 Historical request/result v1/v2 parsing remains in a separate read-only verifier branch. The runner will reject those versions for a new launch.
+
+Historical compatibility is bounded by the bytes that survived. R1-r3 do not retain request, result, review, or audit bytes; r4 has no review commit; r6 records an audit hash without audit bytes; and source-only bundles may retain a governance retirement decision that is not derivable from root artifacts alone. Tests will therefore pin every available byte by path, size, and SHA-256, pin an explicit absence inventory, and record evidence-derived classification separately from the immutable governance disposition. They will invoke the complete public v1/v2 verifier only for bundles that preserve all required anchors. They must not render a substitute request, invent a review commit, reconstruct audit bytes from a hash, or report a governance decision as if it were root-derived evidence.
 
 Alternative considered: add optional observability fields to request v2. Rejected because optional fields would make the consumption boundary ambiguous and could permit a future launch to omit the new contract while still appearing v2-valid.
 
@@ -93,7 +95,7 @@ Alternative considered: treat bootstrap files as operator diagnostics outside in
 
 ### 7. Keep implementation and validation offline in this change
 
-Implementation will start from red unit and subprocess regressions, then add the producer contract, independent verifier branch, crash matrix, and historical replay. The change will not edit live CommunicationMod configuration or create a new qualification root. A separate reviewed amendment may prepare a future identity only after this change passes source-only review.
+Implementation will start from red unit and subprocess regressions, then add the producer contract, independent verifier branch, crash matrix, and evidence-bounded historical compatibility checks. The change will not edit live CommunicationMod configuration or create a new qualification root. A separate reviewed amendment may prepare a future identity only after this change passes source-only review.
 
 ## Risks / Trade-offs
 
@@ -103,12 +105,12 @@ Implementation will start from red unit and subprocess regressions, then add the
 - [The bootstrap command grows] -> Pass compact fixed anchors and a deterministic token, not request JSON or diagnostic text, and retain CommunicationMod-equivalent tokenization tests.
 - [Early diagnostics could expose sensitive state] -> Use fixed failure codes and bounded sanitized exception metadata; forbid environment values, stdout/stderr capture, gameplay outcomes, and arbitrary file content.
 - [Pure-stdlib publication duplicates an existing helper] -> Keep one minimal bootstrap primitive, test its bytes and path behavior directly, and reuse it after imports rather than maintaining divergent formats.
-- [v3 support could change historical classification] -> Isolate the v3 branch and require byte-for-byte r1-r6 replay fixtures before completion.
+- [v3 support could change historical evidence or blur a governance decision into root-derived proof] -> Isolate the v3 branch, require exact r1-r6 byte and absence inventories, keep evidence and governance classifications distinct, and run complete public replay only for historically complete bundles.
 - [A valid prefix can still lack exact root cause after abrupt termination] -> Report only the last independently completed stage; do not infer the in-progress operation or use offline timing as live proof.
 
 ## Migration Plan
 
-1. Add red schema, exclusive-claim, path-safety, canonical-chain, stream-silence, crash-prefix, handoff, authority, and historical-replay regressions.
+1. Add red schema, exclusive-claim, path-safety, canonical-chain, stream-silence, crash-prefix, handoff, authority, and historical byte/absence compatibility regressions.
 2. Implement the pure-stdlib bootstrap claim/stage primitive and v3 request construction/loading without changing v1/v2 historical readers.
 3. Integrate trusted-launcher, runner-entered, source, request, isolation, active-request, handoff, and terminal bindings while preserving the existing child ownership and restoration paths.
 4. Implement independent v3 prefix/terminal replay without importing producer result builders.

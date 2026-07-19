@@ -8,13 +8,13 @@ Future qualification identities need durable, request-bound stage evidence befor
 
 - Add a pure-stdlib pre-request evidence protocol with an exclusive claim, immutable hash-linked stage records, a request handoff, fixed failure classes, and independent prefix replay.
 - Treat the first successfully created claim as irreversible consumption of the qualification identity; any valid, partial, malformed, or corrupt prefix remains non-retryable and fail closed.
-- **BREAKING**: require every future launchable qualification to use qualification request/result/review-binding v3 and bootstrap-evidence v1. Historical v1/v2 evidence remains byte-preserved and read-only verifiable but cannot launch or qualify a replacement.
+- **BREAKING**: require every future launchable qualification to use qualification request/result/review-binding v3 and bootstrap-evidence v1. Every actually preserved historical v1/v2 byte and every recorded absence remains immutable and read-only verifiable; only a historical bundle that retains all request, review, and Git anchors is eligible for complete public replay, and no incomplete bundle may be reconstructed. Historical evidence cannot launch or qualify a replacement.
 - Bind the trusted launcher command to a deterministic launch token, claim path, ordered stage contract, reviewed runner SHA-256, request anchors, and review commit before the runner imports project code.
 - Extend the standalone verifier to classify the last independently supported pre-request stage, validate a complete v3 handoff and terminal chain, reject gaps or mutations, and preserve the existing all-false authority boundary for every incomplete prefix.
 - Add regression, subprocess crash-matrix, backward-compatibility, focused/full pytest, strict OpenSpec, byte, and source-only review gates.
 - Do not change CommunicationMod, increase a timeout, retry r6, prepare r7, launch the game, collect study evidence, tune policy, or start training in this change.
 
-Success means every injected failure after claim creation is classified from qualification-root artifacts alone, a second invocation is rejected before active request or child launch, a complete fixture independently verifies, r1-r6 replay unchanged, and protected gameplay/study isolation remains untouched.
+Success means every injected failure after claim creation is classified from qualification-root artifacts alone, a second invocation is rejected before active request or child launch, a complete fixture independently verifies, the r1-r6 byte/absence inventory and separately recorded evidence and governance classifications remain unchanged, and protected gameplay/study isolation remains untouched.
 
 ## Capabilities
 

@@ -2,7 +2,7 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Make every future qualification identity durably consumed and independently diagnosable from trusted-launcher entry through active-request handoff, while preserving stream silence, one-shot behavior, historical replay, and uniformly closed study/training/policy authority.
+**Goal:** Make every future qualification identity durably consumed and independently diagnosable from trusted-launcher entry through active-request handoff, while preserving stream silence, one-shot behavior, evidence-bounded historical compatibility, and uniformly closed study/training/policy authority.
 
 **Architecture:** Request, result, and review-binding v3 bind one bootstrap-evidence v1 contract. A pure-stdlib publish-once primitive creates a claim before runner execution, then five immutable hash-linked stage files and one request-bound handoff. The independent verifier reconstructs the token, guarded paths, canonical bytes, chain, and lifecycle without importing producer builders; historical v1/v2 evidence stays on an unchanged read-only branch.
 
@@ -18,7 +18,7 @@
 - Keep qualification stdout and stderr empty on every success and failure path before child stream ownership transfers.
 - Treat every entry at the claim path, including partial or malformed bytes, as permanent identity consumption. Never delete, truncate, replace, repair, complete, downgrade, or retry it.
 - Publish bootstrap files only as fixed direct children of the guarded qualification root. Reject traversal, alternate data streams, Win32 alias components, symlinks, reparse points, non-regular entries, identity changes, and unexpected files.
-- Preserve all r1-r6 request/result/review/audit/report bytes and their existing v1/v2 classifications. New launch execution accepts v3 only.
+- Preserve every available r1-r6 request/result/review/audit/report/root byte and every recorded absence. Keep evidence-derived classification separate from externally reviewed governance disposition; require complete public v1/v2 replay only for bundles retaining every required request, review, and Git anchor. Never synthesize missing history. New launch execution accepts v3 only.
 - Claim, stages, failure, handoff, terminal, and verifier output are evidence only. Every live, study, collection, causal, policy, training, and promotion authority field remains false.
 - Never use current worktree bytes as substitutes for externally anchored S, R, request, runner, result, or historical evidence.
 - Stage publication records checks that have already completed; it must not repeat Git, source, inventory, isolation, restoration, or child-liveness work.
@@ -754,9 +754,9 @@ Start from one literal valid v3 claim/stages/active-request/handoff/attempt/read
 
 Assert the verifier does not call producer record, request, result, review-binding, inventory, or token builders. A test should fail if the producer module appears in `sys.modules` during source-only verifier replay.
 
-- [ ] **Step 2: Add immutable historical fixture tests**
+- [ ] **Step 2: Add immutable historical byte-and-absence fixture tests**
 
-Use preserved r1-r6 request/result/audit/report bytes from their reviewed Git commits or literal test vectors. For every fixture, record the existing schema, byte SHA-256, status, consumed/retry semantics, hashes, and authority output. Assert v3 implementation does not change a byte or classification and never synthesizes a bootstrap field for historical evidence.
+Use every actually preserved r1-r6 request/result/review/audit/report/root byte from reviewed Git commits or literal tracked fixtures. For every fixture, pin the complete available-artifact inventory by relative path, byte size, and SHA-256 and pin every expected absence. Record evidence-derived classification separately from the immutable governance disposition, including consumed/retry semantics, hashes, launchability, and authority output. Invoke complete public v1/v2 replay only when the preserved bundle retains every request, review, and Git anchor required by that path. Assert v3 implementation does not change a byte, collapse evidence and governance classifications, or synthesize a request, result, review commit, audit byte, Git anchor, bootstrap field, or root artifact for incomplete history.
 
 - [ ] **Step 3: Run the red terminal/history slice**
 
@@ -770,7 +770,7 @@ D:\anaconda\envs\stsai\python.exe -m pytest `
   -q
 ```
 
-Expected: v3 terminal tests fail; historical fixtures continue to expose any accidental alias drift.
+Expected: v3 terminal tests fail; historical fixtures continue to expose any byte, absence, schema-dispatch, evidence-classification, or governance-disposition drift.
 
 - [ ] **Step 4: Require full bootstrap replay before terminal success**
 
@@ -780,7 +780,7 @@ Keep existing verified terminal status names. Observability is an additional pre
 
 - [ ] **Step 5: Isolate historical dispatch**
 
-Dispatch on explicit request schema before applying any v3 field-set checks. Request v1/v2 must use their existing result/review/audit rules and remain unlaunchable by the current producer. Do not reinterpret an absent bootstrap field as an empty valid prefix.
+Dispatch on explicit request schema before applying any v3 field-set checks. A historically complete request v1/v2 bundle must use its existing result/review/audit rules and remain unlaunchable by the current producer. An incomplete historical bundle must remain an exact byte/absence inventory with separately pinned evidence and governance classifications; do not make it replayable by rendering substitute bytes or reinterpret an absent bootstrap field as an empty valid prefix.
 
 - [ ] **Step 6: Run terminal/history tests green**
 
@@ -950,7 +950,7 @@ Resolve every Important or higher finding, add a regression for behavioral corre
 5. crash and controlled-failure matrix outcomes;
 6. CommunicationMod-equivalent tokenization and stream-silence evidence;
 7. protected-state isolation and no-surviving-child evidence;
-8. r1-r6 byte/hash/classification replay results;
+8. r1-r6 byte/hash/absence inventory, evidence/governance classification, and eligible public-replay results;
 9. strict OpenSpec, diff, deterministic-render, placeholder, and review results;
 10. non-goals and rollback boundary;
 11. explicit statement that r7, game launch, `start`, collection, OPE, policy, causal, training, and promotion authority remain false and require a separate amendment.

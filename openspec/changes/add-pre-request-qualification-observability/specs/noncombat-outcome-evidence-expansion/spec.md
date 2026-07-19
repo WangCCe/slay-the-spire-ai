@@ -13,10 +13,13 @@ The system SHALL require every future replacement outcome-evidence qualification
 - **THEN** that evidence SHALL remain input only to a separate later review of whether to create the registered study run lock
 - **AND** it SHALL NOT itself create the run lock, start collection, interpret OPE, change gameplay policy, make causal claims, train a model, or promote a policy
 
-#### Scenario: Historical r1 through r6 evidence is replayed
-- **WHEN** the preserved r1-r6 roots, requests, terminals, reports, or audits are inspected after v3 observability is implemented
-- **THEN** every historical byte and its existing consumed, failed, obsolete, prepared, partial, or retired classification SHALL remain unchanged
-- **AND** no historical v1/v2 identity SHALL be retried, upgraded in place, given synthetic bootstrap evidence, or used to authorize a future launch or `start`
+#### Scenario: Historical r1 through r6 evidence is verified within its preserved boundary
+- **WHEN** the preserved r1-r6 roots, requests, terminals, reports, audits, and recorded absences are inspected after v3 observability is implemented
+- **THEN** every available historical byte SHALL retain its exact path, size, and SHA-256 and every unavailable artifact SHALL remain explicitly absent
+- **AND** evidence-derived classification SHALL remain distinct from any separately reviewed consumed, failed, obsolete, prepared, partial, or retired governance disposition
+- **AND** complete public v1/v2 replay SHALL be required only when the preserved bundle contains every request, review, and Git anchor required by that verifier path
+- **AND** no missing request, result, review commit, audit byte, Git anchor, bootstrap field, or root artifact SHALL be synthesized to make an incomplete historical bundle replayable
+- **AND** no historical v1/v2 identity SHALL be retried, upgraded in place, or used to authorize a future launch or `start`
 
 #### Scenario: Observability implementation is complete but no replacement exists
 - **WHEN** this change passes all offline implementation and review gates but no separate replacement amendment has been approved
