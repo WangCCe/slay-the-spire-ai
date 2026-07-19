@@ -8,7 +8,7 @@ import shutil
 import subprocess
 import sys
 from copy import deepcopy
-from pathlib import Path, PureWindowsPath
+from pathlib import Path
 
 import pytest
 
@@ -80,6 +80,13 @@ HISTORICAL_QUALIFICATION_FIXTURES = (
         "schema_version": "noncombat-outcome-evidence-qualification-request-v1",
         "status": "failed_pre_ready",
         "consumed": True,
+        "evidence_classification": "sealed_invalid",
+        "evidence_consumed": True,
+        "ineligibility_reasons": (
+            "missing_preserved_request_bytes",
+            "missing_preserved_review_bytes",
+            "missing_preserved_git_anchors",
+        ),
     },
     {
         "id": "r2",
@@ -98,6 +105,13 @@ HISTORICAL_QUALIFICATION_FIXTURES = (
         "schema_version": "noncombat-outcome-evidence-qualification-request-v1",
         "status": "failed_readiness_timeout",
         "consumed": True,
+        "evidence_classification": "sealed_invalid",
+        "evidence_consumed": True,
+        "ineligibility_reasons": (
+            "missing_preserved_request_bytes",
+            "missing_preserved_review_bytes",
+            "missing_preserved_git_anchors",
+        ),
     },
     {
         "id": "r3",
@@ -116,6 +130,13 @@ HISTORICAL_QUALIFICATION_FIXTURES = (
         "schema_version": "noncombat-outcome-evidence-qualification-request-v1",
         "status": "failed_release_side",
         "consumed": True,
+        "evidence_classification": "sealed_invalid",
+        "evidence_consumed": True,
+        "ineligibility_reasons": (
+            "missing_preserved_request_bytes",
+            "missing_preserved_review_bytes",
+            "missing_preserved_git_anchors",
+        ),
     },
     {
         "id": "r4",
@@ -134,6 +155,12 @@ HISTORICAL_QUALIFICATION_FIXTURES = (
         "schema_version": "noncombat-outcome-evidence-qualification-request-v1",
         "status": "obsolete_prepared",
         "consumed": False,
+        "evidence_classification": "reviewed_prepared",
+        "evidence_consumed": False,
+        "ineligibility_reasons": (
+            "missing_preserved_review_commit",
+            "missing_preserved_git_anchors",
+        ),
     },
     {
         "id": "r5",
@@ -152,6 +179,9 @@ HISTORICAL_QUALIFICATION_FIXTURES = (
         "schema_version": "noncombat-outcome-evidence-qualification-request-v2",
         "status": "retired_pre_request",
         "consumed": True,
+        "evidence_classification": "reviewed_prepared",
+        "evidence_consumed": False,
+        "ineligibility_reasons": ("missing_preserved_git_anchors",),
     },
     {
         "id": "r6",
@@ -170,11 +200,336 @@ HISTORICAL_QUALIFICATION_FIXTURES = (
         "schema_version": "noncombat-outcome-evidence-qualification-request-v2",
         "status": "retired_pre_request",
         "consumed": True,
+        "evidence_classification": "reviewed_prepared",
+        "evidence_consumed": False,
+        "ineligibility_reasons": ("missing_preserved_git_anchors",),
+        "recorded_audit_hash": (
+            "938d603a13601717f26c92684e88ca35a32ec6baff51757a0351de3cb36c48a0"
+        ),
     },
 )
 
+HISTORICAL_QUALIFICATION_FILE_CONTRACTS = {'r1': {'available_files': [{'path': 'artifacts/report.md',
+                             'sha256': '8c1afc4a2968717540353e4a65810103dd56bb6a85b008a6ed8043bb48938bba',
+                             'size': 21249},
+                            {'path': 'root/approved-study-launch-communication.properties',
+                             'sha256': '0fe8d59213f2c151cd289b6b8042c5621b05d233290b39dd53b1701bdc7fa116',
+                             'size': 324},
+                            {'path': 'root/communication-config-before.bin',
+                             'sha256': '374806e6386940a5945ffd03411b526d6a21c002b938bb4db253780f787b8e9a',
+                             'size': 505},
+                            {'path': 'root/communication-config-observed-smoke.bin',
+                             'sha256': '674bf681aa63032271725a902ce43bf0455af2cd452ff8970f077f0b006484ba',
+                             'size': 275},
+                            {'path': 'root/pre-smoke-snapshot.json',
+                             'sha256': '608457af6988b84867e006cf85541becbdf5244a81a128952851dfed3bfe7fbe',
+                             'size': 45683},
+                            {'path': 'root/qualification-ai-debug.log',
+                             'sha256': 'b84a46d3daae3fc56c6868186f7592e38bb117465d86cdaa4995a85b21418c54',
+                             'size': 1234},
+                            {'path': 'root/qualification-communication-attempt.json',
+                             'sha256': 'f1c904a49f3c59f7a14414908a39650ff00ad5d622f6fdbb836f94ff45c1d705',
+                             'size': 1522},
+                            {'path': 'root/qualification-failure-record.json',
+                             'sha256': '0677212e139270219be597e26f9e79bab30ab2c74fc5c810c41360c2d7dd545a',
+                             'size': 7845},
+                            {'path': 'root/qualification-smoke-communication.properties',
+                             'sha256': 'b3be2071a36e2f27cd81ddc7fe23ff726f1ba376f346a87c47b365178187736c',
+                             'size': 240},
+                            {'path': 'root/qualification-smoke-config.json',
+                             'sha256': '69a2ee37db1bb06feb3e8e9429280c834db817af67f3f136f471c1dc32e92c2a',
+                             'size': 211}],
+        'expected_absences': [{'path': 'artifacts/audit.json',
+                               'sha256': None,
+                               'size': None},
+                              {'path': 'artifacts/request.json',
+                               'sha256': None,
+                               'size': None},
+                              {'path': 'artifacts/result.json',
+                               'sha256': None,
+                               'size': None},
+                              {'path': 'artifacts/review.md',
+                               'sha256': None,
+                               'size': None},
+                              {'path': 'root/qualification-communication-ready.json',
+                               'sha256': None,
+                               'size': None},
+                              {'path': 'root/qualification-communication-release.json',
+                               'sha256': None,
+                               'size': None},
+                              {'path': 'root/qualification-completion.json',
+                               'sha256': None,
+                               'size': None},
+                              {'path': 'root/qualification-failure.json',
+                               'sha256': None,
+                               'size': None},
+                              {'path': 'root/qualification-manifest.json',
+                               'sha256': None,
+                               'size': None},
+                              {'path': 'root/qualification-request.json',
+                               'sha256': None,
+                               'size': None},
+                              {'path': 'root/qualification-trace.jsonl',
+                               'sha256': None,
+                               'size': None}]},
+ 'r2': {'available_files': [{'path': 'artifacts/report.md',
+                             'sha256': '8c1afc4a2968717540353e4a65810103dd56bb6a85b008a6ed8043bb48938bba',
+                             'size': 21249},
+                            {'path': 'root/approved-study-launch-communication.properties',
+                             'sha256': '0fe8d59213f2c151cd289b6b8042c5621b05d233290b39dd53b1701bdc7fa116',
+                             'size': 324},
+                            {'path': 'root/communication-config-before.bin',
+                             'sha256': '374806e6386940a5945ffd03411b526d6a21c002b938bb4db253780f787b8e9a',
+                             'size': 505},
+                            {'path': 'root/communication-config-observed-smoke.bin',
+                             'sha256': '667a94aa108a974e0ad2fb5364dbe3e820957a95ce0e3a3fcec3abc1a0bb2a5b',
+                             'size': 275},
+                            {'path': 'root/pre-smoke-snapshot.json',
+                             'sha256': 'fd4613f7d02e923086814cc2e7a01015419141ef63d617c5ad007d0fd1d33d9e',
+                             'size': 46733},
+                            {'path': 'root/qualification-ai-debug.log',
+                             'sha256': 'f342f25d2dcb1c72165eab2f28505feae1e3705a47dc19ebf11cb6edef5e608e',
+                             'size': 1363},
+                            {'path': 'root/qualification-communication-attempt.json',
+                             'sha256': 'aba385906fad70d787a413544039760e5fc36d634283d8c7dd2d56d40d95c57d',
+                             'size': 1540},
+                            {'path': 'root/qualification-failure-record.json',
+                             'sha256': '3fbace492dd0f849bdf86deff1df97dfc4ae3b77a427545413ac48170c9c2540',
+                             'size': 9818},
+                            {'path': 'root/qualification-slay-the-spire.log',
+                             'sha256': 'efe5b85ea7ff27689ded3eb082da81447950ebc3d675e27e43bb8955f42b8f29',
+                             'size': 15956},
+                            {'path': 'root/qualification-smoke-communication.properties',
+                             'sha256': 'b3be2071a36e2f27cd81ddc7fe23ff726f1ba376f346a87c47b365178187736c',
+                             'size': 240},
+                            {'path': 'root/qualification-smoke-config.json',
+                             'sha256': 'e2252a3c8bb7d79f5b7de8deb49296fda28d13f562ec0c9e38f085833820d7d6',
+                             'size': 211}],
+        'expected_absences': [{'path': 'artifacts/audit.json',
+                               'sha256': None,
+                               'size': None},
+                              {'path': 'artifacts/request.json',
+                               'sha256': None,
+                               'size': None},
+                              {'path': 'artifacts/result.json',
+                               'sha256': None,
+                               'size': None},
+                              {'path': 'artifacts/review.md',
+                               'sha256': None,
+                               'size': None},
+                              {'path': 'root/qualification-communication-ready.json',
+                               'sha256': None,
+                               'size': None},
+                              {'path': 'root/qualification-communication-release.json',
+                               'sha256': None,
+                               'size': None},
+                              {'path': 'root/qualification-completion.json',
+                               'sha256': None,
+                               'size': None},
+                              {'path': 'root/qualification-failure.json',
+                               'sha256': None,
+                               'size': None},
+                              {'path': 'root/qualification-manifest.json',
+                               'sha256': None,
+                               'size': None},
+                              {'path': 'root/qualification-request.json',
+                               'sha256': None,
+                               'size': None},
+                              {'path': 'root/qualification-trace.jsonl',
+                               'sha256': None,
+                               'size': None}]},
+ 'r3': {'available_files': [{'path': 'artifacts/report.md',
+                             'sha256': '739fbb650e2694844e48062c1c0892a6778e5de8965a3f39bf076f80a309b41f',
+                             'size': 12245},
+                            {'path': 'root/approved-study-launch-communication.properties',
+                             'sha256': '0fe8d59213f2c151cd289b6b8042c5621b05d233290b39dd53b1701bdc7fa116',
+                             'size': 324},
+                            {'path': 'root/communication-config-before.bin',
+                             'sha256': '374806e6386940a5945ffd03411b526d6a21c002b938bb4db253780f787b8e9a',
+                             'size': 505},
+                            {'path': 'root/communication-config-observed-smoke.bin',
+                             'sha256': '718b29ba6e891b8fc8265c6cff31037ff8bb071d5509ef68062da5ba4cc20bd8',
+                             'size': 275},
+                            {'path': 'root/pre-smoke-snapshot.json',
+                             'sha256': '2cb530873cd6c601a7b6fc22a133f205844bdbe9b470ca6972699403afb069e6',
+                             'size': 47443},
+                            {'path': 'root/qualification-ai-debug.log',
+                             'sha256': 'b7327af24bbdd49ab624a7a9c34a5fca72208b4da4624ddf1f23cd59faf8d911',
+                             'size': 1593},
+                            {'path': 'root/qualification-communication-attempt.json',
+                             'sha256': '48fdd0d15070862e94a055e4902cf1da98a59c013f2a890ad13ed52975c3878a',
+                             'size': 1541},
+                            {'path': 'root/qualification-communication-ready.json',
+                             'sha256': '6a8e25328110ae4cd5cc2c1693a8a1933e4201e5840346a4828fad41a0cde8b8',
+                             'size': 1233},
+                            {'path': 'root/qualification-failure-record.json',
+                             'sha256': '5a3c47f5b93d7c1f66b5de6c32d3af139188b60735fa36733c6b3c6ee772cfec',
+                             'size': 10356},
+                            {'path': 'root/qualification-slay-the-spire.log',
+                             'sha256': 'abc1c469c37a87926bd528f866b47ddf57fc8d4d004fac0d7c98cb7cf427e7c5',
+                             'size': 16065},
+                            {'path': 'root/qualification-smoke-communication.properties',
+                             'sha256': 'b3be2071a36e2f27cd81ddc7fe23ff726f1ba376f346a87c47b365178187736c',
+                             'size': 240},
+                            {'path': 'root/qualification-smoke-config.json',
+                             'sha256': 'ec1e5329d34724e2c9f626472a70fc831440f65bc9451179801ab3de756231ae',
+                             'size': 211}],
+        'expected_absences': [{'path': 'artifacts/audit.json',
+                               'sha256': None,
+                               'size': None},
+                              {'path': 'artifacts/request.json',
+                               'sha256': None,
+                               'size': None},
+                              {'path': 'artifacts/result.json',
+                               'sha256': None,
+                               'size': None},
+                              {'path': 'artifacts/review.md',
+                               'sha256': None,
+                               'size': None},
+                              {'path': 'root/qualification-communication-release.json',
+                               'sha256': None,
+                               'size': None},
+                              {'path': 'root/qualification-completion.json',
+                               'sha256': None,
+                               'size': None},
+                              {'path': 'root/qualification-failure.json',
+                               'sha256': None,
+                               'size': None},
+                              {'path': 'root/qualification-manifest.json',
+                               'sha256': None,
+                               'size': None},
+                              {'path': 'root/qualification-request.json',
+                               'sha256': None,
+                               'size': None},
+                              {'path': 'root/qualification-trace.jsonl',
+                               'sha256': None,
+                               'size': None}]},
+ 'r4': {'available_files': [{'path': 'artifacts/request.json',
+                             'sha256': '1e04b2a378e434c16f45cdb8a389dd527d2419ae6625d6a141e1a9fb0be4792c',
+                             'size': 5996},
+                            {'path': 'artifacts/review.md',
+                             'sha256': 'f2158322c22af7000fd2f086a7cfee4f19ceeba0ff948b9dbb4f38e737019056',
+                             'size': 9354},
+                            {'path': 'root/qualification-config.json',
+                             'sha256': 'b925aca3c6c0051542ebf0e9d6c12d6def868c119e3a00fbafb0502f293937aa',
+                             'size': 950}],
+        'expected_absences': [{'path': 'artifacts/audit.json',
+                               'sha256': None,
+                               'size': None},
+                              {'path': 'artifacts/result.json',
+                               'sha256': None,
+                               'size': None},
+                              {'path': 'root/qualification-communication-attempt.json',
+                               'sha256': None,
+                               'size': None},
+                              {'path': 'root/qualification-communication-ready.json',
+                               'sha256': None,
+                               'size': None},
+                              {'path': 'root/qualification-communication-release.json',
+                               'sha256': None,
+                               'size': None},
+                              {'path': 'root/qualification-completion.json',
+                               'sha256': None,
+                               'size': None},
+                              {'path': 'root/qualification-failure.json',
+                               'sha256': None,
+                               'size': None},
+                              {'path': 'root/qualification-manifest.json',
+                               'sha256': None,
+                               'size': None},
+                              {'path': 'root/qualification-request.json',
+                               'sha256': None,
+                               'size': None},
+                              {'path': 'root/qualification-trace.jsonl',
+                               'sha256': None,
+                               'size': None}]},
+ 'r5': {'available_files': [{'path': 'artifacts/request.json',
+                             'sha256': '40e978059c31f90c2da52435d50193deea95b1f3f19c28a865ef96f80c20ed26',
+                             'size': 8813},
+                            {'path': 'artifacts/review.md',
+                             'sha256': '739fbb650e2694844e48062c1c0892a6778e5de8965a3f39bf076f80a309b41f',
+                             'size': 12245},
+                            {'path': 'root/qualification-config.json',
+                             'sha256': '98e71368dba46a76bbf129e036de0dd8b290dff7e2066ede97d7f747a330c8f6',
+                             'size': 949}],
+        'expected_absences': [{'path': 'artifacts/audit.json',
+                               'sha256': None,
+                               'size': None},
+                              {'path': 'artifacts/result.json',
+                               'sha256': None,
+                               'size': None},
+                              {'path': 'root/qualification-communication-attempt.json',
+                               'sha256': None,
+                               'size': None},
+                              {'path': 'root/qualification-communication-ready.json',
+                               'sha256': None,
+                               'size': None},
+                              {'path': 'root/qualification-communication-release.json',
+                               'sha256': None,
+                               'size': None},
+                              {'path': 'root/qualification-completion.json',
+                               'sha256': None,
+                               'size': None},
+                              {'path': 'root/qualification-failure.json',
+                               'sha256': None,
+                               'size': None},
+                              {'path': 'root/qualification-manifest.json',
+                               'sha256': None,
+                               'size': None},
+                              {'path': 'root/qualification-request.json',
+                               'sha256': None,
+                               'size': None},
+                              {'path': 'root/qualification-trace.jsonl',
+                               'sha256': None,
+                               'size': None}]},
+ 'r6': {'available_files': [{'path': 'artifacts/report.md',
+                             'sha256': '680f6cffba77d8134500f1ef9f6d4ca02e4df05916afc1926bab2262e8000d62',
+                             'size': 5952},
+                            {'path': 'artifacts/request.json',
+                             'sha256': '28c174d6fba875ba110b107c92da5d522664ead81d9bf5c0db71db6fc3748b69',
+                             'size': 8886},
+                            {'path': 'artifacts/review.md',
+                             'sha256': 'ab330238d935a724c6bdd209d32986dfc2c62f524d3bb8c379d6c97069d8c377',
+                             'size': 13986},
+                            {'path': 'root/qualification-config.json',
+                             'sha256': 'b1b734e885ba7404e5492bb8911be97494eab789ddb21c0fb6230f46d3161404',
+                             'size': 949}],
+        'expected_absences': [{'path': 'artifacts/audit.json',
+                               'sha256': None,
+                               'size': None},
+                              {'path': 'artifacts/result.json',
+                               'sha256': None,
+                               'size': None},
+                              {'path': 'root/qualification-communication-attempt.json',
+                               'sha256': None,
+                               'size': None},
+                              {'path': 'root/qualification-communication-ready.json',
+                               'sha256': None,
+                               'size': None},
+                              {'path': 'root/qualification-communication-release.json',
+                               'sha256': None,
+                               'size': None},
+                              {'path': 'root/qualification-completion.json',
+                               'sha256': None,
+                               'size': None},
+                              {'path': 'root/qualification-failure.json',
+                               'sha256': None,
+                               'size': None},
+                              {'path': 'root/qualification-manifest.json',
+                               'sha256': None,
+                               'size': None},
+                              {'path': 'root/qualification-request.json',
+                               'sha256': None,
+                               'size': None},
+                              {'path': 'root/qualification-trace.jsonl',
+                               'sha256': None,
+                               'size': None}]}}
+
 QUALIFICATION_HISTORY_FIXTURE_ROOT = (
     REPO_ROOT / "tests" / "fixtures" / "qualification_history"
+)
+CANONICAL_PUBLIC_V1_V2_VECTOR_PROVENANCE = (
+    "canonical-public-v1-v2-compatibility-vector"
 )
 
 
@@ -1166,7 +1521,7 @@ print(json.dumps({
     assert replay["producer_absent_after_load"] is True
     assert replay["producer_absent_after_replay"] is True
     assert replay["dead_child_alive_after_replay"] is False
-    assert replay["valid"]["kind"] == "audit"
+    assert replay["valid"]["kind"] == "audit", replay["valid"]
     assert replay["valid"]["accepted"] is True
     audit = replay["valid"]["audit"]
     assert audit["schema_version"] == (
@@ -1622,31 +1977,30 @@ def _load_qualification_history_manifest(identity):
     manifest = json.loads(raw.decode("ascii"))
     assert raw == (_canonical_json(manifest) + "\n").encode("ascii")
     assert manifest["identity"] == identity
-    assert manifest["schema_version"] == "qualification-history-fixture-v1"
+    assert manifest["schema_version"] == "qualification-history-fixture-v2"
     return manifest
 
 
 def _assert_qualification_history_bundle(manifest):
     fixture_root = QUALIFICATION_HISTORY_FIXTURE_ROOT / manifest["identity"]
-    root = fixture_root / "root"
     observed = []
-    for path in sorted(root.rglob("*")):
-        if not path.is_file():
+    for path in sorted(fixture_root.rglob("*")):
+        if not path.is_file() or path.name == "manifest.json":
             continue
         raw = path.read_bytes()
         observed.append(
             {
-                "path": path.relative_to(root).as_posix(),
+                "path": path.relative_to(fixture_root).as_posix(),
                 "sha256": hashlib.sha256(raw).hexdigest(),
                 "size": len(raw),
             }
         )
-    expected_root = manifest["original_root"]
-    assert observed == expected_root["files"]
-    assert len(observed) == expected_root["file_count"]
-    assert sum(row["size"] for row in observed) == expected_root["total_bytes"]
-    for relative_path in expected_root["absent_paths"]:
-        assert not (root / relative_path).exists()
+    assert observed == manifest["available_files"]
+
+    for absence in manifest["expected_absences"]:
+        assert absence["sha256"] is None
+        assert absence["size"] is None
+        assert not (fixture_root / absence["path"]).exists()
 
     for name, binding in manifest["artifacts"].items():
         if not binding["present"]:
@@ -1726,251 +2080,8 @@ def _portable_history_isolation(
     return baseline
 
 
-def _build_portable_historical_replay(tmp_path, manifest):
-    identity = manifest["identity"]
-    fixture_root = QUALIFICATION_HISTORY_FIXTURE_ROOT / identity
-    artifacts = manifest["artifacts"]
-    historical_artifacts = {
-        name: {
-            "present": binding["present"],
-            "sha256": binding["sha256"],
-            "size": binding["size"],
-        }
-        for name, binding in artifacts.items()
-    }
-    historical_request = None
-    if artifacts["request"]["present"]:
-        request_artifact_path = fixture_root / artifacts["request"]["path"]
-        historical_request = json.loads(
-            request_artifact_path.read_text(encoding="ascii")
-        )
-        assert historical_request["request_hash"] == artifacts["request"][
-            "record_hash"
-        ]
-        request_source_parts = PureWindowsPath(
-            historical_request["request_source_path"]
-        ).parts
-        reports_index = next(
-            index
-            for index, part in enumerate(request_source_parts)
-            if part.lower() == "reports"
-        )
-        request_source_relative = "/".join(
-            request_source_parts[reports_index:]
-        )
-        review_allowed_paths = list(historical_request["review_allowed_paths"])
-        assert request_source_relative in review_allowed_paths
-    else:
-        request_source_relative = f"reports/{identity}-qualification-request.json"
-        review_allowed_paths = [request_source_relative]
-    replay_home = (tmp_path.parent / identity).resolve()
-    if replay_home.exists():
-        shutil.rmtree(replay_home)
-    qualification_root = replay_home / "qualification-root"
-    shutil.copytree(fixture_root / "root", qualification_root)
 
-    repo_root = replay_home / "repo"
-    repo_root.mkdir(parents=True)
-    _copy_registered_sources(repo_root)
-    game_root = replay_home / "game"
-    checkpoint_root = game_root / "checkpoints"
-    checkpoint_root.mkdir(parents=True)
-    (checkpoint_root / "rl_model_fixture.pth").write_bytes(b"fixture\n")
-    marker_path = game_root / "runs" / "ai_games.txt"
-    marker_path.parent.mkdir()
-    marker_path.write_bytes(b"10\n11\n")
-    (game_root / "ai_debug.log").write_bytes(b"fixture debug\n")
-    (game_root / "communication_mod_errors.log").write_bytes(
-        b"fixture communication\n"
-    )
-    communication_path = replay_home / "config.properties"
-    communication_raw = (
-        b"verbose=false\ncommand=fixture-child\nrunAtGameStart=true\n"
-    )
-    communication_path.write_bytes(communication_raw)
-    registration = expansion.build_registration(
-        study_id=STUDY_ID,
-        artifact_root=replay_home / "study",
-        repo_root=repo_root,
-        seed_base=SEED_BASE,
-        python_executable=Path(r"D:\anaconda\envs\stsai\python.exe"),
-        communication_config_path=communication_path,
-        checkpoint_root=checkpoint_root,
-    )
-    registration_path = (repo_root / "reports" / "registration.json").resolve()
-    registration_path.parent.mkdir()
-    registration_path.write_text(
-        expansion.render_registration_json(registration),
-        encoding="ascii",
-        newline="",
-    )
-    _git(repo_root, "init", "--object-format=sha1")
-    _git(repo_root, "config", "core.autocrlf", "false")
-    _git(repo_root, "config", "user.email", "history@example.invalid")
-    _git(repo_root, "config", "user.name", "Qualification History Fixture")
-    _git(repo_root, "add", ".")
-    _git(repo_root, "commit", "-m", f"{identity} source")
-    source_commit = _git(repo_root, "rev-parse", "HEAD")
 
-    qualification_id = f"{STUDY_ID}-history-{identity}"
-    config_path = qualification_root / (
-        "qualification-config.json"
-        if identity in {"r4", "r5", "r6"}
-        else "qualification-smoke-config.json"
-    )
-    if identity in {"r4", "r5", "r6"}:
-        _write_json(
-            config_path,
-            {
-                "category_rates_bps": {"card_reward": 300, "shop": 1000},
-                "enabled_categories": ["card_reward", "shop"],
-                "manifest_path": str(
-                    qualification_root / "qualification-manifest.json"
-                ),
-                "per_run_alternative_budget": 2,
-                "schema_version": "noncombat-exploration-config-v1",
-                "seed": SEED_BASE + 1,
-                "session_id": f"{qualification_id}-s01",
-                "source_commit": source_commit,
-                "study_id": qualification_id,
-                "study_registration_hash": registration.registration_hash,
-                "study_run_lock_hash": "0" * 64,
-                "study_slot_number": 1,
-                "trace_path": str(
-                    qualification_root / "qualification-trace.jsonl"
-                ),
-            },
-        )
-    config_raw = config_path.read_bytes()
-    request_source_path = (repo_root / request_source_relative).resolve()
-    implementation = {
-        relative_path: hashlib.sha256(
-            (repo_root / relative_path).read_bytes()
-        ).hexdigest()
-        for relative_path in registration.to_record()["integrity_rules"][
-            "implementation_paths"
-        ]
-    }
-    handshake = {
-        "attempt_path": str(
-            qualification_root / "qualification-communication-attempt.json"
-        ),
-        "protocol_version": "noncombat-outcome-evidence-handshake-v1",
-        "readiness_timeout_seconds": 120,
-        "ready_path": str(
-            qualification_root / "qualification-communication-ready.json"
-        ),
-        "release_path": str(
-            qualification_root / "qualification-communication-release.json"
-        ),
-        "release_timeout_seconds": 10,
-        "run_lock_hash": "0" * 64,
-        "session_id": f"{qualification_id}-s01",
-        "slot_number": 1,
-    }
-    excluded = {
-        qualification_root / "qualification-request.json",
-        qualification_root / "qualification-completion.json",
-        qualification_root / "qualification-failure.json",
-        *(Path(handshake[f"{name}_path"]) for name in ("attempt", "ready", "release")),
-        qualification_root / "qualification-manifest.json",
-        qualification_root / "qualification-trace.jsonl",
-    }
-    preexisting = {
-        str(path.resolve()): hashlib.sha256(path.read_bytes()).hexdigest()
-        for path in sorted(qualification_root.rglob("*"))
-        if path.is_file() and path.resolve() not in excluded
-    }
-    registration_record = registration.to_record()
-    request = {
-        "child_command": [
-            registration_record["command"]["python_executable"],
-            "-I",
-            "-S",
-            registration_record["command"]["main_path"],
-            *registration_record["command"]["arguments"],
-        ],
-        "completion_path": str(
-            qualification_root / "qualification-completion.json"
-        ),
-        "config": {
-            "path": str(config_path),
-            "sha256": hashlib.sha256(config_raw).hexdigest(),
-        },
-        "created_unix_ns": 100,
-        "failure_path": str(qualification_root / "qualification-failure.json"),
-        "forbidden_paths": sorted(
-            {
-                str(replay_home / "study"),
-                str(replay_home / "study" / "run-lock.json"),
-                str(replay_home / "study" / "study-ledger.jsonl"),
-                str(qualification_root / "qualification-manifest.json"),
-                str(qualification_root / "qualification-trace.jsonl"),
-            }
-        ),
-        "handshake": handshake,
-        "implementation_sha256": implementation,
-        "marker": {"path": str(marker_path), "start_count": 2},
-        "preexisting_files": preexisting,
-        "qualification_id": qualification_id,
-        "qualification_root": str(qualification_root),
-        "registration": {
-            "canonical_hash": registration.registration_hash,
-            "file_sha256": hashlib.sha256(
-                registration_path.read_bytes()
-            ).hexdigest(),
-            "path": str(registration_path),
-        },
-        "request_hash": None,
-        "request_path": str(qualification_root / "qualification-request.json"),
-        "request_source_path": str(request_source_path),
-        "review_allowed_paths": review_allowed_paths,
-        "schema_version": manifest["classification"]["public_replay"][
-            "schema_version"
-        ],
-        "source_commit": source_commit,
-    }
-    if request["schema_version"] == (
-        "noncombat-outcome-evidence-qualification-request-v2"
-    ):
-        request["isolation"] = _portable_history_isolation(
-            communication_path=communication_path,
-            communication_raw=communication_raw,
-            checkpoint_root=checkpoint_root,
-            marker_path=marker_path,
-        )
-    request["request_hash"] = _self_hash(request, "request_hash")
-    _write_json(request_source_path, request)
-    request_raw = request_source_path.read_bytes()
-    review_binding = artifacts["review"]
-    review_raw = (
-        (fixture_root / review_binding["path"]).read_bytes()
-        if review_binding["present"]
-        else None
-    )
-    for relative_path in review_allowed_paths:
-        if relative_path == request_source_relative:
-            continue
-        path = (repo_root / relative_path).resolve()
-        path.parent.mkdir(parents=True, exist_ok=True)
-        if review_raw is not None and relative_path.endswith(
-            "qualification_review.md"
-        ):
-            path.write_bytes(review_raw)
-        else:
-            path.write_bytes(
-                f"historical {identity} inert review artifact\n".encode("ascii")
-            )
-    _git(repo_root, "add", "--", *review_allowed_paths)
-    _git(repo_root, "commit", "-m", f"{identity} review")
-    review_commit = _git(repo_root, "rev-parse", "HEAD")
-    return {
-        "historical_artifacts": historical_artifacts,
-        "request": request,
-        "request_raw": request_raw,
-        "request_source_path": request_source_path,
-        "review_commit": review_commit,
-    }
 
 
 def _build_source_only_v3_top_level_fixture(tmp_path):
@@ -2376,23 +2487,61 @@ def _build_source_only_v3_top_level_fixture(tmp_path):
     HISTORICAL_QUALIFICATION_FIXTURES,
     ids=lambda fixture: f"historical_{fixture['id']}",
 )
-def test_historical_r1_r6_reviewed_bytes_and_dispatch_remain_immutable(
-    tmp_path,
+def test_historical_r1_r6_preserved_contract_never_synthesizes_replay(
     monkeypatch,
     fixture,
 ):
+    external_root = "d:\\steamlibrary\\"
+    original_read_bytes = Path.read_bytes
+    original_read_text = Path.read_text
+
+    def read_bytes_without_external_root(path, *args, **kwargs):
+        assert not str(path).lower().startswith(external_root)
+        return original_read_bytes(path, *args, **kwargs)
+
+    def read_text_without_external_root(path, *args, **kwargs):
+        assert not str(path).lower().startswith(external_root)
+        return original_read_text(path, *args, **kwargs)
+
+    monkeypatch.setattr(Path, "read_bytes", read_bytes_without_external_root)
+    monkeypatch.setattr(Path, "read_text", read_text_without_external_root)
     verifier = _verifier()
     manifest = _load_qualification_history_manifest(fixture["id"])
+    pinned = HISTORICAL_QUALIFICATION_FILE_CONTRACTS[fixture["id"]]
+    assert manifest["available_files"] == pinned["available_files"]
+    assert manifest["expected_absences"] == pinned["expected_absences"]
     _assert_qualification_history_bundle(manifest)
-    classification = manifest["classification"]
-    assert classification["governance_status"] == fixture["status"]
-    assert classification["governance_consumed"] is fixture["consumed"]
-    assert classification["retry_allowed"] is False
-    assert classification["launch_qualified"] is False
-    assert classification["public_replay"]["schema_version"] in {
-        verifier.QUALIFICATION_REQUEST_V1_SCHEMA_VERSION,
-        verifier.QUALIFICATION_REQUEST_V2_SCHEMA_VERSION,
+
+    evidence = manifest["evidence"]
+    governance = manifest["governance"]
+    replay = manifest["public_v1_v2_replay"]
+    assert evidence == {
+        "all_authority_false": True,
+        "classification": fixture["evidence_classification"],
+        "consumed": fixture["evidence_consumed"],
+        "launchable": False,
+        "retry_allowed": False,
     }
+    assert governance == {
+        "consumed": fixture["consumed"],
+        "disposition": fixture["status"],
+        "retry_allowed": False,
+    }
+    assert replay == {
+        "eligible": False,
+        "ineligibility_reasons": list(fixture["ineligibility_reasons"]),
+    }
+
+    artifacts = manifest["artifacts"]
+    audit_binding = artifacts["audit"]
+    assert audit_binding["path"] is None
+    assert audit_binding["sha256"] is None
+    assert audit_binding["size"] is None
+    if fixture["id"] == "r6":
+        assert audit_binding["recorded_hash"] == fixture["recorded_audit_hash"]
+    else:
+        assert audit_binding["recorded_hash"] is None
+
     if fixture["id"] in {"r1", "r2", "r3"}:
         failure_path = (
             QUALIFICATION_HISTORY_FIXTURE_ROOT
@@ -2403,75 +2552,22 @@ def test_historical_r1_r6_reviewed_bytes_and_dispatch_remain_immutable(
         failure = json.loads(failure_path.read_text(encoding="ascii"))
         assert failure["failure_record_hash"] == fixture["record_hash"]
     else:
-        assert manifest["artifacts"]["request"]["record_hash"] == fixture[
-            "record_hash"
-        ]
+        assert artifacts["request"]["record_hash"] == fixture["record_hash"]
 
-    replay = _build_portable_historical_replay(tmp_path, manifest)
-    assert replay["historical_artifacts"] == {
-        name: {
-            "present": binding["present"],
-            "sha256": binding["sha256"],
-            "size": binding["size"],
-        }
-        for name, binding in manifest["artifacts"].items()
-    }
-    external_root = os.path.normcase(manifest["original_root"]["original_path"])
-    original_lstat = verifier._qualification_lstat
-
-    def reject_external_root(path):
-        assert not os.path.normcase(str(path)).startswith(external_root)
-        return original_lstat(path)
-
-    monkeypatch.setattr(verifier, "_qualification_lstat", reject_external_root)
-    audit = verifier.verify_prelock_qualification(
-        replay["request_source_path"],
-        expected_review_commit=replay["review_commit"],
-        expected_request_hash=replay["request"]["request_hash"],
-        expected_request_file_sha256=hashlib.sha256(
-            replay["request_raw"]
-        ).hexdigest(),
-        expected_request_size=len(replay["request_raw"]),
+    monkeypatch.setattr(
+        verifier,
+        "verify_prelock_qualification",
+        lambda *_args, **_kwargs: pytest.fail(
+            "incomplete historical fixtures must not invoke public replay"
+        ),
     )
-
-    expected = classification["public_replay"]
-    assert audit["schema_version"] == (
-        "noncombat-outcome-evidence-qualification-verification-audit-v2"
-    )
-    assert audit["status"] == expected["status"]
-    assert audit["qualification_status"] == expected["qualification_status"]
-    assert audit["partial_stage"] == expected["partial_stage"]
-    assert audit["consumed"] is expected["consumed"]
-    assert audit["evidence_valid"] is expected["evidence_valid"]
-    assert audit["request_hash"] == replay["request"]["request_hash"]
-    assert audit["result_hash"] is None
-    assert audit["review_binding"]["schema_version"] == (
-        verifier.QUALIFICATION_REVIEW_BINDING_V1_SCHEMA_VERSION
-    )
-    assert audit["review_binding"]["review_binding_hash"] == _self_hash(
-        audit["review_binding"],
-        "review_binding_hash",
-    )
-    rendered = verifier.render_verification_audit(audit).encode("ascii")
-    assert rendered == (_canonical_json(audit) + "\n").encode("ascii")
-    assert json.loads(rendered) == audit
-    assert audit["audit_hash"] == _self_hash(audit, "audit_hash")
-    assert "bootstrap" not in audit
-    assert "bootstrap_inventory" not in audit
-    assert "retry_allowed" not in audit
-    assert audit["launch_qualified"] is False
-    for field in (
-        "causal_claim_authorized",
-        "collection_authorized",
-        "gameplay_policy_change_authorized",
-        "run_lock_authorized",
-        "study_start_authorized",
-        "training_authorized",
-    ):
-        assert audit[field] is False
+    if replay["eligible"]:
+        pytest.fail("complete preserved history requires an explicit public replay")
 
 
-def test_historical_r1_r6_review_fix_uses_public_top_level_replay():
+
+
+def test_historical_r1_r6_provenance_contract_has_no_synthetic_replay():
     source = Path(__file__).read_text(encoding="utf-8")
     module = ast.parse(source)
     functions = {
@@ -2480,14 +2576,14 @@ def test_historical_r1_r6_review_fix_uses_public_top_level_replay():
         if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef))
     }
     historical = functions[
-        "test_historical_r1_r6_reviewed_bytes_and_dispatch_remain_immutable"
+        "test_historical_r1_r6_preserved_contract_never_synthesizes_replay"
     ]
     source_only = functions[
         "test_qualification_bootstrap_terminal_source_only_replay_without_producer"
     ]
 
-    assert "._qualification_audit(" not in historical
-    assert "verify_prelock_qualification(" in historical
+    assert "_build_portable_historical_replay" not in functions
+    assert "verify_prelock_qualification(" not in historical
     assert "verify_prelock_qualification(" in source_only
     assert (
         'sys.modules.pop("scripts.run_noncombat_outcome_evidence_expansion", None)'
@@ -2592,7 +2688,7 @@ def _qualification_schema_fixture_result(
     return result
 
 
-def _qualification_schema_fixture_records():
+def _canonical_public_v1_v2_compatibility_vectors():
     request_v2_path = (
         REPO_ROOT
         / "reports"
@@ -2656,8 +2752,11 @@ def _qualification_schema_fixture_records():
     }
 
 
-def test_historical_schema_bytes_remain_explicit_and_unchanged():
-    records = _qualification_schema_fixture_records()
+def test_canonical_public_v1_v2_compatibility_vectors_historical_schema_bytes_remain_immutable():
+    assert CANONICAL_PUBLIC_V1_V2_VECTOR_PROVENANCE == (
+        "canonical-public-v1-v2-compatibility-vector"
+    )
+    records = _canonical_public_v1_v2_compatibility_vectors()
     assert set(records["request_v2"]) == set(records["request_v1"]) | {
         "isolation"
     }

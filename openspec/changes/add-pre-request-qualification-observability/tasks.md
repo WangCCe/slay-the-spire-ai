@@ -18,7 +18,7 @@
 - [x] 3.1 Independently reconstruct v3 token inputs, guarded direct-child paths, canonical bytes, claim consumption, static anchors, ordered stage/self-hash chain, bounded failure classes, and handoff without importing producer result builders or trusting current worktree bytes.
 - [x] 3.2 Implement deterministic `reviewed_prepared`, `pre_request_partial`, `sealed_invalid`, `active_request_partial`, and existing verified-terminal classification with exact last-stage reporting and no retry or positive authority for every incomplete state.
 - [x] 3.3 Require an exact v3 bootstrap chain and handoff before terminal verification; reject missing, extra, malformed, linked, non-regular, mutated, reordered, synthetic, or externally mismatched evidence without deleting or repairing the root.
-- [ ] 3.4 Pin every available r1-r6 request/result/review/audit/report/root byte and every recorded absence by exact path, size, and SHA-256; keep evidence-derived classification separate from immutable governance disposition; replay only historically complete bundles through the public v1/v2 path; and prove no synthetic evidence, authority, retry, or launchability change.
+- [x] 3.4 Pin every available r1-r6 request/result/review/audit/report/root byte and every recorded absence by exact path, size, and SHA-256; keep evidence-derived classification separate from immutable governance disposition; replay only historically complete bundles through the public v1/v2 path; and prove no synthetic evidence, authority, retry, or launchability change.
 
 ## 4. Prove Isolation And Compatibility
 
