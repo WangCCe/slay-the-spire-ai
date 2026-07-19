@@ -1117,6 +1117,7 @@ def _qualification_verify_bootstrap_prefix(
             "evidence_valid": evidence_valid,
             "final_stage_hash": final_stage_hash,
             "handoff_hash": handoff_hash,
+            "launch_token": launch_token,
             "partial_stage": partial_stage,
             "qualification_status": qualification_status,
         }
@@ -1421,6 +1422,68 @@ def _qualification_no_follow_entries(
             if stat.S_ISDIR(metadata.st_mode) and not is_link_or_reparse:
                 pending.append(path)
     return sorted(entries, key=lambda row: str(row[0]))
+
+
+def _qualification_expected_bootstrap_summary(
+    bootstrap_verification: Mapping[str, Any],
+) -> dict[str, Any]:
+    inventory = _mapping(
+        bootstrap_verification.get("bootstrap_inventory"),
+        "qualification bootstrap inventory",
+    )
+    entries = _sequence(
+        inventory.get("entries"),
+        "qualification bootstrap inventory entries",
+    )
+    expected_names = [
+        "qualification-bootstrap-claim.json",
+        *(
+            f"qualification-bootstrap-stage-{index:02d}-"
+            f"{name.replace('_', '-')}.json"
+            for index, name in enumerate(
+                QUALIFICATION_BOOTSTRAP_STAGE_NAMES,
+                start=1,
+            )
+        ),
+        "qualification-bootstrap-handoff.json",
+    ]
+    normalized_entries = []
+    for row in entries:
+        binding = _mapping(row, "qualification bootstrap inventory row")
+        if (
+            set(binding) != {"path", "sha256", "size"}
+            or not isinstance(binding.get("path"), str)
+            or not _is_sha256(binding.get("sha256"))
+            or type(binding.get("size")) is not int
+            or binding["size"] <= 0
+        ):
+            raise OutcomeEvidenceVerificationError(
+                "qualification bootstrap inventory row is invalid"
+            )
+        normalized_entries.append(dict(binding))
+    if [row["path"] for row in normalized_entries] != expected_names:
+        raise OutcomeEvidenceVerificationError(
+            "qualification bootstrap inventory order mismatch"
+        )
+    for field in (
+        "claim_hash",
+        "final_stage_hash",
+        "handoff_hash",
+        "launch_token",
+    ):
+        if not _is_sha256(bootstrap_verification.get(field)):
+            raise OutcomeEvidenceVerificationError(
+                f"qualification bootstrap {field} is invalid"
+            )
+    return {
+        "claim_hash": bootstrap_verification["claim_hash"],
+        "failure_hash": None,
+        "final_stage_hash": bootstrap_verification["final_stage_hash"],
+        "handoff_hash": bootstrap_verification["handoff_hash"],
+        "inventory": normalized_entries,
+        "launch_token": bootstrap_verification["launch_token"],
+        "schema_version": QUALIFICATION_BOOTSTRAP_EVIDENCE_SCHEMA_VERSION,
+    }
 
 
 def _qualification_read_file_bytes(path: Path, label: str) -> bytes:
@@ -2521,8 +2584,22 @@ def verify_prelock_qualification(
                         guarded_snapshot=guarded_snapshot,
                     )
             if result_path is not None:
-                raise OutcomeEvidenceVerificationError(
-                    "qualification terminal evidence lacks a complete bootstrap handoff"
+                return finish_audit(
+                    checks=checks,
+                    review_binding=review["review_binding"],
+                    request_hash=request["request_hash"],
+                    result_hash=None,
+                    qualification_status="sealed_invalid",
+                    status="sealed_invalid",
+                    partial_stage="invalid_terminal_bootstrap",
+                    consumed=True,
+                    evidence_valid=False,
+                    evidence_error=(
+                        bootstrap_verification["evidence_error"]
+                        or "qualification terminal evidence lacks a complete "
+                        "bootstrap handoff"
+                    ),
+                    artifact_inventory=artifact_inventory,
                 )
             return finish_audit(
                 checks=checks,
@@ -2537,18 +2614,110 @@ def verify_prelock_qualification(
                 evidence_error=bootstrap_verification["evidence_error"],
                 artifact_inventory=artifact_inventory,
             )
-        context = _verify_qualification_request(
-            request,
-            request_path=request_path,
-            registration=review["registration"],
-            registration_bytes=review["registration_bytes"],
-            request_review=review["review_binding"],
-            checks=checks,
-            guarded_snapshot=guarded_snapshot,
-        )
+        try:
+            context = _verify_qualification_request(
+                request,
+                request_path=request_path,
+                registration=review["registration"],
+                registration_bytes=review["registration_bytes"],
+                request_review=review["review_binding"],
+                checks=checks,
+                guarded_snapshot=guarded_snapshot,
+            )
+        except OutcomeEvidenceVerificationError as exc:
+            return finish_audit(
+                checks=checks,
+                review_binding=review["review_binding"],
+                request_hash=request["request_hash"],
+                result_hash=None,
+                qualification_status="sealed_invalid",
+                status="sealed_invalid",
+                partial_stage="invalid_active_request",
+                consumed=True,
+                evidence_valid=False,
+                evidence_error=str(exc),
+                artifact_inventory=artifact_inventory,
+            )
         if result_path is not None:
-            raise OutcomeEvidenceVerificationError(
-                "qualification terminal-v3 verification is not implemented"
+            try:
+                resolved_result_path = _qualification_lexical_absolute_path(
+                    os.fspath(result_path),
+                    "qualification result path",
+                )
+                checks.require(
+                    resolved_result_path in {completion_path, failure_path},
+                    "qualification result path does not match a terminal branch",
+                )
+                result_bytes = _qualification_snapshot_regular_file_bytes(
+                    guarded_snapshot,
+                    resolved_result_path,
+                    label="result",
+                )
+                checks.require(
+                    len(result_bytes) == result_anchors["size"],
+                    "qualification result byte-count anchor mismatch",
+                )
+                checks.require(
+                    hashlib.sha256(result_bytes).hexdigest()
+                    == result_anchors["file_sha256"],
+                    "qualification result file-SHA anchor mismatch",
+                )
+                result = _load_qualification_record_bytes(
+                    result_bytes,
+                    path=resolved_result_path,
+                    schema_version=QUALIFICATION_RESULT_SCHEMA_VERSION,
+                    hash_field="result_hash",
+                    label="qualification result",
+                )
+                checks.require(
+                    result["result_hash"] == result_anchors["result_hash"],
+                    "qualification result self-hash anchor mismatch",
+                )
+                result_verification = _verify_qualification_result(
+                    result,
+                    result_path=resolved_result_path,
+                    request=request,
+                    context=context,
+                    checks=checks,
+                    bootstrap_verification=bootstrap_verification,
+                    guarded_snapshot=guarded_snapshot,
+                )
+            except OutcomeEvidenceVerificationError as exc:
+                return finish_audit(
+                    checks=checks,
+                    review_binding=review["review_binding"],
+                    request_hash=request["request_hash"],
+                    result_hash=None,
+                    qualification_status="sealed_invalid",
+                    status="sealed_invalid",
+                    partial_stage="invalid_terminal",
+                    consumed=True,
+                    evidence_valid=False,
+                    evidence_error=str(exc),
+                    artifact_inventory=artifact_inventory,
+                )
+            return finish_audit(
+                checks=checks,
+                review_binding=result["review_binding"],
+                request_hash=request["request_hash"],
+                result_hash=result["result_hash"],
+                qualification_status=result["status"],
+                status="verified",
+                partial_stage=None,
+                consumed=True,
+                evidence_valid=True,
+                evidence_error=None,
+                artifact_inventory=artifact_inventory,
+                result_file_sha256=result_anchors["file_sha256"],
+                result_size=result_anchors["size"],
+                isolation_bound=result_verification["isolation_bound"],
+                launch_qualified=result_verification["launch_qualified"],
+                isolation_baseline_hash=result_verification[
+                    "isolation_baseline_hash"
+                ],
+                isolation_post_observation_hash=result_verification[
+                    "isolation_post_observation_hash"
+                ],
             )
         if (
             _qualification_snapshot_entry(guarded_snapshot, completion_path)
@@ -3481,6 +3650,7 @@ def _expected_qualification_review_binding(
     request_source_path: Path,
     request_source_relative: str,
     request_bytes: bytes,
+    bootstrap_summary: Mapping[str, Any] | None = None,
 ) -> dict[str, Any]:
     file_sha256 = hashlib.sha256(request_bytes).hexdigest()
     record = {
@@ -3511,6 +3681,12 @@ def _expected_qualification_review_binding(
         ),
         "source_commit": request["source_commit"],
     }
+    if bootstrap_summary is not None:
+        if request.get("schema_version") != QUALIFICATION_REQUEST_SCHEMA_VERSION:
+            raise OutcomeEvidenceVerificationError(
+                "historical qualification review cannot bind bootstrap evidence"
+            )
+        record["bootstrap"] = dict(bootstrap_summary)
     record["review_binding_hash"] = _self_hash(
         record,
         "review_binding_hash",
@@ -4165,6 +4341,8 @@ def _verify_qualification_result(
     request: Mapping[str, Any],
     context: Mapping[str, Any],
     checks: _Checks,
+    bootstrap_verification: Mapping[str, Any] | None = None,
+    guarded_snapshot: Mapping[str, Any] | None = None,
 ) -> dict[str, Any]:
     result_schema_version = result.get("schema_version")
     expected_result_schema = (
@@ -4203,6 +4381,20 @@ def _verify_qualification_result(
         QUALIFICATION_RESULT_SCHEMA_VERSION,
     }:
         expected_fields.add("isolation")
+    expected_bootstrap = None
+    if result_schema_version == QUALIFICATION_RESULT_SCHEMA_VERSION:
+        expected_fields.add("bootstrap")
+        if bootstrap_verification is None:
+            raise OutcomeEvidenceVerificationError(
+                "qualification result v3 requires bootstrap replay"
+            )
+        expected_bootstrap = _qualification_expected_bootstrap_summary(
+            bootstrap_verification
+        )
+        checks.require(
+            result.get("bootstrap") == expected_bootstrap,
+            "qualification result bootstrap binding mismatch",
+        )
     checks.require(
         set(result) == expected_fields,
         "qualification result fields mismatch",
@@ -4219,8 +4411,17 @@ def _verify_qualification_result(
         result_path == expected_result_path,
         "qualification result path contradicts status",
     )
+    opposite_exists = (
+        _qualification_path_entry_exists(opposite_result_path)
+        if guarded_snapshot is None
+        else _qualification_snapshot_entry(
+            guarded_snapshot,
+            opposite_result_path,
+        )
+        is not None
+    )
     checks.require(
-        not _qualification_path_entry_exists(opposite_result_path),
+        not opposite_exists,
         "qualification terminal branches are not exclusive",
     )
     created = _exact_int(result.get("created_unix_ns"), "qualification result start")
@@ -4245,8 +4446,31 @@ def _verify_qualification_result(
             result.get(field) == request[field],
             f"qualification result {field} binding mismatch",
         )
+    expected_review_binding = context["request_review"]
+    if result_schema_version == QUALIFICATION_RESULT_SCHEMA_VERSION:
+        active_request_bytes = _qualification_snapshot_regular_file_bytes(
+            guarded_snapshot,
+            Path(request["request_path"]),
+            label="active request",
+        )
+        request_review = _mapping(
+            context.get("request_review"),
+            "qualification request review binding",
+        )
+        source_binding = _mapping(
+            request_review.get("request_source"),
+            "qualification request source review binding",
+        )
+        expected_review_binding = _expected_qualification_review_binding(
+            request=request,
+            review_commit=str(request_review["review_commit"]),
+            request_source_path=Path(str(source_binding["path"])),
+            request_source_relative=str(source_binding["relative_path"]),
+            request_bytes=active_request_bytes,
+            bootstrap_summary=expected_bootstrap,
+        )
     checks.require(
-        result.get("review_binding") == context["request_review"],
+        result.get("review_binding") == expected_review_binding,
         "qualification result review binding mismatch",
     )
     authority = _mapping(result.get("authority"), "qualification authority")
@@ -4359,6 +4583,7 @@ def _verify_qualification_result(
         request=request,
         registration=context["registration"],
         checks=checks,
+        guarded_snapshot=guarded_snapshot,
     )
     _verify_qualification_lifecycle_timestamps(
         request=request,
@@ -4421,6 +4646,11 @@ def _verify_qualification_result(
             or isolation_verification["isolation_complete"] is True
         )
     )
+    if result_schema_version == QUALIFICATION_RESULT_SCHEMA_VERSION:
+        checks.require(
+            status == "passed" and success_evidence_complete,
+            "qualification v3 terminal lifecycle is incomplete",
+        )
     if status == "passed":
         checks.require(
             result.get("failure") is None and success_evidence_complete,
@@ -4446,6 +4676,7 @@ def _verify_qualification_handshake_result(
     request: Mapping[str, Any],
     registration: Mapping[str, Any],
     checks: _Checks,
+    guarded_snapshot: Mapping[str, Any] | None = None,
 ) -> dict[str, dict[str, Any]]:
     handshake_result = _mapping(
         result.get("handshake"),
@@ -4463,16 +4694,37 @@ def _verify_qualification_handshake_result(
             f"qualification {name} result",
         )
         path = Path(request_handshake[f"{name}_path"])
-        path_is_regular = _qualification_path_is_regular_file(path)
-        expected_sha = _file_sha256(path) if path_is_regular else None
+        raw = None
+        if guarded_snapshot is None:
+            path_is_regular = _qualification_path_is_regular_file(path)
+            expected_sha = _file_sha256(path) if path_is_regular else None
+        else:
+            raw = _qualification_snapshot_regular_file_bytes(
+                guarded_snapshot,
+                path,
+                label=f"{name} artifact",
+                allow_missing=True,
+            )
+            path_is_regular = raw is not None
+            expected_sha = (
+                None if raw is None else hashlib.sha256(raw).hexdigest()
+            )
         checks.require(
             binding == {"path": str(path), "sha256": expected_sha},
             f"qualification {name} result hash mismatch",
         )
         if path_is_regular:
-            records[name] = _load_canonical_handshake_record(
-                path,
-                f"qualification {name}",
+            records[name] = (
+                _load_canonical_handshake_record(
+                    path,
+                    f"qualification {name}",
+                )
+                if raw is None
+                else _load_canonical_handshake_record_bytes(
+                    raw,
+                    path=path,
+                    label=f"qualification {name}",
+                )
             )
     if "attempt" not in records:
         checks.require(
@@ -4503,6 +4755,15 @@ def _verify_qualification_handshake_result(
         },
         expected_marker_start=request["marker"]["start_count"],
         checks=checks,
+        config_bytes=(
+            None
+            if guarded_snapshot is None
+            else _qualification_snapshot_regular_file_bytes(
+                guarded_snapshot,
+                Path(request["config"]["path"]),
+                label="config",
+            )
+        ),
     )
     if "ready" not in records:
         checks.require(

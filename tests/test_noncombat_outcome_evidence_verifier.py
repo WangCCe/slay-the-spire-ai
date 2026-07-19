@@ -1,4 +1,5 @@
 import ast
+import base64
 import hashlib
 import importlib
 import json
@@ -60,6 +61,117 @@ QUALIFICATION_BOOTSTRAP_FAILURE_DETAILS = {
     "prelaunch_isolation_failed": "prelaunch isolation validation failed",
     "unexpected_pre_request_failure": "unexpected pre-request failure",
 }
+
+HISTORICAL_QUALIFICATION_FIXTURES = (
+    {
+        "id": "r1",
+        "artifact_commit": "2936c547bd7917fdbbc487470326716129e3fbe2",
+        "artifact_path": (
+            "reports/noncombat_outcome_evidence_expansion_20260716_v2_"
+            "registration_review.md"
+        ),
+        "artifact_sha256": (
+            "8c1afc4a2968717540353e4a65810103dd56bb6a85b008a6ed8043bb48938bba"
+        ),
+        "artifact_size": 21249,
+        "record_hash": (
+            "ccd76824c90a9726c57b48a7f71d8bc1d8da94df6c686ae36eff10a1b72db41f"
+        ),
+        "schema_version": "noncombat-outcome-evidence-qualification-request-v1",
+        "status": "failed_pre_ready",
+        "consumed": True,
+    },
+    {
+        "id": "r2",
+        "artifact_commit": "2936c547bd7917fdbbc487470326716129e3fbe2",
+        "artifact_path": (
+            "reports/noncombat_outcome_evidence_expansion_20260716_v2_"
+            "registration_review.md"
+        ),
+        "artifact_sha256": (
+            "8c1afc4a2968717540353e4a65810103dd56bb6a85b008a6ed8043bb48938bba"
+        ),
+        "artifact_size": 21249,
+        "record_hash": (
+            "8bb9b396e129e017fd84fb4aabe7fa6d02bb51b0c7c147836dbf29e7c289c95c"
+        ),
+        "schema_version": "noncombat-outcome-evidence-qualification-request-v1",
+        "status": "failed_readiness_timeout",
+        "consumed": True,
+    },
+    {
+        "id": "r3",
+        "artifact_commit": "2936c547bd7917fdbbc487470326716129e3fbe2",
+        "artifact_path": (
+            "reports/noncombat_outcome_evidence_expansion_20260716_v2_"
+            "r5_qualification_review.md"
+        ),
+        "artifact_sha256": (
+            "739fbb650e2694844e48062c1c0892a6778e5de8965a3f39bf076f80a309b41f"
+        ),
+        "artifact_size": 12245,
+        "record_hash": (
+            "e495ce302f0ddf9628962e0d4147614a0cf9b9c7c010f256662a98eae76b033d"
+        ),
+        "schema_version": "noncombat-outcome-evidence-qualification-request-v1",
+        "status": "failed_release_side",
+        "consumed": True,
+    },
+    {
+        "id": "r4",
+        "artifact_commit": "2936c547bd7917fdbbc487470326716129e3fbe2",
+        "artifact_path": (
+            "reports/noncombat_outcome_evidence_expansion_20260716_v2_"
+            "r5_qualification_review.md"
+        ),
+        "artifact_sha256": (
+            "739fbb650e2694844e48062c1c0892a6778e5de8965a3f39bf076f80a309b41f"
+        ),
+        "artifact_size": 12245,
+        "record_hash": (
+            "f21313b80fedfccdea76c0e69d3d3d44f06289ba033159537d73f0202f3c039e"
+        ),
+        "schema_version": "noncombat-outcome-evidence-qualification-request-v1",
+        "status": "obsolete_prepared",
+        "consumed": False,
+    },
+    {
+        "id": "r5",
+        "artifact_commit": "2936c547bd7917fdbbc487470326716129e3fbe2",
+        "artifact_path": (
+            "reports/noncombat_outcome_evidence_expansion_20260716_v2_"
+            "r5_qualification_request.json"
+        ),
+        "artifact_sha256": (
+            "40e978059c31f90c2da52435d50193deea95b1f3f19c28a865ef96f80c20ed26"
+        ),
+        "artifact_size": 8813,
+        "record_hash": (
+            "b80b5311018c6c39de6df55c8e1d9090826e07bbd606711b4d0c4d68b4d1cfce"
+        ),
+        "schema_version": "noncombat-outcome-evidence-qualification-request-v2",
+        "status": "retired_pre_request",
+        "consumed": True,
+    },
+    {
+        "id": "r6",
+        "artifact_commit": "020fc99d8f3fd804af1b16a3baa247aa086b3370",
+        "artifact_path": (
+            "reports/noncombat_outcome_evidence_expansion_20260716_v2_"
+            "r6_qualification_outcome.md"
+        ),
+        "artifact_sha256": (
+            "680f6cffba77d8134500f1ef9f6d4ca02e4df05916afc1926bab2262e8000d62"
+        ),
+        "artifact_size": 5952,
+        "record_hash": (
+            "fc5332ffca8b00a1e5132047d07538825369f187db030d9e080a91d37fa8496c"
+        ),
+        "schema_version": "noncombat-outcome-evidence-qualification-request-v2",
+        "status": "retired_pre_request",
+        "consumed": True,
+    },
+)
 
 
 def _verifier():
@@ -420,6 +532,1095 @@ def _independent_complete_handoff_lifecycle(request, review):
         }
     }
     return context, config_path
+
+
+def _independent_file_observation(path, raw):
+    return {
+        "exists": raw is not None,
+        "path": str(path),
+        "sha256": None if raw is None else hashlib.sha256(raw).hexdigest(),
+        "size": None if raw is None else len(raw),
+    }
+
+
+def _independent_inventory(root, *, patterns=None):
+    normalized_patterns = None if patterns is None else list(patterns)
+    rows = []
+    for path in sorted(Path(root).rglob("*")):
+        if not path.is_file():
+            continue
+        if normalized_patterns is not None and not any(
+            path.match(pattern) for pattern in normalized_patterns
+        ):
+            continue
+        raw = path.read_bytes()
+        rows.append(
+            {
+                "kind": "file",
+                "path": path.relative_to(root).as_posix(),
+                "sha256": hashlib.sha256(raw).hexdigest(),
+                "size": len(raw),
+            }
+        )
+    return {
+        "entry_count": len(rows),
+        "inventory_sha256": hashlib.sha256(
+            _canonical_json(rows).encode("ascii")
+        ).hexdigest(),
+        "patterns": normalized_patterns,
+        "root": str(root),
+        "total_bytes": sum(row["size"] for row in rows),
+    }
+
+
+def _independent_review_binding(request, request_bytes, *, bootstrap=None):
+    source_path = Path(request["request_source_path"])
+    file_sha256 = hashlib.sha256(request_bytes).hexdigest()
+    record = {
+        "active_request": {
+            "file_sha256": file_sha256,
+            "path": request["request_path"],
+            "request_hash": request["request_hash"],
+            "size": len(request_bytes),
+        },
+        "allowed_review_paths": list(request["review_allowed_paths"]),
+        "implementation_map_sha256": hashlib.sha256(
+            _canonical_json(request["implementation_sha256"]).encode("ascii")
+        ).hexdigest(),
+        "registration": dict(request["registration"]),
+        "request_source": {
+            "file_sha256": file_sha256,
+            "path": str(source_path),
+            "relative_path": request["review_allowed_paths"][-1],
+            "request_hash": request["request_hash"],
+            "size": len(request_bytes),
+        },
+        "review_binding_hash": None,
+        "review_commit": QUALIFICATION_REVIEW_COMMIT,
+        "schema_version": (
+            "noncombat-outcome-evidence-qualification-review-binding-v3"
+        ),
+        "source_commit": request["source_commit"],
+    }
+    if bootstrap is not None:
+        record["bootstrap"] = deepcopy(bootstrap)
+    record["review_binding_hash"] = _self_hash(
+        record,
+        "review_binding_hash",
+    )
+    return record
+
+
+def _literal_v3_terminal_fixture(tmp_path):
+    request, _review = _independent_bootstrap_request(tmp_path)
+    root = Path(request["qualification_root"])
+    request_source_path = (tmp_path / "reports" / "request.json").resolve()
+    request_source_path.parent.mkdir()
+    config_path = root / "qualification-config.json"
+    config_raw = b'{"fixture":true}\n'
+    config_path.write_bytes(config_raw)
+
+    game_root = (tmp_path / "game").resolve()
+    checkpoint_root = game_root / "checkpoints"
+    run_root = game_root / "runs"
+    checkpoint_root.mkdir(parents=True)
+    run_root.mkdir()
+    marker_path = run_root / "ai_games.txt"
+    marker_raw = b""
+    marker_path.write_bytes(marker_raw)
+    communication_path = (tmp_path / "config.properties").resolve()
+    communication_raw = b"verbose=false\nrunAtGameStart=true\n"
+    communication_path.write_bytes(communication_raw)
+    checkpoint_patterns = ["rl_combat_model_*.pth", "rl_model_*.pth"]
+    baseline = {
+        "baseline_hash": None,
+        "checkpoints": _independent_inventory(
+            checkpoint_root,
+            patterns=checkpoint_patterns,
+        ),
+        "communication_mod": {
+            "original_bytes_b64": base64.b64encode(
+                communication_raw
+            ).decode("ascii"),
+            "path": str(communication_path),
+            "properties": {
+                "runAtGameStart": "true",
+                "verbose": "false",
+            },
+            "sha256": hashlib.sha256(communication_raw).hexdigest(),
+            "size": len(communication_raw),
+        },
+        "global_logs": {
+            str(game_root / "ai_debug.log"): _independent_file_observation(
+                game_root / "ai_debug.log",
+                None,
+            ),
+            str(
+                game_root / "communication_mod_errors.log"
+            ): _independent_file_observation(
+                game_root / "communication_mod_errors.log",
+                None,
+            ),
+        },
+        "marker": {
+            **_independent_file_observation(marker_path, marker_raw),
+            "line_count": 0,
+        },
+        "runs": _independent_inventory(run_root),
+        "schema_version": (
+            "noncombat-outcome-evidence-qualification-isolation-v1"
+        ),
+    }
+    baseline["baseline_hash"] = _self_hash(baseline, "baseline_hash")
+    post_observation = {
+        "checkpoints": deepcopy(baseline["checkpoints"]),
+        "communication_mod": {
+            "exists": True,
+            "path": str(communication_path),
+            "properties": deepcopy(baseline["communication_mod"]["properties"]),
+            "sha256": baseline["communication_mod"]["sha256"],
+            "size": baseline["communication_mod"]["size"],
+        },
+        "global_logs": deepcopy(baseline["global_logs"]),
+        "marker": deepcopy(baseline["marker"]),
+        "observation_hash": None,
+        "runs": deepcopy(baseline["runs"]),
+        "schema_version": (
+            "noncombat-outcome-evidence-qualification-isolation-observation-v1"
+        ),
+    }
+    post_observation["observation_hash"] = _self_hash(
+        post_observation,
+        "observation_hash",
+    )
+
+    session_id = "fixture-qualification-s01"
+    registration_hash = "e" * 64
+    handshake = {
+        "attempt_path": str(root / "qualification-communication-attempt.json"),
+        "protocol_version": "noncombat-outcome-evidence-handshake-v1",
+        "readiness_timeout_seconds": 120,
+        "ready_path": str(root / "qualification-communication-ready.json"),
+        "release_path": str(root / "qualification-communication-release.json"),
+        "release_timeout_seconds": 10,
+        "run_lock_hash": "0" * 64,
+        "session_id": session_id,
+        "slot_number": 1,
+    }
+    request.update(
+        {
+            "child_command": ["fixture-python", "-I", "-S", "fixture-main.py"],
+            "completion_path": str(root / "qualification-completion.json"),
+            "config": {
+                "path": str(config_path),
+                "sha256": hashlib.sha256(config_raw).hexdigest(),
+            },
+            "created_unix_ns": 100,
+            "failure_path": str(root / "qualification-failure.json"),
+            "forbidden_paths": [str((tmp_path / "study").resolve())],
+            "handshake": handshake,
+            "isolation": baseline,
+            "marker": {"path": str(marker_path), "start_count": 0},
+            "preexisting_files": {
+                str(config_path): hashlib.sha256(config_raw).hexdigest(),
+            },
+            "registration": {
+                "canonical_hash": registration_hash,
+                "file_sha256": "f" * 64,
+                "path": str((tmp_path / "registration.json").resolve()),
+            },
+            "request_source_path": str(request_source_path),
+            "review_allowed_paths": ["reports/request.json"],
+        }
+    )
+    request["request_hash"] = None
+    request["request_hash"] = _self_hash(request, "request_hash")
+    request_bytes = (_canonical_json(request) + "\n").encode("ascii")
+    request_source_path.write_bytes(request_bytes)
+    review_binding = _independent_review_binding(request, request_bytes)
+    review = {
+        "request_bytes": request_bytes,
+        "review_binding": review_binding,
+    }
+    records = _write_bootstrap_phase(
+        request,
+        review,
+        stage_count=5,
+        handoff=True,
+    )
+    Path(request["request_path"]).write_bytes(request_bytes)
+
+    config_sha256 = hashlib.sha256(config_raw).hexdigest()
+    token_payload = {
+        "config_sha256": config_sha256,
+        "protocol_version": handshake["protocol_version"],
+        "registration_hash": registration_hash,
+        "run_lock_hash": handshake["run_lock_hash"],
+        "session_id": session_id,
+        "slot_number": 1,
+    }
+    slot_token = hashlib.sha256(
+        _canonical_json(token_payload).encode("ascii")
+    ).hexdigest()
+    attempt = {
+        "attempt_hash": None,
+        "attempt_path": handshake["attempt_path"],
+        "config_path": str(config_path),
+        "config_sha256": config_sha256,
+        "created_unix_ns": 110,
+        "marker_start_count": 0,
+        "protocol_version": handshake["protocol_version"],
+        "readiness_timeout_seconds": 120,
+        "ready_path": handshake["ready_path"],
+        "registration_hash": registration_hash,
+        "release_path": handshake["release_path"],
+        "release_timeout_seconds": 10,
+        "run_lock_hash": handshake["run_lock_hash"],
+        "schema_version": "noncombat-outcome-evidence-handshake-attempt-v1",
+        "session_id": session_id,
+        "slot_number": 1,
+        "slot_token": slot_token,
+        "study_id": request["qualification_id"],
+    }
+    attempt["attempt_hash"] = _self_hash(attempt, "attempt_hash")
+    ready = {
+        "attempt_hash": attempt["attempt_hash"],
+        "child_pid": 9001,
+        "communication_state_received": True,
+        "config_path": str(config_path),
+        "config_sha256": config_sha256,
+        "created_unix_ns": 120,
+        "protocol_version": handshake["protocol_version"],
+        "ready_hash": None,
+        "ready_path": handshake["ready_path"],
+        "registration_hash": registration_hash,
+        "run_lock_hash": handshake["run_lock_hash"],
+        "schema_version": "noncombat-outcome-evidence-handshake-ready-v1",
+        "session_id": session_id,
+        "slot_number": 1,
+        "slot_token": slot_token,
+        "study_id": request["qualification_id"],
+    }
+    ready["ready_hash"] = _self_hash(ready, "ready_hash")
+    release = {
+        "attempt_hash": attempt["attempt_hash"],
+        "child_pid": ready["child_pid"],
+        "created_unix_ns": 130,
+        "protocol_version": handshake["protocol_version"],
+        "ready_hash": ready["ready_hash"],
+        "registration_hash": registration_hash,
+        "release_hash": None,
+        "release_path": handshake["release_path"],
+        "run_lock_hash": handshake["run_lock_hash"],
+        "schema_version": "noncombat-outcome-evidence-handshake-release-v1",
+        "session_id": session_id,
+        "slot_number": 1,
+        "slot_token": slot_token,
+        "study_id": request["qualification_id"],
+    }
+    release["release_hash"] = _self_hash(release, "release_hash")
+    handshake_records = {"attempt": attempt, "ready": ready, "release": release}
+    for name, record in handshake_records.items():
+        Path(handshake[f"{name}_path"]).write_bytes(
+            (_canonical_json(record) + "\n").encode("ascii")
+        )
+
+    ordered_bootstrap_paths = [
+        Path(request["bootstrap"]["claim_path"]),
+        *(Path(row["path"]) for row in request["bootstrap"]["stage_paths"]),
+        Path(request["bootstrap"]["handoff_path"]),
+    ]
+    inventory = []
+    for path in ordered_bootstrap_paths:
+        raw = path.read_bytes()
+        inventory.append(
+            {
+                "path": path.name,
+                "sha256": hashlib.sha256(raw).hexdigest(),
+                "size": len(raw),
+            }
+        )
+    bootstrap_summary = {
+        "claim_hash": records[0]["record_hash"],
+        "failure_hash": None,
+        "final_stage_hash": records[-2]["record_hash"],
+        "handoff_hash": records[-1]["record_hash"],
+        "inventory": inventory,
+        "launch_token": records[0]["anchors"]["launch_token"],
+        "schema_version": QUALIFICATION_BOOTSTRAP_EVIDENCE_SCHEMA,
+    }
+    terminal_review = _independent_review_binding(
+        request,
+        request_bytes,
+        bootstrap=bootstrap_summary,
+    )
+    result = {
+        "authority": {
+            "causal_claim": False,
+            "collection": False,
+            "gameplay_policy_change": False,
+            "run_lock": False,
+            "study_start": False,
+            "training": False,
+        },
+        "bootstrap": bootstrap_summary,
+        "child_command": list(request["child_command"]),
+        "config": dict(request["config"]),
+        "created_unix_ns": 110,
+        "ended_unix_ns": 140,
+        "failure": None,
+        "forbidden_paths": {path: False for path in request["forbidden_paths"]},
+        "handshake": {
+            name: {
+                "path": handshake[f"{name}_path"],
+                "sha256": hashlib.sha256(
+                    Path(handshake[f"{name}_path"]).read_bytes()
+                ).hexdigest(),
+            }
+            for name in ("attempt", "ready", "release")
+        },
+        "implementation_sha256": dict(request["implementation_sha256"]),
+        "isolation": {
+            "baseline_hash": baseline["baseline_hash"],
+            "child_alive": False,
+            "communication_restored": True,
+            "matched": True,
+            "mismatches": [],
+            "observation_error": None,
+            "post_observation": post_observation,
+            "post_observation_hash": post_observation["observation_hash"],
+            "restoration_error": None,
+        },
+        "marker": {"end_count": 0, "path": str(marker_path), "start_count": 0},
+        "process": {
+            "cleanup_attempted": False,
+            "cleanup_error": None,
+            "exit_code": 0,
+            "launch_count": 1,
+            "pid": ready["child_pid"],
+        },
+        "registration": dict(request["registration"]),
+        "request": {"hash": request["request_hash"], "path": request["request_path"]},
+        "review_binding": terminal_review,
+        "result_hash": None,
+        "schema_version": "noncombat-outcome-evidence-qualification-result-v3",
+        "source_commit": request["source_commit"],
+        "status": "passed",
+    }
+    result["result_hash"] = _self_hash(result, "result_hash")
+    result_path = Path(request["completion_path"])
+    result_raw = (_canonical_json(result) + "\n").encode("ascii")
+    result_path.write_bytes(result_raw)
+    context = {
+        "isolation": baseline,
+        "marker_count": 0,
+        "registration": {
+            "registration_hash": registration_hash,
+            "study_id": request["qualification_id"],
+        },
+        "request_review": review_binding,
+        "request_schema_version": QUALIFICATION_REQUEST_V3_SCHEMA,
+    }
+    return {
+        "bootstrap_summary": bootstrap_summary,
+        "context": context,
+        "request": request,
+        "request_bytes": request_bytes,
+        "request_source_path": request_source_path,
+        "result": result,
+        "result_path": result_path,
+        "result_raw": result_raw,
+        "review": review,
+    }
+
+
+def _replay_literal_v3_terminal(verifier, fixture, monkeypatch, **overrides):
+    def load_review(_path, **kwargs):
+        assert kwargs["expected_review_commit"] == overrides.get(
+            "expected_review_commit",
+            QUALIFICATION_REVIEW_COMMIT,
+        )
+        return {
+            **fixture["review"],
+            "registration": {},
+            "registration_bytes": b"",
+            "repo_root": REPO_ROOT,
+            "request": fixture["request"],
+        }
+
+    snapshots = []
+
+    def verify_request(*_args, guarded_snapshot, **_kwargs):
+        snapshots.append(guarded_snapshot)
+        return fixture["context"]
+
+    monkeypatch.setattr(
+        verifier,
+        "_load_historical_qualification_review",
+        load_review,
+    )
+    monkeypatch.setattr(verifier, "_verify_qualification_request", verify_request)
+    monkeypatch.setattr(verifier, "_qualification_pid_is_alive", lambda _pid: False)
+    result = fixture["result"]
+    kwargs = {
+        "expected_request_hash": fixture["request"]["request_hash"],
+        "expected_request_file_sha256": hashlib.sha256(
+            fixture["request_bytes"]
+        ).hexdigest(),
+        "expected_request_size": len(fixture["request_bytes"]),
+        "expected_result_hash": result["result_hash"],
+        "expected_result_file_sha256": hashlib.sha256(
+            fixture["result_raw"]
+        ).hexdigest(),
+        "expected_result_size": len(fixture["result_raw"]),
+        "expected_review_commit": QUALIFICATION_REVIEW_COMMIT,
+    }
+    kwargs.update(overrides)
+    audit = verifier.verify_prelock_qualification(
+        fixture["request_source_path"],
+        fixture["result_path"],
+        **kwargs,
+    )
+    return audit, snapshots
+
+
+def test_qualification_bootstrap_terminal_replays_literal_complete_v3_chain(
+    tmp_path,
+    monkeypatch,
+):
+    verifier = _verifier()
+    fixture = _literal_v3_terminal_fixture(tmp_path)
+
+    def forbidden_builder(*_args, **_kwargs):
+        pytest.fail("literal v3 replay called a producer builder")
+
+    for name in (
+        "_qualification_bootstrap_inventory",
+        "_qualification_bootstrap_record",
+        "_qualification_bootstrap_token",
+        "_build_qualification_result",
+        "_build_qualification_review_binding",
+        "build_qualification_request",
+    ):
+        monkeypatch.setattr(runner, name, forbidden_builder)
+    producer_name = "scripts.run_noncombat_outcome_evidence_expansion"
+    saved_producer = sys.modules.pop(producer_name)
+    try:
+        audit, snapshots = _replay_literal_v3_terminal(
+            verifier,
+            fixture,
+            monkeypatch,
+        )
+        assert producer_name not in sys.modules
+    finally:
+        sys.modules[producer_name] = saved_producer
+
+    assert audit["schema_version"] == (
+        "noncombat-outcome-evidence-qualification-verification-audit-v3"
+    )
+    assert audit["status"] == "verified"
+    assert audit["qualification_status"] == "passed"
+    assert audit["bootstrap_inventory"]["entries"] == fixture[
+        "bootstrap_summary"
+    ]["inventory"]
+    assert audit["claim_hash"] == fixture["bootstrap_summary"]["claim_hash"]
+    assert audit["final_stage_hash"] == fixture["bootstrap_summary"][
+        "final_stage_hash"
+    ]
+    assert audit["handoff_hash"] == fixture["bootstrap_summary"]["handoff_hash"]
+    assert audit["consumed"] is True
+    assert audit["retry_allowed"] is False
+    assert audit["launch_qualified"] is True
+    assert len(snapshots) == 1
+    for field in (
+        "causal_claim_authorized",
+        "collection_authorized",
+        "gameplay_policy_change_authorized",
+        "run_lock_authorized",
+        "study_start_authorized",
+        "training_authorized",
+    ):
+        assert audit[field] is False
+
+
+def test_qualification_bootstrap_terminal_source_only_replay_without_producer(
+    tmp_path,
+):
+    fixture = _literal_v3_terminal_fixture(tmp_path)
+    verifier_path = (
+        REPO_ROOT
+        / "analysis_scripts"
+        / "verify_noncombat_outcome_evidence_expansion.py"
+    )
+    vector_path = tmp_path / "source-only-terminal-vector.json"
+    vector_path.write_text(
+        _canonical_json(
+            {
+                "context": fixture["context"],
+                "request": fixture["request"],
+                "request_bytes_hex": fixture["request_bytes"].hex(),
+                "result_path": str(fixture["result_path"]),
+                "review_binding": fixture["review"]["review_binding"],
+            }
+        )
+        + "\n",
+        encoding="ascii",
+        newline="",
+    )
+    probe = r'''
+import importlib.util
+import json
+from pathlib import Path
+import sys
+
+sys.modules["scripts.run_noncombat_outcome_evidence_expansion"] = None
+spec = importlib.util.spec_from_file_location("source_only_verifier", sys.argv[1])
+module = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(module)
+vector = json.loads(Path(sys.argv[2]).read_text(encoding="ascii"))
+checks = module._Checks()
+bootstrap = module._qualification_verify_bootstrap_prefix(
+    vector["request"],
+    {
+        "request_bytes": bytes.fromhex(vector["request_bytes_hex"]),
+        "review_binding": vector["review_binding"],
+    },
+    active_request_bytes=None,
+    checks=checks,
+)
+snapshot = checks.guarded_root_snapshot
+result_path = Path(vector["result_path"])
+result_raw = module._qualification_snapshot_regular_file_bytes(
+    snapshot,
+    result_path,
+    label="result",
+)
+result = module._load_qualification_record_bytes(
+    result_raw,
+    path=result_path,
+    schema_version=module.QUALIFICATION_RESULT_SCHEMA_VERSION,
+    hash_field="result_hash",
+    label="qualification result",
+)
+module._qualification_pid_is_alive = lambda _pid: False
+verified = module._verify_qualification_result(
+    result,
+    result_path=result_path,
+    request=vector["request"],
+    context=vector["context"],
+    checks=checks,
+    bootstrap_verification=bootstrap,
+    guarded_snapshot=snapshot,
+)
+print(json.dumps({
+    "bootstrap_status": bootstrap["qualification_status"],
+    "isolation_complete": verified["isolation_complete"],
+    "launch_qualified": verified["launch_qualified"],
+    "producer_absent": sys.modules[
+        "scripts.run_noncombat_outcome_evidence_expansion"
+    ] is None,
+}, sort_keys=True))
+'''
+
+    completed = subprocess.run(
+        [
+            sys.executable,
+            "-I",
+            "-S",
+            "-c",
+            probe,
+            str(verifier_path),
+            str(vector_path),
+        ],
+        cwd=tmp_path,
+        capture_output=True,
+        check=False,
+        text=True,
+    )
+
+    assert completed.returncode == 0, completed.stderr
+    assert json.loads(completed.stdout) == {
+        "bootstrap_status": "handoff_complete",
+        "isolation_complete": True,
+        "launch_qualified": True,
+        "producer_absent": True,
+    }
+
+
+def _rewrite_literal_terminal_result(fixture, mutate, *, rehash=True):
+    result = deepcopy(fixture["result"])
+    mutate(result)
+    if rehash:
+        result["result_hash"] = None
+        result["result_hash"] = _self_hash(result, "result_hash")
+    raw = (_canonical_json(result) + "\n").encode("ascii")
+    fixture["result_path"].write_bytes(raw)
+    fixture["result"] = result
+    fixture["result_raw"] = raw
+
+
+def _assert_v3_terminal_sealed_invalid(audit):
+    assert audit["schema_version"] == (
+        "noncombat-outcome-evidence-qualification-verification-audit-v3"
+    )
+    assert audit["status"] == "sealed_invalid"
+    assert audit["qualification_status"] == "sealed_invalid"
+    assert audit["consumed"] is True
+    assert audit["retry_allowed"] is False
+    assert audit["evidence_valid"] is False
+    assert audit["launch_qualified"] is False
+    for field in (
+        "causal_claim_authorized",
+        "collection_authorized",
+        "gameplay_policy_change_authorized",
+        "run_lock_authorized",
+        "study_start_authorized",
+        "training_authorized",
+    ):
+        assert audit[field] is False
+
+
+def test_qualification_bootstrap_terminal_rejects_incomplete_failed_lifecycle(
+    tmp_path,
+    monkeypatch,
+):
+    verifier = _verifier()
+    fixture = _literal_v3_terminal_fixture(tmp_path)
+    result = deepcopy(fixture["result"])
+    result["status"] = "failed"
+    result["failure"] = {
+        "exception_type": "FixtureError",
+        "message": "child was never launched",
+        "stage": "launch",
+    }
+    for name in ("attempt", "ready", "release"):
+        Path(fixture["request"]["handshake"][f"{name}_path"]).unlink()
+        result["handshake"][name]["sha256"] = None
+    result["process"] = {
+        "cleanup_attempted": False,
+        "cleanup_error": None,
+        "exit_code": None,
+        "launch_count": 0,
+        "pid": None,
+    }
+    result["result_hash"] = None
+    result["result_hash"] = _self_hash(result, "result_hash")
+    result_raw = (_canonical_json(result) + "\n").encode("ascii")
+    fixture["result_path"].unlink()
+    failure_path = Path(fixture["request"]["failure_path"])
+    failure_path.write_bytes(result_raw)
+    fixture.update(
+        {
+            "result": result,
+            "result_path": failure_path,
+            "result_raw": result_raw,
+        }
+    )
+
+    audit, _snapshots = _replay_literal_v3_terminal(
+        verifier,
+        fixture,
+        monkeypatch,
+    )
+
+    _assert_v3_terminal_sealed_invalid(audit)
+
+
+@pytest.mark.parametrize(
+    "damage",
+    (
+        "result_claim_hash",
+        "result_final_stage_hash",
+        "result_handoff_hash",
+        "result_launch_token",
+        "result_inventory_path",
+        "result_inventory_order",
+        "result_inventory_hash",
+        "result_inventory_size",
+        "result_bootstrap_schema",
+        "review_claim_hash",
+        "review_final_stage_hash",
+        "review_handoff_hash",
+        "review_launch_token",
+        "review_inventory_path",
+        "review_inventory_order",
+        "review_inventory_hash",
+        "review_inventory_size",
+        "review_bootstrap_schema",
+        "review_active_request",
+        "review_allowed_paths",
+        "review_implementation",
+        "review_registration",
+        "review_request_source",
+        "review_review_commit",
+        "review_source_commit",
+    ),
+)
+def test_qualification_bootstrap_terminal_rejects_result_and_review_tamper(
+    tmp_path,
+    monkeypatch,
+    damage,
+):
+    verifier = _verifier()
+    fixture = _literal_v3_terminal_fixture(tmp_path)
+
+    def mutate(result):
+        target_name, field = damage.split("_", 1)
+        target = (
+            result["bootstrap"]
+            if target_name == "result"
+            else result["review_binding"]
+        )
+        if target_name == "review" and not field.startswith((
+            "claim_hash",
+            "final_stage_hash",
+            "handoff_hash",
+            "launch_token",
+            "inventory_",
+            "bootstrap_schema",
+        )):
+            if field == "active_request":
+                target[field]["request_hash"] = "0" * 64
+            elif field == "allowed_paths":
+                target["allowed_review_paths"] = ["reports/changed.json"]
+            elif field == "implementation":
+                target["implementation_map_sha256"] = "0" * 64
+            elif field == "registration":
+                target["registration"]["canonical_hash"] = "0" * 64
+            elif field == "request_source":
+                target[field]["request_hash"] = "0" * 64
+            elif field == "review_commit":
+                target[field] = "0" * 40
+            elif field == "source_commit":
+                target[field] = "0" * 40
+        else:
+            bootstrap = target if target_name == "result" else target["bootstrap"]
+            if field in {
+                "claim_hash",
+                "final_stage_hash",
+                "handoff_hash",
+                "launch_token",
+            }:
+                bootstrap[field] = "0" * 64
+            elif field == "inventory_path":
+                bootstrap["inventory"][0]["path"] = "changed.json"
+            elif field == "inventory_order":
+                bootstrap["inventory"][0], bootstrap["inventory"][1] = (
+                    bootstrap["inventory"][1],
+                    bootstrap["inventory"][0],
+                )
+            elif field == "inventory_hash":
+                bootstrap["inventory"][0]["sha256"] = "0" * 64
+            elif field == "inventory_size":
+                bootstrap["inventory"][0]["size"] += 1
+            elif field == "bootstrap_schema":
+                bootstrap["schema_version"] = "bootstrap-wrong"
+        if target_name == "review":
+            target["review_binding_hash"] = None
+            target["review_binding_hash"] = _self_hash(
+                target,
+                "review_binding_hash",
+            )
+
+    _rewrite_literal_terminal_result(fixture, mutate)
+    audit, _snapshots = _replay_literal_v3_terminal(
+        verifier,
+        fixture,
+        monkeypatch,
+    )
+    _assert_v3_terminal_sealed_invalid(audit)
+
+
+@pytest.mark.parametrize(
+    "damage",
+    (
+        "external_result_hash",
+        "external_result_file_sha256",
+        "external_result_size",
+        "attempt_link",
+        "ready_link",
+        "release_link",
+        "child_exit",
+        "child_alive",
+        "restoration",
+        "lifecycle_timestamp",
+        "alternate_terminal_branch",
+        "terminal_branch",
+        "terminal_schema",
+        "terminal_self_hash",
+    ),
+)
+def test_qualification_bootstrap_terminal_rejects_lifecycle_and_external_tamper(
+    tmp_path,
+    monkeypatch,
+    damage,
+):
+    verifier = _verifier()
+    fixture = _literal_v3_terminal_fixture(tmp_path)
+    overrides = {}
+    if damage.startswith("external_result_"):
+        key = f"expected_{damage.removeprefix('external_')}"
+        overrides[key] = 1 if damage.endswith("size") else "0" * 64
+    elif damage in {"attempt_link", "ready_link", "release_link"}:
+        name = damage.removesuffix("_link")
+        path = Path(fixture["request"]["handshake"][f"{name}_path"])
+        record = json.loads(path.read_text(encoding="ascii"))
+        if name == "attempt":
+            record["session_id"] = "changed-session"
+            hash_field = "attempt_hash"
+        elif name == "ready":
+            record["attempt_hash"] = "0" * 64
+            hash_field = "ready_hash"
+        else:
+            record["ready_hash"] = "0" * 64
+            hash_field = "release_hash"
+        record[hash_field] = None
+        record[hash_field] = _self_hash(record, hash_field)
+        raw = (_canonical_json(record) + "\n").encode("ascii")
+        path.write_bytes(raw)
+
+        def mutate(result):
+            result["handshake"][name]["sha256"] = hashlib.sha256(raw).hexdigest()
+
+        _rewrite_literal_terminal_result(fixture, mutate)
+    elif damage == "alternate_terminal_branch":
+        Path(fixture["request"]["failure_path"]).write_bytes(b"{}\n")
+    else:
+        def mutate(result):
+            if damage == "child_exit":
+                result["process"]["exit_code"] = 1
+            elif damage == "child_alive":
+                result["isolation"]["child_alive"] = True
+            elif damage == "restoration":
+                result["isolation"]["communication_restored"] = False
+            elif damage == "lifecycle_timestamp":
+                result["ended_unix_ns"] = 125
+            elif damage == "terminal_branch":
+                result["status"] = "failed"
+                result["failure"] = {
+                    "exception_type": "FixtureError",
+                    "message": "fixed",
+                    "stage": "terminal",
+                }
+            elif damage == "terminal_schema":
+                result["schema_version"] = "qualification-result-wrong"
+            elif damage == "terminal_self_hash":
+                result["result_hash"] = "0" * 64
+
+        _rewrite_literal_terminal_result(
+            fixture,
+            mutate,
+            rehash=damage != "terminal_self_hash",
+        )
+
+    audit, _snapshots = _replay_literal_v3_terminal(
+        verifier,
+        fixture,
+        monkeypatch,
+        **overrides,
+    )
+    _assert_v3_terminal_sealed_invalid(audit)
+
+
+def _literal_bootstrap_artifact_paths(request):
+    bootstrap = request["bootstrap"]
+    return [
+        Path(bootstrap["claim_path"]),
+        *(Path(row["path"]) for row in bootstrap["stage_paths"]),
+        Path(bootstrap["handoff_path"]),
+    ]
+
+
+@pytest.mark.parametrize("path_index", range(8))
+def test_qualification_bootstrap_terminal_rejects_every_declared_path_tamper(
+    tmp_path,
+    monkeypatch,
+    path_index,
+):
+    verifier = _verifier()
+    fixture = _literal_v3_terminal_fixture(tmp_path)
+    paths = _literal_bootstrap_artifact_paths(fixture["request"])
+    failure_path = Path(fixture["request"]["bootstrap"]["failure_path"])
+    if path_index < len(paths):
+        path = paths[path_index]
+        os.replace(path, path.with_name(f"alternate-{path.name}"))
+    else:
+        failure_path.write_bytes(b"{}\n")
+
+    audit, _snapshots = _replay_literal_v3_terminal(
+        verifier,
+        fixture,
+        monkeypatch,
+    )
+    _assert_v3_terminal_sealed_invalid(audit)
+
+
+@pytest.mark.parametrize("record_index", range(7))
+def test_qualification_bootstrap_terminal_rejects_every_record_byte_tamper(
+    tmp_path,
+    monkeypatch,
+    record_index,
+):
+    verifier = _verifier()
+    fixture = _literal_v3_terminal_fixture(tmp_path)
+    path = _literal_bootstrap_artifact_paths(fixture["request"])[record_index]
+    path.write_bytes(path.read_bytes() + b" ")
+
+    audit, _snapshots = _replay_literal_v3_terminal(
+        verifier,
+        fixture,
+        monkeypatch,
+    )
+    _assert_v3_terminal_sealed_invalid(audit)
+
+
+@pytest.mark.parametrize("row_index", range(7))
+@pytest.mark.parametrize("field", ("path", "sha256", "size"))
+def test_qualification_bootstrap_terminal_rejects_every_inventory_row_tamper(
+    tmp_path,
+    monkeypatch,
+    row_index,
+    field,
+):
+    verifier = _verifier()
+    fixture = _literal_v3_terminal_fixture(tmp_path)
+
+    def mutate(result):
+        row = result["bootstrap"]["inventory"][row_index]
+        if field == "path":
+            row[field] = f"changed-{row_index}.json"
+        elif field == "sha256":
+            row[field] = "0" * 64
+        else:
+            row[field] += 1
+
+    _rewrite_literal_terminal_result(fixture, mutate)
+    audit, _snapshots = _replay_literal_v3_terminal(
+        verifier,
+        fixture,
+        monkeypatch,
+    )
+    _assert_v3_terminal_sealed_invalid(audit)
+
+
+@pytest.mark.parametrize(
+    "damage",
+    (
+        "record_schema",
+        "record_anchor",
+        "record_pid",
+        "stage_link",
+        "handoff_active_sha",
+        "handoff_active_size",
+        "handoff_claim_hash",
+        "handoff_final_stage_hash",
+        "handoff_request_hash",
+    ),
+)
+def test_qualification_bootstrap_terminal_rejects_rehashed_record_tamper(
+    tmp_path,
+    monkeypatch,
+    damage,
+):
+    verifier = _verifier()
+    fixture = _literal_v3_terminal_fixture(tmp_path)
+    bootstrap = fixture["request"]["bootstrap"]
+    path = Path(
+        bootstrap["handoff_path"]
+        if damage.startswith("handoff_")
+        else bootstrap["stage_paths"][1]["path"]
+    )
+
+    def mutate(record):
+        if damage == "record_schema":
+            record["schema_version"] = "bootstrap-record-wrong"
+        elif damage == "record_anchor":
+            record["anchors"]["review_commit"] = "0" * 40
+        elif damage == "record_pid":
+            record["pid"] += 1
+        elif damage == "stage_link":
+            record["previous_hash"] = "0" * 64
+        else:
+            field = {
+                "handoff_active_sha": "active_request_file_sha256",
+                "handoff_active_size": "active_request_size",
+                "handoff_claim_hash": "claim_hash",
+                "handoff_final_stage_hash": "final_stage_hash",
+                "handoff_request_hash": "request_hash",
+            }[damage]
+            if field == "active_request_size":
+                record["payload"][field] += 1
+            else:
+                record["payload"][field] = "0" * 64
+
+    _rewrite_independent_bootstrap_record(path, mutate)
+    audit, _snapshots = _replay_literal_v3_terminal(
+        verifier,
+        fixture,
+        monkeypatch,
+    )
+    _assert_v3_terminal_sealed_invalid(audit)
+
+
+@pytest.mark.parametrize(
+    "fixture",
+    HISTORICAL_QUALIFICATION_FIXTURES,
+    ids=lambda fixture: f"historical_{fixture['id']}",
+)
+def test_historical_r1_r6_reviewed_bytes_and_dispatch_remain_immutable(fixture):
+    verifier = _verifier()
+    raw = subprocess.check_output(
+        [
+            "git",
+            "show",
+            f"{fixture['artifact_commit']}:{fixture['artifact_path']}",
+        ],
+        cwd=REPO_ROOT,
+    )
+
+    assert len(raw) == fixture["artifact_size"]
+    assert hashlib.sha256(raw).hexdigest() == fixture["artifact_sha256"]
+    assert fixture["schema_version"] in {
+        verifier.QUALIFICATION_REQUEST_V1_SCHEMA_VERSION,
+        verifier.QUALIFICATION_REQUEST_V2_SCHEMA_VERSION,
+    }
+    assert fixture["record_hash"].encode("ascii") in raw
+    audit = verifier._qualification_audit(
+        checks=verifier._Checks(),
+        review_binding={"schema_version": (
+            verifier.QUALIFICATION_REVIEW_BINDING_V1_SCHEMA_VERSION
+        )},
+        request_hash=fixture["record_hash"],
+        result_hash=None,
+        qualification_status=fixture["status"],
+        status=fixture["status"],
+        partial_stage=None,
+        consumed=fixture["consumed"],
+        evidence_valid=True,
+        evidence_error=None,
+        artifact_inventory={},
+        audit_schema_version=verifier.QUALIFICATION_AUDIT_V2_SCHEMA_VERSION,
+    )
+
+    assert audit["schema_version"] == (
+        "noncombat-outcome-evidence-qualification-verification-audit-v2"
+    )
+    assert "bootstrap" not in audit
+    assert "bootstrap_inventory" not in audit
+    assert "retry_allowed" not in audit
+    assert fixture["status"] == audit["status"]
+    assert fixture["consumed"] is audit["consumed"]
+    assert fixture.get("retry_allowed", False) is False
+    assert audit["launch_qualified"] is False
+    for field in (
+        "causal_claim_authorized",
+        "collection_authorized",
+        "gameplay_policy_change_authorized",
+        "run_lock_authorized",
+        "study_start_authorized",
+        "training_authorized",
+    ):
+        assert audit[field] is False
 
 
 def _qualification_schema_fixture_review(request, request_bytes, schema_version):
