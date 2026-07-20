@@ -22,4 +22,4 @@
 - [x] 4.1 Run focused qualification producer, lifecycle, verifier, bootstrap, and exact-registration pytest with a writable external or inert repository basetemp.
 - [x] 4.2 Run the full pytest suite, `openspec validate --all --strict`, diff/source-hygiene checks, and an independent code/evidence review; resolve every Important finding.
 - [x] 4.3 Commit the offline implementation repair as one cohesive source snapshot S with no live game, qualifier, run lock, collection, training, tuning, or policy change.
-- [ ] 4.4 In a later separately reviewed study amendment, preserve the unlaunched old r4 candidate, name a previously absent qualification root, regenerate registration/request/R anchors from the new S, and only then reconsider one live qualification.
+- [x] 4.4 In the separately reviewed `qualify-r7-outcome-evidence-replacement` amendment, preserve every earlier identity, use the previously absent r7 root, regenerate request/R anchors from the current source snapshot, and reconsider one live qualification. R7 retired at the independently verified `source_validation_failed` pre-request boundary without retry or `start` authority.

@@ -19,3 +19,5 @@
 
 - [x] 4.1 Update `run-v2-known-propensity-outcome-evidence-study` only after the fix commit: preserve both failed qualification roots, regenerate and independently review the pending v2 registration under the 120-second contract, select a previously absent r3 qualification root, and commit that separate study amendment before any live process starts.
 - [ ] 4.2 Run the complete bounded r3 no-action cold-start qualification from the later tracked-clean study candidate and require attempt/ready/release, semantic configuration restoration, unchanged markers/runs/checkpoints/global logs, no gameplay or study artifact, and independent attestation; keep this fix change open and do not authorize `start` if r3 does not pass.
+
+R3 did not pass, and the later r7 replacement retired at `source_validation_failed` before the active request or handshake. This gate remains unsatisfied and `start` remains unauthorized.
