@@ -472,7 +472,9 @@ def test_enriched_trace_rows_become_complete_operating_samples(tmp_path):
     assert by_category["shop"].confidence == "high"
     assert by_category["event"].reference_choice == "choose 1: Leave"
     assert by_category["event"].confidence == "high"
+    assert by_category["route"].current_choice == "choice 0"
     assert by_category["route"].reference_choice == "choice 1"
+    assert by_category["route"].match is False
     assert by_category["route"].confidence == "high"
 
 

@@ -1057,7 +1057,9 @@ def _current_choice_text(sample: DecisionSample) -> str:
         label = choice.get("label") or _choice_label(_as_list(sample.context.get("choices")), _to_int(choice.get("index"), 0) or 0)
         return f"choose {choice.get('index')}: {label}"
     if sample.category == "route":
-        value = choice.get("choice") or choice.get("name") or kind
+        value = choice.get("choice")
+        if value is None:
+            value = choice.get("name") or kind
         return f"choice {value}" if kind == "map_node" else str(value)
     if kind in {"skip", "take", "buy_card", "purchase", "purge"}:
         return str(choice.get("name") or kind)
