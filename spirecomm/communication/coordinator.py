@@ -168,14 +168,18 @@ class Coordinator:
 
     def _is_transition_late_command_error(self, error):
         command = self._invalid_command_name(error)
+        game = getattr(self, "last_game_state", None)
+        available_commands = getattr(game, "available_commands", None) or []
+
+        if command == "start":
+            return self.in_game and command not in available_commands
+
         if command != "play":
             return False
 
-        game = getattr(self, "last_game_state", None)
         if getattr(game, "screen_type", None) != ScreenType.COMBAT_REWARD:
             return False
 
-        available_commands = getattr(game, "available_commands", None) or []
         return command not in available_commands
 
     @staticmethod

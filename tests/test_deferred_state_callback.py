@@ -753,6 +753,28 @@ def test_late_play_error_on_combat_reward_resyncs_without_error_callback():
     assert coordinator.output_queue.get_nowait() == "state"
 
 
+def test_late_start_error_on_neow_event_resyncs_without_error_callback():
+    coordinator = _coordinator_without_threads()
+    errors = []
+    coordinator.error_callback = lambda error: errors.append(error) or None
+    coordinator.in_game = True
+    coordinator.last_game_state = SimpleNamespace(
+        screen_type=ScreenType.EVENT,
+        available_commands=["choose", "key", "click", "wait", "state"],
+    )
+    coordinator.input_queue.put(
+        _command_error_message(
+            "Invalid command: start. Possible commands: [choose, key, click, wait, state]"
+        )
+    )
+
+    assert coordinator.receive_game_state_update(block=False, perform_callbacks=True)
+
+    assert errors == []
+    assert coordinator.last_error is None
+    assert coordinator.output_queue.get_nowait() == "state"
+
+
 def test_out_of_game_update_clears_stale_ready_wait_before_start_action():
     coordinator = _coordinator_without_threads()
     coordinator._card_select_confirm_in_flight = True
