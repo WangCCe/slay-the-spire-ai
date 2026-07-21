@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from decimal import Decimal, InvalidOperation
 from datetime import datetime, timedelta, timezone
 from hashlib import sha256
 import json
@@ -42,6 +43,10 @@ _CANONICAL_PAYLOAD = re.compile(r"^[^\s]+(?: [^\s]+)*$")
 _CHARACTER = re.compile(r"^[A-Z][A-Z0-9_]*$")
 _HP = re.compile(r"^(?P<current>0|[1-9]\d*)/(?P<maximum>[1-9]\d*)$")
 _HP_PCT = re.compile(r"^[01]\.\d{6}$")
+_MICROSECONDS_PER_SECOND = Decimal(1_000_000)
+_MAX_NORMALIZED_MICROSECONDS = 2**63 - 1
+_MAP_MAX_Y = 14
+_UNIX_EPOCH = datetime(1970, 1, 1, tzinfo=timezone.utc)
 
 
 class EvidenceError(ValueError):
@@ -75,11 +80,15 @@ class AdaptiveOccurrence:
     source_path: Path
     line_number: int
     timestamp: datetime
-    unix_time: float
+    unix_time: Decimal
     payload: str
     fields: dict[str, str]
     conservative: Candidate | None
     aggressive: Candidate | None
+
+    @property
+    def unix_time_us(self) -> int:
+        return _seconds_to_microseconds(self.unix_time, "adaptive unix_time")
 
 
 @dataclass(frozen=True)
@@ -108,7 +117,7 @@ class TracePath:
 
 @dataclass(frozen=True)
 class TraceMapDecision:
-    unix_time: float
+    unix_time: Decimal
     act: int
     floor: int
     current_node: Coordinate
@@ -118,12 +127,20 @@ class TraceMapDecision:
     action_node: Coordinate
     semantic_fingerprint: str
 
+    @property
+    def unix_time_us(self) -> int:
+        return _seconds_to_microseconds(self.unix_time, "decision unix_time")
+
 
 @dataclass(frozen=True)
 class JoinedOccurrence:
     occurrence: AdaptiveOccurrence
     decision: TraceMapDecision
-    delta_seconds: float
+    delta_seconds: Decimal
+
+    @property
+    def delta_us(self) -> int:
+        return _seconds_to_microseconds(self.delta_seconds, "join delta")
 
 
 @dataclass(frozen=True)
@@ -200,6 +217,23 @@ def _candidate_derived_fields(
     )
 
 
+def _validate_candidate_extent(candidate: Candidate) -> None:
+    end_y = candidate.start_y + len(candidate.symbols) - 1
+    if end_y > _MAP_MAX_Y:
+        raise EvidenceError("candidate extent must stay within map y 0..14")
+
+
+def _validate_candidate_pair_geometry(
+    conservative: Candidate, aggressive: Candidate
+) -> None:
+    _validate_candidate_extent(conservative)
+    _validate_candidate_extent(aggressive)
+    if conservative.start_y != aggressive.start_y:
+        raise EvidenceError("complete candidate pair must share start_y")
+    if len(conservative.symbols) != len(aggressive.symbols):
+        raise EvidenceError("complete candidate pair must share route extent")
+
+
 def _parse_candidate(value: str) -> Candidate | None:
     if value == "unavailable":
         return None
@@ -251,7 +285,7 @@ def _parse_candidate(value: str) -> Candidate | None:
     ):
         raise EvidenceError("candidate recovery distances do not match its route")
 
-    return Candidate(
+    candidate = Candidate(
         mode=mode,
         start_y=start_y,
         symbols=symbols,
@@ -260,6 +294,8 @@ def _parse_candidate(value: str) -> Candidate | None:
         recovery_before=recovery_before,
         recovery_after=recovery_after,
     )
+    _validate_candidate_extent(candidate)
+    return candidate
 
 
 def _validate_state_scalars(fields: dict[str, str]) -> None:
@@ -344,6 +380,7 @@ def _validate_fields(
             raise EvidenceError("complete candidate pair requires both candidates")
         if conservative.mode != "conservative" or aggressive.mode != "aggressive":
             raise EvidenceError("candidate mode does not match its payload field")
+        _validate_candidate_pair_geometry(conservative, aggressive)
         minimum_elites = _parse_nonnegative_integer(fields["minimum_elites"], "minimum_elites")
         added_elites = _parse_nonnegative_integer(fields["added_elites"], "added_elites")
         if minimum_elites != conservative.elite_count:
@@ -415,6 +452,16 @@ def _timestamp_and_message(line: str) -> tuple[datetime, str] | None:
     return datetime.strptime(match.group("timestamp"), "%Y-%m-%d %H:%M:%S,%f"), match.group("message")
 
 
+def _datetime_to_unix_seconds(timestamp: datetime, offset: timezone) -> Decimal:
+    aware = timestamp.replace(tzinfo=offset).astimezone(timezone.utc)
+    delta = aware - _UNIX_EPOCH
+    microseconds = (
+        (delta.days * 24 * 60 * 60 + delta.seconds) * 1_000_000
+        + delta.microseconds
+    )
+    return Decimal(microseconds) / _MICROSECONDS_PER_SECOND
+
+
 def load_adaptive_logs(
     paths: Sequence[Path], utc_offset_hours: float
 ) -> tuple[list[AdaptiveOccurrence], list[dict]]:
@@ -470,7 +517,7 @@ def load_adaptive_logs(
                     source_path=source_path,
                     line_number=line_number,
                     timestamp=timestamp,
-                    unix_time=timestamp.replace(tzinfo=offset).timestamp(),
+                    unix_time=_datetime_to_unix_seconds(timestamp, offset),
                     payload=payload,
                     fields=fields,
                     conservative=conservative,
@@ -513,12 +560,33 @@ def _strict_integer(value: object, label: str, minimum: int = 0) -> int:
     return value
 
 
-def _strict_number(value: object, label: str) -> float:
-    if isinstance(value, bool) or not isinstance(value, (int, float)):
+def _decimal_seconds(value: object, label: str) -> Decimal:
+    if isinstance(value, bool) or not isinstance(value, (int, float, Decimal)):
         raise EvidenceError(f"{label} must be a finite number")
-    parsed = float(value)
-    if not isfinite(parsed):
+    try:
+        parsed = value if isinstance(value, Decimal) else Decimal(str(value))
+    except (InvalidOperation, ValueError, OverflowError) as error:
+        raise EvidenceError(f"{label} must be a finite number") from error
+    if not parsed.is_finite():
         raise EvidenceError(f"{label} must be a finite number")
+    return parsed
+
+
+def _seconds_to_microseconds(value: object, label: str) -> int:
+    parsed = _decimal_seconds(value, label)
+    maximum_seconds = Decimal(_MAX_NORMALIZED_MICROSECONDS) / _MICROSECONDS_PER_SECOND
+    if abs(parsed) > maximum_seconds:
+        raise EvidenceError(f"{label} is outside the supported exact range")
+    scaled = parsed * _MICROSECONDS_PER_SECOND
+    integral = scaled.to_integral_value()
+    if scaled != integral:
+        raise EvidenceError(f"{label} must have at most microsecond precision")
+    return int(integral)
+
+
+def _strict_number(value: object, label: str) -> Decimal:
+    parsed = _decimal_seconds(value, label)
+    _seconds_to_microseconds(parsed, label)
     return parsed
 
 
@@ -548,6 +616,8 @@ def _trace_coordinate(
     y = _strict_integer(value.get("y"), f"{label} y", minimum=-1 if allow_virtual else 0)
     if y >= 0 and not 0 <= x <= 6:
         raise EvidenceError(f"{label} x must be within the seven-column map")
+    if y >= 0 and y > _MAP_MAX_Y:
+        raise EvidenceError(f"{label} map y must be within 0..14")
     if y == -1 and not allow_virtual:
         raise EvidenceError(f"{label} cannot be a virtual coordinate")
     if y == -1 and x < -1:
@@ -613,7 +683,10 @@ def _parse_trace_paths(
         if (
             not isinstance(symbols, list)
             or not symbols
-            or any(symbol not in _ROUTE_SYMBOLS for symbol in symbols)
+            or any(
+                not isinstance(symbol, str) or symbol not in _ROUTE_SYMBOLS
+                for symbol in symbols
+            )
         ):
             raise EvidenceError("path nodes contain invalid route symbols")
 
@@ -624,6 +697,8 @@ def _parse_trace_paths(
             if match is None:
                 raise EvidenceError("path label does not contain exact map coordinates")
             coordinate = (int(match.group("x")), int(match.group("y")))
+            if coordinate[1] > _MAP_MAX_Y:
+                raise EvidenceError("path map y must be within 0..14")
             if coordinate not in graph:
                 raise EvidenceError("path coordinate does not exist in the map graph")
             if graph[coordinate].symbol != match.group("symbol"):
@@ -794,10 +869,11 @@ def load_decision_trace(path: Path) -> tuple[list[TraceMapDecision], dict]:
         try:
             row = json.loads(
                 line,
+                parse_float=Decimal,
                 parse_constant=_reject_json_constant,
                 object_pairs_hook=_strict_json_object,
             )
-        except (json.JSONDecodeError, ValueError) as error:
+        except (json.JSONDecodeError, ValueError, InvalidOperation) as error:
             detail = error.msg if isinstance(error, json.JSONDecodeError) else str(error)
             raise EvidenceError(
                 f"malformed decision trace JSON: {detail}",
@@ -840,15 +916,16 @@ def load_decision_trace(path: Path) -> tuple[list[TraceMapDecision], dict]:
     }
 
 
-def _validate_join_tolerance(max_join_seconds: float) -> float:
-    if (
-        isinstance(max_join_seconds, bool)
-        or not isinstance(max_join_seconds, (int, float))
-        or not isfinite(float(max_join_seconds))
-        or max_join_seconds < 0
-    ):
+def _validate_join_tolerance(max_join_seconds: float) -> int:
+    try:
+        tolerance_us = _seconds_to_microseconds(
+            max_join_seconds, "join tolerance"
+        )
+    except EvidenceError as error:
+        raise EvidenceError("join tolerance must be a finite non-negative number") from error
+    if tolerance_us < 0:
         raise EvidenceError("join tolerance must be a finite non-negative number")
-    return float(max_join_seconds)
+    return tolerance_us
 
 
 def join_occurrences(
@@ -857,7 +934,7 @@ def join_occurrences(
     max_join_seconds: float,
 ) -> list[JoinedRecord]:
     """Join every source occurrence before accepting semantic deduplication."""
-    tolerance = _validate_join_tolerance(max_join_seconds)
+    tolerance_us = _validate_join_tolerance(max_join_seconds)
     joined_records: list[JoinedRecord] = []
     for record in records:
         if not record.occurrences:
@@ -892,10 +969,12 @@ def join_occurrences(
                     occurrence.line_number,
                 )
             candidates = [
-                (abs(decision.unix_time - occurrence.unix_time), decision)
+                (abs(decision.unix_time_us - occurrence.unix_time_us), decision)
                 for decision in same_state
             ]
-            bounded = [candidate for candidate in candidates if candidate[0] <= tolerance]
+            bounded = [
+                candidate for candidate in candidates if candidate[0] <= tolerance_us
+            ]
             if not bounded:
                 raise EvidenceError(
                     "nearest decision-trace row is outside join tolerance",
@@ -904,7 +983,7 @@ def join_occurrences(
                 )
             bounded.sort(key=lambda candidate: candidate[0])
             nearest_delta, nearest = bounded[0]
-            if len(bounded) > 1 and abs(bounded[1][0] - nearest_delta) <= 1e-12:
+            if len(bounded) > 1 and bounded[1][0] == nearest_delta:
                 raise EvidenceError(
                     "tied nearest decision-trace join for adaptive occurrence",
                     occurrence.source_path,
@@ -914,7 +993,9 @@ def join_occurrences(
                 JoinedOccurrence(
                     occurrence=occurrence,
                     decision=nearest,
-                    delta_seconds=nearest_delta,
+                    delta_seconds=(
+                        Decimal(nearest_delta) / _MICROSECONDS_PER_SECOND
+                    ),
                 )
             )
 
@@ -943,6 +1024,7 @@ def matching_candidate_paths(
     candidate: Candidate, decision: TraceMapDecision
 ) -> tuple[CoordinatePath, ...]:
     """Enumerate every reachable graph path matching the exact candidate symbols."""
+    _validate_candidate_extent(candidate)
     graph = dict(decision.graph)
     reachable = _reachable_children(decision.current_node, graph)
     starts = [
@@ -1018,6 +1100,7 @@ def classify_candidate_pair(joined_record: JoinedRecord) -> CandidatePairEvidenc
     aggressive = occurrence.aggressive
     if conservative is None or aggressive is None:
         raise EvidenceError("candidate classification requires a complete candidate pair")
+    _validate_candidate_pair_geometry(conservative, aggressive)
 
     conservative_matches = matching_candidate_paths(conservative, joined_record.decision)
     aggressive_matches = matching_candidate_paths(aggressive, joined_record.decision)

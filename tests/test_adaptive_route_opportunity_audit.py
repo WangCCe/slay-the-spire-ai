@@ -3,6 +3,8 @@ from __future__ import annotations
 import copy
 import hashlib
 import json
+from dataclasses import replace
+from decimal import Decimal
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
@@ -11,9 +13,16 @@ import pytest
 from analysis_scripts import adaptive_route_opportunity_audit as audit
 
 
+def _epoch_microseconds(value: datetime) -> int:
+    epoch = datetime(1970, 1, 1, tzinfo=timezone.utc)
+    delta = value.astimezone(timezone.utc) - epoch
+    return (delta.days * 24 * 60 * 60 + delta.seconds) * 1_000_000 + delta.microseconds
+
+
 def _candidate(
     mode: str,
     *,
+    start_y: int = 7,
     symbols: str,
     elite_count: int,
     elite_floors: str,
@@ -21,7 +30,7 @@ def _candidate(
     recovery_after: str = "none",
 ) -> str:
     return (
-        f"mode:{mode},start_y:7,symbols:{symbols},elite_count:{elite_count},"
+        f"mode:{mode},start_y:{start_y},symbols:{symbols},elite_count:{elite_count},"
         f"elite_floors:{elite_floors},recovery_before:{recovery_before},"
         f"recovery_after:{recovery_after}"
     )
@@ -188,9 +197,18 @@ def test_loads_occurrence_provenance_source_identity_and_deduplicates_callbacks(
     assert first.source_path == source
     assert first.line_number == 2
     assert first.timestamp == datetime(2026, 7, 22, 12, 0, 0, 100000)
-    assert first.unix_time == datetime(
-        2026, 7, 22, 12, 0, 0, 100000, tzinfo=timezone(timedelta(hours=8))
-    ).timestamp()
+    assert first.unix_time_us == _epoch_microseconds(
+        datetime(
+            2026,
+            7,
+            22,
+            12,
+            0,
+            0,
+            100000,
+            tzinfo=timezone(timedelta(hours=8)),
+        )
+    )
     assert sources == [
         {
             "source_path": str(source),
@@ -483,23 +501,33 @@ def test_converts_fractional_utc_offset_to_known_unix_timestamp(tmp_path: Path):
 
     occurrences, _ = audit.load_adaptive_logs([source], utc_offset_hours=5.5)
 
-    assert occurrences[0].unix_time == datetime(
-        2026, 7, 22, 12, 0, 0, 100000, tzinfo=timezone(timedelta(hours=5.5))
-    ).timestamp()
+    assert occurrences[0].unix_time_us == _epoch_microseconds(
+        datetime(
+            2026,
+            7,
+            22,
+            12,
+            0,
+            0,
+            100000,
+            tzinfo=timezone(timedelta(hours=5.5)),
+        )
+    )
 
 
 def _task2_payload(**overrides: str) -> str:
-    return _payload(
-        aggressive_candidate=_candidate(
+    values = {
+        "aggressive_candidate": _candidate(
             "aggressive",
             symbols="M/T/?/$/R/M/E/R",
             elite_count=1,
             elite_floors="14",
             recovery_before="2",
             recovery_after="1",
-        ),
-        **overrides,
-    )
+        )
+    }
+    values.update(overrides)
+    return _payload(**values)
 
 
 def _graph_node(
@@ -521,15 +549,21 @@ def _task2_graph(
 ) -> list[dict]:
     nodes = [
         _graph_node(2, 6, "?", (2, 7), (4, 7)),
+        _graph_node(3, 6, "?", (2, 7)),
         _graph_node(2, 7, "M", (2, 8)),
         _graph_node(4, 7, "E"),
-        _graph_node(6, 7, "M"),
+        _graph_node(6, 7, "M", (6, 8)),
         _graph_node(2, 8, "T", (2, 9)),
+        _graph_node(6, 8, "T", (6, 9)),
         _graph_node(2, 9, "?", (2, 10)),
+        _graph_node(6, 9, "?", (6, 10)),
         _graph_node(2, 10, "$", (2, 11)),
+        _graph_node(6, 10, "$", (6, 11)),
         _graph_node(2, 11, "R", (1, 12), (0, 12)),
+        _graph_node(6, 11, "R", (6, 12)),
         _graph_node(1, 12, "?", (1, 13)),
         _graph_node(0, 12, "M", (0, 13)),
+        _graph_node(6, 12, "?", (6, 13)),
         _graph_node(
             1,
             13,
@@ -538,9 +572,11 @@ def _task2_graph(
             *((2, 14),) if ambiguous_conservative else (),
         ),
         _graph_node(0, 13, "E", (1, 14)),
+        _graph_node(6, 13, "M", (6, 14)),
         _graph_node(0, 14, "R"),
         _graph_node(1, 14, "R"),
         _graph_node(2, 14, "R"),
+        _graph_node(6, 14, "R"),
     ]
     by_coordinate = {(node["x"], node["y"]): node for node in nodes}
 
@@ -663,7 +699,7 @@ def _task2_record(
             source_path=Path("synthetic-adaptive.log"),
             line_number=index + 1,
             timestamp=datetime(2026, 7, 22, tzinfo=timezone.utc),
-            unix_time=unix_time,
+            unix_time=Decimal(str(unix_time)),
             payload=payload,
             fields=fields,
             conservative=conservative,
@@ -679,6 +715,49 @@ def _load_task2_decisions(tmp_path: Path, name: str, rows: list[dict]):
     return audit.load_decision_trace(trace)
 
 
+def _coordinate_from_path_label(label: str) -> tuple[int, int]:
+    coordinate = label.split(" -> ", 1)[0].split("@", 1)[1]
+    x, y = coordinate.split(",", 1)
+    return int(x), int(y)
+
+
+def _reorder_trace_representation(row: dict) -> None:
+    row["screen"]["map"]["nodes"].reverse()
+    for node in row["screen"]["map"]["nodes"]:
+        node["children"].reverse()
+    row["screen"]["next_nodes"].reverse()
+    choice_by_coordinate = {
+        (node["x"], node["y"]): choice
+        for choice, node in enumerate(row["screen"]["next_nodes"])
+    }
+    for path in row["screen"]["paths"]:
+        path["choice"] = choice_by_coordinate[_coordinate_from_path_label(path["label"])]
+    row["screen"]["paths"].reverse()
+    action = row["action"]["node"]
+    row["action"]["choice_index"] = choice_by_coordinate[(action["x"], action["y"])]
+
+
+def _change_fingerprint_component(row: dict, component: str) -> None:
+    nodes = row["screen"]["map"]["nodes"]
+    by_coordinate = {(node["x"], node["y"]): node for node in nodes}
+    if component == "current_node":
+        row["screen"]["current_node"] = {"x": 3, "y": 6, "symbol": "?"}
+    elif component == "next_nodes":
+        row["screen"]["next_nodes"].append({"x": 6, "y": 7, "symbol": "M"})
+    elif component == "graph":
+        by_coordinate[(6, 14)]["symbol"] = "M"
+    elif component == "paths":
+        row["screen"]["paths"].pop()
+    elif component == "action":
+        row["action"] = {
+            "type": "ChooseMapNodeAction",
+            "choice_index": 1,
+            "node": {"x": 4, "y": 7, "symbol": "E"},
+        }
+    else:
+        raise AssertionError(f"unexpected fingerprint component {component}")
+
+
 def test_load_decision_trace_parses_all_jsonl_and_ignores_map_boss_actions(tmp_path: Path):
     node_row = _task2_trace_row(unix_time=102.0)
     boss_row = copy.deepcopy(node_row)
@@ -691,7 +770,7 @@ def test_load_decision_trace_parses_all_jsonl_and_ignores_map_boss_actions(tmp_p
 
     decisions, source = audit.load_decision_trace(trace)
 
-    assert [decision.unix_time for decision in decisions] == [102.0]
+    assert [decision.unix_time_us for decision in decisions] == [102_000_000]
     assert source["source_path"] == str(trace)
     assert source["sha256"] == hashlib.sha256(trace.read_bytes()).hexdigest()
     assert source["record_count"] == 3
@@ -707,6 +786,10 @@ def test_load_decision_trace_parses_all_jsonl_and_ignores_map_boss_actions(tmp_p
         ("[]\n", "decision trace row must be an object"),
         (
             '{"screen_type":"ScreenType.COMBAT","unix_time":NaN}\n',
+            "malformed decision trace JSON",
+        ),
+        (
+            '{"screen_type":"ScreenType.MAP","unix_time":1e9999999999999999999}\n',
             "malformed decision trace JSON",
         ),
         (
@@ -727,6 +810,50 @@ def test_load_decision_trace_rejects_malformed_or_nonobject_jsonl(
     assert str(error.value).startswith(f"{trace}:1:")
 
 
+@pytest.mark.parametrize("bad_symbol", [[], {}, ["M"], {"symbol": "M"}])
+def test_load_decision_trace_rejects_non_string_path_symbols_with_provenance(
+    tmp_path: Path, bad_symbol: object
+):
+    row = _task2_trace_row()
+    row["screen"]["paths"][0]["nodes"][0] = bad_symbol
+    trace = _write_trace(tmp_path, "bad-path-symbol.jsonl", [row])
+
+    with pytest.raises(audit.EvidenceError, match="path nodes") as error:
+        audit.load_decision_trace(trace)
+
+    assert str(error.value).startswith(f"{trace}:1:")
+
+
+def test_load_decision_trace_rejects_extreme_epoch_number_with_provenance(
+    tmp_path: Path,
+):
+    row = _task2_trace_row()
+    row["unix_time"] = 10**400
+    trace = _write_trace(tmp_path, "extreme-time.jsonl", [row])
+
+    with pytest.raises(audit.EvidenceError, match="unix_time") as error:
+        audit.load_decision_trace(trace)
+
+    assert str(error.value).startswith(f"{trace}:1:")
+
+
+def test_decision_trace_source_identity_counts_raw_bytes_and_physical_lines(
+    tmp_path: Path,
+):
+    node = json.dumps(_task2_trace_row(), sort_keys=True)
+    non_map = json.dumps({"screen_type": "ScreenType.COMBAT"}, sort_keys=True)
+    raw = ("\r\n" + node + "\r\n\r\n" + non_map).encode("utf-8")
+    trace = tmp_path / "physical-lines.jsonl"
+    trace.write_bytes(raw)
+
+    decisions, source = audit.load_decision_trace(trace)
+
+    assert len(decisions) == 1
+    assert source["byte_count"] == len(raw)
+    assert source["line_count"] == 4
+    assert source["record_count"] == 2
+
+
 @pytest.mark.parametrize(
     ("case", "message"),
     [
@@ -738,6 +865,16 @@ def test_load_decision_trace_rejects_malformed_or_nonobject_jsonl(
         ("current-symbol", "current-node symbol"),
         ("path-symbol", "path nodes"),
         ("missing-paths", "paths"),
+        ("duplicate-graph", "duplicate coordinate"),
+        ("duplicate-child", "duplicate children"),
+        ("duplicate-next", "duplicate next nodes"),
+        ("graph-x-out-of-range", "seven-column"),
+        ("graph-y-out-of-range", "map y"),
+        ("child-y-out-of-range", "map y"),
+        ("next-y-out-of-range", "map y"),
+        ("path-y-out-of-range", "map y"),
+        ("action-choice-mismatch", "choice_index does not identify"),
+        ("path-non-child", "non-child graph edge"),
     ],
 )
 def test_load_decision_trace_rejects_invalid_graph_next_action_and_paths(
@@ -763,9 +900,40 @@ def test_load_decision_trace_rejects_invalid_graph_next_action_and_paths(
         row["screen"]["paths"][0]["nodes"][0] = "E"
     elif case == "missing-paths":
         row["screen"].pop("paths")
+    elif case == "duplicate-graph":
+        nodes.append(copy.deepcopy(nodes[0]))
+    elif case == "duplicate-child":
+        by_coordinate[(2, 6)]["children"].append(
+            copy.deepcopy(by_coordinate[(2, 6)]["children"][0])
+        )
+    elif case == "duplicate-next":
+        row["screen"]["next_nodes"].append(
+            copy.deepcopy(row["screen"]["next_nodes"][0])
+        )
+    elif case == "graph-x-out-of-range":
+        by_coordinate[(3, 6)]["x"] = 7
+    elif case == "graph-y-out-of-range":
+        by_coordinate[(3, 6)]["y"] = 15
+    elif case == "child-y-out-of-range":
+        by_coordinate[(2, 6)]["children"][0]["y"] = 15
+    elif case == "next-y-out-of-range":
+        row["screen"]["next_nodes"][0]["y"] = 15
+    elif case == "path-y-out-of-range":
+        row["screen"]["paths"][0]["label"] = row["screen"]["paths"][0][
+            "label"
+        ].replace("R@0,14", "R@0,15")
+    elif case == "action-choice-mismatch":
+        row["action"]["choice_index"] = 1
+    elif case == "path-non-child":
+        row["screen"]["paths"][0]["label"] = row["screen"]["paths"][0][
+            "label"
+        ].replace("T@2,8", "T@6,8")
 
-    with pytest.raises(audit.EvidenceError, match=message):
-        _load_task2_decisions(tmp_path, f"{case}.jsonl", [row])
+    trace = _write_trace(tmp_path, f"{case}.jsonl", [row])
+    with pytest.raises(audit.EvidenceError, match=message) as error:
+        audit.load_decision_trace(trace)
+
+    assert str(error.value).startswith(f"{trace}:1:")
 
 
 def test_join_occurrences_uses_unique_nearest_row_and_requires_duplicate_agreement(
@@ -779,12 +947,123 @@ def test_join_occurrences_uses_unique_nearest_row_and_requires_duplicate_agreeme
     joined = audit.join_occurrences([record], decisions, max_join_seconds=0.01)
 
     assert len(joined) == 1
-    assert [item.decision.unix_time for item in joined[0].occurrences] == [
-        100.003,
-        101.002,
+    assert [item.decision.unix_time_us for item in joined[0].occurrences] == [
+        100_003_000,
+        101_002_000,
     ]
-    assert joined[0].occurrences[0].delta_seconds == pytest.approx(0.003)
+    assert joined[0].occurrences[0].delta_us == 3_000
     assert joined[0].decision.semantic_fingerprint == decisions[0].semantic_fingerprint
+
+
+@pytest.mark.parametrize(
+    "component", ["current_node", "next_nodes", "graph", "paths", "action"]
+)
+def test_duplicate_occurrences_reject_each_fingerprint_disagreement(
+    tmp_path: Path, component: str
+):
+    record = _task2_record(unix_times=(100.0, 101.0))
+    first = _task2_trace_row(unix_time=100.0)
+    second = _task2_trace_row(unix_time=101.0)
+    _change_fingerprint_component(second, component)
+    decisions, _ = _load_task2_decisions(
+        tmp_path, f"fingerprint-{component}.jsonl", [first, second]
+    )
+
+    with pytest.raises(audit.EvidenceError, match="duplicate occurrences disagree"):
+        audit.join_occurrences([record], decisions, max_join_seconds=0.01)
+
+
+def test_semantic_fingerprint_ignores_harmless_representation_order(tmp_path: Path):
+    first = _task2_trace_row(unix_time=100.0, advertise_superset=True)
+    second = copy.deepcopy(first)
+    second["unix_time"] = 101.0
+    _reorder_trace_representation(second)
+    decisions, _ = _load_task2_decisions(
+        tmp_path, "representation-order.jsonl", [first, second]
+    )
+
+    assert decisions[0].semantic_fingerprint == decisions[1].semantic_fingerprint
+    record = _task2_record(unix_times=(100.0, 101.0))
+    joined = audit.join_occurrences([record], decisions, max_join_seconds=0.01)
+    assert len(joined) == 1
+
+
+def test_join_occurrences_rejects_epoch_scale_exact_tie(tmp_path: Path):
+    record = _task2_record(unix_times=(1784563200.123,))
+    rows = [
+        _task2_trace_row(unix_time=1784563200.118),
+        _task2_trace_row(unix_time=1784563200.128),
+    ]
+    decisions, _ = _load_task2_decisions(tmp_path, "epoch-tie.jsonl", rows)
+
+    with pytest.raises(audit.EvidenceError, match="tied nearest"):
+        audit.join_occurrences([record], decisions, max_join_seconds=0.01)
+
+
+def test_join_occurrences_distinguishes_adjacent_microsecond_non_tie(tmp_path: Path):
+    record = _task2_record(unix_times=(1784563200.123,))
+    rows = [
+        _task2_trace_row(unix_time=1784563200.118),
+        _task2_trace_row(unix_time=1784563200.128001),
+    ]
+    decisions, _ = _load_task2_decisions(tmp_path, "epoch-adjacent.jsonl", rows)
+
+    joined = audit.join_occurrences([record], decisions, max_join_seconds=0.01)
+
+    assert joined[0].decision.unix_time_us == 1784563200118000
+    assert joined[0].occurrences[0].delta_us == 5000
+
+
+@pytest.mark.parametrize(
+    "trace_time", [1784563200.113, 1784563200.133], ids=["before", "after"]
+)
+def test_join_occurrences_accepts_exact_tolerance_boundary_on_both_sides(
+    tmp_path: Path, trace_time: float
+):
+    record = _task2_record(unix_times=(1784563200.123,))
+    decisions, _ = _load_task2_decisions(
+        tmp_path, "exact-boundary.jsonl", [_task2_trace_row(unix_time=trace_time)]
+    )
+
+    joined = audit.join_occurrences([record], decisions, max_join_seconds=0.01)
+
+    assert joined[0].occurrences[0].delta_us == 10_000
+
+
+@pytest.mark.parametrize(
+    ("trace_time", "expected_delta_us"),
+    [
+        (1784563200.113001, 9_999),
+        (1784563200.132999, 9_999),
+    ],
+    ids=["before", "after"],
+)
+def test_join_occurrences_accepts_just_inside_boundary_on_both_sides(
+    tmp_path: Path, trace_time: float, expected_delta_us: int
+):
+    record = _task2_record(unix_times=(1784563200.123,))
+    decisions, _ = _load_task2_decisions(
+        tmp_path, "inside-boundary.jsonl", [_task2_trace_row(unix_time=trace_time)]
+    )
+
+    joined = audit.join_occurrences([record], decisions, max_join_seconds=0.01)
+
+    assert joined[0].occurrences[0].delta_us == expected_delta_us
+
+
+@pytest.mark.parametrize(
+    "trace_time", [1784563200.112999, 1784563200.133001], ids=["before", "after"]
+)
+def test_join_occurrences_rejects_just_outside_boundary_on_both_sides(
+    tmp_path: Path, trace_time: float
+):
+    record = _task2_record(unix_times=(1784563200.123,))
+    decisions, _ = _load_task2_decisions(
+        tmp_path, "outside-boundary.jsonl", [_task2_trace_row(unix_time=trace_time)]
+    )
+
+    with pytest.raises(audit.EvidenceError, match="outside join tolerance"):
+        audit.join_occurrences([record], decisions, max_join_seconds=0.01)
 
 
 @pytest.mark.parametrize(
@@ -860,6 +1139,24 @@ def test_classify_candidate_pair_preserves_later_ambiguity_and_proves_first_dive
         conservative=(1, 12),
         aggressive=(0, 12),
     )
+
+
+def test_matching_candidates_excludes_advertised_symbol_identical_non_child_branch(
+    tmp_path: Path,
+):
+    record = _task2_record()
+    decisions, _ = _load_task2_decisions(
+        tmp_path,
+        "unreachable-symbol-identical.jsonl",
+        [_task2_trace_row(advertise_superset=True)],
+    )
+    conservative = record.occurrences[0].conservative
+
+    matches = audit.matching_candidate_paths(conservative, decisions[0])
+
+    assert len(matches) == 2
+    assert all(path[0] == (2, 7) for path in matches)
+    assert all((6, 7) not in path for path in matches)
 
 
 def test_classify_candidate_pair_reports_unique_paths_when_each_candidate_has_one(
@@ -957,6 +1254,83 @@ def test_classify_candidate_pair_rejects_selected_action_contradiction(tmp_path:
         audit.classify_candidate_pair(joined)
 
 
+@pytest.mark.parametrize(
+    ("payload", "message"),
+    [
+        (
+            _task2_payload(
+                conservative_candidate=_candidate(
+                    "conservative",
+                    start_y=6,
+                    symbols="M/T/?/$/R/?/M/R",
+                    elite_count=0,
+                    elite_floors="none",
+                )
+            ),
+            "start_y",
+        ),
+        (
+            _task2_payload(
+                aggressive_candidate=_candidate(
+                    "aggressive",
+                    symbols="M/T/?/$/R/E/R",
+                    elite_count=1,
+                    elite_floors="13",
+                    recovery_before="1",
+                    recovery_after="1",
+                )
+            ),
+            "extent",
+        ),
+        (
+            _task2_payload(
+                conservative_candidate=_candidate(
+                    "conservative",
+                    start_y=8,
+                    symbols="M/T/?/$/R/?/M/R",
+                    elite_count=0,
+                    elite_floors="none",
+                ),
+                aggressive_candidate=_candidate(
+                    "aggressive",
+                    start_y=8,
+                    symbols="M/T/?/$/R/M/E/R",
+                    elite_count=1,
+                    elite_floors="15",
+                    recovery_before="2",
+                    recovery_after="1",
+                ),
+            ),
+            "extent",
+        ),
+    ],
+    ids=["different-start", "different-length", "past-map-end"],
+)
+def test_parse_complete_candidate_pair_rejects_impossible_geometry(
+    payload: str, message: str
+):
+    with pytest.raises(audit.EvidenceError, match=message):
+        audit.parse_adaptive_payload(payload)
+
+
+def test_classify_candidate_pair_revalidates_geometry_before_positional_analysis(
+    tmp_path: Path,
+):
+    record = _task2_record()
+    decisions, _ = _load_task2_decisions(
+        tmp_path, "manual-impossible-pair.jsonl", [_task2_trace_row()]
+    )
+    joined = audit.join_occurrences([record], decisions, max_join_seconds=0.01)[0]
+    occurrence = joined.record.occurrences[0]
+    impossible = replace(occurrence.conservative, start_y=6)
+    malformed_occurrence = replace(occurrence, conservative=impossible)
+    malformed_record = replace(joined.record, occurrences=(malformed_occurrence,))
+    malformed_joined = replace(joined, record=malformed_record)
+
+    with pytest.raises(audit.EvidenceError, match="start_y"):
+        audit.classify_candidate_pair(malformed_joined)
+
+
 def test_candidate_generation_fallback_joins_with_supersetted_next_nodes(tmp_path: Path):
     record = _task2_record(payload=_outcome_payload("candidate_generation_failed"))
     decisions, _ = _load_task2_decisions(
@@ -971,7 +1345,9 @@ def test_candidate_generation_fallback_joins_with_supersetted_next_nodes(tmp_pat
     assert joined[0].record.occurrences[0].fields["outcome"] == "candidate_generation_failed"
 
 
-@pytest.mark.parametrize("max_join_seconds", [True, -0.01, float("nan"), float("inf")])
+@pytest.mark.parametrize(
+    "max_join_seconds", [True, -0.01, float("nan"), float("inf"), 10**400]
+)
 def test_join_occurrences_rejects_invalid_tolerances(max_join_seconds: float):
     with pytest.raises(audit.EvidenceError, match="join tolerance"):
         audit.join_occurrences([], [], max_join_seconds=max_join_seconds)
