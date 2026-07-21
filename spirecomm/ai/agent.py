@@ -2843,6 +2843,30 @@ class SimpleAgent:
             ),
         )
 
+    def _adaptive_conservative_fallback_route(self):
+        if self.map_router is None:
+            raise _AdaptiveRouteCandidateGenerationError("adaptive map router is unavailable")
+        start_y, current_map_node, next_nodes = self._adaptive_candidate_origin()
+        map_height = self._validate_adaptive_candidate_map(
+            start_y,
+            current_map_node,
+            next_nodes,
+        )
+        history_prefix = self._validated_route_history_prefix(
+            map_height,
+            current_map_node,
+            start_y,
+        )
+        conservative = self._describe_adaptive_route_candidate(
+            "conservative",
+            self._build_map_route("conservative"),
+            start_y,
+            current_map_node,
+            next_nodes,
+            history_prefix,
+        )
+        return self._route_from_adaptive_candidate(conservative)
+
     def _candidate_features(self, candidate):
         if isinstance(candidate, _AdaptiveRouteCandidate):
             start_y, current_map_node, next_nodes = self._adaptive_candidate_origin()
@@ -2926,7 +2950,7 @@ class SimpleAgent:
                         DecisionContext(self.game),
                     )
                 except _AdaptiveRouteCandidateGenerationError:
-                    route = self._build_map_route("conservative")
+                    route = self._adaptive_conservative_fallback_route()
                     logging.info(
                         "[MAP_ROUTING] Adaptive route fallback "
                         "reason=candidate_generation_failed budget=0\n"

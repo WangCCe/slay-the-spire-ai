@@ -5,6 +5,7 @@ from types import SimpleNamespace
 import pytest
 
 from analysis_scripts import benchmark_adaptive_route_candidates as benchmark
+import spirecomm.ai.agent as agent_module
 from spirecomm.ai.agent import SimpleAgent
 from spirecomm.ai.heuristics.map_routing import AdaptiveMapRouter, RouteCandidateFeatures
 from spirecomm.communication.action import ChooseMapBossAction, ChooseMapNodeAction, RestAction
@@ -1592,6 +1593,31 @@ def test_adaptive_selector_falls_back_when_candidate_generation_fails(
     assert "candidate_generation_failed" in caplog.text
 
 
+def test_adaptive_act_start_fallback_uses_one_full_conservative_builder(monkeypatch):
+    game_map, safe_start, elite_start = _optional_elite_route_map()
+    agent = _route_agent("adaptive", game_map, deck=_prepared_act1_deck())
+    _set_start_screen(agent, safe_start, elite_start)
+    original_builder = agent._build_map_route
+    expected = original_builder("conservative")
+    calls = []
+
+    def candidate_failure():
+        raise agent_module._AdaptiveRouteCandidateGenerationError("malformed candidate")
+
+    def track_builder(mode):
+        calls.append(mode)
+        return original_builder(mode)
+
+    monkeypatch.setattr(agent, "_adaptive_route_candidates", candidate_failure)
+    monkeypatch.setattr(agent, "_build_map_route", track_builder)
+
+    route = agent.generate_map_route()
+
+    assert calls == ["conservative"]
+    assert route == expected
+    assert agent.map_route == expected
+
+
 def _mid_act_adaptive_route_agent():
     agent = _route_agent("adaptive", Map(), deck=_prepared_act1_deck())
     agent.game.deck.extend(_card("Strike") for _ in range(6))
@@ -1646,13 +1672,95 @@ def test_adaptive_mid_act_generation_commits_legal_full_aggressive_route():
     assert action.node != safe
 
 
+def test_adaptive_mid_act_fallback_merges_valid_history_with_conservative_suffix(
+        monkeypatch, caplog):
+    caplog.set_level(logging.INFO)
+    agent, current, _, _ = _mid_act_adaptive_route_agent()
+    original_builder = agent._build_map_route
+    raw_conservative = original_builder("conservative")
+    expected = list(raw_conservative)
+    expected[:current.y + 1] = agent.map_route[:current.y + 1]
+    calls = []
+
+    def candidate_failure():
+        raise agent_module._AdaptiveRouteCandidateGenerationError("malformed candidate")
+
+    def track_builder(mode):
+        calls.append(mode)
+        return original_builder(mode)
+
+    monkeypatch.setattr(agent, "_adaptive_route_candidates", candidate_failure)
+    monkeypatch.setattr(agent, "_build_map_route", track_builder)
+
+    route = agent.generate_map_route()
+
+    assert calls == ["conservative"]
+    assert route == expected
+    assert agent.map_route == expected
+    assert route[current.y] == current.x
+    assert "candidate_generation_failed" in caplog.text
+
+
+def test_adaptive_mid_act_fallback_invalid_history_propagates_without_mutation(
+        monkeypatch):
+    agent, _, _, _ = _mid_act_adaptive_route_agent()
+    agent.map_route = agent.map_route[:-1]
+    invalid_route = list(agent.map_route)
+    original_metadata = (agent._last_route_hp_pct, agent._last_route_floor)
+    calls = []
+
+    def candidate_failure():
+        raise agent_module._AdaptiveRouteCandidateGenerationError("malformed candidate")
+
+    def track_builder(mode):
+        calls.append(mode)
+        return [0] * 8
+
+    monkeypatch.setattr(agent, "_adaptive_route_candidates", candidate_failure)
+    monkeypatch.setattr(agent, "_build_map_route", track_builder)
+
+    with pytest.raises(RuntimeError, match="route history"):
+        agent.generate_map_route()
+
+    assert calls == []
+    assert agent.map_route == invalid_route
+    assert (agent._last_route_hp_pct, agent._last_route_floor) == original_metadata
+
+
+def test_adaptive_mid_act_fallback_invalid_future_propagates_without_mutation(
+        monkeypatch):
+    agent, _, _, _ = _mid_act_adaptive_route_agent()
+    original_route = list(agent.map_route)
+    original_metadata = (agent._last_route_hp_pct, agent._last_route_floor)
+    calls = []
+
+    def candidate_failure():
+        raise agent_module._AdaptiveRouteCandidateGenerationError("malformed candidate")
+
+    def truncated_builder(mode):
+        calls.append(mode)
+        return [0] * (len(original_route) - 1)
+
+    monkeypatch.setattr(agent, "_adaptive_route_candidates", candidate_failure)
+    monkeypatch.setattr(agent, "_build_map_route", truncated_builder)
+
+    with pytest.raises(ValueError, match="candidate route is incomplete"):
+        agent.generate_map_route()
+
+    assert calls == ["conservative"]
+    assert agent.map_route == original_route
+    assert (agent._last_route_hp_pct, agent._last_route_floor) == original_metadata
+
+
 @pytest.mark.parametrize("failure_kind", ("truncated", "disconnected"))
 def test_adaptive_candidate_shape_failures_trigger_conservative_fallback(
         monkeypatch, caplog, failure_kind):
     caplog.set_level(logging.INFO)
-    agent, _, _, _ = _mid_act_adaptive_route_agent()
+    agent, current, _, _ = _mid_act_adaptive_route_agent()
     original_builder = agent._build_map_route
     conservative_route = original_builder("conservative")
+    expected = list(conservative_route)
+    expected[:current.y + 1] = agent.map_route[:current.y + 1]
     calls = []
 
     def malformed_candidate_builder(mode):
@@ -1670,15 +1778,17 @@ def test_adaptive_candidate_shape_failures_trigger_conservative_fallback(
     route = agent.generate_map_route()
 
     assert calls == ["conservative", "aggressive", "conservative"]
-    assert route == conservative_route
+    assert route == expected
+    assert agent.map_route == expected
     assert "candidate_generation_failed" in caplog.text
 
 
-def test_adaptive_malformed_unreachable_child_triggers_conservative_fallback(
-        monkeypatch, caplog):
-    caplog.set_level(logging.INFO)
+def test_adaptive_malformed_unreachable_child_propagates_without_route_mutation(
+        monkeypatch):
     agent, _, _, _ = _mid_act_adaptive_route_agent()
     original_builder = agent._build_map_route
+    original_route = list(agent.map_route)
+    original_metadata = (agent._last_route_hp_pct, agent._last_route_floor)
     calls = []
     orphan = Node(5, 0, "M")
     orphan.children = [Node(5, 1, "M")]
@@ -1690,11 +1800,12 @@ def test_adaptive_malformed_unreachable_child_triggers_conservative_fallback(
 
     monkeypatch.setattr(agent, "_build_map_route", track_builder)
 
-    route = agent.generate_map_route()
+    with pytest.raises(ValueError, match="candidate child is missing from the map"):
+        agent.generate_map_route()
 
-    assert calls == ["conservative"]
-    assert route == original_builder("conservative")
-    assert "candidate_generation_failed" in caplog.text
+    assert calls == []
+    assert agent.map_route == original_route
+    assert (agent._last_route_hp_pct, agent._last_route_floor) == original_metadata
 
 
 def test_adaptive_selector_key_error_propagates_without_conservative_fallback(
@@ -1767,9 +1878,10 @@ def test_adaptive_success_logs_one_committed_chosen_path(caplog):
 def test_forged_adaptive_absolute_path_triggers_conservative_fallback(
         monkeypatch, caplog):
     caplog.set_level(logging.INFO)
-    agent, _, _, _ = _mid_act_adaptive_route_agent()
+    agent, current, _, _ = _mid_act_adaptive_route_agent()
     conservative, aggressive = agent._adaptive_route_candidates()
     expected = agent._build_map_route("conservative")
+    expected[:current.y + 1] = agent.map_route[:current.y + 1]
     forged_path = list(aggressive.absolute_path)
     forged_path[aggressive.start_y] = conservative.path[0]
     forged_aggressive = type(aggressive)(aggressive.features, tuple(forged_path))
