@@ -33,7 +33,14 @@ _TIMESTAMPED_INFO = re.compile(
     r"^(?P<timestamp>\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2},\d{1,6})"
     r"\s+-\s+INFO\s+-\s+(?P<message>.*)$"
 )
-_GAME_BOUNDARY = re.compile(r"^Starting game #(?P<game_number>[1-9]\d*)$")
+_GAME_BOUNDARY = re.compile(
+    r"^Starting game #(?P<game_number>[1-9]\d*)"
+    r"(?: as PlayerClass\.(?P<player_class>[A-Z][A-Z0-9_]*))?$"
+)
+_CANONICAL_PAYLOAD = re.compile(r"^[^\s]+(?: [^\s]+)*$")
+_CHARACTER = re.compile(r"^[A-Z][A-Z0-9_]*$")
+_HP = re.compile(r"^(?P<current>0|[1-9]\d*)/(?P<maximum>[1-9]\d*)$")
+_HP_PCT = re.compile(r"^[01]\.\d{6}$")
 
 
 class EvidenceError(ValueError):
@@ -93,6 +100,36 @@ def _parse_optional_nonnegative_integer(value: str, label: str) -> int | None:
     return _parse_nonnegative_integer(value, label)
 
 
+def _parse_positive_integer(value: str, label: str) -> int:
+    parsed = _parse_nonnegative_integer(value, label)
+    if parsed < 1:
+        raise EvidenceError(f"{label} must be at least one")
+    return parsed
+
+
+def _candidate_derived_fields(
+    symbols: tuple[str, ...], start_y: int
+) -> tuple[tuple[int, ...], int | None, int | None]:
+    elite_indexes = tuple(index for index, symbol in enumerate(symbols) if symbol == "E")
+    elite_floors = tuple(start_y + index + 1 for index in elite_indexes)
+    if not elite_indexes:
+        return elite_floors, None, None
+    first_elite_index = elite_indexes[0]
+    prior_rests = [
+        index for index, symbol in enumerate(symbols[:first_elite_index]) if symbol == "R"
+    ]
+    later_rests = [
+        index
+        for index, symbol in enumerate(symbols[first_elite_index + 1:], first_elite_index + 1)
+        if symbol == "R"
+    ]
+    return (
+        elite_floors,
+        first_elite_index - prior_rests[-1] if prior_rests else None,
+        later_rests[0] - first_elite_index if later_rests else None,
+    )
+
+
 def _parse_candidate(value: str) -> Candidate | None:
     if value == "unavailable":
         return None
@@ -122,10 +159,8 @@ def _parse_candidate(value: str) -> Candidate | None:
             _parse_nonnegative_integer(floor, "candidate elite floor")
             for floor in elite_floors_value.split("|")
         )
-    expected_elite_floors = tuple(
-        start_y + index + 1
-        for index, symbol in enumerate(symbols)
-        if symbol == "E"
+    expected_elite_floors, expected_recovery_before, expected_recovery_after = (
+        _candidate_derived_fields(symbols, start_y)
     )
     if (
         elite_count != len(elite_floors)
@@ -134,18 +169,55 @@ def _parse_candidate(value: str) -> Candidate | None:
     ):
         raise EvidenceError("candidate elite counts do not match its route")
 
+    recovery_before = _parse_optional_nonnegative_integer(
+        values["recovery_before"], "candidate recovery_before"
+    )
+    recovery_after = _parse_optional_nonnegative_integer(
+        values["recovery_after"], "candidate recovery_after"
+    )
+    if (recovery_before, recovery_after) != (
+        expected_recovery_before,
+        expected_recovery_after,
+    ):
+        raise EvidenceError("candidate recovery distances do not match its route")
+
     return Candidate(
         mode=mode,
         start_y=start_y,
         symbols=symbols,
         elite_count=elite_count,
         elite_floors=elite_floors,
-        recovery_before=_parse_optional_nonnegative_integer(
-            values["recovery_before"], "candidate recovery_before"
-        ),
-        recovery_after=_parse_optional_nonnegative_integer(
-            values["recovery_after"], "candidate recovery_after"),
+        recovery_before=recovery_before,
+        recovery_after=recovery_after,
     )
+
+
+def _validate_state_scalars(fields: dict[str, str]) -> None:
+    state_keys = ("hp", "hp_pct", "deck", "potion", "relic", "elite_seen", "last_rest_floor")
+    if fields["state_valid"] == "false":
+        if any(fields[key] != "unavailable" for key in state_keys):
+            raise EvidenceError("invalid state must use unavailable state scalars")
+        return
+
+    if "unavailable" in (fields[key] for key in state_keys):
+        raise EvidenceError("valid state must provide every state scalar")
+    hp_match = _HP.fullmatch(fields["hp"])
+    if hp_match is None:
+        raise EvidenceError("hp must be current/max positive integer form")
+    current_hp = int(hp_match.group("current"))
+    maximum_hp = int(hp_match.group("maximum"))
+    if current_hp > maximum_hp:
+        raise EvidenceError("hp current value cannot exceed maximum")
+    if _HP_PCT.fullmatch(fields["hp_pct"]) is None:
+        raise EvidenceError("hp_pct must have six decimal places")
+    hp_pct = float(fields["hp_pct"])
+    if hp_pct > 1 or abs(hp_pct - current_hp / maximum_hp) > 0.000001:
+        raise EvidenceError("hp_pct does not match hp")
+    for key in ("deck", "potion", "relic"):
+        _parse_nonnegative_integer(fields[key], key)
+    if fields["elite_seen"] not in {"true", "false"}:
+        raise EvidenceError("valid state elite_seen must be boolean")
+    _parse_optional_nonnegative_integer(fields["last_rest_floor"], "last_rest_floor")
 
 
 def _validate_fields(
@@ -162,11 +234,14 @@ def _validate_fields(
         raise EvidenceError("adaptive outcome is invalid")
     if fields["state_valid"] not in {"true", "false"}:
         raise EvidenceError("adaptive state_valid must be boolean")
-    if fields["elite_seen"] not in {"true", "false", "unavailable"}:
-        raise EvidenceError("adaptive elite_seen must be boolean or unavailable")
-    for key in ("act", "floor", "minimum_elites", "added_elites", "budget"):
-        if fields[key] != "unavailable":
-            _parse_nonnegative_integer(fields[key], key)
+    if fields["character"] != "unavailable" and _CHARACTER.fullmatch(fields["character"]) is None:
+        raise EvidenceError("adaptive character is invalid")
+    if fields["act"] != "unavailable":
+        _parse_positive_integer(fields["act"], "act")
+    if fields["floor"] != "unavailable":
+        _parse_nonnegative_integer(fields["floor"], "floor")
+    _parse_nonnegative_integer(fields["budget"], "budget")
+    _validate_state_scalars(fields)
     if fields["candidate_pair"] not in {
         "complete",
         "not_attempted",
@@ -175,22 +250,53 @@ def _validate_fields(
         raise EvidenceError("adaptive candidate_pair is invalid")
     if fields["selected"] not in {"conservative", "aggressive"}:
         raise EvidenceError("adaptive selected mode is invalid")
-    if fields["candidate_pair"] == "complete":
+    outcome = fields["outcome"]
+    pair = fields["candidate_pair"]
+    if outcome in {"success", "forced"}:
+        if pair != "complete" or fields["fallback_candidate"] != "not_used":
+            raise EvidenceError("complete outcome contract is invalid")
         if conservative is None or aggressive is None:
             raise EvidenceError("complete candidate pair requires both candidates")
         if conservative.mode != "conservative" or aggressive.mode != "aggressive":
             raise EvidenceError("candidate mode does not match its payload field")
-        if fields["fallback_candidate"] != "not_used":
-            raise EvidenceError("complete candidate pair cannot use a fallback")
-    elif conservative is not None or aggressive is not None:
+        minimum_elites = _parse_nonnegative_integer(fields["minimum_elites"], "minimum_elites")
+        added_elites = _parse_nonnegative_integer(fields["added_elites"], "added_elites")
+        if minimum_elites != conservative.elite_count:
+            raise EvidenceError("minimum_elites does not match conservative candidate")
+        if added_elites != aggressive.elite_count - conservative.elite_count:
+            raise EvidenceError("added_elites does not match candidate pair")
+        if outcome == "forced" and fields["selected"] != "conservative":
+            raise EvidenceError("forced outcome must select conservative")
+        return
+    if conservative is not None or aggressive is not None:
         raise EvidenceError("incomplete candidate pair must not include candidates")
+    if fields["minimum_elites"] != "unavailable" or fields["added_elites"] != "unavailable":
+        raise EvidenceError("incomplete candidate pair counts must be unavailable")
+    if outcome == "unsupported":
+        if (
+            pair != "not_attempted"
+            or fields["fallback_candidate"] != "not_applicable"
+            or fields["selected"] != "conservative"
+        ):
+            raise EvidenceError("unsupported outcome contract is invalid")
+        return
+    if pair != "generation_failed" or fields["selected"] != "conservative":
+        raise EvidenceError("candidate-generation failure contract is invalid")
+    fallback = _parse_candidate(fields["fallback_candidate"])
+    if fallback is None or fallback.mode != "conservative":
+        raise EvidenceError("candidate-generation failure requires conservative fallback")
 
 
 def parse_adaptive_payload(payload: str) -> tuple[dict[str, str], Candidate | None, Candidate | None]:
     """Parse one complete adaptive-routing payload without accepting reordering."""
-    tokens = payload.split()
+    if _CANONICAL_PAYLOAD.fullmatch(payload) is None:
+        raise EvidenceError("adaptive payload must use canonical single-space separators")
+    tokens = payload.split(" ")
     keys = tuple(token.partition("=")[0] for token in tokens)
-    if keys != ADAPTIVE_KEYS or any("=" not in token for token in tokens):
+    if (
+        keys != ADAPTIVE_KEYS
+        or any(token.count("=") != 1 for token in tokens)
+    ):
         raise EvidenceError("adaptive payload keys do not match the ordered contract")
     fields = dict(token.split("=", 1) for token in tokens)
     conservative = _parse_candidate(fields["conservative_candidate"])
@@ -212,8 +318,8 @@ def _validate_utc_offset(utc_offset_hours: float) -> float:
     if isinstance(utc_offset_hours, bool) or not isinstance(utc_offset_hours, (int, float)):
         raise EvidenceError("log UTC offset must be a finite number of hours")
     offset = float(utc_offset_hours)
-    if not isfinite(offset) or abs(offset) > 24:
-        raise EvidenceError("log UTC offset must be within 24 hours")
+    if not isfinite(offset) or abs(offset) >= 24:
+        raise EvidenceError("log UTC offset must be strictly within 24 hours")
     return offset
 
 
@@ -259,6 +365,8 @@ def load_adaptive_logs(
                 active_game_number = game_number
                 previous_game_number = game_number
                 continue
+            if message.startswith("Starting game #"):
+                raise EvidenceError("invalid game boundary", source_path, line_number)
             if "[ADAPTIVE_ROUTE]" not in message:
                 continue
             prefix = "[ADAPTIVE_ROUTE] "

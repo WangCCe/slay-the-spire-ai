@@ -34,9 +34,9 @@ def _payload(**overrides: str) -> str:
         "state_valid": "true",
         "hp": "60/80",
         "hp_pct": "0.750000",
-        "deck": "prepared",
-        "potion": "none",
-        "relic": "none",
+        "deck": "5",
+        "potion": "1",
+        "relic": "0",
         "elite_seen": "false",
         "last_rest_floor": "none",
         "candidate_pair": "complete",
@@ -73,6 +73,56 @@ def _write_log(tmp_path: Path, name: str, lines: list[str]) -> Path:
     path = tmp_path / name
     path.write_bytes("".join(lines).encode("utf-8"))
     return path
+
+
+def _live_line(payload: str, *, boundary: str = "Starting game #1 as PlayerClass.IRONCLAD") -> list[str]:
+    return [_line(boundary), _line(f"[ADAPTIVE_ROUTE] {payload}", millisecond=100)]
+
+
+def _outcome_payload(outcome: str) -> str:
+    if outcome == "success":
+        return _payload()
+    if outcome == "forced":
+        return _payload(outcome="forced", selected="conservative", reasons="forced_elite_route")
+    if outcome == "unsupported":
+        return _payload(
+            outcome="unsupported",
+            candidate_pair="not_attempted",
+            conservative_candidate="unavailable",
+            aggressive_candidate="unavailable",
+            minimum_elites="unavailable",
+            added_elites="unavailable",
+            fallback_candidate="not_applicable",
+            selected="conservative",
+            reasons="unsupported_character",
+        )
+    if outcome == "candidate_generation_failed":
+        return _payload(
+            outcome="candidate_generation_failed",
+            candidate_pair="generation_failed",
+            conservative_candidate="unavailable",
+            aggressive_candidate="unavailable",
+            minimum_elites="unavailable",
+            added_elites="unavailable",
+            fallback_candidate=_candidate(
+                "conservative",
+                symbols="M/T/?/$/R/?/M/R",
+                elite_count=0,
+                elite_floors="none",
+            ),
+            selected="conservative",
+            reasons="candidate_generation_failed",
+        )
+    raise AssertionError(f"unexpected outcome {outcome}")
+
+
+def _assert_rejected_live_line(tmp_path: Path, name: str, payload: str) -> None:
+    source = _write_log(tmp_path, name, _live_line(payload))
+
+    with pytest.raises(audit.EvidenceError) as error:
+        audit.load_adaptive_logs([source], utc_offset_hours=8)
+
+    assert str(error.value).startswith(f"{source}:2:")
 
 
 def test_parse_adaptive_payload_preserves_exact_fields_and_candidates():
@@ -179,3 +229,156 @@ def test_rejects_non_monotonic_game_boundaries(tmp_path: Path):
 
     with pytest.raises(audit.EvidenceError, match="non-monotonic game boundary"):
         audit.load_adaptive_logs([source], utc_offset_hours=8)
+
+
+def test_accepts_exact_production_game_boundary_suffix_and_rejects_trailing_text(tmp_path: Path):
+    source = _write_log(tmp_path, "production-boundary.log", _live_line(_payload()))
+
+    occurrences, _ = audit.load_adaptive_logs([source], utc_offset_hours=8)
+
+    assert [occurrence.game_number for occurrence in occurrences] == [1]
+
+    trailing_source = _write_log(
+        tmp_path,
+        "trailing-boundary.log",
+        _live_line(_payload(), boundary="Starting game #1 as PlayerClass.IRONCLAD trailing"),
+    )
+    with pytest.raises(audit.EvidenceError, match="invalid game boundary") as error:
+        audit.load_adaptive_logs([trailing_source], utc_offset_hours=8)
+    assert str(error.value).startswith(f"{trailing_source}:1:")
+
+
+@pytest.mark.parametrize(
+    "outcome",
+    ("success", "forced", "unsupported", "candidate_generation_failed"),
+)
+def test_loads_every_valid_outcome_contract_with_live_shaped_values(tmp_path: Path, outcome: str):
+    source = _write_log(tmp_path, f"{outcome}.log", _live_line(_outcome_payload(outcome)))
+
+    occurrences, _ = audit.load_adaptive_logs([source], utc_offset_hours=8)
+
+    assert occurrences[0].fields["outcome"] == outcome
+    if outcome == "candidate_generation_failed":
+        assert occurrences[0].fields["fallback_candidate"].startswith("mode:conservative,")
+
+
+@pytest.mark.parametrize(
+    ("name", "payload"),
+    [
+        (
+            "success-pair",
+            _payload(
+                candidate_pair="generation_failed",
+                conservative_candidate="unavailable",
+                aggressive_candidate="unavailable",
+                minimum_elites="unavailable",
+                added_elites="unavailable",
+            ),
+        ),
+        ("forced-selection", _outcome_payload("forced").replace("selected=conservative", "selected=aggressive")),
+        ("unsupported-pair", _outcome_payload("unsupported").replace("candidate_pair=not_attempted", "candidate_pair=complete")),
+        ("unsupported-fallback", _outcome_payload("unsupported").replace("fallback_candidate=not_applicable", "fallback_candidate=unavailable")),
+        ("failure-pair", _outcome_payload("candidate_generation_failed").replace("candidate_pair=generation_failed", "candidate_pair=not_attempted")),
+        ("failure-selection", _outcome_payload("candidate_generation_failed").replace("selected=conservative", "selected=aggressive")),
+        ("failure-fallback", _outcome_payload("candidate_generation_failed").replace("fallback_candidate=mode:conservative", "fallback_candidate=unavailable")),
+    ],
+)
+def test_rejects_invalid_outcome_candidate_pair_fallback_and_selection_matrix(
+    tmp_path: Path, name: str, payload: str
+):
+    _assert_rejected_live_line(tmp_path, f"{name}.log", payload)
+
+
+@pytest.mark.parametrize(
+    ("name", "payload"),
+    [
+        (
+            "recovery",
+            _payload(conservative_candidate=_candidate("conservative", symbols="M/T/?/$/R/?/M/R", elite_count=0, elite_floors="none", recovery_before="1")),
+        ),
+        ("minimum-elites", _payload(minimum_elites="99")),
+        ("added-elites", _payload(added_elites="99")),
+        ("hp", _payload(hp="bad")),
+        ("hp-pct", _payload(hp_pct="nan")),
+        ("deck", _payload(deck="-1")),
+        ("potion", _payload(potion="x")),
+        ("relic", _payload(relic="x")),
+        ("elite-seen", _payload(elite_seen="unavailable")),
+        ("last-rest", _payload(last_rest_floor="-1")),
+        ("invalid-state-populated", _payload(state_valid="false")),
+        ("act-zero", _payload(act="0")),
+    ],
+)
+def test_rejects_invalid_candidate_derivations_counts_and_scalar_availability(
+    tmp_path: Path, name: str, payload: str
+):
+    _assert_rejected_live_line(tmp_path, f"{name}.log", payload)
+
+
+def test_accepts_invalid_state_only_with_unavailable_state_scalars():
+    payload = _payload(
+        state_valid="false",
+        hp="unavailable",
+        hp_pct="unavailable",
+        deck="unavailable",
+        potion="unavailable",
+        relic="unavailable",
+        elite_seen="unavailable",
+        last_rest_floor="unavailable",
+    )
+
+    fields, _, _ = audit.parse_adaptive_payload(payload)
+
+    assert fields["state_valid"] == "false"
+
+
+@pytest.mark.parametrize(
+    "payload",
+    [
+        lambda: _payload().replace(" ", "  ", 1),
+        lambda: _payload().replace(" ", "\t", 1),
+        lambda: " " + _payload(),
+        lambda: _payload() + " ",
+    ],
+)
+def test_rejects_noncanonical_payload_whitespace_before_deduplication(payload):
+    with pytest.raises(audit.EvidenceError, match="canonical"):
+        audit.parse_adaptive_payload(payload())
+
+
+def test_malformed_whitespace_cannot_become_a_second_deduplication_key(tmp_path: Path):
+    canonical = _payload()
+    source = _write_log(
+        tmp_path,
+        "whitespace-dedup.log",
+        [
+            _line("Starting game #1 as PlayerClass.IRONCLAD"),
+            _line(f"[ADAPTIVE_ROUTE] {canonical}", millisecond=100),
+            _line(f"[ADAPTIVE_ROUTE] {canonical.replace(' ', '  ', 1)}", millisecond=200),
+        ],
+    )
+
+    with pytest.raises(audit.EvidenceError, match="canonical") as error:
+        audit.load_adaptive_logs([source], utc_offset_hours=8)
+    assert str(error.value).startswith(f"{source}:3:")
+
+
+@pytest.mark.parametrize("utc_offset_hours", [True, float("nan"), float("inf"), float("-inf"), -24, 24])
+def test_rejects_utc_offsets_outside_datetime_timezone_domain(utc_offset_hours: float):
+    with pytest.raises(audit.EvidenceError, match="UTC offset"):
+        audit._validate_utc_offset(utc_offset_hours)
+
+
+@pytest.mark.parametrize("utc_offset_hours", [-23.999, 23.999])
+def test_accepts_utc_offsets_just_inside_datetime_timezone_domain(utc_offset_hours: float):
+    assert audit._validate_utc_offset(utc_offset_hours) == utc_offset_hours
+
+
+def test_converts_fractional_utc_offset_to_known_unix_timestamp(tmp_path: Path):
+    source = _write_log(tmp_path, "fractional-offset.log", _live_line(_payload()))
+
+    occurrences, _ = audit.load_adaptive_logs([source], utc_offset_hours=5.5)
+
+    assert occurrences[0].unix_time == datetime(
+        2026, 7, 22, 12, 0, 0, 100000, tzinfo=timezone(timedelta(hours=5.5))
+    ).timestamp()
