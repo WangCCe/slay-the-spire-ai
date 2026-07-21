@@ -1591,7 +1591,10 @@ def _write_task3_evidence(
                 aggressive_symbols=record["aggressive_symbols"],
                 selected=record["selected"],
             )
-        for millisecond in (100, 200):
+        trace_millisecond_offsets = record.get(
+            "trace_millisecond_offsets", (0, 0)
+        )
+        for callback_index, millisecond in enumerate((100, 200)):
             log_lines.append(
                 _line(
                     f"[ADAPTIVE_ROUTE] {payload}",
@@ -1601,7 +1604,11 @@ def _write_task3_evidence(
             )
             trace_rows.append(
                 _task3_trace_row(
-                    unix_time=_task3_unix_time(second, millisecond),
+                    unix_time=_task3_unix_time(
+                        second,
+                        millisecond
+                        + trace_millisecond_offsets[callback_index],
+                    ),
                     floor=record["floor"],
                     current_node=record["current_node"],
                     action_node=record["action_node"],
@@ -1931,12 +1938,14 @@ def test_build_audit_preserves_deterministic_per_record_fallback_provenance(
             "payload": first_payload,
             "current_node": (-1, -1),
             "action_node": (0, 0),
+            "trace_millisecond_offsets": (1, 0),
         },
         {
             "floor": 1,
             "payload": second_payload,
             "current_node": (0, 0),
             "action_node": (0, 1),
+            "trace_millisecond_offsets": (0, -1),
         },
     ]
 
@@ -1965,7 +1974,7 @@ def test_build_audit_preserves_deterministic_per_record_fallback_provenance(
                     "source_path": str(evidence[0][0]),
                     "line_number": 2,
                     "timestamp": "2026-07-22T12:00:01.100000",
-                    "join_delta_seconds": "0",
+                    "join_delta_seconds": "0.001",
                 },
                 {
                     "source_path": str(evidence[0][0]),
@@ -2004,7 +2013,7 @@ def test_build_audit_preserves_deterministic_per_record_fallback_provenance(
                     "source_path": str(evidence[0][0]),
                     "line_number": 5,
                     "timestamp": "2026-07-22T12:00:02.200000",
-                    "join_delta_seconds": "0",
+                    "join_delta_seconds": "0.001",
                 },
             ],
             "decision": {
