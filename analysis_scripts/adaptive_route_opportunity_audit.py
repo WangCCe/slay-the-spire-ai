@@ -12,6 +12,7 @@ from math import isfinite
 import os
 from pathlib import Path
 import re
+import sys
 from typing import Sequence, TypeAlias
 
 
@@ -1170,10 +1171,16 @@ def _validate_ordered_sources(
 ) -> tuple[Path, ...]:
     if not isinstance(paths, (list, tuple)) or not paths:
         raise EvidenceError(f"{label} paths must be a non-empty ordered list or tuple")
-    normalized = tuple(Path(path) for path in paths)
-    if len(set(normalized)) != len(normalized):
-        raise EvidenceError(f"{label} paths must not repeat a source")
-    return normalized
+    ordered = tuple(Path(path) for path in paths)
+    for index, source_path in enumerate(ordered):
+        for prior_path in ordered[:index]:
+            if _paths_share_source(
+                source_path, prior_path, f"ordered {label} identity"
+            ):
+                raise EvidenceError(
+                    f"ordered {label} sources alias one physical file"
+                )
+    return ordered
 
 
 def load_runs(paths: Sequence[Path]) -> tuple[list[RunEvidence], list[dict]]:
@@ -1760,23 +1767,45 @@ def _argument_parser() -> argparse.ArgumentParser:
     return parser
 
 
-def _normalized_path_identity(path: Path) -> str:
-    return os.path.normcase(os.path.normpath(str(path.resolve(strict=False))))
+def _normalized_path_identity(path: Path, context: str) -> str:
+    try:
+        resolved = path.resolve(strict=False)
+    except (OSError, RuntimeError) as error:
+        raise EvidenceError(f"{context}: path normalization failed") from error
+    return os.path.normcase(os.path.normpath(str(resolved)))
+
+
+def _path_exists_for_identity(path: Path, context: str) -> bool:
+    try:
+        path.stat()
+    except FileNotFoundError:
+        return False
+    except OSError as error:
+        raise EvidenceError(f"{context}: file identity check failed") from error
+    return True
+
+
+def _paths_share_source(left: Path, right: Path, context: str) -> bool:
+    if _normalized_path_identity(left, context) == _normalized_path_identity(
+        right, context
+    ):
+        return True
+    left_exists = _path_exists_for_identity(left, context)
+    right_exists = _path_exists_for_identity(right, context)
+    if not (left_exists and right_exists):
+        return False
+    try:
+        return left.samefile(right)
+    except OSError as error:
+        raise EvidenceError(f"{context}: file identity check failed") from error
 
 
 def _validate_output_source_separation(
     output: Path, source_paths: Sequence[Path]
 ) -> None:
-    output_identity = _normalized_path_identity(output)
     for source_path in source_paths:
-        if output_identity == _normalized_path_identity(source_path):
-            raise EvidenceError("output path aliases a source path")
-        if output.exists() and source_path.exists():
-            try:
-                if output.samefile(source_path):
-                    raise EvidenceError("output path aliases a source file")
-            except OSError:
-                continue
+        if _paths_share_source(output, source_path, "output/source identity"):
+            raise EvidenceError("output/source alias rejected")
 
 
 def main(argv: Sequence[str] | None = None) -> int:
@@ -1785,7 +1814,8 @@ def main(argv: Sequence[str] | None = None) -> int:
         _validate_output_source_separation(
             args.output, [*args.ai_log, args.decision_trace, *args.run]
         )
-    except EvidenceError:
+    except EvidenceError as error:
+        print(f"adaptive-route audit argument error: {error}", file=sys.stderr)
         return 2
     result, exit_code = build_audit(
         args.ai_log,

@@ -1644,6 +1644,86 @@ def test_load_runs_preserves_ordered_source_identity_and_path_symbols(tmp_path: 
     assert all(source["sha256"] and source["record_count"] == 1 for source in sources)
 
 
+@pytest.mark.parametrize("alias_kind", ("normalized", "symlink", "hardlink"))
+def test_load_runs_rejects_duplicate_physical_source_aliases_before_reading(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, alias_kind: str
+):
+    source = _write_task3_run(tmp_path, "physical.run", ["M"])
+    if alias_kind == "normalized":
+        alias_parent = tmp_path / "run-alias-parent"
+        alias_parent.mkdir()
+        alias = alias_parent / ".." / source.name
+    elif alias_kind == "symlink":
+        alias = tmp_path / "run-symlink.run"
+        try:
+            alias.symlink_to(source)
+        except OSError:
+            original_resolve = Path.resolve
+            source_target = source.resolve()
+
+            def resolve_simulated_symlink(self: Path, strict: bool = False):
+                if self == alias:
+                    return source_target
+                return original_resolve(self, strict=strict)
+
+            monkeypatch.setattr(Path, "resolve", resolve_simulated_symlink)
+    else:
+        alias = tmp_path / "run-hardlink.run"
+        try:
+            alias.hardlink_to(source)
+        except OSError as error:
+            pytest.skip(f"hard links unavailable: {error}")
+
+    def fail_if_read(_self: Path):
+        pytest.fail("duplicate ordered run sources must be rejected before reading")
+
+    monkeypatch.setattr(Path, "read_bytes", fail_if_read)
+
+    with pytest.raises(
+        audit.EvidenceError, match="ordered run sources alias one physical file"
+    ):
+        audit.load_runs([source, alias])
+
+
+@pytest.mark.parametrize(
+    ("failure_kind", "expected_message"),
+    (
+        ("normalization", "ordered run identity: path normalization failed"),
+        ("samefile", "ordered run identity: file identity check failed"),
+    ),
+)
+def test_load_runs_fails_closed_before_read_when_identity_is_uncertain(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    failure_kind: str,
+    expected_message: str,
+):
+    first = _write_task3_run(tmp_path, "identity-first.run", ["M"])
+    second = _write_task3_run(tmp_path, "identity-second.run", ["T"])
+    if failure_kind == "normalization":
+        original_resolve = Path.resolve
+
+        def fail_second_normalization(self: Path, strict: bool = False):
+            if self == second:
+                raise OSError("forced normalization failure")
+            return original_resolve(self, strict=strict)
+
+        monkeypatch.setattr(Path, "resolve", fail_second_normalization)
+    else:
+        def fail_identity_check(self: Path, other: Path):
+            raise OSError("forced identity failure")
+
+        monkeypatch.setattr(Path, "samefile", fail_identity_check)
+
+    def fail_if_read(_self: Path):
+        pytest.fail("uncertain ordered run identity must fail before reading")
+
+    monkeypatch.setattr(Path, "read_bytes", fail_if_read)
+
+    with pytest.raises(audit.EvidenceError, match=expected_message):
+        audit.load_runs([first, second])
+
+
 def _task3_two_root_graph() -> list[dict]:
     graph = _task3_graph()
     graph.extend(
@@ -2193,3 +2273,78 @@ def test_cli_rejects_existing_file_identity_alias_without_modifying_source(
     assert exit_code == 2
     assert source.read_bytes() == original
     assert identity_alias.read_bytes() == original
+
+
+@pytest.mark.parametrize(
+    ("failure_kind", "expected_diagnostic"),
+    (
+        (
+            "normalization",
+            "adaptive-route audit argument error: output/source identity: "
+            "path normalization failed\n",
+        ),
+        (
+            "samefile",
+            "adaptive-route audit argument error: output/source identity: "
+            "file identity check failed\n",
+        ),
+    ),
+)
+def test_cli_identity_uncertainty_stops_before_build_and_output_write(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+    failure_kind: str,
+    expected_diagnostic: str,
+):
+    _, _, evidence = _task3_build(
+        tmp_path, [_task3_initial_record(selected="conservative")], run_symbols=["M"]
+    )
+    output = tmp_path / "existing-output.json"
+    output.write_bytes(b"output sentinel\n")
+    source = evidence[0][0]
+    source_bytes = source.read_bytes()
+
+    def fail_if_built(*_args, **_kwargs):
+        pytest.fail("build_audit must not run when source identity is uncertain")
+
+    monkeypatch.setattr(audit, "build_audit", fail_if_built)
+    if failure_kind == "normalization":
+        original_resolve = Path.resolve
+
+        def fail_output_normalization(self: Path, strict: bool = False):
+            if self == output:
+                raise OSError("forced normalization failure")
+            return original_resolve(self, strict=strict)
+
+        monkeypatch.setattr(Path, "resolve", fail_output_normalization)
+    else:
+        def fail_identity_check(self: Path, other: Path):
+            raise OSError("forced identity failure")
+
+        monkeypatch.setattr(Path, "samefile", fail_identity_check)
+
+    exit_code = audit.main(_task3_cli_arguments(evidence, output))
+
+    assert exit_code == 2
+    assert capsys.readouterr().err == expected_diagnostic
+    assert output.read_bytes() == b"output sentinel\n"
+    assert source.read_bytes() == source_bytes
+
+
+def test_cli_emits_deterministic_diagnostic_for_output_source_alias(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+):
+    _, _, evidence = _task3_build(
+        tmp_path, [_task3_initial_record(selected="conservative")], run_symbols=["M"]
+    )
+    source = evidence[1]
+    original = source.read_bytes()
+
+    exit_code = audit.main(_task3_cli_arguments(evidence, source))
+
+    assert exit_code == 2
+    assert capsys.readouterr().err == (
+        "adaptive-route audit argument error: output/source alias rejected\n"
+    )
+    assert source.read_bytes() == original
