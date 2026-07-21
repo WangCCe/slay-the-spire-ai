@@ -10,8 +10,8 @@
 
 ## 3. Treatment Attribution And Artifact Output
 
-- [ ] 3.1 Add failing synthetic tests for run corroboration, same-immediate selection, later revocation, route departure, divergence uptake, realized optional elite, ambiguity exclusion, deterministic JSON, and invalid-integrity CLI exit behavior.
-- [ ] 3.2 Implement ordered run ingestion, opportunity funnel aggregation, per-opportunity treatment evidence, deterministic schema `adaptive-route-opportunity-audit-v1`, and the read-only CLI.
+- [x] 3.1 Add failing synthetic tests for run corroboration, same-immediate selection, later revocation, route departure, divergence uptake, realized optional elite, ambiguity exclusion, deterministic JSON, and invalid-integrity CLI exit behavior.
+- [x] 3.2 Implement ordered run ingestion, opportunity funnel aggregation, per-opportunity treatment evidence, deterministic schema `adaptive-route-opportunity-audit-v1`, and the read-only CLI.
 
 ## 4. Frozen Qualification POC
 

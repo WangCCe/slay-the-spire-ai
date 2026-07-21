@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import argparse
 from dataclasses import dataclass
 from decimal import Decimal, InvalidOperation
 from datetime import datetime, timedelta, timezone
@@ -31,6 +32,7 @@ _CANDIDATE_KEYS = (
     "recovery_after",
 )
 _ROUTE_SYMBOLS = frozenset(("M", "T", "?", "$", "R", "E"))
+_RUN_SYMBOLS = _ROUTE_SYMBOLS | frozenset(("B",))
 _TIMESTAMPED_INFO = re.compile(
     r"^(?P<timestamp>\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2},\d{1,6})"
     r"\s+-\s+INFO\s+-\s+(?P<message>.*)$"
@@ -173,6 +175,14 @@ class CandidatePairEvidence:
     aggressive_immediate: Coordinate | None
     immediate_classification: str
     first_divergence: Divergence | None
+
+
+@dataclass(frozen=True)
+class RunEvidence:
+    source_path: Path
+    path_per_floor: tuple[str, ...]
+    floor_reached: int | None
+    victory: bool | None
 
 
 def _parse_nonnegative_integer(value: str, label: str) -> int:
@@ -1152,3 +1162,544 @@ def classify_candidate_pair(joined_record: JoinedRecord) -> CandidatePairEvidenc
             conservative_sets, aggressive_sets
         ),
     )
+
+
+def _validate_ordered_sources(
+    paths: Sequence[Path], label: str
+) -> tuple[Path, ...]:
+    if not isinstance(paths, (list, tuple)) or not paths:
+        raise EvidenceError(f"{label} paths must be a non-empty ordered list or tuple")
+    normalized = tuple(Path(path) for path in paths)
+    if len(set(normalized)) != len(normalized):
+        raise EvidenceError(f"{label} paths must not repeat a source")
+    return normalized
+
+
+def load_runs(paths: Sequence[Path]) -> tuple[list[RunEvidence], list[dict]]:
+    """Load ordered run records without inferring or rewriting path symbols."""
+    ordered_paths = _validate_ordered_sources(paths, "run")
+    runs: list[RunEvidence] = []
+    sources: list[dict] = []
+    for source_path in ordered_paths:
+        try:
+            raw_bytes = source_path.read_bytes()
+            text = raw_bytes.decode("utf-8")
+            row = json.loads(
+                text,
+                parse_float=Decimal,
+                parse_constant=_reject_json_constant,
+                object_pairs_hook=_strict_json_object,
+            )
+        except (OSError, UnicodeDecodeError, json.JSONDecodeError, ValueError) as error:
+            detail = error.msg if isinstance(error, json.JSONDecodeError) else str(error)
+            raise EvidenceError(
+                f"cannot read strict UTF-8 run record: {detail}", source_path
+            ) from error
+        if not isinstance(row, dict):
+            raise EvidenceError("run record must be an object", source_path)
+        raw_path = row.get("path_per_floor")
+        if (
+            not isinstance(raw_path, list)
+            or any(
+                not isinstance(symbol, str) or symbol not in _RUN_SYMBOLS
+                for symbol in raw_path
+            )
+        ):
+            raise EvidenceError(
+                "run path_per_floor must contain only valid room symbols",
+                source_path,
+            )
+        floor_reached = row.get("floor_reached")
+        if floor_reached is not None:
+            floor_reached = _strict_integer(floor_reached, "run floor_reached")
+        victory = row.get("victory")
+        if victory is not None and not isinstance(victory, bool):
+            raise EvidenceError("run victory must be boolean", source_path)
+        runs.append(
+            RunEvidence(
+                source_path=source_path,
+                path_per_floor=tuple(raw_path),
+                floor_reached=floor_reached,
+                victory=victory,
+            )
+        )
+        sources.append(
+            {
+                "source_path": str(source_path),
+                "sha256": sha256(raw_bytes).hexdigest(),
+                "byte_count": len(raw_bytes),
+                "line_count": len(text.splitlines()),
+                "record_count": 1,
+            }
+        )
+    return runs, sources
+
+
+def _empty_funnel() -> dict[str, int]:
+    return {
+        "adaptive_occurrences": 0,
+        "callback_independent_records": 0,
+        "candidate_generation_fallbacks": 0,
+        "complete_candidate_pairs": 0,
+        "zero_vs_one_opportunities": 0,
+        "act1_zero_vs_one_opportunities": 0,
+        "aggressive_selections": 0,
+        "same_immediate_coordinate": 0,
+        "different_immediate_coordinate": 0,
+        "ambiguous_immediate_coordinate": 0,
+        "provable_first_divergences": 0,
+        "selection_revoked_before_divergence": 0,
+        "route_left_before_divergence": 0,
+        "divergences_taken": 0,
+        "realized_optional_elites": 0,
+    }
+
+
+def _coordinate_json(coordinate: Coordinate | None) -> list[int] | None:
+    return list(coordinate) if coordinate is not None else None
+
+
+def _paths_json(paths: tuple[CoordinatePath, ...]) -> list[list[list[int]]]:
+    return [[list(coordinate) for coordinate in path] for path in paths]
+
+
+def _candidate_pair_json(evidence: CandidatePairEvidence) -> dict:
+    divergence = evidence.first_divergence
+    return {
+        "conservative_match_count": evidence.conservative_match_count,
+        "aggressive_match_count": evidence.aggressive_match_count,
+        "conservative_matches": _paths_json(evidence.conservative_matches),
+        "aggressive_matches": _paths_json(evidence.aggressive_matches),
+        "conservative_immediate": _coordinate_json(evidence.conservative_immediate),
+        "aggressive_immediate": _coordinate_json(evidence.aggressive_immediate),
+        "immediate_classification": evidence.immediate_classification,
+        "first_divergence": (
+            None
+            if divergence is None
+            else {
+                "index": divergence.index,
+                "map_y": divergence.map_y,
+                "entered_floor": divergence.entered_floor,
+                "conservative": list(divergence.conservative),
+                "aggressive": list(divergence.aggressive),
+            }
+        ),
+    }
+
+
+def _run_corroboration(
+    joined: JoinedRecord, runs: Sequence[RunEvidence]
+) -> tuple[dict, dict | None]:
+    decision = joined.decision
+    graph = dict(decision.graph)
+    trace_symbol = graph[decision.action_node].symbol
+    game_number = joined.record.game_number
+    if game_number > len(runs):
+        return (
+            {
+                "trace_symbol": trace_symbol,
+                "run_symbol": None,
+                "run_compatibility": "missing",
+            },
+            {
+                "code": "missing_ordered_run",
+                "game_number": game_number,
+                "act": decision.act,
+                "floor": decision.floor,
+            },
+        )
+    run = runs[game_number - 1]
+    if decision.floor >= len(run.path_per_floor):
+        return (
+            {
+                "trace_symbol": trace_symbol,
+                "run_symbol": None,
+                "run_compatibility": "missing",
+            },
+            {
+                "code": "run_floor_missing",
+                "game_number": game_number,
+                "act": decision.act,
+                "floor": decision.floor,
+            },
+        )
+    run_symbol = run.path_per_floor[decision.floor]
+    if trace_symbol == "?" and run_symbol != "B":
+        compatibility = "event_resolved"
+        diagnostic = None
+    elif trace_symbol == run_symbol:
+        compatibility = "exact"
+        diagnostic = None
+    else:
+        compatibility = "mismatch"
+        diagnostic = {
+            "code": "run_symbol_mismatch",
+            "game_number": game_number,
+            "act": decision.act,
+            "floor": decision.floor,
+            "trace_symbol": trace_symbol,
+            "run_symbol": run_symbol,
+        }
+    return (
+        {
+            "trace_symbol": trace_symbol,
+            "run_symbol": run_symbol,
+            "run_compatibility": compatibility,
+        },
+        diagnostic,
+    )
+
+
+def _joined_step(
+    joined: JoinedRecord, corroboration: dict
+) -> dict:
+    occurrence = joined.record.occurrences[0]
+    return {
+        "joined": joined,
+        "selected": occurrence.fields["selected"],
+        "action_index": joined.decision.action_node[1],
+        "corroboration": corroboration,
+    }
+
+
+def _treatment_evidence(
+    joined: JoinedRecord,
+    pair: CandidatePairEvidence,
+    same_game_steps: Sequence[dict],
+) -> dict:
+    divergence = pair.first_divergence
+    if divergence is None:
+        return {"status": "ambiguous"}
+    occurrence = joined.record.occurrences[0]
+    aggressive = occurrence.aggressive
+    conservative = occurrence.conservative
+    if aggressive is None or conservative is None:
+        return {"status": "ambiguous"}
+
+    steps_by_index: dict[int, dict] = {}
+    ordered_steps = sorted(
+        same_game_steps,
+        key=lambda step: (
+            step["joined"].decision.floor,
+            step["joined"].decision.unix_time_us,
+        ),
+    )
+    for step in ordered_steps:
+        later = step["joined"]
+        if later.decision.act != joined.decision.act:
+            continue
+        if later.decision.floor < joined.decision.floor:
+            continue
+        candidate_index = later.decision.action_node[1] - aggressive.start_y
+        if 0 <= candidate_index < len(aggressive.symbols):
+            steps_by_index.setdefault(candidate_index, step)
+
+    for index in range(divergence.index + 1):
+        step = steps_by_index.get(index)
+        if step is None:
+            return {"status": "incomplete_before_divergence"}
+        later = step["joined"]
+        if index > 0 and step["selected"] != "aggressive":
+            return {
+                "status": "revoked_before_divergence",
+                "revocation": {
+                    "act": later.decision.act,
+                    "floor": later.decision.floor,
+                    "selected": step["selected"],
+                },
+            }
+        allowed = set(pair.aggressive_coordinate_sets[index])
+        if later.decision.action_node not in allowed:
+            if index == divergence.index:
+                return {
+                    "status": "divergence_not_taken",
+                    "divergence": {
+                        "act": later.decision.act,
+                        "floor": later.decision.floor,
+                        "expected_coordinate": list(divergence.aggressive),
+                        "action_coordinate": list(later.decision.action_node),
+                    },
+                }
+            return {
+                "status": "route_left_before_divergence",
+                "route_departure": {
+                    "act": later.decision.act,
+                    "floor": later.decision.floor,
+                    "action_coordinate": list(later.decision.action_node),
+                },
+            }
+
+    treatment = {
+        "status": "divergence_taken",
+        "divergence": {
+            "act": joined.decision.act,
+            "floor": steps_by_index[divergence.index]["joined"].decision.floor,
+            "coordinate": list(divergence.aggressive),
+        },
+    }
+    conservative_elite_floors = set(conservative.elite_floors)
+    for elite_floor in aggressive.elite_floors:
+        if elite_floor in conservative_elite_floors:
+            continue
+        elite_index = elite_floor - aggressive.start_y - 1
+        if elite_index < divergence.index:
+            continue
+        aggressive_set = pair.aggressive_coordinate_sets[elite_index]
+        conservative_set = pair.conservative_coordinate_sets[elite_index]
+        if len(aggressive_set) != 1 or aggressive_set[0] in set(conservative_set):
+            continue
+        compatible = True
+        for index in range(divergence.index + 1, elite_index + 1):
+            step = steps_by_index.get(index)
+            if (
+                step is None
+                or step["selected"] != "aggressive"
+                or step["joined"].decision.action_node
+                not in set(pair.aggressive_coordinate_sets[index])
+            ):
+                compatible = False
+                break
+        if not compatible:
+            continue
+        elite_step = steps_by_index.get(elite_index)
+        if elite_step is None:
+            continue
+        corroboration = elite_step["corroboration"]
+        if (
+            elite_step["joined"].decision.action_node == aggressive_set[0]
+            and corroboration["trace_symbol"] == "E"
+            and corroboration["run_symbol"] == "E"
+            and corroboration["run_compatibility"] == "exact"
+        ):
+            elite_decision = elite_step["joined"].decision
+            treatment = {
+                "status": "realized_optional_elite",
+                "divergence": treatment["divergence"],
+                "elite": {
+                    "act": elite_decision.act,
+                    "floor": elite_decision.floor,
+                    "coordinate": list(aggressive_set[0]),
+                    "trace_symbol": "E",
+                    "run_symbol": "E",
+                },
+            }
+            break
+    return treatment
+
+
+def _base_result(
+    utc_offset_hours: float,
+    max_join_seconds: float,
+    sources: dict,
+    diagnostics: list[dict],
+) -> dict:
+    return {
+        "schema_version": "adaptive-route-opportunity-audit-v1",
+        "parameters": {
+            "log_utc_offset_hours": utc_offset_hours,
+            "max_join_seconds": max_join_seconds,
+        },
+        "sources": sources,
+        "integrity": {
+            "status": "invalid" if diagnostics else "valid",
+            "diagnostics": diagnostics,
+        },
+        "deduplication": {
+            "adaptive_occurrences": 0,
+            "callback_independent_records": 0,
+            "multiplicities": [],
+        },
+        "funnel": _empty_funnel(),
+        "runs": [],
+        "opportunities": [],
+    }
+
+
+def build_audit(
+    ai_logs: Sequence[Path],
+    decision_trace: Path,
+    runs: Sequence[Path],
+    utc_offset_hours: float,
+    max_join_seconds: float,
+) -> tuple[dict, int]:
+    """Build a deterministic, fail-closed adaptive-route opportunity audit."""
+    sources: dict = {"ai_logs": [], "decision_trace": None, "runs": []}
+    try:
+        occurrences, ai_sources = load_adaptive_logs(ai_logs, utc_offset_hours)
+        sources["ai_logs"] = ai_sources
+        trace_rows, trace_source = load_decision_trace(Path(decision_trace))
+        sources["decision_trace"] = trace_source
+        run_records, run_sources = load_runs(runs)
+        sources["runs"] = run_sources
+        records = deduplicate_occurrences(occurrences)
+        joined_records = join_occurrences(records, trace_rows, max_join_seconds)
+    except EvidenceError as error:
+        result = _base_result(
+            utc_offset_hours,
+            max_join_seconds,
+            sources,
+            [{"code": "evidence_error", "message": str(error)}],
+        )
+        return result, 2
+
+    diagnostics: list[dict] = []
+    corroborations: dict[int, dict] = {}
+    classified: dict[int, CandidatePairEvidence] = {}
+    for joined in joined_records:
+        corroboration, diagnostic = _run_corroboration(joined, run_records)
+        corroborations[id(joined)] = corroboration
+        if diagnostic is not None:
+            diagnostics.append(diagnostic)
+        occurrence = joined.record.occurrences[0]
+        if occurrence.fields["candidate_pair"] == "complete":
+            try:
+                classified[id(joined)] = classify_candidate_pair(joined)
+            except EvidenceError as error:
+                diagnostics.append(
+                    {
+                        "code": "candidate_attribution_error",
+                        "game_number": joined.record.game_number,
+                        "act": joined.decision.act,
+                        "floor": joined.decision.floor,
+                        "message": str(error),
+                    }
+                )
+
+    result = _base_result(
+        utc_offset_hours, max_join_seconds, sources, diagnostics
+    )
+    funnel = result["funnel"]
+    funnel["adaptive_occurrences"] = len(occurrences)
+    funnel["callback_independent_records"] = len(records)
+    funnel["candidate_generation_fallbacks"] = sum(
+        record.occurrences[0].fields["outcome"] == "candidate_generation_failed"
+        for record in records
+    )
+    complete_records = [
+        joined
+        for joined in joined_records
+        if joined.record.occurrences[0].fields["candidate_pair"] == "complete"
+    ]
+    funnel["complete_candidate_pairs"] = len(complete_records)
+    result["deduplication"] = {
+        "adaptive_occurrences": len(occurrences),
+        "callback_independent_records": len(records),
+        "multiplicities": [len(record.occurrences) for record in records],
+    }
+    result["runs"] = [
+        {
+            "game_number": index,
+            "source_path": str(run.source_path),
+            "path_per_floor": list(run.path_per_floor),
+            "floor_reached": run.floor_reached,
+            "victory": run.victory,
+        }
+        for index, run in enumerate(run_records, start=1)
+    ]
+
+    steps_by_game: dict[int, list[dict]] = {}
+    for joined in joined_records:
+        steps_by_game.setdefault(joined.record.game_number, []).append(
+            _joined_step(joined, corroborations[id(joined)])
+        )
+
+    opportunities: list[dict] = []
+    for joined in joined_records:
+        occurrence = joined.record.occurrences[0]
+        conservative = occurrence.conservative
+        aggressive = occurrence.aggressive
+        if (
+            conservative is None
+            or aggressive is None
+            or conservative.elite_count != 0
+            or aggressive.elite_count != 1
+        ):
+            continue
+        funnel["zero_vs_one_opportunities"] += 1
+        if joined.decision.act == 1:
+            funnel["act1_zero_vs_one_opportunities"] += 1
+        pair = classified.get(id(joined))
+        corroboration = corroborations[id(joined)]
+        decision_summary = {
+            "act": joined.decision.act,
+            "floor": joined.decision.floor,
+            "action_coordinate": list(joined.decision.action_node),
+            **corroboration,
+        }
+        selected = occurrence.fields["selected"]
+        treatment = {"status": "not_aggressive"}
+        if selected == "aggressive":
+            funnel["aggressive_selections"] += 1
+            if pair is None:
+                treatment = {"status": "ambiguous"}
+            else:
+                funnel[f"{pair.immediate_classification}_immediate_coordinate"] += 1
+                if pair.first_divergence is not None:
+                    funnel["provable_first_divergences"] += 1
+                treatment = _treatment_evidence(
+                    joined,
+                    pair,
+                    steps_by_game[joined.record.game_number],
+                )
+                if treatment["status"] == "revoked_before_divergence":
+                    funnel["selection_revoked_before_divergence"] += 1
+                elif treatment["status"] == "route_left_before_divergence":
+                    funnel["route_left_before_divergence"] += 1
+                elif treatment["status"] in {
+                    "divergence_taken",
+                    "realized_optional_elite",
+                }:
+                    funnel["divergences_taken"] += 1
+                if treatment["status"] == "realized_optional_elite":
+                    funnel["realized_optional_elites"] += 1
+        opportunities.append(
+            {
+                "opportunity_number": len(opportunities) + 1,
+                "game_number": joined.record.game_number,
+                "selected": selected,
+                "decision": decision_summary,
+                "candidate_pair": (
+                    _candidate_pair_json(pair) if pair is not None else None
+                ),
+                "treatment": treatment,
+            }
+        )
+    result["opportunities"] = opportunities
+    return result, 0 if result["integrity"]["status"] == "valid" else 2
+
+
+def serialize_audit(result: dict) -> bytes:
+    """Serialize stable ASCII JSON with sorted keys and one final newline."""
+    return (
+        json.dumps(result, indent=2, sort_keys=True, ensure_ascii=True) + "\n"
+    ).encode("ascii")
+
+
+def _argument_parser() -> argparse.ArgumentParser:
+    parser = argparse.ArgumentParser(
+        description="Audit frozen adaptive-route opportunity evidence."
+    )
+    parser.add_argument("--ai-log", action="append", required=True, type=Path)
+    parser.add_argument("--decision-trace", required=True, type=Path)
+    parser.add_argument("--run", action="append", required=True, type=Path)
+    parser.add_argument("--log-utc-offset-hours", required=True, type=float)
+    parser.add_argument("--max-join-seconds", required=True, type=float)
+    parser.add_argument("--output", required=True, type=Path)
+    return parser
+
+
+def main(argv: Sequence[str] | None = None) -> int:
+    args = _argument_parser().parse_args(argv)
+    result, exit_code = build_audit(
+        args.ai_log,
+        args.decision_trace,
+        args.run,
+        args.log_utc_offset_hours,
+        args.max_join_seconds,
+    )
+    args.output.write_bytes(serialize_audit(result))
+    return exit_code
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

@@ -1366,3 +1366,546 @@ def test_candidate_generation_fallback_joins_with_supersetted_next_nodes(tmp_pat
 def test_join_occurrences_rejects_invalid_tolerances(max_join_seconds: float):
     with pytest.raises(audit.EvidenceError, match="join tolerance"):
         audit.join_occurrences([], [], max_join_seconds=max_join_seconds)
+
+
+def _task3_candidate(mode: str, start_y: int, symbols: tuple[str, ...]) -> str:
+    elite_indexes = [index for index, symbol in enumerate(symbols) if symbol == "E"]
+    elite_floors = "|".join(str(start_y + index + 1) for index in elite_indexes) or "none"
+    recovery_before = "none"
+    recovery_after = "none"
+    if elite_indexes:
+        first_elite = elite_indexes[0]
+        rests_before = [index for index, symbol in enumerate(symbols[:first_elite]) if symbol == "R"]
+        rests_after = [
+            index
+            for index, symbol in enumerate(symbols[first_elite + 1 :], first_elite + 1)
+            if symbol == "R"
+        ]
+        if rests_before:
+            recovery_before = str(first_elite - rests_before[-1])
+        if rests_after:
+            recovery_after = str(rests_after[0] - first_elite)
+    return _candidate(
+        mode,
+        start_y=start_y,
+        symbols="/".join(symbols),
+        elite_count=len(elite_indexes),
+        elite_floors=elite_floors,
+        recovery_before=recovery_before,
+        recovery_after=recovery_after,
+    )
+
+
+def _task3_payload(
+    *,
+    floor: int,
+    start_y: int,
+    conservative_symbols: tuple[str, ...],
+    aggressive_symbols: tuple[str, ...],
+    selected: str,
+) -> str:
+    conservative_elites = conservative_symbols.count("E")
+    aggressive_elites = aggressive_symbols.count("E")
+    return _payload(
+        floor=str(floor),
+        conservative_candidate=_task3_candidate(
+            "conservative", start_y, conservative_symbols
+        ),
+        aggressive_candidate=_task3_candidate(
+            "aggressive", start_y, aggressive_symbols
+        ),
+        minimum_elites=str(conservative_elites),
+        added_elites=str(aggressive_elites - conservative_elites),
+        budget=str(int(selected == "aggressive")),
+        selected=selected,
+        reasons="elite_budget" if selected == "aggressive" else "conservative_baseline",
+    )
+
+
+def _task3_graph(
+    *,
+    root_symbol: str = "M",
+    alternate_aggressive_root: bool = False,
+    ambiguous_aggressive_root: bool = False,
+) -> list[dict]:
+    shared_elite_child = not alternate_aggressive_root
+    nodes = [
+        _graph_node(0, 0, root_symbol, (0, 1), (2, 1)),
+        _graph_node(
+            0,
+            1,
+            "T",
+            (0, 2),
+            *((1, 2),) if shared_elite_child else (),
+        ),
+        _graph_node(2, 1, "?", (2, 2), (3, 2)),
+        _graph_node(0, 2, "M", (0, 3)),
+        _graph_node(1, 2, "E", (0, 3)),
+        _graph_node(2, 2, "M", (0, 3)),
+        _graph_node(3, 2, "E", (0, 3)),
+        _graph_node(0, 3, "R"),
+    ]
+    if alternate_aggressive_root or ambiguous_aggressive_root:
+        nodes.extend(
+            [
+                _graph_node(4, 0, root_symbol, (4, 1)),
+                _graph_node(4, 1, "T", (1, 2)),
+            ]
+        )
+    return nodes
+
+
+def _task3_trace_row(
+    *,
+    unix_time: float,
+    floor: int,
+    current_node: tuple[int, int],
+    action_node: tuple[int, int],
+    graph: list[dict],
+) -> dict:
+    by_coordinate = {(node["x"], node["y"]): node for node in graph}
+    if current_node[1] == -1:
+        next_coordinates = sorted(
+            coordinate for coordinate in by_coordinate if coordinate[1] == 0
+        )
+        current_symbol = "?"
+    else:
+        next_coordinates = [
+            (child["x"], child["y"])
+            for child in by_coordinate[current_node]["children"]
+        ]
+        current_symbol = by_coordinate[current_node]["symbol"]
+    action_choice = next_coordinates.index(action_node)
+    return {
+        "unix_time": unix_time,
+        "act": 1,
+        "floor": floor,
+        "screen_type": "ScreenType.MAP",
+        "screen": {
+            "type": "ScreenType.MAP",
+            "current_node": {
+                "x": current_node[0],
+                "y": current_node[1],
+                "symbol": current_symbol,
+            },
+            "next_nodes": [
+                {"x": x, "y": y, "symbol": by_coordinate[(x, y)]["symbol"]}
+                for x, y in next_coordinates
+            ],
+            "map": {"nodes": graph},
+            "paths": [
+                _path_summary(choice, [coordinate], graph)
+                for choice, coordinate in enumerate(next_coordinates)
+            ],
+        },
+        "action": {
+            "type": "ChooseMapNodeAction",
+            "choice_index": action_choice,
+            "node": {
+                "x": action_node[0],
+                "y": action_node[1],
+                "symbol": by_coordinate[action_node]["symbol"],
+            },
+        },
+    }
+
+
+def _task3_unix_time(second: int, millisecond: int) -> float:
+    value = datetime(
+        2026,
+        7,
+        22,
+        12,
+        0,
+        second,
+        millisecond * 1000,
+        tzinfo=timezone(timedelta(hours=8)),
+    )
+    return _epoch_microseconds(value) / 1_000_000
+
+
+def _write_task3_run(tmp_path: Path, name: str, symbols: list[str]) -> Path:
+    path = tmp_path / name
+    path.write_text(
+        json.dumps(
+            {
+                "path_per_floor": symbols,
+                "floor_reached": len(symbols),
+                "victory": False,
+            },
+            sort_keys=True,
+        ),
+        encoding="utf-8",
+    )
+    return path
+
+
+def _write_task3_evidence(
+    tmp_path: Path,
+    records: list[dict],
+    *,
+    run_symbols: list[str],
+    graph: list[dict] | None = None,
+) -> tuple[list[Path], Path, list[Path]]:
+    graph = graph or _task3_graph()
+    log_lines = [_line("Starting game #1 as PlayerClass.IRONCLAD")]
+    trace_rows = []
+    for index, record in enumerate(records):
+        second = index + 1
+        payload = _task3_payload(
+            floor=record["floor"],
+            start_y=record["start_y"],
+            conservative_symbols=record["conservative_symbols"],
+            aggressive_symbols=record["aggressive_symbols"],
+            selected=record["selected"],
+        )
+        for millisecond in (100, 200):
+            log_lines.append(
+                _line(
+                    f"[ADAPTIVE_ROUTE] {payload}",
+                    second=second,
+                    millisecond=millisecond,
+                )
+            )
+            trace_rows.append(
+                _task3_trace_row(
+                    unix_time=_task3_unix_time(second, millisecond),
+                    floor=record["floor"],
+                    current_node=record["current_node"],
+                    action_node=record["action_node"],
+                    graph=graph,
+                )
+            )
+    log_lines.append(_line("Starting game #2 as PlayerClass.IRONCLAD", second=20))
+    ai_log = _write_log(tmp_path, "task3-ai.log", log_lines)
+    trace = _write_trace(tmp_path, "task3-trace.jsonl", trace_rows)
+    runs = [
+        _write_task3_run(tmp_path, "game-1.run", run_symbols),
+        _write_task3_run(tmp_path, "game-2.run", ["M"]),
+    ]
+    return [ai_log], trace, runs
+
+
+def _task3_build(
+    tmp_path: Path,
+    records: list[dict],
+    *,
+    run_symbols: list[str],
+    graph: list[dict] | None = None,
+) -> tuple[dict, int, tuple[list[Path], Path, list[Path]]]:
+    evidence = _write_task3_evidence(
+        tmp_path,
+        records,
+        run_symbols=run_symbols,
+        graph=graph,
+    )
+    result, exit_code = audit.build_audit(
+        evidence[0], evidence[1], evidence[2], 8, 0.001
+    )
+    return result, exit_code, evidence
+
+
+def _task3_initial_record(**overrides: object) -> dict:
+    record = {
+        "floor": 0,
+        "start_y": 0,
+        "conservative_symbols": ("M", "T", "M", "R"),
+        "aggressive_symbols": ("M", "T", "E", "R"),
+        "selected": "aggressive",
+        "current_node": (-1, -1),
+        "action_node": (0, 0),
+    }
+    record.update(overrides)
+    return record
+
+
+def test_load_runs_preserves_ordered_source_identity_and_path_symbols(tmp_path: Path):
+    first = _write_task3_run(tmp_path, "first.run", ["M", "?", "E"])
+    second = _write_task3_run(tmp_path, "second.run", ["T", "$", "R"])
+
+    runs, sources = audit.load_runs([first, second])
+
+    assert [run.path_per_floor for run in runs] == [
+        ("M", "?", "E"),
+        ("T", "$", "R"),
+    ]
+    assert [source["source_path"] for source in sources] == [str(first), str(second)]
+    assert all(source["sha256"] and source["record_count"] == 1 for source in sources)
+
+
+def test_build_audit_reports_exact_same_immediate_revocation_funnel(tmp_path: Path):
+    records = [
+        _task3_initial_record(),
+        {
+            "floor": 1,
+            "start_y": 1,
+            "conservative_symbols": ("T", "M", "R"),
+            "aggressive_symbols": ("T", "E", "R"),
+            "selected": "conservative",
+            "current_node": (0, 0),
+            "action_node": (0, 1),
+        },
+    ]
+
+    result, exit_code, _ = _task3_build(
+        tmp_path, records, run_symbols=["M", "T", "M", "R"]
+    )
+
+    assert exit_code == 0
+    assert result["integrity"] == {"status": "valid", "diagnostics": []}
+    assert result["funnel"] == {
+        "adaptive_occurrences": 4,
+        "callback_independent_records": 2,
+        "candidate_generation_fallbacks": 0,
+        "complete_candidate_pairs": 2,
+        "zero_vs_one_opportunities": 2,
+        "act1_zero_vs_one_opportunities": 2,
+        "aggressive_selections": 1,
+        "same_immediate_coordinate": 1,
+        "different_immediate_coordinate": 0,
+        "ambiguous_immediate_coordinate": 0,
+        "provable_first_divergences": 1,
+        "selection_revoked_before_divergence": 1,
+        "route_left_before_divergence": 0,
+        "divergences_taken": 0,
+        "realized_optional_elites": 0,
+    }
+    assert result["opportunities"][0]["treatment"]["status"] == "revoked_before_divergence"
+    assert result["opportunities"][0]["treatment"]["revocation"]["floor"] == 1
+
+
+def test_build_audit_reports_route_departure_before_divergence(tmp_path: Path):
+    records = [
+        _task3_initial_record(),
+        {
+            "floor": 1,
+            "start_y": 1,
+            "conservative_symbols": ("?", "E", "R"),
+            "aggressive_symbols": ("?", "E", "R"),
+            "selected": "aggressive",
+            "current_node": (0, 0),
+            "action_node": (2, 1),
+        },
+    ]
+
+    result, exit_code, _ = _task3_build(
+        tmp_path, records, run_symbols=["M", "?", "E", "R"]
+    )
+
+    assert exit_code == 0
+    assert result["funnel"]["route_left_before_divergence"] == 1
+    assert result["funnel"]["divergences_taken"] == 0
+    treatment = result["opportunities"][0]["treatment"]
+    assert treatment["status"] == "route_left_before_divergence"
+    assert treatment["route_departure"]["action_coordinate"] == [2, 1]
+
+
+def test_build_audit_counts_immediate_divergence_when_action_takes_it(tmp_path: Path):
+    graph = _task3_graph(alternate_aggressive_root=True)
+    record = _task3_initial_record(action_node=(4, 0))
+
+    result, exit_code, _ = _task3_build(
+        tmp_path, [record], run_symbols=["M"], graph=graph
+    )
+
+    assert exit_code == 0
+    assert result["funnel"]["different_immediate_coordinate"] == 1
+    assert result["funnel"]["provable_first_divergences"] == 1
+    assert result["funnel"]["divergences_taken"] == 1
+    assert result["funnel"]["realized_optional_elites"] == 0
+
+
+def test_build_audit_does_not_call_conservative_divergence_a_prior_departure(
+    tmp_path: Path,
+):
+    records = [
+        _task3_initial_record(),
+        {
+            "floor": 1,
+            "start_y": 1,
+            "conservative_symbols": ("T", "E", "R"),
+            "aggressive_symbols": ("T", "E", "R"),
+            "selected": "aggressive",
+            "current_node": (0, 0),
+            "action_node": (0, 1),
+        },
+        {
+            "floor": 2,
+            "start_y": 2,
+            "conservative_symbols": ("M", "R"),
+            "aggressive_symbols": ("M", "R"),
+            "selected": "aggressive",
+            "current_node": (0, 1),
+            "action_node": (0, 2),
+        },
+    ]
+
+    result, exit_code, _ = _task3_build(
+        tmp_path, records, run_symbols=["M", "T", "M", "R"]
+    )
+
+    assert exit_code == 0
+    assert result["funnel"]["route_left_before_divergence"] == 0
+    assert result["funnel"]["divergences_taken"] == 0
+    assert result["opportunities"][0]["treatment"]["status"] == "divergence_not_taken"
+
+
+def test_build_audit_counts_only_exact_trace_and_run_elite_attribution(tmp_path: Path):
+    records = [
+        _task3_initial_record(),
+        {
+            "floor": 1,
+            "start_y": 1,
+            "conservative_symbols": ("T", "E", "R"),
+            "aggressive_symbols": ("T", "E", "R"),
+            "selected": "aggressive",
+            "current_node": (0, 0),
+            "action_node": (0, 1),
+        },
+        {
+            "floor": 2,
+            "start_y": 2,
+            "conservative_symbols": ("E", "R"),
+            "aggressive_symbols": ("E", "R"),
+            "selected": "aggressive",
+            "current_node": (0, 1),
+            "action_node": (1, 2),
+        },
+    ]
+
+    result, exit_code, _ = _task3_build(
+        tmp_path, records, run_symbols=["M", "T", "E", "R"]
+    )
+
+    assert exit_code == 0
+    assert result["opportunities"][0]["treatment"]["status"] == "realized_optional_elite"
+    assert result["opportunities"][0]["treatment"]["elite"] == {
+        "act": 1,
+        "floor": 2,
+        "coordinate": [1, 2],
+        "trace_symbol": "E",
+        "run_symbol": "E",
+    }
+    assert result["funnel"]["realized_optional_elites"] == 1
+
+
+def test_event_trace_resolves_to_nonboss_run_symbol_without_elite_attribution(tmp_path: Path):
+    graph = _task3_graph(root_symbol="?")
+    record = _task3_initial_record(
+        conservative_symbols=("?", "T", "M", "R"),
+        aggressive_symbols=("?", "T", "E", "R"),
+        selected="conservative",
+    )
+
+    result, exit_code, _ = _task3_build(
+        tmp_path, [record], run_symbols=["M"], graph=graph
+    )
+
+    assert exit_code == 0
+    decision = result["opportunities"][0]["decision"]
+    assert decision["trace_symbol"] == "?"
+    assert decision["run_symbol"] == "M"
+    assert decision["run_compatibility"] == "event_resolved"
+    assert result["funnel"]["realized_optional_elites"] == 0
+
+
+def test_non_event_run_symbol_mismatch_marks_integrity_invalid(tmp_path: Path):
+    result, exit_code, _ = _task3_build(
+        tmp_path, [_task3_initial_record(selected="conservative")], run_symbols=["E"]
+    )
+
+    assert exit_code == 2
+    assert result["integrity"]["status"] == "invalid"
+    assert result["integrity"]["diagnostics"] == [
+        {
+            "code": "run_symbol_mismatch",
+            "game_number": 1,
+            "act": 1,
+            "floor": 0,
+            "trace_symbol": "M",
+            "run_symbol": "E",
+        }
+    ]
+
+
+def test_ambiguous_candidate_paths_are_excluded_from_divergence_uptake(tmp_path: Path):
+    graph = _task3_graph(ambiguous_aggressive_root=True)
+
+    result, exit_code, _ = _task3_build(
+        tmp_path, [_task3_initial_record()], run_symbols=["M"], graph=graph
+    )
+
+    assert exit_code == 0
+    assert result["funnel"]["ambiguous_immediate_coordinate"] == 1
+    assert result["funnel"]["provable_first_divergences"] == 0
+    assert result["funnel"]["divergences_taken"] == 0
+    assert result["opportunities"][0]["treatment"]["status"] == "ambiguous"
+
+
+def test_serialize_audit_is_stable_sorted_json_with_final_newline(tmp_path: Path):
+    result_one, exit_one, evidence = _task3_build(
+        tmp_path, [_task3_initial_record(selected="conservative")], run_symbols=["M"]
+    )
+    result_two, exit_two = audit.build_audit(
+        evidence[0], evidence[1], evidence[2], 8, 0.001
+    )
+
+    first = audit.serialize_audit(result_one)
+    second = audit.serialize_audit(result_two)
+
+    assert (exit_one, exit_two) == (0, 0)
+    assert first == second
+    assert first.endswith(b"\n")
+    assert json.loads(first) == result_one
+    assert first == (
+        json.dumps(result_one, indent=2, sort_keys=True, ensure_ascii=True) + "\n"
+    ).encode("ascii")
+
+
+def test_cli_writes_valid_and_invalid_artifacts_with_distinct_exit_codes(tmp_path: Path):
+    _, _, evidence = _task3_build(
+        tmp_path, [_task3_initial_record(selected="conservative")], run_symbols=["M"]
+    )
+    valid_output = tmp_path / "valid.json"
+    invalid_run = _write_task3_run(tmp_path, "invalid.run", ["E"])
+    invalid_output = tmp_path / "invalid.json"
+    common = [
+        "--ai-log",
+        str(evidence[0][0]),
+        "--decision-trace",
+        str(evidence[1]),
+        "--log-utc-offset-hours",
+        "8",
+        "--max-join-seconds",
+        "0.001",
+    ]
+
+    valid_exit = audit.main(
+        common
+        + [
+            "--run",
+            str(evidence[2][0]),
+            "--run",
+            str(evidence[2][1]),
+            "--output",
+            str(valid_output),
+        ]
+    )
+    invalid_exit = audit.main(
+        common
+        + [
+            "--run",
+            str(invalid_run),
+            "--run",
+            str(evidence[2][1]),
+            "--output",
+            str(invalid_output),
+        ]
+    )
+
+    assert valid_exit == 0
+    assert json.loads(valid_output.read_bytes())["integrity"]["status"] == "valid"
+    assert invalid_exit == 2
+    invalid_result = json.loads(invalid_output.read_bytes())
+    assert invalid_result["integrity"]["status"] == "invalid"
+    assert invalid_result["integrity"]["diagnostics"][0]["code"] == "run_symbol_mismatch"
