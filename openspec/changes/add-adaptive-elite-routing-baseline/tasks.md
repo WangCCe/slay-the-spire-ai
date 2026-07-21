@@ -1,0 +1,38 @@
+## 1. Feasibility And Legacy Characterization
+
+- [ ] 1.1 Add characterization fixtures that lock conservative and aggressive chosen nodes, node priorities, elite tie breaks, forced one- and two-elite routes, and HP-drop replanning on identical inputs before shared planner refactoring.
+- [ ] 1.2 Build a read-only paired-route POC over every Task 1.1 fixture plus three versioned 15-layer, seven-column Act 1 fixtures with at least 35 reachable nodes and sparse, typical, and dense elite/rest placement, without adding adaptive gameplay behavior.
+- [ ] 1.3 On each full-height fixture exclude ten warm-up pairs, time 100 pairs from immediately before conservative generation through aggressive completion on identical separate-agent state using `perf_counter_ns` and normal logging, and report fixture JSON/SHA-256, command, interpreter, per-fixture and aggregate counts, median, p95, and maximum.
+- [ ] 1.4 Stop and revise the proposal if any candidate is incomplete, median paired latency exceeds 25 ms, or maximum paired latency exceeds 100 ms; proceed only when the feasibility gate passes.
+
+## 2. Regression Coverage
+
+- [ ] 2.1 Add failing CLI and constructor tests for Ironclad `adaptive`, non-Ironclad `unsupported_character` conservative fallback, and unchanged legacy initialization.
+- [ ] 2.2 Add failing pure-policy tests for the exact deck-only score, potion allowlist/usability, relic allowlist/weights, local `node.y + 1` floor semantics, HP gates, support substitution, Act 2+ denial, malformed-state denial, and prior-exposure denial.
+- [ ] 2.3 Add failing selector fixtures for a prepared one-optional-elite choice, recovery denial and exception, two-added-elite denial, deterministic conservative tie, forced one- and two-elite selection, and incomplete-candidate fallback.
+- [ ] 2.4 Add failing agent tests for per-choice adaptive replanning, act reset, idempotent repeated-node/rest/elite tracking, and one structured decision log while retaining all Task 1 legacy characterizations.
+
+## 3. Adaptive Policy And Selector
+
+- [ ] 3.1 Add immutable normalized route-state, candidate feature, and assessment result types plus named centralized baseline thresholds in the existing map-routing module.
+- [ ] 3.2 Implement independent deck-only readiness, potion support, relic support, fail-closed hard gates, and stable reason codes without changing the legacy aggressive readiness function or comparing legacy route scores.
+- [ ] 3.3 Refactor the existing route generator only enough to return complete conservative and aggressive candidates without changing either mode's selected path or side effects.
+- [ ] 3.4 Implement adaptive two-candidate selection that chooses aggressive only for the `0` versus `1` elite case after every hard gate passes, plus recovery feature extraction, deterministic conservative fallback for all other count pairs, and `candidate_generation_failed` handling.
+- [ ] 3.5 Add `adaptive` to CLI validation, help text, logging, and existing agent-construction paths without changing the default route mode.
+- [ ] 3.6 Track visited coordinates and latest rest idempotently by act, regenerate both candidates at every adaptive map choice, and emit one structured summary per decision.
+- [ ] 3.7 Confirm no combat, shop, event, card-reward, campfire, checkpoint, training, or Communication Mod protocol behavior changes in the implementation diff.
+
+## 4. Automated Verification
+
+- [ ] 4.1 Run the focused CLI and map-routing regressions with the production Windows interpreter and a writable repository-local basetemp.
+- [ ] 4.2 Run `scripts/run_test_gate.py gameplay` and `scripts/run_test_gate.py commit`; preserve exact counts, durations, and any failure without retry.
+- [ ] 4.3 Run one unchanged `scripts/run_test_gate.py full`; record the exact result and separately diagnose at most the already-known timing-sensitive node without rewriting the full result.
+- [ ] 4.4 Run `openspec validate add-adaptive-elite-routing-baseline` and `git diff --check`, then obtain a final read-only code review with no unresolved Critical or Important finding.
+
+## 5. Bounded Live Qualification
+
+- [ ] 5.1 Capture the current Communication Mod configuration, latest AI run marker, debug/error log offsets, and decision/sim-divergence trace cutoffs; verify training is disabled and conservative is the rollback command.
+- [ ] 5.2 Run one fresh ten-game Ironclad A0 adaptive cohort with `D:\anaconda\envs\stsai\python.exe`, stopping on a runtime error, repeated stall, or evidence-integrity failure.
+- [ ] 5.3 Restore and attest the conservative Communication Mod configuration after completion or failure, and verify no training checkpoint was created or changed.
+- [ ] 5.4 Write a dated report containing every run id; total `E` nodes; normalized final elite killers; elite death runs and fatality ratio; average/max floor; Act 2 boss reaches; victories; runtime errors; and fresh sim-divergence cluster keys against the preserved 2026-07-20 cohorts.
+- [ ] 5.5 Mark the baseline eligible only for a larger validation when it has at least three elite encounters, at most two elite-death runs, elite fatality ratio at most 25 percent, average floor at least 24.2, at least three Act 2 boss reaches, no runtime error, and no repeated causal A-class cluster; otherwise retain conservative and do not tune and rerun the same cohort.
