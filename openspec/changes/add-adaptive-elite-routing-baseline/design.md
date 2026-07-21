@@ -95,6 +95,8 @@ Before gameplay code changes, a read-only POC will run the existing route genera
 
 For each full-height fixture, ten paired warm-up samples are excluded, followed by 100 timed paired samples. One paired sample starts immediately before conservative `generate_map_route()` and ends immediately after aggressive `generate_map_route()` returns on separate agents built from identical fixture state. Timing uses `perf_counter_ns` under the production Windows interpreter and includes normal route logging. Results are reported per fixture and aggregate. The design remains eligible only when every candidate completes, aggregate median is no greater than 25 ms, and every measured sample is no greater than 100 ms. A miss requires revising the proposal before gameplay implementation.
 
+The first expanded seven-case attempt recorded an aggregate median of `16.6877 ms` and one `105.1622 ms` maximum while the qualification worktree was dirty. That failure remains immutable. Independent review then found evidence-harness omissions: runtime fixture-contract checks, exact protocol bounds, and raw per-pair durations. The proposal revision permits those harness-only fixes to be frozen without gameplay changes, followed by exactly one formal requalification on a clean committed source. The requalification uses the same production interpreter, seven cases, exact `10` warm-ups and `100` measured pairs per case (700 measured pairs total), normal logging, and unchanged latency limits. Its benchmark command writes `reports/adaptive_route_candidate_poc_20260721_attempt-2_clean.json`; `reports/adaptive_route_candidate_poc_20260721_attempt-2_clean.md` is generated from that exact result after the run. Neither the canonical first FAIL evidence nor `attempt-1-fail` evidence is overwritten. Diagnostic runs made while investigating the first miss are not qualification evidence. Both formal attempts are retained; if the clean-source attempt misses either limit, gameplay implementation stops and no further POC retry is allowed in this change.
+
 This POC validates the only new performance multiplier: two existing dynamic-programming passes at each adaptive map choice.
 
 ### 6. Use a bounded no-training promotion gate
@@ -129,11 +131,12 @@ The report preserves every run id and relevant log/trace cutoff. Passing does no
 ## Migration Plan
 
 1. Add legacy characterization fixtures and run the read-only paired-route feasibility POC.
-2. If the POC passes, add adaptive policy and selector regressions before implementation.
-3. Add the adaptive mode without changing defaults or live configuration.
-4. Verify focused, gameplay, commit, and unchanged full test gates.
-5. Temporarily launch one fresh no-training adaptive cohort, collect evidence, and restore conservative configuration.
-6. If any hard gate, runtime check, or evidence threshold fails, keep conservative live and record the rejection without tuning the same cohort.
+2. Preserve the first failed attempt, freeze the review-complete qualification harness, and run the sole clean-source requalification under unchanged limits.
+3. If the clean-source POC passes, add adaptive policy and selector regressions before implementation.
+4. Add the adaptive mode without changing defaults or live configuration.
+5. Verify focused, gameplay, commit, and unchanged full test gates.
+6. Temporarily launch one fresh no-training adaptive cohort, collect evidence, and restore conservative configuration.
+7. If any hard gate, runtime check, or evidence threshold fails, keep conservative live and record the rejection without tuning or rerunning the same evidence gate.
 
 Rollback is immediate: select `--elite-route conservative`; no data, checkpoint, protocol, or schema migration is required.
 

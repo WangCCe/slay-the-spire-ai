@@ -115,6 +115,20 @@ Each full-height fixture SHALL receive ten excluded warm-up pairs and 100 timed 
 - **THEN** gameplay implementation SHALL stop
 - **AND** the proposal SHALL be revised before another planner approach is attempted
 
+#### Scenario: The first POC failure also exposes qualification-harness gaps
+- **WHEN** the first expanded POC exceeds a latency limit and independent review finds missing runtime fixture validation, protocol bounds, or raw timing evidence in the dirty qualification worktree
+- **THEN** the failed report SHALL be preserved without reinterpretation or overwrite
+- **AND** only qualification-harness tests, validation, and evidence serialization MAY change before a new source revision is frozen
+- **AND** exactly one clean-source requalification MAY run with the same seven cases, production interpreter, exact ten warm-up pairs and exact 100 measured pairs per case (700 measured pairs total), normal logging, and unchanged `25 ms` median and `100 ms` maximum limits
+- **AND** the benchmark SHALL write `reports/adaptive_route_candidate_poc_20260721_attempt-2_clean.json` and the Markdown report at `reports/adaptive_route_candidate_poc_20260721_attempt-2_clean.md` SHALL be generated from that exact result without overwriting canonical or `attempt-1-fail` evidence
+
+#### Scenario: The sole clean-source requalification completes
+- **WHEN** the frozen qualification source is run once after the proposal revision
+- **THEN** both formal attempts and their source provenance SHALL be preserved
+- **AND** the clean-source evidence SHALL contain the seven-case, 700-pair result at `reports/adaptive_route_candidate_poc_20260721_attempt-2_clean.json` and its Markdown derivative at `reports/adaptive_route_candidate_poc_20260721_attempt-2_clean.md`
+- **AND** gameplay implementation MAY proceed only if every candidate completes and both unchanged latency limits pass
+- **AND** a miss SHALL stop this change without another POC retry
+
 ### Requirement: No-training live qualification and rollback
 The adaptive baseline SHALL be evaluated in one fresh ten-game Ironclad A0 cohort using the production Windows interpreter with training disabled, and the persistent live configuration SHALL be restored to conservative after completion or operational failure.
 

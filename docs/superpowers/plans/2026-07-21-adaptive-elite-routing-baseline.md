@@ -17,8 +17,9 @@
 - Use the production Windows interpreter for POC, focused tests, qualification gates, and live gameplay.
 - Use `-p no:cacheprovider` and a writable unique repository-local `--basetemp` for direct pytest commands.
 - Do not proceed past Task 1 when any POC candidate is incomplete, aggregate median exceeds 25 ms, or any measured pair exceeds 100 ms.
+- Preserve the first `105.1622 ms` failed attempt. After freezing the review-complete qualification harness, permit exactly one clean-source requalification under the same thresholds; a second miss ends this plan without another POC retry.
 - Do not train or tune from the ten-game cohort; restore conservative Communication Mod configuration after completion or failure.
-- Preserve exact failures without retry. A permitted known-flake diagnosis never rewrites a failed full result.
+- Preserve exact failures without overwrite. A permitted diagnosis or source-revision requalification never rewrites a failed full result.
 
 ---
 
@@ -31,12 +32,13 @@
 - Create: `tests/fixtures/adaptive_route_maps/full_height_dense.json`
 - Create: `analysis_scripts/benchmark_adaptive_route_candidates.py`
 - Create: `tests/test_adaptive_route_candidate_benchmark.py`
-- Create: `reports/adaptive_route_candidate_poc_20260721.md`
+- Create: `reports/adaptive_route_candidate_poc_20260721_attempt-2_clean.json`
+- Create: `reports/adaptive_route_candidate_poc_20260721_attempt-2_clean.md`
 - Modify: `openspec/changes/add-adaptive-elite-routing-baseline/tasks.md`
 
 **Interfaces:**
 - Consumes: existing `SimpleAgent.generate_map_route()`, `AdaptiveMapRouter.calculate_node_priority()`, `Map.from_json()`, and `Node` graph semantics.
-- Produces: `load_route_fixture(path: Path) -> dict`, `build_fixture_agent(fixture: dict, elite_mode: str) -> SimpleAgent`, `benchmark_fixture(path: Path, warmups: int, samples: int) -> FixtureBenchmark`, and three versioned full-height fixture JSON files used by later regression tests.
+- Produces: `load_route_fixture(path: Path) -> dict`, `build_fixture_agent(fixture: dict, elite_mode: str) -> SimpleAgent`, `benchmark_fixture(path: Path, warmups: int, samples: int) -> FixtureBenchmark`, four shared legacy-characterization cases, three versioned full-height fixture JSON files, and the seven-case clean-source evidence artifacts at `reports/adaptive_route_candidate_poc_20260721_attempt-2_clean.json` and `reports/adaptive_route_candidate_poc_20260721_attempt-2_clean.md`.
 
 - [ ] **Step 1: Add characterization helpers and legacy tests**
 
@@ -182,21 +184,21 @@ Expected: all tests pass.
 Run:
 
 ```powershell
-D:\anaconda\envs\stsai\python.exe analysis_scripts\benchmark_adaptive_route_candidates.py --fixture-root tests\fixtures\adaptive_route_maps --warmups 10 --samples 100 --output reports\adaptive_route_candidate_poc_20260721.json --log .adaptive_route_poc\route.log
+D:\anaconda\envs\stsai\python.exe analysis_scripts\benchmark_adaptive_route_candidates.py --fixture-root tests\fixtures\adaptive_route_maps --warmups 10 --samples 100 --output reports\adaptive_route_candidate_poc_20260721_attempt-2_clean.json --log .adaptive_route_poc\route.log
 ```
 
-Expected: 300 measured pairs, every candidate complete, aggregate median `<= 25.0 ms`, and maximum `<= 100.0 ms`.
+Expected: seven qualification cases and 700 measured pairs, every candidate complete, aggregate median `<= 25.0 ms`, and maximum `<= 100.0 ms`.
 
 - [ ] **Step 7: Write the POC decision report and update OpenSpec tasks**
 
-Write `reports/adaptive_route_candidate_poc_20260721.md` with command, interpreter, Git commit, fixture ids/SHA-256, graph dimensions, warm-up/measured counts, per-fixture median/p95/max, aggregate values, selected paths, and explicit `PASS` or `FAIL`.
+The benchmark writes `reports/adaptive_route_candidate_poc_20260721_attempt-2_clean.json`. After that command completes, generate `reports/adaptive_route_candidate_poc_20260721_attempt-2_clean.md` from that exact JSON result with command, interpreter, Git commit, fixture ids/SHA-256, graph dimensions, warm-up/measured counts, per-fixture median/p95/max, aggregate values, selected paths, raw-duration auditability, and explicit `PASS` or `FAIL`. Neither the canonical first FAIL artifacts nor `attempt-1-fail` artifacts may be overwritten.
 
-If PASS, mark OpenSpec tasks 1.1 through 1.4 complete. If FAIL, stop without editing gameplay code and revise the design in a new reviewed commit.
+If PASS, mark OpenSpec task 1.5 complete. If FAIL, stop without editing gameplay code; the sole clean-source requalification has then been consumed.
 
 - [ ] **Step 8: Commit Task 1**
 
 ```powershell
-git add tests/test_map_routing_safety.py tests/test_adaptive_route_candidate_benchmark.py tests/fixtures/adaptive_route_maps analysis_scripts/benchmark_adaptive_route_candidates.py reports/adaptive_route_candidate_poc_20260721.md reports/adaptive_route_candidate_poc_20260721.json openspec/changes/add-adaptive-elite-routing-baseline/tasks.md
+git add tests/test_map_routing_safety.py tests/test_adaptive_route_candidate_benchmark.py tests/fixtures/adaptive_route_maps analysis_scripts/benchmark_adaptive_route_candidates.py reports/adaptive_route_candidate_poc_20260721_attempt-2_clean.md reports/adaptive_route_candidate_poc_20260721_attempt-2_clean.json openspec/changes/add-adaptive-elite-routing-baseline/tasks.md
 git commit -m "test: qualify adaptive route candidate generation"
 ```
 
