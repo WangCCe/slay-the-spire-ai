@@ -60,6 +60,9 @@ def validate_full_height_fixture(fixture: dict) -> None:
         raise ValueError(
             f"invalid full-height fixture schema_version: {fixture.get('schema_version')!r}"
         )
+    game = fixture.get("game")
+    if not isinstance(game, dict) or game.get("act") != 1:
+        raise ValueError("full-height fixture game.act must equal 1")
     nodes = fixture.get("nodes")
     if not isinstance(nodes, list):
         raise ValueError("full-height fixture nodes must be a list")
@@ -216,10 +219,17 @@ def _case_from_fixture(fixture: dict, source: str) -> QualificationCase:
     )
 
 
-def _case_from_path(path: Path) -> QualificationCase:
+def _case_from_path(
+    path: Path,
+    expected_fixture_id: str | None = None,
+) -> QualificationCase:
     fixture_bytes = path.read_bytes()
     fixture = json.loads(fixture_bytes)
     validate_full_height_fixture(fixture)
+    if expected_fixture_id is not None and fixture.get("fixture_id") != expected_fixture_id:
+        raise ValueError(
+            f"full-height fixture_id for {path.name} must equal {expected_fixture_id!r}"
+        )
     return QualificationCase(
         fixture_id=fixture["fixture_id"],
         fixture=fixture,
@@ -239,8 +249,15 @@ def qualification_cases(fixture_root: Path) -> tuple[QualificationCase, ...]:
         )
     )
     full_height_cases = tuple(
-        _case_from_path(fixture_root / f"full_height_{name}.json")
-        for name in ("sparse", "typical", "dense")
+        _case_from_path(
+            fixture_root / f"full_height_{name}.json",
+            expected_fixture_id,
+        )
+        for name, expected_fixture_id in (
+            ("sparse", "full-height-sparse-v1"),
+            ("typical", "full-height-typical-v1"),
+            ("dense", "full-height-dense-v1"),
+        )
     )
     return legacy_cases + full_height_cases
 
@@ -393,10 +410,10 @@ def configure_route_logging(log_path: Path) -> logging.Handler:
 
 
 def validate_qualification_counts(warmups: int, samples: int) -> None:
-    if warmups < MIN_WARMUPS:
-        raise ValueError(f"qualification requires at least {MIN_WARMUPS} warmups")
-    if samples < MIN_SAMPLES:
-        raise ValueError(f"qualification requires at least {MIN_SAMPLES} samples")
+    if warmups != MIN_WARMUPS:
+        raise ValueError(f"qualification requires exactly {MIN_WARMUPS} warmups")
+    if samples != MIN_SAMPLES:
+        raise ValueError(f"qualification requires exactly {MIN_SAMPLES} samples")
 
 
 def ensure_production_interpreter(executable: str | Path | None = None) -> None:

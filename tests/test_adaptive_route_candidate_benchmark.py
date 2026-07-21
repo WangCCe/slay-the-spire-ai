@@ -122,8 +122,10 @@ def test_qualification_cases_include_shared_legacy_characterizations():
 @pytest.mark.parametrize(
     ("warmups", "samples", "error"),
     (
-        (9, 100, "at least 10"),
-        (10, 99, "at least 100"),
+        (9, 100, "exactly 10 warmups"),
+        (11, 100, "exactly 10 warmups"),
+        (10, 99, "exactly 100 samples"),
+        (10, 101, "exactly 100 samples"),
     ),
 )
 def test_qualification_rejects_under_minimum_sampling(warmups, samples, error):
@@ -187,6 +189,30 @@ def test_full_height_fixture_validator_rejects_contract_violations(mutation, err
         benchmark.validate_full_height_fixture(fixture)
 
 
+def test_full_height_fixture_validator_rejects_non_act1_fixture():
+    fixture = copy.deepcopy(load_route_fixture(FIXTURE_ROOT / "full_height_sparse.json"))
+    fixture["game"]["act"] = 2
+
+    with pytest.raises(ValueError, match="game.act"):
+        benchmark.validate_full_height_fixture(fixture)
+
+
+def test_qualification_cases_rejects_mismatched_full_height_fixture_id(tmp_path):
+    fixture_root = tmp_path / "fixtures"
+    fixture_root.mkdir()
+    for name in ("sparse", "typical", "dense"):
+        fixture = load_route_fixture(FIXTURE_ROOT / f"full_height_{name}.json")
+        if name == "sparse":
+            fixture["fixture_id"] = "full-height-typical-v1"
+        (fixture_root / f"full_height_{name}.json").write_text(
+            json.dumps(fixture),
+            encoding="utf-8",
+        )
+
+    with pytest.raises(ValueError, match="fixture_id"):
+        benchmark.qualification_cases(fixture_root)
+
+
 def test_cli_qualification_rejects_malformed_full_height_fixture_before_timing(
     tmp_path,
 ):
@@ -240,15 +266,16 @@ def test_benchmark_report_preserves_raw_durations_and_matching_metrics():
         aggressive_path=(0,) * 15,
     )
 
-    report = benchmark.benchmark_report((result,))
-    fixture_report = report["fixtures"][0]
+    report = benchmark.benchmark_report((result,) * 7)
 
-    assert fixture_report["durations_ns"] == list(durations)
-    assert len(fixture_report["durations_ns"]) == fixture_report["sample_count"]
-    assert fixture_report["metrics"] == {
-        "median_ms": 1.5,
-        "p95_ms": 2.0,
-        "max_ms": 2.0,
-    }
-    assert report["aggregate"]["durations_ns"] == list(durations)
-    assert len(report["aggregate"]["durations_ns"]) == report["aggregate"]["sample_count"]
+    assert len(report["fixtures"]) == 7
+    for fixture_report in report["fixtures"]:
+        assert fixture_report["durations_ns"] == list(durations)
+        assert len(fixture_report["durations_ns"]) == fixture_report["sample_count"] == 100
+        assert fixture_report["metrics"] == {
+            "median_ms": 1.5,
+            "p95_ms": 2.0,
+            "max_ms": 2.0,
+        }
+    assert report["aggregate"]["durations_ns"] == list(durations) * 7
+    assert len(report["aggregate"]["durations_ns"]) == report["aggregate"]["sample_count"] == 700
