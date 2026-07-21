@@ -1,11 +1,11 @@
-from dataclasses import FrozenInstanceError
+from dataclasses import FrozenInstanceError, replace
 from types import SimpleNamespace
 
 import pytest
 
 from analysis_scripts import benchmark_adaptive_route_candidates as benchmark
 from spirecomm.ai.agent import SimpleAgent
-from spirecomm.ai.heuristics.map_routing import AdaptiveMapRouter
+from spirecomm.ai.heuristics.map_routing import AdaptiveMapRouter, RouteCandidateFeatures
 from spirecomm.communication.action import ChooseMapNodeAction, RestAction
 from spirecomm.spire.character import PlayerClass
 from spirecomm.spire.map import Map, Node
@@ -730,7 +730,7 @@ def _potion(name, *, potion_id=None, can_use=True):
 
 
 def _adaptive_state(router, *, act=1, current_hp=80, max_hp=80, deck=None,
-                    potions=None, relics=None, elite_seen=False):
+                    potions=None, relics=None, elite_seen=False, last_rest_floor=None):
     context = _context(
         deck=_prepared_act1_deck() if deck is None else deck,
         act=act,
@@ -740,19 +740,26 @@ def _adaptive_state(router, *, act=1, current_hp=80, max_hp=80, deck=None,
     context.game.max_hp = max_hp
     context.game.potions = list(potions if potions is not None else [_potion("Fire Potion")])
     context.game.relics = list(relics if relics is not None else ["Burning Blood"])
-    return router.build_adaptive_state(context, elite_seen=elite_seen)
+    return router.build_adaptive_state(
+        context,
+        elite_seen=elite_seen,
+        last_rest_floor=last_rest_floor,
+    )
 
 
-def _adaptive_candidates(router, *, elite_symbols=None):
+def _adaptive_candidates(router, *, elite_symbols=None, start_y=0):
+    aggressive_symbols = elite_symbols or ("M", "M", "M", "M", "M", "E", "R")
     safe = router.describe_candidate(
         "conservative",
         (0, 0, 0, 0, 0, 0, 0),
         ("M", "M", "R", "M", "M", "M", "M"),
+        start_y=start_y,
     )
     aggressive = router.describe_candidate(
         "aggressive",
-        (1, 1, 1, 1, 1, 1, 1),
-        elite_symbols or ("M", "M", "M", "M", "M", "E", "R"),
+        (1,) * len(aggressive_symbols),
+        aggressive_symbols,
+        start_y=start_y,
     )
     return safe, aggressive
 
@@ -1046,6 +1053,222 @@ def test_adaptive_assessment_allows_90_percent_readiness_7_potion_recovery_excep
     )
 
     assert assessment.reasons == ("optional_elite_allowed",)
+
+
+def test_adaptive_candidate_rejects_forged_recovery_and_mutable_fields():
+    router = AdaptiveMapRouter("IRONCLAD", "adaptive")
+    safe_candidate, one_elite_candidate = _adaptive_candidates(router)
+    forged_recovery = replace(
+        one_elite_candidate,
+        symbols=("M", "M", "M", "M", "M", "E", "M"),
+        rest_after_distance=1,
+    )
+    mutable_candidate = RouteCandidateFeatures(
+        mode="aggressive",
+        path=[1, 1, 1, 1, 1, 1, 1],
+        symbols=["M", "M", "M", "M", "M", "E", "R"],
+        elite_floors=[6],
+        first_elite_index=5,
+        rest_before_distance=None,
+        rest_after_distance=1,
+        start_y=0,
+    )
+
+    forged_assessment = router.assess_optional_elite(
+        _adaptive_state(router),
+        safe_candidate,
+        forged_recovery,
+    )
+    mutable_assessment = router.assess_optional_elite(
+        _adaptive_state(router),
+        safe_candidate,
+        mutable_candidate,
+    )
+
+    assert forged_assessment.reasons == ("malformed_state",)
+    assert mutable_assessment.reasons == ("malformed_state",)
+
+
+@pytest.mark.parametrize(
+    "candidate_update",
+    [
+        {"mode": "adaptive"},
+        {"path": (1, 1, 1, 1, 1, -1, 1)},
+        {"path": (1, 1, 1, 1, 1, 1.0, 1)},
+        {"path": (1, 1, 1, 1, 1, True, 1)},
+        {"rest_after_distance": 0},
+        {"rest_after_distance": -1},
+        {"first_elite_index": 4},
+    ],
+)
+def test_adaptive_candidate_rejects_noncanonical_mode_coordinates_and_distances(
+        candidate_update):
+    router = AdaptiveMapRouter("IRONCLAD", "adaptive")
+    safe_candidate, one_elite_candidate = _adaptive_candidates(router)
+    malformed_candidate = replace(one_elite_candidate, **candidate_update)
+
+    assessment = router.assess_optional_elite(
+        _adaptive_state(router),
+        safe_candidate,
+        malformed_candidate,
+    )
+
+    assert assessment.reasons == ("malformed_state",)
+
+
+@pytest.mark.parametrize("non_finite_hp_pct", (float("nan"), float("inf"), float("-inf")))
+def test_adaptive_state_rejects_non_finite_hp_percentage(non_finite_hp_pct):
+    router = AdaptiveMapRouter("IRONCLAD", "adaptive")
+    safe_candidate, one_elite_candidate = _adaptive_candidates(router)
+    state = replace(_adaptive_state(router), hp_pct=non_finite_hp_pct)
+
+    assessment = router.assess_optional_elite(
+        state,
+        safe_candidate,
+        one_elite_candidate,
+    )
+
+    assert assessment.reasons == ("malformed_state",)
+
+
+@pytest.mark.parametrize(
+    "field, value",
+    [
+        ("act", 1.5),
+        ("act", True),
+        ("current_hp", 79.5),
+        ("current_hp", True),
+        ("max_hp", 80.5),
+        ("max_hp", True),
+        ("last_rest_floor", 5.5),
+        ("last_rest_floor", True),
+    ],
+)
+def test_adaptive_state_rejects_fractional_and_boolean_integer_inputs(field, value):
+    router = AdaptiveMapRouter("IRONCLAD", "adaptive")
+    safe_candidate, one_elite_candidate = _adaptive_candidates(router)
+    state_args = {field: value}
+
+    assessment = router.assess_optional_elite(
+        _adaptive_state(router, **state_args),
+        safe_candidate,
+        one_elite_candidate,
+    )
+
+    assert assessment.reasons == ("malformed_state",)
+
+
+def test_describe_candidate_uses_start_y_for_mid_act_local_floor():
+    router = AdaptiveMapRouter("IRONCLAD", "adaptive")
+
+    candidate = router.describe_candidate(
+        "aggressive",
+        (3, 3, 3),
+        ("M", "E", "R"),
+        start_y=7,
+    )
+
+    assert candidate.start_y == 7
+    assert candidate.elite_floors == (9,)
+    assert candidate.rest_after_distance == 1
+
+
+@pytest.mark.parametrize(
+    "last_rest_floor, expected_reason",
+    [
+        (7, "optional_elite_allowed"),
+        (6, "recovery_window_missing"),
+        (9, "recovery_window_missing"),
+        (10, "recovery_window_missing"),
+        (-1, "malformed_state"),
+        (True, "malformed_state"),
+        (7.5, "malformed_state"),
+    ],
+)
+def test_adaptive_assessment_uses_only_recent_prior_rest_for_recovery(
+        last_rest_floor, expected_reason):
+    router = AdaptiveMapRouter("IRONCLAD", "adaptive")
+    safe_candidate, one_elite_candidate = _adaptive_candidates(
+        router,
+        elite_symbols=("M", "E", "M"),
+        start_y=7,
+    )
+
+    assessment = router.assess_optional_elite(
+        _adaptive_state(router, last_rest_floor=last_rest_floor),
+        safe_candidate,
+        one_elite_candidate,
+    )
+
+    assert one_elite_candidate.elite_floors == (9,)
+    assert assessment.reasons == (expected_reason,)
+
+
+def test_adaptive_assessment_locks_fail_closed_reason_order_for_combined_failures():
+    router = AdaptiveMapRouter("IRONCLAD", "adaptive")
+    safe_candidate, eligible_candidate = _adaptive_candidates(router)
+    _, early_candidate = _adaptive_candidates(
+        router,
+        elite_symbols=("M", "M", "R", "M", "E", "R", "M"),
+    )
+
+    wrong_type = router.assess_optional_elite(object(), safe_candidate, eligible_candidate)
+    unsupported = router.assess_optional_elite(
+        _adaptive_state(AdaptiveMapRouter("THE_SILENT", "adaptive"), act=2),
+        safe_candidate,
+        eligible_candidate,
+    )
+    later_act = router.assess_optional_elite(
+        _adaptive_state(router, act=2, current_hp=47, deck=[]),
+        safe_candidate,
+        eligible_candidate,
+    )
+    early_floor = router.assess_optional_elite(
+        _adaptive_state(router, current_hp=47, deck=[]),
+        safe_candidate,
+        early_candidate,
+    )
+    absolute_hp = router.assess_optional_elite(
+        _adaptive_state(router, current_hp=47, deck=[]),
+        safe_candidate,
+        eligible_candidate,
+    )
+    relative_hp = router.assess_optional_elite(
+        _adaptive_state(router, current_hp=60, max_hp=81, deck=[]),
+        safe_candidate,
+        eligible_candidate,
+    )
+    deck = router.assess_optional_elite(
+        _adaptive_state(router, deck=[], elite_seen=True),
+        safe_candidate,
+        eligible_candidate,
+    )
+    resource = router.assess_optional_elite(
+        _adaptive_state(router, potions=[], elite_seen=True),
+        safe_candidate,
+        eligible_candidate,
+    )
+    seen = router.assess_optional_elite(
+        _adaptive_state(router, elite_seen=True),
+        safe_candidate,
+        eligible_candidate,
+    )
+    count = router.assess_optional_elite(
+        _adaptive_state(router),
+        eligible_candidate,
+        eligible_candidate,
+    )
+
+    assert wrong_type.reasons == ("malformed_state",)
+    assert unsupported.reasons == ("unsupported_character",)
+    assert later_act.reasons == ("later_act_optional_elite",)
+    assert early_floor.reasons == ("elite_before_local_floor",)
+    assert absolute_hp.reasons == ("hp_below_absolute_floor",)
+    assert relative_hp.reasons == ("hp_below_relative_floor",)
+    assert deck.reasons == ("deck_not_ready",)
+    assert resource.reasons == ("resource_support_missing",)
+    assert seen.reasons == ("elite_already_seen",)
+    assert count.reasons == ("candidate_counts_not_zero_vs_one",)
 
 
 def _add_nodes(game_map, *nodes):

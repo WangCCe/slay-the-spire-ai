@@ -10,6 +10,7 @@ Implements expert strategies for map navigation:
 
 import sys
 import logging
+import math
 from dataclasses import dataclass
 from typing import Dict, List, Optional, Tuple
 from ..decision.base import DecisionContext
@@ -49,6 +50,7 @@ ADAPTIVE_RELIC_SUPPORT_WEIGHTS = {
     "Meat on the Bone": 1,
 }
 ADAPTIVE_ROUTE_SYMBOLS = frozenset(("M", "E", "$", "?", "T", "R"))
+ADAPTIVE_ROUTE_MODES = frozenset(("conservative", "aggressive"))
 
 
 @dataclass(frozen=True)
@@ -74,6 +76,7 @@ class RouteCandidateFeatures:
     first_elite_index: Optional[int]
     rest_before_distance: Optional[int]
     rest_after_distance: Optional[int]
+    start_y: int = 0
 
 
 @dataclass(frozen=True)
@@ -153,6 +156,17 @@ class AdaptiveMapRouter:
         except (TypeError, ValueError):
             return 0
 
+    @staticmethod
+    def _adaptive_non_negative_int(value) -> int:
+        """Normalize only exact non-negative integers for adaptive policy inputs."""
+        if isinstance(value, bool):
+            return -1
+        if isinstance(value, int):
+            return value if value >= 0 else -1
+        if isinstance(value, str) and value.isdecimal():
+            return int(value)
+        return -1
+
     def adaptive_deck_readiness(self, context: DecisionContext) -> int:
         """Return the adaptive policy's deck-only Act 1 readiness score."""
         game = getattr(context, "game", None)
@@ -212,66 +226,48 @@ class AdaptiveMapRouter:
     ) -> AdaptiveRouteState:
         """Normalize the current game state without selecting a route."""
         game = getattr(context, "game", None)
-        current_hp = self._non_negative_int(getattr(game, "current_hp", 0))
-        max_hp = self._non_negative_int(getattr(game, "max_hp", 0))
-        hp_pct = current_hp / max_hp if max_hp else 0.0
+        current_hp = self._adaptive_non_negative_int(getattr(game, "current_hp", None))
+        max_hp = self._adaptive_non_negative_int(getattr(game, "max_hp", None))
+        hp_pct = current_hp / max_hp if current_hp >= 0 and max_hp > 0 else float("nan")
         normalized_last_rest_floor = None
         if last_rest_floor is not None:
-            try:
-                normalized_last_rest_floor = int(last_rest_floor)
-            except (TypeError, ValueError):
-                normalized_last_rest_floor = -1
+            normalized_last_rest_floor = self._adaptive_non_negative_int(last_rest_floor)
+        player_class = self.player_class.upper() if isinstance(self.player_class, str) else ""
         return AdaptiveRouteState(
-            player_class=str(self.player_class or "").upper(),
-            act=self._non_negative_int(getattr(context, "act", 0)),
+            player_class=player_class,
+            act=self._adaptive_non_negative_int(getattr(context, "act", None)),
             current_hp=current_hp,
             max_hp=max_hp,
             hp_pct=hp_pct,
             deck_readiness=self.adaptive_deck_readiness(context),
             potion_support=self.adaptive_potion_support(context),
             relic_support=self.adaptive_relic_support(getattr(game, "relics", []) or []),
-            elite_seen=bool(elite_seen),
+            elite_seen=elite_seen if isinstance(elite_seen, bool) else None,
             last_rest_floor=normalized_last_rest_floor,
         )
 
-    def describe_candidate(self, mode, path, symbols) -> RouteCandidateFeatures:
+    def describe_candidate(self, mode, path, symbols, *, start_y=0) -> RouteCandidateFeatures:
         """Describe a candidate from its own inputs without touching route state."""
         normalized_path = self._normalize_adaptive_path(path)
         normalized_symbols = self._normalize_adaptive_symbols(symbols)
-        if normalized_path is None or normalized_symbols is None:
+        normalized_start_y = self._adaptive_non_negative_int(start_y)
+        if normalized_path is None or normalized_symbols is None or normalized_start_y < 0:
             normalized_path = tuple()
             normalized_symbols = tuple()
-
-        elite_indexes = tuple(
-            index for index, symbol in enumerate(normalized_symbols)
-            if symbol == "E"
+        derived = self._adaptive_candidate_derived_fields(
+            normalized_symbols,
+            normalized_start_y,
         )
-        first_elite_index = elite_indexes[0] if elite_indexes else None
-        rest_before_distance = None
-        rest_after_distance = None
-        if first_elite_index is not None:
-            prior_rests = [
-                index for index, symbol in enumerate(normalized_symbols[:first_elite_index])
-                if symbol == "R"
-            ]
-            later_rests = [
-                index
-                for index, symbol in enumerate(normalized_symbols[first_elite_index + 1:], first_elite_index + 1)
-                if symbol == "R"
-            ]
-            if prior_rests:
-                rest_before_distance = first_elite_index - prior_rests[-1]
-            if later_rests:
-                rest_after_distance = later_rests[0] - first_elite_index
 
         return RouteCandidateFeatures(
-            mode=str(mode or "").lower(),
+            mode=mode.lower() if isinstance(mode, str) else "",
             path=normalized_path,
             symbols=normalized_symbols,
-            elite_floors=tuple(index + 1 for index in elite_indexes),
-            first_elite_index=first_elite_index,
-            rest_before_distance=rest_before_distance,
-            rest_after_distance=rest_after_distance,
+            elite_floors=derived[0],
+            first_elite_index=derived[1],
+            rest_before_distance=derived[2],
+            rest_after_distance=derived[3],
+            start_y=normalized_start_y,
         )
 
     @staticmethod
@@ -282,15 +278,11 @@ class AdaptiveMapRouter:
             return None
         normalized = []
         for value in values:
-            if isinstance(value, bool):
+            if isinstance(value, bool) or not isinstance(value, int):
                 return None
-            try:
-                coordinate = int(value)
-            except (TypeError, ValueError):
+            if value < 0:
                 return None
-            if coordinate < 0 or (isinstance(value, float) and not value.is_integer()):
-                return None
-            normalized.append(coordinate)
+            normalized.append(value)
         return tuple(normalized)
 
     @staticmethod
@@ -302,6 +294,34 @@ class AdaptiveMapRouter:
         if not all(isinstance(symbol, str) and symbol in ADAPTIVE_ROUTE_SYMBOLS for symbol in values):
             return None
         return values
+
+    @staticmethod
+    def _adaptive_candidate_derived_fields(
+            symbols: Tuple[str, ...],
+            start_y: int,
+    ) -> Tuple[Tuple[int, ...], Optional[int], Optional[int], Optional[int]]:
+        elite_indexes = tuple(
+            index for index, symbol in enumerate(symbols)
+            if symbol == "E"
+        )
+        first_elite_index = elite_indexes[0] if elite_indexes else None
+        if first_elite_index is None:
+            return tuple(), None, None, None
+        prior_rests = [
+            index for index, symbol in enumerate(symbols[:first_elite_index])
+            if symbol == "R"
+        ]
+        later_rests = [
+            index
+            for index, symbol in enumerate(symbols[first_elite_index + 1:], first_elite_index + 1)
+            if symbol == "R"
+        ]
+        return (
+            tuple(start_y + index + 1 for index in elite_indexes),
+            first_elite_index,
+            first_elite_index - prior_rests[-1] if prior_rests else None,
+            later_rests[0] - first_elite_index if later_rests else None,
+        )
 
     @staticmethod
     def _adaptive_assessment(allowed: bool, reason: str) -> AdaptiveEliteAssessment:
@@ -318,20 +338,20 @@ class AdaptiveMapRouter:
             aggressive: RouteCandidateFeatures,
     ) -> AdaptiveEliteAssessment:
         """Apply the ordered, fail-closed adaptive optional-elite gates."""
-        if not isinstance(state, AdaptiveRouteState) or state.player_class != ADAPTIVE_SUPPORTED_CHARACTER:
-            return self._adaptive_assessment(False, "unsupported_character")
-        if isinstance(state.act, int) and not isinstance(state.act, bool) and state.act >= 2:
-            return self._adaptive_assessment(False, "later_act_optional_elite")
         if not self._valid_adaptive_state(state) or not self._valid_adaptive_candidate(conservative) \
                 or not self._valid_adaptive_candidate(aggressive):
             return self._adaptive_assessment(False, "malformed_state")
+        if state.player_class != ADAPTIVE_SUPPORTED_CHARACTER:
+            return self._adaptive_assessment(False, "unsupported_character")
+        if state.act >= 2:
+            return self._adaptive_assessment(False, "later_act_optional_elite")
+        if aggressive.first_elite_index is not None \
+                and aggressive.elite_floors[0] < ADAPTIVE_MIN_ELITE_LOCAL_FLOOR:
+            return self._adaptive_assessment(False, "elite_before_local_floor")
         if state.current_hp < ADAPTIVE_MIN_ABSOLUTE_HP:
             return self._adaptive_assessment(False, "hp_below_absolute_floor")
         if state.hp_pct < ADAPTIVE_MIN_HP_PCT:
             return self._adaptive_assessment(False, "hp_below_relative_floor")
-        if aggressive.first_elite_index is not None \
-                and aggressive.elite_floors[0] < ADAPTIVE_MIN_ELITE_LOCAL_FLOOR:
-            return self._adaptive_assessment(False, "elite_before_local_floor")
         if state.deck_readiness < ADAPTIVE_MIN_DECK_READINESS:
             return self._adaptive_assessment(False, "deck_not_ready")
         if state.potion_support < 1 \
@@ -347,6 +367,12 @@ class AdaptiveMapRouter:
              and aggressive.rest_before_distance <= ADAPTIVE_MAX_RECOVERY_DISTANCE)
             or (aggressive.rest_after_distance is not None
                 and aggressive.rest_after_distance <= ADAPTIVE_MAX_RECOVERY_DISTANCE)
+            or (
+                state.last_rest_floor is not None
+                and state.last_rest_floor < aggressive.elite_floors[0]
+                and aggressive.elite_floors[0] - state.last_rest_floor
+                <= ADAPTIVE_MAX_RECOVERY_DISTANCE
+            )
         )
         recovery_exception = (
             state.hp_pct >= ADAPTIVE_RECOVERY_EXCEPTION_HP_PCT
@@ -359,7 +385,13 @@ class AdaptiveMapRouter:
 
     @staticmethod
     def _valid_adaptive_state(state: AdaptiveRouteState) -> bool:
-        if state.act != 1 or not isinstance(state.elite_seen, bool):
+        if not isinstance(state, AdaptiveRouteState):
+            return False
+        if not isinstance(state.player_class, str) or not state.player_class:
+            return False
+        if isinstance(state.act, bool) or not isinstance(state.act, int) or state.act < 1:
+            return False
+        if not isinstance(state.elite_seen, bool):
             return False
         if any(isinstance(value, bool) or not isinstance(value, int) for value in (
                 state.current_hp,
@@ -371,7 +403,8 @@ class AdaptiveMapRouter:
             return False
         if state.max_hp <= 0 or state.current_hp < 0 or state.current_hp > state.max_hp:
             return False
-        if not isinstance(state.hp_pct, (int, float)) or not 0.0 <= state.hp_pct <= 1.0:
+        if isinstance(state.hp_pct, bool) or not isinstance(state.hp_pct, (int, float)) \
+                or not math.isfinite(state.hp_pct) or not 0.0 <= state.hp_pct <= 1.0:
             return False
         if abs(state.hp_pct - (state.current_hp / state.max_hp)) > 0.000001:
             return False
@@ -382,25 +415,54 @@ class AdaptiveMapRouter:
         if not 0 <= state.relic_support <= ADAPTIVE_MAX_RESOURCE_SUPPORT:
             return False
         return state.last_rest_floor is None or (
-            isinstance(state.last_rest_floor, int) and state.last_rest_floor >= 0
+            isinstance(state.last_rest_floor, int)
+            and not isinstance(state.last_rest_floor, bool)
+            and state.last_rest_floor >= 0
         )
 
     @staticmethod
     def _valid_adaptive_candidate(candidate: RouteCandidateFeatures) -> bool:
         if not isinstance(candidate, RouteCandidateFeatures):
             return False
+        if candidate.mode not in ADAPTIVE_ROUTE_MODES:
+            return False
+        if not isinstance(candidate.path, tuple) or not isinstance(candidate.symbols, tuple) \
+                or not isinstance(candidate.elite_floors, tuple):
+            return False
         if not candidate.path or len(candidate.path) != len(candidate.symbols):
             return False
-        elite_indexes = tuple(
-            index for index, symbol in enumerate(candidate.symbols)
-            if symbol == "E"
+        if not all(
+                isinstance(coordinate, int)
+                and not isinstance(coordinate, bool)
+                and coordinate >= 0
+                for coordinate in candidate.path
+        ):
+            return False
+        if not all(
+                isinstance(symbol, str) and symbol in ADAPTIVE_ROUTE_SYMBOLS
+                for symbol in candidate.symbols
+        ):
+            return False
+        if isinstance(candidate.start_y, bool) or not isinstance(candidate.start_y, int) \
+                or candidate.start_y < 0:
+            return False
+        if not all(
+                isinstance(floor, int) and not isinstance(floor, bool) and floor > 0
+                for floor in candidate.elite_floors
+        ):
+            return False
+        expected = AdaptiveMapRouter._adaptive_candidate_derived_fields(
+            candidate.symbols,
+            candidate.start_y,
         )
-        if candidate.elite_floors != tuple(index + 1 for index in elite_indexes):
+        if (
+                candidate.elite_floors != expected[0]
+                or candidate.first_elite_index != expected[1]
+                or candidate.rest_before_distance != expected[2]
+                or candidate.rest_after_distance != expected[3]
+        ):
             return False
-        expected_first = elite_indexes[0] if elite_indexes else None
-        if candidate.first_elite_index != expected_first:
-            return False
-        return all(symbol in ADAPTIVE_ROUTE_SYMBOLS for symbol in candidate.symbols)
+        return True
 
     def calculate_node_priority(self, node: Node, context: DecisionContext) -> int:
         """
