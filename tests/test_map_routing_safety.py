@@ -1,4 +1,5 @@
 from dataclasses import FrozenInstanceError, replace
+import logging
 from types import SimpleNamespace
 
 import pytest
@@ -1429,3 +1430,163 @@ def test_legacy_modes_only_replan_after_configured_hp_drop(monkeypatch, elite_mo
     agent.game.current_hp = 71
     assert agent.make_map_choice().node == next_node
     assert calls == [True]
+
+
+def test_build_map_route_returns_legacy_candidates_without_committing_state():
+    game_map, safe_start, elite_start = _optional_elite_route_map()
+    agent = _route_agent("adaptive", game_map, deck=_prepared_act1_deck())
+    _set_start_screen(agent, safe_start, elite_start)
+
+    conservative = agent._build_map_route("conservative")
+    aggressive = agent._build_map_route("aggressive")
+
+    assert sum(game_map.get_node(x, y).symbol == "E" for y, x in enumerate(conservative)) == 0
+    assert sum(game_map.get_node(x, y).symbol == "E" for y, x in enumerate(aggressive)) == 1
+    assert agent.map_route == []
+    assert agent._last_route_hp_pct is None
+    assert agent._last_route_floor is None
+
+
+@pytest.mark.parametrize("elite_mode", ("conservative", "aggressive"))
+def test_build_map_route_preserves_exact_legacy_route(elite_mode):
+    game_map, safe_start, elite_start = _optional_elite_route_map()
+    agent = _route_agent(elite_mode, game_map, deck=_prepared_act1_deck())
+    _set_start_screen(agent, safe_start, elite_start)
+
+    expected = agent.generate_map_route()
+    rebuilt = agent._build_map_route(elite_mode)
+
+    assert rebuilt == expected
+
+
+def test_adaptive_selector_chooses_aggressive_only_for_allowed_zero_vs_one():
+    agent = _route_agent("adaptive", Map(), deck=_prepared_act1_deck())
+    agent.game.potions = [_potion("Fire Potion")]
+    conservative, aggressive = _adaptive_candidates(agent.map_router)
+
+    route, assessment = agent._select_adaptive_route(
+        conservative,
+        aggressive,
+        SimpleNamespace(
+            game=agent.game,
+            act=agent.game.act,
+            floor=agent.game.floor,
+            player_hp_pct=1.0,
+        ),
+    )
+
+    assert route == list(aggressive.path)
+    assert assessment.allowed is True
+    assert assessment.optional_elite_budget == 1
+    assert assessment.reasons == ("optional_elite_allowed",)
+
+
+def test_adaptive_selector_chooses_conservative_for_zero_vs_two():
+    agent = _route_agent("adaptive", Map(), deck=_prepared_act1_deck())
+    agent.game.potions = [_potion("Fire Potion")]
+    conservative = agent.map_router.describe_candidate(
+        "conservative", (0,) * 7, ("M",) * 7,
+    )
+    aggressive = agent.map_router.describe_candidate(
+        "aggressive", (1,) * 7, ("M", "M", "M", "M", "M", "E", "E"),
+    )
+
+    route, assessment = agent._select_adaptive_route(
+        conservative,
+        aggressive,
+        SimpleNamespace(
+            game=agent.game,
+            act=agent.game.act,
+            floor=agent.game.floor,
+            player_hp_pct=1.0,
+        ),
+    )
+
+    assert route == list(conservative.path)
+    assert assessment.allowed is False
+    assert assessment.optional_elite_budget == 0
+    assert assessment.reasons == ("candidate_counts_not_zero_vs_one",)
+
+
+@pytest.mark.parametrize("elite_count", (1, 2))
+def test_adaptive_selector_keeps_conservative_for_forced_elites(elite_count):
+    game_map, early_start, delayed_start = _forced_elite_route_map(elite_count)
+    agent = _route_agent("adaptive", game_map, deck=_prepared_act1_deck())
+    _set_start_screen(agent, early_start, delayed_start)
+
+    conservative, aggressive = agent._adaptive_route_candidates()
+    route, assessment = agent._select_adaptive_route(
+        conservative,
+        aggressive,
+        SimpleNamespace(
+            game=agent.game,
+            act=agent.game.act,
+            floor=agent.game.floor,
+            player_hp_pct=1.0,
+        ),
+    )
+
+    assert conservative.elite_floors == tuple(sorted(conservative.elite_floors))
+    assert len(conservative.elite_floors) == elite_count
+    assert route == list(conservative.path)
+    assert assessment.allowed is False
+    assert assessment.optional_elite_budget == 0
+    assert assessment.reasons == ("forced_elite_route",)
+
+
+def test_adaptive_selector_uses_conservative_route_for_unsupported_character():
+    game_map, safe_start, elite_start = _optional_elite_route_map()
+    agent = SimpleAgent(chosen_class=PlayerClass.THE_SILENT, elite_mode="adaptive")
+    agent.game.map = game_map
+    agent.game.act = 1
+    agent.game.floor = 0
+    agent.game.current_hp = 80
+    agent.game.max_hp = 80
+    agent.game.deck = _prepared_act1_deck()
+    agent.game.hand = []
+    agent.game.monsters = []
+    agent.game.potions = [_potion("Fire Potion")]
+    agent.game.relics = ["Burning Blood"]
+    _set_start_screen(agent, safe_start, elite_start)
+
+    conservative, aggressive = agent._adaptive_route_candidates()
+    route, assessment = agent._select_adaptive_route(
+        conservative,
+        aggressive,
+        SimpleNamespace(
+            game=agent.game,
+            act=agent.game.act,
+            floor=agent.game.floor,
+            player_hp_pct=1.0,
+        ),
+    )
+
+    assert route == list(conservative.path)
+    assert assessment.optional_elite_budget == 0
+    assert assessment.reasons == ("unsupported_character",)
+
+
+def test_adaptive_selector_falls_back_when_candidate_generation_fails(
+        monkeypatch, caplog):
+    caplog.set_level(logging.INFO)
+    game_map, safe_start, elite_start = _optional_elite_route_map()
+    agent = _route_agent("adaptive", game_map, deck=_prepared_act1_deck())
+    _set_start_screen(agent, safe_start, elite_start)
+    original_builder = agent._build_map_route
+    expected = original_builder("conservative")
+    calls = []
+
+    def malformed_aggressive_candidate(mode):
+        calls.append(mode)
+        if mode == "aggressive":
+            return [99] * len(expected)
+        return original_builder(mode)
+
+    monkeypatch.setattr(agent, "_build_map_route", malformed_aggressive_candidate)
+
+    route = agent.generate_map_route()
+
+    assert calls == ["conservative", "aggressive", "conservative"]
+    assert route == expected
+    assert agent.map_route == expected
+    assert "candidate_generation_failed" in caplog.text

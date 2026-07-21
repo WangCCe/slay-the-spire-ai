@@ -45,6 +45,10 @@ from spirecomm.ai.heuristics.potions import (
 # Get logger for this module
 logger = logging.getLogger(__name__)
 
+
+class _AdaptiveRouteCandidateGenerationError(ValueError):
+    """Expected malformed-map or malformed-candidate failure at the adaptive boundary."""
+
 # Import optimized AI components
 try:
     from spirecomm.ai.decision.base import DecisionContext
@@ -2348,7 +2352,7 @@ class SimpleAgent:
             self.skipped_cards = True
             return CancelAction()
 
-    def generate_map_route(self):
+    def _build_map_route(self, elite_mode):
         context = DecisionContext(self.game) if DecisionContext is not None else None
 
         # Log current state
@@ -2366,7 +2370,7 @@ class SimpleAgent:
         no_elite_floor = 10**6
         unreachable_first_elite_floor = -1
         unreachable_combat_count = -(10**6)
-        minimize_elites = self._route_should_minimize_elites()
+        minimize_elites = self._route_should_minimize_elites(elite_mode)
         prioritize_act1_monsters = self._route_should_prioritize_act1_monsters(
             context,
             hp_pct,
@@ -2427,7 +2431,11 @@ class SimpleAgent:
             )
         else:
             best_rewards[0] = {
-                node.x: self._calculate_map_node_priority(node, context)
+                node.x: self._calculate_route_node_priority(
+                    node,
+                    context,
+                    elite_mode,
+                )
                 for node in self.game.map.nodes[0].values()
             }
             best_parents[0] = {
@@ -2479,7 +2487,11 @@ class SimpleAgent:
                 if node is None or best_node_reward <= unreachable_reward:
                     continue
                 for child in node.children:
-                    child_priority = self._calculate_map_node_priority(child, context)
+                    child_priority = self._calculate_route_node_priority(
+                        child,
+                        context,
+                        elite_mode,
+                    )
                     if (
                         prioritize_act1_monsters
                         and act1_monster_target > 0
@@ -2582,8 +2594,6 @@ class SimpleAgent:
             best_path[y - 1] = best_parents[y][best_path[y]]
         if current_map_node is not None:
             best_path[start_y] = current_map_node.x
-        self.map_route = best_path
-
         # Log chosen path
         path_summary = []
         for y in range(len(best_path)):
@@ -2591,10 +2601,123 @@ class SimpleAgent:
             if node:
                 path_summary.append(f"{y}:{node.symbol}")
         logging.info(f"[MAP_ROUTING] Chosen path: {' -> '.join(path_summary)}\n")
-        self._last_route_hp_pct = hp_pct
-        self._last_route_floor = floor
+        return best_path
 
-    def _route_should_minimize_elites(self):
+    @staticmethod
+    def _adaptive_candidate_generation_errors():
+        return (IndexError, KeyError, _AdaptiveRouteCandidateGenerationError)
+
+    def _current_map_route_start_y(self):
+        screen = getattr(self.game, "screen", None)
+        next_nodes = getattr(screen, "next_nodes", []) or []
+        at_act_start = bool(next_nodes) and getattr(next_nodes[0], "y", None) == 0
+        current_node = getattr(screen, "current_node", None)
+        if at_act_start or current_node is None or getattr(current_node, "y", -1) < 0:
+            return 0
+        current_map_node = self.game.map.get_node(current_node.x, current_node.y)
+        if current_map_node is None:
+            raise _AdaptiveRouteCandidateGenerationError(
+                "current map node is missing from the route map"
+            )
+        return current_map_node.y
+
+    def _describe_adaptive_route_candidate(self, mode, route, start_y):
+        local_path = tuple(route[start_y:])
+        if not local_path:
+            raise _AdaptiveRouteCandidateGenerationError("candidate route is incomplete")
+
+        symbols = []
+        for index, x in enumerate(local_path):
+            node = self.game.map.get_node(x, start_y + index)
+            symbol = getattr(node, "symbol", None)
+            if node is None or not isinstance(symbol, str):
+                raise _AdaptiveRouteCandidateGenerationError(
+                    "candidate route does not describe map coordinates"
+                )
+            symbols.append(symbol)
+
+        candidate = self.map_router.describe_candidate(
+            mode,
+            local_path,
+            tuple(symbols),
+            start_y=start_y,
+        )
+        if not self.map_router._valid_adaptive_candidate(candidate):
+            raise _AdaptiveRouteCandidateGenerationError("candidate route has invalid data")
+        return candidate
+
+    def _adaptive_route_candidates(self):
+        if self.map_router is None:
+            raise _AdaptiveRouteCandidateGenerationError("adaptive map router is unavailable")
+        start_y = self._current_map_route_start_y()
+        conservative_route = self._build_map_route("conservative")
+        aggressive_route = self._build_map_route("aggressive")
+        return (
+            self._describe_adaptive_route_candidate(
+                "conservative",
+                conservative_route,
+                start_y,
+            ),
+            self._describe_adaptive_route_candidate(
+                "aggressive",
+                aggressive_route,
+                start_y,
+            ),
+        )
+
+    @staticmethod
+    def _route_from_adaptive_candidate(candidate):
+        return [0] * candidate.start_y + list(candidate.path)
+
+    def _select_adaptive_route(self, conservative, aggressive, context):
+        state = self.map_router.build_adaptive_state(context)
+        assessment = self.map_router.assess_optional_elite(
+            state,
+            conservative,
+            aggressive,
+        )
+        if conservative.elite_floors:
+            return (
+                self._route_from_adaptive_candidate(conservative),
+                self.map_router._adaptive_assessment(False, "forced_elite_route"),
+            )
+        if assessment.allowed:
+            return self._route_from_adaptive_candidate(aggressive), assessment
+        return self._route_from_adaptive_candidate(conservative), assessment
+
+    def _current_route_hp_pct(self):
+        context = DecisionContext(self.game) if DecisionContext is not None else None
+        return context.player_hp_pct if context else 0
+
+    def generate_map_route(self):
+        if str(self.elite_mode or "").lower() == "adaptive":
+            if self.chosen_class != PlayerClass.IRONCLAD:
+                route = self._build_map_route("conservative")
+            else:
+                try:
+                    conservative, aggressive = self._adaptive_route_candidates()
+                    route, _ = self._select_adaptive_route(
+                        conservative,
+                        aggressive,
+                        DecisionContext(self.game),
+                    )
+                except self._adaptive_candidate_generation_errors():
+                    route = self._build_map_route("conservative")
+                    logging.info(
+                        "[MAP_ROUTING] Adaptive route fallback "
+                        "reason=candidate_generation_failed budget=0\n"
+                    )
+        else:
+            route = self._build_map_route(self.elite_mode)
+
+        self.map_route = route
+        self._last_route_hp_pct = self._current_route_hp_pct()
+        self._last_route_floor = self.game.floor
+        return route
+
+    def _route_should_minimize_elites(self, elite_mode_override=None):
+        if elite_mode_override is not None:
+            return str(elite_mode_override).lower() == "conservative"
         if str(self.elite_mode or "").lower() == "conservative":
             return True
         return str(getattr(self.map_router, "elite_mode", "")).lower() == "conservative"
@@ -2723,12 +2846,21 @@ class SimpleAgent:
                 return capped_count > current_capped_count
         return reward > current_reward
 
-    def _calculate_map_node_priority(self, node, context):
+    def _calculate_map_node_priority(self, node, context, elite_mode_override=None):
         if self.map_router is None or context is None:
             node_rewards = self.priorities.MAP_NODE_PRIORITIES.get(self.game.act, {})
             return node_rewards.get(node.symbol, 0)
         context.floor = node.y + 1
-        return self.map_router.calculate_node_priority(node, context)
+        return self.map_router.calculate_node_priority(
+            node,
+            context,
+            elite_mode_override=elite_mode_override,
+        )
+
+    def _calculate_route_node_priority(self, node, context, elite_mode):
+        if elite_mode == self.elite_mode:
+            return self._calculate_map_node_priority(node, context)
+        return self._calculate_map_node_priority(node, context, elite_mode)
 
     def make_map_choice(self):
         if (

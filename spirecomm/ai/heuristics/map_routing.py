@@ -483,7 +483,12 @@ class AdaptiveMapRouter:
         aggressive_end_floor = aggressive.start_y + len(aggressive.path)
         return conservative_end_floor == aggressive_end_floor
 
-    def calculate_node_priority(self, node: Node, context: DecisionContext) -> int:
+    def calculate_node_priority(
+            self,
+            node: Node,
+            context: DecisionContext,
+            elite_mode_override: Optional[str] = None,
+    ) -> int:
         """
         Calculate dynamic priority for a map node.
 
@@ -500,24 +505,49 @@ class AdaptiveMapRouter:
 
         # Act 1: Character-specific strategies
         if act == 1:
-            base_priority = self._adjust_act_1_priority(symbol, base_priority, hp_pct, floor, context)
+            base_priority = self._adjust_act_1_priority(
+                symbol,
+                base_priority,
+                hp_pct,
+                floor,
+                context,
+                elite_mode_override,
+            )
 
         # Act 2+: More conservative
         elif act >= 2:
-            base_priority = self._adjust_act_2_plus_priority(symbol, base_priority, hp_pct)
+            base_priority = self._adjust_act_2_plus_priority(
+                symbol,
+                base_priority,
+                hp_pct,
+                elite_mode_override,
+            )
 
         # Generic HP-based adjustments for all acts
         base_priority = self._adjust_for_hp(symbol, base_priority, hp_pct, act=act, floor=floor)
 
         return base_priority
 
-    def _adjust_act_1_priority(self, symbol: str, base: int, hp_pct: float, floor: int, context: DecisionContext) -> int:
+    def _adjust_act_1_priority(
+            self,
+            symbol: str,
+            base: int,
+            hp_pct: float,
+            floor: int,
+            context: DecisionContext,
+            elite_mode_override: Optional[str] = None,
+    ) -> int:
         """Act 1 priorities - Ironclad takes elites only after readiness checks."""
         # Ironclad prioritizes rest sites for card upgrades, avoids elites consistently
         if self.player_class == 'IRONCLAD':
             if symbol == 'E':  # Elite
                 # Optional elite routing mode for experimentation.
-                if self.elite_mode == "aggressive":
+                elite_mode = (
+                    self.elite_mode
+                    if elite_mode_override is None
+                    else elite_mode_override
+                )
+                if elite_mode == "aggressive":
                     readiness = self._act_1_elite_readiness_score(context)
                     if readiness >= 5:
                         return base + 450 + readiness * 30
@@ -652,10 +682,21 @@ class AdaptiveMapRouter:
 
         return score
 
-    def _adjust_act_2_plus_priority(self, symbol: str, base: int, hp_pct: float) -> int:
+    def _adjust_act_2_plus_priority(
+            self,
+            symbol: str,
+            base: int,
+            hp_pct: float,
+            elite_mode_override: Optional[str] = None,
+    ) -> int:
         """Act 2+ priorities - first-win conservative mode avoids optional elites."""
         if symbol == 'E':  # Elite
-            if self.elite_mode == "conservative":
+            elite_mode = (
+                self.elite_mode
+                if elite_mode_override is None
+                else elite_mode_override
+            )
+            if elite_mode == "conservative":
                 return base - 5000
 
             # Aggressive elite routing in Act 2

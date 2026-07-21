@@ -10,15 +10,15 @@
 
 - [ ] 2.1 Add failing CLI and constructor tests for Ironclad `adaptive`, non-Ironclad `unsupported_character` conservative fallback, and unchanged legacy initialization.
 - [x] 2.2 Add failing pure-policy tests for the exact deck-only score, potion allowlist/usability, relic allowlist/weights, local `node.y + 1` floor semantics, HP gates, support substitution, Act 2+ denial, malformed-state denial, and prior-exposure denial.
-- [ ] 2.3 Add failing selector fixtures for a prepared one-optional-elite choice, recovery denial and exception, two-added-elite denial, deterministic conservative tie, forced one- and two-elite selection, and incomplete-candidate fallback.
+- [x] 2.3 Add failing selector fixtures for a prepared one-optional-elite choice, recovery denial and exception, two-added-elite denial, deterministic conservative tie, forced one- and two-elite selection, and incomplete-candidate fallback.
 - [ ] 2.4 Add failing agent tests for per-choice adaptive replanning, act reset, idempotent repeated-node/rest/elite tracking, and one structured decision log while retaining all Task 1 legacy characterizations.
 
 ## 3. Adaptive Policy And Selector
 
 - [x] 3.1 Add immutable normalized route-state, candidate feature, and assessment result types plus named centralized baseline thresholds in the existing map-routing module.
 - [x] 3.2 Implement independent deck-only readiness, potion support, relic support, fail-closed hard gates, and stable reason codes without changing the legacy aggressive readiness function or comparing legacy route scores.
-- [ ] 3.3 Refactor the existing route generator only enough to return complete conservative and aggressive candidates without changing either mode's selected path or side effects.
-- [ ] 3.4 Implement adaptive two-candidate selection that chooses aggressive only for the `0` versus `1` elite case after every hard gate passes, plus recovery feature extraction, deterministic conservative fallback for all other count pairs, and `candidate_generation_failed` handling.
+- [x] 3.3 Refactor the existing route generator only enough to return complete conservative and aggressive candidates without changing either mode's selected path or side effects.
+- [x] 3.4 Implement adaptive two-candidate selection that chooses aggressive only for the `0` versus `1` elite case after every hard gate passes, plus recovery feature extraction, deterministic conservative fallback for all other count pairs, and `candidate_generation_failed` handling.
 - [ ] 3.5 Add `adaptive` to CLI validation, help text, logging, and existing agent-construction paths without changing the default route mode.
 - [ ] 3.6 Track visited coordinates and latest rest idempotently by act, regenerate both candidates at every adaptive map choice, and emit one structured summary per decision.
 - [ ] 3.7 Confirm no combat, shop, event, card-reward, campfire, checkpoint, training, or Communication Mod protocol behavior changes in the implementation diff.
