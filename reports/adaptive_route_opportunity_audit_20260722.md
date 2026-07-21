@@ -256,7 +256,11 @@ the treatment conclusion. Keep conservative. No tuning, cohort rerun, training,
 or policy promotion is authorized. Any oracle or value study is a separate
 change.
 
-## Verification
+## Superseded Verification At `b92f413c6`
+
+The following results were valid for `b92f413c6` but were superseded when the
+final whole-change review required additional analysis-only fixes. Fresh final
+results are required before publication.
 
 Focused audit test:
 

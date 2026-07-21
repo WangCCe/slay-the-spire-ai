@@ -293,7 +293,7 @@ Change tasks `4.1` through `4.3` to `[x]` only when artifacts and checks agree.
 - Modify: `reports/adaptive_route_opportunity_audit_20260722.md`
 - Modify: `openspec/changes/add-adaptive-route-opportunity-audit/tasks.md`
 
-- [x] **Step 1: Run focused verification**
+- [ ] **Step 1: Run focused verification**
 
 ```powershell
 D:\anaconda\envs\stsai\python.exe -m pytest -q -p no:cacheprovider --basetemp .pytest_adaptive_route_audit_final tests/test_adaptive_route_opportunity_audit.py
@@ -301,7 +301,7 @@ D:\anaconda\envs\stsai\python.exe -m pytest -q -p no:cacheprovider --basetemp .p
 
 Record test count, duration, and exit code in the report.
 
-- [x] **Step 2: Run the commit gate**
+- [ ] **Step 2: Run the commit gate**
 
 ```powershell
 D:\anaconda\envs\stsai\python.exe scripts\run_test_gate.py commit
@@ -309,7 +309,7 @@ D:\anaconda\envs\stsai\python.exe scripts\run_test_gate.py commit
 
 Record the gate's resolved pytest command, test count, duration, and exit code. Stop on nonzero.
 
-- [x] **Step 3: Validate planning and diff boundaries**
+- [ ] **Step 3: Validate planning and diff boundaries**
 
 ```powershell
 openspec validate add-adaptive-route-opportunity-audit --strict
