@@ -1,6 +1,8 @@
 from __future__ import annotations
 
+import copy
 import hashlib
+import json
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
@@ -484,3 +486,492 @@ def test_converts_fractional_utc_offset_to_known_unix_timestamp(tmp_path: Path):
     assert occurrences[0].unix_time == datetime(
         2026, 7, 22, 12, 0, 0, 100000, tzinfo=timezone(timedelta(hours=5.5))
     ).timestamp()
+
+
+def _task2_payload(**overrides: str) -> str:
+    return _payload(
+        aggressive_candidate=_candidate(
+            "aggressive",
+            symbols="M/T/?/$/R/M/E/R",
+            elite_count=1,
+            elite_floors="14",
+            recovery_before="2",
+            recovery_after="1",
+        ),
+        **overrides,
+    )
+
+
+def _graph_node(
+    x: int, y: int, symbol: str, *children: tuple[int, int]
+) -> dict:
+    return {
+        "x": x,
+        "y": y,
+        "symbol": symbol,
+        "children": [{"x": child_x, "y": child_y} for child_x, child_y in children],
+    }
+
+
+def _task2_graph(
+    *,
+    ambiguous_conservative: bool = True,
+    ambiguous_before_divergence: bool = False,
+    different_immediate: bool = False,
+) -> list[dict]:
+    nodes = [
+        _graph_node(2, 6, "?", (2, 7), (4, 7)),
+        _graph_node(2, 7, "M", (2, 8)),
+        _graph_node(4, 7, "E"),
+        _graph_node(6, 7, "M"),
+        _graph_node(2, 8, "T", (2, 9)),
+        _graph_node(2, 9, "?", (2, 10)),
+        _graph_node(2, 10, "$", (2, 11)),
+        _graph_node(2, 11, "R", (1, 12), (0, 12)),
+        _graph_node(1, 12, "?", (1, 13)),
+        _graph_node(0, 12, "M", (0, 13)),
+        _graph_node(
+            1,
+            13,
+            "M",
+            (0, 14),
+            *((2, 14),) if ambiguous_conservative else (),
+        ),
+        _graph_node(0, 13, "E", (1, 14)),
+        _graph_node(0, 14, "R"),
+        _graph_node(1, 14, "R"),
+        _graph_node(2, 14, "R"),
+    ]
+    by_coordinate = {(node["x"], node["y"]): node for node in nodes}
+
+    if ambiguous_before_divergence:
+        by_coordinate[(2, 9)]["children"].append({"x": 3, "y": 10})
+        nodes.append(_graph_node(3, 10, "$", (2, 11)))
+
+    if different_immediate:
+        by_coordinate[(2, 11)]["children"] = [{"x": 1, "y": 12}]
+        by_coordinate[(4, 7)].update(symbol="M", children=[{"x": 4, "y": 8}])
+        nodes.extend(
+            [
+                _graph_node(4, 8, "T", (4, 9)),
+                _graph_node(4, 9, "?", (4, 10)),
+                _graph_node(4, 10, "$", (4, 11)),
+                _graph_node(4, 11, "R", (4, 12)),
+                _graph_node(4, 12, "M", (4, 13)),
+                _graph_node(4, 13, "E", (4, 14)),
+                _graph_node(4, 14, "R"),
+            ]
+        )
+    return nodes
+
+
+def _path_summary(choice: int, coordinates: list[tuple[int, int]], graph: list[dict]) -> dict:
+    by_coordinate = {(node["x"], node["y"]): node for node in graph}
+    labels = [
+        f"{by_coordinate[coordinate]['symbol']}@{coordinate[0]},{coordinate[1]}"
+        for coordinate in coordinates
+    ]
+    return {
+        "choice": choice,
+        "label": " -> ".join(labels),
+        "nodes": [by_coordinate[coordinate]["symbol"] for coordinate in coordinates],
+    }
+
+
+def _task2_trace_row(
+    *,
+    unix_time: float = 100.0,
+    ambiguous_conservative: bool = True,
+    ambiguous_before_divergence: bool = False,
+    different_immediate: bool = False,
+    advertise_superset: bool = False,
+) -> dict:
+    graph = _task2_graph(
+        ambiguous_conservative=ambiguous_conservative,
+        ambiguous_before_divergence=ambiguous_before_divergence,
+        different_immediate=different_immediate,
+    )
+    conservative_prefix = [(2, 7), (2, 8), (2, 9), (2, 10), (2, 11), (1, 12), (1, 13)]
+    paths = [_path_summary(0, conservative_prefix + [(0, 14)], graph)]
+    if ambiguous_conservative:
+        paths.append(_path_summary(0, conservative_prefix + [(2, 14)], graph))
+
+    if different_immediate:
+        aggressive = [
+            (4, 7), (4, 8), (4, 9), (4, 10),
+            (4, 11), (4, 12), (4, 13), (4, 14),
+        ]
+        paths.append(_path_summary(1, aggressive, graph))
+        action_coordinate = (4, 7)
+        action_choice = 1
+    else:
+        aggressive = [
+            (2, 7), (2, 8), (2, 9), (2, 10),
+            (2, 11), (0, 12), (0, 13), (1, 14),
+        ]
+        paths.append(_path_summary(0, aggressive, graph))
+        paths.append(_path_summary(1, [(4, 7)], graph))
+        action_coordinate = (2, 7)
+        action_choice = 0
+
+    by_coordinate = {(node["x"], node["y"]): node for node in graph}
+    next_coordinates = [(2, 7), (4, 7)]
+    if advertise_superset:
+        next_coordinates.append((6, 7))
+    return {
+        "unix_time": unix_time,
+        "act": 1,
+        "floor": 8,
+        "screen_type": "ScreenType.MAP",
+        "screen": {
+            "type": "ScreenType.MAP",
+            "current_node": {"x": 2, "y": 6, "symbol": "?"},
+            "next_nodes": [
+                {"x": x, "y": y, "symbol": by_coordinate[(x, y)]["symbol"]}
+                for x, y in next_coordinates
+            ],
+            "map": {"nodes": graph},
+            "paths": paths,
+        },
+        "action": {
+            "type": "ChooseMapNodeAction",
+            "choice_index": action_choice,
+            "node": {
+                "x": action_coordinate[0],
+                "y": action_coordinate[1],
+                "symbol": by_coordinate[action_coordinate]["symbol"],
+            },
+        },
+    }
+
+
+def _write_trace(tmp_path: Path, name: str, rows: list[dict]) -> Path:
+    path = tmp_path / name
+    text = "\n".join(json.dumps(row, sort_keys=True) for row in rows) + "\n\n"
+    path.write_text(text, encoding="utf-8")
+    return path
+
+
+def _task2_record(
+    *, payload: str | None = None, unix_times: tuple[float, ...] = (100.0,)
+) -> audit.AdaptiveRecord:
+    payload = payload or _task2_payload()
+    fields, conservative, aggressive = audit.parse_adaptive_payload(payload)
+    occurrences = tuple(
+        audit.AdaptiveOccurrence(
+            game_number=1,
+            source_path=Path("synthetic-adaptive.log"),
+            line_number=index + 1,
+            timestamp=datetime(2026, 7, 22, tzinfo=timezone.utc),
+            unix_time=unix_time,
+            payload=payload,
+            fields=fields,
+            conservative=conservative,
+            aggressive=aggressive,
+        )
+        for index, unix_time in enumerate(unix_times)
+    )
+    return audit.AdaptiveRecord(game_number=1, payload=payload, occurrences=occurrences)
+
+
+def _load_task2_decisions(tmp_path: Path, name: str, rows: list[dict]):
+    trace = _write_trace(tmp_path, name, rows)
+    return audit.load_decision_trace(trace)
+
+
+def test_load_decision_trace_parses_all_jsonl_and_ignores_map_boss_actions(tmp_path: Path):
+    node_row = _task2_trace_row(unix_time=102.0)
+    boss_row = copy.deepcopy(node_row)
+    boss_row["unix_time"] = 101.0
+    boss_row["action"] = {"type": "ChooseMapBossAction", "choice_index": 0}
+    boss_row["screen"]["next_nodes"] = []
+    boss_row["screen"]["paths"] = []
+    non_map_row = {"unix_time": 100.0, "screen_type": "ScreenType.COMBAT"}
+    trace = _write_trace(tmp_path, "mixed.jsonl", [non_map_row, boss_row, node_row])
+
+    decisions, source = audit.load_decision_trace(trace)
+
+    assert [decision.unix_time for decision in decisions] == [102.0]
+    assert source["source_path"] == str(trace)
+    assert source["sha256"] == hashlib.sha256(trace.read_bytes()).hexdigest()
+    assert source["record_count"] == 3
+    assert source["map_record_count"] == 2
+    assert source["node_action_record_count"] == 1
+    assert source["boss_action_record_count"] == 1
+
+
+@pytest.mark.parametrize(
+    ("contents", "message"),
+    [
+        ("{not-json}\n", "malformed decision trace JSON"),
+        ("[]\n", "decision trace row must be an object"),
+        (
+            '{"screen_type":"ScreenType.COMBAT","unix_time":NaN}\n',
+            "malformed decision trace JSON",
+        ),
+        (
+            '{"screen_type":"ScreenType.COMBAT","screen_type":"ScreenType.MAP"}\n',
+            "malformed decision trace JSON",
+        ),
+    ],
+)
+def test_load_decision_trace_rejects_malformed_or_nonobject_jsonl(
+    tmp_path: Path, contents: str, message: str
+):
+    trace = tmp_path / "malformed.jsonl"
+    trace.write_text(contents, encoding="utf-8")
+
+    with pytest.raises(audit.EvidenceError, match=message) as error:
+        audit.load_decision_trace(trace)
+
+    assert str(error.value).startswith(f"{trace}:1:")
+
+
+@pytest.mark.parametrize(
+    ("case", "message"),
+    [
+        ("missing-child", "graph child"),
+        ("child-skips-row", "advance exactly one row"),
+        ("action-unadvertised", "advertised"),
+        ("action-not-child", "reachable child"),
+        ("next-symbol", "next-node symbol"),
+        ("current-symbol", "current-node symbol"),
+        ("path-symbol", "path nodes"),
+        ("missing-paths", "paths"),
+    ],
+)
+def test_load_decision_trace_rejects_invalid_graph_next_action_and_paths(
+    tmp_path: Path, case: str, message: str
+):
+    row = _task2_trace_row(advertise_superset=True)
+    nodes = row["screen"]["map"]["nodes"]
+    by_coordinate = {(node["x"], node["y"]): node for node in nodes}
+    if case == "missing-child":
+        by_coordinate[(2, 6)]["children"][0] = {"x": 5, "y": 7}
+    elif case == "child-skips-row":
+        by_coordinate[(2, 6)]["children"][0] = {"x": 2, "y": 8}
+    elif case == "action-unadvertised":
+        row["screen"]["next_nodes"] = row["screen"]["next_nodes"][1:]
+    elif case == "action-not-child":
+        row["action"]["choice_index"] = 2
+        row["action"]["node"] = {"x": 6, "y": 7, "symbol": "M"}
+    elif case == "next-symbol":
+        row["screen"]["next_nodes"][0]["symbol"] = "E"
+    elif case == "current-symbol":
+        row["screen"]["current_node"]["symbol"] = "M"
+    elif case == "path-symbol":
+        row["screen"]["paths"][0]["nodes"][0] = "E"
+    elif case == "missing-paths":
+        row["screen"].pop("paths")
+
+    with pytest.raises(audit.EvidenceError, match=message):
+        _load_task2_decisions(tmp_path, f"{case}.jsonl", [row])
+
+
+def test_join_occurrences_uses_unique_nearest_row_and_requires_duplicate_agreement(
+    tmp_path: Path,
+):
+    record = _task2_record(unix_times=(100.0, 101.0))
+    first = _task2_trace_row(unix_time=100.003, advertise_superset=True)
+    second = _task2_trace_row(unix_time=101.002, advertise_superset=True)
+    decisions, _ = _load_task2_decisions(tmp_path, "nearest.jsonl", [first, second])
+
+    joined = audit.join_occurrences([record], decisions, max_join_seconds=0.01)
+
+    assert len(joined) == 1
+    assert [item.decision.unix_time for item in joined[0].occurrences] == [
+        100.003,
+        101.002,
+    ]
+    assert joined[0].occurrences[0].delta_seconds == pytest.approx(0.003)
+    assert joined[0].decision.semantic_fingerprint == decisions[0].semantic_fingerprint
+
+
+@pytest.mark.parametrize(
+    ("case", "message"),
+    [
+        ("missing", "missing decision-trace join"),
+        ("out-of-tolerance", "outside join tolerance"),
+        ("tied", "tied nearest decision-trace join"),
+    ],
+)
+def test_join_occurrences_rejects_missing_out_of_tolerance_and_tied_rows(
+    tmp_path: Path, case: str, message: str
+):
+    record = _task2_record()
+    if case == "missing":
+        rows = [_task2_trace_row(unix_time=100.0)]
+        rows[0]["act"] = 2
+    elif case == "out-of-tolerance":
+        rows = [_task2_trace_row(unix_time=100.02)]
+    else:
+        rows = [
+            _task2_trace_row(unix_time=99.995),
+            _task2_trace_row(unix_time=100.005),
+        ]
+    decisions, _ = _load_task2_decisions(tmp_path, f"{case}.jsonl", rows)
+
+    with pytest.raises(audit.EvidenceError, match=message):
+        audit.join_occurrences([record], decisions, max_join_seconds=0.01)
+
+
+def test_join_occurrences_rejects_semantically_contradictory_duplicate_callbacks(
+    tmp_path: Path,
+):
+    record = _task2_record(unix_times=(100.0, 101.0))
+    first = _task2_trace_row(unix_time=100.0)
+    second = _task2_trace_row(unix_time=101.0)
+    second["action"] = {
+        "type": "ChooseMapNodeAction",
+        "choice_index": 1,
+        "node": {"x": 4, "y": 7, "symbol": "E"},
+    }
+    decisions, _ = _load_task2_decisions(tmp_path, "contradictory.jsonl", [first, second])
+
+    with pytest.raises(audit.EvidenceError, match="duplicate occurrences disagree"):
+        audit.join_occurrences([record], decisions, max_join_seconds=0.01)
+
+
+def test_classify_candidate_pair_preserves_later_ambiguity_and_proves_first_divergence(
+    tmp_path: Path,
+):
+    record = _task2_record()
+    decisions, _ = _load_task2_decisions(
+        tmp_path,
+        "frozen-shape.jsonl",
+        [_task2_trace_row(advertise_superset=True)],
+    )
+    joined = audit.join_occurrences([record], decisions, max_join_seconds=0.01)[0]
+
+    evidence = audit.classify_candidate_pair(joined)
+
+    assert evidence.immediate_classification == "same"
+    assert evidence.conservative_immediate == (2, 7)
+    assert evidence.aggressive_immediate == (2, 7)
+    assert evidence.conservative_match_count == 2
+    assert evidence.aggressive_match_count == 1
+    assert evidence.conservative_path is None
+    assert evidence.aggressive_path[0] == (2, 7)
+    assert evidence.conservative_coordinate_sets[-1] == ((0, 14), (2, 14))
+    assert evidence.first_divergence == audit.Divergence(
+        index=5,
+        map_y=12,
+        entered_floor=13,
+        conservative=(1, 12),
+        aggressive=(0, 12),
+    )
+
+
+def test_classify_candidate_pair_reports_unique_paths_when_each_candidate_has_one(
+    tmp_path: Path,
+):
+    record = _task2_record()
+    decisions, _ = _load_task2_decisions(
+        tmp_path,
+        "unique.jsonl",
+        [_task2_trace_row(ambiguous_conservative=False)],
+    )
+    joined = audit.join_occurrences([record], decisions, max_join_seconds=0.01)[0]
+
+    evidence = audit.classify_candidate_pair(joined)
+
+    assert evidence.conservative_path[0] == (2, 7)
+    assert evidence.aggressive_path[0] == (2, 7)
+    assert evidence.conservative_match_count == evidence.aggressive_match_count == 1
+
+
+def test_classify_candidate_pair_does_not_guess_divergence_after_ambiguous_prefix(
+    tmp_path: Path,
+):
+    record = _task2_record()
+    decisions, _ = _load_task2_decisions(
+        tmp_path,
+        "ambiguous-prefix.jsonl",
+        [_task2_trace_row(ambiguous_before_divergence=True)],
+    )
+    joined = audit.join_occurrences([record], decisions, max_join_seconds=0.01)[0]
+
+    evidence = audit.classify_candidate_pair(joined)
+
+    assert evidence.conservative_coordinate_sets[3] == ((2, 10), (3, 10))
+    assert evidence.aggressive_coordinate_sets[3] == ((2, 10), (3, 10))
+    assert evidence.first_divergence is None
+
+
+def test_classify_candidate_pair_reports_different_immediate_coordinates(tmp_path: Path):
+    record = _task2_record()
+    decisions, _ = _load_task2_decisions(
+        tmp_path,
+        "different-immediate.jsonl",
+        [_task2_trace_row(different_immediate=True)],
+    )
+    joined = audit.join_occurrences([record], decisions, max_join_seconds=0.01)[0]
+
+    evidence = audit.classify_candidate_pair(joined)
+
+    assert evidence.immediate_classification == "different"
+    assert evidence.first_divergence == audit.Divergence(
+        index=0,
+        map_y=7,
+        entered_floor=8,
+        conservative=(2, 7),
+        aggressive=(4, 7),
+    )
+
+
+def test_classify_candidate_pair_marks_zero_match_candidate_ambiguous(tmp_path: Path):
+    payload = _task2_payload(
+        conservative_candidate=_candidate(
+            "conservative",
+            symbols="M/T/?/$/R/?/?/R",
+            elite_count=0,
+            elite_floors="none",
+        )
+    )
+    record = _task2_record(payload=payload)
+    decisions, _ = _load_task2_decisions(
+        tmp_path, "zero-match.jsonl", [_task2_trace_row()]
+    )
+    joined = audit.join_occurrences([record], decisions, max_join_seconds=0.01)[0]
+
+    evidence = audit.classify_candidate_pair(joined)
+
+    assert evidence.conservative_match_count == 0
+    assert evidence.conservative_path is None
+    assert evidence.immediate_classification == "ambiguous"
+    assert evidence.first_divergence is None
+
+
+def test_classify_candidate_pair_rejects_selected_action_contradiction(tmp_path: Path):
+    record = _task2_record()
+    row = _task2_trace_row()
+    row["action"] = {
+        "type": "ChooseMapNodeAction",
+        "choice_index": 1,
+        "node": {"x": 4, "y": 7, "symbol": "E"},
+    }
+    decisions, _ = _load_task2_decisions(tmp_path, "selected-contradiction.jsonl", [row])
+    joined = audit.join_occurrences([record], decisions, max_join_seconds=0.01)[0]
+
+    with pytest.raises(audit.EvidenceError, match="selected candidate contradicts joined action"):
+        audit.classify_candidate_pair(joined)
+
+
+def test_candidate_generation_fallback_joins_with_supersetted_next_nodes(tmp_path: Path):
+    record = _task2_record(payload=_outcome_payload("candidate_generation_failed"))
+    decisions, _ = _load_task2_decisions(
+        tmp_path,
+        "fallback-superset.jsonl",
+        [_task2_trace_row(advertise_superset=True)],
+    )
+
+    joined = audit.join_occurrences([record], decisions, max_join_seconds=0.01)
+
+    assert len(joined) == 1
+    assert joined[0].record.occurrences[0].fields["outcome"] == "candidate_generation_failed"
+
+
+@pytest.mark.parametrize("max_join_seconds", [True, -0.01, float("nan"), float("inf")])
+def test_join_occurrences_rejects_invalid_tolerances(max_join_seconds: float):
+    with pytest.raises(audit.EvidenceError, match="join tolerance"):
+        audit.join_occurrences([], [], max_join_seconds=max_join_seconds)

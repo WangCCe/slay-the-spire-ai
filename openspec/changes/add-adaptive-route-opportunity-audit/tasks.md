@@ -5,8 +5,8 @@
 
 ## 2. Trace Correlation And Coordinate Reconstruction
 
-- [ ] 2.1 Add failing synthetic tests for bounded nearest-time joins, duplicate semantic agreement, map/action validation, unique and ambiguous graph-route reconstruction, and selected-action contradictions.
-- [ ] 2.2 Implement decision-trace ingestion, occurrence-level joins, semantic fingerprints, graph validation, coordinate path matching, immediate-coordinate classification, and first-divergence evidence.
+- [x] 2.1 Add failing synthetic tests for bounded nearest-time joins, duplicate semantic agreement, map/action validation, unique and ambiguous graph-route reconstruction, and selected-action contradictions.
+- [x] 2.2 Implement decision-trace ingestion, occurrence-level joins, semantic fingerprints, graph validation, coordinate path matching, immediate-coordinate classification, and first-divergence evidence.
 
 ## 3. Treatment Attribution And Artifact Output
 
