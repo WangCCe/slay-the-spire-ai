@@ -3,6 +3,7 @@ import random
 import logging
 import sys
 from copy import deepcopy
+from dataclasses import dataclass
 from datetime import datetime
 from typing import Optional
 
@@ -48,6 +49,17 @@ logger = logging.getLogger(__name__)
 
 class _AdaptiveRouteCandidateGenerationError(ValueError):
     """Expected malformed-map or malformed-candidate failure at the adaptive boundary."""
+
+
+@dataclass(frozen=True)
+class _AdaptiveRouteCandidate:
+    """A validated full route paired with Task 2's local candidate features."""
+
+    features: object
+    absolute_path: tuple
+
+    def __getattr__(self, name):
+        return getattr(self.features, name)
 
 # Import optimized AI components
 try:
@@ -2594,89 +2606,165 @@ class SimpleAgent:
             best_path[y - 1] = best_parents[y][best_path[y]]
         if current_map_node is not None:
             best_path[start_y] = current_map_node.x
-        # Log chosen path
-        path_summary = []
-        for y in range(len(best_path)):
-            node = self.game.map.get_node(best_path[y], y)
-            if node:
-                path_summary.append(f"{y}:{node.symbol}")
-        logging.info(f"[MAP_ROUTING] Chosen path: {' -> '.join(path_summary)}\n")
         return best_path
 
-    @staticmethod
-    def _adaptive_candidate_generation_errors():
-        return (IndexError, KeyError, _AdaptiveRouteCandidateGenerationError)
-
-    def _current_map_route_start_y(self):
+    def _adaptive_candidate_origin(self):
         screen = getattr(self.game, "screen", None)
         next_nodes = getattr(screen, "next_nodes", []) or []
-        at_act_start = bool(next_nodes) and getattr(next_nodes[0], "y", None) == 0
         current_node = getattr(screen, "current_node", None)
-        if at_act_start or current_node is None or getattr(current_node, "y", -1) < 0:
-            return 0
-        current_map_node = self.game.map.get_node(current_node.x, current_node.y)
+        if not next_nodes:
+            raise _AdaptiveRouteCandidateGenerationError("candidate has no next nodes")
+        if current_node is None or getattr(current_node, "y", -1) < 0:
+            return 0, None, tuple(next_nodes)
+        current_map_node = self._candidate_map_node(current_node.x, current_node.y)
         if current_map_node is None:
             raise _AdaptiveRouteCandidateGenerationError(
                 "current map node is missing from the route map"
             )
-        return current_map_node.y
+        return current_map_node.y + 1, current_map_node, tuple(next_nodes)
 
-    def _describe_adaptive_route_candidate(self, mode, route, start_y):
-        local_path = tuple(route[start_y:])
-        if not local_path:
+    def _candidate_map_node(self, x, y):
+        try:
+            return self.game.map.get_node(x, y)
+        except (IndexError, KeyError) as error:
+            raise _AdaptiveRouteCandidateGenerationError(
+                "candidate map lookup failed"
+            ) from error
+
+    @staticmethod
+    def _candidate_has_child(parent, child):
+        return any(
+            getattr(candidate, "x", None) == child.x
+            and getattr(candidate, "y", None) == child.y
+            for candidate in getattr(parent, "children", []) or []
+        )
+
+    def _describe_adaptive_route_candidate(
+            self,
+            mode,
+            route,
+            start_y,
+            current_map_node,
+            next_nodes,
+    ):
+        try:
+            map_height = max(self.game.map.nodes.keys())
+            absolute_path = list(route)
+        except (IndexError, KeyError, ValueError) as error:
+            raise _AdaptiveRouteCandidateGenerationError(
+                "candidate route map shape is invalid"
+            ) from error
+        if len(absolute_path) != map_height + 1 or start_y > map_height:
             raise _AdaptiveRouteCandidateGenerationError("candidate route is incomplete")
 
+        if current_map_node is not None:
+            for y, x in enumerate(self.map_route[:start_y]):
+                absolute_path[y] = x
+            absolute_path[start_y - 1] = current_map_node.x
+        local_path = tuple(absolute_path[start_y:])
+        if len(local_path) != map_height - start_y + 1:
+            raise _AdaptiveRouteCandidateGenerationError("candidate route is truncated")
+
+        expected_next_nodes = {
+            (getattr(node, "x", None), getattr(node, "y", None))
+            for node in next_nodes
+        }
+        if (local_path[0], start_y) not in expected_next_nodes:
+            raise _AdaptiveRouteCandidateGenerationError("candidate starts outside next nodes")
+
         symbols = []
-        for index, x in enumerate(local_path):
-            node = self.game.map.get_node(x, start_y + index)
+        local_nodes = []
+        for y, x in enumerate(absolute_path):
+            node = self._candidate_map_node(x, y)
             symbol = getattr(node, "symbol", None)
             if node is None or not isinstance(symbol, str):
                 raise _AdaptiveRouteCandidateGenerationError(
                     "candidate route does not describe map coordinates"
                 )
-            symbols.append(symbol)
+            if y >= start_y:
+                local_nodes.append(node)
+                symbols.append(symbol)
 
-        candidate = self.map_router.describe_candidate(
+        if current_map_node is not None and not self._candidate_has_child(
+                current_map_node, local_nodes[0]):
+            raise _AdaptiveRouteCandidateGenerationError("candidate starts off branch")
+        for parent, child in zip(local_nodes, local_nodes[1:]):
+            if not self._candidate_has_child(parent, child):
+                raise _AdaptiveRouteCandidateGenerationError("candidate route is disconnected")
+
+        features = self.map_router.describe_candidate(
             mode,
             local_path,
             tuple(symbols),
             start_y=start_y,
         )
-        if not self.map_router._valid_adaptive_candidate(candidate):
+        if not self.map_router._valid_adaptive_candidate(features):
             raise _AdaptiveRouteCandidateGenerationError("candidate route has invalid data")
-        return candidate
+        return _AdaptiveRouteCandidate(features, tuple(absolute_path))
 
     def _adaptive_route_candidates(self):
         if self.map_router is None:
             raise _AdaptiveRouteCandidateGenerationError("adaptive map router is unavailable")
-        start_y = self._current_map_route_start_y()
-        conservative_route = self._build_map_route("conservative")
-        aggressive_route = self._build_map_route("aggressive")
+        start_y, current_map_node, next_nodes = self._adaptive_candidate_origin()
+        try:
+            conservative_route = self._build_map_route("conservative")
+            aggressive_route = self._build_map_route("aggressive")
+        except (IndexError, KeyError) as error:
+            raise _AdaptiveRouteCandidateGenerationError(
+                "candidate route build map lookup failed"
+            ) from error
         return (
             self._describe_adaptive_route_candidate(
                 "conservative",
                 conservative_route,
                 start_y,
+                current_map_node,
+                next_nodes,
             ),
             self._describe_adaptive_route_candidate(
                 "aggressive",
                 aggressive_route,
                 start_y,
+                current_map_node,
+                next_nodes,
             ),
         )
 
-    @staticmethod
-    def _route_from_adaptive_candidate(candidate):
+    def _candidate_features(self, candidate):
+        if isinstance(candidate, _AdaptiveRouteCandidate):
+            start_y, current_map_node, next_nodes = self._adaptive_candidate_origin()
+            validated = self._describe_adaptive_route_candidate(
+                candidate.features.mode,
+                candidate.absolute_path,
+                start_y,
+                current_map_node,
+                next_nodes,
+            )
+            if (
+                    validated.features != candidate.features
+                    or validated.absolute_path != candidate.absolute_path
+            ):
+                raise _AdaptiveRouteCandidateGenerationError(
+                    "candidate route bundle is inconsistent"
+                )
+            return validated.features
+        return candidate
+
+    def _route_from_adaptive_candidate(self, candidate):
+        if isinstance(candidate, _AdaptiveRouteCandidate):
+            return list(candidate.absolute_path)
         return [0] * candidate.start_y + list(candidate.path)
 
     def _select_adaptive_route(self, conservative, aggressive, context):
+        conservative_features = self._candidate_features(conservative)
+        aggressive_features = self._candidate_features(aggressive)
         state = self.map_router.build_adaptive_state(context)
         assessment = self.map_router.assess_optional_elite(
             state,
-            conservative,
-            aggressive,
+            conservative_features,
+            aggressive_features,
         )
-        if conservative.elite_floors:
+        if conservative_features.elite_floors:
             return (
                 self._route_from_adaptive_candidate(conservative),
                 self.map_router._adaptive_assessment(False, "forced_elite_route"),
@@ -2689,10 +2777,22 @@ class SimpleAgent:
         context = DecisionContext(self.game) if DecisionContext is not None else None
         return context.player_hp_pct if context else 0
 
+    def _log_chosen_map_route(self, route):
+        path_summary = []
+        for y, x in enumerate(route):
+            node = self.game.map.get_node(x, y)
+            if node:
+                path_summary.append(f"{y}:{node.symbol}")
+        logging.info(f"[MAP_ROUTING] Chosen path: {' -> '.join(path_summary)}\n")
+
     def generate_map_route(self):
         if str(self.elite_mode or "").lower() == "adaptive":
             if self.chosen_class != PlayerClass.IRONCLAD:
                 route = self._build_map_route("conservative")
+                logging.info(
+                    "[MAP_ROUTING] Adaptive route fallback "
+                    "reason=unsupported_character budget=0\n"
+                )
             else:
                 try:
                     conservative, aggressive = self._adaptive_route_candidates()
@@ -2701,7 +2801,7 @@ class SimpleAgent:
                         aggressive,
                         DecisionContext(self.game),
                     )
-                except self._adaptive_candidate_generation_errors():
+                except _AdaptiveRouteCandidateGenerationError:
                     route = self._build_map_route("conservative")
                     logging.info(
                         "[MAP_ROUTING] Adaptive route fallback "
@@ -2713,6 +2813,7 @@ class SimpleAgent:
         self.map_route = route
         self._last_route_hp_pct = self._current_route_hp_pct()
         self._last_route_floor = self.game.floor
+        self._log_chosen_map_route(route)
         return route
 
     def _route_should_minimize_elites(self, elite_mode_override=None):

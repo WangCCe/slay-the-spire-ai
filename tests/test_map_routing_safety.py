@@ -1590,3 +1590,203 @@ def test_adaptive_selector_falls_back_when_candidate_generation_fails(
     assert route == expected
     assert agent.map_route == expected
     assert "candidate_generation_failed" in caplog.text
+
+
+def _mid_act_adaptive_route_agent():
+    agent = _route_agent("adaptive", Map(), deck=_prepared_act1_deck())
+    agent.game.deck.extend(_card("Strike") for _ in range(6))
+    game_map = agent.game.map
+    prefix = [Node(0, y, "M") for y in range(4)]
+    current = Node(0, 4, "E")
+    safe = Node(0, 5, "M")
+    elite = Node(1, 5, "E")
+    safe_rest = Node(0, 6, "R")
+    elite_rest = Node(1, 6, "R")
+    safe_end = Node(0, 7, "T")
+    elite_end = Node(1, 7, "T")
+
+    for parent, child in zip(prefix, prefix[1:] + [current]):
+        parent.children = [child]
+    current.children = [safe, elite]
+    safe.children = [safe_rest]
+    elite.children = [elite_rest]
+    safe_rest.children = [safe_end]
+    elite_rest.children = [elite_end]
+    for node in prefix + [
+            current, safe, elite, safe_rest, elite_rest, safe_end, elite_end]:
+        game_map.add_node(node)
+
+    agent.game.potions = [_potion("Fire Potion")]
+    agent.game.screen = SimpleNamespace(
+        current_node=current,
+        next_nodes=[safe, elite],
+        boss_available=False,
+    )
+    agent.map_route = [0, 0, 0, 0, current.x]
+    return agent, current, safe, elite
+
+
+def test_adaptive_mid_act_generation_commits_legal_full_aggressive_route():
+    agent, current, safe, elite = _mid_act_adaptive_route_agent()
+
+    conservative, aggressive = agent._adaptive_route_candidates()
+    route = agent.generate_map_route()
+    action = agent.make_map_choice()
+
+    assert conservative.start_y == current.y + 1
+    assert aggressive.start_y == current.y + 1
+    assert current.symbol == "E"
+    assert conservative.elite_floors == ()
+    assert aggressive.elite_floors == (elite.y + 1,)
+    assert route[:current.y] == [0] * current.y
+    assert route[current.y] == current.x
+    assert route[current.y + 1] == elite.x
+    assert isinstance(action, ChooseMapNodeAction)
+    assert action.node == elite
+    assert action.node != safe
+
+
+@pytest.mark.parametrize("failure_kind", ("truncated", "disconnected"))
+def test_adaptive_candidate_shape_failures_trigger_conservative_fallback(
+        monkeypatch, caplog, failure_kind):
+    caplog.set_level(logging.INFO)
+    agent, _, _, _ = _mid_act_adaptive_route_agent()
+    original_builder = agent._build_map_route
+    conservative_route = original_builder("conservative")
+    calls = []
+
+    def malformed_candidate_builder(mode):
+        calls.append(mode)
+        route = original_builder(mode)
+        if mode != "aggressive":
+            return route
+        if failure_kind == "truncated":
+            return route[:-1]
+        route[6] = 0
+        return route
+
+    monkeypatch.setattr(agent, "_build_map_route", malformed_candidate_builder)
+
+    route = agent.generate_map_route()
+
+    assert calls == ["conservative", "aggressive", "conservative"]
+    assert route == conservative_route
+    assert "candidate_generation_failed" in caplog.text
+
+
+def test_adaptive_candidate_map_key_error_triggers_conservative_fallback(
+        monkeypatch, caplog):
+    caplog.set_level(logging.INFO)
+    agent, _, _, elite = _mid_act_adaptive_route_agent()
+    original_builder = agent._build_map_route
+    original_get_node = agent.game.map.get_node
+    calls = []
+    active_mode = [None]
+
+    def track_builder(mode):
+        calls.append(mode)
+        active_mode[0] = mode
+        return original_builder(mode)
+
+    def malformed_candidate_map(x, y):
+        if active_mode[0] == "aggressive" and x == elite.x and y == elite.y:
+            raise KeyError("malformed candidate node")
+        return original_get_node(x, y)
+
+    monkeypatch.setattr(agent, "_build_map_route", track_builder)
+    monkeypatch.setattr(agent.game.map, "get_node", malformed_candidate_map)
+
+    route = agent.generate_map_route()
+
+    assert calls == ["conservative", "aggressive", "conservative"]
+    assert route == original_builder("conservative")
+    assert "candidate_generation_failed" in caplog.text
+
+
+def test_adaptive_selector_key_error_propagates_without_conservative_fallback(
+        monkeypatch):
+    agent, _, _, _ = _mid_act_adaptive_route_agent()
+    calls = []
+    original_builder = agent._build_map_route
+
+    def track_builder(mode):
+        calls.append(mode)
+        return original_builder(mode)
+
+    def broken_selector(*args):
+        raise KeyError("selector bug")
+
+    monkeypatch.setattr(agent, "_build_map_route", track_builder)
+    monkeypatch.setattr(agent, "_select_adaptive_route", broken_selector)
+
+    with pytest.raises(KeyError, match="selector bug"):
+        agent.generate_map_route()
+
+    assert calls == ["conservative", "aggressive"]
+
+
+def test_non_ironclad_adaptive_generation_uses_one_conservative_pass_with_reason(
+        monkeypatch, caplog):
+    caplog.set_level(logging.INFO)
+    game_map, safe_start, elite_start = _optional_elite_route_map()
+    agent = SimpleAgent(chosen_class=PlayerClass.THE_SILENT, elite_mode="adaptive")
+    agent.game.map = game_map
+    agent.game.act = 1
+    agent.game.floor = 0
+    agent.game.current_hp = 80
+    agent.game.max_hp = 80
+    agent.game.deck = _prepared_act1_deck()
+    agent.game.hand = []
+    agent.game.monsters = []
+    agent.game.potions = [_potion("Fire Potion")]
+    agent.game.relics = ["Burning Blood"]
+    _set_start_screen(agent, safe_start, elite_start)
+    original_builder = agent._build_map_route
+    expected = original_builder("conservative")
+    calls = []
+
+    def track_builder(mode):
+        calls.append(mode)
+        return original_builder(mode)
+
+    monkeypatch.setattr(agent, "_build_map_route", track_builder)
+
+    route = agent.generate_map_route()
+
+    assert route == expected
+    assert calls == ["conservative"]
+    assert "unsupported_character" in caplog.text
+
+
+def test_adaptive_success_logs_one_committed_chosen_path(caplog):
+    caplog.set_level(logging.INFO)
+    game_map, safe_start, elite_start = _optional_elite_route_map()
+    agent = _route_agent("adaptive", game_map, deck=_prepared_act1_deck())
+    agent.game.potions = [_potion("Fire Potion")]
+    _set_start_screen(agent, safe_start, elite_start)
+
+    agent.generate_map_route()
+
+    assert caplog.text.count("[MAP_ROUTING] Chosen path:") == 1
+
+
+def test_forged_adaptive_absolute_path_triggers_conservative_fallback(
+        monkeypatch, caplog):
+    caplog.set_level(logging.INFO)
+    agent, _, _, _ = _mid_act_adaptive_route_agent()
+    conservative, aggressive = agent._adaptive_route_candidates()
+    expected = agent._build_map_route("conservative")
+    forged_path = list(aggressive.absolute_path)
+    forged_path[aggressive.start_y] = conservative.path[0]
+    forged_aggressive = type(aggressive)(aggressive.features, tuple(forged_path))
+
+    monkeypatch.setattr(
+        agent,
+        "_adaptive_route_candidates",
+        lambda: (conservative, forged_aggressive),
+    )
+
+    route = agent.generate_map_route()
+
+    assert route == expected
+    assert "candidate_generation_failed" in caplog.text
