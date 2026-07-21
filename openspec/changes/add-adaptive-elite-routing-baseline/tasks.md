@@ -34,8 +34,8 @@
 
 ## 5. Bounded Live Qualification
 
-- [ ] 5.1 Capture the current Communication Mod configuration, latest AI run marker, debug/error log offsets, and decision/sim-divergence trace cutoffs; verify training is disabled and conservative is the rollback command.
-- [ ] 5.2 Run one fresh ten-game Ironclad A0 adaptive cohort with `D:\anaconda\envs\stsai\python.exe`, stopping on a runtime error, repeated stall, or evidence-integrity failure.
-- [ ] 5.3 Restore and attest the conservative Communication Mod configuration after completion or failure, and verify no training checkpoint was created or changed.
-- [ ] 5.4 Write a dated report containing every run id; total `E` nodes; normalized final elite killers; elite death runs and fatality ratio; average/max floor; Act 2 boss reaches; victories; runtime errors; and fresh sim-divergence cluster keys against the preserved 2026-07-20 cohorts.
-- [ ] 5.5 Mark the baseline eligible only for a larger validation when it has at least three elite encounters, at most two elite-death runs, elite fatality ratio at most 25 percent, average floor at least 24.2, at least three Act 2 boss reaches, no runtime error, and no repeated causal A-class cluster; otherwise retain conservative and do not tune and rerun the same cohort.
+- [x] 5.1 Capture the current Communication Mod configuration, latest AI run marker, debug/error log offsets, and decision/sim-divergence trace cutoffs; verify training is disabled and conservative is the rollback command.
+- [x] 5.2 Run one fresh ten-game Ironclad A0 adaptive cohort with `D:\anaconda\envs\stsai\python.exe`, stopping on a runtime error, repeated stall, or evidence-integrity failure.
+- [x] 5.3 Restore and attest the conservative Communication Mod configuration after completion or failure, and verify no training checkpoint was created or changed.
+- [x] 5.4 Write a dated report containing every run id; total `E` nodes; normalized final elite killers; elite death runs and fatality ratio; average/max floor; Act 2 boss reaches; victories; runtime errors; and fresh sim-divergence cluster keys against the preserved 2026-07-20 cohorts.
+- [x] 5.5 Mark the baseline eligible only for a larger validation when it has at least three elite encounters, at most two elite-death runs, elite fatality ratio at most 25 percent, average floor at least 24.2, at least three Act 2 boss reaches, no runtime error, and no repeated causal A-class cluster; otherwise retain conservative and do not tune and rerun the same cohort.
