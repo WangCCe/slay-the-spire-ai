@@ -14,16 +14,16 @@ The adaptive elite-routing implementation passed its host `gameplay`, `commit`, 
 ## Capabilities
 
 ### New Capabilities
-- `adaptive-route-integration-contracts`: Defines conservative recovery boundaries, agent compatibility, complete adaptive decision observability, and fresh qualification after the blocked whole-change review.
+
+None.
 
 ### Modified Capabilities
-
-None. The original `adaptive-elite-routing` capability remains in its active change and is not redefined or weakened here.
+- `adaptive-elite-routing`: Narrows adaptive startup to agents whose MAP choices are owned by the heuristic router, defines one-shot conservative recovery at both first-map and mid-act origins, makes the adaptive decision record availability-aware and mechanically parseable, and requires fresh evidence after the blocked whole-change review. The original delta was synchronized into the main specification at commit `55b660b70` so this follow-up can modify the existing capability without duplicating it.
 
 ## Impact
 
 - `spirecomm/ai/agent.py` will narrow fallback validation to active history/origin plus the returned conservative candidate and will retain that candidate for logging.
-- `main.py` will fail fast for the unsupported full-RL/adaptive combination while preserving all supported construction paths and the default route mode.
+- `main.py` will fail fast with a stable error for the unsupported full-RL/adaptive combination in both direct construction and parsed CLI startup, before any RL factory, checkpoint load, or fallback agent path.
 - `tests/test_map_routing_safety.py` and `tests/test_main_runtime_errors.py` will add exact regressions for fallback, compatibility, and outcome-specific log fields.
 - Follow-up reports will preserve exact commands, raw or directly captured gate results, counts, durations, exit codes, final static validation, and independent review outcome.
 - Success requires focused regressions, host `gameplay`, `commit`, and `full` gates to exit `0`, followed by no unresolved Critical or Important whole-change finding. Until then, conservative remains the rollback mode, adaptive remains opt-in, training remains disabled for qualification, and the first Ironclad `victory=true` run remains the outer objective.

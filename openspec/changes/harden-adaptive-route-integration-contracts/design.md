@@ -2,7 +2,7 @@
 
 The active `add-adaptive-elite-routing-baseline` change reached a host qualification with `371`, `2917`, and `3627` passing tests, but its mandatory whole-change review failed. The review found that the adaptive fallback repeats strict whole-map validation before invoking the legacy conservative planner, the full-RL construction path silently ignores an accepted adaptive CLI value, and the structured decision line omits required normalized and fallback evidence.
 
-The original qualification and failed review are immutable evidence. This follow-up must remain smaller than a policy redesign: adaptive risk thresholds and candidate selection are already regression-covered, the intended live agent is `combat_rl`, and persistent gameplay remains conservative until a new qualification and review pass.
+The original qualification and failed review are immutable evidence. The original delta specification was synchronized into `openspec/specs/adaptive-elite-routing/spec.md` at commit `55b660b70`; this follow-up therefore modifies that existing capability rather than introducing a parallel integration-contract capability. This follow-up must remain smaller than a policy redesign: adaptive risk thresholds and candidate selection are already regression-covered, the intended live agent is `combat_rl`, and persistent gameplay remains conservative until a new qualification and review pass.
 
 ## Goals / Non-Goals
 
@@ -28,12 +28,12 @@ The original qualification and failed review are immutable evidence. This follow
 
 The initial adaptive path continues to validate the complete map and both complete candidate bundles. If that path raises the dedicated adaptive candidate-generation error, the fallback will not repeat whole-map validation. It will instead:
 
-1. Resolve a usable active origin and validate the existing absolute route-history prefix.
+1. Resolve a usable active origin and validate the existing absolute route-history prefix. At the initial map choice only, no current node plus an empty committed history is a valid `start_y=0` origin; the same absence after route history exists is invalid.
 2. Invoke `_build_map_route("conservative")` exactly once from the current origin.
 3. Describe and validate that returned route against the active origin, history prefix, map height, coordinates, edges, and completion boundary.
 4. Return the validated conservative candidate, derive its route, and commit it with reason `candidate_generation_failed` only after chosen-path logging succeeds.
 
-This permits recovery from an irrelevant malformed earlier/unreachable node that the legacy mid-act planner never visits. It does not recursively retry. Invalid history, an absent/invalid current origin, an exception from the conservative builder, invalid returned route data, or an unexpected selector/programming error still propagates without route/metadata/log mutation.
+This permits recovery from an irrelevant malformed earlier/unreachable node that the legacy mid-act planner never visits, and it preserves first-map recovery without inventing a current node. It does not recursively retry. Invalid history, a missing/invalid non-initial origin, an exception from the conservative builder, invalid returned route data, or an unexpected selector/programming error still propagates without route/metadata/log mutation.
 
 Alternatives considered:
 
@@ -44,7 +44,13 @@ Alternatives considered:
 
 Full RL v1/v2 owns MAP actions through its learned action encoder. Adaptive routing belongs to `SimpleAgent` and its heuristic descendants; merely storing `elite_mode` in an RL constructor would still be a no-op.
 
-`create_agent()` will therefore reject the exact `agent_type="rl"` plus `elite_mode="adaptive"` combination before the RL factory, checkpoint loading, or fallback logic. The error text is stable and states that adaptive requires a heuristic map owner. `simple`, `optimized`, Ironclad `auto`, and `combat_rl` remain supported. Existing full-RL conservative/aggressive behavior remains unchanged because this follow-up does not redefine those legacy combinations.
+`create_agent()` will therefore reject the exact `agent_type="rl"` plus `elite_mode="adaptive"` combination before the RL factory, checkpoint loading, or fallback logic. Direct construction raises `ValueError`; parsed CLI startup calls the parser's error path and exits with status `2`. Both use the exact text:
+
+```text
+--elite-route adaptive is unsupported for --agent rl; adaptive routing requires a heuristic map owner
+```
+
+The direct and parsed paths share a side-effect-free compatibility validator, while the parser remains responsible for CLI presentation and exit semantics. `simple`, `optimized`, Ironclad `auto`, and `combat_rl` remain supported. Existing full-RL conservative/aggressive behavior remains unchanged because this follow-up does not redefine those legacy combinations.
 
 Alternatives considered:
 
@@ -53,27 +59,25 @@ Alternatives considered:
 
 ### 3. Extend the current flat log with explicit outcome and availability
 
-The `[ADAPTIVE_ROUTE]` prefix and single parameterized INFO record remain unchanged. The record will retain existing fields and add a stable outcome-aware schema:
+The `[ADAPTIVE_ROUTE]` prefix and single parameterized INFO record remain unchanged. After the prefix, the implementation serializes exactly these ordered, whitespace-delimited `key=value` tokens:
 
 ```text
-outcome=<success|forced|unsupported|candidate_generation_failed>
-state_valid=<true|false>
-hp_pct=<decimal|unavailable>
-elite_seen=<true|false|unavailable>
-last_rest_floor=<integer|none|unavailable>
-candidate_pair=<complete|not_attempted|generation_failed>
-minimum_elites=<integer|unavailable>
-added_elites=<integer|unavailable>
-fallback=<not_used|not_applicable|candidate-summary>
+outcome character act floor state_valid hp hp_pct deck potion relic elite_seen last_rest_floor candidate_pair conservative_candidate aggressive_candidate minimum_elites added_elites fallback_candidate budget selected reasons
 ```
 
-Each available candidate summary is derived only from validated candidate features and includes mode, start floor boundary, symbols, elite count/floors, and recovery distances. For a complete pair, `minimum_elites` is the conservative elite count and `added_elites` is the aggressive count minus that minimum. Missing pair data is `unavailable`, never a fabricated zero.
+Values never contain whitespace. Booleans are lowercase, unavailable evidence is literally `unavailable`, a valid empty optional value is `none`, reason codes and integer lists use `|`, route symbols use `/`, and `hp_pct` uses exactly six decimal places. Every available candidate summary is derived only from validated candidate features and uses:
 
-- `success` and `forced`: both pair summaries are complete; fallback is `not_used`.
-- `unsupported`: candidate pair is `not_attempted`; pair-derived fields are unavailable; fallback is `not_applicable`.
-- `candidate_generation_failed`: pair is `generation_failed`; pair-derived fields are unavailable; fallback contains the one validated conservative candidate returned by the recovery helper.
+```text
+mode:<mode>,start_y:<integer>,symbols:<symbol>/<symbol>|none,elite_count:<integer>,elite_floors:<integer>|<integer>|none,recovery_before:<integer|none>,recovery_after:<integer|none>
+```
 
-Normalized state values are emitted as policy inputs only when state validation succeeds. Invalid state uses explicit unavailable values rather than presenting normalization sentinels as usable data. Payload preparation and chosen-path logging still complete before route/metadata commit; the one summary is emitted only after commit. Any uncommitted error emits no adaptive decision record.
+For a complete pair, `minimum_elites` is the conservative elite count and `added_elites` is the aggressive count minus that minimum. Missing pair data is `unavailable`, never a fabricated zero.
+
+- `success` and `forced`: `candidate_pair=complete`, both pair summaries are available, count fields are arithmetic values, and `fallback_candidate=not_used`.
+- `unsupported`: `candidate_pair=not_attempted`, pair summaries/counts are unavailable, and `fallback_candidate=not_applicable`.
+- `candidate_generation_failed`: `candidate_pair=generation_failed`, pair summaries/counts are unavailable, and `fallback_candidate` contains the one validated conservative candidate returned by the recovery helper.
+
+Normalized policy inputs are emitted only when the adaptive state validator succeeds. Invalid state makes `hp`, `hp_pct`, `deck`, `potion`, `relic`, `elite_seen`, and `last_rest_floor` unavailable; character, act, and floor are normalized independently. Payload preparation and chosen-path logging complete before route/metadata commit; the one summary is emitted only after commit. Candidate, fallback, payload-preparation, or chosen-path errors before commit emit no adaptive decision record and preserve previous route metadata.
 
 Alternatives considered:
 
@@ -82,9 +86,9 @@ Alternatives considered:
 
 ### 4. Treat the prior review as a failed qualification and collect fresh evidence
 
-The original PASS gate report and FAIL whole-change review are not edited or reclassified. This follow-up adds red/green regressions, then runs focused routing/main tests and one host-permission sequence of `gameplay`, `commit`, and `full`, stopping at the first nonzero result. Each command's terminal output is preserved in a separately named raw transcript and summarized in a new report. A known stream-silence failure may be diagnosed once for attribution but remains a failed full gate.
+The original PASS gate report and FAIL whole-change review are not edited or reclassified. This follow-up adds red/green regressions, then runs focused routing/main tests and one host-permission sequence of `gameplay`, `commit`, and `full`, stopping at the first nonzero result. Each command's terminal output is preserved in a separately named raw transcript and summarized in a new report. A known stream-silence failure may be diagnosed once for attribution but remains a failed full gate. Any nonzero gate ends this follow-up; code, tests, gate policy, and commands are frozen and no gate is rerun in the same change.
 
-After all gates exit `0`, a fresh highest-capability read-only review covers the complete range from the original adaptive proposal through the follow-up head. Any Critical or Important finding leaves both changes blocked and requires another separately proposed change and new evidence. Only a clean review may mark the original task `4.4` and authorize the bounded live qualification.
+After all gates exit `0`, strict validation covers both active changes, `git diff --check e1a559f37..HEAD` must pass, and a fresh highest-capability read-only review covers that complete range. Any Critical or Important finding ends this follow-up with code, tests, qualification, and review policy frozen; both changes remain blocked and another separately proposed change with fresh evidence is required. Only a clean review may mark the original task `4.4` and authorize the bounded live qualification.
 
 ## Risks / Trade-offs
 
@@ -96,12 +100,14 @@ After all gates exit `0`, a fresh highest-capability read-only review covers the
 
 ## Migration Plan
 
-1. Commit and review this follow-up proposal/design/spec/tasks before code changes.
+1. Keep the original synchronized main spec at `55b660b70`, then commit and review this follow-up proposal/design/spec/tasks before code changes.
 2. Add red regressions for fallback recovery, full-RL compatibility rejection, and each log outcome.
 3. Apply the three minimal fixes in cohesive commits with per-task reviews.
 4. Run focused tests, then one host gameplay/commit/full sequence with separately named transcripts and report.
 5. Run final static validation and an independent whole-range review.
-6. On PASS, mark the follow-up complete and satisfy the original task `4.4`; only then prepare the existing bounded live cohort.
+6. On PASS, satisfy the original task `4.4`; only then prepare and run the existing bounded live cohort. Keep the follow-up delta unsynchronized while the original change remains active.
+7. After the original live tasks complete and the user explicitly confirms archival, archive the original change with `--skip-specs` because its delta is already in main. This prevents its older delta from overwriting the follow-up semantics.
+8. Then synchronize the follow-up delta into the main `adaptive-elite-routing` spec, validate it, and archive the follow-up with `--skip-specs` only after separate explicit user confirmation.
 
 Rollback remains immediate: retain or select conservative routing. No checkpoint, protocol, data-schema, model, or persistent configuration migration is introduced.
 
