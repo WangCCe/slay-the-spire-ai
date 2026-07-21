@@ -7,7 +7,9 @@ import hashlib
 import json
 import logging
 import math
+import os
 import statistics
+import subprocess
 import sys
 import time
 from dataclasses import dataclass
@@ -16,6 +18,10 @@ from types import SimpleNamespace
 
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
+PRODUCTION_PYTHON = Path(r"D:\anaconda\envs\stsai\python.exe")
+MIN_WARMUPS = 10
+MIN_SAMPLES = 100
+FULL_HEIGHT_FIXTURE_SCHEMA = "adaptive-route-map-fixture-v1"
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
@@ -29,6 +35,7 @@ from spirecomm.spire.potion import Potion
 class FixtureBenchmark:
     fixture_id: str
     fixture_sha256: str
+    source: str
     warmup_count: int
     sample_count: int
     durations_ns: tuple[int, ...]
@@ -36,8 +43,206 @@ class FixtureBenchmark:
     aggressive_path: tuple[int, ...]
 
 
+@dataclass(frozen=True)
+class QualificationCase:
+    fixture_id: str
+    fixture: dict
+    fixture_sha256: str
+    source: str
+
+
 def load_route_fixture(path: Path) -> dict:
     return json.loads(path.read_bytes())
+
+
+def validate_full_height_fixture(fixture: dict) -> None:
+    if fixture.get("schema_version") != FULL_HEIGHT_FIXTURE_SCHEMA:
+        raise ValueError(
+            f"invalid full-height fixture schema_version: {fixture.get('schema_version')!r}"
+        )
+    nodes = fixture.get("nodes")
+    if not isinstance(nodes, list):
+        raise ValueError("full-height fixture nodes must be a list")
+
+    by_coordinate = {}
+    for node in nodes:
+        if not isinstance(node, dict):
+            raise ValueError("full-height fixture node must be an object")
+        x = node.get("x")
+        y = node.get("y")
+        if type(x) is not int or x not in range(7):
+            raise ValueError(f"invalid full-height fixture x coordinate: {x!r}")
+        if type(y) is not int or y not in range(15):
+            raise ValueError(f"invalid full-height fixture y coordinate: {y!r}")
+        coordinate = (x, y)
+        if coordinate in by_coordinate:
+            raise ValueError(f"duplicate full-height fixture node: {coordinate}")
+        by_coordinate[coordinate] = node
+
+    if sorted({y for _, y in by_coordinate}) != list(range(15)):
+        raise ValueError("full-height fixture must contain exactly layers y=0..14")
+
+    child_coordinates = {}
+    for coordinate, node in by_coordinate.items():
+        x, y = coordinate
+        children = node.get("children")
+        if not isinstance(children, list):
+            raise ValueError(f"full-height fixture children must be a list at {coordinate}")
+        if y == 14:
+            if children:
+                raise ValueError(f"terminal full-height fixture node has children at {coordinate}")
+            child_coordinates[coordinate] = ()
+            continue
+        if not 1 <= len(children) <= 2:
+            raise ValueError(
+                f"full-height fixture node must have one or two children at {coordinate}"
+            )
+        resolved_children = []
+        for child in children:
+            if not isinstance(child, dict):
+                raise ValueError(f"invalid child at {coordinate}")
+            child_coordinate = (child.get("x"), child.get("y"))
+            if child_coordinate not in by_coordinate:
+                raise ValueError(
+                    f"missing child {child_coordinate} referenced from {coordinate}"
+                )
+            if child_coordinate[1] != y + 1:
+                raise ValueError(
+                    f"non-forward child edge from {coordinate} to {child_coordinate}"
+                )
+            resolved_children.append(child_coordinate)
+        child_coordinates[coordinate] = tuple(resolved_children)
+
+    starts = [coordinate for coordinate in by_coordinate if coordinate[1] == 0]
+    if not starts:
+        raise ValueError("full-height fixture has no valid starts")
+    reachable = set(starts)
+    pending = list(starts)
+    while pending:
+        coordinate = pending.pop()
+        for child_coordinate in child_coordinates[coordinate]:
+            if child_coordinate not in reachable:
+                reachable.add(child_coordinate)
+                pending.append(child_coordinate)
+    if len(reachable) < 35:
+        raise ValueError("full-height fixture requires at least 35 reachable nodes")
+
+
+def _fixture_sha256(fixture: dict) -> str:
+    fixture_bytes = json.dumps(
+        fixture,
+        separators=(",", ":"),
+        sort_keys=True,
+    ).encode("utf-8")
+    return hashlib.sha256(fixture_bytes).hexdigest()
+
+
+def _legacy_branch_nodes(x: int, symbols: list[str]) -> list[dict]:
+    nodes = []
+    for y, symbol in enumerate(symbols):
+        children = [] if y == 14 else [{"x": x, "y": y + 1}]
+        nodes.append({"x": x, "y": y, "symbol": symbol, "children": children})
+    return nodes
+
+
+def _legacy_route_fixture(fixture_id: str, branches: tuple[list[str], ...]) -> dict:
+    return {
+        "schema_version": "adaptive-route-map-fixture-v1",
+        "fixture_id": fixture_id,
+        "game": {
+            "act": 1,
+            "floor": 0,
+            "current_hp": 80,
+            "max_hp": 80,
+            "gold": 99,
+            "deck": [
+                "Bash+",
+                "Pommel Strike",
+                "Headbutt",
+                "Anger",
+                "Shrug It Off",
+                "Iron Wave",
+            ],
+            "potions": ["Fire Potion"],
+            "relics": ["Burning Blood"],
+        },
+        "nodes": [
+            node
+            for x, symbols in enumerate(branches)
+            for node in _legacy_branch_nodes(x, symbols)
+        ],
+    }
+
+
+def legacy_route_fixture(case_name: str) -> dict:
+    safe = ["M"] * 15
+    elite = ["M"] * 15
+    elite[7] = "E"
+    elite[8] = "T"
+    early = list(elite)
+    delayed = ["M"] * 15
+    delayed[8] = "R"
+    delayed[9] = "E"
+    cases = {
+        "optional_elite": _legacy_route_fixture(
+            "legacy-optional-elite-v1",
+            (safe, elite),
+        ),
+        "forced_one_elite": _legacy_route_fixture(
+            "legacy-forced-one-elite-v1",
+            (early, delayed),
+        ),
+        "forced_two_elite": _legacy_route_fixture(
+            "legacy-forced-two-elite-v1",
+            (
+                early[:10] + ["E", "T"] + early[12:],
+                delayed[:12] + ["E"] + delayed[13:],
+            ),
+        ),
+        "hp_drop_replan": _legacy_route_fixture(
+            "legacy-hp-drop-replan-v1",
+            (safe,),
+        ),
+    }
+    return cases[case_name]
+
+
+def _case_from_fixture(fixture: dict, source: str) -> QualificationCase:
+    return QualificationCase(
+        fixture_id=fixture["fixture_id"],
+        fixture=fixture,
+        fixture_sha256=_fixture_sha256(fixture),
+        source=source,
+    )
+
+
+def _case_from_path(path: Path) -> QualificationCase:
+    fixture_bytes = path.read_bytes()
+    fixture = json.loads(fixture_bytes)
+    validate_full_height_fixture(fixture)
+    return QualificationCase(
+        fixture_id=fixture["fixture_id"],
+        fixture=fixture,
+        fixture_sha256=hashlib.sha256(fixture_bytes).hexdigest(),
+        source="full_height_json",
+    )
+
+
+def qualification_cases(fixture_root: Path) -> tuple[QualificationCase, ...]:
+    legacy_cases = tuple(
+        _case_from_fixture(legacy_route_fixture(name), "legacy_characterization")
+        for name in (
+            "optional_elite",
+            "forced_one_elite",
+            "forced_two_elite",
+            "hp_drop_replan",
+        )
+    )
+    full_height_cases = tuple(
+        _case_from_path(fixture_root / f"full_height_{name}.json")
+        for name in ("sparse", "typical", "dense")
+    )
+    return legacy_cases + full_height_cases
 
 
 def _fixture_card(card_name: str) -> SimpleNamespace:
@@ -94,34 +299,54 @@ def timed_route_pair(fixture: dict) -> tuple[int, tuple[int, ...], tuple[int, ..
     return elapsed, tuple(conservative.map_route), tuple(aggressive.map_route)
 
 
-def _validate_route(path: tuple[int, ...], mode: str) -> None:
+def _validate_route(path: tuple[int, ...], mode: str, game_map: Map) -> None:
     if not path:
         raise ValueError(f"empty {mode} route")
     if len(path) != 15:
         raise ValueError(f"incomplete {mode} route: expected 15 nodes, got {len(path)}")
+    for y, x in enumerate(path):
+        node = game_map.get_node(x, y)
+        if node is None:
+            raise ValueError(f"missing {mode} route node at ({x}, {y})")
+        if y == len(path) - 1:
+            continue
+        next_node = game_map.get_node(path[y + 1], y + 1)
+        if next_node is None or not any(
+            child.x == next_node.x and child.y == next_node.y
+            for child in node.children
+        ):
+            raise ValueError(
+                f"illegal {mode} route edge from ({x}, {y}) to ({path[y + 1]}, {y + 1})"
+            )
 
 
 def benchmark_fixture(path: Path, warmups: int, samples: int) -> FixtureBenchmark:
-    fixture_bytes = path.read_bytes()
-    fixture = json.loads(fixture_bytes)
-    fixture_id = fixture["fixture_id"]
-    fixture_sha256 = hashlib.sha256(fixture_bytes).hexdigest()
+    return benchmark_case(_case_from_path(path), warmups, samples)
+
+
+def benchmark_case(
+    case: QualificationCase,
+    warmups: int,
+    samples: int,
+) -> FixtureBenchmark:
+    fixture = case.fixture
+    game_map = Map.from_json(fixture["nodes"])
     if warmups < 0 or samples <= 0:
         raise ValueError("warmups must be non-negative and samples must be positive")
 
     for _ in range(warmups):
         duration, conservative_path, aggressive_path = timed_route_pair(fixture)
         del duration
-        _validate_route(conservative_path, "conservative")
-        _validate_route(aggressive_path, "aggressive")
+        _validate_route(conservative_path, "conservative", game_map)
+        _validate_route(aggressive_path, "aggressive", game_map)
 
     durations = []
     expected_conservative_path = None
     expected_aggressive_path = None
     for _ in range(samples):
         duration, conservative_path, aggressive_path = timed_route_pair(fixture)
-        _validate_route(conservative_path, "conservative")
-        _validate_route(aggressive_path, "aggressive")
+        _validate_route(conservative_path, "conservative", game_map)
+        _validate_route(aggressive_path, "aggressive", game_map)
         if expected_conservative_path is None:
             expected_conservative_path = conservative_path
             expected_aggressive_path = aggressive_path
@@ -132,8 +357,9 @@ def benchmark_fixture(path: Path, warmups: int, samples: int) -> FixtureBenchmar
         durations.append(duration)
 
     return FixtureBenchmark(
-        fixture_id=fixture_id,
-        fixture_sha256=fixture_sha256,
+        fixture_id=case.fixture_id,
+        fixture_sha256=case.fixture_sha256,
+        source=case.source,
         warmup_count=warmups,
         sample_count=samples,
         durations_ns=tuple(durations),
@@ -166,7 +392,26 @@ def configure_route_logging(log_path: Path) -> logging.Handler:
     return handler
 
 
-def benchmark_report(results: tuple[FixtureBenchmark, ...]) -> dict:
+def validate_qualification_counts(warmups: int, samples: int) -> None:
+    if warmups < MIN_WARMUPS:
+        raise ValueError(f"qualification requires at least {MIN_WARMUPS} warmups")
+    if samples < MIN_SAMPLES:
+        raise ValueError(f"qualification requires at least {MIN_SAMPLES} samples")
+
+
+def ensure_production_interpreter(executable: str | Path | None = None) -> None:
+    actual = os.path.normcase(os.path.normpath(str(executable or sys.executable)))
+    expected = os.path.normcase(os.path.normpath(str(PRODUCTION_PYTHON)))
+    if actual != expected:
+        raise RuntimeError(
+            f"qualification requires production interpreter {PRODUCTION_PYTHON}; got {actual}"
+        )
+
+
+def benchmark_report(
+    results: tuple[FixtureBenchmark, ...],
+    provenance: dict | None = None,
+) -> dict:
     aggregate_durations = tuple(
         duration
         for result in results
@@ -177,14 +422,16 @@ def benchmark_report(results: tuple[FixtureBenchmark, ...]) -> dict:
         aggregate_metrics["median_ms"] <= 25.0
         and aggregate_metrics["max_ms"] <= 100.0
     )
-    return {
+    report = {
         "schema_version": "adaptive-route-candidate-poc-v1",
         "fixtures": [
             {
                 "fixture_id": result.fixture_id,
                 "fixture_sha256": result.fixture_sha256,
+                "source": result.source,
                 "warmup_count": result.warmup_count,
                 "sample_count": result.sample_count,
+                "durations_ns": list(result.durations_ns),
                 "metrics": _metrics(result.durations_ns),
                 "conservative_path": list(result.conservative_path),
                 "aggressive_path": list(result.aggressive_path),
@@ -194,9 +441,37 @@ def benchmark_report(results: tuple[FixtureBenchmark, ...]) -> dict:
         "aggregate": {
             "fixture_count": len(results),
             "sample_count": len(aggregate_durations),
+            "durations_ns": list(aggregate_durations),
             "metrics": aggregate_metrics,
         },
         "status": "PASS" if passed else "FAIL",
+    }
+    if provenance is not None:
+        report["provenance"] = provenance
+    return report
+
+
+def benchmark_provenance() -> dict:
+    try:
+        tested_head = subprocess.run(
+            ["git", "rev-parse", "HEAD"],
+            cwd=PROJECT_ROOT,
+            capture_output=True,
+            check=True,
+            text=True,
+        ).stdout.strip()
+        task1_status = subprocess.run(
+            ["git", "status", "--short", "--", "analysis_scripts", "tests", "reports", "openspec"],
+            cwd=PROJECT_ROOT,
+            capture_output=True,
+            check=True,
+            text=True,
+        ).stdout.strip()
+    except (OSError, subprocess.CalledProcessError):
+        return {"tested_head": "unavailable", "task1_worktree": "unavailable"}
+    return {
+        "tested_head": tested_head,
+        "task1_worktree": "dirty" if task1_status else "clean",
     }
 
 
@@ -212,17 +487,20 @@ def parse_args() -> argparse.Namespace:
 
 def main() -> int:
     args = parse_args()
+    try:
+        validate_qualification_counts(args.warmups, args.samples)
+        ensure_production_interpreter()
+        cases = qualification_cases(args.fixture_root)
+    except (RuntimeError, ValueError) as error:
+        print(f"qualification failed: {error}", file=sys.stderr)
+        return 2
     handler = configure_route_logging(args.log)
     try:
-        fixture_paths = tuple(
-            args.fixture_root / f"full_height_{name}.json"
-            for name in ("sparse", "typical", "dense")
-        )
         results = tuple(
-            benchmark_fixture(path, args.warmups, args.samples)
-            for path in fixture_paths
+            benchmark_case(case, args.warmups, args.samples)
+            for case in cases
         )
-        report = benchmark_report(results)
+        report = benchmark_report(results, benchmark_provenance())
         args.output.parent.mkdir(parents=True, exist_ok=True)
         args.output.write_text(
             json.dumps(report, indent=2, sort_keys=True) + "\n",

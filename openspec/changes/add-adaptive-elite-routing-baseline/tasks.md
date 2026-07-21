@@ -3,7 +3,7 @@
 - [x] 1.1 Add characterization fixtures that lock conservative and aggressive chosen nodes, node priorities, elite tie breaks, forced one- and two-elite routes, and HP-drop replanning on identical inputs before shared planner refactoring.
 - [x] 1.2 Build a read-only paired-route POC over every Task 1.1 fixture plus three versioned 15-layer, seven-column Act 1 fixtures with at least 35 reachable nodes and sparse, typical, and dense elite/rest placement, without adding adaptive gameplay behavior.
 - [x] 1.3 On each full-height fixture exclude ten warm-up pairs, time 100 pairs from immediately before conservative generation through aggressive completion on identical separate-agent state using `perf_counter_ns` and normal logging, and report fixture JSON/SHA-256, command, interpreter, per-fixture and aggregate counts, median, p95, and maximum.
-- [x] 1.4 Stop and revise the proposal if any candidate is incomplete, median paired latency exceeds 25 ms, or maximum paired latency exceeds 100 ms; proceed only when the feasibility gate passes.
+- [ ] 1.4 Stop and revise the proposal if any candidate is incomplete, median paired latency exceeds 25 ms, or maximum paired latency exceeds 100 ms; proceed only when the feasibility gate passes. BLOCKED: 2026-07-21 qualification observed a 105.1622 ms measured pair in `legacy-forced-one-elite-v1`.
 
 ## 2. Regression Coverage
 

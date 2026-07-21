@@ -1,5 +1,8 @@
 from types import SimpleNamespace
 
+import pytest
+
+from analysis_scripts import benchmark_adaptive_route_candidates as benchmark
 from spirecomm.ai.agent import SimpleAgent
 from spirecomm.ai.heuristics.map_routing import AdaptiveMapRouter
 from spirecomm.communication.action import ChooseMapNodeAction, RestAction
@@ -716,35 +719,14 @@ def _add_nodes(game_map, *nodes):
 
 
 def _optional_elite_route_map():
-    game_map = Map()
-    safe_nodes = [Node(0, y, "M") for y in range(15)]
-    elite_nodes = [Node(1, y, "M") for y in range(15)]
-    elite_nodes[7].symbol = "E"
-    elite_nodes[8].symbol = "T"
-    for nodes in (safe_nodes, elite_nodes):
-        for parent, child in zip(nodes, nodes[1:]):
-            parent.children = [child]
-    _add_nodes(game_map, *safe_nodes, *elite_nodes)
-    return game_map, safe_nodes[0], elite_nodes[0]
+    game_map = Map.from_json(benchmark.legacy_route_fixture("optional_elite")["nodes"])
+    return game_map, game_map.get_node(0, 0), game_map.get_node(1, 0)
 
 
 def _forced_elite_route_map(elite_count):
-    game_map = Map()
-    early_nodes = [Node(0, y, "M") for y in range(15)]
-    delayed_nodes = [Node(1, y, "M") for y in range(15)]
-    early_nodes[7].symbol = "E"
-    early_nodes[8].symbol = "T"
-    delayed_nodes[9].symbol = "E"
-    delayed_nodes[8].symbol = "R"
-    if elite_count == 2:
-        early_nodes[10].symbol = "E"
-        early_nodes[11].symbol = "T"
-        delayed_nodes[12].symbol = "E"
-    for nodes in (early_nodes, delayed_nodes):
-        for parent, child in zip(nodes, nodes[1:]):
-            parent.children = [child]
-    _add_nodes(game_map, *early_nodes, *delayed_nodes)
-    return game_map, early_nodes[0], delayed_nodes[0]
+    case_name = "forced_one_elite" if elite_count == 1 else "forced_two_elite"
+    game_map = Map.from_json(benchmark.legacy_route_fixture(case_name)["nodes"])
+    return game_map, game_map.get_node(0, 0), game_map.get_node(1, 0)
 
 
 def test_legacy_modes_lock_optional_elite_choice_on_identical_map():
@@ -799,13 +781,12 @@ def test_legacy_modes_preserve_forced_two_elite_path():
     assert aggressive.make_map_choice().node == early_start
 
 
-def test_legacy_modes_only_replan_after_configured_hp_drop(monkeypatch):
-    game_map = Map()
-    current = Node(0, 1, "M")
-    next_node = Node(0, 2, "M")
-    current.children = [next_node]
-    _add_nodes(game_map, current, next_node)
-    agent = _route_agent("conservative", game_map, hp=80, max_hp=80)
+@pytest.mark.parametrize("elite_mode", ("conservative", "aggressive"))
+def test_legacy_modes_only_replan_after_configured_hp_drop(monkeypatch, elite_mode):
+    game_map = Map.from_json(benchmark.legacy_route_fixture("hp_drop_replan")["nodes"])
+    current = game_map.get_node(0, 1)
+    next_node = game_map.get_node(0, 2)
+    agent = _route_agent(elite_mode, game_map, hp=80, max_hp=80)
     agent.map_route = [0, 0, 0]
     agent._last_route_hp_pct = 1.0
     agent.game.screen = SimpleNamespace(
