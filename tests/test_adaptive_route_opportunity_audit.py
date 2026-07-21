@@ -372,6 +372,8 @@ def test_loads_valid_resource_caps_and_budget_selection_boundaries(tmp_path: Pat
             relic="unavailable",
             elite_seen="unavailable",
             last_rest_floor="unavailable",
+            budget="0",
+            selected="conservative",
         ),
     ]
     source = _write_log(
@@ -404,11 +406,32 @@ def test_accepts_invalid_state_only_with_unavailable_state_scalars():
         relic="unavailable",
         elite_seen="unavailable",
         last_rest_floor="unavailable",
+        budget="0",
+        selected="conservative",
     )
 
     fields, _, _ = audit.parse_adaptive_payload(payload)
 
     assert fields["state_valid"] == "false"
+
+
+def test_rejects_invalid_state_with_aggressive_budget_using_log_provenance(
+    tmp_path: Path,
+):
+    payload = _payload(
+        state_valid="false",
+        hp="unavailable",
+        hp_pct="unavailable",
+        deck="unavailable",
+        potion="unavailable",
+        relic="unavailable",
+        elite_seen="unavailable",
+        last_rest_floor="unavailable",
+        budget="1",
+        selected="aggressive",
+    )
+
+    _assert_rejected_live_line(tmp_path, "invalid-state-aggressive.log", payload)
 
 
 @pytest.mark.parametrize(

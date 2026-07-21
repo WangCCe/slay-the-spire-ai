@@ -259,6 +259,10 @@ def _validate_fields(
         raise EvidenceError("adaptive candidate_pair is invalid")
     if fields["selected"] not in {"conservative", "aggressive"}:
         raise EvidenceError("adaptive selected mode is invalid")
+    if fields["state_valid"] == "false" and (
+        budget != 0 or fields["selected"] != "conservative"
+    ):
+        raise EvidenceError("invalid state must use zero budget and conservative selection")
     if budget != int(fields["selected"] == "aggressive"):
         raise EvidenceError("budget does not match selected mode")
     outcome = fields["outcome"]
