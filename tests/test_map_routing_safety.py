@@ -2078,7 +2078,9 @@ def test_adaptive_history_resets_on_act_change():
     agent, current, _, _ = _mid_act_adaptive_route_agent()
     agent._update_adaptive_route_history()
     agent.game.act = 2
-    agent.game.screen.current_node = Node(6, 2, "M")
+    next_act_node = Node(6, 2, "M")
+    agent.game.map.add_node(next_act_node)
+    agent.game.screen.current_node = next_act_node
 
     agent._update_adaptive_route_history()
 
@@ -2104,6 +2106,63 @@ def test_adaptive_history_records_latest_rest_and_elite():
     assert agent._adaptive_visited_nodes == {(1, 3), (2, 5)}
     assert agent._adaptive_elite_seen is True
     assert agent._adaptive_last_rest_floor == 4
+
+
+@pytest.mark.parametrize("invalid_kind", ("missing", "mismatched"))
+def test_adaptive_history_waits_for_a_valid_matching_map_node(
+        monkeypatch, invalid_kind):
+    agent, _, _, _ = _mid_act_adaptive_route_agent()
+    current = Node(2, 5, "E")
+    agent.game.screen.current_node = current
+
+    if invalid_kind == "mismatched":
+        original_get_node = agent.game.map.get_node
+        monkeypatch.setattr(
+            agent.game.map,
+            "get_node",
+            lambda _x, _y: Node(3, 5, "E"),
+        )
+
+    agent._update_adaptive_route_history()
+
+    assert agent._adaptive_visited_nodes == set()
+    assert agent._adaptive_elite_seen is False
+
+    valid = Node(current.x, current.y, "E")
+    agent.game.map.add_node(valid)
+    if invalid_kind == "mismatched":
+        monkeypatch.setattr(agent.game.map, "get_node", original_get_node)
+
+    agent._update_adaptive_route_history()
+
+    assert agent._adaptive_visited_nodes == {(current.x, current.y)}
+    assert agent._adaptive_elite_seen is True
+
+
+def test_adaptive_route_summary_requires_chosen_route_commit(monkeypatch, caplog):
+    caplog.set_level(logging.INFO)
+    game_map, safe_start, elite_start = _optional_elite_route_map()
+    agent = _route_agent("adaptive", game_map, deck=_prepared_act1_deck())
+    agent.game.potions = [_potion("Fire Potion")]
+    _set_start_screen(agent, safe_start, elite_start)
+    original_route = list(agent.map_route)
+    original_metadata = (agent._last_route_hp_pct, agent._last_route_floor)
+
+    monkeypatch.setattr(
+        agent,
+        "_log_chosen_map_route",
+        lambda _route: (_ for _ in ()).throw(RuntimeError("chosen route log failed")),
+    )
+
+    with pytest.raises(RuntimeError, match="chosen route log failed"):
+        agent.generate_map_route()
+
+    assert agent.map_route == original_route
+    assert (agent._last_route_hp_pct, agent._last_route_floor) == original_metadata
+    assert not any(
+        record.getMessage().startswith("[ADAPTIVE_ROUTE]")
+        for record in caplog.records
+    )
 
 
 @pytest.mark.parametrize("outcome", ("success", "forced", "fallback", "unsupported"))

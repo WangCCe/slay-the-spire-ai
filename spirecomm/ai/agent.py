@@ -2996,6 +2996,7 @@ class SimpleAgent:
         )
 
     def generate_map_route(self):
+        adaptive_summary = None
         if str(self.elite_mode or "").lower() == "adaptive":
             context = DecisionContext(self.game)
             if self.chosen_class != PlayerClass.IRONCLAD:
@@ -3029,7 +3030,7 @@ class SimpleAgent:
                     conservative = None
                     aggressive = None
                     selected_mode = "conservative"
-            self._log_adaptive_route_summary(
+            adaptive_summary = (
                 state,
                 conservative,
                 aggressive,
@@ -3039,10 +3040,14 @@ class SimpleAgent:
         else:
             route = self._build_map_route(self.elite_mode)
 
-        self.map_route = route
-        self._last_route_hp_pct = self._current_route_hp_pct()
-        self._last_route_floor = self.game.floor
+        route_hp_pct = self._current_route_hp_pct()
+        route_floor = self.game.floor
         self._log_chosen_map_route(route)
+        self.map_route = route
+        self._last_route_hp_pct = route_hp_pct
+        self._last_route_floor = route_floor
+        if adaptive_summary is not None:
+            self._log_adaptive_route_summary(*adaptive_summary)
         return route
 
     def _route_should_minimize_elites(self, elite_mode_override=None):
@@ -3214,10 +3219,17 @@ class SimpleAgent:
         coordinate = (x, y)
         if coordinate in self._adaptive_visited_nodes:
             return
-        self._adaptive_visited_nodes.add(coordinate)
         map_node = self.game.map.get_node(x, y)
-        if map_node is None:
+        map_x = getattr(map_node, "x", None)
+        map_y = getattr(map_node, "y", None)
+        if (
+                map_node is None
+                or not self._adaptive_valid_coordinate(map_x)
+                or not self._adaptive_valid_coordinate(map_y)
+                or (map_x, map_y) != coordinate
+        ):
             return
+        self._adaptive_visited_nodes.add(coordinate)
         if map_node.symbol == "E":
             self._adaptive_elite_seen = True
         elif map_node.symbol == "R":
