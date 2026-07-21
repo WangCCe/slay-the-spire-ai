@@ -255,3 +255,32 @@ The final artifact makes the four fallback records auditable but does not alter
 the treatment conclusion. Keep conservative. No tuning, cohort rerun, training,
 or policy promotion is authorized. Any oracle or value study is a separate
 change.
+
+## Verification
+
+Focused audit test:
+
+```powershell
+D:\anaconda\envs\stsai\python.exe -m pytest -q -p no:cacheprovider --basetemp .pytest_adaptive_route_audit_final tests/test_adaptive_route_opportunity_audit.py
+```
+
+Result: exit `0`; `161 passed in 4.29s`.
+
+Repository commit gate:
+
+```powershell
+D:\anaconda\envs\stsai\python.exe scripts\run_test_gate.py commit
+```
+
+Resolved pytest command:
+
+```powershell
+D:\anaconda\envs\stsai\python.exe -m pytest -q -p no:cacheprovider --basetemp D:\PycharmProjects\slay-the-spire-ai\.pytest_gates\commit-335f1d1c4889461b86fd196cfabbaa94 --ignore=tests/test_noncombat_outcome_evidence_runner.py --ignore=tests/test_noncombat_outcome_evidence_verifier.py
+```
+
+Result: exit `0`; `3101 passed in 250.15s`; gate duration `254.18s`.
+
+`openspec validate add-adaptive-route-opportunity-audit --strict` returned exit
+`0`. Both the committed range from `d333a2600` and the final working-tree diff
+passed `git diff --check`. No full pytest profile was run: this isolated
+analysis-only change uses the focused file plus the registered `commit` gate.

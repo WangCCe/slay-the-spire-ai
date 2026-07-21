@@ -265,7 +265,7 @@ Add a failing regression requiring one deterministic `fallbacks` entry per callb
 - Create: `reports/adaptive_route_opportunity_audit_20260722.md`
 - Modify: `openspec/changes/add-adaptive-route-opportunity-audit/tasks.md`
 
-- [ ] **Step 1: Preserve execution lineage and run the final audit without launching the game**
+- [x] **Step 1: Preserve execution lineage and run the final audit without launching the game**
 
 Run the CLI with these ordered sources:
 
@@ -275,15 +275,15 @@ D:\anaconda\envs\stsai\python.exe analysis_scripts\adaptive_route_opportunity_au
 
 Expected final invocation: exit `0`, integrity valid, no game process launched. Preserve the earlier fail-closed artifact identity and diagnostic, reviewed transition-slot fix, and superseding artifact identity in the durable Markdown; do not imply that only one analysis invocation occurred.
 
-- [ ] **Step 2: Verify registered evidence checks**
+- [x] **Step 2: Verify registered evidence checks**
 
 Read the JSON and assert source hashes plus `346` raw occurrences, `173` unique records, multiplicity distribution `{2: 173}`, `58` zero-versus-one opportunities, `54` in Act 1, one aggressive selection, four separately auditable callback-independent candidate-generation fallbacks with total multiplicity eight, same immediate coordinate, revocation before divergence, and zero realized optional elites.
 
-- [ ] **Step 3: Write the derivative report**
+- [x] **Step 3: Write the derivative report**
 
 Document the exact command, failed-then-resumed analysis lineage, hashes, integrity checks, opportunity funnel, sole aggressive case, candidate-generation fallbacks, limitations, and decision: keep conservative, do not tune or rerun this cohort, and treat a later oracle/value study as a separate change. Label pre/post hashes and game-process counts as operator-observed controls unless they are explicit fields in the final JSON.
 
-- [ ] **Step 4: Mark OpenSpec POC tasks complete**
+- [x] **Step 4: Mark OpenSpec POC tasks complete**
 
 Change tasks `4.1` through `4.3` to `[x]` only when artifacts and checks agree.
 
@@ -293,7 +293,7 @@ Change tasks `4.1` through `4.3` to `[x]` only when artifacts and checks agree.
 - Modify: `reports/adaptive_route_opportunity_audit_20260722.md`
 - Modify: `openspec/changes/add-adaptive-route-opportunity-audit/tasks.md`
 
-- [ ] **Step 1: Run focused verification**
+- [x] **Step 1: Run focused verification**
 
 ```powershell
 D:\anaconda\envs\stsai\python.exe -m pytest -q -p no:cacheprovider --basetemp .pytest_adaptive_route_audit_final tests/test_adaptive_route_opportunity_audit.py
@@ -301,7 +301,7 @@ D:\anaconda\envs\stsai\python.exe -m pytest -q -p no:cacheprovider --basetemp .p
 
 Record test count, duration, and exit code in the report.
 
-- [ ] **Step 2: Run the commit gate**
+- [x] **Step 2: Run the commit gate**
 
 ```powershell
 D:\anaconda\envs\stsai\python.exe scripts\run_test_gate.py commit
@@ -309,7 +309,7 @@ D:\anaconda\envs\stsai\python.exe scripts\run_test_gate.py commit
 
 Record the gate's resolved pytest command, test count, duration, and exit code. Stop on nonzero.
 
-- [ ] **Step 3: Validate planning and diff boundaries**
+- [x] **Step 3: Validate planning and diff boundaries**
 
 ```powershell
 openspec validate add-adaptive-route-opportunity-audit --strict
