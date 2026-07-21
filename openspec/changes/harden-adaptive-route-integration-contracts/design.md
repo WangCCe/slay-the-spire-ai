@@ -30,10 +30,10 @@ The initial adaptive path continues to validate the complete map and both comple
 
 1. Resolve a usable active origin and validate the existing absolute route-history prefix. At an act's initial map choice, an absent/sentinel current node plus advertised `y=0` next nodes is a valid `start_y=0` origin with an empty current-act prefix. A stale complete `map_route` from the previous act is ignored rather than copied or treated as current-act history. An absent current node with nonzero-row next nodes is invalid.
 2. Invoke `_build_map_route("conservative")` exactly once from the current origin.
-3. Describe and validate that returned route against the active origin, history prefix, map height, coordinates, edges, and completion boundary.
+3. Describe and validate that returned route against the active origin, history prefix, map height, lookup-key-to-node coordinate identity for every selected history/future node, edges, and completion boundary.
 4. Return the validated conservative candidate, derive its route, and commit it with reason `candidate_generation_failed` only after chosen-path logging succeeds.
 
-This permits recovery from an irrelevant malformed earlier/unreachable node that the legacy mid-act planner never visits, and it preserves first-map recovery without inventing a current node or reusing a previous-act prefix. It does not recursively retry. Invalid current-act history, a missing/invalid non-initial origin, an exception from the conservative builder, invalid returned route data, or an unexpected selector/programming error still propagates without route/metadata/log mutation.
+This permits recovery from an irrelevant malformed earlier/unreachable node that the legacy mid-act planner never visits, and it preserves first-map recovery without inventing a current node or reusing a previous-act prefix. After a valid initial route commits, map-choice action selection uses route index `0` for either an absent current node or the existing negative-row start sentinel. It does not recursively retry. Invalid current-act history, a missing/invalid non-initial origin, selected nodes whose internal coordinates differ from their map lookup keys, an exception from the conservative builder, invalid returned route data, or an unexpected selector/programming error still propagates without route/metadata/log mutation.
 
 Alternatives considered:
 

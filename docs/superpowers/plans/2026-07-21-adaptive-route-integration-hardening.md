@@ -46,11 +46,11 @@ assert (agent._last_route_hp_pct, agent._last_route_floor) != original_metadata
 assert "candidate_generation_failed" in caplog.text
 ```
 
-Add the same malformed earlier-node condition to `_late_adaptive_route_agent(13)` and assert the floor-14 decision retains its complete absolute prefix and invokes one conservative builder. Extend `test_adaptive_act_start_fallback_uses_one_full_conservative_builder` with both a naturally empty route and a stale previous-act full route; in both cases assert a valid empty current-act `start_y=0` prefix, one builder call, and no previous-act prefix copied into the new route.
+Add the same malformed earlier-node condition to `_late_adaptive_route_agent(13)` and assert the floor-14 decision retains its complete absolute prefix and invokes one conservative builder. Parameterize the first-map fallback over `current_node=None` and the existing `Node(-1, -1, "M")` sentinel, and over a naturally empty route versus a stale previous-act full route. Exercise `make_map_choice()` rather than only `generate_map_route()`; assert a valid empty current-act `start_y=0` prefix, one builder call, no previous-act prefix copied, and the `ChooseMapNodeAction` selected from route index `0`.
 
 - [ ] **Step 2: Add red integrity regressions for invalid initial origin and fallback output**
 
-Add an invalid-origin test where the screen has no usable current node but advertises only nonzero-row next nodes. Inject candidate failure and assert `_AdaptiveRouteCandidateGenerationError`, zero builder calls, unchanged route/metadata, and no `[ADAPTIVE_ROUTE]` record. Retain existing invalid mid-act history, truncated fallback, builder exception, and selector programming-error tests as the no-retry matrix.
+Add an invalid-origin test where the screen has no usable current node but advertises only nonzero-row next nodes. Add one test monkeypatching the active-origin lookup to return a node whose internal coordinates differ from the requested key, and one fallback test doing the same for a selected future route node. Assert `_AdaptiveRouteCandidateGenerationError`, zero builder calls for the invalid origin, exactly one builder call for invalid returned-route data, unchanged route/metadata, and no `[ADAPTIVE_ROUTE]` record. Retain existing invalid mid-act history, truncated fallback, builder exception, and selector programming-error tests as the no-retry matrix.
 
 - [ ] **Step 3: Run only the new recovery nodes and verify RED**
 
@@ -96,7 +96,7 @@ def _adaptive_fallback_context(self):
     return start_y, current_map_node, next_nodes, history_prefix
 ```
 
-Do not call `_validate_adaptive_candidate_map()` here. `_adaptive_candidate_origin()` validates the active current-node lookup; `_validated_route_history_prefix()` validates committed coordinates/edges; `_describe_adaptive_route_candidate()` validates the returned full route, next-node start, active edge, bounds, coordinates, symbols, completion, and future edges.
+Do not call `_validate_adaptive_candidate_map()` here. Strengthen `_candidate_map_node(x, y)` so every non-`None` lookup requires `(node.x, node.y) == (x, y)` and otherwise raises `_AdaptiveRouteCandidateGenerationError("candidate map node coordinates are invalid")`. `_adaptive_candidate_origin()` then validates active-origin identity, `_validated_route_history_prefix()` validates every committed coordinate/edge, and `_describe_adaptive_route_candidate()` validates every returned-route coordinate identity plus next-node start, active edge, bounds, symbols, completion, and future edges.
 
 - [ ] **Step 5: Return the validated fallback candidate and commit its route**
 
@@ -129,6 +129,16 @@ route = self._route_from_adaptive_candidate(fallback_candidate)
 ```
 
 For this task, pass the retained candidate through the existing summary slot so all old log tests stay green; Task 3 will apply the final availability matrix.
+
+In `make_map_choice()`, derive the route index without dereferencing an absent initial node:
+
+```python
+current_node = getattr(self.game.screen, "current_node", None)
+route_index = 0 if current_node is None else current_node.y + 1
+chosen_x = self.map_route[route_index]
+```
+
+The generation path has already rejected absent origins whose next nodes are not on `y=0`; do not normalize other malformed current-node objects here.
 
 - [ ] **Step 6: Run recovery and complete routing suites**
 

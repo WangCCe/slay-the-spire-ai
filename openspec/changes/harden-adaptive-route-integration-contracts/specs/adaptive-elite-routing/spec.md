@@ -32,7 +32,7 @@ The stable compatibility error SHALL be `--elite-route adaptive is unsupported f
 ### Requirement: Two-candidate adaptive selection
 The adaptive planner SHALL generate one complete route with the existing conservative behavior and one complete route with the existing aggressive behavior. It SHALL select the aggressive candidate only when conservative contains zero elites, aggressive contains exactly one, and that elite passes every hard gate. It SHALL select conservative for every other elite-count pair and SHALL NOT compare the modes' incompatible raw route scores or enumerate the full path set.
 
-If adaptive candidate generation or strict whole-map validation raises the dedicated candidate-generation error while the active origin and committed history remain valid, the system SHALL invoke the existing conservative builder exactly once without repeating strict whole-map validation. It SHALL validate the returned complete route against the active origin, validated history prefix, map bounds, coordinates, edges, and completion boundary before committing it with reason `candidate_generation_failed`.
+If adaptive candidate generation or strict whole-map validation raises the dedicated candidate-generation error while the active origin and committed history remain valid, the system SHALL invoke the existing conservative builder exactly once without repeating strict whole-map validation. It SHALL validate the returned complete route against the active origin, validated history prefix, map bounds, lookup-key-to-node coordinate identity for every selected history and future node, edges, and completion boundary before committing it with reason `candidate_generation_failed`.
 
 #### Scenario: Prepared aggressive candidate is recoverable
 - **WHEN** conservative contains zero elites, aggressive contains exactly one Act 1 elite, that elite has a rest site within two path nodes before or after it, and all state gates pass
@@ -72,9 +72,15 @@ If adaptive candidate generation or strict whole-map validation raises the dedic
 - **THEN** the system SHALL treat `start_y=0` with an empty current-act history prefix as a valid initial origin
 - **AND** SHALL ignore any stale complete `map_route` retained from the previous act rather than copy it into the new route or reject recovery
 - **AND** SHALL invoke the existing conservative planner exactly once and commit only its validated complete route with reason `candidate_generation_failed`
+- **AND** map-choice action selection SHALL use route index `0` for both an absent current node and the negative-row start sentinel
+
+#### Scenario: Selected route node coordinates do not match their lookup keys
+- **WHEN** the active origin or any selected history or future route node is returned from map coordinate `(x,y)` but the node's own coordinates differ from `(x,y)`
+- **THEN** the system SHALL propagate the candidate integrity error without another fallback or planner call
+- **AND** route, replan metadata, and adaptive decision logs SHALL remain unchanged
 
 #### Scenario: Recovery integrity is invalid
-- **WHEN** the active origin is absent with nonzero-row next nodes, current-act committed history is invalid, the conservative builder raises, its returned route is invalid, or an unexpected selector or programming error occurs
+- **WHEN** the active origin is absent with nonzero-row next nodes, current-act committed history is invalid, the conservative builder raises, its returned route is otherwise invalid, or an unexpected selector or programming error occurs
 - **THEN** the error SHALL propagate without adaptive or conservative retry
 - **AND** route, replan metadata, and adaptive decision logs SHALL remain unchanged
 
