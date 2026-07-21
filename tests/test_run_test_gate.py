@@ -131,6 +131,21 @@ def test_load_manifest_rejects_duplicate_json_key(temporary_repo: Path) -> None:
         load_manifest(path, temporary_repo)
 
 
+def test_load_manifest_rejects_invalid_utf8(temporary_repo: Path) -> None:
+    path = temporary_repo / "test_gate_manifest.json"
+    path.write_bytes(b"\xff")
+
+    with pytest.raises(ManifestError, match="UTF-8"):
+        load_manifest(path, temporary_repo)
+
+
+def test_load_manifest_rejects_malformed_pytest_ini(temporary_repo: Path) -> None:
+    (temporary_repo / "pytest.ini").write_text("[pytest", encoding="utf-8")
+
+    with pytest.raises(ManifestError, match="pytest.ini"):
+        load_manifest(_write_manifest(temporary_repo, VALID_MANIFEST), temporary_repo)
+
+
 @pytest.mark.parametrize(
     ("name", "mutate", "message"),
     [

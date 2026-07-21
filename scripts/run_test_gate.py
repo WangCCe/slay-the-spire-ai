@@ -57,7 +57,11 @@ def _reject_duplicate_keys(pairs: list[tuple[str, Any]]) -> dict[str, Any]:
 def _configured_test_paths(repo_root: Path) -> tuple[Path, ...]:
     config_path = repo_root / "pytest.ini"
     parser = configparser.ConfigParser()
-    if not parser.read(config_path, encoding="utf-8"):
+    try:
+        read_paths = parser.read(config_path, encoding="utf-8")
+    except (UnicodeDecodeError, configparser.Error) as error:
+        raise ManifestError(f"unable to read pytest.ini: {config_path}") from error
+    if not read_paths:
         raise ManifestError(f"pytest configuration does not exist: {config_path}")
     if not parser.has_option("pytest", "testpaths"):
         raise ManifestError("pytest.ini must configure testpaths")
@@ -198,6 +202,8 @@ def load_manifest(path: Path, repo_root: Path) -> TestGateManifest:
         raw_manifest = json.loads(
             path.read_text(encoding="utf-8"), object_pairs_hook=_reject_duplicate_keys
         )
+    except UnicodeDecodeError as error:
+        raise ManifestError(f"manifest is not valid UTF-8: {path}") from error
     except (OSError, json.JSONDecodeError) as error:
         raise ManifestError(f"unable to read manifest: {path}") from error
 
