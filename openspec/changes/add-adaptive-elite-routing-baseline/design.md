@@ -125,7 +125,7 @@ The canonical automated qualification record at `reports/adaptive_elite_routing_
 
 The post-attempt evidence isolates the failure to the execution environment: pytest `9.0.2` executes `cleanup_dead_symlinks(basetemp)`, which calls `root.iterdir()` before inspecting or unlinking any child; a direct single `tmp_path` node passed; that same node under parent-Python to pytest-child execution failed; nested Python `mkdir(mode=0o700)` followed immediately by `iterdir()` failed in the managed sandbox; and the same minimal nested mkdir/iterdir operation passed under host permission. This proves a managed-sandbox ACL failure rather than an adaptive-route or test-assertion failure.
 
-Exactly one corrected host-permission attempt is authorized, running the unchanged commands below in this order with the existing manifest, thresholds, and gate-generated unique basetemps:
+Exactly one corrected host-permission sequence is authorized, running the unchanged commands below in this order with the existing manifest, thresholds, and gate-generated unique basetemps:
 
 ```powershell
 D:\anaconda\envs\stsai\python.exe scripts\run_test_gate.py gameplay
@@ -133,7 +133,7 @@ D:\anaconda\envs\stsai\python.exe scripts\run_test_gate.py commit
 D:\anaconda\envs\stsai\python.exe scripts\run_test_gate.py full
 ```
 
-Focused verification is not rerun because the original direct focused command already passed `183` tests. Each corrected gate gets one attempt only. The known stream-silence node retains its existing one-node diagnostic allowance only when it is the sole full-gate failure; every other corrected-run failure stops qualification without code/test changes or another retry. The corrected result is written only to `reports/adaptive_elite_routing_automated_qualification_20260721_attempt-2-host.md`. This execution correction does not weaken POC no-retry rules, live promotion thresholds, no-training constraints, conservative default/rollback behavior, or the outer `victory=true` objective.
+Focused verification is not rerun because the original direct focused command already passed `183` tests. Run `gameplay`, then `commit`, then `full` only while the preceding gate exited `0`; stop immediately at the first nonzero result. The known stream-silence node retains its existing one-node diagnostic allowance only when `full` is reached and it is the sole full-gate failure. Task `4.3b` completes when this sequence is executed according to that stop rule and its evidence is preserved. Qualification success requires all three corrected gates to exit `0` subject only to that existing full-node handling. The corrected result is written only to `reports/adaptive_elite_routing_automated_qualification_20260721_attempt-2-host.md`; `4.4` and live qualification are forbidden unless all-three success exists. Final review begins only after that success. A Critical or Important review finding blocks this qualification and requires a follow-up change and new evidence, not a same-attempt code fix or focused-test rerun. This execution correction does not weaken POC no-retry rules, live promotion thresholds, no-training constraints, conservative default/rollback behavior, or the outer `victory=true` objective.
 
 ## Risks / Trade-offs
 

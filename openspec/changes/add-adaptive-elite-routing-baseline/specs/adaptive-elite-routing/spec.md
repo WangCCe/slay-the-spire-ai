@@ -139,15 +139,31 @@ The canonical automated qualification report at `reports/adaptive_elite_routing_
 
 #### Scenario: One corrected host-permission attempt is authorized
 - **WHEN** the attempt-1 ACL evidence is preserved
-- **THEN** exactly one host-permission execution each of the unchanged `gameplay`, `commit`, and `full` gate commands SHALL be permitted with the existing manifest, thresholds, and gate-generated unique basetemps
+- **THEN** exactly one host-permission sequence of the unchanged `gameplay`, `commit`, and `full` gate commands SHALL be permitted with the existing manifest, thresholds, and gate-generated unique basetemps
+- **AND** the commands SHALL run in that order and SHALL stop immediately at the first nonzero result
 - **AND** focused verification SHALL NOT be rerun because the direct focused command already passed `183` tests
 - **AND** the corrected result SHALL be written only to `reports/adaptive_elite_routing_automated_qualification_20260721_attempt-2-host.md`
 - **AND** the original attempt-1 failures SHALL remain failures
+
+#### Scenario: Corrected sequence succeeds
+- **WHEN** `gameplay`, `commit`, and `full` each exit `0`, subject only to the existing sole stream-silence full-node handling
+- **THEN** task `4.3b` MAY be marked complete once that ordered execution evidence is preserved
+- **AND** final review under task `4.4` MAY begin
+- **AND** live qualification MAY remain gated by the remaining stated requirements
 
 #### Scenario: Corrected automated qualification fails
 - **WHEN** any corrected gate fails for a reason other than the sole known stream-silence full-gate node
 - **THEN** qualification SHALL stop with the corrected evidence preserved and no further retry, code/test change, training change, or live-config change
 - **AND** the known stream-silence node MAY receive only its existing one-node diagnostic run when it is the sole full-gate failure
+- **AND** task `4.4` and live qualification SHALL remain forbidden
+
+### Requirement: Final review follows successful corrected qualification only
+Task `4.4` SHALL begin only after a successful all-three corrected `4.3b` result. A Critical or Important review finding SHALL block this qualification and require a follow-up change and new evidence; it SHALL NOT be repaired through same-attempt code changes or focused-test reruns.
+
+#### Scenario: Final review is blocked before successful corrected gates
+- **WHEN** the corrected sequence stopped early or any of `gameplay`, `commit`, and `full` lacks the required successful result
+- **THEN** task `4.4` and live qualification SHALL remain blocked
+- **AND** a later Critical or Important final-review finding SHALL require a follow-up change and new evidence rather than same-attempt code changes or focused-test reruns
 
 ### Requirement: No-training live qualification and rollback
 The adaptive baseline SHALL be evaluated in one fresh ten-game Ironclad A0 cohort using the production Windows interpreter with training disabled, and the persistent live configuration SHALL be restored to conservative after completion or operational failure.

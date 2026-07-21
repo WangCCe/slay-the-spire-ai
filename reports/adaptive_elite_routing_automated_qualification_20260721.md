@@ -118,4 +118,102 @@ or training artifacts were modified, and no commit was created.
 
 The failure is an execution-environment ACL failure, not an adaptive-route or test-assertion failure. pytest `9.0.2` reached `cleanup_dead_symlinks(basetemp)`, then `root.iterdir()` on the generated basetemp root before inspecting or unlinking a child. The direct single `tmp_path` node passed. The same node executed through parent-Python to a pytest-child failed. A minimal nested Python `mkdir(mode=0o700)` followed immediately by `iterdir()` failed in the managed sandbox, while the identical minimal nested mkdir/iterdir operation passed under host permission.
 
-This evidence authorizes one corrected host-permission attempt of the unchanged `gameplay`, `commit`, and `full` gate commands, one attempt per profile with generated unique basetemps and unchanged manifest/thresholds. Focused verification is not rerun because it already passed `183` tests. The attempt-1 failures remain failures. Only the already-known stream-silence node retains its existing one diagnostic-run allowance when it is the sole full-gate failure; any other corrected-run failure stops qualification without another retry.
+This evidence authorizes one corrected host-permission sequence of the unchanged `gameplay`, `commit`, and `full` gate commands in that order, one attempt per reached profile with generated unique basetemps and unchanged manifest/thresholds. Stop immediately at the first nonzero result. Only when `full` is reached and its sole failure is the already-known stream-silence node does its existing one-node diagnosis rule apply. Focused verification is not rerun because it already passed `183` tests. The attempt-1 failures remain failures. Task `4.3b` is complete when this sequence is executed according to that stop rule and its evidence is preserved, but qualification success requires all three corrected gates to exit `0` subject only to that existing full-node handling. Task `4.4` and all live qualification work are forbidden unless that successful all-three result exists.
+
+## Auditable ACL Probe Evidence And Provenance
+
+The original gate runner printed to the Task 5 terminal capture and did not
+persist raw output files. Consequently, the attempt-1 gate counts and
+tracebacks above come from that terminal capture; this is a provenance
+limitation. No earlier committed copy is claimed. The following separately
+captured probes make the ACL conclusion auditable.
+
+### Direct pytest `tmp_path` node
+
+```powershell
+D:\anaconda\envs\stsai\python.exe -m pytest -q -p no:cacheprovider --basetemp .pytest_diag_direct_tmp_path_20260721 tests/test_offline_decision_comparator.py::test_run_loader_marks_shop_purchases_as_partial_evidence
+```
+
+```text
+.                                                                        [100%]
+1 passed in 0.26s
+```
+
+Exit code: `0`. Basetemp: `D:\PycharmProjects\slay-the-spire-ai\.pytest_diag_direct_tmp_path_20260721`.
+
+### Same node through parent Python to pytest child
+
+```powershell
+@'
+import subprocess
+import sys
+
+raise SystemExit(subprocess.run([
+    sys.executable, "-m", "pytest", "-q", "-p", "no:cacheprovider",
+    "--basetemp",
+    r"D:\PycharmProjects\slay-the-spire-ai\.pytest_gates\diagnostic-nested-tmp-44d618684e2d426aa7691d007254b4ec",
+    "tests/test_offline_decision_comparator.py::test_run_loader_marks_shop_purchases_as_partial_evidence",
+], check=False).returncode)
+'@ | & D:\anaconda\envs\stsai\python.exe -
+```
+
+The test progress showed `E`; exit code: `1`. Generated basetemp:
+`D:\PycharmProjects\slay-the-spire-ai\.pytest_gates\diagnostic-nested-tmp-44d618684e2d426aa7691d007254b4ec`.
+The relevant terminal traceback ended:
+
+```text
+  File "D:\anaconda\envs\stsai\lib\site-packages\_pytest\tmpdir.py", line 304, in pytest_sessionfinish
+    cleanup_dead_symlinks(basetemp)
+  File "D:\anaconda\envs\stsai\lib\site-packages\_pytest\pathlib.py", line 357, in cleanup_dead_symlinks
+    for left_dir in root.iterdir():
+  File "D:\anaconda\envs\stsai\lib\pathlib.py", line 1017, in iterdir
+    for name in self._accessor.listdir(self):
+PermissionError: [WinError 5] 拒绝访问。: 'D:\PycharmProjects\slay-the-spire-ai\.pytest_gates\diagnostic-nested-tmp-44d618684e2d426aa7691d007254b4ec'
+```
+
+### Minimal nested mkdir/iterdir in the managed sandbox
+
+```powershell
+@'
+from pathlib import Path
+
+p = Path(r"D:\PycharmProjects\slay-the-spire-ai\.pytest_gates\diagnostic-mkdir-ecac38bef2b84ad7a3f4963e01d649a7")
+p.parent.mkdir(parents=True, exist_ok=True)
+p.mkdir(mode=0o700)
+print(f"created: {p}")
+print(list(p.iterdir()))
+'@ | & D:\anaconda\envs\stsai\python.exe -
+```
+
+```text
+created: D:\PycharmProjects\slay-the-spire-ai\.pytest_gates\diagnostic-mkdir-ecac38bef2b84ad7a3f4963e01d649a7
+PermissionError: [WinError 5] 拒绝访问。: 'D:\PycharmProjects\slay-the-spire-ai\.pytest_gates\diagnostic-mkdir-ecac38bef2b84ad7a3f4963e01d649a7'
+```
+
+The immediate `list(p.iterdir())` failed; exit code: `1`.
+
+### Identical minimal nested operation under host permission
+
+The following identical code was launched through the Codex shell with
+`sandbox_permissions=require_escalated`:
+
+```powershell
+@'
+from pathlib import Path
+
+p = Path(r"D:\PycharmProjects\slay-the-spire-ai\.pytest_gates\diagnostic-unsandboxed-mkdir-10344285bc02484db9da058e1019c94e")
+p.parent.mkdir(parents=True, exist_ok=True)
+p.mkdir(mode=0o700)
+print(f"created: {p}")
+print("children:", list(p.iterdir()))
+'@ | & D:\anaconda\envs\stsai\python.exe -
+```
+
+```text
+created: D:\PycharmProjects\slay-the-spire-ai\.pytest_gates\diagnostic-unsandboxed-mkdir-10344285bc02484db9da058e1019c94e
+children: []
+```
+
+Exit code: `0`. The identical nested mkdir/iterdir operation therefore differs
+only by managed-sandbox versus host permission, not by adaptive policy or test
+assertions.

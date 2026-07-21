@@ -29,8 +29,8 @@
 - [x] 4.2 Run `scripts/run_test_gate.py gameplay` and `scripts/run_test_gate.py commit`; preserve exact counts, durations, and any failure without retry.
 - [x] 4.3 Run one unchanged `scripts/run_test_gate.py full`; record the exact result and separately diagnose at most the already-known timing-sensitive node without rewriting the full result.
 - [x] 4.3a Preserve the canonical automated qualification report as immutable attempt-1 sandbox FAIL evidence and record the managed-sandbox ACL root cause without changing code, tests, or gate policy.
-- [ ] 4.3b Run exactly one host-permission attempt of the unchanged `gameplay`, `commit`, and `full` gates with generated unique basetemps; do not rerun focused verification, write only `reports/adaptive_elite_routing_automated_qualification_20260721_attempt-2-host.md`, and stop on any non-stream-silence failure without another retry.
-- [ ] 4.4 Run `openspec validate add-adaptive-elite-routing-baseline` and `git diff --check`, then obtain a final read-only code review with no unresolved Critical or Important finding.
+- [ ] 4.3b Execute one host-permission sequence of unchanged `gameplay`, then `commit`, then `full` gates with generated unique basetemps, stopping immediately at the first nonzero result except the existing sole-stream-silence full-node rule; do not rerun focused verification and write only `reports/adaptive_elite_routing_automated_qualification_20260721_attempt-2-host.md`. Mark this task after execution evidence is preserved under that stop rule; qualification succeeds only if all three gates exit `0` subject to the existing full-node handling.
+- [ ] 4.4 Only after successful all-three `4.3b` qualification, run `openspec validate add-adaptive-elite-routing-baseline` and `git diff --check`, then obtain a final read-only code review with no unresolved Critical or Important finding. Any Critical/Important finding blocks this qualification and requires a follow-up change and new evidence, not a same-attempt code fix or focused-test rerun.
 
 ## 5. Bounded Live Qualification
 
