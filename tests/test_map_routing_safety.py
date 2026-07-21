@@ -674,3 +674,152 @@ def test_conservative_route_delays_forced_act1_elite_until_after_rest():
 
     assert isinstance(action, ChooseMapNodeAction)
     assert action.node == delayed_start
+
+
+def _route_agent(elite_mode, game_map, *, hp=80, max_hp=80, floor=0, deck=None):
+    agent = SimpleAgent(chosen_class=PlayerClass.IRONCLAD, elite_mode=elite_mode)
+    agent.game.map = game_map
+    agent.game.act = 1
+    agent.game.floor = floor
+    agent.game.current_hp = hp
+    agent.game.max_hp = max_hp
+    agent.game.deck = list(deck or [])
+    agent.game.hand = []
+    agent.game.monsters = []
+    agent.game.potions = []
+    agent.game.relics = ["Burning Blood"]
+    return agent
+
+
+def _set_start_screen(agent, *next_nodes):
+    agent.game.screen = SimpleNamespace(
+        current_node=Node(-1, -1, "M"),
+        next_nodes=list(next_nodes),
+        boss_available=False,
+    )
+
+
+def _prepared_act1_deck():
+    return [
+        _card("Bash", upgrades=1),
+        _card("Pommel Strike"),
+        _card("Headbutt"),
+        _card("Anger"),
+        _card("Shrug It Off"),
+        _card("Iron Wave"),
+    ]
+
+
+def _add_nodes(game_map, *nodes):
+    for node in nodes:
+        game_map.add_node(node)
+
+
+def _optional_elite_route_map():
+    game_map = Map()
+    safe_nodes = [Node(0, y, "M") for y in range(15)]
+    elite_nodes = [Node(1, y, "M") for y in range(15)]
+    elite_nodes[7].symbol = "E"
+    elite_nodes[8].symbol = "T"
+    for nodes in (safe_nodes, elite_nodes):
+        for parent, child in zip(nodes, nodes[1:]):
+            parent.children = [child]
+    _add_nodes(game_map, *safe_nodes, *elite_nodes)
+    return game_map, safe_nodes[0], elite_nodes[0]
+
+
+def _forced_elite_route_map(elite_count):
+    game_map = Map()
+    early_nodes = [Node(0, y, "M") for y in range(15)]
+    delayed_nodes = [Node(1, y, "M") for y in range(15)]
+    early_nodes[7].symbol = "E"
+    early_nodes[8].symbol = "T"
+    delayed_nodes[9].symbol = "E"
+    delayed_nodes[8].symbol = "R"
+    if elite_count == 2:
+        early_nodes[10].symbol = "E"
+        early_nodes[11].symbol = "T"
+        delayed_nodes[12].symbol = "E"
+    for nodes in (early_nodes, delayed_nodes):
+        for parent, child in zip(nodes, nodes[1:]):
+            parent.children = [child]
+    _add_nodes(game_map, *early_nodes, *delayed_nodes)
+    return game_map, early_nodes[0], delayed_nodes[0]
+
+
+def test_legacy_modes_lock_optional_elite_choice_on_identical_map():
+    game_map, safe_start, elite_start = _optional_elite_route_map()
+    conservative = _route_agent("conservative", game_map)
+    aggressive = _route_agent("aggressive", game_map, deck=_prepared_act1_deck())
+    _set_start_screen(conservative, safe_start, elite_start)
+    _set_start_screen(aggressive, safe_start, elite_start)
+
+    assert conservative.make_map_choice().node == safe_start
+    assert aggressive.make_map_choice().node == elite_start
+
+
+def test_legacy_node_priorities_remain_mode_specific():
+    context = _context(deck=_prepared_act1_deck(), act=1, floor=8, hp_pct=1.0)
+    elite = SimpleNamespace(symbol="E")
+
+    conservative = AdaptiveMapRouter(player_class="IRONCLAD", elite_mode="conservative")
+    aggressive = AdaptiveMapRouter(player_class="IRONCLAD", elite_mode="aggressive")
+
+    assert conservative.calculate_node_priority(elite, context) == -4960
+    assert aggressive.calculate_node_priority(elite, context) == 700
+
+
+def test_legacy_conservative_tie_delays_first_forced_elite():
+    game_map, early_start, delayed_start = _forced_elite_route_map(1)
+    agent = _route_agent("conservative", game_map, deck=_prepared_act1_deck())
+    _set_start_screen(agent, early_start, delayed_start)
+
+    assert agent.make_map_choice().node == delayed_start
+
+
+def test_legacy_modes_preserve_forced_single_elite_path():
+    game_map, early_start, delayed_start = _forced_elite_route_map(1)
+    conservative = _route_agent("conservative", game_map, deck=_prepared_act1_deck())
+    aggressive = _route_agent("aggressive", game_map, deck=_prepared_act1_deck())
+    _set_start_screen(conservative, early_start, delayed_start)
+    _set_start_screen(aggressive, early_start, delayed_start)
+
+    assert conservative.make_map_choice().node == delayed_start
+    assert aggressive.make_map_choice().node == early_start
+
+
+def test_legacy_modes_preserve_forced_two_elite_path():
+    game_map, early_start, delayed_start = _forced_elite_route_map(2)
+    conservative = _route_agent("conservative", game_map, deck=_prepared_act1_deck())
+    aggressive = _route_agent("aggressive", game_map, deck=_prepared_act1_deck())
+    _set_start_screen(conservative, early_start, delayed_start)
+    _set_start_screen(aggressive, early_start, delayed_start)
+
+    assert conservative.make_map_choice().node == delayed_start
+    assert aggressive.make_map_choice().node == early_start
+
+
+def test_legacy_modes_only_replan_after_configured_hp_drop(monkeypatch):
+    game_map = Map()
+    current = Node(0, 1, "M")
+    next_node = Node(0, 2, "M")
+    current.children = [next_node]
+    _add_nodes(game_map, current, next_node)
+    agent = _route_agent("conservative", game_map, hp=80, max_hp=80)
+    agent.map_route = [0, 0, 0]
+    agent._last_route_hp_pct = 1.0
+    agent.game.screen = SimpleNamespace(
+        current_node=current,
+        next_nodes=[next_node],
+        boss_available=False,
+    )
+    calls = []
+    monkeypatch.setattr(agent, "generate_map_route", lambda: calls.append(True))
+
+    agent.game.current_hp = 73
+    assert agent.make_map_choice().node == next_node
+    assert calls == []
+
+    agent.game.current_hp = 71
+    assert agent.make_map_choice().node == next_node
+    assert calls == [True]

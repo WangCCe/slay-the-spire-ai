@@ -1,0 +1,150 @@
+{
+  "aggregate": {
+    "fixture_count": 3,
+    "metrics": {
+      "max_ms": 96.6285,
+      "median_ms": 18.36535,
+      "p95_ms": 32.9989
+    },
+    "sample_count": 300
+  },
+  "fixtures": [
+    {
+      "aggressive_path": [
+        2,
+        2,
+        2,
+        2,
+        2,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1
+      ],
+      "conservative_path": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "fixture_id": "full-height-sparse-v1",
+      "fixture_sha256": "7eae28f6abe1d688d344da55ce112d1382480595db45e8bc3e15ae0bf5396339",
+      "metrics": {
+        "max_ms": 45.1181,
+        "median_ms": 19.15595,
+        "p95_ms": 31.5354
+      },
+      "sample_count": 100,
+      "warmup_count": 10
+    },
+    {
+      "aggressive_path": [
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1
+      ],
+      "conservative_path": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "fixture_id": "full-height-typical-v1",
+      "fixture_sha256": "6ec1b6c163edaccef62ea9a341286d49562ac369fbc34bd036da0229e0ff78f5",
+      "metrics": {
+        "max_ms": 46.7085,
+        "median_ms": 17.5075,
+        "p95_ms": 29.3177
+      },
+      "sample_count": 100,
+      "warmup_count": 10
+    },
+    {
+      "aggressive_path": [
+        2,
+        2,
+        2,
+        2,
+        2,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1
+      ],
+      "conservative_path": [
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1
+      ],
+      "fixture_id": "full-height-dense-v1",
+      "fixture_sha256": "de5ca9ba2066d4ea2175fae1cf62d3d7421873ca8a46cb0d58cd37b97379eb1f",
+      "metrics": {
+        "max_ms": 96.6285,
+        "median_ms": 18.2446,
+        "p95_ms": 38.2089
+      },
+      "sample_count": 100,
+      "warmup_count": 10
+    }
+  ],
+  "schema_version": "adaptive-route-candidate-poc-v1",
+  "status": "PASS"
+}
