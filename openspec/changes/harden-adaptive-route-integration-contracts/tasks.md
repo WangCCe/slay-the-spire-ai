@@ -14,8 +14,8 @@
 
 ## 3. Focused Verification And Task Review
 
-- [ ] 3.1 Run the complete `tests/test_map_routing_safety.py` and `tests/test_main_runtime_errors.py` suites with `D:\anaconda\envs\stsai\python.exe`, cache disabled, and unique writable repository basetemps; preserve exact counts and durations.
-- [ ] 3.2 Run strict validation for both `add-adaptive-elite-routing-baseline` and `harden-adaptive-route-integration-contracts`, run `git diff --check e1a559f37..HEAD`, confirm the whole-range diff contains no policy threshold, learned MAP behavior, training, checkpoint, protocol, default, or live-config change, and obtain task-scoped read-only reviews with no unresolved Critical or Important finding.
+- [x] 3.1 Run the complete `tests/test_map_routing_safety.py` and `tests/test_main_runtime_errors.py` suites with `D:\anaconda\envs\stsai\python.exe`, cache disabled, and unique writable repository basetemps; preserve exact counts and durations.
+- [x] 3.2 Run strict validation for both `add-adaptive-elite-routing-baseline` and `harden-adaptive-route-integration-contracts`, run `git diff --check e1a559f37..HEAD`, confirm the whole-range diff contains no policy threshold, learned MAP behavior, training, checkpoint, protocol, default, or live-config change, and obtain task-scoped read-only reviews with no unresolved Critical or Important finding.
 
 ## 4. Fresh Automated Qualification
 
