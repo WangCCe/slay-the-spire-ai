@@ -749,10 +749,16 @@ def _adaptive_state(router, *, act=1, current_hp=80, max_hp=80, deck=None,
 
 def _adaptive_candidates(router, *, elite_symbols=None, start_y=0):
     aggressive_symbols = elite_symbols or ("M", "M", "M", "M", "M", "E", "R")
+    default_safe_symbols = ("M", "M", "R", "M", "M", "M", "M")
+    safe_symbols = (
+        default_safe_symbols
+        if len(aggressive_symbols) == len(default_safe_symbols)
+        else ("M",) * len(aggressive_symbols)
+    )
     safe = router.describe_candidate(
         "conservative",
-        (0, 0, 0, 0, 0, 0, 0),
-        ("M", "M", "R", "M", "M", "M", "M"),
+        (0,) * len(safe_symbols),
+        safe_symbols,
         start_y=start_y,
     )
     aggressive = router.describe_candidate(
@@ -1177,6 +1183,7 @@ def test_describe_candidate_uses_start_y_for_mid_act_local_floor():
     "last_rest_floor, expected_reason",
     [
         (7, "optional_elite_allowed"),
+        (8, "recovery_window_missing"),
         (6, "recovery_window_missing"),
         (9, "recovery_window_missing"),
         (10, "recovery_window_missing"),
@@ -1255,7 +1262,7 @@ def test_adaptive_assessment_locks_fail_closed_reason_order_for_combined_failure
     )
     count = router.assess_optional_elite(
         _adaptive_state(router),
-        eligible_candidate,
+        replace(eligible_candidate, mode="conservative"),
         eligible_candidate,
     )
 
@@ -1269,6 +1276,66 @@ def test_adaptive_assessment_locks_fail_closed_reason_order_for_combined_failure
     assert resource.reasons == ("resource_support_missing",)
     assert seen.reasons == ("elite_already_seen",)
     assert count.reasons == ("candidate_counts_not_zero_vs_one",)
+
+
+def test_adaptive_assessment_rejects_candidate_pair_with_boosted_start_y():
+    router = AdaptiveMapRouter("IRONCLAD", "adaptive")
+    safe_candidate = router.describe_candidate(
+        "conservative",
+        (0,) * 7,
+        ("M", "M", "M", "M", "M", "M", "M"),
+        start_y=0,
+    )
+    boosted_candidate = router.describe_candidate(
+        "aggressive",
+        (1,) * 7,
+        ("M", "M", "M", "M", "E", "R", "M"),
+        start_y=1,
+    )
+
+    assessment = router.assess_optional_elite(
+        _adaptive_state(router),
+        safe_candidate,
+        boosted_candidate,
+    )
+
+    assert boosted_candidate.elite_floors == (6,)
+    assert assessment.reasons == ("malformed_state",)
+
+
+def test_adaptive_assessment_rejects_swapped_candidate_modes():
+    router = AdaptiveMapRouter("IRONCLAD", "adaptive")
+    safe_candidate, one_elite_candidate = _adaptive_candidates(router)
+
+    assessment = router.assess_optional_elite(
+        _adaptive_state(router),
+        replace(safe_candidate, mode="aggressive"),
+        replace(one_elite_candidate, mode="conservative"),
+    )
+
+    assert assessment.reasons == ("malformed_state",)
+
+
+def test_adaptive_assessment_rejects_unequal_candidate_extents():
+    router = AdaptiveMapRouter("IRONCLAD", "adaptive")
+    safe_candidate = router.describe_candidate(
+        "conservative",
+        (0,) * 6,
+        ("M", "M", "M", "M", "M", "M"),
+    )
+    one_elite_candidate = router.describe_candidate(
+        "aggressive",
+        (1,) * 7,
+        ("M", "M", "M", "M", "M", "E", "R"),
+    )
+
+    assessment = router.assess_optional_elite(
+        _adaptive_state(router),
+        safe_candidate,
+        one_elite_candidate,
+    )
+
+    assert assessment.reasons == ("malformed_state",)
 
 
 def _add_nodes(game_map, *nodes):

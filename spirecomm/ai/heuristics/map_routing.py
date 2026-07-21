@@ -338,8 +338,8 @@ class AdaptiveMapRouter:
             aggressive: RouteCandidateFeatures,
     ) -> AdaptiveEliteAssessment:
         """Apply the ordered, fail-closed adaptive optional-elite gates."""
-        if not self._valid_adaptive_state(state) or not self._valid_adaptive_candidate(conservative) \
-                or not self._valid_adaptive_candidate(aggressive):
+        if not self._valid_adaptive_state(state) \
+                or not self._valid_adaptive_candidate_pair(conservative, aggressive):
             return self._adaptive_assessment(False, "malformed_state")
         if state.player_class != ADAPTIVE_SUPPORTED_CHARACTER:
             return self._adaptive_assessment(False, "unsupported_character")
@@ -369,8 +369,8 @@ class AdaptiveMapRouter:
                 and aggressive.rest_after_distance <= ADAPTIVE_MAX_RECOVERY_DISTANCE)
             or (
                 state.last_rest_floor is not None
-                and state.last_rest_floor < aggressive.elite_floors[0]
-                and aggressive.elite_floors[0] - state.last_rest_floor
+                and state.last_rest_floor < aggressive.start_y + 1
+                and 1 <= aggressive.elite_floors[0] - state.last_rest_floor
                 <= ADAPTIVE_MAX_RECOVERY_DISTANCE
             )
         )
@@ -463,6 +463,25 @@ class AdaptiveMapRouter:
         ):
             return False
         return True
+
+    @staticmethod
+    def _valid_adaptive_candidate_pair(
+            conservative: RouteCandidateFeatures,
+            aggressive: RouteCandidateFeatures,
+    ) -> bool:
+        if not AdaptiveMapRouter._valid_adaptive_candidate(conservative) \
+                or not AdaptiveMapRouter._valid_adaptive_candidate(aggressive):
+            return False
+        if conservative.mode != "conservative" or aggressive.mode != "aggressive":
+            return False
+        if conservative.start_y != aggressive.start_y:
+            return False
+        if len(conservative.path) != len(aggressive.path) \
+                or len(conservative.symbols) != len(aggressive.symbols):
+            return False
+        conservative_end_floor = conservative.start_y + len(conservative.path)
+        aggressive_end_floor = aggressive.start_y + len(aggressive.path)
+        return conservative_end_floor == aggressive_end_floor
 
     def calculate_node_priority(self, node: Node, context: DecisionContext) -> int:
         """
