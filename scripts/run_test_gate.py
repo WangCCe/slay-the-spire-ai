@@ -9,6 +9,7 @@ import time
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Callable, Sequence
+from uuid import uuid4
 
 
 _REQUIRED_PROFILES = (
@@ -251,7 +252,7 @@ def build_pytest_command(
     profile_name: str,
     manifest: TestGateManifest,
     repo_root: Path,
-    basetemp_root: Path,
+    basetemp: Path,
 ) -> list[str]:
     profile = manifest.profiles[profile_name]
     command = [
@@ -262,7 +263,7 @@ def build_pytest_command(
         "-p",
         "no:cacheprovider",
         "--basetemp",
-        str(basetemp_root / profile_name),
+        str(basetemp),
     ]
     if profile.mode == "default-minus-full-only":
         command.extend(
@@ -274,6 +275,10 @@ def build_pytest_command(
             _repository_relative_argument(target, repo_root) for target in profile.targets
         )
     return command
+
+
+def _unique_basetemp_path(profile_name: str, repo_root: Path) -> Path:
+    return repo_root.resolve() / ".pytest_gates" / f"{profile_name}-{uuid4().hex}"
 
 
 def _configuration_error(error: ManifestError) -> int:
@@ -294,13 +299,15 @@ def run_profile(
     except ManifestError as error:
         return _configuration_error(error)
 
-    command = build_pytest_command(
-        profile_name, manifest, repo_root, repo_root / ".pytest_gates"
-    )
+    basetemp = _unique_basetemp_path(profile_name, repo_root)
+    command = build_pytest_command(profile_name, manifest, repo_root, basetemp)
+    mode = "dry-run" if dry_run else "run"
+    print(f"test gate {mode} profile: {profile_name}", flush=True)
+    print(f"pytest command: {subprocess.list2cmdline(command)}", flush=True)
     if dry_run:
-        print(f"dry-run: {subprocess.list2cmdline(command)}")
         return 0
 
+    basetemp.parent.mkdir(parents=True, exist_ok=True)
     started_at = clock()
     result = executor(command, cwd=repo_root, check=False)
     elapsed = clock() - started_at

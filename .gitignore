@@ -49,6 +49,7 @@ coverage.xml
 *.cover
 .hypothesis/
 .pytest_cache/
+/.pytest_gates/
 .pytest-tmp/
 /.pytest-tmp-*/
 /.pytest_tmp_*/

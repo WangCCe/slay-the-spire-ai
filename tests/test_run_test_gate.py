@@ -5,6 +5,7 @@ import json
 import subprocess
 import sys
 from pathlib import Path
+from types import SimpleNamespace
 
 import pytest
 
@@ -260,21 +261,22 @@ def test_load_manifest_rejects_invalid_configuration(
     "profile_name",
     ("commit", "protocol", "gameplay", "noncombat-evidence", "full"),
 )
-def test_build_pytest_command_uses_shared_pytest_options_and_profile_basetemp(
+def test_build_pytest_command_uses_shared_pytest_options_and_resolved_basetemp(
     temporary_repo: Path, profile_name: str
 ) -> None:
     manifest = load_manifest(_write_manifest(temporary_repo, VALID_MANIFEST), temporary_repo)
+    basetemp = temporary_repo / ".pytest_gates" / f"{profile_name}-deterministic"
 
     command = test_gate_runner.build_pytest_command(
         profile_name,
         manifest,
         temporary_repo,
-        temporary_repo / ".pytest_gates",
+        basetemp,
     )
 
     assert command[:5] == [sys.executable, "-m", "pytest", "-q", "-p"]
     assert command[5:7] == ["no:cacheprovider", "--basetemp"]
-    assert command[7] == str(temporary_repo / ".pytest_gates" / profile_name)
+    assert command[7] == str(basetemp)
 
 
 def test_build_pytest_command_commit_excludes_only_full_only_targets(
@@ -283,7 +285,10 @@ def test_build_pytest_command_commit_excludes_only_full_only_targets(
     manifest = load_manifest(_write_manifest(temporary_repo, VALID_MANIFEST), temporary_repo)
 
     command = test_gate_runner.build_pytest_command(
-        "commit", manifest, temporary_repo, temporary_repo / ".pytest_gates"
+        "commit",
+        manifest,
+        temporary_repo,
+        temporary_repo / ".pytest_gates" / "commit-deterministic",
     )
 
     assert command[8:] == ["--ignore=tests/test_slow.py"]
@@ -295,7 +300,10 @@ def test_build_pytest_command_full_has_no_ignores_or_positive_targets(
     manifest = load_manifest(_write_manifest(temporary_repo, VALID_MANIFEST), temporary_repo)
 
     command = test_gate_runner.build_pytest_command(
-        "full", manifest, temporary_repo, temporary_repo / ".pytest_gates"
+        "full",
+        manifest,
+        temporary_repo,
+        temporary_repo / ".pytest_gates" / "full-deterministic",
     )
 
     assert command[8:] == []
@@ -311,7 +319,7 @@ def test_build_pytest_command_appends_domain_targets(
         profile_name,
         manifest,
         temporary_repo,
-        temporary_repo / ".pytest_gates",
+        temporary_repo / ".pytest_gates" / f"{profile_name}-deterministic",
     )
 
     assert command[8:] == list(manifest.profiles[profile_name].targets)
@@ -338,9 +346,17 @@ def test_main_list_prints_profiles_without_running_them(
 
 
 def test_run_profile_dry_run_prints_windows_safe_command_without_executor(
-    temporary_repo: Path, capsys: pytest.CaptureFixture[str]
+    temporary_repo: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
 ) -> None:
     manifest_path = _write_manifest(temporary_repo, VALID_MANIFEST)
+    monkeypatch.setattr(
+        test_gate_runner,
+        "uuid4",
+        lambda: SimpleNamespace(hex="dryruntoken"),
+        raising=False,
+    )
 
     def executor(*args: object, **kwargs: object) -> subprocess.CompletedProcess[str]:
         pytest.fail("--dry-run must not run pytest")
@@ -353,16 +369,127 @@ def test_run_profile_dry_run_prints_windows_safe_command_without_executor(
         "commit",
         load_manifest(manifest_path, temporary_repo),
         temporary_repo,
-        temporary_repo / ".pytest_gates",
+        temporary_repo / ".pytest_gates" / "commit-dryruntoken",
     )
-    assert subprocess.list2cmdline(command) in capsys.readouterr().out
+    output = capsys.readouterr().out
+    assert "test gate dry-run profile: commit" in output
+    assert f"pytest command: {subprocess.list2cmdline(command)}" in output
+
+
+def test_run_profile_reports_and_flushes_command_before_executor(
+    temporary_repo: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    manifest_path = _write_manifest(temporary_repo, VALID_MANIFEST)
+    monkeypatch.setattr(
+        test_gate_runner,
+        "uuid4",
+        lambda: SimpleNamespace(hex="orderingtoken"),
+        raising=False,
+    )
+
+    def executor(
+        command: list[str], **kwargs: object
+    ) -> subprocess.CompletedProcess[str]:
+        output_at_executor_call = capsys.readouterr().out
+        assert "test gate run profile: protocol" in output_at_executor_call
+        assert f"pytest command: {subprocess.list2cmdline(command)}" in output_at_executor_call
+        return subprocess.CompletedProcess(command, 0)
+
+    assert test_gate_runner.run_profile(
+        "protocol", manifest_path, temporary_repo, executor=executor
+    ) == 0
+
+
+def test_run_profile_uses_unique_profile_prefixed_repository_basetemp(
+    temporary_repo: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    manifest_path = _write_manifest(temporary_repo, VALID_MANIFEST)
+    tokens = iter(("firsttoken", "secondtoken"))
+    monkeypatch.setattr(
+        test_gate_runner,
+        "uuid4",
+        lambda: SimpleNamespace(hex=next(tokens)),
+        raising=False,
+    )
+    commands: list[list[str]] = []
+
+    def executor(
+        command: list[str], **kwargs: object
+    ) -> subprocess.CompletedProcess[str]:
+        commands.append(command)
+        return subprocess.CompletedProcess(command, 0)
+
+    assert test_gate_runner.run_profile(
+        "gameplay", manifest_path, temporary_repo, executor=executor
+    ) == 0
+    assert test_gate_runner.run_profile(
+        "gameplay", manifest_path, temporary_repo, executor=executor
+    ) == 0
+
+    basetemps = [Path(command[7]) for command in commands]
+    assert basetemps == [
+        temporary_repo / ".pytest_gates" / "gameplay-firsttoken",
+        temporary_repo / ".pytest_gates" / "gameplay-secondtoken",
+    ]
+    assert basetemps[0] != basetemps[1]
+
+
+def test_run_profile_creates_only_basetemp_parent_before_executor(
+    temporary_repo: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    manifest_path = _write_manifest(temporary_repo, VALID_MANIFEST)
+    monkeypatch.setattr(
+        test_gate_runner,
+        "uuid4",
+        lambda: SimpleNamespace(hex="parenttoken"),
+    )
+    expected_basetemp = (
+        temporary_repo / ".pytest_gates" / "commit-parenttoken"
+    )
+
+    def executor(
+        command: list[str], **kwargs: object
+    ) -> subprocess.CompletedProcess[str]:
+        assert expected_basetemp.parent.is_dir()
+        assert not expected_basetemp.exists()
+        return subprocess.CompletedProcess(command, 0)
+
+    assert test_gate_runner.run_profile(
+        "commit", manifest_path, temporary_repo, executor=executor
+    ) == 0
+
+
+def test_repository_ignores_generated_pytest_gate_state() -> None:
+    result = subprocess.run(
+        [
+            "git",
+            "check-ignore",
+            "--quiet",
+            "--",
+            ".pytest_gates/commit-deterministic/pytest-current",
+        ],
+        cwd=REPOSITORY_ROOT,
+        check=False,
+    )
+
+    assert result.returncode == 0
 
 
 def test_run_profile_propagates_pytest_exit_code_and_reports_elapsed_time(
-    temporary_repo: Path, capsys: pytest.CaptureFixture[str]
+    temporary_repo: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
 ) -> None:
     manifest_path = _write_manifest(temporary_repo, VALID_MANIFEST)
     received: dict[str, object] = {}
+    monkeypatch.setattr(
+        test_gate_runner,
+        "uuid4",
+        lambda: SimpleNamespace(hex="exitcodetoken"),
+        raising=False,
+    )
 
     def executor(*args: object, **kwargs: object) -> subprocess.CompletedProcess[str]:
         received.update(kwargs)
@@ -385,7 +512,7 @@ def test_run_profile_propagates_pytest_exit_code_and_reports_elapsed_time(
         "protocol",
         load_manifest(manifest_path, temporary_repo),
         temporary_repo,
-        temporary_repo / ".pytest_gates",
+        temporary_repo / ".pytest_gates" / "protocol-exitcodetoken",
     )
     assert "2.50s" in capsys.readouterr().out
 
