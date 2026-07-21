@@ -1524,7 +1524,9 @@ def _task3_unix_time(second: int, millisecond: int) -> float:
     return _epoch_microseconds(value) / 1_000_000
 
 
-def _write_task3_run(tmp_path: Path, name: str, symbols: list[str]) -> Path:
+def _write_task3_run(
+    tmp_path: Path, name: str, symbols: list[str | None]
+) -> Path:
     path = tmp_path / name
     path.write_text(
         json.dumps(
@@ -1642,6 +1644,52 @@ def test_load_runs_preserves_ordered_source_identity_and_path_symbols(tmp_path: 
     ]
     assert [source["source_path"] for source in sources] == [str(first), str(second)]
     assert all(source["sha256"] and source["record_count"] == 1 for source in sources)
+
+
+def test_build_audit_preserves_canonical_post_boss_transition_slot(tmp_path: Path):
+    record = _task3_initial_record(floor=2)
+
+    result, exit_code, _ = _task3_build(
+        tmp_path, [record], run_symbols=["B", None, "M"]
+    )
+
+    assert exit_code == 0
+    assert result["runs"][0]["path_per_floor"] == ["B", None, "M"]
+    serialized = audit.serialize_audit(result)
+    assert json.loads(serialized)["runs"][0]["path_per_floor"] == [
+        "B",
+        None,
+        "M",
+    ]
+
+
+def test_load_runs_rejects_misplaced_transition_slot(tmp_path: Path):
+    source = _write_task3_run(tmp_path, "misplaced-null.run", ["M", None, "M"])
+
+    with pytest.raises(
+        audit.EvidenceError,
+        match=r"path_per_floor\[1\].*null.*immediately follow.*B",
+    ):
+        audit.load_runs([source])
+
+
+def test_build_audit_rejects_action_targeted_transition_slot(tmp_path: Path):
+    record = _task3_initial_record(floor=1)
+
+    result, exit_code, evidence = _task3_build(
+        tmp_path, [record], run_symbols=["B", None, "M"]
+    )
+
+    assert exit_code == 2
+    assert result["integrity"]["diagnostics"] == [
+        {
+            "code": "run_transition_slot_targeted",
+            "game_number": 1,
+            "run_source_path": str(evidence[2][0]),
+            "act": 1,
+            "floor": 1,
+        }
+    ]
 
 
 @pytest.mark.parametrize("alias_kind", ("normalized", "symlink", "hardlink"))

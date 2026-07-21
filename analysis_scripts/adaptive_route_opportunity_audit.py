@@ -182,7 +182,7 @@ class CandidatePairEvidence:
 @dataclass(frozen=True)
 class RunEvidence:
     source_path: Path
-    path_per_floor: tuple[str, ...]
+    path_per_floor: tuple[str | None, ...]
     floor_reached: int | None
     victory: bool | None
 
@@ -1206,17 +1206,24 @@ def load_runs(paths: Sequence[Path]) -> tuple[list[RunEvidence], list[dict]]:
         if not isinstance(row, dict):
             raise EvidenceError("run record must be an object", source_path)
         raw_path = row.get("path_per_floor")
-        if (
-            not isinstance(raw_path, list)
-            or any(
-                not isinstance(symbol, str) or symbol not in _RUN_SYMBOLS
-                for symbol in raw_path
-            )
-        ):
+        if not isinstance(raw_path, list):
             raise EvidenceError(
                 "run path_per_floor must contain only valid room symbols",
                 source_path,
             )
+        for floor, symbol in enumerate(raw_path):
+            if symbol is None:
+                if floor == 0 or raw_path[floor - 1] != "B":
+                    raise EvidenceError(
+                        f"run path_per_floor[{floor}] null transition slot "
+                        "must immediately follow B",
+                        source_path,
+                    )
+            elif not isinstance(symbol, str) or symbol not in _RUN_SYMBOLS:
+                raise EvidenceError(
+                    "run path_per_floor must contain only valid room symbols",
+                    source_path,
+                )
         floor_reached = row.get("floor_reached")
         if floor_reached is not None:
             floor_reached = _strict_integer(floor_reached, "run floor_reached")
@@ -1332,6 +1339,21 @@ def _run_corroboration(
             },
         )
     run_symbol = run.path_per_floor[decision.floor]
+    if run_symbol is None:
+        return (
+            {
+                "trace_symbol": trace_symbol,
+                "run_symbol": None,
+                "run_compatibility": "transition_slot",
+            },
+            {
+                "code": "run_transition_slot_targeted",
+                "game_number": game_number,
+                "run_source_path": str(run.source_path),
+                "act": decision.act,
+                "floor": decision.floor,
+            },
+        )
     if trace_symbol == run_symbol:
         compatibility = "exact"
         diagnostic = None
