@@ -581,6 +581,7 @@ sys.argv = [
     str(main_path),
     "--agent", "rl",
     "--elite-route", "adaptive",
+    "--eval",
 ]
 runpy.run_path(str(main_path), run_name="__main__")
 """
@@ -606,7 +607,8 @@ runpy.run_path(str(main_path), run_name="__main__")
     log = log_path.read_text(encoding="utf-8")
     assert "Creating CommunicationMod coordinator" not in log
     assert "Creating RL Agent" not in log
-    assert "Auto-loading" not in log
+    assert "Evaluation mode auto-loading latest checkpoint" not in log
+    assert "Evaluation mode requested but no checkpoint was found" not in log
     assert "Falling back" not in log
 
 
