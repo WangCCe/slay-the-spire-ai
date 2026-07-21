@@ -7,7 +7,7 @@ import pytest
 from analysis_scripts import benchmark_adaptive_route_candidates as benchmark
 from spirecomm.ai.agent import SimpleAgent
 from spirecomm.ai.heuristics.map_routing import AdaptiveMapRouter, RouteCandidateFeatures
-from spirecomm.communication.action import ChooseMapNodeAction, RestAction
+from spirecomm.communication.action import ChooseMapBossAction, ChooseMapNodeAction, RestAction
 from spirecomm.spire.character import PlayerClass
 from spirecomm.spire.map import Map, Node
 from spirecomm.spire.screen import RestOption
@@ -1596,7 +1596,7 @@ def _mid_act_adaptive_route_agent():
     agent = _route_agent("adaptive", Map(), deck=_prepared_act1_deck())
     agent.game.deck.extend(_card("Strike") for _ in range(6))
     game_map = agent.game.map
-    prefix = [Node(0, y, "M") for y in range(4)]
+    prefix = [Node(x, y, "M") for y, x in enumerate((0, 1, 1, 0))]
     current = Node(0, 4, "E")
     safe = Node(0, 5, "M")
     elite = Node(1, 5, "E")
@@ -1622,7 +1622,7 @@ def _mid_act_adaptive_route_agent():
         next_nodes=[safe, elite],
         boss_available=False,
     )
-    agent.map_route = [0, 0, 0, 0, current.x]
+    agent.map_route = [0, 1, 1, 0, current.x, 0, 0, 0]
     return agent, current, safe, elite
 
 
@@ -1638,7 +1638,7 @@ def test_adaptive_mid_act_generation_commits_legal_full_aggressive_route():
     assert current.symbol == "E"
     assert conservative.elite_floors == ()
     assert aggressive.elite_floors == (elite.y + 1,)
-    assert route[:current.y] == [0] * current.y
+    assert route[:current.y] == [0, 1, 1, 0]
     assert route[current.y] == current.x
     assert route[current.y + 1] == elite.x
     assert isinstance(action, ChooseMapNodeAction)
@@ -1674,31 +1674,25 @@ def test_adaptive_candidate_shape_failures_trigger_conservative_fallback(
     assert "candidate_generation_failed" in caplog.text
 
 
-def test_adaptive_candidate_map_key_error_triggers_conservative_fallback(
+def test_adaptive_malformed_unreachable_child_triggers_conservative_fallback(
         monkeypatch, caplog):
     caplog.set_level(logging.INFO)
-    agent, _, _, elite = _mid_act_adaptive_route_agent()
+    agent, _, _, _ = _mid_act_adaptive_route_agent()
     original_builder = agent._build_map_route
-    original_get_node = agent.game.map.get_node
     calls = []
-    active_mode = [None]
+    orphan = Node(5, 0, "M")
+    orphan.children = [Node(5, 1, "M")]
+    agent.game.map.add_node(orphan)
 
     def track_builder(mode):
         calls.append(mode)
-        active_mode[0] = mode
         return original_builder(mode)
 
-    def malformed_candidate_map(x, y):
-        if active_mode[0] == "aggressive" and x == elite.x and y == elite.y:
-            raise KeyError("malformed candidate node")
-        return original_get_node(x, y)
-
     monkeypatch.setattr(agent, "_build_map_route", track_builder)
-    monkeypatch.setattr(agent.game.map, "get_node", malformed_candidate_map)
 
     route = agent.generate_map_route()
 
-    assert calls == ["conservative", "aggressive", "conservative"]
+    assert calls == ["conservative"]
     assert route == original_builder("conservative")
     assert "candidate_generation_failed" in caplog.text
 
@@ -1790,3 +1784,109 @@ def test_forged_adaptive_absolute_path_triggers_conservative_fallback(
 
     assert route == expected
     assert "candidate_generation_failed" in caplog.text
+
+
+def _late_adaptive_route_agent(current_y, *, boss_available=False):
+    agent = _route_agent("adaptive", Map(), deck=_prepared_act1_deck())
+    game_map = agent.game.map
+    nodes = [Node(0, y, "M") for y in range(15)]
+    for parent, child in zip(nodes, nodes[1:]):
+        parent.children = [child]
+    for node in nodes:
+        game_map.add_node(node)
+    agent.game.screen = SimpleNamespace(
+        current_node=nodes[current_y],
+        next_nodes=[] if current_y == 14 else [nodes[current_y + 1]],
+        boss_available=boss_available,
+    )
+    agent.map_route = [0] * 15
+    agent._last_route_hp_pct = 1.0
+    agent._last_route_floor = 13
+    return agent, nodes
+
+
+def test_adaptive_current_y13_uses_valid_complete_nonzero_history_prefix():
+    agent, nodes = _late_adaptive_route_agent(13)
+    alternate_1 = Node(1, 1, "M")
+    alternate_2 = Node(1, 2, "M")
+    nodes[0].children = [alternate_1]
+    alternate_1.children = [alternate_2]
+    alternate_2.children = [nodes[3]]
+    agent.game.map.add_node(alternate_1)
+    agent.game.map.add_node(alternate_2)
+    agent.map_route[:4] = [0, 1, 1, 0]
+
+    route = agent.generate_map_route()
+    action = agent.make_map_choice()
+
+    assert route[:4] == [0, 1, 1, 0]
+    assert route[13] == nodes[13].x
+    assert route[14] == nodes[14].x
+    assert isinstance(action, ChooseMapNodeAction)
+    assert action.node == nodes[14]
+
+
+@pytest.mark.parametrize("history_kind", ("short", "stale"))
+def test_adaptive_invalid_history_prefix_propagates_without_route_mutation(
+        monkeypatch, history_kind):
+    agent, nodes = _late_adaptive_route_agent(13)
+    original_route = list(agent.map_route)
+    original_metadata = (agent._last_route_hp_pct, agent._last_route_floor)
+    if history_kind == "short":
+        agent.map_route = agent.map_route[:14]
+    else:
+        agent.map_route[13] = 1
+    invalid_history = list(agent.map_route)
+    calls = []
+
+    def track_builder(mode):
+        calls.append(mode)
+        return original_route
+
+    monkeypatch.setattr(agent, "_build_map_route", track_builder)
+
+    with pytest.raises(RuntimeError, match="route history"):
+        agent.generate_map_route()
+
+    assert calls == []
+    assert agent.map_route == invalid_history
+    assert (agent._last_route_hp_pct, agent._last_route_floor) == original_metadata
+
+
+@pytest.mark.parametrize("error_type", (IndexError, KeyError))
+def test_adaptive_builder_programming_errors_propagate_without_route_mutation(
+        monkeypatch, error_type):
+    agent, _, _, _ = _mid_act_adaptive_route_agent()
+    original_route = list(agent.map_route)
+    original_metadata = (agent._last_route_hp_pct, agent._last_route_floor)
+    calls = []
+
+    def broken_builder(mode):
+        calls.append(mode)
+        raise error_type("injected builder failure")
+
+    monkeypatch.setattr(agent, "_build_map_route", broken_builder)
+
+    with pytest.raises(error_type, match="injected builder failure"):
+        agent.generate_map_route()
+
+    assert calls == ["conservative"]
+    assert agent.map_route == original_route
+    assert (agent._last_route_hp_pct, agent._last_route_floor) == original_metadata
+
+
+def test_boss_choice_skips_replan_and_route_mutation_at_map_height(monkeypatch):
+    agent, nodes = _late_adaptive_route_agent(14, boss_available=True)
+    original_route = list(agent.map_route)
+    original_metadata = (agent._last_route_hp_pct, agent._last_route_floor)
+    calls = []
+
+    monkeypatch.setattr(agent, "generate_map_route", lambda: calls.append(True))
+    agent.game.current_hp = 1
+
+    action = agent.make_map_choice()
+
+    assert isinstance(action, ChooseMapBossAction)
+    assert calls == []
+    assert agent.map_route == original_route
+    assert (agent._last_route_hp_pct, agent._last_route_floor) == original_metadata

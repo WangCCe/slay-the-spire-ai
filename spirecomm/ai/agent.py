@@ -51,6 +51,10 @@ class _AdaptiveRouteCandidateGenerationError(ValueError):
     """Expected malformed-map or malformed-candidate failure at the adaptive boundary."""
 
 
+class _AdaptiveRouteHistoryIntegrityError(RuntimeError):
+    """A stale route prefix must not be merged into a new adaptive route."""
+
+
 @dataclass(frozen=True)
 class _AdaptiveRouteCandidate:
     """A validated full route paired with Task 2's local candidate features."""
@@ -2623,6 +2627,72 @@ class SimpleAgent:
             )
         return current_map_node.y + 1, current_map_node, tuple(next_nodes)
 
+    def _validate_adaptive_candidate_map(
+            self,
+            start_y,
+            current_map_node,
+            next_nodes,
+    ):
+        rows = getattr(getattr(self.game, "map", None), "nodes", None)
+        if not isinstance(rows, dict) or not rows:
+            raise _AdaptiveRouteCandidateGenerationError("candidate map has no rows")
+        try:
+            map_height = max(rows)
+        except (TypeError, ValueError) as error:
+            raise _AdaptiveRouteCandidateGenerationError(
+                "candidate map height is invalid"
+            ) from error
+        if not isinstance(map_height, int) or map_height < start_y:
+            raise _AdaptiveRouteCandidateGenerationError("candidate map is too short")
+
+        for y in range(map_height + 1):
+            row = rows.get(y)
+            if not isinstance(row, dict) or not row:
+                raise _AdaptiveRouteCandidateGenerationError(
+                    "candidate map is missing a row"
+                )
+            for x, node in row.items():
+                if getattr(node, "x", None) != x or getattr(node, "y", None) != y:
+                    raise _AdaptiveRouteCandidateGenerationError(
+                        "candidate map node coordinates are invalid"
+                    )
+                for child in getattr(node, "children", []) or []:
+                    child_x = getattr(child, "x", None)
+                    child_y = getattr(child, "y", None)
+                    if child_y != y + 1:
+                        raise _AdaptiveRouteCandidateGenerationError(
+                            "candidate child does not advance one row"
+                        )
+                    referenced = self._candidate_map_node(child_x, child_y)
+                    if (
+                            referenced is None
+                            or referenced.x != child_x
+                            or referenced.y != child_y
+                    ):
+                        raise _AdaptiveRouteCandidateGenerationError(
+                            "candidate child is missing from the map"
+                        )
+
+        for next_node in next_nodes:
+            if getattr(next_node, "y", None) != start_y:
+                raise _AdaptiveRouteCandidateGenerationError(
+                    "candidate next node has an invalid row"
+                )
+            referenced = self._candidate_map_node(
+                getattr(next_node, "x", None),
+                getattr(next_node, "y", None),
+            )
+            if referenced is None:
+                raise _AdaptiveRouteCandidateGenerationError(
+                    "candidate next node is missing from the map"
+                )
+            if current_map_node is not None and not self._candidate_has_child(
+                    current_map_node, referenced):
+                raise _AdaptiveRouteCandidateGenerationError(
+                    "candidate next node is not a current child"
+                )
+        return map_height
+
     def _candidate_map_node(self, x, y):
         try:
             return self.game.map.get_node(x, y)
@@ -2630,6 +2700,42 @@ class SimpleAgent:
             raise _AdaptiveRouteCandidateGenerationError(
                 "candidate map lookup failed"
             ) from error
+
+    def _validated_route_history_prefix(self, map_height, current_map_node, start_y):
+        if current_map_node is None:
+            return None
+        route = self.map_route
+        if not isinstance(route, list) or len(route) != map_height + 1:
+            raise _AdaptiveRouteHistoryIntegrityError(
+                "route history is not a complete absolute route"
+            )
+
+        history_nodes = []
+        for y, x in enumerate(route[:start_y]):
+            if isinstance(x, bool) or not isinstance(x, int):
+                raise _AdaptiveRouteHistoryIntegrityError(
+                    "route history has an invalid coordinate"
+                )
+            node = self._candidate_map_node(x, y)
+            if node is None:
+                raise _AdaptiveRouteHistoryIntegrityError(
+                    "route history references a missing node"
+                )
+            history_nodes.append(node)
+
+        if (
+                history_nodes[-1].x != current_map_node.x
+                or history_nodes[-1].y != current_map_node.y
+        ):
+            raise _AdaptiveRouteHistoryIntegrityError(
+                "route history does not end at the current node"
+            )
+        for parent, child in zip(history_nodes, history_nodes[1:]):
+            if not self._candidate_has_child(parent, child):
+                raise _AdaptiveRouteHistoryIntegrityError(
+                    "route history is disconnected"
+                )
+        return tuple(route[:start_y])
 
     @staticmethod
     def _candidate_has_child(parent, child):
@@ -2646,6 +2752,7 @@ class SimpleAgent:
             start_y,
             current_map_node,
             next_nodes,
+            history_prefix,
     ):
         try:
             map_height = max(self.game.map.nodes.keys())
@@ -2657,10 +2764,9 @@ class SimpleAgent:
         if len(absolute_path) != map_height + 1 or start_y > map_height:
             raise _AdaptiveRouteCandidateGenerationError("candidate route is incomplete")
 
-        if current_map_node is not None:
-            for y, x in enumerate(self.map_route[:start_y]):
+        if history_prefix is not None:
+            for y, x in enumerate(history_prefix):
                 absolute_path[y] = x
-            absolute_path[start_y - 1] = current_map_node.x
         local_path = tuple(absolute_path[start_y:])
         if len(local_path) != map_height - start_y + 1:
             raise _AdaptiveRouteCandidateGenerationError("candidate route is truncated")
@@ -2706,13 +2812,18 @@ class SimpleAgent:
         if self.map_router is None:
             raise _AdaptiveRouteCandidateGenerationError("adaptive map router is unavailable")
         start_y, current_map_node, next_nodes = self._adaptive_candidate_origin()
-        try:
-            conservative_route = self._build_map_route("conservative")
-            aggressive_route = self._build_map_route("aggressive")
-        except (IndexError, KeyError) as error:
-            raise _AdaptiveRouteCandidateGenerationError(
-                "candidate route build map lookup failed"
-            ) from error
+        map_height = self._validate_adaptive_candidate_map(
+            start_y,
+            current_map_node,
+            next_nodes,
+        )
+        history_prefix = self._validated_route_history_prefix(
+            map_height,
+            current_map_node,
+            start_y,
+        )
+        conservative_route = self._build_map_route("conservative")
+        aggressive_route = self._build_map_route("aggressive")
         return (
             self._describe_adaptive_route_candidate(
                 "conservative",
@@ -2720,6 +2831,7 @@ class SimpleAgent:
                 start_y,
                 current_map_node,
                 next_nodes,
+                history_prefix,
             ),
             self._describe_adaptive_route_candidate(
                 "aggressive",
@@ -2727,18 +2839,30 @@ class SimpleAgent:
                 start_y,
                 current_map_node,
                 next_nodes,
+                history_prefix,
             ),
         )
 
     def _candidate_features(self, candidate):
         if isinstance(candidate, _AdaptiveRouteCandidate):
             start_y, current_map_node, next_nodes = self._adaptive_candidate_origin()
+            map_height = self._validate_adaptive_candidate_map(
+                start_y,
+                current_map_node,
+                next_nodes,
+            )
+            history_prefix = self._validated_route_history_prefix(
+                map_height,
+                current_map_node,
+                start_y,
+            )
             validated = self._describe_adaptive_route_candidate(
                 candidate.features.mode,
                 candidate.absolute_path,
                 start_y,
                 current_map_node,
                 next_nodes,
+                history_prefix,
             )
             if (
                     validated.features != candidate.features
@@ -2964,6 +3088,8 @@ class SimpleAgent:
         return self._calculate_map_node_priority(node, context, elite_mode)
 
     def make_map_choice(self):
+        if getattr(self.game.screen, "boss_available", False):
+            return ChooseMapBossAction()
         if (
             len(self.game.screen.next_nodes) > 0
             and self.game.screen.next_nodes[0].y == 0
