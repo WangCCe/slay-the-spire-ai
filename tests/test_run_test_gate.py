@@ -2,10 +2,13 @@ from __future__ import annotations
 
 import copy
 import json
+import subprocess
+import sys
 from pathlib import Path
 
 import pytest
 
+import scripts.run_test_gate as test_gate_runner
 from scripts.run_test_gate import (
     FullOnlyTarget,
     ManifestError,
@@ -251,3 +254,163 @@ def test_load_manifest_rejects_invalid_configuration(
 
     with pytest.raises(ManifestError, match=message):
         load_manifest(_write_manifest(temporary_repo, manifest), temporary_repo)
+
+
+@pytest.mark.parametrize(
+    "profile_name",
+    ("commit", "protocol", "gameplay", "noncombat-evidence", "full"),
+)
+def test_build_pytest_command_uses_shared_pytest_options_and_profile_basetemp(
+    temporary_repo: Path, profile_name: str
+) -> None:
+    manifest = load_manifest(_write_manifest(temporary_repo, VALID_MANIFEST), temporary_repo)
+
+    command = test_gate_runner.build_pytest_command(
+        profile_name,
+        manifest,
+        temporary_repo,
+        temporary_repo / ".pytest_gates",
+    )
+
+    assert command[:5] == [sys.executable, "-m", "pytest", "-q", "-p"]
+    assert command[5:7] == ["no:cacheprovider", "--basetemp"]
+    assert command[7] == str(temporary_repo / ".pytest_gates" / profile_name)
+
+
+def test_build_pytest_command_commit_excludes_only_full_only_targets(
+    temporary_repo: Path,
+) -> None:
+    manifest = load_manifest(_write_manifest(temporary_repo, VALID_MANIFEST), temporary_repo)
+
+    command = test_gate_runner.build_pytest_command(
+        "commit", manifest, temporary_repo, temporary_repo / ".pytest_gates"
+    )
+
+    assert command[8:] == ["--ignore=tests/test_slow.py"]
+
+
+def test_build_pytest_command_full_has_no_ignores_or_positive_targets(
+    temporary_repo: Path,
+) -> None:
+    manifest = load_manifest(_write_manifest(temporary_repo, VALID_MANIFEST), temporary_repo)
+
+    command = test_gate_runner.build_pytest_command(
+        "full", manifest, temporary_repo, temporary_repo / ".pytest_gates"
+    )
+
+    assert command[8:] == []
+
+
+@pytest.mark.parametrize("profile_name", ("protocol", "gameplay", "noncombat-evidence"))
+def test_build_pytest_command_appends_domain_targets(
+    temporary_repo: Path, profile_name: str
+) -> None:
+    manifest = load_manifest(_write_manifest(temporary_repo, VALID_MANIFEST), temporary_repo)
+
+    command = test_gate_runner.build_pytest_command(
+        profile_name,
+        manifest,
+        temporary_repo,
+        temporary_repo / ".pytest_gates",
+    )
+
+    assert command[8:] == list(manifest.profiles[profile_name].targets)
+
+
+def test_main_list_prints_profiles_without_running_them(
+    temporary_repo: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    manifest_path = _write_manifest(temporary_repo, VALID_MANIFEST)
+    monkeypatch.setattr(test_gate_runner, "_DEFAULT_REPO_ROOT", temporary_repo)
+    monkeypatch.setattr(test_gate_runner, "_DEFAULT_MANIFEST_PATH", manifest_path)
+    monkeypatch.setattr(
+        test_gate_runner,
+        "run_profile",
+        lambda *args, **kwargs: pytest.fail("--list must not run pytest"),
+    )
+
+    assert test_gate_runner.main(["--list"]) == 0
+
+    output = capsys.readouterr().out
+    for profile_name, profile in VALID_MANIFEST["profiles"].items():
+        assert profile_name in output
+        assert profile["description"] in output
+
+
+def test_run_profile_dry_run_prints_windows_safe_command_without_executor(
+    temporary_repo: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    manifest_path = _write_manifest(temporary_repo, VALID_MANIFEST)
+
+    def executor(*args: object, **kwargs: object) -> subprocess.CompletedProcess[str]:
+        pytest.fail("--dry-run must not run pytest")
+
+    assert test_gate_runner.run_profile(
+        "commit", manifest_path, temporary_repo, dry_run=True, executor=executor
+    ) == 0
+
+    command = test_gate_runner.build_pytest_command(
+        "commit",
+        load_manifest(manifest_path, temporary_repo),
+        temporary_repo,
+        temporary_repo / ".pytest_gates",
+    )
+    assert subprocess.list2cmdline(command) in capsys.readouterr().out
+
+
+def test_run_profile_propagates_pytest_exit_code_and_reports_elapsed_time(
+    temporary_repo: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    manifest_path = _write_manifest(temporary_repo, VALID_MANIFEST)
+    received: dict[str, object] = {}
+
+    def executor(*args: object, **kwargs: object) -> subprocess.CompletedProcess[str]:
+        received.update(kwargs)
+        received["command"] = args[0]
+        return subprocess.CompletedProcess(args[0], 7)
+
+    clock_values = iter((10.0, 12.5))
+
+    assert test_gate_runner.run_profile(
+        "protocol",
+        manifest_path,
+        temporary_repo,
+        executor=executor,
+        clock=lambda: next(clock_values),
+    ) == 7
+
+    assert received["cwd"] == temporary_repo
+    assert received["check"] is False
+    assert received["command"] == test_gate_runner.build_pytest_command(
+        "protocol",
+        load_manifest(manifest_path, temporary_repo),
+        temporary_repo,
+        temporary_repo / ".pytest_gates",
+    )
+    assert "2.50s" in capsys.readouterr().out
+
+
+def test_run_profile_returns_configuration_error_without_running_executor(
+    temporary_repo: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    def executor(*args: object, **kwargs: object) -> subprocess.CompletedProcess[str]:
+        pytest.fail("invalid manifests must not run pytest")
+
+    assert test_gate_runner.run_profile(
+        "commit", temporary_repo / "missing.json", temporary_repo, executor=executor
+    ) == 2
+
+    assert "test gate configuration error:" in capsys.readouterr().err
+
+
+def test_main_returns_configuration_error_code(
+    temporary_repo: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    monkeypatch.setattr(test_gate_runner, "_DEFAULT_REPO_ROOT", temporary_repo)
+    monkeypatch.setattr(
+        test_gate_runner, "_DEFAULT_MANIFEST_PATH", temporary_repo / "missing.json"
+    )
+
+    assert test_gate_runner.main(["--list"]) == 2
+
+    assert "test gate configuration error:" in capsys.readouterr().err

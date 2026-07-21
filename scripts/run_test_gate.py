@@ -1,10 +1,14 @@
 from __future__ import annotations
 
+import argparse
 import configparser
 import json
+import subprocess
+import sys
+import time
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any
+from typing import Any, Callable, Sequence
 
 
 _REQUIRED_PROFILES = (
@@ -15,6 +19,8 @@ _REQUIRED_PROFILES = (
     "full",
 )
 _DOMAIN_PROFILES = ("protocol", "gameplay", "noncombat-evidence")
+_DEFAULT_REPO_ROOT = Path(__file__).resolve().parents[1]
+_DEFAULT_MANIFEST_PATH = _DEFAULT_REPO_ROOT / "tests" / "test_gate_manifest.json"
 
 
 class ManifestError(ValueError):
@@ -232,3 +238,101 @@ def load_manifest(path: Path, repo_root: Path) -> TestGateManifest:
             for name in _REQUIRED_PROFILES
         },
     )
+
+
+def _repository_relative_argument(value: str, repo_root: Path) -> str:
+    target_file, separator, node_id = value.partition("::")
+    relative_file = (repo_root / target_file).resolve().relative_to(repo_root.resolve())
+    argument = relative_file.as_posix()
+    return f"{argument}{separator}{node_id}" if separator else argument
+
+
+def build_pytest_command(
+    profile_name: str,
+    manifest: TestGateManifest,
+    repo_root: Path,
+    basetemp_root: Path,
+) -> list[str]:
+    profile = manifest.profiles[profile_name]
+    command = [
+        sys.executable,
+        "-m",
+        "pytest",
+        "-q",
+        "-p",
+        "no:cacheprovider",
+        "--basetemp",
+        str(basetemp_root / profile_name),
+    ]
+    if profile.mode == "default-minus-full-only":
+        command.extend(
+            f"--ignore={_repository_relative_argument(target.path, repo_root)}"
+            for target in manifest.full_only
+        )
+    elif profile.mode == "targets":
+        command.extend(
+            _repository_relative_argument(target, repo_root) for target in profile.targets
+        )
+    return command
+
+
+def _configuration_error(error: ManifestError) -> int:
+    print(f"test gate configuration error: {error}", file=sys.stderr)
+    return 2
+
+
+def run_profile(
+    profile_name: str,
+    manifest_path: Path,
+    repo_root: Path,
+    dry_run: bool = False,
+    executor: Callable[..., subprocess.CompletedProcess[Any]] = subprocess.run,
+    clock: Callable[[], float] = time.perf_counter,
+) -> int:
+    try:
+        manifest = load_manifest(manifest_path, repo_root)
+    except ManifestError as error:
+        return _configuration_error(error)
+
+    command = build_pytest_command(
+        profile_name, manifest, repo_root, repo_root / ".pytest_gates"
+    )
+    if dry_run:
+        print(f"dry-run: {subprocess.list2cmdline(command)}")
+        return 0
+
+    started_at = clock()
+    result = executor(command, cwd=repo_root, check=False)
+    elapsed = clock() - started_at
+    print(f"test gate {profile_name}: {elapsed:.2f}s (exit code {result.returncode})")
+    return result.returncode
+
+
+def main(argv: Sequence[str] | None = None) -> int:
+    parser = argparse.ArgumentParser(description="Run a validated pytest gate profile.")
+    parser.add_argument("profile", nargs="?", default="commit", choices=_REQUIRED_PROFILES)
+    parser.add_argument("--list", action="store_true", help="list available profiles")
+    parser.add_argument(
+        "--dry-run", action="store_true", help="print the pytest command without running it"
+    )
+    arguments = parser.parse_args(argv)
+
+    if arguments.list:
+        try:
+            manifest = load_manifest(_DEFAULT_MANIFEST_PATH, _DEFAULT_REPO_ROOT)
+        except ManifestError as error:
+            return _configuration_error(error)
+        for name in _REQUIRED_PROFILES:
+            print(f"{name}: {manifest.profiles[name].description}")
+        return 0
+
+    return run_profile(
+        arguments.profile,
+        _DEFAULT_MANIFEST_PATH,
+        _DEFAULT_REPO_ROOT,
+        dry_run=arguments.dry_run,
+    )
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())
