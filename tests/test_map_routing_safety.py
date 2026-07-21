@@ -1668,8 +1668,8 @@ def test_adaptive_mid_act_generation_commits_legal_full_aggressive_route():
     assert route[current.y] == current.x
     assert route[current.y + 1] == elite.x
     assert isinstance(action, ChooseMapNodeAction)
-    assert action.node == elite
-    assert action.node != safe
+    assert action.node == safe
+    assert action.node != elite
 
 
 def test_adaptive_mid_act_fallback_merges_valid_history_with_conservative_suffix(
@@ -2002,3 +2002,158 @@ def test_boss_choice_skips_replan_and_route_mutation_at_map_height(monkeypatch):
     assert calls == []
     assert agent.map_route == original_route
     assert (agent._last_route_hp_pct, agent._last_route_floor) == original_metadata
+
+
+def test_adaptive_constructor_initializes_isolated_tracking_state():
+    ironclad = SimpleAgent(chosen_class=PlayerClass.IRONCLAD, elite_mode="adaptive")
+    silent = SimpleAgent(chosen_class=PlayerClass.THE_SILENT, elite_mode="adaptive")
+
+    for agent in (ironclad, silent):
+        assert agent.elite_mode == "adaptive"
+        assert agent._adaptive_route_act is None
+        assert agent._adaptive_visited_nodes == set()
+        assert agent._adaptive_elite_seen is False
+        assert agent._adaptive_last_rest_floor is None
+
+
+def test_adaptive_replans_on_every_map_choice(monkeypatch):
+    agent, _ = _late_adaptive_route_agent(13)
+    original_builder = agent._build_map_route
+    calls = []
+
+    def tracked_builder(mode):
+        calls.append(mode)
+        return original_builder(mode)
+
+    monkeypatch.setattr(agent, "_build_map_route", tracked_builder)
+
+    agent.make_map_choice()
+    agent.make_map_choice()
+
+    assert calls == ["conservative", "aggressive", "conservative", "aggressive"]
+
+
+def test_legacy_mode_keeps_hp_drop_replan_trigger(monkeypatch):
+    game_map = Map.from_json(benchmark.legacy_route_fixture("hp_drop_replan")["nodes"])
+    current = game_map.get_node(0, 1)
+    next_node = game_map.get_node(0, 2)
+    agent = _route_agent("aggressive", game_map)
+    agent.map_route = [0, 0, 0]
+    agent._last_route_hp_pct = 1.0
+    agent.game.screen = SimpleNamespace(
+        current_node=current,
+        next_nodes=[next_node],
+        boss_available=False,
+    )
+    original_builder = agent._build_map_route
+    calls = []
+
+    def tracked_builder(mode):
+        calls.append(mode)
+        return original_builder(mode)
+
+    monkeypatch.setattr(agent, "_build_map_route", tracked_builder)
+
+    agent.game.current_hp = 73
+    assert agent.make_map_choice().node == next_node
+    agent.game.current_hp = 71
+    assert agent.make_map_choice().node == next_node
+
+    assert calls == ["aggressive"]
+
+
+def test_adaptive_history_is_idempotent_for_repeated_coordinate():
+    agent, current, _, _ = _mid_act_adaptive_route_agent()
+
+    agent._update_adaptive_route_history()
+    agent._update_adaptive_route_history()
+
+    assert agent._adaptive_route_act == 1
+    assert agent._adaptive_visited_nodes == {(current.x, current.y)}
+    assert agent._adaptive_elite_seen is True
+    assert agent._adaptive_last_rest_floor is None
+
+
+def test_adaptive_history_resets_on_act_change():
+    agent, current, _, _ = _mid_act_adaptive_route_agent()
+    agent._update_adaptive_route_history()
+    agent.game.act = 2
+    agent.game.screen.current_node = Node(6, 2, "M")
+
+    agent._update_adaptive_route_history()
+
+    assert agent._adaptive_route_act == 2
+    assert agent._adaptive_visited_nodes == {(6, 2)}
+    assert agent._adaptive_elite_seen is False
+    assert agent._adaptive_last_rest_floor is None
+    assert (current.x, current.y) not in agent._adaptive_visited_nodes
+
+
+def test_adaptive_history_records_latest_rest_and_elite():
+    agent, _, _, _ = _mid_act_adaptive_route_agent()
+    rest = Node(1, 3, "R")
+    elite = Node(2, 5, "E")
+    agent.game.map.add_node(rest)
+    agent.game.map.add_node(elite)
+    agent.game.screen.current_node = rest
+
+    agent._update_adaptive_route_history()
+    agent.game.screen.current_node = elite
+    agent._update_adaptive_route_history()
+
+    assert agent._adaptive_visited_nodes == {(1, 3), (2, 5)}
+    assert agent._adaptive_elite_seen is True
+    assert agent._adaptive_last_rest_floor == 4
+
+
+@pytest.mark.parametrize("outcome", ("success", "forced", "fallback", "unsupported"))
+def test_adaptive_decision_emits_one_structured_summary(monkeypatch, caplog, outcome):
+    caplog.set_level(logging.INFO)
+    if outcome == "unsupported":
+        game_map, safe_start, elite_start = _optional_elite_route_map()
+        agent = SimpleAgent(chosen_class=PlayerClass.THE_SILENT, elite_mode="adaptive")
+        agent.game.map = game_map
+        agent.game.act = 1
+        agent.game.floor = 0
+        agent.game.current_hp = 80
+        agent.game.max_hp = 80
+        agent.game.deck = _prepared_act1_deck()
+        agent.game.hand = []
+        agent.game.monsters = []
+        agent.game.potions = [_potion("Fire Potion")]
+        agent.game.relics = ["Burning Blood"]
+        _set_start_screen(agent, safe_start, elite_start)
+    elif outcome == "forced":
+        game_map, early_start, delayed_start = _forced_elite_route_map(1)
+        agent = _route_agent("adaptive", game_map, deck=_prepared_act1_deck())
+        agent.game.potions = [_potion("Fire Potion")]
+        _set_start_screen(agent, early_start, delayed_start)
+    else:
+        game_map, safe_start, elite_start = _optional_elite_route_map()
+        agent = _route_agent("adaptive", game_map, deck=_prepared_act1_deck())
+        agent.game.potions = [_potion("Fire Potion")]
+        _set_start_screen(agent, safe_start, elite_start)
+        if outcome == "fallback":
+            monkeypatch.setattr(
+                agent,
+                "_adaptive_route_candidates",
+                lambda: (_ for _ in ()).throw(
+                    agent_module._AdaptiveRouteCandidateGenerationError("injected")
+                ),
+            )
+
+    agent.make_map_choice()
+
+    summaries = [
+        record.getMessage()
+        for record in caplog.records
+        if record.getMessage().startswith("[ADAPTIVE_ROUTE]")
+    ]
+    assert len(summaries) == 1
+    assert "conservative=" in summaries[0]
+    assert "aggressive=" in summaries[0]
+    assert "elite_counts=" in summaries[0]
+    assert "recovery=" in summaries[0]
+    assert "budget=" in summaries[0]
+    assert "selected=" in summaries[0]
+    assert "reasons=" in summaries[0]

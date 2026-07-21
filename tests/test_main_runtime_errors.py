@@ -432,6 +432,21 @@ def test_main_supports_isolated_interpreter_startup(tmp_path):
     assert "usage:" in completed.stdout.lower()
 
 
+def test_main_help_exposes_adaptive_elite_route_without_changing_default(tmp_path):
+    completed = subprocess.run(
+        [sys.executable, "-I", str(Path(main.__file__).resolve()), "--help"],
+        cwd=tmp_path,
+        capture_output=True,
+        text=True,
+        timeout=30,
+        check=False,
+    )
+
+    assert completed.returncode == 0, completed.stderr
+    assert "{conservative,aggressive,adaptive}" in completed.stdout
+    assert "default: aggressive" in completed.stdout
+
+
 def test_qualification_child_rejects_site_enabled_isolated_startup(tmp_path):
     probe = "import runpy,sys; runpy.run_path(sys.argv[1], run_name='probe')"
     environment = os.environ.copy()

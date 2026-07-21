@@ -447,7 +447,7 @@ def create_agent(
         training: Whether RL agent should be in training mode
         model_path: Path to pre-trained RL model checkpoint
         epsilon: Exploration rate for non-training RL inference
-        elite_mode: Elite routing mode ("conservative" or "aggressive", default: "aggressive")
+        elite_mode: Elite routing mode ("conservative", "aggressive", or "adaptive", default: "aggressive")
         rl_version: RL space version ("v1" or "v2"), defaults to STS_RL_VERSION or "v1"
 
     Returns:
@@ -839,6 +839,7 @@ if __name__ == "__main__":
             "  python main.py --seed-pool analysis_scripts/seed_pool.txt --max-games 20\n"
             "  python main.py --elite-route conservative -a 20 # Conservative elite routing (avoid elites)\n"
             "  python main.py --elite-route aggressive         # Aggressive elite routing (seek elites)\n"
+            "  python main.py --elite-route adaptive           # Adaptive Ironclad elite routing\n"
         ),
     )
     parser.add_argument(
@@ -930,9 +931,9 @@ if __name__ == "__main__":
     )
     parser.add_argument(
         "--elite-route",
-        choices=["conservative", "aggressive"],
+        choices=["conservative", "aggressive", "adaptive"],
         default="aggressive",
-        help="Map routing strategy for elites: conservative (avoid) or aggressive (seek) (default: aggressive)",
+        help="Map routing strategy for elites: conservative, aggressive, or adaptive (default: aggressive)",
     )
     parser.add_argument(
         "--noncombat-exploration-dry-run",

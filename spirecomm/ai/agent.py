@@ -223,6 +223,10 @@ class SimpleAgent:
         self._last_route_hp_pct = None
         self._last_route_floor = None
         self._map_replan_hp_drop = 0.10
+        self._adaptive_route_act = None
+        self._adaptive_visited_nodes = set()
+        self._adaptive_elite_seen = False
+        self._adaptive_last_rest_floor = None
         self.chosen_class = chosen_class
         self.priorities = Priority()
         self.map_router = None
@@ -2903,10 +2907,15 @@ class SimpleAgent:
             return list(candidate.absolute_path)
         return [0] * candidate.start_y + list(candidate.path)
 
-    def _select_adaptive_route(self, conservative, aggressive, context):
+    def _select_adaptive_route(self, conservative, aggressive, context, state=None):
         conservative_features = self._candidate_features(conservative)
         aggressive_features = self._candidate_features(aggressive)
-        state = self.map_router.build_adaptive_state(context)
+        if state is None:
+            state = self.map_router.build_adaptive_state(
+                context,
+                elite_seen=self._adaptive_elite_seen,
+                last_rest_floor=self._adaptive_last_rest_floor,
+            )
         assessment = self.map_router.assess_optional_elite(
             state,
             conservative_features,
@@ -2933,28 +2942,100 @@ class SimpleAgent:
                 path_summary.append(f"{y}:{node.symbol}")
         logging.info(f"[MAP_ROUTING] Chosen path: {' -> '.join(path_summary)}\n")
 
+    def _adaptive_state(self, context):
+        return self.map_router.build_adaptive_state(
+            context,
+            elite_seen=self._adaptive_elite_seen,
+            last_rest_floor=self._adaptive_last_rest_floor,
+        )
+
+    @staticmethod
+    def _adaptive_candidate_summary(candidate):
+        if candidate is None:
+            return "unavailable", "unavailable", "unavailable"
+        features = candidate.features if isinstance(candidate, _AdaptiveRouteCandidate) else candidate
+        return (
+            features.symbols,
+            len(features.elite_floors),
+            (features.rest_before_distance, features.rest_after_distance),
+        )
+
+    def _log_adaptive_route_summary(
+            self,
+            state,
+            conservative,
+            aggressive,
+            assessment,
+            selected_mode,
+    ):
+        conservative_symbols, conservative_elites, conservative_recovery = \
+            self._adaptive_candidate_summary(conservative)
+        aggressive_symbols, aggressive_elites, aggressive_recovery = \
+            self._adaptive_candidate_summary(aggressive)
+        logging.info(
+            "[ADAPTIVE_ROUTE] character=%s act=%s floor=%s hp=%s/%s deck=%s "
+            "potion=%s relic=%s conservative=%s aggressive=%s "
+            "elite_counts=%s/%s recovery=%s/%s budget=%s selected=%s reasons=%s",
+            state.player_class,
+            state.act,
+            self.game.floor,
+            state.current_hp,
+            state.max_hp,
+            state.deck_readiness,
+            state.potion_support,
+            state.relic_support,
+            conservative_symbols,
+            aggressive_symbols,
+            conservative_elites,
+            aggressive_elites,
+            conservative_recovery,
+            aggressive_recovery,
+            assessment.optional_elite_budget,
+            selected_mode,
+            assessment.reasons,
+        )
+
     def generate_map_route(self):
         if str(self.elite_mode or "").lower() == "adaptive":
+            context = DecisionContext(self.game)
             if self.chosen_class != PlayerClass.IRONCLAD:
                 route = self._build_map_route("conservative")
-                logging.info(
-                    "[MAP_ROUTING] Adaptive route fallback "
-                    "reason=unsupported_character budget=0\n"
+                state = self._adaptive_state(context)
+                assessment = self.map_router._adaptive_assessment(
+                    False,
+                    "unsupported_character",
                 )
+                conservative = None
+                aggressive = None
+                selected_mode = "conservative"
             else:
                 try:
                     conservative, aggressive = self._adaptive_route_candidates()
-                    route, _ = self._select_adaptive_route(
+                    state = self._adaptive_state(context)
+                    route, assessment = self._select_adaptive_route(
                         conservative,
                         aggressive,
-                        DecisionContext(self.game),
+                        context,
+                        state,
                     )
+                    selected_mode = "aggressive" if assessment.allowed else "conservative"
                 except _AdaptiveRouteCandidateGenerationError:
                     route = self._adaptive_conservative_fallback_route()
-                    logging.info(
-                        "[MAP_ROUTING] Adaptive route fallback "
-                        "reason=candidate_generation_failed budget=0\n"
+                    state = self._adaptive_state(context)
+                    assessment = self.map_router._adaptive_assessment(
+                        False,
+                        "candidate_generation_failed",
                     )
+                    conservative = None
+                    aggressive = None
+                    selected_mode = "conservative"
+            self._log_adaptive_route_summary(
+                state,
+                conservative,
+                aggressive,
+                assessment,
+                selected_mode,
+            )
         else:
             route = self._build_map_route(self.elite_mode)
 
@@ -3111,10 +3192,44 @@ class SimpleAgent:
             return self._calculate_map_node_priority(node, context)
         return self._calculate_map_node_priority(node, context, elite_mode)
 
+    @staticmethod
+    def _adaptive_valid_coordinate(value):
+        return isinstance(value, int) and not isinstance(value, bool) and value >= 0
+
+    def _update_adaptive_route_history(self):
+        act = getattr(self.game, "act", None)
+        if not self._adaptive_valid_coordinate(act) or act < 1:
+            return
+        if self._adaptive_route_act != act:
+            self._adaptive_route_act = act
+            self._adaptive_visited_nodes = set()
+            self._adaptive_elite_seen = False
+            self._adaptive_last_rest_floor = None
+
+        current_node = getattr(getattr(self.game, "screen", None), "current_node", None)
+        x = getattr(current_node, "x", None)
+        y = getattr(current_node, "y", None)
+        if not self._adaptive_valid_coordinate(x) or not self._adaptive_valid_coordinate(y):
+            return
+        coordinate = (x, y)
+        if coordinate in self._adaptive_visited_nodes:
+            return
+        self._adaptive_visited_nodes.add(coordinate)
+        map_node = self.game.map.get_node(x, y)
+        if map_node is None:
+            return
+        if map_node.symbol == "E":
+            self._adaptive_elite_seen = True
+        elif map_node.symbol == "R":
+            self._adaptive_last_rest_floor = map_node.y + 1
+
     def make_map_choice(self):
         if getattr(self.game.screen, "boss_available", False):
             return ChooseMapBossAction()
-        if (
+        if str(self.elite_mode or "").lower() == "adaptive":
+            self._update_adaptive_route_history()
+            self.generate_map_route()
+        elif (
             len(self.game.screen.next_nodes) > 0
             and self.game.screen.next_nodes[0].y == 0
         ):
