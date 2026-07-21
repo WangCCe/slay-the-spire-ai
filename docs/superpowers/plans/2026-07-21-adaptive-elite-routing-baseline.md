@@ -505,11 +505,11 @@ D:\anaconda\envs\stsai\python.exe scripts\run_test_gate.py commit
 D:\anaconda\envs\stsai\python.exe scripts\run_test_gate.py full
 ```
 
-Keep the existing manifest and all thresholds unchanged. Do not rerun focused verification. Run `gameplay`, then `commit`, then `full` only while the preceding gate exited `0`; stop immediately at the first nonzero result. Preserve attempt 1 as failed. Only the already-known stream-silence node may receive its existing one diagnostic run when `full` is reached and it is the sole full-gate failure. Any other failure stops qualification without retry, code/test change, training change, or live-config change.
+Keep the existing manifest and all thresholds unchanged. Do not rerun focused verification. Run `gameplay`, then `commit`, then `full` only while the preceding gate exited `0`; stop immediately at the first nonzero result. Preserve attempt 1 as failed. Only the already-known stream-silence node may receive its existing one diagnostic run when `full` is reached and it is the sole full-gate failure. That diagnostic is attribution-only: the original full result remains nonzero and failed, never becomes a success, and has no retry. Any other failure stops qualification without retry, code/test change, training change, or live-config change.
 
 - [ ] **Step 4: Write the separate corrected qualification report**
 
-Write exact printed profiles, resolved commands, unique basetemps, counts, durations, exit codes, stop point, and any permitted stream-silence diagnosis only to `reports/adaptive_elite_routing_automated_qualification_20260721_attempt-2-host.md`. Never overwrite attempt 1. Mark OpenSpec task `4.3b` when the sequence has executed according to the stop rule and its evidence is preserved. Qualification success requires all three gates to exit `0` subject only to the existing full-node handling; otherwise do not start final review or live qualification.
+Write exact printed profiles, resolved commands, unique basetemps, counts, durations, exit codes, stop point, and any permitted stream-silence diagnosis only to `reports/adaptive_elite_routing_automated_qualification_20260721_attempt-2-host.md`. Never overwrite attempt 1. Mark OpenSpec task `4.3b` when the sequence has executed according to the stop rule and its evidence is preserved. Qualification success requires gameplay, commit, and full each to exit `0`; otherwise do not start final review or live qualification.
 
 - [ ] **Step 5: Validate artifacts and scope**
 

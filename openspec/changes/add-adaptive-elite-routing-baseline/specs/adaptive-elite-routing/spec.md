@@ -146,15 +146,15 @@ The canonical automated qualification report at `reports/adaptive_elite_routing_
 - **AND** the original attempt-1 failures SHALL remain failures
 
 #### Scenario: Corrected sequence succeeds
-- **WHEN** `gameplay`, `commit`, and `full` each exit `0`, subject only to the existing sole stream-silence full-node handling
+- **WHEN** `gameplay`, `commit`, and `full` each exit `0`
 - **THEN** task `4.3b` MAY be marked complete once that ordered execution evidence is preserved
 - **AND** final review under task `4.4` MAY begin
 - **AND** live qualification MAY remain gated by the remaining stated requirements
 
 #### Scenario: Corrected automated qualification fails
-- **WHEN** any corrected gate fails for a reason other than the sole known stream-silence full-gate node
+- **WHEN** any corrected gate exits nonzero
 - **THEN** qualification SHALL stop with the corrected evidence preserved and no further retry, code/test change, training change, or live-config change
-- **AND** the known stream-silence node MAY receive only its existing one-node diagnostic run when it is the sole full-gate failure
+- **AND** the known stream-silence node MAY receive only its existing one-node diagnostic run when it is the sole full-gate failure; that diagnostic SHALL be attribution-only, SHALL leave the original full result nonzero and failed, and SHALL NOT convert it to success
 - **AND** task `4.4` and live qualification SHALL remain forbidden
 
 ### Requirement: Final review follows successful corrected qualification only
