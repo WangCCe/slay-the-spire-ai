@@ -1645,6 +1645,55 @@ def _task3_build(
     return result, exit_code, evidence
 
 
+def _task3_build_with_callback_times(
+    tmp_path: Path,
+    records: list[dict],
+    *,
+    run_symbols: list[str],
+) -> tuple[dict, int]:
+    graph = _task3_graph()
+    events: list[tuple[int, int, int, str, dict]] = []
+    for record_number, record in enumerate(records):
+        payload = _task3_payload(
+            floor=record["floor"],
+            start_y=record["start_y"],
+            conservative_symbols=record["conservative_symbols"],
+            aggressive_symbols=record["aggressive_symbols"],
+            selected=record["selected"],
+        )
+        for second, millisecond in record["callback_times"]:
+            events.append((second, millisecond, record_number, payload, record))
+    events.sort(key=lambda event: (event[0], event[1], event[2]))
+
+    log_lines = [_line("Starting game #1 as PlayerClass.IRONCLAD")]
+    trace_rows = []
+    for second, millisecond, _, payload, record in events:
+        log_lines.append(
+            _line(
+                f"[ADAPTIVE_ROUTE] {payload}",
+                second=second,
+                millisecond=millisecond,
+            )
+        )
+        trace_rows.append(
+            _task3_trace_row(
+                unix_time=_task3_unix_time(second, millisecond),
+                floor=record["floor"],
+                current_node=record["current_node"],
+                action_node=record["action_node"],
+                graph=graph,
+            )
+        )
+    log_lines.append(_line("Starting game #2 as PlayerClass.IRONCLAD", second=20))
+    ai_log = _write_log(tmp_path, "interleaved-ai.log", log_lines)
+    trace = _write_trace(tmp_path, "interleaved-trace.jsonl", trace_rows)
+    runs = [
+        _write_task3_run(tmp_path, "interleaved-game-1.run", run_symbols),
+        _write_task3_run(tmp_path, "interleaved-game-2.run", ["M"]),
+    ]
+    return audit.build_audit([ai_log], trace, runs, 8, 0.001)
+
+
 def _task3_initial_record(**overrides: object) -> dict:
     record = {
         "floor": 0,
@@ -1966,6 +2015,7 @@ def test_build_audit_preserves_deterministic_per_record_fallback_provenance(
     assert result["fallbacks"] == [
         {
             "fallback_number": 1,
+            "record_ordinal": 1,
             "game_number": 1,
             "payload": first_payload,
             "multiplicity": 2,
@@ -1999,6 +2049,7 @@ def test_build_audit_preserves_deterministic_per_record_fallback_provenance(
         },
         {
             "fallback_number": 2,
+            "record_ordinal": 2,
             "game_number": 1,
             "payload": second_payload,
             "multiplicity": 2,
@@ -2034,7 +2085,99 @@ def test_build_audit_preserves_deterministic_per_record_fallback_provenance(
     assert audit.serialize_audit(result) == audit.serialize_audit(rebuilt)
 
 
-def test_build_audit_invalid_base_result_contains_empty_fallbacks(tmp_path: Path):
+def test_build_audit_emits_keyed_callback_independent_record_ledger(
+    tmp_path: Path,
+):
+    fallback_payload = _task3_fallback_payload(
+        floor=1,
+        start_y=1,
+        symbols=("T", "M", "R"),
+    )
+    records = [
+        _task3_initial_record(selected="conservative"),
+        {
+            "floor": 1,
+            "payload": fallback_payload,
+            "current_node": (0, 0),
+            "action_node": (0, 1),
+            "trace_millisecond_offsets": (0, -1),
+        },
+    ]
+
+    result, exit_code, evidence = _task3_build(
+        tmp_path,
+        records,
+        run_symbols=["M", "T"],
+    )
+
+    assert exit_code == 0
+    assert len(result["records"]) == result["funnel"][
+        "callback_independent_records"
+    ] == 2
+    assert sum(record["multiplicity"] for record in result["records"]) == result[
+        "funnel"
+    ]["adaptive_occurrences"] == 4
+    assert [record["record_ordinal"] for record in result["records"]] == [1, 2]
+    assert result["opportunities"][0]["record_ordinal"] == 1
+    assert result["fallbacks"][0]["record_ordinal"] == 2
+
+    first = result["records"][0]
+    assert first["game_number"] == 1
+    assert first["payload"] == _task3_payload(
+        floor=0,
+        start_y=0,
+        conservative_symbols=("M", "T", "M", "R"),
+        aggressive_symbols=("M", "T", "E", "R"),
+        selected="conservative",
+    )
+    assert first["multiplicity"] == 2
+    assert first["occurrences"] == [
+        {
+            "source_path": str(evidence[0][0]),
+            "line_number": 2,
+            "timestamp": "2026-07-22T12:00:01.100000",
+            "unix_time_seconds": str(
+                Decimal(str(_task3_unix_time(1, 100)))
+            ),
+            "joined_decision_unix_time_seconds": str(
+                Decimal(str(_task3_unix_time(1, 100)))
+            ),
+            "join_delta_seconds": "0",
+        },
+        {
+            "source_path": str(evidence[0][0]),
+            "line_number": 3,
+            "timestamp": "2026-07-22T12:00:01.200000",
+            "unix_time_seconds": str(
+                Decimal(str(_task3_unix_time(1, 200)))
+            ),
+            "joined_decision_unix_time_seconds": str(
+                Decimal(str(_task3_unix_time(1, 200)))
+            ),
+            "join_delta_seconds": "0",
+        },
+    ]
+    assert first["decision"] == {
+        "semantic_fingerprint": first["decision"]["semantic_fingerprint"],
+        "unix_time_seconds": str(Decimal(str(_task3_unix_time(1, 100)))),
+        "act": 1,
+        "floor": 0,
+        "current_coordinate": [-1, -1],
+        "next_coordinates": [[0, 0]],
+        "action_coordinate": [0, 0],
+    }
+    assert len(first["decision"]["semantic_fingerprint"]) == 64
+    assert first["run_corroboration"] == {
+        "run_source_path": str(evidence[2][0]),
+        "trace_symbol": "M",
+        "run_symbol": "M",
+        "run_compatibility": "exact",
+    }
+
+
+def test_build_audit_invalid_base_result_contains_empty_record_ledger_and_fallbacks(
+    tmp_path: Path,
+):
     result, exit_code = audit.build_audit(
         [tmp_path / "missing-ai.log"],
         tmp_path / "missing-trace.jsonl",
@@ -2045,6 +2188,7 @@ def test_build_audit_invalid_base_result_contains_empty_fallbacks(tmp_path: Path
 
     assert exit_code == 2
     assert result["integrity"]["status"] == "invalid"
+    assert result["records"] == []
     assert result["fallbacks"] == []
 
 
@@ -2162,6 +2306,111 @@ def test_treatment_ignores_complete_coordinate_chain_that_predates_opportunity(
     assert result["opportunities"][0]["treatment"]["status"] == (
         "incomplete_before_divergence"
     )
+
+
+def test_treatment_rejects_conservative_record_interleaved_with_origin_interval(
+    tmp_path: Path,
+):
+    records = [
+        {
+            **_task3_initial_record(),
+            "callback_times": ((1, 100), (1, 300)),
+        },
+        {
+            **_task3_initial_record(selected="conservative"),
+            "callback_times": ((1, 200), (1, 400)),
+        },
+        {
+            "floor": 1,
+            "start_y": 1,
+            "conservative_symbols": ("T", "M", "R"),
+            "aggressive_symbols": ("T", "E", "R"),
+            "selected": "aggressive",
+            "current_node": (0, 0),
+            "action_node": (0, 1),
+            "callback_times": ((1, 500), (1, 600)),
+        },
+        {
+            "floor": 2,
+            "start_y": 2,
+            "conservative_symbols": ("M", "R"),
+            "aggressive_symbols": ("E", "R"),
+            "selected": "aggressive",
+            "current_node": (0, 1),
+            "action_node": (1, 2),
+            "callback_times": ((1, 700), (1, 800)),
+        },
+    ]
+
+    result, exit_code = _task3_build_with_callback_times(
+        tmp_path,
+        records,
+        run_symbols=["M", "T", "E"],
+    )
+
+    assert exit_code == 0
+    assert result["opportunities"][0]["record_ordinal"] == 1
+    assert result["opportunities"][0]["treatment"] == {
+        "status": "trajectory_unattributable",
+        "reason": "chronological_overlap",
+    }
+
+
+def test_treatment_rejects_conservative_record_overlapping_previous_interval(
+    tmp_path: Path,
+):
+    records = [
+        {
+            **_task3_initial_record(
+                conservative_symbols=("M", "T", "M", "R"),
+                aggressive_symbols=("M", "?", "E", "R"),
+            ),
+            "callback_times": ((1, 100), (1, 200)),
+        },
+        {
+            "floor": 1,
+            "start_y": 1,
+            "conservative_symbols": ("?", "M", "R"),
+            "aggressive_symbols": ("?", "E", "R"),
+            "selected": "aggressive",
+            "current_node": (0, 0),
+            "action_node": (2, 1),
+            "callback_times": ((1, 300), (1, 500)),
+        },
+        {
+            "floor": 1,
+            "start_y": 1,
+            "conservative_symbols": ("?", "M", "R"),
+            "aggressive_symbols": ("?", "E", "R"),
+            "selected": "conservative",
+            "current_node": (0, 0),
+            "action_node": (2, 1),
+            "callback_times": ((1, 400), (1, 600)),
+        },
+        {
+            "floor": 2,
+            "start_y": 2,
+            "conservative_symbols": ("M", "R"),
+            "aggressive_symbols": ("E", "R"),
+            "selected": "aggressive",
+            "current_node": (2, 1),
+            "action_node": (3, 2),
+            "callback_times": ((1, 700), (1, 800)),
+        },
+    ]
+
+    result, exit_code = _task3_build_with_callback_times(
+        tmp_path,
+        records,
+        run_symbols=["M", "?", "E"],
+    )
+
+    assert exit_code == 0
+    assert result["opportunities"][0]["record_ordinal"] == 1
+    assert result["opportunities"][0]["treatment"] == {
+        "status": "trajectory_unattributable",
+        "reason": "chronological_overlap",
+    }
 
 
 @pytest.mark.parametrize("broken_chain", ("disconnected", "floor_gap"))
@@ -2346,6 +2595,15 @@ def test_serialize_audit_is_stable_sorted_json_with_final_newline(tmp_path: Path
     ).encode("ascii")
 
 
+@pytest.mark.parametrize(
+    "nonfinite",
+    (float("nan"), float("inf"), float("-inf")),
+)
+def test_serialize_audit_rejects_nonfinite_numbers(nonfinite: float):
+    with pytest.raises(ValueError, match="Out of range float values"):
+        audit.serialize_audit({"nonfinite": nonfinite})
+
+
 def test_cli_writes_valid_and_invalid_artifacts_with_distinct_exit_codes(tmp_path: Path):
     _, _, evidence = _task3_build(
         tmp_path, [_task3_initial_record(selected="conservative")], run_symbols=["M"]
@@ -2413,6 +2671,69 @@ def _task3_cli_arguments(
     for run in evidence[2]:
         arguments.extend(("--run", str(run)))
     return arguments
+
+
+@pytest.mark.parametrize(
+    ("option", "parameter", "token"),
+    (
+        ("--log-utc-offset-hours", "log_utc_offset_hours", "NaN"),
+        ("--log-utc-offset-hours", "log_utc_offset_hours", "+Infinity"),
+        ("--log-utc-offset-hours", "log_utc_offset_hours", "-Infinity"),
+        ("--max-join-seconds", "max_join_seconds", "NaN"),
+        ("--max-join-seconds", "max_join_seconds", "+Infinity"),
+        ("--max-join-seconds", "max_join_seconds", "-Infinity"),
+    ),
+)
+def test_cli_nonfinite_numeric_parameters_write_deterministic_strict_json(
+    tmp_path: Path,
+    option: str,
+    parameter: str,
+    token: str,
+):
+    _, _, evidence = _task3_build(
+        tmp_path, [_task3_initial_record(selected="conservative")], run_symbols=["M"]
+    )
+    first_output = tmp_path / f"invalid-{parameter}-first.json"
+    second_output = tmp_path / f"invalid-{parameter}-second.json"
+    first_arguments = _task3_cli_arguments(evidence, first_output)
+    second_arguments = _task3_cli_arguments(evidence, second_output)
+    if token.startswith("-"):
+        first_index = first_arguments.index(option)
+        second_index = second_arguments.index(option)
+        first_arguments[first_index : first_index + 2] = [f"{option}={token}"]
+        second_arguments[second_index : second_index + 2] = [f"{option}={token}"]
+    else:
+        first_arguments[first_arguments.index(option) + 1] = token
+        second_arguments[second_arguments.index(option) + 1] = token
+
+    first_exit = audit.main(first_arguments)
+    second_exit = audit.main(second_arguments)
+
+    first_bytes = first_output.read_bytes()
+    assert (first_exit, second_exit) == (2, 2)
+    assert first_bytes == second_output.read_bytes()
+    parsed = json.loads(
+        first_bytes,
+        parse_constant=lambda value: pytest.fail(
+            f"non-standard JSON constant emitted: {value}"
+        ),
+    )
+    assert parsed["parameters"][parameter] is None
+    assert parsed["integrity"] == {
+        "status": "invalid",
+        "diagnostics": [
+            {
+                "code": "invalid_parameter",
+                "parameter": parameter,
+                "message": (
+                    "log UTC offset must be strictly within 24 hours"
+                    if parameter == "log_utc_offset_hours"
+                    else "join tolerance must be a finite non-negative number"
+                ),
+            }
+        ],
+    }
+    assert parsed["records"] == []
 
 
 @pytest.mark.parametrize("source_kind", ("ai_log", "decision_trace", "run"))

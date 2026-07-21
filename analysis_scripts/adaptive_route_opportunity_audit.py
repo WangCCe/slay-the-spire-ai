@@ -1302,8 +1302,57 @@ def _candidate_pair_json(evidence: CandidatePairEvidence) -> dict:
     }
 
 
+def _record_ledger_json(
+    record_ordinal: int,
+    joined: JoinedRecord,
+    corroboration: dict,
+    runs: Sequence[RunEvidence],
+) -> dict:
+    game_number = joined.record.game_number
+    run_source_path = (
+        str(runs[game_number - 1].source_path)
+        if game_number <= len(runs)
+        else None
+    )
+    return {
+        "record_ordinal": record_ordinal,
+        "game_number": game_number,
+        "payload": joined.record.payload,
+        "multiplicity": len(joined.occurrences),
+        "occurrences": [
+            {
+                "source_path": str(item.occurrence.source_path),
+                "line_number": item.occurrence.line_number,
+                "timestamp": item.occurrence.timestamp.isoformat(
+                    timespec="microseconds"
+                ),
+                "unix_time_seconds": str(item.occurrence.unix_time),
+                "joined_decision_unix_time_seconds": str(item.decision.unix_time),
+                "join_delta_seconds": str(item.delta_seconds),
+            }
+            for item in joined.occurrences
+        ],
+        "decision": {
+            "semantic_fingerprint": joined.decision.semantic_fingerprint,
+            "unix_time_seconds": str(joined.decision.unix_time),
+            "act": joined.decision.act,
+            "floor": joined.decision.floor,
+            "current_coordinate": list(joined.decision.current_node),
+            "next_coordinates": [
+                list(coordinate) for coordinate in joined.decision.next_nodes
+            ],
+            "action_coordinate": list(joined.decision.action_node),
+        },
+        "run_corroboration": {
+            "run_source_path": run_source_path,
+            **corroboration,
+        },
+    }
+
+
 def _fallback_json(
     fallback_number: int,
+    record_ordinal: int,
     joined: JoinedRecord,
     corroboration: dict,
     runs: Sequence[RunEvidence],
@@ -1316,6 +1365,7 @@ def _fallback_json(
     )
     return {
         "fallback_number": fallback_number,
+        "record_ordinal": record_ordinal,
         "game_number": game_number,
         "payload": joined.record.payload,
         "multiplicity": len(joined.occurrences),
@@ -1472,6 +1522,24 @@ def _treatment_evidence(
     origin_decision = joined.decision
     if origin_decision.action_node not in set(pair.aggressive_coordinate_sets[0]):
         return {"status": "trajectory_unattributable", "reason": "disconnected"}
+    chronology_steps = sorted(
+        (
+            step
+            for step in same_game_steps
+            if step["joined"] is not joined
+            and step["joined"].decision.act == origin_decision.act
+            and step["last_time_us"] >= origin_step["first_time_us"]
+        ),
+        key=lambda step: (step["first_time_us"], step["last_time_us"]),
+    )
+    if any(
+        step["first_time_us"] <= origin_step["last_time_us"]
+        for step in chronology_steps
+    ):
+        return {
+            "status": "trajectory_unattributable",
+            "reason": "chronological_overlap",
+        }
 
     def divergence_evidence(step: dict) -> dict:
         decision = step["joined"].decision
@@ -1521,16 +1589,11 @@ def _treatment_evidence(
     max_target_index = max(
         (divergence.index, *attributable_elites.keys())
     )
-    later_steps = sorted(
-        (
-            step
-            for step in same_game_steps
-            if step["joined"] is not joined
-            and step["joined"].decision.act == origin_decision.act
-            and step["first_time_us"] > origin_step["last_time_us"]
-        ),
-        key=lambda step: (step["first_time_us"], step["last_time_us"]),
-    )
+    later_steps = [
+        step
+        for step in chronology_steps
+        if step["first_time_us"] > origin_step["last_time_us"]
+    ]
     previous_step = origin_step
     previous_time_us = origin_step["last_time_us"]
     expected_index = 1
@@ -1541,8 +1604,6 @@ def _treatment_evidence(
         decision = step["joined"].decision
         previous_decision = previous_step["joined"].decision
         if step["first_time_us"] <= previous_time_us:
-            if treatment is not None:
-                return treatment
             return {
                 "status": "trajectory_unattributable",
                 "reason": "chronological_overlap",
@@ -1633,8 +1694,8 @@ def _treatment_evidence(
 
 
 def _base_result(
-    utc_offset_hours: float,
-    max_join_seconds: float,
+    utc_offset_hours: float | None,
+    max_join_seconds: float | None,
     sources: dict,
     diagnostics: list[dict],
 ) -> dict:
@@ -1657,6 +1718,7 @@ def _base_result(
         "funnel": _empty_funnel(),
         "runs": [],
         "fallbacks": [],
+        "records": [],
         "opportunities": [],
     }
 
@@ -1670,19 +1732,58 @@ def build_audit(
 ) -> tuple[dict, int]:
     """Build a deterministic, fail-closed adaptive-route opportunity audit."""
     sources: dict = {"ai_logs": [], "decision_trace": None, "runs": []}
+    parameter_diagnostics: list[dict] = []
     try:
-        occurrences, ai_sources = load_adaptive_logs(ai_logs, utc_offset_hours)
+        validated_utc_offset = _validate_utc_offset(utc_offset_hours)
+    except EvidenceError as error:
+        validated_utc_offset = None
+        parameter_diagnostics.append(
+            {
+                "code": "invalid_parameter",
+                "parameter": "log_utc_offset_hours",
+                "message": str(error),
+            }
+        )
+    try:
+        _validate_join_tolerance(max_join_seconds)
+        validated_max_join = float(max_join_seconds)
+    except (EvidenceError, OverflowError, TypeError, ValueError) as error:
+        validated_max_join = None
+        parameter_diagnostics.append(
+            {
+                "code": "invalid_parameter",
+                "parameter": "max_join_seconds",
+                "message": str(error),
+            }
+        )
+    if parameter_diagnostics:
+        return (
+            _base_result(
+                validated_utc_offset,
+                validated_max_join,
+                sources,
+                parameter_diagnostics,
+            ),
+            2,
+        )
+
+    try:
+        occurrences, ai_sources = load_adaptive_logs(
+            ai_logs, validated_utc_offset
+        )
         sources["ai_logs"] = ai_sources
         trace_rows, trace_source = load_decision_trace(Path(decision_trace))
         sources["decision_trace"] = trace_source
         run_records, run_sources = load_runs(runs)
         sources["runs"] = run_sources
         records = deduplicate_occurrences(occurrences)
-        joined_records = join_occurrences(records, trace_rows, max_join_seconds)
+        joined_records = join_occurrences(
+            records, trace_rows, validated_max_join
+        )
     except EvidenceError as error:
         result = _base_result(
-            utc_offset_hours,
-            max_join_seconds,
+            validated_utc_offset,
+            validated_max_join,
             sources,
             [{"code": "evidence_error", "message": str(error)}],
         )
@@ -1712,7 +1813,7 @@ def build_audit(
                 )
 
     result = _base_result(
-        utc_offset_hours, max_join_seconds, sources, diagnostics
+        validated_utc_offset, validated_max_join, sources, diagnostics
     )
     funnel = result["funnel"]
     funnel["adaptive_occurrences"] = len(occurrences)
@@ -1745,9 +1846,23 @@ def build_audit(
         }
         for index, run in enumerate(run_records, start=1)
     ]
+    record_ordinals = {
+        id(joined): record_ordinal
+        for record_ordinal, joined in enumerate(joined_records, start=1)
+    }
+    result["records"] = [
+        _record_ledger_json(
+            record_ordinals[id(joined)],
+            joined,
+            corroborations[id(joined)],
+            run_records,
+        )
+        for joined in joined_records
+    ]
     result["fallbacks"] = [
         _fallback_json(
             fallback_number,
+            record_ordinals[id(joined)],
             joined,
             corroborations[id(joined)],
             run_records,
@@ -1813,6 +1928,7 @@ def build_audit(
         opportunities.append(
             {
                 "opportunity_number": len(opportunities) + 1,
+                "record_ordinal": record_ordinals[id(joined)],
                 "game_number": joined.record.game_number,
                 "selected": selected,
                 "decision": decision_summary,
@@ -1829,7 +1945,14 @@ def build_audit(
 def serialize_audit(result: dict) -> bytes:
     """Serialize stable ASCII JSON with sorted keys and one final newline."""
     return (
-        json.dumps(result, indent=2, sort_keys=True, ensure_ascii=True) + "\n"
+        json.dumps(
+            result,
+            indent=2,
+            sort_keys=True,
+            ensure_ascii=True,
+            allow_nan=False,
+        )
+        + "\n"
     ).encode("ascii")
 
 
