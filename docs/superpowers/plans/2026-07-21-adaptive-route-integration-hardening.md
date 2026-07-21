@@ -50,14 +50,14 @@ Add the same malformed earlier-node condition to `_late_adaptive_route_agent(13)
 
 - [ ] **Step 2: Add red integrity regressions for invalid initial origin and fallback output**
 
-Add an invalid-origin test where the screen has no usable current node but advertises only nonzero-row next nodes. Add one test monkeypatching the active-origin lookup to return a node whose internal coordinates differ from the requested key, and one fallback test doing the same for a selected future route node. Assert `_AdaptiveRouteCandidateGenerationError`, zero builder calls for the invalid origin, exactly one builder call for invalid returned-route data, unchanged route/metadata, and no `[ADAPTIVE_ROUTE]` record. Retain existing invalid mid-act history, truncated fallback, builder exception, and selector programming-error tests as the no-retry matrix.
+Add an invalid-origin test where the screen has no usable current node but advertises only nonzero-row next nodes. Add three coordinate-identity tests monkeypatching map lookup to return a node whose internal coordinates differ from the requested key: one at the active origin, one in the selected mid-act history prefix, and one in the selected future fallback route. Assert `_AdaptiveRouteCandidateGenerationError`, zero builder calls for invalid active/history lookups, exactly one builder call for invalid returned-future data, unchanged route/metadata, and no `[ADAPTIVE_ROUTE]` record. Retain existing invalid mid-act history, truncated fallback, builder exception, and selector programming-error tests as the no-retry matrix.
 
 - [ ] **Step 3: Run only the new recovery nodes and verify RED**
 
 Run:
 
 ```powershell
-D:\anaconda\envs\stsai\python.exe -m pytest -q -p no:cacheprovider --basetemp D:\PycharmProjects\slay-the-spire-ai\.pytest_followup_fallback_red tests/test_map_routing_safety.py -k "malformed_unreachable or late_fallback or act_start_fallback or invalid_initial"
+D:\anaconda\envs\stsai\python.exe -m pytest -q -p no:cacheprovider --basetemp D:\PycharmProjects\slay-the-spire-ai\.pytest_followup_fallback_red tests/test_map_routing_safety.py -k "malformed_unreachable or late_fallback or act_start_fallback or invalid_initial or coordinate_identity"
 ```
 
 Expected: the irrelevant-node cases fail because `_adaptive_conservative_fallback_route()` repeats `_validate_adaptive_candidate_map()`; integrity characterizations remain green.
