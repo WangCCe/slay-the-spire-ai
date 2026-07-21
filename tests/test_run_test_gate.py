@@ -146,6 +146,24 @@ def test_load_manifest_rejects_malformed_pytest_ini(temporary_repo: Path) -> Non
         load_manifest(_write_manifest(temporary_repo, VALID_MANIFEST), temporary_repo)
 
 
+def test_load_manifest_rejects_pytest_ini_interpolation_error(
+    temporary_repo: Path,
+) -> None:
+    (temporary_repo / "pytest.ini").write_text(
+        "[pytest]\ntestpaths = %(missing)s\n", encoding="utf-8"
+    )
+
+    with pytest.raises(ManifestError, match="pytest.ini"):
+        load_manifest(_write_manifest(temporary_repo, VALID_MANIFEST), temporary_repo)
+
+
+def test_load_manifest_rejects_invalid_utf8_pytest_ini(temporary_repo: Path) -> None:
+    (temporary_repo / "pytest.ini").write_bytes(b"\xff")
+
+    with pytest.raises(ManifestError, match="pytest.ini"):
+        load_manifest(_write_manifest(temporary_repo, VALID_MANIFEST), temporary_repo)
+
+
 @pytest.mark.parametrize(
     ("name", "mutate", "message"),
     [

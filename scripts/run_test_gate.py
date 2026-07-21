@@ -59,6 +59,8 @@ def _configured_test_paths(repo_root: Path) -> tuple[Path, ...]:
     parser = configparser.ConfigParser()
     try:
         read_paths = parser.read(config_path, encoding="utf-8")
+        if read_paths and parser.has_option("pytest", "testpaths"):
+            configured_paths = parser.get("pytest", "testpaths").split()
     except (UnicodeDecodeError, configparser.Error) as error:
         raise ManifestError(f"unable to read pytest.ini: {config_path}") from error
     if not read_paths:
@@ -66,7 +68,6 @@ def _configured_test_paths(repo_root: Path) -> tuple[Path, ...]:
     if not parser.has_option("pytest", "testpaths"):
         raise ManifestError("pytest.ini must configure testpaths")
 
-    configured_paths = parser.get("pytest", "testpaths").split()
     if not configured_paths:
         raise ManifestError("pytest.ini testpaths must not be empty")
 
