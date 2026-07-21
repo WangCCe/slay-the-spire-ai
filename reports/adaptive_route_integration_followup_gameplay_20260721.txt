@@ -1,0 +1,10 @@
+test gate run profile: gameplay
+pytest command: D:\anaconda\envs\stsai\python.exe -m pytest -q -p no:cacheprovider --basetemp D:\PycharmProjects\slay-the-spire-ai\.pytest_gates\gameplay-062e741416724fd48c72d822843f700c tests/test_map_routing_safety.py tests/test_shop_screen_guards.py tests/test_event_choice_guard.py tests/test_ironclad_card_reward_guards.py tests/test_rest_guard.py tests/test_decision_context_guards.py tests/test_offline_decision_comparator.py
+........................................................................ [ 18%]
+........................................................................ [ 37%]
+........................................................................ [ 55%]
+........................................................................ [ 74%]
+........................................................................ [ 93%]
+..........................                                               [100%]
+386 passed in 10.86s
+test gate gameplay: 14.04s (exit code 0)
