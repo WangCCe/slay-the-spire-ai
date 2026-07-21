@@ -1302,6 +1302,50 @@ def _candidate_pair_json(evidence: CandidatePairEvidence) -> dict:
     }
 
 
+def _fallback_json(
+    fallback_number: int,
+    joined: JoinedRecord,
+    corroboration: dict,
+    runs: Sequence[RunEvidence],
+) -> dict:
+    game_number = joined.record.game_number
+    run_source_path = (
+        str(runs[game_number - 1].source_path)
+        if game_number <= len(runs)
+        else None
+    )
+    return {
+        "fallback_number": fallback_number,
+        "game_number": game_number,
+        "payload": joined.record.payload,
+        "multiplicity": len(joined.occurrences),
+        "occurrences": [
+            {
+                "source_path": str(item.occurrence.source_path),
+                "line_number": item.occurrence.line_number,
+                "timestamp": item.occurrence.timestamp.isoformat(
+                    timespec="microseconds"
+                ),
+                "join_delta_seconds": str(item.delta_seconds),
+            }
+            for item in joined.occurrences
+        ],
+        "decision": {
+            "act": joined.decision.act,
+            "floor": joined.decision.floor,
+            "current_coordinate": list(joined.decision.current_node),
+            "next_coordinates": [
+                list(coordinate) for coordinate in joined.decision.next_nodes
+            ],
+            "action_coordinate": list(joined.decision.action_node),
+        },
+        "run_corroboration": {
+            "run_source_path": run_source_path,
+            **corroboration,
+        },
+    }
+
+
 def _run_corroboration(
     joined: JoinedRecord, runs: Sequence[RunEvidence]
 ) -> tuple[dict, dict | None]:
@@ -1612,6 +1656,7 @@ def _base_result(
         },
         "funnel": _empty_funnel(),
         "runs": [],
+        "fallbacks": [],
         "opportunities": [],
     }
 
@@ -1672,10 +1717,13 @@ def build_audit(
     funnel = result["funnel"]
     funnel["adaptive_occurrences"] = len(occurrences)
     funnel["callback_independent_records"] = len(records)
-    funnel["candidate_generation_fallbacks"] = sum(
-        record.occurrences[0].fields["outcome"] == "candidate_generation_failed"
-        for record in records
-    )
+    fallback_records = [
+        joined
+        for joined in joined_records
+        if joined.record.occurrences[0].fields["outcome"]
+        == "candidate_generation_failed"
+    ]
+    funnel["candidate_generation_fallbacks"] = len(fallback_records)
     complete_records = [
         joined
         for joined in joined_records
@@ -1696,6 +1744,15 @@ def build_audit(
             "victory": run.victory,
         }
         for index, run in enumerate(run_records, start=1)
+    ]
+    result["fallbacks"] = [
+        _fallback_json(
+            fallback_number,
+            joined,
+            corroborations[id(joined)],
+            run_records,
+        )
+        for fallback_number, joined in enumerate(fallback_records, start=1)
     ]
 
     steps_by_game: dict[int, list[dict]] = {}

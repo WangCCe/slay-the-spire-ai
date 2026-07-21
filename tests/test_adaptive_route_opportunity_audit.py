@@ -1422,6 +1422,24 @@ def _task3_payload(
     )
 
 
+def _task3_fallback_payload(
+    *, floor: int, start_y: int, symbols: tuple[str, ...]
+) -> str:
+    return _payload(
+        outcome="candidate_generation_failed",
+        floor=str(floor),
+        candidate_pair="generation_failed",
+        conservative_candidate="unavailable",
+        aggressive_candidate="unavailable",
+        minimum_elites="unavailable",
+        added_elites="unavailable",
+        fallback_candidate=_task3_candidate("conservative", start_y, symbols),
+        budget="0",
+        selected="conservative",
+        reasons="candidate_generation_failed",
+    )
+
+
 def _task3_graph(
     *,
     root_symbol: str = "M",
@@ -1564,13 +1582,15 @@ def _write_task3_evidence(
                 )
             )
             active_game_number = game_number
-        payload = _task3_payload(
-            floor=record["floor"],
-            start_y=record["start_y"],
-            conservative_symbols=record["conservative_symbols"],
-            aggressive_symbols=record["aggressive_symbols"],
-            selected=record["selected"],
-        )
+        payload = record.get("payload")
+        if payload is None:
+            payload = _task3_payload(
+                floor=record["floor"],
+                start_y=record["start_y"],
+                conservative_symbols=record["conservative_symbols"],
+                aggressive_symbols=record["aggressive_symbols"],
+                selected=record["selected"],
+            )
         for millisecond in (100, 200):
             log_lines.append(
                 _line(
@@ -1890,6 +1910,133 @@ def test_build_audit_reports_exact_same_immediate_revocation_funnel(tmp_path: Pa
     }
     assert result["opportunities"][0]["treatment"]["status"] == "revoked_before_divergence"
     assert result["opportunities"][0]["treatment"]["revocation"]["floor"] == 1
+
+
+def test_build_audit_preserves_deterministic_per_record_fallback_provenance(
+    tmp_path: Path,
+):
+    first_payload = _task3_fallback_payload(
+        floor=0,
+        start_y=0,
+        symbols=("M", "T", "M", "R"),
+    )
+    second_payload = _task3_fallback_payload(
+        floor=1,
+        start_y=1,
+        symbols=("T", "M", "R"),
+    )
+    records = [
+        {
+            "floor": 0,
+            "payload": first_payload,
+            "current_node": (-1, -1),
+            "action_node": (0, 0),
+        },
+        {
+            "floor": 1,
+            "payload": second_payload,
+            "current_node": (0, 0),
+            "action_node": (0, 1),
+        },
+    ]
+
+    result, exit_code, evidence = _task3_build(
+        tmp_path,
+        records,
+        run_symbols=["M", "T"],
+    )
+    rebuilt, rebuilt_exit = audit.build_audit(
+        evidence[0], evidence[1], evidence[2], 8, 0.001
+    )
+
+    assert (exit_code, rebuilt_exit) == (0, 0)
+    assert result["funnel"]["candidate_generation_fallbacks"] == 2
+    assert len(result["fallbacks"]) == result["funnel"][
+        "candidate_generation_fallbacks"
+    ]
+    assert result["fallbacks"] == [
+        {
+            "fallback_number": 1,
+            "game_number": 1,
+            "payload": first_payload,
+            "multiplicity": 2,
+            "occurrences": [
+                {
+                    "source_path": str(evidence[0][0]),
+                    "line_number": 2,
+                    "timestamp": "2026-07-22T12:00:01.100000",
+                    "join_delta_seconds": "0",
+                },
+                {
+                    "source_path": str(evidence[0][0]),
+                    "line_number": 3,
+                    "timestamp": "2026-07-22T12:00:01.200000",
+                    "join_delta_seconds": "0",
+                },
+            ],
+            "decision": {
+                "act": 1,
+                "floor": 0,
+                "current_coordinate": [-1, -1],
+                "next_coordinates": [[0, 0]],
+                "action_coordinate": [0, 0],
+            },
+            "run_corroboration": {
+                "run_source_path": str(evidence[2][0]),
+                "trace_symbol": "M",
+                "run_symbol": "M",
+                "run_compatibility": "exact",
+            },
+        },
+        {
+            "fallback_number": 2,
+            "game_number": 1,
+            "payload": second_payload,
+            "multiplicity": 2,
+            "occurrences": [
+                {
+                    "source_path": str(evidence[0][0]),
+                    "line_number": 4,
+                    "timestamp": "2026-07-22T12:00:02.100000",
+                    "join_delta_seconds": "0",
+                },
+                {
+                    "source_path": str(evidence[0][0]),
+                    "line_number": 5,
+                    "timestamp": "2026-07-22T12:00:02.200000",
+                    "join_delta_seconds": "0",
+                },
+            ],
+            "decision": {
+                "act": 1,
+                "floor": 1,
+                "current_coordinate": [0, 0],
+                "next_coordinates": [[0, 1], [2, 1]],
+                "action_coordinate": [0, 1],
+            },
+            "run_corroboration": {
+                "run_source_path": str(evidence[2][0]),
+                "trace_symbol": "T",
+                "run_symbol": "T",
+                "run_compatibility": "exact",
+            },
+        },
+    ]
+    assert audit.serialize_audit(result) == audit.serialize_audit(rebuilt)
+
+
+def test_build_audit_invalid_base_result_contains_empty_fallbacks(tmp_path: Path):
+    result, exit_code = audit.build_audit(
+        [tmp_path / "missing-ai.log"],
+        tmp_path / "missing-trace.jsonl",
+        [tmp_path / "missing.run"],
+        8,
+        0.001,
+    )
+
+    assert exit_code == 2
+    assert result["integrity"]["status"] == "invalid"
+    assert result["fallbacks"] == []
 
 
 def test_build_audit_reports_route_departure_before_divergence(tmp_path: Path):

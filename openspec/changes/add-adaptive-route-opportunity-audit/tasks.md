@@ -13,6 +13,7 @@
 - [x] 3.1 Add failing synthetic tests for run corroboration, same-immediate selection, later revocation, route departure, divergence uptake, realized optional elite, ambiguity exclusion, deterministic JSON, and invalid-integrity CLI exit behavior.
 - [x] 3.2 Implement ordered run ingestion, opportunity funnel aggregation, per-opportunity treatment evidence, deterministic schema `adaptive-route-opportunity-audit-v1`, and the read-only CLI.
 - [x] 3.3 Add failing regressions for canonical post-boss `null` transition slots, preserve valid slots in run evidence, and fail closed on malformed or action-targeted null slots.
+- [x] 3.4 Add failing regressions and deterministic per-record provenance for every callback-independent candidate-generation fallback.
 
 ## 4. Frozen Qualification POC
 
