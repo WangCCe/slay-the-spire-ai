@@ -2498,7 +2498,159 @@ def test_adaptive_route_summary_requires_chosen_route_commit(monkeypatch, caplog
     )
 
 
-@pytest.mark.parametrize("outcome", ("success", "forced", "fallback", "unsupported"))
+def test_adaptive_route_summary_payload_failure_is_atomic(monkeypatch, caplog):
+    caplog.set_level(logging.INFO)
+    game_map, safe_start, elite_start = _optional_elite_route_map()
+    agent = _route_agent("adaptive", game_map, deck=_prepared_act1_deck())
+    agent.game.potions = [_potion("Fire Potion")]
+    _set_start_screen(agent, safe_start, elite_start)
+    original_route = list(agent.map_route)
+    original_metadata = (agent._last_route_hp_pct, agent._last_route_floor)
+
+    monkeypatch.setattr(
+        agent,
+        "_adaptive_route_summary_payload",
+        lambda *_args, **_kwargs: (_ for _ in ()).throw(
+            RuntimeError("adaptive payload failed")
+        ),
+        raising=False,
+    )
+
+    with pytest.raises(RuntimeError, match="adaptive payload failed"):
+        agent.generate_map_route()
+
+    assert agent.map_route == original_route
+    assert (agent._last_route_hp_pct, agent._last_route_floor) == original_metadata
+    assert not any(
+        record.getMessage().startswith("[ADAPTIVE_ROUTE]")
+        for record in caplog.records
+    )
+
+
+_ADAPTIVE_ROUTE_LOG_KEYS = (
+    "outcome",
+    "character",
+    "act",
+    "floor",
+    "state_valid",
+    "hp",
+    "hp_pct",
+    "deck",
+    "potion",
+    "relic",
+    "elite_seen",
+    "last_rest_floor",
+    "candidate_pair",
+    "conservative_candidate",
+    "aggressive_candidate",
+    "minimum_elites",
+    "added_elites",
+    "fallback_candidate",
+    "budget",
+    "selected",
+    "reasons",
+)
+
+
+def _parse_adaptive_route_record(message):
+    tokens = message.split()
+    assert tokens[0] == "[ADAPTIVE_ROUTE]"
+    pairs = [token.split("=", 1) for token in tokens[1:]]
+    assert all(len(pair) == 2 and pair[0] and pair[1] for pair in pairs)
+    assert tuple(pair[0] for pair in pairs) == _ADAPTIVE_ROUTE_LOG_KEYS
+    assert all(not any(character.isspace() for character in pair[1]) for pair in pairs)
+    return dict(pairs)
+
+
+_SAFE_CANDIDATE = (
+    "mode:conservative,start_y:0,"
+    "symbols:M/M/M/M/M/M/M/M/M/M/M/M/M/M/M,"
+    "elite_count:0,elite_floors:none,recovery_before:none,recovery_after:none"
+)
+_OPTIONAL_ELITE_CANDIDATE = (
+    "mode:aggressive,start_y:0,"
+    "symbols:M/M/M/M/M/M/M/E/T/M/M/M/M/M/M,"
+    "elite_count:1,elite_floors:8,recovery_before:none,recovery_after:none"
+)
+_FORCED_ELITE_CANDIDATE = (
+    "mode:conservative,start_y:0,"
+    "symbols:M/M/M/M/M/M/M/M/R/E/M/M/M/M/M,"
+    "elite_count:1,elite_floors:10,recovery_before:1,recovery_after:none"
+)
+
+
+def _expected_adaptive_route_record(outcome):
+    expected = {
+        "outcome": outcome,
+        "character": "IRONCLAD",
+        "act": "1",
+        "floor": "0",
+        "state_valid": "true",
+        "hp": "80/80",
+        "hp_pct": "1.000000",
+        "deck": "6",
+        "potion": "1",
+        "relic": "0",
+        "elite_seen": "false",
+        "last_rest_floor": "none",
+        "candidate_pair": "complete",
+        "conservative_candidate": _SAFE_CANDIDATE,
+        "aggressive_candidate": _OPTIONAL_ELITE_CANDIDATE,
+        "minimum_elites": "0",
+        "added_elites": "1",
+        "fallback_candidate": "not_used",
+        "budget": "0",
+        "selected": "conservative",
+        "reasons": "recovery_window_missing",
+    }
+    if outcome == "forced":
+        expected.update({
+            "conservative_candidate": _FORCED_ELITE_CANDIDATE,
+            "minimum_elites": "1",
+            "added_elites": "0",
+            "reasons": "forced_elite_route",
+        })
+    elif outcome == "unsupported":
+        expected.update({
+            "character": "THE_SILENT",
+            "candidate_pair": "not_attempted",
+            "conservative_candidate": "unavailable",
+            "aggressive_candidate": "unavailable",
+            "minimum_elites": "unavailable",
+            "added_elites": "unavailable",
+            "fallback_candidate": "not_applicable",
+            "reasons": "unsupported_character",
+        })
+    elif outcome == "candidate_generation_failed":
+        expected.update({
+            "candidate_pair": "generation_failed",
+            "conservative_candidate": "unavailable",
+            "aggressive_candidate": "unavailable",
+            "minimum_elites": "unavailable",
+            "added_elites": "unavailable",
+            "fallback_candidate": _SAFE_CANDIDATE,
+            "reasons": "candidate_generation_failed",
+        })
+    elif outcome == "invalid_state":
+        expected.update({
+            "outcome": "success",
+            "state_valid": "false",
+            "hp": "unavailable",
+            "hp_pct": "unavailable",
+            "deck": "unavailable",
+            "potion": "unavailable",
+            "relic": "unavailable",
+            "elite_seen": "unavailable",
+            "last_rest_floor": "unavailable",
+            "reasons": "malformed_state",
+        })
+    return expected
+
+
+@pytest.mark.parametrize(
+    "outcome",
+    ("success", "forced", "unsupported", "candidate_generation_failed", "invalid_state"),
+)
 def test_adaptive_decision_emits_one_structured_summary(monkeypatch, caplog, outcome):
     caplog.set_level(logging.INFO)
     if outcome == "unsupported":
@@ -2525,7 +2677,7 @@ def test_adaptive_decision_emits_one_structured_summary(monkeypatch, caplog, out
         agent = _route_agent("adaptive", game_map, deck=_prepared_act1_deck())
         agent.game.potions = [_potion("Fire Potion")]
         _set_start_screen(agent, safe_start, elite_start)
-        if outcome == "fallback":
+        if outcome == "candidate_generation_failed":
             monkeypatch.setattr(
                 agent,
                 "_adaptive_route_candidates",
@@ -2533,6 +2685,28 @@ def test_adaptive_decision_emits_one_structured_summary(monkeypatch, caplog, out
                     agent_module._AdaptiveRouteCandidateGenerationError("injected")
                 ),
             )
+        elif outcome == "invalid_state":
+            state = agent._adaptive_state(agent_module.DecisionContext(agent.game))
+            monkeypatch.setattr(
+                agent,
+                "_adaptive_state",
+                lambda _context: replace(state, hp_pct=float("nan")),
+            )
+
+    emission_state = []
+    original_logging_info = agent_module.logging.info
+
+    def observe_adaptive_commit(message, *args, **kwargs):
+        rendered = message % args if args else message
+        if rendered.startswith("[ADAPTIVE_ROUTE]"):
+            emission_state.append((
+                tuple(agent.map_route),
+                agent._last_route_hp_pct,
+                agent._last_route_floor,
+            ))
+        return original_logging_info(message, *args, **kwargs)
+
+    monkeypatch.setattr(agent_module.logging, "info", observe_adaptive_commit)
 
     agent.make_map_choice()
 
@@ -2542,10 +2716,12 @@ def test_adaptive_decision_emits_one_structured_summary(monkeypatch, caplog, out
         if record.getMessage().startswith("[ADAPTIVE_ROUTE]")
     ]
     assert len(summaries) == 1
-    assert "conservative=" in summaries[0]
-    assert "aggressive=" in summaries[0]
-    assert "elite_counts=" in summaries[0]
-    assert "recovery=" in summaries[0]
-    assert "budget=" in summaries[0]
-    assert "selected=" in summaries[0]
-    assert "reasons=" in summaries[0]
+    assert _parse_adaptive_route_record(summaries[0]) == \
+        _expected_adaptive_route_record(outcome)
+    assert emission_state == [(
+        tuple(agent.map_route),
+        agent._last_route_hp_pct,
+        agent._last_route_floor,
+    )]
+    assert emission_state[0][0]
+    assert emission_state[0][1:] == (1.0, 0)

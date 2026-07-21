@@ -2997,56 +2997,163 @@ class SimpleAgent:
             last_rest_floor=self._adaptive_last_rest_floor,
         )
 
-    @staticmethod
-    def _adaptive_candidate_summary(candidate):
+    def _adaptive_candidate_summary(self, candidate):
         if candidate is None:
-            return "unavailable", "unavailable", "unavailable"
+            return "unavailable"
         features = candidate.features if isinstance(candidate, _AdaptiveRouteCandidate) else candidate
+        if self.map_router is None or not self.map_router._valid_adaptive_candidate(features):
+            raise _AdaptiveRouteCandidateGenerationError(
+                "adaptive log candidate is invalid"
+            )
+        symbols = "/".join(features.symbols) or "none"
+        elite_floors = "|".join(str(floor) for floor in features.elite_floors) or "none"
+        recovery_before = (
+            str(features.rest_before_distance)
+            if features.rest_before_distance is not None
+            else "none"
+        )
+        recovery_after = (
+            str(features.rest_after_distance)
+            if features.rest_after_distance is not None
+            else "none"
+        )
         return (
-            features.symbols,
-            len(features.elite_floors),
-            (features.rest_before_distance, features.rest_after_distance),
+            f"mode:{features.mode},start_y:{features.start_y},"
+            f"symbols:{symbols},elite_count:{len(features.elite_floors)},"
+            f"elite_floors:{elite_floors},recovery_before:{recovery_before},"
+            f"recovery_after:{recovery_after}"
         )
 
-    def _log_adaptive_route_summary(
+    @staticmethod
+    def _adaptive_log_integer(value, *, minimum=0):
+        if isinstance(value, bool) or not isinstance(value, int) or value < minimum:
+            return "unavailable"
+        return str(value)
+
+    @staticmethod
+    def _adaptive_log_character(value):
+        if not isinstance(value, str):
+            return "unavailable"
+        normalized = value.strip().upper()
+        if not normalized or "=" in normalized or any(
+                character.isspace() for character in normalized
+        ):
+            return "unavailable"
+        return normalized
+
+    def _adaptive_route_summary_payload(
             self,
             state,
             conservative,
             aggressive,
             assessment,
             selected_mode,
+            outcome,
+            fallback_candidate=None,
     ):
-        conservative_symbols, conservative_elites, conservative_recovery = \
-            self._adaptive_candidate_summary(conservative)
-        aggressive_symbols, aggressive_elites, aggressive_recovery = \
-            self._adaptive_candidate_summary(aggressive)
-        logging.info(
-            "[ADAPTIVE_ROUTE] character=%s act=%s floor=%s hp=%s/%s deck=%s "
-            "potion=%s relic=%s conservative=%s aggressive=%s "
-            "elite_counts=%s/%s recovery=%s/%s budget=%s selected=%s reasons=%s",
-            state.player_class,
-            state.act,
-            self.game.floor,
-            state.current_hp,
-            state.max_hp,
-            state.deck_readiness,
-            state.potion_support,
-            state.relic_support,
-            conservative_symbols,
-            aggressive_symbols,
-            conservative_elites,
-            aggressive_elites,
-            conservative_recovery,
-            aggressive_recovery,
-            assessment.optional_elite_budget,
-            selected_mode,
-            assessment.reasons,
+        if outcome not in {
+                "success",
+                "forced",
+                "unsupported",
+                "candidate_generation_failed",
+        }:
+            raise ValueError("adaptive route outcome is invalid")
+
+        state_valid = bool(
+            self.map_router is not None
+            and self.map_router._valid_adaptive_state(state)
+        )
+        character = self._adaptive_log_character(getattr(state, "player_class", None))
+        act = self._adaptive_log_integer(getattr(state, "act", None), minimum=1)
+        floor = self._adaptive_log_integer(getattr(self.game, "floor", None))
+        if state_valid:
+            hp = f"{state.current_hp}/{state.max_hp}"
+            hp_pct = f"{state.hp_pct:.6f}"
+            deck = str(state.deck_readiness)
+            potion = str(state.potion_support)
+            relic = str(state.relic_support)
+            elite_seen = "true" if state.elite_seen else "false"
+            last_rest_floor = (
+                str(state.last_rest_floor)
+                if state.last_rest_floor is not None
+                else "none"
+            )
+        else:
+            hp = hp_pct = deck = potion = relic = "unavailable"
+            elite_seen = last_rest_floor = "unavailable"
+
+        if outcome in {"success", "forced"}:
+            conservative_summary = self._adaptive_candidate_summary(conservative)
+            aggressive_summary = self._adaptive_candidate_summary(aggressive)
+            conservative_features = (
+                conservative.features
+                if isinstance(conservative, _AdaptiveRouteCandidate)
+                else conservative
+            )
+            aggressive_features = (
+                aggressive.features
+                if isinstance(aggressive, _AdaptiveRouteCandidate)
+                else aggressive
+            )
+            minimum_elites = str(len(conservative_features.elite_floors))
+            added_elites = str(
+                len(aggressive_features.elite_floors)
+                - len(conservative_features.elite_floors)
+            )
+            candidate_pair = "complete"
+            fallback_summary = "not_used"
+        elif outcome == "unsupported":
+            candidate_pair = "not_attempted"
+            conservative_summary = aggressive_summary = "unavailable"
+            minimum_elites = added_elites = "unavailable"
+            fallback_summary = "not_applicable"
+        else:
+            candidate_pair = "generation_failed"
+            conservative_summary = aggressive_summary = "unavailable"
+            minimum_elites = added_elites = "unavailable"
+            fallback_summary = self._adaptive_candidate_summary(fallback_candidate)
+
+        reasons = "|".join(assessment.reasons) or "none"
+        values = (
+            ("outcome", outcome),
+            ("character", character),
+            ("act", act),
+            ("floor", floor),
+            ("state_valid", "true" if state_valid else "false"),
+            ("hp", hp),
+            ("hp_pct", hp_pct),
+            ("deck", deck),
+            ("potion", potion),
+            ("relic", relic),
+            ("elite_seen", elite_seen),
+            ("last_rest_floor", last_rest_floor),
+            ("candidate_pair", candidate_pair),
+            ("conservative_candidate", conservative_summary),
+            ("aggressive_candidate", aggressive_summary),
+            ("minimum_elites", minimum_elites),
+            ("added_elites", added_elites),
+            ("fallback_candidate", fallback_summary),
+            ("budget", str(assessment.optional_elite_budget)),
+            ("selected", selected_mode),
+            ("reasons", reasons),
+        )
+        for key, value in values:
+            if (
+                    not isinstance(value, str)
+                    or not value
+                    or "=" in value
+                    or any(character.isspace() for character in value)
+            ):
+                raise ValueError(f"adaptive route log field {key} is invalid")
+        return "[ADAPTIVE_ROUTE] " + " ".join(
+            f"{key}={value}" for key, value in values
         )
 
     def generate_map_route(self):
-        adaptive_summary = None
+        adaptive_log_payload = None
         if str(self.elite_mode or "").lower() == "adaptive":
             context = DecisionContext(self.game)
+            fallback_candidate = None
             if self.chosen_class != PlayerClass.IRONCLAD:
                 route = self._build_map_route("conservative")
                 state = self._adaptive_state(context)
@@ -3057,6 +3164,7 @@ class SimpleAgent:
                 conservative = None
                 aggressive = None
                 selected_mode = "conservative"
+                outcome = "unsupported"
             else:
                 try:
                     conservative, aggressive = self._adaptive_route_candidates()
@@ -3068,22 +3176,31 @@ class SimpleAgent:
                         state,
                     )
                     selected_mode = "aggressive" if assessment.allowed else "conservative"
+                    outcome = (
+                        "forced"
+                        if "forced_elite_route" in assessment.reasons
+                        else "success"
+                    )
                 except _AdaptiveRouteCandidateGenerationError:
-                    conservative = self._adaptive_conservative_fallback_candidate()
-                    route = self._route_from_adaptive_candidate(conservative)
+                    fallback_candidate = self._adaptive_conservative_fallback_candidate()
+                    route = self._route_from_adaptive_candidate(fallback_candidate)
                     state = self._adaptive_state(context)
                     assessment = self.map_router._adaptive_assessment(
                         False,
                         "candidate_generation_failed",
                     )
+                    conservative = None
                     aggressive = None
                     selected_mode = "conservative"
-            adaptive_summary = (
+                    outcome = "candidate_generation_failed"
+            adaptive_log_payload = self._adaptive_route_summary_payload(
                 state,
                 conservative,
                 aggressive,
                 assessment,
                 selected_mode,
+                outcome,
+                fallback_candidate,
             )
         else:
             route = self._build_map_route(self.elite_mode)
@@ -3094,8 +3211,8 @@ class SimpleAgent:
         self.map_route = route
         self._last_route_hp_pct = route_hp_pct
         self._last_route_floor = route_floor
-        if adaptive_summary is not None:
-            self._log_adaptive_route_summary(*adaptive_summary)
+        if adaptive_log_payload is not None:
+            logging.info("%s", adaptive_log_payload)
         return route
 
     def _route_should_minimize_elites(self, elite_mode_override=None):
