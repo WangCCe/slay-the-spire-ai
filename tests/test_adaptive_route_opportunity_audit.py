@@ -837,6 +837,21 @@ def test_load_decision_trace_rejects_extreme_epoch_number_with_provenance(
     assert str(error.value).startswith(f"{trace}:1:")
 
 
+def test_load_decision_trace_rejects_overlong_path_y_with_provenance(
+    tmp_path: Path,
+):
+    row = _task2_trace_row()
+    row["screen"]["paths"][0]["label"] = row["screen"]["paths"][0][
+        "label"
+    ].replace("M@2,7", f"M@2,{'9' * 5000}", 1)
+    trace = _write_trace(tmp_path, "overlong-path-y.jsonl", [row])
+
+    with pytest.raises(audit.EvidenceError, match="path label") as error:
+        audit.load_decision_trace(trace)
+
+    assert str(error.value).startswith(f"{trace}:1:")
+
+
 def test_decision_trace_source_identity_counts_raw_bytes_and_physical_lines(
     tmp_path: Path,
 ):

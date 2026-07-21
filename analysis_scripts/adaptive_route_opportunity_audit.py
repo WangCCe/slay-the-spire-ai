@@ -659,7 +659,9 @@ def _parse_graph(value: object) -> tuple[tuple[Coordinate, GraphNode], ...]:
     return tuple(sorted(graph.items()))
 
 
-_TRACE_PATH_NODE = re.compile(r"^(?P<symbol>[MT?$RE])@(?P<x>[0-6]),(?P<y>0|[1-9]\d*)$")
+_TRACE_PATH_NODE = re.compile(
+    r"^(?P<symbol>[MT?$RE])@(?P<x>[0-6]),(?P<y>0|[1-9]\d?)$"
+)
 
 
 def _parse_trace_paths(
