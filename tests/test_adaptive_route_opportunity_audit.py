@@ -1550,8 +1550,18 @@ def _write_task3_evidence(
     graph = graph or _task3_graph()
     log_lines = [_line("Starting game #1 as PlayerClass.IRONCLAD")]
     trace_rows = []
+    active_game_number = 1
     for index, record in enumerate(records):
         second = index + 1
+        game_number = record.get("game_number", 1)
+        if game_number != active_game_number:
+            log_lines.append(
+                _line(
+                    f"Starting game #{game_number} as PlayerClass.IRONCLAD",
+                    second=second,
+                )
+            )
+            active_game_number = game_number
         payload = _task3_payload(
             floor=record["floor"],
             start_y=record["start_y"],
@@ -1576,7 +1586,8 @@ def _write_task3_evidence(
                     graph=graph,
                 )
             )
-    log_lines.append(_line("Starting game #2 as PlayerClass.IRONCLAD", second=20))
+    if active_game_number < 2:
+        log_lines.append(_line("Starting game #2 as PlayerClass.IRONCLAD", second=20))
     ai_log = _write_log(tmp_path, "task3-ai.log", log_lines)
     trace = _write_trace(tmp_path, "task3-trace.jsonl", trace_rows)
     runs = [
@@ -1631,6 +1642,85 @@ def test_load_runs_preserves_ordered_source_identity_and_path_symbols(tmp_path: 
     ]
     assert [source["source_path"] for source in sources] == [str(first), str(second)]
     assert all(source["sha256"] and source["record_count"] == 1 for source in sources)
+
+
+def _task3_two_root_graph() -> list[dict]:
+    graph = _task3_graph()
+    graph.extend(
+        [
+            _graph_node(4, 0, "T", (4, 1)),
+            _graph_node(4, 1, "T", (0, 2), (1, 2)),
+        ]
+    )
+    return graph
+
+
+def _task3_two_game_records() -> list[dict]:
+    return [
+        _task3_initial_record(selected="conservative", game_number=1),
+        {
+            "game_number": 2,
+            "floor": 0,
+            "start_y": 0,
+            "conservative_symbols": ("T", "T", "M", "R"),
+            "aggressive_symbols": ("T", "T", "E", "R"),
+            "selected": "conservative",
+            "current_node": (-1, -1),
+            "action_node": (4, 0),
+        },
+    ]
+
+
+def test_build_audit_maps_joined_game_two_to_second_ordered_run(tmp_path: Path):
+    evidence = _write_task3_evidence(
+        tmp_path,
+        _task3_two_game_records(),
+        run_symbols=["M"],
+        graph=_task3_two_root_graph(),
+    )
+    _write_task3_run(tmp_path, "game-2.run", ["T"])
+
+    result, exit_code = audit.build_audit(
+        evidence[0], evidence[1], evidence[2], 8, 0.001
+    )
+
+    assert exit_code == 0
+    assert [
+        (
+            opportunity["game_number"],
+            opportunity["decision"]["trace_symbol"],
+            opportunity["decision"]["run_symbol"],
+        )
+        for opportunity in result["opportunities"]
+    ] == [(1, "M", "M"), (2, "T", "T")]
+
+
+def test_build_audit_reports_game_two_mismatch_against_second_ordered_run(
+    tmp_path: Path,
+):
+    evidence = _write_task3_evidence(
+        tmp_path,
+        _task3_two_game_records(),
+        run_symbols=["M"],
+        graph=_task3_two_root_graph(),
+    )
+    _write_task3_run(tmp_path, "game-2.run", ["E"])
+
+    result, exit_code = audit.build_audit(
+        evidence[0], evidence[1], evidence[2], 8, 0.001
+    )
+
+    assert exit_code == 2
+    assert result["integrity"]["diagnostics"] == [
+        {
+            "code": "run_symbol_mismatch",
+            "game_number": 2,
+            "act": 1,
+            "floor": 0,
+            "trace_symbol": "T",
+            "run_symbol": "E",
+        }
+    ]
 
 
 def test_build_audit_reports_exact_same_immediate_revocation_funnel(tmp_path: Path):
@@ -1750,6 +1840,96 @@ def test_build_audit_does_not_call_conservative_divergence_a_prior_departure(
     assert result["opportunities"][0]["treatment"]["status"] == "divergence_not_taken"
 
 
+def test_treatment_ignores_complete_coordinate_chain_that_predates_opportunity(
+    tmp_path: Path,
+):
+    records = [
+        {
+            "floor": 0,
+            "start_y": 1,
+            "conservative_symbols": ("?", "E", "R"),
+            "aggressive_symbols": ("?", "E", "R"),
+            "selected": "aggressive",
+            "current_node": (0, 0),
+            "action_node": (2, 1),
+        },
+        {
+            "floor": 1,
+            "start_y": 2,
+            "conservative_symbols": ("E", "R"),
+            "aggressive_symbols": ("E", "R"),
+            "selected": "aggressive",
+            "current_node": (2, 1),
+            "action_node": (3, 2),
+        },
+        _task3_initial_record(
+            conservative_symbols=("M", "?", "M", "R"),
+            aggressive_symbols=("M", "?", "E", "R"),
+        ),
+    ]
+
+    result, exit_code, _ = _task3_build(
+        tmp_path, records, run_symbols=["M", "E", "R"]
+    )
+
+    assert exit_code == 0
+    assert result["funnel"]["divergences_taken"] == 0
+    assert result["funnel"]["realized_optional_elites"] == 0
+    assert result["opportunities"][0]["treatment"]["status"] == (
+        "incomplete_before_divergence"
+    )
+
+
+@pytest.mark.parametrize("broken_chain", ("disconnected", "floor_gap"))
+def test_treatment_requires_connected_coordinates_and_consecutive_global_floors(
+    tmp_path: Path, broken_chain: str
+):
+    graph = _task3_graph()
+    if broken_chain == "disconnected":
+        graph.append(_graph_node(4, 0, "?", (0, 1)))
+        step_one_floor = 1
+        step_two_floor = 2
+        step_one_current = (4, 0)
+        run_symbols = ["M", "T", "E"]
+    else:
+        step_one_floor = 2
+        step_two_floor = 3
+        step_one_current = (0, 0)
+        run_symbols = ["M", "?", "T", "E"]
+    records = [
+        _task3_initial_record(),
+        {
+            "floor": step_one_floor,
+            "start_y": 1,
+            "conservative_symbols": ("T", "E", "R"),
+            "aggressive_symbols": ("T", "E", "R"),
+            "selected": "aggressive",
+            "current_node": step_one_current,
+            "action_node": (0, 1),
+        },
+        {
+            "floor": step_two_floor,
+            "start_y": 2,
+            "conservative_symbols": ("E", "R"),
+            "aggressive_symbols": ("E", "R"),
+            "selected": "aggressive",
+            "current_node": (0, 1),
+            "action_node": (1, 2),
+        },
+    ]
+
+    result, exit_code, _ = _task3_build(
+        tmp_path, records, run_symbols=run_symbols, graph=graph
+    )
+
+    assert exit_code == 0
+    assert result["funnel"]["divergences_taken"] == 0
+    assert result["funnel"]["realized_optional_elites"] == 0
+    treatment = result["opportunities"][0]["treatment"]
+    assert treatment["status"] == "trajectory_unattributable"
+    assert treatment["reason"] == broken_chain
+
+
 def test_build_audit_counts_only_exact_trace_and_run_elite_attribution(tmp_path: Path):
     records = [
         _task3_initial_record(),
@@ -1806,6 +1986,26 @@ def test_event_trace_resolves_to_nonboss_run_symbol_without_elite_attribution(tm
     assert decision["trace_symbol"] == "?"
     assert decision["run_symbol"] == "M"
     assert decision["run_compatibility"] == "event_resolved"
+    assert result["funnel"]["realized_optional_elites"] == 0
+
+
+def test_exact_event_trace_and_run_symbols_are_classified_as_exact(tmp_path: Path):
+    graph = _task3_graph(root_symbol="?")
+    record = _task3_initial_record(
+        conservative_symbols=("?", "T", "M", "R"),
+        aggressive_symbols=("?", "T", "E", "R"),
+        selected="conservative",
+    )
+
+    result, exit_code, _ = _task3_build(
+        tmp_path, [record], run_symbols=["?"], graph=graph
+    )
+
+    assert exit_code == 0
+    decision = result["opportunities"][0]["decision"]
+    assert decision["trace_symbol"] == "?"
+    assert decision["run_symbol"] == "?"
+    assert decision["run_compatibility"] == "exact"
     assert result["funnel"]["realized_optional_elites"] == 0
 
 
@@ -1909,3 +2109,87 @@ def test_cli_writes_valid_and_invalid_artifacts_with_distinct_exit_codes(tmp_pat
     invalid_result = json.loads(invalid_output.read_bytes())
     assert invalid_result["integrity"]["status"] == "invalid"
     assert invalid_result["integrity"]["diagnostics"][0]["code"] == "run_symbol_mismatch"
+
+
+def _task3_cli_arguments(
+    evidence: tuple[list[Path], Path, list[Path]], output: Path
+) -> list[str]:
+    arguments = [
+        "--decision-trace",
+        str(evidence[1]),
+        "--log-utc-offset-hours",
+        "8",
+        "--max-join-seconds",
+        "0.001",
+        "--output",
+        str(output),
+    ]
+    for ai_log in evidence[0]:
+        arguments.extend(("--ai-log", str(ai_log)))
+    for run in evidence[2]:
+        arguments.extend(("--run", str(run)))
+    return arguments
+
+
+@pytest.mark.parametrize("source_kind", ("ai_log", "decision_trace", "run"))
+def test_cli_rejects_direct_output_source_collision_without_modifying_any_source(
+    tmp_path: Path, source_kind: str
+):
+    _, _, evidence = _task3_build(
+        tmp_path, [_task3_initial_record(selected="conservative")], run_symbols=["M"]
+    )
+    source = {
+        "ai_log": evidence[0][0],
+        "decision_trace": evidence[1],
+        "run": evidence[2][0],
+    }[source_kind]
+    all_sources = [*evidence[0], evidence[1], *evidence[2]]
+    original_bytes = {path: path.read_bytes() for path in all_sources}
+
+    exit_code = audit.main(_task3_cli_arguments(evidence, source))
+
+    assert exit_code == 2
+    assert {path: path.read_bytes() for path in all_sources} == original_bytes
+
+
+def test_cli_rejects_normalized_output_alias_before_loading_sources(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+):
+    _, _, evidence = _task3_build(
+        tmp_path, [_task3_initial_record(selected="conservative")], run_symbols=["M"]
+    )
+    alias_parent = tmp_path / "alias-parent"
+    alias_parent.mkdir()
+    normalized_alias = alias_parent / ".." / evidence[0][0].name
+    original = evidence[0][0].read_bytes()
+
+    def fail_if_loaded(*_args, **_kwargs):
+        pytest.fail("build_audit must not run for an output/source alias")
+
+    monkeypatch.setattr(audit, "build_audit", fail_if_loaded)
+
+    exit_code = audit.main(_task3_cli_arguments(evidence, normalized_alias))
+
+    assert exit_code == 2
+    assert evidence[0][0].read_bytes() == original
+
+
+def test_cli_rejects_existing_file_identity_alias_without_modifying_source(
+    tmp_path: Path,
+):
+    _, _, evidence = _task3_build(
+        tmp_path, [_task3_initial_record(selected="conservative")], run_symbols=["M"]
+    )
+    source = evidence[2][0]
+    identity_alias = tmp_path / "run-hardlink-output.json"
+    try:
+        identity_alias.hardlink_to(source)
+    except OSError as error:
+        pytest.skip(f"hard links unavailable: {error}")
+    original = source.read_bytes()
+
+    exit_code = audit.main(_task3_cli_arguments(evidence, identity_alias))
+
+    assert exit_code == 2
+    assert source.read_bytes() == original
+    assert identity_alias.read_bytes() == original

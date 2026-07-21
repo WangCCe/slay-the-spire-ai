@@ -9,6 +9,7 @@ from datetime import datetime, timedelta, timezone
 from hashlib import sha256
 import json
 from math import isfinite
+import os
 from pathlib import Path
 import re
 from typing import Sequence, TypeAlias
@@ -1324,11 +1325,11 @@ def _run_corroboration(
             },
         )
     run_symbol = run.path_per_floor[decision.floor]
-    if trace_symbol == "?" and run_symbol != "B":
-        compatibility = "event_resolved"
-        diagnostic = None
-    elif trace_symbol == run_symbol:
+    if trace_symbol == run_symbol:
         compatibility = "exact"
+        diagnostic = None
+    elif trace_symbol == "?" and run_symbol != "B":
+        compatibility = "event_resolved"
         diagnostic = None
     else:
         compatibility = "mismatch"
@@ -1354,10 +1355,12 @@ def _joined_step(
     joined: JoinedRecord, corroboration: dict
 ) -> dict:
     occurrence = joined.record.occurrences[0]
+    joined_times = [item.decision.unix_time_us for item in joined.occurrences]
     return {
         "joined": joined,
         "selected": occurrence.fields["selected"],
-        "action_index": joined.decision.action_node[1],
+        "first_time_us": min(joined_times),
+        "last_time_us": max(joined_times),
         "corroboration": corroboration,
     }
 
@@ -1376,68 +1379,8 @@ def _treatment_evidence(
     if aggressive is None or conservative is None:
         return {"status": "ambiguous"}
 
-    steps_by_index: dict[int, dict] = {}
-    ordered_steps = sorted(
-        same_game_steps,
-        key=lambda step: (
-            step["joined"].decision.floor,
-            step["joined"].decision.unix_time_us,
-        ),
-    )
-    for step in ordered_steps:
-        later = step["joined"]
-        if later.decision.act != joined.decision.act:
-            continue
-        if later.decision.floor < joined.decision.floor:
-            continue
-        candidate_index = later.decision.action_node[1] - aggressive.start_y
-        if 0 <= candidate_index < len(aggressive.symbols):
-            steps_by_index.setdefault(candidate_index, step)
-
-    for index in range(divergence.index + 1):
-        step = steps_by_index.get(index)
-        if step is None:
-            return {"status": "incomplete_before_divergence"}
-        later = step["joined"]
-        if index > 0 and step["selected"] != "aggressive":
-            return {
-                "status": "revoked_before_divergence",
-                "revocation": {
-                    "act": later.decision.act,
-                    "floor": later.decision.floor,
-                    "selected": step["selected"],
-                },
-            }
-        allowed = set(pair.aggressive_coordinate_sets[index])
-        if later.decision.action_node not in allowed:
-            if index == divergence.index:
-                return {
-                    "status": "divergence_not_taken",
-                    "divergence": {
-                        "act": later.decision.act,
-                        "floor": later.decision.floor,
-                        "expected_coordinate": list(divergence.aggressive),
-                        "action_coordinate": list(later.decision.action_node),
-                    },
-                }
-            return {
-                "status": "route_left_before_divergence",
-                "route_departure": {
-                    "act": later.decision.act,
-                    "floor": later.decision.floor,
-                    "action_coordinate": list(later.decision.action_node),
-                },
-            }
-
-    treatment = {
-        "status": "divergence_taken",
-        "divergence": {
-            "act": joined.decision.act,
-            "floor": steps_by_index[divergence.index]["joined"].decision.floor,
-            "coordinate": list(divergence.aggressive),
-        },
-    }
     conservative_elite_floors = set(conservative.elite_floors)
+    attributable_elites: dict[int, Coordinate] = {}
     for elite_floor in aggressive.elite_floors:
         if elite_floor in conservative_elite_floors:
             continue
@@ -1448,43 +1391,172 @@ def _treatment_evidence(
         conservative_set = pair.conservative_coordinate_sets[elite_index]
         if len(aggressive_set) != 1 or aggressive_set[0] in set(conservative_set):
             continue
-        compatible = True
-        for index in range(divergence.index + 1, elite_index + 1):
-            step = steps_by_index.get(index)
-            if (
-                step is None
-                or step["selected"] != "aggressive"
-                or step["joined"].decision.action_node
-                not in set(pair.aggressive_coordinate_sets[index])
-            ):
-                compatible = False
-                break
-        if not compatible:
-            continue
-        elite_step = steps_by_index.get(elite_index)
-        if elite_step is None:
-            continue
-        corroboration = elite_step["corroboration"]
+        attributable_elites[elite_index] = aggressive_set[0]
+
+    origin_step = next(
+        step for step in same_game_steps if step["joined"] is joined
+    )
+    origin_decision = joined.decision
+    if origin_decision.action_node not in set(pair.aggressive_coordinate_sets[0]):
+        return {"status": "trajectory_unattributable", "reason": "disconnected"}
+
+    def divergence_evidence(step: dict) -> dict:
+        decision = step["joined"].decision
+        return {
+            "status": "divergence_taken",
+            "divergence": {
+                "act": decision.act,
+                "floor": decision.floor,
+                "coordinate": list(divergence.aggressive),
+            },
+        }
+
+    def realized_elite(
+        index: int, step: dict, current_treatment: dict
+    ) -> dict | None:
+        coordinate = attributable_elites.get(index)
+        if coordinate is None:
+            return None
+        decision = step["joined"].decision
+        corroboration = step["corroboration"]
         if (
-            elite_step["joined"].decision.action_node == aggressive_set[0]
+            decision.action_node == coordinate
             and corroboration["trace_symbol"] == "E"
             and corroboration["run_symbol"] == "E"
             and corroboration["run_compatibility"] == "exact"
         ):
-            elite_decision = elite_step["joined"].decision
-            treatment = {
+            return {
                 "status": "realized_optional_elite",
-                "divergence": treatment["divergence"],
+                "divergence": current_treatment["divergence"],
                 "elite": {
-                    "act": elite_decision.act,
-                    "floor": elite_decision.floor,
-                    "coordinate": list(aggressive_set[0]),
+                    "act": decision.act,
+                    "floor": decision.floor,
+                    "coordinate": list(coordinate),
                     "trace_symbol": "E",
                     "run_symbol": "E",
                 },
             }
+        return None
+
+    treatment: dict | None = None
+    if divergence.index == 0:
+        treatment = divergence_evidence(origin_step)
+        elite = realized_elite(0, origin_step, treatment)
+        if elite is not None:
+            return elite
+
+    max_target_index = max(
+        (divergence.index, *attributable_elites.keys())
+    )
+    later_steps = sorted(
+        (
+            step
+            for step in same_game_steps
+            if step["joined"] is not joined
+            and step["joined"].decision.act == origin_decision.act
+            and step["first_time_us"] > origin_step["last_time_us"]
+        ),
+        key=lambda step: (step["first_time_us"], step["last_time_us"]),
+    )
+    previous_step = origin_step
+    previous_time_us = origin_step["last_time_us"]
+    expected_index = 1
+
+    for step in later_steps:
+        if expected_index > max_target_index:
             break
-    return treatment
+        decision = step["joined"].decision
+        previous_decision = previous_step["joined"].decision
+        if step["first_time_us"] <= previous_time_us:
+            if treatment is not None:
+                return treatment
+            return {
+                "status": "trajectory_unattributable",
+                "reason": "chronological_overlap",
+            }
+        if (
+            decision.floor == previous_decision.floor
+            and decision.current_node == previous_decision.current_node
+            and decision.action_node == previous_decision.action_node
+        ):
+            previous_time_us = step["last_time_us"]
+            if step["selected"] != "aggressive" and expected_index <= divergence.index:
+                return {
+                    "status": "revoked_before_divergence",
+                    "revocation": {
+                        "act": decision.act,
+                        "floor": decision.floor,
+                        "selected": step["selected"],
+                    },
+                }
+            continue
+        if decision.floor != previous_decision.floor + 1:
+            if treatment is not None:
+                return treatment
+            return {
+                "status": "trajectory_unattributable",
+                "reason": "floor_gap",
+            }
+        if decision.current_node != previous_decision.action_node:
+            if treatment is not None:
+                return treatment
+            return {
+                "status": "trajectory_unattributable",
+                "reason": "disconnected",
+            }
+        if decision.action_node[1] != aggressive.start_y + expected_index:
+            if treatment is not None:
+                return treatment
+            return {
+                "status": "trajectory_unattributable",
+                "reason": "coordinate_progression",
+            }
+        if step["selected"] != "aggressive":
+            if expected_index <= divergence.index:
+                return {
+                    "status": "revoked_before_divergence",
+                    "revocation": {
+                        "act": decision.act,
+                        "floor": decision.floor,
+                        "selected": step["selected"],
+                    },
+                }
+            return treatment or {"status": "incomplete_before_divergence"}
+        if decision.action_node not in set(
+            pair.aggressive_coordinate_sets[expected_index]
+        ):
+            if expected_index < divergence.index:
+                return {
+                    "status": "route_left_before_divergence",
+                    "route_departure": {
+                        "act": decision.act,
+                        "floor": decision.floor,
+                        "action_coordinate": list(decision.action_node),
+                    },
+                }
+            if expected_index == divergence.index:
+                return {
+                    "status": "divergence_not_taken",
+                    "divergence": {
+                        "act": decision.act,
+                        "floor": decision.floor,
+                        "expected_coordinate": list(divergence.aggressive),
+                        "action_coordinate": list(decision.action_node),
+                    },
+                }
+            return treatment or {"status": "incomplete_before_divergence"}
+
+        previous_step = step
+        previous_time_us = step["last_time_us"]
+        if expected_index == divergence.index:
+            treatment = divergence_evidence(step)
+        if treatment is not None:
+            elite = realized_elite(expected_index, step, treatment)
+            if elite is not None:
+                return elite
+        expected_index += 1
+
+    return treatment or {"status": "incomplete_before_divergence"}
 
 
 def _base_result(
@@ -1688,8 +1760,33 @@ def _argument_parser() -> argparse.ArgumentParser:
     return parser
 
 
+def _normalized_path_identity(path: Path) -> str:
+    return os.path.normcase(os.path.normpath(str(path.resolve(strict=False))))
+
+
+def _validate_output_source_separation(
+    output: Path, source_paths: Sequence[Path]
+) -> None:
+    output_identity = _normalized_path_identity(output)
+    for source_path in source_paths:
+        if output_identity == _normalized_path_identity(source_path):
+            raise EvidenceError("output path aliases a source path")
+        if output.exists() and source_path.exists():
+            try:
+                if output.samefile(source_path):
+                    raise EvidenceError("output path aliases a source file")
+            except OSError:
+                continue
+
+
 def main(argv: Sequence[str] | None = None) -> int:
     args = _argument_parser().parse_args(argv)
+    try:
+        _validate_output_source_separation(
+            args.output, [*args.ai_log, args.decision_trace, *args.run]
+        )
+    except EvidenceError:
+        return 2
     result, exit_code = build_audit(
         args.ai_log,
         args.decision_trace,
