@@ -68,12 +68,13 @@ If adaptive candidate generation or strict whole-map validation raises the dedic
 - **AND** SHALL commit only its validated complete route with reason `candidate_generation_failed`
 
 #### Scenario: Candidate generation is incomplete at the first map choice
-- **WHEN** adaptive candidate generation fails at the first map choice where no current node exists and committed history is empty
-- **THEN** the system SHALL treat `start_y=0` with an empty history prefix as a valid initial origin
+- **WHEN** adaptive candidate generation fails at an act's first map choice where the current node is absent or a start sentinel and every advertised next node is on `y=0`
+- **THEN** the system SHALL treat `start_y=0` with an empty current-act history prefix as a valid initial origin
+- **AND** SHALL ignore any stale complete `map_route` retained from the previous act rather than copy it into the new route or reject recovery
 - **AND** SHALL invoke the existing conservative planner exactly once and commit only its validated complete route with reason `candidate_generation_failed`
 
 #### Scenario: Recovery integrity is invalid
-- **WHEN** the active origin or committed history is invalid, the conservative builder raises, its returned route is invalid, or an unexpected selector or programming error occurs
+- **WHEN** the active origin is absent with nonzero-row next nodes, current-act committed history is invalid, the conservative builder raises, its returned route is invalid, or an unexpected selector or programming error occurs
 - **THEN** the error SHALL propagate without adaptive or conservative retry
 - **AND** route, replan metadata, and adaptive decision logs SHALL remain unchanged
 

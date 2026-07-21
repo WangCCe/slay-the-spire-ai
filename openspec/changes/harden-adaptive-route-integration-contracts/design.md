@@ -28,12 +28,12 @@ The original qualification and failed review are immutable evidence. The origina
 
 The initial adaptive path continues to validate the complete map and both complete candidate bundles. If that path raises the dedicated adaptive candidate-generation error, the fallback will not repeat whole-map validation. It will instead:
 
-1. Resolve a usable active origin and validate the existing absolute route-history prefix. At the initial map choice only, no current node plus an empty committed history is a valid `start_y=0` origin; the same absence after route history exists is invalid.
+1. Resolve a usable active origin and validate the existing absolute route-history prefix. At an act's initial map choice, an absent/sentinel current node plus advertised `y=0` next nodes is a valid `start_y=0` origin with an empty current-act prefix. A stale complete `map_route` from the previous act is ignored rather than copied or treated as current-act history. An absent current node with nonzero-row next nodes is invalid.
 2. Invoke `_build_map_route("conservative")` exactly once from the current origin.
 3. Describe and validate that returned route against the active origin, history prefix, map height, coordinates, edges, and completion boundary.
 4. Return the validated conservative candidate, derive its route, and commit it with reason `candidate_generation_failed` only after chosen-path logging succeeds.
 
-This permits recovery from an irrelevant malformed earlier/unreachable node that the legacy mid-act planner never visits, and it preserves first-map recovery without inventing a current node. It does not recursively retry. Invalid history, a missing/invalid non-initial origin, an exception from the conservative builder, invalid returned route data, or an unexpected selector/programming error still propagates without route/metadata/log mutation.
+This permits recovery from an irrelevant malformed earlier/unreachable node that the legacy mid-act planner never visits, and it preserves first-map recovery without inventing a current node or reusing a previous-act prefix. It does not recursively retry. Invalid current-act history, a missing/invalid non-initial origin, an exception from the conservative builder, invalid returned route data, or an unexpected selector/programming error still propagates without route/metadata/log mutation.
 
 Alternatives considered:
 
