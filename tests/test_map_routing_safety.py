@@ -2139,6 +2139,41 @@ def test_adaptive_history_waits_for_a_valid_matching_map_node(
     assert agent._adaptive_elite_seen is True
 
 
+@pytest.mark.parametrize(
+    ("invalid_symbol", "valid_symbol"),
+    ((None, "E"), ("invalid", "R")),
+)
+def test_adaptive_history_waits_for_a_supported_map_symbol(
+        monkeypatch, invalid_symbol, valid_symbol):
+    agent, _, _, _ = _mid_act_adaptive_route_agent()
+    current = Node(3, 5, "M")
+    agent.game.screen.current_node = current
+    original_get_node = agent.game.map.get_node
+    monkeypatch.setattr(
+        agent.game.map,
+        "get_node",
+        lambda _x, _y: Node(current.x, current.y, invalid_symbol),
+    )
+
+    agent._update_adaptive_route_history()
+
+    assert agent._adaptive_visited_nodes == set()
+    assert agent._adaptive_elite_seen is False
+    assert agent._adaptive_last_rest_floor is None
+
+    valid = Node(current.x, current.y, valid_symbol)
+    agent.game.map.add_node(valid)
+    monkeypatch.setattr(agent.game.map, "get_node", original_get_node)
+
+    agent._update_adaptive_route_history()
+
+    assert agent._adaptive_visited_nodes == {(current.x, current.y)}
+    assert agent._adaptive_elite_seen is (valid_symbol == "E")
+    assert agent._adaptive_last_rest_floor == (
+        valid.y + 1 if valid_symbol == "R" else None
+    )
+
+
 def test_adaptive_route_summary_requires_chosen_route_commit(monkeypatch, caplog):
     caplog.set_level(logging.INFO)
     game_map, safe_start, elite_start = _optional_elite_route_map()

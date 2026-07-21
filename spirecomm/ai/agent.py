@@ -71,13 +71,17 @@ try:
     from spirecomm.ai.heuristics.card import SynergyCardEvaluator
     from spirecomm.ai.heuristics.simulation import HeuristicCombatPlanner
     from spirecomm.ai.heuristics.deck import DeckAnalyzer
-    from spirecomm.ai.heuristics.map_routing import AdaptiveMapRouter
+    from spirecomm.ai.heuristics.map_routing import (
+        ADAPTIVE_ROUTE_SYMBOLS,
+        AdaptiveMapRouter,
+    )
 
     OPTIMIZED_AI_AVAILABLE = True
 except ImportError:
     OPTIMIZED_AI_AVAILABLE = False
     DecisionContext = None
     AdaptiveMapRouter = None
+    ADAPTIVE_ROUTE_SYMBOLS = frozenset()
 
 # Import tracker separately (always available, no dependencies)
 try:
@@ -3227,6 +3231,7 @@ class SimpleAgent:
                 or not self._adaptive_valid_coordinate(map_x)
                 or not self._adaptive_valid_coordinate(map_y)
                 or (map_x, map_y) != coordinate
+                or getattr(map_node, "symbol", None) not in ADAPTIVE_ROUTE_SYMBOLS
         ):
             return
         self._adaptive_visited_nodes.add(coordinate)
