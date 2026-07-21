@@ -144,3 +144,4 @@ dmypy.json
 /.pytest_tmp/
 /-WindowTitlePattern/
 /.worktrees/
+/.superpowers/sdd/

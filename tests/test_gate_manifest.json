@@ -1,0 +1,73 @@
+{
+  "schema_version": 1,
+  "full_only": [
+    {
+      "path": "tests/test_noncombat_outcome_evidence_runner.py",
+      "reason": "subprocess, crash-recovery, and temporary Git replay matrix"
+    },
+    {
+      "path": "tests/test_noncombat_outcome_evidence_verifier.py",
+      "reason": "independent verifier subprocess and historical Git replay matrix"
+    }
+  ],
+  "profiles": {
+    "commit": {
+      "description": "routine pre-commit validation",
+      "mode": "default-minus-full-only",
+      "targets": []
+    },
+    "protocol": {
+      "description": "communication protocol validation",
+      "mode": "targets",
+      "targets": [
+        "tests/test_deferred_state_callback.py",
+        "tests/test_coordinator_startup_timeout.py",
+        "tests/test_main_runtime_errors.py",
+        "tests/test_startup.py",
+        "tests/test_card_select_confirm_guard.py",
+        "tests/test_combat_reward_action_guards.py"
+      ]
+    },
+    "gameplay": {
+      "description": "gameplay policy validation",
+      "mode": "targets",
+      "targets": [
+        "tests/test_map_routing_safety.py",
+        "tests/test_shop_screen_guards.py",
+        "tests/test_event_choice_guard.py",
+        "tests/test_ironclad_card_reward_guards.py",
+        "tests/test_rest_guard.py",
+        "tests/test_decision_context_guards.py",
+        "tests/test_offline_decision_comparator.py"
+      ]
+    },
+    "noncombat-evidence": {
+      "description": "non-combat evidence validation",
+      "mode": "targets",
+      "targets": [
+        "tests/test_noncombat_exploration.py",
+        "tests/test_noncombat_exploration_adapters.py",
+        "tests/test_noncombat_exploration_evidence.py",
+        "tests/test_noncombat_exploration_persistence.py",
+        "tests/test_noncombat_exploration_runtime.py",
+        "tests/test_noncombat_rl_decision_loop.py",
+        "tests/test_noncombat_ope_readiness.py",
+        "tests/test_noncombat_ope_estimation.py",
+        "tests/test_noncombat_ope_calibration.py",
+        "tests/test_noncombat_ope_influence.py",
+        "tests/test_noncombat_ope_estimate_artifacts.py",
+        "tests/test_noncombat_ope_artifact_verifier.py",
+        "tests/test_noncombat_ope_bootstrap.py",
+        "tests/test_noncombat_outcome_evidence_gate.py",
+        "tests/test_noncombat_outcome_evidence_pool.py",
+        "tests/test_noncombat_outcome_evidence_finalizer.py",
+        "tests/test_noncombat_outcome_evidence_expansion.py"
+      ]
+    },
+    "full": {
+      "description": "complete repository validation",
+      "mode": "default",
+      "targets": []
+    }
+  }
+}
