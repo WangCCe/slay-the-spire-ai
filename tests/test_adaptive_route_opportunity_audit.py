@@ -83,7 +83,12 @@ def _outcome_payload(outcome: str) -> str:
     if outcome == "success":
         return _payload()
     if outcome == "forced":
-        return _payload(outcome="forced", selected="conservative", reasons="forced_elite_route")
+        return _payload(
+            outcome="forced",
+            budget="0",
+            selected="conservative",
+            reasons="forced_elite_route",
+        )
     if outcome == "unsupported":
         return _payload(
             outcome="unsupported",
@@ -93,6 +98,7 @@ def _outcome_payload(outcome: str) -> str:
             minimum_elites="unavailable",
             added_elites="unavailable",
             fallback_candidate="not_applicable",
+            budget="0",
             selected="conservative",
             reasons="unsupported_character",
         )
@@ -110,6 +116,7 @@ def _outcome_payload(outcome: str) -> str:
                 elite_count=0,
                 elite_floors="none",
             ),
+            budget="0",
             selected="conservative",
             reasons="candidate_generation_failed",
         )
@@ -313,6 +320,78 @@ def test_rejects_invalid_candidate_derivations_counts_and_scalar_availability(
     tmp_path: Path, name: str, payload: str
 ):
     _assert_rejected_live_line(tmp_path, f"{name}.log", payload)
+
+
+@pytest.mark.parametrize(
+    ("name", "payload"),
+    [
+        ("character-unavailable", _payload(character="unavailable")),
+        ("act-unavailable", _payload(act="unavailable")),
+        ("deck-above-cap", _payload(deck="8")),
+        ("potion-above-cap", _payload(potion="3")),
+        ("relic-above-cap", _payload(relic="3")),
+        ("budget-above-domain", _payload(budget="2")),
+        ("aggressive-without-budget", _payload(budget="0")),
+        (
+            "success-conservative-with-budget",
+            _payload(selected="conservative", budget="1"),
+        ),
+        (
+            "forced-conservative-with-budget",
+            _outcome_payload("forced").replace("budget=0", "budget=1"),
+        ),
+        (
+            "unsupported-conservative-with-budget",
+            _outcome_payload("unsupported").replace("budget=0", "budget=1"),
+        ),
+        (
+            "generation-failure-conservative-with-budget",
+            _outcome_payload("candidate_generation_failed").replace(
+                "budget=0", "budget=1"
+            ),
+        ),
+    ],
+)
+def test_rejects_impossible_valid_state_resources_and_budget_selection_matrix(
+    tmp_path: Path, name: str, payload: str
+):
+    _assert_rejected_live_line(tmp_path, f"{name}.log", payload)
+
+
+def test_loads_valid_resource_caps_and_budget_selection_boundaries(tmp_path: Path):
+    payloads = [
+        _payload(deck="7", potion="2", relic="2"),
+        _payload(
+            character="unavailable",
+            act="unavailable",
+            state_valid="false",
+            hp="unavailable",
+            hp_pct="unavailable",
+            deck="unavailable",
+            potion="unavailable",
+            relic="unavailable",
+            elite_seen="unavailable",
+            last_rest_floor="unavailable",
+        ),
+    ]
+    source = _write_log(
+        tmp_path,
+        "valid-scalar-boundaries.log",
+        [
+            _line("Starting game #1 as PlayerClass.IRONCLAD"),
+            *[
+                _line(f"[ADAPTIVE_ROUTE] {payload}", millisecond=index)
+                for index, payload in enumerate(payloads, start=100)
+            ],
+        ],
+    )
+
+    occurrences, _ = audit.load_adaptive_logs([source], utc_offset_hours=8)
+
+    assert [occurrence.fields["state_valid"] for occurrence in occurrences] == [
+        "true",
+        "false",
+    ]
 
 
 def test_accepts_invalid_state_only_with_unavailable_state_scalars():

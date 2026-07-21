@@ -213,8 +213,9 @@ def _validate_state_scalars(fields: dict[str, str]) -> None:
     hp_pct = float(fields["hp_pct"])
     if hp_pct > 1 or abs(hp_pct - current_hp / maximum_hp) > 0.000001:
         raise EvidenceError("hp_pct does not match hp")
-    for key in ("deck", "potion", "relic"):
-        _parse_nonnegative_integer(fields[key], key)
+    for key, maximum in (("deck", 7), ("potion", 2), ("relic", 2)):
+        if _parse_nonnegative_integer(fields[key], key) > maximum:
+            raise EvidenceError(f"{key} must not exceed {maximum}")
     if fields["elite_seen"] not in {"true", "false"}:
         raise EvidenceError("valid state elite_seen must be boolean")
     _parse_optional_nonnegative_integer(fields["last_rest_floor"], "last_rest_floor")
@@ -234,13 +235,21 @@ def _validate_fields(
         raise EvidenceError("adaptive outcome is invalid")
     if fields["state_valid"] not in {"true", "false"}:
         raise EvidenceError("adaptive state_valid must be boolean")
-    if fields["character"] != "unavailable" and _CHARACTER.fullmatch(fields["character"]) is None:
+    if fields["character"] == "unavailable":
+        if fields["state_valid"] == "true":
+            raise EvidenceError("valid state character must be available")
+    elif _CHARACTER.fullmatch(fields["character"]) is None:
         raise EvidenceError("adaptive character is invalid")
-    if fields["act"] != "unavailable":
+    if fields["act"] == "unavailable":
+        if fields["state_valid"] == "true":
+            raise EvidenceError("valid state act must be available")
+    else:
         _parse_positive_integer(fields["act"], "act")
     if fields["floor"] != "unavailable":
         _parse_nonnegative_integer(fields["floor"], "floor")
-    _parse_nonnegative_integer(fields["budget"], "budget")
+    budget = _parse_nonnegative_integer(fields["budget"], "budget")
+    if budget not in {0, 1}:
+        raise EvidenceError("budget must be zero or one")
     _validate_state_scalars(fields)
     if fields["candidate_pair"] not in {
         "complete",
@@ -250,6 +259,8 @@ def _validate_fields(
         raise EvidenceError("adaptive candidate_pair is invalid")
     if fields["selected"] not in {"conservative", "aggressive"}:
         raise EvidenceError("adaptive selected mode is invalid")
+    if budget != int(fields["selected"] == "aggressive"):
+        raise EvidenceError("budget does not match selected mode")
     outcome = fields["outcome"]
     pair = fields["candidate_pair"]
     if outcome in {"success", "forced"}:
