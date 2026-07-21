@@ -16,9 +16,9 @@
 
 ## 4. Frozen Qualification POC
 
-- [ ] 4.1 Run the audit once against the two retained AI log segments, dedicated decision trace, and ten ordered qualification run records without launching the game.
-- [ ] 4.2 Preserve `reports/adaptive_route_opportunity_audit_20260722.json` and verify the registered source identities and expected `346 -> 173`, 58/54 opportunity, one-selection, four-fallback, and zero-treatment checks.
-- [ ] 4.3 Add `reports/adaptive_route_opportunity_audit_20260722.md` as a derivative report with the exact command, evidence funnel, integrity result, limitations, and no-tuning stop decision.
+- [x] 4.1 Run the audit once against the two retained AI log segments, dedicated decision trace, and ten ordered qualification run records without launching the game.
+- [x] 4.2 Preserve `reports/adaptive_route_opportunity_audit_20260722.json` and verify the registered source identities and expected `346 -> 173`, 58/54 opportunity, one-selection, four-fallback, and zero-treatment checks.
+- [x] 4.3 Add `reports/adaptive_route_opportunity_audit_20260722.md` as a derivative report with the exact command, evidence funnel, integrity result, limitations, and no-tuning stop decision.
 
 ## 5. Verification And Review
 
