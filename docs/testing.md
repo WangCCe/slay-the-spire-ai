@@ -25,6 +25,16 @@ unchanged configured pytest suite, including every `full_only` file.
 | Documentation only | No pytest unless executable examples or manifest change |
 
 The runner never retries a failure and returns pytest's result unchanged.
+Before launching pytest, an ordinary run prints and flushes the selected profile
+and the fully assembled Windows command. `--dry-run` prints the same information
+with an explicit dry-run label but does not create test state or launch pytest.
+
+Each non-dry-run invocation uses a new repository-local basetemp named
+`.pytest_gates/<profile>-<UUID>`. The shared `.pytest_gates/` directory is
+ignored by Git. The runner creates that shared parent when needed but neither
+reuses nor cleans invocation leaves, so an inaccessible sibling cannot affect a
+later gate and no cleanup can rewrite a pytest result.
+
 Direct pytest remains the rollback path when a gate command must be bypassed:
 
 ```powershell
