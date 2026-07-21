@@ -21,13 +21,15 @@
 - [x] 3.4 Implement adaptive two-candidate selection that chooses aggressive only for the `0` versus `1` elite case after every hard gate passes, plus recovery feature extraction, deterministic conservative fallback for all other count pairs, and `candidate_generation_failed` handling.
 - [x] 3.5 Add `adaptive` to CLI validation, help text, logging, and existing agent-construction paths without changing the default route mode.
 - [x] 3.6 Track visited coordinates and latest rest idempotently by act, regenerate both candidates at every adaptive map choice, and emit one structured summary per decision.
-- [ ] 3.7 Confirm no combat, shop, event, card-reward, campfire, checkpoint, training, or Communication Mod protocol behavior changes in the implementation diff.
+- [x] 3.7 Confirm no combat, shop, event, card-reward, campfire, checkpoint, training, or Communication Mod protocol behavior changes in the implementation diff.
 
 ## 4. Automated Verification
 
-- [ ] 4.1 Run the focused CLI and map-routing regressions with the production Windows interpreter and a writable repository-local basetemp.
-- [ ] 4.2 Run `scripts/run_test_gate.py gameplay` and `scripts/run_test_gate.py commit`; preserve exact counts, durations, and any failure without retry.
-- [ ] 4.3 Run one unchanged `scripts/run_test_gate.py full`; record the exact result and separately diagnose at most the already-known timing-sensitive node without rewriting the full result.
+- [x] 4.1 Run the focused CLI and map-routing regressions with the production Windows interpreter and a writable repository-local basetemp.
+- [x] 4.2 Run `scripts/run_test_gate.py gameplay` and `scripts/run_test_gate.py commit`; preserve exact counts, durations, and any failure without retry.
+- [x] 4.3 Run one unchanged `scripts/run_test_gate.py full`; record the exact result and separately diagnose at most the already-known timing-sensitive node without rewriting the full result.
+- [x] 4.3a Preserve the canonical automated qualification report as immutable attempt-1 sandbox FAIL evidence and record the managed-sandbox ACL root cause without changing code, tests, or gate policy.
+- [ ] 4.3b Run exactly one host-permission attempt of the unchanged `gameplay`, `commit`, and `full` gates with generated unique basetemps; do not rerun focused verification, write only `reports/adaptive_elite_routing_automated_qualification_20260721_attempt-2-host.md`, and stop on any non-stream-silence failure without another retry.
 - [ ] 4.4 Run `openspec validate add-adaptive-elite-routing-baseline` and `git diff --check`, then obtain a final read-only code review with no unresolved Critical or Important finding.
 
 ## 5. Bounded Live Qualification

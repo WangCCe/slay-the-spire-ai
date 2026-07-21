@@ -480,40 +480,38 @@ git commit -m "feat: expose observable adaptive route mode"
 
 **Files:**
 - Create: `reports/adaptive_elite_routing_automated_qualification_20260721.md`
+- Create: `reports/adaptive_elite_routing_automated_qualification_20260721_attempt-2-host.md`
 - Modify: `openspec/changes/add-adaptive-elite-routing-baseline/tasks.md`
 
 **Interfaces:**
 - Consumes: committed implementation from Tasks 1-4 and tiered pytest gates.
 - Produces: exact automated qualification evidence and reviewed implementation ready for bounded live use.
 
-- [ ] **Step 1: Run focused production-interpreter verification**
+- [x] **Step 1: Preserve immutable attempt-1 sandbox evidence**
 
-Run:
+Keep `reports/adaptive_elite_routing_automated_qualification_20260721.md` as attempt-1 sandbox FAIL. It retains focused `183 passed in 14.09s`, plus gameplay (`16.07s`, exit `1`), commit (`707.37s`, gate exit `1`, harness exit `124`), and full (`1237.76s`, exit `1`) results with their exact generated basetemps. Do not rerun focused verification and do not rewrite any attempt-1 result.
 
-```powershell
-D:\anaconda\envs\stsai\python.exe -m pytest -q -p no:cacheprovider --basetemp .pytest_tmp_adaptive_route_final tests/test_map_routing_safety.py tests/test_adaptive_route_candidate_benchmark.py tests/test_main_runtime_errors.py
-```
+- [x] **Step 2: Record the managed-sandbox ACL root cause**
 
-Record exact count and duration.
+Record that pytest `9.0.2` cleanup calls `cleanup_dead_symlinks(basetemp) -> root.iterdir()`; the direct single `tmp_path` node passed; the same node under parent-Python to pytest-child failed; nested Python `mkdir(mode=0o700)` followed by immediate `iterdir()` failed in the managed sandbox; and the same minimal operation passed under host permission. Treat this as execution-environment ACL evidence, not a product or assertion failure.
 
-- [ ] **Step 2: Run gameplay and commit gates without retry**
+- [ ] **Step 3: Run the sole corrected host-permission gate attempt**
+
+Under host permission, run these unchanged commands once each and allow each gate to generate its unique basetemp:
 
 ```powershell
 D:\anaconda\envs\stsai\python.exe scripts\run_test_gate.py gameplay
 D:\anaconda\envs\stsai\python.exe scripts\run_test_gate.py commit
-```
-
-Record printed profile, resolved commands, unique basetemps, counts, durations, and exit codes.
-
-- [ ] **Step 3: Run one unchanged full gate**
-
-```powershell
 D:\anaconda\envs\stsai\python.exe scripts\run_test_gate.py full
 ```
 
-Record the exact result. If and only if the same known stream-silence node fails, run that one node once for diagnosis and keep the original full result failed.
+Keep the existing manifest and all thresholds unchanged. Do not rerun focused verification. Preserve attempt 1 as failed. Only the already-known stream-silence node may receive its existing one diagnostic run when it is the sole full-gate failure. Any other failure stops qualification without retry, code/test change, training change, or live-config change.
 
-- [ ] **Step 4: Validate artifacts and scope**
+- [ ] **Step 4: Write the separate corrected qualification report**
+
+Write exact printed profiles, resolved commands, unique basetemps, counts, durations, exit codes, and any permitted stream-silence diagnosis only to `reports/adaptive_elite_routing_automated_qualification_20260721_attempt-2-host.md`. Never overwrite attempt 1. Mark OpenSpec task `4.3b` only when all three corrected commands have been attempted under this authorization and their results are preserved.
+
+- [ ] **Step 5: Validate artifacts and scope**
 
 Run:
 
@@ -525,10 +523,6 @@ git diff --stat e1a559f37..HEAD
 
 Confirm implementation touches only route/CLI/tests/POC/report/OpenSpec files and no prohibited policy or training files.
 
-- [ ] **Step 5: Write qualification report and mark verification tasks**
-
-Write exact commands/results to `reports/adaptive_elite_routing_automated_qualification_20260721.md`. Mark OpenSpec tasks 3.7 and 4.1-4.3 complete only from observed results.
-
 - [ ] **Step 6: Obtain read-only final review and fix all Critical/Important findings**
 
 Review the complete diff from `e1a559f37` to HEAD against proposal/design/spec/tasks. Re-run affected focused tests after any fix. Mark task 4.4 only after OpenSpec validation, diff check, and review are clean.
@@ -536,7 +530,7 @@ Review the complete diff from `e1a559f37` to HEAD against proposal/design/spec/t
 - [ ] **Step 7: Commit qualification evidence**
 
 ```powershell
-git add reports/adaptive_elite_routing_automated_qualification_20260721.md openspec/changes/add-adaptive-elite-routing-baseline/tasks.md
+git add reports/adaptive_elite_routing_automated_qualification_20260721.md reports/adaptive_elite_routing_automated_qualification_20260721_attempt-2-host.md openspec/changes/add-adaptive-elite-routing-baseline/tasks.md
 git commit -m "docs: qualify adaptive elite routing implementation"
 ```
 

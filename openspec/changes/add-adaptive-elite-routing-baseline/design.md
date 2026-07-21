@@ -119,6 +119,22 @@ The cohort becomes a candidate for a larger validation only if it:
 
 The report preserves every run id and relevant log/trace cutoff. Passing does not change defaults or authorize training. A `victory=true` run remains the outer objective.
 
+### 7. Correct a proven managed-sandbox qualification ACL failure once
+
+The canonical automated qualification record at `reports/adaptive_elite_routing_automated_qualification_20260721.md` is immutable attempt-1 sandbox FAIL evidence. It retains focused `183 passed` and the original gameplay, commit, and full basetemps, durations, and exit codes; those failures are not converted to passes or overwritten.
+
+The post-attempt evidence isolates the failure to the execution environment: pytest `9.0.2` executes `cleanup_dead_symlinks(basetemp)`, which calls `root.iterdir()` before inspecting or unlinking any child; a direct single `tmp_path` node passed; that same node under parent-Python to pytest-child execution failed; nested Python `mkdir(mode=0o700)` followed immediately by `iterdir()` failed in the managed sandbox; and the same minimal nested mkdir/iterdir operation passed under host permission. This proves a managed-sandbox ACL failure rather than an adaptive-route or test-assertion failure.
+
+Exactly one corrected host-permission attempt is authorized, running the unchanged commands below in this order with the existing manifest, thresholds, and gate-generated unique basetemps:
+
+```powershell
+D:\anaconda\envs\stsai\python.exe scripts\run_test_gate.py gameplay
+D:\anaconda\envs\stsai\python.exe scripts\run_test_gate.py commit
+D:\anaconda\envs\stsai\python.exe scripts\run_test_gate.py full
+```
+
+Focused verification is not rerun because the original direct focused command already passed `183` tests. Each corrected gate gets one attempt only. The known stream-silence node retains its existing one-node diagnostic allowance only when it is the sole full-gate failure; every other corrected-run failure stops qualification without code/test changes or another retry. The corrected result is written only to `reports/adaptive_elite_routing_automated_qualification_20260721_attempt-2-host.md`. This execution correction does not weaken POC no-retry rules, live promotion thresholds, no-training constraints, conservative default/rollback behavior, or the outer `victory=true` objective.
+
 ## Risks / Trade-offs
 
 - [Hand-authored thresholds can be too strict or too permissive] -> Keep independent inputs explicit, fixture-tested, and subject to one bounded qualification without same-cohort tuning.

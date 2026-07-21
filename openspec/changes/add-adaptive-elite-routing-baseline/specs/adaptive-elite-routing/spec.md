@@ -129,6 +129,26 @@ Each full-height fixture SHALL receive ten excluded warm-up pairs and 100 timed 
 - **AND** gameplay implementation MAY proceed only if every candidate completes and both unchanged latency limits pass
 - **AND** a miss SHALL stop this change without another POC retry
 
+### Requirement: Controlled automated qualification execution recovery
+The canonical automated qualification report at `reports/adaptive_elite_routing_automated_qualification_20260721.md` SHALL remain immutable attempt-1 sandbox FAIL evidence, retaining focused `183 passed` and the original gameplay, commit, and full failures, basetemps, durations, and exit codes.
+
+#### Scenario: Managed-sandbox ACL failure is isolated
+- **WHEN** pytest `9.0.2` cleanup reaches `cleanup_dead_symlinks(basetemp)` and its `root.iterdir()` call is denied
+- **THEN** the evidence SHALL record that a direct single `tmp_path` node passed, the same node under parent-Python to pytest-child failed, nested Python `mkdir(mode=0o700)` followed immediately by `iterdir()` failed in the managed sandbox, and that same minimal operation passed under host permission
+- **AND** the failure SHALL be treated as an execution-environment ACL failure, not an adaptive-route or test-assertion failure
+
+#### Scenario: One corrected host-permission attempt is authorized
+- **WHEN** the attempt-1 ACL evidence is preserved
+- **THEN** exactly one host-permission execution each of the unchanged `gameplay`, `commit`, and `full` gate commands SHALL be permitted with the existing manifest, thresholds, and gate-generated unique basetemps
+- **AND** focused verification SHALL NOT be rerun because the direct focused command already passed `183` tests
+- **AND** the corrected result SHALL be written only to `reports/adaptive_elite_routing_automated_qualification_20260721_attempt-2-host.md`
+- **AND** the original attempt-1 failures SHALL remain failures
+
+#### Scenario: Corrected automated qualification fails
+- **WHEN** any corrected gate fails for a reason other than the sole known stream-silence full-gate node
+- **THEN** qualification SHALL stop with the corrected evidence preserved and no further retry, code/test change, training change, or live-config change
+- **AND** the known stream-silence node MAY receive only its existing one-node diagnostic run when it is the sole full-gate failure
+
 ### Requirement: No-training live qualification and rollback
 The adaptive baseline SHALL be evaluated in one fresh ten-game Ironclad A0 cohort using the production Windows interpreter with training disabled, and the persistent live configuration SHALL be restored to conservative after completion or operational failure.
 
