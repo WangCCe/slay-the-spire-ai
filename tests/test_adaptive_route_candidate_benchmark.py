@@ -1,6 +1,7 @@
 import copy
 import json
 import subprocess
+from types import SimpleNamespace
 from pathlib import Path
 
 import pytest
@@ -161,6 +162,27 @@ def test_benchmark_report_preserves_tested_revision_provenance():
     report = benchmark.benchmark_report((result,), provenance)
 
     assert report["provenance"] == provenance
+
+
+def test_benchmark_provenance_ignores_untracked_files_but_detects_tracked_changes(
+    monkeypatch,
+):
+    calls = []
+    outputs = iter(("exact-tested-head\n", " M analysis_scripts/benchmark.py\n"))
+
+    def run_git(command, **kwargs):
+        calls.append((command, kwargs))
+        return SimpleNamespace(stdout=next(outputs))
+
+    monkeypatch.setattr(benchmark.subprocess, "run", run_git)
+
+    assert benchmark.benchmark_provenance() == {
+        "tested_head": "exact-tested-head",
+        "task1_worktree": "dirty",
+    }
+    assert calls[0][0] == ["git", "rev-parse", "HEAD"]
+    assert calls[1][0] == ["git", "status", "--short", "--untracked-files=no"]
+    assert calls[1][1]["cwd"] == benchmark.PROJECT_ROOT
 
 
 @pytest.mark.parametrize(

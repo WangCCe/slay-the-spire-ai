@@ -478,7 +478,7 @@ def benchmark_provenance() -> dict:
             text=True,
         ).stdout.strip()
         task1_status = subprocess.run(
-            ["git", "status", "--short", "--", "analysis_scripts", "tests", "reports", "openspec"],
+            ["git", "status", "--short", "--untracked-files=no"],
             cwd=PROJECT_ROOT,
             capture_output=True,
             check=True,
