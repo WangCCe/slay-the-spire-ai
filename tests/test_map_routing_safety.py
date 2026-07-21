@@ -1593,12 +1593,24 @@ def test_adaptive_selector_falls_back_when_candidate_generation_fails(
     assert "candidate_generation_failed" in caplog.text
 
 
-def test_adaptive_act_start_fallback_uses_one_full_conservative_builder(monkeypatch):
+@pytest.mark.parametrize("current_kind", ("absent", "sentinel"))
+@pytest.mark.parametrize("stale_previous_route", (False, True))
+def test_adaptive_act_start_fallback_uses_route_index_zero(
+        monkeypatch, caplog, current_kind, stale_previous_route):
+    caplog.set_level(logging.INFO)
     game_map, safe_start, elite_start = _optional_elite_route_map()
     agent = _route_agent("adaptive", game_map, deck=_prepared_act1_deck())
-    _set_start_screen(agent, safe_start, elite_start)
+    agent.game.screen = SimpleNamespace(
+        current_node=(
+            None if current_kind == "absent" else Node(-1, -1, "M")
+        ),
+        next_nodes=[safe_start, elite_start],
+        boss_available=False,
+    )
     original_builder = agent._build_map_route
     expected = original_builder("conservative")
+    if stale_previous_route:
+        agent.map_route = [6] * len(expected)
     calls = []
 
     def candidate_failure():
@@ -1611,11 +1623,51 @@ def test_adaptive_act_start_fallback_uses_one_full_conservative_builder(monkeypa
     monkeypatch.setattr(agent, "_adaptive_route_candidates", candidate_failure)
     monkeypatch.setattr(agent, "_build_map_route", track_builder)
 
-    route = agent.generate_map_route()
+    action = agent.make_map_choice()
 
     assert calls == ["conservative"]
-    assert route == expected
     assert agent.map_route == expected
+    assert isinstance(action, ChooseMapNodeAction)
+    assert action.node == next(
+        node for node in agent.game.screen.next_nodes if node.x == expected[0]
+    )
+    assert "candidate_generation_failed" in caplog.text
+
+
+def test_adaptive_invalid_initial_origin_propagates_without_fallback(
+        monkeypatch, caplog):
+    caplog.set_level(logging.INFO)
+    game_map, safe_start, _ = _optional_elite_route_map()
+    agent = _route_agent("adaptive", game_map, deck=_prepared_act1_deck())
+    agent.game.screen = SimpleNamespace(
+        current_node=None,
+        next_nodes=[safe_start.children[0]],
+        boss_available=False,
+    )
+    original_route = list(agent.map_route)
+    original_metadata = (agent._last_route_hp_pct, agent._last_route_floor)
+    calls = []
+
+    monkeypatch.setattr(
+        agent,
+        "_adaptive_route_candidates",
+        lambda: (_ for _ in ()).throw(
+            agent_module._AdaptiveRouteCandidateGenerationError("injected")
+        ),
+    )
+    monkeypatch.setattr(
+        agent,
+        "_build_map_route",
+        lambda mode: calls.append(mode),
+    )
+
+    with pytest.raises(ValueError, match="initial candidate origin is invalid"):
+        agent.generate_map_route()
+
+    assert calls == []
+    assert agent.map_route == original_route
+    assert (agent._last_route_hp_pct, agent._last_route_floor) == original_metadata
+    assert "[ADAPTIVE_ROUTE]" not in caplog.text
 
 
 def _mid_act_adaptive_route_agent():
@@ -1783,12 +1835,14 @@ def test_adaptive_candidate_shape_failures_trigger_conservative_fallback(
     assert "candidate_generation_failed" in caplog.text
 
 
-def test_adaptive_malformed_unreachable_child_propagates_without_route_mutation(
-        monkeypatch):
-    agent, _, _, _ = _mid_act_adaptive_route_agent()
+def test_adaptive_malformed_unreachable_child_uses_one_conservative_fallback(
+        monkeypatch, caplog):
+    caplog.set_level(logging.INFO)
+    agent, current, _, _ = _mid_act_adaptive_route_agent()
     original_builder = agent._build_map_route
     original_route = list(agent.map_route)
-    original_metadata = (agent._last_route_hp_pct, agent._last_route_floor)
+    expected = original_builder("conservative")
+    expected[:current.y + 1] = original_route[:current.y + 1]
     calls = []
     orphan = Node(5, 0, "M")
     orphan.children = [Node(5, 1, "M")]
@@ -1800,12 +1854,134 @@ def test_adaptive_malformed_unreachable_child_propagates_without_route_mutation(
 
     monkeypatch.setattr(agent, "_build_map_route", track_builder)
 
-    with pytest.raises(ValueError, match="candidate child is missing from the map"):
+    route = agent.generate_map_route()
+
+    assert calls == ["conservative"]
+    assert route == expected
+    assert agent.map_route == expected
+    assert route[:current.y + 1] == original_route[:current.y + 1]
+    assert "candidate_generation_failed" in caplog.text
+
+
+def test_adaptive_active_origin_coordinate_identity_propagates_without_fallback(
+        monkeypatch, caplog):
+    caplog.set_level(logging.INFO)
+    agent, current, _, _ = _mid_act_adaptive_route_agent()
+    original_route = list(agent.map_route)
+    original_metadata = (agent._last_route_hp_pct, agent._last_route_floor)
+    original_get_node = agent.game.map.get_node
+    malformed = Node(current.x + 7, current.y, current.symbol)
+    malformed.children = list(current.children)
+    calls = []
+
+    def mismatched_origin(x, y):
+        if (x, y) == (current.x, current.y):
+            return malformed
+        return original_get_node(x, y)
+
+    monkeypatch.setattr(
+        agent,
+        "_adaptive_route_candidates",
+        lambda: (_ for _ in ()).throw(
+            agent_module._AdaptiveRouteCandidateGenerationError("injected")
+        ),
+    )
+    monkeypatch.setattr(agent.game.map, "get_node", mismatched_origin)
+    monkeypatch.setattr(
+        agent,
+        "_build_map_route",
+        lambda mode: calls.append(mode),
+    )
+
+    with pytest.raises(ValueError, match="candidate map node coordinates are invalid"):
         agent.generate_map_route()
 
     assert calls == []
     assert agent.map_route == original_route
     assert (agent._last_route_hp_pct, agent._last_route_floor) == original_metadata
+    assert "[ADAPTIVE_ROUTE]" not in caplog.text
+
+
+def test_adaptive_history_coordinate_identity_propagates_without_fallback(
+        monkeypatch, caplog):
+    caplog.set_level(logging.INFO)
+    agent, _, _, _ = _mid_act_adaptive_route_agent()
+    original_route = list(agent.map_route)
+    original_metadata = (agent._last_route_hp_pct, agent._last_route_floor)
+    history_node = agent.game.map.get_node(1, 1)
+    history_node.x = 7
+    calls = []
+
+    monkeypatch.setattr(
+        agent,
+        "_adaptive_route_candidates",
+        lambda: (_ for _ in ()).throw(
+            agent_module._AdaptiveRouteCandidateGenerationError("injected")
+        ),
+    )
+    monkeypatch.setattr(
+        agent,
+        "_validate_adaptive_candidate_map",
+        lambda *_args: pytest.fail("fallback repeated strict whole-map validation"),
+    )
+    monkeypatch.setattr(
+        agent,
+        "_build_map_route",
+        lambda mode: calls.append(mode),
+    )
+
+    with pytest.raises(ValueError, match="candidate map node coordinates are invalid"):
+        agent.generate_map_route()
+
+    assert calls == []
+    assert agent.map_route == original_route
+    assert (agent._last_route_hp_pct, agent._last_route_floor) == original_metadata
+    assert "[ADAPTIVE_ROUTE]" not in caplog.text
+
+
+def test_adaptive_future_coordinate_identity_propagates_after_one_fallback(
+        monkeypatch, caplog):
+    caplog.set_level(logging.INFO)
+    agent, current, _, _ = _mid_act_adaptive_route_agent()
+    original_builder = agent._build_map_route
+    fallback_route = original_builder("conservative")
+    target_y = current.y + 2
+    target_x = fallback_route[target_y]
+    original_target = agent.game.map.get_node(target_x, target_y)
+    malformed = Node(target_x + 7, target_y, original_target.symbol)
+    malformed.children = list(original_target.children)
+    original_get_node = agent.game.map.get_node
+    original_route = list(agent.map_route)
+    original_metadata = (agent._last_route_hp_pct, agent._last_route_floor)
+    calls = []
+    mismatch_enabled = False
+
+    def candidate_failure():
+        raise agent_module._AdaptiveRouteCandidateGenerationError("injected")
+
+    def tracked_builder(mode):
+        nonlocal mismatch_enabled
+        calls.append(mode)
+        route = original_builder(mode)
+        mismatch_enabled = True
+        return route
+
+    def mismatched_future(x, y):
+        if mismatch_enabled and (x, y) == (target_x, target_y):
+            return malformed
+        return original_get_node(x, y)
+
+    monkeypatch.setattr(agent, "_adaptive_route_candidates", candidate_failure)
+    monkeypatch.setattr(agent, "_build_map_route", tracked_builder)
+    monkeypatch.setattr(agent.game.map, "get_node", mismatched_future)
+
+    with pytest.raises(ValueError, match="candidate map node coordinates are invalid"):
+        agent.generate_map_route()
+
+    assert calls == ["conservative"]
+    assert agent.map_route == original_route
+    assert (agent._last_route_hp_pct, agent._last_route_floor) == original_metadata
+    assert "[ADAPTIVE_ROUTE]" not in caplog.text
 
 
 def test_adaptive_selector_key_error_propagates_without_conservative_fallback(
@@ -1936,6 +2112,33 @@ def test_adaptive_current_y13_uses_valid_complete_nonzero_history_prefix():
     assert route[14] == nodes[14].x
     assert isinstance(action, ChooseMapNodeAction)
     assert action.node == nodes[14]
+
+
+def test_adaptive_late_fallback_ignores_irrelevant_malformed_earlier_node(
+        monkeypatch, caplog):
+    caplog.set_level(logging.INFO)
+    agent, nodes = _late_adaptive_route_agent(13)
+    original_builder = agent._build_map_route
+    expected = original_builder("conservative")
+    expected[:14] = agent.map_route[:14]
+    orphan = Node(5, 0, "M")
+    orphan.children = [Node(5, 1, "M")]
+    agent.game.map.add_node(orphan)
+    calls = []
+
+    def tracked_builder(mode):
+        calls.append(mode)
+        return original_builder(mode)
+
+    monkeypatch.setattr(agent, "_build_map_route", tracked_builder)
+
+    action = agent.make_map_choice()
+
+    assert calls == ["conservative"]
+    assert agent.map_route == expected
+    assert isinstance(action, ChooseMapNodeAction)
+    assert action.node == nodes[14]
+    assert "candidate_generation_failed" in caplog.text
 
 
 @pytest.mark.parametrize("history_kind", ("short", "stale"))

@@ -2703,11 +2703,19 @@ class SimpleAgent:
 
     def _candidate_map_node(self, x, y):
         try:
-            return self.game.map.get_node(x, y)
+            node = self.game.map.get_node(x, y)
         except (IndexError, KeyError) as error:
             raise _AdaptiveRouteCandidateGenerationError(
                 "candidate map lookup failed"
             ) from error
+        if node is not None and (
+                getattr(node, "x", None) != x
+                or getattr(node, "y", None) != y
+        ):
+            raise _AdaptiveRouteCandidateGenerationError(
+                "candidate map node coordinates are invalid"
+            )
+        return node
 
     def _validated_route_history_prefix(self, map_height, current_map_node, start_y):
         if current_map_node is None:
@@ -2851,21 +2859,43 @@ class SimpleAgent:
             ),
         )
 
-    def _adaptive_conservative_fallback_route(self):
+    def _adaptive_fallback_context(self):
+        start_y, current_map_node, next_nodes = self._adaptive_candidate_origin()
+        rows = getattr(getattr(self.game, "map", None), "nodes", None)
+        if not isinstance(rows, dict) or not rows:
+            raise _AdaptiveRouteCandidateGenerationError("candidate map has no rows")
+        try:
+            map_height = max(rows)
+        except (TypeError, ValueError) as error:
+            raise _AdaptiveRouteCandidateGenerationError(
+                "candidate map height is invalid"
+            ) from error
+        if not isinstance(map_height, int) or map_height < start_y:
+            raise _AdaptiveRouteCandidateGenerationError("candidate map is too short")
+
+        if current_map_node is None:
+            if start_y != 0 or any(
+                    getattr(node, "y", None) != 0 for node in next_nodes
+            ):
+                raise _AdaptiveRouteCandidateGenerationError(
+                    "initial candidate origin is invalid"
+                )
+            history_prefix = ()
+        else:
+            history_prefix = self._validated_route_history_prefix(
+                map_height,
+                current_map_node,
+                start_y,
+            )
+        return start_y, current_map_node, next_nodes, history_prefix
+
+    def _adaptive_conservative_fallback_candidate(self):
         if self.map_router is None:
             raise _AdaptiveRouteCandidateGenerationError("adaptive map router is unavailable")
-        start_y, current_map_node, next_nodes = self._adaptive_candidate_origin()
-        map_height = self._validate_adaptive_candidate_map(
-            start_y,
-            current_map_node,
-            next_nodes,
+        start_y, current_map_node, next_nodes, history_prefix = (
+            self._adaptive_fallback_context()
         )
-        history_prefix = self._validated_route_history_prefix(
-            map_height,
-            current_map_node,
-            start_y,
-        )
-        conservative = self._describe_adaptive_route_candidate(
+        return self._describe_adaptive_route_candidate(
             "conservative",
             self._build_map_route("conservative"),
             start_y,
@@ -2873,7 +2903,6 @@ class SimpleAgent:
             next_nodes,
             history_prefix,
         )
-        return self._route_from_adaptive_candidate(conservative)
 
     def _candidate_features(self, candidate):
         if isinstance(candidate, _AdaptiveRouteCandidate):
@@ -3025,13 +3054,13 @@ class SimpleAgent:
                     )
                     selected_mode = "aggressive" if assessment.allowed else "conservative"
                 except _AdaptiveRouteCandidateGenerationError:
-                    route = self._adaptive_conservative_fallback_route()
+                    conservative = self._adaptive_conservative_fallback_candidate()
+                    route = self._route_from_adaptive_candidate(conservative)
                     state = self._adaptive_state(context)
                     assessment = self.map_router._adaptive_assessment(
                         False,
                         "candidate_generation_failed",
                     )
-                    conservative = None
                     aggressive = None
                     selected_mode = "conservative"
             adaptive_summary = (
@@ -3279,7 +3308,9 @@ class SimpleAgent:
                 self.generate_map_route()
         if self.game.screen.boss_available:
             return ChooseMapBossAction()
-        chosen_x = self.map_route[self.game.screen.current_node.y + 1]
+        current_node = getattr(self.game.screen, "current_node", None)
+        route_index = 0 if current_node is None else current_node.y + 1
+        chosen_x = self.map_route[route_index]
         for choice in self.game.screen.next_nodes:
             if choice.x == chosen_x:
                 return ChooseMapNodeAction(choice)
