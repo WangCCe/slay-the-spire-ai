@@ -2620,14 +2620,29 @@ class SimpleAgent:
             best_path[start_y] = current_map_node.x
         return best_path
 
+    @staticmethod
+    def _adaptive_is_initial_map_origin(current_node):
+        if current_node is None:
+            return True
+        y = getattr(current_node, "y", None)
+        return isinstance(y, int) and not isinstance(y, bool) and y == -1
+
     def _adaptive_candidate_origin(self):
         screen = getattr(self.game, "screen", None)
         next_nodes = getattr(screen, "next_nodes", []) or []
         current_node = getattr(screen, "current_node", None)
         if not next_nodes:
             raise _AdaptiveRouteCandidateGenerationError("candidate has no next nodes")
-        if current_node is None or getattr(current_node, "y", -1) < 0:
+        if self._adaptive_is_initial_map_origin(current_node):
             return 0, None, tuple(next_nodes)
+        if not self._adaptive_valid_coordinate(
+                getattr(current_node, "x", None)
+        ) or not self._adaptive_valid_coordinate(
+                getattr(current_node, "y", None)
+        ):
+            raise _AdaptiveRouteCandidateGenerationError(
+                "candidate current node is invalid"
+            )
         current_map_node = self._candidate_map_node(current_node.x, current_node.y)
         if current_map_node is None:
             raise _AdaptiveRouteCandidateGenerationError(
@@ -3309,7 +3324,13 @@ class SimpleAgent:
         if self.game.screen.boss_available:
             return ChooseMapBossAction()
         current_node = getattr(self.game.screen, "current_node", None)
-        route_index = 0 if current_node is None else current_node.y + 1
+        if (
+                str(self.elite_mode or "").lower() == "adaptive"
+                and self._adaptive_is_initial_map_origin(current_node)
+        ):
+            route_index = 0
+        else:
+            route_index = current_node.y + 1
         chosen_x = self.map_route[route_index]
         for choice in self.game.screen.next_nodes:
             if choice.x == chosen_x:

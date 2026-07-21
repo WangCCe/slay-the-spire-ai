@@ -1670,6 +1670,59 @@ def test_adaptive_invalid_initial_origin_propagates_without_fallback(
     assert "[ADAPTIVE_ROUTE]" not in caplog.text
 
 
+@pytest.mark.parametrize("origin_kind", ("too_negative", "missing_y"))
+def test_adaptive_malformed_negative_origin_propagates_before_builder(
+        monkeypatch, caplog, origin_kind):
+    caplog.set_level(logging.INFO)
+    game_map, safe_start, elite_start = _optional_elite_route_map()
+    agent = _route_agent("adaptive", game_map, deck=_prepared_act1_deck())
+    agent.game.screen = SimpleNamespace(
+        current_node=(
+            SimpleNamespace(x=-1, y=-2)
+            if origin_kind == "too_negative"
+            else SimpleNamespace(x=-1)
+        ),
+        next_nodes=[safe_start, elite_start],
+        boss_available=False,
+    )
+    original_route = list(agent.map_route)
+    original_metadata = (agent._last_route_hp_pct, agent._last_route_floor)
+    original_builder = agent._build_map_route
+    calls = []
+
+    def tracked_builder(mode):
+        calls.append(mode)
+        return original_builder(mode)
+
+    monkeypatch.setattr(agent, "_build_map_route", tracked_builder)
+
+    with pytest.raises(ValueError, match="candidate current node is invalid"):
+        agent.make_map_choice()
+
+    assert calls == []
+    assert agent.map_route == original_route
+    assert (agent._last_route_hp_pct, agent._last_route_floor) == original_metadata
+    assert "[ADAPTIVE_ROUTE]" not in caplog.text
+
+
+def test_legacy_route_does_not_normalize_absent_current_node():
+    game_map, safe_start, _ = _optional_elite_route_map()
+    agent = _route_agent("conservative", game_map, deck=_prepared_act1_deck())
+    agent.map_route = agent._build_map_route("conservative")
+    original_route = list(agent.map_route)
+    agent._last_route_hp_pct = 1.0
+    agent.game.screen = SimpleNamespace(
+        current_node=None,
+        next_nodes=[safe_start.children[0]],
+        boss_available=False,
+    )
+
+    with pytest.raises(AttributeError):
+        agent.make_map_choice()
+
+    assert agent.map_route == original_route
+
+
 def _mid_act_adaptive_route_agent():
     agent = _route_agent("adaptive", Map(), deck=_prepared_act1_deck())
     agent.game.deck.extend(_card("Strike") for _ in range(6))
@@ -1754,7 +1807,8 @@ def test_adaptive_mid_act_fallback_merges_valid_history_with_conservative_suffix
 
 
 def test_adaptive_mid_act_fallback_invalid_history_propagates_without_mutation(
-        monkeypatch):
+        monkeypatch, caplog):
+    caplog.set_level(logging.INFO)
     agent, _, _, _ = _mid_act_adaptive_route_agent()
     agent.map_route = agent.map_route[:-1]
     invalid_route = list(agent.map_route)
@@ -1777,10 +1831,12 @@ def test_adaptive_mid_act_fallback_invalid_history_propagates_without_mutation(
     assert calls == []
     assert agent.map_route == invalid_route
     assert (agent._last_route_hp_pct, agent._last_route_floor) == original_metadata
+    assert "[ADAPTIVE_ROUTE]" not in caplog.text
 
 
 def test_adaptive_mid_act_fallback_invalid_future_propagates_without_mutation(
-        monkeypatch):
+        monkeypatch, caplog):
+    caplog.set_level(logging.INFO)
     agent, _, _, _ = _mid_act_adaptive_route_agent()
     original_route = list(agent.map_route)
     original_metadata = (agent._last_route_hp_pct, agent._last_route_floor)
@@ -1802,6 +1858,7 @@ def test_adaptive_mid_act_fallback_invalid_future_propagates_without_mutation(
     assert calls == ["conservative"]
     assert agent.map_route == original_route
     assert (agent._last_route_hp_pct, agent._last_route_floor) == original_metadata
+    assert "[ADAPTIVE_ROUTE]" not in caplog.text
 
 
 @pytest.mark.parametrize("failure_kind", ("truncated", "disconnected"))
@@ -1985,8 +2042,11 @@ def test_adaptive_future_coordinate_identity_propagates_after_one_fallback(
 
 
 def test_adaptive_selector_key_error_propagates_without_conservative_fallback(
-        monkeypatch):
+        monkeypatch, caplog):
+    caplog.set_level(logging.INFO)
     agent, _, _, _ = _mid_act_adaptive_route_agent()
+    original_route = list(agent.map_route)
+    original_metadata = (agent._last_route_hp_pct, agent._last_route_floor)
     calls = []
     original_builder = agent._build_map_route
 
@@ -2004,6 +2064,9 @@ def test_adaptive_selector_key_error_propagates_without_conservative_fallback(
         agent.generate_map_route()
 
     assert calls == ["conservative", "aggressive"]
+    assert agent.map_route == original_route
+    assert (agent._last_route_hp_pct, agent._last_route_floor) == original_metadata
+    assert "[ADAPTIVE_ROUTE]" not in caplog.text
 
 
 def test_non_ironclad_adaptive_generation_uses_one_conservative_pass_with_reason(
@@ -2143,7 +2206,8 @@ def test_adaptive_late_fallback_ignores_irrelevant_malformed_earlier_node(
 
 @pytest.mark.parametrize("history_kind", ("short", "stale"))
 def test_adaptive_invalid_history_prefix_propagates_without_route_mutation(
-        monkeypatch, history_kind):
+        monkeypatch, caplog, history_kind):
+    caplog.set_level(logging.INFO)
     agent, nodes = _late_adaptive_route_agent(13)
     original_route = list(agent.map_route)
     original_metadata = (agent._last_route_hp_pct, agent._last_route_floor)
@@ -2166,11 +2230,13 @@ def test_adaptive_invalid_history_prefix_propagates_without_route_mutation(
     assert calls == []
     assert agent.map_route == invalid_history
     assert (agent._last_route_hp_pct, agent._last_route_floor) == original_metadata
+    assert "[ADAPTIVE_ROUTE]" not in caplog.text
 
 
 @pytest.mark.parametrize("error_type", (IndexError, KeyError))
 def test_adaptive_builder_programming_errors_propagate_without_route_mutation(
-        monkeypatch, error_type):
+        monkeypatch, caplog, error_type):
+    caplog.set_level(logging.INFO)
     agent, _, _, _ = _mid_act_adaptive_route_agent()
     original_route = list(agent.map_route)
     original_metadata = (agent._last_route_hp_pct, agent._last_route_floor)
@@ -2188,6 +2254,35 @@ def test_adaptive_builder_programming_errors_propagate_without_route_mutation(
     assert calls == ["conservative"]
     assert agent.map_route == original_route
     assert (agent._last_route_hp_pct, agent._last_route_floor) == original_metadata
+    assert "[ADAPTIVE_ROUTE]" not in caplog.text
+
+
+@pytest.mark.parametrize("error_type", (IndexError, KeyError))
+def test_adaptive_fallback_builder_error_is_not_retried_or_committed(
+        monkeypatch, caplog, error_type):
+    caplog.set_level(logging.INFO)
+    agent, _, _, _ = _mid_act_adaptive_route_agent()
+    original_route = list(agent.map_route)
+    original_metadata = (agent._last_route_hp_pct, agent._last_route_floor)
+    calls = []
+
+    def candidate_failure():
+        raise agent_module._AdaptiveRouteCandidateGenerationError("injected")
+
+    def broken_fallback(mode):
+        calls.append(mode)
+        raise error_type("injected fallback builder failure")
+
+    monkeypatch.setattr(agent, "_adaptive_route_candidates", candidate_failure)
+    monkeypatch.setattr(agent, "_build_map_route", broken_fallback)
+
+    with pytest.raises(error_type, match="injected fallback builder failure"):
+        agent.generate_map_route()
+
+    assert calls == ["conservative"]
+    assert agent.map_route == original_route
+    assert (agent._last_route_hp_pct, agent._last_route_floor) == original_metadata
+    assert "[ADAPTIVE_ROUTE]" not in caplog.text
 
 
 def test_boss_choice_skips_replan_and_route_mutation_at_map_height(monkeypatch):

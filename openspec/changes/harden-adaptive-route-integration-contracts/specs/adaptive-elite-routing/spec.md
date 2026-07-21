@@ -68,11 +68,17 @@ If adaptive candidate generation or strict whole-map validation raises the dedic
 - **AND** SHALL commit only its validated complete route with reason `candidate_generation_failed`
 
 #### Scenario: Candidate generation is incomplete at the first map choice
-- **WHEN** adaptive candidate generation fails at an act's first map choice where the current node is absent or a start sentinel and every advertised next node is on `y=0`
+- **WHEN** adaptive candidate generation fails at an act's first map choice where the current node is absent or has integer `y=-1` and every advertised next node is on `y=0`
 - **THEN** the system SHALL treat `start_y=0` with an empty current-act history prefix as a valid initial origin
 - **AND** SHALL ignore any stale complete `map_route` retained from the previous act rather than copy it into the new route or reject recovery
 - **AND** SHALL invoke the existing conservative planner exactly once and commit only its validated complete route with reason `candidate_generation_failed`
 - **AND** map-choice action selection SHALL use route index `0` for both an absent current node and the negative-row start sentinel
+
+#### Scenario: Malformed negative current node is not an initial origin
+- **WHEN** adaptive mode receives a current-node object with missing or non-integer `y` or integer `y<-1`
+- **THEN** the system SHALL propagate a stable candidate-origin integrity error before any route builder or commit
+- **AND** route, replan metadata, and adaptive decision logs SHALL remain unchanged
+- **AND** the adaptive route-index-0 rule SHALL NOT change malformed current-node behavior in legacy route modes
 
 #### Scenario: Selected route node coordinates do not match their lookup keys
 - **WHEN** the active origin or any selected history or future route node is returned from map coordinate `(x,y)` but the node's own coordinates differ from `(x,y)`

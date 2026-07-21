@@ -50,7 +50,7 @@ Add the same malformed earlier-node condition to `_late_adaptive_route_agent(13)
 
 - [ ] **Step 2: Add red integrity regressions for invalid initial origin and fallback output**
 
-Add an invalid-origin test where the screen has no usable current node but advertises only nonzero-row next nodes. Add three coordinate-identity tests monkeypatching map lookup to return a node whose internal coordinates differ from the requested key: one at the active origin, one in the selected mid-act history prefix, and one in the selected future fallback route. Assert `_AdaptiveRouteCandidateGenerationError`, zero builder calls for invalid active/history lookups, exactly one builder call for invalid returned-future data, unchanged route/metadata, and no `[ADAPTIVE_ROUTE]` record. Retain existing invalid mid-act history, truncated fallback, builder exception, and selector programming-error tests as the no-retry matrix.
+Add invalid-origin tests for absent current plus nonzero-row next nodes, integer `y<-1`, and a current object missing `y`. Add a legacy-mode characterization proving the adaptive route-index-0 special case does not normalize an absent malformed legacy current node. Add three coordinate-identity tests monkeypatching map lookup to return a node whose internal coordinates differ from the requested key: one at the active origin, one in the selected mid-act history prefix, and one in the selected future fallback route. Assert `_AdaptiveRouteCandidateGenerationError`, zero builder calls for invalid active/history lookups, exactly one builder call for invalid returned-future data, unchanged route/metadata, and no `[ADAPTIVE_ROUTE]` record. Add a candidate-failure-initiated fallback-builder exception test and extend invalid history/output, normal builder, and selector-programming-error tests so every case asserts exact builder calls, unchanged route/metadata, and no adaptive record.
 
 - [ ] **Step 3: Run only the new recovery nodes and verify RED**
 
@@ -98,6 +98,8 @@ def _adaptive_fallback_context(self):
 
 Do not call `_validate_adaptive_candidate_map()` here. Strengthen `_candidate_map_node(x, y)` so every non-`None` lookup requires `(node.x, node.y) == (x, y)` and otherwise raises `_AdaptiveRouteCandidateGenerationError("candidate map node coordinates are invalid")`. `_adaptive_candidate_origin()` then validates active-origin identity, `_validated_route_history_prefix()` validates every committed coordinate/edge, and `_describe_adaptive_route_candidate()` validates every returned-route coordinate identity plus next-node start, active edge, bounds, symbols, completion, and future edges.
 
+Centralize initial-origin recognition in `_adaptive_is_initial_map_origin(current_node)`: return true only for `None` or an object whose `y` is integer `-1` (not `bool`). `_adaptive_candidate_origin()` must reject every other non-coordinate object with `candidate current node is invalid` before map lookup or builder execution.
+
 - [ ] **Step 5: Return the validated fallback candidate and commit its route**
 
 Replace `_adaptive_conservative_fallback_route()` with:
@@ -134,7 +136,13 @@ In `make_map_choice()`, derive the route index without dereferencing an absent i
 
 ```python
 current_node = getattr(self.game.screen, "current_node", None)
-route_index = 0 if current_node is None else current_node.y + 1
+if (
+        str(self.elite_mode or "").lower() == "adaptive"
+        and self._adaptive_is_initial_map_origin(current_node)
+):
+    route_index = 0
+else:
+    route_index = current_node.y + 1
 chosen_x = self.map_route[route_index]
 ```
 
