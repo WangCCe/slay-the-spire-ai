@@ -424,6 +424,17 @@ def create_ready_coordinator(agent_type, *, force_input_thread=False):
     return coordinator, defer_input_thread
 
 
+RL_ADAPTIVE_ROUTE_ERROR = (
+    "--elite-route adaptive is unsupported for --agent rl; "
+    "adaptive routing requires a heuristic map owner"
+)
+
+
+def validate_agent_route_compatibility(agent_type, elite_mode):
+    if agent_type == "rl" and str(elite_mode or "").lower() == "adaptive":
+        raise ValueError(RL_ADAPTIVE_ROUTE_ERROR)
+
+
 def create_agent(
     agent_type="auto",
     use_optimized=None,
@@ -447,7 +458,9 @@ def create_agent(
         training: Whether RL agent should be in training mode
         model_path: Path to pre-trained RL model checkpoint
         epsilon: Exploration rate for non-training RL inference
-        elite_mode: Elite routing mode ("conservative", "aggressive", or "adaptive", default: "aggressive")
+        elite_mode: Elite routing mode ("conservative", "aggressive", or
+            "adaptive", default: "aggressive"). Adaptive requires a heuristic
+            map owner and is rejected for the full RL agent.
         rl_version: RL space version ("v1" or "v2"), defaults to STS_RL_VERSION or "v1"
 
     Returns:
@@ -456,6 +469,8 @@ def create_agent(
     # Handle legacy use_optimized parameter
     if agent_type == "auto" and use_optimized is not None:
         agent_type = "optimized" if use_optimized else "simple"
+
+    validate_agent_route_compatibility(agent_type, elite_mode)
 
     # Auto-detect: use optimized for Ironclad, simple for others
     if agent_type == "auto":
@@ -933,7 +948,11 @@ if __name__ == "__main__":
         "--elite-route",
         choices=["conservative", "aggressive", "adaptive"],
         default="aggressive",
-        help="Map routing strategy for elites: conservative, aggressive, or adaptive (default: aggressive)",
+        help=(
+            "Map routing (default: aggressive): conservative, aggressive, or "
+            "adaptive. Adaptive requires a heuristic map owner and is "
+            "unsupported for --agent rl."
+        ),
     )
     parser.add_argument(
         "--noncombat-exploration-dry-run",
@@ -971,6 +990,11 @@ if __name__ == "__main__":
     elif args.agent != "auto":
         agent_type = args.agent
         logging.info(f"Agent type set to: {agent_type}")
+
+    try:
+        validate_agent_route_compatibility(agent_type, args.elite_route)
+    except ValueError as error:
+        parser.error(str(error))
 
     # RL-specific options
     if args.eval and args.train:

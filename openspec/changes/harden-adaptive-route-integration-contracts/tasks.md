@@ -2,15 +2,15 @@
 
 - [x] 1.1 Replace the irrelevant earlier-node propagation characterization with failing mid-act, floor-14, and first-map regressions proving one conservative fallback call, no repeated whole-map validation, preserved absolute mid-act history, an empty current-act `start_y=0` prefix, ignored previous-act `map_route`, safe route-index-0 action selection for both absent and sentinel current nodes, `candidate_generation_failed`, and no pre-commit mutation.
 - [x] 1.2 Retain and extend regressions proving absent current nodes with nonzero-row next nodes, lookup-key/node-coordinate mismatches at the active origin and selected history and future route nodes, invalid current-act history, conservative-builder exceptions, invalid fallback output, and unexpected selector errors propagate without retry, route/metadata mutation, or adaptive decision log.
-- [ ] 1.3 Add separate failing direct-`create_agent` and parsed-CLI tests for `rl` plus `adaptive`: assert the exact stable error, `ValueError` for direct construction, CLI exit status `2`, and zero calls to the RL factory, checkpoint loader, and `SimpleAgent` fallback; retain supported-path tests for `simple`, `optimized`, Ironclad `auto`, and `combat_rl` plus legacy full-RL startup.
+- [x] 1.3 Add separate failing direct-`create_agent` and parsed-CLI tests for `rl` plus `adaptive`: assert the exact stable error, `ValueError` for direct construction, CLI exit status `2`, and zero calls to the RL factory, checkpoint loader, and `SimpleAgent` fallback; retain supported-path tests for `simple`, `optimized`, Ironclad `auto`, and `combat_rl` plus legacy full-RL startup.
 - [ ] 1.4 Parse the entire `[ADAPTIVE_ROUTE]` line in failing tests and assert the exact ordered key set and values for success, forced, unsupported, candidate-generation fallback, and invalid-state outcomes, plus exactly one post-commit record and no record on an uncommitted error.
 
 ## 2. Minimal Integration Fixes
 
 - [x] 2.1 Make the conservative recovery helper skip repeated strict whole-map validation, validate active origin/history and the one returned full conservative candidate, and return that candidate for route commit and observability without changing normal two-candidate selection.
-- [ ] 2.2 Add centralized fail-fast compatibility validation using the exact specified error for direct construction and parser exit status `2` for CLI startup, without entering RL construction/checkpoints or changing RL constructors, action ownership, training, legacy modes, or supported heuristic map-owner paths.
+- [x] 2.2 Add centralized fail-fast compatibility validation using the exact specified error for direct construction and parser exit status `2` for CLI startup, without entering RL construction/checkpoints or changing RL constructors, action ownership, training, legacy modes, or supported heuristic map-owner paths.
 - [ ] 2.3 Implement the exact fixed-order, whitespace-free `[ADAPTIVE_ROUTE]` grammar and outcome availability matrix from the delta spec, including validated fallback evidence, while preserving atomic route/replan commit and exactly-one post-commit logging.
-- [ ] 2.4 Correct touched constructor/help documentation to describe adaptive support and the explicit full-RL restriction without changing defaults or persistent live configuration.
+- [x] 2.4 Correct touched constructor/help documentation to describe adaptive support and the explicit full-RL restriction without changing defaults or persistent live configuration.
 
 ## 3. Focused Verification And Task Review
 

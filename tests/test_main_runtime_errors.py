@@ -5,7 +5,7 @@ import os
 import subprocess
 import sys
 from pathlib import Path
-from types import ModuleType
+from types import ModuleType, SimpleNamespace
 
 import main
 import pytest
@@ -445,6 +445,169 @@ def test_main_help_exposes_adaptive_elite_route_without_changing_default(tmp_pat
     assert completed.returncode == 0, completed.stderr
     assert "{conservative,aggressive,adaptive}" in completed.stdout
     assert "default: aggressive" in completed.stdout
+
+
+def test_create_agent_rejects_full_rl_adaptive_before_any_side_effect(
+    monkeypatch,
+):
+    expected_error = (
+        "--elite-route adaptive is unsupported for --agent rl; "
+        "adaptive routing requires a heuristic map owner"
+    )
+
+    def forbidden(name):
+        return lambda *args, **kwargs: pytest.fail(f"{name} was called")
+
+    monkeypatch.setattr(main, "_load_rl_components", forbidden("RL loader"))
+    monkeypatch.setattr(
+        main,
+        "find_latest_checkpoint",
+        forbidden("checkpoint lookup"),
+    )
+    monkeypatch.setattr(main, "create_rl_agent", forbidden("RL factory"))
+    monkeypatch.setattr(main, "SimpleAgent", forbidden("SimpleAgent fallback"))
+
+    with pytest.raises(ValueError) as error:
+        main.create_agent(
+            agent_type="rl",
+            player_class=main.PlayerClass.IRONCLAD,
+            training=True,
+            elite_mode="adaptive",
+        )
+
+    assert str(error.value) == expected_error
+
+
+@pytest.mark.parametrize("agent_type", ("simple", "optimized", "auto"))
+def test_heuristic_agent_types_preserve_adaptive_route_mode(
+    monkeypatch,
+    agent_type,
+):
+    class StubHeuristicAgent:
+        def __init__(self, chosen_class=None, elite_mode=None):
+            self.chosen_class = chosen_class
+            self.elite_mode = elite_mode
+
+    monkeypatch.setattr(main, "SimpleAgent", StubHeuristicAgent)
+    monkeypatch.setattr(main, "OptimizedAgent", StubHeuristicAgent)
+    monkeypatch.setattr(main, "OPTIMIZED_AI_AVAILABLE", True)
+
+    agent = main.create_agent(
+        agent_type=agent_type,
+        player_class=main.PlayerClass.IRONCLAD,
+        elite_mode="adaptive",
+    )
+
+    assert agent.chosen_class == main.PlayerClass.IRONCLAD
+    assert agent.elite_mode == "adaptive"
+
+
+def test_combat_rl_preserves_adaptive_heuristic_route_mode(monkeypatch):
+    class StubCombatRLAgent:
+        def __init__(self, *, elite_mode=None, **_kwargs):
+            self.elite_mode = elite_mode
+            self.rl_agent = SimpleNamespace(
+                state_encoder=SimpleNamespace(feature_dim=1),
+                action_encoder=SimpleNamespace(MAX_ACTIONS=1),
+            )
+
+    monkeypatch.setattr(main, "_load_rl_components", lambda: None)
+    monkeypatch.setattr(main, "RL_AVAILABLE", True)
+    monkeypatch.setattr(main, "RL_V2_AVAILABLE", True)
+    monkeypatch.setattr(main, "CombatRLAgent", StubCombatRLAgent)
+
+    agent = main.create_agent(
+        agent_type="combat_rl",
+        player_class=main.PlayerClass.IRONCLAD,
+        elite_mode="adaptive",
+    )
+
+    assert agent.elite_mode == "adaptive"
+
+
+@pytest.mark.parametrize("elite_mode", ("conservative", "aggressive"))
+def test_full_rl_legacy_route_mode_keeps_learned_map_factory(
+    monkeypatch,
+    elite_mode,
+):
+    factory_calls = []
+
+    def stub_rl_factory(**kwargs):
+        factory_calls.append(kwargs)
+        return SimpleNamespace(
+            state_encoder=SimpleNamespace(feature_dim=1),
+            action_encoder=SimpleNamespace(MAX_ACTIONS=1),
+        )
+
+    monkeypatch.setattr(main, "_load_rl_components", lambda: None)
+    monkeypatch.setattr(main, "RL_AVAILABLE", True)
+    monkeypatch.setattr(main, "RL_V2_AVAILABLE", True)
+    monkeypatch.setattr(main, "create_rl_agent", stub_rl_factory)
+
+    agent = main.create_agent(
+        agent_type="rl",
+        player_class=main.PlayerClass.IRONCLAD,
+        elite_mode=elite_mode,
+    )
+
+    assert agent is not None
+    assert len(factory_calls) == 1
+    assert "elite_mode" not in factory_calls[0]
+
+
+def test_entrypoint_rejects_full_rl_adaptive_before_pre_agent_startup(tmp_path):
+    expected_error = (
+        "--elite-route adaptive is unsupported for --agent rl; "
+        "adaptive routing requires a heuristic map owner"
+    )
+    log_path = (tmp_path / "adaptive-full-rl-entrypoint.log").resolve()
+    environment = os.environ.copy()
+    environment["STS_AI_LOG_FILE"] = str(log_path)
+    probe = """
+import runpy
+import sys
+from pathlib import Path
+
+main_path = Path(sys.argv[1]).resolve()
+sys.path.insert(0, str(main_path.parent))
+import spirecomm.communication.coordinator as coordinator_module
+
+class ForbiddenCoordinator:
+    def __init__(self, *args, **kwargs):
+        raise RuntimeError("coordinator startup reached")
+
+coordinator_module.Coordinator = ForbiddenCoordinator
+sys.argv = [
+    str(main_path),
+    "--agent", "rl",
+    "--elite-route", "adaptive",
+]
+runpy.run_path(str(main_path), run_name="__main__")
+"""
+
+    completed = subprocess.run(
+        [
+            sys.executable,
+            "-I",
+            "-c",
+            probe,
+            str(Path(main.__file__).resolve()),
+        ],
+        cwd=tmp_path,
+        env=environment,
+        capture_output=True,
+        text=True,
+        timeout=30,
+        check=False,
+    )
+
+    assert completed.returncode == 2
+    assert expected_error in completed.stderr
+    log = log_path.read_text(encoding="utf-8")
+    assert "Creating CommunicationMod coordinator" not in log
+    assert "Creating RL Agent" not in log
+    assert "Auto-loading" not in log
+    assert "Falling back" not in log
 
 
 def test_qualification_child_rejects_site_enabled_isolated_startup(tmp_path):
