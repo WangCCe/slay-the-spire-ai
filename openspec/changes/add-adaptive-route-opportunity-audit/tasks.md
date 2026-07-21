@@ -17,9 +17,9 @@
 
 ## 4. Frozen Qualification POC
 
-- [ ] 4.1 Preserve the initial fail-closed invocation, reviewed transition-slot fix, and final frozen-evidence invocation lineage without launching the game.
-- [ ] 4.2 Preserve `reports/adaptive_route_opportunity_audit_20260722.json` and verify the registered source identities, expected `346 -> 173`, 58/54 opportunity, one-selection, four separately auditable fallback records, and zero-treatment checks.
-- [ ] 4.3 Add `reports/adaptive_route_opportunity_audit_20260722.md` as a derivative report with the exact command, execution lineage, JSON-backed evidence, explicitly labeled operator-observed controls, limitations, and no-tuning stop decision.
+- [x] 4.1 Preserve the initial fail-closed invocation, reviewed transition-slot fix, and final frozen-evidence invocation lineage without launching the game.
+- [x] 4.2 Preserve `reports/adaptive_route_opportunity_audit_20260722.json` and verify the registered source identities, expected `346 -> 173`, 58/54 opportunity, one-selection, four separately auditable fallback records, and zero-treatment checks.
+- [x] 4.3 Add `reports/adaptive_route_opportunity_audit_20260722.md` as a derivative report with the exact command, execution lineage, JSON-backed evidence, explicitly labeled operator-observed controls, limitations, and no-tuning stop decision.
 
 ## 5. Verification And Review
 

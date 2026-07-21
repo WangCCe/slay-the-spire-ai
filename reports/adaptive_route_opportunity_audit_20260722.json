@@ -178,6 +178,228 @@
       2
     ]
   },
+  "fallbacks": [
+    {
+      "decision": {
+        "act": 2,
+        "action_coordinate": [
+          1,
+          1
+        ],
+        "current_coordinate": [
+          1,
+          0
+        ],
+        "floor": 18,
+        "next_coordinates": [
+          [
+            1,
+            1
+          ],
+          [
+            2,
+            1
+          ],
+          [
+            3,
+            1
+          ],
+          [
+            4,
+            1
+          ]
+        ]
+      },
+      "fallback_number": 1,
+      "game_number": 5,
+      "multiplicity": 2,
+      "occurrences": [
+        {
+          "join_delta_seconds": "0.001",
+          "line_number": 65124,
+          "source_path": "D:\\SteamLibrary\\steamapps\\common\\SlayTheSpire\\ai_debug_adaptive_20260721.log.1",
+          "timestamp": "2026-07-22T00:22:25.337000"
+        },
+        {
+          "join_delta_seconds": "0.002",
+          "line_number": 65169,
+          "source_path": "D:\\SteamLibrary\\steamapps\\common\\SlayTheSpire\\ai_debug_adaptive_20260721.log.1",
+          "timestamp": "2026-07-22T00:22:25.410000"
+        }
+      ],
+      "payload": "outcome=candidate_generation_failed character=IRONCLAD act=2 floor=18 state_valid=true hp=54/80 hp_pct=0.675000 deck=6 potion=0 relic=2 elite_seen=false last_rest_floor=none candidate_pair=generation_failed conservative_candidate=unavailable aggressive_candidate=unavailable minimum_elites=unavailable added_elites=unavailable fallback_candidate=mode:conservative,start_y:1,symbols:?/?/?/M/R/M/?/T/M/?/M/R/M/R,elite_count:0,elite_floors:none,recovery_before:none,recovery_after:none budget=0 selected=conservative reasons=candidate_generation_failed",
+      "run_corroboration": {
+        "run_compatibility": "exact",
+        "run_source_path": "D:\\SteamLibrary\\steamapps\\common\\SlayTheSpire\\runs\\IRONCLAD\\1784650965.run",
+        "run_symbol": "?",
+        "trace_symbol": "?"
+      }
+    },
+    {
+      "decision": {
+        "act": 2,
+        "action_coordinate": [
+          0,
+          2
+        ],
+        "current_coordinate": [
+          1,
+          1
+        ],
+        "floor": 19,
+        "next_coordinates": [
+          [
+            0,
+            2
+          ],
+          [
+            1,
+            2
+          ],
+          [
+            2,
+            2
+          ],
+          [
+            5,
+            2
+          ]
+        ]
+      },
+      "fallback_number": 2,
+      "game_number": 5,
+      "multiplicity": 2,
+      "occurrences": [
+        {
+          "join_delta_seconds": "0.002",
+          "line_number": 65230,
+          "source_path": "D:\\SteamLibrary\\steamapps\\common\\SlayTheSpire\\ai_debug_adaptive_20260721.log.1",
+          "timestamp": "2026-07-22T00:22:25.816000"
+        },
+        {
+          "join_delta_seconds": "0.001",
+          "line_number": 65273,
+          "source_path": "D:\\SteamLibrary\\steamapps\\common\\SlayTheSpire\\ai_debug_adaptive_20260721.log.1",
+          "timestamp": "2026-07-22T00:22:25.893000"
+        }
+      ],
+      "payload": "outcome=candidate_generation_failed character=IRONCLAD act=2 floor=19 state_valid=true hp=54/80 hp_pct=0.675000 deck=6 potion=0 relic=2 elite_seen=false last_rest_floor=none candidate_pair=generation_failed conservative_candidate=unavailable aggressive_candidate=unavailable minimum_elites=unavailable added_elites=unavailable fallback_candidate=mode:conservative,start_y:2,symbols:?/?/M/R/M/?/T/M/?/M/R/M/R,elite_count:0,elite_floors:none,recovery_before:none,recovery_after:none budget=0 selected=conservative reasons=candidate_generation_failed",
+      "run_corroboration": {
+        "run_compatibility": "exact",
+        "run_source_path": "D:\\SteamLibrary\\steamapps\\common\\SlayTheSpire\\runs\\IRONCLAD\\1784650965.run",
+        "run_symbol": "?",
+        "trace_symbol": "?"
+      }
+    },
+    {
+      "decision": {
+        "act": 2,
+        "action_coordinate": [
+          0,
+          3
+        ],
+        "current_coordinate": [
+          0,
+          2
+        ],
+        "floor": 20,
+        "next_coordinates": [
+          [
+            0,
+            3
+          ],
+          [
+            1,
+            3
+          ],
+          [
+            2,
+            3
+          ],
+          [
+            4,
+            3
+          ]
+        ]
+      },
+      "fallback_number": 3,
+      "game_number": 5,
+      "multiplicity": 2,
+      "occurrences": [
+        {
+          "join_delta_seconds": "0.001",
+          "line_number": 65966,
+          "source_path": "D:\\SteamLibrary\\steamapps\\common\\SlayTheSpire\\ai_debug_adaptive_20260721.log.1",
+          "timestamp": "2026-07-22T00:22:35.834000"
+        },
+        {
+          "join_delta_seconds": "0.002",
+          "line_number": 65989,
+          "source_path": "D:\\SteamLibrary\\steamapps\\common\\SlayTheSpire\\ai_debug_adaptive_20260721.log.1",
+          "timestamp": "2026-07-22T00:22:35.893000"
+        }
+      ],
+      "payload": "outcome=candidate_generation_failed character=IRONCLAD act=2 floor=20 state_valid=true hp=20/80 hp_pct=0.250000 deck=7 potion=0 relic=2 elite_seen=false last_rest_floor=none candidate_pair=generation_failed conservative_candidate=unavailable aggressive_candidate=unavailable minimum_elites=unavailable added_elites=unavailable fallback_candidate=mode:conservative,start_y:3,symbols:?/M/R/M/?/T/M/?/M/R/M/R,elite_count:0,elite_floors:none,recovery_before:none,recovery_after:none budget=0 selected=conservative reasons=candidate_generation_failed",
+      "run_corroboration": {
+        "run_compatibility": "exact",
+        "run_source_path": "D:\\SteamLibrary\\steamapps\\common\\SlayTheSpire\\runs\\IRONCLAD\\1784650965.run",
+        "run_symbol": "?",
+        "trace_symbol": "?"
+      }
+    },
+    {
+      "decision": {
+        "act": 2,
+        "action_coordinate": [
+          1,
+          4
+        ],
+        "current_coordinate": [
+          0,
+          3
+        ],
+        "floor": 21,
+        "next_coordinates": [
+          [
+            1,
+            4
+          ],
+          [
+            3,
+            4
+          ],
+          [
+            4,
+            4
+          ]
+        ]
+      },
+      "fallback_number": 4,
+      "game_number": 5,
+      "multiplicity": 2,
+      "occurrences": [
+        {
+          "join_delta_seconds": "0",
+          "line_number": 66028,
+          "source_path": "D:\\SteamLibrary\\steamapps\\common\\SlayTheSpire\\ai_debug_adaptive_20260721.log.1",
+          "timestamp": "2026-07-22T00:22:36.243000"
+        },
+        {
+          "join_delta_seconds": "0.001",
+          "line_number": 66049,
+          "source_path": "D:\\SteamLibrary\\steamapps\\common\\SlayTheSpire\\ai_debug_adaptive_20260721.log.1",
+          "timestamp": "2026-07-22T00:22:36.309000"
+        }
+      ],
+      "payload": "outcome=candidate_generation_failed character=IRONCLAD act=2 floor=21 state_valid=true hp=20/80 hp_pct=0.250000 deck=7 potion=0 relic=2 elite_seen=false last_rest_floor=none candidate_pair=generation_failed conservative_candidate=unavailable aggressive_candidate=unavailable minimum_elites=unavailable added_elites=unavailable fallback_candidate=mode:conservative,start_y:4,symbols:M/R/M/?/T/M/?/M/R/M/R,elite_count:0,elite_floors:none,recovery_before:none,recovery_after:none budget=0 selected=conservative reasons=candidate_generation_failed",
+      "run_corroboration": {
+        "run_compatibility": "exact",
+        "run_source_path": "D:\\SteamLibrary\\steamapps\\common\\SlayTheSpire\\runs\\IRONCLAD\\1784650965.run",
+        "run_symbol": "M",
+        "trace_symbol": "M"
+      }
+    }
+  ],
   "funnel": {
     "act1_zero_vs_one_opportunities": 54,
     "adaptive_occurrences": 346,
