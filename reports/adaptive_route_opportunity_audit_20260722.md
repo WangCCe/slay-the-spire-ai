@@ -4,8 +4,8 @@
 
 The final analysis invocation exited `0`. The current machine artifact uses
 schema `adaptive-route-opportunity-audit-v1`, reports
-`integrity.status=valid`, and has no diagnostics. It is `232,184` bytes with
-SHA-256 `252e57b7830d7d10027ae223a023b6d30aea02470cdb89263d08511ff8f65955`.
+`integrity.status=valid`, and has no diagnostics. It is `613,374` bytes with
+SHA-256 `0dc302b5d49fb78c4905b09f8752f1361141d0995506f373853b95cae439da53`.
 
 The evidence supports an opportunity-and-uptake audit only. Keep the
 conservative route policy. Do not tune thresholds or defaults, rerun this
@@ -14,11 +14,10 @@ requires a separate approved OpenSpec change.
 
 ## Analysis Lineage
 
-This path contains the final artifact, but Task 4 had three analysis
-invocations. The two earlier artifacts were deliberately superseded. Their
-bytes are no longer at the output path, so this report preserves their observed
-identities and dispositions without implying that the current JSON contains
-them.
+This path contains the current artifact. Earlier artifacts were deliberately
+superseded. Their bytes are no longer at the output path, so this report
+preserves their observed identities and dispositions without implying that the
+current JSON contains them.
 
 1. **Initial fail-closed invocation.** The registered command exited `1` and
    wrote a `2,251` byte invalid artifact with SHA-256
@@ -44,12 +43,22 @@ them.
    `45d6f162adc2e3a31cb20eb08d151494771208d8`, and registered after independent
    approval at reviewed HEAD
    `9eb809f53edc062f32d0524cf50efd34b76de98f`.
-4. **Final invocation.** One final authorized analysis invocation ran at that
+4. **Pre-final-review frozen artifact.** One authorized invocation ran at the
    reviewed HEAD against the same 13 frozen source identities. It exited `0`
-   and overwrote only the prior valid JSON with the current `232,184` byte
-   artifact identified above. This final artifact adds four separately
-   auditable fallback objects while retaining every previously registered
-   count and treatment result.
+   and wrote a `232,184` byte artifact with SHA-256
+   `252e57b7830d7d10027ae223a023b6d30aea02470cdb89263d08511ff8f65955`.
+   It added four separately auditable fallback objects while retaining every
+   previously registered count and treatment result. It is superseded because
+   the later whole-change review required five analysis-only integrity fixes.
+5. **Publication-refresh invocation.** After the final-review fixes, one
+   authorized regeneration read the same 13 registered source paths and wrote
+   only the current JSON. It exited `0` and produced the `613,374` byte
+   artifact identified above. Its source identities, excluding the newly
+   emitted `parse_status` field, exactly match the prior committed artifact.
+   The current artifact adds a deterministic 173-record occurrence ledger,
+   fail-closed cross-input physical identity checks, retained partial-source
+   snapshots, and the exact virtual MAP root contract; the 346-to-173 cohort
+   and treatment conclusion are unchanged.
 
 ## Exact Final Command
 
@@ -62,42 +71,44 @@ The final JSON records `log_utc_offset_hours=8.0` and
 
 ## Operator-Observed Controls
 
-The following are operator-observed boundary controls copied into this durable
-report. They are **not fields in the final JSON**. The final JSON contains one
-source-identity snapshot for the final analysis and contains no process
+The following are operator-observed boundary controls copied from the
+pre-final-review invocation. They are **not fields in the final JSON** and do
+not cover the later publication-refresh invocation. The final JSON contains
+one source-identity snapshot for the current analysis and contains no process
 observations, no pre/post manifests, and no continuous process monitoring.
 
-| Boundary observation | Observed UTC | Registered source hashes | Observed `SlayTheSpire` process count |
+| Prior-command boundary | Observed UTC | Registered source hashes | Observed `SlayTheSpire` process count |
 | --- | --- | --- | ---: |
 | Before final command | `2026-07-21T22:30:51.1720734Z` | 13/13 matched | 0 |
 | After final command | `2026-07-21T22:31:41.3503961Z` | 13/13 matched | 0 |
 
-At both observed boundaries, SHA-256 and byte count for all 13 source paths
+At both prior boundaries, SHA-256 and byte count for all 13 source paths
 matched the registration below. This establishes equality at those boundaries;
 it is not a JSON-backed second snapshot and does not prove the absence of an
-unobserved transient process between observations. The operator did not launch
-or rerun the game.
+unobserved transient process between observations. The current refresh compared
+the newly emitted source identity fields against the prior committed artifact
+and found equality for every pre-existing field. No game was launched or rerun.
 
 ## Final JSON Source Snapshot
 
 These identities are fields in the final JSON and appear in registered command
 order.
 
-| Kind | Source path | Bytes | Lines | Parsed records | SHA-256 |
-| --- | --- | ---: | ---: | ---: | --- |
-| AI log 1 | `D:\SteamLibrary\steamapps\common\SlayTheSpire\ai_debug_adaptive_20260721.log.1` | 10,485,706 | 111,379 | 308 | `72f73e094c33883ae53f724c8fd48ea94482503fcce503ebb4981210c9c6268a` |
-| AI log 2 | `D:\SteamLibrary\steamapps\common\SlayTheSpire\ai_debug_adaptive_20260721.log` | 2,751,552 | 29,171 | 38 | `e0388bcfb9d8992ec325e14f99076d5b7f5cfbda7eaab1b45aae60da7dd2a2fc` |
-| Decision trace | `D:\SteamLibrary\steamapps\common\SlayTheSpire\ai_decision_trace_adaptive_20260721.jsonl` | 9,739,213 | 2,768 | 2,768 | `259a9c07f803c32d70caf41eb062e4c354b09d5223d18cc462f71d260d9f899f` |
-| Run 1 | `D:\SteamLibrary\steamapps\common\SlayTheSpire\runs\IRONCLAD\1784650652.run` | 5,610 | 1 | 1 | `ca10fa2f5cda7fab3b7d27cf5111ccd0c78bbdaf377bc4257546ecf118f38b4c` |
-| Run 2 | `D:\SteamLibrary\steamapps\common\SlayTheSpire\runs\IRONCLAD\1784650754.run` | 3,529 | 1 | 1 | `5e3867045bfc93d57cf5c1756609bb56fa1e3f0bb4ca920171966b36746fad52` |
-| Run 3 | `D:\SteamLibrary\steamapps\common\SlayTheSpire\runs\IRONCLAD\1784650802.run` | 2,289 | 1 | 1 | `ffaff203a15b007e0c97953b57fb56f5e506147db358f1801db1f9bf6b288d88` |
-| Run 4 | `D:\SteamLibrary\steamapps\common\SlayTheSpire\runs\IRONCLAD\1784650867.run` | 3,482 | 1 | 1 | `b88b9aadd596977c9e112ca7ef2eb71da820550621279cde8f7660e229f08b97` |
-| Run 5 | `D:\SteamLibrary\steamapps\common\SlayTheSpire\runs\IRONCLAD\1784650965.run` | 5,174 | 1 | 1 | `86656c3eefdef15d5e6e8bbd39eed4f931539696b3958fa8bc5d35e899338b05` |
-| Run 6 | `D:\SteamLibrary\steamapps\common\SlayTheSpire\runs\IRONCLAD\1784651020.run` | 2,738 | 1 | 1 | `ce0428e6105ad5ddcee62e28f181f6c157fe0453f17d811b5eb7480b30553b43` |
-| Run 7 | `D:\SteamLibrary\steamapps\common\SlayTheSpire\runs\IRONCLAD\1784651097.run` | 3,357 | 1 | 1 | `a45f57d1691ae833138c2f24337a703d12b5a9f7becfd21316af9d3da7b8cf64` |
-| Run 8 | `D:\SteamLibrary\steamapps\common\SlayTheSpire\runs\IRONCLAD\1784651170.run` | 3,240 | 1 | 1 | `3dddfd0da4b7c0a347fdc1497881a72a665df6e70967d283ecb01088ff3b3f91` |
-| Run 9 | `D:\SteamLibrary\steamapps\common\SlayTheSpire\runs\IRONCLAD\1784651250.run` | 3,338 | 1 | 1 | `c5f2f3df0ebb9191cdb2765f3bc63335d1748680f28215c5e583ba486153ef01` |
-| Run 10 | `D:\SteamLibrary\steamapps\common\SlayTheSpire\runs\IRONCLAD\1784651443.run` | 5,652 | 1 | 1 | `8873a26cca8ff21cb01263937b670761e0007f8f3bef92cb459146a24e135678` |
+| Kind | Source path | Bytes | Lines | Parsed records | Parse status | SHA-256 |
+| --- | --- | ---: | ---: | ---: | --- | --- |
+| AI log 1 | `D:\SteamLibrary\steamapps\common\SlayTheSpire\ai_debug_adaptive_20260721.log.1` | 10,485,706 | 111,379 | 308 | valid | `72f73e094c33883ae53f724c8fd48ea94482503fcce503ebb4981210c9c6268a` |
+| AI log 2 | `D:\SteamLibrary\steamapps\common\SlayTheSpire\ai_debug_adaptive_20260721.log` | 2,751,552 | 29,171 | 38 | valid | `e0388bcfb9d8992ec325e14f99076d5b7f5cfbda7eaab1b45aae60da7dd2a2fc` |
+| Decision trace | `D:\SteamLibrary\steamapps\common\SlayTheSpire\ai_decision_trace_adaptive_20260721.jsonl` | 9,739,213 | 2,768 | 2,768 | valid | `259a9c07f803c32d70caf41eb062e4c354b09d5223d18cc462f71d260d9f899f` |
+| Run 1 | `D:\SteamLibrary\steamapps\common\SlayTheSpire\runs\IRONCLAD\1784650652.run` | 5,610 | 1 | 1 | valid | `ca10fa2f5cda7fab3b7d27cf5111ccd0c78bbdaf377bc4257546ecf118f38b4c` |
+| Run 2 | `D:\SteamLibrary\steamapps\common\SlayTheSpire\runs\IRONCLAD\1784650754.run` | 3,529 | 1 | 1 | valid | `5e3867045bfc93d57cf5c1756609bb56fa1e3f0bb4ca920171966b36746fad52` |
+| Run 3 | `D:\SteamLibrary\steamapps\common\SlayTheSpire\runs\IRONCLAD\1784650802.run` | 2,289 | 1 | 1 | valid | `ffaff203a15b007e0c97953b57fb56f5e506147db358f1801db1f9bf6b288d88` |
+| Run 4 | `D:\SteamLibrary\steamapps\common\SlayTheSpire\runs\IRONCLAD\1784650867.run` | 3,482 | 1 | 1 | valid | `b88b9aadd596977c9e112ca7ef2eb71da820550621279cde8f7660e229f08b97` |
+| Run 5 | `D:\SteamLibrary\steamapps\common\SlayTheSpire\runs\IRONCLAD\1784650965.run` | 5,174 | 1 | 1 | valid | `86656c3eefdef15d5e6e8bbd39eed4f931539696b3958fa8bc5d35e899338b05` |
+| Run 6 | `D:\SteamLibrary\steamapps\common\SlayTheSpire\runs\IRONCLAD\1784651020.run` | 2,738 | 1 | 1 | valid | `ce0428e6105ad5ddcee62e28f181f6c157fe0453f17d811b5eb7480b30553b43` |
+| Run 7 | `D:\SteamLibrary\steamapps\common\SlayTheSpire\runs\IRONCLAD\1784651097.run` | 3,357 | 1 | 1 | valid | `a45f57d1691ae833138c2f24337a703d12b5a9f7becfd21316af9d3da7b8cf64` |
+| Run 8 | `D:\SteamLibrary\steamapps\common\SlayTheSpire\runs\IRONCLAD\1784651170.run` | 3,240 | 1 | 1 | valid | `3dddfd0da4b7c0a347fdc1497881a72a665df6e70967d283ecb01088ff3b3f91` |
+| Run 9 | `D:\SteamLibrary\steamapps\common\SlayTheSpire\runs\IRONCLAD\1784651250.run` | 3,338 | 1 | 1 | valid | `c5f2f3df0ebb9191cdb2765f3bc63335d1748680f28215c5e583ba486153ef01` |
+| Run 10 | `D:\SteamLibrary\steamapps\common\SlayTheSpire\runs\IRONCLAD\1784651443.run` | 5,652 | 1 | 1 | valid | `8873a26cca8ff21cb01263937b670761e0007f8f3bef92cb459146a24e135678` |
 
 The decision-trace snapshot additionally reports 364 map records, 346
 node-action records, and 18 boss-action records. The JSON accepted all ten run
@@ -117,7 +128,10 @@ canonical post-boss `null` slots only for games 1, 5, and 10 at zero-based
 | Other multiplicities | 0 |
 
 The callback collapse is exactly `346 -> 173`; the multiplicity distribution
-is `{2: 173}` and sums back to 346 raw occurrences.
+is `{2: 173}` and sums back to 346 raw occurrences. The current JSON also
+contains one stable, occurrence-complete `records` ledger entry for each of the
+173 callback-independent records; the ledger multiplicities sum to 346 and its
+ordinals are referenced from every opportunity and fallback.
 
 ## Opportunity Funnel
 
@@ -288,3 +302,43 @@ Result: exit `0`; `3101 passed in 250.15s`; gate duration `254.18s`.
 `0`. Both the committed range from `d333a2600` and the final working-tree diff
 passed `git diff --check`. No full pytest profile was run: this isolated
 analysis-only change uses the focused file plus the registered `commit` gate.
+
+## Fresh Publication Verification
+
+The following evidence applies to the current publication-refresh artifact and
+the final invalid-timestamp fail-closed fix. The Windows production Python
+creates unreadable directories when pytest requests mode `0o700`; therefore a
+test-harness-only `sitecustomize.py` outside the repository mapped that mode to
+`0o777` through `PYTHONPATH`. It changes neither project source nor pytest
+configuration and is needed only for temporary test directories.
+
+Focused audit test:
+
+```powershell
+$env:PYTHONPATH = 'C:\Users\20571\.codex\visualizations\2026\07\21\019f870d-25a3-7541-8665-5a6e4dd673b1\pytest_acl_compat'
+D:\anaconda\envs\stsai\python.exe -m pytest -q -p no:cacheprovider --basetemp C:\Users\20571\.codex\visualizations\2026\07\21\019f870d-25a3-7541-8665-5a6e4dd673b1\pytest-adaptive-route-full4-20260722 tests\test_adaptive_route_opportunity_audit.py
+```
+
+Result: exit `0`; `184 passed in 6.78s`.
+
+Registered repository commit gate:
+
+```powershell
+$env:PYTHONPATH = 'C:\Users\20571\.codex\visualizations\2026\07\21\019f870d-25a3-7541-8665-5a6e4dd673b1\pytest_acl_compat'
+D:\anaconda\envs\stsai\python.exe scripts\run_test_gate.py commit
+```
+
+Resolved pytest command:
+
+```powershell
+D:\anaconda\envs\stsai\python.exe -m pytest -q -p no:cacheprovider --basetemp D:\PycharmProjects\slay-the-spire-ai\.pytest_gates\commit-b78be81ee43f4909b93d241af9e0c103 --ignore=tests/test_noncombat_outcome_evidence_runner.py --ignore=tests/test_noncombat_outcome_evidence_verifier.py
+```
+
+Result: exit `0`; `3124 passed in 203.84s`; gate duration `207.64s`.
+
+Strict `openspec validate add-adaptive-route-opportunity-audit --strict` and
+`git diff --check d333a2600` both returned exit `0`. The path-boundary check
+from `d333a2600` found 11 changed paths, all within the approved analysis,
+reports, OpenSpec, plan, and handoff scope. A final independent local review
+resolved the malformed-timestamp error path with a RED/GREEN regression; no
+Critical or Important finding remains.

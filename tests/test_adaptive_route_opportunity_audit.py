@@ -216,6 +216,7 @@ def test_loads_occurrence_provenance_source_identity_and_deduplicates_callbacks(
             "byte_count": len(source.read_bytes()),
             "line_count": 6,
             "record_count": 3,
+            "parse_status": "valid",
         }
     ]
 
@@ -1486,7 +1487,7 @@ def _task3_trace_row(
         next_coordinates = sorted(
             coordinate for coordinate in by_coordinate if coordinate[1] == 0
         )
-        current_symbol = "?"
+        current_symbol = ""
     else:
         next_coordinates = [
             (child["x"], child["y"])
@@ -1701,7 +1702,7 @@ def _task3_initial_record(**overrides: object) -> dict:
         "conservative_symbols": ("M", "T", "M", "R"),
         "aggressive_symbols": ("M", "T", "E", "R"),
         "selected": "aggressive",
-        "current_node": (-1, -1),
+        "current_node": (0, -1),
         "action_node": (0, 0),
     }
     record.update(overrides)
@@ -1848,6 +1849,284 @@ def test_load_runs_fails_closed_before_read_when_identity_is_uncertain(
         audit.load_runs([first, second])
 
 
+@pytest.mark.parametrize(
+    "current_node",
+    (
+        {"x": -1, "y": -1, "symbol": ""},
+        {"x": 6, "y": -1, "symbol": ""},
+        {"x": 0, "y": -1, "symbol": "?"},
+    ),
+)
+def test_load_decision_trace_rejects_noncanonical_virtual_map_root(
+    tmp_path: Path, current_node: dict
+):
+    row = _task3_trace_row(
+        unix_time=100.0,
+        floor=0,
+        current_node=(0, -1),
+        action_node=(0, 0),
+        graph=_task3_graph(),
+    )
+    row["screen"]["current_node"] = current_node
+    trace = _write_trace(tmp_path, "noncanonical-virtual-root.jsonl", [row])
+
+    with pytest.raises(audit.EvidenceError, match="canonical virtual map root"):
+        audit.load_decision_trace(trace)
+
+
+@pytest.mark.parametrize("alias_kind", ("normalized", "symlink", "hardlink"))
+def test_build_audit_rejects_adaptive_log_alias_before_reading(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, alias_kind: str
+):
+    _, _, evidence = _task3_build(
+        tmp_path, [_task3_initial_record(selected="conservative")], run_symbols=["M"]
+    )
+    source = evidence[0][0]
+    if alias_kind == "normalized":
+        alias_parent = tmp_path / "adaptive-log-alias-parent"
+        alias_parent.mkdir()
+        alias = alias_parent / ".." / source.name
+    elif alias_kind == "symlink":
+        alias = tmp_path / "adaptive-log-symlink.log"
+        try:
+            alias.symlink_to(source)
+        except OSError:
+            original_resolve = Path.resolve
+            source_target = source.resolve()
+
+            def resolve_simulated_symlink(self: Path, strict: bool = False):
+                if self == alias:
+                    return source_target
+                return original_resolve(self, strict=strict)
+
+            monkeypatch.setattr(Path, "resolve", resolve_simulated_symlink)
+    else:
+        alias = tmp_path / "adaptive-log-hardlink.log"
+        try:
+            alias.hardlink_to(source)
+        except OSError as error:
+            pytest.skip(f"hard links unavailable: {error}")
+
+    def fail_if_read(_self: Path):
+        pytest.fail("input aliases must be rejected before loading sources")
+
+    monkeypatch.setattr(Path, "read_bytes", fail_if_read)
+
+    result, exit_code = audit.build_audit(
+        [source, alias], evidence[1], evidence[2], 8, 0.001
+    )
+
+    assert exit_code == 2
+    assert result["integrity"]["diagnostics"] == [
+        {
+            "code": "evidence_error",
+            "message": "input sources alias one physical file",
+        }
+    ]
+    assert result["sources"] == {
+        "ai_logs": [],
+        "decision_trace": None,
+        "runs": [],
+    }
+
+
+def test_build_audit_rejects_cross_type_source_alias_before_reading(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+):
+    _, _, evidence = _task3_build(
+        tmp_path, [_task3_initial_record(selected="conservative")], run_symbols=["M"]
+    )
+    ai_log = evidence[0][0]
+    trace_alias = tmp_path / "decision-trace-hardlink.jsonl"
+    try:
+        trace_alias.hardlink_to(ai_log)
+    except OSError as error:
+        pytest.skip(f"hard links unavailable: {error}")
+
+    def fail_if_read(_self: Path):
+        pytest.fail("cross-type aliases must be rejected before loading sources")
+
+    monkeypatch.setattr(Path, "read_bytes", fail_if_read)
+
+    result, exit_code = audit.build_audit(
+        [ai_log], trace_alias, evidence[2], 8, 0.001
+    )
+
+    assert exit_code == 2
+    assert result["integrity"]["diagnostics"] == [
+        {
+            "code": "evidence_error",
+            "message": "input sources alias one physical file",
+        }
+    ]
+    assert result["sources"] == {
+        "ai_logs": [],
+        "decision_trace": None,
+        "runs": [],
+    }
+
+
+def test_build_audit_retains_snapshots_for_malformed_later_source_snapshot(
+    tmp_path: Path,
+):
+    _, _, evidence = _task3_build(
+        tmp_path, [_task3_initial_record(selected="conservative")], run_symbols=["M"]
+    )
+    malformed_ai_log = _write_log(
+        tmp_path,
+        "malformed-later-ai.log",
+        [
+            _line("Starting game #2 as PlayerClass.IRONCLAD"),
+            _line("[ADAPTIVE_ROUTE] malformed"),
+        ],
+    )
+
+    result, exit_code = audit.build_audit(
+        [*evidence[0], malformed_ai_log], evidence[1], evidence[2], 8, 0.001
+    )
+
+    assert exit_code == 2
+    assert result["sources"]["ai_logs"] == [
+        {
+            "source_path": str(evidence[0][0]),
+            "sha256": hashlib.sha256(evidence[0][0].read_bytes()).hexdigest(),
+            "byte_count": len(evidence[0][0].read_bytes()),
+            "line_count": 4,
+            "record_count": 2,
+            "parse_status": "valid",
+        },
+        {
+            "source_path": str(malformed_ai_log),
+            "sha256": hashlib.sha256(malformed_ai_log.read_bytes()).hexdigest(),
+            "byte_count": len(malformed_ai_log.read_bytes()),
+            "line_count": 2,
+            "record_count": 0,
+            "parse_status": "invalid",
+        },
+    ]
+    assert result["sources"]["decision_trace"] is None
+    assert result["sources"]["runs"] == []
+
+
+def test_build_audit_retains_partial_record_count_in_malformed_later_source_snapshot(
+    tmp_path: Path,
+):
+    _, _, evidence = _task3_build(
+        tmp_path, [_task3_initial_record(selected="conservative")], run_symbols=["M"]
+    )
+    payload = _task3_payload(
+        floor=0,
+        start_y=0,
+        conservative_symbols=("M", "T", "M", "R"),
+        aggressive_symbols=("M", "T", "E", "R"),
+        selected="conservative",
+    )
+    malformed_ai_log = _write_log(
+        tmp_path,
+        "partially-malformed-later-ai.log",
+        [
+            _line("Starting game #3 as PlayerClass.IRONCLAD"),
+            _line(f"[ADAPTIVE_ROUTE] {payload}", second=1),
+            _line("[ADAPTIVE_ROUTE] malformed", second=2),
+        ],
+    )
+
+    result, exit_code = audit.build_audit(
+        [*evidence[0], malformed_ai_log], evidence[1], evidence[2], 8, 0.001
+    )
+
+    assert exit_code == 2
+    assert result["sources"]["ai_logs"][-1]["record_count"] == 1
+    assert result["sources"]["ai_logs"][-1]["parse_status"] == "invalid"
+
+
+def test_build_audit_rejects_invalid_timestamp_as_invalid_source_snapshot(
+    tmp_path: Path,
+):
+    payload = _task3_payload(
+        floor=0,
+        start_y=0,
+        conservative_symbols=("M", "T", "M", "R"),
+        aggressive_symbols=("M", "T", "E", "R"),
+        selected="conservative",
+    )
+    ai_log = _write_log(
+        tmp_path,
+        "invalid-timestamp-ai.log",
+        [
+            _line("Starting game #1 as PlayerClass.IRONCLAD"),
+            (
+                "2026-13-22 12:00:01,100 - INFO - "
+                f"[ADAPTIVE_ROUTE] {payload}\n"
+            ),
+        ],
+    )
+
+    result, exit_code = audit.build_audit(
+        [ai_log],
+        tmp_path / "unread-trace.jsonl",
+        [tmp_path / "unread.run"],
+        8,
+        0.001,
+    )
+
+    assert exit_code == 2
+    assert result["integrity"]["diagnostics"] == [
+        {
+            "code": "evidence_error",
+            "message": (
+                f"{ai_log}:2: timestamped INFO line has an invalid timestamp"
+            ),
+        }
+    ]
+    assert result["sources"]["ai_logs"] == [
+        {
+            "source_path": str(ai_log),
+            "sha256": hashlib.sha256(ai_log.read_bytes()).hexdigest(),
+            "byte_count": len(ai_log.read_bytes()),
+            "line_count": 2,
+            "record_count": 0,
+            "parse_status": "invalid",
+        }
+    ]
+    assert result["sources"]["decision_trace"] is None
+    assert result["sources"]["runs"] == []
+
+
+def test_build_audit_retains_snapshots_for_malformed_later_source_snapshot_run(
+    tmp_path: Path,
+):
+    _, _, evidence = _task3_build(
+        tmp_path, [_task3_initial_record(selected="conservative")], run_symbols=["M"]
+    )
+    malformed_run = tmp_path / "malformed-later.run"
+    malformed_run.write_text("{\"path_per_floor\": [", encoding="utf-8")
+
+    result, exit_code = audit.build_audit(
+        evidence[0], evidence[1], [*evidence[2], malformed_run], 8, 0.001
+    )
+
+    assert exit_code == 2
+    assert [source["parse_status"] for source in result["sources"]["ai_logs"]] == [
+        "valid"
+    ]
+    assert result["sources"]["decision_trace"]["parse_status"] == "valid"
+    assert [source["parse_status"] for source in result["sources"]["runs"]] == [
+        "valid",
+        "valid",
+        "invalid",
+    ]
+    malformed_snapshot = result["sources"]["runs"][-1]
+    assert malformed_snapshot == {
+        "source_path": str(malformed_run),
+        "sha256": hashlib.sha256(malformed_run.read_bytes()).hexdigest(),
+        "byte_count": len(malformed_run.read_bytes()),
+        "line_count": 1,
+        "record_count": 0,
+        "parse_status": "invalid",
+    }
+
+
 def _task3_two_root_graph() -> list[dict]:
     graph = _task3_graph()
     graph.extend(
@@ -1869,7 +2148,7 @@ def _task3_two_game_records() -> list[dict]:
             "conservative_symbols": ("T", "T", "M", "R"),
             "aggressive_symbols": ("T", "T", "E", "R"),
             "selected": "conservative",
-            "current_node": (-1, -1),
+            "current_node": (0, -1),
             "action_node": (4, 0),
         },
     ]
@@ -1985,7 +2264,7 @@ def test_build_audit_preserves_deterministic_per_record_fallback_provenance(
         {
             "floor": 0,
             "payload": first_payload,
-            "current_node": (-1, -1),
+            "current_node": (0, -1),
             "action_node": (0, 0),
             "trace_millisecond_offsets": (1, 0),
         },
@@ -2036,7 +2315,7 @@ def test_build_audit_preserves_deterministic_per_record_fallback_provenance(
             "decision": {
                 "act": 1,
                 "floor": 0,
-                "current_coordinate": [-1, -1],
+                "current_coordinate": [0, -1],
                 "next_coordinates": [[0, 0]],
                 "action_coordinate": [0, 0],
             },
@@ -2162,7 +2441,7 @@ def test_build_audit_emits_keyed_callback_independent_record_ledger(
         "unix_time_seconds": str(Decimal(str(_task3_unix_time(1, 100)))),
         "act": 1,
         "floor": 0,
-        "current_coordinate": [-1, -1],
+        "current_coordinate": [0, -1],
         "next_coordinates": [[0, 0]],
         "action_coordinate": [0, 0],
     }

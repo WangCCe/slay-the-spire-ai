@@ -461,7 +461,15 @@ def _timestamp_and_message(line: str) -> tuple[datetime, str] | None:
     match = _TIMESTAMPED_INFO.match(line)
     if match is None:
         return None
-    return datetime.strptime(match.group("timestamp"), "%Y-%m-%d %H:%M:%S,%f"), match.group("message")
+    try:
+        timestamp = datetime.strptime(
+            match.group("timestamp"), "%Y-%m-%d %H:%M:%S,%f"
+        )
+    except ValueError as error:
+        raise EvidenceError(
+            "timestamped INFO line has an invalid timestamp"
+        ) from error
+    return timestamp, match.group("message")
 
 
 def _datetime_to_unix_seconds(timestamp: datetime, offset: timezone) -> Decimal:
@@ -474,78 +482,102 @@ def _datetime_to_unix_seconds(timestamp: datetime, offset: timezone) -> Decimal:
     return Decimal(microseconds) / _MICROSECONDS_PER_SECOND
 
 
+def _source_snapshot(source_path: Path, raw_bytes: bytes) -> dict:
+    return {
+        "source_path": str(source_path),
+        "sha256": sha256(raw_bytes).hexdigest(),
+        "byte_count": len(raw_bytes),
+        "line_count": len(raw_bytes.splitlines()),
+        "record_count": 0,
+        "parse_status": "pending",
+    }
+
+
 def load_adaptive_logs(
-    paths: Sequence[Path], utc_offset_hours: float
+    paths: Sequence[Path],
+    utc_offset_hours: float,
+    source_snapshots: list[dict] | None = None,
 ) -> tuple[list[AdaptiveOccurrence], list[dict]]:
     """Load chronologically ordered adaptive log sources with byte identities."""
     ordered_paths = _validate_paths(paths)
     offset_hours = _validate_utc_offset(utc_offset_hours)
     offset = timezone(timedelta(hours=offset_hours))
     occurrences: list[AdaptiveOccurrence] = []
-    sources: list[dict] = []
+    sources = [] if source_snapshots is None else source_snapshots
     active_game_number: int | None = None
     previous_game_number: int | None = None
 
     for source_path in ordered_paths:
         try:
             raw_bytes = source_path.read_bytes()
-            text = raw_bytes.decode("utf-8")
-        except (OSError, UnicodeDecodeError) as error:
+        except OSError as error:
             raise EvidenceError(f"cannot read UTF-8 adaptive log source: {error}", source_path) from error
+        source = _source_snapshot(source_path, raw_bytes)
+        sources.append(source)
+        try:
+            text = raw_bytes.decode("utf-8")
+        except UnicodeDecodeError as error:
+            source["parse_status"] = "invalid"
+            raise EvidenceError(
+                f"cannot read UTF-8 adaptive log source: {error}", source_path
+            ) from error
 
         record_count = 0
-        for line_number, line in enumerate(text.splitlines(), start=1):
-            parsed = _timestamp_and_message(line)
-            if parsed is None:
-                if "[ADAPTIVE_ROUTE]" in line:
-                    raise EvidenceError("adaptive record must be a timestamped INFO line", source_path, line_number)
-                continue
-            timestamp, message = parsed
-            boundary = _GAME_BOUNDARY.fullmatch(message)
-            if boundary is not None:
-                game_number = int(boundary.group("game_number"))
-                if previous_game_number is not None and game_number <= previous_game_number:
-                    raise EvidenceError("non-monotonic game boundary", source_path, line_number)
-                active_game_number = game_number
-                previous_game_number = game_number
-                continue
-            if message.startswith("Starting game #"):
-                raise EvidenceError("invalid game boundary", source_path, line_number)
-            if "[ADAPTIVE_ROUTE]" not in message:
-                continue
-            prefix = "[ADAPTIVE_ROUTE] "
-            if not message.startswith(prefix):
-                raise EvidenceError("adaptive record must be prefixed exactly", source_path, line_number)
-            if active_game_number is None:
-                raise EvidenceError("missing game boundary for adaptive record", source_path, line_number)
-            payload = message[len(prefix):]
-            try:
-                fields, conservative, aggressive = parse_adaptive_payload(payload)
-            except EvidenceError as error:
-                raise EvidenceError(str(error), source_path, line_number) from error
-            occurrences.append(
-                AdaptiveOccurrence(
-                    game_number=active_game_number,
-                    source_path=source_path,
-                    line_number=line_number,
-                    timestamp=timestamp,
-                    unix_time=_datetime_to_unix_seconds(timestamp, offset),
-                    payload=payload,
-                    fields=fields,
-                    conservative=conservative,
-                    aggressive=aggressive,
+        try:
+            for line_number, line in enumerate(text.splitlines(), start=1):
+                try:
+                    parsed = _timestamp_and_message(line)
+                except EvidenceError as error:
+                    raise EvidenceError(
+                        str(error), source_path, line_number
+                    ) from error
+                if parsed is None:
+                    if "[ADAPTIVE_ROUTE]" in line:
+                        raise EvidenceError("adaptive record must be a timestamped INFO line", source_path, line_number)
+                    continue
+                timestamp, message = parsed
+                boundary = _GAME_BOUNDARY.fullmatch(message)
+                if boundary is not None:
+                    game_number = int(boundary.group("game_number"))
+                    if previous_game_number is not None and game_number <= previous_game_number:
+                        raise EvidenceError("non-monotonic game boundary", source_path, line_number)
+                    active_game_number = game_number
+                    previous_game_number = game_number
+                    continue
+                if message.startswith("Starting game #"):
+                    raise EvidenceError("invalid game boundary", source_path, line_number)
+                if "[ADAPTIVE_ROUTE]" not in message:
+                    continue
+                prefix = "[ADAPTIVE_ROUTE] "
+                if not message.startswith(prefix):
+                    raise EvidenceError("adaptive record must be prefixed exactly", source_path, line_number)
+                if active_game_number is None:
+                    raise EvidenceError("missing game boundary for adaptive record", source_path, line_number)
+                payload = message[len(prefix):]
+                try:
+                    fields, conservative, aggressive = parse_adaptive_payload(payload)
+                except EvidenceError as error:
+                    raise EvidenceError(str(error), source_path, line_number) from error
+                occurrences.append(
+                    AdaptiveOccurrence(
+                        game_number=active_game_number,
+                        source_path=source_path,
+                        line_number=line_number,
+                        timestamp=timestamp,
+                        unix_time=_datetime_to_unix_seconds(timestamp, offset),
+                        payload=payload,
+                        fields=fields,
+                        conservative=conservative,
+                        aggressive=aggressive,
+                    )
                 )
-            )
-            record_count += 1
-        sources.append(
-            {
-                "source_path": str(source_path),
-                "sha256": sha256(raw_bytes).hexdigest(),
-                "byte_count": len(raw_bytes),
-                "line_count": len(text.splitlines()),
-                "record_count": record_count,
-            }
-        )
+                record_count += 1
+        except EvidenceError:
+            source["record_count"] = record_count
+            source["parse_status"] = "invalid"
+            raise
+        source["record_count"] = record_count
+        source["parse_status"] = "valid"
     return occurrences, sources
 
 
@@ -632,8 +664,8 @@ def _trace_coordinate(
         raise EvidenceError(f"{label} map y must be within 0..14")
     if y == -1 and not allow_virtual:
         raise EvidenceError(f"{label} cannot be a virtual coordinate")
-    if y == -1 and x < -1:
-        raise EvidenceError(f"{label} virtual x is invalid")
+    if y == -1 and (x != 0 or value.get("symbol") != ""):
+        raise EvidenceError(f"{label} must be the canonical virtual map root")
     symbol: str | None = None
     if require_symbol:
         symbol = value.get("symbol")
@@ -740,7 +772,7 @@ def _parse_trace_paths(
 def _reachable_children(
     current_node: Coordinate, graph: dict[Coordinate, GraphNode]
 ) -> set[Coordinate]:
-    if current_node[1] == -1:
+    if current_node == (0, -1):
         return {coordinate for coordinate in graph if coordinate[1] == 0}
     if current_node not in graph:
         raise EvidenceError("current node does not exist in the map graph")
@@ -860,13 +892,24 @@ def _parse_trace_map_decision(row: dict) -> TraceMapDecision:
     )
 
 
-def load_decision_trace(path: Path) -> tuple[list[TraceMapDecision], dict]:
+def load_decision_trace(
+    path: Path, source_snapshots: list[dict] | None = None
+) -> tuple[list[TraceMapDecision], dict]:
     """Load strict JSONL and retain only node-selection MAP actions for joins."""
     source_path = Path(path)
     try:
         raw_bytes = source_path.read_bytes()
+    except OSError as error:
+        raise EvidenceError(
+            f"cannot read UTF-8 decision trace source: {error}", source_path
+        ) from error
+    source = _source_snapshot(source_path, raw_bytes)
+    if source_snapshots is not None:
+        source_snapshots.append(source)
+    try:
         text = raw_bytes.decode("utf-8")
-    except (OSError, UnicodeDecodeError) as error:
+    except UnicodeDecodeError as error:
+        source["parse_status"] = "invalid"
         raise EvidenceError(
             f"cannot read UTF-8 decision trace source: {error}", source_path
         ) from error
@@ -876,58 +919,69 @@ def load_decision_trace(path: Path) -> tuple[list[TraceMapDecision], dict]:
     map_record_count = 0
     node_action_record_count = 0
     boss_action_record_count = 0
-    for line_number, line in enumerate(text.splitlines(), start=1):
-        if not line.strip():
-            continue
-        record_count += 1
-        try:
-            row = json.loads(
-                line,
-                parse_float=Decimal,
-                parse_constant=_reject_json_constant,
-                object_pairs_hook=_strict_json_object,
-            )
-        except (json.JSONDecodeError, ValueError, InvalidOperation) as error:
-            detail = error.msg if isinstance(error, json.JSONDecodeError) else str(error)
-            raise EvidenceError(
-                f"malformed decision trace JSON: {detail}",
-                source_path,
-                line_number,
-            ) from error
-        if not isinstance(row, dict):
-            raise EvidenceError(
-                "decision trace row must be an object", source_path, line_number
-            )
-        if row.get("screen_type") != "ScreenType.MAP":
-            continue
-        map_record_count += 1
-        action = row.get("action")
-        action_type = action.get("type") if isinstance(action, dict) else None
-        if action_type == "ChooseMapBossAction":
-            boss_action_record_count += 1
-            continue
-        if action_type != "ChooseMapNodeAction":
-            raise EvidenceError(
-                "MAP row action must be a node or boss action",
-                source_path,
-                line_number,
-            )
-        try:
-            decisions.append(_parse_trace_map_decision(row))
-        except EvidenceError as error:
-            raise EvidenceError(str(error), source_path, line_number) from error
-        node_action_record_count += 1
-
-    return decisions, {
-        "source_path": str(source_path),
-        "sha256": sha256(raw_bytes).hexdigest(),
-        "byte_count": len(raw_bytes),
-        "line_count": len(text.splitlines()),
-        "record_count": record_count,
-        "map_record_count": map_record_count,
-        "node_action_record_count": node_action_record_count,
-        "boss_action_record_count": boss_action_record_count,
-    }
+    try:
+        for line_number, line in enumerate(text.splitlines(), start=1):
+            if not line.strip():
+                continue
+            record_count += 1
+            try:
+                row = json.loads(
+                    line,
+                    parse_float=Decimal,
+                    parse_constant=_reject_json_constant,
+                    object_pairs_hook=_strict_json_object,
+                )
+            except (json.JSONDecodeError, ValueError, InvalidOperation) as error:
+                detail = error.msg if isinstance(error, json.JSONDecodeError) else str(error)
+                raise EvidenceError(
+                    f"malformed decision trace JSON: {detail}",
+                    source_path,
+                    line_number,
+                ) from error
+            if not isinstance(row, dict):
+                raise EvidenceError(
+                    "decision trace row must be an object", source_path, line_number
+                )
+            if row.get("screen_type") != "ScreenType.MAP":
+                continue
+            map_record_count += 1
+            action = row.get("action")
+            action_type = action.get("type") if isinstance(action, dict) else None
+            if action_type == "ChooseMapBossAction":
+                boss_action_record_count += 1
+                continue
+            if action_type != "ChooseMapNodeAction":
+                raise EvidenceError(
+                    "MAP row action must be a node or boss action",
+                    source_path,
+                    line_number,
+                )
+            try:
+                decisions.append(_parse_trace_map_decision(row))
+            except EvidenceError as error:
+                raise EvidenceError(str(error), source_path, line_number) from error
+            node_action_record_count += 1
+    except EvidenceError:
+        source.update(
+            {
+                "record_count": record_count,
+                "map_record_count": map_record_count,
+                "node_action_record_count": node_action_record_count,
+                "boss_action_record_count": boss_action_record_count,
+                "parse_status": "invalid",
+            }
+        )
+        raise
+    source.update(
+        {
+            "record_count": record_count,
+            "map_record_count": map_record_count,
+            "node_action_record_count": node_action_record_count,
+            "boss_action_record_count": boss_action_record_count,
+            "parse_status": "valid",
+        }
+    )
+    return decisions, source
 
 
 def _validate_join_tolerance(max_join_seconds: float) -> int:
@@ -1183,14 +1237,23 @@ def _validate_ordered_sources(
     return ordered
 
 
-def load_runs(paths: Sequence[Path]) -> tuple[list[RunEvidence], list[dict]]:
+def load_runs(
+    paths: Sequence[Path], source_snapshots: list[dict] | None = None
+) -> tuple[list[RunEvidence], list[dict]]:
     """Load ordered run records without inferring or rewriting path symbols."""
     ordered_paths = _validate_ordered_sources(paths, "run")
     runs: list[RunEvidence] = []
-    sources: list[dict] = []
+    sources = [] if source_snapshots is None else source_snapshots
     for source_path in ordered_paths:
         try:
             raw_bytes = source_path.read_bytes()
+        except OSError as error:
+            raise EvidenceError(
+                f"cannot read strict UTF-8 run record: {error}", source_path
+            ) from error
+        source = _source_snapshot(source_path, raw_bytes)
+        sources.append(source)
+        try:
             text = raw_bytes.decode("utf-8")
             row = json.loads(
                 text,
@@ -1198,38 +1261,43 @@ def load_runs(paths: Sequence[Path]) -> tuple[list[RunEvidence], list[dict]]:
                 parse_constant=_reject_json_constant,
                 object_pairs_hook=_strict_json_object,
             )
-        except (OSError, UnicodeDecodeError, json.JSONDecodeError, ValueError) as error:
+        except (UnicodeDecodeError, json.JSONDecodeError, ValueError) as error:
+            source["parse_status"] = "invalid"
             detail = error.msg if isinstance(error, json.JSONDecodeError) else str(error)
             raise EvidenceError(
                 f"cannot read strict UTF-8 run record: {detail}", source_path
             ) from error
-        if not isinstance(row, dict):
-            raise EvidenceError("run record must be an object", source_path)
-        raw_path = row.get("path_per_floor")
-        if not isinstance(raw_path, list):
-            raise EvidenceError(
-                "run path_per_floor must contain only valid room symbols",
-                source_path,
-            )
-        for floor, symbol in enumerate(raw_path):
-            if symbol is None:
-                if floor == 0 or raw_path[floor - 1] != "B":
-                    raise EvidenceError(
-                        f"run path_per_floor[{floor}] null transition slot "
-                        "must immediately follow B",
-                        source_path,
-                    )
-            elif not isinstance(symbol, str) or symbol not in _RUN_SYMBOLS:
+        try:
+            if not isinstance(row, dict):
+                raise EvidenceError("run record must be an object", source_path)
+            raw_path = row.get("path_per_floor")
+            if not isinstance(raw_path, list):
                 raise EvidenceError(
                     "run path_per_floor must contain only valid room symbols",
                     source_path,
                 )
-        floor_reached = row.get("floor_reached")
-        if floor_reached is not None:
-            floor_reached = _strict_integer(floor_reached, "run floor_reached")
-        victory = row.get("victory")
-        if victory is not None and not isinstance(victory, bool):
-            raise EvidenceError("run victory must be boolean", source_path)
+            for floor, symbol in enumerate(raw_path):
+                if symbol is None:
+                    if floor == 0 or raw_path[floor - 1] != "B":
+                        raise EvidenceError(
+                            f"run path_per_floor[{floor}] null transition slot "
+                            "must immediately follow B",
+                            source_path,
+                        )
+                elif not isinstance(symbol, str) or symbol not in _RUN_SYMBOLS:
+                    raise EvidenceError(
+                        "run path_per_floor must contain only valid room symbols",
+                        source_path,
+                    )
+            floor_reached = row.get("floor_reached")
+            if floor_reached is not None:
+                floor_reached = _strict_integer(floor_reached, "run floor_reached")
+            victory = row.get("victory")
+            if victory is not None and not isinstance(victory, bool):
+                raise EvidenceError("run victory must be boolean", source_path)
+        except EvidenceError:
+            source["parse_status"] = "invalid"
+            raise
         runs.append(
             RunEvidence(
                 source_path=source_path,
@@ -1238,15 +1306,8 @@ def load_runs(paths: Sequence[Path]) -> tuple[list[RunEvidence], list[dict]]:
                 victory=victory,
             )
         )
-        sources.append(
-            {
-                "source_path": str(source_path),
-                "sha256": sha256(raw_bytes).hexdigest(),
-                "byte_count": len(raw_bytes),
-                "line_count": len(text.splitlines()),
-                "record_count": 1,
-            }
-        )
+        source["record_count"] = 1
+        source["parse_status"] = "valid"
     return runs, sources
 
 
@@ -1732,6 +1793,9 @@ def build_audit(
 ) -> tuple[dict, int]:
     """Build a deterministic, fail-closed adaptive-route opportunity audit."""
     sources: dict = {"ai_logs": [], "decision_trace": None, "runs": []}
+    ai_sources: list[dict] = []
+    trace_sources: list[dict] = []
+    run_sources: list[dict] = []
     parameter_diagnostics: list[dict] = []
     try:
         validated_utc_offset = _validate_utc_offset(utc_offset_hours)
@@ -1768,19 +1832,24 @@ def build_audit(
         )
 
     try:
-        occurrences, ai_sources = load_adaptive_logs(
-            ai_logs, validated_utc_offset
-        )
+        _validate_input_source_identity(ai_logs, decision_trace, runs)
         sources["ai_logs"] = ai_sources
-        trace_rows, trace_source = load_decision_trace(Path(decision_trace))
+        occurrences, _ = load_adaptive_logs(
+            ai_logs, validated_utc_offset, ai_sources
+        )
+        trace_rows, trace_source = load_decision_trace(
+            Path(decision_trace), trace_sources
+        )
         sources["decision_trace"] = trace_source
-        run_records, run_sources = load_runs(runs)
         sources["runs"] = run_sources
+        run_records, _ = load_runs(runs, run_sources)
         records = deduplicate_occurrences(occurrences)
         joined_records = join_occurrences(
             records, trace_rows, validated_max_join
         )
     except EvidenceError as error:
+        if trace_sources:
+            sources["decision_trace"] = trace_sources[0]
         result = _base_result(
             validated_utc_offset,
             validated_max_join,
@@ -2000,6 +2069,22 @@ def _paths_share_source(left: Path, right: Path, context: str) -> bool:
         return left.samefile(right)
     except OSError as error:
         raise EvidenceError(f"{context}: file identity check failed") from error
+
+
+def _validate_input_source_identity(
+    ai_logs: Sequence[Path], decision_trace: Path, runs: Sequence[Path]
+) -> None:
+    source_paths = (
+        *_validate_paths(ai_logs),
+        Path(decision_trace),
+        *_validate_ordered_sources(runs, "run"),
+    )
+    for index, source_path in enumerate(source_paths):
+        for prior_path in source_paths[:index]:
+            if _paths_share_source(
+                source_path, prior_path, "input source identity"
+            ):
+                raise EvidenceError("input sources alias one physical file")
 
 
 def _validate_output_source_separation(

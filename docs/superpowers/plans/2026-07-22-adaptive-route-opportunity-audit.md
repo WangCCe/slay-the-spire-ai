@@ -293,7 +293,7 @@ Change tasks `4.1` through `4.3` to `[x]` only when artifacts and checks agree.
 - Modify: `reports/adaptive_route_opportunity_audit_20260722.md`
 - Modify: `openspec/changes/add-adaptive-route-opportunity-audit/tasks.md`
 
-- [ ] **Step 1: Run focused verification**
+- [x] **Step 1: Run focused verification**
 
 ```powershell
 D:\anaconda\envs\stsai\python.exe -m pytest -q -p no:cacheprovider --basetemp .pytest_adaptive_route_audit_final tests/test_adaptive_route_opportunity_audit.py
@@ -301,7 +301,7 @@ D:\anaconda\envs\stsai\python.exe -m pytest -q -p no:cacheprovider --basetemp .p
 
 Record test count, duration, and exit code in the report.
 
-- [ ] **Step 2: Run the commit gate**
+- [x] **Step 2: Run the commit gate**
 
 ```powershell
 D:\anaconda\envs\stsai\python.exe scripts\run_test_gate.py commit
@@ -309,7 +309,7 @@ D:\anaconda\envs\stsai\python.exe scripts\run_test_gate.py commit
 
 Record the gate's resolved pytest command, test count, duration, and exit code. Stop on nonzero.
 
-- [ ] **Step 3: Validate planning and diff boundaries**
+- [x] **Step 3: Validate planning and diff boundaries**
 
 ```powershell
 openspec validate add-adaptive-route-opportunity-audit --strict
@@ -319,11 +319,11 @@ git diff --name-only
 
 Expected: strict validation passes, whitespace check is clean, and changed implementation paths are limited to `analysis_scripts/`, `tests/`, `reports/`, `openspec/changes/add-adaptive-route-opportunity-audit/`, and this plan.
 
-- [ ] **Step 4: Run independent local review**
+- [x] **Step 4: Run independent local review**
 
 Review all tracked changes for correctness, evidence overclaiming, unsafe source writes, nondeterminism, and missing tests. Resolve every Critical or Important finding before completion.
 
-- [ ] **Step 5: Mark verification tasks and commit**
+- [x] **Step 5: Mark verification tasks and commit**
 
 Update tasks `5.1` through `5.4`, stage only the named files, and commit:
 

@@ -23,8 +23,8 @@
 
 ## 5. Verification And Review
 
-- [ ] 5.1 Run focused audit tests with cache disabled and a writable repository basetemp.
-- [ ] 5.2 Run the repository `commit` test gate and preserve its resolved command, test count, duration, and exit code in the report.
-- [ ] 5.3 Run strict OpenSpec validation, `git diff --check`, and verify that no gameplay-policy, training, checkpoint, protocol, or live-configuration source changed.
-- [ ] 5.4 Complete an independent local code review with no unresolved Critical or Important finding.
-- [ ] 5.5 Commit the cohesive read-only audit change on `master` without staging unrelated pre-existing untracked artifacts.
+- [x] 5.1 Run focused audit tests with cache disabled and a writable repository basetemp.
+- [x] 5.2 Run the repository `commit` test gate and preserve its resolved command, test count, duration, and exit code in the report.
+- [x] 5.3 Run strict OpenSpec validation, `git diff --check`, and verify that no gameplay-policy, training, checkpoint, protocol, or live-configuration source changed.
+- [x] 5.4 Complete an independent local code review with no unresolved Critical or Important finding.
+- [x] 5.5 Commit the cohesive read-only audit change on `master` without staging unrelated pre-existing untracked artifacts.
