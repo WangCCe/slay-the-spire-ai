@@ -9668,6 +9668,51 @@ def test_end_turn_monster_regenerate_heals_active_monster(monkeypatch, tmp_path)
     assert not trace_path.exists()
 
 
+def test_end_turn_dead_player_does_not_regenerate_monster(monkeypatch, tmp_path):
+    trace_path = tmp_path / "sim_divergence.jsonl"
+    monkeypatch.setenv("STS_SIM_DIVERGENCE_TRACE_FILE", str(trace_path))
+    reset_pending_divergence()
+
+    before = _game(
+        floor=50,
+        turn=14,
+        player=SimpleNamespace(current_hp=2, max_hp=80, block=0, energy=0),
+        hand=[],
+        monsters=[
+            _monster(
+                name="Awakened One",
+                monster_id="AwakenedOne",
+                hp=45,
+                max_hp=300,
+                damage=2,
+                intent=Intent.ATTACK,
+                powers=[Power("Regenerate", "Regenerate", 10)],
+            )
+        ],
+    )
+    actual = _game(
+        floor=50,
+        turn=15,
+        player=SimpleNamespace(current_hp=0, max_hp=80, block=0, energy=0),
+        hand=[],
+        monsters=[
+            _monster(
+                name="Awakened One",
+                monster_id="AwakenedOne",
+                hp=45,
+                max_hp=300,
+                damage=2,
+                intent=Intent.ATTACK,
+                powers=[Power("Regenerate", "Regenerate", 10)],
+            )
+        ],
+    )
+
+    assert record_expected_action(EndTurnAction(), before) is True
+    assert observe_next_state(actual) is False
+    assert not trace_path.exists()
+
+
 def test_end_turn_next_monster_intent_change_does_not_create_false_diff(monkeypatch, tmp_path):
     trace_path = tmp_path / "sim_divergence.jsonl"
     monkeypatch.setenv("STS_SIM_DIVERGENCE_TRACE_FILE", str(trace_path))
@@ -9992,6 +10037,62 @@ def test_darkling_attack_death_enters_half_dead_without_false_divergence(monkeyp
     assert not trace_path.exists()
 
 
+def test_awakened_one_attack_death_enters_half_dead_without_false_divergence(
+    monkeypatch, tmp_path
+):
+    trace_path = tmp_path / "sim_divergence.jsonl"
+    monkeypatch.setenv("STS_SIM_DIVERGENCE_TRACE_FILE", str(trace_path))
+    reset_pending_divergence()
+
+    strike = _card(name="Strike", card_id="Strike_R", damage=83, cost=1)
+    before = _game(
+        floor=50,
+        turn=9,
+        player=SimpleNamespace(current_hp=80, max_hp=80, block=0, energy=1),
+        hand=[strike],
+        monsters=[
+            _monster(
+                name="Awakened One",
+                monster_id="AwakenedOne",
+                hp=83,
+                max_hp=300,
+                damage=20,
+                intent=Intent.ATTACK,
+                powers=[
+                    Power("Regenerate", "Regenerate", 10),
+                    Power("Curiosity", "Curiosity", 1),
+                    Power("Unawakened", "Unawakened", -1),
+                    Power("Strength", "Strength", -2),
+                    Power("Vulnerable", "Vulnerable", 5),
+                    Power("Weakened", "Weakened", 2),
+                ],
+            )
+        ],
+    )
+    killed_awakened_one = _monster(
+        name="Awakened One",
+        monster_id="AwakenedOne",
+        hp=0,
+        max_hp=300,
+        damage=-1,
+        intent=Intent.UNKNOWN,
+        powers=[Power("Regenerate", "Regenerate", 10)],
+    )
+    killed_awakened_one.is_gone = True
+    killed_awakened_one.half_dead = True
+    actual = _game(
+        floor=50,
+        turn=9,
+        player=SimpleNamespace(current_hp=80, max_hp=80, block=0, energy=0),
+        hand=[],
+        monsters=[killed_awakened_one],
+    )
+
+    assert record_expected_action(PlayCardAction(card_index=0, target_index=0), before) is True
+    assert observe_next_state(actual) is False
+    assert not trace_path.exists()
+
+
 def test_darkling_buff_turn_revives_half_dead_monster_without_false_divergence(monkeypatch, tmp_path):
     trace_path = tmp_path / "sim_divergence.jsonl"
     monkeypatch.setenv("STS_SIM_DIVERGENCE_TRACE_FILE", str(trace_path))
@@ -10050,6 +10151,52 @@ def test_darkling_buff_turn_revives_half_dead_monster_without_false_divergence(m
                 intent=Intent.ATTACK,
                 index=1,
             ),
+        ],
+    )
+
+    assert record_expected_action(EndTurnAction(), before) is True
+    assert observe_next_state(actual) is False
+    assert not trace_path.exists()
+
+
+def test_awakened_one_end_turn_rebirth_without_false_divergence(monkeypatch, tmp_path):
+    trace_path = tmp_path / "sim_divergence.jsonl"
+    monkeypatch.setenv("STS_SIM_DIVERGENCE_TRACE_FILE", str(trace_path))
+    reset_pending_divergence()
+
+    rebirthing_awakened_one = _monster(
+        name="Awakened One",
+        monster_id="AwakenedOne",
+        hp=0,
+        max_hp=300,
+        damage=-1,
+        intent=Intent.UNKNOWN,
+        powers=[Power("Regenerate", "Regenerate", 10)],
+    )
+    rebirthing_awakened_one.is_gone = True
+    rebirthing_awakened_one.half_dead = True
+    before = _game(
+        floor=50,
+        turn=10,
+        player=SimpleNamespace(current_hp=80, max_hp=80, block=0, energy=0),
+        hand=[],
+        monsters=[rebirthing_awakened_one],
+    )
+    actual = _game(
+        floor=50,
+        turn=11,
+        player=SimpleNamespace(current_hp=80, max_hp=80, block=0, energy=3),
+        hand=[],
+        monsters=[
+            _monster(
+                name="Awakened One",
+                monster_id="AwakenedOne",
+                hp=300,
+                max_hp=300,
+                damage=20,
+                intent=Intent.ATTACK,
+                powers=[Power("Regenerate", "Regenerate", 10)],
+            )
         ],
     )
 

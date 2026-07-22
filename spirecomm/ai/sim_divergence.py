@@ -711,6 +711,7 @@ def _expected_after_action(action, game, before: Dict[str, Any]) -> Dict[str, An
             if brutality_loss > 0:
                 _lose_player_hp(expected, brutality_loss)
             _apply_darkling_end_turn_revives(expected, before)
+            _apply_awakened_one_end_turn_rebirth(expected, before)
             _prepare_monster_block_for_mercury_hourglass(expected, before)
             _apply_mercury_hourglass_damage(expected, before)
             _apply_end_turn_summons(expected, before)
@@ -1087,6 +1088,19 @@ def _mark_monster_defeated(
         monster["half_dead"] = True
         monster["intent"] = "Intent.UNKNOWN"
         monster["move_damage"] = -1
+    elif _is_awakened_one_monster(monster):
+        monster["half_dead"] = True
+        monster["intent"] = "Intent.UNKNOWN"
+        monster["move_damage"] = -1
+        monster["powers"] = [
+            power
+            for power in monster.get("powers", []) or []
+            if "regenerate"
+            in {
+                _normalize(power.get("id")),
+                _normalize(power.get("name")),
+            }
+        ]
 
 
 def _apply_monster_death_effects(
@@ -1136,6 +1150,24 @@ def _apply_darkling_end_turn_revives(
         monster["hp"] = max(1, _to_int(monster.get("max_hp")) // 2)
         monster["gone"] = False
         monster["half_dead"] = False
+
+
+def _apply_awakened_one_end_turn_rebirth(
+    expected: Dict[str, Any],
+    before: Dict[str, Any],
+) -> None:
+    if _to_int(expected.get("player", {}).get("current_hp")) <= 0:
+        return
+    before_monsters = before.get("monsters") or []
+    for index, monster in enumerate(expected.get("monsters", []) or []):
+        before_monster = before_monsters[index] if index < len(before_monsters) else {}
+        if not _awakened_one_half_dead(before_monster):
+            continue
+        monster["hp"] = max(1, _to_int(monster.get("max_hp")))
+        monster["block"] = 0
+        monster["gone"] = False
+        monster["half_dead"] = False
+        monster["intent"] = "Intent.ATTACK"
 
 
 def _apply_end_turn_summons(
@@ -2327,6 +2359,20 @@ def _darkling_half_dead(monster: Dict[str, Any]) -> bool:
 def _is_darkling_monster(monster: Dict[str, Any]) -> bool:
     identifiers = {_normalize(monster.get("id")), _normalize(monster.get("name"))}
     return "darkling" in identifiers
+
+
+def _is_awakened_one_monster(monster: Dict[str, Any]) -> bool:
+    identifiers = {_normalize(monster.get("id")), _normalize(monster.get("name"))}
+    return "awakenedone" in identifiers
+
+
+def _awakened_one_half_dead(monster: Dict[str, Any]) -> bool:
+    return (
+        _is_awakened_one_monster(monster)
+        and bool(monster.get("gone"))
+        and bool(monster.get("half_dead"))
+        and _to_int(monster.get("hp")) <= 0
+    )
 
 
 def _sword_boomerang_random_target_boundary(pending: Dict[str, Any]) -> bool:
@@ -3663,6 +3709,8 @@ def _heal_monster(expected: Dict[str, Any], monster_index: int, amount: int) -> 
 
 
 def _apply_monster_regenerate_end_turn(expected: Dict[str, Any]) -> None:
+    if _to_int(expected.get("player", {}).get("current_hp")) <= 0:
+        return
     for index, monster in enumerate(expected.get("monsters", []) or []):
         if (
             monster.get("gone")
