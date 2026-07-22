@@ -126,6 +126,7 @@ class ComparisonRow:
     match: bool
     confidence: str
     reason: str
+    context_fingerprint: str = ""
     oracle_mode: str = "bottled_style"
     oracle_source: Dict[str, Any] = field(default_factory=dict)
     raw_reference: Dict[str, Any] = field(default_factory=dict)
@@ -307,6 +308,7 @@ def compare_samples(
                 match=match,
                 confidence=confidence,
                 reason=reference.reason,
+                context_fingerprint=_context_fingerprint(sample),
                 oracle_mode=reference.oracle_mode,
                 oracle_source=dict(reference.source),
                 raw_reference=dict(reference.raw),
@@ -1226,11 +1228,27 @@ def _is_fixture_source(source: str) -> bool:
     return str(source or "").startswith("fixture")
 
 
-def _issue_signature(row: ComparisonRow) -> tuple[str, str, str]:
+def _issue_signature(row: ComparisonRow) -> tuple[str, str, str, str, str]:
     return (
         row.category,
+        _normalize_name(row.current_choice),
         _normalize_name(row.reference_choice),
         _normalize_name(row.reason),
+        row.context_fingerprint,
+    )
+
+
+def _context_fingerprint(sample: DecisionSample) -> str:
+    payload = {
+        "category": sample.category,
+        "context": sample.context,
+    }
+    return json.dumps(
+        payload,
+        ensure_ascii=False,
+        sort_keys=True,
+        separators=(",", ":"),
+        default=str,
     )
 
 

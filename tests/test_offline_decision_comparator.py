@@ -4,6 +4,7 @@ import sys
 from pathlib import Path
 
 from analysis_scripts.offline_decision_comparator import (
+    ComparisonRow,
     DecisionSample,
     compare_samples,
     load_fixture_samples,
@@ -235,6 +236,41 @@ def test_rank_issues_deduplicates_same_trace_decision_retries():
 
     assert len(issues) == 1
     assert "Repeated 2x" in issues[0].reason
+
+
+def test_rank_issues_does_not_merge_different_card_reward_contexts():
+    rows = [
+        ComparisonRow(
+            sample_id="trace-card-reward-a",
+            category="card_reward",
+            source="decision_trace",
+            floor=2,
+            act=1,
+            evidence_quality="complete",
+            current_choice="Clothesline",
+            reference_choice="Perfected Strike",
+            match=False,
+            confidence="high",
+            reason="Bottled REQUESTED_STRIKE desired-card list wants up to 5 copy/copies of Perfected Strike.",
+            context_fingerprint="offered=perfectedstrike,clothesline,armaments;deck=strike,pummel",
+        ),
+        ComparisonRow(
+            sample_id="trace-card-reward-b",
+            category="card_reward",
+            source="decision_trace",
+            floor=2,
+            act=1,
+            evidence_quality="complete",
+            current_choice="Clothesline",
+            reference_choice="Perfected Strike",
+            match=False,
+            confidence="high",
+            reason="Bottled REQUESTED_STRIKE desired-card list wants up to 5 copy/copies of Perfected Strike.",
+            context_fingerprint="offered=perfectedstrike,clothesline,heavyblade;deck=strike,shrugitoff",
+        ),
+    ]
+
+    assert rank_issues(rows) == []
 
 
 def test_event_reference_matches_bottled_golden_shrine_and_mausoleum():
