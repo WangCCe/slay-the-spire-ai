@@ -9713,6 +9713,70 @@ def test_end_turn_dead_player_does_not_regenerate_monster(monkeypatch, tmp_path)
     assert not trace_path.exists()
 
 
+def test_end_turn_gremlin_leader_random_summon_ignores_structure_boundary(
+    monkeypatch, tmp_path
+):
+    trace_path = tmp_path / "sim_divergence.jsonl"
+    monkeypatch.setenv("STS_SIM_DIVERGENCE_TRACE_FILE", str(trace_path))
+    reset_pending_divergence()
+
+    leader = _monster(
+        name="Gremlin Leader",
+        monster_id="GremlinLeader",
+        hp=88,
+        max_hp=145,
+        damage=-1,
+        intent=Intent.UNKNOWN,
+        move_id=2,
+    )
+    before = _game(
+        floor=24,
+        turn=4,
+        player=SimpleNamespace(current_hp=60, max_hp=80, block=0, energy=0),
+        hand=[],
+        monsters=[leader],
+    )
+    actual = _game(
+        floor=24,
+        turn=5,
+        player=SimpleNamespace(current_hp=60, max_hp=80, block=0, energy=3),
+        hand=[],
+        monsters=[
+            _monster(
+                name="Sneaky Gremlin",
+                monster_id="SneakyGremlin",
+                hp=13,
+                max_hp=13,
+                damage=9,
+                intent=Intent.ATTACK,
+            ),
+            _monster(
+                name="Mad Gremlin",
+                monster_id="MadGremlin",
+                hp=23,
+                max_hp=23,
+                damage=4,
+                intent=Intent.ATTACK,
+                index=1,
+            ),
+            _monster(
+                name="Gremlin Leader",
+                monster_id="GremlinLeader",
+                hp=88,
+                max_hp=145,
+                damage=-1,
+                intent=Intent.DEFEND_BUFF,
+                move_id=3,
+                index=2,
+            ),
+        ],
+    )
+
+    assert record_expected_action(EndTurnAction(), before) is True
+    assert observe_next_state(actual) is False
+    assert not trace_path.exists()
+
+
 def test_end_turn_next_monster_intent_change_does_not_create_false_diff(monkeypatch, tmp_path):
     trace_path = tmp_path / "sim_divergence.jsonl"
     monkeypatch.setenv("STS_SIM_DIVERGENCE_TRACE_FILE", str(trace_path))

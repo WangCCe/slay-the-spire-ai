@@ -2072,6 +2072,9 @@ def _ignored_diff_keys(pending: Dict[str, Any], actual: Optional[Dict[str, Any]]
     if action.get("type") == "EndTurnAction":
         ignored.add("player.energy")
         ignored.update(_end_turn_summon_ignored_diff_keys(pending))
+        ignored.update(
+            _gremlin_leader_random_summon_ignored_diff_keys(pending, actual)
+        )
         monster_count = _monster_diff_count(pending, actual)
         mystic_support_turn = _has_mystic_support_turn(pending.get("before") or {})
         for index in range(monster_count):
@@ -2091,6 +2094,50 @@ def _end_turn_summon_ignored_diff_keys(pending: Dict[str, Any]) -> set:
             continue
         ignored.add(f"monsters[{index}].hp")
     return ignored
+
+
+def _gremlin_leader_random_summon_ignored_diff_keys(
+    pending: Dict[str, Any],
+    actual: Optional[Dict[str, Any]],
+) -> set:
+    before = pending.get("before") or {}
+    actual = actual or {}
+    if not any(
+        _is_gremlin_leader_rally(monster)
+        for monster in before.get("monsters", []) or []
+    ):
+        return set()
+    before_minion_count = _active_random_gremlin_minion_count(before)
+    actual_minion_count = _active_random_gremlin_minion_count(actual)
+    if actual_minion_count <= before_minion_count:
+        return set()
+    return _monster_state_diff_keys(pending, actual)
+
+
+def _is_gremlin_leader_rally(monster: Dict[str, Any]) -> bool:
+    identifiers = {_normalize(monster.get("id")), _normalize(monster.get("name"))}
+    return (
+        "gremlinleader" in identifiers
+        and _snapshot_monster_active(monster)
+        and _normalized_intent(monster.get("intent")) == "unknown"
+        and _to_int(monster.get("move_id"), default=-1) == 2
+    )
+
+
+def _active_random_gremlin_minion_count(snapshot: Dict[str, Any]) -> int:
+    return sum(
+        1
+        for monster in snapshot.get("monsters", []) or []
+        if _snapshot_monster_active(monster)
+        and _is_random_gremlin_minion(monster)
+    )
+
+
+def _is_random_gremlin_minion(monster: Dict[str, Any]) -> bool:
+    identifiers = {_normalize(monster.get("id")), _normalize(monster.get("name"))}
+    return any("gremlin" in identifier for identifier in identifiers) and (
+        "gremlinleader" not in identifiers
+    )
 
 
 def _monster_diff_count(
