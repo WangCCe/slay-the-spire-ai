@@ -30,18 +30,27 @@ The active v2 known-propensity outcome-evidence study is stopped before study
 start. Its r7 replacement qualification reached `launcher_verified` and
 `runner_entered`, then failed at `source_validation_failed` before
 `source_verified`, active-request publication, gameplay, or trajectory
-collection. The root cause is not established.
+collection. Exact clean-commit replay established that normalization-only
+source hashing falsely rejected reviewed mixed-line-ending bytes and then
+exposed an omitted safe built-in `binary` attribute. The raw-first source fix,
+focused regressions, registered commit gate, and OpenSpec archive are complete.
+
+R7 remains immutable and retired. The current blocker is one new,
+independently verified r8 no-action qualification; its proposal is
+`qualify-r8-outcome-evidence-replacement`.
 
 The next authorized sequence is:
 
-1. Diagnose the r7 source-validation failure offline from frozen artifacts and
-   current source.
-2. Specify and implement a regression-backed source fix in a separate OpenSpec
-   change.
-3. Run focused and registered test gates.
-4. Permit at most one fresh no-action replacement qualification.
-5. Resume the 24-by-25 evidence study only if that qualification succeeds and
-   its independent verifier passes.
+1. Freeze and review one previously absent r8 candidate without changing live
+   state or runtime source.
+2. Reuse source-fix gate evidence only when exact source/test inputs match;
+   otherwise rerun the registered gate.
+3. Permit at most one r8 no-action CommunicationMod invocation after an exact
+   offline go decision.
+4. Preserve, independently replay, and attest either the valid terminal or the
+   exact fail-closed boundary, including restoration and process death.
+5. Resume the 24-by-25 evidence study only if r8 qualifies and its independent
+   verifier passes.
 6. Use the completed evidence and OPE gates to decide whether to propose a
    bounded non-combat RL training experiment.
 
