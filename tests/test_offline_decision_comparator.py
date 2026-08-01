@@ -1,15 +1,18 @@
 import json
 import subprocess
 import sys
+from dataclasses import replace
 from pathlib import Path
 
 from analysis_scripts.offline_decision_comparator import (
     ComparisonRow,
     DecisionSample,
+    NORMALIZED_SIGNATURE_VERSION,
     compare_samples,
     load_fixture_samples,
     load_jsonl_samples,
     load_run_samples,
+    rank_normalized_review_candidates,
     rank_issues,
     render_markdown_report,
 )
@@ -271,6 +274,308 @@ def test_rank_issues_does_not_merge_different_card_reward_contexts():
     ]
 
     assert rank_issues(rows) == []
+
+
+def _complete_shop_mismatch(
+    sample_id: str,
+    occurrence_id: str,
+    *,
+    gold: int = 180,
+    deck: list[str] | None = None,
+    purge_available: bool = True,
+) -> DecisionSample:
+    return DecisionSample(
+        sample_id=sample_id,
+        category="shop",
+        source="decision_trace",
+        occurrence_id=occurrence_id,
+        floor=5,
+        act=1,
+        evidence_quality="complete",
+        our_choice={"kind": "buy_card", "name": "Anger"},
+        context={
+            "gold": gold,
+            "purge_available": purge_available,
+            "purge_cost": 75,
+            "deck": deck or ["Strike_R", "Defend_R", "Bash"],
+            "cards": [{"id": "Anger", "name": "Anger", "price": 55}],
+            "relics": [],
+            "potions": [],
+        },
+    )
+
+
+def test_normalized_review_groups_equivalent_complete_shop_mismatches_without_opening_repair_gate():
+    rows = compare_samples(
+        [
+            _complete_shop_mismatch(
+                "trace-shop-a",
+                "trace-a.jsonl#17",
+                gold=180,
+                deck=["Strike_R", "Defend_R", "Bash", "Shrug It Off"],
+            ),
+            _complete_shop_mismatch(
+                "trace-shop-b",
+                "trace-b.jsonl#23",
+                gold=200,
+                deck=["Strike_R", "Defend_R", "Bash", "Pommel Strike"],
+            ),
+        ]
+    )
+
+    assert rank_issues(rows) == []
+
+    diagnostics = rank_normalized_review_candidates(rows)
+
+    assert diagnostics.exclusions == {}
+    assert len(diagnostics.candidates) == 1
+    candidate = diagnostics.candidates[0]
+    assert candidate.signature_version == NORMALIZED_SIGNATURE_VERSION
+    assert candidate.occurrence_count == 2
+    assert candidate.distinct_context_count == 2
+    assert [member.occurrence_id for member in candidate.members] == [
+        "trace-a.jsonl#17",
+        "trace-b.jsonl#23",
+    ]
+
+    report = render_markdown_report(rows)
+    assert report == render_markdown_report(rows)
+    assert "## Normalized Review Candidates" in report
+    assert "diagnostic review evidence" in report
+    assert "Most Worth Fixing" in report
+    assert "No repeated high-confidence operating-decision fix is recommended yet." in report
+
+
+def test_normalized_signatures_keep_material_adapter_inputs_separate():
+    shop_rows = compare_samples(
+        [
+            _complete_shop_mismatch("shop-affordable", "trace-a#1"),
+            _complete_shop_mismatch("shop-not-affordable", "trace-b#1", gold=50),
+        ]
+    )
+    assert shop_rows[0].normalized_signature != shop_rows[1].normalized_signature
+
+    card_rows = compare_samples(
+        [
+            DecisionSample(
+                sample_id="card-perfect",
+                category="card_reward",
+                source="decision_trace",
+                occurrence_id="trace-a#2",
+                floor=2,
+                act=1,
+                evidence_quality="complete",
+                our_choice={"kind": "take", "name": "Clothesline"},
+                context={
+                    "offered": ["Perfected Strike", "Clothesline"],
+                    "deck": ["Strike_R"] * 4,
+                    "can_skip": True,
+                    "can_bowl": False,
+                },
+            ),
+            DecisionSample(
+                sample_id="card-different-offer",
+                category="card_reward",
+                source="decision_trace",
+                occurrence_id="trace-b#2",
+                floor=2,
+                act=1,
+                evidence_quality="complete",
+                our_choice={"kind": "take", "name": "Clothesline"},
+                context={
+                    "offered": ["Offering", "Clothesline"],
+                    "deck": ["Strike_R"] * 4,
+                    "can_skip": True,
+                    "can_bowl": False,
+                },
+            ),
+        ]
+    )
+    assert card_rows[0].normalized_signature != card_rows[1].normalized_signature
+
+    event_rows = compare_samples(
+        [
+            DecisionSample(
+                sample_id="event-high-hp",
+                category="event",
+                source="decision_trace",
+                occurrence_id="trace-a#3",
+                floor=3,
+                act=1,
+                evidence_quality="complete",
+                our_choice={"kind": "choose", "index": 1, "label": "Leave"},
+                context={
+                    "event_name": "Shining Light",
+                    "choices": ["Enter", "Leave"],
+                    "current_hp": 40,
+                    "max_hp": 80,
+                    "relics": [],
+                },
+            ),
+            DecisionSample(
+                sample_id="event-low-hp",
+                category="event",
+                source="decision_trace",
+                occurrence_id="trace-b#3",
+                floor=3,
+                act=1,
+                evidence_quality="complete",
+                our_choice={"kind": "choose", "index": 0, "label": "Enter"},
+                context={
+                    "event_name": "Shining Light",
+                    "choices": ["Enter", "Leave"],
+                    "current_hp": 39,
+                    "max_hp": 80,
+                    "relics": [],
+                },
+            ),
+        ]
+    )
+    assert event_rows[0].normalized_signature != event_rows[1].normalized_signature
+
+    relic_event_rows = compare_samples(
+        [
+            DecisionSample(
+                sample_id="golden-shrine-no-omamori",
+                category="event",
+                source="decision_trace",
+                occurrence_id="trace-a#3b",
+                floor=3,
+                act=1,
+                evidence_quality="complete",
+                our_choice={"kind": "choose", "index": 1, "label": "Desecrate"},
+                context={
+                    "event_name": "Golden Shrine",
+                    "choices": ["Pray", "Desecrate"],
+                    "current_hp": 70,
+                    "max_hp": 80,
+                    "relics": [],
+                },
+            ),
+            DecisionSample(
+                sample_id="golden-shrine-omamori",
+                category="event",
+                source="decision_trace",
+                occurrence_id="trace-b#3b",
+                floor=3,
+                act=1,
+                evidence_quality="complete",
+                our_choice={"kind": "choose", "index": 0, "label": "Pray"},
+                context={
+                    "event_name": "Golden Shrine",
+                    "choices": ["Pray", "Desecrate"],
+                    "current_hp": 70,
+                    "max_hp": 80,
+                    "relics": ["Omamori"],
+                },
+            ),
+        ]
+    )
+    assert relic_event_rows[0].normalized_signature != relic_event_rows[1].normalized_signature
+
+    route_rows = compare_samples(
+        [
+            DecisionSample(
+                sample_id="route-elite",
+                category="route",
+                source="decision_trace",
+                occurrence_id="trace-a#4",
+                floor=4,
+                act=1,
+                evidence_quality="complete",
+                our_choice={"kind": "map_node", "choice": 0},
+                context={
+                    "paths": [
+                        {"choice": 0, "nodes": ["E", "E"]},
+                        {"choice": 1, "nodes": ["M", "R"]},
+                    ],
+                    "current_hp": 24,
+                    "max_hp": 80,
+                    "gold": 100,
+                    "relics": ["Burning Blood"],
+                },
+            ),
+            DecisionSample(
+                sample_id="route-different-shape",
+                category="route",
+                source="decision_trace",
+                occurrence_id="trace-b#4",
+                floor=4,
+                act=1,
+                evidence_quality="complete",
+                our_choice={"kind": "map_node", "choice": 0},
+                context={
+                    "paths": [
+                        {"choice": 0, "nodes": ["M", "?"]},
+                        {"choice": 1, "nodes": ["M", "R"]},
+                    ],
+                    "current_hp": 24,
+                    "max_hp": 80,
+                    "gold": 100,
+                    "relics": ["Burning Blood"],
+                },
+            ),
+        ]
+    )
+    assert route_rows[0].normalized_signature != route_rows[1].normalized_signature
+
+
+def test_normalized_review_excludes_non_independent_and_insufficient_evidence(tmp_path):
+    first, second = compare_samples(
+        [
+            _complete_shop_mismatch("first", "trace-a#5"),
+            _complete_shop_mismatch("second", "trace-b#5"),
+        ]
+    )
+    partial = replace(first, evidence_quality="partial", occurrence_id="trace-c#5")
+    fixture = replace(first, source="fixture:shop", occurrence_id="fixture#5")
+    medium = replace(first, confidence="medium", occurrence_id="trace-d#5")
+    matched = replace(first, match=True, occurrence_id="trace-e#5")
+    retry = replace(first, sample_id="retry", context_fingerprint="retry-context")
+    unsupported_oracle = replace(first, oracle_mode="native_bottled", occurrence_id="trace-f#5")
+
+    diagnostics = rank_normalized_review_candidates(
+        [first, second, partial, fixture, medium, matched, retry, unsupported_oracle]
+    )
+
+    assert len(diagnostics.candidates) == 1
+    assert diagnostics.candidates[0].occurrence_count == 2
+    assert diagnostics.exclusions == {
+        "fixture": 1,
+        "matched": 1,
+        "partial_evidence": 1,
+        "retry_duplicate": 1,
+        "unsupported_oracle_mode": 1,
+        "unsupported_confidence": 1,
+    }
+
+    trace_path = tmp_path / "trace.jsonl"
+    trace_path.write_text(
+        json.dumps(
+            {
+                "floor": 5,
+                "act": 1,
+                "screen_type": "ScreenType.EVENT",
+                "action": {"type": "ChooseAction", "choice_index": 1},
+                "player": {"current_hp": 20, "max_hp": 80},
+                "relics": [],
+                "screen": {
+                    "event_name": "Shining Light",
+                    "options": [{"label": "Enter"}, {"label": "Leave"}],
+                },
+            }
+        ),
+        encoding="utf-8",
+    )
+    trace_path.write_text(
+        trace_path.read_text(encoding="utf-8") + "\n" + trace_path.read_text(encoding="utf-8"),
+        encoding="utf-8",
+    )
+    trace_samples = load_jsonl_samples(trace_path)
+    assert [sample.occurrence_id for sample in trace_samples] == [
+        f"{trace_path.resolve()}#run:0:line:0",
+        f"{trace_path.resolve()}#run:0:line:0",
+    ]
 
 
 def test_event_reference_matches_bottled_golden_shrine_and_mausoleum():

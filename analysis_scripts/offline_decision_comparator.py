@@ -10,7 +10,7 @@ import sys
 from collections import deque
 from dataclasses import dataclass, field, replace
 from pathlib import Path
-from typing import Any, Dict, Iterable, List, Optional, Sequence
+from typing import Any, Dict, Iterable, List, Optional, Sequence, Tuple
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 if str(REPO_ROOT) not in sys.path:
@@ -72,6 +72,7 @@ SHOP_RELIC_PRIORITY = [
     "centennial puzzle",
 ]
 SHOP_CARD_PRIORITY = ["offering", "battle trance", "shockwave"]
+NORMALIZED_SIGNATURE_VERSION = "v1"
 CURSE_NAMES = {
     "ascendersbane",
     "ascender's bane",
@@ -100,6 +101,7 @@ class DecisionSample:
     our_choice: Dict[str, Any]
     context: Dict[str, Any] = field(default_factory=dict)
     limitations: List[str] = field(default_factory=list)
+    occurrence_id: str = ""
 
 
 @dataclass(frozen=True)
@@ -131,6 +133,27 @@ class ComparisonRow:
     oracle_source: Dict[str, Any] = field(default_factory=dict)
     raw_reference: Dict[str, Any] = field(default_factory=dict)
     limitations: List[str] = field(default_factory=list)
+    normalized_signature: str = ""
+    occurrence_id: str = ""
+
+
+@dataclass(frozen=True)
+class NormalizedReviewCandidate:
+    signature: str
+    signature_version: str
+    category: str
+    current_choice: str
+    reference_choice: str
+    reason: str
+    occurrence_count: int
+    distinct_context_count: int
+    members: Tuple[ComparisonRow, ...]
+
+
+@dataclass(frozen=True)
+class NormalizedReviewDiagnostics:
+    candidates: Tuple[NormalizedReviewCandidate, ...]
+    exclusions: Dict[str, int]
 
 
 def load_fixture_samples(path: Path | str) -> List[DecisionSample]:
@@ -253,24 +276,40 @@ def load_jsonl_samples(
     tail: int = 2000,
     since_unix: Optional[float] = None,
 ) -> List[DecisionSample]:
-    rows: deque[str] = deque(maxlen=max(1, tail))
+    rows: deque[tuple[int, str]] = deque(maxlen=max(1, tail))
     with Path(path).open("r", encoding="utf-8", errors="replace") as handle:
-        for line in handle:
-            rows.append(line)
+        for line_number, line in enumerate(handle):
+            rows.append((line_number, line))
 
     samples: List[DecisionSample] = []
-    for index, line in enumerate(rows):
+    source_path = str(Path(path).resolve())
+    run_ordinal = 0
+    previous_floor: Optional[int] = None
+    first_line_by_retry_key: Dict[str, int] = {}
+    for line_number, line in rows:
         try:
             event = json.loads(line)
         except json.JSONDecodeError:
             continue
+        event_floor = _to_int(event.get("floor"), default=None)
+        if event_floor is not None:
+            if previous_floor is not None and event_floor < previous_floor:
+                run_ordinal += 1
+            previous_floor = event_floor
         if since_unix is not None:
             event_time = _to_float(event.get("unix_time"), default=None)
             if event_time is None or event_time < since_unix:
                 continue
-        sample = _sample_from_trace_event(event, index)
+        sample = _sample_from_trace_event(event, line_number)
         if sample:
-            samples.append(sample)
+            retry_key = _trace_retry_key(sample, run_ordinal)
+            first_line = first_line_by_retry_key.setdefault(retry_key, line_number)
+            samples.append(
+                replace(
+                    sample,
+                    occurrence_id=f"{source_path}#run:{run_ordinal}:line:{first_line}",
+                )
+            )
     return samples
 
 
@@ -313,6 +352,8 @@ def compare_samples(
                 oracle_source=dict(reference.source),
                 raw_reference=dict(reference.raw),
                 limitations=list(sample.limitations) + list(reference.limitations),
+                normalized_signature=_normalized_signature(sample, reference, current),
+                occurrence_id=sample.occurrence_id,
             )
         )
     return rows
@@ -358,11 +399,72 @@ def rank_issues(rows: Sequence[ComparisonRow], max_issues: int = 5) -> List[Comp
     return issues
 
 
+def rank_normalized_review_candidates(
+    rows: Sequence[ComparisonRow],
+    max_candidates: int = 5,
+) -> NormalizedReviewDiagnostics:
+    """Group conservative diagnostic signals without changing the repair gate."""
+    groups: Dict[str, Dict[Any, ComparisonRow]] = {}
+    exclusions: Dict[str, int] = {}
+    for row in rows:
+        exclusion = _normalized_review_exclusion(row)
+        if exclusion:
+            exclusions[exclusion] = exclusions.get(exclusion, 0) + 1
+            continue
+
+        occurrence_key = _normalized_occurrence_key(row)
+        members_by_occurrence = groups.setdefault(row.normalized_signature, {})
+        previous = members_by_occurrence.get(occurrence_key)
+        if previous is not None:
+            exclusions["retry_duplicate"] = exclusions.get("retry_duplicate", 0) + 1
+            if _comparison_row_sort_key(row) < _comparison_row_sort_key(previous):
+                members_by_occurrence[occurrence_key] = row
+            continue
+        members_by_occurrence[occurrence_key] = row
+
+    candidates: List[NormalizedReviewCandidate] = []
+    for signature, members_by_occurrence in groups.items():
+        members = tuple(sorted(members_by_occurrence.values(), key=_comparison_row_sort_key))
+        if len(members) < 2:
+            exclusions["insufficient_distinct_occurrences"] = (
+                exclusions.get("insufficient_distinct_occurrences", 0) + len(members)
+            )
+            continue
+        representative = members[0]
+        candidates.append(
+            NormalizedReviewCandidate(
+                signature=signature,
+                signature_version=_signature_version(signature),
+                category=representative.category,
+                current_choice=representative.current_choice,
+                reference_choice=representative.reference_choice,
+                reason=representative.reason,
+                occurrence_count=len(members),
+                distinct_context_count=len({member.context_fingerprint for member in members}),
+                members=members,
+            )
+        )
+
+    priority = {"shop": 0, "event": 1, "route": 2, "card_reward": 3}
+    candidates.sort(
+        key=lambda candidate: (
+            priority.get(candidate.category, 9),
+            -candidate.occurrence_count,
+            candidate.signature,
+        )
+    )
+    return NormalizedReviewDiagnostics(
+        candidates=tuple(candidates[:max_candidates]),
+        exclusions=dict(sorted(exclusions.items())),
+    )
+
+
 def render_markdown_report(
     rows: Sequence[ComparisonRow],
     issues: Optional[Sequence[ComparisonRow]] = None,
 ) -> str:
     issue_rows = list(rank_issues(rows) if issues is None else issues)
+    normalized_diagnostics = rank_normalized_review_candidates(rows)
     lines = [
         "# Offline Decision Comparator POC",
         "",
@@ -411,6 +513,7 @@ def render_markdown_report(
             )
         )
 
+    lines.extend(_render_normalized_review_candidates(normalized_diagnostics))
     lines.extend(["", "## Most Worth Fixing", ""])
     if issue_rows:
         for index, row in enumerate(issue_rows, start=1):
@@ -1228,6 +1331,307 @@ def _is_fixture_source(source: str) -> bool:
     return str(source or "").startswith("fixture")
 
 
+def _normalized_signature(
+    sample: DecisionSample,
+    reference: ReferenceDecision,
+    current_choice: str,
+) -> str:
+    context = _normalized_signature_context(sample)
+    if context is None:
+        return ""
+    payload = {
+        "version": NORMALIZED_SIGNATURE_VERSION,
+        "category": sample.category,
+        "oracle_mode": reference.oracle_mode,
+        "current_choice": _normalize_name(current_choice),
+        "reference_choice": _normalize_name(reference.choice),
+        "reason_branch": _reference_reason_branch(reference.reason),
+        "context": context,
+    }
+    return json.dumps(payload, ensure_ascii=False, sort_keys=True, separators=(",", ":"))
+
+
+def _normalized_signature_context(sample: DecisionSample) -> Optional[Dict[str, Any]]:
+    if sample.category == "card_reward":
+        return _card_reward_signature_context(sample.context)
+    if sample.category == "shop":
+        return _shop_signature_context(sample.context)
+    if sample.category == "event":
+        return _event_signature_context(sample.context)
+    if sample.category == "route":
+        return _route_signature_context(sample)
+    return None
+
+
+def _card_reward_signature_context(context: Dict[str, Any]) -> Dict[str, Any]:
+    offered = [_normalize_name(card) for card in _as_list(context.get("offered"))]
+    deck_counts: Dict[str, int] = {}
+    for card in _as_list(context.get("deck")):
+        key = _normalize_name(card)
+        deck_counts[key] = deck_counts.get(key, 0) + 1
+    desired_offered = sorted({card for card in offered if _desired_card_limit(card) is not None})
+    return {
+        "offered": offered,
+        "desired_offer_deck_counts": {card: deck_counts.get(card, 0) for card in desired_offered},
+        "can_skip": bool(context.get("can_skip", True)),
+        "can_bowl": bool(context.get("can_bowl", False)),
+    }
+
+
+def _shop_signature_context(context: Dict[str, Any]) -> Dict[str, Any]:
+    gold = _to_int(context.get("gold"), 0) or 0
+    purge_available = bool(context.get("purge_available"))
+    purge_cost = _to_int(context.get("purge_cost"), 10**9) or 10**9
+    deck = {_normalize_name(card) for card in _as_list(context.get("deck"))}
+    cards = [item for item in _as_list(context.get("cards")) if isinstance(item, dict)]
+    relics = [item for item in _as_list(context.get("relics")) if isinstance(item, dict)]
+
+    def affordable(items: Sequence[Dict[str, Any]], desired: str) -> bool:
+        return any(
+            _normalize_name(item.get("id") or item.get("name")) == desired
+            and gold >= (_to_int(item.get("price"), 10**9) or 10**9)
+            for item in items
+        )
+
+    return {
+        "purge_available": purge_available,
+        "purge_affordable": purge_available and gold >= purge_cost,
+        "deck_has_curse": any(card in CURSE_NAMES or "curse" in card for card in deck),
+        "deck_has_removal_priority": any(card in SHOP_REMOVAL_PRIORITY for card in deck),
+        "perfected_strike_affordable": affordable(cards, "perfected strike"),
+        "membership_card_affordable": affordable(relics, "membership card"),
+        "affordable_priority_relics": [
+            desired for desired in SHOP_RELIC_PRIORITY if affordable(relics, desired)
+        ],
+        "affordable_new_priority_cards": [
+            desired
+            for desired in SHOP_CARD_PRIORITY
+            if desired not in deck and affordable(cards, desired)
+        ],
+    }
+
+
+def _event_signature_context(context: Dict[str, Any]) -> Dict[str, Any]:
+    event_name = _normalize_event_name(context.get("event_name"))
+    relics = {_normalize_name(relic) for relic in _as_list(context.get("relics"))}
+    hp_pct = _hp_percent(context)
+    threshold_state = "not_used"
+    if event_name == "shining light":
+        threshold_state = "at_or_above_50" if hp_pct >= 50 else "below_50"
+    elif event_name == "world of goop":
+        threshold_state = "at_or_above_70" if hp_pct >= 70 else "below_70"
+    elif event_name == "wing statue":
+        threshold_state = "at_or_above_60" if hp_pct >= 60 else "below_60"
+
+    relic_flags: Dict[str, bool] = {}
+    if event_name == "golden shrine":
+        relic_flags = {
+            "omamori": "omamori" in relics,
+            "ectoplasm": "ectoplasm" in relics,
+        }
+    elif event_name == "the mausoleum":
+        relic_flags = {"omamori": "omamori" in relics}
+
+    return {
+        "event_name": event_name,
+        "choices": [_normalize_name(choice) for choice in _as_list(context.get("choices"))],
+        "hp_threshold_state": threshold_state,
+        "relic_flags": relic_flags,
+    }
+
+
+def _route_signature_context(sample: DecisionSample) -> Dict[str, Any]:
+    context = sample.context
+    paths = [path for path in _as_list(context.get("paths")) if isinstance(path, dict)]
+    path_features = sorted(
+        (
+            str(path.get("choice")),
+            tuple(str(node).upper() for node in _as_list(path.get("nodes"))),
+        )
+        for path in paths
+    )
+    scored = [
+        (_score_route_path(path, context, sample.act)[0], str(path.get("choice")))
+        for path in paths
+    ]
+    scored.sort(key=lambda item: (-item[0], item[1]))
+    score_order = [choice for _, choice in scored]
+    margin = scored[0][0] - scored[1][0] if len(scored) > 1 else 0.0
+    relics = {_normalize_name(relic) for relic in _as_list(context.get("relics"))}
+    return {
+        "act": sample.act,
+        "floor_band": _floor_band(sample.floor),
+        "hp_band": _route_hp_band(context),
+        "gold_band": _route_gold_band(context),
+        "relic_flags": {
+            "burning_blood": "burning blood" in relics,
+            "membership_card": "membership card" in relics,
+        },
+        "path_features": path_features,
+        "score_order": score_order,
+        "score_margin_band": _route_score_margin_band(margin),
+    }
+
+
+def _desired_card_limit(card: Any) -> Optional[int]:
+    normalized = _normalize_name(card)
+    return REQUESTED_STRIKE_DESIRED_CARDS.get(normalized) or REQUESTED_STRIKE_DESIRED_CARDS.get(
+        _compact_key(card)
+    )
+
+
+def _reference_reason_branch(reason: str) -> str:
+    normalized = _normalize_name(reason)
+    prefixes = {
+        "bottled requested strike shop priority removes curses": "shop_remove_curse",
+        "bottled requested strike buys affordable perfected strike": "shop_perfected_strike",
+        "bottled shop priority buys affordable membership card": "shop_membership_card",
+        "bottled requested strike shop priority prefers starter removal": "shop_starter_removal",
+        "bottled shop relic list ranks": "shop_priority_relic",
+        "bottled shop card list ranks": "shop_priority_card",
+        "bottled shop handler leaves": "shop_leave",
+        "bottled requested strike enters shining light": "event_shining_light",
+        "bottled requested strike takes goop gold": "event_world_of_goop",
+        "bottled requested strike purges at wing statue": "event_wing_statue",
+        "bottled common event handling avoids": "event_dead_adventurer",
+        "bottled common event handling takes golden shrine": "event_golden_shrine",
+        "bottled common event handling opens the mausoleum": "event_mausoleum",
+        "bottled common event handling takes the main": "event_main_reward",
+        "bottled common event fallback chooses": "event_fallback",
+        "bottled common map scoring prefers": "route_reward_survivability",
+        "bottled requested strike desired card list wants": "card_requested_strike",
+        "bottled card reward handler uses singing bowl": "card_bowl",
+        "bottled card reward handler skips": "card_skip",
+    }
+    for prefix, branch in prefixes.items():
+        if normalized.startswith(prefix):
+            return branch
+    return f"literal:{normalized}"
+
+
+def _floor_band(floor: Optional[int]) -> str:
+    if floor is None:
+        return "unknown"
+    return f"{max(0, floor) // 5 * 5}-{max(0, floor) // 5 * 5 + 4}"
+
+
+def _route_hp_band(context: Dict[str, Any]) -> str:
+    hp_pct = _hp_percent(context)
+    if hp_pct <= 25:
+        return "critical"
+    if hp_pct < 60:
+        return "recover"
+    return "stable"
+
+
+def _route_gold_band(context: Dict[str, Any]) -> str:
+    gold = _to_int(context.get("gold"), 0) or 0
+    if gold < 100:
+        return "under_100"
+    if gold < 200:
+        return "100_to_199"
+    if gold < 300:
+        return "200_to_299"
+    return "300_plus"
+
+
+def _route_score_margin_band(margin: float) -> str:
+    if margin < 0.25:
+        return "under_0_25"
+    if margin < 1.0:
+        return "0_25_to_0_99"
+    return "1_plus"
+
+
+def _normalized_review_exclusion(row: ComparisonRow) -> str:
+    if row.match:
+        return "matched"
+    if row.evidence_quality != "complete":
+        return "partial_evidence"
+    if row.confidence != "high":
+        return "unsupported_confidence"
+    if _is_fixture_source(row.source):
+        return "fixture"
+    if row.oracle_mode != "bottled_style":
+        return "unsupported_oracle_mode"
+    if not row.normalized_signature:
+        return "unsupported_context"
+    return ""
+
+
+def _normalized_occurrence_key(row: ComparisonRow) -> Any:
+    return row.occurrence_id or _issue_occurrence_key(row)
+
+
+def _comparison_row_sort_key(row: ComparisonRow) -> tuple[Any, ...]:
+    return (
+        str(_normalized_occurrence_key(row)),
+        row.floor if row.floor is not None else 999,
+        row.sample_id,
+        row.context_fingerprint,
+    )
+
+
+def _signature_version(signature: str) -> str:
+    try:
+        return str(json.loads(signature).get("version") or "unknown")
+    except (TypeError, ValueError, json.JSONDecodeError):
+        return "unknown"
+
+
+def _render_normalized_review_candidates(
+    diagnostics: NormalizedReviewDiagnostics,
+) -> List[str]:
+    lines = [
+        "",
+        "## Normalized Review Candidates",
+        "",
+        f"- Signature schema: `{NORMALIZED_SIGNATURE_VERSION}`",
+        "- These groups are diagnostic review evidence, not gameplay repair recommendations.",
+    ]
+    if diagnostics.exclusions:
+        lines.append(f"- Excluded rows: {_format_counts(diagnostics.exclusions)}")
+    if not diagnostics.candidates:
+        lines.extend(
+            [
+                "",
+                "No normalized review group has two independent eligible occurrences yet.",
+            ]
+        )
+        return lines
+
+    for index, candidate in enumerate(diagnostics.candidates, start=1):
+        lines.extend(
+            [
+                "",
+                f"### {index}. {_md(candidate.category)}: `{_md(candidate.current_choice)}` vs `{_md(candidate.reference_choice)}`",
+                f"- Occurrences: {candidate.occurrence_count}; distinct full contexts: {candidate.distinct_context_count}.",
+                f"- Reference branch: {_md(candidate.reason)}",
+                f"- Signature ({candidate.signature_version}): `{_inline_code(candidate.signature)}`",
+                "- Member contexts:",
+            ]
+        )
+        for member in candidate.members:
+            source_identity = _occurrence_source_identity(member)
+            lines.append(
+                f"  - `{_md(member.sample_id)}` | occurrence `{_inline_code(str(_normalized_occurrence_key(member)))}` "
+                f"| source `{_inline_code(source_identity)}` | full context fingerprint `{_inline_code(member.context_fingerprint)}`"
+            )
+        lines.append(
+            "- Manual review is required; inspect the member contexts and add a failing regression before selecting any gameplay change."
+        )
+    return lines
+
+
+def _occurrence_source_identity(row: ComparisonRow) -> str:
+    occurrence = str(_normalized_occurrence_key(row))
+    return occurrence.rsplit("#", 1)[0] if "#" in occurrence else str(row.source)
+
+
+def _inline_code(value: Any) -> str:
+    return str(value).replace("`", "\\`").replace("\n", " ")
+
+
 def _issue_signature(row: ComparisonRow) -> tuple[str, str, str, str, str]:
     return (
         row.category,
@@ -1250,6 +1654,18 @@ def _context_fingerprint(sample: DecisionSample) -> str:
         separators=(",", ":"),
         default=str,
     )
+
+
+def _trace_retry_key(sample: DecisionSample, run_ordinal: int) -> str:
+    payload = {
+        "run_ordinal": run_ordinal,
+        "category": sample.category,
+        "floor": sample.floor,
+        "act": sample.act,
+        "current_choice": _current_choice_text(sample),
+        "context_fingerprint": _context_fingerprint(sample),
+    }
+    return json.dumps(payload, ensure_ascii=False, sort_keys=True, separators=(",", ":"))
 
 
 def _issue_occurrence_key(row: ComparisonRow) -> tuple[str, str, Optional[int], str, str, str]:
