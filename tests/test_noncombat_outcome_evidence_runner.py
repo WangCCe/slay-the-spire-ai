@@ -1713,6 +1713,48 @@ def test_qualification_runner_does_not_execute_repository_bytecode(tmp_path):
     assert not marker_path.exists()
 
 
+def test_qualification_bootstrap_accepts_exact_reviewed_crlf_blob(tmp_path):
+    module = _module()
+    repo_root = tmp_path / "repo"
+    repo_root.mkdir()
+    source_path = repo_root / ".gitignore"
+    reviewed_bytes = b"alpha\r\nbeta\r\n"
+    source_path.write_bytes(reviewed_bytes)
+    for arguments in (
+        ("init", "--object-format=sha1"),
+        ("config", "user.email", "runner@example.invalid"),
+        ("config", "user.name", "Runner Fixture"),
+        ("config", "core.autocrlf", "false"),
+        ("add", ".gitignore"),
+        ("commit", "-m", "source snapshot"),
+    ):
+        subprocess.run(
+            ["git", "-C", str(repo_root), *arguments],
+            capture_output=True,
+            check=True,
+            text=True,
+        )
+    review_commit = subprocess.run(
+        ["git", "-C", str(repo_root), "rev-parse", "HEAD"],
+        capture_output=True,
+        check=True,
+        text=True,
+    ).stdout.strip()
+    git_root = module._qualification_bootstrap_validate_git_metadata(repo_root)
+
+    reviewed_source_bindings = (
+        module._qualification_bootstrap_validate_reviewed_source_bytes(
+            repo_root,
+            git_root,
+            review_commit,
+        )
+    )
+
+    assert reviewed_source_bindings[
+        os.path.normcase(os.path.abspath(source_path))
+    ][0] == reviewed_bytes
+
+
 def test_qualification_bootstrap_accepts_git_normalized_autocrlf_text(tmp_path):
     module = _module()
     repo_root = tmp_path / "repo"
@@ -1855,6 +1897,132 @@ def test_qualification_bootstrap_does_not_normalize_binary_tamper(tmp_path):
     with pytest.raises(
         module._QualificationBootstrapError,
         match="reviewed source bytes changed",
+    ):
+        module._qualification_bootstrap_validate_reviewed_source_bytes(
+            repo_root,
+            git_root,
+            review_commit,
+        )
+
+
+def test_qualification_bootstrap_rejects_substantive_text_tamper(tmp_path):
+    module = _module()
+    repo_root = tmp_path / "repo"
+    repo_root.mkdir()
+    source_path = repo_root / "settings.yaml"
+    source_path.write_bytes(b"alpha\nbeta\n")
+    for arguments in (
+        ("init", "--object-format=sha1"),
+        ("config", "user.email", "runner@example.invalid"),
+        ("config", "user.name", "Runner Fixture"),
+        ("config", "core.autocrlf", "false"),
+        ("add", "settings.yaml"),
+        ("commit", "-m", "source snapshot"),
+    ):
+        subprocess.run(
+            ["git", "-C", str(repo_root), *arguments],
+            capture_output=True,
+            check=True,
+            text=True,
+        )
+    review_commit = subprocess.run(
+        ["git", "-C", str(repo_root), "rev-parse", "HEAD"],
+        capture_output=True,
+        check=True,
+        text=True,
+    ).stdout.strip()
+    source_path.write_bytes(b"alpha\ngamma\n")
+    git_root = module._qualification_bootstrap_validate_git_metadata(repo_root)
+
+    with pytest.raises(
+        module._QualificationBootstrapError,
+        match="reviewed source bytes changed",
+    ):
+        module._qualification_bootstrap_validate_reviewed_source_bytes(
+            repo_root,
+            git_root,
+            review_commit,
+        )
+
+
+def test_qualification_bootstrap_accepts_reviewed_builtin_binary_attribute(
+    tmp_path,
+):
+    module = _module()
+    repo_root = tmp_path / "repo"
+    repo_root.mkdir()
+    attributes_path = repo_root / ".gitattributes"
+    attributes_path.write_bytes(b"**/root/** binary\n")
+    payload_path = repo_root / "tests" / "fixtures" / "root" / "payload.bin"
+    payload_path.parent.mkdir(parents=True)
+    payload_path.write_bytes(b"\x00alpha\r\nbeta\r\n")
+    for arguments in (
+        ("init", "--object-format=sha1"),
+        ("config", "user.email", "runner@example.invalid"),
+        ("config", "user.name", "Runner Fixture"),
+        ("config", "core.autocrlf", "false"),
+        ("add", "."),
+        ("commit", "-m", "source snapshot"),
+    ):
+        subprocess.run(
+            ["git", "-C", str(repo_root), *arguments],
+            capture_output=True,
+            check=True,
+            text=True,
+        )
+    review_commit = subprocess.run(
+        ["git", "-C", str(repo_root), "rev-parse", "HEAD"],
+        capture_output=True,
+        check=True,
+        text=True,
+    ).stdout.strip()
+    git_root = module._qualification_bootstrap_validate_git_metadata(repo_root)
+
+    reviewed_source_bindings = (
+        module._qualification_bootstrap_validate_reviewed_source_bytes(
+            repo_root,
+            git_root,
+            review_commit,
+        )
+    )
+
+    assert reviewed_source_bindings[
+        os.path.normcase(os.path.abspath(payload_path))
+    ][0] == b"\x00alpha\r\nbeta\r\n"
+
+
+def test_qualification_bootstrap_rejects_tracked_external_filter_attribute(
+    tmp_path,
+):
+    module = _module()
+    repo_root = tmp_path / "repo"
+    repo_root.mkdir()
+    (repo_root / ".gitattributes").write_bytes(b"*.py filter=untrusted\n")
+    (repo_root / "source.py").write_bytes(b"VALUE = 1\n")
+    for arguments in (
+        ("init", "--object-format=sha1"),
+        ("config", "user.email", "runner@example.invalid"),
+        ("config", "user.name", "Runner Fixture"),
+        ("add", "."),
+        ("commit", "-m", "source snapshot"),
+    ):
+        subprocess.run(
+            ["git", "-C", str(repo_root), *arguments],
+            capture_output=True,
+            check=True,
+            text=True,
+        )
+    review_commit = subprocess.run(
+        ["git", "-C", str(repo_root), "rev-parse", "HEAD"],
+        capture_output=True,
+        check=True,
+        text=True,
+    ).stdout.strip()
+    git_root = module._qualification_bootstrap_validate_git_metadata(repo_root)
+
+    with pytest.raises(
+        module._QualificationBootstrapError,
+        match="worktree attributes contain an unsafe directive",
     ):
         module._qualification_bootstrap_validate_reviewed_source_bytes(
             repo_root,

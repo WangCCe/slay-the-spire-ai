@@ -1442,6 +1442,7 @@ def _qualification_bootstrap_validate_reviewed_source_bytes(
         reviewed_source_bindings = {}
         allowed_attribute_tokens = {
             "-text",
+            "binary",
             "eol=crlf",
             "eol=lf",
             "text",
@@ -1481,13 +1482,13 @@ def _qualification_bootstrap_validate_reviewed_source_bytes(
                 source_bytes,
                 source_identity,
             )
+            raw_object_id = hashlib.sha1(
+                b"blob "
+                + str(len(source_bytes)).encode("ascii")
+                + b"\0"
+                + source_bytes
+            ).hexdigest().encode("ascii")
             if source_path.name.casefold() == ".gitattributes":
-                raw_object_id = hashlib.sha1(
-                    b"blob "
-                    + str(len(source_bytes)).encode("ascii")
-                    + b"\0"
-                    + source_bytes
-                ).hexdigest().encode("ascii")
                 if raw_object_id != object_id:
                     raise _QualificationBootstrapError(
                         "qualification bootstrap reviewed source bytes changed: "
@@ -1517,6 +1518,8 @@ def _qualification_bootstrap_validate_reviewed_source_bytes(
                             "qualification bootstrap worktree attributes contain "
                             "an unsafe directive"
                         )
+                continue
+            if raw_object_id == object_id:
                 continue
             canonical_object_id = _qualification_bootstrap_git_output(
                 repo_root,
