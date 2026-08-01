@@ -27,30 +27,37 @@ diagnostics. They are not reward, ground truth, or a mandatory policy target.
 ## Current Blocker
 
 The active v2 known-propensity outcome-evidence study is stopped before study
-start. Its r7 replacement qualification reached `launcher_verified` and
-`runner_entered`, then failed at `source_validation_failed` before
-`source_verified`, active-request publication, gameplay, or trajectory
-collection. Exact clean-commit replay established that normalization-only
-source hashing falsely rejected reviewed mixed-line-ending bytes and then
-exposed an omitted safe built-in `binary` attribute. The raw-first source fix,
-focused regressions, registered commit gate, and OpenSpec archive are complete.
+start. R7 remains immutable and retired after `source_validation_failed`; its
+raw-first source fix, focused regressions, registered commit gate, and
+OpenSpec archive are complete.
 
-R7 remains immutable and retired. The current blocker is one new,
-independently verified r8 no-action qualification; its proposal is
-`qualify-r8-outcome-evidence-replacement`.
+The separately reviewed r8 replacement reached `source_verified`, then failed
+at `request_validation_failed` before active request publication, gameplay, or
+trajectory collection. The immutable chain proves at least one live boundary;
+the same-session operator journal records one issued invocation but does not
+independently prove the exact count. Its standalone verifier and independent
+closeout passed, CommunicationMod and protected inventories were restored
+exactly, target processes are zero, and the registered study root remains
+absent. R8 is consumed and permanently retired; it cannot be retried or used
+to prepare r9 under its amendment.
+
+The current blocker is a separate regression-backed diagnosis of r8 request
+validation. The closeout does not establish the root cause, so no replacement
+qualification identity or live invocation is currently authorized.
 
 The next authorized sequence is:
 
-1. Freeze and review one previously absent r8 candidate without changing live
-   state or runtime source.
-2. Reuse source-fix gate evidence only when exact source/test inputs match;
-   otherwise rerun the registered gate.
-3. Permit at most one r8 no-action CommunicationMod invocation after an exact
-   offline go decision.
-4. Preserve, independently replay, and attest either the valid terminal or the
-   exact fail-closed boundary, including restoration and process death.
-5. Resume the 24-by-25 evidence study only if r8 qualifies and its independent
-   verifier passes.
+1. Archive the completed r8 amendment while preserving its external root and
+   closeout byte-for-byte.
+2. Open a separate, offline-first OpenSpec change to reproduce the exact r8
+   `request_validation_failed` path and identify the failing invariant.
+3. If an implementation defect is proven, add one red regression, make the
+   minimum source fix, run focused checks and the registered commit gate, and
+   archive that fix without launching the game.
+4. Only a later explicit amendment may prepare a previously absent replacement
+   qualification identity and independently review another no-action attempt.
+5. Resume the 24-by-25 evidence study only after a future qualification and
+   independent verifier both pass.
 6. Use the completed evidence and OPE gates to decide whether to propose a
    bounded non-combat RL training experiment.
 
