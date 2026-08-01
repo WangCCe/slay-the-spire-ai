@@ -16,4 +16,4 @@
 - [x] 3.1 Run the focused qualification-bootstrap slice with cache disabled and a fresh writable basetemp, then run Python compile checks for the modified runner and tests.
 - [x] 3.2 Run the registered `commit` test gate, `openspec validate --all --strict`, and `git diff --check`; do not run an unregistered raw full suite or any live qualification.
 - [x] 3.3 Review the final diff for source-integrity scope and prove no request schema, timeout, CommunicationMod configuration, game, RL, checkpoint, reward, policy, or authority change entered it.
-- [ ] 3.4 Commit the cohesive source fix and diagnosis, sync the delta requirement, and archive this change. Leave any replacement qualification to a separate later amendment.
+- [x] 3.4 Commit the cohesive source fix and diagnosis, sync the delta requirement, and archive this change. Leave any replacement qualification to a separate later amendment.
