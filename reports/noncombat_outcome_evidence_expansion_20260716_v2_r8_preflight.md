@@ -48,7 +48,7 @@ The unchanged v2 registration is 19,796 bytes with file SHA-256
 and canonical registration hash
 `7df8036e111fb55ece15154796d494ea857a74984c9d1a224c2b61f8fc710ace`.
 
-A lexical component-by-component no-follow audit found all 27 proposed r8 and
+A lexical component-by-component no-follow audit found all 26 proposed r8 and
 study targets absent with no reparse component. The checked surfaces were:
 
 - registered study root, `run-lock.json`, and `study-ledger.jsonl`
@@ -67,6 +67,61 @@ The r8 root is fixed as:
 The external evidence root is fixed as:
 
 `D:\PycharmProjects\slay-the-spire-ai-r8-qualification-evidence-20260802`
+
+A fresh lexical no-follow audit also found that external root and all ten
+fixed descendant evidence paths absent. The descendants are:
+
+- `r8-precommit-codex-review.txt`
+- `r8-focused-pytest.txt`
+- `r8-postcommit-source-only-review.json`
+- `r8-postcommit-codex-review.txt`
+- `r8-offline-go-no-go.json`
+- `r8-publication-record.json`
+- `r8-live-observation.json`
+- `r8-standalone-verifier.json`
+- `r8-independent-attestation.json`
+- `r8-closeout.json`
+
+These names are frozen before R. The external root must remain absent until R
+and its postcommit review have passed; later evidence may only be published to
+the corresponding fixed path.
+
+## Source Snapshot And Workspace Hygiene
+
+The approved amendment was committed as source snapshot S:
+
+`519cf55fa17706e7faee05a05c3a9c85f4238b75`
+
+Before freezing S, source inventory failed closed on historical pytest
+basetemp ACLs and ignored executable artifacts. The artifacts were preserved,
+not deleted, at:
+
+`D:\PycharmProjects\slay-the-spire-ai-test-artifacts-archive-20260802`
+
+The reversible archive contains 153 top-level pytest directories, 14
+`__pycache__` directories, untracked Superpowers residue, and the local
+`.codex/config.toml`. The two tracked Superpowers Markdown reports were
+identified and restored exactly. The resulting repository has no tracked
+change and no untracked non-inert file; the qualifier's own source inventory
+returns exact S.
+
+R8 config, request, and checklist candidates were rendered twice in separate
+processes from S and the same live baseline. Both renders produced:
+
+- isolation baseline hash
+  `990f7c1a26229b90e3e459effe700dcb3c1fcb4c0b407b59ab4999f168499d64`
+- config SHA-256
+  `5e09b11c1f74c89a269b712f7785d1abb4a4cc3df33b388b34c56ed2fc364485`
+- request self-hash
+  `97fe82629d18981067720fce393fe6b0bb7095b78d7a6541cd4f45f754eb7e2d`
+- request file SHA-256
+  `465c07ea7f2bb28c29dcce77e8f3e55f879e0ad0668f2c727f33b277aa026f72`
+
+An exact Git comparison from source-fix commit `76e84c678` to S found no
+change in any registered implementation path, focused qualification test,
+test-gate runner, or gate manifest. The recorded `3134 passed` registered
+commit gate and focused source-validation evidence are therefore reusable by
+exact input identity; candidate-specific checks still run under this change.
 
 ## Live Baseline And Authority
 

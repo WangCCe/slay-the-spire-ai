@@ -7,10 +7,10 @@
 
 ## 2. Build And Review The Offline Candidate
 
-- [ ] 2.1 Commit the approved amendment, select one clean source snapshot S, and bind exact implementation, runner, launcher, verifier, registration, source-fix, and relevant test input hashes without changing live configuration.
-- [ ] 2.2 Capture exact CommunicationMod bytes and semantics, protected marker/run/checkpoint/global-log inventories, registered-root absence, rollback material, and zero target processes without launching Java or the game.
-- [ ] 2.3 Deterministically render the r8 bootstrap-v1/request-v3 candidate, launch token, static-root image, inert direct-child allowlist, and all-false authority twice; require byte-identical outputs while the external root remains absent.
-- [ ] 2.4 Run candidate-specific focused qualification tests, canonical/source-only replay, Python compile checks, strict OpenSpec validation, and `git diff --check`. Reuse the registered commit-gate result only if every bound executable and relevant test input hash matches; otherwise rerun the registered gate. Do not run an unregistered raw full suite.
+- [x] 2.1 Commit the approved amendment, select one clean source snapshot S, and bind exact implementation, runner, launcher, verifier, registration, source-fix, and relevant test input hashes without changing live configuration.
+- [x] 2.2 Capture exact CommunicationMod bytes and semantics, protected marker/run/checkpoint/global-log inventories, registered-root absence, rollback material, and zero target processes without launching Java or the game.
+- [x] 2.3 Deterministically render the r8 bootstrap-v1/request-v3 candidate, launch token, static-root image, inert direct-child allowlist, and all-false authority twice; require byte-identical outputs while the external root remains absent.
+- [x] 2.4 Run candidate-specific focused qualification tests, canonical/source-only replay, Python compile checks, strict OpenSpec validation, and `git diff --check`. Reuse the registered commit-gate result only if every bound executable and relevant test input hash matches; otherwise rerun the registered gate. Do not run an unregistered raw full suite.
 - [ ] 2.5 Obtain an independent review of source identity, request and launcher anchors, S-to-R inert diff, rollback package, one-shot boundary, and authority fields; resolve documentation findings, create one final direct-child R, recheck it from tracked-clean source, and publish one externally anchored offline go/no-go decision.
 
 ## 3. Publish And Invoke At Most Once
