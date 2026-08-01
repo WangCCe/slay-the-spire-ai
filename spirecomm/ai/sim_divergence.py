@@ -2075,6 +2075,9 @@ def _ignored_diff_keys(pending: Dict[str, Any], actual: Optional[Dict[str, Any]]
         ignored.update(
             _gremlin_leader_random_summon_ignored_diff_keys(pending, actual)
         )
+        ignored.update(
+            _bronze_automaton_random_orb_summon_ignored_diff_keys(pending, actual)
+        )
         monster_count = _monster_diff_count(pending, actual)
         mystic_support_turn = _has_mystic_support_turn(pending.get("before") or {})
         for index in range(monster_count):
@@ -2112,6 +2115,79 @@ def _gremlin_leader_random_summon_ignored_diff_keys(
     if actual_minion_count <= before_minion_count:
         return set()
     return _monster_state_diff_keys(pending, actual)
+
+
+def _bronze_automaton_random_orb_summon_ignored_diff_keys(
+    pending: Dict[str, Any],
+    actual: Optional[Dict[str, Any]],
+) -> set:
+    before = pending.get("before") or {}
+    expected = pending.get("expected") or {}
+    actual = actual or {}
+    before_monsters = before.get("monsters", []) or []
+    if _active_bronze_orb_count(before) != 0:
+        return set()
+    if not any(_is_bronze_automaton_orb_summon(monster) for monster in before_monsters):
+        return set()
+    if not _is_bronze_automaton_orb_summon_snapshot(expected):
+        return set()
+    if not _is_bronze_automaton_orb_summon_snapshot(actual):
+        return set()
+    expected_boss = _single_active_bronze_automaton(expected)
+    actual_boss = _single_active_bronze_automaton(actual)
+    if expected_boss is None or actual_boss is None:
+        return set()
+    for field in ("hp", "gone", "half_dead"):
+        if expected_boss.get(field) != actual_boss.get(field):
+            return set()
+    return _monster_state_diff_keys(pending, actual)
+
+
+def _is_bronze_automaton_orb_summon(monster: Dict[str, Any]) -> bool:
+    identifiers = {_normalize(monster.get("id")), _normalize(monster.get("name"))}
+    if "bronzeautomaton" not in identifiers:
+        return False
+    return len(_end_turn_summon_names(monster)) >= 2
+
+
+def _active_bronze_orb_count(snapshot: Dict[str, Any]) -> int:
+    return sum(
+        1
+        for monster in snapshot.get("monsters", []) or []
+        if _snapshot_monster_active(monster)
+        and _is_bronze_orb(monster)
+    )
+
+
+def _is_bronze_automaton_orb_summon_snapshot(snapshot: Dict[str, Any]) -> bool:
+    monsters = snapshot.get("monsters", []) or []
+    return (
+        len(monsters) == 3
+        and _active_bronze_orb_count(snapshot) == 2
+        and _single_active_bronze_automaton(snapshot) is not None
+    )
+
+
+def _single_active_bronze_automaton(
+    snapshot: Dict[str, Any],
+) -> Optional[Dict[str, Any]]:
+    matches = [
+        monster
+        for monster in snapshot.get("monsters", []) or []
+        if _snapshot_monster_active(monster)
+        and _is_bronze_automaton(monster)
+    ]
+    return matches[0] if len(matches) == 1 else None
+
+
+def _is_bronze_orb(monster: Dict[str, Any]) -> bool:
+    identifiers = {_normalize(monster.get("id")), _normalize(monster.get("name"))}
+    return "bronzeorb" in identifiers
+
+
+def _is_bronze_automaton(monster: Dict[str, Any]) -> bool:
+    identifiers = {_normalize(monster.get("id")), _normalize(monster.get("name"))}
+    return "bronzeautomaton" in identifiers
 
 
 def _is_gremlin_leader_rally(monster: Dict[str, Any]) -> bool:
