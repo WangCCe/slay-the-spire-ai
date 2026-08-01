@@ -1,8 +1,5 @@
-2026年1月7日01点00分记录：
-- Added special monster ability handling in simulation
-- Implemented future damage penalty using Wiki move predictions
-todo:
-- Add more monster abilities
-- profiling
-- 继续和claude code的对话
+# Project Status
+
+The canonical current objective, authority boundary, and next-step sequence are
+maintained in [docs/project_direction.md](docs/project_direction.md).
 
