@@ -1,0 +1,196 @@
+{
+  "authority": {
+    "formal_noncombat_rl": false,
+    "live_gameplay": false,
+    "live_policy_loading": false,
+    "live_study_launch": false,
+    "ope_reinterpretation": false,
+    "policy_promotion": false,
+    "qualification": false,
+    "simulator_rl_training": false,
+    "simulator_training": false
+  },
+  "blockers": [],
+  "checks": {
+    "candidate_mapping": true,
+    "collection_replay_identity": true,
+    "four_category_coverage": true,
+    "model_updated": true,
+    "provenance_identity": true,
+    "teacher_policy_identity": true,
+    "terminal_outcomes": true,
+    "training_replay_identity": true,
+    "within_bounds": true
+  },
+  "dataset": {
+    "candidate_count": {
+      "maximum": 15.0,
+      "mean": 2.8714285714285714,
+      "minimum": 1.0
+    },
+    "category_row_counts": {
+      "card_reward": 195,
+      "event": 91,
+      "route": 407,
+      "shop": 77
+    },
+    "dataset_sha256": "723cc6502920e4d7d5979764b2d08b7d4c4e0ddb200a5d57343c98391e3c25cf",
+    "decisions_per_episode": {
+      "maximum": 99.0,
+      "mean": 38.5,
+      "minimum": 11.0
+    },
+    "episode_count": 20,
+    "replay_sha256": "723cc6502920e4d7d5979764b2d08b7d4c4e0ddb200a5d57343c98391e3c25cf",
+    "row_count": 770,
+    "terminal_outcome_counts": {
+      "player_loss": 20,
+      "player_victory": 0
+    }
+  },
+  "fit_input_sha256": "c9e71303793428b754c78446dd7de2d251ef77b0be8213caac51d4c5f2bb7c8f",
+  "identity": {
+    "adapter_fit_input": {
+      "path": "reports/noncombat_simulator_fit_20260802_r3_input.json",
+      "sha256": "2ea0d165520410726639304c51cffd236290bba2f9a28ba8592445ad1ca5d4a6",
+      "size_bytes": 1627
+    },
+    "adapter_fit_report": {
+      "path": "reports/noncombat_simulator_fit_20260802_r3.json",
+      "sha256": "42d08fedd3225179bf45c4cbbaa4c8103b8cba43cc3b0ebdf220f147f6cb82b5",
+      "size_bytes": 31889
+    },
+    "adapter_provenance": {
+      "adapter_commit": "a810d6d0ce92c1ebab8483fb8819163fc76d54fe",
+      "adapter_source_sha256": "10c413d11e6abf4c621400279a4f4bfccddb0876426a0e14c6c892fdf0d4da5b",
+      "build": {
+        "adapter_api_version": "sts-lightspeed-noncombat-adapter-v2",
+        "baseline_policy_id": "sts_lightspeed_simple_agent_no_potions_v1",
+        "compiler": "15.2.0",
+        "cpp_standard": 201703,
+        "native_target_policy_id": "sts_lightspeed_simple_agent_target_v1",
+        "pybind11_version": "3.0.2a0",
+        "python": "3.10.18"
+      },
+      "module_sha256": "b3328aea4ee3040a4fe8751d6f300a148a7ae64d68f7ebec050ae61f479d6805",
+      "module_size_bytes": 1550848,
+      "simulator_commit": "7476a81954020087da31d41d16fddf475746ec2d",
+      "simulator_dirty": true,
+      "simulator_source_file_count": 79,
+      "simulator_source_sha256": "a3f98721ec37373b1b00aef660832a3307f0186ba0614d07a3b1e7de8ab2e46a",
+      "submodules": {
+        "json": "55f93686c01528224f448c19128836e7df245f72",
+        "pybind11": "8f68ecd32c8e18d3b064dbf0ea5fc31a6cb37e9a"
+      }
+    },
+    "excluded_baselines": {
+      "bottled": {
+        "feature_version": "noncombat-policy-features-v1",
+        "model": {
+          "path": "reports/noncombat_policy_learning_pilot_20260712/bottled_model.pt",
+          "sha256": "29af1fa00cc952934a22c298e3e7e2a40f3eb3b80c79c15e3e3ca60d64ee4ffb",
+          "size_bytes": 6100
+        },
+        "reason": "unvalidated_simulator_feature_action_bridge"
+      },
+      "current": {
+        "feature_version": "noncombat-policy-features-v1",
+        "model": {
+          "path": "reports/noncombat_policy_learning_pilot_20260712/current_model.pt",
+          "sha256": "2e99cb9bc0f152364a6179c09ecc41265bfa4a90f059fb13373bb7f202938509",
+          "size_bytes": 6100
+        },
+        "reason": "unvalidated_simulator_feature_action_bridge"
+      }
+    },
+    "implementation": {
+      "commit": "30d354b210bf892e87b05156796c14cadd6f0c9e",
+      "source_files": [
+        "analysis_scripts/noncombat_policy_model.py",
+        "analysis_scripts/noncombat_simulator_adapter.py",
+        "analysis_scripts/noncombat_simulator_baseline_warm_start.py",
+        "analysis_scripts/noncombat_simulator_fit.py",
+        "analysis_scripts/noncombat_simulator_policy_validity.py",
+        "analysis_scripts/noncombat_simulator_training_smoke.py"
+      ],
+      "source_sha256": "b88e93977ae762902d497ae862aa192fe4b8f115cc74a58e1ea958df7cf7db5f"
+    },
+    "prior_evidence": {
+      "policy_validity_manifest": {
+        "path": "reports/noncombat_simulator_policy_validity_20260802/artifact_manifest.json",
+        "sha256": "5cbf3d7860318db7aae5b0a1f2edea2a20e75b81ed9ccf1c6fe7722f55a41f0b",
+        "size_bytes": 828
+      },
+      "policy_validity_registration": {
+        "path": "reports/noncombat_simulator_policy_validity_20260802_input.json",
+        "sha256": "149a0ed451f52804561de34b213fb4602f6825740705b6c1cf98ab87e0748d10",
+        "size_bytes": 7597
+      },
+      "smoke_manifest": {
+        "path": "reports/noncombat_simulator_training_smoke_20260802/artifact_manifest.json",
+        "sha256": "0b99c292e8ab0dd82df56e32dd7ac7229319b3b832720290467cab8012b35bf9",
+        "size_bytes": 894
+      },
+      "smoke_registration": {
+        "path": "reports/noncombat_simulator_training_smoke_20260802_input.json",
+        "sha256": "c131e3183fb4e7eaabd60ff5807dd48c17330d855a53d41387f7667410dc914e",
+        "size_bytes": 4294
+      }
+    },
+    "runtime": {
+      "python": "3.10.18",
+      "torch": "2.5.1"
+    }
+  },
+  "limitations": [
+    "Only already-observed adapter fit seeds 0 through 19 were reused.",
+    "The report evaluates implementation behavior, not policy quality.",
+    "SimpleAgent labels are auxiliary demonstrations, not reward or permanent truth.",
+    "No validation, final-test, live, OPE, qualification, or promotion authority is granted.",
+    "Measured runtime is machine-specific and excluded from later canonical study identity."
+  ],
+  "quality_claim": "none",
+  "runtime": {
+    "collection_seconds": [
+      60.99565039994195,
+      58.330637999926694
+    ],
+    "total_seconds": 250.18822670006193,
+    "training_seconds": [
+      55.35832539992407,
+      52.19664690003265
+    ]
+  },
+  "schema_version": "noncombat-simulator-baseline-warm-start-implementation-fit-report-v1",
+  "seeds": [
+    0,
+    1,
+    2,
+    3,
+    4,
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11,
+    12,
+    13,
+    14,
+    15,
+    16,
+    17,
+    18,
+    19
+  ],
+  "training": {
+    "epochs": 10,
+    "final_model_sha256": "c37124d76c12daba62c0dd56af6250b0d9cde0fd93980a20ad3773ca6369a593",
+    "history_sha256": "74280f2fdf525df466f78f4ad4dd6cd55f9470d655eabaf9d328c89136ed51f8",
+    "initial_model_sha256": "ffcc1320e84c1bc5a5520c908961f0eb6de5680a311fb34b2101ad78669b072b",
+    "replay_final_model_sha256": "c37124d76c12daba62c0dd56af6250b0d9cde0fd93980a20ad3773ca6369a593",
+    "replay_history_sha256": "74280f2fdf525df466f78f4ad4dd6cd55f9470d655eabaf9d328c89136ed51f8"
+  },
+  "verdict": "implementation_fit_ready"
+}
