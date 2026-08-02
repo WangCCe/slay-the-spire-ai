@@ -28,5 +28,5 @@
 ## 5. Verification And Closeout
 
 - [x] 5.1 Run focused audit, contract, resolver, bridge, and historical regressions, Python compilation, the repository commit gate, and strict global OpenSpec validation
-- [ ] 5.2 Publish the closeout and project direction, explicitly preserving the consumed compatibility failure and requiring a separate untouched-seed preregistration before native evaluation
-- [ ] 5.3 Sync capability specs, archive the completed change, commit, push, and prove tracked-clean `HEAD == origin/master`
+- [x] 5.2 Publish the closeout and project direction, explicitly preserving the consumed compatibility failure and requiring a separate untouched-seed preregistration before native evaluation
+- [x] 5.3 Sync capability specs, archive the completed change, commit, push, and prove tracked-clean `HEAD == origin/master`
