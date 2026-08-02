@@ -1876,7 +1876,7 @@ def _report_markdown(
             f"| `{row['category']}` | {row['seed']} | {row['decision_index']} | `{row['status']}` | `{result}` |"
         )
     lines.extend(["", "## Stage 2", ""])
-    if stage2_result is not None:
+    if stage2_result is not None and stage2_result["status"] == "passed":
         lines.extend(
             [
                 "The registered reused-seed compatibility check passed with two deterministic replays per seed.",
@@ -1889,6 +1889,11 @@ def _report_markdown(
             lines.append(
                 f"| {row['seed']} | {row['decision_count']} | {row['terminal_floor']} | `{row['outcome']}` | `{row['trajectory_sha256']}` |"
             )
+    elif stage2_result is not None:
+        lines.append(
+            "The registered reused-seed compatibility check failed closed with "
+            f"`{stage2_result['reason']}`."
+        )
     else:
         lines.append(
             "Stage 2 is authorized by Stage 1 but requires the registered bounded compatibility executor."
@@ -1964,7 +1969,11 @@ def build_artifacts(
             "authorized": classification["stage2_authorized"],
             "executed": stage2_result is not None,
             "reason": (
-                "completed"
+                (
+                    "completed"
+                    if stage2_result["status"] == "passed"
+                    else stage2_result["reason"]
+                )
                 if stage2_result is not None
                 else "executor_not_entered_by_frozen_only_poc"
                 if classification["stage2_authorized"]
@@ -2106,12 +2115,24 @@ def run_poc(
                 simulator_provenance=provenance,
             )
 
-        stage2_result = run_stage2_compatibility(
-            registration=registration,
-            environment_factory=environment_factory,
-            session_factory=session_factory,
-            native_identity=actual_native_identity,
-        )
+        try:
+            stage2_result = run_stage2_compatibility(
+                registration=registration,
+                environment_factory=environment_factory,
+                session_factory=session_factory,
+                native_identity=actual_native_identity,
+            )
+        except BridgeBlocked as exc:
+            stage2_result = {
+                "detail": exc.detail,
+                "max_decisions_per_episode": STAGE2_MAX_DECISIONS_PER_EPISODE,
+                "native_identity": actual_native_identity,
+                "reason": exc.reason,
+                "replay_count": STAGE2_REPLAY_COUNT,
+                "schema_version": STAGE2_RESULT_SCHEMA_VERSION,
+                "seeds": list(registration["stage2"]["reused_seeds"]),
+                "status": "failed",
+            }
     artifacts = build_artifacts(
         registration=registration,
         registration_sha256=registration_sha256,
@@ -2143,6 +2164,9 @@ def run_poc(
         "output_directory": str(output_dir),
         "stage2_authorized": classification["stage2_authorized"],
         "stage2_executed": stage2_result is not None,
+        "stage2_status": (
+            stage2_result["status"] if stage2_result is not None else "not_executed"
+        ),
         "verdict": classification["verdict"],
     }
 

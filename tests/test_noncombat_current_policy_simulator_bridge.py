@@ -969,6 +969,62 @@ def test_stage2_result_is_published_in_canonical_artifacts():
     ]
 
 
+def test_stage2_failure_is_preserved_in_canonical_artifacts():
+    successor, predecessor = _successor_registration()
+    comparison = validate_successor_registration(successor, predecessor)
+    comparison.update(
+        {
+            "predecessor_manifest": successor["identity"][
+                "predecessor_manifest"
+            ],
+            "predecessor_registration": successor["identity"][
+                "predecessor_registration"
+            ],
+            "predecessor_verdict": "frozen_bridge_not_compatible",
+        }
+    )
+    stage2_result = {
+        "detail": "Big Fish",
+        "max_decisions_per_episode": 500,
+        "native_identity": _stage2_native_identity(successor),
+        "reason": "event_option_semantics_event_unsupported",
+        "replay_count": 2,
+        "schema_version": (
+            "noncombat-current-policy-simulator-bridge-stage2-v1"
+        ),
+        "seeds": [2000, 2001, 2002, 2003],
+        "status": "failed",
+    }
+    classification = {
+        "authority": copy.deepcopy(ALL_FALSE_AUTHORITY),
+        "category_coverage": {
+            "card_reward": True,
+            "event": True,
+            "route": True,
+            "shop": True,
+        },
+        "passed": True,
+        "stage2_authorized": True,
+        "verdict": "frozen_bridge_structurally_compatible",
+    }
+
+    artifacts = build_artifacts(
+        registration=validate_registration(successor),
+        registration_sha256="a" * 64,
+        row_results=[],
+        classification=classification,
+        successor_comparison=comparison,
+        stage2_result=stage2_result,
+    )
+
+    metrics = json.loads(artifacts["metrics.json"])
+    assert metrics["stage2"]["executed"] is True
+    assert metrics["stage2"]["reason"] == (
+        "event_option_semantics_event_unsupported"
+    )
+    assert b"failed closed" in artifacts["report.md"]
+
+
 def test_script_path_entrypoint_can_import_repository_modules():
     repo_root = Path(__file__).resolve().parents[1]
     completed = subprocess.run(
