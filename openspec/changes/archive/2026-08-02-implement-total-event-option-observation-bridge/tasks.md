@@ -15,5 +15,5 @@
 
 - [x] 3.1 Run focused adapter, resolver, observation-contract, and bridge pytest with isolated writable basetemp; do not load or execute a native module.
 - [x] 3.2 Run Python compile checks, strict change validation, global OpenSpec validation, and the repository commit test gate; do not substitute the raw long-suite entrypoint or launch gameplay because this path is offline-only.
-- [ ] 3.3 Write the implementation closeout and update project direction while keeping compatibility, seed use, gameplay, baseline, reward, model, formal-RL, training, and promotion authority false.
-- [ ] 3.4 Sync modified capability specs, archive the completed change, commit cohesive implementation evidence, and push `master` without running a compatibility cohort.
+- [x] 3.3 Write the implementation closeout and update project direction while keeping compatibility, seed use, gameplay, baseline, reward, model, formal-RL, training, and promotion authority false.
+- [x] 3.4 Sync modified capability specs, archive the completed change, commit cohesive implementation evidence, and push `master` without running a compatibility cohort.

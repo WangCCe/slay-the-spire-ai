@@ -1,6 +1,6 @@
 # Project Direction
 
-Last updated: 2026-08-02
+Last updated: 2026-08-03
 
 ## Current Phase
 
@@ -60,19 +60,16 @@ at the first unsupported event identity, `The Cleric`. Native module, build,
 simulator, source, and submodule identities all matched. This is a semantic
 coverage blocker, not a policy-quality result, and those seeds remain consumed.
 
-The subsequent hash-bound static audit now has a comment-aware r2 result and a
-strictly reproducible total observation contract. The contract accounts for all
-25 canonical events and 47 Current aliases with 23 static rules, one explicit
-five-phase `Cursed Tome` rule, and one `N'loth` offered-relic rule. It also makes
-the action boundary explicit: contiguous Current option positions are not
-necessarily simulator choice indices, so sparse legal sets must retain a
-reversible position-to-index mapping. `N'loth` still requires a future adapter
-to expose offered relic slot, id, and name under
-`state.decision_context.offered_relics`. Zero source surfaces are unaccounted,
-but resolver and adapter readiness correctly remain false. The next objective
-is a separately reviewed implementation change that extends that snapshot,
-consumes the contract in a total fail-closed resolver, and translates Current
-positions through the validated mapping. Do not start another imitation POC,
+The subsequent hash-bound static audit, total observation contract, and
+implementation-only bridge change are now complete. New native modules declare
+adapter API v3 and expose exact `N'loth` offered-relic records; historical v2
+evidence remains explicitly readable without upgrade. The total fail-closed
+resolver consumes all 25 canonical events and 47 Current aliases, and the bridge
+now translates contiguous Current positions through their validated simulator
+choice indices. Focused regressions and the repository commit gate pass, but no
+native module, environment, seed, cohort, gameplay process, model, or trainer ran
+in the implementation change. The next objective is a separately preregistered
+v3 native compatibility evaluation. Do not start another imitation POC,
 unregistered simulator cohort, gameplay batch, or formal non-combat RL training.
 
 ## Training Boundary
@@ -98,17 +95,15 @@ zero target-supported victories. The next prerequisite is the non-teacher
 baseline floor; passing it would not override the outcome blocker or authorize
 training.
 
-The immediate baseline-lane blocker is now contract implementation, not event
-discovery or contract definition. The r2 bridge successor closes the frozen
-`Liars Game` row and passes all four Stage 1 categories, but its one registered
-Stage 2 execution stops on unsupported `The Cleric` semantics. The reused seeds
-`2000..2003` are consumed by this gate and SHALL NOT become an iterative
-event-debugging cohort. The completed total observation contract covers all 25
-Current-relevant events and all 47 aliases, resolves the five `Cursed Tome`
-phases, specifies `Mindbloom` to `MindBloom` identity normalization, and records
-the exact `N'loth` snapshot extension. A separate implementation must now expose
-that context, consume the fail-closed rules, and preserve reversible option
-position mapping before another own-trajectory check can even be proposed.
+The immediate baseline-lane blocker is now v3 native compatibility, not event
+discovery, contract definition, or Python bridge implementation. The r2 bridge
+successor still closes only its frozen Stage 1 rows, and its single Stage 2
+execution still stops on the historical `The Cleric` coverage blocker. Seeds
+`2000..2003` remain consumed and SHALL NOT become an iterative event-debugging
+cohort. The completed implementation closes the known total-observation code
+boundary, but a new own-trajectory check requires a separate registration that
+binds the v3 module, exact sources and contract, a new cohort, deterministic
+replay, stop rules, and structural-only authority before any environment starts.
 
 The active v2 known-propensity outcome-evidence study is stopped before any
 replacement qualification or study start. R7 remains immutable and retired
@@ -249,24 +244,21 @@ The next authorized sequence is:
     `2000..2003`, change the frozen rows, or patch events one at a time around
     that observed trajectory.
 12. Preserve both Current event-semantics coverage registrations, the corrected
-    r2 artifact set, and the completed total observation contract. Keep r1
-    immutable but use r2 as the source-surface input. Treat the contract's 25
-    events, 47 aliases, exact `Cursed Tome` phases, `N'loth` context schema, and
-    reversible position mapping as implementation requirements, not resolver or
-    adapter readiness. Implement them only in a separately reviewed change
-    before proposing any new compatibility cohort.
+    r2 artifact set, the total observation contract, and the completed
+    implementation change. Keep API v2 evidence immutable and require API v3
+    for newly loaded modules. Do not reuse seeds `2000..2003`. Preregister the
+    next native compatibility evaluation, including its module/source identity,
+    new cohort, replay, stop, and authority contract, before environment startup.
 
 ## Work Lanes
 
-The primary lane is now a separately reviewed implementation of the completed
-event-option observation contract. It must extend the native snapshot with the
-exact `N'loth` offered-relic fields, make the resolver consume the registered
-25-event rules without generic fallbacks, and translate Current option positions
-through the contract's simulator-index mapping. Only after focused regressions,
-the repository commit gate, and a separately preregistered evaluation plan may
-a new compatibility cohort be considered. A non-teacher baseline-floor study
-remains downstream of structural compatibility; the target-supported-outcome
-lane remains blocked and separate.
+The primary lane is now a separately reviewed v3 native compatibility
+registration. It must bind the built module, adapter and simulator sources,
+canonical total observation contract, resolver, bridge, metadata, runtime, a new
+untouched cohort, deterministic replay, and fail-closed stop rules before seed
+access. Its result may establish structural own-trajectory compatibility only.
+A non-teacher baseline-floor study remains downstream of that result; the
+target-supported-outcome lane remains blocked and separate.
 
 Live gameplay is a maintenance and registered-evaluation lane only. Launch it
 for a crash, stuck state, repeated A-class simulator/mechanics defect, or an
