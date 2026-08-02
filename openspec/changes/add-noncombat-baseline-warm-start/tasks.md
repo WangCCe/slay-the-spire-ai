@@ -1,6 +1,6 @@
 ## 1. Pure Contracts And Regression Coverage
 
-- [ ] 1.1 Add the versioned warm-start registration schema and fail-closed validators for identities, one fixed model/optimizer schedule, cohort disjointness, prior-seed exclusion, metrics, thresholds, and resource bounds; cover valid and invalid fixtures.
+- [x] 1.1 Add the versioned warm-start registration schema and fail-closed validators for identities, one fixed model/optimizer schedule, cohort disjointness, prior-seed exclusion, metrics, thresholds, and resource bounds; cover valid and invalid fixtures.
 - [ ] 1.2 Add canonical native-demonstration row and dataset builders with complete ordered candidates, target mapping, policy-view hashes, category/provenance fields, successor summaries, and deterministic byte identity; cover them with fake-environment regressions.
 - [ ] 1.3 Add the fixed seeded `candidate-ranker-mlp-v1`, category-balanced candidate-masked cross entropy, finite-state checks, canonical model serialization/loading, and full-candidate greedy inference; prove deterministic updates and candidate preservation.
 - [ ] 1.4 Add teacher-fit, paired rollout, deterministic bootstrap, validation-stop, final non-inferiority, and no-authority classification helpers with positive, negative, blocked, and untouched-test regressions.
