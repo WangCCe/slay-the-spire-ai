@@ -1,0 +1,23 @@
+{
+  "canonical": false,
+  "cohort_consumed": true,
+  "completed_at_utc": "2026-08-02T22:12:11Z",
+  "elapsed_seconds": 0.6870000000344589,
+  "preregistration_commit": "61b74cb9332c4889ec25764dd72de5e934eb9e3e",
+  "registration_sha256": "5db0c2f6676a332126260207c9da082a50eb5fc304c116e226183a1252879b11",
+  "result_sha256": "30a53568fe6c4a069007409154abb2e55263a7c00e014da2a1cc52bd2400d2b4",
+  "schema_version": "noncombat-total-event-native-compatibility-journal-v1",
+  "seeds": [
+    7000,
+    7001,
+    7002,
+    7003,
+    7004,
+    7005,
+    7006,
+    7007
+  ],
+  "started_at_utc": "2026-08-02T22:12:11Z",
+  "status": "finalized",
+  "verdict": "total_event_native_compatibility_failed"
+}

@@ -26,12 +26,12 @@
 
 ## 5. One-Shot Compatibility Execution
 
-- [ ] 5.1 Run the final no-seed preflight and atomically consume the complete cohort before constructing the first environment
-- [ ] 5.2 Execute exactly two bounded replays for each registered seed once, preserving pass, failure, timeout, crash, or partial state without retry
-- [ ] 5.3 Verify the preserved result without loading native code and publish the structural verdict with all downstream authority false
+- [x] 5.1 Run the final no-seed preflight and atomically consume the complete cohort before constructing the first environment
+- [x] 5.2 Execute exactly two bounded replays for each registered seed once, preserving pass, failure, timeout, crash, or partial state without retry
+- [x] 5.3 Verify the preserved result without loading native code and publish the structural verdict with all downstream authority false
 
 ## 6. Closeout
 
-- [ ] 6.1 Update project direction from the frozen result and document whether a separate baseline-floor proposal is allowed or the structural blocker remains active
-- [ ] 6.2 Run focused regressions, the repository commit gate, and strict global OpenSpec validation on the final artifacts
-- [ ] 6.3 Sync the capability specs, archive the completed change, commit, and push the immutable closeout
+- [x] 6.1 Update project direction from the frozen result and document whether a separate baseline-floor proposal is allowed or the structural blocker remains active
+- [x] 6.2 Run focused regressions, the repository commit gate, and strict global OpenSpec validation on the final artifacts
+- [x] 6.3 Sync the capability specs, archive the completed change, commit, and push the immutable closeout
