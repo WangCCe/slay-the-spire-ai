@@ -1,0 +1,157 @@
+{
+  "fit": {
+    "ascension": 0,
+    "collection_replays": 2,
+    "limits": {
+      "max_decisions_per_episode": 500,
+      "max_demo_rows": 10000,
+      "max_episodes": 20,
+      "max_total_wall_seconds": 480.0,
+      "max_training_wall_seconds": 180.0,
+      "max_wall_seconds_per_collection": 180.0
+    },
+    "model": {
+      "activation": "relu",
+      "architecture": "candidate-ranker-mlp-v1",
+      "dropout": 0.0,
+      "feature_version": "noncombat-simulator-policy-features-v1",
+      "hash_dim": 1024,
+      "hidden_dim": 128,
+      "model_seed": 0
+    },
+    "optimizer": {
+      "algorithm": "adam",
+      "beta1": 0.9,
+      "beta2": 0.999,
+      "category_balanced": true,
+      "deterministic_order": true,
+      "epochs": 10,
+      "epsilon": 1e-08,
+      "learning_rate": 0.001,
+      "weight_decay": 0.0
+    },
+    "required_categories": [
+      "card_reward",
+      "event",
+      "route",
+      "shop"
+    ],
+    "seeds": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9,
+      10,
+      11,
+      12,
+      13,
+      14,
+      15,
+      16,
+      17,
+      18,
+      19
+    ],
+    "training_replays": 2
+  },
+  "identity": {
+    "adapter_fit_input": {
+      "path": "reports/noncombat_simulator_fit_20260802_r3_input.json",
+      "sha256": "2ea0d165520410726639304c51cffd236290bba2f9a28ba8592445ad1ca5d4a6",
+      "size_bytes": 1627
+    },
+    "adapter_fit_report": {
+      "path": "reports/noncombat_simulator_fit_20260802_r3.json",
+      "sha256": "42d08fedd3225179bf45c4cbbaa4c8103b8cba43cc3b0ebdf220f147f6cb82b5",
+      "size_bytes": 31889
+    },
+    "adapter_provenance": {
+      "adapter_commit": "a810d6d0ce92c1ebab8483fb8819163fc76d54fe",
+      "adapter_source_sha256": "10c413d11e6abf4c621400279a4f4bfccddb0876426a0e14c6c892fdf0d4da5b",
+      "build": {
+        "adapter_api_version": "sts-lightspeed-noncombat-adapter-v2",
+        "baseline_policy_id": "sts_lightspeed_simple_agent_no_potions_v1",
+        "compiler": "15.2.0",
+        "cpp_standard": 201703,
+        "native_target_policy_id": "sts_lightspeed_simple_agent_target_v1",
+        "pybind11_version": "3.0.2a0",
+        "python": "3.10.18"
+      },
+      "module_sha256": "b3328aea4ee3040a4fe8751d6f300a148a7ae64d68f7ebec050ae61f479d6805",
+      "module_size_bytes": 1550848,
+      "simulator_commit": "7476a81954020087da31d41d16fddf475746ec2d",
+      "simulator_dirty": true,
+      "simulator_source_file_count": 79,
+      "simulator_source_sha256": "a3f98721ec37373b1b00aef660832a3307f0186ba0614d07a3b1e7de8ab2e46a",
+      "submodules": {
+        "json": "55f93686c01528224f448c19128836e7df245f72",
+        "pybind11": "8f68ecd32c8e18d3b064dbf0ea5fc31a6cb37e9a"
+      }
+    },
+    "excluded_baselines": {
+      "bottled": {
+        "feature_version": "noncombat-policy-features-v1",
+        "model": {
+          "path": "reports/noncombat_policy_learning_pilot_20260712/bottled_model.pt",
+          "sha256": "29af1fa00cc952934a22c298e3e7e2a40f3eb3b80c79c15e3e3ca60d64ee4ffb",
+          "size_bytes": 6100
+        },
+        "reason": "unvalidated_simulator_feature_action_bridge"
+      },
+      "current": {
+        "feature_version": "noncombat-policy-features-v1",
+        "model": {
+          "path": "reports/noncombat_policy_learning_pilot_20260712/current_model.pt",
+          "sha256": "2e99cb9bc0f152364a6179c09ecc41265bfa4a90f059fb13373bb7f202938509",
+          "size_bytes": 6100
+        },
+        "reason": "unvalidated_simulator_feature_action_bridge"
+      }
+    },
+    "implementation": {
+      "commit": "30d354b210bf892e87b05156796c14cadd6f0c9e",
+      "source_files": [
+        "analysis_scripts/noncombat_policy_model.py",
+        "analysis_scripts/noncombat_simulator_adapter.py",
+        "analysis_scripts/noncombat_simulator_baseline_warm_start.py",
+        "analysis_scripts/noncombat_simulator_fit.py",
+        "analysis_scripts/noncombat_simulator_policy_validity.py",
+        "analysis_scripts/noncombat_simulator_training_smoke.py"
+      ],
+      "source_sha256": "b88e93977ae762902d497ae862aa192fe4b8f115cc74a58e1ea958df7cf7db5f"
+    },
+    "prior_evidence": {
+      "policy_validity_manifest": {
+        "path": "reports/noncombat_simulator_policy_validity_20260802/artifact_manifest.json",
+        "sha256": "5cbf3d7860318db7aae5b0a1f2edea2a20e75b81ed9ccf1c6fe7722f55a41f0b",
+        "size_bytes": 828
+      },
+      "policy_validity_registration": {
+        "path": "reports/noncombat_simulator_policy_validity_20260802_input.json",
+        "sha256": "149a0ed451f52804561de34b213fb4602f6825740705b6c1cf98ab87e0748d10",
+        "size_bytes": 7597
+      },
+      "smoke_manifest": {
+        "path": "reports/noncombat_simulator_training_smoke_20260802/artifact_manifest.json",
+        "sha256": "0b99c292e8ab0dd82df56e32dd7ac7229319b3b832720290467cab8012b35bf9",
+        "size_bytes": 894
+      },
+      "smoke_registration": {
+        "path": "reports/noncombat_simulator_training_smoke_20260802_input.json",
+        "sha256": "c131e3183fb4e7eaabd60ff5807dd48c17330d855a53d41387f7667410dc914e",
+        "size_bytes": 4294
+      }
+    },
+    "runtime": {
+      "python": "3.10.18",
+      "torch": "2.5.1"
+    }
+  },
+  "schema_version": "noncombat-simulator-baseline-warm-start-implementation-fit-input-v1"
+}
