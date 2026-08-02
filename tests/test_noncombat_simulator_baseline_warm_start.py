@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import copy
+import hashlib
 import json
 import os
 from pathlib import Path
@@ -34,9 +35,11 @@ from analysis_scripts.noncombat_simulator_baseline_warm_start import (
     publish_warm_start_execution_journal,
     run_implementation_fit,
     run_warm_start_execution,
+    run_warm_start_study,
     train_warm_start_ranker,
     validate_warm_start_artifact_directory,
     validate_warm_start_artifact_payloads,
+    validate_warm_start_registration_hash_closure,
     validate_implementation_fit_input,
     validate_warm_start_registration,
 )
@@ -102,6 +105,12 @@ def valid_registration() -> dict[str, object]:
                 "source_files": list(REGISTERED_SOURCE_FILES),
                 "source_sha256": "c" * 64,
             },
+            "implementation_fit_input": _binding(
+                "reports/warm_start_implementation_fit_input.json"
+            ),
+            "implementation_fit_report": _binding(
+                "reports/warm_start_implementation_fit.json"
+            ),
             "prior_evidence": {
                 "policy_validity_manifest": _binding(
                     "reports/policy_validity/artifact_manifest.json"
@@ -183,6 +192,8 @@ def valid_registration() -> dict[str, object]:
 def valid_implementation_fit_input() -> dict[str, object]:
     registration = valid_registration()
     identity = copy.deepcopy(registration["identity"])
+    identity.pop("implementation_fit_input")
+    identity.pop("implementation_fit_report")
     identity["adapter_provenance"] = copy.deepcopy(FAKE_PROVENANCE)
     return {
         "schema_version": IMPLEMENTATION_FIT_INPUT_SCHEMA_VERSION,
@@ -229,6 +240,42 @@ def test_implementation_fit_input_is_fixed_to_observed_seeds():
     invalid["fit"]["seeds"][-1] = 20
     with pytest.raises(WarmStartBlocked, match="implementation fit.seeds"):
         validate_implementation_fit_input(invalid)
+
+
+def test_warm_start_registration_hash_closure_rejects_bound_file_drift(tmp_path):
+    registration = valid_registration()
+    identity = registration["identity"]
+    bindings = [
+        identity["adapter_fit_input"],
+        identity["adapter_fit_report"],
+        identity["implementation_fit_input"],
+        identity["implementation_fit_report"],
+        *identity["prior_evidence"].values(),
+        *(entry["model"] for entry in identity["excluded_baselines"].values()),
+    ]
+    for index, binding in enumerate(bindings):
+        payload = f"binding-{index}".encode("ascii")
+        relative = Path("evidence") / f"binding-{index}.bin"
+        destination = tmp_path / relative
+        destination.parent.mkdir(parents=True, exist_ok=True)
+        destination.write_bytes(payload)
+        binding.update(
+            path=relative.as_posix(),
+            sha256=hashlib.sha256(payload).hexdigest(),
+            size_bytes=len(payload),
+        )
+
+    closure = validate_warm_start_registration_hash_closure(
+        registration, repo_root=tmp_path
+    )
+    assert len(closure["bindings"]) == 10
+    assert len(closure["registration_sha256"]) == 64
+
+    (tmp_path / bindings[0]["path"]).write_bytes(b"drift")
+    with pytest.raises(WarmStartBlocked, match="registered binding mismatch"):
+        validate_warm_start_registration_hash_closure(
+            registration, repo_root=tmp_path
+        )
 
 
 @pytest.mark.parametrize(
@@ -785,7 +832,7 @@ def test_paired_rollout_reuses_demonstration_native_policy():
     assert set(result["checks"].values()) == {True}
 
 
-def test_warm_start_execution_stops_before_final_test_on_validation_failure():
+def test_warm_start_study_stops_before_final_test_on_validation_failure():
     registration = _artifact_registration()
     registration["study"]["evaluation"]["thresholds"].update(
         minimum_macro_category_action_agreement=1.0,
@@ -808,18 +855,19 @@ def test_warm_start_execution_stops_before_final_test_on_validation_failure():
         factory_calls.append(seed)
         return ShiftedTeacherEnvironment(seed)
 
-    execution = run_warm_start_execution(
+    study = run_warm_start_study(
         registration=registration,
         environment_factory=shifted_factory,
         preflight_checks={"identity": True, "native_compatibility": True},
         clock=lambda: 0.0,
     )
+    execution = study["primary"]
 
     assert execution["validation_gate"]["passed"] is False
     assert execution["final_test"] is None
     assert execution["datasets"]["final_test"] is None
     assert all(seed < 6000 for seed in factory_calls)
-    assert factory_calls == [
+    expected_calls = [
         4000,
         4001,
         4002,
@@ -833,6 +881,21 @@ def test_warm_start_execution_stops_before_final_test_on_validation_failure():
         5002,
         5003,
     ]
+    assert factory_calls == expected_calls * 2
+    assert study["primary"] == study["replay"]
+    assert study["classification"]["verdict"] == (
+        "study_valid_without_baseline_floor"
+    )
+    assert study["classification"]["final_test_untouched"] is True
+    artifacts = build_warm_start_artifacts(
+        registration=registration,
+        primary=study["primary"],
+        replay=study["replay"],
+        classification=study["classification"],
+    )
+    manifest = validate_warm_start_artifact_payloads(artifacts)
+    assert manifest["verdict"] == "study_valid_without_baseline_floor"
+    assert set(manifest["authority"].values()) == {False}
 
 
 def _teacher_fit_metrics(agreement: float) -> dict[str, object]:

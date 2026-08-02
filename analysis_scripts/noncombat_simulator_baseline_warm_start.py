@@ -4,10 +4,12 @@ from __future__ import annotations
 
 import argparse
 import copy
+import hashlib
 import json
 import math
 import os
 import random
+import subprocess
 import sys
 import time
 from collections.abc import Callable, Mapping, Sequence
@@ -182,19 +184,26 @@ def _seed_array(value: object, label: str, *, nonempty: bool = True) -> list[int
     return seeds
 
 
-def _validate_identity(value: object) -> dict[str, Any]:
+def _validate_identity(
+    value: object, *, include_implementation_fit: bool = True
+) -> dict[str, Any]:
     identity = _mapping(value, "identity")
+    expected_keys = {
+        "adapter_fit_input",
+        "adapter_fit_report",
+        "adapter_provenance",
+        "excluded_baselines",
+        "implementation",
+        "prior_evidence",
+        "runtime",
+    }
+    if include_implementation_fit:
+        expected_keys.update(
+            {"implementation_fit_input", "implementation_fit_report"}
+        )
     _require_keys(
         identity,
-        {
-            "adapter_fit_input",
-            "adapter_fit_report",
-            "adapter_provenance",
-            "excluded_baselines",
-            "implementation",
-            "prior_evidence",
-            "runtime",
-        },
+        expected_keys,
         "identity",
     )
     identity["adapter_fit_input"] = _validated_binding(
@@ -203,6 +212,15 @@ def _validate_identity(value: object) -> dict[str, Any]:
     identity["adapter_fit_report"] = _validated_binding(
         identity["adapter_fit_report"], "identity.adapter_fit_report"
     )
+    if include_implementation_fit:
+        identity["implementation_fit_input"] = _validated_binding(
+            identity["implementation_fit_input"],
+            "identity.implementation_fit_input",
+        )
+        identity["implementation_fit_report"] = _validated_binding(
+            identity["implementation_fit_report"],
+            "identity.implementation_fit_report",
+        )
     try:
         identity["adapter_provenance"] = validate_provenance(
             identity["adapter_provenance"]
@@ -605,7 +623,9 @@ def validate_implementation_fit_input(value: object) -> dict[str, Any]:
         "implementation fit input",
     )
     fit_input = copy.deepcopy(fit_input)
-    fit_input["identity"] = _validate_identity(fit_input["identity"])
+    fit_input["identity"] = _validate_identity(
+        fit_input["identity"], include_implementation_fit=False
+    )
     fit = _mapping(fit_input["fit"], "implementation fit")
     _require_keys(
         fit,
@@ -1862,12 +1882,15 @@ def run_warm_start_execution(
     environment_factory: Callable[[int], Any],
     preflight_checks: Mapping[str, bool],
     clock: Callable[[], float],
+    final_test_authorized: bool = True,
 ) -> dict[str, Any]:
     """Run one bounded train/validation/final execution from a registration."""
     validated = validate_warm_start_registration(registration)
     checks = _mapping(preflight_checks, "preflight_checks")
     if not checks or any(not isinstance(value, bool) for value in checks.values()):
         raise WarmStartBlocked("preflight_checks must be nonempty booleans")
+    if not isinstance(final_test_authorized, bool):
+        raise WarmStartBlocked("final_test_authorized must be boolean")
     failed_preflight = sorted(name for name, passed in checks.items() if not passed)
     if failed_preflight:
         raise WarmStartBlocked(
@@ -1967,7 +1990,7 @@ def run_warm_start_execution(
 
     final_dataset = None
     final_test = None
-    if validation_gate["passed"]:
+    if validation_gate["passed"] and final_test_authorized:
         final_dataset = collect_phase("final_test", cohorts["final_test_seeds"])
         final_test = evaluate_phase(
             training.model,
@@ -2004,6 +2027,86 @@ def run_warm_start_execution(
         "validation": validation,
         "validation_gate": validation_gate,
     }
+
+
+def run_warm_start_study(
+    *,
+    registration: Mapping[str, Any],
+    environment_factory: Callable[[int], Any],
+    preflight_checks: Mapping[str, bool],
+    clock: Callable[[], float] = time.perf_counter,
+) -> dict[str, Any]:
+    """Run exactly one primary and one replay with conservative test access."""
+    validated = validate_warm_start_registration(registration)
+    primary_started = _finite_number(clock(), "clock value")
+    primary = run_warm_start_execution(
+        registration=validated,
+        environment_factory=environment_factory,
+        preflight_checks=preflight_checks,
+        clock=clock,
+    )
+    primary_elapsed = _finite_number(clock(), "clock value") - primary_started
+    replay_started = _finite_number(clock(), "clock value")
+    replay = run_warm_start_execution(
+        registration=validated,
+        environment_factory=environment_factory,
+        preflight_checks=preflight_checks,
+        clock=clock,
+        final_test_authorized=primary["validation_gate"]["passed"],
+    )
+    replay_elapsed = _finite_number(clock(), "clock value") - replay_started
+    for name, elapsed in (
+        ("primary", primary_elapsed),
+        ("replay", replay_elapsed),
+    ):
+        if elapsed < 0.0:
+            raise WarmStartBlocked(f"{name} execution clock moved backwards")
+    classification = classify_warm_start_results(
+        primary,
+        replay,
+        validated["study"]["evaluation"]["thresholds"],
+    )
+    return {
+        "classification": classification,
+        "journal": build_warm_start_execution_journal(
+            primary_elapsed_seconds=primary_elapsed,
+            replay_elapsed_seconds=replay_elapsed,
+            wall_time_budget_seconds=validated["study"]["limits"][
+                "max_wall_seconds_per_execution"
+            ],
+        ),
+        "primary": primary,
+        "replay": replay,
+    }
+
+
+def _hash_bound_files_at_commit(
+    repo_root: Path, commit: str, source_files: Sequence[str]
+) -> str:
+    digest = hashlib.sha256()
+    for relative in source_files:
+        relative_path = Path(relative)
+        if relative_path.is_absolute() or ".." in relative_path.parts:
+            raise WarmStartBlocked(f"bound source escapes repository: {relative}")
+        canonical_relative = relative_path.as_posix()
+        try:
+            completed = subprocess.run(
+                ["git", "show", f"{commit}:{canonical_relative}"],
+                cwd=repo_root,
+                check=True,
+                capture_output=True,
+            )
+        except (OSError, subprocess.CalledProcessError) as exc:
+            raise WarmStartBlocked(
+                f"cannot bind {canonical_relative} at commit {commit}: {exc}"
+            ) from exc
+        relative_bytes = canonical_relative.encode("utf-8")
+        data = completed.stdout
+        digest.update(len(relative_bytes).to_bytes(4, "big"))
+        digest.update(relative_bytes)
+        digest.update(len(data).to_bytes(8, "big"))
+        digest.update(data)
+    return digest.hexdigest()
 
 
 def collect_implementation_fit_actual_identity(
@@ -2044,11 +2147,13 @@ def collect_implementation_fit_actual_identity(
             raise WarmStartBlocked("adapter fit lacks native baseline checks")
         adapter_commit = identity["adapter_provenance"]["adapter_commit"]
         _verify_sources_at_commit(root, adapter_commit, ADAPTER_SOURCE_FILES)
-        _verify_sources_at_commit(
+        historical_source_sha256 = _hash_bound_files_at_commit(
             root,
             identity["implementation"]["commit"],
             identity["implementation"]["source_files"],
         )
+        if historical_source_sha256 != identity["implementation"]["source_sha256"]:
+            raise WarmStartBlocked("historical implementation source hash mismatch")
     except SmokeBlocked as exc:
         raise WarmStartBlocked(str(exc)) from exc
 
@@ -2093,15 +2198,153 @@ def collect_implementation_fit_actual_identity(
         "implementation": {
             "commit": identity["implementation"]["commit"],
             "source_files": list(identity["implementation"]["source_files"]),
-            "source_sha256": hash_bound_files(
-                root, identity["implementation"]["source_files"]
-            ),
+            "source_sha256": historical_source_sha256,
         },
         "prior_evidence": {
             name: _actual_binding(root, binding)
             for name, binding in sorted(identity["prior_evidence"].items())
         },
         "runtime": {"python": sys.version.split()[0], "torch": torch.__version__},
+    }
+
+
+def _warm_start_identity_bindings(
+    identity: Mapping[str, Any],
+) -> dict[str, Mapping[str, Any]]:
+    bindings = {
+        "adapter_fit_input": identity["adapter_fit_input"],
+        "adapter_fit_report": identity["adapter_fit_report"],
+        "implementation_fit_input": identity["implementation_fit_input"],
+        "implementation_fit_report": identity["implementation_fit_report"],
+    }
+    bindings.update(
+        {
+            f"prior_evidence.{name}": binding
+            for name, binding in identity["prior_evidence"].items()
+        }
+    )
+    bindings.update(
+        {
+            f"excluded_baselines.{name}.model": entry["model"]
+            for name, entry in identity["excluded_baselines"].items()
+        }
+    )
+    return dict(sorted(bindings.items()))
+
+
+def validate_warm_start_registration_hash_closure(
+    registration: Mapping[str, Any], *, repo_root: Path | str
+) -> dict[str, Any]:
+    """Validate every repository-local registration binding by size and hash."""
+    validated = validate_warm_start_registration(registration)
+    root = Path(repo_root).resolve()
+    actual = {}
+    try:
+        for name, binding in _warm_start_identity_bindings(
+            validated["identity"]
+        ).items():
+            observed = _actual_binding(root, binding)
+            if canonical_json_bytes(observed) != canonical_json_bytes(binding):
+                raise WarmStartBlocked(f"registered binding mismatch: {name}")
+            actual[name] = observed
+    except SmokeBlocked as exc:
+        raise WarmStartBlocked(str(exc)) from exc
+    return {
+        "bindings": actual,
+        "registration_sha256": sha256_bytes(canonical_json_bytes(validated)),
+    }
+
+
+def collect_warm_start_actual_identity(
+    registration: Mapping[str, Any],
+    *,
+    repo_root: Path | str,
+    simulator_repo: Path | str,
+    module_path: Path | str,
+    native_module: Any,
+) -> dict[str, Any]:
+    """Rebuild study identity and validate bound implementation-fit evidence."""
+    validated = validate_warm_start_registration(registration)
+    identity = validated["identity"]
+    root = Path(repo_root).resolve()
+    validate_warm_start_registration_hash_closure(validated, repo_root=root)
+    try:
+        implementation_fit_input = _load_bound_json(
+            root,
+            identity["implementation_fit_input"],
+            "warm-start implementation-fit input",
+        )
+        implementation_fit_report = _load_bound_json(
+            root,
+            identity["implementation_fit_report"],
+            "warm-start implementation-fit report",
+        )
+    except SmokeBlocked as exc:
+        raise WarmStartBlocked(str(exc)) from exc
+    fit_input = validate_implementation_fit_input(implementation_fit_input)
+    fit_report = validate_implementation_fit_report(implementation_fit_report)
+    if fit_report["fit_input_sha256"] != sha256_bytes(
+        canonical_json_bytes(fit_input)
+    ):
+        raise WarmStartBlocked("implementation-fit report input hash mismatch")
+    if canonical_json_bytes(fit_report["identity"]) != canonical_json_bytes(
+        fit_input["identity"]
+    ):
+        raise WarmStartBlocked("implementation-fit report identity mismatch")
+    if fit_report["verdict"] != "implementation_fit_ready":
+        raise WarmStartBlocked("implementation-fit evidence is not ready")
+
+    fit_actual = collect_implementation_fit_actual_identity(
+        fit_input,
+        repo_root=root,
+        simulator_repo=simulator_repo,
+        module_path=module_path,
+        native_module=native_module,
+    )
+    fit_mismatches = _identity_mismatches(fit_input["identity"], fit_actual)
+    if fit_mismatches:
+        raise WarmStartBlocked(
+            "implementation-fit runtime identity mismatch: "
+            + ", ".join(fit_mismatches)
+        )
+    try:
+        _verify_sources_at_commit(
+            root,
+            identity["implementation"]["commit"],
+            identity["implementation"]["source_files"],
+        )
+    except SmokeBlocked as exc:
+        raise WarmStartBlocked(str(exc)) from exc
+    return {
+        "adapter_fit_input": _actual_binding(root, identity["adapter_fit_input"]),
+        "adapter_fit_report": _actual_binding(root, identity["adapter_fit_report"]),
+        "adapter_provenance": fit_actual["adapter_provenance"],
+        "excluded_baselines": {
+            name: {
+                "feature_version": entry["feature_version"],
+                "model": _actual_binding(root, entry["model"]),
+                "reason": entry["reason"],
+            }
+            for name, entry in sorted(identity["excluded_baselines"].items())
+        },
+        "implementation": {
+            "commit": identity["implementation"]["commit"],
+            "source_files": list(identity["implementation"]["source_files"]),
+            "source_sha256": hash_bound_files(
+                root, identity["implementation"]["source_files"]
+            ),
+        },
+        "implementation_fit_input": _actual_binding(
+            root, identity["implementation_fit_input"]
+        ),
+        "implementation_fit_report": _actual_binding(
+            root, identity["implementation_fit_report"]
+        ),
+        "prior_evidence": {
+            name: _actual_binding(root, binding)
+            for name, binding in sorted(identity["prior_evidence"].items())
+        },
+        "runtime": copy.deepcopy(fit_actual["runtime"]),
     }
 
 
@@ -2985,58 +3228,118 @@ def build_parser() -> argparse.ArgumentParser:
     fit.add_argument("--dll-directory", type=Path, action="append", default=[])
     fit.add_argument("--json-output", type=Path, required=True)
     fit.add_argument("--markdown-output", type=Path, required=True)
+    study = commands.add_parser(
+        "study", description="Run one registered primary execution and replay."
+    )
+    study.add_argument("--input", type=Path, required=True)
+    study.add_argument("--simulator-repo", type=Path, required=True)
+    study.add_argument("--module", type=Path, required=True)
+    study.add_argument("--dll-directory", type=Path, action="append", default=[])
+    study.add_argument("--output-dir", type=Path, required=True)
     return parser
 
 
 def main(argv: Sequence[str] | None = None) -> int:
     args = build_parser().parse_args(argv)
-    if args.command != "implementation-fit":
-        raise WarmStartBlocked(f"unsupported command: {args.command}")
     repo_root = Path(__file__).resolve().parents[1]
     try:
-        fit_input = load_implementation_fit_input(args.input)
-        module = load_native_module(args.module, dll_directories=args.dll_directory)
-        actual_identity = collect_implementation_fit_actual_identity(
-            fit_input,
-            repo_root=repo_root,
-            simulator_repo=args.simulator_repo,
-            module_path=args.module,
-            native_module=module,
-        )
-        provenance = actual_identity["adapter_provenance"]
-
-        def environment_factory(seed: int) -> NativeSimulatorEnvironment:
-            return NativeSimulatorEnvironment(
-                module.Environment(seed, fit_input["fit"]["ascension"]), provenance
+        if args.command == "implementation-fit":
+            fit_input = load_implementation_fit_input(args.input)
+            module = load_native_module(args.module, dll_directories=args.dll_directory)
+            actual_identity = collect_implementation_fit_actual_identity(
+                fit_input,
+                repo_root=repo_root,
+                simulator_repo=args.simulator_repo,
+                module_path=args.module,
+                native_module=module,
             )
+            provenance = actual_identity["adapter_provenance"]
 
-        report = run_implementation_fit(
-            fit_input=fit_input,
-            actual_identity=actual_identity,
-            environment_factory=environment_factory,
-        )
-        publish_implementation_fit_report(
-            report,
-            json_output=args.json_output,
-            markdown_output=args.markdown_output,
-        )
+            def environment_factory(seed: int) -> NativeSimulatorEnvironment:
+                return NativeSimulatorEnvironment(
+                    module.Environment(seed, fit_input["fit"]["ascension"]),
+                    provenance,
+                )
+
+            report = run_implementation_fit(
+                fit_input=fit_input,
+                actual_identity=actual_identity,
+                environment_factory=environment_factory,
+            )
+            publish_implementation_fit_report(
+                report,
+                json_output=args.json_output,
+                markdown_output=args.markdown_output,
+            )
+            result = {
+                "json_output": str(args.json_output),
+                "markdown_output": str(args.markdown_output),
+                "verdict": report["verdict"],
+            }
+            success = report["verdict"] == "implementation_fit_ready"
+        elif args.command == "study":
+            registration = load_warm_start_registration(args.input)
+            module = load_native_module(args.module, dll_directories=args.dll_directory)
+            closure = validate_warm_start_registration_hash_closure(
+                registration, repo_root=repo_root
+            )
+            actual_identity = collect_warm_start_actual_identity(
+                registration,
+                repo_root=repo_root,
+                simulator_repo=args.simulator_repo,
+                module_path=args.module,
+                native_module=module,
+            )
+            mismatches = _identity_mismatches(
+                registration["identity"], actual_identity
+            )
+            if mismatches:
+                raise WarmStartBlocked(
+                    "runtime identity mismatch: " + ", ".join(mismatches)
+                )
+            provenance = actual_identity["adapter_provenance"]
+
+            def environment_factory(seed: int) -> NativeSimulatorEnvironment:
+                return NativeSimulatorEnvironment(
+                    module.Environment(seed, registration["study"]["ascension"]),
+                    provenance,
+                )
+
+            study = run_warm_start_study(
+                registration=registration,
+                environment_factory=environment_factory,
+                preflight_checks={
+                    "implementation_fit": True,
+                    "identity": True,
+                    "registration_hash_closure": bool(
+                        closure["registration_sha256"]
+                    ),
+                },
+            )
+            artifacts = build_warm_start_artifacts(
+                registration=registration,
+                primary=study["primary"],
+                replay=study["replay"],
+                classification=study["classification"],
+            )
+            publish_warm_start_artifacts(args.output_dir, artifacts)
+            publish_warm_start_execution_journal(args.output_dir, study["journal"])
+            result = {
+                "output_dir": str(args.output_dir),
+                "verdict": study["classification"]["verdict"],
+            }
+            success = study["classification"]["verdict"] != "blocked"
+        else:
+            raise WarmStartBlocked(f"unsupported command: {args.command}")
+
     except (ImportError, OSError, SimulatorAdapterError, WarmStartBlocked) as exc:
         print(
             json.dumps({"command": args.command, "error": str(exc), "verdict": "blocked"}),
             file=sys.stderr,
         )
         return 2
-    print(
-        json.dumps(
-            {
-                "json_output": str(args.json_output),
-                "markdown_output": str(args.markdown_output),
-                "verdict": report["verdict"],
-            },
-            sort_keys=True,
-        )
-    )
-    return 0 if report["verdict"] == "implementation_fit_ready" else 2
+    print(json.dumps(result, sort_keys=True))
+    return 0 if success else 2
 
 
 if __name__ == "__main__":
