@@ -1378,6 +1378,7 @@ class CurrentPolicyBridgeSession:
             raise BridgeBlocked("tracker_reenabled")
         category = snapshot.get("category")
         event_option_semantics = None
+        event_observation = None
         if category == "event":
             hydration_state = _mapping(
                 hydration_snapshot.get("state"), "hydration snapshot.state"
@@ -1398,6 +1399,35 @@ class CurrentPolicyBridgeSession:
             raise BridgeBlocked("source_snapshot_mutated_during_evaluation")
         if canonical_json_bytes(candidates) != before_candidates:
             raise BridgeBlocked("source_candidates_mutated_during_evaluation")
+        if category == "event":
+            source_state = _mapping(snapshot.get("state"), "snapshot.state")
+            source_context = _mapping(
+                source_state.get("decision_context"),
+                "snapshot.state.decision_context",
+            )
+            current_position = getattr(action, "choice_index", None)
+            matching_semantics = [
+                row
+                for row in _sequence(
+                    event_option_semantics, "event option semantics"
+                )
+                if isinstance(row, Mapping)
+                and row.get("current_position") == current_position
+            ]
+            if len(matching_semantics) != 1:
+                raise BridgeBlocked(
+                    "event_option_position_invalid", current_position
+                )
+            event_observation = {
+                "current_event_id": hydration_context.get("event_id"),
+                "current_position": current_position,
+                "event_data": source_context.get("event_data"),
+                "semantics_source": event_semantics_source,
+                "simulator_choice_index": matching_semantics[0].get(
+                    "simulator_choice_index"
+                ),
+                "upstream_event_id": source_context.get("event_id"),
+            }
         self._last_decision_index = decision_index
         result = {
             "action_id": action_id,
@@ -1412,6 +1442,7 @@ class CurrentPolicyBridgeSession:
         }
         if category == "event":
             result["event_semantics_source"] = event_semantics_source
+            result["event_observation"] = event_observation
         return result
 
 

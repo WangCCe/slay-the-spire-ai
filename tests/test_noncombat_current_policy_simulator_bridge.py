@@ -790,6 +790,14 @@ def test_current_session_uses_resolved_liars_game_semantics(metadata):
     assert result["event_semantics_source"] == (
         "sts_lightspeed_total_event_observation_v2"
     )
+    assert result["event_observation"] == {
+        "current_event_id": "Liars Game",
+        "current_position": 1,
+        "event_data": 0,
+        "semantics_source": "sts_lightspeed_total_event_observation_v2",
+        "simulator_choice_index": 1,
+        "upstream_event_id": "Liars Game",
+    }
     assert snapshot == before_snapshot
     assert candidates == before_candidates
 
@@ -818,6 +826,14 @@ def test_current_session_maps_cleric_visible_position_to_sparse_candidate(metada
     assert result["event_semantics_source"] == (
         "sts_lightspeed_total_event_observation_v2"
     )
+    assert result["event_observation"] == {
+        "current_event_id": "The Cleric",
+        "current_position": 0,
+        "event_data": 0,
+        "semantics_source": "sts_lightspeed_total_event_observation_v2",
+        "simulator_choice_index": 2,
+        "upstream_event_id": "The Cleric",
+    }
     assert snapshot == before_snapshot
     assert candidates == before_candidates
 
