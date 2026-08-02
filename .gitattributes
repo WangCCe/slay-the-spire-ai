@@ -37,3 +37,13 @@ reports/noncombat_ope_* -text whitespace=cr-at-eol
 # Preserve deterministic study-feasibility source and artifact bytes.
 reports/noncombat_study_feasibility_* text eol=lf
 tests/test_noncombat_study_feasibility.py text eol=lf
+
+# Preserve deterministic simulator-adapter source, fixtures, and reports.
+analysis_scripts/noncombat_simulator_adapter.py text eol=lf
+analysis_scripts/noncombat_simulator_fit.py text eol=lf
+simulator_adapters/sts_lightspeed/** text eol=lf
+tests/fixtures/noncombat_simulator_adapter/** text eol=lf
+tests/test_noncombat_simulator_adapter.py text eol=lf
+tests/test_noncombat_simulator_fit.py text eol=lf
+reports/noncombat_simulator_fit_* text eol=lf
+openspec/changes/add-noncombat-simulator-adapter-poc/** text eol=lf

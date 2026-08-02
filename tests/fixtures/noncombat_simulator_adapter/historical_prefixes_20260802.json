@@ -1,0 +1,173 @@
+{
+  "runs": [
+    {
+      "ascension_level": 0,
+      "decisions": [
+        {
+          "candidates": [
+            "Blind",
+            "Deep Breath",
+            "Enlightenment"
+          ],
+          "floor": 0,
+          "picked": "Enlightenment"
+        },
+        {
+          "candidates": [
+            "Body Slam",
+            "Perfected Strike",
+            "True Grit"
+          ],
+          "floor": 1,
+          "picked": "Perfected Strike"
+        }
+      ],
+      "neow_bonus": "RANDOM_COLORLESS",
+      "run_file": "1785609165.run",
+      "seed_played": "-5834353561679991233",
+      "sha256": "a0db41edc99692312d2f1af49c9bdc6c1fd13fa2f8391afa832bd2cdf6b7cdc6",
+      "size_bytes": 3631
+    },
+    {
+      "ascension_level": 0,
+      "decisions": [
+        {
+          "candidates": [
+            "Bandage Up",
+            "Deep Breath",
+            "Dramatic Entrance"
+          ],
+          "floor": 0,
+          "picked": "Bandage Up"
+        },
+        {
+          "candidates": [
+            "Havoc",
+            "Headbutt",
+            "Wild Strike"
+          ],
+          "floor": 1,
+          "picked": "Headbutt"
+        }
+      ],
+      "neow_bonus": "RANDOM_COLORLESS",
+      "run_file": "1785608597.run",
+      "seed_played": "-1782641100005079425",
+      "sha256": "27d9d962caf01ceb4437f1c16ad709ffc8097e6b546e9922752130c5a9ad8a5b",
+      "size_bytes": 2647
+    },
+    {
+      "ascension_level": 0,
+      "decisions": [
+        {
+          "candidates": [
+            "Enlightenment",
+            "Panacea",
+            "Trip"
+          ],
+          "floor": 0,
+          "picked": "Trip"
+        },
+        {
+          "candidates": [
+            "Clothesline",
+            "Pommel Strike",
+            "Searing Blow"
+          ],
+          "floor": 1,
+          "picked": "Clothesline"
+        }
+      ],
+      "neow_bonus": "RANDOM_COLORLESS",
+      "run_file": "1785607911.run",
+      "seed_played": "1998965815521405489",
+      "sha256": "c4b5382883a01f74775c4ea5bd00205ee1b7eb21fae0fe6b28349b6ccbf0704d",
+      "size_bytes": 5765
+    },
+    {
+      "ascension_level": 0,
+      "decisions": [
+        {
+          "candidates": [
+            "Blind",
+            "Deep Breath",
+            "Good Instincts"
+          ],
+          "floor": 0,
+          "picked": "Blind"
+        },
+        {
+          "candidates": [
+            "Havoc",
+            "Pommel Strike",
+            "Sentinel"
+          ],
+          "floor": 1,
+          "picked": "Pommel Strike"
+        }
+      ],
+      "neow_bonus": "RANDOM_COLORLESS",
+      "run_file": "1784725335.run",
+      "seed_played": "-6130694970859591097",
+      "sha256": "018faacc62ef97737b3022ecf1640701ea6c90b5493b19b9d6e80e5b4fcac888",
+      "size_bytes": 3411
+    },
+    {
+      "ascension_level": 0,
+      "decisions": [
+        {
+          "candidates": [
+            "Deep Breath",
+            "Forethought",
+            "Trip"
+          ],
+          "floor": 0,
+          "picked": "Trip"
+        },
+        {
+          "candidates": [
+            "Clash",
+            "Second Wind",
+            "Sever Soul"
+          ],
+          "floor": 1,
+          "picked": "Sever Soul"
+        }
+      ],
+      "neow_bonus": "RANDOM_COLORLESS",
+      "run_file": "1784725042.run",
+      "seed_played": "-1926183682297532037",
+      "sha256": "208d3d4a3a102085c9b3868513106f0d44f938097425ca1db5189e38500c3641",
+      "size_bytes": 3719
+    },
+    {
+      "ascension_level": 0,
+      "decisions": [
+        {
+          "candidates": [
+            "Forethought",
+            "Good Instincts",
+            "Trip"
+          ],
+          "floor": 0,
+          "picked": "Trip"
+        },
+        {
+          "candidates": [
+            "Armaments",
+            "Clash",
+            "Headbutt"
+          ],
+          "floor": 1,
+          "picked": "Headbutt"
+        }
+      ],
+      "neow_bonus": "RANDOM_COLORLESS",
+      "run_file": "1784715079.run",
+      "seed_played": "450893982247702715",
+      "sha256": "2b80d6d6870c305913a742c5377c85c1c8fa4a895b37cc22ff2f893281b668c4",
+      "size_bytes": 3443
+    }
+  ],
+  "schema_version": "sts-lightspeed-historical-prefix-v1"
+}
