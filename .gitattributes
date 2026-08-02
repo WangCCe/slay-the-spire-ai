@@ -114,3 +114,5 @@ reports/noncombat_event_option_observation_contract_*/** text eol=lf
 openspec/specs/noncombat-event-option-observation-contract/** text eol=lf
 openspec/changes/implement-total-event-option-observation-bridge/** text eol=lf
 openspec/changes/archive/*-implement-total-event-option-observation-bridge/** text eol=lf
+openspec/changes/run-v3-total-event-native-compatibility/** text eol=lf
+openspec/changes/archive/*-run-v3-total-event-native-compatibility/** text eol=lf
