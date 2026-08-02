@@ -1,0 +1,23 @@
+{
+  "artifact_hashes": {
+    "demonstrations.json": "6b549ad2f54cea6e08f4399e9ec5cda12d20b3bb3f18fa5349cdb544d48050c6",
+    "metrics.json": "d4809a2098d0e6c0a0ee7183cb2569bba4d6b3d1cbde26d90b98ea6278b51fcb",
+    "model.json": "1b14e9cdb046dedb45402f91877ae78a70afc5dd3f02ce4c6fdfdf9f364a21e1",
+    "report.md": "4b936f745b2a5220cd6f95434c627af967e5dd061ec6455021cc71bc3481505f",
+    "trajectories.json": "c9d320a213e49f1f30760104e5c0ae7c0a06d7fabd72225bf7de077b51450bc8"
+  },
+  "authority": {
+    "formal_noncombat_rl": false,
+    "live_gameplay": false,
+    "live_policy_loading": false,
+    "live_study_launch": false,
+    "ope_reinterpretation": false,
+    "policy_promotion": false,
+    "qualification": false,
+    "simulator_rl_training": false,
+    "simulator_training": false
+  },
+  "registration_sha256": "2815274e61c7d4ad8e553190ca234d6303457d9543cd63def541637729340a7a",
+  "schema_version": "noncombat-simulator-baseline-manifest-v1",
+  "verdict": "study_valid_without_baseline_floor"
+}

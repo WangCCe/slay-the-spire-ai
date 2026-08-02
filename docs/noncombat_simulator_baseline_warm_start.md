@@ -2,15 +2,49 @@
 
 ## Status
 
-The implementation-fit evidence is complete. It reused only the already
-observed adapter fit seeds `0..19`, made no policy-quality claim, and granted no
-training or live authority. No native environment has been constructed for the
-fresh study cohorts below.
+The implementation-fit evidence and the one registered study are complete.
+Implementation fit reused only the already observed adapter fit seeds `0..19`.
+The study used train seeds `4000..4031` and validation seeds `5000..5015`, then
+stopped at the preregistered validation gate. Final-test seeds `6000..6031`
+remain untouched.
 
 The study remains a bounded supervised warm-start experiment. Native
 SimpleAgent actions are auxiliary demonstrations, not reward, permanent truth,
 or a policy-promotion target. Current and Bottled remain excluded until their
 simulator feature/action bridges are separately validated.
+
+## Registered Study Result
+
+The primary execution and identical replay matched canonically. Their bounded
+execution times were 428.27 and 431.49 seconds. Training collected 1,291 rows;
+validation collected 705 rows; no final-test dataset or trajectory exists.
+
+| Validation metric | Result | Gate |
+| --- | ---: | ---: |
+| Overall exact teacher action agreement | 0.790071 | at least 0.80 |
+| Macro-category exact agreement | 0.786065 | at least 0.75 |
+| Minimum per-category agreement | 0.640000 | at least 0.60 |
+| Candidate-minus-SimpleAgent mean floor | -4.687500 | at least -1.0 |
+| Paired 95% interval lower bound | -11.689062 | at least -3.0 |
+
+Per-category teacher agreement was 0.640000 for card reward, 0.927536 for
+event, 0.845953 for route, and 0.730769 for shop. On 16 paired validation
+seeds, the candidate averaged floor 20.0 and native SimpleAgent averaged
+24.6875; each policy recorded one victory. The teacher macro and per-category
+checks passed, while overall agreement, mean floor deficit, and lower-bound
+non-inferiority failed.
+
+The verdict is `study_valid_without_baseline_floor`. This is a valid negative
+result, not a blocked execution. It does not authorize formal RL or another
+training run. The next stage is read-only attribution of the existing
+validation divergences before proposing a different warm-start/data-aggregation
+method.
+
+The complete canonical corpus remains in the local result directory. Because
+its raw JSON is 320,965,025 bytes, the repository publishes a deterministic
+13,416,133-byte gzip copy and a raw/compressed hash manifest under
+`reports/noncombat_simulator_baseline_warm_start_20260802_archive/`. Restoring
+the raw file reproduces the SHA-256 bound by the canonical artifact manifest.
 
 ## Committed Implementation-Fit Evidence
 

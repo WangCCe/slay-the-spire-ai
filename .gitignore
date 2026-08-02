@@ -140,6 +140,7 @@ dmypy.json
 /.tools/
 /.codex-tmp/
 /.sts_lightspeed*_build/
+/reports/noncombat_simulator_baseline_warm_start_20260802/demonstrations.json
 /.tmp/
 /.codex_pytest/
 /codex_pytest_*/

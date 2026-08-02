@@ -1,0 +1,107 @@
+{
+  "authority": {
+    "formal_noncombat_rl": false,
+    "live_gameplay": false,
+    "live_policy_loading": false,
+    "live_study_launch": false,
+    "ope_reinterpretation": false,
+    "policy_promotion": false,
+    "qualification": false,
+    "simulator_rl_training": false,
+    "simulator_training": false
+  },
+  "checks": {
+    "episode_budget": true,
+    "final_test_access_contract": true,
+    "identity": true,
+    "implementation_fit": true,
+    "model_frozen": true,
+    "registration": true,
+    "registration_hash_closure": true,
+    "replay_identity": true,
+    "train_four_category_coverage": true
+  },
+  "classification": {
+    "authority": {
+      "formal_noncombat_rl": false,
+      "live_gameplay": false,
+      "live_policy_loading": false,
+      "live_study_launch": false,
+      "ope_reinterpretation": false,
+      "policy_promotion": false,
+      "qualification": false,
+      "simulator_rl_training": false,
+      "simulator_training": false
+    },
+    "blockers": [],
+    "checks": {
+      "episode_budget": true,
+      "final_test_access_contract": true,
+      "identity": true,
+      "implementation_fit": true,
+      "model_frozen": true,
+      "registration": true,
+      "registration_hash_closure": true,
+      "replay_identity": true,
+      "train_four_category_coverage": true
+    },
+    "final_gate": null,
+    "final_test_untouched": true,
+    "quality": "baseline_floor_not_demonstrated",
+    "validation_gate": {
+      "checks": {
+        "macro_category_action_agreement": true,
+        "mean_floor_deficit": false,
+        "noninferiority_lower_bound": false,
+        "overall_action_agreement": false,
+        "per_category_action_agreement": true
+      },
+      "passed": false
+    },
+    "verdict": "study_valid_without_baseline_floor"
+  },
+  "cohort_seed_counts": {
+    "final_test": 32,
+    "train": 32,
+    "validation": 16
+  },
+  "demonstration_row_counts": {
+    "final_test": null,
+    "train": 1291,
+    "validation": 705
+  },
+  "final_model_sha256": "a356ac955e8eff419ce9848c6e26cd0992f174656d4f5f8c4a2414659967215a",
+  "final_test": null,
+  "initial_model_sha256": "ffcc1320e84c1bc5a5520c908961f0eb6de5680a311fb34b2101ad78669b072b",
+  "primary_execution_sha256": "a982a3242d643fd505b0a476249ff1f542cb92f395149db43551551c7dae2dc4",
+  "registration_sha256": "2815274e61c7d4ad8e553190ca234d6303457d9543cd63def541637729340a7a",
+  "replay_execution_sha256": "a982a3242d643fd505b0a476249ff1f542cb92f395149db43551551c7dae2dc4",
+  "schema_version": "noncombat-simulator-baseline-metrics-artifact-v1",
+  "training_epochs": 10,
+  "validation": {
+    "floor_difference_ci": {
+      "confidence_level": 0.95,
+      "lower": -11.689062499999993,
+      "mean": -4.6875,
+      "resamples": 5000,
+      "upper": 2.5
+    },
+    "gate": {
+      "checks": {
+        "macro_category_action_agreement": true,
+        "mean_floor_deficit": false,
+        "noninferiority_lower_bound": false,
+        "overall_action_agreement": false,
+        "per_category_action_agreement": true
+      },
+      "passed": false
+    },
+    "macro_category_action_agreement": 0.7860646163160637,
+    "overall_action_agreement": 0.7900709219858156,
+    "teacher_row_count": 705,
+    "victories": {
+      "candidate": 1,
+      "native_simple_agent": 1
+    }
+  }
+}

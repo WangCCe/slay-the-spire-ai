@@ -1,0 +1,16 @@
+{
+  "compression": {
+    "format": "gzip",
+    "level": 9,
+    "mtime": 0,
+    "original_name": "demonstrations.json"
+  },
+  "gzip_path": "reports/noncombat_simulator_baseline_warm_start_20260802_archive/demonstrations.json.gz",
+  "gzip_sha256": "221959f47a7d53d6c3b9df2487f34bbac482005b83d212863a59960db21c4816",
+  "gzip_size_bytes": 13416133,
+  "raw_path": "reports/noncombat_simulator_baseline_warm_start_20260802/demonstrations.json",
+  "raw_sha256": "6b549ad2f54cea6e08f4399e9ec5cda12d20b3bb3f18fa5349cdb544d48050c6",
+  "raw_size_bytes": 320965025,
+  "registration_sha256": "2815274e61c7d4ad8e553190ca234d6303457d9543cd63def541637729340a7a",
+  "schema_version": "noncombat-simulator-baseline-corpus-archive-v1"
+}

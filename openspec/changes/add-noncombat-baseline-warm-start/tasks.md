@@ -21,11 +21,11 @@
 
 ## 4. One Registered Warm-Start Study
 
-- [ ] 4.1 Execute exactly one primary registered collection/training/validation pipeline and one identical replay; touch final-test seeds only if the preregistered validation stop gate passes, and do not tune or substitute after observation.
-- [ ] 4.2 Publish the positive, negative, or blocked result with teacher-fit and independent rollout evidence separated, paired floor intervals and victories explicit, deterministic replay checked, and every downstream authority flag false.
+- [x] 4.1 Execute exactly one primary registered collection/training/validation pipeline and one identical replay; touch final-test seeds only if the preregistered validation stop gate passes, and do not tune or substitute after observation.
+- [x] 4.2 Publish the positive, negative, or blocked result with teacher-fit and independent rollout evidence separated, paired floor intervals and victories explicit, deterministic replay checked, and every downstream authority flag false.
 
 ## 5. Verification And Closeout
 
-- [ ] 5.1 Run focused pure regressions, opt-in native integration checks, canonical artifact rehash checks, Python compilation, the registered commit gate, strict OpenSpec validation, and post-execution isolation checks without launching a live game or an unbounded raw full suite.
-- [ ] 5.2 Perform a read-only final audit of cohort isolation, teacher-only semantics, full candidate preservation, model immutability, validation/test separation, primary gate math, deterministic reproduction, provenance, authority, and managed artifact inventory.
+- [x] 5.1 Run focused pure regressions, opt-in native integration checks, canonical artifact rehash checks, Python compilation, the registered commit gate, strict OpenSpec validation, and post-execution isolation checks without launching a live game or an unbounded raw full suite.
+- [x] 5.2 Perform a read-only final audit of cohort isolation, teacher-only semantics, full candidate preservation, model immutability, validation/test separation, primary gate math, deterministic reproduction, provenance, authority, and managed artifact inventory.
 - [ ] 5.3 Update project direction and simulator documentation, sync accepted delta specs, archive the completed change, commit only scoped files, push `master`, and preserve all unrelated local artifacts.

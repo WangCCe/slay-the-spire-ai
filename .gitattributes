@@ -56,6 +56,16 @@ reports/noncombat_simulator_policy_validity_* text eol=lf
 reports/noncombat_simulator_policy_validity_*/** text eol=lf
 openspec/changes/add-noncombat-simulator-policy-validity-study/** text eol=lf
 
+# Preserve baseline warm-start source and evidence bytes.
+analysis_scripts/noncombat_simulator_baseline_warm_start.py text eol=lf
+tests/test_noncombat_simulator_baseline_warm_start.py text eol=lf
+tests/test_noncombat_simulator_baseline_warm_start_native.py text eol=lf
+docs/noncombat_simulator_baseline_warm_start.md text eol=lf
+reports/noncombat_simulator_baseline_warm_start_* text eol=lf
+reports/noncombat_simulator_baseline_warm_start_*/** text eol=lf
+reports/noncombat_simulator_baseline_warm_start_*_archive/*.gz -text
+openspec/changes/add-noncombat-baseline-warm-start/** text eol=lf
+
 # Preserve bounded simulator-training implementation and canonical evidence bytes.
 analysis_scripts/noncombat_policy_model.py text eol=lf
 analysis_scripts/noncombat_simulator_training_smoke.py text eol=lf
