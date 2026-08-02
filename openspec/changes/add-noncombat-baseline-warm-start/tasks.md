@@ -4,7 +4,7 @@
 - [x] 1.2 Add canonical native-demonstration row and dataset builders with complete ordered candidates, target mapping, policy-view hashes, category/provenance fields, successor summaries, and deterministic byte identity; cover them with fake-environment regressions.
 - [x] 1.3 Add the fixed seeded `candidate-ranker-mlp-v1`, category-balanced candidate-masked cross entropy, finite-state checks, canonical model serialization/loading, and full-candidate greedy inference; prove deterministic updates and candidate preservation.
 - [x] 1.4 Add teacher-fit, paired rollout, deterministic bootstrap, validation-stop, final non-inferiority, and no-authority classification helpers with positive, negative, blocked, and untouched-test regressions.
-- [ ] 1.5 Add atomic hash-closed dataset/model/trajectory/metric/report/manifest publication plus a noncanonical timing journal, including prior-complete-set preservation and artifact revalidation tests.
+- [x] 1.5 Add atomic hash-closed dataset/model/trajectory/metric/report/manifest publication plus a noncanonical timing journal, including prior-complete-set preservation and artifact revalidation tests.
 
 ## 2. Native Adapter Integration And Implementation Fit
 

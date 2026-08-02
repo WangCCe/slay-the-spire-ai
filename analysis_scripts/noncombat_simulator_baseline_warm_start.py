@@ -5,6 +5,7 @@ from __future__ import annotations
 import copy
 import json
 import math
+import os
 import random
 from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass
@@ -19,6 +20,7 @@ from analysis_scripts.noncombat_simulator_adapter import (
     SimulatorAdapterError,
     canonical_json_bytes,
     sha256_bytes,
+    sha256_file,
     validate_candidates,
     validate_native_baseline_action,
     validate_provenance,
@@ -45,7 +47,25 @@ DATASET_SCHEMA_VERSION = "noncombat-simulator-native-demonstration-dataset-v1"
 MODEL_SCHEMA_VERSION = "noncombat-simulator-baseline-warm-start-model-v1"
 TEACHER_FIT_SCHEMA_VERSION = "noncombat-simulator-baseline-teacher-fit-v1"
 ROLLOUT_SCHEMA_VERSION = "noncombat-simulator-baseline-rollouts-v1"
+DEMONSTRATION_ARTIFACT_SCHEMA_VERSION = (
+    "noncombat-simulator-baseline-demonstrations-artifact-v1"
+)
+MODEL_ARTIFACT_SCHEMA_VERSION = "noncombat-simulator-baseline-model-artifact-v1"
+TRAJECTORY_ARTIFACT_SCHEMA_VERSION = (
+    "noncombat-simulator-baseline-trajectories-artifact-v1"
+)
+METRICS_ARTIFACT_SCHEMA_VERSION = "noncombat-simulator-baseline-metrics-artifact-v1"
+MANIFEST_SCHEMA_VERSION = "noncombat-simulator-baseline-manifest-v1"
+JOURNAL_SCHEMA_VERSION = "noncombat-simulator-baseline-journal-v1"
 MODEL_ARCHITECTURE = "candidate-ranker-mlp-v1"
+CANONICAL_ARTIFACT_NAMES = (
+    "artifact_manifest.json",
+    "demonstrations.json",
+    "metrics.json",
+    "model.json",
+    "report.md",
+    "trajectories.json",
+)
 PRIOR_SEEDS = tuple(
     sorted(
         set(range(20))
@@ -1679,3 +1699,467 @@ def classify_warm_start_results(
         "validation_gate": validation_gate,
         "verdict": verdict,
     }
+
+
+def _phase_metric_summary(
+    evidence: Mapping[str, Any] | None, gate: Mapping[str, Any] | None
+) -> dict[str, Any] | None:
+    if evidence is None:
+        return None
+    teacher = _mapping(evidence.get("teacher_fit"), "phase teacher_fit")
+    rollouts = _mapping(evidence.get("rollouts"), "phase rollouts")
+    comparison = _mapping(rollouts.get("comparison"), "phase rollout comparison")
+    return {
+        "floor_difference_ci": copy.deepcopy(comparison.get("floor_difference_ci")),
+        "gate": copy.deepcopy(gate),
+        "macro_category_action_agreement": teacher.get(
+            "macro_category_action_agreement"
+        ),
+        "overall_action_agreement": teacher.get("overall_action_agreement"),
+        "teacher_row_count": teacher.get("row_count"),
+        "victories": copy.deepcopy(rollouts.get("victories")),
+    }
+
+
+def _render_warm_start_report(metrics: Mapping[str, Any]) -> str:
+    classification = _mapping(metrics.get("classification"), "metrics.classification")
+    lines = [
+        "# Non-Combat Simulator Baseline Warm Start",
+        "",
+        f"- Verdict: `{classification['verdict']}`",
+        f"- Quality: `{classification['quality']}`",
+        f"- Registration SHA-256: `{metrics['registration_sha256']}`",
+        f"- Replay identity: `{str(classification['checks']['replay_identity']).lower()}`",
+        f"- Final test untouched: `{str(classification['final_test_untouched']).lower()}`",
+        "",
+        "## Cohorts",
+        "",
+    ]
+    for name, count in sorted(metrics["cohort_seed_counts"].items()):
+        lines.append(f"- {name}: {count} seeds")
+    lines.extend(["", "## Gates", ""])
+    validation = metrics["validation"]
+    lines.append(
+        "- Validation: "
+        + ("passed" if validation["gate"]["passed"] else "not demonstrated")
+    )
+    final_test = metrics["final_test"]
+    if final_test is None:
+        lines.append("- Final test: untouched")
+    else:
+        lines.append(
+            "- Final test: "
+            + ("passed" if final_test["gate"]["passed"] else "not demonstrated")
+        )
+    lines.extend(["", "## Blockers", ""])
+    if classification["blockers"]:
+        lines.extend(f"- {value}" for value in classification["blockers"])
+    else:
+        lines.append("- None")
+    lines.extend(["", "## Authority", ""])
+    lines.extend(
+        f"- {name}: `{str(value).lower()}`"
+        for name, value in sorted(classification["authority"].items())
+    )
+    lines.extend(
+        [
+            "",
+            "## Limitations",
+            "",
+            "- Demonstrations and rollout outcomes are simulator-only evidence.",
+            "- SimpleAgent is auxiliary supervision, not reward or permanent ground truth.",
+            "- This result does not authorize formal RL, live loading, gameplay, OPE, qualification, or promotion.",
+            "- Current and Bottled remain excluded until a simulator feature/action bridge is validated.",
+        ]
+    )
+    return "\n".join(lines) + "\n"
+
+
+def build_warm_start_artifacts(
+    *,
+    registration: Mapping[str, Any],
+    primary: Mapping[str, Any],
+    replay: Mapping[str, Any],
+    classification: Mapping[str, Any],
+) -> dict[str, bytes]:
+    """Build the complete canonical artifact set entirely in memory."""
+    validated_registration = validate_warm_start_registration(registration)
+    primary = copy.deepcopy(_mapping(primary, "primary execution"))
+    replay = copy.deepcopy(_mapping(replay, "replay execution"))
+    expected_classification = classify_warm_start_results(
+        primary,
+        replay,
+        validated_registration["study"]["evaluation"]["thresholds"],
+    )
+    if canonical_json_bytes(classification) != canonical_json_bytes(
+        expected_classification
+    ):
+        raise WarmStartBlocked("warm-start classification does not match executions")
+    classification = copy.deepcopy(expected_classification)
+    datasets = _mapping(primary.get("datasets"), "primary.datasets")
+    _require_keys(
+        datasets, {"final_test", "train", "validation"}, "primary.datasets"
+    )
+    training = _mapping(primary.get("training"), "primary.training")
+    _require_keys(
+        training, {"final_model", "history", "initial_model"}, "primary.training"
+    )
+    registration_sha256 = sha256_bytes(canonical_json_bytes(validated_registration))
+    primary_sha256 = sha256_bytes(canonical_json_bytes(primary))
+    replay_sha256 = sha256_bytes(canonical_json_bytes(replay))
+    initial_model_sha256 = sha256_bytes(
+        canonical_json_bytes(training["initial_model"])
+    )
+    final_model_sha256 = sha256_bytes(canonical_json_bytes(training["final_model"]))
+
+    demonstrations = {
+        "datasets": copy.deepcopy(datasets),
+        "registration_sha256": registration_sha256,
+        "schema_version": DEMONSTRATION_ARTIFACT_SCHEMA_VERSION,
+    }
+    model = {
+        "final_model": copy.deepcopy(training["final_model"]),
+        "final_model_sha256": final_model_sha256,
+        "history": copy.deepcopy(training["history"]),
+        "initial_model": copy.deepcopy(training["initial_model"]),
+        "initial_model_sha256": initial_model_sha256,
+        "registration_sha256": registration_sha256,
+        "schema_version": MODEL_ARTIFACT_SCHEMA_VERSION,
+    }
+    trajectories = {
+        "final_test": copy.deepcopy(primary.get("final_test")),
+        "primary_execution_sha256": primary_sha256,
+        "registration_sha256": registration_sha256,
+        "replay_execution_sha256": replay_sha256,
+        "schema_version": TRAJECTORY_ARTIFACT_SCHEMA_VERSION,
+        "structural_checks": copy.deepcopy(primary.get("structural_checks")),
+        "validation": copy.deepcopy(primary.get("validation")),
+    }
+    cohorts = validated_registration["study"]["cohorts"]
+    metrics = {
+        "authority": copy.deepcopy(classification["authority"]),
+        "checks": copy.deepcopy(classification["checks"]),
+        "classification": classification,
+        "cohort_seed_counts": {
+            "final_test": len(cohorts["final_test_seeds"]),
+            "train": len(cohorts["train_seeds"]),
+            "validation": len(cohorts["validation_seeds"]),
+        },
+        "demonstration_row_counts": {
+            name: None if dataset is None else dataset.get("row_count")
+            for name, dataset in sorted(datasets.items())
+        },
+        "final_model_sha256": final_model_sha256,
+        "final_test": _phase_metric_summary(
+            primary.get("final_test"), classification.get("final_gate")
+        ),
+        "initial_model_sha256": initial_model_sha256,
+        "primary_execution_sha256": primary_sha256,
+        "registration_sha256": registration_sha256,
+        "replay_execution_sha256": replay_sha256,
+        "schema_version": METRICS_ARTIFACT_SCHEMA_VERSION,
+        "training_epochs": len(training["history"]),
+        "validation": _phase_metric_summary(
+            _mapping(primary.get("validation"), "primary.validation"),
+            classification.get("validation_gate"),
+        ),
+    }
+    payloads = {
+        "demonstrations.json": canonical_json_bytes(demonstrations),
+        "metrics.json": canonical_json_bytes(metrics),
+        "model.json": canonical_json_bytes(model),
+        "report.md": _render_warm_start_report(metrics).encode("utf-8"),
+        "trajectories.json": canonical_json_bytes(trajectories),
+    }
+    manifest = {
+        "artifact_hashes": {
+            name: sha256_bytes(payload) for name, payload in sorted(payloads.items())
+        },
+        "authority": copy.deepcopy(classification["authority"]),
+        "registration_sha256": registration_sha256,
+        "schema_version": MANIFEST_SCHEMA_VERSION,
+        "verdict": classification["verdict"],
+    }
+    payloads["artifact_manifest.json"] = canonical_json_bytes(manifest)
+    validate_warm_start_artifact_payloads(payloads)
+    return payloads
+
+
+def _load_artifact_json(artifacts: Mapping[str, bytes], name: str) -> dict[str, Any]:
+    try:
+        value = json.loads(artifacts[name])
+    except (KeyError, UnicodeError, json.JSONDecodeError) as exc:
+        raise WarmStartBlocked(f"canonical artifact {name} is invalid: {exc}") from exc
+    return _mapping(value, f"canonical artifact {name}")
+
+
+def _validate_warm_start_artifact_semantics(
+    *,
+    manifest: Mapping[str, Any],
+    demonstrations: Mapping[str, Any],
+    metrics: Mapping[str, Any],
+    model: Mapping[str, Any],
+    trajectories: Mapping[str, Any],
+) -> None:
+    expected_schemas = {
+        "demonstrations": DEMONSTRATION_ARTIFACT_SCHEMA_VERSION,
+        "metrics": METRICS_ARTIFACT_SCHEMA_VERSION,
+        "model": MODEL_ARTIFACT_SCHEMA_VERSION,
+        "trajectories": TRAJECTORY_ARTIFACT_SCHEMA_VERSION,
+    }
+    payloads = {
+        "demonstrations": demonstrations,
+        "metrics": metrics,
+        "model": model,
+        "trajectories": trajectories,
+    }
+    registration_sha256 = manifest.get("registration_sha256")
+    if not _is_hex(registration_sha256, 64):
+        raise WarmStartBlocked("canonical registration SHA-256 is invalid")
+    for name, payload in payloads.items():
+        if payload.get("schema_version") != expected_schemas[name]:
+            raise WarmStartBlocked(f"canonical {name} schema mismatch")
+        if payload.get("registration_sha256") != registration_sha256:
+            raise WarmStartBlocked(f"canonical {name} registration mismatch")
+
+    authority = manifest.get("authority")
+    classification = _mapping(metrics.get("classification"), "metrics.classification")
+    valid_verdicts = {
+        "blocked",
+        "study_valid_with_baseline_floor",
+        "study_valid_without_baseline_floor",
+    }
+    if (
+        not isinstance(authority, Mapping)
+        or dict(authority) != _authority()
+        or metrics.get("authority") != authority
+        or classification.get("authority") != authority
+        or classification.get("verdict") != manifest.get("verdict")
+        or manifest.get("verdict") not in valid_verdicts
+    ):
+        raise WarmStartBlocked("canonical artifact verdict or authority mismatch")
+
+    datasets = _mapping(demonstrations.get("datasets"), "demonstrations.datasets")
+    _require_keys(
+        datasets, {"final_test", "train", "validation"}, "demonstrations.datasets"
+    )
+    for name in ("train", "validation"):
+        dataset = _mapping(datasets[name], f"demonstrations.datasets.{name}")
+        if dataset.get("schema_version") != DATASET_SCHEMA_VERSION:
+            raise WarmStartBlocked(f"canonical {name} dataset schema mismatch")
+        if dataset.get("cohort") != name:
+            raise WarmStartBlocked(f"canonical {name} dataset cohort mismatch")
+    if datasets["final_test"] is not None:
+        final_dataset = _mapping(
+            datasets["final_test"], "demonstrations.datasets.final_test"
+        )
+        if (
+            final_dataset.get("schema_version") != DATASET_SCHEMA_VERSION
+            or final_dataset.get("cohort") != "final_test"
+        ):
+            raise WarmStartBlocked("canonical final_test dataset mismatch")
+    final_untouched = classification.get("final_test_untouched")
+    if final_untouched is not (datasets["final_test"] is None):
+        raise WarmStartBlocked("canonical final-test dataset access mismatch")
+    if (trajectories.get("final_test") is None) is not bool(final_untouched):
+        raise WarmStartBlocked("canonical final-test trajectory access mismatch")
+
+    initial_payload = _mapping(model.get("initial_model"), "model.initial_model")
+    final_payload = _mapping(model.get("final_model"), "model.final_model")
+    for name, payload in (("initial", initial_payload), ("final", final_payload)):
+        loaded = load_warm_start_model(
+            payload, expected_hash_dim=1024, expected_hidden_dim=128
+        )
+        if canonical_warm_start_model_payload(loaded) != payload:
+            raise WarmStartBlocked(f"canonical {name} model mismatch")
+    initial_sha256 = sha256_bytes(canonical_json_bytes(initial_payload))
+    final_sha256 = sha256_bytes(canonical_json_bytes(final_payload))
+    if (
+        model.get("initial_model_sha256") != initial_sha256
+        or model.get("final_model_sha256") != final_sha256
+        or metrics.get("initial_model_sha256") != initial_sha256
+        or metrics.get("final_model_sha256") != final_sha256
+    ):
+        raise WarmStartBlocked("canonical model hash mismatch")
+
+    primary_sha256 = trajectories.get("primary_execution_sha256")
+    replay_sha256 = trajectories.get("replay_execution_sha256")
+    if not _is_hex(primary_sha256, 64) or not _is_hex(replay_sha256, 64):
+        raise WarmStartBlocked("canonical execution SHA-256 is invalid")
+    if (
+        metrics.get("primary_execution_sha256") != primary_sha256
+        or metrics.get("replay_execution_sha256") != replay_sha256
+        or classification.get("checks", {}).get("replay_identity")
+        is not (primary_sha256 == replay_sha256)
+    ):
+        raise WarmStartBlocked("canonical execution identity mismatch")
+
+
+def validate_warm_start_artifact_payloads(
+    artifacts: Mapping[str, bytes]
+) -> dict[str, Any]:
+    """Validate an in-memory canonical artifact set and its semantic links."""
+    if set(artifacts) != set(CANONICAL_ARTIFACT_NAMES):
+        raise WarmStartBlocked("canonical artifact set is incomplete")
+    if any(not isinstance(payload, bytes) for payload in artifacts.values()):
+        raise WarmStartBlocked("canonical artifacts must be bytes")
+    manifest = _load_artifact_json(artifacts, "artifact_manifest.json")
+    if manifest.get("schema_version") != MANIFEST_SCHEMA_VERSION:
+        raise WarmStartBlocked("artifact manifest schema mismatch")
+    expected_hashes = {
+        name: sha256_bytes(artifacts[name])
+        for name in sorted(artifacts)
+        if name != "artifact_manifest.json"
+    }
+    if manifest.get("artifact_hashes") != expected_hashes:
+        raise WarmStartBlocked("artifact manifest hash closure mismatch")
+    try:
+        report = artifacts["report.md"].decode("utf-8")
+    except UnicodeError as exc:
+        raise WarmStartBlocked(f"canonical report is invalid UTF-8: {exc}") from exc
+    if not report.startswith("# Non-Combat Simulator Baseline Warm Start\n"):
+        raise WarmStartBlocked("canonical report header mismatch")
+    _validate_warm_start_artifact_semantics(
+        manifest=manifest,
+        demonstrations=_load_artifact_json(artifacts, "demonstrations.json"),
+        metrics=_load_artifact_json(artifacts, "metrics.json"),
+        model=_load_artifact_json(artifacts, "model.json"),
+        trajectories=_load_artifact_json(artifacts, "trajectories.json"),
+    )
+    return manifest
+
+
+def publish_warm_start_artifacts(
+    output_dir: Path | str,
+    artifacts: Mapping[str, bytes],
+    *,
+    replace: Callable[[str | os.PathLike[str], str | os.PathLike[str]], None] = os.replace,
+) -> None:
+    """Atomically install a validated canonical set, restoring prior bytes on error."""
+    validate_warm_start_artifact_payloads(artifacts)
+    root = Path(output_dir)
+    root.mkdir(parents=True, exist_ok=True)
+    allowed = set(CANONICAL_ARTIFACT_NAMES) | {"execution_journal.json"}
+    existing = {path.name for path in root.iterdir()}
+    if not existing.issubset(allowed):
+        raise WarmStartBlocked("output artifact inventory mismatch")
+    order = sorted(name for name in artifacts if name != "artifact_manifest.json")
+    order.append("artifact_manifest.json")
+    destinations = {name: root / name for name in order}
+    previous = {
+        name: path.read_bytes() if path.is_file() else None
+        for name, path in destinations.items()
+    }
+    temporary = {
+        name: path.with_name(f".{path.name}.tmp") for name, path in destinations.items()
+    }
+    installed = []
+    try:
+        for name in order:
+            temporary[name].write_bytes(artifacts[name])
+        for name in order:
+            replace(temporary[name], destinations[name])
+            installed.append(name)
+    except Exception:
+        for name in installed:
+            destination = destinations[name]
+            prior = previous[name]
+            if prior is None:
+                destination.unlink(missing_ok=True)
+            else:
+                restore = destination.with_name(f".{destination.name}.restore")
+                restore.write_bytes(prior)
+                os.replace(restore, destination)
+        raise
+    finally:
+        for path in temporary.values():
+            path.unlink(missing_ok=True)
+        for path in destinations.values():
+            path.with_name(f".{path.name}.restore").unlink(missing_ok=True)
+    validate_warm_start_artifact_directory(root)
+
+
+def validate_warm_start_artifact_directory(
+    output_dir: Path | str,
+) -> dict[str, Any]:
+    """Rehash and semantically validate one published artifact directory."""
+    root = Path(output_dir)
+    allowed = set(CANONICAL_ARTIFACT_NAMES) | {"execution_journal.json"}
+    try:
+        entries = {path.name for path in root.iterdir()}
+    except OSError as exc:
+        raise WarmStartBlocked(f"cannot inspect artifact directory: {exc}") from exc
+    if not set(CANONICAL_ARTIFACT_NAMES).issubset(entries) or not entries.issubset(
+        allowed
+    ):
+        raise WarmStartBlocked("published artifact inventory mismatch")
+    try:
+        artifacts = {
+            name: (root / name).read_bytes() for name in CANONICAL_ARTIFACT_NAMES
+        }
+    except OSError as exc:
+        raise WarmStartBlocked(f"cannot read published artifacts: {exc}") from exc
+    manifest = validate_warm_start_artifact_payloads(artifacts)
+    expected_hashes = manifest["artifact_hashes"]
+    actual_hashes = {
+        name: sha256_file(root / name) for name in sorted(expected_hashes)
+    }
+    if actual_hashes != expected_hashes:
+        raise WarmStartBlocked("published artifact hash closure mismatch")
+    journal_path = root / "execution_journal.json"
+    if journal_path.exists():
+        try:
+            journal = json.loads(journal_path.read_text(encoding="utf-8"))
+        except (OSError, UnicodeError, json.JSONDecodeError) as exc:
+            raise WarmStartBlocked(f"published execution journal is invalid: {exc}") from exc
+        if (
+            not isinstance(journal, Mapping)
+            or journal.get("schema_version") != JOURNAL_SCHEMA_VERSION
+            or journal.get("canonical") is not False
+        ):
+            raise WarmStartBlocked("published execution journal contract mismatch")
+    return manifest
+
+
+def build_warm_start_execution_journal(
+    *,
+    primary_elapsed_seconds: float,
+    replay_elapsed_seconds: float,
+    wall_time_budget_seconds: float,
+) -> dict[str, Any]:
+    values = {}
+    for name, raw in (
+        ("primary_elapsed_seconds", primary_elapsed_seconds),
+        ("replay_elapsed_seconds", replay_elapsed_seconds),
+        ("wall_time_budget_seconds", wall_time_budget_seconds),
+    ):
+        value = _finite_number(raw, name)
+        if value < 0.0:
+            raise WarmStartBlocked(f"{name} must be non-negative")
+        values[name] = value
+    return {
+        "canonical": False,
+        **values,
+        "schema_version": JOURNAL_SCHEMA_VERSION,
+    }
+
+
+def publish_warm_start_execution_journal(
+    output_dir: Path | str, journal: Mapping[str, Any]
+) -> None:
+    root = Path(output_dir)
+    validate_warm_start_artifact_directory(root)
+    value = _mapping(journal, "execution journal")
+    if (
+        value.get("schema_version") != JOURNAL_SCHEMA_VERSION
+        or value.get("canonical") is not False
+    ):
+        raise WarmStartBlocked("execution journal contract mismatch")
+    destination = root / "execution_journal.json"
+    temporary = destination.with_name(f".{destination.name}.tmp")
+    temporary.write_bytes(canonical_json_bytes(value))
+    try:
+        os.replace(temporary, destination)
+    finally:
+        temporary.unlink(missing_ok=True)
+    validate_warm_start_artifact_directory(root)

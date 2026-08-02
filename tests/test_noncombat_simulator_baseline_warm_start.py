@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import copy
 import json
+import os
 from pathlib import Path
 
 import pytest
@@ -14,6 +15,8 @@ from analysis_scripts.noncombat_simulator_baseline_warm_start import (
     PRIOR_SEEDS,
     REGISTERED_SOURCE_FILES,
     WarmStartBlocked,
+    build_warm_start_artifacts,
+    build_warm_start_execution_journal,
     build_warm_start_model,
     canonical_warm_start_model_payload,
     classify_warm_start_results,
@@ -23,7 +26,11 @@ from analysis_scripts.noncombat_simulator_baseline_warm_start import (
     load_warm_start_registration,
     load_warm_start_model,
     predict_warm_start_action,
+    publish_warm_start_artifacts,
+    publish_warm_start_execution_journal,
     train_warm_start_ranker,
+    validate_warm_start_artifact_directory,
+    validate_warm_start_artifact_payloads,
     validate_warm_start_registration,
 )
 from analysis_scripts.noncombat_simulator_adapter import (
@@ -731,3 +738,132 @@ def test_warm_start_classification_positive_negative_blocked_and_untouched():
     result = classify_warm_start_results(replay_changed, replay, thresholds)
     assert result["verdict"] == "blocked"
     assert "replay_identity" in result["blockers"]
+
+
+def _artifact_registration() -> dict[str, object]:
+    registration = valid_registration()
+    registration["study"]["cohorts"].update(
+        train_seeds=[4000, 4001, 4002, 4003],
+        validation_seeds=[5000, 5001, 5002, 5003],
+        final_test_seeds=[6000, 6001, 6002, 6003],
+    )
+    registration["study"]["limits"].update(
+        max_train_episodes=4,
+        max_validation_policy_episodes=8,
+        max_final_policy_episodes=8,
+        max_total_policy_episodes=20,
+    )
+    return registration
+
+
+def _artifact_execution() -> tuple[dict[str, object], dict[str, object]]:
+    model = build_warm_start_model(hash_dim=1024, hidden_dim=128, model_seed=0)
+    model_payload = canonical_warm_start_model_payload(model)
+    primary = {
+        "datasets": {
+            "final_test": None,
+            "train": _collect_demo(),
+            "validation": _collect_demo(
+                cohort="validation", seeds=(5000, 5001, 5002, 5003)
+            ),
+        },
+        "final_test": None,
+        "structural_checks": {"identity": True, "model_frozen": True},
+        "training": {
+            "final_model": model_payload,
+            "history": [],
+            "initial_model": model_payload,
+        },
+        "validation": {
+            "rollouts": _rollout_metrics(lower=-4.0, mean=-2.0),
+            "teacher_fit": _teacher_fit_metrics(0.5),
+        },
+    }
+    classification = classify_warm_start_results(
+        primary,
+        copy.deepcopy(primary),
+        _classification_thresholds(),
+    )
+    return primary, classification
+
+
+def test_warm_start_artifacts_are_hash_closed_atomic_and_revalidated(tmp_path):
+    registration = _artifact_registration()
+    primary, classification = _artifact_execution()
+    replay = copy.deepcopy(primary)
+    artifacts = build_warm_start_artifacts(
+        registration=registration,
+        primary=primary,
+        replay=replay,
+        classification=classification,
+    )
+
+    manifest = validate_warm_start_artifact_payloads(artifacts)
+    assert manifest["verdict"] == "study_valid_without_baseline_floor"
+    assert set(manifest["authority"].values()) == {False}
+    output_dir = tmp_path / "artifacts"
+    publish_warm_start_artifacts(output_dir, artifacts)
+    publish_warm_start_execution_journal(
+        output_dir,
+        build_warm_start_execution_journal(
+            primary_elapsed_seconds=1.5,
+            replay_elapsed_seconds=1.25,
+            wall_time_budget_seconds=30.0,
+        ),
+    )
+    published_manifest = validate_warm_start_artifact_directory(output_dir)
+    assert published_manifest == manifest
+    before = {
+        path.name: path.read_bytes()
+        for path in output_dir.iterdir()
+        if path.name != "execution_journal.json"
+    }
+
+    changed_primary = copy.deepcopy(primary)
+    changed_primary["training"]["history"] = [{"epoch": 1, "loss": 0.5}]
+    changed = build_warm_start_artifacts(
+        registration=registration,
+        primary=changed_primary,
+        replay=copy.deepcopy(changed_primary),
+        classification=classification,
+    )
+    replace_calls = 0
+
+    def fail_second_replace(source, destination):
+        nonlocal replace_calls
+        replace_calls += 1
+        if replace_calls == 2:
+            raise OSError("injected replace failure")
+        os.replace(source, destination)
+
+    with pytest.raises(OSError, match="injected replace failure"):
+        publish_warm_start_artifacts(
+            output_dir, changed, replace=fail_second_replace
+        )
+    assert {
+        path.name: path.read_bytes()
+        for path in output_dir.iterdir()
+        if path.name != "execution_journal.json"
+    } == before
+    assert validate_warm_start_artifact_directory(output_dir) == manifest
+
+
+def test_warm_start_artifact_tampering_and_extra_inventory_fail_closed(tmp_path):
+    registration = _artifact_registration()
+    primary, classification = _artifact_execution()
+    artifacts = build_warm_start_artifacts(
+        registration=registration,
+        primary=primary,
+        replay=copy.deepcopy(primary),
+        classification=classification,
+    )
+    tampered = dict(artifacts)
+    tampered["metrics.json"] = b"{}\n"
+    with pytest.raises(WarmStartBlocked, match="manifest hash closure mismatch"):
+        validate_warm_start_artifact_payloads(tampered)
+
+    output_dir = tmp_path / "inventory"
+    publish_warm_start_artifacts(output_dir, artifacts)
+    (output_dir / "unexpected.txt").write_text("unexpected", encoding="utf-8")
+    with pytest.raises(WarmStartBlocked, match="artifact inventory mismatch"):
+        validate_warm_start_artifact_directory(output_dir)
