@@ -5,7 +5,9 @@ from __future__ import annotations
 import copy
 import json
 import math
+import random
 from collections.abc import Callable, Mapping, Sequence
+from dataclasses import dataclass
 from numbers import Real
 from pathlib import Path
 from typing import Any
@@ -25,6 +27,7 @@ from analysis_scripts.noncombat_simulator_adapter import (
 from analysis_scripts.noncombat_simulator_training_smoke import (
     FEATURE_VERSION,
     SmokeBlocked,
+    _candidate_features,
     _validate_binding,
     project_policy_view,
 )
@@ -33,6 +36,7 @@ from analysis_scripts.noncombat_simulator_training_smoke import (
 INPUT_SCHEMA_VERSION = "noncombat-simulator-baseline-warm-start-input-v1"
 DEMONSTRATION_SCHEMA_VERSION = "noncombat-simulator-native-demonstration-v1"
 DATASET_SCHEMA_VERSION = "noncombat-simulator-native-demonstration-dataset-v1"
+MODEL_SCHEMA_VERSION = "noncombat-simulator-baseline-warm-start-model-v1"
 MODEL_ARCHITECTURE = "candidate-ranker-mlp-v1"
 PRIOR_SEEDS = tuple(
     sorted(
@@ -56,6 +60,14 @@ class WarmStartBlocked(RuntimeError):
     """Raised when the warm-start contract requires a fail-closed stop."""
 
 
+@dataclass(frozen=True)
+class WarmStartTrainingResult:
+    model: Any
+    initial_model: dict[str, Any]
+    final_model: dict[str, Any]
+    history: tuple[dict[str, Any], ...]
+
+
 def _mapping(value: object, label: str) -> dict[str, Any]:
     if not isinstance(value, Mapping):
         raise WarmStartBlocked(f"{label} must be an object")
@@ -70,7 +82,8 @@ def _require_keys(value: Mapping[str, Any], expected: set[str], label: str) -> N
 def _require_exact(
     value: Mapping[str, Any], field: str, expected: object, label: str
 ) -> None:
-    if value.get(field) != expected:
+    actual = value.get(field)
+    if type(actual) is not type(expected) or actual != expected:
         raise WarmStartBlocked(f"{label}.{field} must equal {expected!r}")
 
 
@@ -829,3 +842,374 @@ def collect_native_demonstrations(
         episodes=episodes,
         required_categories=required_categories,
     )
+
+
+_WARM_START_MODEL_CLASS: type | None = None
+
+
+def _torch_module():
+    import torch
+
+    return torch
+
+
+def _warm_start_model_class():
+    global _WARM_START_MODEL_CLASS
+    if _WARM_START_MODEL_CLASS is None:
+        torch = _torch_module()
+
+        class WarmStartCandidateRanker(torch.nn.Module):
+            def __init__(self, input_dim: int, hidden_dim: int) -> None:
+                super().__init__()
+                self.hidden = torch.nn.Linear(input_dim, hidden_dim)
+                self.scorer = torch.nn.Linear(hidden_dim, 1)
+
+            def forward(self, candidate_features):
+                hidden = torch.relu(self.hidden(candidate_features))
+                return self.scorer(hidden).squeeze(-1)
+
+        _WARM_START_MODEL_CLASS = WarmStartCandidateRanker
+    return _WARM_START_MODEL_CLASS
+
+
+def _ensure_finite_tensor(value: Any, label: str) -> None:
+    torch = _torch_module()
+    if not torch.isfinite(value).all().item():
+        raise WarmStartBlocked(f"non-finite {label}")
+
+
+def _ensure_finite_model(model: Any) -> None:
+    for name, tensor in model.state_dict().items():
+        _ensure_finite_tensor(tensor, f"model tensor {name}")
+
+
+def build_warm_start_model(
+    *, hash_dim: int, hidden_dim: int, model_seed: int
+) -> Any:
+    """Create the deterministic CPU-only v1 MLP with gradients enabled."""
+    hash_dim = _positive_int(hash_dim, "hash_dim")
+    hidden_dim = _positive_int(hidden_dim, "hidden_dim")
+    if model_seed != 0:
+        raise WarmStartBlocked("model_seed must equal 0")
+    torch = _torch_module()
+    torch.set_num_threads(1)
+    torch.use_deterministic_algorithms(True)
+    random.seed(model_seed)
+    torch.manual_seed(model_seed)
+    model_class = _warm_start_model_class()
+    model = model_class(hash_dim, hidden_dim)
+    if next(model.parameters()).device.type != "cpu":
+        raise WarmStartBlocked("warm-start model must remain on CPU")
+    _ensure_finite_model(model)
+    return model
+
+
+def canonical_warm_start_model_payload(model: Any) -> dict[str, Any]:
+    """Serialize the warm-start MLP without platform or archive metadata."""
+    if not hasattr(model, "hidden") or not hasattr(model, "scorer"):
+        raise WarmStartBlocked("warm-start model architecture mismatch")
+    input_dim = getattr(model.hidden, "in_features", None)
+    hidden_dim = getattr(model.hidden, "out_features", None)
+    if (
+        isinstance(input_dim, bool)
+        or not isinstance(input_dim, int)
+        or isinstance(hidden_dim, bool)
+        or not isinstance(hidden_dim, int)
+        or model.scorer.in_features != hidden_dim
+        or model.scorer.out_features != 1
+    ):
+        raise WarmStartBlocked("warm-start model dimensions are invalid")
+    state_dict: dict[str, Any] = {}
+    for name, tensor in sorted(model.state_dict().items()):
+        value = tensor.detach().to(device="cpu").contiguous()
+        _ensure_finite_tensor(value, f"model tensor {name}")
+        state_dict[name] = {
+            "dtype": str(value.dtype).removeprefix("torch."),
+            "shape": list(value.shape),
+            "values": [float(item).hex() for item in value.reshape(-1).tolist()],
+        }
+    return {
+        "architecture": MODEL_ARCHITECTURE,
+        "hidden_dim": hidden_dim,
+        "input_dim": input_dim,
+        "schema_version": MODEL_SCHEMA_VERSION,
+        "state_dict": state_dict,
+    }
+
+
+def load_warm_start_model(
+    payload: Mapping[str, Any], *, expected_hash_dim: int, expected_hidden_dim: int
+) -> Any:
+    """Load and freeze one canonical v1 MLP, rejecting any noncanonical value."""
+    expected_hash_dim = _positive_int(expected_hash_dim, "expected_hash_dim")
+    expected_hidden_dim = _positive_int(expected_hidden_dim, "expected_hidden_dim")
+    value = _mapping(payload, "warm-start model")
+    _require_keys(
+        value,
+        {"architecture", "hidden_dim", "input_dim", "schema_version", "state_dict"},
+        "warm-start model",
+    )
+    _require_exact(value, "architecture", MODEL_ARCHITECTURE, "warm-start model")
+    _require_exact(value, "schema_version", MODEL_SCHEMA_VERSION, "warm-start model")
+    _require_exact(value, "input_dim", expected_hash_dim, "warm-start model")
+    _require_exact(value, "hidden_dim", expected_hidden_dim, "warm-start model")
+    expected_shapes = {
+        "hidden.bias": [expected_hidden_dim],
+        "hidden.weight": [expected_hidden_dim, expected_hash_dim],
+        "scorer.bias": [1],
+        "scorer.weight": [1, expected_hidden_dim],
+    }
+    state = _mapping(value["state_dict"], "warm-start model.state_dict")
+    _require_keys(state, set(expected_shapes), "warm-start model.state_dict")
+    torch = _torch_module()
+    tensors = {}
+    for name, shape in expected_shapes.items():
+        entry = _mapping(state[name], f"warm-start model.state_dict.{name}")
+        _require_keys(
+            entry, {"dtype", "shape", "values"},
+            f"warm-start model.state_dict.{name}"
+        )
+        if entry["dtype"] != "float32" or entry["shape"] != shape:
+            raise WarmStartBlocked(f"warm-start model tensor {name} metadata mismatch")
+        raw_values = entry["values"]
+        expected_count = math.prod(shape)
+        if not isinstance(raw_values, list) or len(raw_values) != expected_count:
+            raise WarmStartBlocked(f"warm-start model tensor {name} value count mismatch")
+        parsed = []
+        for raw in raw_values:
+            if not isinstance(raw, str):
+                raise WarmStartBlocked(f"warm-start model tensor {name} value is invalid")
+            try:
+                numeric = float.fromhex(raw)
+            except ValueError as exc:
+                raise WarmStartBlocked(
+                    f"warm-start model tensor {name} value is invalid"
+                ) from exc
+            if not math.isfinite(numeric):
+                raise WarmStartBlocked(
+                    f"warm-start model tensor {name} values must be finite"
+                )
+            parsed.append(numeric)
+        tensors[name] = torch.tensor(parsed, dtype=torch.float32).reshape(shape)
+
+    model = build_warm_start_model(
+        hash_dim=expected_hash_dim, hidden_dim=expected_hidden_dim, model_seed=0
+    )
+    model.load_state_dict(tensors, strict=True)
+    model.requires_grad_(False)
+    model.eval()
+    if canonical_warm_start_model_payload(model) != copy.deepcopy(value):
+        raise WarmStartBlocked("warm-start model canonical round trip mismatch")
+    return model
+
+
+def _validated_training_rows(
+    dataset: Mapping[str, Any], *, hash_dim: int
+) -> list[dict[str, Any]]:
+    value = _mapping(dataset, "demonstration dataset")
+    if value.get("schema_version") != DATASET_SCHEMA_VERSION:
+        raise WarmStartBlocked("demonstration dataset schema mismatch")
+    if value.get("source_type") != SOURCE_TYPE:
+        raise WarmStartBlocked("demonstration dataset source_type mismatch")
+    if value.get("teacher_policy_id") != NATIVE_TARGET_POLICY_ID:
+        raise WarmStartBlocked("demonstration dataset teacher policy mismatch")
+    if value.get("all_categories") != list(TARGET_CATEGORIES):
+        raise WarmStartBlocked("training dataset must cover all target categories")
+    rows_value = value.get("rows")
+    if not isinstance(rows_value, list) or not rows_value:
+        raise WarmStartBlocked("training dataset rows must be nonempty")
+    rows = [copy.deepcopy(dict(_mapping(row, "demonstration row"))) for row in rows_value]
+    ordering = [(row.get("seed"), row.get("decision_index")) for row in rows]
+    if ordering != sorted(ordering):
+        raise WarmStartBlocked("training demonstration rows must be deterministically ordered")
+    for row in rows:
+        if row.get("schema_version") != DEMONSTRATION_SCHEMA_VERSION:
+            raise WarmStartBlocked("training demonstration row schema mismatch")
+        try:
+            snapshot = validate_snapshot(row.get("source_snapshot"))
+            candidates = validate_candidates(
+                row.get("candidate_actions"), category=snapshot["category"]
+            )
+            target = validate_native_baseline_action(
+                row.get("teacher"), category=snapshot["category"], candidates=candidates
+            )
+        except SimulatorAdapterError as exc:
+            raise WarmStartBlocked(f"invalid training demonstration row: {exc}") from exc
+        policy_views = row.get("policy_views")
+        if not isinstance(policy_views, list) or len(policy_views) != len(candidates):
+            raise WarmStartBlocked("training policy view count mismatch")
+        for candidate, entry_value in zip(candidates, policy_views, strict=True):
+            entry = _mapping(entry_value, "training policy view")
+            view = project_policy_view(snapshot["state"], candidate)
+            if entry.get("action_id") != candidate["action_id"]:
+                raise WarmStartBlocked("training policy view action mismatch")
+            if canonical_json_bytes(entry.get("policy_view")) != canonical_json_bytes(view):
+                raise WarmStartBlocked("training policy view mismatch")
+            if entry.get("sha256") != sha256_bytes(canonical_json_bytes(view)):
+                raise WarmStartBlocked("training policy view hash mismatch")
+        features = _candidate_features(snapshot["state"], candidates, hash_dim=hash_dim)
+        _ensure_finite_tensor(features, "training candidate features")
+        target_ids = [candidate["action_id"] for candidate in candidates]
+        row["_category"] = snapshot["category"]
+        row["_features"] = features
+        row["_target_index"] = target_ids.index(target["action_id"])
+    return rows
+
+
+def _validate_training_parameters(
+    *,
+    epochs: int,
+    learning_rate: float,
+    betas: Sequence[float],
+    epsilon: float,
+    weight_decay: float,
+) -> tuple[int, float, tuple[float, float], float]:
+    epochs = _positive_int(epochs, "epochs")
+    learning_rate = _finite_number(learning_rate, "learning_rate")
+    epsilon = _finite_number(epsilon, "epsilon")
+    weight_decay = _finite_number(weight_decay, "weight_decay")
+    if not 0.0 < learning_rate <= 1.0:
+        raise WarmStartBlocked("learning_rate must be in (0, 1]")
+    if epsilon <= 0.0:
+        raise WarmStartBlocked("epsilon must be positive")
+    if weight_decay != 0.0:
+        raise WarmStartBlocked("weight_decay must equal 0.0")
+    if not isinstance(betas, Sequence) or isinstance(betas, (str, bytes)) or len(betas) != 2:
+        raise WarmStartBlocked("betas must contain two values")
+    parsed_betas = tuple(_finite_number(value, "beta") for value in betas)
+    if any(not 0.0 <= value < 1.0 for value in parsed_betas):
+        raise WarmStartBlocked("betas must be in [0, 1)")
+    return epochs, learning_rate, parsed_betas, epsilon
+
+
+def train_warm_start_ranker(
+    dataset: Mapping[str, Any],
+    *,
+    hash_dim: int,
+    hidden_dim: int,
+    model_seed: int,
+    epochs: int,
+    learning_rate: float,
+    betas: Sequence[float],
+    epsilon: float,
+    weight_decay: float,
+) -> WarmStartTrainingResult:
+    """Train the one fixed category-balanced supervised warm-start ranker."""
+    hash_dim = _positive_int(hash_dim, "hash_dim")
+    hidden_dim = _positive_int(hidden_dim, "hidden_dim")
+    epochs, learning_rate, parsed_betas, epsilon = _validate_training_parameters(
+        epochs=epochs,
+        learning_rate=learning_rate,
+        betas=betas,
+        epsilon=epsilon,
+        weight_decay=weight_decay,
+    )
+    rows = _validated_training_rows(dataset, hash_dim=hash_dim)
+    grouped = {
+        category: [row for row in rows if row["_category"] == category]
+        for category in TARGET_CATEGORIES
+    }
+    if any(not category_rows for category_rows in grouped.values()):
+        raise WarmStartBlocked("training dataset must contain every target category")
+
+    torch = _torch_module()
+    model = build_warm_start_model(
+        hash_dim=hash_dim, hidden_dim=hidden_dim, model_seed=model_seed
+    )
+    initial_model = canonical_warm_start_model_payload(model)
+    optimizer = torch.optim.Adam(
+        model.parameters(),
+        lr=learning_rate,
+        betas=parsed_betas,
+        eps=epsilon,
+        weight_decay=weight_decay,
+    )
+    history: list[dict[str, Any]] = []
+    category_count = float(len(TARGET_CATEGORIES))
+    for epoch in range(1, epochs + 1):
+        model.train()
+        optimizer.zero_grad(set_to_none=True)
+        category_losses: dict[str, float] = {}
+        for category in TARGET_CATEGORIES:
+            category_rows = grouped[category]
+            row_loss_values = []
+            row_count = float(len(category_rows))
+            for row in category_rows:
+                logits = model(row["_features"])
+                _ensure_finite_tensor(logits, "training logits")
+                target = torch.tensor(
+                    [row["_target_index"]], dtype=torch.long, device="cpu"
+                )
+                loss = torch.nn.functional.cross_entropy(logits.unsqueeze(0), target)
+                _ensure_finite_tensor(loss, "training loss")
+                (loss / (category_count * row_count)).backward()
+                row_loss_values.append(float(loss.detach().item()))
+            category_losses[category] = sum(row_loss_values) / len(row_loss_values)
+        for name, parameter in model.named_parameters():
+            if parameter.grad is None:
+                raise WarmStartBlocked(f"missing model gradient: {name}")
+            _ensure_finite_tensor(parameter.grad, f"model gradient {name}")
+        optimizer.step()
+        _ensure_finite_model(model)
+        history.append(
+            {
+                "category_losses": category_losses,
+                "category_row_counts": {
+                    category: len(grouped[category]) for category in TARGET_CATEGORIES
+                },
+                "epoch": epoch,
+                "loss": sum(category_losses.values()) / len(category_losses),
+            }
+        )
+    model.requires_grad_(False)
+    model.eval()
+    final_model = canonical_warm_start_model_payload(model)
+    return WarmStartTrainingResult(
+        model=model,
+        initial_model=initial_model,
+        final_model=final_model,
+        history=tuple(history),
+    )
+
+
+def predict_warm_start_action(
+    model: Any,
+    *,
+    snapshot: Mapping[str, Any],
+    candidates: Sequence[Mapping[str, Any]],
+    hash_dim: int,
+) -> dict[str, Any]:
+    """Score the complete current candidate set without teacher fallback."""
+    hash_dim = _positive_int(hash_dim, "hash_dim")
+    try:
+        normalized_snapshot = validate_snapshot(snapshot)
+        if normalized_snapshot["terminal"]:
+            raise WarmStartBlocked("cannot score a terminal snapshot")
+        normalized_candidates = validate_candidates(
+            list(candidates), category=normalized_snapshot["category"]
+        )
+    except SimulatorAdapterError as exc:
+        raise WarmStartBlocked(f"invalid warm-start prediction input: {exc}") from exc
+    if not hasattr(model, "hidden") or model.hidden.in_features != hash_dim:
+        raise WarmStartBlocked("prediction model input dimension mismatch")
+    if next(model.parameters()).device.type != "cpu":
+        raise WarmStartBlocked("prediction model must remain on CPU")
+    _ensure_finite_model(model)
+    features = _candidate_features(
+        normalized_snapshot["state"], normalized_candidates, hash_dim=hash_dim
+    )
+    torch = _torch_module()
+    model.eval()
+    with torch.no_grad():
+        logits = model(features)
+        probabilities = torch.softmax(logits, dim=0)
+    _ensure_finite_tensor(logits, "prediction logits")
+    _ensure_finite_tensor(probabilities, "prediction probabilities")
+    selected_index = int(torch.argmax(probabilities).item())
+    candidate_ids = [candidate["action_id"] for candidate in normalized_candidates]
+    return {
+        "candidate_action_ids": candidate_ids,
+        "probabilities": [float(value) for value in probabilities.tolist()],
+        "scores": [float(value) for value in logits.tolist()],
+        "selected_action_id": candidate_ids[selected_index],
+    }

@@ -5,6 +5,7 @@ import json
 from pathlib import Path
 
 import pytest
+import torch
 
 from analysis_scripts.noncombat_simulator_baseline_warm_start import (
     DEMONSTRATION_SCHEMA_VERSION,
@@ -13,8 +14,13 @@ from analysis_scripts.noncombat_simulator_baseline_warm_start import (
     PRIOR_SEEDS,
     REGISTERED_SOURCE_FILES,
     WarmStartBlocked,
+    build_warm_start_model,
+    canonical_warm_start_model_payload,
     collect_native_demonstrations,
     load_warm_start_registration,
+    load_warm_start_model,
+    predict_warm_start_action,
+    train_warm_start_ranker,
     validate_warm_start_registration,
 )
 from analysis_scripts.noncombat_simulator_adapter import (
@@ -198,6 +204,10 @@ def test_valid_registration_is_accepted_without_mutating_input():
                 architecture="candidate-ranker-linear-v1"
             ),
             "study.model.architecture",
+        ),
+        (
+            lambda value: value["study"]["model"].update(model_seed=False),
+            "study.model.model_seed",
         ),
         (
             lambda value: value["study"]["optimizer"].update(
@@ -411,3 +421,128 @@ def test_native_demonstration_unmapped_target_fails_closed():
 def test_native_demonstration_row_limit_fails_closed():
     with pytest.raises(WarmStartBlocked, match="max_demo_rows"):
         _collect_demo(max_demo_rows=3)
+
+
+def test_warm_start_training_is_deterministic_and_preserves_all_candidates():
+    dataset = _collect_demo()
+    first = train_warm_start_ranker(
+        dataset,
+        hash_dim=64,
+        hidden_dim=16,
+        model_seed=0,
+        epochs=20,
+        learning_rate=0.02,
+        betas=(0.9, 0.999),
+        epsilon=1e-8,
+        weight_decay=0.0,
+    )
+    second = train_warm_start_ranker(
+        dataset,
+        hash_dim=64,
+        hidden_dim=16,
+        model_seed=0,
+        epochs=20,
+        learning_rate=0.02,
+        betas=(0.9, 0.999),
+        epsilon=1e-8,
+        weight_decay=0.0,
+    )
+
+    assert first.initial_model == second.initial_model
+    assert first.final_model == second.final_model
+    assert first.history == second.history
+    assert first.initial_model != first.final_model
+    assert all(not parameter.requires_grad for parameter in first.model.parameters())
+    for row in dataset["rows"]:
+        prediction = predict_warm_start_action(
+            first.model,
+            snapshot=row["source_snapshot"],
+            candidates=row["candidate_actions"],
+            hash_dim=64,
+        )
+        assert prediction["candidate_action_ids"] == ["skip", "take"]
+        assert len(prediction["probabilities"]) == 2
+        assert prediction["selected_action_id"] == "take"
+
+
+def test_warm_start_loss_is_category_balanced():
+    result = train_warm_start_ranker(
+        _collect_demo(),
+        hash_dim=64,
+        hidden_dim=16,
+        model_seed=0,
+        epochs=1,
+        learning_rate=0.01,
+        betas=(0.9, 0.999),
+        epsilon=1e-8,
+        weight_decay=0.0,
+    )
+
+    epoch = result.history[0]
+    assert sorted(epoch["category_losses"]) == [
+        "card_reward",
+        "event",
+        "route",
+        "shop",
+    ]
+    assert epoch["loss"] == pytest.approx(
+        sum(epoch["category_losses"].values()) / 4.0
+    )
+    assert epoch["category_row_counts"] == {
+        "card_reward": 1,
+        "event": 1,
+        "route": 1,
+        "shop": 1,
+    }
+
+
+def test_warm_start_model_canonical_round_trip_is_frozen():
+    model = build_warm_start_model(hash_dim=32, hidden_dim=8, model_seed=0)
+    payload = canonical_warm_start_model_payload(model)
+    loaded = load_warm_start_model(
+        payload, expected_hash_dim=32, expected_hidden_dim=8
+    )
+
+    assert canonical_warm_start_model_payload(loaded) == payload
+    assert all(not parameter.requires_grad for parameter in loaded.parameters())
+    assert loaded.training is False
+
+    invalid = copy.deepcopy(payload)
+    invalid["state_dict"]["hidden.weight"]["values"][0] = "nan"
+    with pytest.raises(WarmStartBlocked, match="values must be finite"):
+        load_warm_start_model(
+            invalid, expected_hash_dim=32, expected_hidden_dim=8
+        )
+
+
+def test_warm_start_training_rejects_tampered_policy_view_hash():
+    dataset = _collect_demo()
+    dataset["rows"][0]["policy_views"][0]["sha256"] = "0" * 64
+
+    with pytest.raises(WarmStartBlocked, match="policy view hash mismatch"):
+        train_warm_start_ranker(
+            dataset,
+            hash_dim=64,
+            hidden_dim=16,
+            model_seed=0,
+            epochs=1,
+            learning_rate=0.01,
+            betas=(0.9, 0.999),
+            epsilon=1e-8,
+            weight_decay=0.0,
+        )
+
+
+def test_warm_start_prediction_rejects_nonfinite_model():
+    model = build_warm_start_model(hash_dim=32, hidden_dim=8, model_seed=0)
+    with torch.no_grad():
+        next(model.parameters()).fill_(float("nan"))
+    row = _collect_demo()["rows"][0]
+
+    with pytest.raises(WarmStartBlocked, match="non-finite model tensor"):
+        predict_warm_start_action(
+            model,
+            snapshot=row["source_snapshot"],
+            candidates=row["candidate_actions"],
+            hash_dim=32,
+        )
