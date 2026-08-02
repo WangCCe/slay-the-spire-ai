@@ -178,7 +178,7 @@ The system SHALL keep known-propensity data qualification separate from outcome-
 - **AND** they SHALL NOT change the recorded behavior distribution or become reward truth
 
 ### Requirement: Simulator Transitions Remain Separate Evidence
-The non-combat decision loop SHALL distinguish simulator-generated transitions, rewards, returns, models, and evaluation metrics from live trace samples, known-propensity exploration evidence, and matched `.run` outcomes.
+The non-combat decision loop SHALL distinguish simulator-generated transitions, rewards, returns, models, baseline comparisons, and evaluation metrics from live trace samples, known-propensity exploration evidence, and matched `.run` outcomes.
 
 #### Scenario: Simulator transition is exported
 - **WHEN** the offline adapter exports a route, shop, event, or card-reward transition
@@ -195,7 +195,12 @@ The non-combat decision loop SHALL distinguish simulator-generated transitions, 
 - **THEN** every artifact SHALL retain simulator-only source and reward provenance
 - **AND** it SHALL NOT be joined into live outcome, OPE, qualification, or promotion evidence
 
+#### Scenario: Frozen simulator policies are compared
+- **WHEN** a reviewed policy-validity study compares a frozen simulator policy with same-schema baselines
+- **THEN** baseline deltas, confidence intervals, floors, and victories SHALL remain simulator-only evidence
+- **AND** they SHALL NOT authorize formal training, increase live evidence coverage, or satisfy a live promotion gate
+
 #### Scenario: Future training combines evidence classes
 - **WHEN** a future proposal seeks to train on both live and simulator data
 - **THEN** it MUST separately define dataset weighting, simulator-divergence controls, reward semantics, and real-game holdout evaluation
-- **AND** the adapter POC or bounded simulator smoke alone SHALL NOT satisfy that approval gate
+- **AND** the adapter POC, bounded simulator smoke, or policy-validity study alone SHALL NOT satisfy that approval gate

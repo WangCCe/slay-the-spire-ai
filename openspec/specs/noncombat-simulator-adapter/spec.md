@@ -33,7 +33,7 @@ The adapter SHALL bind every transition report to the physical simulator source,
 - **AND** it SHALL NOT reuse a prior readiness result
 
 ### Requirement: Deterministic Non-Combat Environment API
-The adapter SHALL expose deterministic Ironclad reset, deep clone, canonical snapshot, legal-action enumeration, action execution, and terminal outcome through JSON-compatible values.
+The adapter SHALL expose deterministic Ironclad reset, deep clone, canonical snapshot, legal-action enumeration, action execution, native SimpleAgent target-action query, and terminal outcome through JSON-compatible values.
 
 #### Scenario: Same seed resets identically
 - **WHEN** two environments reset with the same seed and ascension under the same bound identities
@@ -53,6 +53,16 @@ The adapter SHALL expose deterministic Ironclad reset, deep clone, canonical sna
 - **WHEN** an upstream screen-info field is uninitialized, stale, or not defined for the current target screen
 - **THEN** the adapter SHALL omit it or emit an explicit canonical unavailable value
 - **AND** process memory contents SHALL NOT enter snapshots or policy features
+
+#### Scenario: Native baseline target action is queried
+- **WHEN** a baseline-following environment reaches a route, shop, event, or card-reward decision
+- **THEN** the adapter SHALL map the corresponding upstream SimpleAgent decision to exactly one currently reported candidate
+- **AND** repeated queries SHALL leave source snapshot and candidate bytes unchanged
+
+#### Scenario: Native baseline continuation is broken
+- **WHEN** an environment previously applies a target action different from its queried SimpleAgent action
+- **THEN** a later native-baseline query on that trajectory SHALL fail closed
+- **AND** the adapter SHALL NOT present a stale route path as a counterfactual baseline action
 
 ### Requirement: Four-Category Simulator Transitions
 The adapter SHALL emit versioned simulator transitions for route, shop, event, and card-reward decisions while declaring all baseline-controlled screens and follow-up semantics.
@@ -85,7 +95,7 @@ The system SHALL publish a deterministic, fail-closed fit report before simulato
 - **AND** it SHALL identify the exact failed prerequisite
 
 ### Requirement: Simulator POC Has No Training Authority
-Simulator adapter readiness SHALL authorize only a separate reviewed proposal for a bounded simulator-training smoke; an accepted smoke change MAY invoke only its pre-registered bounded execution and SHALL NOT authorize formal training or live use.
+Simulator adapter readiness SHALL authorize only separately reviewed bounded simulator smoke or policy-validity work and SHALL NOT authorize formal training or live use.
 
 #### Scenario: POC report passes
 - **WHEN** a fit report returns `adapter_poc_ready`
@@ -95,6 +105,11 @@ Simulator adapter readiness SHALL authorize only a separate reviewed proposal fo
 - **WHEN** an accepted simulator-training-smoke change invokes the adapter against its exact registered identities
 - **THEN** the adapter MAY run only within that change's registered cohorts and resource bounds
 - **AND** formal RL, live gameplay, live loading, OPE, qualification, and promotion authority SHALL remain false
+
+#### Scenario: Reviewed policy-validity study executes
+- **WHEN** an accepted simulator-policy-validity change invokes the adapter against its exact registered identities
+- **THEN** the adapter MAY run only frozen policies within that change's registered compatibility and fresh-evaluation bounds
+- **AND** training, live gameplay, live loading, OPE, qualification, and promotion authority SHALL remain false
 
 #### Scenario: Bottled labels are attached
 - **WHEN** Bottled labels are compared with simulator transitions

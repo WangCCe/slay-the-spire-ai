@@ -30,4 +30,4 @@
 - [x] 5.1 Run focused pure regressions, opt-in native integration checks, canonical artifact rehash/replay checks, and Python compilation without launching a live game.
 - [x] 5.2 Run the repository's registered commit gate, strict OpenSpec validation, scoped diff review, and process/CommunicationMod/checkpoint isolation checks; do not substitute an unbounded raw full-suite invocation.
 - [x] 5.3 Perform a read-only final audit of cohort disjointness, model immutability, compatibility exclusion from quality metrics, native baseline legality, primary gate math, deterministic reproduction, provenance, authority, and managed artifact inventory.
-- [ ] 5.4 Update project direction and simulator documentation, sync accepted delta specs, archive the completed change, commit only scoped files, push `master`, and preserve all unrelated local artifacts.
+- [x] 5.4 Update project direction and simulator documentation, sync accepted delta specs, archive the completed change, commit only scoped files, push `master`, and preserve all unrelated local artifacts.
