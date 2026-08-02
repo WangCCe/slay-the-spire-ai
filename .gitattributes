@@ -92,3 +92,12 @@ reports/noncombat_formal_reward_contract_*/** text eol=lf
 openspec/specs/noncombat-formal-reward-contract/** text eol=lf
 openspec/changes/add-noncombat-formal-reward-contract/** text eol=lf
 openspec/changes/archive/*-add-noncombat-formal-reward-contract/** text eol=lf
+
+# Preserve Current event-semantics audit source and canonical evidence bytes.
+analysis_scripts/noncombat_event_semantics_coverage_audit.py text eol=lf
+spirecomm/ai/agent.py -text whitespace=cr-at-eol
+tests/test_noncombat_event_semantics_coverage_audit.py text eol=lf
+reports/noncombat_event_semantics_coverage_audit_* text eol=lf
+reports/noncombat_event_semantics_coverage_audit_*/** text eol=lf
+openspec/specs/noncombat-event-semantics-coverage-audit/** text eol=lf
+openspec/changes/archive/*-audit-current-event-option-semantics-coverage/** text eol=lf

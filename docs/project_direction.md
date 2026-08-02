@@ -58,12 +58,18 @@ Stage 1 rows pass deterministically, so the verdict is now
 The single authorized reused-seed Stage 2 check then executed and failed closed
 at the first unsupported event identity, `The Cleric`. Native module, build,
 simulator, source, and submodule identities all matched. This is a semantic
-coverage blocker, not a policy-quality result. Do not retry those seeds by
-adding one event at a time. The current objective is a read-only static coverage
-audit for the complete set of event semantics that Current can use, followed by
-a separately reviewed adapter-contract extension. Do not start another
-imitation POC, unregistered simulator cohort, gameplay batch, or formal
-non-combat RL training.
+coverage blocker, not a policy-quality result, and those seeds remain consumed.
+
+The subsequent hash-bound static audit is now complete and strictly
+reproducible. It accounts for 47 Current aliases across 18 decision branches and
+maps them to 25 canonical upstream events. Twenty-four events are
+`source_complete`; `Cursed Tome` is `source_partial` because its legal masks are
+dynamic expressions of `eventData`. Zero aliases are unaccounted, but the audit
+correctly remains `resolver_ready=false`. The next objective is a separately
+reviewed source-bound adapter contract that resolves this dynamic phase mapping
+and defines fail-closed semantics for all 25 events before any resolver change
+or new compatibility evaluation. Do not start another imitation POC,
+unregistered simulator cohort, gameplay batch, or formal non-combat RL training.
 
 ## Training Boundary
 
@@ -88,14 +94,16 @@ zero target-supported victories. The next prerequisite is the non-teacher
 baseline floor; passing it would not override the outcome blocker or authorize
 training.
 
-The immediate baseline-lane blocker is now broader event-semantic coverage.
-The r2 successor closes the frozen `Liars Game` row and passes all four Stage 1
-categories, but its one registered Stage 2 execution stops on unsupported
-`The Cleric` semantics. The reused seeds `2000..2003` are consumed by this gate
-and SHALL NOT become an iterative event-debugging cohort. Before another
-own-trajectory check, a read-only audit must statically enumerate the event
-identities, phases, legal indices, and labels that Current can actually read and
-define a total fail-closed coverage contract without running those seeds again.
+The immediate baseline-lane blocker is now the event adapter contract, not
+event discovery. The r2 successor closes the frozen `Liars Game` row and passes
+all four Stage 1 categories, but its one registered Stage 2 execution stops on
+unsupported `The Cleric` semantics. The reused seeds `2000..2003` are consumed
+by this gate and SHALL NOT become an iterative event-debugging cohort. The
+completed static audit covers all 25 Current-relevant events and all 47 aliases,
+with 24 `source_complete` rows and one explicit `Cursed Tome` dynamic-mask
+blocker. A separate contract must now bind exact state and phase semantics,
+resolve that blocker, and prove total fail-closed resolver behavior before
+another own-trajectory check can even be proposed.
 
 The active v2 known-propensity outcome-evidence study is stopped before any
 replacement qualification or study start. R7 remains immutable and retired
@@ -235,16 +243,23 @@ The next authorized sequence is:
     with a fail-closed `The Cleric` coverage blocker. Do not retry seeds
     `2000..2003`, change the frozen rows, or patch events one at a time around
     that observed trajectory.
+12. Preserve the completed Current event-semantics coverage registration and
+    canonical artifacts. Treat its 24 `source_complete` rows as source-surface
+    evidence, not resolver readiness. Define a separately reviewed adapter
+    contract for all 25 events, including exact `Cursed Tome` phase masks and
+    fail-closed unknown-state behavior, before changing resolver code or
+    proposing any new compatibility cohort.
 
 ## Work Lanes
 
-The primary lane is a read-only source audit and separately reviewed adapter
-contract for total Current-relevant event-option semantic coverage. It must be
-derived from upstream event identity, legal-action, display-label, and execution
-sources rather than repeated own-trajectory probes. Only after that contract is
-complete may a new preregistered compatibility evaluation be considered. A
-non-teacher baseline-floor study remains downstream of structural compatibility;
-the target-supported-outcome lane remains blocked and separate.
+The primary lane is now the separately reviewed adapter contract for total
+Current-relevant event-option semantic coverage. It must consume the completed
+static inventory, resolve the dynamic `Cursed Tome` phase masks from bound
+upstream sources, and specify exact fail-closed behavior before resolver code is
+extended. Only after that contract is implemented and verified may a new
+preregistered compatibility evaluation be considered. A non-teacher
+baseline-floor study remains downstream of structural compatibility; the
+target-supported-outcome lane remains blocked and separate.
 
 Live gameplay is a maintenance and registered-evaluation lane only. Launch it
 for a crash, stuck state, repeated A-class simulator/mechanics defect, or an

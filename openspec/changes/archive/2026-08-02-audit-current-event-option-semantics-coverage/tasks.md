@@ -14,13 +14,13 @@
 
 ## 3. Registered Evidence
 
-- [ ] 3.1 Commit the reviewed audit implementation boundary, then create a registration binding exact Current and upstream source identities plus the complete canonical alias-to-enum registry.
-- [ ] 3.2 Run the static audit once without simulator or gameplay execution and publish the registered artifact set.
-- [ ] 3.3 Recompute from the same registration and require byte-identical artifacts, reconciled event and status counts, and zero unaccounted Current aliases.
-- [ ] 3.4 Write a closeout report and update project direction with source-coverage findings, exact blockers, authority limits, and the separately reviewed next-contract boundary.
+- [x] 3.1 Commit the reviewed audit implementation boundary, then create a registration binding exact Current and upstream source identities plus the complete canonical alias-to-enum registry.
+- [x] 3.2 Run the static audit once without simulator or gameplay execution and publish the registered artifact set.
+- [x] 3.3 Recompute from the same registration and require byte-identical artifacts, reconciled event and status counts, and zero unaccounted Current aliases.
+- [x] 3.4 Write a closeout report and update project direction with source-coverage findings, exact blockers, authority limits, and the separately reviewed next-contract boundary.
 
 ## 4. Verification And Closeout
 
-- [ ] 4.1 Run focused audit pytest with an isolated writable basetemp and strict validation of this OpenSpec change.
-- [ ] 4.2 Run global OpenSpec validation and the repository commit test gate; do not launch gameplay or substitute the obsolete raw full-suite command.
-- [ ] 4.3 Sync the new capability spec, archive the completed change, commit cohesive artifacts, and push `master`.
+- [x] 4.1 Run focused audit pytest with an isolated writable basetemp and strict validation of this OpenSpec change.
+- [x] 4.2 Run global OpenSpec validation and the repository commit test gate; do not launch gameplay or substitute the obsolete raw full-suite command.
+- [x] 4.3 Sync the new capability spec, archive the completed change, commit cohesive artifacts, and push `master`.
