@@ -38,6 +38,7 @@ from analysis_scripts.noncombat_simulator_training_smoke import (
     evaluate_greedy_policy,
     paired_bootstrap_interval,
     project_policy_view,
+    simulator_training_reward,
 )
 
 
@@ -872,6 +873,161 @@ def collect_native_demonstrations(
     )
 
 
+def _demonstration_transition(row: Mapping[str, Any]) -> dict[str, Any]:
+    snapshot = _mapping(row.get("source_snapshot"), "demonstration source_snapshot")
+    teacher = _mapping(row.get("teacher"), "demonstration teacher")
+    return {
+        "candidate_actions": copy.deepcopy(row.get("candidate_actions")),
+        "category": row.get("category"),
+        "provenance": copy.deepcopy(row.get("provenance")),
+        "selected_action_id": teacher.get("action_id"),
+        "source_state": copy.deepcopy(snapshot.get("state")),
+        "source_type": SOURCE_TYPE,
+        "successor": copy.deepcopy(row.get("successor")),
+    }
+
+
+def native_policy_from_demonstrations(
+    dataset: Mapping[str, Any],
+) -> dict[str, Any]:
+    """Reconstruct validated native rollout evidence without a second episode."""
+    value = _mapping(dataset, "demonstration dataset")
+    cohort = _validate_cohort_name(value.get("cohort"))
+    seeds = _seed_array(value.get("seeds"), "demonstration seeds")
+    rows_value = value.get("rows")
+    episodes_value = value.get("episodes")
+    if not isinstance(rows_value, list) or not isinstance(episodes_value, list):
+        raise WarmStartBlocked("demonstration rows and episodes must be arrays")
+    normalized = build_demonstration_dataset(
+        cohort=cohort,
+        seeds=seeds,
+        rows=rows_value,
+        episodes=episodes_value,
+        required_categories=TARGET_CATEGORIES,
+    )
+    if canonical_json_bytes(normalized) != canonical_json_bytes(value):
+        raise WarmStartBlocked("demonstration dataset canonical identity mismatch")
+
+    rows_by_seed = {seed: [] for seed in seeds}
+    for row_value in normalized["rows"]:
+        row = _mapping(row_value, "demonstration row")
+        transition = _demonstration_transition(row)
+        rebuilt = build_demonstration_row(
+            cohort=cohort,
+            seed=row.get("seed"),
+            decision_index=row.get("decision_index"),
+            source_snapshot=_mapping(
+                row.get("source_snapshot"), "demonstration source_snapshot"
+            ),
+            candidates=row.get("candidate_actions"),
+            target_action=_mapping(row.get("teacher"), "demonstration teacher"),
+            transition=transition,
+        )
+        if canonical_json_bytes(rebuilt) != canonical_json_bytes(row):
+            raise WarmStartBlocked("demonstration row canonical identity mismatch")
+        rows_by_seed[row["seed"]].append((row, transition))
+
+    policy_rows = []
+    for episode_value in normalized["episodes"]:
+        episode = _mapping(episode_value, "demonstration episode")
+        seed = episode.get("seed")
+        seed_rows = rows_by_seed.get(seed)
+        if not seed_rows:
+            raise WarmStartBlocked("demonstration episode has no matching rows")
+        for index in range(1, len(seed_rows)):
+            previous = seed_rows[index - 1][0]
+            current = seed_rows[index][0]
+            previous_successor = _mapping(
+                previous.get("successor"), "demonstration successor"
+            )
+            current_snapshot = _mapping(
+                current.get("source_snapshot"), "demonstration source_snapshot"
+            )
+            if previous_successor.get("terminal") is not False or (
+                canonical_json_bytes(previous_successor.get("state"))
+                != canonical_json_bytes(current_snapshot.get("state"))
+                or previous_successor.get("category") != current_snapshot.get("category")
+            ):
+                raise WarmStartBlocked("demonstration episode transition chain mismatch")
+        last_successor = _mapping(
+            seed_rows[-1][0].get("successor"), "demonstration final successor"
+        )
+        terminal_state = _mapping(
+            last_successor.get("state"), "demonstration final successor.state"
+        )
+        if last_successor.get("terminal") is not True:
+            raise WarmStartBlocked("demonstration episode does not end at terminal")
+        if terminal_state.get("outcome") not in {"player_loss", "player_victory"}:
+            raise WarmStartBlocked("demonstration episode terminal outcome mismatch")
+        terminal_floor = _finite_number(
+            terminal_state.get("floor"), "demonstration terminal floor"
+        )
+
+        action_rows = []
+        for row, transition in seed_rows:
+            teacher = _mapping(row.get("teacher"), "demonstration teacher")
+            try:
+                reward = simulator_training_reward(transition)
+            except SmokeBlocked as exc:
+                raise WarmStartBlocked(f"invalid demonstration reward: {exc}") from exc
+            action_rows.append(
+                {
+                    "action_id": teacher["action_id"],
+                    "category": row["category"],
+                    "decision": row["decision_index"],
+                    "native_action_sha256": sha256_bytes(
+                        canonical_json_bytes(teacher)
+                    ),
+                    "reward": reward,
+                }
+            )
+        selected_action_ids = [row["action_id"] for row in action_rows]
+        expected_episode = {
+            "action_sequence_sha256": sha256_bytes(
+                canonical_json_bytes(selected_action_ids)
+            ),
+            "categories": sorted({row["category"] for row, _ in seed_rows}),
+            "decisions": len(seed_rows),
+            "outcome": terminal_state.get("outcome"),
+            "row_sha256s": [
+                sha256_bytes(canonical_json_bytes(row)) for row, _ in seed_rows
+            ],
+            "seed": seed,
+            "selected_action_ids": selected_action_ids,
+            "terminal_floor": terminal_floor,
+        }
+        if canonical_json_bytes(expected_episode) != canonical_json_bytes(episode):
+            raise WarmStartBlocked("demonstration episode canonical identity mismatch")
+        policy_rows.append(
+            {
+                "action_sequence_sha256": sha256_bytes(
+                    canonical_json_bytes(action_rows)
+                ),
+                "candidate_legality": True,
+                "categories": expected_episode["categories"],
+                "decisions": expected_episode["decisions"],
+                "native_action_sha256s": [
+                    row["native_action_sha256"] for row in action_rows
+                ],
+                "outcome": expected_episode["outcome"],
+                "seed": seed,
+                "selected_action_ids": selected_action_ids,
+                "terminal_floor": float(expected_episode["terminal_floor"]),
+                "total_reward": sum(row["reward"] for row in action_rows),
+            }
+        )
+    return {
+        "all_categories": normalized["all_categories"],
+        "candidate_legality": True,
+        "policy_id": NATIVE_TARGET_POLICY_ID,
+        "rows": policy_rows,
+        "terminal_outcomes": all(
+            row["outcome"] in {"player_loss", "player_victory"}
+            for row in policy_rows
+        ),
+    }
+
+
 _WARM_START_MODEL_CLASS: type | None = None
 
 
@@ -1405,6 +1561,7 @@ def evaluate_warm_start_rollouts(
     bootstrap_resamples: int,
     confidence_level: float,
     clock: Callable[[], float],
+    native_demonstrations: Mapping[str, Any] | None = None,
 ) -> dict[str, Any]:
     """Compare one frozen candidate with native SimpleAgent on paired seeds."""
     normalized_seeds = _seed_array(seeds, "rollout seeds")
@@ -1434,6 +1591,11 @@ def evaluate_warm_start_rollouts(
     started = _finite_number(clock(), "clock value")
     deadline = started + max_wall_seconds
     torch = _torch_module()
+    native = None
+    if native_demonstrations is not None:
+        native = native_policy_from_demonstrations(native_demonstrations)
+        if [row.get("seed") for row in native["rows"]] != normalized_seeds:
+            raise WarmStartBlocked("native demonstration rollout seeds mismatch")
     try:
         with torch.inference_mode():
             candidate = evaluate_greedy_policy(
@@ -1445,13 +1607,14 @@ def evaluate_warm_start_rollouts(
                 deadline=deadline,
                 clock=clock,
             )
-            native = evaluate_native_policy(
-                environment_factory=environment_factory,
-                seeds=normalized_seeds,
-                max_decisions_per_episode=max_decisions_per_episode,
-                deadline=deadline,
-                clock=clock,
-            )
+            if native is None:
+                native = evaluate_native_policy(
+                    environment_factory=environment_factory,
+                    seeds=normalized_seeds,
+                    max_decisions_per_episode=max_decisions_per_episode,
+                    deadline=deadline,
+                    clock=clock,
+                )
     except (PolicyValidityBlocked, SimulatorAdapterError, SmokeBlocked) as exc:
         raise WarmStartBlocked(str(exc)) from exc
     for policy in (candidate, native):
@@ -1599,6 +1762,156 @@ def classify_quality_gate(
         >= limits["minimum_per_category_action_agreement"],
     }
     return {"checks": checks, "passed": all(checks.values())}
+
+
+def run_warm_start_execution(
+    *,
+    registration: Mapping[str, Any],
+    environment_factory: Callable[[int], Any],
+    preflight_checks: Mapping[str, bool],
+    clock: Callable[[], float],
+) -> dict[str, Any]:
+    """Run one bounded train/validation/final execution from a registration."""
+    validated = validate_warm_start_registration(registration)
+    checks = _mapping(preflight_checks, "preflight_checks")
+    if not checks or any(not isinstance(value, bool) for value in checks.values()):
+        raise WarmStartBlocked("preflight_checks must be nonempty booleans")
+    failed_preflight = sorted(name for name, passed in checks.items() if not passed)
+    if failed_preflight:
+        raise WarmStartBlocked(
+            "preflight checks failed: " + ", ".join(failed_preflight)
+        )
+
+    study = validated["study"]
+    cohorts = study["cohorts"]
+    evaluation = study["evaluation"]
+    limits = study["limits"]
+    model_config = study["model"]
+    optimizer = study["optimizer"]
+    started = _finite_number(clock(), "clock value")
+    deadline = started + limits["max_wall_seconds_per_execution"]
+    remaining_demo_rows = limits["max_demo_rows"]
+    policy_episodes = 0
+
+    def collect_phase(cohort: str, seeds: Sequence[int]) -> dict[str, Any]:
+        nonlocal remaining_demo_rows, policy_episodes
+        if remaining_demo_rows <= 0:
+            raise WarmStartBlocked("execution exhausted max_demo_rows")
+        dataset = collect_native_demonstrations(
+            environment_factory=environment_factory,
+            cohort=cohort,
+            seeds=seeds,
+            max_decisions_per_episode=limits["max_decisions_per_episode"],
+            max_demo_rows=remaining_demo_rows,
+            max_episodes=len(seeds),
+            deadline=deadline,
+            clock=clock,
+            required_categories=TARGET_CATEGORIES,
+        )
+        remaining_demo_rows -= dataset["row_count"]
+        policy_episodes += len(seeds)
+        return dataset
+
+    def evaluate_phase(
+        model: Any,
+        *,
+        dataset: Mapping[str, Any],
+        seeds: Sequence[int],
+        max_episodes: int,
+    ) -> dict[str, Any]:
+        nonlocal policy_episodes
+        now = _finite_number(clock(), "clock value")
+        remaining_seconds = deadline - now
+        if remaining_seconds <= 0.0:
+            raise WarmStartBlocked("warm-start execution exceeded wall-time bound")
+        teacher_fit = evaluate_teacher_fit(
+            model, dataset=dataset, hash_dim=model_config["hash_dim"]
+        )
+        rollouts = evaluate_warm_start_rollouts(
+            model,
+            environment_factory=environment_factory,
+            seeds=seeds,
+            hash_dim=model_config["hash_dim"],
+            max_decisions_per_episode=limits["max_decisions_per_episode"],
+            max_episodes=max_episodes,
+            max_wall_seconds=remaining_seconds,
+            bootstrap_seed=evaluation["bootstrap_seed"],
+            bootstrap_resamples=evaluation["bootstrap_resamples"],
+            confidence_level=evaluation["confidence_level"],
+            clock=clock,
+            native_demonstrations=dataset,
+        )
+        policy_episodes += len(seeds)
+        return {"rollouts": rollouts, "teacher_fit": teacher_fit}
+
+    train_dataset = collect_phase("train", cohorts["train_seeds"])
+    if policy_episodes > limits["max_train_episodes"]:
+        raise WarmStartBlocked("execution exceeded max_train_episodes")
+    training = train_warm_start_ranker(
+        train_dataset,
+        hash_dim=model_config["hash_dim"],
+        hidden_dim=model_config["hidden_dim"],
+        model_seed=model_config["model_seed"],
+        epochs=optimizer["epochs"],
+        learning_rate=optimizer["learning_rate"],
+        betas=(optimizer["beta1"], optimizer["beta2"]),
+        epsilon=optimizer["epsilon"],
+        weight_decay=optimizer["weight_decay"],
+    )
+    _check_deadline(clock, deadline, "warm-start training")
+
+    validation_dataset = collect_phase("validation", cohorts["validation_seeds"])
+    validation = evaluate_phase(
+        training.model,
+        dataset=validation_dataset,
+        seeds=cohorts["validation_seeds"],
+        max_episodes=limits["max_validation_policy_episodes"],
+    )
+    validation_gate = classify_quality_gate(
+        validation["teacher_fit"],
+        validation["rollouts"],
+        evaluation["thresholds"],
+    )
+
+    final_dataset = None
+    final_test = None
+    if validation_gate["passed"]:
+        final_dataset = collect_phase("final_test", cohorts["final_test_seeds"])
+        final_test = evaluate_phase(
+            training.model,
+            dataset=final_dataset,
+            seeds=cohorts["final_test_seeds"],
+            max_episodes=limits["max_final_policy_episodes"],
+        )
+    if policy_episodes > limits["max_total_policy_episodes"]:
+        raise WarmStartBlocked("execution exceeded max_total_policy_episodes")
+    _check_deadline(clock, deadline, "warm-start execution")
+
+    internal_checks = {
+        "episode_budget": policy_episodes <= limits["max_total_policy_episodes"],
+        "model_frozen": all(
+            not parameter.requires_grad for parameter in training.model.parameters()
+        ),
+        "registration": True,
+        "train_four_category_coverage": train_dataset["all_categories"]
+        == list(TARGET_CATEGORIES),
+    }
+    return {
+        "datasets": {
+            "final_test": final_dataset,
+            "train": train_dataset,
+            "validation": validation_dataset,
+        },
+        "final_test": final_test,
+        "structural_checks": {**checks, **internal_checks},
+        "training": {
+            "final_model": training.final_model,
+            "history": list(training.history),
+            "initial_model": training.initial_model,
+        },
+        "validation": validation,
+        "validation_gate": validation_gate,
+    }
 
 
 def _nested_structural_blockers(

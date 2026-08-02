@@ -8,7 +8,7 @@
 
 ## 2. Native Adapter Integration And Implementation Fit
 
-- [ ] 2.1 Integrate adapter API v2 baseline target query and baseline-following step without changing the external simulator checkout, CommunicationMod, live agent paths, or historical smoke/policy-validity artifacts.
+- [x] 2.1 Integrate adapter API v2 baseline target query and baseline-following step without changing the external simulator checkout, CommunicationMod, live agent paths, or historical smoke/policy-validity artifacts.
 - [ ] 2.2 Add opt-in native tests for four-category demonstration coverage, exact target mapping, query non-mutation, repeated collection, terminal outcomes, model rollout legality, and fail-closed counterfactual continuation.
 - [ ] 2.3 Publish a bounded implementation-fit input and report using only already observed adapter fit seeds; record row/category balance, deterministic identities, runtime, limitations, and all-false authority without making a quality claim.
 

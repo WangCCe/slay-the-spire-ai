@@ -25,9 +25,11 @@ from analysis_scripts.noncombat_simulator_baseline_warm_start import (
     evaluate_warm_start_rollouts,
     load_warm_start_registration,
     load_warm_start_model,
+    native_policy_from_demonstrations,
     predict_warm_start_action,
     publish_warm_start_artifacts,
     publish_warm_start_execution_journal,
+    run_warm_start_execution,
     train_warm_start_ranker,
     validate_warm_start_artifact_directory,
     validate_warm_start_artifact_payloads,
@@ -400,6 +402,37 @@ def test_native_demonstration_dataset_is_complete_and_deterministic():
         assert row["successor"]["state"]["outcome"] == "player_loss"
 
 
+def test_native_policy_is_reconstructed_from_demonstrations():
+    dataset = _collect_demo(cohort="validation")
+
+    policy = native_policy_from_demonstrations(dataset)
+
+    assert policy["all_categories"] == ["card_reward", "event", "route", "shop"]
+    assert policy["candidate_legality"] is True
+    assert policy["policy_id"] == NATIVE_TARGET_POLICY_ID
+    assert policy["terminal_outcomes"] is True
+    assert [row["seed"] for row in policy["rows"]] == dataset["seeds"]
+    for row, episode in zip(policy["rows"], dataset["episodes"], strict=True):
+        assert row["categories"] == episode["categories"]
+        assert row["decisions"] == episode["decisions"]
+        assert row["outcome"] == episode["outcome"]
+        assert row["selected_action_ids"] == episode["selected_action_ids"]
+        assert row["terminal_floor"] == episode["terminal_floor"]
+        assert len(row["native_action_sha256s"]) == row["decisions"]
+
+
+@pytest.mark.parametrize("tamper", ["row", "episode"])
+def test_native_policy_reconstruction_rejects_tampering(tamper):
+    dataset = _collect_demo(cohort="validation")
+    if tamper == "row":
+        dataset["rows"][0]["policy_views"][0]["sha256"] = "0" * 64
+    else:
+        dataset["episodes"][0]["terminal_floor"] += 1
+
+    with pytest.raises(WarmStartBlocked, match="demonstration"):
+        native_policy_from_demonstrations(dataset)
+
+
 def test_native_demonstration_query_mutation_fails_closed():
     class MutatingEnvironment(FakeDemonstrationEnvironment):
         def native_baseline_action(self) -> dict[str, str]:
@@ -627,6 +660,87 @@ def test_teacher_fit_and_paired_rollout_metrics_are_deterministic():
         "candidate": 0,
         "native_simple_agent": 0,
     }
+
+
+def test_paired_rollout_reuses_demonstration_native_policy():
+    model = _trained_demo_model()
+    dataset = _collect_demo(cohort="validation")
+    factory_calls = []
+
+    def counting_factory(seed):
+        factory_calls.append(seed)
+        return _demo_factory(seed)
+
+    result = evaluate_warm_start_rollouts(
+        model,
+        environment_factory=counting_factory,
+        seeds=(4000, 4001, 4002, 4003),
+        hash_dim=64,
+        max_decisions_per_episode=4,
+        max_episodes=8,
+        max_wall_seconds=30.0,
+        bootstrap_seed=0,
+        bootstrap_resamples=200,
+        confidence_level=0.95,
+        clock=lambda: 0.0,
+        native_demonstrations=dataset,
+    )
+
+    assert factory_calls == [4000, 4001, 4002, 4003]
+    assert result["policies"]["native_simple_agent"] == (
+        native_policy_from_demonstrations(dataset)
+    )
+    assert set(result["checks"].values()) == {True}
+
+
+def test_warm_start_execution_stops_before_final_test_on_validation_failure():
+    registration = _artifact_registration()
+    registration["study"]["evaluation"]["thresholds"].update(
+        minimum_macro_category_action_agreement=1.0,
+        minimum_overall_action_agreement=1.0,
+        minimum_per_category_action_agreement=1.0,
+    )
+    factory_calls = []
+
+    class ShiftedTeacherEnvironment(FakeDemonstrationEnvironment):
+        def native_baseline_action(self) -> dict[str, str]:
+            value = super().native_baseline_action()
+            if self.seed >= 5000:
+                value["action_id"] = "skip"
+            return value
+
+        def step_native_baseline(self) -> dict[str, object]:
+            return self.step("skip" if self.seed >= 5000 else "take")
+
+    def shifted_factory(seed):
+        factory_calls.append(seed)
+        return ShiftedTeacherEnvironment(seed)
+
+    execution = run_warm_start_execution(
+        registration=registration,
+        environment_factory=shifted_factory,
+        preflight_checks={"identity": True, "native_compatibility": True},
+        clock=lambda: 0.0,
+    )
+
+    assert execution["validation_gate"]["passed"] is False
+    assert execution["final_test"] is None
+    assert execution["datasets"]["final_test"] is None
+    assert all(seed < 6000 for seed in factory_calls)
+    assert factory_calls == [
+        4000,
+        4001,
+        4002,
+        4003,
+        5000,
+        5001,
+        5002,
+        5003,
+        5000,
+        5001,
+        5002,
+        5003,
+    ]
 
 
 def _teacher_fit_metrics(agreement: float) -> dict[str, object]:
