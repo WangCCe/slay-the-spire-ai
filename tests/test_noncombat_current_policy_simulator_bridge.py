@@ -2,6 +2,9 @@ from __future__ import annotations
 
 import copy
 import json
+import subprocess
+import sys
+from pathlib import Path
 
 import pytest
 
@@ -369,3 +372,25 @@ def test_registration_rejects_any_positive_authority():
 
     with pytest.raises(BridgeBlocked, match="authority"):
         validate_registration(registration)
+
+
+def test_script_path_entrypoint_can_import_repository_modules():
+    repo_root = Path(__file__).resolve().parents[1]
+    completed = subprocess.run(
+        [
+            sys.executable,
+            str(
+                repo_root
+                / "analysis_scripts"
+                / "noncombat_current_policy_simulator_bridge.py"
+            ),
+            "--help",
+        ],
+        cwd=repo_root,
+        check=True,
+        capture_output=True,
+        text=True,
+        encoding="utf-8",
+    )
+
+    assert "--registration" in completed.stdout

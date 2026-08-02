@@ -15,6 +15,10 @@ from pathlib import Path, PurePosixPath
 from typing import Any
 from unittest.mock import patch
 
+_REPO_ROOT = Path(__file__).resolve().parents[1]
+if str(_REPO_ROOT) not in sys.path:
+    sys.path.insert(0, str(_REPO_ROOT))
+
 import spirecomm.ai.agent as agent_module
 from analysis_scripts.noncombat_simulator_adapter import (
     TARGET_CATEGORIES,
