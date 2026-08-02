@@ -108,11 +108,11 @@ would hide a hard prerequisite and make a near-pass appear actionable.
 
 ### Recompute into a temporary directory for strict validation
 
-`--validate-output-dir` will validate the published manifest, recompute from
-the registered inputs into a temporary sibling directory, and compare every
-canonical artifact byte-for-byte. It will never partially replace the
-published directory. Publication will use a staging directory followed by an
-atomic rename.
+`--validate-output-dir` will validate the published manifest, recompute all
+canonical bytes from the registered inputs, and compare every artifact
+byte-for-byte. It will never replace the published directory. Publication will
+write temporary files inside a new output directory and install the manifest
+last with atomic file renames, so an incomplete directory has no commit marker.
 
 This follows the repository's existing registered-audit pattern and gives a
 stronger claim than comparing selected summary fields.

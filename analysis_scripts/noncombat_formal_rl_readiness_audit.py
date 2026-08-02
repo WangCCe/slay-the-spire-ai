@@ -6,10 +6,8 @@ import argparse
 import json
 import os
 import re
-import shutil
 import subprocess
 import sys
-import tempfile
 from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass
 from decimal import Decimal, InvalidOperation
@@ -1303,20 +1301,27 @@ def publish_artifacts(
         raise ReadinessAuditBlocked(
             "invalid_evidence: audit output directory already exists"
         )
-    staging = Path(
-        tempfile.mkdtemp(
-            prefix=f".{destination.name}.staging-", dir=destination.parent
-        )
-    )
+    destination.mkdir()
+    order = sorted(name for name in artifacts if name != "artifact_manifest.json")
+    order.append("artifact_manifest.json")
+    temporary = {name: destination / f".{name}.tmp" for name in order}
+    installed: list[str] = []
     try:
-        for name, payload in artifacts.items():
-            (staging / name).write_bytes(payload)
-        validate_artifact_directory(staging)
-        replace(staging, destination)
+        for name in order:
+            temporary[name].write_bytes(artifacts[name])
+        for name in order:
+            replace(temporary[name], destination / name)
+            installed.append(name)
     except Exception:
-        if staging.exists():
-            shutil.rmtree(staging)
+        for name in installed:
+            (destination / name).unlink(missing_ok=True)
+        for path in temporary.values():
+            path.unlink(missing_ok=True)
+        destination.rmdir()
         raise
+    finally:
+        for path in temporary.values():
+            path.unlink(missing_ok=True)
     validate_artifact_directory(destination)
 
 
@@ -1336,19 +1341,11 @@ def recompute_artifact_directory(
     manifest = validate_artifact_directory(root)
     execution = execute_audit(context)
     expected = build_artifacts(context=context, execution=execution)
-    temporary_parent = Path(
-        tempfile.mkdtemp(prefix=f".{root.name}.recompute-", dir=root.parent)
-    )
-    candidate = temporary_parent / "candidate"
-    try:
-        publish_artifacts(candidate, expected)
-        for name in CANONICAL_ARTIFACT_NAMES:
-            if (root / name).read_bytes() != (candidate / name).read_bytes():
-                raise ReadinessAuditBlocked(
-                    f"invalid_evidence: canonical recomputation mismatch: {name}"
-                )
-    finally:
-        shutil.rmtree(temporary_parent, ignore_errors=True)
+    for name in CANONICAL_ARTIFACT_NAMES:
+        if (root / name).read_bytes() != expected[name]:
+            raise ReadinessAuditBlocked(
+                f"invalid_evidence: canonical recomputation mismatch: {name}"
+            )
     return manifest
 
 

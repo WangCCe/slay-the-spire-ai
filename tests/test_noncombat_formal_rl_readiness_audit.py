@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import copy
 import json
+import os
 from pathlib import Path
 
 import pytest
@@ -429,13 +430,23 @@ def test_atomic_publication_manifest_and_strict_recomputation(
     registration, _, _ = _registered_fixture(tmp_path, monkeypatch)
     context = audit.load_validated_context(registration, repo_root=tmp_path)
     output = tmp_path / "canonical"
+    installed = []
 
-    manifest = audit.run_registered_audit(context=context, output_dir=output)
+    def record_replace(source, destination):
+        installed.append(Path(destination).name)
+        os.replace(source, destination)
+
+    artifacts = audit.build_artifacts(
+        context=context, execution=audit.execute_audit(context)
+    )
+    audit.publish_artifacts(output, artifacts, replace=record_replace)
+    manifest = audit.validate_artifact_directory(output)
 
     assert manifest["verdict"] == "ready_for_bounded_training_proposal"
     assert set(path.name for path in output.iterdir()) == set(
         audit.CANONICAL_ARTIFACT_NAMES
     )
+    assert installed[-1] == "artifact_manifest.json"
     assert audit.recompute_artifact_directory(
         context=context, output_dir=output
     ) == manifest
@@ -462,4 +473,3 @@ def test_atomic_publication_cleans_staging_on_replace_failure(
         audit.publish_artifacts(destination, artifacts, replace=fail_replace)
 
     assert not destination.exists()
-    assert not list(tmp_path.glob(".replace-failure.staging-*"))
