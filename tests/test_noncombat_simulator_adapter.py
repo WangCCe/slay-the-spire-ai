@@ -6,9 +6,13 @@ from pathlib import Path
 
 import pytest
 
+from analysis_scripts.noncombat_event_option_semantics import (
+    EventOptionSemanticsError,
+    event_option_semantics_identity,
+    resolve_event_option_semantics,
+)
 from analysis_scripts.noncombat_simulator_adapter import (
     ADAPTER_API_VERSION,
-    EventOptionSemanticsError,
     NATIVE_BASELINE_ACTION_SCHEMA_VERSION,
     NATIVE_TARGET_POLICY_ID,
     SOURCE_TYPE,
@@ -18,10 +22,8 @@ from analysis_scripts.noncombat_simulator_adapter import (
     SimulatorAdapterError,
     build_transition,
     collect_provenance,
-    event_option_semantics_identity,
     hash_compiled_simulator_sources,
     load_native_module,
-    resolve_event_option_semantics,
     validate_candidates,
 )
 

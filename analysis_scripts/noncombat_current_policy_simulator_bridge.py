@@ -20,16 +20,18 @@ if str(_REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(_REPO_ROOT))
 
 import spirecomm.ai.agent as agent_module
-from analysis_scripts.noncombat_simulator_adapter import (
+from analysis_scripts.noncombat_event_option_semantics import (
     EventOptionSemanticsError,
+    event_option_semantics_identity,
+    resolve_event_option_semantics,
+)
+from analysis_scripts.noncombat_simulator_adapter import (
     NativeSimulatorEnvironment,
     SimulatorAdapterError,
     TARGET_CATEGORIES,
     canonical_json_bytes,
-    event_option_semantics_identity,
     hash_compiled_simulator_sources,
     load_native_module,
-    resolve_event_option_semantics,
     sha256_bytes,
     sha256_file,
     validate_candidates,
@@ -99,7 +101,7 @@ CANONICAL_ARTIFACT_NAMES = (
     "report.md",
     "row_results.json",
 )
-REGISTERED_SOURCE_FILES = (
+V1_REGISTERED_SOURCE_FILES = (
     "analysis_scripts/noncombat_current_policy_simulator_bridge.py",
     "analysis_scripts/noncombat_simulator_adapter.py",
     "spirecomm/ai/agent.py",
@@ -117,6 +119,11 @@ REGISTERED_SOURCE_FILES = (
     "spirecomm/spire/potion.py",
     "spirecomm/spire/relic.py",
     "spirecomm/spire/screen.py",
+)
+REGISTERED_SOURCE_FILES = (
+    V1_REGISTERED_SOURCE_FILES[0],
+    "analysis_scripts/noncombat_event_option_semantics.py",
+    *V1_REGISTERED_SOURCE_FILES[1:],
 )
 ALL_FALSE_AUTHORITY = {
     "baseline_floor_authorized": False,
@@ -362,7 +369,12 @@ def validate_registration(value: object) -> dict[str, Any]:
     )
     if not _is_hex(implementation["commit"], 40):
         raise BridgeBlocked("invalid_implementation_commit")
-    if implementation["source_files"] != list(REGISTERED_SOURCE_FILES):
+    expected_source_files = (
+        V1_REGISTERED_SOURCE_FILES
+        if schema_version == INPUT_SCHEMA_VERSION
+        else REGISTERED_SOURCE_FILES
+    )
+    if implementation["source_files"] != list(expected_source_files):
         raise BridgeBlocked("implementation_source_files_mismatch")
     if not _is_hex(implementation["source_sha256"], 64):
         raise BridgeBlocked("invalid_implementation_source_sha256")

@@ -44,7 +44,8 @@ not for a claim that every simulator event is semantically covered.
 
 ### Add one versioned Python adapter-layer resolver
 
-`noncombat_simulator_adapter.py` will expose a pure resolver whose input is a
+The offline adapter layer will expose a pure resolver in a separate semantics
+module whose input is a
 validated event snapshot, legal candidates, and a registered simulator source
 identity. Version 1 supports only `event_id == "Liars Game"`, `event_data == 0`,
 and the exact candidate indices `{0, 1}`. It returns ordered semantic records:
@@ -54,6 +55,11 @@ no-op effect.
 The source contract will record the upstream enum, event id, legal-index source,
 display-label source, execution source, simulator commit, and simulator source
 digest. Resolution rejects identity drift before returning semantics.
+
+The existing `noncombat_simulator_adapter.py` remains byte-identical because
+older policy-validity evidence hash-binds that file. The bridge registration
+binds the new semantics module explicitly instead of invalidating historical
+evidence.
 
 Alternative considered: duplicate the entire console event switch in the C++
 adapter. Rejected because it creates broad unverified coverage and still cannot

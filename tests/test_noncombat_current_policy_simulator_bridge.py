@@ -13,6 +13,8 @@ from analysis_scripts.noncombat_current_policy_simulator_bridge import (
     BridgeBlocked,
     CurrentPolicyBridgeSession,
     MetadataCatalog,
+    REGISTERED_SOURCE_FILES,
+    V1_REGISTERED_SOURCE_FILES,
     build_artifacts,
     classify_stage1,
     enrich_event_option_semantics,
@@ -24,9 +26,11 @@ from analysis_scripts.noncombat_current_policy_simulator_bridge import (
     validate_registration,
     validate_successor_evidence,
 )
+from analysis_scripts.noncombat_event_option_semantics import (
+    event_option_semantics_identity,
+)
 from analysis_scripts.noncombat_simulator_adapter import (
     canonical_json_bytes,
-    event_option_semantics_identity,
     sha256_bytes,
 )
 from spirecomm.communication.action import (
@@ -186,6 +190,9 @@ def _successor_registration():
         "size_bytes": 1,
     }
     successor["identity"]["implementation"]["commit"] = "3" * 40
+    successor["identity"]["implementation"]["source_files"] = list(
+        REGISTERED_SOURCE_FILES
+    )
     successor["identity"]["implementation"]["source_sha256"] = "4" * 64
     successor["output"]["directory"] = (
         "reports/noncombat_current_policy_simulator_bridge_20260802_r2"
@@ -723,6 +730,21 @@ def test_successor_registration_accepts_only_declared_identity_changes():
     )
     assert "stage1" in comparison["immutable_paths"]
     assert "identity.implementation" in comparison["mutable_paths"]
+
+
+def test_v1_registration_preserves_historical_source_file_contract():
+    _, predecessor = _successor_registration()
+
+    normalized = validate_registration(predecessor)
+    assert normalized["identity"]["implementation"]["source_files"] == list(
+        V1_REGISTERED_SOURCE_FILES
+    )
+
+    predecessor["identity"]["implementation"]["source_files"] = list(
+        REGISTERED_SOURCE_FILES
+    )
+    with pytest.raises(BridgeBlocked, match="implementation_source_files_mismatch"):
+        validate_registration(predecessor)
 
 
 @pytest.mark.parametrize(

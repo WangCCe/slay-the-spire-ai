@@ -53,9 +53,10 @@ None.
 
 ## Impact
 
-- Affects `analysis_scripts/noncombat_simulator_adapter.py`, the Current bridge,
-  focused adapter/bridge tests, OpenSpec capability specs, project direction,
-  and new hash-closed report artifacts.
+- Adds a separate offline adapter-semantics module and affects the Current
+  bridge, focused adapter/bridge tests, OpenSpec capability specs, project
+  direction, and new hash-closed report artifacts. The historically hash-bound
+  core simulator adapter remains byte-identical.
 - Reads the external `D:\CLionProjects\sts_lightspeed` checkout only for source
   audit and provenance. It does not modify or vendor that checkout.
 - Does not change `OptimizedAgent`, Communication Mod configuration, live
