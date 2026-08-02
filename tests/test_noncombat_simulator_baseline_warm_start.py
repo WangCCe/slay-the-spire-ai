@@ -11,6 +11,8 @@ import torch
 from analysis_scripts.noncombat_simulator_baseline_warm_start import (
     DEMONSTRATION_SCHEMA_VERSION,
     DATASET_SCHEMA_VERSION,
+    IMPLEMENTATION_FIT_INPUT_SCHEMA_VERSION,
+    IMPLEMENTATION_FIT_SEEDS,
     INPUT_SCHEMA_VERSION,
     PRIOR_SEEDS,
     REGISTERED_SOURCE_FILES,
@@ -27,12 +29,15 @@ from analysis_scripts.noncombat_simulator_baseline_warm_start import (
     load_warm_start_model,
     native_policy_from_demonstrations,
     predict_warm_start_action,
+    publish_implementation_fit_report,
     publish_warm_start_artifacts,
     publish_warm_start_execution_journal,
+    run_implementation_fit,
     run_warm_start_execution,
     train_warm_start_ranker,
     validate_warm_start_artifact_directory,
     validate_warm_start_artifact_payloads,
+    validate_implementation_fit_input,
     validate_warm_start_registration,
 )
 from analysis_scripts.noncombat_simulator_adapter import (
@@ -175,6 +180,33 @@ def valid_registration() -> dict[str, object]:
     }
 
 
+def valid_implementation_fit_input() -> dict[str, object]:
+    registration = valid_registration()
+    identity = copy.deepcopy(registration["identity"])
+    identity["adapter_provenance"] = copy.deepcopy(FAKE_PROVENANCE)
+    return {
+        "schema_version": IMPLEMENTATION_FIT_INPUT_SCHEMA_VERSION,
+        "identity": identity,
+        "fit": {
+            "ascension": 0,
+            "collection_replays": 2,
+            "limits": {
+                "max_decisions_per_episode": 500,
+                "max_demo_rows": 10_000,
+                "max_episodes": 20,
+                "max_total_wall_seconds": 480.0,
+                "max_training_wall_seconds": 180.0,
+                "max_wall_seconds_per_collection": 180.0,
+            },
+            "model": copy.deepcopy(registration["study"]["model"]),
+            "optimizer": copy.deepcopy(registration["study"]["optimizer"]),
+            "required_categories": ["card_reward", "event", "route", "shop"],
+            "seeds": list(IMPLEMENTATION_FIT_SEEDS),
+            "training_replays": 2,
+        },
+    }
+
+
 def test_valid_registration_is_accepted_without_mutating_input():
     registration = valid_registration()
     before = copy.deepcopy(registration)
@@ -184,6 +216,19 @@ def test_valid_registration_is_accepted_without_mutating_input():
     assert validated == before
     assert registration == before
     assert validated is not registration
+
+
+def test_implementation_fit_input_is_fixed_to_observed_seeds():
+    fit_input = valid_implementation_fit_input()
+    before = copy.deepcopy(fit_input)
+
+    assert validate_implementation_fit_input(fit_input) == before
+    assert fit_input == before
+
+    invalid = copy.deepcopy(fit_input)
+    invalid["fit"]["seeds"][-1] = 20
+    with pytest.raises(WarmStartBlocked, match="implementation fit.seeds"):
+        validate_implementation_fit_input(invalid)
 
 
 @pytest.mark.parametrize(
@@ -400,6 +445,53 @@ def test_native_demonstration_dataset_is_complete_and_deterministic():
         assert all(len(item["sha256"]) == 64 for item in row["policy_views"])
         assert row["successor"]["terminal"] is True
         assert row["successor"]["state"]["outcome"] == "player_loss"
+
+
+def test_implementation_fit_is_deterministic_and_has_no_quality_authority(tmp_path):
+    fit_input = valid_implementation_fit_input()
+
+    report = run_implementation_fit(
+        fit_input=fit_input,
+        actual_identity=copy.deepcopy(fit_input["identity"]),
+        environment_factory=_demo_factory,
+        clock=lambda: 0.0,
+    )
+
+    assert report["verdict"] == "implementation_fit_ready"
+    assert report["quality_claim"] == "none"
+    assert report["blockers"] == []
+    assert set(report["authority"].values()) == {False}
+    assert set(report["checks"].values()) == {True}
+    assert report["dataset"]["episode_count"] == 20
+    assert report["dataset"]["row_count"] == 20
+    assert report["dataset"]["category_row_counts"] == {
+        "card_reward": 5,
+        "event": 5,
+        "route": 5,
+        "shop": 5,
+    }
+    assert report["dataset"]["dataset_sha256"] == report["dataset"][
+        "replay_sha256"
+    ]
+    assert report["training"]["final_model_sha256"] == report["training"][
+        "replay_final_model_sha256"
+    ]
+    assert report["runtime"] == {
+        "collection_seconds": [0.0, 0.0],
+        "total_seconds": 0.0,
+        "training_seconds": [0.0, 0.0],
+    }
+    json_output = tmp_path / "implementation_fit.json"
+    markdown_output = tmp_path / "implementation_fit.md"
+    publish_implementation_fit_report(
+        report,
+        json_output=json_output,
+        markdown_output=markdown_output,
+    )
+    assert json.loads(json_output.read_text(encoding="utf-8")) == report
+    assert markdown_output.read_text(encoding="utf-8").startswith(
+        "# Non-Combat Simulator Baseline Warm-Start Implementation Fit\n"
+    )
 
 
 def test_native_policy_is_reconstructed_from_demonstrations():

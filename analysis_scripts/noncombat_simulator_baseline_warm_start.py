@@ -2,11 +2,14 @@
 
 from __future__ import annotations
 
+import argparse
 import copy
 import json
 import math
 import os
 import random
+import sys
+import time
 from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass
 from numbers import Real
@@ -17,8 +20,11 @@ from analysis_scripts.noncombat_simulator_adapter import (
     NATIVE_TARGET_POLICY_ID,
     SOURCE_TYPE,
     TARGET_CATEGORIES,
+    NativeSimulatorEnvironment,
     SimulatorAdapterError,
     canonical_json_bytes,
+    hash_compiled_simulator_sources,
+    load_native_module,
     sha256_bytes,
     sha256_file,
     validate_candidates,
@@ -31,18 +37,32 @@ from analysis_scripts.noncombat_simulator_policy_validity import (
     evaluate_native_policy,
 )
 from analysis_scripts.noncombat_simulator_training_smoke import (
+    ADAPTER_SOURCE_FILES,
     FEATURE_VERSION,
     SmokeBlocked,
+    _actual_binding,
     _candidate_features,
+    _git,
+    _identity_mismatches,
+    _load_bound_json,
     _validate_binding,
+    _verify_sources_at_commit,
     evaluate_greedy_policy,
+    hash_bound_files,
     paired_bootstrap_interval,
     project_policy_view,
     simulator_training_reward,
+    validate_bound_fit_evidence,
 )
 
 
 INPUT_SCHEMA_VERSION = "noncombat-simulator-baseline-warm-start-input-v1"
+IMPLEMENTATION_FIT_INPUT_SCHEMA_VERSION = (
+    "noncombat-simulator-baseline-warm-start-implementation-fit-input-v1"
+)
+IMPLEMENTATION_FIT_REPORT_SCHEMA_VERSION = (
+    "noncombat-simulator-baseline-warm-start-implementation-fit-report-v1"
+)
 DEMONSTRATION_SCHEMA_VERSION = "noncombat-simulator-native-demonstration-v1"
 DATASET_SCHEMA_VERSION = "noncombat-simulator-native-demonstration-dataset-v1"
 MODEL_SCHEMA_VERSION = "noncombat-simulator-baseline-warm-start-model-v1"
@@ -75,6 +95,7 @@ PRIOR_SEEDS = tuple(
         | set(range(3000, 3064))
     )
 )
+IMPLEMENTATION_FIT_SEEDS = tuple(range(20))
 REGISTERED_SOURCE_FILES = (
     "analysis_scripts/noncombat_policy_model.py",
     "analysis_scripts/noncombat_simulator_adapter.py",
@@ -567,6 +588,77 @@ def load_warm_start_registration(path: Path | str) -> dict[str, Any]:
     except (OSError, UnicodeError, json.JSONDecodeError) as exc:
         raise WarmStartBlocked(f"cannot load warm-start input {path}: {exc}") from exc
     return validate_warm_start_registration(value)
+
+
+def validate_implementation_fit_input(value: object) -> dict[str, Any]:
+    """Validate the fixed already-observed implementation-fit contract."""
+    fit_input = _mapping(value, "implementation fit input")
+    _require_keys(
+        fit_input,
+        {"fit", "identity", "schema_version"},
+        "implementation fit input",
+    )
+    _require_exact(
+        fit_input,
+        "schema_version",
+        IMPLEMENTATION_FIT_INPUT_SCHEMA_VERSION,
+        "implementation fit input",
+    )
+    fit_input = copy.deepcopy(fit_input)
+    fit_input["identity"] = _validate_identity(fit_input["identity"])
+    fit = _mapping(fit_input["fit"], "implementation fit")
+    _require_keys(
+        fit,
+        {
+            "ascension",
+            "collection_replays",
+            "limits",
+            "model",
+            "optimizer",
+            "required_categories",
+            "seeds",
+            "training_replays",
+        },
+        "implementation fit",
+    )
+    for field, expected in {
+        "ascension": 0,
+        "collection_replays": 2,
+        "required_categories": list(TARGET_CATEGORIES),
+        "seeds": list(IMPLEMENTATION_FIT_SEEDS),
+        "training_replays": 2,
+    }.items():
+        _require_exact(fit, field, expected, "implementation fit")
+    fit["model"] = _validate_model(fit["model"])
+    fit["optimizer"] = _validate_optimizer(fit["optimizer"])
+    limits = _mapping(fit["limits"], "implementation fit.limits")
+    expected_limits = {
+        "max_decisions_per_episode": 500,
+        "max_demo_rows": 10_000,
+        "max_episodes": len(IMPLEMENTATION_FIT_SEEDS),
+        "max_total_wall_seconds": 480.0,
+        "max_training_wall_seconds": 180.0,
+        "max_wall_seconds_per_collection": 180.0,
+    }
+    _require_keys(limits, set(expected_limits), "implementation fit.limits")
+    for field, expected in expected_limits.items():
+        _require_exact(limits, field, expected, "implementation fit.limits")
+    fit["limits"] = limits
+    fit_input["fit"] = fit
+    return fit_input
+
+
+def load_implementation_fit_input(path: Path | str) -> dict[str, Any]:
+    try:
+        value = json.loads(
+            Path(path).read_text(encoding="utf-8"),
+            object_pairs_hook=_reject_duplicate_pairs,
+        )
+    except WarmStartBlocked:
+        raise
+    except (OSError, UnicodeError, json.JSONDecodeError) as exc:
+        raise WarmStartBlocked(f"cannot load implementation-fit input {path}: {exc}") from exc
+    return validate_implementation_fit_input(value)
 
 
 def _adapter_call(label: str, call: Callable[[], Any]) -> Any:
@@ -1914,6 +2006,316 @@ def run_warm_start_execution(
     }
 
 
+def collect_implementation_fit_actual_identity(
+    fit_input: Mapping[str, Any],
+    *,
+    repo_root: Path | str,
+    simulator_repo: Path | str,
+    module_path: Path | str,
+    native_module: Any,
+) -> dict[str, Any]:
+    """Rebuild every bound implementation-fit identity before seed access."""
+    validated = validate_implementation_fit_input(fit_input)
+    identity = validated["identity"]
+    root = Path(repo_root).resolve()
+    simulator = Path(simulator_repo).resolve()
+    module_file = Path(module_path).resolve()
+    try:
+        fit_registration = _load_bound_json(
+            root, identity["adapter_fit_input"], "adapter fit input"
+        )
+        fit_report = _load_bound_json(
+            root, identity["adapter_fit_report"], "adapter fit report"
+        )
+        validate_bound_fit_evidence(
+            fit_registration, fit_report, identity["adapter_provenance"]
+        )
+        required_fit_checks = {
+            "native_baseline_candidate_mapping",
+            "native_baseline_four_category_coverage",
+            "native_baseline_non_mutation",
+            "native_baseline_repeated_seed_determinism",
+            "native_baseline_terminal_outcomes",
+        }
+        fit_checks = fit_report.get("checks")
+        if not isinstance(fit_checks, Mapping) or any(
+            fit_checks.get(name) is not True for name in required_fit_checks
+        ):
+            raise WarmStartBlocked("adapter fit lacks native baseline checks")
+        adapter_commit = identity["adapter_provenance"]["adapter_commit"]
+        _verify_sources_at_commit(root, adapter_commit, ADAPTER_SOURCE_FILES)
+        _verify_sources_at_commit(
+            root,
+            identity["implementation"]["commit"],
+            identity["implementation"]["source_files"],
+        )
+    except SmokeBlocked as exc:
+        raise WarmStartBlocked(str(exc)) from exc
+
+    simulator_source_sha256, simulator_source_file_count = (
+        hash_compiled_simulator_sources(simulator)
+    )
+    try:
+        build = json.loads(native_module.build_info_json())
+    except (AttributeError, TypeError, RuntimeError, json.JSONDecodeError) as exc:
+        raise WarmStartBlocked(f"invalid native build identity: {exc}") from exc
+    build["python"] = sys.version.split()[0]
+    provenance = validate_provenance(
+        {
+            "adapter_commit": adapter_commit,
+            "adapter_source_sha256": hash_bound_files(root, ADAPTER_SOURCE_FILES),
+            "build": build,
+            "module_sha256": sha256_file(module_file),
+            "module_size_bytes": module_file.stat().st_size,
+            "simulator_commit": _git(simulator, "rev-parse", "HEAD"),
+            "simulator_dirty": bool(_git(simulator, "status", "--porcelain=v1")),
+            "simulator_source_file_count": simulator_source_file_count,
+            "simulator_source_sha256": simulator_source_sha256,
+            "submodules": {
+                "json": _git(simulator / "json", "rev-parse", "HEAD"),
+                "pybind11": _git(simulator / "pybind11", "rev-parse", "HEAD"),
+            },
+        }
+    )
+    torch = _torch_module()
+    return {
+        "adapter_fit_input": _actual_binding(root, identity["adapter_fit_input"]),
+        "adapter_fit_report": _actual_binding(root, identity["adapter_fit_report"]),
+        "adapter_provenance": provenance,
+        "excluded_baselines": {
+            name: {
+                "feature_version": entry["feature_version"],
+                "model": _actual_binding(root, entry["model"]),
+                "reason": entry["reason"],
+            }
+            for name, entry in sorted(identity["excluded_baselines"].items())
+        },
+        "implementation": {
+            "commit": identity["implementation"]["commit"],
+            "source_files": list(identity["implementation"]["source_files"]),
+            "source_sha256": hash_bound_files(
+                root, identity["implementation"]["source_files"]
+            ),
+        },
+        "prior_evidence": {
+            name: _actual_binding(root, binding)
+            for name, binding in sorted(identity["prior_evidence"].items())
+        },
+        "runtime": {"python": sys.version.split()[0], "torch": torch.__version__},
+    }
+
+
+def _implementation_fit_distribution(values: Sequence[Real]) -> dict[str, float]:
+    normalized = [float(value) for value in values]
+    if not normalized or any(not math.isfinite(value) for value in normalized):
+        raise WarmStartBlocked("implementation-fit distribution is invalid")
+    return {
+        "maximum": max(normalized),
+        "mean": sum(normalized) / len(normalized),
+        "minimum": min(normalized),
+    }
+
+
+def run_implementation_fit(
+    *,
+    fit_input: Mapping[str, Any],
+    actual_identity: Mapping[str, Any],
+    environment_factory: Callable[[int], Any],
+    clock: Callable[[], float] = time.perf_counter,
+) -> dict[str, Any]:
+    """Run descriptive implementation fit only on already observed seeds."""
+    validated = validate_implementation_fit_input(fit_input)
+    identity = _mapping(actual_identity, "actual implementation-fit identity")
+    mismatches = _identity_mismatches(validated["identity"], identity)
+    if mismatches:
+        raise WarmStartBlocked("runtime identity mismatch: " + ", ".join(mismatches))
+    fit = validated["fit"]
+    limits = fit["limits"]
+    started = _finite_number(clock(), "clock value")
+    global_deadline = started + limits["max_total_wall_seconds"]
+    collection_durations = []
+    datasets = []
+    for _ in range(fit["collection_replays"]):
+        phase_started = _finite_number(clock(), "clock value")
+        dataset = collect_native_demonstrations(
+            environment_factory=environment_factory,
+            cohort="train",
+            seeds=fit["seeds"],
+            max_decisions_per_episode=limits["max_decisions_per_episode"],
+            max_demo_rows=limits["max_demo_rows"],
+            max_episodes=limits["max_episodes"],
+            deadline=min(
+                global_deadline,
+                phase_started + limits["max_wall_seconds_per_collection"],
+            ),
+            clock=clock,
+            required_categories=fit["required_categories"],
+        )
+        datasets.append(dataset)
+        duration = _finite_number(clock(), "clock value") - phase_started
+        if duration < 0.0 or duration > limits["max_wall_seconds_per_collection"]:
+            raise WarmStartBlocked(
+                "implementation-fit collection exceeded wall-time bound"
+            )
+        collection_durations.append(duration)
+        _check_deadline(clock, global_deadline, "implementation fit")
+
+    training_durations = []
+    trainings = []
+    for _ in range(fit["training_replays"]):
+        phase_started = _finite_number(clock(), "clock value")
+        training = train_warm_start_ranker(
+            datasets[0],
+            hash_dim=fit["model"]["hash_dim"],
+            hidden_dim=fit["model"]["hidden_dim"],
+            model_seed=fit["model"]["model_seed"],
+            epochs=fit["optimizer"]["epochs"],
+            learning_rate=fit["optimizer"]["learning_rate"],
+            betas=(fit["optimizer"]["beta1"], fit["optimizer"]["beta2"]),
+            epsilon=fit["optimizer"]["epsilon"],
+            weight_decay=fit["optimizer"]["weight_decay"],
+        )
+        duration = _finite_number(clock(), "clock value") - phase_started
+        if duration < 0.0 or duration > limits["max_training_wall_seconds"]:
+            raise WarmStartBlocked("implementation-fit training exceeded wall-time bound")
+        trainings.append(training)
+        training_durations.append(duration)
+        _check_deadline(clock, global_deadline, "implementation fit")
+
+    dataset_hashes = [
+        sha256_bytes(canonical_json_bytes(dataset)) for dataset in datasets
+    ]
+    initial_model_hashes = [
+        sha256_bytes(canonical_json_bytes(training.initial_model))
+        for training in trainings
+    ]
+    final_model_hashes = [
+        sha256_bytes(canonical_json_bytes(training.final_model))
+        for training in trainings
+    ]
+    history_hashes = [
+        sha256_bytes(canonical_json_bytes(list(training.history)))
+        for training in trainings
+    ]
+    rows = datasets[0]["rows"]
+    episodes = datasets[0]["episodes"]
+    category_row_counts = {
+        category: sum(row["category"] == category for row in rows)
+        for category in TARGET_CATEGORIES
+    }
+    checks = {
+        "candidate_mapping": all(
+            sum(
+                candidate["action_id"] == row["teacher"]["action_id"]
+                for candidate in row["candidate_actions"]
+            )
+            == 1
+            for row in rows
+        ),
+        "collection_replay_identity": len(set(dataset_hashes)) == 1,
+        "four_category_coverage": datasets[0]["all_categories"]
+        == list(TARGET_CATEGORIES),
+        "model_updated": initial_model_hashes[0] != final_model_hashes[0],
+        "provenance_identity": all(
+            canonical_json_bytes(row["provenance"])
+            == canonical_json_bytes(identity["adapter_provenance"])
+            for row in rows
+        ),
+        "teacher_policy_identity": all(
+            row["teacher"]["policy_id"] == NATIVE_TARGET_POLICY_ID for row in rows
+        ),
+        "training_replay_identity": len(set(initial_model_hashes)) == 1
+        and len(set(final_model_hashes)) == 1
+        and len(set(history_hashes)) == 1,
+        "terminal_outcomes": all(
+            episode["outcome"] in {"player_loss", "player_victory"}
+            for episode in episodes
+        ),
+        "within_bounds": len(episodes) == len(IMPLEMENTATION_FIT_SEEDS)
+        and len(rows) <= limits["max_demo_rows"]
+        and len(trainings[0].history) == fit["optimizer"]["epochs"],
+    }
+    blockers = sorted(name for name, passed in checks.items() if not passed)
+    authority = _authority()
+    total_duration = _finite_number(clock(), "clock value") - started
+    if total_duration < 0.0 or total_duration > limits["max_total_wall_seconds"]:
+        raise WarmStartBlocked("implementation fit exceeded total wall-time bound")
+    report = {
+        "authority": authority,
+        "blockers": blockers,
+        "checks": checks,
+        "dataset": {
+            "candidate_count": _implementation_fit_distribution(
+                [len(row["candidate_actions"]) for row in rows]
+            ),
+            "category_row_counts": category_row_counts,
+            "dataset_sha256": dataset_hashes[0],
+            "decisions_per_episode": _implementation_fit_distribution(
+                [episode["decisions"] for episode in episodes]
+            ),
+            "episode_count": len(episodes),
+            "replay_sha256": dataset_hashes[1],
+            "row_count": len(rows),
+            "terminal_outcome_counts": {
+                outcome: sum(episode["outcome"] == outcome for episode in episodes)
+                for outcome in ("player_loss", "player_victory")
+            },
+        },
+        "fit_input_sha256": sha256_bytes(canonical_json_bytes(validated)),
+        "identity": copy.deepcopy(identity),
+        "limitations": [
+            "Only already-observed adapter fit seeds 0 through 19 were reused.",
+            "The report evaluates implementation behavior, not policy quality.",
+            "SimpleAgent labels are auxiliary demonstrations, not reward or permanent truth.",
+            "No validation, final-test, live, OPE, qualification, or promotion authority is granted.",
+            "Measured runtime is machine-specific and excluded from later canonical study identity.",
+        ],
+        "quality_claim": "none",
+        "runtime": {
+            "collection_seconds": collection_durations,
+            "total_seconds": total_duration,
+            "training_seconds": training_durations,
+        },
+        "schema_version": IMPLEMENTATION_FIT_REPORT_SCHEMA_VERSION,
+        "seeds": list(IMPLEMENTATION_FIT_SEEDS),
+        "training": {
+            "epochs": fit["optimizer"]["epochs"],
+            "final_model_sha256": final_model_hashes[0],
+            "history_sha256": history_hashes[0],
+            "initial_model_sha256": initial_model_hashes[0],
+            "replay_final_model_sha256": final_model_hashes[1],
+            "replay_history_sha256": history_hashes[1],
+        },
+        "verdict": "implementation_fit_ready" if not blockers else "blocked",
+    }
+    return validate_implementation_fit_report(report)
+
+
+def validate_implementation_fit_report(value: object) -> dict[str, Any]:
+    report = copy.deepcopy(_mapping(value, "implementation-fit report"))
+    if report.get("schema_version") != IMPLEMENTATION_FIT_REPORT_SCHEMA_VERSION:
+        raise WarmStartBlocked("implementation-fit report schema mismatch")
+    if report.get("seeds") != list(IMPLEMENTATION_FIT_SEEDS):
+        raise WarmStartBlocked("implementation-fit report seeds mismatch")
+    if report.get("quality_claim") != "none":
+        raise WarmStartBlocked("implementation-fit report made a quality claim")
+    checks = _mapping(report.get("checks"), "implementation-fit report.checks")
+    if not checks or any(not isinstance(value, bool) for value in checks.values()):
+        raise WarmStartBlocked("implementation-fit checks must be nonempty booleans")
+    expected_verdict = "implementation_fit_ready" if all(checks.values()) else "blocked"
+    if report.get("verdict") != expected_verdict:
+        raise WarmStartBlocked("implementation-fit verdict mismatch")
+    if report.get("blockers") != sorted(
+        name for name, passed in checks.items() if not passed
+    ):
+        raise WarmStartBlocked("implementation-fit blockers mismatch")
+    if report.get("authority") != _authority():
+        raise WarmStartBlocked("implementation-fit authority mismatch")
+    if not _is_hex(report.get("fit_input_sha256"), 64):
+        raise WarmStartBlocked("implementation-fit input hash is invalid")
+    return report
+
+
 def _nested_structural_blockers(
     phase: str, evidence: Mapping[str, Any]
 ) -> list[str]:
@@ -2476,3 +2878,166 @@ def publish_warm_start_execution_journal(
     finally:
         temporary.unlink(missing_ok=True)
     validate_warm_start_artifact_directory(root)
+
+
+def render_implementation_fit_markdown(report: Mapping[str, Any]) -> str:
+    value = validate_implementation_fit_report(report)
+    dataset = value["dataset"]
+    training = value["training"]
+    lines = [
+        "# Non-Combat Simulator Baseline Warm-Start Implementation Fit",
+        "",
+        f"- Verdict: `{value['verdict']}`",
+        f"- Quality claim: `{value['quality_claim']}`",
+        f"- Reused seeds: `{value['seeds'][0]}..{value['seeds'][-1]}`",
+        f"- Demonstration rows: {dataset['row_count']}",
+        f"- Episodes: {dataset['episode_count']}",
+        f"- Dataset SHA-256: `{dataset['dataset_sha256']}`",
+        f"- Final model SHA-256: `{training['final_model_sha256']}`",
+        "",
+        "## Category Rows",
+        "",
+    ]
+    lines.extend(
+        f"- {name}: {count}"
+        for name, count in sorted(dataset["category_row_counts"].items())
+    )
+    lines.extend(["", "## Checks", ""])
+    lines.extend(
+        f"- {name}: `{'pass' if passed else 'fail'}`"
+        for name, passed in sorted(value["checks"].items())
+    )
+    lines.extend(["", "## Runtime", ""])
+    lines.append(
+        "- Collection seconds: "
+        + ", ".join(f"{seconds:.6f}" for seconds in value["runtime"]["collection_seconds"])
+    )
+    lines.append(
+        "- Training seconds: "
+        + ", ".join(f"{seconds:.6f}" for seconds in value["runtime"]["training_seconds"])
+    )
+    lines.append(f"- Total seconds: {value['runtime']['total_seconds']:.6f}")
+    lines.extend(["", "## Blockers", ""])
+    lines.extend(f"- {blocker}" for blocker in (value["blockers"] or ["None."]))
+    lines.extend(["", "## Authority", ""])
+    lines.extend(
+        f"- {name}: `{str(enabled).lower()}`"
+        for name, enabled in sorted(value["authority"].items())
+    )
+    lines.extend(["", "## Limitations", ""])
+    lines.extend(f"- {limitation}" for limitation in value["limitations"])
+    return "\n".join(lines) + "\n"
+
+
+def publish_implementation_fit_report(
+    report: Mapping[str, Any],
+    *,
+    json_output: Path | str,
+    markdown_output: Path | str,
+    replace: Callable[[str | os.PathLike[str], str | os.PathLike[str]], None] = os.replace,
+) -> None:
+    value = validate_implementation_fit_report(report)
+    destinations = (Path(json_output), Path(markdown_output))
+    payloads = (
+        canonical_json_bytes(value),
+        render_implementation_fit_markdown(value).encode("utf-8"),
+    )
+    previous = [path.read_bytes() if path.is_file() else None for path in destinations]
+    temporary = [path.with_name(f".{path.name}.tmp") for path in destinations]
+    for path in destinations:
+        path.parent.mkdir(parents=True, exist_ok=True)
+    installed = 0
+    try:
+        for path, payload in zip(temporary, payloads):
+            path.write_bytes(payload)
+        for source, destination in zip(temporary, destinations):
+            replace(source, destination)
+            installed += 1
+    except Exception:
+        for index in range(installed):
+            destination = destinations[index]
+            prior = previous[index]
+            if prior is None:
+                destination.unlink(missing_ok=True)
+            else:
+                restore = destination.with_name(f".{destination.name}.restore")
+                restore.write_bytes(prior)
+                os.replace(restore, destination)
+        raise
+    finally:
+        for path in temporary:
+            path.unlink(missing_ok=True)
+        for path in destinations:
+            path.with_name(f".{path.name}.restore").unlink(missing_ok=True)
+    loaded = json.loads(destinations[0].read_text(encoding="utf-8"))
+    validate_implementation_fit_report(loaded)
+
+
+def build_parser() -> argparse.ArgumentParser:
+    parser = argparse.ArgumentParser(description=__doc__)
+    commands = parser.add_subparsers(dest="command", required=True)
+    fit = commands.add_parser(
+        "implementation-fit", description="Run the observed-seed implementation fit."
+    )
+    fit.add_argument("--input", type=Path, required=True)
+    fit.add_argument("--simulator-repo", type=Path, required=True)
+    fit.add_argument("--module", type=Path, required=True)
+    fit.add_argument("--dll-directory", type=Path, action="append", default=[])
+    fit.add_argument("--json-output", type=Path, required=True)
+    fit.add_argument("--markdown-output", type=Path, required=True)
+    return parser
+
+
+def main(argv: Sequence[str] | None = None) -> int:
+    args = build_parser().parse_args(argv)
+    if args.command != "implementation-fit":
+        raise WarmStartBlocked(f"unsupported command: {args.command}")
+    repo_root = Path(__file__).resolve().parents[1]
+    try:
+        fit_input = load_implementation_fit_input(args.input)
+        module = load_native_module(args.module, dll_directories=args.dll_directory)
+        actual_identity = collect_implementation_fit_actual_identity(
+            fit_input,
+            repo_root=repo_root,
+            simulator_repo=args.simulator_repo,
+            module_path=args.module,
+            native_module=module,
+        )
+        provenance = actual_identity["adapter_provenance"]
+
+        def environment_factory(seed: int) -> NativeSimulatorEnvironment:
+            return NativeSimulatorEnvironment(
+                module.Environment(seed, fit_input["fit"]["ascension"]), provenance
+            )
+
+        report = run_implementation_fit(
+            fit_input=fit_input,
+            actual_identity=actual_identity,
+            environment_factory=environment_factory,
+        )
+        publish_implementation_fit_report(
+            report,
+            json_output=args.json_output,
+            markdown_output=args.markdown_output,
+        )
+    except (ImportError, OSError, SimulatorAdapterError, WarmStartBlocked) as exc:
+        print(
+            json.dumps({"command": args.command, "error": str(exc), "verdict": "blocked"}),
+            file=sys.stderr,
+        )
+        return 2
+    print(
+        json.dumps(
+            {
+                "json_output": str(args.json_output),
+                "markdown_output": str(args.markdown_output),
+                "verdict": report["verdict"],
+            },
+            sort_keys=True,
+        )
+    )
+    return 0 if report["verdict"] == "implementation_fit_ready" else 2
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())
