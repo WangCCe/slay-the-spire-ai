@@ -23,7 +23,9 @@ import spirecomm.ai.agent as agent_module
 from analysis_scripts.noncombat_event_option_semantics import (
     EventOptionSemanticsError,
     event_option_semantics_identity,
+    reachable_event_option_semantics_identity,
     resolve_event_option_observation,
+    resolve_reachable_event_option_observation,
 )
 from analysis_scripts.noncombat_simulator_adapter import (
     NativeSimulatorEnvironment,
@@ -178,6 +180,40 @@ def _mapping(value: object, label: str) -> dict[str, Any]:
     if not isinstance(value, Mapping):
         raise BridgeBlocked("invalid_mapping", label)
     return dict(value)
+
+
+def _validated_event_semantics_identity(
+    value: Mapping[str, Any] | None,
+) -> dict[str, Any]:
+    actual = (
+        reachable_event_option_semantics_identity()
+        if value is None
+        else _mapping(value, "event semantics identity")
+    )
+    supported = (
+        reachable_event_option_semantics_identity(),
+        event_option_semantics_identity(),
+    )
+    if actual not in supported:
+        raise BridgeBlocked(
+            "event_option_semantics_identity_mismatch",
+            {"actual": actual, "expected": list(supported)},
+        )
+    return copy.deepcopy(actual)
+
+
+def _registration_event_semantics_identity(
+    registration: Mapping[str, Any],
+) -> dict[str, Any]:
+    if registration.get("schema_version") == SUCCESSOR_INPUT_SCHEMA_VERSION:
+        return _validated_event_semantics_identity(
+            _mapping(registration.get("identity"), "registration.identity").get(
+                "event_option_semantics"
+            )
+        )
+    if registration.get("schema_version") == INPUT_SCHEMA_VERSION:
+        return event_option_semantics_identity()
+    raise BridgeBlocked("registration_schema_mismatch")
 
 
 def _sequence(value: object, label: str) -> list[Any]:
@@ -924,6 +960,7 @@ def enrich_event_option_semantics(
     snapshot: Mapping[str, Any],
     candidates: Sequence[Mapping[str, Any]],
     simulator_provenance: Mapping[str, Any] | None,
+    semantics_identity: Mapping[str, Any] | None = None,
 ) -> tuple[dict[str, Any], str]:
     """Return a hydration copy with exact event semantics when required."""
 
@@ -945,8 +982,17 @@ def enrich_event_option_semantics(
     else:
         if simulator_provenance is None:
             raise BridgeBlocked("event_option_semantics_provenance_missing")
+        resolved_identity = _validated_event_semantics_identity(
+            semantics_identity
+        )
         try:
-            observation = resolve_event_option_observation(
+            resolver = (
+                resolve_reachable_event_option_observation
+                if resolved_identity
+                == reachable_event_option_semantics_identity()
+                else resolve_event_option_observation
+            )
+            observation = resolver(
                 snapshot=snapshot,
                 candidates=candidates,
                 simulator_provenance=simulator_provenance,
@@ -958,7 +1004,14 @@ def enrich_event_option_semantics(
         )
         context["event_id"] = observation["current_event_id"]
         context["option_semantics"] = semantics
-        source = event_option_semantics_identity()["contract_id"]
+        source = observation.get(
+            "semantic_source", resolved_identity["contract_id"]
+        )
+        if source != resolved_identity["contract_id"]:
+            raise BridgeBlocked(
+                "event_option_semantics_source_mismatch",
+                {"actual": source, "expected": resolved_identity["contract_id"]},
+            )
     state["decision_context"] = context
     enriched["state"] = state
 
@@ -1305,11 +1358,15 @@ class CurrentPolicyBridgeSession:
         *,
         metadata: MetadataCatalog,
         current_policy: Mapping[str, Any],
+        event_semantics_identity: Mapping[str, Any] | None = None,
         require_global_metadata_match: bool = True,
         simulator_provenance: Mapping[str, Any] | None = None,
     ):
         self.metadata = metadata
         self.current_policy = _validated_current_policy(current_policy)
+        self.event_semantics_identity = _validated_event_semantics_identity(
+            event_semantics_identity
+        )
         self.simulator_provenance = (
             copy.deepcopy(dict(simulator_provenance))
             if simulator_provenance is not None
@@ -1359,6 +1416,7 @@ class CurrentPolicyBridgeSession:
             snapshot=snapshot,
             candidates=candidates,
             simulator_provenance=self.simulator_provenance,
+            semantics_identity=self.event_semantics_identity,
         )
         game = hydrate_game(hydration_snapshot, candidates, self.metadata)
         if game.ascension_level != self.current_policy["ascension"]:
@@ -1422,6 +1480,7 @@ class CurrentPolicyBridgeSession:
                 "current_event_id": hydration_context.get("event_id"),
                 "current_position": current_position,
                 "event_data": source_context.get("event_data"),
+                "selected_action_id": action_id,
                 "semantics_source": event_semantics_source,
                 "simulator_choice_index": matching_semantics[0].get(
                     "simulator_choice_index"
@@ -1961,6 +2020,9 @@ def _evaluate_stage1(
                 session = CurrentPolicyBridgeSession(
                     metadata=metadata,
                     current_policy=registration["current_policy"],
+                    event_semantics_identity=(
+                        _registration_event_semantics_identity(registration)
+                    ),
                     simulator_provenance=registration["identity"][
                         "adapter_provenance"
                     ],
@@ -2295,6 +2357,9 @@ def run_poc(
             return CurrentPolicyBridgeSession(
                 metadata=metadata,
                 current_policy=registration["current_policy"],
+                event_semantics_identity=(
+                    _registration_event_semantics_identity(registration)
+                ),
                 simulator_provenance=provenance,
             )
 

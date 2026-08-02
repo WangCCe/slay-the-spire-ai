@@ -1779,6 +1779,7 @@ def _execute_registered(
         return CurrentPolicyBridgeSession(
             metadata=metadata,
             current_policy=registration["current_policy"],
+            event_semantics_identity=event_option_semantics_identity(),
             simulator_provenance=provenance,
         )
 

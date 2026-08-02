@@ -28,6 +28,7 @@ from analysis_scripts.noncombat_current_policy_simulator_bridge import (
 )
 from analysis_scripts.noncombat_event_option_semantics import (
     event_option_semantics_identity,
+    reachable_event_option_semantics_identity,
 )
 from analysis_scripts.noncombat_simulator_adapter import (
     canonical_json_bytes,
@@ -597,7 +598,7 @@ def test_bridge_enriches_missing_event_semantics_without_mutating_sources():
         simulator_provenance=_adapter_provenance(),
     )
 
-    assert source == "sts_lightspeed_total_event_observation_v2"
+    assert source == "sts_lightspeed_reachable_event_observation_v3"
     assert enriched["state"]["decision_context"]["option_semantics"] == [
         {
             "choice_index": 0,
@@ -788,13 +789,14 @@ def test_current_session_uses_resolved_liars_game_semantics(metadata):
 
     assert result["action_id"] == "event:the_ssssserpent:option:1"
     assert result["event_semantics_source"] == (
-        "sts_lightspeed_total_event_observation_v2"
+        "sts_lightspeed_reachable_event_observation_v3"
     )
     assert result["event_observation"] == {
         "current_event_id": "Liars Game",
         "current_position": 1,
         "event_data": 0,
-        "semantics_source": "sts_lightspeed_total_event_observation_v2",
+        "selected_action_id": "event:the_ssssserpent:option:1",
+        "semantics_source": "sts_lightspeed_reachable_event_observation_v3",
         "simulator_choice_index": 1,
         "upstream_event_id": "Liars Game",
     }
@@ -824,18 +826,88 @@ def test_current_session_maps_cleric_visible_position_to_sparse_candidate(metada
 
     assert result["action_id"] == candidates[0]["action_id"]
     assert result["event_semantics_source"] == (
-        "sts_lightspeed_total_event_observation_v2"
+        "sts_lightspeed_reachable_event_observation_v3"
     )
     assert result["event_observation"] == {
         "current_event_id": "The Cleric",
         "current_position": 0,
         "event_data": 0,
-        "semantics_source": "sts_lightspeed_total_event_observation_v2",
+        "selected_action_id": candidates[0]["action_id"],
+        "semantics_source": "sts_lightspeed_reachable_event_observation_v3",
         "simulator_choice_index": 2,
         "upstream_event_id": "The Cleric",
     }
     assert snapshot == before_snapshot
     assert candidates == before_candidates
+
+
+def test_current_session_maps_generic_scrap_ooze_position_to_sparse_candidate(
+    metadata,
+):
+    snapshot = _snapshot(
+        "event", _event_state("Scrap Ooze", "Scrap Ooze", event_data=3)
+    )
+    candidates = [
+        _candidate(
+            "event",
+            "event_option",
+            "event:scrap_ooze:option:2",
+            label="Try again",
+            event_id="Scrap Ooze",
+            idx1=2,
+            idx2=0,
+        ),
+        _candidate(
+            "event",
+            "event_option",
+            "event:scrap_ooze:option:7",
+            label="Back away",
+            event_id="Scrap Ooze",
+            idx1=7,
+            idx2=0,
+        ),
+    ]
+    before_snapshot = copy.deepcopy(snapshot)
+    before_candidates = copy.deepcopy(candidates)
+    session = CurrentPolicyBridgeSession(
+        metadata=metadata,
+        current_policy=_current_policy(),
+        require_global_metadata_match=False,
+        simulator_provenance=_adapter_provenance(),
+    )
+
+    result = session.evaluate(
+        snapshot=snapshot,
+        candidates=candidates,
+        decision_index=1,
+    )
+
+    assert result["action_id"] == "event:scrap_ooze:option:2"
+    assert result["event_observation"] == {
+        "current_event_id": "Scrap Ooze",
+        "current_position": 0,
+        "event_data": 3,
+        "selected_action_id": "event:scrap_ooze:option:2",
+        "semantics_source": "sts_lightspeed_reachable_event_observation_v3",
+        "simulator_choice_index": 2,
+        "upstream_event_id": "Scrap Ooze",
+    }
+    assert snapshot == before_snapshot
+    assert candidates == before_candidates
+
+
+def test_historical_semantics_identity_keeps_predecessor_resolver():
+    snapshot = _snapshot("event", _liars_game_state())
+
+    enriched, source = enrich_event_option_semantics(
+        snapshot=snapshot,
+        candidates=_liars_game_candidates(),
+        simulator_provenance=_adapter_provenance(),
+        semantics_identity=event_option_semantics_identity(),
+    )
+
+    assert source == "sts_lightspeed_total_event_observation_v2"
+    assert enriched["state"]["decision_context"]["event_id"] == "Liars Game"
 
 
 def test_hydration_keeps_snapshot_and_candidates_unchanged(metadata):
@@ -923,6 +995,16 @@ def test_successor_registration_accepts_only_declared_identity_changes():
     )
     assert "stage1" in comparison["immutable_paths"]
     assert "identity.implementation" in comparison["mutable_paths"]
+
+
+def test_v2_registration_rejects_reachable_successor_identity():
+    successor, _ = _successor_registration()
+    successor["identity"]["event_option_semantics"] = (
+        reachable_event_option_semantics_identity()
+    )
+
+    with pytest.raises(BridgeBlocked, match="event_option_semantics_identity_mismatch"):
+        validate_registration(successor)
 
 
 def test_v1_registration_preserves_historical_source_file_contract():
