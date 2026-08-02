@@ -48,8 +48,17 @@ and outcome support remain blocked. The terminal verdict remains
 `not_ready_for_bounded_training_proposal`, with all execution and promotion
 authority false.
 
-The current objective is a separately reviewed, read-only plan for establishing
-a non-teacher credible baseline floor, not another imitation POC, unregistered
+The first source-bound Current-policy simulator bridge POC is also complete.
+The exact conservative Ironclad `OptimizedAgent` path mapped route, card reward,
+and shop rows deterministically without fallback or source mutation. The event
+row failed closed because adapter v2 preserves only generic option indices and
+not the semantic option labels read by Current. The verdict is
+`frozen_bridge_not_compatible`; Stage 2 was not authorized or executed, and all
+downstream authority remains false.
+
+The current objective is a separately reviewed, read-only adapter contract for
+exact event-option semantics, followed only by strict recomputation of the same
+frozen Current bridge POC. Do not start another imitation POC, unregistered
 simulator cohort, gameplay batch, or formal non-combat RL training.
 
 ## Training Boundary
@@ -74,6 +83,14 @@ undemonstrated credible baseline floor and source-incomparable evidence with
 zero target-supported victories. The next prerequisite is the non-teacher
 baseline floor; passing it would not override the outcome blocker or authorize
 training.
+
+The immediate baseline-lane blocker is narrower: Current cannot be evaluated
+across all four simulator categories until event snapshots expose exact option
+semantics. The frozen bridge POC passed route, card reward, and shop, then
+stopped on `missing_event_option_semantics`. This is an adapter evidence gap,
+not a Current policy-quality result. Its fixed reused-seed Stage 2 cohort remains
+unspent by this bridge and must stay closed until the same Stage 1 registration
+passes after a separately specified adapter change.
 
 The active v2 known-propensity outcome-evidence study is stopped before any
 replacement qualification or study start. R7 remains immutable and retired
@@ -207,15 +224,20 @@ The next authorized sequence is:
    reproduction contract. Keep target-supported outcomes separate. Consider
    bounded formal RL only after every readiness domain passes and a separate
    training OpenSpec is approved.
+11. Preserve the completed Current bridge registration and valid negative
+    artifacts. Add exact event-option semantics through a separate adapter
+    OpenSpec, then strictly recompute the same frozen four-row Stage 1 POC. Do
+    not change its rows, thresholds, Current configuration, or Stage 2 seeds,
+    and do not run Stage 2 unless every frozen structural gate passes.
 
 ## Work Lanes
 
-The primary lane is a read-only non-teacher baseline-floor definition derived
-from the completed readiness r2 matrix. It must inventory candidate baselines,
-define a credible fixed floor and comparison contract, preserve untouched
-evaluation, and preregister stop/reproduction gates before any fresh simulator
-cohort or fit is considered. The target-supported-outcome lane remains blocked
-and separate.
+The primary lane is the exact event-option semantics adapter contract needed to
+finish the frozen Current bridge. If the unchanged Stage 1 POC then passes, the
+next change may run its already-registered reused-seed compatibility check.
+Only after structural compatibility is established should a non-teacher
+baseline-floor study define a credible fixed floor and untouched comparison
+contract. The target-supported-outcome lane remains blocked and separate.
 
 Live gameplay is a maintenance and registered-evaluation lane only. Launch it
 for a crash, stuck state, repeated A-class simulator/mechanics defect, or an

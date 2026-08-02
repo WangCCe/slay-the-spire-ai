@@ -1,0 +1,157 @@
+{
+  "registration": {
+    "authority": {
+      "baseline_floor_authorized": false,
+      "formal_rl_readiness_authorized": false,
+      "fresh_evidence_authorized": false,
+      "gameplay_authorized": false,
+      "promotion_authorized": false,
+      "reward_authorized": false,
+      "training_authorized": false
+    },
+    "current_policy": {
+      "ascension": 0,
+      "character": "IRONCLAD",
+      "elite_mode": "conservative",
+      "gameplay_io_enabled": false,
+      "policy_id": "current_optimized_ironclad_a0_conservative_snapshot_v1",
+      "screen_entrypoint": "handle_screen",
+      "tracker_enabled": false,
+      "use_optimized_card_selection": true,
+      "use_optimized_combat": true
+    },
+    "identity": {
+      "adapter_provenance": {
+        "adapter_commit": "a810d6d0ce92c1ebab8483fb8819163fc76d54fe",
+        "adapter_source_sha256": "10c413d11e6abf4c621400279a4f4bfccddb0876426a0e14c6c892fdf0d4da5b",
+        "build": {
+          "adapter_api_version": "sts-lightspeed-noncombat-adapter-v2",
+          "baseline_policy_id": "sts_lightspeed_simple_agent_no_potions_v1",
+          "compiler": "15.2.0",
+          "cpp_standard": 201703,
+          "native_target_policy_id": "sts_lightspeed_simple_agent_target_v1",
+          "pybind11_version": "3.0.2a0",
+          "python": "3.10.18"
+        },
+        "module_sha256": "b3328aea4ee3040a4fe8751d6f300a148a7ae64d68f7ebec050ae61f479d6805",
+        "module_size_bytes": 1550848,
+        "simulator_commit": "7476a81954020087da31d41d16fddf475746ec2d",
+        "simulator_dirty": true,
+        "simulator_source_file_count": 79,
+        "simulator_source_sha256": "a3f98721ec37373b1b00aef660832a3307f0186ba0614d07a3b1e7de8ab2e46a",
+        "submodules": {
+          "json": "55f93686c01528224f448c19128836e7df245f72",
+          "pybind11": "8f68ecd32c8e18d3b064dbf0ea5fc31a6cb37e9a"
+        }
+      },
+      "frozen_demonstrations": {
+        "path": "reports/noncombat_simulator_baseline_warm_start_20260802/demonstrations.json",
+        "sha256": "6b549ad2f54cea6e08f4399e9ec5cda12d20b3bb3f18fa5349cdb544d48050c6",
+        "size_bytes": 320965025
+      },
+      "implementation": {
+        "commit": "ebe2fb8e2deb639edfe0e4bac1320d3befd55f9e",
+        "source_files": [
+          "analysis_scripts/noncombat_current_policy_simulator_bridge.py",
+          "analysis_scripts/noncombat_simulator_adapter.py",
+          "spirecomm/ai/agent.py",
+          "spirecomm/ai/decision/base.py",
+          "spirecomm/ai/heuristics/card.py",
+          "spirecomm/ai/heuristics/deck.py",
+          "spirecomm/ai/heuristics/ironclad_deck.py",
+          "spirecomm/ai/heuristics/ironclad_evaluator.py",
+          "spirecomm/ai/heuristics/map_routing.py",
+          "spirecomm/ai/priorities.py",
+          "spirecomm/data/loader.py",
+          "spirecomm/spire/card.py",
+          "spirecomm/spire/game.py",
+          "spirecomm/spire/map.py",
+          "spirecomm/spire/potion.py",
+          "spirecomm/spire/relic.py",
+          "spirecomm/spire/screen.py"
+        ],
+        "source_sha256": "c22831456991da22bf918b17a9a90b4b061bd138f4fd0c2cf86a858daac6e975"
+      },
+      "metadata": {
+        "path": "D:\\SteamLibrary\\steamapps\\common\\SlayTheSpire\\export\\items.json",
+        "sha256": "e23784ea8ed3092e3bfa9918240e162a9cbcb837badfb53c612eb0d83cc811dc",
+        "size_bytes": 240371
+      },
+      "prior_seed_evidence": {
+        "path": "reports/noncombat_simulator_policy_validity_20260802_input.json",
+        "sha256": "149a0ed451f52804561de34b213fb4602f6825740705b6c1cf98ab87e0748d10",
+        "size_bytes": 7597
+      },
+      "runtime": {
+        "python": "3.10.18"
+      }
+    },
+    "output": {
+      "artifact_names": [
+        "configuration.json",
+        "execution_journal.json",
+        "metrics.json",
+        "report.md",
+        "row_results.json"
+      ],
+      "directory": "reports/noncombat_current_policy_simulator_bridge_20260802"
+    },
+    "schema_version": "noncombat-current-policy-simulator-bridge-input-v1",
+    "stage1": {
+      "category_minimums": {
+        "card_reward": 1,
+        "event": 1,
+        "route": 1,
+        "shop": 1
+      },
+      "replay_count": 2,
+      "rows": [
+        {
+          "category": "route",
+          "cohort": "train",
+          "decision_index": 0,
+          "row_sha256": "e80e604e980f9bd974176961f6301dcc2e5c48b4c8ba21cd6cddaf6507021447",
+          "seed": 4000,
+          "source_snapshot_sha256": "7e23458f5bd2d063ff08d9cc0e432b7bf87ad4c64fc27846781c685ff029620c"
+        },
+        {
+          "category": "card_reward",
+          "cohort": "train",
+          "decision_index": 1,
+          "row_sha256": "7169c8c5b926f345b55089cbdca05fd6b84235c4390e431fcdc4b56591e7b157",
+          "seed": 4000,
+          "source_snapshot_sha256": "5ad7e99d86026870361f9b303b5047250987da50d71fb3afb0515075fbdd8a17"
+        },
+        {
+          "category": "shop",
+          "cohort": "train",
+          "decision_index": 5,
+          "row_sha256": "aca56abc9ba552e7529413f87bc008ff9f46a25c71ecb37f442211360d5d887b",
+          "seed": 4000,
+          "source_snapshot_sha256": "6b97ff3fbeea0239f33c10fcee90e91f8000c37d3f674265ae94d65345cfc2dd"
+        },
+        {
+          "category": "event",
+          "cohort": "train",
+          "decision_index": 11,
+          "row_sha256": "f1a84420ad8c453a7de851e650a43c9e222d08fe5894f6e56113d9a45fa509fe",
+          "seed": 4000,
+          "source_snapshot_sha256": "bc0c0e5fe62e4f955f877f0d6306a7652c15ffa3bdcab9277c4be3d0b0aa613a"
+        }
+      ]
+    },
+    "stage2": {
+      "enabled_only_if_stage1_passes": true,
+      "max_episodes": 4,
+      "prior_seed_json_path": "study.cohorts.compatibility_seeds",
+      "reused_seeds": [
+        2000,
+        2001,
+        2002,
+        2003
+      ]
+    }
+  },
+  "registration_sha256": "2c8cf7fae0acc707cd37d31fa75f79066fa3764f827962979e877be6581ba192",
+  "schema_version": "noncombat-current-policy-simulator-bridge-input-v1"
+}

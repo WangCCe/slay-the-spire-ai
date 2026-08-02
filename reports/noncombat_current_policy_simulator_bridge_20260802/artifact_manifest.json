@@ -1,0 +1,22 @@
+{
+  "artifact_hashes": {
+    "configuration.json": "542b259fe78c425da8465d8ba1a0848da0725888c4c6bbe67896c22b20da7f86",
+    "execution_journal.json": "4b3c562341061b8784e91564931d369666d6d6e12c0f4ab4c8ba20978d83efb3",
+    "metrics.json": "80c2d79f199bae318804f0d731aad6c6d77561514ae17a6914e59f0356a0cafd",
+    "report.md": "1562a351f683b0ce9c48449c6128c8e12be1a5e1c0b38c0da09f778d0c827d13",
+    "row_results.json": "b85f308854ff9ebae4314ac254607080e3740e3472f2f43b4449b601858d1afa"
+  },
+  "authority": {
+    "baseline_floor_authorized": false,
+    "formal_rl_readiness_authorized": false,
+    "fresh_evidence_authorized": false,
+    "gameplay_authorized": false,
+    "promotion_authorized": false,
+    "reward_authorized": false,
+    "training_authorized": false
+  },
+  "registration_sha256": "2c8cf7fae0acc707cd37d31fa75f79066fa3764f827962979e877be6581ba192",
+  "schema_version": "noncombat-current-policy-simulator-bridge-manifest-v1",
+  "stage2_executed": false,
+  "verdict": "frozen_bridge_not_compatible"
+}

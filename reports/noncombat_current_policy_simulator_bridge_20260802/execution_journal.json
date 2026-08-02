@@ -1,0 +1,9 @@
+{
+  "steps": [
+    "validated_registration_and_bound_sources",
+    "loaded_registered_frozen_rows",
+    "replayed_each_row_with_fresh_current_session",
+    "classified_stage1",
+    "stage2_not_authorized"
+  ]
+}

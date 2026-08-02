@@ -1,0 +1,31 @@
+{
+  "authority": {
+    "baseline_floor_authorized": false,
+    "formal_rl_readiness_authorized": false,
+    "fresh_evidence_authorized": false,
+    "gameplay_authorized": false,
+    "promotion_authorized": false,
+    "reward_authorized": false,
+    "training_authorized": false
+  },
+  "category_coverage": {
+    "card_reward": true,
+    "event": false,
+    "route": true,
+    "shop": true
+  },
+  "passed_row_count": 3,
+  "reason_counts": {
+    "missing_event_option_semantics": 1
+  },
+  "registration_sha256": "2c8cf7fae0acc707cd37d31fa75f79066fa3764f827962979e877be6581ba192",
+  "row_count": 4,
+  "schema_version": "noncombat-current-policy-simulator-bridge-metrics-v1",
+  "stage1_passed": false,
+  "stage2": {
+    "authorized": false,
+    "executed": false,
+    "reason": "stage1_not_compatible"
+  },
+  "verdict": "frozen_bridge_not_compatible"
+}

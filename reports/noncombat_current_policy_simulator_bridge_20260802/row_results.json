@@ -1,0 +1,143 @@
+{
+  "rows": [
+    {
+      "category": "route",
+      "cohort": "train",
+      "decision_index": 0,
+      "deterministic": true,
+      "reason": null,
+      "replays": [
+        {
+          "action_id": "route:map_node:0:0",
+          "action_type": "ChooseMapNodeAction",
+          "category": "route",
+          "fallback_used": false,
+          "input_candidates_sha256": "9abd4ebe3de05f474b4dbb9216252ba778b110a0b57616534117eb5bc95ab6bd",
+          "input_snapshot_sha256": "7e23458f5bd2d063ff08d9cc0e432b7bf87ad4c64fc27846781c685ff029620c",
+          "policy_id": "current_optimized_ironclad_a0_conservative_snapshot_v1",
+          "replay_index": 0,
+          "source_mutated": false,
+          "status": "passed",
+          "tracker_enabled": false
+        },
+        {
+          "action_id": "route:map_node:0:0",
+          "action_type": "ChooseMapNodeAction",
+          "category": "route",
+          "fallback_used": false,
+          "input_candidates_sha256": "9abd4ebe3de05f474b4dbb9216252ba778b110a0b57616534117eb5bc95ab6bd",
+          "input_snapshot_sha256": "7e23458f5bd2d063ff08d9cc0e432b7bf87ad4c64fc27846781c685ff029620c",
+          "policy_id": "current_optimized_ironclad_a0_conservative_snapshot_v1",
+          "replay_index": 1,
+          "source_mutated": false,
+          "status": "passed",
+          "tracker_enabled": false
+        }
+      ],
+      "schema_version": "noncombat-current-policy-simulator-bridge-row-v1",
+      "seed": 4000,
+      "status": "passed"
+    },
+    {
+      "category": "card_reward",
+      "cohort": "train",
+      "decision_index": 1,
+      "deterministic": true,
+      "reason": null,
+      "replays": [
+        {
+          "action_id": "card_reward:take:0:0:armaments",
+          "action_type": "TracedCardRewardAction",
+          "category": "card_reward",
+          "fallback_used": false,
+          "input_candidates_sha256": "2ff54e3cf2e3b4270cd5b3c60a23077ad6db7c49518087f3a20c63cd69cddea2",
+          "input_snapshot_sha256": "5ad7e99d86026870361f9b303b5047250987da50d71fb3afb0515075fbdd8a17",
+          "policy_id": "current_optimized_ironclad_a0_conservative_snapshot_v1",
+          "replay_index": 0,
+          "source_mutated": false,
+          "status": "passed",
+          "tracker_enabled": false
+        },
+        {
+          "action_id": "card_reward:take:0:0:armaments",
+          "action_type": "TracedCardRewardAction",
+          "category": "card_reward",
+          "fallback_used": false,
+          "input_candidates_sha256": "2ff54e3cf2e3b4270cd5b3c60a23077ad6db7c49518087f3a20c63cd69cddea2",
+          "input_snapshot_sha256": "5ad7e99d86026870361f9b303b5047250987da50d71fb3afb0515075fbdd8a17",
+          "policy_id": "current_optimized_ironclad_a0_conservative_snapshot_v1",
+          "replay_index": 1,
+          "source_mutated": false,
+          "status": "passed",
+          "tracker_enabled": false
+        }
+      ],
+      "schema_version": "noncombat-current-policy-simulator-bridge-row-v1",
+      "seed": 4000,
+      "status": "passed"
+    },
+    {
+      "category": "shop",
+      "cohort": "train",
+      "decision_index": 5,
+      "deterministic": true,
+      "reason": null,
+      "replays": [
+        {
+          "action_id": "shop:remove_card",
+          "action_type": "ChooseAction",
+          "category": "shop",
+          "fallback_used": false,
+          "input_candidates_sha256": "7f2fec41b04c7db93ece568501f07c730c156d35daa74fa161b9e76a87d23eb6",
+          "input_snapshot_sha256": "6b97ff3fbeea0239f33c10fcee90e91f8000c37d3f674265ae94d65345cfc2dd",
+          "policy_id": "current_optimized_ironclad_a0_conservative_snapshot_v1",
+          "replay_index": 0,
+          "source_mutated": false,
+          "status": "passed",
+          "tracker_enabled": false
+        },
+        {
+          "action_id": "shop:remove_card",
+          "action_type": "ChooseAction",
+          "category": "shop",
+          "fallback_used": false,
+          "input_candidates_sha256": "7f2fec41b04c7db93ece568501f07c730c156d35daa74fa161b9e76a87d23eb6",
+          "input_snapshot_sha256": "6b97ff3fbeea0239f33c10fcee90e91f8000c37d3f674265ae94d65345cfc2dd",
+          "policy_id": "current_optimized_ironclad_a0_conservative_snapshot_v1",
+          "replay_index": 1,
+          "source_mutated": false,
+          "status": "passed",
+          "tracker_enabled": false
+        }
+      ],
+      "schema_version": "noncombat-current-policy-simulator-bridge-row-v1",
+      "seed": 4000,
+      "status": "passed"
+    },
+    {
+      "category": "event",
+      "cohort": "train",
+      "decision_index": 11,
+      "deterministic": true,
+      "reason": "missing_event_option_semantics",
+      "replays": [
+        {
+          "detail": "Liars Game",
+          "reason": "missing_event_option_semantics",
+          "replay_index": 0,
+          "status": "failed"
+        },
+        {
+          "detail": "Liars Game",
+          "reason": "missing_event_option_semantics",
+          "replay_index": 1,
+          "status": "failed"
+        }
+      ],
+      "schema_version": "noncombat-current-policy-simulator-bridge-row-v1",
+      "seed": 4000,
+      "status": "failed"
+    }
+  ],
+  "schema_version": "noncombat-current-policy-simulator-bridge-rows-v1"
+}
