@@ -1,0 +1,21 @@
+{
+  "artifact_hashes": {
+    "metrics.json": "a88083c02d3ad8103e756e661936221d364cac20c98f43bc069b8d90e5008770",
+    "model.json": "87e43e8813e890373c6668cc51791cadecba91e3df51f6b5cd3deddce81768cb",
+    "report.md": "b9c4052b6faa4dc92780499c0cb287e6660287ef737658ebc84f9f819136963b",
+    "trajectories.json": "cb2978aaffdf0278ec2340a68ca8f5118ea71da14ab99b9770b4675f90bfe849"
+  },
+  "authority": {
+    "formal_noncombat_rl": false,
+    "live_gameplay": false,
+    "live_policy_loading": false,
+    "live_study_launch": false,
+    "ope_reinterpretation": false,
+    "policy_promotion": false,
+    "qualification": false,
+    "simulator_training_smoke": false
+  },
+  "registration_sha256": "9e8ab44f5777a0624fb5c12d8c56830623839654480e423868a853f598ce079a",
+  "schema_version": "noncombat-simulator-training-smoke-artifact-manifest-v1",
+  "verdict": "pipeline_demonstrated_with_holdout_signal"
+}

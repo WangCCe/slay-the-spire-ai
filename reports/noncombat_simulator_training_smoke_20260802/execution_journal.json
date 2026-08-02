@@ -1,0 +1,7 @@
+{
+  "canonical": false,
+  "primary_elapsed_seconds": 281.38739599997643,
+  "replay_elapsed_seconds": 273.4347857000539,
+  "schema_version": "noncombat-simulator-training-smoke-journal-v1",
+  "wall_time_budget_seconds": 600.0
+}

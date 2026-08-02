@@ -633,6 +633,59 @@ def test_canonical_artifacts_exclude_timing_and_close_the_hash_manifest(tmp_path
     }
 
 
+def test_registered_smoke_publication_is_hash_closed_and_non_authorizing():
+    root = REPO_ROOT / "reports" / "noncombat_simulator_training_smoke_20260802"
+    manifest = validate_artifact_directory(root)
+    registration = load_smoke_registration(
+        REPO_ROOT / "reports" / "noncombat_simulator_training_smoke_20260802_input.json"
+    )
+    registration_sha256 = hashlib.sha256(canonical_json_bytes(registration)).hexdigest()
+    metrics = json.loads((root / "metrics.json").read_text(encoding="utf-8"))
+    model = json.loads((root / "model.json").read_text(encoding="utf-8"))
+    trajectories = json.loads(
+        (root / "trajectories.json").read_text(encoding="utf-8")
+    )
+    journal = json.loads((root / "execution_journal.json").read_text(encoding="utf-8"))
+
+    assert manifest["registration_sha256"] == registration_sha256
+    assert metrics["registration_sha256"] == registration_sha256
+    assert model["registration_sha256"] == registration_sha256
+    assert trajectories["registration_sha256"] == registration_sha256
+    assert registration_sha256 in (root / "report.md").read_text(encoding="utf-8")
+    assert manifest["verdict"] == "pipeline_demonstrated_with_holdout_signal"
+    assert metrics["classification"]["checks"]["replay_identity"] is True
+    assert metrics["classification"]["replay_difference"] == ""
+    assert metrics["holdout"]["floor_improvement_ci"] == {
+        "confidence_level": 0.95,
+        "lower": 1.703125,
+        "mean": 2.921875,
+        "resamples": 10_000,
+        "upper": 4.171875,
+    }
+    assert all(value is False for value in manifest["authority"].values())
+    assert all(value is False for value in metrics["authority"].values())
+
+    training_rows = trajectories["training"]["episodes"]
+    paired_rows = trajectories["holdout"]["paired_rows"]
+    assert len(training_rows) == 128
+    assert len(paired_rows) == 64
+    assert {row["seed"] for row in training_rows} == set(range(1000, 1032))
+    assert {row["seed"] for row in paired_rows} == set(range(2000, 2064))
+    assert not ({row["seed"] for row in training_rows} & {row["seed"] for row in paired_rows})
+    assert all(row["candidate_legality"] is True for row in paired_rows)
+    assert sum(row["floor_difference"] > 0 for row in paired_rows) == 29
+    assert sum(row["floor_difference"] == 0 for row in paired_rows) == 30
+    assert sum(row["floor_difference"] < 0 for row in paired_rows) == 5
+    assert not any(
+        row["outcome"] == "player_victory"
+        for side in ("initial", "final")
+        for row in trajectories["holdout"][side]["rows"]
+    )
+    assert journal["canonical"] is False
+    assert 0.0 < journal["primary_elapsed_seconds"] < 600.0
+    assert 0.0 < journal["replay_elapsed_seconds"] < 600.0
+
+
 def test_canonical_publication_rolls_back_the_complete_prior_set(tmp_path):
     execution = _small_execution()
     classification = classify_smoke_results(execution, copy.deepcopy(execution))

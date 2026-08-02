@@ -1,0 +1,66 @@
+{
+  "algorithm": {
+    "discount": 1.0,
+    "feature_version": "noncombat-simulator-policy-features-v1",
+    "hash_dim": 1024,
+    "learning_rate": 0.001,
+    "model_seed": 0,
+    "optimizer": "adam",
+    "passes": 4,
+    "standardize_returns": true,
+    "version": "candidate-masked-reinforce-smoke-v1"
+  },
+  "authority": {
+    "formal_noncombat_rl": false,
+    "live_gameplay": false,
+    "live_policy_loading": false,
+    "live_study_launch": false,
+    "ope_reinterpretation": false,
+    "policy_promotion": false,
+    "qualification": false,
+    "simulator_training_smoke": false
+  },
+  "checks": {
+    "candidate_legality": true,
+    "four_category_coverage": true,
+    "seed_disjoint": true,
+    "terminal_outcomes": true,
+    "within_bounds": true
+  },
+  "classification": {
+    "authority": {
+      "formal_noncombat_rl": false,
+      "live_gameplay": false,
+      "live_policy_loading": false,
+      "live_study_launch": false,
+      "ope_reinterpretation": false,
+      "policy_promotion": false,
+      "qualification": false,
+      "simulator_training_smoke": false
+    },
+    "blockers": [],
+    "checks": {
+      "candidate_legality": true,
+      "four_category_coverage": true,
+      "replay_identity": true,
+      "seed_disjoint": true,
+      "terminal_outcomes": true,
+      "within_bounds": true
+    },
+    "quality": "holdout_signal",
+    "replay_difference": "",
+    "verdict": "pipeline_demonstrated_with_holdout_signal"
+  },
+  "holdout": {
+    "floor_improvement_ci": {
+      "confidence_level": 0.95,
+      "lower": 1.703125,
+      "mean": 2.921875,
+      "resamples": 10000,
+      "upper": 4.171875
+    },
+    "paired_seed_count": 64
+  },
+  "registration_sha256": "9e8ab44f5777a0624fb5c12d8c56830623839654480e423868a853f598ce079a",
+  "schema_version": "noncombat-simulator-training-metrics-v1"
+}

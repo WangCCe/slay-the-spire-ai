@@ -8,10 +8,11 @@ The first real Ironclad A0 validation victory is a completed historical
 milestone. Run `1780479519.run` reached floor 51 with `victory=true`; the
 evidence is recorded in `reports/gameplay_validation_mechanics_audit.md`.
 
-The current objective is to reach an evidence-backed go/no-go decision for a
-bounded non-combat RL training experiment covering card rewards, shops, events,
-and routes. Another isolated victory or a healthy gameplay batch does not
-complete this phase.
+The bounded non-combat simulator-training smoke covering card rewards, shops,
+events, and routes is complete. The current objective is to decide whether its
+simulator-only floor signal survives a separately registered fresh-cohort
+evaluation against meaningful fixed baselines. Another training pass, isolated
+victory, or healthy gameplay batch does not complete this phase.
 
 ## Training Boundary
 
@@ -73,6 +74,23 @@ remain separate from live known-propensity, OPE, and supported-outcome evidence.
 Every live, training, OPE, qualification, and promotion authority flag remains
 false.
 
+The first learning integration then repaired three environment-contract defects:
+clones now deep-copy the map across Act transitions, event snapshots omit
+undefined upstream HP fields, and new environments canonicalize the initial
+encounter field. The native adapter is loaded before PyTorch on Windows. A new
+fit audit bound to adapter commit `68369db646a074fa712fccddc6a650015197332d`
+again returned `adapter_poc_ready` with the same 20-seed and historical-prefix
+checks.
+
+The registered bounded smoke used 32 train seeds over four passes, 64 disjoint
+paired holdout seeds, and one identical replay. Both executions stayed below
+their 600-second bounds and matched canonically. The trained greedy policy
+improved mean terminal floor by `2.921875`; its pre-registered 95% paired
+bootstrap interval was `[1.703125, 4.171875]`. Of 64 pairs, 29 improved, 30 were
+unchanged, and five declined. Both initial and trained policies still won 0/64
+holdout runs. The verdict is `pipeline_demonstrated_with_holdout_signal`, with
+all downstream authority false.
+
 The next authorized sequence is:
 
 1. Preserve r1-r8, the completed r8 diagnosis/fix, and all external evidence
@@ -82,20 +100,21 @@ The next authorized sequence is:
 3. Use a separate offline-first OpenSpec decision to choose among improving
    and re-baselining the current gameplay policy, revising the outcome/reward
    evidence contract, or registering a materially different study design.
-4. Treat `adapter_poc_ready` as permission only to design, not run, one bounded
-   simulator-training smoke. Its proposal must define a training-only reward,
-   evidence separation, simulator-divergence gates, fixed holdout seeds, a
-   later real-game evaluation boundary, and explicit stop conditions.
+4. Preserve the completed smoke model and cohort as observed evidence; do not
+   tune it, rerun it, or reuse the observed holdout as a selection set.
 5. Permit a later replacement-qualification amendment only after a current,
    source-comparable feasibility audit demonstrates the declared planning gate.
-6. Consider bounded non-combat RL training only after the revised evidence
-   path reaches the existing independently checkable training go/no-go gates.
+6. Review a separate offline policy-validity study that freezes this model,
+   uses new disjoint seeds, compares it with meaningful fixed simulator
+   baselines, reports category-level behavior and failures, and grants no live
+   authority. Only replicated, baseline-relevant evidence may motivate a
+   formal-training proposal.
 
 ## Work Lanes
 
-The primary lane is non-combat RL readiness: first close the offline simulator
-environment contract, then review a bounded training-smoke proposal, while
-keeping simulated and live evidence separate.
+The primary lane is non-combat RL readiness: validate the frozen smoke policy
+on fresh simulator cohorts and fixed baselines while keeping simulated and live
+evidence separate.
 
 Live gameplay is a maintenance and registered-evaluation lane only. Launch it
 for a crash, stuck state, repeated A-class simulator/mechanics defect, or an

@@ -18,13 +18,13 @@
 ## 3. Registered Simulator Smoke
 
 - [x] 3.1 Commit the reviewed implementation, rebuild and rerun the adapter fit under its repaired physical identity, then freeze one smoke input binding that exact implementation and refreshed fit evidence plus train seeds 1000..1031, holdout seeds 2000..2063, four passes, 500 decisions per episode, 128 train episodes, and 600 seconds per execution.
-- [ ] 3.2 Rebuild the optional native module from the registered identities, run focused pure and opt-in integration checks, then execute exactly one primary smoke and one identical reproduction without parameter changes, gameplay, Java, CommunicationMod, or live evidence collection.
-- [ ] 3.3 Publish the resulting model/metrics/report/manifest and noncanonical execution journal; if blocked or quality is not demonstrated, record that result and stop without tuning or retrying.
-- [ ] 3.4 Update project direction and simulator documentation with the observed structural verdict, paired holdout estimate, limitations, and the next separately reviewed go/no-go boundary while leaving every downstream authority false.
+- [x] 3.2 Rebuild the optional native module from the registered identities, run focused pure and opt-in integration checks, then execute exactly one primary smoke and one identical reproduction without parameter changes, gameplay, Java, CommunicationMod, or live evidence collection.
+- [x] 3.3 Publish the resulting model/metrics/report/manifest and noncanonical execution journal; if blocked or quality is not demonstrated, record that result and stop without tuning or retrying.
+- [x] 3.4 Update project direction and simulator documentation with the observed structural verdict, paired holdout estimate, limitations, and the next separately reviewed go/no-go boundary while leaving every downstream authority false.
 
 ## 4. Verification And Closeout
 
-- [ ] 4.1 Run focused regressions, opt-in native-adapter integration tests, canonical artifact rehash/replay checks, and Python compilation without launching a live game or formal training.
-- [ ] 4.2 Run the registered commit gate, strict OpenSpec validation, scoped diff review, and process/CommunicationMod/checkpoint isolation checks; do not substitute an unregistered raw full-suite invocation.
-- [ ] 4.3 Perform a read-only final audit of seed disjointness, no holdout updates, exact provenance, deterministic replay, reward exclusion, verdict math, authority flags, and managed artifact inventory.
-- [ ] 4.4 Sync accepted delta specs, archive the completed change, commit only scoped files, push `master`, and preserve all unrelated local artifacts.
+- [x] 4.1 Run focused regressions, opt-in native-adapter integration tests, canonical artifact rehash/replay checks, and Python compilation without launching a live game or formal training.
+- [x] 4.2 Run the registered commit gate, strict OpenSpec validation, scoped diff review, and process/CommunicationMod/checkpoint isolation checks; do not substitute an unregistered raw full-suite invocation.
+- [x] 4.3 Perform a read-only final audit of seed disjointness, no holdout updates, exact provenance, deterministic replay, reward exclusion, verdict math, authority flags, and managed artifact inventory.
+- [x] 4.4 Sync accepted delta specs, archive the completed change, commit only scoped files, push `master`, and preserve all unrelated local artifacts.

@@ -14,7 +14,7 @@ the live known-propensity or supported-outcome evidence sets.
 
 ## Bound Source Identity
 
-The registered 2026-08-02 fit report binds:
+The original registered 2026-08-02 adapter-only fit report binds:
 
 - adapter commit `dbf67c01cd30c16d4eb2a6d9b45a1d9816898cbe`
 - adapter source SHA-256
@@ -29,6 +29,15 @@ The registered 2026-08-02 fit report binds:
 
 The simulator checkout was dirty, so the physical-source hash, not the parent
 commit alone, is the binding identity.
+
+The later bounded-training integration found and repaired shared-map clone
+ownership and undefined snapshot fields. Its replacement `r2` fit binds adapter
+commit `68369db646a074fa712fccddc6a650015197332d`, adapter source SHA-256
+`933f7725cc7cb3dfd088e26bd2c81856e09bacac24c6f1e1e98246db62cabb41`,
+and native module SHA-256
+`d4055640698ca415ea5f4d57e11ac5fd4635143039bfefd869c60ddf64924b3c`.
+The simulator commit and physical-source identity are unchanged. The original
+fit remains historical evidence; `r2` is the fit consumed by the smoke.
 
 ## Reproducible Build
 
@@ -90,7 +99,7 @@ remain baseline-controlled. Historical agreement covers only twelve early
 candidate sets, and the upstream loader cannot import arbitrary live
 non-combat states.
 
-A separately reviewed OpenSpec change is required before any simulator-training
-smoke. That change must preserve the simulated/live evidence boundary and
-define fixed train/holdout seeds, a training-only reward contract, divergence
-checks, resource bounds, promotion exclusions, and stop conditions.
+The separately reviewed bounded simulator-training smoke is complete. Its
+registered contract, result, limitations, and next gate are documented in
+`docs/noncombat_simulator_training_smoke.md`. It preserves this evidence
+boundary and grants no formal-training or live authority.
