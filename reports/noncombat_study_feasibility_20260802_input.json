@@ -1,0 +1,27 @@
+{
+  "minimum_pass_probability": "0.80",
+  "minimum_reference_trajectories": 100,
+  "readiness": {
+    "path": "reports/noncombat_ope_b3_b7_current_deterministic_readiness_20260714.json",
+    "sha256": "29fbd3543f718c34a626a27e1fad90b92465de4a53f30ef3f726002eca09abb8",
+    "size_bytes": 912464
+  },
+  "reference_comparability": "historical_reference_only",
+  "registration": {
+    "path": "reports/noncombat_outcome_evidence_expansion_20260716_v2_registration.json",
+    "sha256": "a0e282699ede7d1ea38b2d81f029ce5e823b924d81c5ca7cdbc9a45ddc2eb6c2",
+    "size_bytes": 19796
+  },
+  "schema_version": "noncombat-study-feasibility-input-v1",
+  "sensitivity_rates": [
+    "0",
+    "0.001",
+    "0.00125",
+    "0.0025",
+    "0.005",
+    "0.005568",
+    "0.007",
+    "0.008",
+    "0.01"
+  ]
+}

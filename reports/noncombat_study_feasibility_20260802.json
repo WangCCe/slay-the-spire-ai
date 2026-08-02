@@ -1,0 +1,127 @@
+{
+  "authority": {
+    "causal_claim": false,
+    "communication_mod_publication": false,
+    "formal_noncombat_rl_training": false,
+    "gameplay_collection": false,
+    "live_policy_promotion": false,
+    "ope_policy_claim": false,
+    "replacement_qualification_preparation": false,
+    "reward_change": false,
+    "study_run_lock_creation": false,
+    "study_start": false
+  },
+  "limitations": [
+    "Planning-only plug-in probabilities do not estimate uncertainty, causality, or future policy performance.",
+    "Raw victories with zero deterministic-Current weight do not satisfy the registered supported-victory gate.",
+    "A demonstrated result would require a separate reviewed amendment before any live preparation."
+  ],
+  "operating_characteristics": {
+    "plug_in_pass_probability": "0.000000000000",
+    "required_supported_victory_rates": [
+      {
+        "supported_victory_rate": "0.004454264662",
+        "target_pass_probability": "0.500000000000"
+      },
+      {
+        "supported_victory_rate": "0.007118181088",
+        "target_pass_probability": "0.800000000000"
+      },
+      {
+        "supported_victory_rate": "0.008846003867",
+        "target_pass_probability": "0.900000000000"
+      }
+    ],
+    "sensitivity": [
+      {
+        "pass_probability": "0.000000000000",
+        "supported_victory_rate": "0.000000000000"
+      },
+      {
+        "pass_probability": "0.023046101217",
+        "supported_victory_rate": "0.001000000000"
+      },
+      {
+        "pass_probability": "0.040401554333",
+        "supported_victory_rate": "0.001250000000"
+      },
+      {
+        "pass_probability": "0.190995816954",
+        "supported_victory_rate": "0.002500000000"
+      },
+      {
+        "pass_probability": "0.577371506717",
+        "supported_victory_rate": "0.005000000000"
+      },
+      {
+        "pass_probability": "0.649441122724",
+        "supported_victory_rate": "0.005568000000"
+      },
+      {
+        "pass_probability": "0.790783155530",
+        "supported_victory_rate": "0.007000000000"
+      },
+      {
+        "pass_probability": "0.858524898428",
+        "supported_victory_rate": "0.008000000000"
+      },
+      {
+        "pass_probability": "0.938923659054",
+        "supported_victory_rate": "0.010000000000"
+      }
+    ]
+  },
+  "planning_configuration": {
+    "bisection_iterations": 192,
+    "decimal_precision": 80,
+    "minimum_pass_probability": "0.800000000000",
+    "minimum_reference_trajectories": 100
+  },
+  "reference_evidence": {
+    "complete_trajectories": 125,
+    "observed_supported_victory_rate": {
+      "denominator": 125,
+      "numerator": 0,
+      "value": "0.000000000000"
+    },
+    "raw_victories": 1,
+    "reference_comparability": "historical_reference_only",
+    "target_supported_victories": 0
+  },
+  "result": {
+    "blockers": [
+      "reference_not_source_comparable",
+      "no_target_supported_victory",
+      "plug_in_pass_probability_below_minimum"
+    ],
+    "separate_amendment_required": true,
+    "study_feasibility": "not_demonstrated"
+  },
+  "schema_version": "noncombat-study-feasibility-v1",
+  "source": {
+    "manifest": {
+      "path": "reports/noncombat_study_feasibility_20260802_input.json",
+      "sha256": "7a8be1fb033bb66169b78088736ceeac04177416d6b05db0a91ad63000b9b21e",
+      "size_bytes": 786
+    },
+    "readiness": {
+      "construction_mode": "current_deterministic",
+      "path": "reports/noncombat_ope_b3_b7_current_deterministic_readiness_20260714.json",
+      "sha256": "29fbd3543f718c34a626a27e1fad90b92465de4a53f30ef3f726002eca09abb8",
+      "size_bytes": 912464,
+      "target_policy_commit": "2006df2be20151afd759e9fc4deef320bc1f599d",
+      "target_policy_id": "current_deterministic"
+    },
+    "registration": {
+      "path": "reports/noncombat_outcome_evidence_expansion_20260716_v2_registration.json",
+      "registration_hash": "7df8036e111fb55ece15154796d494ea857a74984c9d1a224c2b61f8fc710ace",
+      "sha256": "a0e282699ede7d1ea38b2d81f029ce5e823b924d81c5ca7cdbc9a45ddc2eb6c2",
+      "size_bytes": 19796,
+      "study_id": "noncombat-outcome-evidence-expansion-20260716-v2"
+    }
+  },
+  "study_contract": {
+    "minimum_supported_victories": 3,
+    "scheduled_attempts": 600
+  }
+}

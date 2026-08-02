@@ -26,10 +26,10 @@ diagnostics. They are not reward, ground truth, or a mandatory policy target.
 
 ## Current Blocker
 
-The active v2 known-propensity outcome-evidence study is stopped before study
-start. R7 remains immutable and retired after `source_validation_failed`; its
-raw-first source fix, focused regressions, registered commit gate, and
-OpenSpec archive are complete.
+The active v2 known-propensity outcome-evidence study is stopped before any
+replacement qualification or study start. R7 remains immutable and retired
+after `source_validation_failed`; its raw-first source fix, focused
+regressions, registered commit gate, and OpenSpec archive are complete.
 
 The separately reviewed r8 replacement reached `source_verified`, then failed
 at `request_validation_failed` before active request publication, gameplay, or
@@ -45,22 +45,31 @@ The separate regression-backed diagnosis proved that the r8 qualifier CLI
 bound `--request` to the absent active publication path instead of the reviewed
 repository `request_source_path`. The narrow source fix adds one canonical
 builder and exact validator for that suffix, routes the production-Python smoke
-through it, and preserves every retired r8 artifact unchanged. No replacement
-qualification identity or live invocation is currently authorized.
+through it, and preserves every retired r8 artifact unchanged.
+
+The offline feasibility audit now binds the frozen B3-B7 readiness evidence
+and current v2 registration exactly. It observes 125 complete trajectories,
+one raw victory, and zero deterministic-Current-supported victories because
+the winning trajectory has exact target weight zero. For 600 attempts to have
+an 80% plug-in probability of reaching the registered three-supported-victory
+gate, the supported-victory rate would need to be about 0.7118%. The current
+audit is `not_demonstrated` because the evidence is historical-only, contains
+no supported victory, and yields zero plug-in pass probability. It grants no
+qualification, study, gameplay, OPE, training, or promotion authority.
 
 The next authorized sequence is:
 
-1. Archive the completed r8 amendment while preserving its external root and
-   closeout byte-for-byte.
-2. Preserve the completed offline diagnosis and canonical launch-binding fix,
-   including its red regression, focused checks, registered commit gate, and
-   archived OpenSpec evidence.
-3. Only a later explicit amendment may prepare a previously absent replacement
-   qualification identity and independently review another no-action attempt.
-4. Resume the 24-by-25 evidence study only after a future qualification and
-   independent verifier both pass.
-5. Use the completed evidence and OPE gates to decide whether to propose a
-   bounded non-combat RL training experiment.
+1. Preserve r1-r8, the completed r8 diagnosis/fix, and all external evidence
+   byte-for-byte; do not prepare r9 or another replacement identity.
+2. Preserve the canonical feasibility input and deterministic JSON/Markdown
+   `not_demonstrated` report as the current pre-launch decision.
+3. Use a separate offline-first OpenSpec decision to choose among improving
+   and re-baselining the current gameplay policy, revising the outcome/reward
+   evidence contract, or registering a materially different study design.
+4. Permit a later replacement-qualification amendment only after a current,
+   source-comparable feasibility audit demonstrates the declared planning gate.
+5. Consider bounded non-combat RL training only after the revised evidence
+   path reaches the existing independently checkable training go/no-go gates.
 
 ## Work Lanes
 
