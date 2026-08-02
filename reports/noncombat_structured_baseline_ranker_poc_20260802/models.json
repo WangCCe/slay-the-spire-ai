@@ -1,0 +1,21 @@
+{
+  "fold_model_sha256s": {
+    "control": [
+      "85eb2dd5ffcd2e48ed53be7b9f96207e5c16d3a89dc0205ed1e3b7f3fa0df79d",
+      "df245a5ab339e84c2987d929f8df98cda1209f8c62c4a6355a68ef48d1ac8ed7",
+      "d3a1db90617182f2e4626aa3aa7d29811e17aa89db124898566bc4f8949d5ab3",
+      "8ec2bebdf69cdd1ab410e8680e300fa99361783f3f49fd6408414c5ee7fabcfd"
+    ],
+    "structured": [
+      "7f6d7a71d4362e4881cfc17c9a2d0d9d00567cd69f21545c8608b40f01c0887b",
+      "be2fd74b7be3d1d8c1c4ca63301cdb1ef7a2cbe973b9183bfa220123f0b03e4e",
+      "401b7997d8c2bb9ac599965ae495646bd3a8237c535204c3e4a17d1d80848070",
+      "25da856b0b7d346a64a3929dc012c160ed2226f022c47dac1901e67aa172ec6d"
+    ]
+  },
+  "registration_sha256": "3a9aca0175bec6dddbeb17b96044c405c8e8e3b3486fc0f46f1c3ff3e126b49a",
+  "replay_selected_model_sha256": null,
+  "schema_version": "noncombat-structured-baseline-ranker-model-v1",
+  "selected_model": null,
+  "selected_model_sha256": null
+}

@@ -14,8 +14,17 @@ primary and replay matched, but validation failed both the registered overall
 teacher-fit threshold and the primary rollout floor gate. Final-test seeds were
 therefore untouched. The read-only failure audit is now complete: forced
 single-candidate rows inflated headline agreement, and the policy diverged on
-teacher states near the start of every validation run. The current objective is
-a separate structured baseline-ranker POC, not formal non-combat RL.
+teacher states near the start of every validation run.
+
+The subsequent train-only structured baseline-ranker POC is also complete. Its
+primary/replay execution identity matched, but the candidate missed every
+aggregate selection gate: multi-candidate agreement fell from `70.00%` to
+`67.82%`, macro agreement fell by `7.89` points, and cross entropy worsened by
+`0.1924`. Route improved by `11.00` points in all four folds and card reward by
+`2.32` points overall, while event and shop regressed; the shop head predicted
+`leave` on all 124 held-out decisions. No model was selected and all authority
+remains false. The current objective is a narrower legacy-preserving
+route/card residual POC, not a fresh simulator study or formal non-combat RL.
 
 ## Training Boundary
 
@@ -142,24 +151,29 @@ The next authorized sequence is:
    verdict, and untouched final cohort; do not tune or rerun this study.
 5. Preserve the completed read-only first-divergence/floor-deficit audit; do
    not reuse its validation rows for model selection.
-6. Route a structured, category-aware baseline-ranker POC through a new
-   OpenSpec change. Its implementation fit may use only prior train evidence;
-   any quality claim requires entirely fresh preregistered cohorts and a
-   separate multi-candidate competence gate.
+6. Preserve the completed structured-ranker POC and valid negative verdict.
+   Do not rerun it, change its thresholds, or advance its unified candidate to
+   fresh simulator evidence.
 7. Treat SimpleAgent as temporary auxiliary supervision, preserve the full
    candidate action space, and keep Current/Bottled out of simulator training
    until their feature/action bridges are validated.
-8. Consider formal RL only after a separately registered policy demonstrates a
+8. If another train-only POC is pursued, freeze legacy event/shop behavior and
+   limit learning to a small route/card residual with per-fold agreement and
+   cross-entropy gates. It may use only the already observed train corpus and
+   makes no policy-quality claim.
+9. Consider formal RL only after a separately registered policy demonstrates a
    credible baseline floor on untouched evidence. Permit later live work only
    through its existing crash/qualification gates.
 
 ## Work Lanes
 
-The primary lane is a structured baseline-ranker POC motivated by the completed
-failure audit. Improve permutation-invariant state summaries,
-candidate-relative route/card/shop features, and nontrivial-choice evaluation
-before another fresh baseline-floor study. Simulated and live evidence remain
-separate.
+The primary lane is a bounded legacy-preserving route/card residual POC,
+motivated by the completed structured-ranker result and its read-only audit in
+`reports/noncombat_structured_baseline_ranker_poc_failure_audit_20260802.md`.
+Keep the legacy event/shop decisions fixed, preserve complete candidates, and
+require held-out agreement plus cross-entropy improvement in every seed fold.
+Do not spend fresh simulator cohorts until that implementation-fit gate passes.
+Simulated and live evidence remain separate.
 
 Live gameplay is a maintenance and registered-evaluation lane only. Launch it
 for a crash, stuck state, repeated A-class simulator/mechanics defect, or an

@@ -1,0 +1,7 @@
+{
+  "canonical": false,
+  "primary_elapsed_seconds": 121.60999999998603,
+  "replay_elapsed_seconds": 120.14000000001397,
+  "schema_version": "noncombat-structured-baseline-ranker-journal-v1",
+  "wall_time_budget_seconds": 900.0
+}

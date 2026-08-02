@@ -1,0 +1,145 @@
+{
+  "authority": {
+    "dagger": false,
+    "formal_noncombat_rl": false,
+    "live_gameplay": false,
+    "live_policy_loading": false,
+    "native_evidence_collection": false,
+    "ope_reinterpretation": false,
+    "policy_promotion": false,
+    "qualification": false,
+    "simulator_rollout": false
+  },
+  "candidate_metrics": {
+    "control": {
+      "by_category": {
+        "card_reward": {
+          "action_agreement": 0.6688741721854304,
+          "mean_cross_entropy": 1.0788744604195435,
+          "row_count": 302
+        },
+        "event": {
+          "action_agreement": 0.9652777777777778,
+          "mean_cross_entropy": 0.6492066124444694,
+          "row_count": 144
+        },
+        "route": {
+          "action_agreement": 0.6666666666666666,
+          "mean_cross_entropy": 0.7507905899861005,
+          "row_count": 300
+        },
+        "shop": {
+          "action_agreement": 0.5483870967741935,
+          "mean_cross_entropy": 1.7457953015428507,
+          "row_count": 124
+        }
+      },
+      "macro_category_action_agreement": 0.7123014283510171,
+      "macro_category_mean_cross_entropy": 1.056166741098241,
+      "overall_action_agreement": 0.7,
+      "overall_mean_cross_entropy": 0.989680038650402,
+      "row_count": 870
+    },
+    "structured": {
+      "by_category": {
+        "card_reward": {
+          "action_agreement": 0.6920529801324503,
+          "mean_cross_entropy": 1.3671994245138244,
+          "row_count": 302
+        },
+        "event": {
+          "action_agreement": 0.7986111111111112,
+          "mean_cross_entropy": 0.805923513480103,
+          "row_count": 144
+        },
+        "route": {
+          "action_agreement": 0.7766666666666666,
+          "mean_cross_entropy": 0.7997139211245662,
+          "row_count": 300
+        },
+        "shop": {
+          "action_agreement": 0.2661290322580645,
+          "mean_cross_entropy": 2.092959424139281,
+          "row_count": 124
+        }
+      },
+      "macro_category_action_agreement": 0.6333649475420732,
+      "macro_category_mean_cross_entropy": 1.2664490708144436,
+      "overall_action_agreement": 0.6781609195402298,
+      "overall_mean_cross_entropy": 1.1820555828447707,
+      "row_count": 870
+    }
+  },
+  "classification": {
+    "authority": {
+      "dagger": false,
+      "formal_noncombat_rl": false,
+      "live_gameplay": false,
+      "live_policy_loading": false,
+      "native_evidence_collection": false,
+      "ope_reinterpretation": false,
+      "policy_promotion": false,
+      "qualification": false,
+      "simulator_rollout": false
+    },
+    "checks": {
+      "card_reward_nonregression": true,
+      "cross_entropy_nonworse": false,
+      "macro_agreement_improvement": false,
+      "overall_agreement_improvement": false,
+      "replay_identity": true,
+      "route_nonregression": true
+    },
+    "primary_execution_sha256": "c5c8294715c1006af285ff22a335c94e7ddd752608065561016b869d6617368b",
+    "replay_execution_sha256": "c5c8294715c1006af285ff22a335c94e7ddd752608065561016b869d6617368b",
+    "selected_candidate_id": null,
+    "verdict": "poc_valid_without_structured_candidate"
+  },
+  "comparison": {
+    "checks": {
+      "card_reward_nonregression": true,
+      "cross_entropy_nonworse": false,
+      "macro_agreement_improvement": false,
+      "overall_agreement_improvement": false,
+      "route_nonregression": true
+    },
+    "deltas": {
+      "card_reward_agreement": 0.023178807947019875,
+      "macro_agreement": -0.07893648080894389,
+      "mean_cross_entropy": 0.19237554419436875,
+      "overall_agreement": -0.02183908045977012,
+      "route_agreement": 0.10999999999999999
+    },
+    "selected_candidate_id": null,
+    "verdict": "poc_valid_without_structured_candidate"
+  },
+  "feature_collision_diagnostics": {
+    "collided_bin_count": 116,
+    "collision_count": 135,
+    "collision_fraction": 0.16363636363636364,
+    "hash_dim": 2048,
+    "occupied_bin_count": 690,
+    "unique_feature_count": 825
+  },
+  "fit_count_per_execution": 8,
+  "registration_sha256": "3a9aca0175bec6dddbeb17b96044c405c8e8e3b3486fc0f46f1c3ff3e126b49a",
+  "schema_version": "noncombat-structured-baseline-ranker-metrics-v1",
+  "singleton_summary": {
+    "by_category": {
+      "card_reward": 0,
+      "event": 10,
+      "route": 391,
+      "shop": 20
+    },
+    "excluded_from_competence_metrics": true,
+    "row_count": 421,
+    "total_by_category": {
+      "card_reward": 302,
+      "event": 154,
+      "route": 691,
+      "shop": 144
+    },
+    "total_row_count": 1291
+  },
+  "train_dataset_sha256": "86cf82f7833ca6b7d3f4e58967f5768ef7292a2297d06af01819b783526227d0"
+}

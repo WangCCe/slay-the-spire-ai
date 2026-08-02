@@ -22,11 +22,11 @@
 
 ## 4. One Bounded Train-Only POC
 
-- [ ] 4.1 Execute the registered four-fold legacy-versus-structured comparison exactly once and one identical replay, then conditionally fit the all-train structured artifact only under the registered selection rule.
-- [ ] 4.2 Publish the selected, valid-negative, or blocked result with multi-candidate metrics primary, singleton metrics separate, limitations explicit, and every downstream authority flag false.
+- [x] 4.1 Execute the registered four-fold legacy-versus-structured comparison exactly once and one identical replay, then conditionally fit the all-train structured artifact only under the registered selection rule.
+- [x] 4.2 Publish the selected, valid-negative, or blocked result with multi-candidate metrics primary, singleton metrics separate, limitations explicit, and every downstream authority flag false.
 
 ## 5. Verification And Closeout
 
-- [ ] 5.1 Run focused regressions, artifact rehash/semantic checks, Python compilation, the registered pytest commit gate, and strict OpenSpec validation without a native module, new seed, live game, raw unbounded suite, or formal RL.
-- [ ] 5.2 Perform a read-only final audit of train-only isolation, fold leakage, complete candidates, feature invariance, metric math, threshold application, deterministic replay, model immutability, authority, and managed inventory.
-- [ ] 5.3 Update project direction with the fresh-study go/no-go, sync accepted delta specs, archive the completed change, commit only scoped files, push `master`, and preserve all unrelated local artifacts.
+- [x] 5.1 Run focused regressions, artifact rehash/semantic checks, Python compilation, the registered pytest commit gate, and strict OpenSpec validation without a native module, new seed, live game, raw unbounded suite, or formal RL.
+- [x] 5.2 Perform a read-only final audit of train-only isolation, fold leakage, complete candidates, feature invariance, metric math, threshold application, deterministic replay, model immutability, authority, and managed inventory.
+- [x] 5.3 Update project direction with the fresh-study go/no-go, sync accepted delta specs, archive the completed change, commit only scoped files, push `master`, and preserve all unrelated local artifacts.

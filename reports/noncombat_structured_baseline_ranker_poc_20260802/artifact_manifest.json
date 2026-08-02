@@ -1,0 +1,24 @@
+{
+  "artifact_hashes": {
+    "configuration.json": "3a9aca0175bec6dddbeb17b96044c405c8e8e3b3486fc0f46f1c3ff3e126b49a",
+    "folds.json": "7e23eddfd98b4de42aeb234c960df59c68b719ce8438930de6f6d7716898b744",
+    "metrics.json": "4d7e384b000a89f6948fa0b8f6f860a2b48e2daad14f180a91fc3c8651140bb3",
+    "models.json": "56a5b5365199bd1bdff1e1b225e25b20178d66958440e72f73e8c34a83b38af0",
+    "predictions.json": "a29f00aa7b6ae4e43396796a5691ff77392f9cda4e0455592ab7915b97763005",
+    "report.md": "f7b7bac89cfd6751ab46f98929841e3b27e072b90ce1152caf50864adee07c48"
+  },
+  "authority": {
+    "dagger": false,
+    "formal_noncombat_rl": false,
+    "live_gameplay": false,
+    "live_policy_loading": false,
+    "native_evidence_collection": false,
+    "ope_reinterpretation": false,
+    "policy_promotion": false,
+    "qualification": false,
+    "simulator_rollout": false
+  },
+  "registration_sha256": "3a9aca0175bec6dddbeb17b96044c405c8e8e3b3486fc0f46f1c3ff3e126b49a",
+  "schema_version": "noncombat-structured-baseline-ranker-manifest-v1",
+  "verdict": "poc_valid_without_structured_candidate"
+}
