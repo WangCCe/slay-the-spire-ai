@@ -1,0 +1,18 @@
+## MODIFIED Requirements
+
+### Requirement: Simulator POC Has No Training Authority
+Simulator adapter readiness SHALL authorize only a separate reviewed proposal for a bounded simulator-training smoke; an accepted smoke change MAY invoke only its pre-registered bounded execution and SHALL NOT authorize formal training or live use.
+
+#### Scenario: POC report passes
+- **WHEN** a fit report returns `adapter_poc_ready`
+- **THEN** live study launch, formal RL training, OPE reinterpretation, live policy loading, and promotion authority SHALL all remain false
+
+#### Scenario: Reviewed bounded smoke executes
+- **WHEN** an accepted simulator-training-smoke change invokes the adapter against its exact registered identities
+- **THEN** the adapter MAY run only within that change's registered cohorts and resource bounds
+- **AND** formal RL, live gameplay, live loading, OPE, qualification, and promotion authority SHALL remain false
+
+#### Scenario: Bottled labels are attached
+- **WHEN** Bottled labels are compared with simulator transitions
+- **THEN** they SHALL remain auxiliary annotations
+- **AND** they SHALL NOT become direct reward, terminal truth, or simulator correctness evidence
