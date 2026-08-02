@@ -169,7 +169,11 @@ production agent code, or the external simulator checkout.
 
 ## Open Questions
 
-Exact hash width, hidden width, optimizer schedule, resource bounds, and
-positive selection margins will be chosen from static complexity/runtime
-constraints and synthetic implementation-fit checks, then committed in the
-registration before any structured fit on the observed train corpus.
+None for this POC. Static complexity/runtime constraints and synthetic tests
+freeze the legacy control at a `1024`-wide hash with one `128`-unit shared head,
+the structured candidate at a `2048`-wide hash with four `64`-unit category
+heads, and both at 20 deterministic Adam epochs over four round-robin seed
+folds. Selection requires at least `+0.03` overall and macro multi-candidate
+agreement, no route or card-reward agreement regression, and non-worse mean
+cross entropy. Each execution is limited to 1,500 rows, 32 candidates per row,
+nine model fits, and 900 seconds.
