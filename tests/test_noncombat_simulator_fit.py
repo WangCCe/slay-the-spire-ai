@@ -251,6 +251,50 @@ def test_historical_fixture_rejects_mutable_or_noncanonical_shape(tmp_path):
         load_historical_fixture(path)
 
 
+def test_published_r3_fit_evidence_is_frozen_and_ready():
+    expected_files = {
+        "noncombat_simulator_fit_20260802_r3_input.json": (
+            "2ea0d165520410726639304c51cffd236290bba2f9a28ba8592445ad1ca5d4a6",
+            1627,
+        ),
+        "noncombat_simulator_fit_20260802_r3.json": (
+            "42d08fedd3225179bf45c4cbbaa4c8103b8cba43cc3b0ebdf220f147f6cb82b5",
+            31889,
+        ),
+        "noncombat_simulator_fit_20260802_r3.md": (
+            "6a44cd2d043bb0e815d48cd652fb6746864d5f13d775a36c47ea8978618dead6",
+            1789,
+        ),
+    }
+    for name, (expected_sha256, expected_size) in expected_files.items():
+        path = REPO_ROOT / "reports" / name
+        assert path.stat().st_size == expected_size
+        assert sha256_file(path) == expected_sha256
+
+    input_path = (
+        REPO_ROOT / "reports" / "noncombat_simulator_fit_20260802_r3_input.json"
+    )
+    fit_input, fixture_path = load_bound_input(input_path, REPO_ROOT)
+    report = json.loads(
+        (
+            REPO_ROOT / "reports" / "noncombat_simulator_fit_20260802_r3.json"
+        ).read_text(encoding="utf-8")
+    )
+
+    assert fixture_path == FIXTURE_PATH
+    assert report["report_schema_version"] == REPORT_SCHEMA_VERSION
+    assert report["provenance"] == fit_input["registered_provenance"]
+    assert report["verdict"] == "adapter_poc_ready"
+    assert report["blockers"] == []
+    assert set(report["checks"].values()) == {True}
+    assert report["batch"]["native_baseline"]["first"]["checked_decisions"] == 770
+    assert report["batch"]["native_baseline"]["first"]["all_categories"] == list(
+        TARGET_CATEGORIES
+    )
+    assert report["historical_prefix"]["matched_decisions"] == 12
+    assert set(report["authority"].values()) == {False}
+
+
 def _integration_settings():
     module_path = os.environ.get("STS_LIGHTSPEED_ADAPTER_MODULE")
     simulator_root = os.environ.get("STS_LIGHTSPEED_ROOT")

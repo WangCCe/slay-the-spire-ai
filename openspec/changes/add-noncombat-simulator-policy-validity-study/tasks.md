@@ -10,7 +10,7 @@
 
 - [x] 2.1 Version the optional native API and implement the deep-copy SimpleAgent target query with exact `GameAction.bits` matching, explicit card skip/Bowl handling, baseline-route continuation, and no external-checkout modification.
 - [x] 2.2 Extend the Python facade and validators to expose one deterministic baseline action id only on a valid baseline-following trajectory and to reject unreported, ambiguous, mutating, or stale results.
-- [ ] 2.3 Rebuild the ignored native module from explicit identities, run focused native checks, refresh the adapter fit report under the new source/module hashes, and prove seeds `2000..2003` retain published state/candidate semantics.
+- [x] 2.3 Rebuild the ignored native module from explicit identities, run focused native checks, refresh the adapter fit report under the new source/module hashes, and prove seeds `2000..2003` retain published state/candidate semantics.
 
 ## 3. Offline Policy Validity Evaluator
 

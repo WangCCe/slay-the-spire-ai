@@ -1,0 +1,57 @@
+{
+  "audit": {
+    "max_decisions": 500,
+    "seeds": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9,
+      10,
+      11,
+      12,
+      13,
+      14,
+      15,
+      16,
+      17,
+      18,
+      19
+    ],
+    "throughput_budget_seconds": 90.0
+  },
+  "fixture": {
+    "path": "tests/fixtures/noncombat_simulator_adapter/historical_prefixes_20260802.json",
+    "sha256": "2ed658eceede8b656acad5e4b98fd9da4fc764ac480f64a5bffa7992bff9b00e",
+    "size_bytes": 4149
+  },
+  "registered_provenance": {
+    "adapter_commit": "a810d6d0ce92c1ebab8483fb8819163fc76d54fe",
+    "adapter_source_sha256": "10c413d11e6abf4c621400279a4f4bfccddb0876426a0e14c6c892fdf0d4da5b",
+    "build": {
+      "adapter_api_version": "sts-lightspeed-noncombat-adapter-v2",
+      "baseline_policy_id": "sts_lightspeed_simple_agent_no_potions_v1",
+      "compiler": "15.2.0",
+      "cpp_standard": 201703,
+      "native_target_policy_id": "sts_lightspeed_simple_agent_target_v1",
+      "pybind11_version": "3.0.2a0",
+      "python": "3.10.18"
+    },
+    "module_sha256": "b3328aea4ee3040a4fe8751d6f300a148a7ae64d68f7ebec050ae61f479d6805",
+    "module_size_bytes": 1550848,
+    "simulator_commit": "7476a81954020087da31d41d16fddf475746ec2d",
+    "simulator_dirty": true,
+    "simulator_source_file_count": 79,
+    "simulator_source_sha256": "a3f98721ec37373b1b00aef660832a3307f0186ba0614d07a3b1e7de8ab2e46a",
+    "submodules": {
+      "json": "55f93686c01528224f448c19128836e7df245f72",
+      "pybind11": "8f68ecd32c8e18d3b064dbf0ea5fc31a6cb37e9a"
+    }
+  },
+  "schema_version": "noncombat-simulator-fit-input-v1"
+}
