@@ -1,15 +1,15 @@
 ## 1. Contract Regressions
 
-- [ ] 1.1 Add strict registration and artifact-binding tests that reject identity drift, duplicate JSON keys, non-canonical evidence, extra managed files, and any true authority flag.
-- [ ] 1.2 Add total-registry tests that reconcile exactly 25 canonical events, 47 aliases, upstream identities, static option labels, and every display-label expression classification against the corrected r2 inventory and bound source cases.
-- [ ] 1.3 Add position-mapping regressions for contiguous and sparse legal candidate sets, including Cleric Leave at simulator index 2 becoming Current position 0 and reversible source-index recovery.
-- [ ] 1.4 Add dynamic and fail-closed regressions for all five Cursed Tome phases, N'loth offered-relic slot/id/name validation, Mindbloom Current-id normalization, and unknown event, phase, index, or context rejection.
+- [x] 1.1 Add strict registration and artifact-binding tests that reject identity drift, duplicate JSON keys, non-canonical evidence, extra managed files, and any true authority flag.
+- [x] 1.2 Add total-registry tests that reconcile exactly 25 canonical events, 47 aliases, upstream identities, static option labels, and every display-label expression classification against the corrected r2 inventory and bound source cases.
+- [x] 1.3 Add position-mapping regressions for contiguous and sparse legal candidate sets, including Cleric Leave at simulator index 2 becoming Current position 0 and reversible source-index recovery.
+- [x] 1.4 Add dynamic and fail-closed regressions for all five Cursed Tome phases, N'loth offered-relic slot/id/name validation, Mindbloom Current-id normalization, and unknown event, phase, index, or context rejection.
 
 ## 2. Read-Only Contract Validator
 
-- [ ] 2.1 Implement a strict, deterministic validator that consumes only registered Current, corrected r2, and upstream source bytes and does not import the bridge resolver, native module, gameplay runtime, model, or trainer.
-- [ ] 2.2 Implement the reviewed 25-event registry with static index labels, explicit Current/upstream identities, the Cursed Tome phase table, N'loth dynamic-context schema, and zero generic or fuzzy fallbacks.
-- [ ] 2.3 Build reversible Current-position/simulator-index observation rows from validated legal candidates and publish canonical configuration, contract, metrics, report, and manifest payloads with all readiness and execution authority false.
+- [x] 2.1 Implement a strict, deterministic validator that consumes only registered Current, corrected r2, and upstream source bytes and does not import the bridge resolver, native module, gameplay runtime, model, or trainer.
+- [x] 2.2 Implement the reviewed 25-event registry with static index labels, explicit Current/upstream identities, the Cursed Tome phase table, N'loth dynamic-context schema, and zero generic or fuzzy fallbacks.
+- [x] 2.3 Build reversible Current-position/simulator-index observation rows from validated legal candidates and publish canonical configuration, contract, metrics, report, and manifest payloads with all readiness and execution authority false.
 
 ## 3. Registered Contract Evidence
 

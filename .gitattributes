@@ -105,3 +105,10 @@ openspec/changes/archive/*-audit-current-event-option-semantics-coverage/** text
 openspec/changes/archive/*-fix-event-semantics-audit-comment-parsing/** text eol=lf
 openspec/changes/define-total-event-option-observation-contract/** text eol=lf
 openspec/changes/archive/*-define-total-event-option-observation-contract/** text eol=lf
+
+# Preserve total event-option observation contract source and evidence bytes.
+analysis_scripts/noncombat_event_option_observation_contract.py text eol=lf
+tests/test_noncombat_event_option_observation_contract.py text eol=lf
+reports/noncombat_event_option_observation_contract_* text eol=lf
+reports/noncombat_event_option_observation_contract_*/** text eol=lf
+openspec/specs/noncombat-event-option-observation-contract/** text eol=lf
