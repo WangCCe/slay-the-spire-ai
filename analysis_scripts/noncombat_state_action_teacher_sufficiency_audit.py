@@ -13,6 +13,7 @@ import sys
 import time
 from collections import Counter, defaultdict
 from collections.abc import Callable, Mapping, Sequence
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
@@ -34,7 +35,11 @@ from analysis_scripts.noncombat_structured_baseline_ranker_poc import (
     TRAIN_INPUT_MANIFEST_SCHEMA_VERSION,
     StructuredPocBlocked,
     _actual_binding,
+    _add_card_reward_features,
+    _add_route_features,
+    _add_token,
     _binding_for_path,
+    _global_features,
     _is_commit,
     _is_sha256,
     _load_json,
@@ -51,8 +56,18 @@ from analysis_scripts.noncombat_structured_baseline_ranker_poc import (
 AuditBlocked = StructuredPocBlocked
 
 REGISTRATION_SCHEMA_VERSION = (
+    "noncombat-state-action-teacher-sufficiency-audit-input-v2"
+)
+CONSUMED_REGISTRATION_SCHEMA_VERSION = (
     "noncombat-state-action-teacher-sufficiency-audit-input-v1"
 )
+BLOCKED_FAILURE_SCHEMA_VERSION = (
+    "noncombat-state-action-teacher-sufficiency-audit-failure-v1"
+)
+SYNTHETIC_BENCHMARK_SCHEMA_VERSION = (
+    "noncombat-teacher-sufficiency-runtime-synthetic-benchmark-v1"
+)
+RECOVERY_MODE = "single-validated-load-v1"
 SOURCE_FACTS_SCHEMA_VERSION = "noncombat-teacher-source-facts-v1"
 DEPENDENCY_SCHEMA_VERSION = "noncombat-teacher-dependency-coverage-v1"
 ROW_EVIDENCE_SCHEMA_VERSION = "noncombat-teacher-row-evidence-v1"
@@ -179,6 +194,21 @@ def _audit_contract() -> dict[str, Any]:
     }
 
 
+def _recovery_contract() -> dict[str, Any]:
+    return {
+        "adapter_signature_source": "payload-validated-policy-view-sha256",
+        "context_mode": RECOVERY_MODE,
+        "fresh_execution_count": 1,
+        "registered_corpus_preflight_allowed": False,
+        "structured_global_cache": "per-decision-exact-copy-v1",
+        "synthetic_benchmark": {
+            "card_reward_rows": 302,
+            "max_elapsed_seconds": 90.0,
+            "route_rows": 300,
+        },
+    }
+
+
 def _external_file_records(root: Path) -> list[dict[str, Any]]:
     records = []
     for relative in EXTERNAL_SOURCE_FILES:
@@ -275,7 +305,7 @@ def validate_registration(value: object) -> dict[str, Any]:
     registration = dict(_mapping(value, "audit registration"))
     _require_keys(
         registration,
-        {"audit", "authority", "identity", "schema_version"},
+        {"audit", "authority", "identity", "recovery", "schema_version"},
         "audit registration",
     )
     _require_exact(
@@ -290,12 +320,17 @@ def validate_registration(value: object) -> dict[str, Any]:
     audit = dict(_mapping(registration["audit"], "audit contract"))
     if audit != _audit_contract():
         raise AuditBlocked("audit contract differs from the registered contract")
+    recovery = dict(_mapping(registration["recovery"], "recovery contract"))
+    if recovery != _recovery_contract():
+        raise AuditBlocked("recovery contract differs from the registered contract")
     identity = dict(_mapping(registration["identity"], "identity"))
     _require_keys(
         identity,
         {
             "external_source",
             "implementation",
+            "blocked_attempt_failure",
+            "consumed_registration",
             "residual_failure_audit",
             "residual_manifest",
             "residual_verdict",
@@ -304,6 +339,7 @@ def validate_registration(value: object) -> dict[str, Any]:
             "train_dataset_sha256",
             "train_input",
             "train_input_manifest",
+            "synthetic_benchmark",
         },
         "identity",
     )
@@ -330,8 +366,11 @@ def validate_registration(value: object) -> dict[str, Any]:
     if any(not isinstance(runtime[name], str) or not runtime[name] for name in runtime):
         raise AuditBlocked("runtime identity is invalid")
     for name in (
+        "blocked_attempt_failure",
+        "consumed_registration",
         "residual_failure_audit",
         "residual_manifest",
+        "synthetic_benchmark",
         "train_input",
         "train_input_manifest",
     ):
@@ -348,6 +387,7 @@ def validate_registration(value: object) -> dict[str, Any]:
     registration["audit"] = audit
     registration["authority"] = authority
     registration["identity"] = identity
+    registration["recovery"] = recovery
     return registration
 
 
@@ -363,6 +403,105 @@ def _torch_version() -> str:
     return str(torch.__version__)
 
 
+def validate_blocked_lineage(
+    *, consumed_registration: Mapping[str, Any], failure: Mapping[str, Any]
+) -> dict[str, Any]:
+    if consumed_registration.get("schema_version") != CONSUMED_REGISTRATION_SCHEMA_VERSION:
+        raise AuditBlocked("consumed registration schema mismatch")
+    if failure.get("schema_version") != BLOCKED_FAILURE_SCHEMA_VERSION:
+        raise AuditBlocked("blocked failure schema mismatch")
+    attempt = _mapping(failure.get("attempt"), "blocked failure attempt")
+    failure_value = _mapping(failure.get("failure"), "blocked failure")
+    isolation = _mapping(failure.get("isolation"), "blocked failure isolation")
+    resolution = _mapping(failure.get("resolution"), "blocked failure resolution")
+    if failure_value.get("classification") != "registered_audit_wall_time_exceeded":
+        raise AuditBlocked("blocked failure classification mismatch")
+    if failure_value.get("registered_max_wall_seconds") != 120.0:
+        raise AuditBlocked("blocked failure wall-time contract mismatch")
+    if failure_value.get("stage") != "post_analysis_pre_publication":
+        raise AuditBlocked("blocked failure stage mismatch")
+    if isolation.get("canonical_output_root_absent") is not True or isolation.get(
+        "canonical_artifact_count"
+    ) != 0:
+        raise AuditBlocked("blocked failure output isolation mismatch")
+    if resolution.get("same_registration_retry_allowed") is not False or resolution.get(
+        "threshold_change_allowed"
+    ) is not False:
+        raise AuditBlocked("blocked failure retry boundary mismatch")
+    if resolution.get("verdict") != "blocked":
+        raise AuditBlocked("blocked failure verdict mismatch")
+    registration_file = _mapping(
+        attempt.get("registration_file"), "blocked failure registration file"
+    )
+    consumed_bytes = canonical_json_bytes(consumed_registration)
+    if (
+        registration_file.get("sha256") != sha256_bytes(consumed_bytes)
+        or registration_file.get("size_bytes") != len(consumed_bytes)
+    ):
+        raise AuditBlocked("blocked failure registration identity mismatch")
+    if consumed_registration.get("audit") != _audit_contract():
+        raise AuditBlocked("consumed registration audit contract drifted")
+    authority = _mapping(failure.get("authority"), "blocked failure authority")
+    if not authority or any(bool(item) for item in authority.values()):
+        raise AuditBlocked("blocked failure authority must remain all false")
+    return {
+        "classification": failure_value["classification"],
+        "consumed_registration_sha256": registration_file["sha256"],
+        "same_registration_retry_allowed": False,
+    }
+
+
+def validate_synthetic_benchmark(value: object) -> dict[str, Any]:
+    benchmark = dict(_mapping(value, "synthetic benchmark"))
+    _require_keys(
+        benchmark,
+        {
+            "category_counts",
+            "elapsed_seconds",
+            "fixture_sha256",
+            "no_registered_corpus_access",
+            "optimized_row_count",
+            "passed",
+            "runtime",
+            "schema_version",
+            "threshold_seconds",
+        },
+        "synthetic benchmark",
+    )
+    if benchmark["schema_version"] != SYNTHETIC_BENCHMARK_SCHEMA_VERSION:
+        raise AuditBlocked("synthetic benchmark schema mismatch")
+    expected = _recovery_contract()["synthetic_benchmark"]
+    if benchmark["category_counts"] != {
+        "card_reward": expected["card_reward_rows"],
+        "route": expected["route_rows"],
+    }:
+        raise AuditBlocked("synthetic benchmark category counts mismatch")
+    if benchmark["optimized_row_count"] != sum(benchmark["category_counts"].values()):
+        raise AuditBlocked("synthetic benchmark row count mismatch")
+    if benchmark["threshold_seconds"] != expected["max_elapsed_seconds"]:
+        raise AuditBlocked("synthetic benchmark threshold mismatch")
+    elapsed = benchmark["elapsed_seconds"]
+    if (
+        isinstance(elapsed, bool)
+        or not isinstance(elapsed, (int, float))
+        or not math.isfinite(float(elapsed))
+        or float(elapsed) < 0.0
+        or float(elapsed) > benchmark["threshold_seconds"]
+    ):
+        raise AuditBlocked("synthetic benchmark elapsed time is invalid")
+    if benchmark["passed"] is not True or benchmark["no_registered_corpus_access"] is not True:
+        raise AuditBlocked("synthetic benchmark did not pass isolation")
+    if not _is_sha256(benchmark["fixture_sha256"]):
+        raise AuditBlocked("synthetic benchmark fixture identity is invalid")
+    runtime = _mapping(benchmark["runtime"], "synthetic benchmark runtime")
+    if runtime != {
+        "python": ".".join(map(str, sys.version_info[:3])),
+        "torch": _torch_version(),
+    }:
+        raise AuditBlocked("synthetic benchmark runtime mismatch")
+    return benchmark
+
+
 def build_registration(
     *,
     repo_root: Path,
@@ -372,6 +511,9 @@ def build_registration(
     train_input_manifest_path: Path | str,
     residual_manifest_path: Path | str,
     residual_failure_audit_path: Path | str,
+    consumed_registration_path: Path | str,
+    blocked_attempt_failure_path: Path | str,
+    synthetic_benchmark_path: Path | str,
 ) -> dict[str, Any]:
     if not _is_commit(implementation_commit):
         raise AuditBlocked("implementation commit is invalid")
@@ -397,10 +539,37 @@ def build_registration(
         raise AuditBlocked("residual lineage is not the terminal negative")
     if any(bool(item) for item in residual_manifest.get("authority", {}).values()):
         raise AuditBlocked("residual lineage has downstream authority")
+    consumed_registration = _load_json(
+        consumed_registration_path, "consumed v1 registration"
+    )
+    blocked_failure = _load_json(
+        blocked_attempt_failure_path, "blocked v1 failure"
+    )
+    validate_blocked_lineage(
+        consumed_registration=consumed_registration, failure=blocked_failure
+    )
+    synthetic_benchmark = validate_synthetic_benchmark(
+        _load_json(synthetic_benchmark_path, "synthetic benchmark")
+    )
+    consumed_identity = _mapping(
+        consumed_registration.get("identity"), "consumed registration identity"
+    )
+    if consumed_identity.get("train_dataset_sha256") != train_input["source"][
+        "train_dataset_sha256"
+    ]:
+        raise AuditBlocked("recovery train corpus differs from consumed registration")
+    if consumed_registration.get("audit") != _audit_contract():
+        raise AuditBlocked("recovery audit contract differs from consumed registration")
     registration = {
         "audit": _audit_contract(),
         "authority": _authority(),
         "identity": {
+            "blocked_attempt_failure": _binding_for_path(
+                repo_root, blocked_attempt_failure_path
+            ),
+            "consumed_registration": _binding_for_path(
+                repo_root, consumed_registration_path
+            ),
             "external_source": _external_identity(external_repo_root),
             "implementation": {
                 "commit": implementation_commit,
@@ -417,25 +586,35 @@ def build_registration(
                 "torch": _torch_version(),
             },
             "teacher_policy_id": NATIVE_TARGET_POLICY_ID,
+            "synthetic_benchmark": _binding_for_path(
+                repo_root, synthetic_benchmark_path
+            ),
             "train_dataset_sha256": train_input["source"]["train_dataset_sha256"],
             "train_input": _binding_for_path(repo_root, train_input_path),
             "train_input_manifest": _binding_for_path(
                 repo_root, train_input_manifest_path
             ),
         },
+        "recovery": _recovery_contract(),
         "schema_version": REGISTRATION_SCHEMA_VERSION,
     }
     return validate_registration(registration)
 
 
 def validate_registered_identity(
-    registration: Mapping[str, Any], *, repo_root: Path
+    registration: Mapping[str, Any],
+    *,
+    repo_root: Path,
+    return_train_input: bool = False,
 ) -> dict[str, Any]:
     value = validate_registration(registration)
     identity = value["identity"]
     for name in (
+        "blocked_attempt_failure",
+        "consumed_registration",
         "residual_failure_audit",
         "residual_manifest",
+        "synthetic_benchmark",
         "train_input",
         "train_input_manifest",
     ):
@@ -477,13 +656,34 @@ def validate_registered_identity(
         bool(item) for item in residual.get("authority", {}).values()
     ):
         raise AuditBlocked("registered residual lineage mismatch")
-    return {
+    consumed_registration = _load_json(
+        repo_root / identity["consumed_registration"]["path"],
+        "consumed v1 registration",
+    )
+    blocked_failure = _load_json(
+        repo_root / identity["blocked_attempt_failure"]["path"],
+        "blocked v1 failure",
+    )
+    lineage = validate_blocked_lineage(
+        consumed_registration=consumed_registration, failure=blocked_failure
+    )
+    validate_synthetic_benchmark(
+        _load_json(
+            repo_root / identity["synthetic_benchmark"]["path"],
+            "synthetic benchmark",
+        )
+    )
+    result = {
+        "blocked_lineage": lineage,
         "external_commit": external["commit"],
         "implementation_commit": implementation["commit"],
         "implementation_source_sha256": actual_source_sha256,
         "runtime": runtime,
         "train_dataset_sha256": identity["train_dataset_sha256"],
     }
+    if return_train_input:
+        result["train_input"] = train_input
+    return result
 
 
 def validate_external_identity(value: object) -> dict[str, Any]:
@@ -499,6 +699,61 @@ def validate_external_identity(value: object) -> dict[str, Any]:
     if _external_file_records(external_root) != external["files"]:
         raise AuditBlocked("external physical source identity mismatch")
     return external
+
+
+_CONTEXT_SEAL = object()
+
+
+@dataclass(frozen=True)
+class ValidatedAuditContext:
+    registration: Mapping[str, Any]
+    train_input: Mapping[str, Any]
+    source_facts: Mapping[str, Any]
+    identity_summary: Mapping[str, Any]
+    registration_sha256: str
+    train_dataset_sha256: str
+    _seal: object
+
+
+def _validate_audit_context(value: object) -> ValidatedAuditContext:
+    if not isinstance(value, ValidatedAuditContext) or value._seal is not _CONTEXT_SEAL:
+        raise AuditBlocked("audit requires a registered validated context")
+    if value.registration_sha256 != sha256_bytes(
+        canonical_json_bytes(value.registration)
+    ):
+        raise AuditBlocked("validated context registration identity drifted")
+    source = _mapping(value.train_input.get("source"), "validated train source")
+    if source.get("train_dataset_sha256") != value.train_dataset_sha256:
+        raise AuditBlocked("validated context train identity drifted")
+    if value.train_dataset_sha256 != value.registration["identity"][
+        "train_dataset_sha256"
+    ]:
+        raise AuditBlocked("validated context crosses registrations")
+    if value.source_facts.get("schema_version") != SOURCE_FACTS_SCHEMA_VERSION:
+        raise AuditBlocked("validated context source facts are invalid")
+    return value
+
+
+def load_validated_audit_context(
+    registration: Mapping[str, Any], *, repo_root: Path
+) -> ValidatedAuditContext:
+    normalized = validate_registration(registration)
+    identity = validate_registered_identity(
+        normalized, repo_root=repo_root, return_train_input=True
+    )
+    train_input = identity.pop("train_input")
+    source_facts = load_source_facts(normalized, repo_root=repo_root)
+    return _validate_audit_context(
+        ValidatedAuditContext(
+            registration=normalized,
+            train_input=train_input,
+            source_facts=source_facts,
+            identity_summary=identity,
+            registration_sha256=sha256_bytes(canonical_json_bytes(normalized)),
+            train_dataset_sha256=normalized["identity"]["train_dataset_sha256"],
+            _seal=_CONTEXT_SEAL,
+        )
+    )
 
 
 def _matching_brace(text: str, opening: int) -> int:
@@ -1229,6 +1484,148 @@ def build_representation_row(
     }
 
 
+def optimized_structured_feature_maps(
+    state: Mapping[str, Any],
+    candidates: Sequence[Mapping[str, Any]],
+    *,
+    category: str,
+) -> list[dict[str, float]]:
+    if category not in AUDITED_CATEGORIES:
+        raise AuditBlocked("optimized structured category is not audited")
+    shared = _global_features(state, category)
+    result = []
+    for candidate_value in candidates:
+        candidate = _mapping(candidate_value, "optimized structured candidate")
+        if candidate.get("category") != category or candidate.get("available") is not True:
+            raise AuditBlocked("optimized structured candidate contract mismatch")
+        features = dict(shared)
+        _add_token(features, "candidate.kind", candidate.get("kind"))
+        if category == "route":
+            _add_route_features(features, state, candidate)
+        else:
+            _add_card_reward_features(features, state, candidate)
+        if not features or any(not math.isfinite(value) for value in features.values()):
+            raise AuditBlocked("optimized structured feature map is invalid")
+        result.append(dict(sorted(features.items())))
+    return result
+
+
+def _validated_policy_view_hashes(
+    row: Mapping[str, Any],
+    *,
+    state: Mapping[str, Any],
+    candidates: Sequence[Mapping[str, Any]],
+    payloads_already_validated: bool,
+) -> list[str]:
+    policy_views = row.get("policy_views")
+    if not isinstance(policy_views, list) or len(policy_views) != len(candidates):
+        raise AuditBlocked("optimized row policy-view inventory mismatch")
+    result = []
+    for candidate, entry_value in zip(candidates, policy_views, strict=True):
+        entry = _mapping(entry_value, "optimized policy view")
+        if entry.get("action_id") != candidate.get("action_id") or not _is_sha256(
+            entry.get("sha256")
+        ):
+            raise AuditBlocked("optimized policy-view identity mismatch")
+        if not payloads_already_validated:
+            expected = project_policy_view(state, candidate)
+            if entry.get("policy_view") != expected or entry.get("sha256") != sha256_bytes(
+                canonical_json_bytes(expected)
+            ):
+                raise AuditBlocked("optimized policy-view payload is not validated")
+        result.append(str(entry["sha256"]))
+    return result
+
+
+def build_representation_row_optimized(
+    row: Mapping[str, Any],
+    source_facts: Mapping[str, Any],
+    *,
+    policy_view_payloads_already_validated: bool = False,
+) -> dict[str, Any]:
+    category = str(row.get("category"))
+    if category not in AUDITED_CATEGORIES:
+        raise AuditBlocked("representation row category is not audited")
+    snapshot = _mapping(row.get("source_snapshot"), "source snapshot")
+    state = _mapping(snapshot.get("state"), "source state")
+    candidates_value = row.get("candidate_actions")
+    if not isinstance(candidates_value, list) or len(candidates_value) < 2:
+        raise AuditBlocked("representation rows must have multiple candidates")
+    candidates = [dict(_mapping(item, "candidate")) for item in candidates_value]
+    target_id = str(_mapping(row.get("teacher"), "teacher").get("action_id"))
+    candidate_ids = [str(item.get("action_id")) for item in candidates]
+    if candidate_ids.count(target_id) != 1:
+        raise AuditBlocked("representation target must map exactly once")
+    target_index = candidate_ids.index(target_id)
+    semantic_keys = [list(semantic_action_key(category, item)) for item in candidates]
+    source_payload = _source_signature_payload(
+        category=category,
+        state=state,
+        candidates=candidates,
+        source_facts=source_facts,
+    )
+    source_shared = sha256_bytes(canonical_json_bytes(source_payload))
+    source_candidates = [
+        sha256_bytes(
+            canonical_json_bytes(
+                {"candidate": semantic_keys[index], "source": source_shared}
+            )
+        )
+        for index in range(len(candidates))
+    ]
+    adapter_candidates = _validated_policy_view_hashes(
+        row,
+        state=state,
+        candidates=candidates,
+        payloads_already_validated=policy_view_payloads_already_validated,
+    )
+    legacy_candidates = _tensor_row_hashes(
+        _candidate_features(state, candidates, hash_dim=1024), expected_width=1024
+    )
+    structured_maps = optimized_structured_feature_maps(
+        state, candidates, category=category
+    )
+    structured_vectors = __import__("torch").stack(
+        [
+            vectorize_structured_features(features, hash_dim=2048)
+            for features in structured_maps
+        ]
+    )
+    structured_candidates = _tensor_row_hashes(
+        structured_vectors, expected_width=2048
+    )
+    candidate_signatures = {
+        "adapter-observable-v1": adapter_candidates,
+        "legacy-hash-1024-v1": legacy_candidates,
+        "structured-hash-2048-v1": structured_candidates,
+        "teacher-source-v1": source_candidates,
+    }
+    representations = {
+        signature_id: {
+            "candidate_signatures": candidate_signatures[signature_id],
+            "decision_signature": sha256_bytes(
+                canonical_json_bytes(
+                    {
+                        "candidate_signatures": candidate_signatures[signature_id],
+                        "category": category,
+                    }
+                )
+            ),
+        }
+        for signature_id in SIGNATURE_IDS
+    }
+    return {
+        "category": category,
+        "candidate_action_ids": candidate_ids,
+        "representations": representations,
+        "row_id": f"{row.get('seed')}:{row.get('decision_index')}",
+        "seed": row.get("seed"),
+        "semantic_action_keys": semantic_keys,
+        "target_action_id": target_id,
+        "target_index": target_index,
+    }
+
+
 def _bounded_examples(values: Sequence[Any], limit: int = 20) -> list[Any]:
     return list(values[:limit])
 
@@ -1431,16 +1828,14 @@ def classify_verdict(
     return "audit_inconclusive"
 
 
-def execute_audit(
+def _execute_audit_rows(
     *,
     registration: Mapping[str, Any],
-    train_input: Mapping[str, Any],
+    normalized_input: Mapping[str, Any],
     source_facts: Mapping[str, Any],
+    optimized: bool,
 ) -> dict[str, Any]:
-    value = validate_registration(registration)
-    normalized_input = validate_train_input(
-        copy.deepcopy(train_input), expected_seeds=value["audit"]["seeds"]
-    )
+    value = registration
     dataset = normalized_input["dataset"]
     rows = dataset["rows"]
     limits = value["audit"]["limits"]
@@ -1502,7 +1897,14 @@ def execute_audit(
             "semantic_target": list(semantic_action_key(category, target_candidate)),
         }
         if len(candidates) > 1:
-            representation = build_representation_row(row, source_facts)
+            if optimized:
+                representation = build_representation_row_optimized(
+                    row,
+                    source_facts,
+                    policy_view_payloads_already_validated=True,
+                )
+            else:
+                representation = build_representation_row(row, source_facts)
             representation_rows.append(representation)
             row_evidence["representation_decision_signatures"] = {
                 signature_id: representation["representations"][signature_id][
@@ -1581,6 +1983,282 @@ def execute_audit(
         "source_facts": copy.deepcopy(source_facts),
         "suitability": suitability,
     }
+
+
+def execute_audit(
+    *,
+    registration: Mapping[str, Any],
+    train_input: Mapping[str, Any],
+    source_facts: Mapping[str, Any],
+) -> dict[str, Any]:
+    """Execute the v1 reference path on untrusted fixture input."""
+    value = validate_registration(registration)
+    normalized_input = validate_train_input(
+        copy.deepcopy(train_input), expected_seeds=value["audit"]["seeds"]
+    )
+    return _execute_audit_rows(
+        registration=value,
+        normalized_input=normalized_input,
+        source_facts=source_facts,
+        optimized=False,
+    )
+
+
+def execute_validated_audit(context: ValidatedAuditContext) -> dict[str, Any]:
+    """Execute the optimized path without revalidating or copying the train archive."""
+    value = _validate_audit_context(context)
+    return _execute_audit_rows(
+        registration=value.registration,
+        normalized_input=value.train_input,
+        source_facts=value.source_facts,
+        optimized=True,
+    )
+
+
+def _synthetic_benchmark_source_facts() -> dict[str, Any]:
+    return {
+        "blocks": {},
+        "card": {
+            "card_priority_count": 4,
+            "card_priority_duplicate_count": 1,
+            "card_priority_order": ["BASH", "ANGER", "SHRUG_IT_OFF", "ANGER"],
+            "copy_limit_count": 1,
+            "copy_limits": {"ANGER": 2},
+            "default_priority": 0,
+            "equality_fields": ["id", "misc", "upgraded"],
+            "offer_count_used_for_copy_limit": True,
+            "reads_actual_deck": False,
+            "reads_run_context": False,
+            "skip_action_index": 5,
+            "values_singing_bowl": False,
+        },
+        "route": {
+            "cached_path_member": "mapPath",
+            "map_weights": [
+                [100, 1000, 100, 10, 1, 0],
+                [10, 1000, 10, 100, 1, 0],
+                [100, 1000, 100, 1, 10, 0],
+            ],
+            "reads_current_gold": False,
+            "reads_current_hp": False,
+            "replans_only_at_map_entry": True,
+            "strict_final_tie_keeps_first": True,
+            "strict_path_tie_keeps_existing": True,
+        },
+        "schema_version": SOURCE_FACTS_SCHEMA_VERSION,
+    }
+
+
+def _synthetic_base_state(index: int, *, category: str) -> dict[str, Any]:
+    return {
+        "act": 1 + index % 3,
+        "ascension": index % 21,
+        "blue_key": bool(index % 2),
+        "boss": ("THE_GUARDIAN", "HEXAGHOST", "SLIME_BOSS")[index % 3],
+        "cur_hp": 35 + index % 45,
+        "cur_map_node": {"x": -1, "y": -1},
+        "cur_room": "MAP" if category == "route" else "MONSTER",
+        "decision_context": {},
+        "deck": [
+            {
+                "id": "STRIKE_RED",
+                "misc": 0,
+                "name": "Strike",
+                "upgrade_count": index % 2,
+                "upgraded": bool(index % 2),
+            },
+            {
+                "id": "DEFEND_RED",
+                "misc": 0,
+                "name": "Defend",
+                "upgrade_count": 0,
+                "upgraded": False,
+            },
+        ],
+        "encounter": "CULTIST",
+        "floor": 1 + index % 49,
+        "gold": 50 + index % 250,
+        "green_key": bool((index // 2) % 2),
+        "map": None,
+        "max_hp": 80,
+        "outcome": "synthetic-only",
+        "potions": [],
+        "red_key": bool((index // 3) % 2),
+        "relics": [{"data": index % 4, "id": "BURNING_BLOOD", "name": "Burning Blood"}],
+        "screen_state": "MAP" if category == "route" else "REWARDS",
+        "terminal": False,
+    }
+
+
+def _synthetic_route_row(index: int) -> dict[str, Any]:
+    state = _synthetic_base_state(index, category="route")
+    room_cycle = ("MONSTER", "REST", "SHOP", "EVENT", "ELITE", "TREASURE")
+    nodes = []
+    for x in (0, 1):
+        for y in range(15):
+            room = room_cycle[(index + x + y) % len(room_cycle)]
+            nodes.append(
+                {
+                    "edges": [{"x": x, "y": y + 1}],
+                    "room": room,
+                    "x": x,
+                    "y": y,
+                }
+            )
+    state["map"] = {
+        "burning_elite": {"buff": index % 4, "x": index % 2, "y": 7},
+        "nodes": nodes,
+    }
+    candidates = [
+        {
+            "action_id": f"synthetic:route:{index}:{x}:0",
+            "available": True,
+            "category": "route",
+            "kind": "map_node",
+            "label": f"route-{x}",
+            "raw": {
+                "room": room_cycle[(index + x) % len(room_cycle)],
+                "x": x,
+                "y": 0,
+            },
+        }
+        for x in (0, 1)
+    ]
+    row = {
+        "candidate_actions": candidates,
+        "category": "route",
+        "decision_index": index,
+        "seed": f"synthetic-route-{index:03d}",
+        "source_snapshot": {"state": state},
+        "teacher": {"action_id": candidates[index % 2]["action_id"]},
+    }
+    row["policy_views"] = [
+        {
+            "action_id": candidate["action_id"],
+            "policy_view": view,
+            "sha256": sha256_bytes(canonical_json_bytes(view)),
+        }
+        for candidate in candidates
+        for view in [project_policy_view(state, candidate)]
+    ]
+    return row
+
+
+def _synthetic_card_reward_row(index: int) -> dict[str, Any]:
+    state = _synthetic_base_state(index, category="card_reward")
+    card_ids = ("ANGER", "BASH", "SHRUG_IT_OFF")
+    candidates = []
+    offered = []
+    for slot, card_id in enumerate(card_ids):
+        raw = {
+            "id": card_id,
+            "misc": index % 2 if slot == 0 else 0,
+            "name": card_id.replace("_", " ").title(),
+            "reward_index": 0,
+            "slot": slot,
+            "upgrade_count": 1 if (index + slot) % 3 == 0 else 0,
+            "upgraded": (index + slot) % 3 == 0,
+        }
+        offered.append(copy.deepcopy(raw))
+        candidates.append(
+            {
+                "action_id": f"synthetic:card:{index}:take:{slot}",
+                "available": True,
+                "category": "card_reward",
+                "kind": "take",
+                "label": raw["name"],
+                "raw": raw,
+            }
+        )
+    skip_kind = "bowl" if index % 2 else "skip"
+    candidates.append(
+        {
+            "action_id": f"synthetic:card:{index}:{skip_kind}",
+            "available": True,
+            "category": "card_reward",
+            "kind": skip_kind,
+            "label": skip_kind,
+            "raw": {"reward_index": 0},
+        }
+    )
+    state["decision_context"] = {
+        "cards": offered,
+        "has_singing_bowl": skip_kind == "bowl",
+    }
+    row = {
+        "candidate_actions": candidates,
+        "category": "card_reward",
+        "decision_index": index,
+        "seed": f"synthetic-card-{index:03d}",
+        "source_snapshot": {"state": state},
+        "teacher": {"action_id": candidates[index % len(candidates)]["action_id"]},
+    }
+    row["policy_views"] = [
+        {
+            "action_id": candidate["action_id"],
+            "policy_view": view,
+            "sha256": sha256_bytes(canonical_json_bytes(view)),
+        }
+        for candidate in candidates
+        for view in [project_policy_view(state, candidate)]
+    ]
+    return row
+
+
+def build_synthetic_performance_workload() -> list[dict[str, Any]]:
+    contract = _recovery_contract()["synthetic_benchmark"]
+    return [
+        *[
+            _synthetic_route_row(index)
+            for index in range(contract["route_rows"])
+        ],
+        *[
+            _synthetic_card_reward_row(index)
+            for index in range(contract["card_reward_rows"])
+        ],
+    ]
+
+
+def run_synthetic_performance_benchmark(output_path: Path | str) -> dict[str, Any]:
+    workload = build_synthetic_performance_workload()
+    source_facts = _synthetic_benchmark_source_facts()
+    fixture_sha256 = sha256_bytes(canonical_json_bytes(workload))
+    start = time.monotonic()
+    optimized_rows = [
+        build_representation_row_optimized(row, source_facts) for row in workload
+    ]
+    elapsed = time.monotonic() - start
+    category_counts = Counter(row["category"] for row in optimized_rows)
+    contract = _recovery_contract()["synthetic_benchmark"]
+    report = {
+        "category_counts": {
+            "card_reward": category_counts["card_reward"],
+            "route": category_counts["route"],
+        },
+        "elapsed_seconds": elapsed,
+        "fixture_sha256": fixture_sha256,
+        "no_registered_corpus_access": True,
+        "optimized_row_count": len(optimized_rows),
+        "passed": elapsed <= contract["max_elapsed_seconds"],
+        "runtime": {
+            "python": ".".join(map(str, sys.version_info[:3])),
+            "torch": _torch_version(),
+        },
+        "schema_version": SYNTHETIC_BENCHMARK_SCHEMA_VERSION,
+        "threshold_seconds": contract["max_elapsed_seconds"],
+    }
+    normalized = validate_synthetic_benchmark(report)
+    destination = Path(output_path)
+    if destination.exists():
+        raise AuditBlocked("synthetic benchmark output already exists")
+    destination.parent.mkdir(parents=True, exist_ok=True)
+    temporary = destination.with_name(f".{destination.name}.tmp")
+    temporary.write_bytes(canonical_json_bytes(normalized))
+    try:
+        os.replace(temporary, destination)
+    finally:
+        temporary.unlink(missing_ok=True)
+    return normalized
 
 
 def _report_markdown(
@@ -1867,16 +2545,13 @@ def validate_artifact_directory(output_dir: Path | str) -> dict[str, Any]:
 def recompute_artifact_directory(
     *,
     output_dir: Path | str,
-    registration: Mapping[str, Any],
-    train_input: Mapping[str, Any],
-    source_facts: Mapping[str, Any],
+    context: ValidatedAuditContext,
 ) -> dict[str, Any]:
+    value = _validate_audit_context(context)
     root = Path(output_dir)
     manifest = validate_artifact_directory(root)
-    execution = execute_audit(
-        registration=registration, train_input=train_input, source_facts=source_facts
-    )
-    expected = build_artifacts(registration=registration, execution=execution)
+    execution = execute_validated_audit(value)
+    expected = build_artifacts(registration=value.registration, execution=execution)
     for name in CANONICAL_ARTIFACT_NAMES:
         if (root / name).read_bytes() != expected[name]:
             raise AuditBlocked(f"canonical recomputation mismatch: {name}")
@@ -1885,21 +2560,17 @@ def recompute_artifact_directory(
 
 def run_registered_audit(
     *,
-    registration: Mapping[str, Any],
-    train_input: Mapping[str, Any],
-    source_facts: Mapping[str, Any],
+    context: ValidatedAuditContext,
     output_dir: Path | str,
 ) -> dict[str, Any]:
-    value = validate_registration(registration)
+    value = _validate_audit_context(context)
     start = time.monotonic()
-    execution = execute_audit(
-        registration=value, train_input=train_input, source_facts=source_facts
-    )
+    execution = execute_validated_audit(value)
     elapsed = time.monotonic() - start
-    budget = value["audit"]["limits"]["max_wall_seconds"]
+    budget = value.registration["audit"]["limits"]["max_wall_seconds"]
     if elapsed > budget:
         raise AuditBlocked("audit exceeded the registered wall-time bound")
-    artifacts = build_artifacts(registration=value, execution=execution)
+    artifacts = build_artifacts(registration=value.registration, execution=execution)
     publish_artifacts(output_dir, artifacts)
     publish_execution_journal(
         output_dir, elapsed_seconds=elapsed, wall_time_budget_seconds=budget
@@ -1917,7 +2588,14 @@ def build_parser() -> argparse.ArgumentParser:
     register.add_argument("--train-input-manifest", type=Path, required=True)
     register.add_argument("--residual-manifest", type=Path, required=True)
     register.add_argument("--residual-failure-audit", type=Path, required=True)
+    register.add_argument("--consumed-registration", type=Path, required=True)
+    register.add_argument("--blocked-attempt-failure", type=Path, required=True)
+    register.add_argument("--synthetic-benchmark", type=Path, required=True)
     register.add_argument("--output", type=Path, required=True)
+    benchmark = commands.add_parser(
+        "benchmark", description="Run the generated non-corpus performance gate."
+    )
+    benchmark.add_argument("--output", type=Path, required=True)
     run = commands.add_parser("run", description="Run the registered read-only audit.")
     run.add_argument("--input", type=Path, required=True)
     run.add_argument("--output-dir", type=Path, required=True)
@@ -1929,21 +2607,14 @@ def build_parser() -> argparse.ArgumentParser:
     return parser
 
 
-def _registered_train_input(
-    registration: Mapping[str, Any], *, repo_root: Path
-) -> dict[str, Any]:
-    identity = registration["identity"]
-    return load_train_input_archive(
-        repo_root / identity["train_input"]["path"],
-        manifest_path=repo_root / identity["train_input_manifest"]["path"],
-        expected_seeds=registration["audit"]["seeds"],
-    )
-
-
 def main(argv: Sequence[str] | None = None) -> int:
     args = build_parser().parse_args(argv)
     repo_root = Path(__file__).resolve().parents[1]
     try:
+        if args.command == "benchmark":
+            benchmark = run_synthetic_performance_benchmark(args.output)
+            print(json.dumps(benchmark, indent=2, sort_keys=True))
+            return 0
         if args.command == "register":
             registration = build_registration(
                 repo_root=repo_root,
@@ -1953,6 +2624,9 @@ def main(argv: Sequence[str] | None = None) -> int:
                 train_input_manifest_path=args.train_input_manifest,
                 residual_manifest_path=args.residual_manifest,
                 residual_failure_audit_path=args.residual_failure_audit,
+                consumed_registration_path=args.consumed_registration,
+                blocked_attempt_failure_path=args.blocked_attempt_failure,
+                synthetic_benchmark_path=args.synthetic_benchmark,
             )
             validate_registered_identity(registration, repo_root=repo_root)
             args.output.parent.mkdir(parents=True, exist_ok=True)
@@ -1960,22 +2634,16 @@ def main(argv: Sequence[str] | None = None) -> int:
             print(sha256_file(args.output))
             return 0
         registration = load_registration(args.input)
-        validate_registered_identity(registration, repo_root=repo_root)
-        train_input = _registered_train_input(registration, repo_root=repo_root)
-        source_facts = load_source_facts(registration, repo_root=repo_root)
+        context = load_validated_audit_context(registration, repo_root=repo_root)
         if args.command == "run":
             manifest = run_registered_audit(
-                registration=registration,
-                train_input=train_input,
-                source_facts=source_facts,
+                context=context,
                 output_dir=args.output_dir,
             )
         else:
             manifest = recompute_artifact_directory(
                 output_dir=args.output_dir,
-                registration=registration,
-                train_input=train_input,
-                source_facts=source_facts,
+                context=context,
             )
         print(json.dumps(manifest, indent=2, sort_keys=True))
         return 0

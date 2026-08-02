@@ -21,6 +21,8 @@ def _registration() -> dict:
         "audit": audit._audit_contract(),
         "authority": audit._authority(),
         "identity": {
+            "blocked_attempt_failure": _binding("reports/blocked-failure.json"),
+            "consumed_registration": _binding("reports/consumed-registration.json"),
             "external_source": {
                 "commit": "a" * 40,
                 "files": [
@@ -41,12 +43,51 @@ def _registration() -> dict:
             "residual_manifest": _binding("reports/artifact_manifest.json"),
             "residual_verdict": "poc_valid_without_route_card_residual",
             "runtime": {"python": "3.10.18", "torch": "2.5.1"},
+            "synthetic_benchmark": _binding("reports/synthetic-benchmark.json"),
             "teacher_policy_id": "sts_lightspeed_simple_agent_target_v1",
             "train_dataset_sha256": _hash("c"),
             "train_input": _binding("reports/train.json.gz"),
             "train_input_manifest": _binding("reports/train-manifest.json"),
         },
+        "recovery": audit._recovery_contract(),
         "schema_version": audit.REGISTRATION_SCHEMA_VERSION,
+    }
+
+
+def _consumed_registration() -> dict:
+    return {
+        "audit": audit._audit_contract(),
+        "authority": {"historical": False},
+        "identity": {"train_dataset_sha256": _hash("c")},
+        "schema_version": audit.CONSUMED_REGISTRATION_SCHEMA_VERSION,
+    }
+
+
+def _blocked_failure(consumed: dict) -> dict:
+    payload = audit.canonical_json_bytes(consumed)
+    return {
+        "attempt": {
+            "registration_file": {
+                "sha256": audit.sha256_bytes(payload),
+                "size_bytes": len(payload),
+            }
+        },
+        "authority": {"historical": False},
+        "failure": {
+            "classification": "registered_audit_wall_time_exceeded",
+            "registered_max_wall_seconds": 120.0,
+            "stage": "post_analysis_pre_publication",
+        },
+        "isolation": {
+            "canonical_artifact_count": 0,
+            "canonical_output_root_absent": True,
+        },
+        "resolution": {
+            "same_registration_retry_allowed": False,
+            "threshold_change_allowed": False,
+            "verdict": "blocked",
+        },
+        "schema_version": audit.BLOCKED_FAILURE_SCHEMA_VERSION,
     }
 
 
@@ -218,6 +259,69 @@ def _source_facts() -> dict:
     }
 
 
+def _bind_policy_views(row: dict) -> dict:
+    value = copy.deepcopy(row)
+    state = value["source_snapshot"]["state"]
+    value["policy_views"] = []
+    for candidate in value["candidate_actions"]:
+        view = audit.project_policy_view(state, candidate)
+        value["policy_views"].append(
+            {
+                "action_id": candidate["action_id"],
+                "policy_view": view,
+                "sha256": audit.sha256_bytes(audit.canonical_json_bytes(view)),
+            }
+        )
+    return value
+
+
+def _representation_rows() -> tuple[dict, dict]:
+    route = audit._synthetic_route_row(7)
+    for x, candidate in enumerate(route["candidate_actions"]):
+        candidate["action_id"] = f"route:map_node:{x}:0"
+    route["teacher"]["action_id"] = audit.reconstruct_route_action(
+        route["source_snapshot"]["state"], route["candidate_actions"], _source_facts()
+    )
+    route = _bind_policy_views(route)
+
+    card = audit._synthetic_card_reward_row(9)
+    first = card["candidate_actions"][0]
+    second = card["candidate_actions"][1]
+    second["raw"] = copy.deepcopy(first["raw"])
+    second["raw"]["slot"] = 1
+    card["source_snapshot"]["state"]["baseline_history"] = ["synthetic-leakage"]
+    card["teacher"]["action_id"] = audit.reconstruct_card_reward_action(
+        card["candidate_actions"], _source_facts()
+    )
+    card = _bind_policy_views(card)
+    return route, card
+
+
+def _validated_context(
+    *, registration: dict | None = None, train_input: dict | None = None
+) -> audit.ValidatedAuditContext:
+    registration = copy.deepcopy(registration or _registration())
+    train_input = copy.deepcopy(
+        train_input
+        or {
+            "dataset": {"rows": []},
+            "schema_version": "fixture",
+            "source": {"train_dataset_sha256": _hash("c")},
+        }
+    )
+    return audit.ValidatedAuditContext(
+        registration=registration,
+        train_input=train_input,
+        source_facts=_source_facts(),
+        identity_summary={},
+        registration_sha256=audit.sha256_bytes(
+            audit.canonical_json_bytes(registration)
+        ),
+        train_dataset_sha256=_hash("c"),
+        _seal=audit._CONTEXT_SEAL,
+    )
+
+
 def _metric_row(
     row_id: str,
     *,
@@ -261,6 +365,116 @@ def test_registration_rejects_authority_and_contract_drift():
     contract_drift["audit"]["limits"]["max_model_fits"] = 1
     with pytest.raises(audit.AuditBlocked, match="contract"):
         audit.validate_registration(contract_drift)
+
+    wall_time_drift = copy.deepcopy(registration)
+    wall_time_drift["audit"]["limits"]["max_wall_seconds"] = 121.0
+    with pytest.raises(audit.AuditBlocked, match="contract"):
+        audit.validate_registration(wall_time_drift)
+
+    signature_drift = copy.deepcopy(registration)
+    signature_drift["audit"]["signatures"]["structured-hash-2048-v1"][
+        "hash_dim"
+    ] = 4096
+    with pytest.raises(audit.AuditBlocked, match="contract"):
+        audit.validate_registration(signature_drift)
+
+    recovery_drift = copy.deepcopy(registration)
+    recovery_drift["recovery"]["context_mode"] = "retry-v1"
+    with pytest.raises(audit.AuditBlocked, match="recovery contract"):
+        audit.validate_registration(recovery_drift)
+
+
+def test_registration_v2_rejects_v1_retry_and_blocked_lineage_drift():
+    legacy = copy.deepcopy(_registration())
+    legacy["schema_version"] = audit.CONSUMED_REGISTRATION_SCHEMA_VERSION
+    with pytest.raises(audit.AuditBlocked, match="schema"):
+        audit.validate_registration(legacy)
+
+    consumed = _consumed_registration()
+    failure = _blocked_failure(consumed)
+    assert audit.validate_blocked_lineage(
+        consumed_registration=consumed, failure=failure
+    )["same_registration_retry_allowed"] is False
+
+    changed_failure = copy.deepcopy(failure)
+    changed_failure["failure"]["registered_max_wall_seconds"] = 121.0
+    with pytest.raises(audit.AuditBlocked, match="wall-time"):
+        audit.validate_blocked_lineage(
+            consumed_registration=consumed, failure=changed_failure
+        )
+
+    changed_registration = copy.deepcopy(consumed)
+    changed_registration["audit"]["limits"]["max_wall_seconds"] = 121.0
+    changed_failure = _blocked_failure(changed_registration)
+    with pytest.raises(audit.AuditBlocked, match="contract drifted"):
+        audit.validate_blocked_lineage(
+            consumed_registration=changed_registration, failure=changed_failure
+        )
+
+
+def test_validated_context_loader_is_single_entrypoint(
+    monkeypatch: pytest.MonkeyPatch,
+):
+    registration = _registration()
+    train_input = {
+        "dataset": {"rows": []},
+        "schema_version": "fixture",
+        "source": {"train_dataset_sha256": _hash("c")},
+    }
+    calls = {"identity": 0, "registration": 0, "source": 0}
+
+    def validate_registration(value: object) -> dict:
+        calls["registration"] += 1
+        assert value is registration
+        return registration
+
+    def validate_identity(value: object, *, repo_root: Path, return_train_input: bool):
+        calls["identity"] += 1
+        assert value is registration
+        assert return_train_input is True
+        return {"identity": "validated", "train_input": train_input}
+
+    def load_source(value: object, *, repo_root: Path) -> dict:
+        calls["source"] += 1
+        assert value is registration
+        return _source_facts()
+
+    monkeypatch.setattr(audit, "validate_registration", validate_registration)
+    monkeypatch.setattr(audit, "validate_registered_identity", validate_identity)
+    monkeypatch.setattr(audit, "load_source_facts", load_source)
+    context = audit.load_validated_audit_context(registration, repo_root=Path("repo"))
+    assert calls == {"identity": 1, "registration": 1, "source": 1}
+    assert context.train_input is train_input
+    assert context.identity_summary == {"identity": "validated"}
+
+
+def test_validated_context_rejects_raw_stale_and_cross_registration_values():
+    assert audit._validate_audit_context(_validated_context()).train_dataset_sha256 == _hash(
+        "c"
+    )
+    with pytest.raises(audit.AuditBlocked, match="registered validated context"):
+        audit._validate_audit_context({})
+
+    stale_registration = _validated_context()
+    stale_registration.registration["authority"]["model_fitting"] = True
+    with pytest.raises(audit.AuditBlocked, match="registration identity drifted"):
+        audit._validate_audit_context(stale_registration)
+
+    stale_dataset = _validated_context()
+    stale_dataset.train_input["source"]["train_dataset_sha256"] = _hash("d")
+    with pytest.raises(audit.AuditBlocked, match="train identity drifted"):
+        audit._validate_audit_context(stale_dataset)
+
+    other_registration = _registration()
+    other_registration["identity"]["train_dataset_sha256"] = _hash("d")
+    cross_registration = _validated_context(registration=other_registration)
+    with pytest.raises(audit.AuditBlocked, match="crosses registrations"):
+        audit._validate_audit_context(cross_registration)
+
+    stale_source = _validated_context()
+    stale_source.source_facts["schema_version"] = "stale"
+    with pytest.raises(audit.AuditBlocked, match="source facts"):
+        audit._validate_audit_context(stale_source)
 
 
 def test_external_physical_identity_rejects_relevant_file_drift(
@@ -428,6 +642,108 @@ def test_real_feature_signatures_are_deterministic_without_model_fitting():
     torch = __import__("torch")
     with pytest.raises(audit.AuditBlocked, match="non-finite"):
         audit._tensor_row_hashes(torch.tensor([[float("nan")]]), expected_width=1)
+
+
+def test_optimized_representations_match_reference_maps_vectors_and_artifacts():
+    route, card = _representation_rows()
+    facts = _source_facts()
+    for row in (route, card):
+        state = row["source_snapshot"]["state"]
+        candidates = row["candidate_actions"]
+        optimized_maps = audit.optimized_structured_feature_maps(
+            state, candidates, category=row["category"]
+        )
+        reference_maps = [
+            audit.structured_feature_map(state, candidate, category=row["category"])
+            for candidate in candidates
+        ]
+        assert optimized_maps == reference_maps
+        assert audit.build_representation_row_optimized(row, facts) == (
+            audit.build_representation_row(row, facts)
+        )
+
+    registration = audit.validate_registration(_registration())
+    train_input = {
+        "dataset": {"rows": [route, card]},
+        "source": {"train_dataset_sha256": _hash("c")},
+    }
+    reference = audit._execute_audit_rows(
+        registration=registration,
+        normalized_input=train_input,
+        source_facts=facts,
+        optimized=False,
+    )
+    optimized = audit._execute_audit_rows(
+        registration=registration,
+        normalized_input=train_input,
+        source_facts=facts,
+        optimized=True,
+    )
+    assert optimized == reference
+    assert audit.build_artifacts(
+        registration=registration, execution=optimized
+    ) == audit.build_artifacts(registration=registration, execution=reference)
+
+
+def test_optimized_representation_fails_closed_on_policy_view_and_cache_drift():
+    route, card = _representation_rows()
+    facts = _source_facts()
+
+    missing = copy.deepcopy(card)
+    missing.pop("policy_views")
+    with pytest.raises(audit.AuditBlocked, match="inventory"):
+        audit.build_representation_row_optimized(missing, facts)
+
+    reordered = copy.deepcopy(card)
+    reordered["policy_views"].reverse()
+    with pytest.raises(audit.AuditBlocked, match="identity"):
+        audit.build_representation_row_optimized(reordered, facts)
+
+    tampered = copy.deepcopy(card)
+    tampered["policy_views"][0]["policy_view"]["state"]["gold"] = 9999
+    with pytest.raises(audit.AuditBlocked, match="payload"):
+        audit.build_representation_row_optimized(tampered, facts)
+
+    invalid_hash = copy.deepcopy(card)
+    invalid_hash["policy_views"][0]["sha256"] = "not-a-hash"
+    with pytest.raises(audit.AuditBlocked, match="identity"):
+        audit.build_representation_row_optimized(
+            invalid_hash, facts, policy_view_payloads_already_validated=True
+        )
+
+    nonfinite = copy.deepcopy(card)
+    nonfinite["source_snapshot"]["state"]["cur_hp"] = float("nan")
+    with pytest.raises(audit.AuditBlocked, match="finite"):
+        audit.optimized_structured_feature_maps(
+            nonfinite["source_snapshot"]["state"],
+            nonfinite["candidate_actions"],
+            category="card_reward",
+        )
+
+    other_route = audit._synthetic_route_row(8)
+    first_maps = audit.optimized_structured_feature_maps(
+        route["source_snapshot"]["state"],
+        route["candidate_actions"],
+        category="route",
+    )
+    second_maps = audit.optimized_structured_feature_maps(
+        other_route["source_snapshot"]["state"],
+        other_route["candidate_actions"],
+        category="route",
+    )
+    assert first_maps != second_maps
+
+
+def test_synthetic_performance_workload_has_exact_counts_and_no_corpus_identity():
+    workload = audit.build_synthetic_performance_workload()
+    assert len(workload) == 602
+    assert sum(row["category"] == "route" for row in workload) == 300
+    assert sum(row["category"] == "card_reward" for row in workload) == 302
+    assert all(len(row["candidate_actions"]) > 1 for row in workload)
+    assert all(row["seed"] not in audit.REGISTERED_TRAIN_SEEDS for row in workload)
+    fixture_text = audit.canonical_json_bytes(workload).decode("utf-8")
+    assert "noncombat_structured_baseline_train_input" not in fixture_text
+    assert "reports/" not in fixture_text
 
 
 def test_dependency_and_suitability_classify_teacher_limit_not_adapter_gap():

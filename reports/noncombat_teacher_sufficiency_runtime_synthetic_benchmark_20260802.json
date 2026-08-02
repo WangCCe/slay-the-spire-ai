@@ -1,0 +1,17 @@
+{
+  "category_counts": {
+    "card_reward": 302,
+    "route": 300
+  },
+  "elapsed_seconds": 23.375,
+  "fixture_sha256": "a10ce4c7052727cfc2b048d995024f4e2a90dfa80dd2c137579b5aa768f9aebc",
+  "no_registered_corpus_access": true,
+  "optimized_row_count": 602,
+  "passed": true,
+  "runtime": {
+    "python": "3.10.18",
+    "torch": "2.5.1"
+  },
+  "schema_version": "noncombat-teacher-sufficiency-runtime-synthetic-benchmark-v1",
+  "threshold_seconds": 90.0
+}
