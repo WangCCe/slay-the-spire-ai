@@ -1,0 +1,85 @@
+{
+  "authority": {
+    "formal_noncombat_rl": false,
+    "gameplay": false,
+    "live_policy_loading": false,
+    "model_fitting": false,
+    "native_module_loading": false,
+    "ope_reinterpretation": false,
+    "policy_promotion": false,
+    "qualification": false,
+    "simulator_rollout": false,
+    "simulator_training": false
+  },
+  "contract_id": "noncombat-formal-reward-contract-v1",
+  "exclusions": [
+    "behavior_action_probability",
+    "bottled_label",
+    "current_policy_label",
+    "deck_heuristics",
+    "gold",
+    "hp",
+    "ope_estimates",
+    "simpleagent_label",
+    "teacher_agreement"
+  ],
+  "optimization": {
+    "maximum_episode_floor_progress": 1.0,
+    "permitted_modes": [
+      "lexicographic",
+      "strict_primary_dominance"
+    ],
+    "production_mode_selected": false,
+    "production_weight_selected": false,
+    "strict_scalar_constraint": "victory_weight > maximum_episode_floor_progress"
+  },
+  "primary_objective": {
+    "direction": "maximize",
+    "name": "terminal_victory",
+    "outcome_field": "victory"
+  },
+  "provenance": {
+    "live_and_ope": {
+      "floor_reached_role": "diagnostic",
+      "primary_outcome": "victory",
+      "simulator_reward_attribution": false
+    },
+    "simulator": {
+      "floor_progress_role": "potential_shaping",
+      "scope": "simulator_training_only"
+    },
+    "simulator_live_separated": true
+  },
+  "reference_labels_excluded": true,
+  "schema_version": "noncombat-formal-rl-reward-contract-v1",
+  "secondary_channels": [
+    {
+      "bounds": [
+        0.0,
+        1.0
+      ],
+      "discount": 1.0,
+      "formula": "max(0,cap(successor_floor,0,57)-cap(source_floor,0,57))/57",
+      "max_floor": 57,
+      "name": "floor_progress",
+      "outcome_field": "floor_reached",
+      "role": "potential_shaping",
+      "scope": "simulator_training_only"
+    }
+  ],
+  "smoke_reward_assessment": {
+    "formal_compatible": false,
+    "maximum_episode_floor_progress": 1.0,
+    "reason": "strict dominance requires victory_bonus > 1.0",
+    "replacement_weight_selected": false,
+    "version": "simulator-floor-progress-victory-v1",
+    "victory_bonus": 1.0
+  },
+  "source_registration_sha256": "dcda155c98f3bf76dd60df5236a62792ad85510dd94b82f97883d05e5afaad81",
+  "verdict": "formal_reward_contract_ready",
+  "verification": {
+    "formula_tests": true,
+    "provenance_boundary_tests": true,
+    "terminal_objective_tests": true
+  }
+}

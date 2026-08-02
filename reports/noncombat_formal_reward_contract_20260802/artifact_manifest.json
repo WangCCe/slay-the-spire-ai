@@ -1,0 +1,44 @@
+{
+  "artifacts": {
+    "configuration.json": {
+      "sha256": "dcda155c98f3bf76dd60df5236a62792ad85510dd94b82f97883d05e5afaad81",
+      "size_bytes": 4650
+    },
+    "contract.json": {
+      "sha256": "4ee9c0087e523b95e2d380d6e6a0c7ecefd4f211cbd7d780b496df0d642a10bb",
+      "size_bytes": 2419
+    },
+    "report.md": {
+      "sha256": "20cefd2c4d494acc45f68947ffef5d2ff68cd8f8486400c78e241e662c511808",
+      "size_bytes": 1582
+    },
+    "verification.json": {
+      "sha256": "be1aaaf4412e5dec6afd03b782a8d55c73bf810712cde3142cea734f7a856cfe",
+      "size_bytes": 1980
+    }
+  },
+  "authority": {
+    "formal_noncombat_rl": false,
+    "gameplay": false,
+    "live_policy_loading": false,
+    "model_fitting": false,
+    "native_module_loading": false,
+    "ope_reinterpretation": false,
+    "policy_promotion": false,
+    "qualification": false,
+    "simulator_rollout": false,
+    "simulator_training": false
+  },
+  "canonical_artifact_names": [
+    "artifact_manifest.json",
+    "configuration.json",
+    "contract.json",
+    "report.md",
+    "verification.json"
+  ],
+  "configuration_sha256": "dcda155c98f3bf76dd60df5236a62792ad85510dd94b82f97883d05e5afaad81",
+  "contract_sha256": "4ee9c0087e523b95e2d380d6e6a0c7ecefd4f211cbd7d780b496df0d642a10bb",
+  "registration_sha256": "dcda155c98f3bf76dd60df5236a62792ad85510dd94b82f97883d05e5afaad81",
+  "schema_version": "noncombat-formal-reward-manifest-v1",
+  "verdict": "formal_reward_contract_ready"
+}

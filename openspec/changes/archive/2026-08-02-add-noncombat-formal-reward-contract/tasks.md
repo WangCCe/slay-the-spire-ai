@@ -12,9 +12,9 @@
 
 ## 3. Frozen Contract And Readiness Handoff
 
-- [ ] 3.1 Commit implementation and tests, freeze one formal reward registration, publish the contract, and strictly recompute it.
-- [ ] 3.2 Freeze one new readiness registration with the formal reward binding and verify the preregistered reward-only matrix delta.
-- [ ] 3.3 Record the no-authority interpretation and update project direction without changing runtime reward behavior.
+- [x] 3.1 Commit implementation and tests, freeze one formal reward registration, publish the contract, and strictly recompute it.
+- [x] 3.2 Freeze one new readiness registration with the formal reward binding and verify the preregistered reward-only matrix delta.
+- [x] 3.3 Record the no-authority interpretation and update project direction without changing runtime reward behavior.
 
 ## 4. Closeout
 

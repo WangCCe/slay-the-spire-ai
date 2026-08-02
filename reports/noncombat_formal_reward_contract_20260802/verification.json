@@ -1,0 +1,78 @@
+{
+  "authority": {
+    "formal_noncombat_rl": false,
+    "gameplay": false,
+    "live_policy_loading": false,
+    "model_fitting": false,
+    "native_module_loading": false,
+    "ope_reinterpretation": false,
+    "policy_promotion": false,
+    "qualification": false,
+    "simulator_rollout": false,
+    "simulator_training": false
+  },
+  "checks": {
+    "authority_tests": true,
+    "bounds_tests": true,
+    "excluded_field_invariance_tests": true,
+    "formula_tests": true,
+    "provenance_boundary_tests": true,
+    "reference_exclusion_tests": true,
+    "scalarization_tests": true,
+    "terminal_objective_tests": true
+  },
+  "fixed_examples": [
+    {
+      "expected": {
+        "floor_progress": 0.017543859649122806,
+        "terminal_victory": 0
+      },
+      "id": "one_floor_advance",
+      "observed": {
+        "floor_progress": 0.017543859649122806,
+        "terminal_victory": 0
+      },
+      "passed": true
+    },
+    {
+      "expected": {
+        "floor_progress": 0.0,
+        "terminal_victory": 0
+      },
+      "id": "floor_regression",
+      "observed": {
+        "floor_progress": 0.0,
+        "terminal_victory": 0
+      },
+      "passed": true
+    },
+    {
+      "expected": {
+        "floor_progress": 0.017543859649122806,
+        "terminal_victory": 1
+      },
+      "id": "capped_terminal_victory",
+      "observed": {
+        "floor_progress": 0.017543859649122806,
+        "terminal_victory": 1
+      },
+      "passed": true
+    },
+    {
+      "expected": {
+        "floor_progress": 0.0,
+        "terminal_victory": 0
+      },
+      "id": "nonterminal_victory_looking_outcome",
+      "observed": {
+        "floor_progress": 0.0,
+        "terminal_victory": 0
+      },
+      "passed": true
+    }
+  ],
+  "monotone_episode_floor_progress": 1.0,
+  "registration_sha256": "dcda155c98f3bf76dd60df5236a62792ad85510dd94b82f97883d05e5afaad81",
+  "schema_version": "noncombat-formal-reward-verification-v1",
+  "verdict": "formal_reward_contract_ready"
+}

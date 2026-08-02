@@ -1,0 +1,224 @@
+{
+  "authority": {
+    "formal_noncombat_rl": false,
+    "gameplay": false,
+    "live_policy_loading": false,
+    "model_fitting": false,
+    "native_module_loading": false,
+    "ope_reinterpretation": false,
+    "policy_promotion": false,
+    "qualification": false,
+    "simulator_rollout": false,
+    "simulator_training": false
+  },
+  "contract": {
+    "baseline": {
+      "passing_quality": "baseline_floor_demonstrated",
+      "passing_verdict": "study_valid_with_baseline_floor"
+    },
+    "domain_order": [
+      "state_action",
+      "reference_isolation",
+      "reward",
+      "baseline_policy",
+      "outcome_support",
+      "evaluation"
+    ],
+    "formal_reward": {
+      "expected_schema": "noncombat-formal-rl-reward-contract-v1",
+      "primary_objective": {
+        "direction": "maximize",
+        "name": "terminal_victory",
+        "outcome_field": "victory"
+      },
+      "required_exclusions": [
+        "bottled_label",
+        "current_policy_label",
+        "simpleagent_label",
+        "teacher_agreement"
+      ],
+      "required_verification_checks": [
+        "formula_tests",
+        "provenance_boundary_tests",
+        "terminal_objective_tests"
+      ],
+      "secondary_floor_roles": [
+        "diagnostic",
+        "potential_shaping"
+      ]
+    },
+    "outcome_support": {
+      "minimum_pass_probability": "0.800000000000",
+      "minimum_supported_victories": 3,
+      "passing_comparability": "source_comparable",
+      "passing_status": "demonstrated"
+    },
+    "prerequisite_order": [
+      "state_action",
+      "reference_isolation",
+      "reward",
+      "baseline_policy",
+      "outcome_support",
+      "evaluation"
+    ],
+    "recommendations": {
+      "baseline_policy": "establish_non_teacher_credible_baseline_floor",
+      "evaluation": "complete_noncombat_evaluation_isolation_contract",
+      "outcome_support": "expand_source_comparable_target_supported_outcomes",
+      "reference_isolation": "isolate_auxiliary_reference_roles",
+      "reward": "add_noncombat_formal_reward_contract",
+      "state_action": "repair_noncombat_state_action_contract"
+    },
+    "reference_roles": {
+      "bottled": "auxiliary_reference",
+      "current": "behavior_reference",
+      "simpleagent": "auxiliary_regression_oracle"
+    },
+    "simulator_reward": {
+      "max_floor": 57,
+      "progress_divisor": 57.0,
+      "version": "simulator-floor-progress-victory-v1",
+      "victory_bonus": 1.0
+    },
+    "structural_checks": {
+      "baseline_metrics": [
+        "episode_budget",
+        "final_test_access_contract",
+        "identity",
+        "implementation_fit",
+        "model_frozen",
+        "registration",
+        "registration_hash_closure",
+        "replay_identity",
+        "train_four_category_coverage"
+      ],
+      "policy_validity_metrics": [
+        "candidate_legality",
+        "episode_count",
+        "finite_metrics",
+        "four_category_coverage",
+        "model_immutability",
+        "no_gradients",
+        "replay_identity",
+        "terminal_outcomes",
+        "within_bounds"
+      ],
+      "simulator_smoke_metrics": [
+        "candidate_legality",
+        "four_category_coverage",
+        "replay_identity",
+        "seed_disjoint",
+        "terminal_outcomes",
+        "within_bounds"
+      ]
+    },
+    "verdict_precedence": [
+      "invalid_evidence",
+      "not_ready_for_bounded_training_proposal",
+      "ready_for_bounded_training_proposal"
+    ],
+    "version": "noncombat-formal-rl-readiness-gates-v1"
+  },
+  "declared_missing_evidence": [],
+  "evidence": {
+    "baseline_manifest": {
+      "expected_schema": "noncombat-simulator-baseline-manifest-v1",
+      "path": "reports/noncombat_simulator_baseline_warm_start_20260802/artifact_manifest.json",
+      "sha256": "50b797d3bb77ef2d52eb1e2235db891086890f65b400c1f919eae38b32c264fd",
+      "size_bytes": 997
+    },
+    "baseline_metrics": {
+      "expected_schema": "noncombat-simulator-baseline-metrics-artifact-v1",
+      "path": "reports/noncombat_simulator_baseline_warm_start_20260802/metrics.json",
+      "sha256": "d4809a2098d0e6c0a0ee7183cb2569bba4d6b3d1cbde26d90b98ea6278b51fcb",
+      "size_bytes": 3272
+    },
+    "baseline_registration": {
+      "expected_schema": "noncombat-simulator-baseline-warm-start-input-v1",
+      "path": "reports/noncombat_simulator_baseline_warm_start_20260802_input.json",
+      "sha256": "ed920c0a04c62bf38cc520912fd33cd5b15ed9816cbeb228d4ba706c8a144fe3",
+      "size_bytes": 8226
+    },
+    "formal_reward_contract": {
+      "expected_schema": "noncombat-formal-rl-reward-contract-v1",
+      "path": "reports/noncombat_formal_reward_contract_20260802/contract.json",
+      "sha256": "4ee9c0087e523b95e2d380d6e6a0c7ecefd4f211cbd7d780b496df0d642a10bb",
+      "size_bytes": 2419
+    },
+    "outcome_feasibility_input": {
+      "expected_schema": "noncombat-study-feasibility-input-v1",
+      "path": "reports/noncombat_study_feasibility_20260802_input.json",
+      "sha256": "7a8be1fb033bb66169b78088736ceeac04177416d6b05db0a91ad63000b9b21e",
+      "size_bytes": 786
+    },
+    "outcome_feasibility_report": {
+      "expected_schema": "noncombat-study-feasibility-v1",
+      "path": "reports/noncombat_study_feasibility_20260802.json",
+      "sha256": "46d9321676676b92756caab5e35cddb4055086078accacb13e83540a81240bbe",
+      "size_bytes": 4216
+    },
+    "policy_validity_manifest": {
+      "expected_schema": "noncombat-simulator-policy-validity-manifest-v1",
+      "path": "reports/noncombat_simulator_policy_validity_20260802/artifact_manifest.json",
+      "sha256": "5cbf3d7860318db7aae5b0a1f2edea2a20e75b81ed9ccf1c6fe7722f55a41f0b",
+      "size_bytes": 828
+    },
+    "policy_validity_metrics": {
+      "expected_schema": "noncombat-simulator-policy-validity-metrics-v1",
+      "path": "reports/noncombat_simulator_policy_validity_20260802/metrics.json",
+      "sha256": "4546b12ec3540cfba9251cabc270199254fe20f43e1459ab6ee99d71a44497f1",
+      "size_bytes": 3006
+    },
+    "policy_validity_registration": {
+      "expected_schema": "noncombat-simulator-policy-validity-input-v1",
+      "path": "reports/noncombat_simulator_policy_validity_20260802_input.json",
+      "sha256": "149a0ed451f52804561de34b213fb4602f6825740705b6c1cf98ab87e0748d10",
+      "size_bytes": 7597
+    },
+    "simulator_smoke_manifest": {
+      "expected_schema": "noncombat-simulator-training-smoke-artifact-manifest-v1",
+      "path": "reports/noncombat_simulator_training_smoke_20260802/artifact_manifest.json",
+      "sha256": "0b99c292e8ab0dd82df56e32dd7ac7229319b3b832720290467cab8012b35bf9",
+      "size_bytes": 894
+    },
+    "simulator_smoke_metrics": {
+      "expected_schema": "noncombat-simulator-training-metrics-v1",
+      "path": "reports/noncombat_simulator_training_smoke_20260802/metrics.json",
+      "sha256": "a88083c02d3ad8103e756e661936221d364cac20c98f43bc069b8d90e5008770",
+      "size_bytes": 1821
+    },
+    "simulator_smoke_registration": {
+      "expected_schema": "noncombat-simulator-training-smoke-input-v1",
+      "path": "reports/noncombat_simulator_training_smoke_20260802_input.json",
+      "sha256": "c131e3183fb4e7eaabd60ff5807dd48c17330d855a53d41387f7667410dc914e",
+      "size_bytes": 4294
+    },
+    "teacher_configuration": {
+      "expected_schema": "noncombat-state-action-teacher-sufficiency-audit-input-v2",
+      "path": "reports/noncombat_state_action_teacher_sufficiency_audit_20260802_r2/configuration.json",
+      "sha256": "a0f5421169c8a28533167681c00589d9f927ba62dc6507523796d40d874689ff",
+      "size_bytes": 6579
+    },
+    "teacher_manifest": {
+      "expected_schema": "noncombat-state-action-teacher-audit-manifest-v1",
+      "path": "reports/noncombat_state_action_teacher_sufficiency_audit_20260802_r2/artifact_manifest.json",
+      "sha256": "45535a77a554c64aef1c95c1a41935b19ccf10b11e14fa4f3b2bfec5eabc2994",
+      "size_bytes": 2015
+    },
+    "teacher_report": {
+      "expected_schema": "noncombat-state-action-teacher-audit-report-v1",
+      "path": "reports/noncombat_state_action_teacher_sufficiency_audit_20260802_r2/report.json",
+      "sha256": "213d266841322d19aad5b35a7a1bb6290e3c147e50ab8273e2b410230dd850f0",
+      "size_bytes": 1284
+    }
+  },
+  "identity": {
+    "implementation": {
+      "path": "analysis_scripts/noncombat_formal_rl_readiness_audit.py",
+      "sha256": "3d3de2da2d8603f65fc7d1c0e80734892521fd54973c16c3c8521002c78289cc",
+      "size_bytes": 54523
+    },
+    "source_commit": "20bc4efc0a018de7e8939536b1d14c1f18e27296"
+  },
+  "schema_version": "noncombat-formal-rl-readiness-audit-input-v1"
+}

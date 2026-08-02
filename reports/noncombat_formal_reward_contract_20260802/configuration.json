@@ -1,0 +1,131 @@
+{
+  "authority": {
+    "formal_noncombat_rl": false,
+    "gameplay": false,
+    "live_policy_loading": false,
+    "model_fitting": false,
+    "native_module_loading": false,
+    "ope_reinterpretation": false,
+    "policy_promotion": false,
+    "qualification": false,
+    "simulator_rollout": false,
+    "simulator_training": false
+  },
+  "contract": {
+    "contract_id": "noncombat-formal-reward-contract-v1",
+    "exclusions": [
+      "behavior_action_probability",
+      "bottled_label",
+      "current_policy_label",
+      "deck_heuristics",
+      "gold",
+      "hp",
+      "ope_estimates",
+      "simpleagent_label",
+      "teacher_agreement"
+    ],
+    "floor_progress": {
+      "complete_episode_bound": [
+        0.0,
+        1.0
+      ],
+      "discount": 1.0,
+      "formula": "max(0,cap(successor_floor,0,57)-cap(source_floor,0,57))/57",
+      "max_floor": 57,
+      "monotone_simulator_floor_required_for_episode_bound": true,
+      "role": "potential_shaping",
+      "scope": "simulator_training_only"
+    },
+    "optimization": {
+      "maximum_episode_floor_progress": 1.0,
+      "permitted_modes": [
+        "lexicographic",
+        "strict_primary_dominance"
+      ],
+      "production_mode_selected": false,
+      "production_weight_selected": false,
+      "strict_scalar_constraint": "victory_weight > maximum_episode_floor_progress"
+    },
+    "primary_objective": {
+      "direction": "maximize",
+      "name": "terminal_victory",
+      "outcome_field": "victory"
+    },
+    "smoke_reward_assessment": {
+      "formal_compatible": false,
+      "maximum_episode_floor_progress": 1.0,
+      "reason": "strict dominance requires victory_bonus > 1.0",
+      "replacement_weight_selected": false,
+      "version": "simulator-floor-progress-victory-v1",
+      "victory_bonus": 1.0
+    },
+    "verification_requirements": [
+      "formula_tests",
+      "provenance_boundary_tests",
+      "terminal_objective_tests"
+    ]
+  },
+  "identity": {
+    "implementation": {
+      "path": "analysis_scripts/noncombat_formal_reward_contract.py",
+      "sha256": "8bd92a82f619c187439a583064d0d922ffc83b406b00a48f998d63b155b69c8a",
+      "size_bytes": 41316
+    },
+    "source_commit": "e3fde0cc9fc88809a55463429256d8576fb766dc"
+  },
+  "schema_version": "noncombat-formal-reward-contract-input-v1",
+  "sources": {
+    "contract_spec": {
+      "path": "openspec/specs/noncombat-formal-reward-contract/spec.md",
+      "sha256": "555633148de342205a114dc52c2d923a1d1119a380f87afa525ff3d8ccbb495d",
+      "size_bytes": 5851
+    },
+    "contract_tests": {
+      "path": "tests/test_noncombat_formal_reward_contract.py",
+      "sha256": "caf534187ce51e4f8b06d7778ce134e2b15ceb0dda73b7615dde8a78c4da5ee7",
+      "size_bytes": 9993
+    },
+    "decision_loop_spec": {
+      "path": "openspec/specs/noncombat-rl-decision-loop/spec.md",
+      "sha256": "be3d0a739d791dd24483ac0603ad2502588dfd700a98e153c5f41ed8f3102807",
+      "size_bytes": 16702
+    },
+    "ope_readiness_spec": {
+      "path": "openspec/specs/noncombat-ope-readiness/spec.md",
+      "sha256": "4dfc6405b8e7f598df91f59f275544ddd34eb63c556397583aba78668e2d7670",
+      "size_bytes": 13118
+    },
+    "prior_readiness_manifest": {
+      "expected_schema": "noncombat-formal-rl-readiness-manifest-v1",
+      "path": "reports/noncombat_formal_rl_readiness_audit_20260802/artifact_manifest.json",
+      "sha256": "15002c7a3547d5ed7f31b1eb528fd1b5619add8dc965b23755246baf11bb240a",
+      "size_bytes": 1567
+    },
+    "prior_readiness_report": {
+      "expected_schema": "noncombat-formal-rl-readiness-report-v1",
+      "path": "reports/noncombat_formal_rl_readiness_audit_20260802/report.json",
+      "sha256": "d918c4cfa5b5cd449556d0ce55c5d11f2f59513285582473dadd7f45e8846473",
+      "size_bytes": 1128
+    },
+    "readiness_spec": {
+      "path": "openspec/specs/noncombat-formal-rl-readiness-audit/spec.md",
+      "sha256": "12d57418bb212df63fd894486dbb7b94b84d0963c9f1d28ce777b72e4ff35917",
+      "size_bytes": 7882
+    },
+    "simulator_smoke_implementation": {
+      "path": "analysis_scripts/noncombat_simulator_training_smoke.py",
+      "sha256": "ab39e7aa1691af4c9bc700b136fa4dcf64d56e68490ef5df8b936926894795c1",
+      "size_bytes": 61825
+    },
+    "simulator_smoke_spec": {
+      "path": "openspec/specs/noncombat-simulator-training-smoke/spec.md",
+      "sha256": "2b53aa4cc35174f5b18b87ef892d0402c37e79cbfb10e3bed2dcf3eb788193d1",
+      "size_bytes": 10040
+    },
+    "simulator_smoke_tests": {
+      "path": "tests/test_noncombat_simulator_training_smoke.py",
+      "sha256": "d2d1fae5945507921d7064b43ba95fb9573a4247019a799a9cd7e883ebd4b8ae",
+      "size_bytes": 28227
+    }
+  }
+}

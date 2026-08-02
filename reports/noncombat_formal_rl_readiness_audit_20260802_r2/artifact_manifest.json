@@ -1,0 +1,48 @@
+{
+  "artifacts": {
+    "configuration.json": {
+      "sha256": "17b7f03854ae96aa5d46eb9d684e8cd6d74c48185c30e4062abcda599a8e5e93",
+      "size_bytes": 8555
+    },
+    "evidence_inventory.json": {
+      "sha256": "51f96d25381c7a3ee0527da58ba22091d068cbe94e9cb43cd354f1c0d500d177",
+      "size_bytes": 5253
+    },
+    "readiness_matrix.json": {
+      "sha256": "e305635a70fa4337a4b894d024f594de93c062d627dafee716a938c8fe9822ea",
+      "size_bytes": 5134
+    },
+    "report.json": {
+      "sha256": "3458b0f27ab5ff65f60e280f010c2a9802e92ee6f0f71d530df2151be14da97a",
+      "size_bytes": 1070
+    },
+    "report.md": {
+      "sha256": "d523f57b156af7bd87a166c2b9f6deb16a4d9670fe1463aaba2a0f0a0cfe304c",
+      "size_bytes": 3606
+    }
+  },
+  "authority": {
+    "formal_noncombat_rl": false,
+    "gameplay": false,
+    "live_policy_loading": false,
+    "model_fitting": false,
+    "native_module_loading": false,
+    "ope_reinterpretation": false,
+    "policy_promotion": false,
+    "qualification": false,
+    "simulator_rollout": false,
+    "simulator_training": false
+  },
+  "canonical_artifact_names": [
+    "artifact_manifest.json",
+    "configuration.json",
+    "evidence_inventory.json",
+    "readiness_matrix.json",
+    "report.json",
+    "report.md"
+  ],
+  "configuration_sha256": "17b7f03854ae96aa5d46eb9d684e8cd6d74c48185c30e4062abcda599a8e5e93",
+  "registration_sha256": "17b7f03854ae96aa5d46eb9d684e8cd6d74c48185c30e4062abcda599a8e5e93",
+  "schema_version": "noncombat-formal-rl-readiness-manifest-v1",
+  "verdict": "not_ready_for_bounded_training_proposal"
+}

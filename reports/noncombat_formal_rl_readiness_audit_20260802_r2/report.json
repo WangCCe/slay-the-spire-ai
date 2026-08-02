@@ -1,0 +1,31 @@
+{
+  "authority": {
+    "formal_noncombat_rl": false,
+    "gameplay": false,
+    "live_policy_loading": false,
+    "model_fitting": false,
+    "native_module_loading": false,
+    "ope_reinterpretation": false,
+    "policy_promotion": false,
+    "qualification": false,
+    "simulator_rollout": false,
+    "simulator_training": false
+  },
+  "bounded_training_proposal_consideration": false,
+  "failed_domains": [
+    "baseline_policy",
+    "outcome_support"
+  ],
+  "limitations": [
+    "Simulator evidence remains separate from live evidence.",
+    "Reference policies remain auxiliary and are not reward or policy-quality truth.",
+    "A positive verdict requires a separate accepted OpenSpec before execution."
+  ],
+  "next_prerequisites": [
+    "establish_non_teacher_credible_baseline_floor",
+    "expand_source_comparable_target_supported_outcomes"
+  ],
+  "registration_sha256": "17b7f03854ae96aa5d46eb9d684e8cd6d74c48185c30e4062abcda599a8e5e93",
+  "schema_version": "noncombat-formal-rl-readiness-report-v1",
+  "verdict": "not_ready_for_bounded_training_proposal"
+}
