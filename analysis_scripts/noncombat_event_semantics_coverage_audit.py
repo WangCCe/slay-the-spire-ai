@@ -19,6 +19,8 @@ INPUT_SCHEMA_VERSION = "noncombat-event-semantics-coverage-audit-input-v1"
 INVENTORY_SCHEMA_VERSION = "noncombat-event-semantics-coverage-inventory-v1"
 METRICS_SCHEMA_VERSION = "noncombat-event-semantics-coverage-metrics-v1"
 MANIFEST_SCHEMA_VERSION = "noncombat-event-semantics-coverage-manifest-v1"
+DELTA_INPUT_SCHEMA_VERSION = "noncombat-event-semantics-coverage-delta-input-v1"
+DELTA_REPORT_SCHEMA_VERSION = "noncombat-event-semantics-coverage-delta-report-v1"
 IMPLEMENTATION_SOURCE_FILES = (
     "analysis_scripts/noncombat_event_semantics_coverage_audit.py",
 )
@@ -317,6 +319,120 @@ def load_registration(path: Path | str) -> dict[str, Any]:
     except (OSError, UnicodeError, json.JSONDecodeError) as exc:
         raise AuditBlocked("registration_load_failed", str(exc)) from exc
     return validate_registration(value)
+
+
+def validate_delta_registration(value: object) -> dict[str, Any]:
+    registration = _mapping(copy.deepcopy(value), "delta_registration")
+    _require_keys(
+        registration,
+        {
+            "authority",
+            "expected",
+            "output_path",
+            "predecessor",
+            "schema_version",
+            "successor",
+        },
+        "delta_registration",
+    )
+    if registration["schema_version"] != DELTA_INPUT_SCHEMA_VERSION:
+        raise AuditBlocked("delta_registration_schema_mismatch")
+    if registration["authority"] != ALL_FALSE_AUTHORITY:
+        raise AuditBlocked("delta_authority_mismatch")
+    registration["authority"] = dict(ALL_FALSE_AUTHORITY)
+
+    predecessor = _mapping(registration["predecessor"], "predecessor")
+    _require_keys(
+        predecessor, {"directory", "manifest", "registration"}, "predecessor"
+    )
+    predecessor["directory"] = _validated_relative_path(
+        predecessor["directory"], "predecessor.directory"
+    )
+    predecessor["manifest"] = _validated_binding(
+        predecessor["manifest"], "predecessor.manifest"
+    )
+    predecessor["registration"] = _validated_binding(
+        predecessor["registration"], "predecessor.registration"
+    )
+    expected_manifest_path = (
+        PurePosixPath(predecessor["directory"]) / "artifact_manifest.json"
+    ).as_posix()
+    if predecessor["manifest"]["path"] != expected_manifest_path:
+        raise AuditBlocked("delta_predecessor_manifest_path_mismatch")
+    registration["predecessor"] = predecessor
+
+    successor = _mapping(registration["successor"], "successor")
+    _require_keys(successor, {"directory", "registration"}, "successor")
+    successor["directory"] = _validated_relative_path(
+        successor["directory"], "successor.directory"
+    )
+    successor["registration"] = _validated_binding(
+        successor["registration"], "successor.registration"
+    )
+    registration["successor"] = successor
+    if predecessor["directory"] == successor["directory"]:
+        raise AuditBlocked("delta_audit_directories_must_differ")
+
+    expected = _mapping(registration["expected"], "expected")
+    _require_keys(
+        expected,
+        {
+            "added_display_entries",
+            "alias_count",
+            "event_count",
+            "removed_display_entries",
+            "status_counts",
+            "unaccounted_current_alias_count",
+        },
+        "expected",
+    )
+    for field in ("alias_count", "event_count", "unaccounted_current_alias_count"):
+        if (
+            isinstance(expected[field], bool)
+            or not isinstance(expected[field], int)
+            or expected[field] < 0
+        ):
+            raise AuditBlocked("delta_expected_count_invalid", field)
+    status_counts = _mapping(expected["status_counts"], "expected.status_counts")
+    if not status_counts or any(
+        not isinstance(status, str)
+        or not status
+        or isinstance(count, bool)
+        or not isinstance(count, int)
+        or count <= 0
+        for status, count in status_counts.items()
+    ):
+        raise AuditBlocked("delta_expected_status_counts_invalid")
+    expected["status_counts"] = dict(sorted(status_counts.items()))
+    expected["removed_display_entries"] = _display_entries(
+        expected["removed_display_entries"], "expected.removed_display_entries"
+    )
+    expected["added_display_entries"] = _display_entries(
+        expected["added_display_entries"], "expected.added_display_entries"
+    )
+    registration["expected"] = expected
+
+    registration["output_path"] = _validated_relative_path(
+        registration["output_path"], "output_path"
+    )
+    output = PurePosixPath(registration["output_path"])
+    for directory in (predecessor["directory"], successor["directory"]):
+        if output == PurePosixPath(directory) or PurePosixPath(directory) in output.parents:
+            raise AuditBlocked("delta_output_inside_audit_directory", directory)
+    return registration
+
+
+def load_delta_registration(path: Path | str) -> dict[str, Any]:
+    try:
+        value = json.loads(
+            Path(path).read_text(encoding="utf-8"),
+            object_pairs_hook=_reject_duplicate_pairs,
+        )
+    except AuditBlocked:
+        raise
+    except (OSError, UnicodeError, json.JSONDecodeError) as exc:
+        raise AuditBlocked("delta_registration_load_failed", str(exc)) from exc
+    return validate_delta_registration(value)
 
 
 def verify_bound_file(
@@ -697,9 +813,96 @@ def validate_event_registry(
     return alias_mapping
 
 
+def _mask_cpp_comments(value: str) -> str:
+    """Mask C++ comments without changing source length or newline offsets."""
+
+    output: list[str] = []
+    state = "code"
+    index = 0
+    while index < len(value):
+        character = value[index]
+        next_character = value[index + 1] if index + 1 < len(value) else ""
+
+        if state == "code":
+            if character == "R" and next_character == '"':
+                raise AuditBlocked("cpp_raw_string_unsupported")
+            if character == "/" and next_character == "/":
+                output.extend((" ", " "))
+                state = "line_comment"
+                index += 2
+                continue
+            if character == "/" and next_character == "*":
+                output.extend((" ", " "))
+                state = "block_comment"
+                index += 2
+                continue
+            output.append(character)
+            if character == '"':
+                state = "string"
+            elif character == "'":
+                state = "character"
+            index += 1
+            continue
+
+        if state == "line_comment":
+            if character in "\r\n":
+                output.append(character)
+                if character == "\n":
+                    state = "code"
+            else:
+                output.append(" ")
+            index += 1
+            continue
+
+        if state == "block_comment":
+            if character == "*" and next_character == "/":
+                output.extend((" ", " "))
+                state = "code"
+                index += 2
+                continue
+            output.append(character if character in "\r\n" else " ")
+            index += 1
+            continue
+
+        output.append(character)
+        if character == "\\":
+            if not next_character:
+                reason = (
+                    "cpp_string_literal_unterminated"
+                    if state == "string"
+                    else "cpp_character_literal_unterminated"
+                )
+                raise AuditBlocked(reason)
+            output.append(next_character)
+            index += 2
+            continue
+        if character in "\r\n":
+            reason = (
+                "cpp_string_literal_unterminated"
+                if state == "string"
+                else "cpp_character_literal_unterminated"
+            )
+            raise AuditBlocked(reason)
+        if (state == "string" and character == '"') or (
+            state == "character" and character == "'"
+        ):
+            state = "code"
+        index += 1
+
+    if state == "block_comment":
+        raise AuditBlocked("cpp_block_comment_unterminated")
+    if state == "string":
+        raise AuditBlocked("cpp_string_literal_unterminated")
+    if state == "character":
+        raise AuditBlocked("cpp_character_literal_unterminated")
+    masked = "".join(output)
+    if len(masked) != len(value):
+        raise AuditBlocked("cpp_comment_mask_layout_mismatch")
+    return masked
+
+
 def _strip_cpp_comments(value: str) -> str:
-    without_blocks = re.sub(r"/\*.*?\*/", "", value, flags=re.DOTALL)
-    return re.sub(r"//[^\n]*", "", without_blocks)
+    return _mask_cpp_comments(value)
 
 
 def _line_number(value: str, offset: int) -> int:
@@ -724,14 +927,16 @@ def parse_event_identities(
     events_path: str = "include/constants/Events.h",
     save_path: str = "include/constants/SaveFileMappings.h",
 ) -> dict[str, dict[str, Any]]:
+    events_analysis = _mask_cpp_comments(events_source)
+    save_analysis = _mask_cpp_comments(save_source)
     enum_match = re.search(
         r"enum\s+class\s+Event\b[^\{]*\{(?P<body>.*?)\};",
-        events_source,
+        events_analysis,
         flags=re.DOTALL,
     )
     if enum_match is None:
         raise AuditBlocked("event_enum_block_missing")
-    enum_body = _strip_cpp_comments(enum_match.group("body"))
+    enum_body = enum_match.group("body")
     enum_names = []
     enum_lines = {}
     body_offset = enum_match.start("body")
@@ -747,7 +952,7 @@ def parse_event_identities(
     def parse_array(name: str) -> tuple[list[str], list[int]]:
         match = re.search(
             rf"\b{name}\s*\[\s*\]\s*=\s*\{{(?P<body>.*?)\}}\s*;",
-            events_source,
+            events_analysis,
             flags=re.DOTALL,
         )
         if match is None:
@@ -771,7 +976,7 @@ def parse_event_identities(
 
     save_match = re.search(
         r"NLOHMANN_JSON_SERIALIZE_ENUM\s*\(\s*Event\s*,\s*\{(?P<body>.*?)\}\s*\)",
-        save_source,
+        save_analysis,
         flags=re.DOTALL,
     )
     if save_match is None:
@@ -868,20 +1073,27 @@ def _cpp_line_is_trivia(line: str) -> bool:
 def index_cpp_event_cases(
     source: str, *, signature: str, source_path: str
 ) -> dict[str, dict[str, Any]]:
-    occurrences = [match.start() for match in re.finditer(re.escape(signature), source)]
+    analysis_source = _mask_cpp_comments(source)
+    occurrences = [
+        match.start() for match in re.finditer(re.escape(signature), analysis_source)
+    ]
     if len(occurrences) != 1:
         raise AuditBlocked(
             "cpp_function_missing_or_ambiguous",
             {"count": len(occurrences), "signature": signature},
         )
     signature_start = occurrences[0]
-    opening = source.find("{", signature_start + len(signature))
+    opening = analysis_source.find("{", signature_start + len(signature))
     if opening < 0:
         raise AuditBlocked("cpp_function_opening_brace_missing", signature)
-    closing = _find_matching_cpp_brace(source, opening)
+    closing = _find_matching_cpp_brace(analysis_source, opening)
     function_source = source[signature_start : closing + 1]
+    function_analysis = analysis_source[signature_start : closing + 1]
     base_line = _line_number(source, signature_start)
-    lines = function_source.splitlines()
+    raw_lines = function_source.splitlines()
+    lines = function_analysis.splitlines()
+    if len(raw_lines) != len(lines):
+        raise AuditBlocked("cpp_comment_mask_layout_mismatch")
     labels = []
     for line_index, line in enumerate(lines):
         match = re.match(
@@ -926,8 +1138,12 @@ def index_cpp_event_cases(
             if group_index + 1 < len(groups)
             else len(lines) - 2
         )
-        text = "\n".join(lines[start_index : end_index + 1]) + "\n"
+        text = "\n".join(raw_lines[start_index : end_index + 1]) + "\n"
+        analysis_text = "\n".join(lines[start_index : end_index + 1]) + "\n"
+        if len(text) != len(analysis_text):
+            raise AuditBlocked("cpp_comment_mask_layout_mismatch")
         value = {
+            "analysis_text": analysis_text,
             "case_group": [entry["enum"] for entry in group],
             "line_end": base_line + end_index,
             "line_start": base_line + start_index,
@@ -941,12 +1157,15 @@ def index_cpp_event_cases(
 
 def _case_summary_base(case: Mapping[str, Any]) -> dict[str, Any]:
     text = str(case["text"])
+    analysis_text = str(case["analysis_text"])
     return {
         "case_group": list(case["case_group"]),
-        "conditional": bool(re.search(r"\b(?:if|switch|for)\s*\(", text)),
+        "conditional": bool(
+            re.search(r"\b(?:if|switch|for)\s*\(", analysis_text)
+        ),
         "line_end": int(case["line_end"]),
         "line_start": int(case["line_start"]),
-        "phase_sensitive": "eventData" in text,
+        "phase_sensitive": "eventData" in analysis_text,
         "source_path": str(case["source_path"]),
         "source_sha256": sha256_bytes(text.encode("utf-8")),
     }
@@ -956,7 +1175,9 @@ def summarize_legal_case(case: Mapping[str, Any]) -> dict[str, Any]:
     summary = _case_summary_base(case)
     expressions = [
         match.group(1).strip()
-        for match in re.finditer(r"\breturn\s+([^;]+);", str(case["text"]))
+        for match in re.finditer(
+            r"\breturn\s+([^;]+);", str(case["analysis_text"])
+        )
     ]
     literal_masks = []
     dynamic_expressions = []
@@ -988,7 +1209,8 @@ def summarize_legal_case(case: Mapping[str, Any]) -> dict[str, Any]:
 def summarize_display_case(case: Mapping[str, Any]) -> dict[str, Any]:
     summary = _case_summary_base(case)
     entries = set()
-    for literal, _ in _cpp_string_literals(str(case["text"]), 0, str(case["text"])):
+    analysis_text = str(case["analysis_text"])
+    for literal, _ in _cpp_string_literals(analysis_text, 0, analysis_text):
         match = re.match(r"\s*(\d+)\s*:\s*(?:\[([^\]]+)\])?\s*(.*)", literal)
         if match is None:
             continue
@@ -1012,7 +1234,9 @@ def summarize_execution_case(case: Mapping[str, Any]) -> dict[str, Any]:
     effect_indices = sorted(
         {
             int(match.group(1))
-            for match in re.finditer(r"\bcase\s+(\d+)\s*:", str(case["text"]))
+            for match in re.finditer(
+                r"\bcase\s+(\d+)\s*:", str(case["analysis_text"])
+            )
         }
     )
     summary["effect_indices"] = effect_indices
@@ -1216,6 +1440,450 @@ def build_artifacts(
     return {name: payloads[name] for name in CANONICAL_ARTIFACT_NAMES}
 
 
+def _display_entries(value: object, label: str) -> list[dict[str, Any]]:
+    entries = []
+    seen: set[tuple[str, int, str]] = set()
+    for index, raw in enumerate(_sequence(value, label)):
+        entry = _mapping(raw, f"{label}[{index}]")
+        _require_keys(entry, {"canonical_id", "index", "label"}, f"{label}[{index}]")
+        canonical_id = entry["canonical_id"]
+        choice_index = entry["index"]
+        display_label = entry["label"]
+        if not isinstance(canonical_id, str) or not canonical_id:
+            raise AuditBlocked("delta_display_entry_invalid", f"{label}.canonical_id")
+        if isinstance(choice_index, bool) or not isinstance(choice_index, int):
+            raise AuditBlocked("delta_display_entry_invalid", f"{label}.index")
+        if not isinstance(display_label, str) or not display_label:
+            raise AuditBlocked("delta_display_entry_invalid", f"{label}.label")
+        key = (canonical_id, choice_index, display_label)
+        if key in seen:
+            raise AuditBlocked("delta_display_entry_duplicate", entry)
+        seen.add(key)
+        entries.append(
+            {
+                "canonical_id": canonical_id,
+                "index": choice_index,
+                "label": display_label,
+            }
+        )
+    sorted_entries = sorted(
+        entries, key=lambda entry: (entry["canonical_id"], entry["index"], entry["label"])
+    )
+    if entries != sorted_entries:
+        raise AuditBlocked("delta_display_entry_order_invalid", label)
+    return entries
+
+
+def _inventory_rows(value: object, label: str) -> list[dict[str, Any]]:
+    inventory = _mapping(value, label)
+    _require_keys(inventory, {"rows", "schema_version"}, label)
+    if inventory["schema_version"] != INVENTORY_SCHEMA_VERSION:
+        raise AuditBlocked("delta_inventory_schema_mismatch", label)
+    rows = [_mapping(row, f"{label}.rows") for row in _sequence(inventory["rows"], label)]
+    canonical_ids = [row.get("canonical_id") for row in rows]
+    if any(not isinstance(event_id, str) or not event_id for event_id in canonical_ids):
+        raise AuditBlocked("delta_inventory_event_id_invalid", label)
+    if canonical_ids != sorted(set(canonical_ids)):
+        raise AuditBlocked("delta_inventory_event_order_or_duplicate", label)
+    return rows
+
+
+def _row_display_entries(row: Mapping[str, Any], label: str) -> set[tuple[int, str]]:
+    display = _mapping(row.get("display_labels"), f"{label}.display_labels")
+    entries: set[tuple[int, str]] = set()
+    for index, raw in enumerate(
+        _sequence(display.get("display_entries"), f"{label}.display_entries")
+    ):
+        entry = _mapping(raw, f"{label}.display_entries[{index}]")
+        _require_keys(entry, {"index", "label"}, f"{label}.display_entries[{index}]")
+        choice_index = entry["index"]
+        display_label = entry["label"]
+        if (
+            isinstance(choice_index, bool)
+            or not isinstance(choice_index, int)
+            or not isinstance(display_label, str)
+            or not display_label
+        ):
+            raise AuditBlocked("delta_inventory_display_entry_invalid", label)
+        key = (choice_index, display_label)
+        if key in entries:
+            raise AuditBlocked("delta_inventory_display_entry_duplicate", label)
+        entries.add(key)
+    expected_indices = sorted({choice_index for choice_index, _ in entries})
+    if display.get("display_indices") != expected_indices:
+        raise AuditBlocked("delta_inventory_display_indices_mismatch", label)
+    return entries
+
+
+def compare_audit_payloads(
+    *,
+    predecessor_registration: Mapping[str, Any],
+    successor_registration: Mapping[str, Any],
+    predecessor_inventory: Mapping[str, Any],
+    successor_inventory: Mapping[str, Any],
+    predecessor_metrics: Mapping[str, Any],
+    successor_metrics: Mapping[str, Any],
+    expected: Mapping[str, Any],
+) -> dict[str, Any]:
+    """Compare two audit payload sets while allowing only registered label deltas."""
+
+    predecessor_registration = validate_registration(predecessor_registration)
+    successor_registration = validate_registration(successor_registration)
+    for field in ("authority", "current", "events", "schema_version", "simulator"):
+        if predecessor_registration[field] != successor_registration[field]:
+            raise AuditBlocked("delta_registration_immutable_field_mismatch", field)
+
+    predecessor_metrics = _mapping(predecessor_metrics, "predecessor_metrics")
+    successor_metrics = _mapping(successor_metrics, "successor_metrics")
+    if (
+        predecessor_metrics.get("authority") != ALL_FALSE_AUTHORITY
+        or successor_metrics.get("authority") != ALL_FALSE_AUTHORITY
+    ):
+        raise AuditBlocked("delta_authority_mismatch")
+    metric_invariants = set(predecessor_metrics).union(successor_metrics) - {
+        "registration_sha256"
+    }
+    for field in sorted(metric_invariants):
+        if predecessor_metrics.get(field) != successor_metrics.get(field):
+            raise AuditBlocked("delta_metric_invariant_mismatch", field)
+
+    expected = _mapping(expected, "expected")
+    _require_keys(
+        expected,
+        {
+            "added_display_entries",
+            "alias_count",
+            "event_count",
+            "removed_display_entries",
+            "status_counts",
+            "unaccounted_current_alias_count",
+        },
+        "expected",
+    )
+    for field in (
+        "alias_count",
+        "event_count",
+        "status_counts",
+        "unaccounted_current_alias_count",
+    ):
+        if predecessor_metrics.get(field) != expected[field]:
+            raise AuditBlocked("delta_expected_metric_mismatch", field)
+    if predecessor_metrics.get("resolver_ready") is not False:
+        raise AuditBlocked("delta_resolver_readiness_mismatch")
+
+    expected_removed = _display_entries(
+        expected["removed_display_entries"], "expected.removed_display_entries"
+    )
+    expected_added = _display_entries(
+        expected["added_display_entries"], "expected.added_display_entries"
+    )
+    predecessor_rows = _inventory_rows(predecessor_inventory, "predecessor_inventory")
+    successor_rows = _inventory_rows(successor_inventory, "successor_inventory")
+    predecessor_by_id = {row["canonical_id"]: row for row in predecessor_rows}
+    successor_by_id = {row["canonical_id"]: row for row in successor_rows}
+    if list(predecessor_by_id) != list(successor_by_id):
+        raise AuditBlocked("delta_inventory_event_identity_mismatch")
+
+    removed = []
+    added = []
+    for canonical_id in predecessor_by_id:
+        predecessor_row = predecessor_by_id[canonical_id]
+        successor_row = successor_by_id[canonical_id]
+        predecessor_entries = _row_display_entries(
+            predecessor_row, f"predecessor.{canonical_id}"
+        )
+        successor_entries = _row_display_entries(
+            successor_row, f"successor.{canonical_id}"
+        )
+        removed.extend(
+            {
+                "canonical_id": canonical_id,
+                "index": choice_index,
+                "label": display_label,
+            }
+            for choice_index, display_label in predecessor_entries - successor_entries
+        )
+        added.extend(
+            {
+                "canonical_id": canonical_id,
+                "index": choice_index,
+                "label": display_label,
+            }
+            for choice_index, display_label in successor_entries - predecessor_entries
+        )
+        predecessor_without_display = copy.deepcopy(predecessor_row)
+        successor_without_display = copy.deepcopy(successor_row)
+        for row in (predecessor_without_display, successor_without_display):
+            row["display_labels"].pop("display_entries")
+            row["display_labels"].pop("display_indices")
+        if predecessor_without_display != successor_without_display:
+            raise AuditBlocked("delta_inventory_non_display_drift", canonical_id)
+
+    removed = sorted(
+        removed, key=lambda entry: (entry["canonical_id"], entry["index"], entry["label"])
+    )
+    added = sorted(
+        added, key=lambda entry: (entry["canonical_id"], entry["index"], entry["label"])
+    )
+    if removed != expected_removed or added != expected_added:
+        raise AuditBlocked(
+            "delta_display_entries_mismatch",
+            {
+                "actual_added": added,
+                "actual_removed": removed,
+                "expected_added": expected_added,
+                "expected_removed": expected_removed,
+            },
+        )
+    return {
+        "added_display_entries": added,
+        "alias_count": expected["alias_count"],
+        "event_count": expected["event_count"],
+        "removed_display_entries": removed,
+        "status": "passed",
+        "status_counts": expected["status_counts"],
+        "unaccounted_current_alias_count": expected[
+            "unaccounted_current_alias_count"
+        ],
+    }
+
+
+def _load_canonical_json(path: Path, label: str) -> dict[str, Any]:
+    try:
+        raw = path.read_bytes()
+        value = json.loads(raw, object_pairs_hook=_reject_duplicate_pairs)
+    except AuditBlocked:
+        raise
+    except (OSError, UnicodeError, json.JSONDecodeError) as exc:
+        raise AuditBlocked("delta_artifact_load_failed", label) from exc
+    if canonical_json_bytes(value) != raw:
+        raise AuditBlocked("delta_artifact_not_canonical", label)
+    return _mapping(value, label)
+
+
+def _load_delta_side(
+    *,
+    root: Path,
+    side: Mapping[str, Any],
+    label: str,
+    bound_manifest: Mapping[str, Any] | None,
+) -> dict[str, Any]:
+    directory = (root / side["directory"]).resolve()
+    try:
+        directory.relative_to(root)
+    except ValueError as exc:
+        raise AuditBlocked("delta_audit_directory_escapes_repository", label) from exc
+    if not directory.is_dir():
+        raise AuditBlocked("delta_audit_directory_missing", label)
+    actual_names = {path.name for path in directory.iterdir() if path.is_file()}
+    if actual_names != set(CANONICAL_ARTIFACT_NAMES):
+        raise AuditBlocked(
+            "delta_audit_artifact_set_mismatch",
+            {
+                "actual": sorted(actual_names),
+                "expected": sorted(CANONICAL_ARTIFACT_NAMES),
+                "side": label,
+            },
+        )
+
+    registration_path = verify_bound_file(
+        root, side["registration"], repository_relative=True
+    )
+    registration = load_registration(registration_path)
+    if registration["output"]["directory"] != side["directory"]:
+        raise AuditBlocked("delta_audit_registration_directory_mismatch", label)
+    registration_sha256 = sha256_file(registration_path)
+
+    if bound_manifest is not None:
+        manifest_path = verify_bound_file(
+            root, bound_manifest, repository_relative=True
+        )
+        if manifest_path != directory / "artifact_manifest.json":
+            raise AuditBlocked("delta_predecessor_manifest_path_mismatch")
+    manifest_path = directory / "artifact_manifest.json"
+    configuration = _load_canonical_json(
+        directory / "configuration.json", f"{label}.configuration"
+    )
+    inventory = _load_canonical_json(
+        directory / "event_inventory.json", f"{label}.inventory"
+    )
+    metrics = _load_canonical_json(directory / "metrics.json", f"{label}.metrics")
+    manifest = _load_canonical_json(manifest_path, f"{label}.manifest")
+
+    _require_keys(
+        configuration,
+        {"registration", "registration_sha256", "schema_version"},
+        f"{label}.configuration",
+    )
+    if configuration != {
+        "registration": registration,
+        "registration_sha256": registration_sha256,
+        "schema_version": INPUT_SCHEMA_VERSION,
+    }:
+        raise AuditBlocked("delta_configuration_registration_mismatch", label)
+
+    _require_keys(
+        metrics,
+        {
+            "alias_count",
+            "authority",
+            "event_count",
+            "label_sensitive_event_count",
+            "registration_sha256",
+            "resolver_ready",
+            "schema_version",
+            "status_counts",
+            "unaccounted_current_alias_count",
+        },
+        f"{label}.metrics",
+    )
+    if metrics["schema_version"] != METRICS_SCHEMA_VERSION:
+        raise AuditBlocked("delta_metrics_schema_mismatch", label)
+    _require_keys(
+        manifest,
+        {
+            "artifact_hashes",
+            "authority",
+            "event_count",
+            "registration_sha256",
+            "resolver_ready",
+            "schema_version",
+            "status_counts",
+        },
+        f"{label}.manifest",
+    )
+    if manifest["schema_version"] != MANIFEST_SCHEMA_VERSION:
+        raise AuditBlocked("delta_manifest_schema_mismatch", label)
+    if (
+        metrics["registration_sha256"] != registration_sha256
+        or manifest["registration_sha256"] != registration_sha256
+    ):
+        raise AuditBlocked("delta_artifact_registration_hash_mismatch", label)
+    if (
+        metrics["authority"] != ALL_FALSE_AUTHORITY
+        or manifest["authority"] != ALL_FALSE_AUTHORITY
+    ):
+        raise AuditBlocked("delta_authority_mismatch", label)
+    if (
+        metrics["resolver_ready"] is not False
+        or manifest["resolver_ready"] is not False
+    ):
+        raise AuditBlocked("delta_resolver_readiness_mismatch", label)
+    if (
+        manifest["event_count"] != metrics["event_count"]
+        or manifest["status_counts"] != metrics["status_counts"]
+    ):
+        raise AuditBlocked("delta_manifest_metrics_mismatch", label)
+
+    expected_hash_names = set(CANONICAL_ARTIFACT_NAMES) - {
+        "artifact_manifest.json"
+    }
+    artifact_hashes = _mapping(
+        manifest["artifact_hashes"], f"{label}.manifest.artifact_hashes"
+    )
+    if set(artifact_hashes) != expected_hash_names:
+        raise AuditBlocked("delta_manifest_hash_set_mismatch", label)
+    for name, expected_hash in artifact_hashes.items():
+        if not _is_hex(expected_hash, 64) or sha256_file(directory / name) != expected_hash:
+            raise AuditBlocked(
+                "delta_manifest_artifact_hash_mismatch",
+                {"artifact": name, "side": label},
+            )
+    return {
+        "directory": side["directory"],
+        "inventory": inventory,
+        "manifest": manifest,
+        "manifest_sha256": sha256_file(manifest_path),
+        "metrics": metrics,
+        "registration": registration,
+        "registration_sha256": registration_sha256,
+    }
+
+
+def _write_or_verify_delta(path: Path, data: bytes, *, recompute: bool) -> None:
+    if recompute:
+        if not path.is_file() or path.read_bytes() != data:
+            raise AuditBlocked("delta_recompute_mismatch", str(path))
+        return
+    if path.exists():
+        raise AuditBlocked("delta_output_already_exists", str(path))
+    path.parent.mkdir(parents=True, exist_ok=True)
+    temporary = path.with_name(f".{path.name}.tmp")
+    if temporary.exists():
+        raise AuditBlocked("delta_temporary_output_exists", str(temporary))
+    temporary.write_bytes(data)
+    temporary.replace(path)
+
+
+def run_registered_delta(
+    *,
+    registration_path: Path | str,
+    repo_root: Path | str,
+    recompute: bool = False,
+) -> dict[str, Any]:
+    root = Path(repo_root).resolve()
+    input_path = Path(registration_path).resolve()
+    try:
+        input_path.relative_to(root)
+    except ValueError as exc:
+        raise AuditBlocked("delta_registration_escapes_repository") from exc
+    registration = load_delta_registration(input_path)
+    predecessor = _load_delta_side(
+        root=root,
+        side=registration["predecessor"],
+        label="predecessor",
+        bound_manifest=registration["predecessor"]["manifest"],
+    )
+    successor = _load_delta_side(
+        root=root,
+        side=registration["successor"],
+        label="successor",
+        bound_manifest=None,
+    )
+    comparison = compare_audit_payloads(
+        predecessor_registration=predecessor["registration"],
+        successor_registration=successor["registration"],
+        predecessor_inventory=predecessor["inventory"],
+        successor_inventory=successor["inventory"],
+        predecessor_metrics=predecessor["metrics"],
+        successor_metrics=successor["metrics"],
+        expected=registration["expected"],
+    )
+    report = {
+        "authority": dict(ALL_FALSE_AUTHORITY),
+        "comparison": comparison,
+        "delta_registration_sha256": sha256_file(input_path),
+        "predecessor": {
+            "directory": predecessor["directory"],
+            "manifest_sha256": predecessor["manifest_sha256"],
+            "registration_sha256": predecessor["registration_sha256"],
+        },
+        "schema_version": DELTA_REPORT_SCHEMA_VERSION,
+        "status": "passed",
+        "successor": {
+            "directory": successor["directory"],
+            "manifest_sha256": successor["manifest_sha256"],
+            "registration_sha256": successor["registration_sha256"],
+        },
+    }
+    output_path = (root / registration["output_path"]).resolve()
+    try:
+        output_path.relative_to(root)
+    except ValueError as exc:
+        raise AuditBlocked("delta_output_escapes_repository") from exc
+    _write_or_verify_delta(
+        output_path, canonical_json_bytes(report), recompute=recompute
+    )
+    return {
+        "added_display_entry_count": len(comparison["added_display_entries"]),
+        "output_path": str(output_path),
+        "removed_display_entry_count": len(
+            comparison["removed_display_entries"]
+        ),
+        "status": "passed",
+    }
+
+
 def write_or_verify_artifacts(
     output_dir: Path | str,
     artifacts: Mapping[str, bytes],
@@ -1336,6 +2004,7 @@ def run_audit(
 def _parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--registration", required=True)
+    parser.add_argument("--delta-registration")
     parser.add_argument(
         "--repo-root", default=str(Path(__file__).resolve().parents[1])
     )
@@ -1351,6 +2020,12 @@ def main(argv: Sequence[str] | None = None) -> int:
             repo_root=args.repo_root,
             recompute=args.recompute,
         )
+        if args.delta_registration is not None:
+            result["delta"] = run_registered_delta(
+                registration_path=args.delta_registration,
+                repo_root=args.repo_root,
+                recompute=args.recompute,
+            )
     except AuditBlocked as exc:
         print(
             json.dumps(

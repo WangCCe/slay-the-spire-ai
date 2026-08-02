@@ -3,8 +3,8 @@
 The published event-semantics coverage audit analyzes raw C++ case spans and
 therefore treats commented-out `os <<` statements as live display evidence.
 The registered r1 inventory demonstrably adds `Big Fish` label `Offer` and old
-`Cursed Tome` labels `0: Take` and `1: Stop` from comments, so its label matrix
-must not be used to design the next adapter contract.
+`Cursed Tome` labels `0: Continue`, `0: Take`, and `1: Stop` from comments, so
+its label matrix must not be used to design the next adapter contract.
 
 ## What Changes
 

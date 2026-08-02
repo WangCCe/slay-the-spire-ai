@@ -5,7 +5,7 @@ bytes, but its C++ case summaries run regexes over raw case text. The case
 indexer ignores lines beginning with `//` when finding case labels, yet
 `summarize_display_case`, `summarize_legal_case`,
 `summarize_execution_case`, and `_case_summary_base` still inspect comments
-inside the selected span. This admitted three known false display entries from
+inside the selected span. This admitted four known false display entries from
 commented-out console code.
 
 The correction must preserve raw source provenance, line spans, the immutable
@@ -66,8 +66,8 @@ directory and is executed once plus one strict recomputation.
 
 An explicit delta check requires unchanged event, alias, status, unaccounted
 alias, resolver-readiness, and authority values. The expected semantic delta is
-removal of `Big Fish` entry `0: Offer` and `Cursed Tome` entries `0: Take` and
-`1: Stop`; any other row-level change requires a new review.
+removal of `Big Fish` entry `0: Offer` and `Cursed Tome` entries `0: Continue`,
+`0: Take`, and `1: Stop`; any other row-level change requires a new review.
 
 ## Risks / Trade-offs
 

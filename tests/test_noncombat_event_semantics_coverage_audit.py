@@ -336,6 +336,358 @@ def test_cpp_case_index_rejects_duplicate_event_case():
         )
 
 
+def test_cpp_comment_mask_preserves_layout_and_literal_markers():
+    source = (
+        'active(); // return 0x7; eventData\n'
+        'const char *url = "https://example.test/*live*/";\n'
+        "const char slash = '/'; /* case 9: */ tail();\n"
+        'const char *escaped = "quote: \\" // still literal";\n'
+    )
+
+    masked = audit_module._mask_cpp_comments(source)
+
+    assert len(masked) == len(source)
+    assert [index for index, char in enumerate(masked) if char == "\n"] == [
+        index for index, char in enumerate(source) if char == "\n"
+    ]
+    assert "return 0x7" not in masked
+    assert "case 9" not in masked
+    assert '"https://example.test/*live*/"' in masked
+    assert '"quote: \\" // still literal"' in masked
+    assert "tail();" in masked
+
+
+@pytest.mark.parametrize(
+    ("source", "reason"),
+    [
+        ('R"tag(// not a comment)tag"', "cpp_raw_string_unsupported"),
+        ("/* never closed", "cpp_block_comment_unterminated"),
+        ('"never closed', "cpp_string_literal_unterminated"),
+        ("'never closed", "cpp_character_literal_unterminated"),
+    ],
+)
+def test_cpp_comment_mask_fails_closed_on_ambiguous_lexical_input(source, reason):
+    with pytest.raises(AuditBlocked, match=reason):
+        audit_module._mask_cpp_comments(source)
+
+
+def test_cpp_case_summaries_ignore_all_commented_semantic_tokens():
+    legal_source = r'''
+int search::GameAction::getValidEventSelectBits(const GameContext &gc) {
+    switch (gc.curEvent) {
+        /* case Event::COMMENTED: return 0xF; */
+        case Event::EVENT_A:
+            // if (gc.info.eventData == 7) { return 0x6; }
+            /* return 0x4; */
+            return 0x1;
+    }
+}
+'''
+    display_source = r'''
+void ConsoleSimulator::printEventActions(std::ostream &os) const {
+    switch (gc->curEvent) {
+        case Event::EVENT_A:
+            // os << "1: [Commented Line] ignored\n";
+            /* os << "2: [Commented Block] ignored\n"; */
+            os << "0: [Active] text with // and /* markers.\n";
+            break;
+    }
+}
+'''
+    execution_source = r'''
+void GameContext::chooseEventOption(int idx) {
+    switch (curEvent) {
+        case Event::EVENT_A:
+            // case 8: ignored(); break;
+            /* case 9: ignored(); break; */
+            switch (idx) { case 0: active(); break; }
+            break;
+    }
+}
+'''
+
+    legal_cases = index_cpp_event_cases(
+        legal_source,
+        signature="int search::GameAction::getValidEventSelectBits",
+        source_path="legal.cpp",
+    )
+    display_cases = index_cpp_event_cases(
+        display_source,
+        signature="void ConsoleSimulator::printEventActions",
+        source_path="display.cpp",
+    )
+    execution_cases = index_cpp_event_cases(
+        execution_source,
+        signature="void GameContext::chooseEventOption",
+        source_path="execution.cpp",
+    )
+
+    assert set(legal_cases) == {"EVENT_A"}
+    assert legal_cases["EVENT_A"]["text"].count("return") == 3
+    assert len(legal_cases["EVENT_A"]["analysis_text"]) == len(
+        legal_cases["EVENT_A"]["text"]
+    )
+    legal = summarize_legal_case(legal_cases["EVENT_A"])
+    assert legal["return_expressions"] == ["0x1"]
+    assert legal["conditional"] is False
+    assert legal["phase_sensitive"] is False
+    assert legal["source_sha256"] == sha256_bytes(
+        legal_cases["EVENT_A"]["text"].encode("utf-8")
+    )
+    assert summarize_display_case(display_cases["EVENT_A"])["display_entries"] == [
+        {"index": 0, "label": "Active"}
+    ]
+    assert summarize_execution_case(execution_cases["EVENT_A"])[
+        "effect_indices"
+    ] == [0]
+
+
+def _delta_payloads():
+    surface = parse_current_event_surface(
+        CURRENT_SOURCE, class_name="SimpleAgent", function_name="_choose_event_option"
+    )
+    successor_rows = build_event_inventory(
+        surface, validate_event_registry(_registry(), surface), _upstream_summaries()
+    )
+    predecessor_rows = copy.deepcopy(successor_rows)
+    predecessor_rows[0]["display_labels"]["display_entries"].append(
+        {"index": 0, "label": "Commented"}
+    )
+    predecessor_rows[0]["display_labels"]["display_entries"].sort(
+        key=lambda entry: (entry["index"], entry["label"])
+    )
+
+    def metrics(registration_sha256):
+        return {
+            "alias_count": 4,
+            "authority": copy.deepcopy(ALL_FALSE_AUTHORITY),
+            "event_count": 3,
+            "label_sensitive_event_count": 2,
+            "registration_sha256": registration_sha256,
+            "resolver_ready": False,
+            "schema_version": "noncombat-event-semantics-coverage-metrics-v1",
+            "status_counts": {"source_complete": 2, "source_partial": 1},
+            "unaccounted_current_alias_count": 0,
+        }
+
+    predecessor_registration = _registration()
+    predecessor_registration["output"]["directory"] = "reports/predecessor"
+    successor_registration = copy.deepcopy(predecessor_registration)
+    successor_registration["implementation"]["commit"] = "a" * 40
+    successor_registration["implementation"]["source_sha256"] = "b" * 64
+    successor_registration["output"]["directory"] = "reports/successor"
+    expected = {
+        "added_display_entries": [],
+        "alias_count": 4,
+        "event_count": 3,
+        "removed_display_entries": [
+            {"canonical_id": "A", "index": 0, "label": "Commented"}
+        ],
+        "status_counts": {"source_complete": 2, "source_partial": 1},
+        "unaccounted_current_alias_count": 0,
+    }
+    return {
+        "expected": expected,
+        "predecessor_inventory": {
+            "rows": predecessor_rows,
+            "schema_version": "noncombat-event-semantics-coverage-inventory-v1",
+        },
+        "predecessor_metrics": metrics("c" * 64),
+        "predecessor_registration": predecessor_registration,
+        "successor_inventory": {
+            "rows": successor_rows,
+            "schema_version": "noncombat-event-semantics-coverage-inventory-v1",
+        },
+        "successor_metrics": metrics("d" * 64),
+        "successor_registration": successor_registration,
+    }
+
+
+def test_registered_delta_allows_only_declared_display_entry_removals():
+    comparison = audit_module.compare_audit_payloads(**_delta_payloads())
+
+    assert comparison["added_display_entries"] == []
+    assert comparison["removed_display_entries"] == [
+        {"canonical_id": "A", "index": 0, "label": "Commented"}
+    ]
+    assert comparison["status"] == "passed"
+
+
+@pytest.mark.parametrize(
+    ("mutation", "reason"),
+    [
+        (
+            lambda payloads: payloads["successor_metrics"].__setitem__(
+                "event_count", 4
+            ),
+            "delta_metric_invariant_mismatch",
+        ),
+        (
+            lambda payloads: payloads["successor_metrics"]["authority"].__setitem__(
+                "training_authorized", True
+            ),
+            "delta_authority_mismatch",
+        ),
+        (
+            lambda payloads: (
+                payloads["successor_inventory"]["rows"][0]["display_labels"][
+                    "display_entries"
+                ].append({"index": 9, "label": "Unexpected"}),
+                payloads["successor_inventory"]["rows"][0]["display_labels"][
+                    "display_indices"
+                ].append(9),
+            ),
+            "delta_display_entries_mismatch",
+        ),
+        (
+            lambda payloads: payloads["successor_registration"]["current"].__setitem__(
+                "repository_commit", "f" * 40
+            ),
+            "delta_registration_immutable_field_mismatch",
+        ),
+    ],
+)
+def test_registered_delta_rejects_unexpected_drift(mutation, reason):
+    payloads = _delta_payloads()
+    mutation(payloads)
+
+    with pytest.raises(AuditBlocked, match=reason):
+        audit_module.compare_audit_payloads(**payloads)
+
+
+def _file_binding(root: Path, path: Path):
+    data = path.read_bytes()
+    return {
+        "path": path.relative_to(root).as_posix(),
+        "sha256": sha256_bytes(data),
+        "size_bytes": len(data),
+    }
+
+
+def _write_delta_fixture(tmp_path: Path):
+    payloads = _delta_payloads()
+    reports = tmp_path / "reports"
+    reports.mkdir()
+    predecessor_registration_path = reports / "predecessor_input.json"
+    successor_registration_path = reports / "successor_input.json"
+    predecessor_registration_path.write_bytes(
+        canonical_json_bytes(payloads["predecessor_registration"])
+    )
+    successor_registration_path.write_bytes(
+        canonical_json_bytes(payloads["successor_registration"])
+    )
+    predecessor_artifacts = build_artifacts(
+        registration=payloads["predecessor_registration"],
+        registration_sha256=sha256_bytes(predecessor_registration_path.read_bytes()),
+        rows=payloads["predecessor_inventory"]["rows"],
+    )
+    successor_artifacts = build_artifacts(
+        registration=payloads["successor_registration"],
+        registration_sha256=sha256_bytes(successor_registration_path.read_bytes()),
+        rows=payloads["successor_inventory"]["rows"],
+    )
+    predecessor_dir = tmp_path / "reports" / "predecessor"
+    successor_dir = tmp_path / "reports" / "successor"
+    write_or_verify_artifacts(predecessor_dir, predecessor_artifacts, recompute=False)
+    write_or_verify_artifacts(successor_dir, successor_artifacts, recompute=False)
+    delta_registration = {
+        "authority": copy.deepcopy(ALL_FALSE_AUTHORITY),
+        "expected": payloads["expected"],
+        "output_path": "reports/predecessor_to_successor_delta.json",
+        "predecessor": {
+            "directory": "reports/predecessor",
+            "manifest": _file_binding(
+                tmp_path, predecessor_dir / "artifact_manifest.json"
+            ),
+            "registration": _file_binding(
+                tmp_path, predecessor_registration_path
+            ),
+        },
+        "schema_version": audit_module.DELTA_INPUT_SCHEMA_VERSION,
+        "successor": {
+            "directory": "reports/successor",
+            "registration": _file_binding(tmp_path, successor_registration_path),
+        },
+    }
+    delta_registration_path = reports / "delta_input.json"
+    delta_registration_path.write_bytes(canonical_json_bytes(delta_registration))
+    return delta_registration, delta_registration_path
+
+
+def test_registered_delta_report_is_hash_bound_atomic_and_recomputable(tmp_path):
+    registration, registration_path = _write_delta_fixture(tmp_path)
+
+    first = audit_module.run_registered_delta(
+        registration_path=registration_path,
+        repo_root=tmp_path,
+        recompute=False,
+    )
+    second = audit_module.run_registered_delta(
+        registration_path=registration_path,
+        repo_root=tmp_path,
+        recompute=True,
+    )
+
+    assert first == second
+    assert first["removed_display_entry_count"] == 1
+    report_path = tmp_path / registration["output_path"]
+    report = json.loads(report_path.read_bytes())
+    assert report["comparison"]["status"] == "passed"
+    assert report["authority"] == ALL_FALSE_AUTHORITY
+
+    registration["predecessor"]["manifest"]["sha256"] = "f" * 64
+    registration_path.write_bytes(canonical_json_bytes(registration))
+    with pytest.raises(AuditBlocked, match="bound_file_identity_mismatch"):
+        audit_module.run_registered_delta(
+            registration_path=registration_path,
+            repo_root=tmp_path,
+            recompute=True,
+        )
+
+
+@pytest.mark.parametrize(
+    ("artifact_name", "field", "value", "reason"),
+    [
+        ("metrics.json", "unexpected", True, "object_keys_mismatch"),
+        (
+            "metrics.json",
+            "schema_version",
+            "unexpected-metrics-schema",
+            "delta_metrics_schema_mismatch",
+        ),
+        (
+            "artifact_manifest.json",
+            "schema_version",
+            "unexpected-manifest-schema",
+            "delta_manifest_schema_mismatch",
+        ),
+        (
+            "artifact_manifest.json",
+            "status_counts",
+            {"source_complete": 3},
+            "delta_manifest_metrics_mismatch",
+        ),
+    ],
+)
+def test_registered_delta_rejects_artifact_shape_or_schema_drift(
+    tmp_path, artifact_name, field, value, reason
+):
+    registration, registration_path = _write_delta_fixture(tmp_path)
+    artifact_path = (
+        tmp_path / registration["successor"]["directory"] / artifact_name
+    )
+    artifact = json.loads(artifact_path.read_bytes())
+    artifact[field] = value
+    artifact_path.write_bytes(canonical_json_bytes(artifact))
+
+    with pytest.raises(AuditBlocked, match=reason):
+        audit_module.run_registered_delta(
+            registration_path=registration_path,
+            repo_root=tmp_path,
+            recompute=True,
+        )
+
+
 def test_event_inventory_reconciles_complete_and_partial_rows():
     surface = parse_current_event_surface(
         CURRENT_SOURCE, class_name="SimpleAgent", function_name="_choose_event_option"
