@@ -544,7 +544,9 @@ def _validate_embedded_identity(
         ("baseline_registration", "baseline_manifest", "baseline_metrics"),
     )
     for registration_id, manifest_id, metrics_id in linked_groups:
-        expected_registration = bindings[registration_id]["sha256"]
+        expected_registration = sha256_bytes(
+            canonical_json_bytes(documents[registration_id])
+        )
         manifest = documents[manifest_id]
         metrics = documents[metrics_id]
         if (

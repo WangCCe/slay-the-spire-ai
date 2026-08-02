@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import copy
+import json
 from pathlib import Path
 
 import pytest
@@ -314,6 +315,14 @@ def _registered_fixture(
         paths[evidence_id] = _write_json(
             root, f"evidence/{evidence_id}.json", documents[evidence_id]
         )
+    for evidence_id in (
+        "simulator_smoke_registration",
+        "baseline_registration",
+    ):
+        paths[evidence_id].write_text(
+            json.dumps(documents[evidence_id], separators=(",", ":")),
+            encoding="utf-8",
+        )
 
     teacher_report_path = _write_json(
         root, "evidence/teacher_report.json", documents["teacher_report"]
@@ -342,7 +351,9 @@ def _registered_fixture(
         ("baseline", "baseline_registration", "baseline_metrics"),
     )
     for prefix, registration_id, metrics_id in linked_groups:
-        registration_hash = audit.sha256_bytes(paths[registration_id].read_bytes())
+        registration_hash = audit.sha256_bytes(
+            audit.canonical_json_bytes(documents[registration_id])
+        )
         metrics = copy.deepcopy(documents[metrics_id])
         metrics["registration_sha256"] = registration_hash
         metrics_path = _write_json(root, f"evidence/{metrics_id}.json", metrics)
