@@ -1,0 +1,115 @@
+{
+  "authority": {
+    "formal_noncombat_rl": false,
+    "live_gameplay": false,
+    "live_policy_loading": false,
+    "live_study_launch": false,
+    "ope_reinterpretation": false,
+    "policy_promotion": false,
+    "qualification": false,
+    "simulator_policy_validity": false,
+    "simulator_training": false
+  },
+  "checks": {
+    "candidate_legality": true,
+    "episode_count": true,
+    "finite_metrics": true,
+    "four_category_coverage": true,
+    "model_immutability": true,
+    "no_gradients": true,
+    "terminal_outcomes": true,
+    "within_bounds": true
+  },
+  "classification": {
+    "authority": {
+      "formal_noncombat_rl": false,
+      "live_gameplay": false,
+      "live_policy_loading": false,
+      "live_study_launch": false,
+      "ope_reinterpretation": false,
+      "policy_promotion": false,
+      "qualification": false,
+      "simulator_policy_validity": false,
+      "simulator_training": false
+    },
+    "blockers": [],
+    "checks": {
+      "candidate_legality": true,
+      "episode_count": true,
+      "finite_metrics": true,
+      "four_category_coverage": true,
+      "model_immutability": true,
+      "no_gradients": true,
+      "replay_identity": true,
+      "terminal_outcomes": true,
+      "within_bounds": true
+    },
+    "quality": "baseline_signal_not_demonstrated",
+    "replay_difference": "",
+    "verdict": "study_valid_without_baseline_signal"
+  },
+  "comparisons": {
+    "trained_minus_native_simple_agent": {
+      "floor_difference_ci": {
+        "confidence_level": 0.95,
+        "lower": -7.875,
+        "mean": -5.40625,
+        "resamples": 10000,
+        "upper": -2.921875
+      },
+      "paired_seed_count": 64
+    },
+    "trained_minus_seeded_initial": {
+      "floor_difference_ci": {
+        "confidence_level": 0.95,
+        "lower": 1.375,
+        "mean": 2.765625,
+        "resamples": 10000,
+        "upper": 4.25
+      },
+      "paired_seed_count": 64
+    }
+  },
+  "fresh_seed_count": 64,
+  "model_hashes": {
+    "seeded_initial": "7dbeec0677c6645f3851f1f0fda2c08db19f6cb87d91ca603a3a978d5ec50cb1",
+    "smoke_trained": "b4f989ebb3fa21912601d4acf662908fef50be613474e6808cdbcc3aa5c7dc1a"
+  },
+  "policy_summaries": {
+    "native_simple_agent": {
+      "categories": [
+        "card_reward",
+        "event",
+        "route",
+        "shop"
+      ],
+      "episodes": 64,
+      "mean_terminal_floor": 19.96875,
+      "victories": 0
+    },
+    "seeded_initial": {
+      "categories": [
+        "card_reward",
+        "event",
+        "route",
+        "shop"
+      ],
+      "episodes": 64,
+      "mean_terminal_floor": 11.796875,
+      "victories": 0
+    },
+    "smoke_trained": {
+      "categories": [
+        "card_reward",
+        "event",
+        "route",
+        "shop"
+      ],
+      "episodes": 64,
+      "mean_terminal_floor": 14.5625,
+      "victories": 0
+    }
+  },
+  "registration_sha256": "149a0ed451f52804561de34b213fb4602f6825740705b6c1cf98ab87e0748d10",
+  "schema_version": "noncombat-simulator-policy-validity-metrics-v1"
+}

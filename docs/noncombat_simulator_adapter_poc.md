@@ -39,6 +39,18 @@ and native module SHA-256
 The simulator commit and physical-source identity are unchanged. The original
 fit remains historical evidence; `r2` is the fit consumed by the smoke.
 
+The policy-validity extension adds the read-only native target policy
+`sts_lightspeed_simple_agent_target_v1` under adapter API v2. Its `r3` fit binds
+adapter commit `a810d6d0ce92c1ebab8483fb8819163fc76d54fe`, adapter source SHA-256
+`10c413d11e6abf4c621400279a4f4bfccddb0876426a0e14c6c892fdf0d4da5b`,
+and native module SHA-256
+`b3328aea4ee3040a4fe8751d6f300a148a7ae64d68f7ebec050ae61f479d6805`.
+The fit checked 770 native target decisions across seeds `0..19` twice,
+covered all four categories, matched one current candidate per query, preserved
+source bytes, reached terminal outcomes, and retained 12/12 historical-prefix
+matches. The simulator physical-source identity remains unchanged and dirty by
+explicit registration.
+
 ## Reproducible Build
 
 Run from the repository root in PowerShell. The build stays out of both source
@@ -99,7 +111,9 @@ remain baseline-controlled. Historical agreement covers only twelve early
 candidate sets, and the upstream loader cannot import arbitrary live
 non-combat states.
 
-The separately reviewed bounded simulator-training smoke is complete. Its
-registered contract, result, limitations, and next gate are documented in
-`docs/noncombat_simulator_training_smoke.md`. It preserves this evidence
-boundary and grants no formal-training or live authority.
+The bounded simulator-training smoke and its separately registered policy
+validity study are complete. Their contracts, results, limitations, and next
+boundary are documented in `docs/noncombat_simulator_training_smoke.md` and
+`docs/noncombat_simulator_policy_validity.md`. The trained smoke ranker beat its
+seeded initialization but lost to native SimpleAgent on the fresh validity
+cohort. Neither result grants formal-training or live authority.

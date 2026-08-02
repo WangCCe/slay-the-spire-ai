@@ -1,0 +1,7 @@
+{
+  "canonical": false,
+  "primary_elapsed_seconds": 217.4571503000334,
+  "replay_elapsed_seconds": 213.41093430004548,
+  "schema_version": "noncombat-simulator-policy-validity-journal-v1",
+  "wall_time_budget_seconds": 480.0
+}

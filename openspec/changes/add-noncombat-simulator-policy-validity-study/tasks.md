@@ -22,12 +22,12 @@
 ## 4. Registered Fresh-Cohort Study
 
 - [x] 4.1 Commit the reviewed implementation and refreshed fit evidence, then freeze one checked-in registration binding compatibility seeds `2000..2003`, fresh seeds `3000..3063`, three policies, 10,000 bootstrap resamples at seed `0`, 500 decisions per episode, 192 episodes, and 480 seconds per execution.
-- [ ] 4.2 Rebuild and verify the optional module from the registered identities, run the exact compatibility gate and registered commit gate, then execute exactly one primary study and one identical reproduction without training, gameplay, Java, CommunicationMod, or new live evidence.
-- [ ] 4.3 Publish the positive, negative, or blocked result without tuning or alternate cohorts; report floors, intervals, victories, category coverage, limitations, and every all-false downstream authority flag.
+- [x] 4.2 Rebuild and verify the optional module from the registered identities, run the exact compatibility gate and registered commit gate, then execute exactly one primary study and one identical reproduction without training, gameplay, Java, CommunicationMod, or new live evidence.
+- [x] 4.3 Publish the positive, negative, or blocked result without tuning or alternate cohorts; report floors, intervals, victories, category coverage, limitations, and every all-false downstream authority flag.
 
 ## 5. Verification And Closeout
 
-- [ ] 5.1 Run focused pure regressions, opt-in native integration checks, canonical artifact rehash/replay checks, and Python compilation without launching a live game.
-- [ ] 5.2 Run the repository's registered commit gate, strict OpenSpec validation, scoped diff review, and process/CommunicationMod/checkpoint isolation checks; do not substitute an unbounded raw full-suite invocation.
-- [ ] 5.3 Perform a read-only final audit of cohort disjointness, model immutability, compatibility exclusion from quality metrics, native baseline legality, primary gate math, deterministic reproduction, provenance, authority, and managed artifact inventory.
+- [x] 5.1 Run focused pure regressions, opt-in native integration checks, canonical artifact rehash/replay checks, and Python compilation without launching a live game.
+- [x] 5.2 Run the repository's registered commit gate, strict OpenSpec validation, scoped diff review, and process/CommunicationMod/checkpoint isolation checks; do not substitute an unbounded raw full-suite invocation.
+- [x] 5.3 Perform a read-only final audit of cohort disjointness, model immutability, compatibility exclusion from quality metrics, native baseline legality, primary gate math, deterministic reproduction, provenance, authority, and managed artifact inventory.
 - [ ] 5.4 Update project direction and simulator documentation, sync accepted delta specs, archive the completed change, commit only scoped files, push `master`, and preserve all unrelated local artifacts.

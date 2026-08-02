@@ -8,11 +8,13 @@ The first real Ironclad A0 validation victory is a completed historical
 milestone. Run `1780479519.run` reached floor 51 with `victory=true`; the
 evidence is recorded in `reports/gameplay_validation_mechanics_audit.md`.
 
-The bounded non-combat simulator-training smoke covering card rewards, shops,
-events, and routes is complete. The current objective is to decide whether its
-simulator-only floor signal survives a separately registered fresh-cohort
-evaluation against meaningful fixed baselines. Another training pass, isolated
-victory, or healthy gameplay batch does not complete this phase.
+The bounded non-combat simulator-training smoke and its separately registered
+policy-validity study are complete. The smoke-trained ranker retained a positive
+signal against its seeded initialization but materially underperformed native
+SimpleAgent on the untouched primary cohort. The current objective is therefore
+to define a separate baseline-anchored warm-start stage before reconsidering
+formal non-combat RL. Another pass of the same training, an enlarged cohort, an
+isolated victory, or a healthy gameplay batch does not complete this phase.
 
 ## Training Boundary
 
@@ -91,30 +93,48 @@ unchanged, and five declined. Both initial and trained policies still won 0/64
 holdout runs. The verdict is `pipeline_demonstrated_with_holdout_signal`, with
 all downstream authority false.
 
+Adapter API v2 then exposed the upstream SimpleAgent's target action as exactly
+one current candidate on a baseline-following trajectory. The r3 fit bound
+adapter commit `a810d6d0ce92c1ebab8483fb8819163fc76d54fe` and checked 770 native
+target decisions across seeds `0..19` twice with four-category coverage,
+non-mutation, terminal outcomes, and 12/12 historical-prefix agreement.
+
+The registered policy-validity study used compatibility seeds `2000..2003` and
+fresh seeds `3000..3063`. Its primary and identical replay matched canonically.
+The trained policy averaged floor `14.5625`, seeded initial `11.796875`, and
+native SimpleAgent `19.96875`; all recorded 0/64 victories. Trained minus
+SimpleAgent was `-5.40625`, with registered 95% interval
+`[-7.875, -2.921875]`. Trained minus initial remained positive at `+2.765625`,
+with interval `[1.375, 4.25]`. The structurally valid verdict is
+`study_valid_without_baseline_signal`, and all downstream authority remains
+false.
+
 The next authorized sequence is:
 
 1. Preserve r1-r8, the completed r8 diagnosis/fix, and all external evidence
    byte-for-byte; do not prepare r9 or another replacement identity.
-2. Preserve the canonical feasibility input and deterministic JSON/Markdown
-   `not_demonstrated` report as the current pre-launch decision.
-3. Use a separate offline-first OpenSpec decision to choose among improving
-   and re-baselining the current gameplay policy, revising the outcome/reward
-   evidence contract, or registering a materially different study design.
-4. Preserve the completed smoke model and cohort as observed evidence; do not
-   tune it, rerun it, or reuse the observed holdout as a selection set.
-5. Permit a later replacement-qualification amendment only after a current,
-   source-comparable feasibility audit demonstrates the declared planning gate.
-6. Review a separate offline policy-validity study that freezes this model,
-   uses new disjoint seeds, compares it with meaningful fixed simulator
-   baselines, reports category-level behavior and failures, and grants no live
-   authority. Only replicated, baseline-relevant evidence may motivate a
-   formal-training proposal.
+2. Preserve the smoke and policy-validity registrations, cohorts, models, and
+   results as observed evidence; do not rerun or reuse them for selection.
+3. Do not start formal RL from the current smoke or treat its positive interval
+   against seeded initialization as evidence of policy competence.
+4. Route the next stage through a separate OpenSpec change: preregister native
+   SimpleAgent demonstrations, train a distinct warm-start ranker, and test
+   baseline parity on an untouched cohort.
+5. Treat SimpleAgent demonstrations as auxiliary supervision, not reward or
+   permanent ground truth, and preserve the full candidate action space.
+6. Keep Current and Bottled out of simulator training until a validated
+   feature/action bridge exists; Bottled remains diagnostic evidence only.
+7. Consider a bounded formal-RL proposal only after the warm-start policy
+   demonstrates a credible baseline floor on untouched evidence.
+8. Permit a later live replacement-qualification amendment only after a
+   current, source-comparable feasibility audit demonstrates its planning gate.
 
 ## Work Lanes
 
-The primary lane is non-combat RL readiness: validate the frozen smoke policy
-on fresh simulator cohorts and fixed baselines while keeping simulated and live
-evidence separate.
+The primary lane is non-combat RL readiness through a baseline-anchored
+warm-start: establish simulator parity with native SimpleAgent on untouched
+evidence before proposing formal RL, while keeping simulated and live evidence
+separate.
 
 Live gameplay is a maintenance and registered-evaluation lane only. Launch it
 for a crash, stuck state, repeated A-class simulator/mechanics defect, or an

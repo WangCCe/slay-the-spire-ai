@@ -1,0 +1,21 @@
+{
+  "artifact_hashes": {
+    "metrics.json": "4546b12ec3540cfba9251cabc270199254fe20f43e1459ab6ee99d71a44497f1",
+    "report.md": "90bb2865c6e345ce27c6910eebf1fe8bb79ce6632aa134aad72621ff687f9a03",
+    "trajectories.json": "1ea6eff0cf152a76cd5542e61dcded774bc4b5d7f81e69ee662fa0fef803f46a"
+  },
+  "authority": {
+    "formal_noncombat_rl": false,
+    "live_gameplay": false,
+    "live_policy_loading": false,
+    "live_study_launch": false,
+    "ope_reinterpretation": false,
+    "policy_promotion": false,
+    "qualification": false,
+    "simulator_policy_validity": false,
+    "simulator_training": false
+  },
+  "registration_sha256": "149a0ed451f52804561de34b213fb4602f6825740705b6c1cf98ab87e0748d10",
+  "schema_version": "noncombat-simulator-policy-validity-manifest-v1",
+  "verdict": "study_valid_without_baseline_signal"
+}

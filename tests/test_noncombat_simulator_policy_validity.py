@@ -47,6 +47,7 @@ from analysis_scripts.noncombat_simulator_training_smoke import (
     canonical_model_payload,
     evaluate_greedy_policy,
     hash_bound_files,
+    paired_bootstrap_interval,
     validate_bound_fit_evidence,
 )
 
@@ -332,6 +333,98 @@ def test_checked_in_policy_validity_registration_is_hash_closed_and_disjoint():
         | set(cohorts["compatibility_seeds"])
     )
     assert set(cohorts["fresh_seeds"]).isdisjoint(prior)
+
+
+def test_published_policy_validity_result_is_frozen_reproducible_and_negative():
+    root = REPO_ROOT / "reports" / "noncombat_simulator_policy_validity_20260802"
+    expected_files = {
+        "artifact_manifest.json": (
+            "5cbf3d7860318db7aae5b0a1f2edea2a20e75b81ed9ccf1c6fe7722f55a41f0b",
+            828,
+        ),
+        "execution_journal.json": (
+            "eca7f0f7576ce35ea8c3a6ea5f190a4a0a34dc95927718eeaeae20be87e7a939",
+            228,
+        ),
+        "metrics.json": (
+            "4546b12ec3540cfba9251cabc270199254fe20f43e1459ab6ee99d71a44497f1",
+            3006,
+        ),
+        "report.md": (
+            "90bb2865c6e345ce27c6910eebf1fe8bb79ce6632aa134aad72621ff687f9a03",
+            1797,
+        ),
+        "trajectories.json": (
+            "1ea6eff0cf152a76cd5542e61dcded774bc4b5d7f81e69ee662fa0fef803f46a",
+            785574,
+        ),
+    }
+    assert {path.name for path in root.iterdir()} == set(expected_files)
+    for name, (expected_sha256, expected_size) in expected_files.items():
+        path = root / name
+        assert path.stat().st_size == expected_size
+        assert sha256_file(path) == expected_sha256
+
+    manifest = validate_artifact_directory(root)
+    metrics = json.loads((root / "metrics.json").read_text(encoding="utf-8"))
+    trajectories = json.loads(
+        (root / "trajectories.json").read_text(encoding="utf-8")
+    )
+    assert manifest["registration_sha256"] == (
+        "149a0ed451f52804561de34b213fb4602f6825740705b6c1cf98ab87e0748d10"
+    )
+    assert metrics["classification"]["verdict"] == (
+        "study_valid_without_baseline_signal"
+    )
+    assert metrics["classification"]["quality"] == (
+        "baseline_signal_not_demonstrated"
+    )
+    assert metrics["classification"]["blockers"] == []
+    assert set(metrics["classification"]["checks"].values()) == {True}
+    assert set(manifest["authority"].values()) == {False}
+    assert trajectories["compatibility"]["quality_rows_included"] == 0
+    assert trajectories["compatibility"]["seeds"] == list(COMPATIBILITY_SEEDS)
+
+    fresh_seeds = list(FRESH_SEEDS)
+    expected_floors = {
+        "native_simple_agent": 19.96875,
+        "seeded_initial": 11.796875,
+        "smoke_trained": 14.5625,
+    }
+    for policy_id, policy in trajectories["policies"].items():
+        rows = policy["rows"]
+        assert [row["seed"] for row in rows] == fresh_seeds
+        assert policy["all_categories"] == ["card_reward", "event", "route", "shop"]
+        assert all(row["candidate_legality"] is True for row in rows)
+        assert sum(row["outcome"] == "player_victory" for row in rows) == 0
+        assert sum(row["terminal_floor"] for row in rows) / len(rows) == (
+            expected_floors[policy_id]
+        )
+
+    for comparison_id, comparison in trajectories["comparisons"].items():
+        rows = comparison["paired_rows"]
+        assert [row["seed"] for row in rows] == fresh_seeds
+        recomputed = paired_bootstrap_interval(
+            [row["floor_difference"] for row in rows],
+            seed=0,
+            resamples=10_000,
+            confidence_level=0.95,
+        )
+        assert recomputed == metrics["comparisons"][comparison_id][
+            "floor_difference_ci"
+        ]
+    assert metrics["comparisons"]["trained_minus_native_simple_agent"][
+        "floor_difference_ci"
+    ] == {
+        "confidence_level": 0.95,
+        "lower": -7.875,
+        "mean": -5.40625,
+        "resamples": 10_000,
+        "upper": -2.921875,
+    }
+    assert trajectories["replay_execution_sha256"] == (
+        "2c3b192aaa8d2f871a831da05a0b21f1c92ec9ec7db7a262ca9916bf95323af1"
+    )
 
 
 @pytest.mark.parametrize(
