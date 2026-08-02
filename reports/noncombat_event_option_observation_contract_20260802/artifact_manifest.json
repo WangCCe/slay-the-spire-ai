@@ -1,0 +1,27 @@
+{
+  "adapter_ready": false,
+  "artifact_hashes": {
+    "configuration.json": "61b130a2d6563a9abe5eb1dc7206b9aa5fea4c6039bc3e7ac5c12386b5e13aed",
+    "contract.json": "785e5db26d4cecaa843c7ee3e9e276fdc98c4b77b6a61e88f4520824a50bf3fc",
+    "metrics.json": "19b4ba12209d13d47d0fef35264e1d2ec9bacb7be2bf993b0e02bd7505c7c4f9",
+    "report.md": "fe4524970c99d6e919d419b6be06038ea03b0e8cb0d244db4013926213615cc5"
+  },
+  "authority": {
+    "adapter_implementation_authorized": false,
+    "baseline_floor_authorized": false,
+    "compatibility_evaluation_authorized": false,
+    "formal_rl_readiness_authorized": false,
+    "gameplay_authorized": false,
+    "model_fitting_authorized": false,
+    "promotion_authorized": false,
+    "resolver_implementation_authorized": false,
+    "reward_authorized": false,
+    "seed_use_authorized": false,
+    "simulator_execution_authorized": false,
+    "training_authorized": false
+  },
+  "event_count": 25,
+  "registration_sha256": "3fb637a44d17d4081cba3e0ff7ba868811c1312a08c904ee3b1f5deeb1c3183b",
+  "resolver_ready": false,
+  "schema_version": "noncombat-event-option-observation-contract-manifest-v1"
+}

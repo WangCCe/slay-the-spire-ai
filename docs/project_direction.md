@@ -60,19 +60,20 @@ at the first unsupported event identity, `The Cleric`. Native module, build,
 simulator, source, and submodule identities all matched. This is a semantic
 coverage blocker, not a policy-quality result, and those seeds remain consumed.
 
-The subsequent hash-bound static audit now has a comment-aware r2 result and is
-strictly reproducible. It accounts for 47 Current aliases across 18 decision
-branches and maps them to 25 canonical upstream events. The immutable r1 label
-matrix is superseded: r2 removes exactly four entries derived from commented C++
-output and changes no event, alias, status, or authority count. Twenty-four
-events are `source_complete`; `Cursed Tome` is `source_partial` because its legal
-masks are dynamic expressions of `eventData`. Zero aliases are unaccounted, but
-the audit correctly remains `resolver_ready=false`. The next objective is a
-separately reviewed source-bound adapter contract that resolves this dynamic
-phase mapping and defines fail-closed semantics for all 25 events before any
-resolver change or new compatibility evaluation. Do not start another imitation
-POC, unregistered simulator cohort, gameplay batch, or formal non-combat RL
-training.
+The subsequent hash-bound static audit now has a comment-aware r2 result and a
+strictly reproducible total observation contract. The contract accounts for all
+25 canonical events and 47 Current aliases with 23 static rules, one explicit
+five-phase `Cursed Tome` rule, and one `N'loth` offered-relic rule. It also makes
+the action boundary explicit: contiguous Current option positions are not
+necessarily simulator choice indices, so sparse legal sets must retain a
+reversible position-to-index mapping. `N'loth` still requires a future adapter
+to expose offered relic slot, id, and name under
+`state.decision_context.offered_relics`. Zero source surfaces are unaccounted,
+but resolver and adapter readiness correctly remain false. The next objective
+is a separately reviewed implementation change that extends that snapshot,
+consumes the contract in a total fail-closed resolver, and translates Current
+positions through the validated mapping. Do not start another imitation POC,
+unregistered simulator cohort, gameplay batch, or formal non-combat RL training.
 
 ## Training Boundary
 
@@ -97,16 +98,17 @@ zero target-supported victories. The next prerequisite is the non-teacher
 baseline floor; passing it would not override the outcome blocker or authorize
 training.
 
-The immediate baseline-lane blocker is now the event adapter contract, not
-event discovery. The r2 successor closes the frozen `Liars Game` row and passes
-all four Stage 1 categories, but its one registered Stage 2 execution stops on
-unsupported `The Cleric` semantics. The reused seeds `2000..2003` are consumed
-by this gate and SHALL NOT become an iterative event-debugging cohort. The
-completed static audit covers all 25 Current-relevant events and all 47 aliases,
-with 24 `source_complete` rows and one explicit `Cursed Tome` dynamic-mask
-blocker. A separate contract must now bind exact state and phase semantics,
-resolve that blocker, and prove total fail-closed resolver behavior before
-another own-trajectory check can even be proposed.
+The immediate baseline-lane blocker is now contract implementation, not event
+discovery or contract definition. The r2 bridge successor closes the frozen
+`Liars Game` row and passes all four Stage 1 categories, but its one registered
+Stage 2 execution stops on unsupported `The Cleric` semantics. The reused seeds
+`2000..2003` are consumed by this gate and SHALL NOT become an iterative
+event-debugging cohort. The completed total observation contract covers all 25
+Current-relevant events and all 47 aliases, resolves the five `Cursed Tome`
+phases, specifies `Mindbloom` to `MindBloom` identity normalization, and records
+the exact `N'loth` snapshot extension. A separate implementation must now expose
+that context, consume the fail-closed rules, and preserve reversible option
+position mapping before another own-trajectory check can even be proposed.
 
 The active v2 known-propensity outcome-evidence study is stopped before any
 replacement qualification or study start. R7 remains immutable and retired
@@ -246,24 +248,25 @@ The next authorized sequence is:
     with a fail-closed `The Cleric` coverage blocker. Do not retry seeds
     `2000..2003`, change the frozen rows, or patch events one at a time around
     that observed trajectory.
-12. Preserve both Current event-semantics coverage registrations and canonical
-    artifact sets. Keep r1 immutable but use the comment-aware r2 inventory as
-    the current source-surface evidence. Treat its 24 `source_complete` rows as
-    source-surface evidence, not resolver readiness. Define a separately
-    reviewed adapter contract for all 25 events, including exact `Cursed Tome`
-    phase masks and fail-closed unknown-state behavior, before changing resolver
-    code or proposing any new compatibility cohort.
+12. Preserve both Current event-semantics coverage registrations, the corrected
+    r2 artifact set, and the completed total observation contract. Keep r1
+    immutable but use r2 as the source-surface input. Treat the contract's 25
+    events, 47 aliases, exact `Cursed Tome` phases, `N'loth` context schema, and
+    reversible position mapping as implementation requirements, not resolver or
+    adapter readiness. Implement them only in a separately reviewed change
+    before proposing any new compatibility cohort.
 
 ## Work Lanes
 
-The primary lane is now the separately reviewed adapter contract for total
-Current-relevant event-option semantic coverage. It must consume the corrected
-r2 static inventory, resolve the dynamic `Cursed Tome` phase masks from bound
-upstream sources, and specify exact fail-closed behavior before resolver code is
-extended. Only after that contract is implemented and verified may a new
-preregistered compatibility evaluation be considered. A non-teacher
-baseline-floor study remains downstream of structural compatibility; the
-target-supported-outcome lane remains blocked and separate.
+The primary lane is now a separately reviewed implementation of the completed
+event-option observation contract. It must extend the native snapshot with the
+exact `N'loth` offered-relic fields, make the resolver consume the registered
+25-event rules without generic fallbacks, and translate Current option positions
+through the contract's simulator-index mapping. Only after focused regressions,
+the repository commit gate, and a separately preregistered evaluation plan may
+a new compatibility cohort be considered. A non-teacher baseline-floor study
+remains downstream of structural compatibility; the target-supported-outcome
+lane remains blocked and separate.
 
 Live gameplay is a maintenance and registered-evaluation lane only. Launch it
 for a crash, stuck state, repeated A-class simulator/mechanics defect, or an

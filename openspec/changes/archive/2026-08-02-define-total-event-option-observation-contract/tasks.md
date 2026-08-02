@@ -13,12 +13,12 @@
 
 ## 3. Registered Contract Evidence
 
-- [ ] 3.1 Commit the reviewed implementation boundary, then create one registration bound to that commit, the exact r2 registration/inventory/manifest, Current source, selected upstream sources, explicit event rules, expected outputs, and all-false authority.
-- [ ] 3.2 Publish the canonical contract once without native or gameplay execution and strictly recompute all managed artifacts byte-for-byte.
-- [ ] 3.3 Confirm 25 events, 47 aliases, zero unaccounted surfaces, complete static and Cursed Tome mappings, the explicit N'loth snapshot-extension requirement, resolver/adapter readiness false, and no runtime authority.
+- [x] 3.1 Commit the reviewed implementation boundary, then create one registration bound to that commit, the exact r2 registration/inventory/manifest, Current source, selected upstream sources, explicit event rules, expected outputs, and all-false authority.
+- [x] 3.2 Publish the canonical contract once without native or gameplay execution and strictly recompute all managed artifacts byte-for-byte.
+- [x] 3.3 Confirm 25 events, 47 aliases, zero unaccounted surfaces, complete static and Cursed Tome mappings, the explicit N'loth snapshot-extension requirement, resolver/adapter readiness false, and no runtime authority.
 
 ## 4. Verification And Closeout
 
-- [ ] 4.1 Write the contract closeout and update project direction to name the later resolver/adapter implementation boundary without authorizing a compatibility cohort.
-- [ ] 4.2 Run focused validator pytest with an isolated writable basetemp, strict change validation, global OpenSpec validation, and the repository commit test gate; do not run the raw long-suite entrypoint or launch gameplay/native simulation.
-- [ ] 4.3 Sync the new capability spec, archive the completed change, commit cohesive evidence, and push `master`.
+- [x] 4.1 Write the contract closeout and update project direction to name the later resolver/adapter implementation boundary without authorizing a compatibility cohort.
+- [x] 4.2 Run focused validator pytest with an isolated writable basetemp, strict change validation, global OpenSpec validation, and the repository commit test gate; do not run the raw long-suite entrypoint or launch gameplay/native simulation.
+- [x] 4.3 Sync the new capability spec, archive the completed change, commit cohesive evidence, and push `master`.

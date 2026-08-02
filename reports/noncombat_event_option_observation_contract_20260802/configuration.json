@@ -1,0 +1,104 @@
+{
+  "registration": {
+    "audit": {
+      "directory": "reports/noncombat_event_semantics_coverage_audit_20260802_r2",
+      "inventory": {
+        "path": "reports/noncombat_event_semantics_coverage_audit_20260802_r2/event_inventory.json",
+        "sha256": "f30c2c8345d858c78bdbefb414b29dea2d753e6216848716ccdcd8d6c29c8066",
+        "size_bytes": 89514
+      },
+      "manifest": {
+        "path": "reports/noncombat_event_semantics_coverage_audit_20260802_r2/artifact_manifest.json",
+        "sha256": "f00356b0690556898425992b968414cc1de43e853623df99ff1636cb125c9c12",
+        "size_bytes": 1044
+      },
+      "registration": {
+        "path": "reports/noncombat_event_semantics_coverage_audit_20260802_r2_input.json",
+        "sha256": "c8ce94fbe1337ec9e245c1747ffffb0c9bd48594414410234da7d06d5ff62d6a",
+        "size_bytes": 6764
+      }
+    },
+    "authority": {
+      "adapter_implementation_authorized": false,
+      "baseline_floor_authorized": false,
+      "compatibility_evaluation_authorized": false,
+      "formal_rl_readiness_authorized": false,
+      "gameplay_authorized": false,
+      "model_fitting_authorized": false,
+      "promotion_authorized": false,
+      "resolver_implementation_authorized": false,
+      "reward_authorized": false,
+      "seed_use_authorized": false,
+      "simulator_execution_authorized": false,
+      "training_authorized": false
+    },
+    "expected": {
+      "alias_count": 47,
+      "event_count": 25,
+      "registry_sha256": "cb525f7d077dcdc09d8c302625ac00dcf2e30aa9a60dffc8bafbbfa50eec9bb0",
+      "rule_kind_counts": {
+        "cursed_tome_phase": 1,
+        "nloth_relic": 1,
+        "static": 23
+      },
+      "unaccounted_surface_count": 0
+    },
+    "implementation": {
+      "commit": "0b08b59c9de6710eba81a3ba56bc540fc7d75ff8",
+      "source_files": [
+        "analysis_scripts/noncombat_event_option_observation_contract.py"
+      ],
+      "source_sha256": "6ed2f3cf517c7f06905577f2928e3253ab65dd42449ea4ac3323145e933f3369"
+    },
+    "output": {
+      "artifact_names": [
+        "configuration.json",
+        "contract.json",
+        "metrics.json",
+        "report.md",
+        "artifact_manifest.json"
+      ],
+      "directory": "reports/noncombat_event_option_observation_contract_20260802"
+    },
+    "schema_version": "noncombat-event-option-observation-contract-input-v1",
+    "source_identity": {
+      "current_repository_commit": "585135f8209b90d4145bc1c1f1b81c6446d5ff8d",
+      "current_source": {
+        "path": "spirecomm/ai/agent.py",
+        "sha256": "a495b56bcf2367b34e74cf679bbc8ae0a51c9509723236b2240c7577eef2a9f5",
+        "size_bytes": 230849
+      },
+      "simulator_parent_commit": "7476a81954020087da31d41d16fddf475746ec2d",
+      "simulator_source_sha256": "a3f98721ec37373b1b00aef660832a3307f0186ba0614d07a3b1e7de8ab2e46a",
+      "upstream_source_files": {
+        "display_labels": {
+          "path": "src/sim/ConsoleSimulator.cpp",
+          "sha256": "f17878b7579bdeb484387e890be3c7caaa42f76c3edd7f96eacb64656e5458b4",
+          "size_bytes": 38159
+        },
+        "event_identities": {
+          "path": "include/constants/Events.h",
+          "sha256": "d558be77e7f187784a7eb66c21a537b458304d7dcbc934c6498d635a74cb97f1",
+          "size_bytes": 7182
+        },
+        "event_save_ids": {
+          "path": "include/constants/SaveFileMappings.h",
+          "sha256": "bff98a7990a58031f6d1f0ca87c420941125108f3c51b0bee4f197590d8091e5",
+          "size_bytes": 38316
+        },
+        "execution": {
+          "path": "src/game/GameContext.cpp",
+          "sha256": "aad9fcf6db5a667858185256722065d61167393f891ee8a717e4e37b4c28a053",
+          "size_bytes": 118266
+        },
+        "legal_actions": {
+          "path": "src/sim/search/GameAction.cpp",
+          "sha256": "8a84d545333b9a6a1a0b2bd8d5e705bd1821b940fa6799b52ebf4bcdd4638d9b",
+          "size_bytes": 26442
+        }
+      }
+    }
+  },
+  "registration_sha256": "3fb637a44d17d4081cba3e0ff7ba868811c1312a08c904ee3b1f5deeb1c3183b",
+  "schema_version": "noncombat-event-option-observation-contract-input-v1"
+}

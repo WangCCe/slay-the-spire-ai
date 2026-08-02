@@ -1,0 +1,728 @@
+{
+  "adapter_ready": false,
+  "alias_count": 47,
+  "authority": {
+    "adapter_implementation_authorized": false,
+    "baseline_floor_authorized": false,
+    "compatibility_evaluation_authorized": false,
+    "formal_rl_readiness_authorized": false,
+    "gameplay_authorized": false,
+    "model_fitting_authorized": false,
+    "promotion_authorized": false,
+    "resolver_implementation_authorized": false,
+    "reward_authorized": false,
+    "seed_use_authorized": false,
+    "simulator_execution_authorized": false,
+    "training_authorized": false
+  },
+  "event_count": 25,
+  "events": [
+    {
+      "aliases": [
+        "Back to Basics",
+        "BackToBasics"
+      ],
+      "canonical_id": "Back to Basics",
+      "current_event_id": "Back to Basics",
+      "event_game_name": "Ancient Writing",
+      "kind": "static",
+      "options": [
+        {
+          "label": "Elegance",
+          "simulator_choice_index": 0
+        },
+        {
+          "label": "Simplicity",
+          "simulator_choice_index": 1
+        }
+      ],
+      "upstream_enum": "ANCIENT_WRITING",
+      "upstream_event_id": "Back to Basics"
+    },
+    {
+      "aliases": [
+        "Big Fish",
+        "BigFish"
+      ],
+      "canonical_id": "Big Fish",
+      "current_event_id": "Big Fish",
+      "event_game_name": "Big Fish",
+      "kind": "static",
+      "options": [
+        {
+          "label": "Banana",
+          "simulator_choice_index": 0
+        },
+        {
+          "label": "Donut",
+          "simulator_choice_index": 1
+        },
+        {
+          "label": "Box",
+          "simulator_choice_index": 2
+        }
+      ],
+      "upstream_enum": "BIG_FISH",
+      "upstream_event_id": "Big Fish"
+    },
+    {
+      "aliases": [
+        "Cursed Tome",
+        "CursedTome"
+      ],
+      "canonical_id": "Cursed Tome",
+      "current_event_id": "Cursed Tome",
+      "event_game_name": "Cursed Tome",
+      "kind": "cursed_tome_phase",
+      "options": [
+        {
+          "label": "Read",
+          "simulator_choice_index": 0
+        },
+        {
+          "label": "Leave",
+          "simulator_choice_index": 1
+        },
+        {
+          "label": "Continue",
+          "simulator_choice_index": 2
+        },
+        {
+          "label": "Continue",
+          "simulator_choice_index": 3
+        },
+        {
+          "label": "Continue",
+          "simulator_choice_index": 4
+        },
+        {
+          "label": "Take",
+          "simulator_choice_index": 5
+        },
+        {
+          "label": "Stop",
+          "simulator_choice_index": 6
+        }
+      ],
+      "phases": [
+        {
+          "event_data": 0,
+          "simulator_choice_indices": [
+            0,
+            1
+          ]
+        },
+        {
+          "event_data": 1,
+          "simulator_choice_indices": [
+            2
+          ]
+        },
+        {
+          "event_data": 2,
+          "simulator_choice_indices": [
+            3
+          ]
+        },
+        {
+          "event_data": 3,
+          "simulator_choice_indices": [
+            4
+          ]
+        },
+        {
+          "event_data": 4,
+          "simulator_choice_indices": [
+            5,
+            6
+          ]
+        }
+      ],
+      "upstream_enum": "CURSED_TOME",
+      "upstream_event_id": "Cursed Tome"
+    },
+    {
+      "aliases": [
+        "Dead Adventurer",
+        "DeadAdventurer"
+      ],
+      "canonical_id": "Dead Adventurer",
+      "current_event_id": "Dead Adventurer",
+      "event_game_name": "Dead Adventurer",
+      "kind": "static",
+      "options": [
+        {
+          "label": "Search",
+          "simulator_choice_index": 0
+        },
+        {
+          "label": "Escape",
+          "simulator_choice_index": 1
+        }
+      ],
+      "upstream_enum": "DEAD_ADVENTURER",
+      "upstream_event_id": "Dead Adventurer"
+    },
+    {
+      "aliases": [
+        "Drug Dealer"
+      ],
+      "canonical_id": "Drug Dealer",
+      "current_event_id": "Drug Dealer",
+      "event_game_name": "Augmenter",
+      "kind": "static",
+      "options": [
+        {
+          "label": "Test J.A.X",
+          "simulator_choice_index": 0
+        },
+        {
+          "label": "Become Test Subject",
+          "simulator_choice_index": 1
+        },
+        {
+          "label": "Ingest Mutagens",
+          "simulator_choice_index": 2
+        }
+      ],
+      "upstream_enum": "AUGMENTER",
+      "upstream_event_id": "Drug Dealer"
+    },
+    {
+      "aliases": [
+        "Face Trader",
+        "FaceTrader"
+      ],
+      "canonical_id": "Face Trader",
+      "current_event_id": "Face Trader",
+      "event_game_name": "Face Trader",
+      "kind": "static",
+      "options": [
+        {
+          "label": "Touch",
+          "simulator_choice_index": 0
+        },
+        {
+          "label": "Trade",
+          "simulator_choice_index": 1
+        },
+        {
+          "label": "Leave",
+          "simulator_choice_index": 2
+        }
+      ],
+      "upstream_enum": "FACE_TRADER",
+      "upstream_event_id": "Face Trader"
+    },
+    {
+      "aliases": [
+        "Forgotten Altar",
+        "ForgottenAltar"
+      ],
+      "canonical_id": "Forgotten Altar",
+      "current_event_id": "Forgotten Altar",
+      "event_game_name": "Forgotten Altar",
+      "kind": "static",
+      "options": [
+        {
+          "label": "Offer: Golden Idol",
+          "simulator_choice_index": 0
+        },
+        {
+          "label": "Sacrifice",
+          "simulator_choice_index": 1
+        },
+        {
+          "label": "Desecrate",
+          "simulator_choice_index": 2
+        }
+      ],
+      "upstream_enum": "FORGOTTEN_ALTAR",
+      "upstream_event_id": "Forgotten Altar"
+    },
+    {
+      "aliases": [
+        "Council of Ghosts",
+        "CouncilOfGhosts",
+        "Ghosts"
+      ],
+      "canonical_id": "Ghosts",
+      "current_event_id": "Ghosts",
+      "event_game_name": "Council of Ghosts",
+      "kind": "static",
+      "options": [
+        {
+          "label": "Accept",
+          "simulator_choice_index": 0
+        },
+        {
+          "label": "Refuse",
+          "simulator_choice_index": 1
+        }
+      ],
+      "upstream_enum": "GHOSTS",
+      "upstream_event_id": "Ghosts"
+    },
+    {
+      "aliases": [
+        "Golden Idol",
+        "GoldenIdol"
+      ],
+      "canonical_id": "Golden Idol",
+      "current_event_id": "Golden Idol",
+      "event_game_name": "Golden Idol",
+      "kind": "static",
+      "options": [
+        {
+          "label": "Take",
+          "simulator_choice_index": 0
+        },
+        {
+          "label": "Leave",
+          "simulator_choice_index": 1
+        },
+        {
+          "label": "Outrun",
+          "simulator_choice_index": 2
+        },
+        {
+          "label": "Smash",
+          "simulator_choice_index": 3
+        },
+        {
+          "label": "Hide",
+          "simulator_choice_index": 4
+        }
+      ],
+      "upstream_enum": "GOLDEN_IDOL",
+      "upstream_event_id": "Golden Idol"
+    },
+    {
+      "aliases": [
+        "Golden Shrine",
+        "GoldenShrine"
+      ],
+      "canonical_id": "Golden Shrine",
+      "current_event_id": "Golden Shrine",
+      "event_game_name": "Golden Shrine",
+      "kind": "static",
+      "options": [
+        {
+          "label": "Pray",
+          "simulator_choice_index": 0
+        },
+        {
+          "label": "Desecrate",
+          "simulator_choice_index": 1
+        },
+        {
+          "label": "Leave",
+          "simulator_choice_index": 2
+        }
+      ],
+      "upstream_enum": "GOLDEN_SHRINE",
+      "upstream_event_id": "Golden Shrine"
+    },
+    {
+      "aliases": [
+        "Knowing Skull"
+      ],
+      "canonical_id": "Knowing Skull",
+      "current_event_id": "Knowing Skull",
+      "event_game_name": "Knowing Skull",
+      "kind": "static",
+      "options": [
+        {
+          "label": "Riches?",
+          "simulator_choice_index": 0
+        },
+        {
+          "label": "Success?",
+          "simulator_choice_index": 1
+        },
+        {
+          "label": "A Pick Me Up?",
+          "simulator_choice_index": 2
+        },
+        {
+          "label": "How do I leave?",
+          "simulator_choice_index": 3
+        }
+      ],
+      "upstream_enum": "KNOWING_SKULL",
+      "upstream_event_id": "Knowing Skull"
+    },
+    {
+      "aliases": [
+        "Liars Game"
+      ],
+      "canonical_id": "Liars Game",
+      "current_event_id": "Liars Game",
+      "event_game_name": "The Ssssserpent",
+      "kind": "static",
+      "options": [
+        {
+          "label": "Agree",
+          "simulator_choice_index": 0
+        },
+        {
+          "label": "Disagree",
+          "simulator_choice_index": 1
+        }
+      ],
+      "upstream_enum": "THE_SSSSSERPENT",
+      "upstream_event_id": "Liars Game"
+    },
+    {
+      "aliases": [
+        "Living Wall",
+        "LivingWall"
+      ],
+      "canonical_id": "Living Wall",
+      "current_event_id": "Living Wall",
+      "event_game_name": "Living Wall",
+      "kind": "static",
+      "options": [
+        {
+          "label": "Forget",
+          "simulator_choice_index": 0
+        },
+        {
+          "label": "Change",
+          "simulator_choice_index": 1
+        },
+        {
+          "label": "Grow",
+          "simulator_choice_index": 2
+        }
+      ],
+      "upstream_enum": "LIVING_WALL",
+      "upstream_event_id": "Living Wall"
+    },
+    {
+      "aliases": [
+        "Masked Bandits",
+        "MaskedBandits"
+      ],
+      "canonical_id": "Masked Bandits",
+      "current_event_id": "Masked Bandits",
+      "event_game_name": "Masked Bandits",
+      "kind": "static",
+      "options": [
+        {
+          "label": "Pay",
+          "simulator_choice_index": 0
+        },
+        {
+          "label": "Fight!",
+          "simulator_choice_index": 1
+        }
+      ],
+      "upstream_enum": "MASKED_BANDITS",
+      "upstream_event_id": "Masked Bandits"
+    },
+    {
+      "aliases": [
+        "Mind Bloom",
+        "MindBloom"
+      ],
+      "canonical_id": "MindBloom",
+      "current_event_id": "MindBloom",
+      "event_game_name": "Mindbloom",
+      "kind": "static",
+      "options": [
+        {
+          "label": "I am War",
+          "simulator_choice_index": 0
+        },
+        {
+          "label": "I am Awake",
+          "simulator_choice_index": 1
+        },
+        {
+          "label": "I am Rich",
+          "simulator_choice_index": 2
+        },
+        {
+          "label": "I am Healthy",
+          "simulator_choice_index": 3
+        }
+      ],
+      "upstream_enum": "MINDBLOOM",
+      "upstream_event_id": "Mindbloom"
+    },
+    {
+      "aliases": [
+        "Mushrooms",
+        "The Mushroom Lair"
+      ],
+      "canonical_id": "Mushrooms",
+      "current_event_id": "Mushrooms",
+      "event_game_name": "Hypnotizing Colored Mushrooms",
+      "kind": "static",
+      "options": [
+        {
+          "label": "Stomp",
+          "simulator_choice_index": 0
+        },
+        {
+          "label": "Eat",
+          "simulator_choice_index": 1
+        }
+      ],
+      "upstream_enum": "HYPNOTIZING_COLORED_MUSHROOMS",
+      "upstream_event_id": "Mushrooms"
+    },
+    {
+      "aliases": [
+        "Mysterious Sphere",
+        "MysteriousSphere"
+      ],
+      "canonical_id": "Mysterious Sphere",
+      "current_event_id": "Mysterious Sphere",
+      "event_game_name": "Mysterious Sphere",
+      "kind": "static",
+      "options": [
+        {
+          "label": "Open Sphere",
+          "simulator_choice_index": 0
+        },
+        {
+          "label": "Leave",
+          "simulator_choice_index": 1
+        }
+      ],
+      "upstream_enum": "MYSTERIOUS_SPHERE",
+      "upstream_event_id": "Mysterious Sphere"
+    },
+    {
+      "aliases": [
+        "N'loth",
+        "Nloth",
+        "N\u2019loth"
+      ],
+      "canonical_id": "N'loth",
+      "current_event_id": "N'loth",
+      "event_game_name": "N'loth",
+      "kind": "nloth_relic",
+      "options": [
+        {
+          "label_template": "Offer {relic_name}",
+          "simulator_choice_index": 0
+        },
+        {
+          "label_template": "Offer {relic_name}",
+          "simulator_choice_index": 1
+        },
+        {
+          "label": "Leave",
+          "simulator_choice_index": 2
+        }
+      ],
+      "required_context": {
+        "offered_relics_path": "state.decision_context.offered_relics",
+        "record_fields": [
+          "relic_id",
+          "relic_name",
+          "relic_slot",
+          "simulator_choice_index"
+        ],
+        "snapshot_relics_path": "state.relics",
+        "source_fields": [
+          "GameContext.info.relicIdx0",
+          "GameContext.info.relicIdx1"
+        ]
+      },
+      "upstream_enum": "NLOTH",
+      "upstream_event_id": "Nloth"
+    },
+    {
+      "aliases": [
+        "Note For Yourself",
+        "NoteForYourself"
+      ],
+      "canonical_id": "Note For Yourself",
+      "current_event_id": "Note For Yourself",
+      "event_game_name": "Note For Yourself",
+      "kind": "static",
+      "options": [
+        {
+          "label": "Take and Give",
+          "simulator_choice_index": 0
+        },
+        {
+          "label": "Ignore",
+          "simulator_choice_index": 1
+        }
+      ],
+      "upstream_enum": "NOTE_FOR_YOURSELF",
+      "upstream_event_id": "Note For Yourself"
+    },
+    {
+      "aliases": [
+        "Shining Light",
+        "ShiningLight"
+      ],
+      "canonical_id": "Shining Light",
+      "current_event_id": "Shining Light",
+      "event_game_name": "Shining Light",
+      "kind": "static",
+      "options": [
+        {
+          "label": "Enter",
+          "simulator_choice_index": 0
+        },
+        {
+          "label": "Leave",
+          "simulator_choice_index": 1
+        }
+      ],
+      "upstream_enum": "SHINING_LIGHT",
+      "upstream_event_id": "Shining Light"
+    },
+    {
+      "aliases": [
+        "Cleric",
+        "The Cleric"
+      ],
+      "canonical_id": "The Cleric",
+      "current_event_id": "The Cleric",
+      "event_game_name": "The Cleric",
+      "kind": "static",
+      "options": [
+        {
+          "label": "Heal",
+          "simulator_choice_index": 0
+        },
+        {
+          "label": "Purify",
+          "simulator_choice_index": 1
+        },
+        {
+          "label": "Leave",
+          "simulator_choice_index": 2
+        }
+      ],
+      "upstream_enum": "THE_CLERIC",
+      "upstream_event_id": "The Cleric"
+    },
+    {
+      "aliases": [
+        "The Library"
+      ],
+      "canonical_id": "The Library",
+      "current_event_id": "The Library",
+      "event_game_name": "The Library",
+      "kind": "static",
+      "options": [
+        {
+          "label": "Read",
+          "simulator_choice_index": 0
+        },
+        {
+          "label": "Sleep",
+          "simulator_choice_index": 1
+        }
+      ],
+      "upstream_enum": "THE_LIBRARY",
+      "upstream_event_id": "The Library"
+    },
+    {
+      "aliases": [
+        "Mausoleum",
+        "The Mausoleum"
+      ],
+      "canonical_id": "The Mausoleum",
+      "current_event_id": "The Mausoleum",
+      "event_game_name": "The Mausoleum",
+      "kind": "static",
+      "options": [
+        {
+          "label": "Open Coffin",
+          "simulator_choice_index": 0
+        },
+        {
+          "label": "Leave",
+          "simulator_choice_index": 1
+        }
+      ],
+      "upstream_enum": "THE_MAUSOLEUM",
+      "upstream_event_id": "The Mausoleum"
+    },
+    {
+      "aliases": [
+        "Vampires"
+      ],
+      "canonical_id": "Vampires",
+      "current_event_id": "Vampires",
+      "event_game_name": "Vampires(?)",
+      "kind": "static",
+      "options": [
+        {
+          "label": "Offer",
+          "simulator_choice_index": 0
+        },
+        {
+          "label": "Accept",
+          "simulator_choice_index": 1
+        },
+        {
+          "label": "Refuse",
+          "simulator_choice_index": 2
+        }
+      ],
+      "upstream_enum": "VAMPIRES",
+      "upstream_event_id": "Vampires"
+    },
+    {
+      "aliases": [
+        "World of Goop",
+        "WorldOfGoop"
+      ],
+      "canonical_id": "World of Goop",
+      "current_event_id": "World of Goop",
+      "event_game_name": "World of Goop",
+      "kind": "static",
+      "options": [
+        {
+          "label": "Gather Gold",
+          "simulator_choice_index": 0
+        },
+        {
+          "label": "Leave It",
+          "simulator_choice_index": 1
+        }
+      ],
+      "upstream_enum": "WORLD_OF_GOOP",
+      "upstream_event_id": "World of Goop"
+    }
+  ],
+  "registry_sha256": "cb525f7d077dcdc09d8c302625ac00dcf2e30aa9a60dffc8bafbbfa50eec9bb0",
+  "required_snapshot_extensions": [
+    {
+      "canonical_id": "N'loth",
+      "required_context": {
+        "offered_relics_path": "state.decision_context.offered_relics",
+        "record_fields": [
+          "relic_id",
+          "relic_name",
+          "relic_slot",
+          "simulator_choice_index"
+        ],
+        "snapshot_relics_path": "state.relics",
+        "source_fields": [
+          "GameContext.info.relicIdx0",
+          "GameContext.info.relicIdx1"
+        ]
+      }
+    }
+  ],
+  "resolver_ready": false,
+  "rule_kind_counts": {
+    "cursed_tome_phase": 1,
+    "nloth_relic": 1,
+    "static": 23
+  },
+  "schema_version": "noncombat-event-option-observation-contract-v1",
+  "unaccounted_surface_count": 0
+}

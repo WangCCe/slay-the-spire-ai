@@ -1,0 +1,28 @@
+{
+  "adapter_ready": false,
+  "alias_count": 47,
+  "authority": {
+    "adapter_implementation_authorized": false,
+    "baseline_floor_authorized": false,
+    "compatibility_evaluation_authorized": false,
+    "formal_rl_readiness_authorized": false,
+    "gameplay_authorized": false,
+    "model_fitting_authorized": false,
+    "promotion_authorized": false,
+    "resolver_implementation_authorized": false,
+    "reward_authorized": false,
+    "seed_use_authorized": false,
+    "simulator_execution_authorized": false,
+    "training_authorized": false
+  },
+  "event_count": 25,
+  "registration_sha256": "3fb637a44d17d4081cba3e0ff7ba868811c1312a08c904ee3b1f5deeb1c3183b",
+  "resolver_ready": false,
+  "rule_kind_counts": {
+    "cursed_tome_phase": 1,
+    "nloth_relic": 1,
+    "static": 23
+  },
+  "schema_version": "noncombat-event-option-observation-contract-metrics-v1",
+  "unaccounted_surface_count": 0
+}
