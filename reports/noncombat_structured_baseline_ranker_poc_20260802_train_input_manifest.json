@@ -1,0 +1,8 @@
+{
+  "gzip_sha256": "4a19636971afd87607772fe892d8db86c45212a0955047baab08318c6cf0a4ef",
+  "gzip_size_bytes": 7506293,
+  "raw_sha256": "7aeab5500bcf9ce547dbb88d05ab01372ecf1d9c8c344d9d38aa3584feb4339e",
+  "raw_size_bytes": 191862684,
+  "schema_version": "noncombat-structured-baseline-ranker-train-input-manifest-v1",
+  "train_dataset_sha256": "86cf82f7833ca6b7d3f4e58967f5768ef7292a2297d06af01819b783526227d0"
+}

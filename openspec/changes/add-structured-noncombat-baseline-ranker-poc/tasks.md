@@ -16,8 +16,8 @@
 ## 3. Frozen POC Preparation
 
 - [x] 3.1 Use only static schema/runtime constraints and synthetic fixtures to freeze the exact feature widths, architecture, optimizer schedule, fold rule, selection margins, tie rule, and hard resource bounds.
-- [ ] 3.2 Check in one registration binding the preserved warm-start source and manifest identities, train dataset identity, seeds `4000..4031`, implementation files, and every selected POC value before structured fitting.
-- [ ] 3.3 Derive and validate the canonical train-only input without loading the native simulator, reading live artifacts, changing CommunicationMod, or touching checkpoints.
+- [x] 3.2 Check in one registration binding the preserved warm-start source and manifest identities, train dataset identity, seeds `4000..4031`, implementation files, and every selected POC value before structured fitting.
+- [x] 3.3 Derive and validate the canonical train-only input without loading the native simulator, reading live artifacts, changing CommunicationMod, or touching checkpoints.
 - [ ] 3.4 Run focused pure tests, Python compilation, the registered pytest commit gate, and strict OpenSpec validation; commit and push the implementation, registration, and derived input before POC execution.
 
 ## 4. One Bounded Train-Only POC

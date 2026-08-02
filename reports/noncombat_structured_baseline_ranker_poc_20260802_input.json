@@ -1,0 +1,146 @@
+{
+  "authority": {
+    "dagger": false,
+    "formal_noncombat_rl": false,
+    "live_gameplay": false,
+    "live_policy_loading": false,
+    "native_evidence_collection": false,
+    "ope_reinterpretation": false,
+    "policy_promotion": false,
+    "qualification": false,
+    "simulator_rollout": false
+  },
+  "identity": {
+    "implementation": {
+      "commit": "6a31a0923f61811dce78d6bc04510af06aa3acd6",
+      "source_files": [
+        "analysis_scripts/noncombat_policy_model.py",
+        "analysis_scripts/noncombat_simulator_adapter.py",
+        "analysis_scripts/noncombat_simulator_baseline_warm_start.py",
+        "analysis_scripts/noncombat_simulator_training_smoke.py",
+        "analysis_scripts/noncombat_structured_baseline_ranker_poc.py"
+      ],
+      "source_sha256": "5234ad5836f2495ce6d28819462d76206549e78868351d56c6dd14697e08980d"
+    },
+    "runtime": {
+      "python": "3.10.18",
+      "torch": "2.5.1"
+    },
+    "source_archive": {
+      "path": "reports/noncombat_simulator_baseline_warm_start_20260802_archive/demonstrations.json.gz",
+      "sha256": "221959f47a7d53d6c3b9df2487f34bbac482005b83d212863a59960db21c4816",
+      "size_bytes": 13416133
+    },
+    "source_archive_manifest": {
+      "path": "reports/noncombat_simulator_baseline_warm_start_20260802_archive/manifest.json",
+      "sha256": "f65cae83c26286d29c9e9ca657545c548801af60d2fad833c1d8f3b63749ffc4",
+      "size_bytes": 718
+    },
+    "source_warm_start_manifest": {
+      "path": "reports/noncombat_simulator_baseline_warm_start_20260802/artifact_manifest.json",
+      "sha256": "50b797d3bb77ef2d52eb1e2235db891086890f65b400c1f919eae38b32c264fd",
+      "size_bytes": 997
+    },
+    "teacher_policy_id": "sts_lightspeed_simple_agent_target_v1",
+    "train_dataset_sha256": "86cf82f7833ca6b7d3f4e58967f5768ef7292a2297d06af01819b783526227d0",
+    "train_input": {
+      "path": "reports/noncombat_structured_baseline_ranker_poc_20260802_train_input.json.gz",
+      "sha256": "4a19636971afd87607772fe892d8db86c45212a0955047baab08318c6cf0a4ef",
+      "size_bytes": 7506293
+    },
+    "train_input_manifest": {
+      "path": "reports/noncombat_structured_baseline_ranker_poc_20260802_train_input_manifest.json",
+      "sha256": "30671db535f24fe6040612b7f06a647ee77326d4d1f85193192ee754502a65aa",
+      "size_bytes": 411
+    }
+  },
+  "poc": {
+    "candidates": {
+      "control": {
+        "architecture": "shared-mlp-v1",
+        "feature_version": "noncombat-simulator-policy-features-v1",
+        "hash_dim": 1024,
+        "hidden_dim": 128,
+        "id": "legacy-hash-mlp-multichoice-v1"
+      },
+      "structured": {
+        "architecture": "category-specific-mlp-v1",
+        "feature_version": "noncombat-structured-policy-features-v1",
+        "hash_dim": 2048,
+        "hidden_dim": 64,
+        "id": "structured-category-ranker-v1"
+      }
+    },
+    "evaluation": {
+      "primary_metric": "seed_grouped_heldout_multicandidate_action_agreement",
+      "singleton_treatment": "report_only_excluded_from_fit_and_gate",
+      "thresholds": {
+        "maximum_mean_cross_entropy_delta": 0.0,
+        "minimum_card_reward_agreement_delta": 0.0,
+        "minimum_macro_agreement_delta": 0.03,
+        "minimum_overall_agreement_delta": 0.03,
+        "minimum_route_agreement_delta": 0.0
+      }
+    },
+    "folds": {
+      "count": 4,
+      "rule": "sorted-round-robin-seed-folds-v1"
+    },
+    "limits": {
+      "max_candidates_per_row": 32,
+      "max_model_fits_per_execution": 9,
+      "max_rows": 1500,
+      "max_wall_seconds_per_execution": 900.0
+    },
+    "optimizer": {
+      "algorithm": "adam",
+      "beta1": 0.9,
+      "beta2": 0.999,
+      "category_balanced": true,
+      "deterministic_order": true,
+      "epochs": 20,
+      "epsilon": 1e-08,
+      "learning_rate": 0.001,
+      "model_seed": 0,
+      "multi_candidate_only": true,
+      "torch_num_threads": 1,
+      "weight_decay": 0.0
+    },
+    "seeds": [
+      4000,
+      4001,
+      4002,
+      4003,
+      4004,
+      4005,
+      4006,
+      4007,
+      4008,
+      4009,
+      4010,
+      4011,
+      4012,
+      4013,
+      4014,
+      4015,
+      4016,
+      4017,
+      4018,
+      4019,
+      4020,
+      4021,
+      4022,
+      4023,
+      4024,
+      4025,
+      4026,
+      4027,
+      4028,
+      4029,
+      4030,
+      4031
+    ],
+    "tie_rule": "first-max-in-adapter-order"
+  },
+  "schema_version": "noncombat-structured-baseline-ranker-poc-input-v1"
+}
