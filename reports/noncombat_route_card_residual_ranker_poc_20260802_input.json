@@ -1,0 +1,173 @@
+{
+  "authority": {
+    "dagger": false,
+    "formal_noncombat_rl": false,
+    "live_gameplay": false,
+    "live_policy_loading": false,
+    "native_evidence_collection": false,
+    "ope_reinterpretation": false,
+    "policy_promotion": false,
+    "policy_quality": false,
+    "qualification": false,
+    "simulator_rollout": false
+  },
+  "identity": {
+    "implementation": {
+      "commit": "737d5841939adcd372b04f3351c16d482c782e53",
+      "source_files": [
+        "analysis_scripts/noncombat_policy_model.py",
+        "analysis_scripts/noncombat_simulator_adapter.py",
+        "analysis_scripts/noncombat_simulator_baseline_warm_start.py",
+        "analysis_scripts/noncombat_simulator_training_smoke.py",
+        "analysis_scripts/noncombat_structured_baseline_ranker_poc.py",
+        "analysis_scripts/noncombat_route_card_residual_ranker_poc.py"
+      ],
+      "source_sha256": "4d4eaef37715affa429d7ed1fe1d2b4e59d6a3f12a12cd05cc9b4d92d7a1551c"
+    },
+    "runtime": {
+      "python": "3.10.18",
+      "torch": "2.5.1"
+    },
+    "structured_poc_failure_audit": {
+      "path": "reports/noncombat_structured_baseline_ranker_poc_failure_audit_20260802.md",
+      "sha256": "8ca41e5288b3785dc122e4ddc3011379a0a6ff76cfd748604b9de3d113521f7d",
+      "size_bytes": 6878
+    },
+    "structured_poc_manifest": {
+      "path": "reports/noncombat_structured_baseline_ranker_poc_20260802/artifact_manifest.json",
+      "sha256": "58dc2723c58e871fdd7b3d8600f18cca1c90508799688a9203132f9247ba2c70",
+      "size_bytes": 1087
+    },
+    "structured_poc_verdict": "poc_valid_without_structured_candidate",
+    "teacher_policy_id": "sts_lightspeed_simple_agent_target_v1",
+    "train_dataset_sha256": "86cf82f7833ca6b7d3f4e58967f5768ef7292a2297d06af01819b783526227d0",
+    "train_input": {
+      "path": "reports/noncombat_structured_baseline_ranker_poc_20260802_train_input.json.gz",
+      "sha256": "4a19636971afd87607772fe892d8db86c45212a0955047baab08318c6cf0a4ef",
+      "size_bytes": 7506293
+    },
+    "train_input_manifest": {
+      "path": "reports/noncombat_structured_baseline_ranker_poc_20260802_train_input_manifest.json",
+      "sha256": "30671db535f24fe6040612b7f06a647ee77326d4d1f85193192ee754502a65aa",
+      "size_bytes": 411
+    }
+  },
+  "poc": {
+    "candidates": {
+      "control": {
+        "architecture": "shared-mlp-v1",
+        "feature_version": "noncombat-simulator-policy-features-v1",
+        "hash_dim": 1024,
+        "hidden_dim": 128,
+        "id": "legacy-hash-mlp-multichoice-v1"
+      },
+      "residual": {
+        "architecture": "legacy-plus-two-head-bounded-residual-v1",
+        "base_candidate_id": "legacy-hash-mlp-multichoice-v1",
+        "composition": "base-logit-plus-tanh-residual-v1",
+        "feature_version": "noncombat-structured-policy-features-v1",
+        "hash_dim": 2048,
+        "hidden_dim": 32,
+        "id": "legacy-plus-structured-route-card-residual-v1",
+        "initialization": "zero-output-layer-v1",
+        "residual_categories": [
+          "card_reward",
+          "route"
+        ],
+        "residual_scale": 1.0
+      }
+    },
+    "evaluation": {
+      "primary_metric": "seed_grouped_heldout_multicandidate_action_agreement",
+      "singleton_treatment": "report_only_excluded_from_fit_and_gate",
+      "thresholds": {
+        "maximum_aggregate_card_reward_cross_entropy_delta": -0.01,
+        "maximum_aggregate_route_cross_entropy_delta": -0.01,
+        "maximum_fold_category_cross_entropy_delta": 0.0,
+        "maximum_fold_overall_cross_entropy_delta": 0.0,
+        "minimum_aggregate_card_reward_agreement_delta": 0.01,
+        "minimum_aggregate_route_agreement_delta": 0.05,
+        "minimum_fold_category_agreement_delta": 0.0,
+        "minimum_fold_macro_agreement_delta": 0.0,
+        "minimum_macro_agreement_delta": 0.02,
+        "minimum_overall_agreement_delta": 0.03
+      }
+    },
+    "folds": {
+      "count": 4,
+      "rule": "sorted-round-robin-seed-folds-v1"
+    },
+    "limits": {
+      "max_candidates_per_row": 32,
+      "max_model_fits_per_execution": 10,
+      "max_rows": 1500,
+      "max_wall_seconds_per_execution": 900.0
+    },
+    "optimizers": {
+      "base": {
+        "algorithm": "adam",
+        "beta1": 0.9,
+        "beta2": 0.999,
+        "category_balanced": true,
+        "deterministic_order": true,
+        "epochs": 20,
+        "epsilon": 1e-08,
+        "learning_rate": 0.001,
+        "model_seed": 0,
+        "multi_candidate_only": true,
+        "torch_num_threads": 1,
+        "weight_decay": 0.0
+      },
+      "residual": {
+        "algorithm": "adam",
+        "beta1": 0.9,
+        "beta2": 0.999,
+        "category_balanced": true,
+        "deterministic_order": true,
+        "epochs": 20,
+        "epsilon": 1e-08,
+        "learning_rate": 0.001,
+        "model_seed": 0,
+        "multi_candidate_only": true,
+        "torch_num_threads": 1,
+        "weight_decay": 0.0
+      }
+    },
+    "seeds": [
+      4000,
+      4001,
+      4002,
+      4003,
+      4004,
+      4005,
+      4006,
+      4007,
+      4008,
+      4009,
+      4010,
+      4011,
+      4012,
+      4013,
+      4014,
+      4015,
+      4016,
+      4017,
+      4018,
+      4019,
+      4020,
+      4021,
+      4022,
+      4023,
+      4024,
+      4025,
+      4026,
+      4027,
+      4028,
+      4029,
+      4030,
+      4031
+    ],
+    "tie_rule": "first-max-in-adapter-order"
+  },
+  "schema_version": "noncombat-route-card-residual-ranker-poc-input-v1"
+}

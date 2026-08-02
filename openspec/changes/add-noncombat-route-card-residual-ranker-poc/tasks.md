@@ -20,8 +20,8 @@
 
 ## 4. Frozen Registration And One POC
 
-- [ ] 4.1 Commit and push the implementation and OpenSpec artifacts, then check in one registration binding that implementation commit, the existing train input, the prior structured result/audit, and every fixed POC value.
-- [ ] 4.2 Run focused tests, the registered pytest commit gate, strict OpenSpec validation, and registration identity checks; commit and push the registration before real model fitting.
+- [x] 4.1 Commit and push the implementation and OpenSpec artifacts, then check in one registration binding that implementation commit, the existing train input, the prior structured result/audit, and every fixed POC value.
+- [x] 4.2 Run focused tests, the registered pytest commit gate, strict OpenSpec validation, and registration identity checks; commit and push the registration before real model fitting.
 - [ ] 4.3 Execute the registered primary comparison exactly once plus one identical replay, with no alternate candidate, threshold, schedule, fold, retry, native module, new seed, live game, or formal RL.
 - [ ] 4.4 Publish and validate the selected, valid-negative, or blocked artifact set with all downstream authority false.
 
