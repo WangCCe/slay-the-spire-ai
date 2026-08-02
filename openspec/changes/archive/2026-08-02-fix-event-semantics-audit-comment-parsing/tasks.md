@@ -12,13 +12,13 @@
 
 ## 3. Superseding Registered Evidence
 
-- [ ] 3.1 Commit the reviewed implementation boundary, then create fresh r2 audit and delta registrations bound to the exact implementation, unchanged Current/upstream identities, immutable r1 evidence, expected semantic removals, and all-false authority.
-- [ ] 3.2 Publish r2 once without native or gameplay execution, run the registered predecessor comparison, and strictly recompute both outputs byte-for-byte.
-- [ ] 3.3 Confirm the same 25 events, 47 aliases, `24 source_complete + 1 source_partial`, zero unaccounted aliases, and exactly the registered removal of the four comment-derived display entries.
-- [ ] 3.4 Write the r2 closeout and update project direction to supersede r1 labels while preserving its files and all resolver, evaluation, and training blockers.
+- [x] 3.1 Commit the reviewed implementation boundary, then create fresh r2 audit and delta registrations bound to the exact implementation, unchanged Current/upstream identities, immutable r1 evidence, expected semantic removals, and all-false authority.
+- [x] 3.2 Publish r2 once without native or gameplay execution, run the registered predecessor comparison, and strictly recompute both outputs byte-for-byte.
+- [x] 3.3 Confirm the same 25 events, 47 aliases, `24 source_complete + 1 source_partial`, zero unaccounted aliases, and exactly the registered removal of the four comment-derived display entries.
+- [x] 3.4 Write the r2 closeout and update project direction to supersede r1 labels while preserving its files and all resolver, evaluation, and training blockers.
 
 ## 4. Verification And Closeout
 
-- [ ] 4.1 Run focused audit pytest with an isolated writable basetemp and strict validation of this OpenSpec change.
-- [ ] 4.2 Run global OpenSpec validation and the repository commit test gate; do not launch gameplay or run an unregistered native simulator path.
-- [ ] 4.3 Sync the modified capability spec, archive the completed change, commit cohesive artifacts, and push `master`.
+- [x] 4.1 Run focused audit pytest with an isolated writable basetemp and strict validation of this OpenSpec change.
+- [x] 4.2 Run global OpenSpec validation and the repository commit test gate; do not launch gameplay or run an unregistered native simulator path.
+- [x] 4.3 Sync the modified capability spec, archive the completed change, commit cohesive artifacts, and push `master`.

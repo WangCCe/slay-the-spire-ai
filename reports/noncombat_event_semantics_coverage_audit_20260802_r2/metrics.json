@@ -1,0 +1,24 @@
+{
+  "alias_count": 47,
+  "authority": {
+    "formal_rl_readiness_authorized": false,
+    "gameplay_authorized": false,
+    "model_fitting_authorized": false,
+    "promotion_authorized": false,
+    "resolver_extension_authorized": false,
+    "reward_authorized": false,
+    "seed_use_authorized": false,
+    "simulator_execution_authorized": false,
+    "training_authorized": false
+  },
+  "event_count": 25,
+  "label_sensitive_event_count": 25,
+  "registration_sha256": "c8ce94fbe1337ec9e245c1747ffffb0c9bd48594414410234da7d06d5ff62d6a",
+  "resolver_ready": false,
+  "schema_version": "noncombat-event-semantics-coverage-metrics-v1",
+  "status_counts": {
+    "source_complete": 24,
+    "source_partial": 1
+  },
+  "unaccounted_current_alias_count": 0
+}

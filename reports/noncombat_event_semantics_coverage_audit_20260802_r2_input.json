@@ -1,0 +1,278 @@
+{
+  "authority": {
+    "formal_rl_readiness_authorized": false,
+    "gameplay_authorized": false,
+    "model_fitting_authorized": false,
+    "promotion_authorized": false,
+    "resolver_extension_authorized": false,
+    "reward_authorized": false,
+    "seed_use_authorized": false,
+    "simulator_execution_authorized": false,
+    "training_authorized": false
+  },
+  "current": {
+    "class_name": "SimpleAgent",
+    "function_name": "_choose_event_option",
+    "repository_commit": "585135f8209b90d4145bc1c1f1b81c6446d5ff8d",
+    "source": {
+      "path": "spirecomm/ai/agent.py",
+      "sha256": "a495b56bcf2367b34e74cf679bbc8ae0a51c9509723236b2240c7577eef2a9f5",
+      "size_bytes": 230849
+    }
+  },
+  "events": [
+    {
+      "aliases": [
+        "Back to Basics",
+        "BackToBasics"
+      ],
+      "canonical_id": "Back to Basics",
+      "upstream_enum": "ANCIENT_WRITING"
+    },
+    {
+      "aliases": [
+        "Big Fish",
+        "BigFish"
+      ],
+      "canonical_id": "Big Fish",
+      "upstream_enum": "BIG_FISH"
+    },
+    {
+      "aliases": [
+        "Cursed Tome",
+        "CursedTome"
+      ],
+      "canonical_id": "Cursed Tome",
+      "upstream_enum": "CURSED_TOME"
+    },
+    {
+      "aliases": [
+        "Dead Adventurer",
+        "DeadAdventurer"
+      ],
+      "canonical_id": "Dead Adventurer",
+      "upstream_enum": "DEAD_ADVENTURER"
+    },
+    {
+      "aliases": [
+        "Drug Dealer"
+      ],
+      "canonical_id": "Drug Dealer",
+      "upstream_enum": "AUGMENTER"
+    },
+    {
+      "aliases": [
+        "Face Trader",
+        "FaceTrader"
+      ],
+      "canonical_id": "Face Trader",
+      "upstream_enum": "FACE_TRADER"
+    },
+    {
+      "aliases": [
+        "Forgotten Altar",
+        "ForgottenAltar"
+      ],
+      "canonical_id": "Forgotten Altar",
+      "upstream_enum": "FORGOTTEN_ALTAR"
+    },
+    {
+      "aliases": [
+        "Council of Ghosts",
+        "CouncilOfGhosts",
+        "Ghosts"
+      ],
+      "canonical_id": "Ghosts",
+      "upstream_enum": "GHOSTS"
+    },
+    {
+      "aliases": [
+        "Golden Idol",
+        "GoldenIdol"
+      ],
+      "canonical_id": "Golden Idol",
+      "upstream_enum": "GOLDEN_IDOL"
+    },
+    {
+      "aliases": [
+        "Golden Shrine",
+        "GoldenShrine"
+      ],
+      "canonical_id": "Golden Shrine",
+      "upstream_enum": "GOLDEN_SHRINE"
+    },
+    {
+      "aliases": [
+        "Knowing Skull"
+      ],
+      "canonical_id": "Knowing Skull",
+      "upstream_enum": "KNOWING_SKULL"
+    },
+    {
+      "aliases": [
+        "Liars Game"
+      ],
+      "canonical_id": "Liars Game",
+      "upstream_enum": "THE_SSSSSERPENT"
+    },
+    {
+      "aliases": [
+        "Living Wall",
+        "LivingWall"
+      ],
+      "canonical_id": "Living Wall",
+      "upstream_enum": "LIVING_WALL"
+    },
+    {
+      "aliases": [
+        "Masked Bandits",
+        "MaskedBandits"
+      ],
+      "canonical_id": "Masked Bandits",
+      "upstream_enum": "MASKED_BANDITS"
+    },
+    {
+      "aliases": [
+        "Mind Bloom",
+        "MindBloom"
+      ],
+      "canonical_id": "MindBloom",
+      "upstream_enum": "MINDBLOOM"
+    },
+    {
+      "aliases": [
+        "Mushrooms",
+        "The Mushroom Lair"
+      ],
+      "canonical_id": "Mushrooms",
+      "upstream_enum": "HYPNOTIZING_COLORED_MUSHROOMS"
+    },
+    {
+      "aliases": [
+        "Mysterious Sphere",
+        "MysteriousSphere"
+      ],
+      "canonical_id": "Mysterious Sphere",
+      "upstream_enum": "MYSTERIOUS_SPHERE"
+    },
+    {
+      "aliases": [
+        "N'loth",
+        "Nloth",
+        "N’loth"
+      ],
+      "canonical_id": "N'loth",
+      "upstream_enum": "NLOTH"
+    },
+    {
+      "aliases": [
+        "Note For Yourself",
+        "NoteForYourself"
+      ],
+      "canonical_id": "Note For Yourself",
+      "upstream_enum": "NOTE_FOR_YOURSELF"
+    },
+    {
+      "aliases": [
+        "Shining Light",
+        "ShiningLight"
+      ],
+      "canonical_id": "Shining Light",
+      "upstream_enum": "SHINING_LIGHT"
+    },
+    {
+      "aliases": [
+        "Cleric",
+        "The Cleric"
+      ],
+      "canonical_id": "The Cleric",
+      "upstream_enum": "THE_CLERIC"
+    },
+    {
+      "aliases": [
+        "The Library"
+      ],
+      "canonical_id": "The Library",
+      "upstream_enum": "THE_LIBRARY"
+    },
+    {
+      "aliases": [
+        "Mausoleum",
+        "The Mausoleum"
+      ],
+      "canonical_id": "The Mausoleum",
+      "upstream_enum": "THE_MAUSOLEUM"
+    },
+    {
+      "aliases": [
+        "Vampires"
+      ],
+      "canonical_id": "Vampires",
+      "upstream_enum": "VAMPIRES"
+    },
+    {
+      "aliases": [
+        "World of Goop",
+        "WorldOfGoop"
+      ],
+      "canonical_id": "World of Goop",
+      "upstream_enum": "WORLD_OF_GOOP"
+    }
+  ],
+  "implementation": {
+    "commit": "d7af2840febb64ff3805ea6681e5c001470e4f1b",
+    "source_files": [
+      "analysis_scripts/noncombat_event_semantics_coverage_audit.py"
+    ],
+    "source_sha256": "0bec7b66556aa64483c802a1d0b0304c0ebeaf06de73921a22573b9c1201906c"
+  },
+  "output": {
+    "artifact_names": [
+      "configuration.json",
+      "event_inventory.json",
+      "metrics.json",
+      "report.md",
+      "artifact_manifest.json"
+    ],
+    "directory": "reports/noncombat_event_semantics_coverage_audit_20260802_r2"
+  },
+  "schema_version": "noncombat-event-semantics-coverage-audit-input-v1",
+  "simulator": {
+    "dirty": true,
+    "parent_commit": "7476a81954020087da31d41d16fddf475746ec2d",
+    "root": "D:\\CLionProjects\\sts_lightspeed",
+    "source_file_count": 79,
+    "source_files": {
+      "display_labels": {
+        "path": "src/sim/ConsoleSimulator.cpp",
+        "sha256": "f17878b7579bdeb484387e890be3c7caaa42f76c3edd7f96eacb64656e5458b4",
+        "size_bytes": 38159
+      },
+      "event_identities": {
+        "path": "include/constants/Events.h",
+        "sha256": "d558be77e7f187784a7eb66c21a537b458304d7dcbc934c6498d635a74cb97f1",
+        "size_bytes": 7182
+      },
+      "event_save_ids": {
+        "path": "include/constants/SaveFileMappings.h",
+        "sha256": "bff98a7990a58031f6d1f0ca87c420941125108f3c51b0bee4f197590d8091e5",
+        "size_bytes": 38316
+      },
+      "execution": {
+        "path": "src/game/GameContext.cpp",
+        "sha256": "aad9fcf6db5a667858185256722065d61167393f891ee8a717e4e37b4c28a053",
+        "size_bytes": 118266
+      },
+      "legal_actions": {
+        "path": "src/sim/search/GameAction.cpp",
+        "sha256": "8a84d545333b9a6a1a0b2bd8d5e705bd1821b940fa6799b52ebf4bcdd4638d9b",
+        "size_bytes": 26442
+      }
+    },
+    "source_sha256": "a3f98721ec37373b1b00aef660832a3307f0186ba0614d07a3b1e7de8ab2e46a",
+    "submodules": {
+      "json": "55f93686c01528224f448c19128836e7df245f72",
+      "pybind11": "8f68ecd32c8e18d3b064dbf0ea5fc31a6cb37e9a"
+    }
+  }
+}

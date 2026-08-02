@@ -1,0 +1,59 @@
+{
+  "authority": {
+    "formal_rl_readiness_authorized": false,
+    "gameplay_authorized": false,
+    "model_fitting_authorized": false,
+    "promotion_authorized": false,
+    "resolver_extension_authorized": false,
+    "reward_authorized": false,
+    "seed_use_authorized": false,
+    "simulator_execution_authorized": false,
+    "training_authorized": false
+  },
+  "comparison": {
+    "added_display_entries": [],
+    "alias_count": 47,
+    "event_count": 25,
+    "removed_display_entries": [
+      {
+        "canonical_id": "Big Fish",
+        "index": 0,
+        "label": "Offer"
+      },
+      {
+        "canonical_id": "Cursed Tome",
+        "index": 0,
+        "label": "Continue"
+      },
+      {
+        "canonical_id": "Cursed Tome",
+        "index": 0,
+        "label": "Take"
+      },
+      {
+        "canonical_id": "Cursed Tome",
+        "index": 1,
+        "label": "Stop"
+      }
+    ],
+    "status": "passed",
+    "status_counts": {
+      "source_complete": 24,
+      "source_partial": 1
+    },
+    "unaccounted_current_alias_count": 0
+  },
+  "delta_registration_sha256": "d5bd43673488416c85b4c70fcc4ac87947c068112a32ec93599938ee649a220b",
+  "predecessor": {
+    "directory": "reports/noncombat_event_semantics_coverage_audit_20260802",
+    "manifest_sha256": "3f1c6176e6f28b8444c4459275fe1d7369b580e43092faaf648d0b5f532429a7",
+    "registration_sha256": "8e7bd6ba6d51891e47ef8053cfab9bd5208b49784600a538d0fbd3ecfd75cef2"
+  },
+  "schema_version": "noncombat-event-semantics-coverage-delta-report-v1",
+  "status": "passed",
+  "successor": {
+    "directory": "reports/noncombat_event_semantics_coverage_audit_20260802_r2",
+    "manifest_sha256": "f00356b0690556898425992b968414cc1de43e853623df99ff1636cb125c9c12",
+    "registration_sha256": "c8ce94fbe1337ec9e245c1747ffffb0c9bd48594414410234da7d06d5ff62d6a"
+  }
+}

@@ -1,0 +1,68 @@
+{
+  "authority": {
+    "formal_rl_readiness_authorized": false,
+    "gameplay_authorized": false,
+    "model_fitting_authorized": false,
+    "promotion_authorized": false,
+    "resolver_extension_authorized": false,
+    "reward_authorized": false,
+    "seed_use_authorized": false,
+    "simulator_execution_authorized": false,
+    "training_authorized": false
+  },
+  "expected": {
+    "added_display_entries": [],
+    "alias_count": 47,
+    "event_count": 25,
+    "removed_display_entries": [
+      {
+        "canonical_id": "Big Fish",
+        "index": 0,
+        "label": "Offer"
+      },
+      {
+        "canonical_id": "Cursed Tome",
+        "index": 0,
+        "label": "Continue"
+      },
+      {
+        "canonical_id": "Cursed Tome",
+        "index": 0,
+        "label": "Take"
+      },
+      {
+        "canonical_id": "Cursed Tome",
+        "index": 1,
+        "label": "Stop"
+      }
+    ],
+    "status_counts": {
+      "source_complete": 24,
+      "source_partial": 1
+    },
+    "unaccounted_current_alias_count": 0
+  },
+  "output_path": "reports/noncombat_event_semantics_coverage_audit_20260802_r1_to_r2_delta.json",
+  "predecessor": {
+    "directory": "reports/noncombat_event_semantics_coverage_audit_20260802",
+    "manifest": {
+      "path": "reports/noncombat_event_semantics_coverage_audit_20260802/artifact_manifest.json",
+      "sha256": "3f1c6176e6f28b8444c4459275fe1d7369b580e43092faaf648d0b5f532429a7",
+      "size_bytes": 1044
+    },
+    "registration": {
+      "path": "reports/noncombat_event_semantics_coverage_audit_20260802_input.json",
+      "sha256": "8e7bd6ba6d51891e47ef8053cfab9bd5208b49784600a538d0fbd3ecfd75cef2",
+      "size_bytes": 6761
+    }
+  },
+  "schema_version": "noncombat-event-semantics-coverage-delta-input-v1",
+  "successor": {
+    "directory": "reports/noncombat_event_semantics_coverage_audit_20260802_r2",
+    "registration": {
+      "path": "reports/noncombat_event_semantics_coverage_audit_20260802_r2_input.json",
+      "sha256": "c8ce94fbe1337ec9e245c1747ffffb0c9bd48594414410234da7d06d5ff62d6a",
+      "size_bytes": 6764
+    }
+  }
+}

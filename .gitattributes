@@ -100,4 +100,6 @@ tests/test_noncombat_event_semantics_coverage_audit.py text eol=lf
 reports/noncombat_event_semantics_coverage_audit_* text eol=lf
 reports/noncombat_event_semantics_coverage_audit_*/** text eol=lf
 openspec/specs/noncombat-event-semantics-coverage-audit/** text eol=lf
+openspec/changes/fix-event-semantics-audit-comment-parsing/** text eol=lf
 openspec/changes/archive/*-audit-current-event-option-semantics-coverage/** text eol=lf
+openspec/changes/archive/*-fix-event-semantics-audit-comment-parsing/** text eol=lf
