@@ -7,16 +7,47 @@ from pathlib import Path
 import pytest
 
 from analysis_scripts.noncombat_simulator_baseline_warm_start import (
+    DEMONSTRATION_SCHEMA_VERSION,
+    DATASET_SCHEMA_VERSION,
     INPUT_SCHEMA_VERSION,
     PRIOR_SEEDS,
     REGISTERED_SOURCE_FILES,
     WarmStartBlocked,
+    collect_native_demonstrations,
     load_warm_start_registration,
     validate_warm_start_registration,
+)
+from analysis_scripts.noncombat_simulator_adapter import (
+    ADAPTER_API_VERSION,
+    NATIVE_BASELINE_ACTION_SCHEMA_VERSION,
+    NATIVE_TARGET_POLICY_ID,
+    SOURCE_TYPE,
+    STATE_SCHEMA_VERSION,
+    build_transition,
+    canonical_json_bytes,
 )
 
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
+FAKE_PROVENANCE = {
+    "adapter_commit": "1" * 40,
+    "adapter_source_sha256": "2" * 64,
+    "build": {
+        "adapter_api_version": ADAPTER_API_VERSION,
+        "baseline_policy_id": "test-baseline-v1",
+        "compiler": "test-compiler",
+        "cpp_standard": 201703,
+        "native_target_policy_id": NATIVE_TARGET_POLICY_ID,
+        "python": "3.10.18",
+    },
+    "module_sha256": "3" * 64,
+    "module_size_bytes": 123,
+    "simulator_commit": "4" * 40,
+    "simulator_dirty": False,
+    "simulator_source_file_count": 79,
+    "simulator_source_sha256": "5" * 64,
+    "submodules": {"json": "6" * 40, "pybind11": "7" * 40},
+}
 
 
 def _binding(path: str) -> dict[str, object]:
@@ -216,3 +247,167 @@ def test_registration_loader_rejects_duplicate_json_keys(tmp_path):
 
     with pytest.raises(WarmStartBlocked, match="duplicate JSON key: schema_version"):
         load_warm_start_registration(path)
+
+
+class FakeDemonstrationEnvironment:
+    def __init__(self, seed: int):
+        self.seed = seed
+        self.terminal = False
+        self.selected: str | None = None
+        self.query_mutation = False
+
+    @property
+    def category(self) -> str:
+        return ("card_reward", "event", "route", "shop")[self.seed % 4]
+
+    def snapshot(self) -> dict[str, object]:
+        return {
+            "adapter_api_version": ADAPTER_API_VERSION,
+            "baseline_control": {"history": [], "policy_id": "test-baseline-v1"},
+            "category": None if self.terminal else self.category,
+            "decision_count": int(self.terminal),
+            "schema_version": STATE_SCHEMA_VERSION,
+            "source_type": SOURCE_TYPE,
+            "state": {
+                "cur_hp": 80,
+                "floor": 9 if self.terminal else 0,
+                "gold": 99,
+                "outcome": "player_loss" if self.terminal else "undecided",
+                "query_mutation": self.query_mutation,
+                "seed": str(self.seed),
+            },
+            "terminal": self.terminal,
+        }
+
+    def legal_actions(self) -> list[dict[str, object]]:
+        if self.terminal:
+            return []
+        return [
+            {
+                "action_id": "skip",
+                "available": True,
+                "category": self.category,
+                "kind": "choose",
+                "label": "skip",
+                "raw": {"quality": 0},
+            },
+            {
+                "action_id": "take",
+                "available": True,
+                "category": self.category,
+                "kind": "choose",
+                "label": "take",
+                "raw": {"quality": 1},
+            },
+        ]
+
+    def native_baseline_action(self) -> dict[str, str]:
+        return {
+            "action_id": "take",
+            "category": self.category,
+            "policy_id": NATIVE_TARGET_POLICY_ID,
+            "schema_version": NATIVE_BASELINE_ACTION_SCHEMA_VERSION,
+        }
+
+    def step(self, action_id: str) -> dict[str, object]:
+        before = self.snapshot()
+        candidates = self.legal_actions()
+        if action_id not in {candidate["action_id"] for candidate in candidates}:
+            raise ValueError("illegal action")
+        self.selected = action_id
+        self.terminal = True
+        return build_transition(
+            before=before,
+            candidates=candidates,
+            selected_action_id=action_id,
+            after=self.snapshot(),
+            provenance=FAKE_PROVENANCE,
+        )
+
+    def step_native_baseline(self) -> dict[str, object]:
+        return self.step("take")
+
+
+def _demo_factory(seed: int) -> FakeDemonstrationEnvironment:
+    return FakeDemonstrationEnvironment(seed)
+
+
+def _collect_demo(**overrides):
+    values = {
+        "clock": lambda: 0.0,
+        "cohort": "train",
+        "deadline": 30.0,
+        "environment_factory": _demo_factory,
+        "max_decisions_per_episode": 4,
+        "max_demo_rows": 20,
+        "max_episodes": 4,
+        "required_categories": ("card_reward", "event", "route", "shop"),
+        "seeds": (4000, 4001, 4002, 4003),
+    }
+    values.update(overrides)
+    return collect_native_demonstrations(**values)
+
+
+def test_native_demonstration_dataset_is_complete_and_deterministic():
+    first = _collect_demo()
+    second = _collect_demo()
+
+    assert canonical_json_bytes(first) == canonical_json_bytes(second)
+    assert first["schema_version"] == DATASET_SCHEMA_VERSION
+    assert first["cohort"] == "train"
+    assert first["seeds"] == [4000, 4001, 4002, 4003]
+    assert first["row_count"] == 4
+    assert first["all_categories"] == ["card_reward", "event", "route", "shop"]
+    assert [episode["seed"] for episode in first["episodes"]] == first["seeds"]
+    for row in first["rows"]:
+        assert row["schema_version"] == DEMONSTRATION_SCHEMA_VERSION
+        assert row["source_type"] == SOURCE_TYPE
+        assert row["teacher"]["action_id"] == "take"
+        assert row["teacher"]["policy_id"] == NATIVE_TARGET_POLICY_ID
+        assert [item["action_id"] for item in row["candidate_actions"]] == [
+            "skip",
+            "take",
+        ]
+        assert [item["action_id"] for item in row["policy_views"]] == [
+            "skip",
+            "take",
+        ]
+        assert all(len(item["sha256"]) == 64 for item in row["policy_views"])
+        assert row["successor"]["terminal"] is True
+        assert row["successor"]["state"]["outcome"] == "player_loss"
+
+
+def test_native_demonstration_query_mutation_fails_closed():
+    class MutatingEnvironment(FakeDemonstrationEnvironment):
+        def native_baseline_action(self) -> dict[str, str]:
+            self.query_mutation = True
+            return super().native_baseline_action()
+
+    with pytest.raises(WarmStartBlocked, match="native target query mutated source"):
+        _collect_demo(
+            environment_factory=MutatingEnvironment,
+            required_categories=("card_reward",),
+            seeds=(4000,),
+            max_episodes=1,
+        )
+
+
+def test_native_demonstration_unmapped_target_fails_closed():
+    class UnmappedEnvironment(FakeDemonstrationEnvironment):
+        def native_baseline_action(self) -> dict[str, str]:
+            value = super().native_baseline_action()
+            value["action_id"] = "missing"
+            return value
+
+    with pytest.raises(WarmStartBlocked, match="maps to 0 current candidates"):
+        _collect_demo(
+            environment_factory=UnmappedEnvironment,
+            required_categories=("card_reward",),
+            seeds=(4000,),
+            max_episodes=1,
+        )
+
+
+def test_native_demonstration_row_limit_fails_closed():
+    with pytest.raises(WarmStartBlocked, match="max_demo_rows"):
+        _collect_demo(max_demo_rows=3)

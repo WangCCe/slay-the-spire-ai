@@ -5,23 +5,34 @@ from __future__ import annotations
 import copy
 import json
 import math
-from collections.abc import Mapping, Sequence
+from collections.abc import Callable, Mapping, Sequence
 from numbers import Real
 from pathlib import Path
 from typing import Any
 
 from analysis_scripts.noncombat_simulator_adapter import (
     NATIVE_TARGET_POLICY_ID,
+    SOURCE_TYPE,
+    TARGET_CATEGORIES,
+    SimulatorAdapterError,
+    canonical_json_bytes,
+    sha256_bytes,
+    validate_candidates,
+    validate_native_baseline_action,
     validate_provenance,
+    validate_snapshot,
 )
 from analysis_scripts.noncombat_simulator_training_smoke import (
     FEATURE_VERSION,
     SmokeBlocked,
     _validate_binding,
+    project_policy_view,
 )
 
 
 INPUT_SCHEMA_VERSION = "noncombat-simulator-baseline-warm-start-input-v1"
+DEMONSTRATION_SCHEMA_VERSION = "noncombat-simulator-native-demonstration-v1"
+DATASET_SCHEMA_VERSION = "noncombat-simulator-native-demonstration-dataset-v1"
 MODEL_ARCHITECTURE = "candidate-ranker-mlp-v1"
 PRIOR_SEEDS = tuple(
     sorted(
@@ -514,3 +525,307 @@ def load_warm_start_registration(path: Path | str) -> dict[str, Any]:
     except (OSError, UnicodeError, json.JSONDecodeError) as exc:
         raise WarmStartBlocked(f"cannot load warm-start input {path}: {exc}") from exc
     return validate_warm_start_registration(value)
+
+
+def _adapter_call(label: str, call: Callable[[], Any]) -> Any:
+    try:
+        return call()
+    except WarmStartBlocked:
+        raise
+    except (KeyError, SimulatorAdapterError, TypeError, ValueError) as exc:
+        raise WarmStartBlocked(f"{label}: {exc}") from exc
+
+
+def _validate_cohort_name(value: object) -> str:
+    if value not in {"train", "validation", "final_test"}:
+        raise WarmStartBlocked("cohort must be train, validation, or final_test")
+    return str(value)
+
+
+def _validate_nonnegative_int(value: object, label: str) -> int:
+    if isinstance(value, bool) or not isinstance(value, int) or value < 0:
+        raise WarmStartBlocked(f"{label} must be a non-negative integer")
+    return value
+
+
+def build_demonstration_row(
+    *,
+    cohort: str,
+    seed: int,
+    decision_index: int,
+    source_snapshot: Mapping[str, Any],
+    candidates: Sequence[Mapping[str, Any]],
+    target_action: Mapping[str, Any],
+    transition: Mapping[str, Any],
+) -> dict[str, Any]:
+    """Build one canonical teacher row from an already executed native step."""
+    cohort = _validate_cohort_name(cohort)
+    if isinstance(seed, bool) or not isinstance(seed, int):
+        raise WarmStartBlocked("demonstration seed must be an integer")
+    decision_index = _validate_nonnegative_int(
+        decision_index, "demonstration decision_index"
+    )
+    try:
+        snapshot = validate_snapshot(copy.deepcopy(dict(source_snapshot)))
+        if snapshot["terminal"] is not False or snapshot["category"] not in TARGET_CATEGORIES:
+            raise WarmStartBlocked("demonstration source must be a target decision")
+        normalized_candidates = validate_candidates(
+            [copy.deepcopy(dict(candidate)) for candidate in candidates],
+            category=snapshot["category"],
+        )
+        target_id = target_action.get("action_id")
+        match_count = sum(
+            candidate["action_id"] == target_id for candidate in normalized_candidates
+        )
+        if match_count != 1:
+            raise WarmStartBlocked(
+                f"native target maps to {match_count} current candidates"
+            )
+        teacher = validate_native_baseline_action(
+            copy.deepcopy(dict(target_action)),
+            category=snapshot["category"],
+            candidates=normalized_candidates,
+        )
+        normalized_transition = copy.deepcopy(dict(transition))
+        if normalized_transition.get("source_type") != SOURCE_TYPE:
+            raise WarmStartBlocked("demonstration transition source_type mismatch")
+        if normalized_transition.get("category") != snapshot["category"]:
+            raise WarmStartBlocked("demonstration transition category mismatch")
+        if normalized_transition.get("selected_action_id") != teacher["action_id"]:
+            raise WarmStartBlocked("demonstration transition selected action mismatch")
+        if canonical_json_bytes(normalized_transition.get("source_state")) != (
+            canonical_json_bytes(snapshot["state"])
+        ):
+            raise WarmStartBlocked("demonstration transition source state mismatch")
+        if canonical_json_bytes(normalized_transition.get("candidate_actions")) != (
+            canonical_json_bytes(normalized_candidates)
+        ):
+            raise WarmStartBlocked("demonstration transition candidates mismatch")
+        provenance = validate_provenance(normalized_transition.get("provenance"))
+        successor = _mapping(
+            normalized_transition.get("successor"), "demonstration transition successor"
+        )
+        if not isinstance(successor.get("terminal"), bool):
+            raise WarmStartBlocked(
+                "demonstration transition successor.terminal must be boolean"
+            )
+        _mapping(successor.get("state"), "demonstration transition successor.state")
+    except SimulatorAdapterError as exc:
+        raise WarmStartBlocked(f"invalid demonstration row: {exc}") from exc
+
+    policy_views = []
+    for candidate in normalized_candidates:
+        view = project_policy_view(snapshot["state"], candidate)
+        policy_views.append(
+            {
+                "action_id": candidate["action_id"],
+                "policy_view": view,
+                "sha256": sha256_bytes(canonical_json_bytes(view)),
+            }
+        )
+    return {
+        "candidate_actions": normalized_candidates,
+        "candidate_actions_sha256": sha256_bytes(
+            canonical_json_bytes(normalized_candidates)
+        ),
+        "category": snapshot["category"],
+        "cohort": cohort,
+        "decision_index": decision_index,
+        "policy_views": policy_views,
+        "provenance": provenance,
+        "schema_version": DEMONSTRATION_SCHEMA_VERSION,
+        "seed": seed,
+        "source_snapshot": snapshot,
+        "source_snapshot_sha256": sha256_bytes(canonical_json_bytes(snapshot)),
+        "source_type": SOURCE_TYPE,
+        "successor": successor,
+        "teacher": teacher,
+    }
+
+
+def build_demonstration_dataset(
+    *,
+    cohort: str,
+    seeds: Sequence[int],
+    rows: Sequence[Mapping[str, Any]],
+    episodes: Sequence[Mapping[str, Any]],
+    required_categories: Sequence[str] = TARGET_CATEGORIES,
+) -> dict[str, Any]:
+    """Validate and package canonical teacher rows for one cohort."""
+    cohort = _validate_cohort_name(cohort)
+    normalized_seeds = _seed_array(seeds, "demonstration seeds")
+    normalized_rows = [copy.deepcopy(dict(row)) for row in rows]
+    normalized_episodes = [copy.deepcopy(dict(episode)) for episode in episodes]
+    if [episode.get("seed") for episode in normalized_episodes] != normalized_seeds:
+        raise WarmStartBlocked("demonstration episode seeds mismatch")
+    row_seeds = {seed: [] for seed in normalized_seeds}
+    categories: set[str] = set()
+    for row in normalized_rows:
+        if row.get("schema_version") != DEMONSTRATION_SCHEMA_VERSION:
+            raise WarmStartBlocked("demonstration row schema mismatch")
+        if row.get("cohort") != cohort:
+            raise WarmStartBlocked("demonstration row cohort mismatch")
+        seed = row.get("seed")
+        if seed not in row_seeds:
+            raise WarmStartBlocked("demonstration row seed is outside cohort")
+        row_seeds[seed].append(row)
+        category = row.get("category")
+        if category not in TARGET_CATEGORIES:
+            raise WarmStartBlocked("demonstration row category mismatch")
+        categories.add(category)
+    for seed, seed_rows in row_seeds.items():
+        if not seed_rows:
+            raise WarmStartBlocked(f"demonstration seed {seed} has no rows")
+        indices = [row.get("decision_index") for row in seed_rows]
+        if indices != list(range(len(seed_rows))):
+            raise WarmStartBlocked(
+                f"demonstration seed {seed} decision indices are not contiguous"
+            )
+    required = set(required_categories)
+    if not required.issubset(TARGET_CATEGORIES):
+        raise WarmStartBlocked("required demonstration category is unsupported")
+    missing = sorted(required - categories)
+    if missing:
+        raise WarmStartBlocked(
+            "demonstration dataset missing categories: " + ", ".join(missing)
+        )
+    return {
+        "all_categories": sorted(categories),
+        "cohort": cohort,
+        "episodes": normalized_episodes,
+        "row_count": len(normalized_rows),
+        "rows": normalized_rows,
+        "schema_version": DATASET_SCHEMA_VERSION,
+        "seeds": normalized_seeds,
+        "source_type": SOURCE_TYPE,
+        "teacher_policy_id": NATIVE_TARGET_POLICY_ID,
+    }
+
+
+def _check_deadline(clock: Callable[[], float], deadline: float, label: str) -> None:
+    now = _finite_number(clock(), "clock value")
+    if now > deadline:
+        raise WarmStartBlocked(f"{label} exceeded wall-time bound")
+
+
+def collect_native_demonstrations(
+    *,
+    environment_factory: Callable[[int], Any],
+    cohort: str,
+    seeds: Sequence[int],
+    max_decisions_per_episode: int,
+    max_demo_rows: int,
+    max_episodes: int,
+    deadline: float,
+    clock: Callable[[], float],
+    required_categories: Sequence[str] = TARGET_CATEGORIES,
+) -> dict[str, Any]:
+    """Follow native SimpleAgent and collect a deterministic cohort dataset."""
+    cohort = _validate_cohort_name(cohort)
+    normalized_seeds = _seed_array(seeds, "demonstration seeds")
+    max_decisions_per_episode = _positive_int(
+        max_decisions_per_episode, "max_decisions_per_episode"
+    )
+    max_demo_rows = _positive_int(max_demo_rows, "max_demo_rows")
+    max_episodes = _positive_int(max_episodes, "max_episodes")
+    deadline = _finite_number(deadline, "deadline")
+    if len(normalized_seeds) > max_episodes:
+        raise WarmStartBlocked("demonstration cohort exceeds max_episodes")
+
+    rows: list[dict[str, Any]] = []
+    episodes: list[dict[str, Any]] = []
+    for seed in normalized_seeds:
+        _check_deadline(clock, deadline, "demonstration collection")
+        environment = environment_factory(seed)
+        episode_rows: list[dict[str, Any]] = []
+        while True:
+            _check_deadline(clock, deadline, "demonstration collection")
+            snapshot = _adapter_call("invalid demonstration snapshot", environment.snapshot)
+            try:
+                snapshot = validate_snapshot(snapshot)
+            except SimulatorAdapterError as exc:
+                raise WarmStartBlocked(f"invalid demonstration snapshot: {exc}") from exc
+            if snapshot["terminal"]:
+                break
+            if len(episode_rows) >= max_decisions_per_episode:
+                raise WarmStartBlocked(
+                    f"seed {seed} exceeded max_decisions_per_episode"
+                )
+            if len(rows) >= max_demo_rows:
+                raise WarmStartBlocked("demonstration collection exceeded max_demo_rows")
+            candidates = _adapter_call(
+                "invalid demonstration candidates", environment.legal_actions
+            )
+            source_bytes = canonical_json_bytes(snapshot)
+            candidate_bytes = canonical_json_bytes(candidates)
+            target = _adapter_call(
+                "invalid native target query", environment.native_baseline_action
+            )
+            after_query = _adapter_call(
+                "invalid post-query snapshot", environment.snapshot
+            )
+            after_candidates = _adapter_call(
+                "invalid post-query candidates", environment.legal_actions
+            )
+            if (
+                canonical_json_bytes(after_query) != source_bytes
+                or canonical_json_bytes(after_candidates) != candidate_bytes
+            ):
+                raise WarmStartBlocked("native target query mutated source")
+            target_id = target.get("action_id") if isinstance(target, Mapping) else None
+            match_count = sum(
+                isinstance(candidate, Mapping)
+                and candidate.get("action_id") == target_id
+                for candidate in candidates
+            )
+            if match_count != 1:
+                raise WarmStartBlocked(
+                    f"native target maps to {match_count} current candidates"
+                )
+            transition = _adapter_call(
+                "native baseline step failed", environment.step_native_baseline
+            )
+            row = build_demonstration_row(
+                cohort=cohort,
+                seed=seed,
+                decision_index=len(episode_rows),
+                source_snapshot=snapshot,
+                candidates=candidates,
+                target_action=target,
+                transition=transition,
+            )
+            rows.append(row)
+            episode_rows.append(row)
+
+        terminal_state = _mapping(
+            snapshot.get("state"), f"seed {seed} terminal snapshot.state"
+        )
+        outcome = terminal_state.get("outcome")
+        if outcome not in {"player_loss", "player_victory"}:
+            raise WarmStartBlocked(f"seed {seed} did not produce a terminal outcome")
+        floor = _finite_number(terminal_state.get("floor"), f"seed {seed} terminal floor")
+        action_ids = [row["teacher"]["action_id"] for row in episode_rows]
+        episodes.append(
+            {
+                "action_sequence_sha256": sha256_bytes(
+                    canonical_json_bytes(action_ids)
+                ),
+                "categories": sorted({row["category"] for row in episode_rows}),
+                "decisions": len(episode_rows),
+                "outcome": outcome,
+                "row_sha256s": [
+                    sha256_bytes(canonical_json_bytes(row)) for row in episode_rows
+                ],
+                "seed": seed,
+                "selected_action_ids": action_ids,
+                "terminal_floor": floor,
+            }
+        )
+
+    return build_demonstration_dataset(
+        cohort=cohort,
+        seeds=normalized_seeds,
+        rows=rows,
+        episodes=episodes,
+        required_categories=required_categories,
+    )
