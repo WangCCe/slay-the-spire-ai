@@ -24,11 +24,17 @@ from analysis_scripts.noncombat_simulator_adapter import (
     validate_provenance,
     validate_snapshot,
 )
+from analysis_scripts.noncombat_simulator_policy_validity import (
+    PolicyValidityBlocked,
+    evaluate_native_policy,
+)
 from analysis_scripts.noncombat_simulator_training_smoke import (
     FEATURE_VERSION,
     SmokeBlocked,
     _candidate_features,
     _validate_binding,
+    evaluate_greedy_policy,
+    paired_bootstrap_interval,
     project_policy_view,
 )
 
@@ -37,6 +43,8 @@ INPUT_SCHEMA_VERSION = "noncombat-simulator-baseline-warm-start-input-v1"
 DEMONSTRATION_SCHEMA_VERSION = "noncombat-simulator-native-demonstration-v1"
 DATASET_SCHEMA_VERSION = "noncombat-simulator-native-demonstration-dataset-v1"
 MODEL_SCHEMA_VERSION = "noncombat-simulator-baseline-warm-start-model-v1"
+TEACHER_FIT_SCHEMA_VERSION = "noncombat-simulator-baseline-teacher-fit-v1"
+ROLLOUT_SCHEMA_VERSION = "noncombat-simulator-baseline-rollouts-v1"
 MODEL_ARCHITECTURE = "candidate-ranker-mlp-v1"
 PRIOR_SEEDS = tuple(
     sorted(
@@ -1161,6 +1169,7 @@ def train_warm_start_ranker(
                 "loss": sum(category_losses.values()) / len(category_losses),
             }
         )
+    optimizer.zero_grad(set_to_none=True)
     model.requires_grad_(False)
     model.eval()
     final_model = canonical_warm_start_model_payload(model)
@@ -1212,4 +1221,461 @@ def predict_warm_start_action(
         "probabilities": [float(value) for value in probabilities.tolist()],
         "scores": [float(value) for value in logits.tolist()],
         "selected_action_id": candidate_ids[selected_index],
+    }
+
+
+def evaluate_teacher_fit(
+    model: Any, *, dataset: Mapping[str, Any], hash_dim: int
+) -> dict[str, Any]:
+    """Measure frozen-model agreement on independent baseline-following states."""
+    rows = _validated_training_rows(dataset, hash_dim=hash_dim)
+    result_rows = []
+    category_values = {category: [] for category in TARGET_CATEGORIES}
+    for row in rows:
+        prediction = predict_warm_start_action(
+            model,
+            snapshot=row["source_snapshot"],
+            candidates=row["candidate_actions"],
+            hash_dim=hash_dim,
+        )
+        target_id = row["teacher"]["action_id"]
+        target_index = prediction["candidate_action_ids"].index(target_id)
+        target_probability = prediction["probabilities"][target_index]
+        if not math.isfinite(target_probability) or not 0.0 < target_probability <= 1.0:
+            raise WarmStartBlocked("teacher target probability must be finite and positive")
+        cross_entropy = -math.log(target_probability)
+        correct = prediction["selected_action_id"] == target_id
+        category = row["category"]
+        category_values[category].append((correct, cross_entropy))
+        result_rows.append(
+            {
+                "candidate_action_ids": prediction["candidate_action_ids"],
+                "category": category,
+                "correct": correct,
+                "cross_entropy": cross_entropy,
+                "decision_index": row["decision_index"],
+                "predicted_action_id": prediction["selected_action_id"],
+                "seed": row["seed"],
+                "target_action_id": target_id,
+                "target_probability": target_probability,
+            }
+        )
+    by_category = {}
+    for category in TARGET_CATEGORIES:
+        values = category_values[category]
+        if not values:
+            raise WarmStartBlocked(f"teacher fit is missing category {category}")
+        by_category[category] = {
+            "action_agreement": sum(correct for correct, _ in values) / len(values),
+            "mean_cross_entropy": sum(loss for _, loss in values) / len(values),
+            "row_count": len(values),
+        }
+    overall_agreement = sum(row["correct"] for row in result_rows) / len(result_rows)
+    overall_cross_entropy = sum(row["cross_entropy"] for row in result_rows) / len(
+        result_rows
+    )
+    finite_metrics = all(
+        math.isfinite(float(value))
+        for value in (
+            overall_agreement,
+            overall_cross_entropy,
+            *(entry["action_agreement"] for entry in by_category.values()),
+            *(entry["mean_cross_entropy"] for entry in by_category.values()),
+        )
+    )
+    return {
+        "by_category": by_category,
+        "checks": {
+            "candidate_legality": all(
+                row["predicted_action_id"] in row["candidate_action_ids"]
+                for row in result_rows
+            ),
+            "finite_metrics": finite_metrics,
+            "four_category_coverage": set(by_category) == set(TARGET_CATEGORIES),
+        },
+        "macro_category_action_agreement": sum(
+            entry["action_agreement"] for entry in by_category.values()
+        )
+        / len(by_category),
+        "overall_action_agreement": overall_agreement,
+        "overall_cross_entropy": overall_cross_entropy,
+        "row_count": len(result_rows),
+        "rows": result_rows,
+        "schema_version": TEACHER_FIT_SCHEMA_VERSION,
+    }
+
+
+def _rollout_rows_by_seed(
+    policy: Mapping[str, Any], *, label: str
+) -> dict[int, Mapping[str, Any]]:
+    rows = policy.get("rows")
+    if not isinstance(rows, list):
+        raise WarmStartBlocked(f"{label}.rows must be an array")
+    result = {}
+    for row in rows:
+        if not isinstance(row, Mapping):
+            raise WarmStartBlocked(f"{label} row must be an object")
+        seed = row.get("seed")
+        if isinstance(seed, bool) or not isinstance(seed, int):
+            raise WarmStartBlocked(f"{label} row seed is invalid")
+        if seed in result:
+            raise WarmStartBlocked(f"{label} has duplicate seed {seed}")
+        result[seed] = row
+    return result
+
+
+def _paired_rollout_comparison(
+    candidate: Mapping[str, Any],
+    native: Mapping[str, Any],
+    *,
+    seeds: Sequence[int],
+    bootstrap_seed: int,
+    bootstrap_resamples: int,
+    confidence_level: float,
+) -> dict[str, Any]:
+    candidate_rows = _rollout_rows_by_seed(candidate, label="candidate policy")
+    native_rows = _rollout_rows_by_seed(native, label="native policy")
+    paired_rows = []
+    for seed in seeds:
+        if seed not in candidate_rows or seed not in native_rows:
+            raise WarmStartBlocked(f"rollout comparison is missing paired seed {seed}")
+        candidate_row = candidate_rows[seed]
+        native_row = native_rows[seed]
+        paired_rows.append(
+            {
+                "candidate_outcome": candidate_row["outcome"],
+                "candidate_terminal_floor": candidate_row["terminal_floor"],
+                "floor_difference": candidate_row["terminal_floor"]
+                - native_row["terminal_floor"],
+                "native_outcome": native_row["outcome"],
+                "native_terminal_floor": native_row["terminal_floor"],
+                "seed": seed,
+                "victory_difference": int(
+                    candidate_row["outcome"] == "player_victory"
+                )
+                - int(native_row["outcome"] == "player_victory"),
+            }
+        )
+    try:
+        interval = paired_bootstrap_interval(
+            [row["floor_difference"] for row in paired_rows],
+            seed=bootstrap_seed,
+            resamples=bootstrap_resamples,
+            confidence_level=confidence_level,
+        )
+    except (SimulatorAdapterError, SmokeBlocked) as exc:
+        raise WarmStartBlocked(str(exc)) from exc
+    return {
+        "comparison_id": "candidate_minus_native_simple_agent",
+        "floor_difference_ci": interval,
+        "paired_rows": paired_rows,
+    }
+
+
+def evaluate_warm_start_rollouts(
+    model: Any,
+    *,
+    environment_factory: Callable[[int], Any],
+    seeds: Sequence[int],
+    hash_dim: int,
+    max_decisions_per_episode: int,
+    max_episodes: int,
+    max_wall_seconds: float,
+    bootstrap_seed: int,
+    bootstrap_resamples: int,
+    confidence_level: float,
+    clock: Callable[[], float],
+) -> dict[str, Any]:
+    """Compare one frozen candidate with native SimpleAgent on paired seeds."""
+    normalized_seeds = _seed_array(seeds, "rollout seeds")
+    hash_dim = _positive_int(hash_dim, "hash_dim")
+    max_decisions_per_episode = _positive_int(
+        max_decisions_per_episode, "max_decisions_per_episode"
+    )
+    max_episodes = _positive_int(max_episodes, "max_episodes")
+    bootstrap_resamples = _positive_int(bootstrap_resamples, "bootstrap_resamples")
+    max_wall_seconds = _finite_number(max_wall_seconds, "max_wall_seconds")
+    confidence_level = _finite_number(confidence_level, "confidence_level")
+    if max_wall_seconds <= 0.0:
+        raise WarmStartBlocked("max_wall_seconds must be positive")
+    if max_episodes < 2 * len(normalized_seeds):
+        raise WarmStartBlocked("max_episodes does not cover paired rollout policies")
+    if isinstance(bootstrap_seed, bool) or not isinstance(bootstrap_seed, int):
+        raise WarmStartBlocked("bootstrap_seed must be an integer")
+    if not 0.0 < confidence_level < 1.0:
+        raise WarmStartBlocked("confidence_level must be between zero and one")
+    if any(parameter.requires_grad for parameter in model.parameters()):
+        raise WarmStartBlocked("rollout model must be frozen")
+    _ensure_finite_model(model)
+
+    model_before = sha256_bytes(
+        canonical_json_bytes(canonical_warm_start_model_payload(model))
+    )
+    started = _finite_number(clock(), "clock value")
+    deadline = started + max_wall_seconds
+    torch = _torch_module()
+    try:
+        with torch.inference_mode():
+            candidate = evaluate_greedy_policy(
+                model,
+                environment_factory=environment_factory,
+                seeds=normalized_seeds,
+                hash_dim=hash_dim,
+                max_decisions_per_episode=max_decisions_per_episode,
+                deadline=deadline,
+                clock=clock,
+            )
+            native = evaluate_native_policy(
+                environment_factory=environment_factory,
+                seeds=normalized_seeds,
+                max_decisions_per_episode=max_decisions_per_episode,
+                deadline=deadline,
+                clock=clock,
+            )
+    except (PolicyValidityBlocked, SimulatorAdapterError, SmokeBlocked) as exc:
+        raise WarmStartBlocked(str(exc)) from exc
+    for policy in (candidate, native):
+        for row in policy["rows"]:
+            row["candidate_legality"] = policy.get("candidate_legality") is True
+
+    model_after = sha256_bytes(
+        canonical_json_bytes(canonical_warm_start_model_payload(model))
+    )
+    all_rows = [*candidate["rows"], *native["rows"]]
+    finite_metrics = all(
+        not isinstance(row.get("terminal_floor"), bool)
+        and isinstance(row.get("terminal_floor"), Real)
+        and math.isfinite(float(row["terminal_floor"]))
+        and not isinstance(row.get("decisions"), bool)
+        and isinstance(row.get("decisions"), int)
+        and 0 <= row["decisions"] <= max_decisions_per_episode
+        for row in all_rows
+    )
+    comparison = _paired_rollout_comparison(
+        candidate,
+        native,
+        seeds=normalized_seeds,
+        bootstrap_seed=bootstrap_seed,
+        bootstrap_resamples=bootstrap_resamples,
+        confidence_level=confidence_level,
+    )
+    return {
+        "checks": {
+            "candidate_legality": candidate.get("candidate_legality") is True
+            and native.get("candidate_legality") is True,
+            "episode_count": len(all_rows) == 2 * len(normalized_seeds),
+            "finite_metrics": finite_metrics,
+            "four_category_coverage": candidate.get("all_categories")
+            == list(TARGET_CATEGORIES)
+            and native.get("all_categories") == list(TARGET_CATEGORIES),
+            "model_immutability": model_before == model_after,
+            "no_gradients": all(
+                parameter.grad is None for parameter in model.parameters()
+            ),
+            "terminal_outcomes": all(
+                row.get("outcome") in {"player_loss", "player_victory"}
+                for row in all_rows
+            ),
+            "within_bounds": len(all_rows) <= max_episodes,
+        },
+        "comparison": comparison,
+        "model_sha256": model_after,
+        "policies": {
+            "candidate": candidate,
+            "native_simple_agent": native,
+        },
+        "schema_version": ROLLOUT_SCHEMA_VERSION,
+        "seeds": normalized_seeds,
+        "victories": {
+            "candidate": sum(
+                row["outcome"] == "player_victory" for row in candidate["rows"]
+            ),
+            "native_simple_agent": sum(
+                row["outcome"] == "player_victory" for row in native["rows"]
+            ),
+        },
+    }
+
+
+def _validated_gate_thresholds(value: Mapping[str, Any]) -> dict[str, float]:
+    thresholds = _mapping(value, "quality thresholds")
+    expected = {
+        "floor_noninferiority_margin",
+        "maximum_mean_floor_deficit",
+        "minimum_macro_category_action_agreement",
+        "minimum_overall_action_agreement",
+        "minimum_per_category_action_agreement",
+    }
+    _require_keys(thresholds, expected, "quality thresholds")
+    result = {
+        name: _finite_number(thresholds[name], f"quality thresholds.{name}")
+        for name in sorted(expected)
+    }
+    for field in (
+        "minimum_macro_category_action_agreement",
+        "minimum_overall_action_agreement",
+        "minimum_per_category_action_agreement",
+    ):
+        if not 0.0 <= result[field] <= 1.0:
+            raise WarmStartBlocked(f"quality thresholds.{field} must be in [0, 1]")
+    if (
+        result["floor_noninferiority_margin"] < 0.0
+        or result["maximum_mean_floor_deficit"] < 0.0
+    ):
+        raise WarmStartBlocked("floor deficit thresholds must be non-negative")
+    if (
+        result["maximum_mean_floor_deficit"]
+        > result["floor_noninferiority_margin"]
+    ):
+        raise WarmStartBlocked(
+            "maximum_mean_floor_deficit must not exceed floor_noninferiority_margin"
+        )
+    return result
+
+
+def classify_quality_gate(
+    teacher_fit: Mapping[str, Any],
+    rollouts: Mapping[str, Any],
+    thresholds: Mapping[str, Any],
+) -> dict[str, Any]:
+    """Apply the same preregistered fit and rollout thresholds to one cohort."""
+    limits = _validated_gate_thresholds(thresholds)
+    by_category = _mapping(teacher_fit.get("by_category"), "teacher_fit.by_category")
+    if set(by_category) != set(TARGET_CATEGORIES):
+        raise WarmStartBlocked("teacher_fit categories mismatch")
+    overall = _finite_number(
+        teacher_fit.get("overall_action_agreement"),
+        "teacher_fit.overall_action_agreement",
+    )
+    macro = _finite_number(
+        teacher_fit.get("macro_category_action_agreement"),
+        "teacher_fit.macro_category_action_agreement",
+    )
+    per_category = [
+        _finite_number(
+            _mapping(by_category[category], f"teacher_fit.{category}").get(
+                "action_agreement"
+            ),
+            f"teacher_fit.{category}.action_agreement",
+        )
+        for category in TARGET_CATEGORIES
+    ]
+    comparison = _mapping(rollouts.get("comparison"), "rollouts.comparison")
+    interval = _mapping(
+        comparison.get("floor_difference_ci"),
+        "rollouts.comparison.floor_difference_ci",
+    )
+    lower = _finite_number(interval.get("lower"), "rollout floor interval lower")
+    mean = _finite_number(interval.get("mean"), "rollout floor interval mean")
+    checks = {
+        "macro_category_action_agreement": macro
+        >= limits["minimum_macro_category_action_agreement"],
+        "mean_floor_deficit": mean >= -limits["maximum_mean_floor_deficit"],
+        "noninferiority_lower_bound": lower
+        >= -limits["floor_noninferiority_margin"],
+        "overall_action_agreement": overall
+        >= limits["minimum_overall_action_agreement"],
+        "per_category_action_agreement": min(per_category)
+        >= limits["minimum_per_category_action_agreement"],
+    }
+    return {"checks": checks, "passed": all(checks.values())}
+
+
+def _nested_structural_blockers(
+    phase: str, evidence: Mapping[str, Any]
+) -> list[str]:
+    blockers = []
+    for section in ("teacher_fit", "rollouts"):
+        section_value = _mapping(evidence.get(section), f"{phase}.{section}")
+        checks = _mapping(section_value.get("checks"), f"{phase}.{section}.checks")
+        blockers.extend(
+            f"{phase}.{section}.{name}"
+            for name, passed in sorted(checks.items())
+            if passed is not True
+        )
+    return blockers
+
+
+def _authority() -> dict[str, bool]:
+    return {
+        "formal_noncombat_rl": False,
+        "live_gameplay": False,
+        "live_policy_loading": False,
+        "live_study_launch": False,
+        "ope_reinterpretation": False,
+        "policy_promotion": False,
+        "qualification": False,
+        "simulator_rl_training": False,
+        "simulator_training": False,
+    }
+
+
+def classify_warm_start_results(
+    primary: Mapping[str, Any],
+    replay: Mapping[str, Any],
+    thresholds: Mapping[str, Any],
+) -> dict[str, Any]:
+    """Classify structure, validation stopping, and final baseline floor."""
+    primary = _mapping(primary, "primary execution")
+    replay = _mapping(replay, "replay execution")
+    structural = _mapping(
+        primary.get("structural_checks"), "primary structural_checks"
+    )
+    blockers = [
+        name for name, passed in sorted(structural.items()) if passed is not True
+    ]
+    replay_identity = canonical_json_bytes(primary) == canonical_json_bytes(replay)
+    if not replay_identity:
+        blockers.append("replay_identity")
+
+    validation = _mapping(primary.get("validation"), "primary validation")
+    blockers.extend(_nested_structural_blockers("validation", validation))
+    validation_gate = classify_quality_gate(
+        _mapping(validation["teacher_fit"], "validation.teacher_fit"),
+        _mapping(validation["rollouts"], "validation.rollouts"),
+        thresholds,
+    )
+    final_test_value = primary.get("final_test")
+    final_test_untouched = final_test_value is None
+    final_gate = None
+    if validation_gate["passed"]:
+        if final_test_value is None:
+            blockers.append("final_test_missing_after_validation_pass")
+        else:
+            final_test = _mapping(final_test_value, "primary final_test")
+            blockers.extend(_nested_structural_blockers("final_test", final_test))
+            final_gate = classify_quality_gate(
+                _mapping(final_test["teacher_fit"], "final_test.teacher_fit"),
+                _mapping(final_test["rollouts"], "final_test.rollouts"),
+                thresholds,
+            )
+    elif final_test_value is not None:
+        blockers.append("validation_stop_gate")
+
+    final_test_access_contract = (
+        validation_gate["passed"] and final_test_value is not None
+    ) or (not validation_gate["passed"] and final_test_value is None)
+
+    if blockers:
+        quality = "not_evaluated"
+        verdict = "blocked"
+    elif final_gate is not None and final_gate["passed"]:
+        quality = "baseline_floor_demonstrated"
+        verdict = "study_valid_with_baseline_floor"
+    else:
+        quality = "baseline_floor_not_demonstrated"
+        verdict = "study_valid_without_baseline_floor"
+    return {
+        "authority": _authority(),
+        "blockers": blockers,
+        "checks": {
+            **structural,
+            "final_test_access_contract": final_test_access_contract,
+            "replay_identity": replay_identity,
+        },
+        "final_gate": final_gate,
+        "final_test_untouched": final_test_untouched,
+        "quality": quality,
+        "validation_gate": validation_gate,
+        "verdict": verdict,
     }

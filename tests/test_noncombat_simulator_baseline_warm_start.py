@@ -16,7 +16,10 @@ from analysis_scripts.noncombat_simulator_baseline_warm_start import (
     WarmStartBlocked,
     build_warm_start_model,
     canonical_warm_start_model_payload,
+    classify_warm_start_results,
     collect_native_demonstrations,
+    evaluate_teacher_fit,
+    evaluate_warm_start_rollouts,
     load_warm_start_registration,
     load_warm_start_model,
     predict_warm_start_action,
@@ -311,6 +314,9 @@ class FakeDemonstrationEnvironment:
             },
         ]
 
+    def clone(self) -> "FakeDemonstrationEnvironment":
+        return copy.deepcopy(self)
+
     def native_baseline_action(self) -> dict[str, str]:
         return {
             "action_id": "take",
@@ -453,6 +459,7 @@ def test_warm_start_training_is_deterministic_and_preserves_all_candidates():
     assert first.history == second.history
     assert first.initial_model != first.final_model
     assert all(not parameter.requires_grad for parameter in first.model.parameters())
+    assert all(parameter.grad is None for parameter in first.model.parameters())
     for row in dataset["rows"]:
         prediction = predict_warm_start_action(
             first.model,
@@ -546,3 +553,181 @@ def test_warm_start_prediction_rejects_nonfinite_model():
             candidates=row["candidate_actions"],
             hash_dim=32,
         )
+
+
+def _trained_demo_model():
+    return train_warm_start_ranker(
+        _collect_demo(),
+        hash_dim=64,
+        hidden_dim=16,
+        model_seed=0,
+        epochs=20,
+        learning_rate=0.02,
+        betas=(0.9, 0.999),
+        epsilon=1e-8,
+        weight_decay=0.0,
+    ).model
+
+
+def test_teacher_fit_and_paired_rollout_metrics_are_deterministic():
+    model = _trained_demo_model()
+    dataset = _collect_demo(cohort="validation")
+
+    teacher_fit = evaluate_teacher_fit(model, dataset=dataset, hash_dim=64)
+    first = evaluate_warm_start_rollouts(
+        model,
+        environment_factory=_demo_factory,
+        seeds=(4000, 4001, 4002, 4003),
+        hash_dim=64,
+        max_decisions_per_episode=4,
+        max_episodes=8,
+        max_wall_seconds=30.0,
+        bootstrap_seed=0,
+        bootstrap_resamples=200,
+        confidence_level=0.95,
+        clock=lambda: 0.0,
+    )
+    second = evaluate_warm_start_rollouts(
+        model,
+        environment_factory=_demo_factory,
+        seeds=(4000, 4001, 4002, 4003),
+        hash_dim=64,
+        max_decisions_per_episode=4,
+        max_episodes=8,
+        max_wall_seconds=30.0,
+        bootstrap_seed=0,
+        bootstrap_resamples=200,
+        confidence_level=0.95,
+        clock=lambda: 0.0,
+    )
+
+    assert teacher_fit["overall_action_agreement"] == 1.0
+    assert teacher_fit["macro_category_action_agreement"] == 1.0
+    assert all(
+        category["action_agreement"] == 1.0
+        for category in teacher_fit["by_category"].values()
+    )
+    assert first == second
+    assert set(first["checks"].values()) == {True}
+    assert first["comparison"]["floor_difference_ci"] == {
+        "confidence_level": 0.95,
+        "lower": 0.0,
+        "mean": 0.0,
+        "resamples": 200,
+        "upper": 0.0,
+    }
+    assert first["victories"] == {
+        "candidate": 0,
+        "native_simple_agent": 0,
+    }
+
+
+def _teacher_fit_metrics(agreement: float) -> dict[str, object]:
+    return {
+        "by_category": {
+            category: {"action_agreement": agreement, "row_count": 1}
+            for category in ("card_reward", "event", "route", "shop")
+        },
+        "checks": {
+            "candidate_legality": True,
+            "four_category_coverage": True,
+            "finite_metrics": True,
+        },
+        "macro_category_action_agreement": agreement,
+        "overall_action_agreement": agreement,
+    }
+
+
+def _rollout_metrics(*, lower: float, mean: float) -> dict[str, object]:
+    return {
+        "checks": {
+            "candidate_legality": True,
+            "episode_count": True,
+            "finite_metrics": True,
+            "four_category_coverage": True,
+            "model_immutability": True,
+            "no_gradients": True,
+            "terminal_outcomes": True,
+            "within_bounds": True,
+        },
+        "comparison": {
+            "floor_difference_ci": {
+                "confidence_level": 0.95,
+                "lower": lower,
+                "mean": mean,
+                "resamples": 1000,
+                "upper": mean + 1.0,
+            }
+        },
+    }
+
+
+def _classification_input(
+    *, validation_agreement: float = 0.9, final_lower: float | None = -1.0
+) -> dict[str, object]:
+    validation = {
+        "rollouts": _rollout_metrics(lower=-1.0, mean=-0.5),
+        "teacher_fit": _teacher_fit_metrics(validation_agreement),
+    }
+    final_test = None
+    if final_lower is not None:
+        final_test = {
+            "rollouts": _rollout_metrics(lower=final_lower, mean=-0.5),
+            "teacher_fit": _teacher_fit_metrics(0.9),
+        }
+    return {
+        "final_test": final_test,
+        "structural_checks": {"identity": True, "model_frozen": True},
+        "validation": validation,
+    }
+
+
+def _classification_thresholds() -> dict[str, float]:
+    return copy.deepcopy(
+        valid_registration()["study"]["evaluation"]["thresholds"]
+    )
+
+
+def test_warm_start_classification_positive_negative_blocked_and_untouched():
+    thresholds = _classification_thresholds()
+    positive = _classification_input(final_lower=-1.0)
+    result = classify_warm_start_results(positive, copy.deepcopy(positive), thresholds)
+    assert result["verdict"] == "study_valid_with_baseline_floor"
+    assert result["quality"] == "baseline_floor_demonstrated"
+    assert result["blockers"] == []
+    assert set(result["authority"].values()) == {False}
+
+    negative = _classification_input(final_lower=-4.0)
+    result = classify_warm_start_results(negative, copy.deepcopy(negative), thresholds)
+    assert result["verdict"] == "study_valid_without_baseline_floor"
+    assert result["quality"] == "baseline_floor_not_demonstrated"
+    assert result["blockers"] == []
+
+    untouched = _classification_input(validation_agreement=0.5, final_lower=None)
+    result = classify_warm_start_results(untouched, copy.deepcopy(untouched), thresholds)
+    assert result["verdict"] == "study_valid_without_baseline_floor"
+    assert result["final_test_untouched"] is True
+    assert result["checks"]["final_test_access_contract"] is True
+    assert result["validation_gate"]["passed"] is False
+
+    violated_stop = _classification_input(validation_agreement=0.5, final_lower=-1.0)
+    result = classify_warm_start_results(
+        violated_stop, copy.deepcopy(violated_stop), thresholds
+    )
+    assert result["verdict"] == "blocked"
+    assert "validation_stop_gate" in result["blockers"]
+
+    blocked = _classification_input(final_lower=-1.0)
+    blocked["structural_checks"]["identity"] = False
+    result = classify_warm_start_results(blocked, copy.deepcopy(blocked), thresholds)
+    assert result["verdict"] == "blocked"
+    assert "identity" in result["blockers"]
+
+    replay_changed = _classification_input(final_lower=-1.0)
+    replay = copy.deepcopy(replay_changed)
+    replay["final_test"]["rollouts"]["comparison"]["floor_difference_ci"][
+        "mean"
+    ] = 99.0
+    result = classify_warm_start_results(replay_changed, replay, thresholds)
+    assert result["verdict"] == "blocked"
+    assert "replay_identity" in result["blockers"]
