@@ -12,6 +12,10 @@ gradient loop before considering formal non-combat RL.
 - Add a registered, CPU-only simulator-training smoke with exact adapter/source
   identity, disjoint fixed train and holdout seeds, finite episode/update/time
   bounds, and one allowed run with no hyperparameter sweep or adaptive retry.
+- Repair adapter determinism exposed by the learning integration: clones must
+  own independent maps across Act transitions, snapshots must omit undefined
+  upstream screen fields, and the CLI must load the native MinGW module before
+  PyTorch on Windows.
 - Add a versioned simulator policy feature view that removes seed, terminal
   outcome, provenance, and baseline-history leakage while retaining canonical
   state and legal candidate data.
@@ -36,6 +40,12 @@ identity, and an honest paired holdout result. A positive policy signal requires
 the pre-registered lower confidence bound for paired terminal-floor improvement
 to exceed zero; absence of that signal is a valid `quality_not_demonstrated`
 result, not a reason to tune or rerun.
+
+The registered operational cohort is 32 train seeds over four passes (128
+training episodes) plus 64 paired holdout seeds before and after training, with
+a 600-second limit per execution. This replaces the initial 64-by-eight draft
+before any registered policy result was observed; a native throughput regression
+showed that draft would approach or exceed its own wall bound.
 
 Non-goals are simulator/live mechanics equivalence, formal or long-running RL,
 live gameplay evaluation, policy promotion, Bottled imitation, reward tuning,
@@ -66,8 +76,8 @@ inventories remain untouched.
 - Adds offline analysis/training modules, registration and report schemas,
   focused tests, a frozen smoke input, and isolated report/model artifacts.
 - Reuses the optional native adapter and existing PyTorch candidate-ranker
-  architecture; it adds no live startup dependency and no automatic model
-  discovery path.
+  architecture after focused clone/snapshot/runtime coexistence repairs; it
+  adds no live startup dependency and no automatic model discovery path.
 - Reads the explicit local `sts_lightspeed` checkout and native module only when
   the smoke command is invoked. It does not modify the external checkout.
 - Leaves CommunicationMod configuration, gameplay launchers, combat

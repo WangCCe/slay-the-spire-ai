@@ -134,6 +134,7 @@ class NoncombatEnvironment {
 public:
     NoncombatEnvironment(std::uint64_t seed, int ascension)
         : gc_(sts::CharacterClass::IRONCLAD, seed, ascension) {
+        gc_.info.encounter = sts::MonsterEncounter::INVALID;
         configureAgents();
         advanceToDecision();
     }
@@ -141,6 +142,9 @@ public:
     NoncombatEnvironment(const NoncombatEnvironment &other)
         : gc_(other.gc_), baselineHistory_(other.baselineHistory_),
           decisionCount_(other.decisionCount_) {
+        if (other.gc_.map) {
+            gc_.map = std::make_shared<sts::Map>(*other.gc_.map);
+        }
         configureAgents();
     }
 
@@ -316,7 +320,6 @@ private:
                 {"event_data", gc_.info.eventData},
                 {"event_id", sts::eventIdStrings[static_cast<int>(gc_.curEvent)]},
                 {"event_name", eventName(gc_.curEvent)},
-                {"hp_amounts", {gc_.info.hpAmount0, gc_.info.hpAmount1, gc_.info.hpAmount2}},
             };
         } else if (category() == "shop") {
             json cards = json::array();

@@ -87,6 +87,11 @@ The system SHALL compare the frozen initial and trained greedy policies on the s
 ### Requirement: Deterministic Smoke Reproduction
 The published smoke SHALL be reproduced once from the identical registration before its structural pipeline can be classified as demonstrated.
 
+#### Scenario: Native module and PyTorch initialize on Windows
+- **WHEN** the smoke CLI starts with the registered native module and MinGW DLL directory
+- **THEN** it SHALL load and validate the native adapter before importing PyTorch
+- **AND** a fresh-process integration check SHALL prove both runtimes coexist
+
 #### Scenario: Same-input replay matches
 - **WHEN** primary and replay executions use the same registered environment and runtime identities
 - **THEN** canonical model tensors, selected actions, metrics, manifests, and report bytes SHALL match exactly
