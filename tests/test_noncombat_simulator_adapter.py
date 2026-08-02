@@ -8,6 +8,7 @@ import pytest
 
 from analysis_scripts.noncombat_simulator_adapter import (
     ADAPTER_API_VERSION,
+    EventOptionSemanticsError,
     NATIVE_BASELINE_ACTION_SCHEMA_VERSION,
     NATIVE_TARGET_POLICY_ID,
     SOURCE_TYPE,
@@ -17,8 +18,10 @@ from analysis_scripts.noncombat_simulator_adapter import (
     SimulatorAdapterError,
     build_transition,
     collect_provenance,
+    event_option_semantics_identity,
     hash_compiled_simulator_sources,
     load_native_module,
+    resolve_event_option_semantics,
     validate_candidates,
 )
 
@@ -75,6 +78,128 @@ def _provenance():
         "simulator_source_sha256": "e" * 64,
         "submodules": {"json": "f" * 40, "pybind11": "1" * 40},
     }
+
+
+def _event_snapshot(*, ascension=0, event_data=0, event_id="Liars Game"):
+    snapshot = _snapshot("event")
+    snapshot["state"].update(
+        {
+            "ascension": ascension,
+            "decision_context": {
+                "event_data": event_data,
+                "event_id": event_id,
+                "event_name": "The Ssssserpent",
+            },
+        }
+    )
+    return snapshot
+
+
+def _event_candidate(index, *, action_id=None):
+    return {
+        "action_id": action_id or f"event:the_ssssserpent:option:{index}",
+        "available": True,
+        "category": "event",
+        "kind": "event_option",
+        "label": f"The Ssssserpent option {index}",
+        "raw": {"event_id": "Liars Game", "idx1": index, "idx2": 0},
+    }
+
+
+def _event_semantics_provenance():
+    provenance = _provenance()
+    identity = event_option_semantics_identity()
+    provenance["simulator_commit"] = identity["simulator_commit"]
+    provenance["simulator_source_sha256"] = identity["simulator_source_sha256"]
+    return provenance
+
+
+@pytest.mark.parametrize(
+    ("ascension", "expected_text"),
+    [
+        (0, "Gain 175 Gold. Become Cursed - Doubt."),
+        (15, "Gain 150 Gold. Become Cursed - Doubt."),
+    ],
+)
+def test_liars_game_semantics_are_exact_source_bound_and_non_mutating(
+    ascension, expected_text
+):
+    snapshot = _event_snapshot(ascension=ascension)
+    candidates = [_event_candidate(0), _event_candidate(1)]
+    provenance = _event_semantics_provenance()
+    before_snapshot = json.dumps(snapshot, sort_keys=True)
+    before_candidates = json.dumps(candidates, sort_keys=True)
+    before_provenance = json.dumps(provenance, sort_keys=True)
+
+    semantics = resolve_event_option_semantics(
+        snapshot=snapshot,
+        candidates=candidates,
+        simulator_provenance=provenance,
+    )
+
+    assert semantics == [
+        {"choice_index": 0, "label": "Agree", "text": expected_text},
+        {"choice_index": 1, "label": "Disagree", "text": "Nothing happens."},
+    ]
+    assert json.dumps(snapshot, sort_keys=True) == before_snapshot
+    assert json.dumps(candidates, sort_keys=True) == before_candidates
+    assert json.dumps(provenance, sort_keys=True) == before_provenance
+
+
+@pytest.mark.parametrize(
+    ("snapshot", "candidates", "reason"),
+    [
+        (
+            _event_snapshot(event_id="Big Fish"),
+            [_event_candidate(0), _event_candidate(1)],
+            "event_option_semantics_event_unsupported",
+        ),
+        (
+            _event_snapshot(event_data=1),
+            [_event_candidate(0), _event_candidate(1)],
+            "event_option_semantics_phase_unsupported",
+        ),
+        (
+            _event_snapshot(),
+            [_event_candidate(0)],
+            "event_option_semantics_candidate_indices_mismatch",
+        ),
+        (
+            _event_snapshot(),
+            [
+                _event_candidate(0),
+                _event_candidate(0, action_id="event:the_ssssserpent:option:duplicate"),
+            ],
+            "event_option_semantics_candidate_index_duplicate",
+        ),
+    ],
+)
+def test_event_semantics_reject_unsupported_or_incomplete_state(
+    snapshot, candidates, reason
+):
+    with pytest.raises(EventOptionSemanticsError) as exc_info:
+        resolve_event_option_semantics(
+            snapshot=snapshot,
+            candidates=candidates,
+            simulator_provenance=_event_semantics_provenance(),
+        )
+
+    assert exc_info.value.reason == reason
+
+
+@pytest.mark.parametrize("field", ["simulator_commit", "simulator_source_sha256"])
+def test_event_semantics_reject_simulator_identity_drift(field):
+    provenance = _event_semantics_provenance()
+    provenance[field] = "0" * len(provenance[field])
+
+    with pytest.raises(EventOptionSemanticsError) as exc_info:
+        resolve_event_option_semantics(
+            snapshot=_event_snapshot(),
+            candidates=[_event_candidate(0), _event_candidate(1)],
+            simulator_provenance=provenance,
+        )
+
+    assert exc_info.value.reason == "event_option_semantics_provenance_mismatch"
 
 
 class _FakeNativeBaselineEnvironment:

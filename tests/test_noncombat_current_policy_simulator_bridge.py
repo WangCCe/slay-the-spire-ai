@@ -11,11 +11,21 @@ import pytest
 from analysis_scripts.noncombat_current_policy_simulator_bridge import (
     ALL_FALSE_AUTHORITY,
     BridgeBlocked,
+    CurrentPolicyBridgeSession,
     MetadataCatalog,
+    build_artifacts,
     classify_stage1,
+    enrich_event_option_semantics,
     hydrate_game,
     map_current_action,
+    validate_successor_registration,
     validate_registration,
+    validate_successor_evidence,
+)
+from analysis_scripts.noncombat_simulator_adapter import (
+    canonical_json_bytes,
+    event_option_semantics_identity,
+    sha256_bytes,
 )
 from spirecomm.communication.action import (
     BuyCardAction,
@@ -108,6 +118,166 @@ def _snapshot(category, state):
         "state": state,
         "terminal": False,
     }
+
+
+def _adapter_provenance():
+    semantics = event_option_semantics_identity()
+    return {
+        "adapter_commit": "a" * 40,
+        "adapter_source_sha256": "b" * 64,
+        "build": {
+            "adapter_api_version": "sts-lightspeed-noncombat-adapter-v2",
+            "compiler": "test compiler",
+            "cpp_standard": 201703,
+            "python": sys.version.split()[0],
+        },
+        "module_sha256": "c" * 64,
+        "simulator_commit": semantics["simulator_commit"],
+        "simulator_source_sha256": semantics["simulator_source_sha256"],
+        "submodules": {"json": "d" * 40, "pybind11": "e" * 40},
+    }
+
+
+def _current_policy():
+    return {
+        "ascension": 0,
+        "character": "IRONCLAD",
+        "elite_mode": "conservative",
+        "gameplay_io_enabled": False,
+        "policy_id": "current_optimized_ironclad_a0_conservative_snapshot_v1",
+        "screen_entrypoint": "handle_screen",
+        "tracker_enabled": False,
+        "use_optimized_card_selection": True,
+        "use_optimized_combat": True,
+    }
+
+
+def _successor_registration():
+    repo_root = Path(__file__).resolve().parents[1]
+    predecessor = json.loads(
+        (
+            repo_root
+            / "reports"
+            / "noncombat_current_policy_simulator_bridge_20260802_input.json"
+        ).read_text(encoding="utf-8")
+    )
+    successor = copy.deepcopy(predecessor)
+    successor["schema_version"] = (
+        "noncombat-current-policy-simulator-bridge-input-v2"
+    )
+    successor["identity"]["event_option_semantics"] = (
+        event_option_semantics_identity()
+    )
+    successor["identity"]["predecessor_registration"] = {
+        "path": (
+            "reports/noncombat_current_policy_simulator_bridge_20260802_input.json"
+        ),
+        "sha256": "1" * 64,
+        "size_bytes": 1,
+    }
+    successor["identity"]["predecessor_manifest"] = {
+        "path": (
+            "reports/noncombat_current_policy_simulator_bridge_20260802/"
+            "artifact_manifest.json"
+        ),
+        "sha256": "2" * 64,
+        "size_bytes": 1,
+    }
+    successor["identity"]["implementation"]["commit"] = "3" * 40
+    successor["identity"]["implementation"]["source_sha256"] = "4" * 64
+    successor["output"]["directory"] = (
+        "reports/noncombat_current_policy_simulator_bridge_20260802_r2"
+    )
+    return successor, predecessor
+
+
+def _write_successor_evidence(tmp_path):
+    successor, predecessor = _successor_registration()
+    predecessor_relative = Path(
+        "reports/noncombat_current_policy_simulator_bridge_20260802_input.json"
+    )
+    predecessor_path = tmp_path / predecessor_relative
+    predecessor_path.parent.mkdir(parents=True)
+    predecessor_bytes = canonical_json_bytes(predecessor)
+    predecessor_path.write_bytes(predecessor_bytes)
+
+    manifest_relative = (
+        Path(predecessor["output"]["directory"]) / "artifact_manifest.json"
+    )
+    manifest_path = tmp_path / manifest_relative
+    manifest_path.parent.mkdir(parents=True)
+    manifest = {
+        "artifact_hashes": {
+            name: str(index) * 64
+            for index, name in enumerate(
+                [
+                    "configuration.json",
+                    "execution_journal.json",
+                    "metrics.json",
+                    "report.md",
+                    "row_results.json",
+                ],
+                start=1,
+            )
+        },
+        "authority": copy.deepcopy(ALL_FALSE_AUTHORITY),
+        "registration_sha256": sha256_bytes(predecessor_bytes),
+        "schema_version": (
+            "noncombat-current-policy-simulator-bridge-manifest-v1"
+        ),
+        "stage2_executed": False,
+        "verdict": "frozen_bridge_not_compatible",
+    }
+    manifest_bytes = canonical_json_bytes(manifest)
+    manifest_path.write_bytes(manifest_bytes)
+
+    successor["identity"]["predecessor_registration"] = {
+        "path": predecessor_relative.as_posix(),
+        "sha256": sha256_bytes(predecessor_bytes),
+        "size_bytes": len(predecessor_bytes),
+    }
+    successor["identity"]["predecessor_manifest"] = {
+        "path": manifest_relative.as_posix(),
+        "sha256": sha256_bytes(manifest_bytes),
+        "size_bytes": len(manifest_bytes),
+    }
+    return successor, manifest, manifest_path
+
+
+def _liars_game_state(*, inline_semantics=None):
+    context = {
+        "event_data": 0,
+        "event_id": "Liars Game",
+        "event_name": "The Ssssserpent",
+    }
+    if inline_semantics is not None:
+        context["option_semantics"] = inline_semantics
+    return _state(
+        cur_room="EVENT",
+        decision_context=context,
+        screen_state="EVENT_SCREEN",
+    )
+
+
+def _liars_game_candidates():
+    return [
+        _candidate(
+            "event",
+            "event_option",
+            "event:the_ssssserpent:option:0",
+            idx1=0,
+            idx2=0,
+            event_id="Liars Game",
+        ),
+        _candidate(
+            "event",
+            "event_option",
+            "event:the_ssssserpent:option:1",
+            idx1=1,
+            idx2=0,
+            event_id="Liars Game",
+        ),
+    ]
 
 
 @pytest.fixture
@@ -286,7 +456,11 @@ def test_event_hydration_preserves_semantic_labels(metadata):
             "event_name": "The Ssssserpent",
             "option_semantics": [
                 {"choice_index": 0, "label": "Agree", "text": "Gain gold"},
-                {"choice_index": 1, "label": "Leave", "text": "Leave"},
+                {
+                    "choice_index": 1,
+                    "label": "Disagree",
+                    "text": "Nothing happens.",
+                },
             ],
         },
         screen_state="EVENT_SCREEN",
@@ -299,8 +473,98 @@ def test_event_hydration_preserves_semantic_labels(metadata):
     game = hydrate_game(_snapshot("event", state), candidates, metadata)
 
     assert game.screen_type is ScreenType.EVENT
-    assert [option.label for option in game.screen.options] == ["Agree", "Leave"]
+    assert [option.label for option in game.screen.options] == ["Agree", "Disagree"]
     assert [option.choice_index for option in game.choice_list] == [0, 1]
+
+
+def test_bridge_enriches_missing_event_semantics_without_mutating_sources():
+    snapshot = _snapshot("event", _liars_game_state())
+    candidates = _liars_game_candidates()
+    before_snapshot = copy.deepcopy(snapshot)
+    before_candidates = copy.deepcopy(candidates)
+
+    enriched, source = enrich_event_option_semantics(
+        snapshot=snapshot,
+        candidates=candidates,
+        simulator_provenance=_adapter_provenance(),
+    )
+
+    assert source == "sts_lightspeed_liars_game_event_options_v1"
+    assert enriched["state"]["decision_context"]["option_semantics"] == [
+        {
+            "choice_index": 0,
+            "label": "Agree",
+            "text": "Gain 175 Gold. Become Cursed - Doubt.",
+        },
+        {
+            "choice_index": 1,
+            "label": "Disagree",
+            "text": "Nothing happens.",
+        },
+    ]
+    assert snapshot == before_snapshot
+    assert candidates == before_candidates
+
+
+def test_bridge_preserves_valid_inline_event_semantics():
+    inline = [
+        {"choice_index": 0, "label": "Inline Accept", "text": "Inline text"},
+        {"choice_index": 1, "label": "Inline Leave", "text": "Inline text"},
+    ]
+    snapshot = _snapshot(
+        "event", _liars_game_state(inline_semantics=copy.deepcopy(inline))
+    )
+    drifted = _adapter_provenance()
+    drifted["simulator_commit"] = "0" * 40
+
+    enriched, source = enrich_event_option_semantics(
+        snapshot=snapshot,
+        candidates=_liars_game_candidates(),
+        simulator_provenance=drifted,
+    )
+
+    assert source == "inline"
+    assert enriched["state"]["decision_context"]["option_semantics"] == inline
+
+
+def test_bridge_propagates_event_semantics_blocker():
+    snapshot = _snapshot("event", _liars_game_state())
+    snapshot["state"]["decision_context"]["event_id"] = "Big Fish"
+
+    with pytest.raises(
+        BridgeBlocked, match="event_option_semantics_event_unsupported"
+    ):
+        enrich_event_option_semantics(
+            snapshot=snapshot,
+            candidates=_liars_game_candidates(),
+            simulator_provenance=_adapter_provenance(),
+        )
+
+
+def test_current_session_uses_resolved_liars_game_semantics(metadata):
+    snapshot = _snapshot("event", _liars_game_state())
+    candidates = _liars_game_candidates()
+    before_snapshot = copy.deepcopy(snapshot)
+    before_candidates = copy.deepcopy(candidates)
+    session = CurrentPolicyBridgeSession(
+        metadata=metadata,
+        current_policy=_current_policy(),
+        require_global_metadata_match=False,
+        simulator_provenance=_adapter_provenance(),
+    )
+
+    result = session.evaluate(
+        snapshot=snapshot,
+        candidates=candidates,
+        decision_index=11,
+    )
+
+    assert result["action_id"] == "event:the_ssssserpent:option:1"
+    assert result["event_semantics_source"] == (
+        "sts_lightspeed_liars_game_event_options_v1"
+    )
+    assert snapshot == before_snapshot
+    assert candidates == before_candidates
 
 
 def test_hydration_keeps_snapshot_and_candidates_unchanged(metadata):
@@ -372,6 +636,139 @@ def test_registration_rejects_any_positive_authority():
 
     with pytest.raises(BridgeBlocked, match="authority"):
         validate_registration(registration)
+
+
+def test_successor_registration_accepts_only_declared_identity_changes():
+    successor, predecessor = _successor_registration()
+
+    comparison = validate_successor_registration(successor, predecessor)
+
+    assert comparison["status"] == "passed"
+    assert comparison["predecessor_schema_version"] == (
+        "noncombat-current-policy-simulator-bridge-input-v1"
+    )
+    assert comparison["successor_schema_version"] == (
+        "noncombat-current-policy-simulator-bridge-input-v2"
+    )
+    assert "stage1" in comparison["immutable_paths"]
+    assert "identity.implementation" in comparison["mutable_paths"]
+
+
+@pytest.mark.parametrize(
+    ("path", "value"),
+    [
+        (("identity", "adapter_provenance", "simulator_dirty"), False),
+        (("identity", "frozen_demonstrations", "sha256"), "5" * 64),
+        (("identity", "metadata", "sha256"), "6" * 64),
+        (("identity", "prior_seed_evidence", "sha256"), "7" * 64),
+        (("identity", "runtime", "python"), "9.9.9"),
+        (("stage1", "category_minimums", "event"), 2),
+        (("stage1", "replay_count"), 3),
+        (("stage1", "rows", 0, "decision_index"), 99),
+    ],
+)
+def test_successor_registration_rejects_immutable_identity_or_stage1_drift(
+    path, value
+):
+    successor, predecessor = _successor_registration()
+    target = successor
+    for part in path[:-1]:
+        target = target[part]
+    target[path[-1]] = value
+
+    with pytest.raises(BridgeBlocked, match="successor_immutable_field_mismatch"):
+        validate_successor_registration(successor, predecessor)
+
+
+def test_successor_registration_rejects_stage2_seed_or_limit_drift():
+    successor, predecessor = _successor_registration()
+    successor["stage2"]["reused_seeds"] = [2000, 2001]
+    successor["stage2"]["max_episodes"] = 2
+
+    with pytest.raises(BridgeBlocked, match="successor_immutable_field_mismatch"):
+        validate_successor_registration(successor, predecessor)
+
+
+def test_successor_registration_rejects_current_policy_drift():
+    successor, predecessor = _successor_registration()
+    successor["current_policy"]["elite_mode"] = "aggressive"
+
+    with pytest.raises(BridgeBlocked, match="current_policy_configuration_mismatch"):
+        validate_successor_registration(successor, predecessor)
+
+
+def test_successor_registration_rejects_authority_drift():
+    successor, predecessor = _successor_registration()
+    successor["authority"]["training_authorized"] = True
+
+    with pytest.raises(BridgeBlocked, match="authority_must_be_all_false"):
+        validate_successor_registration(successor, predecessor)
+
+
+def test_successor_evidence_binds_predecessor_manifest_and_registration(tmp_path):
+    successor, _, _ = _write_successor_evidence(tmp_path)
+
+    comparison = validate_successor_evidence(
+        validate_registration(successor), tmp_path
+    )
+
+    assert comparison["status"] == "passed"
+    assert comparison["predecessor_verdict"] == "frozen_bridge_not_compatible"
+    assert comparison["predecessor_registration"] == successor["identity"][
+        "predecessor_registration"
+    ]
+
+
+def test_successor_evidence_rejects_manifest_registration_mismatch(tmp_path):
+    successor, manifest, manifest_path = _write_successor_evidence(tmp_path)
+    manifest["registration_sha256"] = "f" * 64
+    manifest_bytes = canonical_json_bytes(manifest)
+    manifest_path.write_bytes(manifest_bytes)
+    successor["identity"]["predecessor_manifest"].update(
+        {
+            "sha256": sha256_bytes(manifest_bytes),
+            "size_bytes": len(manifest_bytes),
+        }
+    )
+
+    with pytest.raises(
+        BridgeBlocked, match="predecessor_manifest_registration_mismatch"
+    ):
+        validate_successor_evidence(validate_registration(successor), tmp_path)
+
+
+def test_successor_artifacts_disclose_comparison(tmp_path):
+    successor, _, _ = _write_successor_evidence(tmp_path)
+    normalized = validate_registration(successor)
+    comparison = validate_successor_evidence(normalized, tmp_path)
+    classification = {
+        "authority": copy.deepcopy(ALL_FALSE_AUTHORITY),
+        "category_coverage": {
+            "card_reward": True,
+            "event": True,
+            "route": True,
+            "shop": True,
+        },
+        "passed": True,
+        "stage2_authorized": True,
+        "verdict": "frozen_bridge_structurally_compatible",
+    }
+
+    artifacts = build_artifacts(
+        registration=normalized,
+        registration_sha256="a" * 64,
+        row_results=[],
+        classification=classification,
+        successor_comparison=comparison,
+    )
+
+    configuration = json.loads(artifacts["configuration.json"])
+    metrics = json.loads(artifacts["metrics.json"])
+    manifest = json.loads(artifacts["artifact_manifest.json"])
+    assert configuration["successor_comparison"]["status"] == "passed"
+    assert metrics["schema_version"].endswith("metrics-v2")
+    assert manifest["schema_version"].endswith("manifest-v2")
+    assert b"## Successor Integrity" in artifacts["report.md"]
 
 
 def test_script_path_entrypoint_can_import_repository_modules():

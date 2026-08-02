@@ -21,8 +21,11 @@ if str(_REPO_ROOT) not in sys.path:
 
 import spirecomm.ai.agent as agent_module
 from analysis_scripts.noncombat_simulator_adapter import (
+    EventOptionSemanticsError,
     TARGET_CATEGORIES,
     canonical_json_bytes,
+    event_option_semantics_identity,
+    resolve_event_option_semantics,
     sha256_bytes,
     sha256_file,
     validate_candidates,
@@ -60,9 +63,21 @@ from spirecomm.spire.screen import (
 
 
 INPUT_SCHEMA_VERSION = "noncombat-current-policy-simulator-bridge-input-v1"
+SUCCESSOR_INPUT_SCHEMA_VERSION = (
+    "noncombat-current-policy-simulator-bridge-input-v2"
+)
+SUCCESSOR_COMPARISON_SCHEMA_VERSION = (
+    "noncombat-current-policy-simulator-bridge-successor-comparison-v1"
+)
 ROW_RESULT_SCHEMA_VERSION = "noncombat-current-policy-simulator-bridge-row-v1"
 METRICS_SCHEMA_VERSION = "noncombat-current-policy-simulator-bridge-metrics-v1"
+SUCCESSOR_METRICS_SCHEMA_VERSION = (
+    "noncombat-current-policy-simulator-bridge-metrics-v2"
+)
 MANIFEST_SCHEMA_VERSION = "noncombat-current-policy-simulator-bridge-manifest-v1"
+SUCCESSOR_MANIFEST_SCHEMA_VERSION = (
+    "noncombat-current-policy-simulator-bridge-manifest-v2"
+)
 POLICY_ID = "current_optimized_ironclad_a0_conservative_snapshot_v1"
 DEMONSTRATION_SCHEMA_VERSION = "noncombat-simulator-native-demonstration-v1"
 DEMONSTRATION_ARTIFACT_SCHEMA_VERSION = (
@@ -103,6 +118,25 @@ ALL_FALSE_AUTHORITY = {
     "reward_authorized": False,
     "training_authorized": False,
 }
+SUCCESSOR_IMMUTABLE_PATHS = (
+    ("authority",),
+    ("current_policy",),
+    ("identity", "adapter_provenance"),
+    ("identity", "frozen_demonstrations"),
+    ("identity", "metadata"),
+    ("identity", "prior_seed_evidence"),
+    ("identity", "runtime"),
+    ("stage1",),
+    ("stage2",),
+)
+SUCCESSOR_MUTABLE_PATHS = (
+    "schema_version",
+    "identity.implementation",
+    "identity.event_option_semantics",
+    "identity.predecessor_registration",
+    "identity.predecessor_manifest",
+    "output.directory",
+)
 
 
 class BridgeBlocked(RuntimeError):
@@ -221,7 +255,7 @@ def _validated_current_policy(value: object) -> dict[str, Any]:
 
 
 def validate_registration(value: object) -> dict[str, Any]:
-    """Validate the one accepted bridge POC registration without defaults."""
+    """Validate an original or successor bridge registration without defaults."""
 
     registration = _mapping(value, "registration")
     authority = _mapping(registration.get("authority"), "authority")
@@ -241,25 +275,31 @@ def validate_registration(value: object) -> dict[str, Any]:
         },
         "registration",
     )
-    if registration["schema_version"] != INPUT_SCHEMA_VERSION:
+    schema_version = registration["schema_version"]
+    if schema_version not in {INPUT_SCHEMA_VERSION, SUCCESSOR_INPUT_SCHEMA_VERSION}:
         raise BridgeBlocked("registration_schema_mismatch")
     registration["current_policy"] = _validated_current_policy(
         registration["current_policy"]
     )
 
     identity = _mapping(registration["identity"], "identity")
-    _require_keys(
-        identity,
-        {
-            "adapter_provenance",
-            "frozen_demonstrations",
-            "implementation",
-            "metadata",
-            "prior_seed_evidence",
-            "runtime",
-        },
-        "identity",
-    )
+    identity_keys = {
+        "adapter_provenance",
+        "frozen_demonstrations",
+        "implementation",
+        "metadata",
+        "prior_seed_evidence",
+        "runtime",
+    }
+    if schema_version == SUCCESSOR_INPUT_SCHEMA_VERSION:
+        identity_keys.update(
+            {
+                "event_option_semantics",
+                "predecessor_manifest",
+                "predecessor_registration",
+            }
+        )
+    _require_keys(identity, identity_keys, "identity")
     try:
         identity["adapter_provenance"] = validate_provenance(
             identity["adapter_provenance"]
@@ -279,6 +319,31 @@ def validate_registration(value: object) -> dict[str, Any]:
         "identity.prior_seed_evidence",
         repository_relative=True,
     )
+    if schema_version == SUCCESSOR_INPUT_SCHEMA_VERSION:
+        semantic_identity = _mapping(
+            identity["event_option_semantics"],
+            "identity.event_option_semantics",
+        )
+        expected_semantic_identity = event_option_semantics_identity()
+        if semantic_identity != expected_semantic_identity:
+            raise BridgeBlocked(
+                "event_option_semantics_identity_mismatch",
+                {
+                    "actual": semantic_identity,
+                    "expected": expected_semantic_identity,
+                },
+            )
+        identity["event_option_semantics"] = semantic_identity
+        identity["predecessor_registration"] = _validated_binding(
+            identity["predecessor_registration"],
+            "identity.predecessor_registration",
+            repository_relative=True,
+        )
+        identity["predecessor_manifest"] = _validated_binding(
+            identity["predecessor_manifest"],
+            "identity.predecessor_manifest",
+            repository_relative=True,
+        )
 
     implementation = _mapping(identity["implementation"], "identity.implementation")
     _require_keys(
@@ -391,6 +456,58 @@ def validate_registration(value: object) -> dict[str, Any]:
     registration["output"] = output
     registration["authority"] = authority
     return registration
+
+
+def _registration_value_at_path(
+    registration: Mapping[str, Any], path: Sequence[str]
+) -> object:
+    current: object = registration
+    for part in path:
+        if not isinstance(current, Mapping) or part not in current:
+            raise BridgeBlocked(
+                "successor_comparison_path_missing", ".".join(path)
+            )
+        current = current[part]
+    return current
+
+
+def validate_successor_registration(
+    successor: object, predecessor: object
+) -> dict[str, Any]:
+    """Prove that a v2 registration preserves the v1 execution contract."""
+
+    normalized_successor = validate_registration(copy.deepcopy(successor))
+    normalized_predecessor = validate_registration(copy.deepcopy(predecessor))
+    if normalized_successor["schema_version"] != SUCCESSOR_INPUT_SCHEMA_VERSION:
+        raise BridgeBlocked("successor_registration_schema_required")
+    if normalized_predecessor["schema_version"] != INPUT_SCHEMA_VERSION:
+        raise BridgeBlocked("predecessor_registration_schema_mismatch")
+
+    immutable_paths = []
+    for path in SUCCESSOR_IMMUTABLE_PATHS:
+        actual = _registration_value_at_path(normalized_successor, path)
+        expected = _registration_value_at_path(normalized_predecessor, path)
+        path_label = ".".join(path)
+        if actual != expected:
+            raise BridgeBlocked(
+                "successor_immutable_field_mismatch",
+                {"actual": actual, "expected": expected, "path": path_label},
+            )
+        immutable_paths.append(path_label)
+
+    if (
+        normalized_successor["output"]["directory"]
+        == normalized_predecessor["output"]["directory"]
+    ):
+        raise BridgeBlocked("successor_output_directory_not_new")
+    return {
+        "immutable_paths": immutable_paths,
+        "mutable_paths": list(SUCCESSOR_MUTABLE_PATHS),
+        "predecessor_schema_version": normalized_predecessor["schema_version"],
+        "schema_version": SUCCESSOR_COMPARISON_SCHEMA_VERSION,
+        "status": "passed",
+        "successor_schema_version": normalized_successor["schema_version"],
+    }
 
 
 def load_registration(path: Path | str) -> dict[str, Any]:
@@ -676,6 +793,49 @@ def _hydrate_event_screen(
     screen = EventScreen(event_name, event_id, "")
     screen.options = options
     return screen, options
+
+
+def enrich_event_option_semantics(
+    *,
+    snapshot: Mapping[str, Any],
+    candidates: Sequence[Mapping[str, Any]],
+    simulator_provenance: Mapping[str, Any] | None,
+) -> tuple[dict[str, Any], str]:
+    """Return a hydration copy with exact event semantics when required."""
+
+    before_snapshot = canonical_json_bytes(snapshot)
+    before_candidates = canonical_json_bytes(candidates)
+    enriched = copy.deepcopy(dict(snapshot))
+    if enriched.get("category") != "event":
+        return enriched, "not_applicable"
+
+    state = _mapping(enriched.get("state"), "snapshot.state")
+    context = _mapping(
+        state.get("decision_context"), "snapshot.state.decision_context"
+    )
+    if "option_semantics" in context:
+        source = "inline"
+    else:
+        if simulator_provenance is None:
+            raise BridgeBlocked("event_option_semantics_provenance_missing")
+        try:
+            semantics = resolve_event_option_semantics(
+                snapshot=snapshot,
+                candidates=candidates,
+                simulator_provenance=simulator_provenance,
+            )
+        except EventOptionSemanticsError as exc:
+            raise BridgeBlocked(exc.reason, exc.detail) from exc
+        context["option_semantics"] = semantics
+        source = event_option_semantics_identity()["contract_id"]
+    state["decision_context"] = context
+    enriched["state"] = state
+
+    if canonical_json_bytes(snapshot) != before_snapshot:
+        raise BridgeBlocked("source_snapshot_mutated_during_semantic_enrichment")
+    if canonical_json_bytes(candidates) != before_candidates:
+        raise BridgeBlocked("source_candidates_mutated_during_semantic_enrichment")
+    return enriched, source
 
 
 def hydrate_game(
@@ -996,9 +1156,15 @@ class CurrentPolicyBridgeSession:
         metadata: MetadataCatalog,
         current_policy: Mapping[str, Any],
         require_global_metadata_match: bool = True,
+        simulator_provenance: Mapping[str, Any] | None = None,
     ):
         self.metadata = metadata
         self.current_policy = _validated_current_policy(current_policy)
+        self.simulator_provenance = (
+            copy.deepcopy(dict(simulator_provenance))
+            if simulator_provenance is not None
+            else None
+        )
         if require_global_metadata_match:
             active_path = Path(game_data_loader.items_file).resolve()
             if active_path != metadata.path:
@@ -1039,7 +1205,12 @@ class CurrentPolicyBridgeSession:
             )
         before_snapshot = canonical_json_bytes(snapshot)
         before_candidates = canonical_json_bytes(candidates)
-        game = hydrate_game(snapshot, candidates, self.metadata)
+        hydration_snapshot, event_semantics_source = enrich_event_option_semantics(
+            snapshot=snapshot,
+            candidates=candidates,
+            simulator_provenance=self.simulator_provenance,
+        )
+        game = hydrate_game(hydration_snapshot, candidates, self.metadata)
         if game.ascension_level != self.current_policy["ascension"]:
             raise BridgeBlocked("snapshot_ascension_mismatch", game.ascension_level)
         self.agent.game = game
@@ -1067,7 +1238,7 @@ class CurrentPolicyBridgeSession:
         if canonical_json_bytes(candidates) != before_candidates:
             raise BridgeBlocked("source_candidates_mutated_during_evaluation")
         self._last_decision_index = decision_index
-        return {
+        result = {
             "action_id": action_id,
             "action_type": type(action).__name__,
             "category": category,
@@ -1078,6 +1249,9 @@ class CurrentPolicyBridgeSession:
             "source_mutated": False,
             "tracker_enabled": False,
         }
+        if category == "event":
+            result["event_semantics_source"] = event_semantics_source
+        return result
 
 
 def classify_stage1(
@@ -1200,10 +1374,85 @@ def _load_json(path: Path, label: str) -> dict[str, Any]:
     return _mapping(value, label)
 
 
+def validate_successor_evidence(
+    registration: Mapping[str, Any], repo_root: Path
+) -> dict[str, Any] | None:
+    """Verify predecessor files and immutable registration equality for v2."""
+
+    if registration["schema_version"] != SUCCESSOR_INPUT_SCHEMA_VERSION:
+        return None
+    identity = registration["identity"]
+    predecessor_path = _verify_binding(
+        repo_root=repo_root,
+        binding=identity["predecessor_registration"],
+        repository_relative=True,
+    )
+    manifest_path = _verify_binding(
+        repo_root=repo_root,
+        binding=identity["predecessor_manifest"],
+        repository_relative=True,
+    )
+    predecessor = load_registration(predecessor_path)
+    comparison = validate_successor_registration(registration, predecessor)
+
+    expected_manifest_path = (
+        PurePosixPath(predecessor["output"]["directory"])
+        / "artifact_manifest.json"
+    ).as_posix()
+    actual_manifest_path = str(identity["predecessor_manifest"]["path"]).replace(
+        "\\", "/"
+    )
+    if actual_manifest_path != expected_manifest_path:
+        raise BridgeBlocked(
+            "predecessor_manifest_path_mismatch",
+            {"actual": actual_manifest_path, "expected": expected_manifest_path},
+        )
+
+    manifest = _load_json(manifest_path, "predecessor manifest")
+    _require_keys(
+        manifest,
+        {
+            "artifact_hashes",
+            "authority",
+            "registration_sha256",
+            "schema_version",
+            "stage2_executed",
+            "verdict",
+        },
+        "predecessor manifest",
+    )
+    if manifest["schema_version"] != MANIFEST_SCHEMA_VERSION:
+        raise BridgeBlocked("predecessor_manifest_schema_mismatch")
+    if manifest["registration_sha256"] != sha256_file(predecessor_path):
+        raise BridgeBlocked("predecessor_manifest_registration_mismatch")
+    if manifest["authority"] != ALL_FALSE_AUTHORITY:
+        raise BridgeBlocked("predecessor_manifest_authority_mismatch")
+    artifact_hashes = _mapping(
+        manifest["artifact_hashes"], "predecessor manifest.artifact_hashes"
+    )
+    if set(artifact_hashes) != set(CANONICAL_ARTIFACT_NAMES):
+        raise BridgeBlocked("predecessor_manifest_artifact_names_mismatch")
+    for name, digest in artifact_hashes.items():
+        if not _is_hex(digest, 64):
+            raise BridgeBlocked(
+                "predecessor_manifest_artifact_hash_invalid", name
+            )
+
+    comparison["predecessor_manifest"] = dict(
+        identity["predecessor_manifest"]
+    )
+    comparison["predecessor_registration"] = dict(
+        identity["predecessor_registration"]
+    )
+    comparison["predecessor_verdict"] = manifest["verdict"]
+    return comparison
+
+
 def _validate_identity(
     registration: Mapping[str, Any], repo_root: Path
-) -> tuple[Path, MetadataCatalog]:
+) -> tuple[Path, MetadataCatalog, dict[str, Any] | None]:
     identity = registration["identity"]
+    successor_comparison = validate_successor_evidence(registration, repo_root)
     demonstrations_path = _verify_binding(
         repo_root=repo_root,
         binding=identity["frozen_demonstrations"],
@@ -1241,7 +1490,7 @@ def _validate_identity(
             {"evidence": registered_prior_seeds, "registered": registration["stage2"]["reused_seeds"]},
         )
     metadata = MetadataCatalog(metadata_path)
-    return demonstrations_path, metadata
+    return demonstrations_path, metadata, successor_comparison
 
 
 def _selected_rows(
@@ -1308,6 +1557,9 @@ def _evaluate_stage1(
                 session = CurrentPolicyBridgeSession(
                     metadata=metadata,
                     current_policy=registration["current_policy"],
+                    simulator_provenance=registration["identity"][
+                        "adapter_provenance"
+                    ],
                 )
                 evaluation = session.evaluate(
                     snapshot=row["source_snapshot"],
@@ -1356,7 +1608,10 @@ def _evaluate_stage1(
 
 
 def _report_markdown(
-    *, classification: Mapping[str, Any], row_results: Sequence[Mapping[str, Any]]
+    *,
+    classification: Mapping[str, Any],
+    row_results: Sequence[Mapping[str, Any]],
+    successor_comparison: Mapping[str, Any] | None = None,
 ) -> str:
     lines = [
         "# Current Policy Simulator Bridge POC",
@@ -1365,11 +1620,32 @@ def _report_markdown(
         "",
         "This is structural bridge evidence only. It does not establish policy quality, a baseline floor, reward validity, outcome support, promotion, or formal RL readiness.",
         "",
-        "## Frozen Rows",
-        "",
-        "| Category | Seed | Decision | Status | Result |",
-        "| --- | ---: | ---: | --- | --- |",
     ]
+    if successor_comparison is not None:
+        lines.extend(
+            [
+                "## Successor Integrity",
+                "",
+                f"Status: `{successor_comparison['status']}`.",
+                "",
+                f"Predecessor verdict: `{successor_comparison['predecessor_verdict']}`.",
+                "",
+                "Immutable paths: "
+                + ", ".join(
+                    f"`{path}`" for path in successor_comparison["immutable_paths"]
+                )
+                + ".",
+                "",
+            ]
+        )
+    lines.extend(
+        [
+            "## Frozen Rows",
+            "",
+            "| Category | Seed | Decision | Status | Result |",
+            "| --- | ---: | ---: | --- | --- |",
+        ]
+    )
     for row in row_results:
         result = row.get("reason")
         if result is None:
@@ -1410,6 +1686,7 @@ def build_artifacts(
     registration_sha256: str,
     row_results: Sequence[Mapping[str, Any]],
     classification: Mapping[str, Any],
+    successor_comparison: Mapping[str, Any] | None = None,
 ) -> dict[str, bytes]:
     reason_counts = Counter(
         str(row["reason"]) for row in row_results if row.get("reason") is not None
@@ -1417,11 +1694,18 @@ def build_artifacts(
     configuration = {
         "registration": registration,
         "registration_sha256": registration_sha256,
-        "schema_version": INPUT_SCHEMA_VERSION,
+        "schema_version": registration["schema_version"],
     }
+    if successor_comparison is not None:
+        configuration["successor_comparison"] = successor_comparison
     journal = {
         "steps": [
             "validated_registration_and_bound_sources",
+            *(
+                ["validated_predecessor_and_immutable_successor_fields"]
+                if successor_comparison is not None
+                else []
+            ),
             "loaded_registered_frozen_rows",
             "replayed_each_row_with_fresh_current_session",
             "classified_stage1",
@@ -1439,7 +1723,11 @@ def build_artifacts(
         "reason_counts": dict(sorted(reason_counts.items())),
         "registration_sha256": registration_sha256,
         "row_count": len(row_results),
-        "schema_version": METRICS_SCHEMA_VERSION,
+        "schema_version": (
+            SUCCESSOR_METRICS_SCHEMA_VERSION
+            if successor_comparison is not None
+            else METRICS_SCHEMA_VERSION
+        ),
         "stage1_passed": classification["passed"],
         "stage2": {
             "authorized": classification["stage2_authorized"],
@@ -1452,12 +1740,16 @@ def build_artifacts(
         },
         "verdict": classification["verdict"],
     }
+    if successor_comparison is not None:
+        metrics["successor_comparison"] = successor_comparison
     artifacts = {
         "configuration.json": canonical_json_bytes(configuration),
         "execution_journal.json": canonical_json_bytes(journal),
         "metrics.json": canonical_json_bytes(metrics),
         "report.md": _report_markdown(
-            classification=classification, row_results=row_results
+            classification=classification,
+            row_results=row_results,
+            successor_comparison=successor_comparison,
         ).encode("utf-8"),
         "row_results.json": canonical_json_bytes(
             {
@@ -1472,10 +1764,16 @@ def build_artifacts(
         },
         "authority": dict(ALL_FALSE_AUTHORITY),
         "registration_sha256": registration_sha256,
-        "schema_version": MANIFEST_SCHEMA_VERSION,
+        "schema_version": (
+            SUCCESSOR_MANIFEST_SCHEMA_VERSION
+            if successor_comparison is not None
+            else MANIFEST_SCHEMA_VERSION
+        ),
         "stage2_executed": False,
         "verdict": classification["verdict"],
     }
+    if successor_comparison is not None:
+        manifest["successor_comparison"] = successor_comparison
     artifacts["artifact_manifest.json"] = canonical_json_bytes(manifest)
     return artifacts
 
@@ -1487,7 +1785,9 @@ def run_poc(
     input_path = Path(registration_path).resolve()
     registration = load_registration(input_path)
     registration_sha256 = sha256_file(input_path)
-    demonstrations_path, metadata = _validate_identity(registration, root)
+    demonstrations_path, metadata, successor_comparison = _validate_identity(
+        registration, root
+    )
     demonstrations = _load_json(demonstrations_path, "frozen demonstrations")
     row_results, classification = _evaluate_stage1(
         registration=registration,
@@ -1499,6 +1799,7 @@ def run_poc(
         registration_sha256=registration_sha256,
         row_results=row_results,
         classification=classification,
+        successor_comparison=successor_comparison,
     )
     output_dir = (root / registration["output"]["directory"]).resolve()
     try:
