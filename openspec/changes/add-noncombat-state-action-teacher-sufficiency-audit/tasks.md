@@ -48,9 +48,9 @@
 
 ## 5. Frozen Registration And Closeout
 
-- [ ] 5.1 Commit and push implementation plus OpenSpec artifacts, then check in
+- [x] 5.1 Commit and push implementation plus OpenSpec artifacts, then check in
   one immutable registration binding that commit and every allowed input.
-- [ ] 5.2 Verify and push the registration before executing one canonical audit;
+- [x] 5.2 Verify and push the registration before executing one canonical audit;
   do not alter keys, criteria, source interpretation, or inputs after result.
 - [ ] 5.3 Execute the registered audit once, strictly recompute it, and perform a
   read-only manual review of source closure, aliases, suitability, authority,
@@ -58,3 +58,10 @@
 - [ ] 5.4 Update project direction with the terminal next-step verdict, run
   focused and commit-gate verification without gameplay, sync/archive the
   change, commit only scoped files, and push `master`.
+
+## Blocked Registered Attempt
+
+The sole registered execution on 2026-08-02 failed closed after the audit body
+exceeded its fixed 120-second wall-time bound. No canonical output was
+published, the same registration cannot be retried, and tasks 5.3-5.4 remain
+open pending a separate runtime-recovery OpenSpec change and fresh registration.

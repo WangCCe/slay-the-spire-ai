@@ -31,9 +31,11 @@ the legacy base remained immutable, and replay matched, but card agreement did
 not change and route improved by only one net decision out of 300. Overall
 agreement delta was `+0.001149`, route delta `+0.003333`, and fold 1 regressed.
 No model was selected. Baseline-imitation model trials on this corpus are now
-closed; the current objective is a read-only state/action sufficiency and
-SimpleAgent teacher-suitability audit, not another model POC, fresh simulator
-study, or formal non-combat RL.
+closed. The first registered read-only state/action and SimpleAgent
+teacher-suitability audit then failed closed before publication because its
+timed body exceeded the fixed 120-second limit. The current objective is a
+separate equivalence-preserving runtime recovery and fresh registration, not
+another model POC, fresh simulator study, or formal non-combat RL.
 
 ## Training Boundary
 
@@ -169,23 +171,26 @@ The next authorized sequence is:
 8. Preserve the completed route/card residual POC, its registration, canonical
    artifacts, and valid negative verdict. Do not tune, rerun, or attempt a third
    model on the observed train corpus.
-9. Audit state/action sufficiency and SimpleAgent teacher suitability read-only:
-   compare the teacher's actual route/card dependencies with adapter snapshots,
-   candidates, projections, and label aliasing before proposing any repair.
+9. Preserve the consumed teacher-sufficiency registration and blocked failure
+   record. Do not retry it or infer a representation/teacher verdict from the
+   absent canonical output. Any recovery must keep the corpus, signatures,
+   source interpretation, checks, verdict order, and 120-second audit-body
+   limit unchanged under a separate OpenSpec and fresh registration.
 10. Consider formal RL only after a separately registered policy demonstrates a
    credible baseline floor on untouched evidence. Permit later live work only
    through its existing crash/qualification gates.
 
 ## Work Lanes
 
-The primary lane is a read-only state/action sufficiency and SimpleAgent
-teacher-suitability audit, motivated by the two completed train-only negatives
-in `reports/noncombat_structured_baseline_ranker_poc_failure_audit_20260802.md`
-and
-`reports/noncombat_route_card_residual_ranker_poc_failure_audit_20260802.md`.
-Inspect source dependencies and existing corpus aliasing before changing the
-adapter, target, or training approach. Do not fit another model or spend fresh
-simulator cohorts under this lane. Simulated and live evidence remain separate.
+The primary lane is equivalence-preserving runtime recovery for the blocked
+read-only state/action and SimpleAgent teacher-suitability audit, motivated by
+the two completed train-only negatives and the failure record in
+`reports/noncombat_state_action_teacher_sufficiency_audit_20260802_failure.json`.
+Remove only redundant validation/serialization and cache exact pure feature
+computations; prove byte-equivalence on synthetic fixtures before a fresh
+registration and one-shot audit. Do not change the evidence, signatures,
+suitability criteria, verdict order, or limits, fit another model, or spend
+fresh simulator cohorts. Simulated and live evidence remain separate.
 
 Live gameplay is a maintenance and registered-evaluation lane only. Launch it
 for a crash, stuck state, repeated A-class simulator/mechanics defect, or an

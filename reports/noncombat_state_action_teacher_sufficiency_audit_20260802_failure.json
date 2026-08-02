@@ -1,0 +1,66 @@
+{
+  "attempt": {
+    "command": [
+      "D:\\anaconda\\envs\\stsai\\python.exe",
+      "-m",
+      "analysis_scripts.noncombat_state_action_teacher_sufficiency_audit",
+      "run",
+      "--input",
+      "reports\\noncombat_state_action_teacher_sufficiency_audit_20260802_input.json",
+      "--output-dir",
+      "reports\\noncombat_state_action_teacher_sufficiency_audit_20260802"
+    ],
+    "command_wall_seconds": 293.7,
+    "completed_at": "2026-08-02T21:32:36.7192648+08:00",
+    "registration_commit": "40c936748083deeb340950577117b46f2350e19f",
+    "registration_file": {
+      "path": "reports/noncombat_state_action_teacher_sufficiency_audit_20260802_input.json",
+      "sha256": "f33cf96301f9042611d17fcf49ebafde596f85e4f054d3a2f09d01965c32f498",
+      "size_bytes": 5443
+    }
+  },
+  "authority": {
+    "adapter_representation_repair": false,
+    "dagger": false,
+    "formal_noncombat_rl": false,
+    "live_gameplay": false,
+    "live_policy_loading": false,
+    "model_fitting": false,
+    "native_build": false,
+    "native_evidence_collection": false,
+    "native_module_loading": false,
+    "ope_reinterpretation": false,
+    "policy_promotion": false,
+    "policy_quality": false,
+    "qualification": false,
+    "simulator_rollout": false,
+    "teacher_suitability_verdict": false
+  },
+  "failure": {
+    "audit_elapsed_seconds": null,
+    "classification": "registered_audit_wall_time_exceeded",
+    "message": "The runner completed its deterministic analysis call but rejected publication because the measured audit body exceeded the registered 120-second wall-time bound.",
+    "registered_max_wall_seconds": 120.0,
+    "stage": "post_analysis_pre_publication",
+    "stderr": "blocked: audit exceeded the registered wall-time bound"
+  },
+  "identity": {
+    "external_simulator_commit": "7476a81954020087da31d41d16fddf475746ec2d",
+    "implementation_commit": "18edd14008522a5d579e8f84f28f6bd798cb5a02",
+    "train_dataset_sha256": "86cf82f7833ca6b7d3f4e58967f5768ef7292a2297d06af01819b783526227d0"
+  },
+  "isolation": {
+    "canonical_artifact_count": 0,
+    "canonical_output_root": "reports/noncombat_state_action_teacher_sufficiency_audit_20260802",
+    "canonical_output_root_absent": true,
+    "external_relevant_files_clean": true,
+    "registration_unchanged": true
+  },
+  "resolution": {
+    "same_registration_retry_allowed": false,
+    "status": "blocked_requires_separate_runtime_recovery_openspec_and_fresh_registration",
+    "threshold_change_allowed": false,
+    "verdict": "blocked"
+  },
+  "schema_version": "noncombat-state-action-teacher-sufficiency-audit-failure-v1"
+}
