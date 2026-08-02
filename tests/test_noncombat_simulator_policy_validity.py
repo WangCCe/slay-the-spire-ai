@@ -567,6 +567,21 @@ def test_canonical_artifacts_are_hash_closed_atomic_and_all_false(tmp_path):
         "trajectories.json",
     }
 
+    manifest_path = tmp_path / "artifact_manifest.json"
+    original_manifest = manifest_path.read_bytes()
+    incomplete_manifest = json.loads(original_manifest)
+    incomplete_manifest["artifact_hashes"].pop("report.md")
+    manifest_path.write_bytes(canonical_json_bytes(incomplete_manifest))
+    with pytest.raises(PolicyValidityBlocked, match="hash set mismatch"):
+        validate_artifact_directory(tmp_path)
+    manifest_path.write_bytes(original_manifest)
+
+    unexpected = tmp_path / "unexpected.json"
+    unexpected.write_text("{}", encoding="utf-8")
+    with pytest.raises(PolicyValidityBlocked, match="inventory mismatch"):
+        validate_artifact_directory(tmp_path)
+    unexpected.unlink()
+
     before = {path.name: path.read_bytes() for path in tmp_path.iterdir()}
     calls = 0
 

@@ -1126,6 +1126,46 @@ def build_canonical_artifacts(
     return payloads
 
 
+def _validate_canonical_semantics(
+    manifest: Mapping[str, Any],
+    metrics: Mapping[str, Any],
+    trajectories: Mapping[str, Any],
+) -> None:
+    if not isinstance(metrics, Mapping) or not isinstance(trajectories, Mapping):
+        raise PolicyValidityBlocked("canonical JSON artifacts must be objects")
+    if metrics.get("schema_version") != METRICS_SCHEMA_VERSION:
+        raise PolicyValidityBlocked("canonical metrics schema mismatch")
+    if trajectories.get("schema_version") != TRAJECTORY_SCHEMA_VERSION:
+        raise PolicyValidityBlocked("canonical trajectories schema mismatch")
+    registration_sha256 = manifest.get("registration_sha256")
+    if (
+        not isinstance(registration_sha256, str)
+        or len(registration_sha256) != 64
+        or any(char not in "0123456789abcdef" for char in registration_sha256.lower())
+    ):
+        raise PolicyValidityBlocked("canonical registration SHA-256 is invalid")
+    if any(
+        payload.get("registration_sha256") != registration_sha256
+        for payload in (metrics, trajectories)
+    ):
+        raise PolicyValidityBlocked("canonical artifact registration mismatch")
+    authority = manifest.get("authority")
+    classification = metrics.get("classification")
+    valid_verdicts = {
+        "blocked",
+        "study_valid_with_baseline_signal",
+        "study_valid_without_baseline_signal",
+    }
+    if (
+        not isinstance(classification, Mapping)
+        or manifest.get("verdict") not in valid_verdicts
+        or classification.get("verdict") != manifest.get("verdict")
+        or metrics.get("authority") != authority
+        or classification.get("authority") != authority
+    ):
+        raise PolicyValidityBlocked("canonical artifact verdict or authority mismatch")
+
+
 def _validate_artifact_payloads(artifacts: Mapping[str, bytes]) -> dict[str, Any]:
     if set(artifacts) != set(CANONICAL_ARTIFACT_NAMES):
         raise PolicyValidityBlocked("canonical artifact set is incomplete")
@@ -1145,8 +1185,14 @@ def _validate_artifact_payloads(artifacts: Mapping[str, bytes]) -> dict[str, Any
     if manifest.get("artifact_hashes") != expected_hashes:
         raise PolicyValidityBlocked("artifact manifest hash closure mismatch")
     authority = manifest.get("authority")
-    if not isinstance(authority, Mapping) or any(value is not False for value in authority.values()):
+    if not isinstance(authority, Mapping) or dict(authority) != _authority():
         raise PolicyValidityBlocked("artifact manifest authority must remain false")
+    try:
+        metrics = json.loads(artifacts["metrics.json"])
+        trajectories = json.loads(artifacts["trajectories.json"])
+    except (UnicodeError, json.JSONDecodeError) as exc:
+        raise PolicyValidityBlocked(f"canonical artifact JSON is invalid: {exc}") from exc
+    _validate_canonical_semantics(manifest, metrics, trajectories)
     return manifest
 
 
@@ -1159,6 +1205,10 @@ def publish_canonical_artifacts(
     _validate_artifact_payloads(artifacts)
     root = Path(output_dir)
     root.mkdir(parents=True, exist_ok=True)
+    allowed_names = set(CANONICAL_ARTIFACT_NAMES) | {"execution_journal.json"}
+    existing_names = {path.name for path in root.iterdir()}
+    if not existing_names.issubset(allowed_names):
+        raise PolicyValidityBlocked("output artifact inventory mismatch")
     order = sorted(name for name in artifacts if name != "artifact_manifest.json")
     order.append("artifact_manifest.json")
     destinations = {name: root / name for name in order}
@@ -1197,6 +1247,15 @@ def publish_canonical_artifacts(
 
 def validate_artifact_directory(output_dir: Path | str) -> dict[str, Any]:
     root = Path(output_dir)
+    allowed_names = set(CANONICAL_ARTIFACT_NAMES) | {"execution_journal.json"}
+    try:
+        entries = {path.name for path in root.iterdir()}
+    except OSError as exc:
+        raise PolicyValidityBlocked(f"cannot inspect artifact directory: {exc}") from exc
+    if not set(CANONICAL_ARTIFACT_NAMES).issubset(entries) or not entries.issubset(
+        allowed_names
+    ):
+        raise PolicyValidityBlocked("published artifact inventory mismatch")
     try:
         manifest = json.loads((root / "artifact_manifest.json").read_text(encoding="utf-8"))
     except (OSError, UnicodeError, json.JSONDecodeError) as exc:
@@ -1206,6 +1265,9 @@ def validate_artifact_directory(output_dir: Path | str) -> dict[str, Any]:
     expected = manifest.get("artifact_hashes")
     if not isinstance(expected, Mapping):
         raise PolicyValidityBlocked("published artifact hashes are missing")
+    expected_names = set(CANONICAL_ARTIFACT_NAMES) - {"artifact_manifest.json"}
+    if set(expected) != expected_names:
+        raise PolicyValidityBlocked("published artifact hash set mismatch")
     actual = {}
     for name in sorted(expected):
         path = root / name
@@ -1215,8 +1277,16 @@ def validate_artifact_directory(output_dir: Path | str) -> dict[str, Any]:
     if actual != dict(expected):
         raise PolicyValidityBlocked("published artifact hash closure mismatch")
     authority = manifest.get("authority")
-    if not isinstance(authority, Mapping) or any(value is not False for value in authority.values()):
+    if not isinstance(authority, Mapping) or dict(authority) != _authority():
         raise PolicyValidityBlocked("published authority must remain false")
+    try:
+        metrics = json.loads((root / "metrics.json").read_text(encoding="utf-8"))
+        trajectories = json.loads(
+            (root / "trajectories.json").read_text(encoding="utf-8")
+        )
+    except (OSError, UnicodeError, json.JSONDecodeError) as exc:
+        raise PolicyValidityBlocked(f"cannot load canonical artifacts: {exc}") from exc
+    _validate_canonical_semantics(manifest, metrics, trajectories)
     return manifest
 
 
