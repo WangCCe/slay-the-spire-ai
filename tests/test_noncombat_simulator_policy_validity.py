@@ -33,6 +33,7 @@ from analysis_scripts.noncombat_simulator_policy_validity import (
     canonical_model_sha256,
     classify_policy_validity_results,
     load_frozen_model,
+    load_policy_validity_registration,
     publish_canonical_artifacts,
     run_compatibility_gate,
     run_policy_validity_execution,
@@ -45,6 +46,8 @@ from analysis_scripts.noncombat_simulator_training_smoke import (
     _candidate_features,
     canonical_model_payload,
     evaluate_greedy_policy,
+    hash_bound_files,
+    validate_bound_fit_evidence,
 )
 
 
@@ -280,6 +283,55 @@ def test_registration_accepts_only_the_predeclared_frozen_study():
 
     assert validated["study"]["cohorts"]["fresh_seeds"] == list(range(3000, 3064))
     assert validated["study"]["policies"] == list(POLICY_IDS)
+
+
+def test_checked_in_policy_validity_registration_is_hash_closed_and_disjoint():
+    path = (
+        REPO_ROOT
+        / "reports"
+        / "noncombat_simulator_policy_validity_20260802_input.json"
+    )
+    assert path.stat().st_size == 7597
+    assert sha256_file(path) == (
+        "149a0ed451f52804561de34b213fb4602f6825740705b6c1cf98ab87e0748d10"
+    )
+    registration = load_policy_validity_registration(path)
+    identity = registration["identity"]
+
+    bindings = [identity["adapter_fit_input"], identity["adapter_fit_report"]]
+    bindings.extend(identity["smoke_artifacts"].values())
+    bindings.extend(
+        entry["model"] for entry in identity["excluded_baselines"].values()
+    )
+    for binding in bindings:
+        artifact = REPO_ROOT / binding["path"]
+        assert artifact.stat().st_size == binding["size_bytes"]
+        assert sha256_file(artifact) == binding["sha256"]
+
+    _validate_bound_smoke_artifacts(REPO_ROOT, identity["smoke_artifacts"])
+    fit_input = json.loads(
+        (REPO_ROOT / identity["adapter_fit_input"]["path"]).read_text(
+            encoding="utf-8"
+        )
+    )
+    fit_report = json.loads(
+        (REPO_ROOT / identity["adapter_fit_report"]["path"]).read_text(
+            encoding="utf-8"
+        )
+    )
+    validate_bound_fit_evidence(fit_input, fit_report, identity["adapter_provenance"])
+    assert hash_bound_files(
+        REPO_ROOT, identity["implementation"]["source_files"]
+    ) == identity["implementation"]["source_sha256"]
+
+    cohorts = registration["study"]["cohorts"]
+    prior = (
+        set(cohorts["fit_seeds"])
+        | set(cohorts["smoke_train_seeds"])
+        | set(cohorts["smoke_holdout_seeds"])
+        | set(cohorts["compatibility_seeds"])
+    )
+    assert set(cohorts["fresh_seeds"]).isdisjoint(prior)
 
 
 @pytest.mark.parametrize(

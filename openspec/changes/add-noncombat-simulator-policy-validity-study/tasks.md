@@ -21,7 +21,7 @@
 
 ## 4. Registered Fresh-Cohort Study
 
-- [ ] 4.1 Commit the reviewed implementation and refreshed fit evidence, then freeze one checked-in registration binding compatibility seeds `2000..2003`, fresh seeds `3000..3063`, three policies, 10,000 bootstrap resamples at seed `0`, 500 decisions per episode, 192 episodes, and 480 seconds per execution.
+- [x] 4.1 Commit the reviewed implementation and refreshed fit evidence, then freeze one checked-in registration binding compatibility seeds `2000..2003`, fresh seeds `3000..3063`, three policies, 10,000 bootstrap resamples at seed `0`, 500 decisions per episode, 192 episodes, and 480 seconds per execution.
 - [ ] 4.2 Rebuild and verify the optional module from the registered identities, run the exact compatibility gate and registered commit gate, then execute exactly one primary study and one identical reproduction without training, gameplay, Java, CommunicationMod, or new live evidence.
 - [ ] 4.3 Publish the positive, negative, or blocked result without tuning or alternate cohorts; report floors, intervals, victories, category coverage, limitations, and every all-false downstream authority flag.
 
