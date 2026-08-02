@@ -9,7 +9,7 @@ import json
 import subprocess
 import sys
 from collections import Counter
-from collections.abc import Mapping, Sequence
+from collections.abc import Callable, Mapping, Sequence
 from contextlib import ExitStack, contextmanager
 from pathlib import Path, PurePosixPath
 from typing import Any
@@ -22,9 +22,13 @@ if str(_REPO_ROOT) not in sys.path:
 import spirecomm.ai.agent as agent_module
 from analysis_scripts.noncombat_simulator_adapter import (
     EventOptionSemanticsError,
+    NativeSimulatorEnvironment,
+    SimulatorAdapterError,
     TARGET_CATEGORIES,
     canonical_json_bytes,
     event_option_semantics_identity,
+    hash_compiled_simulator_sources,
+    load_native_module,
     resolve_event_option_semantics,
     sha256_bytes,
     sha256_file,
@@ -78,6 +82,11 @@ MANIFEST_SCHEMA_VERSION = "noncombat-current-policy-simulator-bridge-manifest-v1
 SUCCESSOR_MANIFEST_SCHEMA_VERSION = (
     "noncombat-current-policy-simulator-bridge-manifest-v2"
 )
+STAGE2_RESULT_SCHEMA_VERSION = (
+    "noncombat-current-policy-simulator-bridge-stage2-v1"
+)
+STAGE2_REPLAY_COUNT = 2
+STAGE2_MAX_DECISIONS_PER_EPISODE = 500
 POLICY_ID = "current_optimized_ironclad_a0_conservative_snapshot_v1"
 DEMONSTRATION_SCHEMA_VERSION = "noncombat-simulator-native-demonstration-v1"
 DEMONSTRATION_ARTIFACT_SCHEMA_VERSION = (
@@ -1254,6 +1263,218 @@ class CurrentPolicyBridgeSession:
         return result
 
 
+def _registered_stage2_native_identity(
+    registration: Mapping[str, Any]
+) -> dict[str, Any]:
+    provenance = registration["identity"]["adapter_provenance"]
+    return {
+        "build": copy.deepcopy(provenance["build"]),
+        "module_sha256": provenance["module_sha256"],
+        "module_size_bytes": provenance["module_size_bytes"],
+        "simulator_commit": provenance["simulator_commit"],
+        "simulator_dirty": provenance["simulator_dirty"],
+        "simulator_source_file_count": provenance["simulator_source_file_count"],
+        "simulator_source_sha256": provenance["simulator_source_sha256"],
+        "submodules": copy.deepcopy(provenance["submodules"]),
+    }
+
+
+def validate_stage2_native_identity(
+    registration: Mapping[str, Any], actual_identity: object
+) -> dict[str, Any]:
+    """Validate every executable native identity field before Stage 2."""
+
+    actual = _mapping(actual_identity, "stage2 native identity")
+    expected = _registered_stage2_native_identity(registration)
+    mismatches = sorted(
+        key for key in set(actual) | set(expected) if actual.get(key) != expected.get(key)
+    )
+    if mismatches:
+        raise BridgeBlocked(
+            "stage2_native_identity_mismatch",
+            {
+                "actual": actual,
+                "expected": expected,
+                "fields": mismatches,
+            },
+        )
+    return copy.deepcopy(actual)
+
+
+def _git_text(repo: Path, *args: str) -> str:
+    try:
+        completed = subprocess.run(
+            ["git", *args],
+            cwd=repo,
+            check=True,
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+        )
+    except (OSError, subprocess.CalledProcessError) as exc:
+        raise BridgeBlocked(
+            "stage2_native_git_identity_failed",
+            {"args": list(args), "repository": str(repo)},
+        ) from exc
+    return completed.stdout.strip()
+
+
+def collect_stage2_native_identity(
+    *,
+    module_path: Path | str,
+    simulator_repo: Path | str,
+    native_module: object,
+) -> dict[str, Any]:
+    """Collect content identities from runtime discovery paths."""
+
+    module_file = Path(module_path).resolve()
+    simulator = Path(simulator_repo).resolve()
+    if not module_file.is_file():
+        raise BridgeBlocked("stage2_native_module_missing", str(module_file))
+    if not simulator.is_dir():
+        raise BridgeBlocked("stage2_simulator_repository_missing", str(simulator))
+    try:
+        build = json.loads(native_module.build_info_json())
+    except (AttributeError, TypeError, json.JSONDecodeError) as exc:
+        raise BridgeBlocked("stage2_native_build_identity_invalid", str(exc)) from exc
+    build["python"] = sys.version.split()[0]
+    source_sha256, source_file_count = hash_compiled_simulator_sources(simulator)
+    return {
+        "build": build,
+        "module_sha256": sha256_file(module_file),
+        "module_size_bytes": module_file.stat().st_size,
+        "simulator_commit": _git_text(simulator, "rev-parse", "HEAD"),
+        "simulator_dirty": bool(_git_text(simulator, "status", "--porcelain=v1")),
+        "simulator_source_file_count": source_file_count,
+        "simulator_source_sha256": source_sha256,
+        "submodules": {
+            "json": _git_text(simulator / "json", "rev-parse", "HEAD"),
+            "pybind11": _git_text(simulator / "pybind11", "rev-parse", "HEAD"),
+        },
+    }
+
+
+def _run_stage2_replay(
+    *,
+    environment: Any,
+    session: Any,
+    seed: int,
+) -> dict[str, Any]:
+    selected_action_ids = []
+    policy_input_sha256s = []
+    categories = []
+    while True:
+        try:
+            snapshot = environment.snapshot()
+        except SimulatorAdapterError as exc:
+            raise BridgeBlocked("stage2_snapshot_failed", str(exc)) from exc
+        if snapshot.get("terminal") is True:
+            break
+        if len(selected_action_ids) >= STAGE2_MAX_DECISIONS_PER_EPISODE:
+            raise BridgeBlocked(
+                "stage2_decision_limit_exceeded",
+                {"limit": STAGE2_MAX_DECISIONS_PER_EPISODE, "seed": seed},
+            )
+        if snapshot.get("state", {}).get("seed") != str(seed):
+            raise BridgeBlocked("stage2_environment_seed_mismatch", seed)
+        decision_index = snapshot.get("decision_count")
+        if isinstance(decision_index, bool) or not isinstance(decision_index, int):
+            raise BridgeBlocked("stage2_decision_index_invalid", decision_index)
+        try:
+            candidates = environment.legal_actions()
+            evaluation = session.evaluate(
+                snapshot=snapshot,
+                candidates=candidates,
+                decision_index=decision_index,
+            )
+            transition = environment.step(evaluation["action_id"])
+        except SimulatorAdapterError as exc:
+            raise BridgeBlocked("stage2_simulator_step_failed", str(exc)) from exc
+        if transition.get("selected_action_id") != evaluation["action_id"]:
+            raise BridgeBlocked("stage2_transition_action_mismatch")
+        categories.append(evaluation["category"])
+        selected_action_ids.append(evaluation["action_id"])
+        policy_input_sha256s.append(
+            sha256_bytes(
+                canonical_json_bytes(
+                    {
+                        "candidates": evaluation["input_candidates_sha256"],
+                        "snapshot": evaluation["input_snapshot_sha256"],
+                    }
+                )
+            )
+        )
+
+    terminal_state = _mapping(snapshot.get("state"), "stage2 terminal state")
+    terminal_floor = terminal_state.get("floor")
+    if isinstance(terminal_floor, bool) or not isinstance(terminal_floor, int):
+        raise BridgeBlocked("stage2_terminal_floor_invalid", terminal_floor)
+    outcome = terminal_state.get("outcome")
+    if outcome not in {"player_loss", "player_victory"}:
+        raise BridgeBlocked("stage2_terminal_outcome_invalid", outcome)
+    row = {
+        "action_sequence_sha256": sha256_bytes(
+            canonical_json_bytes(selected_action_ids)
+        ),
+        "categories": categories,
+        "decision_count": len(selected_action_ids),
+        "outcome": outcome,
+        "policy_input_sha256s": policy_input_sha256s,
+        "seed": seed,
+        "selected_action_ids": selected_action_ids,
+        "terminal_floor": terminal_floor,
+    }
+    row["trajectory_sha256"] = sha256_bytes(canonical_json_bytes(row))
+    return row
+
+
+def run_stage2_compatibility(
+    *,
+    registration: Mapping[str, Any],
+    environment_factory: Callable[[int], Any],
+    session_factory: Callable[[], Any],
+    native_identity: Mapping[str, Any],
+) -> dict[str, Any]:
+    """Run exactly the registered reused-seed Current compatibility gate."""
+
+    normalized_registration = validate_registration(copy.deepcopy(registration))
+    if normalized_registration["schema_version"] != SUCCESSOR_INPUT_SCHEMA_VERSION:
+        raise BridgeBlocked("stage2_successor_registration_required")
+    validated_native_identity = validate_stage2_native_identity(
+        normalized_registration, native_identity
+    )
+    rows = []
+    for seed in normalized_registration["stage2"]["reused_seeds"]:
+        replays = []
+        for _ in range(STAGE2_REPLAY_COUNT):
+            replays.append(
+                _run_stage2_replay(
+                    environment=environment_factory(seed),
+                    session=session_factory(),
+                    seed=seed,
+                )
+            )
+        if canonical_json_bytes(replays[0]) != canonical_json_bytes(replays[1]):
+            raise BridgeBlocked(
+                "stage2_trajectory_nondeterministic",
+                {
+                    "first": replays[0]["trajectory_sha256"],
+                    "second": replays[1]["trajectory_sha256"],
+                    "seed": seed,
+                },
+            )
+        rows.append({**replays[0], "replay_count": STAGE2_REPLAY_COUNT})
+    return {
+        "max_decisions_per_episode": STAGE2_MAX_DECISIONS_PER_EPISODE,
+        "native_identity": validated_native_identity,
+        "replay_count": STAGE2_REPLAY_COUNT,
+        "rows": rows,
+        "schema_version": STAGE2_RESULT_SCHEMA_VERSION,
+        "seeds": list(normalized_registration["stage2"]["reused_seeds"]),
+        "status": "passed",
+    }
+
+
 def classify_stage1(
     *,
     row_results: Sequence[Mapping[str, Any]],
@@ -1612,6 +1833,7 @@ def _report_markdown(
     classification: Mapping[str, Any],
     row_results: Sequence[Mapping[str, Any]],
     successor_comparison: Mapping[str, Any] | None = None,
+    stage2_result: Mapping[str, Any] | None = None,
 ) -> str:
     lines = [
         "# Current Policy Simulator Bridge POC",
@@ -1653,21 +1875,27 @@ def _report_markdown(
         lines.append(
             f"| `{row['category']}` | {row['seed']} | {row['decision_index']} | `{row['status']}` | `{result}` |"
         )
-    lines.extend(
-        [
-            "",
-            "## Stage 2",
-            "",
-            (
-                "Stage 2 is authorized by Stage 1 but requires the registered bounded compatibility executor."
-                if classification["stage2_authorized"]
-                else "Stage 2 was not run because at least one frozen structural gate failed."
-            ),
-            "",
-            "## Authority",
-            "",
-        ]
-    )
+    lines.extend(["", "## Stage 2", ""])
+    if stage2_result is not None:
+        lines.extend(
+            [
+                "The registered reused-seed compatibility check passed with two deterministic replays per seed.",
+                "",
+                "| Seed | Decisions | Floor | Outcome | Trajectory |",
+                "| ---: | ---: | ---: | --- | --- |",
+            ]
+        )
+        for row in stage2_result["rows"]:
+            lines.append(
+                f"| {row['seed']} | {row['decision_count']} | {row['terminal_floor']} | `{row['outcome']}` | `{row['trajectory_sha256']}` |"
+            )
+    else:
+        lines.append(
+            "Stage 2 is authorized by Stage 1 but requires the registered bounded compatibility executor."
+            if classification["stage2_authorized"]
+            else "Stage 2 was not run because at least one frozen structural gate failed."
+        )
+    lines.extend(["", "## Authority", ""])
     for name, enabled in sorted(ALL_FALSE_AUTHORITY.items()):
         lines.append(f"- `{name}`: `{str(enabled).lower()}`")
     lines.extend(
@@ -1687,6 +1915,7 @@ def build_artifacts(
     row_results: Sequence[Mapping[str, Any]],
     classification: Mapping[str, Any],
     successor_comparison: Mapping[str, Any] | None = None,
+    stage2_result: Mapping[str, Any] | None = None,
 ) -> dict[str, bytes]:
     reason_counts = Counter(
         str(row["reason"]) for row in row_results if row.get("reason") is not None
@@ -1710,7 +1939,9 @@ def build_artifacts(
             "replayed_each_row_with_fresh_current_session",
             "classified_stage1",
             (
-                "stage2_authorized_not_executed"
+                "executed_registered_stage2_compatibility"
+                if stage2_result is not None
+                else "stage2_authorized_not_executed"
                 if classification["stage2_authorized"]
                 else "stage2_not_authorized"
             ),
@@ -1731,9 +1962,11 @@ def build_artifacts(
         "stage1_passed": classification["passed"],
         "stage2": {
             "authorized": classification["stage2_authorized"],
-            "executed": False,
+            "executed": stage2_result is not None,
             "reason": (
-                "executor_not_entered_by_frozen_only_poc"
+                "completed"
+                if stage2_result is not None
+                else "executor_not_entered_by_frozen_only_poc"
                 if classification["stage2_authorized"]
                 else "stage1_not_compatible"
             ),
@@ -1742,6 +1975,8 @@ def build_artifacts(
     }
     if successor_comparison is not None:
         metrics["successor_comparison"] = successor_comparison
+    if stage2_result is not None:
+        metrics["stage2"]["result"] = stage2_result
     artifacts = {
         "configuration.json": canonical_json_bytes(configuration),
         "execution_journal.json": canonical_json_bytes(journal),
@@ -1750,6 +1985,7 @@ def build_artifacts(
             classification=classification,
             row_results=row_results,
             successor_comparison=successor_comparison,
+            stage2_result=stage2_result,
         ).encode("utf-8"),
         "row_results.json": canonical_json_bytes(
             {
@@ -1769,17 +2005,53 @@ def build_artifacts(
             if successor_comparison is not None
             else MANIFEST_SCHEMA_VERSION
         ),
-        "stage2_executed": False,
+        "stage2_executed": stage2_result is not None,
         "verdict": classification["verdict"],
     }
     if successor_comparison is not None:
         manifest["successor_comparison"] = successor_comparison
+    if stage2_result is not None:
+        manifest["stage2_result_sha256"] = sha256_bytes(
+            canonical_json_bytes(stage2_result)
+        )
     artifacts["artifact_manifest.json"] = canonical_json_bytes(manifest)
     return artifacts
 
 
+def _assert_artifacts_match(
+    output_dir: Path, artifacts: Mapping[str, bytes], reason: str
+) -> None:
+    actual_names = {
+        path.name for path in output_dir.iterdir() if path.is_file()
+    } if output_dir.is_dir() else set()
+    if actual_names != set(artifacts):
+        raise BridgeBlocked(
+            reason,
+            {"actual": sorted(actual_names), "expected": sorted(artifacts)},
+        )
+    for name, expected in artifacts.items():
+        path = output_dir / name
+        if path.read_bytes() != expected:
+            raise BridgeBlocked(reason, name)
+
+
+def _write_artifacts(output_dir: Path, artifacts: Mapping[str, bytes]) -> None:
+    output_dir.mkdir(parents=True, exist_ok=True)
+    for name, data in artifacts.items():
+        temporary = output_dir / f".{name}.tmp"
+        temporary.write_bytes(data)
+        temporary.replace(output_dir / name)
+
+
 def run_poc(
-    *, registration_path: Path | str, repo_root: Path | str, recompute: bool = False
+    *,
+    registration_path: Path | str,
+    repo_root: Path | str,
+    recompute: bool = False,
+    execute_stage2: bool = False,
+    module_path: Path | str | None = None,
+    simulator_repo: Path | str | None = None,
+    dll_directories: Sequence[Path | str] = (),
 ) -> dict[str, Any]:
     root = Path(repo_root).resolve()
     input_path = Path(registration_path).resolve()
@@ -1794,12 +2066,59 @@ def run_poc(
         demonstrations=demonstrations,
         metadata=metadata,
     )
+    stage1_artifacts = build_artifacts(
+        registration=registration,
+        registration_sha256=registration_sha256,
+        row_results=row_results,
+        classification=classification,
+        successor_comparison=successor_comparison,
+    )
+    stage2_result = None
+    if execute_stage2:
+        if not classification["stage2_authorized"]:
+            raise BridgeBlocked("stage2_not_authorized")
+        if module_path is None or simulator_repo is None:
+            raise BridgeBlocked("stage2_runtime_paths_required")
+        try:
+            native_module = load_native_module(
+                module_path, dll_directories=dll_directories
+            )
+        except SimulatorAdapterError as exc:
+            raise BridgeBlocked("stage2_native_module_load_failed", str(exc)) from exc
+        actual_native_identity = collect_stage2_native_identity(
+            module_path=module_path,
+            simulator_repo=simulator_repo,
+            native_module=native_module,
+        )
+        validate_stage2_native_identity(registration, actual_native_identity)
+        provenance = registration["identity"]["adapter_provenance"]
+
+        def environment_factory(seed: int) -> NativeSimulatorEnvironment:
+            return NativeSimulatorEnvironment(
+                native_module.Environment(seed, registration["current_policy"]["ascension"]),
+                provenance,
+            )
+
+        def session_factory() -> CurrentPolicyBridgeSession:
+            return CurrentPolicyBridgeSession(
+                metadata=metadata,
+                current_policy=registration["current_policy"],
+                simulator_provenance=provenance,
+            )
+
+        stage2_result = run_stage2_compatibility(
+            registration=registration,
+            environment_factory=environment_factory,
+            session_factory=session_factory,
+            native_identity=actual_native_identity,
+        )
     artifacts = build_artifacts(
         registration=registration,
         registration_sha256=registration_sha256,
         row_results=row_results,
         classification=classification,
         successor_comparison=successor_comparison,
+        stage2_result=stage2_result,
     )
     output_dir = (root / registration["output"]["directory"]).resolve()
     try:
@@ -1807,20 +2126,23 @@ def run_poc(
     except ValueError as exc:
         raise BridgeBlocked("output_directory_escapes_repository") from exc
     if recompute:
-        for name, expected in artifacts.items():
-            path = output_dir / name
-            if not path.is_file() or path.read_bytes() != expected:
-                raise BridgeBlocked("artifact_recompute_mismatch", name)
+        _assert_artifacts_match(
+            output_dir, artifacts, "artifact_recompute_mismatch"
+        )
     else:
-        if output_dir.exists() and any(output_dir.iterdir()):
+        if execute_stage2 and output_dir.exists() and any(output_dir.iterdir()):
+            _assert_artifacts_match(
+                output_dir,
+                stage1_artifacts,
+                "stage2_prepublication_artifact_mismatch",
+            )
+        elif output_dir.exists() and any(output_dir.iterdir()):
             raise BridgeBlocked("output_directory_not_empty", str(output_dir))
-        output_dir.mkdir(parents=True, exist_ok=True)
-        for name, data in artifacts.items():
-            (output_dir / name).write_bytes(data)
+        _write_artifacts(output_dir, artifacts)
     return {
         "output_directory": str(output_dir),
         "stage2_authorized": classification["stage2_authorized"],
-        "stage2_executed": False,
+        "stage2_executed": stage2_result is not None,
         "verdict": classification["verdict"],
     }
 
@@ -1830,6 +2152,10 @@ def _parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
     parser.add_argument("--registration", required=True)
     parser.add_argument("--repo-root", default=str(Path(__file__).resolve().parents[1]))
     parser.add_argument("--recompute", action="store_true")
+    parser.add_argument("--execute-stage2", action="store_true")
+    parser.add_argument("--module")
+    parser.add_argument("--simulator-repo")
+    parser.add_argument("--dll-directory", action="append", default=[])
     return parser.parse_args(argv)
 
 
@@ -1840,6 +2166,10 @@ def main(argv: Sequence[str] | None = None) -> int:
             registration_path=args.registration,
             repo_root=args.repo_root,
             recompute=args.recompute,
+            execute_stage2=args.execute_stage2,
+            module_path=args.module,
+            simulator_repo=args.simulator_repo,
+            dll_directories=args.dll_directory,
         )
     except BridgeBlocked as exc:
         print(json.dumps({"detail": exc.detail, "reason": exc.reason}, sort_keys=True))

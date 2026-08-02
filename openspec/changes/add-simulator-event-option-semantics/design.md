@@ -98,6 +98,18 @@ run using the already-registered seeds `2000..2003`. Stage 2 remains structural:
 it checks legal deterministic own-trajectory execution and cannot update policy
 quality or RL readiness.
 
+The executor will accept native module, DLL, and simulator checkout locations
+only as runtime discovery paths. Before constructing an environment it will
+match the module hash and size, module build identity, simulator commit, dirty
+state, full source digest, and submodule commits to the unchanged registered
+adapter provenance. Each registered seed runs twice with one episode-local
+Current session, at most 500 target decisions per replay, and exact trajectory
+signature comparison. No caller-supplied seed or decision limit is accepted.
+
+The initial Stage 1-only artifact set may transition once to the Stage 2 result
+only after its bytes match a fresh Stage 1 recomputation. The final result is
+then itself subject to strict byte-for-byte recomputation.
+
 ## Risks / Trade-offs
 
 - [The narrow resolver is mistaken for full event support] -> Encode supported

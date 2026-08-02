@@ -10,11 +10,12 @@
 - [x] 2.1 Implement the versioned pure event-semantics contract and resolver in the offline Python simulator adapter layer.
 - [x] 2.2 Integrate resolver enrichment into the Current bridge without changing `OptimizedAgent`, native simulator behavior, or inline-semantic precedence.
 - [x] 2.3 Add v2 successor-registration validation, predecessor/output-manifest binding, immutable-field comparison, and report disclosure.
+- [ ] 2.4 Implement the registered reused-seed Stage 2 executor with exact native identity checks, fixed decision/replay bounds, deterministic trajectory comparison, and guarded artifact transition.
 
 ## 3. Frozen Evidence Re-evaluation
 
-- [ ] 3.1 Commit the reviewed implementation boundary, then create a hash-bound successor input preserving the predecessor's four rows, settings, authority flags, and Stage 2 seeds.
-- [ ] 3.2 Strictly run the successor's four-row Stage 1 gate and publish canonical artifacts without modifying predecessor inputs or reports.
+- [x] 3.1 Commit the reviewed implementation boundary, then create a hash-bound successor input preserving the predecessor's four rows, settings, authority flags, and Stage 2 seeds.
+- [x] 3.2 Strictly run the successor's four-row Stage 1 gate and publish canonical artifacts without modifying predecessor inputs or reports.
 - [ ] 3.3 Run the single already-consumed-seed Stage 2 compatibility check only if Stage 1 passes; otherwise record the blocker and stop.
 
 ## 4. Verification And Closeout

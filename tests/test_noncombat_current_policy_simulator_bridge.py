@@ -18,6 +18,8 @@ from analysis_scripts.noncombat_current_policy_simulator_bridge import (
     enrich_event_option_semantics,
     hydrate_game,
     map_current_action,
+    run_stage2_compatibility,
+    validate_stage2_native_identity,
     validate_successor_registration,
     validate_registration,
     validate_successor_evidence,
@@ -242,6 +244,75 @@ def _write_successor_evidence(tmp_path):
         "size_bytes": len(manifest_bytes),
     }
     return successor, manifest, manifest_path
+
+
+def _stage2_native_identity(registration):
+    provenance = registration["identity"]["adapter_provenance"]
+    return {
+        "build": copy.deepcopy(provenance["build"]),
+        "module_sha256": provenance["module_sha256"],
+        "module_size_bytes": provenance["module_size_bytes"],
+        "simulator_commit": provenance["simulator_commit"],
+        "simulator_dirty": provenance["simulator_dirty"],
+        "simulator_source_file_count": provenance["simulator_source_file_count"],
+        "simulator_source_sha256": provenance["simulator_source_sha256"],
+        "submodules": copy.deepcopy(provenance["submodules"]),
+    }
+
+
+class _FakeStage2Environment:
+    def __init__(self, seed, *, divergent=False, never_terminal=False):
+        self.seed = seed
+        self.decision_index = 0
+        self.divergent = divergent
+        self.never_terminal = never_terminal
+
+    def snapshot(self):
+        terminal = not self.never_terminal and self.decision_index >= 2
+        return {
+            "category": None if terminal else "route",
+            "decision_count": self.decision_index,
+            "state": {
+                "floor": self.decision_index,
+                "outcome": "player_loss" if terminal else "undecided",
+                "seed": str(self.seed),
+            },
+            "terminal": terminal,
+        }
+
+    def legal_actions(self):
+        suffix = 1 if self.divergent and self.decision_index == 1 else 0
+        return [
+            _candidate(
+                "route",
+                "map_node",
+                f"route:map_node:{suffix}:{self.decision_index}",
+                x=suffix,
+                y=self.decision_index,
+            )
+        ]
+
+    def step(self, action_id):
+        self.decision_index += 1
+        return {"selected_action_id": action_id}
+
+
+class _FakeStage2Session:
+    def evaluate(self, *, snapshot, candidates, decision_index):
+        candidate = candidates[0]
+        return {
+            "action_id": candidate["action_id"],
+            "action_type": "ChooseMapNodeAction",
+            "category": snapshot["category"],
+            "fallback_used": False,
+            "input_candidates_sha256": sha256_bytes(
+                canonical_json_bytes(candidates)
+            ),
+            "input_snapshot_sha256": sha256_bytes(canonical_json_bytes(snapshot)),
+            "policy_id": "current_optimized_ironclad_a0_conservative_snapshot_v1",
+            "source_mutated": False,
+            "tracker_enabled": False,
+        }
 
 
 def _liars_game_state(*, inline_semantics=None):
@@ -769,6 +840,133 @@ def test_successor_artifacts_disclose_comparison(tmp_path):
     assert metrics["schema_version"].endswith("metrics-v2")
     assert manifest["schema_version"].endswith("manifest-v2")
     assert b"## Successor Integrity" in artifacts["report.md"]
+
+
+def test_stage2_native_identity_accepts_exact_registration_and_rejects_drift():
+    successor, _ = _successor_registration()
+    actual = _stage2_native_identity(successor)
+
+    assert validate_stage2_native_identity(successor, actual) == actual
+
+    actual["module_sha256"] = "0" * 64
+    with pytest.raises(BridgeBlocked, match="stage2_native_identity_mismatch"):
+        validate_stage2_native_identity(successor, actual)
+
+
+def test_stage2_runs_only_registered_seeds_with_deterministic_replay():
+    successor, _ = _successor_registration()
+    factory_calls = []
+
+    def environment_factory(seed):
+        factory_calls.append(seed)
+        return _FakeStage2Environment(seed)
+
+    result = run_stage2_compatibility(
+        registration=successor,
+        environment_factory=environment_factory,
+        session_factory=_FakeStage2Session,
+        native_identity=_stage2_native_identity(successor),
+    )
+
+    assert result["status"] == "passed"
+    assert result["seeds"] == [2000, 2001, 2002, 2003]
+    assert result["replay_count"] == 2
+    assert [row["decision_count"] for row in result["rows"]] == [2, 2, 2, 2]
+    assert factory_calls == [
+        2000,
+        2000,
+        2001,
+        2001,
+        2002,
+        2002,
+        2003,
+        2003,
+    ]
+
+
+def test_stage2_rejects_nondeterministic_trajectory():
+    successor, _ = _successor_registration()
+    calls = 0
+
+    def environment_factory(seed):
+        nonlocal calls
+        calls += 1
+        return _FakeStage2Environment(seed, divergent=(calls == 2))
+
+    with pytest.raises(BridgeBlocked, match="stage2_trajectory_nondeterministic"):
+        run_stage2_compatibility(
+            registration=successor,
+            environment_factory=environment_factory,
+            session_factory=_FakeStage2Session,
+            native_identity=_stage2_native_identity(successor),
+        )
+
+
+def test_stage2_rejects_decision_bound_exhaustion():
+    successor, _ = _successor_registration()
+
+    with pytest.raises(BridgeBlocked, match="stage2_decision_limit_exceeded"):
+        run_stage2_compatibility(
+            registration=successor,
+            environment_factory=lambda seed: _FakeStage2Environment(
+                seed, never_terminal=True
+            ),
+            session_factory=_FakeStage2Session,
+            native_identity=_stage2_native_identity(successor),
+        )
+
+
+def test_stage2_result_is_published_in_canonical_artifacts():
+    successor, predecessor = _successor_registration()
+    comparison = validate_successor_registration(successor, predecessor)
+    comparison.update(
+        {
+            "predecessor_manifest": successor["identity"][
+                "predecessor_manifest"
+            ],
+            "predecessor_registration": successor["identity"][
+                "predecessor_registration"
+            ],
+            "predecessor_verdict": "frozen_bridge_not_compatible",
+        }
+    )
+    stage2_result = run_stage2_compatibility(
+        registration=successor,
+        environment_factory=_FakeStage2Environment,
+        session_factory=_FakeStage2Session,
+        native_identity=_stage2_native_identity(successor),
+    )
+    classification = {
+        "authority": copy.deepcopy(ALL_FALSE_AUTHORITY),
+        "category_coverage": {
+            "card_reward": True,
+            "event": True,
+            "route": True,
+            "shop": True,
+        },
+        "passed": True,
+        "stage2_authorized": True,
+        "verdict": "frozen_bridge_structurally_compatible",
+    }
+
+    artifacts = build_artifacts(
+        registration=validate_registration(successor),
+        registration_sha256="a" * 64,
+        row_results=[],
+        classification=classification,
+        successor_comparison=comparison,
+        stage2_result=stage2_result,
+    )
+
+    metrics = json.loads(artifacts["metrics.json"])
+    manifest = json.loads(artifacts["artifact_manifest.json"])
+    assert metrics["stage2"]["executed"] is True
+    assert metrics["stage2"]["result"]["seeds"] == [2000, 2001, 2002, 2003]
+    assert manifest["stage2_executed"] is True
+    assert len(manifest["stage2_result_sha256"]) == 64
+    assert b"registered reused-seed compatibility check passed" in artifacts[
+        "report.md"
+    ]
 
 
 def test_script_path_entrypoint_can_import_repository_modules():
