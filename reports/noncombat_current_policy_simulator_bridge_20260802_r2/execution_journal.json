@@ -1,0 +1,10 @@
+{
+  "steps": [
+    "validated_registration_and_bound_sources",
+    "validated_predecessor_and_immutable_successor_fields",
+    "loaded_registered_frozen_rows",
+    "replayed_each_row_with_fresh_current_session",
+    "classified_stage1",
+    "executed_registered_stage2_compatibility"
+  ]
+}

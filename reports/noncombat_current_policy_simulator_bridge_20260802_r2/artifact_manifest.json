@@ -1,0 +1,59 @@
+{
+  "artifact_hashes": {
+    "configuration.json": "f303169ebe7b143d21a31a7848ade89e7e816f0243451d34d0bb67d8aa2e93a2",
+    "execution_journal.json": "fbd7c527681402859a67562b5648e5cce10b243cb45fb368343d4b18e3b67602",
+    "metrics.json": "06f17fe9f0e45d6dde652f4aeb6c07b4a91154e2f2b78b71d3d10b6c97476860",
+    "report.md": "1860007faaefa76002e920730f274c35354e0ace3cca037e2444052874366040",
+    "row_results.json": "a36c711726980a414b123555b97b15960f4dae54557831a76b2bfab65187cf3d"
+  },
+  "authority": {
+    "baseline_floor_authorized": false,
+    "formal_rl_readiness_authorized": false,
+    "fresh_evidence_authorized": false,
+    "gameplay_authorized": false,
+    "promotion_authorized": false,
+    "reward_authorized": false,
+    "training_authorized": false
+  },
+  "registration_sha256": "b251f7eefa558610b58c2dc23525f60302e6ae9f99bd11da72faa6c9a138f8f6",
+  "schema_version": "noncombat-current-policy-simulator-bridge-manifest-v2",
+  "stage2_executed": true,
+  "stage2_result_sha256": "5629d19955c53bc6af7469355f8e2faab32b0fcb33f3338626052f9c529605c7",
+  "successor_comparison": {
+    "immutable_paths": [
+      "authority",
+      "current_policy",
+      "identity.adapter_provenance",
+      "identity.frozen_demonstrations",
+      "identity.metadata",
+      "identity.prior_seed_evidence",
+      "identity.runtime",
+      "stage1",
+      "stage2"
+    ],
+    "mutable_paths": [
+      "schema_version",
+      "identity.implementation",
+      "identity.event_option_semantics",
+      "identity.predecessor_registration",
+      "identity.predecessor_manifest",
+      "output.directory"
+    ],
+    "predecessor_manifest": {
+      "path": "reports/noncombat_current_policy_simulator_bridge_20260802/artifact_manifest.json",
+      "sha256": "272a5a38bbfc833a142619769682823910b9958197556b632b1cbab2726ae493",
+      "size_bytes": 1011
+    },
+    "predecessor_registration": {
+      "path": "reports/noncombat_current_policy_simulator_bridge_20260802_input.json",
+      "sha256": "2c8cf7fae0acc707cd37d31fa75f79066fa3764f827962979e877be6581ba192",
+      "size_bytes": 5458
+    },
+    "predecessor_schema_version": "noncombat-current-policy-simulator-bridge-input-v1",
+    "predecessor_verdict": "frozen_bridge_not_compatible",
+    "schema_version": "noncombat-current-policy-simulator-bridge-successor-comparison-v1",
+    "status": "passed",
+    "successor_schema_version": "noncombat-current-policy-simulator-bridge-input-v2"
+  },
+  "verdict": "frozen_bridge_structurally_compatible"
+}

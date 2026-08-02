@@ -48,18 +48,22 @@ and outcome support remain blocked. The terminal verdict remains
 `not_ready_for_bounded_training_proposal`, with all execution and promotion
 authority false.
 
-The first source-bound Current-policy simulator bridge POC is also complete.
-The exact conservative Ironclad `OptimizedAgent` path mapped route, card reward,
-and shop rows deterministically without fallback or source mutation. The event
-row failed closed because adapter v2 preserves only generic option indices and
-not the semantic option labels read by Current. The verdict is
-`frozen_bridge_not_compatible`; Stage 2 was not authorized or executed, and all
-downstream authority remains false.
+The first source-bound Current-policy simulator bridge registration remains a
+valid negative. Its event row stopped on missing semantics. The source-bound r2
+successor now resolves the exact `Liars Game` `Agree`/`Disagree` contract and
+proves the original four rows and all execution settings unchanged. All four
+Stage 1 rows pass deterministically, so the verdict is now
+`frozen_bridge_structurally_compatible`.
 
-The current objective is a separately reviewed, read-only adapter contract for
-exact event-option semantics, followed only by strict recomputation of the same
-frozen Current bridge POC. Do not start another imitation POC, unregistered
-simulator cohort, gameplay batch, or formal non-combat RL training.
+The single authorized reused-seed Stage 2 check then executed and failed closed
+at the first unsupported event identity, `The Cleric`. Native module, build,
+simulator, source, and submodule identities all matched. This is a semantic
+coverage blocker, not a policy-quality result. Do not retry those seeds by
+adding one event at a time. The current objective is a read-only static coverage
+audit for the complete set of event semantics that Current can use, followed by
+a separately reviewed adapter-contract extension. Do not start another
+imitation POC, unregistered simulator cohort, gameplay batch, or formal
+non-combat RL training.
 
 ## Training Boundary
 
@@ -84,13 +88,14 @@ zero target-supported victories. The next prerequisite is the non-teacher
 baseline floor; passing it would not override the outcome blocker or authorize
 training.
 
-The immediate baseline-lane blocker is narrower: Current cannot be evaluated
-across all four simulator categories until event snapshots expose exact option
-semantics. The frozen bridge POC passed route, card reward, and shop, then
-stopped on `missing_event_option_semantics`. This is an adapter evidence gap,
-not a Current policy-quality result. Its fixed reused-seed Stage 2 cohort remains
-unspent by this bridge and must stay closed until the same Stage 1 registration
-passes after a separately specified adapter change.
+The immediate baseline-lane blocker is now broader event-semantic coverage.
+The r2 successor closes the frozen `Liars Game` row and passes all four Stage 1
+categories, but its one registered Stage 2 execution stops on unsupported
+`The Cleric` semantics. The reused seeds `2000..2003` are consumed by this gate
+and SHALL NOT become an iterative event-debugging cohort. Before another
+own-trajectory check, a read-only audit must statically enumerate the event
+identities, phases, legal indices, and labels that Current can actually read and
+define a total fail-closed coverage contract without running those seeds again.
 
 The active v2 known-propensity outcome-evidence study is stopped before any
 replacement qualification or study start. R7 remains immutable and retired
@@ -224,20 +229,22 @@ The next authorized sequence is:
    reproduction contract. Keep target-supported outcomes separate. Consider
    bounded formal RL only after every readiness domain passes and a separate
    training OpenSpec is approved.
-11. Preserve the completed Current bridge registration and valid negative
-    artifacts. Add exact event-option semantics through a separate adapter
-    OpenSpec, then strictly recompute the same frozen four-row Stage 1 POC. Do
-    not change its rows, thresholds, Current configuration, or Stage 2 seeds,
-    and do not run Stage 2 unless every frozen structural gate passes.
+11. Preserve both Current bridge registrations and reports. The predecessor is
+    a valid `missing_event_option_semantics` negative; the r2 successor passes
+    the unchanged four-row Stage 1 gate and consumes its single Stage 2 attempt
+    with a fail-closed `The Cleric` coverage blocker. Do not retry seeds
+    `2000..2003`, change the frozen rows, or patch events one at a time around
+    that observed trajectory.
 
 ## Work Lanes
 
-The primary lane is the exact event-option semantics adapter contract needed to
-finish the frozen Current bridge. If the unchanged Stage 1 POC then passes, the
-next change may run its already-registered reused-seed compatibility check.
-Only after structural compatibility is established should a non-teacher
-baseline-floor study define a credible fixed floor and untouched comparison
-contract. The target-supported-outcome lane remains blocked and separate.
+The primary lane is a read-only source audit and separately reviewed adapter
+contract for total Current-relevant event-option semantic coverage. It must be
+derived from upstream event identity, legal-action, display-label, and execution
+sources rather than repeated own-trajectory probes. Only after that contract is
+complete may a new preregistered compatibility evaluation be considered. A
+non-teacher baseline-floor study remains downstream of structural compatibility;
+the target-supported-outcome lane remains blocked and separate.
 
 Live gameplay is a maintenance and registered-evaluation lane only. Launch it
 for a crash, stuck state, repeated A-class simulator/mechanics defect, or an

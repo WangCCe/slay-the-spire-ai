@@ -21,6 +21,6 @@
 ## 4. Verification And Closeout
 
 - [x] 4.1 Run focused adapter and bridge pytest with an isolated writable basetemp.
-- [ ] 4.2 Run global OpenSpec validation and the repository commit test gate; do not substitute the obsolete raw full-suite command.
+- [x] 4.2 Run global OpenSpec validation and the repository commit test gate; do not substitute the obsolete raw full-suite command.
 - [x] 4.3 Update project direction and a closeout report with semantic coverage, predecessor comparison, verdict, authority limits, and rollback boundary.
-- [ ] 4.4 Sync the accepted delta specs, archive the completed change, commit cohesive artifacts, and push `master`.
+- [x] 4.4 Sync the accepted delta specs, archive the completed change, commit cohesive artifacts, and push `master`.

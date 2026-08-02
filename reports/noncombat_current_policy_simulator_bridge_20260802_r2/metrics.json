@@ -1,0 +1,100 @@
+{
+  "authority": {
+    "baseline_floor_authorized": false,
+    "formal_rl_readiness_authorized": false,
+    "fresh_evidence_authorized": false,
+    "gameplay_authorized": false,
+    "promotion_authorized": false,
+    "reward_authorized": false,
+    "training_authorized": false
+  },
+  "category_coverage": {
+    "card_reward": true,
+    "event": true,
+    "route": true,
+    "shop": true
+  },
+  "passed_row_count": 4,
+  "reason_counts": {},
+  "registration_sha256": "b251f7eefa558610b58c2dc23525f60302e6ae9f99bd11da72faa6c9a138f8f6",
+  "row_count": 4,
+  "schema_version": "noncombat-current-policy-simulator-bridge-metrics-v2",
+  "stage1_passed": true,
+  "stage2": {
+    "authorized": true,
+    "executed": true,
+    "reason": "event_option_semantics_event_unsupported",
+    "result": {
+      "detail": "The Cleric",
+      "max_decisions_per_episode": 500,
+      "native_identity": {
+        "build": {
+          "adapter_api_version": "sts-lightspeed-noncombat-adapter-v2",
+          "baseline_policy_id": "sts_lightspeed_simple_agent_no_potions_v1",
+          "compiler": "15.2.0",
+          "cpp_standard": 201703,
+          "native_target_policy_id": "sts_lightspeed_simple_agent_target_v1",
+          "pybind11_version": "3.0.2a0",
+          "python": "3.10.18"
+        },
+        "module_sha256": "b3328aea4ee3040a4fe8751d6f300a148a7ae64d68f7ebec050ae61f479d6805",
+        "module_size_bytes": 1550848,
+        "simulator_commit": "7476a81954020087da31d41d16fddf475746ec2d",
+        "simulator_dirty": true,
+        "simulator_source_file_count": 79,
+        "simulator_source_sha256": "a3f98721ec37373b1b00aef660832a3307f0186ba0614d07a3b1e7de8ab2e46a",
+        "submodules": {
+          "json": "55f93686c01528224f448c19128836e7df245f72",
+          "pybind11": "8f68ecd32c8e18d3b064dbf0ea5fc31a6cb37e9a"
+        }
+      },
+      "reason": "event_option_semantics_event_unsupported",
+      "replay_count": 2,
+      "schema_version": "noncombat-current-policy-simulator-bridge-stage2-v1",
+      "seeds": [
+        2000,
+        2001,
+        2002,
+        2003
+      ],
+      "status": "failed"
+    }
+  },
+  "successor_comparison": {
+    "immutable_paths": [
+      "authority",
+      "current_policy",
+      "identity.adapter_provenance",
+      "identity.frozen_demonstrations",
+      "identity.metadata",
+      "identity.prior_seed_evidence",
+      "identity.runtime",
+      "stage1",
+      "stage2"
+    ],
+    "mutable_paths": [
+      "schema_version",
+      "identity.implementation",
+      "identity.event_option_semantics",
+      "identity.predecessor_registration",
+      "identity.predecessor_manifest",
+      "output.directory"
+    ],
+    "predecessor_manifest": {
+      "path": "reports/noncombat_current_policy_simulator_bridge_20260802/artifact_manifest.json",
+      "sha256": "272a5a38bbfc833a142619769682823910b9958197556b632b1cbab2726ae493",
+      "size_bytes": 1011
+    },
+    "predecessor_registration": {
+      "path": "reports/noncombat_current_policy_simulator_bridge_20260802_input.json",
+      "sha256": "2c8cf7fae0acc707cd37d31fa75f79066fa3764f827962979e877be6581ba192",
+      "size_bytes": 5458
+    },
+    "predecessor_schema_version": "noncombat-current-policy-simulator-bridge-input-v1",
+    "predecessor_verdict": "frozen_bridge_not_compatible",
+    "schema_version": "noncombat-current-policy-simulator-bridge-successor-comparison-v1",
+    "status": "passed",
+    "successor_schema_version": "noncombat-current-policy-simulator-bridge-input-v2"
+  },
+  "verdict": "frozen_bridge_structurally_compatible"
+}
