@@ -1,0 +1,92 @@
+# noncombat-simulator-adapter Specification
+
+## Purpose
+
+Define an optional, provenance-bound offline simulator interface and its strict
+separation from live gameplay, evaluation evidence, training, and promotion.
+
+## Requirements
+
+### Requirement: Offline External Simulator Isolation
+The system SHALL use `sts_lightspeed` only through an explicitly requested offline adapter and SHALL NOT import it from the CommunicationMod gameplay runtime.
+
+#### Scenario: Adapter is absent during live gameplay
+- **WHEN** the production agent starts through CommunicationMod
+- **THEN** it SHALL NOT import, build, or invoke the simulator adapter
+- **AND** simulator availability SHALL NOT change live action selection
+
+#### Scenario: External checkout is explicit
+- **WHEN** a developer builds or audits the simulator adapter
+- **THEN** the command SHALL require an explicit external checkout and caller-selected build location
+- **AND** it SHALL NOT modify or vendor the external checkout
+
+### Requirement: Provenance-Bound Simulator Environment
+The adapter SHALL bind every transition report to the physical simulator source, dependency, build, adapter, and fixture identities used to produce it.
+
+#### Scenario: Complete provenance is recorded
+- **WHEN** a simulator fit audit succeeds
+- **THEN** the report SHALL record the simulator parent commit, source-diff digest, submodule commits, module hash, Python and compiler identities, adapter commit, and fixture hash
+
+#### Scenario: Registered identity drifts
+- **WHEN** any required source, dependency, module, or fixture identity differs from the registered input
+- **THEN** the audit SHALL fail closed with an explicit provenance blocker
+- **AND** it SHALL NOT reuse a prior readiness result
+
+### Requirement: Deterministic Non-Combat Environment API
+The adapter SHALL expose deterministic Ironclad reset, clone, snapshot, legal-action enumeration, action execution, and terminal outcome through JSON-compatible values.
+
+#### Scenario: Same seed resets identically
+- **WHEN** two environments reset with the same seed and ascension under the same bound identities
+- **THEN** their canonical snapshots and legal actions SHALL be byte-equivalent
+
+#### Scenario: Clone branches are isolated
+- **WHEN** an environment is cloned at a target decision and an action executes on only one branch
+- **THEN** the untouched branch snapshot SHALL remain unchanged
+- **AND** the changed branch SHALL return a legal successor or terminal outcome
+
+#### Scenario: Reported candidates execute legally
+- **WHEN** the adapter reports legal candidates at a target decision
+- **THEN** every candidate SHALL execute successfully on a fresh clone of that decision state
+- **AND** no unreported action SHALL be accepted as a target-category action
+
+### Requirement: Four-Category Simulator Transitions
+The adapter SHALL emit versioned simulator transitions for route, shop, event, and card-reward decisions while declaring all baseline-controlled screens and follow-up semantics.
+
+#### Scenario: Target category transition is emitted
+- **WHEN** the environment reaches a supported target decision and applies one reported candidate
+- **THEN** it SHALL emit source state, candidate set, selected action, successor state or terminal outcome, category, and simulator provenance
+
+#### Scenario: Combat is baseline controlled
+- **WHEN** a selected non-combat action leads to combat before the next target decision
+- **THEN** the adapter SHALL resolve combat with the declared simulator baseline
+- **AND** the transition SHALL record that baseline rather than attributing combat control to the learned policy
+
+#### Scenario: Unsupported screen remains explicit
+- **WHEN** the environment reaches Neow, boss relic, campfire, treasure, or a follow-up selection outside the POC action space
+- **THEN** the adapter SHALL either resolve it with the declared baseline and record that fact or stop with an unsupported reason
+- **AND** it SHALL NOT silently relabel the screen as one of the four target categories
+
+### Requirement: Historical Prefix And Category Fit Audit
+The system SHALL publish a deterministic, fail-closed fit report before simulator transitions can support a training proposal.
+
+#### Scenario: Adapter POC fit is demonstrated
+- **WHEN** exact source provenance passes, repeated seeds are deterministic, clone branches are isolated, every reported action executes legally, all four target categories have bounded smoke coverage, terminal outcomes are produced, and every frozen historical prefix candidate set matches
+- **THEN** the report MAY classify the result as `adapter_poc_ready`
+- **AND** it SHALL list remaining simulator-divergence and action-scope limitations
+
+#### Scenario: Any fit prerequisite fails
+- **WHEN** any required provenance, determinism, clone, legality, category, terminal, or historical-prefix check fails
+- **THEN** the report SHALL classify the result as `blocked`
+- **AND** it SHALL identify the exact failed prerequisite
+
+### Requirement: Simulator POC Has No Training Authority
+Simulator adapter readiness SHALL authorize only a separate reviewed proposal for a bounded simulator-training smoke.
+
+#### Scenario: POC report passes
+- **WHEN** a fit report returns `adapter_poc_ready`
+- **THEN** live study launch, formal RL training, OPE reinterpretation, live policy loading, and promotion authority SHALL all remain false
+
+#### Scenario: Bottled labels are attached
+- **WHEN** Bottled labels are compared with simulator transitions
+- **THEN** they SHALL remain auxiliary annotations
+- **AND** they SHALL NOT become direct reward, terminal truth, or simulator correctness evidence

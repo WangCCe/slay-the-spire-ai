@@ -57,6 +57,22 @@ audit is `not_demonstrated` because the evidence is historical-only, contains
 no supported victory, and yields zero plug-in pass probability. It grants no
 qualification, study, gameplay, OPE, training, or promotion authority.
 
+The offline `sts_lightspeed` adapter POC now binds the simulator checkout,
+submodule commits, physical source hash, adapter commit/source hash, and native
+module hash. Two independent 20-seed batches were identical, terminated on all
+seeds, covered route/shop/event/card-reward decisions, and applied all 46
+inspected candidates on isolated clones. The historical-prefix check matched
+12/12 early reward candidate sets from six recent real runs. The fit verdict is
+`adapter_poc_ready`.
+
+That verdict establishes an offline environment interface, not policy quality
+or mechanics parity. The declared first-candidate baseline won 0/20 runs,
+battle potion use is disabled, non-target screens remain baseline-controlled,
+and arbitrary live non-combat states cannot be imported. Simulator transitions
+remain separate from live known-propensity, OPE, and supported-outcome evidence.
+Every live, training, OPE, qualification, and promotion authority flag remains
+false.
+
 The next authorized sequence is:
 
 1. Preserve r1-r8, the completed r8 diagnosis/fix, and all external evidence
@@ -66,14 +82,20 @@ The next authorized sequence is:
 3. Use a separate offline-first OpenSpec decision to choose among improving
    and re-baselining the current gameplay policy, revising the outcome/reward
    evidence contract, or registering a materially different study design.
-4. Permit a later replacement-qualification amendment only after a current,
+4. Treat `adapter_poc_ready` as permission only to design, not run, one bounded
+   simulator-training smoke. Its proposal must define a training-only reward,
+   evidence separation, simulator-divergence gates, fixed holdout seeds, a
+   later real-game evaluation boundary, and explicit stop conditions.
+5. Permit a later replacement-qualification amendment only after a current,
    source-comparable feasibility audit demonstrates the declared planning gate.
-5. Consider bounded non-combat RL training only after the revised evidence
+6. Consider bounded non-combat RL training only after the revised evidence
    path reaches the existing independently checkable training go/no-go gates.
 
 ## Work Lanes
 
-The primary lane is non-combat RL readiness and its evidence pipeline.
+The primary lane is non-combat RL readiness: first close the offline simulator
+environment contract, then review a bounded training-smoke proposal, while
+keeping simulated and live evidence separate.
 
 Live gameplay is a maintenance and registered-evaluation lane only. Launch it
 for a crash, stuck state, repeated A-class simulator/mechanics defect, or an

@@ -14,11 +14,11 @@
 ## 3. Fit Audit And Frozen Evidence
 
 - [x] 3.1 Implement a deterministic offline audit for exact source/build identities, import compatibility, repeated-seed determinism, clone isolation, candidate legality, four-category coverage, terminal outcomes, throughput, and historical-prefix agreement.
-- [ ] 3.2 Build and run the POC against the bound local checkout with production Python, then publish deterministic JSON and Markdown reports with explicit blockers and all downstream authority false.
-- [ ] 3.3 Update project direction and non-combat RL readiness documentation to record the simulator evidence class and the next bounded go/no-go boundary.
+- [x] 3.2 Build and run the POC against the bound local checkout with production Python, then publish deterministic JSON and Markdown reports with explicit blockers and all downstream authority false.
+- [x] 3.3 Update project direction and non-combat RL readiness documentation to record the simulator evidence class and the next bounded go/no-go boundary.
 
 ## 4. Verification And Closeout
 
 - [x] 4.1 Run focused pure tests and opt-in local adapter integration tests without launching Slay the Spire, Java, CommunicationMod, gameplay collection, or training.
-- [ ] 4.2 Run the registered commit gate, strict OpenSpec validation, scoped diff review, and process/configuration isolation checks.
-- [ ] 4.3 Sync accepted delta specs, archive the completed change, commit only scoped files, and push `master`.
+- [x] 4.2 Run the registered commit gate, strict OpenSpec validation, scoped diff review, and process/configuration isolation checks.
+- [x] 4.3 Sync accepted delta specs, archive the completed change, commit only scoped files, and push `master`.
