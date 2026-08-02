@@ -1,0 +1,53 @@
+{
+  "artifact_hashes": {
+    "configuration.json": "a0f5421169c8a28533167681c00589d9f927ba62dc6507523796d40d874689ff",
+    "dependency_coverage.json": "5680a0d1d3ef5ecc95eae5d71ac08ef54e8b4fcc3cd54a11b16f998622ad016c",
+    "report.json": "213d266841322d19aad5b35a7a1bb6290e3c147e50ab8273e2b410230dd850f0",
+    "report.md": "a8a5936f3ced34887ec04333e53d61029852fad41e88ebeff13195ab462cac0e",
+    "representation_metrics.json": "737d0645ca4b94ee2a4a685571e3bdfbfeda6803cfae17b3bd4b34e339ed75da",
+    "row_evidence.json": "df5649f0965b477512f812633ff3dacd11308dfb9d8ed7020f716cff0480af0d",
+    "source_facts.json": "15125ce39dbfa752da59f987662eb151e7193726a592ad2a0ca457e6a66333da",
+    "teacher_suitability.json": "1636ae8f69392f8f434af2238ce8851975207d57a690630b59d63ef75f735dfa"
+  },
+  "authority": {
+    "dagger": false,
+    "formal_noncombat_rl": false,
+    "live_gameplay": false,
+    "live_policy_loading": false,
+    "model_fitting": false,
+    "native_build": false,
+    "native_evidence_collection": false,
+    "native_module_loading": false,
+    "ope_reinterpretation": false,
+    "policy_promotion": false,
+    "policy_quality": false,
+    "qualification": false,
+    "simulator_rollout": false
+  },
+  "canonical_artifact_names": [
+    "artifact_manifest.json",
+    "configuration.json",
+    "dependency_coverage.json",
+    "report.json",
+    "report.md",
+    "representation_metrics.json",
+    "row_evidence.json",
+    "source_facts.json",
+    "teacher_suitability.json"
+  ],
+  "configuration_sha256": "a0f5421169c8a28533167681c00589d9f927ba62dc6507523796d40d874689ff",
+  "managed_inventory": [
+    "artifact_manifest.json",
+    "configuration.json",
+    "dependency_coverage.json",
+    "report.json",
+    "report.md",
+    "representation_metrics.json",
+    "row_evidence.json",
+    "source_facts.json",
+    "teacher_suitability.json",
+    "execution_journal.json"
+  ],
+  "schema_version": "noncombat-state-action-teacher-audit-manifest-v1",
+  "verdict": "simpleagent_unsuitable_as_policy_quality_gate"
+}

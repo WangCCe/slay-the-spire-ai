@@ -1,0 +1,182 @@
+{
+  "dependencies": [
+    {
+      "category": "route",
+      "dependency_id": "route.act",
+      "evidence": "source_facts.route.map_weights",
+      "legacy_projection": "directly_represented",
+      "raw_adapter": "directly_represented",
+      "role": "selects one of three fixed room-weight tables",
+      "source_input": "gc.act",
+      "structured_projection": "directly_represented"
+    },
+    {
+      "category": "route",
+      "dependency_id": "route.map_topology_and_rooms",
+      "evidence": "source_facts.blocks.route",
+      "legacy_projection": "directly_represented",
+      "raw_adapter": "directly_represented",
+      "role": "determines the complete cached maximum-weight route",
+      "source_input": "gc.map nodes, ordered edges, and room enum",
+      "structured_projection": "missing_exact_dependency"
+    },
+    {
+      "category": "route",
+      "dependency_id": "route.current_map_y",
+      "evidence": "source_facts.blocks.map_screen",
+      "legacy_projection": "directly_represented",
+      "raw_adapter": "directly_represented",
+      "role": "indexes the next coordinate in the cached route",
+      "source_input": "gc.curMapNodeY",
+      "structured_projection": "directly_represented"
+    },
+    {
+      "category": "route",
+      "dependency_id": "route.cached_map_path",
+      "evidence": "source_facts.route.cached_path_member",
+      "legacy_projection": "deterministically_derivable",
+      "raw_adapter": "deterministically_derivable",
+      "role": "persists the map-entry route across later choices",
+      "source_input": "SimpleAgent.mapPath",
+      "structured_projection": "missing_exact_dependency"
+    },
+    {
+      "category": "route",
+      "dependency_id": "route.map_weights",
+      "evidence": "source_facts.route.map_weights",
+      "legacy_projection": "policy_constant",
+      "raw_adapter": "policy_constant",
+      "role": "fixed teacher-policy parameters",
+      "source_input": "mapWeights[act-1]",
+      "structured_projection": "policy_constant"
+    },
+    {
+      "category": "route",
+      "dependency_id": "route.source_order_ties",
+      "evidence": "source_facts.route.strict_path_tie_keeps_existing",
+      "legacy_projection": "policy_constant",
+      "raw_adapter": "policy_constant",
+      "role": "keeps the first path on equal weight",
+      "source_input": "ordered x/edge loops and strict comparisons",
+      "structured_projection": "policy_constant"
+    },
+    {
+      "category": "card_reward",
+      "dependency_id": "card.identity_and_upgrade",
+      "evidence": "source_facts.blocks.card_reward",
+      "legacy_projection": "directly_represented",
+      "raw_adapter": "directly_represented",
+      "role": "computes static card priority",
+      "source_input": "lastCardReward card id and upgraded flag",
+      "structured_projection": "directly_represented"
+    },
+    {
+      "category": "card_reward",
+      "dependency_id": "card.offer_order",
+      "evidence": "source_facts.blocks.card_reward",
+      "legacy_projection": "directly_represented",
+      "raw_adapter": "directly_represented",
+      "role": "keeps the first card on equal priority and equality remap",
+      "source_input": "lastCardReward iteration order",
+      "structured_projection": "missing_exact_dependency"
+    },
+    {
+      "category": "card_reward",
+      "dependency_id": "card.offer_local_counts",
+      "evidence": "source_facts.card.offer_count_used_for_copy_limit",
+      "legacy_projection": "directly_represented",
+      "raw_adapter": "directly_represented",
+      "role": "applies the copy-limit table to offer multiplicity",
+      "source_input": "deckCounts populated from lastCardReward",
+      "structured_projection": "directly_represented"
+    },
+    {
+      "category": "card_reward",
+      "dependency_id": "card.equality_remap_fields",
+      "evidence": "source_facts.card.equality_fields",
+      "legacy_projection": "directly_represented",
+      "raw_adapter": "directly_represented",
+      "role": "maps the selected Card value back to the first equal reward slot",
+      "source_input": "Card::operator== id, misc, and upgraded fields",
+      "structured_projection": "directly_represented"
+    },
+    {
+      "category": "card_reward",
+      "dependency_id": "card.priority_and_copy_tables",
+      "evidence": "source_facts.card",
+      "legacy_projection": "policy_constant",
+      "raw_adapter": "policy_constant",
+      "role": "fixed teacher-policy parameters",
+      "source_input": "cardPriorityMap and maxCopies",
+      "structured_projection": "policy_constant"
+    },
+    {
+      "category": "card_reward",
+      "dependency_id": "card.skip_or_bowl_mapping",
+      "evidence": "source_facts.blocks.adapter_card_candidates",
+      "legacy_projection": "directly_represented",
+      "raw_adapter": "directly_represented",
+      "role": "maps the teacher skip bits to one legal action id",
+      "source_input": "adapter candidate mapped from GameAction card index 5",
+      "structured_projection": "directly_represented"
+    },
+    {
+      "category": "card_reward",
+      "dependency_id": "card.actual_deck",
+      "evidence": "source_facts.card.reads_actual_deck",
+      "legacy_projection": "intentionally_irrelevant_to_teacher",
+      "raw_adapter": "intentionally_irrelevant_to_teacher",
+      "role": "available run context not read by the teacher",
+      "source_input": "gc.deck",
+      "structured_projection": "intentionally_irrelevant_to_teacher"
+    },
+    {
+      "category": "card_reward",
+      "dependency_id": "card.other_run_context",
+      "evidence": "source_facts.card.reads_run_context",
+      "legacy_projection": "intentionally_irrelevant_to_teacher",
+      "raw_adapter": "intentionally_irrelevant_to_teacher",
+      "role": "available run context not read by the teacher",
+      "source_input": "act, floor, hp, gold, boss, relics, and potions",
+      "structured_projection": "intentionally_irrelevant_to_teacher"
+    }
+  ],
+  "raw_adapter_actionable_gap_count": 0,
+  "schema_version": "noncombat-teacher-dependency-coverage-v1",
+  "summary": {
+    "legacy_projection": {
+      "by_status": {
+        "deterministically_derivable": 1,
+        "directly_represented": 8,
+        "intentionally_irrelevant_to_teacher": 2,
+        "missing_exact_dependency": 0,
+        "policy_constant": 3
+      },
+      "missing_dependency_ids": []
+    },
+    "raw_adapter": {
+      "by_status": {
+        "deterministically_derivable": 1,
+        "directly_represented": 8,
+        "intentionally_irrelevant_to_teacher": 2,
+        "missing_exact_dependency": 0,
+        "policy_constant": 3
+      },
+      "missing_dependency_ids": []
+    },
+    "structured_projection": {
+      "by_status": {
+        "deterministically_derivable": 0,
+        "directly_represented": 6,
+        "intentionally_irrelevant_to_teacher": 2,
+        "missing_exact_dependency": 3,
+        "policy_constant": 3
+      },
+      "missing_dependency_ids": [
+        "route.map_topology_and_rooms",
+        "route.cached_map_path",
+        "card.offer_order"
+      ]
+    }
+  }
+}

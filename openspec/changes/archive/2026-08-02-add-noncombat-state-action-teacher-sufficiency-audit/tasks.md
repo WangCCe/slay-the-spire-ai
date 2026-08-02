@@ -52,16 +52,19 @@
   one immutable registration binding that commit and every allowed input.
 - [x] 5.2 Verify and push the registration before executing one canonical audit;
   do not alter keys, criteria, source interpretation, or inputs after result.
-- [ ] 5.3 Execute the registered audit once, strictly recompute it, and perform a
+- [x] 5.3 Execute the registered audit once, strictly recompute it, and perform a
   read-only manual review of source closure, aliases, suitability, authority,
   bounds, and inventory.
-- [ ] 5.4 Update project direction with the terminal next-step verdict, run
+- [x] 5.4 Update project direction with the terminal next-step verdict, run
   focused and commit-gate verification without gameplay, sync/archive the
   change, commit only scoped files, and push `master`.
 
-## Blocked Registered Attempt
+## Recovered Registered Attempt
 
-The sole registered execution on 2026-08-02 failed closed after the audit body
+The v1 registered execution on 2026-08-02 failed closed after the audit body
 exceeded its fixed 120-second wall-time bound. No canonical output was
-published, the same registration cannot be retried, and tasks 5.3-5.4 remain
-open pending a separate runtime-recovery OpenSpec change and fresh registration.
+published and that registration remains consumed. A separate runtime-recovery
+OpenSpec and fresh v2 registration preserved the contract, published in 34.938
+seconds, and strictly recomputed the terminal
+`simpleagent_unsuitable_as_policy_quality_gate` result. Task 5.4 remains open
+only for bounded verification, spec sync/archive, commit, and push.

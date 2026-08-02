@@ -41,13 +41,13 @@
 
 ## 5. Fresh Registration And One-Shot Recovery
 
-- [ ] 5.1 Commit and push implementation/OpenSpec, then create, verify, commit,
+- [x] 5.1 Commit and push implementation/OpenSpec, then create, verify, commit,
   and push one v2 registration binding the consumed failure and unchanged
   evidence contract.
-- [ ] 5.2 Execute the fresh registered audit exactly once; do not retry, profile,
+- [x] 5.2 Execute the fresh registered audit exactly once; do not retry, profile,
   tune, or change limits/semantics after the attempt.
-- [ ] 5.3 Strictly recompute a published result or preserve a terminal failure,
+- [x] 5.3 Strictly recompute a published result or preserve a terminal failure,
   perform the final read-only identity/equivalence/authority/inventory audit,
   and update project direction.
-- [ ] 5.4 Run bounded final verification, sync/archive completed changes only if
+- [x] 5.4 Run bounded final verification, sync/archive completed changes only if
   the original canonical result exists, commit scoped files, and push `master`.

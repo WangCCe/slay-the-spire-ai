@@ -32,10 +32,18 @@ not change and route improved by only one net decision out of 300. Overall
 agreement delta was `+0.001149`, route delta `+0.003333`, and fold 1 regressed.
 No model was selected. Baseline-imitation model trials on this corpus are now
 closed. The first registered read-only state/action and SimpleAgent
-teacher-suitability audit then failed closed before publication because its
-timed body exceeded the fixed 120-second limit. The current objective is a
-separate equivalence-preserving runtime recovery and fresh registration, not
-another model POC, fresh simulator study, or formal non-combat RL.
+teacher-suitability audit failed closed before publication because its timed
+body exceeded the fixed 120-second limit. A separately registered,
+byte-equivalent runtime recovery then completed in 34.938 seconds and strictly
+recomputed every canonical artifact. It reconstructed 993/993 teacher actions,
+found no raw-adapter gap or observed representation conflict on 602
+multi-candidate rows, and failed all six fixed teacher-suitability checks. The
+terminal verdict is `simpleagent_unsuitable_as_policy_quality_gate`.
+
+SimpleAgent is therefore closed as a policy-quality target and retained only as
+an auxiliary regression oracle. The current objective is a separate read-only
+`outcome-backed-noncombat-rl-readiness` go/no-go audit, not another imitation
+POC, fresh simulator study, or formal non-combat RL training.
 
 ## Training Boundary
 
@@ -49,6 +57,13 @@ Bottled-style decisions remain an auxiliary oracle for comparison, labels, and
 diagnostics. They are not reward, ground truth, or a mandatory policy target.
 
 ## Current Blocker
+
+State/action source closure is no longer the primary blocker: the recovered
+teacher audit proved exact reconstruction and adequate raw-adapter visibility
+on the preserved train corpus. The remaining training blocker is outcome-backed
+readiness: known-propensity support, reward/outcome attribution, untouched
+offline evaluation, and a preregistered training/promotion boundary are not yet
+jointly demonstrated.
 
 The active v2 known-propensity outcome-evidence study is stopped before any
 replacement qualification or study start. R7 remains immutable and retired
@@ -171,26 +186,24 @@ The next authorized sequence is:
 8. Preserve the completed route/card residual POC, its registration, canonical
    artifacts, and valid negative verdict. Do not tune, rerun, or attempt a third
    model on the observed train corpus.
-9. Preserve the consumed teacher-sufficiency registration and blocked failure
-   record. Do not retry it or infer a representation/teacher verdict from the
-   absent canonical output. Any recovery must keep the corpus, signatures,
-   source interpretation, checks, verdict order, and 120-second audit-body
-   limit unchanged under a separate OpenSpec and fresh registration.
-10. Consider formal RL only after a separately registered policy demonstrates a
-   credible baseline floor on untouched evidence. Permit later live work only
-   through its existing crash/qualification gates.
+9. Preserve both consumed teacher-sufficiency registrations, the v1 timeout,
+   and the strictly recomputed r2 result. Do not retry either registration or
+   treat zero observed representation conflicts as policy-quality evidence.
+10. Route the next capability through a separate read-only outcome-backed
+   non-combat RL readiness audit. Consider bounded formal RL only after it
+   proves reproducible state/action, support, reward/outcome, and untouched
+   evaluation contracts and a separate training OpenSpec is approved. Permit
+   later live work only through existing crash/qualification gates.
 
 ## Work Lanes
 
-The primary lane is equivalence-preserving runtime recovery for the blocked
-read-only state/action and SimpleAgent teacher-suitability audit, motivated by
-the two completed train-only negatives and the failure record in
-`reports/noncombat_state_action_teacher_sufficiency_audit_20260802_failure.json`.
-Remove only redundant validation/serialization and cache exact pure feature
-computations; prove byte-equivalence on synthetic fixtures before a fresh
-registration and one-shot audit. Do not change the evidence, signatures,
-suitability criteria, verdict order, or limits, fit another model, or spend
-fresh simulator cohorts. Simulated and live evidence remain separate.
+The primary lane is a separate read-only outcome-backed non-combat RL readiness
+audit. It should consume only frozen evidence and determine whether state/action
+coverage, known-propensity support, terminal outcomes, reward attribution, and
+untouched offline evaluation are sufficient to preregister a bounded training
+study. It must define an explicit go/no-go verdict without fitting a model,
+spending fresh simulator cohorts, launching gameplay, or granting training or
+promotion authority. Simulated and live evidence remain separate.
 
 Live gameplay is a maintenance and registered-evaluation lane only. Launch it
 for a crash, stuck state, repeated A-class simulator/mechanics defect, or an

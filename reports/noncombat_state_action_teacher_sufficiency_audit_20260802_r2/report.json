@@ -1,0 +1,44 @@
+{
+  "adapter_gap_reasons": [],
+  "audited_category_counts": {
+    "card_reward": 302,
+    "route": 691
+  },
+  "audited_row_count": 993,
+  "authority": {
+    "dagger": false,
+    "formal_noncombat_rl": false,
+    "live_gameplay": false,
+    "live_policy_loading": false,
+    "model_fitting": false,
+    "native_build": false,
+    "native_evidence_collection": false,
+    "native_module_loading": false,
+    "ope_reinterpretation": false,
+    "policy_promotion": false,
+    "policy_quality": false,
+    "qualification": false,
+    "simulator_rollout": false
+  },
+  "blockers": [],
+  "max_candidate_count": 5,
+  "multi_candidate_row_count": 602,
+  "next_proposal_class": "outcome-backed-noncombat-rl-readiness",
+  "reconstruction_match_count": 993,
+  "reconstruction_mismatch_count": 0,
+  "reconstruction_mismatch_examples": [],
+  "schema_version": "noncombat-state-action-teacher-audit-report-v1",
+  "singleton_counts": {
+    "card_reward": 0,
+    "route": 391
+  },
+  "suitability_failed_check_ids": [
+    "route_replans_with_current_state",
+    "route_reads_survivability",
+    "route_reads_run_resources",
+    "card_copy_limit_uses_actual_deck",
+    "card_reads_deck_and_run_context",
+    "card_values_skip_vs_bowl"
+  ],
+  "verdict": "simpleagent_unsuitable_as_policy_quality_gate"
+}

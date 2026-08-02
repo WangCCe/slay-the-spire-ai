@@ -1,0 +1,50 @@
+{
+  "checks": [
+    {
+      "check_id": "route_replans_with_current_state",
+      "critical": true,
+      "evidence": "source_facts.route.replans_only_at_map_entry",
+      "passed": false
+    },
+    {
+      "check_id": "route_reads_survivability",
+      "critical": true,
+      "evidence": "source_facts.route.reads_current_hp",
+      "passed": false
+    },
+    {
+      "check_id": "route_reads_run_resources",
+      "critical": true,
+      "evidence": "source_facts.route.reads_current_gold",
+      "passed": false
+    },
+    {
+      "check_id": "card_copy_limit_uses_actual_deck",
+      "critical": true,
+      "evidence": "source_facts.card.reads_actual_deck",
+      "passed": false
+    },
+    {
+      "check_id": "card_reads_deck_and_run_context",
+      "critical": true,
+      "evidence": "source_facts.card.reads_actual_deck/read_run_context",
+      "passed": false
+    },
+    {
+      "check_id": "card_values_skip_vs_bowl",
+      "critical": true,
+      "evidence": "source_facts.card.values_singing_bowl",
+      "passed": false
+    }
+  ],
+  "critical_failed_check_ids": [
+    "route_replans_with_current_state",
+    "route_reads_survivability",
+    "route_reads_run_resources",
+    "card_copy_limit_uses_actual_deck",
+    "card_reads_deck_and_run_context",
+    "card_values_skip_vs_bowl"
+  ],
+  "policy_quality_gate_suitable": false,
+  "schema_version": "noncombat-teacher-suitability-v1"
+}
