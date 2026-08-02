@@ -30,7 +30,7 @@ using json = nlohmann::json;
 
 namespace {
 
-constexpr const char *ADAPTER_API_VERSION = "sts-lightspeed-noncombat-adapter-v2";
+constexpr const char *ADAPTER_API_VERSION = "sts-lightspeed-noncombat-adapter-v3";
 constexpr const char *STATE_SCHEMA_VERSION = "sts-lightspeed-state-v1";
 constexpr const char *BASELINE_POLICY_ID = "sts_lightspeed_simple_agent_no_potions_v1";
 constexpr const char *NATIVE_BASELINE_ACTION_SCHEMA_VERSION =
@@ -357,6 +357,25 @@ private:
                 {"event_id", sts::eventIdStrings[static_cast<int>(gc_.curEvent)]},
                 {"event_name", eventName(gc_.curEvent)},
             };
+            if (gc_.curEvent == sts::Event::NLOTH) {
+                json offeredRelics = json::array();
+                const auto appendOffer = [&](int simulatorChoiceIndex, int relicSlot) {
+                    if (relicSlot < 0 || relicSlot >= gc_.relics.size()) {
+                        throw std::runtime_error("N'loth offered relic slot is invalid");
+                    }
+                    const auto &relic = gc_.relics.relics[relicSlot];
+                    offeredRelics.push_back({
+                        {"relic_id", sts::relicEnumNames[static_cast<int>(relic.id)]},
+                        {"relic_name", sts::getRelicName(relic.id)},
+                        {"relic_slot", relicSlot},
+                        {"simulator_choice_index", simulatorChoiceIndex},
+                    });
+                };
+                appendOffer(0, gc_.info.relicIdx0);
+                appendOffer(1, gc_.info.relicIdx1);
+                state["decision_context"]["offered_relics"] =
+                    std::move(offeredRelics);
+            }
         } else if (category() == "shop") {
             json cards = json::array();
             json relics = json::array();

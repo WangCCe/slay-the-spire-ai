@@ -20,6 +20,9 @@ from analysis_scripts.noncombat_simulator_adapter import (
     canonical_json_bytes,
     sha256_file,
 )
+from analysis_scripts.noncombat_simulator_baseline_warm_start import (
+    _hash_bound_files_at_commit,
+)
 from analysis_scripts.noncombat_simulator_policy_validity import (
     COMPATIBILITY_SEEDS,
     FRESH_SEEDS,
@@ -46,7 +49,6 @@ from analysis_scripts.noncombat_simulator_training_smoke import (
     _candidate_features,
     canonical_model_payload,
     evaluate_greedy_policy,
-    hash_bound_files,
     paired_bootstrap_interval,
     validate_bound_fit_evidence,
 )
@@ -321,8 +323,10 @@ def test_checked_in_policy_validity_registration_is_hash_closed_and_disjoint():
         )
     )
     validate_bound_fit_evidence(fit_input, fit_report, identity["adapter_provenance"])
-    assert hash_bound_files(
-        REPO_ROOT, identity["implementation"]["source_files"]
+    assert _hash_bound_files_at_commit(
+        REPO_ROOT,
+        identity["implementation"]["commit"],
+        identity["implementation"]["source_files"],
     ) == identity["implementation"]["source_sha256"]
 
     cohorts = registration["study"]["cohorts"]

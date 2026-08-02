@@ -23,7 +23,7 @@ import spirecomm.ai.agent as agent_module
 from analysis_scripts.noncombat_event_option_semantics import (
     EventOptionSemanticsError,
     event_option_semantics_identity,
-    resolve_event_option_semantics,
+    resolve_event_option_observation,
 )
 from analysis_scripts.noncombat_simulator_adapter import (
     NativeSimulatorEnvironment,
@@ -773,6 +773,127 @@ def _hydrate_map(value: object) -> Map:
     return dungeon_map
 
 
+_EVENT_OPTION_LEGACY_KEYS = {"choice_index", "label", "text"}
+_EVENT_OPTION_V2_KEYS = {
+    "choice_index",
+    "current_position",
+    "label",
+    "simulator_choice_index",
+    "text",
+}
+
+
+def _event_candidate_indices(candidates: Sequence[Mapping[str, Any]]) -> list[int]:
+    indices = []
+    for position, raw_candidate in enumerate(candidates):
+        candidate = _mapping(raw_candidate, f"event candidate[{position}]")
+        if candidate.get("kind") != "event_option":
+            raise BridgeBlocked(
+                "event_option_semantics_candidate_kind_mismatch",
+                candidate.get("action_id"),
+            )
+        raw = _mapping(candidate.get("raw"), f"event candidate[{position}].raw")
+        simulator_index = raw.get("idx1")
+        if (
+            isinstance(simulator_index, bool)
+            or not isinstance(simulator_index, int)
+            or simulator_index < 0
+        ):
+            raise BridgeBlocked(
+                "event_option_semantics_candidate_index_invalid",
+                candidate.get("action_id"),
+            )
+        indices.append(simulator_index)
+    if indices != sorted(set(indices)):
+        raise BridgeBlocked("event_option_semantics_candidate_order_invalid", indices)
+    return indices
+
+
+def _normalize_event_option_semantics(
+    semantics: object,
+    candidates: Sequence[Mapping[str, Any]],
+) -> tuple[list[dict[str, Any]], str]:
+    if not isinstance(semantics, list):
+        raise BridgeBlocked("missing_event_option_semantics")
+    candidate_indices = _event_candidate_indices(candidates)
+    if len(semantics) != len(candidate_indices):
+        raise BridgeBlocked(
+            "event_option_semantics_candidate_mismatch",
+            {"semantics_count": len(semantics), "candidates": candidate_indices},
+        )
+
+    normalized = []
+    row_versions = set()
+    for position, raw_option in enumerate(semantics):
+        option = _mapping(raw_option, f"event option_semantics[{position}]")
+        keys = set(option)
+        if keys == _EVENT_OPTION_LEGACY_KEYS:
+            row_versions.add("legacy")
+            current_position = option.get("choice_index")
+            simulator_choice_index = current_position
+        elif keys == _EVENT_OPTION_V2_KEYS:
+            row_versions.add("v2")
+            current_position = option.get("current_position")
+            simulator_choice_index = option.get("simulator_choice_index")
+        else:
+            raise BridgeBlocked(
+                "event_option_semantics_invalid",
+                {"position": position, "keys": sorted(keys)},
+            )
+
+        choice_index = option.get("choice_index")
+        label = option.get("label")
+        text = option.get("text")
+        if (
+            isinstance(choice_index, bool)
+            or not isinstance(choice_index, int)
+            or choice_index < 0
+            or isinstance(current_position, bool)
+            or not isinstance(current_position, int)
+            or current_position < 0
+            or isinstance(simulator_choice_index, bool)
+            or not isinstance(simulator_choice_index, int)
+            or simulator_choice_index < 0
+            or choice_index != current_position
+            or not isinstance(label, str)
+            or not label
+            or not isinstance(text, str)
+            or not text
+        ):
+            raise BridgeBlocked("event_option_semantics_invalid", position)
+        normalized.append(
+            {
+                "choice_index": current_position,
+                "current_position": current_position,
+                "label": label,
+                "simulator_choice_index": simulator_choice_index,
+                "text": text,
+            }
+        )
+
+    if len(row_versions) != 1:
+        raise BridgeBlocked("event_option_semantics_version_mixed")
+    current_positions = [row["current_position"] for row in normalized]
+    expected_positions = list(range(len(normalized)))
+    if current_positions != expected_positions:
+        raise BridgeBlocked(
+            "event_option_semantics_position_mismatch",
+            {"actual": current_positions, "expected": expected_positions},
+        )
+    simulator_indices = [row["simulator_choice_index"] for row in normalized]
+    if "legacy" in row_versions and candidate_indices != expected_positions:
+        raise BridgeBlocked(
+            "event_option_semantics_legacy_ambiguous", candidate_indices
+        )
+    if simulator_indices != candidate_indices:
+        raise BridgeBlocked(
+            "event_option_semantics_candidate_mismatch",
+            {"semantics": simulator_indices, "candidates": candidate_indices},
+        )
+    source = "inline_legacy_contiguous" if "legacy" in row_versions else "inline_v2"
+    return normalized, source
+
+
 def _hydrate_event_screen(
     state: Mapping[str, Any], candidates: Sequence[Mapping[str, Any]]
 ) -> tuple[EventScreen, list[EventOption]]:
@@ -781,36 +902,18 @@ def _hydrate_event_screen(
     event_name = context.get("event_name")
     if not isinstance(event_id, str) or not isinstance(event_name, str):
         raise BridgeBlocked("event_identity_missing")
-    semantics = context.get("option_semantics")
-    if not isinstance(semantics, list):
-        raise BridgeBlocked("missing_event_option_semantics", event_id)
-    candidate_indices = sorted(
-        candidate["raw"].get("idx1") for candidate in candidates
+    semantics, _ = _normalize_event_option_semantics(
+        context.get("option_semantics"), candidates
     )
-    options = []
-    semantic_indices = []
-    for index, raw in enumerate(semantics):
-        option = _mapping(raw, f"event option_semantics[{index}]")
-        _require_keys(option, {"choice_index", "label", "text"}, f"event option {index}")
-        choice_index = option["choice_index"]
-        label = option["label"]
-        text = option["text"]
-        if (
-            isinstance(choice_index, bool)
-            or not isinstance(choice_index, int)
-            or not isinstance(label, str)
-            or not label
-            or not isinstance(text, str)
-            or not text
-        ):
-            raise BridgeBlocked("event_option_semantics_invalid", index)
-        semantic_indices.append(choice_index)
-        options.append(EventOption(text, label, False, choice_index))
-    if semantic_indices != candidate_indices:
-        raise BridgeBlocked(
-            "event_option_semantics_candidate_mismatch",
-            {"semantics": semantic_indices, "candidates": candidate_indices},
+    options = [
+        EventOption(
+            option["text"],
+            option["label"],
+            False,
+            option["current_position"],
         )
+        for option in semantics
+    ]
     screen = EventScreen(event_name, event_id, "")
     screen.options = options
     return screen, options
@@ -835,18 +938,25 @@ def enrich_event_option_semantics(
         state.get("decision_context"), "snapshot.state.decision_context"
     )
     if "option_semantics" in context:
-        source = "inline"
+        semantics, source = _normalize_event_option_semantics(
+            context["option_semantics"], candidates
+        )
+        context["option_semantics"] = semantics
     else:
         if simulator_provenance is None:
             raise BridgeBlocked("event_option_semantics_provenance_missing")
         try:
-            semantics = resolve_event_option_semantics(
+            observation = resolve_event_option_observation(
                 snapshot=snapshot,
                 candidates=candidates,
                 simulator_provenance=simulator_provenance,
             )
         except EventOptionSemanticsError as exc:
             raise BridgeBlocked(exc.reason, exc.detail) from exc
+        semantics, _ = _normalize_event_option_semantics(
+            observation["options"], candidates
+        )
+        context["event_id"] = observation["current_event_id"]
         context["option_semantics"] = semantics
         source = event_option_semantics_identity()["contract_id"]
     state["decision_context"] = context
@@ -1025,6 +1135,7 @@ def map_current_action(
     action: object,
     candidates: Sequence[Mapping[str, Any]],
     event_semantics_validated: bool = False,
+    event_option_semantics: Sequence[Mapping[str, Any]] | None = None,
 ) -> str:
     """Map one Current action object to exactly one stable simulator candidate."""
 
@@ -1110,14 +1221,32 @@ def map_current_action(
         raise BridgeBlocked("unsupported_current_action", type(action).__name__)
 
     if category == "event":
-        if not event_semantics_validated:
+        if not event_semantics_validated or event_option_semantics is None:
             raise BridgeBlocked("missing_event_option_semantics")
         if not isinstance(action, ChooseAction) or action.name is not None:
             raise BridgeBlocked("unsupported_current_action", type(action).__name__)
+        current_position = action.choice_index
+        if (
+            isinstance(current_position, bool)
+            or not isinstance(current_position, int)
+            or current_position < 0
+        ):
+            raise BridgeBlocked("event_option_position_invalid", current_position)
+        semantics, _ = _normalize_event_option_semantics(
+            list(event_option_semantics), normalized
+        )
+        matching_rows = [
+            row
+            for row in semantics
+            if row["current_position"] == current_position
+        ]
+        if len(matching_rows) != 1:
+            raise BridgeBlocked("event_option_position_invalid", current_position)
+        simulator_choice_index = matching_rows[0]["simulator_choice_index"]
         return _unique_match(
             normalized,
             lambda candidate: candidate["kind"] == "event_option"
-            and candidate["raw"].get("idx1") == action.choice_index,
+            and candidate["raw"].get("idx1") == simulator_choice_index,
             category=category,
         )
     raise BridgeBlocked("unsupported_category", category)
@@ -1248,11 +1377,22 @@ class CurrentPolicyBridgeSession:
         if self.agent.game_tracker is not None:
             raise BridgeBlocked("tracker_reenabled")
         category = snapshot.get("category")
+        event_option_semantics = None
+        if category == "event":
+            hydration_state = _mapping(
+                hydration_snapshot.get("state"), "hydration snapshot.state"
+            )
+            hydration_context = _mapping(
+                hydration_state.get("decision_context"),
+                "hydration snapshot.state.decision_context",
+            )
+            event_option_semantics = hydration_context.get("option_semantics")
         action_id = map_current_action(
             category=category,
             action=action,
             candidates=candidates,
             event_semantics_validated=(category == "event"),
+            event_option_semantics=event_option_semantics,
         )
         if canonical_json_bytes(snapshot) != before_snapshot:
             raise BridgeBlocked("source_snapshot_mutated_during_evaluation")

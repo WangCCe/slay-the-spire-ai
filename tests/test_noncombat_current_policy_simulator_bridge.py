@@ -358,6 +358,36 @@ def _liars_game_candidates():
     ]
 
 
+def _event_state(event_id, event_name, event_data=0, *, inline_semantics=None):
+    context = {
+        "event_data": event_data,
+        "event_id": event_id,
+        "event_name": event_name,
+    }
+    if inline_semantics is not None:
+        context["option_semantics"] = copy.deepcopy(inline_semantics)
+    return _state(
+        cur_room="EVENT",
+        decision_context=context,
+        screen_state="EVENT_SCREEN",
+    )
+
+
+def _event_candidates(event_id, event_name, indices):
+    slug = event_name.lower().replace(" ", "_")
+    return [
+        _candidate(
+            "event",
+            "event_option",
+            f"event:{slug}:option:{index}",
+            idx1=index,
+            idx2=0,
+            event_id=event_id,
+        )
+        for index in indices
+    ]
+
+
 @pytest.fixture
 def metadata(tmp_path):
     path = tmp_path / "items.json"
@@ -567,17 +597,21 @@ def test_bridge_enriches_missing_event_semantics_without_mutating_sources():
         simulator_provenance=_adapter_provenance(),
     )
 
-    assert source == "sts_lightspeed_liars_game_event_options_v1"
+    assert source == "sts_lightspeed_total_event_observation_v2"
     assert enriched["state"]["decision_context"]["option_semantics"] == [
         {
             "choice_index": 0,
+            "current_position": 0,
             "label": "Agree",
-            "text": "Gain 175 Gold. Become Cursed - Doubt.",
+            "simulator_choice_index": 0,
+            "text": "Agree",
         },
         {
             "choice_index": 1,
+            "current_position": 1,
             "label": "Disagree",
-            "text": "Nothing happens.",
+            "simulator_choice_index": 1,
+            "text": "Disagree",
         },
     ]
     assert snapshot == before_snapshot
@@ -601,8 +635,123 @@ def test_bridge_preserves_valid_inline_event_semantics():
         simulator_provenance=drifted,
     )
 
-    assert source == "inline"
+    assert source == "inline_legacy_contiguous"
+    assert enriched["state"]["decision_context"]["option_semantics"] == [
+        {
+            **row,
+            "current_position": index,
+            "simulator_choice_index": index,
+        }
+        for index, row in enumerate(inline)
+    ]
+
+
+def test_bridge_preserves_versioned_inline_coordinates():
+    inline = [
+        {
+            "choice_index": 0,
+            "current_position": 0,
+            "label": "Leave",
+            "simulator_choice_index": 2,
+            "text": "Leave",
+        }
+    ]
+    snapshot = _snapshot(
+        "event",
+        _event_state("The Cleric", "The Cleric", inline_semantics=inline),
+    )
+    candidates = _event_candidates("The Cleric", "The Cleric", [2])
+
+    enriched, source = enrich_event_option_semantics(
+        snapshot=snapshot,
+        candidates=candidates,
+        simulator_provenance=None,
+    )
+
+    assert source == "inline_v2"
     assert enriched["state"]["decision_context"]["option_semantics"] == inline
+
+
+def test_bridge_rejects_ambiguous_sparse_legacy_inline_semantics():
+    inline = [{"choice_index": 0, "label": "Leave", "text": "Leave"}]
+    snapshot = _snapshot(
+        "event",
+        _event_state("The Cleric", "The Cleric", inline_semantics=inline),
+    )
+
+    with pytest.raises(
+        BridgeBlocked, match="event_option_semantics_legacy_ambiguous"
+    ):
+        enrich_event_option_semantics(
+            snapshot=snapshot,
+            candidates=_event_candidates("The Cleric", "The Cleric", [2]),
+            simulator_provenance=None,
+        )
+
+
+@pytest.mark.parametrize(
+    ("event_id", "event_name", "event_data", "simulator_index", "label"),
+    [
+        ("The Cleric", "The Cleric", 0, 2, "Leave"),
+        ("Cursed Tome", "Cursed Tome", 2, 3, "Continue"),
+    ],
+)
+def test_sparse_event_position_maps_back_to_simulator_choice_index(
+    metadata, event_id, event_name, event_data, simulator_index, label
+):
+    snapshot = _snapshot(
+        "event", _event_state(event_id, event_name, event_data=event_data)
+    )
+    candidates = _event_candidates(event_id, event_name, [simulator_index])
+
+    enriched, _ = enrich_event_option_semantics(
+        snapshot=snapshot,
+        candidates=candidates,
+        simulator_provenance=_adapter_provenance(),
+    )
+    semantics = enriched["state"]["decision_context"]["option_semantics"]
+    game = hydrate_game(enriched, candidates, metadata)
+    action_id = map_current_action(
+        category="event",
+        action=ChooseAction(0),
+        candidates=candidates,
+        event_semantics_validated=True,
+        event_option_semantics=semantics,
+    )
+
+    assert semantics == [
+        {
+            "choice_index": 0,
+            "current_position": 0,
+            "label": label,
+            "simulator_choice_index": simulator_index,
+            "text": label,
+        }
+    ]
+    assert game.choice_list[0].choice_index == 0
+    assert action_id == candidates[0]["action_id"]
+
+
+def test_event_reverse_mapping_rejects_invalid_current_position():
+    candidates = _event_candidates("The Cleric", "The Cleric", [2])
+    semantics = [
+        {
+            "choice_index": 0,
+            "current_position": 0,
+            "label": "Leave",
+            "simulator_choice_index": 2,
+            "text": "Leave",
+        }
+    ]
+
+    with pytest.raises(BridgeBlocked, match="event_option_position_invalid"):
+        map_current_action(
+            category="event",
+            action=ChooseAction(1),
+            candidates=candidates,
+            event_semantics_validated=True,
+            event_option_semantics=semantics,
+        )
 
 
 def test_bridge_propagates_event_semantics_blocker():
@@ -610,7 +759,7 @@ def test_bridge_propagates_event_semantics_blocker():
     snapshot["state"]["decision_context"]["event_id"] = "Big Fish"
 
     with pytest.raises(
-        BridgeBlocked, match="event_option_semantics_event_unsupported"
+        BridgeBlocked, match="event_option_semantics_event_identity_mismatch"
     ):
         enrich_event_option_semantics(
             snapshot=snapshot,
@@ -639,7 +788,35 @@ def test_current_session_uses_resolved_liars_game_semantics(metadata):
 
     assert result["action_id"] == "event:the_ssssserpent:option:1"
     assert result["event_semantics_source"] == (
-        "sts_lightspeed_liars_game_event_options_v1"
+        "sts_lightspeed_total_event_observation_v2"
+    )
+    assert snapshot == before_snapshot
+    assert candidates == before_candidates
+
+
+def test_current_session_maps_cleric_visible_position_to_sparse_candidate(metadata):
+    snapshot = _snapshot(
+        "event", _event_state("The Cleric", "The Cleric", event_data=0)
+    )
+    candidates = _event_candidates("The Cleric", "The Cleric", [2])
+    before_snapshot = copy.deepcopy(snapshot)
+    before_candidates = copy.deepcopy(candidates)
+    session = CurrentPolicyBridgeSession(
+        metadata=metadata,
+        current_policy=_current_policy(),
+        require_global_metadata_match=False,
+        simulator_provenance=_adapter_provenance(),
+    )
+
+    result = session.evaluate(
+        snapshot=snapshot,
+        candidates=candidates,
+        decision_index=1,
+    )
+
+    assert result["action_id"] == candidates[0]["action_id"]
+    assert result["event_semantics_source"] == (
+        "sts_lightspeed_total_event_observation_v2"
     )
     assert snapshot == before_snapshot
     assert candidates == before_candidates

@@ -14,10 +14,17 @@ from types import ModuleType
 from typing import Any, Iterable, Mapping, Sequence
 
 
-ADAPTER_API_VERSION = "sts-lightspeed-noncombat-adapter-v2"
+ADAPTER_API_VERSION = "sts-lightspeed-noncombat-adapter-v3"
+HISTORICAL_ADAPTER_API_VERSIONS = (
+    "sts-lightspeed-noncombat-adapter-v2",
+)
+SUPPORTED_SNAPSHOT_ADAPTER_API_VERSIONS = (
+    *HISTORICAL_ADAPTER_API_VERSIONS,
+    ADAPTER_API_VERSION,
+)
 SUPPORTED_PROVENANCE_ADAPTER_API_VERSIONS = (
     "sts-lightspeed-noncombat-adapter-v1",
-    ADAPTER_API_VERSION,
+    *SUPPORTED_SNAPSHOT_ADAPTER_API_VERSIONS,
 )
 STATE_SCHEMA_VERSION = "sts-lightspeed-state-v1"
 TRANSITION_SCHEMA_VERSION = "noncombat-simulator-transition-v1"
@@ -58,7 +65,9 @@ def _mapping(value: object, label: str) -> Mapping[str, Any]:
 
 def validate_snapshot(value: object) -> dict[str, Any]:
     snapshot = dict(_mapping(value, "snapshot"))
-    if snapshot.get("adapter_api_version") != ADAPTER_API_VERSION:
+    if snapshot.get("adapter_api_version") not in (
+        SUPPORTED_SNAPSHOT_ADAPTER_API_VERSIONS
+    ):
         raise SimulatorAdapterError("snapshot adapter_api_version mismatch")
     if snapshot.get("schema_version") != STATE_SCHEMA_VERSION:
         raise SimulatorAdapterError("snapshot schema_version mismatch")

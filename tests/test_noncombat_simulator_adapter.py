@@ -2,17 +2,16 @@ from __future__ import annotations
 
 import json
 import os
+import sys
 from pathlib import Path
+from types import SimpleNamespace
 
 import pytest
 
-from analysis_scripts.noncombat_event_option_semantics import (
-    EventOptionSemanticsError,
-    event_option_semantics_identity,
-    resolve_event_option_semantics,
-)
 from analysis_scripts.noncombat_simulator_adapter import (
     ADAPTER_API_VERSION,
+    HISTORICAL_ADAPTER_API_VERSIONS,
+    MODULE_NAME,
     NATIVE_BASELINE_ACTION_SCHEMA_VERSION,
     NATIVE_TARGET_POLICY_ID,
     SOURCE_TYPE,
@@ -25,6 +24,7 @@ from analysis_scripts.noncombat_simulator_adapter import (
     hash_compiled_simulator_sources,
     load_native_module,
     validate_candidates,
+    validate_snapshot,
 )
 
 
@@ -82,126 +82,57 @@ def _provenance():
     }
 
 
-def _event_snapshot(*, ascension=0, event_data=0, event_id="Liars Game"):
+def test_adapter_v3_source_exports_exact_nloth_offer_identity():
+    assert ADAPTER_API_VERSION == "sts-lightspeed-noncombat-adapter-v3"
+    assert "sts-lightspeed-noncombat-adapter-v2" in HISTORICAL_ADAPTER_API_VERSIONS
+
+    source = (
+        REPO_ROOT
+        / "simulator_adapters"
+        / "sts_lightspeed"
+        / "noncombat_adapter.cpp"
+    ).read_text(encoding="utf-8")
+    for token in (
+        'ADAPTER_API_VERSION = "sts-lightspeed-noncombat-adapter-v3"',
+        'state["decision_context"]["offered_relics"]',
+        "gc_.info.relicIdx0",
+        "gc_.info.relicIdx1",
+        '"simulator_choice_index"',
+        '"relic_slot"',
+        '"relic_id"',
+        '"relic_name"',
+    ):
+        assert token in source
+
+
+def test_snapshot_reader_preserves_historical_v2_identity_without_defaults():
     snapshot = _snapshot("event")
-    snapshot["state"].update(
-        {
-            "ascension": ascension,
-            "decision_context": {
-                "event_data": event_data,
-                "event_id": event_id,
-                "event_name": "The Ssssserpent",
-            },
-        }
-    )
-    return snapshot
-
-
-def _event_candidate(index, *, action_id=None):
-    return {
-        "action_id": action_id or f"event:the_ssssserpent:option:{index}",
-        "available": True,
-        "category": "event",
-        "kind": "event_option",
-        "label": f"The Ssssserpent option {index}",
-        "raw": {"event_id": "Liars Game", "idx1": index, "idx2": 0},
+    snapshot["adapter_api_version"] = "sts-lightspeed-noncombat-adapter-v2"
+    snapshot["state"]["decision_context"] = {
+        "event_data": 0,
+        "event_id": "Liars Game",
+        "event_name": "The Ssssserpent",
     }
 
+    normalized = validate_snapshot(snapshot)
 
-def _event_semantics_provenance():
-    provenance = _provenance()
-    identity = event_option_semantics_identity()
-    provenance["simulator_commit"] = identity["simulator_commit"]
-    provenance["simulator_source_sha256"] = identity["simulator_source_sha256"]
-    return provenance
-
-
-@pytest.mark.parametrize(
-    ("ascension", "expected_text"),
-    [
-        (0, "Gain 175 Gold. Become Cursed - Doubt."),
-        (15, "Gain 150 Gold. Become Cursed - Doubt."),
-    ],
-)
-def test_liars_game_semantics_are_exact_source_bound_and_non_mutating(
-    ascension, expected_text
-):
-    snapshot = _event_snapshot(ascension=ascension)
-    candidates = [_event_candidate(0), _event_candidate(1)]
-    provenance = _event_semantics_provenance()
-    before_snapshot = json.dumps(snapshot, sort_keys=True)
-    before_candidates = json.dumps(candidates, sort_keys=True)
-    before_provenance = json.dumps(provenance, sort_keys=True)
-
-    semantics = resolve_event_option_semantics(
-        snapshot=snapshot,
-        candidates=candidates,
-        simulator_provenance=provenance,
+    assert normalized["adapter_api_version"] == (
+        "sts-lightspeed-noncombat-adapter-v2"
     )
-
-    assert semantics == [
-        {"choice_index": 0, "label": "Agree", "text": expected_text},
-        {"choice_index": 1, "label": "Disagree", "text": "Nothing happens."},
-    ]
-    assert json.dumps(snapshot, sort_keys=True) == before_snapshot
-    assert json.dumps(candidates, sort_keys=True) == before_candidates
-    assert json.dumps(provenance, sort_keys=True) == before_provenance
+    assert "offered_relics" not in normalized["state"]["decision_context"]
 
 
-@pytest.mark.parametrize(
-    ("snapshot", "candidates", "reason"),
-    [
-        (
-            _event_snapshot(event_id="Big Fish"),
-            [_event_candidate(0), _event_candidate(1)],
-            "event_option_semantics_event_unsupported",
-        ),
-        (
-            _event_snapshot(event_data=1),
-            [_event_candidate(0), _event_candidate(1)],
-            "event_option_semantics_phase_unsupported",
-        ),
-        (
-            _event_snapshot(),
-            [_event_candidate(0)],
-            "event_option_semantics_candidate_indices_mismatch",
-        ),
-        (
-            _event_snapshot(),
-            [
-                _event_candidate(0),
-                _event_candidate(0, action_id="event:the_ssssserpent:option:duplicate"),
-            ],
-            "event_option_semantics_candidate_index_duplicate",
-        ),
-    ],
-)
-def test_event_semantics_reject_unsupported_or_incomplete_state(
-    snapshot, candidates, reason
-):
-    with pytest.raises(EventOptionSemanticsError) as exc_info:
-        resolve_event_option_semantics(
-            snapshot=snapshot,
-            candidates=candidates,
-            simulator_provenance=_event_semantics_provenance(),
-        )
+def test_new_module_loader_rejects_historical_v2_module(tmp_path, monkeypatch):
+    module_path = tmp_path / "adapter.pyd"
+    module_path.write_bytes(b"not loaded")
+    legacy = SimpleNamespace(
+        __file__=str(module_path),
+        adapter_api_version=lambda: "sts-lightspeed-noncombat-adapter-v2",
+    )
+    monkeypatch.setitem(sys.modules, MODULE_NAME, legacy)
 
-    assert exc_info.value.reason == reason
-
-
-@pytest.mark.parametrize("field", ["simulator_commit", "simulator_source_sha256"])
-def test_event_semantics_reject_simulator_identity_drift(field):
-    provenance = _event_semantics_provenance()
-    provenance[field] = "0" * len(provenance[field])
-
-    with pytest.raises(EventOptionSemanticsError) as exc_info:
-        resolve_event_option_semantics(
-            snapshot=_event_snapshot(),
-            candidates=[_event_candidate(0), _event_candidate(1)],
-            simulator_provenance=provenance,
-        )
-
-    assert exc_info.value.reason == "event_option_semantics_provenance_mismatch"
+    with pytest.raises(SimulatorAdapterError, match="adapter API mismatch"):
+        load_native_module(module_path)
 
 
 class _FakeNativeBaselineEnvironment:
