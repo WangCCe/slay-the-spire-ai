@@ -1,0 +1,184 @@
+{
+  "identity": {
+    "adapter_fit_input": {
+      "path": "reports/noncombat_simulator_fit_20260802_r2_input.json",
+      "sha256": "6df711920aaa5dbbd9185d336594b97844e98b5079e2a3474fa6e6ce95c8a9d9",
+      "size_bytes": 1553
+    },
+    "adapter_fit_report": {
+      "path": "reports/noncombat_simulator_fit_20260802_r2.json",
+      "sha256": "4a22437070fe5533ceabe73d45ca80b529151bd5398aa9e8aa6f65df2ff78af0",
+      "size_bytes": 15710
+    },
+    "adapter_provenance": {
+      "adapter_commit": "68369db646a074fa712fccddc6a650015197332d",
+      "adapter_source_sha256": "933f7725cc7cb3dfd088e26bd2c81856e09bacac24c6f1e1e98246db62cabb41",
+      "build": {
+        "adapter_api_version": "sts-lightspeed-noncombat-adapter-v1",
+        "baseline_policy_id": "sts_lightspeed_simple_agent_no_potions_v1",
+        "compiler": "15.2.0",
+        "cpp_standard": 201703,
+        "pybind11_version": "3.0.2a0",
+        "python": "3.10.18"
+      },
+      "module_sha256": "d4055640698ca415ea5f4d57e11ac5fd4635143039bfefd869c60ddf64924b3c",
+      "module_size_bytes": 1540608,
+      "simulator_commit": "7476a81954020087da31d41d16fddf475746ec2d",
+      "simulator_dirty": true,
+      "simulator_source_file_count": 79,
+      "simulator_source_sha256": "a3f98721ec37373b1b00aef660832a3307f0186ba0614d07a3b1e7de8ab2e46a",
+      "submodules": {
+        "json": "55f93686c01528224f448c19128836e7df245f72",
+        "pybind11": "8f68ecd32c8e18d3b064dbf0ea5fc31a6cb37e9a"
+      }
+    },
+    "implementation": {
+      "commit": "68369db646a074fa712fccddc6a650015197332d",
+      "source_files": [
+        "analysis_scripts/noncombat_policy_model.py",
+        "analysis_scripts/noncombat_simulator_adapter.py",
+        "analysis_scripts/noncombat_simulator_training_smoke.py"
+      ],
+      "source_sha256": "199483974539f35e822077d3719d5c08da14e1c0042d5463525e3a47d2b436b5"
+    }
+  },
+  "schema_version": "noncombat-simulator-training-smoke-input-v1",
+  "smoke": {
+    "algorithm": {
+      "discount": 1.0,
+      "feature_version": "noncombat-simulator-policy-features-v1",
+      "hash_dim": 1024,
+      "learning_rate": 0.001,
+      "model_seed": 0,
+      "optimizer": "adam",
+      "passes": 4,
+      "standardize_returns": true,
+      "version": "candidate-masked-reinforce-smoke-v1"
+    },
+    "ascension": 0,
+    "cohorts": {
+      "holdout_seeds": [
+        2000,
+        2001,
+        2002,
+        2003,
+        2004,
+        2005,
+        2006,
+        2007,
+        2008,
+        2009,
+        2010,
+        2011,
+        2012,
+        2013,
+        2014,
+        2015,
+        2016,
+        2017,
+        2018,
+        2019,
+        2020,
+        2021,
+        2022,
+        2023,
+        2024,
+        2025,
+        2026,
+        2027,
+        2028,
+        2029,
+        2030,
+        2031,
+        2032,
+        2033,
+        2034,
+        2035,
+        2036,
+        2037,
+        2038,
+        2039,
+        2040,
+        2041,
+        2042,
+        2043,
+        2044,
+        2045,
+        2046,
+        2047,
+        2048,
+        2049,
+        2050,
+        2051,
+        2052,
+        2053,
+        2054,
+        2055,
+        2056,
+        2057,
+        2058,
+        2059,
+        2060,
+        2061,
+        2062,
+        2063
+      ],
+      "train_seeds": [
+        1000,
+        1001,
+        1002,
+        1003,
+        1004,
+        1005,
+        1006,
+        1007,
+        1008,
+        1009,
+        1010,
+        1011,
+        1012,
+        1013,
+        1014,
+        1015,
+        1016,
+        1017,
+        1018,
+        1019,
+        1020,
+        1021,
+        1022,
+        1023,
+        1024,
+        1025,
+        1026,
+        1027,
+        1028,
+        1029,
+        1030,
+        1031
+      ]
+    },
+    "evaluation": {
+      "bootstrap_resamples": 10000,
+      "bootstrap_seed": 0,
+      "confidence_level": 0.95,
+      "policy": "greedy"
+    },
+    "execution": {
+      "allow_parameter_retry": false,
+      "primary_count": 1,
+      "replay_count": 1
+    },
+    "limits": {
+      "max_decisions_per_episode": 500,
+      "max_train_episodes": 128,
+      "max_wall_seconds_per_execution": 600.0
+    },
+    "reward": {
+      "max_floor": 57,
+      "progress_divisor": 57.0,
+      "victory_bonus": 1.0,
+      "version": "simulator-floor-progress-victory-v1"
+    }
+  }
+}

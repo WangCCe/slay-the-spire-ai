@@ -1,0 +1,657 @@
+{
+  "authority": {
+    "formal_noncombat_rl": false,
+    "live_gameplay": false,
+    "live_policy_loading": false,
+    "live_study_launch": false,
+    "ope_reinterpretation": false,
+    "policy_promotion": false,
+    "simulator_training_smoke": false
+  },
+  "batch": {
+    "checked_candidates": 46,
+    "first": {
+      "all_categories": [
+        "card_reward",
+        "event",
+        "route",
+        "shop"
+      ],
+      "checked_candidates": 46,
+      "clone_isolation": true,
+      "rows": [
+        {
+          "categories": [
+            "card_reward",
+            "event",
+            "route",
+            "shop"
+          ],
+          "decisions": 16,
+          "floor": 8,
+          "outcome": "player_loss",
+          "seed": 0
+        },
+        {
+          "categories": [
+            "card_reward",
+            "event",
+            "route"
+          ],
+          "decisions": 33,
+          "floor": 20,
+          "outcome": "player_loss",
+          "seed": 1
+        },
+        {
+          "categories": [
+            "card_reward",
+            "event",
+            "route"
+          ],
+          "decisions": 15,
+          "floor": 8,
+          "outcome": "player_loss",
+          "seed": 2
+        },
+        {
+          "categories": [
+            "card_reward",
+            "event",
+            "route",
+            "shop"
+          ],
+          "decisions": 33,
+          "floor": 16,
+          "outcome": "player_loss",
+          "seed": 3
+        },
+        {
+          "categories": [
+            "card_reward",
+            "event",
+            "route"
+          ],
+          "decisions": 35,
+          "floor": 20,
+          "outcome": "player_loss",
+          "seed": 4
+        },
+        {
+          "categories": [
+            "card_reward",
+            "event",
+            "route"
+          ],
+          "decisions": 13,
+          "floor": 7,
+          "outcome": "player_loss",
+          "seed": 5
+        },
+        {
+          "categories": [
+            "card_reward",
+            "event",
+            "route"
+          ],
+          "decisions": 20,
+          "floor": 11,
+          "outcome": "player_loss",
+          "seed": 6
+        },
+        {
+          "categories": [
+            "card_reward",
+            "event",
+            "route"
+          ],
+          "decisions": 11,
+          "floor": 6,
+          "outcome": "player_loss",
+          "seed": 7
+        },
+        {
+          "categories": [
+            "card_reward",
+            "event",
+            "route",
+            "shop"
+          ],
+          "decisions": 30,
+          "floor": 16,
+          "outcome": "player_loss",
+          "seed": 8
+        },
+        {
+          "categories": [
+            "card_reward",
+            "event",
+            "route"
+          ],
+          "decisions": 27,
+          "floor": 16,
+          "outcome": "player_loss",
+          "seed": 9
+        },
+        {
+          "categories": [
+            "card_reward",
+            "event",
+            "route",
+            "shop"
+          ],
+          "decisions": 31,
+          "floor": 16,
+          "outcome": "player_loss",
+          "seed": 10
+        },
+        {
+          "categories": [
+            "card_reward",
+            "event",
+            "route"
+          ],
+          "decisions": 20,
+          "floor": 10,
+          "outcome": "player_loss",
+          "seed": 11
+        },
+        {
+          "categories": [
+            "card_reward",
+            "event",
+            "route"
+          ],
+          "decisions": 42,
+          "floor": 25,
+          "outcome": "player_loss",
+          "seed": 12
+        },
+        {
+          "categories": [
+            "card_reward",
+            "event",
+            "route",
+            "shop"
+          ],
+          "decisions": 13,
+          "floor": 6,
+          "outcome": "player_loss",
+          "seed": 13
+        },
+        {
+          "categories": [
+            "card_reward",
+            "event",
+            "route",
+            "shop"
+          ],
+          "decisions": 34,
+          "floor": 16,
+          "outcome": "player_loss",
+          "seed": 14
+        },
+        {
+          "categories": [
+            "card_reward",
+            "route"
+          ],
+          "decisions": 12,
+          "floor": 6,
+          "outcome": "player_loss",
+          "seed": 15
+        },
+        {
+          "categories": [
+            "card_reward",
+            "event",
+            "route"
+          ],
+          "decisions": 21,
+          "floor": 11,
+          "outcome": "player_loss",
+          "seed": 16
+        },
+        {
+          "categories": [
+            "card_reward",
+            "event",
+            "route",
+            "shop"
+          ],
+          "decisions": 31,
+          "floor": 16,
+          "outcome": "player_loss",
+          "seed": 17
+        },
+        {
+          "categories": [
+            "card_reward",
+            "event",
+            "route",
+            "shop"
+          ],
+          "decisions": 29,
+          "floor": 14,
+          "outcome": "player_loss",
+          "seed": 18
+        },
+        {
+          "categories": [
+            "card_reward",
+            "event",
+            "route"
+          ],
+          "decisions": 27,
+          "floor": 16,
+          "outcome": "player_loss",
+          "seed": 19
+        }
+      ]
+    },
+    "second": {
+      "all_categories": [
+        "card_reward",
+        "event",
+        "route",
+        "shop"
+      ],
+      "checked_candidates": 46,
+      "clone_isolation": true,
+      "rows": [
+        {
+          "categories": [
+            "card_reward",
+            "event",
+            "route",
+            "shop"
+          ],
+          "decisions": 16,
+          "floor": 8,
+          "outcome": "player_loss",
+          "seed": 0
+        },
+        {
+          "categories": [
+            "card_reward",
+            "event",
+            "route"
+          ],
+          "decisions": 33,
+          "floor": 20,
+          "outcome": "player_loss",
+          "seed": 1
+        },
+        {
+          "categories": [
+            "card_reward",
+            "event",
+            "route"
+          ],
+          "decisions": 15,
+          "floor": 8,
+          "outcome": "player_loss",
+          "seed": 2
+        },
+        {
+          "categories": [
+            "card_reward",
+            "event",
+            "route",
+            "shop"
+          ],
+          "decisions": 33,
+          "floor": 16,
+          "outcome": "player_loss",
+          "seed": 3
+        },
+        {
+          "categories": [
+            "card_reward",
+            "event",
+            "route"
+          ],
+          "decisions": 35,
+          "floor": 20,
+          "outcome": "player_loss",
+          "seed": 4
+        },
+        {
+          "categories": [
+            "card_reward",
+            "event",
+            "route"
+          ],
+          "decisions": 13,
+          "floor": 7,
+          "outcome": "player_loss",
+          "seed": 5
+        },
+        {
+          "categories": [
+            "card_reward",
+            "event",
+            "route"
+          ],
+          "decisions": 20,
+          "floor": 11,
+          "outcome": "player_loss",
+          "seed": 6
+        },
+        {
+          "categories": [
+            "card_reward",
+            "event",
+            "route"
+          ],
+          "decisions": 11,
+          "floor": 6,
+          "outcome": "player_loss",
+          "seed": 7
+        },
+        {
+          "categories": [
+            "card_reward",
+            "event",
+            "route",
+            "shop"
+          ],
+          "decisions": 30,
+          "floor": 16,
+          "outcome": "player_loss",
+          "seed": 8
+        },
+        {
+          "categories": [
+            "card_reward",
+            "event",
+            "route"
+          ],
+          "decisions": 27,
+          "floor": 16,
+          "outcome": "player_loss",
+          "seed": 9
+        },
+        {
+          "categories": [
+            "card_reward",
+            "event",
+            "route",
+            "shop"
+          ],
+          "decisions": 31,
+          "floor": 16,
+          "outcome": "player_loss",
+          "seed": 10
+        },
+        {
+          "categories": [
+            "card_reward",
+            "event",
+            "route"
+          ],
+          "decisions": 20,
+          "floor": 10,
+          "outcome": "player_loss",
+          "seed": 11
+        },
+        {
+          "categories": [
+            "card_reward",
+            "event",
+            "route"
+          ],
+          "decisions": 42,
+          "floor": 25,
+          "outcome": "player_loss",
+          "seed": 12
+        },
+        {
+          "categories": [
+            "card_reward",
+            "event",
+            "route",
+            "shop"
+          ],
+          "decisions": 13,
+          "floor": 6,
+          "outcome": "player_loss",
+          "seed": 13
+        },
+        {
+          "categories": [
+            "card_reward",
+            "event",
+            "route",
+            "shop"
+          ],
+          "decisions": 34,
+          "floor": 16,
+          "outcome": "player_loss",
+          "seed": 14
+        },
+        {
+          "categories": [
+            "card_reward",
+            "route"
+          ],
+          "decisions": 12,
+          "floor": 6,
+          "outcome": "player_loss",
+          "seed": 15
+        },
+        {
+          "categories": [
+            "card_reward",
+            "event",
+            "route"
+          ],
+          "decisions": 21,
+          "floor": 11,
+          "outcome": "player_loss",
+          "seed": 16
+        },
+        {
+          "categories": [
+            "card_reward",
+            "event",
+            "route",
+            "shop"
+          ],
+          "decisions": 31,
+          "floor": 16,
+          "outcome": "player_loss",
+          "seed": 17
+        },
+        {
+          "categories": [
+            "card_reward",
+            "event",
+            "route",
+            "shop"
+          ],
+          "decisions": 29,
+          "floor": 14,
+          "outcome": "player_loss",
+          "seed": 18
+        },
+        {
+          "categories": [
+            "card_reward",
+            "event",
+            "route"
+          ],
+          "decisions": 27,
+          "floor": 16,
+          "outcome": "player_loss",
+          "seed": 19
+        }
+      ]
+    },
+    "seeds": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9,
+      10,
+      11,
+      12,
+      13,
+      14,
+      15,
+      16,
+      17,
+      18,
+      19
+    ]
+  },
+  "blockers": [],
+  "checks": {
+    "candidate_legality": true,
+    "clone_isolation": true,
+    "four_category_coverage": true,
+    "historical_prefix_agreement": true,
+    "historical_source_identity": true,
+    "provenance_identity": true,
+    "repeated_seed_determinism": true,
+    "terminal_outcomes": true,
+    "throughput_budget": true
+  },
+  "historical_prefix": {
+    "expected_decisions": 12,
+    "matched_decisions": 12,
+    "rows": [
+      {
+        "encounter": "CULTIST",
+        "floor": 1,
+        "floor_one_match": true,
+        "neow_match": true,
+        "run_file": "1785609165.run"
+      },
+      {
+        "encounter": "JAW_WORM",
+        "floor": 1,
+        "floor_one_match": true,
+        "neow_match": true,
+        "run_file": "1785608597.run"
+      },
+      {
+        "encounter": "JAW_WORM",
+        "floor": 1,
+        "floor_one_match": true,
+        "neow_match": true,
+        "run_file": "1785607911.run"
+      },
+      {
+        "encounter": "CULTIST",
+        "floor": 1,
+        "floor_one_match": true,
+        "neow_match": true,
+        "run_file": "1784725335.run"
+      },
+      {
+        "encounter": "TWO_LOUSE",
+        "floor": 1,
+        "floor_one_match": true,
+        "neow_match": true,
+        "run_file": "1784725042.run"
+      },
+      {
+        "encounter": "TWO_LOUSE",
+        "floor": 1,
+        "floor_one_match": true,
+        "neow_match": true,
+        "run_file": "1784715079.run"
+      }
+    ]
+  },
+  "historical_sources": [
+    {
+      "actual_sha256": "a0db41edc99692312d2f1af49c9bdc6c1fd13fa2f8391afa832bd2cdf6b7cdc6",
+      "actual_size_bytes": 3631,
+      "expected_sha256": "a0db41edc99692312d2f1af49c9bdc6c1fd13fa2f8391afa832bd2cdf6b7cdc6",
+      "expected_size_bytes": 3631,
+      "matched": true,
+      "run_file": "1785609165.run"
+    },
+    {
+      "actual_sha256": "27d9d962caf01ceb4437f1c16ad709ffc8097e6b546e9922752130c5a9ad8a5b",
+      "actual_size_bytes": 2647,
+      "expected_sha256": "27d9d962caf01ceb4437f1c16ad709ffc8097e6b546e9922752130c5a9ad8a5b",
+      "expected_size_bytes": 2647,
+      "matched": true,
+      "run_file": "1785608597.run"
+    },
+    {
+      "actual_sha256": "c4b5382883a01f74775c4ea5bd00205ee1b7eb21fae0fe6b28349b6ccbf0704d",
+      "actual_size_bytes": 5765,
+      "expected_sha256": "c4b5382883a01f74775c4ea5bd00205ee1b7eb21fae0fe6b28349b6ccbf0704d",
+      "expected_size_bytes": 5765,
+      "matched": true,
+      "run_file": "1785607911.run"
+    },
+    {
+      "actual_sha256": "018faacc62ef97737b3022ecf1640701ea6c90b5493b19b9d6e80e5b4fcac888",
+      "actual_size_bytes": 3411,
+      "expected_sha256": "018faacc62ef97737b3022ecf1640701ea6c90b5493b19b9d6e80e5b4fcac888",
+      "expected_size_bytes": 3411,
+      "matched": true,
+      "run_file": "1784725335.run"
+    },
+    {
+      "actual_sha256": "208d3d4a3a102085c9b3868513106f0d44f938097425ca1db5189e38500c3641",
+      "actual_size_bytes": 3719,
+      "expected_sha256": "208d3d4a3a102085c9b3868513106f0d44f938097425ca1db5189e38500c3641",
+      "expected_size_bytes": 3719,
+      "matched": true,
+      "run_file": "1784725042.run"
+    },
+    {
+      "actual_sha256": "2b80d6d6870c305913a742c5377c85c1c8fa4a895b37cc22ff2f893281b668c4",
+      "actual_size_bytes": 3443,
+      "expected_sha256": "2b80d6d6870c305913a742c5377c85c1c8fa4a895b37cc22ff2f893281b668c4",
+      "expected_size_bytes": 3443,
+      "matched": true,
+      "run_file": "1784715079.run"
+    }
+  ],
+  "limitations": [
+    "Simulator outcomes are not live outcomes and do not enter live OPE or supported-victory counts.",
+    "Combat uses the declared SimpleAgent baseline with battle potion use disabled.",
+    "Neow, boss relics, campfires, treasure, and follow-up card selections are baseline-controlled.",
+    "Historical agreement covers twelve early reward candidate sets, not full-run mechanics equivalence.",
+    "The upstream save loader cannot import arbitrary non-combat live states.",
+    "A separate reviewed change is required before any simulator training smoke."
+  ],
+  "provenance": {
+    "adapter_commit": "68369db646a074fa712fccddc6a650015197332d",
+    "adapter_source_sha256": "933f7725cc7cb3dfd088e26bd2c81856e09bacac24c6f1e1e98246db62cabb41",
+    "build": {
+      "adapter_api_version": "sts-lightspeed-noncombat-adapter-v1",
+      "baseline_policy_id": "sts_lightspeed_simple_agent_no_potions_v1",
+      "compiler": "15.2.0",
+      "cpp_standard": 201703,
+      "pybind11_version": "3.0.2a0",
+      "python": "3.10.18"
+    },
+    "module_sha256": "d4055640698ca415ea5f4d57e11ac5fd4635143039bfefd869c60ddf64924b3c",
+    "module_size_bytes": 1540608,
+    "simulator_commit": "7476a81954020087da31d41d16fddf475746ec2d",
+    "simulator_dirty": true,
+    "simulator_source_file_count": 79,
+    "simulator_source_sha256": "a3f98721ec37373b1b00aef660832a3307f0186ba0614d07a3b1e7de8ab2e46a",
+    "submodules": {
+      "json": "55f93686c01528224f448c19128836e7df245f72",
+      "pybind11": "8f68ecd32c8e18d3b064dbf0ea5fc31a6cb37e9a"
+    }
+  },
+  "provenance_mismatches": [],
+  "report_schema_version": "noncombat-simulator-fit-report-v1",
+  "verdict": "adapter_poc_ready"
+}

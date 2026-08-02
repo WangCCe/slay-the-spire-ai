@@ -37,6 +37,7 @@ from analysis_scripts.noncombat_simulator_training_smoke import (
     canonical_model_payload,
     classify_smoke_results,
     evaluate_greedy_policy,
+    load_smoke_registration,
     paired_bootstrap_interval,
     project_policy_view,
     publish_canonical_artifacts,
@@ -334,6 +335,35 @@ def test_bound_fit_evidence_must_be_ready_and_match_registered_provenance():
     drifted["provenance"]["module_sha256"] = "f" * 64
     with pytest.raises(SmokeBlocked, match="fit report provenance"):
         validate_bound_fit_evidence(fit_input, drifted, FAKE_PROVENANCE)
+
+
+def test_registered_smoke_input_binds_the_ready_r2_fit_evidence():
+    registration_path = (
+        REPO_ROOT / "reports" / "noncombat_simulator_training_smoke_20260802_input.json"
+    )
+    registration = load_smoke_registration(registration_path)
+    identity = registration["identity"]
+
+    bound_values = {}
+    for name in ("adapter_fit_input", "adapter_fit_report"):
+        binding = identity[name]
+        path = REPO_ROOT / binding["path"]
+        data = path.read_bytes()
+        assert len(data) == binding["size_bytes"]
+        assert hashlib.sha256(data).hexdigest() == binding["sha256"]
+        bound_values[name] = json.loads(data)
+
+    validate_bound_fit_evidence(
+        bound_values["adapter_fit_input"],
+        bound_values["adapter_fit_report"],
+        identity["adapter_provenance"],
+    )
+    assert registration["smoke"]["cohorts"]["train_seeds"] == list(
+        range(1000, 1032)
+    )
+    assert registration["smoke"]["cohorts"]["holdout_seeds"] == list(
+        range(2000, 2064)
+    )
 
 
 def test_policy_projection_removes_leakage_and_retains_decision_features():
@@ -675,7 +705,7 @@ def test_native_adapter_runs_a_reproducible_policy_gradient_smoke():
         from analysis_scripts.noncombat_simulator_adapter import NativeSimulatorEnvironment, canonical_json_bytes, load_native_module
 
         module = load_native_module({module_path!r}, dll_directories=[{mingw_bin!r}])
-        fit_report = json.loads(Path('reports/noncombat_simulator_fit_20260802.json').read_text(encoding='utf-8'))
+        fit_report = json.loads(Path('reports/noncombat_simulator_fit_20260802_r2.json').read_text(encoding='utf-8'))
         provenance = fit_report['provenance']
         from analysis_scripts.noncombat_simulator_training_smoke import _first_difference, run_policy_gradient_execution
 

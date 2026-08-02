@@ -17,7 +17,7 @@
 
 ## 3. Registered Simulator Smoke
 
-- [ ] 3.1 Commit the reviewed implementation, rebuild and rerun the adapter fit under its repaired physical identity, then freeze one smoke input binding that exact implementation and refreshed fit evidence plus train seeds 1000..1031, holdout seeds 2000..2063, four passes, 500 decisions per episode, 128 train episodes, and 600 seconds per execution.
+- [x] 3.1 Commit the reviewed implementation, rebuild and rerun the adapter fit under its repaired physical identity, then freeze one smoke input binding that exact implementation and refreshed fit evidence plus train seeds 1000..1031, holdout seeds 2000..2063, four passes, 500 decisions per episode, 128 train episodes, and 600 seconds per execution.
 - [ ] 3.2 Rebuild the optional native module from the registered identities, run focused pure and opt-in integration checks, then execute exactly one primary smoke and one identical reproduction without parameter changes, gameplay, Java, CommunicationMod, or live evidence collection.
 - [ ] 3.3 Publish the resulting model/metrics/report/manifest and noncanonical execution journal; if blocked or quality is not demonstrated, record that result and stop without tuning or retrying.
 - [ ] 3.4 Update project direction and simulator documentation with the observed structural verdict, paired holdout estimate, limitations, and the next separately reviewed go/no-go boundary while leaving every downstream authority false.
