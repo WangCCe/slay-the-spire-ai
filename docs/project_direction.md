@@ -12,9 +12,10 @@ The bounded simulator-training smoke, policy-validity study, and separate
 baseline-anchored supervised warm-start study are complete. The warm-start
 primary and replay matched, but validation failed both the registered overall
 teacher-fit threshold and the primary rollout floor gate. Final-test seeds were
-therefore untouched. The current objective is a read-only attribution of this
-fixed validation result before deciding whether a different supervised/data
-aggregation stage is justified. Formal non-combat RL remains a no-go.
+therefore untouched. The read-only failure audit is now complete: forced
+single-candidate rows inflated headline agreement, and the policy diverged on
+teacher states near the start of every validation run. The current objective is
+a separate structured baseline-ranker POC, not formal non-combat RL.
 
 ## Training Boundary
 
@@ -119,6 +120,16 @@ paired mean difference was `-4.6875` and its 95% interval was
 seeds `6000..6031` remained untouched, and the valid negative verdict is
 `study_valid_without_baseline_floor`. All downstream authority remains false.
 
+The post-study read-only audit aligned all 16 candidate/SimpleAgent action
+prefixes. Every run diverged by floor 3, 13 within five target decisions, led
+by eight route and seven card-reward decisions. Validation agreement on the
+471 rows with more than one legal action was only 68.58%; route fell from its
+84.60% headline to 65.09% after forced rows were removed. Frozen-model train
+multi-choice agreement was 76.32%, so the evidence points first to
+representation/teacher-state competence, with rollout state shift and unseen
+labels as secondary risks. The full analysis is in
+`reports/noncombat_simulator_baseline_warm_start_failure_audit_20260802.md`.
+
 The next authorized sequence is:
 
 1. Preserve r1-r8, the completed r8 diagnosis/fix, and all external evidence
@@ -129,12 +140,12 @@ The next authorized sequence is:
    against seeded initialization as evidence of policy competence.
 4. Preserve the completed warm-start registration, model, artifacts, negative
    verdict, and untouched final cohort; do not tune or rerun this study.
-5. Use only the existing validation artifacts for a read-only first-divergence
-   and floor-deficit audit, separating teacher-fit error from rollout state
-   shift and category imbalance.
-6. Route any second warm-start, data aggregation, architecture, feature, or
-   cohort proposal through a new OpenSpec change after that audit; do not treat
-   a near teacher-fit threshold as policy competence.
+5. Preserve the completed read-only first-divergence/floor-deficit audit; do
+   not reuse its validation rows for model selection.
+6. Route a structured, category-aware baseline-ranker POC through a new
+   OpenSpec change. Its implementation fit may use only prior train evidence;
+   any quality claim requires entirely fresh preregistered cohorts and a
+   separate multi-candidate competence gate.
 7. Treat SimpleAgent as temporary auxiliary supervision, preserve the full
    candidate action space, and keep Current/Bottled out of simulator training
    until their feature/action bridges are validated.
@@ -144,10 +155,11 @@ The next authorized sequence is:
 
 ## Work Lanes
 
-The primary lane is now read-only diagnosis of the failed baseline warm-start
-validation. Establish whether the deficit comes from supervised fit, rollout
-state shift, representation, or category/action structure before proposing
-another learner. Simulated and live evidence remain separate.
+The primary lane is a structured baseline-ranker POC motivated by the completed
+failure audit. Improve permutation-invariant state summaries,
+candidate-relative route/card/shop features, and nontrivial-choice evaluation
+before another fresh baseline-floor study. Simulated and live evidence remain
+separate.
 
 Live gameplay is a maintenance and registered-evaluation lane only. Launch it
 for a crash, stuck state, repeated A-class simulator/mechanics defect, or an
