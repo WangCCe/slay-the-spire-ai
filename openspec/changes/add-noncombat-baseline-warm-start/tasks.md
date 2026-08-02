@@ -16,8 +16,8 @@
 
 - [x] 3.1 Use only the committed implementation-fit evidence to choose documented train/validation/final-test counts, teacher-fit thresholds, paired floor margin and mean-deficit limit, bootstrap settings, optimizer schedule, and hard bounds.
 - [x] 3.2 Freeze one checked-in registration with cohorts disjoint from every bound prior fit, smoke, compatibility, and policy-validity seed; bind source, adapter, module, runtime, implementation, fit, model, metric, threshold, and exclusion hashes and add a hash-closure regression.
-- [ ] 3.3 Rebuild and verify the optional native module from the registered identities, run exact compatibility and focused native gates, compile Python, run the repository commit gate, validate OpenSpec strictly, and record process/CommunicationMod/checkpoint isolation before any registered seed.
-- [ ] 3.4 Commit and push the reviewed implementation, fit evidence, and registration before authorizing the exact registered execution; do not collect a study seed from an uncommitted tree.
+- [x] 3.3 Rebuild and verify the optional native module from the registered identities, run exact compatibility and focused native gates, compile Python, run the repository commit gate, validate OpenSpec strictly, and record process/CommunicationMod/checkpoint isolation before any registered seed.
+- [x] 3.4 Commit and push the reviewed implementation, fit evidence, and registration before authorizing the exact registered execution; do not collect a study seed from an uncommitted tree.
 
 ## 4. One Registered Warm-Start Study
 
