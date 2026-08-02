@@ -2312,6 +2312,59 @@ def test_qualification_request_uses_isolated_child_command(
     assert request["child_command"][1:4] == ["-I", "-S", "-B"]
 
 
+def test_qualification_cli_arguments_bind_reviewed_request_source():
+    module = _module()
+    request_source_path = (
+        REPO_ROOT
+        / "reports"
+        / "noncombat_outcome_evidence_expansion_20260716_v2_r8_qualification_request.json"
+    )
+    request_bytes = request_source_path.read_bytes()
+    request = json.loads(request_bytes.decode("ascii"))
+    review_commit = "1d805b450862d2b5f34aeb2d4bbbeb9884510c84"
+    request_file_sha256 = hashlib.sha256(request_bytes).hexdigest()
+
+    arguments = module.build_qualification_cli_arguments(
+        request,
+        expected_request_file_sha256=request_file_sha256,
+        expected_request_size=len(request_bytes),
+        review_commit=review_commit,
+    )
+
+    assert arguments[3:5] == (
+        "--request",
+        request["request_source_path"],
+    )
+    assert arguments[4] != request["request_path"]
+    published_arguments = _ascii_java_properties_fixture_decode(
+        _ascii_java_properties_fixture_serialize(
+            {"command": " ".join(arguments)}
+        )
+    )["command"].split()
+    assert published_arguments == list(arguments)
+    assert module.validate_qualification_cli_arguments(
+        published_arguments,
+        request=request,
+        expected_request_file_sha256=request_file_sha256,
+        expected_request_size=len(request_bytes),
+        review_commit=review_commit,
+    ) == arguments
+
+    active_path_arguments = list(arguments)
+    active_path_arguments[4] = request["request_path"]
+    with pytest.raises(
+        module.OutcomeEvidenceRunnerError,
+        match="qualification launch arguments mismatch",
+    ):
+        module.validate_qualification_cli_arguments(
+            active_path_arguments,
+            request=request,
+            expected_request_file_sha256=request_file_sha256,
+            expected_request_size=len(request_bytes),
+            review_commit=review_commit,
+        )
+
+
 def test_qualification_child_environment_drops_ambient_python(monkeypatch):
     module = _module()
     monkeypatch.setenv("PYTHONPATH", r"C:\untrusted")
@@ -4751,19 +4804,14 @@ def _production_python_smoke_fixture(tmp_path):
         runner_sha256,
         module._qualification_bootstrap_encode_envelope(envelope),
         module._qualification_bootstrap_token(envelope),
-        "qualify",
-        "--registration",
-        str(registration_path),
-        "--request",
-        str(request_source_path),
-        "--request-hash",
-        request["request_hash"],
-        "--request-file-sha256",
-        hashlib.sha256(request_bytes).hexdigest(),
-        "--request-size",
-        str(len(request_bytes)),
-        "--review-commit",
-        review_commit,
+        *module.build_qualification_cli_arguments(
+            request,
+            expected_request_file_sha256=hashlib.sha256(
+                request_bytes
+            ).hexdigest(),
+            expected_request_size=len(request_bytes),
+            review_commit=review_commit,
+        ),
     ]
     return {
         "command": command,
@@ -4771,6 +4819,9 @@ def _production_python_smoke_fixture(tmp_path):
         "qualification_root": qualification_root,
         "repo_root": repo_root,
         "request": request,
+        "request_file_sha256": hashlib.sha256(request_bytes).hexdigest(),
+        "request_size": len(request_bytes),
+        "review_commit": review_commit,
         "state_home": state_home,
     }
 
@@ -4798,6 +4849,18 @@ def test_qualification_production_python_smoke_is_source_clean_without_inherited
     assert _canonical_protected_state_snapshot(fixture["protected"]) != (
         original_protected_snapshot
     )
+    module = _module()
+    published_command = _ascii_java_properties_fixture_decode(
+        temporary_qualification_config_bytes
+    )["command"].split()
+    assert published_command == fixture["command"]
+    assert module.validate_qualification_cli_arguments(
+        published_command[9:],
+        request=request,
+        expected_request_file_sha256=fixture["request_file_sha256"],
+        expected_request_size=fixture["request_size"],
+        review_commit=fixture["review_commit"],
+    ) == tuple(published_command[9:])
     environment = os.environ.copy()
     environment.pop("PYTHONDONTWRITEBYTECODE", None)
     for name in (
@@ -4808,11 +4871,11 @@ def test_qualification_production_python_smoke_is_source_clean_without_inherited
         HANDSHAKE_ATTEMPT_ENV,
     ):
         environment.pop(name, None)
-    assert "-B" not in fixture["command"][:4]
+    assert "-B" not in published_command[:4]
     assert "PYTHONDONTWRITEBYTECODE" not in environment
 
     completed = subprocess.run(
-        fixture["command"],
+        published_command,
         cwd=fixture["repo_root"],
         capture_output=True,
         check=False,

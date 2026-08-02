@@ -41,24 +41,25 @@ exactly, target processes are zero, and the registered study root remains
 absent. R8 is consumed and permanently retired; it cannot be retried or used
 to prepare r9 under its amendment.
 
-The current blocker is a separate regression-backed diagnosis of r8 request
-validation. The closeout does not establish the root cause, so no replacement
+The separate regression-backed diagnosis proved that the r8 qualifier CLI
+bound `--request` to the absent active publication path instead of the reviewed
+repository `request_source_path`. The narrow source fix adds one canonical
+builder and exact validator for that suffix, routes the production-Python smoke
+through it, and preserves every retired r8 artifact unchanged. No replacement
 qualification identity or live invocation is currently authorized.
 
 The next authorized sequence is:
 
 1. Archive the completed r8 amendment while preserving its external root and
    closeout byte-for-byte.
-2. Open a separate, offline-first OpenSpec change to reproduce the exact r8
-   `request_validation_failed` path and identify the failing invariant.
-3. If an implementation defect is proven, add one red regression, make the
-   minimum source fix, run focused checks and the registered commit gate, and
-   archive that fix without launching the game.
-4. Only a later explicit amendment may prepare a previously absent replacement
+2. Preserve the completed offline diagnosis and canonical launch-binding fix,
+   including its red regression, focused checks, registered commit gate, and
+   archived OpenSpec evidence.
+3. Only a later explicit amendment may prepare a previously absent replacement
    qualification identity and independently review another no-action attempt.
-5. Resume the 24-by-25 evidence study only after a future qualification and
+4. Resume the 24-by-25 evidence study only after a future qualification and
    independent verifier both pass.
-6. Use the completed evidence and OPE gates to decide whether to propose a
+5. Use the completed evidence and OPE gates to decide whether to propose a
    bounded non-combat RL training experiment.
 
 ## Work Lanes

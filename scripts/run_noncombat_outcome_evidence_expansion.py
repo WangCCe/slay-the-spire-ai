@@ -2277,6 +2277,115 @@ def _qualification_bootstrap_validate_prefix_for_request(
         )
 
 
+def build_qualification_cli_arguments(
+    request: Mapping[str, Any],
+    *,
+    expected_request_file_sha256: str,
+    expected_request_size: int,
+    review_commit: str,
+) -> tuple[str, ...]:
+    """Build the reviewed qualifier suffix from source-request bindings."""
+
+    if not isinstance(request, Mapping):
+        raise OutcomeEvidenceRunnerError(
+            "qualification launch request is invalid"
+        )
+    if request.get("schema_version") != QUALIFICATION_REQUEST_SCHEMA_VERSION:
+        raise OutcomeEvidenceRunnerError(
+            "qualification launch request schema mismatch"
+        )
+    registration = request.get("registration")
+    if not isinstance(registration, Mapping):
+        raise OutcomeEvidenceRunnerError(
+            "qualification launch registration is invalid"
+        )
+    registration_path = _resolved_absolute_path(
+        registration.get("path"),
+        "qualification launch registration path",
+    )
+    request_source_path = _resolved_absolute_path(
+        request.get("request_source_path"),
+        "qualification launch request source path",
+    )
+    active_request_path = _resolved_absolute_path(
+        request.get("request_path"),
+        "qualification launch active request path",
+    )
+    if request_source_path == active_request_path:
+        raise OutcomeEvidenceRunnerError(
+            "qualification launch request source must differ from active path"
+        )
+    request_hash = request.get("request_hash")
+    if not isinstance(request_hash, str) or not _is_lower_hex(
+        request_hash,
+        _SHA256_LENGTH,
+    ):
+        raise OutcomeEvidenceRunnerError(
+            "qualification launch request hash is invalid"
+        )
+    if not isinstance(expected_request_file_sha256, str) or not _is_lower_hex(
+        expected_request_file_sha256,
+        _SHA256_LENGTH,
+    ):
+        raise OutcomeEvidenceRunnerError(
+            "qualification launch request file hash is invalid"
+        )
+    if type(expected_request_size) is not int or expected_request_size <= 0:
+        raise OutcomeEvidenceRunnerError(
+            "qualification launch request size is invalid"
+        )
+    if not isinstance(review_commit, str) or not _is_lower_hex(
+        review_commit,
+        _GIT_COMMIT_LENGTH,
+    ):
+        raise OutcomeEvidenceRunnerError(
+            "qualification launch review commit is invalid"
+        )
+    return (
+        "qualify",
+        "--registration",
+        str(registration_path),
+        "--request",
+        str(request_source_path),
+        "--request-hash",
+        request_hash,
+        "--request-file-sha256",
+        expected_request_file_sha256,
+        "--request-size",
+        str(expected_request_size),
+        "--review-commit",
+        review_commit,
+    )
+
+
+def validate_qualification_cli_arguments(
+    value: Sequence[str],
+    *,
+    request: Mapping[str, Any],
+    expected_request_file_sha256: str,
+    expected_request_size: int,
+    review_commit: str,
+) -> tuple[str, ...]:
+    """Require one rendered qualifier suffix to match reviewed bindings."""
+
+    expected = build_qualification_cli_arguments(
+        request,
+        expected_request_file_sha256=expected_request_file_sha256,
+        expected_request_size=expected_request_size,
+        review_commit=review_commit,
+    )
+    if (
+        isinstance(value, (str, bytes))
+        or not isinstance(value, Sequence)
+        or any(not isinstance(argument, str) for argument in value)
+        or tuple(value) != expected
+    ):
+        raise OutcomeEvidenceRunnerError(
+            "qualification launch arguments mismatch"
+        )
+    return expected
+
+
 @dataclass(frozen=True)
 class RegisteredSlotLaunch:
     slot_number: int
