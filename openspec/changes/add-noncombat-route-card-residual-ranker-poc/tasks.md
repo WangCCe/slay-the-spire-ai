@@ -1,22 +1,22 @@
 ## 1. Bound Contracts And Synthetic Regressions
 
-- [ ] 1.1 Add the versioned residual POC registration and fail-closed validation for exact evidence identities, runtime, shared base, sole residual candidate, folds, schedule, thresholds, limits, and all-false authority.
-- [ ] 1.2 Add synthetic regressions for train-only isolation, complete candidate preservation, seed-grouped folds, singleton exclusion, and immutable shared base parameters.
-- [ ] 1.3 Add synthetic regressions proving route/card residual initialization and magnitude bounds, exact event/shop score and probability delegation, deterministic tie behavior, and finite outputs.
-- [ ] 1.4 Add synthetic positive, valid-negative, and blocked terminal-gate cases covering every aggregate, category, per-fold, delegation, residual, replay, and resource check.
+- [x] 1.1 Add the versioned residual POC registration and fail-closed validation for exact evidence identities, runtime, shared base, sole residual candidate, folds, schedule, thresholds, limits, and all-false authority.
+- [x] 1.2 Add synthetic regressions for train-only isolation, complete candidate preservation, seed-grouped folds, singleton exclusion, and immutable shared base parameters.
+- [x] 1.3 Add synthetic regressions proving route/card residual initialization and magnitude bounds, exact event/shop score and probability delegation, deterministic tie behavior, and finite outputs.
+- [x] 1.4 Add synthetic positive, valid-negative, and blocked terminal-gate cases covering every aggregate, category, per-fold, delegation, residual, replay, and resource check.
 
 ## 2. Shared-Base Residual And Evaluation
 
-- [ ] 2.1 Add the deterministic `2048 -> 32 -> 1` route/card residual heads over the existing structured projection, exact-zero output initialization, frozen legacy base composition, and canonical model serialization/loading.
-- [ ] 2.2 Add one-base-per-fold paired training and evaluation so control and candidate share base logits, only route/card residual parameters train, and event/shop bypass the residual.
-- [ ] 2.3 Add full score/probability prediction evidence, aggregate and materialized per-fold metrics, category deltas, training histories, residual magnitude diagnostics, and exact delegation proofs.
-- [ ] 2.4 Add the fixed terminal selection classifier, conditional all-train selected artifact, deterministic primary/replay identity, and hard fit/row/candidate/wall-time bounds.
+- [x] 2.1 Add the deterministic `2048 -> 32 -> 1` route/card residual heads over the existing structured projection, exact-zero output initialization, frozen legacy base composition, and canonical model serialization/loading.
+- [x] 2.2 Add one-base-per-fold paired training and evaluation so control and candidate share base logits, only route/card residual parameters train, and event/shop bypass the residual.
+- [x] 2.3 Add full score/probability prediction evidence, aggregate and materialized per-fold metrics, category deltas, training histories, residual magnitude diagnostics, and exact delegation proofs.
+- [x] 2.4 Add the fixed terminal selection classifier, conditional all-train selected artifact, deterministic primary/replay identity, and hard fit/row/candidate/wall-time bounds.
 
 ## 3. Hash-Closed Publication
 
-- [ ] 3.1 Add atomic canonical publication for configuration, folds, models, predictions, metrics, report, manifest, and one noncanonical timing journal with exact managed inventory.
-- [ ] 3.2 Add artifact validators covering identity closure, canonical per-fold reporting, model/prediction integrity, delegation proofs, selected-model consistency, authority, and inventory.
-- [ ] 3.3 Run focused tests and Python compilation, then fix only contract or implementation defects found before registration.
+- [x] 3.1 Add atomic canonical publication for configuration, folds, models, predictions, metrics, report, manifest, and one noncanonical timing journal with exact managed inventory.
+- [x] 3.2 Add artifact validators covering identity closure, canonical per-fold reporting, model/prediction integrity, delegation proofs, selected-model consistency, authority, and inventory.
+- [x] 3.3 Run focused tests and Python compilation, then fix only contract or implementation defects found before registration.
 
 ## 4. Frozen Registration And One POC
 
