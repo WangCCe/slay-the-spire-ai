@@ -1,0 +1,207 @@
+{
+  "audit": {
+    "categories": [
+      "card_reward",
+      "route"
+    ],
+    "limits": {
+      "max_candidates_per_row": 32,
+      "max_model_fits": 0,
+      "max_native_calls": 0,
+      "max_rows": 1500,
+      "max_wall_seconds": 120.0
+    },
+    "seeds": [
+      4000,
+      4001,
+      4002,
+      4003,
+      4004,
+      4005,
+      4006,
+      4007,
+      4008,
+      4009,
+      4010,
+      4011,
+      4012,
+      4013,
+      4014,
+      4015,
+      4016,
+      4017,
+      4018,
+      4019,
+      4020,
+      4021,
+      4022,
+      4023,
+      4024,
+      4025,
+      4026,
+      4027,
+      4028,
+      4029,
+      4030,
+      4031
+    ],
+    "signatures": {
+      "adapter-observable-v1": {
+        "leakage_fields": [
+          "baseline_control",
+          "baseline_history",
+          "outcome",
+          "provenance",
+          "seed",
+          "terminal"
+        ],
+        "type": "canonical-policy-view-bytes"
+      },
+      "legacy-hash-1024-v1": {
+        "dtype": "float32",
+        "hash_dim": 1024,
+        "type": "exact-candidate-vector-bytes"
+      },
+      "structured-hash-2048-v1": {
+        "dtype": "float32",
+        "hash_dim": 2048,
+        "type": "exact-candidate-vector-bytes"
+      },
+      "teacher-source-v1": {
+        "type": "source-faithful-dependency-signature"
+      }
+    },
+    "suitability_checks": [
+      "route_replans_with_current_state",
+      "route_reads_survivability",
+      "route_reads_run_resources",
+      "card_copy_limit_uses_actual_deck",
+      "card_reads_deck_and_run_context",
+      "card_values_skip_vs_bowl"
+    ],
+    "verdict_order": [
+      "blocked",
+      "adapter_representation_repair_required",
+      "simpleagent_unsuitable_as_policy_quality_gate",
+      "audit_inconclusive"
+    ]
+  },
+  "authority": {
+    "dagger": false,
+    "formal_noncombat_rl": false,
+    "live_gameplay": false,
+    "live_policy_loading": false,
+    "model_fitting": false,
+    "native_build": false,
+    "native_evidence_collection": false,
+    "native_module_loading": false,
+    "ope_reinterpretation": false,
+    "policy_promotion": false,
+    "policy_quality": false,
+    "qualification": false,
+    "simulator_rollout": false
+  },
+  "identity": {
+    "blocked_attempt_failure": {
+      "path": "reports/noncombat_state_action_teacher_sufficiency_audit_20260802_failure.json",
+      "sha256": "c9104f641427808a5290ce5696e4a88c61cbb82dbae0c7207b9ff9a0f7bafaba",
+      "size_bytes": 2609
+    },
+    "consumed_registration": {
+      "path": "reports/noncombat_state_action_teacher_sufficiency_audit_20260802_input.json",
+      "sha256": "f33cf96301f9042611d17fcf49ebafde596f85e4f054d3a2f09d01965c32f498",
+      "size_bytes": 5443
+    },
+    "external_source": {
+      "commit": "7476a81954020087da31d41d16fddf475746ec2d",
+      "files": [
+        {
+          "path": "include/constants/Rooms.h",
+          "sha256": "bb98993c2df04d66e5ba8cd54e9b5b3e6370e4dbc00f66197aeeee5a92ecfb92",
+          "size_bytes": 1184
+        },
+        {
+          "path": "include/game/Card.h",
+          "sha256": "c272fa95bedfe211262d3b0e18ef9bc7acd9a5ff27a0a47de753d7676057c16d",
+          "size_bytes": 1344
+        },
+        {
+          "path": "include/sim/search/SimpleAgent.h",
+          "sha256": "0870be67e080c79c5086bc6ef4e88fc4c2aee66c8b151e7457dae707de877d49",
+          "size_bytes": 1496
+        },
+        {
+          "path": "src/game/Card.cpp",
+          "sha256": "19b1bf77c78744fe4ae0491da8f47c038c1bfa6b22442488674c8ae6719d3600",
+          "size_bytes": 2101
+        },
+        {
+          "path": "src/sim/search/SimpleAgent.cpp",
+          "sha256": "8e065efa65d3bdd63ee3bcabd6a0dfb356bd8251cfbbda27242313fbcbc95065",
+          "size_bytes": 39264
+        }
+      ],
+      "overall_dirty_at_registration": true,
+      "overall_status_sha256": "c07c98a5816de0d94ebb00263acc50600f50ed075abbeb6b2b463f7c04465893",
+      "relevant_status": "",
+      "repo_path": "D:\\CLionProjects\\sts_lightspeed"
+    },
+    "implementation": {
+      "commit": "d86d73f84f07b2106e961ca29346941d7158fb93",
+      "source_files": [
+        "analysis_scripts/noncombat_policy_model.py",
+        "analysis_scripts/noncombat_simulator_adapter.py",
+        "analysis_scripts/noncombat_simulator_training_smoke.py",
+        "analysis_scripts/noncombat_structured_baseline_ranker_poc.py",
+        "analysis_scripts/noncombat_state_action_teacher_sufficiency_audit.py",
+        "simulator_adapters/sts_lightspeed/noncombat_adapter.cpp"
+      ],
+      "source_sha256": "1fa275444e2962fca4c4e0f2367504592d1ef6ea50f96c450fa880f130135da4"
+    },
+    "residual_failure_audit": {
+      "path": "reports/noncombat_route_card_residual_ranker_poc_failure_audit_20260802.md",
+      "sha256": "e468d1773e3755e34085a8d35f6d87ceed0c0758a47c91995630425987d52676",
+      "size_bytes": 6344
+    },
+    "residual_manifest": {
+      "path": "reports/noncombat_route_card_residual_ranker_poc_20260802/artifact_manifest.json",
+      "sha256": "bd60e3ba0abe871ada36acc3bfda45dd36b028d12842bd248b3cb466a8120efa",
+      "size_bytes": 1179
+    },
+    "residual_verdict": "poc_valid_without_route_card_residual",
+    "runtime": {
+      "python": "3.10.18",
+      "torch": "2.5.1"
+    },
+    "synthetic_benchmark": {
+      "path": "reports/noncombat_teacher_sufficiency_runtime_synthetic_benchmark_20260802.json",
+      "sha256": "8141c5ce489d1c6b53b24857a9c0d65b657713f05780286688def27660804ab3",
+      "size_bytes": 455
+    },
+    "teacher_policy_id": "sts_lightspeed_simple_agent_target_v1",
+    "train_dataset_sha256": "86cf82f7833ca6b7d3f4e58967f5768ef7292a2297d06af01819b783526227d0",
+    "train_input": {
+      "path": "reports/noncombat_structured_baseline_ranker_poc_20260802_train_input.json.gz",
+      "sha256": "4a19636971afd87607772fe892d8db86c45212a0955047baab08318c6cf0a4ef",
+      "size_bytes": 7506293
+    },
+    "train_input_manifest": {
+      "path": "reports/noncombat_structured_baseline_ranker_poc_20260802_train_input_manifest.json",
+      "sha256": "30671db535f24fe6040612b7f06a647ee77326d4d1f85193192ee754502a65aa",
+      "size_bytes": 411
+    }
+  },
+  "recovery": {
+    "adapter_signature_source": "payload-validated-policy-view-sha256",
+    "context_mode": "single-validated-load-v1",
+    "fresh_execution_count": 1,
+    "registered_corpus_preflight_allowed": false,
+    "structured_global_cache": "per-decision-exact-copy-v1",
+    "synthetic_benchmark": {
+      "card_reward_rows": 302,
+      "max_elapsed_seconds": 90.0,
+      "route_rows": 300
+    }
+  },
+  "schema_version": "noncombat-state-action-teacher-sufficiency-audit-input-v2"
+}
