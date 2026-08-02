@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import os
 import time
@@ -16,6 +17,7 @@ from analysis_scripts.noncombat_simulator_adapter import (
     load_native_module,
     sha256_file,
     validate_candidates,
+    validate_native_baseline_action,
     validate_provenance,
     validate_snapshot,
 )
@@ -187,6 +189,91 @@ def _run_first_candidate_batch(
     }
 
 
+def _run_native_baseline_batch(
+    module: Any,
+    *,
+    seeds: Sequence[int],
+    max_decisions: int,
+) -> dict[str, Any]:
+    rows: list[dict[str, Any]] = []
+    all_categories: set[str] = set()
+    checked_decisions = 0
+    candidate_legality = True
+    non_mutation = True
+
+    for seed in seeds:
+        environment = module.Environment(seed, 0)
+        categories: set[str] = set()
+        action_ids: list[str] = []
+        decisions = 0
+        while not environment.terminal():
+            if decisions >= max_decisions:
+                raise SimulatorFitError(
+                    f"native baseline seed {seed} exceeded {max_decisions} target decisions"
+                )
+            before_snapshot_bytes = environment.snapshot_json()
+            before = validate_snapshot(json.loads(before_snapshot_bytes))
+            before_candidate_bytes = environment.legal_actions_json()
+            candidates = validate_candidates(
+                json.loads(before_candidate_bytes),
+                category=before["category"],
+            )
+            category = before["category"]
+            if category is None:
+                raise SimulatorFitError(
+                    f"native baseline seed {seed} stopped outside a target decision"
+                )
+
+            first_action = validate_native_baseline_action(
+                json.loads(environment.native_baseline_action_json()),
+                category=category,
+                candidates=candidates,
+            )
+            second_action = validate_native_baseline_action(
+                json.loads(environment.native_baseline_action_json()),
+                category=category,
+                candidates=candidates,
+            )
+            if first_action != second_action:
+                raise SimulatorFitError("native baseline repeated query differs")
+            if (
+                environment.snapshot_json() != before_snapshot_bytes
+                or environment.legal_actions_json() != before_candidate_bytes
+            ):
+                non_mutation = False
+
+            selected_action_id = environment.step_native_baseline()
+            if selected_action_id != first_action["action_id"]:
+                candidate_legality = False
+            categories.add(category)
+            all_categories.add(category)
+            action_ids.append(selected_action_id)
+            checked_decisions += 1
+            decisions += 1
+
+        terminal = validate_snapshot(json.loads(environment.snapshot_json()))
+        rows.append(
+            {
+                "action_sequence_sha256": hashlib.sha256(
+                    canonical_json_bytes(action_ids)
+                ).hexdigest(),
+                "categories": sorted(categories),
+                "decisions": decisions,
+                "floor": terminal["state"]["floor"],
+                "outcome": terminal["state"]["outcome"],
+                "seed": seed,
+            }
+        )
+
+    return {
+        "all_categories": sorted(all_categories),
+        "candidate_legality": candidate_legality,
+        "checked_decisions": checked_decisions,
+        "non_mutation": non_mutation,
+        "rows": rows,
+    }
+
+
 def _audit_historical_prefixes(module: Any, fixture: Mapping[str, Any]) -> dict[str, Any]:
     rows: list[dict[str, Any]] = []
     matched_decisions = 0
@@ -249,6 +336,8 @@ def classify_fit_report(
     registered_provenance: Mapping[str, Any],
     first_batch: Mapping[str, Any],
     second_batch: Mapping[str, Any],
+    first_native_baseline_batch: Mapping[str, Any],
+    second_native_baseline_batch: Mapping[str, Any],
     historical: Mapping[str, Any],
     historical_sources: Sequence[Mapping[str, Any]],
     throughput_within_budget: bool,
@@ -264,6 +353,12 @@ def classify_fit_report(
         row.get("outcome") in {"player_loss", "player_victory"} for row in rows
     )
     categories = set(first_batch.get("all_categories", []))
+    native_rows = first_native_baseline_batch.get("rows", [])
+    native_categories = set(first_native_baseline_batch.get("all_categories", []))
+    native_terminal = bool(native_rows) and all(
+        row.get("outcome") in {"player_loss", "player_victory"}
+        for row in native_rows
+    )
     checks = {
         "candidate_legality": first_batch.get("checked_candidates", 0) > 0,
         "clone_isolation": first_batch.get("clone_isolation") is True,
@@ -273,6 +368,22 @@ def classify_fit_report(
         ),
         "historical_source_identity": bool(historical_sources)
         and all(row.get("matched") is True for row in historical_sources),
+        "native_baseline_candidate_mapping": (
+            first_native_baseline_batch.get("candidate_legality") is True
+            and first_native_baseline_batch.get("checked_decisions", 0) > 0
+        ),
+        "native_baseline_four_category_coverage": (
+            native_categories == set(TARGET_CATEGORIES)
+        ),
+        "native_baseline_non_mutation": (
+            first_native_baseline_batch.get("non_mutation") is True
+        ),
+        "native_baseline_repeated_seed_determinism": (
+            first_native_baseline_batch == second_native_baseline_batch
+        ),
+        "native_baseline_terminal_outcomes": (
+            native_terminal and len(native_rows) == len(seeds)
+        ),
         "provenance_identity": not provenance_mismatches,
         "repeated_seed_determinism": first_batch == second_batch,
         "terminal_outcomes": all_terminal and len(rows) == len(seeds),
@@ -288,11 +399,16 @@ def classify_fit_report(
             "live_study_launch": False,
             "ope_reinterpretation": False,
             "policy_promotion": False,
+            "simulator_policy_validity": False,
             "simulator_training_smoke": False,
         },
         "batch": {
             "checked_candidates": first_batch.get("checked_candidates", 0),
             "first": first_batch,
+            "native_baseline": {
+                "first": first_native_baseline_batch,
+                "second": second_native_baseline_batch,
+            },
             "second": second_batch,
             "seeds": list(seeds),
         },
@@ -306,7 +422,8 @@ def classify_fit_report(
             "Neow, boss relics, campfires, treasure, and follow-up card selections are baseline-controlled.",
             "Historical agreement covers twelve early reward candidate sets, not full-run mechanics equivalence.",
             "The upstream save loader cannot import arbitrary non-combat live states.",
-            "A separate reviewed change is required before any simulator training smoke.",
+            "The native target query is valid only while target actions follow that baseline.",
+            "Adapter fit and policy validity do not authorize formal simulator training.",
         ],
         "provenance": normalized_provenance,
         "provenance_mismatches": provenance_mismatches,
@@ -346,6 +463,16 @@ def run_native_audit(
         max_decisions=max_decisions,
         exercise_all_candidates_seed=seeds[0],
     )
+    first_native_baseline = _run_native_baseline_batch(
+        module,
+        seeds=seeds,
+        max_decisions=max_decisions,
+    )
+    second_native_baseline = _run_native_baseline_batch(
+        module,
+        seeds=seeds,
+        max_decisions=max_decisions,
+    )
     historical = _audit_historical_prefixes(module, fixture)
     within_budget = (time.perf_counter() - started) <= throughput_budget_seconds
     return classify_fit_report(
@@ -353,6 +480,8 @@ def run_native_audit(
         registered_provenance=registered_provenance,
         first_batch=first,
         second_batch=second,
+        first_native_baseline_batch=first_native_baseline,
+        second_native_baseline_batch=second_native_baseline,
         historical=historical,
         historical_sources=historical_sources,
         throughput_within_budget=within_budget,
@@ -371,6 +500,10 @@ def render_markdown(report: Mapping[str, Any]) -> str:
         f"- Adapter source commit: `{report['provenance']['adapter_commit']}`",
         f"- Seeds: {len(report['batch']['seeds'])}",
         f"- Clone candidates checked: {report['batch']['checked_candidates']}",
+        (
+            "- Native baseline decisions checked: "
+            f"{report['batch']['native_baseline']['first']['checked_decisions']}"
+        ),
         (
             "- Historical reward candidates: "
             f"{report['historical_prefix']['matched_decisions']}/"

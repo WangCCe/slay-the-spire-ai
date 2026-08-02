@@ -30,9 +30,12 @@ using json = nlohmann::json;
 
 namespace {
 
-constexpr const char *ADAPTER_API_VERSION = "sts-lightspeed-noncombat-adapter-v1";
+constexpr const char *ADAPTER_API_VERSION = "sts-lightspeed-noncombat-adapter-v2";
 constexpr const char *STATE_SCHEMA_VERSION = "sts-lightspeed-state-v1";
 constexpr const char *BASELINE_POLICY_ID = "sts_lightspeed_simple_agent_no_potions_v1";
+constexpr const char *NATIVE_BASELINE_ACTION_SCHEMA_VERSION =
+    "sts-lightspeed-native-baseline-action-v1";
+constexpr const char *NATIVE_TARGET_POLICY_ID = "sts_lightspeed_simple_agent_target_v1";
 
 std::string normalizeId(const std::string &value) {
     std::string result;
@@ -140,8 +143,9 @@ public:
     }
 
     NoncombatEnvironment(const NoncombatEnvironment &other)
-        : gc_(other.gc_), baselineHistory_(other.baselineHistory_),
-          decisionCount_(other.decisionCount_) {
+        : gc_(other.gc_), baselineAgent_(other.baselineAgent_),
+          baselineHistory_(other.baselineHistory_), decisionCount_(other.decisionCount_),
+          nativeBaselineContinuationValid_(other.nativeBaselineContinuationValid_) {
         if (other.gc_.map) {
             gc_.map = std::make_shared<sts::Map>(*other.gc_.map);
         }
@@ -251,6 +255,36 @@ public:
         return result.dump();
     }
 
+    std::string nativeBaselineActionJson() const {
+        const auto actionId = probeNativeBaselineAction(nullptr);
+        return json({
+            {"action_id", actionId},
+            {"category", category()},
+            {"policy_id", NATIVE_TARGET_POLICY_ID},
+            {"schema_version", NATIVE_BASELINE_ACTION_SCHEMA_VERSION},
+        }).dump();
+    }
+
+    std::string stepNativeBaseline() {
+        if (terminal()) {
+            throw std::runtime_error("cannot act in a terminal simulator state");
+        }
+        sts::search::SimpleAgent agentAfter = baselineAgent_;
+        const auto actionId = probeNativeBaselineAction(&agentAfter);
+        const auto candidates = legalCandidates();
+        const auto it = std::find_if(candidates.begin(), candidates.end(),
+            [&](const Candidate &candidate) { return candidate.actionId == actionId; });
+        if (it == candidates.end()) {
+            throw std::runtime_error("native baseline action is not a current candidate");
+        }
+
+        baselineAgent_.mapPath = agentAfter.mapPath;
+        applyCandidate(*it);
+        ++decisionCount_;
+        advanceToDecision();
+        return actionId;
+    }
+
     void step(const std::string &actionId) {
         if (terminal()) {
             throw std::runtime_error("cannot act in a terminal simulator state");
@@ -262,6 +296,7 @@ public:
             throw std::invalid_argument("action is not legal in the current target decision: " + actionId);
         }
 
+        nativeBaselineContinuationValid_ = false;
         applyCandidate(*it);
         ++decisionCount_;
         advanceToDecision();
@@ -272,6 +307,7 @@ private:
     sts::search::SimpleAgent baselineAgent_;
     std::vector<std::string> baselineHistory_;
     int decisionCount_ = 0;
+    bool nativeBaselineContinuationValid_ = true;
 
     void configureAgents() {
         baselineAgent_.print = false;
@@ -440,6 +476,10 @@ private:
         Candidate skip;
         skip.category = "card_reward";
         skip.rewardIdx = rewardIdx;
+        skip.bits = sts::search::GameAction(
+            sts::search::GameAction::RewardsActionType::CARD,
+            rewardIdx,
+            5).bits;
         if (gc_.hasRelic(sts::RelicId::SINGING_BOWL)) {
             skip.actionId = "card_reward:bowl:" + std::to_string(rewardIdx);
             skip.kind = "bowl";
@@ -454,6 +494,59 @@ private:
         skip.raw = {{"reward_index", rewardIdx}};
         result.push_back(std::move(skip));
         return result;
+    }
+
+    std::string probeNativeBaselineAction(sts::search::SimpleAgent *agentAfter) const {
+        if (!nativeBaselineContinuationValid_) {
+            throw std::runtime_error(
+                "native baseline query requires a baseline-following target trajectory");
+        }
+        const auto currentCategory = category();
+        if (currentCategory.empty()) {
+            throw std::runtime_error("native baseline query requires a target decision");
+        }
+
+        NoncombatEnvironment probe(*this);
+        probe.baselineAgent_.actionHistory.clear();
+        if (currentCategory == "route") {
+            probe.baselineAgent_.stepOutOfCombat(probe.gc_);
+        } else if (currentCategory == "shop") {
+            probe.baselineAgent_.stepShopScreen(probe.gc_);
+        } else if (currentCategory == "event") {
+            probe.baselineAgent_.stepEventScreen(probe.gc_);
+        } else if (currentCategory == "card_reward") {
+            probe.baselineAgent_.stepCardReward(probe.gc_);
+        } else {
+            throw std::runtime_error("unsupported native baseline target category");
+        }
+        if (probe.baselineAgent_.actionHistory.size() != 1) {
+            throw std::runtime_error(
+                "native baseline target query did not emit exactly one game action");
+        }
+
+        const auto actionBits = static_cast<std::uint32_t>(
+            probe.baselineAgent_.actionHistory.front());
+        const auto candidates = legalCandidates();
+        const Candidate *matched = nullptr;
+        for (const auto &candidate : candidates) {
+            if (candidate.bits != actionBits) {
+                continue;
+            }
+            if (matched != nullptr) {
+                throw std::runtime_error(
+                    "native baseline game action maps to multiple adapter candidates");
+            }
+            matched = &candidate;
+        }
+        if (matched == nullptr) {
+            throw std::runtime_error(
+                "native baseline game action is not an adapter candidate");
+        }
+        if (agentAfter != nullptr) {
+            *agentAfter = probe.baselineAgent_;
+            agentAfter->curGameContext = nullptr;
+        }
+        return matched->actionId;
     }
 
     void appendShopCandidate(const sts::search::GameAction &action, Candidate &candidate) const {
@@ -650,6 +743,7 @@ std::string buildInfoJson() {
     return json({
         {"adapter_api_version", ADAPTER_API_VERSION},
         {"baseline_policy_id", BASELINE_POLICY_ID},
+        {"native_target_policy_id", NATIVE_TARGET_POLICY_ID},
         {"compiler", __VERSION__},
         {"cpp_standard", __cplusplus},
         {"pybind11_version", STS_ADAPTER_STRINGIFY(PYBIND11_VERSION_MAJOR) "."
@@ -671,7 +765,9 @@ PYBIND11_MODULE(sts_lightspeed_noncombat_adapter, module) {
         .def("category", &NoncombatEnvironment::category)
         .def("clone", &NoncombatEnvironment::clone)
         .def("legal_actions_json", &NoncombatEnvironment::legalActionsJson)
+        .def("native_baseline_action_json", &NoncombatEnvironment::nativeBaselineActionJson)
         .def("snapshot_json", &NoncombatEnvironment::snapshotJson)
         .def("step", &NoncombatEnvironment::step)
+        .def("step_native_baseline", &NoncombatEnvironment::stepNativeBaseline)
         .def("terminal", &NoncombatEnvironment::terminal);
 }

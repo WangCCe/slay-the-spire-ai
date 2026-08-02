@@ -14,9 +14,15 @@ from types import ModuleType
 from typing import Any, Iterable, Mapping, Sequence
 
 
-ADAPTER_API_VERSION = "sts-lightspeed-noncombat-adapter-v1"
+ADAPTER_API_VERSION = "sts-lightspeed-noncombat-adapter-v2"
+SUPPORTED_PROVENANCE_ADAPTER_API_VERSIONS = (
+    "sts-lightspeed-noncombat-adapter-v1",
+    ADAPTER_API_VERSION,
+)
 STATE_SCHEMA_VERSION = "sts-lightspeed-state-v1"
 TRANSITION_SCHEMA_VERSION = "noncombat-simulator-transition-v1"
+NATIVE_BASELINE_ACTION_SCHEMA_VERSION = "sts-lightspeed-native-baseline-action-v1"
+NATIVE_TARGET_POLICY_ID = "sts_lightspeed_simple_agent_target_v1"
 SOURCE_TYPE = "sts_lightspeed_simulation"
 TARGET_CATEGORIES = ("card_reward", "event", "route", "shop")
 MODULE_NAME = "sts_lightspeed_noncombat_adapter"
@@ -110,6 +116,30 @@ def validate_candidates(
     return result
 
 
+def validate_native_baseline_action(
+    value: object,
+    *,
+    category: str | None,
+    candidates: Sequence[Mapping[str, Any]],
+) -> dict[str, Any]:
+    action = dict(_mapping(value, "native baseline action"))
+    if action.get("schema_version") != NATIVE_BASELINE_ACTION_SCHEMA_VERSION:
+        raise SimulatorAdapterError("native baseline action schema mismatch")
+    if action.get("policy_id") != NATIVE_TARGET_POLICY_ID:
+        raise SimulatorAdapterError("native baseline policy id mismatch")
+    if category not in TARGET_CATEGORIES or action.get("category") != category:
+        raise SimulatorAdapterError("native baseline action category mismatch")
+    action_id = action.get("action_id")
+    if not isinstance(action_id, str) or not action_id:
+        raise SimulatorAdapterError("native baseline action_id is required")
+    candidate_ids = [candidate.get("action_id") for candidate in candidates]
+    if candidate_ids.count(action_id) != 1:
+        raise SimulatorAdapterError(
+            "native baseline action must map to exactly one reported candidate"
+        )
+    return action
+
+
 def validate_provenance(value: object) -> dict[str, Any]:
     provenance = dict(_mapping(value, "provenance"))
     required = (
@@ -130,7 +160,7 @@ def validate_provenance(value: object) -> dict[str, Any]:
     for field in ("adapter_api_version", "compiler", "cpp_standard", "python"):
         if not build.get(field):
             raise SimulatorAdapterError(f"provenance.build.{field} is required")
-    if build["adapter_api_version"] != ADAPTER_API_VERSION:
+    if build["adapter_api_version"] not in SUPPORTED_PROVENANCE_ADAPTER_API_VERSIONS:
         raise SimulatorAdapterError("provenance adapter API mismatch")
     return provenance
 
@@ -205,6 +235,47 @@ class NativeSimulatorEnvironment:
 
     def clone(self) -> "NativeSimulatorEnvironment":
         return NativeSimulatorEnvironment(self.native.clone(), self.provenance)
+
+    def native_baseline_action(self) -> dict[str, Any]:
+        before = self.snapshot()
+        candidates = self.legal_actions()
+        before_snapshot_bytes = canonical_json_bytes(before)
+        before_candidate_bytes = canonical_json_bytes(candidates)
+        try:
+            raw_action = json.loads(self.native.native_baseline_action_json())
+        except (AttributeError, TypeError, RuntimeError, json.JSONDecodeError) as exc:
+            raise SimulatorAdapterError(f"invalid native baseline action: {exc}") from exc
+
+        after = self.snapshot()
+        if canonical_json_bytes(after) != before_snapshot_bytes:
+            raise SimulatorAdapterError("native baseline query mutated source snapshot")
+        after_candidates = self.legal_actions()
+        if canonical_json_bytes(after_candidates) != before_candidate_bytes:
+            raise SimulatorAdapterError("native baseline query mutated source candidates")
+        return validate_native_baseline_action(
+            raw_action,
+            category=before["category"],
+            candidates=candidates,
+        )
+
+    def step_native_baseline(self) -> dict[str, Any]:
+        before = self.snapshot()
+        candidates = self.legal_actions()
+        expected = self.native_baseline_action()
+        try:
+            selected_action_id = self.native.step_native_baseline()
+        except (AttributeError, TypeError, RuntimeError) as exc:
+            raise SimulatorAdapterError(f"native baseline step failed: {exc}") from exc
+        if selected_action_id != expected["action_id"]:
+            raise SimulatorAdapterError("native baseline query and step action differ")
+        after = self.snapshot()
+        return build_transition(
+            before=before,
+            candidates=candidates,
+            selected_action_id=selected_action_id,
+            after=after,
+            provenance=self.provenance,
+        )
 
     def step(self, action_id: str) -> dict[str, Any]:
         before = self.snapshot()

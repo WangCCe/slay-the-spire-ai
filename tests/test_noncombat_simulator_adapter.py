@@ -8,6 +8,8 @@ import pytest
 
 from analysis_scripts.noncombat_simulator_adapter import (
     ADAPTER_API_VERSION,
+    NATIVE_BASELINE_ACTION_SCHEMA_VERSION,
+    NATIVE_TARGET_POLICY_ID,
     SOURCE_TYPE,
     STATE_SCHEMA_VERSION,
     TRANSITION_SCHEMA_VERSION,
@@ -73,6 +75,72 @@ def _provenance():
         "simulator_source_sha256": "e" * 64,
         "submodules": {"json": "f" * 40, "pybind11": "1" * 40},
     }
+
+
+class _FakeNativeBaselineEnvironment:
+    def __init__(self, *, mutate_on_query: bool = False):
+        self._snapshot = _snapshot("route")
+        self._candidates = [_candidate()]
+        self._mutate_on_query = mutate_on_query
+
+    def snapshot_json(self):
+        return json.dumps(self._snapshot, sort_keys=True)
+
+    def legal_actions_json(self):
+        return json.dumps(self._candidates, sort_keys=True)
+
+    def native_baseline_action_json(self):
+        if self._mutate_on_query:
+            self._snapshot["decision_count"] += 1
+        return json.dumps(
+            {
+                "action_id": self._candidates[0]["action_id"],
+                "category": "route",
+                "policy_id": NATIVE_TARGET_POLICY_ID,
+                "schema_version": NATIVE_BASELINE_ACTION_SCHEMA_VERSION,
+            },
+            sort_keys=True,
+        )
+
+    def step_native_baseline(self):
+        action_id = self._candidates[0]["action_id"]
+        self._snapshot = _snapshot(None, terminal=True, floor=2)
+        return action_id
+
+
+def test_native_baseline_wrapper_is_candidate_legal_and_non_mutating():
+    environment = NativeSimulatorEnvironment(
+        _FakeNativeBaselineEnvironment(),
+        _provenance(),
+    )
+    before = environment.snapshot()
+    before_candidates = environment.legal_actions()
+
+    first = environment.native_baseline_action()
+    second = environment.native_baseline_action()
+
+    assert first == second == {
+        "action_id": "route:map_node:1:0",
+        "category": "route",
+        "policy_id": NATIVE_TARGET_POLICY_ID,
+        "schema_version": NATIVE_BASELINE_ACTION_SCHEMA_VERSION,
+    }
+    assert environment.snapshot() == before
+    assert environment.legal_actions() == before_candidates
+
+    transition = environment.step_native_baseline()
+    assert transition["selected_action_id"] == first["action_id"]
+    assert transition["successor"]["terminal"] is True
+
+
+def test_native_baseline_wrapper_rejects_query_side_effects():
+    environment = NativeSimulatorEnvironment(
+        _FakeNativeBaselineEnvironment(mutate_on_query=True),
+        _provenance(),
+    )
+
+    with pytest.raises(SimulatorAdapterError, match="mutated source snapshot"):
+        environment.native_baseline_action()
 
 
 def test_transition_schema_keeps_simulator_evidence_separate():
@@ -247,3 +315,82 @@ def test_native_adapter_matches_all_historical_prefixes():
         )
         assert probe["neow_candidates"] == run["decisions"][0]["candidates"]
         assert probe["floor_one_candidates"] == run["decisions"][1]["candidates"]
+
+
+def test_native_simple_agent_target_policy_is_deterministic_and_candidate_legal():
+    module, provenance = _integration_settings()
+    first_rows = []
+    all_categories: set[str] = set()
+
+    for seed in range(20):
+        environment = NativeSimulatorEnvironment(module.Environment(seed, 0), provenance)
+        actions = []
+        decisions = 0
+        while not environment.snapshot()["terminal"]:
+            assert decisions < 500
+            before = environment.snapshot()
+            candidates = environment.legal_actions()
+            before_snapshot_bytes = json.dumps(before, sort_keys=True)
+            before_candidate_bytes = json.dumps(candidates, sort_keys=True)
+
+            first = environment.native_baseline_action()
+            second = environment.native_baseline_action()
+            assert first == second
+            assert first["action_id"] in {
+                candidate["action_id"] for candidate in candidates
+            }
+            assert json.dumps(environment.snapshot(), sort_keys=True) == before_snapshot_bytes
+            assert json.dumps(environment.legal_actions(), sort_keys=True) == before_candidate_bytes
+
+            transition = environment.step_native_baseline()
+            assert transition["selected_action_id"] == first["action_id"]
+            all_categories.add(first["category"])
+            actions.append(first["action_id"])
+            decisions += 1
+
+        terminal = environment.snapshot()
+        first_rows.append(
+            {
+                "actions": actions,
+                "floor": terminal["state"]["floor"],
+                "outcome": terminal["state"]["outcome"],
+                "seed": seed,
+            }
+        )
+
+    second_rows = []
+    for seed in range(20):
+        environment = NativeSimulatorEnvironment(module.Environment(seed, 0), provenance)
+        actions = []
+        while not environment.snapshot()["terminal"]:
+            actions.append(environment.native_baseline_action()["action_id"])
+            environment.step_native_baseline()
+        terminal = environment.snapshot()
+        second_rows.append(
+            {
+                "actions": actions,
+                "floor": terminal["state"]["floor"],
+                "outcome": terminal["state"]["outcome"],
+                "seed": seed,
+            }
+        )
+
+    assert first_rows == second_rows
+    assert all_categories == {"card_reward", "event", "route", "shop"}
+
+
+def test_native_baseline_query_fails_after_general_policy_step():
+    module, _ = _integration_settings()
+    environment = module.Environment(0, 0)
+    candidates = json.loads(environment.legal_actions_json())
+    baseline = json.loads(environment.native_baseline_action_json())
+    alternative = next(
+        candidate["action_id"]
+        for candidate in candidates
+        if candidate["action_id"] != baseline["action_id"]
+    )
+
+    environment.step(alternative)
+
+    with pytest.raises(RuntimeError, match="baseline-following"):
+        environment.native_baseline_action_json()

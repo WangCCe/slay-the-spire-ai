@@ -48,6 +48,14 @@ tests/test_noncombat_simulator_fit.py text eol=lf
 reports/noncombat_simulator_fit_* text eol=lf
 openspec/changes/add-noncombat-simulator-adapter-poc/** text eol=lf
 
+# Preserve simulator policy-validity source, registration, and evidence bytes.
+analysis_scripts/noncombat_simulator_policy_validity.py text eol=lf
+tests/test_noncombat_simulator_policy_validity.py text eol=lf
+tests/test_noncombat_simulator_policy_validity_native.py text eol=lf
+reports/noncombat_simulator_policy_validity_* text eol=lf
+reports/noncombat_simulator_policy_validity_*/** text eol=lf
+openspec/changes/add-noncombat-simulator-policy-validity-study/** text eol=lf
+
 # Preserve bounded simulator-training implementation and canonical evidence bytes.
 analysis_scripts/noncombat_policy_model.py text eol=lf
 analysis_scripts/noncombat_simulator_training_smoke.py text eol=lf

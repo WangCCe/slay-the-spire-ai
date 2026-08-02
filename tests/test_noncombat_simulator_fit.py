@@ -83,6 +83,31 @@ def _batch():
     }
 
 
+def _native_baseline_batch():
+    return {
+        "all_categories": sorted(TARGET_CATEGORIES),
+        "candidate_legality": True,
+        "checked_decisions": 49,
+        "non_mutation": True,
+        "rows": [
+            {
+                "categories": sorted(TARGET_CATEGORIES),
+                "decisions": 20,
+                "floor": 12,
+                "outcome": "player_loss",
+                "seed": 0,
+            },
+            {
+                "categories": ["card_reward", "event", "route"],
+                "decisions": 29,
+                "floor": 16,
+                "outcome": "player_loss",
+                "seed": 1,
+            },
+        ],
+    }
+
+
 def _historical_sources():
     return [
         {
@@ -100,11 +125,15 @@ def _historical_sources():
 def _ready_report():
     first = _batch()
     second = json.loads(json.dumps(first))
+    first_native = _native_baseline_batch()
+    second_native = json.loads(json.dumps(first_native))
     return classify_fit_report(
         provenance=_provenance(),
         registered_provenance=_provenance(),
         first_batch=first,
         second_batch=second,
+        first_native_baseline_batch=first_native,
+        second_native_baseline_batch=second_native,
         historical={"expected_decisions": 12, "matched_decisions": 12, "rows": []},
         historical_sources=_historical_sources(),
         throughput_within_budget=True,
@@ -118,6 +147,10 @@ def test_ready_report_requires_every_fit_check_and_has_no_authority():
     assert report["verdict"] == "adapter_poc_ready"
     assert report["blockers"] == []
     assert set(report["checks"].values()) == {True}
+    assert report["checks"]["native_baseline_candidate_mapping"] is True
+    assert report["checks"]["native_baseline_non_mutation"] is True
+    assert report["checks"]["native_baseline_repeated_seed_determinism"] is True
+    assert report["batch"]["native_baseline"]["first"]["checked_decisions"] == 49
     assert set(report["authority"].values()) == {False}
     assert "disabled" in " ".join(report["limitations"]).lower()
 
@@ -131,6 +164,8 @@ def test_provenance_drift_blocks_fit_and_names_exact_field():
         registered_provenance=expected,
         first_batch=first,
         second_batch=json.loads(json.dumps(first)),
+        first_native_baseline_batch=_native_baseline_batch(),
+        second_native_baseline_batch=_native_baseline_batch(),
         historical={"expected_decisions": 12, "matched_decisions": 12, "rows": []},
         historical_sources=_historical_sources(),
         throughput_within_budget=True,
@@ -251,10 +286,13 @@ def test_native_fit_audit_passes_registered_poc_contract():
         historical_sources=historical_sources,
         seeds=list(range(20)),
         max_decisions=500,
-        throughput_budget_seconds=30,
+        throughput_budget_seconds=90,
     )
 
     assert report["verdict"] == "adapter_poc_ready"
     assert report["batch"]["checked_candidates"] == 46
+    assert report["batch"]["native_baseline"]["first"]["checked_decisions"] > 0
+    assert report["checks"]["native_baseline_candidate_mapping"] is True
+    assert report["checks"]["native_baseline_non_mutation"] is True
     assert report["historical_prefix"]["matched_decisions"] == 12
     assert set(report["authority"].values()) == {False}
