@@ -5,11 +5,11 @@
 
 ## 2. Reachable Surface Audit
 
-- [ ] 2.1 Add red regressions for exact A0 pool parsing, duplicate identities, permanent guard drift, direct transitions, empty legal surfaces, and unsupported source forms
-- [ ] 2.2 Implement provenance-bound registration and bounded static parsers for pool, guard, setup, legal, display, execution, identity, save-id, and Current AST sources
-- [ ] 2.3 Add and implement exact reconciliation of 51 pool declarations into 2 disabled, 1 direct transition, and 48 event-option targets, then partition targets into 25 explicit and 23 generic identities
-- [ ] 2.4 Add and implement canonical configuration, pool inventory, target inventory, Current partition, metrics, report, manifest, and strict no-native recomputation
-- [ ] 2.5 Run focused audit regressions and Python compilation, then commit and push the verified audit implementation before canonical publication
+- [x] 2.1 Add red regressions for exact A0 pool parsing, duplicate identities, permanent guard drift, direct transitions, empty legal surfaces, and unsupported source forms
+- [x] 2.2 Implement provenance-bound registration and bounded static parsers for pool, guard, setup, legal, display, execution, identity, save-id, and Current AST sources
+- [x] 2.3 Add and implement exact reconciliation of 51 pool declarations into 2 disabled, 1 direct transition, and 48 event-option targets, then partition targets into 25 explicit and 23 generic identities
+- [x] 2.4 Add and implement canonical configuration, pool inventory, target inventory, Current partition, metrics, report, manifest, and strict no-native recomputation
+- [x] 2.5 Run focused audit regressions and Python compilation, then commit and push the verified audit implementation before canonical publication
 
 ## 3. Successor Contract Publication
 
