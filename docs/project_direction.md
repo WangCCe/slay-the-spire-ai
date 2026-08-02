@@ -41,9 +41,16 @@ multi-candidate rows, and failed all six fixed teacher-suitability checks. The
 terminal verdict is `simpleagent_unsuitable_as_policy_quality_gate`.
 
 SimpleAgent is therefore closed as a policy-quality target and retained only as
-an auxiliary regression oracle. The current objective is a separate read-only
-`outcome-backed-noncombat-rl-readiness` go/no-go audit, not another imitation
-POC, fresh simulator study, or formal non-combat RL training.
+an auxiliary regression oracle. The separate formal-RL readiness audit is now
+complete and strictly recomputed. State/action, reference isolation, and
+evaluation passed; formal reward, baseline policy, and outcome support remain
+blocked. Its terminal verdict is
+`not_ready_for_bounded_training_proposal`, with all execution and promotion
+authority false.
+
+The current objective is a minimal, separately reviewed formal reward contract,
+not another imitation POC, fresh simulator study, gameplay batch, or formal
+non-combat RL training.
 
 ## Training Boundary
 
@@ -58,12 +65,15 @@ diagnostics. They are not reward, ground truth, or a mandatory policy target.
 
 ## Current Blocker
 
-State/action source closure is no longer the primary blocker: the recovered
-teacher audit proved exact reconstruction and adequate raw-adapter visibility
-on the preserved train corpus. The remaining training blocker is outcome-backed
-readiness: known-propensity support, reward/outcome attribution, untouched
-offline evaluation, and a preregistered training/promotion boundary are not yet
-jointly demonstrated.
+State/action source closure and evaluation isolation are no longer primary
+blockers. The formal-RL readiness audit bound the recovered teacher, simulator
+smoke, policy-validity, warm-start, and outcome-feasibility evidence under one
+fixed contract. It passed state/action, reference isolation, and evaluation;
+it blocked on a missing formal reward contract, an undemonstrated credible
+baseline floor, and source-incomparable evidence with zero target-supported
+victories. The next smallest prerequisite is the reward contract. Passing it
+would not override the baseline or outcome blockers and would not authorize
+training.
 
 The active v2 known-propensity outcome-evidence study is stopped before any
 replacement qualification or study start. R7 remains immutable and retired
@@ -189,21 +199,22 @@ The next authorized sequence is:
 9. Preserve both consumed teacher-sufficiency registrations, the v1 timeout,
    and the strictly recomputed r2 result. Do not retry either registration or
    treat zero observed representation conflicts as policy-quality evidence.
-10. Route the next capability through a separate read-only outcome-backed
-   non-combat RL readiness audit. Consider bounded formal RL only after it
-   proves reproducible state/action, support, reward/outcome, and untouched
-   evaluation contracts and a separate training OpenSpec is approved. Permit
-   later live work only through existing crash/qualification gates.
+10. Preserve the completed formal-RL readiness registration and canonical
+   verdict. Implement only the separately reviewed formal reward contract next;
+   keep terminal victory primary, make floor shaping explicit and secondary,
+   exclude reference labels, and preserve simulator/live provenance. Then
+   address the non-teacher baseline floor and target-supported outcomes as
+   separate prerequisites. Consider bounded formal RL only after all readiness
+   domains pass and a separate training OpenSpec is approved.
 
 ## Work Lanes
 
-The primary lane is a separate read-only outcome-backed non-combat RL readiness
-audit. It should consume only frozen evidence and determine whether state/action
-coverage, known-propensity support, terminal outcomes, reward attribution, and
-untouched offline evaluation are sufficient to preregister a bounded training
-study. It must define an explicit go/no-go verdict without fitting a model,
-spending fresh simulator cohorts, launching gameplay, or granting training or
-promotion authority. Simulated and live evidence remain separate.
+The primary lane is a minimal formal reward contract derived from the completed
+readiness audit. It must define and test terminal-victory priority, secondary
+floor-progress semantics, reference-label exclusions, and simulator/live
+provenance without fitting a model, spending fresh simulator cohorts, launching
+gameplay, or granting training or promotion authority. The later baseline-floor
+and target-supported-outcome lanes remain blocked and separate.
 
 Live gameplay is a maintenance and registered-evaluation lane only. Launch it
 for a crash, stuck state, repeated A-class simulator/mechanics defect, or an

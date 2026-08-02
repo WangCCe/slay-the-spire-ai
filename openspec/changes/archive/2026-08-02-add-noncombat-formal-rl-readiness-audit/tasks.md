@@ -17,6 +17,6 @@
 
 ## 4. Frozen Audit And Closeout
 
-- [ ] 4.1 Commit the implementation and tests, then freeze one registration over the existing canonical evidence and the committed analyzer identity.
-- [ ] 4.2 Execute the registered audit once, strictly recompute it, and record the evidence-backed no-authority interpretation.
-- [ ] 4.3 Run the repository commit gate, sync the capability spec, archive the completed change, commit the frozen evidence and closeout, and push master.
+- [x] 4.1 Commit the implementation and tests, then freeze one registration over the existing canonical evidence and the committed analyzer identity.
+- [x] 4.2 Execute the registered audit once, strictly recompute it, and record the evidence-backed no-authority interpretation.
+- [x] 4.3 Run the repository commit gate, sync the capability spec, archive the completed change, commit the frozen evidence and closeout, and push master.

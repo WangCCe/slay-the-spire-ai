@@ -75,3 +75,11 @@ analysis_scripts/noncombat_simulator_training_smoke.py text eol=lf
 tests/test_noncombat_simulator_training_smoke.py text eol=lf
 reports/noncombat_simulator_training_smoke_* text eol=lf
 reports/noncombat_simulator_training_smoke_*/** text eol=lf
+
+# Preserve formal non-combat RL readiness implementation and evidence bytes.
+analysis_scripts/noncombat_formal_rl_readiness_audit.py text eol=lf
+tests/test_noncombat_formal_rl_readiness_audit.py text eol=lf
+reports/noncombat_formal_rl_readiness_audit_* text eol=lf
+reports/noncombat_formal_rl_readiness_audit_*/** text eol=lf
+openspec/specs/noncombat-formal-rl-readiness-audit/** text eol=lf
+openspec/changes/archive/*-add-noncombat-formal-rl-readiness-audit/** text eol=lf
