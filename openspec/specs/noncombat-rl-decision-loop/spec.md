@@ -74,7 +74,7 @@ The system SHALL define the reward-readiness contract needed before formal non-c
 - **THEN** the readiness report keeps formal non-combat RL training blocked by reward readiness
 
 ### Requirement: Formal Non-Combat RL Training Guard
-The system SHALL prevent formal non-combat RL training from being treated as ready until the decision loop is fully defined and verified. It SHALL allow a bounded offline supervised policy-learning pilot only when that pilot remains isolated from live gameplay, reward optimization, and policy promotion.
+The system SHALL prevent formal non-combat RL training from being treated as ready until the decision loop is fully defined and verified. It SHALL allow a bounded offline supervised policy-learning pilot only when that pilot remains isolated from live gameplay, reward optimization, and policy promotion. A credible simulator baseline floor SHALL be necessary but not sufficient for a later formal-RL proposal.
 
 #### Scenario: Combat RL smoke remains allowed
 - **WHEN** a developer runs a small combat RL smoke training or dry-run command
@@ -88,6 +88,16 @@ The system SHALL prevent formal non-combat RL training from being treated as rea
 - **WHEN** an offline Current-imitation or Bottled-auxiliary pilot trains and evaluates successfully
 - **THEN** the system SHALL continue to report formal non-combat RL and live-policy promotion as blocked
 - **AND** the pilot result SHALL be treated only as training-pipeline and representation evidence
+
+#### Scenario: Baseline warm start lacks a credible floor
+- **WHEN** a baseline-anchored warm-start study is blocked or fails its preregistered untouched rollout gate
+- **THEN** formal non-combat RL SHALL remain blocked on baseline-policy readiness
+- **AND** a positive training loss or teacher-agreement result SHALL NOT override that blocker
+
+#### Scenario: Baseline warm start demonstrates a credible floor
+- **WHEN** a baseline-anchored warm-start study passes its structural, untouched action-fit, rollout non-inferiority, and reproduction gates
+- **THEN** the result MAY support a separate proposal for bounded formal non-combat RL
+- **AND** it SHALL NOT itself authorize training, live loading, qualification, or promotion
 
 ### Requirement: Bottled Policy Oracle Adapter
 The system SHALL provide an offline-only adapter that evaluates Ironclad non-combat decision samples against the local Bottled `REQUESTED_STRIKE` policy.
@@ -178,7 +188,7 @@ The system SHALL keep known-propensity data qualification separate from outcome-
 - **AND** they SHALL NOT change the recorded behavior distribution or become reward truth
 
 ### Requirement: Simulator Transitions Remain Separate Evidence
-The non-combat decision loop SHALL distinguish simulator-generated transitions, rewards, returns, models, baseline comparisons, and evaluation metrics from live trace samples, known-propensity exploration evidence, and matched `.run` outcomes.
+The non-combat decision loop SHALL distinguish simulator-generated transitions, demonstrations, rewards, returns, models, baseline comparisons, and evaluation metrics from live trace samples, known-propensity exploration evidence, and matched `.run` outcomes.
 
 #### Scenario: Simulator transition is exported
 - **WHEN** the offline adapter exports a route, shop, event, or card-reward transition
@@ -200,7 +210,12 @@ The non-combat decision loop SHALL distinguish simulator-generated transitions, 
 - **THEN** baseline deltas, confidence intervals, floors, and victories SHALL remain simulator-only evidence
 - **AND** they SHALL NOT authorize formal training, increase live evidence coverage, or satisfy a live promotion gate
 
+#### Scenario: Native demonstrations train a warm start
+- **WHEN** a reviewed baseline-warm-start study derives supervised labels, model updates, action-fit metrics, or rollout comparisons from native SimpleAgent demonstrations
+- **THEN** every artifact SHALL retain simulator-only source, teacher, cohort, and model provenance
+- **AND** it SHALL NOT treat the teacher as reward, increase live evidence coverage, or satisfy a live promotion gate
+
 #### Scenario: Future training combines evidence classes
 - **WHEN** a future proposal seeks to train on both live and simulator data
 - **THEN** it MUST separately define dataset weighting, simulator-divergence controls, reward semantics, and real-game holdout evaluation
-- **AND** the adapter POC, bounded simulator smoke, or policy-validity study alone SHALL NOT satisfy that approval gate
+- **AND** the adapter POC, bounded simulator smoke, policy-validity study, or baseline warm start alone SHALL NOT satisfy that approval gate
