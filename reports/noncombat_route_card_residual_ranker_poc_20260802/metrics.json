@@ -1,0 +1,842 @@
+{
+  "aggregate_metrics": {
+    "candidate": {
+      "by_category": {
+        "card_reward": {
+          "action_agreement": 0.6688741721854304,
+          "mean_cross_entropy": 1.0778688111836146,
+          "row_count": 302
+        },
+        "event": {
+          "action_agreement": 0.9652777777777778,
+          "mean_cross_entropy": 0.6492066124444694,
+          "row_count": 144
+        },
+        "route": {
+          "action_agreement": 0.67,
+          "mean_cross_entropy": 0.7492749393596849,
+          "row_count": 300
+        },
+        "shop": {
+          "action_agreement": 0.5483870967741935,
+          "mean_cross_entropy": 1.7457953015428507,
+          "row_count": 124
+        }
+      },
+      "macro_category_action_agreement": 0.7131347616843504,
+      "macro_category_mean_cross_entropy": 1.0555364161326548,
+      "overall_action_agreement": 0.7011494252873564,
+      "overall_mean_cross_entropy": 0.9888083130674423,
+      "row_count": 870
+    },
+    "control": {
+      "by_category": {
+        "card_reward": {
+          "action_agreement": 0.6688741721854304,
+          "mean_cross_entropy": 1.0788744604195435,
+          "row_count": 302
+        },
+        "event": {
+          "action_agreement": 0.9652777777777778,
+          "mean_cross_entropy": 0.6492066124444694,
+          "row_count": 144
+        },
+        "route": {
+          "action_agreement": 0.6666666666666666,
+          "mean_cross_entropy": 0.7507905899861005,
+          "row_count": 300
+        },
+        "shop": {
+          "action_agreement": 0.5483870967741935,
+          "mean_cross_entropy": 1.7457953015428507,
+          "row_count": 124
+        }
+      },
+      "macro_category_action_agreement": 0.7123014283510171,
+      "macro_category_mean_cross_entropy": 1.056166741098241,
+      "overall_action_agreement": 0.7,
+      "overall_mean_cross_entropy": 0.989680038650402,
+      "row_count": 870
+    },
+    "deltas": {
+      "by_category": {
+        "card_reward": {
+          "action_agreement": 0.0,
+          "mean_cross_entropy": -0.0010056492359289404,
+          "row_count": 302
+        },
+        "event": {
+          "action_agreement": 0.0,
+          "mean_cross_entropy": 0.0,
+          "row_count": 144
+        },
+        "route": {
+          "action_agreement": 0.0033333333333334103,
+          "mean_cross_entropy": -0.0015156506264155656,
+          "row_count": 300
+        },
+        "shop": {
+          "action_agreement": 0.0,
+          "mean_cross_entropy": 0.0,
+          "row_count": 124
+        }
+      },
+      "macro_category_action_agreement": 0.0008333333333333526,
+      "macro_category_mean_cross_entropy": -0.0006303249655861265,
+      "overall_action_agreement": 0.0011494252873563982,
+      "overall_mean_cross_entropy": -0.0008717255829596704,
+      "row_count": 870
+    }
+  },
+  "authority": {
+    "dagger": false,
+    "formal_noncombat_rl": false,
+    "live_gameplay": false,
+    "live_policy_loading": false,
+    "native_evidence_collection": false,
+    "ope_reinterpretation": false,
+    "policy_promotion": false,
+    "policy_quality": false,
+    "qualification": false,
+    "simulator_rollout": false
+  },
+  "base_immutable": true,
+  "classification": {
+    "authority": {
+      "dagger": false,
+      "formal_noncombat_rl": false,
+      "live_gameplay": false,
+      "live_policy_loading": false,
+      "native_evidence_collection": false,
+      "ope_reinterpretation": false,
+      "policy_promotion": false,
+      "policy_quality": false,
+      "qualification": false,
+      "simulator_rollout": false
+    },
+    "checks": {
+      "aggregate_card_reward_agreement_improvement": false,
+      "aggregate_card_reward_cross_entropy_improvement": false,
+      "aggregate_route_agreement_improvement": false,
+      "aggregate_route_cross_entropy_improvement": false,
+      "all_fold_nonregression": false,
+      "base_immutable": true,
+      "event_shop_delegation_exact": true,
+      "macro_agreement_improvement": false,
+      "overall_agreement_improvement": false,
+      "replay_identity": true,
+      "residual_bound": true
+    },
+    "primary_execution_sha256": "6c6c4498e94925457c1870fce921150bcc46e6bf4cc2d3f1ae6dbdd57df1e108",
+    "replay_execution_sha256": "6c6c4498e94925457c1870fce921150bcc46e6bf4cc2d3f1ae6dbdd57df1e108",
+    "selected_candidate_id": null,
+    "verdict": "poc_valid_without_route_card_residual"
+  },
+  "comparison": {
+    "checks": {
+      "aggregate_card_reward_agreement_improvement": false,
+      "aggregate_card_reward_cross_entropy_improvement": false,
+      "aggregate_route_agreement_improvement": false,
+      "aggregate_route_cross_entropy_improvement": false,
+      "all_fold_nonregression": false,
+      "base_immutable": true,
+      "event_shop_delegation_exact": true,
+      "macro_agreement_improvement": false,
+      "overall_agreement_improvement": false,
+      "residual_bound": true
+    },
+    "fold_checks": [
+      {
+        "checks": {
+          "card_reward_agreement_nonregression": true,
+          "card_reward_cross_entropy_nonregression": true,
+          "macro_agreement_nonregression": true,
+          "overall_cross_entropy_nonregression": true,
+          "route_agreement_nonregression": true,
+          "route_cross_entropy_nonregression": true
+        },
+        "fold": 0,
+        "pass": true
+      },
+      {
+        "checks": {
+          "card_reward_agreement_nonregression": true,
+          "card_reward_cross_entropy_nonregression": true,
+          "macro_agreement_nonregression": false,
+          "overall_cross_entropy_nonregression": true,
+          "route_agreement_nonregression": false,
+          "route_cross_entropy_nonregression": true
+        },
+        "fold": 1,
+        "pass": false
+      },
+      {
+        "checks": {
+          "card_reward_agreement_nonregression": true,
+          "card_reward_cross_entropy_nonregression": true,
+          "macro_agreement_nonregression": true,
+          "overall_cross_entropy_nonregression": true,
+          "route_agreement_nonregression": true,
+          "route_cross_entropy_nonregression": true
+        },
+        "fold": 2,
+        "pass": true
+      },
+      {
+        "checks": {
+          "card_reward_agreement_nonregression": true,
+          "card_reward_cross_entropy_nonregression": true,
+          "macro_agreement_nonregression": true,
+          "overall_cross_entropy_nonregression": true,
+          "route_agreement_nonregression": true,
+          "route_cross_entropy_nonregression": true
+        },
+        "fold": 3,
+        "pass": true
+      }
+    ],
+    "selected_candidate_id": null,
+    "verdict": "poc_valid_without_route_card_residual"
+  },
+  "delegation": {
+    "by_category": {
+      "event": {
+        "exact": true,
+        "mismatch_count": 0,
+        "row_count": 144
+      },
+      "shop": {
+        "exact": true,
+        "mismatch_count": 0,
+        "row_count": 124
+      }
+    },
+    "compared_fields": [
+      "candidate_action_ids",
+      "correct",
+      "predicted_action_id",
+      "probability_hexes",
+      "score_hexes",
+      "target_probability_hex"
+    ],
+    "exact": true,
+    "row_count": 268
+  },
+  "feature_collision_diagnostics": {
+    "collided_bin_count": 60,
+    "collision_count": 67,
+    "collision_fraction": 0.11185308848080133,
+    "hash_dim": 2048,
+    "occupied_bin_count": 532,
+    "unique_feature_count": 599
+  },
+  "fit_count_per_execution": 8,
+  "fold_metrics": [
+    {
+      "base_immutable": true,
+      "base_model_sha256": "85eb2dd5ffcd2e48ed53be7b9f96207e5c16d3a89dc0205ed1e3b7f3fa0df79d",
+      "candidate_metrics": {
+        "by_category": {
+          "card_reward": {
+            "action_agreement": 0.5963302752293578,
+            "mean_cross_entropy": 1.0772471075976857,
+            "row_count": 109
+          },
+          "event": {
+            "action_agreement": 0.9583333333333334,
+            "mean_cross_entropy": 0.6363682488577057,
+            "row_count": 48
+          },
+          "route": {
+            "action_agreement": 0.6767676767676768,
+            "mean_cross_entropy": 0.7367709333626608,
+            "row_count": 99
+          },
+          "shop": {
+            "action_agreement": 0.35135135135135137,
+            "mean_cross_entropy": 1.8647953895431082,
+            "row_count": 37
+          }
+        },
+        "macro_category_action_agreement": 0.6456956591704298,
+        "macro_category_mean_cross_entropy": 1.07879541984029,
+        "overall_action_agreement": 0.6518771331058021,
+        "overall_mean_cross_entropy": 0.9894312712945939,
+        "row_count": 293
+      },
+      "control_metrics": {
+        "by_category": {
+          "card_reward": {
+            "action_agreement": 0.5963302752293578,
+            "mean_cross_entropy": 1.0782922539855502,
+            "row_count": 109
+          },
+          "event": {
+            "action_agreement": 0.9583333333333334,
+            "mean_cross_entropy": 0.6363682488577057,
+            "row_count": 48
+          },
+          "route": {
+            "action_agreement": 0.6666666666666666,
+            "mean_cross_entropy": 0.7381417893386919,
+            "row_count": 99
+          },
+          "shop": {
+            "action_agreement": 0.35135135135135137,
+            "mean_cross_entropy": 1.8647953895431082,
+            "row_count": 37
+          }
+        },
+        "macro_category_action_agreement": 0.6431704066451772,
+        "macro_category_mean_cross_entropy": 1.079399420431264,
+        "overall_action_agreement": 0.6484641638225256,
+        "overall_mean_cross_entropy": 0.9902832702635503,
+        "row_count": 293
+      },
+      "delegation": {
+        "by_category": {
+          "event": {
+            "exact": true,
+            "mismatch_count": 0,
+            "row_count": 48
+          },
+          "shop": {
+            "exact": true,
+            "mismatch_count": 0,
+            "row_count": 37
+          }
+        },
+        "compared_fields": [
+          "candidate_action_ids",
+          "correct",
+          "predicted_action_id",
+          "probability_hexes",
+          "score_hexes",
+          "target_probability_hex"
+        ],
+        "exact": true,
+        "row_count": 85
+      },
+      "deltas": {
+        "by_category": {
+          "card_reward": {
+            "action_agreement": 0.0,
+            "mean_cross_entropy": -0.0010451463878644596,
+            "row_count": 109
+          },
+          "event": {
+            "action_agreement": 0.0,
+            "mean_cross_entropy": 0.0,
+            "row_count": 48
+          },
+          "route": {
+            "action_agreement": 0.010101010101010166,
+            "mean_cross_entropy": -0.001370855976031149,
+            "row_count": 99
+          },
+          "shop": {
+            "action_agreement": 0.0,
+            "mean_cross_entropy": 0.0,
+            "row_count": 37
+          }
+        },
+        "macro_category_action_agreement": 0.002525252525252597,
+        "macro_category_mean_cross_entropy": -0.0006040005909739854,
+        "overall_action_agreement": 0.0034129692832765013,
+        "overall_mean_cross_entropy": -0.0008519989689564911,
+        "row_count": 293
+      },
+      "fit_row_count": 577,
+      "fold": 0,
+      "heldout_row_count": 293,
+      "residual_diagnostics": {
+        "by_category": {
+          "card_reward": {
+            "candidate_logit_count": 426,
+            "max_abs": 0.004504941403865814,
+            "mean_abs": 0.0018125217884260847,
+            "rms": 0.0021083646707547657
+          },
+          "route": {
+            "candidate_logit_count": 229,
+            "max_abs": 0.011594582349061966,
+            "mean_abs": 0.0031548898095696124,
+            "rms": 0.0039987586681657986
+          }
+        },
+        "overall": {
+          "candidate_logit_count": 655,
+          "max_abs": 0.011594582349061966,
+          "mean_abs": 0.002281838241619776,
+          "rms": 0.0029123013926605715
+        }
+      },
+      "residual_model_sha256": "3476c25b4cfffc3abf0227d840a54cdaf68addbe749cd71d913ab253ff50c1b4"
+    },
+    {
+      "base_immutable": true,
+      "base_model_sha256": "df245a5ab339e84c2987d929f8df98cda1209f8c62c4a6355a68ef48d1ac8ed7",
+      "candidate_metrics": {
+        "by_category": {
+          "card_reward": {
+            "action_agreement": 0.7307692307692307,
+            "mean_cross_entropy": 1.040358357061815,
+            "row_count": 52
+          },
+          "event": {
+            "action_agreement": 1.0,
+            "mean_cross_entropy": 0.6710724416429732,
+            "row_count": 31
+          },
+          "route": {
+            "action_agreement": 0.6129032258064516,
+            "mean_cross_entropy": 0.7218369431595266,
+            "row_count": 62
+          },
+          "shop": {
+            "action_agreement": 0.78125,
+            "mean_cross_entropy": 1.6889607238593987,
+            "row_count": 32
+          }
+        },
+        "macro_category_action_agreement": 0.7812306141439206,
+        "macro_category_mean_cross_entropy": 1.0305571164309284,
+        "overall_action_agreement": 0.7457627118644068,
+        "overall_mean_cross_entropy": 0.981370135014339,
+        "row_count": 177
+      },
+      "control_metrics": {
+        "by_category": {
+          "card_reward": {
+            "action_agreement": 0.7307692307692307,
+            "mean_cross_entropy": 1.0413531263507898,
+            "row_count": 52
+          },
+          "event": {
+            "action_agreement": 1.0,
+            "mean_cross_entropy": 0.6710724416429732,
+            "row_count": 31
+          },
+          "route": {
+            "action_agreement": 0.6290322580645161,
+            "mean_cross_entropy": 0.7234576253103878,
+            "row_count": 62
+          },
+          "shop": {
+            "action_agreement": 0.78125,
+            "mean_cross_entropy": 1.6889607238593987,
+            "row_count": 32
+          }
+        },
+        "macro_category_action_agreement": 0.7852628722084367,
+        "macro_category_mean_cross_entropy": 1.0312109792908875,
+        "overall_action_agreement": 0.751412429378531,
+        "overall_mean_cross_entropy": 0.9822300801916276,
+        "row_count": 177
+      },
+      "delegation": {
+        "by_category": {
+          "event": {
+            "exact": true,
+            "mismatch_count": 0,
+            "row_count": 31
+          },
+          "shop": {
+            "exact": true,
+            "mismatch_count": 0,
+            "row_count": 32
+          }
+        },
+        "compared_fields": [
+          "candidate_action_ids",
+          "correct",
+          "predicted_action_id",
+          "probability_hexes",
+          "score_hexes",
+          "target_probability_hex"
+        ],
+        "exact": true,
+        "row_count": 63
+      },
+      "deltas": {
+        "by_category": {
+          "card_reward": {
+            "action_agreement": 0.0,
+            "mean_cross_entropy": -0.000994769288974906,
+            "row_count": 52
+          },
+          "event": {
+            "action_agreement": 0.0,
+            "mean_cross_entropy": 0.0,
+            "row_count": 31
+          },
+          "route": {
+            "action_agreement": -0.016129032258064502,
+            "mean_cross_entropy": -0.0016206821508611968,
+            "row_count": 62
+          },
+          "shop": {
+            "action_agreement": 0.0,
+            "mean_cross_entropy": 0.0,
+            "row_count": 32
+          }
+        },
+        "macro_category_action_agreement": -0.0040322580645161255,
+        "macro_category_mean_cross_entropy": -0.0006538628599590535,
+        "overall_action_agreement": -0.005649717514124242,
+        "overall_mean_cross_entropy": -0.0008599451772886013,
+        "row_count": 177
+      },
+      "fit_row_count": 693,
+      "fold": 1,
+      "heldout_row_count": 177,
+      "residual_diagnostics": {
+        "by_category": {
+          "card_reward": {
+            "candidate_logit_count": 208,
+            "max_abs": 0.004987940192222595,
+            "mean_abs": 0.0016866528444202582,
+            "rms": 0.002067126546314005
+          },
+          "route": {
+            "candidate_logit_count": 136,
+            "max_abs": 0.010619983077049255,
+            "mean_abs": 0.00334236794964561,
+            "rms": 0.00407836070084354
+          }
+        },
+        "overall": {
+          "candidate_logit_count": 344,
+          "max_abs": 0.010619983077049255,
+          "mean_abs": 0.0023412378860209787,
+          "rms": 0.003026471420823047
+        }
+      },
+      "residual_model_sha256": "2994b80ca871a89800913d74b01bda6cc51a56aa718cd1d175d9f6471829a7f7"
+    },
+    {
+      "base_immutable": true,
+      "base_model_sha256": "d3a1db90617182f2e4626aa3aa7d29811e17aa89db124898566bc4f8949d5ab3",
+      "candidate_metrics": {
+        "by_category": {
+          "card_reward": {
+            "action_agreement": 0.7045454545454546,
+            "mean_cross_entropy": 1.0764017819471137,
+            "row_count": 88
+          },
+          "event": {
+            "action_agreement": 0.9166666666666666,
+            "mean_cross_entropy": 0.6606525910361429,
+            "row_count": 36
+          },
+          "route": {
+            "action_agreement": 0.7142857142857143,
+            "mean_cross_entropy": 0.7731555621256218,
+            "row_count": 91
+          },
+          "shop": {
+            "action_agreement": 0.5405405405405406,
+            "mean_cross_entropy": 1.714413905269762,
+            "row_count": 37
+          }
+        },
+        "macro_category_action_agreement": 0.719009594009594,
+        "macro_category_mean_cross_entropy": 1.0561559600946602,
+        "overall_action_agreement": 0.7142857142857143,
+        "overall_mean_cross_entropy": 1.0011798441946824,
+        "row_count": 252
+      },
+      "control_metrics": {
+        "by_category": {
+          "card_reward": {
+            "action_agreement": 0.7045454545454546,
+            "mean_cross_entropy": 1.0773620718766483,
+            "row_count": 88
+          },
+          "event": {
+            "action_agreement": 0.9166666666666666,
+            "mean_cross_entropy": 0.6606525910361429,
+            "row_count": 36
+          },
+          "route": {
+            "action_agreement": 0.7142857142857143,
+            "mean_cross_entropy": 0.7745820909432972,
+            "row_count": 91
+          },
+          "shop": {
+            "action_agreement": 0.5405405405405406,
+            "mean_cross_entropy": 1.714413905269762,
+            "row_count": 37
+          }
+        },
+        "macro_category_action_agreement": 0.719009594009594,
+        "macro_category_mean_cross_entropy": 1.0567526647814627,
+        "overall_action_agreement": 0.7142857142857143,
+        "overall_mean_cross_entropy": 1.002030318941537,
+        "row_count": 252
+      },
+      "delegation": {
+        "by_category": {
+          "event": {
+            "exact": true,
+            "mismatch_count": 0,
+            "row_count": 36
+          },
+          "shop": {
+            "exact": true,
+            "mismatch_count": 0,
+            "row_count": 37
+          }
+        },
+        "compared_fields": [
+          "candidate_action_ids",
+          "correct",
+          "predicted_action_id",
+          "probability_hexes",
+          "score_hexes",
+          "target_probability_hex"
+        ],
+        "exact": true,
+        "row_count": 73
+      },
+      "deltas": {
+        "by_category": {
+          "card_reward": {
+            "action_agreement": 0.0,
+            "mean_cross_entropy": -0.0009602899295346745,
+            "row_count": 88
+          },
+          "event": {
+            "action_agreement": 0.0,
+            "mean_cross_entropy": 0.0,
+            "row_count": 36
+          },
+          "route": {
+            "action_agreement": 0.0,
+            "mean_cross_entropy": -0.0014265288176754654,
+            "row_count": 91
+          },
+          "shop": {
+            "action_agreement": 0.0,
+            "mean_cross_entropy": 0.0,
+            "row_count": 37
+          }
+        },
+        "macro_category_action_agreement": 0.0,
+        "macro_category_mean_cross_entropy": -0.0005967046868025072,
+        "overall_action_agreement": 0.0,
+        "overall_mean_cross_entropy": -0.0008504747468545126,
+        "row_count": 252
+      },
+      "fit_row_count": 618,
+      "fold": 2,
+      "heldout_row_count": 252,
+      "residual_diagnostics": {
+        "by_category": {
+          "card_reward": {
+            "candidate_logit_count": 353,
+            "max_abs": 0.005194944329559803,
+            "mean_abs": 0.0016820077613199252,
+            "rms": 0.002033500811353717
+          },
+          "route": {
+            "candidate_logit_count": 214,
+            "max_abs": 0.010197234340012074,
+            "mean_abs": 0.0029579636345184452,
+            "rms": 0.003883345377226048
+          }
+        },
+        "overall": {
+          "candidate_logit_count": 567,
+          "max_abs": 0.010197234340012074,
+          "mean_abs": 0.002163585463020954,
+          "rms": 0.0028750887667606502
+        }
+      },
+      "residual_model_sha256": "2d8ee2c1e75103ac161d896beecc2d1dc5c770b1a23d42cc36a7ba9a5db797fe"
+    },
+    {
+      "base_immutable": true,
+      "base_model_sha256": "8ec2bebdf69cdd1ab410e8680e300fa99361783f3f49fd6408414c5ee7fabcfd",
+      "candidate_metrics": {
+        "by_category": {
+          "card_reward": {
+            "action_agreement": 0.6981132075471698,
+            "mean_cross_entropy": 1.118385940957421,
+            "row_count": 53
+          },
+          "event": {
+            "action_agreement": 1.0,
+            "mean_cross_entropy": 0.6328736992620826,
+            "row_count": 29
+          },
+          "route": {
+            "action_agreement": 0.6458333333333334,
+            "mean_cross_entropy": 0.7652315161599961,
+            "row_count": 48
+          },
+          "shop": {
+            "action_agreement": 0.5555555555555556,
+            "mean_cross_entropy": 1.6667294622075894,
+            "row_count": 18
+          }
+        },
+        "macro_category_action_agreement": 0.7248755241090148,
+        "macro_category_mean_cross_entropy": 1.0458051546467724,
+        "overall_action_agreement": 0.722972972972973,
+        "overall_mean_cross_entropy": 0.9754056435456767,
+        "row_count": 148
+      },
+      "control_metrics": {
+        "by_category": {
+          "card_reward": {
+            "action_agreement": 0.6981132075471698,
+            "mean_cross_entropy": 1.1193963484319105,
+            "row_count": 53
+          },
+          "event": {
+            "action_agreement": 1.0,
+            "mean_cross_entropy": 0.6328736992620826,
+            "row_count": 29
+          },
+          "route": {
+            "action_agreement": 0.625,
+            "mean_cross_entropy": 0.7670791001294929,
+            "row_count": 48
+          },
+          "shop": {
+            "action_agreement": 0.5555555555555556,
+            "mean_cross_entropy": 1.6667294622075894,
+            "row_count": 18
+          }
+        },
+        "macro_category_action_agreement": 0.7196671907756813,
+        "macro_category_mean_cross_entropy": 1.046519652507769,
+        "overall_action_agreement": 0.7162162162162162,
+        "overall_mean_cross_entropy": 0.9763666950773242,
+        "row_count": 148
+      },
+      "delegation": {
+        "by_category": {
+          "event": {
+            "exact": true,
+            "mismatch_count": 0,
+            "row_count": 29
+          },
+          "shop": {
+            "exact": true,
+            "mismatch_count": 0,
+            "row_count": 18
+          }
+        },
+        "compared_fields": [
+          "candidate_action_ids",
+          "correct",
+          "predicted_action_id",
+          "probability_hexes",
+          "score_hexes",
+          "target_probability_hex"
+        ],
+        "exact": true,
+        "row_count": 47
+      },
+      "deltas": {
+        "by_category": {
+          "card_reward": {
+            "action_agreement": 0.0,
+            "mean_cross_entropy": -0.0010104074744894387,
+            "row_count": 53
+          },
+          "event": {
+            "action_agreement": 0.0,
+            "mean_cross_entropy": 0.0,
+            "row_count": 29
+          },
+          "route": {
+            "action_agreement": 0.02083333333333337,
+            "mean_cross_entropy": -0.0018475839694968021,
+            "row_count": 48
+          },
+          "shop": {
+            "action_agreement": 0.0,
+            "mean_cross_entropy": 0.0,
+            "row_count": 18
+          }
+        },
+        "macro_category_action_agreement": 0.005208333333333481,
+        "macro_category_mean_cross_entropy": -0.0007144978609965325,
+        "overall_action_agreement": 0.006756756756756799,
+        "overall_mean_cross_entropy": -0.0009610515316474944,
+        "row_count": 148
+      },
+      "fit_row_count": 722,
+      "fold": 3,
+      "heldout_row_count": 148,
+      "residual_diagnostics": {
+        "by_category": {
+          "card_reward": {
+            "candidate_logit_count": 213,
+            "max_abs": 0.00476139085367322,
+            "mean_abs": 0.0017501502200805892,
+            "rms": 0.002109707340824844
+          },
+          "route": {
+            "candidate_logit_count": 115,
+            "max_abs": 0.009156185202300549,
+            "mean_abs": 0.0032004125231532786,
+            "rms": 0.0039334797864431234
+          }
+        },
+        "overall": {
+          "candidate_logit_count": 328,
+          "max_abs": 0.009156185202300549,
+          "mean_abs": 0.002258626332438392,
+          "rms": 0.002883587138776128
+        }
+      },
+      "residual_model_sha256": "fb525327b84cfe5cca1396a0eaa1f7b5a8aa54a15aa55c0ac5019335ce6f8b2c"
+    }
+  ],
+  "registration_sha256": "eaf3e5f493d1686ca2cbff87571eee5ed1fa375c5e364a7d7d9cf7c568677676",
+  "residual_diagnostics": {
+    "by_category": {
+      "card_reward": {
+        "candidate_logit_count": 1200,
+        "max_abs": 0.005194944329559803,
+        "mean_abs": 0.0017412406751100206,
+        "rms": 0.002079698692481875
+      },
+      "route": {
+        "candidate_logit_count": 694,
+        "max_abs": 0.011594582349061966,
+        "mean_abs": 0.003138448797540084,
+        "rms": 0.003968595651609743
+      }
+    },
+    "overall": {
+      "candidate_logit_count": 1894,
+      "max_abs": 0.011594582349061966,
+      "mean_abs": 0.002253206058936031,
+      "rms": 0.002917422402899137
+    }
+  },
+  "schema_version": "noncombat-route-card-residual-metrics-v1",
+  "singleton_summary": {
+    "by_category": {
+      "card_reward": 0,
+      "event": 10,
+      "route": 391,
+      "shop": 20
+    },
+    "excluded_from_competence_metrics": true,
+    "row_count": 421,
+    "total_by_category": {
+      "card_reward": 302,
+      "event": 154,
+      "route": 691,
+      "shop": 144
+    },
+    "total_row_count": 1291
+  },
+  "train_dataset_sha256": "86cf82f7833ca6b7d3f4e58967f5768ef7292a2297d06af01819b783526227d0"
+}

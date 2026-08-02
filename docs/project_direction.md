@@ -23,8 +23,17 @@ aggregate selection gate: multi-candidate agreement fell from `70.00%` to
 `0.1924`. Route improved by `11.00` points in all four folds and card reward by
 `2.32` points overall, while event and shop regressed; the shop head predicted
 `leave` on all 124 held-out decisions. No model was selected and all authority
-remains false. The current objective is a narrower legacy-preserving
-route/card residual POC, not a fresh simulator study or formal non-combat RL.
+remains false.
+
+The terminal legacy-preserving route/card residual POC is now complete and is
+also a deterministic valid negative. Event/shop delegated exactly on 268 rows,
+the legacy base remained immutable, and replay matched, but card agreement did
+not change and route improved by only one net decision out of 300. Overall
+agreement delta was `+0.001149`, route delta `+0.003333`, and fold 1 regressed.
+No model was selected. Baseline-imitation model trials on this corpus are now
+closed; the current objective is a read-only state/action sufficiency and
+SimpleAgent teacher-suitability audit, not another model POC, fresh simulator
+study, or formal non-combat RL.
 
 ## Training Boundary
 
@@ -157,23 +166,26 @@ The next authorized sequence is:
 7. Treat SimpleAgent as temporary auxiliary supervision, preserve the full
    candidate action space, and keep Current/Bottled out of simulator training
    until their feature/action bridges are validated.
-8. If another train-only POC is pursued, freeze legacy event/shop behavior and
-   limit learning to a small route/card residual with per-fold agreement and
-   cross-entropy gates. It may use only the already observed train corpus and
-   makes no policy-quality claim.
-9. Consider formal RL only after a separately registered policy demonstrates a
+8. Preserve the completed route/card residual POC, its registration, canonical
+   artifacts, and valid negative verdict. Do not tune, rerun, or attempt a third
+   model on the observed train corpus.
+9. Audit state/action sufficiency and SimpleAgent teacher suitability read-only:
+   compare the teacher's actual route/card dependencies with adapter snapshots,
+   candidates, projections, and label aliasing before proposing any repair.
+10. Consider formal RL only after a separately registered policy demonstrates a
    credible baseline floor on untouched evidence. Permit later live work only
    through its existing crash/qualification gates.
 
 ## Work Lanes
 
-The primary lane is a bounded legacy-preserving route/card residual POC,
-motivated by the completed structured-ranker result and its read-only audit in
-`reports/noncombat_structured_baseline_ranker_poc_failure_audit_20260802.md`.
-Keep the legacy event/shop decisions fixed, preserve complete candidates, and
-require held-out agreement plus cross-entropy improvement in every seed fold.
-Do not spend fresh simulator cohorts until that implementation-fit gate passes.
-Simulated and live evidence remain separate.
+The primary lane is a read-only state/action sufficiency and SimpleAgent
+teacher-suitability audit, motivated by the two completed train-only negatives
+in `reports/noncombat_structured_baseline_ranker_poc_failure_audit_20260802.md`
+and
+`reports/noncombat_route_card_residual_ranker_poc_failure_audit_20260802.md`.
+Inspect source dependencies and existing corpus aliasing before changing the
+adapter, target, or training approach. Do not fit another model or spend fresh
+simulator cohorts under this lane. Simulated and live evidence remain separate.
 
 Live gameplay is a maintenance and registered-evaluation lane only. Launch it
 for a crash, stuck state, repeated A-class simulator/mechanics defect, or an
