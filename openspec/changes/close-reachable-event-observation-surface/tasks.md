@@ -13,9 +13,9 @@
 
 ## 3. Successor Contract Publication
 
-- [ ] 3.1 Create and independently verify a registration that binds the pushed audit implementation, Current and simulator sources, predecessor contract, failed cohort evidence, exact partition, output contract, and all-false authority
-- [ ] 3.2 Publish and strictly recompute the source-only reachable audit without loading a native module, reading a seed, launching gameplay, or fitting a model
-- [ ] 3.3 Generate and validate the successor contract with 25 explicit rules, 23 generic identities, 2 disabled identities, and 1 direct-transition identity, preserving predecessor bytes unchanged
+- [x] 3.1 Create and independently verify a registration that binds the pushed audit implementation, Current and simulator sources, predecessor contract, failed cohort evidence, exact partition, output contract, and all-false authority
+- [x] 3.2 Publish and strictly recompute the source-only reachable audit without loading a native module, reading a seed, launching gameplay, or fitting a model
+- [x] 3.3 Generate and validate the successor contract with 25 explicit rules, 23 generic identities, 2 disabled identities, and 1 direct-transition identity, preserving predecessor bytes unchanged
 - [ ] 3.4 Commit and push the canonical audit and successor contract before changing the production resolver path
 
 ## 4. Resolver And Bridge Closure

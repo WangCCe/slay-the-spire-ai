@@ -1,0 +1,121 @@
+{
+  "authority": {
+    "baseline_floor_authorized": false,
+    "formal_rl_readiness_authorized": false,
+    "fresh_evidence_authorized": false,
+    "gameplay_authorized": false,
+    "model_authorized": false,
+    "ope_authorized": false,
+    "policy_loading_authorized": false,
+    "promotion_authorized": false,
+    "qualification_authorized": false,
+    "reward_authorized": false,
+    "target_supported_outcome_authorized": false,
+    "training_authorized": false
+  },
+  "current": {
+    "class_name": "SimpleAgent",
+    "function_name": "_choose_event_option",
+    "repository_commit": "bcbfbdf706f2c936bca968fa8dc49b92985d6a30",
+    "source": {
+      "path": "spirecomm/ai/agent.py",
+      "sha256": "a495b56bcf2367b34e74cf679bbc8ae0a51c9509723236b2240c7577eef2a9f5",
+      "size_bytes": 230849
+    }
+  },
+  "expected_partition": {
+    "direct_transition_count": 1,
+    "event_option_target_count": 48,
+    "explicit_event_count": 25,
+    "generic_event_count": 23,
+    "pool_declared_count": 51,
+    "runtime_disabled_count": 2
+  },
+  "implementation": {
+    "commit": "bcbfbdf706f2c936bca968fa8dc49b92985d6a30",
+    "source_files": [
+      "analysis_scripts/noncombat_reachable_event_surface_audit.py",
+      "tests/test_noncombat_reachable_event_surface_audit.py"
+    ],
+    "source_sha256": "b7f80881e0754b9130c7d1d954da955a8c3d216cd338fb16ca509307886d542c"
+  },
+  "output": {
+    "artifact_names": [
+      "artifact_manifest.json",
+      "configuration.json",
+      "current_partition.json",
+      "metrics.json",
+      "pool_inventory.json",
+      "report.md",
+      "successor_contract.json",
+      "target_inventory.json"
+    ],
+    "directory": "reports/noncombat_reachable_event_surface_audit_20260803"
+  },
+  "predecessors": {
+    "compatibility_closeout": {
+      "path": "reports/noncombat_total_event_native_compatibility_20260803_closeout.md",
+      "sha256": "157250fab609e0cd31ee69e04977cb7762760d608bca40e987be6e9ee1043c82",
+      "size_bytes": 3884
+    },
+    "compatibility_journal": {
+      "path": "reports/noncombat_total_event_native_compatibility_20260803/execution_journal.json",
+      "sha256": "c980ffee9e2ec5f26435ec0a80f4f4bc82fa8bc045bfd40ff7a385b02ae3a810",
+      "size_bytes": 690
+    },
+    "compatibility_manifest": {
+      "path": "reports/noncombat_total_event_native_compatibility_20260803/artifact_manifest.json",
+      "sha256": "ebec5e749b337e4900a56f5d26c927e1b1089bbbde79cad1b52b5b05cc7483c1",
+      "size_bytes": 1608
+    },
+    "observation_contract": {
+      "path": "reports/noncombat_event_option_observation_contract_20260802/contract.json",
+      "sha256": "785e5db26d4cecaa843c7ee3e9e276fdc98c4b77b6a61e88f4520824a50bf3fc",
+      "size_bytes": 17272
+    }
+  },
+  "schema_version": "noncombat-reachable-event-surface-audit-input-v1",
+  "simulator": {
+    "dirty": true,
+    "parent_commit": "7476a81954020087da31d41d16fddf475746ec2d",
+    "root": "D:\\CLionProjects\\sts_lightspeed",
+    "source_file_count": 79,
+    "source_files": {
+      "display_labels": {
+        "path": "src/sim/ConsoleSimulator.cpp",
+        "sha256": "f17878b7579bdeb484387e890be3c7caaa42f76c3edd7f96eacb64656e5458b4",
+        "size_bytes": 38159
+      },
+      "event_definitions": {
+        "path": "include/constants/Events.h",
+        "sha256": "d558be77e7f187784a7eb66c21a537b458304d7dcbc934c6498d635a74cb97f1",
+        "size_bytes": 7182
+      },
+      "event_save_ids": {
+        "path": "include/constants/SaveFileMappings.h",
+        "sha256": "bff98a7990a58031f6d1f0ca87c420941125108f3c51b0bee4f197590d8091e5",
+        "size_bytes": 38316
+      },
+      "game_context": {
+        "path": "src/game/GameContext.cpp",
+        "sha256": "aad9fcf6db5a667858185256722065d61167393f891ee8a717e4e37b4c28a053",
+        "size_bytes": 118266
+      },
+      "game_header": {
+        "path": "include/game/GameContext.h",
+        "sha256": "854f20770857b64869d038c068735af5f1fb3da7d337046e95374adce950a9d6",
+        "size_bytes": 10315
+      },
+      "legal_actions": {
+        "path": "src/sim/search/GameAction.cpp",
+        "sha256": "8a84d545333b9a6a1a0b2bd8d5e705bd1821b940fa6799b52ebf4bcdd4638d9b",
+        "size_bytes": 26442
+      }
+    },
+    "source_sha256": "a3f98721ec37373b1b00aef660832a3307f0186ba0614d07a3b1e7de8ab2e46a",
+    "submodules": {
+      "json": "55f93686c01528224f448c19128836e7df245f72",
+      "pybind11": "8f68ecd32c8e18d3b064dbf0ea5fc31a6cb37e9a"
+    }
+  }
+}

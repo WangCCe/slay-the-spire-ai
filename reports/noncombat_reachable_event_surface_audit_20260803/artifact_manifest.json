@@ -1,0 +1,65 @@
+{
+  "artifact_bindings": {
+    "configuration.json": {
+      "path": "configuration.json",
+      "sha256": "566e66dadc8a232eb107c6c38836558b8bb4fae6a15ad9741a8d92e81a139b7d",
+      "size_bytes": 4843
+    },
+    "current_partition.json": {
+      "path": "current_partition.json",
+      "sha256": "67edb80bacf2995d6320ea25382679b38c06a0ed06d09eb1a6f5010f18c0b2cd",
+      "size_bytes": 13034
+    },
+    "metrics.json": {
+      "path": "metrics.json",
+      "sha256": "59a4f7a0b30bad0e902555178af04cf6dad713097d3d18c11dc93fdafc001b5f",
+      "size_bytes": 1113
+    },
+    "pool_inventory.json": {
+      "path": "pool_inventory.json",
+      "sha256": "53e031bfedfb88201ac6865e9dc3b92e38f97ac8c4d10f05405f47949ae8694e",
+      "size_bytes": 40944
+    },
+    "report.md": {
+      "path": "report.md",
+      "sha256": "274fd609e137a509592ca3046b77f31323a0e06ef706161d39daf6d56de78a0e",
+      "size_bytes": 506
+    },
+    "successor_contract.json": {
+      "path": "successor_contract.json",
+      "sha256": "46a1349443fcec4b224de6b2a5d07a5d5d829ee702a8f549cc3917cf85698d6e",
+      "size_bytes": 23649
+    },
+    "target_inventory.json": {
+      "path": "target_inventory.json",
+      "sha256": "3bba0923a70c696f5cb63d34d14b18bc508658332665cd2c7e175081e826210d",
+      "size_bytes": 126454
+    }
+  },
+  "authority": {
+    "baseline_floor_authorized": false,
+    "formal_rl_readiness_authorized": false,
+    "fresh_evidence_authorized": false,
+    "gameplay_authorized": false,
+    "model_authorized": false,
+    "ope_authorized": false,
+    "policy_loading_authorized": false,
+    "promotion_authorized": false,
+    "qualification_authorized": false,
+    "reward_authorized": false,
+    "target_supported_outcome_authorized": false,
+    "training_authorized": false
+  },
+  "counts": {
+    "direct_transition_count": 1,
+    "event_option_target_count": 48,
+    "explicit_event_count": 25,
+    "generic_event_count": 23,
+    "pool_declared_count": 51,
+    "runtime_disabled_count": 2
+  },
+  "registration_sha256": "28a3346b16b037dd915d7b1704ae1cb935bc08de6326466416d6833812951a82",
+  "schema_version": "noncombat-reachable-event-surface-manifest-v1",
+  "successor_contract_sha256": "46a1349443fcec4b224de6b2a5d07a5d5d829ee702a8f549cc3917cf85698d6e",
+  "verdict": "reachable_event_surface_closed"
+}

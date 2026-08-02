@@ -1,0 +1,1574 @@
+{
+  "declaration_count": 7,
+  "declarations": [
+    {
+      "declared_count": 14,
+      "events": [
+        "OMINOUS_FORGE",
+        "BONFIRE_SPIRITS",
+        "DESIGNER_IN_SPIRE",
+        "DUPLICATOR",
+        "FACE_TRADER",
+        "THE_DIVINE_FOUNTAIN",
+        "KNOWING_SKULL",
+        "LAB",
+        "NLOTH",
+        "NOTE_FOR_YOURSELF",
+        "SECRET_PORTAL",
+        "THE_JOUST",
+        "WE_MEET_AGAIN",
+        "THE_WOMAN_IN_BLUE"
+      ],
+      "line_end": 195,
+      "line_start": 195,
+      "scope": "EventPools::oneTimeEventsAsc0",
+      "source_sha256": "ad5e41bbab2a1a7ed4dc7703e87a7ac5fe0dc003cd0aadf75f4c664738fb88b5"
+    },
+    {
+      "declared_count": 11,
+      "events": [
+        "BIG_FISH",
+        "THE_CLERIC",
+        "DEAD_ADVENTURER",
+        "GOLDEN_IDOL",
+        "WING_STATUE",
+        "WORLD_OF_GOOP",
+        "THE_SSSSSERPENT",
+        "LIVING_WALL",
+        "HYPNOTIZING_COLORED_MUSHROOMS",
+        "SCRAP_OOZE",
+        "SHINING_LIGHT"
+      ],
+      "line_end": 199,
+      "line_start": 199,
+      "scope": "EventPools::Act1::events",
+      "source_sha256": "d5e750aa5b32c623d3f2f9261d7a3b53a9c653280ff55684f69823f37c37d7c4"
+    },
+    {
+      "declared_count": 6,
+      "events": [
+        "MATCH_AND_KEEP",
+        "GOLDEN_SHRINE",
+        "TRANSMORGRIFIER",
+        "PURIFIER",
+        "UPGRADE_SHRINE",
+        "WHEEL_OF_CHANGE"
+      ],
+      "line_end": 200,
+      "line_start": 200,
+      "scope": "EventPools::Act1::shrines",
+      "source_sha256": "49b5fec530b1bea1f8990d0f0299363ca50de59520c7884840f9a09f55c675a9"
+    },
+    {
+      "declared_count": 13,
+      "events": [
+        "PLEADING_VAGRANT",
+        "ANCIENT_WRITING",
+        "OLD_BEGGAR",
+        "COLOSSEUM",
+        "CURSED_TOME",
+        "AUGMENTER",
+        "FORGOTTEN_ALTAR",
+        "GHOSTS",
+        "MASKED_BANDITS",
+        "THE_NEST",
+        "THE_LIBRARY",
+        "THE_MAUSOLEUM",
+        "VAMPIRES"
+      ],
+      "line_end": 204,
+      "line_start": 204,
+      "scope": "EventPools::Act2::events",
+      "source_sha256": "3ffc4322ebe154f2a774a6f116b9641717d5b061ef0a55c6a27f84371f767d5d"
+    },
+    {
+      "declared_count": 6,
+      "events": [
+        "MATCH_AND_KEEP",
+        "WHEEL_OF_CHANGE",
+        "GOLDEN_SHRINE",
+        "TRANSMORGRIFIER",
+        "PURIFIER",
+        "UPGRADE_SHRINE"
+      ],
+      "line_end": 205,
+      "line_start": 205,
+      "scope": "EventPools::Act2::shrines",
+      "source_sha256": "aa0b053358bfcd3135e77cf8fb18cdc39ca7a831d3ffeb2b98cb87261c49128d"
+    },
+    {
+      "declared_count": 7,
+      "events": [
+        "FALLING",
+        "MINDBLOOM",
+        "THE_MOAI_HEAD",
+        "MYSTERIOUS_SPHERE",
+        "SENSORY_STONE",
+        "TOMB_OF_LORD_RED_MASK",
+        "WINDING_HALLS"
+      ],
+      "line_end": 209,
+      "line_start": 209,
+      "scope": "EventPools::Act3::events",
+      "source_sha256": "2498e77c2cbcf256fc5928166f501d12c0aacbe1620fee9108456430c97b24bd"
+    },
+    {
+      "declared_count": 6,
+      "events": [
+        "MATCH_AND_KEEP",
+        "WHEEL_OF_CHANGE",
+        "GOLDEN_SHRINE",
+        "TRANSMORGRIFIER",
+        "PURIFIER",
+        "UPGRADE_SHRINE"
+      ],
+      "line_end": 210,
+      "line_start": 210,
+      "scope": "EventPools::Act3::shrines",
+      "source_sha256": "aa0b053358bfcd3135e77cf8fb18cdc39ca7a831d3ffeb2b98cb87261c49128d"
+    }
+  ],
+  "events": [
+    {
+      "event_game_name": "Ancient Writing",
+      "partition": "explicit",
+      "pool_memberships": [
+        "EventPools::Act2::events"
+      ],
+      "save_id": "Back to Basics",
+      "source_refs": {
+        "enum": {
+          "line": 22,
+          "path": "include/constants/Events.h"
+        },
+        "event_game_name": {
+          "line": 142,
+          "path": "include/constants/Events.h"
+        },
+        "event_id": {
+          "line": 82,
+          "path": "include/constants/Events.h"
+        },
+        "save_id": {
+          "line": 587,
+          "path": "include/constants/SaveFileMappings.h"
+        }
+      },
+      "upstream_enum": "ANCIENT_WRITING",
+      "upstream_event_id": "Back to Basics"
+    },
+    {
+      "event_game_name": "Augmenter",
+      "partition": "explicit",
+      "pool_memberships": [
+        "EventPools::Act2::events"
+      ],
+      "save_id": "Drug Dealer",
+      "source_refs": {
+        "enum": {
+          "line": 30,
+          "path": "include/constants/Events.h"
+        },
+        "event_game_name": {
+          "line": 150,
+          "path": "include/constants/Events.h"
+        },
+        "event_id": {
+          "line": 90,
+          "path": "include/constants/Events.h"
+        },
+        "save_id": {
+          "line": 595,
+          "path": "include/constants/SaveFileMappings.h"
+        }
+      },
+      "upstream_enum": "AUGMENTER",
+      "upstream_event_id": "Drug Dealer"
+    },
+    {
+      "event_game_name": "Big Fish",
+      "partition": "explicit",
+      "pool_memberships": [
+        "EventPools::Act1::events"
+      ],
+      "save_id": "Big Fish",
+      "source_refs": {
+        "enum": {
+          "line": 24,
+          "path": "include/constants/Events.h"
+        },
+        "event_game_name": {
+          "line": 144,
+          "path": "include/constants/Events.h"
+        },
+        "event_id": {
+          "line": 84,
+          "path": "include/constants/Events.h"
+        },
+        "save_id": {
+          "line": 589,
+          "path": "include/constants/SaveFileMappings.h"
+        }
+      },
+      "upstream_enum": "BIG_FISH",
+      "upstream_event_id": "Big Fish"
+    },
+    {
+      "event_game_name": "Bonfire Spirits",
+      "partition": "direct_transition",
+      "pool_memberships": [
+        "EventPools::oneTimeEventsAsc0"
+      ],
+      "save_id": "Bonfire Elementals",
+      "source_refs": {
+        "enum": {
+          "line": 25,
+          "path": "include/constants/Events.h"
+        },
+        "event_game_name": {
+          "line": 145,
+          "path": "include/constants/Events.h"
+        },
+        "event_id": {
+          "line": 85,
+          "path": "include/constants/Events.h"
+        },
+        "save_id": {
+          "line": 590,
+          "path": "include/constants/SaveFileMappings.h"
+        }
+      },
+      "upstream_enum": "BONFIRE_SPIRITS",
+      "upstream_event_id": "Bonfire Elementals"
+    },
+    {
+      "event_game_name": "The Colosseum",
+      "partition": "runtime_disabled",
+      "pool_memberships": [
+        "EventPools::Act2::events"
+      ],
+      "save_id": "Colosseum",
+      "source_refs": {
+        "enum": {
+          "line": 26,
+          "path": "include/constants/Events.h"
+        },
+        "event_game_name": {
+          "line": 146,
+          "path": "include/constants/Events.h"
+        },
+        "event_id": {
+          "line": 86,
+          "path": "include/constants/Events.h"
+        },
+        "save_id": {
+          "line": 591,
+          "path": "include/constants/SaveFileMappings.h"
+        }
+      },
+      "upstream_enum": "COLOSSEUM",
+      "upstream_event_id": "Colosseum"
+    },
+    {
+      "event_game_name": "Cursed Tome",
+      "partition": "explicit",
+      "pool_memberships": [
+        "EventPools::Act2::events"
+      ],
+      "save_id": "Cursed Tome",
+      "source_refs": {
+        "enum": {
+          "line": 27,
+          "path": "include/constants/Events.h"
+        },
+        "event_game_name": {
+          "line": 147,
+          "path": "include/constants/Events.h"
+        },
+        "event_id": {
+          "line": 87,
+          "path": "include/constants/Events.h"
+        },
+        "save_id": {
+          "line": 592,
+          "path": "include/constants/SaveFileMappings.h"
+        }
+      },
+      "upstream_enum": "CURSED_TOME",
+      "upstream_event_id": "Cursed Tome"
+    },
+    {
+      "event_game_name": "Dead Adventurer",
+      "partition": "explicit",
+      "pool_memberships": [
+        "EventPools::Act1::events"
+      ],
+      "save_id": "Dead Adventurer",
+      "source_refs": {
+        "enum": {
+          "line": 28,
+          "path": "include/constants/Events.h"
+        },
+        "event_game_name": {
+          "line": 148,
+          "path": "include/constants/Events.h"
+        },
+        "event_id": {
+          "line": 88,
+          "path": "include/constants/Events.h"
+        },
+        "save_id": {
+          "line": 593,
+          "path": "include/constants/SaveFileMappings.h"
+        }
+      },
+      "upstream_enum": "DEAD_ADVENTURER",
+      "upstream_event_id": "Dead Adventurer"
+    },
+    {
+      "event_game_name": "Designer In-Spire",
+      "partition": "generic",
+      "pool_memberships": [
+        "EventPools::oneTimeEventsAsc0"
+      ],
+      "save_id": "Designer",
+      "source_refs": {
+        "enum": {
+          "line": 29,
+          "path": "include/constants/Events.h"
+        },
+        "event_game_name": {
+          "line": 149,
+          "path": "include/constants/Events.h"
+        },
+        "event_id": {
+          "line": 89,
+          "path": "include/constants/Events.h"
+        },
+        "save_id": {
+          "line": 594,
+          "path": "include/constants/SaveFileMappings.h"
+        }
+      },
+      "upstream_enum": "DESIGNER_IN_SPIRE",
+      "upstream_event_id": "Designer"
+    },
+    {
+      "event_game_name": "Duplicator",
+      "partition": "generic",
+      "pool_memberships": [
+        "EventPools::oneTimeEventsAsc0"
+      ],
+      "save_id": "Duplicator",
+      "source_refs": {
+        "enum": {
+          "line": 31,
+          "path": "include/constants/Events.h"
+        },
+        "event_game_name": {
+          "line": 151,
+          "path": "include/constants/Events.h"
+        },
+        "event_id": {
+          "line": 91,
+          "path": "include/constants/Events.h"
+        },
+        "save_id": {
+          "line": 596,
+          "path": "include/constants/SaveFileMappings.h"
+        }
+      },
+      "upstream_enum": "DUPLICATOR",
+      "upstream_event_id": "Duplicator"
+    },
+    {
+      "event_game_name": "Face Trader",
+      "partition": "explicit",
+      "pool_memberships": [
+        "EventPools::oneTimeEventsAsc0"
+      ],
+      "save_id": "FaceTrader",
+      "source_refs": {
+        "enum": {
+          "line": 32,
+          "path": "include/constants/Events.h"
+        },
+        "event_game_name": {
+          "line": 152,
+          "path": "include/constants/Events.h"
+        },
+        "event_id": {
+          "line": 92,
+          "path": "include/constants/Events.h"
+        },
+        "save_id": {
+          "line": 597,
+          "path": "include/constants/SaveFileMappings.h"
+        }
+      },
+      "upstream_enum": "FACE_TRADER",
+      "upstream_event_id": "Face Trader"
+    },
+    {
+      "event_game_name": "Falling",
+      "partition": "generic",
+      "pool_memberships": [
+        "EventPools::Act3::events"
+      ],
+      "save_id": "Falling",
+      "source_refs": {
+        "enum": {
+          "line": 33,
+          "path": "include/constants/Events.h"
+        },
+        "event_game_name": {
+          "line": 153,
+          "path": "include/constants/Events.h"
+        },
+        "event_id": {
+          "line": 93,
+          "path": "include/constants/Events.h"
+        },
+        "save_id": {
+          "line": 598,
+          "path": "include/constants/SaveFileMappings.h"
+        }
+      },
+      "upstream_enum": "FALLING",
+      "upstream_event_id": "Falling"
+    },
+    {
+      "event_game_name": "Forgotten Altar",
+      "partition": "explicit",
+      "pool_memberships": [
+        "EventPools::Act2::events"
+      ],
+      "save_id": "Forgotten Altar",
+      "source_refs": {
+        "enum": {
+          "line": 34,
+          "path": "include/constants/Events.h"
+        },
+        "event_game_name": {
+          "line": 154,
+          "path": "include/constants/Events.h"
+        },
+        "event_id": {
+          "line": 94,
+          "path": "include/constants/Events.h"
+        },
+        "save_id": {
+          "line": 599,
+          "path": "include/constants/SaveFileMappings.h"
+        }
+      },
+      "upstream_enum": "FORGOTTEN_ALTAR",
+      "upstream_event_id": "Forgotten Altar"
+    },
+    {
+      "event_game_name": "Council of Ghosts",
+      "partition": "explicit",
+      "pool_memberships": [
+        "EventPools::Act2::events"
+      ],
+      "save_id": "Ghosts",
+      "source_refs": {
+        "enum": {
+          "line": 36,
+          "path": "include/constants/Events.h"
+        },
+        "event_game_name": {
+          "line": 156,
+          "path": "include/constants/Events.h"
+        },
+        "event_id": {
+          "line": 96,
+          "path": "include/constants/Events.h"
+        },
+        "save_id": {
+          "line": 601,
+          "path": "include/constants/SaveFileMappings.h"
+        }
+      },
+      "upstream_enum": "GHOSTS",
+      "upstream_event_id": "Ghosts"
+    },
+    {
+      "event_game_name": "Golden Idol",
+      "partition": "explicit",
+      "pool_memberships": [
+        "EventPools::Act1::events"
+      ],
+      "save_id": "Golden Idol",
+      "source_refs": {
+        "enum": {
+          "line": 37,
+          "path": "include/constants/Events.h"
+        },
+        "event_game_name": {
+          "line": 157,
+          "path": "include/constants/Events.h"
+        },
+        "event_id": {
+          "line": 97,
+          "path": "include/constants/Events.h"
+        },
+        "save_id": {
+          "line": 602,
+          "path": "include/constants/SaveFileMappings.h"
+        }
+      },
+      "upstream_enum": "GOLDEN_IDOL",
+      "upstream_event_id": "Golden Idol"
+    },
+    {
+      "event_game_name": "Golden Shrine",
+      "partition": "explicit",
+      "pool_memberships": [
+        "EventPools::Act1::shrines",
+        "EventPools::Act2::shrines",
+        "EventPools::Act3::shrines"
+      ],
+      "save_id": "Golden Shrine",
+      "source_refs": {
+        "enum": {
+          "line": 38,
+          "path": "include/constants/Events.h"
+        },
+        "event_game_name": {
+          "line": 158,
+          "path": "include/constants/Events.h"
+        },
+        "event_id": {
+          "line": 98,
+          "path": "include/constants/Events.h"
+        },
+        "save_id": {
+          "line": 603,
+          "path": "include/constants/SaveFileMappings.h"
+        }
+      },
+      "upstream_enum": "GOLDEN_SHRINE",
+      "upstream_event_id": "Golden Shrine"
+    },
+    {
+      "event_game_name": "Hypnotizing Colored Mushrooms",
+      "partition": "explicit",
+      "pool_memberships": [
+        "EventPools::Act1::events"
+      ],
+      "save_id": "Mushrooms",
+      "source_refs": {
+        "enum": {
+          "line": 47,
+          "path": "include/constants/Events.h"
+        },
+        "event_game_name": {
+          "line": 167,
+          "path": "include/constants/Events.h"
+        },
+        "event_id": {
+          "line": 107,
+          "path": "include/constants/Events.h"
+        },
+        "save_id": {
+          "line": 612,
+          "path": "include/constants/SaveFileMappings.h"
+        }
+      },
+      "upstream_enum": "HYPNOTIZING_COLORED_MUSHROOMS",
+      "upstream_event_id": "Mushrooms"
+    },
+    {
+      "event_game_name": "Knowing Skull",
+      "partition": "explicit",
+      "pool_memberships": [
+        "EventPools::oneTimeEventsAsc0"
+      ],
+      "save_id": "Knowing Skull",
+      "source_refs": {
+        "enum": {
+          "line": 40,
+          "path": "include/constants/Events.h"
+        },
+        "event_game_name": {
+          "line": 160,
+          "path": "include/constants/Events.h"
+        },
+        "event_id": {
+          "line": 100,
+          "path": "include/constants/Events.h"
+        },
+        "save_id": {
+          "line": 605,
+          "path": "include/constants/SaveFileMappings.h"
+        }
+      },
+      "upstream_enum": "KNOWING_SKULL",
+      "upstream_event_id": "Knowing Skull"
+    },
+    {
+      "event_game_name": "Lab",
+      "partition": "generic",
+      "pool_memberships": [
+        "EventPools::oneTimeEventsAsc0"
+      ],
+      "save_id": "Lab",
+      "source_refs": {
+        "enum": {
+          "line": 41,
+          "path": "include/constants/Events.h"
+        },
+        "event_game_name": {
+          "line": 161,
+          "path": "include/constants/Events.h"
+        },
+        "event_id": {
+          "line": 101,
+          "path": "include/constants/Events.h"
+        },
+        "save_id": {
+          "line": 606,
+          "path": "include/constants/SaveFileMappings.h"
+        }
+      },
+      "upstream_enum": "LAB",
+      "upstream_event_id": "Lab"
+    },
+    {
+      "event_game_name": "Living Wall",
+      "partition": "explicit",
+      "pool_memberships": [
+        "EventPools::Act1::events"
+      ],
+      "save_id": "Living Wall",
+      "source_refs": {
+        "enum": {
+          "line": 43,
+          "path": "include/constants/Events.h"
+        },
+        "event_game_name": {
+          "line": 163,
+          "path": "include/constants/Events.h"
+        },
+        "event_id": {
+          "line": 103,
+          "path": "include/constants/Events.h"
+        },
+        "save_id": {
+          "line": 608,
+          "path": "include/constants/SaveFileMappings.h"
+        }
+      },
+      "upstream_enum": "LIVING_WALL",
+      "upstream_event_id": "Living Wall"
+    },
+    {
+      "event_game_name": "Masked Bandits",
+      "partition": "explicit",
+      "pool_memberships": [
+        "EventPools::Act2::events"
+      ],
+      "save_id": "Masked Bandits",
+      "source_refs": {
+        "enum": {
+          "line": 44,
+          "path": "include/constants/Events.h"
+        },
+        "event_game_name": {
+          "line": 164,
+          "path": "include/constants/Events.h"
+        },
+        "event_id": {
+          "line": 104,
+          "path": "include/constants/Events.h"
+        },
+        "save_id": {
+          "line": 609,
+          "path": "include/constants/SaveFileMappings.h"
+        }
+      },
+      "upstream_enum": "MASKED_BANDITS",
+      "upstream_event_id": "Masked Bandits"
+    },
+    {
+      "event_game_name": "Match and Keep",
+      "partition": "runtime_disabled",
+      "pool_memberships": [
+        "EventPools::Act1::shrines",
+        "EventPools::Act2::shrines",
+        "EventPools::Act3::shrines"
+      ],
+      "save_id": "Match and Keep",
+      "source_refs": {
+        "enum": {
+          "line": 45,
+          "path": "include/constants/Events.h"
+        },
+        "event_game_name": {
+          "line": 165,
+          "path": "include/constants/Events.h"
+        },
+        "event_id": {
+          "line": 105,
+          "path": "include/constants/Events.h"
+        },
+        "save_id": {
+          "line": 610,
+          "path": "include/constants/SaveFileMappings.h"
+        }
+      },
+      "upstream_enum": "MATCH_AND_KEEP",
+      "upstream_event_id": "Match and Keep"
+    },
+    {
+      "event_game_name": "Mindbloom",
+      "partition": "explicit",
+      "pool_memberships": [
+        "EventPools::Act3::events"
+      ],
+      "save_id": "MindBloom",
+      "source_refs": {
+        "enum": {
+          "line": 46,
+          "path": "include/constants/Events.h"
+        },
+        "event_game_name": {
+          "line": 166,
+          "path": "include/constants/Events.h"
+        },
+        "event_id": {
+          "line": 106,
+          "path": "include/constants/Events.h"
+        },
+        "save_id": {
+          "line": 611,
+          "path": "include/constants/SaveFileMappings.h"
+        }
+      },
+      "upstream_enum": "MINDBLOOM",
+      "upstream_event_id": "Mindbloom"
+    },
+    {
+      "event_game_name": "Mysterious Sphere",
+      "partition": "explicit",
+      "pool_memberships": [
+        "EventPools::Act3::events"
+      ],
+      "save_id": "Mysterious Sphere",
+      "source_refs": {
+        "enum": {
+          "line": 48,
+          "path": "include/constants/Events.h"
+        },
+        "event_game_name": {
+          "line": 168,
+          "path": "include/constants/Events.h"
+        },
+        "event_id": {
+          "line": 108,
+          "path": "include/constants/Events.h"
+        },
+        "save_id": {
+          "line": 613,
+          "path": "include/constants/SaveFileMappings.h"
+        }
+      },
+      "upstream_enum": "MYSTERIOUS_SPHERE",
+      "upstream_event_id": "Mysterious Sphere"
+    },
+    {
+      "event_game_name": "N'loth",
+      "partition": "explicit",
+      "pool_memberships": [
+        "EventPools::oneTimeEventsAsc0"
+      ],
+      "save_id": "N'loth",
+      "source_refs": {
+        "enum": {
+          "line": 50,
+          "path": "include/constants/Events.h"
+        },
+        "event_game_name": {
+          "line": 170,
+          "path": "include/constants/Events.h"
+        },
+        "event_id": {
+          "line": 110,
+          "path": "include/constants/Events.h"
+        },
+        "save_id": {
+          "line": 615,
+          "path": "include/constants/SaveFileMappings.h"
+        }
+      },
+      "upstream_enum": "NLOTH",
+      "upstream_event_id": "Nloth"
+    },
+    {
+      "event_game_name": "Note For Yourself",
+      "partition": "explicit",
+      "pool_memberships": [
+        "EventPools::oneTimeEventsAsc0"
+      ],
+      "save_id": "NoteForYourself",
+      "source_refs": {
+        "enum": {
+          "line": 51,
+          "path": "include/constants/Events.h"
+        },
+        "event_game_name": {
+          "line": 171,
+          "path": "include/constants/Events.h"
+        },
+        "event_id": {
+          "line": 111,
+          "path": "include/constants/Events.h"
+        },
+        "save_id": {
+          "line": 616,
+          "path": "include/constants/SaveFileMappings.h"
+        }
+      },
+      "upstream_enum": "NOTE_FOR_YOURSELF",
+      "upstream_event_id": "Note For Yourself"
+    },
+    {
+      "event_game_name": "Old Beggar",
+      "partition": "generic",
+      "pool_memberships": [
+        "EventPools::Act2::events"
+      ],
+      "save_id": "Beggar",
+      "source_refs": {
+        "enum": {
+          "line": 23,
+          "path": "include/constants/Events.h"
+        },
+        "event_game_name": {
+          "line": 143,
+          "path": "include/constants/Events.h"
+        },
+        "event_id": {
+          "line": 83,
+          "path": "include/constants/Events.h"
+        },
+        "save_id": {
+          "line": 588,
+          "path": "include/constants/SaveFileMappings.h"
+        }
+      },
+      "upstream_enum": "OLD_BEGGAR",
+      "upstream_event_id": "Beggar"
+    },
+    {
+      "event_game_name": "Ominous Forge",
+      "partition": "generic",
+      "pool_memberships": [
+        "EventPools::oneTimeEventsAsc0"
+      ],
+      "save_id": "Accursed Blacksmith",
+      "source_refs": {
+        "enum": {
+          "line": 20,
+          "path": "include/constants/Events.h"
+        },
+        "event_game_name": {
+          "line": 140,
+          "path": "include/constants/Events.h"
+        },
+        "event_id": {
+          "line": 80,
+          "path": "include/constants/Events.h"
+        },
+        "save_id": {
+          "line": 585,
+          "path": "include/constants/SaveFileMappings.h"
+        }
+      },
+      "upstream_enum": "OMINOUS_FORGE",
+      "upstream_event_id": "Accursed Blacksmith"
+    },
+    {
+      "event_game_name": "Pleading Vagrant",
+      "partition": "generic",
+      "pool_memberships": [
+        "EventPools::Act2::events"
+      ],
+      "save_id": "Addict",
+      "source_refs": {
+        "enum": {
+          "line": 21,
+          "path": "include/constants/Events.h"
+        },
+        "event_game_name": {
+          "line": 141,
+          "path": "include/constants/Events.h"
+        },
+        "event_id": {
+          "line": 81,
+          "path": "include/constants/Events.h"
+        },
+        "save_id": {
+          "line": 586,
+          "path": "include/constants/SaveFileMappings.h"
+        }
+      },
+      "upstream_enum": "PLEADING_VAGRANT",
+      "upstream_event_id": "Addict"
+    },
+    {
+      "event_game_name": "Purifier",
+      "partition": "generic",
+      "pool_memberships": [
+        "EventPools::Act1::shrines",
+        "EventPools::Act2::shrines",
+        "EventPools::Act3::shrines"
+      ],
+      "save_id": "Purifier",
+      "source_refs": {
+        "enum": {
+          "line": 52,
+          "path": "include/constants/Events.h"
+        },
+        "event_game_name": {
+          "line": 172,
+          "path": "include/constants/Events.h"
+        },
+        "event_id": {
+          "line": 112,
+          "path": "include/constants/Events.h"
+        },
+        "save_id": {
+          "line": 617,
+          "path": "include/constants/SaveFileMappings.h"
+        }
+      },
+      "upstream_enum": "PURIFIER",
+      "upstream_event_id": "Purifier"
+    },
+    {
+      "event_game_name": "Scrap Ooze",
+      "partition": "generic",
+      "pool_memberships": [
+        "EventPools::Act1::events"
+      ],
+      "save_id": "Scrap Ooze",
+      "source_refs": {
+        "enum": {
+          "line": 53,
+          "path": "include/constants/Events.h"
+        },
+        "event_game_name": {
+          "line": 173,
+          "path": "include/constants/Events.h"
+        },
+        "event_id": {
+          "line": 113,
+          "path": "include/constants/Events.h"
+        },
+        "save_id": {
+          "line": 618,
+          "path": "include/constants/SaveFileMappings.h"
+        }
+      },
+      "upstream_enum": "SCRAP_OOZE",
+      "upstream_event_id": "Scrap Ooze"
+    },
+    {
+      "event_game_name": "Secret Portal",
+      "partition": "generic",
+      "pool_memberships": [
+        "EventPools::oneTimeEventsAsc0"
+      ],
+      "save_id": "SecretPortal",
+      "source_refs": {
+        "enum": {
+          "line": 54,
+          "path": "include/constants/Events.h"
+        },
+        "event_game_name": {
+          "line": 174,
+          "path": "include/constants/Events.h"
+        },
+        "event_id": {
+          "line": 114,
+          "path": "include/constants/Events.h"
+        },
+        "save_id": {
+          "line": 619,
+          "path": "include/constants/SaveFileMappings.h"
+        }
+      },
+      "upstream_enum": "SECRET_PORTAL",
+      "upstream_event_id": "Secret Portal"
+    },
+    {
+      "event_game_name": "Sensory Stone",
+      "partition": "generic",
+      "pool_memberships": [
+        "EventPools::Act3::events"
+      ],
+      "save_id": "Sensory Stone",
+      "source_refs": {
+        "enum": {
+          "line": 55,
+          "path": "include/constants/Events.h"
+        },
+        "event_game_name": {
+          "line": 175,
+          "path": "include/constants/Events.h"
+        },
+        "event_id": {
+          "line": 115,
+          "path": "include/constants/Events.h"
+        },
+        "save_id": {
+          "line": 620,
+          "path": "include/constants/SaveFileMappings.h"
+        }
+      },
+      "upstream_enum": "SENSORY_STONE",
+      "upstream_event_id": "Sensory Stone"
+    },
+    {
+      "event_game_name": "Shining Light",
+      "partition": "explicit",
+      "pool_memberships": [
+        "EventPools::Act1::events"
+      ],
+      "save_id": "Shining Light",
+      "source_refs": {
+        "enum": {
+          "line": 56,
+          "path": "include/constants/Events.h"
+        },
+        "event_game_name": {
+          "line": 176,
+          "path": "include/constants/Events.h"
+        },
+        "event_id": {
+          "line": 116,
+          "path": "include/constants/Events.h"
+        },
+        "save_id": {
+          "line": 621,
+          "path": "include/constants/SaveFileMappings.h"
+        }
+      },
+      "upstream_enum": "SHINING_LIGHT",
+      "upstream_event_id": "Shining Light"
+    },
+    {
+      "event_game_name": "The Cleric",
+      "partition": "explicit",
+      "pool_memberships": [
+        "EventPools::Act1::events"
+      ],
+      "save_id": "The Cleric",
+      "source_refs": {
+        "enum": {
+          "line": 57,
+          "path": "include/constants/Events.h"
+        },
+        "event_game_name": {
+          "line": 177,
+          "path": "include/constants/Events.h"
+        },
+        "event_id": {
+          "line": 117,
+          "path": "include/constants/Events.h"
+        },
+        "save_id": {
+          "line": 622,
+          "path": "include/constants/SaveFileMappings.h"
+        }
+      },
+      "upstream_enum": "THE_CLERIC",
+      "upstream_event_id": "The Cleric"
+    },
+    {
+      "event_game_name": "The Divine Fountain",
+      "partition": "generic",
+      "pool_memberships": [
+        "EventPools::oneTimeEventsAsc0"
+      ],
+      "save_id": "Fountain of Cleansing",
+      "source_refs": {
+        "enum": {
+          "line": 35,
+          "path": "include/constants/Events.h"
+        },
+        "event_game_name": {
+          "line": 155,
+          "path": "include/constants/Events.h"
+        },
+        "event_id": {
+          "line": 95,
+          "path": "include/constants/Events.h"
+        },
+        "save_id": {
+          "line": 600,
+          "path": "include/constants/SaveFileMappings.h"
+        }
+      },
+      "upstream_enum": "THE_DIVINE_FOUNTAIN",
+      "upstream_event_id": "Fountain of Cleansing"
+    },
+    {
+      "event_game_name": "The Joust",
+      "partition": "generic",
+      "pool_memberships": [
+        "EventPools::oneTimeEventsAsc0"
+      ],
+      "save_id": "The Joust",
+      "source_refs": {
+        "enum": {
+          "line": 58,
+          "path": "include/constants/Events.h"
+        },
+        "event_game_name": {
+          "line": 178,
+          "path": "include/constants/Events.h"
+        },
+        "event_id": {
+          "line": 118,
+          "path": "include/constants/Events.h"
+        },
+        "save_id": {
+          "line": 623,
+          "path": "include/constants/SaveFileMappings.h"
+        }
+      },
+      "upstream_enum": "THE_JOUST",
+      "upstream_event_id": "The Joust"
+    },
+    {
+      "event_game_name": "The Library",
+      "partition": "explicit",
+      "pool_memberships": [
+        "EventPools::Act2::events"
+      ],
+      "save_id": "The Library",
+      "source_refs": {
+        "enum": {
+          "line": 59,
+          "path": "include/constants/Events.h"
+        },
+        "event_game_name": {
+          "line": 179,
+          "path": "include/constants/Events.h"
+        },
+        "event_id": {
+          "line": 119,
+          "path": "include/constants/Events.h"
+        },
+        "save_id": {
+          "line": 624,
+          "path": "include/constants/SaveFileMappings.h"
+        }
+      },
+      "upstream_enum": "THE_LIBRARY",
+      "upstream_event_id": "The Library"
+    },
+    {
+      "event_game_name": "The Mausoleum",
+      "partition": "explicit",
+      "pool_memberships": [
+        "EventPools::Act2::events"
+      ],
+      "save_id": "The Mausoleum",
+      "source_refs": {
+        "enum": {
+          "line": 60,
+          "path": "include/constants/Events.h"
+        },
+        "event_game_name": {
+          "line": 180,
+          "path": "include/constants/Events.h"
+        },
+        "event_id": {
+          "line": 120,
+          "path": "include/constants/Events.h"
+        },
+        "save_id": {
+          "line": 625,
+          "path": "include/constants/SaveFileMappings.h"
+        }
+      },
+      "upstream_enum": "THE_MAUSOLEUM",
+      "upstream_event_id": "The Mausoleum"
+    },
+    {
+      "event_game_name": "The Moai Head",
+      "partition": "generic",
+      "pool_memberships": [
+        "EventPools::Act3::events"
+      ],
+      "save_id": "The Moai Head",
+      "source_refs": {
+        "enum": {
+          "line": 61,
+          "path": "include/constants/Events.h"
+        },
+        "event_game_name": {
+          "line": 181,
+          "path": "include/constants/Events.h"
+        },
+        "event_id": {
+          "line": 121,
+          "path": "include/constants/Events.h"
+        },
+        "save_id": {
+          "line": 626,
+          "path": "include/constants/SaveFileMappings.h"
+        }
+      },
+      "upstream_enum": "THE_MOAI_HEAD",
+      "upstream_event_id": "The Moai Head"
+    },
+    {
+      "event_game_name": "The Nest",
+      "partition": "generic",
+      "pool_memberships": [
+        "EventPools::Act2::events"
+      ],
+      "save_id": "Nest",
+      "source_refs": {
+        "enum": {
+          "line": 49,
+          "path": "include/constants/Events.h"
+        },
+        "event_game_name": {
+          "line": 169,
+          "path": "include/constants/Events.h"
+        },
+        "event_id": {
+          "line": 109,
+          "path": "include/constants/Events.h"
+        },
+        "save_id": {
+          "line": 614,
+          "path": "include/constants/SaveFileMappings.h"
+        }
+      },
+      "upstream_enum": "THE_NEST",
+      "upstream_event_id": "Nest"
+    },
+    {
+      "event_game_name": "The Ssssserpent",
+      "partition": "explicit",
+      "pool_memberships": [
+        "EventPools::Act1::events"
+      ],
+      "save_id": "Liars Game",
+      "source_refs": {
+        "enum": {
+          "line": 42,
+          "path": "include/constants/Events.h"
+        },
+        "event_game_name": {
+          "line": 162,
+          "path": "include/constants/Events.h"
+        },
+        "event_id": {
+          "line": 102,
+          "path": "include/constants/Events.h"
+        },
+        "save_id": {
+          "line": 607,
+          "path": "include/constants/SaveFileMappings.h"
+        }
+      },
+      "upstream_enum": "THE_SSSSSERPENT",
+      "upstream_event_id": "Liars Game"
+    },
+    {
+      "event_game_name": "The Woman in Blue",
+      "partition": "generic",
+      "pool_memberships": [
+        "EventPools::oneTimeEventsAsc0"
+      ],
+      "save_id": "The Woman in Blue",
+      "source_refs": {
+        "enum": {
+          "line": 62,
+          "path": "include/constants/Events.h"
+        },
+        "event_game_name": {
+          "line": 182,
+          "path": "include/constants/Events.h"
+        },
+        "event_id": {
+          "line": 122,
+          "path": "include/constants/Events.h"
+        },
+        "save_id": {
+          "line": 627,
+          "path": "include/constants/SaveFileMappings.h"
+        }
+      },
+      "upstream_enum": "THE_WOMAN_IN_BLUE",
+      "upstream_event_id": "The Woman in Blue"
+    },
+    {
+      "event_game_name": "Tomb of Lord Red Mask",
+      "partition": "generic",
+      "pool_memberships": [
+        "EventPools::Act3::events"
+      ],
+      "save_id": "Tomb of Lord Red Mask",
+      "source_refs": {
+        "enum": {
+          "line": 63,
+          "path": "include/constants/Events.h"
+        },
+        "event_game_name": {
+          "line": 183,
+          "path": "include/constants/Events.h"
+        },
+        "event_id": {
+          "line": 123,
+          "path": "include/constants/Events.h"
+        },
+        "save_id": {
+          "line": 628,
+          "path": "include/constants/SaveFileMappings.h"
+        }
+      },
+      "upstream_enum": "TOMB_OF_LORD_RED_MASK",
+      "upstream_event_id": "Tomb of Lord Red Mask"
+    },
+    {
+      "event_game_name": "Transmorgrifier",
+      "partition": "generic",
+      "pool_memberships": [
+        "EventPools::Act1::shrines",
+        "EventPools::Act2::shrines",
+        "EventPools::Act3::shrines"
+      ],
+      "save_id": "Transmorgrifier",
+      "source_refs": {
+        "enum": {
+          "line": 64,
+          "path": "include/constants/Events.h"
+        },
+        "event_game_name": {
+          "line": 184,
+          "path": "include/constants/Events.h"
+        },
+        "event_id": {
+          "line": 124,
+          "path": "include/constants/Events.h"
+        },
+        "save_id": {
+          "line": 629,
+          "path": "include/constants/SaveFileMappings.h"
+        }
+      },
+      "upstream_enum": "TRANSMORGRIFIER",
+      "upstream_event_id": "Transmorgrifier"
+    },
+    {
+      "event_game_name": "Upgrade Shrine",
+      "partition": "generic",
+      "pool_memberships": [
+        "EventPools::Act1::shrines",
+        "EventPools::Act2::shrines",
+        "EventPools::Act3::shrines"
+      ],
+      "save_id": "Upgrade Shrine",
+      "source_refs": {
+        "enum": {
+          "line": 65,
+          "path": "include/constants/Events.h"
+        },
+        "event_game_name": {
+          "line": 185,
+          "path": "include/constants/Events.h"
+        },
+        "event_id": {
+          "line": 125,
+          "path": "include/constants/Events.h"
+        },
+        "save_id": {
+          "line": 630,
+          "path": "include/constants/SaveFileMappings.h"
+        }
+      },
+      "upstream_enum": "UPGRADE_SHRINE",
+      "upstream_event_id": "Upgrade Shrine"
+    },
+    {
+      "event_game_name": "Vampires(?)",
+      "partition": "explicit",
+      "pool_memberships": [
+        "EventPools::Act2::events"
+      ],
+      "save_id": "Vampires",
+      "source_refs": {
+        "enum": {
+          "line": 66,
+          "path": "include/constants/Events.h"
+        },
+        "event_game_name": {
+          "line": 186,
+          "path": "include/constants/Events.h"
+        },
+        "event_id": {
+          "line": 126,
+          "path": "include/constants/Events.h"
+        },
+        "save_id": {
+          "line": 631,
+          "path": "include/constants/SaveFileMappings.h"
+        }
+      },
+      "upstream_enum": "VAMPIRES",
+      "upstream_event_id": "Vampires"
+    },
+    {
+      "event_game_name": "We Meet Again!",
+      "partition": "generic",
+      "pool_memberships": [
+        "EventPools::oneTimeEventsAsc0"
+      ],
+      "save_id": "WeMeetAgain",
+      "source_refs": {
+        "enum": {
+          "line": 67,
+          "path": "include/constants/Events.h"
+        },
+        "event_game_name": {
+          "line": 187,
+          "path": "include/constants/Events.h"
+        },
+        "event_id": {
+          "line": 127,
+          "path": "include/constants/Events.h"
+        },
+        "save_id": {
+          "line": 632,
+          "path": "include/constants/SaveFileMappings.h"
+        }
+      },
+      "upstream_enum": "WE_MEET_AGAIN",
+      "upstream_event_id": "WeMeetAgain"
+    },
+    {
+      "event_game_name": "Wheel of Change",
+      "partition": "generic",
+      "pool_memberships": [
+        "EventPools::Act1::shrines",
+        "EventPools::Act2::shrines",
+        "EventPools::Act3::shrines"
+      ],
+      "save_id": "Wheel of Change",
+      "source_refs": {
+        "enum": {
+          "line": 68,
+          "path": "include/constants/Events.h"
+        },
+        "event_game_name": {
+          "line": 188,
+          "path": "include/constants/Events.h"
+        },
+        "event_id": {
+          "line": 128,
+          "path": "include/constants/Events.h"
+        },
+        "save_id": {
+          "line": 633,
+          "path": "include/constants/SaveFileMappings.h"
+        }
+      },
+      "upstream_enum": "WHEEL_OF_CHANGE",
+      "upstream_event_id": "Wheel of Change"
+    },
+    {
+      "event_game_name": "Winding Halls",
+      "partition": "generic",
+      "pool_memberships": [
+        "EventPools::Act3::events"
+      ],
+      "save_id": "Winding Halls",
+      "source_refs": {
+        "enum": {
+          "line": 69,
+          "path": "include/constants/Events.h"
+        },
+        "event_game_name": {
+          "line": 189,
+          "path": "include/constants/Events.h"
+        },
+        "event_id": {
+          "line": 129,
+          "path": "include/constants/Events.h"
+        },
+        "save_id": {
+          "line": 634,
+          "path": "include/constants/SaveFileMappings.h"
+        }
+      },
+      "upstream_enum": "WINDING_HALLS",
+      "upstream_event_id": "Winding Halls"
+    },
+    {
+      "event_game_name": "Wing Statue",
+      "partition": "generic",
+      "pool_memberships": [
+        "EventPools::Act1::events"
+      ],
+      "save_id": "Golden Wing",
+      "source_refs": {
+        "enum": {
+          "line": 39,
+          "path": "include/constants/Events.h"
+        },
+        "event_game_name": {
+          "line": 159,
+          "path": "include/constants/Events.h"
+        },
+        "event_id": {
+          "line": 99,
+          "path": "include/constants/Events.h"
+        },
+        "save_id": {
+          "line": 604,
+          "path": "include/constants/SaveFileMappings.h"
+        }
+      },
+      "upstream_enum": "WING_STATUE",
+      "upstream_event_id": "Golden Wing"
+    },
+    {
+      "event_game_name": "World of Goop",
+      "partition": "explicit",
+      "pool_memberships": [
+        "EventPools::Act1::events"
+      ],
+      "save_id": "World of Goop",
+      "source_refs": {
+        "enum": {
+          "line": 70,
+          "path": "include/constants/Events.h"
+        },
+        "event_game_name": {
+          "line": 190,
+          "path": "include/constants/Events.h"
+        },
+        "event_id": {
+          "line": 130,
+          "path": "include/constants/Events.h"
+        },
+        "save_id": {
+          "line": 635,
+          "path": "include/constants/SaveFileMappings.h"
+        }
+      },
+      "upstream_enum": "WORLD_OF_GOOP",
+      "upstream_event_id": "World of Goop"
+    }
+  ],
+  "schema_version": "noncombat-reachable-event-pool-inventory-v1"
+}

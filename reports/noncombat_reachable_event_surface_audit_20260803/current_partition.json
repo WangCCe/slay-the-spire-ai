@@ -1,0 +1,556 @@
+{
+  "current_surface": {
+    "aliases": [
+      "Back to Basics",
+      "BackToBasics",
+      "Big Fish",
+      "BigFish",
+      "Cleric",
+      "Council of Ghosts",
+      "CouncilOfGhosts",
+      "Cursed Tome",
+      "CursedTome",
+      "Dead Adventurer",
+      "DeadAdventurer",
+      "Drug Dealer",
+      "Face Trader",
+      "FaceTrader",
+      "Forgotten Altar",
+      "ForgottenAltar",
+      "Ghosts",
+      "Golden Idol",
+      "Golden Shrine",
+      "GoldenIdol",
+      "GoldenShrine",
+      "Knowing Skull",
+      "Liars Game",
+      "Living Wall",
+      "LivingWall",
+      "Masked Bandits",
+      "MaskedBandits",
+      "Mausoleum",
+      "Mind Bloom",
+      "MindBloom",
+      "Mushrooms",
+      "Mysterious Sphere",
+      "MysteriousSphere",
+      "N'loth",
+      "Nloth",
+      "Note For Yourself",
+      "NoteForYourself",
+      "N\u2019loth",
+      "Shining Light",
+      "ShiningLight",
+      "The Cleric",
+      "The Library",
+      "The Mausoleum",
+      "The Mushroom Lair",
+      "Vampires",
+      "World of Goop",
+      "WorldOfGoop"
+    ],
+    "ast_sha256": "15fb21a410b5cc7a430b76d46171a2510651e78537aac21fc0e7dc28978bdbd9",
+    "branches": [
+      {
+        "aliases": [
+          "Golden Idol",
+          "GoldenIdol"
+        ],
+        "ast_sha256": "fc8865ce41945420afc39b24a6c6a17b14e2746c6d29e790130b2ca223affd25",
+        "branch_order": 0,
+        "kind": "explicit",
+        "label_sensitive": true,
+        "line_end": 1007,
+        "line_start": 960,
+        "string_literals": [
+          "current_hp",
+          "ectoplasm",
+          "id",
+          "leave",
+          "max_hp",
+          "name",
+          "omamori",
+          "relic_id",
+          "relics",
+          "take"
+        ]
+      },
+      {
+        "aliases": [
+          "Golden Shrine",
+          "GoldenShrine"
+        ],
+        "ast_sha256": "f148c4c443800a5c289e4bc79d3f5ebb3c3aa9510f9afc8fb9d79b89c426c352",
+        "branch_order": 1,
+        "kind": "explicit",
+        "label_sensitive": true,
+        "line_end": 1047,
+        "line_start": 1008,
+        "string_literals": [
+          "desecrate",
+          "ectoplasm",
+          "id",
+          "leave",
+          "name",
+          "omamori",
+          "pray",
+          "relic_id",
+          "relics"
+        ]
+      },
+      {
+        "aliases": [
+          "Face Trader",
+          "FaceTrader"
+        ],
+        "ast_sha256": "870a26e20f28f40bf5189630c17184cd5a6fedb213540d44ee0a6e7845eb9f26",
+        "branch_order": 2,
+        "kind": "explicit",
+        "label_sensitive": true,
+        "line_end": 1068,
+        "line_start": 1048,
+        "string_literals": [
+          "current_hp",
+          "leave",
+          "max_hp",
+          "touch"
+        ]
+      },
+      {
+        "aliases": [
+          "Big Fish",
+          "BigFish"
+        ],
+        "ast_sha256": "00b72258b8764ba21762ee19a611f393e0ffd32035f83bdc5e24e122417023f2",
+        "branch_order": 3,
+        "kind": "explicit",
+        "label_sensitive": true,
+        "line_end": 1105,
+        "line_start": 1069,
+        "string_literals": [
+          "banana",
+          "box",
+          "current_hp",
+          "donut",
+          "heal",
+          "id",
+          "max hp",
+          "max_hp",
+          "name",
+          "omamori",
+          "relic",
+          "relic_id",
+          "relics"
+        ]
+      },
+      {
+        "aliases": [
+          "Cleric",
+          "The Cleric"
+        ],
+        "ast_sha256": "05327cb04de29051f6e75babef308c110a51c15c4c2beaa97e58054374b21f45",
+        "branch_order": 4,
+        "kind": "explicit",
+        "label_sensitive": true,
+        "line_end": 1133,
+        "line_start": 1106,
+        "string_literals": [
+          "current_hp",
+          "heal",
+          "leave",
+          "max_hp",
+          "purge",
+          "purify",
+          "remove"
+        ]
+      },
+      {
+        "aliases": [
+          "Living Wall",
+          "LivingWall"
+        ],
+        "ast_sha256": "9298b12a51b43ae75b0cea1fc15ea3b1beb295a5772249577d8c47f07c2c6c01",
+        "branch_order": 5,
+        "kind": "explicit",
+        "label_sensitive": true,
+        "line_end": 1147,
+        "line_start": 1134,
+        "string_literals": [
+          "change",
+          "forget",
+          "grow",
+          "remove",
+          "transform",
+          "upgrade"
+        ]
+      },
+      {
+        "aliases": [
+          "Mushrooms",
+          "The Mushroom Lair"
+        ],
+        "ast_sha256": "0094219b50a6536268772ad14c3b132b65f8f879e1357c9a0d7c3578f415b5f1",
+        "branch_order": 6,
+        "kind": "explicit",
+        "label_sensitive": true,
+        "line_end": 1183,
+        "line_start": 1148,
+        "string_literals": [
+          "current_hp",
+          "decline",
+          "eat",
+          "fight",
+          "heal",
+          "ignore",
+          "leave",
+          "max_hp",
+          "move on",
+          "refuse",
+          "skip",
+          "stomp"
+        ]
+      },
+      {
+        "aliases": [
+          "Forgotten Altar",
+          "ForgottenAltar"
+        ],
+        "ast_sha256": "f56ccfe6cd8fdcdd5a6a0fd86d5071b157727fd9c71782d763fe3b41f17c7478",
+        "branch_order": 7,
+        "kind": "explicit",
+        "label_sensitive": true,
+        "line_end": 1251,
+        "line_start": 1184,
+        "string_literals": [
+          "act",
+          "current_hp",
+          "decline",
+          "desecrate",
+          "ignore",
+          "leave",
+          "max_hp",
+          "move on",
+          "offer",
+          "refuse",
+          "sacrifice",
+          "shed blood",
+          "skip"
+        ]
+      },
+      {
+        "aliases": [
+          "Shining Light",
+          "ShiningLight"
+        ],
+        "ast_sha256": "6277e6da11e011d482269917bbae3a04eee290bce6f3d4799ba89b5e382eced5",
+        "branch_order": 8,
+        "kind": "explicit",
+        "label_sensitive": true,
+        "line_end": 1279,
+        "line_start": 1252,
+        "string_literals": [
+          "current_hp",
+          "decline",
+          "enter",
+          "ignore",
+          "leave",
+          "light",
+          "max_hp",
+          "skip",
+          "upgrade"
+        ]
+      },
+      {
+        "aliases": [
+          "World of Goop",
+          "WorldOfGoop"
+        ],
+        "ast_sha256": "319cb380d07ff8b5f20a8cf5878a655fe0cb0a3b97786c42a692c7b67696e624",
+        "branch_order": 9,
+        "kind": "explicit",
+        "label_sensitive": true,
+        "line_end": 1320,
+        "line_start": 1280,
+        "string_literals": [
+          "current_hp",
+          "decline",
+          "ectoplasm",
+          "gather",
+          "gold",
+          "id",
+          "ignore",
+          "leave",
+          "max_hp",
+          "name",
+          "relic_id",
+          "relics",
+          "skip"
+        ]
+      },
+      {
+        "aliases": [
+          "Cursed Tome",
+          "CursedTome"
+        ],
+        "ast_sha256": "cb45f78c43773c3308916204a5fb635e860342149193808a922d609a38549753",
+        "branch_order": 10,
+        "kind": "explicit",
+        "label_sensitive": true,
+        "line_end": 1354,
+        "line_start": 1321,
+        "string_literals": [
+          "book",
+          "continue",
+          "current_hp",
+          "leave",
+          "max_hp",
+          "read",
+          "stop",
+          "take"
+        ]
+      },
+      {
+        "aliases": [
+          "Council of Ghosts",
+          "CouncilOfGhosts",
+          "Ghosts"
+        ],
+        "ast_sha256": "4de2406b2a5dcb25297fde0dcb24839a5c136b97e1c2037cf321c4c90997041b",
+        "branch_order": 11,
+        "kind": "explicit",
+        "label_sensitive": true,
+        "line_end": 1393,
+        "line_start": 1355,
+        "string_literals": [
+          "accept",
+          "apparition",
+          "bite",
+          "deck",
+          "decline",
+          "id",
+          "leave",
+          "name",
+          "refuse",
+          "relic_id",
+          "relics",
+          "sneckoeye"
+        ]
+      },
+      {
+        "aliases": [
+          "Masked Bandits",
+          "MaskedBandits"
+        ],
+        "ast_sha256": "8cce8b98e6363dfdad5f8626d016f18545b5e969b1027486deb7ea5147b49775",
+        "branch_order": 12,
+        "kind": "explicit",
+        "label_sensitive": true,
+        "line_end": 1421,
+        "line_start": 1394,
+        "string_literals": [
+          "current_hp",
+          "fight",
+          "give gold",
+          "leave",
+          "max_hp",
+          "pay"
+        ]
+      },
+      {
+        "aliases": [
+          "Mysterious Sphere",
+          "MysteriousSphere"
+        ],
+        "ast_sha256": "c2550aa7e8a06b4222bfc62531ed8d62ec4d3ff971f7b69ff1c2e93fd2806880",
+        "branch_order": 13,
+        "kind": "explicit",
+        "label_sensitive": true,
+        "line_end": 1449,
+        "line_start": 1422,
+        "string_literals": [
+          "current_hp",
+          "decline",
+          "fight",
+          "ignore",
+          "leave",
+          "max_hp",
+          "open",
+          "skip",
+          "sphere"
+        ]
+      },
+      {
+        "aliases": [
+          "Back to Basics",
+          "BackToBasics"
+        ],
+        "ast_sha256": "345321038dbada3ab8f41f4ae7cb66ed222771380598953584dc9357b0832d29",
+        "branch_order": 14,
+        "kind": "explicit",
+        "label_sensitive": true,
+        "line_end": 1463,
+        "line_start": 1450,
+        "string_literals": [
+          "elegance",
+          "simplicity"
+        ]
+      },
+      {
+        "aliases": [
+          "Mind Bloom",
+          "MindBloom"
+        ],
+        "ast_sha256": "e0c2e2a1d5bd32ae4e2fb70f2d059f49340f4c86e0ada0a20433d5ecbd93b647",
+        "branch_order": 15,
+        "kind": "explicit",
+        "label_sensitive": true,
+        "line_end": 1491,
+        "line_start": 1464,
+        "string_literals": [
+          "awake",
+          "current_hp",
+          "fight",
+          "max_hp",
+          "rich",
+          "war"
+        ]
+      },
+      {
+        "aliases": [
+          "N'loth",
+          "Nloth",
+          "N\u2019loth"
+        ],
+        "ast_sha256": "166751f18b75c775033599d7a75717e43c46ec89ab2e44fafcfa59c64aae0127",
+        "branch_order": 16,
+        "kind": "explicit",
+        "label_sensitive": true,
+        "line_end": 1514,
+        "line_start": 1492,
+        "string_literals": [
+          "black blood",
+          "burning blood",
+          "decline",
+          "ignore",
+          "leave",
+          "move on",
+          "offer",
+          "refuse",
+          "skip"
+        ]
+      },
+      {
+        "aliases": [
+          "Dead Adventurer",
+          "DeadAdventurer",
+          "Drug Dealer",
+          "Ghosts",
+          "Golden Idol",
+          "Knowing Skull",
+          "Liars Game",
+          "Masked Bandits",
+          "Mausoleum",
+          "Mushrooms",
+          "Note For Yourself",
+          "NoteForYourself",
+          "The Library",
+          "The Mausoleum",
+          "The Mushroom Lair",
+          "Vampires"
+        ],
+        "ast_sha256": "2f34cc8586c2533181ebeef912def5e7ab3be3aacd831b1501792d1bd6598cf7",
+        "branch_order": 17,
+        "kind": "risky_fallback",
+        "label_sensitive": true,
+        "line_end": 1526,
+        "line_start": 1515,
+        "string_literals": [
+          "Masked Bandits",
+          "decline",
+          "give gold",
+          "ignore",
+          "leave",
+          "move on",
+          "pay",
+          "refuse",
+          "skip"
+        ]
+      }
+    ],
+    "class_name": "SimpleAgent",
+    "function_name": "_choose_event_option",
+    "line_end": 1547,
+    "line_start": 916,
+    "risky_aliases": [
+      "Dead Adventurer",
+      "DeadAdventurer",
+      "Drug Dealer",
+      "Ghosts",
+      "Golden Idol",
+      "Knowing Skull",
+      "Liars Game",
+      "Masked Bandits",
+      "Mausoleum",
+      "Mushrooms",
+      "Note For Yourself",
+      "NoteForYourself",
+      "The Library",
+      "The Mausoleum",
+      "The Mushroom Lair",
+      "Vampires"
+    ]
+  },
+  "explicit_upstream_enums": [
+    "ANCIENT_WRITING",
+    "AUGMENTER",
+    "BIG_FISH",
+    "CURSED_TOME",
+    "DEAD_ADVENTURER",
+    "FACE_TRADER",
+    "FORGOTTEN_ALTAR",
+    "GHOSTS",
+    "GOLDEN_IDOL",
+    "GOLDEN_SHRINE",
+    "HYPNOTIZING_COLORED_MUSHROOMS",
+    "KNOWING_SKULL",
+    "LIVING_WALL",
+    "MASKED_BANDITS",
+    "MINDBLOOM",
+    "MYSTERIOUS_SPHERE",
+    "NLOTH",
+    "NOTE_FOR_YOURSELF",
+    "SHINING_LIGHT",
+    "THE_CLERIC",
+    "THE_LIBRARY",
+    "THE_MAUSOLEUM",
+    "THE_SSSSSERPENT",
+    "VAMPIRES",
+    "WORLD_OF_GOOP"
+  ],
+  "generic_upstream_enums": [
+    "DESIGNER_IN_SPIRE",
+    "DUPLICATOR",
+    "FALLING",
+    "LAB",
+    "OLD_BEGGAR",
+    "OMINOUS_FORGE",
+    "PLEADING_VAGRANT",
+    "PURIFIER",
+    "SCRAP_OOZE",
+    "SECRET_PORTAL",
+    "SENSORY_STONE",
+    "THE_DIVINE_FOUNTAIN",
+    "THE_JOUST",
+    "THE_MOAI_HEAD",
+    "THE_NEST",
+    "THE_WOMAN_IN_BLUE",
+    "TOMB_OF_LORD_RED_MASK",
+    "TRANSMORGRIFIER",
+    "UPGRADE_SHRINE",
+    "WE_MEET_AGAIN",
+    "WHEEL_OF_CHANGE",
+    "WINDING_HALLS",
+    "WING_STATUE"
+  ],
+  "schema_version": "noncombat-reachable-event-current-partition-v1"
+}

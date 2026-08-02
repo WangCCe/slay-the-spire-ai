@@ -1,0 +1,4764 @@
+{
+  "events": [
+    {
+      "display_summary": {
+        "case_group": [
+          "ANCIENT_WRITING"
+        ],
+        "conditional": false,
+        "display_entries": [
+          {
+            "index": 0,
+            "label": "Elegance"
+          },
+          {
+            "index": 1,
+            "label": "Simplicity"
+          }
+        ],
+        "display_indices": [
+          0,
+          1
+        ],
+        "line_end": 652,
+        "line_start": 647,
+        "phase_sensitive": false,
+        "source_path": "src/sim/ConsoleSimulator.cpp",
+        "source_sha256": "9dd13b602fd1a4f28d5aa3dce2543df66f3ddd797721a016f3af8637b798901a"
+      },
+      "event_game_name": "Ancient Writing",
+      "execution_summary": {
+        "case_group": [
+          "ANCIENT_WRITING"
+        ],
+        "conditional": true,
+        "effect_indices": [],
+        "line_end": 2511,
+        "line_start": 2498,
+        "phase_sensitive": false,
+        "source_path": "src/game/GameContext.cpp",
+        "source_sha256": "59e47ae74cb77a217931c58e5feedc40d9e4e0ecc709372c5b89dedc56990359"
+      },
+      "handling": "explicit_policy_sensitive",
+      "legal_summary": {
+        "case_group": [
+          "ANCIENT_WRITING",
+          "DEAD_ADVENTURER",
+          "DUPLICATOR",
+          "OLD_BEGGAR",
+          "THE_DIVINE_FOUNTAIN",
+          "GHOSTS",
+          "THE_SSSSSERPENT",
+          "MASKED_BANDITS",
+          "HYPNOTIZING_COLORED_MUSHROOMS",
+          "MYSTERIOUS_SPHERE",
+          "THE_NEST",
+          "NOTE_FOR_YOURSELF",
+          "SCRAP_OOZE",
+          "SECRET_PORTAL",
+          "SHINING_LIGHT",
+          "THE_JOUST",
+          "THE_LIBRARY",
+          "THE_MAUSOLEUM",
+          "WORLD_OF_GOOP"
+        ],
+        "conditional": false,
+        "dynamic_return_expressions": [],
+        "legal_indices": [
+          0,
+          1
+        ],
+        "line_end": 696,
+        "line_start": 676,
+        "literal_masks": [
+          3
+        ],
+        "phase_sensitive": false,
+        "return_expressions": [
+          "0x3"
+        ],
+        "source_path": "src/sim/search/GameAction.cpp",
+        "source_sha256": "7f2377a74ac5628c6cee28dd4fa5f31990ca3497a6e1f55d983051705de685f5"
+      },
+      "predecessor_rule_sha256": "f05fcb5815fee8b0db3ec8ce7ead18dd7c375ebe72d7559e2b09d63088fafbcd",
+      "save_id": "Back to Basics",
+      "source_refs": {
+        "enum": {
+          "line": 22,
+          "path": "include/constants/Events.h"
+        },
+        "event_game_name": {
+          "line": 142,
+          "path": "include/constants/Events.h"
+        },
+        "event_id": {
+          "line": 82,
+          "path": "include/constants/Events.h"
+        },
+        "save_id": {
+          "line": 587,
+          "path": "include/constants/SaveFileMappings.h"
+        }
+      },
+      "upstream_enum": "ANCIENT_WRITING",
+      "upstream_event_id": "Back to Basics"
+    },
+    {
+      "display_summary": {
+        "case_group": [
+          "AUGMENTER"
+        ],
+        "conditional": true,
+        "display_entries": [
+          {
+            "index": 0,
+            "label": "Test J.A.X"
+          },
+          {
+            "index": 1,
+            "label": "Become Test Subject"
+          },
+          {
+            "index": 2,
+            "label": "Ingest Mutagens"
+          }
+        ],
+        "display_indices": [
+          0,
+          1,
+          2
+        ],
+        "line_end": 781,
+        "line_start": 773,
+        "phase_sensitive": false,
+        "source_path": "src/sim/ConsoleSimulator.cpp",
+        "source_sha256": "98ec2be31bb152ee001fa956e231cd5bd22e21fb63d8da4aad89200418836096"
+      },
+      "event_game_name": "Augmenter",
+      "execution_summary": {
+        "case_group": [
+          "AUGMENTER"
+        ],
+        "conditional": true,
+        "effect_indices": [
+          0,
+          1,
+          2
+        ],
+        "line_end": 2720,
+        "line_start": 2698,
+        "phase_sensitive": false,
+        "source_path": "src/game/GameContext.cpp",
+        "source_sha256": "2b04687c544296b61fccac665a1893912d3019404b408c4f4aeec33ca48007a8"
+      },
+      "handling": "explicit_policy_sensitive",
+      "legal_summary": {
+        "case_group": [
+          "AUGMENTER"
+        ],
+        "conditional": true,
+        "dynamic_return_expressions": [],
+        "legal_indices": [
+          0,
+          1,
+          2
+        ],
+        "line_end": 780,
+        "line_start": 774,
+        "literal_masks": [
+          5,
+          7
+        ],
+        "phase_sensitive": false,
+        "return_expressions": [
+          "0x7",
+          "0b101"
+        ],
+        "source_path": "src/sim/search/GameAction.cpp",
+        "source_sha256": "465ec6d5949b76380d63c5596473afd07c2787111e4b379ff2c63b963f804602"
+      },
+      "predecessor_rule_sha256": "ac5d1d9d8d61183881442da829ffc844d908cd02c4aad8ef47021d62d3c46f97",
+      "save_id": "Drug Dealer",
+      "source_refs": {
+        "enum": {
+          "line": 30,
+          "path": "include/constants/Events.h"
+        },
+        "event_game_name": {
+          "line": 150,
+          "path": "include/constants/Events.h"
+        },
+        "event_id": {
+          "line": 90,
+          "path": "include/constants/Events.h"
+        },
+        "save_id": {
+          "line": 595,
+          "path": "include/constants/SaveFileMappings.h"
+        }
+      },
+      "upstream_enum": "AUGMENTER",
+      "upstream_event_id": "Drug Dealer"
+    },
+    {
+      "display_summary": {
+        "case_group": [
+          "BIG_FISH"
+        ],
+        "conditional": false,
+        "display_entries": [
+          {
+            "index": 0,
+            "label": "Banana"
+          },
+          {
+            "index": 1,
+            "label": "Donut"
+          },
+          {
+            "index": 2,
+            "label": "Box"
+          }
+        ],
+        "display_indices": [
+          0,
+          1,
+          2
+        ],
+        "line_end": 671,
+        "line_start": 659,
+        "phase_sensitive": false,
+        "source_path": "src/sim/ConsoleSimulator.cpp",
+        "source_sha256": "7c6d047875ba01786b55d513c883addeaa13bee5caafb61268d69a7d12caf555"
+      },
+      "event_game_name": "Big Fish",
+      "execution_summary": {
+        "case_group": [
+          "BIG_FISH"
+        ],
+        "conditional": true,
+        "effect_indices": [
+          0,
+          1,
+          2
+        ],
+        "line_end": 2553,
+        "line_start": 2526,
+        "phase_sensitive": false,
+        "source_path": "src/game/GameContext.cpp",
+        "source_sha256": "c9a6e2fb060efb5931afad124ca85212293cda4fef7f2719c4e5172b34893aea"
+      },
+      "handling": "explicit_policy_sensitive",
+      "legal_summary": {
+        "case_group": [
+          "BIG_FISH",
+          "FACE_TRADER",
+          "GOLDEN_SHRINE",
+          "NLOTH",
+          "SENSORY_STONE",
+          "WINDING_HALLS"
+        ],
+        "conditional": false,
+        "dynamic_return_expressions": [],
+        "legal_indices": [
+          0,
+          1,
+          2
+        ],
+        "line_end": 704,
+        "line_start": 697,
+        "literal_masks": [
+          7
+        ],
+        "phase_sensitive": false,
+        "return_expressions": [
+          "0x7"
+        ],
+        "source_path": "src/sim/search/GameAction.cpp",
+        "source_sha256": "b35bc891dba4926ac0a75eaac287f5c961c778bfa21062b20674af62be54d05a"
+      },
+      "predecessor_rule_sha256": "585abdfd8b79ba08279f06d6292a4197c1d6717e05ef2d883886bb930aabb875",
+      "save_id": "Big Fish",
+      "source_refs": {
+        "enum": {
+          "line": 24,
+          "path": "include/constants/Events.h"
+        },
+        "event_game_name": {
+          "line": 144,
+          "path": "include/constants/Events.h"
+        },
+        "event_id": {
+          "line": 84,
+          "path": "include/constants/Events.h"
+        },
+        "save_id": {
+          "line": 589,
+          "path": "include/constants/SaveFileMappings.h"
+        }
+      },
+      "upstream_enum": "BIG_FISH",
+      "upstream_event_id": "Big Fish"
+    },
+    {
+      "display_summary": {
+        "case_group": [
+          "CURSED_TOME"
+        ],
+        "conditional": true,
+        "display_entries": [
+          {
+            "index": 0,
+            "label": "Read"
+          },
+          {
+            "index": 1,
+            "label": "Leave"
+          },
+          {
+            "index": 5,
+            "label": "Take"
+          },
+          {
+            "index": 6,
+            "label": "Stop"
+          }
+        ],
+        "display_indices": [
+          0,
+          1,
+          5,
+          6
+        ],
+        "line_end": 728,
+        "line_start": 682,
+        "phase_sensitive": true,
+        "source_path": "src/sim/ConsoleSimulator.cpp",
+        "source_sha256": "58098cbaf36725b7fbbd853dafa80f98c68e23a51f25c4db581eee75b1803ef9"
+      },
+      "event_game_name": "Cursed Tome",
+      "execution_summary": {
+        "case_group": [
+          "CURSED_TOME"
+        ],
+        "conditional": true,
+        "effect_indices": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6
+        ],
+        "line_end": 2599,
+        "line_start": 2558,
+        "phase_sensitive": true,
+        "source_path": "src/game/GameContext.cpp",
+        "source_sha256": "9636b8e3a3b24483e6945dd43f96d1652cc9531eb9ca7fbda3e605f90c25e4ae"
+      },
+      "handling": "explicit_policy_sensitive",
+      "legal_summary": {
+        "case_group": [
+          "CURSED_TOME"
+        ],
+        "conditional": true,
+        "dynamic_return_expressions": [
+          "0x1 << (gc.info.eventData+1)",
+          "0x3 << (gc.info.eventData+1)"
+        ],
+        "legal_indices": [
+          0,
+          1
+        ],
+        "line_end": 739,
+        "line_start": 724,
+        "literal_masks": [
+          0,
+          3
+        ],
+        "phase_sensitive": true,
+        "return_expressions": [
+          "0x3",
+          "0x1 << (gc.info.eventData+1)",
+          "0x3 << (gc.info.eventData+1)",
+          "0"
+        ],
+        "source_path": "src/sim/search/GameAction.cpp",
+        "source_sha256": "c49d37ab71f8fc107c7e3ef04028b335d50486550824f87be1045ba524a0fbfc"
+      },
+      "predecessor_rule_sha256": "d3c9baf4c7d5d6137edd7c31cd7df62152e33ecb2fdf731b023e95d52cba4a84",
+      "save_id": "Cursed Tome",
+      "source_refs": {
+        "enum": {
+          "line": 27,
+          "path": "include/constants/Events.h"
+        },
+        "event_game_name": {
+          "line": 147,
+          "path": "include/constants/Events.h"
+        },
+        "event_id": {
+          "line": 87,
+          "path": "include/constants/Events.h"
+        },
+        "save_id": {
+          "line": 592,
+          "path": "include/constants/SaveFileMappings.h"
+        }
+      },
+      "upstream_enum": "CURSED_TOME",
+      "upstream_event_id": "Cursed Tome"
+    },
+    {
+      "display_summary": {
+        "case_group": [
+          "DEAD_ADVENTURER"
+        ],
+        "conditional": false,
+        "display_entries": [
+          {
+            "index": 0,
+            "label": "Search"
+          },
+          {
+            "index": 1,
+            "label": "Escape"
+          }
+        ],
+        "display_indices": [
+          0,
+          1
+        ],
+        "line_end": 735,
+        "line_start": 729,
+        "phase_sensitive": false,
+        "source_path": "src/sim/ConsoleSimulator.cpp",
+        "source_sha256": "fc0ea2e3003eda1298e79a3805911733782acb0c6994311cf06daf4c9b9d9cf4"
+      },
+      "event_game_name": "Dead Adventurer",
+      "execution_summary": {
+        "case_group": [
+          "DEAD_ADVENTURER"
+        ],
+        "conditional": true,
+        "effect_indices": [],
+        "line_end": 2656,
+        "line_start": 2600,
+        "phase_sensitive": false,
+        "source_path": "src/game/GameContext.cpp",
+        "source_sha256": "a7307c8072a2ecc50f1aadd1d8b499df6a76fba67045d939d306a4b66a6ef0ac"
+      },
+      "handling": "explicit_policy_sensitive",
+      "legal_summary": {
+        "case_group": [
+          "ANCIENT_WRITING",
+          "DEAD_ADVENTURER",
+          "DUPLICATOR",
+          "OLD_BEGGAR",
+          "THE_DIVINE_FOUNTAIN",
+          "GHOSTS",
+          "THE_SSSSSERPENT",
+          "MASKED_BANDITS",
+          "HYPNOTIZING_COLORED_MUSHROOMS",
+          "MYSTERIOUS_SPHERE",
+          "THE_NEST",
+          "NOTE_FOR_YOURSELF",
+          "SCRAP_OOZE",
+          "SECRET_PORTAL",
+          "SHINING_LIGHT",
+          "THE_JOUST",
+          "THE_LIBRARY",
+          "THE_MAUSOLEUM",
+          "WORLD_OF_GOOP"
+        ],
+        "conditional": false,
+        "dynamic_return_expressions": [],
+        "legal_indices": [
+          0,
+          1
+        ],
+        "line_end": 696,
+        "line_start": 676,
+        "literal_masks": [
+          3
+        ],
+        "phase_sensitive": false,
+        "return_expressions": [
+          "0x3"
+        ],
+        "source_path": "src/sim/search/GameAction.cpp",
+        "source_sha256": "7f2377a74ac5628c6cee28dd4fa5f31990ca3497a6e1f55d983051705de685f5"
+      },
+      "predecessor_rule_sha256": "1e17f006c2fe760fdb8edc404b683af1ad284c371da9136f81c80d7e6f1059b2",
+      "save_id": "Dead Adventurer",
+      "source_refs": {
+        "enum": {
+          "line": 28,
+          "path": "include/constants/Events.h"
+        },
+        "event_game_name": {
+          "line": 148,
+          "path": "include/constants/Events.h"
+        },
+        "event_id": {
+          "line": 88,
+          "path": "include/constants/Events.h"
+        },
+        "save_id": {
+          "line": 593,
+          "path": "include/constants/SaveFileMappings.h"
+        }
+      },
+      "upstream_enum": "DEAD_ADVENTURER",
+      "upstream_event_id": "Dead Adventurer"
+    },
+    {
+      "display_summary": {
+        "case_group": [
+          "DESIGNER_IN_SPIRE"
+        ],
+        "conditional": true,
+        "display_entries": [
+          {
+            "index": 0,
+            "label": "Adjustments"
+          },
+          {
+            "index": 1,
+            "label": "Adjustments"
+          },
+          {
+            "index": 2,
+            "label": "Clean Up"
+          },
+          {
+            "index": 3,
+            "label": "Clean Up"
+          },
+          {
+            "index": 4,
+            "label": "Full Service"
+          },
+          {
+            "index": 5,
+            "label": "Punch"
+          }
+        ],
+        "display_indices": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5
+        ],
+        "line_end": 772,
+        "line_start": 736,
+        "phase_sensitive": false,
+        "source_path": "src/sim/ConsoleSimulator.cpp",
+        "source_sha256": "491f1d4b37c71595f5145955557137e634fb9bdaea94e980c11dc7bc09f4c157"
+      },
+      "event_game_name": "Designer In-Spire",
+      "execution_summary": {
+        "case_group": [
+          "DESIGNER_IN_SPIRE"
+        ],
+        "conditional": true,
+        "effect_indices": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5
+        ],
+        "line_end": 2697,
+        "line_start": 2657,
+        "phase_sensitive": false,
+        "source_path": "src/game/GameContext.cpp",
+        "source_sha256": "62a96cef4e1ed3f48da52ce9dc9220469f5f5b2f1b9167c6751990709f7b84fa"
+      },
+      "handling": "generic_position_zero_default",
+      "legal_summary": {
+        "case_group": [
+          "DESIGNER_IN_SPIRE"
+        ],
+        "conditional": true,
+        "dynamic_return_expressions": [
+          "bits"
+        ],
+        "legal_indices": [],
+        "line_end": 773,
+        "line_start": 740,
+        "literal_masks": [],
+        "phase_sensitive": false,
+        "return_expressions": [
+          "bits"
+        ],
+        "source_path": "src/sim/search/GameAction.cpp",
+        "source_sha256": "e1849f87134637f1df11f3ed82e97b999c657071b278fcb04bf1602e3fa13341"
+      },
+      "save_id": "Designer",
+      "source_refs": {
+        "enum": {
+          "line": 29,
+          "path": "include/constants/Events.h"
+        },
+        "event_game_name": {
+          "line": 149,
+          "path": "include/constants/Events.h"
+        },
+        "event_id": {
+          "line": 89,
+          "path": "include/constants/Events.h"
+        },
+        "save_id": {
+          "line": 594,
+          "path": "include/constants/SaveFileMappings.h"
+        }
+      },
+      "upstream_enum": "DESIGNER_IN_SPIRE",
+      "upstream_event_id": "Designer"
+    },
+    {
+      "display_summary": {
+        "case_group": [
+          "DUPLICATOR"
+        ],
+        "conditional": false,
+        "display_entries": [
+          {
+            "index": 0,
+            "label": "Pray"
+          },
+          {
+            "index": 1,
+            "label": "Leave"
+          }
+        ],
+        "display_indices": [
+          0,
+          1
+        ],
+        "line_end": 787,
+        "line_start": 782,
+        "phase_sensitive": false,
+        "source_path": "src/sim/ConsoleSimulator.cpp",
+        "source_sha256": "00d2f2a062a6463903b1955fa9794070e1902f27db1b6ac65a7ef69ca5849dc2"
+      },
+      "event_game_name": "Duplicator",
+      "execution_summary": {
+        "case_group": [
+          "DUPLICATOR"
+        ],
+        "conditional": true,
+        "effect_indices": [],
+        "line_end": 2733,
+        "line_start": 2721,
+        "phase_sensitive": false,
+        "source_path": "src/game/GameContext.cpp",
+        "source_sha256": "28d572d3c0dff0d76d627a8edaa968b6e761506f03ee46d4b28a4b924c45116b"
+      },
+      "handling": "generic_position_zero_default",
+      "legal_summary": {
+        "case_group": [
+          "ANCIENT_WRITING",
+          "DEAD_ADVENTURER",
+          "DUPLICATOR",
+          "OLD_BEGGAR",
+          "THE_DIVINE_FOUNTAIN",
+          "GHOSTS",
+          "THE_SSSSSERPENT",
+          "MASKED_BANDITS",
+          "HYPNOTIZING_COLORED_MUSHROOMS",
+          "MYSTERIOUS_SPHERE",
+          "THE_NEST",
+          "NOTE_FOR_YOURSELF",
+          "SCRAP_OOZE",
+          "SECRET_PORTAL",
+          "SHINING_LIGHT",
+          "THE_JOUST",
+          "THE_LIBRARY",
+          "THE_MAUSOLEUM",
+          "WORLD_OF_GOOP"
+        ],
+        "conditional": false,
+        "dynamic_return_expressions": [],
+        "legal_indices": [
+          0,
+          1
+        ],
+        "line_end": 696,
+        "line_start": 676,
+        "literal_masks": [
+          3
+        ],
+        "phase_sensitive": false,
+        "return_expressions": [
+          "0x3"
+        ],
+        "source_path": "src/sim/search/GameAction.cpp",
+        "source_sha256": "7f2377a74ac5628c6cee28dd4fa5f31990ca3497a6e1f55d983051705de685f5"
+      },
+      "save_id": "Duplicator",
+      "source_refs": {
+        "enum": {
+          "line": 31,
+          "path": "include/constants/Events.h"
+        },
+        "event_game_name": {
+          "line": 151,
+          "path": "include/constants/Events.h"
+        },
+        "event_id": {
+          "line": 91,
+          "path": "include/constants/Events.h"
+        },
+        "save_id": {
+          "line": 596,
+          "path": "include/constants/SaveFileMappings.h"
+        }
+      },
+      "upstream_enum": "DUPLICATOR",
+      "upstream_event_id": "Duplicator"
+    },
+    {
+      "display_summary": {
+        "case_group": [
+          "FACE_TRADER"
+        ],
+        "conditional": false,
+        "display_entries": [
+          {
+            "index": 0,
+            "label": "Touch"
+          },
+          {
+            "index": 1,
+            "label": "Trade"
+          },
+          {
+            "index": 2,
+            "label": "Leave"
+          }
+        ],
+        "display_indices": [
+          0,
+          1,
+          2
+        ],
+        "line_end": 794,
+        "line_start": 788,
+        "phase_sensitive": false,
+        "source_path": "src/sim/ConsoleSimulator.cpp",
+        "source_sha256": "9f8be6b325b310509cdd9fcc0b1d19e8150f83319e6a911fb60826cc2854081d"
+      },
+      "event_game_name": "Face Trader",
+      "execution_summary": {
+        "case_group": [
+          "FACE_TRADER"
+        ],
+        "conditional": true,
+        "effect_indices": [
+          0,
+          1,
+          2
+        ],
+        "line_end": 2756,
+        "line_start": 2734,
+        "phase_sensitive": false,
+        "source_path": "src/game/GameContext.cpp",
+        "source_sha256": "82f5accabe7ecb63d67e02fd760bb0dca3fe730dd97bdb1807b86a64105865b0"
+      },
+      "handling": "explicit_policy_sensitive",
+      "legal_summary": {
+        "case_group": [
+          "BIG_FISH",
+          "FACE_TRADER",
+          "GOLDEN_SHRINE",
+          "NLOTH",
+          "SENSORY_STONE",
+          "WINDING_HALLS"
+        ],
+        "conditional": false,
+        "dynamic_return_expressions": [],
+        "legal_indices": [
+          0,
+          1,
+          2
+        ],
+        "line_end": 704,
+        "line_start": 697,
+        "literal_masks": [
+          7
+        ],
+        "phase_sensitive": false,
+        "return_expressions": [
+          "0x7"
+        ],
+        "source_path": "src/sim/search/GameAction.cpp",
+        "source_sha256": "b35bc891dba4926ac0a75eaac287f5c961c778bfa21062b20674af62be54d05a"
+      },
+      "predecessor_rule_sha256": "8a203ab444744be89faf25ae1aa92bd6b54d9f68800bb4a2540babdfdbe0ba69",
+      "save_id": "FaceTrader",
+      "source_refs": {
+        "enum": {
+          "line": 32,
+          "path": "include/constants/Events.h"
+        },
+        "event_game_name": {
+          "line": 152,
+          "path": "include/constants/Events.h"
+        },
+        "event_id": {
+          "line": 92,
+          "path": "include/constants/Events.h"
+        },
+        "save_id": {
+          "line": 597,
+          "path": "include/constants/SaveFileMappings.h"
+        }
+      },
+      "upstream_enum": "FACE_TRADER",
+      "upstream_event_id": "Face Trader"
+    },
+    {
+      "display_summary": {
+        "case_group": [
+          "FALLING"
+        ],
+        "conditional": true,
+        "display_entries": [
+          {
+            "index": 0,
+            "label": "Land"
+          },
+          {
+            "index": 1,
+            "label": "Channel"
+          },
+          {
+            "index": 2,
+            "label": "Strike"
+          },
+          {
+            "index": 3,
+            "label": "Splat"
+          }
+        ],
+        "display_indices": [
+          0,
+          1,
+          2,
+          3
+        ],
+        "line_end": 818,
+        "line_start": 795,
+        "phase_sensitive": false,
+        "source_path": "src/sim/ConsoleSimulator.cpp",
+        "source_sha256": "4361e65f24b583001de908706359e6d0c80427f8f344bebc0e9b89e71b5d4ba8"
+      },
+      "event_game_name": "Falling",
+      "execution_summary": {
+        "case_group": [
+          "FALLING"
+        ],
+        "conditional": true,
+        "effect_indices": [
+          0,
+          1,
+          2,
+          3
+        ],
+        "line_end": 2784,
+        "line_start": 2757,
+        "phase_sensitive": false,
+        "source_path": "src/game/GameContext.cpp",
+        "source_sha256": "6beef894b7903aad5c707f2022957cd44c67c844dfbe38085ee25e0d72fe0c6f"
+      },
+      "handling": "generic_position_zero_default",
+      "legal_summary": {
+        "case_group": [
+          "FALLING"
+        ],
+        "conditional": true,
+        "dynamic_return_expressions": [
+          "bits"
+        ],
+        "legal_indices": [
+          3
+        ],
+        "line_end": 798,
+        "line_start": 781,
+        "literal_masks": [
+          8
+        ],
+        "phase_sensitive": false,
+        "return_expressions": [
+          "8",
+          "bits"
+        ],
+        "source_path": "src/sim/search/GameAction.cpp",
+        "source_sha256": "fb653858704c725e13a9c7f19ac9bee3b1e7cb7e292b77270e1c0e583a943ed2"
+      },
+      "save_id": "Falling",
+      "source_refs": {
+        "enum": {
+          "line": 33,
+          "path": "include/constants/Events.h"
+        },
+        "event_game_name": {
+          "line": 153,
+          "path": "include/constants/Events.h"
+        },
+        "event_id": {
+          "line": 93,
+          "path": "include/constants/Events.h"
+        },
+        "save_id": {
+          "line": 598,
+          "path": "include/constants/SaveFileMappings.h"
+        }
+      },
+      "upstream_enum": "FALLING",
+      "upstream_event_id": "Falling"
+    },
+    {
+      "display_summary": {
+        "case_group": [
+          "FORGOTTEN_ALTAR"
+        ],
+        "conditional": true,
+        "display_entries": [
+          {
+            "index": 0,
+            "label": "Offer: Golden Idol"
+          },
+          {
+            "index": 1,
+            "label": "Sacrifice"
+          },
+          {
+            "index": 2,
+            "label": "Desecrate"
+          }
+        ],
+        "display_indices": [
+          0,
+          1,
+          2
+        ],
+        "line_end": 827,
+        "line_start": 819,
+        "phase_sensitive": false,
+        "source_path": "src/sim/ConsoleSimulator.cpp",
+        "source_sha256": "7bf5a17a82299d0dff7ab77699d793de61d134c97bf4f0362a78a86a7546fc94"
+      },
+      "event_game_name": "Forgotten Altar",
+      "execution_summary": {
+        "case_group": [
+          "FORGOTTEN_ALTAR"
+        ],
+        "conditional": true,
+        "effect_indices": [
+          0,
+          1,
+          2
+        ],
+        "line_end": 2810,
+        "line_start": 2785,
+        "phase_sensitive": false,
+        "source_path": "src/game/GameContext.cpp",
+        "source_sha256": "f6581da2fb3c5687dd42ab563aa8c83eaff5a5c27cd55e8c3f9346b2d7fdaceb"
+      },
+      "handling": "explicit_policy_sensitive",
+      "legal_summary": {
+        "case_group": [
+          "FORGOTTEN_ALTAR"
+        ],
+        "conditional": true,
+        "dynamic_return_expressions": [],
+        "legal_indices": [
+          0,
+          1,
+          2
+        ],
+        "line_end": 805,
+        "line_start": 799,
+        "literal_masks": [
+          6,
+          7
+        ],
+        "phase_sensitive": false,
+        "return_expressions": [
+          "0x7",
+          "0b110"
+        ],
+        "source_path": "src/sim/search/GameAction.cpp",
+        "source_sha256": "bfc139e3f0a2fc349993b2571541530d632543a7de91c46ae33a7b310d049f5e"
+      },
+      "predecessor_rule_sha256": "c0e4e7d34a9bece3aab5f556a4f91fc80913bd723728f252b4875b4a235c355f",
+      "save_id": "Forgotten Altar",
+      "source_refs": {
+        "enum": {
+          "line": 34,
+          "path": "include/constants/Events.h"
+        },
+        "event_game_name": {
+          "line": 154,
+          "path": "include/constants/Events.h"
+        },
+        "event_id": {
+          "line": 94,
+          "path": "include/constants/Events.h"
+        },
+        "save_id": {
+          "line": 599,
+          "path": "include/constants/SaveFileMappings.h"
+        }
+      },
+      "upstream_enum": "FORGOTTEN_ALTAR",
+      "upstream_event_id": "Forgotten Altar"
+    },
+    {
+      "display_summary": {
+        "case_group": [
+          "GHOSTS"
+        ],
+        "conditional": false,
+        "display_entries": [
+          {
+            "index": 0,
+            "label": "Accept"
+          },
+          {
+            "index": 1,
+            "label": "Refuse"
+          }
+        ],
+        "display_indices": [
+          0,
+          1
+        ],
+        "line_end": 839,
+        "line_start": 834,
+        "phase_sensitive": false,
+        "source_path": "src/sim/ConsoleSimulator.cpp",
+        "source_sha256": "27d5c59d7a15664b1d21c1c4770f219aeeeecaa16156c8edb36e2139125b117d"
+      },
+      "event_game_name": "Council of Ghosts",
+      "execution_summary": {
+        "case_group": [
+          "GHOSTS"
+        ],
+        "conditional": true,
+        "effect_indices": [],
+        "line_end": 2843,
+        "line_start": 2829,
+        "phase_sensitive": false,
+        "source_path": "src/game/GameContext.cpp",
+        "source_sha256": "87856147846d9b0eccc12c3be2b3e00fbee91e8c7437fc9a7e60be4ba379d500"
+      },
+      "handling": "explicit_policy_sensitive",
+      "legal_summary": {
+        "case_group": [
+          "ANCIENT_WRITING",
+          "DEAD_ADVENTURER",
+          "DUPLICATOR",
+          "OLD_BEGGAR",
+          "THE_DIVINE_FOUNTAIN",
+          "GHOSTS",
+          "THE_SSSSSERPENT",
+          "MASKED_BANDITS",
+          "HYPNOTIZING_COLORED_MUSHROOMS",
+          "MYSTERIOUS_SPHERE",
+          "THE_NEST",
+          "NOTE_FOR_YOURSELF",
+          "SCRAP_OOZE",
+          "SECRET_PORTAL",
+          "SHINING_LIGHT",
+          "THE_JOUST",
+          "THE_LIBRARY",
+          "THE_MAUSOLEUM",
+          "WORLD_OF_GOOP"
+        ],
+        "conditional": false,
+        "dynamic_return_expressions": [],
+        "legal_indices": [
+          0,
+          1
+        ],
+        "line_end": 696,
+        "line_start": 676,
+        "literal_masks": [
+          3
+        ],
+        "phase_sensitive": false,
+        "return_expressions": [
+          "0x3"
+        ],
+        "source_path": "src/sim/search/GameAction.cpp",
+        "source_sha256": "7f2377a74ac5628c6cee28dd4fa5f31990ca3497a6e1f55d983051705de685f5"
+      },
+      "predecessor_rule_sha256": "0aa5897c5dcb77e90b32dc366baa754511103b99d735ee2792a4e37611015929",
+      "save_id": "Ghosts",
+      "source_refs": {
+        "enum": {
+          "line": 36,
+          "path": "include/constants/Events.h"
+        },
+        "event_game_name": {
+          "line": 156,
+          "path": "include/constants/Events.h"
+        },
+        "event_id": {
+          "line": 96,
+          "path": "include/constants/Events.h"
+        },
+        "save_id": {
+          "line": 601,
+          "path": "include/constants/SaveFileMappings.h"
+        }
+      },
+      "upstream_enum": "GHOSTS",
+      "upstream_event_id": "Ghosts"
+    },
+    {
+      "display_summary": {
+        "case_group": [
+          "GOLDEN_IDOL"
+        ],
+        "conditional": true,
+        "display_entries": [
+          {
+            "index": 0,
+            "label": "Take"
+          },
+          {
+            "index": 1,
+            "label": "Leave"
+          },
+          {
+            "index": 2,
+            "label": "Outrun"
+          },
+          {
+            "index": 3,
+            "label": "Smash"
+          },
+          {
+            "index": 4,
+            "label": "Hide"
+          }
+        ],
+        "display_indices": [
+          0,
+          1,
+          2,
+          3,
+          4
+        ],
+        "line_end": 851,
+        "line_start": 840,
+        "phase_sensitive": false,
+        "source_path": "src/sim/ConsoleSimulator.cpp",
+        "source_sha256": "0f981df7d3192e0256b7e91c32f10d435b3ff94d7f5701bc6bf11d7917dcf716"
+      },
+      "event_game_name": "Golden Idol",
+      "execution_summary": {
+        "case_group": [
+          "GOLDEN_IDOL"
+        ],
+        "conditional": true,
+        "effect_indices": [
+          0,
+          1,
+          2,
+          3,
+          4
+        ],
+        "line_end": 2874,
+        "line_start": 2844,
+        "phase_sensitive": false,
+        "source_path": "src/game/GameContext.cpp",
+        "source_sha256": "46da5ca9da9c14b8880538faea6c0fb2ab3fd2a4d02132382e47d7de6a3fbcd5"
+      },
+      "handling": "explicit_policy_sensitive",
+      "legal_summary": {
+        "case_group": [
+          "GOLDEN_IDOL"
+        ],
+        "conditional": true,
+        "dynamic_return_expressions": [],
+        "legal_indices": [
+          0,
+          1,
+          2,
+          3,
+          4
+        ],
+        "line_end": 812,
+        "line_start": 806,
+        "literal_masks": [
+          3,
+          28
+        ],
+        "phase_sensitive": false,
+        "return_expressions": [
+          "0b11",
+          "0b11100"
+        ],
+        "source_path": "src/sim/search/GameAction.cpp",
+        "source_sha256": "38b094e16f80299451458c14d78d50eb35dbf70390a40505e763a1f599ccc1ed"
+      },
+      "predecessor_rule_sha256": "61f2b5e05b3be43bc7f8949882ef4b6be1ab4c7c3f391727860d31581f62431f",
+      "save_id": "Golden Idol",
+      "source_refs": {
+        "enum": {
+          "line": 37,
+          "path": "include/constants/Events.h"
+        },
+        "event_game_name": {
+          "line": 157,
+          "path": "include/constants/Events.h"
+        },
+        "event_id": {
+          "line": 97,
+          "path": "include/constants/Events.h"
+        },
+        "save_id": {
+          "line": 602,
+          "path": "include/constants/SaveFileMappings.h"
+        }
+      },
+      "upstream_enum": "GOLDEN_IDOL",
+      "upstream_event_id": "Golden Idol"
+    },
+    {
+      "display_summary": {
+        "case_group": [
+          "GOLDEN_SHRINE"
+        ],
+        "conditional": false,
+        "display_entries": [
+          {
+            "index": 0,
+            "label": "Pray"
+          },
+          {
+            "index": 1,
+            "label": "Desecrate"
+          },
+          {
+            "index": 2,
+            "label": "Leave"
+          }
+        ],
+        "display_indices": [
+          0,
+          1,
+          2
+        ],
+        "line_end": 858,
+        "line_start": 852,
+        "phase_sensitive": false,
+        "source_path": "src/sim/ConsoleSimulator.cpp",
+        "source_sha256": "cec14389349c6e48dff93103d0654d03da2c44cb696e2646796dcbbf19599725"
+      },
+      "event_game_name": "Golden Shrine",
+      "execution_summary": {
+        "case_group": [
+          "GOLDEN_SHRINE"
+        ],
+        "conditional": true,
+        "effect_indices": [
+          0,
+          1,
+          2
+        ],
+        "line_end": 2897,
+        "line_start": 2875,
+        "phase_sensitive": false,
+        "source_path": "src/game/GameContext.cpp",
+        "source_sha256": "3586654209e3de6c6f94f96c223350413f1946da72a724709c131e47e6d2a870"
+      },
+      "handling": "explicit_policy_sensitive",
+      "legal_summary": {
+        "case_group": [
+          "BIG_FISH",
+          "FACE_TRADER",
+          "GOLDEN_SHRINE",
+          "NLOTH",
+          "SENSORY_STONE",
+          "WINDING_HALLS"
+        ],
+        "conditional": false,
+        "dynamic_return_expressions": [],
+        "legal_indices": [
+          0,
+          1,
+          2
+        ],
+        "line_end": 704,
+        "line_start": 697,
+        "literal_masks": [
+          7
+        ],
+        "phase_sensitive": false,
+        "return_expressions": [
+          "0x7"
+        ],
+        "source_path": "src/sim/search/GameAction.cpp",
+        "source_sha256": "b35bc891dba4926ac0a75eaac287f5c961c778bfa21062b20674af62be54d05a"
+      },
+      "predecessor_rule_sha256": "6667cd8097f40cb03b6f4038b68f54e2a0f12f056a7b008ea878825885967ec5",
+      "save_id": "Golden Shrine",
+      "source_refs": {
+        "enum": {
+          "line": 38,
+          "path": "include/constants/Events.h"
+        },
+        "event_game_name": {
+          "line": 158,
+          "path": "include/constants/Events.h"
+        },
+        "event_id": {
+          "line": 98,
+          "path": "include/constants/Events.h"
+        },
+        "save_id": {
+          "line": 603,
+          "path": "include/constants/SaveFileMappings.h"
+        }
+      },
+      "upstream_enum": "GOLDEN_SHRINE",
+      "upstream_event_id": "Golden Shrine"
+    },
+    {
+      "display_summary": {
+        "case_group": [
+          "HYPNOTIZING_COLORED_MUSHROOMS"
+        ],
+        "conditional": false,
+        "display_entries": [
+          {
+            "index": 0,
+            "label": "Stomp"
+          },
+          {
+            "index": 1,
+            "label": "Eat"
+          }
+        ],
+        "display_indices": [
+          0,
+          1
+        ],
+        "line_end": 933,
+        "line_start": 928,
+        "phase_sensitive": false,
+        "source_path": "src/sim/ConsoleSimulator.cpp",
+        "source_sha256": "d526b5979581f36e316e78a3613eb7f7c9ad90fa89975f97da6586b2083c3097"
+      },
+      "event_game_name": "Hypnotizing Colored Mushrooms",
+      "execution_summary": {
+        "case_group": [
+          "HYPNOTIZING_COLORED_MUSHROOMS"
+        ],
+        "conditional": true,
+        "effect_indices": [],
+        "line_end": 3092,
+        "line_start": 3069,
+        "phase_sensitive": false,
+        "source_path": "src/game/GameContext.cpp",
+        "source_sha256": "038408afc39eadf83951ddd33ea5bb537a31b47d0d96439e643c473a3da5f4f5"
+      },
+      "handling": "explicit_policy_sensitive",
+      "legal_summary": {
+        "case_group": [
+          "ANCIENT_WRITING",
+          "DEAD_ADVENTURER",
+          "DUPLICATOR",
+          "OLD_BEGGAR",
+          "THE_DIVINE_FOUNTAIN",
+          "GHOSTS",
+          "THE_SSSSSERPENT",
+          "MASKED_BANDITS",
+          "HYPNOTIZING_COLORED_MUSHROOMS",
+          "MYSTERIOUS_SPHERE",
+          "THE_NEST",
+          "NOTE_FOR_YOURSELF",
+          "SCRAP_OOZE",
+          "SECRET_PORTAL",
+          "SHINING_LIGHT",
+          "THE_JOUST",
+          "THE_LIBRARY",
+          "THE_MAUSOLEUM",
+          "WORLD_OF_GOOP"
+        ],
+        "conditional": false,
+        "dynamic_return_expressions": [],
+        "legal_indices": [
+          0,
+          1
+        ],
+        "line_end": 696,
+        "line_start": 676,
+        "literal_masks": [
+          3
+        ],
+        "phase_sensitive": false,
+        "return_expressions": [
+          "0x3"
+        ],
+        "source_path": "src/sim/search/GameAction.cpp",
+        "source_sha256": "7f2377a74ac5628c6cee28dd4fa5f31990ca3497a6e1f55d983051705de685f5"
+      },
+      "predecessor_rule_sha256": "9572242451906d2a4dae9228cbb615bc943b26444ca745aa19c134dc0762eb9c",
+      "save_id": "Mushrooms",
+      "source_refs": {
+        "enum": {
+          "line": 47,
+          "path": "include/constants/Events.h"
+        },
+        "event_game_name": {
+          "line": 167,
+          "path": "include/constants/Events.h"
+        },
+        "event_id": {
+          "line": 107,
+          "path": "include/constants/Events.h"
+        },
+        "save_id": {
+          "line": 612,
+          "path": "include/constants/SaveFileMappings.h"
+        }
+      },
+      "upstream_enum": "HYPNOTIZING_COLORED_MUSHROOMS",
+      "upstream_event_id": "Mushrooms"
+    },
+    {
+      "display_summary": {
+        "case_group": [
+          "KNOWING_SKULL"
+        ],
+        "conditional": false,
+        "display_entries": [
+          {
+            "index": 0,
+            "label": "Riches?"
+          },
+          {
+            "index": 1,
+            "label": "Success?"
+          },
+          {
+            "index": 2,
+            "label": "A Pick Me Up?"
+          },
+          {
+            "index": 3,
+            "label": "How do I leave?"
+          }
+        ],
+        "display_indices": [
+          0,
+          1,
+          2,
+          3
+        ],
+        "line_end": 875,
+        "line_start": 868,
+        "phase_sensitive": false,
+        "source_path": "src/sim/ConsoleSimulator.cpp",
+        "source_sha256": "0d252acbd36102f52abab6f5f0eb633df50f062aad912b7923ea060cc28a830a"
+      },
+      "event_game_name": "Knowing Skull",
+      "execution_summary": {
+        "case_group": [
+          "KNOWING_SKULL"
+        ],
+        "conditional": true,
+        "effect_indices": [
+          0,
+          1,
+          2,
+          3
+        ],
+        "line_end": 2947,
+        "line_start": 2920,
+        "phase_sensitive": false,
+        "source_path": "src/game/GameContext.cpp",
+        "source_sha256": "cf9753fc05c336bab8f73b709c3ca0f3a25c2aac09957f2827db78f2e85643fb"
+      },
+      "handling": "explicit_policy_sensitive",
+      "legal_summary": {
+        "case_group": [
+          "NEOW",
+          "KNOWING_SKULL",
+          "THE_WOMAN_IN_BLUE"
+        ],
+        "conditional": false,
+        "dynamic_return_expressions": [],
+        "legal_indices": [
+          0,
+          1,
+          2,
+          3
+        ],
+        "line_end": 709,
+        "line_start": 705,
+        "literal_masks": [
+          15
+        ],
+        "phase_sensitive": false,
+        "return_expressions": [
+          "0xF"
+        ],
+        "source_path": "src/sim/search/GameAction.cpp",
+        "source_sha256": "3470f9465c720965ec1dc2b835e97e7684805e5217490fae9607d06b34adb7be"
+      },
+      "predecessor_rule_sha256": "91f08c4470eccb93e3f574e4efdb66e336917930ff0b9c6ab5de04f953804ff7",
+      "save_id": "Knowing Skull",
+      "source_refs": {
+        "enum": {
+          "line": 40,
+          "path": "include/constants/Events.h"
+        },
+        "event_game_name": {
+          "line": 160,
+          "path": "include/constants/Events.h"
+        },
+        "event_id": {
+          "line": 100,
+          "path": "include/constants/Events.h"
+        },
+        "save_id": {
+          "line": 605,
+          "path": "include/constants/SaveFileMappings.h"
+        }
+      },
+      "upstream_enum": "KNOWING_SKULL",
+      "upstream_event_id": "Knowing Skull"
+    },
+    {
+      "display_summary": {
+        "case_group": [
+          "LAB"
+        ],
+        "conditional": false,
+        "display_entries": [],
+        "display_indices": [],
+        "line_end": 879,
+        "line_start": 876,
+        "phase_sensitive": false,
+        "source_path": "src/sim/ConsoleSimulator.cpp",
+        "source_sha256": "fd4dcb14256999d385e4769742d3e9de052e8e0adc48526e0b876e5eaefb6864"
+      },
+      "event_game_name": "Lab",
+      "execution_summary": {
+        "case_group": [
+          "LAB"
+        ],
+        "conditional": false,
+        "effect_indices": [],
+        "line_end": 2952,
+        "line_start": 2948,
+        "phase_sensitive": false,
+        "source_path": "src/game/GameContext.cpp",
+        "source_sha256": "0c3f7b017c39ab9e0fd7cedf7b50405ffe3c3adec4f495fb64e7da39d7363ea9"
+      },
+      "handling": "generic_position_zero_default",
+      "legal_summary": {
+        "case_group": [
+          "LAB",
+          "WHEEL_OF_CHANGE"
+        ],
+        "conditional": false,
+        "dynamic_return_expressions": [],
+        "legal_indices": [
+          0
+        ],
+        "line_end": 675,
+        "line_start": 672,
+        "literal_masks": [
+          1
+        ],
+        "phase_sensitive": false,
+        "return_expressions": [
+          "0b1"
+        ],
+        "source_path": "src/sim/search/GameAction.cpp",
+        "source_sha256": "3de25d80e2115043369d952a992fb89184798ce214631a2a1c7a5eeef095a175"
+      },
+      "save_id": "Lab",
+      "source_refs": {
+        "enum": {
+          "line": 41,
+          "path": "include/constants/Events.h"
+        },
+        "event_game_name": {
+          "line": 161,
+          "path": "include/constants/Events.h"
+        },
+        "event_id": {
+          "line": 101,
+          "path": "include/constants/Events.h"
+        },
+        "save_id": {
+          "line": 606,
+          "path": "include/constants/SaveFileMappings.h"
+        }
+      },
+      "upstream_enum": "LAB",
+      "upstream_event_id": "Lab"
+    },
+    {
+      "display_summary": {
+        "case_group": [
+          "LIVING_WALL"
+        ],
+        "conditional": true,
+        "display_entries": [
+          {
+            "index": 0,
+            "label": "Forget"
+          },
+          {
+            "index": 1,
+            "label": "Change"
+          },
+          {
+            "index": 2,
+            "label": "Grow"
+          }
+        ],
+        "display_indices": [
+          0,
+          1,
+          2
+        ],
+        "line_end": 894,
+        "line_start": 886,
+        "phase_sensitive": false,
+        "source_path": "src/sim/ConsoleSimulator.cpp",
+        "source_sha256": "42432c72fed66baa793f4285c97784701c5bedd5e0ae6636049d3ade7930d580"
+      },
+      "event_game_name": "Living Wall",
+      "execution_summary": {
+        "case_group": [
+          "LIVING_WALL"
+        ],
+        "conditional": true,
+        "effect_indices": [
+          0,
+          1,
+          2
+        ],
+        "line_end": 2986,
+        "line_start": 2968,
+        "phase_sensitive": false,
+        "source_path": "src/game/GameContext.cpp",
+        "source_sha256": "bc6289374143a2a90114c40c9576013630c5b99273b529ac5bee302dcd99143f"
+      },
+      "handling": "explicit_policy_sensitive",
+      "legal_summary": {
+        "case_group": [
+          "LIVING_WALL"
+        ],
+        "conditional": true,
+        "dynamic_return_expressions": [],
+        "legal_indices": [
+          0,
+          1,
+          2
+        ],
+        "line_end": 826,
+        "line_start": 820,
+        "literal_masks": [
+          3,
+          7
+        ],
+        "phase_sensitive": false,
+        "return_expressions": [
+          "0x7",
+          "0x3"
+        ],
+        "source_path": "src/sim/search/GameAction.cpp",
+        "source_sha256": "9e1dec53f8f22b644282e4a1f08914856ac307153b29e4d2a7b9662446170958"
+      },
+      "predecessor_rule_sha256": "af16943fdf3bd952664e7ce0134b5688a5652f644b313f76f918dc18b442a747",
+      "save_id": "Living Wall",
+      "source_refs": {
+        "enum": {
+          "line": 43,
+          "path": "include/constants/Events.h"
+        },
+        "event_game_name": {
+          "line": 163,
+          "path": "include/constants/Events.h"
+        },
+        "event_id": {
+          "line": 103,
+          "path": "include/constants/Events.h"
+        },
+        "save_id": {
+          "line": 608,
+          "path": "include/constants/SaveFileMappings.h"
+        }
+      },
+      "upstream_enum": "LIVING_WALL",
+      "upstream_event_id": "Living Wall"
+    },
+    {
+      "display_summary": {
+        "case_group": [
+          "MASKED_BANDITS"
+        ],
+        "conditional": false,
+        "display_entries": [
+          {
+            "index": 0,
+            "label": "Pay"
+          },
+          {
+            "index": 1,
+            "label": "Fight!"
+          }
+        ],
+        "display_indices": [
+          0,
+          1
+        ],
+        "line_end": 899,
+        "line_start": 895,
+        "phase_sensitive": false,
+        "source_path": "src/sim/ConsoleSimulator.cpp",
+        "source_sha256": "6c05237784a49f5fd3764ab738b38719a95f3c4289455e713cd6f312f7d97363"
+      },
+      "event_game_name": "Masked Bandits",
+      "execution_summary": {
+        "case_group": [
+          "MASKED_BANDITS"
+        ],
+        "conditional": true,
+        "effect_indices": [],
+        "line_end": 3009,
+        "line_start": 2987,
+        "phase_sensitive": false,
+        "source_path": "src/game/GameContext.cpp",
+        "source_sha256": "3a529f6eeba228e986b0e791654f6422cd652fac47d68ebe8ff9508d82de699a"
+      },
+      "handling": "explicit_policy_sensitive",
+      "legal_summary": {
+        "case_group": [
+          "ANCIENT_WRITING",
+          "DEAD_ADVENTURER",
+          "DUPLICATOR",
+          "OLD_BEGGAR",
+          "THE_DIVINE_FOUNTAIN",
+          "GHOSTS",
+          "THE_SSSSSERPENT",
+          "MASKED_BANDITS",
+          "HYPNOTIZING_COLORED_MUSHROOMS",
+          "MYSTERIOUS_SPHERE",
+          "THE_NEST",
+          "NOTE_FOR_YOURSELF",
+          "SCRAP_OOZE",
+          "SECRET_PORTAL",
+          "SHINING_LIGHT",
+          "THE_JOUST",
+          "THE_LIBRARY",
+          "THE_MAUSOLEUM",
+          "WORLD_OF_GOOP"
+        ],
+        "conditional": false,
+        "dynamic_return_expressions": [],
+        "legal_indices": [
+          0,
+          1
+        ],
+        "line_end": 696,
+        "line_start": 676,
+        "literal_masks": [
+          3
+        ],
+        "phase_sensitive": false,
+        "return_expressions": [
+          "0x3"
+        ],
+        "source_path": "src/sim/search/GameAction.cpp",
+        "source_sha256": "7f2377a74ac5628c6cee28dd4fa5f31990ca3497a6e1f55d983051705de685f5"
+      },
+      "predecessor_rule_sha256": "bad169537bb3f1a7d64b0a67b85d3dfa93dcaa878a64132df9f49785e0ac1b21",
+      "save_id": "Masked Bandits",
+      "source_refs": {
+        "enum": {
+          "line": 44,
+          "path": "include/constants/Events.h"
+        },
+        "event_game_name": {
+          "line": 164,
+          "path": "include/constants/Events.h"
+        },
+        "event_id": {
+          "line": 104,
+          "path": "include/constants/Events.h"
+        },
+        "save_id": {
+          "line": 609,
+          "path": "include/constants/SaveFileMappings.h"
+        }
+      },
+      "upstream_enum": "MASKED_BANDITS",
+      "upstream_event_id": "Masked Bandits"
+    },
+    {
+      "display_summary": {
+        "case_group": [
+          "MINDBLOOM"
+        ],
+        "conditional": true,
+        "display_entries": [
+          {
+            "index": 0,
+            "label": "I am War"
+          },
+          {
+            "index": 1,
+            "label": "I am Awake"
+          },
+          {
+            "index": 2,
+            "label": "I am Rich"
+          },
+          {
+            "index": 3,
+            "label": "I am Healthy"
+          }
+        ],
+        "display_indices": [
+          0,
+          1,
+          2,
+          3
+        ],
+        "line_end": 927,
+        "line_start": 917,
+        "phase_sensitive": false,
+        "source_path": "src/sim/ConsoleSimulator.cpp",
+        "source_sha256": "edcd739b25092e526cf19088f8a351a4f5eb78fceaecb06cd114ff3eb4868416"
+      },
+      "event_game_name": "Mindbloom",
+      "execution_summary": {
+        "case_group": [
+          "MINDBLOOM"
+        ],
+        "conditional": true,
+        "effect_indices": [
+          0,
+          1,
+          2,
+          3
+        ],
+        "line_end": 3068,
+        "line_start": 3015,
+        "phase_sensitive": false,
+        "source_path": "src/game/GameContext.cpp",
+        "source_sha256": "f3ed6506849ed5cfccffe48dfed2e78b4393d40b803908cc223dd27ea5bfb6f6"
+      },
+      "handling": "explicit_policy_sensitive",
+      "legal_summary": {
+        "case_group": [
+          "MINDBLOOM"
+        ],
+        "conditional": true,
+        "dynamic_return_expressions": [],
+        "legal_indices": [
+          0,
+          1,
+          2,
+          3
+        ],
+        "line_end": 833,
+        "line_start": 827,
+        "literal_masks": [
+          7,
+          11
+        ],
+        "phase_sensitive": false,
+        "return_expressions": [
+          "0x7",
+          "0b1011"
+        ],
+        "source_path": "src/sim/search/GameAction.cpp",
+        "source_sha256": "1e2e0747f2e978e1b50eebe8f75a261016d0b9b2c7b6d1f782f276e899d77972"
+      },
+      "predecessor_rule_sha256": "c07734931a326dc57f7efc0075eac95d66914a9eccf8c22db9312af0f8176422",
+      "save_id": "MindBloom",
+      "source_refs": {
+        "enum": {
+          "line": 46,
+          "path": "include/constants/Events.h"
+        },
+        "event_game_name": {
+          "line": 166,
+          "path": "include/constants/Events.h"
+        },
+        "event_id": {
+          "line": 106,
+          "path": "include/constants/Events.h"
+        },
+        "save_id": {
+          "line": 611,
+          "path": "include/constants/SaveFileMappings.h"
+        }
+      },
+      "upstream_enum": "MINDBLOOM",
+      "upstream_event_id": "Mindbloom"
+    },
+    {
+      "display_summary": {
+        "case_group": [
+          "MYSTERIOUS_SPHERE"
+        ],
+        "conditional": false,
+        "display_entries": [
+          {
+            "index": 0,
+            "label": "Open Sphere"
+          },
+          {
+            "index": 1,
+            "label": "Leave"
+          }
+        ],
+        "display_indices": [
+          0,
+          1
+        ],
+        "line_end": 938,
+        "line_start": 934,
+        "phase_sensitive": false,
+        "source_path": "src/sim/ConsoleSimulator.cpp",
+        "source_sha256": "0c745660a2178ae6b3829771d627a72ca1c0464a69948be06674685d9196552f"
+      },
+      "event_game_name": "Mysterious Sphere",
+      "execution_summary": {
+        "case_group": [
+          "MYSTERIOUS_SPHERE"
+        ],
+        "conditional": true,
+        "effect_indices": [],
+        "line_end": 3114,
+        "line_start": 3093,
+        "phase_sensitive": false,
+        "source_path": "src/game/GameContext.cpp",
+        "source_sha256": "c6693edfeea227fc6e38bd7bf6ad849e9d0c85b16e19d9eeb2c7300b25a19e83"
+      },
+      "handling": "explicit_policy_sensitive",
+      "legal_summary": {
+        "case_group": [
+          "ANCIENT_WRITING",
+          "DEAD_ADVENTURER",
+          "DUPLICATOR",
+          "OLD_BEGGAR",
+          "THE_DIVINE_FOUNTAIN",
+          "GHOSTS",
+          "THE_SSSSSERPENT",
+          "MASKED_BANDITS",
+          "HYPNOTIZING_COLORED_MUSHROOMS",
+          "MYSTERIOUS_SPHERE",
+          "THE_NEST",
+          "NOTE_FOR_YOURSELF",
+          "SCRAP_OOZE",
+          "SECRET_PORTAL",
+          "SHINING_LIGHT",
+          "THE_JOUST",
+          "THE_LIBRARY",
+          "THE_MAUSOLEUM",
+          "WORLD_OF_GOOP"
+        ],
+        "conditional": false,
+        "dynamic_return_expressions": [],
+        "legal_indices": [
+          0,
+          1
+        ],
+        "line_end": 696,
+        "line_start": 676,
+        "literal_masks": [
+          3
+        ],
+        "phase_sensitive": false,
+        "return_expressions": [
+          "0x3"
+        ],
+        "source_path": "src/sim/search/GameAction.cpp",
+        "source_sha256": "7f2377a74ac5628c6cee28dd4fa5f31990ca3497a6e1f55d983051705de685f5"
+      },
+      "predecessor_rule_sha256": "0e9785467cd8bec0fb137791961797e726d4cee1910ebbbf19658850c4567f43",
+      "save_id": "Mysterious Sphere",
+      "source_refs": {
+        "enum": {
+          "line": 48,
+          "path": "include/constants/Events.h"
+        },
+        "event_game_name": {
+          "line": 168,
+          "path": "include/constants/Events.h"
+        },
+        "event_id": {
+          "line": 108,
+          "path": "include/constants/Events.h"
+        },
+        "save_id": {
+          "line": 613,
+          "path": "include/constants/SaveFileMappings.h"
+        }
+      },
+      "upstream_enum": "MYSTERIOUS_SPHERE",
+      "upstream_event_id": "Mysterious Sphere"
+    },
+    {
+      "display_summary": {
+        "case_group": [
+          "NLOTH"
+        ],
+        "conditional": false,
+        "display_entries": [
+          {
+            "index": 0,
+            "label": "[Offer"
+          },
+          {
+            "index": 1,
+            "label": "[Offer"
+          },
+          {
+            "index": 2,
+            "label": "Leave"
+          }
+        ],
+        "display_indices": [
+          0,
+          1,
+          2
+        ],
+        "line_end": 953,
+        "line_start": 944,
+        "phase_sensitive": false,
+        "source_path": "src/sim/ConsoleSimulator.cpp",
+        "source_sha256": "5d398602b2884ff4c2b6af01974a4397125513405bbb8b145941a55f6b496e6c"
+      },
+      "event_game_name": "N'loth",
+      "execution_summary": {
+        "case_group": [
+          "NLOTH"
+        ],
+        "conditional": true,
+        "effect_indices": [
+          0,
+          1,
+          2
+        ],
+        "line_end": 3154,
+        "line_start": 3131,
+        "phase_sensitive": false,
+        "source_path": "src/game/GameContext.cpp",
+        "source_sha256": "b04ca92f99552f89fdc609d319c6b247c572ff50b913d8e8db184c71404500de"
+      },
+      "handling": "explicit_policy_sensitive",
+      "legal_summary": {
+        "case_group": [
+          "BIG_FISH",
+          "FACE_TRADER",
+          "GOLDEN_SHRINE",
+          "NLOTH",
+          "SENSORY_STONE",
+          "WINDING_HALLS"
+        ],
+        "conditional": false,
+        "dynamic_return_expressions": [],
+        "legal_indices": [
+          0,
+          1,
+          2
+        ],
+        "line_end": 704,
+        "line_start": 697,
+        "literal_masks": [
+          7
+        ],
+        "phase_sensitive": false,
+        "return_expressions": [
+          "0x7"
+        ],
+        "source_path": "src/sim/search/GameAction.cpp",
+        "source_sha256": "b35bc891dba4926ac0a75eaac287f5c961c778bfa21062b20674af62be54d05a"
+      },
+      "predecessor_rule_sha256": "0c85e97c4f27e4c6c021bff60752f8bbaab01c259908c3e03e8fe0c86d69d9fa",
+      "save_id": "N'loth",
+      "source_refs": {
+        "enum": {
+          "line": 50,
+          "path": "include/constants/Events.h"
+        },
+        "event_game_name": {
+          "line": 170,
+          "path": "include/constants/Events.h"
+        },
+        "event_id": {
+          "line": 110,
+          "path": "include/constants/Events.h"
+        },
+        "save_id": {
+          "line": 615,
+          "path": "include/constants/SaveFileMappings.h"
+        }
+      },
+      "upstream_enum": "NLOTH",
+      "upstream_event_id": "Nloth"
+    },
+    {
+      "display_summary": {
+        "case_group": [
+          "NOTE_FOR_YOURSELF"
+        ],
+        "conditional": false,
+        "display_entries": [
+          {
+            "index": 0,
+            "label": "Take and Give"
+          },
+          {
+            "index": 1,
+            "label": "Ignore"
+          }
+        ],
+        "display_indices": [
+          0,
+          1
+        ],
+        "line_end": 958,
+        "line_start": 954,
+        "phase_sensitive": false,
+        "source_path": "src/sim/ConsoleSimulator.cpp",
+        "source_sha256": "e8c1363986b85e612afda0fe2d42b79a0bf7fe3e0f9f6990f73a6843b55865c7"
+      },
+      "event_game_name": "Note For Yourself",
+      "execution_summary": {
+        "case_group": [
+          "NOTE_FOR_YOURSELF"
+        ],
+        "conditional": true,
+        "effect_indices": [],
+        "line_end": 3165,
+        "line_start": 3155,
+        "phase_sensitive": false,
+        "source_path": "src/game/GameContext.cpp",
+        "source_sha256": "8a0b15f3373ef605b4475865ce913e3786038242dc34f7079fb638371ad981c6"
+      },
+      "handling": "explicit_policy_sensitive",
+      "legal_summary": {
+        "case_group": [
+          "ANCIENT_WRITING",
+          "DEAD_ADVENTURER",
+          "DUPLICATOR",
+          "OLD_BEGGAR",
+          "THE_DIVINE_FOUNTAIN",
+          "GHOSTS",
+          "THE_SSSSSERPENT",
+          "MASKED_BANDITS",
+          "HYPNOTIZING_COLORED_MUSHROOMS",
+          "MYSTERIOUS_SPHERE",
+          "THE_NEST",
+          "NOTE_FOR_YOURSELF",
+          "SCRAP_OOZE",
+          "SECRET_PORTAL",
+          "SHINING_LIGHT",
+          "THE_JOUST",
+          "THE_LIBRARY",
+          "THE_MAUSOLEUM",
+          "WORLD_OF_GOOP"
+        ],
+        "conditional": false,
+        "dynamic_return_expressions": [],
+        "legal_indices": [
+          0,
+          1
+        ],
+        "line_end": 696,
+        "line_start": 676,
+        "literal_masks": [
+          3
+        ],
+        "phase_sensitive": false,
+        "return_expressions": [
+          "0x3"
+        ],
+        "source_path": "src/sim/search/GameAction.cpp",
+        "source_sha256": "7f2377a74ac5628c6cee28dd4fa5f31990ca3497a6e1f55d983051705de685f5"
+      },
+      "predecessor_rule_sha256": "217a76931ee68a5e57f203ce9c8a064faa53f0d2a592fb805a0c87058b92875f",
+      "save_id": "NoteForYourself",
+      "source_refs": {
+        "enum": {
+          "line": 51,
+          "path": "include/constants/Events.h"
+        },
+        "event_game_name": {
+          "line": 171,
+          "path": "include/constants/Events.h"
+        },
+        "event_id": {
+          "line": 111,
+          "path": "include/constants/Events.h"
+        },
+        "save_id": {
+          "line": 616,
+          "path": "include/constants/SaveFileMappings.h"
+        }
+      },
+      "upstream_enum": "NOTE_FOR_YOURSELF",
+      "upstream_event_id": "Note For Yourself"
+    },
+    {
+      "display_summary": {
+        "case_group": [
+          "OLD_BEGGAR"
+        ],
+        "conditional": false,
+        "display_entries": [
+          {
+            "index": 0,
+            "label": "Offer Gold"
+          },
+          {
+            "index": 1,
+            "label": "Leave"
+          }
+        ],
+        "display_indices": [
+          0,
+          1
+        ],
+        "line_end": 658,
+        "line_start": 653,
+        "phase_sensitive": false,
+        "source_path": "src/sim/ConsoleSimulator.cpp",
+        "source_sha256": "a2baa3cb521a44a218cf8a782aef70a4eda548af76134fce28a9110393bd1c3b"
+      },
+      "event_game_name": "Old Beggar",
+      "execution_summary": {
+        "case_group": [
+          "OLD_BEGGAR"
+        ],
+        "conditional": true,
+        "effect_indices": [],
+        "line_end": 2525,
+        "line_start": 2512,
+        "phase_sensitive": false,
+        "source_path": "src/game/GameContext.cpp",
+        "source_sha256": "113ea5f8f5fa495278464a5c6467b121aabd66972b273444e77a2fecc13d78b9"
+      },
+      "handling": "generic_position_zero_default",
+      "legal_summary": {
+        "case_group": [
+          "ANCIENT_WRITING",
+          "DEAD_ADVENTURER",
+          "DUPLICATOR",
+          "OLD_BEGGAR",
+          "THE_DIVINE_FOUNTAIN",
+          "GHOSTS",
+          "THE_SSSSSERPENT",
+          "MASKED_BANDITS",
+          "HYPNOTIZING_COLORED_MUSHROOMS",
+          "MYSTERIOUS_SPHERE",
+          "THE_NEST",
+          "NOTE_FOR_YOURSELF",
+          "SCRAP_OOZE",
+          "SECRET_PORTAL",
+          "SHINING_LIGHT",
+          "THE_JOUST",
+          "THE_LIBRARY",
+          "THE_MAUSOLEUM",
+          "WORLD_OF_GOOP"
+        ],
+        "conditional": false,
+        "dynamic_return_expressions": [],
+        "legal_indices": [
+          0,
+          1
+        ],
+        "line_end": 696,
+        "line_start": 676,
+        "literal_masks": [
+          3
+        ],
+        "phase_sensitive": false,
+        "return_expressions": [
+          "0x3"
+        ],
+        "source_path": "src/sim/search/GameAction.cpp",
+        "source_sha256": "7f2377a74ac5628c6cee28dd4fa5f31990ca3497a6e1f55d983051705de685f5"
+      },
+      "save_id": "Beggar",
+      "source_refs": {
+        "enum": {
+          "line": 23,
+          "path": "include/constants/Events.h"
+        },
+        "event_game_name": {
+          "line": 143,
+          "path": "include/constants/Events.h"
+        },
+        "event_id": {
+          "line": 83,
+          "path": "include/constants/Events.h"
+        },
+        "save_id": {
+          "line": 588,
+          "path": "include/constants/SaveFileMappings.h"
+        }
+      },
+      "upstream_enum": "OLD_BEGGAR",
+      "upstream_event_id": "Beggar"
+    },
+    {
+      "display_summary": {
+        "case_group": [
+          "OMINOUS_FORGE"
+        ],
+        "conditional": true,
+        "display_entries": [
+          {
+            "index": 0,
+            "label": "Forge"
+          },
+          {
+            "index": 1,
+            "label": "Rummage"
+          },
+          {
+            "index": 2,
+            "label": "Leave"
+          }
+        ],
+        "display_indices": [
+          0,
+          1,
+          2
+        ],
+        "line_end": 637,
+        "line_start": 629,
+        "phase_sensitive": false,
+        "source_path": "src/sim/ConsoleSimulator.cpp",
+        "source_sha256": "1719a53e0e79cbca9af5452f7ff808cdba8cafc79b62d80acb80cb1e26331340"
+      },
+      "event_game_name": "Ominous Forge",
+      "execution_summary": {
+        "case_group": [
+          "OMINOUS_FORGE"
+        ],
+        "conditional": true,
+        "effect_indices": [
+          0,
+          1,
+          2
+        ],
+        "line_end": 2469,
+        "line_start": 2448,
+        "phase_sensitive": false,
+        "source_path": "src/game/GameContext.cpp",
+        "source_sha256": "99d4d1ef8b50ca9f33960fc3d14b312c524c3062f861b9fea0f703034179d9ed"
+      },
+      "handling": "generic_position_zero_default",
+      "legal_summary": {
+        "case_group": [
+          "OMINOUS_FORGE"
+        ],
+        "conditional": true,
+        "dynamic_return_expressions": [],
+        "legal_indices": [
+          0,
+          1,
+          2
+        ],
+        "line_end": 898,
+        "line_start": 891,
+        "literal_masks": [
+          6,
+          7
+        ],
+        "phase_sensitive": false,
+        "return_expressions": [
+          "0x7",
+          "0x6"
+        ],
+        "source_path": "src/sim/search/GameAction.cpp",
+        "source_sha256": "eae88eeaa0b79ddb39411e5a2a313c9ee150ef5c395c2315187e10fbdfca8739"
+      },
+      "save_id": "Accursed Blacksmith",
+      "source_refs": {
+        "enum": {
+          "line": 20,
+          "path": "include/constants/Events.h"
+        },
+        "event_game_name": {
+          "line": 140,
+          "path": "include/constants/Events.h"
+        },
+        "event_id": {
+          "line": 80,
+          "path": "include/constants/Events.h"
+        },
+        "save_id": {
+          "line": 585,
+          "path": "include/constants/SaveFileMappings.h"
+        }
+      },
+      "upstream_enum": "OMINOUS_FORGE",
+      "upstream_event_id": "Accursed Blacksmith"
+    },
+    {
+      "display_summary": {
+        "case_group": [
+          "PLEADING_VAGRANT"
+        ],
+        "conditional": true,
+        "display_entries": [
+          {
+            "index": 0,
+            "label": "Give 85 Gold"
+          },
+          {
+            "index": 1,
+            "label": "Rob"
+          },
+          {
+            "index": 2,
+            "label": "Leave"
+          }
+        ],
+        "display_indices": [
+          0,
+          1,
+          2
+        ],
+        "line_end": 646,
+        "line_start": 638,
+        "phase_sensitive": false,
+        "source_path": "src/sim/ConsoleSimulator.cpp",
+        "source_sha256": "81d67ebc8f7a50562b0ec0b2a0efc09329d23b47f2c2a573f1cd6e46ed08e8a8"
+      },
+      "event_game_name": "Pleading Vagrant",
+      "execution_summary": {
+        "case_group": [
+          "PLEADING_VAGRANT"
+        ],
+        "conditional": true,
+        "effect_indices": [
+          0,
+          1,
+          2
+        ],
+        "line_end": 2497,
+        "line_start": 2470,
+        "phase_sensitive": false,
+        "source_path": "src/game/GameContext.cpp",
+        "source_sha256": "d3eedd470d511c08b92631a0bdc2ca288fe637eb867a211b60214091f872ba07"
+      },
+      "handling": "generic_position_zero_default",
+      "legal_summary": {
+        "case_group": [
+          "PLEADING_VAGRANT"
+        ],
+        "conditional": true,
+        "dynamic_return_expressions": [],
+        "legal_indices": [
+          0,
+          1,
+          2
+        ],
+        "line_end": 716,
+        "line_start": 710,
+        "literal_masks": [
+          6,
+          7
+        ],
+        "phase_sensitive": false,
+        "return_expressions": [
+          "0x7",
+          "0b110"
+        ],
+        "source_path": "src/sim/search/GameAction.cpp",
+        "source_sha256": "31606caf6843dbaebacda6113615286f559693885f85e13c7079662cf98e0415"
+      },
+      "save_id": "Addict",
+      "source_refs": {
+        "enum": {
+          "line": 21,
+          "path": "include/constants/Events.h"
+        },
+        "event_game_name": {
+          "line": 141,
+          "path": "include/constants/Events.h"
+        },
+        "event_id": {
+          "line": 81,
+          "path": "include/constants/Events.h"
+        },
+        "save_id": {
+          "line": 586,
+          "path": "include/constants/SaveFileMappings.h"
+        }
+      },
+      "upstream_enum": "PLEADING_VAGRANT",
+      "upstream_event_id": "Addict"
+    },
+    {
+      "display_summary": {
+        "case_group": [
+          "PURIFIER"
+        ],
+        "conditional": true,
+        "display_entries": [
+          {
+            "index": 0,
+            "label": "Pray"
+          },
+          {
+            "index": 1,
+            "label": "Leave"
+          }
+        ],
+        "display_indices": [
+          0,
+          1
+        ],
+        "line_end": 965,
+        "line_start": 959,
+        "phase_sensitive": false,
+        "source_path": "src/sim/ConsoleSimulator.cpp",
+        "source_sha256": "b2113ae07d9854c2c33e933b6aa571276389e7da3e2e920f82985214c80f96c5"
+      },
+      "event_game_name": "Purifier",
+      "execution_summary": {
+        "case_group": [
+          "PURIFIER"
+        ],
+        "conditional": true,
+        "effect_indices": [],
+        "line_end": 3178,
+        "line_start": 3166,
+        "phase_sensitive": false,
+        "source_path": "src/game/GameContext.cpp",
+        "source_sha256": "9e36b7dda501dc95abf63203fb50c0deefb35e5b56ff9f45654abbf8fd14175f"
+      },
+      "handling": "generic_position_zero_default",
+      "legal_summary": {
+        "case_group": [
+          "PURIFIER",
+          "TRANSMORGRIFIER"
+        ],
+        "conditional": true,
+        "dynamic_return_expressions": [],
+        "legal_indices": [
+          0,
+          1
+        ],
+        "line_end": 841,
+        "line_start": 834,
+        "literal_masks": [
+          2,
+          3
+        ],
+        "phase_sensitive": false,
+        "return_expressions": [
+          "0x3",
+          "0x2"
+        ],
+        "source_path": "src/sim/search/GameAction.cpp",
+        "source_sha256": "946e3aa5edf0de80ab3a409b9e3fa665c97b488ef8fc0f3e72d7f845a8214333"
+      },
+      "save_id": "Purifier",
+      "source_refs": {
+        "enum": {
+          "line": 52,
+          "path": "include/constants/Events.h"
+        },
+        "event_game_name": {
+          "line": 172,
+          "path": "include/constants/Events.h"
+        },
+        "event_id": {
+          "line": 112,
+          "path": "include/constants/Events.h"
+        },
+        "save_id": {
+          "line": 617,
+          "path": "include/constants/SaveFileMappings.h"
+        }
+      },
+      "upstream_enum": "PURIFIER",
+      "upstream_event_id": "Purifier"
+    },
+    {
+      "display_summary": {
+        "case_group": [
+          "SCRAP_OOZE"
+        ],
+        "conditional": false,
+        "display_entries": [
+          {
+            "index": 0,
+            "label": "Reach Inside"
+          },
+          {
+            "index": 1,
+            "label": "Leave"
+          }
+        ],
+        "display_indices": [
+          0,
+          1
+        ],
+        "line_end": 974,
+        "line_start": 966,
+        "phase_sensitive": true,
+        "source_path": "src/sim/ConsoleSimulator.cpp",
+        "source_sha256": "f216e5ef7d0efc178013a71363be8c45b21359b1266edb4b9dbbe386bc3b8e0c"
+      },
+      "event_game_name": "Scrap Ooze",
+      "execution_summary": {
+        "case_group": [
+          "SCRAP_OOZE"
+        ],
+        "conditional": true,
+        "effect_indices": [],
+        "line_end": 3199,
+        "line_start": 3179,
+        "phase_sensitive": true,
+        "source_path": "src/game/GameContext.cpp",
+        "source_sha256": "1bd1c22999034da879542b3fcd709b3c26c32bd60b866c4c2e854e109a5ec449"
+      },
+      "handling": "generic_position_zero_default",
+      "legal_summary": {
+        "case_group": [
+          "ANCIENT_WRITING",
+          "DEAD_ADVENTURER",
+          "DUPLICATOR",
+          "OLD_BEGGAR",
+          "THE_DIVINE_FOUNTAIN",
+          "GHOSTS",
+          "THE_SSSSSERPENT",
+          "MASKED_BANDITS",
+          "HYPNOTIZING_COLORED_MUSHROOMS",
+          "MYSTERIOUS_SPHERE",
+          "THE_NEST",
+          "NOTE_FOR_YOURSELF",
+          "SCRAP_OOZE",
+          "SECRET_PORTAL",
+          "SHINING_LIGHT",
+          "THE_JOUST",
+          "THE_LIBRARY",
+          "THE_MAUSOLEUM",
+          "WORLD_OF_GOOP"
+        ],
+        "conditional": false,
+        "dynamic_return_expressions": [],
+        "legal_indices": [
+          0,
+          1
+        ],
+        "line_end": 696,
+        "line_start": 676,
+        "literal_masks": [
+          3
+        ],
+        "phase_sensitive": false,
+        "return_expressions": [
+          "0x3"
+        ],
+        "source_path": "src/sim/search/GameAction.cpp",
+        "source_sha256": "7f2377a74ac5628c6cee28dd4fa5f31990ca3497a6e1f55d983051705de685f5"
+      },
+      "save_id": "Scrap Ooze",
+      "source_refs": {
+        "enum": {
+          "line": 53,
+          "path": "include/constants/Events.h"
+        },
+        "event_game_name": {
+          "line": 173,
+          "path": "include/constants/Events.h"
+        },
+        "event_id": {
+          "line": 113,
+          "path": "include/constants/Events.h"
+        },
+        "save_id": {
+          "line": 618,
+          "path": "include/constants/SaveFileMappings.h"
+        }
+      },
+      "upstream_enum": "SCRAP_OOZE",
+      "upstream_event_id": "Scrap Ooze"
+    },
+    {
+      "display_summary": {
+        "case_group": [
+          "SECRET_PORTAL"
+        ],
+        "conditional": false,
+        "display_entries": [
+          {
+            "index": 0,
+            "label": "Enter the Portal"
+          },
+          {
+            "index": 1,
+            "label": "Leave"
+          }
+        ],
+        "display_indices": [
+          0,
+          1
+        ],
+        "line_end": 979,
+        "line_start": 975,
+        "phase_sensitive": false,
+        "source_path": "src/sim/ConsoleSimulator.cpp",
+        "source_sha256": "f5b230305b41914833c94df24179c42158ea4fc8c2749e5a7968884623d8cb86"
+      },
+      "event_game_name": "Secret Portal",
+      "execution_summary": {
+        "case_group": [
+          "SECRET_PORTAL"
+        ],
+        "conditional": true,
+        "effect_indices": [],
+        "line_end": 3213,
+        "line_start": 3200,
+        "phase_sensitive": false,
+        "source_path": "src/game/GameContext.cpp",
+        "source_sha256": "cf7a6ef3422c0843d0bd7104d4de342ca0e4f4606f8da62da2bceeacc9ed725f"
+      },
+      "handling": "generic_position_zero_default",
+      "legal_summary": {
+        "case_group": [
+          "ANCIENT_WRITING",
+          "DEAD_ADVENTURER",
+          "DUPLICATOR",
+          "OLD_BEGGAR",
+          "THE_DIVINE_FOUNTAIN",
+          "GHOSTS",
+          "THE_SSSSSERPENT",
+          "MASKED_BANDITS",
+          "HYPNOTIZING_COLORED_MUSHROOMS",
+          "MYSTERIOUS_SPHERE",
+          "THE_NEST",
+          "NOTE_FOR_YOURSELF",
+          "SCRAP_OOZE",
+          "SECRET_PORTAL",
+          "SHINING_LIGHT",
+          "THE_JOUST",
+          "THE_LIBRARY",
+          "THE_MAUSOLEUM",
+          "WORLD_OF_GOOP"
+        ],
+        "conditional": false,
+        "dynamic_return_expressions": [],
+        "legal_indices": [
+          0,
+          1
+        ],
+        "line_end": 696,
+        "line_start": 676,
+        "literal_masks": [
+          3
+        ],
+        "phase_sensitive": false,
+        "return_expressions": [
+          "0x3"
+        ],
+        "source_path": "src/sim/search/GameAction.cpp",
+        "source_sha256": "7f2377a74ac5628c6cee28dd4fa5f31990ca3497a6e1f55d983051705de685f5"
+      },
+      "save_id": "SecretPortal",
+      "source_refs": {
+        "enum": {
+          "line": 54,
+          "path": "include/constants/Events.h"
+        },
+        "event_game_name": {
+          "line": 174,
+          "path": "include/constants/Events.h"
+        },
+        "event_id": {
+          "line": 114,
+          "path": "include/constants/Events.h"
+        },
+        "save_id": {
+          "line": 619,
+          "path": "include/constants/SaveFileMappings.h"
+        }
+      },
+      "upstream_enum": "SECRET_PORTAL",
+      "upstream_event_id": "Secret Portal"
+    },
+    {
+      "display_summary": {
+        "case_group": [
+          "SENSORY_STONE"
+        ],
+        "conditional": false,
+        "display_entries": [
+          {
+            "index": 0,
+            "label": "Recall"
+          },
+          {
+            "index": 1,
+            "label": "Recall"
+          },
+          {
+            "index": 2,
+            "label": "Recall"
+          }
+        ],
+        "display_indices": [
+          0,
+          1,
+          2
+        ],
+        "line_end": 986,
+        "line_start": 980,
+        "phase_sensitive": false,
+        "source_path": "src/sim/ConsoleSimulator.cpp",
+        "source_sha256": "21d52b8f06ce3366ff26a0da3beeefea1ffe6f686fbcd91dd6609c53a0b2a31d"
+      },
+      "event_game_name": "Sensory Stone",
+      "execution_summary": {
+        "case_group": [
+          "SENSORY_STONE"
+        ],
+        "conditional": true,
+        "effect_indices": [],
+        "line_end": 3232,
+        "line_start": 3214,
+        "phase_sensitive": false,
+        "source_path": "src/game/GameContext.cpp",
+        "source_sha256": "4297d857cc27fab12ac863e7beb59631b45977d80dfe1adbf0418b911ecadebd"
+      },
+      "handling": "generic_position_zero_default",
+      "legal_summary": {
+        "case_group": [
+          "BIG_FISH",
+          "FACE_TRADER",
+          "GOLDEN_SHRINE",
+          "NLOTH",
+          "SENSORY_STONE",
+          "WINDING_HALLS"
+        ],
+        "conditional": false,
+        "dynamic_return_expressions": [],
+        "legal_indices": [
+          0,
+          1,
+          2
+        ],
+        "line_end": 704,
+        "line_start": 697,
+        "literal_masks": [
+          7
+        ],
+        "phase_sensitive": false,
+        "return_expressions": [
+          "0x7"
+        ],
+        "source_path": "src/sim/search/GameAction.cpp",
+        "source_sha256": "b35bc891dba4926ac0a75eaac287f5c961c778bfa21062b20674af62be54d05a"
+      },
+      "save_id": "Sensory Stone",
+      "source_refs": {
+        "enum": {
+          "line": 55,
+          "path": "include/constants/Events.h"
+        },
+        "event_game_name": {
+          "line": 175,
+          "path": "include/constants/Events.h"
+        },
+        "event_id": {
+          "line": 115,
+          "path": "include/constants/Events.h"
+        },
+        "save_id": {
+          "line": 620,
+          "path": "include/constants/SaveFileMappings.h"
+        }
+      },
+      "upstream_enum": "SENSORY_STONE",
+      "upstream_event_id": "Sensory Stone"
+    },
+    {
+      "display_summary": {
+        "case_group": [
+          "SHINING_LIGHT"
+        ],
+        "conditional": false,
+        "display_entries": [
+          {
+            "index": 0,
+            "label": "Enter"
+          },
+          {
+            "index": 1,
+            "label": "Leave"
+          }
+        ],
+        "display_indices": [
+          0,
+          1
+        ],
+        "line_end": 991,
+        "line_start": 987,
+        "phase_sensitive": false,
+        "source_path": "src/sim/ConsoleSimulator.cpp",
+        "source_sha256": "9691b79a5e68ba40a7192b5ce2e88fb48504816a4b0d7a19339fdcb5c956fa3a"
+      },
+      "event_game_name": "Shining Light",
+      "execution_summary": {
+        "case_group": [
+          "SHINING_LIGHT"
+        ],
+        "conditional": true,
+        "effect_indices": [],
+        "line_end": 3256,
+        "line_start": 3233,
+        "phase_sensitive": false,
+        "source_path": "src/game/GameContext.cpp",
+        "source_sha256": "c0efd65a80fab2d399752259d6fd3c91ee9663b131a12b87ea967ce279c28557"
+      },
+      "handling": "explicit_policy_sensitive",
+      "legal_summary": {
+        "case_group": [
+          "ANCIENT_WRITING",
+          "DEAD_ADVENTURER",
+          "DUPLICATOR",
+          "OLD_BEGGAR",
+          "THE_DIVINE_FOUNTAIN",
+          "GHOSTS",
+          "THE_SSSSSERPENT",
+          "MASKED_BANDITS",
+          "HYPNOTIZING_COLORED_MUSHROOMS",
+          "MYSTERIOUS_SPHERE",
+          "THE_NEST",
+          "NOTE_FOR_YOURSELF",
+          "SCRAP_OOZE",
+          "SECRET_PORTAL",
+          "SHINING_LIGHT",
+          "THE_JOUST",
+          "THE_LIBRARY",
+          "THE_MAUSOLEUM",
+          "WORLD_OF_GOOP"
+        ],
+        "conditional": false,
+        "dynamic_return_expressions": [],
+        "legal_indices": [
+          0,
+          1
+        ],
+        "line_end": 696,
+        "line_start": 676,
+        "literal_masks": [
+          3
+        ],
+        "phase_sensitive": false,
+        "return_expressions": [
+          "0x3"
+        ],
+        "source_path": "src/sim/search/GameAction.cpp",
+        "source_sha256": "7f2377a74ac5628c6cee28dd4fa5f31990ca3497a6e1f55d983051705de685f5"
+      },
+      "predecessor_rule_sha256": "cf721f4bcf7835751c75a4097ceee8399a0601e962162340e43af47f49e5cb97",
+      "save_id": "Shining Light",
+      "source_refs": {
+        "enum": {
+          "line": 56,
+          "path": "include/constants/Events.h"
+        },
+        "event_game_name": {
+          "line": 176,
+          "path": "include/constants/Events.h"
+        },
+        "event_id": {
+          "line": 116,
+          "path": "include/constants/Events.h"
+        },
+        "save_id": {
+          "line": 621,
+          "path": "include/constants/SaveFileMappings.h"
+        }
+      },
+      "upstream_enum": "SHINING_LIGHT",
+      "upstream_event_id": "Shining Light"
+    },
+    {
+      "display_summary": {
+        "case_group": [
+          "THE_CLERIC"
+        ],
+        "conditional": true,
+        "display_entries": [
+          {
+            "index": 0,
+            "label": "Heal"
+          },
+          {
+            "index": 1,
+            "label": "Purify"
+          },
+          {
+            "index": 2,
+            "label": "Leave"
+          }
+        ],
+        "display_indices": [
+          0,
+          1,
+          2
+        ],
+        "line_end": 1002,
+        "line_start": 992,
+        "phase_sensitive": false,
+        "source_path": "src/sim/ConsoleSimulator.cpp",
+        "source_sha256": "9906458d90a87d81f7934f5ccd687bd5bb6430c4f030d582d842a620724e5b60"
+      },
+      "event_game_name": "The Cleric",
+      "execution_summary": {
+        "case_group": [
+          "THE_CLERIC"
+        ],
+        "conditional": true,
+        "effect_indices": [
+          0,
+          1,
+          2
+        ],
+        "line_end": 3279,
+        "line_start": 3257,
+        "phase_sensitive": false,
+        "source_path": "src/game/GameContext.cpp",
+        "source_sha256": "1e7fdda376d6250caec8a1f26da905e75c223ec2af8b39e692fea4c6753513b2"
+      },
+      "handling": "explicit_policy_sensitive",
+      "legal_summary": {
+        "case_group": [
+          "THE_CLERIC"
+        ],
+        "conditional": true,
+        "dynamic_return_expressions": [],
+        "legal_indices": [
+          0,
+          1,
+          2
+        ],
+        "line_end": 848,
+        "line_start": 842,
+        "literal_masks": [
+          5,
+          7
+        ],
+        "phase_sensitive": false,
+        "return_expressions": [
+          "0x7",
+          "0b101"
+        ],
+        "source_path": "src/sim/search/GameAction.cpp",
+        "source_sha256": "2a25396e85b2d3f18bf88e755a7ff90be7800b755de1677a1f026dbc12265360"
+      },
+      "predecessor_rule_sha256": "caa7a4741aa76c83c1ccc353dc58a9fc97b7ca0ed3eda287411fe86fcf593130",
+      "save_id": "The Cleric",
+      "source_refs": {
+        "enum": {
+          "line": 57,
+          "path": "include/constants/Events.h"
+        },
+        "event_game_name": {
+          "line": 177,
+          "path": "include/constants/Events.h"
+        },
+        "event_id": {
+          "line": 117,
+          "path": "include/constants/Events.h"
+        },
+        "save_id": {
+          "line": 622,
+          "path": "include/constants/SaveFileMappings.h"
+        }
+      },
+      "upstream_enum": "THE_CLERIC",
+      "upstream_event_id": "The Cleric"
+    },
+    {
+      "display_summary": {
+        "case_group": [
+          "THE_DIVINE_FOUNTAIN"
+        ],
+        "conditional": false,
+        "display_entries": [
+          {
+            "index": 0,
+            "label": "Drink"
+          },
+          {
+            "index": 1,
+            "label": "Leave"
+          }
+        ],
+        "display_indices": [
+          0,
+          1
+        ],
+        "line_end": 833,
+        "line_start": 828,
+        "phase_sensitive": false,
+        "source_path": "src/sim/ConsoleSimulator.cpp",
+        "source_sha256": "73108806bcd7a051ad2f8e37a77feec493cca0745cfd083292cdf0b880601321"
+      },
+      "event_game_name": "The Divine Fountain",
+      "execution_summary": {
+        "case_group": [
+          "THE_DIVINE_FOUNTAIN"
+        ],
+        "conditional": true,
+        "effect_indices": [],
+        "line_end": 2828,
+        "line_start": 2811,
+        "phase_sensitive": false,
+        "source_path": "src/game/GameContext.cpp",
+        "source_sha256": "b59f4c895190116f22fdab9e978ba54a87666d2c3537c4c763d26b26a4127511"
+      },
+      "handling": "generic_position_zero_default",
+      "legal_summary": {
+        "case_group": [
+          "ANCIENT_WRITING",
+          "DEAD_ADVENTURER",
+          "DUPLICATOR",
+          "OLD_BEGGAR",
+          "THE_DIVINE_FOUNTAIN",
+          "GHOSTS",
+          "THE_SSSSSERPENT",
+          "MASKED_BANDITS",
+          "HYPNOTIZING_COLORED_MUSHROOMS",
+          "MYSTERIOUS_SPHERE",
+          "THE_NEST",
+          "NOTE_FOR_YOURSELF",
+          "SCRAP_OOZE",
+          "SECRET_PORTAL",
+          "SHINING_LIGHT",
+          "THE_JOUST",
+          "THE_LIBRARY",
+          "THE_MAUSOLEUM",
+          "WORLD_OF_GOOP"
+        ],
+        "conditional": false,
+        "dynamic_return_expressions": [],
+        "legal_indices": [
+          0,
+          1
+        ],
+        "line_end": 696,
+        "line_start": 676,
+        "literal_masks": [
+          3
+        ],
+        "phase_sensitive": false,
+        "return_expressions": [
+          "0x3"
+        ],
+        "source_path": "src/sim/search/GameAction.cpp",
+        "source_sha256": "7f2377a74ac5628c6cee28dd4fa5f31990ca3497a6e1f55d983051705de685f5"
+      },
+      "save_id": "Fountain of Cleansing",
+      "source_refs": {
+        "enum": {
+          "line": 35,
+          "path": "include/constants/Events.h"
+        },
+        "event_game_name": {
+          "line": 155,
+          "path": "include/constants/Events.h"
+        },
+        "event_id": {
+          "line": 95,
+          "path": "include/constants/Events.h"
+        },
+        "save_id": {
+          "line": 600,
+          "path": "include/constants/SaveFileMappings.h"
+        }
+      },
+      "upstream_enum": "THE_DIVINE_FOUNTAIN",
+      "upstream_event_id": "Fountain of Cleansing"
+    },
+    {
+      "display_summary": {
+        "case_group": [
+          "THE_JOUST"
+        ],
+        "conditional": false,
+        "display_entries": [
+          {
+            "index": 0,
+            "label": "Murderer"
+          },
+          {
+            "index": 1,
+            "label": "Owner"
+          }
+        ],
+        "display_indices": [
+          0,
+          1
+        ],
+        "line_end": 1009,
+        "line_start": 1003,
+        "phase_sensitive": false,
+        "source_path": "src/sim/ConsoleSimulator.cpp",
+        "source_sha256": "5ff6066239281a31bf246891a3e9537bb5ab5187bc1a6ad9646ce9f6867440a5"
+      },
+      "event_game_name": "The Joust",
+      "execution_summary": {
+        "case_group": [
+          "THE_JOUST"
+        ],
+        "conditional": true,
+        "effect_indices": [],
+        "line_end": 3299,
+        "line_start": 3280,
+        "phase_sensitive": false,
+        "source_path": "src/game/GameContext.cpp",
+        "source_sha256": "a9caf923461f281b3753344579057f8da89f2a0f18df1da139a876f32268782a"
+      },
+      "handling": "generic_position_zero_default",
+      "legal_summary": {
+        "case_group": [
+          "ANCIENT_WRITING",
+          "DEAD_ADVENTURER",
+          "DUPLICATOR",
+          "OLD_BEGGAR",
+          "THE_DIVINE_FOUNTAIN",
+          "GHOSTS",
+          "THE_SSSSSERPENT",
+          "MASKED_BANDITS",
+          "HYPNOTIZING_COLORED_MUSHROOMS",
+          "MYSTERIOUS_SPHERE",
+          "THE_NEST",
+          "NOTE_FOR_YOURSELF",
+          "SCRAP_OOZE",
+          "SECRET_PORTAL",
+          "SHINING_LIGHT",
+          "THE_JOUST",
+          "THE_LIBRARY",
+          "THE_MAUSOLEUM",
+          "WORLD_OF_GOOP"
+        ],
+        "conditional": false,
+        "dynamic_return_expressions": [],
+        "legal_indices": [
+          0,
+          1
+        ],
+        "line_end": 696,
+        "line_start": 676,
+        "literal_masks": [
+          3
+        ],
+        "phase_sensitive": false,
+        "return_expressions": [
+          "0x3"
+        ],
+        "source_path": "src/sim/search/GameAction.cpp",
+        "source_sha256": "7f2377a74ac5628c6cee28dd4fa5f31990ca3497a6e1f55d983051705de685f5"
+      },
+      "save_id": "The Joust",
+      "source_refs": {
+        "enum": {
+          "line": 58,
+          "path": "include/constants/Events.h"
+        },
+        "event_game_name": {
+          "line": 178,
+          "path": "include/constants/Events.h"
+        },
+        "event_id": {
+          "line": 118,
+          "path": "include/constants/Events.h"
+        },
+        "save_id": {
+          "line": 623,
+          "path": "include/constants/SaveFileMappings.h"
+        }
+      },
+      "upstream_enum": "THE_JOUST",
+      "upstream_event_id": "The Joust"
+    },
+    {
+      "display_summary": {
+        "case_group": [
+          "THE_LIBRARY"
+        ],
+        "conditional": false,
+        "display_entries": [
+          {
+            "index": 0,
+            "label": "Read"
+          },
+          {
+            "index": 1,
+            "label": "Sleep"
+          }
+        ],
+        "display_indices": [
+          0,
+          1
+        ],
+        "line_end": 1015,
+        "line_start": 1010,
+        "phase_sensitive": false,
+        "source_path": "src/sim/ConsoleSimulator.cpp",
+        "source_sha256": "fadf9639e27efcc4c37fa0cd7f798a12dcc7aa0b432c544a20f1d87d6947f863"
+      },
+      "event_game_name": "The Library",
+      "execution_summary": {
+        "case_group": [
+          "THE_LIBRARY"
+        ],
+        "conditional": true,
+        "effect_indices": [],
+        "line_end": 3325,
+        "line_start": 3300,
+        "phase_sensitive": false,
+        "source_path": "src/game/GameContext.cpp",
+        "source_sha256": "dcdae9192187b944d2d84d45acd508b635d3560fb89df0d39da7bcba9c6a4c38"
+      },
+      "handling": "explicit_policy_sensitive",
+      "legal_summary": {
+        "case_group": [
+          "ANCIENT_WRITING",
+          "DEAD_ADVENTURER",
+          "DUPLICATOR",
+          "OLD_BEGGAR",
+          "THE_DIVINE_FOUNTAIN",
+          "GHOSTS",
+          "THE_SSSSSERPENT",
+          "MASKED_BANDITS",
+          "HYPNOTIZING_COLORED_MUSHROOMS",
+          "MYSTERIOUS_SPHERE",
+          "THE_NEST",
+          "NOTE_FOR_YOURSELF",
+          "SCRAP_OOZE",
+          "SECRET_PORTAL",
+          "SHINING_LIGHT",
+          "THE_JOUST",
+          "THE_LIBRARY",
+          "THE_MAUSOLEUM",
+          "WORLD_OF_GOOP"
+        ],
+        "conditional": false,
+        "dynamic_return_expressions": [],
+        "legal_indices": [
+          0,
+          1
+        ],
+        "line_end": 696,
+        "line_start": 676,
+        "literal_masks": [
+          3
+        ],
+        "phase_sensitive": false,
+        "return_expressions": [
+          "0x3"
+        ],
+        "source_path": "src/sim/search/GameAction.cpp",
+        "source_sha256": "7f2377a74ac5628c6cee28dd4fa5f31990ca3497a6e1f55d983051705de685f5"
+      },
+      "predecessor_rule_sha256": "bdafcc956a87a47a8f3bb63ababd664d52f8ec37a61ec78d02ce57ab56192969",
+      "save_id": "The Library",
+      "source_refs": {
+        "enum": {
+          "line": 59,
+          "path": "include/constants/Events.h"
+        },
+        "event_game_name": {
+          "line": 179,
+          "path": "include/constants/Events.h"
+        },
+        "event_id": {
+          "line": 119,
+          "path": "include/constants/Events.h"
+        },
+        "save_id": {
+          "line": 624,
+          "path": "include/constants/SaveFileMappings.h"
+        }
+      },
+      "upstream_enum": "THE_LIBRARY",
+      "upstream_event_id": "The Library"
+    },
+    {
+      "display_summary": {
+        "case_group": [
+          "THE_MAUSOLEUM"
+        ],
+        "conditional": false,
+        "display_entries": [
+          {
+            "index": 0,
+            "label": "Open Coffin"
+          },
+          {
+            "index": 1,
+            "label": "Leave"
+          }
+        ],
+        "display_indices": [
+          0,
+          1
+        ],
+        "line_end": 1021,
+        "line_start": 1016,
+        "phase_sensitive": false,
+        "source_path": "src/sim/ConsoleSimulator.cpp",
+        "source_sha256": "3e5012c1e98f151a8210022a7d37cb831d5f7b371b6aa0b046b205aa57b51c27"
+      },
+      "event_game_name": "The Mausoleum",
+      "execution_summary": {
+        "case_group": [
+          "THE_MAUSOLEUM"
+        ],
+        "conditional": true,
+        "effect_indices": [],
+        "line_end": 3342,
+        "line_start": 3326,
+        "phase_sensitive": false,
+        "source_path": "src/game/GameContext.cpp",
+        "source_sha256": "f55ba8b101bea938b23eb5affc41fa2004cd646b30e9538c499ebe73a5a38e43"
+      },
+      "handling": "explicit_policy_sensitive",
+      "legal_summary": {
+        "case_group": [
+          "ANCIENT_WRITING",
+          "DEAD_ADVENTURER",
+          "DUPLICATOR",
+          "OLD_BEGGAR",
+          "THE_DIVINE_FOUNTAIN",
+          "GHOSTS",
+          "THE_SSSSSERPENT",
+          "MASKED_BANDITS",
+          "HYPNOTIZING_COLORED_MUSHROOMS",
+          "MYSTERIOUS_SPHERE",
+          "THE_NEST",
+          "NOTE_FOR_YOURSELF",
+          "SCRAP_OOZE",
+          "SECRET_PORTAL",
+          "SHINING_LIGHT",
+          "THE_JOUST",
+          "THE_LIBRARY",
+          "THE_MAUSOLEUM",
+          "WORLD_OF_GOOP"
+        ],
+        "conditional": false,
+        "dynamic_return_expressions": [],
+        "legal_indices": [
+          0,
+          1
+        ],
+        "line_end": 696,
+        "line_start": 676,
+        "literal_masks": [
+          3
+        ],
+        "phase_sensitive": false,
+        "return_expressions": [
+          "0x3"
+        ],
+        "source_path": "src/sim/search/GameAction.cpp",
+        "source_sha256": "7f2377a74ac5628c6cee28dd4fa5f31990ca3497a6e1f55d983051705de685f5"
+      },
+      "predecessor_rule_sha256": "d56bfb49685edfe6e27231b281be6d4490d51abc5588a1502a4b1033cb8242b8",
+      "save_id": "The Mausoleum",
+      "source_refs": {
+        "enum": {
+          "line": 60,
+          "path": "include/constants/Events.h"
+        },
+        "event_game_name": {
+          "line": 180,
+          "path": "include/constants/Events.h"
+        },
+        "event_id": {
+          "line": 120,
+          "path": "include/constants/Events.h"
+        },
+        "save_id": {
+          "line": 625,
+          "path": "include/constants/SaveFileMappings.h"
+        }
+      },
+      "upstream_enum": "THE_MAUSOLEUM",
+      "upstream_event_id": "The Mausoleum"
+    },
+    {
+      "display_summary": {
+        "case_group": [
+          "THE_MOAI_HEAD"
+        ],
+        "conditional": true,
+        "display_entries": [
+          {
+            "index": 0,
+            "label": "Jump Inside"
+          },
+          {
+            "index": 1,
+            "label": "Offer: Golden Idol"
+          },
+          {
+            "index": 2,
+            "label": "Leave"
+          }
+        ],
+        "display_indices": [
+          0,
+          1,
+          2
+        ],
+        "line_end": 1031,
+        "line_start": 1022,
+        "phase_sensitive": false,
+        "source_path": "src/sim/ConsoleSimulator.cpp",
+        "source_sha256": "29019150120bd7b5a4c9c6d7141bc4f3dc8480f5586ccb78087cf526e62ccb8f"
+      },
+      "event_game_name": "The Moai Head",
+      "execution_summary": {
+        "case_group": [
+          "THE_MOAI_HEAD"
+        ],
+        "conditional": true,
+        "effect_indices": [
+          0,
+          1,
+          2
+        ],
+        "line_end": 3373,
+        "line_start": 3343,
+        "phase_sensitive": false,
+        "source_path": "src/game/GameContext.cpp",
+        "source_sha256": "360588efae84b75f992a7f2c167159513a701614b6710faec56ba8429e8cc5e2"
+      },
+      "handling": "generic_position_zero_default",
+      "legal_summary": {
+        "case_group": [
+          "THE_MOAI_HEAD"
+        ],
+        "conditional": true,
+        "dynamic_return_expressions": [],
+        "legal_indices": [
+          0,
+          1,
+          2
+        ],
+        "line_end": 855,
+        "line_start": 849,
+        "literal_masks": [
+          5,
+          7
+        ],
+        "phase_sensitive": false,
+        "return_expressions": [
+          "0x7",
+          "0b101"
+        ],
+        "source_path": "src/sim/search/GameAction.cpp",
+        "source_sha256": "a5508bfba3e50b06c7b4700bd5efbd14546b747cc76296e0c0d68de2b7a7f76e"
+      },
+      "save_id": "The Moai Head",
+      "source_refs": {
+        "enum": {
+          "line": 61,
+          "path": "include/constants/Events.h"
+        },
+        "event_game_name": {
+          "line": 181,
+          "path": "include/constants/Events.h"
+        },
+        "event_id": {
+          "line": 121,
+          "path": "include/constants/Events.h"
+        },
+        "save_id": {
+          "line": 626,
+          "path": "include/constants/SaveFileMappings.h"
+        }
+      },
+      "upstream_enum": "THE_MOAI_HEAD",
+      "upstream_event_id": "The Moai Head"
+    },
+    {
+      "display_summary": {
+        "case_group": [
+          "THE_NEST"
+        ],
+        "conditional": false,
+        "display_entries": [
+          {
+            "index": 0,
+            "label": "Smash and Grab"
+          },
+          {
+            "index": 1,
+            "label": "Stay in Line"
+          }
+        ],
+        "display_indices": [
+          0,
+          1
+        ],
+        "line_end": 943,
+        "line_start": 939,
+        "phase_sensitive": false,
+        "source_path": "src/sim/ConsoleSimulator.cpp",
+        "source_sha256": "a1de0b38b09b945001626027b0a5af491178e330cdb9323f02256a0250146062"
+      },
+      "event_game_name": "The Nest",
+      "execution_summary": {
+        "case_group": [
+          "THE_NEST"
+        ],
+        "conditional": true,
+        "effect_indices": [],
+        "line_end": 3130,
+        "line_start": 3115,
+        "phase_sensitive": false,
+        "source_path": "src/game/GameContext.cpp",
+        "source_sha256": "0b7400d68c3bb07927ac5d68d720ba17ddec482b264696700877155079898562"
+      },
+      "handling": "generic_position_zero_default",
+      "legal_summary": {
+        "case_group": [
+          "ANCIENT_WRITING",
+          "DEAD_ADVENTURER",
+          "DUPLICATOR",
+          "OLD_BEGGAR",
+          "THE_DIVINE_FOUNTAIN",
+          "GHOSTS",
+          "THE_SSSSSERPENT",
+          "MASKED_BANDITS",
+          "HYPNOTIZING_COLORED_MUSHROOMS",
+          "MYSTERIOUS_SPHERE",
+          "THE_NEST",
+          "NOTE_FOR_YOURSELF",
+          "SCRAP_OOZE",
+          "SECRET_PORTAL",
+          "SHINING_LIGHT",
+          "THE_JOUST",
+          "THE_LIBRARY",
+          "THE_MAUSOLEUM",
+          "WORLD_OF_GOOP"
+        ],
+        "conditional": false,
+        "dynamic_return_expressions": [],
+        "legal_indices": [
+          0,
+          1
+        ],
+        "line_end": 696,
+        "line_start": 676,
+        "literal_masks": [
+          3
+        ],
+        "phase_sensitive": false,
+        "return_expressions": [
+          "0x3"
+        ],
+        "source_path": "src/sim/search/GameAction.cpp",
+        "source_sha256": "7f2377a74ac5628c6cee28dd4fa5f31990ca3497a6e1f55d983051705de685f5"
+      },
+      "save_id": "Nest",
+      "source_refs": {
+        "enum": {
+          "line": 49,
+          "path": "include/constants/Events.h"
+        },
+        "event_game_name": {
+          "line": 169,
+          "path": "include/constants/Events.h"
+        },
+        "event_id": {
+          "line": 109,
+          "path": "include/constants/Events.h"
+        },
+        "save_id": {
+          "line": 614,
+          "path": "include/constants/SaveFileMappings.h"
+        }
+      },
+      "upstream_enum": "THE_NEST",
+      "upstream_event_id": "Nest"
+    },
+    {
+      "display_summary": {
+        "case_group": [
+          "THE_SSSSSERPENT"
+        ],
+        "conditional": false,
+        "display_entries": [
+          {
+            "index": 0,
+            "label": "Agree"
+          },
+          {
+            "index": 1,
+            "label": "Disagree"
+          }
+        ],
+        "display_indices": [
+          0,
+          1
+        ],
+        "line_end": 885,
+        "line_start": 880,
+        "phase_sensitive": false,
+        "source_path": "src/sim/ConsoleSimulator.cpp",
+        "source_sha256": "0da26f43f53b53e6b895961904d2f1edcbb15c6fef7caaa3e822738a4b80c606"
+      },
+      "event_game_name": "The Ssssserpent",
+      "execution_summary": {
+        "case_group": [
+          "THE_SSSSSERPENT"
+        ],
+        "conditional": true,
+        "effect_indices": [],
+        "line_end": 2967,
+        "line_start": 2953,
+        "phase_sensitive": false,
+        "source_path": "src/game/GameContext.cpp",
+        "source_sha256": "6b9349d2cb633b2c78fadfe41d63437426110846dfb872b072c464c6697ac4ee"
+      },
+      "handling": "explicit_policy_sensitive",
+      "legal_summary": {
+        "case_group": [
+          "ANCIENT_WRITING",
+          "DEAD_ADVENTURER",
+          "DUPLICATOR",
+          "OLD_BEGGAR",
+          "THE_DIVINE_FOUNTAIN",
+          "GHOSTS",
+          "THE_SSSSSERPENT",
+          "MASKED_BANDITS",
+          "HYPNOTIZING_COLORED_MUSHROOMS",
+          "MYSTERIOUS_SPHERE",
+          "THE_NEST",
+          "NOTE_FOR_YOURSELF",
+          "SCRAP_OOZE",
+          "SECRET_PORTAL",
+          "SHINING_LIGHT",
+          "THE_JOUST",
+          "THE_LIBRARY",
+          "THE_MAUSOLEUM",
+          "WORLD_OF_GOOP"
+        ],
+        "conditional": false,
+        "dynamic_return_expressions": [],
+        "legal_indices": [
+          0,
+          1
+        ],
+        "line_end": 696,
+        "line_start": 676,
+        "literal_masks": [
+          3
+        ],
+        "phase_sensitive": false,
+        "return_expressions": [
+          "0x3"
+        ],
+        "source_path": "src/sim/search/GameAction.cpp",
+        "source_sha256": "7f2377a74ac5628c6cee28dd4fa5f31990ca3497a6e1f55d983051705de685f5"
+      },
+      "predecessor_rule_sha256": "031131ffb81caedf731741fedcd1e4ec0c647dc548ab8cb2fc768e5b60a829eb",
+      "save_id": "Liars Game",
+      "source_refs": {
+        "enum": {
+          "line": 42,
+          "path": "include/constants/Events.h"
+        },
+        "event_game_name": {
+          "line": 162,
+          "path": "include/constants/Events.h"
+        },
+        "event_id": {
+          "line": 102,
+          "path": "include/constants/Events.h"
+        },
+        "save_id": {
+          "line": 607,
+          "path": "include/constants/SaveFileMappings.h"
+        }
+      },
+      "upstream_enum": "THE_SSSSSERPENT",
+      "upstream_event_id": "Liars Game"
+    },
+    {
+      "display_summary": {
+        "case_group": [
+          "THE_WOMAN_IN_BLUE"
+        ],
+        "conditional": true,
+        "display_entries": [
+          {
+            "index": 0,
+            "label": "Buy 1 Potion"
+          },
+          {
+            "index": 1,
+            "label": "Buy 2 Potion"
+          },
+          {
+            "index": 2,
+            "label": "Buy 3 Potion"
+          },
+          {
+            "index": 3,
+            "label": "Leave"
+          }
+        ],
+        "display_indices": [
+          0,
+          1,
+          2,
+          3
+        ],
+        "line_end": 1043,
+        "line_start": 1032,
+        "phase_sensitive": false,
+        "source_path": "src/sim/ConsoleSimulator.cpp",
+        "source_sha256": "866cedc85e14888a2414dc4c097d68dbb28c85e034e06bd2b7b3f19477f81c2e"
+      },
+      "event_game_name": "The Woman in Blue",
+      "execution_summary": {
+        "case_group": [
+          "THE_WOMAN_IN_BLUE"
+        ],
+        "conditional": true,
+        "effect_indices": [
+          0,
+          1,
+          2,
+          3
+        ],
+        "line_end": 3408,
+        "line_start": 3374,
+        "phase_sensitive": false,
+        "source_path": "src/game/GameContext.cpp",
+        "source_sha256": "6b899d30d1ed4af6f5046dc3a017b145c441d7b47ee8dd97624e878a15c334a0"
+      },
+      "handling": "generic_position_zero_default",
+      "legal_summary": {
+        "case_group": [
+          "NEOW",
+          "KNOWING_SKULL",
+          "THE_WOMAN_IN_BLUE"
+        ],
+        "conditional": false,
+        "dynamic_return_expressions": [],
+        "legal_indices": [
+          0,
+          1,
+          2,
+          3
+        ],
+        "line_end": 709,
+        "line_start": 705,
+        "literal_masks": [
+          15
+        ],
+        "phase_sensitive": false,
+        "return_expressions": [
+          "0xF"
+        ],
+        "source_path": "src/sim/search/GameAction.cpp",
+        "source_sha256": "3470f9465c720965ec1dc2b835e97e7684805e5217490fae9607d06b34adb7be"
+      },
+      "save_id": "The Woman in Blue",
+      "source_refs": {
+        "enum": {
+          "line": 62,
+          "path": "include/constants/Events.h"
+        },
+        "event_game_name": {
+          "line": 182,
+          "path": "include/constants/Events.h"
+        },
+        "event_id": {
+          "line": 122,
+          "path": "include/constants/Events.h"
+        },
+        "save_id": {
+          "line": 627,
+          "path": "include/constants/SaveFileMappings.h"
+        }
+      },
+      "upstream_enum": "THE_WOMAN_IN_BLUE",
+      "upstream_event_id": "The Woman in Blue"
+    },
+    {
+      "display_summary": {
+        "case_group": [
+          "TOMB_OF_LORD_RED_MASK"
+        ],
+        "conditional": true,
+        "display_entries": [
+          {
+            "index": 0,
+            "label": "Don the Red Mask"
+          },
+          {
+            "index": 1,
+            "label": "[Offer:"
+          },
+          {
+            "index": 2,
+            "label": "Leave"
+          }
+        ],
+        "display_indices": [
+          0,
+          1,
+          2
+        ],
+        "line_end": 1053,
+        "line_start": 1044,
+        "phase_sensitive": false,
+        "source_path": "src/sim/ConsoleSimulator.cpp",
+        "source_sha256": "ab379c089b6f7a478895cd2792cf5bf99854f587ef4c696de5634c2011b5970f"
+      },
+      "event_game_name": "Tomb of Lord Red Mask",
+      "execution_summary": {
+        "case_group": [
+          "TOMB_OF_LORD_RED_MASK"
+        ],
+        "conditional": true,
+        "effect_indices": [
+          0,
+          1,
+          2
+        ],
+        "line_end": 3432,
+        "line_start": 3409,
+        "phase_sensitive": false,
+        "source_path": "src/game/GameContext.cpp",
+        "source_sha256": "09720a97a28e6a574dc0d317afc1bcc83acf3a37d8271bb7207544f38c58cbf3"
+      },
+      "handling": "generic_position_zero_default",
+      "legal_summary": {
+        "case_group": [
+          "TOMB_OF_LORD_RED_MASK"
+        ],
+        "conditional": true,
+        "dynamic_return_expressions": [],
+        "legal_indices": [
+          0,
+          1,
+          2
+        ],
+        "line_end": 862,
+        "line_start": 856,
+        "literal_masks": [
+          5,
+          6
+        ],
+        "phase_sensitive": false,
+        "return_expressions": [
+          "0b101",
+          "0b110"
+        ],
+        "source_path": "src/sim/search/GameAction.cpp",
+        "source_sha256": "238a48cdcedff1bb41602c78d6925f9e53590ef94872d385f6411bdb745b4d44"
+      },
+      "save_id": "Tomb of Lord Red Mask",
+      "source_refs": {
+        "enum": {
+          "line": 63,
+          "path": "include/constants/Events.h"
+        },
+        "event_game_name": {
+          "line": 183,
+          "path": "include/constants/Events.h"
+        },
+        "event_id": {
+          "line": 123,
+          "path": "include/constants/Events.h"
+        },
+        "save_id": {
+          "line": 628,
+          "path": "include/constants/SaveFileMappings.h"
+        }
+      },
+      "upstream_enum": "TOMB_OF_LORD_RED_MASK",
+      "upstream_event_id": "Tomb of Lord Red Mask"
+    },
+    {
+      "display_summary": {
+        "case_group": [
+          "TRANSMORGRIFIER"
+        ],
+        "conditional": true,
+        "display_entries": [
+          {
+            "index": 0,
+            "label": "Pray"
+          },
+          {
+            "index": 1,
+            "label": "Leave"
+          }
+        ],
+        "display_indices": [
+          0,
+          1
+        ],
+        "line_end": 1060,
+        "line_start": 1054,
+        "phase_sensitive": false,
+        "source_path": "src/sim/ConsoleSimulator.cpp",
+        "source_sha256": "3e868d85eb5dfa808e73f0e5f1432197156dd9b28e4e279be7eaacb8a880c409"
+      },
+      "event_game_name": "Transmorgrifier",
+      "execution_summary": {
+        "case_group": [
+          "TRANSMORGRIFIER"
+        ],
+        "conditional": true,
+        "effect_indices": [],
+        "line_end": 3446,
+        "line_start": 3433,
+        "phase_sensitive": false,
+        "source_path": "src/game/GameContext.cpp",
+        "source_sha256": "3c303f52fc57f52cdd60dd1f1ee87970f6f21b84da793b307849e308dca604f4"
+      },
+      "handling": "generic_position_zero_default",
+      "legal_summary": {
+        "case_group": [
+          "PURIFIER",
+          "TRANSMORGRIFIER"
+        ],
+        "conditional": true,
+        "dynamic_return_expressions": [],
+        "legal_indices": [
+          0,
+          1
+        ],
+        "line_end": 841,
+        "line_start": 834,
+        "literal_masks": [
+          2,
+          3
+        ],
+        "phase_sensitive": false,
+        "return_expressions": [
+          "0x3",
+          "0x2"
+        ],
+        "source_path": "src/sim/search/GameAction.cpp",
+        "source_sha256": "946e3aa5edf0de80ab3a409b9e3fa665c97b488ef8fc0f3e72d7f845a8214333"
+      },
+      "save_id": "Transmorgrifier",
+      "source_refs": {
+        "enum": {
+          "line": 64,
+          "path": "include/constants/Events.h"
+        },
+        "event_game_name": {
+          "line": 184,
+          "path": "include/constants/Events.h"
+        },
+        "event_id": {
+          "line": 124,
+          "path": "include/constants/Events.h"
+        },
+        "save_id": {
+          "line": 629,
+          "path": "include/constants/SaveFileMappings.h"
+        }
+      },
+      "upstream_enum": "TRANSMORGRIFIER",
+      "upstream_event_id": "Transmorgrifier"
+    },
+    {
+      "display_summary": {
+        "case_group": [
+          "UPGRADE_SHRINE"
+        ],
+        "conditional": true,
+        "display_entries": [
+          {
+            "index": 0,
+            "label": "Pray"
+          },
+          {
+            "index": 1,
+            "label": "Leave"
+          }
+        ],
+        "display_indices": [
+          0,
+          1
+        ],
+        "line_end": 1067,
+        "line_start": 1061,
+        "phase_sensitive": false,
+        "source_path": "src/sim/ConsoleSimulator.cpp",
+        "source_sha256": "69c1d3f3e8a725d6c5691a9a2082587966ea0d6b50e4353f244e6742f7521d83"
+      },
+      "event_game_name": "Upgrade Shrine",
+      "execution_summary": {
+        "case_group": [
+          "UPGRADE_SHRINE"
+        ],
+        "conditional": true,
+        "effect_indices": [],
+        "line_end": 3459,
+        "line_start": 3447,
+        "phase_sensitive": false,
+        "source_path": "src/game/GameContext.cpp",
+        "source_sha256": "a48ba74160f335693517d8473f00a83938fefc194bc1a66ee507d649d8dbd7c2"
+      },
+      "handling": "generic_position_zero_default",
+      "legal_summary": {
+        "case_group": [
+          "UPGRADE_SHRINE"
+        ],
+        "conditional": true,
+        "dynamic_return_expressions": [],
+        "legal_indices": [
+          0,
+          1
+        ],
+        "line_end": 869,
+        "line_start": 863,
+        "literal_masks": [
+          2,
+          3
+        ],
+        "phase_sensitive": false,
+        "return_expressions": [
+          "0x3",
+          "0x2"
+        ],
+        "source_path": "src/sim/search/GameAction.cpp",
+        "source_sha256": "d0a491fd883a780f8a107b4038038fa600517b4741e247d55b3a9522c50d68c0"
+      },
+      "save_id": "Upgrade Shrine",
+      "source_refs": {
+        "enum": {
+          "line": 65,
+          "path": "include/constants/Events.h"
+        },
+        "event_game_name": {
+          "line": 185,
+          "path": "include/constants/Events.h"
+        },
+        "event_id": {
+          "line": 125,
+          "path": "include/constants/Events.h"
+        },
+        "save_id": {
+          "line": 630,
+          "path": "include/constants/SaveFileMappings.h"
+        }
+      },
+      "upstream_enum": "UPGRADE_SHRINE",
+      "upstream_event_id": "Upgrade Shrine"
+    },
+    {
+      "display_summary": {
+        "case_group": [
+          "VAMPIRES"
+        ],
+        "conditional": true,
+        "display_entries": [
+          {
+            "index": 0,
+            "label": "Offer"
+          },
+          {
+            "index": 1,
+            "label": "Accept"
+          },
+          {
+            "index": 2,
+            "label": "Refuse"
+          }
+        ],
+        "display_indices": [
+          0,
+          1,
+          2
+        ],
+        "line_end": 1076,
+        "line_start": 1068,
+        "phase_sensitive": false,
+        "source_path": "src/sim/ConsoleSimulator.cpp",
+        "source_sha256": "bf6b206f563e1aeaa6588db838b49218c3a9c34794265c978845af2eca25a2d7"
+      },
+      "event_game_name": "Vampires(?)",
+      "execution_summary": {
+        "case_group": [
+          "VAMPIRES"
+        ],
+        "conditional": true,
+        "effect_indices": [],
+        "line_end": 3483,
+        "line_start": 3460,
+        "phase_sensitive": false,
+        "source_path": "src/game/GameContext.cpp",
+        "source_sha256": "e51725350f76a09d2df00e74497a218e706171390e0bb7a039a53f723b023409"
+      },
+      "handling": "explicit_policy_sensitive",
+      "legal_summary": {
+        "case_group": [
+          "VAMPIRES"
+        ],
+        "conditional": true,
+        "dynamic_return_expressions": [],
+        "legal_indices": [
+          0,
+          1,
+          2
+        ],
+        "line_end": 876,
+        "line_start": 870,
+        "literal_masks": [
+          6,
+          7
+        ],
+        "phase_sensitive": false,
+        "return_expressions": [
+          "0x7",
+          "0b110"
+        ],
+        "source_path": "src/sim/search/GameAction.cpp",
+        "source_sha256": "5a91200deeae924ac9ee3235fa25e0d070445dab576ae926e9d699de9f823695"
+      },
+      "predecessor_rule_sha256": "ff06f2207357e6e46b5ea2bea65edad732c97c23e53019fc710a50ceb28796cf",
+      "save_id": "Vampires",
+      "source_refs": {
+        "enum": {
+          "line": 66,
+          "path": "include/constants/Events.h"
+        },
+        "event_game_name": {
+          "line": 186,
+          "path": "include/constants/Events.h"
+        },
+        "event_id": {
+          "line": 126,
+          "path": "include/constants/Events.h"
+        },
+        "save_id": {
+          "line": 631,
+          "path": "include/constants/SaveFileMappings.h"
+        }
+      },
+      "upstream_enum": "VAMPIRES",
+      "upstream_event_id": "Vampires"
+    },
+    {
+      "display_summary": {
+        "case_group": [
+          "WE_MEET_AGAIN"
+        ],
+        "conditional": true,
+        "display_entries": [
+          {
+            "index": 0,
+            "label": "Give Potion"
+          },
+          {
+            "index": 1,
+            "label": "Give Gold"
+          },
+          {
+            "index": 2,
+            "label": "Give Card"
+          },
+          {
+            "index": 3,
+            "label": "Attack"
+          }
+        ],
+        "display_indices": [
+          0,
+          1,
+          2,
+          3
+        ],
+        "line_end": 1090,
+        "line_start": 1077,
+        "phase_sensitive": false,
+        "source_path": "src/sim/ConsoleSimulator.cpp",
+        "source_sha256": "a623a5f69c50fc6f21072d6072a45c722134889c7f8500321e71ba1a8a42bdfa"
+      },
+      "event_game_name": "We Meet Again!",
+      "execution_summary": {
+        "case_group": [
+          "WE_MEET_AGAIN"
+        ],
+        "conditional": true,
+        "effect_indices": [
+          0,
+          1,
+          2
+        ],
+        "line_end": 3514,
+        "line_start": 3484,
+        "phase_sensitive": false,
+        "source_path": "src/game/GameContext.cpp",
+        "source_sha256": "57d0b2eb8032fc0e0ca8d787caa25bb1c0052dc2850626d843c0ffcb6568f924"
+      },
+      "handling": "generic_position_zero_default",
+      "legal_summary": {
+        "case_group": [
+          "WE_MEET_AGAIN"
+        ],
+        "conditional": true,
+        "dynamic_return_expressions": [
+          "bits"
+        ],
+        "legal_indices": [],
+        "line_end": 890,
+        "line_start": 877,
+        "literal_masks": [],
+        "phase_sensitive": false,
+        "return_expressions": [
+          "bits"
+        ],
+        "source_path": "src/sim/search/GameAction.cpp",
+        "source_sha256": "67288e41811022c3ce84f12efd7b67961610c2c2703b8761009647a39cd32081"
+      },
+      "save_id": "WeMeetAgain",
+      "source_refs": {
+        "enum": {
+          "line": 67,
+          "path": "include/constants/Events.h"
+        },
+        "event_game_name": {
+          "line": 187,
+          "path": "include/constants/Events.h"
+        },
+        "event_id": {
+          "line": 127,
+          "path": "include/constants/Events.h"
+        },
+        "save_id": {
+          "line": 632,
+          "path": "include/constants/SaveFileMappings.h"
+        }
+      },
+      "upstream_enum": "WE_MEET_AGAIN",
+      "upstream_event_id": "WeMeetAgain"
+    },
+    {
+      "display_summary": {
+        "case_group": [
+          "WHEEL_OF_CHANGE"
+        ],
+        "conditional": false,
+        "display_entries": [
+          {
+            "index": 0,
+            "label": "Play"
+          }
+        ],
+        "display_indices": [
+          0
+        ],
+        "line_end": 1095,
+        "line_start": 1091,
+        "phase_sensitive": false,
+        "source_path": "src/sim/ConsoleSimulator.cpp",
+        "source_sha256": "281252e83f80edb2809b5ef1db0d044e0586cc2ea9ebe2806cfd713a14d1ab6c"
+      },
+      "event_game_name": "Wheel of Change",
+      "execution_summary": {
+        "case_group": [
+          "WHEEL_OF_CHANGE"
+        ],
+        "conditional": true,
+        "effect_indices": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5
+        ],
+        "line_end": 3555,
+        "line_start": 3515,
+        "phase_sensitive": false,
+        "source_path": "src/game/GameContext.cpp",
+        "source_sha256": "cc499424af4889a4eb75b223d43d3a3574baa59ed1348aa1a73cbfb090245486"
+      },
+      "handling": "generic_position_zero_default",
+      "legal_summary": {
+        "case_group": [
+          "LAB",
+          "WHEEL_OF_CHANGE"
+        ],
+        "conditional": false,
+        "dynamic_return_expressions": [],
+        "legal_indices": [
+          0
+        ],
+        "line_end": 675,
+        "line_start": 672,
+        "literal_masks": [
+          1
+        ],
+        "phase_sensitive": false,
+        "return_expressions": [
+          "0b1"
+        ],
+        "source_path": "src/sim/search/GameAction.cpp",
+        "source_sha256": "3de25d80e2115043369d952a992fb89184798ce214631a2a1c7a5eeef095a175"
+      },
+      "save_id": "Wheel of Change",
+      "source_refs": {
+        "enum": {
+          "line": 68,
+          "path": "include/constants/Events.h"
+        },
+        "event_game_name": {
+          "line": 188,
+          "path": "include/constants/Events.h"
+        },
+        "event_id": {
+          "line": 128,
+          "path": "include/constants/Events.h"
+        },
+        "save_id": {
+          "line": 633,
+          "path": "include/constants/SaveFileMappings.h"
+        }
+      },
+      "upstream_enum": "WHEEL_OF_CHANGE",
+      "upstream_event_id": "Wheel of Change"
+    },
+    {
+      "display_summary": {
+        "case_group": [
+          "WINDING_HALLS"
+        ],
+        "conditional": false,
+        "display_entries": [
+          {
+            "index": 0,
+            "label": "Embrace Madness"
+          },
+          {
+            "index": 1,
+            "label": "Press On"
+          },
+          {
+            "index": 2,
+            "label": "Retrace Your Steps"
+          }
+        ],
+        "display_indices": [
+          0,
+          1,
+          2
+        ],
+        "line_end": 1102,
+        "line_start": 1096,
+        "phase_sensitive": false,
+        "source_path": "src/sim/ConsoleSimulator.cpp",
+        "source_sha256": "d2f214317427c41516d93866e07424927ba29a7e765b081b470e241e19113003"
+      },
+      "event_game_name": "Winding Halls",
+      "execution_summary": {
+        "case_group": [
+          "WINDING_HALLS"
+        ],
+        "conditional": true,
+        "effect_indices": [
+          0,
+          1,
+          2
+        ],
+        "line_end": 3580,
+        "line_start": 3556,
+        "phase_sensitive": false,
+        "source_path": "src/game/GameContext.cpp",
+        "source_sha256": "11ae875fbd2fa33f171616591ccf5636925039a556151e6ad17f2c95e4156e2f"
+      },
+      "handling": "generic_position_zero_default",
+      "legal_summary": {
+        "case_group": [
+          "BIG_FISH",
+          "FACE_TRADER",
+          "GOLDEN_SHRINE",
+          "NLOTH",
+          "SENSORY_STONE",
+          "WINDING_HALLS"
+        ],
+        "conditional": false,
+        "dynamic_return_expressions": [],
+        "legal_indices": [
+          0,
+          1,
+          2
+        ],
+        "line_end": 704,
+        "line_start": 697,
+        "literal_masks": [
+          7
+        ],
+        "phase_sensitive": false,
+        "return_expressions": [
+          "0x7"
+        ],
+        "source_path": "src/sim/search/GameAction.cpp",
+        "source_sha256": "b35bc891dba4926ac0a75eaac287f5c961c778bfa21062b20674af62be54d05a"
+      },
+      "save_id": "Winding Halls",
+      "source_refs": {
+        "enum": {
+          "line": 69,
+          "path": "include/constants/Events.h"
+        },
+        "event_game_name": {
+          "line": 189,
+          "path": "include/constants/Events.h"
+        },
+        "event_id": {
+          "line": 129,
+          "path": "include/constants/Events.h"
+        },
+        "save_id": {
+          "line": 634,
+          "path": "include/constants/SaveFileMappings.h"
+        }
+      },
+      "upstream_enum": "WINDING_HALLS",
+      "upstream_event_id": "Winding Halls"
+    },
+    {
+      "display_summary": {
+        "case_group": [
+          "WING_STATUE"
+        ],
+        "conditional": true,
+        "display_entries": [
+          {
+            "index": 0,
+            "label": "Pray"
+          },
+          {
+            "index": 1,
+            "label": "Destroy"
+          },
+          {
+            "index": 2,
+            "label": "Leave"
+          }
+        ],
+        "display_indices": [
+          0,
+          1,
+          2
+        ],
+        "line_end": 867,
+        "line_start": 859,
+        "phase_sensitive": false,
+        "source_path": "src/sim/ConsoleSimulator.cpp",
+        "source_sha256": "f333237df91ba301515ea83bc723dca2f3e2b219c7ea1c0733648f0fd4016714"
+      },
+      "event_game_name": "Wing Statue",
+      "execution_summary": {
+        "case_group": [
+          "WING_STATUE"
+        ],
+        "conditional": true,
+        "effect_indices": [
+          0,
+          1,
+          2
+        ],
+        "line_end": 2919,
+        "line_start": 2898,
+        "phase_sensitive": false,
+        "source_path": "src/game/GameContext.cpp",
+        "source_sha256": "372b8fdaf800cfaa24283e676e369fc87975f8c1631cb7aadd524f032dc0bc8b"
+      },
+      "handling": "generic_position_zero_default",
+      "legal_summary": {
+        "case_group": [
+          "WING_STATUE"
+        ],
+        "conditional": true,
+        "dynamic_return_expressions": [],
+        "legal_indices": [
+          0,
+          1,
+          2
+        ],
+        "line_end": 819,
+        "line_start": 813,
+        "literal_masks": [
+          5,
+          7
+        ],
+        "phase_sensitive": false,
+        "return_expressions": [
+          "0x7",
+          "0b101"
+        ],
+        "source_path": "src/sim/search/GameAction.cpp",
+        "source_sha256": "db73c1696eb6bf3fd2b72a783fca7a6fd1fc074bd558973d87fc610f8755e008"
+      },
+      "save_id": "Golden Wing",
+      "source_refs": {
+        "enum": {
+          "line": 39,
+          "path": "include/constants/Events.h"
+        },
+        "event_game_name": {
+          "line": 159,
+          "path": "include/constants/Events.h"
+        },
+        "event_id": {
+          "line": 99,
+          "path": "include/constants/Events.h"
+        },
+        "save_id": {
+          "line": 604,
+          "path": "include/constants/SaveFileMappings.h"
+        }
+      },
+      "upstream_enum": "WING_STATUE",
+      "upstream_event_id": "Golden Wing"
+    },
+    {
+      "display_summary": {
+        "case_group": [
+          "WORLD_OF_GOOP"
+        ],
+        "conditional": false,
+        "display_entries": [
+          {
+            "index": 0,
+            "label": "Gather Gold"
+          },
+          {
+            "index": 1,
+            "label": "Leave It"
+          }
+        ],
+        "display_indices": [
+          0,
+          1
+        ],
+        "line_end": 1108,
+        "line_start": 1103,
+        "phase_sensitive": false,
+        "source_path": "src/sim/ConsoleSimulator.cpp",
+        "source_sha256": "945ada8273c832dc424818d4f0e7f467941af1a1680e86064a7bf8944946b26a"
+      },
+      "event_game_name": "World of Goop",
+      "execution_summary": {
+        "case_group": [
+          "WORLD_OF_GOOP"
+        ],
+        "conditional": true,
+        "effect_indices": [],
+        "line_end": 3596,
+        "line_start": 3581,
+        "phase_sensitive": false,
+        "source_path": "src/game/GameContext.cpp",
+        "source_sha256": "13ec6e34d1e7b217a5db56e1847e9552764bb8999b7bc96bee9396918d1e3a10"
+      },
+      "handling": "explicit_policy_sensitive",
+      "legal_summary": {
+        "case_group": [
+          "ANCIENT_WRITING",
+          "DEAD_ADVENTURER",
+          "DUPLICATOR",
+          "OLD_BEGGAR",
+          "THE_DIVINE_FOUNTAIN",
+          "GHOSTS",
+          "THE_SSSSSERPENT",
+          "MASKED_BANDITS",
+          "HYPNOTIZING_COLORED_MUSHROOMS",
+          "MYSTERIOUS_SPHERE",
+          "THE_NEST",
+          "NOTE_FOR_YOURSELF",
+          "SCRAP_OOZE",
+          "SECRET_PORTAL",
+          "SHINING_LIGHT",
+          "THE_JOUST",
+          "THE_LIBRARY",
+          "THE_MAUSOLEUM",
+          "WORLD_OF_GOOP"
+        ],
+        "conditional": false,
+        "dynamic_return_expressions": [],
+        "legal_indices": [
+          0,
+          1
+        ],
+        "line_end": 696,
+        "line_start": 676,
+        "literal_masks": [
+          3
+        ],
+        "phase_sensitive": false,
+        "return_expressions": [
+          "0x3"
+        ],
+        "source_path": "src/sim/search/GameAction.cpp",
+        "source_sha256": "7f2377a74ac5628c6cee28dd4fa5f31990ca3497a6e1f55d983051705de685f5"
+      },
+      "predecessor_rule_sha256": "9602827e31cf420b710d07d147584378af1d5d0e871298adb1c6b925972fae63",
+      "save_id": "World of Goop",
+      "source_refs": {
+        "enum": {
+          "line": 70,
+          "path": "include/constants/Events.h"
+        },
+        "event_game_name": {
+          "line": 190,
+          "path": "include/constants/Events.h"
+        },
+        "event_id": {
+          "line": 130,
+          "path": "include/constants/Events.h"
+        },
+        "save_id": {
+          "line": 635,
+          "path": "include/constants/SaveFileMappings.h"
+        }
+      },
+      "upstream_enum": "WORLD_OF_GOOP",
+      "upstream_event_id": "World of Goop"
+    }
+  ],
+  "schema_version": "noncombat-reachable-event-target-inventory-v1"
+}
