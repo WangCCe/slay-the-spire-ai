@@ -1,0 +1,162 @@
+{
+  "authority": {
+    "baseline_floor_authorized": false,
+    "formal_rl_readiness_authorized": false,
+    "fresh_evidence_authorized": false,
+    "gameplay_authorized": false,
+    "model_authorized": false,
+    "ope_authorized": false,
+    "policy_loading_authorized": false,
+    "promotion_authorized": false,
+    "qualification_authorized": false,
+    "reward_authorized": false,
+    "target_supported_outcome_authorized": false,
+    "training_authorized": false
+  },
+  "cohort": {
+    "replay_count": 2,
+    "seeds": [
+      7000,
+      7001,
+      7002,
+      7003,
+      7004,
+      7005,
+      7006,
+      7007
+    ]
+  },
+  "current_policy": {
+    "ascension": 0,
+    "character": "IRONCLAD",
+    "elite_mode": "conservative",
+    "gameplay_io_enabled": false,
+    "policy_id": "current_optimized_ironclad_a0_conservative_snapshot_v1",
+    "screen_entrypoint": "handle_screen",
+    "tracker_enabled": false,
+    "use_optimized_card_selection": true,
+    "use_optimized_combat": true
+  },
+  "identity": {
+    "adapter_provenance": {
+      "adapter_commit": "1328042c40f48a3bddcabd74ba28e3c00f2bcdf9",
+      "adapter_source_sha256": "4d444939525d93d14e19a03ae6959290996a5daae5192fa527ee80f3945674bf",
+      "build": {
+        "adapter_api_version": "sts-lightspeed-noncombat-adapter-v3",
+        "baseline_policy_id": "sts_lightspeed_simple_agent_no_potions_v1",
+        "compiler": "15.2.0",
+        "cpp_standard": 201703,
+        "native_target_policy_id": "sts_lightspeed_simple_agent_target_v1",
+        "pybind11_version": "3.0.2a0",
+        "python": "3.10.18"
+      },
+      "module_sha256": "410ac6b742192cfcd3568e36975bc87ecab4c2de9093d30113258b74a887e8cb",
+      "module_size_bytes": 4223488,
+      "simulator_commit": "7476a81954020087da31d41d16fddf475746ec2d",
+      "simulator_dirty": true,
+      "simulator_source_file_count": 79,
+      "simulator_source_sha256": "a3f98721ec37373b1b00aef660832a3307f0186ba0614d07a3b1e7de8ab2e46a",
+      "submodules": {
+        "json": "55f93686c01528224f448c19128836e7df245f72",
+        "pybind11": "8f68ecd32c8e18d3b064dbf0ea5fc31a6cb37e9a"
+      }
+    },
+    "adapter_source_files": [
+      "simulator_adapters/sts_lightspeed/CMakeLists.txt",
+      "simulator_adapters/sts_lightspeed/noncombat_adapter.cpp"
+    ],
+    "contract": {
+      "contract_id": "sts_lightspeed_total_event_observation_v2",
+      "observation_contract": {
+        "alias_count": 47,
+        "event_count": 25,
+        "path": "reports/noncombat_event_option_observation_contract_20260802/contract.json",
+        "schema_version": "noncombat-event-option-observation-contract-v1",
+        "sha256": "785e5db26d4cecaa843c7ee3e9e276fdc98c4b77b6a61e88f4520824a50bf3fc"
+      },
+      "schema_version": "sts-lightspeed-event-option-observation-v2",
+      "simulator_commit": "7476a81954020087da31d41d16fddf475746ec2d",
+      "simulator_source_sha256": "a3f98721ec37373b1b00aef660832a3307f0186ba0614d07a3b1e7de8ab2e46a"
+    },
+    "contract_file": {
+      "path": "reports/noncombat_event_option_observation_contract_20260802/contract.json",
+      "sha256": "785e5db26d4cecaa843c7ee3e9e276fdc98c4b77b6a61e88f4520824a50bf3fc",
+      "size_bytes": 17272
+    },
+    "implementation": {
+      "commit": "1328042c40f48a3bddcabd74ba28e3c00f2bcdf9",
+      "source_files": [
+        "analysis_scripts/noncombat_total_event_native_compatibility.py",
+        "analysis_scripts/noncombat_current_policy_simulator_bridge.py",
+        "analysis_scripts/noncombat_event_option_observation_contract.py",
+        "analysis_scripts/noncombat_event_option_semantics.py",
+        "analysis_scripts/noncombat_simulator_adapter.py",
+        "spirecomm/ai/agent.py",
+        "spirecomm/ai/decision/base.py",
+        "spirecomm/ai/heuristics/card.py",
+        "spirecomm/ai/heuristics/deck.py",
+        "spirecomm/ai/heuristics/ironclad_deck.py",
+        "spirecomm/ai/heuristics/ironclad_evaluator.py",
+        "spirecomm/ai/heuristics/map_routing.py",
+        "spirecomm/ai/priorities.py",
+        "spirecomm/data/loader.py",
+        "spirecomm/spire/card.py",
+        "spirecomm/spire/game.py",
+        "spirecomm/spire/map.py",
+        "spirecomm/spire/potion.py",
+        "spirecomm/spire/relic.py",
+        "spirecomm/spire/screen.py"
+      ],
+      "source_sha256": "00f1e10e033876b4c0a75cad50a37d49229b5d63d834f0016bfbe8107bb60ef4"
+    },
+    "metadata": {
+      "path": "D:\\SteamLibrary\\steamapps\\common\\SlayTheSpire\\export\\items.json",
+      "sha256": "e23784ea8ed3092e3bfa9918240e162a9cbcb837badfb53c612eb0d83cc811dc",
+      "size_bytes": 240371
+    },
+    "module_path": "D:\\PycharmProjects\\slay-the-spire-ai\\.sts_lightspeed_adapter_v3_build\\sts_lightspeed_noncombat_adapter.cp310-win_amd64.pyd",
+    "predecessors": {
+      "bridge_closeout": {
+        "path": "reports/noncombat_total_event_option_observation_bridge_20260803_closeout.md",
+        "sha256": "97ca7970525fb50d593d828bedfe93497650a0713633f488f8fa2947c76e0c3a",
+        "size_bytes": 3839
+      },
+      "bridge_manifest": {
+        "path": "reports/noncombat_current_policy_simulator_bridge_20260802_r2/artifact_manifest.json",
+        "sha256": "f5898b84d8ed0deced0c1642ba319f6d3f247932800eae4d80f0a1c93bd57489",
+        "size_bytes": 2484
+      },
+      "bridge_registration": {
+        "path": "reports/noncombat_current_policy_simulator_bridge_20260802_r2_input.json",
+        "sha256": "b251f7eefa558610b58c2dc23525f60302e6ae9f99bd11da72faa6c9a138f8f6",
+        "size_bytes": 6928
+      }
+    },
+    "runtime": {
+      "executable": "D:\\anaconda\\envs\\stsai\\python.exe",
+      "python": "3.10.18"
+    },
+    "seed_ledger": {
+      "path": "reports/noncombat_total_event_native_compatibility_20260803_seed_ledger.json",
+      "sha256": "1a5fe44695ecb3bbbb2db8dc41dc9feb260a8074d47a2588e8cd94d1a154a136",
+      "size_bytes": 12545
+    },
+    "simulator_path": "D:\\CLionProjects\\sts_lightspeed"
+  },
+  "limits": {
+    "max_decisions_per_replay": 500,
+    "max_wall_seconds": 120.0
+  },
+  "output": {
+    "artifact_names": [
+      "artifact_manifest.json",
+      "configuration.json",
+      "execution_journal.json",
+      "metrics.json",
+      "report.md",
+      "trajectory_rows.json"
+    ],
+    "directory": "reports/noncombat_total_event_native_compatibility_20260803"
+  },
+  "schema_version": "noncombat-total-event-native-compatibility-input-v1"
+}

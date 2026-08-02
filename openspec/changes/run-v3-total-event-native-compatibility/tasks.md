@@ -19,10 +19,10 @@
 
 ## 4. Native Identity And Registration
 
-- [ ] 4.1 Configure and build the API v3 adapter in a new ignored directory, then load only API and build-info surfaces without constructing `Environment`
-- [ ] 4.2 Collect module, adapter, simulator physical source, dependency, contract, policy, metadata, runtime, predecessor, and output identities
-- [ ] 4.3 Generate and independently verify the exact `7000..7007` seed ledger and immutable compatibility registration
-- [ ] 4.4 Commit and push the registration, then prove tracked-clean status, exact `HEAD` registration bytes, and `HEAD == origin/master`
+- [x] 4.1 Configure and build the API v3 adapter in a new ignored directory, then load only API and build-info surfaces without constructing `Environment`
+- [x] 4.2 Collect module, adapter, simulator physical source, dependency, contract, policy, metadata, runtime, predecessor, and output identities
+- [x] 4.3 Generate and independently verify the exact `7000..7007` seed ledger and immutable compatibility registration
+- [x] 4.4 Commit and push the registration, then prove tracked-clean status, exact `HEAD` registration bytes, and `HEAD == origin/master`
 
 ## 5. One-Shot Compatibility Execution
 
