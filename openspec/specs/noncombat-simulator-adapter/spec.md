@@ -33,7 +33,7 @@ The adapter SHALL bind every transition report to the physical simulator source,
 - **AND** it SHALL NOT reuse a prior readiness result
 
 ### Requirement: Deterministic Non-Combat Environment API
-The adapter SHALL expose deterministic Ironclad reset, deep clone, canonical snapshot, legal-action enumeration, action execution, native SimpleAgent target-action query, and terminal outcome through JSON-compatible values.
+The adapter SHALL expose deterministic Ironclad reset, deep clone, canonical snapshot, legal-action enumeration, action execution, native SimpleAgent target-action query, and terminal outcome through JSON-compatible values. Native shop snapshots SHALL expose the same visible inventory boundary as Communication Mod while preserving simulator source-slot identity.
 
 #### Scenario: Same seed resets identically
 - **WHEN** two environments reset with the same seed and ascension under the same bound identities
@@ -63,6 +63,16 @@ The adapter SHALL expose deterministic Ironclad reset, deep clone, canonical sna
 - **WHEN** an environment previously applies a target action different from its queried SimpleAgent action
 - **THEN** a later native-baseline query on that trajectory SHALL fail closed
 - **AND** the adapter SHALL NOT present a stale route path as a counterfactual baseline action
+
+#### Scenario: Native shop snapshot is emitted
+- **WHEN** fixed shop slots contain a sold `price == -1` entry, a nonnegative unaffordable entry, or a nonnegative Courier replacement
+- **THEN** the snapshot SHALL omit exactly the sold entry and SHALL retain every nonnegative visible entry with its original fixed `slot`
+- **AND** legal candidate ids SHALL continue to map to original fixed slots rather than compact visible-list positions
+
+#### Scenario: Native shop inventory has an invalid negative price
+- **WHEN** a card, relic, or potion source slot has a price below `-1`
+- **THEN** snapshot generation SHALL fail with the affected inventory kind and source slot
+- **AND** it SHALL NOT reinterpret the invalid value as a sold item or pass it to policy hydration
 
 ### Requirement: Four-Category Simulator Transitions
 The adapter SHALL emit versioned simulator transitions for route, shop, event, and card-reward decisions while declaring all baseline-controlled screens and follow-up semantics.

@@ -19,6 +19,6 @@
 
 ## 4. Verification And Closeout
 
-- [ ] 4.1 Run focused native/bridge pytest, the partitioned repository commit gate, and strict OpenSpec validation without invoking the raw unpartitioned full suite.
-- [ ] 4.2 Publish a provenance-bound closeout with every live, training, OPE, qualification, loading, and promotion authority set to false.
-- [ ] 4.3 Sync the delta spec, archive the completed change, commit and push a clean `master`, then reassess whether a third formal native gate is justified.
+- [x] 4.1 Run focused native/bridge pytest, the partitioned repository commit gate, and strict OpenSpec validation without invoking the raw unpartitioned full suite.
+- [x] 4.2 Publish a provenance-bound closeout with every live, training, OPE, qualification, loading, and promotion authority set to false.
+- [x] 4.3 Sync the delta spec, archive the completed change, commit and push a clean `master`, then reassess whether a third formal native gate is justified.
