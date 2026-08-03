@@ -1,0 +1,188 @@
+{
+  "audit_id": "noncombat-baseline-floor-readiness-audit-20260803",
+  "authority": {
+    "formal_rl_authorized": false,
+    "fresh_evidence_authorized": false,
+    "gameplay_authorized": false,
+    "model_fitting_authorized": false,
+    "native_loading_authorized": false,
+    "ope_authorized": false,
+    "policy_loading_authorized": false,
+    "promotion_authorized": false,
+    "qualification_authorized": false,
+    "reward_authorized": false,
+    "seed_selection_authorized": false,
+    "simulator_environment_authorized": false,
+    "training_authorized": false
+  },
+  "baseline_floor_contract": {
+    "absolute_quality_gate_fixed": false,
+    "bootstrap_contract_fixed": false,
+    "comparison_controls_fixed": false,
+    "paired_quality_gate_fixed": false,
+    "replay_contract_fixed": false,
+    "stop_rules_fixed": false,
+    "unsupported_rate_ceiling_fixed": false,
+    "untouched_holdout_fixed": false
+  },
+  "candidate_roles": [
+    {
+      "eligible": true,
+      "policy_id": "current",
+      "role": "eligible_non_teacher",
+      "status": "structural_closure_required"
+    },
+    {
+      "eligible": false,
+      "policy_id": "native_simple_agent",
+      "role": "auxiliary_deterministic_control",
+      "status": "teacher_quality_gate_rejected"
+    },
+    {
+      "eligible": false,
+      "policy_id": "bottled",
+      "role": "auxiliary_oracle",
+      "status": "reference_only"
+    },
+    {
+      "eligible": false,
+      "policy_id": "seeded_initial",
+      "role": "weak_control",
+      "status": "not_credible_baseline_floor"
+    },
+    {
+      "eligible": false,
+      "policy_id": "smoke_trained",
+      "role": "negative_policy_evidence",
+      "status": "baseline_signal_not_demonstrated"
+    },
+    {
+      "eligible": false,
+      "policy_id": "simpleagent_warm_start",
+      "role": "negative_policy_evidence",
+      "status": "baseline_floor_not_demonstrated"
+    },
+    {
+      "eligible": false,
+      "policy_id": "structured_ranker",
+      "role": "negative_policy_evidence",
+      "status": "candidate_not_selected"
+    },
+    {
+      "eligible": false,
+      "policy_id": "route_card_residual",
+      "role": "negative_policy_evidence",
+      "status": "candidate_not_selected"
+    }
+  ],
+  "evidence": [
+    {
+      "id": "current_bridge",
+      "path": "reports/noncombat_current_policy_simulator_bridge_20260802_r2/metrics.json",
+      "sha256": "06f17fe9f0e45d6dde652f4aeb6c07b4a91154e2f2b78b71d3d10b6c97476860",
+      "size_bytes": 3537
+    },
+    {
+      "id": "formal_readiness",
+      "path": "reports/noncombat_formal_rl_readiness_audit_20260802_r2/report.json",
+      "sha256": "3458b0f27ab5ff65f60e280f010c2a9802e92ee6f0f71d530df2151be14da97a",
+      "size_bytes": 1070
+    },
+    {
+      "id": "formal_reward",
+      "path": "reports/noncombat_formal_reward_contract_20260802/contract.json",
+      "sha256": "4ee9c0087e523b95e2d380d6e6a0c7ecefd4f211cbd7d780b496df0d642a10bb",
+      "size_bytes": 2419
+    },
+    {
+      "id": "outcome_feasibility",
+      "path": "reports/noncombat_study_feasibility_20260802.json",
+      "sha256": "46d9321676676b92756caab5e35cddb4055086078accacb13e83540a81240bbe",
+      "size_bytes": 4216
+    },
+    {
+      "id": "policy_validity",
+      "path": "reports/noncombat_simulator_policy_validity_20260802/metrics.json",
+      "sha256": "4546b12ec3540cfba9251cabc270199254fe20f43e1459ab6ee99d71a44497f1",
+      "size_bytes": 3006
+    },
+    {
+      "id": "reachable_compatibility",
+      "path": "reports/noncombat_reachable_event_native_compatibility_20260803/metrics.json",
+      "sha256": "8061ccde69d7dbd09bb08ab648053f315d39ae6a998a1db1b5216aa4df60918e",
+      "size_bytes": 993
+    },
+    {
+      "id": "reachable_event_repair",
+      "path": "reports/noncombat_reachable_event_surface_20260803_closeout.md",
+      "sha256": "466d3f007c8199bba842ed093dab278c4c91b7d18ba3eacf020cd57b9c57c6e6",
+      "size_bytes": 4657
+    },
+    {
+      "id": "remove_sentinel_repair",
+      "path": "reports/noncombat_shop_remove_cost_sentinel_20260803_closeout.md",
+      "sha256": "13f0e694898fcdb19e1c6344d54b25180c033eacc8d3836b35a8adea8d43709a",
+      "size_bytes": 4002
+    },
+    {
+      "id": "residual_ranker",
+      "path": "reports/noncombat_route_card_residual_ranker_poc_20260802/metrics.json",
+      "sha256": "998e554f0ff6307ebbb408c4c59ecc4df7e6324a8f2f91e60e416aabe776046d",
+      "size_bytes": 26723
+    },
+    {
+      "id": "shop_support_envelope",
+      "path": "reports/noncombat_native_shop_support_envelope_20260803_closeout.md",
+      "sha256": "3ccc66a624f53afadbac838e44fda993af644f3486bd3a9a4498f08c9379b3d5",
+      "size_bytes": 6612
+    },
+    {
+      "id": "sold_inventory_repair",
+      "path": "reports/noncombat_native_shop_sold_inventory_filter_20260803_closeout.md",
+      "sha256": "c9ddbacc827432c518d930b258b11905241bdd8acab613928356638e2e8128c3",
+      "size_bytes": 6618
+    },
+    {
+      "id": "structured_ranker",
+      "path": "reports/noncombat_structured_baseline_ranker_poc_20260802/metrics.json",
+      "sha256": "4d7e384b000a89f6948fa0b8f6f860a2b48e2daad14f180a91fc3c8651140bb3",
+      "size_bytes": 4611
+    },
+    {
+      "id": "teacher_suitability",
+      "path": "reports/noncombat_state_action_teacher_sufficiency_audit_20260802_r2/teacher_suitability.json",
+      "sha256": "1636ae8f69392f8f434af2238ce8851975207d57a690630b59d63ef75f735dfa",
+      "size_bytes": 1399
+    },
+    {
+      "id": "total_compatibility",
+      "path": "reports/noncombat_total_event_native_compatibility_20260803/metrics.json",
+      "sha256": "dbf729ceb4d02d3d45cb9163bf50c6b58c0a322c9df9aa72aebd6d0c4860ac8d",
+      "size_bytes": 928
+    },
+    {
+      "id": "warm_start",
+      "path": "reports/noncombat_simulator_baseline_warm_start_20260802/metrics.json",
+      "sha256": "d4809a2098d0e6c0a0ee7183cb2569bba4d6b3d1cbde26d90b98ea6278b51fcb",
+      "size_bytes": 3272
+    }
+  ],
+  "implementation": {
+    "path": "analysis_scripts/noncombat_baseline_floor_readiness.py",
+    "sha256": "e864756510a0c87ab9de5f8711ae9554ff4570ae23d38902ffc3de7ae8642cc7",
+    "size_bytes": 21896
+  },
+  "schema_version": "noncombat-baseline-floor-readiness-audit-input-v1",
+  "unsupported_episode_contract": {
+    "aggregate_metrics_include_unsupported": true,
+    "denominator": "all_selected_episodes",
+    "drop_allowed": false,
+    "exact_reason_seed_rate_reporting": true,
+    "paired_metrics_include_unsupported": true,
+    "primary_disposition": "non_victory_last_supported_floor",
+    "replacement_allowed": false,
+    "retry_allowed": false,
+    "supported_only_can_authorize": false,
+    "unsupported_rate_ceiling_required": true
+  }
+}

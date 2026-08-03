@@ -116,3 +116,15 @@ openspec/changes/implement-total-event-option-observation-bridge/** text eol=lf
 openspec/changes/archive/*-implement-total-event-option-observation-bridge/** text eol=lf
 openspec/changes/run-v3-total-event-native-compatibility/** text eol=lf
 openspec/changes/archive/*-run-v3-total-event-native-compatibility/** text eol=lf
+
+# Preserve baseline-floor readiness audit source and canonical bytes.
+analysis_scripts/noncombat_baseline_floor_readiness.py text eol=lf
+tests/test_noncombat_baseline_floor_readiness.py text eol=lf
+reports/noncombat_baseline_floor_readiness_audit_* text eol=lf
+openspec/specs/noncombat-baseline-floor-readiness-audit/** text eol=lf
+openspec/changes/audit-noncombat-baseline-floor-readiness/** text eol=lf
+openspec/changes/archive/*-audit-noncombat-baseline-floor-readiness/** text eol=lf
+reports/noncombat_reachable_event_surface_20260803_closeout.md text eol=lf
+reports/noncombat_shop_remove_cost_sentinel_20260803_closeout.md text eol=lf
+reports/noncombat_native_shop_sold_inventory_filter_20260803_closeout.md text eol=lf
+reports/noncombat_native_shop_support_envelope_20260803_closeout.md text eol=lf

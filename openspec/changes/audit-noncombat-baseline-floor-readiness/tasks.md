@@ -1,15 +1,15 @@
 ## 1. Planning And Evidence Boundary
 
 - [x] 1.1 Strict-validate the proposal, design, delta spec, and task boundary.
-- [ ] 1.2 Commit and push all planning artifacts before writing the audit registration, analyzer, or canonical outputs.
-- [ ] 1.3 Inventory only the decision-bearing tracked evidence named by the design; record exact path, SHA-256, size, schema or declared identity, current implementation source, and all-false authority expectations.
+- [x] 1.2 Commit and push all planning artifacts before writing the audit registration, analyzer, or canonical outputs.
+- [x] 1.3 Inventory only the decision-bearing tracked evidence named by the design; record exact path, SHA-256, size, schema or declared identity, current implementation source, and all-false authority expectations.
 
 ## 2. Regression And Compact Analyzer
 
-- [ ] 2.1 Add red tests for exact evidence validation, candidate-role isolation, fixed verdict precedence, conservative unsupported-episode accounting, and canonical JSON/Markdown rendering.
-- [ ] 2.2 Implement one compact read-only analyzer and versioned registration without directory crawling, native imports, environment construction, seed selection, or model loading.
-- [ ] 2.3 Prove drift, survivor-only accounting, auxiliary-reference promotion, missing Current structural evidence, and non-false authority all fail closed.
-- [ ] 2.4 Run focused pytest, review the scoped diff, then commit and push the implementation before publication.
+- [x] 2.1 Add red tests for exact evidence validation, candidate-role isolation, fixed verdict precedence, conservative unsupported-episode accounting, and canonical JSON/Markdown rendering.
+- [x] 2.2 Implement one compact read-only analyzer and versioned registration without directory crawling, native imports, environment construction, seed selection, or model loading.
+- [x] 2.3 Prove drift, survivor-only accounting, auxiliary-reference promotion, missing Current structural evidence, and non-false authority all fail closed.
+- [x] 2.4 Run focused pytest, review the scoped diff, then commit and push the implementation before publication.
 
 ## 3. Current Audit Publication
 
