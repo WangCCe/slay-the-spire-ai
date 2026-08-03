@@ -1,0 +1,50 @@
+{
+  "artifact_hashes": {
+    "bootstrap_draws.json": {
+      "sha256": "cd4c4a50436c004245c521afb8a942f065be8011374972e1462475453b4e3bd4",
+      "size_bytes": 484
+    },
+    "configuration.json": {
+      "sha256": "a4f7f1ea75d067588b5e482a3ccfa7ee461cdbaf242856482ac104942d51de30",
+      "size_bytes": 11763
+    },
+    "execution_journal.json": {
+      "sha256": "f8d6b771bc9be0ff16241d2d18505f2082836fcc9e340415aa974bbbd1f4951d",
+      "size_bytes": 1072
+    },
+    "metrics.json": {
+      "sha256": "e53e12558232b6b97f1c78c60a7917fe77d5287cd8764dfd1ef4ed7c1d9cb76b",
+      "size_bytes": 911
+    },
+    "report.md": {
+      "sha256": "48ede3984dd265eea09c656ccfe2815d90216b3cf08d0ae943b8c71245638ed2",
+      "size_bytes": 275
+    },
+    "trajectory_rows.json": {
+      "sha256": "14e5b886737e18e1e0b1bcfe9e43e24864047635939991e90792b0793c75c04d",
+      "size_bytes": 219839
+    }
+  },
+  "authority": {
+    "baseline_floor_authorized": false,
+    "environment_construction_authorized": false,
+    "execution_authorized": false,
+    "formal_rl_authorized": false,
+    "fresh_evidence_authorized": false,
+    "gameplay_authorized": false,
+    "model_fitting_authorized": false,
+    "native_loading_authorized": false,
+    "ope_authorized": false,
+    "policy_loading_authorized": false,
+    "promotion_authorized": false,
+    "qualification_authorized": false,
+    "reward_authorized": false,
+    "seed_access_authorized": false,
+    "target_supported_outcome_authorized": false,
+    "training_authorized": false
+  },
+  "preregistration_commit": "720f41b07c6d92a35fc7c6620ad62bad8771ce49",
+  "registration_sha256": "e84411234821397b462530398722f1f6b5174198754348b1c40bbb6f6d651085",
+  "schema_version": "noncombat-current-baseline-evidence-study-manifest-v1",
+  "verdict": "study_blocked"
+}

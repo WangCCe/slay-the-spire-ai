@@ -1,0 +1,30 @@
+{
+  "authority": {
+    "baseline_floor_authorized": false,
+    "environment_construction_authorized": false,
+    "execution_authorized": false,
+    "formal_rl_authorized": false,
+    "fresh_evidence_authorized": false,
+    "gameplay_authorized": false,
+    "model_fitting_authorized": false,
+    "native_loading_authorized": false,
+    "ope_authorized": false,
+    "policy_loading_authorized": false,
+    "promotion_authorized": false,
+    "qualification_authorized": false,
+    "reward_authorized": false,
+    "seed_access_authorized": false,
+    "target_supported_outcome_authorized": false,
+    "training_authorized": false
+  },
+  "completed_row_count": 18,
+  "detail": "Injury",
+  "holdout_accessed": false,
+  "preregistration_commit": "720f41b07c6d92a35fc7c6620ad62bad8771ce49",
+  "reason": "card_metadata_cost_invalid",
+  "registration_sha256": "e84411234821397b462530398722f1f6b5174198754348b1c40bbb6f6d651085",
+  "schema_version": "noncombat-current-baseline-evidence-study-journal-v1",
+  "state": "terminal",
+  "status": "blocked",
+  "verdict": "study_blocked"
+}

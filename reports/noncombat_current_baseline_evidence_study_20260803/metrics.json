@@ -1,0 +1,29 @@
+{
+  "authority": {
+    "baseline_floor_authorized": false,
+    "environment_construction_authorized": false,
+    "execution_authorized": false,
+    "formal_rl_authorized": false,
+    "fresh_evidence_authorized": false,
+    "gameplay_authorized": false,
+    "model_fitting_authorized": false,
+    "native_loading_authorized": false,
+    "ope_authorized": false,
+    "policy_loading_authorized": false,
+    "promotion_authorized": false,
+    "qualification_authorized": false,
+    "reward_authorized": false,
+    "seed_access_authorized": false,
+    "target_supported_outcome_authorized": false,
+    "training_authorized": false
+  },
+  "canary": null,
+  "detail": "Injury",
+  "holdout": null,
+  "holdout_accessed": false,
+  "reason": "card_metadata_cost_invalid",
+  "row_count": 18,
+  "schema_version": "noncombat-current-baseline-evidence-study-metrics-v1",
+  "status": "blocked",
+  "verdict": "study_blocked"
+}

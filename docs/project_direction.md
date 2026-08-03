@@ -1,6 +1,6 @@
 # Project Direction
 
-Last updated: 2026-08-03
+Last updated: 2026-08-04
 
 ## Current Phase
 
@@ -108,6 +108,16 @@ schema fix, and one-shot fail-closed authority. This review authorizes planning
 only. It does not authorize native loading, environment construction, execution,
 a readiness refresh, or any training or promotion surface.
 
+That successor r2 diagnostic was later consumed as a second zero-row failure on
+`potion_metadata_missing`. The closed potion and relic identity repairs and the
+production candidate-schema repair then supported one separately preregistered
+post-repair Current baseline study. Its one authorized attempt retained 18
+replay-identical policy rows for canary seeds `11000..11008`, then terminated as
+`study_blocked` on `card_metadata_cost_invalid` with detail `Injury`. The full
+canary was not completed, bootstrap did not run, and holdout seeds
+`12000..12063` remained untouched. This is a terminal blocked result, not a
+baseline-floor result, and it cannot be retried or replaced.
+
 ## Training Boundary
 
 Formal non-combat RL training is not currently authorized. A training go means
@@ -131,20 +141,18 @@ zero target-supported victories. The next prerequisite is the non-teacher
 baseline floor; passing it would not override the outcome blocker or authorize
 training.
 
-The immediate baseline-lane blocker is a missing completed Current
-own-trajectory under the repaired supported boundary. The four frozen Stage 1
-bridge rows pass, but historical Stage 2 and both API v3 cohorts remain consumed
-negatives. Subsequent repairs do not establish structural closure. A third fresh
-cohort is premature until a separate diagnostic smoke binds the current module,
-adapter, bridge, contracts, reused development seeds, replay, limits, and exact
-support blockers without claiming policy quality.
+The immediate baseline-lane blocker is now the terminal post-repair study
+result. Eighteen partial canary rows do not satisfy the 32-row canary contract,
+and their partial floors cannot be promoted into quality evidence. Current
+structural closure and a credible baseline floor therefore remain
+undemonstrated. The observed `Injury` empty-cost metadata boundary is a narrow
+offline compatibility candidate only; repairing it later would not reinterpret
+or reopen the consumed study.
 
-The registered diagnostic bound those identities but produced zero decisions
-and zero retained rows because of its runner-schema defect. Therefore the same
-completed-Current-row blocker remains. All eight baseline-floor contract checks
-remain false, and source comparability with zero target-supported victories
-remains an independent blocker. Fixing the runner offline cannot reinterpret
-the consumed diagnostic or authorize a readiness refresh.
+All formal-RL authority remains false. Source comparability with zero
+target-supported victories remains an independent blocker, unchanged by the
+simulator-only partial rows. No training proposal may be considered while
+either baseline policy or outcome support remains blocked.
 
 Any future baseline-floor study must retain every selected episode. A declared
 support blocker counts conservatively as a non-victory at the last supported
@@ -321,30 +329,33 @@ The next authorized sequence is:
     stable native IDs. Together with the potion repair, this closes the known
     static item-name hydration gaps without changing policy or evidence
     authority.
+19. Preserve the post-repair Current baseline registration, authorization,
+    terminal journal, 18 retained rows, canonical artifacts, and
+    `study_blocked` verdict byte-for-byte. Do not retry, replace, tune, or treat
+    the partial rows as a completed canary or baseline floor.
+20. Keep formal non-combat RL `no_go`. Baseline policy and target-supported
+    outcome support remain blocked; the latter still has zero supported
+    victories and no source-comparable evidence.
+21. Treat the observed `Injury` empty-cost boundary as a possible separate
+    offline card-metadata-domain audit, not as permission for a repair inside
+    the consumed study or for another empirical cohort.
 
 ## Work Lanes
 
-The offline production candidate-schema fix, anti-retry review, versioned r2
-successor, and subsequent potion and relic metadata compatibility repairs are
-complete. The audited card surface needs no compatibility repair. The single
-r2 execution remains terminal with zero rows and cannot be repaired or
-reinterpreted. The post-bridge formal-RL evidence-gap audit is also complete:
-formal RL remains `no_go` because the credible baseline floor and
-source-comparable target-supported outcome domains are still blocked.
+The offline production candidate-schema fix, anti-retry review, r2 successor,
+potion and relic identity repairs, and post-repair Current baseline study are
+complete. The study is a terminal blocked result after 18 partial canary rows;
+it does not establish structural closure or a baseline floor. Formal RL remains
+`no_go` because baseline policy and source-comparable target-supported outcomes
+are still blocked.
 
-The post-repair Current baseline-evidence proposal path is now explicitly
-selected. Active change `add-post-repair-current-baseline-evidence-study`
-replaces a third diagnostic with one immutable canary-plus-holdout floor study,
-fixed numeric gates, conservative Courier support accounting, and no retry.
-Planning and source-only implementation may proceed, but preregistration grants
-no empirical authority. Do not rerun either diagnostic, prepare r3, load the
-native module, construct an environment, access a study seed, or train until a
-separate pushed registration is explicitly approved for one-shot execution.
-
-A fresh compatibility or non-teacher baseline-floor study remains blocked; the
-failed diagnostic did not open that lane. The target-supported-outcome lane
-remains independently blocked on source comparability and zero supported
-victories.
+Do not prepare another baseline cohort, modify the consumed study, or start
+training. The narrow next maintenance candidate is a separate read-only audit
+of the card metadata cost domain, including empty-cost unplayable Curse/Status
+entries. It may lead to a small compatibility repair under its own evidence and
+OpenSpec boundary, but cannot reopen this study. A new empirical baseline
+strategy requires a separate project-level decision after that audit, not an
+automatic successor.
 
 Live gameplay is a maintenance and registered-evaluation lane only. Launch it
 for a crash, stuck state, repeated A-class simulator/mechanics defect, or an

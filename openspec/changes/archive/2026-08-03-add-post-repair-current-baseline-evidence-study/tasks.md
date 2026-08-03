@@ -68,13 +68,13 @@
 
 ## 6. One-Shot Study And Closeout
 
-- [ ] 6.1 After explicit execution approval, write the started journal and run
+- [x] 6.1 After explicit execution approval, write the started journal and run
   the canary exactly once; run the holdout automatically only if the immutable
   canary gate passes, with no retry, repair, replacement, or runtime override.
-- [ ] 6.2 Preserve the terminal positive, negative, blocked, interrupted, or
+- [x] 6.2 Preserve the terminal positive, negative, blocked, interrupted, or
   partial result; run a fresh-process no-native verifier and publish exact
   cohort, support, floor, bootstrap, category, outcome, and authority findings.
-- [ ] 6.3 Perform a separate read-only baseline/formal-readiness refresh, update
+- [x] 6.3 Perform a separate read-only baseline/formal-readiness refresh, update
   project direction without changing outcome support, sync specs, archive the
   change, run final focused and commit-gate verification as applicable, commit,
   and push all canonical evidence.

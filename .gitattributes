@@ -148,4 +148,7 @@ analysis_scripts/noncombat_current_baseline_evidence_study.py text eol=lf
 tests/test_noncombat_current_baseline_evidence_study.py text eol=lf
 reports/noncombat_current_baseline_evidence_study_* text eol=lf
 reports/noncombat_current_baseline_evidence_study_*/** text eol=lf
+reports/noncombat_current_baseline_readiness_refresh_* text eol=lf
 openspec/changes/add-post-repair-current-baseline-evidence-study/** text eol=lf
+openspec/changes/archive/*-add-post-repair-current-baseline-evidence-study/** text eol=lf
+openspec/specs/noncombat-current-baseline-evidence-study/** text eol=lf
