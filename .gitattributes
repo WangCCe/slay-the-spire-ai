@@ -142,3 +142,10 @@ openspec/changes/archive/*-fix-current-bridge-diagnostic-candidate-schema/** tex
 reports/noncombat_current_bridge_diagnostic_successor_* text eol=lf
 openspec/changes/run-current-bridge-diagnostic-successor-r2/** text eol=lf
 openspec/changes/archive/*-run-current-bridge-diagnostic-successor-r2/** text eol=lf
+
+# Preserve post-repair Current baseline study source and canonical evidence bytes.
+analysis_scripts/noncombat_current_baseline_evidence_study.py text eol=lf
+tests/test_noncombat_current_baseline_evidence_study.py text eol=lf
+reports/noncombat_current_baseline_evidence_study_* text eol=lf
+reports/noncombat_current_baseline_evidence_study_*/** text eol=lf
+openspec/changes/add-post-repair-current-baseline-evidence-study/** text eol=lf

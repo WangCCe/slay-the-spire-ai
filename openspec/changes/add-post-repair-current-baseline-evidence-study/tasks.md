@@ -55,14 +55,14 @@
 
 ## 5. Preregistration Without Execution
 
-- [ ] 5.1 From the clean pushed implementation, reuse registered build identity,
+- [x] 5.1 From the clean pushed implementation, reuse registered build identity,
   hash external module/runtime bytes without importing the native module,
   regenerate the tracked exclusion proof, confirm all 80 study seeds remain
   untouched and the output root is absent, and construct no environment.
-- [ ] 5.2 Prepare one canonical registration and no-environment preflight,
+- [x] 5.2 Prepare one canonical registration and no-environment preflight,
   verify every source, cohort, gate, limit, external identity, artifact, and
   all-false authority field, then commit and push the preregistration.
-- [ ] 5.3 Stop before native loading and seed access until the user explicitly
+- [x] 5.3 Stop before native loading and seed access until the user explicitly
   approves the exact pushed registration and one-shot command in a separate
   execution authorization artifact.
 
