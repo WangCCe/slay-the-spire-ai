@@ -63,11 +63,12 @@
 
 ## 8. Preregister The Exact Experiment
 
-- [ ] 8.1 Scan canonical prior registered simulator cohort inputs and publish a source-only inventory proof that every value in `50000..51663` is collision-free; block without choosing a replacement range if any collision exists.
-- [ ] 8.2 Generate a canonical preregistration binding the pushed source commit, API v3 adapter, physical `sts_lightspeed` source and module identities, Windows runtime, formal reward artifact, fixed constants, cohorts, support blockers, limits, outputs, and all-false authority.
-- [ ] 8.3 Verify the preregistration twice in independent fresh processes and prove both runs are byte-identical and perform no native import, environment construction, seed use, training, or output-directory creation.
-- [ ] 8.4 Review the preregistration against the proposal, design, specs, source implementation, seed inventory, and immutable historical evidence.
-- [ ] 8.5 Commit and push the preregistration and inventory proof while keeping `experiment_execution=false` and every live, OPE, formal-RL, qualification, loading, and promotion flag false.
+- [x] 8.1 Scan canonical prior registered simulator cohort inputs and publish a source-only inventory proof that every value in `50000..51663` is collision-free; block without choosing a replacement range if any collision exists.
+- [x] 8.2 Generate a canonical preregistration binding the pushed source commit, API v3 adapter, physical `sts_lightspeed` source and module identities, Windows runtime, formal reward artifact, fixed constants, cohorts, support blockers, limits, outputs, and all-false authority.
+- [x] 8.3 Verify the preregistration twice in independent fresh processes and prove both runs are byte-identical and perform no native import, environment construction, seed use, training, or output-directory creation.
+  - Evidence: both source-tree recomputations produced byte-identical verification output `dea99f28a27d0c0b49e86a0274a3d043b53925d7cde4425ec2c98a03e36a9056`; inventory `b800b633976ded015864c3b7dd88c3cdb4a64828f1bd14054fe6ff70fcbb2de0` and registration `cf30c2a2e1c10681968ef6f0191e33b272af047c496e811d7ae5aa24205fa452` remained all-false and output-absent.
+- [x] 8.4 Review the preregistration against the proposal, design, specs, source implementation, seed inventory, and immutable historical evidence.
+- [x] 8.5 Commit and push the preregistration and inventory proof while keeping `experiment_execution=false` and every live, OPE, formal-RL, qualification, loading, and promotion flag false.
 
 ## 9. Authorize And Preflight One Logical Execution
 
