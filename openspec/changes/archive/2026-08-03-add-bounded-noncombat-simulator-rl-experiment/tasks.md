@@ -81,16 +81,22 @@
 
 ## 10. Execute The Single Bounded Experiment
 
-- [ ] 10.1 Start or resume exactly one logical experiment under its authorization, append the started journal, and retain every selected episode under the cumulative 28,800-second wall limit.
-- [ ] 10.2 Complete and independently verify the first-two-chunk byte replay before continuing to the remaining registered train coordinates.
-- [ ] 10.3 Complete all reachable training chunks with canonical checkpoints, or publish the exact bounded or blocked terminal state without retrying or replacing any episode.
-- [ ] 10.4 Evaluate canary once for both frozen policies and access holdout only if every fixed canary gate passes.
-- [ ] 10.5 Publish the reached terminal verdict, untouched-cohort state, full canonical artifact set, and standalone-verifier result; treat absence of learning signal as a valid terminal negative.
-- [ ] 10.6 Do not rerun, tune, sweep, extend, reinterpret, or promote from the result under this change.
+- [x] 10.1 Start or resume exactly one logical experiment under its authorization, append the started journal, and retain every selected episode under the cumulative 28,800-second wall limit.
+- [x] 10.2 Complete and independently verify the first-two-chunk byte replay before continuing to the remaining registered train coordinates.
+  - Evidence: the authorized execution blocked while loading the registered native module, before any environment or chunk existed. Prefix replay was therefore not reached, and no later train coordinate was accessed.
+- [x] 10.3 Complete all reachable training chunks with canonical checkpoints, or publish the exact bounded or blocked terminal state without retrying or replacing any episode.
+- [x] 10.4 Evaluate canary once for both frozen policies and access holdout only if every fixed canary gate passes.
+  - Evidence: zero training episodes and zero updates were reached; canary and holdout remained untouched as required by the blocked terminal path.
+- [x] 10.5 Publish the reached terminal verdict, untouched-cohort state, full canonical artifact set, and standalone-verifier result; treat absence of learning signal as a valid terminal negative.
+  - Evidence: `experiment_blocked` was published after `0.21622760000173002` cumulative wall seconds with zero episodes and updates. A fresh standalone verifier accepted 8 artifacts and 174 checks.
+- [x] 10.6 Do not rerun, tune, sweep, extend, reinterpret, or promote from the result under this change.
+  - Evidence: the one logical execution was not retried; no seed, parameter, module, or path was replaced.
 
 ## 11. Close Out The Change
 
-- [ ] 11.1 Re-run focused artifact and verifier tests after result publication; run the full commit gate again only if source code changed after the implementation release.
-- [ ] 11.2 Update project direction with the exact simulator-only result, resource use, learning-signal verdict, preserved readiness blockers, and prohibited claims.
-- [ ] 11.3 Sync the accepted capability deltas to the main specs, archive the completed change, and run strict change and repository-wide OpenSpec validation.
-- [ ] 11.4 Commit and push the terminal evidence, direction update, synced specs, and archive while preserving all prior evidence and unrelated untracked files.
+- [x] 11.1 Re-run focused artifact and verifier tests after result publication; run the full commit gate again only if source code changed after the implementation release.
+  - Evidence: publication/verifier focus passed `18` tests with `77` deselected in `51.61s`. No source code changed after implementation release, so the full commit gate was not repeated.
+- [x] 11.2 Update project direction with the exact simulator-only result, resource use, learning-signal verdict, preserved readiness blockers, and prohibited claims.
+- [x] 11.3 Sync the accepted capability deltas to the main specs, archive the completed change, and run strict change and repository-wide OpenSpec validation.
+  - Evidence: the active change passed strict validation, the two capability deltas were synced, the change was archived, and post-archive repository-wide strict validation passed all 63 items.
+- [x] 11.4 Commit and push the terminal evidence, direction update, synced specs, and archive while preserving all prior evidence and unrelated untracked files.

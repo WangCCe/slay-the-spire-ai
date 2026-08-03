@@ -48,14 +48,21 @@ and outcome support remain blocked. The terminal verdict remains
 `not_ready_for_bounded_training_proposal`, with all execution and promotion
 authority false.
 
-The bounded simulator-only non-combat RL experiment now has a source-only
-implementation ready for preregistration review. It defines one fixed
-candidate-masked REINFORCE run, closed API v3 features and reward, recoverable
-hash-chained checkpoints, disjoint train/canary/holdout cohorts, and an
-independent standard-library verifier. This source milestone grants no native
-loading, registered-seed use, experiment execution, formal-RL, live loading,
-qualification, or promotion authority. A pushed canonical preregistration and
-separate one-shot execution authorization remain mandatory before training.
+The bounded simulator-only non-combat RL experiment completed its one
+authorized logical execution as `experiment_blocked`. Static preflight matched
+the pushed source, runtime, native-module bytes, physical simulator source,
+registration, and authorization, but Windows failed to load the bound native
+module with `ImportError: DLL load failed ... The specified procedure could not
+be found.`. The run stopped
+before constructing an environment: it consumed zero registered episodes,
+performed zero optimizer updates, and left prefix replay, canary, and holdout
+untouched. Cumulative charged wall time was `0.21622760000173002` seconds. The
+standalone standard-library verifier accepted all 174 terminal checks, and the
+focused publication/verifier regression passed 18 tests. The logical execution
+is terminal and cannot be retried, repaired in place, retuned, or reinterpreted
+as learning evidence. Formal readiness remains
+`not_ready_for_bounded_training_proposal`; all Current, live, OPE, causal,
+qualification, loading, formal-RL, and promotion authorities remain false.
 
 The first source-bound Current-policy simulator bridge registration remains a
 valid negative. Its event row stopped on missing semantics. The source-bound r2
@@ -359,13 +366,16 @@ The next authorized sequence is:
     SpireComm cost `-2`; all field drift and unlisted empty-cost identities stay
     blocked. It grants no study retry, empirical cohort, gameplay, OPE, fitting,
     reward, formal-RL, training, qualification, loading, or promotion authority.
-22. Advance the bounded simulator-only RL experiment only through its staged
-    gates: source implementation, collision-free preregistration, separate
-    one-shot authorization, then one logical execution. Until the registration
-    and authorization are committed, pushed, and exact, do not load native
-    code, construct an environment, consume seeds `50000..51663`, or train.
-    Every result preserves `not_ready_for_bounded_training_proposal` and the
-    blocked Current-baseline and target-supported-outcome requirements.
+22. Preserve the bounded simulator-only RL experiment's terminal
+    `experiment_blocked` artifacts and consumed logical execution identity.
+    The registered native module failed to load before environment construction,
+    so seeds `50000..51663`, training, prefix replay, canary, and holdout were
+    untouched. Do not retry or repair this execution in place. Any successor
+    must first close the Windows native-load/preflight gap in a separate
+    source-only change, then make a separately reviewed registration,
+    execution-identity, and cohort decision. Every successor must preserve
+    `not_ready_for_bounded_training_proposal` and the blocked Current-baseline
+    and target-supported-outcome requirements.
 
 ## Work Lanes
 
@@ -377,12 +387,15 @@ floor. Formal RL remains `no_go` because baseline policy and source-comparable
 target-supported outcomes are still blocked.
 
 Do not prepare another baseline cohort or modify the consumed study. The card
-metadata cost audit and its bounded compatibility repair are closed. The only
-planned training lane is the separately gated simulator-only experiment above;
-it remains source-only until preregistration and one-shot authorization pass. A
-new empirical Current-baseline strategy still requires a separate project-level
-decision with a fresh identity and evidence design; it is not an automatic
-successor to either the consumed study or this implementation repair.
+metadata cost audit and its bounded compatibility repair are closed. The
+simulator-only experiment is also closed as a terminal native-load failure,
+without training or evaluation evidence. Its only automatic follow-up is a
+read-only Windows dependency/loadability audit; a repaired runner, rebuilt
+module, or successor experiment requires a separate OpenSpec change and cannot
+reuse the consumed logical execution. A new empirical Current-baseline strategy
+still requires a separate project-level decision with a fresh identity and
+evidence design; it is not an automatic successor to either the consumed study
+or this implementation repair.
 
 Live gameplay is a maintenance and registered-evaluation lane only. Launch it
 for a crash, stuck state, repeated A-class simulator/mechanics defect, or an

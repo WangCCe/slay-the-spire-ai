@@ -1,0 +1,11 @@
+{
+  "details": {
+    "prefix_replay_verified": false,
+    "verdict": "experiment_blocked"
+  },
+  "index": 1,
+  "logical_execution_id": "noncombat-simulator-rl-20260804-r1",
+  "phase": "blocked",
+  "previous_record_sha256": "8c45857406003710b2ce4e10270f10322c7a251f702d5f058812377193ebed5b",
+  "schema_version": "noncombat-simulator-rl-journal-v1"
+}

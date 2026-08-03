@@ -1,0 +1,22 @@
+{
+  "authority": {
+    "experiment_execution": true,
+    "formal_noncombat_rl": false,
+    "live_gameplay": false,
+    "live_policy_loading": false,
+    "live_study_launch": false,
+    "ope_estimation": false,
+    "ope_reinterpretation": false,
+    "policy_promotion": false,
+    "qualification": false
+  },
+  "logical_execution_id": "noncombat-simulator-rl-20260804-r1",
+  "output_directory": "reports/noncombat_simulator_rl_experiment_20260804",
+  "registration": {
+    "commit": "41fe94062bf90d969163f95c1339da9807befa8f",
+    "path": "reports/noncombat_simulator_rl_experiment_20260804_registration.json",
+    "sha256": "cf30c2a2e1c10681968ef6f0191e33b272af047c496e811d7ae5aa24205fa452",
+    "size_bytes": 31259
+  },
+  "schema_version": "noncombat-simulator-rl-experiment-authorization-v1"
+}

@@ -1,0 +1,10 @@
+{
+  "details": {
+    "registration_sha256": "cf30c2a2e1c10681968ef6f0191e33b272af047c496e811d7ae5aa24205fa452"
+  },
+  "index": 0,
+  "logical_execution_id": "noncombat-simulator-rl-20260804-r1",
+  "phase": "started",
+  "previous_record_sha256": null,
+  "schema_version": "noncombat-simulator-rl-journal-v1"
+}

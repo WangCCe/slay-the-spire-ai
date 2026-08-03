@@ -1,0 +1,28 @@
+{
+  "authority": {
+    "experiment_execution": false,
+    "formal_noncombat_rl": false,
+    "live_gameplay": false,
+    "live_policy_loading": false,
+    "live_study_launch": false,
+    "ope_estimation": false,
+    "ope_reinterpretation": false,
+    "policy_promotion": false,
+    "qualification": false
+  },
+  "blocked_reason": "ImportError: DLL load failed while importing sts_lightspeed_noncombat_adapter: \u627e\u4e0d\u5230\u6307\u5b9a\u7684\u7a0b\u5e8f\u3002",
+  "cumulative_wall_seconds": 0.21622760000173002,
+  "formal_readiness_verdict": "not_ready_for_bounded_training_proposal",
+  "logical_execution_id": "noncombat-simulator-rl-20260804-r1",
+  "prefix_replay_verified": false,
+  "registration_sha256": "cf30c2a2e1c10681968ef6f0191e33b272af047c496e811d7ae5aa24205fa452",
+  "schema_version": "noncombat-simulator-rl-metrics-v1",
+  "training": {
+    "categories": [],
+    "episodes": 0,
+    "optimizer_updates": 0,
+    "unsupported_episodes": 0,
+    "victories": 0
+  },
+  "verdict": "experiment_blocked"
+}

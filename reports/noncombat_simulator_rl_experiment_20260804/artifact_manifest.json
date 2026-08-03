@@ -1,0 +1,60 @@
+{
+  "artifact_inventory": [
+    {
+      "path": "authorization.json",
+      "sha256": "1c9f336eba2d6baa71e32e1ce882966370a5b6bc86deafa0004e4368304f354a",
+      "size_bytes": 796
+    },
+    {
+      "path": "configuration.json",
+      "sha256": "34a5a936cd28a0138a5357014411fe0e30a37eb6b9b60c47efc634ccc7a9e54b",
+      "size_bytes": 31573
+    },
+    {
+      "path": "journal/record_000000.json",
+      "sha256": "8c45857406003710b2ce4e10270f10322c7a251f702d5f058812377193ebed5b",
+      "size_bytes": 308
+    },
+    {
+      "path": "journal/record_000001.json",
+      "sha256": "e5512b2362ac850c66ca50aaa0be5d7e76c3cce21b60cb17bf38385066d95523",
+      "size_bytes": 349
+    },
+    {
+      "path": "metrics.json",
+      "sha256": "650d535da84743b99a573bd7a54ec847621e3634dc748495bbe812f6cc0039f7",
+      "size_bytes": 1014
+    },
+    {
+      "path": "model.json",
+      "sha256": "4781af79d7b7841cc938b3d46b7ddf1538638e5c41735822e41ad4d563baeeb4",
+      "size_bytes": 6544
+    },
+    {
+      "path": "registration.json",
+      "sha256": "cf30c2a2e1c10681968ef6f0191e33b272af047c496e811d7ae5aa24205fa452",
+      "size_bytes": 31259
+    },
+    {
+      "path": "report.md",
+      "sha256": "d1fb6ac8898cf553e0973a2420ab36b4d25151791e9c6fa34b742f9b15ae7172",
+      "size_bytes": 454
+    }
+  ],
+  "authority": {
+    "experiment_execution": false,
+    "formal_noncombat_rl": false,
+    "live_gameplay": false,
+    "live_policy_loading": false,
+    "live_study_launch": false,
+    "ope_estimation": false,
+    "ope_reinterpretation": false,
+    "policy_promotion": false,
+    "qualification": false
+  },
+  "formal_readiness_verdict": "not_ready_for_bounded_training_proposal",
+  "logical_execution_id": "noncombat-simulator-rl-20260804-r1",
+  "registration_sha256": "cf30c2a2e1c10681968ef6f0191e33b272af047c496e811d7ae5aa24205fa452",
+  "schema_version": "noncombat-simulator-rl-manifest-v1",
+  "verdict": "experiment_blocked"
+}
