@@ -1,0 +1,47 @@
+{
+  "artifact_bindings": {
+    "configuration.json": {
+      "path": "configuration.json",
+      "sha256": "9fa306661953905a028b164967f2b901b02d8ea11c1c4a8fe351644057a5d5d5",
+      "size_bytes": 10060
+    },
+    "execution_journal.json": {
+      "path": "execution_journal.json",
+      "sha256": "e6d15cece497464e382125f8cb5b78e2f608fc80f41509d900749d56a51ec3a4",
+      "size_bytes": 997
+    },
+    "metrics.json": {
+      "path": "metrics.json",
+      "sha256": "8061ccde69d7dbd09bb08ab648053f315d39ae6a998a1db1b5216aa4df60918e",
+      "size_bytes": 993
+    },
+    "report.md": {
+      "path": "report.md",
+      "sha256": "62a4f8afa6b7769b48835b7d36d5c7f75793a6029bf813093f64a629c079665c",
+      "size_bytes": 543
+    },
+    "trajectory_rows.json": {
+      "path": "trajectory_rows.json",
+      "sha256": "0fdc43635540d6b0163bbda934a2431171a433ae5a42ce2a28bb23c42e5e9b4d",
+      "size_bytes": 1096
+    }
+  },
+  "authority": {
+    "baseline_floor_authorized": false,
+    "formal_rl_readiness_authorized": false,
+    "fresh_evidence_authorized": false,
+    "gameplay_authorized": false,
+    "model_authorized": false,
+    "ope_authorized": false,
+    "policy_loading_authorized": false,
+    "promotion_authorized": false,
+    "qualification_authorized": false,
+    "reward_authorized": false,
+    "target_supported_outcome_authorized": false,
+    "training_authorized": false
+  },
+  "registration_sha256": "c22c0f2346ace8c982e1f0701cb8014e92333858531a91e7d566f762268c4d10",
+  "schema_version": "noncombat-reachable-event-native-compatibility-manifest-v1",
+  "status": "failed",
+  "verdict": "reachable_event_native_compatibility_failed"
+}

@@ -1,0 +1,41 @@
+{
+  "result": {
+    "authority": {
+      "baseline_floor_authorized": false,
+      "formal_rl_readiness_authorized": false,
+      "fresh_evidence_authorized": false,
+      "gameplay_authorized": false,
+      "model_authorized": false,
+      "ope_authorized": false,
+      "policy_loading_authorized": false,
+      "promotion_authorized": false,
+      "qualification_authorized": false,
+      "reward_authorized": false,
+      "target_supported_outcome_authorized": false,
+      "training_authorized": false
+    },
+    "category_counts": {
+      "card_reward": 0,
+      "event": 0,
+      "route": 0,
+      "shop": 0
+    },
+    "detail": "shop remove_cost",
+    "reason": "invalid_nonnegative_integer",
+    "rows": [],
+    "schema_version": "noncombat-reachable-event-native-compatibility-execution-v1",
+    "seeds": [
+      7100,
+      7101,
+      7102,
+      7103,
+      7104,
+      7105,
+      7106,
+      7107
+    ],
+    "status": "failed",
+    "verdict": "reachable_event_native_compatibility_failed"
+  },
+  "schema_version": "noncombat-reachable-event-native-compatibility-trajectories-v1"
+}

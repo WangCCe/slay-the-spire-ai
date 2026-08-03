@@ -20,11 +20,11 @@
 
 ## 4. One-Shot Native Gate
 
-- [ ] 4.1 Execute the pushed cohort exactly once, atomically consuming the whole cohort before the first environment and preserving any handled blocker, timeout, interruption, or partial result without retry or replacement
-- [ ] 4.2 Run the no-native verifier, inspect canonical identities, category and event diagnostics, confirm the predecessor evidence is unchanged, and classify the structural verdict without policy-quality interpretation
+- [x] 4.1 Execute the pushed cohort exactly once, atomically consuming the whole cohort before the first environment and preserving any handled blocker, timeout, interruption, or partial result without retry or replacement
+- [x] 4.2 Run the no-native verifier, inspect canonical identities, category and event diagnostics, confirm the predecessor evidence is unchanged, and classify the structural verdict without policy-quality interpretation
 
 ## 5. Verification And Closeout
 
-- [ ] 5.1 Run focused successor and historical regressions, Python compilation, the repository commit gate, and strict global OpenSpec validation without launching gameplay or training
-- [ ] 5.2 Publish the compatibility closeout and project direction, preserving consumed seed status and keeping every downstream authority false for pass or failure
+- [x] 5.1 Run focused successor and historical regressions, Python compilation, the repository commit gate, and strict global OpenSpec validation without launching gameplay or training
+- [x] 5.2 Publish the compatibility closeout and project direction, preserving consumed seed status and keeping every downstream authority false for pass or failure
 - [ ] 5.3 Sync the modified capability spec, archive the completed change, commit, push, and prove tracked-clean `HEAD == origin/master`

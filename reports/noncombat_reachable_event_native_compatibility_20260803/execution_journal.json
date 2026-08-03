@@ -1,0 +1,32 @@
+{
+  "authority": {
+    "baseline_floor_authorized": false,
+    "formal_rl_readiness_authorized": false,
+    "fresh_evidence_authorized": false,
+    "gameplay_authorized": false,
+    "model_authorized": false,
+    "ope_authorized": false,
+    "policy_loading_authorized": false,
+    "promotion_authorized": false,
+    "qualification_authorized": false,
+    "reward_authorized": false,
+    "target_supported_outcome_authorized": false,
+    "training_authorized": false
+  },
+  "consumed_seeds": [
+    7100,
+    7101,
+    7102,
+    7103,
+    7104,
+    7105,
+    7106,
+    7107
+  ],
+  "preregistration_commit": "1987efb0aa5915d9c9ee925293396089a9d5c5c1",
+  "registration_sha256": "c22c0f2346ace8c982e1f0701cb8014e92333858531a91e7d566f762268c4d10",
+  "result_sha256": "aff48bc8452de5870d831f6205548aced1f6d1e824c9968fdb47105d411d9666",
+  "schema_version": "noncombat-reachable-event-native-compatibility-journal-v1",
+  "status": "finalized",
+  "verdict": "reachable_event_native_compatibility_failed"
+}

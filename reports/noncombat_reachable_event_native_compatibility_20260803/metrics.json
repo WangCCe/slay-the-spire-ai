@@ -1,0 +1,38 @@
+{
+  "authority": {
+    "baseline_floor_authorized": false,
+    "formal_rl_readiness_authorized": false,
+    "fresh_evidence_authorized": false,
+    "gameplay_authorized": false,
+    "model_authorized": false,
+    "ope_authorized": false,
+    "policy_loading_authorized": false,
+    "promotion_authorized": false,
+    "qualification_authorized": false,
+    "reward_authorized": false,
+    "target_supported_outcome_authorized": false,
+    "training_authorized": false
+  },
+  "category_counts": {
+    "card_reward": 0,
+    "event": 0,
+    "route": 0,
+    "shop": 0
+  },
+  "completed_seed_rows": 0,
+  "reason": "invalid_nonnegative_integer",
+  "registration_sha256": "c22c0f2346ace8c982e1f0701cb8014e92333858531a91e7d566f762268c4d10",
+  "schema_version": "noncombat-reachable-event-native-compatibility-metrics-v1",
+  "seeds": [
+    7100,
+    7101,
+    7102,
+    7103,
+    7104,
+    7105,
+    7106,
+    7107
+  ],
+  "status": "failed",
+  "verdict": "reachable_event_native_compatibility_failed"
+}
