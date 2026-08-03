@@ -1,0 +1,106 @@
+{
+  "authority": {
+    "baseline_floor_authorized": false,
+    "environment_construction_authorized": false,
+    "execute_r2_authorized": false,
+    "formal_rl_authorized": false,
+    "fresh_evidence_authorized": false,
+    "gameplay_authorized": false,
+    "model_fitting_authorized": false,
+    "ope_authorized": false,
+    "policy_loading_authorized": false,
+    "promotion_authorized": false,
+    "qualification_authorized": false,
+    "reward_authorized": false,
+    "target_supported_outcome_authorized": false,
+    "training_authorized": false
+  },
+  "checks": {
+    "environment_constructed": false,
+    "implementation_head_equal_origin": true,
+    "lineage_validated": true,
+    "native_identity_loaded": true,
+    "no_native_replay_passed": true,
+    "output_root_absent": true,
+    "registration_canonical": true,
+    "seed_accessed": false,
+    "tracked_clean_before_prepare": true,
+    "v1_artifacts_recomputed": true
+  },
+  "cohort": {
+    "max_decisions_per_replay": 500,
+    "max_wall_seconds": 600.0,
+    "replay_count": 2,
+    "seeds": [
+      7000,
+      7100,
+      2000,
+      10
+    ]
+  },
+  "implementation": {
+    "commit": "fe9f861aa945618187291e04b595d69914135200",
+    "source_sha256": "08e60d22b127b0a5889cabbffd654a7688458ab2adf15f8055cc072c44709a02"
+  },
+  "input_bindings": {
+    "metadata": {
+      "path": "D:\\SteamLibrary\\steamapps\\common\\SlayTheSpire\\export\\items.json",
+      "sha256": "e23784ea8ed3092e3bfa9918240e162a9cbcb837badfb53c612eb0d83cc811dc",
+      "size_bytes": 240371
+    },
+    "module": {
+      "path": "D:\\PycharmProjects\\slay-the-spire-ai\\.sts_lightspeed_adapter_v3_shop_support_build\\sts_lightspeed_noncombat_adapter.cp310-win_amd64.pyd",
+      "sha256": "7ac2c750fba6e38d4a023cab72a4d67f158fe7f88414058e5876cef5003fcb88",
+      "size_bytes": 4225024
+    },
+    "preimplementation": {
+      "path": "reports/noncombat_current_bridge_diagnostic_smoke_20260803_r2_preimplementation.json",
+      "sha256": "aabbc0e007f2f44f05c1f529ce03ada57c715fe257237fa2c830a6f2035ed9c9",
+      "size_bytes": 5603
+    },
+    "simulator": {
+      "commit": "7476a81954020087da31d41d16fddf475746ec2d",
+      "path": "D:\\CLionProjects\\sts_lightspeed",
+      "source_sha256": "a3f98721ec37373b1b00aef660832a3307f0186ba0614d07a3b1e7de8ab2e46a"
+    }
+  },
+  "next_gate": {
+    "action": "commit_and_push_registration_then_revalidate",
+    "execute_before_gate": false,
+    "output_directory": "reports/noncombat_current_bridge_diagnostic_smoke_20260803_r2"
+  },
+  "registration": {
+    "path": "reports/noncombat_current_bridge_diagnostic_smoke_20260803_r2_input.json",
+    "sha256": "71e156bfcb2d8b6932fbf8e1f50c1705023098ae91485e5967304bb866874934",
+    "size_bytes": 6977
+  },
+  "schema_version": "noncombat-current-bridge-diagnostic-smoke-r2-preflight-v1",
+  "verification": {
+    "adjacent_pytest": {
+      "passed": 150,
+      "skipped": 5
+    },
+    "commit_gate": {
+      "elapsed_seconds": 242.89,
+      "passed": 3573,
+      "pytest_seconds": 239.77,
+      "skipped": 11
+    },
+    "focused_pytest": {
+      "passed": 55,
+      "skipped": 0
+    },
+    "reachable_event_semantics_pytest": {
+      "passed": 21,
+      "skipped": 0
+    },
+    "red_profile_regressions": {
+      "failed": 4,
+      "passed": 0
+    },
+    "strict_openspec": {
+      "failed": 0,
+      "passed": 62
+    }
+  }
+}

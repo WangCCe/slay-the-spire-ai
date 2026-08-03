@@ -34,17 +34,17 @@
   unregistered raw full pytest suite, then recheck every consumed v1 evidence
   byte and confirm no environment, seed, gameplay, model, reward, OPE, or
   training surface was touched.
-- [ ] 3.3 Review the final implementation diff for the narrow profile boundary,
+- [x] 3.3 Review the final implementation diff for the narrow profile boundary,
   commit it cohesively, and push a tracked-clean `master` before creating the
   r2 registration.
 
 ## 4. R2 Preregistration Gate
 
-- [ ] 4.1 From the pushed implementation commit, revalidate the exact native
+- [x] 4.1 From the pushed implementation commit, revalidate the exact native
   module, adapter/simulator provenance, metadata, runtime, source and lineage;
   permit identity-only native loading but construct no environment and access
   no seed.
-- [ ] 4.2 Prepare exactly one canonical r2 registration with the unchanged four
+- [x] 4.2 Prepare exactly one canonical r2 registration with the unchanged four
   reused seeds and limits, verify the r2 output root is absent, and run all
   source-bound and no-environment preflight checks.
 - [ ] 4.3 Commit and push the registration and preflight record without any
