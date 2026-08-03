@@ -78,12 +78,19 @@ impossible Sozu/full-capacity potion purchases while preserving visible
 inventory. These changes close known evidence corruption paths but still do not
 provide a completed Current own-trajectory row.
 
-The baseline-floor readiness audit now returns `diagnostic_smoke_required`.
+The baseline-floor readiness audit returned `diagnostic_smoke_required`.
 Current is the only eligible non-teacher baseline candidate; SimpleAgent and
 Bottled remain auxiliary, and all learned imitation/structured/residual lanes
-remain valid negatives. Before another untouched compatibility or quality
-cohort, run only a separately reviewed reused-development-seed Current bridge
-smoke with structural-only authority. Do not start training or gameplay.
+remain valid negatives. It required a separately reviewed
+reused-development-seed Current bridge smoke with structural-only authority
+before another untouched compatibility or quality cohort.
+
+That reused-development-seed smoke has now executed exactly once and finalized
+as `current_bridge_diagnostic_failed` before retaining its first row. The
+runner accessed a non-contractual native candidate field, `action_type`; the
+production candidate schema does not provide it, while the fake regression
+candidate did. This is a runner-contract defect rather than simulator or policy
+evidence. The attempt is consumed and will not be repaired or rerun.
 
 ## Training Boundary
 
@@ -115,6 +122,13 @@ negatives. Subsequent repairs do not establish structural closure. A third fresh
 cohort is premature until a separate diagnostic smoke binds the current module,
 adapter, bridge, contracts, reused development seeds, replay, limits, and exact
 support blockers without claiming policy quality.
+
+The registered diagnostic bound those identities but produced zero decisions
+and zero retained rows because of its runner-schema defect. Therefore the same
+completed-Current-row blocker remains. All eight baseline-floor contract checks
+remain false, and source comparability with zero target-supported victories
+remains an independent blocker. Fixing the runner offline cannot reinterpret
+the consumed diagnostic or authorize a readiness refresh.
 
 Any future baseline-floor study must retain every selected episode. A declared
 support blocker counts conservatively as a non-victory at the last supported
@@ -255,24 +269,28 @@ The next authorized sequence is:
 11. Preserve both Current bridge registrations, both consumed API v3
     compatibility cohorts, and seeds `2000..2003`, `7000..7007`, and
     `7100..7107`. Do not retry or reinterpret any of them after repairs.
-12. Before selecting another untouched seed, preregister a structural-only
-    Current bridge smoke on already-consumed development seeds. It must bind the
-    current successor module and all source/contracts, replay exactly, retain
-    declared support blockers, and grant no baseline-floor or policy-quality
-    authority. A later floor proposal must separately fix comparison, numeric
-    gates, unsupported-rate ceiling, bootstrap, stop, and holdout contracts.
+12. Preserve the consumed Current bridge diagnostic registration, finalized
+    zero-row failure, and canonical artifacts. Do not repair, resume, replace,
+    rerun, or reinterpret that attempt.
+13. Use a separate narrow OpenSpec to regression-fix the invalid candidate
+    `action_type` assumption against the production candidate schema without
+    loading a native environment or consuming a seed. Any later diagnostic
+    attempt requires separate preregistration and explicit anti-retry review.
+    A later floor proposal must still fix comparison, numeric gates,
+    unsupported-rate ceiling, bootstrap, stop, and holdout contracts.
 
 ## Work Lanes
 
-The primary lane is now a separately reviewed reused-development-seed Current
-bridge diagnostic smoke. It must bind the built successor module, adapter and
-simulator sources, reachable event contract, shop support envelope, bridge,
-metadata, runtime, fixed reused seeds, deterministic replay, and fail-closed
-limits. It has structural-only authority and may not select fresh seeds.
+The primary lane is now closeout of the consumed diagnostic and a separate
+offline regression fix for its production candidate-schema mismatch. That fix
+has no execution authority and may not load a native environment or consume a
+seed. A replacement diagnostic is not automatic and requires a new reviewed
+registration with explicit anti-retry justification.
 
-A fresh compatibility or non-teacher baseline-floor study remains downstream
-of that diagnostic. The target-supported-outcome lane remains independently
-blocked on source comparability and zero supported victories.
+A fresh compatibility or non-teacher baseline-floor study remains blocked; the
+failed diagnostic did not open that lane. The target-supported-outcome lane
+remains independently blocked on source comparability and zero supported
+victories.
 
 Live gameplay is a maintenance and registered-evaluation lane only. Launch it
 for a crash, stuck state, repeated A-class simulator/mechanics defect, or an

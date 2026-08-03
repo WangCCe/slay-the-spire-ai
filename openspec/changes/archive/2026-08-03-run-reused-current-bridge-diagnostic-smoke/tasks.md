@@ -21,13 +21,13 @@
 
 ## 4. One-Shot Diagnostic
 
-- [ ] 4.1 Atomically write the started journal before constructing the first environment, then execute exactly seeds `[7000, 7100, 2000, 10]` in order with two replays, 500 decisions per replay, and the 600-second deadline.
-- [ ] 4.2 Preserve all deterministic terminal and declared-support rows; on the first unknown failure, timeout, interruption, or nondeterminism, stop without repair, replacement, resume, or retry.
-- [ ] 4.3 Verify the published configuration, journal, rows, metrics, report, and manifest without native loading and confirm the verdict follows the fixed precedence.
+- [x] 4.1 Atomically write the started journal before constructing the first environment, then execute exactly seeds `[7000, 7100, 2000, 10]` in order with two replays, 500 decisions per replay, and the 600-second deadline.
+- [x] 4.2 Preserve all deterministic terminal and declared-support rows; on the first unknown failure, timeout, interruption, or nondeterminism, stop without repair, replacement, resume, or retry.
+- [x] 4.3 Verify the published configuration, journal, rows, metrics, report, and manifest without native loading and confirm the verdict follows the fixed precedence.
 
 ## 5. Closeout And Archive
 
-- [ ] 5.1 Publish a concise closeout with exact identities, row dispositions, category counts, terminal-row count, support-blocker count, verdict, and every downstream authority false.
-- [ ] 5.2 Update `docs/project_direction.md` from the observed structural result while preserving all eight baseline-floor contract gaps and the independent target-supported-outcome blocker.
-- [ ] 5.3 Run focused no-native verification, relevant pytest, compile checks, `git diff --check`, and strict global OpenSpec validation; do not run raw unpartitioned full pytest or gameplay validation.
-- [ ] 5.4 Sync the new capability to main specs, archive the change, commit and push a tracked-clean `master`, and hand off either a separate readiness refresh or the exact observed blocker without executing training or fresh evidence.
+- [x] 5.1 Publish a concise closeout with exact identities, row dispositions, category counts, terminal-row count, support-blocker count, verdict, and every downstream authority false.
+- [x] 5.2 Update `docs/project_direction.md` from the observed structural result while preserving all eight baseline-floor contract gaps and the independent target-supported-outcome blocker.
+- [x] 5.3 Run focused no-native verification, relevant pytest, compile checks, `git diff --check`, and strict global OpenSpec validation; do not run raw unpartitioned full pytest or gameplay validation.
+- [x] 5.4 Sync the new capability to main specs, archive the change, commit and push a tracked-clean `master`, and hand off either a separate readiness refresh or the exact observed blocker without executing training or fresh evidence.

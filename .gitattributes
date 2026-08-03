@@ -133,6 +133,7 @@ reports/noncombat_native_shop_support_envelope_20260803_closeout.md text eol=lf
 analysis_scripts/noncombat_current_bridge_diagnostic_smoke.py text eol=lf
 tests/test_noncombat_current_bridge_diagnostic_smoke.py text eol=lf
 reports/noncombat_current_bridge_diagnostic_smoke_* text eol=lf
+reports/noncombat_current_bridge_diagnostic_smoke_*/** text eol=lf
 openspec/specs/noncombat-current-bridge-diagnostic-smoke/** text eol=lf
 openspec/changes/run-reused-current-bridge-diagnostic-smoke/** text eol=lf
 openspec/changes/archive/*-run-reused-current-bridge-diagnostic-smoke/** text eol=lf
