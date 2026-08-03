@@ -173,12 +173,12 @@
     ],
     "implementation": {
       "path": "analysis_scripts/noncombat_baseline_floor_readiness.py",
-      "sha256": "e864756510a0c87ab9de5f8711ae9554ff4570ae23d38902ffc3de7ae8642cc7",
-      "size_bytes": 21896
+      "sha256": "08c98cf38b9f046a1a6f7e14780854cd198a6ef2a2d4adeb515b587db0cdd8a8",
+      "size_bytes": 21982
     },
     "registration": {
       "path": "reports/noncombat_baseline_floor_readiness_audit_20260803_input.json",
-      "sha256": "3c36ed85c3be42ed65e65c8d80f7b7801b26261d6d5270938e5a5a23f2440f99",
+      "sha256": "b6f2bc3b9ee7a454aecd618d67dc6ea58cc8b579b0e18ceb0e379d694c6b8464",
       "size_bytes": 6633
     }
   },

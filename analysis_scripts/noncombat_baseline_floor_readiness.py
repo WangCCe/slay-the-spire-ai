@@ -204,7 +204,8 @@ _EXPECTED_TEXT_TOKENS = {
 
 
 class AuditInputError(RuntimeError):
-    pass
+    def __init__(self, message: str):
+        super().__init__(f"invalid_evidence: {message}")
 
 
 def _canonical_bytes(value: Any) -> bytes:

@@ -237,8 +237,10 @@ def test_registration_drift_and_policy_promotion_fail_closed(
         registration["unsupported_episode_contract"]["drop_allowed"] = True
     _write_json(registration_path, registration)
 
-    with pytest.raises(readiness.AuditInputError, match=match):
+    with pytest.raises(readiness.AuditInputError, match=match) as exc_info:
         readiness.analyze_registration(registration_path, repo_root=tmp_path)
+
+    assert str(exc_info.value).startswith("invalid_evidence:")
 
 
 def test_fixed_verdict_precedence():
