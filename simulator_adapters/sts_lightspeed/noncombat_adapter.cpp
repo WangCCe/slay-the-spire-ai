@@ -104,6 +104,15 @@ json cardJson(const sts::Card &card, int slot = -1) {
     return value;
 }
 
+bool shopItemIsVisible(int price, const char *kind, int slot) {
+    if (price < -1) {
+        throw std::runtime_error(
+            "shop " + std::string(kind) + " slot " + std::to_string(slot) +
+            " has invalid negative price");
+    }
+    return price != -1;
+}
+
 struct Candidate {
     enum class Mode {
         GAME_ACTION,
@@ -381,21 +390,35 @@ private:
             json relics = json::array();
             json potions = json::array();
             for (int i = 0; i < 7; ++i) {
+                const int price = gc_.info.shop.cardPrice(i);
+                if (!shopItemIsVisible(price, "card", i)) {
+                    continue;
+                }
                 auto card = cardJson(gc_.info.shop.cards[i], i);
-                card["price"] = gc_.info.shop.cardPrice(i);
+                card["price"] = price;
                 cards.push_back(card);
             }
             for (int i = 0; i < 3; ++i) {
+                const int price = gc_.info.shop.relicPrice(i);
+                if (!shopItemIsVisible(price, "relic", i)) {
+                    continue;
+                }
                 relics.push_back({
                     {"id", sts::relicEnumNames[static_cast<int>(gc_.info.shop.relics[i])]},
                     {"name", sts::getRelicName(gc_.info.shop.relics[i])},
-                    {"price", gc_.info.shop.relicPrice(i)},
+                    {"price", price},
                     {"slot", i},
                 });
+            }
+            for (int i = 0; i < 3; ++i) {
+                const int price = gc_.info.shop.potionPrice(i);
+                if (!shopItemIsVisible(price, "potion", i)) {
+                    continue;
+                }
                 potions.push_back({
                     {"id", sts::potionEnumNames[static_cast<int>(gc_.info.shop.potions[i])]},
                     {"name", sts::getPotionName(gc_.info.shop.potions[i])},
-                    {"price", gc_.info.shop.potionPrice(i)},
+                    {"price", price},
                     {"slot", i},
                 });
             }

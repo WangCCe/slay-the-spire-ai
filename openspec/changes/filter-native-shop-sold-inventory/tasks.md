@@ -1,14 +1,14 @@
 ## 1. Planning And Isolation
 
 - [x] 1.1 Strict-validate the accepted proposal, design, delta spec, and task boundary.
-- [ ] 1.2 Commit and push the planning artifacts before native execution or implementation.
+- [x] 1.2 Commit and push the planning artifacts before native execution or implementation.
 
 ## 2. Regression And Repair
 
-- [ ] 2.1 Add red source-contract regressions for exact `-1` filtering, below-`-1` rejection, nonnegative inventory preservation, and original-slot retention.
-- [ ] 2.2 Add bridge regressions proving sparse visible slots hydrate and map back to original candidate slots without accepting negative item prices.
-- [ ] 2.3 Implement the minimal card, relic, and potion snapshot filter in the native C++ adapter.
-- [ ] 2.4 Run focused pure-Python tests and review the scoped diff before committing and pushing the repair.
+- [x] 2.1 Add red source-contract regressions for exact `-1` filtering, below-`-1` rejection, nonnegative inventory preservation, and original-slot retention.
+- [x] 2.2 Add bridge regressions proving sparse visible slots hydrate and map back to original candidate slots without accepting negative item prices.
+- [x] 2.3 Implement the minimal card, relic, and potion snapshot filter in the native C++ adapter.
+- [x] 2.4 Run focused pure-Python tests and review the scoped diff before committing and pushing the repair.
 
 ## 3. Successor Build And Bounded Smoke
 

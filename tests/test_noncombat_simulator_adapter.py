@@ -105,6 +105,33 @@ def test_adapter_v3_source_exports_exact_nloth_offer_identity():
         assert token in source
 
 
+def test_adapter_v3_source_filters_only_sold_shop_inventory_slots():
+    source = (
+        REPO_ROOT
+        / "simulator_adapters"
+        / "sts_lightspeed"
+        / "noncombat_adapter.cpp"
+    ).read_text(encoding="utf-8")
+
+    for inventory_kind, price_accessor in (
+        ("card", "cardPrice"),
+        ("relic", "relicPrice"),
+        ("potion", "potionPrice"),
+    ):
+        assert f"const int price = gc_.info.shop.{price_accessor}(i);" in source
+        assert (
+            f'if (!shopItemIsVisible(price, "{inventory_kind}", i))' in source
+        )
+
+    assert "bool shopItemIsVisible(int price, const char *kind, int slot)" in source
+    assert "if (price < -1)" in source
+    assert "return price != -1;" in source
+    assert 'card["price"] = price;' in source
+    assert source.count('{"price", price}') >= 2
+    assert "cardJson(gc_.info.shop.cards[i], i)" in source
+    assert source.count('{"slot", i}') >= 2
+
+
 def test_snapshot_reader_preserves_historical_v2_identity_without_defaults():
     snapshot = _snapshot("event")
     snapshot["adapter_api_version"] = "sts-lightspeed-noncombat-adapter-v2"

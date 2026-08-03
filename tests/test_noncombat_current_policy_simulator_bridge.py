@@ -389,15 +389,17 @@ def _event_candidates(event_id, event_name, indices):
     ]
 
 
-def _shop_state(remove_cost):
+def _shop_state(remove_cost, **inventory):
+    context = {
+        "cards": [],
+        "potions": [],
+        "relics": [],
+        "remove_cost": remove_cost,
+    }
+    context.update(inventory)
     return _state(
         cur_room="SHOP",
-        decision_context={
-            "cards": [],
-            "potions": [],
-            "relics": [],
-            "remove_cost": remove_cost,
-        },
+        decision_context=context,
         screen_state="SHOP_SCREEN",
     )
 
@@ -535,6 +537,102 @@ def test_shop_inventory_actions_map_by_captured_slot(action, kind, slot, expecte
     candidates = [_candidate("shop", kind, expected, slot=slot)]
 
     assert map_current_action(category="shop", action=action, candidates=candidates) == expected
+
+
+def test_shop_hydration_preserves_sparse_visible_source_slots(metadata):
+    snapshot = _snapshot(
+        "shop",
+        _shop_state(
+            75,
+            cards=[
+                {
+                    "id": "ARMAMENTS",
+                    "misc": 0,
+                    "name": "Armaments",
+                    "price": 150,
+                    "slot": 5,
+                    "upgrade_count": 0,
+                    "upgraded": False,
+                }
+            ],
+            relics=[
+                {
+                    "id": "BURNING_BLOOD",
+                    "name": "Burning Blood",
+                    "price": 200,
+                    "slot": 2,
+                }
+            ],
+            potions=[
+                {
+                    "id": "ATTACK_POTION",
+                    "name": "Attack Potion",
+                    "price": 120,
+                    "slot": 1,
+                }
+            ],
+        ),
+    )
+    candidates = [_candidate("shop", "leave", "shop:leave")]
+
+    game = hydrate_game(snapshot, candidates, metadata)
+
+    assert [card._bridge_source_slot for card in game.screen.cards] == [5]
+    assert [card.price for card in game.screen.cards] == [150]
+    assert [relic._bridge_source_slot for relic in game.screen.relics] == [2]
+    assert [relic.price for relic in game.screen.relics] == [200]
+    assert [potion._bridge_source_slot for potion in game.screen.potions] == [1]
+    assert [potion.price for potion in game.screen.potions] == [120]
+
+
+@pytest.mark.parametrize(
+    ("inventory_kind", "entry", "reason"),
+    [
+        (
+            "cards",
+            {
+                "id": "ARMAMENTS",
+                "misc": 0,
+                "name": "Armaments",
+                "price": -1,
+                "slot": 5,
+                "upgrade_count": 0,
+                "upgraded": False,
+            },
+            "card_price_invalid",
+        ),
+        (
+            "relics",
+            {
+                "id": "BURNING_BLOOD",
+                "name": "Burning Blood",
+                "price": -1,
+                "slot": 2,
+            },
+            "relic_price_invalid",
+        ),
+        (
+            "potions",
+            {
+                "id": "ATTACK_POTION",
+                "name": "Attack Potion",
+                "price": -1,
+                "slot": 1,
+            },
+            "potion_price_invalid",
+        ),
+    ],
+)
+def test_shop_hydration_rejects_sold_inventory_entries(
+    inventory_kind, entry, reason, metadata
+):
+    snapshot = _snapshot(
+        "shop", _shop_state(75, **{inventory_kind: [entry]})
+    )
+    candidates = [_candidate("shop", "leave", "shop:leave")]
+
+    with pytest.raises(BridgeBlocked, match=reason):
+        hydrate_game(snapshot, candidates, metadata)
 
 
 @pytest.mark.parametrize(
