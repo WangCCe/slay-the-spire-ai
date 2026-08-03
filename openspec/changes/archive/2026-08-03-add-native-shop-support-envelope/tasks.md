@@ -18,6 +18,6 @@
 
 ## 4. Verification And Closeout
 
-- [ ] 4.1 Run focused native/bridge pytest, the partitioned commit gate, and strict OpenSpec validation without the raw unpartitioned full suite.
-- [ ] 4.2 Publish a provenance-bound closeout with unsupported counts and every live, training, OPE, loading, qualification, and promotion authority false.
-- [ ] 4.3 Sync the support-envelope requirement, archive the change, commit and push a clean `master`, then return to the non-combat RL go/no-go assessment.
+- [x] 4.1 Run focused native/bridge pytest, the partitioned commit gate, and strict OpenSpec validation without the raw unpartitioned full suite.
+- [x] 4.2 Publish a provenance-bound closeout with unsupported counts and every live, training, OPE, loading, qualification, and promotion authority false.
+- [x] 4.3 Sync the support-envelope requirement, archive the change, commit and push a clean `master`, then return to the non-combat RL go/no-go assessment.
