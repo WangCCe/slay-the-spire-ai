@@ -164,3 +164,7 @@ docs/project_direction.md text eol=lf
 openspec/specs/noncombat-current-policy-simulator-bridge/spec.md text eol=lf
 openspec/changes/fix-current-bridge-card-metadata-cost-domain/** text eol=lf
 openspec/changes/archive/*-fix-current-bridge-card-metadata-cost-domain/** text eol=lf
+
+# Preserve the bounded simulator-only RL experiment plan and archive.
+openspec/changes/add-bounded-noncombat-simulator-rl-experiment/** text eol=lf
+openspec/changes/archive/*-add-bounded-noncombat-simulator-rl-experiment/** text eol=lf
