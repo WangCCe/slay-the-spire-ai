@@ -1,0 +1,47 @@
+{
+  "artifact_bindings": {
+    "configuration.json": {
+      "path": "configuration.json",
+      "sha256": "2102e422e7cd8d1825e7fb16687f917b6e0ab44a2f41b5a469ea026831b78dfb",
+      "size_bytes": 8046
+    },
+    "execution_journal.json": {
+      "path": "execution_journal.json",
+      "sha256": "5b57c8fe7b2b45d70b1ccbe1498f0bc9b8875f9799a44291220eae5a0f7fa4da",
+      "size_bytes": 938
+    },
+    "metrics.json": {
+      "path": "metrics.json",
+      "sha256": "4fb2a2607487df9c9ac09f7d214f9b936e4d1879c31f6a5ee0dcd58b13462ee1",
+      "size_bytes": 958
+    },
+    "report.md": {
+      "path": "report.md",
+      "sha256": "fb426fb2655cb0dfecc7d6170d6f485a39190fe3fbb6a9570d75157808c99ba0",
+      "size_bytes": 550
+    },
+    "trajectory_rows.json": {
+      "path": "trajectory_rows.json",
+      "sha256": "40158f052f260dd51d0b14880f61a1265fad92af5de48ee99223f5b7538fa493",
+      "size_bytes": 1077
+    }
+  },
+  "authority": {
+    "baseline_floor_authorized": false,
+    "formal_rl_authorized": false,
+    "fresh_evidence_authorized": false,
+    "gameplay_authorized": false,
+    "model_fitting_authorized": false,
+    "ope_authorized": false,
+    "policy_loading_authorized": false,
+    "promotion_authorized": false,
+    "qualification_authorized": false,
+    "reward_authorized": false,
+    "target_supported_outcome_authorized": false,
+    "training_authorized": false
+  },
+  "registration_sha256": "71e156bfcb2d8b6932fbf8e1f50c1705023098ae91485e5967304bb866874934",
+  "schema_version": "noncombat-current-bridge-diagnostic-smoke-manifest-v2",
+  "status": "failed",
+  "verdict": "current_bridge_diagnostic_failed"
+}

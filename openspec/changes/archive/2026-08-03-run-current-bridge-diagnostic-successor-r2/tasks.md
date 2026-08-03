@@ -53,17 +53,17 @@
 
 ## 5. One-Shot Execution And Closeout
 
-- [ ] 5.1 Write the r2 started journal and execute the pushed registration at
+- [x] 5.1 Write the r2 started journal and execute the pushed registration at
   most once with the bound Windows Python, native module, simulator, metadata,
   MinGW runtime, fixed cohort, and no runtime override. Never retry after the
   journal exists.
-- [ ] 5.2 Preserve the exact terminal, support-limited, failed, interrupted, or
+- [x] 5.2 Preserve the exact terminal, support-limited, failed, interrupted, or
   partial result and run a fresh-process no-native canonical verifier without
   interpreting it as policy quality or a baseline floor.
-- [ ] 5.3 Write the closeout and project-direction handoff, rerun focused
+- [x] 5.3 Write the closeout and project-direction handoff, rerun focused
   no-native verification, `git diff --check`, and strict global OpenSpec
   validation, then recheck v1 and r2 evidence identities.
-- [ ] 5.4 Sync the delta requirement, archive the completed change, commit and
+- [x] 5.4 Sync the delta requirement, archive the completed change, commit and
   push all canonical evidence. Do not prepare r3, a fresh cohort, gameplay,
   readiness promotion, OPE, model fitting, reward changes, formal RL, training,
   qualification, policy/model loading, or promotion.

@@ -1,0 +1,28 @@
+{
+  "attempted_seeds": [
+    7000,
+    7100,
+    2000,
+    10
+  ],
+  "authority": {
+    "baseline_floor_authorized": false,
+    "formal_rl_authorized": false,
+    "fresh_evidence_authorized": false,
+    "gameplay_authorized": false,
+    "model_fitting_authorized": false,
+    "ope_authorized": false,
+    "policy_loading_authorized": false,
+    "promotion_authorized": false,
+    "qualification_authorized": false,
+    "reward_authorized": false,
+    "target_supported_outcome_authorized": false,
+    "training_authorized": false
+  },
+  "preregistration_commit": "a9ecb7d66dafa9bf7ddc1d01bc0e2f896d856d91",
+  "registration_sha256": "71e156bfcb2d8b6932fbf8e1f50c1705023098ae91485e5967304bb866874934",
+  "result_sha256": "b969c26b106455320d03408a1d427a3ea20fa6f2f3b65e977aa8dc3de31e3285",
+  "schema_version": "noncombat-current-bridge-diagnostic-smoke-journal-v2",
+  "status": "finalized",
+  "verdict": "current_bridge_diagnostic_failed"
+}

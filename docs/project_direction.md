@@ -299,15 +299,24 @@ The next authorized sequence is:
     identity. Require a narrow dual-profile boundary, exact historical artifact
     recomputation, unchanged reused-seed controls, a pushed preregistration,
     and an explicit later one-shot execution gate.
+15. Preserve the consumed r2 successor registration, one-shot execution,
+    finalized zero-row `potion_metadata_missing` failure, and all six canonical
+    artifacts byte-for-byte. Do not retry r2, repair it in place, prepare r3,
+    or reinterpret the result as policy quality or baseline-floor evidence.
+16. Treat the three statically proven potion display-name differences as a
+    separate offline compatibility defect. Any repair must use a closed mapping
+    keyed by stable native potion ID, add regressions for every known pair, and
+    fail closed on unknown or inconsistent identities. It grants no execution,
+    fresh-evidence, gameplay, OPE, model, reward, training, or promotion
+    authority.
 
 ## Work Lanes
 
-The offline production candidate-schema fix and separate anti-retry review are
-complete. One new successor diagnostic is eligible for OpenSpec planning, but
-no execution is currently authorized. Planning must remain separate from the
-consumed registration and may not reinterpret its failed result. The first
-implementation gate is an offline, narrow versioned-profile boundary that
-preserves historical artifact recomputation without copying the full runner.
+The offline production candidate-schema fix, anti-retry review, and versioned
+r2 successor are complete. The single r2 execution is terminal with zero rows
+at a deterministic potion metadata-name boundary. The active engineering lane
+is a separate offline compatibility audit and narrow source repair; it may not
+rerun r2, prepare r3, construct a native environment, or access a seed.
 
 A fresh compatibility or non-teacher baseline-floor study remains blocked; the
 failed diagnostic did not open that lane. The target-supported-outcome lane
