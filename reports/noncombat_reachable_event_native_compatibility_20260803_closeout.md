@@ -68,6 +68,11 @@ cohort was then persisted as consumed before the first environment.
 - Repository commit gate: `3492 passed, 11 skipped in 228.82s`; gate total
   `232.07s`.
 - Strict global OpenSpec validation before spec sync: `60 passed, 0 failed`.
+- Strict global OpenSpec validation after spec sync: `60 passed, 0 failed`.
+- Strict global OpenSpec validation after archive: `59 passed, 0 failed`.
+
+The completed change is archived at
+`openspec/changes/archive/2026-08-03-run-v3-reachable-event-native-compatibility`.
 
 ## Authority Boundary
 
@@ -90,7 +95,7 @@ simulator source semantics, preserve rejection of inconsistent negative costs,
 hydrate Current with `purge_available == false`, and leave gameplay policy
 scoring unchanged.
 
-This consumed failure must be archived before that repair. A later native
+This consumed failure is archived before that repair. A later native
 compatibility attempt, if still justified after source-level verification,
 requires a separately preregistered untouched cohort. It must not reuse these
 seeds or start training as a substitute for structural compatibility.

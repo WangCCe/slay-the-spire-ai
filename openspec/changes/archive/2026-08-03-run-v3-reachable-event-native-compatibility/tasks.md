@@ -27,4 +27,4 @@
 
 - [x] 5.1 Run focused successor and historical regressions, Python compilation, the repository commit gate, and strict global OpenSpec validation without launching gameplay or training
 - [x] 5.2 Publish the compatibility closeout and project direction, preserving consumed seed status and keeping every downstream authority false for pass or failure
-- [ ] 5.3 Sync the modified capability spec, archive the completed change, commit, push, and prove tracked-clean `HEAD == origin/master`
+- [x] 5.3 Sync the modified capability spec, archive the completed change, commit, push, and prove tracked-clean `HEAD == origin/master`
