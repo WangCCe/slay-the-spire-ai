@@ -328,10 +328,15 @@ The offline production candidate-schema fix, anti-retry review, versioned r2
 successor, and subsequent potion and relic metadata compatibility repairs are
 complete. The audited card surface needs no compatibility repair. The single
 r2 execution remains terminal with zero rows and cannot be repaired or
-reinterpreted. The next authorized step is a read-only formal-RL evidence-gap
-audit after these closeouts; it may recommend a later proposal but may not
-rerun either diagnostic, prepare r3, construct a native environment, access a
-seed, or start training.
+reinterpreted. The post-bridge formal-RL evidence-gap audit is also complete:
+formal RL remains `no_go` because the credible baseline floor and
+source-comparable target-supported outcome domains are still blocked.
+
+No empirical execution is currently authorized. The next decision is whether
+to fund a separately reviewed post-repair Current baseline-evidence proposal or
+defer formal RL and return to bounded gameplay maintenance. Do not create that
+proposal, rerun either diagnostic, prepare r3, construct a native environment,
+access a seed, or start training without an explicit direction decision.
 
 A fresh compatibility or non-teacher baseline-floor study remains blocked; the
 failed diagnostic did not open that lane. The target-supported-outcome lane
