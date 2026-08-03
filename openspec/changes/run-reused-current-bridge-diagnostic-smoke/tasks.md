@@ -1,8 +1,8 @@
 ## 1. Planning And Frozen Boundary
 
 - [x] 1.1 Strict-validate the proposal, design, delta spec, seed rationale, limits, verdict precedence, support-row semantics, and no-authority boundary.
-- [ ] 1.2 Commit and push all planning artifacts before writing runner code, loading the module, or constructing an environment.
-- [ ] 1.3 Record the pre-implementation hashes of all bound predecessor registrations, journals, manifests, closeouts, historical modules, and the exact shop-support successor module; stop if the successor bytes differ from the archived closeout.
+- [x] 1.2 Commit and push all planning artifacts before writing runner code, loading the module, or constructing an environment.
+- [x] 1.3 Record the pre-implementation hashes of all bound predecessor registrations, journals, manifests, closeouts, historical modules, and the exact shop-support successor module; stop if the successor bytes differ from the archived closeout.
 
 ## 2. Regression And Compact Runner
 

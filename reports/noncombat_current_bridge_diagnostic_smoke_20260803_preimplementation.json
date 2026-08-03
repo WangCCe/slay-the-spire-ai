@@ -1,0 +1,183 @@
+{
+  "authority": {
+    "baseline_floor_authorized": false,
+    "formal_rl_authorized": false,
+    "fresh_evidence_authorized": false,
+    "gameplay_authorized": false,
+    "model_fitting_authorized": false,
+    "ope_authorized": false,
+    "policy_loading_authorized": false,
+    "promotion_authorized": false,
+    "qualification_authorized": false,
+    "reward_authorized": false,
+    "target_supported_outcome_authorized": false,
+    "training_authorized": false
+  },
+  "cohort": {
+    "max_decisions_per_replay": 500,
+    "max_wall_seconds": 600.0,
+    "replay_count": 2,
+    "seeds": [
+      7000,
+      7100,
+      2000,
+      10
+    ]
+  },
+  "module_evidence": [
+    {
+      "id": "original_v3",
+      "path": ".sts_lightspeed_adapter_v3_build/sts_lightspeed_noncombat_adapter.cp310-win_amd64.pyd",
+      "sha256": "410ac6b742192cfcd3568e36975bc87ecab4c2de9093d30113258b74a887e8cb",
+      "size_bytes": 4223488
+    },
+    {
+      "id": "sold_inventory_v3",
+      "path": ".sts_lightspeed_adapter_v3_sold_inventory_build/sts_lightspeed_noncombat_adapter.cp310-win_amd64.pyd",
+      "sha256": "f5dde34657156db74e437bcb954fc0ceb739604bb43a3bcb10da5fd861bc48b8",
+      "size_bytes": 4224512
+    },
+    {
+      "id": "shop_support_v3",
+      "path": ".sts_lightspeed_adapter_v3_shop_support_build/sts_lightspeed_noncombat_adapter.cp310-win_amd64.pyd",
+      "sha256": "7ac2c750fba6e38d4a023cab72a4d67f158fe7f88414058e5876cef5003fcb88",
+      "size_bytes": 4225024
+    }
+  ],
+  "planning_commit": "2bb0d0e53074daad1bf01254cffaa23c4f24210b",
+  "schema_version": "noncombat-current-bridge-diagnostic-smoke-preimplementation-v1",
+  "seed_rationale": [
+    {
+      "boundary": "total_event_cohort_first_seed_after_scrap_ooze_repair",
+      "seed": 7000
+    },
+    {
+      "boundary": "reachable_event_cohort_first_seed_after_remove_sentinel_repair",
+      "seed": 7100
+    },
+    {
+      "boundary": "legacy_current_bridge_first_stage2_seed_after_the_cleric_repair",
+      "seed": 2000
+    },
+    {
+      "boundary": "native_target_policy_courier_support_envelope_seed",
+      "seed": 10
+    }
+  ],
+  "tracked_evidence": [
+    {
+      "id": "baseline_floor_closeout",
+      "path": "reports/noncombat_baseline_floor_readiness_audit_20260803_closeout.md",
+      "sha256": "be6392f0f0259edc15f5cef3ecec9bc481dd9832d6e807b362e9c9b0ff107524",
+      "size_bytes": 4615
+    },
+    {
+      "id": "baseline_floor_input",
+      "path": "reports/noncombat_baseline_floor_readiness_audit_20260803_input.json",
+      "sha256": "b6f2bc3b9ee7a454aecd618d67dc6ea58cc8b579b0e18ceb0e379d694c6b8464",
+      "size_bytes": 6633
+    },
+    {
+      "id": "baseline_floor_result",
+      "path": "reports/noncombat_baseline_floor_readiness_audit_20260803.json",
+      "sha256": "1ffa837357acf4f93574ec9749f48e03cac26fb05dfe4d023f5aeb001011b621",
+      "size_bytes": 8287
+    },
+    {
+      "id": "current_bridge_closeout",
+      "path": "reports/noncombat_current_policy_simulator_bridge_20260802_r2_closeout.md",
+      "sha256": "58a97d0f79f6dfaf910fddfcf09cbef8a0f7a88dfc7fb520a759fa0efed392ce",
+      "size_bytes": 3757
+    },
+    {
+      "id": "current_bridge_input",
+      "path": "reports/noncombat_current_policy_simulator_bridge_20260802_r2_input.json",
+      "sha256": "b251f7eefa558610b58c2dc23525f60302e6ae9f99bd11da72faa6c9a138f8f6",
+      "size_bytes": 6928
+    },
+    {
+      "id": "current_bridge_manifest",
+      "path": "reports/noncombat_current_policy_simulator_bridge_20260802_r2/artifact_manifest.json",
+      "sha256": "f5898b84d8ed0deced0c1642ba319f6d3f247932800eae4d80f0a1c93bd57489",
+      "size_bytes": 2484
+    },
+    {
+      "id": "current_bridge_metrics",
+      "path": "reports/noncombat_current_policy_simulator_bridge_20260802_r2/metrics.json",
+      "sha256": "06f17fe9f0e45d6dde652f4aeb6c07b4a91154e2f2b78b71d3d10b6c97476860",
+      "size_bytes": 3537
+    },
+    {
+      "id": "reachable_compatibility_closeout",
+      "path": "reports/noncombat_reachable_event_native_compatibility_20260803_closeout.md",
+      "sha256": "e556c61bf4234b578775a6bd70956324f6a0b0bcb1b449cde10d2c4052a64c67",
+      "size_bytes": 4652
+    },
+    {
+      "id": "reachable_compatibility_input",
+      "path": "reports/noncombat_reachable_event_native_compatibility_20260803_input.json",
+      "sha256": "c22c0f2346ace8c982e1f0701cb8014e92333858531a91e7d566f762268c4d10",
+      "size_bytes": 8896
+    },
+    {
+      "id": "reachable_compatibility_journal",
+      "path": "reports/noncombat_reachable_event_native_compatibility_20260803/execution_journal.json",
+      "sha256": "e6d15cece497464e382125f8cb5b78e2f608fc80f41509d900749d56a51ec3a4",
+      "size_bytes": 997
+    },
+    {
+      "id": "reachable_compatibility_manifest",
+      "path": "reports/noncombat_reachable_event_native_compatibility_20260803/artifact_manifest.json",
+      "sha256": "79aa0771cc162023dcfa898e13100699ccf95750ca0ea7b497337bfd40dd5148",
+      "size_bytes": 1639
+    },
+    {
+      "id": "reachable_event_repair",
+      "path": "reports/noncombat_reachable_event_surface_20260803_closeout.md",
+      "sha256": "466d3f007c8199bba842ed093dab278c4c91b7d18ba3eacf020cd57b9c57c6e6",
+      "size_bytes": 4657
+    },
+    {
+      "id": "remove_sentinel_repair",
+      "path": "reports/noncombat_shop_remove_cost_sentinel_20260803_closeout.md",
+      "sha256": "13f0e694898fcdb19e1c6344d54b25180c033eacc8d3836b35a8adea8d43709a",
+      "size_bytes": 4002
+    },
+    {
+      "id": "shop_support_envelope",
+      "path": "reports/noncombat_native_shop_support_envelope_20260803_closeout.md",
+      "sha256": "3ccc66a624f53afadbac838e44fda993af644f3486bd3a9a4498f08c9379b3d5",
+      "size_bytes": 6612
+    },
+    {
+      "id": "sold_inventory_repair",
+      "path": "reports/noncombat_native_shop_sold_inventory_filter_20260803_closeout.md",
+      "sha256": "c9ddbacc827432c518d930b258b11905241bdd8acab613928356638e2e8128c3",
+      "size_bytes": 6618
+    },
+    {
+      "id": "total_compatibility_closeout",
+      "path": "reports/noncombat_total_event_native_compatibility_20260803_closeout.md",
+      "sha256": "157250fab609e0cd31ee69e04977cb7762760d608bca40e987be6e9ee1043c82",
+      "size_bytes": 3884
+    },
+    {
+      "id": "total_compatibility_input",
+      "path": "reports/noncombat_total_event_native_compatibility_20260803_input.json",
+      "sha256": "5db0c2f6676a332126260207c9da082a50eb5fc304c116e226183a1252879b11",
+      "size_bytes": 6352
+    },
+    {
+      "id": "total_compatibility_journal",
+      "path": "reports/noncombat_total_event_native_compatibility_20260803/execution_journal.json",
+      "sha256": "c980ffee9e2ec5f26435ec0a80f4f4bc82fa8bc045bfd40ff7a385b02ae3a810",
+      "size_bytes": 690
+    },
+    {
+      "id": "total_compatibility_manifest",
+      "path": "reports/noncombat_total_event_native_compatibility_20260803/artifact_manifest.json",
+      "sha256": "ebec5e749b337e4900a56f5d26c927e1b1089bbbde79cad1b52b5b05cc7483c1",
+      "size_bytes": 1608
+    }
+  ]
+}

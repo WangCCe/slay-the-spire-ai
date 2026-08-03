@@ -128,3 +128,11 @@ reports/noncombat_reachable_event_surface_20260803_closeout.md text eol=lf
 reports/noncombat_shop_remove_cost_sentinel_20260803_closeout.md text eol=lf
 reports/noncombat_native_shop_sold_inventory_filter_20260803_closeout.md text eol=lf
 reports/noncombat_native_shop_support_envelope_20260803_closeout.md text eol=lf
+
+# Preserve reused Current bridge diagnostic source and canonical evidence bytes.
+analysis_scripts/noncombat_current_bridge_diagnostic_smoke.py text eol=lf
+tests/test_noncombat_current_bridge_diagnostic_smoke.py text eol=lf
+reports/noncombat_current_bridge_diagnostic_smoke_* text eol=lf
+openspec/specs/noncombat-current-bridge-diagnostic-smoke/** text eol=lf
+openspec/changes/run-reused-current-bridge-diagnostic-smoke/** text eol=lf
+openspec/changes/archive/*-run-reused-current-bridge-diagnostic-smoke/** text eol=lf
