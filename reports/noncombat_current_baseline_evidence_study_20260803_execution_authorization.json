@@ -1,0 +1,37 @@
+{
+  "approval": {
+    "approved": true,
+    "scope": "one_canary_and_conditional_holdout_same_attempt",
+    "source": "explicit_user_approval"
+  },
+  "authority": {
+    "baseline_floor_authorized": false,
+    "environment_construction_authorized": false,
+    "execution_authorized": true,
+    "formal_rl_authorized": false,
+    "fresh_evidence_authorized": false,
+    "gameplay_authorized": false,
+    "model_fitting_authorized": false,
+    "native_loading_authorized": false,
+    "ope_authorized": false,
+    "policy_loading_authorized": false,
+    "promotion_authorized": false,
+    "qualification_authorized": false,
+    "reward_authorized": false,
+    "seed_access_authorized": false,
+    "target_supported_outcome_authorized": false,
+    "training_authorized": false
+  },
+  "command": [
+    "D:\\anaconda\\envs\\stsai\\python.exe",
+    "analysis_scripts/noncombat_current_baseline_evidence_study.py",
+    "execute"
+  ],
+  "preregistration_commit": "720f41b07c6d92a35fc7c6620ad62bad8771ce49",
+  "registration": {
+    "path": "reports/noncombat_current_baseline_evidence_study_20260803_input.json",
+    "sha256": "e84411234821397b462530398722f1f6b5174198754348b1c40bbb6f6d651085",
+    "size_bytes": 10240
+  },
+  "schema_version": "noncombat-current-baseline-evidence-study-execution-authorization-v1"
+}
