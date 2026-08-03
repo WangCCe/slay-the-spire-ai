@@ -1,13 +1,13 @@
 ## 1. Planning And Isolation
 
 - [x] 1.1 Strict-validate the proposal, design, support-envelope spec, and task boundary.
-- [ ] 1.2 Commit and push all planning artifacts before implementation or native loading.
+- [x] 1.2 Commit and push all planning artifacts before implementation or native loading.
 
 ## 2. Regression And Implementation
 
-- [ ] 2.1 Add red source-contract regressions for the exact Courier blocker, all policy-consumable entry paths, and the Sozu/full-capacity potion predicate.
-- [ ] 2.2 Implement the minimal native Courier guard and impossible-potion candidate filter without changing snapshots or other candidate kinds.
-- [ ] 2.3 Run focused pure adapter tests, review the scoped diff, then commit and push the implementation.
+- [x] 2.1 Add red source-contract regressions for the exact Courier blocker, all policy-consumable entry paths, and the Sozu/full-capacity potion predicate.
+- [x] 2.2 Implement the minimal native Courier guard and impossible-potion candidate filter without changing snapshots or other candidate kinds.
+- [x] 2.3 Run focused pure adapter tests, review the scoped diff, then commit and push the implementation.
 
 ## 3. Successor Build And Bounded Smoke
 

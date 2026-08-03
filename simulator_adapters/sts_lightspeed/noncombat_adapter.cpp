@@ -194,6 +194,7 @@ public:
     }
 
     std::string snapshotJson() const {
+        assertSupportedCurrentDecision();
         json state = {
             {"act", gc_.act},
             {"ascension", gc_.ascension},
@@ -323,6 +324,17 @@ private:
         baselineAgent_.curGameContext = &gc_;
     }
 
+    void assertSupportedCurrentDecision() const {
+        if (category() == "shop" && gc_.hasRelic(sts::RelicId::THE_COURIER)) {
+            throw std::runtime_error("unsupported_shop_courier_restock_semantics");
+        }
+    }
+
+    bool shopPotionPurchaseSupported() const {
+        return !gc_.hasRelic(sts::RelicId::SOZU) &&
+            gc_.potionCount < gc_.potionCapacity;
+    }
+
     void appendMap(json &state) const {
         if (!gc_.map) {
             state["map"] = nullptr;
@@ -445,6 +457,7 @@ private:
 
     std::vector<Candidate> legalCandidates() const {
         const auto currentCategory = category();
+        assertSupportedCurrentDecision();
         if (currentCategory.empty()) {
             return {};
         }
@@ -485,6 +498,11 @@ private:
                 candidate.raw["event_id"] = sts::eventIdStrings[static_cast<int>(gc_.curEvent)];
                 candidate.raw["follow_up_control"] = "baseline";
             } else {
+                using Type = sts::search::GameAction::RewardsActionType;
+                if (action.getRewardsActionType() == Type::POTION &&
+                    !shopPotionPurchaseSupported()) {
+                    continue;
+                }
                 appendShopCandidate(action, candidate);
             }
             result.push_back(std::move(candidate));
@@ -539,6 +557,7 @@ private:
     }
 
     std::string probeNativeBaselineAction(sts::search::SimpleAgent *agentAfter) const {
+        assertSupportedCurrentDecision();
         if (!nativeBaselineContinuationValid_) {
             throw std::runtime_error(
                 "native baseline query requires a baseline-following target trajectory");

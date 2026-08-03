@@ -132,6 +132,46 @@ def test_adapter_v3_source_filters_only_sold_shop_inventory_slots():
     assert source.count('{"slot", i}') >= 2
 
 
+def test_adapter_v3_source_enforces_native_shop_support_envelope():
+    source = (
+        REPO_ROOT
+        / "simulator_adapters"
+        / "sts_lightspeed"
+        / "noncombat_adapter.cpp"
+    ).read_text(encoding="utf-8")
+
+    def member_source(signature: str) -> str:
+        start = source.index(signature)
+        end = source.index("\n    }\n", start)
+        return source[start:end]
+
+    for signature in (
+        "std::string snapshotJson() const",
+        "std::vector<Candidate> legalCandidates() const",
+        "std::string probeNativeBaselineAction(",
+    ):
+        assert "assertSupportedCurrentDecision();" in member_source(signature)
+
+    for token in (
+        "void assertSupportedCurrentDecision() const",
+        "sts::RelicId::THE_COURIER",
+        '"unsupported_shop_courier_restock_semantics"',
+        "bool shopPotionPurchaseSupported() const",
+        "sts::RelicId::SOZU",
+        "gc_.potionCount < gc_.potionCapacity",
+    ):
+        assert token in source
+
+    legal_candidates = member_source(
+        "std::vector<Candidate> legalCandidates() const"
+    )
+    assert "action.getRewardsActionType() == Type::POTION" in legal_candidates
+    assert "!shopPotionPurchaseSupported()" in legal_candidates
+    assert "shopPotionPurchaseSupported()" not in member_source(
+        "void appendDecisionContext(json &state) const"
+    )
+
+
 def test_snapshot_reader_preserves_historical_v2_identity_without_defaults():
     snapshot = _snapshot("event")
     snapshot["adapter_api_version"] = "sts-lightspeed-noncombat-adapter-v2"
