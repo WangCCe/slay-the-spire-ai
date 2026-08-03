@@ -72,10 +72,10 @@
 
 ## 9. Authorize And Preflight One Logical Execution
 
-- [ ] 9.1 Create a separate canonical one-shot execution authorization only after the pushed preregistration is exact, binding one unused logical execution id and changing only `experiment_execution` to true.
+- [x] 9.1 Create a separate canonical one-shot execution authorization only after the pushed preregistration is exact, binding one unused logical execution id and changing only `experiment_execution` to true.
 - [ ] 9.2 Add and run preflight checks for exact pushed source, runtime, native module, physical simulator source, registration, authorization, absent output, free lease, cumulative budget, and immutable production checkpoint inventory.
 - [ ] 9.3 Prove preflight neither starts nor contacts Communication Mod, changes its configuration, discovers a live policy artifact, launches gameplay, or mutates production checkpoints.
-- [ ] 9.4 Commit and push the authorization before any native loading, environment construction, registered seed use, training, canary access, or holdout access.
+- [x] 9.4 Commit and push the authorization before any native loading, environment construction, registered seed use, training, canary access, or holdout access.
 - [ ] 9.5 Stop before execution if any identity, absence, authority, lease, or resource boundary differs; do not repair it by substituting a path, seed, runtime, module, threshold, or parameter.
 
 ## 10. Execute The Single Bounded Experiment
