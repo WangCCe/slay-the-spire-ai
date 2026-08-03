@@ -75,12 +75,14 @@ already consumed formal structural studies.
 
 ### Treat only one exact Courier error as a declared support row
 
-A replay may become `declared_support_blocked` only when native snapshot or
-candidate generation fails with the exact underlying message
+A replay may become `declared_support_blocked` only when native snapshot,
+candidate generation, or the post-step snapshot surfaced by transition
+construction fails with the exact underlying message
 `unsupported_shop_courier_restock_semantics`. The row records seed, reason,
 last supported floor and decision, prefix decisions and hashes, category counts,
-and no terminal outcome. Both replays must match byte-for-byte after excluding
-only replay index.
+and no terminal outcome. Only actions with a returned, validated transition are
+part of the retained prefix. Both replays must match byte-for-byte after
+excluding only replay index.
 
 A matched declared blocker does not abort the fixed list. Any other native,
 bridge, identity, legality, mutation, fallback, tracker, determinism, limit, or
@@ -97,10 +99,12 @@ complete.
 After valid identity and complete fixed-seed execution:
 
 1. `current_bridge_diagnostic_failed` for any unexpected structural failure,
-   nondeterminism, missing row, or missing aggregate category;
+   nondeterminism, or missing row;
 2. `current_bridge_diagnostic_support_limited` when all four rows are valid but
-   none is terminal; or
-3. `current_bridge_diagnostic_passed` when every seed has a deterministic
+   none is terminal, with category coverage retained only as a diagnostic;
+3. `current_bridge_diagnostic_failed` when a terminal row exists but aggregate
+   route, shop, event, or card-reward coverage is missing; or
+4. `current_bridge_diagnostic_passed` when every seed has a deterministic
    terminal or declared-support row, at least one row is terminal, and route,
    shop, event, and card-reward counts are all nonzero across retained prefixes.
 

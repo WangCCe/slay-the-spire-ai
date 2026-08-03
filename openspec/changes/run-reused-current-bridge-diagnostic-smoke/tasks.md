@@ -6,11 +6,11 @@
 
 ## 2. Regression And Compact Runner
 
-- [ ] 2.1 Add red tests for exact registration validation, fixed seeds and limits, all-false authority, output collision, pushed-state checks, and rejection of runtime cohort overrides.
-- [ ] 2.2 Add red fake-environment tests for deterministic terminal rows, exact Courier support rows that continue, mismatched support replays, unknown blockers, partial preservation, category coverage, deadline, and one-shot journal behavior.
-- [ ] 2.3 Implement the compact diagnostic runner, canonical artifact publication, and no-native verifier by reusing bound predecessor helpers without changing historical evaluator schemas or gameplay code.
-- [ ] 2.4 Prove historical registrations, journals, manifests, reports, and predecessor modules remain byte-identical; run focused pytest, compile checks, `git diff --check`, and a scoped review.
-- [ ] 2.5 Run the partitioned repository commit gate, then commit and push the runner implementation before native identity collection.
+- [x] 2.1 Add red tests for exact registration validation, fixed seeds and limits, all-false authority, output collision, pushed-state checks, and rejection of runtime cohort overrides.
+- [x] 2.2 Add red fake-environment tests for deterministic terminal rows, exact Courier support rows that continue, mismatched support replays, unknown blockers, partial preservation, category coverage, deadline, and one-shot journal behavior.
+- [x] 2.3 Implement the compact diagnostic runner, canonical artifact publication, and no-native verifier by reusing bound predecessor helpers without changing historical evaluator schemas or gameplay code.
+- [x] 2.4 Prove historical registrations, journals, manifests, reports, and predecessor modules remain byte-identical; run focused pytest, compile checks, `git diff --check`, and a scoped review.
+- [x] 2.5 Run the partitioned repository commit gate, then commit and push the runner implementation before native identity collection.
 
 ## 3. Pushed Preregistration
 

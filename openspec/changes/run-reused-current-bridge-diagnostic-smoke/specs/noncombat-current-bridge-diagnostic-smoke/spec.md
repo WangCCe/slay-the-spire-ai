@@ -35,7 +35,7 @@ The diagnostic SHALL preserve exactly one deterministic row per fixed seed whose
 - **AND** it SHALL treat floor and outcome only as structural diagnostics
 
 #### Scenario: Both replays reach the Courier support envelope
-- **WHEN** both replays fail at the same coordinates with the exact underlying reason `unsupported_shop_courier_restock_semantics` and have identical retained prefixes
+- **WHEN** both replays fail during snapshot, candidate generation, or a post-step snapshot at the same coordinates with the exact underlying reason `unsupported_shop_courier_restock_semantics` and have identical retained completed-transition prefixes
 - **THEN** the diagnostic SHALL retain one `declared_support_blocked` row with no terminal outcome
 - **AND** it SHALL continue to the next fixed seed without dropping, replacing, or retrying the blocked row
 
