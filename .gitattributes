@@ -155,3 +155,7 @@ openspec/specs/noncombat-current-baseline-evidence-study/** text eol=lf
 
 # Preserve the read-only Current card metadata cost-domain audit.
 reports/noncombat_current_bridge_card_metadata_cost_domain_audit_* text eol=lf
+
+# Preserve the closed Current card metadata cost-domain repair plan and archive.
+openspec/changes/fix-current-bridge-card-metadata-cost-domain/** text eol=lf
+openspec/changes/archive/*-fix-current-bridge-card-metadata-cost-domain/** text eol=lf
