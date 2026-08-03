@@ -520,64 +520,100 @@ def test_native_adapter_matches_all_historical_prefixes():
 
 def test_native_simple_agent_target_policy_is_deterministic_and_candidate_legal():
     module, provenance = _integration_settings()
-    first_rows = []
-    all_categories: set[str] = set()
+    courier_reason = "unsupported_shop_courier_restock_semantics"
 
-    for seed in range(20):
-        environment = NativeSimulatorEnvironment(module.Environment(seed, 0), provenance)
-        actions = []
-        decisions = 0
-        while not environment.snapshot()["terminal"]:
-            assert decisions < 500
-            before = environment.snapshot()
-            candidates = environment.legal_actions()
-            before_snapshot_bytes = json.dumps(before, sort_keys=True)
-            before_candidate_bytes = json.dumps(candidates, sort_keys=True)
+    def run_once(*, verify_queries: bool):
+        rows = []
+        categories: set[str] = set()
+        for seed in range(20):
+            environment = NativeSimulatorEnvironment(
+                module.Environment(seed, 0), provenance
+            )
+            actions = []
+            blocker = None
+            decisions = 0
+            while True:
+                before = environment.snapshot()
+                if before["terminal"]:
+                    terminal = before
+                    break
+                assert decisions < 500
 
-            first = environment.native_baseline_action()
-            second = environment.native_baseline_action()
-            assert first == second
-            assert first["action_id"] in {
-                candidate["action_id"] for candidate in candidates
-            }
-            assert json.dumps(environment.snapshot(), sort_keys=True) == before_snapshot_bytes
-            assert json.dumps(environment.legal_actions(), sort_keys=True) == before_candidate_bytes
+                candidates = environment.legal_actions() if verify_queries else None
+                if verify_queries:
+                    before_snapshot_bytes = json.dumps(before, sort_keys=True)
+                    before_candidate_bytes = json.dumps(candidates, sort_keys=True)
 
-            transition = environment.step_native_baseline()
-            assert transition["selected_action_id"] == first["action_id"]
-            all_categories.add(first["category"])
-            actions.append(first["action_id"])
-            decisions += 1
+                first = environment.native_baseline_action()
+                if verify_queries:
+                    second = environment.native_baseline_action()
+                    assert first == second
+                    assert first["action_id"] in {
+                        candidate["action_id"] for candidate in candidates
+                    }
+                    assert (
+                        json.dumps(environment.snapshot(), sort_keys=True)
+                        == before_snapshot_bytes
+                    )
+                    assert (
+                        json.dumps(environment.legal_actions(), sort_keys=True)
+                        == before_candidate_bytes
+                    )
 
-        terminal = environment.snapshot()
-        first_rows.append(
-            {
-                "actions": actions,
-                "floor": terminal["state"]["floor"],
-                "outcome": terminal["state"]["outcome"],
-                "seed": seed,
-            }
-        )
+                categories.add(first["category"])
+                actions.append(first["action_id"])
+                try:
+                    transition = environment.step_native_baseline()
+                except RuntimeError as exc:
+                    assert str(exc) == courier_reason
+                    blocker = {
+                        "action_id": first["action_id"],
+                        "category": first["category"],
+                        "decision_count": before["decision_count"],
+                        "reason": str(exc),
+                    }
+                    terminal = before
+                    break
+                assert transition["selected_action_id"] == first["action_id"]
+                decisions += 1
 
-    second_rows = []
-    for seed in range(20):
-        environment = NativeSimulatorEnvironment(module.Environment(seed, 0), provenance)
-        actions = []
-        while not environment.snapshot()["terminal"]:
-            actions.append(environment.native_baseline_action()["action_id"])
-            environment.step_native_baseline()
-        terminal = environment.snapshot()
-        second_rows.append(
-            {
-                "actions": actions,
-                "floor": terminal["state"]["floor"],
-                "outcome": terminal["state"]["outcome"],
-                "seed": seed,
-            }
-        )
+            rows.append(
+                {
+                    "actions": actions,
+                    "blocker": blocker,
+                    "floor": terminal["state"]["floor"],
+                    "outcome": (
+                        None if blocker is not None else terminal["state"]["outcome"]
+                    ),
+                    "seed": seed,
+                }
+            )
+        return rows, categories
 
+    first_rows, all_categories = run_once(verify_queries=True)
+    second_rows, second_categories = run_once(verify_queries=False)
     assert first_rows == second_rows
+    assert all_categories == second_categories
     assert all_categories == {"card_reward", "event", "route", "shop"}
+    blockers = [
+        {
+            "floor": row["floor"],
+            "seed": row["seed"],
+            **row["blocker"],
+        }
+        for row in first_rows
+        if row["blocker"] is not None
+    ]
+    assert blockers == [
+        {
+            "action_id": "route:map_node:6:4",
+            "category": "route",
+            "decision_count": 39,
+            "floor": 21,
+            "reason": courier_reason,
+            "seed": 10,
+        }
+    ]
 
 
 def test_native_baseline_query_fails_after_general_policy_step():

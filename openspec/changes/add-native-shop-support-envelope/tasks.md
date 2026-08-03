@@ -11,10 +11,10 @@
 
 ## 3. Successor Build And Bounded Smoke
 
-- [ ] 3.1 Record frozen predecessor hashes and build a distinct ignored API v3 successor against the unchanged external source identity.
-- [ ] 3.2 Record source, module, compiler, simulator, and dependency provenance and prove frozen modules remain byte-identical.
-- [ ] 3.3 Run only existing development seeds `0..19` and historical fixtures to verify supported behavior remains deterministic.
-- [ ] 3.4 Preserve every blocker exactly and do not run a seed search, fresh formal cohort, gameplay, policy change, or training.
+- [x] 3.1 Record frozen predecessor hashes and build a distinct ignored API v3 successor against the unchanged external source identity.
+- [x] 3.2 Record source, module, compiler, simulator, and dependency provenance and prove frozen modules remain byte-identical.
+- [x] 3.3 Run only existing development seeds `0..19` and historical fixtures to verify supported behavior remains deterministic.
+- [x] 3.4 Preserve every blocker exactly and do not run a seed search, fresh formal cohort, gameplay, policy change, or training.
 
 ## 4. Verification And Closeout
 
