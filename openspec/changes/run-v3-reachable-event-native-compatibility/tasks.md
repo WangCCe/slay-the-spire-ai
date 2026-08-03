@@ -5,11 +5,11 @@
 
 ## 2. Successor Evaluator Implementation
 
-- [ ] 2.1 Add red regressions for tracked seed-source discovery, nested seed paths, ambiguous conservative exclusion, duplicate JSON keys, candidate overlap, predecessor drift, build-only discovery, pushed-registration gates, journal ordering, and no-native verification
-- [ ] 2.2 Implement a versioned successor evaluator with exhaustive canonical seed inventory, exact eight-seed ledger validation, new schemas and paths, all-false authority, and immutable predecessor bindings without changing predecessor artifacts
-- [ ] 2.3 Implement build-only native identity discovery, reachable-v3 bridge sessions, two-replay bounded trajectories, dual-coordinate event diagnostics, whole-cohort pre-consumption, first-blocker preservation, and no CLI override of registered limits
-- [ ] 2.4 Implement canonical configuration, journal, trajectory or failure, metrics, report, manifest, atomic writes, and strict no-native recomputation that rejects changed, missing, or extra managed files
-- [ ] 2.5 Run focused successor, resolver, bridge, adapter, and historical regressions plus Python compilation; commit and push the evaluator implementation before naming or accessing a native seed
+- [x] 2.1 Add red regressions for tracked seed-source discovery, nested seed paths, ambiguous conservative exclusion, duplicate JSON keys, candidate overlap, predecessor drift, build-only discovery, pushed-registration gates, journal ordering, and no-native verification
+- [x] 2.2 Implement a versioned successor evaluator with exhaustive canonical seed inventory, exact eight-seed ledger validation, new schemas and paths, all-false authority, and immutable predecessor bindings without changing predecessor artifacts
+- [x] 2.3 Implement build-only native identity discovery, reachable-v3 bridge sessions, two-replay bounded trajectories, dual-coordinate event diagnostics, whole-cohort pre-consumption, first-blocker preservation, and no CLI override of registered limits
+- [x] 2.4 Implement canonical configuration, journal, trajectory or failure, metrics, report, manifest, atomic writes, and strict no-native recomputation that rejects changed, missing, or extra managed files
+- [x] 2.5 Run focused successor, resolver, bridge, adapter, and historical regressions plus Python compilation; commit and push the evaluator implementation before naming or accessing a native seed
 
 ## 3. Immutable Preregistration
 
