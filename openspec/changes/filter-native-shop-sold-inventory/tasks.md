@@ -12,10 +12,10 @@
 
 ## 3. Successor Build And Bounded Smoke
 
-- [ ] 3.1 Record the frozen predecessor module hash, configure a distinct ignored API v3 build directory, and build the successor without modifying the external checkout.
-- [ ] 3.2 Record successor source, module, simulator, compiler, and dependency identities and prove the predecessor module hash is unchanged.
-- [ ] 3.3 Run only reused development-smoke seeds against the successor and verify that emitted shop item prices are nonnegative and source slots remain candidate-compatible.
-- [ ] 3.4 Preserve any bounded-smoke blocker exactly; do not consume a fresh formal cohort or broaden into gameplay, policy, or training changes.
+- [x] 3.1 Record the frozen predecessor module hash, configure a distinct ignored API v3 build directory, and build the successor without modifying the external checkout.
+- [x] 3.2 Record successor source, module, simulator, compiler, and dependency identities and prove the predecessor module hash is unchanged.
+- [x] 3.3 Run only reused development-smoke seeds against the successor and verify that emitted shop item prices are nonnegative and source slots remain candidate-compatible.
+- [x] 3.4 Preserve any bounded-smoke blocker exactly; do not consume a fresh formal cohort or broaden into gameplay, policy, or training changes.
 
 ## 4. Verification And Closeout
 

@@ -328,16 +328,84 @@ def _integration_settings():
     return module, provenance
 
 
+_SHOP_COLLECTION_BY_ACTION_KIND = {
+    "buy_card": "cards",
+    "buy_potion": "potions",
+    "buy_relic": "relics",
+}
+
+
+def _validated_shop_inventory(snapshot, actions):
+    context = snapshot["state"]["decision_context"]
+    by_collection = {}
+    for collection in _SHOP_COLLECTION_BY_ACTION_KIND.values():
+        entries = context[collection]
+        slots = [entry["slot"] for entry in entries]
+        assert all(isinstance(slot, int) and not isinstance(slot, bool) for slot in slots)
+        assert len(slots) == len(set(slots))
+        assert all(
+            isinstance(entry["price"], int)
+            and not isinstance(entry["price"], bool)
+            and entry["price"] >= 0
+            for entry in entries
+        )
+        by_collection[collection] = {entry["slot"]: entry for entry in entries}
+
+    legal_inventory_slots = set()
+    for action in actions:
+        collection = _SHOP_COLLECTION_BY_ACTION_KIND.get(action["kind"])
+        if collection is None:
+            continue
+        slot = action["raw"]["slot"]
+        legal_inventory_slots.add((collection, slot))
+        assert by_collection[collection][slot]["price"] == action["raw"]["price"]
+
+    gold = snapshot["state"]["gold"]
+    unaffordable = 0
+    for collection, entries in by_collection.items():
+        for slot, entry in entries.items():
+            if entry["price"] > gold:
+                unaffordable += 1
+                assert (collection, slot) not in legal_inventory_slots
+    return by_collection, unaffordable
+
+
 def _run_first_candidate_policy(module, seed: int):
     environment = module.Environment(seed, 0)
     categories: set[str] = set()
     decisions = 0
+    shop_purchases = 0
+    shop_snapshots = 0
+    sold_slots_absent = 0
+    unaffordable_shop_items = 0
     while not environment.terminal():
         assert decisions < 500
         snapshot = json.loads(environment.snapshot_json())
         actions = json.loads(environment.legal_actions_json())
         categories.add(snapshot["category"])
-        environment.step(actions[0]["action_id"])
+        if snapshot["category"] == "shop":
+            _, unaffordable = _validated_shop_inventory(snapshot, actions)
+            shop_snapshots += 1
+            unaffordable_shop_items += unaffordable
+
+        selected = actions[0]
+        collection = _SHOP_COLLECTION_BY_ACTION_KIND.get(selected["kind"])
+        selected_slot = selected["raw"].get("slot") if collection else None
+        environment.step(selected["action_id"])
+        if collection is not None:
+            shop_purchases += 1
+            after = json.loads(environment.snapshot_json())
+            if after["category"] == "shop":
+                after_actions = json.loads(environment.legal_actions_json())
+                after_inventory, _ = _validated_shop_inventory(after, after_actions)
+                has_courier = any(
+                    relic["id"] == "THE_COURIER" for relic in after["state"]["relics"]
+                )
+                if has_courier:
+                    assert selected_slot in after_inventory[collection]
+                else:
+                    assert selected_slot not in after_inventory[collection]
+                    sold_slots_absent += 1
         decisions += 1
     terminal = json.loads(environment.snapshot_json())
     return {
@@ -345,6 +413,10 @@ def _run_first_candidate_policy(module, seed: int):
         "decisions": decisions,
         "floor": terminal["state"]["floor"],
         "outcome": terminal["state"]["outcome"],
+        "shop_purchases": shop_purchases,
+        "shop_snapshots": shop_snapshots,
+        "sold_slots_absent": sold_slots_absent,
+        "unaffordable_shop_items": unaffordable_shop_items,
     }
 
 
@@ -384,6 +456,10 @@ def test_native_adapter_repeated_seed_batch_is_deterministic():
         "route",
         "shop",
     }
+    assert sum(row["shop_snapshots"] for row in first) > 0
+    assert sum(row["shop_purchases"] for row in first) > 0
+    assert sum(row["sold_slots_absent"] for row in first) > 0
+    assert sum(row["unaffordable_shop_items"] for row in first) > 0
 
 
 def test_native_adapter_matches_all_historical_prefixes():
