@@ -15,6 +15,7 @@ from analysis_scripts.noncombat_current_policy_simulator_bridge import (
     MetadataCatalog,
     REGISTERED_SOURCE_FILES,
     V1_REGISTERED_SOURCE_FILES,
+    _EMPTY_COST_UNPLAYABLE_CARD_METADATA_IDENTITIES,
     build_artifacts,
     classify_stage1,
     enrich_event_option_semantics,
@@ -437,6 +438,278 @@ def _metadata_catalog(
 @pytest.fixture
 def metadata(tmp_path):
     return _metadata_catalog(tmp_path, ["Attack Potion"])
+
+
+_EXPECTED_EMPTY_UNPLAYABLE_CARD_METADATA = (
+    ("ASCENDERS_BANE", "Ascender's Bane", "Curse"),
+    ("BURN", "Burn", "Status"),
+    ("CLUMSY", "Clumsy", "Curse"),
+    ("CURSE_OF_THE_BELL", "Curse of the Bell", "Curse"),
+    ("DAZED", "Dazed", "Status"),
+    ("DECAY", "Decay", "Curse"),
+    ("DEUS_EX_MACHINA", "Deus Ex Machina", "Skill"),
+    ("DOUBT", "Doubt", "Curse"),
+    ("INJURY", "Injury", "Curse"),
+    ("NECRONOMICURSE", "Necronomicurse", "Curse"),
+    ("NORMALITY", "Normality", "Curse"),
+    ("PAIN", "Pain", "Curse"),
+    ("PARASITE", "Parasite", "Curse"),
+    ("REFLEX", "Reflex", "Skill"),
+    ("REGRET", "Regret", "Curse"),
+    ("SHAME", "Shame", "Curse"),
+    ("TACTICIAN", "Tactician", "Skill"),
+    ("VOID", "Void", "Status"),
+    ("WOUND", "Wound", "Status"),
+    ("WRITHE", "Writhe", "Curse"),
+)
+
+
+def test_card_metadata_cost_domain_registered_identity_table_is_exact():
+    assert _EMPTY_COST_UNPLAYABLE_CARD_METADATA_IDENTITIES == {
+        card_id: (name, card_type)
+        for card_id, name, card_type in _EXPECTED_EMPTY_UNPLAYABLE_CARD_METADATA
+    }
+
+
+def _card_metadata_catalog(tmp_path, cards):
+    path = tmp_path / "card-items.json"
+    path.write_text(
+        json.dumps(
+            {
+                "cards": cards,
+                "relics": [{"name": "Burning Blood"}],
+                "potions": [],
+            }
+        ),
+        encoding="utf-8",
+    )
+    return MetadataCatalog(path)
+
+
+def _source_card(card_id, name, *, upgrades=0, slot=0):
+    return {
+        "id": card_id,
+        "misc": 0,
+        "name": name,
+        "slot": slot,
+        "upgrade_count": upgrades,
+        "upgraded": upgrades > 0,
+    }
+
+
+def _card_metadata(name, card_type, *, cost="", description="Unplayable."):
+    rarity = {
+        "Attack": "Common",
+        "Curse": "Curse",
+        "Power": "Special",
+        "Skill": "Uncommon",
+        "Status": "Common",
+    }[card_type]
+    return {
+        "cost": cost,
+        "description": description,
+        "name": name,
+        "rarity": rarity,
+        "type": card_type,
+    }
+
+
+@pytest.mark.parametrize(
+    ("card_id", "name", "card_type"),
+    _EXPECTED_EMPTY_UNPLAYABLE_CARD_METADATA,
+)
+def test_card_metadata_cost_domain_hydrates_every_registered_identity(
+    tmp_path, card_id, name, card_type
+):
+    metadata_record = _card_metadata(name, card_type)
+    catalog = _card_metadata_catalog(tmp_path, [metadata_record])
+    source = _source_card(card_id, name)
+    before_source = copy.deepcopy(source)
+    before_metadata = catalog.path.read_bytes()
+    before_catalog = copy.deepcopy(catalog.cards)
+
+    card = catalog.card(source, role="deck")
+
+    assert card.card_id == card_id
+    assert card.name == name
+    assert card.type is CardType[card_type.upper()]
+    assert card.rarity.name == metadata_record["rarity"].upper()
+    assert card.cost == -2
+    assert card.cost_for_turn == -2
+    assert card.upgrades == 0
+    assert card.misc == 0
+    assert card.price == 0
+    assert card._bridge_source_role == "deck"
+    assert card._bridge_source_slot == 0
+    assert source == before_source
+    assert catalog.path.read_bytes() == before_metadata
+    assert catalog.cards == before_catalog
+
+
+@pytest.mark.parametrize(
+    ("card_id", "name", "card_type"),
+    [
+        ("REFLEX", "Reflex", "Skill"),
+        ("TACTICIAN", "Tactician", "Skill"),
+        ("DEUS_EX_MACHINA", "Deus Ex Machina", "Skill"),
+    ],
+)
+def test_card_metadata_cost_domain_preserves_registered_skill_upgrades(
+    tmp_path, card_id, name, card_type
+):
+    catalog = _card_metadata_catalog(
+        tmp_path, [_card_metadata(name, card_type)]
+    )
+    source = _source_card(card_id, name, upgrades=2)
+
+    card = catalog.card(source, role="deck")
+
+    assert card.name == name
+    assert card.upgrades == 2
+    assert card.cost == -2
+    assert card.cost_for_turn == -2
+
+
+def test_card_metadata_cost_domain_hydrates_production_shaped_injury_deck(
+    tmp_path,
+):
+    catalog = _card_metadata_catalog(
+        tmp_path,
+        [
+            _card_metadata("Strike", "Attack", cost="1", description="Deal damage."),
+            _card_metadata("Injury", "Curse"),
+        ],
+    )
+    state = _state()
+    state["deck"].append(_source_card("INJURY", "Injury", slot=1))
+    snapshot = _snapshot("route", state)
+    candidates = [
+        _candidate("route", "map_node", "route:map_node:0:0", x=0, y=0)
+    ]
+    before_snapshot = copy.deepcopy(snapshot)
+    before_candidates = copy.deepcopy(candidates)
+    before_metadata = catalog.path.read_bytes()
+
+    game = hydrate_game(snapshot, candidates, catalog)
+
+    injury = game.deck[1]
+    assert injury.card_id == "INJURY"
+    assert injury.name == "Injury"
+    assert injury.type is CardType.CURSE
+    assert injury.rarity is CardRarity.CURSE
+    assert injury.cost == -2
+    assert injury.cost_for_turn == -2
+    assert snapshot == before_snapshot
+    assert candidates == before_candidates
+    assert catalog.path.read_bytes() == before_metadata
+
+
+def test_card_metadata_cost_domain_rejects_registered_source_name_drift(tmp_path):
+    catalog = _card_metadata_catalog(
+        tmp_path, [_card_metadata("Injury", "Curse")]
+    )
+
+    with pytest.raises(BridgeBlocked) as error:
+        catalog.card(
+            _source_card("INJURY", "Renamed Injury"),
+            role="deck",
+        )
+
+    assert error.value.reason == "card_metadata_unplayable_source_name_mismatch"
+
+
+def test_card_metadata_cost_domain_rejects_registered_metadata_name_drift(tmp_path):
+    catalog = _card_metadata_catalog(
+        tmp_path, [_card_metadata("injury", "Curse")]
+    )
+
+    with pytest.raises(BridgeBlocked) as error:
+        catalog.card(_source_card("INJURY", "Injury"), role="deck")
+
+    assert error.value.reason == "card_metadata_unplayable_metadata_name_mismatch"
+
+
+@pytest.mark.parametrize(
+    ("overrides", "reason"),
+    [
+        ({"type": "Status"}, "card_metadata_unplayable_type_mismatch"),
+        ({"type": "Unknown"}, "card_metadata_unplayable_type_mismatch"),
+        ({"cost": "1"}, "card_metadata_unplayable_cost_mismatch"),
+        ({"cost": "X"}, "card_metadata_unplayable_cost_mismatch"),
+        (
+            {"description": "Cannot be played."},
+            "card_metadata_unplayable_description_mismatch",
+        ),
+    ],
+)
+def test_card_metadata_cost_domain_rejects_registered_metadata_drift(
+    tmp_path, overrides, reason
+):
+    metadata_record = _card_metadata("Injury", "Curse")
+    metadata_record.update(overrides)
+    catalog = _card_metadata_catalog(tmp_path, [metadata_record])
+
+    with pytest.raises(BridgeBlocked) as error:
+        catalog.card(_source_card("INJURY", "Injury"), role="deck")
+
+    assert error.value.reason == reason
+
+
+@pytest.mark.parametrize(
+    ("card_id", "name", "card_type", "description"),
+    [
+        ("UNKNOWN_UNPLAYABLE", "Injury", "Curse", "Unplayable."),
+        ("BECOME_ALMIGHTY", "Become Almighty", "Power", "Gain 3 Strength."),
+        (
+            "FAME_AND_FORTUNE",
+            "Fame and Fortune",
+            "Skill",
+            "Gain 25 Gold.",
+        ),
+        ("LIVE_FOREVER", "Live Forever", "Power", "Gain 6 Plated Armor."),
+    ],
+)
+def test_card_metadata_cost_domain_keeps_unlisted_empty_cost_blocked(
+    tmp_path, card_id, name, card_type, description
+):
+    catalog = _card_metadata_catalog(
+        tmp_path,
+        [_card_metadata(name, card_type, description=description)],
+    )
+
+    with pytest.raises(BridgeBlocked) as error:
+        catalog.card(_source_card(card_id, name), role="deck")
+
+    assert error.value.reason == "card_metadata_cost_invalid"
+
+
+@pytest.mark.parametrize(
+    ("card_id", "name", "card_type", "raw_cost", "expected_cost"),
+    [
+        ("SLIMED", "Slimed", "Status", "1", 1),
+        ("PRIDE", "Pride", "Curse", "1", 1),
+        ("WHIRLWIND", "Whirlwind", "Attack", "X", -1),
+    ],
+)
+def test_card_metadata_cost_domain_preserves_numeric_and_x_controls(
+    tmp_path, card_id, name, card_type, raw_cost, expected_cost
+):
+    catalog = _card_metadata_catalog(
+        tmp_path,
+        [
+            _card_metadata(
+                name,
+                card_type,
+                cost=raw_cost,
+                description="Control card.",
+            )
+        ],
+    )
+
+    card = catalog.card(_source_card(card_id, name), role="deck")
+
+    assert card.cost == expected_cost
+    assert card.cost_for_turn == expected_cost
 
 
 @pytest.mark.parametrize(

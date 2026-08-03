@@ -118,6 +118,15 @@ canary was not completed, bootstrap did not run, and holdout seeds
 `12000..12063` remained untouched. This is a terminal blocked result, not a
 baseline-floor result, and it cannot be retried or replaced.
 
+A separate read-only cost-domain audit then proved a closed exporter/bridge
+representation mismatch: exactly 20 stable native IDs have empty metadata cost
+and a leading `Unplayable.` description, while three Wish option identities
+have empty cost without that contract. The completed offline repair now maps
+only the exact 20 audited identity and metadata shapes to SpireComm cost `-2`
+and keeps every drift or unlisted empty-cost record fail closed. This removes a
+known future bridge compatibility defect but does not reopen the consumed
+study, establish a baseline floor, or change formal-RL readiness.
+
 ## Training Boundary
 
 Formal non-combat RL training is not currently authorized. A training go means
@@ -336,26 +345,26 @@ The next authorized sequence is:
 20. Keep formal non-combat RL `no_go`. Baseline policy and target-supported
     outcome support remain blocked; the latter still has zero supported
     victories and no source-comparable evidence.
-21. Treat the observed `Injury` empty-cost boundary as a possible separate
-    offline card-metadata-domain audit, not as permission for a repair inside
-    the consumed study or for another empirical cohort.
+21. Preserve the completed card metadata cost-domain audit and closed 20-ID
+    repair. It hydrates only exact empty-cost `Unplayable.` metadata shapes as
+    SpireComm cost `-2`; all field drift and unlisted empty-cost identities stay
+    blocked. It grants no study retry, empirical cohort, gameplay, OPE, fitting,
+    reward, formal-RL, training, qualification, loading, or promotion authority.
 
 ## Work Lanes
 
 The offline production candidate-schema fix, anti-retry review, r2 successor,
-potion and relic identity repairs, and post-repair Current baseline study are
-complete. The study is a terminal blocked result after 18 partial canary rows;
-it does not establish structural closure or a baseline floor. Formal RL remains
-`no_go` because baseline policy and source-comparable target-supported outcomes
-are still blocked.
+potion, relic, and card-cost identity repairs, and post-repair Current baseline
+study are complete. The study is a terminal blocked result after 18 partial
+canary rows; the later repair does not complete it or establish a baseline
+floor. Formal RL remains `no_go` because baseline policy and source-comparable
+target-supported outcomes are still blocked.
 
 Do not prepare another baseline cohort, modify the consumed study, or start
-training. The narrow next maintenance candidate is a separate read-only audit
-of the card metadata cost domain, including empty-cost unplayable Curse/Status
-entries. It may lead to a small compatibility repair under its own evidence and
-OpenSpec boundary, but cannot reopen this study. A new empirical baseline
-strategy requires a separate project-level decision after that audit, not an
-automatic successor.
+training. The card metadata cost audit and its bounded compatibility repair are
+closed. A new empirical baseline strategy now requires a separate project-level
+decision with a fresh identity and evidence design; it is not an automatic
+successor to either the consumed study or this implementation repair.
 
 Live gameplay is a maintenance and registered-evaluation lane only. Launch it
 for a crash, stuck state, repeated A-class simulator/mechanics defect, or an

@@ -141,6 +141,28 @@ _POTION_METADATA_NAME_ALIASES = {
     "FAIRY_POTION": ("Fairy Potion", "Fairy in a Bottle"),
     "GAMBLERS_BREW": ("Gamblers Brew", "Gambler's Brew"),
 }
+_EMPTY_COST_UNPLAYABLE_CARD_METADATA_IDENTITIES = {
+    "ASCENDERS_BANE": ("Ascender's Bane", "Curse"),
+    "BURN": ("Burn", "Status"),
+    "CLUMSY": ("Clumsy", "Curse"),
+    "CURSE_OF_THE_BELL": ("Curse of the Bell", "Curse"),
+    "DAZED": ("Dazed", "Status"),
+    "DECAY": ("Decay", "Curse"),
+    "DEUS_EX_MACHINA": ("Deus Ex Machina", "Skill"),
+    "DOUBT": ("Doubt", "Curse"),
+    "INJURY": ("Injury", "Curse"),
+    "NECRONOMICURSE": ("Necronomicurse", "Curse"),
+    "NORMALITY": ("Normality", "Curse"),
+    "PAIN": ("Pain", "Curse"),
+    "PARASITE": ("Parasite", "Curse"),
+    "REFLEX": ("Reflex", "Skill"),
+    "REGRET": ("Regret", "Curse"),
+    "SHAME": ("Shame", "Curse"),
+    "TACTICIAN": ("Tactician", "Skill"),
+    "VOID": ("Void", "Status"),
+    "WOUND": ("Wound", "Status"),
+    "WRITHE": ("Writhe", "Curse"),
+}
 _RELIC_METADATA_IDENTITIES = {
     "BIRD_FACED_URN": ("Bird Faced Urn", "Bird-Faced Urn"),
     "CAPTAINS_WHEEL": ("Captains Wheel", "Captain's Wheel"),
@@ -678,6 +700,49 @@ class MetadataCatalog:
             raise BridgeBlocked("missing_source_slot", label)
         return slot
 
+    @staticmethod
+    def _empty_cost_unplayable_card_cost(
+        card_id: str,
+        metadata: Mapping[str, Any],
+        identity: tuple[str, str],
+    ) -> int:
+        expected_name, expected_type = identity
+        metadata_name = metadata.get("name")
+        if metadata_name != expected_name:
+            raise BridgeBlocked(
+                "card_metadata_unplayable_metadata_name_mismatch",
+                {
+                    "actual": metadata_name,
+                    "card_id": card_id,
+                    "expected": expected_name,
+                },
+            )
+        metadata_type = metadata.get("type")
+        if metadata_type != expected_type:
+            raise BridgeBlocked(
+                "card_metadata_unplayable_type_mismatch",
+                {
+                    "actual": metadata_type,
+                    "card_id": card_id,
+                    "expected": expected_type,
+                },
+            )
+        metadata_cost = metadata.get("cost")
+        if metadata_cost != "":
+            raise BridgeBlocked(
+                "card_metadata_unplayable_cost_mismatch",
+                {"actual": metadata_cost, "card_id": card_id, "expected": ""},
+            )
+        description = metadata.get("description")
+        if not isinstance(description, str) or not description.startswith(
+            "Unplayable."
+        ):
+            raise BridgeBlocked(
+                "card_metadata_unplayable_description_mismatch",
+                {"actual": description, "card_id": card_id},
+            )
+        return -2
+
     def card(self, value: Mapping[str, Any], *, role: str) -> Card:
         source = _mapping(value, f"{role} card")
         card_id = source.get("id")
@@ -686,9 +751,39 @@ class MetadataCatalog:
             raise BridgeBlocked("card_id_missing", role)
         if not isinstance(name, str) or not name:
             raise BridgeBlocked("card_name_missing", role)
+        unplayable_identity = _EMPTY_COST_UNPLAYABLE_CARD_METADATA_IDENTITIES.get(
+            card_id
+        )
+        if unplayable_identity is not None and name != unplayable_identity[0]:
+            raise BridgeBlocked(
+                "card_metadata_unplayable_source_name_mismatch",
+                {
+                    "actual": name,
+                    "card_id": card_id,
+                    "expected": unplayable_identity[0],
+                },
+            )
         metadata_candidates = self.cards.get(name.casefold())
         if metadata_candidates is None:
+            if unplayable_identity is not None:
+                raise BridgeBlocked(
+                    "card_metadata_unplayable_metadata_name_mismatch",
+                    {
+                        "actual": None,
+                        "card_id": card_id,
+                        "expected": unplayable_identity[0],
+                    },
+                )
             raise BridgeBlocked("card_metadata_missing", name)
+        if unplayable_identity is not None and len(metadata_candidates) != 1:
+            raise BridgeBlocked(
+                "card_metadata_unplayable_metadata_name_mismatch",
+                {
+                    "actual_candidate_count": len(metadata_candidates),
+                    "card_id": card_id,
+                    "expected": unplayable_identity[0],
+                },
+            )
         if len(metadata_candidates) == 1:
             metadata = metadata_candidates[0]
         else:
@@ -710,6 +805,10 @@ class MetadataCatalog:
                     },
                 )
             metadata = color_matches[0]
+        if unplayable_identity is not None:
+            cost = self._empty_cost_unplayable_card_cost(
+                card_id, metadata, unplayable_identity
+            )
         slot = self._source_slot(source, role)
         type_name = str(metadata.get("type", "")).upper()
         rarity_name = str(metadata.get("rarity", "")).upper()
@@ -721,16 +820,17 @@ class MetadataCatalog:
                 "card_metadata_enum_invalid",
                 {"name": name, "type": type_name, "rarity": rarity_name},
             ) from exc
-        raw_cost = str(metadata.get("cost", "")).strip().upper()
-        if raw_cost == "X":
-            cost = -1
-        elif raw_cost in {"UNPLAYABLE", "-"}:
-            cost = -2
-        else:
-            try:
-                cost = int(raw_cost)
-            except ValueError as exc:
-                raise BridgeBlocked("card_metadata_cost_invalid", name) from exc
+        if unplayable_identity is None:
+            raw_cost = str(metadata.get("cost", "")).strip().upper()
+            if raw_cost == "X":
+                cost = -1
+            elif raw_cost in {"UNPLAYABLE", "-"}:
+                cost = -2
+            else:
+                try:
+                    cost = int(raw_cost)
+                except ValueError as exc:
+                    raise BridgeBlocked("card_metadata_cost_invalid", name) from exc
         upgrades = source.get("upgrade_count")
         if isinstance(upgrades, bool) or not isinstance(upgrades, int) or upgrades < 0:
             raise BridgeBlocked("card_upgrade_count_invalid", name)
