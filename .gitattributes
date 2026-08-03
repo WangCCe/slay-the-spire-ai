@@ -152,3 +152,6 @@ reports/noncombat_current_baseline_readiness_refresh_* text eol=lf
 openspec/changes/add-post-repair-current-baseline-evidence-study/** text eol=lf
 openspec/changes/archive/*-add-post-repair-current-baseline-evidence-study/** text eol=lf
 openspec/specs/noncombat-current-baseline-evidence-study/** text eol=lf
+
+# Preserve the read-only Current card metadata cost-domain audit.
+reports/noncombat_current_bridge_card_metadata_cost_domain_audit_* text eol=lf

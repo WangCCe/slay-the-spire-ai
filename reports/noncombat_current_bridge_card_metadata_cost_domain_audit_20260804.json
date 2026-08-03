@@ -1,0 +1,144 @@
+{
+  "authority": {
+    "baseline_floor_authorized": false,
+    "environment_construction_authorized": false,
+    "formal_rl_authorized": false,
+    "fresh_evidence_authorized": false,
+    "gameplay_authorized": false,
+    "model_fitting_authorized": false,
+    "native_loading_authorized": false,
+    "ope_authorized": false,
+    "policy_loading_authorized": false,
+    "promotion_authorized": false,
+    "qualification_authorized": false,
+    "reward_authorized": false,
+    "seed_access_authorized": false,
+    "study_retry_authorized": false,
+    "training_authorized": false
+  },
+  "decision": {
+    "repair_contract": "closed_stable_id_unplayable_empty_cost_mapping",
+    "status": "bounded_compatibility_defect_demonstrated",
+    "study_reopen_authorized": false
+  },
+  "evidence": {
+    "bridge_implementation": {
+      "path": "analysis_scripts/noncombat_current_policy_simulator_bridge.py",
+      "sha256": "8037c59a27cd52a562d9db0cf066346e0555875c69fbb5c8979462a38347a714",
+      "size_bytes": 98600
+    },
+    "metadata": {
+      "path": "D:\\SteamLibrary\\steamapps\\common\\SlayTheSpire\\export\\items.json",
+      "sha256": "e23784ea8ed3092e3bfa9918240e162a9cbcb837badfb53c612eb0d83cc811dc",
+      "size_bytes": 240371
+    },
+    "prior_identity_audit": {
+      "path": "reports/noncombat_current_bridge_card_relic_metadata_identity_audit_20260803.md",
+      "sha256": "4835936675f0a6c131ac0dcead73d4d91773a8c9215574a2fb83c150a5379b1a",
+      "size_bytes": 6196
+    },
+    "simulator_card_source": {
+      "commit": "7476a81954020087da31d41d16fddf475746ec2d",
+      "path": "D:\\CLionProjects\\sts_lightspeed\\include\\constants\\Cards.h",
+      "sha256": "3492ca9ec6ff3e1098092127892529589be91cb338d3ef44b5fd8e979f52a7e0",
+      "size_bytes": 62887
+    },
+    "study_journal": {
+      "path": "reports/noncombat_current_baseline_evidence_study_20260803/execution_journal.json",
+      "sha256": "f8d6b771bc9be0ff16241d2d18505f2082836fcc9e340415aa974bbbd1f4951d",
+      "size_bytes": 1072
+    },
+    "study_metrics": {
+      "path": "reports/noncombat_current_baseline_evidence_study_20260803/metrics.json",
+      "sha256": "e53e12558232b6b97f1c78c60a7917fe77d5287cd8764dfd1ef4ed7c1d9cb76b",
+      "size_bytes": 911
+    }
+  },
+  "findings": {
+    "accepted_record_count": 692,
+    "cost_value_counts": {
+      "": 29,
+      "0": 167,
+      "1": 348,
+      "2": 119,
+      "3": 30,
+      "4": 6,
+      "5": 2,
+      "X": 20
+    },
+    "empty_cost": {
+      "explicit_unplayable": {
+        "metadata_record_count": 23,
+        "native_identity_count": 20,
+        "native_ids": [
+          "ASCENDERS_BANE",
+          "BURN",
+          "CLUMSY",
+          "CURSE_OF_THE_BELL",
+          "DAZED",
+          "DECAY",
+          "DEUS_EX_MACHINA",
+          "DOUBT",
+          "INJURY",
+          "NECRONOMICURSE",
+          "NORMALITY",
+          "PAIN",
+          "PARASITE",
+          "REFLEX",
+          "REGRET",
+          "SHAME",
+          "TACTICIAN",
+          "VOID",
+          "WOUND",
+          "WRITHE"
+        ]
+      },
+      "other": {
+        "metadata_record_count": 6,
+        "native_identity_count": 3,
+        "native_ids": [
+          "BECOME_ALMIGHTY",
+          "FAME_AND_FORTUNE",
+          "LIVE_FOREVER"
+        ]
+      },
+      "record_count": 29
+    },
+    "metadata_card_record_count": 721,
+    "negative_controls": [
+      {
+        "cost": 1,
+        "id": "SLIMED",
+        "name": "Slimed",
+        "type": "STATUS"
+      },
+      {
+        "cost": 1,
+        "id": "PRIDE",
+        "name": "Pride",
+        "type": "CURSE"
+      },
+      {
+        "cost": -1,
+        "id": "WHIRLWIND",
+        "name": "Whirlwind",
+        "type": "ATTACK"
+      }
+    ],
+    "reachable_a0_ironclad_persistent_curse_ids": [
+      "CLUMSY",
+      "CURSE_OF_THE_BELL",
+      "DECAY",
+      "DOUBT",
+      "INJURY",
+      "NECRONOMICURSE",
+      "NORMALITY",
+      "PAIN",
+      "PARASITE",
+      "REGRET",
+      "SHAME",
+      "WRITHE"
+    ]
+  },
+  "schema_version": "noncombat-current-bridge-card-metadata-cost-domain-audit-v1"
+}
