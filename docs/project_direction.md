@@ -48,6 +48,15 @@ and outcome support remain blocked. The terminal verdict remains
 `not_ready_for_bounded_training_proposal`, with all execution and promotion
 authority false.
 
+The bounded simulator-only non-combat RL experiment now has a source-only
+implementation ready for preregistration review. It defines one fixed
+candidate-masked REINFORCE run, closed API v3 features and reward, recoverable
+hash-chained checkpoints, disjoint train/canary/holdout cohorts, and an
+independent standard-library verifier. This source milestone grants no native
+loading, registered-seed use, experiment execution, formal-RL, live loading,
+qualification, or promotion authority. A pushed canonical preregistration and
+separate one-shot execution authorization remain mandatory before training.
+
 The first source-bound Current-policy simulator bridge registration remains a
 valid negative. Its event row stopped on missing semantics. The source-bound r2
 successor now resolves the exact `Liars Game` `Agree`/`Disagree` contract and
@@ -350,6 +359,13 @@ The next authorized sequence is:
     SpireComm cost `-2`; all field drift and unlisted empty-cost identities stay
     blocked. It grants no study retry, empirical cohort, gameplay, OPE, fitting,
     reward, formal-RL, training, qualification, loading, or promotion authority.
+22. Advance the bounded simulator-only RL experiment only through its staged
+    gates: source implementation, collision-free preregistration, separate
+    one-shot authorization, then one logical execution. Until the registration
+    and authorization are committed, pushed, and exact, do not load native
+    code, construct an environment, consume seeds `50000..51663`, or train.
+    Every result preserves `not_ready_for_bounded_training_proposal` and the
+    blocked Current-baseline and target-supported-outcome requirements.
 
 ## Work Lanes
 
@@ -360,9 +376,11 @@ canary rows; the later repair does not complete it or establish a baseline
 floor. Formal RL remains `no_go` because baseline policy and source-comparable
 target-supported outcomes are still blocked.
 
-Do not prepare another baseline cohort, modify the consumed study, or start
-training. The card metadata cost audit and its bounded compatibility repair are
-closed. A new empirical baseline strategy now requires a separate project-level
+Do not prepare another baseline cohort or modify the consumed study. The card
+metadata cost audit and its bounded compatibility repair are closed. The only
+planned training lane is the separately gated simulator-only experiment above;
+it remains source-only until preregistration and one-shot authorization pass. A
+new empirical Current-baseline strategy still requires a separate project-level
 decision with a fresh identity and evidence design; it is not an automatic
 successor to either the consumed study or this implementation repair.
 

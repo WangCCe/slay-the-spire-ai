@@ -74,9 +74,12 @@ unique validated next coordinate under the cumulative wall-time bound.
 
 #### Scenario: A checkpoint is published
 - **WHEN** one training chunk commits successfully
-- **THEN** canonical model, optimizer, random-generator, coordinate, runtime,
-  registration, implementation, and prior-checkpoint identities SHALL be
-  atomically recorded
+- **THEN** canonical model, optimizer, random-generator, coordinate,
+  registration, and implementation state SHALL be recorded in a deterministic
+  state payload, while measured runtime and prior-checkpoint identity SHALL be
+  recorded in its atomic envelope
+- **AND** one canonical pending record SHALL make checkpoint, trajectory
+  summary, and journal publication idempotently recoverable as one coordinate
 - **AND** a partial or unchained checkpoint SHALL NOT replace the last valid one
 
 #### Scenario: A process resumes after interruption
@@ -89,7 +92,12 @@ unique validated next coordinate under the cumulative wall-time bound.
 #### Scenario: Checkpoint-prefix replay is verified
 - **WHEN** the registered independent replay executes the first two chunks from
   initialization
-- **THEN** its second checkpoint SHALL match the primary checkpoint byte-for-byte
+- **THEN** its second deterministic state payload SHALL match the primary
+  checkpoint's state payload byte-for-byte
+- **AND** measured wall time and the separate replay publication chain SHALL NOT
+  enter the compared payload
+- **AND** replay wall time SHALL be recorded outside that payload and restored
+  across interruption before the next checkpoint
 - **AND** a mismatch SHALL block canary and holdout evaluation
 
 ### Requirement: Conservative Episode Accounting
@@ -116,8 +124,9 @@ after the frozen initial and trained policies pass every registered canary gate.
 
 #### Scenario: Canary passes
 - **WHEN** both policies produce legal terminal rows with four-category
-  coverage, unsupported rate at most 10%, trained victories not below initial,
-  and a positive 95% paired floor-difference lower bound
+  coverage, unsupported policy-episode rate at most 10% across the 256 initial
+  and trained canary episodes, trained victories not below initial, and a
+  positive 95% paired floor-difference lower bound
 - **THEN** the one fixed holdout MAY be accessed once for both frozen policies
 - **AND** neither policy SHALL update from canary or holdout transitions
 

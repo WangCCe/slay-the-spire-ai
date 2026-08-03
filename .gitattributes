@@ -166,5 +166,11 @@ openspec/changes/fix-current-bridge-card-metadata-cost-domain/** text eol=lf
 openspec/changes/archive/*-fix-current-bridge-card-metadata-cost-domain/** text eol=lf
 
 # Preserve the bounded simulator-only RL experiment plan and archive.
+analysis_scripts/noncombat_simulator_rl_experiment.py text eol=lf
+analysis_scripts/verify_noncombat_simulator_rl_experiment.py text eol=lf
+scripts/run_noncombat_simulator_rl_experiment.py text eol=lf
+tests/test_noncombat_simulator_rl_experiment.py text eol=lf
+reports/noncombat_simulator_rl_experiment_* text eol=lf
+reports/noncombat_simulator_rl_experiment_*/** text eol=lf
 openspec/changes/add-bounded-noncombat-simulator-rl-experiment/** text eol=lf
 openspec/changes/archive/*-add-bounded-noncombat-simulator-rl-experiment/** text eol=lf

@@ -105,8 +105,9 @@ shuffle or replacement occurs.
 After training, frozen initialization and trained policy run once on the same
 canary. Holdout remains untouched unless both policies are legal and terminal,
 all four categories are covered, the registered unsupported rate is at most
-10%, trained canary victories are not fewer than initialization, and the 95%
-paired bootstrap lower bound for terminal-floor difference is above zero.
+10% across all initial and trained policy episodes (256 canary episodes),
+trained canary victories are not fewer than initialization, and the 95% paired
+bootstrap lower bound for terminal-floor difference is above zero.
 
 If canary passes, initialization and trained policy run once on holdout. The
 learning-signal verdict requires trained holdout victories to exceed
@@ -126,12 +127,19 @@ replaced.
 ### Persist canonical hash-chained checkpoints
 
 After every 64-episode optimizer update, write one canonical JSON checkpoint
-containing model tensors, Adam tensors and counters, Python and PyTorch random
-states, action-generator state, completed seed/pass/chunk coordinates,
-accumulated bounded runtime, prior-checkpoint hash, registration hash, and
-implementation identity. Tensor bytes use explicit dtype, shape, little-endian
-contiguous bytes, and base64 encoding; no pickle or timestamp-bearing archive
-format is authoritative.
+envelope. Its deterministic state payload contains model tensors, Adam tensors
+and counters, Python and PyTorch random states, action-generator state,
+completed seed/pass/chunk coordinates, registration hash, and implementation
+identity. The envelope records the state-payload hash, accumulated bounded
+runtime, and prior-checkpoint hash. Tensor bytes use explicit dtype, shape,
+little-endian contiguous bytes, and base64 encoding; no pickle or
+timestamp-bearing archive format is authoritative.
+
+Checkpoint, trajectory summary, and journal publication uses one canonical
+pending-chunk record as a write-ahead commit. The pending record binds the exact
+bytes of all three outputs and is removed only after the checkpoint, summary,
+and journal record validate as one coordinate. A resume holding the execution
+lease completes that same record idempotently; it does not rerun the chunk.
 
 A resume validates the full chain, exact source/runtime/native identities, the
 started journal, single logical execution ID, next coordinate, and output
@@ -140,9 +148,14 @@ and cumulative 28,800-second wall budget. A second concurrent lease, changed
 identity, missing checkpoint, or already terminal journal fails before rollout.
 
 The first two primary chunks are independently replayed from initialization and
-must reproduce checkpoint 2 byte-for-byte. Full 4,096-episode duplication is
-rejected because it doubles cost without adding a distinct contract beyond the
-checkpoint-prefix proof and deterministic source tests.
+must reproduce checkpoint 2's deterministic state payload byte-for-byte. The
+outer checkpoint envelope is not the comparison target because it contains
+measured wall time and a distinct publication chain. The replay artifact records
+its measured and post-replay cumulative wall time outside the deterministic
+payload; resume restores that value at the checkpoint-2 boundary and requires
+every later checkpoint to include it. Full 4,096-episode
+duplication is rejected because it doubles cost without adding a distinct
+contract beyond the checkpoint-prefix proof and deterministic source tests.
 
 ### Separate implementation, authorization, execution, and verification
 
