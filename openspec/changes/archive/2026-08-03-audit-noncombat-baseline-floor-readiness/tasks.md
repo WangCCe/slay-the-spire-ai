@@ -16,10 +16,10 @@
 - [x] 3.1 Generate the canonical JSON result and Markdown report from the committed registration and exact frozen evidence.
 - [x] 3.2 Strictly regenerate both outputs byte-for-byte and confirm the observed verdict, candidate roles, blockers, unsupported-episode contract, and next prerequisite match the specification.
 - [x] 3.3 Update `docs/project_direction.md` to replace superseded v3 compatibility instructions with the observed baseline-floor readiness result while preserving the independent outcome-support blocker.
-- [ ] 3.4 Write a concise closeout with every gameplay, native, cohort, reward, OPE, formal-RL, training, qualification, loading, and promotion authority false.
+- [x] 3.4 Write a concise closeout with every gameplay, native, cohort, reward, OPE, formal-RL, training, qualification, loading, and promotion authority false.
 
 ## 4. Verification And Archive
 
-- [ ] 4.1 Run focused audit tests, relevant compile/import checks, `git diff --check`, and the partitioned repository commit gate; do not run raw unpartitioned full pytest or gameplay validation for this read-only change.
-- [ ] 4.2 Run strict global OpenSpec validation and an independent scoped review of evidence identity, classification rules, no-survivor-bias handling, rendering, and authority boundaries.
-- [ ] 4.3 Sync the new capability to the main specs, archive the change, commit and push a tracked-clean `master`, then hand off the exact diagnostic-smoke prerequisite without executing it.
+- [x] 4.1 Run focused audit tests, relevant compile/import checks, `git diff --check`, and the partitioned repository commit gate; do not run raw unpartitioned full pytest or gameplay validation for this read-only change.
+- [x] 4.2 Run strict global OpenSpec validation and an independent scoped review of evidence identity, classification rules, no-survivor-bias handling, rendering, and authority boundaries.
+- [x] 4.3 Sync the new capability to the main specs, archive the change, commit and push a tracked-clean `master`, then hand off the exact diagnostic-smoke prerequisite without executing it.
