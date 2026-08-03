@@ -5,32 +5,32 @@
   their committed byte identities without native loading.
 - [x] 1.2 Commit and push all planning artifacts before editing the diagnostic
   runner or tests.
-- [ ] 1.3 Build one canonical tracked r2 preimplementation lineage record from
+- [x] 1.3 Build one canonical tracked r2 preimplementation lineage record from
   fixed paths, including the v1 failure, anti-retry review, archived schema fix,
   predecessor evidence, exact module, unchanged controls, and all-false
   authority; commit it before binding its hash in code.
 
 ## 2. Red Regressions And Narrow Profile Boundary
 
-- [ ] 2.1 Add red tests for byte-identical v1 artifact recomputation after
+- [x] 2.1 Add red tests for byte-identical v1 artifact recomputation after
   profile selection, exact r2 profile isolation, mixed-profile rejection before
   environment construction, and complete production-shaped candidate handling
   through the pre-step boundary.
-- [ ] 2.2 Introduce one frozen diagnostic profile value and thread it only
+- [x] 2.2 Introduce one frozen diagnostic profile value and thread it only
   through registration, result, journal, publication, verification, and CLI
   identity helpers; preserve v1 defaults and shared cohort/policy/support/verdict
   semantics, and do not copy the runner or create a generic experiment system.
-- [ ] 2.3 Add exact r2 lineage validation and explicit `prepare-r2`,
+- [x] 2.3 Add exact r2 lineage validation and explicit `prepare-r2`,
   `execute-r2`, and `verify-r2` paths. Prove registration, source, schema, path,
   cohort, limit, authority, and output drift fail before environment
   construction.
 
 ## 3. Offline Verification And Implementation Gate
 
-- [ ] 3.1 Run the focused diagnostic plus adjacent bridge/adapter pytest with a
+- [x] 3.1 Run the focused diagnostic plus adjacent bridge/adapter pytest with a
   fresh writable basetemp, no-native v1/r2 verifier checks, `py_compile`,
   `git diff --check`, and strict change validation.
-- [ ] 3.2 Run the partitioned repository `commit` test gate instead of an
+- [x] 3.2 Run the partitioned repository `commit` test gate instead of an
   unregistered raw full pytest suite, then recheck every consumed v1 evidence
   byte and confirm no environment, seed, gameplay, model, reward, OPE, or
   training surface was touched.

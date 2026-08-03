@@ -61,7 +61,8 @@ def _provenance():
     }
 
 
-def _identity(tmp_path):
+def _identity(tmp_path, *, profile=None):
+    profile = smoke.V1_PROFILE if profile is None else profile
     metadata = tmp_path / "items.json"
     metadata.write_text("{}\n", encoding="utf-8")
     module = tmp_path / "adapter.pyd"
@@ -79,15 +80,15 @@ def _identity(tmp_path):
         },
         "implementation": {
             "commit": "f" * 40,
-            "source_files": list(smoke.IMPLEMENTATION_SOURCE_FILES),
+            "source_files": list(profile.implementation_source_files),
             "source_sha256": "1" * 64,
         },
         "metadata": _binding(metadata),
         "module_path": str(module.resolve()),
         "preimplementation": {
-            "path": smoke.PREIMPLEMENTATION_PATH,
-            "sha256": smoke.EXPECTED_PREIMPLEMENTATION_SHA256,
-            "size_bytes": smoke.EXPECTED_PREIMPLEMENTATION_SIZE_BYTES,
+            "path": profile.preimplementation_path,
+            "sha256": profile.preimplementation_sha256,
+            "size_bytes": profile.preimplementation_size_bytes,
         },
         "runtime": {
             "executable": str((tmp_path / "python.exe").resolve()),
@@ -97,8 +98,11 @@ def _identity(tmp_path):
     }
 
 
-def _registration(tmp_path):
-    return smoke.build_registration(identity=_identity(tmp_path))
+def _registration(tmp_path, *, profile=None):
+    profile = smoke.V1_PROFILE if profile is None else profile
+    return smoke.build_registration(
+        identity=_identity(tmp_path, profile=profile), profile=profile
+    )
 
 
 class FakeEnvironment:
@@ -264,8 +268,11 @@ def _rehash_row(row):
         ("module", "registered_module_identity_mismatch"),
     ],
 )
-def test_registration_contract_is_exact(tmp_path, mutation, reason):
-    registration = _registration(tmp_path)
+@pytest.mark.parametrize(
+    "profile", [smoke.V1_PROFILE, smoke.R2_PROFILE], ids=lambda value: value.name
+)
+def test_registration_contract_is_exact(tmp_path, mutation, reason, profile):
+    registration = _registration(tmp_path, profile=profile)
     if mutation == "seed":
         registration["cohort"]["seeds"][0] = 9999
     elif mutation == "seed_type":
@@ -286,7 +293,7 @@ def test_registration_contract_is_exact(tmp_path, mutation, reason):
         registration["identity"]["adapter_provenance"]["module_sha256"] = "0" * 64
 
     with pytest.raises(smoke.DiagnosticBlocked) as exc_info:
-        smoke.validate_registration(registration)
+        smoke.validate_registration(registration, profile=profile)
 
     assert exc_info.value.reason == reason
 
@@ -298,6 +305,89 @@ def test_cli_has_no_seed_or_limit_override():
         parser.parse_args(["execute", "--seed", "1"])
     with pytest.raises(SystemExit):
         parser.parse_args(["execute", "--max-wall-seconds", "1"])
+    with pytest.raises(SystemExit):
+        parser.parse_args(["execute-r2", "--seed", "1"])
+    assert parser.parse_args(["verify-r2"]).command == "verify-r2"
+
+
+def test_r2_registration_has_distinct_versioned_publication_identity(tmp_path):
+    registration = _registration(tmp_path, profile=smoke.R2_PROFILE)
+
+    assert registration["schema_version"] == smoke.R2_PROFILE.input_schema_version
+    assert registration["output"]["directory"] == smoke.R2_PROFILE.output_directory
+    assert registration["identity"]["preimplementation"] == {
+        "path": smoke.R2_PROFILE.preimplementation_path,
+        "sha256": smoke.R2_PROFILE.preimplementation_sha256,
+        "size_bytes": smoke.R2_PROFILE.preimplementation_size_bytes,
+    }
+    assert registration["cohort"] == {
+        "replay_count": smoke.REPLAY_COUNT,
+        "seeds": list(smoke.FIXED_SEEDS),
+    }
+
+
+def test_mixed_profile_fails_before_environment_construction(tmp_path):
+    registration = _registration(tmp_path, profile=smoke.V1_PROFILE)
+    constructed = []
+
+    with pytest.raises(smoke.DiagnosticBlocked) as exc_info:
+        smoke.run_diagnostic(
+            registration=registration,
+            environment_factory=lambda seed: constructed.append(seed),
+            session_factory=FakeSession,
+            profile=smoke.R2_PROFILE,
+        )
+
+    assert exc_info.value.reason == "registration_schema_mismatch"
+    assert constructed == []
+
+
+def test_r2_publication_uses_only_r2_schemas(tmp_path):
+    registration = _registration(tmp_path, profile=smoke.R2_PROFILE)
+    output = tmp_path / "r2-output"
+    registration_sha256 = "2" * 64
+
+    result = smoke.consume_and_run(
+        registration=registration,
+        registration_sha256=registration_sha256,
+        preregistration_commit="3" * 40,
+        output_directory=output,
+        environment_factory=_factory(_passing_plans()),
+        session_factory=FakeSession,
+        profile=smoke.R2_PROFILE,
+    )
+    manifest = smoke.verify_artifact_directory(
+        registration=registration,
+        registration_sha256=registration_sha256,
+        output_directory=output,
+        profile=smoke.R2_PROFILE,
+    )
+    configuration = json.loads((output / "configuration.json").read_text())
+    journal = json.loads((output / "execution_journal.json").read_text())
+    metrics = json.loads((output / "metrics.json").read_text())
+    trajectories = json.loads((output / "trajectory_rows.json").read_text())
+
+    assert result["schema_version"] == smoke.R2_PROFILE.execution_schema_version
+    assert (
+        configuration["schema_version"]
+        == smoke.R2_PROFILE.configuration_schema_version
+    )
+    assert journal["schema_version"] == smoke.R2_PROFILE.journal_schema_version
+    assert metrics["schema_version"] == smoke.R2_PROFILE.metrics_schema_version
+    assert (
+        trajectories["schema_version"]
+        == smoke.R2_PROFILE.trajectory_schema_version
+    )
+    assert manifest["schema_version"] == smoke.R2_PROFILE.manifest_schema_version
+
+    with pytest.raises(smoke.DiagnosticBlocked) as exc_info:
+        smoke.verify_artifact_directory(
+            registration=registration,
+            registration_sha256=registration_sha256,
+            output_directory=output,
+            profile=smoke.V1_PROFILE,
+        )
+    assert exc_info.value.reason == "registration_schema_mismatch"
 
 
 def test_terminal_and_declared_support_rows_pass_and_continue(tmp_path):
@@ -620,8 +710,8 @@ def test_no_native_verifier_replays_artifacts_and_rejects_drift(tmp_path):
 
 
 def test_consumed_artifact_directory_recomputes_without_native_loading():
-    registration_path = REPO_ROOT / smoke.DEFAULT_REGISTRATION_PATH
-    output = REPO_ROOT / smoke.DEFAULT_OUTPUT_DIRECTORY
+    registration_path = REPO_ROOT / smoke.V1_PROFILE.registration_path
+    output = REPO_ROOT / smoke.V1_PROFILE.output_directory
     protected_paths = [
         registration_path,
         REPO_ROOT
@@ -633,12 +723,15 @@ def test_consumed_artifact_directory_recomputes_without_native_loading():
         path: hashlib.sha256(path.read_bytes()).hexdigest()
         for path in protected_paths
     }
-    registration = smoke.load_registration(registration_path)
+    registration = smoke.load_registration(
+        registration_path, profile=smoke.V1_PROFILE
+    )
 
     manifest = smoke.verify_artifact_directory(
         registration=registration,
         registration_sha256=smoke.sha256_file(registration_path),
         output_directory=output,
+        profile=smoke.V1_PROFILE,
     )
 
     after = {
@@ -648,6 +741,84 @@ def test_consumed_artifact_directory_recomputes_without_native_loading():
     assert manifest["verdict"] == "current_bridge_diagnostic_failed"
     assert before == after
     assert "sts_lightspeed_noncombat_adapter" not in sys.modules
+
+
+def test_committed_r2_preimplementation_is_canonical_and_exact():
+    path = REPO_ROOT / smoke.R2_PROFILE.preimplementation_path
+    payload = json.loads(path.read_text(encoding="utf-8"))
+
+    assert path.read_bytes() == _canonical_bytes(payload)
+    validated = smoke.validate_preimplementation_file(
+        path, repo_root=REPO_ROOT, profile=smoke.R2_PROFILE
+    )
+    assert validated["lineage"]["consumed_v1"]["failure"] == {
+        "category_counts": {
+            "card_reward": 0,
+            "event": 0,
+            "route": 0,
+            "shop": 0,
+        },
+        "reason": "diagnostic_execution_failed",
+        "retained_rows": 0,
+        "status": "failed",
+        "support_blocker_count": 0,
+        "terminal_row_count": 0,
+        "verdict": "current_bridge_diagnostic_failed",
+    }
+    assert validated["lineage"]["candidate_schema_fix"]["commit"] == (
+        "b0c7ccc0b88a7a847b1119a984b6378032d94b78"
+    )
+
+
+@pytest.mark.parametrize(
+    ("mutation", "reason"),
+    [
+        ("failure", "consumed_v1_failure_mismatch"),
+        ("fix_commit", "candidate_schema_fix_commit_mismatch"),
+        ("artifact_path", "preimplementation_lineage_path_mismatch"),
+        ("authority", "preimplementation_authority_mismatch"),
+    ],
+)
+def test_r2_preimplementation_rejects_lineage_drift(mutation, reason):
+    path = REPO_ROOT / smoke.R2_PROFILE.preimplementation_path
+    payload = json.loads(path.read_text(encoding="utf-8"))
+    if mutation == "failure":
+        payload["lineage"]["consumed_v1"]["failure"]["retained_rows"] = 1
+    elif mutation == "fix_commit":
+        payload["lineage"]["candidate_schema_fix"]["commit"] = "0" * 40
+    elif mutation == "artifact_path":
+        payload["lineage"]["consumed_v1"]["artifacts"][0]["path"] = (
+            "reports/other.json"
+        )
+    else:
+        payload["authority"]["training_authorized"] = True
+
+    with pytest.raises(smoke.DiagnosticBlocked) as exc_info:
+        smoke.validate_preimplementation(payload, profile=smoke.R2_PROFILE)
+
+    assert exc_info.value.reason == reason
+
+
+def test_r2_source_drift_fails_before_native_loading(tmp_path, monkeypatch):
+    registration = _registration(tmp_path, profile=smoke.R2_PROFILE)
+    contract_path = registration["identity"]["contract_file"]["path"]
+    registration["identity"]["contract_file"] = _binding(
+        REPO_ROOT / contract_path, display_path=contract_path
+    )
+    native_loads = []
+    monkeypatch.setattr(
+        smoke,
+        "load_native_module",
+        lambda *_args, **_kwargs: native_loads.append(True),
+    )
+
+    with pytest.raises(smoke.DiagnosticBlocked) as exc_info:
+        smoke.validate_registration_evidence(
+            registration, REPO_ROOT, profile=smoke.R2_PROFILE
+        )
+
+    assert exc_info.value.reason == "implementation_source_hash_mismatch"
+    assert native_loads == []
 
 
 @pytest.mark.parametrize(

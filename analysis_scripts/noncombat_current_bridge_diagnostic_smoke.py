@@ -11,6 +11,7 @@ import sys
 import time
 from collections import Counter
 from collections.abc import Callable, Mapping, Sequence
+from dataclasses import dataclass
 from pathlib import Path, PurePosixPath
 from typing import Any
 
@@ -74,6 +75,34 @@ EXPECTED_PREIMPLEMENTATION_SHA256 = (
 EXPECTED_PREIMPLEMENTATION_SIZE_BYTES = 6949
 EXPECTED_PLANNING_COMMIT = "2bb0d0e53074daad1bf01254cffaa23c4f24210b"
 
+R2_PREIMPLEMENTATION_SCHEMA_VERSION = (
+    "noncombat-current-bridge-diagnostic-smoke-preimplementation-v2"
+)
+R2_INPUT_SCHEMA_VERSION = "noncombat-current-bridge-diagnostic-smoke-input-v2"
+R2_EXECUTION_SCHEMA_VERSION = (
+    "noncombat-current-bridge-diagnostic-smoke-execution-v2"
+)
+R2_JOURNAL_SCHEMA_VERSION = (
+    "noncombat-current-bridge-diagnostic-smoke-journal-v2"
+)
+R2_CONFIGURATION_SCHEMA_VERSION = (
+    "noncombat-current-bridge-diagnostic-smoke-configuration-v2"
+)
+R2_METRICS_SCHEMA_VERSION = (
+    "noncombat-current-bridge-diagnostic-smoke-metrics-v2"
+)
+R2_TRAJECTORY_SCHEMA_VERSION = (
+    "noncombat-current-bridge-diagnostic-smoke-trajectories-v2"
+)
+R2_MANIFEST_SCHEMA_VERSION = (
+    "noncombat-current-bridge-diagnostic-smoke-manifest-v2"
+)
+R2_EXPECTED_PREIMPLEMENTATION_SHA256 = (
+    "aabbc0e007f2f44f05c1f529ce03ada57c715fe257237fa2c830a6f2035ed9c9"
+)
+R2_EXPECTED_PREIMPLEMENTATION_SIZE_BYTES = 5603
+R2_EXPECTED_PLANNING_COMMIT = "7a0fefcc120d325349c8c60e7560d8ecd790f5fd"
+
 PREIMPLEMENTATION_PATH = (
     "reports/noncombat_current_bridge_diagnostic_smoke_20260803_"
     "preimplementation.json"
@@ -83,6 +112,16 @@ DEFAULT_REGISTRATION_PATH = (
 )
 DEFAULT_OUTPUT_DIRECTORY = (
     "reports/noncombat_current_bridge_diagnostic_smoke_20260803"
+)
+R2_PREIMPLEMENTATION_PATH = (
+    "reports/noncombat_current_bridge_diagnostic_smoke_20260803_"
+    "r2_preimplementation.json"
+)
+R2_REGISTRATION_PATH = (
+    "reports/noncombat_current_bridge_diagnostic_smoke_20260803_r2_input.json"
+)
+R2_OUTPUT_DIRECTORY = (
+    "reports/noncombat_current_bridge_diagnostic_smoke_20260803_r2"
 )
 
 CANONICAL_ARTIFACT_NAMES = (
@@ -120,6 +159,69 @@ IMPLEMENTATION_SOURCE_FILES = tuple(
         )
     )
 )
+
+
+@dataclass(frozen=True)
+class DiagnosticProfile:
+    """Immutable publication identity for one diagnostic registration."""
+
+    name: str
+    input_schema_version: str
+    execution_schema_version: str
+    journal_schema_version: str
+    configuration_schema_version: str
+    metrics_schema_version: str
+    trajectory_schema_version: str
+    manifest_schema_version: str
+    preimplementation_schema_version: str
+    preimplementation_path: str
+    preimplementation_sha256: str
+    preimplementation_size_bytes: int
+    planning_commit: str
+    registration_path: str
+    output_directory: str
+    implementation_source_files: tuple[str, ...]
+
+
+V1_PROFILE = DiagnosticProfile(
+    name="v1-consumed",
+    input_schema_version=INPUT_SCHEMA_VERSION,
+    execution_schema_version=EXECUTION_SCHEMA_VERSION,
+    journal_schema_version=JOURNAL_SCHEMA_VERSION,
+    configuration_schema_version=CONFIGURATION_SCHEMA_VERSION,
+    metrics_schema_version=METRICS_SCHEMA_VERSION,
+    trajectory_schema_version=TRAJECTORY_SCHEMA_VERSION,
+    manifest_schema_version=MANIFEST_SCHEMA_VERSION,
+    preimplementation_schema_version=PREIMPLEMENTATION_SCHEMA_VERSION,
+    preimplementation_path=PREIMPLEMENTATION_PATH,
+    preimplementation_sha256=EXPECTED_PREIMPLEMENTATION_SHA256,
+    preimplementation_size_bytes=EXPECTED_PREIMPLEMENTATION_SIZE_BYTES,
+    planning_commit=EXPECTED_PLANNING_COMMIT,
+    registration_path=DEFAULT_REGISTRATION_PATH,
+    output_directory=DEFAULT_OUTPUT_DIRECTORY,
+    implementation_source_files=IMPLEMENTATION_SOURCE_FILES,
+)
+
+R2_PROFILE = DiagnosticProfile(
+    name="r2-successor",
+    input_schema_version=R2_INPUT_SCHEMA_VERSION,
+    execution_schema_version=R2_EXECUTION_SCHEMA_VERSION,
+    journal_schema_version=R2_JOURNAL_SCHEMA_VERSION,
+    configuration_schema_version=R2_CONFIGURATION_SCHEMA_VERSION,
+    metrics_schema_version=R2_METRICS_SCHEMA_VERSION,
+    trajectory_schema_version=R2_TRAJECTORY_SCHEMA_VERSION,
+    manifest_schema_version=R2_MANIFEST_SCHEMA_VERSION,
+    preimplementation_schema_version=R2_PREIMPLEMENTATION_SCHEMA_VERSION,
+    preimplementation_path=R2_PREIMPLEMENTATION_PATH,
+    preimplementation_sha256=R2_EXPECTED_PREIMPLEMENTATION_SHA256,
+    preimplementation_size_bytes=R2_EXPECTED_PREIMPLEMENTATION_SIZE_BYTES,
+    planning_commit=R2_EXPECTED_PLANNING_COMMIT,
+    registration_path=R2_REGISTRATION_PATH,
+    output_directory=R2_OUTPUT_DIRECTORY,
+    implementation_source_files=IMPLEMENTATION_SOURCE_FILES,
+)
+
+SUPPORTED_PROFILES = (V1_PROFILE, R2_PROFILE)
 
 EXPECTED_TRACKED_EVIDENCE_IDS = (
     "baseline_floor_closeout",
@@ -186,6 +288,12 @@ class DiagnosticBlocked(RuntimeError):
         self.detail = detail
         message = reason if detail is None else f"{reason}: {detail}"
         super().__init__(message)
+
+
+def _coerce_profile(profile: DiagnosticProfile) -> DiagnosticProfile:
+    if profile not in SUPPORTED_PROFILES:
+        raise DiagnosticBlocked("diagnostic_profile_unsupported")
+    return profile
 
 
 def _mapping(value: object, label: str) -> dict[str, Any]:
@@ -282,7 +390,201 @@ def _validate_provenance(value: object) -> dict[str, Any]:
     return provenance
 
 
-def validate_preimplementation(value: object) -> dict[str, Any]:
+def _validate_seed_rationale(value: object) -> list[dict[str, Any]]:
+    rationale = _sequence(value, "seed_rationale")
+    if len(rationale) != len(FIXED_SEEDS):
+        raise DiagnosticBlocked("preimplementation_seed_rationale_mismatch")
+    normalized = []
+    for index, raw in enumerate(rationale):
+        row = _mapping(raw, f"seed_rationale[{index}]")
+        if (
+            set(row) != {"boundary", "seed"}
+            or row["seed"] != FIXED_SEEDS[index]
+            or not isinstance(row["boundary"], str)
+            or not row["boundary"]
+        ):
+            raise DiagnosticBlocked("preimplementation_seed_rationale_mismatch")
+        normalized.append(row)
+    return normalized
+
+
+def _validate_relative_binding_path(
+    value: object, *, label: str, expected_path: str
+) -> dict[str, Any]:
+    binding = _validate_binding(value, label, repository_relative=True)
+    if binding["path"] != expected_path:
+        raise DiagnosticBlocked("preimplementation_lineage_path_mismatch", label)
+    return binding
+
+
+def _validate_r2_preimplementation(value: object) -> dict[str, Any]:
+    baseline = _mapping(value, "preimplementation")
+    _require_keys(
+        baseline,
+        {
+            "authority",
+            "cohort",
+            "lineage",
+            "module",
+            "planning_commit",
+            "schema_version",
+            "seed_rationale",
+        },
+        "preimplementation",
+    )
+    if baseline["schema_version"] != R2_PROFILE.preimplementation_schema_version:
+        raise DiagnosticBlocked("preimplementation_schema_mismatch")
+    if not _canonical_equal(baseline["authority"], ALL_FALSE_AUTHORITY):
+        raise DiagnosticBlocked("preimplementation_authority_mismatch")
+    if baseline["planning_commit"] != R2_PROFILE.planning_commit:
+        raise DiagnosticBlocked("preimplementation_planning_commit_mismatch")
+    expected_cohort = {
+        "max_decisions_per_replay": MAX_DECISIONS_PER_REPLAY,
+        "max_wall_seconds": MAX_WALL_SECONDS,
+        "replay_count": REPLAY_COUNT,
+        "seeds": list(FIXED_SEEDS),
+    }
+    if not _canonical_equal(baseline["cohort"], expected_cohort):
+        raise DiagnosticBlocked("preimplementation_cohort_mismatch")
+
+    lineage = _mapping(baseline["lineage"], "lineage")
+    _require_keys(
+        lineage,
+        {"anti_retry_decision", "candidate_schema_fix", "consumed_v1"},
+        "lineage",
+    )
+    lineage["anti_retry_decision"] = _validate_relative_binding_path(
+        lineage["anti_retry_decision"],
+        label="anti_retry_decision",
+        expected_path=(
+            "reports/noncombat_current_bridge_diagnostic_"
+            "successor_eligibility_20260803.md"
+        ),
+    )
+
+    source_fix = _mapping(lineage["candidate_schema_fix"], "candidate_schema_fix")
+    _require_keys(source_fix, {"archive_files", "commit"}, "candidate_schema_fix")
+    if source_fix["commit"] != "b0c7ccc0b88a7a847b1119a984b6378032d94b78":
+        raise DiagnosticBlocked("candidate_schema_fix_commit_mismatch")
+    expected_fix_paths = (
+        "openspec/changes/archive/2026-08-03-fix-current-bridge-"
+        "diagnostic-candidate-schema/design.md",
+        "openspec/changes/archive/2026-08-03-fix-current-bridge-"
+        "diagnostic-candidate-schema/proposal.md",
+        "openspec/changes/archive/2026-08-03-fix-current-bridge-"
+        "diagnostic-candidate-schema/specs/"
+        "noncombat-current-bridge-diagnostic-smoke/spec.md",
+        "openspec/changes/archive/2026-08-03-fix-current-bridge-"
+        "diagnostic-candidate-schema/tasks.md",
+    )
+    fix_files = _sequence(source_fix["archive_files"], "source fix archive files")
+    if len(fix_files) != len(expected_fix_paths):
+        raise DiagnosticBlocked("candidate_schema_fix_inventory_mismatch")
+    source_fix["archive_files"] = [
+        _validate_relative_binding_path(
+            row,
+            label=f"candidate_schema_fix.archive_files[{index}]",
+            expected_path=expected_path,
+        )
+        for index, (row, expected_path) in enumerate(
+            zip(fix_files, expected_fix_paths, strict=True)
+        )
+    ]
+    lineage["candidate_schema_fix"] = source_fix
+
+    consumed = _mapping(lineage["consumed_v1"], "consumed_v1")
+    _require_keys(
+        consumed,
+        {
+            "artifacts",
+            "closeout",
+            "failure",
+            "preimplementation",
+            "preregistration_commit",
+            "registration",
+        },
+        "consumed_v1",
+    )
+    if (
+        consumed["preregistration_commit"]
+        != "b3da176bc6dab63d3e245b9d4159190b7077eab8"
+    ):
+        raise DiagnosticBlocked("consumed_v1_commit_mismatch")
+    consumed["preimplementation"] = _validate_relative_binding_path(
+        consumed["preimplementation"],
+        label="consumed_v1.preimplementation",
+        expected_path=V1_PROFILE.preimplementation_path,
+    )
+    consumed["registration"] = _validate_relative_binding_path(
+        consumed["registration"],
+        label="consumed_v1.registration",
+        expected_path=V1_PROFILE.registration_path,
+    )
+    consumed["closeout"] = _validate_relative_binding_path(
+        consumed["closeout"],
+        label="consumed_v1.closeout",
+        expected_path=(
+            "reports/noncombat_current_bridge_diagnostic_smoke_"
+            "20260803_closeout.md"
+        ),
+    )
+    expected_artifact_paths = tuple(
+        f"{V1_PROFILE.output_directory}/{name}"
+        for name in CANONICAL_ARTIFACT_NAMES
+    )
+    artifacts = _sequence(consumed["artifacts"], "consumed_v1.artifacts")
+    if len(artifacts) != len(expected_artifact_paths):
+        raise DiagnosticBlocked("consumed_v1_artifact_inventory_mismatch")
+    consumed["artifacts"] = [
+        _validate_relative_binding_path(
+            row,
+            label=f"consumed_v1.artifacts[{index}]",
+            expected_path=expected_path,
+        )
+        for index, (row, expected_path) in enumerate(
+            zip(artifacts, expected_artifact_paths, strict=True)
+        )
+    ]
+    expected_failure = {
+        "category_counts": {category: 0 for category in TARGET_CATEGORIES},
+        "reason": "diagnostic_execution_failed",
+        "retained_rows": 0,
+        "status": "failed",
+        "support_blocker_count": 0,
+        "terminal_row_count": 0,
+        "verdict": "current_bridge_diagnostic_failed",
+    }
+    if not _canonical_equal(consumed["failure"], expected_failure):
+        raise DiagnosticBlocked("consumed_v1_failure_mismatch")
+    lineage["consumed_v1"] = consumed
+
+    module = _validate_relative_binding_path(
+        baseline["module"],
+        label="module",
+        expected_path=(
+            ".sts_lightspeed_adapter_v3_shop_support_build/"
+            "sts_lightspeed_noncombat_adapter.cp310-win_amd64.pyd"
+        ),
+    )
+    if (
+        module["sha256"] != EXPECTED_MODULE_SHA256
+        or module["size_bytes"] != EXPECTED_MODULE_SIZE_BYTES
+    ):
+        raise DiagnosticBlocked("preimplementation_module_inventory_mismatch")
+    baseline["lineage"] = lineage
+    baseline["module"] = module
+    baseline["seed_rationale"] = _validate_seed_rationale(
+        baseline["seed_rationale"]
+    )
+    return baseline
+
+
+def validate_preimplementation(
+    value: object, *, profile: DiagnosticProfile = V1_PROFILE
+) -> dict[str, Any]:
+    profile = _coerce_profile(profile)
+    if profile == R2_PROFILE:
+        return _validate_r2_preimplementation(value)
     baseline = _mapping(value, "preimplementation")
     _require_keys(
         baseline,
@@ -297,11 +599,11 @@ def validate_preimplementation(value: object) -> dict[str, Any]:
         },
         "preimplementation",
     )
-    if baseline["schema_version"] != PREIMPLEMENTATION_SCHEMA_VERSION:
+    if baseline["schema_version"] != profile.preimplementation_schema_version:
         raise DiagnosticBlocked("preimplementation_schema_mismatch")
     if not _canonical_equal(baseline["authority"], ALL_FALSE_AUTHORITY):
         raise DiagnosticBlocked("preimplementation_authority_mismatch")
-    if baseline["planning_commit"] != EXPECTED_PLANNING_COMMIT:
+    if baseline["planning_commit"] != profile.planning_commit:
         raise DiagnosticBlocked("preimplementation_planning_commit_mismatch")
     expected_cohort = {
         "max_decisions_per_replay": MAX_DECISIONS_PER_REPLAY,
@@ -337,26 +639,19 @@ def validate_preimplementation(value: object) -> dict[str, Any]:
     if not _canonical_equal(modules, list(EXPECTED_MODULE_EVIDENCE)):
         raise DiagnosticBlocked("preimplementation_module_inventory_mismatch")
 
-    rationale = _sequence(baseline["seed_rationale"], "seed_rationale")
-    if len(rationale) != len(FIXED_SEEDS):
-        raise DiagnosticBlocked("preimplementation_seed_rationale_mismatch")
-    normalized_rationale = []
-    for index, raw in enumerate(rationale):
-        row = _mapping(raw, f"seed_rationale[{index}]")
-        if (
-            set(row) != {"boundary", "seed"}
-            or row["seed"] != FIXED_SEEDS[index]
-            or not isinstance(row["boundary"], str)
-            or not row["boundary"]
-        ):
-            raise DiagnosticBlocked("preimplementation_seed_rationale_mismatch")
-        normalized_rationale.append(row)
     baseline["tracked_evidence"] = normalized_tracked
-    baseline["seed_rationale"] = normalized_rationale
+    baseline["seed_rationale"] = _validate_seed_rationale(
+        baseline["seed_rationale"]
+    )
     return baseline
 
 
-def build_registration(*, identity: Mapping[str, Any]) -> dict[str, Any]:
+def build_registration(
+    *,
+    identity: Mapping[str, Any],
+    profile: DiagnosticProfile = V1_PROFILE,
+) -> dict[str, Any]:
+    profile = _coerce_profile(profile)
     registration = {
         "authority": copy.deepcopy(ALL_FALSE_AUTHORITY),
         "cohort": {"replay_count": REPLAY_COUNT, "seeds": list(FIXED_SEEDS)},
@@ -368,14 +663,17 @@ def build_registration(*, identity: Mapping[str, Any]) -> dict[str, Any]:
         },
         "output": {
             "artifact_names": list(CANONICAL_ARTIFACT_NAMES),
-            "directory": DEFAULT_OUTPUT_DIRECTORY,
+            "directory": profile.output_directory,
         },
-        "schema_version": INPUT_SCHEMA_VERSION,
+        "schema_version": profile.input_schema_version,
     }
-    return validate_registration(registration)
+    return validate_registration(registration, profile=profile)
 
 
-def validate_registration(value: object) -> dict[str, Any]:
+def validate_registration(
+    value: object, *, profile: DiagnosticProfile = V1_PROFILE
+) -> dict[str, Any]:
+    profile = _coerce_profile(profile)
     registration = _mapping(value, "registration")
     _require_keys(
         registration,
@@ -390,7 +688,7 @@ def validate_registration(value: object) -> dict[str, Any]:
         },
         "registration",
     )
-    if registration["schema_version"] != INPUT_SCHEMA_VERSION:
+    if registration["schema_version"] != profile.input_schema_version:
         raise DiagnosticBlocked("registration_schema_mismatch")
     if not _canonical_equal(registration["authority"], ALL_FALSE_AUTHORITY):
         raise DiagnosticBlocked("authority_must_be_all_false")
@@ -413,7 +711,7 @@ def validate_registration(value: object) -> dict[str, Any]:
         registration["output"],
         {
             "artifact_names": list(CANONICAL_ARTIFACT_NAMES),
-            "directory": DEFAULT_OUTPUT_DIRECTORY,
+            "directory": profile.output_directory,
         },
     ):
         raise DiagnosticBlocked("registration_output_mismatch")
@@ -461,7 +759,8 @@ def validate_registration(value: object) -> dict[str, Any]:
     )
     if (
         not _is_hex(implementation["commit"], 40)
-        or implementation["source_files"] != list(IMPLEMENTATION_SOURCE_FILES)
+        or implementation["source_files"]
+        != list(profile.implementation_source_files)
         or not _is_hex(implementation["source_sha256"], 64)
     ):
         raise DiagnosticBlocked("implementation_identity_mismatch")
@@ -485,9 +784,9 @@ def validate_registration(value: object) -> dict[str, Any]:
     if not _canonical_equal(
         identity["preimplementation"],
         {
-            "path": PREIMPLEMENTATION_PATH,
-            "sha256": EXPECTED_PREIMPLEMENTATION_SHA256,
-            "size_bytes": EXPECTED_PREIMPLEMENTATION_SIZE_BYTES,
+            "path": profile.preimplementation_path,
+            "sha256": profile.preimplementation_sha256,
+            "size_bytes": profile.preimplementation_size_bytes,
         },
     ):
         raise DiagnosticBlocked("preimplementation_binding_mismatch")
@@ -529,8 +828,12 @@ def _load_json(path: Path | str, label: str) -> dict[str, Any]:
     return _mapping(value, label)
 
 
-def load_registration(path: Path | str) -> dict[str, Any]:
-    return validate_registration(_load_json(path, "registration"))
+def load_registration(
+    path: Path | str, *, profile: DiagnosticProfile = V1_PROFILE
+) -> dict[str, Any]:
+    return validate_registration(
+        _load_json(path, "registration"), profile=profile
+    )
 
 
 def _verify_binding(
@@ -551,33 +854,105 @@ def _verify_binding(
 
 
 def validate_preimplementation_file(
-    path: Path | str, *, repo_root: Path | str
+    path: Path | str,
+    *,
+    repo_root: Path | str,
+    profile: DiagnosticProfile = V1_PROFILE,
 ) -> dict[str, Any]:
+    profile = _coerce_profile(profile)
     root = Path(repo_root).resolve()
     source = Path(path).resolve()
-    expected = (root / PREIMPLEMENTATION_PATH).resolve()
+    expected = (root / profile.preimplementation_path).resolve()
     if source != expected:
         raise DiagnosticBlocked("preimplementation_path_mismatch")
     raw = source.read_bytes()
     if (
-        len(raw) != EXPECTED_PREIMPLEMENTATION_SIZE_BYTES
-        or sha256_bytes(raw) != EXPECTED_PREIMPLEMENTATION_SHA256
+        len(raw) != profile.preimplementation_size_bytes
+        or sha256_bytes(raw) != profile.preimplementation_sha256
     ):
         raise DiagnosticBlocked("preimplementation_file_identity_mismatch")
-    baseline = validate_preimplementation(_load_json(source, "preimplementation"))
+    baseline = validate_preimplementation(
+        _load_json(source, "preimplementation"), profile=profile
+    )
     if raw != canonical_json_bytes(baseline):
         raise DiagnosticBlocked("preimplementation_not_canonical")
-    for row in baseline["tracked_evidence"]:
+    if profile == V1_PROFILE:
+        for row in baseline["tracked_evidence"]:
+            _verify_binding(repo_root=root, binding=row, repository_relative=True)
+        for row in baseline["module_evidence"]:
+            _verify_binding(repo_root=root, binding=row, repository_relative=True)
+        return baseline
+
+    lineage = baseline["lineage"]
+    consumed = lineage["consumed_v1"]
+    bindings = [
+        lineage["anti_retry_decision"],
+        *lineage["candidate_schema_fix"]["archive_files"],
+        consumed["preimplementation"],
+        consumed["registration"],
+        consumed["closeout"],
+        *consumed["artifacts"],
+        baseline["module"],
+    ]
+    for row in bindings:
         _verify_binding(repo_root=root, binding=row, repository_relative=True)
-    for row in baseline["module_evidence"]:
-        _verify_binding(repo_root=root, binding=row, repository_relative=True)
+    validate_preimplementation_file(
+        root / consumed["preimplementation"]["path"],
+        repo_root=root,
+        profile=V1_PROFILE,
+    )
+    v1_registration_path = root / consumed["registration"]["path"]
+    v1_registration = load_registration(
+        v1_registration_path, profile=V1_PROFILE
+    )
+    manifest = verify_artifact_directory(
+        registration=v1_registration,
+        registration_sha256=sha256_file(v1_registration_path),
+        output_directory=root / V1_PROFILE.output_directory,
+        profile=V1_PROFILE,
+    )
+    v1_result = _mapping(
+        _load_json(
+            root / V1_PROFILE.output_directory / "trajectory_rows.json",
+            "consumed v1 trajectories",
+        ).get("result"),
+        "consumed v1 result",
+    )
+    actual_failure = {
+        "category_counts": copy.deepcopy(v1_result.get("category_counts")),
+        "reason": v1_result.get("reason"),
+        "retained_rows": len(_sequence(v1_result.get("rows"), "consumed rows")),
+        "status": v1_result.get("status"),
+        "support_blocker_count": v1_result.get("support_blocker_count"),
+        "terminal_row_count": v1_result.get("terminal_row_count"),
+        "verdict": v1_result.get("verdict"),
+    }
+    if (
+        manifest["verdict"] != consumed["failure"]["verdict"]
+        or not _canonical_equal(actual_failure, consumed["failure"])
+    ):
+        raise DiagnosticBlocked("consumed_v1_failure_mismatch")
+    fix_commit = lineage["candidate_schema_fix"]["commit"]
+    for row in lineage["candidate_schema_fix"]["archive_files"]:
+        committed = _git_bytes(root, "show", f"{fix_commit}:{row['path']}")
+        if (
+            len(committed) != row["size_bytes"]
+            or sha256_bytes(committed) != row["sha256"]
+        ):
+            raise DiagnosticBlocked("candidate_schema_fix_commit_mismatch")
     return baseline
 
 
 def validate_registration_evidence(
-    registration: Mapping[str, Any], repo_root: Path | str
+    registration: Mapping[str, Any],
+    repo_root: Path | str,
+    *,
+    profile: DiagnosticProfile = V1_PROFILE,
 ) -> MetadataCatalog:
-    normalized = validate_registration(copy.deepcopy(registration))
+    profile = _coerce_profile(profile)
+    normalized = validate_registration(
+        copy.deepcopy(registration), profile=profile
+    )
     root = Path(repo_root).resolve()
     identity = normalized["identity"]
     preimplementation_path = _verify_binding(
@@ -585,7 +960,9 @@ def validate_registration_evidence(
         binding=identity["preimplementation"],
         repository_relative=True,
     )
-    validate_preimplementation_file(preimplementation_path, repo_root=root)
+    validate_preimplementation_file(
+        preimplementation_path, repo_root=root, profile=profile
+    )
     contract_path = _verify_binding(
         repo_root=root,
         binding=identity["contract_file"],
@@ -664,14 +1041,18 @@ def _assert_clean_pushed_head(repo_root: Path) -> str:
 
 
 def assert_pushed_registration(
-    *, registration_path: Path | str, repo_root: Path | str
+    *,
+    registration_path: Path | str,
+    repo_root: Path | str,
+    profile: DiagnosticProfile = V1_PROFILE,
 ) -> dict[str, Any]:
+    profile = _coerce_profile(profile)
     root = Path(repo_root).resolve()
     path = Path(registration_path).resolve()
-    expected = (root / DEFAULT_REGISTRATION_PATH).resolve()
+    expected = (root / profile.registration_path).resolve()
     if path != expected or not path.is_file():
         raise DiagnosticBlocked("registration_path_mismatch")
-    registration = load_registration(path)
+    registration = load_registration(path, profile=profile)
     if (root / registration["output"]["directory"]).exists():
         raise DiagnosticBlocked("output_directory_already_exists")
     head = _assert_clean_pushed_head(root)
@@ -972,8 +1353,13 @@ def _counts_for_rows(rows: Sequence[Mapping[str, Any]]) -> dict[str, int]:
 
 
 def _failed_result(
-    *, reason: str, detail: object | None, rows: list[dict[str, Any]]
+    *,
+    reason: str,
+    detail: object | None,
+    rows: list[dict[str, Any]],
+    profile: DiagnosticProfile = V1_PROFILE,
 ) -> dict[str, Any]:
+    profile = _coerce_profile(profile)
     terminal_count = sum(row["disposition"] == "terminal" for row in rows)
     support_count = sum(
         row["disposition"] == "declared_support_blocked" for row in rows
@@ -984,7 +1370,7 @@ def _failed_result(
         "detail": _preserved_detail(detail),
         "reason": reason,
         "rows": rows,
-        "schema_version": EXECUTION_SCHEMA_VERSION,
+        "schema_version": profile.execution_schema_version,
         "seeds": list(FIXED_SEEDS),
         "status": "failed",
         "support_blocker_count": support_count,
@@ -999,8 +1385,12 @@ def run_diagnostic(
     environment_factory: Callable[[int], Any],
     session_factory: Callable[[], Any],
     monotonic: Callable[[], float] = time.monotonic,
+    profile: DiagnosticProfile = V1_PROFILE,
 ) -> dict[str, Any]:
-    normalized = validate_registration(copy.deepcopy(registration))
+    profile = _coerce_profile(profile)
+    normalized = validate_registration(
+        copy.deepcopy(registration), profile=profile
+    )
     deadline = monotonic() + normalized["limits"]["max_wall_seconds"]
     rows: list[dict[str, Any]] = []
     try:
@@ -1059,7 +1449,7 @@ def run_diagnostic(
                 "detail": None,
                 "reason": None,
                 "rows": rows,
-                "schema_version": EXECUTION_SCHEMA_VERSION,
+                "schema_version": profile.execution_schema_version,
                 "seeds": list(FIXED_SEEDS),
                 "status": "support_limited",
                 "support_blocker_count": support_count,
@@ -1074,6 +1464,7 @@ def run_diagnostic(
                 reason="aggregate_category_coverage_missing",
                 detail=missing,
                 rows=rows,
+                profile=profile,
             )
         return {
             "authority": copy.deepcopy(ALL_FALSE_AUTHORITY),
@@ -1081,7 +1472,7 @@ def run_diagnostic(
             "detail": None,
             "reason": None,
             "rows": rows,
-            "schema_version": EXECUTION_SCHEMA_VERSION,
+            "schema_version": profile.execution_schema_version,
             "seeds": list(FIXED_SEEDS),
             "status": "passed",
             "support_blocker_count": support_count,
@@ -1091,12 +1482,18 @@ def run_diagnostic(
     except KeyboardInterrupt:
         raise
     except DiagnosticBlocked as exc:
-        return _failed_result(reason=exc.reason, detail=exc.detail, rows=rows)
+        return _failed_result(
+            reason=exc.reason,
+            detail=exc.detail,
+            rows=rows,
+            profile=profile,
+        )
     except Exception as exc:
         return _failed_result(
             reason="diagnostic_execution_failed",
             detail={"message": str(exc), "type": type(exc).__name__},
             rows=rows,
+            profile=profile,
         )
 
 
@@ -1293,9 +1690,13 @@ def _validate_result_row(
 
 
 def _validate_execution_result(
-    value: object, registration: Mapping[str, Any]
+    value: object,
+    registration: Mapping[str, Any],
+    *,
+    profile: DiagnosticProfile = V1_PROFILE,
 ) -> dict[str, Any]:
-    validate_registration(copy.deepcopy(registration))
+    profile = _coerce_profile(profile)
+    validate_registration(copy.deepcopy(registration), profile=profile)
     result = _mapping(value, "execution result")
     _require_keys(
         result,
@@ -1314,7 +1715,7 @@ def _validate_execution_result(
         },
         "execution result",
     )
-    if result["schema_version"] != EXECUTION_SCHEMA_VERSION:
+    if result["schema_version"] != profile.execution_schema_version:
         raise DiagnosticBlocked("execution_schema_mismatch")
     if not _canonical_equal(result["authority"], ALL_FALSE_AUTHORITY):
         raise DiagnosticBlocked("authority_must_be_all_false")
@@ -1408,15 +1809,19 @@ def _write_atomic(path: Path, payload: bytes) -> None:
 
 
 def _started_journal(
-    *, registration_sha256: str, preregistration_commit: str
+    *,
+    registration_sha256: str,
+    preregistration_commit: str,
+    profile: DiagnosticProfile = V1_PROFILE,
 ) -> dict[str, Any]:
+    profile = _coerce_profile(profile)
     return {
         "attempted_seeds": list(FIXED_SEEDS),
         "authority": copy.deepcopy(ALL_FALSE_AUTHORITY),
         "preregistration_commit": preregistration_commit,
         "registration_sha256": registration_sha256,
         "result_sha256": None,
-        "schema_version": JOURNAL_SCHEMA_VERSION,
+        "schema_version": profile.journal_schema_version,
         "status": "started",
         "verdict": None,
     }
@@ -1464,14 +1869,21 @@ def _deterministic_payloads(
     registration_sha256: str,
     preregistration_commit: str,
     result: Mapping[str, Any],
+    profile: DiagnosticProfile = V1_PROFILE,
 ) -> dict[str, bytes]:
-    normalized_registration = validate_registration(copy.deepcopy(registration))
-    normalized_result = _validate_execution_result(result, normalized_registration)
+    profile = _coerce_profile(profile)
+    normalized_registration = validate_registration(
+        copy.deepcopy(registration), profile=profile
+    )
+    normalized_result = _validate_execution_result(
+        result, normalized_registration, profile=profile
+    )
     result_sha256 = sha256_bytes(canonical_json_bytes(normalized_result))
     journal = {
         **_started_journal(
             registration_sha256=registration_sha256,
             preregistration_commit=preregistration_commit,
+            profile=profile,
         ),
         "result_sha256": result_sha256,
         "status": "finalized",
@@ -1482,14 +1894,14 @@ def _deterministic_payloads(
         "preregistration_commit": preregistration_commit,
         "registration": normalized_registration,
         "registration_sha256": registration_sha256,
-        "schema_version": CONFIGURATION_SCHEMA_VERSION,
+        "schema_version": profile.configuration_schema_version,
     }
     metrics = {
         "authority": copy.deepcopy(ALL_FALSE_AUTHORITY),
         "category_counts": copy.deepcopy(normalized_result["category_counts"]),
         "reason": copy.deepcopy(normalized_result["reason"]),
         "registration_sha256": registration_sha256,
-        "schema_version": METRICS_SCHEMA_VERSION,
+        "schema_version": profile.metrics_schema_version,
         "seeds": list(FIXED_SEEDS),
         "status": normalized_result["status"],
         "support_blocker_count": normalized_result["support_blocker_count"],
@@ -1498,7 +1910,7 @@ def _deterministic_payloads(
     }
     trajectories = {
         "result": normalized_result,
-        "schema_version": TRAJECTORY_SCHEMA_VERSION,
+        "schema_version": profile.trajectory_schema_version,
     }
     return {
         "configuration.json": canonical_json_bytes(configuration),
@@ -1514,8 +1926,13 @@ def _artifact_binding(name: str, payload: bytes) -> dict[str, Any]:
 
 
 def _build_manifest(
-    *, registration_sha256: str, result: Mapping[str, Any], payloads: Mapping[str, bytes]
+    *,
+    registration_sha256: str,
+    result: Mapping[str, Any],
+    payloads: Mapping[str, bytes],
+    profile: DiagnosticProfile = V1_PROFILE,
 ) -> bytes:
+    profile = _coerce_profile(profile)
     manifest = {
         "artifact_bindings": {
             name: _artifact_binding(name, payload)
@@ -1523,7 +1940,7 @@ def _build_manifest(
         },
         "authority": copy.deepcopy(ALL_FALSE_AUTHORITY),
         "registration_sha256": registration_sha256,
-        "schema_version": MANIFEST_SCHEMA_VERSION,
+        "schema_version": profile.manifest_schema_version,
         "status": result["status"],
         "verdict": result["verdict"],
     }
@@ -1539,8 +1956,12 @@ def consume_and_run(
     environment_factory: Callable[[int], Any],
     session_factory: Callable[[], Any],
     monotonic: Callable[[], float] = time.monotonic,
+    profile: DiagnosticProfile = V1_PROFILE,
 ) -> dict[str, Any]:
-    normalized = validate_registration(copy.deepcopy(registration))
+    profile = _coerce_profile(profile)
+    normalized = validate_registration(
+        copy.deepcopy(registration), profile=profile
+    )
     if not _is_hex(registration_sha256, 64) or not _is_hex(
         preregistration_commit, 40
     ):
@@ -1556,6 +1977,7 @@ def consume_and_run(
     started = _started_journal(
         registration_sha256=registration_sha256,
         preregistration_commit=preregistration_commit,
+        profile=profile,
     )
     _write_atomic(output / "execution_journal.json", canonical_json_bytes(started))
     result = run_diagnostic(
@@ -1563,12 +1985,14 @@ def consume_and_run(
         environment_factory=environment_factory,
         session_factory=session_factory,
         monotonic=monotonic,
+        profile=profile,
     )
     payloads = _deterministic_payloads(
         registration=normalized,
         registration_sha256=registration_sha256,
         preregistration_commit=preregistration_commit,
         result=result,
+        profile=profile,
     )
     for name, payload in payloads.items():
         _write_atomic(output / name, payload)
@@ -1576,6 +2000,7 @@ def consume_and_run(
         registration_sha256=registration_sha256,
         result=result,
         payloads=payloads,
+        profile=profile,
     )
     _write_atomic(output / "artifact_manifest.json", manifest)
     return result
@@ -1586,8 +2011,12 @@ def verify_artifact_directory(
     registration: Mapping[str, Any],
     registration_sha256: str,
     output_directory: Path | str,
+    profile: DiagnosticProfile = V1_PROFILE,
 ) -> dict[str, Any]:
-    normalized = validate_registration(copy.deepcopy(registration))
+    profile = _coerce_profile(profile)
+    normalized = validate_registration(
+        copy.deepcopy(registration), profile=profile
+    )
     output = Path(output_directory).resolve()
     if not output.is_dir():
         raise DiagnosticBlocked("artifact_directory_missing", str(output))
@@ -1599,7 +2028,8 @@ def verify_artifact_directory(
         )
     configuration = _load_json(output / "configuration.json", "configuration")
     if (
-        configuration.get("schema_version") != CONFIGURATION_SCHEMA_VERSION
+        configuration.get("schema_version")
+        != profile.configuration_schema_version
         or not _canonical_equal(configuration.get("registration"), normalized)
         or configuration.get("registration_sha256") != registration_sha256
         or not _canonical_equal(
@@ -1609,14 +2039,17 @@ def verify_artifact_directory(
     ):
         raise DiagnosticBlocked("configuration_invalid")
     trajectories = _load_json(output / "trajectory_rows.json", "trajectories")
-    if trajectories.get("schema_version") != TRAJECTORY_SCHEMA_VERSION:
+    if trajectories.get("schema_version") != profile.trajectory_schema_version:
         raise DiagnosticBlocked("trajectory_artifact_schema_mismatch")
-    result = _validate_execution_result(trajectories.get("result"), normalized)
+    result = _validate_execution_result(
+        trajectories.get("result"), normalized, profile=profile
+    )
     payloads = _deterministic_payloads(
         registration=normalized,
         registration_sha256=registration_sha256,
         preregistration_commit=configuration["preregistration_commit"],
         result=result,
+        profile=profile,
     )
     for name, expected in payloads.items():
         if (output / name).read_bytes() != expected:
@@ -1625,6 +2058,7 @@ def verify_artifact_directory(
         registration_sha256=registration_sha256,
         result=result,
         payloads=payloads,
+        profile=profile,
     )
     if (output / "artifact_manifest.json").read_bytes() != expected_manifest:
         raise DiagnosticBlocked("artifact_recomputation_mismatch", "artifact_manifest.json")
@@ -1638,17 +2072,23 @@ def prepare_registration(
     simulator_repo: Path | str,
     metadata_path: Path | str,
     dll_directories: Sequence[Path | str] = (),
+    profile: DiagnosticProfile = V1_PROFILE,
 ) -> dict[str, Any]:
+    profile = _coerce_profile(profile)
     root = Path(repo_root).resolve()
     native_path = Path(module_path).resolve()
     simulator_path = Path(simulator_repo).resolve()
     metadata = Path(metadata_path).resolve()
     implementation_commit = _assert_clean_pushed_head(root)
-    registration_path = root / DEFAULT_REGISTRATION_PATH
-    output_path = root / DEFAULT_OUTPUT_DIRECTORY
+    registration_path = root / profile.registration_path
+    output_path = root / profile.output_directory
     if registration_path.exists() or output_path.exists():
         raise DiagnosticBlocked("managed_evidence_already_exists")
-    validate_preimplementation_file(root / PREIMPLEMENTATION_PATH, repo_root=root)
+    validate_preimplementation_file(
+        root / profile.preimplementation_path,
+        repo_root=root,
+        profile=profile,
+    )
     if (
         not native_path.is_file()
         or native_path.stat().st_size != EXPECTED_MODULE_SIZE_BYTES
@@ -1680,13 +2120,16 @@ def prepare_registration(
         "contract_file": _file_binding(root / contract_relative, contract_relative),
         "implementation": {
             "commit": implementation_commit,
-            "source_files": list(IMPLEMENTATION_SOURCE_FILES),
-            "source_sha256": hash_bound_files(root, IMPLEMENTATION_SOURCE_FILES),
+            "source_files": list(profile.implementation_source_files),
+            "source_sha256": hash_bound_files(
+                root, profile.implementation_source_files
+            ),
         },
         "metadata": _file_binding(metadata, str(metadata)),
         "module_path": str(native_path),
         "preimplementation": _file_binding(
-            root / PREIMPLEMENTATION_PATH, PREIMPLEMENTATION_PATH
+            root / profile.preimplementation_path,
+            profile.preimplementation_path,
         ),
         "runtime": {
             "executable": str(Path(sys.executable).resolve()),
@@ -1694,27 +2137,33 @@ def prepare_registration(
         },
         "simulator_path": str(simulator_path),
     }
-    registration = build_registration(identity=identity)
-    validate_registration_evidence(registration, root)
+    registration = build_registration(identity=identity, profile=profile)
+    validate_registration_evidence(registration, root, profile=profile)
     _write_atomic(registration_path, canonical_json_bytes(registration))
     return {
         "implementation_commit": implementation_commit,
-        "registration_path": DEFAULT_REGISTRATION_PATH,
+        "registration_path": profile.registration_path,
         "registration_sha256": sha256_file(registration_path),
         "seeds": list(FIXED_SEEDS),
     }
 
 
 def execute_registered(
-    *, repo_root: Path | str, dll_directories: Sequence[Path | str] = ()
+    *,
+    repo_root: Path | str,
+    dll_directories: Sequence[Path | str] = (),
+    profile: DiagnosticProfile = V1_PROFILE,
 ) -> dict[str, Any]:
+    profile = _coerce_profile(profile)
     root = Path(repo_root).resolve()
-    registration_path = root / DEFAULT_REGISTRATION_PATH
+    registration_path = root / profile.registration_path
     pushed = assert_pushed_registration(
-        registration_path=registration_path, repo_root=root
+        registration_path=registration_path, repo_root=root, profile=profile
     )
-    registration = load_registration(registration_path)
-    metadata = validate_registration_evidence(registration, root)
+    registration = load_registration(registration_path, profile=profile)
+    metadata = validate_registration_evidence(
+        registration, root, profile=profile
+    )
     identity = registration["identity"]
     try:
         native_module = load_native_module(
@@ -1753,30 +2202,37 @@ def execute_registered(
         registration=registration,
         registration_sha256=pushed["registration_sha256"],
         preregistration_commit=pushed["preregistration_commit"],
-        output_directory=root / DEFAULT_OUTPUT_DIRECTORY,
+        output_directory=root / profile.output_directory,
         environment_factory=environment_factory,
         session_factory=session_factory,
+        profile=profile,
     )
     return {
-        "output_directory": DEFAULT_OUTPUT_DIRECTORY,
+        "output_directory": profile.output_directory,
         "reason": result["reason"],
         "status": result["status"],
         "verdict": result["verdict"],
     }
 
 
-def verify_registered(*, repo_root: Path | str) -> dict[str, Any]:
+def verify_registered(
+    *,
+    repo_root: Path | str,
+    profile: DiagnosticProfile = V1_PROFILE,
+) -> dict[str, Any]:
+    profile = _coerce_profile(profile)
     root = Path(repo_root).resolve()
-    registration_path = root / DEFAULT_REGISTRATION_PATH
-    registration = load_registration(registration_path)
-    validate_registration_evidence(registration, root)
+    registration_path = root / profile.registration_path
+    registration = load_registration(registration_path, profile=profile)
+    validate_registration_evidence(registration, root, profile=profile)
     manifest = verify_artifact_directory(
         registration=registration,
         registration_sha256=sha256_file(registration_path),
-        output_directory=root / DEFAULT_OUTPUT_DIRECTORY,
+        output_directory=root / profile.output_directory,
+        profile=profile,
     )
     return {
-        "output_directory": DEFAULT_OUTPUT_DIRECTORY,
+        "output_directory": profile.output_directory,
         "verdict": manifest["verdict"],
     }
 
@@ -1785,34 +2241,45 @@ def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--repo-root", type=Path, default=_REPO_ROOT)
     commands = parser.add_subparsers(dest="command", required=True)
-    prepare = commands.add_parser("prepare")
-    prepare.add_argument("--module", type=Path, required=True)
-    prepare.add_argument("--simulator-repo", type=Path, required=True)
-    prepare.add_argument("--metadata", type=Path, required=True)
-    prepare.add_argument("--dll-directory", action="append", type=Path, default=[])
-    execute = commands.add_parser("execute")
-    execute.add_argument("--dll-directory", action="append", type=Path, default=[])
+    for command in ("prepare", "prepare-r2"):
+        prepare = commands.add_parser(command)
+        prepare.add_argument("--module", type=Path, required=True)
+        prepare.add_argument("--simulator-repo", type=Path, required=True)
+        prepare.add_argument("--metadata", type=Path, required=True)
+        prepare.add_argument(
+            "--dll-directory", action="append", type=Path, default=[]
+        )
+    for command in ("execute", "execute-r2"):
+        execute = commands.add_parser(command)
+        execute.add_argument(
+            "--dll-directory", action="append", type=Path, default=[]
+        )
     commands.add_parser("verify")
+    commands.add_parser("verify-r2")
     return parser
 
 
 def main(argv: Sequence[str] | None = None) -> int:
     args = build_parser().parse_args(argv)
+    profile = R2_PROFILE if args.command.endswith("-r2") else V1_PROFILE
     try:
-        if args.command == "prepare":
+        if args.command in {"prepare", "prepare-r2"}:
             result = prepare_registration(
                 repo_root=args.repo_root,
                 module_path=args.module,
                 simulator_repo=args.simulator_repo,
                 metadata_path=args.metadata,
                 dll_directories=args.dll_directory,
+                profile=profile,
             )
-        elif args.command == "execute":
+        elif args.command in {"execute", "execute-r2"}:
             result = execute_registered(
-                repo_root=args.repo_root, dll_directories=args.dll_directory
+                repo_root=args.repo_root,
+                dll_directories=args.dll_directory,
+                profile=profile,
             )
         else:
-            result = verify_registered(repo_root=args.repo_root)
+            result = verify_registered(repo_root=args.repo_root, profile=profile)
     except DiagnosticBlocked as exc:
         print(json.dumps({"detail": exc.detail, "reason": exc.reason}, sort_keys=True))
         return 2
