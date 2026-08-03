@@ -315,13 +315,20 @@ The next authorized sequence is:
     fail-closed handling. It cannot reinterpret either consumed diagnostic or
     authorize r3, a fresh cohort, gameplay, OPE, fitting, reward work, formal
     RL, training, qualification, loading, or promotion.
+18. Preserve the completed card/relic metadata identity audit and closed relic
+    repair. All 370 audited native card display names match metadata; the relic
+    bridge binds exactly 15 aliases and two simulator fallback exemptions to
+    stable native IDs. Together with the potion repair, this closes the known
+    static item-name hydration gaps without changing policy or evidence
+    authority.
 
 ## Work Lanes
 
 The offline production candidate-schema fix, anti-retry review, versioned r2
-successor, and subsequent potion metadata compatibility repair are complete.
-The single r2 execution remains terminal with zero rows and cannot be repaired
-or reinterpreted. The next authorized step is a read-only formal-RL evidence-gap
+successor, and subsequent potion and relic metadata compatibility repairs are
+complete. The audited card surface needs no compatibility repair. The single
+r2 execution remains terminal with zero rows and cannot be repaired or
+reinterpreted. The next authorized step is a read-only formal-RL evidence-gap
 audit after these closeouts; it may recommend a later proposal but may not
 rerun either diagnostic, prepare r3, construct a native environment, access a
 seed, or start training.

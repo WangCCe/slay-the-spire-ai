@@ -404,7 +404,9 @@ def _shop_state(remove_cost, **inventory):
     )
 
 
-def _metadata_catalog(tmp_path, potion_names):
+def _metadata_catalog(
+    tmp_path, potion_names, relic_names=("Burning Blood",)
+):
     path = tmp_path / "items.json"
     path.write_text(
         json.dumps(
@@ -423,7 +425,7 @@ def _metadata_catalog(tmp_path, potion_names):
                         "cost": "1",
                     },
                 ],
-                "relics": [{"name": "Burning Blood"}],
+                "relics": [{"name": name} for name in relic_names],
                 "potions": [{"name": name} for name in potion_names],
             }
         ),
@@ -435,6 +437,124 @@ def _metadata_catalog(tmp_path, potion_names):
 @pytest.fixture
 def metadata(tmp_path):
     return _metadata_catalog(tmp_path, ["Attack Potion"])
+
+
+@pytest.mark.parametrize(
+    ("relic_id", "native_name", "metadata_name"),
+    [
+        ("BIRD_FACED_URN", "Bird Faced Urn", "Bird-Faced Urn"),
+        ("CAPTAINS_WHEEL", "Captains Wheel", "Captain's Wheel"),
+        ("CHARONS_ASHES", "Charons Ashes", "Charon's Ashes"),
+        ("NILRYS_CODEX", "Nilrys Codex", "Nilry's Codex"),
+        (
+            "PHILOSOPHERS_STONE",
+            "Philosophers Stone",
+            "Philosopher's Stone",
+        ),
+        ("SELF_FORMING_CLAY", "Self Forming Clay", "Self-Forming Clay"),
+        ("DU_VU_DOLL", "Du Vu Doll", "Du-Vu Doll"),
+        (
+            "GOLD_PLATED_CABLES",
+            "Goldplated Cables",
+            "Gold-Plated Cables",
+        ),
+        ("NEOWS_LAMENT", "Neows Lament", "Neow's Lament"),
+        ("SLAVERS_COLLAR", "Slavers Collar", "Slaver's Collar"),
+        ("DOLLYS_MIRROR", "Dollys Mirror", "Dolly's Mirror"),
+        ("LEES_WAFFLE", "Lees Waffle", "Lee's Waffle"),
+        ("NLOTHS_GIFT", "Nloths Gift", "N'loth's Gift"),
+        (
+            "NLOTHS_HUNGRY_FACE",
+            "Nloths Hungry Face",
+            "N'loth's Hungry Face",
+        ),
+        ("PANDORAS_BOX", "Pandoras Box", "Pandora's Box"),
+    ],
+)
+def test_registered_relic_metadata_aliases_use_canonical_name(
+    tmp_path, relic_id, native_name, metadata_name
+):
+    catalog = _metadata_catalog(
+        tmp_path, ["Attack Potion"], relic_names=[metadata_name]
+    )
+    source = {
+        "data": 3,
+        "id": relic_id,
+        "name": native_name,
+        "price": 111,
+        "slot": 4,
+    }
+    before = copy.deepcopy(source)
+
+    relic = catalog.relic(source, role="shop_relic")
+
+    assert relic.relic_id == relic_id
+    assert relic.name == metadata_name
+    assert relic.counter == 3
+    assert relic.price == 111
+    assert relic._bridge_source_slot == 4
+    assert source == before
+
+
+@pytest.mark.parametrize(
+    ("relic_id", "native_name"),
+    [("CIRCLET", "Circlet"), ("RED_CIRCLET", "Red Circlet")],
+)
+def test_registered_relic_metadata_exemptions_hydrate_exact_identity(
+    tmp_path, relic_id, native_name
+):
+    catalog = _metadata_catalog(tmp_path, ["Attack Potion"])
+    source = {"data": 2, "id": relic_id, "name": native_name, "slot": 1}
+    before = copy.deepcopy(source)
+
+    relic = catalog.relic(source, role="run")
+
+    assert relic.relic_id == relic_id
+    assert relic.name == native_name
+    assert relic.counter == 2
+    assert relic._bridge_source_slot == 1
+    assert source == before
+
+
+@pytest.mark.parametrize(
+    ("relic_id", "native_name", "metadata_names"),
+    [
+        ("BIRD_FACED_URN", "Renamed Urn", ["Bird-Faced Urn"]),
+        (
+            "BIRD_FACED_URN",
+            "Burning Blood",
+            ["Bird-Faced Urn", "Burning Blood"],
+        ),
+        ("UNKNOWN_RELIC", "Bird Faced Urn", ["Bird-Faced Urn"]),
+        ("BIRD_FACED_URN", "Bird Faced Urn", ["Burning Blood"]),
+        ("CIRCLET", "Renamed Circlet", ["Burning Blood"]),
+        ("UNKNOWN_RELIC", "Circlet", ["Burning Blood"]),
+    ],
+)
+def test_relic_metadata_identities_fail_closed_when_inconsistent(
+    tmp_path, relic_id, native_name, metadata_names
+):
+    catalog = _metadata_catalog(
+        tmp_path, ["Attack Potion"], relic_names=metadata_names
+    )
+
+    with pytest.raises(BridgeBlocked, match="relic_metadata_missing"):
+        catalog.relic(
+            {"data": 0, "id": relic_id, "name": native_name, "slot": 0},
+            role="run",
+        )
+
+
+def test_exact_relic_metadata_name_path_remains_unchanged(tmp_path):
+    catalog = _metadata_catalog(tmp_path, ["Attack Potion"])
+
+    relic = catalog.relic(
+        {"data": 0, "id": "BURNING_BLOOD", "name": "burning blood"},
+        role="run",
+    )
+
+    assert relic.relic_id == "BURNING_BLOOD"
+    assert relic.name == "burning blood"
 
 
 @pytest.mark.parametrize(
@@ -690,6 +810,41 @@ def test_shop_hydration_resolves_registered_potion_alias_without_mutation(tmp_pa
     assert potion.effect_type == "exhaust_hand_select"
     assert potion._bridge_source_slot == 2
     assert potion.price == 65
+    assert snapshot == before_snapshot
+    assert candidates == before_candidates
+
+
+def test_shop_hydration_resolves_registered_relic_alias_without_mutation(tmp_path):
+    metadata = _metadata_catalog(
+        tmp_path,
+        ["Attack Potion"],
+        relic_names=["Burning Blood", "Pandora's Box"],
+    )
+    snapshot = _snapshot(
+        "shop",
+        _shop_state(
+            75,
+            relics=[
+                {
+                    "id": "PANDORAS_BOX",
+                    "name": "Pandoras Box",
+                    "price": 300,
+                    "slot": 1,
+                }
+            ],
+        ),
+    )
+    candidates = [_candidate("shop", "leave", "shop:leave")]
+    before_snapshot = copy.deepcopy(snapshot)
+    before_candidates = copy.deepcopy(candidates)
+
+    game = hydrate_game(snapshot, candidates, metadata)
+
+    relic = game.screen.relics[0]
+    assert relic.relic_id == "PANDORAS_BOX"
+    assert relic.name == "Pandora's Box"
+    assert relic._bridge_source_slot == 1
+    assert relic.price == 300
     assert snapshot == before_snapshot
     assert candidates == before_candidates
 

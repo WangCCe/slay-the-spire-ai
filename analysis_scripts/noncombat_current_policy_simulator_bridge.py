@@ -141,6 +141,25 @@ _POTION_METADATA_NAME_ALIASES = {
     "FAIRY_POTION": ("Fairy Potion", "Fairy in a Bottle"),
     "GAMBLERS_BREW": ("Gamblers Brew", "Gambler's Brew"),
 }
+_RELIC_METADATA_IDENTITIES = {
+    "BIRD_FACED_URN": ("Bird Faced Urn", "Bird-Faced Urn"),
+    "CAPTAINS_WHEEL": ("Captains Wheel", "Captain's Wheel"),
+    "CHARONS_ASHES": ("Charons Ashes", "Charon's Ashes"),
+    "NILRYS_CODEX": ("Nilrys Codex", "Nilry's Codex"),
+    "PHILOSOPHERS_STONE": ("Philosophers Stone", "Philosopher's Stone"),
+    "SELF_FORMING_CLAY": ("Self Forming Clay", "Self-Forming Clay"),
+    "DU_VU_DOLL": ("Du Vu Doll", "Du-Vu Doll"),
+    "GOLD_PLATED_CABLES": ("Goldplated Cables", "Gold-Plated Cables"),
+    "NEOWS_LAMENT": ("Neows Lament", "Neow's Lament"),
+    "SLAVERS_COLLAR": ("Slavers Collar", "Slaver's Collar"),
+    "DOLLYS_MIRROR": ("Dollys Mirror", "Dolly's Mirror"),
+    "LEES_WAFFLE": ("Lees Waffle", "Lee's Waffle"),
+    "NLOTHS_GIFT": ("Nloths Gift", "N'loth's Gift"),
+    "NLOTHS_HUNGRY_FACE": ("Nloths Hungry Face", "N'loth's Hungry Face"),
+    "PANDORAS_BOX": ("Pandoras Box", "Pandora's Box"),
+    "CIRCLET": ("Circlet", None),
+    "RED_CIRCLET": ("Red Circlet", None),
+}
 SUCCESSOR_IMMUTABLE_PATHS = (
     ("authority",),
     ("current_policy",),
@@ -748,7 +767,22 @@ class MetadataCatalog:
             raise BridgeBlocked("relic_id_missing", role)
         if not isinstance(name, str) or not name:
             raise BridgeBlocked("relic_name_missing", role)
-        if name.casefold() not in self.relics:
+        identity = _RELIC_METADATA_IDENTITIES.get(relic_id)
+        hydrated_name = name
+        if identity is not None:
+            expected_native_name, metadata_name = identity
+            if name.casefold() != expected_native_name.casefold():
+                raise BridgeBlocked("relic_metadata_missing", name)
+            if metadata_name is None:
+                metadata = self.relics.get(name.casefold())
+                if metadata is not None:
+                    hydrated_name = metadata["name"]
+            else:
+                metadata = self.relics.get(metadata_name.casefold())
+                if metadata is None:
+                    raise BridgeBlocked("relic_metadata_missing", name)
+                hydrated_name = metadata["name"]
+        elif name.casefold() not in self.relics:
             raise BridgeBlocked("relic_metadata_missing", name)
         counter = source.get("data", 0)
         price = source.get("price", 0)
@@ -756,7 +790,7 @@ class MetadataCatalog:
             raise BridgeBlocked("relic_counter_invalid", name)
         if isinstance(price, bool) or not isinstance(price, int) or price < 0:
             raise BridgeBlocked("relic_price_invalid", name)
-        relic = Relic(relic_id, name, counter=counter, price=price)
+        relic = Relic(relic_id, hydrated_name, counter=counter, price=price)
         if "slot" in source:
             relic._bridge_source_slot = self._source_slot(source, role)
         return relic
