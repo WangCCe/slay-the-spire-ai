@@ -404,8 +404,7 @@ def _shop_state(remove_cost, **inventory):
     )
 
 
-@pytest.fixture
-def metadata(tmp_path):
+def _metadata_catalog(tmp_path, potion_names):
     path = tmp_path / "items.json"
     path.write_text(
         json.dumps(
@@ -425,12 +424,90 @@ def metadata(tmp_path):
                     },
                 ],
                 "relics": [{"name": "Burning Blood"}],
-                "potions": [{"name": "Attack Potion"}],
+                "potions": [{"name": name} for name in potion_names],
             }
         ),
         encoding="utf-8",
     )
     return MetadataCatalog(path)
+
+
+@pytest.fixture
+def metadata(tmp_path):
+    return _metadata_catalog(tmp_path, ["Attack Potion"])
+
+
+@pytest.mark.parametrize(
+    ("potion_id", "native_name", "metadata_name", "effect_type"),
+    [
+        ("ELIXIR_POTION", "Elixir Potion", "Elixir", "exhaust_hand_select"),
+        ("FAIRY_POTION", "Fairy Potion", "Fairy in a Bottle", "fairy"),
+        (
+            "GAMBLERS_BREW",
+            "Gamblers Brew",
+            "Gambler's Brew",
+            "discard_draw",
+        ),
+    ],
+)
+def test_registered_potion_metadata_aliases_use_canonical_name(
+    tmp_path, potion_id, native_name, metadata_name, effect_type
+):
+    catalog = _metadata_catalog(tmp_path, [metadata_name])
+    source = {
+        "id": potion_id,
+        "name": native_name,
+        "price": 77,
+        "slot": 2,
+    }
+    before = copy.deepcopy(source)
+
+    potion = catalog.potion(source, role="shop_potion")
+
+    assert potion.potion_id == potion_id
+    assert potion.name == metadata_name
+    assert potion.effect_type == effect_type
+    assert potion.price == 77
+    assert potion._bridge_source_slot == 2
+    assert source == before
+
+
+@pytest.mark.parametrize(
+    ("potion_id", "native_name", "metadata_names"),
+    [
+        ("ELIXIR_POTION", "Renamed Elixir", ["Elixir"]),
+        (
+            "ELIXIR_POTION",
+            "Attack Potion",
+            ["Attack Potion", "Elixir"],
+        ),
+        ("UNKNOWN_POTION", "Elixir Potion", ["Elixir"]),
+        ("ELIXIR_POTION", "Elixir Potion", ["Attack Potion"]),
+    ],
+)
+def test_potion_metadata_aliases_fail_closed_for_inconsistent_identity(
+    tmp_path, potion_id, native_name, metadata_names
+):
+    catalog = _metadata_catalog(tmp_path, metadata_names)
+
+    with pytest.raises(BridgeBlocked, match="potion_metadata_missing"):
+        catalog.potion(
+            {"id": potion_id, "name": native_name, "price": 0, "slot": 0},
+            role="run",
+        )
+
+
+def test_exact_potion_metadata_name_path_remains_unchanged(tmp_path):
+    catalog = _metadata_catalog(tmp_path, ["Attack Potion"])
+
+    potion = catalog.potion(
+        {"id": "ATTACK_POTION", "name": "attack potion", "slot": 0},
+        role="run",
+    )
+
+    assert potion.potion_id == "ATTACK_POTION"
+    assert potion.name == "attack potion"
+    assert potion.effect_type == "card_choice_attack"
 
 
 def test_route_action_maps_by_coordinate():
@@ -583,6 +660,38 @@ def test_shop_hydration_preserves_sparse_visible_source_slots(metadata):
     assert [relic.price for relic in game.screen.relics] == [200]
     assert [potion._bridge_source_slot for potion in game.screen.potions] == [1]
     assert [potion.price for potion in game.screen.potions] == [120]
+
+
+def test_shop_hydration_resolves_registered_potion_alias_without_mutation(tmp_path):
+    metadata = _metadata_catalog(tmp_path, ["Elixir"])
+    snapshot = _snapshot(
+        "shop",
+        _shop_state(
+            75,
+            potions=[
+                {
+                    "id": "ELIXIR_POTION",
+                    "name": "Elixir Potion",
+                    "price": 65,
+                    "slot": 2,
+                }
+            ],
+        ),
+    )
+    candidates = [_candidate("shop", "leave", "shop:leave")]
+    before_snapshot = copy.deepcopy(snapshot)
+    before_candidates = copy.deepcopy(candidates)
+
+    game = hydrate_game(snapshot, candidates, metadata)
+
+    potion = game.screen.potions[0]
+    assert potion.potion_id == "ELIXIR_POTION"
+    assert potion.name == "Elixir"
+    assert potion.effect_type == "exhaust_hand_select"
+    assert potion._bridge_source_slot == 2
+    assert potion.price == 65
+    assert snapshot == before_snapshot
+    assert candidates == before_candidates
 
 
 @pytest.mark.parametrize(

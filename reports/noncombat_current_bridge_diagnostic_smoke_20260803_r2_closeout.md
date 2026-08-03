@@ -83,7 +83,7 @@ canonical artifact byte with `native_loaded = false`.
 
 ## Root-Cause Boundary
 
-A read-only static comparison of all 43 upstream non-empty potion display names
+A read-only static comparison of all 42 upstream non-empty potion display names
 against the frozen base-game metadata found exactly three unmatched pairs:
 
 | Stable native ID | Native display name | Metadata name |
@@ -93,7 +93,7 @@ against the frozen base-game metadata found exactly three unmatched pairs:
 | `GAMBLERS_BREW` | `Gamblers Brew` | `Gambler's Brew` |
 
 Only the first pair was reached by r2. The other two are static compatibility
-findings, not observed r2 failures. Exact matching succeeds for the other 40
+findings, not observed r2 failures. Exact matching succeeds for the other 39
 upstream potion display names.
 
 Any repair belongs to a separate OpenSpec change. It should key a closed alias

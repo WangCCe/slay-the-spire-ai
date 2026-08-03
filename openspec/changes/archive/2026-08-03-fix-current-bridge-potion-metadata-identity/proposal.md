@@ -15,7 +15,7 @@ without a closed identity-compatibility boundary.
 - Preserve exact case-insensitive name matching for every already compatible
   potion and fail closed for unknown IDs, unexpected native names, or absent
   canonical metadata.
-- Record the complete 43-potion static audit and the three-pair boundary in a
+- Record the complete 42-potion static audit and the three-pair boundary in a
   durable report.
 - Verify the source repair offline with focused regressions, adjacent bridge
   tests, the repository commit gate, strict OpenSpec validation, and a cohesive

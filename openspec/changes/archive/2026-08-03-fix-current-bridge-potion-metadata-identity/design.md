@@ -9,7 +9,7 @@ The r2 diagnostic first reached `ELIXIR_POTION` / `Elixir Potion`, while the
 frozen metadata calls the potion `Elixir`. A read-only comparison of every
 non-empty upstream potion found two additional differences:
 `FAIRY_POTION` / `Fairy Potion` / `Fairy in a Bottle` and
-`GAMBLERS_BREW` / `Gamblers Brew` / `Gambler's Brew`. The other 40 upstream
+`GAMBLERS_BREW` / `Gamblers Brew` / `Gambler's Brew`. The other 39 upstream
 display names match metadata case-insensitively.
 
 The bridge must remain a strict Communication Mod hydration boundary. The

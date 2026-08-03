@@ -309,14 +309,22 @@ The next authorized sequence is:
     fail closed on unknown or inconsistent identities. It grants no execution,
     fresh-evidence, gameplay, OPE, model, reward, training, or promotion
     authority.
+17. Preserve the completed potion metadata identity audit and closed three-pair
+    repair. It canonicalizes only aliased typed potion names while preserving
+    stable native ID, slot, price, source bytes, exact-name behavior, and
+    fail-closed handling. It cannot reinterpret either consumed diagnostic or
+    authorize r3, a fresh cohort, gameplay, OPE, fitting, reward work, formal
+    RL, training, qualification, loading, or promotion.
 
 ## Work Lanes
 
-The offline production candidate-schema fix, anti-retry review, and versioned
-r2 successor are complete. The single r2 execution is terminal with zero rows
-at a deterministic potion metadata-name boundary. The active engineering lane
-is a separate offline compatibility audit and narrow source repair; it may not
-rerun r2, prepare r3, construct a native environment, or access a seed.
+The offline production candidate-schema fix, anti-retry review, versioned r2
+successor, and subsequent potion metadata compatibility repair are complete.
+The single r2 execution remains terminal with zero rows and cannot be repaired
+or reinterpreted. The next authorized step is a read-only formal-RL evidence-gap
+audit after these closeouts; it may recommend a later proposal but may not
+rerun either diagnostic, prepare r3, construct a native environment, access a
+seed, or start training.
 
 A fresh compatibility or non-teacher baseline-floor study remains blocked; the
 failed diagnostic did not open that lane. The target-supported-outcome lane

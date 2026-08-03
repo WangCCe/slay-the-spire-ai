@@ -136,6 +136,11 @@ ALL_FALSE_AUTHORITY = {
     "reward_authorized": False,
     "training_authorized": False,
 }
+_POTION_METADATA_NAME_ALIASES = {
+    "ELIXIR_POTION": ("Elixir Potion", "Elixir"),
+    "FAIRY_POTION": ("Fairy Potion", "Fairy in a Bottle"),
+    "GAMBLERS_BREW": ("Gamblers Brew", "Gambler's Brew"),
+}
 SUCCESSOR_IMMUTABLE_PATHS = (
     ("authority",),
     ("current_policy",),
@@ -766,12 +771,22 @@ class MetadataCatalog:
         if potion_id == "EMPTY_POTION_SLOT" and name == "EMPTY_POTION_SLOT":
             potion = Potion("Potion Slot", "Potion Slot", False, False, False)
         else:
-            if name.casefold() not in self.potions:
+            alias = _POTION_METADATA_NAME_ALIASES.get(potion_id)
+            metadata_name = name
+            if alias is not None:
+                expected_native_name, metadata_name = alias
+                if name.casefold() != expected_native_name.casefold():
+                    raise BridgeBlocked("potion_metadata_missing", name)
+            metadata = self.potions.get(metadata_name.casefold())
+            if metadata is None:
                 raise BridgeBlocked("potion_metadata_missing", name)
             price = source.get("price", 0)
             if isinstance(price, bool) or not isinstance(price, int) or price < 0:
                 raise BridgeBlocked("potion_price_invalid", name)
-            potion = Potion(potion_id, name, False, False, False, price=price)
+            hydrated_name = metadata["name"] if alias is not None else name
+            potion = Potion(
+                potion_id, hydrated_name, False, False, False, price=price
+            )
         potion._bridge_source_slot = slot
         return potion
 
