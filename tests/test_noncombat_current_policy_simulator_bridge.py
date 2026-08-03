@@ -389,6 +389,19 @@ def _event_candidates(event_id, event_name, indices):
     ]
 
 
+def _shop_state(remove_cost):
+    return _state(
+        cur_room="SHOP",
+        decision_context={
+            "cards": [],
+            "potions": [],
+            "relics": [],
+            "remove_cost": remove_cost,
+        },
+        screen_state="SHOP_SCREEN",
+    )
+
+
 @pytest.fixture
 def metadata(tmp_path):
     path = tmp_path / "items.json"
@@ -535,6 +548,89 @@ def test_shop_control_actions_map_exactly(action, kind, expected):
     candidates = [_candidate("shop", kind, expected)]
 
     assert map_current_action(category="shop", action=action, candidates=candidates) == expected
+
+
+def test_shop_hydration_normalizes_consumed_remove_sentinel_without_mutation(
+    metadata,
+):
+    snapshot = _snapshot("shop", _shop_state(-1))
+    candidates = [_candidate("shop", "leave", "shop:leave")]
+    before_snapshot = copy.deepcopy(snapshot)
+    before_candidates = copy.deepcopy(candidates)
+
+    game = hydrate_game(snapshot, candidates, metadata)
+
+    assert game.screen_type is ScreenType.SHOP_SCREEN
+    assert game.screen.purge_available is False
+    assert game.screen.purge_cost == 0
+    assert snapshot == before_snapshot
+    assert candidates == before_candidates
+
+
+def test_shop_hydration_rejects_remove_candidate_with_consumed_sentinel(metadata):
+    snapshot = _snapshot("shop", _shop_state(-1))
+    candidates = [
+        _candidate("shop", "remove_card", "shop:remove_card"),
+        _candidate("shop", "leave", "shop:leave"),
+    ]
+
+    with pytest.raises(
+        BridgeBlocked, match="shop_remove_cost_sentinel_candidate_mismatch"
+    ):
+        hydrate_game(snapshot, candidates, metadata)
+
+
+@pytest.mark.parametrize("remove_cost", [-2, True, 1.5, None, "75"])
+def test_shop_hydration_rejects_unproven_remove_cost(remove_cost, metadata):
+    snapshot = _snapshot("shop", _shop_state(remove_cost))
+    candidates = [_candidate("shop", "leave", "shop:leave")]
+
+    with pytest.raises(BridgeBlocked, match="invalid_nonnegative_integer"):
+        hydrate_game(snapshot, candidates, metadata)
+
+
+@pytest.mark.parametrize(
+    ("remove_cost", "remove_available"),
+    [(0, False), (75, True)],
+)
+def test_shop_hydration_preserves_nonnegative_remove_cost(
+    remove_cost, remove_available, metadata
+):
+    snapshot = _snapshot("shop", _shop_state(remove_cost))
+    candidates = [_candidate("shop", "leave", "shop:leave")]
+    if remove_available:
+        candidates.insert(
+            0, _candidate("shop", "remove_card", "shop:remove_card")
+        )
+
+    game = hydrate_game(snapshot, candidates, metadata)
+
+    assert game.screen.purge_available is remove_available
+    assert game.screen.purge_cost == remove_cost
+
+
+def test_current_session_accepts_consumed_shop_remove_sentinel(metadata):
+    snapshot = _snapshot("shop", _shop_state(-1))
+    candidates = [_candidate("shop", "leave", "shop:leave")]
+    before_snapshot = copy.deepcopy(snapshot)
+    before_candidates = copy.deepcopy(candidates)
+    session = CurrentPolicyBridgeSession(
+        metadata=metadata,
+        current_policy=_current_policy(),
+        require_global_metadata_match=False,
+    )
+
+    result = session.evaluate(
+        snapshot=snapshot,
+        candidates=candidates,
+        decision_index=1,
+    )
+
+    assert result["action_id"] == "shop:leave"
+    assert result["category"] == "shop"
+    assert result["fallback_used"] is False
+    assert snapshot == before_snapshot
+    assert candidates == before_candidates
 
 
 def test_event_hydration_requires_exact_option_semantics(metadata):

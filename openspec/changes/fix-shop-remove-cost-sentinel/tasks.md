@@ -5,10 +5,10 @@
 
 ## 2. Sentinel Contract Repair
 
-- [ ] 2.1 Add red hydration regressions for valid `-1` sentinel normalization, contradictory remove candidates, invalid lower negatives and types, ordinary nonnegative costs, and source non-mutation
-- [ ] 2.2 Implement the smallest bridge helper that preserves nonnegative costs, accepts only the proven unavailable sentinel, and fails inconsistent states before Current executes
-- [ ] 2.3 Run focused bridge, successor evaluator, adapter, and historical compatibility regressions plus relevant Python compilation without loading a native module or launching gameplay
-- [ ] 2.4 Commit and push the regression-backed implementation as one bridge-contract change
+- [x] 2.1 Add red hydration regressions for valid `-1` sentinel normalization, contradictory remove candidates, invalid lower negatives and types, ordinary nonnegative costs, and source non-mutation
+- [x] 2.2 Implement the smallest bridge helper that preserves nonnegative costs, accepts only the proven unavailable sentinel, and fails inconsistent states before Current executes
+- [x] 2.3 Run focused bridge, successor evaluator, adapter, and historical compatibility regressions plus relevant Python compilation without loading a native module or launching gameplay
+- [x] 2.4 Commit and push the regression-backed implementation as one bridge-contract change
 
 ## 3. Verification And Closeout
 

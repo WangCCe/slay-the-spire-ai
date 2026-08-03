@@ -242,6 +242,14 @@ def _nonnegative_int(value: object, label: str) -> int:
     return value
 
 
+def _shop_remove_cost(value: object, *, purge_available: bool) -> int:
+    if value == -1:
+        if purge_available:
+            raise BridgeBlocked("shop_remove_cost_sentinel_candidate_mismatch")
+        return 0
+    return _nonnegative_int(value, "shop remove_cost")
+
+
 def _is_hex(value: object, length: int) -> bool:
     return (
         isinstance(value, str)
@@ -1143,7 +1151,9 @@ def hydrate_game(
         purge_available = any(
             candidate["kind"] == "remove_card" for candidate in normalized_candidates
         )
-        purge_cost = _nonnegative_int(context.get("remove_cost"), "shop remove_cost")
+        purge_cost = _shop_remove_cost(
+            context.get("remove_cost"), purge_available=purge_available
+        )
         game.screen_type = ScreenType.SHOP_SCREEN
         game.screen = ShopScreen(cards, relics, potions, purge_available, purge_cost)
         game.available_commands = ["choose", "leave"]
