@@ -332,11 +332,14 @@ reinterpreted. The post-bridge formal-RL evidence-gap audit is also complete:
 formal RL remains `no_go` because the credible baseline floor and
 source-comparable target-supported outcome domains are still blocked.
 
-No empirical execution is currently authorized. The next decision is whether
-to fund a separately reviewed post-repair Current baseline-evidence proposal or
-defer formal RL and return to bounded gameplay maintenance. Do not create that
-proposal, rerun either diagnostic, prepare r3, construct a native environment,
-access a seed, or start training without an explicit direction decision.
+The post-repair Current baseline-evidence proposal path is now explicitly
+selected. Active change `add-post-repair-current-baseline-evidence-study`
+replaces a third diagnostic with one immutable canary-plus-holdout floor study,
+fixed numeric gates, conservative Courier support accounting, and no retry.
+Planning and source-only implementation may proceed, but preregistration grants
+no empirical authority. Do not rerun either diagnostic, prepare r3, load the
+native module, construct an environment, access a study seed, or train until a
+separate pushed registration is explicitly approved for one-shot execution.
 
 A fresh compatibility or non-teacher baseline-floor study remains blocked; the
 failed diagnostic did not open that lane. The target-supported-outcome lane
