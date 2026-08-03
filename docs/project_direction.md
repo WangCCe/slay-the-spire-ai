@@ -100,6 +100,14 @@ consumed canonical output without native loading and leaves every consumed
 evidence byte unchanged. It did not construct an environment or consume a seed,
 and it does not reopen or replace the failed attempt.
 
+The subsequent read-only anti-retry review finds one separately preregistered
+successor diagnostic eligible for proposal. The consumed identity and failure
+remain terminal; the allowed successor must use a new identity, the same four
+reused development seeds and fixed controls, an exact lineage to the completed
+schema fix, and one-shot fail-closed authority. This review authorizes planning
+only. It does not authorize native loading, environment construction, execution,
+a readiness refresh, or any training or promotion surface.
+
 ## Training Boundary
 
 Formal non-combat RL training is not currently authorized. A training go means
@@ -286,14 +294,20 @@ The next authorized sequence is:
     anti-retry review. A later floor proposal must still fix comparison,
     numeric gates, unsupported-rate ceiling, bootstrap, stop, and holdout
     contracts.
+14. Treat the completed anti-retry review as permission to propose exactly one
+    new versioned successor diagnostic, not to rerun or replace the consumed
+    identity. Require a narrow dual-profile boundary, exact historical artifact
+    recomputation, unchanged reused-seed controls, a pushed preregistration,
+    and an explicit later one-shot execution gate.
 
 ## Work Lanes
 
-The offline production candidate-schema fix is complete. No replacement
-diagnostic is currently authorized. The next non-combat RL decision is whether
-to propose another diagnostic at all under an explicit anti-retry review; that
-decision must remain separate from implementation and cannot reuse the consumed
-registration or reinterpret its failed result.
+The offline production candidate-schema fix and separate anti-retry review are
+complete. One new successor diagnostic is eligible for OpenSpec planning, but
+no execution is currently authorized. Planning must remain separate from the
+consumed registration and may not reinterpret its failed result. The first
+implementation gate is an offline, narrow versioned-profile boundary that
+preserves historical artifact recomputation without copying the full runner.
 
 A fresh compatibility or non-teacher baseline-floor study remains blocked; the
 failed diagnostic did not open that lane. The target-supported-outcome lane
