@@ -52,6 +52,11 @@ The audit SHALL publish one deterministic planning verdict using fixed precedenc
 - **THEN** the verdict SHALL be `diagnostic_smoke_required`
 - **AND** the next prerequisite SHALL be a separately reviewed reused-development-seed Current bridge smoke with structural-only authority
 
+#### Scenario: Structural closure exists but the floor contract is incomplete
+- **WHEN** Current structural closure is demonstrated but comparison controls, numeric absolute and paired gates, unsupported-rate ceiling, replay, bootstrap, stop, or untouched holdout terms remain unfixed
+- **THEN** the verdict SHALL be `baseline_floor_contract_required`
+- **AND** no fresh baseline-floor cohort SHALL be selected or executed
+
 #### Scenario: Candidate and evidence contract are complete
 - **WHEN** Current structural closure is demonstrated and candidate role, conservative unsupported handling, comparison controls, numeric absolute and paired gates, replay, bootstrap, stop, and untouched holdout contracts are all fixed
 - **THEN** the verdict MAY be `ready_for_baseline_floor_preregistration`

@@ -98,6 +98,11 @@ holdout rules. Directly spending a third fresh compatibility cohort was
 rejected because the new support envelope has not yet been exercised through
 Current trajectories.
 
+Verdict precedence is fixed as invalid evidence, no viable non-teacher
+candidate, missing Current structural closure, incomplete baseline-floor
+contract, then readiness to consider preregistration. Structural closure alone
+therefore yields `baseline_floor_contract_required`, not a positive handoff.
+
 ### Publish a small canonical result
 
 The implementation will use one registration JSON, one compact Python
