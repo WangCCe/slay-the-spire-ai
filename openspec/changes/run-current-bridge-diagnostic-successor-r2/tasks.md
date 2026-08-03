@@ -3,7 +3,7 @@
 - [x] 1.1 Strict-validate the change and recheck the consumed v1 registration,
   failure, closeout, six canonical artifacts, module, seeds, and verdict against
   their committed byte identities without native loading.
-- [ ] 1.2 Commit and push all planning artifacts before editing the diagnostic
+- [x] 1.2 Commit and push all planning artifacts before editing the diagnostic
   runner or tests.
 - [ ] 1.3 Build one canonical tracked r2 preimplementation lineage record from
   fixed paths, including the v1 failure, anti-retry review, archived schema fix,

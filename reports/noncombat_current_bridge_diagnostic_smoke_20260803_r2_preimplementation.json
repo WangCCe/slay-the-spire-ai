@@ -1,0 +1,148 @@
+{
+  "authority": {
+    "baseline_floor_authorized": false,
+    "formal_rl_authorized": false,
+    "fresh_evidence_authorized": false,
+    "gameplay_authorized": false,
+    "model_fitting_authorized": false,
+    "ope_authorized": false,
+    "policy_loading_authorized": false,
+    "promotion_authorized": false,
+    "qualification_authorized": false,
+    "reward_authorized": false,
+    "target_supported_outcome_authorized": false,
+    "training_authorized": false
+  },
+  "cohort": {
+    "max_decisions_per_replay": 500,
+    "max_wall_seconds": 600.0,
+    "replay_count": 2,
+    "seeds": [
+      7000,
+      7100,
+      2000,
+      10
+    ]
+  },
+  "lineage": {
+    "anti_retry_decision": {
+      "path": "reports/noncombat_current_bridge_diagnostic_successor_eligibility_20260803.md",
+      "sha256": "0b3ae5314e2f5182183bbc65e3b01aa213028a063aa9a19b6d6ad05cb4f15cc9",
+      "size_bytes": 5857
+    },
+    "candidate_schema_fix": {
+      "archive_files": [
+        {
+          "path": "openspec/changes/archive/2026-08-03-fix-current-bridge-diagnostic-candidate-schema/design.md",
+          "sha256": "9d133674269fc60b97ca1ec9e948771219a326a17f76853522b4d72ddd15eccd",
+          "size_bytes": 5984
+        },
+        {
+          "path": "openspec/changes/archive/2026-08-03-fix-current-bridge-diagnostic-candidate-schema/proposal.md",
+          "sha256": "1f2455ca18170cd16eac75d6203792f99f86425494ec5f1407fc881878587fd0",
+          "size_bytes": 1985
+        },
+        {
+          "path": "openspec/changes/archive/2026-08-03-fix-current-bridge-diagnostic-candidate-schema/specs/noncombat-current-bridge-diagnostic-smoke/spec.md",
+          "sha256": "87da47f9d481ca5f8ede84d88e0f5a3baf46fba22fcfa10fe33fa5e3aeedfc7d",
+          "size_bytes": 2650
+        },
+        {
+          "path": "openspec/changes/archive/2026-08-03-fix-current-bridge-diagnostic-candidate-schema/tasks.md",
+          "sha256": "4c42c93cddd01a500a19364e40ef7ff2a920d08648c1c8d9ffecc2373f2e21a5",
+          "size_bytes": 1969
+        }
+      ],
+      "commit": "b0c7ccc0b88a7a847b1119a984b6378032d94b78"
+    },
+    "consumed_v1": {
+      "artifacts": [
+        {
+          "path": "reports/noncombat_current_bridge_diagnostic_smoke_20260803/artifact_manifest.json",
+          "sha256": "649444f4b87877ebf2fcea7258ffa08484a94e7455d28f79e14c6ac30c90dbca",
+          "size_bytes": 1620
+        },
+        {
+          "path": "reports/noncombat_current_bridge_diagnostic_smoke_20260803/configuration.json",
+          "sha256": "3e3bd2fcc0d41fed22ef3124cf4e29c0feb44dd05eff8035f6b4ca02f1f2313a",
+          "size_bytes": 8040
+        },
+        {
+          "path": "reports/noncombat_current_bridge_diagnostic_smoke_20260803/execution_journal.json",
+          "sha256": "9bb79654e4cba9d6fd287b666d01298d942c514c0901370e874a538ffdec2c90",
+          "size_bytes": 938
+        },
+        {
+          "path": "reports/noncombat_current_bridge_diagnostic_smoke_20260803/metrics.json",
+          "sha256": "30a7ca88310a705f8a1e48a56a470448b8472a960d74330216ba168a0513d9db",
+          "size_bytes": 962
+        },
+        {
+          "path": "reports/noncombat_current_bridge_diagnostic_smoke_20260803/report.md",
+          "sha256": "379a9e7802a5f5a18bcf7b3830eb803b9ea92c3bbd5f997113b3e51c30cbaaf9",
+          "size_bytes": 554
+        },
+        {
+          "path": "reports/noncombat_current_bridge_diagnostic_smoke_20260803/trajectory_rows.json",
+          "sha256": "75c0d84146c952454e98fbf4eb59d00da5ee8ec1de0765a216c0f91b996714d6",
+          "size_bytes": 1132
+        }
+      ],
+      "closeout": {
+        "path": "reports/noncombat_current_bridge_diagnostic_smoke_20260803_closeout.md",
+        "sha256": "006ffd7c3e3c662cc87fcd1f25550e3acc73ef61ca7912de533bc111ff0fed0f",
+        "size_bytes": 5310
+      },
+      "failure": {
+        "category_counts": {
+          "card_reward": 0,
+          "event": 0,
+          "route": 0,
+          "shop": 0
+        },
+        "reason": "diagnostic_execution_failed",
+        "retained_rows": 0,
+        "status": "failed",
+        "support_blocker_count": 0,
+        "terminal_row_count": 0,
+        "verdict": "current_bridge_diagnostic_failed"
+      },
+      "preimplementation": {
+        "path": "reports/noncombat_current_bridge_diagnostic_smoke_20260803_preimplementation.json",
+        "sha256": "35bee05b114c30a6b15da52232807a7295f487b565f06ca55c46938f3f435f1e",
+        "size_bytes": 6949
+      },
+      "preregistration_commit": "b3da176bc6dab63d3e245b9d4159190b7077eab8",
+      "registration": {
+        "path": "reports/noncombat_current_bridge_diagnostic_smoke_20260803_input.json",
+        "sha256": "351b0cf61f301ba4a3c48933b74a0dc70301d4d1ce1eaa6711161c6c61a7306a",
+        "size_bytes": 6971
+      }
+    }
+  },
+  "module": {
+    "path": ".sts_lightspeed_adapter_v3_shop_support_build/sts_lightspeed_noncombat_adapter.cp310-win_amd64.pyd",
+    "sha256": "7ac2c750fba6e38d4a023cab72a4d67f158fe7f88414058e5876cef5003fcb88",
+    "size_bytes": 4225024
+  },
+  "planning_commit": "7a0fefcc120d325349c8c60e7560d8ecd790f5fd",
+  "schema_version": "noncombat-current-bridge-diagnostic-smoke-preimplementation-v2",
+  "seed_rationale": [
+    {
+      "boundary": "total_event_cohort_first_seed_after_scrap_ooze_repair",
+      "seed": 7000
+    },
+    {
+      "boundary": "reachable_event_cohort_first_seed_after_remove_sentinel_repair",
+      "seed": 7100
+    },
+    {
+      "boundary": "legacy_current_bridge_first_stage2_seed_after_the_cleric_repair",
+      "seed": 2000
+    },
+    {
+      "boundary": "native_target_policy_courier_support_envelope_seed",
+      "seed": 10
+    }
+  ]
+}
