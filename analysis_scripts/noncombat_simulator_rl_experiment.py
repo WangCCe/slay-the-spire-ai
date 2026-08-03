@@ -91,6 +91,7 @@ REGISTERED_SUPPORT_BLOCKERS = (
     "unsupported_shop_courier_restock_semantics",
 )
 SIMULATOR_BASELINE_POLICY_ID = "sts_lightspeed_simple_agent_no_potions_v1"
+OUTPUT_ROOT_PREFIX = "reports/noncombat_simulator_rl_experiment_"
 
 IMPLEMENTATION_SOURCE_FILES = (
     "analysis_scripts/noncombat_formal_reward_contract.py",
@@ -244,6 +245,30 @@ def experiment_contract() -> dict[str, Any]:
             "max_wall_seconds": MAX_WALL_SECONDS,
             "unsupported_rate_ceiling": UNSUPPORTED_RATE_CEILING,
         },
+        "outputs": {
+            "artifact_root_prefix": OUTPUT_ROOT_PREFIX,
+            "checkpoint_complete_count": TRAINING_CHUNKS,
+            "checkpoint_path_template": "checkpoints/checkpoint_{one_based_chunk:04d}.json",
+            "control_artifacts": [
+                "authorization.json",
+                "configuration.json",
+                "registration.json",
+            ],
+            "ephemeral_artifacts": [".execution.lease", "pending_chunk.json"],
+            "evaluation_artifact": "evaluation.json",
+            "evaluation_present_unless_blocked": True,
+            "journal_path_template": "journal/record_{zero_based_record:06d}.json",
+            "prefix_replay_artifact": "prefix_replay.json",
+            "prefix_replay_required_for_evaluation": True,
+            "terminal_common_artifacts": [
+                "artifact_manifest.json",
+                "metrics.json",
+                "model.json",
+                "report.md",
+            ],
+            "training_summary_complete_count": TRAINING_CHUNKS,
+            "training_summary_path_template": "training/chunk_{zero_based_chunk:04d}.json",
+        },
         "reward": {
             "discount": DISCOUNT,
             "max_floor": MAX_FLOOR,
@@ -252,6 +277,12 @@ def experiment_contract() -> dict[str, Any]:
             "strict_primary_dominance": True,
             "version": REWARD_VERSION,
             "victory_weight": VICTORY_WEIGHT,
+        },
+        "runtime": {
+            "cuda_allowed": False,
+            "deterministic_algorithms": True,
+            "device": "cpu",
+            "torch_num_threads": 1,
         },
         "support": {
             "registered_blockers": list(REGISTERED_SUPPORT_BLOCKERS),
@@ -529,7 +560,7 @@ def _validate_registration_binding(value: object) -> dict[str, Any]:
         raise ExperimentBlocked("authorization registration commit is invalid")
     path = _canonical_relative_path(binding["path"], "authorization.registration")
     if not (
-        path.startswith("reports/noncombat_simulator_rl_experiment_")
+        path.startswith(OUTPUT_ROOT_PREFIX)
         and path.endswith("_registration.json")
     ):
         raise ExperimentBlocked("authorization registration path is outside the contract")
@@ -586,7 +617,7 @@ def _validate_authorization_shape(value: object) -> dict[str, Any]:
     output = _canonical_relative_path(
         authorization["output_directory"], "authorization.output_directory"
     )
-    if not output.startswith("reports/noncombat_simulator_rl_experiment_"):
+    if not output.startswith(OUTPUT_ROOT_PREFIX):
         raise ExperimentBlocked("output_directory is outside the registered report root")
     if "checkpoints" in PurePosixPath(output).parts:
         raise ExperimentBlocked("output_directory must remain outside live checkpoints")

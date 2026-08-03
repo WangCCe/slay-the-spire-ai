@@ -158,9 +158,7 @@ def source_only_preflight(
         repo, authorization_path, "authorization path"
     )
     if not (
-        authorization_relative.startswith(
-            "reports/noncombat_simulator_rl_experiment_"
-        )
+        authorization_relative.startswith(experiment.OUTPUT_ROOT_PREFIX)
         and authorization_relative.endswith("_authorization.json")
     ):
         raise experiment.ExperimentBlocked("authorization path is outside the contract")

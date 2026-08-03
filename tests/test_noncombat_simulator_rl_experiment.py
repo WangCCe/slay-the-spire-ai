@@ -278,6 +278,18 @@ def test_registration_is_closed_and_keeps_every_authority_false():
             ),
             "allow_parameter_retry",
         ),
+        (
+            lambda value: value["experiment"]["outputs"].__setitem__(
+                "checkpoint_complete_count", 63
+            ),
+            "checkpoint_complete_count",
+        ),
+        (
+            lambda value: value["experiment"]["runtime"].__setitem__(
+                "cuda_allowed", True
+            ),
+            "cuda_allowed",
+        ),
     ],
 )
 def test_registration_rejects_any_experiment_contract_drift(mutate, message):
