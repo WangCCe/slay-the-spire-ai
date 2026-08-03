@@ -861,6 +861,8 @@ def _run_replay(
         if (
             evaluation.get("category") != category
             or evaluation.get("policy_id") != POLICY_ID
+            or not isinstance(evaluation.get("action_type"), str)
+            or not evaluation["action_type"]
             or evaluation.get("fallback_used") is not False
             or evaluation.get("tracker_enabled") is not False
             or evaluation.get("source_mutated") is not False
@@ -887,14 +889,6 @@ def _run_replay(
                 )
             except predecessor.CompatibilityBlocked as exc:
                 raise DiagnosticBlocked(exc.reason, exc.detail) from exc
-        if evaluation.get("action_type") != matches[0]["action_type"]:
-            raise DiagnosticBlocked(
-                "current_action_mapping_invalid",
-                {
-                    "candidate": matches[0]["action_type"],
-                    "evaluation": evaluation.get("action_type"),
-                },
-            )
         try:
             transition = _mapping(environment.step(action_id), "native transition")
         except Exception as exc:
@@ -918,7 +912,7 @@ def _run_replay(
         decisions.append(
             {
                 "action_id": action_id,
-                "action_type": evaluation.get("action_type"),
+                "action_type": evaluation["action_type"],
                 "candidate_actions_sha256": candidates_sha256,
                 "category": category,
                 "decision_index": decision_index,

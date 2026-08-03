@@ -92,6 +92,14 @@ production candidate schema does not provide it, while the fake regression
 candidate did. This is a runner-contract defect rather than simulator or policy
 evidence. The attempt is consumed and will not be repaired or rerun.
 
+The separate offline candidate-schema fix is now complete. Its shared fake
+candidate uses exactly the production validated fields, the runner no longer
+reads candidate-side `action_type`, and missing, empty, or non-string Current
+evaluation action metadata fails before `step()`. The fix recomputes the
+consumed canonical output without native loading and leaves every consumed
+evidence byte unchanged. It did not construct an environment or consume a seed,
+and it does not reopen or replace the failed attempt.
+
 ## Training Boundary
 
 Formal non-combat RL training is not currently authorized. A training go means
@@ -272,20 +280,20 @@ The next authorized sequence is:
 12. Preserve the consumed Current bridge diagnostic registration, finalized
     zero-row failure, and canonical artifacts. Do not repair, resume, replace,
     rerun, or reinterpret that attempt.
-13. Use a separate narrow OpenSpec to regression-fix the invalid candidate
-    `action_type` assumption against the production candidate schema without
-    loading a native environment or consuming a seed. Any later diagnostic
-    attempt requires separate preregistration and explicit anti-retry review.
-    A later floor proposal must still fix comparison, numeric gates,
-    unsupported-rate ceiling, bootstrap, stop, and holdout contracts.
+13. Preserve the completed offline candidate-schema fix and its production-key
+    regression. It grants no replacement execution or readiness authority. Any
+    later diagnostic attempt requires separate preregistration and explicit
+    anti-retry review. A later floor proposal must still fix comparison,
+    numeric gates, unsupported-rate ceiling, bootstrap, stop, and holdout
+    contracts.
 
 ## Work Lanes
 
-The primary lane is now closeout of the consumed diagnostic and a separate
-offline regression fix for its production candidate-schema mismatch. That fix
-has no execution authority and may not load a native environment or consume a
-seed. A replacement diagnostic is not automatic and requires a new reviewed
-registration with explicit anti-retry justification.
+The offline production candidate-schema fix is complete. No replacement
+diagnostic is currently authorized. The next non-combat RL decision is whether
+to propose another diagnostic at all under an explicit anti-retry review; that
+decision must remain separate from implementation and cannot reuse the consumed
+registration or reinterpret its failed result.
 
 A fresh compatibility or non-teacher baseline-floor study remains blocked; the
 failed diagnostic did not open that lane. The target-supported-outcome lane

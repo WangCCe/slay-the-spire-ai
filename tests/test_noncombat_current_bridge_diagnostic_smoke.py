@@ -3,6 +3,7 @@ from __future__ import annotations
 import copy
 import hashlib
 import json
+import sys
 from pathlib import Path
 
 import pytest
@@ -11,6 +12,14 @@ import analysis_scripts.noncombat_current_bridge_diagnostic_smoke as smoke
 
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
+PRODUCTION_CANDIDATE_KEYS = {
+    "action_id",
+    "available",
+    "category",
+    "kind",
+    "label",
+    "raw",
+}
 
 
 def _canonical_bytes(value):
@@ -142,7 +151,6 @@ class FakeEnvironment:
         category = self.categories[self.index]
         candidate = {
             "action_id": f"{category}:fixture:0",
-            "action_type": "ChooseAction",
             "available": True,
             "category": category,
             "kind": "event_option" if category == "event" else "test_action",
@@ -166,7 +174,7 @@ class FakeSession:
         category = snapshot["category"]
         result = {
             "action_id": candidate["action_id"],
-            "action_type": candidate["action_type"],
+            "action_type": "ChooseAction",
             "category": category,
             "fallback_used": False,
             "input_candidates_sha256": smoke.sha256_bytes(
@@ -198,14 +206,17 @@ class FakeSession:
         return result
 
 
-class WrongActionTypeSession(FakeSession):
+class InvalidActionTypeSession(FakeSession):
+    def __init__(self, action_type):
+        self.action_type = action_type
+
     def evaluate(self, *, snapshot, candidates, decision_index):
         result = super().evaluate(
             snapshot=snapshot,
             candidates=candidates,
             decision_index=decision_index,
         )
-        result["action_type"] = "ForgedAction"
+        result["action_type"] = self.action_type
         return result
 
 
@@ -429,18 +440,51 @@ def test_terminal_seed_mismatch_fails_closed(tmp_path):
     assert result["rows"] == []
 
 
-def test_current_action_type_must_match_selected_candidate(tmp_path):
+def test_fake_candidate_matches_exact_production_schema():
+    candidate = FakeEnvironment(7000, ["route"]).legal_actions()[0]
+
+    assert set(candidate) == PRODUCTION_CANDIDATE_KEYS
+    assert "action_type" not in candidate
+
+
+def test_production_candidate_schema_does_not_require_action_type(tmp_path):
     registration = _registration(tmp_path)
 
     result = smoke.run_diagnostic(
         registration=registration,
         environment_factory=_factory(_passing_plans()),
-        session_factory=WrongActionTypeSession,
+        session_factory=FakeSession,
+    )
+
+    assert result["verdict"] == "current_bridge_diagnostic_passed"
+    assert result["reason"] is None
+    assert len(result["rows"]) == len(smoke.FIXED_SEEDS)
+
+
+@pytest.mark.parametrize("action_type", [None, "", 1])
+def test_current_evaluation_action_type_must_be_nonempty_string(
+    tmp_path, action_type
+):
+    registration = _registration(tmp_path)
+    environments = []
+
+    def environment_factory(seed):
+        categories, blocker = _passing_plans()[seed]
+        environment = FakeEnvironment(seed, categories, blocker=blocker)
+        environments.append(environment)
+        return environment
+
+    result = smoke.run_diagnostic(
+        registration=registration,
+        environment_factory=environment_factory,
+        session_factory=lambda: InvalidActionTypeSession(action_type),
     )
 
     assert result["verdict"] == "current_bridge_diagnostic_failed"
-    assert result["reason"] == "current_action_mapping_invalid"
+    assert result["reason"] == "current_evaluation_contract_invalid"
     assert result["rows"] == []
+    assert len(environments) == 1
+    assert environments[0].index == 0
 
 
 def test_missing_category_coverage_fails_after_complete_rows(tmp_path):
@@ -573,6 +617,37 @@ def test_no_native_verifier_replays_artifacts_and_rejects_drift(tmp_path):
             output_directory=output,
         )
     assert exc_info.value.reason == "artifact_recomputation_mismatch"
+
+
+def test_consumed_artifact_directory_recomputes_without_native_loading():
+    registration_path = REPO_ROOT / smoke.DEFAULT_REGISTRATION_PATH
+    output = REPO_ROOT / smoke.DEFAULT_OUTPUT_DIRECTORY
+    protected_paths = [
+        registration_path,
+        REPO_ROOT
+        / "reports"
+        / "noncombat_current_bridge_diagnostic_smoke_20260803_closeout.md",
+        *sorted(output.iterdir()),
+    ]
+    before = {
+        path: hashlib.sha256(path.read_bytes()).hexdigest()
+        for path in protected_paths
+    }
+    registration = smoke.load_registration(registration_path)
+
+    manifest = smoke.verify_artifact_directory(
+        registration=registration,
+        registration_sha256=smoke.sha256_file(registration_path),
+        output_directory=output,
+    )
+
+    after = {
+        path: hashlib.sha256(path.read_bytes()).hexdigest()
+        for path in protected_paths
+    }
+    assert manifest["verdict"] == "current_bridge_diagnostic_failed"
+    assert before == after
+    assert "sts_lightspeed_noncombat_adapter" not in sys.modules
 
 
 @pytest.mark.parametrize(
