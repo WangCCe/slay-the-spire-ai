@@ -73,10 +73,11 @@
 ## 9. Authorize And Preflight One Logical Execution
 
 - [x] 9.1 Create a separate canonical one-shot execution authorization only after the pushed preregistration is exact, binding one unused logical execution id and changing only `experiment_execution` to true.
-- [ ] 9.2 Add and run preflight checks for exact pushed source, runtime, native module, physical simulator source, registration, authorization, absent output, free lease, cumulative budget, and immutable production checkpoint inventory.
-- [ ] 9.3 Prove preflight neither starts nor contacts Communication Mod, changes its configuration, discovers a live policy artifact, launches gameplay, or mutates production checkpoints.
+- [x] 9.2 Add and run preflight checks for exact pushed source, runtime, native module, physical simulator source, registration, authorization, absent output, free lease, cumulative budget, and immutable production checkpoint inventory.
+- [x] 9.3 Prove preflight neither starts nor contacts Communication Mod, changes its configuration, discovers a live policy artifact, launches gameplay, or mutates production checkpoints.
+  - Evidence: canonical preflight report `88c740cf3f4e475f978520f163c7ee54088d00085f766ceae8410d4946e22998` records byte-identical pre/post isolation snapshots, unchanged 208-file production checkpoint inventory `a4badcb199c17179ea09f1174ec2bf6b0ecd8942fd5c862124cdf85ccc0da11d`, unchanged Communication Mod configuration, zero relevant processes, absent output and lease, and no native load, environment, seed, or training effect.
 - [x] 9.4 Commit and push the authorization before any native loading, environment construction, registered seed use, training, canary access, or holdout access.
-- [ ] 9.5 Stop before execution if any identity, absence, authority, lease, or resource boundary differs; do not repair it by substituting a path, seed, runtime, module, threshold, or parameter.
+- [x] 9.5 Stop before execution if any identity, absence, authority, lease, or resource boundary differs; do not repair it by substituting a path, seed, runtime, module, threshold, or parameter.
 
 ## 10. Execute The Single Bounded Experiment
 
