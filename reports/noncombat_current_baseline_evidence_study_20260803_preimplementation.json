@@ -1,0 +1,408 @@
+{
+  "authority": {
+    "baseline_floor_authorized": false,
+    "environment_construction_authorized": false,
+    "execution_authorized": false,
+    "formal_rl_authorized": false,
+    "fresh_evidence_authorized": false,
+    "gameplay_authorized": false,
+    "model_fitting_authorized": false,
+    "native_loading_authorized": false,
+    "ope_authorized": false,
+    "policy_loading_authorized": false,
+    "promotion_authorized": false,
+    "qualification_authorized": false,
+    "reward_authorized": false,
+    "seed_access_authorized": false,
+    "target_supported_outcome_authorized": false,
+    "training_authorized": false
+  },
+  "cohorts": {
+    "canary": [
+      11000,
+      11001,
+      11002,
+      11003,
+      11004,
+      11005,
+      11006,
+      11007,
+      11008,
+      11009,
+      11010,
+      11011,
+      11012,
+      11013,
+      11014,
+      11015
+    ],
+    "holdout": [
+      12000,
+      12001,
+      12002,
+      12003,
+      12004,
+      12005,
+      12006,
+      12007,
+      12008,
+      12009,
+      12010,
+      12011,
+      12012,
+      12013,
+      12014,
+      12015,
+      12016,
+      12017,
+      12018,
+      12019,
+      12020,
+      12021,
+      12022,
+      12023,
+      12024,
+      12025,
+      12026,
+      12027,
+      12028,
+      12029,
+      12030,
+      12031,
+      12032,
+      12033,
+      12034,
+      12035,
+      12036,
+      12037,
+      12038,
+      12039,
+      12040,
+      12041,
+      12042,
+      12043,
+      12044,
+      12045,
+      12046,
+      12047,
+      12048,
+      12049,
+      12050,
+      12051,
+      12052,
+      12053,
+      12054,
+      12055,
+      12056,
+      12057,
+      12058,
+      12059,
+      12060,
+      12061,
+      12062,
+      12063
+    ]
+  },
+  "external_identity_expectations": {
+    "metadata": {
+      "path": "D:\\SteamLibrary\\steamapps\\common\\SlayTheSpire\\export\\items.json",
+      "sha256": "e23784ea8ed3092e3bfa9918240e162a9cbcb837badfb53c612eb0d83cc811dc",
+      "size_bytes": 240371
+    },
+    "module": {
+      "path": "D:\\PycharmProjects\\slay-the-spire-ai\\.sts_lightspeed_adapter_v3_shop_support_build\\sts_lightspeed_noncombat_adapter.cp310-win_amd64.pyd",
+      "sha256": "7ac2c750fba6e38d4a023cab72a4d67f158fe7f88414058e5876cef5003fcb88",
+      "size_bytes": 4225024
+    },
+    "revalidation_status": "deferred_until_preregistration_without_native_import",
+    "runtime": {
+      "executable": "D:\\anaconda\\envs\\stsai\\python.exe",
+      "python": "3.10.18"
+    },
+    "simulator": {
+      "commit": "7476a81954020087da31d41d16fddf475746ec2d",
+      "path": "D:\\CLionProjects\\sts_lightspeed",
+      "source_file_count": 79,
+      "source_sha256": "a3f98721ec37373b1b00aef660832a3307f0186ba0614d07a3b1e7de8ab2e46a"
+    },
+    "source_registration": {
+      "path": "reports/noncombat_current_bridge_diagnostic_smoke_20260803_r2_input.json",
+      "sha256": "71e156bfcb2d8b6932fbf8e1f50c1705023098ae91485e5967304bb866874934",
+      "size_bytes": 6977
+    }
+  },
+  "gates": {
+    "bootstrap": {
+      "confidence": 0.95,
+      "resamples": 10000,
+      "seed": 20260803
+    },
+    "canary": {
+      "complete_pair_count": 16,
+      "current_category_coverage": [
+        "card_reward",
+        "event",
+        "route",
+        "shop"
+      ],
+      "current_mean_floor_min": 15.0,
+      "current_minus_control_mean_floor_min": 0.0,
+      "max_declared_support_rows_per_policy": 1,
+      "replay_identity_required": true,
+      "unexpected_failure_count_max": 0
+    },
+    "holdout": {
+      "absolute_bootstrap_lower_min": 15.0,
+      "complete_pair_count": 64,
+      "current_category_coverage": [
+        "card_reward",
+        "event",
+        "route",
+        "shop"
+      ],
+      "current_mean_floor_min": 18.0,
+      "current_minus_control_bootstrap_lower_exclusive_min": 0.0,
+      "current_minus_control_mean_floor_min": 3.0,
+      "max_declared_support_rows_per_policy": 3,
+      "replay_identity_required": true,
+      "unexpected_failure_count_max": 0
+    }
+  },
+  "limits": {
+    "canary_max_wall_seconds": 600.0,
+    "canary_policy_episode_limit": 64,
+    "holdout_policy_episode_limit": 256,
+    "max_decisions_per_episode": 500,
+    "replay_count": 2,
+    "total_max_wall_seconds": 1800.0
+  },
+  "lineage": {
+    "candidate_schema_repair": {
+      "archive_files": [
+        {
+          "path": "openspec/changes/archive/2026-08-03-fix-current-bridge-diagnostic-candidate-schema/.openspec.yaml",
+          "sha256": "92b2525d81859548852d4cec2a25ac7a7f9bc08dfe777798ae4c30fb1b14fa3d",
+          "size_bytes": 40
+        },
+        {
+          "path": "openspec/changes/archive/2026-08-03-fix-current-bridge-diagnostic-candidate-schema/design.md",
+          "sha256": "9d133674269fc60b97ca1ec9e948771219a326a17f76853522b4d72ddd15eccd",
+          "size_bytes": 5984
+        },
+        {
+          "path": "openspec/changes/archive/2026-08-03-fix-current-bridge-diagnostic-candidate-schema/proposal.md",
+          "sha256": "1f2455ca18170cd16eac75d6203792f99f86425494ec5f1407fc881878587fd0",
+          "size_bytes": 1985
+        },
+        {
+          "path": "openspec/changes/archive/2026-08-03-fix-current-bridge-diagnostic-candidate-schema/specs/noncombat-current-bridge-diagnostic-smoke/spec.md",
+          "sha256": "87da47f9d481ca5f8ede84d88e0f5a3baf46fba22fcfa10fe33fa5e3aeedfc7d",
+          "size_bytes": 2650
+        },
+        {
+          "path": "openspec/changes/archive/2026-08-03-fix-current-bridge-diagnostic-candidate-schema/tasks.md",
+          "sha256": "4c42c93cddd01a500a19364e40ef7ff2a920d08648c1c8d9ffecc2373f2e21a5",
+          "size_bytes": 1969
+        }
+      ],
+      "commit": "b0c7ccc0b88a7a847b1119a984b6378032d94b78"
+    },
+    "consumed_r2": {
+      "closeout": {
+        "path": "reports/noncombat_current_bridge_diagnostic_smoke_20260803_r2_closeout.md",
+        "sha256": "755b9d09f97aab66cb23bb4e9d5314e5fb934d22c44995a5b123e42e87aa8fc7",
+        "size_bytes": 5880
+      },
+      "manifest": {
+        "path": "reports/noncombat_current_bridge_diagnostic_smoke_20260803_r2/artifact_manifest.json",
+        "sha256": "7f6da7c27b73db15be1470c702ed6ff3bef24ba6952528c33b49c5248fcf3e8b",
+        "size_bytes": 1620
+      },
+      "registration": {
+        "path": "reports/noncombat_current_bridge_diagnostic_smoke_20260803_r2_input.json",
+        "sha256": "71e156bfcb2d8b6932fbf8e1f50c1705023098ae91485e5967304bb866874934",
+        "size_bytes": 6977
+      },
+      "retained_rows": 0,
+      "verdict": "current_bridge_diagnostic_failed"
+    },
+    "consumed_v1": {
+      "closeout": {
+        "path": "reports/noncombat_current_bridge_diagnostic_smoke_20260803_closeout.md",
+        "sha256": "006ffd7c3e3c662cc87fcd1f25550e3acc73ef61ca7912de533bc111ff0fed0f",
+        "size_bytes": 5310
+      },
+      "manifest": {
+        "path": "reports/noncombat_current_bridge_diagnostic_smoke_20260803/artifact_manifest.json",
+        "sha256": "649444f4b87877ebf2fcea7258ffa08484a94e7455d28f79e14c6ac30c90dbca",
+        "size_bytes": 1620
+      },
+      "registration": {
+        "path": "reports/noncombat_current_bridge_diagnostic_smoke_20260803_input.json",
+        "sha256": "351b0cf61f301ba4a3c48933b74a0dc70301d4d1ce1eaa6711161c6c61a7306a",
+        "size_bytes": 6971
+      },
+      "retained_rows": 0,
+      "verdict": "current_bridge_diagnostic_failed"
+    },
+    "design_audit": {
+      "path": "reports/noncombat_current_baseline_evidence_study_design_audit_20260803.md",
+      "sha256": "d34b107abe7a587525fa3f2abcfe2f65dfa9c610a8d2c91e668557d43f750976",
+      "size_bytes": 3632
+    },
+    "post_bridge_no_go": {
+      "path": "reports/noncombat_formal_rl_post_bridge_gap_audit_20260803.md",
+      "sha256": "0f790a1664847d0c6cf8a3da74ca87377f7d23af585fa71979ac487c2e12b5d5",
+      "size_bytes": 5451
+    },
+    "potion_identity_repair": {
+      "archive_files": [
+        {
+          "path": "openspec/changes/archive/2026-08-03-fix-current-bridge-potion-metadata-identity/.openspec.yaml",
+          "sha256": "92b2525d81859548852d4cec2a25ac7a7f9bc08dfe777798ae4c30fb1b14fa3d",
+          "size_bytes": 40
+        },
+        {
+          "path": "openspec/changes/archive/2026-08-03-fix-current-bridge-potion-metadata-identity/design.md",
+          "sha256": "1dc55169379cc26e6dd734a51dbc233e862fefcd0c5468a7bebae3af41ab942c",
+          "size_bytes": 4216
+        },
+        {
+          "path": "openspec/changes/archive/2026-08-03-fix-current-bridge-potion-metadata-identity/proposal.md",
+          "sha256": "c927d34941d078002ede189a536d879f33bdb1a30937e26ff92bb389ad6fde0c",
+          "size_bytes": 2267
+        },
+        {
+          "path": "openspec/changes/archive/2026-08-03-fix-current-bridge-potion-metadata-identity/specs/noncombat-current-policy-simulator-bridge/spec.md",
+          "sha256": "42682c66a7640699785afb347aa8602b1e8b85c3f93624a314949d9b8b03187b",
+          "size_bytes": 2079
+        },
+        {
+          "path": "openspec/changes/archive/2026-08-03-fix-current-bridge-potion-metadata-identity/tasks.md",
+          "sha256": "0733ba13f5bf8448ca0eea7df41664e45211f2d196300df5ebb13d12d4bf772c",
+          "size_bytes": 2010
+        }
+      ],
+      "audit": {
+        "path": "reports/noncombat_current_bridge_potion_metadata_identity_audit_20260803.md",
+        "sha256": "f1d0dbe5ddb7ab20969ef2f349abf2515f39072b4575251849f6efcb5cc98494",
+        "size_bytes": 5511
+      },
+      "commit": "d2e37cdabdd8ca6c395ce2c575cfc1e8c23fb30d"
+    },
+    "relic_identity_repair": {
+      "archive_files": [
+        {
+          "path": "openspec/changes/archive/2026-08-03-fix-current-bridge-relic-metadata-identity/.openspec.yaml",
+          "sha256": "92b2525d81859548852d4cec2a25ac7a7f9bc08dfe777798ae4c30fb1b14fa3d",
+          "size_bytes": 40
+        },
+        {
+          "path": "openspec/changes/archive/2026-08-03-fix-current-bridge-relic-metadata-identity/design.md",
+          "sha256": "6a8519da9d4fe5b9dc23e470b956eb5036b04a73ddb5ee1ac58ee8b5922cc7c1",
+          "size_bytes": 4590
+        },
+        {
+          "path": "openspec/changes/archive/2026-08-03-fix-current-bridge-relic-metadata-identity/proposal.md",
+          "sha256": "06258a1e33741775ec3eeee7bf94b375bc58871a02ace9430fa81bde56eefc2e",
+          "size_bytes": 2699
+        },
+        {
+          "path": "openspec/changes/archive/2026-08-03-fix-current-bridge-relic-metadata-identity/specs/noncombat-current-policy-simulator-bridge/spec.md",
+          "sha256": "aecec9018dac89edece215b20602ea5bac585241fd7d880a1084087160a26d0e",
+          "size_bytes": 3336
+        },
+        {
+          "path": "openspec/changes/archive/2026-08-03-fix-current-bridge-relic-metadata-identity/tasks.md",
+          "sha256": "800776e82d4d196124324404aa409f98d1d3267a3414a1831be268c1393c8ae1",
+          "size_bytes": 2065
+        }
+      ],
+      "audit": {
+        "path": "reports/noncombat_current_bridge_card_relic_metadata_identity_audit_20260803.md",
+        "sha256": "4835936675f0a6c131ac0dcead73d4d91773a8c9215574a2fb83c150a5379b1a",
+        "size_bytes": 6196
+      },
+      "commit": "386ef60525d275d3bd9493c1f77e5b479299e2bf"
+    }
+  },
+  "output": {
+    "artifact_names": [
+      "artifact_manifest.json",
+      "bootstrap_draws.json",
+      "configuration.json",
+      "execution_journal.json",
+      "metrics.json",
+      "report.md",
+      "trajectory_rows.json"
+    ],
+    "directory": "reports/noncombat_current_baseline_evidence_study_20260803",
+    "exists": false
+  },
+  "planning_commit": "515b606b0c0bfaa8a38b5844daed0caea9326de2",
+  "policies": {
+    "current": {
+      "ascension": 0,
+      "character": "IRONCLAD",
+      "elite_mode": "conservative",
+      "gameplay_io_enabled": false,
+      "policy_id": "current_optimized_ironclad_a0_conservative_snapshot_v1",
+      "screen_entrypoint": "handle_screen",
+      "tracker_enabled": false,
+      "use_optimized_card_selection": true,
+      "use_optimized_combat": true
+    },
+    "weak_control": {
+      "action_selection": "first_candidate_in_registered_order",
+      "policy_id": "deterministic_first_candidate_control_v1",
+      "reference_policy_free": true
+    }
+  },
+  "schema_version": "noncombat-current-baseline-evidence-study-preimplementation-v1",
+  "seed_exclusion": {
+    "excluded_seed_count": 348,
+    "inventory_builder": {
+      "path": "analysis_scripts/noncombat_reachable_event_native_compatibility.py",
+      "sha256": "9eee1fb38ce74536748237047b09dfc1efa1298348e029e6693c60d753c3b4a9",
+      "size_bytes": 76021
+    },
+    "inventory_sha256": "9b598eee383fcdd33507b52269804b7b98d11cadc6abf78ed7f4f9b397c95aa8",
+    "repository_commit": "515b606b0c0bfaa8a38b5844daed0caea9326de2",
+    "row_count": 8315,
+    "source_count": 83,
+    "study_seed_environment_accessed": false,
+    "zero_overlap": {
+      "canary": [],
+      "holdout": []
+    }
+  },
+  "source_identity": {
+    "files": [
+      "analysis_scripts/noncombat_current_bridge_diagnostic_smoke.py",
+      "tests/test_noncombat_current_bridge_diagnostic_smoke.py",
+      "analysis_scripts/noncombat_reachable_event_native_compatibility.py",
+      "analysis_scripts/noncombat_current_policy_simulator_bridge.py",
+      "analysis_scripts/noncombat_event_option_semantics.py",
+      "analysis_scripts/noncombat_reachable_event_surface_audit.py",
+      "analysis_scripts/noncombat_simulator_adapter.py",
+      "tests/test_noncombat_reachable_event_native_compatibility.py",
+      "tests/test_noncombat_reachable_event_option_semantics.py",
+      "spirecomm/ai/agent.py",
+      "spirecomm/ai/decision/base.py",
+      "spirecomm/ai/heuristics/card.py",
+      "spirecomm/ai/heuristics/deck.py",
+      "spirecomm/ai/heuristics/ironclad_deck.py",
+      "spirecomm/ai/heuristics/ironclad_evaluator.py",
+      "spirecomm/ai/heuristics/map_routing.py",
+      "spirecomm/ai/priorities.py",
+      "spirecomm/data/loader.py",
+      "spirecomm/spire/card.py",
+      "spirecomm/spire/game.py",
+      "spirecomm/spire/map.py",
+      "spirecomm/spire/potion.py",
+      "spirecomm/spire/relic.py",
+      "spirecomm/spire/screen.py"
+    ],
+    "sha256": "129b0326f5044f9fb97a7d41a4f0a4c45d07d08c67d8f5857928a5761071eb26"
+  }
+}

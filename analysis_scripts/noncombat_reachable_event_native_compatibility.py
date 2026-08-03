@@ -180,6 +180,20 @@ _MANAGED_SEED_SOURCE_EXCLUSIONS = {
     DEFAULT_REGISTRATION_PATH,
     DEFAULT_SEED_INVENTORY_PATH,
     DEFAULT_SEED_LEDGER_PATH,
+    (
+        "reports/noncombat_current_baseline_evidence_study_20260803_"
+        "preimplementation.json"
+    ),
+    (
+        "reports/noncombat_current_baseline_evidence_study_20260803_"
+        "seed_inventory.json"
+    ),
+    "reports/noncombat_current_baseline_evidence_study_20260803_input.json",
+    "reports/noncombat_current_baseline_evidence_study_20260803_preflight.json",
+    (
+        "reports/noncombat_current_baseline_evidence_study_20260803_"
+        "execution_authorization.json"
+    ),
 }
 
 

@@ -4,52 +4,52 @@
   schema and item-identity repair archives, the post-bridge no-go audit, and the
   current 348-seed exclusion recomputation without native loading; then commit
   and push all planning artifacts before editing source or tests.
-- [ ] 1.2 Add a canonical tracked preimplementation record binding the planning
+- [x] 1.2 Add a canonical tracked preimplementation record binding the planning
   commit, evidence hashes, Current/bridge/adapter sources, exact thresholds,
   cohorts `11000..11015` and `12000..12063`, their zero-overlap proof, external
   identity expectations, output absence, and all-false authority.
 
 ## 2. Red Contract Regressions
 
-- [ ] 2.1 Add red registration tests for exact source and external bindings,
+- [x] 2.1 Add red registration tests for exact source and external bindings,
   pushed-state and output checks, cohort order/isolation/exclusion, execution
   authorization separation, policy set, thresholds, bootstrap, limits, and
   rejection before native loading or environment construction.
-- [ ] 2.2 Add red episode tests for Current and first-candidate isolation,
+- [x] 2.2 Add red episode tests for Current and first-candidate isolation,
   production-shaped candidates, complete source/action hashes, terminal rows,
   exact Courier conservative support rows, rejection of every other failure,
   replay mismatch, resource limits, complete denominators, and no
   SimpleAgent/Bottled fallback.
-- [ ] 2.3 Add red classification and publication tests for every canary and
+- [x] 2.3 Add red classification and publication tests for every canary and
   holdout boundary, absolute and paired bootstrap gates, holdout non-access on
   canary failure, one-shot journal semantics, atomic canonical artifacts, and
   fresh-process no-native byte verification.
 
 ## 3. Focused Study Implementation
 
-- [ ] 3.1 Implement a focused study runner that composes the existing native
+- [x] 3.1 Implement a focused study runner that composes the existing native
   adapter, `CurrentPolicyBridgeSession`, metadata/event contracts, canonical
   helpers, and deterministic bootstrap without copying or modifying the v1/r2
   diagnostic profiles.
-- [ ] 3.2 Implement immutable canary and conditional holdout orchestration for
+- [x] 3.2 Implement immutable canary and conditional holdout orchestration for
   only Current and first-candidate, exact replay comparison, conservative
   support accounting, category aggregation, fixed numeric gates, and terminal
   verdict precedence.
-- [ ] 3.3 Implement registration preparation and validation, durable journal,
+- [x] 3.3 Implement registration preparation and validation, durable journal,
   atomic configuration/rows/draws/metrics/report/manifest publication,
   no-native verification, and CLI commands that keep preparation, execution,
   and verification distinct.
 
 ## 4. Offline Verification And Implementation Gate
 
-- [ ] 4.1 Run focused study, bridge, adapter, event, shop, and metadata pytest
+- [x] 4.1 Run focused study, bridge, adapter, event, shop, and metadata pytest
   with a fresh writable basetemp; run `py_compile`, `git diff --check`, strict
   change validation, and strict global OpenSpec validation.
-- [ ] 4.2 Recompute both consumed diagnostic artifact sets byte-for-byte without
+- [x] 4.2 Recompute both consumed diagnostic artifact sets byte-for-byte without
   native loading, verify their source-bound execution identities remain
   unusable, and prove no native module, environment, seed, gameplay, model,
   reward, OPE, or trainer was touched by implementation verification.
-- [ ] 4.3 Run the partitioned repository `commit` gate instead of an
+- [x] 4.3 Run the partitioned repository `commit` gate instead of an
   unregistered raw full pytest suite, review the diff for scope and authority
   leakage, then commit and push the complete source-only implementation.
 
