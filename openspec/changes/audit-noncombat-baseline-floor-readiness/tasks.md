@@ -13,9 +13,9 @@
 
 ## 3. Current Audit Publication
 
-- [ ] 3.1 Generate the canonical JSON result and Markdown report from the committed registration and exact frozen evidence.
-- [ ] 3.2 Strictly regenerate both outputs byte-for-byte and confirm the observed verdict, candidate roles, blockers, unsupported-episode contract, and next prerequisite match the specification.
-- [ ] 3.3 Update `docs/project_direction.md` to replace superseded v3 compatibility instructions with the observed baseline-floor readiness result while preserving the independent outcome-support blocker.
+- [x] 3.1 Generate the canonical JSON result and Markdown report from the committed registration and exact frozen evidence.
+- [x] 3.2 Strictly regenerate both outputs byte-for-byte and confirm the observed verdict, candidate roles, blockers, unsupported-episode contract, and next prerequisite match the specification.
+- [x] 3.3 Update `docs/project_direction.md` to replace superseded v3 compatibility instructions with the observed baseline-floor readiness result while preserving the independent outcome-support blocker.
 - [ ] 3.4 Write a concise closeout with every gameplay, native, cohort, reward, OPE, formal-RL, training, qualification, loading, and promotion authority false.
 
 ## 4. Verification And Archive

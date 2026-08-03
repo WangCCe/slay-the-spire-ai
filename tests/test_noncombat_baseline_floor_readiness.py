@@ -313,6 +313,33 @@ def test_committed_registration_is_canonical_and_yields_current_verdict():
     assert report["structural_evidence"]["completed_current_seed_rows"] == 0
 
 
+def test_committed_outputs_replay_byte_for_byte(tmp_path):
+    registration_path = (
+        REPO_ROOT
+        / "reports"
+        / "noncombat_baseline_floor_readiness_audit_20260803_input.json"
+    )
+    expected_json = (
+        REPO_ROOT / "reports" / "noncombat_baseline_floor_readiness_audit_20260803.json"
+    )
+    expected_markdown = (
+        REPO_ROOT / "reports" / "noncombat_baseline_floor_readiness_audit_20260803.md"
+    )
+    replay_json = tmp_path / "audit.json"
+    replay_markdown = tmp_path / "audit.md"
+
+    report = readiness.run_audit(
+        registration_path,
+        replay_json,
+        replay_markdown,
+        repo_root=REPO_ROOT,
+    )
+
+    assert replay_json.read_bytes() == expected_json.read_bytes()
+    assert replay_markdown.read_bytes() == expected_markdown.read_bytes()
+    assert report["result"]["verdict"] == "diagnostic_smoke_required"
+
+
 def test_output_collision_with_registered_input_is_rejected(tmp_path):
     registration_path = _write_fixture(tmp_path)
     original = registration_path.read_bytes()

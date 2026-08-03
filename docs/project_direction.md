@@ -61,16 +61,29 @@ simulator, source, and submodule identities all matched. This is a semantic
 coverage blocker, not a policy-quality result, and those seeds remain consumed.
 
 The subsequent hash-bound static audit, total observation contract, and
-implementation-only bridge change are now complete. New native modules declare
-adapter API v3 and expose exact `N'loth` offered-relic records; historical v2
-evidence remains explicitly readable without upgrade. The total fail-closed
-resolver consumes all 25 canonical events and 47 Current aliases, and the bridge
-now translates contiguous Current positions through their validated simulator
-choice indices. Focused regressions and the repository commit gate pass, but no
-native module, environment, seed, cohort, gameplay process, model, or trainer ran
-in the implementation change. The next objective is a separately preregistered
-v3 native compatibility evaluation. Do not start another imitation POC,
-unregistered simulator cohort, gameplay batch, or formal non-combat RL training.
+reachable-surface successor now close all 48 simulator-reachable Ironclad A0
+event-option targets. Historical API v2 evidence remains explicitly readable;
+new modules and bridge sessions use API v3.
+
+Two separately preregistered API v3 own-trajectory cohorts were then consumed
+as valid structural negatives before completing one seed row. The first stopped
+on missing `Scrap Ooze` semantics. After the complete reachable-event repair,
+the successor stopped on the post-removal shop `remove_cost == -1` sentinel.
+Neither result is retryable or retroactively positive.
+
+The remove sentinel, sold shop inventory, and remaining shop domain have since
+received source-bound audits and narrow repairs. The current successor module
+filters sold slots, fails closed on Courier restock semantics, and removes
+impossible Sozu/full-capacity potion purchases while preserving visible
+inventory. These changes close known evidence corruption paths but still do not
+provide a completed Current own-trajectory row.
+
+The baseline-floor readiness audit now returns `diagnostic_smoke_required`.
+Current is the only eligible non-teacher baseline candidate; SimpleAgent and
+Bottled remain auxiliary, and all learned imitation/structured/residual lanes
+remain valid negatives. Before another untouched compatibility or quality
+cohort, run only a separately reviewed reused-development-seed Current bridge
+smoke with structural-only authority. Do not start training or gameplay.
 
 ## Training Boundary
 
@@ -95,15 +108,19 @@ zero target-supported victories. The next prerequisite is the non-teacher
 baseline floor; passing it would not override the outcome blocker or authorize
 training.
 
-The immediate baseline-lane blocker is now v3 native compatibility, not event
-discovery, contract definition, or Python bridge implementation. The r2 bridge
-successor still closes only its frozen Stage 1 rows, and its single Stage 2
-execution still stops on the historical `The Cleric` coverage blocker. Seeds
-`2000..2003` remain consumed and SHALL NOT become an iterative event-debugging
-cohort. The completed implementation closes the known total-observation code
-boundary, but a new own-trajectory check requires a separate registration that
-binds the v3 module, exact sources and contract, a new cohort, deterministic
-replay, stop rules, and structural-only authority before any environment starts.
+The immediate baseline-lane blocker is a missing completed Current
+own-trajectory under the repaired supported boundary. The four frozen Stage 1
+bridge rows pass, but historical Stage 2 and both API v3 cohorts remain consumed
+negatives. Subsequent repairs do not establish structural closure. A third fresh
+cohort is premature until a separate diagnostic smoke binds the current module,
+adapter, bridge, contracts, reused development seeds, replay, limits, and exact
+support blockers without claiming policy quality.
+
+Any future baseline-floor study must retain every selected episode. A declared
+support blocker counts conservatively as a non-victory at the last supported
+floor, remains in paired and aggregate denominators, and is reported by exact
+reason, seed, count, and rate. Dropping unsupported episodes would create
+policy-dependent survivor bias and cannot authorize a positive floor.
 
 The active v2 known-propensity outcome-evidence study is stopped before any
 replacement qualification or study start. R7 remains immutable and retired
@@ -229,36 +246,33 @@ The next authorized sequence is:
 9. Preserve both consumed teacher-sufficiency registrations, the v1 timeout,
    and the strictly recomputed r2 result. Do not retry either registration or
    treat zero observed representation conflicts as policy-quality evidence.
-10. Preserve both completed formal-RL readiness registrations and the formal
-   reward contract byte-for-byte. Treat reward readiness as closed without
-   changing the smoke reward or selecting a scalar weight. Define a separately
-   reviewed, read-only non-teacher baseline-floor plan next; spend no fresh
-   simulator cohort until that plan fixes its candidate, comparison, stop, and
-   reproduction contract. Keep target-supported outcomes separate. Consider
-   bounded formal RL only after every readiness domain passes and a separate
-   training OpenSpec is approved.
-11. Preserve both Current bridge registrations and reports. The predecessor is
-    a valid `missing_event_option_semantics` negative; the r2 successor passes
-    the unchanged four-row Stage 1 gate and consumes its single Stage 2 attempt
-    with a fail-closed `The Cleric` coverage blocker. Do not retry seeds
-    `2000..2003`, change the frozen rows, or patch events one at a time around
-    that observed trajectory.
-12. Preserve both Current event-semantics coverage registrations, the corrected
-    r2 artifact set, the total observation contract, and the completed
-    implementation change. Keep API v2 evidence immutable and require API v3
-    for newly loaded modules. Do not reuse seeds `2000..2003`. Preregister the
-    next native compatibility evaluation, including its module/source identity,
-    new cohort, replay, stop, and authority contract, before environment startup.
+10. Preserve both completed formal-RL readiness registrations, the formal
+    reward contract, and the baseline-floor readiness audit byte-for-byte.
+    Current is the only eligible non-teacher candidate, but its floor remains
+    undemonstrated. Keep target-supported outcomes separate and consider bounded
+    formal RL only after every domain passes and a separate training OpenSpec is
+    approved.
+11. Preserve both Current bridge registrations, both consumed API v3
+    compatibility cohorts, and seeds `2000..2003`, `7000..7007`, and
+    `7100..7107`. Do not retry or reinterpret any of them after repairs.
+12. Before selecting another untouched seed, preregister a structural-only
+    Current bridge smoke on already-consumed development seeds. It must bind the
+    current successor module and all source/contracts, replay exactly, retain
+    declared support blockers, and grant no baseline-floor or policy-quality
+    authority. A later floor proposal must separately fix comparison, numeric
+    gates, unsupported-rate ceiling, bootstrap, stop, and holdout contracts.
 
 ## Work Lanes
 
-The primary lane is now a separately reviewed v3 native compatibility
-registration. It must bind the built module, adapter and simulator sources,
-canonical total observation contract, resolver, bridge, metadata, runtime, a new
-untouched cohort, deterministic replay, and fail-closed stop rules before seed
-access. Its result may establish structural own-trajectory compatibility only.
-A non-teacher baseline-floor study remains downstream of that result; the
-target-supported-outcome lane remains blocked and separate.
+The primary lane is now a separately reviewed reused-development-seed Current
+bridge diagnostic smoke. It must bind the built successor module, adapter and
+simulator sources, reachable event contract, shop support envelope, bridge,
+metadata, runtime, fixed reused seeds, deterministic replay, and fail-closed
+limits. It has structural-only authority and may not select fresh seeds.
+
+A fresh compatibility or non-teacher baseline-floor study remains downstream
+of that diagnostic. The target-supported-outcome lane remains independently
+blocked on source comparability and zero supported victories.
 
 Live gameplay is a maintenance and registered-evaluation lane only. Launch it
 for a crash, stuck state, repeated A-class simulator/mechanics defect, or an
