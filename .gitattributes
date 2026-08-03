@@ -139,3 +139,6 @@ openspec/changes/run-reused-current-bridge-diagnostic-smoke/** text eol=lf
 openspec/changes/archive/*-run-reused-current-bridge-diagnostic-smoke/** text eol=lf
 openspec/changes/fix-current-bridge-diagnostic-candidate-schema/** text eol=lf
 openspec/changes/archive/*-fix-current-bridge-diagnostic-candidate-schema/** text eol=lf
+reports/noncombat_current_bridge_diagnostic_successor_* text eol=lf
+openspec/changes/run-current-bridge-diagnostic-successor-r2/** text eol=lf
+openspec/changes/archive/*-run-current-bridge-diagnostic-successor-r2/** text eol=lf
