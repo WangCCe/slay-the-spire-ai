@@ -12,6 +12,6 @@
 
 ## 3. Verification And Closeout
 
-- [ ] 3.1 Recompute the frozen consumed failure identities read-only and confirm this source-only repair grants no retry, native, gameplay, baseline-floor, reward, model, OPE, formal-RL, training, loading, qualification, or promotion authority
-- [ ] 3.2 Run the repository commit gate and strict global OpenSpec validation without a raw full-suite rerun, native cohort, Communication Mod launch, or training
-- [ ] 3.3 Publish the source-only closeout and RL `NO-GO` direction, sync the bridge spec, archive the change, commit, push, and prove tracked-clean `HEAD == origin/master`
+- [x] 3.1 Recompute the frozen consumed failure identities read-only and confirm this source-only repair grants no retry, native, gameplay, baseline-floor, reward, model, OPE, formal-RL, training, loading, qualification, or promotion authority
+- [x] 3.2 Run the repository commit gate and strict global OpenSpec validation without a raw full-suite rerun, native cohort, Communication Mod launch, or training
+- [x] 3.3 Publish the source-only closeout and RL `NO-GO` direction, sync the bridge spec, archive the change, commit, push, and prove tracked-clean `HEAD == origin/master`
