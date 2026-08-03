@@ -13,9 +13,9 @@
 
 ## 3. Immutable Preregistration
 
-- [ ] 3.1 Collect or rebuild the exact API v3 module identity without constructing an environment, publish and recompute the tracked seed inventory, and prove the canonical output directory does not exist
-- [ ] 3.2 Select exactly eight sorted untouched seeds from the verified inventory, write the immutable ledger and registration, and independently reproduce every implementation, module, simulator, contract, metadata, runtime, predecessor, limit, output, and authority field
-- [ ] 3.3 Run focused preregistration and no-environment guard tests plus strict OpenSpec validation, then commit and push the ledger and registration without creating a journal
+- [x] 3.1 Collect or rebuild the exact API v3 module identity without constructing an environment, publish and recompute the tracked seed inventory, and prove the canonical output directory does not exist
+- [x] 3.2 Select exactly eight sorted untouched seeds from the verified inventory, write the immutable ledger and registration, and independently reproduce every implementation, module, simulator, contract, metadata, runtime, predecessor, limit, output, and authority field
+- [x] 3.3 Run focused preregistration and no-environment guard tests plus strict OpenSpec validation, then commit and push the ledger and registration without creating a journal
 - [ ] 3.4 Prove tracked-clean status, exact registration and ledger blobs at `HEAD`, and `HEAD == origin/master` immediately before execution
 
 ## 4. One-Shot Native Gate
