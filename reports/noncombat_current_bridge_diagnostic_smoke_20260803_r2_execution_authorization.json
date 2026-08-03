@@ -1,0 +1,60 @@
+{
+  "authority": {
+    "baseline_floor_authorized": false,
+    "execute_r2_authorized": true,
+    "formal_rl_authorized": false,
+    "fresh_evidence_authorized": false,
+    "gameplay_authorized": false,
+    "model_fitting_authorized": false,
+    "ope_authorized": false,
+    "policy_loading_authorized": false,
+    "prepare_r3_authorized": false,
+    "promotion_authorized": false,
+    "qualification_authorized": false,
+    "retry_r2_authorized": false,
+    "reward_authorized": false,
+    "target_supported_outcome_authorized": false,
+    "training_authorized": false
+  },
+  "checks": {
+    "head_equal_origin": true,
+    "implementation_source_valid": true,
+    "lineage_valid": true,
+    "metadata_card_count": 709,
+    "native_loaded_during_postcommit_review": false,
+    "output_root_absent": true,
+    "registration_equal_head_blob": true,
+    "registration_source_valid": true
+  },
+  "decision": "go_for_one_r2_execution",
+  "execution": {
+    "command": [
+      "D:\\anaconda\\envs\\stsai\\python.exe",
+      "analysis_scripts\\noncombat_current_bridge_diagnostic_smoke.py",
+      "execute-r2",
+      "--dll-directory",
+      "D:\\programs\\CLion\\bin\\mingw\\bin"
+    ],
+    "max_decisions_per_replay": 500,
+    "max_wall_seconds": 600.0,
+    "output_directory": "reports/noncombat_current_bridge_diagnostic_smoke_20260803_r2",
+    "replay_count": 2,
+    "seeds": [
+      7000,
+      7100,
+      2000,
+      10
+    ]
+  },
+  "implementation": {
+    "commit": "fe9f861aa945618187291e04b595d69914135200",
+    "source_sha256": "08e60d22b127b0a5889cabbffd654a7688458ab2adf15f8055cc072c44709a02"
+  },
+  "registration": {
+    "path": "reports/noncombat_current_bridge_diagnostic_smoke_20260803_r2_input.json",
+    "sha256": "71e156bfcb2d8b6932fbf8e1f50c1705023098ae91485e5967304bb866874934",
+    "size_bytes": 6977
+  },
+  "reviewed_preregistration_commit": "91e18b8eac7498b22366bee9898461411b1e3701",
+  "schema_version": "noncombat-current-bridge-diagnostic-smoke-r2-execution-authorization-v1"
+}

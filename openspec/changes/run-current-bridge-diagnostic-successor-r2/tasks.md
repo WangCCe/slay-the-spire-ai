@@ -47,7 +47,7 @@
 - [x] 4.2 Prepare exactly one canonical r2 registration with the unchanged four
   reused seeds and limits, verify the r2 output root is absent, and run all
   source-bound and no-environment preflight checks.
-- [ ] 4.3 Commit and push the registration and preflight record without any
+- [x] 4.3 Commit and push the registration and preflight record without any
   execution artifact, then independently confirm local `HEAD`, upstream, bound
   source bytes, registration bytes, and absent output root.
 
