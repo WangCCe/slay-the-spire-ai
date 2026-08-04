@@ -449,6 +449,20 @@ The next authorized sequence is:
     initialization retain auxiliary-only roles. A distinct Current readiness
     review and baseline proposal must precede any fresh state-conditioned
     experiment, while target-supported outcomes remain independently blocked.
+27. Preserve the additive state-conditioned policy-input capability. The new
+    source-only module reuses exact API v3 leakage-controlled projection but
+    emits one state tensor and a separate candidate matrix, binds stable input
+    metadata, and builds canonical scored-decision rows for anti-collapse
+    diagnostics. RED failed only on the missing module; the new module then
+    passed 21 focused tests, and the combined input/ranker/diagnostic/r2
+    projection selection passed 54 tests with 92 deselected. No production,
+    script, or existing experiment path imports it, and the unchanged r2
+    verifier still passes 202 artifacts and 225,389 checks. The repository
+    `commit` gate passed 3,849 tests with 11 skips in 315.24 seconds, 318.47
+    seconds including orchestration. Correctness passed, but the five-minute
+    feedback bound remains missed by 18.47 seconds. This capability grants no
+    experiment, cohort, native loading, training, gameplay, model loading,
+    formal-RL, qualification, or promotion authority.
 
 ## Work Lanes
 
@@ -470,17 +484,15 @@ Current loading, policy promotion, or replacement experiment. The r2 terminal
 postmortem is complete and sets an immediate r3 to `no_go`: the registered
 linear feature composition cannot use shared state to change candidate order,
 and the final policy saturated to taking every observed card reward. The
-state-conditioned ranker and anti-collapse diagnostic capability are now
-implemented and verified, but not integrated into an experiment. The successor
-design audit is complete. The active implementation lane is the additive
-source-only `add-state-conditioned-noncombat-policy-input` change: reuse exact
-API v3 leakage-controlled projection semantics, emit separate state and
-candidate tensors, bind stable feature identity, and produce canonical
-diagnostic rows without editing the r2-bound experiment. After that capability
-is archived, the next evidence lane is a distinct read-only post-repair Current
-comparator readiness review. A rebuilt module, different experiment, or
-empirical Current-baseline strategy still requires a separate approved change,
-fresh identity, fresh cohort decision, and evidence design.
+state-conditioned ranker, policy-input boundary, and anti-collapse diagnostic
+capabilities are now implemented and verified, but not integrated into an
+experiment. Exact API v3 state and candidates remain separate through scoring,
+and no production or existing experiment path imports the new boundary. The
+active evidence lane is now a distinct read-only post-repair Current comparator
+readiness review; do not start r3 or allocate a cohort from the implementation
+result. A rebuilt module, different experiment, or empirical Current-baseline
+strategy still requires a separate approved change, fresh identity, fresh
+cohort decision, and evidence design.
 
 Live gameplay is a maintenance and registered-evaluation lane only. Launch it
 for a crash, stuck state, repeated A-class simulator/mechanics defect, or an
@@ -500,9 +512,9 @@ OpenSpec changes authorize them.
   unregistered raw full-suite run for the commit gate.
 - Keep changes cohesive and preserve unrelated local artifacts.
 - Stop when evidence is ambiguous rather than tuning around it.
-- Treat the 2026-08-05 `commit` gate result of 3,828 passed, 11 skipped, and
-  320.40 seconds as a fresh timing-drift observation: correctness passed, but
-  the qualified five-minute feedback bound was exceeded by 20.40 seconds. Do
+- Treat the latest 2026-08-05 `commit` gate result of 3,849 passed, 11 skipped,
+  and 318.47 seconds as confirmation of timing drift: correctness passed, but
+  the qualified five-minute feedback bound was exceeded by 18.47 seconds. Do
   not rerun it inside this change; schedule a separate read-only duration audit
   before claiming the bounded-feedback requirement remains met.
 
