@@ -463,6 +463,20 @@ The next authorized sequence is:
     feedback bound remains missed by 18.47 seconds. This capability grants no
     experiment, cohort, native loading, training, gameplay, model loading,
     formal-RL, qualification, or promotion authority.
+28. Preserve the post-repair Current comparator readiness review. The known
+    event, shop, candidate-schema, potion, card, relic, and card-cost bridge
+    defects are closed at their source and regression boundaries, the bound
+    Current policy and old numeric gates remain unchanged, and the focused
+    offline chain passes 278 tests with 5 expected skips. The current main spec
+    still over-broadly forbids any successor after the `Injury` measurement
+    failure. The next change may revise that boundary and propose exactly one
+    distinct post-final-repair Current-versus-first-candidate replication with
+    a regenerated untouched cohort. It must preserve the consumed study,
+    retain the old thresholds or make them stricter, and make any new
+    structural or quality failure terminal for the Current-baseline lane. This
+    grants proposal consideration only; no cohort selection, native loading,
+    execution, training, gameplay, formal-RL, qualification, or promotion is
+    authorized.
 
 ## Work Lanes
 
@@ -473,8 +487,12 @@ canary rows; the later repair does not complete it or establish a baseline
 floor. Formal RL remains `no_go` because baseline policy and source-comparable
 target-supported outcomes are still blocked.
 
-Do not prepare another baseline cohort or modify the consumed study. The card
-metadata cost audit and its bounded compatibility repair are closed. The r1
+Do not modify, retry, or reinterpret the consumed baseline study. A separate
+project-level readiness review now supports planning exactly one
+post-final-repair replication, but only after an OpenSpec change narrows the
+anti-retry rule, versions the study independently, and fixes every contract
+term before cohort selection. The card metadata cost audit and its bounded
+compatibility repair are closed. The r1
 simulator-only experiment remains a terminal native-load failure with no seed
 access. Its r2 successor completed exactly once and is valid simulator evidence:
 the trained policy improved terminal floor against seeded initialization on
@@ -488,11 +506,12 @@ state-conditioned ranker, policy-input boundary, and anti-collapse diagnostic
 capabilities are now implemented and verified, but not integrated into an
 experiment. Exact API v3 state and candidates remain separate through scoring,
 and no production or existing experiment path imports the new boundary. The
-active evidence lane is now a distinct read-only post-repair Current comparator
-readiness review; do not start r3 or allocate a cohort from the implementation
-result. A rebuilt module, different experiment, or empirical Current-baseline
-strategy still requires a separate approved change, fresh identity, fresh
-cohort decision, and evidence design.
+Current comparator readiness review is complete; the active evidence lane is
+the proposal-only `add-post-final-repair-current-baseline-replication` change.
+Do not start r3, bind a cohort, or execute native code from the review. A
+rebuilt module, different experiment, or empirical Current-baseline strategy
+still requires a separate approved change, fresh identity, fresh cohort
+decision, and evidence design.
 
 Live gameplay is a maintenance and registered-evaluation lane only. Launch it
 for a crash, stuck state, repeated A-class simulator/mechanics defect, or an
