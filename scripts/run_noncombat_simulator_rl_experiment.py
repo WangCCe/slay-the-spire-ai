@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import argparse
 import hashlib
+from importlib import metadata as importlib_metadata
 import json
 import platform
 import subprocess
@@ -137,6 +138,15 @@ def _repo_relative_path(repo: Path, path: Path, label: str) -> str:
     return relative
 
 
+def _installed_torch_version() -> str:
+    try:
+        return importlib_metadata.version("torch")
+    except importlib_metadata.PackageNotFoundError as exc:
+        raise experiment.ExperimentBlocked(
+            "runtime PyTorch distribution is missing"
+        ) from exc
+
+
 def source_only_preflight(
     *,
     repo_root: Path,
@@ -203,7 +213,7 @@ def source_only_preflight(
         raise experiment.ExperimentBlocked("runtime platform mismatch")
     if platform.python_version() != runtime["python_version"]:
         raise experiment.ExperimentBlocked("runtime Python version mismatch")
-    torch_version = str(experiment._torch_module().__version__)
+    torch_version = _installed_torch_version()
     if torch_version != runtime["torch_version"]:
         raise experiment.ExperimentBlocked("runtime PyTorch version mismatch")
 
@@ -298,6 +308,29 @@ def _charge_failed_operation(
     )
 
 
+def _load_registered_native(
+    *,
+    registration: dict[str, Any],
+    module_path: Path,
+    dll_directories: Sequence[Path],
+) -> tuple[Any, dict[str, Any]]:
+    native_module = load_native_module(
+        module_path, dll_directories=dll_directories
+    )
+    actual_provenance = _native_provenance_after_load(
+        registration=registration, native_module=native_module
+    )
+    if actual_provenance != registration["identity"]["adapter_provenance"]:
+        raise experiment.ExperimentBlocked("loaded native build identity mismatch")
+    return native_module, actual_provenance
+
+
+def _pre_rollout_failure(
+    label: str, exc: Exception
+) -> experiment.ExperimentBlocked:
+    return experiment.ExperimentBlocked(f"{label}: {type(exc).__name__}: {exc}")
+
+
 def execute_authorized_experiment(args: argparse.Namespace) -> dict[str, Any]:
     """Execute or resume the one registered logical experiment."""
     repo = args.repo_root.resolve()
@@ -315,7 +348,22 @@ def execute_authorized_experiment(args: argparse.Namespace) -> dict[str, Any]:
     registration_sha256 = hashlib.sha256(registration_bytes).hexdigest()
     implementation_commit = registration["identity"]["implementation"]["commit"]
     execution_id = authorization["logical_execution_id"]
-    if not args.output_dir.exists():
+    fresh_start = not args.output_dir.exists()
+    native_module: Any
+    actual_provenance: dict[str, Any]
+    runtime: experiment.TrainingRuntime
+    if fresh_start:
+        try:
+            native_module, actual_provenance = _load_registered_native(
+                registration=registration,
+                module_path=args.module,
+                dll_directories=args.dll_directory,
+            )
+            runtime = experiment.initialize_training_runtime()
+        except Exception as exc:
+            raise _pre_rollout_failure(
+                "pre-start runtime validation failed", exc
+            ) from exc
         experiment.initialize_experiment_output(
             args.output_dir,
             registration_bytes=registration_bytes,
@@ -330,26 +378,26 @@ def execute_authorized_experiment(args: argparse.Namespace) -> dict[str, Any]:
                 implementation_commit=implementation_commit,
                 logical_execution_id=execution_id,
             )
-        runtime = experiment.resume_training_runtime_from_output(
-            args.output_dir,
-            registration_sha256=registration_sha256,
-            implementation_commit=implementation_commit,
-            logical_execution_id=execution_id,
-            active_lease=lease,
-        )
+        if not fresh_start:
+            try:
+                native_module, actual_provenance = _load_registered_native(
+                    registration=registration,
+                    module_path=args.module,
+                    dll_directories=args.dll_directory,
+                )
+                runtime = experiment.resume_training_runtime_from_output(
+                    args.output_dir,
+                    registration_sha256=registration_sha256,
+                    implementation_commit=implementation_commit,
+                    logical_execution_id=execution_id,
+                    active_lease=lease,
+                )
+            except Exception as exc:
+                raise _pre_rollout_failure(
+                    "pre-rollout runtime validation failed", exc
+                ) from exc
         active_operation_started: float | None = None
         try:
-            active_operation_started = time.perf_counter()
-            native_module = load_native_module(
-                args.module, dll_directories=args.dll_directory
-            )
-            actual_provenance = _native_provenance_after_load(
-                registration=registration, native_module=native_module
-            )
-            if actual_provenance != registration["identity"]["adapter_provenance"]:
-                raise experiment.ExperimentBlocked("loaded native build identity mismatch")
-            active_operation_started = None
-
             def environment_factory(seed: int) -> NativeSimulatorEnvironment:
                 return NativeSimulatorEnvironment(
                     native_module.Environment(seed, 0), actual_provenance

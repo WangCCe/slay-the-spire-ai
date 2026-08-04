@@ -24,11 +24,6 @@ from analysis_scripts.noncombat_formal_reward_contract import (
     reward_channels,
     validate_scalarization,
 )
-from analysis_scripts.noncombat_policy_model import (
-    CandidateRanker,
-    FeatureConfig,
-    candidate_feature_vector,
-)
 from analysis_scripts.noncombat_simulator_adapter import (
     ADAPTER_API_VERSION,
     NATIVE_TARGET_POLICY_ID,
@@ -769,13 +764,13 @@ def candidate_feature_matrix_v2(
         _project_validated_policy_view(normalized_snapshot, candidate)
         for candidate in normalized_candidates
     ]
+    torch = _torch_module()
+    _, FeatureConfig, candidate_feature_vector = _policy_model_components()
     config = FeatureConfig(version=FEATURE_VERSION, hash_dim=hash_dim)
     state_features = candidate_feature_vector(
         SimpleNamespace(state=projected[0]["state"]), {}, config
     )
     empty_state = SimpleNamespace(state={})
-    import torch
-
     result = torch.stack(
         [
             state_features
@@ -838,9 +833,20 @@ def _torch_module():
     return torch
 
 
+def _policy_model_components():
+    from analysis_scripts.noncombat_policy_model import (
+        CandidateRanker,
+        FeatureConfig,
+        candidate_feature_vector,
+    )
+
+    return CandidateRanker, FeatureConfig, candidate_feature_vector
+
+
 def initialize_training_runtime() -> TrainingRuntime:
     """Create the only registered model, optimizer, and random generators."""
     torch = _torch_module()
+    CandidateRanker, _, _ = _policy_model_components()
     torch.set_num_threads(1)
     torch.use_deterministic_algorithms(True)
     random.seed(MODEL_SEED)
@@ -913,6 +919,7 @@ def _ensure_finite_tree(value: Any, label: str) -> None:
 
 def _validate_training_runtime(runtime: TrainingRuntime) -> None:
     torch = _torch_module()
+    CandidateRanker, _, _ = _policy_model_components()
     if not isinstance(runtime.model, CandidateRanker):
         raise ExperimentBlocked("training model must be CandidateRanker")
     if runtime.model.scorer.in_features != HASH_DIM:
@@ -2659,6 +2666,8 @@ def evaluate_frozen_policy(
     clock: Callable[[], float] = time.perf_counter,
 ) -> list[dict[str, Any]]:
     """Evaluate one frozen policy greedily without changing model parameters."""
+    torch = _torch_module()
+    CandidateRanker, _, _ = _policy_model_components()
     if not isinstance(model, CandidateRanker):
         raise ExperimentBlocked("evaluation model must be CandidateRanker")
     if next(model.parameters()).device.type != "cpu":
@@ -2666,7 +2675,6 @@ def evaluate_frozen_policy(
     before = _model_state_bytes(model)
     was_training = model.training
     rows: list[dict[str, Any]] = []
-    torch = _torch_module()
     model.eval()
     try:
         with torch.no_grad():

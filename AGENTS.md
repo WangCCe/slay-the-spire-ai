@@ -71,6 +71,34 @@ This project uses two separate Python environments for different purposes:
    WSL Python:      14:08:04 → 14:08:07  (~3s)     ❌
    ```
 
+### Pytest Temp Directories On Windows
+
+Use a pre-created parent under the system temp directory for direct Codex pytest
+invocations. Do not create new `.pytest_*` or `.codex_pytest` roots in the
+repository.
+
+```powershell
+$pytestRoot = Join-Path $env:TEMP "codex-pytest-stsai"
+New-Item -ItemType Directory -Path $pytestRoot -Force
+D:\anaconda\envs\stsai\python.exe -m pytest -q -p no:cacheprovider `
+  --basetemp (Join-Path $pytestRoot "<unique-scope>") <test-paths>
+```
+
+- Pytest can create and reuse the scoped child directory once its parent exists.
+- A sandboxed `Remove-Item -Recurse` may be denied even after pytest succeeds;
+  that cleanup denial is not a test failure.
+- Do not retry the test merely to clean its basetemp. At a maintenance boundary,
+  resolve the exact absolute child path and remove only that path with the
+  required elevated filesystem permission. Never use a wildcard or broad
+  repository cleanup.
+- If pytest itself reports a setup or cleanup `PermissionError`, record the run
+  as infrastructure failure rather than RED/GREEN test evidence, then rerun once
+  with a fresh scoped child under the system-temp parent.
+- `scripts/run_test_gate.py` currently owns its unique basetemp under the
+  ignored repository `.pytest_gates/` root. In a managed Codex sandbox, run that
+  gate once with the exact elevated command permission it needs; do not first
+  launch a non-elevated gate that may fail only during nested pytest cleanup.
+
 ---
 
 # AI Agent Development Guide

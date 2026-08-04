@@ -1757,6 +1757,45 @@ def test_runner_help_and_control_validation_are_source_only(tmp_path):
     assert "sts_lightspeed_noncombat_adapter" not in validated.stdout
 
 
+def test_source_preflight_reads_torch_version_without_importing_torch(monkeypatch):
+    monkeypatch.setattr(
+        experiment_runner.importlib_metadata,
+        "version",
+        lambda distribution: "2.5.1" if distribution == "torch" else None,
+    )
+    monkeypatch.setattr(
+        experiment_module,
+        "_torch_module",
+        lambda: pytest.fail("source-only preflight must not import Torch"),
+    )
+
+    assert experiment_runner._installed_torch_version() == "2.5.1"
+
+
+def test_runner_module_import_does_not_import_torch():
+    repo_root = Path(__file__).resolve().parents[1]
+    result = subprocess.run(
+        [
+            sys.executable,
+            "-c",
+            (
+                "import sys; "
+                "import scripts.run_noncombat_simulator_rl_experiment; "
+                "print('torch' in sys.modules)"
+            ),
+        ],
+        cwd=repo_root,
+        check=False,
+        capture_output=True,
+        text=True,
+        encoding="utf-8",
+        timeout=60,
+    )
+
+    assert result.returncode == 0, result.stderr
+    assert result.stdout.strip() == "False"
+
+
 def test_runner_rejects_output_path_substitution_before_git_or_native(
     tmp_path, monkeypatch
 ):
@@ -1802,11 +1841,15 @@ def test_runner_rejects_output_path_substitution_before_git_or_native(
         )
 
 
-def test_started_execution_publishes_verifiable_blocked_terminal_on_native_failure(
-    tmp_path, monkeypatch
+@pytest.mark.parametrize("failure_stage", ["native", "provenance", "runtime"])
+def test_fresh_prestart_failure_leaves_output_absent_and_repeatable(
+    tmp_path, monkeypatch, failure_stage
 ):
-    output_name = "noncombat_simulator_rl_experiment_native_block"
+    output_name = f"noncombat_simulator_rl_experiment_prestart_{failure_stage}_block"
     registration_bytes, authorization_bytes = _terminal_controls(output_name)
+    registration = validate_registration(
+        load_canonical_json_bytes(registration_bytes, "registration")
+    )
     registration_path = tmp_path / "registration.json"
     authorization_path = tmp_path / "authorization.json"
     output_dir = tmp_path / output_name
@@ -1817,12 +1860,214 @@ def test_started_execution_publishes_verifiable_blocked_terminal_on_native_failu
         "source_only_preflight",
         lambda **_kwargs: {"source_only_preflight": True},
     )
+    if failure_stage == "native":
+        monkeypatch.setattr(
+            experiment_runner,
+            "load_native_module",
+            lambda *_args, **_kwargs: (_ for _ in ()).throw(
+                ValueError("fixture native failure")
+            ),
+        )
+    else:
+        monkeypatch.setattr(
+            experiment_runner,
+            "load_native_module",
+            lambda *_args, **_kwargs: object(),
+        )
+        if failure_stage == "provenance":
+            monkeypatch.setattr(
+                experiment_runner,
+                "_native_provenance_after_load",
+                lambda **_kwargs: (_ for _ in ()).throw(
+                    ValueError("fixture provenance failure")
+                ),
+            )
+        else:
+            monkeypatch.setattr(
+                experiment_runner,
+                "_native_provenance_after_load",
+                lambda **_kwargs: registration["identity"]["adapter_provenance"],
+            )
+            monkeypatch.setattr(
+                experiment_module,
+                "initialize_training_runtime",
+                lambda: (_ for _ in ()).throw(ValueError("fixture runtime failure")),
+            )
+    args = experiment_runner.build_parser().parse_args(
+        [
+            "execute",
+            "--repo-root",
+            str(Path(__file__).resolve().parents[1]),
+            "--registration",
+            str(registration_path),
+            "--authorization",
+            str(authorization_path),
+            "--output-dir",
+            str(output_dir),
+            "--simulator-repo",
+            str(tmp_path / "simulator"),
+            "--module",
+            str(tmp_path / "adapter.pyd"),
+        ]
+    )
+
+    for _ in range(2):
+        with pytest.raises(
+            ExperimentBlocked,
+            match=f"pre-start runtime validation failed.*fixture {failure_stage} failure",
+        ):
+            experiment_runner.execute_authorized_experiment(args)
+
+    assert not output_dir.exists()
+
+
+@pytest.mark.parametrize("failure_stage", ["native", "restore"])
+def test_resume_pre_rollout_failure_preserves_nonterminal_evidence(
+    tmp_path, monkeypatch, failure_stage
+):
+    output_name = f"noncombat_simulator_rl_experiment_resume_{failure_stage}_block"
+    registration_bytes, authorization_bytes = _terminal_controls(output_name)
+    registration = validate_registration(
+        load_canonical_json_bytes(registration_bytes, "registration")
+    )
+    registration_path = tmp_path / "registration.json"
+    authorization_path = tmp_path / "authorization.json"
+    output_dir = tmp_path / output_name
+    registration_path.write_bytes(registration_bytes)
+    authorization_path.write_bytes(authorization_bytes)
+    initialize_experiment_output(
+        output_dir,
+        registration_bytes=registration_bytes,
+        authorization_bytes=authorization_bytes,
+    )
+    started_bytes = (output_dir / "journal" / "record_000000.json").read_bytes()
+    monkeypatch.setattr(
+        experiment_runner,
+        "source_only_preflight",
+        lambda **_kwargs: {"source_only_preflight": True},
+    )
+    if failure_stage == "native":
+        monkeypatch.setattr(
+            experiment_runner,
+            "load_native_module",
+            lambda *_args, **_kwargs: (_ for _ in ()).throw(
+                ValueError("fixture resume native failure")
+            ),
+        )
+    else:
+        monkeypatch.setattr(
+            experiment_runner,
+            "load_native_module",
+            lambda *_args, **_kwargs: object(),
+        )
+        monkeypatch.setattr(
+            experiment_runner,
+            "_native_provenance_after_load",
+            lambda **_kwargs: registration["identity"]["adapter_provenance"],
+        )
+        monkeypatch.setattr(
+            experiment_module,
+            "resume_training_runtime_from_output",
+            lambda *_args, **_kwargs: (_ for _ in ()).throw(
+                ValueError("fixture resume restore failure")
+            ),
+        )
+    args = experiment_runner.build_parser().parse_args(
+        [
+            "execute",
+            "--repo-root",
+            str(Path(__file__).resolve().parents[1]),
+            "--registration",
+            str(registration_path),
+            "--authorization",
+            str(authorization_path),
+            "--output-dir",
+            str(output_dir),
+            "--simulator-repo",
+            str(tmp_path / "simulator"),
+            "--module",
+            str(tmp_path / "adapter.pyd"),
+        ]
+    )
+
+    with pytest.raises(
+        ExperimentBlocked,
+        match=(
+            "pre-rollout runtime validation failed.*"
+            f"fixture resume {failure_stage} failure"
+        ),
+    ):
+        experiment_runner.execute_authorized_experiment(args)
+
+    assert (
+        output_dir / "journal" / "record_000000.json"
+    ).read_bytes() == started_bytes
+    assert [
+        row["phase"] for row in validate_journal(output_dir, LOGICAL_EXECUTION_ID)
+    ] == ["started"]
+    for forbidden in (
+        "artifact_manifest.json",
+        "metrics.json",
+        "model.json",
+        "report.md",
+    ):
+        assert not (output_dir / forbidden).exists()
+
+
+def test_native_and_pristine_runtime_precede_start_but_rollout_failure_is_terminal(
+    tmp_path, monkeypatch
+):
+    output_name = "noncombat_simulator_rl_experiment_post_start_block"
+    registration_bytes, authorization_bytes = _terminal_controls(output_name)
+    registration = validate_registration(
+        load_canonical_json_bytes(registration_bytes, "registration")
+    )
+    registration_path = tmp_path / "registration.json"
+    authorization_path = tmp_path / "authorization.json"
+    output_dir = tmp_path / output_name
+    registration_path.write_bytes(registration_bytes)
+    authorization_path.write_bytes(authorization_bytes)
+    events = []
+    real_initialize_runtime = experiment_module.initialize_training_runtime
+    real_initialize_output = experiment_module.initialize_experiment_output
+
+    monkeypatch.setattr(
+        experiment_runner,
+        "source_only_preflight",
+        lambda **_kwargs: {"source_only_preflight": True},
+    )
     monkeypatch.setattr(
         experiment_runner,
         "load_native_module",
-        lambda *_args, **_kwargs: (_ for _ in ()).throw(
-            ValueError("fixture native load failure")
-        ),
+        lambda *_args, **_kwargs: events.append("native") or object(),
+    )
+    monkeypatch.setattr(
+        experiment_runner,
+        "_native_provenance_after_load",
+        lambda **_kwargs: events.append("provenance")
+        or registration["identity"]["adapter_provenance"],
+    )
+
+    def initialize_runtime():
+        events.append("torch")
+        return real_initialize_runtime()
+
+    def initialize_output(*args, **kwargs):
+        events.append("output")
+        return real_initialize_output(*args, **kwargs)
+
+    def fail_rollout(*_args, **_kwargs):
+        events.append("rollout")
+        raise ValueError("fixture post-start rollout failure")
+
+    monkeypatch.setattr(
+        experiment_module, "initialize_training_runtime", initialize_runtime
+    )
+    monkeypatch.setattr(
+        experiment_module, "initialize_experiment_output", initialize_output
+    )
+    monkeypatch.setattr(
+        experiment_module, "run_registered_training_chunk", fail_rollout
     )
     args = experiment_runner.build_parser().parse_args(
         [
@@ -1844,10 +2089,14 @@ def test_started_execution_publishes_verifiable_blocked_terminal_on_native_failu
 
     result = experiment_runner.execute_authorized_experiment(args)
 
+    assert events[:5] == ["native", "provenance", "torch", "output", "rollout"]
     assert result["manifest"]["verdict"] == "experiment_blocked"
     assert validate_terminal_artifact_directory(output_dir)["verdict"] == (
         "experiment_blocked"
     )
+    assert [
+        row["phase"] for row in validate_journal(output_dir, LOGICAL_EXECUTION_ID)
+    ] == ["started", "blocked"]
     verified = _run_standalone_verifier(output_dir)
     assert verified.returncode == 0, verified.stderr
 

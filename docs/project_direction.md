@@ -53,8 +53,8 @@ authorized logical execution as `experiment_blocked`. Static preflight matched
 the pushed source, runtime, native-module bytes, physical simulator source,
 registration, and authorization, but Windows failed to load the bound native
 module with `ImportError: DLL load failed ... The specified procedure could not
-be found.`. The run stopped
-before constructing an environment: it consumed zero registered episodes,
+be found.`. The run stopped before constructing an environment: it consumed
+zero registered episodes,
 performed zero optimizer updates, and left prefix replay, canary, and holdout
 untouched. Cumulative charged wall time was `0.21622760000173002` seconds. The
 standalone standard-library verifier accepted all 174 terminal checks, and the
@@ -63,6 +63,19 @@ is terminal and cannot be retried, repaired in place, retuned, or reinterpreted
 as learning evidence. Formal readiness remains
 `not_ready_for_bounded_training_proposal`; all Current, live, OPE, causal,
 qualification, loading, formal-RL, and promotion authorities remain false.
+
+The subsequent read-only loadability audit identified the exact process-global
+runtime collision. The runner import path and source-only preflight imported
+PyTorch first, which loaded Conda's old `libwinpthread-1.dll`; CLion's newer
+`libstdc++-6.dll` then required the absent `clock_gettime64` and `nanosleep64`
+exports. A source-only repair now lazily imports policy-model Torch symbols,
+reads the Torch version from distribution metadata, loads and validates native
+before initializing Torch, and creates fresh output only after the pristine CPU
+runtime is ready. Pre-start failure therefore leaves output absent, while
+resume validation failure preserves the last complete evidence; the existing
+one-shot and terminal rules still apply after the started journal. This repair
+does not alter or reopen r1 and grants no successor registration, seed,
+execution, training, live, qualification, loading, or promotion authority.
 
 The first source-bound Current-policy simulator bridge registration remains a
 valid negative. Its event row stopped on missing semantics. The source-bound r2
@@ -370,12 +383,13 @@ The next authorized sequence is:
     `experiment_blocked` artifacts and consumed logical execution identity.
     The registered native module failed to load before environment construction,
     so seeds `50000..51663`, training, prefix replay, canary, and holdout were
-    untouched. Do not retry or repair this execution in place. Any successor
-    must first close the Windows native-load/preflight gap in a separate
-    source-only change, then make a separately reviewed registration,
-    execution-identity, and cohort decision. Every successor must preserve
-    `not_ready_for_bounded_training_proposal` and the blocked Current-baseline
-    and target-supported-outcome requirements.
+    untouched. Do not retry or repair this execution in place. The Windows
+    native-load/preflight gap is closed for future source, with experiment start
+    defined by durable output and the started journal rather than repeatable
+    compatibility validation. Any successor still requires a separately
+    reviewed registration, execution identity, and cohort decision. Every
+    successor must preserve `not_ready_for_bounded_training_proposal` and the
+    blocked Current-baseline and target-supported-outcome requirements.
 
 ## Work Lanes
 
@@ -389,13 +403,13 @@ target-supported outcomes are still blocked.
 Do not prepare another baseline cohort or modify the consumed study. The card
 metadata cost audit and its bounded compatibility repair are closed. The
 simulator-only experiment is also closed as a terminal native-load failure,
-without training or evaluation evidence. Its only automatic follow-up is a
-read-only Windows dependency/loadability audit; a repaired runner, rebuilt
-module, or successor experiment requires a separate OpenSpec change and cannot
-reuse the consumed logical execution. A new empirical Current-baseline strategy
-still requires a separate project-level decision with a fresh identity and
-evidence design; it is not an automatic successor to either the consumed study
-or this implementation repair.
+without training or evaluation evidence. Its read-only Windows loadability
+audit and source-only start-boundary repair are complete. A rebuilt module or
+successor experiment requires a separate OpenSpec change and cannot reuse the
+consumed logical execution. A new empirical Current-baseline strategy still
+requires a separate project-level decision with a fresh identity and evidence
+design; it is not an automatic successor to either the consumed study or this
+implementation repair.
 
 Live gameplay is a maintenance and registered-evaluation lane only. Launch it
 for a crash, stuck state, repeated A-class simulator/mechanics defect, or an
