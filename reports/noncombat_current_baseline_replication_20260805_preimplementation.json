@@ -1,0 +1,312 @@
+{
+  "authority": {
+    "baseline_floor_authorized": false,
+    "cohort_materialization_authorized": false,
+    "environment_construction_authorized": false,
+    "execution_authorized": false,
+    "formal_rl_authorized": false,
+    "fresh_evidence_authorized": false,
+    "gameplay_authorized": false,
+    "model_fitting_authorized": false,
+    "native_loading_authorized": false,
+    "ope_authorized": false,
+    "policy_loading_authorized": false,
+    "promotion_authorized": false,
+    "qualification_authorized": false,
+    "reward_authorized": false,
+    "seed_access_authorized": false,
+    "target_supported_outcome_authorized": false,
+    "training_authorized": false
+  },
+  "contract": {
+    "bootstrap": {
+      "confidence": 0.95,
+      "resamples": 10000,
+      "seed": 20260803
+    },
+    "cohort_selection": {
+      "canary_count": 16,
+      "holdout_count": 64,
+      "materialized": false,
+      "search_start": 60000,
+      "strategy": "first_ascending_unexcluded_integers_v1",
+      "total_count": 80
+    },
+    "final_current_baseline_attempt": true,
+    "old_partial_rows_authoritative": false,
+    "source_only": true
+  },
+  "evidence": {
+    "closure": [
+      {
+        "path": "reports/noncombat_reachable_event_surface_20260803_closeout.md",
+        "sha256": "466d3f007c8199bba842ed093dab278c4c91b7d18ba3eacf020cd57b9c57c6e6",
+        "size_bytes": 4657
+      },
+      {
+        "path": "reports/noncombat_shop_sold_inventory_sentinel_audit_20260803.md",
+        "sha256": "f09b6a76ed64e3afeaa6379a1a2e41f8d4f4f903aec10d2a9437bfb4d369e8b0",
+        "size_bytes": 5435
+      },
+      {
+        "path": "reports/noncombat_native_shop_support_envelope_20260803_closeout.md",
+        "sha256": "3ccc66a624f53afadbac838e44fda993af644f3486bd3a9a4498f08c9379b3d5",
+        "size_bytes": 6612
+      },
+      {
+        "path": "reports/noncombat_current_bridge_potion_metadata_identity_audit_20260803.md",
+        "sha256": "f1d0dbe5ddb7ab20969ef2f349abf2515f39072b4575251849f6efcb5cc98494",
+        "size_bytes": 5511
+      },
+      {
+        "path": "reports/noncombat_current_bridge_card_relic_metadata_identity_audit_20260803.md",
+        "sha256": "4835936675f0a6c131ac0dcead73d4d91773a8c9215574a2fb83c150a5379b1a",
+        "size_bytes": 6196
+      },
+      {
+        "path": "reports/noncombat_current_bridge_card_metadata_cost_domain_audit_20260804.json",
+        "sha256": "bd8c18241a012da3bbd786e09067edb503cdb3f9aa9003df1fb4a199a79a2230",
+        "size_bytes": 4057
+      },
+      {
+        "path": "reports/noncombat_current_bridge_card_metadata_cost_domain_repair_20260804_closeout.md",
+        "sha256": "cec6a2dae8269608a068c86784b8b033decf373a738bbcb910e155f99c1ce078",
+        "size_bytes": 3908
+      },
+      {
+        "path": "reports/noncombat_current_comparator_readiness_review_20260805.md",
+        "sha256": "94cd7774fc86282140e9f4e34160b0ee8f36f2fdee5ee967d5501b0f93dcb63b",
+        "size_bytes": 7984
+      }
+    ],
+    "consumed_study": [
+      {
+        "path": "reports/noncombat_current_baseline_evidence_study_20260803_input.json",
+        "sha256": "e84411234821397b462530398722f1f6b5174198754348b1c40bbb6f6d651085",
+        "size_bytes": 10240
+      },
+      {
+        "path": "reports/noncombat_current_baseline_evidence_study_20260803_execution_authorization.json",
+        "sha256": "75d19d3631079540465c08c3d6bd44b8ff84d05f6a335c4584d750cbbd9f3b11",
+        "size_bytes": 1306
+      },
+      {
+        "path": "reports/noncombat_current_baseline_evidence_study_20260803_preflight.json",
+        "sha256": "fc0434085de730ce79266af6d282a06148cee57b13d5fde3270037e21a1f5fd3",
+        "size_bytes": 1733
+      },
+      {
+        "path": "reports/noncombat_current_baseline_evidence_study_20260803/artifact_manifest.json",
+        "sha256": "31ad6171c3926e0ca23173824163e168b88698f20dd604355b007eb45d636e4e",
+        "size_bytes": 1789
+      },
+      {
+        "path": "reports/noncombat_current_baseline_evidence_study_20260803/bootstrap_draws.json",
+        "sha256": "cd4c4a50436c004245c521afb8a942f065be8011374972e1462475453b4e3bd4",
+        "size_bytes": 484
+      },
+      {
+        "path": "reports/noncombat_current_baseline_evidence_study_20260803/configuration.json",
+        "sha256": "a4f7f1ea75d067588b5e482a3ccfa7ee461cdbaf242856482ac104942d51de30",
+        "size_bytes": 11763
+      },
+      {
+        "path": "reports/noncombat_current_baseline_evidence_study_20260803/execution_journal.json",
+        "sha256": "f8d6b771bc9be0ff16241d2d18505f2082836fcc9e340415aa974bbbd1f4951d",
+        "size_bytes": 1072
+      },
+      {
+        "path": "reports/noncombat_current_baseline_evidence_study_20260803/metrics.json",
+        "sha256": "e53e12558232b6b97f1c78c60a7917fe77d5287cd8764dfd1ef4ed7c1d9cb76b",
+        "size_bytes": 911
+      },
+      {
+        "path": "reports/noncombat_current_baseline_evidence_study_20260803/report.md",
+        "sha256": "48ede3984dd265eea09c656ccfe2815d90216b3cf08d0ae943b8c71245638ed2",
+        "size_bytes": 275
+      },
+      {
+        "path": "reports/noncombat_current_baseline_evidence_study_20260803/trajectory_rows.json",
+        "sha256": "14e5b886737e18e1e0b1bcfe9e43e24864047635939991e90792b0793c75c04d",
+        "size_bytes": 219839
+      },
+      {
+        "path": "reports/noncombat_current_baseline_evidence_study_20260804_closeout.md",
+        "sha256": "dba6435a25e267d60fbade7f895d9c2bec53e7753735bec802acab2e924ed40a",
+        "size_bytes": 5044
+      },
+      {
+        "path": "reports/noncombat_current_baseline_readiness_refresh_20260804.json",
+        "sha256": "f84a346210ce904cff5281aad839a72b113536199b26b68a293520402199e8ac",
+        "size_bytes": 6658
+      }
+    ]
+  },
+  "external_identity_expectations": {
+    "metadata": {
+      "path": "D:\\SteamLibrary\\steamapps\\common\\SlayTheSpire\\export\\items.json",
+      "sha256": "e23784ea8ed3092e3bfa9918240e162a9cbcb837badfb53c612eb0d83cc811dc",
+      "size_bytes": 240371
+    },
+    "module": {
+      "path": "D:\\PycharmProjects\\slay-the-spire-ai\\.sts_lightspeed_adapter_v3_shop_support_build\\sts_lightspeed_noncombat_adapter.cp310-win_amd64.pyd",
+      "sha256": "7ac2c750fba6e38d4a023cab72a4d67f158fe7f88414058e5876cef5003fcb88",
+      "size_bytes": 4225024
+    },
+    "revalidation_status": "deferred_until_preregistration_without_native_import",
+    "runtime": {
+      "executable": "D:\\anaconda\\envs\\stsai\\python.exe",
+      "python": "3.10.18",
+      "sha256": "1528904a43037efee64b4d91fa73db1d5fac79c2be75aebc5d8b210b496e7e6c",
+      "size_bytes": 104208
+    },
+    "simulator": {
+      "commit": "7476a81954020087da31d41d16fddf475746ec2d",
+      "path": "D:\\CLionProjects\\sts_lightspeed",
+      "source_file_count": 79,
+      "source_sha256": "a3f98721ec37373b1b00aef660832a3307f0186ba0614d07a3b1e7de8ab2e46a"
+    },
+    "source_registration": {
+      "path": "reports/noncombat_current_bridge_diagnostic_smoke_20260803_r2_input.json",
+      "sha256": "71e156bfcb2d8b6932fbf8e1f50c1705023098ae91485e5967304bb866874934",
+      "size_bytes": 6977
+    }
+  },
+  "gates": {
+    "canary": {
+      "complete_pair_count": 16,
+      "current_category_coverage": [
+        "card_reward",
+        "event",
+        "route",
+        "shop"
+      ],
+      "current_mean_floor_min": 15.0,
+      "current_minus_control_mean_floor_min": 0.0,
+      "max_declared_support_rows_per_policy": 1,
+      "replay_identity_required": true,
+      "unexpected_failure_count_max": 0
+    },
+    "holdout": {
+      "absolute_bootstrap_lower_min": 15.0,
+      "complete_pair_count": 64,
+      "current_category_coverage": [
+        "card_reward",
+        "event",
+        "route",
+        "shop"
+      ],
+      "current_mean_floor_min": 18.0,
+      "current_minus_control_bootstrap_lower_exclusive_min": 0.0,
+      "current_minus_control_mean_floor_min": 3.0,
+      "max_declared_support_rows_per_policy": 3,
+      "replay_identity_required": true,
+      "unexpected_failure_count_max": 0
+    }
+  },
+  "limits": {
+    "canary_max_wall_seconds": 600.0,
+    "canary_policy_episode_limit": 64,
+    "holdout_policy_episode_limit": 256,
+    "max_decisions_per_episode": 500,
+    "replay_count": 2,
+    "total_max_wall_seconds": 1800.0
+  },
+  "output": {
+    "artifact_names": [
+      "artifact_manifest.json",
+      "bootstrap_draws.json",
+      "configuration.json",
+      "execution_journal.json",
+      "metrics.json",
+      "report.md",
+      "trajectory_rows.json"
+    ],
+    "directory": "reports/noncombat_current_baseline_replication_20260805",
+    "exists": false
+  },
+  "planning": {
+    "artifacts": [
+      {
+        "path": "openspec/changes/add-post-final-repair-current-baseline-replication/.openspec.yaml",
+        "sha256": "23565055d097ad3e7f15475ed5d87778aa242fd4fd69516e5e239baeebaf096d",
+        "size_bytes": 40
+      },
+      {
+        "path": "openspec/changes/add-post-final-repair-current-baseline-replication/proposal.md",
+        "sha256": "a94921a46150a7b6d0f4925d5844822aa7282bd6f8716e3bc4a92330fc9206aa",
+        "size_bytes": 4034
+      },
+      {
+        "path": "openspec/changes/add-post-final-repair-current-baseline-replication/design.md",
+        "sha256": "2c4774133a5e002df9bb0f6f9a40e5038984c8e838f3ade4fe7ab926060a8357",
+        "size_bytes": 11542
+      },
+      {
+        "path": "openspec/changes/add-post-final-repair-current-baseline-replication/specs/noncombat-baseline-floor-readiness-audit/spec.md",
+        "sha256": "495423b07b2ea7eedaa776b94fc03fadfe23d428cb4cc12caf49a0f8a8aba361",
+        "size_bytes": 6974
+      },
+      {
+        "path": "openspec/changes/add-post-final-repair-current-baseline-replication/specs/noncombat-current-baseline-replication/spec.md",
+        "sha256": "7e77ad561220810427d713bd8ba9a39c786f159f65c9bbb26434b6a1fb2a657d",
+        "size_bytes": 10380
+      },
+      {
+        "path": "openspec/changes/add-post-final-repair-current-baseline-replication/tasks.md",
+        "sha256": "6d8bc111a33d46b7201e1a70a5e05925ceb283d92dcb72d24e4eb42b5d6eb4a4",
+        "size_bytes": 5323
+      }
+    ],
+    "commit": "9c80b2c1bfeb0c017b43b07f5d5eb2a9c9cbd384",
+    "pushed": true
+  },
+  "policies": {
+    "current": {
+      "ascension": 0,
+      "character": "IRONCLAD",
+      "elite_mode": "conservative",
+      "gameplay_io_enabled": false,
+      "policy_id": "current_optimized_ironclad_a0_conservative_snapshot_v1",
+      "screen_entrypoint": "handle_screen",
+      "tracker_enabled": false,
+      "use_optimized_card_selection": true,
+      "use_optimized_combat": true
+    },
+    "weak_control": {
+      "action_selection": "first_candidate_in_registered_order",
+      "policy_id": "deterministic_first_candidate_control_v1",
+      "reference_policy_free": true
+    }
+  },
+  "schema_version": "noncombat-current-baseline-replication-preimplementation-v1",
+  "source_identity": {
+    "files": [
+      "analysis_scripts/noncombat_current_baseline_evidence_study.py",
+      "tests/test_noncombat_current_baseline_evidence_study.py",
+      "analysis_scripts/noncombat_reachable_event_native_compatibility.py",
+      "analysis_scripts/noncombat_current_policy_simulator_bridge.py",
+      "analysis_scripts/noncombat_event_option_semantics.py",
+      "analysis_scripts/noncombat_reachable_event_surface_audit.py",
+      "analysis_scripts/noncombat_simulator_adapter.py",
+      "tests/test_noncombat_reachable_event_native_compatibility.py",
+      "tests/test_noncombat_reachable_event_option_semantics.py",
+      "spirecomm/ai/agent.py",
+      "spirecomm/ai/decision/base.py",
+      "spirecomm/ai/heuristics/card.py",
+      "spirecomm/ai/heuristics/deck.py",
+      "spirecomm/ai/heuristics/ironclad_deck.py",
+      "spirecomm/ai/heuristics/ironclad_evaluator.py",
+      "spirecomm/ai/heuristics/map_routing.py",
+      "spirecomm/ai/priorities.py",
+      "spirecomm/data/loader.py",
+      "spirecomm/spire/card.py",
+      "spirecomm/spire/game.py",
+      "spirecomm/spire/map.py",
+      "spirecomm/spire/potion.py",
+      "spirecomm/spire/relic.py",
+      "spirecomm/spire/screen.py"
+    ],
+    "sha256": "83c86cee723e0b5421311daf35e73ad6a8dcf86fe4fae9d7c49cd0b70d0e26fc"
+  }
+}
