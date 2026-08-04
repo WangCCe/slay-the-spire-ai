@@ -64,15 +64,15 @@
 
 ## 5. Preregistration Without Execution
 
-- [ ] 5.1 From the clean pushed implementation, regenerate the tracked seed
+- [x] 5.1 From the clean pushed implementation, regenerate the tracked seed
   inventory, apply the fixed `60000` algorithm, confirm all 80 materialized
   seeds are untouched and disjoint from every historical/reserved cohort, bind
   external bytes without native import, and construct no environment.
-- [ ] 5.2 Prepare one canonical registration and source-only preflight, verify
+- [x] 5.2 Prepare one canonical registration and source-only preflight, verify
   every source, lineage, cohort, gate, limit, external identity, output,
   artifact, and all-false authority field, then commit and push
   preregistration.
-- [ ] 5.3 Stop before the started journal, native loading, and seed access until
+- [x] 5.3 Stop before the started journal, native loading, and seed access until
   the user explicitly approves the exact pushed registration hash, command,
   limits, cohort, and final-attempt semantics in a tracked authorization.
 

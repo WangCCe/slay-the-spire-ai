@@ -1,0 +1,47 @@
+{
+  "authority": {
+    "baseline_floor_authorized": false,
+    "environment_construction_authorized": false,
+    "execution_authorized": false,
+    "formal_rl_authorized": false,
+    "fresh_evidence_authorized": false,
+    "gameplay_authorized": false,
+    "model_fitting_authorized": false,
+    "native_loading_authorized": false,
+    "ope_authorized": false,
+    "policy_loading_authorized": false,
+    "promotion_authorized": false,
+    "qualification_authorized": false,
+    "reward_authorized": false,
+    "seed_access_authorized": false,
+    "target_supported_outcome_authorized": false,
+    "training_authorized": false
+  },
+  "checks": {
+    "environment_constructed": false,
+    "execution_authorization_present": false,
+    "external_bytes_hashed": true,
+    "native_module_imported": false,
+    "output_root_absent": true,
+    "registration_canonical": true,
+    "seed_inventory_recomputed": true,
+    "study_seed_environment_accessed": false,
+    "tracked_clean_before_prepare": true
+  },
+  "implementation_commit": "6d86f7a693cf71c7db656bc23c2f5ebd14fd31ba",
+  "next_gate": {
+    "action": "commit_and_push_preregistration_then_stop_for_execution_approval",
+    "execute_before_gate": false
+  },
+  "registration": {
+    "path": "reports/noncombat_current_baseline_replication_20260805_input.json",
+    "sha256": "8a2a3948eb3e604b0aebb2296fa15c40dac7efb4005d2245e5f4d5c6c6043a46",
+    "size_bytes": 10362
+  },
+  "schema_version": "noncombat-current-baseline-replication-preflight-v1",
+  "seed_inventory": {
+    "path": "reports/noncombat_current_baseline_replication_20260805_seed_inventory.json",
+    "sha256": "c6b30ff50a7f28b73fc213c72362096ac3b756843cc860fa01aa38996944b222",
+    "size_bytes": 5459044
+  }
+}
