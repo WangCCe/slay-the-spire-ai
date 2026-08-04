@@ -3,13 +3,13 @@
 - [x] 1.1 Revalidate pushed registration commit, canonical digest, all-false preregistration authority, exact user approval, and absent r2 authorization/output.
 - [x] 1.2 Generate one canonical authorization binding registration commit `3bdd870d836b1f6a1dc3cb42dc0c2e0b57779eb4`, r2 logical identity, output path, and execution-only authority.
 - [x] 1.3 Validate authorization and registration in independent fresh source-only processes and prove native, Torch, environment, seed, training, game, and CommunicationMod effects remain absent.
-- [ ] 1.4 Strictly validate the active OpenSpec change, commit only scoped planning and authorization files, push `master`, and verify the authorization blob from `origin/master`.
+- [x] 1.4 Strictly validate the active OpenSpec change, commit only scoped planning and authorization files, push `master`, and verify the authorization blob from `origin/master`.
 
 ## 2. Publish Source-Only Isolation Preflight
 
-- [ ] 2.1 Capture preflight isolation: CommunicationMod config digest, relevant process inventory, production checkpoint byte inventory, absent output/lease, and clean implementation identities.
-- [ ] 2.2 Run the registered source-only preflight against pushed controls, Windows runtime, bound module bytes, and physical simulator source without native or Torch import.
-- [ ] 2.3 Capture postflight isolation, require byte-identical config/checkpoint state and no relevant process, then publish one canonical all-false preflight report with `ready_for_single_authorized_execution`.
+- [x] 2.1 Capture preflight isolation: CommunicationMod config digest, relevant process inventory, production checkpoint byte inventory, absent output/lease, and clean implementation identities.
+- [x] 2.2 Run the registered source-only preflight against pushed controls, Windows runtime, bound module bytes, and physical simulator source without native or Torch import.
+- [x] 2.3 Capture postflight isolation, require byte-identical config/checkpoint state and no relevant process, then publish one canonical all-false preflight report with `ready_for_single_authorized_execution`.
 - [ ] 2.4 Independently validate the report, commit and push it before native loading, and re-prove r2 output remains absent.
 
 ## 3. Execute The Single Logical Attempt
