@@ -428,6 +428,17 @@ The next authorized sequence is:
     existing baseline/outcome blockers. Any later experiment requires an
     evidence-backed hypothesis, fresh identity, fresh cohort decision, and
     separate OpenSpec approval.
+25. Preserve the additive state-conditioned ranker capability and diagnostics.
+    The new one-hidden-layer scorer keeps state and candidate tensors separate,
+    and a fixed regression proves that changing only state can reverse an
+    unchanged candidate ordering. The separate standard-library diagnostics
+    report complete candidate-kind opportunities, selections, exact saturation,
+    and raw margins without importing Torch. Focused pytest passed 23 tests; the
+    registered commit gate passed 3,828 tests with 11 skips; strict OpenSpec
+    passed 64 items; and the unchanged r2 verifier still passed all 225,389
+    checks. No production path imports either module. This capability grants no
+    r3, training, cohort, replay, model-loading, gameplay, formal-RL,
+    qualification, or promotion authority.
 
 ## Work Lanes
 
@@ -448,12 +459,15 @@ registered learning signal. Formal RL remains `no_go`; the result grants no
 Current loading, policy promotion, or replacement experiment. The r2 terminal
 postmortem is complete and sets an immediate r3 to `no_go`: the registered
 linear feature composition cannot use shared state to change candidate order,
-and the final policy saturated to taking every observed card reward. The active
-lane is an OpenSpec proposal for state-conditioned candidate ranking,
-state-sensitivity regressions, anti-collapse diagnostics, and a meaningful
-fixed non-combat comparator. A rebuilt module, different experiment, or
-empirical Current-baseline strategy still requires a separate approved change,
-fresh identity, fresh cohort decision, and evidence design.
+and the final policy saturated to taking every observed card reward. The
+state-conditioned ranker and anti-collapse diagnostic capability are now
+implemented and verified, but not integrated into an experiment. The active
+lane is a separate source-only successor design that must bind a meaningful
+fixed non-combat comparator, leakage-controlled feature projection, diagnostic
+contract, and fresh evidence plan before any r3 proposal. A rebuilt module,
+different experiment, or empirical Current-baseline strategy still requires a
+separate approved change, fresh identity, fresh cohort decision, and evidence
+design.
 
 Live gameplay is a maintenance and registered-evaluation lane only. Launch it
 for a crash, stuck state, repeated A-class simulator/mechanics defect, or an
@@ -473,6 +487,11 @@ OpenSpec changes authorize them.
   unregistered raw full-suite run for the commit gate.
 - Keep changes cohesive and preserve unrelated local artifacts.
 - Stop when evidence is ambiguous rather than tuning around it.
+- Treat the 2026-08-05 `commit` gate result of 3,828 passed, 11 skipped, and
+  320.40 seconds as a fresh timing-drift observation: correctness passed, but
+  the qualified five-minute feedback bound was exceeded by 20.40 seconds. Do
+  not rerun it inside this change; schedule a separate read-only duration audit
+  before claiming the bounded-feedback requirement remains met.
 
 Historical reports and archived changes retain the objectives and authority
 boundaries that applied when they were written. This document is the canonical
