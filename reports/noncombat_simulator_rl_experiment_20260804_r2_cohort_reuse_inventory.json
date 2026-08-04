@@ -1,0 +1,149 @@
+{
+  "authority": {
+    "experiment_execution": false,
+    "formal_noncombat_rl": false,
+    "live_gameplay": false,
+    "live_policy_loading": false,
+    "live_study_launch": false,
+    "ope_estimation": false,
+    "ope_reinterpretation": false,
+    "policy_promotion": false,
+    "qualification": false
+  },
+  "candidate_cohorts": {
+    "canary": {
+      "count": 128,
+      "first": 51024,
+      "last": 51151,
+      "sha256": "9aeeff51305e09bc74e29131f032b8109e11ed3cffa4539b2b3220cff2b82de4"
+    },
+    "holdout": {
+      "count": 512,
+      "first": 51152,
+      "last": 51663,
+      "sha256": "fcfca07a59dc59842c3720a4f48e0bb5e45be3d279a96365e2ed3492d67e4442"
+    },
+    "train": {
+      "count": 1024,
+      "first": 50000,
+      "last": 51023,
+      "sha256": "605ab6ffbe13539ff0f661bdf16b407559d8d2a2827876bf426759cce6b878c1"
+    },
+    "union": {
+      "count": 1664,
+      "first": 50000,
+      "last": 51663,
+      "sha256": "4cdc47ecf4d3769fdccbb7acd09dd67d2752594db6091a931f707fcf468dc35f"
+    }
+  },
+  "decision": {
+    "disposition": "reuse_exact_untouched_cohort",
+    "predecessor_logical_execution_id": "noncombat-simulator-rl-20260804-r1",
+    "proposed_logical_execution_id": "noncombat-simulator-rl-20260804-r2",
+    "proposed_output_directory": "reports/noncombat_simulator_rl_experiment_20260804_r2",
+    "reason": "predecessor failed before environment construction or registered-seed access and revealed no seed-dependent outcome"
+  },
+  "effects": {
+    "canary_accessed": false,
+    "environment_constructed": false,
+    "holdout_accessed": false,
+    "logical_execution_consumed": true,
+    "native_load_succeeded": false,
+    "optimizer_updates": 0,
+    "prefix_replay_completed": false,
+    "registered_seed_consumed": false,
+    "training_episodes": 0,
+    "training_started": false
+  },
+  "overlap_scan": {
+    "allowed_logical_overlap_count": 1,
+    "intersection_file_count": 2,
+    "intersections": [
+      {
+        "classification": "registered_but_unconsumed",
+        "declared_seed_count": 1664,
+        "distinct_seed_count": 1664,
+        "first": 50000,
+        "last": 51663,
+        "logical_execution_id": "noncombat-simulator-rl-20260804-r1",
+        "path": "reports/noncombat_simulator_rl_experiment_20260804/registration.json",
+        "registration_sha256": "cf30c2a2e1c10681968ef6f0191e33b272af047c496e811d7ae5aa24205fa452",
+        "size_bytes": 31259
+      },
+      {
+        "classification": "registered_but_unconsumed",
+        "declared_seed_count": 1664,
+        "distinct_seed_count": 1664,
+        "first": 50000,
+        "last": 51663,
+        "logical_execution_id": "noncombat-simulator-rl-20260804-r1",
+        "path": "reports/noncombat_simulator_rl_experiment_20260804_registration.json",
+        "registration_sha256": "cf30c2a2e1c10681968ef6f0191e33b272af047c496e811d7ae5aa24205fa452",
+        "size_bytes": 31259
+      }
+    ],
+    "registration_document_count": 5,
+    "report_json_count": 313,
+    "seed_field_rule": "integer leaves under seed or *_seed fields and integer arrays under seeds or *_seeds fields",
+    "source_tree_query": "git ls-tree -r --name-only 8d123fdf32bd94bc29e53a97f217a2b7ca40c4fe -- reports",
+    "unclassified_overlap_count": 0
+  },
+  "predecessor": {
+    "artifact_manifest": {
+      "path": "reports/noncombat_simulator_rl_experiment_20260804/artifact_manifest.json",
+      "sha256": "01fe28cd35c13dcdee305189a27488474edfebfb126ba79aa145ab56d08c8080",
+      "size_bytes": 1917
+    },
+    "authorization": {
+      "path": "reports/noncombat_simulator_rl_experiment_20260804_authorization.json",
+      "sha256": "1c9f336eba2d6baa71e32e1ce882966370a5b6bc86deafa0004e4368304f354a",
+      "size_bytes": 796
+    },
+    "authorization_copy": {
+      "path": "reports/noncombat_simulator_rl_experiment_20260804/authorization.json",
+      "sha256": "1c9f336eba2d6baa71e32e1ce882966370a5b6bc86deafa0004e4368304f354a",
+      "size_bytes": 796
+    },
+    "journal": [
+      {
+        "path": "reports/noncombat_simulator_rl_experiment_20260804/journal/record_000000.json",
+        "sha256": "8c45857406003710b2ce4e10270f10322c7a251f702d5f058812377193ebed5b",
+        "size_bytes": 308
+      },
+      {
+        "path": "reports/noncombat_simulator_rl_experiment_20260804/journal/record_000001.json",
+        "sha256": "e5512b2362ac850c66ca50aaa0be5d7e76c3cce21b60cb17bf38385066d95523",
+        "size_bytes": 349
+      }
+    ],
+    "metrics": {
+      "path": "reports/noncombat_simulator_rl_experiment_20260804/metrics.json",
+      "sha256": "650d535da84743b99a573bd7a54ec847621e3634dc748495bbe812f6cc0039f7",
+      "size_bytes": 1014
+    },
+    "native_loadability_audit": {
+      "path": "reports/noncombat_simulator_rl_native_loadability_audit_20260804.md",
+      "sha256": "81398e0a667df6f495e0f0bea1ab7ffbf291e8207a87afc684e0e7070da3e4dc",
+      "size_bytes": 5172
+    },
+    "registration": {
+      "path": "reports/noncombat_simulator_rl_experiment_20260804_registration.json",
+      "sha256": "cf30c2a2e1c10681968ef6f0191e33b272af047c496e811d7ae5aa24205fa452",
+      "size_bytes": 31259
+    },
+    "registration_copy": {
+      "path": "reports/noncombat_simulator_rl_experiment_20260804/registration.json",
+      "sha256": "cf30c2a2e1c10681968ef6f0191e33b272af047c496e811d7ae5aa24205fa452",
+      "size_bytes": 31259
+    },
+    "standalone_verifier": {
+      "artifact_count": 8,
+      "checks": 173,
+      "formal_readiness_verdict": "not_ready_for_bounded_training_proposal",
+      "verdict": "experiment_blocked",
+      "verification": "verified"
+    }
+  },
+  "schema_version": "noncombat-simulator-rl-cohort-reuse-inventory-v1",
+  "source_commit": "8d123fdf32bd94bc29e53a97f217a2b7ca40c4fe"
+}

@@ -77,6 +77,20 @@ one-shot and terminal rules still apply after the started journal. This repair
 does not alter or reopen r1 and grants no successor registration, seed,
 execution, training, live, qualification, loading, or promotion authority.
 
+The separately reviewed r2 preregistration now records an explicit decision to
+reuse the untouched `50000..51663` cohort. A current-tree structured scan found
+two intersecting physical registration files, both byte-identical copies of the
+same terminal r1 registration, and no second logical overlap. The canonical
+reuse inventory (`9664d6961fcb6e713e0f537bc212953b4a0a62236cc3ab015f12036877ea96bd`)
+binds r1's verified zero-environment, zero-seed, zero-episode, and zero-update
+evidence. The all-false r2 registration
+(`8e0576bbf86b2334ccce67ac809410a02dcbfa6419f075211bbe48d0164f8549`)
+binds repaired source `8d123fdf32bd94bc29e53a97f217a2b7ca40c4fe`, the unchanged native and
+simulator identities, and the fixed experiment contract. Proposed identity
+`noncombat-simulator-rl-20260804-r2`, its authorization file, and output remain
+non-executable and absent. A later exact authorization must be committed and
+pushed before the runner's full source-only preflight can execute.
+
 The first source-bound Current-policy simulator bridge registration remains a
 valid negative. Its event row stopped on missing semantics. The source-bound r2
 successor now resolves the exact `Liars Game` `Agree`/`Disagree` contract and
@@ -390,6 +404,14 @@ The next authorized sequence is:
     reviewed registration, execution identity, and cohort decision. Every
     successor must preserve `not_ready_for_bounded_training_proposal` and the
     blocked Current-baseline and target-supported-outcome requirements.
+23. Preserve the r2 cohort-reuse inventory and all-false preregistration. The
+    exact cohort is retained only because r1 exposed no seed-dependent state or
+    outcome; the two tracked registration copies are one logical terminal
+    predecessor. Do not treat preregistration as execution consent. The next
+    possible step is a separate exact authorization binding the pushed r2
+    registration, new logical execution identity, output path, unchanged
+    `28,800`-second CPU bound, and no-retry contract, followed by source-only
+    preflight before native loading or seed access.
 
 ## Work Lanes
 
@@ -404,12 +426,14 @@ Do not prepare another baseline cohort or modify the consumed study. The card
 metadata cost audit and its bounded compatibility repair are closed. The
 simulator-only experiment is also closed as a terminal native-load failure,
 without training or evaluation evidence. Its read-only Windows loadability
-audit and source-only start-boundary repair are complete. A rebuilt module or
-successor experiment requires a separate OpenSpec change and cannot reuse the
-consumed logical execution. A new empirical Current-baseline strategy still
-requires a separate project-level decision with a fresh identity and evidence
-design; it is not an automatic successor to either the consumed study or this
-implementation repair.
+audit and source-only start-boundary repair are complete. The r2 successor is
+preregistered with all authority false and reuses only the untouched cohort,
+not the consumed r1 logical identity. Its exact execution authorization and
+full source-only preflight remain separate future gates. A rebuilt module or
+different experiment still requires a separate OpenSpec change. A new
+empirical Current-baseline strategy still requires a separate project-level
+decision with a fresh identity and evidence design; it is not an automatic
+successor to either the consumed study or this simulator-only preregistration.
 
 Live gameplay is a maintenance and registered-evaluation lane only. Launch it
 for a crash, stuck state, repeated A-class simulator/mechanics defect, or an
