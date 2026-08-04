@@ -1,0 +1,1155 @@
+{
+  "authority": {
+    "formal_rl": false,
+    "gameplay": false,
+    "model_loading": false,
+    "new_cohort": false,
+    "new_experiment": false,
+    "promotion": false,
+    "replay": false,
+    "training": false
+  },
+  "canary": {
+    "initial": {
+      "decisions": {
+        "by_category": {
+          "card_reward": 769,
+          "event": 339,
+          "route": 1496,
+          "shop": 238
+        },
+        "card_reward_families": {
+          "card_reward:skip": {
+            "count": 444,
+            "rate": 0.577373211964
+          },
+          "card_reward:take": {
+            "count": 325,
+            "rate": 0.422626788036
+          }
+        },
+        "mean_per_episode": 22.203125,
+        "shop_families": {
+          "shop:buy_card": {
+            "count": 151,
+            "rate": 0.634453781513
+          },
+          "shop:buy_potion": {
+            "count": 4,
+            "rate": 0.016806722689
+          },
+          "shop:buy_relic": {
+            "count": 4,
+            "rate": 0.016806722689
+          },
+          "shop:leave": {
+            "count": 71,
+            "rate": 0.298319327731
+          },
+          "shop:remove_card": {
+            "count": 8,
+            "rate": 0.033613445378
+          }
+        },
+        "total": 2842
+      },
+      "effective_floor_distribution": {
+        "count": 128,
+        "max": 46.0,
+        "mean": 11.75,
+        "median": 11.0,
+        "min": 2.0,
+        "p10": 6.0,
+        "p25": 6.0,
+        "p75": 16.0,
+        "p90": 16.0
+      },
+      "effective_floor_source": {
+        "last_supported_floor": 2,
+        "terminal_floor": 126
+      },
+      "episodes": 128,
+      "floor_bands": {
+        "0_16": 119,
+        "17_33": 8,
+        "34_50": 1,
+        "51_56": 0,
+        "57_plus": 0
+      },
+      "floor_thresholds": {
+        "ge_17": {
+          "count": 9,
+          "rate": 0.0703125
+        },
+        "ge_34": {
+          "count": 1,
+          "rate": 0.0078125
+        },
+        "ge_51": {
+          "count": 0,
+          "rate": 0.0
+        },
+        "ge_57": {
+          "count": 0,
+          "rate": 0.0
+        }
+      },
+      "missing_last_supported_floor": 0,
+      "outcomes": {
+        "null": 2,
+        "player_loss": 126
+      },
+      "raw_terminal_floor_missing": 2,
+      "supported_nonvictories": 126,
+      "unique_seeds": 128,
+      "unsupported_episodes": 2,
+      "unsupported_reasons": {
+        "unsupported_shop_courier_restock_semantics": 2
+      },
+      "victories": 0
+    },
+    "paired": {
+      "action_sequence": {
+        "all_comparable_first_divergence_inputs_match": true,
+        "comparable_first_divergence_inputs": 128,
+        "divergent": 128,
+        "first_divergence_by_action_family_transition": {
+          "card_reward:skip->card_reward:take": 66,
+          "card_reward:take->card_reward:take": 22,
+          "event:golden_idol->event:golden_idol": 2,
+          "route:map_node->route:map_node": 38
+        },
+        "first_divergence_by_category": {
+          "card_reward": 88,
+          "event": 2,
+          "route": 38
+        },
+        "identical": 0,
+        "matching_first_divergence_inputs": 128
+      },
+      "direction": {
+        "declined": 7,
+        "improved": 98,
+        "unchanged": 23
+      },
+      "floor_difference_distribution": {
+        "count": 128,
+        "max": 38.0,
+        "mean": 10.3515625,
+        "median": 10.0,
+        "min": -30.0,
+        "p10": 0.0,
+        "p25": 1.75,
+        "p75": 17.0,
+        "p90": 25.0
+      },
+      "largest_declines": [
+        {
+          "first_divergence": {
+            "category": "card_reward",
+            "decision_index_zero_based": 1,
+            "initial_action_id": "card_reward:skip:0",
+            "policy_input_sha256_match": true,
+            "trained_action_id": "card_reward:take:0:0:clash"
+          },
+          "floor_difference": -30.0,
+          "initial_floor": 46.0,
+          "initial_unsupported": false,
+          "seed": 51079,
+          "trained_floor": 16.0,
+          "trained_unsupported": false
+        },
+        {
+          "first_divergence": {
+            "category": "card_reward",
+            "decision_index_zero_based": 1,
+            "initial_action_id": "card_reward:skip:0",
+            "policy_input_sha256_match": true,
+            "trained_action_id": "card_reward:take:0:2:flex"
+          },
+          "floor_difference": -11.0,
+          "initial_floor": 33.0,
+          "initial_unsupported": false,
+          "seed": 51029,
+          "trained_floor": 22.0,
+          "trained_unsupported": false
+        },
+        {
+          "first_divergence": {
+            "category": "card_reward",
+            "decision_index_zero_based": 1,
+            "initial_action_id": "card_reward:take:0:1:body_slam",
+            "policy_input_sha256_match": true,
+            "trained_action_id": "card_reward:take:0:2:clash"
+          },
+          "floor_difference": -8.0,
+          "initial_floor": 30.0,
+          "initial_unsupported": false,
+          "seed": 51088,
+          "trained_floor": 22.0,
+          "trained_unsupported": false
+        },
+        {
+          "first_divergence": {
+            "category": "route",
+            "decision_index_zero_based": 0,
+            "initial_action_id": "route:map_node:1:0",
+            "policy_input_sha256_match": true,
+            "trained_action_id": "route:map_node:6:0"
+          },
+          "floor_difference": -8.0,
+          "initial_floor": 24.0,
+          "initial_unsupported": false,
+          "seed": 51110,
+          "trained_floor": 16.0,
+          "trained_unsupported": false
+        },
+        {
+          "first_divergence": {
+            "category": "route",
+            "decision_index_zero_based": 0,
+            "initial_action_id": "route:map_node:5:0",
+            "policy_input_sha256_match": true,
+            "trained_action_id": "route:map_node:3:0"
+          },
+          "floor_difference": -6.0,
+          "initial_floor": 20.0,
+          "initial_unsupported": false,
+          "seed": 51078,
+          "trained_floor": 14.0,
+          "trained_unsupported": false
+        }
+      ],
+      "largest_gains": [
+        {
+          "first_divergence": {
+            "category": "route",
+            "decision_index_zero_based": 0,
+            "initial_action_id": "route:map_node:1:0",
+            "policy_input_sha256_match": true,
+            "trained_action_id": "route:map_node:6:0"
+          },
+          "floor_difference": 38.0,
+          "initial_floor": 6.0,
+          "initial_unsupported": false,
+          "seed": 51026,
+          "trained_floor": 44.0,
+          "trained_unsupported": false
+        },
+        {
+          "first_divergence": {
+            "category": "route",
+            "decision_index_zero_based": 0,
+            "initial_action_id": "route:map_node:5:0",
+            "policy_input_sha256_match": true,
+            "trained_action_id": "route:map_node:3:0"
+          },
+          "floor_difference": 35.0,
+          "initial_floor": 7.0,
+          "initial_unsupported": false,
+          "seed": 51126,
+          "trained_floor": 42.0,
+          "trained_unsupported": false
+        },
+        {
+          "first_divergence": {
+            "category": "card_reward",
+            "decision_index_zero_based": 0,
+            "initial_action_id": "card_reward:take:0:1:body_slam",
+            "policy_input_sha256_match": true,
+            "trained_action_id": "card_reward:take:0:0:shrug_it_off"
+          },
+          "floor_difference": 32.0,
+          "initial_floor": 13.0,
+          "initial_unsupported": false,
+          "seed": 51130,
+          "trained_floor": 45.0,
+          "trained_unsupported": false
+        },
+        {
+          "first_divergence": {
+            "category": "card_reward",
+            "decision_index_zero_based": 1,
+            "initial_action_id": "card_reward:skip:0",
+            "policy_input_sha256_match": true,
+            "trained_action_id": "card_reward:take:0:1:anger"
+          },
+          "floor_difference": 31.0,
+          "initial_floor": 10.0,
+          "initial_unsupported": false,
+          "seed": 51134,
+          "trained_floor": 41.0,
+          "trained_unsupported": false
+        },
+        {
+          "first_divergence": {
+            "category": "card_reward",
+            "decision_index_zero_based": 0,
+            "initial_action_id": "card_reward:skip:0",
+            "policy_input_sha256_match": true,
+            "trained_action_id": "card_reward:take:0:2:bandage_up"
+          },
+          "floor_difference": 30.0,
+          "initial_floor": 16.0,
+          "initial_unsupported": false,
+          "seed": 51032,
+          "trained_floor": 46.0,
+          "trained_unsupported": false
+        }
+      ],
+      "pairs": 128,
+      "reported_pair_rows_match_recomputation": true,
+      "seed_sets_equal": true,
+      "support": {
+        "both_supported": 124,
+        "both_supported_direction": {
+          "declined": 5,
+          "improved": 97,
+          "unchanged": 22
+        },
+        "both_supported_floor_difference_distribution": {
+          "count": 124,
+          "max": 38.0,
+          "mean": 10.596774193548,
+          "median": 10.0,
+          "min": -30.0,
+          "p10": 0.0,
+          "p25": 2.0,
+          "p75": 17.0,
+          "p90": 25.0
+        },
+        "either_unsupported": 4
+      },
+      "threshold_crossings": {
+        "17": {
+          "crossed_down": 3,
+          "crossed_up": 64
+        },
+        "34": {
+          "crossed_down": 1,
+          "crossed_up": 7
+        },
+        "51": {
+          "crossed_down": 0,
+          "crossed_up": 0
+        },
+        "57": {
+          "crossed_down": 0,
+          "crossed_up": 0
+        }
+      }
+    },
+    "trained": {
+      "decisions": {
+        "by_category": {
+          "card_reward": 1384,
+          "event": 530,
+          "route": 2755,
+          "shop": 555
+        },
+        "card_reward_families": {
+          "card_reward:take": {
+            "count": 1384,
+            "rate": 1.0
+          }
+        },
+        "mean_per_episode": 40.8125,
+        "shop_families": {
+          "shop:buy_card": {
+            "count": 364,
+            "rate": 0.655855855856
+          },
+          "shop:buy_potion": {
+            "count": 10,
+            "rate": 0.018018018018
+          },
+          "shop:leave": {
+            "count": 178,
+            "rate": 0.320720720721
+          },
+          "shop:remove_card": {
+            "count": 3,
+            "rate": 0.005405405405
+          }
+        },
+        "total": 5224
+      },
+      "effective_floor_distribution": {
+        "count": 128,
+        "max": 46.0,
+        "mean": 22.1015625,
+        "median": 20.0,
+        "min": 6.0,
+        "p10": 16.0,
+        "p25": 16.0,
+        "p75": 30.0,
+        "p90": 33.0
+      },
+      "effective_floor_source": {
+        "last_supported_floor": 4,
+        "terminal_floor": 124
+      },
+      "episodes": 128,
+      "floor_bands": {
+        "0_16": 58,
+        "17_33": 63,
+        "34_50": 7,
+        "51_56": 0,
+        "57_plus": 0
+      },
+      "floor_thresholds": {
+        "ge_17": {
+          "count": 70,
+          "rate": 0.546875
+        },
+        "ge_34": {
+          "count": 7,
+          "rate": 0.0546875
+        },
+        "ge_51": {
+          "count": 0,
+          "rate": 0.0
+        },
+        "ge_57": {
+          "count": 0,
+          "rate": 0.0
+        }
+      },
+      "missing_last_supported_floor": 0,
+      "outcomes": {
+        "null": 4,
+        "player_loss": 124
+      },
+      "raw_terminal_floor_missing": 4,
+      "supported_nonvictories": 124,
+      "unique_seeds": 128,
+      "unsupported_episodes": 4,
+      "unsupported_reasons": {
+        "unsupported_shop_courier_restock_semantics": 4
+      },
+      "victories": 0
+    }
+  },
+  "holdout": {
+    "initial": {
+      "decisions": {
+        "by_category": {
+          "card_reward": 3035,
+          "event": 1228,
+          "route": 6020,
+          "shop": 1065
+        },
+        "card_reward_families": {
+          "card_reward:bowl": {
+            "count": 2,
+            "rate": 0.000658978583
+          },
+          "card_reward:skip": {
+            "count": 1725,
+            "rate": 0.568369028007
+          },
+          "card_reward:take": {
+            "count": 1308,
+            "rate": 0.43097199341
+          }
+        },
+        "mean_per_episode": 22.1640625,
+        "shop_families": {
+          "shop:buy_card": {
+            "count": 665,
+            "rate": 0.62441314554
+          },
+          "shop:buy_potion": {
+            "count": 32,
+            "rate": 0.030046948357
+          },
+          "shop:buy_relic": {
+            "count": 7,
+            "rate": 0.006572769953
+          },
+          "shop:leave": {
+            "count": 345,
+            "rate": 0.323943661972
+          },
+          "shop:remove_card": {
+            "count": 16,
+            "rate": 0.015023474178
+          }
+        },
+        "total": 11348
+      },
+      "effective_floor_distribution": {
+        "count": 512,
+        "max": 33.0,
+        "mean": 11.791015625,
+        "median": 12.0,
+        "min": 4.0,
+        "p10": 6.0,
+        "p25": 7.0,
+        "p75": 16.0,
+        "p90": 16.0
+      },
+      "effective_floor_source": {
+        "last_supported_floor": 4,
+        "terminal_floor": 508
+      },
+      "episodes": 512,
+      "floor_bands": {
+        "0_16": 491,
+        "17_33": 21,
+        "34_50": 0,
+        "51_56": 0,
+        "57_plus": 0
+      },
+      "floor_thresholds": {
+        "ge_17": {
+          "count": 21,
+          "rate": 0.041015625
+        },
+        "ge_34": {
+          "count": 0,
+          "rate": 0.0
+        },
+        "ge_51": {
+          "count": 0,
+          "rate": 0.0
+        },
+        "ge_57": {
+          "count": 0,
+          "rate": 0.0
+        }
+      },
+      "missing_last_supported_floor": 0,
+      "outcomes": {
+        "null": 4,
+        "player_loss": 508
+      },
+      "raw_terminal_floor_missing": 4,
+      "supported_nonvictories": 508,
+      "unique_seeds": 512,
+      "unsupported_episodes": 4,
+      "unsupported_reasons": {
+        "unsupported_shop_courier_restock_semantics": 4
+      },
+      "victories": 0
+    },
+    "paired": {
+      "action_sequence": {
+        "all_comparable_first_divergence_inputs_match": true,
+        "comparable_first_divergence_inputs": 512,
+        "divergent": 512,
+        "first_divergence_by_action_family_transition": {
+          "card_reward:skip->card_reward:take": 272,
+          "card_reward:take->card_reward:take": 91,
+          "event:big_fish->event:big_fish": 1,
+          "event:golden_idol->event:golden_idol": 1,
+          "event:purifier->event:purifier": 1,
+          "event:the_ssssserpent->event:the_ssssserpent": 3,
+          "route:map_node->route:map_node": 139,
+          "shop:buy_card->shop:buy_card": 4
+        },
+        "first_divergence_by_category": {
+          "card_reward": 363,
+          "event": 6,
+          "route": 139,
+          "shop": 4
+        },
+        "identical": 0,
+        "matching_first_divergence_inputs": 512
+      },
+      "direction": {
+        "declined": 22,
+        "improved": 408,
+        "unchanged": 82
+      },
+      "floor_difference_distribution": {
+        "count": 512,
+        "max": 45.0,
+        "mean": 10.53125,
+        "median": 9.5,
+        "min": -17.0,
+        "p10": 0.0,
+        "p25": 3.0,
+        "p75": 17.0,
+        "p90": 25.0
+      },
+      "largest_declines": [
+        {
+          "first_divergence": {
+            "category": "card_reward",
+            "decision_index_zero_based": 1,
+            "initial_action_id": "card_reward:skip:0",
+            "policy_input_sha256_match": true,
+            "trained_action_id": "card_reward:take:0:1:second_wind"
+          },
+          "floor_difference": -17.0,
+          "initial_floor": 33.0,
+          "initial_unsupported": false,
+          "seed": 51590,
+          "trained_floor": 16.0,
+          "trained_unsupported": false
+        },
+        {
+          "first_divergence": {
+            "category": "card_reward",
+            "decision_index_zero_based": 1,
+            "initial_action_id": "card_reward:skip:0",
+            "policy_input_sha256_match": true,
+            "trained_action_id": "card_reward:take:0:0:sever_soul"
+          },
+          "floor_difference": -16.0,
+          "initial_floor": 23.0,
+          "initial_unsupported": false,
+          "seed": 51541,
+          "trained_floor": 7.0,
+          "trained_unsupported": false
+        },
+        {
+          "first_divergence": {
+            "category": "route",
+            "decision_index_zero_based": 0,
+            "initial_action_id": "route:map_node:5:0",
+            "policy_input_sha256_match": true,
+            "trained_action_id": "route:map_node:3:0"
+          },
+          "floor_difference": -11.0,
+          "initial_floor": 27.0,
+          "initial_unsupported": false,
+          "seed": 51634,
+          "trained_floor": 16.0,
+          "trained_unsupported": false
+        },
+        {
+          "first_divergence": {
+            "category": "route",
+            "decision_index_zero_based": 0,
+            "initial_action_id": "route:map_node:5:0",
+            "policy_input_sha256_match": true,
+            "trained_action_id": "route:map_node:3:0"
+          },
+          "floor_difference": -10.0,
+          "initial_floor": 16.0,
+          "initial_unsupported": false,
+          "seed": 51239,
+          "trained_floor": 6.0,
+          "trained_unsupported": false
+        },
+        {
+          "first_divergence": {
+            "category": "card_reward",
+            "decision_index_zero_based": 1,
+            "initial_action_id": "card_reward:skip:0",
+            "policy_input_sha256_match": true,
+            "trained_action_id": "card_reward:take:0:0:infernal_blade"
+          },
+          "floor_difference": -9.0,
+          "initial_floor": 16.0,
+          "initial_unsupported": false,
+          "seed": 51221,
+          "trained_floor": 7.0,
+          "trained_unsupported": false
+        }
+      ],
+      "largest_gains": [
+        {
+          "first_divergence": {
+            "category": "card_reward",
+            "decision_index_zero_based": 1,
+            "initial_action_id": "card_reward:take:0:2:body_slam",
+            "policy_input_sha256_match": true,
+            "trained_action_id": "card_reward:take:0:0:pommel_strike"
+          },
+          "floor_difference": 45.0,
+          "initial_floor": 5.0,
+          "initial_unsupported": false,
+          "seed": 51234,
+          "trained_floor": 50.0,
+          "trained_unsupported": false
+        },
+        {
+          "first_divergence": {
+            "category": "card_reward",
+            "decision_index_zero_based": 1,
+            "initial_action_id": "card_reward:take:0:1:searing_blow",
+            "policy_input_sha256_match": true,
+            "trained_action_id": "card_reward:take:0:2:shrug_it_off"
+          },
+          "floor_difference": 44.0,
+          "initial_floor": 6.0,
+          "initial_unsupported": false,
+          "seed": 51607,
+          "trained_floor": 50.0,
+          "trained_unsupported": false
+        },
+        {
+          "first_divergence": {
+            "category": "card_reward",
+            "decision_index_zero_based": 1,
+            "initial_action_id": "card_reward:take:0:0:wild_strike",
+            "policy_input_sha256_match": true,
+            "trained_action_id": "card_reward:take:0:1:perfected_strike"
+          },
+          "floor_difference": 40.0,
+          "initial_floor": 7.0,
+          "initial_unsupported": false,
+          "seed": 51396,
+          "trained_floor": 47.0,
+          "trained_unsupported": false
+        },
+        {
+          "first_divergence": {
+            "category": "card_reward",
+            "decision_index_zero_based": 0,
+            "initial_action_id": "card_reward:skip:0",
+            "policy_input_sha256_match": true,
+            "trained_action_id": "card_reward:take:0:1:cleave"
+          },
+          "floor_difference": 40.0,
+          "initial_floor": 7.0,
+          "initial_unsupported": false,
+          "seed": 51595,
+          "trained_floor": 47.0,
+          "trained_unsupported": false
+        },
+        {
+          "first_divergence": {
+            "category": "route",
+            "decision_index_zero_based": 0,
+            "initial_action_id": "route:map_node:1:0",
+            "policy_input_sha256_match": true,
+            "trained_action_id": "route:map_node:6:0"
+          },
+          "floor_difference": 37.0,
+          "initial_floor": 13.0,
+          "initial_unsupported": false,
+          "seed": 51364,
+          "trained_floor": 50.0,
+          "trained_unsupported": false
+        }
+      ],
+      "pairs": 512,
+      "reported_pair_rows_match_recomputation": true,
+      "seed_sets_equal": true,
+      "support": {
+        "both_supported": 500,
+        "both_supported_direction": {
+          "declined": 18,
+          "improved": 403,
+          "unchanged": 79
+        },
+        "both_supported_floor_difference_distribution": {
+          "count": 500,
+          "max": 45.0,
+          "mean": 10.768,
+          "median": 10.0,
+          "min": -17.0,
+          "p10": 0.0,
+          "p25": 3.0,
+          "p75": 17.0,
+          "p90": 25.0
+        },
+        "either_unsupported": 12
+      },
+      "threshold_crossings": {
+        "17": {
+          "crossed_down": 5,
+          "crossed_up": 262
+        },
+        "34": {
+          "crossed_down": 0,
+          "crossed_up": 30
+        },
+        "51": {
+          "crossed_down": 0,
+          "crossed_up": 0
+        },
+        "57": {
+          "crossed_down": 0,
+          "crossed_up": 0
+        }
+      }
+    },
+    "trained": {
+      "decisions": {
+        "by_category": {
+          "card_reward": 5542,
+          "event": 2055,
+          "route": 11132,
+          "shop": 2376
+        },
+        "card_reward_families": {
+          "card_reward:take": {
+            "count": 5542,
+            "rate": 1.0
+          }
+        },
+        "mean_per_episode": 41.220703125,
+        "shop_families": {
+          "shop:buy_card": {
+            "count": 1579,
+            "rate": 0.664562289562
+          },
+          "shop:buy_potion": {
+            "count": 29,
+            "rate": 0.012205387205
+          },
+          "shop:buy_relic": {
+            "count": 9,
+            "rate": 0.003787878788
+          },
+          "shop:leave": {
+            "count": 744,
+            "rate": 0.313131313131
+          },
+          "shop:remove_card": {
+            "count": 15,
+            "rate": 0.006313131313
+          }
+        },
+        "total": 21105
+      },
+      "effective_floor_distribution": {
+        "count": 512,
+        "max": 50.0,
+        "mean": 22.322265625,
+        "median": 21.0,
+        "min": 6.0,
+        "p10": 14.0,
+        "p25": 16.0,
+        "p75": 30.0,
+        "p90": 33.0
+      },
+      "effective_floor_source": {
+        "last_supported_floor": 11,
+        "terminal_floor": 501
+      },
+      "episodes": 512,
+      "floor_bands": {
+        "0_16": 234,
+        "17_33": 248,
+        "34_50": 30,
+        "51_56": 0,
+        "57_plus": 0
+      },
+      "floor_thresholds": {
+        "ge_17": {
+          "count": 278,
+          "rate": 0.54296875
+        },
+        "ge_34": {
+          "count": 30,
+          "rate": 0.05859375
+        },
+        "ge_51": {
+          "count": 0,
+          "rate": 0.0
+        },
+        "ge_57": {
+          "count": 0,
+          "rate": 0.0
+        }
+      },
+      "missing_last_supported_floor": 0,
+      "outcomes": {
+        "null": 11,
+        "player_loss": 501
+      },
+      "raw_terminal_floor_missing": 11,
+      "supported_nonvictories": 501,
+      "unique_seeds": 512,
+      "unsupported_episodes": 11,
+      "unsupported_reasons": {
+        "unsupported_shop_courier_restock_semantics": 11
+      },
+      "victories": 0
+    }
+  },
+  "input_bindings": {
+    "artifact_manifest": {
+      "path": "reports/noncombat_simulator_rl_experiment_20260804_r2/artifact_manifest.json",
+      "sha256": "ae208ee1e34d34495cb5bc76dc6bc73431d904b9a889f1c8267a1eaf25d6d4a7",
+      "size_bytes": 34574
+    },
+    "authorization": {
+      "path": "reports/noncombat_simulator_rl_experiment_20260804_r2_authorization.json",
+      "sha256": "7956a3075dc0bc0c7ae14314ef30339272850ffd6774178ed891b3fb2196c145",
+      "size_bytes": 802
+    },
+    "evaluation": {
+      "path": "reports/noncombat_simulator_rl_experiment_20260804_r2/evaluation.json",
+      "sha256": "50b30261bc722e24383c59bd7c7be2ae959c47b12e5cb22f2e4ee5dbdd721886",
+      "size_bytes": 6343686
+    },
+    "experiment_source": {
+      "path": "analysis_scripts/noncombat_simulator_rl_experiment.py",
+      "sha256": "3c0c39518fba5384c0fad3dcac535c29ab3bc20ef453c5ed1c9700f8022ec5c3",
+      "size_bytes": 144961
+    },
+    "metrics": {
+      "path": "reports/noncombat_simulator_rl_experiment_20260804_r2/metrics.json",
+      "sha256": "ad25f81342f782f8238584ee8923f330a9399f9a43b95dc12cf6455d7df10b9a",
+      "size_bytes": 1768
+    },
+    "model": {
+      "path": "reports/noncombat_simulator_rl_experiment_20260804_r2/model.json",
+      "sha256": "28a638514d5a91aa04020b9bc740708685834f9655a0785bba2e48229098b397",
+      "size_bytes": 6566
+    },
+    "ranker_source": {
+      "path": "analysis_scripts/noncombat_policy_model.py",
+      "sha256": "e18dd084039e4c3179303659f0fee2825e32bbb5f52ccb10cd49bf2631ab372b",
+      "size_bytes": 13206
+    },
+    "registration": {
+      "path": "reports/noncombat_simulator_rl_experiment_20260804_r2_registration.json",
+      "sha256": "8e0576bbf86b2334ccce67ac809410a02dcbfa6419f075211bbe48d0164f8549",
+      "size_bytes": 31278
+    }
+  },
+  "interpretation": {
+    "comparison_policy": "seeded_candidate_ranker_initialization",
+    "floor_signal": "present_against_seeded_candidate_ranker_initialization",
+    "formal_training": "no_go",
+    "immediate_r3": "no_go",
+    "model_architecture": "candidate-ranker-linear-v1",
+    "next_gate": "separate_read_only_hypothesis_audit_before_any_fresh_experiment_proposal",
+    "not_compared_as_noncombat_policy": [
+      "Current",
+      "simulator_SimpleAgent",
+      "Bottled"
+    ],
+    "promotion": "no_go",
+    "state_conditioned_policy_capacity": "not_demonstrated_and_structurally_blocked_for_state_only_features",
+    "trained_card_reward_behavior": "all_observed_canary_and_holdout_card_reward_actions_were_take",
+    "unsupported_explains_zero_victories": false,
+    "victory_signal": "absent_in_training_canary_and_holdout"
+  },
+  "schema_version": "noncombat-simulator-rl-experiment-r2-postmortem-v1",
+  "scope": {
+    "analysis_type": "read_only_terminal_descriptive_postmortem",
+    "effective_floor_definition": "terminal_floor if present, otherwise last_supported_floor for registered unsupported disposition",
+    "new_inferential_gate": false,
+    "new_native_loading": false,
+    "new_seed_access": false,
+    "quantile_method": "linear interpolation at (n - 1) * probability",
+    "training_or_replay": false
+  },
+  "structural_model_audit": {
+    "candidate_feature_composition": "shared_state_features_plus_candidate_features",
+    "caveat": "candidate-local fields may encode context, but the separately encoded shared state cannot change candidate ordering",
+    "ranker": "one_output_linear_layer",
+    "registered_implementation_commit": "8d123fdf32bd94bc29e53a97f217a2b7ca40c4fe",
+    "relative_logit_identity": "score_i - score_j = weight dot (candidate_i - candidate_j)",
+    "relevant_files_unchanged_since_registered_commit": true,
+    "source_locations": [
+      "analysis_scripts/noncombat_policy_model.py:71",
+      "analysis_scripts/noncombat_simulator_rl_experiment.py:733"
+    ],
+    "state_only_features_affect_relative_ranking": false
+  },
+  "terminal_verdicts": {
+    "experiment": "experiment_valid_without_learning_signal",
+    "formal_readiness": "not_ready_for_bounded_training_proposal",
+    "metrics_match_evaluation": true
+  },
+  "training": {
+    "chunk_count": 64,
+    "pass_summaries": {
+      "0": {
+        "effective_floor_max": 48.0,
+        "effective_floor_mean": 13.4521484375,
+        "effective_floor_median": 14.0,
+        "episodes": 1024,
+        "floor_ge_17": 123,
+        "floor_ge_34": 3,
+        "floor_ge_51": 0,
+        "mean_chunk_loss": 0.036485742196,
+        "mean_episode_return": 0.236002604167,
+        "unique_seeds": 1024,
+        "unsupported_episodes": 7,
+        "victories": 0
+      },
+      "1": {
+        "effective_floor_max": 50.0,
+        "effective_floor_mean": 13.53515625,
+        "effective_floor_median": 14.0,
+        "episodes": 1024,
+        "floor_ge_17": 135,
+        "floor_ge_34": 2,
+        "floor_ge_51": 0,
+        "mean_chunk_loss": 0.034190750681,
+        "mean_episode_return": 0.237458881579,
+        "unique_seeds": 1024,
+        "unsupported_episodes": 3,
+        "victories": 0
+      },
+      "2": {
+        "effective_floor_max": 41.0,
+        "effective_floor_mean": 13.7724609375,
+        "effective_floor_median": 14.0,
+        "episodes": 1024,
+        "floor_ge_17": 159,
+        "floor_ge_34": 1,
+        "floor_ge_51": 0,
+        "mean_chunk_loss": 0.02931814343,
+        "mean_episode_return": 0.241622121711,
+        "unique_seeds": 1024,
+        "unsupported_episodes": 7,
+        "victories": 0
+      },
+      "3": {
+        "effective_floor_max": 42.0,
+        "effective_floor_mean": 13.6708984375,
+        "effective_floor_median": 14.0,
+        "episodes": 1024,
+        "floor_ge_17": 135,
+        "floor_ge_34": 3,
+        "floor_ge_51": 0,
+        "mean_chunk_loss": 0.027864338248,
+        "mean_episode_return": 0.239840323465,
+        "unique_seeds": 1024,
+        "unsupported_episodes": 6,
+        "victories": 0
+      }
+    },
+    "passes": [
+      0,
+      1,
+      2,
+      3
+    ],
+    "policy": {
+      "decisions": {
+        "by_category": {
+          "card_reward": 30741,
+          "event": 8602,
+          "route": 55199,
+          "shop": 8628
+        },
+        "card_reward_families": {
+          "card_reward:bowl": {
+            "count": 59,
+            "rate": 0.001919260922
+          },
+          "card_reward:skip": {
+            "count": 7181,
+            "rate": 0.233596825087
+          },
+          "card_reward:take": {
+            "count": 23501,
+            "rate": 0.764483913991
+          }
+        },
+        "mean_per_episode": 25.18798828125,
+        "shop_families": {
+          "shop:buy_card": {
+            "count": 3599,
+            "rate": 0.417130273528
+          },
+          "shop:buy_potion": {
+            "count": 944,
+            "rate": 0.109411219286
+          },
+          "shop:buy_relic": {
+            "count": 352,
+            "rate": 0.040797403802
+          },
+          "shop:leave": {
+            "count": 3275,
+            "rate": 0.379578117756
+          },
+          "shop:remove_card": {
+            "count": 458,
+            "rate": 0.053082985628
+          }
+        },
+        "total": 103170
+      },
+      "effective_floor_distribution": {
+        "count": 4096,
+        "max": 50.0,
+        "mean": 13.607666015625,
+        "median": 14.0,
+        "min": 1.0,
+        "p10": 6.0,
+        "p25": 8.0,
+        "p75": 16.0,
+        "p90": 21.0
+      },
+      "effective_floor_source": {
+        "last_supported_floor": 23,
+        "terminal_floor": 4073
+      },
+      "episodes": 4096,
+      "floor_bands": {
+        "0_16": 3544,
+        "17_33": 543,
+        "34_50": 9,
+        "51_56": 0,
+        "57_plus": 0
+      },
+      "floor_thresholds": {
+        "ge_17": {
+          "count": 552,
+          "rate": 0.134765625
+        },
+        "ge_34": {
+          "count": 9,
+          "rate": 0.002197265625
+        },
+        "ge_51": {
+          "count": 0,
+          "rate": 0.0
+        },
+        "ge_57": {
+          "count": 0,
+          "rate": 0.0
+        }
+      },
+      "missing_last_supported_floor": 0,
+      "outcomes": {
+        "null": 23,
+        "player_loss": 4073
+      },
+      "raw_terminal_floor_missing": 23,
+      "supported_nonvictories": 4073,
+      "unique_seeds": 1024,
+      "unsupported_episodes": 23,
+      "unsupported_reasons": {
+        "unsupported_shop_courier_restock_semantics": 23
+      },
+      "victories": 0
+    },
+    "reward_signal": {
+      "floor_progress_reward_observed_episodes": 4096,
+      "reward_contract": {
+        "discount": 1.0,
+        "max_floor": 57,
+        "maximum_episode_floor_progress": 1.0,
+        "progress_divisor": 57.0,
+        "strict_primary_dominance": true,
+        "version": "formal-victory-primary-scalar-v1",
+        "victory_weight": 2.0
+      },
+      "rows_matching_registered_scalar_reward": 4096,
+      "victory_reward_observed_episodes": 0
+    }
+  },
+  "unsupported_accounting": {
+    "missing_last_supported_floor": 0,
+    "missingness_exactly_matches_unsupported": true,
+    "policy_episodes": 5376,
+    "reasons": {
+      "unsupported_shop_courier_restock_semantics": 44
+    },
+    "terminal_floor_missing": 44,
+    "trained_holdout_supported_nonvictories": 501,
+    "unsupported_episodes": 44,
+    "unsupported_rate": 0.00818452381
+  },
+  "verification": {
+    "independent": "powershell_convertfrom_json_core_metric_recomputation",
+    "primary": "python_stdlib_structured_recomputation_with_invariant_assertions",
+    "status": "verified"
+  }
+}

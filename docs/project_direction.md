@@ -415,10 +415,19 @@ The next authorized sequence is:
     policies won 0/512 holdout episodes. Preserve the valid terminal verdict
     `experiment_valid_without_learning_signal`; do not rerun, tune, reuse the
     cohort, load the model into Current, or claim formal-RL or promotion
-    authority. The next possible step is a separate read-only terminal
-    postmortem of the zero-victory endpoint and floor-shift distribution. Any
-    later experiment requires an evidence-backed hypothesis, fresh identity,
-    fresh cohort decision, and separate OpenSpec approval.
+    authority.
+24. Preserve the completed r2 read-only terminal postmortem and its bound JSON
+    evidence. The floor shift is broad and survives removal of unsupported
+    pairs, but all 5,376 training/evaluation policy episodes had zero victories,
+    no policy episode reached floor 51, and the final greedy policy selected
+    `take` for every observed canary and holdout card reward. More importantly,
+    the registered linear scorer adds one shared state vector to every candidate,
+    so state-only features cancel exactly from relative logits. An immediate r3
+    is `no_go`. The next change must first make candidate ranking state
+    conditioned, add anti-collapse diagnostics and regressions, and retain the
+    existing baseline/outcome blockers. Any later experiment requires an
+    evidence-backed hypothesis, fresh identity, fresh cohort decision, and
+    separate OpenSpec approval.
 
 ## Work Lanes
 
@@ -436,12 +445,15 @@ access. Its r2 successor completed exactly once and is valid simulator evidence:
 the trained policy improved terminal floor against seeded initialization on
 both canary and holdout, but produced no victory improvement and therefore no
 registered learning signal. Formal RL remains `no_go`; the result grants no
-Current loading, policy promotion, or replacement experiment. The active
-analysis lane is a read-only r2 terminal postmortem focused on the zero-victory
-endpoint and floor-shift distribution, followed by a go/no-go decision on
-whether any fresh simulator experiment is justified. A rebuilt module,
-different experiment, or empirical Current-baseline strategy still requires a
-separate OpenSpec change, fresh identity, and evidence design.
+Current loading, policy promotion, or replacement experiment. The r2 terminal
+postmortem is complete and sets an immediate r3 to `no_go`: the registered
+linear feature composition cannot use shared state to change candidate order,
+and the final policy saturated to taking every observed card reward. The active
+lane is an OpenSpec proposal for state-conditioned candidate ranking,
+state-sensitivity regressions, anti-collapse diagnostics, and a meaningful
+fixed non-combat comparator. A rebuilt module, different experiment, or
+empirical Current-baseline strategy still requires a separate approved change,
+fresh identity, fresh cohort decision, and evidence design.
 
 Live gameplay is a maintenance and registered-evaluation lane only. Launch it
 for a crash, stuck state, repeated A-class simulator/mechanics defect, or an
