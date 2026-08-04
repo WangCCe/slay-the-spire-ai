@@ -24,4 +24,4 @@
 - [x] 4.1 Review terminal metrics, model, evaluation if reached, report, manifest, unsupported accounting, and learning-signal result without tuning or reinterpretation.
 - [x] 4.2 Prove r1, r2 registration/authorization, CommunicationMod config, and production checkpoints remain byte-unchanged and no gameplay run was launched.
 - [x] 4.3 Update project direction, sync the accepted requirement, archive this change, and run strict full-tree OpenSpec plus `git diff --check`; do not run pytest or gameplay because source is unchanged.
-- [ ] 4.4 Commit and push only the canonical experiment artifacts, direction, main spec, and archived change while preserving unrelated untracked files.
+- [x] 4.4 Commit and push only the canonical experiment artifacts, direction, main spec, and archived change while preserving unrelated untracked files.
