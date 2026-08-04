@@ -1,0 +1,12 @@
+{
+  "details": {
+    "checkpoint_index": 30,
+    "checkpoint_sha256": "0ba2efe8e90da868360f1e1d3ec6544615cf106274b53378c360fa90bb0e1802",
+    "training_summary_sha256": "5b25438f98ab9bea8e2157e8aab4dd3c4525ffe8b081d06ac97db6c61a6c2357"
+  },
+  "index": 30,
+  "logical_execution_id": "noncombat-simulator-rl-20260804-r2",
+  "phase": "continued",
+  "previous_record_sha256": "ffb05dc60b288895bd64fdbafb3ee40b4299b7bee654f854688a6f5e7225d792",
+  "schema_version": "noncombat-simulator-rl-journal-v1"
+}

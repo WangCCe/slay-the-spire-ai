@@ -1,0 +1,64 @@
+{
+  "authority": {
+    "experiment_execution": false,
+    "formal_noncombat_rl": false,
+    "live_gameplay": false,
+    "live_policy_loading": false,
+    "live_study_launch": false,
+    "ope_estimation": false,
+    "ope_reinterpretation": false,
+    "policy_promotion": false,
+    "qualification": false
+  },
+  "blocked_reason": null,
+  "canary": {
+    "blockers": [],
+    "floor_difference_ci": {
+      "confidence_level": 0.95,
+      "lower": 8.5390625,
+      "mean": 10.3515625,
+      "resamples": 10000,
+      "upper": 12.15625
+    },
+    "initial_victories": 0,
+    "passed": true,
+    "trained_victories": 0,
+    "unsupported_rate": 0.0234375,
+    "unsupported_rate_denominator": 256,
+    "verdict": "canary_passed"
+  },
+  "cumulative_wall_seconds": 13977.617619800265,
+  "formal_readiness_verdict": "not_ready_for_bounded_training_proposal",
+  "holdout": {
+    "floor_difference_ci": {
+      "confidence_level": 0.95,
+      "lower": 9.685546875,
+      "mean": 10.53125,
+      "resamples": 10000,
+      "upper": 11.3984375
+    },
+    "floor_signal": true,
+    "initial_victories": 0,
+    "trained_victories": 0,
+    "unsupported_rate": 0.0146484375,
+    "verdict": "experiment_valid_without_learning_signal",
+    "victory_signal": false
+  },
+  "logical_execution_id": "noncombat-simulator-rl-20260804-r2",
+  "prefix_replay_verified": true,
+  "registration_sha256": "8e0576bbf86b2334ccce67ac809410a02dcbfa6419f075211bbe48d0164f8549",
+  "schema_version": "noncombat-simulator-rl-metrics-v1",
+  "training": {
+    "categories": [
+      "card_reward",
+      "event",
+      "route",
+      "shop"
+    ],
+    "episodes": 4096,
+    "optimizer_updates": 64,
+    "unsupported_episodes": 23,
+    "victories": 0
+  },
+  "verdict": "experiment_valid_without_learning_signal"
+}

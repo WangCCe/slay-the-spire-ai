@@ -1,0 +1,2805 @@
+{
+  "checkpoint_index": 10,
+  "cumulative_wall_seconds": 1859.380992000224,
+  "logical_execution_id": "noncombat-simulator-rl-20260804-r2",
+  "previous_checkpoint_sha256": "80cc1d44f9bd8f3fdecaa0f372a7c7b327144e16ad23bb292f9d12108de52cb2",
+  "schema_version": "noncombat-simulator-rl-checkpoint-v1",
+  "state_payload": {
+    "coordinate": {
+      "completed_episodes": 640,
+      "next": {
+        "chunk_index": 10,
+        "episode_start": 640,
+        "pass_index": 0,
+        "phase": "training",
+        "seed_end": 50703,
+        "seed_start": 50640
+      },
+      "next_chunk_index": 10,
+      "optimizer_updates": 10
+    },
+    "identity": {
+      "implementation_commit": "8d123fdf32bd94bc29e53a97f217a2b7ca40c4fe",
+      "logical_execution_id": "noncombat-simulator-rl-20260804-r2",
+      "registration_sha256": "8e0576bbf86b2334ccce67ac809410a02dcbfa6419f075211bbe48d0164f8549"
+    },
+    "model": {
+      "architecture": "candidate-ranker-linear-v1",
+      "input_dim": 1024,
+      "state_dict": {
+        "scorer.bias": {
+          "byte_order": "little",
+          "data_base64": "QOAguw==",
+          "data_sha256": "25d2d7903b29f89accd1338aafeedcb8bc2ef14029b15eb96cd0ecd6579376ac",
+          "dtype": "float32",
+          "shape": [
+            1
+          ]
+        },
+        "scorer.weight": {
+          "byte_order": "little",
+          "data_base64": "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",
+          "data_sha256": "62cd50ebbae7019be2b9fa4685ec2be60322a4b36e05f0d6c5631d99a0dce990",
+          "dtype": "float32",
+          "shape": [
+            1,
+            1024
+          ]
+        }
+      }
+    },
+    "optimizer": {
+      "param_groups": {
+        "items": [
+          {
+            "items": [
+              {
+                "key": "amsgrad",
+                "value": {
+                  "kind": "scalar",
+                  "value": false
+                }
+              },
+              {
+                "key": "betas",
+                "value": {
+                  "items": [
+                    {
+                      "kind": "scalar",
+                      "value": 0.9
+                    },
+                    {
+                      "kind": "scalar",
+                      "value": 0.999
+                    }
+                  ],
+                  "kind": "tuple"
+                }
+              },
+              {
+                "key": "capturable",
+                "value": {
+                  "kind": "scalar",
+                  "value": false
+                }
+              },
+              {
+                "key": "differentiable",
+                "value": {
+                  "kind": "scalar",
+                  "value": false
+                }
+              },
+              {
+                "key": "eps",
+                "value": {
+                  "kind": "scalar",
+                  "value": 1e-08
+                }
+              },
+              {
+                "key": "foreach",
+                "value": {
+                  "kind": "scalar",
+                  "value": null
+                }
+              },
+              {
+                "key": "fused",
+                "value": {
+                  "kind": "scalar",
+                  "value": null
+                }
+              },
+              {
+                "key": "lr",
+                "value": {
+                  "kind": "scalar",
+                  "value": 0.001
+                }
+              },
+              {
+                "key": "maximize",
+                "value": {
+                  "kind": "scalar",
+                  "value": false
+                }
+              },
+              {
+                "key": "params",
+                "value": {
+                  "items": [
+                    {
+                      "kind": "scalar",
+                      "value": 0
+                    },
+                    {
+                      "kind": "scalar",
+                      "value": 1
+                    }
+                  ],
+                  "kind": "list"
+                }
+              },
+              {
+                "key": "weight_decay",
+                "value": {
+                  "kind": "scalar",
+                  "value": 0
+                }
+              }
+            ],
+            "kind": "mapping"
+          }
+        ],
+        "kind": "list"
+      },
+      "state": [
+        {
+          "parameter_id": 0,
+          "state": {
+            "items": [
+              {
+                "key": "exp_avg",
+                "value": {
+                  "kind": "tensor",
+                  "value": {
+                    "byte_order": "little",
+                    "data_base64": "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",
+                    "data_sha256": "92bb8adab36e451c979b45ae5fedbcb223edfb74076384b0915114b5c41cb9e8",
+                    "dtype": "float32",
+                    "shape": [
+                      1,
+                      1024
+                    ]
+                  }
+                }
+              },
+              {
+                "key": "exp_avg_sq",
+                "value": {
+                  "kind": "tensor",
+                  "value": {
+                    "byte_order": "little",
+                    "data_base64": "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",
+                    "data_sha256": "14d64827362ad36425e4e378534177eea29dafce0bb4539dd6ec57e8d797b7fa",
+                    "dtype": "float32",
+                    "shape": [
+                      1,
+                      1024
+                    ]
+                  }
+                }
+              },
+              {
+                "key": "step",
+                "value": {
+                  "kind": "tensor",
+                  "value": {
+                    "byte_order": "little",
+                    "data_base64": "AAAgQQ==",
+                    "data_sha256": "80c8a717ccd70c8809eb78e6a9591c003e11c721fe0ccaf62fd592abda1a5593",
+                    "dtype": "float32",
+                    "shape": []
+                  }
+                }
+              }
+            ],
+            "kind": "mapping"
+          }
+        },
+        {
+          "parameter_id": 1,
+          "state": {
+            "items": [
+              {
+                "key": "exp_avg",
+                "value": {
+                  "kind": "tensor",
+                  "value": {
+                    "byte_order": "little",
+                    "data_base64": "UG5WLw==",
+                    "data_sha256": "a092fd7d321ecd424386b5220d5189caebc8b67a55f0c642367c2f23ebd2d19b",
+                    "dtype": "float32",
+                    "shape": [
+                      1
+                    ]
+                  }
+                }
+              },
+              {
+                "key": "exp_avg_sq",
+                "value": {
+                  "kind": "tensor",
+                  "value": {
+                    "byte_order": "little",
+                    "data_base64": "n+3bHQ==",
+                    "data_sha256": "c1729d20840d6d205ac742fbe3d577100b37c459ea33e0b8060d9f739e687b86",
+                    "dtype": "float32",
+                    "shape": [
+                      1
+                    ]
+                  }
+                }
+              },
+              {
+                "key": "step",
+                "value": {
+                  "kind": "tensor",
+                  "value": {
+                    "byte_order": "little",
+                    "data_base64": "AAAgQQ==",
+                    "data_sha256": "80c8a717ccd70c8809eb78e6a9591c003e11c721fe0ccaf62fd592abda1a5593",
+                    "dtype": "float32",
+                    "shape": []
+                  }
+                }
+              }
+            ],
+            "kind": "mapping"
+          }
+        }
+      ]
+    },
+    "random": {
+      "action_generator": {
+        "byte_order": "little",
+        "data_base64": "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",
+        "data_sha256": "37591c270a51913a8b877064750ac82b4e4de0b2f2aaa0f29213715c8e12a4e0",
+        "dtype": "uint8",
+        "shape": [
+          5056
+        ]
+      },
+      "python": {
+        "items": [
+          {
+            "kind": "scalar",
+            "value": 3
+          },
+          {
+            "items": [
+              {
+                "kind": "scalar",
+                "value": 2147483648
+              },
+              {
+                "kind": "scalar",
+                "value": 766982754
+              },
+              {
+                "kind": "scalar",
+                "value": 497961170
+              },
+              {
+                "kind": "scalar",
+                "value": 3952298588
+              },
+              {
+                "kind": "scalar",
+                "value": 2331775348
+              },
+              {
+                "kind": "scalar",
+                "value": 1811986599
+              },
+              {
+                "kind": "scalar",
+                "value": 3100132149
+              },
+              {
+                "kind": "scalar",
+                "value": 3188119873
+              },
+              {
+                "kind": "scalar",
+                "value": 3937547222
+              },
+              {
+                "kind": "scalar",
+                "value": 215718963
+              },
+              {
+                "kind": "scalar",
+                "value": 3315684082
+              },
+              {
+                "kind": "scalar",
+                "value": 2978012849
+              },
+              {
+                "kind": "scalar",
+                "value": 2428261856
+              },
+              {
+                "kind": "scalar",
+                "value": 1298227695
+              },
+              {
+                "kind": "scalar",
+                "value": 1704729580
+              },
+              {
+                "kind": "scalar",
+                "value": 54668373
+              },
+              {
+                "kind": "scalar",
+                "value": 3285201915
+              },
+              {
+                "kind": "scalar",
+                "value": 3285178464
+              },
+              {
+                "kind": "scalar",
+                "value": 1552935063
+              },
+              {
+                "kind": "scalar",
+                "value": 988471319
+              },
+              {
+                "kind": "scalar",
+                "value": 3135387943
+              },
+              {
+                "kind": "scalar",
+                "value": 1691402966
+              },
+              {
+                "kind": "scalar",
+                "value": 2757551880
+              },
+              {
+                "kind": "scalar",
+                "value": 416056905
+              },
+              {
+                "kind": "scalar",
+                "value": 907387413
+              },
+              {
+                "kind": "scalar",
+                "value": 1072924981
+              },
+              {
+                "kind": "scalar",
+                "value": 33903495
+              },
+              {
+                "kind": "scalar",
+                "value": 2168419592
+              },
+              {
+                "kind": "scalar",
+                "value": 2429050353
+              },
+              {
+                "kind": "scalar",
+                "value": 831159753
+              },
+              {
+                "kind": "scalar",
+                "value": 430343641
+              },
+              {
+                "kind": "scalar",
+                "value": 3315943586
+              },
+              {
+                "kind": "scalar",
+                "value": 1761671042
+              },
+              {
+                "kind": "scalar",
+                "value": 864453023
+              },
+              {
+                "kind": "scalar",
+                "value": 334804929
+              },
+              {
+                "kind": "scalar",
+                "value": 1627478028
+              },
+              {
+                "kind": "scalar",
+                "value": 2596811275
+              },
+              {
+                "kind": "scalar",
+                "value": 3468733638
+              },
+              {
+                "kind": "scalar",
+                "value": 3994375553
+              },
+              {
+                "kind": "scalar",
+                "value": 1457139722
+              },
+              {
+                "kind": "scalar",
+                "value": 3139722021
+              },
+              {
+                "kind": "scalar",
+                "value": 1334790738
+              },
+              {
+                "kind": "scalar",
+                "value": 2656639915
+              },
+              {
+                "kind": "scalar",
+                "value": 3535811098
+              },
+              {
+                "kind": "scalar",
+                "value": 1464315470
+              },
+              {
+                "kind": "scalar",
+                "value": 2397423927
+              },
+              {
+                "kind": "scalar",
+                "value": 885719490
+              },
+              {
+                "kind": "scalar",
+                "value": 1140895889
+              },
+              {
+                "kind": "scalar",
+                "value": 3284299483
+              },
+              {
+                "kind": "scalar",
+                "value": 2854516462
+              },
+              {
+                "kind": "scalar",
+                "value": 2734973817
+              },
+              {
+                "kind": "scalar",
+                "value": 147484763
+              },
+              {
+                "kind": "scalar",
+                "value": 792049954
+              },
+              {
+                "kind": "scalar",
+                "value": 114360641
+              },
+              {
+                "kind": "scalar",
+                "value": 3345458839
+              },
+              {
+                "kind": "scalar",
+                "value": 1159898878
+              },
+              {
+                "kind": "scalar",
+                "value": 1410498733
+              },
+              {
+                "kind": "scalar",
+                "value": 2242989638
+              },
+              {
+                "kind": "scalar",
+                "value": 453922141
+              },
+              {
+                "kind": "scalar",
+                "value": 1344019764
+              },
+              {
+                "kind": "scalar",
+                "value": 413870456
+              },
+              {
+                "kind": "scalar",
+                "value": 3089405849
+              },
+              {
+                "kind": "scalar",
+                "value": 1494382840
+              },
+              {
+                "kind": "scalar",
+                "value": 470157779
+              },
+              {
+                "kind": "scalar",
+                "value": 4266372830
+              },
+              {
+                "kind": "scalar",
+                "value": 2831181573
+              },
+              {
+                "kind": "scalar",
+                "value": 1361928602
+              },
+              {
+                "kind": "scalar",
+                "value": 1589253513
+              },
+              {
+                "kind": "scalar",
+                "value": 1381373062
+              },
+              {
+                "kind": "scalar",
+                "value": 753045124
+              },
+              {
+                "kind": "scalar",
+                "value": 987032420
+              },
+              {
+                "kind": "scalar",
+                "value": 781978839
+              },
+              {
+                "kind": "scalar",
+                "value": 2953638767
+              },
+              {
+                "kind": "scalar",
+                "value": 3258570111
+              },
+              {
+                "kind": "scalar",
+                "value": 3006718191
+              },
+              {
+                "kind": "scalar",
+                "value": 1675218601
+              },
+              {
+                "kind": "scalar",
+                "value": 1854232715
+              },
+              {
+                "kind": "scalar",
+                "value": 3655829819
+              },
+              {
+                "kind": "scalar",
+                "value": 1731242722
+              },
+              {
+                "kind": "scalar",
+                "value": 2192104666
+              },
+              {
+                "kind": "scalar",
+                "value": 1736665161
+              },
+              {
+                "kind": "scalar",
+                "value": 740150002
+              },
+              {
+                "kind": "scalar",
+                "value": 1195833394
+              },
+              {
+                "kind": "scalar",
+                "value": 1610203160
+              },
+              {
+                "kind": "scalar",
+                "value": 159492766
+              },
+              {
+                "kind": "scalar",
+                "value": 4041488705
+              },
+              {
+                "kind": "scalar",
+                "value": 3128952632
+              },
+              {
+                "kind": "scalar",
+                "value": 2867295744
+              },
+              {
+                "kind": "scalar",
+                "value": 3272632449
+              },
+              {
+                "kind": "scalar",
+                "value": 886824304
+              },
+              {
+                "kind": "scalar",
+                "value": 1791482600
+              },
+              {
+                "kind": "scalar",
+                "value": 221114776
+              },
+              {
+                "kind": "scalar",
+                "value": 3867175393
+              },
+              {
+                "kind": "scalar",
+                "value": 4020804062
+              },
+              {
+                "kind": "scalar",
+                "value": 1077871826
+              },
+              {
+                "kind": "scalar",
+                "value": 1298953503
+              },
+              {
+                "kind": "scalar",
+                "value": 996366221
+              },
+              {
+                "kind": "scalar",
+                "value": 4149754679
+              },
+              {
+                "kind": "scalar",
+                "value": 2483052703
+              },
+              {
+                "kind": "scalar",
+                "value": 2615558283
+              },
+              {
+                "kind": "scalar",
+                "value": 274318093
+              },
+              {
+                "kind": "scalar",
+                "value": 1716359450
+              },
+              {
+                "kind": "scalar",
+                "value": 4099129961
+              },
+              {
+                "kind": "scalar",
+                "value": 1026774175
+              },
+              {
+                "kind": "scalar",
+                "value": 288240973
+              },
+              {
+                "kind": "scalar",
+                "value": 1459347562
+              },
+              {
+                "kind": "scalar",
+                "value": 2365566296
+              },
+              {
+                "kind": "scalar",
+                "value": 3690105224
+              },
+              {
+                "kind": "scalar",
+                "value": 3065780221
+              },
+              {
+                "kind": "scalar",
+                "value": 2050634722
+              },
+              {
+                "kind": "scalar",
+                "value": 2652606621
+              },
+              {
+                "kind": "scalar",
+                "value": 3185241207
+              },
+              {
+                "kind": "scalar",
+                "value": 3026457375
+              },
+              {
+                "kind": "scalar",
+                "value": 3456165734
+              },
+              {
+                "kind": "scalar",
+                "value": 1880121515
+              },
+              {
+                "kind": "scalar",
+                "value": 3398461093
+              },
+              {
+                "kind": "scalar",
+                "value": 1795638629
+              },
+              {
+                "kind": "scalar",
+                "value": 2379692076
+              },
+              {
+                "kind": "scalar",
+                "value": 608668379
+              },
+              {
+                "kind": "scalar",
+                "value": 1261955525
+              },
+              {
+                "kind": "scalar",
+                "value": 84456522
+              },
+              {
+                "kind": "scalar",
+                "value": 1913485156
+              },
+              {
+                "kind": "scalar",
+                "value": 106878280
+              },
+              {
+                "kind": "scalar",
+                "value": 757183891
+              },
+              {
+                "kind": "scalar",
+                "value": 2913957588
+              },
+              {
+                "kind": "scalar",
+                "value": 160418091
+              },
+              {
+                "kind": "scalar",
+                "value": 2025664758
+              },
+              {
+                "kind": "scalar",
+                "value": 141497907
+              },
+              {
+                "kind": "scalar",
+                "value": 1657818026
+              },
+              {
+                "kind": "scalar",
+                "value": 3053760160
+              },
+              {
+                "kind": "scalar",
+                "value": 672193054
+              },
+              {
+                "kind": "scalar",
+                "value": 4157546743
+              },
+              {
+                "kind": "scalar",
+                "value": 223046484
+              },
+              {
+                "kind": "scalar",
+                "value": 1623470498
+              },
+              {
+                "kind": "scalar",
+                "value": 1201972930
+              },
+              {
+                "kind": "scalar",
+                "value": 675008814
+              },
+              {
+                "kind": "scalar",
+                "value": 684162366
+              },
+              {
+                "kind": "scalar",
+                "value": 1738776330
+              },
+              {
+                "kind": "scalar",
+                "value": 3025656654
+              },
+              {
+                "kind": "scalar",
+                "value": 159760723
+              },
+              {
+                "kind": "scalar",
+                "value": 1908867305
+              },
+              {
+                "kind": "scalar",
+                "value": 3933381342
+              },
+              {
+                "kind": "scalar",
+                "value": 2545706671
+              },
+              {
+                "kind": "scalar",
+                "value": 467196949
+              },
+              {
+                "kind": "scalar",
+                "value": 1427819885
+              },
+              {
+                "kind": "scalar",
+                "value": 842150314
+              },
+              {
+                "kind": "scalar",
+                "value": 4032903454
+              },
+              {
+                "kind": "scalar",
+                "value": 2140851898
+              },
+              {
+                "kind": "scalar",
+                "value": 3269883445
+              },
+              {
+                "kind": "scalar",
+                "value": 975813755
+              },
+              {
+                "kind": "scalar",
+                "value": 4177392955
+              },
+              {
+                "kind": "scalar",
+                "value": 1556690684
+              },
+              {
+                "kind": "scalar",
+                "value": 2535611513
+              },
+              {
+                "kind": "scalar",
+                "value": 462962732
+              },
+              {
+                "kind": "scalar",
+                "value": 67591358
+              },
+              {
+                "kind": "scalar",
+                "value": 1729610528
+              },
+              {
+                "kind": "scalar",
+                "value": 2025206740
+              },
+              {
+                "kind": "scalar",
+                "value": 3153739740
+              },
+              {
+                "kind": "scalar",
+                "value": 3255032049
+              },
+              {
+                "kind": "scalar",
+                "value": 4186226368
+              },
+              {
+                "kind": "scalar",
+                "value": 1070144624
+              },
+              {
+                "kind": "scalar",
+                "value": 3107867195
+              },
+              {
+                "kind": "scalar",
+                "value": 1621006038
+              },
+              {
+                "kind": "scalar",
+                "value": 63742485
+              },
+              {
+                "kind": "scalar",
+                "value": 835629717
+              },
+              {
+                "kind": "scalar",
+                "value": 3189842019
+              },
+              {
+                "kind": "scalar",
+                "value": 3950227584
+              },
+              {
+                "kind": "scalar",
+                "value": 3184714559
+              },
+              {
+                "kind": "scalar",
+                "value": 841836938
+              },
+              {
+                "kind": "scalar",
+                "value": 1685394870
+              },
+              {
+                "kind": "scalar",
+                "value": 657939920
+              },
+              {
+                "kind": "scalar",
+                "value": 766156242
+              },
+              {
+                "kind": "scalar",
+                "value": 1412314179
+              },
+              {
+                "kind": "scalar",
+                "value": 1048281639
+              },
+              {
+                "kind": "scalar",
+                "value": 4037161120
+              },
+              {
+                "kind": "scalar",
+                "value": 2044490307
+              },
+              {
+                "kind": "scalar",
+                "value": 1923947830
+              },
+              {
+                "kind": "scalar",
+                "value": 3900790422
+              },
+              {
+                "kind": "scalar",
+                "value": 907554295
+              },
+              {
+                "kind": "scalar",
+                "value": 276417304
+              },
+              {
+                "kind": "scalar",
+                "value": 860658646
+              },
+              {
+                "kind": "scalar",
+                "value": 3574201134
+              },
+              {
+                "kind": "scalar",
+                "value": 3508771399
+              },
+              {
+                "kind": "scalar",
+                "value": 2110232300
+              },
+              {
+                "kind": "scalar",
+                "value": 1636296241
+              },
+              {
+                "kind": "scalar",
+                "value": 1405006077
+              },
+              {
+                "kind": "scalar",
+                "value": 1093408401
+              },
+              {
+                "kind": "scalar",
+                "value": 3243057343
+              },
+              {
+                "kind": "scalar",
+                "value": 1519791182
+              },
+              {
+                "kind": "scalar",
+                "value": 1994660136
+              },
+              {
+                "kind": "scalar",
+                "value": 3829840937
+              },
+              {
+                "kind": "scalar",
+                "value": 2644974199
+              },
+              {
+                "kind": "scalar",
+                "value": 957955566
+              },
+              {
+                "kind": "scalar",
+                "value": 3487641161
+              },
+              {
+                "kind": "scalar",
+                "value": 1646922510
+              },
+              {
+                "kind": "scalar",
+                "value": 1907939989
+              },
+              {
+                "kind": "scalar",
+                "value": 3836029453
+              },
+              {
+                "kind": "scalar",
+                "value": 3429168778
+              },
+              {
+                "kind": "scalar",
+                "value": 201307778
+              },
+              {
+                "kind": "scalar",
+                "value": 72550089
+              },
+              {
+                "kind": "scalar",
+                "value": 2464394982
+              },
+              {
+                "kind": "scalar",
+                "value": 1695794191
+              },
+              {
+                "kind": "scalar",
+                "value": 3344785682
+              },
+              {
+                "kind": "scalar",
+                "value": 996786130
+              },
+              {
+                "kind": "scalar",
+                "value": 3589457196
+              },
+              {
+                "kind": "scalar",
+                "value": 1241754792
+              },
+              {
+                "kind": "scalar",
+                "value": 1291082245
+              },
+              {
+                "kind": "scalar",
+                "value": 4224603667
+              },
+              {
+                "kind": "scalar",
+                "value": 1194379475
+              },
+              {
+                "kind": "scalar",
+                "value": 2693491244
+              },
+              {
+                "kind": "scalar",
+                "value": 881186965
+              },
+              {
+                "kind": "scalar",
+                "value": 2705535111
+              },
+              {
+                "kind": "scalar",
+                "value": 445306946
+              },
+              {
+                "kind": "scalar",
+                "value": 440274268
+              },
+              {
+                "kind": "scalar",
+                "value": 1980827733
+              },
+              {
+                "kind": "scalar",
+                "value": 2482488861
+              },
+              {
+                "kind": "scalar",
+                "value": 3205215943
+              },
+              {
+                "kind": "scalar",
+                "value": 2119332222
+              },
+              {
+                "kind": "scalar",
+                "value": 2928713046
+              },
+              {
+                "kind": "scalar",
+                "value": 1418736938
+              },
+              {
+                "kind": "scalar",
+                "value": 652581136
+              },
+              {
+                "kind": "scalar",
+                "value": 2474070665
+              },
+              {
+                "kind": "scalar",
+                "value": 2208621536
+              },
+              {
+                "kind": "scalar",
+                "value": 4171251876
+              },
+              {
+                "kind": "scalar",
+                "value": 2303664214
+              },
+              {
+                "kind": "scalar",
+                "value": 443762656
+              },
+              {
+                "kind": "scalar",
+                "value": 2981912989
+              },
+              {
+                "kind": "scalar",
+                "value": 2199228311
+              },
+              {
+                "kind": "scalar",
+                "value": 2652261633
+              },
+              {
+                "kind": "scalar",
+                "value": 3166738494
+              },
+              {
+                "kind": "scalar",
+                "value": 3443009210
+              },
+              {
+                "kind": "scalar",
+                "value": 3498764432
+              },
+              {
+                "kind": "scalar",
+                "value": 424010848
+              },
+              {
+                "kind": "scalar",
+                "value": 4065487566
+              },
+              {
+                "kind": "scalar",
+                "value": 2262993542
+              },
+              {
+                "kind": "scalar",
+                "value": 1756076712
+              },
+              {
+                "kind": "scalar",
+                "value": 1477098233
+              },
+              {
+                "kind": "scalar",
+                "value": 2742171915
+              },
+              {
+                "kind": "scalar",
+                "value": 306185806
+              },
+              {
+                "kind": "scalar",
+                "value": 3610666541
+              },
+              {
+                "kind": "scalar",
+                "value": 923091830
+              },
+              {
+                "kind": "scalar",
+                "value": 1034267993
+              },
+              {
+                "kind": "scalar",
+                "value": 2336668648
+              },
+              {
+                "kind": "scalar",
+                "value": 1880719718
+              },
+              {
+                "kind": "scalar",
+                "value": 676878038
+              },
+              {
+                "kind": "scalar",
+                "value": 3788797208
+              },
+              {
+                "kind": "scalar",
+                "value": 3763351494
+              },
+              {
+                "kind": "scalar",
+                "value": 3985428106
+              },
+              {
+                "kind": "scalar",
+                "value": 1101865631
+              },
+              {
+                "kind": "scalar",
+                "value": 1130501258
+              },
+              {
+                "kind": "scalar",
+                "value": 3672967388
+              },
+              {
+                "kind": "scalar",
+                "value": 3432003530
+              },
+              {
+                "kind": "scalar",
+                "value": 4124438011
+              },
+              {
+                "kind": "scalar",
+                "value": 1660392285
+              },
+              {
+                "kind": "scalar",
+                "value": 4025484827
+              },
+              {
+                "kind": "scalar",
+                "value": 2108074566
+              },
+              {
+                "kind": "scalar",
+                "value": 3815409682
+              },
+              {
+                "kind": "scalar",
+                "value": 42955331
+              },
+              {
+                "kind": "scalar",
+                "value": 3248965569
+              },
+              {
+                "kind": "scalar",
+                "value": 1643835718
+              },
+              {
+                "kind": "scalar",
+                "value": 1246665668
+              },
+              {
+                "kind": "scalar",
+                "value": 1071162194
+              },
+              {
+                "kind": "scalar",
+                "value": 3814069229
+              },
+              {
+                "kind": "scalar",
+                "value": 115491158
+              },
+              {
+                "kind": "scalar",
+                "value": 985096811
+              },
+              {
+                "kind": "scalar",
+                "value": 3311029186
+              },
+              {
+                "kind": "scalar",
+                "value": 2990827378
+              },
+              {
+                "kind": "scalar",
+                "value": 3101633320
+              },
+              {
+                "kind": "scalar",
+                "value": 1648574497
+              },
+              {
+                "kind": "scalar",
+                "value": 1470117052
+              },
+              {
+                "kind": "scalar",
+                "value": 174145027
+              },
+              {
+                "kind": "scalar",
+                "value": 2019894819
+              },
+              {
+                "kind": "scalar",
+                "value": 2035501481
+              },
+              {
+                "kind": "scalar",
+                "value": 459104123
+              },
+              {
+                "kind": "scalar",
+                "value": 3507464599
+              },
+              {
+                "kind": "scalar",
+                "value": 2093352659
+              },
+              {
+                "kind": "scalar",
+                "value": 3369174406
+              },
+              {
+                "kind": "scalar",
+                "value": 618767835
+              },
+              {
+                "kind": "scalar",
+                "value": 4009895756
+              },
+              {
+                "kind": "scalar",
+                "value": 935587447
+              },
+              {
+                "kind": "scalar",
+                "value": 3956987426
+              },
+              {
+                "kind": "scalar",
+                "value": 33753995
+              },
+              {
+                "kind": "scalar",
+                "value": 307782427
+              },
+              {
+                "kind": "scalar",
+                "value": 2473424805
+              },
+              {
+                "kind": "scalar",
+                "value": 1440371818
+              },
+              {
+                "kind": "scalar",
+                "value": 2382619594
+              },
+              {
+                "kind": "scalar",
+                "value": 2138695812
+              },
+              {
+                "kind": "scalar",
+                "value": 3164510238
+              },
+              {
+                "kind": "scalar",
+                "value": 1318650933
+              },
+              {
+                "kind": "scalar",
+                "value": 2910086616
+              },
+              {
+                "kind": "scalar",
+                "value": 3886677510
+              },
+              {
+                "kind": "scalar",
+                "value": 566832801
+              },
+              {
+                "kind": "scalar",
+                "value": 3718063320
+              },
+              {
+                "kind": "scalar",
+                "value": 1559818704
+              },
+              {
+                "kind": "scalar",
+                "value": 183047272
+              },
+              {
+                "kind": "scalar",
+                "value": 1142362855
+              },
+              {
+                "kind": "scalar",
+                "value": 26306548
+              },
+              {
+                "kind": "scalar",
+                "value": 645536402
+              },
+              {
+                "kind": "scalar",
+                "value": 3875596208
+              },
+              {
+                "kind": "scalar",
+                "value": 2272778168
+              },
+              {
+                "kind": "scalar",
+                "value": 3512733409
+              },
+              {
+                "kind": "scalar",
+                "value": 1897046338
+              },
+              {
+                "kind": "scalar",
+                "value": 38248886
+              },
+              {
+                "kind": "scalar",
+                "value": 2570759766
+              },
+              {
+                "kind": "scalar",
+                "value": 1806313150
+              },
+              {
+                "kind": "scalar",
+                "value": 860304898
+              },
+              {
+                "kind": "scalar",
+                "value": 2433450338
+              },
+              {
+                "kind": "scalar",
+                "value": 4124013408
+              },
+              {
+                "kind": "scalar",
+                "value": 1216634590
+              },
+              {
+                "kind": "scalar",
+                "value": 1275388896
+              },
+              {
+                "kind": "scalar",
+                "value": 1169566669
+              },
+              {
+                "kind": "scalar",
+                "value": 652504502
+              },
+              {
+                "kind": "scalar",
+                "value": 761221427
+              },
+              {
+                "kind": "scalar",
+                "value": 1448403764
+              },
+              {
+                "kind": "scalar",
+                "value": 3129135949
+              },
+              {
+                "kind": "scalar",
+                "value": 2513214949
+              },
+              {
+                "kind": "scalar",
+                "value": 1269533687
+              },
+              {
+                "kind": "scalar",
+                "value": 2413509541
+              },
+              {
+                "kind": "scalar",
+                "value": 1226750363
+              },
+              {
+                "kind": "scalar",
+                "value": 2450740925
+              },
+              {
+                "kind": "scalar",
+                "value": 4094137910
+              },
+              {
+                "kind": "scalar",
+                "value": 945759293
+              },
+              {
+                "kind": "scalar",
+                "value": 3636927736
+              },
+              {
+                "kind": "scalar",
+                "value": 3178020081
+              },
+              {
+                "kind": "scalar",
+                "value": 2509964157
+              },
+              {
+                "kind": "scalar",
+                "value": 3878869300
+              },
+              {
+                "kind": "scalar",
+                "value": 1848504895
+              },
+              {
+                "kind": "scalar",
+                "value": 2018369720
+              },
+              {
+                "kind": "scalar",
+                "value": 1579755740
+              },
+              {
+                "kind": "scalar",
+                "value": 1023627943
+              },
+              {
+                "kind": "scalar",
+                "value": 924838836
+              },
+              {
+                "kind": "scalar",
+                "value": 2653160914
+              },
+              {
+                "kind": "scalar",
+                "value": 1812804174
+              },
+              {
+                "kind": "scalar",
+                "value": 1521323076
+              },
+              {
+                "kind": "scalar",
+                "value": 4012390528
+              },
+              {
+                "kind": "scalar",
+                "value": 1338763317
+              },
+              {
+                "kind": "scalar",
+                "value": 2608655937
+              },
+              {
+                "kind": "scalar",
+                "value": 16022784
+              },
+              {
+                "kind": "scalar",
+                "value": 1672945066
+              },
+              {
+                "kind": "scalar",
+                "value": 2177189646
+              },
+              {
+                "kind": "scalar",
+                "value": 2944458483
+              },
+              {
+                "kind": "scalar",
+                "value": 2213810972
+              },
+              {
+                "kind": "scalar",
+                "value": 1369873847
+              },
+              {
+                "kind": "scalar",
+                "value": 1224017670
+              },
+              {
+                "kind": "scalar",
+                "value": 130901785
+              },
+              {
+                "kind": "scalar",
+                "value": 3595066712
+              },
+              {
+                "kind": "scalar",
+                "value": 2259115284
+              },
+              {
+                "kind": "scalar",
+                "value": 3316038259
+              },
+              {
+                "kind": "scalar",
+                "value": 455873927
+              },
+              {
+                "kind": "scalar",
+                "value": 2917250465
+              },
+              {
+                "kind": "scalar",
+                "value": 3599550610
+              },
+              {
+                "kind": "scalar",
+                "value": 1502173758
+              },
+              {
+                "kind": "scalar",
+                "value": 684943436
+              },
+              {
+                "kind": "scalar",
+                "value": 3079863840
+              },
+              {
+                "kind": "scalar",
+                "value": 3144992244
+              },
+              {
+                "kind": "scalar",
+                "value": 942855823
+              },
+              {
+                "kind": "scalar",
+                "value": 1771140188
+              },
+              {
+                "kind": "scalar",
+                "value": 2118780653
+              },
+              {
+                "kind": "scalar",
+                "value": 3411494225
+              },
+              {
+                "kind": "scalar",
+                "value": 2711180217
+              },
+              {
+                "kind": "scalar",
+                "value": 4239611184
+              },
+              {
+                "kind": "scalar",
+                "value": 1371891067
+              },
+              {
+                "kind": "scalar",
+                "value": 3398566397
+              },
+              {
+                "kind": "scalar",
+                "value": 3105518599
+              },
+              {
+                "kind": "scalar",
+                "value": 1310665701
+              },
+              {
+                "kind": "scalar",
+                "value": 3345178451
+              },
+              {
+                "kind": "scalar",
+                "value": 2959821156
+              },
+              {
+                "kind": "scalar",
+                "value": 242241789
+              },
+              {
+                "kind": "scalar",
+                "value": 2148966880
+              },
+              {
+                "kind": "scalar",
+                "value": 3192740583
+              },
+              {
+                "kind": "scalar",
+                "value": 404401893
+              },
+              {
+                "kind": "scalar",
+                "value": 3605380577
+              },
+              {
+                "kind": "scalar",
+                "value": 1446464038
+              },
+              {
+                "kind": "scalar",
+                "value": 3920522056
+              },
+              {
+                "kind": "scalar",
+                "value": 2577523013
+              },
+              {
+                "kind": "scalar",
+                "value": 1079274576
+              },
+              {
+                "kind": "scalar",
+                "value": 286634372
+              },
+              {
+                "kind": "scalar",
+                "value": 1752710796
+              },
+              {
+                "kind": "scalar",
+                "value": 2351075979
+              },
+              {
+                "kind": "scalar",
+                "value": 981312309
+              },
+              {
+                "kind": "scalar",
+                "value": 3410516352
+              },
+              {
+                "kind": "scalar",
+                "value": 3468455736
+              },
+              {
+                "kind": "scalar",
+                "value": 1938779182
+              },
+              {
+                "kind": "scalar",
+                "value": 1592494371
+              },
+              {
+                "kind": "scalar",
+                "value": 1533303080
+              },
+              {
+                "kind": "scalar",
+                "value": 88045436
+              },
+              {
+                "kind": "scalar",
+                "value": 438252489
+              },
+              {
+                "kind": "scalar",
+                "value": 1220512168
+              },
+              {
+                "kind": "scalar",
+                "value": 3487004938
+              },
+              {
+                "kind": "scalar",
+                "value": 3724852871
+              },
+              {
+                "kind": "scalar",
+                "value": 1073434882
+              },
+              {
+                "kind": "scalar",
+                "value": 3728218947
+              },
+              {
+                "kind": "scalar",
+                "value": 2977555283
+              },
+              {
+                "kind": "scalar",
+                "value": 4105408406
+              },
+              {
+                "kind": "scalar",
+                "value": 3553772656
+              },
+              {
+                "kind": "scalar",
+                "value": 1462006821
+              },
+              {
+                "kind": "scalar",
+                "value": 3917158017
+              },
+              {
+                "kind": "scalar",
+                "value": 119003006
+              },
+              {
+                "kind": "scalar",
+                "value": 3470530198
+              },
+              {
+                "kind": "scalar",
+                "value": 3439192457
+              },
+              {
+                "kind": "scalar",
+                "value": 2829375771
+              },
+              {
+                "kind": "scalar",
+                "value": 3555715155
+              },
+              {
+                "kind": "scalar",
+                "value": 32324691
+              },
+              {
+                "kind": "scalar",
+                "value": 588735808
+              },
+              {
+                "kind": "scalar",
+                "value": 1459221702
+              },
+              {
+                "kind": "scalar",
+                "value": 803072782
+              },
+              {
+                "kind": "scalar",
+                "value": 2699519868
+              },
+              {
+                "kind": "scalar",
+                "value": 1530797005
+              },
+              {
+                "kind": "scalar",
+                "value": 79738580
+              },
+              {
+                "kind": "scalar",
+                "value": 671990400
+              },
+              {
+                "kind": "scalar",
+                "value": 4289511388
+              },
+              {
+                "kind": "scalar",
+                "value": 3207115447
+              },
+              {
+                "kind": "scalar",
+                "value": 2584684068
+              },
+              {
+                "kind": "scalar",
+                "value": 832698998
+              },
+              {
+                "kind": "scalar",
+                "value": 760958416
+              },
+              {
+                "kind": "scalar",
+                "value": 1217440464
+              },
+              {
+                "kind": "scalar",
+                "value": 2517898131
+              },
+              {
+                "kind": "scalar",
+                "value": 2418819938
+              },
+              {
+                "kind": "scalar",
+                "value": 3629956222
+              },
+              {
+                "kind": "scalar",
+                "value": 3445024962
+              },
+              {
+                "kind": "scalar",
+                "value": 206619378
+              },
+              {
+                "kind": "scalar",
+                "value": 365007395
+              },
+              {
+                "kind": "scalar",
+                "value": 522114139
+              },
+              {
+                "kind": "scalar",
+                "value": 1707954431
+              },
+              {
+                "kind": "scalar",
+                "value": 540423623
+              },
+              {
+                "kind": "scalar",
+                "value": 1786750801
+              },
+              {
+                "kind": "scalar",
+                "value": 369253262
+              },
+              {
+                "kind": "scalar",
+                "value": 4239016754
+              },
+              {
+                "kind": "scalar",
+                "value": 147889201
+              },
+              {
+                "kind": "scalar",
+                "value": 1637777773
+              },
+              {
+                "kind": "scalar",
+                "value": 236798285
+              },
+              {
+                "kind": "scalar",
+                "value": 2806120188
+              },
+              {
+                "kind": "scalar",
+                "value": 586972608
+              },
+              {
+                "kind": "scalar",
+                "value": 2201782716
+              },
+              {
+                "kind": "scalar",
+                "value": 1323327827
+              },
+              {
+                "kind": "scalar",
+                "value": 819485723
+              },
+              {
+                "kind": "scalar",
+                "value": 406078680
+              },
+              {
+                "kind": "scalar",
+                "value": 3407345698
+              },
+              {
+                "kind": "scalar",
+                "value": 1537169369
+              },
+              {
+                "kind": "scalar",
+                "value": 1821691865
+              },
+              {
+                "kind": "scalar",
+                "value": 527271655
+              },
+              {
+                "kind": "scalar",
+                "value": 3751827102
+              },
+              {
+                "kind": "scalar",
+                "value": 1465426495
+              },
+              {
+                "kind": "scalar",
+                "value": 3321682429
+              },
+              {
+                "kind": "scalar",
+                "value": 2179672664
+              },
+              {
+                "kind": "scalar",
+                "value": 401355478
+              },
+              {
+                "kind": "scalar",
+                "value": 1068871880
+              },
+              {
+                "kind": "scalar",
+                "value": 24609462
+              },
+              {
+                "kind": "scalar",
+                "value": 1403522408
+              },
+              {
+                "kind": "scalar",
+                "value": 2311580015
+              },
+              {
+                "kind": "scalar",
+                "value": 1532058170
+              },
+              {
+                "kind": "scalar",
+                "value": 3877815340
+              },
+              {
+                "kind": "scalar",
+                "value": 1768430711
+              },
+              {
+                "kind": "scalar",
+                "value": 1619755157
+              },
+              {
+                "kind": "scalar",
+                "value": 2832904331
+              },
+              {
+                "kind": "scalar",
+                "value": 475102697
+              },
+              {
+                "kind": "scalar",
+                "value": 354987331
+              },
+              {
+                "kind": "scalar",
+                "value": 3295386430
+              },
+              {
+                "kind": "scalar",
+                "value": 2816873951
+              },
+              {
+                "kind": "scalar",
+                "value": 1039415736
+              },
+              {
+                "kind": "scalar",
+                "value": 363972779
+              },
+              {
+                "kind": "scalar",
+                "value": 1499307670
+              },
+              {
+                "kind": "scalar",
+                "value": 2895506264
+              },
+              {
+                "kind": "scalar",
+                "value": 3746345349
+              },
+              {
+                "kind": "scalar",
+                "value": 2678027234
+              },
+              {
+                "kind": "scalar",
+                "value": 3251899088
+              },
+              {
+                "kind": "scalar",
+                "value": 955392878
+              },
+              {
+                "kind": "scalar",
+                "value": 2329157295
+              },
+              {
+                "kind": "scalar",
+                "value": 1343358773
+              },
+              {
+                "kind": "scalar",
+                "value": 309573887
+              },
+              {
+                "kind": "scalar",
+                "value": 2410178377
+              },
+              {
+                "kind": "scalar",
+                "value": 2843173466
+              },
+              {
+                "kind": "scalar",
+                "value": 361132917
+              },
+              {
+                "kind": "scalar",
+                "value": 1755816798
+              },
+              {
+                "kind": "scalar",
+                "value": 1319204283
+              },
+              {
+                "kind": "scalar",
+                "value": 609284796
+              },
+              {
+                "kind": "scalar",
+                "value": 1998842567
+              },
+              {
+                "kind": "scalar",
+                "value": 1892325921
+              },
+              {
+                "kind": "scalar",
+                "value": 223190385
+              },
+              {
+                "kind": "scalar",
+                "value": 1483015769
+              },
+              {
+                "kind": "scalar",
+                "value": 2876023365
+              },
+              {
+                "kind": "scalar",
+                "value": 3876009312
+              },
+              {
+                "kind": "scalar",
+                "value": 3199738344
+              },
+              {
+                "kind": "scalar",
+                "value": 491524099
+              },
+              {
+                "kind": "scalar",
+                "value": 160383137
+              },
+              {
+                "kind": "scalar",
+                "value": 1219178873
+              },
+              {
+                "kind": "scalar",
+                "value": 3870310498
+              },
+              {
+                "kind": "scalar",
+                "value": 1114580266
+              },
+              {
+                "kind": "scalar",
+                "value": 4279604166
+              },
+              {
+                "kind": "scalar",
+                "value": 855339774
+              },
+              {
+                "kind": "scalar",
+                "value": 1983818547
+              },
+              {
+                "kind": "scalar",
+                "value": 2297848784
+              },
+              {
+                "kind": "scalar",
+                "value": 4118592947
+              },
+              {
+                "kind": "scalar",
+                "value": 4084409863
+              },
+              {
+                "kind": "scalar",
+                "value": 2225095054
+              },
+              {
+                "kind": "scalar",
+                "value": 4215601993
+              },
+              {
+                "kind": "scalar",
+                "value": 946447434
+              },
+              {
+                "kind": "scalar",
+                "value": 4205503762
+              },
+              {
+                "kind": "scalar",
+                "value": 146088676
+              },
+              {
+                "kind": "scalar",
+                "value": 778046685
+              },
+              {
+                "kind": "scalar",
+                "value": 1876936928
+              },
+              {
+                "kind": "scalar",
+                "value": 3157333726
+              },
+              {
+                "kind": "scalar",
+                "value": 2173097090
+              },
+              {
+                "kind": "scalar",
+                "value": 3215738813
+              },
+              {
+                "kind": "scalar",
+                "value": 4135448234
+              },
+              {
+                "kind": "scalar",
+                "value": 1219619643
+              },
+              {
+                "kind": "scalar",
+                "value": 1936128689
+              },
+              {
+                "kind": "scalar",
+                "value": 2897130162
+              },
+              {
+                "kind": "scalar",
+                "value": 3336043946
+              },
+              {
+                "kind": "scalar",
+                "value": 3779039524
+              },
+              {
+                "kind": "scalar",
+                "value": 4200886837
+              },
+              {
+                "kind": "scalar",
+                "value": 1359380925
+              },
+              {
+                "kind": "scalar",
+                "value": 3402593091
+              },
+              {
+                "kind": "scalar",
+                "value": 3140713935
+              },
+              {
+                "kind": "scalar",
+                "value": 50855190
+              },
+              {
+                "kind": "scalar",
+                "value": 3122065768
+              },
+              {
+                "kind": "scalar",
+                "value": 1501584468
+              },
+              {
+                "kind": "scalar",
+                "value": 2512255124
+              },
+              {
+                "kind": "scalar",
+                "value": 687125154
+              },
+              {
+                "kind": "scalar",
+                "value": 2666013386
+              },
+              {
+                "kind": "scalar",
+                "value": 837819715
+              },
+              {
+                "kind": "scalar",
+                "value": 3057258172
+              },
+              {
+                "kind": "scalar",
+                "value": 3653455791
+              },
+              {
+                "kind": "scalar",
+                "value": 2868624990
+              },
+              {
+                "kind": "scalar",
+                "value": 322131992
+              },
+              {
+                "kind": "scalar",
+                "value": 42534870
+              },
+              {
+                "kind": "scalar",
+                "value": 4036564806
+              },
+              {
+                "kind": "scalar",
+                "value": 798099710
+              },
+              {
+                "kind": "scalar",
+                "value": 3533853670
+              },
+              {
+                "kind": "scalar",
+                "value": 190914037
+              },
+              {
+                "kind": "scalar",
+                "value": 3726947981
+              },
+              {
+                "kind": "scalar",
+                "value": 2601169403
+              },
+              {
+                "kind": "scalar",
+                "value": 602059656
+              },
+              {
+                "kind": "scalar",
+                "value": 1365668439
+              },
+              {
+                "kind": "scalar",
+                "value": 1918780004
+              },
+              {
+                "kind": "scalar",
+                "value": 394790500
+              },
+              {
+                "kind": "scalar",
+                "value": 277566007
+              },
+              {
+                "kind": "scalar",
+                "value": 3891847777
+              },
+              {
+                "kind": "scalar",
+                "value": 3365421094
+              },
+              {
+                "kind": "scalar",
+                "value": 3139612253
+              },
+              {
+                "kind": "scalar",
+                "value": 1380519090
+              },
+              {
+                "kind": "scalar",
+                "value": 1183088424
+              },
+              {
+                "kind": "scalar",
+                "value": 4203794803
+              },
+              {
+                "kind": "scalar",
+                "value": 3049949521
+              },
+              {
+                "kind": "scalar",
+                "value": 4214159484
+              },
+              {
+                "kind": "scalar",
+                "value": 3446206962
+              },
+              {
+                "kind": "scalar",
+                "value": 1875544460
+              },
+              {
+                "kind": "scalar",
+                "value": 3207220027
+              },
+              {
+                "kind": "scalar",
+                "value": 3288287026
+              },
+              {
+                "kind": "scalar",
+                "value": 913535288
+              },
+              {
+                "kind": "scalar",
+                "value": 178159620
+              },
+              {
+                "kind": "scalar",
+                "value": 1410694581
+              },
+              {
+                "kind": "scalar",
+                "value": 4190575040
+              },
+              {
+                "kind": "scalar",
+                "value": 880731713
+              },
+              {
+                "kind": "scalar",
+                "value": 1427805121
+              },
+              {
+                "kind": "scalar",
+                "value": 404869072
+              },
+              {
+                "kind": "scalar",
+                "value": 3413191414
+              },
+              {
+                "kind": "scalar",
+                "value": 2865934056
+              },
+              {
+                "kind": "scalar",
+                "value": 2899472677
+              },
+              {
+                "kind": "scalar",
+                "value": 4239222733
+              },
+              {
+                "kind": "scalar",
+                "value": 688404529
+              },
+              {
+                "kind": "scalar",
+                "value": 3923323887
+              },
+              {
+                "kind": "scalar",
+                "value": 933651074
+              },
+              {
+                "kind": "scalar",
+                "value": 1199453686
+              },
+              {
+                "kind": "scalar",
+                "value": 642723732
+              },
+              {
+                "kind": "scalar",
+                "value": 2850614853
+              },
+              {
+                "kind": "scalar",
+                "value": 3104368451
+              },
+              {
+                "kind": "scalar",
+                "value": 3054041024
+              },
+              {
+                "kind": "scalar",
+                "value": 3129913503
+              },
+              {
+                "kind": "scalar",
+                "value": 2805843726
+              },
+              {
+                "kind": "scalar",
+                "value": 1829781129
+              },
+              {
+                "kind": "scalar",
+                "value": 3479062313
+              },
+              {
+                "kind": "scalar",
+                "value": 650272704
+              },
+              {
+                "kind": "scalar",
+                "value": 4224852052
+              },
+              {
+                "kind": "scalar",
+                "value": 4085038685
+              },
+              {
+                "kind": "scalar",
+                "value": 2616580676
+              },
+              {
+                "kind": "scalar",
+                "value": 1793860711
+              },
+              {
+                "kind": "scalar",
+                "value": 585126334
+              },
+              {
+                "kind": "scalar",
+                "value": 2995262791
+              },
+              {
+                "kind": "scalar",
+                "value": 520446536
+              },
+              {
+                "kind": "scalar",
+                "value": 3855655015
+              },
+              {
+                "kind": "scalar",
+                "value": 1571815563
+              },
+              {
+                "kind": "scalar",
+                "value": 2240778227
+              },
+              {
+                "kind": "scalar",
+                "value": 2051010344
+              },
+              {
+                "kind": "scalar",
+                "value": 1694977983
+              },
+              {
+                "kind": "scalar",
+                "value": 788402852
+              },
+              {
+                "kind": "scalar",
+                "value": 1988089041
+              },
+              {
+                "kind": "scalar",
+                "value": 2035558649
+              },
+              {
+                "kind": "scalar",
+                "value": 1800063056
+              },
+              {
+                "kind": "scalar",
+                "value": 1234412692
+              },
+              {
+                "kind": "scalar",
+                "value": 2490862867
+              },
+              {
+                "kind": "scalar",
+                "value": 417320514
+              },
+              {
+                "kind": "scalar",
+                "value": 2415019489
+              },
+              {
+                "kind": "scalar",
+                "value": 3374117797
+              },
+              {
+                "kind": "scalar",
+                "value": 136034611
+              },
+              {
+                "kind": "scalar",
+                "value": 898704236
+              },
+              {
+                "kind": "scalar",
+                "value": 1247106941
+              },
+              {
+                "kind": "scalar",
+                "value": 3923519397
+              },
+              {
+                "kind": "scalar",
+                "value": 3563607190
+              },
+              {
+                "kind": "scalar",
+                "value": 2454738671
+              },
+              {
+                "kind": "scalar",
+                "value": 3522360389
+              },
+              {
+                "kind": "scalar",
+                "value": 2672645476
+              },
+              {
+                "kind": "scalar",
+                "value": 146828884
+              },
+              {
+                "kind": "scalar",
+                "value": 3985140042
+              },
+              {
+                "kind": "scalar",
+                "value": 4233949333
+              },
+              {
+                "kind": "scalar",
+                "value": 1184742586
+              },
+              {
+                "kind": "scalar",
+                "value": 860278824
+              },
+              {
+                "kind": "scalar",
+                "value": 2815489967
+              },
+              {
+                "kind": "scalar",
+                "value": 983483427
+              },
+              {
+                "kind": "scalar",
+                "value": 3190081845
+              },
+              {
+                "kind": "scalar",
+                "value": 3288865305
+              },
+              {
+                "kind": "scalar",
+                "value": 3575181235
+              },
+              {
+                "kind": "scalar",
+                "value": 1292151129
+              },
+              {
+                "kind": "scalar",
+                "value": 4007823805
+              },
+              {
+                "kind": "scalar",
+                "value": 4049420597
+              },
+              {
+                "kind": "scalar",
+                "value": 3499391972
+              },
+              {
+                "kind": "scalar",
+                "value": 1611182906
+              },
+              {
+                "kind": "scalar",
+                "value": 1721268432
+              },
+              {
+                "kind": "scalar",
+                "value": 2944249577
+              },
+              {
+                "kind": "scalar",
+                "value": 2487212557
+              },
+              {
+                "kind": "scalar",
+                "value": 789127738
+              },
+              {
+                "kind": "scalar",
+                "value": 4027610014
+              },
+              {
+                "kind": "scalar",
+                "value": 1057334138
+              },
+              {
+                "kind": "scalar",
+                "value": 2902720905
+              },
+              {
+                "kind": "scalar",
+                "value": 624
+              }
+            ],
+            "kind": "tuple"
+          },
+          {
+            "kind": "scalar",
+            "value": null
+          }
+        ],
+        "kind": "tuple"
+      },
+      "torch_global": {
+        "byte_order": "little",
+        "data_base64": "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",
+        "data_sha256": "1f5d84e4e0512e4516ef19672a5b7a50ea9acbd4710af7f42c154b0050d7f8d3",
+        "dtype": "uint8",
+        "shape": [
+          5056
+        ]
+      }
+    },
+    "schema_version": "noncombat-simulator-rl-checkpoint-state-v1"
+  },
+  "state_payload_sha256": "1147fffeb82ffdca62a29950f526751f88a3733a6a99207b346f9f6ad2621844"
+}

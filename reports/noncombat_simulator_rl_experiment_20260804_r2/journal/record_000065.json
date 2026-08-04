@@ -1,0 +1,11 @@
+{
+  "details": {
+    "prefix_replay_verified": true,
+    "verdict": "experiment_valid_without_learning_signal"
+  },
+  "index": 65,
+  "logical_execution_id": "noncombat-simulator-rl-20260804-r2",
+  "phase": "terminal",
+  "previous_record_sha256": "a1e9c5f3e314ce414d66310eb94d53caa1abebe7026947bfb50c1dfce18794d0",
+  "schema_version": "noncombat-simulator-rl-journal-v1"
+}

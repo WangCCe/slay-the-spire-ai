@@ -404,14 +404,21 @@ The next authorized sequence is:
     reviewed registration, execution identity, and cohort decision. Every
     successor must preserve `not_ready_for_bounded_training_proposal` and the
     blocked Current-baseline and target-supported-outcome requirements.
-23. Preserve the r2 cohort-reuse inventory and all-false preregistration. The
-    exact cohort is retained only because r1 exposed no seed-dependent state or
-    outcome; the two tracked registration copies are one logical terminal
-    predecessor. Do not treat preregistration as execution consent. The next
-    possible step is a separate exact authorization binding the pushed r2
-    registration, new logical execution identity, output path, unchanged
-    `28,800`-second CPU bound, and no-retry contract, followed by source-only
-    preflight before native loading or seed access.
+23. Preserve the r2 cohort-reuse inventory, registration, authorization,
+    source-only preflight, terminal journal, 64 checkpoints and training
+    summaries, evaluation, model, report, and manifest byte-for-byte. The
+    single logical execution completed 4,096 training episodes and the
+    registered replay, canary, and conditional holdout within 13,977.62
+    cumulative seconds. Canary passed; trained-minus-initial terminal floor was
+    `+10.3515625` with 95% interval `[8.5390625, 12.15625]`. Holdout then
+    measured `+10.53125` with interval `[9.685546875, 11.3984375]`, but both
+    policies won 0/512 holdout episodes. Preserve the valid terminal verdict
+    `experiment_valid_without_learning_signal`; do not rerun, tune, reuse the
+    cohort, load the model into Current, or claim formal-RL or promotion
+    authority. The next possible step is a separate read-only terminal
+    postmortem of the zero-victory endpoint and floor-shift distribution. Any
+    later experiment requires an evidence-backed hypothesis, fresh identity,
+    fresh cohort decision, and separate OpenSpec approval.
 
 ## Work Lanes
 
@@ -423,17 +430,18 @@ floor. Formal RL remains `no_go` because baseline policy and source-comparable
 target-supported outcomes are still blocked.
 
 Do not prepare another baseline cohort or modify the consumed study. The card
-metadata cost audit and its bounded compatibility repair are closed. The
-simulator-only experiment is also closed as a terminal native-load failure,
-without training or evaluation evidence. Its read-only Windows loadability
-audit and source-only start-boundary repair are complete. The r2 successor is
-preregistered with all authority false and reuses only the untouched cohort,
-not the consumed r1 logical identity. Its exact execution authorization and
-full source-only preflight remain separate future gates. A rebuilt module or
-different experiment still requires a separate OpenSpec change. A new
-empirical Current-baseline strategy still requires a separate project-level
-decision with a fresh identity and evidence design; it is not an automatic
-successor to either the consumed study or this simulator-only preregistration.
+metadata cost audit and its bounded compatibility repair are closed. The r1
+simulator-only experiment remains a terminal native-load failure with no seed
+access. Its r2 successor completed exactly once and is valid simulator evidence:
+the trained policy improved terminal floor against seeded initialization on
+both canary and holdout, but produced no victory improvement and therefore no
+registered learning signal. Formal RL remains `no_go`; the result grants no
+Current loading, policy promotion, or replacement experiment. The active
+analysis lane is a read-only r2 terminal postmortem focused on the zero-victory
+endpoint and floor-shift distribution, followed by a go/no-go decision on
+whether any fresh simulator experiment is justified. A rebuilt module,
+different experiment, or empirical Current-baseline strategy still requires a
+separate OpenSpec change, fresh identity, and evidence design.
 
 Live gameplay is a maintenance and registered-evaluation lane only. Launch it
 for a crash, stuck state, repeated A-class simulator/mechanics defect, or an

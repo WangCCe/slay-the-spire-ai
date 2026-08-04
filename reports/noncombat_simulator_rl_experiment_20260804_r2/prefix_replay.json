@@ -1,0 +1,9 @@
+{
+  "checkpoint_index": 2,
+  "checkpoint_sha256": "3f33e200b779c5a9c169d7a82d53118504dbbe2faf2ded2b95b08216ac4b0e8a",
+  "cumulative_wall_seconds": 605.4004563000053,
+  "replay_wall_seconds": 294.45808030001353,
+  "schema_version": "noncombat-simulator-rl-prefix-replay-v1",
+  "state_payload_sha256": "e30e9d60ec542d1bd849a8bb340f08a800bd9d521791c52ea84a77cf41aab15b",
+  "verified": true
+}
