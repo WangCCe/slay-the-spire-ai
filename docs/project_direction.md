@@ -439,6 +439,16 @@ The next authorized sequence is:
     checks. No production path imports either module. This capability grants no
     r3, training, cohort, replay, model-loading, gameplay, formal-RL,
     qualification, or promotion authority.
+26. Preserve the completed state-conditioned successor design audit. It selects
+    one additive source-only `add-state-conditioned-noncombat-policy-input`
+    change: exact API v3 projection into separate state and candidate tensors,
+    stable feature identity, and canonical anti-collapse diagnostic rows. It
+    must not edit the r2-bound experiment source or start an r3. Current remains
+    the only eligible non-teacher primary comparator, but its structural
+    closure and credible floor remain unproved; SimpleAgent, Bottled, and seeded
+    initialization retain auxiliary-only roles. A distinct Current readiness
+    review and baseline proposal must precede any fresh state-conditioned
+    experiment, while target-supported outcomes remain independently blocked.
 
 ## Work Lanes
 
@@ -461,13 +471,16 @@ postmortem is complete and sets an immediate r3 to `no_go`: the registered
 linear feature composition cannot use shared state to change candidate order,
 and the final policy saturated to taking every observed card reward. The
 state-conditioned ranker and anti-collapse diagnostic capability are now
-implemented and verified, but not integrated into an experiment. The active
-lane is a separate source-only successor design that must bind a meaningful
-fixed non-combat comparator, leakage-controlled feature projection, diagnostic
-contract, and fresh evidence plan before any r3 proposal. A rebuilt module,
-different experiment, or empirical Current-baseline strategy still requires a
-separate approved change, fresh identity, fresh cohort decision, and evidence
-design.
+implemented and verified, but not integrated into an experiment. The successor
+design audit is complete. The active implementation lane is the additive
+source-only `add-state-conditioned-noncombat-policy-input` change: reuse exact
+API v3 leakage-controlled projection semantics, emit separate state and
+candidate tensors, bind stable feature identity, and produce canonical
+diagnostic rows without editing the r2-bound experiment. After that capability
+is archived, the next evidence lane is a distinct read-only post-repair Current
+comparator readiness review. A rebuilt module, different experiment, or
+empirical Current-baseline strategy still requires a separate approved change,
+fresh identity, fresh cohort decision, and evidence design.
 
 Live gameplay is a maintenance and registered-evaluation lane only. Launch it
 for a crash, stuck state, repeated A-class simulator/mechanics defect, or an
