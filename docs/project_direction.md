@@ -595,6 +595,24 @@ The next authorized sequence is:
     finding. The module is not imported by any runner, defines no greedy rule or
     entropy coefficient, and keeps all experiment, seed, native, training,
     gameplay, loading, formal-RL, qualification, and promotion authority false.
+34. Preserve the strict read-only action-family counterfactual audit over the
+    exact collapse-audit-bound scored rows. Across 107,104 training decisions,
+    joint-probability argmax differs from raw-score argmax for 27,106 of 31,571
+    card rewards (`85.86%`) and 5,724 of 9,180 shops (`62.35%`). The trained
+    canary still changes 353 of 1,458 card rewards (`24.21%`) and 380 of 663
+    shops (`57.32%`). Most changes move the score-best `take` or `buy_card`
+    family to singleton `skip`, `leave`, or `remove_card` candidates after
+    within-family probability splitting. Event and route rows remain exact
+    one-family fallbacks with zero family entropy and no argmax changes. All
+    115,908 rows have no score ties, no two-stage score-argmax mismatch, and no
+    probability or entropy invariant violation. Therefore joint-probability
+    argmax is not a neutral greedy rule, and family entropy alone is incomplete
+    for event and route. The combined focused boundary passes 43 tests with 5
+    symlink-permission skips, the repository commit gate passes 4,055 tests with
+    16 skips, and a three-round independent review has no remaining P1, P2, or
+    P3 finding. This audit grants no deterministic-selection, entropy-
+    coefficient, training-objective, experiment, loading, formal-RL, gameplay,
+    qualification, or promotion authority.
 
 ## Work Lanes
 
@@ -635,14 +653,20 @@ read-only trajectory audit locates persistent greedy collapse at training chunk
 and leaves causal intervention claims unresolved. The Current comparator
 evidence lane is closed with
 `no_viable_baseline_candidate`; there is no active empirical baseline
-execution. The action-family source-only design and additive distribution
-capability are now complete. The next simulator-learning gate is a read-only
-counterfactual integration audit over already-audited scored rows: compare flat
-and max-pooled family mass, quantify where two-stage score argmax and joint-
-probability argmax would differ, and review category-specific `kind` semantics.
-It must not access holdout, replay a seed, fit or select a model, choose an
-entropy coefficient, change a threshold, register an execution, or claim
-formal-RL readiness.
+execution. The action-family source-only design, additive distribution
+capability, and frozen-score counterfactual audit are complete. The audit
+rejects joint-probability argmax as an implicit deterministic integration rule
+and shows that family-only entropy leaves event and route unregularized. The
+next simulator-learning gate is a source-only hierarchical policy-objective
+contract: selected-action log probability must retain both family and
+conditional factors; family and conditional entropy must remain separately
+observable; deterministic evaluation must retain raw-score argmax (equivalent
+to two-stage max-score selection outside ties); and category-specific fallback
+and gradient behavior must be regression-covered. That contract must not pick
+coefficients, train or load a model, access a seed or holdout, register an
+execution, modify gameplay, or claim intervention effectiveness or formal-RL
+readiness. A later separately reviewed experiment proposal must preregister any
+coefficients and empirical limits.
 
 Live gameplay is a maintenance and registered-evaluation lane only. Launch it
 for a crash, stuck state, repeated A-class simulator/mechanics defect, or an
@@ -665,10 +689,10 @@ OpenSpec changes authorize them.
 - For a one-attempt Windows evidence run that atomically publishes files, do
   not read any file under its active output root while the process is alive.
   Monitor process liveness only, then inspect artifacts after process exit.
-- Treat the latest 2026-08-06 `commit` gate result of 3,989 passed, 11 skipped,
-  331.45 seconds of pytest, and 334.00 seconds including orchestration as
+- Treat the latest 2026-08-06 `commit` gate result of 4,055 passed, 16 skipped,
+  359.48 seconds of pytest, and 362.51 seconds including orchestration as
   confirmation of timing drift: correctness passed, but the qualified
-  five-minute feedback bound was exceeded by 34.00 seconds. Do
+  five-minute feedback bound was exceeded by 62.51 seconds. Do
   not rerun it inside this change; schedule a separate read-only duration audit
   before claiming the bounded-feedback requirement remains met.
 

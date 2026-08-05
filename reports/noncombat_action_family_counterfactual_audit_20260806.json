@@ -1,0 +1,1006 @@
+{
+  "authority": {
+    "deterministic_selection_authority": false,
+    "experiment_execution_authority": false,
+    "formal_rl_authority": false,
+    "gameplay_authority": false,
+    "holdout_access_authority": false,
+    "model_loading_authority": false,
+    "native_loading_authority": false,
+    "policy_promotion_authority": false,
+    "qualification_authority": false,
+    "seed_access_authority": false,
+    "training_authority": false,
+    "training_objective_authority": false
+  },
+  "conclusion": {
+    "bounded_interpretations": [
+      "joint_candidate_argmax_is_not_a_neutral_greedy_projection",
+      "family_only_entropy_is_incomplete_for_single_family_categories",
+      "max_pooling_reallocates_shop_and_card_reward_mass"
+    ],
+    "prohibited_claims": [
+      "deterministic_selection_rule",
+      "entropy_coefficient_choice",
+      "formal_rl_readiness",
+      "intervention_effectiveness",
+      "policy_promotion",
+      "successor_experiment_authority"
+    ],
+    "status": "counterfactual_measured_selection_semantics_unresolved"
+  },
+  "distribution_metadata": {
+    "authority": {
+      "experiment_execution": false,
+      "formal_rl": false,
+      "gameplay": false,
+      "model_loading": false,
+      "native_loading": false,
+      "policy_promotion": false,
+      "qualification": false,
+      "seed_access": false,
+      "training": false
+    },
+    "candidate_identity_field": "action_id",
+    "device": "cpu",
+    "distribution_dtype": "float64",
+    "entropy_decomposition": "joint=family+expected_conditional",
+    "family_aggregation": "max-candidate-score-v1",
+    "family_identity_field": "kind",
+    "schema_version": "noncombat-action-family-distribution-v1",
+    "score_dtype": "float32"
+  },
+  "inputs": {
+    "collapse_audit": {
+      "file_name": "noncombat_state_conditioned_card_reward_collapse_audit_20260805.json",
+      "sha256": "1392d10a1d3f3746b63285677c3f269b9064959222b275bd2805eb791bf206d6",
+      "size_bytes": 928451
+    },
+    "source_artifacts": [
+      {
+        "path": "evaluation.json",
+        "sha256": "bf76b4684e9c993c0fe6527d02e0c889521449bf525fabe8d36d2bd119042579",
+        "size_bytes": 20492084
+      },
+      {
+        "path": "training_rows.json",
+        "sha256": "1d19779b44ff5c8b2ea598307017af7b892b8b875395e22feb4b3d4eb5061eea",
+        "size_bytes": 126834076
+      }
+    ],
+    "terminal_conclusion": "mechanism_narrowed_causality_unresolved",
+    "terminal_verdict": "experiment_stopped_at_canary"
+  },
+  "phases": {
+    "initial_canary": {
+      "categories": {
+        "card_reward": {
+          "argmax": {
+            "comparable_count": 967,
+            "joint_kind_counts": {
+              "bowl": 3,
+              "skip": 960,
+              "take": 4
+            },
+            "joint_probability_tie_count": 0,
+            "raw_score_tie_count": 0,
+            "score_kind_counts": {
+              "skip": 59,
+              "take": 908
+            },
+            "selected_kind_counts": {
+              "skip": 59,
+              "take": 908
+            },
+            "transition_count": 904,
+            "transition_counts": {
+              "take->bowl": 3,
+              "take->skip": 901
+            },
+            "transition_rate": 0.9348500517063082,
+            "two_stage_comparable_count": 967,
+            "two_stage_equivalent_count": 967,
+            "two_stage_mismatch_count": 0
+          },
+          "candidate_count": 3863,
+          "candidate_kind_occurrences": {
+            "bowl": 3,
+            "skip": 964,
+            "take": 2896
+          },
+          "decision_count": 967,
+          "entropy": {
+            "conditional_mean": 0.5515245705354179,
+            "family_mean": 0.6931035850500186,
+            "flat_candidate_mean": 1.3838277743636431,
+            "joint_mean": 1.2446281555854348
+          },
+          "families": [
+            "bowl",
+            "skip",
+            "take"
+          ],
+          "family_mass": {
+            "bowl": {
+              "flat_mean_when_present": 0.2499537037407601,
+              "hierarchical_mean_when_present": 0.49727011721331466,
+              "mean_delta_when_present": 0.24731641347255456,
+              "opportunity_count": 3
+            },
+            "skip": {
+              "flat_mean_when_present": 0.2496405859741733,
+              "hierarchical_mean_when_present": 0.4960533921787474,
+              "mean_delta_when_present": 0.2464128062045741,
+              "opportunity_count": 964
+            },
+            "take": {
+              "flat_mean_when_present": 0.7503584426160025,
+              "hierarchical_mean_when_present": 0.503942833079677,
+              "mean_delta_when_present": -0.24641560953632546,
+              "opportunity_count": 967
+            }
+          },
+          "family_opportunity_counts": {
+            "bowl": 3,
+            "skip": 964,
+            "take": 967
+          },
+          "invariants": {
+            "entropy_decomposition_max_abs_error": 0.0,
+            "one_family_fallback_max_abs_error": 0.0,
+            "probability_sum_max_abs_error": 0.0
+          },
+          "row_shape": {
+            "multi_family_count": 967,
+            "one_family_count": 0
+          }
+        },
+        "event": {
+          "argmax": {
+            "comparable_count": 250,
+            "joint_kind_counts": {
+              "event_option": 250
+            },
+            "joint_probability_tie_count": 0,
+            "raw_score_tie_count": 0,
+            "score_kind_counts": {
+              "event_option": 250
+            },
+            "selected_kind_counts": {
+              "event_option": 250
+            },
+            "transition_count": 0,
+            "transition_counts": {},
+            "transition_rate": 0.0,
+            "two_stage_comparable_count": 250,
+            "two_stage_equivalent_count": 250,
+            "two_stage_mismatch_count": 0
+          },
+          "candidate_count": 594,
+          "candidate_kind_occurrences": {
+            "event_option": 594
+          },
+          "decision_count": 250,
+          "entropy": {
+            "conditional_mean": 0.8260718408114129,
+            "family_mean": 0.0,
+            "flat_candidate_mean": 0.8260718408114129,
+            "joint_mean": 0.8260718408114129
+          },
+          "families": [
+            "event_option"
+          ],
+          "family_mass": {
+            "event_option": {
+              "flat_mean_when_present": 1.0,
+              "hierarchical_mean_when_present": 1.0,
+              "mean_delta_when_present": 0.0,
+              "opportunity_count": 250
+            }
+          },
+          "family_opportunity_counts": {
+            "event_option": 250
+          },
+          "invariants": {
+            "entropy_decomposition_max_abs_error": 0.0,
+            "one_family_fallback_max_abs_error": 0.0,
+            "probability_sum_max_abs_error": 0.0
+          },
+          "row_shape": {
+            "multi_family_count": 0,
+            "one_family_count": 250
+          }
+        },
+        "route": {
+          "argmax": {
+            "comparable_count": 1699,
+            "joint_kind_counts": {
+              "map_node": 1699
+            },
+            "joint_probability_tie_count": 0,
+            "raw_score_tie_count": 0,
+            "score_kind_counts": {
+              "map_node": 1699
+            },
+            "selected_kind_counts": {
+              "map_node": 1699
+            },
+            "transition_count": 0,
+            "transition_counts": {},
+            "transition_rate": 0.0,
+            "two_stage_comparable_count": 1699,
+            "two_stage_equivalent_count": 1699,
+            "two_stage_mismatch_count": 0
+          },
+          "candidate_count": 2631,
+          "candidate_kind_occurrences": {
+            "map_node": 2631
+          },
+          "decision_count": 1699,
+          "entropy": {
+            "conditional_mean": 0.3299026652233377,
+            "family_mean": 0.0,
+            "flat_candidate_mean": 0.3299026652233377,
+            "joint_mean": 0.3299026652233377
+          },
+          "families": [
+            "map_node"
+          ],
+          "family_mass": {
+            "map_node": {
+              "flat_mean_when_present": 1.0,
+              "hierarchical_mean_when_present": 1.0,
+              "mean_delta_when_present": 0.0,
+              "opportunity_count": 1699
+            }
+          },
+          "family_opportunity_counts": {
+            "map_node": 1699
+          },
+          "invariants": {
+            "entropy_decomposition_max_abs_error": 0.0,
+            "one_family_fallback_max_abs_error": 0.0,
+            "probability_sum_max_abs_error": 0.0
+          },
+          "row_shape": {
+            "multi_family_count": 0,
+            "one_family_count": 1699
+          }
+        },
+        "shop": {
+          "argmax": {
+            "comparable_count": 203,
+            "joint_kind_counts": {
+              "buy_card": 4,
+              "buy_potion": 1,
+              "buy_relic": 3,
+              "leave": 193,
+              "remove_card": 2
+            },
+            "joint_probability_tie_count": 0,
+            "raw_score_tie_count": 0,
+            "score_kind_counts": {
+              "buy_card": 85,
+              "buy_potion": 11,
+              "buy_relic": 8,
+              "leave": 99
+            },
+            "selected_kind_counts": {
+              "buy_card": 85,
+              "buy_potion": 11,
+              "buy_relic": 8,
+              "leave": 99
+            },
+            "transition_count": 99,
+            "transition_counts": {
+              "buy_card->buy_relic": 3,
+              "buy_card->leave": 77,
+              "buy_card->remove_card": 1,
+              "buy_potion->leave": 9,
+              "buy_potion->remove_card": 1,
+              "buy_relic->leave": 8
+            },
+            "transition_rate": 0.4876847290640394,
+            "two_stage_comparable_count": 203,
+            "two_stage_equivalent_count": 203,
+            "two_stage_mismatch_count": 0
+          },
+          "candidate_count": 1633,
+          "candidate_kind_occurrences": {
+            "buy_card": 850,
+            "buy_potion": 323,
+            "buy_relic": 119,
+            "leave": 203,
+            "remove_card": 138
+          },
+          "decision_count": 203,
+          "entropy": {
+            "conditional_mean": 0.5003253319882255,
+            "family_mean": 1.0894585627803215,
+            "flat_candidate_mean": 1.7854245386181586,
+            "joint_mean": 1.5897838947685463
+          },
+          "families": [
+            "buy_card",
+            "buy_potion",
+            "buy_relic",
+            "leave",
+            "remove_card"
+          ],
+          "family_mass": {
+            "buy_card": {
+              "flat_mean_when_present": 0.5365656575293194,
+              "hierarchical_mean_when_present": 0.2801433125687984,
+              "mean_delta_when_present": -0.256422344960521,
+              "opportunity_count": 168
+            },
+            "buy_potion": {
+              "flat_mean_when_present": 0.2786358035148713,
+              "hierarchical_mean_when_present": 0.24395685028973446,
+              "mean_delta_when_present": -0.034678953225136866,
+              "opportunity_count": 114
+            },
+            "buy_relic": {
+              "flat_mean_when_present": 0.16811096731211378,
+              "hierarchical_mean_when_present": 0.22158107415282013,
+              "mean_delta_when_present": 0.053470106840706355,
+              "opportunity_count": 58
+            },
+            "leave": {
+              "flat_mean_when_present": 0.2860906819059466,
+              "hierarchical_mean_when_present": 0.4037785189358053,
+              "mean_delta_when_present": 0.11768783702985869,
+              "opportunity_count": 203
+            },
+            "remove_card": {
+              "flat_mean_when_present": 0.09612785074905282,
+              "hierarchical_mean_when_present": 0.24134855732304414,
+              "mean_delta_when_present": 0.14522070657399133,
+              "opportunity_count": 138
+            }
+          },
+          "family_opportunity_counts": {
+            "buy_card": 168,
+            "buy_potion": 114,
+            "buy_relic": 58,
+            "leave": 203,
+            "remove_card": 138
+          },
+          "invariants": {
+            "entropy_decomposition_max_abs_error": 0.0,
+            "one_family_fallback_max_abs_error": 0.0,
+            "probability_sum_max_abs_error": 0.0
+          },
+          "row_shape": {
+            "multi_family_count": 168,
+            "one_family_count": 35
+          }
+        }
+      },
+      "decision_count": 3119
+    },
+    "trained_canary": {
+      "categories": {
+        "card_reward": {
+          "argmax": {
+            "comparable_count": 1458,
+            "joint_kind_counts": {
+              "bowl": 12,
+              "skip": 341,
+              "take": 1105
+            },
+            "joint_probability_tie_count": 0,
+            "raw_score_tie_count": 0,
+            "score_kind_counts": {
+              "take": 1458
+            },
+            "selected_kind_counts": {
+              "take": 1458
+            },
+            "transition_count": 353,
+            "transition_counts": {
+              "take->bowl": 12,
+              "take->skip": 341
+            },
+            "transition_rate": 0.2421124828532236,
+            "two_stage_comparable_count": 1458,
+            "two_stage_equivalent_count": 1458,
+            "two_stage_mismatch_count": 0
+          },
+          "candidate_count": 5846,
+          "candidate_kind_occurrences": {
+            "bowl": 21,
+            "skip": 1437,
+            "take": 4388
+          },
+          "decision_count": 1458,
+          "entropy": {
+            "conditional_mean": 0.800951508056056,
+            "family_mean": 0.5490583370677019,
+            "flat_candidate_mean": 1.3012242799313056,
+            "joint_mean": 1.350009845123758
+          },
+          "families": [
+            "bowl",
+            "skip",
+            "take"
+          ],
+          "family_mass": {
+            "bowl": {
+              "flat_mean_when_present": 0.15181831775869228,
+              "hierarchical_mean_when_present": 0.29194774998647605,
+              "mean_delta_when_present": 0.14012943222778376,
+              "opportunity_count": 21
+            },
+            "skip": {
+              "flat_mean_when_present": 0.12198504109047024,
+              "hierarchical_mean_when_present": 0.24382472260089497,
+              "mean_delta_when_present": 0.12183968151042472,
+              "opportunity_count": 1437
+            },
+            "take": {
+              "flat_mean_when_present": 0.8775852615089589,
+              "hierarchical_mean_when_present": 0.7554821473750329,
+              "mean_delta_when_present": -0.12210311413392594,
+              "opportunity_count": 1458
+            }
+          },
+          "family_opportunity_counts": {
+            "bowl": 21,
+            "skip": 1437,
+            "take": 1458
+          },
+          "invariants": {
+            "entropy_decomposition_max_abs_error": 0.0,
+            "one_family_fallback_max_abs_error": 0.0,
+            "probability_sum_max_abs_error": 0.0
+          },
+          "row_shape": {
+            "multi_family_count": 1458,
+            "one_family_count": 0
+          }
+        },
+        "event": {
+          "argmax": {
+            "comparable_count": 564,
+            "joint_kind_counts": {
+              "event_option": 564
+            },
+            "joint_probability_tie_count": 0,
+            "raw_score_tie_count": 0,
+            "score_kind_counts": {
+              "event_option": 564
+            },
+            "selected_kind_counts": {
+              "event_option": 564
+            },
+            "transition_count": 0,
+            "transition_counts": {},
+            "transition_rate": 0.0,
+            "two_stage_comparable_count": 564,
+            "two_stage_equivalent_count": 564,
+            "two_stage_mismatch_count": 0
+          },
+          "candidate_count": 1324,
+          "candidate_kind_occurrences": {
+            "event_option": 1324
+          },
+          "decision_count": 564,
+          "entropy": {
+            "conditional_mean": 0.8177822034422049,
+            "family_mean": 0.0,
+            "flat_candidate_mean": 0.8177822034422049,
+            "joint_mean": 0.8177822034422049
+          },
+          "families": [
+            "event_option"
+          ],
+          "family_mass": {
+            "event_option": {
+              "flat_mean_when_present": 1.0,
+              "hierarchical_mean_when_present": 1.0,
+              "mean_delta_when_present": 0.0,
+              "opportunity_count": 564
+            }
+          },
+          "family_opportunity_counts": {
+            "event_option": 564
+          },
+          "invariants": {
+            "entropy_decomposition_max_abs_error": 0.0,
+            "one_family_fallback_max_abs_error": 0.0,
+            "probability_sum_max_abs_error": 0.0
+          },
+          "row_shape": {
+            "multi_family_count": 0,
+            "one_family_count": 564
+          }
+        },
+        "route": {
+          "argmax": {
+            "comparable_count": 3000,
+            "joint_kind_counts": {
+              "map_node": 3000
+            },
+            "joint_probability_tie_count": 0,
+            "raw_score_tie_count": 0,
+            "score_kind_counts": {
+              "map_node": 3000
+            },
+            "selected_kind_counts": {
+              "map_node": 3000
+            },
+            "transition_count": 0,
+            "transition_counts": {},
+            "transition_rate": 0.0,
+            "two_stage_comparable_count": 3000,
+            "two_stage_equivalent_count": 3000,
+            "two_stage_mismatch_count": 0
+          },
+          "candidate_count": 4490,
+          "candidate_kind_occurrences": {
+            "map_node": 4490
+          },
+          "decision_count": 3000,
+          "entropy": {
+            "conditional_mean": 0.2949584594111989,
+            "family_mean": 0.0,
+            "flat_candidate_mean": 0.2949584594111989,
+            "joint_mean": 0.2949584594111989
+          },
+          "families": [
+            "map_node"
+          ],
+          "family_mass": {
+            "map_node": {
+              "flat_mean_when_present": 1.0,
+              "hierarchical_mean_when_present": 1.0,
+              "mean_delta_when_present": 0.0,
+              "opportunity_count": 3000
+            }
+          },
+          "family_opportunity_counts": {
+            "map_node": 3000
+          },
+          "invariants": {
+            "entropy_decomposition_max_abs_error": 0.0,
+            "one_family_fallback_max_abs_error": 0.0,
+            "probability_sum_max_abs_error": 0.0
+          },
+          "row_shape": {
+            "multi_family_count": 0,
+            "one_family_count": 3000
+          }
+        },
+        "shop": {
+          "argmax": {
+            "comparable_count": 663,
+            "joint_kind_counts": {
+              "buy_card": 45,
+              "buy_potion": 5,
+              "buy_relic": 1,
+              "leave": 273,
+              "remove_card": 339
+            },
+            "joint_probability_tie_count": 0,
+            "raw_score_tie_count": 0,
+            "score_kind_counts": {
+              "buy_card": 419,
+              "buy_potion": 6,
+              "buy_relic": 1,
+              "leave": 224,
+              "remove_card": 13
+            },
+            "selected_kind_counts": {
+              "buy_card": 419,
+              "buy_potion": 6,
+              "buy_relic": 1,
+              "leave": 224,
+              "remove_card": 13
+            },
+            "transition_count": 380,
+            "transition_counts": {
+              "buy_card->buy_potion": 3,
+              "buy_card->buy_relic": 1,
+              "buy_card->leave": 47,
+              "buy_card->remove_card": 324,
+              "buy_potion->buy_card": 1,
+              "buy_potion->leave": 2,
+              "buy_potion->remove_card": 1,
+              "buy_relic->remove_card": 1
+            },
+            "transition_rate": 0.5731523378582202,
+            "two_stage_comparable_count": 663,
+            "two_stage_equivalent_count": 663,
+            "two_stage_mismatch_count": 0
+          },
+          "candidate_count": 3815,
+          "candidate_kind_occurrences": {
+            "buy_card": 2035,
+            "buy_potion": 407,
+            "buy_relic": 371,
+            "leave": 663,
+            "remove_card": 339
+          },
+          "decision_count": 663,
+          "entropy": {
+            "conditional_mean": 0.43772837353963184,
+            "family_mean": 0.8017170957175053,
+            "flat_candidate_mean": 1.3141948294220673,
+            "joint_mean": 1.2394454692571362
+          },
+          "families": [
+            "buy_card",
+            "buy_potion",
+            "buy_relic",
+            "leave",
+            "remove_card"
+          ],
+          "family_mass": {
+            "buy_card": {
+              "flat_mean_when_present": 0.6177756950606816,
+              "hierarchical_mean_when_present": 0.40734662775541053,
+              "mean_delta_when_present": -0.2104290673052711,
+              "opportunity_count": 453
+            },
+            "buy_potion": {
+              "flat_mean_when_present": 0.26105696791147415,
+              "hierarchical_mean_when_present": 0.22799150124007544,
+              "mean_delta_when_present": -0.0330654666713987,
+              "opportunity_count": 149
+            },
+            "buy_relic": {
+              "flat_mean_when_present": 0.17821043059059122,
+              "hierarchical_mean_when_present": 0.20824396925263083,
+              "mean_delta_when_present": 0.030033538662039616,
+              "opportunity_count": 164
+            },
+            "leave": {
+              "flat_mean_when_present": 0.4192758650611354,
+              "hierarchical_mean_when_present": 0.49340648632431405,
+              "mean_delta_when_present": 0.07413062126317865,
+              "opportunity_count": 663
+            },
+            "remove_card": {
+              "flat_mean_when_present": 0.10927348898617122,
+              "hierarchical_mean_when_present": 0.24548888658282103,
+              "mean_delta_when_present": 0.1362153975966498,
+              "opportunity_count": 339
+            }
+          },
+          "family_opportunity_counts": {
+            "buy_card": 453,
+            "buy_potion": 149,
+            "buy_relic": 164,
+            "leave": 663,
+            "remove_card": 339
+          },
+          "invariants": {
+            "entropy_decomposition_max_abs_error": 0.0,
+            "one_family_fallback_max_abs_error": 0.0,
+            "probability_sum_max_abs_error": 0.0
+          },
+          "row_shape": {
+            "multi_family_count": 455,
+            "one_family_count": 208
+          }
+        }
+      },
+      "decision_count": 5685
+    },
+    "training": {
+      "categories": {
+        "card_reward": {
+          "argmax": {
+            "comparable_count": 31571,
+            "joint_kind_counts": {
+              "bowl": 242,
+              "skip": 26896,
+              "take": 4433
+            },
+            "joint_probability_tie_count": 0,
+            "raw_score_tie_count": 0,
+            "score_kind_counts": {
+              "skip": 32,
+              "take": 31539
+            },
+            "selected_kind_counts": {
+              "bowl": 62,
+              "skip": 5991,
+              "take": 25518
+            },
+            "transition_count": 27106,
+            "transition_counts": {
+              "take->bowl": 242,
+              "take->skip": 26864
+            },
+            "transition_rate": 0.8585727408064363,
+            "two_stage_comparable_count": 31571,
+            "two_stage_equivalent_count": 31571,
+            "two_stage_mismatch_count": 0
+          },
+          "candidate_count": 126412,
+          "candidate_kind_occurrences": {
+            "bowl": 265,
+            "skip": 31306,
+            "take": 94841
+          },
+          "decision_count": 31571,
+          "entropy": {
+            "conditional_mean": 0.6667068589285476,
+            "family_mean": 0.6536920633605048,
+            "flat_candidate_mean": 1.3644342649297512,
+            "joint_mean": 1.320398922289059
+          },
+          "families": [
+            "bowl",
+            "skip",
+            "take"
+          ],
+          "family_mass": {
+            "bowl": {
+              "flat_mean_when_present": 0.20269958640576904,
+              "hierarchical_mean_when_present": 0.4060861625914696,
+              "mean_delta_when_present": 0.20338657618570058,
+              "opportunity_count": 265
+            },
+            "skip": {
+              "flat_mean_when_present": 0.19148618041806434,
+              "hierarchical_mean_when_present": 0.3875397603274915,
+              "mean_delta_when_present": 0.19605357990942715,
+              "opportunity_count": 31306
+            },
+            "take": {
+              "flat_mean_when_present": 0.8084196967291002,
+              "hierarchical_mean_when_present": 0.6123045652687894,
+              "mean_delta_when_present": -0.1961151314603108,
+              "opportunity_count": 31571
+            }
+          },
+          "family_opportunity_counts": {
+            "bowl": 265,
+            "skip": 31306,
+            "take": 31571
+          },
+          "invariants": {
+            "entropy_decomposition_max_abs_error": 0.0,
+            "one_family_fallback_max_abs_error": 0.0,
+            "probability_sum_max_abs_error": 0.0
+          },
+          "row_shape": {
+            "multi_family_count": 31571,
+            "one_family_count": 0
+          }
+        },
+        "event": {
+          "argmax": {
+            "comparable_count": 9097,
+            "joint_kind_counts": {
+              "event_option": 9097
+            },
+            "joint_probability_tie_count": 0,
+            "raw_score_tie_count": 0,
+            "score_kind_counts": {
+              "event_option": 9097
+            },
+            "selected_kind_counts": {
+              "event_option": 9097
+            },
+            "transition_count": 0,
+            "transition_counts": {},
+            "transition_rate": 0.0,
+            "two_stage_comparable_count": 9097,
+            "two_stage_equivalent_count": 9097,
+            "two_stage_mismatch_count": 0
+          },
+          "candidate_count": 21561,
+          "candidate_kind_occurrences": {
+            "event_option": 21561
+          },
+          "decision_count": 9097,
+          "entropy": {
+            "conditional_mean": 0.8290411955969205,
+            "family_mean": 0.0,
+            "flat_candidate_mean": 0.8290411955969205,
+            "joint_mean": 0.8290411955969205
+          },
+          "families": [
+            "event_option"
+          ],
+          "family_mass": {
+            "event_option": {
+              "flat_mean_when_present": 1.0,
+              "hierarchical_mean_when_present": 1.0,
+              "mean_delta_when_present": 0.0,
+              "opportunity_count": 9097
+            }
+          },
+          "family_opportunity_counts": {
+            "event_option": 9097
+          },
+          "invariants": {
+            "entropy_decomposition_max_abs_error": 0.0,
+            "one_family_fallback_max_abs_error": 0.0,
+            "probability_sum_max_abs_error": 0.0
+          },
+          "row_shape": {
+            "multi_family_count": 0,
+            "one_family_count": 9097
+          }
+        },
+        "route": {
+          "argmax": {
+            "comparable_count": 57256,
+            "joint_kind_counts": {
+              "map_node": 57256
+            },
+            "joint_probability_tie_count": 0,
+            "raw_score_tie_count": 0,
+            "score_kind_counts": {
+              "map_node": 57256
+            },
+            "selected_kind_counts": {
+              "map_node": 57256
+            },
+            "transition_count": 0,
+            "transition_counts": {},
+            "transition_rate": 0.0,
+            "two_stage_comparable_count": 57256,
+            "two_stage_equivalent_count": 57256,
+            "two_stage_mismatch_count": 0
+          },
+          "candidate_count": 87198,
+          "candidate_kind_occurrences": {
+            "map_node": 87198
+          },
+          "decision_count": 57256,
+          "entropy": {
+            "conditional_mean": 0.31485946306783746,
+            "family_mean": 0.0,
+            "flat_candidate_mean": 0.31485946306783746,
+            "joint_mean": 0.31485946306783746
+          },
+          "families": [
+            "map_node"
+          ],
+          "family_mass": {
+            "map_node": {
+              "flat_mean_when_present": 1.0,
+              "hierarchical_mean_when_present": 1.0,
+              "mean_delta_when_present": 0.0,
+              "opportunity_count": 57256
+            }
+          },
+          "family_opportunity_counts": {
+            "map_node": 57256
+          },
+          "invariants": {
+            "entropy_decomposition_max_abs_error": 0.0,
+            "one_family_fallback_max_abs_error": 0.0,
+            "probability_sum_max_abs_error": 0.0
+          },
+          "row_shape": {
+            "multi_family_count": 0,
+            "one_family_count": 57256
+          }
+        },
+        "shop": {
+          "argmax": {
+            "comparable_count": 9180,
+            "joint_kind_counts": {
+              "buy_card": 729,
+              "buy_potion": 88,
+              "buy_relic": 148,
+              "leave": 4255,
+              "remove_card": 3960
+            },
+            "joint_probability_tie_count": 0,
+            "raw_score_tie_count": 0,
+            "score_kind_counts": {
+              "buy_card": 6396,
+              "buy_potion": 52,
+              "buy_relic": 18,
+              "leave": 2685,
+              "remove_card": 29
+            },
+            "selected_kind_counts": {
+              "buy_card": 3914,
+              "buy_potion": 945,
+              "buy_relic": 374,
+              "leave": 3451,
+              "remove_card": 496
+            },
+            "transition_count": 5724,
+            "transition_counts": {
+              "buy_card->buy_potion": 75,
+              "buy_card->buy_relic": 143,
+              "buy_card->leave": 1534,
+              "buy_card->remove_card": 3920,
+              "buy_potion->buy_card": 5,
+              "buy_potion->leave": 29,
+              "buy_potion->remove_card": 5,
+              "buy_relic->leave": 7,
+              "buy_relic->remove_card": 6
+            },
+            "transition_rate": 0.6235294117647059,
+            "two_stage_comparable_count": 9180,
+            "two_stage_equivalent_count": 9180,
+            "two_stage_mismatch_count": 0
+          },
+          "candidate_count": 58896,
+          "candidate_kind_occurrences": {
+            "buy_card": 31063,
+            "buy_potion": 9533,
+            "buy_relic": 4443,
+            "leave": 9180,
+            "remove_card": 4677
+          },
+          "decision_count": 9180,
+          "entropy": {
+            "conditional_mean": 0.4451451463763581,
+            "family_mean": 0.8884944735936139,
+            "flat_candidate_mean": 1.4540977232235692,
+            "joint_mean": 1.333639619969969
+          },
+          "families": [
+            "buy_card",
+            "buy_potion",
+            "buy_relic",
+            "leave",
+            "remove_card"
+          ],
+          "family_mass": {
+            "buy_card": {
+              "flat_mean_when_present": 0.5833612899935601,
+              "hierarchical_mean_when_present": 0.35651346465780054,
+              "mean_delta_when_present": -0.22684782533575953,
+              "opportunity_count": 6728
+            },
+            "buy_potion": {
+              "flat_mean_when_present": 0.2648500043082308,
+              "hierarchical_mean_when_present": 0.23992042665499314,
+              "mean_delta_when_present": -0.024929577653237667,
+              "opportunity_count": 3542
+            },
+            "buy_relic": {
+              "flat_mean_when_present": 0.17059107235995924,
+              "hierarchical_mean_when_present": 0.21814014065068876,
+              "mean_delta_when_present": 0.047549068290729524,
+              "opportunity_count": 2082
+            },
+            "leave": {
+              "flat_mean_when_present": 0.3805605025907316,
+              "hierarchical_mean_when_present": 0.4730788026264235,
+              "mean_delta_when_present": 0.09251830003569189,
+              "opportunity_count": 9180
+            },
+            "remove_card": {
+              "flat_mean_when_present": 0.10013480847278469,
+              "hierarchical_mean_when_present": 0.2425803031056353,
+              "mean_delta_when_present": 0.1424454946328506,
+              "opportunity_count": 4677
+            }
+          },
+          "family_opportunity_counts": {
+            "buy_card": 6728,
+            "buy_potion": 3542,
+            "buy_relic": 2082,
+            "leave": 9180,
+            "remove_card": 4677
+          },
+          "invariants": {
+            "entropy_decomposition_max_abs_error": 0.0,
+            "one_family_fallback_max_abs_error": 0.0,
+            "probability_sum_max_abs_error": 0.0
+          },
+          "row_shape": {
+            "multi_family_count": 6745,
+            "one_family_count": 2435
+          }
+        }
+      },
+      "decision_count": 107104
+    }
+  },
+  "schema_version": "noncombat-action-family-counterfactual-audit-v1"
+}
