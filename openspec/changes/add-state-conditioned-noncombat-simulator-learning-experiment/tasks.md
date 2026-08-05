@@ -1,70 +1,70 @@
 ## 1. Freeze Evidence And Add RED Boundaries
 
-- [ ] 1.1 Bind the baseline-strategy audit, r2 terminal artifacts and
+- [x] 1.1 Bind the baseline-strategy audit, r2 terminal artifacts and
   postmortem, state-conditioned ranker/input capabilities, formal reward and
   readiness results, outcome feasibility result, governing specs, and exact
   unchanged r2 source identities in one source-only preimplementation record.
-- [ ] 1.2 Add failing tests for the absent successor runner, separate
+- [x] 1.2 Add failing tests for the absent successor runner, separate
   state/candidate scoring, deterministic seeded initialization, registered
   entropy and gradient controls, and rejection of reference-policy leakage.
-- [ ] 1.3 Add failing tests for canonical anti-collapse rows, state-effect
+- [x] 1.3 Add failing tests for canonical anti-collapse rows, state-effect
   diagnostics, card/shop saturation gates, category-aware single-kind handling,
   and the three terminal learning verdicts.
-- [ ] 1.4 Add failing tests for fresh-cohort inventory, pre-start isolation,
+- [x] 1.4 Add failing tests for fresh-cohort inventory, pre-start isolation,
   one-logical-attempt lifecycle, active-output no-read rule, canonical
   publication, and standard-library verification.
 
 ## 2. Implement The Source-Only Successor
 
-- [ ] 2.1 Add a versioned successor module and schemas without editing r2,
+- [x] 2.1 Add a versioned successor module and schemas without editing r2,
   production agent, CommunicationMod, gameplay, checkpoint, OPE, or outcome
   study source.
-- [ ] 2.2 Implement state-conditioned model/runtime creation, exact metadata
+- [x] 2.2 Implement state-conditioned model/runtime creation, exact metadata
   validation, deterministic model/action generators, optimizer state, entropy,
   gradient ceiling, and finite checkpoint round trips on CPU.
-- [ ] 2.3 Implement exact API v3 rollout and candidate-masked action selection
+- [x] 2.3 Implement exact API v3 rollout and candidate-masked action selection
   with separate tensors, legal action application, formal reward, conservative
   Courier support handling, deterministic replay, and source non-mutation.
-- [ ] 2.4 Implement bounded chunked REINFORCE training with normalized returns,
+- [x] 2.4 Implement bounded chunked REINFORCE training with normalized returns,
   entropy regularization, gradient clipping, atomic rollback, exact coordinates,
   resumable checkpoints, and cumulative resource accounting.
-- [ ] 2.5 Implement frozen paired canary/holdout evaluation, bootstrap floor
+- [x] 2.5 Implement frozen paired canary/holdout evaluation, bootstrap floor
   metrics, victory accounting, support ceilings, four-category coverage, and
   immutable holdout stop behavior.
-- [ ] 2.6 Implement canonical train/evaluation anti-collapse summaries,
+- [x] 2.6 Implement canonical train/evaluation anti-collapse summaries,
   actual-versus-zero-state relative-score diagnostics, card/shop gates, and
   victory, floor-only, negative, blocked, and invalid verdict precedence.
 
 ## 3. Registration, Publication, And Verification Boundaries
 
-- [ ] 3.1 Implement source-only seed exclusion inventory and deterministic
+- [x] 3.1 Implement source-only seed exclusion inventory and deterministic
   ascending cohort materialization that scans only registered tracked evidence
   and rejects every overlap or caller override.
-- [ ] 3.2 Implement canonical preimplementation, registration, preflight, and
+- [x] 3.2 Implement canonical preimplementation, registration, preflight, and
   tracked-authorization validation with all downstream authority false and no
   native, Torch, environment, seed, training, gameplay, or checkpoint access.
-- [ ] 3.3 Implement Windows native-before-Torch pre-start loading, process and
+- [x] 3.3 Implement Windows native-before-Torch pre-start loading, process and
   CommunicationMod isolation, production-checkpoint inventory protection,
   durable started journal, execution lease, and same-identity resume checks.
-- [ ] 3.4 Implement atomic journal, checkpoint, rows, diagnostics, bootstrap,
+- [x] 3.4 Implement atomic journal, checkpoint, rows, diagnostics, bootstrap,
   metrics, model, report, and manifest publication while forbidding reads under
   the active output root until process exit.
-- [ ] 3.5 Add a standalone standard-library verifier that validates canonical
+- [x] 3.5 Add a standalone standard-library verifier that validates canonical
   bytes, hashes, inventory, coordinates, replay, support, diagnostics, metrics,
   verdict, source isolation, and all-false downstream authority without native
   loading, Torch import, environment construction, replay, or training.
 
 ## 4. Source-Only Verification And Implementation Commit
 
-- [ ] 4.1 Turn every RED boundary green and run focused successor,
+- [x] 4.1 Turn every RED boundary green and run focused successor,
   state-conditioned input/ranker, adapter, formal-reward, r2 verifier, seed
   inventory, publication, and no-authority pytest with a fresh writable
   system-temp basetemp.
-- [ ] 4.2 Prove r2 source and terminal artifacts, Current evidence, formal
+- [x] 4.2 Prove r2 source and terminal artifacts, Current evidence, formal
   readiness, outcome evidence, CommunicationMod configuration, and production
   checkpoints remain byte-unchanged; verify source-only commands import no
   native module and access no empirical seed.
-- [ ] 4.3 Run `py_compile`, strict change and global OpenSpec validation,
+- [x] 4.3 Run `py_compile`, strict change and global OpenSpec validation,
   `git diff --check`, the repository partitioned `commit` gate, and an
   independent code/spec/authority review; commit and push one source-only
   implementation commit.

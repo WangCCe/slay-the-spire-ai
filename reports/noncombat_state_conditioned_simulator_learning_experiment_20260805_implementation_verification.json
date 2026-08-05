@@ -1,0 +1,231 @@
+{
+  "authority": {
+    "causal_claim_authorized": false,
+    "cohort_materialization_authorized": false,
+    "communication_mod_authorized": false,
+    "environment_construction_authorized": false,
+    "execution_authorized": false,
+    "formal_rl_authorized": false,
+    "fresh_evidence_authorized": false,
+    "gameplay_authorized": false,
+    "live_execution_authorized": false,
+    "model_fitting_authorized": false,
+    "native_loading_authorized": false,
+    "ope_authorized": false,
+    "policy_loading_authorized": false,
+    "production_checkpoint_mutation_authorized": false,
+    "promotion_authorized": false,
+    "qualification_authorized": false,
+    "seed_access_authorized": false,
+    "target_supported_outcome_authorized": false,
+    "training_authorized": false
+  },
+  "checks": {
+    "communication_mod_config_unchanged": true,
+    "empirical_seed_consumed": false,
+    "environment_constructed": false,
+    "frozen_evidence_unchanged": true,
+    "native_module_imported": false,
+    "planning_evidence_unchanged": true,
+    "production_checkpoint_inventory_unchanged": true,
+    "r2_terminal_artifacts_verified": true,
+    "torch_imported": false,
+    "training_started": false
+  },
+  "external_isolation": {
+    "communication_mod_config": {
+      "current": {
+        "path": "C:/Users/20571/AppData/Local/ModTheSpire/CommunicationMod/config.properties",
+        "sha256": "7ec79e01f9293a19ead3c59a26b18bb75ef900afa3dbe45d657769fe46061862",
+        "size_bytes": 534
+      },
+      "historical": {
+        "path": "C:/Users/20571/AppData/Local/ModTheSpire/CommunicationMod/config.properties",
+        "sha256": "7ec79e01f9293a19ead3c59a26b18bb75ef900afa3dbe45d657769fe46061862",
+        "size_bytes": 534
+      },
+      "unchanged": true
+    },
+    "production_checkpoints": {
+      "current": {
+        "entry_count": 208,
+        "inventory_sha256": "a4badcb199c17179ea09f1174ec2bf6b0ecd8942fd5c862124cdf85ccc0da11d",
+        "root": "D:/SteamLibrary/steamapps/common/SlayTheSpire/checkpoints",
+        "total_bytes": 1356047034
+      },
+      "historical": {
+        "entry_count": 208,
+        "inventory_sha256": "a4badcb199c17179ea09f1174ec2bf6b0ecd8942fd5c862124cdf85ccc0da11d",
+        "root": "D:/SteamLibrary/steamapps/common/SlayTheSpire/checkpoints",
+        "total_bytes": 1356047034
+      },
+      "unchanged": true
+    },
+    "r2_preflight": {
+      "path": "reports/noncombat_simulator_rl_experiment_20260804_r2_preflight.json",
+      "sha256": "ef6e067989ec581d03d13865e28c46bc90c4054be3f6f429d4f7328dc5822b35",
+      "size_bytes": 38278
+    }
+  },
+  "frozen_evidence": {
+    "binding_count": 14,
+    "bindings": {
+      "baseline_strategy_audit": {
+        "path": "reports/noncombat_baseline_strategy_options_audit_20260805.md",
+        "sha256": "1360880c5d2b6ef647f00c2e951a85de208f40489640a52886a10bf2b905f04b",
+        "size_bytes": 6708
+      },
+      "current_baseline_readiness": {
+        "path": "reports/noncombat_current_baseline_readiness_refresh_20260805.json",
+        "sha256": "4f09bbf53a6b9e17ca1e5427d9651a6066d416ef8d5531808e7cf9ee7b328ce0",
+        "size_bytes": 3786
+      },
+      "formal_readiness": {
+        "path": "reports/noncombat_formal_rl_readiness_audit_20260802_r2/report.json",
+        "sha256": "3458b0f27ab5ff65f60e280f010c2a9802e92ee6f0f71d530df2151be14da97a",
+        "size_bytes": 1070
+      },
+      "formal_reward": {
+        "path": "reports/noncombat_formal_reward_contract_20260802/contract.json",
+        "sha256": "4ee9c0087e523b95e2d380d6e6a0c7ecefd4f211cbd7d780b496df0d642a10bb",
+        "size_bytes": 2419
+      },
+      "outcome_feasibility": {
+        "path": "reports/noncombat_study_feasibility_20260802.json",
+        "sha256": "46d9321676676b92756caab5e35cddb4055086078accacb13e83540a81240bbe",
+        "size_bytes": 4216
+      },
+      "r2_manifest": {
+        "path": "reports/noncombat_simulator_rl_experiment_20260804_r2/artifact_manifest.json",
+        "sha256": "ae208ee1e34d34495cb5bc76dc6bc73431d904b9a889f1c8267a1eaf25d6d4a7",
+        "size_bytes": 34574
+      },
+      "r2_metrics": {
+        "path": "reports/noncombat_simulator_rl_experiment_20260804_r2/metrics.json",
+        "sha256": "ad25f81342f782f8238584ee8923f330a9399f9a43b95dc12cf6455d7df10b9a",
+        "size_bytes": 1768
+      },
+      "r2_postmortem": {
+        "path": "reports/noncombat_simulator_rl_experiment_20260804_r2_postmortem.json",
+        "sha256": "d5c66e41b81a20f7d5503dab1f0ca54533723aa162b1a19c9acf56b9c1124811",
+        "size_bytes": 33364
+      },
+      "r2_source": {
+        "path": "analysis_scripts/noncombat_simulator_rl_experiment.py",
+        "sha256": "3c0c39518fba5384c0fad3dcac535c29ab3bc20ef453c5ed1c9700f8022ec5c3",
+        "size_bytes": 144961
+      },
+      "state_action_teacher_result": {
+        "path": "reports/noncombat_state_action_teacher_sufficiency_audit_20260802_r2/report.json",
+        "sha256": "213d266841322d19aad5b35a7a1bb6290e3c147e50ab8273e2b410230dd850f0",
+        "size_bytes": 1284
+      },
+      "state_conditioned_input_source": {
+        "path": "analysis_scripts/noncombat_state_conditioned_policy_input.py",
+        "sha256": "f460bcb2cf2569b73ae08e640545fbd25996ae3e5d806339bff550aa12f484be",
+        "size_bytes": 8149
+      },
+      "state_conditioned_input_tests": {
+        "path": "tests/test_noncombat_state_conditioned_policy_input.py",
+        "sha256": "470b920cc2bcae1455e156fd9735dd72cadc20c3258cb2d8ef8246216a87aabb",
+        "size_bytes": 12745
+      },
+      "state_conditioned_ranker_source": {
+        "path": "analysis_scripts/noncombat_state_conditioned_ranker.py",
+        "sha256": "60d1b710127e27c0bb283f073d6b166ccae14d9902ffb6d1911caa107d745678",
+        "size_bytes": 4549
+      },
+      "state_conditioned_ranker_tests": {
+        "path": "tests/test_noncombat_state_conditioned_ranker.py",
+        "sha256": "0b1edaa36aa2c3f5d665e81e1e52530ba5dd68cb637ac1d463254031f01b65e5",
+        "size_bytes": 9190
+      }
+    },
+    "combined_sha256": "c0bca9df9219d97ccc42788d219289cdd3429dbe2114a1636fed4381123f9647",
+    "preimplementation": {
+      "path": "reports/noncombat_state_conditioned_simulator_learning_experiment_20260805_preimplementation.json",
+      "sha256": "73d87062057a58d19b5437f5005a4c1568bfc3325462a4306a05ada620092dea",
+      "size_bytes": 6023
+    }
+  },
+  "implementation": {
+    "source_files": [
+      {
+        "path": "analysis_scripts/noncombat_state_conditioned_simulator_learning_experiment.py",
+        "sha256": "911848d2a154d81ae1f195888e3497548205704545622236d39eb5fc0182b73d",
+        "size_bytes": 244135
+      },
+      {
+        "path": "analysis_scripts/verify_noncombat_state_conditioned_simulator_learning_experiment.py",
+        "sha256": "e7adb0159a3ff54392bdfc9fab37ac53296e57ae203ae7468aa446beded90a01",
+        "size_bytes": 123884
+      },
+      {
+        "path": "tests/test_noncombat_state_conditioned_simulator_learning_experiment.py",
+        "sha256": "8ee42f362f9178724c9b5aaec8187fe921e30c5967103a1f46ee2d6e19d2b922",
+        "size_bytes": 119591
+      }
+    ],
+    "working_source_sha256": "56d0968e2bfaef1018878563a4141fd98050cb949c8159dd91dc08565a47e134"
+  },
+  "import_probes": {
+    "r2_terminal_verifier": {
+      "empirical_seed_file_accessed": false,
+      "native_module_imported": false,
+      "torch_imported": false
+    },
+    "successor_runner": {
+      "empirical_seed_file_accessed": false,
+      "native_module_imported": false,
+      "torch_imported": false
+    },
+    "successor_terminal_verifier": {
+      "empirical_seed_file_accessed": false,
+      "native_module_imported": false,
+      "torch_imported": false
+    }
+  },
+  "planning": {
+    "commit": "1eaaa650f7c5d6c7a3a0ad32c90a99ed55598c96",
+    "file_count": 4,
+    "files": {
+      "design": {
+        "path": "openspec/changes/add-state-conditioned-noncombat-simulator-learning-experiment/design.md",
+        "sha256": "e6d5aab71e2bb6616cd83d9876abdf43a135504492d2615457aa5eec38901286",
+        "size_bytes": 10501
+      },
+      "proposal": {
+        "path": "openspec/changes/add-state-conditioned-noncombat-simulator-learning-experiment/proposal.md",
+        "sha256": "ac5262ef02bff2bc04018e0204fb38ff54ceb8efd0f9906be7a55a9ba173657a",
+        "size_bytes": 3786
+      },
+      "spec": {
+        "path": "openspec/changes/add-state-conditioned-noncombat-simulator-learning-experiment/specs/noncombat-state-conditioned-simulator-learning-experiment/spec.md",
+        "sha256": "ca3b33e68fe6dcbc9446de1733500de37fa59878a6d2d5daa4b94f23822012de",
+        "size_bytes": 12380
+      },
+      "tasks": {
+        "path": "openspec/changes/add-state-conditioned-noncombat-simulator-learning-experiment/tasks.md",
+        "sha256": "ba7d0c3b0a21b2e82fa4bd4700d807e535a856833a574883ff3afb147ef13c3c",
+        "size_bytes": 6009
+      }
+    }
+  },
+  "r2_terminal": {
+    "output_directory": "reports/noncombat_simulator_rl_experiment_20260804_r2",
+    "verification": {
+      "artifact_count": 202,
+      "checks": 225389,
+      "formal_readiness_verdict": "not_ready_for_bounded_training_proposal",
+      "verdict": "experiment_valid_without_learning_signal",
+      "verification": "verified"
+    },
+    "verifier": {
+      "path": "analysis_scripts/verify_noncombat_simulator_rl_experiment.py",
+      "sha256": "a2ed2146e7cda47c3573f1c55b7bb4727101531a01fecc9cb996f0861f0ad9e5",
+      "size_bytes": 71359
+    }
+  },
+  "schema_version": "noncombat-state-conditioned-simulator-learning-implementation-verification-v1",
+  "verdict": "source_only_implementation_verified"
+}

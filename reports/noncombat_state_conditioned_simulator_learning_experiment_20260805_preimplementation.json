@@ -1,0 +1,140 @@
+{
+  "authority": {
+    "causal_claim_authorized": false,
+    "cohort_materialization_authorized": false,
+    "communication_mod_authorized": false,
+    "environment_construction_authorized": false,
+    "execution_authorized": false,
+    "formal_rl_authorized": false,
+    "fresh_evidence_authorized": false,
+    "gameplay_authorized": false,
+    "live_execution_authorized": false,
+    "model_fitting_authorized": false,
+    "native_loading_authorized": false,
+    "ope_authorized": false,
+    "policy_loading_authorized": false,
+    "production_checkpoint_mutation_authorized": false,
+    "promotion_authorized": false,
+    "qualification_authorized": false,
+    "seed_access_authorized": false,
+    "target_supported_outcome_authorized": false,
+    "training_authorized": false
+  },
+  "contract": {
+    "anti_collapse_required": true,
+    "cohorts_materialized": false,
+    "formal_readiness_unchanged": true,
+    "fresh_cohort_required": true,
+    "frozen_initialization_is_quality_baseline": false,
+    "native_before_torch_required": true,
+    "output_root_materialized": false,
+    "reference_policy_in_pass_gate": false,
+    "source_only": true,
+    "state_conditioned_relative_scoring_required": true,
+    "target_supported_outcomes_independent": true,
+    "victory_primary": true
+  },
+  "evidence": {
+    "baseline_strategy_audit": {
+      "path": "reports/noncombat_baseline_strategy_options_audit_20260805.md",
+      "sha256": "1360880c5d2b6ef647f00c2e951a85de208f40489640a52886a10bf2b905f04b",
+      "size_bytes": 6708
+    },
+    "current_baseline_readiness": {
+      "path": "reports/noncombat_current_baseline_readiness_refresh_20260805.json",
+      "sha256": "4f09bbf53a6b9e17ca1e5427d9651a6066d416ef8d5531808e7cf9ee7b328ce0",
+      "size_bytes": 3786
+    },
+    "formal_readiness": {
+      "path": "reports/noncombat_formal_rl_readiness_audit_20260802_r2/report.json",
+      "sha256": "3458b0f27ab5ff65f60e280f010c2a9802e92ee6f0f71d530df2151be14da97a",
+      "size_bytes": 1070
+    },
+    "formal_reward": {
+      "path": "reports/noncombat_formal_reward_contract_20260802/contract.json",
+      "sha256": "4ee9c0087e523b95e2d380d6e6a0c7ecefd4f211cbd7d780b496df0d642a10bb",
+      "size_bytes": 2419
+    },
+    "outcome_feasibility": {
+      "path": "reports/noncombat_study_feasibility_20260802.json",
+      "sha256": "46d9321676676b92756caab5e35cddb4055086078accacb13e83540a81240bbe",
+      "size_bytes": 4216
+    },
+    "r2_manifest": {
+      "path": "reports/noncombat_simulator_rl_experiment_20260804_r2/artifact_manifest.json",
+      "sha256": "ae208ee1e34d34495cb5bc76dc6bc73431d904b9a889f1c8267a1eaf25d6d4a7",
+      "size_bytes": 34574
+    },
+    "r2_metrics": {
+      "path": "reports/noncombat_simulator_rl_experiment_20260804_r2/metrics.json",
+      "sha256": "ad25f81342f782f8238584ee8923f330a9399f9a43b95dc12cf6455d7df10b9a",
+      "size_bytes": 1768
+    },
+    "r2_postmortem": {
+      "path": "reports/noncombat_simulator_rl_experiment_20260804_r2_postmortem.json",
+      "sha256": "d5c66e41b81a20f7d5503dab1f0ca54533723aa162b1a19c9acf56b9c1124811",
+      "size_bytes": 33364
+    },
+    "r2_source": {
+      "path": "analysis_scripts/noncombat_simulator_rl_experiment.py",
+      "sha256": "3c0c39518fba5384c0fad3dcac535c29ab3bc20ef453c5ed1c9700f8022ec5c3",
+      "size_bytes": 144961
+    },
+    "state_action_teacher_result": {
+      "path": "reports/noncombat_state_action_teacher_sufficiency_audit_20260802_r2/report.json",
+      "sha256": "213d266841322d19aad5b35a7a1bb6290e3c147e50ab8273e2b410230dd850f0",
+      "size_bytes": 1284
+    },
+    "state_conditioned_input_source": {
+      "path": "analysis_scripts/noncombat_state_conditioned_policy_input.py",
+      "sha256": "f460bcb2cf2569b73ae08e640545fbd25996ae3e5d806339bff550aa12f484be",
+      "size_bytes": 8149
+    },
+    "state_conditioned_input_tests": {
+      "path": "tests/test_noncombat_state_conditioned_policy_input.py",
+      "sha256": "470b920cc2bcae1455e156fd9735dd72cadc20c3258cb2d8ef8246216a87aabb",
+      "size_bytes": 12745
+    },
+    "state_conditioned_ranker_source": {
+      "path": "analysis_scripts/noncombat_state_conditioned_ranker.py",
+      "sha256": "60d1b710127e27c0bb283f073d6b166ccae14d9902ffb6d1911caa107d745678",
+      "size_bytes": 4549
+    },
+    "state_conditioned_ranker_tests": {
+      "path": "tests/test_noncombat_state_conditioned_ranker.py",
+      "sha256": "0b1edaa36aa2c3f5d665e81e1e52530ba5dd68cb637ac1d463254031f01b65e5",
+      "size_bytes": 9190
+    }
+  },
+  "planned_source_files": [
+    "analysis_scripts/noncombat_state_conditioned_simulator_learning_experiment.py",
+    "analysis_scripts/verify_noncombat_state_conditioned_simulator_learning_experiment.py",
+    "tests/test_noncombat_state_conditioned_simulator_learning_experiment.py"
+  ],
+  "planning": {
+    "commit": "1eaaa650f7c5d6c7a3a0ad32c90a99ed55598c96",
+    "files": {
+      "design": {
+        "path": "openspec/changes/add-state-conditioned-noncombat-simulator-learning-experiment/design.md",
+        "sha256": "e6d5aab71e2bb6616cd83d9876abdf43a135504492d2615457aa5eec38901286",
+        "size_bytes": 10501
+      },
+      "proposal": {
+        "path": "openspec/changes/add-state-conditioned-noncombat-simulator-learning-experiment/proposal.md",
+        "sha256": "ac5262ef02bff2bc04018e0204fb38ff54ceb8efd0f9906be7a55a9ba173657a",
+        "size_bytes": 3786
+      },
+      "spec": {
+        "path": "openspec/changes/add-state-conditioned-noncombat-simulator-learning-experiment/specs/noncombat-state-conditioned-simulator-learning-experiment/spec.md",
+        "sha256": "ca3b33e68fe6dcbc9446de1733500de37fa59878a6d2d5daa4b94f23822012de",
+        "size_bytes": 12380
+      },
+      "tasks": {
+        "path": "openspec/changes/add-state-conditioned-noncombat-simulator-learning-experiment/tasks.md",
+        "sha256": "ba7d0c3b0a21b2e82fa4bd4700d807e535a856833a574883ff3afb147ef13c3c",
+        "size_bytes": 6009
+      }
+    }
+  },
+  "schema_version": "noncombat-state-conditioned-simulator-learning-preimplementation-v1"
+}
