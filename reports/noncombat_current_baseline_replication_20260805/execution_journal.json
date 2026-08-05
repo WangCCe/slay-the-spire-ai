@@ -1,0 +1,26 @@
+{
+  "authority": {
+    "baseline_floor_authorized": false,
+    "environment_construction_authorized": false,
+    "execution_authorized": false,
+    "formal_rl_authorized": false,
+    "fresh_evidence_authorized": false,
+    "gameplay_authorized": false,
+    "model_fitting_authorized": false,
+    "native_loading_authorized": false,
+    "ope_authorized": false,
+    "policy_loading_authorized": false,
+    "promotion_authorized": false,
+    "qualification_authorized": false,
+    "reward_authorized": false,
+    "seed_access_authorized": false,
+    "target_supported_outcome_authorized": false,
+    "training_authorized": false
+  },
+  "completed_row_count": 0,
+  "holdout_accessed": false,
+  "preregistration_commit": "b60b6b94acda5ca1ed480f199f702cdde8a52a3b",
+  "registration_sha256": "8a2a3948eb3e604b0aebb2296fa15c40dac7efb4005d2245e5f4d5c6c6043a46",
+  "schema_version": "noncombat-current-baseline-replication-journal-v1",
+  "state": "started"
+}

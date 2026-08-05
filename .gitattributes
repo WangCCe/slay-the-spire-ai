@@ -153,6 +153,15 @@ openspec/changes/add-post-repair-current-baseline-evidence-study/** text eol=lf
 openspec/changes/archive/*-add-post-repair-current-baseline-evidence-study/** text eol=lf
 openspec/specs/noncombat-current-baseline-evidence-study/** text eol=lf
 
+# Preserve final Current baseline replication source and canonical evidence.
+analysis_scripts/noncombat_current_baseline_replication.py text eol=lf
+tests/test_noncombat_current_baseline_replication.py text eol=lf
+reports/noncombat_current_baseline_replication_* text eol=lf
+reports/noncombat_current_baseline_replication_*/** text eol=lf
+openspec/specs/noncombat-current-baseline-replication/** text eol=lf
+openspec/changes/add-post-final-repair-current-baseline-replication/** text eol=lf
+openspec/changes/archive/*-add-post-final-repair-current-baseline-replication/** text eol=lf
+
 # Preserve the read-only Current card metadata cost-domain audit.
 reports/noncombat_current_bridge_card_metadata_cost_domain_audit_* text eol=lf
 reports/noncombat_current_bridge_card_metadata_cost_domain_repair_* text eol=lf

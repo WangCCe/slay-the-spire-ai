@@ -78,14 +78,14 @@
 
 ## 6. Final Replication And Closeout
 
-- [ ] 6.1 After exact execution approval, create the durable started journal
+- [x] 6.1 After exact execution approval, create the durable started journal
   and run canary once; access holdout automatically only if the immutable
   canary passes, with no retry, repair, replacement, resume, or override after
   start.
-- [ ] 6.2 Preserve the terminal positive, negative, blocked, interrupted, or
+- [x] 6.2 Preserve the terminal positive, negative, blocked, interrupted, or
   partial result; run the no-native verifier and publish exact cohort, support,
   floor, bootstrap, category, outcome, lifecycle, and authority findings.
-- [ ] 6.3 Perform a separate read-only baseline/formal-readiness refresh, keep
+- [x] 6.3 Perform a separate read-only baseline/formal-readiness refresh, keep
   target-supported outcomes independent, update project direction, sync specs,
   archive the change, run final focused and commit-gate verification as
   applicable, and commit/push all canonical evidence.

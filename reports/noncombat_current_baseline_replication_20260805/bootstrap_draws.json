@@ -1,0 +1,15 @@
+{
+  "absolute_current_mean": [],
+  "hashes": {
+    "absolute_current_mean": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570",
+    "paired_floor_difference_mean": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570"
+  },
+  "paired_floor_difference_mean": [],
+  "parameters": {
+    "confidence": 0.95,
+    "resamples": 10000,
+    "seed": 20260803
+  },
+  "schema_version": "noncombat-current-baseline-replication-bootstrap-v1",
+  "status": "not_run"
+}

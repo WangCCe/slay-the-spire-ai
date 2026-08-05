@@ -477,22 +477,41 @@ The next authorized sequence is:
     grants proposal consideration only; no cohort selection, native loading,
     execution, training, gameplay, formal-RL, qualification, or promotion is
     authorized.
+29. Preserve the unique final Current baseline replication and its invalid
+    terminal publication. All 16 canary pairs completed and passed: Current
+    mean floor was `25.0625`, control mean floor was `14.1875`, and the paired
+    mean floor difference was `+10.875`. Only five of 64 holdout pairs were
+    retained before terminal publication failed with Windows `PermissionError`
+    while atomically replacing the execution journal. The retained rows are
+    descriptive only; the registered bootstrap, canonical metrics, report,
+    manifest, and terminal verdict are absent, so no baseline floor is
+    established. The same-question attempt is consumed, Current is no longer
+    an eligible baseline candidate, and formal non-combat RL remains `no_go`
+    because both baseline policy and target-supported outcome support are
+    blocked. Read-only monitoring overlapped the active output-root writes, so
+    a Windows sharing conflict is a plausible but unproven contributor. Do not
+    retry, resume, repair, replace seeds, or reinterpret this result.
 
 ## Work Lanes
 
 The offline production candidate-schema fix, anti-retry review, r2 successor,
-potion, relic, and card-cost identity repairs, and post-repair Current baseline
-study are complete. The study is a terminal blocked result after 18 partial
-canary rows; the later repair does not complete it or establish a baseline
-floor. Formal RL remains `no_go` because baseline policy and source-comparable
-target-supported outcomes are still blocked.
+potion, relic, and card-cost identity repairs, post-repair Current baseline
+study, and unique final Current replication are complete. The original study
+remains a terminal blocked result after 18 partial canary rows. The final
+replication passed its 16-pair canary but retained only five of 64 holdout
+pairs, then failed terminal publication. Neither result establishes a baseline
+floor. Current is no longer eligible for the same baseline question. Formal RL
+remains `no_go` because baseline policy and source-comparable target-supported
+outcomes are still blocked.
 
-Do not modify, retry, or reinterpret the consumed baseline study. A separate
-project-level readiness review now supports planning exactly one
-post-final-repair replication, but only after an OpenSpec change narrows the
-anti-retry rule, versions the study independently, and fixes every contract
-term before cohort selection. The card metadata cost audit and its bounded
-compatibility repair are closed. The r1
+Do not modify, retry, or reinterpret either consumed baseline attempt. The
+single post-final-repair replication authorized by the narrowed anti-retry
+rule is now closed. The next project-level decision must select a different
+credible baseline strategy before any future training proposal; it must not
+silently substitute Bottled or SimpleAgent as policy-quality truth. Expanding
+source-comparable target-supported outcomes remains an independent
+prerequisite. The card metadata cost audit and its bounded compatibility
+repair are closed. The r1
 simulator-only experiment remains a terminal native-load failure with no seed
 access. Its r2 successor completed exactly once and is valid simulator evidence:
 the trained policy improved terminal floor against seeded initialization on
@@ -506,12 +525,12 @@ state-conditioned ranker, policy-input boundary, and anti-collapse diagnostic
 capabilities are now implemented and verified, but not integrated into an
 experiment. Exact API v3 state and candidates remain separate through scoring,
 and no production or existing experiment path imports the new boundary. The
-Current comparator readiness review is complete; the active evidence lane is
-the proposal-only `add-post-final-repair-current-baseline-replication` change.
-Do not start r3, bind a cohort, or execute native code from the review. A
-rebuilt module, different experiment, or empirical Current-baseline strategy
-still requires a separate approved change, fresh identity, fresh cohort
-decision, and evidence design.
+Current comparator evidence lane is closed with
+`no_viable_baseline_candidate`; there is no active empirical baseline
+execution. Do not start r3, bind another cohort, or begin formal training from
+these results. A rebuilt module, different experiment, or different baseline
+strategy still requires a separate approved change, fresh identity, fresh
+cohort decision, and evidence design.
 
 Live gameplay is a maintenance and registered-evaluation lane only. Launch it
 for a crash, stuck state, repeated A-class simulator/mechanics defect, or an
@@ -531,6 +550,9 @@ OpenSpec changes authorize them.
   unregistered raw full-suite run for the commit gate.
 - Keep changes cohesive and preserve unrelated local artifacts.
 - Stop when evidence is ambiguous rather than tuning around it.
+- For a one-attempt Windows evidence run that atomically publishes files, do
+  not read any file under its active output root while the process is alive.
+  Monitor process liveness only, then inspect artifacts after process exit.
 - Treat the latest 2026-08-05 `commit` gate result of 3,849 passed, 11 skipped,
   and 318.47 seconds as confirmation of timing drift: correctness passed, but
   the qualified five-minute feedback bound was exceeded by 18.47 seconds. Do

@@ -246,7 +246,7 @@ def test_preimplementation_is_canonical_exact_and_nonempirical():
         "strategy": "first_ascending_unexcluded_integers_v1",
         "total_count": 80,
     }
-    assert not (REPO_ROOT / value["output"]["directory"]).exists()
+    assert value["output"]["exists"] is False
 
 
 def test_preimplementation_mutation_is_rejected(tmp_path):
