@@ -1,0 +1,212 @@
+{
+  "authority": {
+    "causal_claim": false,
+    "communication_mod": false,
+    "formal_rl": false,
+    "gameplay": false,
+    "model_loading": false,
+    "new_cohort": false,
+    "new_experiment": false,
+    "ope": false,
+    "promotion": false,
+    "qualification": false,
+    "replay": false,
+    "training": false
+  },
+  "canary": {
+    "gate": {
+      "blockers": [
+        "card_reward_selected_kind_saturation"
+      ],
+      "passed": false,
+      "unsupported_rate": 0.015625,
+      "verdict": "experiment_stopped_at_canary"
+    },
+    "initial": {
+      "decisions": 3119,
+      "effective_floor": {
+        "ge_17": 17,
+        "ge_34": 0,
+        "ge_51": 0,
+        "max": 33.0,
+        "mean": 13.3984375,
+        "median": 14.0,
+        "min": 4.0
+      },
+      "episodes": 128,
+      "replay_exact": true,
+      "selected_card_reward_kinds": {
+        "bowl": 0,
+        "skip": 59,
+        "take": 908
+      },
+      "unsupported_episodes": 1,
+      "victories": 0
+    },
+    "paired": {
+      "declined": 10,
+      "floor_difference": {
+        "confidence": 0.95,
+        "lower": 8.9609375,
+        "max": 44.0,
+        "mean": 10.75,
+        "median": 10.0,
+        "min": -23.0,
+        "resamples": 10000,
+        "seed": 0,
+        "upper": 12.5390625
+      },
+      "improved": 104,
+      "pairs": 128,
+      "unchanged": 14
+    },
+    "trained": {
+      "decisions": 5685,
+      "effective_floor": {
+        "ge_17": 89,
+        "ge_34": 5,
+        "ge_51": 0,
+        "max": 50.0,
+        "mean": 24.1484375,
+        "median": 24.0,
+        "min": 6.0
+      },
+      "episodes": 128,
+      "replay_exact": true,
+      "selected_card_reward_kinds": {
+        "bowl": 0,
+        "skip": 0,
+        "take": 1458
+      },
+      "selected_shop_kinds": {
+        "buy_card": 419,
+        "buy_potion": 6,
+        "buy_relic": 1,
+        "leave": 224,
+        "remove_card": 13
+      },
+      "state_effect": {
+        "multi_candidate_decisions": 3556,
+        "nonzero_effect_decisions": 3556,
+        "relative_order_change_decisions": 366
+      },
+      "unsupported_episodes": 3,
+      "victories": 0
+    }
+  },
+  "execution": {
+    "artifact_count": 75,
+    "checkpoint_count": 64,
+    "completed_training_episodes": 4096,
+    "cumulative_wall_seconds": 14208.38200000002,
+    "logical_execution_id": "noncombat-state-conditioned-simulator-learning-20260805-r1",
+    "optimizer_updates": 64,
+    "process_exit_code": 0,
+    "training_observed_only_floor_shaping": true,
+    "training_unsupported_episodes": 41,
+    "training_victories": 0
+  },
+  "holdout": {
+    "accessed": false,
+    "episode_count": 0,
+    "seeds": "untouched"
+  },
+  "input_bindings": {
+    "artifact_manifest": {
+      "path": "reports/noncombat_state_conditioned_simulator_learning_experiment_20260805/artifact_manifest.json",
+      "sha256": "4d6184b0cdd88bc59238053ec6b2be0f7a4d2427a2feb2d758da9afd4d21f498",
+      "size_bytes": 14018
+    },
+    "diagnostics": {
+      "path": "reports/noncombat_state_conditioned_simulator_learning_experiment_20260805/diagnostics.json",
+      "sha256": "d11fadb6a3c2a7bf1b3fdc7c92af6241b70dc1a91c6d95b648221e4a60a5b689",
+      "size_bytes": 30841
+    },
+    "evaluation": {
+      "path": "reports/noncombat_state_conditioned_simulator_learning_experiment_20260805/evaluation.json",
+      "sha256": "bf76b4684e9c993c0fe6527d02e0c889521449bf525fabe8d36d2bd119042579",
+      "size_bytes": 20492084
+    },
+    "final_model": {
+      "path": "reports/noncombat_state_conditioned_simulator_learning_experiment_20260805/final_model.json",
+      "sha256": "b24cc22b8e5456e3384d3572c0a1ab19cdaba1d58b3e04c52e82e1ff0b048bad",
+      "size_bytes": 701964
+    },
+    "isolation": {
+      "path": "reports/noncombat_state_conditioned_simulator_learning_experiment_20260805/isolation.json",
+      "sha256": "9a0ec3615b3314762bf24ffa73a92408d61302ef805f938af0acf538d19b2577",
+      "size_bytes": 77160
+    },
+    "metrics": {
+      "path": "reports/noncombat_state_conditioned_simulator_learning_experiment_20260805/metrics.json",
+      "sha256": "0da5ad0c004b806c2e1223c6a3b0f556a7f9c719f5c235e13a475203eefc6e47",
+      "size_bytes": 1323
+    },
+    "registration_sha256": "d4a6ed9469410288f0670645f33c6cbf3c40f507afdc29a47fa229c7a6994f18",
+    "source_commit": "3ec7716c49dde19228569ebe93b2e617085a2b02",
+    "training_rows": {
+      "archive_sha256": "167f418f0cfce7b63021b202b6d57f29a5c5e12e9f6ed159949b09d9565f1138",
+      "archive_size_bytes": 11288071,
+      "raw_sha256": "1d19779b44ff5c8b2ea598307017af7b892b8b875395e22feb4b3d4eb5061eea",
+      "raw_size_bytes": 126834076
+    }
+  },
+  "interpretation": {
+    "architecture_evidence": "state_channel_changes_relative_candidate_scores_but_behavior_gate_failed",
+    "formal_readiness": "unchanged_not_ready",
+    "immediate_successor_experiment": "no_go",
+    "next_gate": "read_only_existing_artifact_card_reward_collapse_audit",
+    "policy_quality_baseline": "not_established",
+    "target_supported_outcomes": "not_established",
+    "victory_learning": "not_observed"
+  },
+  "publication": {
+    "complete_raw_bundle_preserved_locally": true,
+    "ordinary_git_omits_only": [
+      "reports/noncombat_state_conditioned_simulator_learning_experiment_20260805/training_rows.json"
+    ],
+    "reconstructable_from_deterministic_archive": true
+  },
+  "schema_version": "noncombat-state-conditioned-simulator-learning-postmortem-v1",
+  "scope": {
+    "new_bootstrap": false,
+    "new_native_loading": false,
+    "new_seed_access": false,
+    "read_only_terminal_descriptive_postmortem": true,
+    "training_or_replay": false
+  },
+  "terminal_verdicts": {
+    "experiment": "experiment_stopped_at_canary",
+    "formal_readiness": "unchanged_not_ready",
+    "policy_quality_claim": false,
+    "target_supported_outcome_claim": false
+  },
+  "training": {
+    "effective_floor": {
+      "ge_17": 695,
+      "ge_34": 13,
+      "ge_51": 0,
+      "max": 50.0,
+      "mean": 14.1416015625,
+      "median": 16.0,
+      "min": 2.0
+    },
+    "episodes": 4096,
+    "pass_mean_effective_floor": {
+      "0": 13.54296875,
+      "1": 13.73046875,
+      "2": 14.1474609375,
+      "3": 15.1455078125
+    },
+    "unsupported_episodes": 41,
+    "victories": 0
+  },
+  "verification": {
+    "artifact_count": 75,
+    "checkpoint_count": 64,
+    "completed_training_episodes": 4096,
+    "independent_process_exit_code": 0,
+    "standard_library_verifier": "valid",
+    "verdict": "experiment_stopped_at_canary"
+  }
+}

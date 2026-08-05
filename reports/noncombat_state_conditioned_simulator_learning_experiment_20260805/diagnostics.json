@@ -1,0 +1,1016 @@
+{
+  "authority": {
+    "causal_claim_authorized": false,
+    "cohort_materialization_authorized": false,
+    "communication_mod_authorized": false,
+    "environment_construction_authorized": false,
+    "execution_authorized": false,
+    "formal_rl_authorized": false,
+    "fresh_evidence_authorized": false,
+    "gameplay_authorized": false,
+    "live_execution_authorized": false,
+    "model_fitting_authorized": false,
+    "native_loading_authorized": false,
+    "ope_authorized": false,
+    "policy_loading_authorized": false,
+    "production_checkpoint_mutation_authorized": false,
+    "promotion_authorized": false,
+    "qualification_authorized": false,
+    "seed_access_authorized": false,
+    "target_supported_outcome_authorized": false,
+    "training_authorized": false
+  },
+  "evaluation": {
+    "canary_initial": {
+      "authority": {
+        "causal_claim_authorized": false,
+        "cohort_materialization_authorized": false,
+        "communication_mod_authorized": false,
+        "environment_construction_authorized": false,
+        "execution_authorized": false,
+        "formal_rl_authorized": false,
+        "fresh_evidence_authorized": false,
+        "gameplay_authorized": false,
+        "live_execution_authorized": false,
+        "model_fitting_authorized": false,
+        "native_loading_authorized": false,
+        "ope_authorized": false,
+        "policy_loading_authorized": false,
+        "production_checkpoint_mutation_authorized": false,
+        "promotion_authorized": false,
+        "qualification_authorized": false,
+        "seed_access_authorized": false,
+        "target_supported_outcome_authorized": false,
+        "training_authorized": false
+      },
+      "categories": {
+        "card_reward": {
+          "candidate_kind_occurrences": {
+            "bowl": 3,
+            "skip": 964,
+            "take": 2896
+          },
+          "candidate_kind_opportunities": {
+            "bowl": 3,
+            "skip": 964,
+            "take": 967
+          },
+          "card_reward": {
+            "availability_decisions": {
+              "bowl": 3,
+              "skip": 964,
+              "take": 967
+            },
+            "selections": {
+              "bowl": 0,
+              "skip": 59,
+              "take": 908
+            }
+          },
+          "decision_count": 967,
+          "distinct_candidate_kinds": [
+            "bowl",
+            "skip",
+            "take"
+          ],
+          "distinct_selected_kinds": [
+            "skip",
+            "take"
+          ],
+          "exact_single_kind_saturation": false,
+          "multi_candidate_decisions": 967,
+          "multi_kind_decisions": 967,
+          "multi_kind_selected_kinds": {
+            "skip": {
+              "count": 59,
+              "rate": 0.06101344364012409
+            },
+            "take": {
+              "count": 908,
+              "rate": 0.9389865563598759
+            }
+          },
+          "selected_kinds": {
+            "skip": {
+              "count": 59,
+              "rate": 0.06101344364012409
+            },
+            "take": {
+              "count": 908,
+              "rate": 0.9389865563598759
+            }
+          },
+          "selected_score_margin": {
+            "count": 967,
+            "max": 0.03367030620574951,
+            "mean": 0.007926472311506227,
+            "median": 0.006196945905685425,
+            "min": 3.248453140258789e-06
+          },
+          "single_candidate_decisions": 0,
+          "state_effect": {
+            "magnitude": {
+              "count": 967,
+              "max": 0.04686560481786728,
+              "mean": 0.013911726983743714,
+              "median": 0.013025030493736267,
+              "min": 0.0009657368063926697
+            },
+            "multi_candidate_decisions": 967,
+            "nonzero_effect_decisions": 967,
+            "relative_order_change_decisions": 779
+          },
+          "top_score_margin": {
+            "count": 967,
+            "max": 0.03367030620574951,
+            "mean": 0.007926472311506227,
+            "median": 0.006196945905685425,
+            "min": 3.248453140258789e-06
+          }
+        },
+        "event": {
+          "candidate_kind_occurrences": {
+            "event_option": 594
+          },
+          "candidate_kind_opportunities": {
+            "event_option": 250
+          },
+          "decision_count": 250,
+          "distinct_candidate_kinds": [
+            "event_option"
+          ],
+          "distinct_selected_kinds": [
+            "event_option"
+          ],
+          "exact_single_kind_saturation": true,
+          "multi_candidate_decisions": 240,
+          "multi_kind_decisions": 0,
+          "multi_kind_selected_kinds": {},
+          "selected_kinds": {
+            "event_option": {
+              "count": 250,
+              "rate": 1.0
+            }
+          },
+          "selected_score_margin": {
+            "count": 240,
+            "max": 0.027083154767751694,
+            "mean": 0.007693017778607706,
+            "median": 0.006312858313322067,
+            "min": 8.003413677215576e-05
+          },
+          "single_candidate_decisions": 10,
+          "state_effect": {
+            "magnitude": {
+              "count": 240,
+              "max": 0.028610967099666595,
+              "mean": 0.008668339632761975,
+              "median": 0.008498397655785084,
+              "min": 0.00025984644889831543
+            },
+            "multi_candidate_decisions": 240,
+            "nonzero_effect_decisions": 240,
+            "relative_order_change_decisions": 107
+          },
+          "top_score_margin": {
+            "count": 240,
+            "max": 0.027083154767751694,
+            "mean": 0.007693017778607706,
+            "median": 0.006312858313322067,
+            "min": 8.003413677215576e-05
+          }
+        },
+        "route": {
+          "candidate_kind_occurrences": {
+            "map_node": 2631
+          },
+          "candidate_kind_opportunities": {
+            "map_node": 1699
+          },
+          "decision_count": 1699,
+          "distinct_candidate_kinds": [
+            "map_node"
+          ],
+          "distinct_selected_kinds": [
+            "map_node"
+          ],
+          "exact_single_kind_saturation": true,
+          "multi_candidate_decisions": 672,
+          "multi_kind_decisions": 0,
+          "multi_kind_selected_kinds": {},
+          "selected_kinds": {
+            "map_node": {
+              "count": 1699,
+              "rate": 1.0
+            }
+          },
+          "selected_score_margin": {
+            "count": 672,
+            "max": 0.044003620743751526,
+            "mean": 0.00952471631379532,
+            "median": 0.008249938488006592,
+            "min": 6.258487701416016e-06
+          },
+          "single_candidate_decisions": 1027,
+          "state_effect": {
+            "magnitude": {
+              "count": 672,
+              "max": 0.038070566952228546,
+              "mean": 0.009270138118327373,
+              "median": 0.008054377511143684,
+              "min": 3.582611680030823e-05
+            },
+            "multi_candidate_decisions": 672,
+            "nonzero_effect_decisions": 672,
+            "relative_order_change_decisions": 228
+          },
+          "top_score_margin": {
+            "count": 672,
+            "max": 0.044003620743751526,
+            "mean": 0.00952471631379532,
+            "median": 0.008249938488006592,
+            "min": 6.258487701416016e-06
+          }
+        },
+        "shop": {
+          "candidate_kind_occurrences": {
+            "buy_card": 850,
+            "buy_potion": 323,
+            "buy_relic": 119,
+            "leave": 203,
+            "remove_card": 138
+          },
+          "candidate_kind_opportunities": {
+            "buy_card": 168,
+            "buy_potion": 114,
+            "buy_relic": 58,
+            "leave": 203,
+            "remove_card": 138
+          },
+          "decision_count": 203,
+          "distinct_candidate_kinds": [
+            "buy_card",
+            "buy_potion",
+            "buy_relic",
+            "leave",
+            "remove_card"
+          ],
+          "distinct_selected_kinds": [
+            "buy_card",
+            "buy_potion",
+            "buy_relic",
+            "leave"
+          ],
+          "exact_single_kind_saturation": false,
+          "multi_candidate_decisions": 168,
+          "multi_kind_decisions": 168,
+          "multi_kind_selected_kinds": {
+            "buy_card": {
+              "count": 85,
+              "rate": 0.5059523809523809
+            },
+            "buy_potion": {
+              "count": 11,
+              "rate": 0.06547619047619048
+            },
+            "buy_relic": {
+              "count": 8,
+              "rate": 0.047619047619047616
+            },
+            "leave": {
+              "count": 64,
+              "rate": 0.38095238095238093
+            }
+          },
+          "selected_kinds": {
+            "buy_card": {
+              "count": 85,
+              "rate": 0.4187192118226601
+            },
+            "buy_potion": {
+              "count": 11,
+              "rate": 0.054187192118226604
+            },
+            "buy_relic": {
+              "count": 8,
+              "rate": 0.03940886699507389
+            },
+            "leave": {
+              "count": 99,
+              "rate": 0.4876847290640394
+            }
+          },
+          "selected_score_margin": {
+            "count": 168,
+            "max": 0.02434772253036499,
+            "mean": 0.00528172306006863,
+            "median": 0.003710281103849411,
+            "min": 5.662441253662109e-07
+          },
+          "single_candidate_decisions": 35,
+          "state_effect": {
+            "magnitude": {
+              "count": 168,
+              "max": 0.04640914127230644,
+              "mean": 0.019724769273861534,
+              "median": 0.01911267265677452,
+              "min": 0.0036145001649856567
+            },
+            "multi_candidate_decisions": 168,
+            "nonzero_effect_decisions": 168,
+            "relative_order_change_decisions": 157
+          },
+          "top_score_margin": {
+            "count": 168,
+            "max": 0.02434772253036499,
+            "mean": 0.00528172306006863,
+            "median": 0.003710281103849411,
+            "min": 5.662441253662109e-07
+          }
+        }
+      },
+      "decision_count": 3119,
+      "schema_version": "noncombat-state-conditioned-experiment-diagnostics-v1",
+      "state_effect": {
+        "magnitude": {
+          "count": 2047,
+          "max": 0.04686560481786728,
+          "mean": 0.012250286056994518,
+          "median": 0.011475257575511932,
+          "min": 3.582611680030823e-05
+        },
+        "multi_candidate_decisions": 2047,
+        "nonzero_effect_decisions": 2047,
+        "relative_order_change_decisions": 1271
+      }
+    },
+    "canary_trained": {
+      "authority": {
+        "causal_claim_authorized": false,
+        "cohort_materialization_authorized": false,
+        "communication_mod_authorized": false,
+        "environment_construction_authorized": false,
+        "execution_authorized": false,
+        "formal_rl_authorized": false,
+        "fresh_evidence_authorized": false,
+        "gameplay_authorized": false,
+        "live_execution_authorized": false,
+        "model_fitting_authorized": false,
+        "native_loading_authorized": false,
+        "ope_authorized": false,
+        "policy_loading_authorized": false,
+        "production_checkpoint_mutation_authorized": false,
+        "promotion_authorized": false,
+        "qualification_authorized": false,
+        "seed_access_authorized": false,
+        "target_supported_outcome_authorized": false,
+        "training_authorized": false
+      },
+      "categories": {
+        "card_reward": {
+          "candidate_kind_occurrences": {
+            "bowl": 21,
+            "skip": 1437,
+            "take": 4388
+          },
+          "candidate_kind_opportunities": {
+            "bowl": 21,
+            "skip": 1437,
+            "take": 1458
+          },
+          "card_reward": {
+            "availability_decisions": {
+              "bowl": 21,
+              "skip": 1437,
+              "take": 1458
+            },
+            "selections": {
+              "bowl": 0,
+              "skip": 0,
+              "take": 1458
+            }
+          },
+          "decision_count": 1458,
+          "distinct_candidate_kinds": [
+            "bowl",
+            "skip",
+            "take"
+          ],
+          "distinct_selected_kinds": [
+            "take"
+          ],
+          "exact_single_kind_saturation": true,
+          "multi_candidate_decisions": 1458,
+          "multi_kind_decisions": 1458,
+          "multi_kind_selected_kinds": {
+            "take": {
+              "count": 1458,
+              "rate": 1.0
+            }
+          },
+          "selected_kinds": {
+            "take": {
+              "count": 1458,
+              "rate": 1.0
+            }
+          },
+          "selected_score_margin": {
+            "count": 1458,
+            "max": 1.531940832734108,
+            "mean": 0.3199266669518009,
+            "median": 0.2607993483543396,
+            "min": 0.0006607770919799805
+          },
+          "single_candidate_decisions": 0,
+          "state_effect": {
+            "magnitude": {
+              "count": 1458,
+              "max": 0.641747772693634,
+              "mean": 0.3528771603835136,
+              "median": 0.33355990052223206,
+              "min": 0.04852983355522156
+            },
+            "multi_candidate_decisions": 1458,
+            "nonzero_effect_decisions": 1458,
+            "relative_order_change_decisions": 70
+          },
+          "top_score_margin": {
+            "count": 1458,
+            "max": 1.531940832734108,
+            "mean": 0.3199266669518009,
+            "median": 0.2607993483543396,
+            "min": 0.0006607770919799805
+          }
+        },
+        "event": {
+          "candidate_kind_occurrences": {
+            "event_option": 1324
+          },
+          "candidate_kind_opportunities": {
+            "event_option": 564
+          },
+          "decision_count": 564,
+          "distinct_candidate_kinds": [
+            "event_option"
+          ],
+          "distinct_selected_kinds": [
+            "event_option"
+          ],
+          "exact_single_kind_saturation": true,
+          "multi_candidate_decisions": 554,
+          "multi_kind_decisions": 0,
+          "multi_kind_selected_kinds": {},
+          "selected_kinds": {
+            "event_option": {
+              "count": 564,
+              "rate": 1.0
+            }
+          },
+          "selected_score_margin": {
+            "count": 554,
+            "max": 0.34023070335388184,
+            "mean": 0.12256453404142538,
+            "median": 0.09019458293914795,
+            "min": 0.0004121065139770508
+          },
+          "single_candidate_decisions": 10,
+          "state_effect": {
+            "magnitude": {
+              "count": 554,
+              "max": 0.11066949367523193,
+              "mean": 0.05231088679620075,
+              "median": 0.046947181224823,
+              "min": 0.0018413513898849487
+            },
+            "multi_candidate_decisions": 554,
+            "nonzero_effect_decisions": 554,
+            "relative_order_change_decisions": 18
+          },
+          "top_score_margin": {
+            "count": 554,
+            "max": 0.34023070335388184,
+            "mean": 0.12256453404142538,
+            "median": 0.09019458293914795,
+            "min": 0.0004121065139770508
+          }
+        },
+        "route": {
+          "candidate_kind_occurrences": {
+            "map_node": 4490
+          },
+          "candidate_kind_opportunities": {
+            "map_node": 3000
+          },
+          "decision_count": 3000,
+          "distinct_candidate_kinds": [
+            "map_node"
+          ],
+          "distinct_selected_kinds": [
+            "map_node"
+          ],
+          "exact_single_kind_saturation": true,
+          "multi_candidate_decisions": 1089,
+          "multi_kind_decisions": 0,
+          "multi_kind_selected_kinds": {},
+          "selected_kinds": {
+            "map_node": {
+              "count": 3000,
+              "rate": 1.0
+            }
+          },
+          "selected_score_margin": {
+            "count": 1089,
+            "max": 0.9673738181591034,
+            "mean": 0.2788824046405222,
+            "median": 0.24026477336883545,
+            "min": 0.0005289316177368164
+          },
+          "single_candidate_decisions": 1911,
+          "state_effect": {
+            "magnitude": {
+              "count": 1089,
+              "max": 0.3523977994918823,
+              "mean": 0.0880366196296596,
+              "median": 0.0787566602230072,
+              "min": 0.0005965158343315125
+            },
+            "multi_candidate_decisions": 1089,
+            "nonzero_effect_decisions": 1089,
+            "relative_order_change_decisions": 42
+          },
+          "top_score_margin": {
+            "count": 1089,
+            "max": 0.9673738181591034,
+            "mean": 0.2788824046405222,
+            "median": 0.24026477336883545,
+            "min": 0.0005289316177368164
+          }
+        },
+        "shop": {
+          "candidate_kind_occurrences": {
+            "buy_card": 2035,
+            "buy_potion": 407,
+            "buy_relic": 371,
+            "leave": 663,
+            "remove_card": 339
+          },
+          "candidate_kind_opportunities": {
+            "buy_card": 453,
+            "buy_potion": 149,
+            "buy_relic": 164,
+            "leave": 663,
+            "remove_card": 339
+          },
+          "decision_count": 663,
+          "distinct_candidate_kinds": [
+            "buy_card",
+            "buy_potion",
+            "buy_relic",
+            "leave",
+            "remove_card"
+          ],
+          "distinct_selected_kinds": [
+            "buy_card",
+            "buy_potion",
+            "buy_relic",
+            "leave",
+            "remove_card"
+          ],
+          "exact_single_kind_saturation": false,
+          "multi_candidate_decisions": 455,
+          "multi_kind_decisions": 455,
+          "multi_kind_selected_kinds": {
+            "buy_card": {
+              "count": 419,
+              "rate": 0.9208791208791208
+            },
+            "buy_potion": {
+              "count": 6,
+              "rate": 0.013186813186813187
+            },
+            "buy_relic": {
+              "count": 1,
+              "rate": 0.002197802197802198
+            },
+            "leave": {
+              "count": 16,
+              "rate": 0.035164835164835165
+            },
+            "remove_card": {
+              "count": 13,
+              "rate": 0.02857142857142857
+            }
+          },
+          "selected_kinds": {
+            "buy_card": {
+              "count": 419,
+              "rate": 0.6319758672699849
+            },
+            "buy_potion": {
+              "count": 6,
+              "rate": 0.00904977375565611
+            },
+            "buy_relic": {
+              "count": 1,
+              "rate": 0.0015082956259426848
+            },
+            "leave": {
+              "count": 224,
+              "rate": 0.3378582202111614
+            },
+            "remove_card": {
+              "count": 13,
+              "rate": 0.0196078431372549
+            }
+          },
+          "selected_score_margin": {
+            "count": 455,
+            "max": 0.7404590845108032,
+            "mean": 0.1613588022661733,
+            "median": 0.12146127223968506,
+            "min": 1.9669532775878906e-05
+          },
+          "single_candidate_decisions": 208,
+          "state_effect": {
+            "magnitude": {
+              "count": 455,
+              "max": 0.4030880331993103,
+              "mean": 0.1404005116240664,
+              "median": 0.13868141174316406,
+              "min": 0.0002864822745323181
+            },
+            "multi_candidate_decisions": 455,
+            "nonzero_effect_decisions": 455,
+            "relative_order_change_decisions": 236
+          },
+          "top_score_margin": {
+            "count": 455,
+            "max": 0.7404590845108032,
+            "mean": 0.1613588022661733,
+            "median": 0.12146127223968506,
+            "min": 1.9669532775878906e-05
+          }
+        }
+      },
+      "decision_count": 5685,
+      "schema_version": "noncombat-state-conditioned-experiment-diagnostics-v1",
+      "state_effect": {
+        "magnitude": {
+          "count": 3556,
+          "max": 0.641747772693634,
+          "mean": 0.19775850469344983,
+          "median": 0.15543639659881592,
+          "min": 0.0002864822745323181
+        },
+        "multi_candidate_decisions": 3556,
+        "nonzero_effect_decisions": 3556,
+        "relative_order_change_decisions": 366
+      }
+    },
+    "holdout_accessed": false,
+    "holdout_initial": null,
+    "holdout_trained": null
+  },
+  "schema_version": "noncombat-state-conditioned-terminal-diagnostics-v1",
+  "training": {
+    "authority": {
+      "causal_claim_authorized": false,
+      "cohort_materialization_authorized": false,
+      "communication_mod_authorized": false,
+      "environment_construction_authorized": false,
+      "execution_authorized": false,
+      "formal_rl_authorized": false,
+      "fresh_evidence_authorized": false,
+      "gameplay_authorized": false,
+      "live_execution_authorized": false,
+      "model_fitting_authorized": false,
+      "native_loading_authorized": false,
+      "ope_authorized": false,
+      "policy_loading_authorized": false,
+      "production_checkpoint_mutation_authorized": false,
+      "promotion_authorized": false,
+      "qualification_authorized": false,
+      "seed_access_authorized": false,
+      "target_supported_outcome_authorized": false,
+      "training_authorized": false
+    },
+    "categories": {
+      "card_reward": {
+        "candidate_kind_occurrences": {
+          "bowl": 265,
+          "skip": 31306,
+          "take": 94841
+        },
+        "candidate_kind_opportunities": {
+          "bowl": 265,
+          "skip": 31306,
+          "take": 31571
+        },
+        "card_reward": {
+          "availability_decisions": {
+            "bowl": 265,
+            "skip": 31306,
+            "take": 31571
+          },
+          "selections": {
+            "bowl": 62,
+            "skip": 5991,
+            "take": 25518
+          }
+        },
+        "decision_count": 31571,
+        "distinct_candidate_kinds": [
+          "bowl",
+          "skip",
+          "take"
+        ],
+        "distinct_selected_kinds": [
+          "bowl",
+          "skip",
+          "take"
+        ],
+        "exact_single_kind_saturation": false,
+        "multi_candidate_decisions": 31571,
+        "multi_kind_decisions": 31571,
+        "multi_kind_selected_kinds": {
+          "bowl": {
+            "count": 62,
+            "rate": 0.0019638275632700894
+          },
+          "skip": {
+            "count": 5991,
+            "rate": 0.18976275696050174
+          },
+          "take": {
+            "count": 25518,
+            "rate": 0.8082734154762282
+          }
+        },
+        "selected_kinds": {
+          "bowl": {
+            "count": 62,
+            "rate": 0.0019638275632700894
+          },
+          "skip": {
+            "count": 5991,
+            "rate": 0.18976275696050174
+          },
+          "take": {
+            "count": 25518,
+            "rate": 0.8082734154762282
+          }
+        },
+        "selected_score_margin": {
+          "count": 31571,
+          "max": 1.1198334693908691,
+          "mean": -0.11226955355177752,
+          "median": -0.057277753949165344,
+          "min": -1.6053112745285034
+        },
+        "single_candidate_decisions": 0,
+        "state_effect": {
+          "magnitude": {
+            "count": 31571,
+            "max": 0.6223345398902893,
+            "mean": 0.13390176625761432,
+            "median": 0.10992497205734253,
+            "min": 0.0009130164980888367
+          },
+          "multi_candidate_decisions": 31571,
+          "nonzero_effect_decisions": 31571,
+          "relative_order_change_decisions": 4911
+        },
+        "top_score_margin": {
+          "count": 31571,
+          "max": 1.4443582594394684,
+          "mean": 0.12786661359022475,
+          "median": 0.07032966613769531,
+          "min": 2.980232238769531e-07
+        }
+      },
+      "event": {
+        "candidate_kind_occurrences": {
+          "event_option": 21561
+        },
+        "candidate_kind_opportunities": {
+          "event_option": 9097
+        },
+        "decision_count": 9097,
+        "distinct_candidate_kinds": [
+          "event_option"
+        ],
+        "distinct_selected_kinds": [
+          "event_option"
+        ],
+        "exact_single_kind_saturation": true,
+        "multi_candidate_decisions": 8825,
+        "multi_kind_decisions": 0,
+        "multi_kind_selected_kinds": {},
+        "selected_kinds": {
+          "event_option": {
+            "count": 9097,
+            "rate": 1.0
+          }
+        },
+        "selected_score_margin": {
+          "count": 8825,
+          "max": 0.32853347063064575,
+          "mean": -0.006564360177381856,
+          "median": -0.007097095251083374,
+          "min": -0.3683243989944458
+        },
+        "single_candidate_decisions": 272,
+        "state_effect": {
+          "magnitude": {
+            "count": 8825,
+            "max": 0.10668231546878815,
+            "mean": 0.025406316944289815,
+            "median": 0.018162012100219727,
+            "min": 1.2293457984924316e-05
+          },
+          "multi_candidate_decisions": 8825,
+          "nonzero_effect_decisions": 8825,
+          "relative_order_change_decisions": 1123
+        },
+        "top_score_margin": {
+          "count": 8825,
+          "max": 0.3285335898399353,
+          "mean": 0.06202254565933946,
+          "median": 0.036598801612854004,
+          "min": 1.3530254364013672e-05
+        }
+      },
+      "route": {
+        "candidate_kind_occurrences": {
+          "map_node": 87198
+        },
+        "candidate_kind_opportunities": {
+          "map_node": 57256
+        },
+        "decision_count": 57256,
+        "distinct_candidate_kinds": [
+          "map_node"
+        ],
+        "distinct_selected_kinds": [
+          "map_node"
+        ],
+        "exact_single_kind_saturation": true,
+        "multi_candidate_decisions": 21748,
+        "multi_kind_decisions": 0,
+        "multi_kind_selected_kinds": {},
+        "selected_kinds": {
+          "map_node": {
+            "count": 57256,
+            "rate": 1.0
+          }
+        },
+        "selected_score_margin": {
+          "count": 21748,
+          "max": 0.8973749876022339,
+          "mean": 0.005856058985804764,
+          "median": -0.004369847476482391,
+          "min": -0.8727425932884216
+        },
+        "single_candidate_decisions": 35508,
+        "state_effect": {
+          "magnitude": {
+            "count": 21748,
+            "max": 0.3437543511390686,
+            "mean": 0.036385416590326194,
+            "median": 0.019537275657057762,
+            "min": 2.086162567138672e-06
+          },
+          "multi_candidate_decisions": 21748,
+          "nonzero_effect_decisions": 21748,
+          "relative_order_change_decisions": 2680
+        },
+        "top_score_margin": {
+          "count": 21748,
+          "max": 0.8973749876022339,
+          "mean": 0.11502067675118238,
+          "median": 0.06132562458515167,
+          "min": 1.5273690223693848e-06
+        }
+      },
+      "shop": {
+        "candidate_kind_occurrences": {
+          "buy_card": 31063,
+          "buy_potion": 9533,
+          "buy_relic": 4443,
+          "leave": 9180,
+          "remove_card": 4677
+        },
+        "candidate_kind_opportunities": {
+          "buy_card": 6728,
+          "buy_potion": 3542,
+          "buy_relic": 2082,
+          "leave": 9180,
+          "remove_card": 4677
+        },
+        "decision_count": 9180,
+        "distinct_candidate_kinds": [
+          "buy_card",
+          "buy_potion",
+          "buy_relic",
+          "leave",
+          "remove_card"
+        ],
+        "distinct_selected_kinds": [
+          "buy_card",
+          "buy_potion",
+          "buy_relic",
+          "leave",
+          "remove_card"
+        ],
+        "exact_single_kind_saturation": false,
+        "multi_candidate_decisions": 6745,
+        "multi_kind_decisions": 6745,
+        "multi_kind_selected_kinds": {
+          "buy_card": {
+            "count": 3914,
+            "rate": 0.5802816901408451
+          },
+          "buy_potion": {
+            "count": 945,
+            "rate": 0.14010378057820608
+          },
+          "buy_relic": {
+            "count": 374,
+            "rate": 0.055448480355819126
+          },
+          "leave": {
+            "count": 1016,
+            "rate": 0.15063009636767977
+          },
+          "remove_card": {
+            "count": 496,
+            "rate": 0.07353595255744996
+          }
+        },
+        "selected_kinds": {
+          "buy_card": {
+            "count": 3914,
+            "rate": 0.4263616557734205
+          },
+          "buy_potion": {
+            "count": 945,
+            "rate": 0.10294117647058823
+          },
+          "buy_relic": {
+            "count": 374,
+            "rate": 0.040740740740740744
+          },
+          "leave": {
+            "count": 3451,
+            "rate": 0.37592592592592594
+          },
+          "remove_card": {
+            "count": 496,
+            "rate": 0.05403050108932462
+          }
+        },
+        "selected_score_margin": {
+          "count": 6745,
+          "max": 0.9889264702796936,
+          "mean": -0.1337363415825049,
+          "median": -0.07918834686279297,
+          "min": -1.0276563167572021
+        },
+        "single_candidate_decisions": 2435,
+        "state_effect": {
+          "magnitude": {
+            "count": 6745,
+            "max": 0.4022737741470337,
+            "mean": 0.0688013397060539,
+            "median": 0.045144110918045044,
+            "min": 1.8462538719177246e-05
+          },
+          "multi_candidate_decisions": 6745,
+          "nonzero_effect_decisions": 6745,
+          "relative_order_change_decisions": 4614
+        },
+        "top_score_margin": {
+          "count": 6745,
+          "max": 0.9889264702796936,
+          "mean": 0.08980129418481801,
+          "median": 0.04614466428756714,
+          "min": 1.9073486328125e-06
+        }
+      }
+    },
+    "decision_count": 107104,
+    "schema_version": "noncombat-state-conditioned-experiment-diagnostics-v1",
+    "state_effect": {
+      "magnitude": {
+        "count": 68889,
+        "max": 0.6223345398902893,
+        "mean": 0.08284339278950555,
+        "median": 0.04234123229980469,
+        "min": 2.086162567138672e-06
+      },
+      "multi_candidate_decisions": 68889,
+      "nonzero_effect_decisions": 68889,
+      "relative_order_change_decisions": 13328
+    }
+  }
+}

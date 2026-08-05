@@ -1,0 +1,68 @@
+{
+  "authority": {
+    "causal_claim_authorized": false,
+    "cohort_materialization_authorized": false,
+    "communication_mod_authorized": false,
+    "environment_construction_authorized": true,
+    "execution_authorized": true,
+    "formal_rl_authorized": false,
+    "fresh_evidence_authorized": true,
+    "gameplay_authorized": false,
+    "live_execution_authorized": false,
+    "model_fitting_authorized": true,
+    "native_loading_authorized": true,
+    "ope_authorized": false,
+    "policy_loading_authorized": false,
+    "production_checkpoint_mutation_authorized": false,
+    "promotion_authorized": false,
+    "qualification_authorized": false,
+    "seed_access_authorized": true,
+    "target_supported_outcome_authorized": false,
+    "training_authorized": true
+  },
+  "execution": {
+    "authorization_path": "reports/noncombat_state_conditioned_simulator_learning_experiment_20260805_authorization.json",
+    "cohorts_sha256": "32ae5afc8a84310bb9fa347c2cdae583f96eacda3b3d63c8cf11b8e44ff9d592",
+    "command": [
+      "D:/anaconda/envs/stsai/python.exe",
+      "D:/PycharmProjects/slay-the-spire-ai/analysis_scripts/noncombat_state_conditioned_simulator_learning_experiment.py",
+      "execute",
+      "--repo-root",
+      "D:/PycharmProjects/slay-the-spire-ai",
+      "--registration",
+      "D:/PycharmProjects/slay-the-spire-ai/reports/noncombat_state_conditioned_simulator_learning_experiment_20260805_registration.json",
+      "--authorization",
+      "D:/PycharmProjects/slay-the-spire-ai/reports/noncombat_state_conditioned_simulator_learning_experiment_20260805_authorization.json",
+      "--output",
+      "D:/PycharmProjects/slay-the-spire-ai/reports/noncombat_state_conditioned_simulator_learning_experiment_20260805"
+    ],
+    "native_module": {
+      "path": "D:/PycharmProjects/slay-the-spire-ai/.sts_lightspeed_adapter_v3_shop_support_build/sts_lightspeed_noncombat_adapter.cp310-win_amd64.pyd",
+      "sha256": "7ac2c750fba6e38d4a023cab72a4d67f158fe7f88414058e5876cef5003fcb88",
+      "size_bytes": 4225024
+    },
+    "one_logical_attempt": true,
+    "repository_root": "D:/PycharmProjects/slay-the-spire-ai",
+    "resource_limits": {
+      "bootstrap_resamples": 10000,
+      "max_checkpoint_count": 64,
+      "max_episodes": 4096,
+      "max_evaluation_episodes": 2560,
+      "max_total_episodes": 6656,
+      "max_wall_seconds": 28800.0,
+      "train_passes": 4,
+      "training_chunk_size": 64,
+      "unsupported_rate_ceiling": 0.1
+    },
+    "same_identity_checkpoint_resume_authorized": true
+  },
+  "logical_execution_id": "noncombat-state-conditioned-simulator-learning-20260805-r1",
+  "output_directory": "reports/noncombat_state_conditioned_simulator_learning_experiment_20260805",
+  "registration": {
+    "commit": "a97d47714399a6528cfe6a85bd3ece88e4a54fc6",
+    "path": "reports/noncombat_state_conditioned_simulator_learning_experiment_20260805_registration.json",
+    "sha256": "d4a6ed9469410288f0670645f33c6cbf3c40f507afdc29a47fa229c7a6994f18",
+    "size_bytes": 485693
+  },
+  "schema_version": "noncombat-state-conditioned-simulator-learning-authorization-v1"
+}

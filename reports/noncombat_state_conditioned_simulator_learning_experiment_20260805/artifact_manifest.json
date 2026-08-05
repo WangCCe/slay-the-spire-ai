@@ -1,0 +1,405 @@
+{
+  "artifact_count": 75,
+  "artifacts": [
+    {
+      "path": "authorization.json",
+      "sha256": "9fc738d9e3eaaacb391bd5a4b34fe4e28c1d626d4cc6e922028a088500e73e42",
+      "size_bytes": 3108
+    },
+    {
+      "path": "checkpoints/checkpoint_0001.json",
+      "sha256": "c7a021e7e22dc44c3e84155f545db490e2345beaf93a557918ee1884c2df998d",
+      "size_bytes": 4007876
+    },
+    {
+      "path": "checkpoints/checkpoint_0002.json",
+      "sha256": "2d235156657c823a33a4405f90c58625ba5ff49066100b709fbe1ebe6e3ec593",
+      "size_bytes": 3965437
+    },
+    {
+      "path": "checkpoints/checkpoint_0003.json",
+      "sha256": "ce7c0c112c0a51d8954e7a247056256ffe3c7dfbd3192e53ac32fed0b357a828",
+      "size_bytes": 3782345
+    },
+    {
+      "path": "checkpoints/checkpoint_0004.json",
+      "sha256": "8ecbf742b34ee28d3f9fc4affac2e87cae70a7906047845b719b359a6702fc7c",
+      "size_bytes": 3931275
+    },
+    {
+      "path": "checkpoints/checkpoint_0005.json",
+      "sha256": "6ce9712aacccb60ca8bfc743acad3868d98659be08f3b9e6e551cadd3ca2d716",
+      "size_bytes": 4009393
+    },
+    {
+      "path": "checkpoints/checkpoint_0006.json",
+      "sha256": "68725a517e0f0094f6a4bc0d9ede5c621ee77b6f920c1a3c03f511aa48df0b66",
+      "size_bytes": 3849526
+    },
+    {
+      "path": "checkpoints/checkpoint_0007.json",
+      "sha256": "4446913ffff09b0dab7613d770441f1ac16870e6131f68e3dd842ec32d77a1bd",
+      "size_bytes": 3939968
+    },
+    {
+      "path": "checkpoints/checkpoint_0008.json",
+      "sha256": "b4bcabe88c29333df07ec3be8ef8fd2b2bdf42c4acd146f496f229ffab204559",
+      "size_bytes": 3892389
+    },
+    {
+      "path": "checkpoints/checkpoint_0009.json",
+      "sha256": "768c46d00a80e3fae91f5ede9eda45af51e99e8ee922cf982b3c85e43d9f4ff6",
+      "size_bytes": 4030921
+    },
+    {
+      "path": "checkpoints/checkpoint_0010.json",
+      "sha256": "dba2c0e64334bbb25742d9d336dfa255fa1b0f446625ecad417e9a93e0f12022",
+      "size_bytes": 4000022
+    },
+    {
+      "path": "checkpoints/checkpoint_0011.json",
+      "sha256": "3ee564d4d480014ce9d334495643735c3ab5242317af0f9833461a17ea9fc22f",
+      "size_bytes": 4095516
+    },
+    {
+      "path": "checkpoints/checkpoint_0012.json",
+      "sha256": "d0cef3a13b77fcba4cd3282904f20a1344ce642aef36ed494760aaba7cdf1ccb",
+      "size_bytes": 3977178
+    },
+    {
+      "path": "checkpoints/checkpoint_0013.json",
+      "sha256": "8a8fd07d0895a1659313ff9df89e9797e6e245514e01ed0956c617c7c8c884dd",
+      "size_bytes": 4026187
+    },
+    {
+      "path": "checkpoints/checkpoint_0014.json",
+      "sha256": "db6da0365b5aecc09d2c872553fab3f9b2cb10d406ef7fa18ffb4a14540adb3a",
+      "size_bytes": 4033839
+    },
+    {
+      "path": "checkpoints/checkpoint_0015.json",
+      "sha256": "ff3d82aec40430dc8643c8f3b268c36011242de78a746083db202239b288e016",
+      "size_bytes": 4010138
+    },
+    {
+      "path": "checkpoints/checkpoint_0016.json",
+      "sha256": "c064f8e7747fef4300b74bd943d61c59b29bf190809bd996e11cb2d8068151bd",
+      "size_bytes": 3915874
+    },
+    {
+      "path": "checkpoints/checkpoint_0017.json",
+      "sha256": "a2243dfa735c1dd5b5398057b44c18092b508fc080ffe106c6a3d02624ff7776",
+      "size_bytes": 4058204
+    },
+    {
+      "path": "checkpoints/checkpoint_0018.json",
+      "sha256": "669069e5d35e09c4809a58439daac65adf5c99047dbd475159ca05491d2be828",
+      "size_bytes": 3888637
+    },
+    {
+      "path": "checkpoints/checkpoint_0019.json",
+      "sha256": "5c9b6dd55c3aa681fb25e86f6093b22e91104bf23132a8319877ab87e3755473",
+      "size_bytes": 3800161
+    },
+    {
+      "path": "checkpoints/checkpoint_0020.json",
+      "sha256": "602041a344c25c26c8d75cd7e289c6565d0a87ca1727d55e00276b0f3d4f9189",
+      "size_bytes": 3946582
+    },
+    {
+      "path": "checkpoints/checkpoint_0021.json",
+      "sha256": "e5306a54703868875455a4510ea72e55c035aeacf9802098588e45e9b8c9d127",
+      "size_bytes": 4134876
+    },
+    {
+      "path": "checkpoints/checkpoint_0022.json",
+      "sha256": "f5e2ca39a3169e8a388f9de97308fac2590b5f49ab8c31a6997691f471bb8ea2",
+      "size_bytes": 4009317
+    },
+    {
+      "path": "checkpoints/checkpoint_0023.json",
+      "sha256": "40f5a0f3543d81b8fc3ec1d1c6492be57e6e0c2a881c1db78794c8747eb113f9",
+      "size_bytes": 3965984
+    },
+    {
+      "path": "checkpoints/checkpoint_0024.json",
+      "sha256": "e1683812955845748d0bb83aa82d4995272f87d8f92da805633e465e49e93409",
+      "size_bytes": 3939407
+    },
+    {
+      "path": "checkpoints/checkpoint_0025.json",
+      "sha256": "09fab38ce540d90501a37360df328bbd15323ebd79c2a6b084b502a51660dcc4",
+      "size_bytes": 3869903
+    },
+    {
+      "path": "checkpoints/checkpoint_0026.json",
+      "sha256": "ae01ee245abe9777df694f1f9f63acc282acf3e3fd7cc71e8809bfd7aee99466",
+      "size_bytes": 3871729
+    },
+    {
+      "path": "checkpoints/checkpoint_0027.json",
+      "sha256": "02839b8fe0c30102050b00486a90038d8aaf07e364c6ffc82c8a27726333261e",
+      "size_bytes": 4183111
+    },
+    {
+      "path": "checkpoints/checkpoint_0028.json",
+      "sha256": "5f6fe5731f4356818356521899f42749248059ae61ba1f5e2d303521aa4851af",
+      "size_bytes": 4061469
+    },
+    {
+      "path": "checkpoints/checkpoint_0029.json",
+      "sha256": "bfd4dc8069994e2e2ee88c768efd98e600fe77232adafe5f81721b7fbe76da44",
+      "size_bytes": 4100904
+    },
+    {
+      "path": "checkpoints/checkpoint_0030.json",
+      "sha256": "72163a961a36818e8a898ed848ca3ce88e8e6e144d5cfac980d36ddecea6598f",
+      "size_bytes": 4028238
+    },
+    {
+      "path": "checkpoints/checkpoint_0031.json",
+      "sha256": "d333873f61e1ffb1fbf3a6298655a2b19f7962359dac5e62a8ea8149939d4441",
+      "size_bytes": 4093066
+    },
+    {
+      "path": "checkpoints/checkpoint_0032.json",
+      "sha256": "524d9c7f6470434dfa5f4af94f4dc870b76b5aa7f44ea870b2e77fbd00681275",
+      "size_bytes": 3930971
+    },
+    {
+      "path": "checkpoints/checkpoint_0033.json",
+      "sha256": "6428db0389584fd8bb84f32d5cb7b7c6dbc7900eba4d01080a87e6998f6e94ce",
+      "size_bytes": 4039671
+    },
+    {
+      "path": "checkpoints/checkpoint_0034.json",
+      "sha256": "a5cc1b653553cc8076146672c3acc3214429450f84edd11f3760bbfa176acd93",
+      "size_bytes": 3983449
+    },
+    {
+      "path": "checkpoints/checkpoint_0035.json",
+      "sha256": "95b25d6f42f04ad820d3e501948d6d8a5c492b50f3102183b00e6c9950f85299",
+      "size_bytes": 3968468
+    },
+    {
+      "path": "checkpoints/checkpoint_0036.json",
+      "sha256": "022056833f9d4e7734d62ac1ac2c17e00e4aa2cef9620aab78b56151d7941524",
+      "size_bytes": 3965064
+    },
+    {
+      "path": "checkpoints/checkpoint_0037.json",
+      "sha256": "e481eb1445b69bd4977507e65057be01dfc1ad6c00cb62564d02bd0b5ea051f4",
+      "size_bytes": 3997665
+    },
+    {
+      "path": "checkpoints/checkpoint_0038.json",
+      "sha256": "03487c6e4e56220026b9a5fa007302ddeb477c13ed26f504a9c9abf2f0f0f6fc",
+      "size_bytes": 3971958
+    },
+    {
+      "path": "checkpoints/checkpoint_0039.json",
+      "sha256": "e7675081371f8ba37f83ea4a56f05a695871a65a2c3207e3c9dfce736e357783",
+      "size_bytes": 4123994
+    },
+    {
+      "path": "checkpoints/checkpoint_0040.json",
+      "sha256": "a150582df3ee1b7f005690bf72408eaa89061eb8055d3e0128f8bdd3112733b1",
+      "size_bytes": 3996300
+    },
+    {
+      "path": "checkpoints/checkpoint_0041.json",
+      "sha256": "343e0055630c4f630874dfe54f453da2c432d0b95cbbb75de9f684cc44407235",
+      "size_bytes": 4027643
+    },
+    {
+      "path": "checkpoints/checkpoint_0042.json",
+      "sha256": "4a2181c869c92e9f0a35cf564c29eabe74aa0ac283ae4e03530ab2dc05098a91",
+      "size_bytes": 4054117
+    },
+    {
+      "path": "checkpoints/checkpoint_0043.json",
+      "sha256": "8eb8ddaba2282784bdcb706cb40dea46b263ec6c60541de597a0fac21b2392ba",
+      "size_bytes": 4123338
+    },
+    {
+      "path": "checkpoints/checkpoint_0044.json",
+      "sha256": "568936c4ca244f4861cba9b351607feb5ea05a891c15037c33419ebcf7b40139",
+      "size_bytes": 3866948
+    },
+    {
+      "path": "checkpoints/checkpoint_0045.json",
+      "sha256": "970034daf4f8086be3dbd18947387ef154e387fc862a08a9c407bd7c5aefa530",
+      "size_bytes": 4061593
+    },
+    {
+      "path": "checkpoints/checkpoint_0046.json",
+      "sha256": "a628d143fb4abc45d280c390472194a92be15ecdaed563e7e844da2517c2d7b4",
+      "size_bytes": 3919011
+    },
+    {
+      "path": "checkpoints/checkpoint_0047.json",
+      "sha256": "8655efc620f8359ce12e57b940d3963d63441e86b26dfe352be463e49f464911",
+      "size_bytes": 4292107
+    },
+    {
+      "path": "checkpoints/checkpoint_0048.json",
+      "sha256": "cc49c27107236b79151d71bedb02df86da846d70bd11ab5ecfb284b9e2249167",
+      "size_bytes": 4249138
+    },
+    {
+      "path": "checkpoints/checkpoint_0049.json",
+      "sha256": "cbe7d8c4f541527695f7b2a6c9d4e40a61dd9225467bf9faf9082fc231736671",
+      "size_bytes": 4218707
+    },
+    {
+      "path": "checkpoints/checkpoint_0050.json",
+      "sha256": "6c00d8e59359620cc693020b8fdff49ebfaa8a0215b4b1a3f238bb57254ad41d",
+      "size_bytes": 4042605
+    },
+    {
+      "path": "checkpoints/checkpoint_0051.json",
+      "sha256": "684cd423e3720cd8190c778f0aad20cbdba6ebca7ce96eafa71ef30b641221a3",
+      "size_bytes": 4096916
+    },
+    {
+      "path": "checkpoints/checkpoint_0052.json",
+      "sha256": "de778705d287242566842b67cc4a2d1482d2e92fd47c5b6f85a5c0978030e813",
+      "size_bytes": 4222108
+    },
+    {
+      "path": "checkpoints/checkpoint_0053.json",
+      "sha256": "dd3c3955086c43a5c645766313462a3db00b13df4b0693692cba342dca8e51db",
+      "size_bytes": 4116425
+    },
+    {
+      "path": "checkpoints/checkpoint_0054.json",
+      "sha256": "5ce693dfd098ddf0b1e4f88217eb0f319a554b098c4ac51400146f126692c941",
+      "size_bytes": 4088821
+    },
+    {
+      "path": "checkpoints/checkpoint_0055.json",
+      "sha256": "b6c73698829203e19b36d8d6654cf56f7bd9988ff9f625305f68e73a84b0c8ef",
+      "size_bytes": 4088773
+    },
+    {
+      "path": "checkpoints/checkpoint_0056.json",
+      "sha256": "7410d42bac45fa79bb54de136119ef08855c740c7f84421ce50b2ab749d21880",
+      "size_bytes": 4160348
+    },
+    {
+      "path": "checkpoints/checkpoint_0057.json",
+      "sha256": "9fd2c3d9918c01c98740d38cfa8583d359339e9fd639bf49bfce923df9ad374e",
+      "size_bytes": 4077310
+    },
+    {
+      "path": "checkpoints/checkpoint_0058.json",
+      "sha256": "10eb8d42476a286c3e2f4953c429835427cfd46e7a268ea015e1397f5dbbce8e",
+      "size_bytes": 4106366
+    },
+    {
+      "path": "checkpoints/checkpoint_0059.json",
+      "sha256": "7ec32000712a325f1c76a182db3725269112ea22aad018e7aa424c3314e67c49",
+      "size_bytes": 4197505
+    },
+    {
+      "path": "checkpoints/checkpoint_0060.json",
+      "sha256": "958059232289e9d1083eb8519fced4a0361bb1e9c5dcb9a9b1fdbdd21d6f51cf",
+      "size_bytes": 4051193
+    },
+    {
+      "path": "checkpoints/checkpoint_0061.json",
+      "sha256": "d2b765bb600d81eb93247a31b08487b1c19b1019a1869f52671147d39aff06e2",
+      "size_bytes": 4210605
+    },
+    {
+      "path": "checkpoints/checkpoint_0062.json",
+      "sha256": "e891dd8c9d712d3e7d7b037ab9bd4624dca9ea542c4458e87df178d7532ff414",
+      "size_bytes": 4482632
+    },
+    {
+      "path": "checkpoints/checkpoint_0063.json",
+      "sha256": "fa6f76e1c79260ea094e481ff6f090ecba5b12e7c70ce17b08615991b8b971b1",
+      "size_bytes": 4188733
+    },
+    {
+      "path": "checkpoints/checkpoint_0064.json",
+      "sha256": "c7eb4d78ea0b0d565a072948689e2e6a928e811420ac3f3a83827b9364fd3ad2",
+      "size_bytes": 4266354
+    },
+    {
+      "path": "configuration.json",
+      "sha256": "eccff11884cf190b39030b0e1f08dd783cb46f0e66298a4a5c2467799cf54490",
+      "size_bytes": 52185
+    },
+    {
+      "path": "diagnostics.json",
+      "sha256": "d11fadb6a3c2a7bf1b3fdc7c92af6241b70dc1a91c6d95b648221e4a60a5b689",
+      "size_bytes": 30841
+    },
+    {
+      "path": "evaluation.json",
+      "sha256": "bf76b4684e9c993c0fe6527d02e0c889521449bf525fabe8d36d2bd119042579",
+      "size_bytes": 20492084
+    },
+    {
+      "path": "execution_journal.json",
+      "sha256": "8ccbb697953748d71455c3832c125cea11568c0785beabe1b22f790dcdec39cd",
+      "size_bytes": 24237007
+    },
+    {
+      "path": "final_model.json",
+      "sha256": "b24cc22b8e5456e3384d3572c0a1ab19cdaba1d58b3e04c52e82e1ff0b048bad",
+      "size_bytes": 701964
+    },
+    {
+      "path": "isolation.json",
+      "sha256": "9a0ec3615b3314762bf24ffa73a92408d61302ef805f938af0acf538d19b2577",
+      "size_bytes": 77160
+    },
+    {
+      "path": "metrics.json",
+      "sha256": "0da5ad0c004b806c2e1223c6a3b0f556a7f9c719f5c235e13a475203eefc6e47",
+      "size_bytes": 1323
+    },
+    {
+      "path": "registration.json",
+      "sha256": "d4a6ed9469410288f0670645f33c6cbf3c40f507afdc29a47fa229c7a6994f18",
+      "size_bytes": 485693
+    },
+    {
+      "path": "report.json",
+      "sha256": "d8520bf445776f274fe5dbdb793e5eda03d9c0cb814a3ee68027c9692ede37b4",
+      "size_bytes": 327
+    },
+    {
+      "path": "training_rows.json",
+      "sha256": "1d19779b44ff5c8b2ea598307017af7b892b8b875395e22feb4b3d4eb5061eea",
+      "size_bytes": 126834076
+    }
+  ],
+  "authority": {
+    "causal_claim_authorized": false,
+    "cohort_materialization_authorized": false,
+    "communication_mod_authorized": false,
+    "environment_construction_authorized": false,
+    "execution_authorized": false,
+    "formal_rl_authorized": false,
+    "fresh_evidence_authorized": false,
+    "gameplay_authorized": false,
+    "live_execution_authorized": false,
+    "model_fitting_authorized": false,
+    "native_loading_authorized": false,
+    "ope_authorized": false,
+    "policy_loading_authorized": false,
+    "production_checkpoint_mutation_authorized": false,
+    "promotion_authorized": false,
+    "qualification_authorized": false,
+    "seed_access_authorized": false,
+    "target_supported_outcome_authorized": false,
+    "training_authorized": false
+  },
+  "logical_execution_id": "noncombat-state-conditioned-simulator-learning-20260805-r1",
+  "manifest_kind": "full_terminal",
+  "schema_version": "noncombat-state-conditioned-simulator-learning-manifest-v2",
+  "verdict": "experiment_stopped_at_canary"
+}

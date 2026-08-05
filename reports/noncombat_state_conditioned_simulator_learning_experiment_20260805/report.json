@@ -1,0 +1,8 @@
+{
+  "formal_readiness": "unchanged_not_ready",
+  "logical_execution_id": "noncombat-state-conditioned-simulator-learning-20260805-r1",
+  "policy_quality_claim": false,
+  "schema_version": "noncombat-state-conditioned-terminal-report-v1",
+  "target_supported_outcome_claim": false,
+  "verdict": "experiment_stopped_at_canary"
+}

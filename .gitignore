@@ -141,6 +141,9 @@ dmypy.json
 /.codex-tmp/
 /.sts_lightspeed*_build/
 /reports/noncombat_simulator_baseline_warm_start_20260802/demonstrations.json
+/reports/noncombat_simulator_rl_experiment_20260804_r2/.execution.lease
+/reports/noncombat_state_conditioned_simulator_learning_experiment_20260805/.execution.lease
+/reports/noncombat_state_conditioned_simulator_learning_experiment_20260805/training_rows.json
 /.tmp/
 /.codex_pytest/
 /codex_pytest_*/

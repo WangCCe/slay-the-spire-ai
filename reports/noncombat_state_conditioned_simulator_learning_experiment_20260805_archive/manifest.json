@@ -1,0 +1,26 @@
+{
+  "archive": {
+    "path": "reports/noncombat_state_conditioned_simulator_learning_experiment_20260805_archive/training_rows.json.gz",
+    "sha256": "167f418f0cfce7b63021b202b6d57f29a5c5e12e9f6ed159949b09d9565f1138",
+    "size_bytes": 11288071
+  },
+  "compression": {
+    "format": "gzip",
+    "level": 9,
+    "mtime": 0,
+    "original_name": "training_rows.json"
+  },
+  "logical_execution_id": "noncombat-state-conditioned-simulator-learning-20260805-r1",
+  "raw": {
+    "path": "reports/noncombat_state_conditioned_simulator_learning_experiment_20260805/training_rows.json",
+    "sha256": "1d19779b44ff5c8b2ea598307017af7b892b8b875395e22feb4b3d4eb5061eea",
+    "size_bytes": 126834076
+  },
+  "schema_version": "noncombat-state-conditioned-terminal-archive-v1",
+  "terminal_manifest": {
+    "path": "reports/noncombat_state_conditioned_simulator_learning_experiment_20260805/artifact_manifest.json",
+    "sha256": "4d6184b0cdd88bc59238053ec6b2be0f7a4d2427a2feb2d758da9afd4d21f498",
+    "size_bytes": 14018
+  },
+  "verdict": "experiment_stopped_at_canary"
+}

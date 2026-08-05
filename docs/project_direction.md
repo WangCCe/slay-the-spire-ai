@@ -1,6 +1,6 @@
 # Project Direction
 
-Last updated: 2026-08-05
+Last updated: 2026-08-06
 
 ## Current Phase
 
@@ -169,6 +169,31 @@ only the exact 20 audited identity and metadata shapes to SpireComm cost `-2`
 and keeps every drift or unlisted empty-cost record fail closed. This removes a
 known future bridge compatibility defect but does not reopen the consumed
 study, establish a baseline floor, or change formal-RL readiness.
+
+The state-conditioned simulator-learning successor has now completed its one
+authorized logical execution. It trained for 4,096 episodes and 64 optimizer
+updates, then completed all 128 paired canary seeds with exact replay. The
+trained policy improved effective floor against its frozen initialization by
+`+10.75`; the registered 95% bootstrap interval was
+`[8.9609375, 12.5390625]`. Both policies still recorded zero victories, and no
+training or canary policy episode reached floor 51.
+
+The canary correctly stopped on the sole registered blocker
+`card_reward_selected_kind_saturation`: the trained policy selected `take` on
+all 1,458 card-reward decisions despite 1,437 skip opportunities. Holdout seeds
+`71152..71663` were not accessed. The standalone standard-library verifier
+accepted all 75 terminal artifacts, 64 checkpoints, 4,096 training episodes,
+and the terminal verdict `experiment_stopped_at_canary`. CommunicationMod and
+the complete production-checkpoint inventory remained byte-unchanged.
+
+The state channel did affect relative candidate scores and changed ordering on
+366 of 3,556 trained canary multi-candidate decisions, so r2's deterministic
+state-cancellation defect is closed. The remaining failure is behavioral, not
+architectural sufficiency: a positive floor signal against seeded
+initialization cannot override action-family collapse or zero victory evidence.
+An immediate successor experiment is therefore `no_go`. The next gate is a
+read-only audit of the existing rows and checkpoints to locate the card-reward
+collapse mechanism before any algorithm proposal.
 
 ## Training Boundary
 
@@ -503,6 +528,18 @@ The next authorized sequence is:
     source-only planning until implementation, registration, cohort, limits,
     and exact authorization are separately committed and pushed. Target-
     supported outcomes remain independently blocked.
+31. Preserve the state-conditioned successor registration, authorization,
+    complete local terminal bundle, deterministic large-row archive, 64
+    checkpoints, model, canary evidence, and
+    `experiment_stopped_at_canary` verdict. Do not retry, tune, inspect the
+    untouched holdout, select an intermediate checkpoint, or load the model
+    into gameplay. The paired canary floor signal is real against frozen
+    initialization, and state-conditioned relative scoring is demonstrated,
+    but all 1,458 trained card-reward decisions selected `take` and every
+    training/canary episode had zero victory. Formal RL, policy quality,
+    target-supported outcomes, qualification, loading, and promotion remain
+    `no_go`. The next change may perform only a read-only existing-artifact
+    collapse audit before considering a new algorithm proposal.
 
 ## Work Lanes
 
@@ -534,16 +571,16 @@ postmortem is complete and sets an immediate r3 to `no_go`: the registered
 linear feature composition cannot use shared state to change candidate order,
 and the final policy saturated to taking every observed card reward. The
 state-conditioned ranker, policy-input boundary, and anti-collapse diagnostic
-capabilities are now implemented and verified, but not integrated into an
-experiment. Exact API v3 state and candidates remain separate through scoring,
-and no production or existing experiment path imports the new boundary. The
-Current comparator evidence lane is closed with
+capabilities were integrated into one terminal simulator experiment. Exact API
+v3 state and candidates remained separate through scoring, but the trained
+canary policy collapsed to always taking card rewards and stopped before
+holdout. The experiment is consumed and grants no successor run. The Current
+comparator evidence lane is closed with
 `no_viable_baseline_candidate`; there is no active empirical baseline
-execution. The active simulator-learning lane is the source-only
-`add-state-conditioned-noncombat-simulator-learning-experiment` change. It may
-implement a new runner and verifier without editing r2, but it must not bind a
-cohort, load native code, construct an environment, train, or claim formal-RL
-readiness before its separate pushed registration and exact authorization.
+execution. The active simulator-learning lane is now a read-only audit of the
+existing terminal rows and checkpoints to identify the card-reward collapse
+mechanism. It must not access holdout, replay a seed, fit or select a model,
+change a threshold, or claim formal-RL readiness.
 
 Live gameplay is a maintenance and registered-evaluation lane only. Launch it
 for a crash, stuck state, repeated A-class simulator/mechanics defect, or an
@@ -566,9 +603,10 @@ OpenSpec changes authorize them.
 - For a one-attempt Windows evidence run that atomically publishes files, do
   not read any file under its active output root while the process is alive.
   Monitor process liveness only, then inspect artifacts after process exit.
-- Treat the latest 2026-08-05 `commit` gate result of 3,849 passed, 11 skipped,
-  and 318.47 seconds as confirmation of timing drift: correctness passed, but
-  the qualified five-minute feedback bound was exceeded by 18.47 seconds. Do
+- Treat the latest 2026-08-06 `commit` gate result of 3,989 passed, 11 skipped,
+  331.45 seconds of pytest, and 334.00 seconds including orchestration as
+  confirmation of timing drift: correctness passed, but the qualified
+  five-minute feedback bound was exceeded by 34.00 seconds. Do
   not rerun it inside this change; schedule a separate read-only duration audit
   before claiming the bounded-feedback requirement remains met.
 
