@@ -83,6 +83,8 @@ ADAM_AMSGRAD = False
 DISCOUNT = 1.0
 ENTROPY_COEFFICIENT = 0.01
 GRADIENT_NORM_CEILING = 1.0
+BOOTSTRAP_CONFIDENCE = 0.95
+EVALUATION_REPLAY_EPISODES_PER_SEED = 4
 ASCENSION_LEVEL = 0
 MAX_DECISIONS_PER_EPISODE = 500
 VICTORY_WEIGHT = 2.0
@@ -399,6 +401,13 @@ def _experiment_contract() -> dict[str, Any]:
             "max_decisions_per_episode": MAX_DECISIONS_PER_EPISODE,
             "registered_support_blockers": sorted(REGISTERED_SUPPORT_BLOCKERS),
         },
+        "evaluation": {
+            "bootstrap_confidence": BOOTSTRAP_CONFIDENCE,
+            "bootstrap_seed": MODEL_SEED,
+            "greedy_policy": True,
+            "replay_episodes_per_seed": EVALUATION_REPLAY_EPISODES_PER_SEED,
+            "update_free": True,
+        },
         "input": {
             "api_version": 3,
             "candidate_order_preserved": True,
@@ -424,11 +433,31 @@ def _experiment_contract() -> dict[str, Any]:
             "state_conditioned": True,
             "state_input_dim": HASH_DIM,
         },
+        "output": {
+            "checkpoint_directory": "checkpoints",
+            "checkpoint_filename_template": "checkpoint_{index:04d}.json",
+            "conditional_terminal_artifacts": {
+                "evaluation.json": "present_when_evaluation_evidence_exists",
+            },
+            "execution_lease": ".execution.lease",
+            "manifest": "artifact_manifest.json",
+            "required_terminal_artifacts": sorted(
+                FULL_TERMINAL_ARTIFACT_NAMES - {"evaluation.json"}
+            ),
+        },
         "reward": {
             "floor_progress_maximum": 1.0,
             "reward_version": REWARD_VERSION,
             "victory_primary": True,
             "victory_weight": VICTORY_WEIGHT,
+        },
+        "verdicts": {
+            "blocked": "experiment_blocked",
+            "canary_stop": "experiment_stopped_at_canary",
+            "invalid": "experiment_invalid",
+            "valid_floor_only": "experiment_valid_with_floor_only_signal",
+            "valid_victory": "experiment_valid_with_victory_signal",
+            "valid_without_learning": "experiment_valid_without_learning_signal",
         },
     }
 
@@ -878,7 +907,10 @@ def _validate_registration_full(value: Any, payload: bytes) -> dict[str, Any]:
         limits,
         {
             "bootstrap_resamples",
+            "max_checkpoint_count",
             "max_episodes",
+            "max_evaluation_episodes",
+            "max_total_episodes",
             "max_wall_seconds",
             "train_passes",
             "training_chunk_size",
@@ -888,7 +920,10 @@ def _validate_registration_full(value: Any, payload: bytes) -> dict[str, Any]:
     )
     for name in (
         "bootstrap_resamples",
+        "max_checkpoint_count",
         "max_episodes",
+        "max_evaluation_episodes",
+        "max_total_episodes",
         "train_passes",
         "training_chunk_size",
     ):
@@ -906,6 +941,16 @@ def _validate_registration_full(value: Any, payload: bytes) -> dict[str, Any]:
         raise VerificationError("registered max episode count mismatch")
     if len(normalized_cohorts["train"]) % limits["training_chunk_size"] != 0:
         raise VerificationError("registered chunk crosses a train pass boundary")
+    expected_checkpoint_count = limits["max_episodes"] // limits["training_chunk_size"]
+    if limits["max_checkpoint_count"] != expected_checkpoint_count:
+        raise VerificationError("registered checkpoint count mismatch")
+    expected_evaluation_episodes = EVALUATION_REPLAY_EPISODES_PER_SEED * (
+        len(normalized_cohorts["canary"]) + len(normalized_cohorts["holdout"])
+    )
+    if limits["max_evaluation_episodes"] != expected_evaluation_episodes:
+        raise VerificationError("registered evaluation episode count mismatch")
+    if limits["max_total_episodes"] != limits["max_episodes"] + expected_evaluation_episodes:
+        raise VerificationError("registered total episode count mismatch")
     gate = dict(_mapping(registration["behavior_gates"], "behavior gates"))
     _require_keys(gate, {"category_coverage", "multi_kind", "state_effect"}, "behavior gates")
     if gate["category_coverage"] != list(TARGET_CATEGORIES):
@@ -2179,7 +2224,7 @@ def _paired_bootstrap(
         for _ in range(resamples)
     )
     return {
-        "confidence": 0.95,
+        "confidence": BOOTSTRAP_CONFIDENCE,
         "lower": _quantile(means, 0.025),
         "mean": statistics.fmean(differences),
         "resamples": resamples,

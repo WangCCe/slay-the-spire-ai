@@ -1155,7 +1155,10 @@ def _registration() -> dict[str, object]:
         cohorts=cohorts,
         limits={
             "bootstrap_resamples": 200,
+            "max_checkpoint_count": 2,
+            "max_evaluation_episodes": 16,
             "max_episodes": 8,
+            "max_total_episodes": 24,
             "max_wall_seconds": 60.0,
             "train_passes": 2,
             "training_chunk_size": 4,
@@ -1445,6 +1448,57 @@ def test_registration_is_all_false_and_authorization_is_separate_and_exact():
             registration=registration,
             registration_bytes=registration_bytes,
         )
+
+
+def test_registration_freezes_bootstrap_verdict_resource_and_output_terms():
+    registration = _registration()
+
+    assert registration["experiment"]["evaluation"] == {
+        "bootstrap_confidence": 0.95,
+        "bootstrap_seed": 0,
+        "greedy_policy": True,
+        "replay_episodes_per_seed": 4,
+        "update_free": True,
+    }
+    assert registration["experiment"]["verdicts"] == {
+        "blocked": "experiment_blocked",
+        "canary_stop": "experiment_stopped_at_canary",
+        "invalid": "experiment_invalid",
+        "valid_floor_only": "experiment_valid_with_floor_only_signal",
+        "valid_victory": "experiment_valid_with_victory_signal",
+        "valid_without_learning": "experiment_valid_without_learning_signal",
+    }
+    assert registration["experiment"]["output"] == {
+        "checkpoint_directory": "checkpoints",
+        "checkpoint_filename_template": "checkpoint_{index:04d}.json",
+        "conditional_terminal_artifacts": {
+            "evaluation.json": "present_when_evaluation_evidence_exists",
+        },
+        "execution_lease": ".execution.lease",
+        "manifest": "artifact_manifest.json",
+        "required_terminal_artifacts": sorted(
+            experiment.FULL_TERMINAL_ARTIFACT_NAMES - {"evaluation.json"}
+        ),
+    }
+    assert registration["limits"]["max_checkpoint_count"] == 2
+    assert registration["limits"]["max_evaluation_episodes"] == 16
+    assert registration["limits"]["max_total_episodes"] == 24
+
+
+@pytest.mark.parametrize(
+    ("field", "value", "match"),
+    [
+        ("max_checkpoint_count", 3, "checkpoint count"),
+        ("max_evaluation_episodes", 15, "evaluation episode count"),
+        ("max_total_episodes", 23, "total episode count"),
+    ],
+)
+def test_registration_rejects_derived_resource_limit_drift(field, value, match):
+    registration = _registration()
+    registration["limits"][field] = value
+
+    with pytest.raises(experiment.ExperimentBlocked, match=match):
+        experiment.validate_registration(registration)
 
 
 def test_registration_rejects_training_chunks_that_cross_pass_boundaries():
