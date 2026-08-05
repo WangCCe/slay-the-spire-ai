@@ -613,6 +613,22 @@ The next authorized sequence is:
     P3 finding. This audit grants no deterministic-selection, entropy-
     coefficient, training-objective, experiment, loading, formal-RL, gameplay,
     qualification, or promotion authority.
+35. Preserve the additive source-only hierarchical policy-objective contract.
+    It resolves one selected action by stable `action_id`, exposes exact family,
+    conditional, and joint log-probability tensors, and keeps family, expected
+    conditional, and joint entropy separately differentiable. Deterministic
+    metadata returns the complete raw-score maximum set with no tie-breaking;
+    an independently reconstructed two-stage max-score set must match it, and
+    joint-probability argmax is not an API. Event and route retain exact one-
+    family fallback while conditional objective and entropy terms remain live.
+    All terms stay finite CPU float64 over CPU float32 scores, including opposite
+    float32 limits. The focused suite passes 20 tests, the dependency-focused
+    boundary passes 44, the repository commit gate passes 4,075 tests with 16
+    skips, and independent review has no remaining P1 or P2. The capability
+    accepts no coefficient, reward, return, advantage, sampling, or loss and is
+    absent from experiment, verifier, agent, and `main` imports. It grants no
+    execution, training, loading, native, seed, formal-RL, gameplay,
+    qualification, or promotion authority.
 
 ## Work Lanes
 
@@ -653,20 +669,18 @@ read-only trajectory audit locates persistent greedy collapse at training chunk
 and leaves causal intervention claims unresolved. The Current comparator
 evidence lane is closed with
 `no_viable_baseline_candidate`; there is no active empirical baseline
-execution. The action-family source-only design, additive distribution
-capability, and frozen-score counterfactual audit are complete. The audit
-rejects joint-probability argmax as an implicit deterministic integration rule
-and shows that family-only entropy leaves event and route unregularized. The
-next simulator-learning gate is a source-only hierarchical policy-objective
-contract: selected-action log probability must retain both family and
-conditional factors; family and conditional entropy must remain separately
-observable; deterministic evaluation must retain raw-score argmax (equivalent
-to two-stage max-score selection outside ties); and category-specific fallback
-and gradient behavior must be regression-covered. That contract must not pick
-coefficients, train or load a model, access a seed or holdout, register an
-execution, modify gameplay, or claim intervention effectiveness or formal-RL
-readiness. A later separately reviewed experiment proposal must preregister any
-coefficients and empirical limits.
+execution. The action-family source-only design, additive distribution,
+frozen-score counterfactual audit, and hierarchical objective-terms contract
+are complete. The contract preserves selected family plus conditional log
+probability, separately observable entropy terms, and raw-score deterministic
+evaluation without choosing a coefficient or loss. The next simulator-learning
+gate is a separately reviewed source-only successor experiment proposal. It
+must preregister hierarchical sampling, distinct family and conditional entropy
+coefficients, anti-collapse diagnostics and canary stop rules, untouched cohort
+identity, resource bounds, and raw-score evaluation semantics. Proposal work
+does not authorize implementation, registration, cohort access, native loading,
+training, model loading, gameplay, formal-RL, qualification, or promotion; each
+later boundary remains separately reviewed and committed.
 
 Live gameplay is a maintenance and registered-evaluation lane only. Launch it
 for a crash, stuck state, repeated A-class simulator/mechanics defect, or an
@@ -689,10 +703,10 @@ OpenSpec changes authorize them.
 - For a one-attempt Windows evidence run that atomically publishes files, do
   not read any file under its active output root while the process is alive.
   Monitor process liveness only, then inspect artifacts after process exit.
-- Treat the latest 2026-08-06 `commit` gate result of 4,055 passed, 16 skipped,
-  359.48 seconds of pytest, and 362.51 seconds including orchestration as
+- Treat the latest 2026-08-06 `commit` gate result of 4,075 passed, 16 skipped,
+  340.87 seconds of pytest, and 343.66 seconds including orchestration as
   confirmation of timing drift: correctness passed, but the qualified
-  five-minute feedback bound was exceeded by 62.51 seconds. Do
+  five-minute feedback bound was exceeded by 43.66 seconds. Do
   not rerun it inside this change; schedule a separate read-only duration audit
   before claiming the bounded-feedback requirement remains met.
 
