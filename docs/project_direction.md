@@ -629,6 +629,22 @@ The next authorized sequence is:
     absent from experiment, verifier, agent, and `main` imports. It grants no
     execution, training, loading, native, seed, formal-RL, gameplay,
     qualification, or promotion authority.
+36. Preserve the source-only hierarchical simulator-learning successor
+    proposal. It selects a new additive three-module identity without modifying
+    or privately importing the consumed experiment, uses candidate `kind` for
+    family-first then conditional sampling, fixes independently bound family
+    and expected-conditional entropy coefficients at `0.01`, and retains the
+    prior ranker, formal reward, optimizer, gradient, and raw-score evaluation
+    controls. Raw-score ties fail closed. A four-chunk exact family-saturation
+    stop protects canary, while card-reward and shop canary gates protect a
+    newly inventoried holdout. Fresh cohort counts are fixed at `1024/128/512`;
+    ceilings are `4,096` training, `2,560` evaluation/replay, `6,656` total
+    episodes and `28,800` CPU seconds. A durable write-ahead marker separates
+    repeatable pre-seed setup from the evidence-bearing identity. The proposal
+    and global OpenSpec set pass strict validation (`72/72`), but this planning
+    boundary grants no implementation, registration, cohort, native, seed,
+    training, loading, gameplay, formal-RL, qualification, or promotion
+    authority.
 
 ## Work Lanes
 
@@ -673,14 +689,16 @@ execution. The action-family source-only design, additive distribution,
 frozen-score counterfactual audit, and hierarchical objective-terms contract
 are complete. The contract preserves selected family plus conditional log
 probability, separately observable entropy terms, and raw-score deterministic
-evaluation without choosing a coefficient or loss. The next simulator-learning
-gate is a separately reviewed source-only successor experiment proposal. It
-must preregister hierarchical sampling, distinct family and conditional entropy
-coefficients, anti-collapse diagnostics and canary stop rules, untouched cohort
-identity, resource bounds, and raw-score evaluation semantics. Proposal work
-does not authorize implementation, registration, cohort access, native loading,
-training, model loading, gameplay, formal-RL, qualification, or promotion; each
-later boundary remains separately reviewed and committed.
+evaluation without choosing a coefficient or loss. The active source-only
+successor proposal now preregisters two-stage hierarchical sampling, separately
+bound family and conditional entropy coefficients, training and canary
+anti-collapse gates, untouched fresh-cohort selection, resource ceilings,
+raw-score evaluation, and pre-seed versus evidence-bearing lifecycle semantics.
+Its next gate is independent proposal review and a dedicated planning commit;
+only then may source-only implementation begin. Proposal work does not
+authorize registration, cohort access, native loading, training, model loading,
+gameplay, formal-RL, qualification, or promotion; every later boundary remains
+separately reviewed and committed.
 
 Live gameplay is a maintenance and registered-evaluation lane only. Launch it
 for a crash, stuck state, repeated A-class simulator/mechanics defect, or an
