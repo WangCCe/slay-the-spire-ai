@@ -195,6 +195,41 @@ An immediate successor experiment is therefore `no_go`. The next gate is a
 read-only audit of the existing rows and checkpoints to locate the card-reward
 collapse mechanism before any algorithm proposal.
 
+That deterministic read-only audit is now complete. It retained `31,571`
+training card-reward decisions: `31,306` exposed `skip` and `265` exposed
+Singing Bowl as the alternative to taking a card. Stochastic training samples
+never produced an all-`take` chunk, but the score-greedy policy first became
+strictly all-`take` on chunk `2` and remained so through chunk `63`. Because
+chunk `n` is scored before optimizer update `n + 1`, the persistent collapse
+was already present after the second optimizer update; later entropy-driven
+sampling continued to select some skips without restoring the greedy boundary.
+
+The retained scores separate structural and learned pressure. Across eligible
+training decisions, `take` candidates occupied mean candidate share
+`0.749936646862156`, while reconstructed mean `take` probability was
+`0.808513819581934`, an excess of `0.0585771727197777` beyond multiplicity.
+By chunk `63`, mean `take` probability reached `0.877009449037648` and every
+best-take/skip margin was positive, with minimum `0.530952155590057`. Mean
+candidate entropy was `1.36443426492975`, but mean action-kind entropy was only
+`0.482950407917238`; the `0.881483857012509` gap shows that candidate-level
+entropy can remain broad within several card choices while providing much less
+diversity between `take` and `skip`.
+
+This narrows the mechanism to evidence consistent with candidate-level softmax
+multiplicity plus learned take-score amplification and an entropy objective
+that does not directly protect action-family diversity. It is not a causal
+ablation: reward, optimizer, entropy coefficient, architecture, and any
+correction remain unresolved. The JSON and Markdown audit reproduced
+byte-identically, and the independent terminal verifier still accepted all 75
+source artifacts and 64 checkpoints after publication.
+
+No successor execution is authorized. The next gate is a source-only design
+review for an action-family-normalized or hierarchical candidate policy. It
+must prove synthetic invariants such as equal family mass under equal logits,
+invariance to duplicate same-family candidates, preserved within-family card
+ordering, and explicit family-level entropy before any fresh cohort,
+registration, or simulator run is proposed.
+
 ## Training Boundary
 
 Formal non-combat RL training is not currently authorized. A training go means
@@ -574,13 +609,16 @@ state-conditioned ranker, policy-input boundary, and anti-collapse diagnostic
 capabilities were integrated into one terminal simulator experiment. Exact API
 v3 state and candidates remained separate through scoring, but the trained
 canary policy collapsed to always taking card rewards and stopped before
-holdout. The experiment is consumed and grants no successor run. The Current
-comparator evidence lane is closed with
+holdout. The experiment is consumed and grants no successor run. The completed
+read-only trajectory audit locates persistent greedy collapse at training chunk
+`2`, observes candidate multiplicity plus learned probability amplification,
+and leaves causal intervention claims unresolved. The Current comparator
+evidence lane is closed with
 `no_viable_baseline_candidate`; there is no active empirical baseline
-execution. The active simulator-learning lane is now a read-only audit of the
-existing terminal rows and checkpoints to identify the card-reward collapse
-mechanism. It must not access holdout, replay a seed, fit or select a model,
-change a threshold, or claim formal-RL readiness.
+execution. The active simulator-learning lane is now a source-only design
+review for action-family normalization and family-level entropy invariants. It
+must not access holdout, replay a seed, fit or select a model, change a
+threshold, register an execution, or claim formal-RL readiness.
 
 Live gameplay is a maintenance and registered-evaluation lane only. Launch it
 for a crash, stuck state, repeated A-class simulator/mechanics defect, or an
