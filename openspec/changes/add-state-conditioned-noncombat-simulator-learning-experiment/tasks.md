@@ -79,7 +79,7 @@
   source, evidence, runtime, native, cohort, threshold, limit, isolation,
   output, and all-false authority binding, then commit and push without loading
   native code, constructing an environment, accessing a seed, or training.
-- [ ] 5.3 Under the user's standing authorization, publish one tracked exact
+- [x] 5.3 Under the user's standing authorization, publish one tracked exact
   execution authorization bound to the pushed registration and commit/push it;
   stop if any registration term or pre-start condition has drifted.
 
