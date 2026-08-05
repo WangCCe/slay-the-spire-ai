@@ -1,6 +1,6 @@
 # Project Direction
 
-Last updated: 2026-08-04
+Last updated: 2026-08-05
 
 ## Current Phase
 
@@ -491,6 +491,18 @@ The next authorized sequence is:
     blocked. Read-only monitoring overlapped the active output-root writes, so
     a Windows sharing conflict is a plausible but unproven contributor. Do not
     retry, resume, repair, replace seeds, or reinterpret this result.
+30. Preserve the read-only baseline-strategy options audit. No existing policy
+    can replace Current as policy-quality truth: SimpleAgent and Bottled remain
+    auxiliary, seeded initialization is only a training control, and learned
+    imitation lanes remain negative evidence. The selected next direction is a
+    distinct state-conditioned simulator-learning experiment that compares a
+    trained policy only with its frozen initialization, requires explicit
+    anti-collapse and state-effect gates, and cannot establish policy quality,
+    formal-RL readiness, live value, or promotion. The active
+    `add-state-conditioned-noncombat-simulator-learning-experiment` change is
+    source-only planning until implementation, registration, cohort, limits,
+    and exact authorization are separately committed and pushed. Target-
+    supported outcomes remain independently blocked.
 
 ## Work Lanes
 
@@ -506,12 +518,12 @@ outcomes are still blocked.
 
 Do not modify, retry, or reinterpret either consumed baseline attempt. The
 single post-final-repair replication authorized by the narrowed anti-retry
-rule is now closed. The next project-level decision must select a different
-credible baseline strategy before any future training proposal; it must not
-silently substitute Bottled or SimpleAgent as policy-quality truth. Expanding
-source-comparable target-supported outcomes remains an independent
-prerequisite. The card metadata cost audit and its bounded compatibility
-repair are closed. The r1
+rule is now closed. The baseline-strategy decision does not select another
+quality comparator: it separates a frozen experimental control from a credible
+policy baseline. Bottled and SimpleAgent remain auxiliary-only, while
+source-comparable target-supported outcomes remain an independent prerequisite
+for formal RL and live-value claims. The card metadata cost audit and its
+bounded compatibility repair are closed. The r1
 simulator-only experiment remains a terminal native-load failure with no seed
 access. Its r2 successor completed exactly once and is valid simulator evidence:
 the trained policy improved terminal floor against seeded initialization on
@@ -527,10 +539,11 @@ experiment. Exact API v3 state and candidates remain separate through scoring,
 and no production or existing experiment path imports the new boundary. The
 Current comparator evidence lane is closed with
 `no_viable_baseline_candidate`; there is no active empirical baseline
-execution. Do not start r3, bind another cohort, or begin formal training from
-these results. A rebuilt module, different experiment, or different baseline
-strategy still requires a separate approved change, fresh identity, fresh
-cohort decision, and evidence design.
+execution. The active simulator-learning lane is the source-only
+`add-state-conditioned-noncombat-simulator-learning-experiment` change. It may
+implement a new runner and verifier without editing r2, but it must not bind a
+cohort, load native code, construct an environment, train, or claim formal-RL
+readiness before its separate pushed registration and exact authorization.
 
 Live gameplay is a maintenance and registered-evaluation lane only. Launch it
 for a crash, stuck state, repeated A-class simulator/mechanics defect, or an

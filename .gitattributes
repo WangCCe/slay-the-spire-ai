@@ -183,3 +183,14 @@ reports/noncombat_simulator_rl_experiment_* text eol=lf
 reports/noncombat_simulator_rl_experiment_*/** text eol=lf
 openspec/changes/add-bounded-noncombat-simulator-rl-experiment/** text eol=lf
 openspec/changes/archive/*-add-bounded-noncombat-simulator-rl-experiment/** text eol=lf
+
+# Preserve state-conditioned simulator-learning source and canonical evidence.
+analysis_scripts/noncombat_state_conditioned_simulator_learning_experiment.py text eol=lf
+analysis_scripts/verify_noncombat_state_conditioned_simulator_learning_experiment.py text eol=lf
+tests/test_noncombat_state_conditioned_simulator_learning_experiment.py text eol=lf
+reports/noncombat_baseline_strategy_options_audit_* text eol=lf
+reports/noncombat_state_conditioned_simulator_learning_experiment_* text eol=lf
+reports/noncombat_state_conditioned_simulator_learning_experiment_*/** text eol=lf
+openspec/specs/noncombat-state-conditioned-simulator-learning-experiment/** text eol=lf
+openspec/changes/add-state-conditioned-noncombat-simulator-learning-experiment/** text eol=lf
+openspec/changes/archive/*-add-state-conditioned-noncombat-simulator-learning-experiment/** text eol=lf
