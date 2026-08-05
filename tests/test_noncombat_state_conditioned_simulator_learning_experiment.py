@@ -1082,9 +1082,11 @@ def test_process_inventory_includes_javaw_and_slay_the_spire(monkeypatch):
     }
 
 
-def _registration() -> dict[str, object]:
+def _registration(
+    *, inventory_source: str = "historical"
+) -> dict[str, object]:
     inventory = experiment.build_seed_exclusion_inventory(
-        {"historical": [100, 101]}
+        {inventory_source: [100, 101]}
     )
     selection = {
         "canary_count": 2,
@@ -3020,6 +3022,19 @@ def test_reference_policy_fields_are_rejected_recursively():
 
     with pytest.raises(experiment.ExperimentBlocked, match="reference policy"):
         experiment.validate_registration(registration)
+    with pytest.raises(terminal_verifier.VerificationError, match="reference policy"):
+        terminal_verifier._reject_reference_policy_leakage(registration)
+
+
+def test_historical_seed_source_paths_do_not_trigger_policy_leakage():
+    registration = _registration(
+        inventory_source=(
+            "reports/known_propensity_exploration_eval_20260714_b1_config.json"
+        )
+    )
+
+    assert experiment.validate_registration(registration) == registration
+    assert terminal_verifier._reject_reference_policy_leakage(registration) is None
 
 
 def test_checkpoint_round_trip_restores_exact_runtime_and_hash_chain(tmp_path):

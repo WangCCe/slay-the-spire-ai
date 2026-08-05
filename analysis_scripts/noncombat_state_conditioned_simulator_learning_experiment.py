@@ -3303,6 +3303,7 @@ def _reject_reference_policy_leakage(
                 "authority",
                 "evidence",
                 "historical_evidence",
+                "seed_inventory",
             }:
                 continue
             if any(name in folded for name in REFERENCE_POLICY_NAMES):

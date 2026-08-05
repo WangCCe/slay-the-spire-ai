@@ -711,7 +711,12 @@ def _reject_reference_policy_leakage(
     if isinstance(value, Mapping):
         for key, child in value.items():
             folded = str(key).casefold()
-            if allow_evidence and folded in {"authority", "evidence"}:
+            if allow_evidence and folded in {
+                "authority",
+                "evidence",
+                "historical_evidence",
+                "seed_inventory",
+            }:
                 continue
             if any(name in folded for name in REFERENCE_POLICY_NAMES):
                 raise VerificationError(
