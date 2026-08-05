@@ -575,6 +575,26 @@ The next authorized sequence is:
     target-supported outcomes, qualification, loading, and promotion remain
     `no_go`. The next change may perform only a read-only existing-artifact
     collapse audit before considering a new algorithm proposal.
+32. Preserve the completed state-conditioned card-reward collapse audit and its
+    exact source allowlist, trajectory reconstruction, and deterministic report.
+    It locates persistent greedy `take` saturation at training chunk `2`,
+    measures both candidate-count pressure and learned score amplification, and
+    shows that candidate entropy overstates family diversity. These are bounded
+    observations, not reward, optimizer, architecture, or intervention
+    causality, and they grant no replay, training, holdout, or successor-run
+    authority.
+33. Preserve the additive source-only action-family distribution capability.
+    It groups validated candidates by `kind`, uses the best candidate score as
+    each family logit, and factorizes probability into family and conditional
+    softmaxes with explicit family, conditional, and joint entropy. Ranker
+    scores enter as CPU float32 and distribution tensors remain finite CPU
+    float64, including opposite float32 limits; exact hierarchical log-
+    probability sums and autograd gradients are regression-covered. The
+    focused suite passes 24 tests, the repository commit gate passes 4,036 tests
+    with 11 skips, and an independent review has no remaining correctness
+    finding. The module is not imported by any runner, defines no greedy rule or
+    entropy coefficient, and keeps all experiment, seed, native, training,
+    gameplay, loading, formal-RL, qualification, and promotion authority false.
 
 ## Work Lanes
 
@@ -615,10 +635,14 @@ read-only trajectory audit locates persistent greedy collapse at training chunk
 and leaves causal intervention claims unresolved. The Current comparator
 evidence lane is closed with
 `no_viable_baseline_candidate`; there is no active empirical baseline
-execution. The active simulator-learning lane is now a source-only design
-review for action-family normalization and family-level entropy invariants. It
-must not access holdout, replay a seed, fit or select a model, change a
-threshold, register an execution, or claim formal-RL readiness.
+execution. The action-family source-only design and additive distribution
+capability are now complete. The next simulator-learning gate is a read-only
+counterfactual integration audit over already-audited scored rows: compare flat
+and max-pooled family mass, quantify where two-stage score argmax and joint-
+probability argmax would differ, and review category-specific `kind` semantics.
+It must not access holdout, replay a seed, fit or select a model, choose an
+entropy coefficient, change a threshold, register an execution, or claim
+formal-RL readiness.
 
 Live gameplay is a maintenance and registered-evaluation lane only. Launch it
 for a crash, stuck state, repeated A-class simulator/mechanics defect, or an
