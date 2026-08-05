@@ -1,0 +1,79 @@
+{
+  "authority": {
+    "causal_claim_authorized": false,
+    "cohort_materialization_authorized": false,
+    "communication_mod_authorized": false,
+    "environment_construction_authorized": false,
+    "execution_authorized": false,
+    "formal_rl_authorized": false,
+    "fresh_evidence_authorized": false,
+    "gameplay_authorized": false,
+    "live_execution_authorized": false,
+    "model_fitting_authorized": false,
+    "native_loading_authorized": false,
+    "ope_authorized": false,
+    "policy_loading_authorized": false,
+    "production_checkpoint_mutation_authorized": false,
+    "promotion_authorized": false,
+    "qualification_authorized": false,
+    "seed_access_authorized": false,
+    "target_supported_outcome_authorized": false,
+    "training_authorized": false
+  },
+  "checks": {
+    "communication_mod_config_bound": true,
+    "empirical_seed_accessed": false,
+    "environment_constructed": false,
+    "evidence_bindings_verified": true,
+    "fresh_cohorts_disjoint": true,
+    "implementation_pushed_exact": true,
+    "native_module_bytes_verified": true,
+    "native_module_imported": false,
+    "output_absent": true,
+    "production_checkpoint_inventory_bound": true,
+    "registration_canonical": true,
+    "registration_validated": true,
+    "seed_inventory_independent_replay": true,
+    "simulator_source_identity_verified": true,
+    "torch_imported": false,
+    "training_started": false
+  },
+  "cohorts": {
+    "canary": {
+      "count": 128,
+      "first": 71024,
+      "last": 71151,
+      "sha256": "ee6483c7a48064ce502908f4d48de90695a8a12ba659de9d2f814addae37e3c6"
+    },
+    "holdout": {
+      "count": 512,
+      "first": 71152,
+      "last": 71663,
+      "sha256": "654ddf2c16aee8cb17de8513bf209853b1a263acb381eb59a751ff5e14cf76af"
+    },
+    "train": {
+      "count": 1024,
+      "first": 70000,
+      "last": 71023,
+      "sha256": "a703f4a05565461a9fa60b470bbd6cd86498dab17b0c20cdf1b91671499faff5"
+    }
+  },
+  "implementation_commit": "3ec7716c49dde19228569ebe93b2e617085a2b02",
+  "registration": {
+    "path": "reports/noncombat_state_conditioned_simulator_learning_experiment_20260805_registration.json",
+    "sha256": "d4a6ed9469410288f0670645f33c6cbf3c40f507afdc29a47fa229c7a6994f18",
+    "size_bytes": 485693
+  },
+  "schema_version": "noncombat-state-conditioned-simulator-learning-preregistration-preflight-v1",
+  "seed_inventory": {
+    "path": "reports/noncombat_state_conditioned_simulator_learning_experiment_20260805_seed_inventory.json",
+    "sha256": "de8570761b4dcd1ff95d7795ff9d918942b71ffc89f36d4363d42bd1ca220b76",
+    "size_bytes": 362704
+  },
+  "terms": {
+    "behavior_gates": "667cb704cde032d10ee06e7f2cb98b16b280d975a159279ffffcae1fb2f1c2f8",
+    "experiment": "d9ffbd2b866c67e192bba3c633586ebf041b2d0229bdffac079af04e1985a50c",
+    "limits": "5abe075feb76b4969beee404b7e7551149b36bed123e74194984630d70a39997"
+  },
+  "verdict": "ready_for_separate_execution_authorization"
+}

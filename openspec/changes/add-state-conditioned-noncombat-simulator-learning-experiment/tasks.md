@@ -71,11 +71,11 @@
 
 ## 5. Fresh Preregistration Without Execution
 
-- [ ] 5.1 From the clean pushed implementation, build and independently replay
+- [x] 5.1 From the clean pushed implementation, build and independently replay
   the tracked seed inventory; freeze fresh disjoint train, canary, and holdout
   cohorts plus exact algorithm, model, entropy, gradient, support,
   anti-collapse, state-effect, bootstrap, verdict, resource, and output terms.
-- [ ] 5.2 Generate canonical registration and preflight artifacts, prove every
+- [x] 5.2 Generate canonical registration and preflight artifacts, prove every
   source, evidence, runtime, native, cohort, threshold, limit, isolation,
   output, and all-false authority binding, then commit and push without loading
   native code, constructing an environment, accessing a seed, or training.
