@@ -743,10 +743,17 @@ The next authorized sequence is:
     is outside the local-filesystem trust model; deletion-resistant redemption
     would require a separate external authority proposal. No native module,
     simulator environment, empirical seed, fitting, update, game, or
-    CommunicationMod process was loaded or run at this source boundary. The
-    next gate is a fresh historical exclusion inventory and all-false 512-seed
-    registration generated from the clean pushed implementation commit,
-    followed by one exact read-only execution request and separate human
+    CommunicationMod process was loaded or run at the source or registration
+    boundary. The final all-false registration binds implementation commit
+    `5c8b66cdaf62f51a654994ec5a5cd5c2f6ac1118`, registration SHA-256
+    `1a3b267c16524e1e0449a8bddbd482684fb9dd0ac89c20bd9db19a9bd755249c`,
+    334 historical sources, 275,853 provenance rows, 5,755 excluded seeds,
+    and 512 ascending scheduled seeds `1769..2348`. A fresh independent
+    process rebuilt the inventory and accepted every registered source,
+    runtime, native, isolation, authority, and absent-output identity. Focused
+    registration tests pass 20 tests and strict OpenSpec validation passes all
+    75 items. The next gate is one exact read-only execution request rendered
+    from the pushed registration, followed by a hard stop for separate human
     approval of its digest and bounds.
 
 ## Work Lanes

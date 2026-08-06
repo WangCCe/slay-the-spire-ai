@@ -37,9 +37,9 @@
 
 ## 5. Fresh Registration Boundary
 
-- [ ] 5.1 From the clean pushed implementation commit, generate a standard-library historical seed exclusion inventory that includes every consumed, reserved, diagnostic, canary, holdout, and previously untouched holdout identity.
-- [ ] 5.2 Materialize exactly 512 fresh ascending training seeds, eight immutable chunks and folds, ascension zero, exact pushed source/native provenance/isolation/output identities, all resource and artifact ceilings, and every downstream authority as false in a new registration.
-- [ ] 5.3 Independently verify the inventory and registration from a fresh process, run focused registration tests and strict OpenSpec validation, then commit and push this boundary without native loading or seed access.
+- [x] 5.1 From the clean pushed implementation commit, generate a standard-library historical seed exclusion inventory that includes every consumed, reserved, diagnostic, canary, holdout, and previously untouched holdout identity.
+- [x] 5.2 Materialize exactly 512 fresh ascending training seeds, eight immutable chunks and folds, ascension zero, exact pushed source/native provenance/isolation/output identities, all resource and artifact ceilings, and every downstream authority as false in a new registration.
+- [x] 5.3 Independently verify the inventory and registration from a fresh process, run focused registration tests and strict OpenSpec validation, then commit and push this boundary without native loading or seed access.
 
 ## 6. Exact Human Authorization And One Mechanism Execution
 
