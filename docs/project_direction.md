@@ -698,6 +698,26 @@ The next authorized sequence is:
     with synthetic contracts and explicit future shared-parameter attribution;
     it grants no model loading, execution, training, gameplay, formal-RL,
     qualification, or promotion authority.
+39. Preserve the additive source-only hierarchical advantage-attribution
+    contract and its deterministic JSON/Markdown design evidence. It validates
+    trajectory-disjoint baseline and scale provenance, exact residual-over-
+    scale arithmetic, five ordered loss components over one shared CPU
+    float32 parameter set, an independently differentiated full gradient, and
+    one aggregate-first global-norm clip factor at ceiling `1.0`. The fixed
+    shared-ranker fixtures preserve aligned and opposing row-local versus
+    shared-parameter directions plus within/across-family max-pool ties. The
+    focused suite passes 46 tests and the post-review contract,
+    hierarchical-objective, and action-family-distribution boundary passes 90.
+    Independent review found and closed incomplete non-held-out fit coverage
+    and aliased parameter identity. The repository `commit` gate passes 4,241
+    tests with 16 skips in 424.62 seconds, 427.54 seconds including
+    orchestration.
+    This contract fits no baseline and accepts no path, seed, cohort,
+    checkpoint, environment, optimizer state, or parameter delta. The next
+    gate is a separately reviewed OpenSpec proposal that selects a baseline
+    estimator and folds, bounds raw evidence retention, and registers any
+    empirical successor lifecycle. It grants no model loading, execution,
+    training, gameplay, formal-RL, qualification, or promotion authority.
 
 ## Work Lanes
 
@@ -751,12 +771,15 @@ are complete. The contract preserves selected family plus conditional log
     target-supported-outcome, loading, gameplay, qualification, or promotion
     authority. The source-only credit-assignment audit is complete: direct
     take-logit pressure aligns in aggregate but is heterogeneous in the
-    supported effective-floor `17..33` band. The next gate is a separately
-    reviewed source-only algorithm-design proposal that addresses trajectory-
-    confounded advantages and future shared-parameter attribution. It must not
-    fit or load a model, replay a seed, make a causal or OPE claim, change a
-    coefficient or reward, select a checkpoint, register a cohort, or authorize
-    another experiment.
+    supported effective-floor `17..33` band. The additive hierarchical
+    advantage-attribution contract now closes the immediate source-only design
+    gap with trajectory-disjoint provenance, exact shared-gradient component
+    accounting, and uniform clipping evidence. The next gate is a separately
+    reviewed OpenSpec proposal that selects the baseline estimator and folds,
+    bounds raw evidence retention, and registers any new empirical successor
+    lifecycle. Until then, do not fit or load a model, replay a seed, make a
+    causal or OPE claim, change a coefficient or reward, select a checkpoint,
+    register a cohort, or authorize another experiment.
 
 Live gameplay is a maintenance and registered-evaluation lane only. Launch it
 for a crash, stuck state, repeated A-class simulator/mechanics defect, or an
@@ -779,12 +802,12 @@ OpenSpec changes authorize them.
 - For a one-attempt Windows evidence run that atomically publishes files, do
   not read any file under its active output root while the process is alive.
   Monitor process liveness only, then inspect artifacts after process exit.
-- Treat the latest 2026-08-06 `commit` gate result of 4,195 passed, 16 skipped,
-  437.48 seconds of pytest, and 440.38 seconds including orchestration as
+- Treat the latest 2026-08-06 `commit` gate result of 4,241 passed, 16 skipped,
+  424.62 seconds of pytest, and 427.54 seconds including orchestration as
   confirmation of timing drift: correctness passed, but the qualified
-  five-minute feedback bound was exceeded by 140.38 seconds. Do
-  not rerun it inside this change; schedule a separate read-only duration audit
-  before claiming the bounded-feedback requirement remains met.
+  five-minute feedback bound was exceeded by 127.54 seconds. Do not rerun it
+  inside this change; schedule a separate read-only duration audit before
+  claiming the bounded-feedback requirement remains met.
 
 Historical reports and archived changes retain the objectives and authority
 boundaries that applied when they were written. This document is the canonical

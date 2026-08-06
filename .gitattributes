@@ -195,3 +195,11 @@ reports/noncombat_state_conditioned_simulator_learning_experiment_*_archive/*.gz
 openspec/specs/noncombat-state-conditioned-simulator-learning-experiment/** text eol=lf
 openspec/changes/add-state-conditioned-noncombat-simulator-learning-experiment/** text eol=lf
 openspec/changes/archive/*-add-state-conditioned-noncombat-simulator-learning-experiment/** text eol=lf
+
+# Preserve the hierarchical advantage-attribution contract and canonical evidence.
+analysis_scripts/noncombat_hierarchical_advantage_attribution.py text eol=lf
+tests/test_noncombat_hierarchical_advantage_attribution.py text eol=lf
+reports/noncombat_hierarchical_advantage_attribution_contract_* text eol=lf
+openspec/specs/noncombat-hierarchical-advantage-attribution-contract/** text eol=lf
+openspec/changes/add-hierarchical-advantage-attribution-contract/** text eol=lf
+openspec/changes/archive/*-add-hierarchical-advantage-attribution-contract/** text eol=lf
