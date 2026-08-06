@@ -1,0 +1,187 @@
+{
+  "authority": {
+    "causal_claim_authorized": false,
+    "cohort_materialization_authorized": false,
+    "communication_mod_authorized": false,
+    "environment_construction_authorized": false,
+    "execution_authorized": false,
+    "formal_rl_authorized": false,
+    "fresh_evidence_authorized": false,
+    "gameplay_authorized": false,
+    "live_execution_authorized": false,
+    "model_fitting_authorized": false,
+    "native_loading_authorized": false,
+    "ope_authorized": false,
+    "policy_loading_authorized": false,
+    "production_checkpoint_mutation_authorized": false,
+    "promotion_authorized": false,
+    "qualification_authorized": false,
+    "seed_access_authorized": false,
+    "target_supported_outcome_authorized": false,
+    "training_authorized": false
+  },
+  "contract": {
+    "audit_source_committed": false,
+    "consumed_experiment_immutable": true,
+    "environment_constructed": false,
+    "experiment_rerun": false,
+    "model_loaded": false,
+    "native_loaded": false,
+    "seed_accessed": false,
+    "source_only": true,
+    "terminal_bundle_read_only": true,
+    "torch_imported": false,
+    "verifier_executed_source_only": true
+  },
+  "identity": {
+    "audit_change": "audit-hierarchical-card-reward-credit-assignment",
+    "consumed_logical_execution_id": "noncombat-hierarchical-simulator-learning-20260806-r1",
+    "planning_commit": "4a23558cec1f55ec2efa3497064e47a568b04092"
+  },
+  "inputs": {
+    "artifact_manifest": {
+      "path": "reports/noncombat_hierarchical_simulator_learning_successor_20260806/artifact_manifest.json",
+      "sha256": "2cdc682fa6539dfb39dc8ab6e1d3be5b17a4e6683079fcb677ea0d7d6058abc5",
+      "size_bytes": 5115
+    },
+    "authorization": {
+      "path": "reports/noncombat_hierarchical_simulator_learning_successor_20260806/authorization.json",
+      "sha256": "285e573abe7dfe8509b3572c1b96d851451e31a761b4f762d4e81a3abaa11b87",
+      "size_bytes": 2119
+    },
+    "checkpoints": [
+      {
+        "path": "reports/noncombat_hierarchical_simulator_learning_successor_20260806/checkpoints/checkpoint_0001.json",
+        "sha256": "ac386d40a916813666471a664ca55c2c0f2a1649da06b24afa2386907b651c13",
+        "size_bytes": 22374183
+      },
+      {
+        "path": "reports/noncombat_hierarchical_simulator_learning_successor_20260806/checkpoints/checkpoint_0002.json",
+        "sha256": "c8fcda55894e4d3442512cd9b2d7a47899008c2ae3f8ac68cc83a12a0c8cad03",
+        "size_bytes": 22248230
+      },
+      {
+        "path": "reports/noncombat_hierarchical_simulator_learning_successor_20260806/checkpoints/checkpoint_0003.json",
+        "sha256": "62b7ce2d24d1d60e23402b79357cba98a48ca70f004b0c401d913eb296734933",
+        "size_bytes": 22733665
+      },
+      {
+        "path": "reports/noncombat_hierarchical_simulator_learning_successor_20260806/checkpoints/checkpoint_0004.json",
+        "sha256": "555755a4df07e6b0660710f28624873eb28cbb3fc40b3d5ed977fc661bbb47a8",
+        "size_bytes": 23169006
+      },
+      {
+        "path": "reports/noncombat_hierarchical_simulator_learning_successor_20260806/checkpoints/checkpoint_0005.json",
+        "sha256": "7392ec4719ef28241d99c0ce32d7012ac21c953e4cdedc8e6a7b7af2b0d570c5",
+        "size_bytes": 22813471
+      },
+      {
+        "path": "reports/noncombat_hierarchical_simulator_learning_successor_20260806/checkpoints/checkpoint_0006.json",
+        "sha256": "bc131959e646c4c18dbae3631c3e1c855d78b33fe087353a68c22e8acf8e388d",
+        "size_bytes": 23510704
+      },
+      {
+        "path": "reports/noncombat_hierarchical_simulator_learning_successor_20260806/checkpoints/checkpoint_0007.json",
+        "sha256": "2c0c43a32f1f9fdd08a8502d5687a5c1d629cef772d442a5c336929d9b18ee9f",
+        "size_bytes": 23188062
+      },
+      {
+        "path": "reports/noncombat_hierarchical_simulator_learning_successor_20260806/checkpoints/checkpoint_0008.json",
+        "sha256": "e0b5130ca612f2c8e7fd9b0cc10ba2e844ee124c99261510fa550ad88bd620fb",
+        "size_bytes": 23438565
+      }
+    ],
+    "execution_journal": {
+      "path": "reports/noncombat_hierarchical_simulator_learning_successor_20260806/execution_journal.json",
+      "sha256": "2d08e1dced83abae30f0c6010278dc7f03353d0548f06ad3acb95593fef6acf6",
+      "size_bytes": 2725
+    },
+    "isolation": {
+      "path": "reports/noncombat_hierarchical_simulator_learning_successor_20260806/isolation.json",
+      "sha256": "ac7d5311d6e07176eacc4ead5c116bff4fecf5c56d86eb2f43d8151716f526cb",
+      "size_bytes": 1908
+    },
+    "lease_control": {
+      "analytical_evidence": false,
+      "exclusive_nonblocking_lock_required": true,
+      "path": "reports/noncombat_hierarchical_simulator_learning_successor_20260806/.execution.lease",
+      "sha256": "1f14a0d4059f96107a442f960931452e227af8a162fb823936884d2cc8960187",
+      "size_bytes": 373,
+      "tracked": false
+    },
+    "metrics": {
+      "path": "reports/noncombat_hierarchical_simulator_learning_successor_20260806/metrics.json",
+      "sha256": "a894b19096b3d876c3874aa781f5744280147e2a6f3f11c8837c962de4e388ef",
+      "size_bytes": 1344
+    },
+    "postmortem": {
+      "path": "reports/noncombat_hierarchical_simulator_learning_successor_20260806_postmortem.json",
+      "sha256": "aff0ade1f65e66b0db97a205e63952e5cb768f4add789c36acc8e23bbc8a76a3",
+      "size_bytes": 5958
+    },
+    "registration": {
+      "path": "reports/noncombat_hierarchical_simulator_learning_successor_20260806/registration.json",
+      "sha256": "b744ebc2b4999051a12422fe4ba7090ee6f412c7c1aa644882077200bffb53a3",
+      "size_bytes": 713434
+    },
+    "terminal": {
+      "path": "reports/noncombat_hierarchical_simulator_learning_successor_20260806/terminal.json",
+      "sha256": "a058cf19e2bd2e42027bbd7c17bedcc9fd3ba6aa9b4c0de83cc4f68cc287afca",
+      "size_bytes": 1691
+    },
+    "training_rows": {
+      "canonical_sha256": "a19bfd2634e14d25668e5443d7942112c354b7259d21c156dd34c6deb8dde3e5",
+      "canonical_size_bytes": 42593595,
+      "compression": "gzip-mtime-zero-v1",
+      "path": "reports/noncombat_hierarchical_simulator_learning_successor_20260806/training_rows.json.gz",
+      "sha256": "733f479157b16a545234e3cd500aba8e3ff56e5f50b2324f8309d17f6701e320",
+      "size_bytes": 4174910
+    },
+    "verifier_source": {
+      "path": "analysis_scripts/verify_noncombat_hierarchical_simulator_learning_experiment.py",
+      "sha256": "6d37b71985076020c8a8f08ad77a7d97b27c8ef73a05a730b03cc461ae1b77fa",
+      "size_bytes": 132616
+    }
+  },
+  "planned_paths": {
+    "json_report": "reports/noncombat_hierarchical_card_reward_credit_assignment_audit_20260806.json",
+    "markdown_report": "reports/noncombat_hierarchical_card_reward_credit_assignment_audit_20260806.md",
+    "source": "analysis_scripts/audit_hierarchical_card_reward_credit_assignment.py",
+    "tests": "tests/test_audit_hierarchical_card_reward_credit_assignment.py"
+  },
+  "planning": {
+    "commit": "4a23558cec1f55ec2efa3497064e47a568b04092",
+    "files": {
+      "design": {
+        "path": "openspec/changes/audit-hierarchical-card-reward-credit-assignment/design.md",
+        "sha256": "a75a20c4d1933727b835b2d5841c7dd2cb1e641fc9bdc0cb1ad20d422c23ae58",
+        "size_bytes": 11705
+      },
+      "proposal": {
+        "path": "openspec/changes/audit-hierarchical-card-reward-credit-assignment/proposal.md",
+        "sha256": "5150e58972e9cf425934ca27eeb67e7306d5c1f068af58c5cf0ba3b8090f8b3c",
+        "size_bytes": 3687
+      },
+      "spec": {
+        "path": "openspec/changes/audit-hierarchical-card-reward-credit-assignment/specs/noncombat-hierarchical-card-reward-credit-assignment-audit/spec.md",
+        "sha256": "fbf66a7364d4680f1638787d352dc1a712b062f91fd4579aa3c2e9b31806e205",
+        "size_bytes": 8795
+      },
+      "tasks": {
+        "path": "openspec/changes/audit-hierarchical-card-reward-credit-assignment/tasks.md",
+        "sha256": "a4e5abfab612c8c8faa85c6857c3926cb1b44fd090ac9cdad6d851f2ddb849bd",
+        "size_bytes": 3592
+      }
+    }
+  },
+  "schema_version": "noncombat-hierarchical-card-reward-credit-assignment-audit-preimplementation-v1",
+  "verifier_result": {
+    "artifact_count": 22,
+    "checkpoint_count": 8,
+    "logical_execution_id": "noncombat-hierarchical-simulator-learning-20260806-r1",
+    "repository_identity_verified": true,
+    "training_chunk_count": 8,
+    "verdict": "experiment_stopped_during_training_for_family_saturation",
+    "verification": "verified"
+  }
+}
