@@ -96,6 +96,17 @@ AUTHORITY_NAMES = (
     "target_supported_outcome_authorized",
     "training_authorized",
 )
+RECORDED_EXECUTION_ENABLED = frozenset(
+    {
+        "environment_construction_authorized",
+        "execution_authorized",
+        "fresh_evidence_authorized",
+        "model_fitting_authorized",
+        "native_loading_authorized",
+        "seed_access_authorized",
+        "training_authorized",
+    }
+)
 
 LIMITATIONS = (
     "Direct family-logit pressure is a factorized coordinate derivative, not "
@@ -125,6 +136,13 @@ class CreditAssignmentAuditError(ValueError):
 def audit_authority() -> dict[str, bool]:
     """Return the exact all-false downstream authority map."""
     return {name: False for name in AUTHORITY_NAMES}
+
+
+def recorded_execution_authority() -> dict[str, bool]:
+    """Return the exact authority granted to the consumed historical run."""
+    return {
+        name: name in RECORDED_EXECUTION_ENABLED for name in AUTHORITY_NAMES
+    }
 
 
 def _reject_constant(value: str) -> None:
@@ -2028,7 +2046,14 @@ def _validate_terminal_metadata(
     isolation = loaded["isolation.json"]
     report = loaded["report.json"]
     for name, value in loaded.items():
-        if "authority" in value:
+        if "authority" not in value:
+            continue
+        if name == "authorization.json":
+            if value["authority"] != recorded_execution_authority():
+                raise CreditAssignmentAuditError(
+                    "authorization.json authority mismatch"
+                )
+        else:
             _all_false_authority(value["authority"], f"{name} authority")
     if (
         authorization.get("logical_experiment_id") != LOGICAL_EXECUTION_ID
@@ -2098,7 +2123,7 @@ def _validate_terminal_metadata(
     if (
         report.get("logical_execution_id") != LOGICAL_EXECUTION_ID
         or report.get("verdict") != TERMINAL_VERDICT
-        or report.get("formal_rl_readiness") is not False
+        or report.get("formal_rl_readiness") != "unchanged_not_ready"
         or report.get("policy_quality_claim") is not False
         or report.get("target_supported_outcome_claim") is not False
     ):

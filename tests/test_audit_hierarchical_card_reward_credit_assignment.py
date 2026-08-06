@@ -589,6 +589,52 @@ def test_preimplementation_record_binds_existing_terminal_evidence() -> None:
     assert record["verifier_result"]["verification"] == "verified"
 
 
+def test_terminal_metadata_accepts_only_recorded_execution_authority() -> None:
+    preimplementation = audit.parse_canonical_json_bytes(
+        PREIMPLEMENTATION_PATH.read_bytes(),
+        "preimplementation record",
+    )
+    inputs = preimplementation["inputs"]
+    lease_binding = inputs["lease_control"]
+    expected_identity = {
+        "authorization_sha256": inputs["authorization"]["sha256"],
+        "logical_execution_id": audit.LOGICAL_EXECUTION_ID,
+        "registration_sha256": inputs["registration"]["sha256"],
+    }
+    terminal_root = REPO_ROOT / audit.DEFAULT_TERMINAL_DIRECTORY
+    manifest_binding = inputs["artifact_manifest"]
+
+    with audit.hold_inactive_lease(
+        REPO_ROOT / lease_binding["path"],
+        lease_binding,
+        expected_identity,
+    ) as locked_lease_bytes:
+        audit.validate_preimplementation_record(
+            REPO_ROOT,
+            PREIMPLEMENTATION_PATH,
+            locked_lease_bytes=locked_lease_bytes,
+        )
+        manifest, _ = audit.load_bound_json(
+            REPO_ROOT / manifest_binding["path"],
+            manifest_binding,
+            "terminal artifact manifest",
+        )
+        bindings = audit._validate_manifest(manifest, terminal_root)
+        metadata = audit._validate_terminal_metadata(
+            terminal_root,
+            bindings,
+            manifest["identity"],
+        )
+
+    assert len(metadata["train_seeds"]) == 1024
+    assert {
+        name
+        for name, authorized in audit.recorded_execution_authority().items()
+        if authorized
+    } == set(audit.RECORDED_EXECUTION_ENABLED)
+    assert not any(audit.audit_authority().values())
+
+
 def test_cli_rejects_all_caller_overrides(tmp_path: Path) -> None:
     with pytest.raises(SystemExit):
         audit.main(["--repo-root", str(tmp_path)])
