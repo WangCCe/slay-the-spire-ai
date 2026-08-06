@@ -87,11 +87,11 @@
 
 ## 6. Register Fresh Evidence Without Execution
 
-- [ ] 6.1 From the clean pushed implementation, build and independently replay
+- [x] 6.1 From the clean pushed implementation, build and independently replay
   the fixed-tree seed inventory; materialize the exact fresh disjoint train,
   canary, and holdout cohorts without loading native code or constructing an
   environment.
-- [ ] 6.2 Generate canonical registration and source-only preflight artifacts
+- [x] 6.2 Generate canonical registration and source-only preflight artifacts
   that freeze every algorithm, coefficient, control, gate, cohort, resource,
   native, runtime, isolation, output, and all-false downstream authority term;
   independently review, commit, and push them without execution.
