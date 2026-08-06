@@ -203,3 +203,8 @@ reports/noncombat_hierarchical_advantage_attribution_contract_* text eol=lf
 openspec/specs/noncombat-hierarchical-advantage-attribution-contract/** text eol=lf
 openspec/changes/add-hierarchical-advantage-attribution-contract/** text eol=lf
 openspec/changes/archive/*-add-hierarchical-advantage-attribution-contract/** text eol=lf
+
+# Preserve the cross-fitted hierarchical successor plan and future spec bytes.
+openspec/specs/noncombat-cross-fitted-hierarchical-learning-successor/** text eol=lf
+openspec/changes/add-cross-fitted-hierarchical-learning-successor/** text eol=lf
+openspec/changes/archive/*-add-cross-fitted-hierarchical-learning-successor/** text eol=lf
