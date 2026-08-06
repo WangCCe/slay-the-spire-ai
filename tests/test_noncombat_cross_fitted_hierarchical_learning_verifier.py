@@ -76,6 +76,73 @@ def test_verifier_cli_routes_terminal_bundle_without_producer_import(
     assert observed == [output]
 
 
+def test_seed_inventory_replays_the_producer_seed_first_row_order():
+    commit = "a" * 40
+    rows = [
+        {
+            "document_index": 0,
+            "json_path": "/seed",
+            "role": "seed",
+            "seed": 1,
+            "source_path": "reports/z.json",
+        },
+        {
+            "document_index": 0,
+            "json_path": "/seed",
+            "role": "seed",
+            "seed": 2,
+            "source_path": "reports/a.json",
+        },
+    ]
+    excluded = sorted(
+        {1, 2}
+        | set(
+            range(
+                verifier.PREVIOUS_UNTOUCHED_HOLDOUT_START,
+                verifier.PREVIOUS_UNTOUCHED_HOLDOUT_END + 1,
+            )
+        )
+    )
+    inventory = {
+        "canonical_search_start": 0,
+        "excluded_seed_count": len(excluded),
+        "excluded_seeds": excluded,
+        "repository_commit": commit,
+        "reserved_seed_ranges": [
+            {
+                "end_inclusive": verifier.PREVIOUS_UNTOUCHED_HOLDOUT_END,
+                "name": "previous_untouched_holdout",
+                "start_inclusive": verifier.PREVIOUS_UNTOUCHED_HOLDOUT_START,
+            }
+        ],
+        "row_count": len(rows),
+        "rows": rows,
+        "schema_version": verifier.SEED_INVENTORY_SCHEMA_VERSION,
+        "source_bindings": [
+            {
+                "document_count": 1,
+                "format": "json",
+                "path": path,
+                "row_count": 1,
+                "sha256": digest * 64,
+                "size_bytes": 1,
+            }
+            for path, digest in (
+                ("reports/a.json", "a"),
+                ("reports/z.json", "b"),
+            )
+        ],
+        "source_count": 2,
+    }
+
+    assert verifier._validate_seed_inventory(inventory, commit) == inventory
+
+    source_first = copy.deepcopy(inventory)
+    source_first["rows"].reverse()
+    with pytest.raises(verifier.VerifierError, match="not canonical"):
+        verifier._validate_seed_inventory(source_first, commit)
+
+
 @pytest.mark.parametrize(
     ("dtype", "values", "shape", "format_code"),
     [

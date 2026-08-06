@@ -362,6 +362,9 @@ standard-library inventory scans one fixed Git tree and excludes every seed
 under seed-bearing fields in historical registrations, authorizations,
 reservations, diagnostics, reports, checkpoints, training, evaluation, canary,
 and holdout evidence. Previously unvisited holdouts remain excluded.
+Every extracted provenance row is ordered by `(seed, source path, document
+index, JSON path, role)` before hashing so the producer and independent
+verifier share one explicit canonical identity.
 
 One fixed ascending algorithm selects exactly 512 unique training seeds. Sort
 them canonically for chunk and fold assignment. Exact values, native-module

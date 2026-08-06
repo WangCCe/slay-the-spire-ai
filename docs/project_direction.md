@@ -726,7 +726,7 @@ The next authorized sequence is:
     access and resource journals, recoverable checkpoints, one bounded
     same-identity infrastructure resume, exact terminal checkpoint closure,
     and an independent standard-library verifier. Review-sensitive control
-    and verifier tests pass 129 tests with one skip; the repository `commit`
+    and verifier tests pass 130 tests with one skip; the repository `commit`
     gate passes 4,419 tests with 17 skips in 556.07 seconds, 558.90 seconds
     including orchestration. Independent review closed post-isolation terminal
     publication and extra-access saturation-boundary defects. Registration
@@ -735,8 +735,10 @@ The next authorized sequence is:
     registration/authorization HEAD only when the current tree contains both
     exact canonical blobs and all registered source bytes remain unchanged.
     This narrow post-gate repair is covered by RED registration-lineage tests
-    and the 129-test control/verifier suite; the one-shot repository gate was
-    not rerun. Deletion of the
+    and the control/verifier suite. Registration verification also aligned the
+    independent inventory replay with the producer's explicit `(seed, source,
+    document, JSON path, role)` canonical row order. The one-shot repository
+    gate was not rerun for either registration-boundary repair. Deletion of the
     entire immutable output root remains prohibited evidence destruction and
     is outside the local-filesystem trust model; deletion-resistant redemption
     would require a separate external authority proposal. No native module,

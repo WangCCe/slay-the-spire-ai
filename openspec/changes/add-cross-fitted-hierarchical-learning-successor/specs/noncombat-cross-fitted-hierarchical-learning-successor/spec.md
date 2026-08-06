@@ -260,7 +260,7 @@ diagnostic, canary, holdout, and previously untouched holdout seed.
 
 #### Scenario: A fresh registration is built
 - **WHEN** the implementation is clean, independently reviewed, committed, and pushed
-- **THEN** the inventory binds the fixed pushed source tree, all transitive behavioral sources, native provenance, ascension zero, isolation identity, and complete historical exclusions, selects exactly 512 otherwise-unused seeds, and grants no native, seed, fitting, training, gameplay, or promotion authority
+- **THEN** the inventory binds the fixed pushed source tree, all transitive behavioral sources, native provenance, ascension zero, isolation identity, and complete historical exclusions, orders provenance rows by `(seed, source path, document index, JSON path, role)`, selects exactly 512 otherwise-unused seeds, and grants no native, seed, fitting, training, gameplay, or promotion authority
 
 #### Scenario: A runtime seed or resource term drifts
 - **WHEN** seed order, chunk membership, fold assignment, native module, CPU mode, episode/update/decision/byte/time ceiling, output root, or source identity differs from registration

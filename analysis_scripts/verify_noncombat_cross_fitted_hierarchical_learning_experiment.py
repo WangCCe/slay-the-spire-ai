@@ -2798,11 +2798,11 @@ def _validate_seed_inventory(value: Any, repository_commit: str) -> dict[str, An
             raise VerifierError("seed inventory source format mismatch")
         normalized_rows.append(row)
     row_sort = lambda row: (
+        row["seed"],
         row["source_path"],
         row["document_index"],
         row["json_path"],
         row["role"],
-        row["seed"],
     )
     if normalized_rows != sorted(normalized_rows, key=row_sort):
         raise VerifierError("seed inventory rows are not canonical")
