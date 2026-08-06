@@ -718,6 +718,27 @@ The next authorized sequence is:
     estimator and folds, bounds raw evidence retention, and registers any
     empirical successor lifecycle. It grants no model loading, execution,
     training, gameplay, formal-RL, qualification, or promotion authority.
+40. Preserve the source-only cross-fitted hierarchical learning successor and
+    its fail-closed execution boundary. The implementation fixes eight chunks
+    of 64 trajectories, four trajectory-disjoint folds, a 128-dimensional
+    folded sparse baseline, exact five-component shared-gradient accounting,
+    independent Adam replay, deterministic binary/gzip evidence, append-only
+    access and resource journals, recoverable checkpoints, one bounded
+    same-identity infrastructure resume, exact terminal checkpoint closure,
+    and an independent standard-library verifier. Review-sensitive control
+    and verifier tests pass 127 tests with one skip; the repository `commit`
+    gate passes 4,419 tests with 17 skips in 556.07 seconds, 558.90 seconds
+    including orchestration. Independent review closed post-isolation terminal
+    publication and extra-access saturation-boundary defects. Deletion of the
+    entire immutable output root remains prohibited evidence destruction and
+    is outside the local-filesystem trust model; deletion-resistant redemption
+    would require a separate external authority proposal. No native module,
+    simulator environment, empirical seed, fitting, update, game, or
+    CommunicationMod process was loaded or run at this source boundary. The
+    next gate is a fresh historical exclusion inventory and all-false 512-seed
+    registration generated from the clean pushed implementation commit,
+    followed by one exact read-only execution request and separate human
+    approval of its digest and bounds.
 
 ## Work Lanes
 
@@ -774,12 +795,16 @@ are complete. The contract preserves selected family plus conditional log
     supported effective-floor `17..33` band. The additive hierarchical
     advantage-attribution contract now closes the immediate source-only design
     gap with trajectory-disjoint provenance, exact shared-gradient component
-    accounting, and uniform clipping evidence. The next gate is a separately
-    reviewed OpenSpec proposal that selects the baseline estimator and folds,
-    bounds raw evidence retention, and registers any new empirical successor
-    lifecycle. Until then, do not fit or load a model, replay a seed, make a
+    accounting, and uniform clipping evidence. The cross-fitted hierarchical
+    successor source implementation now fixes the selected baseline, folds,
+    evidence bounds, lifecycle, recovery, and independent-verification
+    contract. Its next gate is a standard-library historical exclusion
+    inventory and all-false 512-seed registration generated only from the clean
+    pushed source commit. That boundary may render an exact execution request,
+    but must stop for separate human approval of the request digest and bounds.
+    Until then, do not fit or load a model, access a registered seed, make a
     causal or OPE claim, change a coefficient or reward, select a checkpoint,
-    register a cohort, or authorize another experiment.
+    or authorize or execute the empirical experiment.
 
 Live gameplay is a maintenance and registered-evaluation lane only. Launch it
 for a crash, stuck state, repeated A-class simulator/mechanics defect, or an
@@ -802,12 +827,13 @@ OpenSpec changes authorize them.
 - For a one-attempt Windows evidence run that atomically publishes files, do
   not read any file under its active output root while the process is alive.
   Monitor process liveness only, then inspect artifacts after process exit.
-- Treat the latest 2026-08-06 `commit` gate result of 4,241 passed, 16 skipped,
-  424.62 seconds of pytest, and 427.54 seconds including orchestration as
+- Treat the latest 2026-08-06 `commit` gate result of 4,419 passed, 17 skipped,
+  556.07 seconds of pytest, and 558.90 seconds including orchestration as
   confirmation of timing drift: correctness passed, but the qualified
-  five-minute feedback bound was exceeded by 127.54 seconds. Do not rerun it
-  inside this change; schedule a separate read-only duration audit before
-  claiming the bounded-feedback requirement remains met.
+  five-minute feedback bound was exceeded by 258.90 seconds. This change
+  invoked the gate exactly once and did not rerun it because of duration;
+  schedule a separate read-only duration audit before claiming the bounded-
+  feedback requirement remains met.
 
 Historical reports and archived changes retain the objectives and authority
 boundaries that applied when they were written. This document is the canonical

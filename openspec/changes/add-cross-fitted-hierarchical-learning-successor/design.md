@@ -58,7 +58,7 @@ materialize a cohort, access a seed, fit a baseline, or update a model.
 
 ## Decisions
 
-### Add an isolated three-module successor
+### Add three isolated execution modules and one seed-inventory utility
 
 The implementation will add:
 
@@ -71,7 +71,10 @@ The implementation will add:
    gradient evidence, optimizer updates, and family diagnostics; and
 3. `analysis_scripts/verify_noncombat_cross_fitted_hierarchical_learning_experiment.py`
    as an independent standard-library verifier that imports neither the
-   control plane nor the runtime.
+   control plane nor the runtime; and
+4. `analysis_scripts/noncombat_cross_fitted_hierarchical_learning_seed_inventory.py`
+   as a standard-library historical-exclusion scanner and deterministic fresh-
+   schedule validator used only at the later registration boundary.
 
 Control-only commands remain importable without Torch or the native adapter.
 The runtime is imported only after authorization, source, runtime, native,
@@ -82,7 +85,11 @@ advantage-attribution modules. For the diagnostic only, it calls the consumed
 hierarchical runtime's public `normalize_returns` and `build_reinforce_loss`
 functions so the legacy objective arithmetic is source-identical rather than
 reimplemented. It imports no private function from a consumed learning runner,
-and every reused source file is included in the new source binding.
+and every directly or transitively reused behavioral source file is included in
+the new source binding. Execution rejects a pre-imported Torch or native module,
+loads and verifies the registered native bytes and build provenance first, and
+only then imports the bound runtime and compares its complete immutable metadata
+to the registration.
 
 Alternative: patch the consumed runner. Rejected because that would alter
 consumed evidence. Alternative: copy its complete control plane and runtime.
@@ -318,8 +325,13 @@ A later registration fixes eight chunks of 64 unique scheduled training
 trajectories, at most eight optimizer updates, at most 500 decisions per
 episode, and at most 32,768 retained decisions. There is no canary, holdout,
 teacher, checkpoint selection, or frozen-policy rollout. The execution is CPU
-only, may load only its bound native simulator module, may not load a production
-checkpoint, and has 14,400 charged seconds.
+only at ascension `0`, may load only its bound native simulator module and build
+provenance, may not load a production checkpoint, and has 14,400 charged
+seconds. Registration also binds the exact CommunicationMod configuration and
+complete inert production-checkpoint tree. Source-only preflight reobserves the
+pushed `origin/master` commit, tracked-clean source bytes, runtime identity,
+native bytes, and isolation identity before native loading; terminal closeout
+reobserves isolation before accepting any verdict.
 
 The existing exact anti-collapse rule remains unchanged. After each complete
 chunk, inspect the trailing four chunks. If at least 64 multi-family decisions
@@ -349,8 +361,10 @@ and holdout evidence. Previously unvisited holdouts remain excluded.
 One fixed ascending algorithm selects exactly 512 unique training seeds. Sort
 them canonically for chunk and fold assignment. Exact values, native-module
 identity, source commit, and output root are materialized only in the later
-all-false registration. Caller-supplied seeds, alternate search starts, or
-runtime overrides fail closed.
+all-false registration. That registration additionally binds ascension `0`,
+native build provenance, the pushed remote ref, and pre-execution isolation.
+Caller-supplied seeds, alternate search starts, or runtime overrides fail
+closed.
 
 ### Require explicit external approval for exact execution
 
@@ -372,9 +386,15 @@ approval, or an agent-authored review is not the exact execution approval.
 ### Permit setup retry and one bounded same-identity resume
 
 Registration, source-only verification, inventory, and pre-start validation do
-not load native code or access a seed. A pre-start native-load or isolation
-failure may be retried under the exact same registration and authorization only
-while the durable first-seed journal marker is absent.
+not load native code or access a seed. After source-only checks and lease
+acquisition, the runner publishes six canonical registration, request,
+approval, authorization, preflight, and pre-isolation documents before loading
+the registered native module. If dependency loading fails, a later manual
+invocation may reclaim only that exact source-bound setup inventory under the
+same registration and authorization. A fully initialized bootstrap with a
+zero-debit journal and zero resource ledger is likewise reopenable without
+consuming the post-start resume. Neither case triggers an automatic retry loop,
+changes a module, seed, cohort, or control, or accesses an environment.
 
 Immediately before the first registered seed reaches the environment factory,
 the runner durably flushes the evidence-bearing start marker. After that point,
@@ -397,17 +417,46 @@ when no diagnostic row completed. A checkpoint coordinate may be lower than
 consumed resources. Checkpoint publication advances resource use first and
 model state second, and terminal reconstruction uses only the latest complete
 checkpoint or the write-once seeded bootstrap when no chunk completed.
+Chunk evidence duplicates the exact opaque runtime-checkpoint binding held by
+its checkpoint envelope. If evidence and its reconciled journal/resource
+coordinate are durable but the envelope write is interrupted, a later manual
+invocation may reconstruct exactly that one missing envelope without another
+environment access or optimizer update. Any non-unique or inconsistent prefix
+fails closed.
 
 The output lease is exclusive. While the execution process is alive,
 monitoring reads process liveness only and does not inspect the active output
 root. Initial execution requires an absent output root. A pre-start retry may
-reopen only the exact minimal pre-start-attempt inventory with no first-seed
-marker. The one permitted post-start resume may reclaim only its exact lease
-after independently proving the recorded owner process is dead and validating
-the registered bootstrap, journal, resource prefix, complete checkpoints, and
-absence of an ambiguous temporary publication. Every unrelated or
-unreconstructable preexisting lease, journal, artifact, temporary publication,
-or output root fails closed.
+reopen only the exact source-bound setup inventory or initialized zero-debit
+boundary with no first-seed marker. The one permitted post-start resume may
+reclaim only its exact lease after independently proving the recorded owner
+process is dead and validating the registered bootstrap, journal, resource
+prefix, complete checkpoints, and absence of an ambiguous temporary
+publication. Every unrelated or unreconstructable preexisting lease, journal,
+artifact, temporary publication, or output root fails closed.
+
+The interruption coordinate is the latest durably published complete
+checkpoint, not merely the number of episode terminal records. If all 64
+episode accesses of a chunk completed but its checkpoint did not, that chunk is
+still incomplete and is the sole replay candidate. If interruption occurs after
+a complete checkpoint and before the next registered seed, resume restores that
+checkpoint and continues the next primary chunk without replaying a completed
+chunk or consuming an extra seed. Both cases consume the one post-start resume
+allowance and retain all charged resources.
+
+Terminal publication first writes an immutable intent over the exact artifact
+prefix, then the terminal document, then the manifest. If interrupted after the
+intent or terminal write, a later invocation completes only the uniquely
+missing byte-identical document before dependency loading. It does not reopen
+training or consume another seed.
+
+If the persisted post-isolation observation differs from registration, the
+runner preserves that observation and any typed failure witness but does not
+publish terminal intent, terminal, or manifest. Such a root is deliberately
+not a structurally valid bundle and cannot be reopened. If the sole post-start
+resume is itself interrupted, the runner instead charges its final resources
+and closes a typed infrastructure failure under the consumed identity; it does
+not expose a second resume.
 
 ### Keep every verdict and downstream authority narrow
 
@@ -459,6 +508,12 @@ full policy-quality successor proposal.
 - [A Windows interruption may consume seeds twice] -> Permit only one
   same-identity incomplete-chunk replay, debit every access durably, and never
   substitute a seed or evidence identity.
+- [An operator could delete the complete output root and attempt to reuse the
+  authorization] -> Treat deletion or renaming after publication as prohibited
+  destruction of immutable evidence. The local lifecycle assumes preservation
+  of its bound output root; a deletion-resistant redemption service would be a
+  new external trust boundary and requires a separate proposal rather than a
+  second local marker that the same operator could also delete.
 - [The repository commit gate already exceeds its feedback target] -> Use
   focused tests during implementation, invoke the commit gate once at the
   source commit boundary, and leave duration optimization to its separate
@@ -469,8 +524,9 @@ full policy-quality successor proposal.
 1. Strict-validate, independently review, commit, and push this planning change
    without implementation, Torch/native loading, cohort creation, or seed
    access.
-2. Add RED synthetic and lifecycle tests, then the three additive successor
-   modules. Preserve all consumed files and empirical artifacts byte-for-byte.
+2. Add RED synthetic and lifecycle tests, then the three execution modules and
+   source-only seed-inventory utility. Preserve all consumed files and
+   empirical artifacts byte-for-byte.
 3. Run focused successor/dependency tests, import-isolation checks, strict
    OpenSpec validation, one repository commit gate, and independent code/spec/
    authority review. Commit and push the source-only implementation.

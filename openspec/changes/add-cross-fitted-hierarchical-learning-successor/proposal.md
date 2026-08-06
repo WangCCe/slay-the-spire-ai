@@ -30,20 +30,26 @@ state-value advantages and measure the resulting complete gradient direction.
 - Bound a later mechanism experiment to eight updates, 512 unique fresh
   scheduled trajectories, at most 576 environment episode accesses including
   one same-identity incomplete-chunk replay reserve, no canary or holdout
-  cohort, CPU only, and 14,400 charged seconds. Retain the exact four-chunk
-  family-saturation stop as a negative mechanism result rather than a
-  policy-quality gate.
+  cohort, CPU only, ascension `0`, and 14,400 charged seconds. Bind the loaded
+  native module and build provenance, the pushed `origin/master` source tree,
+  and unchanged CommunicationMod and production-checkpoint isolation before
+  and after execution. Retain the exact four-chunk family-saturation stop as a
+  negative mechanism result rather than a policy-quality gate.
 - Publish fold/fit provenance, sparse pre-decision state features, returns,
   predictions, advantages, fitted baseline parameters and diagnostics, raw
   gradient payloads, pre/post Adam states, per-access seed journal, checkpoints,
-  resource use, and an independently verified terminal inventory. Poor
-  predictive fit is reported and never triggers a
+  resource use, and an independently verified terminal inventory. Recover only
+  uniquely reconstructable checkpoint-envelope or terminal-publication writes
+  without another seed access or optimizer update. Poor predictive fit is
+  reported and never triggers a
   fallback, alternate estimator, coefficient change, or retry.
 - Require a clean pushed implementation before a fresh exclusion inventory and
   all-false registration can be created. Require an exact reviewed execution
   request and a separate explicit human approval before an authorization may be
   published or any native loading, environment construction, seed access,
-  baseline fitting, or policy training may begin.
+  baseline fitting, or policy training may begin. The execution gate loads and
+  validates the registered native module before importing Torch, and only then
+  may drive the immutable schedule to a closed terminal bundle.
 
 Success for this change is a source-only, independently reviewed successor
 contract whose synthetic tests prove leakage exclusion, cross-fit arithmetic,
@@ -78,9 +84,10 @@ None.
 
 ## Impact
 
-- Adds successor-specific control-plane, Torch-runtime, and independent
-  verifier modules under `analysis_scripts/`, focused tests, and later
-  separately authorized registration and terminal report artifacts.
+- Adds successor-specific control-plane, Torch-runtime, independent-verifier,
+  and source-only seed-inventory modules under `analysis_scripts/`, focused
+  tests, and later separately authorized registration and terminal report
+  artifacts.
 - Reuses public contracts from the policy input, candidate feature projection,
   state-conditioned ranker, simulator adapter, formal reward, hierarchical
   distribution/objective, and advantage-attribution capabilities.

@@ -1,14 +1,21 @@
 ## ADDED Requirements
 
 ### Requirement: The successor is additive and source-isolated
-The capability SHALL use a new control-plane module, Torch runtime module, and
-independent verifier module. It SHALL preserve every consumed hierarchical
+The capability SHALL use a new control-plane module, Torch runtime module,
+independent verifier module, and source-only historical seed-inventory utility.
+It SHALL preserve every consumed hierarchical
 runner, registration, authorization, checkpoint, terminal artifact, and seed
 identity unchanged. The control plane and verifier SHALL remain standard-
 library importable without importing Torch, loading a native module,
 constructing an environment, or accessing a seed. The runtime SHALL reuse only
 bound public low-level policy, simulator, reward, hierarchy, and attribution
 APIs and SHALL NOT import private helpers from a consumed experiment.
+Every directly or transitively reused behavioral source SHALL be included in
+the registered source inventory. Execution SHALL reject pre-imported Torch or
+native modules, load and verify the registered native bytes and build
+provenance first, and import the bound Torch runtime only after source, runtime,
+native, pushed-commit, isolation, output-root, lease, and authorization checks
+all pass.
 
 #### Scenario: A control-only command is invoked
 - **WHEN** registration inspection, source verification, terminal verification, or help is invoked with Torch and the native adapter unavailable
@@ -224,20 +231,32 @@ status without rewriting the prefix.
 - **WHEN** collecting or publishing another row, vector, checkpoint, or artifact would cross a registered ceiling
 - **THEN** the runtime stops before another optimizer update and preserves one terminal resource failure under the same identity
 
+#### Scenario: Checkpoint envelope publication is interrupted
+- **WHEN** one chunk's evidence and exact journal/resource coordinate are durable but its checkpoint envelope is absent
+- **THEN** a later invocation may reconstruct exactly that one envelope from the immutable prefix and duplicated opaque runtime-checkpoint binding without another seed access or optimizer update, while every ambiguous or inconsistent prefix fails closed
+
+#### Scenario: Terminal publication is interrupted
+- **WHEN** the immutable terminal intent or intent plus terminal document is durable but the manifest is absent
+- **THEN** a later invocation completes only the uniquely missing byte-identical terminal publication before dependency loading and does not reopen training
+
 ### Requirement: The empirical mechanism study is fresh and narrowly bounded
 A later immutable registration SHALL select exactly 512 unique fresh scheduled
 training seeds by one deterministic ascending exclusion algorithm from one
 clean pushed source tree. It SHALL divide them into eight ordered chunks of 64,
 permit at most eight optimizer updates, 500 decisions per episode, 32,768
 retained decisions, 576 total environment episode accesses including one
-incomplete-chunk replay reserve, CPU-only execution, and 14,400 charged seconds.
+incomplete-chunk replay reserve, CPU-only execution at ascension `0`, and
+14,400 charged seconds. It SHALL bind the loaded native module and build
+provenance, the exact pushed `origin/master` commit, the CommunicationMod
+configuration, and the complete inert production-checkpoint tree. Preflight
+and terminal closeout SHALL independently reobserve those identities.
 It SHALL define no canary, holdout, teacher, checkpoint-selection, or frozen-
 policy evaluation cohort and SHALL exclude every historical used, reserved,
 diagnostic, canary, holdout, and previously untouched holdout seed.
 
 #### Scenario: A fresh registration is built
 - **WHEN** the implementation is clean, independently reviewed, committed, and pushed
-- **THEN** the inventory binds the fixed source tree and complete historical exclusions, selects exactly 512 otherwise-unused seeds, and grants no native, seed, fitting, training, gameplay, or promotion authority
+- **THEN** the inventory binds the fixed pushed source tree, all transitive behavioral sources, native provenance, ascension zero, isolation identity, and complete historical exclusions, selects exactly 512 otherwise-unused seeds, and grants no native, seed, fitting, training, gameplay, or promotion authority
 
 #### Scenario: A runtime seed or resource term drifts
 - **WHEN** seed order, chunk membership, fold assignment, native module, CPU mode, episode/update/decision/byte/time ceiling, output root, or source identity differs from registration
@@ -245,7 +264,7 @@ diagnostic, canary, holdout, and previously untouched holdout seed.
 
 #### Scenario: Four chunks reach exact family saturation
 - **WHEN** a trailing four-complete-chunk window contains at least 64 multi-family `card_reward` or `shop` decisions and every one has the same singleton raw-score maximum family
-- **THEN** the runner publishes `experiment_stopped_during_training_for_family_saturation` before another chunk and accesses no evaluation cohort
+- **THEN** the runner publishes `experiment_stopped_during_training_for_family_saturation` at the exact last-checkpoint journal coordinate before another seed or chunk and accesses no evaluation cohort
 
 #### Scenario: Eight chunks complete without exact saturation
 - **WHEN** all 512 scheduled trajectories and eight optimizer updates complete within every structural and resource bound
@@ -266,10 +285,13 @@ verbatim external approval text, time, and available task provenance; neither
 an agent-authored review nor broad standing permission SHALL substitute for
 approval of that exact request. A durable
 first-seed journal marker SHALL distinguish pre-start setup from empirical
-execution. Pre-start retry SHALL preserve the exact registration and
-authorization. After the marker, algorithm or evidence failure SHALL be
-terminal, while at most one infrastructure interruption MAY resume only the
-same identity and replay only its incomplete registered chunk.
+execution. A manual pre-start re-entry SHALL preserve the exact registration,
+authorization, source-bound static documents, native identity, cohort,
+controls, and output root and SHALL NOT consume the post-start resume. It SHALL
+not automatically loop or substitute any term. After the marker, algorithm or
+evidence failure SHALL be terminal, while at most one infrastructure
+interruption MAY resume only the same identity and replay only its incomplete
+registered chunk.
 
 #### Scenario: An exact request has only agent review
 - **WHEN** the registration and execution request are valid but no separate human message explicitly approves that exact digest and bounds
@@ -285,15 +307,35 @@ same identity and replay only its incomplete registered chunk.
 
 #### Scenario: Setup fails before seed access
 - **WHEN** native loading, isolation, source, output-root, or process setup fails and the durable first-seed marker is absent
-- **THEN** a minimal pre-start record is preserved and setup may reopen only that exact inventory with identical registration, authorization, source, native module, cohort, controls, and output root
+- **THEN** a later manual invocation may reopen only the exact source-bound static setup inventory or initialized zero-debit bootstrap with identical registration, authorization, source, native module, cohort, controls, and output root, without consuming the post-start resume
+
+#### Scenario: A setup re-entry would change a term or loop automatically
+- **WHEN** setup retry proposes a different module, seed, cohort, parameter, output root, or automatic retry cycle
+- **THEN** the control plane rejects it before dependency loading or environment access
 
 #### Scenario: Infrastructure interrupts one incomplete chunk
 - **WHEN** the first post-start infrastructure interruption leaves a valid bootstrap or complete checkpoint and sufficient registered access/time budget
 - **THEN** the same identity may restore exact model, optimizer, Python RNG, Torch generator, and chunk coordinates and replay only that incomplete chunk while retaining all previously debited resources
 
+#### Scenario: A chunk has all episode terminals but no checkpoint
+- **WHEN** infrastructure interrupts after all 64 registered episode accesses finish but before that chunk's complete checkpoint is durably published
+- **THEN** the checkpoint coordinate still defines the chunk as incomplete and the sole resume may replay exactly that chunk without treating its access-only prefix as a complete update
+
+#### Scenario: Infrastructure interrupts at a complete checkpoint boundary
+- **WHEN** infrastructure interrupts after a complete checkpoint and before the next registered seed is debited
+- **THEN** the sole resume restores that checkpoint and continues the next primary chunk without replaying a completed chunk or substituting a seed
+
 #### Scenario: A second resume or evidence-driven retry is requested
 - **WHEN** a second post-start resume, replacement identity, seed substitution, source change, estimator change, threshold change, tuning, or algorithm retry is requested
 - **THEN** the request is rejected and the existing identity remains terminal
+
+#### Scenario: The permitted resume is itself interrupted
+- **WHEN** an infrastructure interruption occurs after the one post-start resume has been consumed
+- **THEN** the runner charges the durable resource prefix, publishes one typed infrastructure failure, closes the identity as `experiment_failed_after_seed_access`, and grants no further resume
+
+#### Scenario: Post-execution isolation differs
+- **WHEN** the persisted post-isolation observation differs from the registered CommunicationMod or production-checkpoint identity
+- **THEN** the runner preserves the observation and any typed failure witness but publishes no terminal intent, terminal, or manifest, and independent verification cannot classify the root as a valid bundle
 
 #### Scenario: Active output is monitored
 - **WHEN** the execution process is alive and holds its exclusive output lease
@@ -304,7 +346,7 @@ same identity and replay only its incomplete registered chunk.
 - **THEN** it may atomically reclaim only that identity's stale lease before replaying the incomplete chunk
 
 #### Scenario: Preexisting output cannot be reconstructed
-- **WHEN** an output root, lease, journal, artifact, or temporary publication is unrelated, live, ambiguous, or differs from the exact pre-start-retry or same-identity-resume inventory
+- **WHEN** an output root, lease, journal, artifact, or temporary publication is unrelated, live, ambiguous, or differs from an exact source-bound setup, zero-debit bootstrap, checkpoint-publication recovery, terminal-publication recovery, or same-identity-resume inventory
 - **THEN** the control plane fails closed without deleting, repairing, or replacing it
 
 #### Scenario: Checkpoint and resource coordinates differ
@@ -313,7 +355,7 @@ same identity and replay only its incomplete registered chunk.
 
 ### Requirement: Independent verification grants only mechanism evidence
 After process exit, the standard-library verifier SHALL reobserve bound source
-and isolation state, close the exact managed inventory, verify the external-
+and pre/post isolation state, close the exact managed inventory, verify the external-
 approval binding, every scheduled or replayed seed access, every Adam state
 transition, and every complete chunk, and classify only valid completion,
 valid family saturation, pre-start blocking, or preserved post-start failure.
@@ -331,6 +373,10 @@ outcomes, production loading, gameplay value, qualification, or promotion.
 #### Scenario: Mechanism evidence appears favorable
 - **WHEN** baseline fit improves, cross-fitted and legacy gradients differ, exact family saturation is absent, floor rises, or a victory occurs
 - **THEN** the report records the observation but authorizes only a later read-only audit and not another experiment, formal training, model loading, gameplay, qualification, or promotion
+
+#### Scenario: A success verdict contains access after its last checkpoint
+- **WHEN** a completion or family-saturation terminal journal advances beyond `checkpoint_count * 64` primary positions or retains a resume candidate after the last checkpoint
+- **THEN** independent verification rejects the bundle even if its manifest and aggregate resource count are internally rehashed
 
 #### Scenario: Source-only implementation completes
 - **WHEN** synthetic leakage, fold, float64 ridge, advantage, gradient, dual-clipping, threshold-neighborhood legacy normalization, optimizer-installation and Adam replay, binary, access-journal, human-approval, lifecycle, resume, and verifier tests pass under the reviewed source identity
