@@ -330,8 +330,13 @@ provenance, may not load a production checkpoint, and has 14,400 charged
 seconds. Registration also binds the exact CommunicationMod configuration and
 complete inert production-checkpoint tree. Source-only preflight reobserves the
 pushed `origin/master` commit, tracked-clean source bytes, runtime identity,
-native bytes, and isolation identity before native loading; terminal closeout
-reobserves isolation before accepting any verdict.
+native bytes, and isolation identity before native loading. Because
+registration and authorization are later tracked boundaries, the registered
+implementation commit is required to be an ancestor of the current pushed
+HEAD rather than equal to it. The current Git tree must contain the exact
+canonical registration and authorization blobs, while the complete registered
+source inventory must still match byte for byte. Terminal closeout reobserves
+isolation before accepting any verdict.
 
 The existing exact anti-collapse rule remains unchanged. After each complete
 chunk, inspect the trailing four chunks. If at least 64 multi-family decisions

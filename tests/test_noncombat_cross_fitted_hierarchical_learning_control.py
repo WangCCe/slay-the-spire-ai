@@ -145,12 +145,15 @@ def _hardened_authorized_values(source_inventory):
 
 def _preflight_injections(source_inventory, registration):
     commit = registration["repository_commit"]
+    pushed_head = "b" * 40
 
     def git_text(_root, *args):
         if args == ("rev-parse", "HEAD"):
-            return commit
+            return pushed_head
         if args == ("rev-parse", "origin/master"):
-            return commit
+            return pushed_head
+        if args == ("merge-base", "--is-ancestor", commit, pushed_head):
+            return ""
         if args == ("status", "--porcelain", "--untracked-files=no"):
             return ""
         raise AssertionError(f"unexpected Git query: {args!r}")
@@ -177,6 +180,7 @@ def _preflight_injections(source_inventory, registration):
             registration["runtime_identity"]
         ),
         "source_inventory_observer": lambda _root: copy.deepcopy(source_inventory),
+        "tracked_blob_observer": lambda _root, ref, _payload: ref == pushed_head,
     }
 
 
@@ -977,14 +981,17 @@ def test_source_only_preflight_rechecks_pushed_clean_bytes_before_import(
     )
 
     assert report["repository_commit"] == "a" * 40
+    assert report["pushed_head_commit"] == "b" * 40
     assert set(report["checks"].values()) == {True}
     assert report["checks"] == {
         "communication_mod_unchanged": True,
         "native_module_unchanged": True,
         "production_checkpoints_unchanged": True,
+        "pushed_registration_exact": True,
         "pushed_source_exact": True,
         "runtime_identity_exact": True,
         "source_inventory_exact": True,
+        "tracked_authorization_exact": True,
         "tracked_worktree_clean": True,
     }
 
@@ -997,10 +1004,10 @@ def test_source_only_preflight_rechecks_pushed_clean_bytes_before_import(
     drifted = dict(injections)
     drifted["git_text"] = lambda _root, *args: (
         "f" * 40
-        if args == ("rev-parse", "HEAD")
+        if args == ("rev-parse", "origin/master")
         else injections["git_text"](_root, *args)
     )
-    with pytest.raises(experiment.ExperimentBlocked, match="HEAD"):
+    with pytest.raises(experiment.ExperimentBlocked, match="pushed HEAD"):
         experiment.load_authorized_runtime(
             registration,
             request,
@@ -1011,6 +1018,43 @@ def test_source_only_preflight_rechecks_pushed_clean_bytes_before_import(
             module_registry={},
             **drifted,
         )
+    assert imported == []
+
+
+@pytest.mark.parametrize(
+    ("missing_document", "message"),
+    [
+        ("registration", "pushed registration"),
+        ("authorization", "tracked authorization"),
+    ],
+)
+def test_source_only_preflight_requires_pushed_registration_and_authorization(
+    source_inventory, missing_document, message
+):
+    registration, request, approval, authorization = _hardened_authorized_values(
+        source_inventory
+    )
+    injections = _preflight_injections(source_inventory, registration)
+    missing_payload = experiment.canonical_json_bytes(
+        registration if missing_document == "registration" else authorization
+    )
+    injections["tracked_blob_observer"] = (
+        lambda _root, _ref, payload: payload != missing_payload
+    )
+    imported = []
+
+    with pytest.raises(experiment.ExperimentBlocked, match=message):
+        experiment.load_authorized_runtime(
+            registration,
+            request,
+            authorization,
+            approval=approval,
+            repo_root=ROOT,
+            module_importer=lambda name: imported.append(name),
+            module_registry={},
+            **injections,
+        )
+
     assert imported == []
 
 

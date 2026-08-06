@@ -48,7 +48,7 @@ AUTHORIZATION_SCHEMA_VERSION = (
     "noncombat-cross-fitted-hierarchical-learning-authorization-v1"
 )
 SOURCE_PREFLIGHT_SCHEMA_VERSION = (
-    "noncombat-cross-fitted-hierarchical-learning-source-preflight-v1"
+    "noncombat-cross-fitted-hierarchical-learning-source-preflight-v2"
 )
 ISOLATION_OBSERVATION_SCHEMA_VERSION = (
     "noncombat-cross-fitted-hierarchical-learning-isolation-observation-v1"
@@ -1231,6 +1231,54 @@ def _call_git_observer(
     return value.strip()
 
 
+def _git_ref_contains_blob(repo_root: Path, ref: str, payload: bytes) -> bool:
+    """Return whether one exact byte payload is present in the selected Git tree."""
+    try:
+        hashed = subprocess.run(
+            ["git", "hash-object", "--stdin"],
+            cwd=repo_root,
+            input=payload,
+            check=True,
+            capture_output=True,
+        )
+        tree = subprocess.run(
+            ["git", "ls-tree", "-r", "-z", ref],
+            cwd=repo_root,
+            check=True,
+            capture_output=True,
+        )
+    except (OSError, subprocess.CalledProcessError) as exc:
+        raise ExperimentBlocked("Git pushed-artifact inspection failed") from exc
+    object_id = hashed.stdout.strip()
+    if not object_id:
+        raise ExperimentBlocked("Git pushed-artifact digest is empty")
+    for row in tree.stdout.split(b"\0"):
+        metadata, separator, _path = row.partition(b"\t")
+        fields = metadata.split()
+        if separator and len(fields) == 3 and fields[1] == b"blob":
+            if fields[2] == object_id:
+                return True
+    return False
+
+
+def _call_tracked_blob_observer(
+    observer: Callable[[Path, str, bytes], bool],
+    root: Path,
+    ref: str,
+    payload: bytes,
+    *,
+    label: str,
+) -> None:
+    try:
+        present = observer(root, ref, payload)
+    except ExperimentBlocked:
+        raise
+    except Exception as exc:
+        raise ExperimentBlocked(f"{label} cannot be inspected") from exc
+    if present is not True:
+        raise ExperimentBlocked(f"{label} is not exact in the pushed Git tree")
+
+
 def source_only_preflight(
     repo_root: Path | str,
     registration: Mapping[str, Any],
@@ -1244,22 +1292,31 @@ def source_only_preflight(
     external_binding_observer: Callable[[Path | str], Mapping[str, Any]] | None = None,
     checkpoint_snapshot_observer: Callable[[Path | str], Mapping[str, Any]]
     | None = None,
+    tracked_blob_observer: Callable[[Path, str, bytes], bool] | None = None,
 ) -> dict[str, Any]:
     """Reobserve pushed source and inert identities before dependency loading."""
     normalized = validate_registration(registration)
-    validate_execution_authorization(
+    normalized_authorization = validate_execution_authorization(
         authorization, normalized, request, approval
     )
     root = Path(repo_root).resolve()
     git_observer = git_text or _git_text
     commit = normalized["repository_commit"]
-    if _call_git_observer(git_observer, root, "rev-parse", "HEAD") != commit:
-        raise ExperimentBlocked("source preflight HEAD differs from registration")
+    head = _commit(
+        _call_git_observer(git_observer, root, "rev-parse", "HEAD"),
+        "pushed HEAD",
+    )
     remote_ref = normalized["pushed_remote_ref"]
-    if _call_git_observer(git_observer, root, "rev-parse", remote_ref) != commit:
-        raise ExperimentBlocked(
-            "source preflight origin/master differs from registration"
-        )
+    if _call_git_observer(git_observer, root, "rev-parse", remote_ref) != head:
+        raise ExperimentBlocked("source preflight HEAD differs from pushed HEAD")
+    _call_git_observer(
+        git_observer,
+        root,
+        "merge-base",
+        "--is-ancestor",
+        commit,
+        head,
+    )
     if _call_git_observer(
         git_observer,
         root,
@@ -1268,6 +1325,22 @@ def source_only_preflight(
         "--untracked-files=no",
     ):
         raise ExperimentBlocked("source preflight tracked worktree is not clean")
+
+    blob_observer = tracked_blob_observer or _git_ref_contains_blob
+    _call_tracked_blob_observer(
+        blob_observer,
+        root,
+        head,
+        canonical_json_bytes(normalized),
+        label="pushed registration",
+    )
+    _call_tracked_blob_observer(
+        blob_observer,
+        root,
+        head,
+        canonical_json_bytes(normalized_authorization),
+        label="tracked authorization",
+    )
 
     source_observer = source_inventory_observer or build_source_inventory
     try:
@@ -1315,11 +1388,14 @@ def source_only_preflight(
             "communication_mod_unchanged": True,
             "native_module_unchanged": True,
             "production_checkpoints_unchanged": True,
+            "pushed_registration_exact": True,
             "pushed_source_exact": True,
             "runtime_identity_exact": True,
             "source_inventory_exact": True,
+            "tracked_authorization_exact": True,
             "tracked_worktree_clean": True,
         },
+        "pushed_head_commit": head,
         "registration_sha256": registration_sha256(normalized),
         "repository_commit": commit,
         "schema_version": SOURCE_PREFLIGHT_SCHEMA_VERSION,
@@ -1475,6 +1551,7 @@ def load_authorized_runtime(
     external_binding_observer: Callable[[Path | str], Mapping[str, Any]] | None = None,
     checkpoint_snapshot_observer: Callable[[Path | str], Mapping[str, Any]]
     | None = None,
+    tracked_blob_observer: Callable[[Path, str, bytes], bool] | None = None,
     module_importer: Callable[[str], Any] | None = None,
     module_registry: Mapping[str, Any] | None = None,
 ) -> Any:
@@ -1494,6 +1571,7 @@ def load_authorized_runtime(
         runtime_identity_observer=runtime_identity_observer,
         external_binding_observer=external_binding_observer,
         checkpoint_snapshot_observer=checkpoint_snapshot_observer,
+        tracked_blob_observer=tracked_blob_observer,
     )
     return _load_registered_runtime(
         registration,
@@ -4406,12 +4484,20 @@ def _validate_source_preflight_report(
     report = _copy_mapping(value, "source preflight report")
     _require_fields(
         report,
-        {"checks", "registration_sha256", "repository_commit", "schema_version"},
+        {
+            "checks",
+            "pushed_head_commit",
+            "registration_sha256",
+            "repository_commit",
+            "schema_version",
+        },
         "source preflight report",
     )
     normalized = validate_registration(registration)
     if (
         report["schema_version"] != SOURCE_PREFLIGHT_SCHEMA_VERSION
+        or _commit(report["pushed_head_commit"], "source preflight pushed HEAD")
+        != report["pushed_head_commit"]
         or report["registration_sha256"] != registration_sha256(normalized)
         or report["repository_commit"] != normalized["repository_commit"]
     ):
@@ -4421,9 +4507,11 @@ def _validate_source_preflight_report(
         "communication_mod_unchanged",
         "native_module_unchanged",
         "production_checkpoints_unchanged",
+        "pushed_registration_exact",
         "pushed_source_exact",
         "runtime_identity_exact",
         "source_inventory_exact",
+        "tracked_authorization_exact",
         "tracked_worktree_clean",
     }
     _require_fields(checks, expected_checks, "source preflight checks")
@@ -4779,6 +4867,7 @@ def execute_authorized_experiment(
     external_binding_observer: Callable[[Path | str], Mapping[str, Any]] | None = None,
     checkpoint_snapshot_observer: Callable[[Path | str], Mapping[str, Any]]
     | None = None,
+    tracked_blob_observer: Callable[[Path, str, bytes], bool] | None = None,
     module_importer: Callable[[str], Any] | None = None,
     module_registry: Mapping[str, Any] | None = None,
     clock: Callable[[], float] = time.monotonic,
@@ -4832,6 +4921,7 @@ def execute_authorized_experiment(
             runtime_identity_observer=runtime_identity_observer,
             external_binding_observer=external_binding_observer,
             checkpoint_snapshot_observer=checkpoint_snapshot_observer,
+            tracked_blob_observer=tracked_blob_observer,
         ),
         normalized_registration,
     )

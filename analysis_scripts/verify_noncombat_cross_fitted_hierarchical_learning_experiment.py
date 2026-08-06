@@ -261,7 +261,7 @@ AUTHORIZATION_SCHEMA_VERSION = (
     "noncombat-cross-fitted-hierarchical-learning-authorization-v1"
 )
 SOURCE_PREFLIGHT_SCHEMA_VERSION = (
-    "noncombat-cross-fitted-hierarchical-learning-source-preflight-v1"
+    "noncombat-cross-fitted-hierarchical-learning-source-preflight-v2"
 )
 ISOLATION_OBSERVATION_SCHEMA_VERSION = (
     "noncombat-cross-fitted-hierarchical-learning-isolation-observation-v1"
@@ -3198,7 +3198,13 @@ def _validate_source_preflight(
 ) -> dict[str, Any]:
     preflight = _exact_mapping(
         value,
-        {"checks", "registration_sha256", "repository_commit", "schema_version"},
+        {
+            "checks",
+            "pushed_head_commit",
+            "registration_sha256",
+            "repository_commit",
+            "schema_version",
+        },
         "source preflight",
     )
     checks = _exact_mapping(
@@ -3207,15 +3213,19 @@ def _validate_source_preflight(
             "communication_mod_unchanged",
             "native_module_unchanged",
             "production_checkpoints_unchanged",
+            "pushed_registration_exact",
             "pushed_source_exact",
             "runtime_identity_exact",
             "source_inventory_exact",
+            "tracked_authorization_exact",
             "tracked_worktree_clean",
         },
         "source preflight checks",
     )
     if (
         preflight["schema_version"] != SOURCE_PREFLIGHT_SCHEMA_VERSION
+        or not isinstance(preflight["pushed_head_commit"], str)
+        or _COMMIT_RE.fullmatch(preflight["pushed_head_commit"]) is None
         or preflight["registration_sha256"] != _canonical_digest(registration)
         or preflight["repository_commit"] != registration["repository_commit"]
         or any(result is not True for result in checks.values())

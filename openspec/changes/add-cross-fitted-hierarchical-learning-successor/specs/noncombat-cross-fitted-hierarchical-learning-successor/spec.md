@@ -29,6 +29,10 @@ all pass.
 - **WHEN** a caller requests native loading, environment construction, seed access, model fitting, or an optimizer step without a matching pushed registration and exact authorization
 - **THEN** the control plane rejects the request without lazily importing the runtime
 
+#### Scenario: Registration and authorization advance the pushed branch
+- **WHEN** the all-false registration and later exact authorization are committed after the registered implementation commit
+- **THEN** source-only preflight requires the implementation commit to be an ancestor of the tracked-clean `origin/master` HEAD, requires the current tree to contain the exact canonical registration and authorization blobs, and requires every registered source byte to remain unchanged before any dependency is loaded
+
 ### Requirement: Baseline features contain only bounded pre-decision state
 For every retained decision, the runtime SHALL obtain the validated exact-API-
 v3 1,024-dimensional CPU float32 state tensor from the public state-conditioned
