@@ -1,0 +1,51 @@
+{
+  "authority": {
+    "causal_claim_authorized": false,
+    "cohort_materialization_authorized": false,
+    "communication_mod_authorized": false,
+    "environment_construction_authorized": false,
+    "execution_authorized": false,
+    "formal_rl_authorized": false,
+    "fresh_evidence_authorized": false,
+    "gameplay_authorized": false,
+    "live_execution_authorized": false,
+    "model_fitting_authorized": false,
+    "native_loading_authorized": false,
+    "ope_authorized": false,
+    "policy_loading_authorized": false,
+    "production_checkpoint_mutation_authorized": false,
+    "promotion_authorized": false,
+    "qualification_authorized": false,
+    "seed_access_authorized": false,
+    "target_supported_outcome_authorized": false,
+    "training_authorized": false
+  },
+  "post": {
+    "communication_mod_config": {
+      "path": "C:/Users/20571/AppData/Local/ModTheSpire/CommunicationMod/config.properties",
+      "sha256": "7ec79e01f9293a19ead3c59a26b18bb75ef900afa3dbe45d657769fe46061862",
+      "size_bytes": 534
+    },
+    "production_checkpoints": {
+      "file_count": 208,
+      "root": "D:/SteamLibrary/steamapps/common/SlayTheSpire/checkpoints",
+      "sha256": "9296b5ac25758e4d7a0be051a55bb66aa9f02e45c365ee9db451388e8b89d9e8",
+      "size_bytes": 1356047034
+    }
+  },
+  "pre": {
+    "communication_mod_config": {
+      "path": "C:/Users/20571/AppData/Local/ModTheSpire/CommunicationMod/config.properties",
+      "sha256": "7ec79e01f9293a19ead3c59a26b18bb75ef900afa3dbe45d657769fe46061862",
+      "size_bytes": 534
+    },
+    "production_checkpoints": {
+      "file_count": 208,
+      "root": "D:/SteamLibrary/steamapps/common/SlayTheSpire/checkpoints",
+      "sha256": "9296b5ac25758e4d7a0be051a55bb66aa9f02e45c365ee9db451388e8b89d9e8",
+      "size_bytes": 1356047034
+    }
+  },
+  "schema_version": "noncombat-hierarchical-simulator-learning-isolation-v1",
+  "unchanged": true
+}

@@ -645,6 +645,23 @@ The next authorized sequence is:
     boundary grants no implementation, registration, cohort, native, seed,
     training, loading, gameplay, formal-RL, qualification, or promotion
     authority.
+37. Preserve the completed hierarchical simulator-learning registration,
+    authorization, full terminal bundle, and
+    `experiment_stopped_during_training_for_family_saturation` verdict. The
+    process exited cleanly after 512 training episodes, 8 optimizer updates,
+    8 checkpoints, 11,807 decisions, and 2,165.452 charged seconds, with zero
+    canary or holdout access. All 1,847 multi-family card-reward decisions in
+    the final four chunks had `take` as the unique raw-score maximum family,
+    even though family entropy remained close to `ln(2)` and sampled `take`
+    versus `skip` stayed near balanced. Mean take score margin grew from
+    `0.0165` in chunk 0 to `0.0959` in chunk 7. Training reached mean floor
+    `12.629`, max floor `44`, and zero victories. A verifier-only float32
+    reduction repair left all artifacts unchanged; 92 focused tests passed and
+    strict repository verification accepted 22 artifacts, 8 checkpoints, and
+    8 chunks. Formal RL, policy quality, target-supported outcomes, model
+    loading, gameplay, qualification, and promotion remain `no_go`. The next
+    work may only audit existing card-reward family credit assignment and
+    trajectory confounding before any new algorithm proposal or empirical run.
 
 ## Work Lanes
 
@@ -688,17 +705,18 @@ evidence lane is closed with
 execution. The action-family source-only design, additive distribution,
 frozen-score counterfactual audit, and hierarchical objective-terms contract
 are complete. The contract preserves selected family plus conditional log
-probability, separately observable entropy terms, and raw-score deterministic
-evaluation without choosing a coefficient or loss. The active source-only
-successor proposal now preregisters two-stage hierarchical sampling, separately
-bound family and conditional entropy coefficients, training and canary
-anti-collapse gates, untouched fresh-cohort selection, resource ceilings,
-raw-score evaluation, and pre-seed versus evidence-bearing lifecycle semantics.
-Its next gate is independent proposal review and a dedicated planning commit;
-only then may source-only implementation begin. Proposal work does not
-authorize registration, cohort access, native loading, training, model loading,
-gameplay, formal-RL, qualification, or promotion; every later boundary remains
-separately reviewed and committed.
+    probability, separately observable entropy terms, and raw-score deterministic
+    evaluation without choosing a coefficient or loss. The hierarchical
+    successor then completed exactly once and stopped during training after its
+    registered card-reward family-saturation gate fired. Near-maximal family
+    entropy preserved stochastic exploration but did not prevent a consistent
+    greedy `take` sign from widening over eight chunks. No canary or holdout seed
+    was accessed, and the terminal bundle grants no policy-quality, formal-RL,
+    target-supported-outcome, loading, gameplay, qualification, or promotion
+    authority. The next gate is a source-only read-only credit-assignment audit
+    over the consumed training rows and checkpoints. It must not fit a model,
+    replay a seed, make a causal or OPE claim, change a coefficient or reward,
+    select a checkpoint, or authorize another experiment.
 
 Live gameplay is a maintenance and registered-evaluation lane only. Launch it
 for a crash, stuck state, repeated A-class simulator/mechanics defect, or an
@@ -721,10 +739,10 @@ OpenSpec changes authorize them.
 - For a one-attempt Windows evidence run that atomically publishes files, do
   not read any file under its active output root while the process is alive.
   Monitor process liveness only, then inspect artifacts after process exit.
-- Treat the latest 2026-08-06 `commit` gate result of 4,075 passed, 16 skipped,
-  340.87 seconds of pytest, and 343.66 seconds including orchestration as
+- Treat the latest 2026-08-06 `commit` gate result of 4,166 passed, 16 skipped,
+  458.48 seconds of pytest, and 461.56 seconds including orchestration as
   confirmation of timing drift: correctness passed, but the qualified
-  five-minute feedback bound was exceeded by 43.66 seconds. Do
+  five-minute feedback bound was exceeded by 161.56 seconds. Do
   not rerun it inside this change; schedule a separate read-only duration audit
   before claiming the bounded-feedback requirement remains met.
 

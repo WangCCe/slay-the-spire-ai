@@ -1,0 +1,147 @@
+{
+  "artifact_count": 22,
+  "artifacts": [
+    {
+      "path": "authorization.json",
+      "sha256": "285e573abe7dfe8509b3572c1b96d851451e31a761b4f762d4e81a3abaa11b87",
+      "size_bytes": 2119
+    },
+    {
+      "path": "bootstrap_runtime.json",
+      "sha256": "50adb0bd73c6deeeac05c3d881886a1d5964283f8927520ad41670ed5fcc2553",
+      "size_bytes": 4662467
+    },
+    {
+      "path": "checkpoints/checkpoint_0001.json",
+      "sha256": "ac386d40a916813666471a664ca55c2c0f2a1649da06b24afa2386907b651c13",
+      "size_bytes": 22374183
+    },
+    {
+      "path": "checkpoints/checkpoint_0002.json",
+      "sha256": "c8fcda55894e4d3442512cd9b2d7a47899008c2ae3f8ac68cc83a12a0c8cad03",
+      "size_bytes": 22248230
+    },
+    {
+      "path": "checkpoints/checkpoint_0003.json",
+      "sha256": "62b7ce2d24d1d60e23402b79357cba98a48ca70f004b0c401d913eb296734933",
+      "size_bytes": 22733665
+    },
+    {
+      "path": "checkpoints/checkpoint_0004.json",
+      "sha256": "555755a4df07e6b0660710f28624873eb28cbb3fc40b3d5ed977fc661bbb47a8",
+      "size_bytes": 23169006
+    },
+    {
+      "path": "checkpoints/checkpoint_0005.json",
+      "sha256": "7392ec4719ef28241d99c0ce32d7012ac21c953e4cdedc8e6a7b7af2b0d570c5",
+      "size_bytes": 22813471
+    },
+    {
+      "path": "checkpoints/checkpoint_0006.json",
+      "sha256": "bc131959e646c4c18dbae3631c3e1c855d78b33fe087353a68c22e8acf8e388d",
+      "size_bytes": 23510704
+    },
+    {
+      "path": "checkpoints/checkpoint_0007.json",
+      "sha256": "2c0c43a32f1f9fdd08a8502d5687a5c1d629cef772d442a5c336929d9b18ee9f",
+      "size_bytes": 23188062
+    },
+    {
+      "path": "checkpoints/checkpoint_0008.json",
+      "sha256": "e0b5130ca612f2c8e7fd9b0cc10ba2e844ee124c99261510fa550ad88bd620fb",
+      "size_bytes": 23438565
+    },
+    {
+      "path": "evaluation.json",
+      "sha256": "7df6184fab96bfedba401d168f4dc71688ded1e4f06315712c2f3fe0097274d0",
+      "size_bytes": 896
+    },
+    {
+      "path": "evidence_start.json",
+      "sha256": "432b698b7139cdbfc0c52d9624ff42779e293aff6dd78c77cb92e615e872a1cc",
+      "size_bytes": 407
+    },
+    {
+      "path": "execution_journal.json",
+      "sha256": "2d08e1dced83abae30f0c6010278dc7f03353d0548f06ad3acb95593fef6acf6",
+      "size_bytes": 2725
+    },
+    {
+      "path": "final_model.json",
+      "sha256": "15f7249db170182fe1176a73d22952c70a896bb6dcb2ac7ec80e904901dd2f53",
+      "size_bytes": 3996816
+    },
+    {
+      "path": "isolation.json",
+      "sha256": "ac7d5311d6e07176eacc4ead5c116bff4fecf5c56d86eb2f43d8151716f526cb",
+      "size_bytes": 1908
+    },
+    {
+      "path": "metrics.json",
+      "sha256": "a894b19096b3d876c3874aa781f5744280147e2a6f3f11c8837c962de4e388ef",
+      "size_bytes": 1344
+    },
+    {
+      "path": "registration.json",
+      "sha256": "b744ebc2b4999051a12422fe4ba7090ee6f412c7c1aa644882077200bffb53a3",
+      "size_bytes": 713434
+    },
+    {
+      "path": "report.json",
+      "sha256": "8eb552cec2ea4b7569ad3e61a36ff7c9f0cf4ce02cc11b76093ddc71f0313790",
+      "size_bytes": 1150
+    },
+    {
+      "path": "resource_use.json",
+      "sha256": "510e81e1f6f89670868a47934ad8a001e697f01221bdd1002fe9aeacc97c77af",
+      "size_bytes": 649
+    },
+    {
+      "path": "terminal.json",
+      "sha256": "a058cf19e2bd2e42027bbd7c17bedcc9fd3ba6aa9b4c0de83cc4f68cc287afca",
+      "size_bytes": 1691
+    },
+    {
+      "path": "terminal_intent.json",
+      "sha256": "92ca69b1b3ca18107a1e2ba28425de56ccabe66d0c00da949cc5f4b9bcd8667b",
+      "size_bytes": 3997978
+    },
+    {
+      "canonical_sha256": "a19bfd2634e14d25668e5443d7942112c354b7259d21c156dd34c6deb8dde3e5",
+      "canonical_size_bytes": 42593595,
+      "compression": "gzip-mtime-zero-v1",
+      "path": "training_rows.json.gz",
+      "sha256": "733f479157b16a545234e3cd500aba8e3ff56e5f50b2324f8309d17f6701e320",
+      "size_bytes": 4174910
+    }
+  ],
+  "authority": {
+    "causal_claim_authorized": false,
+    "cohort_materialization_authorized": false,
+    "communication_mod_authorized": false,
+    "environment_construction_authorized": false,
+    "execution_authorized": false,
+    "formal_rl_authorized": false,
+    "fresh_evidence_authorized": false,
+    "gameplay_authorized": false,
+    "live_execution_authorized": false,
+    "model_fitting_authorized": false,
+    "native_loading_authorized": false,
+    "ope_authorized": false,
+    "policy_loading_authorized": false,
+    "production_checkpoint_mutation_authorized": false,
+    "promotion_authorized": false,
+    "qualification_authorized": false,
+    "seed_access_authorized": false,
+    "target_supported_outcome_authorized": false,
+    "training_authorized": false
+  },
+  "identity": {
+    "authorization_sha256": "285e573abe7dfe8509b3572c1b96d851451e31a761b4f762d4e81a3abaa11b87",
+    "logical_execution_id": "noncombat-hierarchical-simulator-learning-20260806-r1",
+    "registration_sha256": "b744ebc2b4999051a12422fe4ba7090ee6f412c7c1aa644882077200bffb53a3"
+  },
+  "manifest_kind": "full_terminal",
+  "schema_version": "noncombat-hierarchical-simulator-learning-artifact-manifest-v1",
+  "verdict": "experiment_stopped_during_training_for_family_saturation"
+}

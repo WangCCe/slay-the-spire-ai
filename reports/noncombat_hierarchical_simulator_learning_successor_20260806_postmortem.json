@@ -1,0 +1,180 @@
+{
+  "authority": {
+    "causal_claim": false,
+    "communication_mod": false,
+    "formal_rl": false,
+    "gameplay": false,
+    "model_loading": false,
+    "new_cohort": false,
+    "new_experiment": false,
+    "ope": false,
+    "promotion": false,
+    "qualification": false,
+    "replay": false,
+    "training": false
+  },
+  "execution": {
+    "artifact_count": 22,
+    "charged_seconds": 2165.4520000000193,
+    "checkpoint_count": 8,
+    "completed_decisions": 11807,
+    "completed_training_episodes": 512,
+    "implementation_commit": "85809d193fa2048b07ce5356491fcdf0d125599c",
+    "logical_execution_id": "noncombat-hierarchical-simulator-learning-20260806-r1",
+    "optimizer_updates": 8,
+    "process_exit_code": 0,
+    "training_chunk_count": 8
+  },
+  "family_saturation": {
+    "card_reward": {
+      "family_entropy_by_chunk": [
+        0.6931032657647629,
+        0.6930843221987409,
+        0.6930092407378954,
+        0.6928908578214463,
+        0.6927632894285051,
+        0.692564824088222,
+        0.6923002568886844,
+        0.6919447257856098
+      ],
+      "last_window_greedy_take_count": 1847,
+      "last_window_multi_family_decisions": 1847,
+      "mean_family_score_margin_by_chunk": [
+        0.016504044500245174,
+        0.020127770474185368,
+        0.031080623925179587,
+        0.04304117491420616,
+        0.053769435884342305,
+        0.06625491953691688,
+        0.07999404769761738,
+        0.09591821018931349
+      ],
+      "mean_take_probability_by_chunk": [
+        0.5040673837785408,
+        0.5049866440270082,
+        0.5077519650512695,
+        0.510752740658674,
+        0.513438514525252,
+        0.5165565688022857,
+        0.5199860290377661,
+        0.523958632056759
+      ],
+      "saturated_family": "take",
+      "selected_families": {
+        "bowl": 17,
+        "skip": 1752,
+        "take": 1790
+      },
+      "window_chunk_indices": [
+        4,
+        5,
+        6,
+        7
+      ]
+    },
+    "credit_signal": {
+      "causal_interpretation_authorized": false,
+      "final_chunk_skip_mean_normalized_return": -0.0888338406085968,
+      "final_chunk_take_mean_normalized_return": 0.1897339350218145,
+      "take_mean_exceeded_skip_mean_in_chunks": 8
+    },
+    "shop": {
+      "last_window_multi_family_decisions": 317,
+      "saturated": false,
+      "selected_families": {
+        "buy_card": 199,
+        "buy_potion": 102,
+        "buy_relic": 45,
+        "leave": 360,
+        "remove_card": 106
+      }
+    }
+  },
+  "input_bindings": {
+    "artifact_manifest": {
+      "path": "reports/noncombat_hierarchical_simulator_learning_successor_20260806/artifact_manifest.json",
+      "sha256": "2cdc682fa6539dfb39dc8ab6e1d3be5b17a4e6683079fcb677ea0d7d6058abc5",
+      "size_bytes": 5115
+    },
+    "execution_journal": {
+      "path": "reports/noncombat_hierarchical_simulator_learning_successor_20260806/execution_journal.json",
+      "sha256": "2d08e1dced83abae30f0c6010278dc7f03353d0548f06ad3acb95593fef6acf6",
+      "size_bytes": 2725
+    },
+    "isolation": {
+      "path": "reports/noncombat_hierarchical_simulator_learning_successor_20260806/isolation.json",
+      "sha256": "ac7d5311d6e07176eacc4ead5c116bff4fecf5c56d86eb2f43d8151716f526cb",
+      "size_bytes": 1908
+    },
+    "metrics": {
+      "path": "reports/noncombat_hierarchical_simulator_learning_successor_20260806/metrics.json",
+      "sha256": "a894b19096b3d876c3874aa781f5744280147e2a6f3f11c8837c962de4e388ef",
+      "size_bytes": 1344
+    },
+    "preflight": {
+      "path": "reports/noncombat_hierarchical_simulator_learning_successor_20260806_preflight.json",
+      "sha256": "d2a4dcec4b0bd9f785ef44c5a9467bfbfd454006cdb462daf845518e59411f2e",
+      "size_bytes": 1773
+    },
+    "terminal": {
+      "path": "reports/noncombat_hierarchical_simulator_learning_successor_20260806/terminal.json",
+      "sha256": "a058cf19e2bd2e42027bbd7c17bedcc9fd3ba6aa9b4c0de83cc4f68cc287afca",
+      "size_bytes": 1691
+    },
+    "training_rows": {
+      "canonical_sha256": "a19bfd2634e14d25668e5443d7942112c354b7259d21c156dd34c6deb8dde3e5",
+      "canonical_size_bytes": 42593595,
+      "path": "reports/noncombat_hierarchical_simulator_learning_successor_20260806/training_rows.json.gz",
+      "sha256": "733f479157b16a545234e3cd500aba8e3ff56e5f50b2324f8309d17f6701e320",
+      "size_bytes": 4174910
+    }
+  },
+  "interpretation": {
+    "formal_readiness": "unchanged_not_ready",
+    "immediate_successor_experiment": "no_go",
+    "next_gate": "read_only_existing_artifact_card_reward_family_credit_assignment_audit",
+    "policy_quality_baseline": "not_established",
+    "target_supported_outcomes": "not_established",
+    "victory_learning": "not_observed"
+  },
+  "publication": {
+    "complete_terminal_bundle_preserved_locally": true,
+    "ordinary_git_omits_only": [
+      "reports/noncombat_hierarchical_simulator_learning_successor_20260806/.execution.lease"
+    ],
+    "training_rows_canonical_bytes_bound_by_gzip": true
+  },
+  "schema_version": "noncombat-hierarchical-simulator-learning-postmortem-v1",
+  "scope": {
+    "new_native_loading": false,
+    "new_seed_access": false,
+    "read_only_terminal_descriptive_postmortem": true,
+    "terminal_artifact_mutation": false,
+    "training_or_replay": false
+  },
+  "training": {
+    "effective_floor": {
+      "ge_17": 41,
+      "ge_34": 1,
+      "ge_51": 0,
+      "max": 44.0,
+      "mean": 12.62890625,
+      "median": 13.0,
+      "min": 5.0
+    },
+    "episodes": 512,
+    "evaluation_episodes": 0,
+    "victories": 0
+  },
+  "verification": {
+    "artifact_count": 22,
+    "checkpoint_count": 8,
+    "focused_pytest_passed": 92,
+    "initial_false_negative": "sequential_float32_reduction_differed_from_registered_torch_cpu_reduction",
+    "repository_identity_verified": true,
+    "standard_library_verifier": "valid",
+    "training_chunk_count": 8,
+    "verdict": "experiment_stopped_during_training_for_family_saturation",
+    "verifier_fix_commit": "7319b762c"
+  }
+}

@@ -1,0 +1,41 @@
+{
+  "authority": {
+    "causal_claim_authorized": false,
+    "cohort_materialization_authorized": false,
+    "communication_mod_authorized": false,
+    "environment_construction_authorized": false,
+    "execution_authorized": false,
+    "formal_rl_authorized": false,
+    "fresh_evidence_authorized": false,
+    "gameplay_authorized": false,
+    "live_execution_authorized": false,
+    "model_fitting_authorized": false,
+    "native_loading_authorized": false,
+    "ope_authorized": false,
+    "policy_loading_authorized": false,
+    "production_checkpoint_mutation_authorized": false,
+    "promotion_authorized": false,
+    "qualification_authorized": false,
+    "seed_access_authorized": false,
+    "target_supported_outcome_authorized": false,
+    "training_authorized": false
+  },
+  "checkpoint_count": 8,
+  "holdout_accessed": false,
+  "identity": {
+    "authorization_sha256": "285e573abe7dfe8509b3572c1b96d851451e31a761b4f762d4e81a3abaa11b87",
+    "logical_execution_id": "noncombat-hierarchical-simulator-learning-20260806-r1",
+    "registration_sha256": "b744ebc2b4999051a12422fe4ba7090ee6f412c7c1aa644882077200bffb53a3"
+  },
+  "reason": "registered family saturation gate fired",
+  "schema_version": "noncombat-hierarchical-simulator-learning-terminal-v1",
+  "training_rows_binding": {
+    "canonical_sha256": "a19bfd2634e14d25668e5443d7942112c354b7259d21c156dd34c6deb8dde3e5",
+    "canonical_size_bytes": 42593595,
+    "compression": "gzip-mtime-zero-v1",
+    "path": "training_rows.json.gz",
+    "sha256": "733f479157b16a545234e3cd500aba8e3ff56e5f50b2324f8309d17f6701e320",
+    "size_bytes": 4174910
+  },
+  "verdict": "experiment_stopped_during_training_for_family_saturation"
+}

@@ -1,0 +1,8 @@
+{
+  "authorization_sha256": "285e573abe7dfe8509b3572c1b96d851451e31a761b4f762d4e81a3abaa11b87",
+  "first_seed": 25,
+  "logical_execution_id": "noncombat-hierarchical-simulator-learning-20260806-r1",
+  "registration_sha256": "b744ebc2b4999051a12422fe4ba7090ee6f412c7c1aa644882077200bffb53a3",
+  "schema_version": "noncombat-hierarchical-simulator-learning-evidence-start-v1",
+  "state": "evidence_started"
+}
