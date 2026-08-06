@@ -1324,10 +1324,7 @@ def _float32(value: float) -> float:
 
 
 def _float32_sum(values: Sequence[float]) -> float:
-    total = _float32(0.0)
-    for value in values:
-        total = _float32(total + _float32(value))
-    return total
+    return _float32(math.fsum(_float32(value) for value in values))
 
 
 def _float32_mean(values: Sequence[float]) -> float:

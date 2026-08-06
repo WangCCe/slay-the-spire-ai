@@ -657,6 +657,20 @@ def test_independent_objective_recomputation_uses_float32_epsilon_branch():
     assert recomputed["policy_loss"] == 0.0
 
 
+def test_independent_float32_reduction_matches_registered_torch_mean():
+    values = [
+        -0.15160924196243286,
+        -0.12343040108680725,
+        -0.07578526437282562,
+        -0.20351681113243103,
+        -0.06522375345230103,
+    ]
+
+    expected = float(torch.tensor(values, dtype=torch.float32).mean().item())
+
+    assert verifier._float32_mean(values) == expected
+
+
 def test_checkpoint_round_trip_restores_every_runtime_state():
     state = runtime.initialize_training_runtime()
     first_summary = runtime.run_training_chunk(
