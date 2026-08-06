@@ -43,7 +43,7 @@
 
 ## 6. Exact Human Authorization And One Mechanism Execution
 
-- [ ] 6.1 Render and independently review one read-only exact execution request bound to the pushed registration, explicitly listing the native load, 512 scheduled seeds, cross-fitted fitting, eight possible updates, one resume reserve, CPU/time limits, output root, and false downstream authorities; do not publish authorization or execute.
+- [x] 6.1 Render and independently review one read-only exact execution request bound to the pushed registration, explicitly listing the native load, 512 scheduled seeds, cross-fitted fitting, eight possible updates, one resume reserve, CPU/time limits, output root, and false downstream authorities; do not publish authorization or execute.
 - [ ] 6.2 Stop until a separate human message explicitly approves that exact request digest and bounds; reject broad standing permission, proposal approval, agent review, or approval of a different request.
 - [ ] 6.3 After exact external approval, publish and independently verify the tracked authorization binding the canonical request and verbatim approval provenance.
 - [ ] 6.4 Run all source-only preflight checks and start at most one evidence-bearing logical identity; after a pre-start failure, allow only a later manual invocation of the unchanged source-bound setup or initialized zero-debit boundary, with no automatic retry and no post-start resume consumption.

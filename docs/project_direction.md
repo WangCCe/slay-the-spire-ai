@@ -752,9 +752,17 @@ The next authorized sequence is:
     process rebuilt the inventory and accepted every registered source,
     runtime, native, isolation, authority, and absent-output identity. Focused
     registration tests pass 20 tests and strict OpenSpec validation passes all
-    75 items. The next gate is one exact read-only execution request rendered
-    from the pushed registration, followed by a hard stop for separate human
-    approval of its digest and bounds.
+    75 items. The independently reconstructed exact execution request has
+    SHA-256
+    `8f6476b0f4a3fe06969558b8a07ea2c825244223a7d1cc4dd5116364f60a77c3`.
+    It requests CPU-only native loading, 512 scheduled seeds `1769..2348`,
+    four-fold cross-fitted fitting, at most eight optimizer updates, 576 total
+    environment accesses including one same-identity replay reserve, 32,768
+    retained decisions, and 14,400 charged seconds. Evaluation, formal RL,
+    gameplay, CommunicationMod, production model loading, qualification, and
+    promotion remain false. No approval or authorization has been published.
+    The current hard stop is a separate human message explicitly approving
+    this exact request digest and its bound limits.
 
 ## Work Lanes
 
