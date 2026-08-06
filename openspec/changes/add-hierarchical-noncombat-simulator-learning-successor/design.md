@@ -249,6 +249,35 @@ canonical uncompressed bytes and stored bytes. Production checkpoint inventory
 and CommunicationMod configuration are snapshotted before and after execution
 and must remain unchanged.
 
+Logical training state and consumed resources use separate durability rules.
+Model, optimizer, Python RNG, Torch generator, completed-chunk coordinates, and
+gradients roll back to the latest complete checkpoint when an incomplete chunk
+fails. Training/evaluation episode counts and charged seconds never roll back:
+each episode is durably debited in a leased `resource_use.json` prefix before
+its seed reaches the environment factory, and elapsed time is merged after each
+bounded phase. A checkpoint may therefore report more consumed training
+episodes than its completed-episode coordinate. Checkpoint publication first
+advances the resource prefix, then publishes the checkpoint idempotently. Any
+negative or interrupted terminal result reconstructs the model from the latest
+complete checkpoint, or from a write-once `bootstrap_runtime.json` published
+before the evidence marker when no checkpoint exists, before merging the
+durable resource prefix. The bootstrap binds the exact seeded initial model,
+optimizer, Python RNG, Torch generator, and zero coordinates so a later process
+cannot silently reinitialize a different terminal model. Both control plane and
+independent verifier require its frozen canonical runtime digest. The bootstrap
+and evidence marker are mandatory members of every terminal inventory. It never
+publishes an uncheckpointed in-memory update.
+
+Every nonzero resource prefix requires the same-identity evidence marker. A
+crash-left `.resource_use.json.tmp` is reconciled only while holding the output
+lease: the control plane may promote only the exact deterministic successor
+revision, advancing by the newly debited episode count or by one for a wall-only
+advance, or discard an equal or stale prefix. It fails closed on every other
+relation, and terminal publication and verification reject every unreconciled
+temporary file.
+Before restoring any checkpoint state, the control plane also verifies that
+every chunk contains the exact registered training-seed slice in order.
+
 ### Separate setup retries from evidence-bearing execution
 
 Registration, source-only verification, and pre-start validation are
@@ -290,8 +319,10 @@ more trained than initial holdout victories.
 
 No verdict establishes policy quality, formal RL readiness, target-supported
 outcomes, live value, loading, qualification, gameplay, or promotion. Those
-authorities remain false in every registration, authorization, checkpoint,
-metric, report, and manifest.
+downstream authorities remain false in every artifact. The exact execution
+authorization enables only the preregistered execution, native-loading,
+environment, seed-access, and model-fitting/training fields; it grants none of
+the downstream authorities.
 
 ## Risks / Trade-offs
 

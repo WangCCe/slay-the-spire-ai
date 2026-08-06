@@ -14,7 +14,7 @@ logic from the consumed runner.
 
 #### Scenario: Control-only command is imported
 - **WHEN** a registration, inventory, preflight, or verification command is imported or run
-- **THEN** the system does not import Torch, load a native module, construct an environment, materialize a cohort, or access an empirical seed
+- **THEN** the system does not import Torch, load a native module, construct an environment, discover or execute an empirical seed; registration and verification MAY replay the fixed ascending selection in memory from an already bound exclusion inventory solely to bind or verify deterministic cohort values
 
 ### Requirement: Hierarchical family-first training policy
 The runtime SHALL treat each validated candidate `kind` as its action family,
@@ -157,6 +157,22 @@ charged seconds. Runtime inputs SHALL NOT raise any bound.
 - **WHEN** the next decision, episode, update, evaluation, or elapsed interval would exceed a registered ceiling
 - **THEN** the system stops at the last durable coordinate, preserves a bounded terminal result, and does not skip work or substitute another limit
 
+#### Scenario: An incomplete chunk consumes resources
+- **WHEN** an episode reaches the environment boundary or elapsed work is charged but the enclosing chunk does not publish a complete checkpoint
+- **THEN** model, optimizer, RNG, and logical chunk coordinates roll back while the leased episode and wall-time resource prefix remains monotonic and is merged into any same-identity resume or terminal result
+
+#### Scenario: Checkpoint publication fails after an update
+- **WHEN** an in-memory update completes but its checkpoint does not publish atomically
+- **THEN** the system preserves the advanced resource prefix but reconstructs the model only from the latest complete checkpoint or the write-once zero-coordinate bootstrap runtime, never from the uncheckpointed in-memory state
+
+#### Scenario: Resource publication is interrupted
+- **WHEN** a crash leaves a resource-ledger temporary file
+- **THEN** the same-identity lease holder promotes only the exact deterministic successor revision derived from the newly debited episode count or one wall-only advance, removes only an equal or stale prefix, and fails closed on a malformed, divergent, missing-predecessor, or markerless evidence prefix
+
+#### Scenario: Terminal output retains a temporary file
+- **WHEN** terminal publication or independent verification observes any unreconciled `*.tmp` file under the output root
+- **THEN** it fails closed without accepting or publishing a terminal manifest
+
 #### Scenario: Source benchmark supports a lower ceiling
 - **WHEN** source-only benchmarks justify a lower episode or wall-time bound before registration
 - **THEN** the registration may lower that bound but cannot raise any proposal ceiling without renewed proposal review
@@ -177,6 +193,18 @@ be required before any pre-seed retry.
 #### Scenario: Infrastructure interruption occurs after seed access
 - **WHEN** the process stops for an infrastructure reason after evidence-bearing start and a complete checkpoint exists
 - **THEN** only the same logical identity may resume from that checkpoint with unchanged bytes, controls, cohorts, generator state, and coordinates, including deterministic replay of an incomplete chunk
+
+#### Scenario: Infrastructure interruption occurs before the first checkpoint
+- **WHEN** evidence and resources were consumed but no complete checkpoint exists
+- **THEN** the same identity publishes a bounded terminal result from the immutable pre-evidence bootstrap runtime and durable resource prefix without constructing another environment or consuming another seed
+
+#### Scenario: Bootstrap state differs from the registered initialization
+- **WHEN** a zero-coordinate bootstrap has valid shapes and finite values but its canonical runtime digest differs from the frozen model-seed-0 initialization
+- **THEN** control and independent verification reject it before checkpoint restoration or terminal acceptance
+
+#### Scenario: A checkpoint seed sequence drifts
+- **WHEN** a checkpoint chunk does not contain the exact registered training-seed slice in order
+- **THEN** recovery fails before restoring model, optimizer, RNG, or generator state and before any further environment can be constructed
 
 #### Scenario: Algorithm or evidence gate fails after seed access
 - **WHEN** legality, schema, numeric, support, collapse, canary, or terminal verification fails after evidence-bearing start

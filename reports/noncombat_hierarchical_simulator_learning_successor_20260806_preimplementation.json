@@ -1,0 +1,355 @@
+{
+  "authority": {
+    "causal_claim_authorized": false,
+    "cohort_materialization_authorized": false,
+    "communication_mod_authorized": false,
+    "environment_construction_authorized": false,
+    "execution_authorized": false,
+    "formal_rl_authorized": false,
+    "fresh_evidence_authorized": false,
+    "gameplay_authorized": false,
+    "live_execution_authorized": false,
+    "model_fitting_authorized": false,
+    "native_loading_authorized": false,
+    "ope_authorized": false,
+    "policy_loading_authorized": false,
+    "production_checkpoint_mutation_authorized": false,
+    "promotion_authorized": false,
+    "qualification_authorized": false,
+    "seed_access_authorized": false,
+    "target_supported_outcome_authorized": false,
+    "training_authorized": false
+  },
+  "contract": {
+    "cohorts_materialized": false,
+    "consumed_experiment_immutable": true,
+    "environment_constructed": false,
+    "native_loaded": false,
+    "output_root_materialized": false,
+    "seed_accessed": false,
+    "source_only": true,
+    "training_started": false
+  },
+  "evidence": {
+    "action_family_counterfactual_report": {
+      "path": "reports/noncombat_action_family_counterfactual_audit_20260806.json",
+      "sha256": "25fb8242645c58a77f9393dcd00d2af15c22e714037a22b6d44269dac7d84080",
+      "size_bytes": 33379
+    },
+    "action_family_counterfactual_source": {
+      "path": "analysis_scripts/noncombat_action_family_counterfactual_audit.py",
+      "sha256": "7c9df81a6c78fb2c10d0e8815c0acf6605c0b34545f5def6e340ac07ee4ea205",
+      "size_bytes": 52053
+    },
+    "action_family_counterfactual_spec": {
+      "path": "openspec/specs/noncombat-action-family-counterfactual-audit/spec.md",
+      "sha256": "bcea5fba64de9f088747114e35d5181ce33e1e2e3137f38541b7bf58faff6c52",
+      "size_bytes": 6119
+    },
+    "action_family_counterfactual_tests": {
+      "path": "tests/test_noncombat_action_family_counterfactual_audit.py",
+      "sha256": "624d96edc3fc069e514d3a47494b6bae8a3b7ee0fa6e0ceb7145e84c6468c66a",
+      "size_bytes": 26538
+    },
+    "action_family_distribution_report": {
+      "path": "reports/noncombat_action_family_distribution_design_20260805.md",
+      "sha256": "d725ff1979b2a2ca4d1541011678490b399bcf3142a06923997f4f47f20d68ef",
+      "size_bytes": 2315
+    },
+    "action_family_distribution_source": {
+      "path": "analysis_scripts/noncombat_action_family_distribution.py",
+      "sha256": "fa5de88fb4d580756c1cf5f7fda6ab80fd3904754bcdd5608bfbe567c84bcd97",
+      "size_bytes": 15571
+    },
+    "action_family_distribution_spec": {
+      "path": "openspec/specs/noncombat-action-family-distribution/spec.md",
+      "sha256": "bc6d97a3183948d722224293a4578124b00b76b64b1eb288b7a63f94030bb886",
+      "size_bytes": 5649
+    },
+    "action_family_distribution_tests": {
+      "path": "tests/test_noncombat_action_family_distribution.py",
+      "sha256": "fc8521241890fa0fa30e6bca7eb4613c16ace355d70ab07dd566f075de458449",
+      "size_bytes": 15231
+    },
+    "collapse_audit_report": {
+      "path": "reports/noncombat_state_conditioned_card_reward_collapse_audit_20260805.json",
+      "sha256": "1392d10a1d3f3746b63285677c3f269b9064959222b275bd2805eb791bf206d6",
+      "size_bytes": 928451
+    },
+    "collapse_audit_source": {
+      "path": "analysis_scripts/noncombat_state_conditioned_collapse_audit.py",
+      "sha256": "5bfbffcab33cf121b20f5b137a0286517b41c8562603a4fbc8e2670149b0214f",
+      "size_bytes": 76591
+    },
+    "collapse_audit_spec": {
+      "path": "openspec/specs/noncombat-state-conditioned-collapse-audit/spec.md",
+      "sha256": "0be5cc9459f470febf980eb21067cc8dccdab79576395977b72afe2dff49fb73",
+      "size_bytes": 9651
+    },
+    "consumed_manifest": {
+      "path": "reports/noncombat_state_conditioned_simulator_learning_experiment_20260805/artifact_manifest.json",
+      "sha256": "4d6184b0cdd88bc59238053ec6b2be0f7a4d2427a2feb2d758da9afd4d21f498",
+      "size_bytes": 14018
+    },
+    "consumed_postmortem": {
+      "path": "reports/noncombat_state_conditioned_simulator_learning_experiment_20260805_postmortem.json",
+      "sha256": "b7273d39c9e7cb713127abbb42eab6ed4110ee94b0a8d903e35cfa49fe07b6cb",
+      "size_bytes": 6476
+    },
+    "consumed_registration": {
+      "path": "reports/noncombat_state_conditioned_simulator_learning_experiment_20260805_registration.json",
+      "sha256": "d4a6ed9469410288f0670645f33c6cbf3c40f507afdc29a47fa229c7a6994f18",
+      "size_bytes": 485693
+    },
+    "consumed_runner": {
+      "path": "analysis_scripts/noncombat_state_conditioned_simulator_learning_experiment.py",
+      "sha256": "acc26d3c219da1f277ac3319b2077b59832c2a7281bbece19849e77250e2ed64",
+      "size_bytes": 246807
+    },
+    "consumed_spec": {
+      "path": "openspec/specs/noncombat-state-conditioned-simulator-learning-experiment/spec.md",
+      "sha256": "30c99ad0227c3e22a19075bee3a639f7fe5524255d1d4612194fb3862d5c128c",
+      "size_bytes": 12682
+    },
+    "consumed_tests": {
+      "path": "tests/test_noncombat_state_conditioned_simulator_learning_experiment.py",
+      "sha256": "b5cbfd91c9621db0bc7cbb59ddf96f19a79e6bb864ce46e88afaa21f490739ec",
+      "size_bytes": 122330
+    },
+    "consumed_verifier": {
+      "path": "analysis_scripts/verify_noncombat_state_conditioned_simulator_learning_experiment.py",
+      "sha256": "dc18005d24772f77f56c517b0de160949d6e3d0e4f1bac567a7ba5afff1ab0fb",
+      "size_bytes": 126225
+    },
+    "formal_reward_contract": {
+      "path": "reports/noncombat_formal_reward_contract_20260802/contract.json",
+      "sha256": "4ee9c0087e523b95e2d380d6e6a0c7ecefd4f211cbd7d780b496df0d642a10bb",
+      "size_bytes": 2419
+    },
+    "formal_reward_source": {
+      "path": "analysis_scripts/noncombat_formal_reward_contract.py",
+      "sha256": "8bd92a82f619c187439a583064d0d922ffc83b406b00a48f998d63b155b69c8a",
+      "size_bytes": 41316
+    },
+    "formal_reward_spec": {
+      "path": "openspec/specs/noncombat-formal-reward-contract/spec.md",
+      "sha256": "555633148de342205a114dc52c2d923a1d1119a380f87afa525ff3d8ccbb495d",
+      "size_bytes": 5851
+    },
+    "hierarchical_objective_report": {
+      "path": "reports/noncombat_hierarchical_policy_objective_contract_20260806.md",
+      "sha256": "926125ee6127badd50fecb58659eb7aaf476a783de4f1033977f80fac4ddcc94",
+      "size_bytes": 1602
+    },
+    "hierarchical_objective_source": {
+      "path": "analysis_scripts/noncombat_hierarchical_policy_objective.py",
+      "sha256": "4c7450713bcee21b38b4a13e5ab14642a80beab280f4f84ee733f12bebd9d480",
+      "size_bytes": 14363
+    },
+    "hierarchical_objective_spec": {
+      "path": "openspec/specs/noncombat-hierarchical-policy-objective-contract/spec.md",
+      "sha256": "e774dcdac66f916ce5940f681547b2e77730fe7f7e4a8c5d04b7c7d65730e2e6",
+      "size_bytes": 5614
+    },
+    "hierarchical_objective_tests": {
+      "path": "tests/test_noncombat_hierarchical_policy_objective.py",
+      "sha256": "65a7c997b37c05eff74f6bccff3e5703ec56ca789d0f942539c87b8d5120fdf4",
+      "size_bytes": 14260
+    },
+    "policy_input_source": {
+      "path": "analysis_scripts/noncombat_state_conditioned_policy_input.py",
+      "sha256": "f460bcb2cf2569b73ae08e640545fbd25996ae3e5d806339bff550aa12f484be",
+      "size_bytes": 8149
+    },
+    "policy_input_spec": {
+      "path": "openspec/specs/noncombat-state-conditioned-policy-input/spec.md",
+      "sha256": "770a019bdb617d6e9996358faea3faec1f87a77dd24f4acc499845b356da7d69",
+      "size_bytes": 5187
+    },
+    "policy_input_tests": {
+      "path": "tests/test_noncombat_state_conditioned_policy_input.py",
+      "sha256": "470b920cc2bcae1455e156fd9735dd72cadc20c3258cb2d8ef8246216a87aabb",
+      "size_bytes": 12745
+    },
+    "project_direction": {
+      "path": "docs/project_direction.md",
+      "sha256": "c07e7063fccf99d8a73223ba88d938a11352b9cf1ba4952b10f42f7b2f99a9d6",
+      "size_bytes": 48608
+    },
+    "ranker_source": {
+      "path": "analysis_scripts/noncombat_state_conditioned_ranker.py",
+      "sha256": "60d1b710127e27c0bb283f073d6b166ccae14d9902ffb6d1911caa107d745678",
+      "size_bytes": 4549
+    },
+    "ranker_spec": {
+      "path": "openspec/specs/noncombat-state-conditioned-ranker/spec.md",
+      "sha256": "d58e60bbde6258ca44f13e66a432231892733a8bff75c890b0f0338cd4aaa9b5",
+      "size_bytes": 5225
+    },
+    "ranker_tests": {
+      "path": "tests/test_noncombat_state_conditioned_ranker.py",
+      "sha256": "0b1edaa36aa2c3f5d665e81e1e52530ba5dd68cb637ac1d463254031f01b65e5",
+      "size_bytes": 9190
+    },
+    "simulator_adapter_source": {
+      "path": "analysis_scripts/noncombat_simulator_adapter.py",
+      "sha256": "3045281cf592aaee82de1e2972a5205297ff3f371c4ce0aa47d8cb539b66f690",
+      "size_bytes": 16330
+    },
+    "simulator_adapter_spec": {
+      "path": "openspec/specs/noncombat-simulator-adapter/spec.md",
+      "sha256": "88e9509b22ed22196fdfae36be753def4ab9cb3fa10ffdb6a542e2feed85ec99",
+      "size_bytes": 18197
+    },
+    "simulator_adapter_tests": {
+      "path": "tests/test_noncombat_simulator_adapter.py",
+      "sha256": "fdb45bec399a1d38e7e0257ac41948c74fb12382d8e6279e8f16dc48f0ee19ff",
+      "size_bytes": 22824
+    }
+  },
+  "experiment_contract": {
+    "algorithm": {
+      "conditional_entropy_coefficient": 0.01,
+      "discount": 1.0,
+      "family_entropy_coefficient": 0.01,
+      "gradient_norm_ceiling": 1.0,
+      "learning_rate": 0.001,
+      "normalized_returns": true,
+      "optimizer": "adam",
+      "optimizer_amsgrad": false,
+      "optimizer_betas": [
+        0.9,
+        0.999
+      ],
+      "optimizer_capturable": false,
+      "optimizer_differentiable": false,
+      "optimizer_eps": 1e-08,
+      "optimizer_foreach": null,
+      "optimizer_fused": null,
+      "optimizer_maximize": false,
+      "optimizer_weight_decay": 0.0,
+      "sampling": "family-first-then-conditional-v1"
+    },
+    "authority": {
+      "causal_claim_authorized": false,
+      "cohort_materialization_authorized": false,
+      "communication_mod_authorized": false,
+      "environment_construction_authorized": false,
+      "execution_authorized": false,
+      "formal_rl_authorized": false,
+      "fresh_evidence_authorized": false,
+      "gameplay_authorized": false,
+      "live_execution_authorized": false,
+      "model_fitting_authorized": false,
+      "native_loading_authorized": false,
+      "ope_authorized": false,
+      "policy_loading_authorized": false,
+      "production_checkpoint_mutation_authorized": false,
+      "promotion_authorized": false,
+      "qualification_authorized": false,
+      "seed_access_authorized": false,
+      "target_supported_outcome_authorized": false,
+      "training_authorized": false
+    },
+    "canary_family_gate": {
+      "categories": [
+        "card_reward",
+        "shop"
+      ],
+      "maximum_selected_family_rate": 0.95,
+      "minimum_multi_family_decisions": 32,
+      "minimum_selected_families": 2
+    },
+    "cohorts": {
+      "canary_count": 128,
+      "holdout_count": 512,
+      "selection": "tracked-fixed-tree-ascending-v1",
+      "train_count": 1024,
+      "train_passes": 4
+    },
+    "environment": {
+      "adapter_api_version": "sts-lightspeed-noncombat-adapter-v3",
+      "ascension": 0
+    },
+    "evaluation": {
+      "bootstrap_confidence": 0.95,
+      "bootstrap_resamples": 10000,
+      "bootstrap_seed": 0,
+      "replay_each_episode_once": true,
+      "selection": "unique-raw-score-maximum-v1",
+      "tie_handling": "fail-closed",
+      "unsupported_rate_ceiling": 0.1
+    },
+    "identity": {
+      "algorithm_version": "hierarchical-family-first-reinforce-v1",
+      "device": "cpu",
+      "registration_schema_version": "noncombat-hierarchical-simulator-learning-registration-v1"
+    },
+    "limits": {
+      "episodes_per_update": 64,
+      "max_decisions_per_episode": 500,
+      "max_evaluation_episodes": 2560,
+      "max_optimizer_updates": 64,
+      "max_total_episodes": 6656,
+      "max_training_episodes": 4096,
+      "max_wall_seconds": 28800.0
+    },
+    "model": {
+      "architecture": "state-conditioned-candidate-ranker-mlp-v1",
+      "model_seed": 0
+    },
+    "reward": {
+      "floor_progress_maximum": 1.0,
+      "terminal_victory_weight": 2.0,
+      "version": "formal-victory-primary-scalar-v1"
+    },
+    "state_effect_gate": {
+      "minimum_absolute_relative_score_change": 1e-08,
+      "minimum_multi_candidate_decisions": 4,
+      "minimum_nonzero_effect_rate": 0.25,
+      "minimum_relative_order_change_decisions": 1
+    },
+    "training_collapse_gate": {
+      "categories": [
+        "card_reward",
+        "shop"
+      ],
+      "minimum_multi_family_decisions": 64,
+      "required_singleton_max_family_rate": 1.0,
+      "window_chunks": 4
+    }
+  },
+  "planned_source_files": [
+    "analysis_scripts/noncombat_hierarchical_simulator_learning_experiment.py",
+    "analysis_scripts/noncombat_hierarchical_simulator_learning_runtime.py",
+    "analysis_scripts/verify_noncombat_hierarchical_simulator_learning_experiment.py",
+    "tests/test_noncombat_hierarchical_simulator_learning_experiment.py",
+    "tests/test_noncombat_hierarchical_simulator_learning_runtime.py"
+  ],
+  "planning": {
+    "commit": "9cdeb85066d5ceff8a3ec3fbbb5c2bd4de7fc081",
+    "files": {
+      "design": {
+        "path": "openspec/changes/add-hierarchical-noncombat-simulator-learning-successor/design.md",
+        "sha256": "079f9caf4022bc063c617a25b903da8373a2bb7ffff263f9695d16eaabfd5e5a",
+        "size_bytes": 18726
+      },
+      "proposal": {
+        "path": "openspec/changes/add-hierarchical-noncombat-simulator-learning-successor/proposal.md",
+        "sha256": "4b6247791217276f2b01735e41dbeddfcbef58ffae06aa83e47f51771106be93",
+        "size_bytes": 4701
+      },
+      "spec": {
+        "path": "openspec/changes/add-hierarchical-noncombat-simulator-learning-successor/specs/noncombat-hierarchical-simulator-learning-successor/spec.md",
+        "sha256": "0652862a125bdc64c7a42de01f674dad7123e3218f58cee20bc1b2192ed72e31",
+        "size_bytes": 14421
+      },
+      "tasks": {
+        "path": "openspec/changes/add-hierarchical-noncombat-simulator-learning-successor/tasks.md",
+        "sha256": "7f145c76a5edcf3e8c4dd83ec4bac5d74e8487fb91d2f81145d20f31782b391a",
+        "size_bytes": 6752
+      }
+    }
+  },
+  "schema_version": "noncombat-hierarchical-simulator-learning-preimplementation-v1"
+}
