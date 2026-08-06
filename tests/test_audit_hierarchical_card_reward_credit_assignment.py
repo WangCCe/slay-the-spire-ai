@@ -472,6 +472,30 @@ def test_fixed_stratum_boundaries(
     ) == expected
 
 
+def test_multi_family_bowl_take_reward_remains_eligible() -> None:
+    assert audit.is_eligible_card_reward(
+        {
+            "category": "card_reward",
+            "family_order": ["bowl", "take"],
+            "multi_family": True,
+        }
+    )
+    assert not audit.is_eligible_card_reward(
+        {
+            "category": "card_reward",
+            "family_order": ["take"],
+            "multi_family": False,
+        }
+    )
+    assert not audit.is_eligible_card_reward(
+        {
+            "category": "event",
+            "family_order": ["skip", "take"],
+            "multi_family": True,
+        }
+    )
+
+
 def test_support_thresholds_and_selected_family_associations() -> None:
     supported = audit.summarize_stratum("all", _analysis_rows())
     sparse = audit.summarize_stratum("sparse", _analysis_rows(63, take_count=32))

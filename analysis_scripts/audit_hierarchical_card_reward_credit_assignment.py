@@ -828,6 +828,16 @@ def stratum_labels(
     }
 
 
+def is_eligible_card_reward(row: Mapping[str, Any]) -> bool:
+    """Return whether a validated row contributes direct take-logit evidence."""
+    family_order = _sequence(row.get("family_order"), "family order")
+    return (
+        row.get("category") == "card_reward"
+        and row.get("multi_family") is True
+        and "take" in family_order
+    )
+
+
 def _mean(values: Sequence[float]) -> float | None:
     return math.fsum(values) / len(values) if values else None
 
@@ -2304,13 +2314,7 @@ def _analyze_training_rows(
             ordinal = card_ordinal_by_seed[seed]
             computed = _mapping(row.get("_computed"), "computed row evidence")
             family_margin = computed.get("family_margin")
-            family_order = list(row["family_order"])
-            eligible = (
-                row["category"] == "card_reward"
-                and row["multi_family"] is True
-                and "take" in family_order
-                and "skip" in family_order
-            )
+            eligible = is_eligible_card_reward(row)
             aligned: dict[str, Any] = {
                 "card_reward_ordinal": ordinal,
                 "category": row["category"],
