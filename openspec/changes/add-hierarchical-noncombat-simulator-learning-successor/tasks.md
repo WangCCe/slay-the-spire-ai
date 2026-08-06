@@ -95,7 +95,7 @@
   that freeze every algorithm, coefficient, control, gate, cohort, resource,
   native, runtime, isolation, output, and all-false downstream authority term;
   independently review, commit, and push them without execution.
-- [ ] 6.3 Publish one separately reviewed exact authorization bound to the
+- [x] 6.3 Publish one separately reviewed exact authorization bound to the
   pushed registration, commit and push it, and stop if any registered or
   pre-start identity has drifted.
 

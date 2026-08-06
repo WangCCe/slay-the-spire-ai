@@ -1,0 +1,46 @@
+{
+  "authority": {
+    "causal_claim_authorized": false,
+    "cohort_materialization_authorized": false,
+    "communication_mod_authorized": false,
+    "environment_construction_authorized": true,
+    "execution_authorized": true,
+    "formal_rl_authorized": false,
+    "fresh_evidence_authorized": true,
+    "gameplay_authorized": false,
+    "live_execution_authorized": false,
+    "model_fitting_authorized": true,
+    "native_loading_authorized": true,
+    "ope_authorized": false,
+    "policy_loading_authorized": false,
+    "production_checkpoint_mutation_authorized": false,
+    "promotion_authorized": false,
+    "qualification_authorized": false,
+    "seed_access_authorized": true,
+    "target_supported_outcome_authorized": false,
+    "training_authorized": true
+  },
+  "authorization_id": "noncombat-hierarchical-simulator-learning-20260806-r1:authorization-v1",
+  "command": [
+    "D:/anaconda/envs/stsai/python.exe",
+    "D:/PycharmProjects/slay-the-spire-ai/analysis_scripts/noncombat_hierarchical_simulator_learning_experiment.py",
+    "execute",
+    "--repo-root",
+    "D:/PycharmProjects/slay-the-spire-ai",
+    "--registration",
+    "D:/PycharmProjects/slay-the-spire-ai/reports/noncombat_hierarchical_simulator_learning_successor_20260806_registration.json",
+    "--authorization",
+    "D:/PycharmProjects/slay-the-spire-ai/reports/noncombat_hierarchical_simulator_learning_successor_20260806_authorization.json",
+    "--output-dir",
+    "D:/PycharmProjects/slay-the-spire-ai/reports/noncombat_hierarchical_simulator_learning_successor_20260806"
+  ],
+  "implementation_commit": "85809d193fa2048b07ce5356491fcdf0d125599c",
+  "logical_experiment_id": "noncombat-hierarchical-simulator-learning-20260806-r1",
+  "registration_binding": {
+    "path": "reports/noncombat_hierarchical_simulator_learning_successor_20260806_registration.json",
+    "sha256": "b744ebc2b4999051a12422fe4ba7090ee6f412c7c1aa644882077200bffb53a3",
+    "size_bytes": 713434
+  },
+  "registration_commit": "9f19dd06226f67e82a4cd0de441765b8b8ea9fc2",
+  "schema_version": "noncombat-hierarchical-simulator-learning-authorization-v1"
+}
