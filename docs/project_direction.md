@@ -230,6 +230,29 @@ invariance to duplicate same-family candidates, preserved within-family card
 ordering, and explicit family-level entropy before any fresh cohort,
 registration, or simulator run is proposed.
 
+The later hierarchical successor and its fixed read-only credit-assignment
+audit are now complete. The audit exactly reconstructed 11,807 decisions from
+512 training episodes and retained all 3,559 multi-family card rewards,
+including 17 sampled Singing Bowl choices. Aggregate combined direct take-
+logit pressure was positive in every chunk, and the unique greedy `take` margin
+grew strictly across terminal chunks 4 through 7. The bounded verdict is
+`direct_take_pressure_aligned_but_stratum_heterogeneous`: the supported
+effective-floor `17..33` band had nonpositive combined pressure
+(`-0.0010187720362788734`) across 171 decisions while every other supported
+fixed band was positive.
+
+This is descriptive objective evidence, not a full shared-parameter gradient,
+causal card value, or intervention result. It does not justify changing the
+reward, either entropy coefficient, the advantage estimator, architecture, or
+checkpoint selection. Both fresh source-only publications produced JSON
+SHA-256 `5ee6677e26ddc7c6c5fb57b3325a1da805cf1856dc56bca1ac28354aa7e0ba99`
+and Markdown SHA-256
+`02c76303ed1020403f83cbf789068e8b0eb4bd43581ad4657b3b633581e8fde1`.
+The next gate may only be a separately reviewed source-only algorithm-design
+proposal. It must address trajectory-confounded advantages and specify how a
+future registration would expose shared-parameter attribution before seeking
+new model-loading, cohort, training, or experiment authority.
+
 ## Training Boundary
 
 Formal non-combat RL training is not currently authorized. A training go means
@@ -662,6 +685,19 @@ The next authorized sequence is:
     loading, gameplay, qualification, and promotion remain `no_go`. The next
     work may only audit existing card-reward family credit assignment and
     trajectory confounding before any new algorithm proposal or empirical run.
+38. Preserve the completed hierarchical card-reward credit-assignment audit,
+    exact input/source bindings, 11,807 aligned decisions, 3,559 eligible card
+    rewards, byte-identical JSON/Markdown, and
+    `direct_take_pressure_aligned_but_stratum_heterogeneous` verdict. Every
+    chunk had positive aggregate direct take-logit pressure and terminal mean
+    margins grew strictly, but the supported effective-floor `17..33` band had
+    combined pressure `-0.0010187720362788734`. Do not reinterpret direct
+    coordinate pressure as a full model gradient or causal effect, and do not
+    tune a coefficient, reward, advantage, architecture, checkpoint, or cohort
+    from this result. A next change may propose source-only algorithm design
+    with synthetic contracts and explicit future shared-parameter attribution;
+    it grants no model loading, execution, training, gameplay, formal-RL,
+    qualification, or promotion authority.
 
 ## Work Lanes
 
@@ -713,10 +749,14 @@ are complete. The contract preserves selected family plus conditional log
     greedy `take` sign from widening over eight chunks. No canary or holdout seed
     was accessed, and the terminal bundle grants no policy-quality, formal-RL,
     target-supported-outcome, loading, gameplay, qualification, or promotion
-    authority. The next gate is a source-only read-only credit-assignment audit
-    over the consumed training rows and checkpoints. It must not fit a model,
-    replay a seed, make a causal or OPE claim, change a coefficient or reward,
-    select a checkpoint, or authorize another experiment.
+    authority. The source-only credit-assignment audit is complete: direct
+    take-logit pressure aligns in aggregate but is heterogeneous in the
+    supported effective-floor `17..33` band. The next gate is a separately
+    reviewed source-only algorithm-design proposal that addresses trajectory-
+    confounded advantages and future shared-parameter attribution. It must not
+    fit or load a model, replay a seed, make a causal or OPE claim, change a
+    coefficient or reward, select a checkpoint, register a cohort, or authorize
+    another experiment.
 
 Live gameplay is a maintenance and registered-evaluation lane only. Launch it
 for a crash, stuck state, repeated A-class simulator/mechanics defect, or an
@@ -739,10 +779,10 @@ OpenSpec changes authorize them.
 - For a one-attempt Windows evidence run that atomically publishes files, do
   not read any file under its active output root while the process is alive.
   Monitor process liveness only, then inspect artifacts after process exit.
-- Treat the latest 2026-08-06 `commit` gate result of 4,166 passed, 16 skipped,
-  458.48 seconds of pytest, and 461.56 seconds including orchestration as
+- Treat the latest 2026-08-06 `commit` gate result of 4,195 passed, 16 skipped,
+  437.48 seconds of pytest, and 440.38 seconds including orchestration as
   confirmation of timing drift: correctness passed, but the qualified
-  five-minute feedback bound was exceeded by 161.56 seconds. Do
+  five-minute feedback bound was exceeded by 140.38 seconds. Do
   not rerun it inside this change; schedule a separate read-only duration audit
   before claiming the bounded-feedback requirement remains met.
 

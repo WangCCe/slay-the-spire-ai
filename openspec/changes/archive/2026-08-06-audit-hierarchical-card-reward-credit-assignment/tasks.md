@@ -35,27 +35,27 @@
 
 ## 3. Verify And Publish The Audit
 
-- [ ] 3.1 Turn every RED boundary green; run the full focused audit suite plus
+- [x] 3.1 Turn every RED boundary green; run the full focused audit suite plus
   relevant hierarchical verifier/runtime regressions with a fresh system-temp
   basetemp, `py_compile`, `git diff --check`, and strict change/global OpenSpec;
   review, commit, and push the implementation source, tests, and
   preimplementation record before publication.
-- [ ] 3.2 Run two fresh source-only audit processes against the immutable
+- [x] 3.2 Run two fresh source-only audit processes against the immutable
   terminal evidence from the exact committed source; require byte-identical
   JSON/Markdown, exact reconciliation, and proof that Torch, native,
   environment, seed, model, and game effects stay absent.
-- [ ] 3.3 Review the implementation and report interpretation, resolve findings,
+- [x] 3.3 Review the implementation and report interpretation, resolve findings,
   then run one repository `commit` test gate; any source, test, or report-
   generator change loops back through a new 3.1 implementation commit/push and
   both 3.2 processes before proceeding. Do not launch gameplay because no
   production behavior path changes.
-- [ ] 3.4 Publish the canonical audit reports and update project direction with
+- [x] 3.4 Publish the canonical audit reports and update project direction with
   the bounded verdict and next proposal gate while every downstream authority
   remains false.
 
 ## 4. Close Out
 
-- [ ] 4.1 Sync the accepted capability to main specs, archive the completed
+- [x] 4.1 Sync the accepted capability to main specs, archive the completed
   change, rerun final applicable verification, and commit/push only scoped
   source, tests, reports, direction, and OpenSpec files while preserving the
   consumed experiment and unrelated local artifacts.
