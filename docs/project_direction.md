@@ -765,10 +765,33 @@ The next authorized sequence is:
     `3c16ab2541a1daaf0377539e47f4fb49ec6c72025d64b78528ffaf7e163b9945`
     and its independently reconstructed authorization has SHA-256
     `c711b13d1728187ce0c0bb09136c9f86658bbf7de86470707c65b58e5c57c473`.
-    The next gate is the pushed-authorization source-only preflight followed by
-    at most one evidence-bearing logical execution under the registered
-    lifecycle. No execution or seed access occurred while publishing the
-    approval boundary.
+    The single authorized logical execution is now consumed and independently
+    valid as `experiment_failed_after_seed_access`. It durably debited seeds
+    `1769..1780`: 11 accesses completed and the twelfth failed its registered
+    wall-time check before environment construction. No chunk, baseline,
+    retained decision bundle, optimizer update, checkpoint, gradient evidence,
+    or evaluation was published. The verifier accepted all 13 managed
+    artifacts, exact approval/authorization identity, access/resource prefixes,
+    unchanged pre/post isolation, and terminal SHA-256
+    `1887395ae2e4e23d031a3370695e6f694b6ba079ba8b110ceb36b34642e452d8`.
+    No resume or retry is permitted. A read-only terminal postmortem records one
+    monitoring deviation: the outer wrapper timed out while the Python child
+    still held the lease, causing a read-only active-root inspection before
+    child liveness was discovered; no artifact changed and final verification
+    ran only after natural child exit. The separate execution-bottleneck audit
+    finds that parsing the 63,171,200-byte registration takes `0.530` seconds
+    but one `_registration_for_identity` takes `56.016` seconds. One completed
+    access enters that helper at least 20 times, before additional registration
+    hashing, so repeated whole-registration validation dominates the run. It
+    also finds that non-infrastructure pre-checkpoint failure leaves the
+    verified ledger at `charged_seconds=0.0` and that producer terminalization
+    took about 2,228 seconds from failure witness to manifest. Focused terminal
+    tests pass 130 tests with one skip, and strict OpenSpec validation passes all
+    75 items. The next gate is a new source-only OpenSpec proposal that caches
+    one validated execution context, charges every terminal path, removes
+    repeated terminal-publication validation, and supervises true child
+    liveness. It grants no new experiment, native, seed, training, model-loading,
+    gameplay, formal-RL, qualification, or promotion authority.
 
 ## Work Lanes
 
@@ -826,15 +849,15 @@ are complete. The contract preserves selected family plus conditional log
     advantage-attribution contract now closes the immediate source-only design
     gap with trajectory-disjoint provenance, exact shared-gradient component
     accounting, and uniform clipping evidence. The cross-fitted hierarchical
-    successor source implementation now fixes the selected baseline, folds,
-    evidence bounds, lifecycle, recovery, and independent-verification
-    contract. Its next gate is a standard-library historical exclusion
-    inventory and all-false 512-seed registration generated only from the clean
-    pushed source commit. That boundary may render an exact execution request,
-    but must stop for separate human approval of the request digest and bounds.
-    Until then, do not fit or load a model, access a registered seed, make a
-    causal or OPE claim, change a coefficient or reward, select a checkpoint,
-    or authorize or execute the empirical experiment.
+    successor was authorized and consumed exactly once, but repeated full
+    registration validation allowed only 11 completed accesses before the
+    fixed wall-time gate. Its valid terminal failure contains no complete chunk
+    or mechanism evidence and cannot be resumed or retried. The next work is a
+    new source-only control-plane throughput and accounting proposal backed by
+    structural validation-count, failure-charge, terminal-publication, and
+    true-child-liveness regressions. Do not fit or load another model, access a
+    fresh seed, make a causal or OPE claim, change an estimator or reward, or
+    authorize another empirical experiment from this evidence.
 
 Live gameplay is a maintenance and registered-evaluation lane only. Launch it
 for a crash, stuck state, repeated A-class simulator/mechanics defect, or an
@@ -857,6 +880,9 @@ OpenSpec changes authorize them.
 - For a one-attempt Windows evidence run that atomically publishes files, do
   not read any file under its active output root while the process is alive.
   Monitor process liveness only, then inspect artifacts after process exit.
+- Do not treat an outer shell, wrapper timeout, or waiting-cell exit as proof
+  that the evidence process ended. Confirm the true Python child is absent and
+  its exclusive lease is no longer locked before reading the output root.
 - Treat the latest 2026-08-06 `commit` gate result of 4,419 passed, 17 skipped,
   556.07 seconds of pytest, and 558.90 seconds including orchestration as
   confirmation of timing drift: correctness passed, but the qualified

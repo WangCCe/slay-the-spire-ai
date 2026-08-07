@@ -1,0 +1,181 @@
+{
+  "authority": {
+    "causal_claim": false,
+    "communication_mod": false,
+    "evaluation": false,
+    "formal_rl": false,
+    "gameplay": false,
+    "model_fitting": false,
+    "model_loading": false,
+    "new_cohort": false,
+    "new_experiment": false,
+    "ope": false,
+    "policy_quality": false,
+    "promotion": false,
+    "qualification": false,
+    "replay": false,
+    "resume": false,
+    "training": false
+  },
+  "classification": {
+    "failure": {
+      "exception_type": "RuntimeBlocked",
+      "infrastructure": false,
+      "message": "wall-time limit reached before environment construction",
+      "phase": "training",
+      "sha256": "ab4107b9dd6b5c9c7807940229e75b4581d04d52bf0548664e15f508fe680d89"
+    },
+    "pre_start_blocking": false,
+    "preserved_post_start_failure": true,
+    "resume_eligible": false,
+    "resume_used": false,
+    "retry_authorized": false,
+    "valid_completion": false,
+    "valid_family_saturation": false,
+    "verdict": "experiment_failed_after_seed_access"
+  },
+  "execution": {
+    "attempt_ordinals": [
+      0
+    ],
+    "checkpoint_count": 0,
+    "completed_accesses": 11,
+    "completed_chunk_indices": [],
+    "completed_chunks": 0,
+    "debited_accesses": 12,
+    "failed_accesses": 1,
+    "first_debited_seed": 1769,
+    "last_debited_seed": 1780,
+    "ledger_charged_seconds": 0.0,
+    "optimizer_updates": 0,
+    "registered_wall_time_limit_seconds": 14400.0,
+    "retained_decisions": 0,
+    "scheduled_seeds": 512
+  },
+  "identity": {
+    "authorization_sha256": "c711b13d1728187ce0c0bb09136c9f86658bbf7de86470707c65b58e5c57c473",
+    "logical_execution_id": "noncombat-cross-fitted-hierarchical-learning-successor-20260806-r1",
+    "registration_sha256": "1a3b267c16524e1e0449a8bddbd482684fb9dd0ac89c20bd9db19a9bd755249c",
+    "request_sha256": "8f6476b0f4a3fe06969558b8a07ea2c825244223a7d1cc4dd5116364f60a77c3"
+  },
+  "input_bindings": {
+    "access_journal": {
+      "path": "reports/noncombat_cross_fitted_hierarchical_learning_successor_20260806_r1/access_journal.jsonl",
+      "sha256": "bbadde739c3117e8abe0543d20ba3bba0d270966895195cd25ae9a927c406c72",
+      "size_bytes": 5760
+    },
+    "artifact_manifest": {
+      "internal_sha256": "4b039e1a2ef71d33cb2f82a5b780c119f70a0da938d455292dac8ce262846d3a",
+      "path": "reports/noncombat_cross_fitted_hierarchical_learning_successor_20260806_r1/artifact_manifest.json",
+      "sha256": "16fc63bf40075396f7f3dd7e1380fe371e993afb8677c2728cf7f1adaae23675",
+      "size_bytes": 4864
+    },
+    "failure": {
+      "path": "reports/noncombat_cross_fitted_hierarchical_learning_successor_20260806_r1/failure.json",
+      "sha256": "35d17b96d9840dd3b13e4e35989be141046cad916323cd0232d5ebb8bcc2c34b",
+      "size_bytes": 313
+    },
+    "post_isolation": {
+      "path": "reports/noncombat_cross_fitted_hierarchical_learning_successor_20260806_r1/post_isolation.json",
+      "sha256": "07405c7571d7791ab8161aba25a5055a397d2514178ac7d750fad854b6357dec",
+      "size_bytes": 664
+    },
+    "pre_isolation": {
+      "path": "reports/noncombat_cross_fitted_hierarchical_learning_successor_20260806_r1/pre_isolation.json",
+      "sha256": "75bd95d5bd843220a568e5ef989043a7fcb1909d03bd5bb31db70540429eec0c",
+      "size_bytes": 663
+    },
+    "resource_ledger": {
+      "path": "reports/noncombat_cross_fitted_hierarchical_learning_successor_20260806_r1/resource_ledger.jsonl",
+      "sha256": "d8884f2c17d67a975e8148c55cb480dcc724e5cc9f960028bf46dd93bcf81c5c",
+      "size_bytes": 5679
+    },
+    "terminal": {
+      "internal_sha256": "1887395ae2e4e23d031a3370695e6f694b6ba079ba8b110ceb36b34642e452d8",
+      "path": "reports/noncombat_cross_fitted_hierarchical_learning_successor_20260806_r1/terminal.json",
+      "sha256": "39aa5ae15b624cae49dc3c4f04df5d8b2de2ae47b7d52cbbfb665f467a2abd75",
+      "size_bytes": 1740
+    },
+    "terminal_intent": {
+      "internal_sha256": "58a7d9bc37f33f3230942072835496e9e1b198a063e0c13221557a532cca9912",
+      "path": "reports/noncombat_cross_fitted_hierarchical_learning_successor_20260806_r1/terminal_intent.json",
+      "sha256": "1effd18ea52b574d4a977c5ce428b13ca1003b63138b5d06f82498fa662cf521",
+      "size_bytes": 5047
+    }
+  },
+  "interpretation": {
+    "formal_readiness": "unchanged_not_ready",
+    "immediate_successor_experiment": "no_go",
+    "mechanism_evidence": "not_observed_no_complete_chunk",
+    "next_gate": "read_only_terminal_execution_bottleneck_audit",
+    "policy_quality": "not_established",
+    "target_supported_outcomes": "not_established"
+  },
+  "isolation": {
+    "communication_mod_config_unchanged": true,
+    "post_matches_registration": true,
+    "pre_matches_registration": true,
+    "production_checkpoint_bytes": 1356047034,
+    "production_checkpoint_files": 208,
+    "production_checkpoints_unchanged": true
+  },
+  "monitoring": {
+    "active_root_read_after_outer_timeout": true,
+    "artifact_mutation_observed": false,
+    "child_remained_alive_after_outer_timeout": true,
+    "first_verifier_result": "blocked_live_lease",
+    "outer_wait_exit_code": 124,
+    "recovery_action": "stop_reads_and_wait_for_original_pid_to_exit_naturally",
+    "terminal_verifier_ran_only_after_natural_exit": true
+  },
+  "noncanonical_timing_observations": {
+    "failure_file_time": "2026-08-07T15:33:18.2788299+08:00",
+    "failure_to_terminal_intent_seconds": 922.0783753,
+    "lease_acquired_time": "2026-08-07T11:09:44.7530000+08:00",
+    "lease_to_failure_seconds": 15813.5258299,
+    "lease_to_manifest_seconds": 18041.746171,
+    "manifest_file_time": "2026-08-07T16:10:26.4991710+08:00",
+    "terminal_file_time": "2026-08-07T16:09:59.4995660+08:00",
+    "terminal_intent_file_time": "2026-08-07T15:48:40.3572052+08:00",
+    "terminal_intent_to_terminal_seconds": 1279.1423608,
+    "terminal_to_manifest_seconds": 26.999605,
+    "warning": "filesystem times are operational observations, not canonical terminal evidence"
+  },
+  "publication": {
+    "artifact_count": 13,
+    "complete_terminal_bundle_preserved_locally": true,
+    "inactive_execution_lease_is_control_only": true,
+    "managed_stored_bytes": 63920322,
+    "managed_uncompressed_bytes": 63920322,
+    "ordinary_git_omits_only": [
+      "reports/noncombat_cross_fitted_hierarchical_learning_successor_20260806_r1/.execution.lease"
+    ]
+  },
+  "schema_version": "noncombat-cross-fitted-hierarchical-learning-postmortem-v1",
+  "scope": {
+    "new_native_loading": false,
+    "new_seed_access": false,
+    "read_only_terminal_descriptive_postmortem": true,
+    "terminal_artifact_mutation": false,
+    "training_or_replay": false
+  },
+  "verification": {
+    "artifact_count": 13,
+    "checkpoint_count": 0,
+    "completed_chunk_indices": [],
+    "independent_verifier": "valid",
+    "manifest_sha256": "4b039e1a2ef71d33cb2f82a5b780c119f70a0da938d455292dac8ce262846d3a",
+    "resource_use": {
+      "charged_seconds": 0.0,
+      "environment_accesses": 12,
+      "optimizer_updates": 0,
+      "retained_decisions": 0,
+      "stored_bytes": 0,
+      "uncompressed_bytes": 0
+    },
+    "resume_mode": null,
+    "resume_used": false,
+    "terminal_sha256": "1887395ae2e4e23d031a3370695e6f694b6ba079ba8b110ceb36b34642e452d8",
+    "verdict": "experiment_failed_after_seed_access"
+  }
+}

@@ -1,0 +1,1 @@
+{"exception_type":"RuntimeBlocked","failure_sha256":"ab4107b9dd6b5c9c7807940229e75b4581d04d52bf0548664e15f508fe680d89","infrastructure":false,"message":"wall-time limit reached before environment construction","phase":"training","schema_version":"noncombat-cross-fitted-hierarchical-learning-failure-witness-v1"}

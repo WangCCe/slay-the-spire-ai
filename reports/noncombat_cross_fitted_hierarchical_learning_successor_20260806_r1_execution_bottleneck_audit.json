@@ -1,0 +1,129 @@
+{
+  "authority": {
+    "communication_mod": false,
+    "evaluation": false,
+    "formal_rl": false,
+    "gameplay": false,
+    "model_loading": false,
+    "native_loading": false,
+    "new_cohort": false,
+    "new_experiment": false,
+    "policy_promotion": false,
+    "qualification": false,
+    "seed_access": false,
+    "training": false
+  },
+  "decision": {
+    "full_policy_quality_experiment": "no_go",
+    "formal_noncombat_rl": "no_go",
+    "immediate_mechanism_rerun": "no_go",
+    "next_change": "source_only_execution_control_plane_throughput_and_accounting_repair",
+    "next_change_kind": "new_openspec_proposal",
+    "source_only_repair_proposal": "go"
+  },
+  "findings": [
+    {
+      "classification": "blocking",
+      "evidence": {
+        "completed_access_lower_bound_full_registration_validations": 40,
+        "completed_access_lower_bound_identity_helper_calls": 20,
+        "json_parse_seconds": 0.5295703000156209,
+        "registration_for_identity_seconds": 56.01576670000213
+      },
+      "finding_id": "repeated_full_registration_validation_dominates_each_access",
+      "reason": "The debit, journal replay, resource reconciliation, and terminal-status call graph repeatedly enters _registration_for_identity. That helper validates the complete 63 MB registration and then registration_sha256 validates it again. Journal header reconstruction adds further full validations beyond the stated lower bound."
+    },
+    {
+      "classification": "blocking",
+      "evidence": {
+        "debited_accesses": 12,
+        "ledger_charged_seconds": 0.0,
+        "registered_wall_time_limit_seconds": 14400.0,
+        "terminal_failure_infrastructure": false
+      },
+      "finding_id": "noninfrastructure_terminal_failure_does_not_persist_elapsed_charge",
+      "reason": "Elapsed time is persisted at complete checkpoints and infrastructure interruptions. The non-infrastructure exception branch closes the terminal bundle without advancing charged_seconds, so the verified ledger reports zero despite the runtime deadline firing."
+    },
+    {
+      "classification": "high",
+      "evidence": {
+        "failure_to_manifest_seconds": 2228.2203411,
+        "independent_verifier_observed_seconds": 15.1,
+        "managed_registration_bytes": 63171200,
+        "terminal_publication_revalidates_registration_and_inventory": true
+      },
+      "finding_id": "producer_terminal_publication_has_large_revalidation_tail",
+      "reason": "Producer closeout repeatedly revalidates registration identity and rebuilds managed inventories while constructing intent, terminal, and manifest. The observed filesystem interval from failure witness to manifest was about 37 minutes, while the independent verifier later completed in about 15 seconds."
+    },
+    {
+      "classification": "high",
+      "evidence": {
+        "active_root_read_after_outer_timeout": true,
+        "artifact_mutation_observed": false,
+        "child_remained_alive_after_outer_timeout": true,
+        "outer_wait_exit_code": 124
+      },
+      "finding_id": "outer_wait_timeout_did_not_represent_child_exit",
+      "reason": "The five-hour wrapper stopped waiting while the Python child retained the lease and continued terminal publication. Future launch supervision must track the true child lifecycle and must not use wrapper completion as proof that the active root is closed."
+    }
+  ],
+  "input_bindings": {
+    "control_plane_source": {
+      "path": "analysis_scripts/noncombat_cross_fitted_hierarchical_learning_experiment.py",
+      "sha256": "f1cee38b1a1c81e068901acbee2c76837afbf57dc7bcea2cb3c2dca568e550b8",
+      "size_bytes": 206286
+    },
+    "postmortem": {
+      "path": "reports/noncombat_cross_fitted_hierarchical_learning_successor_20260806_r1_postmortem.json",
+      "sha256": "f5be9d677f402e647ccc68fba527c357f36715334c335f8ce954d541d9802e8b",
+      "size_bytes": 7235
+    },
+    "runtime_source": {
+      "path": "analysis_scripts/noncombat_cross_fitted_hierarchical_learning_runtime.py",
+      "sha256": "b09d4724a5faa00eb002a341e159f827fbec5b9ffa13f69a33ca711d50e6a237",
+      "size_bytes": 102092
+    },
+    "terminal": {
+      "path": "reports/noncombat_cross_fitted_hierarchical_learning_successor_20260806_r1/terminal.json",
+      "sha256": "39aa5ae15b624cae49dc3c4f04df5d8b2de2ae47b7d52cbbfb665f467a2abd75",
+      "size_bytes": 1740
+    },
+    "verifier_source": {
+      "path": "analysis_scripts/verify_noncombat_cross_fitted_hierarchical_learning_experiment.py",
+      "sha256": "3fe95c741b3371d41e1e826a052b0bb2c417f626e396e2822db0a588bbc6a56a",
+      "size_bytes": 188250
+    }
+  },
+  "microbenchmark": {
+    "command_scope": "json_load_then_one_registration_for_identity_call",
+    "json_parse_seconds": 0.5295703000156209,
+    "native_imported": false,
+    "registration_for_identity_seconds": 56.01576670000213,
+    "registration_path": "reports/noncombat_cross_fitted_hierarchical_learning_successor_20260806_r1/registration.json",
+    "repetitions": 1,
+    "torch_imported": false,
+    "total_seconds": 56.54533700001775
+  },
+  "proposal_requirements": [
+    "Validate and digest the immutable registration once into a typed in-process execution context before dependency loading.",
+    "Pass the validated context through access-journal, resource-ledger, checkpoint, and terminal helpers without another full registration validation while preserving all byte, schedule, identity, and lease checks.",
+    "Add structural regressions proving no O(registration-size) validation occurs per seed or nested terminal helper and proving corrupted boundary inputs still fail closed.",
+    "Persist elapsed charged time on every terminal path, including non-infrastructure algorithm and resource failures before the first checkpoint, and independently verify the charge coordinate.",
+    "Build terminal intent, terminal, and manifest from one validated immutable snapshot and one managed-artifact inventory without weakening independent post-exit verification.",
+    "Supervise the true Python child lifecycle so wrapper timeout cannot be mistaken for experiment exit; keep active-root monitoring liveness-only.",
+    "Use source-only synthetic performance and lifecycle gates before considering any fresh registration or evidence-bearing execution."
+  ],
+  "schema_version": "noncombat-cross-fitted-hierarchical-learning-execution-bottleneck-audit-v1",
+  "scope": {
+    "artifact_mutation": false,
+    "native_loading": false,
+    "read_only_existing_terminal_and_source_audit": true,
+    "seed_access": false,
+    "training_or_replay": false
+  },
+  "source_identity": {
+    "current_head": "efc5c1664b5d198cff78df646a3aea1d7da6f601",
+    "origin_master": "efc5c1664b5d198cff78df646a3aea1d7da6f601",
+    "registered_implementation_commit": "5c8b66cdaf62f51a654994ec5a5cd5c2f6ac1118"
+  }
+}
