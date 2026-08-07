@@ -760,9 +760,15 @@ The next authorized sequence is:
     environment accesses including one same-identity replay reserve, 32,768
     retained decisions, and 14,400 charged seconds. Evaluation, formal RL,
     gameplay, CommunicationMod, production model loading, qualification, and
-    promotion remain false. No approval or authorization has been published.
-    The current hard stop is a separate human message explicitly approving
-    this exact request digest and its bound limits.
+    promotion remain false. The operator separately approved this exact digest
+    on 2026-08-07. The canonical approval has SHA-256
+    `3c16ab2541a1daaf0377539e47f4fb49ec6c72025d64b78528ffaf7e163b9945`
+    and its independently reconstructed authorization has SHA-256
+    `c711b13d1728187ce0c0bb09136c9f86658bbf7de86470707c65b58e5c57c473`.
+    The next gate is the pushed-authorization source-only preflight followed by
+    at most one evidence-bearing logical execution under the registered
+    lifecycle. No execution or seed access occurred while publishing the
+    approval boundary.
 
 ## Work Lanes
 
