@@ -815,6 +815,31 @@ The next authorized sequence is:
     separate explicit human approval. The five additive requirements are
     synced to the main successor spec and the completed change is archived at
     `openspec/changes/archive/2026-08-07-repair-cross-fitted-execution-control-plane`.
+42. Preserve the terminal `no_go_source_binding` result from the one-shot
+    cross-fitted empirical-successor readiness audit. Source commit
+    `863ae5a4046df110e4f9028bb3c56d556a7c6a43` was pushed and consumed exactly
+    once by audit
+    `noncombat-cross-fitted-empirical-successor-readiness-20260808-r1`. The
+    source gate stopped before candidate inventory reconstruction, rehearsal,
+    native loading, environment construction, seed access, fitting, training,
+    evaluation, OPE, gameplay, CommunicationMod, qualification, or promotion.
+    No canonical output directory was installed and no empirical-successor
+    registration proposal became eligible. Independent receipt review confirms
+    canonical started and terminal JSON, matching attempt identity, valid
+    SHA-256 values
+    `132cfaea05dc7e23b0140fa6b63dc253e60256bea0b8fc6dc5accb3c281a9e71`
+    and
+    `e3bffa6c509ba00a7c28b607cfdcebecfe3021cf004f61b87b14cc8f47870d71`,
+    all-false authority, and absent output, scratch, and staging paths. The
+    bound registration correctly has eight schedule fields; the readiness
+    implementation incorrectly allowed only five and rejected the provenance
+    fields `canonical_search_start`, `inventory_sha256`, and
+    `selection_schema_version`. The identity is non-retryable. The next step is
+    a new source-only OpenSpec correction with the exact bound schedule schema
+    and regression coverage, followed by a new pushed source identity; it is
+    not permission to rerun, register, or execute an empirical successor. The
+    completed readiness change is synced to the main spec and archived at
+    `openspec/changes/archive/2026-08-07-assess-cross-fitted-empirical-successor-readiness`.
 
 ## Work Lanes
 
@@ -879,10 +904,13 @@ are complete. The contract preserves selected family plus conditional log
     control-plane repair now closes the known validation-throughput,
     elapsed-charge, terminal-publication, and true-child-liveness defects. It
     does not retroactively create mechanism evidence or authorize a retry. The
-    next gate is a separate go/no-go proposal for a new source-bound empirical
-    successor; do not fit or load another model, access a fresh seed, make a
-    causal or OPE claim, change an estimator or reward, or infer execution
-    authority from the repair closeout.
+    subsequent one-shot readiness audit closed at `no_go_source_binding`
+    because its consumed-schedule contract omitted three bound provenance
+    fields. The next gate is a new source-only OpenSpec correction and pushed
+    source identity, not an empirical registration or execution proposal. Do
+    not fit or load another model, access a fresh seed, make a causal or OPE
+    claim, change an estimator or reward, or infer execution authority from
+    either the repair closeout or failed readiness attempt.
 
 Live gameplay is a maintenance and registered-evaluation lane only. Launch it
 for a crash, stuck state, repeated A-class simulator/mechanics defect, or an
@@ -919,6 +947,12 @@ OpenSpec changes authorize them.
   invoked the gate exactly once and did not rerun it because of duration;
   schedule a separate read-only duration audit before claiming the bounded-
   feedback requirement remains met.
+- Treat the 2026-08-08 readiness `commit` gate as executed once but not green:
+  4,490 tests passed, 18 skipped, and two unchanged runtime tests failed after
+  796.44 seconds of pytest (799.96 seconds including orchestration). Both
+  failures are exact-ceiling floating-point deadline checks in files outside
+  the readiness diff. The gate was not rerun and the runtime files were not
+  changed under the source-only readiness scope.
 
 Historical reports and archived changes retain the objectives and authority
 boundaries that applied when they were written. This document is the canonical

@@ -1,0 +1,111 @@
+{
+  "audit": {
+    "attempt_sha256": "132cfaea05dc7e23b0140fa6b63dc253e60256bea0b8fc6dc5accb3c281a9e71",
+    "audit_id": "noncombat-cross-fitted-empirical-successor-readiness-20260808-r1",
+    "canonical_output_published": false,
+    "process_exit_code": 1,
+    "source_commit": "863ae5a4046df110e4f9028bb3c56d556a7c6a43",
+    "status": "terminal_no_go",
+    "terminal_sha256": "e3bffa6c509ba00a7c28b607cfdcebecfe3021cf004f61b87b14cc8f47870d71"
+  },
+  "authority": {
+    "causal_claim": false,
+    "communication_mod": false,
+    "empirical_registration": false,
+    "evaluation": false,
+    "execution_authorization": false,
+    "execution_request": false,
+    "external_approval": false,
+    "formal_rl": false,
+    "gameplay": false,
+    "model_fitting": false,
+    "model_loading": false,
+    "native_loading": false,
+    "ope": false,
+    "policy_quality": false,
+    "promotion": false,
+    "qualification": false,
+    "seed_access": false,
+    "training": false
+  },
+  "commit_gate": {
+    "failed": 2,
+    "failures": [
+      {
+        "cause": "default deadline was constructed as monotonic_now plus the exact ceiling and then rejected by a strict floating-point subtraction boundary",
+        "test": "tests/test_noncombat_cross_fitted_hierarchical_learning_runtime.py::test_rollout_sampling_is_replayable_and_rejects_source_mutation"
+      },
+      {
+        "cause": "a parent default deadline at the exact wall-time ceiling was rejected by a nested strict floating-point subtraction boundary",
+        "test": "tests/test_noncombat_hierarchical_simulator_learning_runtime.py::test_canary_failure_never_constructs_a_holdout_environment"
+      }
+    ],
+    "orchestration_seconds": 799.96,
+    "passed": 4490,
+    "pytest_seconds": 796.44,
+    "related_files_changed_by_readiness_change": false,
+    "rerun": false,
+    "skipped": 18
+  },
+  "decision": {
+    "failed_gates": [
+      "source_binding"
+    ],
+    "reason": "no_go_source_binding",
+    "status": "no_go"
+  },
+  "empirical_operations": {
+    "communication_mod": false,
+    "environment_construction": false,
+    "evaluation": false,
+    "model_fitting": false,
+    "model_loading": false,
+    "native_loading": false,
+    "ope": false,
+    "runtime_fitting": false,
+    "seed_access": false,
+    "training": false
+  },
+  "independent_receipt_review": {
+    "attempt_identity_matches": true,
+    "canonical_json": true,
+    "digests_valid": true,
+    "output_absent": true,
+    "scratch_absent": true,
+    "staging_absent": true
+  },
+  "next_step": {
+    "change_required": true,
+    "empirical_successor_registration_proposal_eligible": false,
+    "new_pushed_source_identity_required": true,
+    "retry_same_source_permitted": false,
+    "scope": "source-only consumed-schedule schema correction and readiness regression"
+  },
+  "root_cause": {
+    "actual_schedule_fields": [
+      "canonical_search_start",
+      "chunk_count",
+      "chunks",
+      "episodes_per_chunk",
+      "inventory_sha256",
+      "seeds",
+      "seeds_sha256",
+      "selection_schema_version"
+    ],
+    "category": "readiness_contract_schema_too_narrow",
+    "implementation_allowed_fields": [
+      "chunk_count",
+      "chunks",
+      "episodes_per_chunk",
+      "seeds",
+      "seeds_sha256"
+    ],
+    "rejected_provenance_fields": [
+      "canonical_search_start",
+      "inventory_sha256",
+      "selection_schema_version"
+    ],
+    "summary": "The readiness source required an exact five-field consumed schedule while the bound registration correctly retained three additional schedule-provenance fields. The source gate failed before inventory reconstruction or rehearsal."
+  },
+  "schema_version": "noncombat-cross-fitted-empirical-successor-readiness-postmortem-v1"
+}

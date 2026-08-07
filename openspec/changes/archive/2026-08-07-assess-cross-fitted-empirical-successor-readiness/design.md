@@ -221,6 +221,21 @@ training, evaluation, gameplay, formal-RL, qualification, and promotion flag
 remains false. A `no_go` is terminal for this source identity; changing a gate
 requires a new proposal and source commit, not an in-place rerun.
 
+## Final Outcome
+
+The single canonical audit for pushed source
+`863ae5a4046df110e4f9028bb3c56d556a7c6a43` closed as terminal
+`no_go_source_binding` before inventory reconstruction or rehearsal. The bound
+registration's schedule correctly retained eight fields, while the readiness
+implementation's exact-field validator omitted `canonical_search_start`,
+`inventory_sha256`, and `selection_schema_version`. No output publication was
+installed, every authority and empirical-operation flag remained false, and
+independent receipt review confirmed canonical bytes, matching identities,
+valid digests, and absent output/scratch/staging paths. This source is consumed
+and SHALL NOT be retried. Any correction requires a new source-only OpenSpec
+change, exact bound-schema regressions, and a new pushed source identity; this
+outcome does not make an empirical registration proposal eligible.
+
 ## Risks / Trade-offs
 
 - [One source-only chunk may miss later journal/checkpoint scaling] -> Use

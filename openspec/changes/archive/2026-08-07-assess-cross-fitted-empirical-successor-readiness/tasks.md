@@ -19,6 +19,6 @@
 - [x] 3.1 Run focused source-only tests and import-isolation checks without loading native code or consuming a seed.
 - [x] 3.2 Obtain an independent source review and resolve accepted findings with RED regressions.
 - [x] 3.3 Strictly validate OpenSpec, run the repository commit gate once, then commit and push the implementation source.
-- [ ] 3.4 Run exactly one bounded source-only readiness publication against the pushed implementation commit without retrying, tuning, or widening a ceiling.
-- [ ] 3.5 Independently verify the canonical report, publish the project-direction decision, and keep every empirical authority false.
-- [ ] 3.6 Sync and archive the completed OpenSpec change, run required final checks, then commit and push the evidence without creating an empirical registration.
+- [x] 3.4 Run exactly one bounded source-only readiness publication against the pushed implementation commit without retrying, tuning, or widening a ceiling.
+- [x] 3.5 Independently verify the canonical terminal outcome or report, publish the project-direction decision, and keep every empirical authority false.
+- [x] 3.6 Sync and archive the completed OpenSpec change, run required final checks, then commit and push the evidence without creating an empirical registration.
