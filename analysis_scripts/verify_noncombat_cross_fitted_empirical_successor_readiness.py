@@ -72,8 +72,8 @@ SUCCESSOR_CONTRACT_PATH = (
     "spec.md"
 )
 READINESS_CHANGE_SPEC_PATH = (
-    "openspec/changes/assess-cross-fitted-empirical-successor-readiness/"
-    "specs/noncombat-cross-fitted-empirical-successor-readiness/spec.md"
+    "openspec/specs/noncombat-cross-fitted-empirical-successor-readiness/"
+    "spec.md"
 )
 AUDITOR_SOURCE_PATH = (
     "analysis_scripts/noncombat_cross_fitted_empirical_successor_readiness.py"
@@ -203,6 +203,13 @@ BLOCKED_REHEARSAL_IMPORTS = (
 )
 SCHEDULE_SIZE = 512
 CHUNK_SIZE = 64
+CONSUMED_CANONICAL_SEARCH_START = 0
+CONSUMED_INVENTORY_SHA256 = (
+    "435cf41b1cff21178d6de253677544b0e96f8b8ec431c181981aef36591a7174"
+)
+CONSUMED_SELECTION_SCHEMA_VERSION = (
+    "noncombat-cross-fitted-hierarchical-learning-fresh-schedule-v1"
+)
 CONSUMED_REGISTRATION_SIZE_BYTES = 63_171_200
 STAGE_CEILING_SECONDS = Decimal("300.000")
 MAX_CANDIDATE_STORED_BYTES = 64 * 1024 * 1024
@@ -1734,14 +1741,31 @@ def _verify_consumed_schedule(value: object) -> list[int]:
     _exact_keys(
         schedule,
         {
+            "canonical_search_start",
             "chunk_count",
             "chunks",
             "episodes_per_chunk",
+            "inventory_sha256",
             "seeds",
             "seeds_sha256",
+            "selection_schema_version",
         },
         "consumed schedule",
     )
+    if (
+        _nonnegative_int(
+            schedule["canonical_search_start"],
+            "consumed schedule canonical search start",
+        )
+        != CONSUMED_CANONICAL_SEARCH_START
+        or _digest(
+            schedule["inventory_sha256"], "consumed schedule inventory digest"
+        )
+        != CONSUMED_INVENTORY_SHA256
+        or schedule["selection_schema_version"]
+        != CONSUMED_SELECTION_SCHEMA_VERSION
+    ):
+        raise VerificationError("consumed schedule provenance mismatch")
     raw_seeds = schedule.get("seeds")
     chunks = schedule.get("chunks")
     if (

@@ -28,6 +28,13 @@ from analysis_scripts import (
 
 
 ROOT = Path(__file__).resolve().parents[1]
+CONSUMED_CANONICAL_SEARCH_START = 0
+CONSUMED_INVENTORY_SHA256 = (
+    "435cf41b1cff21178d6de253677544b0e96f8b8ec431c181981aef36591a7174"
+)
+CONSUMED_SELECTION_SCHEMA_VERSION = (
+    "noncombat-cross-fitted-hierarchical-learning-fresh-schedule-v1"
+)
 
 
 def _binding(path: str, payload: bytes = b"bound\n") -> dict[str, object]:
@@ -76,11 +83,14 @@ def _consumed_registration() -> dict[str, object]:
             "noncombat-cross-fitted-hierarchical-learning-successor-20260806-r1"
         ),
         "schedule": {
+            "canonical_search_start": CONSUMED_CANONICAL_SEARCH_START,
             "chunk_count": 8,
             "chunks": [seeds[index : index + 64] for index in range(0, 512, 64)],
             "episodes_per_chunk": 64,
+            "inventory_sha256": CONSUMED_INVENTORY_SHA256,
             "seeds": seeds,
             "seeds_sha256": readiness.canonical_digest(seeds),
+            "selection_schema_version": CONSUMED_SELECTION_SCHEMA_VERSION,
         },
     }
 
@@ -105,6 +115,36 @@ def _source_binding(commit: str = "a" * 40) -> dict[str, object]:
         "status": "passed",
         "tracked_clean": True,
     }
+
+
+def _complete_source_binding(
+    module,
+    *,
+    path_overrides: dict[str, str] | None = None,
+    payload_overrides: dict[str, bytes] | None = None,
+) -> tuple[dict[str, object], dict[str, bytes]]:
+    commit = "a" * 40
+    paths = path_overrides or {}
+    payloads_by_role = payload_overrides or {}
+    payloads: dict[str, bytes] = {}
+    rows = []
+    for role, canonical_path in module.BOUND_INPUT_PATHS:
+        path = paths.get(role, canonical_path)
+        payload = payloads_by_role.get(role, f"{role}\n".encode("ascii"))
+        payloads[path] = payload
+        rows.append({**_binding(path, payload), "role": role})
+    return (
+        {
+            "bindings": rows,
+            "bindings_sha256": module.canonical_digest(rows),
+            "head_commit": commit,
+            "origin_master_commit": commit,
+            "source_commit": commit,
+            "status": "passed",
+            "tracked_clean": True,
+        },
+        payloads,
+    )
 
 
 def _rehearsal() -> dict[str, object]:
@@ -360,6 +400,121 @@ def test_candidate_artifact_proves_full_consumed_cohort_disjointness():
     )
     assert collided["disjointness"]["status"] == "failed"
     assert collided["disjointness"]["collisions"] == [0]
+
+
+def test_consumed_schedule_accepts_exact_production_identity_in_both_paths():
+    registration = _consumed_registration()
+    schedule = registration["schedule"]
+    binding = _binding(readiness.CONSUMED_REGISTRATION_PATH, b"consumed\n")
+
+    consumed = readiness._consumed_cohort(registration, binding)
+
+    assert consumed["seed_count"] == 512
+    assert consumed["seeds_sha256"] == readiness.canonical_digest(
+        schedule["seeds"]
+    )
+    assert verifier._verify_consumed_schedule(schedule) == schedule["seeds"]
+
+
+def test_auditor_rejects_legacy_five_field_consumed_schedule():
+    registration = _consumed_registration()
+    for field in (
+        "canonical_search_start",
+        "inventory_sha256",
+        "selection_schema_version",
+    ):
+        registration["schedule"].pop(field)
+
+    with pytest.raises(readiness.ReadinessBlocked, match="consumed schedule"):
+        readiness._consumed_cohort(
+            registration,
+            _binding(readiness.CONSUMED_REGISTRATION_PATH, b"consumed\n"),
+        )
+
+
+def test_independent_verifier_rejects_legacy_five_field_consumed_schedule():
+    schedule = copy.deepcopy(_consumed_registration()["schedule"])
+    for field in (
+        "canonical_search_start",
+        "inventory_sha256",
+        "selection_schema_version",
+    ):
+        schedule.pop(field)
+
+    with pytest.raises(verifier.VerificationError, match="consumed schedule"):
+        verifier._verify_consumed_schedule(schedule)
+
+
+@pytest.mark.parametrize(
+    ("mutation", "field", "value"),
+    (
+        ("missing", "canonical_search_start", None),
+        ("missing", "inventory_sha256", None),
+        ("missing", "selection_schema_version", None),
+        ("drift", "canonical_search_start", 1),
+        ("malformed", "canonical_search_start", True),
+        ("drift", "inventory_sha256", "0" * 64),
+        ("malformed", "inventory_sha256", "not-a-digest"),
+        ("drift", "selection_schema_version", "fresh-schedule-v2"),
+        ("malformed", "selection_schema_version", 1),
+        ("extra", "unexpected_provenance", "forbidden"),
+    ),
+)
+def test_consumed_schedule_provenance_drift_fails_in_both_paths(
+    mutation: str, field: str, value: object
+):
+    registration = _consumed_registration()
+    schedule = registration["schedule"]
+    if mutation == "missing":
+        schedule.pop(field)
+    else:
+        schedule[field] = value
+
+    with pytest.raises(readiness.ReadinessBlocked, match="consumed"):
+        readiness._consumed_cohort(
+            registration,
+            _binding(readiness.CONSUMED_REGISTRATION_PATH, b"consumed\n"),
+        )
+    with pytest.raises(verifier.VerificationError, match="consumed"):
+        verifier._verify_consumed_schedule(schedule)
+
+
+def test_bound_inputs_use_existing_canonical_readiness_main_spec():
+    expected = (
+        "openspec/specs/noncombat-cross-fitted-empirical-successor-readiness/"
+        "spec.md"
+    )
+    assert readiness.READINESS_CHANGE_SPEC_PATH == expected
+    assert verifier.READINESS_CHANGE_SPEC_PATH == expected
+    for module in (readiness, verifier):
+        paths = {role: path for role, path in module.BOUND_INPUT_PATHS}
+        assert paths["readiness_change_spec"] == expected
+        assert all((ROOT / path).is_file() for path in paths.values())
+
+
+def test_source_bindings_reject_retired_readiness_change_path(monkeypatch):
+    retired = (
+        "openspec/changes/assess-cross-fitted-empirical-successor-readiness/"
+        "specs/noncombat-cross-fitted-empirical-successor-readiness/spec.md"
+    )
+    source, _payloads = _complete_source_binding(
+        readiness,
+        path_overrides={"readiness_change_spec": retired},
+    )
+
+    def forbidden(*_args, **_kwargs):
+        raise AssertionError("retired source inventory reached Git or worktree I/O")
+
+    with pytest.raises(readiness.ReadinessBlocked, match="input inventory"):
+        readiness.load_bound_evidence(
+            ROOT,
+            source_binding=source,
+            blob_reader=forbidden,
+        )
+
+    monkeypatch.setattr(verifier, "_git_command", forbidden)
+    with pytest.raises(verifier.VerificationError, match="input inventory"):
+        verifier._verify_live_source_binding(ROOT, source)
 
 
 def test_source_binding_requires_exact_pushed_clean_tree_and_blob_hashes(tmp_path):
@@ -1125,7 +1280,17 @@ def test_bound_evidence_parse_failure_precedes_and_types_cohort_work(
 
 @pytest.mark.parametrize(
     "mutation",
-    ["seed_type", "chunk_seed_type", "chunks", "chunk_count", "digest"],
+    [
+        "seed_type",
+        "chunk_seed_type",
+        "chunks",
+        "chunk_count",
+        "digest",
+        "missing_provenance",
+        "extra_provenance",
+        "malformed_provenance",
+        "drifted_provenance",
+    ],
 )
 def test_complete_consumed_schedule_is_source_bound_before_inventory(
     tmp_path, monkeypatch, mutation
@@ -1140,8 +1305,16 @@ def test_complete_consumed_schedule_is_source_bound_before_inventory(
         schedule["chunks"][0] = schedule["chunks"][0][:-1]
     elif mutation == "chunk_count":
         schedule["chunk_count"] = 7
-    else:
+    elif mutation == "digest":
         schedule.pop("seeds_sha256")
+    elif mutation == "missing_provenance":
+        schedule.pop("inventory_sha256")
+    elif mutation == "extra_provenance":
+        schedule["unexpected_provenance"] = "forbidden"
+    elif mutation == "malformed_provenance":
+        schedule["canonical_search_start"] = True
+    else:
+        schedule["selection_schema_version"] = "fresh-schedule-v2"
 
     monkeypatch.setattr(
         readiness,
@@ -1169,6 +1342,65 @@ def test_complete_consumed_schedule_is_source_bound_before_inventory(
             tmp_path,
             source_binding=_source_binding(),
         )
+
+
+@pytest.mark.parametrize(
+    "mutation",
+    [
+        "missing_provenance",
+        "extra_provenance",
+        "malformed_provenance",
+        "drifted_provenance",
+    ],
+)
+def test_independent_verifier_rejects_provenance_before_inventory_rebuild(
+    tmp_path, monkeypatch, mutation
+):
+    schedule = copy.deepcopy(_consumed_registration()["schedule"])
+    if mutation == "missing_provenance":
+        schedule.pop("inventory_sha256")
+    elif mutation == "extra_provenance":
+        schedule["unexpected_provenance"] = "forbidden"
+    elif mutation == "malformed_provenance":
+        schedule["canonical_search_start"] = True
+    else:
+        schedule["selection_schema_version"] = "fresh-schedule-v2"
+    registration_payload = verifier.canonical_json_bytes(
+        {
+            "registration_id": (
+                "noncombat-cross-fitted-hierarchical-learning-successor-"
+                "20260806-r1"
+            ),
+            "schedule": schedule,
+        }
+    )
+    source, payloads = _complete_source_binding(
+        verifier,
+        payload_overrides={"consumed_registration": registration_payload},
+    )
+    output = tmp_path / "publication"
+    output.mkdir()
+    _report, artifacts = _report_and_artifacts()
+    for name, payload in artifacts.items():
+        (output / name).write_bytes(payload)
+
+    monkeypatch.setattr(
+        verifier,
+        "_verify_live_source_binding",
+        lambda *_args, **_kwargs: source,
+    )
+    monkeypatch.setattr(
+        verifier,
+        "_git_blob",
+        lambda _root, _commit, path: payloads[path],
+    )
+
+    def forbidden_inventory(*_args, **_kwargs):
+        raise AssertionError("malformed provenance reached inventory rebuild")
+
+    monkeypatch.setattr(verifier, "rebuild_seed_inventory", forbidden_inventory)
+    with pytest.raises(verifier.VerificationError, match="consumed schedule"):
+        verifier.verify_publication(output, repo_root=tmp_path)
 
 
 def test_independent_consumed_schedule_rejects_float_chunk_seed():
@@ -1335,14 +1567,17 @@ def test_runner_terminalizes_independently_verified_no_go(tmp_path, monkeypatch)
     consumed = _consumed_registration()
     consumed_seeds = list(range(512))
     consumed["schedule"] = {
+        "canonical_search_start": CONSUMED_CANONICAL_SEARCH_START,
         "chunk_count": 8,
         "chunks": [
             consumed_seeds[index : index + 64]
             for index in range(0, 512, 64)
         ],
         "episodes_per_chunk": 64,
+        "inventory_sha256": CONSUMED_INVENTORY_SHA256,
         "seeds": consumed_seeds,
         "seeds_sha256": readiness.canonical_digest(consumed_seeds),
+        "selection_schema_version": CONSUMED_SELECTION_SCHEMA_VERSION,
     }
     candidate = readiness.build_candidate_artifact(
         source_commit=commit,
