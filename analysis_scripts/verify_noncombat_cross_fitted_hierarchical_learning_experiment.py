@@ -5,6 +5,7 @@ from __future__ import annotations
 import argparse
 import base64
 import binascii
+import contextlib
 import gzip
 import hashlib
 import hmac
@@ -13,6 +14,7 @@ import json
 import math
 import os
 import re
+import stat as stat_module
 import struct
 import sys
 from collections.abc import Mapping, Sequence
@@ -260,6 +262,9 @@ EXTERNAL_APPROVAL_SCHEMA_VERSION = (
 AUTHORIZATION_SCHEMA_VERSION = (
     "noncombat-cross-fitted-hierarchical-learning-authorization-v1"
 )
+LEASE_SCHEMA_VERSION = (
+    "noncombat-cross-fitted-hierarchical-learning-lease-v1"
+)
 SOURCE_PREFLIGHT_SCHEMA_VERSION = (
     "noncombat-cross-fitted-hierarchical-learning-source-preflight-v2"
 )
@@ -330,6 +335,7 @@ PREVIOUS_UNTOUCHED_HOLDOUT_END = 71_663
 
 _COMMIT_RE = re.compile(r"[0-9a-f]{40}\Z")
 _IDENTITY_RE = re.compile(r"[a-z0-9][a-z0-9._-]{2,127}\Z")
+_OWNER_TOKEN_RE = re.compile(r"[0-9a-f]{32}\Z")
 _TERMINAL_VERDICTS = {
     "experiment_blocked_before_seed_access",
     "experiment_completed_with_cross_fitted_mechanism_evidence",
@@ -2478,6 +2484,162 @@ def _parse_canonical_json(payload: bytes, *, label: str) -> dict[str, Any]:
     return value
 
 
+def _process_is_alive(process_id: int) -> bool:
+    if process_id == os.getpid():
+        return True
+    try:
+        os.kill(process_id, 0)
+    except ProcessLookupError:
+        return False
+    except PermissionError:
+        return True
+    except OSError:
+        return False
+    return True
+
+
+def _validate_lease_owner(value: Any, label: str) -> dict[str, Any]:
+    owner = _exact_mapping(
+        value,
+        {"acquired_at_ns", "process_id", "token"},
+        label,
+    )
+    process_id = _nonnegative_int(owner["process_id"], f"{label} process ID")
+    acquired_at_ns = _nonnegative_int(
+        owner["acquired_at_ns"], f"{label} acquisition coordinate"
+    )
+    if process_id == 0 or acquired_at_ns == 0:
+        raise VerifierError(f"{label} coordinates must be positive")
+    if (
+        not isinstance(owner["token"], str)
+        or _OWNER_TOKEN_RE.fullmatch(owner["token"]) is None
+    ):
+        raise VerifierError(f"{label} token is invalid")
+    return owner
+
+
+def _validate_unbound_execution_identity(value: Any) -> dict[str, str]:
+    identity = _exact_mapping(
+        value,
+        {
+            "authorization_sha256",
+            "logical_execution_id",
+            "registration_sha256",
+            "request_sha256",
+        },
+        "lease execution identity",
+    )
+    for name in ("authorization_sha256", "registration_sha256", "request_sha256"):
+        _binding_sha256(identity[name], f"lease execution identity {name}")
+    logical_id = identity["logical_execution_id"]
+    if not isinstance(logical_id, str) or _IDENTITY_RE.fullmatch(logical_id) is None:
+        raise VerifierError("lease logical execution identity is invalid")
+    return identity
+
+
+@contextlib.contextmanager
+def _hold_inactive_execution_lease(path: Path):
+    def checked_stat() -> os.stat_result:
+        try:
+            observed = path.lstat()
+        except OSError as exc:
+            raise VerifierError("execution lease is missing or unreadable") from exc
+        reparse_flag = getattr(stat_module, "FILE_ATTRIBUTE_REPARSE_POINT", 0)
+        if (
+            stat_module.S_ISLNK(observed.st_mode)
+            or not stat_module.S_ISREG(observed.st_mode)
+            or bool(getattr(observed, "st_file_attributes", 0) & reparse_flag)
+            or observed.st_size > 64 * 1024
+        ):
+            raise VerifierError("execution lease is not a bounded regular file")
+        return observed
+
+    initial_stat = checked_stat()
+    descriptor = None
+    handle = None
+    locked = False
+    try:
+        flags = os.O_RDWR | getattr(os, "O_BINARY", 0)
+        flags |= getattr(os, "O_NOFOLLOW", 0)
+        descriptor = os.open(path, flags)
+        handle = os.fdopen(descriptor, "r+b", buffering=0)
+        descriptor = None
+        opened_stat = os.fstat(handle.fileno())
+        if not os.path.samestat(initial_stat, opened_stat):
+            raise VerifierError("execution lease changed before lock acquisition")
+        current_stat = checked_stat()
+        if not os.path.samestat(opened_stat, current_stat):
+            raise VerifierError("execution lease path changed before lock acquisition")
+        try:
+            if os.name == "nt":
+                import msvcrt
+
+                handle.seek(0)
+                msvcrt.locking(handle.fileno(), msvcrt.LK_NBLCK, 1)
+            else:
+                import fcntl
+
+                fcntl.flock(handle.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
+            locked = True
+        except OSError as exc:
+            raise VerifierError("execution lease is still locked") from exc
+        handle.seek(0)
+        payload = handle.read(64 * 1024 + 1)
+        locked_stat = os.fstat(handle.fileno())
+        if (
+            not os.path.samestat(opened_stat, locked_stat)
+            or len(payload) > 64 * 1024
+            or len(payload) != locked_stat.st_size
+        ):
+            raise VerifierError("execution lease changed while read")
+        lease = _parse_canonical_json(payload, label="execution lease")
+        lease = _exact_mapping(
+            lease,
+            {"identity", "owner", "reclaimed_owner", "schema_version"},
+            "execution lease",
+        )
+        if lease["schema_version"] != LEASE_SCHEMA_VERSION:
+            raise VerifierError("execution lease schema mismatch")
+        identity = _validate_unbound_execution_identity(lease["identity"])
+        owner = _validate_lease_owner(lease["owner"], "execution lease owner")
+        if lease["reclaimed_owner"] is not None:
+            _validate_lease_owner(
+                lease["reclaimed_owner"], "reclaimed execution lease owner"
+            )
+        try:
+            owner_alive = _process_is_alive(owner["process_id"])
+        except BaseException as exc:
+            raise VerifierError("execution lease owner liveness is ambiguous") from exc
+        if owner_alive is not False:
+            raise VerifierError("execution lease owner is still alive")
+        yield identity
+        final_stat = checked_stat()
+        if not os.path.samestat(opened_stat, final_stat):
+            raise VerifierError("execution lease path changed during verification")
+    except VerifierError:
+        raise
+    except OSError as exc:
+        raise VerifierError("execution lease is unreadable") from exc
+    finally:
+        if locked and handle is not None:
+            try:
+                if os.name == "nt":
+                    import msvcrt
+
+                    handle.seek(0)
+                    msvcrt.locking(handle.fileno(), msvcrt.LK_UNLCK, 1)
+                else:
+                    import fcntl
+
+                    fcntl.flock(handle.fileno(), fcntl.LOCK_UN)
+            except OSError:
+                pass
+        if handle is not None:
+            handle.close()
+        elif descriptor is not None:
+            os.close(descriptor)
+
+
 def _load_canonical_document(
     output: Path, filename: str, *, label: str | None = None
 ) -> dict[str, Any]:
@@ -3601,12 +3763,16 @@ def _verify_resource_ledger(
             or event["previous_event_sha256"] != _canonical_digest(previous)
         ):
             raise VerifierError("resource ledger sequence or hash-chain mismatch")
-        _nonempty_string(event["reason"], "resource ledger reason")
+        reason = _nonempty_string(event["reason"], "resource ledger reason")
         resources = _normalize_resources(event["resources"])
         if any(resources[name] < previous_resources[name] for name in _RESOURCE_FIELDS):
             raise VerifierError("resource ledger is not monotonic")
         if resources == previous_resources:
-            raise VerifierError("resource ledger revision did not advance")
+            if (
+                reason != "terminal-attempt-charge"
+                or previous.get("reason") == "terminal-attempt-charge"
+            ):
+                raise VerifierError("resource ledger revision did not advance")
         event["resources"] = resources
         previous = event
         previous_resources = resources
@@ -4370,6 +4536,19 @@ def _verify_checkpoint_chain(
                 if name not in {"charged_seconds", "environment_accesses"}
             ):
                 raise VerifierError("infrastructure charge changed non-time resources")
+        elif event["reason"] == "terminal-attempt-charge":
+            if revision != ledger["revision"]:
+                raise VerifierError("terminal attempt charge is not the final revision")
+            access_delta = (
+                resources["environment_accesses"]
+                - previous_resources["environment_accesses"]
+            )
+            if access_delta < 0 or any(
+                resources[name] != previous_resources[name]
+                for name in _RESOURCE_FIELDS
+                if name not in {"charged_seconds", "environment_accesses"}
+            ):
+                raise VerifierError("terminal attempt charge changed non-attempt resources")
         else:
             if event["reason"] != "access-journal-reconcile":
                 raise VerifierError("non-checkpoint resource reason mismatch")
@@ -4584,6 +4763,17 @@ def _verify_failure(
     return failure
 
 
+def _require_terminal_attempt_charge(ledger: Mapping[str, Any]) -> None:
+    events = ledger.get("events")
+    if (
+        not isinstance(events, Sequence)
+        or not events
+        or not isinstance(events[-1], Mapping)
+        or events[-1].get("reason") != "terminal-attempt-charge"
+    ):
+        raise VerifierError("terminal attempt charge is missing")
+
+
 def _verify_terminal_state(
     *,
     verdict: Any,
@@ -4644,6 +4834,7 @@ def _verify_terminal_state(
             or earliest_saturation is not None
         ):
             raise VerifierError("completion verdict is early, saturated, or incomplete")
+        _require_terminal_attempt_charge(ledger)
     elif verdict == "experiment_stopped_during_training_for_family_saturation":
         if (
             earliest_saturation is None
@@ -4661,8 +4852,11 @@ def _verify_terminal_state(
             raise VerifierError(
                 "saturation verdict is not at the earliest checkpoint boundary"
             )
+        _require_terminal_attempt_charge(ledger)
     elif journal["debited_accesses"] == 0 or failure is None:
         raise VerifierError("post-start failure lacks access evidence or typed failure")
+    else:
+        _require_terminal_attempt_charge(ledger)
     return verdict, normalized_details
 
 
@@ -4824,27 +5018,23 @@ def _verify_manifest(
     return manifest
 
 
-def verify_terminal_bundle(
-    output_path: Path | str,
+def _verify_terminal_bundle_contents(
+    output: Path,
     *,
-    repo_root: Path | str | None = None,
+    root: Path,
+    lease_identity: Mapping[str, str] | None,
 ) -> dict[str, Any]:
-    """Independently verify a complete terminal experiment bundle.
-
-    This function intentionally uses only the Python standard library and the
-    verifier code in this module.  It never imports the producer control plane,
-    the Torch runtime, or the native simulator adapter.
-    """
-    output = Path(output_path).resolve()
-    root = Path(repo_root or Path(__file__).resolve().parents[1]).resolve()
+    if lease_identity is None:
+        try:
+            (output / LEASE_FILENAME).lstat()
+        except FileNotFoundError:
+            pass
+        except OSError as exc:
+            raise VerifierError("execution lease liveness is ambiguous") from exc
+        else:
+            raise VerifierError("execution lease appeared before evidence read")
     files = _enumerate_output_files(output)
     file_set = set(files)
-    if LEASE_FILENAME in file_set:
-        _read_bounded_file(
-            output / LEASE_FILENAME,
-            label="execution lease",
-            limit=64 * 1024,
-        )
 
     registration = _validate_registration(
         _load_canonical_document(output, REGISTRATION_FILENAME, label="registration"),
@@ -4869,6 +5059,8 @@ def verify_terminal_bundle(
         request=request,
         approval=approval,
     )
+    if lease_identity is not None:
+        _validate_execution_identity(lease_identity, identity)
     _validate_source_preflight(
         _load_canonical_document(
             output, SOURCE_PREFLIGHT_FILENAME, label="source preflight"
@@ -5030,6 +5222,69 @@ def verify_terminal_bundle(
         "terminal_sha256": terminal["terminal_sha256"],
         "verdict": verdict,
     }
+
+
+def _lease_path_exists(path: Path) -> bool:
+    try:
+        path.lstat()
+    except FileNotFoundError:
+        return False
+    except OSError as exc:
+        raise VerifierError("execution lease liveness is ambiguous") from exc
+    return True
+
+
+def _require_closed_lease_free_root(output: Path) -> None:
+    reparse_flag = getattr(stat_module, "FILE_ATTRIBUTE_REPARSE_POINT", 0)
+    for filename in (TERMINAL_FILENAME, MANIFEST_FILENAME):
+        path = output / filename
+        try:
+            observed = path.lstat()
+        except OSError as exc:
+            raise VerifierError(
+                "lease-free verification requires a closed terminal bundle"
+            ) from exc
+        if (
+            stat_module.S_ISLNK(observed.st_mode)
+            or not stat_module.S_ISREG(observed.st_mode)
+            or bool(getattr(observed, "st_file_attributes", 0) & reparse_flag)
+        ):
+            raise VerifierError(
+                "lease-free verification requires regular terminal markers"
+            )
+
+
+def verify_terminal_bundle(
+    output_path: Path | str,
+    *,
+    repo_root: Path | str | None = None,
+) -> dict[str, Any]:
+    """Independently verify one terminal bundle while holding any stale lease.
+
+    This function intentionally uses only the Python standard library and the
+    verifier code in this module. It never imports the producer control plane,
+    the Torch runtime, or the native simulator adapter.
+    """
+    output = Path(output_path).resolve()
+    root = Path(repo_root or Path(__file__).resolve().parents[1]).resolve()
+    lease_path = output / LEASE_FILENAME
+    if _lease_path_exists(lease_path):
+        lease_guard = _hold_inactive_execution_lease(lease_path)
+    else:
+        # A compliant producer creates its lease before any terminal artifact
+        # and never reopens a root that already has both closeout markers.
+        _require_closed_lease_free_root(output)
+        lease_guard = (
+            _hold_inactive_execution_lease(lease_path)
+            if _lease_path_exists(lease_path)
+            else contextlib.nullcontext(None)
+        )
+    with lease_guard as lease_identity:
+        return _verify_terminal_bundle_contents(
+            output,
+            root=root,
+            lease_identity=lease_identity,
+        )
 
 
 def build_parser() -> argparse.ArgumentParser:

@@ -1,0 +1,151 @@
+{
+  "authority": {
+    "causal_claim": false,
+    "communication_mod": false,
+    "evaluation": false,
+    "formal_rl": false,
+    "gameplay": false,
+    "model_fitting": false,
+    "model_loading": false,
+    "native_loading": false,
+    "new_cohort": false,
+    "new_experiment": false,
+    "ope": false,
+    "policy_quality": false,
+    "promotion": false,
+    "qualification": false,
+    "replay": false,
+    "resume": false,
+    "seed_access": false,
+    "training": false
+  },
+  "archive": {
+    "main_spec_synced": true,
+    "path": "openspec/changes/archive/2026-08-07-repair-cross-fitted-execution-control-plane",
+    "schema": "spec-driven"
+  },
+  "change_id": "repair-cross-fitted-execution-control-plane",
+  "date": "2026-08-07",
+  "findings_closed": [
+    {
+      "finding": "The validated execution context exposed mutable nested registration values while returning a cached digest.",
+      "id": "immutable-validated-context",
+      "repair": "The independently owned registration and identity now use recursively immutable JSON-compatible dict/list subclasses; context attributes are sealed after construction.",
+      "severity": "high"
+    },
+    {
+      "finding": "A lease could appear after the verifier selected the lease-free path and before evidence enumeration.",
+      "id": "lease-free-boundary-recheck",
+      "repair": "Lease-free verification now requires regular terminal and manifest closeout markers, rechecks lease presence before selecting the guard, and rejects a lease appearing immediately before evidence enumeration.",
+      "severity": "high"
+    },
+    {
+      "finding": "The lease path could identify a different file between lstat and the handle opened for locking.",
+      "id": "locked-lease-handle-identity",
+      "repair": "The verifier now uses a no-follow-capable descriptor open, compares lstat/fstat/path identities before locking, rechecks size and handle identity while reading, and confirms the same path identity after verification while the lock remains held.",
+      "severity": "high"
+    }
+  ],
+  "liveness_evidence": {
+    "closed_markers_required_without_lease": true,
+    "dead_owner_required_for_stale_lease": true,
+    "lease_held_for_complete_evidence_validation": true,
+    "live_or_invalid_lease_rejected_before_evidence": true,
+    "opened_handle_identity_bound_to_path": true,
+    "wrapper_completion_is_process_exit": false
+  },
+  "next_gate": {
+    "description": "Any empirical successor requires a separately reviewed proposal, new pushed source identity, fresh registration and cohort decision, exact request, and separate explicit human approval.",
+    "empirical_authority_granted": false
+  },
+  "resource_evidence": {
+    "ceiling_clamp": {
+      "observed_elapsed_seconds": 14405.0,
+      "recorded_charged_seconds": 14400.0
+    },
+    "first_chunk_noninfrastructure_failure": {
+      "observed_elapsed_seconds": 7.5,
+      "recorded_charged_seconds": 7.5,
+      "terminal_reason": "terminal-attempt-charge"
+    },
+    "idempotent_closeout": {
+      "duplicate_revision_written": false,
+      "resource_ledger_bytes_unchanged": true
+    },
+    "resume": {
+      "prior_charged_seconds": 12.0,
+      "remaining_deadline_seconds": 14388.0,
+      "terminal_witness_present": true
+    }
+  },
+  "schema_version": "noncombat-cross-fitted-control-plane-repair-v1",
+  "scope": {
+    "consumed_terminal_artifacts_modified": false,
+    "native_or_empirical_test_run": false,
+    "source_only": true
+  },
+  "source_bindings": [
+    {
+      "path": "analysis_scripts/noncombat_cross_fitted_hierarchical_learning_experiment.py",
+      "sha256": "8e33b5bff22647bb96c7bbdab6c5d0f50181bd08340df66142065de3d4b55a92",
+      "size_bytes": 215724
+    },
+    {
+      "path": "analysis_scripts/verify_noncombat_cross_fitted_hierarchical_learning_experiment.py",
+      "sha256": "ef7054012da2b0ef062f542e94075ff09f5f7f6dc121759fa21fac062b89ba60",
+      "size_bytes": 197780
+    },
+    {
+      "path": "tests/test_noncombat_cross_fitted_hierarchical_learning_control.py",
+      "sha256": "eec3676c9c60c1e40907c7e34e721422063c9bd28e4b848607300ad3ed30258a",
+      "size_bytes": 112778
+    },
+    {
+      "path": "tests/test_noncombat_cross_fitted_hierarchical_learning_verifier.py",
+      "sha256": "550850a79d3694b5258b6d0d8abd21ca1e21d6a268e300642ca85b3e22c6494a",
+      "size_bytes": 96223
+    }
+  ],
+  "structural_evidence": {
+    "complete_registration_validations": {
+      "after_64_accesses": 1,
+      "after_same_process_terminal_closeout": 1,
+      "context_creation": 1
+    },
+    "durable_journal_and_inventory_validation_preserved": true,
+    "terminal_intent_disk_bytes_compared": true,
+    "terminal_intent_recovery_reopens_raw_file": true
+  },
+  "verification": {
+    "commit_gate": {
+      "orchestration_seconds": 659.89,
+      "passed": 4434,
+      "pytest_seconds": 657.01,
+      "skipped": 17,
+      "status": "passed_exactly_once"
+    },
+    "final_source_focused": {
+      "passed": 193,
+      "seconds": 128.04,
+      "skipped": 1
+    },
+    "independent_review": {
+      "confirmed_findings": 3,
+      "reviewer": "codex-cli-0.144.6-gpt-5.6-terra",
+      "scope": "read-only tracked diff"
+    },
+    "review_red": {
+      "failed": 3,
+      "seconds": 6.04
+    },
+    "review_red_refinement": {
+      "failed": 1,
+      "seconds": 2.42
+    },
+    "review_target_green": {
+      "passed": 3,
+      "seconds": 1.59
+    }
+  },
+  "verdict": "source_only_control_plane_repaired_no_empirical_authority"
+}

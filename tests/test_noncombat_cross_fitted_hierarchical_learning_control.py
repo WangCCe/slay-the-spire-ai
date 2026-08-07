@@ -536,6 +536,32 @@ class _SyntheticTimedInterruptedRuntimeModule(_SyntheticRuntimeModule):
         raise OSError("synthetic timed infrastructure interruption")
 
 
+class _SyntheticTimedFailingRuntimeModule(_SyntheticRuntimeModule):
+    def __init__(self, *, elapsed, message="synthetic algorithm failure"):
+        super().__init__()
+        self.elapsed = float(elapsed)
+        self.message = str(message)
+
+    def collect_and_update_training_chunk(
+        self,
+        state,
+        *,
+        environment_factory,
+        seeds,
+        chunk_index,
+        before_environment,
+        after_environment,
+        deadline,
+        clock,
+    ):
+        del state, chunk_index, after_environment, deadline
+        seed = seeds[0]
+        before_environment(seed)
+        environment_factory(seed)
+        clock.advance(self.elapsed)
+        raise self.RuntimeBlocked(self.message)
+
+
 def _synthetic_loaded_dependencies(runtime):
     native = types.SimpleNamespace(
         Environment=lambda seed, ascension: {
@@ -1220,6 +1246,108 @@ def test_execution_lease_records_owner_and_is_exclusive(
     with pytest.raises(experiment.ExperimentBlocked, match="lacks an execution lease"):
         with experiment.ExecutionLease(unrelated, identity=identity):
             pass
+
+
+def test_validated_execution_context_owns_one_checked_registration(
+    source_inventory, tmp_path, monkeypatch
+):
+    output = tmp_path / "execution"
+    registration, _, _, _, identity = _authorized_output_values(
+        source_inventory, output
+    )
+    original_output = registration["output_root"]
+    original_validate = experiment.validate_registration
+    calls = 0
+
+    def counted_validate(value):
+        nonlocal calls
+        calls += 1
+        return original_validate(value)
+
+    monkeypatch.setattr(experiment, "validate_registration", counted_validate)
+    context = experiment._build_validated_execution_context(
+        registration, identity, output
+    )
+
+    assert calls == 1
+    assert context["output_root"] == original_output
+    assert experiment.registration_sha256(context) == identity[
+        "registration_sha256"
+    ]
+    normalized, normalized_identity, normalized_output = (
+        experiment._registration_for_output(context, identity, output)
+    )
+    assert normalized is context
+    assert normalized_identity == identity
+    assert normalized_output == output.resolve()
+    assert calls == 1
+
+    registration["output_root"] = (tmp_path / "caller-mutation").as_posix()
+    assert context["output_root"] == original_output
+    assert calls == 1
+
+    with pytest.raises(TypeError, match="immutable"):
+        context["contract"]["limits"]["max_charged_seconds"] = 1.0
+    with pytest.raises(TypeError, match="immutable"):
+        context["schedule"]["chunks"][0].append(999_999)
+    assert experiment.registration_sha256(context) == identity[
+        "registration_sha256"
+    ]
+    assert calls == 1
+
+    corrupt = copy.deepcopy(registration)
+    corrupt["registration_id"] = "wrong-registration"
+    with pytest.raises(experiment.ExperimentBlocked, match="registration|identity"):
+        experiment._build_validated_execution_context(corrupt, identity, output)
+
+
+def test_validated_context_keeps_64_access_validation_count_constant(
+    source_inventory, tmp_path, monkeypatch
+):
+    output = tmp_path / "execution"
+    registration, _, _, _, identity = _authorized_output_values(
+        source_inventory, output
+    )
+    original_validate = experiment.validate_registration
+    calls = 0
+
+    def counted_validate(value):
+        nonlocal calls
+        calls += 1
+        return original_validate(value)
+
+    monkeypatch.setattr(experiment, "validate_registration", counted_validate)
+    context = experiment._build_validated_execution_context(
+        registration, identity, output
+    )
+    boundary_calls = calls
+
+    with experiment.ExecutionLease(output, identity=identity) as lease:
+        _initialize_lifecycle(output, context, identity, lease)
+        for seed in registration["schedule"]["chunks"][0]:
+            _complete_access(
+                output,
+                context,
+                identity,
+                lease,
+                chunk_index=0,
+                seed=seed,
+                attempt_ordinal=0,
+            )
+        assert calls == boundary_calls == 1
+        journal = experiment.load_access_journal(
+            output, registration=context, identity=identity
+        )
+        ledger = experiment.load_resource_ledger(output, identity=identity)
+        assert journal["completed_accesses"] == 64
+        assert ledger["resources"]["environment_accesses"] == 64
+
+        journal_path = output / experiment.ACCESS_JOURNAL_FILENAME
+        journal_path.write_bytes(journal_path.read_bytes() + b"{}\n")
+        with pytest.raises(experiment.ExperimentBlocked):
+            experiment.load_access_journal(
+                output, registration=context, identity=identity
+            )
 
 
 def test_stale_lease_reclamation_requires_same_identity_and_dead_owner(
@@ -2198,6 +2326,58 @@ def test_terminal_intent_and_manifest_last_keep_every_authority_false(
     )
 
 
+def test_same_process_terminal_publication_reuses_validated_context_and_intent(
+    source_inventory, tmp_path, monkeypatch
+):
+    output = tmp_path / "execution"
+    registration, _, _, _, identity = _authorized_output_values(
+        source_inventory, output
+    )
+    original_validate = experiment.validate_registration
+    calls = 0
+
+    def counted_validate(value):
+        nonlocal calls
+        calls += 1
+        return original_validate(value)
+
+    monkeypatch.setattr(experiment, "validate_registration", counted_validate)
+    context = experiment._build_validated_execution_context(
+        registration, identity, output
+    )
+
+    with experiment.ExecutionLease(output, identity=identity) as lease:
+        _initialize_lifecycle(output, context, identity, lease)
+        intent = experiment.publish_terminal_intent(
+            output,
+            registration=context,
+            identity=identity,
+            lease=lease,
+            verdict="experiment_blocked_before_seed_access",
+            details={"reason": "synthetic source-only prestart block"},
+        )
+
+        def fail_reopen(*_args, **_kwargs):
+            raise AssertionError("same-process closeout must not reopen intent")
+
+        monkeypatch.setattr(experiment, "load_terminal_intent", fail_reopen)
+        bundle = experiment.publish_terminal_bundle(
+            output,
+            registration=context,
+            identity=identity,
+            lease=lease,
+            terminal_intent=intent,
+        )
+
+    assert bundle["terminal"]["terminal_intent_sha256"] == intent[
+        "terminal_intent_sha256"
+    ]
+    assert bundle["manifest"]["terminal_sha256"] == bundle["terminal"][
+        "terminal_sha256"
+    ]
+    assert calls == 1
+
+
 def test_saturation_terminal_requires_the_exact_checkpoint_boundary():
     journal = {
         "completed_chunk_indices": list(range(4)),
@@ -2411,8 +2591,11 @@ def test_exact_runner_executes_only_registered_training_and_closes_terminal_bund
             "resources": copy.deepcopy(resources)
         },
         "_load_completed_chunk_evidence": lambda *_args, **_kwargs: [],
-        "_exact_checkpoint_resources": exact_resources,
-        "publish_complete_chunk_checkpoint": publish_checkpoint,
+            "_exact_checkpoint_resources": exact_resources,
+            "_charge_attempt_elapsed": lambda *_args, **_kwargs: {
+                "resources": copy.deepcopy(resources)
+            },
+            "publish_complete_chunk_checkpoint": publish_checkpoint,
         "_close_runner_terminal": close_terminal,
     }.items():
         monkeypatch.setattr(experiment, name, replacement)
@@ -2734,6 +2917,114 @@ def test_infrastructure_interruption_charges_time_and_terminalizes_failed_resume
     )
     assert journal["resume_used"] is True
     assert journal["resume_complete"] is False
+    second_ledger = experiment.load_resource_ledger(output, identity=identity)
+    assert second_ledger["resources"]["charged_seconds"] == 12.0
+    assert second_ledger["events"][-1]["reason"] == "terminal-attempt-charge"
+
+
+@pytest.mark.parametrize(
+    ("elapsed", "expected_charge", "failure_message"),
+    [
+        (7.5, 7.5, "synthetic algorithm failure"),
+        (
+            14_405.0,
+            14_400.0,
+            "wall-time limit reached before environment construction",
+        ),
+    ],
+)
+def test_noninfrastructure_failure_charges_elapsed_before_first_checkpoint(
+    source_inventory,
+    tmp_path,
+    monkeypatch,
+    elapsed,
+    expected_charge,
+    failure_message,
+):
+    output = tmp_path / "execution"
+    registration, request, approval, authorization, identity = (
+        _authorized_output_values(source_inventory, output)
+    )
+    clock = _ControlledClock(100.0)
+    runtime = _SyntheticTimedFailingRuntimeModule(
+        elapsed=elapsed, message=failure_message
+    )
+    monkeypatch.setattr(
+        experiment,
+        "_load_registered_dependencies",
+        lambda *_args, **_kwargs: _synthetic_loaded_dependencies(runtime),
+    )
+
+    result = experiment.execute_authorized_experiment(
+        registration,
+        request,
+        authorization,
+        approval,
+        repo_root=ROOT,
+        clock=clock,
+        **_preflight_injections(source_inventory, registration),
+    )
+
+    assert result["status"] == "terminal"
+    assert result["terminal"]["verdict"] == "experiment_failed_after_seed_access"
+    assert result["terminal"]["details"]["failure"]["message"] == failure_message
+    assert result["terminal"]["resource_use"]["charged_seconds"] == (
+        expected_charge
+    )
+    ledger = experiment.load_resource_ledger(output, identity=identity)
+    assert ledger["resources"]["charged_seconds"] == expected_charge
+    assert ledger["events"][-1]["reason"] == "terminal-attempt-charge"
+
+
+def test_terminal_attempt_charge_is_idempotent_at_the_same_clock(
+    source_inventory, tmp_path
+):
+    output = tmp_path / "execution"
+    registration, _, _, _, identity = _authorized_output_values(
+        source_inventory, output
+    )
+    context = experiment._build_validated_execution_context(
+        registration, identity, output
+    )
+    clock = _ControlledClock(110.0)
+
+    with experiment.ExecutionLease(output, identity=identity) as lease:
+        _initialize_lifecycle(output, context, identity, lease)
+        _complete_access(
+            output,
+            context,
+            identity,
+            lease,
+            chunk_index=0,
+            seed=registration["schedule"]["chunks"][0][0],
+            attempt_ordinal=0,
+        )
+        first = experiment._charge_attempt_elapsed(
+            output,
+            registration=context,
+            identity=identity,
+            lease=lease,
+            attempt_started=100.0,
+            charged_origin=0.0,
+            clock=clock,
+            reason="terminal-attempt-charge",
+        )
+        first_bytes = (output / experiment.RESOURCE_LEDGER_FILENAME).read_bytes()
+        second = experiment._charge_attempt_elapsed(
+            output,
+            registration=context,
+            identity=identity,
+            lease=lease,
+            attempt_started=100.0,
+            charged_origin=0.0,
+            clock=clock,
+            reason="terminal-attempt-charge",
+        )
+
+    assert first["resources"]["charged_seconds"] == 10.0
+    assert first["events"][-1]["reason"] == "terminal-attempt-charge"
+    assert second == first
+    assert (output / experiment.RESOURCE_LEDGER_FILENAME).read_bytes() == first_bytes
 
 
 @pytest.mark.parametrize("post_written", [False, True])

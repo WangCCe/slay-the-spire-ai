@@ -1229,7 +1229,7 @@ def test_verify_chunk_evidence_replays_adam_by_parameter_layout(mutate, message)
 
 
 def test_verify_terminal_bundle_rejects_an_empty_output_root(tmp_path):
-    with pytest.raises(verifier.VerifierError, match="registration"):
+    with pytest.raises(verifier.VerifierError, match="closed terminal bundle"):
         verifier.verify_terminal_bundle(tmp_path, repo_root=ROOT)
 
 
@@ -1725,6 +1725,8 @@ def _terminal_bundle_fixture(
     infrastructure_charge=False,
     fail_before_checkpoint=False,
     access_resource_mode="per_access",
+    terminal_charge=True,
+    trailing_infrastructure_charge=False,
 ):
     assert access_resource_mode in {
         "batched_reconcile",
@@ -2062,6 +2064,16 @@ def _terminal_bundle_fixture(
             resources["charged_seconds"] += 0.25
             append_resource("infrastructure-interruption-charge")
 
+    if terminal_charge:
+        resources = dict(resources)
+        if fail_before_checkpoint:
+            resources["charged_seconds"] += 0.5
+        append_resource("terminal-attempt-charge")
+    if trailing_infrastructure_charge:
+        resources = dict(resources)
+        resources["charged_seconds"] += 0.25
+        append_resource("infrastructure-interruption-charge")
+
     journal_bytes = b"".join(
         _fixture_canonical_json_bytes(event) for event in journal_events
     )
@@ -2169,6 +2181,25 @@ def _terminal_bundle_fixture(
     return output
 
 
+def _write_execution_lease_fixture(output, *, process_id):
+    identity = json.loads(
+        (output / verifier.TERMINAL_FILENAME).read_bytes()
+    )["identity"]
+    _write_canonical(
+        output / verifier.LEASE_FILENAME,
+        {
+            "identity": identity,
+            "owner": {
+                "acquired_at_ns": 1,
+                "process_id": process_id,
+                "token": "1" * 32,
+            },
+            "reclaimed_owner": None,
+            "schema_version": verifier.LEASE_SCHEMA_VERSION,
+        },
+    )
+
+
 def test_verify_terminal_bundle_replays_complete_saturated_prefix(tmp_path):
     output = _terminal_bundle_fixture(tmp_path)
 
@@ -2257,13 +2288,115 @@ def test_verify_terminal_bundle_rejects_symlink_artifacts_when_supported(tmp_pat
         verifier.verify_terminal_bundle(output, repo_root=ROOT)
 
 
-def test_verify_terminal_bundle_excludes_the_bounded_execution_lease(tmp_path):
+def test_verify_terminal_bundle_excludes_the_bounded_execution_lease(
+    tmp_path, monkeypatch
+):
     output = _terminal_bundle_fixture(tmp_path)
-    (output / verifier.LEASE_FILENAME).write_text("durable-lease\n", encoding="ascii")
+    _write_execution_lease_fixture(output, process_id=999_999)
+    monkeypatch.setattr(verifier, "_process_is_alive", lambda _pid: False)
+    original_enumerate = verifier._enumerate_output_files
+
+    def enumerate_while_lease_is_held(path):
+        blocked = False
+        handle = (output / verifier.LEASE_FILENAME).open("r+b", buffering=0)
+        try:
+            try:
+                if os.name == "nt":
+                    import msvcrt
+
+                    handle.seek(0)
+                    msvcrt.locking(handle.fileno(), msvcrt.LK_NBLCK, 1)
+                else:
+                    import fcntl
+
+                    fcntl.flock(handle.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
+            except OSError:
+                blocked = True
+            else:
+                if os.name == "nt":
+                    handle.seek(0)
+                    msvcrt.locking(handle.fileno(), msvcrt.LK_UNLCK, 1)
+                else:
+                    fcntl.flock(handle.fileno(), fcntl.LOCK_UN)
+        finally:
+            handle.close()
+        assert blocked is True
+        return original_enumerate(path)
+
+    monkeypatch.setattr(
+        verifier, "_enumerate_output_files", enumerate_while_lease_is_held
+    )
 
     result = verifier.verify_terminal_bundle(output, repo_root=ROOT)
 
     assert result["checkpoint_count"] == 4
+
+
+def test_verify_terminal_bundle_rejects_live_lease_before_evidence_read(
+    tmp_path, monkeypatch
+):
+    output = _terminal_bundle_fixture(tmp_path)
+    _write_execution_lease_fixture(output, process_id=os.getpid())
+    monkeypatch.setattr(verifier, "_process_is_alive", lambda _pid: True)
+
+    def reject_evidence_read(*_args, **_kwargs):
+        raise AssertionError("live lease must block evidence reads")
+
+    monkeypatch.setattr(verifier, "_load_canonical_document", reject_evidence_read)
+    with pytest.raises(verifier.VerifierError, match="owner is still alive"):
+        verifier.verify_terminal_bundle(output, repo_root=ROOT)
+
+
+def test_verify_terminal_bundle_rejects_unreadable_lease_before_evidence_read(
+    tmp_path, monkeypatch
+):
+    output = _terminal_bundle_fixture(tmp_path)
+    (output / verifier.LEASE_FILENAME).write_bytes(b"not-canonical-json")
+
+    def reject_evidence_read(*_args, **_kwargs):
+        raise AssertionError("invalid lease must block evidence reads")
+
+    monkeypatch.setattr(verifier, "_load_canonical_document", reject_evidence_read)
+    with pytest.raises(verifier.VerifierError, match="execution lease"):
+        verifier.verify_terminal_bundle(output, repo_root=ROOT)
+
+
+def test_verify_terminal_bundle_rechecks_lease_before_evidence_read(
+    tmp_path, monkeypatch
+):
+    output = _terminal_bundle_fixture(tmp_path)
+    original_verify = verifier._verify_terminal_bundle_contents
+
+    def verify_after_lease_appears(*args, **kwargs):
+        _write_execution_lease_fixture(output, process_id=os.getpid())
+        return original_verify(*args, **kwargs)
+
+    monkeypatch.setattr(
+        verifier, "_verify_terminal_bundle_contents", verify_after_lease_appears
+    )
+    with pytest.raises(verifier.VerifierError, match="execution lease"):
+        verifier.verify_terminal_bundle(output, repo_root=ROOT)
+
+
+def test_verify_terminal_bundle_rejects_replaced_lease_handle(
+    tmp_path, monkeypatch
+):
+    output = _terminal_bundle_fixture(tmp_path)
+    _write_execution_lease_fixture(output, process_id=999_999)
+    lease_path = output / verifier.LEASE_FILENAME
+    replacement = tmp_path / ".replacement-lease"
+    replacement.write_bytes(lease_path.read_bytes())
+    original_open = os.open
+
+    def open_replacement(path, flags, *args, **kwargs):
+        if Path(path) == lease_path:
+            return original_open(replacement, flags, *args, **kwargs)
+        return original_open(path, flags, *args, **kwargs)
+
+    monkeypatch.setattr(verifier.os, "open", open_replacement)
+    monkeypatch.setattr(verifier, "_process_is_alive", lambda _pid: False)
+    with pytest.raises(verifier.VerifierError, match="execution lease"):
+        verifier.verify_terminal_bundle(output, repo_root=ROOT)
 
 
 def test_verify_terminal_bundle_rejects_rehashed_authority_escalation(tmp_path):
@@ -2376,12 +2509,37 @@ def test_verify_terminal_bundle_reconciles_failure_before_first_checkpoint(tmp_p
         verdict="experiment_failed_after_seed_access",
         failure_witness=True,
         fail_before_checkpoint=True,
+        terminal_charge=True,
     )
 
     result = verifier.verify_terminal_bundle(output, repo_root=ROOT)
 
     assert result["checkpoint_count"] == 0
     assert result["resource_use"]["environment_accesses"] == 1
+    assert result["resource_use"]["charged_seconds"] == 0.5
+
+
+def test_verify_terminal_bundle_rejects_missing_final_attempt_charge(tmp_path):
+    output = _terminal_bundle_fixture(
+        tmp_path,
+        verdict="experiment_failed_after_seed_access",
+        failure_witness=True,
+        fail_before_checkpoint=True,
+        terminal_charge=False,
+    )
+
+    with pytest.raises(verifier.VerifierError, match="terminal attempt charge"):
+        verifier.verify_terminal_bundle(output, repo_root=ROOT)
+
+
+def test_verify_terminal_bundle_rejects_nonfinal_attempt_charge(tmp_path):
+    output = _terminal_bundle_fixture(
+        tmp_path,
+        trailing_infrastructure_charge=True,
+    )
+
+    with pytest.raises(verifier.VerifierError, match="not the final revision"):
+        verifier.verify_terminal_bundle(output, repo_root=ROOT)
 
 
 def test_verify_terminal_bundle_rejects_typed_failure_digest_drift(tmp_path):

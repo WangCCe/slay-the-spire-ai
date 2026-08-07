@@ -1004,7 +1004,164 @@ def validate_registration(value: Mapping[str, Any]) -> dict[str, Any]:
     return registration
 
 
+class _FrozenExecutionDict(dict[str, Any]):
+    """JSON-compatible immutable mapping used only inside one execution context."""
+
+    @staticmethod
+    def _immutable(*_args: Any, **_kwargs: Any) -> None:
+        raise TypeError("validated execution context is immutable")
+
+    __setitem__ = _immutable
+    __delitem__ = _immutable
+    clear = _immutable
+    pop = _immutable
+    popitem = _immutable
+    setdefault = _immutable
+    update = _immutable
+    __ior__ = _immutable
+
+    def __deepcopy__(self, memo: dict[int, Any]) -> dict[str, Any]:
+        copied: dict[str, Any] = {}
+        memo[id(self)] = copied
+        copied.update(
+            {
+                copy.deepcopy(key, memo): copy.deepcopy(value, memo)
+                for key, value in self.items()
+            }
+        )
+        return copied
+
+
+class _FrozenExecutionList(list[Any]):
+    """JSON-compatible immutable sequence used only inside one execution context."""
+
+    @staticmethod
+    def _immutable(*_args: Any, **_kwargs: Any) -> None:
+        raise TypeError("validated execution context is immutable")
+
+    __setitem__ = _immutable
+    __delitem__ = _immutable
+    append = _immutable
+    clear = _immutable
+    extend = _immutable
+    insert = _immutable
+    pop = _immutable
+    remove = _immutable
+    reverse = _immutable
+    sort = _immutable
+    __iadd__ = _immutable
+    __imul__ = _immutable
+
+    def __deepcopy__(self, memo: dict[int, Any]) -> list[Any]:
+        copied: list[Any] = []
+        memo[id(self)] = copied
+        copied.extend(copy.deepcopy(value, memo) for value in self)
+        return copied
+
+
+def _freeze_execution_value(value: Any) -> Any:
+    if isinstance(value, dict):
+        return _FrozenExecutionDict(
+            {key: _freeze_execution_value(item) for key, item in value.items()}
+        )
+    if isinstance(value, list):
+        return _FrozenExecutionList(_freeze_execution_value(item) for item in value)
+    if isinstance(value, tuple):
+        return tuple(_freeze_execution_value(item) for item in value)
+    return value
+
+
+class _ValidatedExecutionContext(Mapping[str, Any]):
+    """Own one completely validated registration for a single process boundary."""
+
+    __slots__ = (
+        "_identity",
+        "_output",
+        "_registration",
+        "_registration_sha256",
+        "_sealed",
+    )
+
+    def __init__(
+        self,
+        registration: _FrozenExecutionDict,
+        *,
+        registration_digest: str,
+        identity: dict[str, str],
+        output: Path,
+    ) -> None:
+        object.__setattr__(self, "_registration", registration)
+        object.__setattr__(
+            self, "_registration_sha256", registration_digest
+        )
+        object.__setattr__(
+            self, "_identity", _freeze_execution_value(identity)
+        )
+        object.__setattr__(self, "_output", output)
+        object.__setattr__(self, "_sealed", True)
+
+    def __setattr__(self, _name: str, _value: Any) -> None:
+        if getattr(self, "_sealed", False):
+            raise TypeError("validated execution context is immutable")
+        object.__setattr__(self, _name, _value)
+
+    def __delattr__(self, _name: str) -> None:
+        raise TypeError("validated execution context is immutable")
+
+    def __getitem__(self, key: str) -> Any:
+        return self._registration[key]
+
+    def __iter__(self):
+        return iter(self._registration)
+
+    def __len__(self) -> int:
+        return len(self._registration)
+
+
+def _build_validated_execution_context(
+    registration: Mapping[str, Any],
+    identity: Mapping[str, Any],
+    output_path: Path | str,
+) -> _ValidatedExecutionContext:
+    """Validate raw execution identity and retain an independently owned copy."""
+    if type(registration) is _ValidatedExecutionContext:
+        raise ExperimentBlocked("execution context must be built from raw registration")
+    normalized_registration = validate_registration(registration)
+    registration_digest = _canonical_digest(normalized_registration)
+    normalized_identity = _validate_execution_identity(identity)
+    if registration_digest != normalized_identity["registration_sha256"]:
+        raise ExperimentBlocked("execution identity registration mismatch")
+    if (
+        normalized_registration["registration_id"]
+        != normalized_identity["logical_execution_id"]
+    ):
+        raise ExperimentBlocked("logical execution registration mismatch")
+    output = Path(output_path).resolve()
+    registered_output = Path(normalized_registration["output_root"]).resolve()
+    if os.path.normcase(str(output)) != os.path.normcase(str(registered_output)):
+        raise ExperimentBlocked("output root differs from exact registration")
+    frozen_registration = _freeze_execution_value(normalized_registration)
+    if type(frozen_registration) is not _FrozenExecutionDict:
+        raise ExperimentBlocked("validated registration ownership failed")
+    return _ValidatedExecutionContext(
+        frozen_registration,
+        registration_digest=registration_digest,
+        identity=normalized_identity,
+        output=output,
+    )
+
+
+def _validated_registration_value(
+    value: Mapping[str, Any],
+) -> Mapping[str, Any]:
+    if type(value) is _ValidatedExecutionContext:
+        return value
+    return validate_registration(value)
+
+
 def registration_sha256(value: Mapping[str, Any]) -> str:
+    if type(value) is _ValidatedExecutionContext:
+        return value._registration_sha256
     return _canonical_digest(validate_registration(value))
 
 
@@ -1434,7 +1591,7 @@ def _load_registered_dependencies(
     module_registry: Mapping[str, Any] | None,
     external_binding_observer: Callable[[Path | str], Mapping[str, Any]] | None,
 ) -> dict[str, Any]:
-    normalized = validate_registration(registration)
+    normalized = _validated_registration_value(registration)
     registry = module_registry if module_registry is not None else sys.modules
     if _module_preloaded(registry, "torch"):
         raise ExperimentBlocked("pre-imported Torch is forbidden")
@@ -1886,11 +2043,16 @@ def _require_execution_lease(
 
 def _registration_for_identity(
     registration: Mapping[str, Any], identity: Mapping[str, Any]
-) -> tuple[dict[str, Any], dict[str, str]]:
+) -> tuple[Mapping[str, Any], dict[str, str]]:
+    if type(registration) is _ValidatedExecutionContext:
+        normalized_identity = _validate_execution_identity(identity)
+        if normalized_identity != registration._identity:
+            raise ExperimentBlocked("execution context identity mismatch")
+        return registration, normalized_identity
     normalized_registration = validate_registration(registration)
     normalized_identity = _validate_execution_identity(identity)
     if (
-        registration_sha256(normalized_registration)
+        _canonical_digest(normalized_registration)
         != normalized_identity["registration_sha256"]
     ):
         raise ExperimentBlocked("execution identity registration mismatch")
@@ -1911,7 +2073,11 @@ def _registration_for_output(
         registration, identity
     )
     output = Path(output_path).resolve()
-    registered_output = Path(normalized_registration["output_root"]).resolve()
+    registered_output = (
+        normalized_registration._output
+        if type(normalized_registration) is _ValidatedExecutionContext
+        else Path(normalized_registration["output_root"]).resolve()
+    )
     if os.path.normcase(str(output)) != os.path.normcase(str(registered_output)):
         raise ExperimentBlocked("output root differs from exact registration")
     return normalized_registration, normalized_identity, output
@@ -2594,12 +2760,16 @@ def validate_resource_ledger_bytes(
             raise ExperimentBlocked("resource ledger revision mismatch")
         if event["previous_event_sha256"] != _canonical_digest(previous):
             raise ExperimentBlocked("resource ledger hash chain mismatch")
-        _nonempty_string(event["reason"], "resource advance reason")
+        reason = _nonempty_string(event["reason"], "resource advance reason")
         resources = _normalize_resources(event["resources"])
         if any(resources[name] < previous_resources[name] for name in _RESOURCE_FIELDS):
             raise ExperimentBlocked("resource prefix is not monotonic")
         if resources == previous_resources:
-            raise ExperimentBlocked("resource prefix did not advance")
+            if (
+                reason != "terminal-attempt-charge"
+                or previous.get("reason") == "terminal-attempt-charge"
+            ):
+                raise ExperimentBlocked("resource prefix did not advance")
         event["resources"] = resources
         previous = event
         previous_resources = resources
@@ -2638,6 +2808,7 @@ def advance_resource_ledger(
     _require_execution_lease(lease, output, normalized_identity)
     ledger = load_resource_ledger(output, identity=normalized_identity)
     normalized_resources = _normalize_resources(resources)
+    normalized_reason = _nonempty_string(reason, "resource advance reason")
     previous_resources = ledger["resources"]
     if any(
         normalized_resources[name] < previous_resources[name]
@@ -2645,7 +2816,10 @@ def advance_resource_ledger(
     ):
         raise ExperimentBlocked("resource prefix is not monotonic")
     if normalized_resources == previous_resources:
-        raise ExperimentBlocked("resource prefix did not advance")
+        if normalized_reason != "terminal-attempt-charge":
+            raise ExperimentBlocked("resource prefix did not advance")
+        if ledger["events"][-1].get("reason") == normalized_reason:
+            return ledger
     if (output / ACCESS_JOURNAL_FILENAME).exists():
         journal = load_access_journal(
             output,
@@ -2657,7 +2831,7 @@ def advance_resource_ledger(
     event = {
         "kind": "resource_prefix_advanced",
         "previous_event_sha256": _canonical_digest(ledger["events"][-1]),
-        "reason": _nonempty_string(reason, "resource advance reason"),
+        "reason": normalized_reason,
         "resources": normalized_resources,
         "revision": ledger["revision"] + 1,
         "schema_version": RESOURCE_LEDGER_SCHEMA_VERSION,
@@ -4100,6 +4274,17 @@ def _terminal_state(
     return journal, ledger, chain
 
 
+def _require_terminal_attempt_charge(ledger: Mapping[str, Any]) -> None:
+    events = ledger.get("events")
+    if (
+        not isinstance(events, Sequence)
+        or not events
+        or not isinstance(events[-1], Mapping)
+        or events[-1].get("reason") != "terminal-attempt-charge"
+    ):
+        raise ExperimentBlocked("terminal attempt charge is missing")
+
+
 def _validate_terminal_state(
     verdict: str,
     *,
@@ -4134,6 +4319,7 @@ def _validate_terminal_state(
             or (journal["resume_used"] and not journal["resume_complete"])
         ):
             raise ExperimentBlocked("completion verdict lacks eight complete chunks")
+        _require_terminal_attempt_charge(ledger)
         return
     if normalized_verdict == (
         "experiment_stopped_during_training_for_family_saturation"
@@ -4152,9 +4338,11 @@ def _validate_terminal_state(
             raise ExperimentBlocked(
                 "family-saturation verdict is not at its checkpoint boundary"
             )
+        _require_terminal_attempt_charge(ledger)
         return
     if journal["debited_accesses"] == 0:
         raise ExperimentBlocked("post-start failure lacks a durable access debit")
+    _require_terminal_attempt_charge(ledger)
 
 
 def _terminal_prefix_inventory(output: Path) -> dict[str, Any]:
@@ -4221,19 +4409,17 @@ def publish_terminal_intent(
     return intent
 
 
-def load_terminal_intent(
-    output_path: Path | str,
+def _validate_terminal_intent_document(
+    value: Mapping[str, Any],
     *,
+    output: Path,
     registration: Mapping[str, Any],
     identity: Mapping[str, Any],
 ) -> dict[str, Any]:
-    normalized_registration, normalized_identity, output = _registration_for_output(
-        registration, identity, output_path
+    normalized_registration, normalized_identity = _registration_for_identity(
+        registration, identity
     )
-    intent = _load_canonical_json_file(
-        output / TERMINAL_INTENT_FILENAME,
-        "terminal intent",
-    )
+    intent = _copy_mapping(value, "terminal intent")
     _require_fields(
         intent,
         {
@@ -4293,17 +4479,54 @@ def load_terminal_intent(
     return intent
 
 
+def load_terminal_intent(
+    output_path: Path | str,
+    *,
+    registration: Mapping[str, Any],
+    identity: Mapping[str, Any],
+) -> dict[str, Any]:
+    normalized_registration, normalized_identity, output = _registration_for_output(
+        registration, identity, output_path
+    )
+    intent = _load_canonical_json_file(
+        output / TERMINAL_INTENT_FILENAME,
+        "terminal intent",
+    )
+    return _validate_terminal_intent_document(
+        intent,
+        output=output,
+        registration=normalized_registration,
+        identity=normalized_identity,
+    )
+
+
 def _expected_terminal_document(
     output: Path,
     *,
     registration: Mapping[str, Any],
     identity: Mapping[str, Any],
+    terminal_intent: Mapping[str, Any] | None = None,
 ) -> dict[str, Any]:
-    intent = load_terminal_intent(
-        output,
-        registration=registration,
-        identity=identity,
-    )
+    if terminal_intent is None:
+        intent = load_terminal_intent(
+            output,
+            registration=registration,
+            identity=identity,
+        )
+    else:
+        supplied_intent = _copy_mapping(terminal_intent, "terminal intent")
+        try:
+            stored_intent = (output / TERMINAL_INTENT_FILENAME).read_bytes()
+        except OSError as exc:
+            raise ExperimentBlocked("terminal intent cannot be read") from exc
+        if stored_intent != canonical_json_bytes(supplied_intent):
+            raise ExperimentBlocked("in-memory terminal intent differs from disk")
+        intent = _validate_terminal_intent_document(
+            supplied_intent,
+            output=output,
+            registration=registration,
+            identity=identity,
+        )
     journal, ledger, chain = _terminal_state(
         output,
         registration=registration,
@@ -4331,6 +4554,7 @@ def publish_terminal_bundle(
     registration: Mapping[str, Any],
     identity: Mapping[str, Any],
     lease: ExecutionLease,
+    terminal_intent: Mapping[str, Any] | None = None,
 ) -> dict[str, Any]:
     """Publish terminal bytes and write the closed artifact manifest last."""
     normalized_registration, normalized_identity, output = _registration_for_output(
@@ -4345,6 +4569,7 @@ def publish_terminal_bundle(
         output,
         registration=normalized_registration,
         identity=normalized_identity,
+        terminal_intent=terminal_intent,
     )
     terminal_bytes = canonical_json_bytes(terminal)
     if len(terminal_bytes) > experiment_contract()["limits"]["max_artifact_bytes"]:
@@ -4529,7 +4754,7 @@ def _observe_isolation(
     checkpoint_snapshot_observer: Callable[[Path | str], Mapping[str, Any]]
     | None,
 ) -> dict[str, Any]:
-    normalized = validate_registration(registration)
+    normalized = _validated_registration_value(registration)
     if phase not in {"post", "pre"}:
         raise ExperimentBlocked("isolation observation phase is invalid")
     expected = normalized["isolation_identity"]
@@ -4721,7 +4946,7 @@ def _is_infrastructure_interruption(exc: BaseException) -> bool:
     return False
 
 
-def _charge_infrastructure_interruption(
+def _charge_attempt_elapsed(
     output: Path,
     *,
     registration: Mapping[str, Any],
@@ -4730,7 +4955,13 @@ def _charge_infrastructure_interruption(
     attempt_started: float,
     charged_origin: float,
     clock: Callable[[], float],
+    reason: str,
 ) -> dict[str, Any]:
+    if reason not in {
+        "infrastructure-interruption-charge",
+        "terminal-attempt-charge",
+    }:
+        raise ExperimentBlocked("attempt charge reason is invalid")
     observed_at = float(clock())
     elapsed = observed_at - attempt_started
     if not math.isfinite(observed_at) or not math.isfinite(elapsed) or elapsed < 0.0:
@@ -4751,7 +4982,7 @@ def _charge_infrastructure_interruption(
         int(resources["environment_accesses"]),
         int(journal["debited_accesses"]),
     )
-    if resources == ledger["resources"]:
+    if resources == ledger["resources"] and reason != "terminal-attempt-charge":
         return ledger
     return advance_resource_ledger(
         output,
@@ -4759,7 +4990,7 @@ def _charge_infrastructure_interruption(
         identity=identity,
         lease=lease,
         resources=resources,
-        reason="infrastructure-interruption-charge",
+        reason=reason,
     )
 
 
@@ -4817,7 +5048,7 @@ def _close_runner_terminal(
         "failure": copy.deepcopy(dict(failure)) if failure is not None else None,
         "saturation": copy.deepcopy(dict(saturation)),
     }
-    publish_terminal_intent(
+    intent = publish_terminal_intent(
         output,
         registration=registration,
         identity=identity,
@@ -4830,6 +5061,7 @@ def _close_runner_terminal(
         registration=registration,
         identity=identity,
         lease=lease,
+        terminal_intent=intent,
     )
     return {
         "identity": copy.deepcopy(dict(identity)),
@@ -4897,8 +5129,11 @@ def execute_authorized_experiment(
     )
     output = Path(normalized_registration["output_root"]).resolve()
     if (output / TERMINAL_FILENAME).is_file() and (output / MANIFEST_FILENAME).is_file():
+        terminal_context = _build_validated_execution_context(
+            normalized_registration, identity, output
+        )
         bundle = validate_terminal_bundle(
-            output, registration=normalized_registration, identity=identity
+            output, registration=terminal_context, identity=identity
         )
         return {
             "identity": identity,
@@ -4933,6 +5168,9 @@ def execute_authorized_experiment(
     )
     if pre_isolation["matches_registration"] is not True:
         raise ExperimentBlocked("pre-execution isolation differs from registration")
+    normalized_registration = _build_validated_execution_context(
+        normalized_registration, identity, output
+    )
     documents = _static_execution_documents(
         registration=normalized_registration,
         request=normalized_request,
@@ -5204,8 +5442,16 @@ def execute_authorized_experiment(
                         "infrastructure_interrupted" if infrastructure else "failed"
                     ),
                 )
-            if infrastructure:
-                _charge_infrastructure_interruption(
+            charged_journal = load_access_journal(
+                output,
+                registration=normalized_registration,
+                identity=identity,
+            )
+            terminalizing = (
+                not infrastructure or charged_journal["resume_used"] is True
+            )
+            if infrastructure or charged_journal["debited_accesses"] > 0:
+                _charge_attempt_elapsed(
                     output,
                     registration=normalized_registration,
                     identity=identity,
@@ -5213,7 +5459,13 @@ def execute_authorized_experiment(
                     attempt_started=attempt_started,
                     charged_origin=charged_origin,
                     clock=clock,
+                    reason=(
+                        "terminal-attempt-charge"
+                        if terminalizing
+                        else "infrastructure-interruption-charge"
+                    ),
                 )
+            if infrastructure:
                 charged_journal = load_access_journal(
                     output,
                     registration=normalized_registration,
@@ -5300,6 +5552,16 @@ def execute_authorized_experiment(
                 preflight=preflight,
             )
 
+        _charge_attempt_elapsed(
+            output,
+            registration=normalized_registration,
+            identity=identity,
+            lease=lease,
+            attempt_started=attempt_started,
+            charged_origin=charged_origin,
+            clock=clock,
+            reason="terminal-attempt-charge",
+        )
         post = _publish_post_isolation(
             output,
             registration=normalized_registration,

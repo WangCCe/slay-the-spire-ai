@@ -1,6 +1,6 @@
 # Project Direction
 
-Last updated: 2026-08-06
+Last updated: 2026-08-07
 
 ## Current Phase
 
@@ -787,11 +787,34 @@ The next authorized sequence is:
     verified ledger at `charged_seconds=0.0` and that producer terminalization
     took about 2,228 seconds from failure witness to manifest. Focused terminal
     tests pass 130 tests with one skip, and strict OpenSpec validation passes all
-    75 items. The next gate is a new source-only OpenSpec proposal that caches
-    one validated execution context, charges every terminal path, removes
-    repeated terminal-publication validation, and supervises true child
-    liveness. It grants no new experiment, native, seed, training, model-loading,
-    gameplay, formal-RL, qualification, or promotion authority.
+    75 items. The source-only control-plane repair is recorded separately in
+    item 41. The consumed execution remains non-retryable and grants no new
+    experiment, native, seed, training, model-loading, gameplay, formal-RL,
+    qualification, or promotion authority.
+41. Preserve the source-only cross-fitted execution control-plane repair and
+    its deterministic JSON/Markdown closeout. One private context now validates
+    and owns the complete registration once, exposes recursively immutable
+    JSON-compatible values, and reuses its bound digest, identity, and output
+    through journal, resource, checkpoint, failure, isolation, and terminal
+    operations. Every post-start terminal path closes with an exact bounded
+    `terminal-attempt-charge`; same-process publication carries its canonical
+    intent forward while interrupted recovery still reopens raw durable bytes.
+    The independent verifier holds a dead-owner lease across its full evidence
+    read, binds the locked descriptor to the checked path, and admits a
+    lease-free archived root only after regular terminal and manifest markers
+    plus a final pre-enumeration lease check. Read-only independent review found
+    and closed mutable context values, a lease-free boundary race, and lease
+    path/handle replacement. Focused review regressions pass 3 tests and the
+    final source-only suite passes 193 tests with one skip. The repository
+    `commit` gate passes 4,434 tests with 17 skips in 657.01 seconds, 659.89
+    seconds including orchestration. No native module, registered seed,
+    environment, fitting, training, evaluation, OPE, gameplay,
+    CommunicationMod, qualification, or promotion was run. Any empirical
+    successor requires a separately reviewed proposal, new pushed source
+    identity, fresh registration and cohort decision, exact request, and
+    separate explicit human approval. The five additive requirements are
+    synced to the main successor spec and the completed change is archived at
+    `openspec/changes/archive/2026-08-07-repair-cross-fitted-execution-control-plane`.
 
 ## Work Lanes
 
@@ -852,12 +875,14 @@ are complete. The contract preserves selected family plus conditional log
     successor was authorized and consumed exactly once, but repeated full
     registration validation allowed only 11 completed accesses before the
     fixed wall-time gate. Its valid terminal failure contains no complete chunk
-    or mechanism evidence and cannot be resumed or retried. The next work is a
-    new source-only control-plane throughput and accounting proposal backed by
-    structural validation-count, failure-charge, terminal-publication, and
-    true-child-liveness regressions. Do not fit or load another model, access a
-    fresh seed, make a causal or OPE claim, change an estimator or reward, or
-    authorize another empirical experiment from this evidence.
+    or mechanism evidence and cannot be resumed or retried. The source-only
+    control-plane repair now closes the known validation-throughput,
+    elapsed-charge, terminal-publication, and true-child-liveness defects. It
+    does not retroactively create mechanism evidence or authorize a retry. The
+    next gate is a separate go/no-go proposal for a new source-bound empirical
+    successor; do not fit or load another model, access a fresh seed, make a
+    causal or OPE claim, change an estimator or reward, or infer execution
+    authority from the repair closeout.
 
 Live gameplay is a maintenance and registered-evaluation lane only. Launch it
 for a crash, stuck state, repeated A-class simulator/mechanics defect, or an
@@ -883,10 +908,14 @@ OpenSpec changes authorize them.
 - Do not treat an outer shell, wrapper timeout, or waiting-cell exit as proof
   that the evidence process ended. Confirm the true Python child is absent and
   its exclusive lease is no longer locked before reading the output root.
-- Treat the latest 2026-08-06 `commit` gate result of 4,419 passed, 17 skipped,
-  556.07 seconds of pytest, and 558.90 seconds including orchestration as
+- Independent verification of an output root with a stale lease must acquire
+  that lease non-blockingly and hold it across the complete evidence inventory
+  and validation. A locked, live-owner, malformed, or ambiguous lease blocks
+  before any terminal evidence is read.
+- Treat the latest 2026-08-07 `commit` gate result of 4,434 passed, 17 skipped,
+  657.01 seconds of pytest, and 659.89 seconds including orchestration as
   confirmation of timing drift: correctness passed, but the qualified
-  five-minute feedback bound was exceeded by 258.90 seconds. This change
+  five-minute feedback bound was exceeded by 359.89 seconds. This change
   invoked the gate exactly once and did not rerun it because of duration;
   schedule a separate read-only duration audit before claiming the bounded-
   feedback requirement remains met.
