@@ -208,6 +208,8 @@ openspec/changes/archive/*-add-hierarchical-advantage-attribution-contract/** te
 openspec/specs/noncombat-cross-fitted-hierarchical-learning-successor/** text eol=lf
 openspec/changes/add-cross-fitted-hierarchical-learning-successor/** text eol=lf
 openspec/changes/archive/*-add-cross-fitted-hierarchical-learning-successor/** text eol=lf
+openspec/changes/repair-cross-fitted-execution-control-plane/** text eol=lf
+openspec/changes/archive/*-repair-cross-fitted-execution-control-plane/** text eol=lf
 
 # Preserve cross-fitted hierarchical successor execution evidence byte-for-byte.
 reports/noncombat_cross_fitted_hierarchical_learning_successor_* -text whitespace=cr-at-eol
