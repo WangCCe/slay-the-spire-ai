@@ -840,6 +840,26 @@ The next authorized sequence is:
     not permission to rerun, register, or execute an empirical successor. The
     completed readiness change is synced to the main spec and archived at
     `openspec/changes/archive/2026-08-07-assess-cross-fitted-empirical-successor-readiness`.
+43. Preserve the completed source-only readiness binding correction at commit
+    `54b266b4ba1b4993faded5fc366532598d81b9f6`. The auditor and independent
+    verifier now require the exact eight-field consumed schedule, pin canonical
+    search start `0`, inventory SHA-256
+    `435cf41b1cff21178d6de253677544b0e96f8b8ec431c181981aef36591a7174`,
+    and selection schema
+    `noncombat-cross-fitted-hierarchical-learning-fresh-schedule-v1`, and bind
+    the synced canonical main readiness spec. The auditor also rejects any
+    source-binding input inventory that differs from its exact declared role
+    and path sequence before Git blob I/O. Focused source-only verification
+    passed 81 tests with one explicit actual-scale skip, both specs passed
+    strict validation, and independent review closed without findings. No
+    readiness auditor, native module, runtime, model, empirical seed outcome,
+    training, evaluation, game, or CommunicationMod operation was run. The
+    main spec is synced and the completed change is archived at
+    `openspec/changes/archive/2026-08-07-repair-cross-fitted-readiness-source-binding`.
+    This correction does not revive source commit `863ae5a4046df110e4f9028bb3c56d556a7c6a43`
+    or authorize another readiness attempt. A later source-only OpenSpec change
+    must separately establish fresh-identity eligibility, exact attempt paths
+    and identity, and one-shot authorization before the auditor is invoked.
 
 ## Work Lanes
 
@@ -906,11 +926,17 @@ are complete. The contract preserves selected family plus conditional log
     does not retroactively create mechanism evidence or authorize a retry. The
     subsequent one-shot readiness audit closed at `no_go_source_binding`
     because its consumed-schedule contract omitted three bound provenance
-    fields. The next gate is a new source-only OpenSpec correction and pushed
-    source identity, not an empirical registration or execution proposal. Do
-    not fit or load another model, access a fresh seed, make a causal or OPE
-    claim, change an estimator or reward, or infer execution authority from
-    either the repair closeout or failed readiness attempt.
+    fields. The source-only schema and durable main-spec binding correction is
+    now complete, reviewed, pushed, synced, and archived without invoking the
+    auditor. The next gate is a separate source-only eligibility and
+    preregistration review for at most one fresh readiness publication against
+    a new pushed clean identity. Until that change fixes the audit id, attempt,
+    output and scratch paths, non-retry proof, ceilings, and exact command, do
+    not invoke readiness or treat the correction as empirical registration or
+    execution authority. Do not fit or load another model, access a fresh seed,
+    make a causal or OPE claim, change an estimator or reward, or infer
+    execution authority from either the repair closeout, failed readiness
+    attempt, or source-only correction.
 
 Live gameplay is a maintenance and registered-evaluation lane only. Launch it
 for a crash, stuck state, repeated A-class simulator/mechanics defect, or an
@@ -953,6 +979,12 @@ OpenSpec changes authorize them.
   failures are exact-ceiling floating-point deadline checks in files outside
   the readiness diff. The gate was not rerun and the runtime files were not
   changed under the source-only readiness scope.
+- Treat the 2026-08-08 readiness source-binding repair `commit` gate as invoked
+  exactly once but not green: 4,514 tests passed, 18 skipped, and one unchanged
+  cross-fitted runtime test failed after 815.11 seconds of pytest (819.01
+  seconds including orchestration). The failure is the same exact-ceiling
+  floating-point deadline boundary in a runtime and test outside the staged
+  repair. The gate was not rerun and that unrelated runtime was not changed.
 
 Historical reports and archived changes retain the objectives and authority
 boundaries that applied when they were written. This document is the canonical
