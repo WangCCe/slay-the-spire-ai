@@ -43,17 +43,17 @@
   authorization review.
 - [x] 4.3 Run focused control/verifier tests, canonical digest probes, import
   isolation, and strict OpenSpec using a fresh scoped pytest temp child.
-- [ ] 4.4 Verify exact staged scope, commit and push only authorization evidence
+- [x] 4.4 Verify exact staged scope, commit and push only authorization evidence
   plus task state, and confirm the exact blobs on `origin/master`.
 
 ## 5. Close Without Execution
 
-- [ ] 5.1 Record the long commit gate and fresh gameplay validation as not
+- [x] 5.1 Record the long commit gate and fresh gameplay validation as not
   applicable unless implementation or test source unexpectedly changes.
-- [ ] 5.2 Obtain a bounded independent final review and resolve only
+- [x] 5.2 Obtain a bounded independent final review and resolve only
   publication-blocking evidence defects without changing registered terms.
-- [ ] 5.3 Sync the delta requirement, update project direction, archive the
+- [x] 5.3 Sync the delta requirement, update project direction, archive the
   change, run final strict validation, and commit/push closeout separately.
-- [ ] 5.4 Confirm the registered output root and empirical artifacts remain
+- [x] 5.4 Confirm the registered output root and empirical artifacts remain
   absent; stop without native loading, environment construction, seed access,
   fitting, training, evaluation, execution, gameplay, or CommunicationMod.

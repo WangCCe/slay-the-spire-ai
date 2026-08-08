@@ -1122,6 +1122,56 @@ The next authorized sequence is:
     evaluation, execution, game, CommunicationMod, qualification, promotion,
     and terminal artifacts remain absent. This request is eligible only for a
     later separate exact delegated-approval and authorization proposal.
+53. Preserve the pushed 20260808-r2 standing delegation, delegated approval,
+    and tracked authorization as separate unexecuted control-plane stages. The
+    plan commit is `371e612a2a786be42538a058f4adc9a6216dc840`, delegated-
+    approval evidence commit is
+    `40c36f1a8a0cedbf2325b759687a475890c0d879`, and authorization commit is
+    `be76cdf9bc803db264949d47d9ee2e07d2e86834`; all are exact on
+    `origin/master`. The reusable 1,114-byte standing-delegation manifest at
+    `reports/noncombat_cross_fitted_hierarchical_learning_standing_delegation_20260808.json`
+    has file SHA-256
+    `6dac765272edc2a730f9d03075c97ebccc373a704fcc6d1bf4674dbc29a699dc`
+    and delegation identity
+    `9720eede9ca1eb41d65277ec9e1fcff024931c06720d2d322bc4f29c55ae97ff`.
+    It preserves the verbatim solo-maintainer grant from external-human message
+    `item-22027`, task `019eb771-30f7-7ed2-9af2-ea4b22fadc11`, at
+    `2026-08-08T09:46:47Z`, together with closed scope, exclusions, future-
+    revocation rule, and self-digest. The final prepublication task-metadata
+    check at `2026-08-08T15:43:28Z` found no later explicit revocation; the
+    latest user message was `item-22065` (`好 继续`). The 1,708-byte delegated
+    approval has file SHA-256
+    `2b1df39c3364e0dfd3f5d1252cf1be50a9d87d55736695082769b56eb28711f4`
+    and approval identity
+    `3786717abcbc82ab4c70a39ae8151feee09cc19f7f44f1cfa5a14257ac25901e`;
+    its 2,846-byte review has file SHA-256
+    `dab1df6ba1c5a15203b50ab2fcfa4010f2abd36c13391d5481b7fb165d7857cb`
+    and self-digest
+    `3628ca851430e67ba6cf3db1c6ca7a4fe99371be947c1871ec97b4a4bca9c901`.
+    Only after that approval was pushed, the 2,650-byte authorization was
+    derived with file SHA-256
+    `fa5a032b104db51fc784f65ff1bf5888441714a5203ac293d42a695f2af68a67`
+    and authorization identity
+    `80dffa2fa2c1d1a9d68d638276c73730415842f085c7d881609a37114d88152f`;
+    its 2,688-byte review has file SHA-256
+    `1f4f10969a88f145439ae6390591dfd2415ce97afbc48634e86377ca059ed9e1`
+    and self-digest
+    `70e797f3828ac0ab39b550403b871b21e426b6f540e36b20a86a42099d474962`.
+    Producer readiness replay took 172.8 seconds for approval and 169.7 seconds
+    for authorization; independent verification took 89.3 and 90.6 seconds.
+    Focused control/verifier tests passed 19 tests in 10.59 seconds and again in
+    9.97 seconds. Canonical/self-digest probes and strict OpenSpec validation
+    passed. One plan-only local model review timed out after 184.4 seconds and
+    returned no result; it is not counted as review evidence. Deterministic
+    contract audit plus the separate standard-library verifier found no
+    publication blocker. No implementation or test source changed, so the
+    known long commit gate and fresh gameplay validation were not applicable.
+    The registered output root remains absent and no native/model load,
+    environment construction, seed access, fit, training, evaluation,
+    execution, gameplay, CommunicationMod, qualification, or promotion has
+    occurred. The pushed authorization permits only a later separate exact
+    execution change; it is not evidence that execution has started or that
+    the policy is valuable.
 
 ## Work Lanes
 
@@ -1187,25 +1237,20 @@ are complete. The contract preserves selected family plus conditional log
     elapsed-charge, terminal-publication, and true-child-liveness defects. It
     does not retroactively create mechanism evidence or authorize a retry. The
     first one-shot readiness audit remains terminal `no_go_source_binding`; its
-    source identity was not reused. The source-only schedule and durable-spec
-    correction is complete, and the separately preregistered corrected-source
-    readiness audit published an independently verified `go` against source
-    commit `522185d06ddf48cb1be095c16efacaad299a0197`. The compact-registration
-    source-only change necessarily changed the control plane, so that r2 result
-    remains historical evidence but is not eligibility for a later source. The
-    separately preregistered r3 attempt is consumed as an unverified terminal
-    no-go, and its source-only artifact-boundary defects are now corrected only
-    for future source identities. No r4 or empirical-successor registration is
-    proposed or authorized. Only a newly preregistered, separately authorized,
-    and independently verified `go` may enable a later exact empirical-successor
-    registration proposal; no registration, execution request, external
-    approval, or execution authority exists yet. Until that
-    later proposal separately fixes the fresh cohort,
-    estimator/objective, resource ceilings, request, isolation, terminal
-    evidence, and approval boundary, do not load a native module or model,
-    access an empirical seed outcome, fit, train, evaluate, run OPE, launch
-    gameplay or CommunicationMod, qualify, promote, or infer policy quality or
-    causal value from readiness.
+    source identity was not reused. Later source-only repairs and readiness
+    audits culminated in the independently verified r5 `go`, followed by the
+    exact compact 20260808-r2 registration, execution request, standing
+    delegation, delegated approval, and tracked authorization now pushed on
+    `origin/master`. These control-plane stages bind the fresh cohort,
+    estimator/objective, resource ceilings, isolation, retry/resume, terminal
+    evidence, and approval chain, but the registered output root remains absent
+    and the empirical successor has not started. Execution must be a new
+    OpenSpec change that revalidates the exact pushed authorization and invokes
+    the registered mechanism without changing any term. Until that boundary is
+    opened, do not load a native module or model, access an empirical seed
+    outcome, fit, train, evaluate, run OPE, launch gameplay or CommunicationMod,
+    qualify, promote, or infer policy quality or causal value from readiness or
+    authorization alone.
 
 Live gameplay is a maintenance and registered-evaluation lane only. Launch it
 for a crash, stuck state, repeated A-class simulator/mechanics defect, or an
