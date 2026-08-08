@@ -54,6 +54,65 @@ VALID_MANIFEST = {
     },
 }
 REPOSITORY_ROOT = Path(__file__).resolve().parents[1]
+EXPECTED_REPOSITORY_FULL_ONLY = {
+    "tests/test_adaptive_route_opportunity_audit.py": (
+        "adaptive-route source-only artifact and replay coverage in the "
+        "320.32s measured lifecycle group"
+    ),
+    "tests/test_noncombat_cross_fitted_empirical_successor_readiness.py": (
+        "readiness source binding, subprocess rehearsal, and Git replay in the "
+        "320.32s measured lifecycle group"
+    ),
+    "tests/test_noncombat_cross_fitted_hierarchical_learning_control.py": (
+        "execution lifecycle, real registration, crash recovery, and checkpoint "
+        "coverage in the 320.32s measured lifecycle group"
+    ),
+    "tests/test_noncombat_cross_fitted_hierarchical_learning_verifier.py": (
+        "independent terminal and immutable bundle replay measured at about "
+        "422.8s after subtracting the 1.01s paired audit file"
+    ),
+    "tests/test_noncombat_current_baseline_evidence_study.py": (
+        "historical seed and Git replay with a measured 138.28s overlap "
+        "rejection node"
+    ),
+    "tests/test_noncombat_current_policy_simulator_bridge.py": (
+        "source-only bridge lifecycle and subprocess coverage in the 320.32s "
+        "measured lifecycle group"
+    ),
+    "tests/test_noncombat_hierarchical_advantage_attribution.py": (
+        "fresh-process rendering and import-isolation coverage with a measured "
+        "10.37s deterministic-rendering node"
+    ),
+    "tests/test_noncombat_hierarchical_policy_objective.py": (
+        "fresh-process objective import-isolation coverage with a measured "
+        "16.16s bidirectional-isolation node"
+    ),
+    "tests/test_noncombat_hierarchical_simulator_learning_experiment.py": (
+        "hierarchical source-only lifecycle and historical Git replay in the "
+        "320.32s measured lifecycle group"
+    ),
+    "tests/test_noncombat_outcome_evidence_runner.py": (
+        "subprocess, crash-recovery, and temporary Git replay matrix"
+    ),
+    "tests/test_noncombat_outcome_evidence_verifier.py": (
+        "independent verifier subprocess and historical Git replay matrix"
+    ),
+    "tests/test_noncombat_route_card_residual_ranker_poc.py": (
+        "deterministic synthetic primary replay with a measured 18.78s node"
+    ),
+    "tests/test_noncombat_simulator_baseline_warm_start.py": (
+        "hash-closed warm-start artifact lifecycle with a measured 14.49s "
+        "publication node"
+    ),
+    "tests/test_noncombat_simulator_rl_experiment.py": (
+        "simulator RL terminal publication and checkpoint lifecycle in the "
+        "320.32s measured lifecycle group"
+    ),
+    "tests/test_noncombat_state_conditioned_simulator_learning_experiment.py": (
+        "state-conditioned lifecycle, recovery, and independent verification "
+        "in the 320.32s measured lifecycle group"
+    ),
+}
 
 
 @pytest.fixture
@@ -121,7 +180,9 @@ def test_repository_manifest_is_valid() -> None:
     )
 
     assert manifest.schema_version == 1
-    assert len(manifest.full_only) == 2
+    assert {target.path: target.reason for target in manifest.full_only} == (
+        EXPECTED_REPOSITORY_FULL_ONLY
+    )
 
 
 def test_load_manifest_rejects_duplicate_json_key(temporary_repo: Path) -> None:

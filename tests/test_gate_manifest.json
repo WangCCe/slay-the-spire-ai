@@ -2,12 +2,64 @@
   "schema_version": 1,
   "full_only": [
     {
+      "path": "tests/test_adaptive_route_opportunity_audit.py",
+      "reason": "adaptive-route source-only artifact and replay coverage in the 320.32s measured lifecycle group"
+    },
+    {
+      "path": "tests/test_noncombat_cross_fitted_empirical_successor_readiness.py",
+      "reason": "readiness source binding, subprocess rehearsal, and Git replay in the 320.32s measured lifecycle group"
+    },
+    {
+      "path": "tests/test_noncombat_cross_fitted_hierarchical_learning_control.py",
+      "reason": "execution lifecycle, real registration, crash recovery, and checkpoint coverage in the 320.32s measured lifecycle group"
+    },
+    {
+      "path": "tests/test_noncombat_cross_fitted_hierarchical_learning_verifier.py",
+      "reason": "independent terminal and immutable bundle replay measured at about 422.8s after subtracting the 1.01s paired audit file"
+    },
+    {
+      "path": "tests/test_noncombat_current_baseline_evidence_study.py",
+      "reason": "historical seed and Git replay with a measured 138.28s overlap rejection node"
+    },
+    {
+      "path": "tests/test_noncombat_current_policy_simulator_bridge.py",
+      "reason": "source-only bridge lifecycle and subprocess coverage in the 320.32s measured lifecycle group"
+    },
+    {
+      "path": "tests/test_noncombat_hierarchical_advantage_attribution.py",
+      "reason": "fresh-process rendering and import-isolation coverage with a measured 10.37s deterministic-rendering node"
+    },
+    {
+      "path": "tests/test_noncombat_hierarchical_policy_objective.py",
+      "reason": "fresh-process objective import-isolation coverage with a measured 16.16s bidirectional-isolation node"
+    },
+    {
+      "path": "tests/test_noncombat_hierarchical_simulator_learning_experiment.py",
+      "reason": "hierarchical source-only lifecycle and historical Git replay in the 320.32s measured lifecycle group"
+    },
+    {
       "path": "tests/test_noncombat_outcome_evidence_runner.py",
       "reason": "subprocess, crash-recovery, and temporary Git replay matrix"
     },
     {
       "path": "tests/test_noncombat_outcome_evidence_verifier.py",
       "reason": "independent verifier subprocess and historical Git replay matrix"
+    },
+    {
+      "path": "tests/test_noncombat_route_card_residual_ranker_poc.py",
+      "reason": "deterministic synthetic primary replay with a measured 18.78s node"
+    },
+    {
+      "path": "tests/test_noncombat_simulator_baseline_warm_start.py",
+      "reason": "hash-closed warm-start artifact lifecycle with a measured 14.49s publication node"
+    },
+    {
+      "path": "tests/test_noncombat_simulator_rl_experiment.py",
+      "reason": "simulator RL terminal publication and checkpoint lifecycle in the 320.32s measured lifecycle group"
+    },
+    {
+      "path": "tests/test_noncombat_state_conditioned_simulator_learning_experiment.py",
+      "reason": "state-conditioned lifecycle, recovery, and independent verification in the 320.32s measured lifecycle group"
     }
   ],
   "profiles": {
