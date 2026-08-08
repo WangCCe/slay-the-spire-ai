@@ -1038,6 +1038,47 @@ The next authorized sequence is:
     execution, or authorize training. Preserve the publication, source-keyed
     receipts, and deterministic closeout at
     `reports/noncombat_cross_fitted_empirical_successor_readiness_20260808_r5_closeout.json`.
+51. Preserve the pushed compact all-false 20260808-r2 successor registration.
+    The preregistered plan commit is
+    `cf415afb5782c3553080299615c22a033ac23509`; registration evidence commit
+    `7b3221c7b099eda2853bfc405c4a67f5b5a8123a` is exact on
+    `origin/master`. The 17,595-byte canonical registration at
+    `reports/noncombat_cross_fitted_hierarchical_learning_successor_20260808_r2_registration.json`
+    has SHA-256
+    `9d792cadbece4ea21768386904633ebded2e94525fb186bdcbf4a4d7729dbdf9`.
+    It binds readiness source `ffd9acc444258483d172529eccfe8ccb05c9bb9b`,
+    publication `0c62aff2fb301dd491017bbf2e775c36a177bf67`, readiness
+    identity `cdff8937e6c15b27df582bf8d9d606c2185d94cdcfbe4e4f907d6a0244e48d38`,
+    source inventory
+    `5b7fdacecb1e557fd53188f01b80cb79ea41b262b618d81c191c1094854aea03`,
+    the complete 8x64 fresh schedule, seed SHA-256
+    `121d1f847ed02c437c8f6dfd60494e378df3d43b36f1cfb2384de94f20e12c56`,
+    zero collision, native module
+    `7ac2c750fba6e38d4a023cab72a4d67f158fe7f88414058e5876cef5003fcb88`,
+    CPU runtime, exact CommunicationMod configuration, and the complete
+    208-file production-checkpoint snapshot. The corrected deterministic review
+    at
+    `reports/noncombat_cross_fitted_hierarchical_learning_successor_20260808_r2_registration_review.json`
+    has self-digest
+    `d7bd532afb4b1865735866c93f3b3160f041a5c365956373666008a71d0a8f30`
+    and exact full-path candidate binding. Producer and independent standard-
+    library validation passed; both JSON files are canonical; blocked dependency
+    import delta is empty; the registered output root and every request,
+    delegation, approval, authorization, journal, checkpoint, terminal, game,
+    and empirical artifact remain absent. One prepublication orchestration check
+    stopped before staging because it incorrectly tried to reconstruct historical
+    dirty-worktree adapter provenance from clean Git blobs; the published pass
+    instead uses the contractually bound tracked provenance and exact current
+    module bytes. This created no consumed attempt or partial publication.
+    Focused verification passed 11 tests in 25.93 seconds after one sandbox-only
+    pytest temp infrastructure failure; canonical/self-digest probes and strict
+    OpenSpec validation passed 77/77. No implementation or test source changed,
+    so the known long commit gate and fresh gameplay validation were not
+    applicable and were not run. This registration grants only eligibility for
+    a later separate exact execution-request proposal. It grants no approval,
+    authorization, native or model loading, environment construction, seed
+    access, fitting, training, evaluation, OPE, gameplay, CommunicationMod,
+    qualification, promotion, policy-quality, causal, or formal-RL authority.
 
 ## Work Lanes
 
