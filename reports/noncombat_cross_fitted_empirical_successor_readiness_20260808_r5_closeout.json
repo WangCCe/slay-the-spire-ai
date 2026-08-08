@@ -1,0 +1,140 @@
+{
+  "audit": {
+    "attempt_consumed": true,
+    "audit_id": "noncombat-cross-fitted-empirical-successor-readiness-20260808-r5",
+    "canonical_output_published": true,
+    "decision": "go",
+    "elapsed_seconds": 994.8,
+    "invocation_count": 1,
+    "process_exit_code": 0,
+    "source_commit": "ffd9acc444258483d172529eccfe8ccb05c9bb9b"
+  },
+  "authority": {
+    "causal_claim": false,
+    "communication_mod": false,
+    "empirical_registration": false,
+    "evaluation": false,
+    "execution_authorization": false,
+    "execution_request": false,
+    "external_approval": false,
+    "formal_rl": false,
+    "gameplay": false,
+    "model_fitting": false,
+    "model_loading": false,
+    "native_loading": false,
+    "ope": false,
+    "policy_quality": false,
+    "promotion": false,
+    "qualification": false,
+    "seed_access": false,
+    "training": false
+  },
+  "budget": {
+    "ceiling_seconds": "14400.000",
+    "control_reservation_seconds": "3600.000",
+    "historical_charged_seconds": "2165.452",
+    "margin_seconds": "4303.644",
+    "projected_total_seconds": "10096.356",
+    "status": "passed"
+  },
+  "cohort": {
+    "candidate_seed_count": 512,
+    "candidate_seeds_sha256": "121d1f847ed02c437c8f6dfd60494e378df3d43b36f1cfb2384de94f20e12c56",
+    "collision_count": 0,
+    "consumed_seed_count": 512,
+    "consumed_seeds_sha256": "6b628f9fa0b7b8b2626d8f4197da815bd32eef5849156ecadefe50abf85e0b94",
+    "status": "passed"
+  },
+  "empirical_operations": {
+    "communication_mod": false,
+    "environment_construction": false,
+    "evaluation": false,
+    "model_fitting": false,
+    "model_loading": false,
+    "native_loading": false,
+    "ope": false,
+    "runtime_fitting": false,
+    "seed_access": false,
+    "training": false
+  },
+  "focused_verification": {
+    "commit_gate_invoked": false,
+    "passed": 8,
+    "pytest_infrastructure_retry_count": 0,
+    "strict_openspec_failed": 0,
+    "strict_openspec_passed": 77
+  },
+  "gates": {
+    "artifact_binding": "passed",
+    "budget_binding": "passed",
+    "cohort_not_fresh": "passed",
+    "control_plane_scaling": "passed",
+    "rehearsal_boundary": "passed",
+    "source_binding": "passed"
+  },
+  "independent_publication_verification": {
+    "candidate_inventory_sha256": "e10ee0f92430cd0309060c7aadaee8449c5a4a16cc217fd4bf274229c1b9596e",
+    "decision": "go",
+    "elapsed_seconds": 457.9,
+    "independent_inventory_sha256": "9dc0046194e7808f4788f3227ed3270a7f3ce781b7e82ada77397e91dd3538ad",
+    "proposal_eligible": true,
+    "readiness_identity_sha256": "cdff8937e6c15b27df582bf8d9d606c2185d94cdcfbe4e4f907d6a0244e48d38",
+    "status": "verified"
+  },
+  "independent_receipt_review": {
+    "all_authority_false": true,
+    "all_empirical_operations_false": true,
+    "attempt_file_sha256": "9d813d465a9b9e9781c88f7571e28277c6a1ab116f9e62846c47ed1f46023af5",
+    "attempt_file_size_bytes": 1386,
+    "attempt_sha256": "1bbbc015b8bc88877e31d5b8d26c4831d6ee54a83da369cbf87702b8054122ae",
+    "canonical_json": true,
+    "output_installed": true,
+    "scratch_absent": true,
+    "sealed_sibling_absent": true,
+    "staging_absent": true,
+    "verification_receipt_file_sha256": "4d312e929d0a0d99a3c66fa847a045182e049aedfbb76127cedf849069c01123",
+    "verification_receipt_file_size_bytes": 1517,
+    "verification_receipt_sha256": "8754dffb9db55fddbb29949b96c88002b5495015bc1c219f87b55cef717aefb6"
+  },
+  "next_step": {
+    "empirical_successor_registration_proposal_eligible": true,
+    "empirical_successor_registered": false,
+    "execution_authorized": false,
+    "new_openspec_change_required": true,
+    "standing_delegation_applied": true,
+    "training_authorized": false
+  },
+  "process_closeout": {
+    "auditor_process_present": false,
+    "descendant_process_present": false,
+    "standalone_verifier_process_present": false,
+    "true_process_exit_observed": true
+  },
+  "publication_bindings": {
+    "candidate_seed_inventory.json.gz": {
+      "sha256": "e10ee0f92430cd0309060c7aadaee8449c5a4a16cc217fd4bf274229c1b9596e",
+      "size_bytes": 6020472
+    },
+    "readiness_report.json": {
+      "sha256": "852975bc7dc0102bc4d95270fcb6d58358db87ece1afefedb0cedadb12087aed",
+      "size_bytes": 6816
+    },
+    "readiness_report.md": {
+      "sha256": "9c41aa789bcdc46890e0c682a667c407c25888cd14172d05be3a8e0dd0897322",
+      "size_bytes": 1621
+    }
+  },
+  "review": {
+    "accepted_findings": 5,
+    "resolved_findings": 5,
+    "terminal_receipt_algorithm_exercised": false,
+    "terminal_receipt_algorithm_note": "The successful publication branch used the standalone publication verifier; the preregistered no-publication receipt algorithm was not needed."
+  },
+  "standing_delegation": {
+    "additional_generated_tuple_required": false,
+    "host_ordered_current_task_checked_before_invocation": true,
+    "later_explicit_human_revocation_present": false,
+    "platform_approvals_bypassed": false
+  },
+  "status": "closed_go"
+}
