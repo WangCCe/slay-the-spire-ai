@@ -1203,6 +1203,40 @@ The next authorized sequence is:
     start an immediate successor. The next gate is a source-only read-only
     baseline-support and card-reward attribution audit over the sealed r2
     artifacts.
+55. Preserve the completed source-only cross-fitted baseline-support audit and
+    its bounded
+    `take_pressure_persists_on_supported_unclipped_rows` verdict. Plan commit
+    `c0ad75a297913755f5084e9c6439c18bda6d9c09` and source commit
+    `4734ac87705f94b261a69d797ef50805060d4163` were pushed before analytical
+    publication. Two fresh isolated processes independently verified the
+    unchanged sealed r2 bundle and produced byte-identical reports: JSON
+    SHA-256
+    `0f63681aea43e197bba0d5fcd8b0a6f759c4fe27a3646a6648b2cbad87d968c0`
+    and Markdown SHA-256
+    `43e566dd5d838ae5710adfaac52d276a9c1a1e469e697a663c2341a0aa98dd7e`.
+    Across 11,729 decisions, 2,261 predictions were clipped low and 9,468
+    remained unclipped. Among 3,536 multi-family card rewards, the supported
+    direct take-logit pressure was positive for both clipped rows
+    (`0.00022624620570936817`) and unclipped rows
+    (`0.009512804533328175`); every supported final-window unclipped chunk was
+    also positive. The exact final-window concentration remained 1,773
+    greedy `take` rows and one `bowl` row at `seed-2663:decision-56`, while the
+    immutable saturation predicate remained false. Lower-bound clipping is
+    therefore not a sufficient explanation for the remaining direct `take`
+    pressure. This is descriptive mechanism evidence, not proof that accepting
+    cards is wrong or that the policy is valuable.
+    Focused audit tests passed 34 tests in 1.01 seconds; the audit plus existing
+    independent-verifier boundary passed 157 tests with one skip in 423.81
+    seconds. The repository `commit` gate passed 4,638 tests with 18 skips in
+    1,270.15 seconds, 1,273.82 seconds including orchestration. Fresh gameplay
+    validation was not applicable because no live behavior changed. All
+    training, replay, evaluation, OPE, model/native loading, gameplay,
+    CommunicationMod, qualification, promotion, policy-quality, causal, and
+    formal-RL authority remains false. The next gate is a separately reviewed
+    source-only proposal that distinguishes supported card acceptance from
+    conditional card-choice collapse with synthetic contracts and shared-
+    gradient diagnostics; it must not authorize another empirical run by
+    itself.
 
 ## Work Lanes
 
@@ -1277,11 +1311,14 @@ are complete. The contract preserves selected family plus conditional log
     the gradient materially relative to the legacy objective, but card-reward
     greedy behavior remained near-saturated at 1,773/1,774 `take` maxima in the
     final window, 2,261 baseline predictions were clipped at zero, and no
-    victory or evaluation evidence was observed. Do not start an immediate
-    successor. First perform the source-only read-only baseline-support and
-    card-reward attribution audit defined by terminal item 54. Until a later
-    proposal passes that gate, do not load a production model, evaluate, run
-    OPE, launch gameplay or CommunicationMod, qualify, promote, or infer policy
+    victory or evaluation evidence was observed. The source-only audit in item
+    55 then found supported positive direct `take` pressure on both clipped and
+    unclipped rows and in every final-window chunk, so lower-bound clipping is
+    not a sufficient explanation for the concentration. Do not start an
+    immediate successor. First review a source-only mechanism proposal that
+    separates supported card acceptance from conditional card-choice collapse.
+    Until that gate passes, do not load a production model, evaluate, run OPE,
+    launch gameplay or CommunicationMod, qualify, promote, or infer policy
     quality or causal value from mechanism completion alone.
 
 Live gameplay is a maintenance and registered-evaluation lane only. Launch it
@@ -1348,6 +1385,12 @@ OpenSpec changes authorize them.
   final 119-test focused source-only suite, strict OpenSpec validation, Python
   compilation, and independent review remain green as recorded in direction
   item 47.
+- Treat the 2026-08-09 baseline-support audit `commit` gate as green but too
+  slow for routine feedback: 4,638 tests passed with 18 skips in 1,270.15
+  seconds of pytest, 1,273.82 seconds including orchestration. The gate was
+  invoked once and was not followed by the `full` profile. Include its runtime
+  attribution in the separate read-only test-duration audit before changing
+  test tiers, test selection, or timing limits.
 
 Historical reports and archived changes retain the objectives and authority
 boundaries that applied when they were written. This document is the canonical

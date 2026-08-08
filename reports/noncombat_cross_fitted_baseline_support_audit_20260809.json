@@ -1,0 +1,2650 @@
+{
+  "authority": {
+    "causal_claim": false,
+    "cohort_materialization": false,
+    "communication_mod": false,
+    "environment_construction": false,
+    "evaluation": false,
+    "execution": false,
+    "formal_rl": false,
+    "gameplay": false,
+    "model_fitting": false,
+    "model_loading": false,
+    "native_loading": false,
+    "ope": false,
+    "policy_promotion": false,
+    "qualification": false,
+    "replay": false,
+    "seed_access": false,
+    "training": false
+  },
+  "evidence": {
+    "card_reward_support_contrasts": {
+      "advantage_sign": [
+        {
+          "clipped": {
+            "count": 0,
+            "direct_take_pressure_sum": 0.0,
+            "selected_families": {}
+          },
+          "clipped_high": {
+            "count": 0,
+            "direct_take_pressure_sum": 0.0,
+            "selected_families": {}
+          },
+          "clipped_low": {
+            "count": 0,
+            "direct_take_pressure_sum": 0.0,
+            "selected_families": {}
+          },
+          "label": "negative",
+          "support": "insufficient",
+          "total": 1634,
+          "unclipped": {
+            "count": 1634,
+            "direct_take_pressure_sum": 0.003911334772380134,
+            "selected_families": {
+              "bowl": 6,
+              "skip": 805,
+              "take": 823
+            }
+          }
+        },
+        {
+          "clipped": {
+            "count": 659,
+            "direct_take_pressure_sum": 0.00022624620570936817,
+            "selected_families": {
+              "bowl": 14,
+              "skip": 304,
+              "take": 341
+            }
+          },
+          "clipped_high": {
+            "count": 0,
+            "direct_take_pressure_sum": 0.0,
+            "selected_families": {}
+          },
+          "clipped_low": {
+            "count": 659,
+            "direct_take_pressure_sum": 0.00022624620570936817,
+            "selected_families": {
+              "bowl": 14,
+              "skip": 304,
+              "take": 341
+            }
+          },
+          "label": "positive",
+          "support": "supported",
+          "total": 1902,
+          "unclipped": {
+            "count": 1243,
+            "direct_take_pressure_sum": 0.005601469760948042,
+            "selected_families": {
+              "bowl": 8,
+              "skip": 563,
+              "take": 672
+            }
+          }
+        }
+      ],
+      "chunk": [
+        {
+          "clipped": {
+            "count": 64,
+            "direct_take_pressure_sum": -0.0006996792516703523,
+            "selected_families": {
+              "bowl": 11,
+              "skip": 30,
+              "take": 23
+            }
+          },
+          "clipped_high": {
+            "count": 0,
+            "direct_take_pressure_sum": 0.0,
+            "selected_families": {}
+          },
+          "clipped_low": {
+            "count": 64,
+            "direct_take_pressure_sum": -0.0006996792516703523,
+            "selected_families": {
+              "bowl": 11,
+              "skip": 30,
+              "take": 23
+            }
+          },
+          "label": "0",
+          "support": "supported",
+          "total": 431,
+          "unclipped": {
+            "count": 367,
+            "direct_take_pressure_sum": 0.001431819462314999,
+            "selected_families": {
+              "bowl": 2,
+              "skip": 187,
+              "take": 178
+            }
+          }
+        },
+        {
+          "clipped": {
+            "count": 53,
+            "direct_take_pressure_sum": -0.00022203305209465658,
+            "selected_families": {
+              "skip": 28,
+              "take": 25
+            }
+          },
+          "clipped_high": {
+            "count": 0,
+            "direct_take_pressure_sum": 0.0,
+            "selected_families": {}
+          },
+          "clipped_low": {
+            "count": 53,
+            "direct_take_pressure_sum": -0.00022203305209465658,
+            "selected_families": {
+              "skip": 28,
+              "take": 25
+            }
+          },
+          "label": "1",
+          "support": "supported",
+          "total": 451,
+          "unclipped": {
+            "count": 398,
+            "direct_take_pressure_sum": 0.0015594419027687093,
+            "selected_families": {
+              "bowl": 1,
+              "skip": 202,
+              "take": 195
+            }
+          }
+        },
+        {
+          "clipped": {
+            "count": 148,
+            "direct_take_pressure_sum": -0.0006920362388384444,
+            "selected_families": {
+              "skip": 81,
+              "take": 67
+            }
+          },
+          "clipped_high": {
+            "count": 0,
+            "direct_take_pressure_sum": 0.0,
+            "selected_families": {}
+          },
+          "clipped_low": {
+            "count": 148,
+            "direct_take_pressure_sum": -0.0006920362388384444,
+            "selected_families": {
+              "skip": 81,
+              "take": 67
+            }
+          },
+          "label": "2",
+          "support": "supported",
+          "total": 443,
+          "unclipped": {
+            "count": 295,
+            "direct_take_pressure_sum": 0.0010823420538783523,
+            "selected_families": {
+              "skip": 138,
+              "take": 157
+            }
+          }
+        },
+        {
+          "clipped": {
+            "count": 68,
+            "direct_take_pressure_sum": 0.00015441514215836432,
+            "selected_families": {
+              "skip": 32,
+              "take": 36
+            }
+          },
+          "clipped_high": {
+            "count": 0,
+            "direct_take_pressure_sum": 0.0,
+            "selected_families": {}
+          },
+          "clipped_low": {
+            "count": 68,
+            "direct_take_pressure_sum": 0.00015441514215836432,
+            "selected_families": {
+              "skip": 32,
+              "take": 36
+            }
+          },
+          "label": "3",
+          "support": "supported",
+          "total": 437,
+          "unclipped": {
+            "count": 369,
+            "direct_take_pressure_sum": 0.0020155221049300105,
+            "selected_families": {
+              "bowl": 2,
+              "skip": 167,
+              "take": 200
+            }
+          }
+        },
+        {
+          "clipped": {
+            "count": 81,
+            "direct_take_pressure_sum": 9.336042847820732e-05,
+            "selected_families": {
+              "bowl": 1,
+              "skip": 38,
+              "take": 42
+            }
+          },
+          "clipped_high": {
+            "count": 0,
+            "direct_take_pressure_sum": 0.0,
+            "selected_families": {}
+          },
+          "clipped_low": {
+            "count": 81,
+            "direct_take_pressure_sum": 9.336042847820732e-05,
+            "selected_families": {
+              "bowl": 1,
+              "skip": 38,
+              "take": 42
+            }
+          },
+          "label": "4",
+          "support": "supported",
+          "total": 449,
+          "unclipped": {
+            "count": 368,
+            "direct_take_pressure_sum": 0.0011221432150055235,
+            "selected_families": {
+              "skip": 173,
+              "take": 195
+            }
+          }
+        },
+        {
+          "clipped": {
+            "count": 78,
+            "direct_take_pressure_sum": 0.0009349835143165351,
+            "selected_families": {
+              "bowl": 1,
+              "skip": 26,
+              "take": 51
+            }
+          },
+          "clipped_high": {
+            "count": 0,
+            "direct_take_pressure_sum": 0.0,
+            "selected_families": {}
+          },
+          "clipped_low": {
+            "count": 78,
+            "direct_take_pressure_sum": 0.0009349835143165351,
+            "selected_families": {
+              "bowl": 1,
+              "skip": 26,
+              "take": 51
+            }
+          },
+          "label": "5",
+          "support": "supported",
+          "total": 457,
+          "unclipped": {
+            "count": 379,
+            "direct_take_pressure_sum": 0.0006715504087695825,
+            "selected_families": {
+              "bowl": 2,
+              "skip": 171,
+              "take": 206
+            }
+          }
+        },
+        {
+          "clipped": {
+            "count": 84,
+            "direct_take_pressure_sum": 0.00048724621585682134,
+            "selected_families": {
+              "bowl": 1,
+              "skip": 35,
+              "take": 48
+            }
+          },
+          "clipped_high": {
+            "count": 0,
+            "direct_take_pressure_sum": 0.0,
+            "selected_families": {}
+          },
+          "clipped_low": {
+            "count": 84,
+            "direct_take_pressure_sum": 0.00048724621585682134,
+            "selected_families": {
+              "bowl": 1,
+              "skip": 35,
+              "take": 48
+            }
+          },
+          "label": "6",
+          "support": "supported",
+          "total": 449,
+          "unclipped": {
+            "count": 365,
+            "direct_take_pressure_sum": 0.0014817736953907509,
+            "selected_families": {
+              "bowl": 7,
+              "skip": 169,
+              "take": 189
+            }
+          }
+        },
+        {
+          "clipped": {
+            "count": 83,
+            "direct_take_pressure_sum": 0.00016998944750289336,
+            "selected_families": {
+              "skip": 34,
+              "take": 49
+            }
+          },
+          "clipped_high": {
+            "count": 0,
+            "direct_take_pressure_sum": 0.0,
+            "selected_families": {}
+          },
+          "clipped_low": {
+            "count": 83,
+            "direct_take_pressure_sum": 0.00016998944750289336,
+            "selected_families": {
+              "skip": 34,
+              "take": 49
+            }
+          },
+          "label": "7",
+          "support": "supported",
+          "total": 419,
+          "unclipped": {
+            "count": 336,
+            "direct_take_pressure_sum": 0.00014821169027024757,
+            "selected_families": {
+              "skip": 161,
+              "take": 175
+            }
+          }
+        }
+      ],
+      "effective_floor": [
+        {
+          "clipped": {
+            "count": 73,
+            "direct_take_pressure_sum": 0.0003763527769045791,
+            "selected_families": {
+              "bowl": 5,
+              "skip": 23,
+              "take": 45
+            }
+          },
+          "clipped_high": {
+            "count": 0,
+            "direct_take_pressure_sum": 0.0,
+            "selected_families": {}
+          },
+          "clipped_low": {
+            "count": 73,
+            "direct_take_pressure_sum": 0.0003763527769045791,
+            "selected_families": {
+              "bowl": 5,
+              "skip": 23,
+              "take": 45
+            }
+          },
+          "label": "17..33",
+          "support": "supported",
+          "total": 167,
+          "unclipped": {
+            "count": 94,
+            "direct_take_pressure_sum": 0.0004229913933526636,
+            "selected_families": {
+              "bowl": 4,
+              "skip": 45,
+              "take": 45
+            }
+          }
+        },
+        {
+          "clipped": {
+            "count": 586,
+            "direct_take_pressure_sum": -0.00015010657119521095,
+            "selected_families": {
+              "bowl": 9,
+              "skip": 281,
+              "take": 296
+            }
+          },
+          "clipped_high": {
+            "count": 0,
+            "direct_take_pressure_sum": 0.0,
+            "selected_families": {}
+          },
+          "clipped_low": {
+            "count": 586,
+            "direct_take_pressure_sum": -0.00015010657119521095,
+            "selected_families": {
+              "bowl": 9,
+              "skip": 281,
+              "take": 296
+            }
+          },
+          "label": "<17",
+          "support": "supported",
+          "total": 3369,
+          "unclipped": {
+            "count": 2783,
+            "direct_take_pressure_sum": 0.009089813139975512,
+            "selected_families": {
+              "bowl": 10,
+              "skip": 1323,
+              "take": 1450
+            }
+          }
+        }
+      ],
+      "fold": [
+        {
+          "clipped": {
+            "count": 141,
+            "direct_take_pressure_sum": -0.0002090511811779966,
+            "selected_families": {
+              "skip": 68,
+              "take": 73
+            }
+          },
+          "clipped_high": {
+            "count": 0,
+            "direct_take_pressure_sum": 0.0,
+            "selected_families": {}
+          },
+          "clipped_low": {
+            "count": 141,
+            "direct_take_pressure_sum": -0.0002090511811779966,
+            "selected_families": {
+              "skip": 68,
+              "take": 73
+            }
+          },
+          "label": "fold-0",
+          "support": "supported",
+          "total": 862,
+          "unclipped": {
+            "count": 721,
+            "direct_take_pressure_sum": 0.002549304260935448,
+            "selected_families": {
+              "bowl": 2,
+              "skip": 338,
+              "take": 381
+            }
+          }
+        },
+        {
+          "clipped": {
+            "count": 215,
+            "direct_take_pressure_sum": -0.000949633709294504,
+            "selected_families": {
+              "bowl": 5,
+              "skip": 111,
+              "take": 99
+            }
+          },
+          "clipped_high": {
+            "count": 0,
+            "direct_take_pressure_sum": 0.0,
+            "selected_families": {}
+          },
+          "clipped_low": {
+            "count": 215,
+            "direct_take_pressure_sum": -0.000949633709294504,
+            "selected_families": {
+              "bowl": 5,
+              "skip": 111,
+              "take": 99
+            }
+          },
+          "label": "fold-1",
+          "support": "supported",
+          "total": 940,
+          "unclipped": {
+            "count": 725,
+            "direct_take_pressure_sum": 0.002538732000566832,
+            "selected_families": {
+              "bowl": 8,
+              "skip": 332,
+              "take": 385
+            }
+          }
+        },
+        {
+          "clipped": {
+            "count": 150,
+            "direct_take_pressure_sum": 9.526582129750427e-05,
+            "selected_families": {
+              "bowl": 9,
+              "skip": 68,
+              "take": 73
+            }
+          },
+          "clipped_high": {
+            "count": 0,
+            "direct_take_pressure_sum": 0.0,
+            "selected_families": {}
+          },
+          "clipped_low": {
+            "count": 150,
+            "direct_take_pressure_sum": 9.526582129750427e-05,
+            "selected_families": {
+              "bowl": 9,
+              "skip": 68,
+              "take": 73
+            }
+          },
+          "label": "fold-2",
+          "support": "supported",
+          "total": 873,
+          "unclipped": {
+            "count": 723,
+            "direct_take_pressure_sum": 0.0038654014430711766,
+            "selected_families": {
+              "bowl": 3,
+              "skip": 363,
+              "take": 357
+            }
+          }
+        },
+        {
+          "clipped": {
+            "count": 153,
+            "direct_take_pressure_sum": 0.0012896652748843644,
+            "selected_families": {
+              "skip": 57,
+              "take": 96
+            }
+          },
+          "clipped_high": {
+            "count": 0,
+            "direct_take_pressure_sum": 0.0,
+            "selected_families": {}
+          },
+          "clipped_low": {
+            "count": 153,
+            "direct_take_pressure_sum": 0.0012896652748843644,
+            "selected_families": {
+              "skip": 57,
+              "take": 96
+            }
+          },
+          "label": "fold-3",
+          "support": "supported",
+          "total": 861,
+          "unclipped": {
+            "count": 708,
+            "direct_take_pressure_sum": 0.0005593668287547191,
+            "selected_families": {
+              "bowl": 1,
+              "skip": 335,
+              "take": 372
+            }
+          }
+        }
+      ],
+      "global": [
+        {
+          "clipped": {
+            "count": 659,
+            "direct_take_pressure_sum": 0.00022624620570936817,
+            "selected_families": {
+              "bowl": 14,
+              "skip": 304,
+              "take": 341
+            }
+          },
+          "clipped_high": {
+            "count": 0,
+            "direct_take_pressure_sum": 0.0,
+            "selected_families": {}
+          },
+          "clipped_low": {
+            "count": 659,
+            "direct_take_pressure_sum": 0.00022624620570936817,
+            "selected_families": {
+              "bowl": 14,
+              "skip": 304,
+              "take": 341
+            }
+          },
+          "label": "all",
+          "support": "supported",
+          "total": 3536,
+          "unclipped": {
+            "count": 2877,
+            "direct_take_pressure_sum": 0.009512804533328175,
+            "selected_families": {
+              "bowl": 14,
+              "skip": 1368,
+              "take": 1495
+            }
+          }
+        }
+      ],
+      "ordinal": [
+        {
+          "clipped": {
+            "count": 28,
+            "direct_take_pressure_sum": -0.0008751457923639649,
+            "selected_families": {
+              "skip": 18,
+              "take": 10
+            }
+          },
+          "clipped_high": {
+            "count": 0,
+            "direct_take_pressure_sum": 0.0,
+            "selected_families": {}
+          },
+          "clipped_low": {
+            "count": 28,
+            "direct_take_pressure_sum": -0.0008751457923639649,
+            "selected_families": {
+              "skip": 18,
+              "take": 10
+            }
+          },
+          "label": "first",
+          "support": "supported",
+          "total": 512,
+          "unclipped": {
+            "count": 484,
+            "direct_take_pressure_sum": 0.003270942547825096,
+            "selected_families": {
+              "skip": 234,
+              "take": 250
+            }
+          }
+        },
+        {
+          "clipped": {
+            "count": 594,
+            "direct_take_pressure_sum": 0.001790770457409058,
+            "selected_families": {
+              "bowl": 14,
+              "skip": 261,
+              "take": 319
+            }
+          },
+          "clipped_high": {
+            "count": 0,
+            "direct_take_pressure_sum": 0.0,
+            "selected_families": {}
+          },
+          "clipped_low": {
+            "count": 594,
+            "direct_take_pressure_sum": 0.001790770457409058,
+            "selected_families": {
+              "bowl": 14,
+              "skip": 261,
+              "take": 319
+            }
+          },
+          "label": "later",
+          "support": "supported",
+          "total": 2513,
+          "unclipped": {
+            "count": 1919,
+            "direct_take_pressure_sum": 0.004127880618239478,
+            "selected_families": {
+              "bowl": 14,
+              "skip": 906,
+              "take": 999
+            }
+          }
+        },
+        {
+          "clipped": {
+            "count": 37,
+            "direct_take_pressure_sum": -0.0006893784593357248,
+            "selected_families": {
+              "skip": 25,
+              "take": 12
+            }
+          },
+          "clipped_high": {
+            "count": 0,
+            "direct_take_pressure_sum": 0.0,
+            "selected_families": {}
+          },
+          "clipped_low": {
+            "count": 37,
+            "direct_take_pressure_sum": -0.0006893784593357248,
+            "selected_families": {
+              "skip": 25,
+              "take": 12
+            }
+          },
+          "label": "second",
+          "support": "supported",
+          "total": 511,
+          "unclipped": {
+            "count": 474,
+            "direct_take_pressure_sum": 0.0021139813672636015,
+            "selected_families": {
+              "skip": 228,
+              "take": 246
+            }
+          }
+        }
+      ]
+    },
+    "chunk_results": [
+      {
+        "chunk_index": 0,
+        "gradient_comparison": {
+          "cosine": 0.616190677374926,
+          "cross_fitted_norm": 0.0037650622837998473,
+          "difference_norm": 0.027271215267929493,
+          "dot": 6.827635954399387e-05,
+          "legacy_norm": 0.029429512521903102
+        },
+        "scalar_components": {
+          "card_reward_conditional_policy": 0.0006881352373467437,
+          "card_reward_family_policy": 0.001011630874142197,
+          "conditional_entropy_regularizer": -0.004463040670527728,
+          "family_entropy_regularizer": -0.0027249826140137478,
+          "other_policy": 0.004997210257566689
+        },
+        "summary": {
+          "advantage_mean": 0.010595706479699079,
+          "advantage_signs": {
+            "negative": 636,
+            "positive": 757,
+            "zero": 3
+          },
+          "clipping": {
+            "clipped_low": 229,
+            "unclipped": 1167
+          },
+          "clipping_rates": {
+            "clipped_low": 0.16404011461318052,
+            "unclipped": 0.8359598853868195
+          },
+          "count": 1396,
+          "direct_take_pressure_sum": 0.0007321402106446465,
+          "greedy_families": {
+            "bowl": 1,
+            "buy_card": 31,
+            "buy_potion": 4,
+            "buy_relic": 1,
+            "event_option": 119,
+            "leave": 57,
+            "map_node": 753,
+            "skip": 18,
+            "take": 412
+          },
+          "prediction_mean": 0.1231573724928038,
+          "raw_return_mean": 0.13375307897250288,
+          "residual_rmse": 0.11560906651014465,
+          "selected_families": {
+            "bowl": 13,
+            "buy_card": 25,
+            "buy_potion": 14,
+            "buy_relic": 4,
+            "event_option": 119,
+            "leave": 39,
+            "map_node": 753,
+            "remove_card": 11,
+            "skip": 217,
+            "take": 201
+          }
+        },
+        "trajectories": 64
+      },
+      {
+        "chunk_index": 1,
+        "gradient_comparison": {
+          "cosine": 0.5340054230776865,
+          "cross_fitted_norm": 0.0032610126084430795,
+          "difference_norm": 0.027124242786161525,
+          "dot": 5.002192954561065e-05,
+          "legacy_norm": 0.028725149304771956
+        },
+        "scalar_components": {
+          "card_reward_conditional_policy": 0.0004171402236078641,
+          "card_reward_family_policy": -0.00017278925618045246,
+          "conditional_entropy_regularizer": -0.0045047867693680625,
+          "family_entropy_regularizer": -0.0028375218167356413,
+          "other_policy": -0.001127163007129477
+        },
+        "summary": {
+          "advantage_mean": -0.0008937331034257418,
+          "advantage_signs": {
+            "negative": 732,
+            "positive": 713
+          },
+          "clipping": {
+            "clipped_low": 183,
+            "unclipped": 1262
+          },
+          "clipping_rates": {
+            "clipped_low": 0.12664359861591695,
+            "unclipped": 0.873356401384083
+          },
+          "count": 1445,
+          "direct_take_pressure_sum": 0.0013374088506740527,
+          "greedy_families": {
+            "buy_card": 76,
+            "buy_potion": 2,
+            "event_option": 116,
+            "leave": 24,
+            "map_node": 776,
+            "skip": 4,
+            "take": 447
+          },
+          "prediction_mean": 0.1366431412258078,
+          "raw_return_mean": 0.13574940812238206,
+          "residual_rmse": 0.10700222864483981,
+          "selected_families": {
+            "bowl": 1,
+            "buy_card": 26,
+            "buy_potion": 15,
+            "buy_relic": 7,
+            "event_option": 116,
+            "leave": 42,
+            "map_node": 776,
+            "remove_card": 12,
+            "skip": 230,
+            "take": 220
+          }
+        },
+        "trajectories": 64
+      },
+      {
+        "chunk_index": 2,
+        "gradient_comparison": {
+          "cosine": 0.5991383430322339,
+          "cross_fitted_norm": 0.004670060084689387,
+          "difference_norm": 0.022838165895175466,
+          "dot": 7.086810382825501e-05,
+          "legacy_norm": 0.0253280194235053
+        },
+        "scalar_components": {
+          "card_reward_conditional_policy": 0.0022650152769331266,
+          "card_reward_family_policy": 0.0033114234728637655,
+          "conditional_entropy_regularizer": -0.004441438894085928,
+          "family_entropy_regularizer": -0.0028362658170629513,
+          "other_policy": 0.005549990862914738
+        },
+        "summary": {
+          "advantage_mean": 0.015619800047067362,
+          "advantage_signs": {
+            "negative": 539,
+            "positive": 921
+          },
+          "clipping": {
+            "clipped_low": 484,
+            "unclipped": 976
+          },
+          "clipping_rates": {
+            "clipped_low": 0.3315068493150685,
+            "unclipped": 0.6684931506849315
+          },
+          "count": 1460,
+          "direct_take_pressure_sum": 0.0003903058150399079,
+          "greedy_families": {
+            "buy_card": 87,
+            "event_option": 111,
+            "leave": 25,
+            "map_node": 794,
+            "take": 443
+          },
+          "prediction_mean": 0.12444268493250486,
+          "raw_return_mean": 0.14006248497957222,
+          "residual_rmse": 0.18607028569410783,
+          "selected_families": {
+            "buy_card": 33,
+            "buy_potion": 11,
+            "buy_relic": 5,
+            "event_option": 111,
+            "leave": 52,
+            "map_node": 794,
+            "remove_card": 11,
+            "skip": 219,
+            "take": 224
+          }
+        },
+        "trajectories": 64
+      },
+      {
+        "chunk_index": 3,
+        "gradient_comparison": {
+          "cosine": 0.6616368183383267,
+          "cross_fitted_norm": 0.0035642271591901304,
+          "difference_norm": 0.024052337730040414,
+          "dot": 6.193078586046496e-05,
+          "legacy_norm": 0.026261622317719693
+        },
+        "scalar_components": {
+          "card_reward_conditional_policy": 0.0015791013922409854,
+          "card_reward_family_policy": 6.3741126522104845e-06,
+          "conditional_entropy_regularizer": -0.004577702301023276,
+          "family_entropy_regularizer": -0.002791289263379925,
+          "other_policy": -0.002200156946349645
+        },
+        "summary": {
+          "advantage_mean": -0.002669253881685809,
+          "advantage_signs": {
+            "negative": 695,
+            "positive": 775,
+            "zero": 2
+          },
+          "clipping": {
+            "clipped_low": 224,
+            "unclipped": 1248
+          },
+          "clipping_rates": {
+            "clipped_low": 0.15217391304347827,
+            "unclipped": 0.8478260869565217
+          },
+          "count": 1472,
+          "direct_take_pressure_sum": 0.0021699372470883748,
+          "greedy_families": {
+            "buy_card": 86,
+            "event_option": 120,
+            "leave": 23,
+            "map_node": 806,
+            "take": 437
+          },
+          "prediction_mean": 0.14623809446139593,
+          "raw_return_mean": 0.14356884057971014,
+          "residual_rmse": 0.13314503540600892,
+          "selected_families": {
+            "bowl": 2,
+            "buy_card": 21,
+            "buy_potion": 16,
+            "buy_relic": 6,
+            "event_option": 120,
+            "leave": 55,
+            "map_node": 806,
+            "remove_card": 11,
+            "skip": 199,
+            "take": 236
+          }
+        },
+        "trajectories": 64
+      },
+      {
+        "chunk_index": 4,
+        "gradient_comparison": {
+          "cosine": 0.5558121075162339,
+          "cross_fitted_norm": 0.003353167769407668,
+          "difference_norm": 0.024731004648238047,
+          "dot": 4.9271721304249304e-05,
+          "legacy_norm": 0.026437138639230272
+        },
+        "scalar_components": {
+          "card_reward_conditional_policy": -4.964824346694638e-05,
+          "card_reward_family_policy": -0.0006542721029424993,
+          "conditional_entropy_regularizer": -0.004605209070501416,
+          "family_entropy_regularizer": -0.0027960172637258784,
+          "other_policy": 0.0019401968605933747
+        },
+        "summary": {
+          "advantage_mean": 0.00030864753090469613,
+          "advantage_signs": {
+            "negative": 687,
+            "positive": 773
+          },
+          "clipping": {
+            "clipped_low": 277,
+            "unclipped": 1183
+          },
+          "clipping_rates": {
+            "clipped_low": 0.18972602739726027,
+            "unclipped": 0.8102739726027397
+          },
+          "count": 1460,
+          "direct_take_pressure_sum": 0.0012155036434837309,
+          "greedy_families": {
+            "bowl": 1,
+            "buy_card": 81,
+            "event_option": 115,
+            "leave": 21,
+            "map_node": 794,
+            "take": 448
+          },
+          "prediction_mean": 0.13872043201728085,
+          "raw_return_mean": 0.13902907954818552,
+          "residual_rmse": 0.13354497732473203,
+          "selected_families": {
+            "bowl": 1,
+            "buy_card": 23,
+            "buy_potion": 12,
+            "buy_relic": 9,
+            "event_option": 115,
+            "leave": 44,
+            "map_node": 794,
+            "remove_card": 14,
+            "skip": 211,
+            "take": 237
+          }
+        },
+        "trajectories": 64
+      },
+      {
+        "chunk_index": 5,
+        "gradient_comparison": {
+          "cosine": 0.5130765237194108,
+          "cross_fitted_norm": 0.0035435973595190876,
+          "difference_norm": 0.023299629516332025,
+          "dot": 4.5305020223050306e-05,
+          "legacy_norm": 0.024918380641567494
+        },
+        "scalar_components": {
+          "card_reward_conditional_policy": 0.0025385329474703093,
+          "card_reward_family_policy": 0.0019194231568869231,
+          "conditional_entropy_regularizer": -0.004627537652651833,
+          "family_entropy_regularizer": -0.002653014318037318,
+          "other_policy": 0.002009697668670907
+        },
+        "summary": {
+          "advantage_mean": 0.009085969199862605,
+          "advantage_signs": {
+            "negative": 796,
+            "positive": 743,
+            "zero": 1
+          },
+          "clipping": {
+            "clipped_low": 243,
+            "unclipped": 1297
+          },
+          "clipping_rates": {
+            "clipped_low": 0.1577922077922078,
+            "unclipped": 0.8422077922077922
+          },
+          "count": 1540,
+          "direct_take_pressure_sum": 0.0016065339230861176,
+          "greedy_families": {
+            "buy_card": 76,
+            "buy_potion": 1,
+            "event_option": 146,
+            "leave": 31,
+            "map_node": 829,
+            "take": 457
+          },
+          "prediction_mean": 0.13945583986826224,
+          "raw_return_mean": 0.14854180906812486,
+          "residual_rmse": 0.12677553668639674,
+          "selected_families": {
+            "bowl": 3,
+            "buy_card": 29,
+            "buy_potion": 17,
+            "buy_relic": 2,
+            "event_option": 146,
+            "leave": 47,
+            "map_node": 829,
+            "remove_card": 13,
+            "skip": 197,
+            "take": 257
+          }
+        },
+        "trajectories": 64
+      },
+      {
+        "chunk_index": 6,
+        "gradient_comparison": {
+          "cosine": 0.637960054876002,
+          "cross_fitted_norm": 0.0035919340111058616,
+          "difference_norm": 0.020670576148398928,
+          "dot": 5.219185715613073e-05,
+          "legacy_norm": 0.02277618147712395
+        },
+        "scalar_components": {
+          "card_reward_conditional_policy": 0.004612182219109574,
+          "card_reward_family_policy": 0.003889678751054236,
+          "conditional_entropy_regularizer": -0.004484484281390857,
+          "family_entropy_regularizer": -0.0028709909349158885,
+          "other_policy": 0.009896716888794711
+        },
+        "summary": {
+          "advantage_mean": 0.019708344725718037,
+          "advantage_signs": {
+            "negative": 688,
+            "positive": 870
+          },
+          "clipping": {
+            "clipped_low": 326,
+            "unclipped": 1232
+          },
+          "clipping_rates": {
+            "clipped_low": 0.2092426187419769,
+            "unclipped": 0.7907573812580231
+          },
+          "count": 1558,
+          "direct_take_pressure_sum": 0.0019690199112475724,
+          "greedy_families": {
+            "buy_card": 112,
+            "event_option": 120,
+            "leave": 33,
+            "map_node": 844,
+            "take": 449
+          },
+          "prediction_mean": 0.1287388322668275,
+          "raw_return_mean": 0.14844717699254553,
+          "residual_rmse": 0.13660948744265522,
+          "selected_families": {
+            "bowl": 8,
+            "buy_card": 47,
+            "buy_potion": 10,
+            "buy_relic": 7,
+            "event_option": 120,
+            "leave": 67,
+            "map_node": 844,
+            "remove_card": 14,
+            "skip": 204,
+            "take": 237
+          }
+        },
+        "trajectories": 64
+      },
+      {
+        "chunk_index": 7,
+        "gradient_comparison": {
+          "cosine": 0.2866360667062842,
+          "cross_fitted_norm": 0.0025298821833428333,
+          "difference_norm": 0.020757402243170662,
+          "dot": 1.5475230868179083e-05,
+          "legacy_norm": 0.021340569480675774
+        },
+        "scalar_components": {
+          "card_reward_conditional_policy": 0.0007126143058327723,
+          "card_reward_family_policy": 0.0014639499255535264,
+          "conditional_entropy_regularizer": -0.004454651972548937,
+          "family_entropy_regularizer": -0.002891164814413976,
+          "other_policy": 0.005246905452628524
+        },
+        "summary": {
+          "advantage_mean": 0.0119369179361744,
+          "advantage_signs": {
+            "negative": 623,
+            "positive": 774,
+            "zero": 1
+          },
+          "clipping": {
+            "clipped_low": 295,
+            "unclipped": 1103
+          },
+          "clipping_rates": {
+            "clipped_low": 0.21101573676680974,
+            "unclipped": 0.7889842632331903
+          },
+          "count": 1398,
+          "direct_take_pressure_sum": 0.00031820113777314093,
+          "greedy_families": {
+            "buy_card": 92,
+            "event_option": 104,
+            "leave": 23,
+            "map_node": 760,
+            "take": 419
+          },
+          "prediction_mean": 0.11675570059154688,
+          "raw_return_mean": 0.1286926185277213,
+          "residual_rmse": 0.117987851599593,
+          "selected_families": {
+            "buy_card": 31,
+            "buy_potion": 10,
+            "buy_relic": 5,
+            "event_option": 104,
+            "leave": 54,
+            "map_node": 760,
+            "remove_card": 15,
+            "skip": 195,
+            "take": 224
+          }
+        },
+        "trajectories": 64
+      }
+    ],
+    "dimensions": {
+      "advantage_sign": [
+        {
+          "advantage_mean": -0.10317940122544907,
+          "advantage_signs": {
+            "negative": 5396
+          },
+          "clipping": {
+            "unclipped": 5396
+          },
+          "clipping_rates": {
+            "unclipped": 1.0
+          },
+          "count": 5396,
+          "direct_take_pressure_sum": 0.003911334772380134,
+          "greedy_families": {
+            "buy_card": 296,
+            "buy_potion": 4,
+            "event_option": 459,
+            "leave": 103,
+            "map_node": 2900,
+            "skip": 8,
+            "take": 1626
+          },
+          "label": "negative",
+          "prediction_mean": 0.2055229175403282,
+          "raw_return_mean": 0.1023435163148791,
+          "residual_rmse": 0.13430050565726862,
+          "selected_families": {
+            "bowl": 6,
+            "buy_card": 90,
+            "buy_potion": 56,
+            "buy_relic": 19,
+            "event_option": 459,
+            "leave": 187,
+            "map_node": 2900,
+            "remove_card": 51,
+            "skip": 805,
+            "take": 823
+          }
+        },
+        {
+          "advantage_mean": 0.1029036369900347,
+          "advantage_signs": {
+            "positive": 6326
+          },
+          "clipping": {
+            "clipped_low": 2254,
+            "unclipped": 4072
+          },
+          "clipping_rates": {
+            "clipped_low": 0.35630730319317105,
+            "unclipped": 0.643692696806829
+          },
+          "count": 6326,
+          "direct_take_pressure_sum": 0.00582771596665741,
+          "greedy_families": {
+            "bowl": 2,
+            "buy_card": 343,
+            "buy_potion": 3,
+            "buy_relic": 1,
+            "event_option": 487,
+            "leave": 134,
+            "map_node": 3456,
+            "skip": 14,
+            "take": 1886
+          },
+          "label": "positive",
+          "prediction_mean": 0.06930407165876085,
+          "raw_return_mean": 0.17220770864879553,
+          "residual_rmse": 0.13415155416665947,
+          "selected_families": {
+            "bowl": 22,
+            "buy_card": 145,
+            "buy_potion": 49,
+            "buy_relic": 25,
+            "event_option": 487,
+            "leave": 213,
+            "map_node": 3456,
+            "remove_card": 49,
+            "skip": 867,
+            "take": 1013
+          }
+        },
+        {
+          "advantage_mean": 0.0,
+          "advantage_signs": {
+            "zero": 7
+          },
+          "clipping": {
+            "clipped_low": 7
+          },
+          "clipping_rates": {
+            "clipped_low": 1.0
+          },
+          "count": 7,
+          "direct_take_pressure_sum": null,
+          "greedy_families": {
+            "buy_card": 2,
+            "event_option": 5
+          },
+          "label": "zero",
+          "prediction_mean": 0.0,
+          "raw_return_mean": 0.0,
+          "residual_rmse": 0.0,
+          "selected_families": {
+            "buy_relic": 1,
+            "event_option": 5,
+            "remove_card": 1
+          }
+        }
+      ],
+      "card_reward_ordinal": [
+        {
+          "advantage_mean": 0.01362306472676995,
+          "advantage_signs": {
+            "negative": 246,
+            "positive": 266
+          },
+          "clipping": {
+            "clipped_low": 28,
+            "unclipped": 484
+          },
+          "clipping_rates": {
+            "clipped_low": 0.0546875,
+            "unclipped": 0.9453125
+          },
+          "count": 512,
+          "direct_take_pressure_sum": 0.002395796755461131,
+          "greedy_families": {
+            "skip": 2,
+            "take": 510
+          },
+          "label": "first",
+          "prediction_mean": 0.1936137773784932,
+          "raw_return_mean": 0.20723684210526314,
+          "residual_rmse": 0.14714808607947563,
+          "selected_families": {
+            "skip": 252,
+            "take": 260
+          }
+        },
+        {
+          "advantage_mean": 0.005049412940975741,
+          "advantage_signs": {
+            "negative": 1144,
+            "positive": 1369
+          },
+          "clipping": {
+            "clipped_low": 594,
+            "unclipped": 1919
+          },
+          "clipping_rates": {
+            "clipped_low": 0.2363708714683645,
+            "unclipped": 0.7636291285316354
+          },
+          "count": 2513,
+          "direct_take_pressure_sum": 0.005918651075648536,
+          "greedy_families": {
+            "bowl": 2,
+            "skip": 15,
+            "take": 2496
+          },
+          "label": "later",
+          "prediction_mean": 0.11401565921015418,
+          "raw_return_mean": 0.11906507215112992,
+          "residual_rmse": 0.12929768888978704,
+          "selected_families": {
+            "bowl": 28,
+            "skip": 1167,
+            "take": 1318
+          }
+        },
+        {
+          "advantage_mean": 0.007961997064943915,
+          "advantage_signs": {
+            "negative": 244,
+            "positive": 267
+          },
+          "clipping": {
+            "clipped_low": 37,
+            "unclipped": 474
+          },
+          "clipping_rates": {
+            "clipped_low": 0.07240704500978473,
+            "unclipped": 0.9275929549902152
+          },
+          "count": 511,
+          "direct_take_pressure_sum": 0.0014246029079278768,
+          "greedy_families": {
+            "skip": 5,
+            "take": 506
+          },
+          "label": "second",
+          "prediction_mean": 0.17564771213957422,
+          "raw_return_mean": 0.18360970920451813,
+          "residual_rmse": 0.14407710210973215,
+          "selected_families": {
+            "skip": 253,
+            "take": 258
+          }
+        }
+      ],
+      "category": [
+        {
+          "advantage_mean": 0.006711754626969625,
+          "advantage_signs": {
+            "negative": 1634,
+            "positive": 1902
+          },
+          "clipping": {
+            "clipped_low": 659,
+            "unclipped": 2877
+          },
+          "clipping_rates": {
+            "clipped_low": 0.186368778280543,
+            "unclipped": 0.813631221719457
+          },
+          "count": 3536,
+          "direct_take_pressure_sum": 0.009739050739037544,
+          "greedy_families": {
+            "bowl": 2,
+            "skip": 22,
+            "take": 3512
+          },
+          "label": "card_reward",
+          "prediction_mean": 0.1344478468654492,
+          "raw_return_mean": 0.14115960149241882,
+          "residual_rmse": 0.1342247935202657,
+          "selected_families": {
+            "bowl": 28,
+            "skip": 1672,
+            "take": 1836
+          }
+        },
+        {
+          "advantage_mean": 0.003887289809141964,
+          "advantage_signs": {
+            "negative": 459,
+            "positive": 487,
+            "zero": 5
+          },
+          "clipping": {
+            "clipped_low": 170,
+            "unclipped": 781
+          },
+          "clipping_rates": {
+            "clipped_low": 0.17875920084121977,
+            "unclipped": 0.8212407991587802
+          },
+          "count": 951,
+          "direct_take_pressure_sum": null,
+          "greedy_families": {
+            "event_option": 951
+          },
+          "label": "event",
+          "prediction_mean": 0.135282928059399,
+          "raw_return_mean": 0.13917021786854095,
+          "residual_rmse": 0.13533045880484687,
+          "selected_families": {
+            "event_option": 951
+          }
+        },
+        {
+          "advantage_mean": 0.008685271525663354,
+          "advantage_signs": {
+            "negative": 2900,
+            "positive": 3456
+          },
+          "clipping": {
+            "clipped_low": 1232,
+            "unclipped": 5124
+          },
+          "clipping_rates": {
+            "clipped_low": 0.19383259911894274,
+            "unclipped": 0.8061674008810573
+          },
+          "count": 6356,
+          "direct_take_pressure_sum": null,
+          "greedy_families": {
+            "map_node": 6356
+          },
+          "label": "route",
+          "prediction_mean": 0.13075197798578045,
+          "raw_return_mean": 0.1394372495114438,
+          "residual_rmse": 0.13223296601623513,
+          "selected_families": {
+            "map_node": 6356
+          }
+        },
+        {
+          "advantage_mean": 0.013069069751536627,
+          "advantage_signs": {
+            "negative": 403,
+            "positive": 481,
+            "zero": 2
+          },
+          "clipping": {
+            "clipped_low": 200,
+            "unclipped": 686
+          },
+          "clipping_rates": {
+            "clipped_low": 0.22573363431151242,
+            "unclipped": 0.7742663656884876
+          },
+          "count": 886,
+          "direct_take_pressure_sum": null,
+          "greedy_families": {
+            "buy_card": 641,
+            "buy_potion": 7,
+            "buy_relic": 1,
+            "leave": 237
+          },
+          "label": "shop",
+          "prediction_mean": 0.1267471751496554,
+          "raw_return_mean": 0.13981624490119202,
+          "residual_rmse": 0.146099094084239,
+          "selected_families": {
+            "buy_card": 235,
+            "buy_potion": 105,
+            "buy_relic": 45,
+            "leave": 400,
+            "remove_card": 101
+          }
+        }
+      ],
+      "chunk": [
+        {
+          "advantage_mean": 0.010595706479699079,
+          "advantage_signs": {
+            "negative": 636,
+            "positive": 757,
+            "zero": 3
+          },
+          "clipping": {
+            "clipped_low": 229,
+            "unclipped": 1167
+          },
+          "clipping_rates": {
+            "clipped_low": 0.16404011461318052,
+            "unclipped": 0.8359598853868195
+          },
+          "count": 1396,
+          "direct_take_pressure_sum": 0.0007321402106446465,
+          "greedy_families": {
+            "bowl": 1,
+            "buy_card": 31,
+            "buy_potion": 4,
+            "buy_relic": 1,
+            "event_option": 119,
+            "leave": 57,
+            "map_node": 753,
+            "skip": 18,
+            "take": 412
+          },
+          "label": "0",
+          "prediction_mean": 0.1231573724928038,
+          "raw_return_mean": 0.13375307897250288,
+          "residual_rmse": 0.11560906651014465,
+          "selected_families": {
+            "bowl": 13,
+            "buy_card": 25,
+            "buy_potion": 14,
+            "buy_relic": 4,
+            "event_option": 119,
+            "leave": 39,
+            "map_node": 753,
+            "remove_card": 11,
+            "skip": 217,
+            "take": 201
+          }
+        },
+        {
+          "advantage_mean": -0.0008937331034257418,
+          "advantage_signs": {
+            "negative": 732,
+            "positive": 713
+          },
+          "clipping": {
+            "clipped_low": 183,
+            "unclipped": 1262
+          },
+          "clipping_rates": {
+            "clipped_low": 0.12664359861591695,
+            "unclipped": 0.873356401384083
+          },
+          "count": 1445,
+          "direct_take_pressure_sum": 0.0013374088506740527,
+          "greedy_families": {
+            "buy_card": 76,
+            "buy_potion": 2,
+            "event_option": 116,
+            "leave": 24,
+            "map_node": 776,
+            "skip": 4,
+            "take": 447
+          },
+          "label": "1",
+          "prediction_mean": 0.1366431412258078,
+          "raw_return_mean": 0.13574940812238206,
+          "residual_rmse": 0.10700222864483981,
+          "selected_families": {
+            "bowl": 1,
+            "buy_card": 26,
+            "buy_potion": 15,
+            "buy_relic": 7,
+            "event_option": 116,
+            "leave": 42,
+            "map_node": 776,
+            "remove_card": 12,
+            "skip": 230,
+            "take": 220
+          }
+        },
+        {
+          "advantage_mean": 0.015619800047067362,
+          "advantage_signs": {
+            "negative": 539,
+            "positive": 921
+          },
+          "clipping": {
+            "clipped_low": 484,
+            "unclipped": 976
+          },
+          "clipping_rates": {
+            "clipped_low": 0.3315068493150685,
+            "unclipped": 0.6684931506849315
+          },
+          "count": 1460,
+          "direct_take_pressure_sum": 0.0003903058150399079,
+          "greedy_families": {
+            "buy_card": 87,
+            "event_option": 111,
+            "leave": 25,
+            "map_node": 794,
+            "take": 443
+          },
+          "label": "2",
+          "prediction_mean": 0.12444268493250486,
+          "raw_return_mean": 0.14006248497957222,
+          "residual_rmse": 0.18607028569410783,
+          "selected_families": {
+            "buy_card": 33,
+            "buy_potion": 11,
+            "buy_relic": 5,
+            "event_option": 111,
+            "leave": 52,
+            "map_node": 794,
+            "remove_card": 11,
+            "skip": 219,
+            "take": 224
+          }
+        },
+        {
+          "advantage_mean": -0.002669253881685809,
+          "advantage_signs": {
+            "negative": 695,
+            "positive": 775,
+            "zero": 2
+          },
+          "clipping": {
+            "clipped_low": 224,
+            "unclipped": 1248
+          },
+          "clipping_rates": {
+            "clipped_low": 0.15217391304347827,
+            "unclipped": 0.8478260869565217
+          },
+          "count": 1472,
+          "direct_take_pressure_sum": 0.0021699372470883748,
+          "greedy_families": {
+            "buy_card": 86,
+            "event_option": 120,
+            "leave": 23,
+            "map_node": 806,
+            "take": 437
+          },
+          "label": "3",
+          "prediction_mean": 0.14623809446139593,
+          "raw_return_mean": 0.14356884057971014,
+          "residual_rmse": 0.13314503540600892,
+          "selected_families": {
+            "bowl": 2,
+            "buy_card": 21,
+            "buy_potion": 16,
+            "buy_relic": 6,
+            "event_option": 120,
+            "leave": 55,
+            "map_node": 806,
+            "remove_card": 11,
+            "skip": 199,
+            "take": 236
+          }
+        },
+        {
+          "advantage_mean": 0.00030864753090469613,
+          "advantage_signs": {
+            "negative": 687,
+            "positive": 773
+          },
+          "clipping": {
+            "clipped_low": 277,
+            "unclipped": 1183
+          },
+          "clipping_rates": {
+            "clipped_low": 0.18972602739726027,
+            "unclipped": 0.8102739726027397
+          },
+          "count": 1460,
+          "direct_take_pressure_sum": 0.0012155036434837309,
+          "greedy_families": {
+            "bowl": 1,
+            "buy_card": 81,
+            "event_option": 115,
+            "leave": 21,
+            "map_node": 794,
+            "take": 448
+          },
+          "label": "4",
+          "prediction_mean": 0.13872043201728085,
+          "raw_return_mean": 0.13902907954818552,
+          "residual_rmse": 0.13354497732473203,
+          "selected_families": {
+            "bowl": 1,
+            "buy_card": 23,
+            "buy_potion": 12,
+            "buy_relic": 9,
+            "event_option": 115,
+            "leave": 44,
+            "map_node": 794,
+            "remove_card": 14,
+            "skip": 211,
+            "take": 237
+          }
+        },
+        {
+          "advantage_mean": 0.009085969199862605,
+          "advantage_signs": {
+            "negative": 796,
+            "positive": 743,
+            "zero": 1
+          },
+          "clipping": {
+            "clipped_low": 243,
+            "unclipped": 1297
+          },
+          "clipping_rates": {
+            "clipped_low": 0.1577922077922078,
+            "unclipped": 0.8422077922077922
+          },
+          "count": 1540,
+          "direct_take_pressure_sum": 0.0016065339230861176,
+          "greedy_families": {
+            "buy_card": 76,
+            "buy_potion": 1,
+            "event_option": 146,
+            "leave": 31,
+            "map_node": 829,
+            "take": 457
+          },
+          "label": "5",
+          "prediction_mean": 0.13945583986826224,
+          "raw_return_mean": 0.14854180906812486,
+          "residual_rmse": 0.12677553668639674,
+          "selected_families": {
+            "bowl": 3,
+            "buy_card": 29,
+            "buy_potion": 17,
+            "buy_relic": 2,
+            "event_option": 146,
+            "leave": 47,
+            "map_node": 829,
+            "remove_card": 13,
+            "skip": 197,
+            "take": 257
+          }
+        },
+        {
+          "advantage_mean": 0.019708344725718037,
+          "advantage_signs": {
+            "negative": 688,
+            "positive": 870
+          },
+          "clipping": {
+            "clipped_low": 326,
+            "unclipped": 1232
+          },
+          "clipping_rates": {
+            "clipped_low": 0.2092426187419769,
+            "unclipped": 0.7907573812580231
+          },
+          "count": 1558,
+          "direct_take_pressure_sum": 0.0019690199112475724,
+          "greedy_families": {
+            "buy_card": 112,
+            "event_option": 120,
+            "leave": 33,
+            "map_node": 844,
+            "take": 449
+          },
+          "label": "6",
+          "prediction_mean": 0.1287388322668275,
+          "raw_return_mean": 0.14844717699254553,
+          "residual_rmse": 0.13660948744265522,
+          "selected_families": {
+            "bowl": 8,
+            "buy_card": 47,
+            "buy_potion": 10,
+            "buy_relic": 7,
+            "event_option": 120,
+            "leave": 67,
+            "map_node": 844,
+            "remove_card": 14,
+            "skip": 204,
+            "take": 237
+          }
+        },
+        {
+          "advantage_mean": 0.0119369179361744,
+          "advantage_signs": {
+            "negative": 623,
+            "positive": 774,
+            "zero": 1
+          },
+          "clipping": {
+            "clipped_low": 295,
+            "unclipped": 1103
+          },
+          "clipping_rates": {
+            "clipped_low": 0.21101573676680974,
+            "unclipped": 0.7889842632331903
+          },
+          "count": 1398,
+          "direct_take_pressure_sum": 0.00031820113777314093,
+          "greedy_families": {
+            "buy_card": 92,
+            "event_option": 104,
+            "leave": 23,
+            "map_node": 760,
+            "take": 419
+          },
+          "label": "7",
+          "prediction_mean": 0.11675570059154688,
+          "raw_return_mean": 0.1286926185277213,
+          "residual_rmse": 0.117987851599593,
+          "selected_families": {
+            "buy_card": 31,
+            "buy_potion": 10,
+            "buy_relic": 5,
+            "event_option": 104,
+            "leave": 54,
+            "map_node": 760,
+            "remove_card": 15,
+            "skip": 195,
+            "take": 224
+          }
+        }
+      ],
+      "clipping_status": [
+        {
+          "advantage_mean": 0.11691768119990378,
+          "advantage_signs": {
+            "positive": 2254,
+            "zero": 7
+          },
+          "clipping": {
+            "clipped_low": 2261
+          },
+          "clipping_rates": {
+            "clipped_low": 1.0
+          },
+          "count": 2261,
+          "direct_take_pressure_sum": 0.00022624620570936817,
+          "greedy_families": {
+            "bowl": 1,
+            "buy_card": 149,
+            "buy_relic": 1,
+            "event_option": 170,
+            "leave": 50,
+            "map_node": 1232,
+            "take": 658
+          },
+          "label": "clipped_low",
+          "prediction_mean": 0.0,
+          "raw_return_mean": 0.11691768119990378,
+          "residual_rmse": 0.14661264505362237,
+          "selected_families": {
+            "bowl": 14,
+            "buy_card": 62,
+            "buy_potion": 16,
+            "buy_relic": 16,
+            "event_option": 170,
+            "leave": 83,
+            "map_node": 1232,
+            "remove_card": 23,
+            "skip": 304,
+            "take": 341
+          }
+        },
+        {
+          "advantage_mean": -0.017969847761570144,
+          "advantage_signs": {
+            "negative": 5396,
+            "positive": 4072
+          },
+          "clipping": {
+            "unclipped": 9468
+          },
+          "clipping_rates": {
+            "unclipped": 1.0
+          },
+          "count": 9468,
+          "direct_take_pressure_sum": 0.009512804533328175,
+          "greedy_families": {
+            "bowl": 1,
+            "buy_card": 492,
+            "buy_potion": 7,
+            "event_option": 781,
+            "leave": 187,
+            "map_node": 5124,
+            "skip": 22,
+            "take": 2854
+          },
+          "label": "unclipped",
+          "prediction_mean": 0.16343675753706507,
+          "raw_return_mean": 0.14546690977549492,
+          "residual_rmse": 0.13103677040713607,
+          "selected_families": {
+            "bowl": 14,
+            "buy_card": 173,
+            "buy_potion": 89,
+            "buy_relic": 29,
+            "event_option": 781,
+            "leave": 317,
+            "map_node": 5124,
+            "remove_card": 78,
+            "skip": 1368,
+            "take": 1495
+          }
+        }
+      ],
+      "effective_floor": [
+        {
+          "advantage_mean": 0.04317972019156328,
+          "advantage_signs": {
+            "negative": 154,
+            "positive": 425
+          },
+          "clipping": {
+            "clipped_low": 259,
+            "unclipped": 320
+          },
+          "clipping_rates": {
+            "clipped_low": 0.4473229706390328,
+            "unclipped": 0.5526770293609672
+          },
+          "count": 579,
+          "direct_take_pressure_sum": 0.0007993441702572428,
+          "greedy_families": {
+            "bowl": 1,
+            "buy_card": 35,
+            "event_option": 46,
+            "leave": 11,
+            "map_node": 320,
+            "skip": 1,
+            "take": 165
+          },
+          "label": "17..33",
+          "prediction_mean": 0.05569007952361412,
+          "raw_return_mean": 0.09886979971517741,
+          "residual_rmse": 0.11104685987221763,
+          "selected_families": {
+            "bowl": 9,
+            "buy_card": 12,
+            "buy_relic": 8,
+            "event_option": 46,
+            "leave": 22,
+            "map_node": 320,
+            "remove_card": 4,
+            "skip": 68,
+            "take": 90
+          }
+        },
+        {
+          "advantage_mean": 0.0062072915332306005,
+          "advantage_signs": {
+            "negative": 5242,
+            "positive": 5901,
+            "zero": 7
+          },
+          "clipping": {
+            "clipped_low": 2002,
+            "unclipped": 9148
+          },
+          "clipping_rates": {
+            "clipped_low": 0.17955156950672646,
+            "unclipped": 0.8204484304932735
+          },
+          "count": 11150,
+          "direct_take_pressure_sum": 0.008939706568780301,
+          "greedy_families": {
+            "bowl": 1,
+            "buy_card": 606,
+            "buy_potion": 7,
+            "buy_relic": 1,
+            "event_option": 905,
+            "leave": 226,
+            "map_node": 6036,
+            "skip": 21,
+            "take": 3347
+          },
+          "label": "<17",
+          "prediction_mean": 0.13589010442302774,
+          "raw_return_mean": 0.14209739595625834,
+          "residual_rmse": 0.13527334584190118,
+          "selected_families": {
+            "bowl": 19,
+            "buy_card": 223,
+            "buy_potion": 105,
+            "buy_relic": 37,
+            "event_option": 905,
+            "leave": 378,
+            "map_node": 6036,
+            "remove_card": 97,
+            "skip": 1604,
+            "take": 1746
+          }
+        }
+      ],
+      "fold": [
+        {
+          "advantage_mean": 0.01034309898375383,
+          "advantage_signs": {
+            "negative": 1290,
+            "positive": 1571,
+            "zero": 3
+          },
+          "clipping": {
+            "clipped_low": 504,
+            "unclipped": 2360
+          },
+          "clipping_rates": {
+            "clipped_low": 0.17597765363128492,
+            "unclipped": 0.8240223463687151
+          },
+          "count": 2864,
+          "direct_take_pressure_sum": 0.002340253079757451,
+          "greedy_families": {
+            "buy_card": 145,
+            "buy_potion": 1,
+            "event_option": 240,
+            "leave": 54,
+            "map_node": 1562,
+            "skip": 3,
+            "take": 859
+          },
+          "label": "fold-0",
+          "prediction_mean": 0.12785154964900122,
+          "raw_return_mean": 0.13819464863275507,
+          "residual_rmse": 0.12895321421625905,
+          "selected_families": {
+            "bowl": 2,
+            "buy_card": 48,
+            "buy_potion": 28,
+            "buy_relic": 8,
+            "event_option": 240,
+            "leave": 92,
+            "map_node": 1562,
+            "remove_card": 24,
+            "skip": 406,
+            "take": 454
+          }
+        },
+        {
+          "advantage_mean": 0.030561418879691195,
+          "advantage_signs": {
+            "negative": 1145,
+            "positive": 1954,
+            "zero": 1
+          },
+          "clipping": {
+            "clipped_low": 727,
+            "unclipped": 2373
+          },
+          "clipping_rates": {
+            "clipped_low": 0.23451612903225807,
+            "unclipped": 0.765483870967742
+          },
+          "count": 3100,
+          "direct_take_pressure_sum": 0.001589098291272328,
+          "greedy_families": {
+            "bowl": 1,
+            "buy_card": 161,
+            "buy_potion": 3,
+            "buy_relic": 1,
+            "event_option": 257,
+            "leave": 59,
+            "map_node": 1679,
+            "skip": 7,
+            "take": 932
+          },
+          "label": "fold-1",
+          "prediction_mean": 0.1151205279227989,
+          "raw_return_mean": 0.14568194680249008,
+          "residual_rmse": 0.1360202679376653,
+          "selected_families": {
+            "bowl": 13,
+            "buy_card": 62,
+            "buy_potion": 24,
+            "buy_relic": 12,
+            "event_option": 257,
+            "leave": 100,
+            "map_node": 1679,
+            "remove_card": 26,
+            "skip": 443,
+            "take": 484
+          }
+        },
+        {
+          "advantage_mean": -0.013046736674943512,
+          "advantage_signs": {
+            "negative": 1566,
+            "positive": 1310,
+            "zero": 2
+          },
+          "clipping": {
+            "clipped_low": 515,
+            "unclipped": 2363
+          },
+          "clipping_rates": {
+            "clipped_low": 0.1789437109103544,
+            "unclipped": 0.8210562890896456
+          },
+          "count": 2878,
+          "direct_take_pressure_sum": 0.003960667264368681,
+          "greedy_families": {
+            "bowl": 1,
+            "buy_card": 178,
+            "event_option": 216,
+            "leave": 66,
+            "map_node": 1545,
+            "skip": 7,
+            "take": 865
+          },
+          "label": "fold-2",
+          "prediction_mean": 0.14914270975566477,
+          "raw_return_mean": 0.13609597308072124,
+          "residual_rmse": 0.14439939154081438,
+          "selected_families": {
+            "bowl": 12,
+            "buy_card": 67,
+            "buy_potion": 24,
+            "buy_relic": 15,
+            "event_option": 216,
+            "leave": 109,
+            "map_node": 1545,
+            "remove_card": 29,
+            "skip": 431,
+            "take": 430
+          }
+        },
+        {
+          "advantage_mean": 0.002562463706411533,
+          "advantage_signs": {
+            "negative": 1395,
+            "positive": 1491,
+            "zero": 1
+          },
+          "clipping": {
+            "clipped_low": 515,
+            "unclipped": 2372
+          },
+          "clipping_rates": {
+            "clipped_low": 0.1783858676827156,
+            "unclipped": 0.8216141323172844
+          },
+          "count": 2887,
+          "direct_take_pressure_sum": 0.0018490321036390837,
+          "greedy_families": {
+            "buy_card": 157,
+            "buy_potion": 3,
+            "event_option": 238,
+            "leave": 58,
+            "map_node": 1570,
+            "skip": 5,
+            "take": 856
+          },
+          "label": "fold-3",
+          "prediction_mean": 0.1368708094661284,
+          "raw_return_mean": 0.13943327317253992,
+          "residual_rmse": 0.126478392944887,
+          "selected_families": {
+            "bowl": 1,
+            "buy_card": 58,
+            "buy_potion": 29,
+            "buy_relic": 10,
+            "event_option": 238,
+            "leave": 99,
+            "map_node": 1570,
+            "remove_card": 22,
+            "skip": 392,
+            "take": 468
+          }
+        }
+      ],
+      "selected_family": [
+        {
+          "advantage_mean": 0.05590997118459986,
+          "advantage_signs": {
+            "negative": 6,
+            "positive": 22
+          },
+          "clipping": {
+            "clipped_low": 14,
+            "unclipped": 14
+          },
+          "clipping_rates": {
+            "clipped_low": 0.5,
+            "unclipped": 0.5
+          },
+          "count": 28,
+          "direct_take_pressure_sum": -0.0005036377278803586,
+          "greedy_families": {
+            "bowl": 1,
+            "take": 27
+          },
+          "label": "card_reward:bowl",
+          "prediction_mean": 0.07190957768758058,
+          "raw_return_mean": 0.12781954887218044,
+          "residual_rmse": 0.12360443449776075,
+          "selected_families": {
+            "bowl": 28
+          }
+        },
+        {
+          "advantage_mean": 0.0027821599764817125,
+          "advantage_signs": {
+            "negative": 805,
+            "positive": 867
+          },
+          "clipping": {
+            "clipped_low": 304,
+            "unclipped": 1368
+          },
+          "clipping_rates": {
+            "clipped_low": 0.18181818181818182,
+            "unclipped": 0.8181818181818182
+          },
+          "count": 1672,
+          "direct_take_pressure_sum": 0.0013534217174520976,
+          "greedy_families": {
+            "skip": 11,
+            "take": 1661
+          },
+          "label": "card_reward:skip",
+          "prediction_mean": 0.1374428043482056,
+          "raw_return_mean": 0.1402249643246873,
+          "residual_rmse": 0.13418943123144117,
+          "selected_families": {
+            "skip": 1672
+          }
+        },
+        {
+          "advantage_mean": 0.009540040134596065,
+          "advantage_signs": {
+            "negative": 823,
+            "positive": 1013
+          },
+          "clipping": {
+            "clipped_low": 341,
+            "unclipped": 1495
+          },
+          "clipping_rates": {
+            "clipped_low": 0.18572984749455337,
+            "unclipped": 0.8142701525054467
+          },
+          "count": 1836,
+          "direct_take_pressure_sum": 0.008889266749465805,
+          "greedy_families": {
+            "bowl": 1,
+            "skip": 11,
+            "take": 1824
+          },
+          "label": "card_reward:take",
+          "prediction_mean": 0.1326741554851723,
+          "raw_return_mean": 0.14221419561976836,
+          "residual_rmse": 0.1344124202832467,
+          "selected_families": {
+            "take": 1836
+          }
+        },
+        {
+          "advantage_mean": 0.003887289809141964,
+          "advantage_signs": {
+            "negative": 459,
+            "positive": 487,
+            "zero": 5
+          },
+          "clipping": {
+            "clipped_low": 170,
+            "unclipped": 781
+          },
+          "clipping_rates": {
+            "clipped_low": 0.17875920084121977,
+            "unclipped": 0.8212407991587802
+          },
+          "count": 951,
+          "direct_take_pressure_sum": null,
+          "greedy_families": {
+            "event_option": 951
+          },
+          "label": "event:event_option",
+          "prediction_mean": 0.135282928059399,
+          "raw_return_mean": 0.13917021786854095,
+          "residual_rmse": 0.13533045880484687,
+          "selected_families": {
+            "event_option": 951
+          }
+        },
+        {
+          "advantage_mean": 0.008685271525663354,
+          "advantage_signs": {
+            "negative": 2900,
+            "positive": 3456
+          },
+          "clipping": {
+            "clipped_low": 1232,
+            "unclipped": 5124
+          },
+          "clipping_rates": {
+            "clipped_low": 0.19383259911894274,
+            "unclipped": 0.8061674008810573
+          },
+          "count": 6356,
+          "direct_take_pressure_sum": null,
+          "greedy_families": {
+            "map_node": 6356
+          },
+          "label": "route:map_node",
+          "prediction_mean": 0.13075197798578045,
+          "raw_return_mean": 0.1394372495114438,
+          "residual_rmse": 0.13223296601623513,
+          "selected_families": {
+            "map_node": 6356
+          }
+        },
+        {
+          "advantage_mean": 0.022668039701966965,
+          "advantage_signs": {
+            "negative": 90,
+            "positive": 145
+          },
+          "clipping": {
+            "clipped_low": 62,
+            "unclipped": 173
+          },
+          "clipping_rates": {
+            "clipped_low": 0.26382978723404255,
+            "unclipped": 0.7361702127659574
+          },
+          "count": 235,
+          "direct_take_pressure_sum": null,
+          "greedy_families": {
+            "buy_card": 216,
+            "leave": 19
+          },
+          "label": "shop:buy_card",
+          "prediction_mean": 0.11305424473252351,
+          "raw_return_mean": 0.13572228443449047,
+          "residual_rmse": 0.1484115565494468,
+          "selected_families": {
+            "buy_card": 235
+          }
+        },
+        {
+          "advantage_mean": 0.00288252907493724,
+          "advantage_signs": {
+            "negative": 56,
+            "positive": 49
+          },
+          "clipping": {
+            "clipped_low": 16,
+            "unclipped": 89
+          },
+          "clipping_rates": {
+            "clipped_low": 0.1523809523809524,
+            "unclipped": 0.8476190476190476
+          },
+          "count": 105,
+          "direct_take_pressure_sum": null,
+          "greedy_families": {
+            "buy_card": 96,
+            "buy_potion": 3,
+            "leave": 6
+          },
+          "label": "shop:buy_potion",
+          "prediction_mean": 0.15434387025672525,
+          "raw_return_mean": 0.1572263993316625,
+          "residual_rmse": 0.1571674170915915,
+          "selected_families": {
+            "buy_potion": 105
+          }
+        },
+        {
+          "advantage_mean": -0.0057752953070168665,
+          "advantage_signs": {
+            "negative": 19,
+            "positive": 25,
+            "zero": 1
+          },
+          "clipping": {
+            "clipped_low": 16,
+            "unclipped": 29
+          },
+          "clipping_rates": {
+            "clipped_low": 0.35555555555555557,
+            "unclipped": 0.6444444444444445
+          },
+          "count": 45,
+          "direct_take_pressure_sum": null,
+          "greedy_families": {
+            "buy_card": 43,
+            "buy_relic": 1,
+            "leave": 1
+          },
+          "label": "shop:buy_relic",
+          "prediction_mean": 0.11376749803606169,
+          "raw_return_mean": 0.10799220272904482,
+          "residual_rmse": 0.11991150715012223,
+          "selected_families": {
+            "buy_relic": 45
+          }
+        },
+        {
+          "advantage_mean": 0.011147269904409394,
+          "advantage_signs": {
+            "negative": 187,
+            "positive": 213
+          },
+          "clipping": {
+            "clipped_low": 83,
+            "unclipped": 317
+          },
+          "clipping_rates": {
+            "clipped_low": 0.2075,
+            "unclipped": 0.7925
+          },
+          "count": 400,
+          "direct_take_pressure_sum": null,
+          "greedy_families": {
+            "buy_card": 188,
+            "buy_potion": 3,
+            "leave": 209
+          },
+          "label": "shop:leave",
+          "prediction_mean": 0.1288965897447134,
+          "raw_return_mean": 0.1400438596491228,
+          "residual_rmse": 0.1448509372070862,
+          "selected_families": {
+            "leave": 400
+          }
+        },
+        {
+          "advantage_mean": 0.017331893505770368,
+          "advantage_signs": {
+            "negative": 51,
+            "positive": 49,
+            "zero": 1
+          },
+          "clipping": {
+            "clipped_low": 23,
+            "unclipped": 78
+          },
+          "clipping_rates": {
+            "clipped_low": 0.22772277227722773,
+            "unclipped": 0.7722772277227723
+          },
+          "count": 101,
+          "direct_take_pressure_sum": null,
+          "greedy_families": {
+            "buy_card": 98,
+            "buy_potion": 1,
+            "leave": 2
+          },
+          "label": "shop:remove_card",
+          "prediction_mean": 0.1271878216236373,
+          "raw_return_mean": 0.14451971512940767,
+          "residual_rmse": 0.14426611594858574,
+          "selected_families": {
+            "remove_card": 101
+          }
+        }
+      ]
+    },
+    "execution_counts": {
+      "chunks": 8,
+      "decisions": 11729,
+      "trajectories": 512,
+      "victories": 0
+    },
+    "final_window": {
+      "greedy_families": {
+        "bowl": 1,
+        "take": 1773
+      },
+      "multi_family_decisions": 1774,
+      "non_take_exceptions": [
+        {
+          "advantage": 0.04578364400944845,
+          "chunk_index": 4,
+          "decision_id": "seed-2663:decision-56",
+          "decision_index": 56,
+          "greedy_family": "bowl",
+          "seed": 2663,
+          "selected_family": "take",
+          "trajectory_id": "seed-2663"
+        }
+      ],
+      "registered_stop": false,
+      "window_chunk_indices": [
+        4,
+        5,
+        6,
+        7
+      ]
+    },
+    "verdict": "take_pressure_persists_on_supported_unclipped_rows",
+    "verdict_inputs": {
+      "clipped_pressure": 0.00022624620570936817,
+      "final_window_supported": [
+        true,
+        true,
+        true,
+        true
+      ],
+      "final_window_unclipped_pressures": [
+        0.0011221432150055235,
+        0.0006715504087695825,
+        0.0014817736953907509,
+        0.00014821169027024757
+      ],
+      "global_support": "supported",
+      "unclipped_pressure": 0.009512804533328175
+    }
+  },
+  "identity": {
+    "authorization_sha256": "80dffa2fa2c1d1a9d68d638276c73730415842f085c7d881609a37114d88152f",
+    "logical_execution_id": "noncombat-cross-fitted-hierarchical-learning-successor-20260808-r2",
+    "registration_sha256": "9d792cadbece4ea21768386904633ebded2e94525fb186bdcbf4a4d7729dbdf9",
+    "request_sha256": "6257a36c6573c8c412bb8727736e81b063dd0c7076f1ea5b41a70d4a08206c2e"
+  },
+  "input_bindings": {
+    "artifact_manifest": {
+      "path": "reports/noncombat_cross_fitted_hierarchical_learning_successor_20260808_r2/artifact_manifest.json",
+      "sha256": "9ae80569dc405d17da7d18f277dcebfb280eb40052cb318a19c629fd97cbac75"
+    },
+    "postmortem": {
+      "path": "reports/noncombat_cross_fitted_hierarchical_learning_successor_20260808_r2_postmortem.json",
+      "sha256": "b2fd8de1fcc190553158710786ab950976c41c2643459b9083aa9c8dfebf0c95",
+      "size_bytes": 9712
+    },
+    "terminal": {
+      "path": "reports/noncombat_cross_fitted_hierarchical_learning_successor_20260808_r2/terminal.json",
+      "sha256": "fff36b367fff09c4efd887db2a33d4cd98fd54b3af358ede397587e773282ce1"
+    }
+  },
+  "limitations": [
+    "Baseline clipping and direct logit pressure are descriptive properties of the consumed simulator trajectories, not causal effects.",
+    "Direct take-logit pressure is a row-local factorized coordinate, not the full shared-parameter network gradient.",
+    "Repeated decisions within a trajectory are not independent samples.",
+    "The audit estimates no policy value, OPE quantity, confidence interval, target-supported outcome, or live-game effect.",
+    "No verdict authorizes fitting, training, replay, evaluation, model loading, gameplay, qualification, or promotion."
+  ],
+  "schema_version": "noncombat-cross-fitted-baseline-support-audit-v1",
+  "scope": {
+    "artifact_mutation": false,
+    "environment_construction": false,
+    "evaluation": false,
+    "model_loading": false,
+    "native_loading": false,
+    "new_seed_access": false,
+    "source_only": true,
+    "training_or_replay": false
+  },
+  "source": {
+    "evidence_commit": "7f2f08878e08d9276425f2fb99a97cf095361c9e",
+    "source_commit": "4734ac87705f94b261a69d797ef50805060d4163",
+    "source_files": {
+      "analysis_scripts/audit_cross_fitted_baseline_support.py": {
+        "path": "analysis_scripts/audit_cross_fitted_baseline_support.py",
+        "sha256": "0c33ef4842b622a7c0764d4c82ad332eade7f45c872f54d5ddd6c4d8415fb52b",
+        "size_bytes": 54352
+      },
+      "analysis_scripts/verify_noncombat_cross_fitted_hierarchical_learning_experiment.py": {
+        "path": "analysis_scripts/verify_noncombat_cross_fitted_hierarchical_learning_experiment.py",
+        "sha256": "3785f3f57887b750a75b08f55cd9f3f9e2257de3f810ee801d29a0d87263ea1a",
+        "size_bytes": 237966
+      },
+      "openspec/changes/audit-cross-fitted-baseline-support/specs/noncombat-cross-fitted-baseline-support-audit/spec.md": {
+        "path": "openspec/changes/audit-cross-fitted-baseline-support/specs/noncombat-cross-fitted-baseline-support-audit/spec.md",
+        "sha256": "17530800088e67e1f4910b9cab170809da80b30ad21930c0e3641dae9177ce86",
+        "size_bytes": 8639
+      },
+      "tests/test_audit_cross_fitted_baseline_support.py": {
+        "path": "tests/test_audit_cross_fitted_baseline_support.py",
+        "sha256": "871b53b1c046dcb7659f654baf9487096e5463eaa48a2743c2cd57ed2cbd9f59",
+        "size_bytes": 18184
+      }
+    }
+  },
+  "terminal_verification": {
+    "checkpoint_count": 8,
+    "completed_chunk_indices": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7
+    ],
+    "manifest_sha256": "b563fe8f95fa705ffcf7eafe14c40672599e46ad2a611db6f473a654ec8860eb",
+    "resource_use": {
+      "charged_seconds": 12101.125,
+      "environment_accesses": 512,
+      "optimizer_updates": 8,
+      "retained_decisions": 11729,
+      "stored_bytes": 89975883,
+      "uncompressed_bytes": 242721994
+    },
+    "terminal_sha256": "3de29ce568b0d418f4e1052c4b7c92040d2de316e035b455c47384daf48db1e0",
+    "verdict": "experiment_completed_with_cross_fitted_mechanism_evidence"
+  },
+  "verdict": "take_pressure_persists_on_supported_unclipped_rows"
+}

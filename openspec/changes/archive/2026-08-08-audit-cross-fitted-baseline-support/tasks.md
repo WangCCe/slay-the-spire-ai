@@ -43,18 +43,18 @@
 
 ## 5. Publish Deterministic Read-Only Evidence
 
-- [ ] 5.1 Run the audit twice in fresh isolated source-only processes against
+- [x] 5.1 Run the audit twice in fresh isolated source-only processes against
   the exact pushed source commit and unchanged sealed r2 bundle, using separate
   staging outputs and no caller-selected analytical term.
-- [ ] 5.2 Require byte-identical JSON and Markdown, publish one canonical pair,
+- [x] 5.2 Require byte-identical JSON and Markdown, publish one canonical pair,
   independently recheck report bindings and verdict inputs, and preserve every
   consumed artifact byte.
 
 ## 6. Close The Change
 
-- [ ] 6.1 Update project direction with the bounded verdict and next gate,
+- [x] 6.1 Update project direction with the bounded verdict and next gate,
   synchronize the new capability, archive the change, and run final strict
   OpenSpec validation.
-- [ ] 6.2 Commit and push the report closeout, leaving training, replay,
+- [x] 6.2 Commit and push the report closeout, leaving training, replay,
   evaluation, OPE, model/native loading, gameplay, CommunicationMod,
   qualification, promotion, policy-quality, causal, and formal-RL claims false.
