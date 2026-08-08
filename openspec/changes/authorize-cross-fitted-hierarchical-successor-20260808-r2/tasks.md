@@ -30,18 +30,18 @@
   deterministic approval review.
 - [x] 3.4 Run focused control/verifier tests, canonical digest probes, import
   isolation, and strict OpenSpec using scoped pytest temp storage.
-- [ ] 3.5 Verify exact staged scope, commit and push only delegation/approval
+- [x] 3.5 Verify exact staged scope, commit and push only delegation/approval
   evidence plus task state, and confirm the exact blobs on `origin/master`.
 
 ## 4. Publish Tracked Authorization
 
-- [ ] 4.1 Re-read and revalidate the exact pushed registration, request,
+- [x] 4.1 Re-read and revalidate the exact pushed registration, request,
   delegation, and delegated approval; confirm the registered output root and
   all execution artifacts remain absent.
-- [ ] 4.2 Render one canonical authorization v1, independently validate its
+- [x] 4.2 Render one canonical authorization v1, independently validate its
   registration/request/approval/authority bindings, and publish a deterministic
   authorization review.
-- [ ] 4.3 Run focused control/verifier tests, canonical digest probes, import
+- [x] 4.3 Run focused control/verifier tests, canonical digest probes, import
   isolation, and strict OpenSpec using a fresh scoped pytest temp child.
 - [ ] 4.4 Verify exact staged scope, commit and push only authorization evidence
   plus task state, and confirm the exact blobs on `origin/master`.
