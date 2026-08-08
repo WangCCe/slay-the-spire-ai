@@ -4,7 +4,7 @@ import ast
 import copy
 import gzip
 import hashlib
-import inspect
+import io
 import json
 import os
 import platform
@@ -118,19 +118,441 @@ def _seed_inventory(repository_commit="a" * 40):
     )
 
 
+def _readiness_authority():
+    return {
+        name: False
+        for name in (
+            "causal_claim",
+            "communication_mod",
+            "empirical_registration",
+            "evaluation",
+            "execution_authorization",
+            "execution_request",
+            "external_approval",
+            "formal_rl",
+            "gameplay",
+            "model_fitting",
+            "model_loading",
+            "native_loading",
+            "ope",
+            "policy_quality",
+            "promotion",
+            "qualification",
+            "seed_access",
+            "training",
+        )
+    }
+
+
+def _deterministic_gzip(payload):
+    buffer = io.BytesIO()
+    with gzip.GzipFile(
+        fileobj=buffer, mode="wb", filename="", mtime=0
+    ) as handle:
+        handle.write(payload)
+    return buffer.getvalue()
+
+
+def _compact_readiness_fixture(source_inventory):
+    source_commit = "a" * 40
+    pushed_head = "b" * 40
+    publication_commit = "c" * 40
+    report_path = "reports/synthetic-readiness/readiness_report.json"
+    candidate_path = "reports/synthetic-readiness/candidate_seed_inventory.json.gz"
+    receipt_path = (
+        "reports/noncombat_cross_fitted_empirical_successor_readiness_attempts/"
+        f"{source_commit}/attempt_verified.json"
+    )
+    inventory = _seed_inventory(source_commit)
+    schedule = seed_inventory.materialize_fresh_schedule(inventory)
+    consumed_seeds = list(range(10_000, 10_512))
+    consumed_path = (
+        "reports/noncombat_cross_fitted_hierarchical_learning_"
+        "successor_20260806_r1/registration.json"
+    )
+    consumed_payload = b"synthetic consumed registration\n"
+    candidate = {
+        "authority": _readiness_authority(),
+        "candidate_schedule": schedule,
+        "consumed_cohort": {
+            "registration_binding": {
+                "path": consumed_path,
+                "sha256": hashlib.sha256(consumed_payload).hexdigest(),
+                "size_bytes": len(consumed_payload),
+            },
+            "registration_id": "consumed-registration",
+            "seed_count": 512,
+            "seeds": consumed_seeds,
+            "seeds_sha256": hashlib.sha256(
+                experiment.canonical_json_bytes(consumed_seeds)
+            ).hexdigest(),
+        },
+        "disjointness": {
+            "collision_count": 0,
+            "collisions": [],
+            "status": "passed",
+        },
+        "historical_seed_inventory": inventory,
+        "schema_version": (
+            "noncombat-cross-fitted-empirical-successor-readiness-candidate-v1"
+        ),
+        "source_commit": source_commit,
+    }
+    candidate_canonical = experiment.canonical_json_bytes(candidate)
+    candidate_stored = _deterministic_gzip(candidate_canonical)
+    report_candidate_binding = {
+        "canonical_sha256": hashlib.sha256(candidate_canonical).hexdigest(),
+        "canonical_size_bytes": len(candidate_canonical),
+        "encoding": "gzip-mtime-zero-v1",
+        "path": "candidate_seed_inventory.json.gz",
+        "sha256": hashlib.sha256(candidate_stored).hexdigest(),
+        "size_bytes": len(candidate_stored),
+    }
+
+    rows = {
+        row["name"]: row
+        for section in ("modules", "public_dependencies")
+        for row in source_inventory[section]
+    }
+    successor_path = (
+        "openspec/specs/noncombat-cross-fitted-hierarchical-learning-successor/"
+        "spec.md"
+    )
+    successor_payload = (ROOT / successor_path).read_bytes()
+    role_rows = [
+        ("seed_inventory_source", rows["seed_inventory"]),
+        ("control_plane_source", rows["control_plane"]),
+        ("terminal_verifier_source", rows["independent_verifier"]),
+        (
+            "successor_contract",
+            {
+                "path": successor_path,
+                "sha256": hashlib.sha256(successor_payload).hexdigest(),
+                "size_bytes": len(successor_payload),
+            },
+        ),
+        (
+            "consumed_registration",
+            {
+                "path": consumed_path,
+                "sha256": hashlib.sha256(consumed_payload).hexdigest(),
+                "size_bytes": len(consumed_payload),
+            },
+        ),
+    ]
+    readiness_bindings = [
+        {
+            "path": row["path"],
+            "role": role,
+            "sha256": row["sha256"],
+            "size_bytes": row["size_bytes"],
+        }
+        for role, row in role_rows
+    ]
+    source_binding = {
+        "bindings": readiness_bindings,
+        "bindings_sha256": hashlib.sha256(
+            experiment.canonical_json_bytes(readiness_bindings)
+        ).hexdigest(),
+        "head_commit": source_commit,
+        "origin_master_commit": source_commit,
+        "source_commit": source_commit,
+        "status": "passed",
+        "tracked_clean": True,
+    }
+    report_body = {
+        "audit_id": "synthetic-readiness",
+        "authority": _readiness_authority(),
+        "budget": {},
+        "candidate_artifact_binding": report_candidate_binding,
+        "cohort": {
+            "candidate_seed_count": 512,
+            "candidate_seeds_sha256": hashlib.sha256(
+                experiment.canonical_json_bytes(schedule["seeds"])
+            ).hexdigest(),
+            "collision_count": 0,
+            "collisions": [],
+            "consumed_seed_count": 512,
+            "consumed_seeds_sha256": hashlib.sha256(
+                experiment.canonical_json_bytes(consumed_seeds)
+            ).hexdigest(),
+            "status": "passed",
+        },
+        "decision": {"failed_gates": [], "reason": "go", "status": "go"},
+        "eligibility": {"empirical_successor_registration_proposal_eligible": True},
+        "gates": {
+            name: "passed"
+            for name in (
+                "artifact_binding",
+                "budget_binding",
+                "cohort_not_fresh",
+                "control_plane_scaling",
+                "rehearsal_boundary",
+                "source_binding",
+            )
+        },
+        "limitations": [],
+        "rehearsal": {},
+        "schema_version": (
+            "noncombat-cross-fitted-empirical-successor-readiness-report-v1"
+        ),
+        "source_binding": source_binding,
+        "source_commit": source_commit,
+    }
+    report = {
+        **report_body,
+        "readiness_identity_sha256": hashlib.sha256(
+            experiment.canonical_json_bytes(report_body)
+        ).hexdigest(),
+    }
+    report_payload = experiment.canonical_json_bytes(report)
+    receipt_body = {
+        "attempt_sha256": "2" * 64,
+        "intended_output_dir": "D:\\synthetic-readiness",
+        "publication_bindings": {
+            "candidate_seed_inventory.json.gz": {
+                "sha256": hashlib.sha256(candidate_stored).hexdigest(),
+                "size_bytes": len(candidate_stored),
+            },
+            "readiness_report.json": {
+                "sha256": hashlib.sha256(report_payload).hexdigest(),
+                "size_bytes": len(report_payload),
+            },
+            "readiness_report.md": {"sha256": "3" * 64, "size_bytes": 1},
+        },
+        "schema_version": (
+            "noncombat-cross-fitted-empirical-successor-readiness-attempt-"
+            "verified-v1"
+        ),
+        "source_commit": source_commit,
+        "staging_dir": "D:\\synthetic-readiness.staging",
+        "status": "staging_independently_verified",
+        "verification": {
+            "candidate_inventory_sha256": hashlib.sha256(
+                candidate_stored
+            ).hexdigest(),
+            "decision": "go",
+            "independent_inventory_sha256": schedule["inventory_sha256"],
+            "proposal_eligible": True,
+            "readiness_identity_sha256": report["readiness_identity_sha256"],
+            "source_commit": source_commit,
+            "status": "verified",
+        },
+    }
+    receipt = {
+        **receipt_body,
+        "verification_receipt_sha256": hashlib.sha256(
+            experiment.canonical_json_bytes(receipt_body)
+        ).hexdigest(),
+    }
+    receipt_payload = experiment.canonical_json_bytes(receipt)
+    path_payloads = {
+        (publication_commit, candidate_path): candidate_stored,
+        (publication_commit, report_path): report_payload,
+        (publication_commit, receipt_path): receipt_payload,
+        (source_commit, consumed_path): consumed_payload,
+        (source_commit, successor_path): successor_payload,
+    }
+    for row in rows.values():
+        path_payloads[(source_commit, row["path"])] = (ROOT / row["path"]).read_bytes()
+
+    def git_text(_root, *args):
+        if args == ("rev-parse", "HEAD"):
+            return pushed_head
+        if args == ("rev-parse", "origin/master"):
+            return pushed_head
+        if args == ("status", "--porcelain", "--untracked-files=no"):
+            return ""
+        if args in {
+            ("merge-base", "--is-ancestor", source_commit, pushed_head),
+            ("merge-base", "--is-ancestor", source_commit, publication_commit),
+            ("merge-base", "--is-ancestor", publication_commit, pushed_head),
+        }:
+            return ""
+        raise AssertionError(f"unexpected Git query: {args!r}")
+
+    def git_path_observer(_root, ref, path):
+        try:
+            return path_payloads[(ref, path)]
+        except KeyError as exc:
+            raise AssertionError(f"unexpected Git blob: {ref}:{path}") from exc
+
+    return {
+        "candidate": candidate,
+        "candidate_path": candidate_path,
+        "git_path_observer": git_path_observer,
+        "git_text": git_text,
+        "publication_commit": publication_commit,
+        "pushed_head": pushed_head,
+        "receipt": receipt,
+        "receipt_path": receipt_path,
+        "report": report,
+        "report_path": report_path,
+        "source_commit": source_commit,
+    }
+
+
 def _hardened_registration(
     source_inventory, *, output_root="D:/synthetic/cross-fitted-output"
 ):
-    return experiment.build_source_only_registration(
-        registration_id="cross-fitted-source-test",
-        repository_commit="a" * 40,
+    historical_source = copy.deepcopy(source_inventory)
+    declared = experiment.module_dependency_inventory(
+        experiment.REGISTRATION_SCHEMA_VERSION
+    )
+    for row, expected in zip(
+        historical_source["public_dependencies"],
+        declared["public_dependencies"],
+        strict=True,
+    ):
+        row["public_symbols"] = expected["public_symbols"]
+    source_body = {
+        key: historical_source[key]
+        for key in ("modules", "public_dependencies", "schema_version")
+    }
+    historical_source["inventory_sha256"] = hashlib.sha256(
+        experiment.canonical_json_bytes(source_body)
+    ).hexdigest()
+    inventory = _seed_inventory()
+    fresh = seed_inventory.materialize_fresh_schedule(inventory)
+    seeds = list(fresh["seeds"])
+    registration = {
+        "authority": experiment.registration_authority(),
+        "contract": experiment.experiment_contract(),
+        "isolation_identity": _isolation_identity(),
+        "native_identity": _hardened_native_identity(),
+        "output_inventory": experiment.registered_output_inventory(),
+        "output_root": output_root,
+        "pushed_remote_ref": "origin/master",
+        "registration_id": "cross-fitted-source-test",
+        "repository_commit": "a" * 40,
+        "runtime_identity": _runtime_identity(),
+        "schedule": {
+            "canonical_search_start": fresh["canonical_search_start"],
+            "chunk_count": 8,
+            "chunks": [
+                seeds[index : index + 64]
+                for index in range(0, len(seeds), 64)
+            ],
+            "episodes_per_chunk": 64,
+            "inventory_sha256": fresh["inventory_sha256"],
+            "seeds": seeds,
+            "seeds_sha256": hashlib.sha256(
+                experiment.canonical_json_bytes(seeds)
+            ).hexdigest(),
+            "selection_schema_version": fresh["schema_version"],
+        },
+        "schema_version": experiment.REGISTRATION_SCHEMA_VERSION,
+        "seed_inventory": inventory,
+        "source_inventory": historical_source,
+    }
+    return experiment.validate_registration(registration)
+
+
+def _compact_registration(
+    source_inventory, *, output_root="D:/synthetic/cross-fitted-output"
+):
+    fixture = _compact_readiness_fixture(source_inventory)
+    registration = experiment.build_readiness_bound_registration(
+        registration_id="cross-fitted-compact-source-test",
+        repository_commit=fixture["source_commit"],
         source_inventory=source_inventory,
         runtime_identity=_runtime_identity(),
         native_identity=_hardened_native_identity(),
         isolation_identity=_isolation_identity(),
-        seed_inventory=_seed_inventory(),
         output_root=output_root,
+        repo_root=ROOT,
+        publication_commit=fixture["publication_commit"],
+        readiness_report_path=fixture["report_path"],
+        candidate_artifact_path=fixture["candidate_path"],
+        verification_receipt_path=fixture["receipt_path"],
+        git_text=fixture["git_text"],
+        git_path_observer=fixture["git_path_observer"],
     )
+    return registration, fixture
+
+
+def _drifted_readiness_report(registration, fixture, case):
+    changed = copy.deepcopy(registration)
+    report = copy.deepcopy(fixture["report"])
+    if case == "authority":
+        report["authority"]["training"] = True
+    elif case == "authority_zero":
+        report["authority"]["training"] = 0
+    elif case == "decision":
+        report["decision"] = {
+            "failed_gates": ["source_binding"],
+            "reason": "no_go_source_binding",
+            "status": "no_go",
+        }
+    elif case == "eligibility":
+        report["eligibility"] = {
+            "empirical_successor_registration_proposal_eligible": False
+        }
+    elif case == "eligibility_one":
+        report["eligibility"] = {
+            "empirical_successor_registration_proposal_eligible": 1
+        }
+    else:  # pragma: no cover - caller owns the cases.
+        raise AssertionError(case)
+    report_body = {
+        key: value
+        for key, value in report.items()
+        if key != "readiness_identity_sha256"
+    }
+    report["readiness_identity_sha256"] = hashlib.sha256(
+        experiment.canonical_json_bytes(report_body)
+    ).hexdigest()
+    report_payload = experiment.canonical_json_bytes(report)
+    changed["readiness_evidence"]["readiness_report"].update(
+        {
+            "readiness_identity_sha256": report["readiness_identity_sha256"],
+            "sha256": hashlib.sha256(report_payload).hexdigest(),
+            "size_bytes": len(report_payload),
+        }
+    )
+
+    receipt = copy.deepcopy(fixture["receipt"])
+    receipt["publication_bindings"]["readiness_report.json"] = {
+        "sha256": hashlib.sha256(report_payload).hexdigest(),
+        "size_bytes": len(report_payload),
+    }
+    receipt["verification"].update(
+        {
+            "decision": report["decision"]["status"],
+            "proposal_eligible": report["eligibility"][
+                "empirical_successor_registration_proposal_eligible"
+            ],
+            "readiness_identity_sha256": report["readiness_identity_sha256"],
+        }
+    )
+    receipt_body = {
+        key: value
+        for key, value in receipt.items()
+        if key != "verification_receipt_sha256"
+    }
+    receipt["verification_receipt_sha256"] = hashlib.sha256(
+        experiment.canonical_json_bytes(receipt_body)
+    ).hexdigest()
+    receipt_payload = experiment.canonical_json_bytes(receipt)
+    changed["readiness_evidence"]["verification_receipt"].update(
+        {
+            "sha256": hashlib.sha256(receipt_payload).hexdigest(),
+            "size_bytes": len(receipt_payload),
+            "verification_receipt_sha256": receipt[
+                "verification_receipt_sha256"
+            ],
+        }
+    )
+
+    def git_path_observer(root, ref, path):
+        if ref == fixture["publication_commit"]:
+            if path == fixture["report_path"]:
+                return report_payload
+            if path == fixture["receipt_path"]:
+                return receipt_payload
+        return fixture["git_path_observer"](root, ref, path)
+
+    return changed, git_path_observer
 
 
 def _hardened_authorized_values(source_inventory):
@@ -179,22 +601,15 @@ def _preflight_injections(source_inventory, registration):
         "runtime_identity_observer": lambda: copy.deepcopy(
             registration["runtime_identity"]
         ),
-        "source_inventory_observer": lambda _root: copy.deepcopy(source_inventory),
+        "source_inventory_observer": lambda _root: copy.deepcopy(
+            registration["source_inventory"]
+        ),
         "tracked_blob_observer": lambda _root, ref, _payload: ref == pushed_head,
     }
 
 
 def _registration(source_inventory, *, output_root="D:/synthetic/cross-fitted-output"):
-    return experiment.build_source_only_registration(
-        registration_id="cross-fitted-source-test",
-        repository_commit="a" * 40,
-        source_inventory=source_inventory,
-        runtime_identity=_runtime_identity(),
-        native_identity=_hardened_native_identity(),
-        isolation_identity=_isolation_identity(),
-        seed_inventory=_seed_inventory(),
-        output_root=output_root,
-    )
+    return _hardened_registration(source_inventory, output_root=output_root)
 
 
 def _approval(registration, request):
@@ -797,6 +1212,420 @@ def test_contract_and_registration_bind_execution_environment(source_inventory):
         experiment.validate_registration(changed)
 
 
+def test_compact_registration_binds_immutable_readiness_publication(source_inventory):
+    registration, fixture = _compact_registration(source_inventory)
+
+    assert registration["schema_version"] == experiment.REGISTRATION_V2_SCHEMA_VERSION
+    assert "seed_inventory" not in registration
+    assert registration["repository_commit"] == fixture["source_commit"]
+    assert registration["schedule"]["seeds"] == list(range(512))
+    assert registration["readiness_evidence"] == {
+        "candidate_artifact": {
+            **fixture["report"]["candidate_artifact_binding"],
+            "path": fixture["candidate_path"],
+        },
+        "publication_commit": fixture["publication_commit"],
+        "readiness_report": {
+            "path": fixture["report_path"],
+            "readiness_identity_sha256": fixture["report"][
+                "readiness_identity_sha256"
+            ],
+            "sha256": hashlib.sha256(
+                experiment.canonical_json_bytes(fixture["report"])
+            ).hexdigest(),
+            "size_bytes": len(experiment.canonical_json_bytes(fixture["report"])),
+        },
+        "verification_receipt": {
+            "path": fixture["receipt_path"],
+            "sha256": hashlib.sha256(
+                experiment.canonical_json_bytes(fixture["receipt"])
+            ).hexdigest(),
+            "size_bytes": len(experiment.canonical_json_bytes(fixture["receipt"])),
+            "verification_receipt_sha256": fixture["receipt"][
+                "verification_receipt_sha256"
+            ],
+        },
+    }
+    assert experiment.validate_registration(registration) == registration
+    assert len(experiment.canonical_json_bytes(registration)) < 64 * 1024 * 1024
+
+
+def test_compact_git_blob_observer_is_bounded_before_payload_validation():
+    with pytest.raises(experiment.ExperimentBlocked, match="exceeds byte ceiling"):
+        experiment._call_git_path_observer(
+            lambda _root, _ref, _path: b"12345",
+            ROOT,
+            "a" * 40,
+            "reports/synthetic-readiness/readiness_report.json",
+            label="synthetic readiness blob",
+            max_bytes=4,
+        )
+
+
+def test_compact_candidate_consumed_registration_is_source_bound(source_inventory):
+    _registration, fixture = _compact_registration(source_inventory)
+
+    experiment._validate_consumed_registration_source_binding(
+        fixture["candidate"], fixture["report"]
+    )
+    changed = copy.deepcopy(fixture["candidate"])
+    changed["consumed_cohort"]["registration_binding"]["sha256"] = "0" * 64
+
+    with pytest.raises(
+        experiment.ExperimentBlocked,
+        match="consumed registration source binding",
+    ):
+        experiment._validate_consumed_registration_source_binding(
+            changed, fixture["report"]
+        )
+
+
+def test_compact_candidate_requires_immutable_consumed_registration_blob(
+    source_inventory,
+):
+    registration, fixture = _compact_registration(source_inventory)
+    consumed_path = fixture["candidate"]["consumed_cohort"][
+        "registration_binding"
+    ]["path"]
+
+    def git_path_observer(root, ref, path):
+        if ref == fixture["source_commit"] and path == consumed_path:
+            raise FileNotFoundError(path)
+        return fixture["git_path_observer"](root, ref, path)
+
+    with pytest.raises(
+        experiment.ExperimentBlocked,
+        match="consumed_registration.*cannot be inspected|consumed registration.*blob",
+    ):
+        experiment.verify_readiness_bound_registration(
+            ROOT,
+            registration,
+            pushed_head=fixture["pushed_head"],
+            git_text=fixture["git_text"],
+            git_path_observer=git_path_observer,
+        )
+
+
+def test_compact_preflight_rechecks_readiness_and_registered_source_before_import(
+    source_inventory,
+):
+    registration, fixture = _compact_registration(source_inventory)
+    request = experiment.build_exact_execution_request(registration)
+    approval = _approval(registration, request)
+    authorization = experiment.build_execution_authorization(
+        registration, request, approval
+    )
+    injections = _preflight_injections(source_inventory, registration)
+    injections["git_text"] = fixture["git_text"]
+    injections["git_path_observer"] = fixture["git_path_observer"]
+
+    report = experiment.source_only_preflight(
+        ROOT,
+        registration,
+        request,
+        authorization,
+        approval,
+        **injections,
+    )
+
+    assert report["checks"]["readiness_candidate_exact"] is True
+    assert report["checks"]["readiness_publication_exact"] is True
+    assert report["checks"]["readiness_source_exact"] is True
+    assert report["checks"]["readiness_verification_receipt_exact"] is True
+
+    drifted = copy.deepcopy(registration)
+    control_row = next(
+        row
+        for row in drifted["source_inventory"]["modules"]
+        if row["name"] == "control_plane"
+    )
+    control_row["sha256"] = "f" * 64
+    source_body = {
+        key: drifted["source_inventory"][key]
+        for key in ("modules", "public_dependencies", "schema_version")
+    }
+    drifted["source_inventory"]["inventory_sha256"] = hashlib.sha256(
+        experiment.canonical_json_bytes(source_body)
+    ).hexdigest()
+
+    with pytest.raises(
+        experiment.ExperimentBlocked,
+        match="registered source|readiness.*source|source.*commit",
+    ):
+        experiment.verify_readiness_bound_registration(
+            ROOT,
+            drifted,
+            pushed_head=fixture["pushed_head"],
+            git_text=fixture["git_text"],
+            git_path_observer=fixture["git_path_observer"],
+        )
+
+
+def test_post_change_control_plane_rejects_real_r2_readiness_evidence(
+    source_inventory,
+):
+    source_commit = "522185d06ddf48cb1be095c16efacaad299a0197"
+    publication_commit = "b928eadbdace3eee8386df96bb9b7fe076a24630"
+    readiness_root = (
+        "reports/noncombat_cross_fitted_empirical_successor_readiness_20260808_r2"
+    )
+    report_path = f"{readiness_root}/readiness_report.json"
+    candidate_path = f"{readiness_root}/candidate_seed_inventory.json.gz"
+    receipt_path = (
+        "reports/noncombat_cross_fitted_empirical_successor_readiness_attempts/"
+        f"{source_commit}/attempt_verified.json"
+    )
+    report_payload = (ROOT / report_path).read_bytes()
+    report = json.loads(report_payload)
+    receipt_payload = (ROOT / receipt_path).read_bytes()
+    receipt = json.loads(receipt_payload)
+    registration = _hardened_registration(source_inventory)
+    registration["repository_commit"] = source_commit
+    registration["schema_version"] = experiment.REGISTRATION_V2_SCHEMA_VERSION
+    registration["source_inventory"] = copy.deepcopy(source_inventory)
+    registration.pop("seed_inventory")
+    registration["readiness_evidence"] = {
+        "candidate_artifact": {
+            **report["candidate_artifact_binding"],
+            "path": candidate_path,
+        },
+        "publication_commit": publication_commit,
+        "readiness_report": {
+            "path": report_path,
+            "readiness_identity_sha256": report["readiness_identity_sha256"],
+            "sha256": hashlib.sha256(report_payload).hexdigest(),
+            "size_bytes": len(report_payload),
+        },
+        "verification_receipt": {
+            "path": receipt_path,
+            "sha256": hashlib.sha256(receipt_payload).hexdigest(),
+            "size_bytes": len(receipt_payload),
+            "verification_receipt_sha256": receipt[
+                "verification_receipt_sha256"
+            ],
+        },
+    }
+
+    with pytest.raises(
+        experiment.ExperimentBlocked,
+        match="registered source|readiness source binding mismatch",
+    ):
+        experiment.verify_readiness_bound_registration(ROOT, registration)
+
+
+def test_real_r1_registration_remains_producer_and_cli_validatable(capsys):
+    registration_path = (
+        ROOT
+        / "reports/noncombat_cross_fitted_hierarchical_learning_successor_20260806_r1/registration.json"
+    )
+    payload = registration_path.read_bytes()
+    registration = json.loads(payload)
+
+    assert experiment.validate_registration(registration) == registration
+    assert experiment.main(
+        [
+            "inspect-registration",
+            "--repo-root",
+            str(ROOT),
+            "--registration",
+            str(registration_path),
+        ]
+    ) == 0
+    assert json.loads(capsys.readouterr().out) == registration
+    assert registration_path.read_bytes() == payload
+
+
+def test_compact_registration_rejects_verification_receipt_drift(source_inventory):
+    registration, fixture = _compact_registration(source_inventory)
+    changed = copy.deepcopy(registration)
+    receipt = copy.deepcopy(fixture["receipt"])
+    receipt["verification"]["decision"] = "no_go"
+    receipt_body = {
+        key: value
+        for key, value in receipt.items()
+        if key != "verification_receipt_sha256"
+    }
+    receipt["verification_receipt_sha256"] = hashlib.sha256(
+        experiment.canonical_json_bytes(receipt_body)
+    ).hexdigest()
+    payload = experiment.canonical_json_bytes(receipt)
+    changed["readiness_evidence"]["verification_receipt"].update(
+        {
+            "sha256": hashlib.sha256(payload).hexdigest(),
+            "size_bytes": len(payload),
+            "verification_receipt_sha256": receipt[
+                "verification_receipt_sha256"
+            ],
+        }
+    )
+
+    def git_path_observer(root, ref, path):
+        if (
+            ref == fixture["publication_commit"]
+            and path == fixture["receipt_path"]
+        ):
+            return payload
+        return fixture["git_path_observer"](root, ref, path)
+
+    with pytest.raises(
+        experiment.ExperimentBlocked, match="verification.*summary|receipt.*verified"
+    ):
+        experiment.verify_readiness_bound_registration(
+            ROOT,
+            changed,
+            pushed_head=fixture["pushed_head"],
+            git_text=fixture["git_text"],
+            git_path_observer=git_path_observer,
+        )
+
+    changed = copy.deepcopy(registration)
+    changed["readiness_evidence"]["verification_receipt"]["path"] = (
+        "reports/synthetic-readiness/attempt_verified.json"
+    )
+    with pytest.raises(
+        experiment.ExperimentBlocked, match="verification receipt path"
+    ):
+        experiment.validate_registration(changed)
+
+
+def test_compact_registration_rejects_unpublished_readiness_ancestry(
+    source_inventory,
+):
+    registration, fixture = _compact_registration(source_inventory)
+
+    def git_text(root, *args):
+        if args == (
+            "merge-base",
+            "--is-ancestor",
+            fixture["publication_commit"],
+            fixture["pushed_head"],
+        ):
+            raise experiment.ExperimentBlocked("synthetic unpublished evidence")
+        return fixture["git_text"](root, *args)
+
+    with pytest.raises(
+        experiment.ExperimentBlocked,
+        match="pushed readiness publication ancestry mismatch",
+    ):
+        experiment.verify_readiness_bound_registration(
+            ROOT,
+            registration,
+            pushed_head=fixture["pushed_head"],
+            git_text=git_text,
+            git_path_observer=fixture["git_path_observer"],
+        )
+
+
+@pytest.mark.parametrize(
+    ("binding_name", "path_name", "error"),
+    [
+        ("readiness_report", "report_path", "readiness report bytes mismatch"),
+        ("candidate_artifact", "candidate_path", "candidate validation failed"),
+    ],
+)
+def test_compact_registration_rejects_readiness_blob_drift(
+    binding_name, path_name, error, source_inventory
+):
+    registration, fixture = _compact_registration(source_inventory)
+    target_path = fixture[path_name]
+
+    def git_path_observer(root, ref, path):
+        payload = fixture["git_path_observer"](root, ref, path)
+        if ref == fixture["publication_commit"] and path == target_path:
+            return payload + b"x"
+        return payload
+
+    with pytest.raises(experiment.ExperimentBlocked, match=error):
+        experiment.verify_readiness_bound_registration(
+            ROOT,
+            registration,
+            pushed_head=fixture["pushed_head"],
+            git_text=fixture["git_text"],
+            git_path_observer=git_path_observer,
+        )
+
+
+@pytest.mark.parametrize(
+    ("case", "error"),
+    [
+        ("authority", "authority must remain all false"),
+        ("authority_zero", "authority must remain all false"),
+        ("decision", "readiness report is not go"),
+        ("eligibility", "not registration eligible"),
+        ("eligibility_one", "not registration eligible"),
+    ],
+)
+def test_compact_registration_rejects_semantically_drifted_go_report(
+    case, error, source_inventory
+):
+    registration, fixture = _compact_registration(source_inventory)
+    changed, git_path_observer = _drifted_readiness_report(
+        registration, fixture, case
+    )
+
+    with pytest.raises(experiment.ExperimentBlocked, match=error):
+        experiment.verify_readiness_bound_registration(
+            ROOT,
+            changed,
+            pushed_head=fixture["pushed_head"],
+            git_text=fixture["git_text"],
+            git_path_observer=git_path_observer,
+        )
+
+
+@pytest.mark.parametrize(
+    ("binding_name", "path", "error"),
+    [
+        (
+            "candidate_artifact",
+            "reports/synthetic-readiness/candidate.json.gz",
+            "candidate filename",
+        ),
+        (
+            "readiness_report",
+            "reports/other-readiness/readiness_report.json",
+            "must be siblings",
+        ),
+    ],
+)
+def test_compact_registration_rejects_readiness_path_drift(
+    binding_name, path, error, source_inventory
+):
+    registration, _fixture = _compact_registration(source_inventory)
+    registration["readiness_evidence"][binding_name]["path"] = path
+
+    with pytest.raises(experiment.ExperimentBlocked, match=error):
+        experiment.validate_registration(registration)
+
+
+@pytest.mark.parametrize("command", ["inspect-registration", "render-request"])
+def test_compact_cli_replays_readiness_evidence(
+    command, source_inventory, tmp_path, monkeypatch, capsys
+):
+    registration, _fixture = _compact_registration(source_inventory)
+    registration_path = tmp_path / "registration.json"
+    registration_path.write_bytes(experiment.canonical_json_bytes(registration))
+    observed = []
+
+    def verify(repo_root, value):
+        observed.append((Path(repo_root).resolve(), value))
+        return {"status": "passed"}
+
+    monkeypatch.setattr(experiment, "verify_readiness_bound_registration", verify)
+
+    assert experiment.main(
+        [
+            command,
+            "--repo-root",
+            str(ROOT),
+            "--registration",
+            str(registration_path),
+        ]
+    ) == 0
+    capsys.readouterr()
+    assert observed == [(ROOT.resolve(), registration)]
+
+
 def test_external_file_and_complete_checkpoint_tree_bindings_are_inert(tmp_path):
     config = tmp_path / "config.properties"
     config.write_bytes(b'command="synthetic"\n')
@@ -845,15 +1674,7 @@ def test_registration_is_exact_and_all_false(source_inventory):
         experiment.validate_registration(changed)
 
 
-def test_registration_has_no_caller_seed_or_search_start_override(source_inventory):
-    parameters = inspect.signature(
-        experiment.build_source_only_registration
-    ).parameters
-    assert "seed_inventory" in parameters
-    assert {"seed", "seeds", "scheduled_seeds", "search_start"}.isdisjoint(
-        parameters
-    )
-
+def test_new_v1_registration_builder_is_disabled(source_inventory):
     kwargs = {
         "registration_id": "cross-fitted-source-test",
         "repository_commit": "a" * 40,
@@ -864,14 +1685,10 @@ def test_registration_has_no_caller_seed_or_search_start_override(source_invento
         "seed_inventory": _seed_inventory(),
         "output_root": "D:/synthetic/cross-fitted-output",
     }
-    for override in (
-        {"seed": 1},
-        {"seeds": range(512)},
-        {"scheduled_seeds": range(512)},
-        {"search_start": 1000},
+    with pytest.raises(
+        experiment.ExperimentBlocked, match="new v1 registration.*disabled"
     ):
-        with pytest.raises(TypeError):
-            experiment.build_source_only_registration(**kwargs, **override)
+        experiment.build_source_only_registration(**kwargs)
 
 
 def test_exact_request_is_deterministic_and_read_only(source_inventory, tmp_path):

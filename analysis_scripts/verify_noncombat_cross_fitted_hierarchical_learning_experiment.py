@@ -16,6 +16,7 @@ import os
 import re
 import stat as stat_module
 import struct
+import subprocess
 import sys
 from collections.abc import Mapping, Sequence
 from pathlib import Path, PurePosixPath
@@ -231,6 +232,26 @@ _AUTHORITY = {
     "seed_access": False,
     "training": False,
 }
+READINESS_AUTHORITY_NAMES = (
+    "causal_claim",
+    "communication_mod",
+    "empirical_registration",
+    "evaluation",
+    "execution_authorization",
+    "execution_request",
+    "external_approval",
+    "formal_rl",
+    "gameplay",
+    "model_fitting",
+    "model_loading",
+    "native_loading",
+    "ope",
+    "policy_quality",
+    "promotion",
+    "qualification",
+    "seed_access",
+    "training",
+)
 _EXECUTION_AUTHORITY = {
     name: name
     in {
@@ -252,6 +273,19 @@ SOURCE_INVENTORY_SCHEMA_VERSION = (
 )
 REGISTRATION_SCHEMA_VERSION = (
     "noncombat-cross-fitted-hierarchical-learning-registration-v1"
+)
+REGISTRATION_V2_SCHEMA_VERSION = (
+    "noncombat-cross-fitted-hierarchical-learning-registration-v2"
+)
+READINESS_REPORT_SCHEMA_VERSION = (
+    "noncombat-cross-fitted-empirical-successor-readiness-report-v1"
+)
+READINESS_CANDIDATE_SCHEMA_VERSION = (
+    "noncombat-cross-fitted-empirical-successor-readiness-candidate-v1"
+)
+READINESS_CANDIDATE_ENCODING = "gzip-mtime-zero-v1"
+READINESS_VERIFICATION_RECEIPT_SCHEMA_VERSION = (
+    "noncombat-cross-fitted-empirical-successor-readiness-attempt-verified-v1"
 )
 EXECUTION_REQUEST_SCHEMA_VERSION = (
     "noncombat-cross-fitted-hierarchical-learning-execution-request-v1"
@@ -324,6 +358,8 @@ LEASE_FILENAME = ".execution.lease"
 CHUNK_COUNT = 8
 SCHEDULED_TRAJECTORIES = CHUNK_COUNT * TRAJECTORIES_PER_CHUNK
 MAX_ARTIFACT_BYTES = 64 * 1024 * 1024
+MAX_READINESS_CANDIDATE_STORED_BYTES = 64 * 1024 * 1024
+MAX_READINESS_CANDIDATE_CANONICAL_BYTES = 512 * 1024 * 1024
 MAX_STORED_BYTES = 192 * 1024 * 1024
 MAX_UNCOMPRESSED_BUNDLE_BYTES = 256 * 1024 * 1024
 MAX_ENVIRONMENT_ACCESSES = 576
@@ -332,6 +368,19 @@ MAX_RETAINED_DECISIONS = 32_768
 MAX_CHARGED_SECONDS = 14_400.0
 PREVIOUS_UNTOUCHED_HOLDOUT_START = 71_152
 PREVIOUS_UNTOUCHED_HOLDOUT_END = 71_663
+SEED_INVENTORY_MODULE_PATH = (
+    "analysis_scripts/noncombat_cross_fitted_hierarchical_learning_seed_inventory.py"
+)
+SUCCESSOR_CONTRACT_PATH = (
+    "openspec/specs/noncombat-cross-fitted-hierarchical-learning-successor/spec.md"
+)
+READINESS_CANDIDATE_FILENAME = "candidate_seed_inventory.json.gz"
+READINESS_REPORT_FILENAME = "readiness_report.json"
+READINESS_REPORT_MARKDOWN_FILENAME = "readiness_report.md"
+READINESS_VERIFICATION_RECEIPT_FILENAME = "attempt_verified.json"
+READINESS_ATTEMPT_ROOT_PATH = (
+    "reports/noncombat_cross_fitted_empirical_successor_readiness_attempts"
+)
 
 _COMMIT_RE = re.compile(r"[0-9a-f]{40}\Z")
 _IDENTITY_RE = re.compile(r"[a-z0-9][a-z0-9._-]{2,127}\Z")
@@ -437,6 +486,14 @@ _PUBLIC_DEPENDENCY_SPECS = (
         "analysis_scripts/noncombat_state_conditioned_ranker.py",
         ("StateConditionedCandidateRanker",),
     ),
+)
+_V2_SEED_INVENTORY_PUBLIC_SYMBOLS = (
+    "decode_readiness_candidate_artifact",
+    "materialize_fresh_schedule",
+    "validate_fresh_schedule",
+    "validate_readiness_candidate_artifact",
+    "validate_seed_inventory",
+    "verify_seed_inventory",
 )
 
 
@@ -1045,6 +1102,13 @@ def _nonnegative_int(value: Any, label: str) -> int:
     if isinstance(value, bool) or not isinstance(value, int) or value < 0:
         raise VerifierError(f"{label} must be a nonnegative integer")
     return value
+
+
+def _positive_int(value: Any, label: str) -> int:
+    result = _nonnegative_int(value, label)
+    if result == 0:
+        raise VerifierError(f"{label} must be positive")
+    return result
 
 
 def _nonempty_string(value: Any, label: str) -> str:
@@ -2438,6 +2502,23 @@ def _canonical_digest(value: Any) -> str:
     return hashlib.sha256(canonical_json_bytes(value)).hexdigest()
 
 
+def _canonical_digest_streaming(value: Any) -> str:
+    digest = hashlib.sha256()
+    encoder = json.JSONEncoder(
+        sort_keys=True,
+        separators=(",", ":"),
+        ensure_ascii=True,
+        allow_nan=False,
+    )
+    try:
+        for fragment in encoder.iterencode(value):
+            digest.update(fragment.encode("ascii"))
+    except (TypeError, ValueError, UnicodeEncodeError) as exc:
+        raise VerifierError("value is not canonical JSON") from exc
+    digest.update(b"\n")
+    return digest.hexdigest()
+
+
 def _reject_json_pairs(pairs: Sequence[tuple[str, Any]]) -> dict[str, Any]:
     result: dict[str, Any] = {}
     for key, value in pairs:
@@ -2890,7 +2971,12 @@ def _validate_native_identity(value: Any) -> dict[str, Any]:
     return identity
 
 
-def _validate_seed_inventory(value: Any, repository_commit: str) -> dict[str, Any]:
+def _validate_seed_inventory(
+    value: Any,
+    repository_commit: str,
+    *,
+    max_rows: int = 1_000_000,
+) -> dict[str, Any]:
     fields = {
         "canonical_search_start",
         "excluded_seed_count",
@@ -2934,7 +3020,7 @@ def _validate_seed_inventory(value: Any, repository_commit: str) -> dict[str, An
         "used",
     }
     rows = _exact_list(inventory["rows"], "seed inventory rows")
-    if len(rows) > 1_000_000:
+    if len(rows) > max_rows:
         raise VerifierError("seed inventory rows exceed the verifier bound")
     normalized_rows: list[dict[str, Any]] = []
     for index, raw in enumerate(rows):
@@ -3096,20 +3182,102 @@ def _validate_schedule(value: Any, seed_inventory: Mapping[str, Any]) -> dict[st
     return schedule
 
 
-def _declared_source_rows() -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
+def _declared_source_rows(
+    registration_schema_version: str = REGISTRATION_SCHEMA_VERSION,
+) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
+    if registration_schema_version not in {
+        REGISTRATION_SCHEMA_VERSION,
+        REGISTRATION_V2_SCHEMA_VERSION,
+    }:
+        raise VerifierError("registration schema mismatch")
     modules = [
         {"name": name, "path": path, "role": role}
         for name, path, role in _MODULE_SPECS
     ]
-    dependencies = [
-        {"name": name, "path": path, "public_symbols": list(symbols)}
-        for name, path, symbols in _PUBLIC_DEPENDENCY_SPECS
-    ]
+    dependencies = []
+    for name, path, symbols in _PUBLIC_DEPENDENCY_SPECS:
+        if (
+            registration_schema_version == REGISTRATION_V2_SCHEMA_VERSION
+            and name == "seed_inventory"
+        ):
+            symbols = _V2_SEED_INVENTORY_PUBLIC_SYMBOLS
+        dependencies.append(
+            {"name": name, "path": path, "public_symbols": list(symbols)}
+        )
     return modules, dependencies
 
 
+def _git_text(repo_root: Path, *arguments: str, label: str) -> str:
+    try:
+        completed = subprocess.run(
+            ["git", *arguments],
+            cwd=repo_root,
+            check=True,
+            capture_output=True,
+            text=True,
+        )
+    except (OSError, subprocess.CalledProcessError) as exc:
+        raise VerifierError(f"{label} cannot be resolved from Git") from exc
+    return completed.stdout.strip()
+
+
+def _git_is_ancestor(
+    repo_root: Path, ancestor: str, descendant: str, *, label: str
+) -> None:
+    try:
+        completed = subprocess.run(
+            ["git", "merge-base", "--is-ancestor", ancestor, descendant],
+            cwd=repo_root,
+            check=False,
+            capture_output=True,
+        )
+    except OSError as exc:
+        raise VerifierError(f"{label} cannot be checked") from exc
+    if completed.returncode == 1:
+        raise VerifierError(f"{label} mismatch")
+    if completed.returncode != 0:
+        raise VerifierError(f"{label} cannot be checked")
+
+
+def _git_blob_bytes(
+    repo_root: Path,
+    commit: str,
+    relative_path: str,
+    *,
+    label: str,
+    limit: int,
+) -> bytes:
+    relative = _canonical_relative_path(relative_path, f"{label} path")
+    object_name = f"{commit}:{relative}"
+    size_text = _git_text(
+        repo_root, "cat-file", "-s", object_name, label=label
+    )
+    try:
+        size = int(size_text)
+    except ValueError as exc:
+        raise VerifierError(f"{label} Git blob size is invalid") from exc
+    if size < 0 or size > limit:
+        raise VerifierError(f"{label} exceeds the byte bound")
+    try:
+        completed = subprocess.run(
+            ["git", "show", object_name],
+            cwd=repo_root,
+            check=True,
+            capture_output=True,
+        )
+    except (OSError, subprocess.CalledProcessError) as exc:
+        raise VerifierError(f"{label} cannot be read from Git") from exc
+    if len(completed.stdout) != size:
+        raise VerifierError(f"{label} Git blob changed while read")
+    return completed.stdout
+
+
 def _validate_source_inventory(
-    value: Any, *, repo_root: Path
+    value: Any,
+    *,
+    repo_root: Path,
+    repository_commit: str,
+    registration_schema_version: str,
 ) -> dict[str, Any]:
     inventory = _exact_mapping(
         value,
@@ -3123,7 +3291,9 @@ def _validate_source_inventory(
     )
     if inventory["schema_version"] != SOURCE_INVENTORY_SCHEMA_VERSION:
         raise VerifierError("source inventory schema mismatch")
-    declared_modules, declared_dependencies = _declared_source_rows()
+    declared_modules, declared_dependencies = _declared_source_rows(
+        registration_schema_version
+    )
     normalized_groups: list[list[dict[str, Any]]] = []
     for group_name, raw_group, declared, special_field in (
         ("modules", inventory["modules"], declared_modules, "role"),
@@ -3146,14 +3316,11 @@ def _validate_source_inventory(
             relative = _canonical_relative_path(row["path"], "source path")
             _binding_sha256(row["sha256"], "source digest")
             size = _nonnegative_int(row["size_bytes"], "source size")
-            candidate = (repo_root / PurePosixPath(relative)).resolve()
-            try:
-                candidate.relative_to(repo_root)
-            except ValueError as exc:
-                raise VerifierError("source inventory escapes repo root") from exc
-            payload = _read_bounded_file(
-                candidate,
-                label=f"source {relative}",
+            payload = _git_blob_bytes(
+                repo_root,
+                repository_commit,
+                relative,
+                label=f"registered source {relative}",
                 limit=MAX_ARTIFACT_BYTES,
             )
             if size != len(payload) or row["sha256"] != hashlib.sha256(
@@ -3172,32 +3339,827 @@ def _validate_source_inventory(
     return inventory
 
 
+def _readiness_reports_path(value: Any, label: str) -> str:
+    relative = _canonical_relative_path(value, label)
+    if not PurePosixPath(relative).parts or not relative.startswith("reports/"):
+        raise VerifierError(f"{label} must be a canonical reports path")
+    return relative
+
+
+def _validate_readiness_evidence(
+    value: Any, *, source_commit: str
+) -> dict[str, Any]:
+    evidence = _exact_mapping(
+        value,
+        {
+            "candidate_artifact",
+            "publication_commit",
+            "readiness_report",
+            "verification_receipt",
+        },
+        "readiness evidence including verification receipt",
+    )
+    publication_commit = evidence["publication_commit"]
+    if (
+        not isinstance(publication_commit, str)
+        or _COMMIT_RE.fullmatch(publication_commit) is None
+    ):
+        raise VerifierError("readiness publication commit mismatch")
+
+    candidate = _exact_mapping(
+        evidence["candidate_artifact"],
+        {
+            "canonical_sha256",
+            "canonical_size_bytes",
+            "encoding",
+            "path",
+            "sha256",
+            "size_bytes",
+        },
+        "readiness candidate artifact binding",
+    )
+    candidate["path"] = _readiness_reports_path(
+        candidate["path"], "readiness candidate artifact path"
+    )
+    if PurePosixPath(candidate["path"]).name != READINESS_CANDIDATE_FILENAME:
+        raise VerifierError("readiness candidate artifact filename mismatch")
+    if candidate["encoding"] != READINESS_CANDIDATE_ENCODING:
+        raise VerifierError("readiness candidate artifact encoding mismatch")
+    _binding_sha256(candidate["sha256"], "readiness candidate stored digest")
+    _binding_sha256(
+        candidate["canonical_sha256"], "readiness candidate canonical digest"
+    )
+    candidate["size_bytes"] = _positive_int(
+        candidate["size_bytes"], "readiness candidate stored size"
+    )
+    candidate["canonical_size_bytes"] = _positive_int(
+        candidate["canonical_size_bytes"], "readiness candidate canonical size"
+    )
+    if (
+        candidate["size_bytes"] > MAX_READINESS_CANDIDATE_STORED_BYTES
+        or candidate["canonical_size_bytes"]
+        > MAX_READINESS_CANDIDATE_CANONICAL_BYTES
+    ):
+        raise VerifierError("readiness candidate artifact exceeds the byte bound")
+
+    report = _exact_mapping(
+        evidence["readiness_report"],
+        {"path", "readiness_identity_sha256", "sha256", "size_bytes"},
+        "readiness report binding",
+    )
+    report["path"] = _readiness_reports_path(
+        report["path"], "readiness report path"
+    )
+    if PurePosixPath(report["path"]).name != READINESS_REPORT_FILENAME:
+        raise VerifierError("readiness report filename mismatch")
+    if PurePosixPath(report["path"]).parent != PurePosixPath(
+        candidate["path"]
+    ).parent:
+        raise VerifierError("readiness report and candidate must be siblings")
+    _binding_sha256(report["sha256"], "readiness report digest")
+    _binding_sha256(
+        report["readiness_identity_sha256"], "readiness report identity"
+    )
+    report["size_bytes"] = _positive_int(
+        report["size_bytes"], "readiness report size"
+    )
+    if report["size_bytes"] > MAX_ARTIFACT_BYTES:
+        raise VerifierError("readiness report exceeds the byte bound")
+
+    receipt = _exact_mapping(
+        evidence["verification_receipt"],
+        {"path", "sha256", "size_bytes", "verification_receipt_sha256"},
+        "readiness verification receipt binding",
+    )
+    receipt["path"] = _readiness_reports_path(
+        receipt["path"], "readiness verification receipt path"
+    )
+    expected_receipt_path = (
+        f"{READINESS_ATTEMPT_ROOT_PATH}/{source_commit}/"
+        f"{READINESS_VERIFICATION_RECEIPT_FILENAME}"
+    )
+    if receipt["path"] != expected_receipt_path:
+        raise VerifierError("readiness verification receipt path mismatch")
+    _binding_sha256(receipt["sha256"], "readiness verification receipt digest")
+    _binding_sha256(
+        receipt["verification_receipt_sha256"],
+        "readiness verification receipt identity",
+    )
+    receipt["size_bytes"] = _positive_int(
+        receipt["size_bytes"], "readiness verification receipt size"
+    )
+    if receipt["size_bytes"] > MAX_ARTIFACT_BYTES:
+        raise VerifierError("readiness verification receipt exceeds the byte bound")
+
+    evidence["candidate_artifact"] = candidate
+    evidence["readiness_report"] = report
+    evidence["verification_receipt"] = receipt
+    return evidence
+
+
+def _validate_bound_payload(
+    payload: bytes, binding: Mapping[str, Any], *, label: str
+) -> None:
+    if (
+        len(payload) != binding["size_bytes"]
+        or hashlib.sha256(payload).hexdigest() != binding["sha256"]
+    ):
+        raise VerifierError(f"{label} bytes mismatch")
+
+
+def _readiness_authority() -> dict[str, bool]:
+    return {name: False for name in READINESS_AUTHORITY_NAMES}
+
+
+def _validate_readiness_authority(value: Any, label: str) -> dict[str, bool]:
+    expected = _readiness_authority()
+    authority = _exact_mapping(value, set(expected), label)
+    if (
+        any(type(enabled) is not bool for enabled in authority.values())
+        or authority != expected
+    ):
+        raise VerifierError(f"{label} must remain all false")
+    return authority
+
+
+def _validate_readiness_report(
+    value: Any,
+    *,
+    registration: Mapping[str, Any],
+    repo_root: Path,
+) -> tuple[dict[str, Any], dict[str, dict[str, Any]]]:
+    report = _exact_mapping(
+        value,
+        {
+            "audit_id",
+            "authority",
+            "budget",
+            "candidate_artifact_binding",
+            "cohort",
+            "decision",
+            "eligibility",
+            "gates",
+            "limitations",
+            "readiness_identity_sha256",
+            "rehearsal",
+            "schema_version",
+            "source_binding",
+            "source_commit",
+        },
+        "readiness report",
+    )
+    source_commit = registration["repository_commit"]
+    if report["schema_version"] != READINESS_REPORT_SCHEMA_VERSION:
+        raise VerifierError("readiness report schema mismatch")
+    if report["source_commit"] != source_commit:
+        raise VerifierError("readiness report source commit mismatch")
+    report["authority"] = _validate_readiness_authority(
+        report["authority"], "readiness report authority"
+    )
+    if report["decision"] != {
+        "failed_gates": [],
+        "reason": "go",
+        "status": "go",
+    }:
+        raise VerifierError("readiness report is not go")
+    eligibility = _exact_mapping(
+        report["eligibility"],
+        {"empirical_successor_registration_proposal_eligible"},
+        "readiness eligibility",
+    )
+    if (
+        type(
+            eligibility["empirical_successor_registration_proposal_eligible"]
+        )
+        is not bool
+        or eligibility["empirical_successor_registration_proposal_eligible"]
+        is not True
+    ):
+        raise VerifierError("readiness report is not registration eligible")
+    report["eligibility"] = eligibility
+    expected_gates = {
+        name: "passed"
+        for name in (
+            "artifact_binding",
+            "budget_binding",
+            "cohort_not_fresh",
+            "control_plane_scaling",
+            "rehearsal_boundary",
+            "source_binding",
+        )
+    }
+    if report["gates"] != expected_gates:
+        raise VerifierError("readiness report gates did not all pass")
+    _nonempty_string(report["audit_id"], "readiness audit identity")
+    identity = report["readiness_identity_sha256"]
+    _binding_sha256(identity, "readiness report identity")
+    report_body = {
+        key: item
+        for key, item in report.items()
+        if key != "readiness_identity_sha256"
+    }
+    if identity != _canonical_digest(report_body):
+        raise VerifierError("readiness report identity mismatch")
+    if identity != registration["readiness_evidence"]["readiness_report"][
+        "readiness_identity_sha256"
+    ]:
+        raise VerifierError("registered readiness identity mismatch")
+
+    candidate_binding = _exact_mapping(
+        report["candidate_artifact_binding"],
+        {
+            "canonical_sha256",
+            "canonical_size_bytes",
+            "encoding",
+            "path",
+            "sha256",
+            "size_bytes",
+        },
+        "readiness report candidate binding",
+    )
+    expected_candidate = dict(
+        registration["readiness_evidence"]["candidate_artifact"]
+    )
+    expected_candidate["path"] = PurePosixPath(expected_candidate["path"]).name
+    if candidate_binding != expected_candidate:
+        raise VerifierError("readiness report candidate binding mismatch")
+
+    source = _exact_mapping(
+        report["source_binding"],
+        {
+            "bindings",
+            "bindings_sha256",
+            "head_commit",
+            "origin_master_commit",
+            "source_commit",
+            "status",
+            "tracked_clean",
+        },
+        "readiness source binding",
+    )
+    if (
+        source["source_commit"] != source_commit
+        or source["head_commit"] != source_commit
+        or source["origin_master_commit"] != source_commit
+        or source["status"] != "passed"
+        or source["tracked_clean"] is not True
+    ):
+        raise VerifierError("readiness source binding identity mismatch")
+    raw_bindings = _exact_list(
+        source["bindings"], "readiness source binding rows"
+    )
+    if not raw_bindings:
+        raise VerifierError("readiness source binding rows are empty")
+    bindings: list[dict[str, Any]] = []
+    roles: set[str] = set()
+    paths: set[str] = set()
+    for index, raw in enumerate(raw_bindings):
+        row = _exact_mapping(
+            raw,
+            {"path", "role", "sha256", "size_bytes"},
+            f"readiness source binding row[{index}]",
+        )
+        row["path"] = _canonical_relative_path(
+            row["path"], "readiness source binding path"
+        )
+        row["role"] = _nonempty_string(
+            row["role"], "readiness source binding role"
+        )
+        _binding_sha256(row["sha256"], "readiness source binding digest")
+        row["size_bytes"] = _positive_int(
+            row["size_bytes"], "readiness source binding size"
+        )
+        if row["role"] in roles or row["path"] in paths:
+            raise VerifierError("readiness source binding roles or paths duplicate")
+        roles.add(row["role"])
+        paths.add(row["path"])
+        payload = _git_blob_bytes(
+            repo_root,
+            source_commit,
+            row["path"],
+            label=f"readiness source binding {row['role']}",
+            limit=MAX_ARTIFACT_BYTES,
+        )
+        _validate_bound_payload(
+            payload, row, label=f"readiness source binding {row['role']}"
+        )
+        bindings.append(row)
+    _binding_sha256(
+        source["bindings_sha256"], "readiness source binding identity"
+    )
+    if source["bindings_sha256"] != _canonical_digest(bindings):
+        raise VerifierError("readiness source binding digest mismatch")
+    by_role = {row["role"]: row for row in bindings}
+
+    inventory_by_name = {
+        row["name"]: row
+        for section in ("modules", "public_dependencies")
+        for row in registration["source_inventory"][section]
+    }
+    required_roles = {
+        "control_plane_source": inventory_by_name["control_plane"],
+        "seed_inventory_source": inventory_by_name["seed_inventory"],
+        "terminal_verifier_source": inventory_by_name["independent_verifier"],
+    }
+    for role, row in required_roles.items():
+        expected = {
+            "path": row["path"],
+            "role": role,
+            "sha256": row["sha256"],
+            "size_bytes": row["size_bytes"],
+        }
+        if by_role.get(role) != expected:
+            raise VerifierError(f"readiness source binding mismatch: {role}")
+    successor_payload = _git_blob_bytes(
+        repo_root,
+        source_commit,
+        SUCCESSOR_CONTRACT_PATH,
+        label="readiness successor contract",
+        limit=MAX_ARTIFACT_BYTES,
+    )
+    expected_successor = {
+        "path": SUCCESSOR_CONTRACT_PATH,
+        "role": "successor_contract",
+        "sha256": hashlib.sha256(successor_payload).hexdigest(),
+        "size_bytes": len(successor_payload),
+    }
+    if by_role.get("successor_contract") != expected_successor:
+        raise VerifierError("readiness successor contract source binding mismatch")
+    report["source_binding"] = {**source, "bindings": bindings}
+    return report, by_role
+
+
+def _validate_readiness_candidate(
+    stored: bytes,
+    *,
+    binding: Mapping[str, Any],
+    source_commit: str,
+    source_bindings: Mapping[str, Mapping[str, Any]],
+) -> dict[str, Any]:
+    try:
+        with gzip.GzipFile(fileobj=io.BytesIO(stored), mode="rb") as stream:
+            canonical = stream.read(MAX_READINESS_CANDIDATE_CANONICAL_BYTES + 1)
+            trailing = stream.read(1)
+    except (EOFError, OSError, gzip.BadGzipFile) as exc:
+        raise VerifierError(
+            "readiness candidate deterministic gzip is invalid"
+        ) from exc
+    if len(canonical) > MAX_READINESS_CANDIDATE_CANONICAL_BYTES or trailing:
+        raise VerifierError(
+            "readiness candidate deterministic gzip exceeds canonical bound"
+        )
+    if (
+        len(canonical) != binding["canonical_size_bytes"]
+        or hashlib.sha256(canonical).hexdigest()
+        != binding["canonical_sha256"]
+    ):
+        raise VerifierError(
+            "readiness candidate deterministic gzip canonical binding mismatch"
+        )
+    if _deterministic_gzip(canonical) != stored:
+        raise VerifierError(
+            "readiness candidate deterministic gzip reconstruction mismatch"
+        )
+    candidate = _parse_canonical_json(canonical, label="readiness candidate")
+    candidate = _exact_mapping(
+        candidate,
+        {
+            "authority",
+            "candidate_schedule",
+            "consumed_cohort",
+            "disjointness",
+            "historical_seed_inventory",
+            "schema_version",
+            "source_commit",
+        },
+        "readiness candidate",
+    )
+    if candidate["schema_version"] != READINESS_CANDIDATE_SCHEMA_VERSION:
+        raise VerifierError("readiness candidate schema mismatch")
+    if candidate["source_commit"] != source_commit:
+        raise VerifierError("readiness candidate source commit mismatch")
+    candidate["authority"] = _validate_readiness_authority(
+        candidate["authority"], "readiness candidate authority"
+    )
+
+    inventory = _validate_seed_inventory(
+        candidate["historical_seed_inventory"],
+        source_commit,
+        max_rows=MAX_READINESS_CANDIDATE_CANONICAL_BYTES // 64,
+    )
+    raw_schedule = _exact_mapping(
+        candidate["candidate_schedule"],
+        {
+            "canonical_search_start",
+            "inventory_sha256",
+            "schema_version",
+            "seed_count",
+            "seeds",
+        },
+        "readiness candidate schedule",
+    )
+    seeds = [
+        _nonnegative_int(seed, "readiness candidate seed")
+        for seed in _exact_list(raw_schedule["seeds"], "readiness candidate seeds")
+    ]
+    if (
+        raw_schedule["schema_version"] != FRESH_SCHEDULE_SCHEMA_VERSION
+        or raw_schedule["canonical_search_start"] != 0
+        or type(raw_schedule["canonical_search_start"]) is not int
+        or raw_schedule["seed_count"] != SCHEDULED_TRAJECTORIES
+        or type(raw_schedule["seed_count"]) is not int
+        or len(seeds) != SCHEDULED_TRAJECTORIES
+        or seeds != sorted(set(seeds))
+    ):
+        raise VerifierError("readiness candidate schedule identity mismatch")
+    inventory_digest = _canonical_digest_streaming(inventory)
+    excluded = set(inventory["excluded_seeds"])
+    expected_seeds: list[int] = []
+    seed = 0
+    while len(expected_seeds) < SCHEDULED_TRAJECTORIES:
+        if seed not in excluded:
+            expected_seeds.append(seed)
+        seed += 1
+        if seed > 10_000_001:
+            raise VerifierError("readiness candidate schedule exceeds the bound")
+    expected_fresh = {
+        "canonical_search_start": 0,
+        "inventory_sha256": inventory_digest,
+        "schema_version": FRESH_SCHEDULE_SCHEMA_VERSION,
+        "seed_count": SCHEDULED_TRAJECTORIES,
+        "seeds": expected_seeds,
+    }
+    if raw_schedule != expected_fresh:
+        raise VerifierError("readiness candidate schedule differs from inventory")
+
+    consumed = _exact_mapping(
+        candidate["consumed_cohort"],
+        {
+            "registration_binding",
+            "registration_id",
+            "seed_count",
+            "seeds",
+            "seeds_sha256",
+        },
+        "readiness consumed cohort",
+    )
+    _nonempty_string(consumed["registration_id"], "consumed registration identity")
+    consumed_binding = _exact_mapping(
+        consumed["registration_binding"],
+        {"path", "sha256", "size_bytes"},
+        "consumed registration binding",
+    )
+    consumed_binding["path"] = _readiness_reports_path(
+        consumed_binding["path"], "consumed registration path"
+    )
+    _binding_sha256(
+        consumed_binding["sha256"], "consumed registration digest"
+    )
+    consumed_binding["size_bytes"] = _positive_int(
+        consumed_binding["size_bytes"], "consumed registration size"
+    )
+    expected_consumed_source = source_bindings.get("consumed_registration")
+    if expected_consumed_source is None or consumed_binding != {
+        key: expected_consumed_source[key]
+        for key in ("path", "sha256", "size_bytes")
+    }:
+        raise VerifierError("consumed cohort registration binding mismatch")
+    consumed_seeds = [
+        _nonnegative_int(seed, "consumed cohort seed")
+        for seed in _exact_list(consumed["seeds"], "consumed cohort seeds")
+    ]
+    if (
+        consumed["seed_count"] != SCHEDULED_TRAJECTORIES
+        or type(consumed["seed_count"]) is not int
+        or len(consumed_seeds) != SCHEDULED_TRAJECTORIES
+        or consumed_seeds != sorted(set(consumed_seeds))
+        or consumed["seeds_sha256"] != _canonical_digest(consumed_seeds)
+    ):
+        raise VerifierError("readiness consumed cohort identity mismatch")
+    collisions = sorted(set(seeds) & set(consumed_seeds))
+    disjointness = _exact_mapping(
+        candidate["disjointness"],
+        {"collision_count", "collisions", "status"},
+        "readiness candidate disjointness",
+    )
+    disjointness["collision_count"] = _nonnegative_int(
+        disjointness["collision_count"],
+        "readiness candidate disjointness collision count",
+    )
+    disjointness["collisions"] = [
+        _nonnegative_int(seed, "readiness candidate disjointness collision")
+        for seed in _exact_list(
+            disjointness["collisions"],
+            "readiness candidate disjointness collisions",
+        )
+    ]
+    if disjointness["status"] not in {"failed", "passed"}:
+        raise VerifierError("readiness candidate disjointness status mismatch")
+    expected_disjointness = {
+        "collision_count": len(collisions),
+        "collisions": collisions,
+        "status": "passed" if not collisions else "failed",
+    }
+    if disjointness != expected_disjointness or collisions:
+        raise VerifierError("readiness candidate collision check failed")
+
+    candidate["historical_seed_inventory"] = inventory
+    candidate["candidate_schedule"] = raw_schedule
+    candidate["consumed_cohort"] = {
+        **consumed,
+        "registration_binding": consumed_binding,
+        "seeds": consumed_seeds,
+    }
+    candidate["disjointness"] = disjointness
+    return candidate
+
+
+def _validate_readiness_verification_receipt(
+    value: Any,
+    *,
+    registration: Mapping[str, Any],
+    report: Mapping[str, Any],
+    candidate: Mapping[str, Any],
+) -> dict[str, Any]:
+    receipt = _exact_mapping(
+        value,
+        {
+            "attempt_sha256",
+            "intended_output_dir",
+            "publication_bindings",
+            "schema_version",
+            "source_commit",
+            "staging_dir",
+            "status",
+            "verification",
+            "verification_receipt_sha256",
+        },
+        "readiness verification receipt",
+    )
+    identity = receipt["verification_receipt_sha256"]
+    _binding_sha256(identity, "readiness verification receipt identity")
+    body = {
+        key: item
+        for key, item in receipt.items()
+        if key != "verification_receipt_sha256"
+    }
+    if identity != _canonical_digest(body):
+        raise VerifierError("readiness verification receipt digest mismatch")
+    registered_receipt = registration["readiness_evidence"][
+        "verification_receipt"
+    ]
+    if identity != registered_receipt["verification_receipt_sha256"]:
+        raise VerifierError("registered verification receipt identity mismatch")
+    _binding_sha256(receipt["attempt_sha256"], "readiness attempt identity")
+    _nonempty_string(receipt["intended_output_dir"], "readiness intended output")
+    _nonempty_string(receipt["staging_dir"], "readiness staging directory")
+    source_commit = registration["repository_commit"]
+    if (
+        receipt["schema_version"]
+        != READINESS_VERIFICATION_RECEIPT_SCHEMA_VERSION
+        or receipt["source_commit"] != source_commit
+        or receipt["status"] != "staging_independently_verified"
+    ):
+        raise VerifierError("readiness verification receipt status mismatch")
+
+    expected_names = {
+        READINESS_CANDIDATE_FILENAME,
+        READINESS_REPORT_FILENAME,
+        READINESS_REPORT_MARKDOWN_FILENAME,
+    }
+    publication = _exact_mapping(
+        receipt["publication_bindings"],
+        expected_names,
+        "verification receipt publication bindings",
+    )
+    normalized_publication: dict[str, dict[str, Any]] = {}
+    for name in sorted(expected_names):
+        item = _exact_mapping(
+            publication[name],
+            {"sha256", "size_bytes"},
+            f"verification receipt publication binding {name}",
+        )
+        _binding_sha256(
+            item["sha256"], f"verification receipt publication digest {name}"
+        )
+        item["size_bytes"] = _positive_int(
+            item["size_bytes"], f"verification receipt publication size {name}"
+        )
+        ceiling = (
+            MAX_READINESS_CANDIDATE_STORED_BYTES
+            if name == READINESS_CANDIDATE_FILENAME
+            else MAX_ARTIFACT_BYTES
+        )
+        if item["size_bytes"] > ceiling:
+            raise VerifierError(
+                f"verification receipt publication binding {name} exceeds bound"
+            )
+        normalized_publication[name] = item
+    candidate_binding = registration["readiness_evidence"]["candidate_artifact"]
+    report_binding = registration["readiness_evidence"]["readiness_report"]
+    if normalized_publication[READINESS_CANDIDATE_FILENAME] != {
+        "sha256": candidate_binding["sha256"],
+        "size_bytes": candidate_binding["size_bytes"],
+    }:
+        raise VerifierError("verification receipt candidate publication binding mismatch")
+    if normalized_publication[READINESS_REPORT_FILENAME] != {
+        "sha256": report_binding["sha256"],
+        "size_bytes": report_binding["size_bytes"],
+    }:
+        raise VerifierError("verification receipt report publication binding mismatch")
+
+    verification = _exact_mapping(
+        receipt["verification"],
+        {
+            "candidate_inventory_sha256",
+            "decision",
+            "independent_inventory_sha256",
+            "proposal_eligible",
+            "readiness_identity_sha256",
+            "source_commit",
+            "status",
+        },
+        "readiness verification summary",
+    )
+    if type(verification["proposal_eligible"]) is not bool:
+        raise VerifierError(
+            "readiness verification proposal eligibility must be boolean"
+        )
+    expected_verification = {
+        "candidate_inventory_sha256": candidate_binding["sha256"],
+        "decision": "go",
+        "independent_inventory_sha256": candidate["candidate_schedule"][
+            "inventory_sha256"
+        ],
+        "proposal_eligible": True,
+        "readiness_identity_sha256": report["readiness_identity_sha256"],
+        "source_commit": source_commit,
+        "status": "verified",
+    }
+    if verification != expected_verification:
+        raise VerifierError(
+            "readiness verification receipt is not the verified go summary"
+        )
+    receipt["publication_bindings"] = normalized_publication
+    receipt["verification"] = verification
+    return receipt
+
+
+def _verify_readiness_bound_registration(
+    registration: Mapping[str, Any], *, repo_root: Path
+) -> None:
+    source_commit = registration["repository_commit"]
+    evidence = registration["readiness_evidence"]
+    publication_commit = evidence["publication_commit"]
+    pushed_head = _git_text(
+        repo_root, "rev-parse", "origin/master", label="pushed HEAD"
+    )
+    if _COMMIT_RE.fullmatch(pushed_head) is None:
+        raise VerifierError("pushed HEAD is not a full Git commit")
+    _git_is_ancestor(
+        repo_root,
+        source_commit,
+        publication_commit,
+        label="readiness source commit publication ancestry",
+    )
+    _git_is_ancestor(
+        repo_root,
+        publication_commit,
+        pushed_head,
+        label="pushed readiness publication ancestry",
+    )
+    _git_is_ancestor(
+        repo_root,
+        source_commit,
+        pushed_head,
+        label="registered source ancestry",
+    )
+
+    receipt_binding = evidence["verification_receipt"]
+    receipt_payload = _git_blob_bytes(
+        repo_root,
+        publication_commit,
+        receipt_binding["path"],
+        label="readiness verification receipt",
+        limit=MAX_ARTIFACT_BYTES,
+    )
+    _validate_bound_payload(
+        receipt_payload,
+        receipt_binding,
+        label="readiness verification receipt binding",
+    )
+    receipt = _parse_canonical_json(
+        receipt_payload, label="readiness verification receipt"
+    )
+
+    report_binding = evidence["readiness_report"]
+    report_payload = _git_blob_bytes(
+        repo_root,
+        publication_commit,
+        report_binding["path"],
+        label="readiness report",
+        limit=MAX_ARTIFACT_BYTES,
+    )
+    _validate_bound_payload(
+        report_payload, report_binding, label="readiness report binding"
+    )
+    report, source_bindings = _validate_readiness_report(
+        _parse_canonical_json(report_payload, label="readiness report"),
+        registration=registration,
+        repo_root=repo_root,
+    )
+
+    candidate_binding = evidence["candidate_artifact"]
+    candidate_payload = _git_blob_bytes(
+        repo_root,
+        publication_commit,
+        candidate_binding["path"],
+        label="readiness candidate artifact",
+        limit=MAX_READINESS_CANDIDATE_STORED_BYTES,
+    )
+    _validate_bound_payload(
+        candidate_payload,
+        candidate_binding,
+        label="readiness candidate artifact binding",
+    )
+    candidate = _validate_readiness_candidate(
+        candidate_payload,
+        binding=candidate_binding,
+        source_commit=source_commit,
+        source_bindings=source_bindings,
+    )
+
+    fresh = candidate["candidate_schedule"]
+    seeds = fresh["seeds"]
+    expected_schedule = {
+        "canonical_search_start": fresh["canonical_search_start"],
+        "chunk_count": CHUNK_COUNT,
+        "chunks": [
+            seeds[index : index + TRAJECTORIES_PER_CHUNK]
+            for index in range(0, len(seeds), TRAJECTORIES_PER_CHUNK)
+        ],
+        "episodes_per_chunk": TRAJECTORIES_PER_CHUNK,
+        "inventory_sha256": fresh["inventory_sha256"],
+        "seeds": seeds,
+        "seeds_sha256": _canonical_digest(seeds),
+        "selection_schema_version": fresh["schema_version"],
+    }
+    if registration["schedule"] != expected_schedule:
+        raise VerifierError("registration schedule differs from readiness candidate")
+    consumed = candidate["consumed_cohort"]
+    expected_cohort = {
+        "candidate_seed_count": len(seeds),
+        "candidate_seeds_sha256": _canonical_digest(seeds),
+        "collision_count": 0,
+        "collisions": [],
+        "consumed_seed_count": len(consumed["seeds"]),
+        "consumed_seeds_sha256": _canonical_digest(consumed["seeds"]),
+        "status": "passed",
+    }
+    if report["cohort"] != expected_cohort:
+        raise VerifierError("readiness report cohort summary mismatch")
+    _validate_readiness_verification_receipt(
+        receipt,
+        registration=registration,
+        report=report,
+        candidate=candidate,
+    )
+
+
 def _validate_registration(
     value: Any, *, output: Path, repo_root: Path
 ) -> dict[str, Any]:
+    if not isinstance(value, Mapping):
+        raise VerifierError("registration must be a mapping")
+    schema_version = value.get("schema_version")
+    common_fields = {
+        "authority",
+        "contract",
+        "isolation_identity",
+        "native_identity",
+        "output_inventory",
+        "output_root",
+        "pushed_remote_ref",
+        "registration_id",
+        "repository_commit",
+        "runtime_identity",
+        "schedule",
+        "schema_version",
+        "source_inventory",
+    }
+    if schema_version == REGISTRATION_SCHEMA_VERSION:
+        registration_fields = common_fields | {"seed_inventory"}
+    elif schema_version == REGISTRATION_V2_SCHEMA_VERSION:
+        registration_fields = common_fields | {"readiness_evidence"}
+    else:
+        raise VerifierError("registration schema mismatch")
     registration = _exact_mapping(
         value,
-        {
-            "authority",
-            "contract",
-            "isolation_identity",
-            "native_identity",
-            "output_inventory",
-            "output_root",
-            "pushed_remote_ref",
-            "registration_id",
-            "repository_commit",
-            "runtime_identity",
-            "schedule",
-            "schema_version",
-            "seed_inventory",
-            "source_inventory",
-        },
+        registration_fields,
         "registration",
     )
     if (
-        registration["schema_version"] != REGISTRATION_SCHEMA_VERSION
-        or registration["authority"] != _AUTHORITY
+        registration["authority"] != _AUTHORITY
         or registration["contract"] != _expected_contract()
         or registration["pushed_remote_ref"] != "origin/master"
         or registration["output_inventory"] != _expected_output_inventory()
@@ -3218,14 +4180,23 @@ def _validate_registration(
     ):
         raise VerifierError("registration output root mismatch")
     registration["source_inventory"] = _validate_source_inventory(
-        registration["source_inventory"], repo_root=repo_root
+        registration["source_inventory"],
+        repo_root=repo_root,
+        repository_commit=commit,
+        registration_schema_version=schema_version,
     )
-    registration["seed_inventory"] = _validate_seed_inventory(
-        registration["seed_inventory"], commit
-    )
-    registration["schedule"] = _validate_schedule(
-        registration["schedule"], registration["seed_inventory"]
-    )
+    if schema_version == REGISTRATION_SCHEMA_VERSION:
+        registration["seed_inventory"] = _validate_seed_inventory(
+            registration["seed_inventory"], commit
+        )
+        registration["schedule"] = _validate_schedule(
+            registration["schedule"], registration["seed_inventory"]
+        )
+    else:
+        registration["readiness_evidence"] = _validate_readiness_evidence(
+            registration["readiness_evidence"], source_commit=commit
+        )
+        _verify_readiness_bound_registration(registration, repo_root=repo_root)
     runtime_identity = _exact_mapping(
         registration["runtime_identity"],
         {"device", "python_executable", "python_version", "torch_version"},
@@ -3369,20 +4340,28 @@ def _validate_source_preflight(
         },
         "source preflight",
     )
+    expected_checks = {
+        "communication_mod_unchanged",
+        "native_module_unchanged",
+        "production_checkpoints_unchanged",
+        "pushed_registration_exact",
+        "pushed_source_exact",
+        "runtime_identity_exact",
+        "source_inventory_exact",
+        "tracked_authorization_exact",
+        "tracked_worktree_clean",
+    }
+    if registration["schema_version"] == REGISTRATION_V2_SCHEMA_VERSION:
+        expected_checks.update(
+            {
+                "readiness_candidate_exact",
+                "readiness_publication_exact",
+                "readiness_source_exact",
+                "readiness_verification_receipt_exact",
+            }
+        )
     checks = _exact_mapping(
-        preflight["checks"],
-        {
-            "communication_mod_unchanged",
-            "native_module_unchanged",
-            "production_checkpoints_unchanged",
-            "pushed_registration_exact",
-            "pushed_source_exact",
-            "runtime_identity_exact",
-            "source_inventory_exact",
-            "tracked_authorization_exact",
-            "tracked_worktree_clean",
-        },
-        "source preflight checks",
+        preflight["checks"], expected_checks, "source preflight checks"
     )
     if (
         preflight["schema_version"] != SOURCE_PREFLIGHT_SCHEMA_VERSION

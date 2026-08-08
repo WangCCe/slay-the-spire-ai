@@ -10,6 +10,7 @@ from __future__ import annotations
 import copy
 import gzip
 import hashlib
+import io
 import json
 import math
 import re
@@ -25,6 +26,12 @@ SEED_INVENTORY_SCHEMA_VERSION = (
 FRESH_SCHEDULE_SCHEMA_VERSION = (
     "noncombat-cross-fitted-hierarchical-learning-fresh-schedule-v1"
 )
+READINESS_CANDIDATE_SCHEMA_VERSION = (
+    "noncombat-cross-fitted-empirical-successor-readiness-candidate-v1"
+)
+READINESS_CANDIDATE_ENCODING = "gzip-mtime-zero-v1"
+MAX_READINESS_CANDIDATE_STORED_BYTES = 64 * 1024 * 1024
+MAX_READINESS_CANDIDATE_CANONICAL_BYTES = 512 * 1024 * 1024
 CANONICAL_SEARCH_START = 0
 TRAINING_SEED_COUNT = 512
 PREVIOUS_UNTOUCHED_HOLDOUT_START = 71152
@@ -91,6 +98,26 @@ _SCHEDULE_FIELDS = {
     "seed_count",
     "seeds",
 }
+_READINESS_AUTHORITY_NAMES = (
+    "causal_claim",
+    "communication_mod",
+    "empirical_registration",
+    "evaluation",
+    "execution_authorization",
+    "execution_request",
+    "external_approval",
+    "formal_rl",
+    "gameplay",
+    "model_fitting",
+    "model_loading",
+    "native_loading",
+    "ope",
+    "policy_quality",
+    "promotion",
+    "qualification",
+    "seed_access",
+    "training",
+)
 
 
 class SeedInventoryBlocked(RuntimeError):
@@ -742,19 +769,234 @@ def validate_fresh_schedule(
     return normalized_schedule
 
 
+def _readiness_authority() -> dict[str, bool]:
+    return {name: False for name in _READINESS_AUTHORITY_NAMES}
+
+
+def _deterministic_gzip_bytes(payload: bytes) -> bytes:
+    buffer = io.BytesIO()
+    with gzip.GzipFile(
+        fileobj=buffer, mode="wb", filename="", mtime=0
+    ) as handle:
+        handle.write(payload)
+    return buffer.getvalue()
+
+
+def validate_readiness_candidate_artifact(
+    value: object, *, expected_source_commit: str
+) -> dict[str, Any]:
+    """Validate one readiness candidate without importing the readiness auditor."""
+    artifact = _mapping(value, "readiness candidate artifact")
+    _require_exact_keys(
+        artifact,
+        {
+            "authority",
+            "candidate_schedule",
+            "consumed_cohort",
+            "disjointness",
+            "historical_seed_inventory",
+            "schema_version",
+            "source_commit",
+        },
+        "readiness candidate artifact",
+    )
+    commit = _repository_commit(expected_source_commit)
+    if artifact["schema_version"] != READINESS_CANDIDATE_SCHEMA_VERSION:
+        raise SeedInventoryBlocked("readiness candidate schema mismatch")
+    if artifact["source_commit"] != commit:
+        raise SeedInventoryBlocked("readiness candidate source commit mismatch")
+    authority = _mapping(artifact["authority"], "readiness candidate authority")
+    expected_authority = _readiness_authority()
+    _require_exact_keys(
+        authority, set(expected_authority), "readiness candidate authority"
+    )
+    if (
+        any(type(enabled) is not bool for enabled in authority.values())
+        or authority != expected_authority
+    ):
+        raise SeedInventoryBlocked("readiness candidate authority must remain all false")
+
+    inventory = validate_seed_inventory(artifact["historical_seed_inventory"])
+    if inventory["repository_commit"] != commit:
+        raise SeedInventoryBlocked("readiness inventory source commit mismatch")
+    schedule = validate_fresh_schedule(inventory, artifact["candidate_schedule"])
+
+    consumed = _mapping(artifact["consumed_cohort"], "consumed cohort")
+    _require_exact_keys(
+        consumed,
+        {
+            "registration_binding",
+            "registration_id",
+            "seed_count",
+            "seeds",
+            "seeds_sha256",
+        },
+        "consumed cohort",
+    )
+    registration_id = consumed["registration_id"]
+    if not isinstance(registration_id, str) or not registration_id:
+        raise SeedInventoryBlocked("consumed registration identity is invalid")
+    binding = _mapping(consumed["registration_binding"], "consumed registration binding")
+    _require_exact_keys(
+        binding, {"path", "sha256", "size_bytes"}, "consumed registration binding"
+    )
+    binding["path"] = _canonical_path(
+        binding["path"], "consumed registration binding path"
+    )
+    if not isinstance(binding["sha256"], str) or _SHA256_RE.fullmatch(
+        binding["sha256"]
+    ) is None:
+        raise SeedInventoryBlocked("consumed registration binding digest is invalid")
+    binding["size_bytes"] = _positive_integer(
+        binding["size_bytes"], "consumed registration binding size"
+    )
+    raw_consumed = consumed["seeds"]
+    if not isinstance(raw_consumed, list):
+        raise SeedInventoryBlocked("consumed cohort seeds must be a list")
+    consumed_seeds = [
+        _nonnegative_integer(seed, "consumed cohort seed") for seed in raw_consumed
+    ]
+    consumed_seed_count = _nonnegative_integer(
+        consumed["seed_count"], "consumed cohort seed count"
+    )
+    if (
+        len(consumed_seeds) != TRAINING_SEED_COUNT
+        or consumed_seeds != sorted(set(consumed_seeds))
+        or consumed_seed_count != TRAINING_SEED_COUNT
+        or consumed["seeds_sha256"]
+        != hashlib.sha256(canonical_json_bytes(consumed_seeds)).hexdigest()
+    ):
+        raise SeedInventoryBlocked("consumed cohort identity mismatch")
+
+    collisions = sorted(set(schedule["seeds"]) & set(consumed_seeds))
+    disjointness = _mapping(artifact["disjointness"], "readiness disjointness")
+    _require_exact_keys(
+        disjointness,
+        {"collision_count", "collisions", "status"},
+        "readiness disjointness",
+    )
+    disjointness["collision_count"] = _nonnegative_integer(
+        disjointness["collision_count"], "readiness disjointness collision count"
+    )
+    raw_collisions = disjointness["collisions"]
+    if not isinstance(raw_collisions, list):
+        raise SeedInventoryBlocked("readiness disjointness collisions must be a list")
+    disjointness["collisions"] = [
+        _nonnegative_integer(seed, "readiness disjointness collision")
+        for seed in raw_collisions
+    ]
+    if disjointness["status"] not in {"failed", "passed"}:
+        raise SeedInventoryBlocked("readiness disjointness status is invalid")
+    expected_disjointness = {
+        "collision_count": len(collisions),
+        "collisions": collisions,
+        "status": "passed" if not collisions else "failed",
+    }
+    if disjointness != expected_disjointness or collisions:
+        raise SeedInventoryBlocked("readiness candidate cohort is not disjoint")
+
+    artifact["authority"] = authority
+    artifact["historical_seed_inventory"] = inventory
+    artifact["candidate_schedule"] = schedule
+    artifact["consumed_cohort"] = {
+        **consumed,
+        "registration_binding": binding,
+        "seed_count": consumed_seed_count,
+        "seeds": consumed_seeds,
+    }
+    artifact["disjointness"] = expected_disjointness
+    artifact["source_commit"] = commit
+    return artifact
+
+
+def decode_readiness_candidate_artifact(
+    stored: bytes,
+    *,
+    expected_binding: Mapping[str, Any],
+    expected_source_commit: str,
+) -> dict[str, Any]:
+    """Decode one bounded deterministic-gzip readiness candidate artifact."""
+    binding = _mapping(expected_binding, "readiness candidate binding")
+    _require_exact_keys(
+        binding,
+        {
+            "canonical_sha256",
+            "canonical_size_bytes",
+            "encoding",
+            "sha256",
+            "size_bytes",
+        },
+        "readiness candidate binding",
+    )
+    if binding["encoding"] != READINESS_CANDIDATE_ENCODING:
+        raise SeedInventoryBlocked("readiness candidate encoding mismatch")
+    for field in ("sha256", "canonical_sha256"):
+        if not isinstance(binding[field], str) or _SHA256_RE.fullmatch(
+            binding[field]
+        ) is None:
+            raise SeedInventoryBlocked(f"readiness candidate {field} is invalid")
+    binding["size_bytes"] = _positive_integer(
+        binding["size_bytes"], "readiness candidate stored size"
+    )
+    binding["canonical_size_bytes"] = _positive_integer(
+        binding["canonical_size_bytes"], "readiness candidate canonical size"
+    )
+    if (
+        binding["size_bytes"] > MAX_READINESS_CANDIDATE_STORED_BYTES
+        or binding["canonical_size_bytes"] > MAX_READINESS_CANDIDATE_CANONICAL_BYTES
+    ):
+        raise SeedInventoryBlocked("readiness candidate exceeds byte ceiling")
+    if (
+        not isinstance(stored, bytes)
+        or not stored
+        or len(stored) != binding["size_bytes"]
+        or hashlib.sha256(stored).hexdigest() != binding["sha256"]
+    ):
+        raise SeedInventoryBlocked("readiness candidate stored bytes mismatch")
+    try:
+        with gzip.GzipFile(fileobj=io.BytesIO(stored), mode="rb") as handle:
+            canonical = handle.read(MAX_READINESS_CANDIDATE_CANONICAL_BYTES + 1)
+    except (EOFError, OSError, gzip.BadGzipFile) as exc:
+        raise SeedInventoryBlocked("readiness candidate gzip is invalid") from exc
+    if len(canonical) > MAX_READINESS_CANDIDATE_CANONICAL_BYTES:
+        raise SeedInventoryBlocked("readiness candidate canonical bytes exceed ceiling")
+    if _deterministic_gzip_bytes(canonical) != stored:
+        raise SeedInventoryBlocked("readiness candidate gzip is not deterministic")
+    if (
+        len(canonical) != binding["canonical_size_bytes"]
+        or hashlib.sha256(canonical).hexdigest() != binding["canonical_sha256"]
+    ):
+        raise SeedInventoryBlocked("readiness candidate canonical bytes mismatch")
+    parsed = _strict_json(canonical, "readiness candidate")
+    if canonical_json_bytes(parsed) != canonical:
+        raise SeedInventoryBlocked("readiness candidate JSON is not canonical")
+    candidate = validate_readiness_candidate_artifact(
+        parsed, expected_source_commit=expected_source_commit
+    )
+    if canonical_json_bytes(candidate) != canonical:
+        raise SeedInventoryBlocked("readiness candidate normalization drifted")
+    return candidate
+
+
 __all__ = [
     "CANONICAL_SEARCH_START",
     "FRESH_SCHEDULE_SCHEMA_VERSION",
+    "MAX_READINESS_CANDIDATE_CANONICAL_BYTES",
+    "MAX_READINESS_CANDIDATE_STORED_BYTES",
     "PREVIOUS_UNTOUCHED_HOLDOUT_END",
     "PREVIOUS_UNTOUCHED_HOLDOUT_START",
+    "READINESS_CANDIDATE_ENCODING",
+    "READINESS_CANDIDATE_SCHEMA_VERSION",
     "SEED_INVENTORY_SCHEMA_VERSION",
     "TRAINING_SEED_COUNT",
     "SeedInventoryBlocked",
     "build_seed_inventory",
     "canonical_json_bytes",
+    "decode_readiness_candidate_artifact",
     "materialize_fresh_schedule",
     "rebuild_seed_inventory",
     "validate_fresh_schedule",
+    "validate_readiness_candidate_artifact",
     "validate_seed_inventory",
     "verify_seed_inventory",
 ]

@@ -4,6 +4,7 @@ import ast
 import copy
 import gzip
 import hashlib
+import io
 import inspect
 import json
 import subprocess
@@ -57,6 +58,96 @@ def _json_bytes(value: object) -> bytes:
     ).encode("utf-8") + b"\n"
 
 
+def _synthetic_inventory(repository_commit: str) -> dict[str, object]:
+    reserved = list(range(71152, 71664))
+    return seed_inventory.validate_seed_inventory(
+        {
+            "canonical_search_start": 0,
+            "excluded_seed_count": len(reserved),
+            "excluded_seeds": reserved,
+            "repository_commit": repository_commit,
+            "reserved_seed_ranges": [
+                {
+                    "end_inclusive": 71663,
+                    "name": "previous_untouched_holdout",
+                    "start_inclusive": 71152,
+                }
+            ],
+            "row_count": 0,
+            "rows": [],
+            "schema_version": seed_inventory.SEED_INVENTORY_SCHEMA_VERSION,
+            "source_bindings": [],
+            "source_count": 0,
+        }
+    )
+
+
+def _deterministic_gzip(payload: bytes, *, mtime: int = 0) -> bytes:
+    buffer = io.BytesIO()
+    with gzip.GzipFile(
+        fileobj=buffer, mode="wb", filename="", mtime=mtime
+    ) as handle:
+        handle.write(payload)
+    return buffer.getvalue()
+
+
+def _readiness_candidate(repository_commit: str) -> dict[str, object]:
+    inventory = _synthetic_inventory(repository_commit)
+    schedule = seed_inventory.materialize_fresh_schedule(inventory)
+    consumed = list(range(10_000, 10_512))
+    consumed_binding = {
+        "path": (
+            "reports/noncombat_cross_fitted_hierarchical_learning_successor_"
+            "20260806_r1/registration.json"
+        ),
+        "sha256": "1" * 64,
+        "size_bytes": 1,
+    }
+    return {
+        "authority": {
+            name: False
+            for name in (
+                "causal_claim",
+                "communication_mod",
+                "empirical_registration",
+                "evaluation",
+                "execution_authorization",
+                "execution_request",
+                "external_approval",
+                "formal_rl",
+                "gameplay",
+                "model_fitting",
+                "model_loading",
+                "native_loading",
+                "ope",
+                "policy_quality",
+                "promotion",
+                "qualification",
+                "seed_access",
+                "training",
+            )
+        },
+        "candidate_schedule": schedule,
+        "consumed_cohort": {
+            "registration_binding": consumed_binding,
+            "registration_id": "consumed-registration",
+            "seed_count": len(consumed),
+            "seeds": consumed,
+            "seeds_sha256": hashlib.sha256(_json_bytes(consumed)).hexdigest(),
+        },
+        "disjointness": {
+            "collision_count": 0,
+            "collisions": [],
+            "status": "passed",
+        },
+        "historical_seed_inventory": inventory,
+        "schema_version": (
+            "noncombat-cross-fitted-empirical-successor-readiness-candidate-v1"
+        ),
+        "source_commit": repository_commit,
+    }
+
+
 def test_module_import_is_source_only_and_stdlib_only():
     source_path = (
         ROOT
@@ -74,6 +165,116 @@ def test_module_import_is_source_only_and_stdlib_only():
     assert imported_roots.isdisjoint(
         {"analysis_scripts", "numpy", "spirecomm", "sts_lightspeed", "torch"}
     )
+
+
+def test_readiness_candidate_decoder_reconstructs_complete_fresh_cohort():
+    commit = "a" * 40
+    candidate = _readiness_candidate(commit)
+    canonical = _json_bytes(candidate)
+    stored = _deterministic_gzip(canonical)
+    binding = {
+        "canonical_sha256": hashlib.sha256(canonical).hexdigest(),
+        "canonical_size_bytes": len(canonical),
+        "encoding": "gzip-mtime-zero-v1",
+        "sha256": hashlib.sha256(stored).hexdigest(),
+        "size_bytes": len(stored),
+    }
+
+    decoded = seed_inventory.decode_readiness_candidate_artifact(
+        stored,
+        expected_binding=binding,
+        expected_source_commit=commit,
+    )
+
+    assert decoded == candidate
+    assert decoded["candidate_schedule"]["seeds"] == list(range(512))
+    assert decoded["disjointness"] == {
+        "collision_count": 0,
+        "collisions": [],
+        "status": "passed",
+    }
+
+
+def test_readiness_candidate_decoder_rejects_nondeterministic_gzip():
+    commit = "a" * 40
+    candidate = _readiness_candidate(commit)
+    canonical = _json_bytes(candidate)
+    stored = _deterministic_gzip(canonical, mtime=1)
+    binding = {
+        "canonical_sha256": hashlib.sha256(canonical).hexdigest(),
+        "canonical_size_bytes": len(canonical),
+        "encoding": "gzip-mtime-zero-v1",
+        "sha256": hashlib.sha256(stored).hexdigest(),
+        "size_bytes": len(stored),
+    }
+
+    with pytest.raises(seed_inventory.SeedInventoryBlocked, match="deterministic"):
+        seed_inventory.decode_readiness_candidate_artifact(
+            stored,
+            expected_binding=binding,
+            expected_source_commit=commit,
+        )
+
+
+@pytest.mark.parametrize(
+    ("case", "error"),
+    [
+        ("authority", "authority"),
+        ("authority_zero", "authority"),
+        ("authority_one", "authority"),
+        ("consumed_count_float", "consumed cohort"),
+        ("disjointness_count_float", "disjointness|not disjoint"),
+        ("fresh_schedule", "fresh schedule|fixed selection"),
+        ("historical_inventory", "source commit"),
+        ("collision", "not disjoint"),
+    ],
+)
+def test_readiness_candidate_decoder_rejects_semantic_drift(case, error):
+    commit = "a" * 40
+    candidate = _readiness_candidate(commit)
+    if case == "authority":
+        candidate["authority"]["training"] = True
+    elif case == "authority_zero":
+        candidate["authority"]["training"] = 0
+    elif case == "authority_one":
+        candidate["authority"]["training"] = 1
+    elif case == "consumed_count_float":
+        candidate["consumed_cohort"]["seed_count"] = 512.0
+    elif case == "disjointness_count_float":
+        candidate["disjointness"]["collision_count"] = 0.0
+    elif case == "fresh_schedule":
+        candidate["candidate_schedule"]["seeds"][0:2] = [1, 0]
+    elif case == "historical_inventory":
+        candidate["historical_seed_inventory"]["repository_commit"] = "b" * 40
+    elif case == "collision":
+        consumed = [0, *range(10_000, 10_511)]
+        candidate["consumed_cohort"]["seeds"] = consumed
+        candidate["consumed_cohort"]["seeds_sha256"] = hashlib.sha256(
+            _json_bytes(consumed)
+        ).hexdigest()
+        candidate["disjointness"] = {
+            "collision_count": 1,
+            "collisions": [0],
+            "status": "failed",
+        }
+    else:  # pragma: no cover - parametrization owns the cases.
+        raise AssertionError(case)
+    canonical = _json_bytes(candidate)
+    stored = _deterministic_gzip(canonical)
+    binding = {
+        "canonical_sha256": hashlib.sha256(canonical).hexdigest(),
+        "canonical_size_bytes": len(canonical),
+        "encoding": "gzip-mtime-zero-v1",
+        "sha256": hashlib.sha256(stored).hexdigest(),
+        "size_bytes": len(stored),
+    }
+
+    with pytest.raises(seed_inventory.SeedInventoryBlocked, match=error):
+        seed_inventory.decode_readiness_candidate_artifact(
+            stored,
+            expected_binding=binding,
+            expected_source_commit=commit,
+        )
 
 
 def test_fixed_tree_inventory_covers_formats_roles_and_predecessor_outputs(tmp_path):

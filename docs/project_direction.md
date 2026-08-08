@@ -890,6 +890,29 @@ The next authorized sequence is:
     `reports/noncombat_cross_fitted_empirical_successor_readiness_20260808_r2_closeout.json`.
     The already-synced execution change is archived at
     `openspec/changes/archive/2026-08-08-run-cross-fitted-readiness-20260808-r2`.
+45. Preserve the completed source-only compact-registration transport change.
+    New successor registrations use schema
+    `noncombat-cross-fitted-hierarchical-learning-registration-v2`, retain the
+    complete 8x64 schedule, and bind the immutable readiness publication,
+    verification receipt, report, deterministic-gzip candidate, and consumed
+    registration source without embedding the 347,575,355-byte canonical
+    inventory. Historical v1 evidence remains independently verifiable against
+    its registered Git source, while the public v1 builder now fails closed.
+    Independent review found and closed four defects: schema-global public
+    symbols that broke historical v1 validation, metadata-only consumed-cohort
+    binding, a still-callable new-v1 builder, and Python numeric equality that
+    admitted non-boolean authority or non-integer counts. Full source-only
+    verification passes 71 control-plane tests, 22 seed-inventory tests, one
+    preservation test, 81 readiness tests with one skip, and 118 independent-
+    verifier tests with one skip. No registration, request, approval,
+    authorization, native or model load, seed access, fitting, training,
+    evaluation, OPE, gameplay, CommunicationMod, qualification, or promotion
+    was created or run. The r2 `go` remains immutable historical evidence for
+    source commit `522185d06ddf48cb1be095c16efacaad299a0197`, but it is obsolete
+    for any registration whose source includes this control-plane change and
+    grants no proposal eligibility to that new source. A separately
+    preregistered one-shot r3 readiness audit must bind the new pushed source
+    and complete independently before any compact registration is proposed.
 
 ## Work Lanes
 
@@ -957,11 +980,15 @@ are complete. The contract preserves selected family plus conditional log
     first one-shot readiness audit remains terminal `no_go_source_binding`; its
     source identity was not reused. The source-only schedule and durable-spec
     correction is complete, and the separately preregistered corrected-source
-    readiness audit has now published an independently verified `go` against a
-    new pushed clean identity. This closes readiness only. The next gate is a
-    new OpenSpec proposal for an exact empirical-successor registration; no
-    registration, execution request, external approval, or execution authority
-    exists yet. Until that proposal separately fixes the fresh cohort,
+    readiness audit published an independently verified `go` against source
+    commit `522185d06ddf48cb1be095c16efacaad299a0197`. The compact-registration
+    source-only change necessarily changes the control plane, so that r2 result
+    remains historical evidence but is not eligibility for the new source. The
+    next gate is a separate preregistered one-shot r3 readiness audit bound to
+    the new pushed source. Only a newly verified `go` may enable a later exact
+    empirical-successor registration proposal; no registration, execution
+    request, external approval, or execution authority exists yet. Until that
+    later proposal separately fixes the fresh cohort,
     estimator/objective, resource ceilings, request, isolation, terminal
     evidence, and approval boundary, do not load a native module or model,
     access an empirical seed outcome, fit, train, evaluate, run OPE, launch
@@ -1015,6 +1042,14 @@ OpenSpec changes authorize them.
   seconds including orchestration). The failure is the same exact-ceiling
   floating-point deadline boundary in a runtime and test outside the staged
   repair. The gate was not rerun and that unrelated runtime was not changed.
+- Treat the 2026-08-08 compact-registration `commit` gate as invoked exactly
+  once but inconclusive: the outer command timed out after 1,204.4 seconds
+  before pytest returned a summary, and no Python child remained afterward.
+  The gate was not rerun. This is a test-infrastructure and feedback-duration
+  failure, not RED test evidence; the complete scoped control, seed-inventory,
+  preservation, readiness, and independent-verifier files remain green as
+  recorded in direction item 45. Include this result in the separate read-only
+  test-duration audit before changing test tiers or timing limits.
 
 Historical reports and archived changes retain the objectives and authority
 boundaries that applied when they were written. This document is the canonical

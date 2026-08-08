@@ -30,9 +30,10 @@ The registration is an all-false source-control document, not empirical executio
 
 - `candidate_artifact`: canonical repository `path`, `encoding`, stored `sha256` and `size_bytes`, and decompressed `canonical_sha256` and `canonical_size_bytes`.
 - `readiness_report`: canonical repository `path`, file `sha256` and `size_bytes`, and `readiness_identity_sha256`.
-- `publication_commit`: the immutable pushed commit that contains both exact readiness artifacts.
+- `verification_receipt`: canonical repository `path`, file `sha256` and `size_bytes`, and self-authenticating `verification_receipt_sha256`.
+- `publication_commit`: the immutable pushed commit that contains all three exact readiness artifacts.
 
-The two paths must be sibling files named `candidate_seed_inventory.json.gz` and `readiness_report.json` under one canonical `reports/` directory. The publication commit must contain both exact blobs, descend from the readiness source commit, and remain an ancestor of the current pushed head. The registration's repository commit must equal the readiness report and candidate source commit.
+The candidate and report paths must be sibling files named `candidate_seed_inventory.json.gz` and `readiness_report.json` under one canonical `reports/` directory. The receipt path must be the source-keyed canonical `attempt_verified.json` under the readiness attempt root. The publication commit must contain all three exact blobs, descend from the readiness source commit, and remain an ancestor of the current pushed head. The registration's repository commit must equal the receipt, report, and candidate source commit.
 
 Alternative considered: store the complete registration as gzip. Rejected because the execution bundle currently publishes canonical `registration.json`; decoding it there would still violate the unchanged artifact ceilings and would duplicate the inventory.
 
@@ -48,12 +49,13 @@ The registration written into the terminal bundle remains canonical JSON and con
 
 For v2, producer preflight first proves that `publication_commit` is an ancestor of `origin/master`, then reads the report and candidate from exact `<publication_commit>:<path>` objects rather than accepting the same blob at an arbitrary or movable path. It then, in fixed order:
 
-1. checks stored path, size, and SHA-256 bindings;
-2. parses canonical readiness JSON and requires the exact all-false authority map, `go`, proposal eligibility, source commit, readiness identity, and candidate binding;
-3. bounds candidate gzip to 64 MiB stored and 512 MiB canonical, rejects extra or nondeterministic members by byte-identical deterministic recompression, and parses strict canonical JSON;
-4. validates the complete historical inventory, canonical 512-seed selection, consumed 512-seed cohort, zero collisions, source commit, and all-false authority;
-5. reconstructs the registration's eight chunks and requires byte-identical schedule identity;
-6. requires every registration source-inventory row to equal the blob at `<readiness-source-commit>:<path>` and requires readiness's bound control plane, terminal verifier, seed helper, and successor contract rows to match those exact source identities.
+1. checks Git object size before reading each blob, then checks stored path, size, and SHA-256 bindings;
+2. parses the canonical independent-verification receipt, verifies its self-digest, and requires its publication bindings and verified `go` summary to match the report and candidate;
+3. parses canonical readiness JSON and requires the exact all-false authority map, `go`, proposal eligibility, source commit, readiness identity, and candidate binding, including exact JSON booleans for authority and eligibility and exact JSON integers for counts;
+4. bounds candidate gzip to 64 MiB stored and 512 MiB canonical, rejects extra or nondeterministic members by byte-identical deterministic recompression, and parses strict canonical JSON;
+5. validates the complete historical inventory, canonical 512-seed selection, consumed 512-seed cohort and its exact `consumed_registration` source role, zero collisions, source commit, and all-false authority;
+6. reconstructs the registration's eight chunks and requires byte-identical schedule identity;
+7. requires every registration source-inventory row to equal the blob at `<readiness-source-commit>:<path>` and requires readiness's bound control plane, terminal verifier, seed helper, and successor contract rows to match those exact source identities.
 
 Only after these checks, the existing current-worktree/source-inventory equality, runtime/native/isolation checks, exact pushed registration/authorization checks, and clean-worktree checks pass may dependency loading begin. Consequently an r2 report bound to the pre-change control plane cannot validate a registration executed by the post-change control plane. `inspect-registration` and `render-request` perform the same readiness-evidence verification for v2, while pure structural validation remains side-effect free for internal identity checks.
 
