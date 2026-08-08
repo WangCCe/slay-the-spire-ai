@@ -38,15 +38,21 @@ approval and tracked authorization pass source-only preflight.
 
 ### Render through the source-only CLI
 
-Invoke `analysis_scripts/noncombat_cross_fitted_hierarchical_learning_experiment.py`
-under Windows Python `-I` with `render-request`, the repository root, and the
-exact pushed registration path. Capture canonical stdout into an additive
-staging file only after exit 0. This entry point revalidates the compact
-readiness publication before deriving the request.
+Invoke the tracked
+`analysis_scripts.noncombat_cross_fitted_hierarchical_learning_experiment`
+module through a Windows Python `-I -c` bootstrap that adds only the exact repo
+root to `sys.path` and dispatches `main()` with `render-request`, the repository
+root, and the exact pushed registration path. Capture canonical stdout into an
+additive staging file only after exit 0. This preserves isolated mode while
+making the repo-local package import explicit; the entry point revalidates the
+compact readiness publication before deriving the request.
 
 Alternative: call `build_exact_execution_request` directly. Rejected for
 publication because the pure helper intentionally assumes an already validated
 in-memory context and does not itself replay external readiness evidence.
+Alternative: execute the file path directly under `-I`. Rejected because
+isolated mode removes the repo root and the file cannot import its bound sibling
+package when readiness decoding begins.
 
 ### Keep requested authority distinct from granted authority
 
