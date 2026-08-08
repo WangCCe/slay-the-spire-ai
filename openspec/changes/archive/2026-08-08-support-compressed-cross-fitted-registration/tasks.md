@@ -16,8 +16,8 @@
 - [x] 3.1 Run focused producer, seed-inventory, preservation, readiness, and independent-verifier pytest with a fresh system-temp basetemp.
 - [x] 3.2 Run strict OpenSpec validation and the repository commit test gate; treat pytest infrastructure failures separately and do not launch gameplay for this source-only change.
 - [x] 3.3 Obtain an independent code review, resolve actionable findings, and record the exact evidence and r2 source-obsolescence boundary in project direction.
-- [ ] 3.4 Sync the successor delta spec, archive the completed change, commit one cohesive source change, and push `master` with no registration, request, authorization, or empirical artifact.
+- [x] 3.4 Sync the successor delta spec, archive the completed change, commit one cohesive source change, and push `master` with no registration, request, authorization, or empirical artifact.
 
 ## 4. Readiness Handoff
 
-- [ ] 4.1 Create a separate preregistered one-shot readiness change bound to the new pushed source; do not reuse r2 eligibility or start the audit under this change.
+- [x] 4.1 Create a separate preregistered one-shot readiness change bound to the new pushed source; do not reuse r2 eligibility or start the audit under this change.
