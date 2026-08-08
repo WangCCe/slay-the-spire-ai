@@ -965,6 +965,30 @@ The next authorized sequence is:
     This correction does not repair, verify, revive, or authorize retry of r3.
     Any later attempt requires a new pushed source, proposal, exact identity and
     paths, preregistration, and explicit one-shot authorization.
+48. Preserve the independently verified repaired-source r4 readiness `go`.
+    Pushed source commit `0570aa23adc46df0801d18769b0bbc8adbe53c55`
+    was invoked exactly once by audit
+    `noncombat-cross-fitted-empirical-successor-readiness-20260808-r4` and
+    exited 0 after 1021.8 seconds. All six fixed gates passed. The candidate
+    contains 512 fresh seeds, excludes the consumed 512-seed cohort with zero
+    collisions, and retains `4303.644` seconds of fixed-budget margin. The
+    canonical three-file publication is installed at
+    `reports/noncombat_cross_fitted_empirical_successor_readiness_20260808_r4`;
+    scratch, exact staging, and sealed siblings are absent. A separate
+    standalone verifier completed in 448.1 seconds with status `verified`,
+    readiness identity
+    `6723364a5a31c177bad0a4e8980bfbc6ff74914d595a506d434387c9bbcc3b8f`,
+    and no findings. Native loading, seed access, model loading, fitting,
+    training, evaluation, OPE, gameplay, CommunicationMod, qualification, and
+    promotion all remained false. This `go` makes only a new empirical-
+    successor registration proposal eligible; it does not register a cohort or
+    authorize execution or training. Preserve the publication, source-keyed
+    receipts, and deterministic closeout at
+    `reports/noncombat_cross_fitted_empirical_successor_readiness_20260808_r4_closeout.json`.
+    Before any later irreversible execution, replace the long copy-pasted
+    authorization tuple with a tracked machine-generated manifest and the solo
+    maintainer's standing delegation, while retaining exact source/path/limit
+    validation, atomic claim, durable receipts, and no-retry semantics.
 
 ## Work Lanes
 
