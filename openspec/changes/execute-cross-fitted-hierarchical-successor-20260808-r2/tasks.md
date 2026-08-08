@@ -1,21 +1,21 @@
 ## 1. Freeze The Execution Plan
 
-- [ ] 1.1 Strictly validate and deterministically audit the proposal, design,
+- [x] 1.1 Strictly validate and deterministically audit the proposal, design,
   delta requirement, exact control identities, execution command, monitoring
   boundary, recovery rule, success metric, and rollback boundary.
-- [ ] 1.2 Commit and push only the OpenSpec plan before creating the registered
+- [x] 1.2 Commit and push only the OpenSpec plan before creating the registered
   output root, loading a dependency, or accessing a seed.
 
 ## 2. Revalidate The Irreversible Boundary
 
-- [ ] 2.1 Confirm local `HEAD` equals `origin/master`, contains exact pushed
+- [x] 2.1 Confirm local `HEAD` equals `origin/master`, contains exact pushed
   registration/request/approval/authorization blobs, descends from every
   control-stage commit, and has no registered output root.
-- [ ] 2.2 Revalidate the complete control chain through isolated producer and
+- [x] 2.2 Revalidate the complete control chain through isolated producer and
   independent standard-library paths, including source/readiness, native file
   and provenance, runtime, isolation, schedule, resources, authority, and zero
   blocked-dependency import delta.
-- [ ] 2.3 Confirm no same-identity execution process exists and freeze the exact
+- [x] 2.3 Confirm no same-identity execution process exists and freeze the exact
   real-argv `execute` command plus an outer wait longer than the registered
   charged-time and publication overhead.
 
