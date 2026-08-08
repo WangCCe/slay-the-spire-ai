@@ -54,6 +54,12 @@ EXECUTION_REQUEST_SCHEMA_VERSION = (
 EXTERNAL_APPROVAL_SCHEMA_VERSION = (
     "noncombat-cross-fitted-hierarchical-learning-external-approval-v1"
 )
+STANDING_DELEGATION_SCHEMA_VERSION = (
+    "noncombat-cross-fitted-hierarchical-learning-standing-delegation-v1"
+)
+DELEGATED_APPROVAL_SCHEMA_VERSION = (
+    "noncombat-cross-fitted-hierarchical-learning-delegated-approval-v2"
+)
 AUTHORIZATION_SCHEMA_VERSION = (
     "noncombat-cross-fitted-hierarchical-learning-authorization-v1"
 )
@@ -92,6 +98,21 @@ TERMINAL_SCHEMA_VERSION = (
 )
 MANIFEST_SCHEMA_VERSION = (
     "noncombat-cross-fitted-hierarchical-learning-manifest-v1"
+)
+
+DELEGATED_REGISTRATION_ID_PREFIX = (
+    "noncombat-cross-fitted-hierarchical-learning-successor-"
+)
+DELEGATED_REQUEST_CLASS = EXECUTION_REQUEST_SCHEMA_VERSION
+DELEGATED_APPROVAL_RESOLVER = "codex-agent-under-standing-delegation-v1"
+STANDING_DELEGATION_REVOCATION = (
+    "future-explicit-human-revocation-before-approval-publication-v1"
+)
+STANDING_DELEGATION_EXCLUSIONS = (
+    "bypass-codex-host-or-operating-system-approval",
+    "change-request-bound-source-path-cohort-resource-retry-or-authority-terms",
+    "destructive-unrelated-repository-or-filesystem-operation",
+    "substitute-another-request-digest",
 )
 
 BASELINE_FEATURE_DIM = 128
@@ -1441,6 +1462,92 @@ def _validate_approval_provenance(value: object) -> dict[str, str]:
     return provenance
 
 
+def build_standing_delegation(
+    *,
+    grant_text: str,
+    granted_at: str,
+    provenance: Mapping[str, Any],
+) -> dict[str, Any]:
+    """Build the reusable human grant without resolving an execution request."""
+    body = {
+        "exclusions": list(STANDING_DELEGATION_EXCLUSIONS),
+        "grant": {
+            "granted_at": _nonempty_string(granted_at, "delegation grant timestamp"),
+            "provenance": _validate_approval_provenance(provenance),
+            "verbatim_text": _nonempty_string(grant_text, "delegation grant text"),
+        },
+        "revocation": STANDING_DELEGATION_REVOCATION,
+        "schema_version": STANDING_DELEGATION_SCHEMA_VERSION,
+        "scope": {
+            "pushed_remote_ref": "origin/master",
+            "registration_id_prefix": DELEGATED_REGISTRATION_ID_PREFIX,
+            "request_class": DELEGATED_REQUEST_CLASS,
+        },
+    }
+    return {**body, "delegation_sha256": _canonical_digest(body)}
+
+
+def validate_standing_delegation(
+    value: Mapping[str, Any], registration: Mapping[str, Any]
+) -> dict[str, Any]:
+    """Validate one human standing grant against the exact registration scope."""
+    delegation = _copy_mapping(value, "standing delegation")
+    _require_fields(
+        delegation,
+        {
+            "delegation_sha256",
+            "exclusions",
+            "grant",
+            "revocation",
+            "schema_version",
+            "scope",
+        },
+        "standing delegation",
+    )
+    if delegation["schema_version"] != STANDING_DELEGATION_SCHEMA_VERSION:
+        raise ExperimentBlocked("standing delegation schema mismatch")
+    if delegation["exclusions"] != list(STANDING_DELEGATION_EXCLUSIONS):
+        raise ExperimentBlocked("standing delegation exclusions mismatch")
+    if delegation["revocation"] != STANDING_DELEGATION_REVOCATION:
+        raise ExperimentBlocked("standing delegation revocation mismatch")
+
+    grant = _copy_mapping(delegation["grant"], "standing delegation grant")
+    _require_fields(
+        grant,
+        {"granted_at", "provenance", "verbatim_text"},
+        "standing delegation grant",
+    )
+    _nonempty_string(grant["granted_at"], "delegation grant timestamp")
+    _nonempty_string(grant["verbatim_text"], "delegation grant text")
+    grant["provenance"] = _validate_approval_provenance(grant["provenance"])
+    delegation["grant"] = grant
+
+    normalized_registration = validate_registration(registration)
+    scope = _copy_mapping(delegation["scope"], "standing delegation scope")
+    _require_fields(
+        scope,
+        {"pushed_remote_ref", "registration_id_prefix", "request_class"},
+        "standing delegation scope",
+    )
+    if scope != {
+        "pushed_remote_ref": normalized_registration["pushed_remote_ref"],
+        "registration_id_prefix": DELEGATED_REGISTRATION_ID_PREFIX,
+        "request_class": DELEGATED_REQUEST_CLASS,
+    } or not normalized_registration["registration_id"].startswith(
+        DELEGATED_REGISTRATION_ID_PREFIX
+    ):
+        raise ExperimentBlocked("standing delegation scope mismatch")
+    delegation["scope"] = scope
+
+    digest = _digest(delegation["delegation_sha256"], "delegation identity")
+    body = {
+        key: item for key, item in delegation.items() if key != "delegation_sha256"
+    }
+    if digest != _canonical_digest(body):
+        raise ExperimentBlocked("standing delegation identity mismatch")
+    return delegation
+
+
 def bind_external_approval(
     registration: Mapping[str, Any],
     request: Mapping[str, Any],
@@ -1470,12 +1577,108 @@ def bind_external_approval(
     return {**body, "approval_sha256": _canonical_digest(body)}
 
 
+def bind_delegated_approval(
+    registration: Mapping[str, Any],
+    request: Mapping[str, Any],
+    delegation: Mapping[str, Any],
+    *,
+    resolved_at: str,
+) -> dict[str, Any]:
+    """Resolve one validated human standing grant to one exact request."""
+    normalized_registration = validate_registration(registration)
+    normalized_request = validate_exact_execution_request(
+        request, normalized_registration
+    )
+    normalized_delegation = validate_standing_delegation(
+        delegation, normalized_registration
+    )
+    resolution = {
+        "delegation_sha256": normalized_delegation["delegation_sha256"],
+        "request_sha256": normalized_request["request_sha256"],
+        "resolved_at": _nonempty_string(
+            resolved_at, "delegated approval resolution timestamp"
+        ),
+        "resolver": DELEGATED_APPROVAL_RESOLVER,
+    }
+    body = {
+        "approval_mode": "standing-delegation",
+        "approved_request_sha256": normalized_request["request_sha256"],
+        "delegation": normalized_delegation,
+        "resolution": resolution,
+        "schema_version": DELEGATED_APPROVAL_SCHEMA_VERSION,
+    }
+    return {**body, "approval_sha256": _canonical_digest(body)}
+
+
+def _validate_delegated_approval(
+    value: Mapping[str, Any],
+    registration: Mapping[str, Any],
+    request: Mapping[str, Any],
+) -> dict[str, Any]:
+    approval = _copy_mapping(value, "delegated approval")
+    _require_fields(
+        approval,
+        {
+            "approval_mode",
+            "approval_sha256",
+            "approved_request_sha256",
+            "delegation",
+            "resolution",
+            "schema_version",
+        },
+        "delegated approval",
+    )
+    if (
+        approval["schema_version"] != DELEGATED_APPROVAL_SCHEMA_VERSION
+        or approval["approval_mode"] != "standing-delegation"
+    ):
+        raise ExperimentBlocked("delegated approval schema or mode mismatch")
+    normalized_registration = validate_registration(registration)
+    normalized_request = validate_exact_execution_request(
+        request, normalized_registration
+    )
+    approved_digest = _digest(
+        approval["approved_request_sha256"], "delegated approved request digest"
+    )
+    if approved_digest != normalized_request["request_sha256"]:
+        raise ExperimentBlocked("delegated approval request digest mismatch")
+    approval["delegation"] = validate_standing_delegation(
+        approval["delegation"], normalized_registration
+    )
+    resolution = _copy_mapping(
+        approval["resolution"], "delegated approval resolution"
+    )
+    _require_fields(
+        resolution,
+        {"delegation_sha256", "request_sha256", "resolved_at", "resolver"},
+        "delegated approval resolution",
+    )
+    _nonempty_string(resolution["resolved_at"], "delegated resolution timestamp")
+    if resolution != {
+        "delegation_sha256": approval["delegation"]["delegation_sha256"],
+        "request_sha256": normalized_request["request_sha256"],
+        "resolved_at": resolution["resolved_at"],
+        "resolver": DELEGATED_APPROVAL_RESOLVER,
+    }:
+        raise ExperimentBlocked("delegated approval resolution mismatch")
+    approval["resolution"] = resolution
+    body = {key: item for key, item in approval.items() if key != "approval_sha256"}
+    if _digest(approval["approval_sha256"], "delegated approval identity") != (
+        _canonical_digest(body)
+    ):
+        raise ExperimentBlocked("delegated approval identity mismatch")
+    return approval
+
+
 def validate_external_approval(
     value: Mapping[str, Any],
     registration: Mapping[str, Any],
     request: Mapping[str, Any],
 ) -> dict[str, Any]:
     approval = _copy_mapping(value, "external approval")
+    schema_version = approval.get("schema_version")
+    if schema_version == DELEGATED_APPROVAL_SCHEMA_VERSION:
+        return _validate_delegated_approval(approval, registration, request)
     _require_fields(
         approval,
         {
@@ -6644,6 +6847,36 @@ def build_parser() -> argparse.ArgumentParser:
     )
     request.add_argument("--repo-root", type=Path, default=Path(__file__).parents[1])
     request.add_argument("--registration", type=Path, required=True)
+    inspect_delegation = subparsers.add_parser(
+        "inspect-delegation",
+        help="validate one standing delegation against a registration",
+    )
+    inspect_delegation.add_argument(
+        "--repo-root", type=Path, default=Path(__file__).parents[1]
+    )
+    inspect_delegation.add_argument("--registration", type=Path, required=True)
+    inspect_delegation.add_argument("--delegation", type=Path, required=True)
+    delegated_approval = subparsers.add_parser(
+        "render-delegated-approval",
+        help="resolve a standing delegation to one exact request",
+    )
+    delegated_approval.add_argument(
+        "--repo-root", type=Path, default=Path(__file__).parents[1]
+    )
+    delegated_approval.add_argument("--registration", type=Path, required=True)
+    delegated_approval.add_argument("--request", type=Path, required=True)
+    delegated_approval.add_argument("--delegation", type=Path, required=True)
+    delegated_approval.add_argument("--resolved-at", required=True)
+    render_authorization = subparsers.add_parser(
+        "render-authorization",
+        help="render exact authorization from registration, request, and approval",
+    )
+    render_authorization.add_argument(
+        "--repo-root", type=Path, default=Path(__file__).parents[1]
+    )
+    render_authorization.add_argument("--registration", type=Path, required=True)
+    render_authorization.add_argument("--request", type=Path, required=True)
+    render_authorization.add_argument("--approval", type=Path, required=True)
     execute = subparsers.add_parser(
         "execute", help="run the one exactly authorized registered mechanism"
     )
@@ -6674,6 +6907,39 @@ def main(argv: Sequence[str] | None = None) -> int:
         if registration["schema_version"] == REGISTRATION_V2_SCHEMA_VERSION:
             verify_readiness_bound_registration(args.repo_root, registration)
         value = build_exact_execution_request(registration)
+    elif args.command == "inspect-delegation":
+        registration = validate_registration(
+            _load_canonical_json_file(args.registration, "registration")
+        )
+        if registration["schema_version"] == REGISTRATION_V2_SCHEMA_VERSION:
+            verify_readiness_bound_registration(args.repo_root, registration)
+        value = validate_standing_delegation(
+            _load_canonical_json_file(args.delegation, "standing delegation"),
+            registration,
+        )
+    elif args.command == "render-delegated-approval":
+        registration = validate_registration(
+            _load_canonical_json_file(args.registration, "registration")
+        )
+        if registration["schema_version"] == REGISTRATION_V2_SCHEMA_VERSION:
+            verify_readiness_bound_registration(args.repo_root, registration)
+        value = bind_delegated_approval(
+            registration,
+            _load_canonical_json_file(args.request, "execution request"),
+            _load_canonical_json_file(args.delegation, "standing delegation"),
+            resolved_at=args.resolved_at,
+        )
+    elif args.command == "render-authorization":
+        registration = validate_registration(
+            _load_canonical_json_file(args.registration, "registration")
+        )
+        if registration["schema_version"] == REGISTRATION_V2_SCHEMA_VERSION:
+            verify_readiness_bound_registration(args.repo_root, registration)
+        value = build_execution_authorization(
+            registration,
+            _load_canonical_json_file(args.request, "execution request"),
+            _load_canonical_json_file(args.approval, "approval"),
+        )
     elif args.command == "execute":
         if argv is not None:
             raise ExperimentBlocked("execute must use the real process argv")

@@ -1,6 +1,6 @@
 # Project Direction
 
-Last updated: 2026-08-07
+Last updated: 2026-08-08
 
 ## Current Phase
 
@@ -989,6 +989,33 @@ The next authorized sequence is:
     authorization tuple with a tracked machine-generated manifest and the solo
     maintainer's standing delegation, while retaining exact source/path/limit
     validation, atomic claim, durable receipts, and no-retry semantics.
+49. Preserve the source-only solo-maintainer execution-delegation control
+    plane. Standing-delegation v1 retains the exact external-human grant,
+    timestamp and message/task provenance, binds `origin/master`, the successor
+    registration-id prefix, the actual execution-request schema version, a
+    closed exclusion set, the external publication-time revocation rule, and a
+    canonical body digest. Delegated-approval v2 embeds that complete grant and
+    a machine resolution to one exact request digest; authorization v1 embeds
+    the normalized approval unchanged, while historical external-human
+    approval v1 and consumed evidence remain byte-preserved. Source-only CLI
+    commands inspect the grant and render approval/authorization candidates to
+    stdout without publication or empirical authority. Focused producer,
+    lifecycle, verifier, preservation, and import-isolation verification passed
+    206 tests with one skip; strict OpenSpec validation passed all 77 items.
+    Independent review found and fixed a request-class alias that was not the
+    actual request schema and expanded invalid CLI coverage. The repository
+    commit gate was invoked once and completed after 1244.73 seconds with 4603
+    passed, 18 skipped, and one failed suite-order assertion because Torch had
+    already been imported by prior tests. The assertion now compares the module
+    set before and after source-only rendering; the exact failed node and two
+    fresh import-isolation nodes pass three tests in 2.02 seconds. The commit
+    gate is not rerun. No native/model load, environment, seed, fitting,
+    training, evaluation, OPE, gameplay, CommunicationMod, qualification,
+    promotion, or empirical output occurred. Because delegation changes source
+    and canonical contract bytes, r4 remains immutable historical evidence but
+    is no longer registration eligibility for this source. The next step is a
+    separate preregistered, independently verified fresh source-only readiness
+    change; no successor registration or execution may precede its `go`.
 
 ## Work Lanes
 

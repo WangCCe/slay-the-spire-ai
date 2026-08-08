@@ -293,6 +293,12 @@ EXECUTION_REQUEST_SCHEMA_VERSION = (
 EXTERNAL_APPROVAL_SCHEMA_VERSION = (
     "noncombat-cross-fitted-hierarchical-learning-external-approval-v1"
 )
+STANDING_DELEGATION_SCHEMA_VERSION = (
+    "noncombat-cross-fitted-hierarchical-learning-standing-delegation-v1"
+)
+DELEGATED_APPROVAL_SCHEMA_VERSION = (
+    "noncombat-cross-fitted-hierarchical-learning-delegated-approval-v2"
+)
 AUTHORIZATION_SCHEMA_VERSION = (
     "noncombat-cross-fitted-hierarchical-learning-authorization-v1"
 )
@@ -337,6 +343,21 @@ SEED_INVENTORY_SCHEMA_VERSION = (
 )
 FRESH_SCHEDULE_SCHEMA_VERSION = (
     "noncombat-cross-fitted-hierarchical-learning-fresh-schedule-v1"
+)
+
+DELEGATED_REGISTRATION_ID_PREFIX = (
+    "noncombat-cross-fitted-hierarchical-learning-successor-"
+)
+DELEGATED_REQUEST_CLASS = EXECUTION_REQUEST_SCHEMA_VERSION
+DELEGATED_APPROVAL_RESOLVER = "codex-agent-under-standing-delegation-v1"
+STANDING_DELEGATION_REVOCATION = (
+    "future-explicit-human-revocation-before-approval-publication-v1"
+)
+STANDING_DELEGATION_EXCLUSIONS = (
+    "bypass-codex-host-or-operating-system-approval",
+    "change-request-bound-source-path-cohort-resource-retry-or-authority-terms",
+    "destructive-unrelated-repository-or-filesystem-operation",
+    "substitute-another-request-digest",
 )
 
 ACCESS_JOURNAL_FILENAME = "access_journal.jsonl"
@@ -4254,11 +4275,131 @@ def _validate_request(
     return request
 
 
+def _validate_standing_delegation(
+    value: Any,
+    *,
+    registration: Mapping[str, Any],
+) -> dict[str, Any]:
+    delegation = _exact_mapping(
+        value,
+        {
+            "delegation_sha256",
+            "exclusions",
+            "grant",
+            "revocation",
+            "schema_version",
+            "scope",
+        },
+        "standing delegation",
+    )
+    if (
+        delegation["schema_version"] != STANDING_DELEGATION_SCHEMA_VERSION
+        or delegation["exclusions"] != list(STANDING_DELEGATION_EXCLUSIONS)
+        or delegation["revocation"] != STANDING_DELEGATION_REVOCATION
+    ):
+        raise VerifierError("standing delegation controls mismatch")
+    grant = _exact_mapping(
+        delegation["grant"],
+        {"granted_at", "provenance", "verbatim_text"},
+        "standing delegation grant",
+    )
+    provenance = _exact_mapping(
+        grant["provenance"],
+        {"message_id", "source", "task_id"},
+        "standing delegation provenance",
+    )
+    if provenance["source"] != "external-human-message":
+        raise VerifierError("standing delegation is not external human input")
+    for name in ("message_id", "task_id"):
+        _nonempty_string(provenance[name], f"delegation provenance {name}")
+    _nonempty_string(grant["granted_at"], "delegation grant timestamp")
+    _nonempty_string(grant["verbatim_text"], "delegation grant text")
+    grant["provenance"] = provenance
+    delegation["grant"] = grant
+    scope = _exact_mapping(
+        delegation["scope"],
+        {"pushed_remote_ref", "registration_id_prefix", "request_class"},
+        "standing delegation scope",
+    )
+    if scope != {
+        "pushed_remote_ref": registration["pushed_remote_ref"],
+        "registration_id_prefix": DELEGATED_REGISTRATION_ID_PREFIX,
+        "request_class": DELEGATED_REQUEST_CLASS,
+    } or not registration["registration_id"].startswith(
+        DELEGATED_REGISTRATION_ID_PREFIX
+    ):
+        raise VerifierError("standing delegation scope mismatch")
+    delegation["scope"] = scope
+    digest = delegation["delegation_sha256"]
+    if not isinstance(digest, str) or _SHA256_RE.fullmatch(digest) is None:
+        raise VerifierError("standing delegation digest mismatch")
+    body = {
+        key: item for key, item in delegation.items() if key != "delegation_sha256"
+    }
+    if digest != _canonical_digest(body):
+        raise VerifierError("standing delegation identity mismatch")
+    return delegation
+
+
+def _validate_delegated_approval(
+    value: Any,
+    *,
+    registration: Mapping[str, Any],
+    request: Mapping[str, Any],
+) -> dict[str, Any]:
+    approval = _exact_mapping(
+        value,
+        {
+            "approval_mode",
+            "approval_sha256",
+            "approved_request_sha256",
+            "delegation",
+            "resolution",
+            "schema_version",
+        },
+        "delegated approval",
+    )
+    if (
+        approval["schema_version"] != DELEGATED_APPROVAL_SCHEMA_VERSION
+        or approval["approval_mode"] != "standing-delegation"
+        or approval["approved_request_sha256"] != request["request_sha256"]
+    ):
+        raise VerifierError("delegated approval request or schema mismatch")
+    approval["delegation"] = _validate_standing_delegation(
+        approval["delegation"], registration=registration
+    )
+    resolution = _exact_mapping(
+        approval["resolution"],
+        {"delegation_sha256", "request_sha256", "resolved_at", "resolver"},
+        "delegated approval resolution",
+    )
+    _nonempty_string(resolution["resolved_at"], "delegated resolution timestamp")
+    if resolution != {
+        "delegation_sha256": approval["delegation"]["delegation_sha256"],
+        "request_sha256": request["request_sha256"],
+        "resolved_at": resolution["resolved_at"],
+        "resolver": DELEGATED_APPROVAL_RESOLVER,
+    }:
+        raise VerifierError("delegated approval resolution mismatch")
+    approval["resolution"] = resolution
+    body = {key: item for key, item in approval.items() if key != "approval_sha256"}
+    if approval["approval_sha256"] != _canonical_digest(body):
+        raise VerifierError("delegated approval body digest mismatch")
+    return approval
+
+
 def _validate_approval(
     value: Any,
     *,
+    registration: Mapping[str, Any],
     request: Mapping[str, Any],
 ) -> dict[str, Any]:
+    if isinstance(value, Mapping) and (
+        value.get("schema_version") == DELEGATED_APPROVAL_SCHEMA_VERSION
+    ):
+        return _validate_delegated_approval(
+            value, registration=registration, request=request
+        )
     approval = _exact_mapping(
         value,
         {
@@ -6030,6 +6171,7 @@ def _verify_terminal_bundle_contents(
         _load_canonical_document(
             output, EXTERNAL_APPROVAL_FILENAME, label="external approval"
         ),
+        registration=registration,
         request=request,
     )
     authorization, identity = _validate_authorization(

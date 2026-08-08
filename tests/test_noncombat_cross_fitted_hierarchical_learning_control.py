@@ -612,6 +612,16 @@ def _registration(source_inventory, *, output_root="D:/synthetic/cross-fitted-ou
     return _hardened_registration(source_inventory, output_root=output_root)
 
 
+def _delegated_registration(
+    source_inventory, *, output_root="D:/synthetic/cross-fitted-output"
+):
+    registration = _registration(source_inventory, output_root=output_root)
+    registration["registration_id"] = (
+        experiment.DELEGATED_REGISTRATION_ID_PREFIX + "synthetic"
+    )
+    return experiment.validate_registration(registration)
+
+
 def _approval(registration, request):
     digest = request["request_sha256"]
     return experiment.bind_external_approval(
@@ -627,6 +637,21 @@ def _approval(registration, request):
             "message_id": "human-message-1",
             "source": "external-human-message",
             "task_id": "control-plane-source-test",
+        },
+    )
+
+
+def _standing_delegation():
+    return experiment.build_standing_delegation(
+        grant_text=(
+            "后面能不能改成不需要这样精确的授权，这个仓库只有我自己，"
+            "你可以全权代表我。"
+        ),
+        granted_at="2026-08-08T18:58:05.0571093+08:00",
+        provenance={
+            "message_id": "user-standing-delegation-20260808",
+            "source": "external-human-message",
+            "task_id": "control-plane-delegation-test",
         },
     )
 
@@ -1129,6 +1154,174 @@ def test_execute_cli_loads_bound_documents_and_routes_the_exact_runner(
         "repo_root": ROOT,
         "request": request,
     }
+
+
+def test_delegated_approval_source_only_cli_renders_exact_documents(
+    source_inventory, tmp_path, capsys
+):
+    isolated_modules_before = {
+        name
+        for name in sys.modules
+        if name == "torch"
+        or name.startswith("torch.")
+        or name == "sts_lightspeed_noncombat_adapter"
+    }
+    output_root = tmp_path / "empirical-output"
+    registration = _delegated_registration(
+        source_inventory, output_root=output_root.as_posix()
+    )
+    request = experiment.build_exact_execution_request(registration)
+    delegation = _standing_delegation()
+    documents = {
+        "registration.json": registration,
+        "execution_request.json": request,
+        "standing_delegation.json": delegation,
+    }
+    paths = {}
+    for filename, value in documents.items():
+        path = tmp_path / filename
+        path.write_bytes(experiment.canonical_json_bytes(value))
+        paths[filename] = path
+
+    assert experiment.main(
+        [
+            "inspect-delegation",
+            "--registration",
+            str(paths["registration.json"]),
+            "--delegation",
+            str(paths["standing_delegation.json"]),
+        ]
+    ) == 0
+    rendered_delegation = capsys.readouterr().out
+    assert rendered_delegation.encode("ascii") == experiment.canonical_json_bytes(
+        delegation
+    )
+
+    assert experiment.main(
+        [
+            "render-delegated-approval",
+            "--registration",
+            str(paths["registration.json"]),
+            "--request",
+            str(paths["execution_request.json"]),
+            "--delegation",
+            str(paths["standing_delegation.json"]),
+            "--resolved-at",
+            "2026-08-08T19:00:00+08:00",
+        ]
+    ) == 0
+    rendered_approval = capsys.readouterr().out
+    approval = json.loads(rendered_approval)
+    assert rendered_approval.encode("ascii") == experiment.canonical_json_bytes(
+        approval
+    )
+    approval_path = tmp_path / "delegated_approval.json"
+    approval_path.write_bytes(experiment.canonical_json_bytes(approval))
+
+    assert experiment.main(
+        [
+            "render-authorization",
+            "--registration",
+            str(paths["registration.json"]),
+            "--request",
+            str(paths["execution_request.json"]),
+            "--approval",
+            str(approval_path),
+        ]
+    ) == 0
+    rendered_authorization = capsys.readouterr().out
+    authorization = json.loads(rendered_authorization)
+    assert rendered_authorization.encode("ascii") == experiment.canonical_json_bytes(
+        authorization
+    )
+    assert authorization == experiment.build_execution_authorization(
+        registration, request, approval
+    )
+    assert {
+        name
+        for name in sys.modules
+        if name == "torch"
+        or name.startswith("torch.")
+        or name == "sts_lightspeed_noncombat_adapter"
+    } == isolated_modules_before
+    assert output_root.exists() is False
+
+    drifted = copy.deepcopy(delegation)
+    drifted["grant"]["verbatim_text"] = "changed"
+    paths["standing_delegation.json"].write_bytes(
+        experiment.canonical_json_bytes(drifted)
+    )
+    with pytest.raises(experiment.ExperimentBlocked, match="delegation identity"):
+        experiment.main(
+            [
+                "inspect-delegation",
+                "--registration",
+                str(paths["registration.json"]),
+                "--delegation",
+                str(paths["standing_delegation.json"]),
+            ]
+        )
+    assert capsys.readouterr().out == ""
+
+    paths["standing_delegation.json"].write_bytes(
+        experiment.canonical_json_bytes(delegation)
+    )
+    invalid_request = copy.deepcopy(request)
+    invalid_request["request_sha256"] = "f" * 64
+    paths["execution_request.json"].write_bytes(
+        experiment.canonical_json_bytes(invalid_request)
+    )
+    with pytest.raises(experiment.ExperimentBlocked, match="exact registration"):
+        experiment.main(
+            [
+                "render-delegated-approval",
+                "--registration",
+                str(paths["registration.json"]),
+                "--request",
+                str(paths["execution_request.json"]),
+                "--delegation",
+                str(paths["standing_delegation.json"]),
+                "--resolved-at",
+                "2026-08-08T19:00:00+08:00",
+            ]
+        )
+    assert capsys.readouterr().out == ""
+
+    paths["execution_request.json"].write_bytes(
+        experiment.canonical_json_bytes(request)
+    )
+    with pytest.raises(experiment.ExperimentBlocked, match="timestamp"):
+        experiment.main(
+            [
+                "render-delegated-approval",
+                "--registration",
+                str(paths["registration.json"]),
+                "--request",
+                str(paths["execution_request.json"]),
+                "--delegation",
+                str(paths["standing_delegation.json"]),
+                "--resolved-at",
+                "",
+            ]
+        )
+    assert capsys.readouterr().out == ""
+
+    invalid_approval = copy.deepcopy(approval)
+    invalid_approval["verbatim_approval_text"] = "generated"
+    approval_path.write_bytes(experiment.canonical_json_bytes(invalid_approval))
+    with pytest.raises(experiment.ExperimentBlocked, match="fields"):
+        experiment.main(
+            [
+                "render-authorization",
+                "--registration",
+                str(paths["registration.json"]),
+                "--request",
+                str(paths["execution_request.json"]),
+                "--approval",
+                str(approval_path),
+            ]
+        )
+    assert capsys.readouterr().out == ""
 
 
 def test_module_dependency_inventory_binds_exact_source_bytes(source_inventory):
@@ -1732,6 +1925,7 @@ def test_external_approval_and_authorization_are_exact_and_fail_closed(
     assert experiment.validate_execution_authorization(
         authorization, registration, request, approval
     ) == authorization
+
     enabled = {name for name, enabled in authorization["authority"].items() if enabled}
     assert enabled == {
         "environment_construction",
@@ -1783,6 +1977,143 @@ def test_external_approval_and_authorization_are_exact_and_fail_closed(
         experiment.validate_execution_authorization(
             changed, registration, request, approval
         )
+
+
+def test_standing_delegation_and_v2_approval_are_exact_and_transitively_bound(
+    source_inventory,
+):
+    registration = _delegated_registration(source_inventory)
+    request = experiment.build_exact_execution_request(registration)
+    delegation = _standing_delegation()
+
+    assert experiment.validate_standing_delegation(
+        delegation, registration
+    ) == delegation
+    assert delegation["schema_version"] == experiment.STANDING_DELEGATION_SCHEMA_VERSION
+    assert delegation["scope"] == {
+        "pushed_remote_ref": "origin/master",
+        "registration_id_prefix": (
+            "noncombat-cross-fitted-hierarchical-learning-successor-"
+        ),
+        "request_class": experiment.DELEGATED_REQUEST_CLASS,
+    }
+    assert delegation["scope"]["request_class"] == request["schema_version"]
+    approval = experiment.bind_delegated_approval(
+        registration,
+        request,
+        delegation,
+        resolved_at="2026-08-08T19:00:00+08:00",
+    )
+    assert approval["schema_version"] == experiment.DELEGATED_APPROVAL_SCHEMA_VERSION
+    assert approval["approval_mode"] == "standing-delegation"
+    assert approval["delegation"] == delegation
+    assert "verbatim_approval_text" not in approval
+    assert approval["resolution"] == {
+        "delegation_sha256": delegation["delegation_sha256"],
+        "request_sha256": request["request_sha256"],
+        "resolved_at": "2026-08-08T19:00:00+08:00",
+        "resolver": "codex-agent-under-standing-delegation-v1",
+    }
+    assert experiment.validate_external_approval(
+        approval, registration, request
+    ) == approval
+
+    authorization = experiment.build_execution_authorization(
+        registration, request, approval
+    )
+    assert authorization["approval"] == approval
+    assert experiment.validate_execution_authorization(
+        authorization, registration, request, approval
+    ) == authorization
+
+    drifted_approval = copy.deepcopy(approval)
+    drifted_approval["resolution"]["resolved_at"] = "2026-08-08T19:00:01+08:00"
+    approval_body = {
+        key: value
+        for key, value in drifted_approval.items()
+        if key != "approval_sha256"
+    }
+    drifted_approval["approval_sha256"] = hashlib.sha256(
+        experiment.canonical_json_bytes(approval_body)
+    ).hexdigest()
+    with pytest.raises(experiment.ExperimentBlocked, match="authorization binding"):
+        experiment.validate_execution_authorization(
+            authorization, registration, request, drifted_approval
+        )
+
+
+@pytest.mark.parametrize(
+    ("mutation", "message"),
+    [
+        (lambda value: value.__setitem__("extra", True), "fields"),
+        (lambda value: value.pop("grant"), "fields"),
+        (
+            lambda value: value.__setitem__("schema_version", "unknown"),
+            "schema",
+        ),
+        (
+            lambda value: value["grant"]["provenance"].__setitem__(
+                "source", "generated"
+            ),
+            "external human",
+        ),
+        (
+            lambda value: value["grant"].__setitem__("verbatim_text", "changed"),
+            "delegation identity",
+        ),
+        (
+            lambda value: value["scope"].__setitem__("pushed_remote_ref", "other"),
+            "delegation scope",
+        ),
+        (
+            lambda value: value["exclusions"].reverse(),
+            "delegation exclusions",
+        ),
+    ],
+)
+def test_standing_delegation_rejects_tampering(
+    source_inventory, mutation, message
+):
+    registration = _delegated_registration(source_inventory)
+    delegation = _standing_delegation()
+    mutation(delegation)
+    if "scope" in delegation and delegation["scope"]["pushed_remote_ref"] == "other":
+        body = {
+            key: value
+            for key, value in delegation.items()
+            if key != "delegation_sha256"
+        }
+        delegation["delegation_sha256"] = hashlib.sha256(
+            experiment.canonical_json_bytes(body)
+        ).hexdigest()
+
+    with pytest.raises(experiment.ExperimentBlocked, match=message):
+        experiment.validate_standing_delegation(delegation, registration)
+
+
+def test_delegated_approval_rejects_hybrid_and_resolution_drift(source_inventory):
+    registration = _delegated_registration(source_inventory)
+    request = experiment.build_exact_execution_request(registration)
+    approval = experiment.bind_delegated_approval(
+        registration,
+        request,
+        _standing_delegation(),
+        resolved_at="2026-08-08T19:00:00+08:00",
+    )
+
+    hybrid = copy.deepcopy(approval)
+    hybrid["verbatim_approval_text"] = "generated text is not human input"
+    with pytest.raises(experiment.ExperimentBlocked, match="fields"):
+        experiment.validate_external_approval(hybrid, registration, request)
+
+    drifted = copy.deepcopy(approval)
+    drifted["resolution"]["request_sha256"] = "f" * 64
+    body = {key: value for key, value in drifted.items() if key != "approval_sha256"}
+    drifted["approval_sha256"] = hashlib.sha256(
+        experiment.canonical_json_bytes(body)
+    ).hexdigest()
+    with pytest.raises(experiment.ExperimentBlocked, match="resolution"):
+        experiment.validate_external_approval(drifted, registration, request)
 
 
 def test_failed_authorization_never_reaches_lazy_runtime_import(

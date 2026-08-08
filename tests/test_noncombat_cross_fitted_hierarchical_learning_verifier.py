@@ -1965,6 +1965,176 @@ def _authorization_documents_fixture(registration):
     return request, approval, authorization, identity
 
 
+def _delegated_authorization_documents_fixture(registration):
+    request, _approval, _authorization, _identity = (
+        _authorization_documents_fixture(registration)
+    )
+    delegation_body = {
+        "exclusions": list(verifier.STANDING_DELEGATION_EXCLUSIONS),
+        "grant": {
+            "granted_at": "2026-08-08T18:58:05.0571093+08:00",
+            "provenance": {
+                "message_id": "synthetic-standing-delegation",
+                "source": "external-human-message",
+                "task_id": "independent-verifier-test",
+            },
+            "verbatim_text": "The solo maintainer delegates exact requests.",
+        },
+        "revocation": verifier.STANDING_DELEGATION_REVOCATION,
+        "schema_version": verifier.STANDING_DELEGATION_SCHEMA_VERSION,
+        "scope": {
+            "pushed_remote_ref": "origin/master",
+            "registration_id_prefix": verifier.DELEGATED_REGISTRATION_ID_PREFIX,
+            "request_class": verifier.DELEGATED_REQUEST_CLASS,
+        },
+    }
+    delegation = {
+        **delegation_body,
+        "delegation_sha256": hashlib.sha256(
+            _fixture_canonical_json_bytes(delegation_body)
+        ).hexdigest(),
+    }
+    resolution = {
+        "delegation_sha256": delegation["delegation_sha256"],
+        "request_sha256": request["request_sha256"],
+        "resolved_at": "2026-08-08T19:00:00+08:00",
+        "resolver": verifier.DELEGATED_APPROVAL_RESOLVER,
+    }
+    approval_body = {
+        "approval_mode": "standing-delegation",
+        "approved_request_sha256": request["request_sha256"],
+        "delegation": delegation,
+        "resolution": resolution,
+        "schema_version": verifier.DELEGATED_APPROVAL_SCHEMA_VERSION,
+    }
+    approval = {
+        **approval_body,
+        "approval_sha256": hashlib.sha256(
+            _fixture_canonical_json_bytes(approval_body)
+        ).hexdigest(),
+    }
+    authorization_body = {
+        "approval": approval,
+        "authorization_id": registration["registration_id"] + ":authorization-v1",
+        "authority": dict(verifier._EXECUTION_AUTHORITY),
+        "registration_id": registration["registration_id"],
+        "registration_sha256": request["registration_sha256"],
+        "request_id": request["request_id"],
+        "request_sha256": request["request_sha256"],
+        "schema_version": verifier.AUTHORIZATION_SCHEMA_VERSION,
+    }
+    authorization = {
+        **authorization_body,
+        "authorization_sha256": hashlib.sha256(
+            _fixture_canonical_json_bytes(authorization_body)
+        ).hexdigest(),
+    }
+    return request, delegation, approval, authorization
+
+
+def test_delegated_approval_v2_is_independently_verified_and_fail_closed(tmp_path):
+    registration = _registration_fixture(tmp_path / "delegated-output")
+    registration["registration_id"] = (
+        verifier.DELEGATED_REGISTRATION_ID_PREFIX + "synthetic"
+    )
+    request, delegation, approval, authorization = (
+        _delegated_authorization_documents_fixture(registration)
+    )
+
+    normalized_approval = verifier._validate_approval(
+        approval,
+        registration=registration,
+        request=request,
+    )
+    assert normalized_approval == approval
+    normalized_authorization, identity = verifier._validate_authorization(
+        authorization,
+        registration=registration,
+        request=request,
+        approval=normalized_approval,
+    )
+    assert normalized_authorization == authorization
+    assert identity["request_sha256"] == request["request_sha256"]
+    assert approval["delegation"] == delegation
+    assert "verbatim_approval_text" not in approval
+
+    drifted = copy.deepcopy(approval)
+    drifted["resolution"]["delegation_sha256"] = "f" * 64
+    body = {key: value for key, value in drifted.items() if key != "approval_sha256"}
+    drifted["approval_sha256"] = hashlib.sha256(
+        _fixture_canonical_json_bytes(body)
+    ).hexdigest()
+    with pytest.raises(verifier.VerifierError, match="resolution"):
+        verifier._validate_approval(
+            drifted,
+            registration=registration,
+            request=request,
+        )
+
+    _request, historical, _authorization, _identity = (
+        _authorization_documents_fixture(registration)
+    )
+    assert verifier._validate_approval(
+        historical,
+        registration=registration,
+        request=request,
+    ) == historical
+
+
+@pytest.mark.parametrize(
+    ("case", "message"),
+    [
+        ("grant", "delegation identity"),
+        ("scope", "delegation scope"),
+        ("hybrid", "fields"),
+        ("request", "resolution"),
+    ],
+)
+def test_delegated_approval_v2_independently_rejects_tampering(
+    tmp_path, case, message
+):
+    registration = _registration_fixture(tmp_path / f"delegated-{case}")
+    registration["registration_id"] = (
+        verifier.DELEGATED_REGISTRATION_ID_PREFIX + "synthetic"
+    )
+    request, _delegation, approval, _authorization = (
+        _delegated_authorization_documents_fixture(registration)
+    )
+    drifted = copy.deepcopy(approval)
+    if case == "grant":
+        drifted["delegation"]["grant"]["verbatim_text"] = "changed"
+    elif case == "scope":
+        drifted["delegation"]["scope"]["pushed_remote_ref"] = "other"
+        delegation_body = {
+            key: value
+            for key, value in drifted["delegation"].items()
+            if key != "delegation_sha256"
+        }
+        drifted["delegation"]["delegation_sha256"] = hashlib.sha256(
+            _fixture_canonical_json_bytes(delegation_body)
+        ).hexdigest()
+        drifted["resolution"]["delegation_sha256"] = drifted["delegation"][
+            "delegation_sha256"
+        ]
+    elif case == "hybrid":
+        drifted["verbatim_approval_text"] = "generated text"
+    elif case == "request":
+        drifted["resolution"]["request_sha256"] = "f" * 64
+    approval_body = {
+        key: value for key, value in drifted.items() if key != "approval_sha256"
+    }
+    drifted["approval_sha256"] = hashlib.sha256(
+        _fixture_canonical_json_bytes(approval_body)
+    ).hexdigest()
+
+    with pytest.raises(verifier.VerifierError, match=message):
+        verifier._validate_approval(
+            drifted,
+            registration=registration,
+            request=request,
+        )
+
+
 def _encode_python_state(value):
     if isinstance(value, tuple):
         return {"items": [_encode_python_state(item) for item in value], "type": "tuple"}
