@@ -860,6 +860,36 @@ The next authorized sequence is:
     or authorize another readiness attempt. A later source-only OpenSpec change
     must separately establish fresh-identity eligibility, exact attempt paths
     and identity, and one-shot authorization before the auditor is invoked.
+44. Preserve the independently verified `go` from the corrected-source
+    readiness audit. Pushed source commit
+    `522185d06ddf48cb1be095c16efacaad299a0197` was claimed exactly once by audit
+    `noncombat-cross-fitted-empirical-successor-readiness-20260808-r2`; the
+    source-only command exited successfully after 959.3 seconds. All six fixed
+    gates passed. The rebuilt candidate has 512 seeds, zero collisions with all
+    512 consumed positions, candidate schedule SHA-256
+    `121d1f847ed02c437c8f6dfd60494e378df3d43b36f1cfb2384de94f20e12c56`,
+    and fixed projected margin 4,303.644 seconds. The independently verified
+    publication is
+    `reports/noncombat_cross_fitted_empirical_successor_readiness_20260808_r2`;
+    its candidate artifact SHA-256 is
+    `7b5b2d9da9fe0b0cdb2dc9a298b395783171dbf9ecf46b941af92ba809e3695d`
+    and readiness identity is
+    `4f3da3b53426f1bb811fbdb3eaccb670bf03e52c221e67df6b1be6f65038897b`.
+    A second standalone verifier independently rebuilt and checked the complete
+    publication in 414.4 seconds. Canonical attempt SHA-256
+    `9062a3bd258c1e95adc4c9954fcd1a6b1085c2a6e6f1dd665a5f65d7214e648c`
+    and verification-receipt SHA-256
+    `d37549b6cc8d026f1feaf7373a26a2bdabb6175da733f6b786a5c6827355ee59`
+    link the source and installed files; scratch, staging, sealed, claim, and
+    child-process remnants are absent. All 18 authority and all 10 empirical-
+    operation fields are false. This `go` makes only a separate empirical-
+    successor registration proposal eligible. It does not register a cohort,
+    authorize native or model loading, access an empirical seed outcome, fit,
+    train, evaluate, run OPE, launch gameplay or CommunicationMod, qualify, or
+    promote. The deterministic closeout is
+    `reports/noncombat_cross_fitted_empirical_successor_readiness_20260808_r2_closeout.json`.
+    The already-synced execution change is archived at
+    `openspec/changes/archive/2026-08-08-run-cross-fitted-readiness-20260808-r2`.
 
 ## Work Lanes
 
@@ -924,19 +954,19 @@ are complete. The contract preserves selected family plus conditional log
     control-plane repair now closes the known validation-throughput,
     elapsed-charge, terminal-publication, and true-child-liveness defects. It
     does not retroactively create mechanism evidence or authorize a retry. The
-    subsequent one-shot readiness audit closed at `no_go_source_binding`
-    because its consumed-schedule contract omitted three bound provenance
-    fields. The source-only schema and durable main-spec binding correction is
-    now complete, reviewed, pushed, synced, and archived without invoking the
-    auditor. The next gate is a separate source-only eligibility and
-    preregistration review for at most one fresh readiness publication against
-    a new pushed clean identity. Until that change fixes the audit id, attempt,
-    output and scratch paths, non-retry proof, ceilings, and exact command, do
-    not invoke readiness or treat the correction as empirical registration or
-    execution authority. Do not fit or load another model, access a fresh seed,
-    make a causal or OPE claim, change an estimator or reward, or infer
-    execution authority from either the repair closeout, failed readiness
-    attempt, or source-only correction.
+    first one-shot readiness audit remains terminal `no_go_source_binding`; its
+    source identity was not reused. The source-only schedule and durable-spec
+    correction is complete, and the separately preregistered corrected-source
+    readiness audit has now published an independently verified `go` against a
+    new pushed clean identity. This closes readiness only. The next gate is a
+    new OpenSpec proposal for an exact empirical-successor registration; no
+    registration, execution request, external approval, or execution authority
+    exists yet. Until that proposal separately fixes the fresh cohort,
+    estimator/objective, resource ceilings, request, isolation, terminal
+    evidence, and approval boundary, do not load a native module or model,
+    access an empirical seed outcome, fit, train, evaluate, run OPE, launch
+    gameplay or CommunicationMod, qualify, promote, or infer policy quality or
+    causal value from readiness.
 
 Live gameplay is a maintenance and registered-evaluation lane only. Launch it
 for a crash, stuck state, repeated A-class simulator/mechanics defect, or an

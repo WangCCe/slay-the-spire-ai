@@ -1,0 +1,115 @@
+{
+  "audit": {
+    "audit_id": "noncombat-cross-fitted-empirical-successor-readiness-20260808-r2",
+    "canonical_output_published": true,
+    "decision": "go",
+    "elapsed_seconds": 959.3,
+    "process_exit_code": 0,
+    "source_commit": "522185d06ddf48cb1be095c16efacaad299a0197"
+  },
+  "authority": {
+    "causal_claim": false,
+    "communication_mod": false,
+    "empirical_registration": false,
+    "evaluation": false,
+    "execution_authorization": false,
+    "execution_request": false,
+    "external_approval": false,
+    "formal_rl": false,
+    "gameplay": false,
+    "model_fitting": false,
+    "model_loading": false,
+    "native_loading": false,
+    "ope": false,
+    "policy_quality": false,
+    "promotion": false,
+    "qualification": false,
+    "seed_access": false,
+    "training": false
+  },
+  "cohort": {
+    "candidate_seed_count": 512,
+    "candidate_seeds_sha256": "121d1f847ed02c437c8f6dfd60494e378df3d43b36f1cfb2384de94f20e12c56",
+    "collision_count": 0,
+    "consumed_seed_count": 512,
+    "status": "passed"
+  },
+  "empirical_operations": {
+    "communication_mod": false,
+    "environment_construction": false,
+    "evaluation": false,
+    "model_fitting": false,
+    "model_loading": false,
+    "native_loading": false,
+    "ope": false,
+    "runtime_fitting": false,
+    "seed_access": false,
+    "training": false
+  },
+  "focused_verification": {
+    "actual_scale_skip_explicit": true,
+    "passed": 81,
+    "skipped": 1
+  },
+  "gates": {
+    "artifact_binding": "passed",
+    "budget_binding": "passed",
+    "cohort_not_fresh": "passed",
+    "control_plane_scaling": "passed",
+    "rehearsal_boundary": "passed",
+    "source_binding": "passed"
+  },
+  "independent_publication_verification": {
+    "candidate_inventory_sha256": "7b5b2d9da9fe0b0cdb2dc9a298b395783171dbf9ecf46b941af92ba809e3695d",
+    "elapsed_seconds": 414.4,
+    "independent_inventory_sha256": "81384786f02a564d80c93169894f4fe0f927bcb37d751db5fad88d316c93b5d7",
+    "proposal_eligible": true,
+    "readiness_identity_sha256": "4f3da3b53426f1bb811fbdb3eaccb670bf03e52c221e67df6b1be6f65038897b",
+    "status": "verified"
+  },
+  "independent_receipt_review": {
+    "all_authority_false": true,
+    "all_empirical_operations_false": true,
+    "attempt_file_sha256": "93416149a7d65248d75b0437ab6e4dfb2ad13ebdef51356b2b4585ada3126d7e",
+    "attempt_sha256": "9062a3bd258c1e95adc4c9954fcd1a6b1085c2a6e6f1dd665a5f65d7214e648c",
+    "canonical_json": true,
+    "claim_absent": true,
+    "sealed_sibling_absent": true,
+    "scratch_absent": true,
+    "staging_absent": true,
+    "verification_receipt_file_sha256": "82056cbd26eba2e66afa7dabdfe57b7c1b89fff55ebe67168ebd094143d151f0",
+    "verification_receipt_sha256": "d37549b6cc8d026f1feaf7373a26a2bdabb6175da733f6b786a5c6827355ee59"
+  },
+  "next_step": {
+    "empirical_successor_registration_proposal_eligible": true,
+    "empirical_successor_registered": false,
+    "execution_authorized": false,
+    "new_openspec_change_required": true,
+    "training_authorized": false
+  },
+  "process_closeout": {
+    "communication_mod_process_present": false,
+    "game_process_present": false,
+    "python_process_present": false
+  },
+  "publication_bindings": {
+    "candidate_seed_inventory.json.gz": {
+      "sha256": "7b5b2d9da9fe0b0cdb2dc9a298b395783171dbf9ecf46b941af92ba809e3695d",
+      "size_bytes": 6020468
+    },
+    "readiness_report.json": {
+      "sha256": "103521948dfa4e67b1fb8d40ca8e3f17ee80921745f905225c1a7169756d0eed",
+      "size_bytes": 6816
+    },
+    "readiness_report.md": {
+      "sha256": "3f16062f5800eff186f82b1cbb6eefd8618c689a935a1db4cd0cfa2c08463688",
+      "size_bytes": 1621
+    }
+  },
+  "review": {
+    "actionable_findings": 0,
+    "terminal_receipt_algorithm_exercised": false,
+    "terminal_receipt_algorithm_note": "The successful publication branch used the standalone publication verifier; the preregistered no-publication receipt algorithm was not needed."
+  },
+  "status": "closed_go"
+}
