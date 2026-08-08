@@ -1079,6 +1079,49 @@ The next authorized sequence is:
     authorization, native or model loading, environment construction, seed
     access, fitting, training, evaluation, OPE, gameplay, CommunicationMod,
     qualification, promotion, policy-quality, causal, or formal-RL authority.
+52. Preserve the pushed exact non-authorizing 20260808-r2 execution request.
+    Initial request plan commit
+    `26baf220bf8392994fddab0804fad9a2561941b6` and isolated-bootstrap
+    clarification `351b9ced669f443eae155e59ef762a367a00f629`
+    precede evidence commit
+    `35d317a7a6e5f31d3e2664fb2f7713bcf8f9ab15`, which is exact on
+    `origin/master`. The canonical 8,945-byte request at
+    `reports/noncombat_cross_fitted_hierarchical_learning_successor_20260808_r2_execution_request.json`
+    has file SHA-256
+    `31e3b2844df5f4ee389a58aee08fe537c159fe498320cb219e3681745e0cdf38`
+    and canonical request digest
+    `6257a36c6573c8c412bb8727736e81b063dd0c7076f1ea5b41a70d4a08206c2e`.
+    It binds registration
+    `9d792cadbece4ea21768386904633ebded2e94525fb186bdcbf4a4d7729dbdf9`,
+    source inventory
+    `5b7fdacecb1e557fd53188f01b80cb79ea41b262b618d81c191c1094854aea03`,
+    the complete 8x64 schedule, exact native/runtime/output/resource/resume
+    terms, and the registered 14,400-second, 576-access, eight-update ceilings.
+    Base authority remains all false. Requested authority is true only for
+    environment construction, execution, model fitting, native loading, seed
+    access, and training; this describes a later authorization candidate and
+    grants none of those operations. The deterministic 3,817-byte review at
+    `reports/noncombat_cross_fitted_hierarchical_learning_successor_20260808_r2_execution_request_review.json`
+    has file SHA-256
+    `95b8f43d02a0e79dbb925c192086cf26c17e59cbf47ead26e7641458c4be0acc`
+    and self-digest
+    `1badc01d53123abc8efd0279bc622b241d08c704d679e517f8321f7e61b71f96`.
+    Producer readiness replay completed in 168.3 seconds; independent
+    registration/request validation completed in 89.4 seconds. The first direct-
+    file `python -I script.py` invocation failed before output because isolated
+    mode removed the repo-local package root and left only a zero-byte staging
+    file, which was exactly removed. The pushed plan then records the isolated
+    `-I -c` repo-root bootstrap that dispatches the same tracked module `main()`;
+    no implementation source or request term changed. Canonical/self-digest and
+    authority probes passed, focused verification passed nine tests in 11.17
+    seconds, strict OpenSpec passed 77/77, and bounded independent artifact
+    review found no blocker. No implementation or test source changed, so the
+    long commit gate and gameplay validation were not applicable and were not
+    run. The registered output root, standing-delegation resolution, delegated
+    approval, authorization, native/model load, environment, seed, fit, train,
+    evaluation, execution, game, CommunicationMod, qualification, promotion,
+    and terminal artifacts remain absent. This request is eligible only for a
+    later separate exact delegated-approval and authorization proposal.
 
 ## Work Lanes
 

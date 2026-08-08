@@ -20,6 +20,6 @@
 - [x] 4.1 Run focused request/control/verifier tests, canonical/self-digest probes, import isolation, and strict OpenSpec with scoped pytest temp storage.
 - [x] 4.2 Record the commit gate and fresh gameplay validation as not applicable unless implementation or test source unexpectedly changes; do not rerun the known long gate for evidence-only bytes.
 - [x] 4.3 Obtain a bounded independent final review and resolve only publication-blocking request defects without changing registration terms.
-- [ ] 4.4 Verify exact staged scope, commit and push request evidence while the change remains active, and confirm the exact request blob on `origin/master`.
-- [ ] 4.5 After 4.4, sync the delta requirement, update project direction, archive the completed change, and verify final closeout scope for a separate commit and push.
+- [x] 4.4 Verify exact staged scope, commit and push request evidence while the change remains active, and confirm the exact request blob on `origin/master`.
+- [x] 4.5 After 4.4, sync the delta requirement, update project direction, archive the completed change, and verify final closeout scope for a separate commit and push.
 - [x] 4.6 Stop without publishing standing-delegation resolution, approval, authorization, native loading, environment construction, seed access, fitting, training, evaluation, execution, or gameplay artifacts.
