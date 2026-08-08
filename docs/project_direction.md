@@ -913,6 +913,31 @@ The next authorized sequence is:
     grants no proposal eligibility to that new source. A separately
     preregistered one-shot r3 readiness audit must bind the new pushed source
     and complete independently before any compact registration is proposed.
+46. Preserve the consumed r3 readiness failure without repairing or retrying
+    it. Pushed source commit
+    `5777eef4a43065e6246481926f95d6cfcba04c88` was invoked exactly once by audit
+    `noncombat-cross-fitted-empirical-successor-readiness-20260808-r3` and
+    exited with code 1 after 760.7 seconds. Source, cohort, rehearsal,
+    control-plane, and budget work completed before artifact publication stopped
+    as `no_go_artifact_binding`: the candidate canonical JSON crossed the fixed
+    512 MiB ceiling. No canonical output, scratch, or sealed sibling remains.
+    The canonical started and terminal receipts have valid identity linkage,
+    digests, and all-false authority and empirical-operation maps, but the exact
+    staging directory remains with one incomplete 6,763,664-byte gzip. The
+    preregistered independent terminal review therefore fails solely on
+    `staging_absent=false`; the terminal receipts are not claimed as
+    independently verified, and no compact registration proposal is eligible.
+    Preserve the receipts and staging as immutable failure evidence. Do not
+    delete, repair, resume, or retry this source identity. Source review confirms
+    two separate defects for a later source-only correction: seed inventory
+    scans all tracked `reports/*.json.gz` inputs and recursively ingests the r2
+    candidate's 1,676,494 historical rows, while the readiness exception path
+    terminalizes without removing an already-created staging directory. A later
+    attempt requires a new OpenSpec correction, pushed source identity, exact
+    paths, and separate authorization. This run loaded no native, runtime,
+    model, game, or CommunicationMod code and performed no empirical seed
+    access, fitting, training, evaluation, or OPE. The deterministic closeout is
+    `reports/noncombat_cross_fitted_empirical_successor_readiness_20260808_r3_closeout.json`.
 
 ## Work Lanes
 
