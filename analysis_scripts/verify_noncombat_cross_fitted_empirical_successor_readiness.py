@@ -43,6 +43,10 @@ PUBLICATION_FILENAMES = (
     REPORT_FILENAME,
     REPORT_MARKDOWN_FILENAME,
 )
+_READINESS_DERIVED_REPORT_PREFIXES = (
+    "reports/noncombat_cross_fitted_empirical_successor_readiness_",
+    "reports/.noncombat_cross_fitted_empirical_successor_readiness_",
+)
 CONSUMED_REGISTRATION_PATH = (
     "reports/noncombat_cross_fitted_hierarchical_learning_successor_"
     "20260806_r1/registration.json"
@@ -544,6 +548,10 @@ def _artifact_format(path: str) -> str | None:
     return None
 
 
+def _is_readiness_derived_report_path(path: str) -> bool:
+    return path.startswith(_READINESS_DERIVED_REPORT_PREFIXES)
+
+
 def _unsupported_seed_candidate(path: str) -> bool:
     folded = path.casefold()
     filename = PurePosixPath(folded).name
@@ -834,6 +842,8 @@ def rebuild_seed_inventory(
     candidates: list[str] = []
     formats: dict[str, str] = {}
     for path in tracked_paths:
+        if _is_readiness_derived_report_path(path):
+            continue
         format_name = _artifact_format(path)
         if format_name is None:
             if _unsupported_seed_candidate(path):

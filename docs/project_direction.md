@@ -938,6 +938,33 @@ The next authorized sequence is:
     model, game, or CommunicationMod code and performed no empirical seed
     access, fitting, training, evaluation, or OPE. The deterministic closeout is
     `reports/noncombat_cross_fitted_empirical_successor_readiness_20260808_r3_closeout.json`.
+47. Preserve the completed source-only readiness artifact-boundary repair. The
+    seed helper, actual streamed producer, and standalone verifier now exclude
+    both exact readiness-derived report namespaces before format selection,
+    Git blob loading, decompression, parsing, or recursive seed extraction, so
+    prior candidates, receipts, closeouts, staging, and sealed siblings cannot
+    recursively inflate a later candidate. Legitimate and lookalike report
+    paths retain their prior handling, and producer/verifier source bindings
+    remain independently reproducible. The runner now records exact staging
+    ownership, rejects lexical pre-existing paths, retires owned staging through
+    an atomic random quarantine with post-rename identity verification, restores
+    replaced or cleanup-failed paths, and uses the same ownership boundary for
+    successful sealing. Terminal receipts are written only after owned staging
+    is absent or cleanup has failed closed as `no_go_artifact_binding`. Focused
+    source-only verification passes 119 tests with one explicit skip; strict
+    OpenSpec validation passes all 77 items; Python compilation and final
+    independent review complete without findings. The repository commit gate
+    was invoked exactly once but is inconclusive: the outer command returned
+    exit 124 after 904.4 seconds without a pytest summary, and its surviving
+    exact runner/pytest processes were terminated by PID and confirmed absent.
+    The gate was not retried. No readiness r4, native or model load, empirical
+    seed access, fitting, training, evaluation, OPE, gameplay, CommunicationMod,
+    qualification, or promotion was run or authorized. The main spec is synced
+    and the completed change is archived at
+    `openspec/changes/archive/2026-08-08-repair-cross-fitted-readiness-artifact-boundary`.
+    This correction does not repair, verify, revive, or authorize retry of r3.
+    Any later attempt requires a new pushed source, proposal, exact identity and
+    paths, preregistration, and explicit one-shot authorization.
 
 ## Work Lanes
 
@@ -1007,12 +1034,15 @@ are complete. The contract preserves selected family plus conditional log
     correction is complete, and the separately preregistered corrected-source
     readiness audit published an independently verified `go` against source
     commit `522185d06ddf48cb1be095c16efacaad299a0197`. The compact-registration
-    source-only change necessarily changes the control plane, so that r2 result
-    remains historical evidence but is not eligibility for the new source. The
-    next gate is a separate preregistered one-shot r3 readiness audit bound to
-    the new pushed source. Only a newly verified `go` may enable a later exact
-    empirical-successor registration proposal; no registration, execution
-    request, external approval, or execution authority exists yet. Until that
+    source-only change necessarily changed the control plane, so that r2 result
+    remains historical evidence but is not eligibility for a later source. The
+    separately preregistered r3 attempt is consumed as an unverified terminal
+    no-go, and its source-only artifact-boundary defects are now corrected only
+    for future source identities. No r4 or empirical-successor registration is
+    proposed or authorized. Only a newly preregistered, separately authorized,
+    and independently verified `go` may enable a later exact empirical-successor
+    registration proposal; no registration, execution request, external
+    approval, or execution authority exists yet. Until that
     later proposal separately fixes the fresh cohort,
     estimator/objective, resource ceilings, request, isolation, terminal
     evidence, and approval boundary, do not load a native module or model,
@@ -1075,6 +1105,15 @@ OpenSpec changes authorize them.
   preservation, readiness, and independent-verifier files remain green as
   recorded in direction item 45. Include this result in the separate read-only
   test-duration audit before changing test tiers or timing limits.
+- Treat the 2026-08-08 readiness artifact-boundary repair `commit` gate as
+  invoked exactly once but inconclusive: the outer command timed out after
+  904.4 seconds with exit 124 before pytest returned a summary. The exact
+  runner and pytest child remained alive after the timeout, were terminated by
+  PID, and were confirmed absent. The gate was not rerun. This is test-
+  infrastructure and feedback-duration evidence, not RED test evidence; the
+  final 119-test focused source-only suite, strict OpenSpec validation, Python
+  compilation, and independent review remain green as recorded in direction
+  item 47.
 
 Historical reports and archived changes retain the objectives and authority
 boundaries that applied when they were written. This document is the canonical

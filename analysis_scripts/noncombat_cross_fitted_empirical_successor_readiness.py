@@ -25,6 +25,7 @@ import re
 import secrets
 import signal
 import shutil
+import stat
 import subprocess
 import sys
 import threading
@@ -1625,6 +1626,8 @@ def _build_streamed_seed_inventory(
     candidates: list[str] = []
     formats: dict[str, str] = {}
     for path in paths:
+        if seed_module._is_readiness_derived_report_path(path):
+            continue
         format_name = seed_module._artifact_format(path)
         if format_name is None:
             if seed_module._unsupported_seed_candidate(path):
@@ -2441,6 +2444,130 @@ def _installed_publication_boundary_crossed(attempt: Mapping[str, Any]) -> bool:
     )
 
 
+def _staging_directory_identity(staging: Path) -> tuple[int, int]:
+    try:
+        observed = os.lstat(staging)
+    except OSError as exc:
+        raise ReadinessBlocked(
+            "no_go_artifact_binding: runner-owned staging identity is unavailable"
+        ) from exc
+    if not stat.S_ISDIR(observed.st_mode):
+        raise ReadinessBlocked(
+            "no_go_artifact_binding: runner-owned staging is not a directory"
+        )
+    return observed.st_dev, observed.st_ino
+
+
+def _remove_owned_staging(
+    staging: Path,
+    *,
+    expected_staging: Path,
+    owned_identity: tuple[int, int] | None,
+) -> None:
+    if staging != expected_staging:
+        raise ReadinessBlocked(
+            "no_go_artifact_binding: runner-owned staging path changed"
+        )
+    if not os.path.lexists(staging):
+        return
+    if owned_identity is None:
+        raise ReadinessBlocked(
+            "no_go_artifact_binding: runner-owned staging identity was not recorded"
+        )
+    quarantine = staging.parent / (
+        f"{staging.name}.{secrets.token_hex(32)}.cleanup"
+    )
+    if os.path.lexists(quarantine):
+        raise ReadinessBlocked(
+            "no_go_artifact_binding: staging cleanup quarantine already exists"
+        )
+    try:
+        os.rename(staging, quarantine)
+    except OSError as exc:
+        raise ReadinessBlocked(
+            "no_go_artifact_binding: runner-owned staging quarantine failed: "
+            f"{exc}"
+        ) from exc
+
+    def restore_quarantine() -> None:
+        if os.path.lexists(staging):
+            raise ReadinessBlocked(
+                "no_go_artifact_binding: staging quarantine restore path is occupied"
+            )
+        try:
+            os.rename(quarantine, staging)
+        except OSError as exc:
+            raise ReadinessBlocked(
+                "no_go_artifact_binding: staging quarantine restore failed: "
+                f"{exc}"
+            ) from exc
+        if os.path.lexists(quarantine) or not os.path.lexists(staging):
+            raise ReadinessBlocked(
+                "no_go_artifact_binding: staging quarantine restore is incomplete"
+            )
+
+    try:
+        quarantined_identity = _staging_directory_identity(quarantine)
+    except BaseException as identity_exc:
+        try:
+            restore_quarantine()
+        except BaseException as restore_exc:
+            raise ReadinessBlocked(
+                "no_go_artifact_binding: staging quarantine identity failed and "
+                f"restore failed: {identity_exc}; {restore_exc}"
+            ) from restore_exc
+        raise
+    if quarantined_identity != owned_identity:
+        try:
+            restore_quarantine()
+        except BaseException as restore_exc:
+            raise ReadinessBlocked(
+                "no_go_artifact_binding: runner-owned staging identity changed and "
+                f"restore failed: {restore_exc}"
+            ) from restore_exc
+        raise ReadinessBlocked(
+            "no_go_artifact_binding: runner-owned staging identity changed"
+        )
+    try:
+        shutil.rmtree(quarantine)
+    except OSError as exc:
+        try:
+            restore_quarantine()
+        except BaseException as restore_exc:
+            raise ReadinessBlocked(
+                "no_go_artifact_binding: runner-owned staging removal and restore "
+                f"failed: {exc}; {restore_exc}"
+            ) from restore_exc
+        raise ReadinessBlocked(
+            "no_go_artifact_binding: runner-owned staging removal failed: "
+            f"{exc}"
+        ) from exc
+    if os.path.lexists(quarantine):
+        raise ReadinessBlocked(
+            "no_go_artifact_binding: staging cleanup quarantine remains"
+        )
+    if os.path.lexists(staging):
+        raise ReadinessBlocked(
+            "no_go_artifact_binding: staging path was replaced during cleanup"
+        )
+
+
+def _staging_cleanup_failure(
+    original_error: BaseException, cleanup_error: BaseException
+) -> ReadinessBlocked:
+    original = str(original_error)[-800:]
+    cleanup = str(cleanup_error)[-800:]
+    failure = ReadinessBlocked(
+        "no_go_artifact_binding: runner-owned staging cleanup failed: "
+        f"{type(cleanup_error).__name__}: {cleanup}; original failure: "
+        f"{type(original_error).__name__}: {original}"
+    )
+    if hasattr(failure, "add_note"):
+        failure.add_note(f"original failure: {original_error}")
+        failure.add_note(f"staging cleanup failure: {cleanup_error}")
+    return failure
+
+
 def _stream_file_binding(path: Path, label: str) -> dict[str, Any]:
     digest = hashlib.sha256()
     size = 0
@@ -2519,7 +2646,12 @@ def _seal_verified_staging(
     *,
     publication_bindings: Mapping[str, Any],
     sealed_path: Path,
+    owned_staging_identity: tuple[int, int],
 ) -> Path:
+    if _staging_directory_identity(staging) != owned_staging_identity:
+        raise ReadinessBlocked(
+            "no_go_artifact_binding: runner-owned staging identity changed before sealing"
+        )
     expected = _validate_publication_bindings(
         publication_bindings, "verified publication bindings"
     )
@@ -2569,16 +2701,11 @@ def _seal_verified_staging(
             raise ReadinessBlocked(
                 "no_go_artifact_binding: sealed publication binding mismatch"
             )
-        try:
-            shutil.rmtree(staging)
-        except OSError as exc:
-            raise ReadinessBlocked(
-                "no_go_artifact_binding: cannot retire verified staging"
-            ) from exc
-        if staging.exists():
-            raise ReadinessBlocked(
-                "no_go_artifact_binding: verified staging remains after sealing"
-            )
+        _remove_owned_staging(
+            staging,
+            expected_staging=staging,
+            owned_identity=owned_staging_identity,
+        )
         return sealed
     except BaseException as exc:
         try:
@@ -3426,7 +3553,10 @@ def run_readiness_audit(
     if not sys.path or sys.path[0] != root_text:
         sys.path.insert(0, root_text)
     attempt: dict[str, Any] | None = None
-    staging = output.parent / f".{output.name}.{commit}.staging"
+    expected_staging = output.parent / f".{output.name}.{commit}.staging"
+    staging = expected_staging
+    staging_owned = False
+    staging_identity: tuple[int, int] | None = None
     sealed: Path | None = None
     active_gate = "source_binding"
     try:
@@ -3442,7 +3572,7 @@ def run_readiness_audit(
             raise ReadinessBlocked(
                 "no_go_source_binding: rehearsal scratch root already exists"
             )
-        if output.exists() or staging.exists():
+        if os.path.lexists(output) or os.path.lexists(staging):
             raise ReadinessBlocked(
                 "no_go_source_binding: publication or staging root already exists"
             )
@@ -3472,6 +3602,8 @@ def run_readiness_audit(
         active_gate = "artifact_binding"
         output.parent.mkdir(parents=True, exist_ok=True)
         staging.mkdir()
+        staging_owned = True
+        staging_identity = _staging_directory_identity(staging)
         candidate_binding = _write_canonical_gzip_file(
             staging / CANDIDATE_INVENTORY_FILENAME,
             candidate,
@@ -3579,6 +3711,7 @@ def run_readiness_audit(
             output,
             publication_bindings=publication_bindings,
             sealed_path=sealed,
+            owned_staging_identity=staging_identity,
         )
         try:
             os.replace(sealed, output)
@@ -3622,7 +3755,8 @@ def run_readiness_audit(
             except BaseException as cleanup_exc:
                 if hasattr(exc, "add_note"):
                     exc.add_note(f"sealed cleanup also failed: {cleanup_exc}")
-        if _installed_publication_boundary_crossed(attempt):
+        installed_boundary_crossed = _installed_publication_boundary_crossed(attempt)
+        if installed_boundary_crossed:
             try:
                 recovered = _recover_installed_publication(attempt)
             except BaseException as recovery_exc:
@@ -3636,6 +3770,16 @@ def run_readiness_audit(
                 if interrupted is not None:
                     raise interrupted
                 return recovered
+        if staging_owned and not installed_boundary_crossed:
+            try:
+                _remove_owned_staging(
+                    staging,
+                    expected_staging=expected_staging,
+                    owned_identity=staging_identity,
+                )
+            except BaseException as cleanup_exc:
+                exc = _staging_cleanup_failure(exc, cleanup_exc)
+                active_gate = "artifact_binding"
         gate = _failure_gate(exc, active_gate)
         terminal = _terminalize_attempt_no_go(
             attempt,

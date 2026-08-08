@@ -223,6 +223,29 @@ def _report_and_artifacts() -> tuple[dict[str, object], dict[str, bytes]]:
     )
 
 
+def _stub_runner_to_artifact_stage(monkeypatch):
+    candidate = _candidate_artifact()
+    monkeypatch.setattr(
+        readiness,
+        "observe_source_binding",
+        lambda *_args, **_kwargs: _source_binding(),
+    )
+    monkeypatch.setattr(
+        readiness,
+        "build_candidate_from_git",
+        lambda *_args, **_kwargs: (
+            candidate,
+            {"historical_throughput": _historical_throughput()},
+        ),
+    )
+    monkeypatch.setattr(
+        readiness,
+        "run_actual_scale_rehearsal",
+        lambda *_args, **_kwargs: _rehearsal(),
+    )
+    return candidate
+
+
 @pytest.mark.parametrize(
     "relative_path",
     [
@@ -686,6 +709,13 @@ def test_independent_verifier_rebuilds_seed_inventory_without_producer_imports(
     (report_dir / "b.jsonl").write_bytes(
         b'{"diagnostic_seed":5}\n{"qualification_seeds":[6]}\n'
     )
+    readiness_derived = report_dir / (
+        "noncombat_cross_fitted_empirical_successor_readiness_20260808_r2"
+    )
+    readiness_derived.mkdir()
+    (readiness_derived / "candidate_seed_inventory.json.gz").write_bytes(
+        b"not a gzip stream"
+    )
     subprocess.run(["git", "init"], cwd=repo, check=True, capture_output=True)
     subprocess.run(
         ["git", "config", "user.email", "readiness@example.invalid"],
@@ -728,6 +758,13 @@ def test_producer_streams_inventory_without_batch_capture_or_deepcopy(
     (report_dir / "b.jsonl").write_bytes(
         b'{"diagnostic_seed":5}\n{"qualification_seeds":[6]}\n'
     )
+    readiness_derived = report_dir / (
+        "noncombat_cross_fitted_empirical_successor_readiness_20260808_r2"
+    )
+    readiness_derived.mkdir()
+    (readiness_derived / "candidate_seed_inventory.json.gz").write_bytes(
+        b"not a gzip stream"
+    )
     subprocess.run(["git", "init"], cwd=repo, check=True, capture_output=True)
     subprocess.run(
         ["git", "config", "user.email", "readiness@example.invalid"],
@@ -761,6 +798,14 @@ def test_producer_streams_inventory_without_batch_capture_or_deepcopy(
 
     monkeypatch.setattr(seed_inventory, "_git_blob_batch", forbidden)
     monkeypatch.setattr(seed_inventory.copy, "deepcopy", forbidden)
+    streamed_paths = []
+    original_iter_blobs = readiness._iter_seed_git_blobs
+
+    def observe_streamed_paths(repo_root, *, commit, paths):
+        streamed_paths.extend(paths)
+        yield from original_iter_blobs(repo_root, commit=commit, paths=paths)
+
+    monkeypatch.setattr(readiness, "_iter_seed_git_blobs", observe_streamed_paths)
     actual_inventory = readiness._build_streamed_seed_inventory(
         repo,
         repository_commit=commit,
@@ -772,6 +817,7 @@ def test_producer_streams_inventory_without_batch_capture_or_deepcopy(
 
     assert actual_inventory == expected_inventory
     assert actual_schedule == expected_schedule
+    assert streamed_paths == ["reports/a.json", "reports/b.jsonl"]
 
 
 def test_rehearsal_summary_fails_closed_on_scaling_import_or_watchdog_drift():
@@ -1410,12 +1456,61 @@ def test_independent_consumed_schedule_rejects_float_chunk_seed():
         verifier._verify_consumed_schedule(schedule)
 
 
+def test_runner_removes_owned_staging_before_terminalizing_candidate_ceiling(
+    tmp_path, monkeypatch
+):
+    root = (tmp_path / "repo").resolve()
+    root.mkdir()
+    output = root / "publication"
+    commit = "a" * 40
+    staging = root / f".publication.{commit}.staging"
+    _stub_runner_to_artifact_stage(monkeypatch)
+
+    def exceed_canonical_ceiling(destination, _value):
+        Path(destination).write_bytes(b"partial candidate")
+        raise readiness.ReadinessBlocked(
+            "candidate canonical payload exceeds byte ceiling"
+        )
+
+    terminal_calls = []
+    original_terminalize = readiness._terminalize_attempt_no_go
+
+    def terminalize_after_cleanup(attempt, *, gate, error):
+        assert not staging.exists()
+        terminal_calls.append((gate, str(error)))
+        return original_terminalize(attempt, gate=gate, error=error)
+
+    monkeypatch.setattr(
+        readiness, "_write_canonical_gzip_file", exceed_canonical_ceiling
+    )
+    monkeypatch.setattr(
+        readiness, "_terminalize_attempt_no_go", terminalize_after_cleanup
+    )
+
+    with pytest.raises(readiness.ReadinessAttemptTerminal) as captured:
+        readiness.run_readiness_audit(
+            repo_root=root,
+            source_commit=commit,
+            scratch_root=root / "scratch",
+            output_dir=output,
+            audit_id="candidate-ceiling-cleanup-test",
+        )
+
+    assert captured.value.result["decision"]["reason"] == "no_go_artifact_binding"
+    assert terminal_calls == [
+        ("artifact_binding", "candidate canonical payload exceeds byte ceiling")
+    ]
+    assert not output.exists()
+
+
 def test_runner_does_not_install_final_publication_before_independent_verification(
     tmp_path, monkeypatch
 ):
     root = (tmp_path / "repo").resolve()
     root.mkdir()
     output = root / "publication"
+    commit = "a" * 40
+    staging = root / f".publication.{commit}.staging"
     candidate = _candidate_artifact()
     monkeypatch.setattr(
         readiness,
@@ -1444,10 +1539,21 @@ def test_runner_does_not_install_final_publication_before_independent_verificati
             stderr=b"independent drift",
         ),
     )
+    terminal_calls = []
+    original_terminalize = readiness._terminalize_attempt_no_go
+
+    def terminalize_after_cleanup(attempt, *, gate, error):
+        assert not staging.exists()
+        terminal_calls.append(gate)
+        return original_terminalize(attempt, gate=gate, error=error)
+
+    monkeypatch.setattr(
+        readiness, "_terminalize_attempt_no_go", terminalize_after_cleanup
+    )
     with pytest.raises(readiness.ReadinessAttemptTerminal) as captured:
         readiness.run_readiness_audit(
             repo_root=root,
-            source_commit="a" * 40,
+            source_commit=commit,
             scratch_root=root / "scratch",
             output_dir=output,
             audit_id="verify-before-install-test",
@@ -1458,6 +1564,206 @@ def test_runner_does_not_install_final_publication_before_independent_verificati
         "status": "no_go",
     }
     assert not output.exists()
+    assert terminal_calls == ["artifact_binding"]
+
+
+def test_runner_preserves_preexisting_unowned_staging(tmp_path):
+    root = (tmp_path / "repo").resolve()
+    root.mkdir()
+    output = root / "publication"
+    commit = "a" * 40
+    staging = root / f".publication.{commit}.staging"
+    staging.mkdir()
+    marker = staging / "owner.txt"
+    marker.write_text("external\n", encoding="utf-8")
+
+    with pytest.raises(readiness.ReadinessAttemptTerminal) as captured:
+        readiness.run_readiness_audit(
+            repo_root=root,
+            source_commit=commit,
+            scratch_root=root / "scratch",
+            output_dir=output,
+            audit_id="preexisting-staging-preservation-test",
+        )
+
+    assert captured.value.result["decision"]["reason"] == "no_go_source_binding"
+    assert marker.read_text(encoding="utf-8") == "external\n"
+    attempt_dir = root / readiness.ATTEMPT_ROOT_PATH / commit
+    assert not (attempt_dir / readiness.ATTEMPT_VERIFIED_FILENAME).exists()
+    assert (attempt_dir / readiness.ATTEMPT_TERMINAL_FILENAME).is_file()
+
+
+def test_runner_checks_lexical_staging_existence_before_source_observation(
+    tmp_path, monkeypatch
+):
+    root = (tmp_path / "repo").resolve()
+    root.mkdir()
+    output = root / "publication"
+    commit = "a" * 40
+    staging = root / f".publication.{commit}.staging"
+    real_lexists = readiness.os.path.lexists
+
+    def report_dangling_staging(path):
+        return Path(path) == staging or real_lexists(path)
+
+    source_calls = []
+
+    def forbidden_source_observation(*_args, **_kwargs):
+        source_calls.append(True)
+        raise AssertionError("source observation crossed lexical preflight")
+
+    monkeypatch.setattr(readiness.os.path, "lexists", report_dangling_staging)
+    monkeypatch.setattr(
+        readiness, "observe_source_binding", forbidden_source_observation
+    )
+
+    with pytest.raises(readiness.ReadinessAttemptTerminal) as captured:
+        readiness.run_readiness_audit(
+            repo_root=root,
+            source_commit=commit,
+            scratch_root=root / "scratch",
+            output_dir=output,
+            audit_id="lexical-staging-preflight-test",
+        )
+
+    assert source_calls == []
+    assert captured.value.result["decision"]["reason"] == "no_go_source_binding"
+
+
+def test_owned_staging_retirement_restores_last_moment_replacement(
+    tmp_path, monkeypatch
+):
+    staging = tmp_path / ".publication.commit.staging"
+    staging.mkdir()
+    (staging / "owned.txt").write_text("owned\n", encoding="utf-8")
+    owned_identity = readiness._staging_directory_identity(staging)
+    real_rename = readiness.os.rename
+    real_rmtree = readiness.shutil.rmtree
+    swapped = False
+
+    def replace_before_quarantine(source, destination):
+        nonlocal swapped
+        if Path(source) == staging and not swapped:
+            swapped = True
+            real_rmtree(staging)
+            staging.mkdir()
+            (staging / "external.txt").write_text(
+                "replacement\n", encoding="utf-8"
+            )
+        return real_rename(source, destination)
+
+    monkeypatch.setattr(readiness.os, "rename", replace_before_quarantine)
+
+    with pytest.raises(readiness.ReadinessBlocked, match="identity changed"):
+        readiness._remove_owned_staging(
+            staging,
+            expected_staging=staging,
+            owned_identity=owned_identity,
+        )
+
+    assert swapped is True
+    assert (staging / "external.txt").read_text(encoding="utf-8") == "replacement\n"
+    assert not list(tmp_path.glob(f"{staging.name}.*.cleanup"))
+
+
+def test_runner_preserves_replaced_staging_as_unowned(tmp_path, monkeypatch):
+    root = (tmp_path / "repo").resolve()
+    root.mkdir()
+    output = root / "publication"
+    commit = "a" * 40
+    staging = root / f".publication.{commit}.staging"
+    _stub_runner_to_artifact_stage(monkeypatch)
+    real_rmtree = readiness.shutil.rmtree
+
+    def replace_then_fail(command, **_kwargs):
+        observed = Path(command[command.index("--output-dir") + 1])
+        assert observed == staging
+        real_rmtree(observed)
+        observed.mkdir()
+        (observed / "external.txt").write_text("replacement\n", encoding="utf-8")
+        return SimpleNamespace(returncode=1, stdout=b"", stderr=b"injected drift")
+
+    monkeypatch.setattr(readiness, "_run_independent_verifier", replace_then_fail)
+
+    with pytest.raises(readiness.ReadinessAttemptTerminal) as captured:
+        readiness.run_readiness_audit(
+            repo_root=root,
+            source_commit=commit,
+            scratch_root=root / "scratch",
+            output_dir=output,
+            audit_id="replaced-staging-preservation-test",
+        )
+
+    assert captured.value.result["decision"]["reason"] == "no_go_artifact_binding"
+    assert "cleanup failed" in captured.value.result["failure"]["message"]
+    assert "identity" in captured.value.result["failure"]["message"]
+    assert (staging / "external.txt").read_text(encoding="utf-8") == "replacement\n"
+    attempt_dir = root / readiness.ATTEMPT_ROOT_PATH / commit
+    assert not (attempt_dir / readiness.ATTEMPT_VERIFIED_FILENAME).exists()
+    assert (attempt_dir / readiness.ATTEMPT_TERMINAL_FILENAME).is_file()
+
+
+def test_runner_terminalizes_once_when_owned_staging_cleanup_fails(
+    tmp_path, monkeypatch
+):
+    root = (tmp_path / "repo").resolve()
+    root.mkdir()
+    output = root / "publication"
+    commit = "a" * 40
+    staging = root / f".publication.{commit}.staging"
+    _stub_runner_to_artifact_stage(monkeypatch)
+    monkeypatch.setattr(
+        readiness,
+        "_run_independent_verifier",
+        lambda *_args, **_kwargs: SimpleNamespace(
+            returncode=1,
+            stdout=b"",
+            stderr=b"injected verifier failure",
+        ),
+    )
+    cleanup_calls = []
+
+    def fail_cleanup(path, *_args, **_kwargs):
+        cleanup_calls.append(Path(path))
+        raise OSError("injected owned staging cleanup failure")
+
+    terminal_calls = []
+    original_terminalize = readiness._terminalize_attempt_no_go
+
+    def observe_terminal(attempt, *, gate, error):
+        terminal_calls.append((gate, str(error)))
+        return original_terminalize(attempt, gate=gate, error=error)
+
+    monkeypatch.setattr(readiness.shutil, "rmtree", fail_cleanup)
+    monkeypatch.setattr(readiness, "_terminalize_attempt_no_go", observe_terminal)
+
+    with pytest.raises(readiness.ReadinessAttemptTerminal) as captured:
+        readiness.run_readiness_audit(
+            repo_root=root,
+            source_commit=commit,
+            scratch_root=root / "scratch",
+            output_dir=output,
+            audit_id="owned-staging-cleanup-failure-test",
+        )
+
+    assert len(cleanup_calls) == 1
+    assert cleanup_calls[0].parent == staging.parent
+    assert cleanup_calls[0].name.startswith(staging.name + ".")
+    assert cleanup_calls[0].name.endswith(".cleanup")
+    assert len(terminal_calls) == 1
+    assert terminal_calls[0][0] == "artifact_binding"
+    assert "injected owned staging cleanup failure" in terminal_calls[0][1]
+    assert "injected verifier failure" in terminal_calls[0][1]
+    assert captured.value.result["decision"]["reason"] == "no_go_artifact_binding"
+    assert set(captured.value.result["authority"].values()) == {False}
+    assert set(captured.value.result["empirical_operations"].values()) == {False}
+    assert staging.is_dir()
+    attempt_dir = root / readiness.ATTEMPT_ROOT_PATH / commit
+    assert not (attempt_dir / readiness.ATTEMPT_VERIFIED_FILENAME).exists()
+    assert {path.name for path in attempt_dir.iterdir()} == {
+        readiness.ATTEMPT_STARTED_FILENAME,
+        readiness.ATTEMPT_TERMINAL_FILENAME,
+    }
 
 
 def test_runner_rebinds_verified_staging_before_atomic_install(
@@ -1541,6 +1847,7 @@ def test_sealed_copy_failure_removes_only_its_random_snapshot(
     for name, payload in artifacts.items():
         (staging / name).write_bytes(payload)
     bindings = readiness._observe_publication_bindings(staging, "test staging")
+    owned_identity = readiness._staging_directory_identity(staging)
 
     def fail_fsync(_descriptor):
         raise OSError("injected sealed fsync failure")
@@ -1552,10 +1859,41 @@ def test_sealed_copy_failure_removes_only_its_random_snapshot(
             tmp_path / "publication",
             publication_bindings=bindings,
             sealed_path=tmp_path / f".publication.{'b' * 64}.sealed",
+            owned_staging_identity=owned_identity,
         )
 
     assert staging.is_dir()
     assert not list(tmp_path.glob("*.sealed"))
+
+
+def test_sealing_preserves_byte_identical_replaced_staging(tmp_path):
+    staging = tmp_path / f".publication.{'a' * 40}.staging"
+    staging.mkdir()
+    _report, artifacts = _report_and_artifacts()
+    for name, payload in artifacts.items():
+        (staging / name).write_bytes(payload)
+    bindings = readiness._observe_publication_bindings(staging, "test staging")
+    owned_identity = readiness._staging_directory_identity(staging)
+
+    readiness.shutil.rmtree(staging)
+    staging.mkdir()
+    for name, payload in artifacts.items():
+        (staging / name).write_bytes(payload)
+
+    sealed = tmp_path / f".publication.{'b' * 64}.sealed"
+    with pytest.raises(readiness.ReadinessBlocked, match="identity changed"):
+        readiness._seal_verified_staging(
+            staging,
+            tmp_path / "publication",
+            publication_bindings=bindings,
+            sealed_path=sealed,
+            owned_staging_identity=owned_identity,
+        )
+
+    assert {path.name for path in staging.iterdir()} == set(
+        readiness.PUBLICATION_FILENAMES
+    )
+    assert not sealed.exists()
 
 
 def test_runner_terminalizes_independently_verified_no_go(tmp_path, monkeypatch):

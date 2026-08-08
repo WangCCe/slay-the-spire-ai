@@ -39,6 +39,10 @@ PREVIOUS_UNTOUCHED_HOLDOUT_END = 71663
 
 _COMMIT_RE = re.compile(r"[0-9a-f]{40}")
 _SHA256_RE = re.compile(r"[0-9a-f]{64}")
+_READINESS_DERIVED_REPORT_PREFIXES = (
+    "reports/noncombat_cross_fitted_empirical_successor_readiness_",
+    "reports/.noncombat_cross_fitted_empirical_successor_readiness_",
+)
 _SUPPORTED_FORMATS = ("json", "jsonl", "json.gz", "jsonl.gz")
 _ROW_ROLES = {
     "canary",
@@ -194,6 +198,10 @@ def _artifact_format(path: str) -> str | None:
     if path.endswith(".json"):
         return "json"
     return None
+
+
+def _is_readiness_derived_report_path(path: str) -> bool:
+    return path.startswith(_READINESS_DERIVED_REPORT_PREFIXES)
 
 
 def _unsupported_seed_candidate(path: str) -> bool:
@@ -498,6 +506,8 @@ def build_seed_inventory(
     candidates: list[str] = []
     formats: dict[str, str] = {}
     for path in paths:
+        if _is_readiness_derived_report_path(path):
+            continue
         format_name = _artifact_format(path)
         if format_name is None:
             if _unsupported_seed_candidate(path):

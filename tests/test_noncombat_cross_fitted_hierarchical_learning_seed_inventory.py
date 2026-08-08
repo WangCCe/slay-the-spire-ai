@@ -14,6 +14,7 @@ from pathlib import Path
 import pytest
 
 import analysis_scripts.noncombat_cross_fitted_hierarchical_learning_seed_inventory as seed_inventory
+import analysis_scripts.verify_noncombat_cross_fitted_empirical_successor_readiness as readiness_verifier
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -397,6 +398,142 @@ def test_fixed_tree_inventory_covers_formats_roles_and_predecessor_outputs(tmp_p
         in bindings
     )
     assert seed_inventory.verify_seed_inventory(inventory, repo) == inventory
+
+
+@pytest.mark.parametrize(
+    ("path", "expected"),
+    [
+        (
+            "reports/noncombat_cross_fitted_empirical_successor_readiness_"
+            "20260808_r2/candidate_seed_inventory.json.gz",
+            True,
+        ),
+        (
+            "reports/noncombat_cross_fitted_empirical_successor_readiness_"
+            "attempts/commit/attempt_terminal.json",
+            True,
+        ),
+        (
+            "reports/.noncombat_cross_fitted_empirical_successor_readiness_"
+            "20260808_r3.commit.staging/candidate_seed_inventory.json.gz",
+            True,
+        ),
+        (
+            "reports/.noncombat_cross_fitted_empirical_successor_readiness_"
+            "20260808_r3.random.sealed/report.json",
+            True,
+        ),
+        ("reports/legitimate/candidate_seed_inventory.json.gz", False),
+        (
+            "reports/archive/noncombat_cross_fitted_empirical_successor_readiness_"
+            "20260808_r2/report.json",
+            False,
+        ),
+        (
+            "reports/noncombat_cross_fitted_empirical_successor_readiness/"
+            "report.json",
+            False,
+        ),
+        (
+            "reports/Noncombat_cross_fitted_empirical_successor_readiness_"
+            "20260808_r2/report.json",
+            False,
+        ),
+    ],
+)
+def test_readiness_derived_path_classifiers_are_exact_and_independent(path, expected):
+    assert seed_inventory._is_readiness_derived_report_path(path) is expected
+    assert readiness_verifier._is_readiness_derived_report_path(path) is expected
+
+
+def test_readiness_derived_reports_are_excluded_before_blob_loading_and_recursion(
+    tmp_path, monkeypatch
+):
+    legitimate_candidate = "reports/legitimate/candidate_seed_inventory.json.gz"
+    lookalike = (
+        "reports/archive/noncombat_cross_fitted_empirical_successor_readiness_"
+        "20260808_r2/attempt_terminal.json"
+    )
+    excluded_final = (
+        "reports/noncombat_cross_fitted_empirical_successor_readiness_"
+        "20260808_r2/candidate_seed_inventory.json.gz"
+    )
+    excluded_attempt = (
+        "reports/noncombat_cross_fitted_empirical_successor_readiness_"
+        "attempts/deadbeef/attempt_terminal.json"
+    )
+    excluded_closeout = (
+        "reports/noncombat_cross_fitted_empirical_successor_readiness_"
+        "20260808_r3_closeout.json"
+    )
+    excluded_staging = (
+        "reports/.noncombat_cross_fitted_empirical_successor_readiness_"
+        "20260808_r3.commit.staging/candidate_seed_inventory.json.gz"
+    )
+    excluded_sealed = (
+        "reports/.noncombat_cross_fitted_empirical_successor_readiness_"
+        "20260808_r3.random.sealed/candidate_seed_inventory.json.gz"
+    )
+    repo, commit = _commit_files(
+        tmp_path,
+        {
+            legitimate_candidate: _deterministic_gzip(
+                _json_bytes({"used_seeds": [101]})
+            ),
+            lookalike: _json_bytes({"used_seeds": [102]}),
+            excluded_final: _deterministic_gzip(
+                _json_bytes(
+                    {
+                        "historical_seed_inventory": {
+                            "rows": [{"seed": 901}, {"seed": 902}]
+                        }
+                    }
+                )
+            ),
+            excluded_attempt: _json_bytes({"attempt_seed": 903}),
+            excluded_closeout: _json_bytes({"closeout_seed": 904}),
+            excluded_staging: b"not a gzip stream",
+            excluded_sealed: b"also not a gzip stream",
+        },
+    )
+
+    producer_blob_paths = []
+    original_blob_batch = seed_inventory._git_blob_batch
+
+    def observe_producer_blobs(repo_root, *, repository_commit, paths):
+        producer_blob_paths.extend(paths)
+        return original_blob_batch(
+            repo_root,
+            repository_commit=repository_commit,
+            paths=paths,
+        )
+
+    verifier_blob_paths = []
+    original_iter_blobs = readiness_verifier._iter_git_blobs
+
+    def observe_verifier_blobs(repo_root, *, commit, paths):
+        verifier_blob_paths.extend(paths)
+        yield from original_iter_blobs(repo_root, commit=commit, paths=paths)
+
+    monkeypatch.setattr(seed_inventory, "_git_blob_batch", observe_producer_blobs)
+    monkeypatch.setattr(
+        readiness_verifier, "_iter_git_blobs", observe_verifier_blobs
+    )
+
+    produced = seed_inventory.build_seed_inventory(repo, repository_commit=commit)
+    rebuilt = readiness_verifier.rebuild_seed_inventory(
+        repo, repository_commit=commit
+    )
+
+    assert produced == rebuilt
+    assert producer_blob_paths == sorted([legitimate_candidate, lookalike])
+    assert verifier_blob_paths == producer_blob_paths
+    assert {101, 102} <= set(produced["excluded_seeds"])
+    assert {901, 902, 903, 904}.isdisjoint(produced["excluded_seeds"])
+    assert {binding["path"] for binding in produced["source_bindings"]} == {
+        legitimate_candidate,
+        lookalike,
+    }
 
 
 @pytest.mark.parametrize(
