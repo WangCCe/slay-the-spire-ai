@@ -1123,7 +1123,8 @@ The next authorized sequence is:
     and terminal artifacts remain absent. This request is eligible only for a
     later separate exact delegated-approval and authorization proposal.
 53. Preserve the pushed 20260808-r2 standing delegation, delegated approval,
-    and tracked authorization as separate unexecuted control-plane stages. The
+    and tracked authorization as separate control-plane stages later consumed
+    exactly once by item 54. The
     plan commit is `371e612a2a786be42538a058f4adc9a6216dc840`, delegated-
     approval evidence commit is
     `40c36f1a8a0cedbf2325b759687a475890c0d879`, and authorization commit is
@@ -1166,12 +1167,42 @@ The next authorized sequence is:
     contract audit plus the separate standard-library verifier found no
     publication blocker. No implementation or test source changed, so the
     known long commit gate and fresh gameplay validation were not applicable.
-    The registered output root remains absent and no native/model load,
+    At this authorization closeout the registered output root remained absent
+    and no native/model load,
     environment construction, seed access, fit, training, evaluation,
     execution, gameplay, CommunicationMod, qualification, or promotion has
-    occurred. The pushed authorization permits only a later separate exact
-    execution change; it is not evidence that execution has started or that
-    the policy is valuable.
+    had occurred. The pushed authorization permitted only the later separate
+    exact execution change recorded by item 54; authorization alone was not
+    evidence that execution had started or that the policy was valuable.
+54. Preserve the completed 20260808-r2 cross-fitted hierarchical execution and
+    its independently verified terminal bundle. Plan commit `d68bfce72e6779fece3f431e8e96d8eaa4150478`
+    and preflight commit `afc947e56ce3538c173a0d932773bec44f3ab8cf`
+    were pushed before the registered output root was created. The exact
+    authorization identity
+    `80dffa2fa2c1d1a9d68d638276c73730415842f085c7d881609a37114d88152f`
+    was consumed once. The execution completed all eight 64-episode chunks,
+    512 environment accesses, eight optimizer updates, eight checkpoints, and
+    11,729 retained decisions in 12,101.125 charged seconds without resume or
+    failure. The independent standard-library verifier passed in 419 seconds
+    with verdict `experiment_completed_with_cross_fitted_mechanism_evidence`,
+    terminal SHA-256
+    `3de29ce568b0d418f4e1052c4b7c92040d2de316e035b455c47384daf48db1e0`,
+    and manifest SHA-256
+    `b563fe8f95fa705ffcf7eafe14c40672599e46ad2a611db6f473a654ec8860eb`.
+    Producer-canonical self-digest probes passed, and the focused terminal,
+    control, and verifier gate passed 18 tests in 75.83 seconds. No
+    implementation or test source changed, so the long commit gate and fresh
+    gameplay validation were not applicable.
+    Cross-fitted and legacy gradients differ materially, but card-reward
+    greedy behavior remains near-saturated: `take` is the maximum family for
+    1,773 of 1,774 final-window multi-family decisions. Also preserve the 2,261
+    lower-bound-clipped baseline predictions as an unresolved support signal.
+    No evaluation cohort or production checkpoint was accessed, no victory was
+    observed, and all policy-quality, causal, formal-RL, gameplay,
+    CommunicationMod, qualification, and promotion claims remain false. Do not
+    start an immediate successor. The next gate is a source-only read-only
+    baseline-support and card-reward attribution audit over the sealed r2
+    artifacts.
 
 ## Work Lanes
 
@@ -1240,17 +1271,18 @@ are complete. The contract preserves selected family plus conditional log
     source identity was not reused. Later source-only repairs and readiness
     audits culminated in the independently verified r5 `go`, followed by the
     exact compact 20260808-r2 registration, execution request, standing
-    delegation, delegated approval, and tracked authorization now pushed on
-    `origin/master`. These control-plane stages bind the fresh cohort,
-    estimator/objective, resource ceilings, isolation, retry/resume, terminal
-    evidence, and approval chain, but the registered output root remains absent
-    and the empirical successor has not started. Execution must be a new
-    OpenSpec change that revalidates the exact pushed authorization and invokes
-    the registered mechanism without changing any term. Until that boundary is
-    opened, do not load a native module or model, access an empirical seed
-    outcome, fit, train, evaluate, run OPE, launch gameplay or CommunicationMod,
-    qualify, promote, or infer policy quality or causal value from readiness or
-    authorization alone.
+    delegation, delegated approval, tracked authorization, and one terminal
+    execution. The independently verified run completed all 512 primary
+    episodes and eight updates without resume. Cross-fitted attribution changed
+    the gradient materially relative to the legacy objective, but card-reward
+    greedy behavior remained near-saturated at 1,773/1,774 `take` maxima in the
+    final window, 2,261 baseline predictions were clipped at zero, and no
+    victory or evaluation evidence was observed. Do not start an immediate
+    successor. First perform the source-only read-only baseline-support and
+    card-reward attribution audit defined by terminal item 54. Until a later
+    proposal passes that gate, do not load a production model, evaluate, run
+    OPE, launch gameplay or CommunicationMod, qualify, promote, or infer policy
+    quality or causal value from mechanism completion alone.
 
 Live gameplay is a maintenance and registered-evaluation lane only. Launch it
 for a crash, stuck state, repeated A-class simulator/mechanics defect, or an

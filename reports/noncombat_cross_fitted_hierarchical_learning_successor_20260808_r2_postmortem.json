@@ -1,0 +1,292 @@
+{
+  "authority": {
+    "causal_claim": false,
+    "communication_mod": false,
+    "evaluation": false,
+    "formal_rl": false,
+    "gameplay": false,
+    "model_loading": false,
+    "new_cohort": false,
+    "new_experiment": false,
+    "ope": false,
+    "policy_quality": false,
+    "promotion": false,
+    "qualification": false,
+    "replay": false,
+    "resume": false,
+    "training": false
+  },
+  "classification": {
+    "failure": null,
+    "pre_start_blocking": false,
+    "resume_eligible": false,
+    "resume_used": false,
+    "retry_authorized": false,
+    "valid_completion": true,
+    "valid_family_saturation": false,
+    "verdict": "experiment_completed_with_cross_fitted_mechanism_evidence"
+  },
+  "execution": {
+    "charged_seconds": 12101.125,
+    "checkpoint_count": 8,
+    "completed_chunk_indices": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7
+    ],
+    "environment_accesses": 512,
+    "invocation_count": 1,
+    "optimizer_updates": 8,
+    "process_exit_code": "unavailable_after_wait_handle_loss",
+    "retained_decisions": 11729,
+    "scheduled_primary_episodes": 512
+  },
+  "identity": {
+    "authorization_sha256": "80dffa2fa2c1d1a9d68d638276c73730415842f085c7d881609a37114d88152f",
+    "logical_execution_id": "noncombat-cross-fitted-hierarchical-learning-successor-20260808-r2",
+    "registration_sha256": "9d792cadbece4ea21768386904633ebded2e94525fb186bdcbf4a4d7729dbdf9",
+    "request_sha256": "6257a36c6573c8c412bb8727736e81b063dd0c7076f1ea5b41a70d4a08206c2e"
+  },
+  "input_bindings": {
+    "access_journal": {
+      "path": "reports/noncombat_cross_fitted_hierarchical_learning_successor_20260808_r2/access_journal.jsonl",
+      "sha256": "95360118a3708f4966165baf8d36d0703d5ab4346d07423af644c2f13c94ddde",
+      "size_bytes": 221039
+    },
+    "artifact_manifest": {
+      "internal_sha256": "b563fe8f95fa705ffcf7eafe14c40672599e46ad2a611db6f473a654ec8860eb",
+      "path": "reports/noncombat_cross_fitted_hierarchical_learning_successor_20260808_r2/artifact_manifest.json",
+      "sha256": "9ae80569dc405d17da7d18f277dcebfb280eb40052cb318a19c629fd97cbac75",
+      "size_bytes": 9630
+    },
+    "post_isolation": {
+      "path": "reports/noncombat_cross_fitted_hierarchical_learning_successor_20260808_r2/post_isolation.json",
+      "sha256": "be29e52af712bf010766e3f3d8fe3c481a37aa8992ec34dda174611ad4477cff",
+      "size_bytes": 664
+    },
+    "pre_isolation": {
+      "path": "reports/noncombat_cross_fitted_hierarchical_learning_successor_20260808_r2/pre_isolation.json",
+      "sha256": "77bfc908c0eb9e71220517d453008b3ac7ea2eca5d3f08b2f88659d5717f032f",
+      "size_bytes": 663
+    },
+    "resource_ledger": {
+      "path": "reports/noncombat_cross_fitted_hierarchical_learning_successor_20260808_r2/resource_ledger.jsonl",
+      "sha256": "36c63bf24bc5ae236bfbacd34e657a6424151aab2103129acb5c593965765696",
+      "size_bytes": 228327
+    },
+    "terminal": {
+      "internal_sha256": "3de29ce568b0d418f4e1052c4b7c92040d2de316e035b455c47384daf48db1e0",
+      "path": "reports/noncombat_cross_fitted_hierarchical_learning_successor_20260808_r2/terminal.json",
+      "sha256": "fff36b367fff09c4efd887db2a33d4cd98fd54b3af358ede397587e773282ce1",
+      "size_bytes": 1502
+    },
+    "terminal_intent": {
+      "internal_sha256": "06fb9ce7be0cb416905fd32caa832c8116a2acb60f94660d9d4d75e6802c9ade",
+      "path": "reports/noncombat_cross_fitted_hierarchical_learning_successor_20260808_r2/terminal_intent.json",
+      "sha256": "1b14a7ec8359d2913d34677111926af63dcb330f492684f16689d80a987ed263",
+      "size_bytes": 10096
+    }
+  },
+  "interpretation": {
+    "formal_readiness": "unchanged_not_ready",
+    "immediate_successor_experiment": "no_go",
+    "mechanism_evidence": "cross_fitted_gradient_materially_differs_from_legacy_but_card_reward_near_saturation_persists",
+    "next_gate": "read_only_cross_fitted_baseline_support_and_card_reward_attribution_audit",
+    "policy_quality": "not_established",
+    "target_supported_outcomes": "not_established"
+  },
+  "isolation": {
+    "communication_mod_config_unchanged": true,
+    "post_matches_registration": true,
+    "pre_matches_registration": true,
+    "production_checkpoint_bytes": 1356047034,
+    "production_checkpoint_files": 208,
+    "production_checkpoints_unchanged": true
+  },
+  "mechanism_evidence": {
+    "advantages": {
+      "categories": {
+        "card_reward": {
+          "decisions": 3536,
+          "mean": 0.00671175462696961,
+          "mean_absolute": 0.10380329228235242,
+          "negative": 1634,
+          "positive": 1902
+        },
+        "event": {
+          "decisions": 951,
+          "mean": 0.003887289809141968,
+          "mean_absolute": 0.10516336276037898,
+          "negative": 459,
+          "positive": 487
+        },
+        "route": {
+          "decisions": 6356,
+          "mean": 0.00868527152566338,
+          "mean_absolute": 0.100956231176808,
+          "negative": 2900,
+          "positive": 3456
+        },
+        "shop": {
+          "decisions": 886,
+          "mean": 0.013069069751536632,
+          "mean_absolute": 0.11172443764803859,
+          "negative": 403,
+          "positive": 481
+        }
+      },
+      "negative": 5396,
+      "positive": 6326,
+      "zero": 7
+    },
+    "baseline": {
+      "clipped_high": 0,
+      "clipped_low": 2261,
+      "clipped_low_by_category": {
+        "card_reward": 659,
+        "event": 170,
+        "route": 1232,
+        "shop": 200
+      },
+      "feature_dim": 128,
+      "fold_count": 4,
+      "per_chunk_rmse": [
+        0.11560906651014465,
+        0.10700222864483987,
+        0.18607028569410802,
+        0.133145035406009,
+        0.13354497732473206,
+        0.12677553668639677,
+        0.13660948744265536,
+        0.11798785159959303
+      ],
+      "prediction_unclipped_max": 0.8428579856055126,
+      "prediction_unclipped_min": -0.35821231002982173
+    },
+    "card_reward": {
+      "greedy_families_all_chunks": {
+        "bowl": 2,
+        "skip": 22,
+        "take": 3512
+      },
+      "last_four_chunk_greedy_families": {
+        "bowl": 1,
+        "take": 1773
+      },
+      "last_four_chunk_multi_family_decisions": 1774,
+      "selected_family_advantage_mean": {
+        "bowl": 0.05590997118459986,
+        "skip": 0.0027821599764817125,
+        "take": 0.009540040134596051
+      },
+      "selected_families_all_chunks": {
+        "bowl": 28,
+        "skip": 1672,
+        "take": 1836
+      }
+    },
+    "gradient_comparison_to_legacy": {
+      "cosine_max": 0.6616368183383267,
+      "cosine_mean": 0.5505570018301381,
+      "cosine_min": 0.2866360667062842,
+      "cross_fitted_norm_max": 0.004670060084689387,
+      "cross_fitted_norm_mean": 0.0035348679324372365,
+      "cross_fitted_norm_min": 0.0025298821833428333,
+      "legacy_norm_max": 0.029429512521903102,
+      "legacy_norm_mean": 0.025652071725812194,
+      "legacy_norm_min": 0.021340569480675774
+    },
+    "outcomes": {
+      "initial_return_max": 0.5789473684210529,
+      "initial_return_mean": 0.2191269188596496,
+      "initial_return_min": 0.017543859649122806,
+      "training_trajectories": 512,
+      "victories": 0
+    },
+    "shop": {
+      "greedy_families_all_chunks": {
+        "buy_card": 641,
+        "buy_potion": 7,
+        "buy_relic": 1,
+        "leave": 237
+      },
+      "last_four_chunk_greedy_families": {
+        "buy_card": 361,
+        "buy_potion": 1,
+        "leave": 108
+      },
+      "last_four_chunk_multi_family_decisions": 362,
+      "selected_families_all_chunks": {
+        "buy_card": 235,
+        "buy_potion": 105,
+        "buy_relic": 45,
+        "leave": 400,
+        "remove_card": 101
+      }
+    }
+  },
+  "monitoring": {
+    "active_output_read_while_child_alive": false,
+    "execution_wait_handle_lost_after_context_transition": true,
+    "exact_shell_exit_code_available": false,
+    "second_execution_started": false,
+    "true_child_absence_confirmed_before_output_read": true
+  },
+  "publication": {
+    "artifact_count": 28,
+    "complete_terminal_bundle_preserved_locally": true,
+    "inactive_execution_lease_is_control_only": true,
+    "manifest_stored_bytes": 91187429,
+    "manifest_uncompressed_bytes": 243933540,
+    "ordinary_git_omits_only": [
+      "reports/noncombat_cross_fitted_hierarchical_learning_successor_20260808_r2/.execution.lease"
+    ]
+  },
+  "schema_version": "noncombat-cross-fitted-hierarchical-learning-postmortem-v1",
+  "scope": {
+    "new_native_loading": false,
+    "new_seed_access": false,
+    "read_only_terminal_descriptive_postmortem": true,
+    "terminal_artifact_mutation": false,
+    "training_or_replay": false
+  },
+  "verification": {
+    "artifact_count": 28,
+    "canonical_self_digest_probes": "valid",
+    "checkpoint_count": 8,
+    "completed_chunk_indices": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7
+    ],
+    "independent_verifier": "valid",
+    "independent_verifier_seconds": 419.0,
+    "focused_pytest_passed": 18,
+    "focused_pytest_seconds": 75.83,
+    "fresh_gameplay_validation": "not_applicable_no_gameplay_or_policy_change",
+    "long_commit_gate": "not_applicable_no_implementation_or_test_source_change",
+    "manifest_sha256": "b563fe8f95fa705ffcf7eafe14c40672599e46ad2a611db6f473a654ec8860eb",
+    "resource_use": {
+      "charged_seconds": 12101.125,
+      "environment_accesses": 512,
+      "optimizer_updates": 8,
+      "retained_decisions": 11729,
+      "stored_bytes": 89975883,
+      "uncompressed_bytes": 242721994
+    },
+    "resume_mode": null,
+    "resume_used": false,
+    "terminal_sha256": "3de29ce568b0d418f4e1052c4b7c92040d2de316e035b455c47384daf48db1e0",
+    "verdict": "experiment_completed_with_cross_fitted_mechanism_evidence"
+  }
+}
