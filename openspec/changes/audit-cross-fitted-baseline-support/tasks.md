@@ -8,37 +8,37 @@
 
 ## 2. Add RED Source-Only Regressions
 
-- [ ] 2.1 Add fail-closed fixtures for pushed source identity, independent
+- [x] 2.1 Add fail-closed fixtures for pushed source identity, independent
   verifier result, inactive lease ownership, terminal/manifest self-digests,
   exact inventory, and immutable r2 bindings.
-- [ ] 2.2 Add streaming chunk fixtures for fold disjointness, prediction bounds,
+- [x] 2.2 Add streaming chunk fixtures for fold disjointness, prediction bounds,
   clipping direction, residual/advantage identities, and bounded gzip handling.
-- [ ] 2.3 Add fixed-stratum and support fixtures for chunk, fold, category,
+- [x] 2.3 Add fixed-stratum and support fixtures for chunk, fold, category,
   clipping status, selected family, advantage sign, floor band, and ordinal.
-- [ ] 2.4 Add direct take-logit pressure, scalar-component reconciliation,
+- [x] 2.4 Add direct take-logit pressure, scalar-component reconciliation,
   final-window 1,773/1 exception, and bounded-verdict precedence fixtures.
-- [ ] 2.5 Add deterministic publication, caller-override rejection, and fresh-
+- [x] 2.5 Add deterministic publication, caller-override rejection, and fresh-
   process forbidden-import regressions.
 
 ## 3. Implement The Streaming Audit
 
-- [ ] 3.1 Implement strict canonical parsing, Git/source bindings, verifier
+- [x] 3.1 Implement strict canonical parsing, Git/source bindings, verifier
   invocation, inactive-lease locking, manifest snapshot validation, and bounded
   deterministic-gzip streaming.
-- [ ] 3.2 Implement exact cross-fitted row reconstruction, fixed support strata,
+- [x] 3.2 Implement exact cross-fitted row reconstruction, fixed support strata,
   direct card-reward pressure, scalar/full-gradient diagnostics, saturation
   reconciliation, and bounded verdict classification.
-- [ ] 3.3 Implement compact canonical JSON and Markdown publication with atomic
+- [x] 3.3 Implement compact canonical JSON and Markdown publication with atomic
   rollback and exact all-false authority.
 
 ## 4. Seal And Push The Source Identity
 
-- [ ] 4.1 Run focused audit/verifier regressions with a fresh system-temp pytest
+- [x] 4.1 Run focused audit/verifier regressions with a fresh system-temp pytest
   child, import-isolation probes, and strict OpenSpec validation.
-- [ ] 4.2 Run the applicable tiered commit gate for changed analysis/test source;
+- [x] 4.2 Run the applicable tiered commit gate for changed analysis/test source;
   record fresh gameplay validation as not applicable because no live behavior
   changed.
-- [ ] 4.3 Commit and push only the plan, audit source, and tests while analytical
+- [x] 4.3 Commit and push only the plan, audit source, and tests while analytical
   report paths remain absent.
 
 ## 5. Publish Deterministic Read-Only Evidence
