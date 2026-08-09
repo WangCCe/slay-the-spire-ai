@@ -9,6 +9,7 @@ import hashlib
 import json
 import math
 from numbers import Integral, Real
+import struct
 import time
 from typing import Any, Literal
 
@@ -16,6 +17,13 @@ import torch
 
 from analysis_scripts import noncombat_formal_reward_contract as formal_reward_contract
 from analysis_scripts import noncombat_simulator_adapter as simulator_adapter
+from analysis_scripts.noncombat_hierarchical_advantage_attribution import (
+    FEATURE_FIELDS,
+    FEATURE_SCHEMA_VERSION,
+    AdvantageAttributionError,
+    AdvantageBatch,
+    build_advantage_batch,
+)
 from analysis_scripts.noncombat_card_acceptance_objective import (
     CardAcceptanceObjectiveError,
     CardAcceptancePolicyTerms,
@@ -57,6 +65,18 @@ MAX_CHARGED_SECONDS = 28_800.0
 REGISTERED_SUPPORT_BLOCKERS = (
     "unsupported_shop_courier_restock_semantics",
 )
+BASELINE_FEATURE_SCHEMA_VERSION = "cross-fitted-baseline-state-features-v1"
+BASELINE_FEATURE_DIM = 128
+BASELINE_SOURCE_DIM = HASH_DIM
+FOLD_COUNT = 4
+TRAJECTORIES_PER_CHUNK = 64
+HELD_OUT_TRAJECTORIES_PER_FOLD = 16
+FIT_TRAJECTORIES_PER_FOLD = 48
+RIDGE_COEFFICIENT = 0.001
+RIDGE_RESIDUAL_ATOL = 1e-9
+RIDGE_RESIDUAL_RTOL = 1e-9
+PREDICTION_MIN = 0.0
+PREDICTION_MAX = 3.0
 ArmName = Literal["candidate", "control"]
 
 _REGISTERED_ADAM_OPTIONS: dict[str, Any] = {
@@ -157,6 +177,59 @@ class PairedEpisodeRollout:
     control: ArmEpisodeRollout
 
 
+@dataclass(frozen=True)
+class ArmBaselineDecision:
+    arm: ArmName
+    category: str
+    decision_id: str
+    decision_index: int
+    raw_return: float
+    reward: float
+    seed: int
+    state_features: torch.Tensor
+    trajectory_id: str
+
+
+@dataclass(frozen=True)
+class RidgeFoldModel:
+    fold_id: str
+    fit_trajectory_ids: tuple[str, ...]
+    held_out_trajectory_ids: tuple[str, ...]
+    coefficients: tuple[float, ...]
+    kkt_residuals: tuple[float, ...]
+    rhs: tuple[float, ...]
+    absolute_product_sums: tuple[float, ...]
+
+
+@dataclass(frozen=True)
+class ArmBaselinePrediction:
+    decision_id: str
+    fold_id: str
+    trajectory_id: str
+    unclipped: float
+    clipped: float
+    was_clipped: bool
+    preclip_little_endian_hex: str
+    feature_sha256: str
+
+
+@dataclass(frozen=True)
+class ArmCrossFittedBaseline:
+    arm: ArmName
+    decisions: tuple[ArmBaselineDecision, ...]
+    fold_trajectories: Mapping[str, tuple[str, ...]]
+    models: tuple[RidgeFoldModel, ...]
+    predictions: tuple[ArmBaselinePrediction, ...]
+    advantage_batch: AdvantageBatch
+
+
+@dataclass(frozen=True)
+class PairedCrossFittedBaselines:
+    seeds: tuple[int, ...]
+    candidate: ArmCrossFittedBaseline
+    control: ArmCrossFittedBaseline
+
+
 _DTYPES: dict[str, torch.dtype] = {
     "bool": torch.bool,
     "float32": torch.float32,
@@ -208,6 +281,20 @@ def runtime_metadata() -> dict[str, Any]:
                 "seed_access",
                 "training",
             )
+        },
+        "baseline": {
+            "feature_dim": BASELINE_FEATURE_DIM,
+            "fit_trajectories_per_fold": FIT_TRAJECTORIES_PER_FOLD,
+            "fold_count": FOLD_COUNT,
+            "held_out_trajectories_per_fold": HELD_OUT_TRAJECTORIES_PER_FOLD,
+            "prediction_bounds": [PREDICTION_MIN, PREDICTION_MAX],
+            "ridge_coefficient": RIDGE_COEFFICIENT,
+            "ridge_residual_atol": RIDGE_RESIDUAL_ATOL,
+            "ridge_residual_rtol": RIDGE_RESIDUAL_RTOL,
+            "scale": 1.0,
+            "solver": "cpu-float64-cholesky-v1",
+            "source_dim": BASELINE_SOURCE_DIM,
+            "trajectory_weighting": "equal-trajectory-mean-squared-error-v1",
         },
         "device": "cpu",
         "dtype": "float32",
@@ -1608,8 +1695,574 @@ def rollout_paired_training_episode(
     return PairedEpisodeRollout(seed=seed, candidate=candidate, control=control)
 
 
+def _validate_baseline_vector(
+    value: Any,
+    *,
+    width: int,
+    label: str,
+) -> torch.Tensor:
+    if not isinstance(value, torch.Tensor) or value.shape != (width,):
+        raise SuccessorRuntimeError(f"{label} must have shape ({width},)")
+    if value.device.type != "cpu" or value.dtype != torch.float32:
+        raise SuccessorRuntimeError(f"{label} must be CPU float32")
+    if not bool(torch.isfinite(value).all().item()):
+        raise SuccessorRuntimeError(f"{label} must be finite")
+    return value
+
+
+def fold_baseline_state_features(source: torch.Tensor) -> torch.Tensor:
+    """Fold the state-only 1,024-vector into 128 float32 coordinates."""
+    source_value = _validate_baseline_vector(
+        source,
+        width=BASELINE_SOURCE_DIM,
+        label="policy state features",
+    )
+    folded = torch.zeros(BASELINE_FEATURE_DIM, dtype=torch.float32, device="cpu")
+    for source_index in range(BASELINE_SOURCE_DIM):
+        target_index = source_index % BASELINE_FEATURE_DIM
+        folded[target_index] = folded[target_index] + source_value[source_index]
+    if not bool(torch.isfinite(folded).all().item()):
+        raise SuccessorRuntimeError("folded state features must remain finite")
+    return folded
+
+
+def _sparse_state_feature_payload(value: torch.Tensor) -> dict[str, Any]:
+    vector = _validate_baseline_vector(
+        value,
+        width=BASELINE_FEATURE_DIM,
+        label="baseline state features",
+    )
+    entries = [
+        [index, float(vector[index].item())]
+        for index in range(BASELINE_FEATURE_DIM)
+        if float(vector[index].item()) != 0.0
+    ]
+    identity = {
+        "dense_dim": BASELINE_FEATURE_DIM,
+        "dtype": "float32",
+        "entries": entries,
+        "folding": "ascending-source-index-modulo-128-float32-add-v1",
+        "schema_version": BASELINE_FEATURE_SCHEMA_VERSION,
+        "source_dim": BASELINE_SOURCE_DIM,
+    }
+    return {
+        **identity,
+        "sha256": hashlib.sha256(
+            _canonical_json_bytes(identity) + b"\n"
+        ).hexdigest(),
+    }
+
+
+def _build_arm_baseline_decisions(
+    episodes: Sequence[ArmEpisodeRollout],
+    *,
+    arm: ArmName,
+) -> tuple[ArmBaselineDecision, ...]:
+    normalized_arm = _validated_arm(arm)
+    if isinstance(episodes, (str, bytes)) or not isinstance(episodes, Sequence):
+        raise SuccessorRuntimeError("arm episodes must be a sequence")
+    source = tuple(episodes)
+    if len(source) != TRAJECTORIES_PER_CHUNK:
+        raise SuccessorRuntimeError(
+            "cross-fitted baseline requires exactly 64 trajectories per arm"
+        )
+    seeds = tuple(episode.seed for episode in source)
+    if any(
+        isinstance(seed, bool) or not isinstance(seed, int) or seed < 0
+        for seed in seeds
+    ) or seeds != tuple(sorted(set(seeds))):
+        raise SuccessorRuntimeError(
+            "arm trajectory seeds must be unique ascending nonnegative integers"
+        )
+
+    result: list[ArmBaselineDecision] = []
+    for episode in source:
+        if not isinstance(episode, ArmEpisodeRollout) or episode.arm != normalized_arm:
+            raise SuccessorRuntimeError("arm episode identity differs")
+        if episode.trajectory_id != f"{normalized_arm}:seed-{episode.seed}":
+            raise SuccessorRuntimeError("arm trajectory identity differs")
+        if episode.unsupported_reason is not None:
+            raise SuccessorRuntimeError(
+                "cross-fitted baseline requires complete supported trajectories"
+            )
+        if episode.final_snapshot.get("terminal") is not True:
+            raise SuccessorRuntimeError(
+                "cross-fitted baseline requires terminal trajectories"
+            )
+        if not episode.decisions or not (
+            len(episode.decisions)
+            == len(episode.rewards)
+            == len(episode.transitions)
+        ):
+            raise SuccessorRuntimeError(
+                "complete arm trajectory decision fields must align"
+            )
+
+        return_to_go = [0.0] * len(episode.rewards)
+        running = 0.0
+        for index in range(len(episode.rewards) - 1, -1, -1):
+            reward = episode.rewards[index]
+            if isinstance(reward, bool) or not isinstance(reward, Real):
+                raise SuccessorRuntimeError("formal rewards must be finite")
+            reward_value = float(reward)
+            if not math.isfinite(reward_value):
+                raise SuccessorRuntimeError("formal rewards must be finite")
+            running = reward_value + running
+            if not math.isfinite(running) or not 0.0 <= running <= 3.0:
+                raise SuccessorRuntimeError(
+                    "return-to-go must remain in [0, 3]"
+                )
+            return_to_go[index] = running
+
+        for index, (decision, reward, raw_return) in enumerate(
+            zip(
+                episode.decisions,
+                episode.rewards,
+                return_to_go,
+                strict=True,
+            )
+        ):
+            expected_id = (
+                f"{normalized_arm}:seed-{episode.seed}:decision-{index}"
+            )
+            if (
+                not isinstance(decision, ArmRolloutDecision)
+                or decision.arm != normalized_arm
+                or decision.decision_index != index
+                or decision.decision_id != expected_id
+                or decision.category not in simulator_adapter.TARGET_CATEGORIES
+            ):
+                raise SuccessorRuntimeError("arm decision identity differs")
+            if decision.category == "card_reward":
+                if (
+                    not isinstance(decision.card_terms, CardAcceptancePolicyTerms)
+                    or decision.card_terms.selected_action_id
+                    != decision.selected_action_id
+                ):
+                    raise SuccessorRuntimeError(
+                        "card decision terms and selected action differ"
+                    )
+            elif decision.card_terms is not None:
+                raise SuccessorRuntimeError(
+                    "non-card decision cannot carry trainable card terms"
+                )
+            result.append(
+                ArmBaselineDecision(
+                    arm=normalized_arm,
+                    category=decision.category,
+                    decision_id=decision.decision_id,
+                    decision_index=index,
+                    raw_return=raw_return,
+                    reward=float(reward),
+                    seed=episode.seed,
+                    state_features=fold_baseline_state_features(
+                        decision.state_features
+                    ),
+                    trajectory_id=episode.trajectory_id,
+                )
+            )
+    return tuple(result)
+
+
+def _normalize_baseline_decisions(
+    decisions: Sequence[ArmBaselineDecision],
+    *,
+    arm: ArmName,
+) -> tuple[
+    tuple[ArmBaselineDecision, ...],
+    tuple[str, ...],
+    dict[str, tuple[ArmBaselineDecision, ...]],
+]:
+    normalized_arm = _validated_arm(arm)
+    source = tuple(decisions)
+    by_trajectory: dict[str, list[ArmBaselineDecision]] = {}
+    seen_decision_ids: set[str] = set()
+    for decision in source:
+        if not isinstance(decision, ArmBaselineDecision) or decision.arm != normalized_arm:
+            raise SuccessorRuntimeError("baseline decision arm differs")
+        if decision.decision_id in seen_decision_ids:
+            raise SuccessorRuntimeError("baseline decision identities must be unique")
+        seen_decision_ids.add(decision.decision_id)
+        _validate_baseline_vector(
+            decision.state_features,
+            width=BASELINE_FEATURE_DIM,
+            label="baseline state features",
+        )
+        by_trajectory.setdefault(decision.trajectory_id, []).append(decision)
+    if len(by_trajectory) != TRAJECTORIES_PER_CHUNK:
+        raise SuccessorRuntimeError(
+            "cross-fitted baseline requires exactly 64 trajectories"
+        )
+
+    seed_by_trajectory: dict[str, int] = {}
+    normalized_by_trajectory: dict[str, tuple[ArmBaselineDecision, ...]] = {}
+    seen_seeds: set[int] = set()
+    for trajectory_id, rows in by_trajectory.items():
+        seeds = {row.seed for row in rows}
+        if len(seeds) != 1:
+            raise SuccessorRuntimeError("one trajectory must have exactly one seed")
+        seed = next(iter(seeds))
+        if seed in seen_seeds:
+            raise SuccessorRuntimeError("trajectory seeds must be unique")
+        seen_seeds.add(seed)
+        seed_by_trajectory[trajectory_id] = seed
+        ordered = tuple(sorted(rows, key=lambda row: row.decision_index))
+        if [row.decision_index for row in ordered] != list(range(len(ordered))):
+            raise SuccessorRuntimeError(
+                "trajectory decision indices must be contiguous"
+            )
+        normalized_by_trajectory[trajectory_id] = ordered
+
+    trajectory_order = tuple(
+        sorted(seed_by_trajectory, key=lambda key: seed_by_trajectory[key])
+    )
+    canonical = tuple(
+        decision
+        for trajectory_id in trajectory_order
+        for decision in normalized_by_trajectory[trajectory_id]
+    )
+    return canonical, trajectory_order, normalized_by_trajectory
+
+
+def _fold_manifest(
+    trajectory_order: Sequence[str],
+) -> dict[str, tuple[str, ...]]:
+    manifest = {
+        f"fold-{fold_index}": tuple(
+            sorted(
+                trajectory_id
+                for position, trajectory_id in enumerate(trajectory_order)
+                if position % FOLD_COUNT == fold_index
+            )
+        )
+        for fold_index in range(FOLD_COUNT)
+    }
+    if any(
+        len(trajectory_ids) != HELD_OUT_TRAJECTORIES_PER_FOLD
+        for trajectory_ids in manifest.values()
+    ):
+        raise SuccessorRuntimeError(
+            "every fold must hold out exactly 16 trajectories"
+        )
+    return manifest
+
+
+def _augmented_sparse_float64_features(
+    decision: ArmBaselineDecision,
+) -> tuple[tuple[int, float], ...]:
+    entries = [(0, 1.0)]
+    for feature_index in range(BASELINE_FEATURE_DIM):
+        value = float(decision.state_features[feature_index].item())
+        if value != 0.0:
+            entries.append((feature_index + 1, value))
+    return tuple(entries)
+
+
+def _fit_fold_model(
+    *,
+    fold_id: str,
+    held_out_ids: tuple[str, ...],
+    trajectory_order: Sequence[str],
+    by_trajectory: Mapping[str, tuple[ArmBaselineDecision, ...]],
+) -> RidgeFoldModel:
+    held_out_set = set(held_out_ids)
+    fit_ids = tuple(sorted(set(trajectory_order).difference(held_out_set)))
+    if len(fit_ids) != FIT_TRAJECTORIES_PER_FOLD:
+        raise SuccessorRuntimeError("every fold must fit exactly 48 trajectories")
+
+    width = BASELINE_FEATURE_DIM + 1
+    normal_matrix = torch.zeros((width, width), dtype=torch.float64)
+    rhs = torch.zeros(width, dtype=torch.float64)
+    for trajectory_id in trajectory_order:
+        if trajectory_id in held_out_set:
+            continue
+        trajectory = by_trajectory[trajectory_id]
+        weight = 1.0 / (FIT_TRAJECTORIES_PER_FOLD * len(trajectory))
+        for decision in trajectory:
+            target = float(decision.raw_return)
+            features = _augmented_sparse_float64_features(decision)
+            for row_index, row_value in features:
+                rhs[row_index] = float(rhs[row_index].item()) + (
+                    weight * target * row_value
+                )
+                for column_index, column_value in features:
+                    normal_matrix[row_index, column_index] = float(
+                        normal_matrix[row_index, column_index].item()
+                    ) + (weight * row_value * column_value)
+    ridge = torch.zeros(width, dtype=torch.float64)
+    ridge[1:] = RIDGE_COEFFICIENT
+    normal_matrix += torch.diag(ridge)
+    try:
+        factor = torch.linalg.cholesky(normal_matrix)
+        coefficients = torch.cholesky_solve(
+            rhs.reshape(width, 1), factor
+        ).reshape(width)
+    except RuntimeError as exc:
+        raise SuccessorRuntimeError(
+            "registered float64 Cholesky ridge solve failed"
+        ) from exc
+    if not bool(torch.isfinite(coefficients).all().item()):
+        raise SuccessorRuntimeError("ridge coefficients must be finite")
+
+    coefficient_values = tuple(float(value) for value in coefficients.tolist())
+    product_sums = torch.tensor(
+        [
+            math.fsum(
+                abs(
+                    float(normal_matrix[row_index, column_index].item())
+                    * coefficient_values[column_index]
+                )
+                for column_index in range(width)
+            )
+            for row_index in range(width)
+        ],
+        dtype=torch.float64,
+    )
+    residuals = torch.tensor(
+        [
+            math.fsum(
+                float(normal_matrix[row_index, column_index].item())
+                * coefficient_values[column_index]
+                for column_index in range(width)
+            )
+            - float(rhs[row_index].item())
+            for row_index in range(width)
+        ],
+        dtype=torch.float64,
+    )
+    for coordinate in range(width):
+        scale = max(
+            abs(float(rhs[coordinate].item())),
+            float(product_sums[coordinate].item()),
+        )
+        limit = RIDGE_RESIDUAL_ATOL + RIDGE_RESIDUAL_RTOL * scale
+        if abs(float(residuals[coordinate].item())) > limit:
+            raise SuccessorRuntimeError(
+                "ridge KKT residual exceeds the fixed boundary"
+            )
+    return RidgeFoldModel(
+        fold_id=fold_id,
+        fit_trajectory_ids=fit_ids,
+        held_out_trajectory_ids=held_out_ids,
+        coefficients=coefficient_values,
+        kkt_residuals=tuple(float(value) for value in residuals.tolist()),
+        rhs=tuple(float(value) for value in rhs.tolist()),
+        absolute_product_sums=tuple(float(value) for value in product_sums.tolist()),
+    )
+
+
+def _predict_baseline(
+    model: RidgeFoldModel,
+    decision: ArmBaselineDecision,
+) -> ArmBaselinePrediction:
+    values = [1.0]
+    values.extend(
+        float(decision.state_features[index].item())
+        for index in range(BASELINE_FEATURE_DIM)
+    )
+    unclipped = math.fsum(
+        float(model.coefficients[index]) * values[index]
+        for index in range(BASELINE_FEATURE_DIM + 1)
+    )
+    if not math.isfinite(unclipped):
+        raise SuccessorRuntimeError("held-out ridge prediction must be finite")
+    clipped = min(PREDICTION_MAX, max(PREDICTION_MIN, unclipped))
+    return ArmBaselinePrediction(
+        decision_id=decision.decision_id,
+        fold_id=model.fold_id,
+        trajectory_id=decision.trajectory_id,
+        unclipped=unclipped,
+        clipped=clipped,
+        was_clipped=clipped != unclipped,
+        preclip_little_endian_hex=struct.pack("<d", unclipped).hex(),
+        feature_sha256=_sparse_state_feature_payload(
+            decision.state_features
+        )["sha256"],
+    )
+
+
+def _build_cross_fitted_arm_baseline(
+    decisions: Sequence[ArmBaselineDecision],
+    *,
+    arm: ArmName,
+) -> ArmCrossFittedBaseline:
+    normalized_arm = _validated_arm(arm)
+    canonical, trajectory_order, by_trajectory = _normalize_baseline_decisions(
+        decisions,
+        arm=normalized_arm,
+    )
+    fold_trajectories = _fold_manifest(trajectory_order)
+    models = tuple(
+        _fit_fold_model(
+            fold_id=fold_id,
+            held_out_ids=held_out_ids,
+            trajectory_order=trajectory_order,
+            by_trajectory=by_trajectory,
+        )
+        for fold_id, held_out_ids in fold_trajectories.items()
+    )
+    model_by_fold = {model.fold_id: model for model in models}
+    fold_by_trajectory = {
+        trajectory_id: fold_id
+        for fold_id, trajectory_ids in fold_trajectories.items()
+        for trajectory_id in trajectory_ids
+    }
+
+    predictions: list[ArmBaselinePrediction] = []
+    records: list[dict[str, Any]] = []
+    for decision in canonical:
+        fold_id = fold_by_trajectory[decision.trajectory_id]
+        model = model_by_fold[fold_id]
+        prediction = _predict_baseline(model, decision)
+        predictions.append(prediction)
+        records.append(
+            {
+                "baseline_fit_trajectory_ids": list(model.fit_trajectory_ids),
+                "baseline_mode": "cross_fitted",
+                "baseline_prediction": prediction.clipped,
+                "decision_id": decision.decision_id,
+                "decision_index": decision.decision_index,
+                "feature_fields": list(FEATURE_FIELDS),
+                "feature_schema_version": FEATURE_SCHEMA_VERSION,
+                "feature_sha256": prediction.feature_sha256,
+                "fold_id": fold_id,
+                "raw_return": float(decision.raw_return),
+                "scale": 1.0,
+                "scale_fit_trajectory_ids": [],
+                "scale_mode": "fixed_unit",
+                "trajectory_id": decision.trajectory_id,
+            }
+        )
+    try:
+        advantage_batch = build_advantage_batch(
+            records,
+            fold_trajectories=fold_trajectories,
+        )
+    except AdvantageAttributionError as exc:
+        raise SuccessorRuntimeError(str(exc)) from exc
+    return ArmCrossFittedBaseline(
+        arm=normalized_arm,
+        decisions=canonical,
+        fold_trajectories=fold_trajectories,
+        models=models,
+        predictions=tuple(predictions),
+        advantage_batch=advantage_batch,
+    )
+
+
+def build_paired_cross_fitted_baselines(
+    episodes: Sequence[PairedEpisodeRollout],
+) -> PairedCrossFittedBaselines:
+    """Fit independent arm-local baselines over one exact 64-seed pair slice."""
+    if isinstance(episodes, (str, bytes)) or not isinstance(episodes, Sequence):
+        raise SuccessorRuntimeError("paired episodes must be a sequence")
+    source = tuple(episodes)
+    if len(source) != TRAJECTORIES_PER_CHUNK:
+        raise SuccessorRuntimeError(
+            "paired cross-fitted baseline requires exactly 64 pairs"
+        )
+    seeds = tuple(pair.seed for pair in source)
+    if any(
+        not isinstance(pair, PairedEpisodeRollout)
+        or isinstance(pair.seed, bool)
+        or not isinstance(pair.seed, int)
+        or pair.seed < 0
+        or pair.candidate.seed != pair.seed
+        or pair.control.seed != pair.seed
+        for pair in source
+    ) or seeds != tuple(sorted(set(seeds))):
+        raise SuccessorRuntimeError(
+            "paired episodes must use one unique ascending seed slice"
+        )
+    candidate_decisions = _build_arm_baseline_decisions(
+        tuple(pair.candidate for pair in source),
+        arm="candidate",
+    )
+    control_decisions = _build_arm_baseline_decisions(
+        tuple(pair.control for pair in source),
+        arm="control",
+    )
+    return PairedCrossFittedBaselines(
+        seeds=seeds,
+        candidate=_build_cross_fitted_arm_baseline(
+            candidate_decisions,
+            arm="candidate",
+        ),
+        control=_build_cross_fitted_arm_baseline(
+            control_decisions,
+            arm="control",
+        ),
+    )
+
+
+def build_arm_card_reward_rows(
+    episodes: Sequence[PairedEpisodeRollout],
+    *,
+    arm: ArmName,
+    baseline: ArmCrossFittedBaseline,
+) -> tuple[tuple[CardAcceptancePolicyTerms, float], ...]:
+    """Align card terms with exact held-out residuals without post-processing."""
+    normalized_arm = _validated_arm(arm)
+    if not isinstance(baseline, ArmCrossFittedBaseline) or baseline.arm != normalized_arm:
+        raise SuccessorRuntimeError("card reward baseline arm differs")
+    source = tuple(episodes)
+    if len(source) != TRAJECTORIES_PER_CHUNK:
+        raise SuccessorRuntimeError("card reward rows require exactly 64 pairs")
+    arm_episodes = tuple(
+        pair.candidate if normalized_arm == "candidate" else pair.control
+        for pair in source
+    )
+    rollout_decisions = tuple(
+        decision for episode in arm_episodes for decision in episode.decisions
+    )
+    baseline_ids = tuple(decision.decision_id for decision in baseline.decisions)
+    rollout_ids = tuple(decision.decision_id for decision in rollout_decisions)
+    records = baseline.advantage_batch.records
+    record_ids = tuple(record.decision_id for record in records)
+    if baseline_ids != rollout_ids or record_ids != baseline_ids:
+        raise SuccessorRuntimeError(
+            "card reward rollout and baseline decision order differs"
+        )
+
+    rows: list[tuple[CardAcceptancePolicyTerms, float]] = []
+    for decision, baseline_decision, record in zip(
+        rollout_decisions,
+        baseline.decisions,
+        records,
+        strict=True,
+    ):
+        if (
+            record.raw_return != baseline_decision.raw_return
+            or record.advantage
+            != record.raw_return - record.baseline_prediction
+            or record.scale != 1.0
+            or record.scale_mode != "fixed_unit"
+            or record.scale_fit_trajectory_ids
+        ):
+            raise SuccessorRuntimeError(
+                "card reward advantage arithmetic differs from registration"
+            )
+        if decision.category != "card_reward":
+            if decision.card_terms is not None:
+                raise SuccessorRuntimeError(
+                    "non-card decision carries card objective terms"
+                )
+            continue
+        terms = decision.card_terms
+        if (
+            not isinstance(terms, CardAcceptancePolicyTerms)
+            or terms.selected_action_id != decision.selected_action_id
+        ):
+            raise SuccessorRuntimeError("card reward policy term alignment differs")
+        rows.append((terms, record.advantage))
+    return tuple(rows)
+
+
 __all__ = [
+    "ArmBaselineDecision",
+    "ArmBaselinePrediction",
     "ArmCardRewardObjective",
+    "ArmCrossFittedBaseline",
     "ArmEpisodeRollout",
     "ArmOptimizerStepEvidence",
     "ArmOptimizers",
@@ -1617,14 +2270,19 @@ __all__ = [
     "CandidateArm",
     "ControlArm",
     "PairedBootstrap",
+    "PairedCrossFittedBaselines",
     "PairedEpisodeRollout",
+    "RidgeFoldModel",
     "SuccessorRuntimeError",
     "apply_arm_optimizer_step",
+    "build_arm_card_reward_rows",
     "build_arm_card_reward_objective",
     "build_arm_optimizers",
     "build_matched_bootstrap",
+    "build_paired_cross_fitted_baselines",
     "encode_optimizer_state",
     "encode_paired_bootstrap",
+    "fold_baseline_state_features",
     "forward_card_policy",
     "restore_optimizer_state",
     "restore_paired_bootstrap",

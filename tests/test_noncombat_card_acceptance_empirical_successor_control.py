@@ -146,6 +146,20 @@ def test_control_contract_and_metadata_are_fixed_and_caller_mutation_safe():
     assert metadata["schema_version"] == (
         "noncombat-card-acceptance-empirical-successor-runtime-metadata-v1"
     )
+    assert metadata["baseline"] == {
+        "feature_dim": 128,
+        "fit_trajectories_per_fold": 48,
+        "fold_count": 4,
+        "held_out_trajectories_per_fold": 16,
+        "prediction_bounds": [0.0, 3.0],
+        "ridge_coefficient": 0.001,
+        "ridge_residual_atol": 1e-9,
+        "ridge_residual_rtol": 1e-9,
+        "scale": 1.0,
+        "solver": "cpu-float64-cholesky-v1",
+        "source_dim": 1024,
+        "trajectory_weighting": "equal-trajectory-mean-squared-error-v1",
+    }
     assert tuple(row["role"] for row in dependencies["modules"]) == (
         "control_plane",
         "torch_runtime",

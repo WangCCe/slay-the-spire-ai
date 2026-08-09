@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import copy
+from dataclasses import replace
 import importlib
 import json
 
@@ -217,6 +218,69 @@ class _RolloutEnvironment:
             after=self.snapshot(),
             provenance=_rollout_provenance(),
         )
+
+
+def _synthetic_paired_rollouts(runtime, bootstrap):
+    state_features, candidate_features = _features()
+    arm_terms = {}
+    for arm in ("candidate", "control"):
+        output = runtime.forward_card_policy(
+            bootstrap,
+            arm=arm,
+            state_features=state_features,
+            candidate_features=candidate_features,
+            candidates=_candidates(),
+        )
+        arm_terms[arm] = build_card_acceptance_policy_terms(
+            output.family_logits,
+            output.conditional_logits,
+            _candidates(),
+            "take-b",
+            category="card_reward",
+        )
+
+    pairs = []
+    for position, seed in enumerate(range(100, 164)):
+        episodes = {}
+        for arm in ("candidate", "control"):
+            features = torch.zeros(HASH_DIM, dtype=torch.float32)
+            features[position % 128] = 1.0 + 0.01 * position
+            reward = (
+                0.2 + 0.1 * (position % 5)
+                if arm == "candidate"
+                else 0.1 + 0.1 * (position % 3)
+            )
+            decision_id = f"{arm}:seed-{seed}:decision-0"
+            decision = runtime.ArmRolloutDecision(
+                arm=arm,
+                category="card_reward",
+                decision_id=decision_id,
+                decision_index=0,
+                selected_action_id="take-b",
+                state_features=features,
+                card_terms=arm_terms[arm],
+                diagnostic={},
+            )
+            episodes[arm] = runtime.ArmEpisodeRollout(
+                arm=arm,
+                seed=seed,
+                trajectory_id=f"{arm}:seed-{seed}",
+                decisions=(decision,),
+                transitions=({"synthetic": True},),
+                rewards=(reward,),
+                final_snapshot={"terminal": True},
+                floor_progress=reward,
+                terminal_victory=0,
+                unsupported_reason=None,
+            )
+        pairs.append(
+            runtime.PairedEpisodeRollout(
+                seed=seed,
+                candidate=episodes["candidate"],
+                control=episodes["control"],
+            )
+        )
+    return tuple(pairs)
 
 
 def test_matched_bootstrap_copies_one_base_into_five_storage_disjoint_rankers():
@@ -909,3 +973,94 @@ def test_paired_training_rollout_uses_same_seed_fixed_arm_order_and_frozen_routi
     ):
         for name, tensor in ranker.state_dict().items():
             assert torch.equal(tensor, frozen_before[arm][name])
+
+
+def test_state_only_baseline_folding_is_fixed_float32_modulo_128():
+    runtime = _runtime()
+    source = torch.ones(HASH_DIM, dtype=torch.float32)
+
+    folded = runtime.fold_baseline_state_features(source)
+
+    assert folded.shape == (128,)
+    assert folded.dtype == torch.float32
+    assert folded.device.type == "cpu"
+    assert torch.equal(folded, torch.full((128,), 8.0, dtype=torch.float32))
+    with pytest.raises(runtime.SuccessorRuntimeError, match="1024|shape"):
+        runtime.fold_baseline_state_features(source[:-1])
+    with pytest.raises(runtime.SuccessorRuntimeError, match="float32|dtype"):
+        runtime.fold_baseline_state_features(source.to(dtype=torch.float64))
+
+
+def test_paired_cross_fitted_baselines_are_arm_local_and_advantages_are_unscaled():
+    runtime = _runtime()
+    bootstrap = runtime.build_matched_bootstrap()
+    pairs = _synthetic_paired_rollouts(runtime, bootstrap)
+
+    baselines = runtime.build_paired_cross_fitted_baselines(pairs)
+
+    assert baselines.seeds == tuple(range(100, 164))
+    for arm, baseline in (
+        ("candidate", baselines.candidate),
+        ("control", baselines.control),
+    ):
+        assert baseline.arm == arm
+        assert len(baseline.decisions) == 64
+        assert len(baseline.models) == 4
+        assert len(baseline.predictions) == 64
+        assert len(baseline.advantage_batch.records) == 64
+        for model in baseline.models:
+            assert len(model.held_out_trajectory_ids) == 16
+            assert len(model.fit_trajectory_ids) == 48
+            assert set(model.held_out_trajectory_ids).isdisjoint(
+                model.fit_trajectory_ids
+            )
+        rows = runtime.build_arm_card_reward_rows(
+            pairs,
+            arm=arm,
+            baseline=baseline,
+        )
+        records = {
+            record.decision_id: record
+            for record in baseline.advantage_batch.records
+        }
+        assert len(rows) == 64
+        for decision, (terms, advantage) in zip(
+            baseline.decisions, rows, strict=True
+        ):
+            record = records[decision.decision_id]
+            assert terms.selected_action_id == "take-b"
+            assert advantage == record.advantage
+            assert advantage == record.raw_return - record.baseline_prediction
+            assert record.scale_mode == "fixed_unit"
+            assert record.scale == 1.0
+            assert record.scale_fit_trajectory_ids == ()
+    assert tuple(
+        prediction.clipped for prediction in baselines.candidate.predictions
+    ) != tuple(prediction.clipped for prediction in baselines.control.predictions)
+
+
+def test_cross_fitted_baseline_rejects_incomplete_reordered_or_unsupported_pairs():
+    runtime = _runtime()
+    pairs = _synthetic_paired_rollouts(
+        runtime,
+        runtime.build_matched_bootstrap(),
+    )
+
+    with pytest.raises(runtime.SuccessorRuntimeError, match="exactly 64"):
+        runtime.build_paired_cross_fitted_baselines(pairs[:-1])
+    with pytest.raises(runtime.SuccessorRuntimeError, match="ascending"):
+        runtime.build_paired_cross_fitted_baselines(tuple(reversed(pairs)))
+
+    unsupported_candidate = replace(
+        pairs[0].candidate,
+        unsupported_reason="unsupported_shop_courier_restock_semantics",
+    )
+    unsupported_pairs = (
+        replace(pairs[0], candidate=unsupported_candidate),
+        *pairs[1:],
+    )
+    with pytest.raises(
+        runtime.SuccessorRuntimeError,
+        match="complete supported trajectories",
+    ):
+        runtime.build_paired_cross_fitted_baselines(unsupported_pairs)
