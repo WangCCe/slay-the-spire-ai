@@ -1668,3 +1668,344 @@ def test_standing_delegation_rejects_generated_scope_and_grant_tampering():
     changed_text["grant"]["verbatim_text"] = "changed"
     with pytest.raises(control.SuccessorControlError, match="identity|digest"):
         control.validate_standing_delegation(changed_text)
+
+
+def _external_approval_message(
+    control,
+    *,
+    approval_text,
+    approved_at,
+    source="external-human-message",
+):
+    body = {
+        "approved_at": approved_at,
+        "provenance": {
+            "message_id": "exact-external-approval-message",
+            "source": source,
+            "task_id": "external-approval-test-task",
+        },
+        "schema_version": control.EXTERNAL_APPROVAL_MESSAGE_SCHEMA_VERSION,
+        "verbatim_approval_text": approval_text,
+    }
+    return {
+        **body,
+        "approval_message_sha256": control.canonical_json_sha256(body),
+    }
+
+
+def _external_revocation_observation(
+    control,
+    request,
+    approval_message,
+    *,
+    phase,
+    checked_at,
+    message_timestamp,
+    available=True,
+    revoked=False,
+):
+    watermark = {
+        "message_id": f"external-latest-human-{phase}",
+        "message_timestamp": message_timestamp,
+        "task_id": "external-approval-test-task",
+    }
+    body = {
+        "approval_message_sha256": approval_message["approval_message_sha256"],
+        "authoritative_state_available": available,
+        "authority_mode": "external-human-approval",
+        "checked_at": checked_at,
+        "latest_human_message_watermark": watermark,
+        "phase": phase,
+        "request_sha256": request["request_sha256"],
+        "revocation_message_watermark": watermark if revoked else None,
+        "revocation_observed": revoked,
+        "schema_version": control.EXTERNAL_REVOCATION_OBSERVATION_SCHEMA_VERSION,
+        "stage": request["stage"],
+    }
+    return {
+        **body,
+        "observation_sha256": control.canonical_json_sha256(body),
+    }
+
+
+@pytest.mark.parametrize("stage", ("inventory", "training", "canary", "holdout"))
+def test_exact_external_human_approval_binds_one_stage_and_fresh_launch(stage):
+    control = _control()
+    request = _stage_request(control, stage)
+    approval_text = f"I approve exact request {request['request_sha256']}."
+    approval_message = _external_approval_message(
+        control,
+        approval_text=approval_text,
+        approved_at="2026-08-09T11:01:00+00:00",
+    )
+    approval_observation = _external_revocation_observation(
+        control,
+        request,
+        approval_message,
+        phase="approval",
+        checked_at="2026-08-09T11:02:00+00:00",
+        message_timestamp="2026-08-09T11:01:59+00:00",
+    )
+
+    approval = control.bind_external_human_approval(
+        request=request,
+        request_review_sha256="e" * 64,
+        request_published_at="2026-08-09T11:00:00+00:00",
+        approval_text=approval_text,
+        approved_at="2026-08-09T11:01:00+00:00",
+        provenance=approval_message["provenance"],
+        approval_observation=approval_observation,
+    )
+    assert control.validate_external_human_approval(approval, request) == approval
+    assert approval["approved_request_sha256"] == request["request_sha256"]
+    assert approval["approval_message"] == approval_message
+    assert approval["bound_request_terms"]["resources"] == request["resources"]
+    assert approval["bound_request_terms"]["exclusions"] == request["exclusions"]
+    assert set(
+        approval["bound_request_terms"]["downstream_authority"].values()
+    ) == {False}
+    authorization = control.build_stage_authorization(
+        request=request,
+        authorization_id=(
+            f"card-acceptance-20260809-{stage}-authorization-v1"
+        ),
+        request_review_sha256="e" * 64,
+        approval_record_sha256=approval["approval_sha256"],
+    )
+    launch_observation = _external_revocation_observation(
+        control,
+        request,
+        approval_message,
+        phase="launch",
+        checked_at="2026-08-09T11:03:00+00:00",
+        message_timestamp="2026-08-09T11:02:59+00:00",
+    )
+    assert control.validate_external_human_stage_launch(
+        request=request,
+        authorization=authorization,
+        external_approval=approval,
+        launch_observation=launch_observation,
+    ) == launch_observation
+    if stage != "inventory":
+        registration = {
+            "registration_id": "card-acceptance-20260809-registration-v1",
+            "registration_sha256": request["prerequisite_bindings"][
+                "registration_sha256"
+            ],
+        }
+        context = control._build_external_human_execution_context(
+            registration=registration,
+            request=request,
+            authorization=authorization,
+            external_approval=approval,
+            launch_observation=launch_observation,
+            registration_validator=lambda value: copy.deepcopy(dict(value)),
+        )
+        assert context.authority_observation == launch_observation
+        assert control._context_identity(context)["launch_authority_sha256"] == (
+            launch_observation["observation_sha256"]
+        )
+
+
+def test_external_human_approval_rejects_generated_inferred_broad_or_predated():
+    control = _control()
+    request = _stage_request(control, "training")
+
+    for source in ("generated", "agent-inference"):
+        text = f"I approve exact request {request['request_sha256']}."
+        message = _external_approval_message(
+            control,
+            approval_text=text,
+            approved_at="2026-08-09T11:01:00+00:00",
+            source=source,
+        )
+        observation = _external_revocation_observation(
+            control,
+            request,
+            message,
+            phase="approval",
+            checked_at="2026-08-09T11:02:00+00:00",
+            message_timestamp="2026-08-09T11:01:59+00:00",
+        )
+        with pytest.raises(control.SuccessorControlError, match="external human"):
+            control.bind_external_human_approval(
+                request=request,
+                request_review_sha256="e" * 64,
+                request_published_at="2026-08-09T11:00:00+00:00",
+                approval_text=text,
+                approved_at="2026-08-09T11:01:00+00:00",
+                provenance=message["provenance"],
+                approval_observation=observation,
+            )
+
+    broad_text = "I broadly approve future work in this repository."
+    broad_message = _external_approval_message(
+        control,
+        approval_text=broad_text,
+        approved_at="2026-08-09T11:01:00+00:00",
+    )
+    broad_observation = _external_revocation_observation(
+        control,
+        request,
+        broad_message,
+        phase="approval",
+        checked_at="2026-08-09T11:02:00+00:00",
+        message_timestamp="2026-08-09T11:01:59+00:00",
+    )
+    with pytest.raises(control.SuccessorControlError, match="request digest|exact"):
+        control.bind_external_human_approval(
+            request=request,
+            request_review_sha256="e" * 64,
+            request_published_at="2026-08-09T11:00:00+00:00",
+            approval_text=broad_text,
+            approved_at="2026-08-09T11:01:00+00:00",
+            provenance=broad_message["provenance"],
+            approval_observation=broad_observation,
+        )
+
+    exact_text = f"I approve exact request {request['request_sha256']}."
+    predated_message = _external_approval_message(
+        control,
+        approval_text=exact_text,
+        approved_at="2026-08-09T10:59:59+00:00",
+    )
+    predated_observation = _external_revocation_observation(
+        control,
+        request,
+        predated_message,
+        phase="approval",
+        checked_at="2026-08-09T11:02:00+00:00",
+        message_timestamp="2026-08-09T11:01:59+00:00",
+    )
+    with pytest.raises(control.SuccessorControlError, match="postdate|published"):
+        control.bind_external_human_approval(
+            request=request,
+            request_review_sha256="e" * 64,
+            request_published_at="2026-08-09T11:00:00+00:00",
+            approval_text=exact_text,
+            approved_at="2026-08-09T10:59:59+00:00",
+            provenance=predated_message["provenance"],
+            approval_observation=predated_observation,
+        )
+
+
+def test_external_approval_rejects_modified_terms_and_missing_conversation_state():
+    control = _control()
+    request = _stage_request(control, "training")
+    approval_text = f"I approve exact request {request['request_sha256']}."
+    message = _external_approval_message(
+        control,
+        approval_text=approval_text,
+        approved_at="2026-08-09T11:01:00+00:00",
+    )
+    unavailable = _external_revocation_observation(
+        control,
+        request,
+        message,
+        phase="approval",
+        checked_at="2026-08-09T11:02:00+00:00",
+        message_timestamp="2026-08-09T11:01:59+00:00",
+        available=False,
+    )
+    with pytest.raises(control.SuccessorControlError, match="authoritative|available"):
+        control.bind_external_human_approval(
+            request=request,
+            request_review_sha256="e" * 64,
+            request_published_at="2026-08-09T11:00:00+00:00",
+            approval_text=approval_text,
+            approved_at="2026-08-09T11:01:00+00:00",
+            provenance=message["provenance"],
+            approval_observation=unavailable,
+        )
+
+    valid_observation = _external_revocation_observation(
+        control,
+        request,
+        message,
+        phase="approval",
+        checked_at="2026-08-09T11:02:00+00:00",
+        message_timestamp="2026-08-09T11:01:59+00:00",
+    )
+    approval = control.bind_external_human_approval(
+        request=request,
+        request_review_sha256="e" * 64,
+        request_published_at="2026-08-09T11:00:00+00:00",
+        approval_text=approval_text,
+        approved_at="2026-08-09T11:01:00+00:00",
+        provenance=message["provenance"],
+        approval_observation=valid_observation,
+    )
+    changed = copy.deepcopy(approval)
+    changed["bound_request_terms"]["resources"]["max_pairs"] = 1
+    changed_body = {
+        key: value for key, value in changed.items() if key != "approval_sha256"
+    }
+    changed["approval_sha256"] = control.canonical_json_sha256(changed_body)
+    with pytest.raises(control.SuccessorControlError, match="binding|terms"):
+        control.validate_external_human_approval(changed, request)
+
+
+def test_external_launch_rejects_later_revocation_and_stale_watermark():
+    control = _control()
+    request = _stage_request(control, "holdout")
+    approval_text = f"I approve exact request {request['request_sha256']}."
+    message = _external_approval_message(
+        control,
+        approval_text=approval_text,
+        approved_at="2026-08-09T11:01:00+00:00",
+    )
+    approval_observation = _external_revocation_observation(
+        control,
+        request,
+        message,
+        phase="approval",
+        checked_at="2026-08-09T11:02:00+00:00",
+        message_timestamp="2026-08-09T11:01:59+00:00",
+    )
+    approval = control.bind_external_human_approval(
+        request=request,
+        request_review_sha256="e" * 64,
+        request_published_at="2026-08-09T11:00:00+00:00",
+        approval_text=approval_text,
+        approved_at="2026-08-09T11:01:00+00:00",
+        provenance=message["provenance"],
+        approval_observation=approval_observation,
+    )
+    authorization = control.build_stage_authorization(
+        request=request,
+        authorization_id="card-acceptance-20260809-holdout-authorization-v1",
+        request_review_sha256="e" * 64,
+        approval_record_sha256=approval["approval_sha256"],
+    )
+    revoked = _external_revocation_observation(
+        control,
+        request,
+        message,
+        phase="launch",
+        checked_at="2026-08-09T11:03:00+00:00",
+        message_timestamp="2026-08-09T11:02:59+00:00",
+        revoked=True,
+    )
+    with pytest.raises(control.SuccessorControlError, match="revocation|revoked"):
+        control.validate_external_human_stage_launch(
+            request=request,
+            authorization=authorization,
+            external_approval=approval,
+            launch_observation=revoked,
+        )
+
+    stale = _external_revocation_observation(
+        control,
+        request,
+        message,
+        phase="launch",
+        checked_at="2026-08-09T11:03:00+00:00",
+        message_timestamp="2026-08-09T11:01:58+00:00",
+    )
+    with pytest.raises(control.SuccessorControlError, match="watermark|stale"):
+        control.validate_external_human_stage_launch(
+            request=request,
+            authorization=authorization,
+            external_approval=approval,
+            launch_observation=stale,
+        )

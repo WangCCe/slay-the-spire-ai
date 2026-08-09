@@ -49,6 +49,15 @@ DELEGATED_APPROVAL_SCHEMA_VERSION = (
 REVOCATION_OBSERVATION_SCHEMA_VERSION = (
     "noncombat-card-acceptance-empirical-successor-revocation-observation-v1"
 )
+EXTERNAL_APPROVAL_MESSAGE_SCHEMA_VERSION = (
+    "noncombat-card-acceptance-empirical-successor-external-approval-message-v1"
+)
+EXTERNAL_HUMAN_APPROVAL_SCHEMA_VERSION = (
+    "noncombat-card-acceptance-empirical-successor-external-human-approval-v1"
+)
+EXTERNAL_REVOCATION_OBSERVATION_SCHEMA_VERSION = (
+    "noncombat-card-acceptance-empirical-successor-external-revocation-observation-v1"
+)
 RUNTIME_MODULE_NAME = (
     "analysis_scripts.noncombat_card_acceptance_empirical_successor_runtime"
 )
@@ -190,6 +199,7 @@ DELEGATED_REGISTRATION_ID_PREFIX = (
 )
 DELEGATED_REQUEST_CLASS = STAGE_REQUEST_SCHEMA_VERSION
 DELEGATED_APPROVAL_RESOLVER = "codex-agent-under-standing-delegation-v1"
+REPOSITORY_ID = "WangCCe/slay-the-spire-ai"
 STANDING_DELEGATION_REVOCATION = (
     "future-explicit-human-revocation-before-approval-publication-v1"
 )
@@ -1403,6 +1413,289 @@ def validate_delegated_approval(
     return approval
 
 
+def _external_approval_message_record(
+    *,
+    approval_text: str,
+    approved_at: str,
+    provenance: Mapping[str, Any],
+) -> dict[str, Any]:
+    _timestamp(approved_at, "external approval timestamp")
+    body = {
+        "approved_at": approved_at,
+        "provenance": _normalize_external_human_provenance(provenance),
+        "schema_version": EXTERNAL_APPROVAL_MESSAGE_SCHEMA_VERSION,
+        "verbatim_approval_text": _nonempty_string(
+            approval_text,
+            "verbatim external approval text",
+        ),
+    }
+    return {**body, "approval_message_sha256": canonical_json_sha256(body)}
+
+
+def _validate_external_approval_message(value: object) -> dict[str, Any]:
+    message = _copy_mapping(value, "external approval message")
+    _require_fields(
+        message,
+        {
+            "approval_message_sha256",
+            "approved_at",
+            "provenance",
+            "schema_version",
+            "verbatim_approval_text",
+        },
+        "external approval message",
+    )
+    if message["schema_version"] != EXTERNAL_APPROVAL_MESSAGE_SCHEMA_VERSION:
+        raise SuccessorControlError("external approval message schema mismatch")
+    expected = _external_approval_message_record(
+        approval_text=message["verbatim_approval_text"],
+        approved_at=message["approved_at"],
+        provenance=message["provenance"],
+    )
+    if message != expected:
+        raise SuccessorControlError("external approval message identity mismatch")
+    return message
+
+
+def validate_external_revocation_observation(
+    value: Mapping[str, Any],
+    *,
+    request: Mapping[str, Any],
+    approval_message: Mapping[str, Any],
+    phase: str,
+) -> dict[str, Any]:
+    """Validate current conversation state anchored to one human approval message."""
+    if phase not in {"approval", "launch"}:
+        raise SuccessorControlError("external revocation observation phase is invalid")
+    normalized_request = validate_stage_request(request)
+    normalized_message = _validate_external_approval_message(approval_message)
+    observation = _copy_mapping(value, "external revocation observation")
+    _require_fields(
+        observation,
+        {
+            "approval_message_sha256",
+            "authoritative_state_available",
+            "authority_mode",
+            "checked_at",
+            "latest_human_message_watermark",
+            "observation_sha256",
+            "phase",
+            "request_sha256",
+            "revocation_message_watermark",
+            "revocation_observed",
+            "schema_version",
+            "stage",
+        },
+        "external revocation observation",
+    )
+    if (
+        observation["schema_version"]
+        != EXTERNAL_REVOCATION_OBSERVATION_SCHEMA_VERSION
+        or observation["authority_mode"] != "external-human-approval"
+        or observation["phase"] != phase
+        or observation["stage"] != normalized_request["stage"]
+        or observation["request_sha256"] != normalized_request["request_sha256"]
+        or observation["approval_message_sha256"]
+        != normalized_message["approval_message_sha256"]
+    ):
+        raise SuccessorControlError("external revocation observation binding mismatch")
+    if type(observation["authoritative_state_available"]) is not bool or type(
+        observation["revocation_observed"]
+    ) is not bool:
+        raise SuccessorControlError(
+            "external revocation observation booleans are invalid"
+        )
+    checked_at = _timestamp(
+        observation["checked_at"],
+        "external revocation checked-at timestamp",
+    )
+    latest = _normalize_message_watermark(
+        observation["latest_human_message_watermark"],
+        "external latest human-message watermark",
+    )
+    approved_at = _timestamp(
+        normalized_message["approved_at"],
+        "external approval message timestamp",
+    )
+    latest_at = _timestamp(
+        latest["message_timestamp"],
+        "external latest human-message timestamp",
+    )
+    expected_task = normalized_message["provenance"]["task_id"]
+    if latest["task_id"] != expected_task:
+        raise SuccessorControlError("external approval task provenance mismatch")
+    if checked_at < latest_at or latest_at < approved_at:
+        raise SuccessorControlError("external revocation observation watermark is stale")
+    revocation_watermark = observation["revocation_message_watermark"]
+    if observation["revocation_observed"]:
+        normalized_revocation = _normalize_message_watermark(
+            revocation_watermark,
+            "external revocation message watermark",
+        )
+        if normalized_revocation["task_id"] != expected_task:
+            raise SuccessorControlError("external revocation task provenance mismatch")
+    elif revocation_watermark is not None:
+        raise SuccessorControlError(
+            "non-revoked external observation names a revocation"
+        )
+    else:
+        normalized_revocation = None
+    normalized = {
+        "approval_message_sha256": normalized_message[
+            "approval_message_sha256"
+        ],
+        "authoritative_state_available": observation[
+            "authoritative_state_available"
+        ],
+        "authority_mode": "external-human-approval",
+        "checked_at": observation["checked_at"],
+        "latest_human_message_watermark": latest,
+        "phase": phase,
+        "request_sha256": normalized_request["request_sha256"],
+        "revocation_message_watermark": normalized_revocation,
+        "revocation_observed": observation["revocation_observed"],
+        "schema_version": EXTERNAL_REVOCATION_OBSERVATION_SCHEMA_VERSION,
+        "stage": normalized_request["stage"],
+    }
+    digest = _digest(
+        observation["observation_sha256"],
+        "external revocation observation identity",
+    )
+    if digest != canonical_json_sha256(normalized):
+        raise SuccessorControlError(
+            "external revocation observation identity mismatch"
+        )
+    if observation["authoritative_state_available"] is not True:
+        raise SuccessorControlError(
+            "authoritative current-conversation state is unavailable"
+        )
+    if observation["revocation_observed"] is not False:
+        raise SuccessorControlError("explicit human revocation was observed")
+    return {**normalized, "observation_sha256": digest}
+
+
+def _external_bound_request_terms(request: Mapping[str, Any]) -> dict[str, Any]:
+    normalized = validate_stage_request(request)
+    return {
+        "configuration_identity": copy.deepcopy(
+            normalized["configuration_identity"]
+        ),
+        "downstream_authority": copy.deepcopy(
+            normalized["downstream_authority"]
+        ),
+        "execution_authority": copy.deepcopy(normalized["execution_authority"]),
+        "exclusions": copy.deepcopy(normalized["exclusions"]),
+        "output_root": normalized["output_root"],
+        "prerequisite_bindings": copy.deepcopy(
+            normalized["prerequisite_bindings"]
+        ),
+        "pushed_remote_ref": "origin/master",
+        "repository_id": REPOSITORY_ID,
+        "request_class": STAGE_REQUEST_SCHEMA_VERSION,
+        "request_id": normalized["request_id"],
+        "request_sha256": normalized["request_sha256"],
+        "resources": copy.deepcopy(normalized["resources"]),
+        "source_commit": normalized["source_commit"],
+        "source_inventory_sha256": normalized["source_inventory_sha256"],
+        "stage": normalized["stage"],
+    }
+
+
+def bind_external_human_approval(
+    *,
+    request: Mapping[str, Any],
+    request_review_sha256: str,
+    request_published_at: str,
+    approval_text: str,
+    approved_at: str,
+    provenance: Mapping[str, Any],
+    approval_observation: Mapping[str, Any],
+) -> dict[str, Any]:
+    """Bind one post-request external-human message to exactly one request."""
+    normalized_request = validate_stage_request(request)
+    published_at = _timestamp(
+        request_published_at,
+        "stage request publication timestamp",
+    )
+    approved_time = _timestamp(approved_at, "external approval timestamp")
+    if approved_time <= published_at:
+        raise SuccessorControlError(
+            "external approval must postdate the published request"
+        )
+    text = _nonempty_string(approval_text, "verbatim external approval text")
+    if text.count(normalized_request["request_sha256"]) != 1:
+        raise SuccessorControlError(
+            "external approval text must name the exact request digest once"
+        )
+    message = _external_approval_message_record(
+        approval_text=text,
+        approved_at=approved_at,
+        provenance=provenance,
+    )
+    observation = validate_external_revocation_observation(
+        approval_observation,
+        request=normalized_request,
+        approval_message=message,
+        phase="approval",
+    )
+    review_digest = _digest(
+        request_review_sha256,
+        "external approval request review identity",
+    )
+    body = {
+        "approval_message": message,
+        "approval_mode": "external-human-approval",
+        "approval_observation": observation,
+        "approved_request_sha256": normalized_request["request_sha256"],
+        "bound_request_terms": _external_bound_request_terms(normalized_request),
+        "request_published_at": request_published_at,
+        "request_review_sha256": review_digest,
+        "schema_version": EXTERNAL_HUMAN_APPROVAL_SCHEMA_VERSION,
+        "stage": normalized_request["stage"],
+    }
+    return {**body, "approval_sha256": canonical_json_sha256(body)}
+
+
+def validate_external_human_approval(
+    value: Mapping[str, Any], request: Mapping[str, Any]
+) -> dict[str, Any]:
+    approval = _copy_mapping(value, "external-human approval")
+    _require_fields(
+        approval,
+        {
+            "approval_message",
+            "approval_mode",
+            "approval_observation",
+            "approval_sha256",
+            "approved_request_sha256",
+            "bound_request_terms",
+            "request_published_at",
+            "request_review_sha256",
+            "schema_version",
+            "stage",
+        },
+        "external-human approval",
+    )
+    if (
+        approval["schema_version"] != EXTERNAL_HUMAN_APPROVAL_SCHEMA_VERSION
+        or approval["approval_mode"] != "external-human-approval"
+    ):
+        raise SuccessorControlError("external-human approval schema or mode mismatch")
+    message = _validate_external_approval_message(approval["approval_message"])
+    expected = bind_external_human_approval(
+        request=request,
+        request_review_sha256=approval["request_review_sha256"],
+        request_published_at=approval["request_published_at"],
+        approval_text=message["verbatim_approval_text"],
+        approved_at=message["approved_at"],
+        provenance=message["provenance"],
+        approval_observation=approval["approval_observation"],
+    )
+    if approval != expected:
+        raise SuccessorControlError("external-human approval binding mismatch")
+    return approval
+
+
 def _stage_authorization_body(
     *,
     request: Mapping[str, Any],
@@ -1546,6 +1839,64 @@ def validate_delegated_stage_launch(
     )
     if launch_checked < approval_checked or launch_watermark < approval_watermark:
         raise SuccessorControlError("delegated launch watermark is stale")
+    return normalized_launch
+
+
+def validate_external_human_stage_launch(
+    *,
+    request: Mapping[str, Any],
+    authorization: Mapping[str, Any],
+    external_approval: Mapping[str, Any],
+    launch_observation: Mapping[str, Any],
+) -> dict[str, Any]:
+    """Recheck an exact external-human authority after authorization publication."""
+    normalized_request = validate_stage_request(request)
+    normalized_approval = validate_external_human_approval(
+        external_approval,
+        normalized_request,
+    )
+    normalized_authorization = validate_stage_authorization(
+        authorization,
+        normalized_request,
+    )
+    if (
+        normalized_authorization["approval_record_sha256"]
+        != normalized_approval["approval_sha256"]
+        or normalized_authorization["request_review_sha256"]
+        != normalized_approval["request_review_sha256"]
+    ):
+        raise SuccessorControlError(
+            "external-human stage authorization approval binding mismatch"
+        )
+    normalized_launch = validate_external_revocation_observation(
+        launch_observation,
+        request=normalized_request,
+        approval_message=normalized_approval["approval_message"],
+        phase="launch",
+    )
+    approval_observation = normalized_approval["approval_observation"]
+    launch_checked = _timestamp(
+        normalized_launch["checked_at"],
+        "external launch checked-at timestamp",
+    )
+    approval_checked = _timestamp(
+        approval_observation["checked_at"],
+        "external approval checked-at timestamp",
+    )
+    launch_watermark = _timestamp(
+        normalized_launch["latest_human_message_watermark"][
+            "message_timestamp"
+        ],
+        "external launch human-message watermark timestamp",
+    )
+    approval_watermark = _timestamp(
+        approval_observation["latest_human_message_watermark"][
+            "message_timestamp"
+        ],
+        "external approval human-message watermark timestamp",
+    )
+    if launch_checked < approval_checked or launch_watermark < approval_watermark:
+        raise SuccessorControlError("external-human launch watermark is stale")
     return normalized_launch
 
 
@@ -1774,6 +2125,33 @@ def _build_delegated_execution_context(
                 request=request,
                 authorization=authorization,
                 delegated_approval=delegated_approval,
+                launch_observation=value,
+            )
+        ),
+    )
+
+
+def _build_external_human_execution_context(
+    *,
+    registration: Mapping[str, Any],
+    request: Mapping[str, Any],
+    authorization: Mapping[str, Any],
+    external_approval: Mapping[str, Any],
+    launch_observation: Mapping[str, Any],
+    registration_validator: Callable[[Mapping[str, Any]], Mapping[str, Any]],
+) -> _ValidatedExecutionContext:
+    """Freeze exact external-human launch authority into the lifecycle identity."""
+    return _build_validated_execution_context(
+        registration=registration,
+        request=request,
+        authorization=authorization,
+        registration_validator=registration_validator,
+        authority_observation=launch_observation,
+        authority_observation_validator=lambda value: (
+            validate_external_human_stage_launch(
+                request=request,
+                authorization=authorization,
+                external_approval=external_approval,
                 launch_observation=value,
             )
         ),
