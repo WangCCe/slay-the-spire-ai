@@ -1,7 +1,7 @@
 ## 1. Planning Boundary
 
 - [x] 1.1 Validate and independently review proposal, design, specification, fixed intervention set, verdict predicates, authority boundary, and rollback scope.
-- [ ] 1.2 Commit and push the complete planning boundary before implementation or sealed-evidence access for this change.
+- [x] 1.2 Commit and push the complete planning boundary before implementation or sealed-evidence access for this change.
 
 ## 2. Regression Contracts
 
