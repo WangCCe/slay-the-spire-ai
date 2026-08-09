@@ -9,11 +9,11 @@
 
 ## 2. Add RED Contract Regressions
 
-- [ ] 2.1 Add synthetic RED tests for softmax reconstruction, uniform take
+- [x] 2.1 Add synthetic RED tests for softmax reconstruction, uniform take
   translation, fixed-family-max conditional redistribution, coupled max-score
   perturbation, policy/entropy pressure components, ties, support, monotonic
   trends, and every bounded verdict branch.
-- [ ] 2.2 Add RED tests for pushed source and reused-source binding, prior-report
+- [x] 2.2 Add RED tests for pushed source and reused-source binding, prior-report
   binding, inactive lease coverage, terminal/checkpoint/chunk identity,
   canonical gzip and JSON bounds, malformed rows and vectors, scalar/full
   gradient reconciliation, authority, determinism, CLI failure atomicity,
@@ -21,24 +21,24 @@
 
 ## 3. Implement The Audit
 
-- [ ] 3.1 Implement standard-library source/input verification and immutable
+- [x] 3.1 Implement standard-library source/input verification and immutable
   snapshot loading under the held inactive lease without Torch, native, model,
   environment, seed-source, runtime, agent, or CommunicationMod imports.
-- [ ] 3.2 Implement exact candidate distribution, entropy, factorized objective,
+- [x] 3.2 Implement exact candidate distribution, entropy, factorized objective,
   scalar ledger, acceptance-pressure, conditional-pressure, tie, support, and
   complete chunk reconstruction.
-- [ ] 3.3 Implement bounded vector decoding and shared-gradient geometry,
+- [x] 3.3 Implement bounded vector decoding and shared-gradient geometry,
   per-chunk and early/final trends, fixed verdict classification, limitations,
   exploratory-probe disclosure, and compact all-false report data.
-- [ ] 3.4 Implement deterministic canonical JSON/Markdown rendering, atomic
+- [x] 3.4 Implement deterministic canonical JSON/Markdown rendering, atomic
   two-file publication, isolated CLI arguments, and import-isolation metadata.
 
 ## 4. Qualify And Push Source
 
-- [ ] 4.1 Run the focused audit tests with a fresh system-temp basetemp, command-
+- [x] 4.1 Run the focused audit tests with a fresh system-temp basetemp, command-
   line smoke probes, deterministic synthetic reproduction, Python compilation,
   strict OpenSpec validation, `git diff --check`, and independent source review.
-- [ ] 4.2 Run the requalified `commit` gate once, preserve its exact result and
+- [x] 4.2 Run the requalified `commit` gate once, preserve its exact result and
   duration without retrying for slowness, then commit and push the source/tests
   boundary before any canonical audit publication.
 
