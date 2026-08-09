@@ -21,7 +21,7 @@
 
 - [x] 4.1 Run the requalified repository `commit` gate once and record test or infrastructure evidence without blind retry. The one invocation reported 3,601 passes, 16 skips, and one test-isolation failure in 294.13 seconds; the failed node and focused boundary were repaired and verified without retrying the gate.
 - [x] 4.2 Obtain independent source review with no unresolved correctness or authority findings.
-- [ ] 4.3 Commit and push source and tests before either publication process opens sealed evidence.
+- [x] 4.3 Commit and push source and tests before either publication process opens sealed evidence.
 
 ## 5. Deterministic Publication And Closeout
 
