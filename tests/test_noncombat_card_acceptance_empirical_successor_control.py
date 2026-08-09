@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import importlib
+import hashlib
 import json
 import os
 from pathlib import Path
@@ -207,3 +208,131 @@ def test_verifier_contract_is_independent_and_keeps_all_empirical_authority_fals
     assert contract["runtime_imported"] is False
     assert contract["seed_inventory_imported"] is False
     assert set(contract["authority"].values()) == {False}
+
+
+def test_source_inventory_binds_closed_modules_and_transitive_dependencies(tmp_path):
+    control = _control()
+    declaration = control.module_dependency_inventory()
+    expected_dependencies = (
+        "analysis_scripts_package",
+        "action_family_distribution",
+        "advantage_attribution",
+        "card_acceptance_objective",
+        "card_acceptance_policy",
+        "candidate_feature_projection",
+        "formal_reward",
+        "hierarchical_objective",
+        "policy_input",
+        "simulator_adapter",
+        "simulator_rl_policy_projection",
+        "state_conditioned_ranker",
+    )
+
+    assert tuple(row["role"] for row in declaration["modules"]) == (
+        "control_plane",
+        "torch_runtime",
+        "seed_inventory",
+        "independent_verifier",
+    )
+    assert tuple(row["name"] for row in declaration["public_dependencies"]) == (
+        expected_dependencies
+    )
+    for index, row in enumerate(
+        declaration["modules"] + declaration["public_dependencies"]
+    ):
+        path = tmp_path / row["path"]
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_bytes(f"source-{index}\n".encode("ascii"))
+
+    first = control.build_source_inventory(tmp_path)
+    second = control.build_source_inventory(tmp_path)
+
+    assert first == second
+    assert first["schema_version"] == (
+        "noncombat-card-acceptance-empirical-successor-source-inventory-v1"
+    )
+    body = {key: value for key, value in first.items() if key != "inventory_sha256"}
+    assert first["inventory_sha256"] == control.canonical_json_sha256(body)
+    assert all(row["size_bytes"] > 0 for row in first["modules"])
+    changed_path = tmp_path / declaration["public_dependencies"][0]["path"]
+    changed_path.write_bytes(b"changed\n")
+    assert control.build_source_inventory(tmp_path) != first
+
+
+def test_experiment_configuration_identity_binds_canonical_contract():
+    control = _control()
+    contract = control.experiment_contract()
+
+    identity = control.experiment_configuration_identity()
+
+    assert identity == {
+        "canonical_size_bytes": len(control.canonical_json_bytes(contract)),
+        "contract_sha256": control.canonical_json_sha256(contract),
+        "schema_version": (
+            "noncombat-card-acceptance-empirical-successor-config-identity-v1"
+        ),
+    }
+    contract["algorithm"]["learning_rate"] = 99.0
+    assert control.experiment_configuration_identity() == identity
+
+
+def test_native_config_and_checkpoint_bindings_are_inert(tmp_path):
+    control = _control()
+    native_module = tmp_path / "native" / "adapter.pyd"
+    native_module.parent.mkdir(parents=True)
+    native_module.write_bytes(b"synthetic-native")
+    dll_directory = tmp_path / "native" / "bin"
+    dll_directory.mkdir()
+    module_sha256 = hashlib.sha256(native_module.read_bytes()).hexdigest()
+    provenance = {
+        "build": {
+            "adapter_api_version": "sts-lightspeed-noncombat-adapter-v3",
+            "compiler": "synthetic",
+        },
+        "module_sha256": module_sha256,
+    }
+    native = control.build_native_identity(
+        module_path=native_module,
+        dll_directories=[dll_directory],
+        provenance=provenance,
+    )
+
+    config = tmp_path / "config.properties"
+    config.write_bytes(b'command="synthetic"\n')
+    checkpoints = tmp_path / "checkpoints"
+    (checkpoints / "nested").mkdir(parents=True)
+    (checkpoints / "model-a.pth").write_bytes(b"model-a")
+    (checkpoints / "nested" / "model-b.pth").write_bytes(b"model-b")
+    first = control.build_isolation_identity(
+        communication_mod_config=config,
+        production_checkpoint_root=checkpoints,
+    )
+    second = control.build_isolation_identity(
+        communication_mod_config=config,
+        production_checkpoint_root=checkpoints,
+    )
+
+    assert native["module"] == control.external_file_binding(native_module)
+    assert native["provenance_sha256"] == control.canonical_json_sha256(provenance)
+    assert native["dll_directories"] == [dll_directory.resolve().as_posix()]
+    assert first == second
+    assert first["communication_mod_config"] == control.external_file_binding(config)
+    assert first["production_checkpoints"]["file_count"] == 2
+    (checkpoints / "nested" / "model-b.pth").write_bytes(b"changed")
+    assert control.build_isolation_identity(
+        communication_mod_config=config,
+        production_checkpoint_root=checkpoints,
+    ) != first
+
+
+def test_runtime_import_is_explicitly_deferred():
+    control = _control()
+    imported = []
+    sentinel = object()
+
+    loaded = control._load_runtime_module(
+        module_importer=lambda name: (imported.append(name), sentinel)[1]
+    )
+
+    assert loaded is sentinel
+    assert imported == [RUNTIME_MODULE]
