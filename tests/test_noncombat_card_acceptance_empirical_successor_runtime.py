@@ -104,10 +104,14 @@ def _encoded_mapping_value(encoded: dict[str, object], key: str) -> dict[str, ob
 
 
 def _candidate_objective(runtime, bootstrap, advantage: float = 1.0):
+    return _arm_objective(runtime, bootstrap, arm="candidate", advantage=advantage)
+
+
+def _arm_objective(runtime, bootstrap, *, arm: str, advantage: float = 1.0):
     state_features, candidate_features = _features()
     output = runtime.forward_card_policy(
         bootstrap,
-        arm="candidate",
+        arm=arm,
         state_features=state_features,
         candidate_features=candidate_features,
         candidates=_candidates(),
@@ -220,7 +224,7 @@ class _RolloutEnvironment:
         )
 
 
-def _synthetic_paired_rollouts(runtime, bootstrap):
+def _synthetic_paired_rollouts(runtime, bootstrap, *, start_seed: int = 100):
     state_features, candidate_features = _features()
     arm_terms = {}
     for arm in ("candidate", "control"):
@@ -240,7 +244,7 @@ def _synthetic_paired_rollouts(runtime, bootstrap):
         )
 
     pairs = []
-    for position, seed in enumerate(range(100, 164)):
+    for position, seed in enumerate(range(start_seed, start_seed + 64)):
         episodes = {}
         for arm in ("candidate", "control"):
             features = torch.zeros(HASH_DIM, dtype=torch.float32)
@@ -1079,8 +1083,9 @@ def test_cross_fitted_baseline_rejects_incomplete_reordered_or_unsupported_pairs
 
 def test_paired_chunk_update_applies_one_named_step_per_arm_and_preserves_frozen_state():
     runtime = _runtime()
-    bootstrap = runtime.build_matched_bootstrap()
-    optimizers = runtime.build_arm_optimizers(bootstrap)
+    training = runtime.initialize_paired_training_runtime()
+    bootstrap = training.bootstrap
+    optimizers = training.optimizers
     pairs = _synthetic_paired_rollouts(runtime, bootstrap)
     frozen_before = {
         arm: {
@@ -1097,11 +1102,12 @@ def test_paired_chunk_update_applies_one_named_step_per_arm_and_preserves_frozen
         for name, generator in bootstrap.generators.items()
     }
 
-    update = runtime.apply_paired_cross_fitted_chunk_update(
-        bootstrap,
-        optimizers,
+    completed = runtime.complete_paired_training_chunk(
+        training,
         pairs,
+        chunk_index=0,
     )
+    update = completed.update
 
     assert update.seeds == tuple(range(100, 164))
     assert update.candidate.arm == "candidate"
@@ -1141,6 +1147,31 @@ def test_paired_chunk_update_applies_one_named_step_per_arm_and_preserves_frozen
             assert torch.equal(tensor, frozen_before[arm][name])
     for name, generator in bootstrap.generators.items():
         assert torch.equal(generator.get_state(), generators_before[name])
+    assert training.next_chunk_index == 1
+    assert training.completed_pairs == 64
+    assert training.training_environment_accesses == 128
+    assert training.candidate_optimizer_updates == 1
+    assert training.control_optimizer_updates == 1
+    assert training.training_optimizer_steps == 2
+    assert completed.saturation["stop"] is False
+    assert completed.checkpoint == runtime.encode_paired_training_checkpoint(
+        training
+    )
+    restored = runtime.restore_paired_training_checkpoint(completed.checkpoint)
+    assert runtime.encode_paired_training_checkpoint(restored) == (
+        completed.checkpoint
+    )
+    drift = json.loads(completed.checkpoint)
+    drift["coordinates"]["completed_pairs"] = 65
+    drift_payload = json.dumps(
+        drift,
+        allow_nan=False,
+        ensure_ascii=True,
+        separators=(",", ":"),
+        sort_keys=True,
+    ).encode("ascii")
+    with pytest.raises(runtime.SuccessorRuntimeError, match="resource coordinates"):
+        runtime.restore_paired_training_checkpoint(drift_payload)
 
 
 def test_paired_chunk_validates_both_arms_before_the_candidate_step():
@@ -1181,3 +1212,232 @@ def test_card_objective_rejects_a_zero_card_reward_chunk():
 
     with pytest.raises(runtime.SuccessorRuntimeError, match="requires decisions"):
         runtime.build_arm_card_reward_objective(())
+
+
+def _family_summary_chunk(
+    chunk_index: int,
+    families: tuple[str | None, ...],
+) -> dict[str, object]:
+    return {
+        "candidate_card_decisions": [
+            {
+                "multi_family": True,
+                "unique_greedy_family_id": family,
+            }
+            for family in families
+        ],
+        "chunk_index": chunk_index,
+    }
+
+
+def _advance_training_coordinate_step(
+    runtime,
+    training,
+    *,
+    chunk_index: int,
+    families: tuple[str | None, ...],
+) -> None:
+    for arm, optimizer in (
+        ("candidate", training.optimizers.candidate),
+        ("control", training.optimizers.control),
+    ):
+        runtime.apply_arm_optimizer_step(
+            optimizer,
+            _arm_objective(
+                runtime,
+                training.bootstrap,
+                arm=arm,
+                advantage=1.0,
+            ),
+            parameters=tuple(optimizer.param_groups[0]["params"]),
+        )
+    training.completed_chunk_summaries.append(
+        _family_summary_chunk(chunk_index, families)
+    )
+    training.next_chunk_index += 1
+    training.completed_pairs += 64
+    training.completed_decisions += 128
+    training.training_environment_accesses += 128
+    training.candidate_optimizer_updates += 1
+    training.control_optimizer_updates += 1
+    training.training_optimizer_steps += 2
+
+
+def test_candidate_family_saturation_is_ineligible_before_four_complete_chunks():
+    runtime = _runtime()
+    chunks = tuple(
+        _family_summary_chunk(index, ("take",) * 64)
+        for index in range(3)
+    )
+
+    result = runtime.classify_candidate_family_saturation(chunks)
+
+    assert result == {
+        "family": None,
+        "multi_family_decisions": 0,
+        "stop": False,
+        "window_chunk_indices": [0, 1, 2],
+    }
+
+
+def test_candidate_family_saturation_first_triggers_at_exact_four_chunk_boundary():
+    runtime = _runtime()
+    chunks = tuple(
+        _family_summary_chunk(index, ("take",) * 16)
+        for index in range(4)
+    )
+
+    result = runtime.classify_candidate_family_saturation(chunks)
+
+    assert result == {
+        "family": "take",
+        "multi_family_decisions": 64,
+        "stop": True,
+        "window_chunk_indices": [0, 1, 2, 3],
+    }
+
+
+def test_candidate_family_saturation_allows_exact_eight_chunk_mixed_completion():
+    runtime = _runtime()
+    chunks = tuple(
+        _family_summary_chunk(
+            index,
+            tuple("take" if offset % 2 == 0 else "bowl" for offset in range(16)),
+        )
+        for index in range(8)
+    )
+
+    results = tuple(
+        runtime.classify_candidate_family_saturation(chunks[:count])
+        for count in range(1, 9)
+    )
+
+    assert all(result["stop"] is False for result in results)
+    assert results[-1]["window_chunk_indices"] == [4, 5, 6, 7]
+
+
+def test_training_collection_uses_write_ahead_candidate_then_control_hooks(
+    monkeypatch,
+):
+    runtime = _runtime()
+    training = runtime.initialize_paired_training_runtime()
+    synthetic_pairs = _synthetic_paired_rollouts(
+        runtime,
+        training.bootstrap,
+        start_seed=200,
+    )
+    episode_by_identity = {
+        (arm, pair.seed): (
+            pair.candidate if arm == "candidate" else pair.control
+        )
+        for pair in synthetic_pairs
+        for arm in ("candidate", "control")
+    }
+    hook_calls: list[tuple[str, str, int]] = []
+    factory_calls: list[int] = []
+
+    def environment_factory(seed: int):
+        factory_calls.append(seed)
+        return _RolloutEnvironment(seed, ("card_reward",))
+
+    def rollout_stub(
+        bootstrap,
+        *,
+        arm,
+        environment_factory,
+        seed,
+        **_kwargs,
+    ):
+        environment_factory(seed)
+        return episode_by_identity[(arm, seed)]
+
+    monkeypatch.setattr(runtime, "rollout_arm_training_episode", rollout_stub)
+
+    completed = runtime.collect_and_complete_paired_training_chunk(
+        training,
+        environment_factory=environment_factory,
+        seeds=tuple(range(200, 264)),
+        chunk_index=0,
+        before_environment=lambda arm, seed: hook_calls.append(
+            ("before", arm, seed)
+        ),
+        after_environment=lambda arm, seed: hook_calls.append(
+            ("after", arm, seed)
+        ),
+        deadline=100.0,
+        clock=lambda: 0.0,
+    )
+
+    assert factory_calls == [seed for seed in range(200, 264) for _ in range(2)]
+    assert hook_calls[:4] == [
+        ("before", "candidate", 200),
+        ("after", "candidate", 200),
+        ("before", "control", 200),
+        ("after", "control", 200),
+    ]
+    assert len(hook_calls) == 256
+    assert completed.seeds == tuple(range(200, 264))
+    assert training.training_environment_accesses == 128
+    assert runtime.training_progress_verdict(training) == "training_incomplete"
+
+
+def test_exact_eight_chunk_coordinates_are_required_for_no_saturation_completion():
+    runtime = _runtime()
+    training = runtime.initialize_paired_training_runtime()
+    mixed_families = tuple(
+        "take" if index % 2 == 0 else "bowl" for index in range(16)
+    )
+
+    for chunk_index in range(8):
+        _advance_training_coordinate_step(
+            runtime,
+            training,
+            chunk_index=chunk_index,
+            families=mixed_families,
+        )
+
+    assert runtime.training_progress_verdict(training) == (
+        "training_completed_without_family_saturation"
+    )
+    assert training.completed_pairs == 512
+    assert training.training_environment_accesses == 1_024
+    assert training.candidate_optimizer_updates == 8
+    assert training.control_optimizer_updates == 8
+    assert training.training_optimizer_steps == 16
+
+
+def test_family_saturation_keeps_canary_and_holdout_zero_and_blocks_more_training():
+    runtime = _runtime()
+    training = runtime.initialize_paired_training_runtime()
+    for chunk_index in range(4):
+        _advance_training_coordinate_step(
+            runtime,
+            training,
+            chunk_index=chunk_index,
+            families=("take",) * 16,
+        )
+    training.stopped_for_family_saturation = True
+
+    assert runtime.training_progress_verdict(training) == (
+        "experiment_stopped_during_training_for_family_saturation"
+    )
+    resources = runtime.training_resource_use(training)
+    assert resources["completed_pairs"] == 256
+    assert resources["training_environment_accesses"] == 512
+    assert resources["candidate_optimizer_updates"] == 4
+    assert resources["control_optimizer_updates"] == 4
+    assert resources["canary_environment_accesses"] == 0
+    assert resources["holdout_environment_accesses"] == 0
+
+    environment_calls: list[int] = []
+    with pytest.raises(runtime.SuccessorRuntimeError, match="cannot start"):
+        runtime.run_bounded_paired_training(
+            training,
+            environment_factory=lambda seed: environment_calls.append(seed),
+            remaining_seeds=tuple(range(256)),
+            before_environment=lambda _arm, _seed: None,
+            after_environment=lambda _arm, _seed: None,
+            deadline=100.0,
+            clock=lambda: 0.0,
+        )
+    assert environment_calls == []

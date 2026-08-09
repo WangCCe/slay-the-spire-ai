@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from collections.abc import Callable, Mapping, Sequence
 import copy
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 import hashlib
 import json
 import math
@@ -48,6 +48,9 @@ from analysis_scripts.noncombat_state_conditioned_ranker import (
 
 BOOTSTRAP_SCHEMA_VERSION = (
     "noncombat-card-acceptance-empirical-successor-bootstrap-v1"
+)
+TRAINING_CHECKPOINT_SCHEMA_VERSION = (
+    "noncombat-card-acceptance-empirical-successor-training-checkpoint-v1"
 )
 RUNTIME_METADATA_SCHEMA_VERSION = (
     "noncombat-card-acceptance-empirical-successor-runtime-metadata-v1"
@@ -261,6 +264,39 @@ class PairedChunkUpdateEvidence:
     baselines: PairedCrossFittedBaselines
     candidate: ArmChunkUpdateEvidence
     control: ArmChunkUpdateEvidence
+
+
+@dataclass
+class PairedTrainingRuntime:
+    bootstrap: PairedBootstrap
+    optimizers: ArmOptimizers
+    next_chunk_index: int = 0
+    completed_pairs: int = 0
+    completed_decisions: int = 0
+    training_environment_accesses: int = 0
+    candidate_optimizer_updates: int = 0
+    control_optimizer_updates: int = 0
+    training_optimizer_steps: int = 0
+    completed_chunk_summaries: list[dict[str, Any]] = field(default_factory=list)
+    stopped_for_family_saturation: bool = False
+
+
+@dataclass(frozen=True)
+class CompletedPairedTrainingChunk:
+    chunk_index: int
+    seeds: tuple[int, ...]
+    episodes: tuple[PairedEpisodeRollout, ...]
+    update: PairedChunkUpdateEvidence
+    saturation: Mapping[str, Any]
+    checkpoint: bytes
+
+
+@dataclass(frozen=True)
+class BoundedTrainingResult:
+    verdict: str
+    chunks: tuple[CompletedPairedTrainingChunk, ...]
+    resource_use: Mapping[str, int]
+    checkpoint: bytes
 
 
 _DTYPES: dict[str, torch.dtype] = {
@@ -2525,6 +2561,581 @@ def apply_paired_cross_fitted_chunk_update(
     )
 
 
+def classify_candidate_family_saturation(
+    completed_chunks: Sequence[Mapping[str, Any]],
+) -> dict[str, Any]:
+    """Apply the candidate-only exact trailing-four family saturation rule."""
+    if isinstance(completed_chunks, (str, bytes)) or not isinstance(
+        completed_chunks, Sequence
+    ):
+        raise SuccessorRuntimeError("completed chunks must be a sequence")
+    chunks = tuple(completed_chunks)
+    if len(chunks) > 8:
+        raise SuccessorRuntimeError("completed chunks exceed the registered bound")
+    normalized: list[dict[str, Any]] = []
+    for index, chunk in enumerate(chunks):
+        if not isinstance(chunk, Mapping) or set(chunk) != {
+            "candidate_card_decisions",
+            "chunk_index",
+        }:
+            raise SuccessorRuntimeError("completed chunk fields differ")
+        if chunk["chunk_index"] != index:
+            raise SuccessorRuntimeError(
+                "completed chunk indices must be contiguous"
+            )
+        decisions = chunk["candidate_card_decisions"]
+        if isinstance(decisions, (str, bytes)) or not isinstance(
+            decisions, Sequence
+        ):
+            raise SuccessorRuntimeError(
+                "candidate card decisions must be a sequence"
+            )
+        normalized_rows: list[dict[str, Any]] = []
+        for row in decisions:
+            if not isinstance(row, Mapping) or set(row) != {
+                "multi_family",
+                "unique_greedy_family_id",
+            }:
+                raise SuccessorRuntimeError(
+                    "candidate family diagnostic fields differ"
+                )
+            if not isinstance(row["multi_family"], bool):
+                raise SuccessorRuntimeError(
+                    "candidate multi-family diagnostic must be boolean"
+                )
+            family = row["unique_greedy_family_id"]
+            if family is not None and (
+                not isinstance(family, str) or not family
+            ):
+                raise SuccessorRuntimeError(
+                    "candidate unique greedy family is invalid"
+                )
+            normalized_rows.append(dict(row))
+        normalized.append(
+            {
+                "candidate_card_decisions": normalized_rows,
+                "chunk_index": index,
+            }
+        )
+
+    window = normalized[-4:]
+    window_indices = [int(chunk["chunk_index"]) for chunk in window]
+    if len(window) < 4:
+        return {
+            "family": None,
+            "multi_family_decisions": 0,
+            "stop": False,
+            "window_chunk_indices": window_indices,
+        }
+    rows = [
+        row
+        for chunk in window
+        for row in chunk["candidate_card_decisions"]
+        if row["multi_family"] is True
+    ]
+    families = [row["unique_greedy_family_id"] for row in rows]
+    if (
+        len(rows) >= 64
+        and all(isinstance(family, str) and family for family in families)
+        and len(set(families)) == 1
+    ):
+        return {
+            "family": families[0],
+            "multi_family_decisions": len(rows),
+            "stop": True,
+            "window_chunk_indices": window_indices,
+        }
+    return {
+        "family": None,
+        "multi_family_decisions": len(rows),
+        "stop": False,
+        "window_chunk_indices": window_indices,
+    }
+
+
+def initialize_paired_training_runtime() -> PairedTrainingRuntime:
+    """Create the matched zero-progress runtime before any environment access."""
+    bootstrap = build_matched_bootstrap()
+    return PairedTrainingRuntime(
+        bootstrap=bootstrap,
+        optimizers=build_arm_optimizers(bootstrap),
+    )
+
+
+def _validate_optimizer_step_coordinate(
+    optimizer: torch.optim.Optimizer,
+    *,
+    expected_steps: int,
+) -> None:
+    parameters = _validated_registered_adam(optimizer)
+    _validate_decoded_adam_state(optimizer, optimizer.state_dict())
+    if expected_steps == 0:
+        if optimizer.state:
+            raise SuccessorRuntimeError(
+                "zero-update optimizer cannot contain Adam moments"
+            )
+        return
+    if len(optimizer.state) != len(parameters):
+        raise SuccessorRuntimeError("Adam moment parameter coverage differs")
+    for parameter in parameters:
+        state = optimizer.state.get(parameter)
+        if not isinstance(state, dict) or set(state) != {
+            "step",
+            "exp_avg",
+            "exp_avg_sq",
+        }:
+            raise SuccessorRuntimeError("Adam moment fields differ")
+        step = state["step"]
+        if (
+            not isinstance(step, torch.Tensor)
+            or step.shape != torch.Size([])
+            or float(step.item()) != float(expected_steps)
+        ):
+            raise SuccessorRuntimeError("Adam step coordinate differs")
+
+
+def _validate_paired_training_runtime(runtime: PairedTrainingRuntime) -> None:
+    if not isinstance(runtime, PairedTrainingRuntime):
+        raise SuccessorRuntimeError("paired training runtime type differs")
+    _validate_rollout_bootstrap(runtime.bootstrap)
+    if not isinstance(runtime.optimizers, ArmOptimizers):
+        raise SuccessorRuntimeError("paired training optimizers differ")
+    for arm, optimizer in (
+        ("candidate", runtime.optimizers.candidate),
+        ("control", runtime.optimizers.control),
+    ):
+        expected_parameters = tuple(
+            parameter
+            for _, parameter in _arm_named_trainable_parameters(
+                runtime.bootstrap,
+                arm=arm,
+            )
+        )
+        actual_parameters = _validated_registered_adam(optimizer)
+        if len(actual_parameters) != len(expected_parameters) or any(
+            actual is not expected
+            for actual, expected in zip(
+                actual_parameters, expected_parameters, strict=True
+            )
+        ):
+            raise SuccessorRuntimeError(
+                f"{arm} optimizer parameter ownership differs"
+            )
+
+    coordinates = (
+        runtime.next_chunk_index,
+        runtime.completed_pairs,
+        runtime.completed_decisions,
+        runtime.training_environment_accesses,
+        runtime.candidate_optimizer_updates,
+        runtime.control_optimizer_updates,
+        runtime.training_optimizer_steps,
+    )
+    if any(
+        isinstance(value, bool) or not isinstance(value, int) or value < 0
+        for value in coordinates
+    ):
+        raise SuccessorRuntimeError("training runtime coordinate is invalid")
+    if not 0 <= runtime.next_chunk_index <= 8:
+        raise SuccessorRuntimeError("training chunk coordinate exceeds eight")
+    expected_chunk_count = runtime.next_chunk_index
+    if (
+        runtime.completed_pairs != 64 * expected_chunk_count
+        or runtime.training_environment_accesses != 128 * expected_chunk_count
+        or runtime.candidate_optimizer_updates != expected_chunk_count
+        or runtime.control_optimizer_updates != expected_chunk_count
+        or runtime.training_optimizer_steps != 2 * expected_chunk_count
+    ):
+        raise SuccessorRuntimeError("training resource coordinates differ")
+    if runtime.completed_decisions > (
+        runtime.training_environment_accesses * MAX_DECISIONS_PER_EPISODE
+    ):
+        raise SuccessorRuntimeError("training decision coordinate exceeds bound")
+    if not isinstance(runtime.completed_chunk_summaries, list) or len(
+        runtime.completed_chunk_summaries
+    ) != expected_chunk_count:
+        raise SuccessorRuntimeError("training chunk summaries differ")
+    saturation = classify_candidate_family_saturation(
+        runtime.completed_chunk_summaries
+    )
+    if not isinstance(runtime.stopped_for_family_saturation, bool) or (
+        runtime.stopped_for_family_saturation is not bool(saturation["stop"])
+    ):
+        raise SuccessorRuntimeError("training saturation coordinate differs")
+    _validate_optimizer_step_coordinate(
+        runtime.optimizers.candidate,
+        expected_steps=runtime.candidate_optimizer_updates,
+    )
+    _validate_optimizer_step_coordinate(
+        runtime.optimizers.control,
+        expected_steps=runtime.control_optimizer_updates,
+    )
+
+
+def _candidate_chunk_summary(
+    episodes: Sequence[PairedEpisodeRollout],
+    *,
+    chunk_index: int,
+) -> dict[str, Any]:
+    rows: list[dict[str, Any]] = []
+    for pair in episodes:
+        for decision in pair.candidate.decisions:
+            if decision.category != "card_reward":
+                continue
+            terms = decision.card_terms
+            if not isinstance(terms, CardAcceptancePolicyTerms):
+                raise SuccessorRuntimeError(
+                    "candidate card decision lacks policy terms"
+                )
+            rows.append(
+                {
+                    "multi_family": len(terms.family_order) > 1,
+                    "unique_greedy_family_id": terms.unique_greedy_family_id,
+                }
+            )
+    return {
+        "candidate_card_decisions": rows,
+        "chunk_index": chunk_index,
+    }
+
+
+def _paired_training_checkpoint_object(
+    runtime: PairedTrainingRuntime,
+) -> dict[str, Any]:
+    _validate_paired_training_runtime(runtime)
+    return {
+        "bootstrap": _paired_bootstrap_object(runtime.bootstrap),
+        "completed_chunk_summaries": copy.deepcopy(
+            runtime.completed_chunk_summaries
+        ),
+        "coordinates": {
+            "candidate_optimizer_updates": runtime.candidate_optimizer_updates,
+            "completed_decisions": runtime.completed_decisions,
+            "completed_pairs": runtime.completed_pairs,
+            "control_optimizer_updates": runtime.control_optimizer_updates,
+            "next_chunk_index": runtime.next_chunk_index,
+            "training_environment_accesses": runtime.training_environment_accesses,
+            "training_optimizer_steps": runtime.training_optimizer_steps,
+        },
+        "optimizers": {
+            "candidate": encode_optimizer_state(runtime.optimizers.candidate),
+            "control": encode_optimizer_state(runtime.optimizers.control),
+        },
+        "schema_version": TRAINING_CHECKPOINT_SCHEMA_VERSION,
+        "stopped_for_family_saturation": runtime.stopped_for_family_saturation,
+    }
+
+
+def encode_paired_training_checkpoint(runtime: PairedTrainingRuntime) -> bytes:
+    """Encode one exact complete-boundary paired training checkpoint."""
+    payload = _canonical_json_bytes(_paired_training_checkpoint_object(runtime))
+    if len(payload) > MAX_BOOTSTRAP_BYTES:
+        raise SuccessorRuntimeError("training checkpoint exceeds its byte ceiling")
+    return payload
+
+
+def restore_paired_training_checkpoint(value: object) -> PairedTrainingRuntime:
+    """Restore only a canonical complete-boundary paired training checkpoint."""
+    if not isinstance(value, bytes) or not value or len(value) > MAX_BOOTSTRAP_BYTES:
+        raise SuccessorRuntimeError("training checkpoint bytes are invalid")
+    try:
+        parsed = json.loads(
+            value.decode("ascii"),
+            object_pairs_hook=_reject_duplicate_pairs,
+            parse_constant=_reject_json_constant,
+        )
+    except (UnicodeDecodeError, json.JSONDecodeError) as exc:
+        raise SuccessorRuntimeError("training checkpoint JSON is invalid") from exc
+    if _canonical_json_bytes(parsed) != value:
+        raise SuccessorRuntimeError("training checkpoint bytes are not canonical")
+    if not isinstance(parsed, Mapping) or set(parsed) != {
+        "bootstrap",
+        "completed_chunk_summaries",
+        "coordinates",
+        "optimizers",
+        "schema_version",
+        "stopped_for_family_saturation",
+    }:
+        raise SuccessorRuntimeError("training checkpoint fields differ")
+    if parsed["schema_version"] != TRAINING_CHECKPOINT_SCHEMA_VERSION:
+        raise SuccessorRuntimeError("training checkpoint schema differs")
+    coordinates = parsed["coordinates"]
+    optimizers_value = parsed["optimizers"]
+    summaries = parsed["completed_chunk_summaries"]
+    if not isinstance(coordinates, Mapping) or set(coordinates) != {
+        "candidate_optimizer_updates",
+        "completed_decisions",
+        "completed_pairs",
+        "control_optimizer_updates",
+        "next_chunk_index",
+        "training_environment_accesses",
+        "training_optimizer_steps",
+    }:
+        raise SuccessorRuntimeError("training checkpoint coordinates differ")
+    if not isinstance(optimizers_value, Mapping) or set(optimizers_value) != {
+        "candidate",
+        "control",
+    }:
+        raise SuccessorRuntimeError("training checkpoint optimizers differ")
+    if not isinstance(summaries, list):
+        raise SuccessorRuntimeError("training checkpoint summaries differ")
+
+    bootstrap = restore_paired_bootstrap(
+        _canonical_json_bytes(parsed["bootstrap"])
+    )
+    optimizers = build_arm_optimizers(bootstrap)
+    restore_optimizer_state(optimizers.candidate, optimizers_value["candidate"])
+    restore_optimizer_state(optimizers.control, optimizers_value["control"])
+    runtime = PairedTrainingRuntime(
+        bootstrap=bootstrap,
+        optimizers=optimizers,
+        next_chunk_index=coordinates["next_chunk_index"],
+        completed_pairs=coordinates["completed_pairs"],
+        completed_decisions=coordinates["completed_decisions"],
+        training_environment_accesses=coordinates[
+            "training_environment_accesses"
+        ],
+        candidate_optimizer_updates=coordinates[
+            "candidate_optimizer_updates"
+        ],
+        control_optimizer_updates=coordinates["control_optimizer_updates"],
+        training_optimizer_steps=coordinates["training_optimizer_steps"],
+        completed_chunk_summaries=copy.deepcopy(summaries),
+        stopped_for_family_saturation=parsed[
+            "stopped_for_family_saturation"
+        ],
+    )
+    _validate_paired_training_runtime(runtime)
+    return runtime
+
+
+def complete_paired_training_chunk(
+    runtime: PairedTrainingRuntime,
+    episodes: Sequence[PairedEpisodeRollout],
+    *,
+    chunk_index: int,
+) -> CompletedPairedTrainingChunk:
+    """Apply and checkpoint one exact 64-pair complete training chunk."""
+    _validate_paired_training_runtime(runtime)
+    if (
+        isinstance(chunk_index, bool)
+        or not isinstance(chunk_index, int)
+        or chunk_index != runtime.next_chunk_index
+    ):
+        raise SuccessorRuntimeError("training chunk index differs")
+    if runtime.stopped_for_family_saturation:
+        raise SuccessorRuntimeError("training already stopped for family saturation")
+    if chunk_index >= 8:
+        raise SuccessorRuntimeError("training already completed eight chunks")
+    source = tuple(episodes)
+    update = apply_paired_cross_fitted_chunk_update(
+        runtime.bootstrap,
+        runtime.optimizers,
+        source,
+    )
+    summary = _candidate_chunk_summary(source, chunk_index=chunk_index)
+    runtime.completed_chunk_summaries.append(summary)
+    runtime.next_chunk_index += 1
+    runtime.completed_pairs += 64
+    runtime.completed_decisions += sum(
+        len(pair.candidate.decisions) + len(pair.control.decisions)
+        for pair in source
+    )
+    runtime.training_environment_accesses += 128
+    runtime.candidate_optimizer_updates += 1
+    runtime.control_optimizer_updates += 1
+    runtime.training_optimizer_steps += 2
+    saturation = classify_candidate_family_saturation(
+        runtime.completed_chunk_summaries
+    )
+    runtime.stopped_for_family_saturation = bool(saturation["stop"])
+    _validate_paired_training_runtime(runtime)
+    checkpoint = encode_paired_training_checkpoint(runtime)
+    return CompletedPairedTrainingChunk(
+        chunk_index=chunk_index,
+        seeds=update.seeds,
+        episodes=source,
+        update=update,
+        saturation=saturation,
+        checkpoint=checkpoint,
+    )
+
+
+def collect_and_complete_paired_training_chunk(
+    runtime: PairedTrainingRuntime,
+    *,
+    environment_factory: Callable[[int], Any],
+    seeds: Sequence[int],
+    chunk_index: int,
+    before_environment: Callable[[ArmName, int], None],
+    after_environment: Callable[[ArmName, int], None],
+    deadline: float,
+    clock: Callable[[], float] = time.monotonic,
+) -> CompletedPairedTrainingChunk:
+    """Collect candidate then control for 64 seeds and checkpoint the update."""
+    _validate_paired_training_runtime(runtime)
+    if not callable(environment_factory) or not callable(before_environment) or not callable(after_environment):
+        raise SuccessorRuntimeError("training collection hooks must be callable")
+    if not callable(clock):
+        raise SuccessorRuntimeError("training collection clock must be callable")
+    if (
+        isinstance(chunk_index, bool)
+        or not isinstance(chunk_index, int)
+        or chunk_index != runtime.next_chunk_index
+    ):
+        raise SuccessorRuntimeError("training collection chunk index differs")
+    seed_values = tuple(seeds)
+    if (
+        len(seed_values) != 64
+        or any(
+            isinstance(seed, bool) or not isinstance(seed, int) or seed < 0
+            for seed in seed_values
+        )
+        or seed_values != tuple(sorted(set(seed_values)))
+    ):
+        raise SuccessorRuntimeError(
+            "training chunk seeds must be 64 unique ascending integers"
+        )
+    active_deadline = float(deadline)
+    now = float(clock())
+    if (
+        not math.isfinite(active_deadline)
+        or not math.isfinite(now)
+        or active_deadline < now
+        or active_deadline > now + MAX_CHARGED_SECONDS
+    ):
+        raise SuccessorRuntimeError(
+            "training collection deadline exceeds the registered bound"
+        )
+
+    episodes: list[PairedEpisodeRollout] = []
+    for seed in seed_values:
+        before_environment("candidate", seed)
+        candidate = rollout_arm_training_episode(
+            runtime.bootstrap,
+            arm="candidate",
+            environment_factory=environment_factory,
+            seed=seed,
+            deadline=active_deadline,
+            clock=clock,
+        )
+        after_environment("candidate", seed)
+        before_environment("control", seed)
+        control = rollout_arm_training_episode(
+            runtime.bootstrap,
+            arm="control",
+            environment_factory=environment_factory,
+            seed=seed,
+            deadline=active_deadline,
+            clock=clock,
+        )
+        after_environment("control", seed)
+        episodes.append(
+            PairedEpisodeRollout(
+                seed=seed,
+                candidate=candidate,
+                control=control,
+            )
+        )
+    return complete_paired_training_chunk(
+        runtime,
+        tuple(episodes),
+        chunk_index=chunk_index,
+    )
+
+
+def training_progress_verdict(runtime: PairedTrainingRuntime) -> str:
+    """Classify only exact complete-boundary training progress."""
+    _validate_paired_training_runtime(runtime)
+    if runtime.stopped_for_family_saturation:
+        return "experiment_stopped_during_training_for_family_saturation"
+    if runtime.next_chunk_index == 8:
+        if (
+            runtime.completed_pairs != 512
+            or runtime.training_environment_accesses != 1_024
+            or runtime.candidate_optimizer_updates != 8
+            or runtime.control_optimizer_updates != 8
+            or runtime.training_optimizer_steps != 16
+        ):
+            raise SuccessorRuntimeError(
+                "complete training coordinates differ"
+            )
+        return "training_completed_without_family_saturation"
+    return "training_incomplete"
+
+
+def training_resource_use(runtime: PairedTrainingRuntime) -> dict[str, int]:
+    """Return the exact training prefix with downstream access fixed at zero."""
+    _validate_paired_training_runtime(runtime)
+    return {
+        "canary_environment_accesses": 0,
+        "candidate_optimizer_updates": runtime.candidate_optimizer_updates,
+        "completed_pairs": runtime.completed_pairs,
+        "control_optimizer_updates": runtime.control_optimizer_updates,
+        "holdout_environment_accesses": 0,
+        "training_environment_accesses": runtime.training_environment_accesses,
+        "training_optimizer_steps": runtime.training_optimizer_steps,
+    }
+
+
+def run_bounded_paired_training(
+    runtime: PairedTrainingRuntime,
+    *,
+    environment_factory: Callable[[int], Any],
+    remaining_seeds: Sequence[int],
+    before_environment: Callable[[ArmName, int], None],
+    after_environment: Callable[[ArmName, int], None],
+    deadline: float,
+    clock: Callable[[], float] = time.monotonic,
+) -> BoundedTrainingResult:
+    """Run the remaining registered chunks, stopping only for exact saturation."""
+    _validate_paired_training_runtime(runtime)
+    if runtime.stopped_for_family_saturation or runtime.next_chunk_index >= 8:
+        raise SuccessorRuntimeError("training identity cannot start another schedule")
+    seeds = tuple(remaining_seeds)
+    expected_count = (8 - runtime.next_chunk_index) * 64
+    if (
+        len(seeds) != expected_count
+        or any(
+            isinstance(seed, bool) or not isinstance(seed, int) or seed < 0
+            for seed in seeds
+        )
+        or seeds != tuple(sorted(set(seeds)))
+    ):
+        raise SuccessorRuntimeError(
+            "remaining training seeds differ from the exact schedule"
+        )
+
+    completed: list[CompletedPairedTrainingChunk] = []
+    offset = 0
+    while runtime.next_chunk_index < 8:
+        chunk_index = runtime.next_chunk_index
+        chunk_seeds = seeds[offset : offset + 64]
+        chunk = collect_and_complete_paired_training_chunk(
+            runtime,
+            environment_factory=environment_factory,
+            seeds=chunk_seeds,
+            chunk_index=chunk_index,
+            before_environment=before_environment,
+            after_environment=after_environment,
+            deadline=deadline,
+            clock=clock,
+        )
+        completed.append(chunk)
+        offset += 64
+        if chunk.saturation["stop"] is True:
+            break
+    verdict = training_progress_verdict(runtime)
+    if verdict == "training_incomplete":
+        raise SuccessorRuntimeError("bounded training stopped without a verdict")
+    return BoundedTrainingResult(
+        verdict=verdict,
+        chunks=tuple(completed),
+        resource_use=training_resource_use(runtime),
+        checkpoint=encode_paired_training_checkpoint(runtime),
+    )
+
+
 __all__ = [
     "ArmBaselineDecision",
     "ArmBaselinePrediction",
@@ -2535,12 +3146,15 @@ __all__ = [
     "ArmOptimizerStepEvidence",
     "ArmOptimizers",
     "ArmRolloutDecision",
+    "BoundedTrainingResult",
     "CandidateArm",
+    "CompletedPairedTrainingChunk",
     "ControlArm",
     "PairedBootstrap",
     "PairedChunkUpdateEvidence",
     "PairedCrossFittedBaselines",
     "PairedEpisodeRollout",
+    "PairedTrainingRuntime",
     "RidgeFoldModel",
     "SuccessorRuntimeError",
     "apply_arm_optimizer_step",
@@ -2550,15 +3164,24 @@ __all__ = [
     "build_arm_optimizers",
     "build_matched_bootstrap",
     "build_paired_cross_fitted_baselines",
+    "classify_candidate_family_saturation",
+    "collect_and_complete_paired_training_chunk",
+    "complete_paired_training_chunk",
     "encode_optimizer_state",
     "encode_paired_bootstrap",
+    "encode_paired_training_checkpoint",
     "fold_baseline_state_features",
     "forward_card_policy",
+    "initialize_paired_training_runtime",
     "restore_optimizer_state",
     "restore_paired_bootstrap",
+    "restore_paired_training_checkpoint",
     "rollout_arm_training_episode",
     "rollout_paired_training_episode",
+    "run_bounded_paired_training",
     "runtime_metadata",
     "score_noncard_candidates",
     "select_two_stage_action",
+    "training_progress_verdict",
+    "training_resource_use",
 ]
