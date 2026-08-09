@@ -1,0 +1,1831 @@
+{
+  "authority": {
+    "architecture_selection": false,
+    "causal": false,
+    "causal_claim": false,
+    "coefficient_selection": false,
+    "cohort_materialization": false,
+    "communication_mod": false,
+    "environment_construction": false,
+    "evaluation": false,
+    "execution": false,
+    "formal_rl": false,
+    "gameplay": false,
+    "model_fitting": false,
+    "model_loading": false,
+    "native_loading": false,
+    "objective_selection": false,
+    "ope": false,
+    "policy_promotion": false,
+    "policy_quality": false,
+    "qualification": false,
+    "replay": false,
+    "seed_access": false,
+    "training": false
+  },
+  "evidence": {
+    "chunk_results": [
+      {
+        "chunk_index": 0,
+        "conditional_supported": true,
+        "family_conditional_dot": 4.7603872229565864e-07,
+        "guard_invariants": {
+          "conflict_projected_to_zero": true,
+          "non_conflict_unchanged": true
+        },
+        "guarded_family_conditional_dot": 4.7603872229565864e-07,
+        "interventions": {
+          "conditional_conflict_guarded": {
+            "clip_factor": 1.0,
+            "clipped_norm": 0.0037650622867106062,
+            "displacement_from_recorded": 1.017628275552102e-09,
+            "raw_norm": 0.0037650622867106062,
+            "retained_family_policy_norm": 0.0019610561091280183,
+            "to_conditional": {
+              "cosine": 0.5667613444631917,
+              "dot": 3.515301138979334e-06,
+              "left_norm": 0.0037650622867106062,
+              "right_norm": 0.001647366187422092
+            },
+            "to_family": {
+              "cosine": 0.6233211379793161,
+              "dot": 4.6022906240846455e-06,
+              "left_norm": 0.0037650622867106062,
+              "right_norm": 0.0019610561091280183
+            },
+            "to_recorded": {
+              "cosine": 0.9999999999999635,
+              "dot": 1.4175694011850705e-05,
+              "left_norm": 0.0037650622867106062,
+              "right_norm": 0.003765062283799824
+            }
+          },
+          "family_policy_ablated": {
+            "clip_factor": 1.0,
+            "clipped_norm": 0.0029693187497790686,
+            "displacement_from_recorded": 0.001961056094386879,
+            "raw_norm": 0.0029693187497790686,
+            "retained_family_policy_norm": 0.0,
+            "to_conditional": {
+              "cosine": 0.6213284375366229,
+              "dot": 3.0392624166836758e-06,
+              "left_norm": 0.0029693187497790686,
+              "right_norm": 0.001647366187422092
+            },
+            "to_family": {
+              "cosine": 0.129924347130515,
+              "dot": 7.565495609363231e-07,
+              "left_norm": 0.0029693187497790686,
+              "right_norm": 0.0019610561091280183
+            },
+            "to_recorded": {
+              "cosine": 0.8563225379726668,
+              "dot": 9.573403416674779e-06,
+              "left_norm": 0.0029693187497790686,
+              "right_norm": 0.003765062283799824
+            }
+          },
+          "recorded": {
+            "clip_factor": 1.0,
+            "clipped_norm": 0.003765062283799824,
+            "displacement_from_recorded": 0.0,
+            "raw_norm": 0.003765062283799824,
+            "retained_family_policy_norm": 0.0019610561091280183,
+            "to_conditional": {
+              "cosine": 0.5667613470188421,
+              "dot": 3.5153011521129014e-06,
+              "left_norm": 0.003765062283799824,
+              "right_norm": 0.001647366187422092
+            },
+            "to_family": {
+              "cosine": 0.6233211345458932,
+              "dot": 4.602290595175927e-06,
+              "left_norm": 0.003765062283799824,
+              "right_norm": 0.0019610561091280183
+            },
+            "to_recorded": {
+              "cosine": 1.0,
+              "dot": 1.4175694000891945e-05,
+              "left_norm": 0.003765062283799824,
+              "right_norm": 0.003765062283799824
+            }
+          }
+        },
+        "projection_applied": false,
+        "projection_multiplier": null,
+        "recorded_reconstruction": {
+          "clip_factor": 1.0,
+          "clipped_full_norm": 0.003765062283799824,
+          "component_norms": {
+            "card_reward_conditional_policy": 0.001647366187422092,
+            "card_reward_family_policy": 0.0019610561091280183,
+            "conditional_entropy_regularizer": 0.0007308690804957,
+            "family_entropy_regularizer": 1.0256098735233185e-05,
+            "other_policy": 0.002176556142582783
+          },
+          "family_conditional": {
+            "cosine": 0.1473540623903032,
+            "dot": 4.7603872229565864e-07,
+            "left_norm": 0.0019610561091280183,
+            "right_norm": 0.001647366187422092
+          },
+          "full_norm": 0.003765062283799824,
+          "installed_matches_consumed": true,
+          "pairwise": {
+            "card_reward_conditional_policy__conditional_entropy_regularizer": {
+              "cosine": -0.008093311034570512,
+              "dot": -9.744419411542252e-09,
+              "left_norm": 0.001647366187422092,
+              "right_norm": 0.0007308690804957
+            },
+            "card_reward_conditional_policy__family_entropy_regularizer": {
+              "cosine": 0.03730164699234211,
+              "dot": 6.302318519608666e-10,
+              "left_norm": 0.001647366187422092,
+              "right_norm": 1.0256098735233185e-05
+            },
+            "card_reward_conditional_policy__other_policy": {
+              "cosine": 0.09330729833819251,
+              "dot": 3.3456124878165786e-07,
+              "left_norm": 0.001647366187422092,
+              "right_norm": 0.002176556142582783
+            },
+            "card_reward_family_policy__card_reward_conditional_policy": {
+              "cosine": 0.1473540623903032,
+              "dot": 4.7603872229565864e-07,
+              "left_norm": 0.0019610561091280183,
+              "right_norm": 0.001647366187422092
+            },
+            "card_reward_family_policy__conditional_entropy_regularizer": {
+              "cosine": -0.0918935423441098,
+              "dot": -1.3170874219960447e-07,
+              "left_norm": 0.0019610561091280183,
+              "right_norm": 0.0007308690804957
+            },
+            "card_reward_family_policy__family_entropy_regularizer": {
+              "cosine": 0.09389822807103548,
+              "dot": 1.8885548806371266e-09,
+              "left_norm": 0.0019610561091280183,
+              "right_norm": 1.0256098735233185e-05
+            },
+            "card_reward_family_policy__other_policy": {
+              "cosine": 0.09613343539875434,
+              "dot": 4.103310259596318e-07,
+              "left_norm": 0.0019610561091280183,
+              "right_norm": 0.002176556142582783
+            },
+            "family_entropy_regularizer__conditional_entropy_regularizer": {
+              "cosine": -0.9793521858849088,
+              "dot": -7.3410922156064396e-09,
+              "left_norm": 1.0256098735233185e-05,
+              "right_norm": 0.0007308690804957
+            },
+            "other_policy__conditional_entropy_regularizer": {
+              "cosine": 0.06131551086481996,
+              "dot": 9.753934039325856e-08,
+              "left_norm": 0.002176556142582783,
+              "right_norm": 0.0007308690804957
+            },
+            "other_policy__family_entropy_regularizer": {
+              "cosine": 0.0017117191762794966,
+              "dot": 3.821066386748743e-11,
+              "left_norm": 0.002176556142582783,
+              "right_norm": 1.0256098735233185e-05
+            }
+          },
+          "reconstruction_max_abs": 9.654499422140361e-11,
+          "to_full": {
+            "card_reward_conditional_policy": {
+              "cosine": 0.5667613470188421,
+              "dot": 3.5153011521129014e-06,
+              "left_norm": 0.001647366187422092,
+              "right_norm": 0.003765062283799824
+            },
+            "card_reward_family_policy": {
+              "cosine": 0.6233211345458932,
+              "dot": 4.602290595175927e-06,
+              "left_norm": 0.0019610561091280183,
+              "right_norm": 0.003765062283799824
+            },
+            "conditional_entropy_regularizer": {
+              "cosine": 0.175492537069881,
+              "dot": 4.829146791950306e-07,
+              "left_norm": 0.0007308690804957,
+              "right_norm": 0.003765062283799824
+            },
+            "family_entropy_regularizer": {
+              "cosine": -0.12116858916982418,
+              "dot": -4.678906959354602e-09,
+              "left_norm": 1.0256098735233185e-05,
+              "right_norm": 0.003765062283799824
+            },
+            "other_policy": {
+              "cosine": 0.6808975460184552,
+              "dot": 5.579866492326201e-06,
+              "left_norm": 0.002176556142582783,
+              "right_norm": 0.003765062283799824
+            }
+          },
+          "uniform_clip_max_abs": 0.0
+        }
+      },
+      {
+        "chunk_index": 1,
+        "conditional_supported": true,
+        "family_conditional_dot": -2.1497280710893846e-07,
+        "guard_invariants": {
+          "conflict_projected_to_zero": true,
+          "non_conflict_unchanged": true
+        },
+        "guarded_family_conditional_dot": 8.712714987959293e-24,
+        "interventions": {
+          "conditional_conflict_guarded": {
+            "clip_factor": 1.0,
+            "clipped_norm": 0.0033299231931156275,
+            "displacement_from_recorded": 0.00014533959594886022,
+            "raw_norm": 0.0033299231931156275,
+            "retained_family_policy_norm": 0.001655895691476334,
+            "to_conditional": {
+              "cosine": 0.49105173301869093,
+              "dot": 2.4185826670695612e-06,
+              "left_norm": 0.0033299231931156275,
+              "right_norm": 0.0014791065889802812
+            },
+            "to_family": {
+              "cosine": 0.5749206258558494,
+              "dot": 3.182302935568319e-06,
+              "left_norm": 0.0033299231931156275,
+              "right_norm": 0.0016622617572560911
+            },
+            "to_recorded": {
+              "cosine": 0.9992460149268197,
+              "dot": 1.0850734053161711e-05,
+              "left_norm": 0.0033299231931156275,
+              "right_norm": 0.0032610126084430618
+            }
+          },
+          "family_policy_ablated": {
+            "clip_factor": 1.0,
+            "clipped_norm": 0.0026439486971471756,
+            "displacement_from_recorded": 0.0016622616740834318,
+            "raw_norm": 0.0026439486971471756,
+            "retained_family_policy_norm": 0.0,
+            "to_conditional": {
+              "cosine": 0.6184554778097271,
+              "dot": 2.4185826670695612e-06,
+              "left_norm": 0.0026439486971471756,
+              "right_norm": 0.0014791065889802812
+            },
+            "to_family": {
+              "cosine": 0.10018633126834324,
+              "dot": 4.403123945184331e-07,
+              "left_norm": 0.0026439486971471756,
+              "right_norm": 0.0016622617572560911
+            },
+            "to_recorded": {
+              "cosine": 0.861844130843458,
+              "dot": 7.430777036222108e-06,
+              "left_norm": 0.0026439486971471756,
+              "right_norm": 0.0032610126084430618
+            }
+          },
+          "recorded": {
+            "clip_factor": 1.0,
+            "clipped_norm": 0.0032610126084430618,
+            "displacement_from_recorded": 0.0,
+            "raw_norm": 0.0032610126084430618,
+            "retained_family_policy_norm": 0.0016622617572560911,
+            "to_conditional": {
+              "cosine": 0.4568596131751197,
+              "dot": 2.203609913065987e-06,
+              "left_norm": 0.0032610126084430618,
+              "right_norm": 0.0014791065889802812
+            },
+            "to_family": {
+              "cosine": 0.5909664958431977,
+              "dot": 3.203426405899409e-06,
+              "left_norm": 0.0032610126084430618,
+              "right_norm": 0.0016622617572560911
+            },
+            "to_recorded": {
+              "cosine": 1.0,
+              "dot": 1.0634203232424621e-05,
+              "left_norm": 0.0032610126084430618,
+              "right_norm": 0.0032610126084430618
+            }
+          }
+        },
+        "projection_applied": true,
+        "projection_multiplier": -0.09826177026900589,
+        "recorded_reconstruction": {
+          "clip_factor": 1.0,
+          "clipped_full_norm": 0.0032610126084430618,
+          "component_norms": {
+            "card_reward_conditional_policy": 0.0014791065889802812,
+            "card_reward_family_policy": 0.0016622617572560911,
+            "conditional_entropy_regularizer": 0.000736488284426183,
+            "family_entropy_regularizer": 1.5548114988123408e-05,
+            "other_policy": 0.001933256872516185
+          },
+          "family_conditional": {
+            "cosine": -0.08743486470486249,
+            "dot": -2.1497280710893846e-07,
+            "left_norm": 0.0016622617572560911,
+            "right_norm": 0.0014791065889802812
+          },
+          "full_norm": 0.0032610126084430618,
+          "installed_matches_consumed": true,
+          "pairwise": {
+            "card_reward_conditional_policy__conditional_entropy_regularizer": {
+              "cosine": -0.03530859235456785,
+              "dot": -3.8463227035002076e-08,
+              "left_norm": 0.0014791065889802812,
+              "right_norm": 0.000736488284426183
+            },
+            "card_reward_conditional_policy__family_entropy_regularizer": {
+              "cosine": 0.04486440501941868,
+              "dot": 1.031761048564721e-09,
+              "left_norm": 0.0014791065889802812,
+              "right_norm": 1.5548114988123408e-05
+            },
+            "card_reward_conditional_policy__other_policy": {
+              "cosine": 0.09381307578792317,
+              "dot": 2.6825783149111586e-07,
+              "left_norm": 0.0014791065889802812,
+              "right_norm": 0.001933256872516185
+            },
+            "card_reward_family_policy__card_reward_conditional_policy": {
+              "cosine": -0.08743486470486249,
+              "dot": -2.1497280710893846e-07,
+              "left_norm": 0.0016622617572560911,
+              "right_norm": 0.0014791065889802812
+            },
+            "card_reward_family_policy__conditional_entropy_regularizer": {
+              "cosine": 0.2936392230946776,
+              "dot": 3.5948379891416677e-07,
+              "left_norm": 0.0016622617572560911,
+              "right_norm": 0.000736488284426183
+            },
+            "card_reward_family_policy__family_entropy_regularizer": {
+              "cosine": -0.29317219153065355,
+              "dot": -7.577046120528962e-09,
+              "left_norm": 0.0016622617572560911,
+              "right_norm": 1.5548114988123408e-05
+            },
+            "card_reward_family_policy__other_policy": {
+              "cosine": 0.09440516384711697,
+              "dot": 3.033784488337337e-07,
+              "left_norm": 0.0016622617572560911,
+              "right_norm": 0.001933256872516185
+            },
+            "family_entropy_regularizer__conditional_entropy_regularizer": {
+              "cosine": -0.9957561578605894,
+              "dot": -1.1402408278085485e-08,
+              "left_norm": 1.5548114988123408e-05,
+              "right_norm": 0.000736488284426183
+            },
+            "other_policy__conditional_entropy_regularizer": {
+              "cosine": 0.0297233199041242,
+              "dot": 4.232068818070088e-08,
+              "left_norm": 0.001933256872516185,
+              "right_norm": 0.000736488284426183
+            },
+            "other_policy__family_entropy_regularizer": {
+              "cosine": -0.015299355194572215,
+              "dot": -4.598756704945093e-10,
+              "left_norm": 0.001933256872516185,
+              "right_norm": 1.5548114988123408e-05
+            }
+          },
+          "reconstruction_max_abs": 1.6393641999457031e-10,
+          "to_full": {
+            "card_reward_conditional_policy": {
+              "cosine": 0.4568596131751197,
+              "dot": 2.203609913065987e-06,
+              "left_norm": 0.0014791065889802812,
+              "right_norm": 0.0032610126084430618
+            },
+            "card_reward_family_policy": {
+              "cosine": 0.5909664958431977,
+              "dot": 3.203426405899409e-06,
+              "left_norm": 0.0016622617572560911,
+              "right_norm": 0.0032610126084430618
+            },
+            "conditional_entropy_regularizer": {
+              "cosine": 0.3723840164992196,
+              "dot": 8.943537918096162e-07,
+              "left_norm": 0.000736488284426183,
+              "right_norm": 0.0032610126084430618
+            },
+            "family_entropy_regularizer": {
+              "cosine": -0.3582819099637079,
+              "dot": -1.8165824014785763e-08,
+              "left_norm": 1.5548114988123408e-05,
+              "right_norm": 0.0032610126084430618
+            },
+            "other_policy": {
+              "cosine": 0.6901523354936719,
+              "dot": 4.35097915536129e-06,
+              "left_norm": 0.001933256872516185,
+              "right_norm": 0.0032610126084430618
+            }
+          },
+          "uniform_clip_max_abs": 0.0
+        }
+      },
+      {
+        "chunk_index": 2,
+        "conditional_supported": true,
+        "family_conditional_dot": 1.2406083607865305e-07,
+        "guard_invariants": {
+          "conflict_projected_to_zero": true,
+          "non_conflict_unchanged": true
+        },
+        "guarded_family_conditional_dot": 1.2406083607865305e-07,
+        "interventions": {
+          "conditional_conflict_guarded": {
+            "clip_factor": 1.0,
+            "clipped_norm": 0.004670060011373062,
+            "displacement_from_recorded": 1.453938249101204e-09,
+            "raw_norm": 0.004670060011373062,
+            "retained_family_policy_norm": 0.002512601847653568,
+            "to_conditional": {
+              "cosine": 0.5522253501842603,
+              "dot": 5.653921363663663e-06,
+              "left_norm": 0.004670060011373062,
+              "right_norm": 0.0021923554241871724
+            },
+            "to_family": {
+              "cosine": 0.5303236529243693,
+              "dot": 6.222818492883316e-06,
+              "left_norm": 0.004670060011373062,
+              "right_norm": 0.002512601847653568
+            },
+            "to_recorded": {
+              "cosine": 0.9999999999999517,
+              "dot": 2.1809460852216226e-05,
+              "left_norm": 0.004670060011373062,
+              "right_norm": 0.004670060084689361
+            }
+          },
+          "family_policy_ablated": {
+            "clip_factor": 1.0,
+            "clipped_norm": 0.003959418084629515,
+            "displacement_from_recorded": 0.0025126019433231186,
+            "raw_norm": 0.003959418084629515,
+            "retained_family_policy_norm": 0.0,
+            "to_conditional": {
+              "cosine": 0.6370475534552925,
+              "dot": 5.52986052758501e-06,
+              "left_norm": 0.003959418084629515,
+              "right_norm": 0.0021923554241871724
+            },
+            "to_family": {
+              "cosine": -0.009081779766015367,
+              "dot": -9.034955194880836e-08,
+              "left_norm": 0.003959418084629515,
+              "right_norm": 0.002512601847653568
+            },
+            "to_recorded": {
+              "cosine": 0.8429440183606739,
+              "dot": 1.558664211895447e-05,
+              "left_norm": 0.003959418084629515,
+              "right_norm": 0.004670060084689361
+            }
+          },
+          "recorded": {
+            "clip_factor": 1.0,
+            "clipped_norm": 0.004670060084689361,
+            "displacement_from_recorded": 0.0,
+            "raw_norm": 0.004670060084689361,
+            "retained_family_policy_norm": 0.002512601847653568,
+            "to_conditional": {
+              "cosine": 0.5522253444525262,
+              "dot": 5.65392139374185e-06,
+              "left_norm": 0.004670060084689361,
+              "right_norm": 0.0021923554241871724
+            },
+            "to_family": {
+              "cosine": 0.5303236650843338,
+              "dot": 6.2228187332617535e-06,
+              "left_norm": 0.004670060084689361,
+              "right_norm": 0.002512601847653568
+            },
+            "to_recorded": {
+              "cosine": 0.9999999999999999,
+              "dot": 2.1809461194608796e-05,
+              "left_norm": 0.004670060084689361,
+              "right_norm": 0.004670060084689361
+            }
+          }
+        },
+        "projection_applied": false,
+        "projection_multiplier": null,
+        "recorded_reconstruction": {
+          "clip_factor": 1.0,
+          "clipped_full_norm": 0.004670060084689361,
+          "component_norms": {
+            "card_reward_conditional_policy": 0.0021923554241871724,
+            "card_reward_family_policy": 0.002512601847653568,
+            "conditional_entropy_regularizer": 0.0007621785258397242,
+            "family_entropy_regularizer": 2.69713601898117e-05,
+            "other_policy": 0.0030065581236092876
+          },
+          "family_conditional": {
+            "cosine": 0.02252164277240034,
+            "dot": 1.2406083607865305e-07,
+            "left_norm": 0.002512601847653568,
+            "right_norm": 0.0021923554241871724
+          },
+          "full_norm": 0.004670060084689361,
+          "installed_matches_consumed": true,
+          "pairwise": {
+            "card_reward_conditional_policy__conditional_entropy_regularizer": {
+              "cosine": -0.14931836771317195,
+              "dot": -2.495059492691755e-07,
+              "left_norm": 0.0021923554241871724,
+              "right_norm": 0.0007621785258397242
+            },
+            "card_reward_conditional_policy__family_entropy_regularizer": {
+              "cosine": 0.1441907095710335,
+              "dot": 8.526113135609187e-09,
+              "left_norm": 0.0021923554241871724,
+              "right_norm": 2.69713601898117e-05
+            },
+            "card_reward_conditional_policy__other_policy": {
+              "cosine": 0.14631362357470998,
+              "dot": 9.644180577556603e-07,
+              "left_norm": 0.0021923554241871724,
+              "right_norm": 0.0030065581236092876
+            },
+            "card_reward_family_policy__card_reward_conditional_policy": {
+              "cosine": 0.02252164277240034,
+              "dot": 1.2406083607865305e-07,
+              "left_norm": 0.002512601847653568,
+              "right_norm": 0.0021923554241871724
+            },
+            "card_reward_family_policy__conditional_entropy_regularizer": {
+              "cosine": -0.15041121100182217,
+              "dot": -2.880451659511031e-07,
+              "left_norm": 0.002512601847653568,
+              "right_norm": 0.0007621785258397242
+            },
+            "card_reward_family_policy__family_entropy_regularizer": {
+              "cosine": 0.15031495556422653,
+              "dot": 1.0186587416836953e-08,
+              "left_norm": 0.002512601847653568,
+              "right_norm": 2.69713601898117e-05
+            },
+            "card_reward_family_policy__other_policy": {
+              "cosine": 0.008398968682675112,
+              "dot": 6.344819050680473e-08,
+              "left_norm": 0.002512601847653568,
+              "right_norm": 0.0030065581236092876
+            },
+            "family_entropy_regularizer__conditional_entropy_regularizer": {
+              "cosine": -0.9981412486981408,
+              "dot": -2.0518781214558216e-08,
+              "left_norm": 2.69713601898117e-05,
+              "right_norm": 0.0007621785258397242
+            },
+            "other_policy__conditional_entropy_regularizer": {
+              "cosine": -0.035239645576518513,
+              "dot": -8.075284734340817e-08,
+              "left_norm": 0.0030065581236092876,
+              "right_norm": 0.0007621785258397242
+            },
+            "other_policy__family_entropy_regularizer": {
+              "cosine": 0.032067486337316514,
+              "dot": 2.600383318691542e-09,
+              "left_norm": 0.0030065581236092876,
+              "right_norm": 2.69713601898117e-05
+            }
+          },
+          "reconstruction_max_abs": 3.164119244392083e-10,
+          "to_full": {
+            "card_reward_conditional_policy": {
+              "cosine": 0.5522253444525262,
+              "dot": 5.65392139374185e-06,
+              "left_norm": 0.0021923554241871724,
+              "right_norm": 0.004670060084689361
+            },
+            "card_reward_family_policy": {
+              "cosine": 0.5303236650843338,
+              "dot": 6.2228187332617535e-06,
+              "left_norm": 0.002512601847653568,
+              "right_norm": 0.004670060084689361
+            },
+            "conditional_entropy_regularizer": {
+              "cosine": -0.01626855076898531,
+              "dot": -5.790659702170555e-08,
+              "left_norm": 0.0007621785258397242,
+              "right_norm": 0.004670060084689361
+            },
+            "family_entropy_regularizer": {
+              "cosine": 0.012081464104382015,
+              "dot": 1.5217555171121082e-09,
+              "left_norm": 2.69713601898117e-05,
+              "right_norm": 0.004670060084689361
+            },
+            "other_policy": {
+              "cosine": 0.7114338588932073,
+              "dot": 9.989105566717215e-06,
+              "left_norm": 0.0030065581236092876,
+              "right_norm": 0.004670060084689361
+            }
+          },
+          "uniform_clip_max_abs": 0.0
+        }
+      },
+      {
+        "chunk_index": 3,
+        "conditional_supported": true,
+        "family_conditional_dot": 3.00988482144583e-07,
+        "guard_invariants": {
+          "conflict_projected_to_zero": true,
+          "non_conflict_unchanged": true
+        },
+        "guarded_family_conditional_dot": 3.00988482144583e-07,
+        "interventions": {
+          "conditional_conflict_guarded": {
+            "clip_factor": 1.0,
+            "clipped_norm": 0.0035642273141070586,
+            "displacement_from_recorded": 1.158896281655748e-09,
+            "raw_norm": 0.0035642273141070586,
+            "retained_family_policy_norm": 0.0020467194966806105,
+            "to_conditional": {
+              "cosine": 0.4739841064886907,
+              "dot": 2.55537676239683e-06,
+              "left_norm": 0.0035642273141070586,
+              "right_norm": 0.0015126058226752955
+            },
+            "to_family": {
+              "cosine": 0.752538236900074,
+              "dot": 5.4897465217984e-06,
+              "left_norm": 0.0035642273141070586,
+              "right_norm": 0.0020467194966806105
+            },
+            "to_recorded": {
+              "cosine": 0.9999999999999483,
+              "dot": 1.2703715794466993e-05,
+              "left_norm": 0.0035642273141070586,
+              "right_norm": 0.003564227159190125
+            }
+          },
+          "family_policy_ablated": {
+            "clip_factor": 1.0,
+            "clipped_norm": 0.0024317244912042462,
+            "displacement_from_recorded": 0.002046719366287322,
+            "raw_norm": 0.0024317244912042462,
+            "retained_family_policy_norm": 0.0,
+            "to_conditional": {
+              "cosine": 0.6128985323073074,
+              "dot": 2.2543882802522475e-06,
+              "left_norm": 0.0024317244912042462,
+              "right_norm": 0.0015126058226752955
+            },
+            "to_family": {
+              "cosine": 0.26133628397758507,
+              "dot": 1.3006858237058686e-06,
+              "left_norm": 0.0024317244912042462,
+              "right_norm": 0.0020467194966806105
+            },
+            "to_recorded": {
+              "cosine": 0.8323281062055291,
+              "dot": 7.213969539547741e-06,
+              "left_norm": 0.0024317244912042462,
+              "right_norm": 0.003564227159190125
+            }
+          },
+          "recorded": {
+            "clip_factor": 1.0,
+            "clipped_norm": 0.003564227159190125,
+            "displacement_from_recorded": 0.0,
+            "raw_norm": 0.003564227159190125,
+            "retained_family_policy_norm": 0.0020467194966806105,
+            "to_conditional": {
+              "cosine": 0.47398410858372986,
+              "dot": 2.5553766626238846e-06,
+              "left_norm": 0.003564227159190125,
+              "right_norm": 0.0015126058226752955
+            },
+            "to_family": {
+              "cosine": 0.7525382330247047,
+              "dot": 5.489746254919251e-06,
+              "left_norm": 0.003564227159190125,
+              "right_norm": 0.0020467194966806105
+            },
+            "to_recorded": {
+              "cosine": 1.0,
+              "dot": 1.270371524230851e-05,
+              "left_norm": 0.003564227159190125,
+              "right_norm": 0.003564227159190125
+            }
+          }
+        },
+        "projection_applied": false,
+        "projection_multiplier": null,
+        "recorded_reconstruction": {
+          "clip_factor": 1.0,
+          "clipped_full_norm": 0.003564227159190125,
+          "component_norms": {
+            "card_reward_conditional_policy": 0.0015126058226752955,
+            "card_reward_family_policy": 0.0020467194966806105,
+            "conditional_entropy_regularizer": 0.0007614965125482152,
+            "family_entropy_regularizer": 3.3939972283315526e-05,
+            "other_policy": 0.0018543141876378659
+          },
+          "family_conditional": {
+            "cosine": 0.09722227568922984,
+            "dot": 3.00988482144583e-07,
+            "left_norm": 0.0020467194966806105,
+            "right_norm": 0.0015126058226752955
+          },
+          "full_norm": 0.003564227159190125,
+          "installed_matches_consumed": true,
+          "pairwise": {
+            "card_reward_conditional_policy__conditional_entropy_regularizer": {
+              "cosine": 0.04122337399888702,
+              "dot": 4.748289842543635e-08,
+              "left_norm": 0.0015126058226752955,
+              "right_norm": 0.0007614965125482152
+            },
+            "card_reward_conditional_policy__family_entropy_regularizer": {
+              "cosine": -0.03632269725631476,
+              "dot": -1.864727356206041e-09,
+              "left_norm": 0.0015126058226752955,
+              "right_norm": 3.3939972283315526e-05
+            },
+            "card_reward_conditional_policy__other_policy": {
+              "cosine": -0.028239073824200354,
+              "dot": -7.920626560819026e-08,
+              "left_norm": 0.0015126058226752955,
+              "right_norm": 0.0018543141876378659
+            },
+            "card_reward_family_policy__card_reward_conditional_policy": {
+              "cosine": 0.09722227568922984,
+              "dot": 3.00988482144583e-07,
+              "left_norm": 0.0020467194966806105,
+              "right_norm": 0.0015126058226752955
+            },
+            "card_reward_family_policy__conditional_entropy_regularizer": {
+              "cosine": 0.4752364177155384,
+              "dot": 7.406891089730967e-07,
+              "left_norm": 0.0020467194966806105,
+              "right_norm": 0.0007614965125482152
+            },
+            "card_reward_family_policy__family_entropy_regularizer": {
+              "cosine": -0.4747817107785766,
+              "dot": -3.298099782741199e-08,
+              "left_norm": 0.0020467194966806105,
+              "right_norm": 3.3939972283315526e-05
+            },
+            "card_reward_family_policy__other_policy": {
+              "cosine": 0.07693521746022,
+              "dot": 2.919892304156009e-07,
+              "left_norm": 0.0020467194966806105,
+              "right_norm": 0.0018543141876378659
+            },
+            "family_entropy_regularizer__conditional_entropy_regularizer": {
+              "cosine": -0.9977821859366438,
+              "dot": -2.578785074705719e-08,
+              "left_norm": 3.3939972283315526e-05,
+              "right_norm": 0.0007614965125482152
+            },
+            "other_policy__conditional_entropy_regularizer": {
+              "cosine": -0.10192743580533943,
+              "dot": -1.4392702173372594e-07,
+              "left_norm": 0.0018543141876378659,
+              "right_norm": 0.0007614965125482152
+            },
+            "other_policy__family_entropy_regularizer": {
+              "cosine": 0.0985423072406165,
+              "dot": 6.201796777031429e-09,
+              "left_norm": 0.0018543141876378659,
+              "right_norm": 3.3939972283315526e-05
+            }
+          },
+          "reconstruction_max_abs": 2.283968569827266e-10,
+          "to_full": {
+            "card_reward_conditional_policy": {
+              "cosine": 0.47398410858372986,
+              "dot": 2.5553766626238846e-06,
+              "left_norm": 0.0015126058226752955,
+              "right_norm": 0.003564227159190125
+            },
+            "card_reward_family_policy": {
+              "cosine": 0.7525382330247047,
+              "dot": 5.489746254919251e-06,
+              "left_norm": 0.0020467194966806105,
+              "right_norm": 0.003564227159190125
+            },
+            "conditional_entropy_regularizer": {
+              "cosine": 0.4415140784422118,
+              "dot": 1.1983339135101427e-06,
+              "left_norm": 0.0007614965125482152,
+              "right_norm": 0.003564227159190125
+            },
+            "family_entropy_regularizer": {
+              "cosine": -0.44043937507996206,
+              "dot": -5.3279850340319074e-08,
+              "left_norm": 3.3939972283315526e-05,
+              "right_norm": 0.003564227159190125
+            },
+            "other_policy": {
+              "cosine": 0.5316135711295392,
+              "dot": 3.513538813754033e-06,
+              "left_norm": 0.0018543141876378659,
+              "right_norm": 0.003564227159190125
+            }
+          },
+          "uniform_clip_max_abs": 0.0
+        }
+      },
+      {
+        "chunk_index": 4,
+        "conditional_supported": true,
+        "family_conditional_dot": -5.4458492716634225e-08,
+        "guard_invariants": {
+          "conflict_projected_to_zero": true,
+          "non_conflict_unchanged": true
+        },
+        "guarded_family_conditional_dot": 4.9793938915715034e-24,
+        "interventions": {
+          "conditional_conflict_guarded": {
+            "clip_factor": 1.0,
+            "clipped_norm": 0.003370139897941926,
+            "displacement_from_recorded": 3.210024837962603e-05,
+            "raw_norm": 0.003370139897941926,
+            "retained_family_policy_norm": 0.0016531545044446722,
+            "to_conditional": {
+              "cosine": 0.5321536767814876,
+              "dot": 3.0425812520171737e-06,
+              "left_norm": 0.003370139897941926,
+              "right_norm": 0.0016965129866464998
+            },
+            "to_family": {
+              "cosine": 0.5605556733987017,
+              "dot": 3.123647258206554e-06,
+              "left_norm": 0.003370139897941926,
+              "right_norm": 0.0016534661295837753
+            },
+            "to_recorded": {
+              "cosine": 0.9999671535194258,
+              "dot": 1.1300273297774145e-05,
+              "left_norm": 0.003370139897941926,
+              "right_norm": 0.003353167769407655
+            }
+          },
+          "family_policy_ablated": {
+            "clip_factor": 1.0,
+            "clipped_norm": 0.0027799872255838344,
+            "displacement_from_recorded": 0.0016534661230250968,
+            "raw_norm": 0.0027799872255838344,
+            "retained_family_policy_norm": 0.0,
+            "to_conditional": {
+              "cosine": 0.6451225104392839,
+              "dot": 3.0425812520171737e-06,
+              "left_norm": 0.0027799872255838344,
+              "right_norm": 0.0016965129866464998
+            },
+            "to_family": {
+              "cosine": 0.085003304953016,
+              "dot": 3.907274426408437e-07,
+              "left_norm": 0.0027799872255838344,
+              "right_norm": 0.0016534661295837753
+            },
+            "to_recorded": {
+              "cosine": 0.8709785832042939,
+              "dot": 8.119056422105985e-06,
+              "left_norm": 0.0027799872255838344,
+              "right_norm": 0.003353167769407655
+            }
+          },
+          "recorded": {
+            "clip_factor": 1.0,
+            "clipped_norm": 0.003353167769407655,
+            "displacement_from_recorded": 0.0,
+            "raw_norm": 0.003353167769407655,
+            "retained_family_policy_norm": 0.0016534661295837753,
+            "to_conditional": {
+              "cosine": 0.5252740723744154,
+              "dot": 2.9881227637890158e-06,
+              "left_norm": 0.003353167769407655,
+              "right_norm": 0.0016965129866464998
+            },
+            "to_family": {
+              "cosine": 0.5635787872494267,
+              "dot": 3.124677673476616e-06,
+              "left_norm": 0.003353167769407655,
+              "right_norm": 0.0016534661295837753
+            },
+            "to_recorded": {
+              "cosine": 1.0,
+              "dot": 1.1243734089794308e-05,
+              "left_norm": 0.003353167769407655,
+              "right_norm": 0.003353167769407655
+            }
+          }
+        },
+        "projection_applied": true,
+        "projection_multiplier": -0.018921311693315807,
+        "recorded_reconstruction": {
+          "clip_factor": 1.0,
+          "clipped_full_norm": 0.003353167769407655,
+          "component_norms": {
+            "card_reward_conditional_policy": 0.0016965129866464998,
+            "card_reward_family_policy": 0.0016534661295837753,
+            "conditional_entropy_regularizer": 0.000792161726911196,
+            "family_entropy_regularizer": 4.363681497458324e-05,
+            "other_policy": 0.001974695097082272
+          },
+          "family_conditional": {
+            "cosine": -0.019413915070747224,
+            "dot": -5.4458492716634225e-08,
+            "left_norm": 0.0016534661295837753,
+            "right_norm": 0.0016965129866464998
+          },
+          "full_norm": 0.003353167769407655,
+          "installed_matches_consumed": true,
+          "pairwise": {
+            "card_reward_conditional_policy__conditional_entropy_regularizer": {
+              "cosine": -0.030537613786237316,
+              "dot": -4.103988568890009e-08,
+              "left_norm": 0.0016965129866464998,
+              "right_norm": 0.000792161726911196
+            },
+            "card_reward_conditional_policy__family_entropy_regularizer": {
+              "cosine": 0.02972802310586989,
+              "dot": 2.2007781344077825e-09,
+              "left_norm": 0.0016965129866464998,
+              "right_norm": 4.363681497458324e-05
+            },
+            "card_reward_conditional_policy__other_policy": {
+              "cosine": 0.06067409805044634,
+              "dot": 2.0326404571143924e-07,
+              "left_norm": 0.0016965129866464998,
+              "right_norm": 0.001974695097082272
+            },
+            "card_reward_family_policy__card_reward_conditional_policy": {
+              "cosine": -0.019413915070747224,
+              "dot": -5.4458492716634225e-08,
+              "left_norm": 0.0016534661295837753,
+              "right_norm": 0.0016965129866464998
+            },
+            "card_reward_family_policy__conditional_entropy_regularizer": {
+              "cosine": 0.1849810125946236,
+              "dot": 2.4229045820853623e-07,
+              "left_norm": 0.0016534661295837753,
+              "right_norm": 0.000792161726911196
+            },
+            "card_reward_family_policy__family_entropy_regularizer": {
+              "cosine": -0.1882686009329677,
+              "dot": -1.3583955259240654e-08,
+              "left_norm": 0.0016534661295837753,
+              "right_norm": 4.363681497458324e-05
+            },
+            "card_reward_family_policy__other_policy": {
+              "cosine": 0.06630118485436666,
+              "dot": 2.1647943240818229e-07,
+              "left_norm": 0.0016534661295837753,
+              "right_norm": 0.001974695097082272
+            },
+            "family_entropy_regularizer__conditional_entropy_regularizer": {
+              "cosine": -0.9980512710801123,
+              "dot": -3.4500052186444586e-08,
+              "left_norm": 4.363681497458324e-05,
+              "right_norm": 0.000792161726911196
+            },
+            "other_policy__conditional_entropy_regularizer": {
+              "cosine": 0.020561086163109137,
+              "dot": 3.216325223728661e-08,
+              "left_norm": 0.001974695097082272,
+              "right_norm": 0.000792161726911196
+            },
+            "other_policy__family_entropy_regularizer": {
+              "cosine": -0.016529738862168568,
+              "dot": -1.4243577556588602e-09,
+              "left_norm": 0.001974695097082272,
+              "right_norm": 4.363681497458324e-05
+            }
+          },
+          "reconstruction_max_abs": 1.3005774235352874e-10,
+          "to_full": {
+            "card_reward_conditional_policy": {
+              "cosine": 0.5252740723744154,
+              "dot": 2.9881227637890158e-06,
+              "left_norm": 0.0016965129866464998,
+              "right_norm": 0.003353167769407655
+            },
+            "card_reward_family_policy": {
+              "cosine": 0.5635787872494267,
+              "dot": 3.124677673476616e-06,
+              "left_norm": 0.0016534661295837753,
+              "right_norm": 0.003353167769407655
+            },
+            "conditional_entropy_regularizer": {
+              "cosine": 0.3111279551453385,
+              "dot": 8.264339951349056e-07,
+              "left_norm": 0.000792161726911196,
+              "right_norm": 0.003353167769407655
+            },
+            "family_entropy_regularizer": {
+              "cosine": -0.31029887948999585,
+              "dot": -4.540341658872332e-08,
+              "left_norm": 4.363681497458324e-05,
+              "right_norm": 0.003353167769407655
+            },
+            "other_policy": {
+              "cosine": 0.6569377967275886,
+              "dot": 4.349903079770787e-06,
+              "left_norm": 0.001974695097082272,
+              "right_norm": 0.003353167769407655
+            }
+          },
+          "uniform_clip_max_abs": 0.0
+        }
+      },
+      {
+        "chunk_index": 5,
+        "conditional_supported": true,
+        "family_conditional_dot": 5.240457970358564e-07,
+        "guard_invariants": {
+          "conflict_projected_to_zero": true,
+          "non_conflict_unchanged": true
+        },
+        "guarded_family_conditional_dot": 5.240457970358564e-07,
+        "interventions": {
+          "conditional_conflict_guarded": {
+            "clip_factor": 1.0,
+            "clipped_norm": 0.0035435973855269674,
+            "displacement_from_recorded": 1.08749594672389e-09,
+            "raw_norm": 0.0035435973855269674,
+            "retained_family_policy_norm": 0.0017101434019653617,
+            "to_conditional": {
+              "cosine": 0.5103948952985703,
+              "dot": 2.3822609977703916e-06,
+              "left_norm": 0.0035435973855269674,
+              "right_norm": 0.0013171603408704507
+            },
+            "to_family": {
+              "cosine": 0.7243676142021004,
+              "dot": 4.389710978177305e-06,
+              "left_norm": 0.0035435973855269674,
+              "right_norm": 0.0017101434019653617
+            },
+            "to_recorded": {
+              "cosine": 0.9999999999999529,
+              "dot": 1.2557082338551498e-05,
+              "left_norm": 0.0035435973855269674,
+              "right_norm": 0.0035435973595190832
+            }
+          },
+          "family_policy_ablated": {
+            "clip_factor": 1.0,
+            "clipped_norm": 0.0025888705895901034,
+            "displacement_from_recorded": 0.0017101433360534942,
+            "raw_norm": 0.0025888705895901034,
+            "retained_family_policy_norm": 0.0,
+            "to_conditional": {
+              "cosine": 0.5449379087705816,
+              "dot": 1.8582152007345353e-06,
+              "left_norm": 0.0025888705895901034,
+              "right_norm": 0.0013171603408704507
+            },
+            "to_family": {
+              "cosine": 0.3309256883393515,
+              "dot": 1.4651205228916433e-06,
+              "left_norm": 0.0025888705895901034,
+              "right_norm": 0.0017101434019653617
+            },
+            "to_recorded": {
+              "cosine": 0.8902820100343671,
+              "dot": 8.167371473093527e-06,
+              "left_norm": 0.0025888705895901034,
+              "right_norm": 0.0035435973595190832
+            }
+          },
+          "recorded": {
+            "clip_factor": 1.0,
+            "clipped_norm": 0.0035435973595190832,
+            "displacement_from_recorded": 0.0,
+            "raw_norm": 0.0035435973595190832,
+            "retained_family_policy_norm": 0.0017101434019653617,
+            "to_conditional": {
+              "cosine": 0.510394903344531,
+              "dot": 2.3822610178404295e-06,
+              "left_norm": 0.0035435973595190832,
+              "right_norm": 0.0013171603408704507
+            },
+            "to_family": {
+              "cosine": 0.724367600918158,
+              "dot": 4.38971086545797e-06,
+              "left_norm": 0.0035435973595190832,
+              "right_norm": 0.0017101434019653617
+            },
+            "to_recorded": {
+              "cosine": 1.0,
+              "dot": 1.2557082246390618e-05,
+              "left_norm": 0.0035435973595190832,
+              "right_norm": 0.0035435973595190832
+            }
+          }
+        },
+        "projection_applied": false,
+        "projection_multiplier": null,
+        "recorded_reconstruction": {
+          "clip_factor": 1.0,
+          "clipped_full_norm": 0.0035435973595190832,
+          "component_norms": {
+            "card_reward_conditional_policy": 0.0013171603408704507,
+            "card_reward_family_policy": 0.0017101434019653617,
+            "conditional_entropy_regularizer": 0.0007655330510506849,
+            "family_entropy_regularizer": 5.086651437236292e-05,
+            "other_policy": 0.0019322365975771663
+          },
+          "family_conditional": {
+            "cosine": 0.2326473270839126,
+            "dot": 5.240457970358564e-07,
+            "left_norm": 0.0017101434019653617,
+            "right_norm": 0.0013171603408704507
+          },
+          "full_norm": 0.0035435973595190832,
+          "installed_matches_consumed": true,
+          "pairwise": {
+            "card_reward_conditional_policy__conditional_entropy_regularizer": {
+              "cosine": 0.05754247019444952,
+              "dot": 5.8021785993588146e-08,
+              "left_norm": 0.0013171603408704507,
+              "right_norm": 0.0007655330510506849
+            },
+            "card_reward_conditional_policy__family_entropy_regularizer": {
+              "cosine": -0.06872243837131595,
+              "dot": -4.604359073053664e-09,
+              "left_norm": 0.0013171603408704507,
+              "right_norm": 5.086651437236292e-05
+            },
+            "card_reward_conditional_policy__other_policy": {
+              "cosine": 0.02745957326920573,
+              "dot": 6.988641025203876e-08,
+              "left_norm": 0.0013171603408704507,
+              "right_norm": 0.0019322365975771663
+            },
+            "card_reward_family_policy__card_reward_conditional_policy": {
+              "cosine": 0.2326473270839126,
+              "dot": 5.240457970358564e-07,
+              "left_norm": 0.0017101434019653617,
+              "right_norm": 0.0013171603408704507
+            },
+            "card_reward_family_policy__conditional_entropy_regularizer": {
+              "cosine": 0.3706989724562968,
+              "dot": 4.853084542857209e-07,
+              "left_norm": 0.0017101434019653617,
+              "right_norm": 0.0007655330510506849
+            },
+            "card_reward_family_policy__family_entropy_regularizer": {
+              "cosine": -0.3741121602659213,
+              "dot": -3.254365540482076e-08,
+              "left_norm": 0.0017101434019653617,
+              "right_norm": 5.086651437236292e-05
+            },
+            "card_reward_family_policy__other_policy": {
+              "cosine": 0.1477755963045196,
+              "dot": 4.883099269748868e-07,
+              "left_norm": 0.0017101434019653617,
+              "right_norm": 0.0019322365975771663
+            },
+            "family_entropy_regularizer__conditional_entropy_regularizer": {
+              "cosine": -0.9980870652657791,
+              "dot": -3.8865508269171335e-08,
+              "left_norm": 5.086651437236292e-05,
+              "right_norm": 0.0007655330510506849
+            },
+            "other_policy__conditional_entropy_regularizer": {
+              "cosine": 0.1723999546894364,
+              "dot": 2.550124575661284e-07,
+              "left_norm": 0.0019322365975771663,
+              "right_norm": 0.0007655330510506849
+            },
+            "other_policy__family_entropy_regularizer": {
+              "cosine": -0.1715833492971042,
+              "dot": -1.686426520418039e-08,
+              "left_norm": 0.0019322365975771663,
+              "right_norm": 5.086651437236292e-05
+            }
+          },
+          "reconstruction_max_abs": 1.77351466845721e-10,
+          "to_full": {
+            "card_reward_conditional_policy": {
+              "cosine": 0.510394903344531,
+              "dot": 2.3822610178404295e-06,
+              "left_norm": 0.0013171603408704507,
+              "right_norm": 0.0035435973595190832
+            },
+            "card_reward_family_policy": {
+              "cosine": 0.724367600918158,
+              "dot": 4.38971086545797e-06,
+              "left_norm": 0.0017101434019653617,
+              "right_norm": 0.0035435973595190832
+            },
+            "conditional_entropy_regularizer": {
+              "cosine": 0.49599942348643994,
+              "dot": 1.3455179216386734e-06,
+              "left_norm": 0.0007655330510506849,
+              "right_norm": 0.0035435973595190832
+            },
+            "family_entropy_regularizer": {
+              "cosine": -0.5009162522334817,
+              "dot": -9.029037788267228e-08,
+              "left_norm": 5.086651437236292e-05,
+              "right_norm": 0.0035435973595190832
+            },
+            "other_policy": {
+              "cosine": 0.6615799021283618,
+              "dot": 4.5298829114970965e-06,
+              "left_norm": 0.0019322365975771663,
+              "right_norm": 0.0035435973595190832
+            }
+          },
+          "uniform_clip_max_abs": 0.0
+        }
+      },
+      {
+        "chunk_index": 6,
+        "conditional_supported": true,
+        "family_conditional_dot": 6.585268153230598e-08,
+        "guard_invariants": {
+          "conflict_projected_to_zero": true,
+          "non_conflict_unchanged": true
+        },
+        "guarded_family_conditional_dot": 6.585268153230598e-08,
+        "interventions": {
+          "conditional_conflict_guarded": {
+            "clip_factor": 1.0,
+            "clipped_norm": 0.0035919339737301302,
+            "displacement_from_recorded": 1.3163998740796138e-09,
+            "raw_norm": 0.0035919339737301302,
+            "retained_family_policy_norm": 0.0019277205399998048,
+            "to_conditional": {
+              "cosine": 0.4253831157326049,
+              "dot": 2.2712067175353304e-06,
+              "left_norm": 0.0035919339737301302,
+              "right_norm": 0.0014864423531058013
+            },
+            "to_family": {
+              "cosine": 0.7234520564314265,
+              "dot": 5.009359211765569e-06,
+              "left_norm": 0.0035919339737301302,
+              "right_norm": 0.0019277205399998048
+            },
+            "to_recorded": {
+              "cosine": 0.9999999999999329,
+              "dot": 1.290198980588699e-05,
+              "left_norm": 0.0035919339737301302,
+              "right_norm": 0.003591934011105854
+            }
+          },
+          "family_policy_ablated": {
+            "clip_factor": 1.0,
+            "clipped_norm": 0.0025689254034406534,
+            "displacement_from_recorded": 0.0019277205888519836,
+            "raw_norm": 0.0025689254034406534,
+            "retained_family_policy_norm": 0.0,
+            "to_conditional": {
+              "cosine": 0.5775355925455865,
+              "dot": 2.2053540360030246e-06,
+              "left_norm": 0.0025689254034406534,
+              "right_norm": 0.0014864423531058013
+            },
+            "to_family": {
+              "cosine": 0.26114868067505637,
+              "dot": 1.2932527314284302e-06,
+              "left_norm": 0.0025689254034406534,
+              "right_norm": 0.0019277205399998048
+            },
+            "to_recorded": {
+              "cosine": 0.855346196581967,
+              "dot": 7.892630499948937e-06,
+              "left_norm": 0.0025689254034406534,
+              "right_norm": 0.003591934011105854
+            }
+          },
+          "recorded": {
+            "clip_factor": 1.0,
+            "clipped_norm": 0.003591934011105854,
+            "displacement_from_recorded": 0.0,
+            "raw_norm": 0.003591934011105854,
+            "retained_family_policy_norm": 0.0019277205399998048,
+            "to_conditional": {
+              "cosine": 0.4253830983532244,
+              "dot": 2.2712066483762422e-06,
+              "left_norm": 0.003591934011105854,
+              "right_norm": 0.0014864423531058013
+            },
+            "to_family": {
+              "cosine": 0.7234520625039729,
+              "dot": 5.0093593059380525e-06,
+              "left_norm": 0.003591934011105854,
+              "right_norm": 0.0019277205399998048
+            },
+            "to_recorded": {
+              "cosine": 1.0000000000000002,
+              "dot": 1.290198994013899e-05,
+              "left_norm": 0.003591934011105854,
+              "right_norm": 0.003591934011105854
+            }
+          }
+        },
+        "projection_applied": false,
+        "projection_multiplier": null,
+        "recorded_reconstruction": {
+          "clip_factor": 1.0,
+          "clipped_full_norm": 0.003591934011105854,
+          "component_norms": {
+            "card_reward_conditional_policy": 0.0014864423531058013,
+            "card_reward_family_policy": 0.0019277205399998048,
+            "conditional_entropy_regularizer": 0.0007777737060314279,
+            "family_entropy_regularizer": 5.804603752914187e-05,
+            "other_policy": 0.002034413232295933
+          },
+          "family_conditional": {
+            "cosine": 0.022981655924886598,
+            "dot": 6.585268153230598e-08,
+            "left_norm": 0.0019277205399998048,
+            "right_norm": 0.0014864423531058013
+          },
+          "full_norm": 0.003591934011105854,
+          "installed_matches_consumed": true,
+          "pairwise": {
+            "card_reward_conditional_policy__conditional_entropy_regularizer": {
+              "cosine": 0.025249536178769814,
+              "dot": 2.9191387157831392e-08,
+              "left_norm": 0.0014864423531058013,
+              "right_norm": 0.0007777737060314279
+            },
+            "card_reward_conditional_policy__family_entropy_regularizer": {
+              "cosine": -0.02565567750353372,
+              "dot": -2.2136254397937664e-09,
+              "left_norm": 0.0014864423531058013,
+              "right_norm": 5.804603752914187e-05
+            },
+            "card_reward_conditional_policy__other_policy": {
+              "cosine": -0.010295702270273965,
+              "dot": -3.113459482172477e-08,
+              "left_norm": 0.0014864423531058013,
+              "right_norm": 0.002034413232295933
+            },
+            "card_reward_family_policy__card_reward_conditional_policy": {
+              "cosine": 0.022981655924886598,
+              "dot": 6.585268153230598e-08,
+              "left_norm": 0.0019277205399998048,
+              "right_norm": 0.0014864423531058013
+            },
+            "card_reward_family_policy__conditional_entropy_regularizer": {
+              "cosine": 0.5787860166711675,
+              "dot": 8.677914401337619e-07,
+              "left_norm": 0.0019277205399998048,
+              "right_norm": 0.0007777737060314279
+            },
+            "card_reward_family_policy__family_entropy_regularizer": {
+              "cosine": -0.5869582379927671,
+              "dot": -6.56785952577158e-08,
+              "left_norm": 0.0019277205399998048,
+              "right_norm": 5.804603752914187e-05
+            },
+            "card_reward_family_policy__other_policy": {
+              "cosine": 0.10844238740326917,
+              "dot": 4.252872050200782e-07,
+              "left_norm": 0.0019277205399998048,
+              "right_norm": 0.002034413232295933
+            },
+            "family_entropy_regularizer__conditional_entropy_regularizer": {
+              "cosine": -0.9967240758821911,
+              "dot": -4.499878462596338e-08,
+              "left_norm": 5.804603752914187e-05,
+              "right_norm": 0.0007777737060314279
+            },
+            "other_policy__conditional_entropy_regularizer": {
+              "cosine": -0.08730309540516636,
+              "dot": -1.3814083321353888e-07,
+              "left_norm": 0.002034413232295933,
+              "right_norm": 0.0007777737060314279
+            },
+            "other_policy__family_entropy_regularizer": {
+              "cosine": 0.07333955436917663,
+              "dot": 8.660640607454294e-09,
+              "left_norm": 0.002034413232295933,
+              "right_norm": 5.804603752914187e-05
+            }
+          },
+          "reconstruction_max_abs": 3.7971403799019754e-10,
+          "to_full": {
+            "card_reward_conditional_policy": {
+              "cosine": 0.4253830983532244,
+              "dot": 2.2712066483762422e-06,
+              "left_norm": 0.0014864423531058013,
+              "right_norm": 0.003591934011105854
+            },
+            "card_reward_family_policy": {
+              "cosine": 0.7234520625039729,
+              "dot": 5.0093593059380525e-06,
+              "left_norm": 0.0019277205399998048,
+              "right_norm": 0.003591934011105854
+            },
+            "conditional_entropy_regularizer": {
+              "cosine": 0.47205124978931384,
+              "dot": 1.3187751597877684e-06,
+              "left_norm": 0.0007777737060314279,
+              "right_norm": 0.003591934011105854
+            },
+            "family_entropy_regularizer": {
+              "cosine": -0.4837516311867472,
+              "dot": -1.0086102333716762e-07,
+              "left_norm": 5.804603752914187e-05,
+              "right_norm": 0.003591934011105854
+            },
+            "other_policy": {
+              "cosine": 0.6026032053565961,
+              "dot": 4.403509715122095e-06,
+              "left_norm": 0.002034413232295933,
+              "right_norm": 0.003591934011105854
+            }
+          },
+          "uniform_clip_max_abs": 0.0
+        }
+      },
+      {
+        "chunk_index": 7,
+        "conditional_supported": true,
+        "family_conditional_dot": 1.2378864304846206e-07,
+        "guard_invariants": {
+          "conflict_projected_to_zero": true,
+          "non_conflict_unchanged": true
+        },
+        "guarded_family_conditional_dot": 1.2378864304846206e-07,
+        "interventions": {
+          "conditional_conflict_guarded": {
+            "clip_factor": 1.0,
+            "clipped_norm": 0.0025298822046803215,
+            "displacement_from_recorded": 8.810285892144063e-10,
+            "raw_norm": 0.0025298822046803215,
+            "retained_family_policy_norm": 0.0014556933585396022,
+            "to_conditional": {
+              "cosine": 0.5666762850335213,
+              "dot": 1.8153200770608783e-06,
+              "left_norm": 0.0025298822046803215,
+              "right_norm": 0.0012662453763049072
+            },
+            "to_family": {
+              "cosine": 0.3872739044008727,
+              "dot": 1.426226280594273e-06,
+              "left_norm": 0.0025298822046803215,
+              "right_norm": 0.0014556933585396022
+            },
+            "to_recorded": {
+              "cosine": 0.9999999999999394,
+              "dot": 6.400303915576437e-06,
+              "left_norm": 0.0025298822046803215,
+              "right_norm": 0.0025298821833428303
+            }
+          },
+          "family_policy_ablated": {
+            "clip_factor": 1.0,
+            "clipped_norm": 0.0023805240100586936,
+            "displacement_from_recorded": 0.001455693377810581,
+            "raw_norm": 0.0023805240100586936,
+            "retained_family_policy_norm": 0.0,
+            "to_conditional": {
+              "cosine": 0.5611637827253586,
+              "dot": 1.6915314340124161e-06,
+              "left_norm": 0.0023805240100586936,
+              "right_norm": 0.0012662453763049072
+            },
+            "to_family": {
+              "cosine": -0.19992909016995447,
+              "dot": -6.928168735020336e-07,
+              "left_norm": 0.0023805240100586936,
+              "right_norm": 0.0014556933585396022
+            },
+            "to_recorded": {
+              "cosine": 0.8259232546940328,
+              "dot": 4.974077606929915e-06,
+              "left_norm": 0.0023805240100586936,
+              "right_norm": 0.0025298821833428303
+            }
+          },
+          "recorded": {
+            "clip_factor": 1.0,
+            "clipped_norm": 0.0025298821833428303,
+            "displacement_from_recorded": 0.0,
+            "raw_norm": 0.0025298821833428303,
+            "retained_family_policy_norm": 0.0014556933585396022,
+            "to_conditional": {
+              "cosine": 0.5666762878022444,
+              "dot": 1.8153200706196058e-06,
+              "left_norm": 0.0025298821833428303,
+              "right_norm": 0.0012662453763049072
+            },
+            "to_family": {
+              "cosine": 0.38727391528444916,
+              "dot": 1.4262263086465213e-06,
+              "left_norm": 0.0025298821833428303,
+              "right_norm": 0.0014556933585396022
+            },
+            "to_recorded": {
+              "cosine": 0.9999999999999999,
+              "dot": 6.400303861595485e-06,
+              "left_norm": 0.0025298821833428303,
+              "right_norm": 0.0025298821833428303
+            }
+          }
+        },
+        "projection_applied": false,
+        "projection_multiplier": null,
+        "recorded_reconstruction": {
+          "clip_factor": 1.0,
+          "clipped_full_norm": 0.0025298821833428303,
+          "component_norms": {
+            "card_reward_conditional_policy": 0.0012662453763049072,
+            "card_reward_family_policy": 0.0014556933585396022,
+            "conditional_entropy_regularizer": 0.0008411756251809287,
+            "family_entropy_regularizer": 7.306090638060383e-05,
+            "other_policy": 0.0017363040644724859
+          },
+          "family_conditional": {
+            "cosine": 0.0671572693480304,
+            "dot": 1.2378864304846206e-07,
+            "left_norm": 0.0014556933585396022,
+            "right_norm": 0.0012662453763049072
+          },
+          "full_norm": 0.0025298821833428303,
+          "installed_matches_consumed": true,
+          "pairwise": {
+            "card_reward_conditional_policy__conditional_entropy_regularizer": {
+              "cosine": 0.0661155600985013,
+              "dot": 7.042198031518907e-08,
+              "left_norm": 0.0012662453763049072,
+              "right_norm": 0.0008411756251809287
+            },
+            "card_reward_conditional_policy__family_entropy_regularizer": {
+              "cosine": -0.06307798067909025,
+              "dot": -5.835535427550035e-09,
+              "left_norm": 0.0012662453763049072,
+              "right_norm": 7.306090638060383e-05
+            },
+            "card_reward_conditional_policy__other_policy": {
+              "cosine": 0.010719446708691717,
+              "dot": 2.3567636111221368e-08,
+              "left_norm": 0.0012662453763049072,
+              "right_norm": 0.0017363040644724859
+            },
+            "card_reward_family_policy__card_reward_conditional_policy": {
+              "cosine": 0.0671572693480304,
+              "dot": 1.2378864304846206e-07,
+              "left_norm": 0.0014556933585396022,
+              "right_norm": 0.0012662453763049072
+            },
+            "card_reward_family_policy__conditional_entropy_regularizer": {
+              "cosine": -0.2987948566984937,
+              "dot": -3.6587244081659666e-07,
+              "left_norm": 0.0014556933585396022,
+              "right_norm": 0.0008411756251809287
+            },
+            "card_reward_family_policy__family_entropy_regularizer": {
+              "cosine": 0.30373886142149426,
+              "dot": 3.230392675638559e-08,
+              "left_norm": 0.0014556933585396022,
+              "right_norm": 7.306090638060383e-05
+            },
+            "card_reward_family_policy__other_policy": {
+              "cosine": -0.191110574570389,
+              "dot": -4.830370024902846e-07,
+              "left_norm": 0.0014556933585396022,
+              "right_norm": 0.0017363040644724859
+            },
+            "family_entropy_regularizer__conditional_entropy_regularizer": {
+              "cosine": -0.9965295126380307,
+              "dot": -6.124376767316362e-08,
+              "left_norm": 7.306090638060383e-05,
+              "right_norm": 0.0008411756251809287
+            },
+            "other_policy__conditional_entropy_regularizer": {
+              "cosine": 0.10479504262211824,
+              "dot": 1.5305700121486128e-07,
+              "left_norm": 0.0017363040644724859,
+              "right_norm": 0.0008411756251809287
+            },
+            "other_policy__family_entropy_regularizer": {
+              "cosine": -0.09492480493976813,
+              "dot": -1.204177618605172e-08,
+              "left_norm": 0.0017363040644724859,
+              "right_norm": 7.306090638060383e-05
+            }
+          },
+          "reconstruction_max_abs": 1.887201506178826e-10,
+          "to_full": {
+            "card_reward_conditional_policy": {
+              "cosine": 0.5666762878022444,
+              "dot": 1.8153200706196058e-06,
+              "left_norm": 0.0012662453763049072,
+              "right_norm": 0.0025298821833428303
+            },
+            "card_reward_family_policy": {
+              "cosine": 0.38727391528444916,
+              "dot": 1.4262263086465213e-06,
+              "left_norm": 0.0014556933585396022,
+              "right_norm": 0.0025298821833428303
+            },
+            "conditional_entropy_regularizer": {
+              "cosine": 0.2368051806500258,
+              "dot": 5.039392386157163e-07,
+              "left_norm": 0.0008411756251809287,
+              "right_norm": 0.0025298821833428303
+            },
+            "family_entropy_regularizer": {
+              "cosine": -0.22441177503674042,
+              "dot": -4.147925935743307e-08,
+              "left_norm": 7.306090638060383e-05,
+              "right_norm": 0.0025298821833428303
+            },
+            "other_policy": {
+              "cosine": 0.6138209963269547,
+              "dot": 2.6962975570520263e-06,
+              "left_norm": 0.0017363040644724859,
+              "right_norm": 0.0025298821833428303
+            }
+          },
+          "uniform_clip_max_abs": 0.0
+        }
+      }
+    ],
+    "execution_counts": {
+      "card_reward_rows": 3536,
+      "chunks": 8,
+      "decisions": 11729,
+      "take_candidate_multiplicity": {
+        "3": 3522,
+        "4": 14
+      },
+      "trajectories": 512
+    },
+    "synthetic_contracts": {
+      "acceptance_translation": {
+        "conditional_entropy_unchanged": true,
+        "conditional_margins_unchanged": true,
+        "conditional_order_unchanged": true,
+        "conditional_probabilities_unchanged": true,
+        "family_mass_changed": true,
+        "passed": true
+      },
+      "all_passed": true,
+      "conditional_perturbation": {
+        "conditional_distribution_changed": true,
+        "family_mass_unchanged": true
+      },
+      "derivative": {
+        "finite_difference_epsilon": 1e-06,
+        "maximum_absolute_residual": 1.8581088057079143e-11,
+        "passed": true
+      },
+      "max_pooled_control": {
+        "coupling_observed": true,
+        "tie_action_ids": [
+          "a",
+          "b"
+        ]
+      },
+      "one_family_fallback": {
+        "acceptance_inactive": true,
+        "family_mass": 1.0
+      }
+    },
+    "verdict": "bounded_conditional_conflict_guard_feasible",
+    "verdict_inputs": {
+      "conditional_support": "supported",
+      "conflicting_chunk_indices": [
+        1,
+        4
+      ],
+      "unsupported_chunk_indices": []
+    },
+    "windows": {
+      "early": {
+        "chunk_indices": [
+          0,
+          1,
+          2,
+          3
+        ],
+        "conflicting_chunk_indices": [
+          1
+        ],
+        "projected_chunks": 1,
+        "supported_chunks": 4
+      },
+      "final": {
+        "chunk_indices": [
+          4,
+          5,
+          6,
+          7
+        ],
+        "conflicting_chunk_indices": [
+          4
+        ],
+        "projected_chunks": 1,
+        "supported_chunks": 4
+      }
+    }
+  },
+  "identity": {
+    "authorization_sha256": "80dffa2fa2c1d1a9d68d638276c73730415842f085c7d881609a37114d88152f",
+    "logical_execution_id": "noncombat-cross-fitted-hierarchical-learning-successor-20260808-r2",
+    "registration_sha256": "9d792cadbece4ea21768386904633ebded2e94525fb186bdcbf4a4d7729dbdf9",
+    "request_sha256": "6257a36c6573c8c412bb8727736e81b063dd0c7076f1ea5b41a70d4a08206c2e"
+  },
+  "input_bindings": {
+    "prior_json": {
+      "path": "reports/noncombat_card_acceptance_conditional_choice_audit_20260809.json",
+      "sha256": "0a10f7e763a40d7a6de751abaa6ac3aa13e02bace06ff6453fd79942d2447f33",
+      "size_bytes": 56923,
+      "verdict": "acceptance_pressure_with_conditional_concentration_but_mixed_direct_pressure"
+    },
+    "prior_markdown": {
+      "path": "reports/noncombat_card_acceptance_conditional_choice_audit_20260809.md",
+      "sha256": "3a789e7924bdf2de55c2e27c98dfefeffb0ef58334dc7cd410f31c243af85825",
+      "size_bytes": 1877
+    },
+    "terminal_manifest": {
+      "manifest_sha256": "b563fe8f95fa705ffcf7eafe14c40672599e46ad2a611db6f473a654ec8860eb",
+      "terminal_sha256": "3de29ce568b0d418f4e1052c4b7c92040d2de316e035b455c47384daf48db1e0"
+    }
+  },
+  "limitations": [
+    "Gradient compositions are post-hoc Euclidean geometry in the retained shared-parameter coordinates, not policy-quality or causal evidence.",
+    "The family-policy ablation is a structural control and is not a selected objective or recommended successor.",
+    "The conflict guard constrains only the family-policy component relative to the conditional-policy component; other components remain unchanged.",
+    "Synthetic independent-coordinate invariants establish representational feasibility but do not show that the current shared ranker implements it.",
+    "The known r2 cohort influenced this post-hoc candidate set; no magnitude threshold, coefficient, architecture, or policy is selected.",
+    "No verdict authorizes fitting, training, replay, evaluation, OPE, model loading, gameplay, qualification, promotion, or a live-policy change."
+  ],
+  "schema_version": "noncombat-card-acceptance-objective-intervention-audit-v1",
+  "scope": {
+    "artifact_mutation": false,
+    "coefficient_search": false,
+    "environment_construction": false,
+    "evaluation": false,
+    "model_loading": false,
+    "native_loading": false,
+    "new_seed_access": false,
+    "objective_selection": false,
+    "source_only": true,
+    "training_or_replay": false
+  },
+  "source": {
+    "bindings": {
+      "analysis_scripts/audit_card_acceptance_conditional_choice.py": {
+        "sha256": "c403fef54ab310888d961f3e6209471469ef5c8144fe4ddbd21978af85540230",
+        "size_bytes": 54880
+      },
+      "analysis_scripts/audit_card_acceptance_objective_interventions.py": {
+        "sha256": "bc85a25234ce5d13a8383915ae8947f97ddb98b8ce23b07776c9cd74918c9bc2",
+        "size_bytes": 57872
+      },
+      "analysis_scripts/audit_cross_fitted_baseline_support.py": {
+        "sha256": "0c33ef4842b622a7c0764d4c82ad332eade7f45c872f54d5ddd6c4d8415fb52b",
+        "size_bytes": 54352
+      },
+      "analysis_scripts/verify_noncombat_cross_fitted_hierarchical_learning_experiment.py": {
+        "sha256": "3785f3f57887b750a75b08f55cd9f3f9e2257de3f810ee801d29a0d87263ea1a",
+        "size_bytes": 237966
+      },
+      "openspec/changes/audit-card-acceptance-objective-interventions/specs/noncombat-card-acceptance-objective-intervention-audit/spec.md": {
+        "sha256": "37065e6a8a97ff0a9d6e56827fb1005a52555743b6ba57bc933dd5200dc498b1",
+        "size_bytes": 8836
+      },
+      "openspec/specs/noncombat-card-acceptance-conditional-choice-audit/spec.md": {
+        "sha256": "bb96d7621915a32759bd2fe33b2a98db6b64314253ea1bd1d5b4cddce308cf89",
+        "size_bytes": 10314
+      }
+    },
+    "commit": "30e9a558013e5733059e9beaf64b1e42fc5c983c",
+    "origin_master": "30e9a558013e5733059e9beaf64b1e42fc5c983c"
+  },
+  "terminal_verification": {
+    "checkpoint_count": 8,
+    "completed_chunk_indices": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7
+    ],
+    "manifest_sha256": "b563fe8f95fa705ffcf7eafe14c40672599e46ad2a611db6f473a654ec8860eb",
+    "terminal_sha256": "3de29ce568b0d418f4e1052c4b7c92040d2de316e035b455c47384daf48db1e0",
+    "verdict": "experiment_completed_with_cross_fitted_mechanism_evidence"
+  },
+  "verdict": "bounded_conditional_conflict_guard_feasible"
+}
