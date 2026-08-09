@@ -7,8 +7,12 @@ import copy
 import hashlib
 import importlib
 import json
+import math
+import os
 import re
 import sys
+import time
+import uuid
 from collections.abc import Callable, Mapping, Sequence
 from pathlib import Path, PurePosixPath
 from typing import Any
@@ -282,6 +286,22 @@ _STAGE_EXCLUSIONS = (
 _SHA256_RE = re.compile(r"[0-9a-f]{64}")
 _COMMIT_RE = re.compile(r"[0-9a-f]{40}")
 _IDENTIFIER_RE = re.compile(r"[a-z0-9][a-z0-9._:-]{2,191}")
+LEASE_SCHEMA_VERSION = (
+    "noncombat-card-acceptance-empirical-successor-execution-lease-v1"
+)
+ACCESS_JOURNAL_SCHEMA_VERSION = (
+    "noncombat-card-acceptance-empirical-successor-access-journal-v1"
+)
+RESOURCE_LEDGER_SCHEMA_VERSION = (
+    "noncombat-card-acceptance-empirical-successor-resource-ledger-v1"
+)
+MARKER_SCHEMA_VERSION = (
+    "noncombat-card-acceptance-empirical-successor-marker-v1"
+)
+LEASE_FILENAME = ".execution.lease"
+ACCESS_JOURNAL_FILENAME = "access_journal.jsonl"
+RESOURCE_LEDGER_FILENAME = "resource_ledger.jsonl"
+_ACTIVE_EXECUTION_LEASES: set[str] = set()
 
 
 class SuccessorControlError(ValueError):
@@ -1076,6 +1096,591 @@ def _execution_context_for_operation(
     if operation not in _EXECUTION_CONTEXT_OPERATIONS:
         raise SuccessorControlError("execution context operation is invalid")
     return context
+
+
+def _context_identity(context: _ValidatedExecutionContext) -> dict[str, str]:
+    return {
+        "authorization_sha256": _digest(
+            context.authorization["authorization_sha256"],
+            "context authorization identity",
+        ),
+        "registration_sha256": _digest(
+            context.registration["registration_sha256"],
+            "context registration identity",
+        ),
+        "request_sha256": _digest(
+            context.request["request_sha256"],
+            "context request identity",
+        ),
+        "stage": context.stage,
+    }
+
+
+def _lock_file(handle: Any) -> None:
+    handle.seek(0)
+    if os.name == "nt":
+        import msvcrt
+
+        msvcrt.locking(handle.fileno(), msvcrt.LK_NBLCK, 1)
+        return
+    import fcntl
+
+    fcntl.flock(handle.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
+
+
+def _unlock_file(handle: Any) -> None:
+    handle.seek(0)
+    if os.name == "nt":
+        import msvcrt
+
+        msvcrt.locking(handle.fileno(), msvcrt.LK_UNLCK, 1)
+        return
+    import fcntl
+
+    fcntl.flock(handle.fileno(), fcntl.LOCK_UN)
+
+
+def _parse_canonical_mapping(payload: bytes, label: str) -> dict[str, Any]:
+    try:
+        value = json.loads(
+            payload,
+            object_pairs_hook=_reject_duplicate_pairs,
+            parse_constant=_reject_json_constant,
+        )
+    except SuccessorControlError:
+        raise
+    except (UnicodeDecodeError, json.JSONDecodeError) as exc:
+        raise SuccessorControlError(f"{label} is invalid") from exc
+    normalized = _copy_mapping(value, label)
+    if payload != canonical_json_bytes(normalized):
+        raise SuccessorControlError(f"{label} is not canonical")
+    return normalized
+
+
+def _positive_process_id(value: object, label: str) -> int:
+    if isinstance(value, bool) or not isinstance(value, int) or value <= 0:
+        raise SuccessorControlError(f"{label} must be a positive integer")
+    return value
+
+
+class ExecutionLease:
+    """Exclusive child-process ownership with explicit dead-owner recovery."""
+
+    def __init__(
+        self,
+        output_path: Path | str,
+        *,
+        context: _ValidatedExecutionContext,
+        child_process_id: int,
+        process_alive: Callable[[int], bool],
+        allow_stale_reclaim: bool = False,
+        clock: Callable[[], float] = time.monotonic,
+    ) -> None:
+        self.output_path = Path(output_path).resolve()
+        self.context = _require_execution_context(context)
+        self.child_process_id = _positive_process_id(
+            child_process_id,
+            "lease child process id",
+        )
+        if not callable(process_alive) or not callable(clock):
+            raise SuccessorControlError("lease observers must be callable")
+        if type(allow_stale_reclaim) is not bool:
+            raise SuccessorControlError("allow_stale_reclaim must be boolean")
+        self.process_alive = process_alive
+        self.allow_stale_reclaim = allow_stale_reclaim
+        self.clock = clock
+        self.path = self.output_path / LEASE_FILENAME
+        self.owner: dict[str, Any] | None = None
+        self.reclaimed_owner: dict[str, Any] | None = None
+        self.started_monotonic: float | None = None
+        self._handle: Any | None = None
+        self.held = False
+
+    def __enter__(self) -> "ExecutionLease":
+        if self.held:
+            return self
+        key = os.path.normcase(str(self.path))
+        if key in _ACTIVE_EXECUTION_LEASES:
+            raise SuccessorControlError("execution lease is already held")
+        try:
+            child_alive = self.process_alive(self.child_process_id)
+        except Exception as exc:
+            raise SuccessorControlError("execution lease child liveness failed") from exc
+        if child_alive is not True:
+            raise SuccessorControlError(
+                "execution lease child process is not alive"
+            )
+        if self.output_path.exists() and not self.path.exists():
+            raise SuccessorControlError(
+                "preexisting output root lacks an execution lease"
+            )
+        self.output_path.mkdir(parents=True, exist_ok=True)
+        handle = self.path.open("a+b", buffering=0)
+        locked = False
+        try:
+            handle.seek(0, os.SEEK_END)
+            if handle.tell() == 0:
+                handle.write(b"\0")
+                handle.flush()
+                os.fsync(handle.fileno())
+            try:
+                _lock_file(handle)
+                locked = True
+            except OSError as exc:
+                raise SuccessorControlError(
+                    "execution lease is already held"
+                ) from exc
+            handle.seek(0)
+            raw = handle.read()
+            existing: dict[str, Any] | None = None
+            if raw not in {b"", b"\0"}:
+                existing = _parse_canonical_mapping(raw, "execution lease")
+                if existing.get("schema_version") != LEASE_SCHEMA_VERSION:
+                    raise SuccessorControlError("execution lease schema mismatch")
+                if existing.get("identity") != _context_identity(self.context):
+                    raise SuccessorControlError("execution lease identity mismatch")
+                if not self.allow_stale_reclaim:
+                    raise SuccessorControlError(
+                        "preexisting execution lease requires recovery"
+                    )
+                old_owner = _copy_mapping(
+                    existing.get("owner"),
+                    "execution lease owner",
+                )
+                old_pid = _positive_process_id(
+                    old_owner.get("child_process_id"),
+                    "lease owner child process id",
+                )
+                try:
+                    old_alive = self.process_alive(old_pid)
+                except Exception as exc:
+                    raise SuccessorControlError(
+                        "execution lease owner liveness failed"
+                    ) from exc
+                if old_alive is not False:
+                    raise SuccessorControlError(
+                        "execution lease child owner is still alive"
+                    )
+                ambiguous = sorted(
+                    path.name
+                    for path in self.output_path.iterdir()
+                    if path.name.startswith(".") and path.name.endswith(".tmp")
+                )
+                if ambiguous:
+                    raise SuccessorControlError(
+                        "stale execution lease has ambiguous temporary output"
+                    )
+                self.reclaimed_owner = old_owner
+            started = float(self.clock())
+            if not math.isfinite(started) or started < 0.0:
+                raise SuccessorControlError("lease monotonic clock is invalid")
+            self.started_monotonic = started
+            self.owner = {
+                "acquired_monotonic": started,
+                "child_process_id": self.child_process_id,
+                "token": uuid.uuid4().hex,
+            }
+            payload = {
+                "identity": _context_identity(self.context),
+                "owner": self.owner,
+                "reclaimed_owner": self.reclaimed_owner,
+                "schema_version": LEASE_SCHEMA_VERSION,
+            }
+            handle.seek(0)
+            handle.truncate()
+            handle.write(canonical_json_bytes(payload))
+            handle.flush()
+            os.fsync(handle.fileno())
+            self._handle = handle
+            self.held = True
+            _ACTIVE_EXECUTION_LEASES.add(key)
+            return self
+        except BaseException:
+            if locked:
+                try:
+                    _unlock_file(handle)
+                except OSError:
+                    pass
+            handle.close()
+            raise
+
+    def __exit__(self, _exc_type: Any, _exc: Any, _traceback: Any) -> None:
+        handle = self._handle
+        key = os.path.normcase(str(self.path))
+        self._handle = None
+        self.held = False
+        _ACTIVE_EXECUTION_LEASES.discard(key)
+        if handle is None:
+            return
+        try:
+            handle.seek(0)
+            payload = _parse_canonical_mapping(handle.read(), "execution lease")
+            if (
+                payload.get("identity") != _context_identity(self.context)
+                or payload.get("owner") != self.owner
+            ):
+                raise SuccessorControlError("execution lease identity drifted")
+        finally:
+            try:
+                _unlock_file(handle)
+            finally:
+                handle.close()
+
+
+def _require_execution_lease(
+    context: _ValidatedExecutionContext, lease: ExecutionLease
+) -> tuple[_ValidatedExecutionContext, Path]:
+    normalized_context = _require_execution_context(context)
+    if (
+        not isinstance(lease, ExecutionLease)
+        or not lease.held
+        or lease.context is not normalized_context
+    ):
+        raise SuccessorControlError("matching execution lease is not held")
+    return normalized_context, lease.output_path
+
+
+def _atomic_write_once_or_identical(path: Path, payload: bytes) -> bytes:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    if path.exists():
+        try:
+            existing = path.read_bytes()
+        except OSError as exc:
+            raise SuccessorControlError(
+                f"write-once artifact cannot be read: {path.name}"
+            ) from exc
+        if existing != payload:
+            raise SuccessorControlError(
+                f"write-once artifact drifted: {path.name}"
+            )
+        return existing
+    temporary = path.with_name(f".{path.name}.tmp")
+    if temporary.exists():
+        raise SuccessorControlError(
+            f"write-once artifact has ambiguous staging: {path.name}"
+        )
+    try:
+        with temporary.open("xb") as handle:
+            handle.write(payload)
+            handle.flush()
+            os.fsync(handle.fileno())
+        os.replace(temporary, path)
+    except BaseException:
+        try:
+            temporary.unlink(missing_ok=True)
+        except OSError:
+            pass
+        raise
+    return payload
+
+
+def _append_durable(path: Path, payload: bytes) -> None:
+    if not path.is_file() or not payload or not payload.endswith(b"\n"):
+        raise SuccessorControlError(f"append target is invalid: {path.name}")
+    with path.open("ab", buffering=0) as handle:
+        handle.write(payload)
+        handle.flush()
+        os.fsync(handle.fileno())
+
+
+def _journal_header(context: _ValidatedExecutionContext) -> dict[str, Any]:
+    return {
+        "event_index": 0,
+        "identity": _context_identity(context),
+        "kind": "journal_opened",
+        "schema_version": ACCESS_JOURNAL_SCHEMA_VERSION,
+    }
+
+
+def initialize_access_journal(
+    context: _ValidatedExecutionContext, lease: ExecutionLease
+) -> dict[str, Any]:
+    context, output = _require_execution_lease(context, lease)
+    _execution_context_for_operation(context, "journal")
+    _atomic_write_once_or_identical(
+        output / ACCESS_JOURNAL_FILENAME,
+        canonical_json_bytes(_journal_header(context)),
+    )
+    return load_access_journal(context, lease)
+
+
+def _canonical_json_lines(payload: bytes, label: str) -> list[dict[str, Any]]:
+    if not payload or not payload.endswith(b"\n"):
+        raise SuccessorControlError(f"{label} is incomplete")
+    return [
+        _parse_canonical_mapping(line, f"{label} line {index}")
+        for index, line in enumerate(payload.splitlines(keepends=True), start=1)
+    ]
+
+
+def load_access_journal(
+    context: _ValidatedExecutionContext, lease: ExecutionLease
+) -> dict[str, Any]:
+    context, output = _require_execution_lease(context, lease)
+    try:
+        events = _canonical_json_lines(
+            (output / ACCESS_JOURNAL_FILENAME).read_bytes(),
+            "access journal",
+        )
+    except OSError as exc:
+        raise SuccessorControlError("access journal cannot be read") from exc
+    if events[0] != _journal_header(context):
+        raise SuccessorControlError("access journal header mismatch")
+    previous = events[0]
+    for index, event in enumerate(events[1:], start=1):
+        if (
+            event.get("schema_version") != ACCESS_JOURNAL_SCHEMA_VERSION
+            or event.get("kind") != "environment_access_debited"
+            or event.get("event_index") != index
+            or event.get("previous_event_sha256")
+            != canonical_json_sha256(previous)
+            or event.get("stage") != context.stage
+        ):
+            raise SuccessorControlError("access journal event mismatch")
+        seed = event.get("seed")
+        if isinstance(seed, bool) or not isinstance(seed, int) or seed < 0:
+            raise SuccessorControlError("access journal seed is invalid")
+        if event.get("arm") not in {"candidate", "control"}:
+            raise SuccessorControlError("access journal arm is invalid")
+        previous = event
+    return {"debited_accesses": len(events) - 1, "events": events}
+
+
+def perform_journaled_environment_access(
+    context: _ValidatedExecutionContext,
+    lease: ExecutionLease,
+    *,
+    seed: int,
+    arm: str,
+    purpose: str,
+    access: Callable[[], Any],
+) -> Any:
+    context, output = _require_execution_lease(context, lease)
+    if isinstance(seed, bool) or not isinstance(seed, int) or seed < 0:
+        raise SuccessorControlError("environment seed is invalid")
+    if arm not in {"candidate", "control"}:
+        raise SuccessorControlError("environment arm is invalid")
+    if purpose != context.stage or not callable(access):
+        raise SuccessorControlError("environment access purpose is invalid")
+    journal = load_access_journal(context, lease)
+    event = {
+        "arm": arm,
+        "event_index": journal["debited_accesses"] + 1,
+        "kind": "environment_access_debited",
+        "previous_event_sha256": canonical_json_sha256(journal["events"][-1]),
+        "schema_version": ACCESS_JOURNAL_SCHEMA_VERSION,
+        "seed": seed,
+        "stage": context.stage,
+    }
+    _append_durable(
+        output / ACCESS_JOURNAL_FILENAME,
+        canonical_json_bytes(event),
+    )
+    return access()
+
+
+def _zero_resources() -> dict[str, int | float]:
+    return {
+        "charged_seconds": 0.0,
+        "environment_accesses": 0,
+        "optimizer_steps": 0,
+        "shadow_optimizer_steps": 0,
+    }
+
+
+def _resource_limits(context: _ValidatedExecutionContext) -> dict[str, int | float]:
+    resources = context.request["resources"]
+    return {
+        "charged_seconds": float(resources.get("max_charged_seconds", 28_800.0)),
+        "environment_accesses": int(resources.get("max_environment_accesses", 0)),
+        "optimizer_steps": int(resources.get("max_optimizer_steps", 0)),
+        "shadow_optimizer_steps": int(
+            resources.get("max_shadow_optimizer_steps", 0)
+        ),
+    }
+
+
+def _resource_header(context: _ValidatedExecutionContext) -> dict[str, Any]:
+    return {
+        "identity": _context_identity(context),
+        "kind": "resource_ledger_opened",
+        "limits": _resource_limits(context),
+        "resources": _zero_resources(),
+        "revision": 0,
+        "schema_version": RESOURCE_LEDGER_SCHEMA_VERSION,
+    }
+
+
+def initialize_resource_ledger(
+    context: _ValidatedExecutionContext, lease: ExecutionLease
+) -> dict[str, Any]:
+    context, output = _require_execution_lease(context, lease)
+    _execution_context_for_operation(context, "resource")
+    _atomic_write_once_or_identical(
+        output / RESOURCE_LEDGER_FILENAME,
+        canonical_json_bytes(_resource_header(context)),
+    )
+    return load_resource_ledger(context, lease)
+
+
+def load_resource_ledger(
+    context: _ValidatedExecutionContext, lease: ExecutionLease
+) -> dict[str, Any]:
+    context, output = _require_execution_lease(context, lease)
+    try:
+        events = _canonical_json_lines(
+            (output / RESOURCE_LEDGER_FILENAME).read_bytes(),
+            "resource ledger",
+        )
+    except OSError as exc:
+        raise SuccessorControlError("resource ledger cannot be read") from exc
+    if events[0] != _resource_header(context):
+        raise SuccessorControlError("resource ledger header mismatch")
+    previous = events[0]
+    previous_resources = _zero_resources()
+    limits = _resource_limits(context)
+    for revision, event in enumerate(events[1:], start=1):
+        if (
+            event.get("schema_version") != RESOURCE_LEDGER_SCHEMA_VERSION
+            or event.get("kind") != "resource_prefix_advanced"
+            or event.get("revision") != revision
+            or event.get("previous_event_sha256")
+            != canonical_json_sha256(previous)
+        ):
+            raise SuccessorControlError("resource ledger event mismatch")
+        resources = _copy_mapping(event.get("resources"), "resource prefix")
+        for name, old_value in previous_resources.items():
+            value = resources.get(name)
+            valid_type = (
+                isinstance(value, (int, float))
+                if name == "charged_seconds"
+                else isinstance(value, int)
+            )
+            if isinstance(value, bool) or not valid_type:
+                raise SuccessorControlError("resource prefix value is invalid")
+            if not math.isfinite(float(value)) or value < old_value:
+                raise SuccessorControlError("resource prefix is not monotonic")
+            if value > limits[name]:
+                raise SuccessorControlError("resource prefix exceeds stage limit")
+        if set(resources) != set(previous_resources):
+            raise SuccessorControlError("resource prefix fields mismatch")
+        previous_resources = resources
+        previous = event
+    return {
+        "events": events,
+        "limits": limits,
+        "resources": previous_resources,
+        "revision": len(events) - 1,
+    }
+
+
+def advance_resource_ledger(
+    context: _ValidatedExecutionContext,
+    lease: ExecutionLease,
+    *,
+    charged_seconds: float,
+    environment_accesses: int,
+    optimizer_steps: int,
+    shadow_optimizer_steps: int,
+    reason: str,
+) -> dict[str, Any]:
+    context, output = _require_execution_lease(context, lease)
+    ledger = load_resource_ledger(context, lease)
+    resources: dict[str, int | float] = {
+        "charged_seconds": charged_seconds,
+        "environment_accesses": environment_accesses,
+        "optimizer_steps": optimizer_steps,
+        "shadow_optimizer_steps": shadow_optimizer_steps,
+    }
+    previous = ledger["resources"]
+    for name, value in resources.items():
+        valid_type = (
+            isinstance(value, (int, float))
+            if name == "charged_seconds"
+            else isinstance(value, int)
+        )
+        if isinstance(value, bool) or not valid_type:
+            raise SuccessorControlError("resource prefix value is invalid")
+        if not math.isfinite(float(value)) or value < previous[name]:
+            raise SuccessorControlError("resource prefix is not monotonic")
+        if value > ledger["limits"][name]:
+            raise SuccessorControlError("resource prefix exceeds stage limit")
+    journal = load_access_journal(context, lease)
+    if environment_accesses > journal["debited_accesses"]:
+        raise SuccessorControlError(
+            "resource accesses exceed durable journal debits"
+        )
+    if resources == previous:
+        return ledger
+    if not isinstance(reason, str) or not reason:
+        raise SuccessorControlError("resource advance reason is invalid")
+    event = {
+        "kind": "resource_prefix_advanced",
+        "previous_event_sha256": canonical_json_sha256(ledger["events"][-1]),
+        "reason": reason,
+        "resources": resources,
+        "revision": ledger["revision"] + 1,
+        "schema_version": RESOURCE_LEDGER_SCHEMA_VERSION,
+    }
+    _append_durable(
+        output / RESOURCE_LEDGER_FILENAME,
+        canonical_json_bytes(event),
+    )
+    return load_resource_ledger(context, lease)
+
+
+def reconcile_resource_ledger(
+    context: _ValidatedExecutionContext, lease: ExecutionLease
+) -> dict[str, Any]:
+    context, _ = _require_execution_lease(context, lease)
+    ledger = load_resource_ledger(context, lease)
+    journal = load_access_journal(context, lease)
+    if lease.started_monotonic is None:
+        raise SuccessorControlError("execution lease clock is unavailable")
+    try:
+        now = float(lease.clock())
+    except Exception as exc:
+        raise SuccessorControlError("resource monotonic clock failed") from exc
+    elapsed = now - lease.started_monotonic
+    if not math.isfinite(elapsed) or elapsed < 0.0:
+        raise SuccessorControlError("resource elapsed time is not monotonic")
+    resources = ledger["resources"]
+    return advance_resource_ledger(
+        context,
+        lease,
+        charged_seconds=max(float(resources["charged_seconds"]), elapsed),
+        environment_accesses=journal["debited_accesses"],
+        optimizer_steps=int(resources["optimizer_steps"]),
+        shadow_optimizer_steps=int(resources["shadow_optimizer_steps"]),
+        reason="journal-and-elapsed-reconciliation",
+    )
+
+
+def publish_write_once_marker(
+    context: _ValidatedExecutionContext,
+    lease: ExecutionLease,
+    *,
+    kind: str,
+    payload: Mapping[str, Any],
+) -> dict[str, Any]:
+    context, output = _require_execution_lease(context, lease)
+    if kind == "bootstrap":
+        _execution_context_for_operation(context, "checkpoint")
+        path = output / "bootstrap.json"
+    elif kind == "stage":
+        _execution_context_for_operation(context, "stage")
+        path = output / "stages" / f"{context.stage}.json"
+    else:
+        raise SuccessorControlError("write-once marker kind is invalid")
+    marker = {
+        "identity": _context_identity(context),
+        "kind": kind,
+        "payload": _copy_mapping(payload, "write-once marker payload"),
+        "schema_version": MARKER_SCHEMA_VERSION,
+    }
+    encoded = canonical_json_bytes(marker)
+    _atomic_write_once_or_identical(path, encoded)
+    return marker
 
 
 def build_parser() -> argparse.ArgumentParser:

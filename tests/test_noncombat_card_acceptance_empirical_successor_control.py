@@ -672,3 +672,166 @@ def test_execution_context_rejects_rewrap_and_registration_binding_mismatch():
             authorization=authorization,
             registration_validator=lambda value: value,
         )
+
+
+def _training_context(control):
+    registration = {
+        "registration_id": "card-acceptance-20260809-registration-v1",
+        "registration_sha256": "c" * 64,
+    }
+    request = _stage_request(control, "training")
+    authorization = control.build_stage_authorization(
+        request=request,
+        authorization_id="card-acceptance-20260809-training-authorization-v1",
+        request_review_sha256="1" * 64,
+        approval_record_sha256="2" * 64,
+    )
+    return control._build_validated_execution_context(
+        registration=registration,
+        request=request,
+        authorization=authorization,
+        registration_validator=lambda value: copy.deepcopy(dict(value)),
+    )
+
+
+def test_execution_lease_binds_live_child_and_requires_dead_owner_recovery(tmp_path):
+    control = _control()
+    context = _training_context(control)
+    output = tmp_path / "execution"
+    observed_pids = []
+
+    def alive(process_id):
+        observed_pids.append(process_id)
+        return process_id == 4242
+
+    with control.ExecutionLease(
+        output,
+        context=context,
+        child_process_id=4242,
+        process_alive=alive,
+    ) as lease:
+        assert lease.held is True
+        assert lease.owner["child_process_id"] == 4242
+        with pytest.raises(control.SuccessorControlError, match="lease"):
+            with control.ExecutionLease(
+                output,
+                context=context,
+                child_process_id=4242,
+                process_alive=alive,
+            ):
+                pass
+
+    assert observed_pids == [4242]
+    with pytest.raises(control.SuccessorControlError, match="recovery|lease"):
+        with control.ExecutionLease(
+            output,
+            context=context,
+            child_process_id=4243,
+            process_alive=lambda _pid: False,
+        ):
+            pass
+    with control.ExecutionLease(
+        output,
+        context=context,
+        child_process_id=4243,
+        process_alive=lambda process_id: process_id == 4243,
+        allow_stale_reclaim=True,
+    ) as reclaimed:
+        assert reclaimed.reclaimed_owner["child_process_id"] == 4242
+
+
+def test_journal_is_write_ahead_resources_are_monotonic_and_markers_write_once(
+    tmp_path,
+):
+    control = _control()
+    context = _training_context(control)
+    output = tmp_path / "execution"
+    clock_values = iter((100.0, 101.5, 102.0))
+
+    with control.ExecutionLease(
+        output,
+        context=context,
+        child_process_id=5150,
+        process_alive=lambda process_id: process_id == 5150,
+        clock=lambda: next(clock_values),
+    ) as lease:
+        control.initialize_access_journal(context, lease)
+        control.initialize_resource_ledger(context, lease)
+        observed = []
+
+        def access():
+            journal = control.load_access_journal(context, lease)
+            observed.append(journal["debited_accesses"])
+            return "episode-result"
+
+        assert control.perform_journaled_environment_access(
+            context,
+            lease,
+            seed=71_664,
+            arm="candidate",
+            purpose="training",
+            access=access,
+        ) == "episode-result"
+        assert observed == [1]
+        ledger = control.reconcile_resource_ledger(context, lease)
+        assert ledger["resources"] == {
+            "charged_seconds": 1.5,
+            "environment_accesses": 1,
+            "optimizer_steps": 0,
+            "shadow_optimizer_steps": 0,
+        }
+        with pytest.raises(RuntimeError, match="synthetic access failure"):
+            control.perform_journaled_environment_access(
+                context,
+                lease,
+                seed=71_665,
+                arm="control",
+                purpose="training",
+                access=lambda: (_ for _ in ()).throw(
+                    RuntimeError("synthetic access failure")
+                ),
+            )
+        assert control.load_access_journal(context, lease)["debited_accesses"] == 2
+        assert control.reconcile_resource_ledger(context, lease)["resources"] == {
+            "charged_seconds": 2.0,
+            "environment_accesses": 2,
+            "optimizer_steps": 0,
+            "shadow_optimizer_steps": 0,
+        }
+        with pytest.raises(control.SuccessorControlError, match="monotonic"):
+            control.advance_resource_ledger(
+                context,
+                lease,
+                charged_seconds=1.0,
+                environment_accesses=1,
+                optimizer_steps=0,
+                shadow_optimizer_steps=0,
+                reason="invalid-decrease",
+            )
+
+        bootstrap = {"checkpoint_sha256": "4" * 64}
+        first = control.publish_write_once_marker(
+            context,
+            lease,
+            kind="bootstrap",
+            payload=bootstrap,
+        )
+        assert control.publish_write_once_marker(
+            context,
+            lease,
+            kind="bootstrap",
+            payload=bootstrap,
+        ) == first
+        control.publish_write_once_marker(
+            context,
+            lease,
+            kind="stage",
+            payload={"stage": "training", "status": "started"},
+        )
+        with pytest.raises(control.SuccessorControlError, match="write-once|drift"):
+            control.publish_write_once_marker(
+                context,
+                lease,
+                kind="stage",
+                payload={"stage": "training", "status": "changed"},
+            )
