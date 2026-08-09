@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import copy
 import hashlib
+import math
 import random
 from dataclasses import replace
 
@@ -349,6 +350,78 @@ def test_rollout_sampling_is_replayable_and_rejects_source_mutation():
             ),
             seed=9,
             chunk_index=0,
+        )
+
+
+def test_default_episode_deadline_accepts_its_representable_upper_bound():
+    now = 2048.0000000000023
+    assert (now + runtime.MAX_CHARGED_SECONDS) - now > (
+        runtime.MAX_CHARGED_SECONDS
+    )
+
+    rollout = runtime.rollout_training_episode(
+        runtime.initialize_training_runtime(),
+        environment_factory=_OneStepEnvironment,
+        seed=9,
+        chunk_index=0,
+        clock=lambda: now,
+    )
+
+    assert len(rollout.decisions) == 1
+
+
+def test_explicit_deadline_accepts_bound_and_rejects_next_float():
+    now = 2048.0000000000023
+    maximum = now + runtime.MAX_CHARGED_SECONDS
+
+    rollout = runtime.rollout_training_episode(
+        runtime.initialize_training_runtime(),
+        environment_factory=_OneStepEnvironment,
+        seed=9,
+        chunk_index=0,
+        deadline=maximum,
+        clock=lambda: now,
+    )
+    assert len(rollout.decisions) == 1
+
+    with pytest.raises(runtime.RuntimeBlocked, match="deadline exceeds"):
+        runtime.rollout_training_episode(
+            runtime.initialize_training_runtime(),
+            environment_factory=_OneStepEnvironment,
+            seed=9,
+            chunk_index=0,
+            deadline=math.nextafter(maximum, math.inf),
+            clock=lambda: now,
+        )
+
+    class BoundaryValidated(Exception):
+        pass
+
+    def stop_after_chunk_validation(_seed: int) -> None:
+        raise BoundaryValidated
+
+    with pytest.raises(BoundaryValidated):
+        runtime.collect_and_update_training_chunk(
+            runtime.initialize_training_runtime(),
+            environment_factory=_OneStepEnvironment,
+            seeds=tuple(range(64)),
+            chunk_index=0,
+            before_environment=stop_after_chunk_validation,
+            after_environment=lambda _seed: None,
+            deadline=maximum,
+            clock=lambda: now,
+        )
+
+    with pytest.raises(runtime.RuntimeBlocked, match="deadline exceeds"):
+        runtime.collect_and_update_training_chunk(
+            runtime.initialize_training_runtime(),
+            environment_factory=_OneStepEnvironment,
+            seeds=tuple(range(64)),
+            chunk_index=0,
+            before_environment=stop_after_chunk_validation,
+            after_environment=lambda _seed: None,
+            deadline=math.nextafter(maximum, math.inf),
+            clock=lambda: now,
         )
 
 

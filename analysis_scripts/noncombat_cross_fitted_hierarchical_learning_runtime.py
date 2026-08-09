@@ -746,11 +746,13 @@ def rollout_training_episode(
     now = float(clock())
     if not math.isfinite(now):
         raise RuntimeBlocked("clock reading must be finite")
-    active_deadline = now + MAX_CHARGED_SECONDS if deadline is None else float(deadline)
+    maximum_deadline = now + MAX_CHARGED_SECONDS
+    active_deadline = maximum_deadline if deadline is None else float(deadline)
     if (
-        not math.isfinite(active_deadline)
+        not math.isfinite(maximum_deadline)
+        or not math.isfinite(active_deadline)
         or active_deadline < now
-        or active_deadline - now > MAX_CHARGED_SECONDS
+        or active_deadline > maximum_deadline
     ):
         raise RuntimeBlocked("episode deadline exceeds the registered bound")
     if before_environment is not None:
@@ -972,11 +974,13 @@ def collect_and_update_training_chunk(
     except (TypeError, ValueError) as exc:
         raise RuntimeBlocked("training chunk deadline must be finite") from exc
     now = float(clock())
+    maximum_deadline = now + MAX_CHARGED_SECONDS
     if (
         not math.isfinite(now)
+        or not math.isfinite(maximum_deadline)
         or not math.isfinite(deadline_value)
         or deadline_value < now
-        or deadline_value - now > MAX_CHARGED_SECONDS
+        or deadline_value > maximum_deadline
     ):
         raise RuntimeBlocked("training chunk deadline exceeds the registered bound")
 
