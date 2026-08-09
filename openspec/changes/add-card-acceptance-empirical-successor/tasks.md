@@ -38,7 +38,7 @@
 - [x] 4.5 Implement deterministic bounded binary/gzip evidence and enforce per-artifact, stored, canonical, decision, episode, update, and time ceilings.
 - [x] 4.6 Implement the independent standard-library verifier for initialization, inventory, lifecycle, advantages, loss/gradients, Adam replay, frozen behavior, canary, holdout, rollback, resources, isolation, and terminal closure.
 - [x] 4.7 Add mutation, truncation, unknown-field, wrong-order, wrong-digest, wrong-process, wrong-stage, byte-ceiling, elapsed-charge, and publication-order verifier regressions.
-- [ ] 4.8 Add exhaustive failure-terminal-to-rollback mapping tests for all seven fixed trigger classes, every declared rollback-required path, precedence, and unmapped or duplicate classification rejection, plus normal-closeout tests for all four complete holdout outcomes.
+- [x] 4.8 Add exhaustive failure-terminal-to-rollback mapping tests for all seven fixed trigger classes, every declared rollback-required path, precedence, and unmapped or duplicate classification rejection, plus normal-closeout tests for all four complete holdout outcomes.
 
 ## 5. Source-Only Qualification
 

@@ -67,7 +67,7 @@ EXPERIMENT_TARGET_SCHEMA_VERSION = (
     "noncombat-card-acceptance-empirical-successor-experiment-target-v1"
 )
 ROLLBACK_OBSERVATION_SCHEMA_VERSION = (
-    "noncombat-card-acceptance-empirical-successor-rollback-observation-v1"
+    "noncombat-card-acceptance-empirical-successor-rollback-observation-v2"
 )
 SOURCE_REGISTRY_SCHEMA_VERSION = (
     "noncombat-card-acceptance-empirical-successor-seed-source-registry-v1"
@@ -152,6 +152,58 @@ _ROLLBACK_TRIGGER_CLASSES = (
     "canary",
     "holdout",
     "publication",
+)
+_ROLLBACK_FAILURE_PATHS = (
+    ("grant_failure", "authority"),
+    ("revocation_failure", "authority"),
+    ("approval_failure", "authority"),
+    ("authorization_failure", "authority"),
+    ("stage_authority_failure", "authority"),
+    ("source_identity_failure", "identity"),
+    ("checkpoint_identity_failure", "identity"),
+    ("config_identity_failure", "identity"),
+    ("cohort_identity_failure", "identity"),
+    ("target_identity_failure", "identity"),
+    ("production_identity_failure", "identity"),
+    ("child_identity_failure", "identity"),
+    ("process_identity_failure", "identity"),
+    ("lease_identity_failure", "identity"),
+    ("candidate_legality_failure", "legality"),
+    ("action_legality_failure", "legality"),
+    ("schema_failure", "legality"),
+    ("finiteness_failure", "legality"),
+    ("objective_support_failure", "legality"),
+    ("zero_card_reward_chunk", "legality"),
+    ("interpreter_preflight_failure", "preflight"),
+    ("native_preflight_failure", "preflight"),
+    ("isolation_preflight_failure", "preflight"),
+    ("output_preflight_failure", "preflight"),
+    ("dependency_preflight_failure", "preflight"),
+    ("setup_preflight_failure", "preflight"),
+    ("training_family_saturation", "canary"),
+    ("canary_gate_failure", "canary"),
+    ("canary_failure", "canary"),
+    ("holdout_gate_failure", "holdout"),
+    ("holdout_access_failure", "holdout"),
+    ("holdout_evaluation_failure", "holdout"),
+    ("holdout_classification_failure", "holdout"),
+    ("resource_accounting_failure", "publication"),
+    ("time_accounting_failure", "publication"),
+    ("access_accounting_failure", "publication"),
+    ("partial_chunk_failure", "publication"),
+    ("journal_failure", "publication"),
+    ("evidence_failure", "publication"),
+    ("byte_bound_failure", "publication"),
+    ("staging_failure", "publication"),
+    ("checkpoint_publication_failure", "publication"),
+    ("terminal_publication_failure", "publication"),
+    ("manifest_publication_failure", "publication"),
+)
+_HOLDOUT_OUTCOME_CLASSES = (
+    "victory_and_floor_signal",
+    "floor_only_signal",
+    "victory_only_signal",
+    "no_learning_signal",
 )
 _INVENTORY_ROLE_COUNTS = {"training": 512, "canary": 128, "holdout": 512}
 _INVENTORY_ROLE_ORDER = ("training", "canary", "holdout")
@@ -2658,6 +2710,65 @@ def _rollback_identity_observation(
     return matches
 
 
+def _verify_terminal_closeout_classification(
+    observation: Mapping[str, Any],
+) -> dict[str, Any]:
+    closeout_kind = observation["closeout_kind"]
+    failure_paths = observation["failure_paths"]
+    outcome_class = observation["outcome_class"]
+    rollback_required = observation["rollback_required"]
+    trigger_class = observation["trigger_class"]
+    if closeout_kind == "normal_holdout":
+        if (
+            failure_paths != []
+            or outcome_class not in _HOLDOUT_OUTCOME_CLASSES
+            or rollback_required is not False
+            or trigger_class is not None
+            or observation["identity"]["stage"] != "holdout"
+        ):
+            raise VerificationError("normal closeout classification differs")
+        return {
+            "closeout_kind": closeout_kind,
+            "failure_paths": [],
+            "outcome_class": outcome_class,
+            "rollback_required": False,
+            "trigger_class": None,
+        }
+    if closeout_kind != "rollback_failure":
+        raise VerificationError("terminal closeout kind differs")
+    if not isinstance(failure_paths, list) or not failure_paths:
+        raise VerificationError("rollback failure paths differ")
+    if any(not isinstance(path, str) for path in failure_paths) or len(
+        set(failure_paths)
+    ) != len(failure_paths):
+        raise VerificationError("rollback failure paths are duplicated")
+    trigger_by_path = dict(_ROLLBACK_FAILURE_PATHS)
+    if any(path not in trigger_by_path for path in failure_paths):
+        raise VerificationError("rollback failure path is not registered")
+    path_order = {
+        path: index for index, (path, _trigger) in enumerate(_ROLLBACK_FAILURE_PATHS)
+    }
+    normalized_paths = sorted(failure_paths, key=path_order.__getitem__)
+    expected_trigger = min(
+        (trigger_by_path[path] for path in normalized_paths),
+        key=_ROLLBACK_TRIGGER_CLASSES.index,
+    )
+    if (
+        failure_paths != normalized_paths
+        or outcome_class is not None
+        or rollback_required is not True
+        or trigger_class != expected_trigger
+    ):
+        raise VerificationError("rollback trigger precedence differs")
+    return {
+        "closeout_kind": closeout_kind,
+        "failure_paths": normalized_paths,
+        "outcome_class": None,
+        "rollback_required": True,
+        "trigger_class": expected_trigger,
+    }
+
+
 def verify_rollback_evidence(
     output_path: Path | str,
     *,
@@ -2676,6 +2787,7 @@ def verify_rollback_evidence(
     )
     observation_fields = {
         "candidate_enabled",
+        "closeout_kind",
         "control_identities_after",
         "control_identities_before",
         "control_identities_verified",
@@ -2683,12 +2795,15 @@ def verify_rollback_evidence(
         "control_target_before",
         "control_target_verified",
         "downstream_authority",
+        "failure_paths",
         "identity",
+        "outcome_class",
         "production_isolation_after",
         "production_isolation_before",
         "production_isolation_verified",
         "rollback_authority_sha256",
         "rollback_observation_sha256",
+        "rollback_required",
         "schema_version",
         "status",
         "trigger_class",
@@ -2705,7 +2820,6 @@ def verify_rollback_evidence(
         or observation["identity"] != identity
         or observation["rollback_authority_sha256"]
         != authority["rollback_authority_sha256"]
-        or observation["trigger_class"] not in _ROLLBACK_TRIGGER_CLASSES
         or _digest(
             observation["rollback_observation_sha256"],
             "rollback observation digest",
@@ -2717,6 +2831,7 @@ def verify_rollback_evidence(
         name: False for name in _AUTHORITY_NAMES
     }:
         raise VerificationError("rollback downstream authority differs")
+    classification = _verify_terminal_closeout_classification(observation)
     expected_control = {
         "checkpoint": authority["control_target"]["checkpoint"],
         "configuration": authority["control_target"]["configuration"],
@@ -2743,15 +2858,26 @@ def verify_rollback_evidence(
     )
     control_verified = control_before and control_after
     isolation_verified = isolation_before and isolation_after
-    expected_status = (
-        "rollback_control_identity_failure"
-        if not control_verified
-        else (
-            "rollback_isolation_failure"
-            if not isolation_verified
-            else "rollback_verified"
+    if classification["rollback_required"]:
+        expected_status = (
+            "rollback_control_identity_failure"
+            if not control_verified
+            else (
+                "rollback_isolation_failure"
+                if not isolation_verified
+                else "rollback_verified"
+            )
         )
-    )
+    else:
+        expected_status = (
+            "normal_closeout_control_identity_failure"
+            if not control_verified
+            else (
+                "normal_closeout_isolation_failure"
+                if not isolation_verified
+                else "normal_closeout_verified"
+            )
+        )
     if (
         observation["control_identities_verified"] is not control_verified
         or observation["production_isolation_verified"] is not isolation_verified
@@ -2825,10 +2951,12 @@ def verify_rollback_evidence(
         raise VerificationError("rollback production isolation changed after observation")
     return {
         "candidate_enabled": False,
+        "closeout_kind": classification["closeout_kind"],
         "control_target_sha256": authority["control_target"]["target_sha256"],
+        "outcome_class": classification["outcome_class"],
         "production_isolation_verified": isolation_verified,
         "status": expected_status,
-        "trigger_class": observation["trigger_class"],
+        "trigger_class": classification["trigger_class"],
         "verified": True,
     }
 

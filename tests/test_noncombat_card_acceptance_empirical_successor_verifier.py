@@ -910,7 +910,7 @@ def test_independent_cross_fitted_verifier_rejects_forged_normal_equation():
         verifier.verify_cross_fitted_baseline_evidence(evidence)
 
 
-def _rollback_fixture(tmp_path: Path):
+def _rollback_fixture(tmp_path: Path, *, outcome_class: str | None = None):
     control = _control()
     verifier = _verifier()
     external = tmp_path / "external"
@@ -948,10 +948,12 @@ def _rollback_fixture(tmp_path: Path):
         "authorization_sha256": "a" * 64,
         "registration_sha256": "b" * 64,
         "request_sha256": "c" * 64,
-        "stage": "training",
+        "stage": "holdout" if outcome_class is not None else "training",
     }
+    normal_closeout = outcome_class is not None
     body = {
         "candidate_enabled": False,
+        "closeout_kind": "normal_holdout" if normal_closeout else "rollback_failure",
         "control_identities_after": {
             "matches_registered": True,
             "observed": expected_control,
@@ -969,7 +971,9 @@ def _rollback_fixture(tmp_path: Path):
         "control_target_before": None,
         "control_target_verified": True,
         "downstream_authority": verifier.verifier_contract()["authority"],
+        "failure_paths": [] if normal_closeout else ["canary_failure"],
         "identity": identity,
+        "outcome_class": outcome_class,
         "production_isolation_after": {
             "matches_registered": True,
             "observed": authority["production_isolation"],
@@ -980,12 +984,15 @@ def _rollback_fixture(tmp_path: Path):
         },
         "production_isolation_verified": True,
         "rollback_authority_sha256": authority["rollback_authority_sha256"],
+        "rollback_required": not normal_closeout,
         "schema_version": (
             "noncombat-card-acceptance-empirical-successor-"
-            "rollback-observation-v1"
+            "rollback-observation-v2"
         ),
-        "status": "rollback_verified",
-        "trigger_class": "canary",
+        "status": (
+            "normal_closeout_verified" if normal_closeout else "rollback_verified"
+        ),
+        "trigger_class": None if normal_closeout else "canary",
     }
     observation = {
         **body,
@@ -1011,12 +1018,71 @@ def test_independent_verifier_reobserves_rollback_and_production_isolation(tmp_p
 
     assert result == {
         "candidate_enabled": False,
+        "closeout_kind": "rollback_failure",
         "control_target_sha256": authority["control_target"]["target_sha256"],
+        "outcome_class": None,
         "production_isolation_verified": True,
         "status": "rollback_verified",
         "trigger_class": "canary",
         "verified": True,
     }
+
+
+@pytest.mark.parametrize(
+    "outcome_class",
+    (
+        "victory_and_floor_signal",
+        "floor_only_signal",
+        "victory_only_signal",
+        "no_learning_signal",
+    ),
+)
+def test_independent_verifier_accepts_four_normal_holdout_closeouts(
+    tmp_path,
+    outcome_class,
+):
+    verifier = _verifier()
+    output, authority, identity, _production_config, _target = _rollback_fixture(
+        tmp_path,
+        outcome_class=outcome_class,
+    )
+
+    result = verifier.verify_rollback_evidence(
+        output,
+        rollback_authority=authority,
+        expected_identity=identity,
+    )
+
+    assert result["closeout_kind"] == "normal_holdout"
+    assert result["outcome_class"] == outcome_class
+    assert result["status"] == "normal_closeout_verified"
+    assert result["trigger_class"] is None
+
+
+def test_independent_rollback_verifier_rejects_rebound_failure_precedence(tmp_path):
+    verifier = _verifier()
+    output, authority, identity, _production_config, _target = _rollback_fixture(
+        tmp_path
+    )
+    observation_path = output / "rollback.json"
+    observation = json.loads(observation_path.read_bytes())
+    observation["failure_paths"] = ["manifest_publication_failure"]
+    body = {
+        key: value
+        for key, value in observation.items()
+        if key != "rollback_observation_sha256"
+    }
+    observation["rollback_observation_sha256"] = hashlib.sha256(
+        verifier.canonical_json_bytes(body)
+    ).hexdigest()
+    observation_path.write_bytes(verifier.canonical_json_bytes(observation))
+
+    with pytest.raises(verifier.VerificationError, match="trigger|precedence"):
+        verifier.verify_rollback_evidence(
+            output,
+            rollback_authority=authority,
+            expected_identity=identity,
+        )
 
 
 @pytest.mark.parametrize("drift", ["production", "target"])

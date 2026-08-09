@@ -364,7 +364,7 @@ EXPERIMENT_TARGET_SCHEMA_VERSION = (
     "noncombat-card-acceptance-empirical-successor-experiment-target-v1"
 )
 ROLLBACK_OBSERVATION_SCHEMA_VERSION = (
-    "noncombat-card-acceptance-empirical-successor-rollback-observation-v1"
+    "noncombat-card-acceptance-empirical-successor-rollback-observation-v2"
 )
 LEASE_FILENAME = ".execution.lease"
 ACCESS_JOURNAL_FILENAME = "access_journal.jsonl"
@@ -382,6 +382,58 @@ ROLLBACK_TRIGGER_CLASSES = (
     "canary",
     "holdout",
     "publication",
+)
+ROLLBACK_FAILURE_PATHS = (
+    ("grant_failure", "authority"),
+    ("revocation_failure", "authority"),
+    ("approval_failure", "authority"),
+    ("authorization_failure", "authority"),
+    ("stage_authority_failure", "authority"),
+    ("source_identity_failure", "identity"),
+    ("checkpoint_identity_failure", "identity"),
+    ("config_identity_failure", "identity"),
+    ("cohort_identity_failure", "identity"),
+    ("target_identity_failure", "identity"),
+    ("production_identity_failure", "identity"),
+    ("child_identity_failure", "identity"),
+    ("process_identity_failure", "identity"),
+    ("lease_identity_failure", "identity"),
+    ("candidate_legality_failure", "legality"),
+    ("action_legality_failure", "legality"),
+    ("schema_failure", "legality"),
+    ("finiteness_failure", "legality"),
+    ("objective_support_failure", "legality"),
+    ("zero_card_reward_chunk", "legality"),
+    ("interpreter_preflight_failure", "preflight"),
+    ("native_preflight_failure", "preflight"),
+    ("isolation_preflight_failure", "preflight"),
+    ("output_preflight_failure", "preflight"),
+    ("dependency_preflight_failure", "preflight"),
+    ("setup_preflight_failure", "preflight"),
+    ("training_family_saturation", "canary"),
+    ("canary_gate_failure", "canary"),
+    ("canary_failure", "canary"),
+    ("holdout_gate_failure", "holdout"),
+    ("holdout_access_failure", "holdout"),
+    ("holdout_evaluation_failure", "holdout"),
+    ("holdout_classification_failure", "holdout"),
+    ("resource_accounting_failure", "publication"),
+    ("time_accounting_failure", "publication"),
+    ("access_accounting_failure", "publication"),
+    ("partial_chunk_failure", "publication"),
+    ("journal_failure", "publication"),
+    ("evidence_failure", "publication"),
+    ("byte_bound_failure", "publication"),
+    ("staging_failure", "publication"),
+    ("checkpoint_publication_failure", "publication"),
+    ("terminal_publication_failure", "publication"),
+    ("manifest_publication_failure", "publication"),
+)
+HOLDOUT_OUTCOME_CLASSES = (
+    "victory_and_floor_signal",
+    "floor_only_signal",
+    "victory_only_signal",
+    "no_learning_signal",
 )
 _TERMINAL_PUBLICATION_FILENAMES = (
     TERMINAL_INTENT_FILENAME,
@@ -403,6 +455,58 @@ _CHECKPOINT_COMPONENT_NAMES = (
 
 class SuccessorControlError(ValueError):
     """Raised when a source-only control value cannot be encoded safely."""
+
+
+def classify_terminal_closeout(
+    *,
+    failure_paths: Sequence[str] | None = None,
+    outcome_class: str | None = None,
+) -> dict[str, Any]:
+    """Map closed failure paths by precedence or admit one normal outcome."""
+    if outcome_class is not None:
+        if failure_paths is not None:
+            raise SuccessorControlError(
+                "terminal closeout cannot combine failure paths and an outcome"
+            )
+        if outcome_class not in HOLDOUT_OUTCOME_CLASSES:
+            raise SuccessorControlError("terminal closeout outcome is not registered")
+        return {
+            "closeout_kind": "normal_holdout",
+            "failure_paths": [],
+            "outcome_class": outcome_class,
+            "rollback_required": False,
+            "trigger_class": None,
+        }
+    if (
+        failure_paths is None
+        or isinstance(failure_paths, (str, bytes))
+        or not isinstance(failure_paths, Sequence)
+        or not failure_paths
+    ):
+        raise SuccessorControlError("rollback failure paths must be nonempty")
+    paths = tuple(failure_paths)
+    if any(not isinstance(path, str) for path in paths):
+        raise SuccessorControlError("rollback failure path is invalid")
+    if len(set(paths)) != len(paths):
+        raise SuccessorControlError("rollback failure paths contain a duplicate")
+    trigger_by_path = dict(ROLLBACK_FAILURE_PATHS)
+    if any(path not in trigger_by_path for path in paths):
+        raise SuccessorControlError("rollback failure path is not registered")
+    path_order = {
+        path: index for index, (path, _trigger) in enumerate(ROLLBACK_FAILURE_PATHS)
+    }
+    normalized_paths = sorted(paths, key=path_order.__getitem__)
+    trigger_class = min(
+        (trigger_by_path[path] for path in normalized_paths),
+        key=ROLLBACK_TRIGGER_CLASSES.index,
+    )
+    return {
+        "closeout_kind": "rollback_failure",
+        "failure_paths": normalized_paths,
+        "outcome_class": None,
+        "rollback_required": True,
+        "trigger_class": trigger_class,
+    }
 
 
 def canonical_json_bytes(value: object) -> bytes:
@@ -3893,12 +3997,12 @@ def _atomic_replace_rollback_target(path: Path, payload: bytes) -> None:
         raise SuccessorControlError("rollback target replacement failed") from exc
 
 
-def execute_registered_rollback(
+def _execute_registered_closeout(
     context: _ValidatedExecutionContext,
     lease: ExecutionLease,
     *,
     rollback_authority: Mapping[str, Any],
-    trigger_class: str,
+    classification: Mapping[str, Any],
     external_binding_observer: Callable[[Path | str], Mapping[str, Any]]
     | None = None,
     checkpoint_snapshot_observer: Callable[
@@ -3906,7 +4010,7 @@ def execute_registered_rollback(
     ]
     | None = None,
 ) -> dict[str, Any]:
-    """Restore only the registered local control target and observe production."""
+    """Restore the registered control target for one classified closeout."""
     context, output = _require_execution_lease(context, lease)
     _execution_context_for_operation(context, "rollback")
     _require_terminal_publication_open(output)
@@ -3915,9 +4019,37 @@ def execute_registered_rollback(
         "rollback_authority_sha256"
     ]:
         raise SuccessorControlError("rollback authority is not registered")
-    normalized_trigger = _identifier(trigger_class, "rollback trigger class")
-    if normalized_trigger not in ROLLBACK_TRIGGER_CLASSES:
-        raise SuccessorControlError("rollback trigger class is not registered")
+    normalized_classification = _copy_mapping(
+        classification,
+        "terminal closeout classification",
+    )
+    _require_fields(
+        normalized_classification,
+        {
+            "closeout_kind",
+            "failure_paths",
+            "outcome_class",
+            "rollback_required",
+            "trigger_class",
+        },
+        "terminal closeout classification",
+    )
+    if normalized_classification["closeout_kind"] == "rollback_failure":
+        expected_classification = classify_terminal_closeout(
+            failure_paths=normalized_classification["failure_paths"]
+        )
+    elif normalized_classification["closeout_kind"] == "normal_holdout":
+        expected_classification = classify_terminal_closeout(
+            outcome_class=normalized_classification["outcome_class"]
+        )
+        if context.stage != "holdout":
+            raise SuccessorControlError(
+                "normal closeout requires the holdout stage"
+            )
+    else:
+        raise SuccessorControlError("terminal closeout kind is not registered")
+    if normalized_classification != expected_classification:
+        raise SuccessorControlError("terminal closeout classification differs")
 
     relative, target = _managed_artifact_target(
         output,
@@ -3981,14 +4113,24 @@ def execute_registered_rollback(
         production_before["matches_registered"] is True
         and production_after["matches_registered"] is True
     )
+    is_rollback = normalized_classification["rollback_required"] is True
     if not control_identities_verified:
-        status = "rollback_control_identity_failure"
+        status = (
+            "rollback_control_identity_failure"
+            if is_rollback
+            else "normal_closeout_control_identity_failure"
+        )
     elif not production_isolation_verified:
-        status = "rollback_isolation_failure"
+        status = (
+            "rollback_isolation_failure"
+            if is_rollback
+            else "normal_closeout_isolation_failure"
+        )
     else:
-        status = "rollback_verified"
+        status = "rollback_verified" if is_rollback else "normal_closeout_verified"
     body = {
         "candidate_enabled": False,
+        "closeout_kind": normalized_classification["closeout_kind"],
         "control_identities_after": control_after,
         "control_identities_before": control_before,
         "control_identities_verified": control_identities_verified,
@@ -3999,14 +4141,17 @@ def execute_registered_rollback(
             context.request["downstream_authority"],
             "rollback downstream authority",
         ),
+        "failure_paths": copy.deepcopy(normalized_classification["failure_paths"]),
         "identity": _context_identity(context),
+        "outcome_class": normalized_classification["outcome_class"],
         "production_isolation_after": production_after,
         "production_isolation_before": production_before,
         "production_isolation_verified": production_isolation_verified,
         "rollback_authority_sha256": authority["rollback_authority_sha256"],
+        "rollback_required": normalized_classification["rollback_required"],
         "schema_version": ROLLBACK_OBSERVATION_SCHEMA_VERSION,
         "status": status,
-        "trigger_class": normalized_trigger,
+        "trigger_class": normalized_classification["trigger_class"],
     }
     observation = {
         **body,
@@ -4019,6 +4164,54 @@ def execute_registered_rollback(
         payload=canonical_json_bytes(observation),
     )
     return observation
+
+
+def execute_registered_rollback(
+    context: _ValidatedExecutionContext,
+    lease: ExecutionLease,
+    *,
+    rollback_authority: Mapping[str, Any],
+    failure_paths: Sequence[str],
+    external_binding_observer: Callable[[Path | str], Mapping[str, Any]]
+    | None = None,
+    checkpoint_snapshot_observer: Callable[
+        [Path | str], Mapping[str, Any]
+    ]
+    | None = None,
+) -> dict[str, Any]:
+    """Classify one failure and restore the registered control target."""
+    return _execute_registered_closeout(
+        context,
+        lease,
+        rollback_authority=rollback_authority,
+        classification=classify_terminal_closeout(failure_paths=failure_paths),
+        external_binding_observer=external_binding_observer,
+        checkpoint_snapshot_observer=checkpoint_snapshot_observer,
+    )
+
+
+def execute_registered_normal_closeout(
+    context: _ValidatedExecutionContext,
+    lease: ExecutionLease,
+    *,
+    rollback_authority: Mapping[str, Any],
+    outcome_class: str,
+    external_binding_observer: Callable[[Path | str], Mapping[str, Any]]
+    | None = None,
+    checkpoint_snapshot_observer: Callable[
+        [Path | str], Mapping[str, Any]
+    ]
+    | None = None,
+) -> dict[str, Any]:
+    """Restore the control target after one complete holdout outcome."""
+    return _execute_registered_closeout(
+        context,
+        lease,
+        rollback_authority=rollback_authority,
+        classification=classify_terminal_closeout(outcome_class=outcome_class),
+        external_binding_observer=external_binding_observer,
+        checkpoint_snapshot_observer=checkpoint_snapshot_observer,
+    )
 
 
 def build_parser() -> argparse.ArgumentParser:

@@ -676,17 +676,17 @@ def test_execution_context_rejects_rewrap_and_registration_binding_mismatch():
         )
 
 
-def _training_context(control, *, registration_fields=None):
+def _empirical_context(control, stage, *, registration_fields=None):
     registration = {
         "registration_id": "card-acceptance-20260809-registration-v1",
         "registration_sha256": "c" * 64,
     }
     if registration_fields is not None:
         registration.update(copy.deepcopy(dict(registration_fields)))
-    request = _stage_request(control, "training")
+    request = _stage_request(control, stage)
     authorization = control.build_stage_authorization(
         request=request,
-        authorization_id="card-acceptance-20260809-training-authorization-v1",
+        authorization_id=f"card-acceptance-20260809-{stage}-authorization-v1",
         request_review_sha256="1" * 64,
         approval_record_sha256="2" * 64,
     )
@@ -695,6 +695,14 @@ def _training_context(control, *, registration_fields=None):
         request=request,
         authorization=authorization,
         registration_validator=lambda value: copy.deepcopy(dict(value)),
+    )
+
+
+def _training_context(control, *, registration_fields=None):
+    return _empirical_context(
+        control,
+        "training",
+        registration_fields=registration_fields,
     )
 
 
@@ -1480,6 +1488,198 @@ def _rollback_authority(control, tmp_path):
     return authority, paths
 
 
+ROLLBACK_FAILURE_PATHS = {
+    "grant_failure": "authority",
+    "revocation_failure": "authority",
+    "approval_failure": "authority",
+    "authorization_failure": "authority",
+    "stage_authority_failure": "authority",
+    "source_identity_failure": "identity",
+    "checkpoint_identity_failure": "identity",
+    "config_identity_failure": "identity",
+    "cohort_identity_failure": "identity",
+    "target_identity_failure": "identity",
+    "production_identity_failure": "identity",
+    "child_identity_failure": "identity",
+    "process_identity_failure": "identity",
+    "lease_identity_failure": "identity",
+    "candidate_legality_failure": "legality",
+    "action_legality_failure": "legality",
+    "schema_failure": "legality",
+    "finiteness_failure": "legality",
+    "objective_support_failure": "legality",
+    "zero_card_reward_chunk": "legality",
+    "interpreter_preflight_failure": "preflight",
+    "native_preflight_failure": "preflight",
+    "isolation_preflight_failure": "preflight",
+    "output_preflight_failure": "preflight",
+    "dependency_preflight_failure": "preflight",
+    "setup_preflight_failure": "preflight",
+    "training_family_saturation": "canary",
+    "canary_gate_failure": "canary",
+    "canary_failure": "canary",
+    "holdout_gate_failure": "holdout",
+    "holdout_access_failure": "holdout",
+    "holdout_evaluation_failure": "holdout",
+    "holdout_classification_failure": "holdout",
+    "resource_accounting_failure": "publication",
+    "time_accounting_failure": "publication",
+    "access_accounting_failure": "publication",
+    "partial_chunk_failure": "publication",
+    "journal_failure": "publication",
+    "evidence_failure": "publication",
+    "byte_bound_failure": "publication",
+    "staging_failure": "publication",
+    "checkpoint_publication_failure": "publication",
+    "terminal_publication_failure": "publication",
+    "manifest_publication_failure": "publication",
+}
+
+
+@pytest.mark.parametrize(
+    ("failure_path", "trigger_class"),
+    tuple(ROLLBACK_FAILURE_PATHS.items()),
+)
+def test_every_registered_failure_path_maps_to_one_rollback_trigger(
+    failure_path,
+    trigger_class,
+):
+    control = _control()
+
+    result = control.classify_terminal_closeout(failure_paths=[failure_path])
+
+    assert result == {
+        "closeout_kind": "rollback_failure",
+        "failure_paths": [failure_path],
+        "outcome_class": None,
+        "rollback_required": True,
+        "trigger_class": trigger_class,
+    }
+
+
+def test_rollback_failure_mapping_uses_fixed_precedence_and_canonical_order():
+    control = _control()
+
+    result = control.classify_terminal_closeout(
+        failure_paths=[
+            "manifest_publication_failure",
+            "source_identity_failure",
+            "approval_failure",
+        ]
+    )
+
+    assert result["failure_paths"] == [
+        "approval_failure",
+        "source_identity_failure",
+        "manifest_publication_failure",
+    ]
+    assert result["trigger_class"] == "authority"
+
+
+@pytest.mark.parametrize(
+    "failure_paths",
+    (
+        [],
+        ["unknown_failure"],
+        ["canary_failure", "canary_failure"],
+    ),
+)
+def test_rollback_failure_mapping_rejects_empty_unmapped_or_duplicate_paths(
+    failure_paths,
+):
+    control = _control()
+
+    with pytest.raises(control.SuccessorControlError, match="failure|path|duplicate"):
+        control.classify_terminal_closeout(failure_paths=failure_paths)
+
+
+@pytest.mark.parametrize(
+    "outcome_class",
+    (
+        "victory_and_floor_signal",
+        "floor_only_signal",
+        "victory_only_signal",
+        "no_learning_signal",
+    ),
+)
+def test_complete_holdout_outcomes_are_normal_closeout_without_trigger(
+    outcome_class,
+):
+    control = _control()
+
+    result = control.classify_terminal_closeout(outcome_class=outcome_class)
+
+    assert result == {
+        "closeout_kind": "normal_holdout",
+        "failure_paths": [],
+        "outcome_class": outcome_class,
+        "rollback_required": False,
+        "trigger_class": None,
+    }
+
+
+def test_terminal_closeout_rejects_failure_plus_outcome_or_unknown_outcome():
+    control = _control()
+
+    with pytest.raises(control.SuccessorControlError, match="failure|outcome"):
+        control.classify_terminal_closeout(
+            failure_paths=["canary_failure"],
+            outcome_class="no_learning_signal",
+        )
+    with pytest.raises(control.SuccessorControlError, match="outcome"):
+        control.classify_terminal_closeout(outcome_class="unknown_signal")
+
+
+@pytest.mark.parametrize(
+    "outcome_class",
+    (
+        "victory_and_floor_signal",
+        "floor_only_signal",
+        "victory_only_signal",
+        "no_learning_signal",
+    ),
+)
+def test_registered_normal_closeout_restores_control_for_every_holdout_outcome(
+    tmp_path,
+    outcome_class,
+):
+    control = _control()
+    authority, paths = _rollback_authority(control, tmp_path)
+    context = _empirical_context(
+        control,
+        "holdout",
+        registration_fields={
+            "rollback_authority_sha256": authority["rollback_authority_sha256"]
+        },
+    )
+    output = tmp_path / "execution"
+    original_production = paths["production_config"].read_bytes()
+
+    with control.ExecutionLease(
+        output,
+        context=context,
+        child_process_id=6_400,
+        process_alive=lambda process_id: process_id == 6_400,
+    ) as lease:
+        target = output / authority["target_relative_path"]
+        target.write_bytes(b'{"candidate_enabled":true}\n')
+
+        observation = control.execute_registered_normal_closeout(
+            context,
+            lease,
+            rollback_authority=authority,
+            outcome_class=outcome_class,
+        )
+
+        assert observation["status"] == "normal_closeout_verified"
+        assert observation["closeout_kind"] == "normal_holdout"
+        assert observation["failure_paths"] == []
+        assert observation["outcome_class"] == outcome_class
+        assert observation["trigger_class"] is None
+        assert json.loads(target.read_bytes()) == authority["control_target"]
+    assert paths["production_config"].read_bytes() == original_production
+
+
 def test_registered_rollback_restores_control_target_and_verifies_isolation(
     tmp_path,
 ):
@@ -1517,7 +1717,7 @@ def test_registered_rollback_restores_control_target_and_verifies_isolation(
             context,
             lease,
             rollback_authority=authority,
-            trigger_class="canary",
+            failure_paths=["canary_failure"],
         )
 
         assert observation["status"] == "rollback_verified"
@@ -1575,7 +1775,7 @@ def test_rollback_records_external_production_drift_without_repair(tmp_path):
             context,
             lease,
             rollback_authority=authority,
-            trigger_class="identity",
+            failure_paths=["production_identity_failure"],
         )
 
         assert observation["status"] == "rollback_isolation_failure"
@@ -1608,7 +1808,7 @@ def test_rollback_rejects_unregistered_authority_and_ambiguous_target_staging(
                 unregistered,
                 lease,
                 rollback_authority=authority,
-                trigger_class="canary",
+                failure_paths=["canary_failure"],
             )
         assert not (unregistered_output / authority["target_relative_path"]).exists()
 
@@ -1638,7 +1838,7 @@ def test_rollback_rejects_unregistered_authority_and_ambiguous_target_staging(
                 registered,
                 lease,
                 rollback_authority=authority,
-                trigger_class="canary",
+                failure_paths=["canary_failure"],
             )
         assert target.read_bytes() == candidate_bytes
         assert staging.read_bytes() == b"ambiguous"
