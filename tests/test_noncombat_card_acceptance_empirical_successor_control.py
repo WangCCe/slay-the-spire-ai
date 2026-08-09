@@ -2,11 +2,13 @@ from __future__ import annotations
 
 import importlib
 import copy
+import gzip
 import hashlib
 import json
 import os
 from pathlib import Path
 import subprocess
+import struct
 import sys
 
 import pytest
@@ -1144,6 +1146,264 @@ def test_existing_drift_and_ambiguous_staging_fail_without_repair(tmp_path):
             )
         assert not absent_path.exists()
         assert absent_staging.read_bytes() == b"unowned"
+
+
+def test_float64_evidence_is_deterministic_little_endian_gzip_metadata_only():
+    control = _control()
+    rows = ((1.0, -2.5), (3.25, 4.0))
+
+    first, first_stored = control.encode_float64_evidence_artifact(
+        relative_path="evidence/vectors.f64.gz",
+        rows=rows,
+    )
+    second, second_stored = control.encode_float64_evidence_artifact(
+        relative_path="evidence/vectors.f64.gz",
+        rows=rows,
+    )
+
+    canonical = struct.pack("<dddd", 1.0, -2.5, 3.25, 4.0)
+    assert first == second
+    assert first_stored == second_stored
+    assert first_stored[4:8] == b"\x00\x00\x00\x00"
+    assert gzip.decompress(first_stored) == canonical
+    assert first == {
+        "artifact": {
+            "encoding": "deterministic-gzip-v1",
+            "path": "evidence/vectors.f64.gz",
+            "stored_sha256": hashlib.sha256(first_stored).hexdigest(),
+            "stored_size_bytes": len(first_stored),
+            "uncompressed_sha256": hashlib.sha256(canonical).hexdigest(),
+            "uncompressed_size_bytes": len(canonical),
+        },
+        "dtype": "float64",
+        "element_count": 4,
+        "endian": "little",
+        "row_order": "row-major",
+        "schema_version": (
+            "noncombat-card-acceptance-empirical-successor-float64-evidence-v1"
+        ),
+        "shape": [2, 2],
+    }
+    assert "rows" not in first and "values" not in first
+
+
+@pytest.mark.parametrize(
+    "rows, message",
+    (
+        (((1.0,), (2.0, 3.0)), "rectangular"),
+        (((float("nan"),),), "finite"),
+        (((),), "column"),
+    ),
+)
+def test_float64_evidence_rejects_invalid_geometry_and_values(rows, message):
+    control = _control()
+
+    with pytest.raises(control.SuccessorControlError, match=message):
+        control.encode_float64_evidence_artifact(
+            relative_path="evidence/invalid.f64.gz",
+            rows=rows,
+        )
+
+
+def _budget_artifact(index, *, stored_size, uncompressed_size):
+    return {
+        "encoding": "deterministic-gzip-v1",
+        "path": f"evidence/chunk-{index:02d}.bin.gz",
+        "stored_sha256": f"{index + 1:064x}",
+        "stored_size_bytes": stored_size,
+        "uncompressed_sha256": f"{index + 101:064x}",
+        "uncompressed_size_bytes": uncompressed_size,
+    }
+
+
+def _complete_budget_kwargs():
+    mib = 1024 * 1024
+    return {
+        "artifacts": tuple(
+            _budget_artifact(index, stored_size=32 * mib, uncompressed_size=64 * mib)
+            for index in range(8)
+        ),
+        "decisions_per_episode": (500,) * 2_560,
+        "training_environment_accesses": 1_024,
+        "canary_environment_accesses": 512,
+        "holdout_environment_accesses": 1_024,
+        "candidate_optimizer_updates": 8,
+        "control_optimizer_updates": 8,
+        "shadow_optimizer_steps": 1,
+        "charged_seconds": 28_800.0,
+    }
+
+
+def test_complete_resource_and_evidence_budget_accepts_exact_ceilings():
+    control = _control()
+
+    budget = control.validate_resource_and_evidence_budget(
+        **_complete_budget_kwargs()
+    )
+
+    assert budget["artifact_count"] == 8
+    assert budget["stored_size_bytes"] == 256 * 1024 * 1024
+    assert budget["uncompressed_size_bytes"] == 512 * 1024 * 1024
+    assert budget["total_environment_accesses"] == 2_560
+    assert budget["training_optimizer_steps"] == 16
+    assert budget["episode_count"] == 2_560
+
+
+@pytest.mark.parametrize(
+    "mutation, message",
+    (
+        ("artifact", "artifact"),
+        ("stored", "stored"),
+        ("uncompressed", "uncompressed"),
+        ("decision", "decision"),
+        ("training_access", "training environment"),
+        ("canary_access", "canary environment"),
+        ("holdout_access", "holdout environment"),
+        ("candidate_update", "candidate optimizer"),
+        ("control_update", "control optimizer"),
+        ("shadow_update", "shadow optimizer"),
+        ("charged_seconds", "charged seconds"),
+    ),
+)
+def test_resource_and_evidence_budget_rejects_each_ceiling_plus_one(
+    mutation,
+    message,
+):
+    control = _control()
+    kwargs = _complete_budget_kwargs()
+    mib = 1024 * 1024
+    if mutation == "artifact":
+        kwargs["artifacts"] = (
+            _budget_artifact(0, stored_size=64 * mib + 1, uncompressed_size=1),
+        )
+        kwargs["decisions_per_episode"] = ()
+        kwargs["training_environment_accesses"] = 0
+        kwargs["canary_environment_accesses"] = 0
+        kwargs["holdout_environment_accesses"] = 0
+    elif mutation == "stored":
+        kwargs["artifacts"] = tuple(
+            _budget_artifact(index, stored_size=64 * mib, uncompressed_size=1)
+            for index in range(4)
+        ) + (_budget_artifact(4, stored_size=1, uncompressed_size=1),)
+    elif mutation == "uncompressed":
+        kwargs["artifacts"] = tuple(
+            _budget_artifact(index, stored_size=1, uncompressed_size=64 * mib)
+            for index in range(8)
+        ) + (_budget_artifact(8, stored_size=1, uncompressed_size=1),)
+    elif mutation == "decision":
+        kwargs["decisions_per_episode"] = (501,) + (500,) * 2_559
+    elif mutation == "training_access":
+        kwargs["training_environment_accesses"] += 1
+        kwargs["decisions_per_episode"] += (1,)
+    elif mutation == "canary_access":
+        kwargs["canary_environment_accesses"] += 1
+        kwargs["decisions_per_episode"] += (1,)
+    elif mutation == "holdout_access":
+        kwargs["holdout_environment_accesses"] += 1
+        kwargs["decisions_per_episode"] += (1,)
+    elif mutation == "candidate_update":
+        kwargs["candidate_optimizer_updates"] += 1
+    elif mutation == "control_update":
+        kwargs["control_optimizer_updates"] += 1
+    elif mutation == "shadow_update":
+        kwargs["shadow_optimizer_steps"] += 1
+    else:
+        kwargs["charged_seconds"] += 0.001
+
+    with pytest.raises(control.SuccessorControlError, match=message):
+        control.validate_resource_and_evidence_budget(**kwargs)
+
+
+def test_managed_artifact_byte_bounds_fail_before_publication(tmp_path, monkeypatch):
+    control = _control()
+    context = _training_context(control)
+    output = tmp_path / "execution"
+
+    with control.ExecutionLease(
+        output,
+        context=context,
+        child_process_id=6204,
+        process_alive=lambda process_id: process_id == 6204,
+    ) as lease:
+        monkeypatch.setattr(
+            control,
+            "_publication_byte_limits",
+            lambda: {
+                "max_artifact_bytes": 4,
+                "max_stored_bytes": 4,
+                "max_uncompressed_bytes": 4,
+            },
+        )
+        with pytest.raises(control.SuccessorControlError, match="artifact"):
+            control.publish_managed_artifact(
+                context,
+                lease,
+                relative_path="evidence/oversized.bin",
+                payload=b"12345",
+            )
+        assert not (output / "evidence" / "oversized.bin").exists()
+
+        control.publish_managed_artifact(
+            context,
+            lease,
+            relative_path="evidence/exact.bin",
+            payload=b"1234",
+        )
+        with pytest.raises(control.SuccessorControlError, match="stored"):
+            control.publish_managed_artifact(
+                context,
+                lease,
+                relative_path="evidence/extra.bin",
+                payload=b"5",
+            )
+        assert not (output / "evidence" / "extra.bin").exists()
+
+
+def test_environment_access_ceiling_fails_before_debit_and_callback(
+    tmp_path,
+    monkeypatch,
+):
+    control = _control()
+    context = _training_context(control)
+    original_limits = control._resource_limits
+    monkeypatch.setattr(
+        control,
+        "_resource_limits",
+        lambda value: {
+            **original_limits(value),
+            "environment_accesses": 1,
+        },
+    )
+    output = tmp_path / "execution"
+    callbacks = []
+
+    with control.ExecutionLease(
+        output,
+        context=context,
+        child_process_id=6205,
+        process_alive=lambda process_id: process_id == 6205,
+    ) as lease:
+        control.initialize_access_journal(context, lease)
+        control.perform_journaled_environment_access(
+            context,
+            lease,
+            seed=80_000,
+            arm="candidate",
+            purpose="training",
+            access=lambda: callbacks.append("first"),
+        )
+        with pytest.raises(control.SuccessorControlError, match="environment access"):
+            control.perform_journaled_environment_access(
+                context,
+                lease,
+                seed=80_001,
+                arm="control",
+                purpose="training",
+                access=lambda: callbacks.append("second"),
+            )
+
+        assert callbacks == ["first"]
+        assert control.load_access_journal(context, lease)["debited_accesses"] == 1
 
 
 def test_checkpoint_republication_rejects_ambiguous_staging(tmp_path):

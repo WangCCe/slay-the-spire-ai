@@ -4,12 +4,15 @@ from __future__ import annotations
 
 import argparse
 import copy
+import gzip
 import hashlib
 import importlib
+import io
 import json
 import math
 import os
 import re
+import struct
 import sys
 import time
 import uuid
@@ -341,6 +344,9 @@ TRAINING_CONTINUATION_SCHEMA_VERSION = (
 )
 ARTIFACT_INVENTORY_SCHEMA_VERSION = (
     "noncombat-card-acceptance-empirical-successor-artifact-inventory-v1"
+)
+FLOAT64_EVIDENCE_SCHEMA_VERSION = (
+    "noncombat-card-acceptance-empirical-successor-float64-evidence-v1"
 )
 TERMINAL_INTENT_SCHEMA_VERSION = (
     "noncombat-card-acceptance-empirical-successor-terminal-intent-v1"
@@ -2484,20 +2490,50 @@ def _require_terminal_publication_open(output: Path) -> None:
             raise SuccessorControlError("terminal publication is closed")
 
 
-def _managed_relative_path(value: object) -> str:
+def deterministic_gzip_bytes(payload: bytes) -> bytes:
+    """Return one gzip member with fixed filename and timestamp metadata."""
+    if not isinstance(payload, bytes):
+        raise SuccessorControlError("gzip payload must be bytes")
+    buffer = io.BytesIO()
+    with gzip.GzipFile(
+        fileobj=buffer,
+        mode="wb",
+        filename="",
+        mtime=0,
+    ) as handle:
+        handle.write(payload)
+    return buffer.getvalue()
+
+
+def _publication_byte_limits() -> dict[str, int]:
+    limits = _limits()
+    return {
+        "max_artifact_bytes": int(limits["max_artifact_bytes"]),
+        "max_stored_bytes": int(limits["max_stored_bytes"]),
+        "max_uncompressed_bytes": int(limits["max_uncompressed_bytes"]),
+    }
+
+
+def _artifact_relative_path(value: object) -> str:
     if not isinstance(value, str) or not value or "\\" in value or ":" in value:
-        raise SuccessorControlError("managed artifact path is invalid")
+        raise SuccessorControlError("artifact path is invalid")
     pure = PurePosixPath(value)
     if (
         pure.is_absolute()
         or pure.as_posix() != value
         or value.endswith("/")
         or any(part in {"", ".", ".."} for part in pure.parts)
-        or value in {LEASE_FILENAME, *_TERMINAL_PUBLICATION_FILENAMES}
         or any(part.startswith(".") and part.endswith(".tmp") for part in pure.parts)
     ):
-        raise SuccessorControlError("managed artifact path is invalid")
+        raise SuccessorControlError("artifact path is invalid")
     return value
+
+
+def _managed_relative_path(value: object) -> str:
+    relative = _artifact_relative_path(value)
+    if relative in {LEASE_FILENAME, *_TERMINAL_PUBLICATION_FILENAMES}:
+        raise SuccessorControlError("managed artifact path is invalid")
+    return relative
 
 
 def _managed_artifact_target(output: Path, relative_path: object) -> tuple[str, Path]:
@@ -2530,6 +2566,135 @@ def _artifact_binding(relative_path: str, path: Path) -> dict[str, Any]:
     }
 
 
+def _bounded_deterministic_gzip_payload(
+    stored: bytes,
+    *,
+    max_uncompressed_bytes: int,
+) -> bytes:
+    try:
+        with gzip.GzipFile(fileobj=io.BytesIO(stored), mode="rb") as stream:
+            uncompressed = stream.read(max_uncompressed_bytes + 1)
+            trailing_output = b"" if len(uncompressed) > max_uncompressed_bytes else stream.read(1)
+    except (EOFError, gzip.BadGzipFile, OSError) as exc:
+        raise SuccessorControlError("managed gzip artifact is invalid") from exc
+    if len(uncompressed) > max_uncompressed_bytes or trailing_output:
+        raise SuccessorControlError(
+            "managed artifact exceeds its uncompressed byte ceiling"
+        )
+    if deterministic_gzip_bytes(uncompressed) != stored:
+        raise SuccessorControlError("managed gzip artifact is not deterministic")
+    return uncompressed
+
+
+def _managed_binding_from_bytes(
+    relative_path: str,
+    stored: bytes,
+    *,
+    limits: Mapping[str, int] | None = None,
+) -> dict[str, Any]:
+    relative = _artifact_relative_path(relative_path)
+    if not isinstance(stored, bytes):
+        raise SuccessorControlError("managed artifact payload must be bytes")
+    active_limits = dict(_publication_byte_limits() if limits is None else limits)
+    max_artifact = active_limits["max_artifact_bytes"]
+    if len(stored) > max_artifact:
+        raise SuccessorControlError("managed artifact exceeds its byte ceiling")
+    if relative.endswith(".gz"):
+        uncompressed = _bounded_deterministic_gzip_payload(
+            stored,
+            max_uncompressed_bytes=max_artifact,
+        )
+        encoding = "deterministic-gzip-v1"
+    else:
+        uncompressed = stored
+        encoding = "identity-bytes-v1"
+    if len(uncompressed) > max_artifact:
+        raise SuccessorControlError("managed artifact exceeds its byte ceiling")
+    return {
+        "encoding": encoding,
+        "path": relative,
+        "stored_sha256": hashlib.sha256(stored).hexdigest(),
+        "stored_size_bytes": len(stored),
+        "uncompressed_sha256": hashlib.sha256(uncompressed).hexdigest(),
+        "uncompressed_size_bytes": len(uncompressed),
+    }
+
+
+def _managed_artifact_binding(relative_path: str, path: Path) -> dict[str, Any]:
+    relative = _artifact_relative_path(relative_path)
+    if path.is_symlink() or not path.is_file():
+        raise SuccessorControlError(
+            f"managed artifact is not a regular file: {relative}"
+        )
+    limits = _publication_byte_limits()
+    try:
+        if path.stat().st_size > limits["max_artifact_bytes"]:
+            raise SuccessorControlError(
+                "managed artifact exceeds its byte ceiling"
+            )
+        stored = path.read_bytes()
+    except OSError as exc:
+        raise SuccessorControlError(
+            f"managed artifact cannot be read: {relative}"
+        ) from exc
+    return _managed_binding_from_bytes(relative, stored, limits=limits)
+
+
+def _validate_artifact_budget_rows(
+    artifacts: Sequence[Mapping[str, Any]],
+    *,
+    limits: Mapping[str, int] | None = None,
+) -> tuple[list[dict[str, Any]], int, int]:
+    active_limits = dict(_publication_byte_limits() if limits is None else limits)
+    normalized: list[dict[str, Any]] = []
+    paths: list[str] = []
+    stored_total = 0
+    uncompressed_total = 0
+    fields = {
+        "encoding",
+        "path",
+        "stored_sha256",
+        "stored_size_bytes",
+        "uncompressed_sha256",
+        "uncompressed_size_bytes",
+    }
+    for value in artifacts:
+        row = _copy_mapping(value, "artifact budget row")
+        _require_fields(row, fields, "artifact budget row")
+        row["path"] = _artifact_relative_path(row["path"])
+        if row["encoding"] not in {
+            "identity-bytes-v1",
+            "deterministic-gzip-v1",
+        }:
+            raise SuccessorControlError("artifact encoding is invalid")
+        _digest(row["stored_sha256"], "artifact stored digest")
+        _digest(row["uncompressed_sha256"], "artifact uncompressed digest")
+        for field in ("stored_size_bytes", "uncompressed_size_bytes"):
+            size = row[field]
+            if isinstance(size, bool) or not isinstance(size, int) or size < 0:
+                raise SuccessorControlError(f"artifact {field} is invalid")
+        if max(row["stored_size_bytes"], row["uncompressed_size_bytes"]) > active_limits[
+            "max_artifact_bytes"
+        ]:
+            raise SuccessorControlError("managed artifact exceeds its byte ceiling")
+        if row["encoding"] == "identity-bytes-v1" and (
+            row["stored_sha256"] != row["uncompressed_sha256"]
+            or row["stored_size_bytes"] != row["uncompressed_size_bytes"]
+        ):
+            raise SuccessorControlError("identity artifact binding differs")
+        paths.append(row["path"])
+        stored_total += row["stored_size_bytes"]
+        uncompressed_total += row["uncompressed_size_bytes"]
+        normalized.append(row)
+    if paths != sorted(set(paths)):
+        raise SuccessorControlError("artifact paths must be unique and sorted")
+    if stored_total > active_limits["max_stored_bytes"]:
+        raise SuccessorControlError("managed stored-byte ceiling exceeded")
+    if uncompressed_total > active_limits["max_uncompressed_bytes"]:
+        raise SuccessorControlError("managed uncompressed-byte ceiling exceeded")
+    return normalized, stored_total, uncompressed_total
+
+
 def _observe_artifact_inventory(
     output: Path, *, excluded_paths: Sequence[str]
 ) -> dict[str, Any]:
@@ -2556,14 +2721,52 @@ def _observe_artifact_inventory(
             raise SuccessorControlError(
                 f"managed artifact has ambiguous staging: {relative}"
             )
-        rows.append(_artifact_binding(relative, path))
+        rows.append(_managed_artifact_binding(relative, path))
+    normalized_rows, stored_total, uncompressed_total = (
+        _validate_artifact_budget_rows(rows)
+    )
     body = {
-        "artifact_count": len(rows),
-        "artifacts": rows,
+        "artifact_count": len(normalized_rows),
+        "artifacts": normalized_rows,
         "schema_version": ARTIFACT_INVENTORY_SCHEMA_VERSION,
-        "stored_size_bytes": sum(row["size_bytes"] for row in rows),
+        "stored_size_bytes": stored_total,
+        "uncompressed_size_bytes": uncompressed_total,
     }
     return {**body, "artifact_inventory_sha256": canonical_json_sha256(body)}
+
+
+def _require_prospective_artifact_budget(
+    output: Path,
+    *,
+    relative_path: str,
+    payload: bytes,
+) -> dict[str, Any]:
+    relative = _artifact_relative_path(relative_path)
+    candidate = _managed_binding_from_bytes(relative, payload)
+    inventory = _observe_artifact_inventory(output, excluded_paths=(relative,))
+    rows = [*inventory["artifacts"], candidate]
+    rows.sort(key=lambda row: row["path"])
+    _validate_artifact_budget_rows(rows)
+    return candidate
+
+
+def _publish_bounded_artifact(
+    output: Path,
+    *,
+    relative_path: str,
+    payload: bytes,
+) -> dict[str, Any]:
+    binding = _require_prospective_artifact_budget(
+        output,
+        relative_path=relative_path,
+        payload=payload,
+    )
+    path = output.joinpath(*PurePosixPath(binding["path"]).parts)
+    _atomic_write_once_or_identical(path, payload)
+    observed = _managed_artifact_binding(binding["path"], path)
+    if observed != binding:
+        raise SuccessorControlError("managed artifact binding drifted")
+    return binding
 
 
 def publish_managed_artifact(
@@ -2578,13 +2781,193 @@ def publish_managed_artifact(
     _execution_context_for_operation(context, "artifact")
     _require_terminal_publication_open(output)
     relative, path = _managed_artifact_target(output, relative_path)
-    _atomic_write_once_or_identical(path, payload)
-    return _artifact_binding(relative, path)
+    del path
+    return _publish_bounded_artifact(
+        output,
+        relative_path=relative,
+        payload=payload,
+    )
 
 
-def _append_durable(path: Path, payload: bytes) -> None:
+def encode_float64_evidence_artifact(
+    *,
+    relative_path: str,
+    rows: Sequence[Sequence[int | float]],
+) -> tuple[dict[str, Any], bytes]:
+    """Encode bounded rectangular float evidence without inline JSON values."""
+    relative = _managed_relative_path(relative_path)
+    if not relative.endswith(".gz"):
+        raise SuccessorControlError("float64 evidence path must end in .gz")
+    if isinstance(rows, (str, bytes)) or not isinstance(rows, Sequence) or not rows:
+        raise SuccessorControlError("float64 evidence rows are invalid")
+    normalized_rows: list[tuple[float, ...]] = []
+    column_count: int | None = None
+    for row in rows:
+        if isinstance(row, (str, bytes)) or not isinstance(row, Sequence):
+            raise SuccessorControlError("float64 evidence row is invalid")
+        if column_count is None:
+            column_count = len(row)
+            if column_count == 0:
+                raise SuccessorControlError(
+                    "float64 evidence column count must be positive"
+                )
+        elif len(row) != column_count:
+            raise SuccessorControlError("float64 evidence must be rectangular")
+        values: list[float] = []
+        for value in row:
+            if isinstance(value, bool) or not isinstance(value, (int, float)):
+                raise SuccessorControlError("float64 evidence value is invalid")
+            normalized = float(value)
+            if not math.isfinite(normalized):
+                raise SuccessorControlError("float64 evidence values must be finite")
+            values.append(normalized)
+        normalized_rows.append(tuple(values))
+    assert column_count is not None
+    element_count = len(normalized_rows) * column_count
+    canonical_size = element_count * 8
+    if canonical_size > _publication_byte_limits()["max_artifact_bytes"]:
+        raise SuccessorControlError("managed artifact exceeds its byte ceiling")
+    canonical_buffer = bytearray(canonical_size)
+    offset = 0
+    for row in normalized_rows:
+        for value in row:
+            struct.pack_into("<d", canonical_buffer, offset, value)
+            offset += 8
+    canonical = bytes(canonical_buffer)
+    stored = deterministic_gzip_bytes(canonical)
+    artifact = _managed_binding_from_bytes(relative, stored)
+    metadata = {
+        "artifact": artifact,
+        "dtype": "float64",
+        "element_count": element_count,
+        "endian": "little",
+        "row_order": "row-major",
+        "schema_version": FLOAT64_EVIDENCE_SCHEMA_VERSION,
+        "shape": [len(normalized_rows), column_count],
+    }
+    canonical_json_bytes(metadata)
+    return metadata, stored
+
+
+def validate_resource_and_evidence_budget(
+    *,
+    artifacts: Sequence[Mapping[str, Any]],
+    decisions_per_episode: Sequence[int],
+    training_environment_accesses: int,
+    canary_environment_accesses: int,
+    holdout_environment_accesses: int,
+    candidate_optimizer_updates: int,
+    control_optimizer_updates: int,
+    shadow_optimizer_steps: int,
+    charged_seconds: float,
+) -> dict[str, Any]:
+    """Validate one complete or terminal-prefix resource/evidence budget."""
+    if isinstance(artifacts, (str, bytes)) or not isinstance(artifacts, Sequence):
+        raise SuccessorControlError("artifact budget rows are invalid")
+    normalized_rows, stored_total, uncompressed_total = (
+        _validate_artifact_budget_rows(artifacts)
+    )
+    limits = _limits()
+    resource_values = {
+        "training_environment_accesses": training_environment_accesses,
+        "canary_environment_accesses": canary_environment_accesses,
+        "holdout_environment_accesses": holdout_environment_accesses,
+        "candidate_optimizer_updates": candidate_optimizer_updates,
+        "control_optimizer_updates": control_optimizer_updates,
+        "shadow_optimizer_steps": shadow_optimizer_steps,
+    }
+    resource_ceilings = {
+        "training_environment_accesses": limits[
+            "max_training_environment_accesses"
+        ],
+        "canary_environment_accesses": limits["max_canary_environment_accesses"],
+        "holdout_environment_accesses": limits[
+            "max_holdout_environment_accesses"
+        ],
+        "candidate_optimizer_updates": limits["max_training_updates_per_arm"],
+        "control_optimizer_updates": limits["max_training_updates_per_arm"],
+        "shadow_optimizer_steps": limits["max_shadow_optimizer_steps"],
+    }
+    for name, value in resource_values.items():
+        if isinstance(value, bool) or not isinstance(value, int) or value < 0:
+            raise SuccessorControlError(
+                f"{name.replace('_', ' ')} must be a nonnegative integer"
+            )
+        if value > resource_ceilings[name]:
+            raise SuccessorControlError(
+                f"{name.replace('_', ' ')} exceeds its ceiling"
+            )
+    training_optimizer_steps = (
+        candidate_optimizer_updates + control_optimizer_updates
+    )
+    if training_optimizer_steps > limits["max_training_optimizer_steps"]:
+        raise SuccessorControlError("training optimizer steps exceed their ceiling")
+    total_environment_accesses = (
+        training_environment_accesses
+        + canary_environment_accesses
+        + holdout_environment_accesses
+    )
+    if total_environment_accesses > limits["max_environment_accesses"]:
+        raise SuccessorControlError("total environment accesses exceed their ceiling")
+    if (
+        isinstance(charged_seconds, bool)
+        or not isinstance(charged_seconds, (int, float))
+        or not math.isfinite(float(charged_seconds))
+        or charged_seconds < 0.0
+    ):
+        raise SuccessorControlError("charged seconds are invalid")
+    if charged_seconds > limits["max_charged_seconds"]:
+        raise SuccessorControlError("charged seconds exceed their ceiling")
+    if (
+        isinstance(decisions_per_episode, (str, bytes))
+        or not isinstance(decisions_per_episode, Sequence)
+    ):
+        raise SuccessorControlError("decisions per episode are invalid")
+    normalized_decisions: list[int] = []
+    for value in decisions_per_episode:
+        if isinstance(value, bool) or not isinstance(value, int) or value < 0:
+            raise SuccessorControlError("decision count is invalid")
+        if value > limits["max_decisions_per_episode"]:
+            raise SuccessorControlError("decision count exceeds its ceiling")
+        normalized_decisions.append(value)
+    if len(normalized_decisions) != total_environment_accesses:
+        raise SuccessorControlError(
+            "episode count differs from environment accesses"
+        )
+    return {
+        "artifact_count": len(normalized_rows),
+        "artifacts": normalized_rows,
+        "candidate_optimizer_updates": candidate_optimizer_updates,
+        "canary_environment_accesses": canary_environment_accesses,
+        "charged_seconds": float(charged_seconds),
+        "control_optimizer_updates": control_optimizer_updates,
+        "decisions_per_episode": normalized_decisions,
+        "episode_count": len(normalized_decisions),
+        "holdout_environment_accesses": holdout_environment_accesses,
+        "shadow_optimizer_steps": shadow_optimizer_steps,
+        "stored_size_bytes": stored_total,
+        "total_environment_accesses": total_environment_accesses,
+        "training_environment_accesses": training_environment_accesses,
+        "training_optimizer_steps": training_optimizer_steps,
+        "uncompressed_size_bytes": uncompressed_total,
+    }
+
+
+def _append_durable(output: Path, path: Path, payload: bytes) -> None:
     if not path.is_file() or not payload or not payload.endswith(b"\n"):
         raise SuccessorControlError(f"append target is invalid: {path.name}")
+    try:
+        relative = path.relative_to(output).as_posix()
+        prospective = path.read_bytes() + payload
+    except (OSError, ValueError) as exc:
+        raise SuccessorControlError(
+            f"append target cannot be budgeted: {path.name}"
+        ) from exc
+    _require_prospective_artifact_budget(
+        output,
+        relative_path=relative,
+        payload=prospective,
+    )
     with path.open("ab", buffering=0) as handle:
         handle.write(payload)
         handle.flush()
@@ -2606,9 +2989,10 @@ def initialize_access_journal(
     context, output = _require_execution_lease(context, lease)
     _execution_context_for_operation(context, "journal")
     _require_terminal_publication_open(output)
-    _atomic_write_once_or_identical(
-        output / ACCESS_JOURNAL_FILENAME,
-        canonical_json_bytes(_journal_header(context)),
+    _publish_bounded_artifact(
+        output,
+        relative_path=ACCESS_JOURNAL_FILENAME,
+        payload=canonical_json_bytes(_journal_header(context)),
     )
     return load_access_journal(context, lease)
 
@@ -2673,6 +3057,12 @@ def perform_journaled_environment_access(
     if purpose != context.stage or not callable(access):
         raise SuccessorControlError("environment access purpose is invalid")
     journal = load_access_journal(context, lease)
+    if journal["debited_accesses"] >= _resource_limits(context)[
+        "environment_accesses"
+    ]:
+        raise SuccessorControlError(
+            "environment access would exceed the stage ceiling"
+        )
     event = {
         "arm": arm,
         "event_index": journal["debited_accesses"] + 1,
@@ -2683,6 +3073,7 @@ def perform_journaled_environment_access(
         "stage": context.stage,
     }
     _append_durable(
+        output,
         output / ACCESS_JOURNAL_FILENAME,
         canonical_json_bytes(event),
     )
@@ -2727,9 +3118,10 @@ def initialize_resource_ledger(
     context, output = _require_execution_lease(context, lease)
     _execution_context_for_operation(context, "resource")
     _require_terminal_publication_open(output)
-    _atomic_write_once_or_identical(
-        output / RESOURCE_LEDGER_FILENAME,
-        canonical_json_bytes(_resource_header(context)),
+    _publish_bounded_artifact(
+        output,
+        relative_path=RESOURCE_LEDGER_FILENAME,
+        payload=canonical_json_bytes(_resource_header(context)),
     )
     return load_resource_ledger(context, lease)
 
@@ -2835,6 +3227,7 @@ def advance_resource_ledger(
         "schema_version": RESOURCE_LEDGER_SCHEMA_VERSION,
     }
     _append_durable(
+        output,
         output / RESOURCE_LEDGER_FILENAME,
         canonical_json_bytes(event),
     )
@@ -2892,7 +3285,11 @@ def publish_write_once_marker(
         "schema_version": MARKER_SCHEMA_VERSION,
     }
     encoded = canonical_json_bytes(marker)
-    _atomic_write_once_or_identical(path, encoded)
+    _publish_bounded_artifact(
+        output,
+        relative_path=path.relative_to(output).as_posix(),
+        payload=encoded,
+    )
     return marker
 
 
@@ -3021,7 +3418,11 @@ def publish_complete_training_checkpoint(
     if len(existing) == index and existing[-1] != marker:
         raise SuccessorControlError("training checkpoint replacement is forbidden")
     path = output / "checkpoints" / f"chunk_{index:04d}.json"
-    _atomic_write_once_or_identical(path, canonical_json_bytes(marker))
+    _publish_bounded_artifact(
+        output,
+        relative_path=path.relative_to(output).as_posix(),
+        payload=canonical_json_bytes(marker),
+    )
     return marker
 
 
@@ -3147,7 +3548,11 @@ def authorize_training_continuation(
     path = output / "training_continuation.json"
     if path.exists():
         raise SuccessorControlError("training continuation was already used")
-    _atomic_write_once_or_identical(path, canonical_json_bytes(marker))
+    _publish_bounded_artifact(
+        output,
+        relative_path=path.relative_to(output).as_posix(),
+        payload=canonical_json_bytes(marker),
+    )
     return marker
 
 
@@ -3291,9 +3696,10 @@ def publish_terminal_intent(
         **body,
         "terminal_intent_sha256": canonical_json_sha256(body),
     }
-    _atomic_write_once_or_identical(
-        output / TERMINAL_INTENT_FILENAME,
-        canonical_json_bytes(intent),
+    _publish_bounded_artifact(
+        output,
+        relative_path=TERMINAL_INTENT_FILENAME,
+        payload=canonical_json_bytes(intent),
     )
     return intent
 
@@ -3329,9 +3735,10 @@ def publish_terminal_document(
         raise SuccessorControlError("terminal publication order is closed")
     intent = _stored_terminal_intent(context, lease, terminal_intent)
     terminal = _expected_terminal_document(intent)
-    _atomic_write_once_or_identical(
-        output / TERMINAL_FILENAME,
-        canonical_json_bytes(terminal),
+    _publish_bounded_artifact(
+        output,
+        relative_path=TERMINAL_FILENAME,
+        payload=canonical_json_bytes(terminal),
     )
     return terminal
 
@@ -3382,9 +3789,10 @@ def publish_artifact_manifest(
         "terminal_sha256": terminal["terminal_sha256"],
     }
     manifest = {**body, "manifest_sha256": canonical_json_sha256(body)}
-    _atomic_write_once_or_identical(
-        output / MANIFEST_FILENAME,
-        canonical_json_bytes(manifest),
+    _publish_bounded_artifact(
+        output,
+        relative_path=MANIFEST_FILENAME,
+        payload=canonical_json_bytes(manifest),
     )
     return manifest
 
@@ -3536,6 +3944,11 @@ def execute_registered_rollback(
     )
 
     target_bytes = canonical_json_bytes(authority["control_target"])
+    _require_prospective_artifact_budget(
+        output,
+        relative_path=relative,
+        payload=target_bytes,
+    )
     _atomic_replace_rollback_target(target, target_bytes)
     try:
         restored_target = _parse_canonical_mapping(
