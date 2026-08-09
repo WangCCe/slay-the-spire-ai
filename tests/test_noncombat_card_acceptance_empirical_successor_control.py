@@ -1383,3 +1383,288 @@ def test_rollback_rejects_unregistered_authority_and_ambiguous_target_staging(
         assert target.read_bytes() == candidate_bytes
         assert staging.read_bytes() == b"ambiguous"
         assert not (output / control.ROLLBACK_OBSERVATION_FILENAME).exists()
+
+
+def _standing_delegation(control):
+    body = {
+        "exclusions": list(control.STANDING_DELEGATION_EXCLUSIONS),
+        "grant": {
+            "granted_at": "2026-08-08T09:46:47+00:00",
+            "provenance": {
+                "message_id": "external-human-grant-message",
+                "source": "external-human-message",
+                "task_id": "successor-control-test-task",
+            },
+            "verbatim_text": (
+                "This repository is solely maintained by me; you may represent me."
+            ),
+        },
+        "revocation": control.STANDING_DELEGATION_REVOCATION,
+        "schema_version": control.STANDING_DELEGATION_SCHEMA_VERSION,
+        "scope": {
+            "pushed_remote_ref": "origin/master",
+            "registration_id_prefix": control.DELEGATED_REGISTRATION_ID_PREFIX,
+            "request_class": control.DELEGATED_REQUEST_CLASS,
+        },
+    }
+    return {**body, "delegation_sha256": control.canonical_json_sha256(body)}
+
+
+def _revocation_observation(
+    control,
+    request,
+    delegation,
+    *,
+    phase,
+    checked_at,
+    message_timestamp,
+    available=True,
+    revoked=False,
+    task_id="successor-control-test-task",
+):
+    watermark = {
+        "message_id": f"latest-human-{phase}",
+        "message_timestamp": message_timestamp,
+        "task_id": task_id,
+    }
+    body = {
+        "authoritative_state_available": available,
+        "authority_mode": "standing-delegation",
+        "checked_at": checked_at,
+        "delegation_sha256": delegation["delegation_sha256"],
+        "latest_human_message_watermark": watermark,
+        "phase": phase,
+        "request_sha256": request["request_sha256"],
+        "revocation_message_watermark": watermark if revoked else None,
+        "revocation_observed": revoked,
+        "schema_version": control.REVOCATION_OBSERVATION_SCHEMA_VERSION,
+        "stage": request["stage"],
+    }
+    return {
+        **body,
+        "observation_sha256": control.canonical_json_sha256(body),
+    }
+
+
+@pytest.mark.parametrize("stage", ("inventory", "training", "canary", "holdout"))
+def test_standing_delegation_binds_exact_stage_and_fresh_launch_observation(stage):
+    control = _control()
+    request = _stage_request(control, stage)
+    delegation = _standing_delegation(control)
+    approval_observation = _revocation_observation(
+        control,
+        request,
+        delegation,
+        phase="approval",
+        checked_at="2026-08-09T10:00:00+00:00",
+        message_timestamp="2026-08-09T09:59:59+00:00",
+    )
+
+    approval = control.bind_delegated_approval(
+        request=request,
+        request_review_sha256="d" * 64,
+        delegation=delegation,
+        approval_observation=approval_observation,
+        resolved_at="2026-08-09T10:00:00+00:00",
+    )
+    assert control.validate_standing_delegation(delegation) == delegation
+    assert control.validate_delegated_approval(approval, request) == approval
+    assert approval["approved_request_sha256"] == request["request_sha256"]
+    assert approval["request_review_sha256"] == "d" * 64
+    assert approval["approval_observation"] == approval_observation
+    assert "verbatim_approval_text" not in approval
+    authorization = control.build_stage_authorization(
+        request=request,
+        authorization_id=(
+            f"card-acceptance-20260809-{stage}-authorization-v1"
+        ),
+        request_review_sha256="d" * 64,
+        approval_record_sha256=approval["approval_sha256"],
+    )
+    launch_observation = _revocation_observation(
+        control,
+        request,
+        delegation,
+        phase="launch",
+        checked_at="2026-08-09T10:01:00+00:00",
+        message_timestamp="2026-08-09T10:00:59+00:00",
+    )
+
+    assert control.validate_delegated_stage_launch(
+        request=request,
+        authorization=authorization,
+        delegated_approval=approval,
+        launch_observation=launch_observation,
+    ) == launch_observation
+    if stage != "inventory":
+        registration = {
+            "registration_id": "card-acceptance-20260809-registration-v1",
+            "registration_sha256": request["prerequisite_bindings"][
+                "registration_sha256"
+            ],
+        }
+        context = control._build_delegated_execution_context(
+            registration=registration,
+            request=request,
+            authorization=authorization,
+            delegated_approval=approval,
+            launch_observation=launch_observation,
+            registration_validator=lambda value: copy.deepcopy(dict(value)),
+        )
+        assert context.authority_observation == launch_observation
+        assert control._context_identity(context)["launch_authority_sha256"] == (
+            launch_observation["observation_sha256"]
+        )
+        with pytest.raises(TypeError, match="immutable"):
+            context.authority_observation["phase"] = "approval"
+
+
+def test_delegated_approval_rejects_unavailable_or_revoked_conversation_state():
+    control = _control()
+    request = _stage_request(control, "training")
+    delegation = _standing_delegation(control)
+
+    unavailable = _revocation_observation(
+        control,
+        request,
+        delegation,
+        phase="approval",
+        checked_at="2026-08-09T10:00:00+00:00",
+        message_timestamp="2026-08-09T09:59:59+00:00",
+        available=False,
+    )
+    with pytest.raises(control.SuccessorControlError, match="authoritative|available"):
+        control.bind_delegated_approval(
+            request=request,
+            request_review_sha256="d" * 64,
+            delegation=delegation,
+            approval_observation=unavailable,
+            resolved_at="2026-08-09T10:00:00+00:00",
+        )
+
+    revoked = _revocation_observation(
+        control,
+        request,
+        delegation,
+        phase="approval",
+        checked_at="2026-08-09T10:00:00+00:00",
+        message_timestamp="2026-08-09T09:59:59+00:00",
+        revoked=True,
+    )
+    with pytest.raises(control.SuccessorControlError, match="revocation|revoked"):
+        control.bind_delegated_approval(
+            request=request,
+            request_review_sha256="d" * 64,
+            delegation=delegation,
+            approval_observation=revoked,
+            resolved_at="2026-08-09T10:00:00+00:00",
+        )
+
+
+def test_delegated_launch_rejects_revocation_stale_watermark_and_wrong_task():
+    control = _control()
+    request = _stage_request(control, "canary")
+    delegation = _standing_delegation(control)
+    approval_observation = _revocation_observation(
+        control,
+        request,
+        delegation,
+        phase="approval",
+        checked_at="2026-08-09T10:00:00+00:00",
+        message_timestamp="2026-08-09T09:59:59+00:00",
+    )
+    approval = control.bind_delegated_approval(
+        request=request,
+        request_review_sha256="d" * 64,
+        delegation=delegation,
+        approval_observation=approval_observation,
+        resolved_at="2026-08-09T10:00:00+00:00",
+    )
+    authorization = control.build_stage_authorization(
+        request=request,
+        authorization_id="card-acceptance-20260809-canary-authorization-v1",
+        request_review_sha256="d" * 64,
+        approval_record_sha256=approval["approval_sha256"],
+    )
+
+    revoked = _revocation_observation(
+        control,
+        request,
+        delegation,
+        phase="launch",
+        checked_at="2026-08-09T10:01:00+00:00",
+        message_timestamp="2026-08-09T10:00:59+00:00",
+        revoked=True,
+    )
+    with pytest.raises(control.SuccessorControlError, match="revocation|revoked"):
+        control.validate_delegated_stage_launch(
+            request=request,
+            authorization=authorization,
+            delegated_approval=approval,
+            launch_observation=revoked,
+        )
+
+    stale = _revocation_observation(
+        control,
+        request,
+        delegation,
+        phase="launch",
+        checked_at="2026-08-09T10:01:00+00:00",
+        message_timestamp="2026-08-09T09:59:58+00:00",
+    )
+    with pytest.raises(control.SuccessorControlError, match="watermark|stale"):
+        control.validate_delegated_stage_launch(
+            request=request,
+            authorization=authorization,
+            delegated_approval=approval,
+            launch_observation=stale,
+        )
+
+    wrong_task = _revocation_observation(
+        control,
+        request,
+        delegation,
+        phase="launch",
+        checked_at="2026-08-09T10:01:00+00:00",
+        message_timestamp="2026-08-09T10:00:59+00:00",
+        task_id="different-task",
+    )
+    with pytest.raises(control.SuccessorControlError, match="task|provenance"):
+        control.validate_delegated_stage_launch(
+            request=request,
+            authorization=authorization,
+            delegated_approval=approval,
+            launch_observation=wrong_task,
+        )
+
+
+def test_standing_delegation_rejects_generated_scope_and_grant_tampering():
+    control = _control()
+    delegation = _standing_delegation(control)
+
+    generated = copy.deepcopy(delegation)
+    generated["grant"]["provenance"]["source"] = "generated"
+    generated_body = {
+        key: value for key, value in generated.items() if key != "delegation_sha256"
+    }
+    generated["delegation_sha256"] = control.canonical_json_sha256(generated_body)
+    with pytest.raises(control.SuccessorControlError, match="external human"):
+        control.validate_standing_delegation(generated)
+
+    wrong_scope = copy.deepcopy(delegation)
+    wrong_scope["scope"]["request_class"] = "unbound-request"
+    wrong_scope_body = {
+        key: value
+        for key, value in wrong_scope.items()
+        if key != "delegation_sha256"
+    }
+    wrong_scope["delegation_sha256"] = control.canonical_json_sha256(
+        wrong_scope_body
+    )
+    with pytest.raises(control.SuccessorControlError, match="scope"):
+        control.validate_standing_delegation(wrong_scope)
+
+    changed_text = copy.deepcopy(delegation)
+    changed_text["grant"]["verbatim_text"] = "changed"
+    with pytest.raises(control.SuccessorControlError, match="identity|digest"):
+        control.validate_standing_delegation(changed_text)

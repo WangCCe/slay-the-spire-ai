@@ -14,6 +14,7 @@ import sys
 import time
 import uuid
 from collections.abc import Callable, Mapping, Sequence
+from datetime import datetime
 from pathlib import Path, PurePosixPath
 from typing import Any
 
@@ -38,6 +39,15 @@ STAGE_REQUEST_SCHEMA_VERSION = (
 )
 STAGE_AUTHORIZATION_SCHEMA_VERSION = (
     "noncombat-card-acceptance-empirical-successor-stage-authorization-v1"
+)
+STANDING_DELEGATION_SCHEMA_VERSION = (
+    "noncombat-cross-fitted-hierarchical-learning-standing-delegation-v1"
+)
+DELEGATED_APPROVAL_SCHEMA_VERSION = (
+    "noncombat-card-acceptance-empirical-successor-delegated-approval-v1"
+)
+REVOCATION_OBSERVATION_SCHEMA_VERSION = (
+    "noncombat-card-acceptance-empirical-successor-revocation-observation-v1"
 )
 RUNTIME_MODULE_NAME = (
     "analysis_scripts.noncombat_card_acceptance_empirical_successor_runtime"
@@ -175,6 +185,20 @@ _PUBLIC_DEPENDENCY_SPECS = (
     ),
 )
 _STAGES = ("inventory", "training", "canary", "holdout")
+DELEGATED_REGISTRATION_ID_PREFIX = (
+    "noncombat-card-acceptance-empirical-successor-"
+)
+DELEGATED_REQUEST_CLASS = STAGE_REQUEST_SCHEMA_VERSION
+DELEGATED_APPROVAL_RESOLVER = "codex-agent-under-standing-delegation-v1"
+STANDING_DELEGATION_REVOCATION = (
+    "future-explicit-human-revocation-before-approval-publication-v1"
+)
+STANDING_DELEGATION_EXCLUSIONS = (
+    "bypass-codex-host-or-operating-system-approval",
+    "change-request-bound-source-path-cohort-resource-retry-or-authority-terms",
+    "destructive-unrelated-repository-or-filesystem-operation",
+    "substitute-another-request-digest",
+)
 _EXECUTION_CONTEXT_OPERATIONS = (
     "artifact",
     "journal",
@@ -414,6 +438,24 @@ def _identifier(value: object, label: str) -> str:
     if not isinstance(value, str) or _IDENTIFIER_RE.fullmatch(value) is None:
         raise SuccessorControlError(f"{label} is invalid")
     return value
+
+
+def _nonempty_string(value: object, label: str) -> str:
+    if not isinstance(value, str) or not value.strip() or "\x00" in value:
+        raise SuccessorControlError(f"{label} must be a nonempty string")
+    return value
+
+
+def _timestamp(value: object, label: str) -> datetime:
+    text = _nonempty_string(value, label)
+    normalized = f"{text[:-1]}+00:00" if text.endswith("Z") else text
+    try:
+        parsed = datetime.fromisoformat(normalized)
+    except ValueError as exc:
+        raise SuccessorControlError(f"{label} is invalid") from exc
+    if parsed.tzinfo is None or parsed.utcoffset() is None:
+        raise SuccessorControlError(f"{label} must include a timezone")
+    return parsed
 
 
 def _canonical_absolute_path(value: object, label: str) -> str:
@@ -1045,6 +1087,322 @@ def validate_stage_request(value: Mapping[str, Any]) -> dict[str, Any]:
     return request
 
 
+def _normalize_external_human_provenance(value: object) -> dict[str, str]:
+    provenance = _copy_mapping(value, "external-human grant provenance")
+    _require_fields(
+        provenance,
+        {"message_id", "source", "task_id"},
+        "external-human grant provenance",
+    )
+    if provenance["source"] != "external-human-message":
+        raise SuccessorControlError("grant provenance is not external human input")
+    return {
+        "message_id": _nonempty_string(
+            provenance["message_id"],
+            "grant provenance message id",
+        ),
+        "source": "external-human-message",
+        "task_id": _nonempty_string(
+            provenance["task_id"],
+            "grant provenance task id",
+        ),
+    }
+
+
+def validate_standing_delegation(value: Mapping[str, Any]) -> dict[str, Any]:
+    """Validate, but never create or amend, one external-human standing grant."""
+    delegation = _copy_mapping(value, "standing delegation")
+    _require_fields(
+        delegation,
+        {
+            "delegation_sha256",
+            "exclusions",
+            "grant",
+            "revocation",
+            "schema_version",
+            "scope",
+        },
+        "standing delegation",
+    )
+    if delegation["schema_version"] != STANDING_DELEGATION_SCHEMA_VERSION:
+        raise SuccessorControlError("standing delegation schema mismatch")
+    if delegation["exclusions"] != list(STANDING_DELEGATION_EXCLUSIONS):
+        raise SuccessorControlError("standing delegation exclusions mismatch")
+    if delegation["revocation"] != STANDING_DELEGATION_REVOCATION:
+        raise SuccessorControlError("standing delegation revocation mismatch")
+    grant = _copy_mapping(delegation["grant"], "standing delegation grant")
+    _require_fields(
+        grant,
+        {"granted_at", "provenance", "verbatim_text"},
+        "standing delegation grant",
+    )
+    _timestamp(grant["granted_at"], "standing delegation grant timestamp")
+    normalized_grant = {
+        "granted_at": grant["granted_at"],
+        "provenance": _normalize_external_human_provenance(grant["provenance"]),
+        "verbatim_text": _nonempty_string(
+            grant["verbatim_text"],
+            "standing delegation verbatim grant text",
+        ),
+    }
+    scope = _copy_mapping(delegation["scope"], "standing delegation scope")
+    _require_fields(
+        scope,
+        {"pushed_remote_ref", "registration_id_prefix", "request_class"},
+        "standing delegation scope",
+    )
+    expected_scope = {
+        "pushed_remote_ref": "origin/master",
+        "registration_id_prefix": DELEGATED_REGISTRATION_ID_PREFIX,
+        "request_class": DELEGATED_REQUEST_CLASS,
+    }
+    if scope != expected_scope:
+        raise SuccessorControlError("standing delegation scope mismatch")
+    normalized = {
+        "exclusions": list(STANDING_DELEGATION_EXCLUSIONS),
+        "grant": normalized_grant,
+        "revocation": STANDING_DELEGATION_REVOCATION,
+        "schema_version": STANDING_DELEGATION_SCHEMA_VERSION,
+        "scope": expected_scope,
+    }
+    digest = _digest(
+        delegation["delegation_sha256"],
+        "standing delegation identity",
+    )
+    if digest != canonical_json_sha256(normalized):
+        raise SuccessorControlError("standing delegation identity mismatch")
+    return {**normalized, "delegation_sha256": digest}
+
+
+def _normalize_message_watermark(value: object, label: str) -> dict[str, str]:
+    watermark = _copy_mapping(value, label)
+    _require_fields(
+        watermark,
+        {"message_id", "message_timestamp", "task_id"},
+        label,
+    )
+    _timestamp(watermark["message_timestamp"], f"{label} timestamp")
+    return {
+        "message_id": _nonempty_string(
+            watermark["message_id"],
+            f"{label} message id",
+        ),
+        "message_timestamp": watermark["message_timestamp"],
+        "task_id": _nonempty_string(
+            watermark["task_id"],
+            f"{label} task id",
+        ),
+    }
+
+
+def validate_revocation_observation(
+    value: Mapping[str, Any],
+    *,
+    request: Mapping[str, Any],
+    delegation: Mapping[str, Any],
+    phase: str,
+) -> dict[str, Any]:
+    """Validate one externally supplied current-conversation trust observation."""
+    if phase not in {"approval", "launch"}:
+        raise SuccessorControlError("revocation observation phase is invalid")
+    normalized_request = validate_stage_request(request)
+    normalized_delegation = validate_standing_delegation(delegation)
+    observation = _copy_mapping(value, "revocation observation")
+    _require_fields(
+        observation,
+        {
+            "authoritative_state_available",
+            "authority_mode",
+            "checked_at",
+            "delegation_sha256",
+            "latest_human_message_watermark",
+            "observation_sha256",
+            "phase",
+            "request_sha256",
+            "revocation_message_watermark",
+            "revocation_observed",
+            "schema_version",
+            "stage",
+        },
+        "revocation observation",
+    )
+    if (
+        observation["schema_version"] != REVOCATION_OBSERVATION_SCHEMA_VERSION
+        or observation["authority_mode"] != "standing-delegation"
+        or observation["phase"] != phase
+        or observation["stage"] != normalized_request["stage"]
+        or observation["request_sha256"] != normalized_request["request_sha256"]
+        or observation["delegation_sha256"]
+        != normalized_delegation["delegation_sha256"]
+    ):
+        raise SuccessorControlError("revocation observation binding mismatch")
+    if type(observation["authoritative_state_available"]) is not bool or type(
+        observation["revocation_observed"]
+    ) is not bool:
+        raise SuccessorControlError("revocation observation booleans are invalid")
+    checked_at = _timestamp(
+        observation["checked_at"],
+        "revocation observation checked-at timestamp",
+    )
+    latest = _normalize_message_watermark(
+        observation["latest_human_message_watermark"],
+        "latest human-message watermark",
+    )
+    grant = normalized_delegation["grant"]
+    grant_time = _timestamp(grant["granted_at"], "standing grant timestamp")
+    latest_time = _timestamp(
+        latest["message_timestamp"],
+        "latest human-message timestamp",
+    )
+    if latest["task_id"] != grant["provenance"]["task_id"]:
+        raise SuccessorControlError(
+            "revocation observation task provenance mismatch"
+        )
+    if checked_at < latest_time or latest_time < grant_time or checked_at <= grant_time:
+        raise SuccessorControlError("revocation observation watermark is stale")
+    revocation_watermark = observation["revocation_message_watermark"]
+    if observation["revocation_observed"]:
+        normalized_revocation = _normalize_message_watermark(
+            revocation_watermark,
+            "revocation message watermark",
+        )
+        if normalized_revocation["task_id"] != grant["provenance"]["task_id"]:
+            raise SuccessorControlError("revocation task provenance mismatch")
+    elif revocation_watermark is not None:
+        raise SuccessorControlError("non-revoked observation names a revocation")
+    else:
+        normalized_revocation = None
+    normalized = {
+        "authoritative_state_available": observation[
+            "authoritative_state_available"
+        ],
+        "authority_mode": "standing-delegation",
+        "checked_at": observation["checked_at"],
+        "delegation_sha256": normalized_delegation["delegation_sha256"],
+        "latest_human_message_watermark": latest,
+        "phase": phase,
+        "request_sha256": normalized_request["request_sha256"],
+        "revocation_message_watermark": normalized_revocation,
+        "revocation_observed": observation["revocation_observed"],
+        "schema_version": REVOCATION_OBSERVATION_SCHEMA_VERSION,
+        "stage": normalized_request["stage"],
+    }
+    digest = _digest(
+        observation["observation_sha256"],
+        "revocation observation identity",
+    )
+    if digest != canonical_json_sha256(normalized):
+        raise SuccessorControlError("revocation observation identity mismatch")
+    if observation["authoritative_state_available"] is not True:
+        raise SuccessorControlError(
+            "authoritative current-conversation state is unavailable"
+        )
+    if observation["revocation_observed"] is not False:
+        raise SuccessorControlError("explicit human revocation was observed")
+    return {**normalized, "observation_sha256": digest}
+
+
+def bind_delegated_approval(
+    *,
+    request: Mapping[str, Any],
+    request_review_sha256: str,
+    delegation: Mapping[str, Any],
+    approval_observation: Mapping[str, Any],
+    resolved_at: str,
+) -> dict[str, Any]:
+    """Resolve one immutable standing grant to one exact reviewed request."""
+    normalized_request = validate_stage_request(request)
+    normalized_delegation = validate_standing_delegation(delegation)
+    normalized_observation = validate_revocation_observation(
+        approval_observation,
+        request=normalized_request,
+        delegation=normalized_delegation,
+        phase="approval",
+    )
+    _timestamp(resolved_at, "delegated approval resolution timestamp")
+    if resolved_at != normalized_observation["checked_at"]:
+        raise SuccessorControlError(
+            "delegated approval resolution lacks a fresh approval observation"
+        )
+    review_digest = _digest(
+        request_review_sha256,
+        "delegated request review identity",
+    )
+    resolution = {
+        "approval_observation_sha256": normalized_observation[
+            "observation_sha256"
+        ],
+        "delegation_sha256": normalized_delegation["delegation_sha256"],
+        "request_review_sha256": review_digest,
+        "request_sha256": normalized_request["request_sha256"],
+        "resolved_at": resolved_at,
+        "resolver": DELEGATED_APPROVAL_RESOLVER,
+    }
+    body = {
+        "approval_mode": "standing-delegation",
+        "approval_observation": normalized_observation,
+        "approved_request_sha256": normalized_request["request_sha256"],
+        "delegation": normalized_delegation,
+        "request_review_sha256": review_digest,
+        "resolution": resolution,
+        "schema_version": DELEGATED_APPROVAL_SCHEMA_VERSION,
+        "stage": normalized_request["stage"],
+    }
+    return {**body, "approval_sha256": canonical_json_sha256(body)}
+
+
+def validate_delegated_approval(
+    value: Mapping[str, Any], request: Mapping[str, Any]
+) -> dict[str, Any]:
+    approval = _copy_mapping(value, "delegated approval")
+    _require_fields(
+        approval,
+        {
+            "approval_mode",
+            "approval_observation",
+            "approval_sha256",
+            "approved_request_sha256",
+            "delegation",
+            "request_review_sha256",
+            "resolution",
+            "schema_version",
+            "stage",
+        },
+        "delegated approval",
+    )
+    if (
+        approval["schema_version"] != DELEGATED_APPROVAL_SCHEMA_VERSION
+        or approval["approval_mode"] != "standing-delegation"
+    ):
+        raise SuccessorControlError("delegated approval schema or mode mismatch")
+    resolution = _copy_mapping(
+        approval["resolution"],
+        "delegated approval resolution",
+    )
+    _require_fields(
+        resolution,
+        {
+            "approval_observation_sha256",
+            "delegation_sha256",
+            "request_review_sha256",
+            "request_sha256",
+            "resolved_at",
+            "resolver",
+        },
+        "delegated approval resolution",
+    )
+    expected = bind_delegated_approval(
+        request=request,
+        request_review_sha256=approval["request_review_sha256"],
+        delegation=approval["delegation"],
+        approval_observation=approval["approval_observation"],
+        resolved_at=resolution["resolved_at"],
+    )
+    if approval != expected:
+        raise SuccessorControlError("delegated approval binding mismatch")
+    return approval
+
+
 def _stage_authorization_body(
     *,
     request: Mapping[str, Any],
@@ -1133,6 +1491,64 @@ def validate_stage_authorization(
     return authorization
 
 
+def validate_delegated_stage_launch(
+    *,
+    request: Mapping[str, Any],
+    authorization: Mapping[str, Any],
+    delegated_approval: Mapping[str, Any],
+    launch_observation: Mapping[str, Any],
+) -> dict[str, Any]:
+    """Require a fresh non-revoked observation before any delegated stage launch."""
+    normalized_request = validate_stage_request(request)
+    normalized_approval = validate_delegated_approval(
+        delegated_approval,
+        normalized_request,
+    )
+    normalized_authorization = validate_stage_authorization(
+        authorization,
+        normalized_request,
+    )
+    if (
+        normalized_authorization["approval_record_sha256"]
+        != normalized_approval["approval_sha256"]
+        or normalized_authorization["request_review_sha256"]
+        != normalized_approval["request_review_sha256"]
+    ):
+        raise SuccessorControlError(
+            "delegated stage authorization approval binding mismatch"
+        )
+    normalized_launch = validate_revocation_observation(
+        launch_observation,
+        request=normalized_request,
+        delegation=normalized_approval["delegation"],
+        phase="launch",
+    )
+    approval_observation = normalized_approval["approval_observation"]
+    launch_checked = _timestamp(
+        normalized_launch["checked_at"],
+        "launch revocation checked-at timestamp",
+    )
+    approval_checked = _timestamp(
+        approval_observation["checked_at"],
+        "approval revocation checked-at timestamp",
+    )
+    launch_watermark = _timestamp(
+        normalized_launch["latest_human_message_watermark"][
+            "message_timestamp"
+        ],
+        "launch human-message watermark timestamp",
+    )
+    approval_watermark = _timestamp(
+        approval_observation["latest_human_message_watermark"][
+            "message_timestamp"
+        ],
+        "approval human-message watermark timestamp",
+    )
+    if launch_checked < approval_checked or launch_watermark < approval_watermark:
+        raise SuccessorControlError("delegated launch watermark is stale")
+    return normalized_launch
+
+
 class _FrozenExecutionDict(dict[str, Any]):
     """JSON-compatible mapping owned by one process-local execution context."""
 
@@ -1184,9 +1600,10 @@ def _freeze_execution_value(value: Any) -> Any:
 
 
 class _ValidatedExecutionContext:
-    """Own one validated registration/request/authorization tuple exactly once."""
+    """Own one validated stage tuple and optional launch authority exactly once."""
 
     __slots__ = (
+        "_authority_observation",
         "_authorization",
         "_registration",
         "_request",
@@ -1200,11 +1617,13 @@ class _ValidatedExecutionContext:
         registration: _FrozenExecutionDict,
         request: _FrozenExecutionDict,
         authorization: _FrozenExecutionDict,
+        authority_observation: _FrozenExecutionDict | None,
         stage: str,
     ) -> None:
         object.__setattr__(self, "_registration", registration)
         object.__setattr__(self, "_request", request)
         object.__setattr__(self, "_authorization", authorization)
+        object.__setattr__(self, "_authority_observation", authority_observation)
         object.__setattr__(self, "_stage", stage)
         object.__setattr__(self, "_sealed", True)
 
@@ -1235,6 +1654,10 @@ class _ValidatedExecutionContext:
         return self._authorization
 
     @property
+    def authority_observation(self) -> Mapping[str, Any] | None:
+        return self._authority_observation
+
+    @property
     def stage(self) -> str:
         return self._stage
 
@@ -1245,6 +1668,11 @@ def _build_validated_execution_context(
     request: Mapping[str, Any],
     authorization: Mapping[str, Any],
     registration_validator: Callable[[Mapping[str, Any]], Mapping[str, Any]],
+    authority_observation: Mapping[str, Any] | None = None,
+    authority_observation_validator: Callable[
+        [Mapping[str, Any]], Mapping[str, Any]
+    ]
+    | None = None,
 ) -> _ValidatedExecutionContext:
     """Validate raw stage bindings once, then retain recursively frozen values."""
     if type(registration) is _ValidatedExecutionContext:
@@ -1271,6 +1699,27 @@ def _build_validated_execution_context(
         raise
     except Exception as exc:
         raise SuccessorControlError("registration validation failed") from exc
+    if (authority_observation is None) != (authority_observation_validator is None):
+        raise SuccessorControlError(
+            "execution authority observation and validator must be paired"
+        )
+    normalized_authority_observation: dict[str, Any] | None = None
+    if authority_observation is not None:
+        if not callable(authority_observation_validator):
+            raise SuccessorControlError(
+                "execution authority observation validator is invalid"
+            )
+        try:
+            normalized_authority_observation = _copy_mapping(
+                authority_observation_validator(authority_observation),
+                "validated execution authority observation",
+            )
+        except SuccessorControlError:
+            raise
+        except Exception as exc:
+            raise SuccessorControlError(
+                "execution authority observation validation failed"
+            ) from exc
     registration_sha256 = _digest(
         normalized_registration.get("registration_sha256"),
         "registration identity",
@@ -1282,16 +1731,52 @@ def _build_validated_execution_context(
     frozen_registration = _freeze_execution_value(normalized_registration)
     frozen_request = _freeze_execution_value(normalized_request)
     frozen_authorization = _freeze_execution_value(normalized_authorization)
+    frozen_authority_observation = (
+        _freeze_execution_value(normalized_authority_observation)
+        if normalized_authority_observation is not None
+        else None
+    )
     if not all(
         type(value) is _FrozenExecutionDict
         for value in (frozen_registration, frozen_request, frozen_authorization)
+    ) or (
+        frozen_authority_observation is not None
+        and type(frozen_authority_observation) is not _FrozenExecutionDict
     ):
         raise SuccessorControlError("execution context ownership failed")
     return _ValidatedExecutionContext(
         registration=frozen_registration,
         request=frozen_request,
         authorization=frozen_authorization,
+        authority_observation=frozen_authority_observation,
         stage=normalized_request["stage"],
+    )
+
+
+def _build_delegated_execution_context(
+    *,
+    registration: Mapping[str, Any],
+    request: Mapping[str, Any],
+    authorization: Mapping[str, Any],
+    delegated_approval: Mapping[str, Any],
+    launch_observation: Mapping[str, Any],
+    registration_validator: Callable[[Mapping[str, Any]], Mapping[str, Any]],
+) -> _ValidatedExecutionContext:
+    """Freeze a validated launch observation into every delegated lifecycle ID."""
+    return _build_validated_execution_context(
+        registration=registration,
+        request=request,
+        authorization=authorization,
+        registration_validator=registration_validator,
+        authority_observation=launch_observation,
+        authority_observation_validator=lambda value: (
+            validate_delegated_stage_launch(
+                request=request,
+                authorization=authorization,
+                delegated_approval=delegated_approval,
+                launch_observation=value,
+            )
+        ),
     )
 
 
@@ -1313,7 +1798,7 @@ def _execution_context_for_operation(
 
 
 def _context_identity(context: _ValidatedExecutionContext) -> dict[str, str]:
-    return {
+    identity = {
         "authorization_sha256": _digest(
             context.authorization["authorization_sha256"],
             "context authorization identity",
@@ -1328,6 +1813,12 @@ def _context_identity(context: _ValidatedExecutionContext) -> dict[str, str]:
         ),
         "stage": context.stage,
     }
+    if context.authority_observation is not None:
+        identity["launch_authority_sha256"] = _digest(
+            context.authority_observation["observation_sha256"],
+            "context launch authority identity",
+        )
+    return identity
 
 
 def _lock_file(handle: Any) -> None:

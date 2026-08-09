@@ -26,7 +26,7 @@
 - [x] 3.5 Implement pre-seed setup reopen and the sole complete-checkpoint training continuation; reject partial-chunk replay and every post-canary resume/retry/update/replacement.
 - [x] 3.6 Implement atomic artifact/checkpoint publication, terminal intent, terminal document, manifest-last closure, and ambiguous staging failure behavior.
 - [x] 3.7 Implement exact experiment-target rollback to the registered control plus candidate-disabled and production-isolation verification.
-- [ ] 3.8 Bind the existing standing-delegation schema to immutable external-human grant provenance and add approval-time plus launch-time current-conversation revocation observations for every delegated stage.
+- [x] 3.8 Bind the existing standing-delegation schema to immutable external-human grant provenance and add approval-time plus launch-time current-conversation revocation observations for every delegated stage.
 - [ ] 3.9 Implement the exact post-request external-human approval schema and add fail-closed regressions for fabricated/modified grants, generated/inferred/broad external approvals, missing authoritative conversation state, revocation after authorization publication, stale message watermarks, and valid exact external approval.
 
 ## 4. Inventory, Canary, Holdout, And Verification
