@@ -2,6 +2,8 @@ from __future__ import annotations
 
 import copy
 from dataclasses import replace
+import gzip
+import hashlib
 import importlib
 import json
 import math
@@ -1749,6 +1751,7 @@ def test_structural_canary_commits_first_outputs_before_exact_replay(
     environment_calls = []
     rollout_calls = {seed: 0 for seed in seeds}
     commitments = []
+    output_artifacts = {}
 
     def environment_factory(seed: int):
         environment_calls.append(seed)
@@ -1760,8 +1763,17 @@ def test_structural_canary_commits_first_outputs_before_exact_replay(
         rollout_calls[seed] += 1
         return _canary_pair(runtime, seed)
 
-    def publish(commitment):
+    def publish(commitment, stored):
         assert len(environment_calls) == 4 * commitment["seed_index"] + 2
+        assert "output" not in commitment
+        binding = commitment["output_artifact"]
+        assert binding["path"] not in output_artifacts
+        assert hashlib.sha256(stored).hexdigest() == binding["stored_sha256"]
+        uncompressed = gzip.decompress(stored)
+        assert hashlib.sha256(uncompressed).hexdigest() == binding[
+            "uncompressed_sha256"
+        ]
+        output_artifacts[binding["path"]] = stored
         commitments.append(copy.deepcopy(commitment))
 
     monkeypatch.setattr(
@@ -1794,6 +1806,8 @@ def test_structural_canary_commits_first_outputs_before_exact_replay(
     }
     assert len(result.commitments) == 256
     assert tuple(commitments) == result.commitments
+    assert len(result.replays) == 256
+    assert len(output_artifacts) == 256
     assert all(count == 2 for count in rollout_calls.values())
     assert environment_calls == [seed for seed in seeds for _ in range(4)]
     for index, commitment in enumerate(commitments):
@@ -1811,6 +1825,18 @@ def test_structural_canary_commits_first_outputs_before_exact_replay(
         }
         assert commitment["commitment_sha256"] == runtime.canonical_runtime_sha256(
             body
+        )
+        replay = result.replays[index]
+        assert replay["sequence_index"] == index
+        assert replay["first_commitment_sha256"] == commitment[
+            "commitment_sha256"
+        ]
+        assert replay["output_sha256"] == commitment["output_sha256"]
+        replay_body = {
+            key: value for key, value in replay.items() if key != "replay_sha256"
+        }
+        assert replay["replay_sha256"] == runtime.canonical_runtime_sha256(
+            replay_body
         )
 
 
@@ -1842,7 +1868,9 @@ def test_structural_canary_rejects_replay_drift_after_commitment(monkeypatch):
             environment_factory=lambda seed: object(),
             seeds=seeds,
             arm_bindings=_canary_arm_bindings(),
-            publish_commitment=lambda commitment: published.append(commitment),
+            publish_commitment=lambda commitment, _stored: published.append(
+                commitment
+            ),
         )
     assert [row["arm"] for row in published] == ["candidate", "control"]
 
@@ -1877,7 +1905,9 @@ def test_structural_canary_concentration_failure_skips_shadow(monkeypatch):
         environment_factory=lambda seed: object(),
         seeds=seeds,
         arm_bindings=_canary_arm_bindings(),
-        publish_commitment=lambda commitment: commitments.append(commitment),
+        publish_commitment=lambda commitment, _stored: commitments.append(
+            commitment
+        ),
     )
 
     assert result.verdict == "canary_failed_concentration"
@@ -1911,7 +1941,7 @@ def test_structural_canary_rejects_nonexact_schedule_before_environment(seeds):
             environment_factory=lambda seed: environment_calls.append(seed),
             seeds=seeds,
             arm_bindings=_canary_arm_bindings(),
-            publish_commitment=lambda _commitment: None,
+            publish_commitment=lambda _commitment, _stored: None,
         )
     assert environment_calls == []
 
@@ -2025,6 +2055,8 @@ def test_untouched_holdout_runs_each_arm_once_and_classifies_complete_evidence(
     assert result.concentration["passed"] is True
     assert result.resource_use == {"holdout_environment_accesses": 1_024}
     assert len(result.pairs) == 512
+    assert len(result.family_observations) == 512
+    assert [row["seed"] for row in result.family_observations] == list(seeds)
     assert [row["seed"] for row in result.pairs] == list(seeds)
     assert all(row["floor_progress_difference"] == 1.0 for row in result.pairs)
     assert rollout_calls == list(seeds)

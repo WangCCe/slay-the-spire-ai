@@ -5,7 +5,9 @@ from __future__ import annotations
 from collections.abc import Callable, Mapping, Sequence
 import copy
 from dataclasses import dataclass, field
+import gzip
 import hashlib
+import io
 import json
 import math
 from numbers import Integral, Real
@@ -58,6 +60,9 @@ RUNTIME_METADATA_SCHEMA_VERSION = (
 )
 CANARY_COMMITMENT_SCHEMA_VERSION = (
     "noncombat-card-acceptance-empirical-successor-canary-commitment-v1"
+)
+CANARY_REPLAY_SCHEMA_VERSION = (
+    "noncombat-card-acceptance-empirical-successor-canary-replay-v1"
 )
 MODEL_SEED = 0
 CARD_GENERATOR_SEED = 0
@@ -323,6 +328,7 @@ class StructuralCanaryResult:
     verdict: str
     seeds: tuple[int, ...]
     commitments: tuple[Mapping[str, Any], ...]
+    replays: tuple[Mapping[str, Any], ...]
     concentration: Mapping[str, Any]
     shadow_step: Mapping[str, Any] | None
     resource_use: Mapping[str, int]
@@ -334,6 +340,7 @@ class UntouchedHoldoutResult:
     outcome_class: str | None
     seeds: tuple[int, ...]
     pairs: tuple[Mapping[str, Any], ...]
+    family_observations: tuple[Mapping[str, Any], ...]
     concentration: Mapping[str, Any]
     bootstrap: Mapping[str, Any] | None
     victory_counts: Mapping[str, int]
@@ -466,6 +473,18 @@ def _rankers(bootstrap: PairedBootstrap) -> tuple[StateConditionedCandidateRanke
 def canonical_runtime_sha256(value: object) -> str:
     """Return the runtime's canonical SHA-256 for reviewable evidence objects."""
     return hashlib.sha256(_canonical_json_bytes(value)).hexdigest()
+
+
+def _deterministic_gzip_bytes(payload: bytes) -> bytes:
+    buffer = io.BytesIO()
+    with gzip.GzipFile(
+        fileobj=buffer,
+        mode="wb",
+        filename="",
+        mtime=0,
+    ) as handle:
+        handle.write(payload)
+    return buffer.getvalue()
 
 
 def _new_ranker() -> StateConditionedCandidateRanker:
@@ -2260,20 +2279,37 @@ def _build_canary_commitment(
     seed_index: int,
     sequence_index: int,
     previous_sha256: str,
-) -> dict[str, Any]:
+) -> tuple[dict[str, Any], bytes]:
     output = _arm_canary_output(rollout)
+    output_bytes = _canonical_json_bytes(output)
+    stored = _deterministic_gzip_bytes(output_bytes)
+    if max(len(output_bytes), len(stored)) > MAX_BOOTSTRAP_BYTES:
+        raise SuccessorRuntimeError("canary output exceeds its artifact byte ceiling")
+    output_artifact = {
+        "encoding": "deterministic-gzip-v1",
+        "path": (
+            f"canary/outputs/{sequence_index:04d}-{rollout.arm}.json.gz"
+        ),
+        "stored_sha256": hashlib.sha256(stored).hexdigest(),
+        "stored_size_bytes": len(stored),
+        "uncompressed_sha256": hashlib.sha256(output_bytes).hexdigest(),
+        "uncompressed_size_bytes": len(output_bytes),
+    }
     body = {
         "arm": rollout.arm,
         "arm_binding": copy.deepcopy(dict(arm_binding)),
-        "output": output,
-        "output_sha256": canonical_runtime_sha256(output),
+        "output_artifact": output_artifact,
+        "output_sha256": output_artifact["uncompressed_sha256"],
         "previous_commitment_sha256": previous_sha256,
         "schema_version": CANARY_COMMITMENT_SCHEMA_VERSION,
         "seed": rollout.seed,
         "seed_index": seed_index,
         "sequence_index": sequence_index,
     }
-    return {**body, "commitment_sha256": canonical_runtime_sha256(body)}
+    return (
+        {**body, "commitment_sha256": canonical_runtime_sha256(body)},
+        stored,
+    )
 
 
 def _family_concentration_gate(values: Sequence[str]) -> dict[str, Any]:
@@ -2578,7 +2614,7 @@ def run_structural_canary(
     environment_factory: Callable[[int], Any],
     seeds: Sequence[int],
     arm_bindings: Mapping[str, Mapping[str, str]],
-    publish_commitment: Callable[[Mapping[str, Any]], None],
+    publish_commitment: Callable[[Mapping[str, Any], bytes], None],
     deadline: float | None = None,
     clock: Callable[[], float] = time.monotonic,
 ) -> StructuralCanaryResult:
@@ -2611,6 +2647,7 @@ def run_structural_canary(
     original_bootstrap = encode_paired_bootstrap(bootstrap)
     original_optimizer = encode_optimizer_state(candidate_optimizer)
     commitments: list[dict[str, Any]] = []
+    replays: list[dict[str, Any]] = []
     candidate_rollouts: list[ArmEpisodeRollout] = []
     previous_sha256 = "0" * 64
 
@@ -2633,14 +2670,14 @@ def run_structural_canary(
             rollout = first_by_arm[arm]
             if rollout.arm != arm or rollout.seed != seed:
                 raise SuccessorRuntimeError("canary first-run arm coordinate differs")
-            commitment = _build_canary_commitment(
+            commitment, stored_output = _build_canary_commitment(
                 rollout=rollout,
                 arm_binding=normalized_bindings[arm],
                 seed_index=seed_index,
                 sequence_index=len(commitments),
                 previous_sha256=previous_sha256,
             )
-            publish_commitment(copy.deepcopy(commitment))
+            publish_commitment(copy.deepcopy(commitment), stored_output)
             commitments.append(commitment)
             first_commitments[arm] = commitment
             previous_sha256 = commitment["commitment_sha256"]
@@ -2659,12 +2696,30 @@ def run_structural_canary(
             "control": replay.control,
         }
         for arm in ("candidate", "control"):
-            if canonical_runtime_sha256(_arm_canary_output(replay_by_arm[arm])) != (
-                first_commitments[arm]["output_sha256"]
-            ):
+            replay_output_sha256 = canonical_runtime_sha256(
+                _arm_canary_output(replay_by_arm[arm])
+            )
+            if replay_output_sha256 != first_commitments[arm]["output_sha256"]:
                 raise SuccessorRuntimeError(
                     f"canary {arm} replay differs from first-output commitment"
                 )
+            replay_body = {
+                "arm": arm,
+                "first_commitment_sha256": first_commitments[arm][
+                    "commitment_sha256"
+                ],
+                "output_sha256": replay_output_sha256,
+                "schema_version": CANARY_REPLAY_SCHEMA_VERSION,
+                "seed": seed,
+                "seed_index": seed_index,
+                "sequence_index": first_commitments[arm]["sequence_index"],
+            }
+            replays.append(
+                {
+                    **replay_body,
+                    "replay_sha256": canonical_runtime_sha256(replay_body),
+                }
+            )
         candidate_rollouts.append(first.candidate)
 
     concentration = classify_canary_concentration(candidate_rollouts)
@@ -2699,6 +2754,7 @@ def run_structural_canary(
         verdict=verdict,
         seeds=normalized_seeds,
         commitments=tuple(commitments),
+        replays=tuple(replays),
         concentration=concentration,
         shadow_step=shadow_step,
         resource_use={
@@ -2895,6 +2951,33 @@ def _holdout_pair_evidence(
     }
 
 
+def _holdout_family_observations(
+    rollouts: Sequence[ArmEpisodeRollout],
+) -> tuple[dict[str, Any], ...]:
+    rows: list[dict[str, Any]] = []
+    for rollout in rollouts:
+        for decision in rollout.decisions:
+            terms = decision.card_terms
+            if (
+                decision.category != "card_reward"
+                or not isinstance(terms, CardAcceptancePolicyTerms)
+                or len(terms.family_order) < CANARY_MIN_FAMILY_COUNT
+            ):
+                continue
+            rows.append(
+                {
+                    "decision_id": decision.decision_id,
+                    "decision_index": decision.decision_index,
+                    "family_order": list(terms.family_order),
+                    "seed": rollout.seed,
+                    "selected_family": terms.selected_family,
+                    "unique_greedy_family_id": terms.unique_greedy_family_id,
+                }
+            )
+    rows.sort(key=lambda row: (row["seed"], row["decision_index"], row["decision_id"]))
+    return tuple(rows)
+
+
 def run_untouched_holdout(
     bootstrap: PairedBootstrap,
     *,
@@ -2944,6 +3027,7 @@ def run_untouched_holdout(
         raise SuccessorRuntimeError("holdout mutated a frozen arm")
 
     concentration = classify_canary_concentration(candidate_rollouts)
+    family_observations = _holdout_family_observations(candidate_rollouts)
     victory_counts = {
         "candidate": sum(row["candidate_victory"] for row in pair_rows),
         "control": sum(row["control_victory"] for row in pair_rows),
@@ -2951,6 +3035,7 @@ def run_untouched_holdout(
     common = {
         "seeds": normalized_seeds,
         "pairs": tuple(pair_rows),
+        "family_observations": family_observations,
         "concentration": concentration,
         "victory_counts": victory_counts,
         "arm_bindings": normalized_bindings,
@@ -4092,7 +4177,11 @@ def collect_and_complete_paired_training_chunk(
 ) -> CompletedPairedTrainingChunk:
     """Collect candidate then control for 64 seeds and checkpoint the update."""
     _validate_paired_training_runtime(runtime)
-    if not callable(environment_factory) or not callable(before_environment) or not callable(after_environment):
+    if (
+        not callable(environment_factory)
+        or not callable(before_environment)
+        or not callable(after_environment)
+    ):
         raise SuccessorRuntimeError("training collection hooks must be callable")
     if not callable(clock):
         raise SuccessorRuntimeError("training collection clock must be callable")
