@@ -6,8 +6,8 @@
 
 ## 2. Source-Only Preflight
 
-- [ ] 2.1 Generate a deterministic path-only r2 preflight that binds the pushed receipt-hardening source commit and repair ancestry, current pushed/clean state, current source inventory, candidate path identity, generated-root exclusions, exact r1 terminal evidence, and absent r2 output/staging/receipt paths without reading candidate blobs or seed values.
-- [ ] 2.2 Independently verify the preflight and exact offending readiness-root exclusion; stop before request publication on any unsupported/ambiguous path, evidence drift, source drift, output collision, or unresolved finding.
+- [x] 2.1 Generate a deterministic path-only r2 preflight that binds the pushed receipt-hardening source commit and repair ancestry, current pushed/clean state, current source inventory, candidate path identity, generated-root exclusions, exact r1 terminal evidence, and absent r2 output/staging/receipt paths without reading candidate blobs or seed values.
+- [x] 2.2 Independently verify the preflight and exact offending readiness-root exclusion; stop before request publication on any unsupported/ambiguous path, evidence drift, source drift, output collision, or unresolved finding.
 
 ## 3. Distinct R2 Authority Chain
 
