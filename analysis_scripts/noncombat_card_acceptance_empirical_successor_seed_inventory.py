@@ -32,6 +32,10 @@ INVENTORY_AUTHORITY_EVIDENCE_SCHEMA_VERSION = (
     "noncombat-card-acceptance-empirical-successor-"
     "seed-inventory-authority-evidence-v1"
 )
+STARTED_RECEIPT_SCHEMA_VERSION = (
+    "noncombat-card-acceptance-empirical-successor-"
+    "seed-inventory-started-receipt-v1"
+)
 OUTPUT_ROOT_POLICY_VERSION = (
     "noncombat-card-acceptance-empirical-successor-output-root-policy-v1"
 )
@@ -1246,12 +1250,57 @@ def _inventory_paths(request: Mapping[str, Any]) -> tuple[Path, Path]:
     return output, staging
 
 
+def _started_receipt_path(request: Mapping[str, Any]) -> Path:
+    output, _staging = _inventory_paths(request)
+    return (
+        output.with_name(f"{output.name}_attempts")
+        / request["request_sha256"]
+        / "started.json"
+    )
+
+
 def _require_unmaterialized(request: Mapping[str, Any]) -> None:
     output, staging = _inventory_paths(request)
     if output.exists():
         raise SeedInventoryBlocked("inventory output already exists")
     if staging.exists():
         raise SeedInventoryBlocked("inventory staging already exists")
+
+
+def _start_inventory_once(
+    *,
+    request: Mapping[str, Any],
+    authorization: Mapping[str, Any],
+    approval_record: Mapping[str, Any],
+    launch_observation: Mapping[str, Any],
+    source_inventory: Mapping[str, Any],
+) -> dict[str, Any]:
+    path = _started_receipt_path(request)
+    if path.exists():
+        raise SeedInventoryBlocked("inventory request already started")
+    body = {
+        "approval_sha256": approval_record["approval_sha256"],
+        "authorization_id": authorization["authorization_id"],
+        "authorization_sha256": authorization["authorization_sha256"],
+        "launch_observation_sha256": launch_observation["observation_sha256"],
+        "request_id": request["request_id"],
+        "request_sha256": request["request_sha256"],
+        "schema_version": STARTED_RECEIPT_SCHEMA_VERSION,
+        "source_commit": request["source_commit"],
+        "source_inventory_sha256": source_inventory["inventory_sha256"],
+    }
+    receipt = {**body, "receipt_sha256": _canonical_sha256(body)}
+    try:
+        path.parent.mkdir(parents=True, exist_ok=True)
+        with path.open("xb") as handle:
+            handle.write(canonical_json_bytes(receipt))
+            handle.flush()
+            os.fsync(handle.fileno())
+    except FileExistsError as exc:
+        raise SeedInventoryBlocked("inventory request already started") from exc
+    except OSError as exc:
+        raise SeedInventoryBlocked(f"inventory start receipt failed: {exc}") from exc
+    return receipt
 
 
 def _publish_inventory_once(
@@ -1298,6 +1347,13 @@ def build_inventory(
         launch_observation=launch_observation,
     )
     _require_unmaterialized(normalized_request)
+    _start_inventory_once(
+        request=normalized_request,
+        authorization=normalized_authorization,
+        approval_record=normalized_approval,
+        launch_observation=normalized_launch,
+        source_inventory=source_inventory,
+    )
     registry, rows, excluded = _build_source_registry_and_rows(
         root,
         repository_commit=normalized_request["source_commit"],

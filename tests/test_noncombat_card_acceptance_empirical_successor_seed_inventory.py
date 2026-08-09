@@ -179,6 +179,15 @@ def _first_eligible(excluded: set[int], count: int) -> list[int]:
     return selected
 
 
+def _started_receipt_path(request) -> Path:
+    output = Path(request["output_root"])
+    return (
+        output.with_name(f"{output.name}_attempts")
+        / request["request_sha256"]
+        / "started.json"
+    )
+
+
 def test_build_inventory_publishes_exact_fresh_disjoint_cohorts(tmp_path):
     repo, commit = _commit_files(
         tmp_path,
@@ -217,6 +226,7 @@ def test_build_inventory_publishes_exact_fresh_disjoint_cohorts(tmp_path):
     assert (output / seed_inventory.INVENTORY_FILENAME).read_bytes() == (
         seed_inventory.canonical_json_bytes(artifact)
     )
+    assert _started_receipt_path(request).is_file()
     assert not list(output.parent.glob(f".{output.name}.*.staging"))
     assert artifact["source_registry"]["repository_commit"] == commit
     assert [row["path"] for row in artifact["source_registry"]["sources"]] == [
@@ -251,6 +261,211 @@ def test_build_inventory_publishes_exact_fresh_disjoint_cohorts(tmp_path):
     assert artifact["inventory_sha256"] == hashlib.sha256(
         seed_inventory.canonical_json_bytes(body)
     ).hexdigest()
+
+
+def test_started_receipt_persists_and_blocks_retry_after_source_failure(
+    tmp_path, monkeypatch
+):
+    repo, commit = _commit_files(
+        tmp_path,
+        {"reports/history/seeds.json": _json_bytes({"used_seed": 1})},
+    )
+    request, authorization, approval, launch_observation = _inventory_authority(
+        repo, commit
+    )
+    source_calls = 0
+
+    def fail_after_start(*_args, **_kwargs):
+        nonlocal source_calls
+        source_calls += 1
+        raise seed_inventory.SeedInventoryBlocked("synthetic historical source failure")
+
+    monkeypatch.setattr(
+        seed_inventory,
+        "_build_source_registry_and_rows",
+        fail_after_start,
+    )
+
+    with pytest.raises(
+        seed_inventory.SeedInventoryBlocked,
+        match="synthetic historical source failure",
+    ):
+        seed_inventory.build_inventory(
+            repo_root=repo,
+            request=request,
+            authorization=authorization,
+            approval_record=approval,
+            launch_observation=launch_observation,
+        )
+
+    receipt_path = _started_receipt_path(request)
+    receipt_bytes = receipt_path.read_bytes()
+    receipt = json.loads(receipt_bytes)
+    assert receipt_bytes == seed_inventory.canonical_json_bytes(receipt)
+    assert receipt == {
+        "approval_sha256": approval["approval_sha256"],
+        "authorization_id": authorization["authorization_id"],
+        "authorization_sha256": authorization["authorization_sha256"],
+        "launch_observation_sha256": launch_observation["observation_sha256"],
+        "receipt_sha256": receipt["receipt_sha256"],
+        "request_id": request["request_id"],
+        "request_sha256": request["request_sha256"],
+        "schema_version": (
+            "noncombat-card-acceptance-empirical-successor-"
+            "seed-inventory-started-receipt-v1"
+        ),
+        "source_commit": request["source_commit"],
+        "source_inventory_sha256": _SOURCE_INVENTORY["inventory_sha256"],
+    }
+    receipt_body = {
+        key: value for key, value in receipt.items() if key != "receipt_sha256"
+    }
+    assert receipt["receipt_sha256"] == hashlib.sha256(
+        seed_inventory.canonical_json_bytes(receipt_body)
+    ).hexdigest()
+
+    with pytest.raises(seed_inventory.SeedInventoryBlocked, match="already started"):
+        seed_inventory.build_inventory(
+            repo_root=repo,
+            request=request,
+            authorization=authorization,
+            approval_record=approval,
+            launch_observation=launch_observation,
+        )
+
+    assert source_calls == 1
+    assert receipt_path.read_bytes() == receipt_bytes
+    output, staging = seed_inventory._inventory_paths(request)
+    assert not output.exists()
+    assert not staging.exists()
+
+
+@pytest.mark.parametrize(
+    "receipt_bytes",
+    [b"", b"{", _json_bytes({"unexpected": True})],
+    ids=["empty", "truncated", "invalid-canonical"],
+)
+def test_partial_started_receipt_blocks_before_source_discovery(
+    tmp_path, monkeypatch, receipt_bytes
+):
+    repo, commit = _commit_files(
+        tmp_path,
+        {"reports/history/seeds.json": _json_bytes({"used_seed": 1})},
+    )
+    request, authorization, approval, launch_observation = _inventory_authority(
+        repo, commit
+    )
+    receipt_path = _started_receipt_path(request)
+    receipt_path.parent.mkdir(parents=True)
+    receipt_path.write_bytes(receipt_bytes)
+
+    def forbidden(*_args, **_kwargs):
+        raise AssertionError("source discovery ran after a partial started receipt")
+
+    monkeypatch.setattr(
+        seed_inventory,
+        "_build_source_registry_and_rows",
+        forbidden,
+    )
+
+    with pytest.raises(seed_inventory.SeedInventoryBlocked, match="already started"):
+        seed_inventory.build_inventory(
+            repo_root=repo,
+            request=request,
+            authorization=authorization,
+            approval_record=approval,
+            launch_observation=launch_observation,
+        )
+
+    assert receipt_path.read_bytes() == receipt_bytes
+
+
+def test_competing_started_receipt_writer_wins_without_source_discovery(
+    tmp_path, monkeypatch
+):
+    repo, commit = _commit_files(
+        tmp_path,
+        {"reports/history/seeds.json": _json_bytes({"used_seed": 1})},
+    )
+    request, authorization, approval, launch_observation = _inventory_authority(
+        repo, commit
+    )
+    receipt_path = _started_receipt_path(request)
+    winner_bytes = b"competing-writer-receipt"
+    original_open = Path.open
+    race_pending = True
+
+    def competing_open(path, mode="r", *args, **kwargs):
+        nonlocal race_pending
+        if path == receipt_path and mode == "xb" and race_pending:
+            race_pending = False
+            with original_open(path, "wb") as handle:
+                handle.write(winner_bytes)
+                handle.flush()
+            return original_open(path, mode, *args, **kwargs)
+        return original_open(path, mode, *args, **kwargs)
+
+    def forbidden(*_args, **_kwargs):
+        raise AssertionError("source discovery ran after losing the receipt race")
+
+    monkeypatch.setattr(Path, "open", competing_open)
+    monkeypatch.setattr(
+        seed_inventory,
+        "_build_source_registry_and_rows",
+        forbidden,
+    )
+
+    with pytest.raises(seed_inventory.SeedInventoryBlocked, match="already started"):
+        seed_inventory.build_inventory(
+            repo_root=repo,
+            request=request,
+            authorization=authorization,
+            approval_record=approval,
+            launch_observation=launch_observation,
+        )
+
+    assert not race_pending
+    assert receipt_path.read_bytes() == winner_bytes
+
+
+def test_prestart_authority_failure_creates_no_started_receipt(
+    tmp_path, monkeypatch
+):
+    repo, commit = _commit_files(
+        tmp_path,
+        {"reports/history/seeds.json": _json_bytes({"used_seed": 1})},
+    )
+    request, authorization, approval, _launch_observation = _inventory_authority(
+        repo, commit
+    )
+    revoked = _inventory_revocation_observation(
+        request,
+        approval["delegation"],
+        phase="launch",
+        checked_at="2026-08-09T10:02:00+00:00",
+        message_timestamp="2026-08-09T10:01:59+00:00",
+        revoked=True,
+    )
+
+    def forbidden(*_args, **_kwargs):
+        raise AssertionError("source discovery ran before authority validation")
+
+    monkeypatch.setattr(
+        seed_inventory,
+        "_build_source_registry_and_rows",
+        forbidden,
+    )
+
+    with pytest.raises(seed_inventory.SeedInventoryBlocked, match="revocation|revoked"):
+        seed_inventory.build_inventory(
+            repo_root=repo,
+            request=request,
+            authorization=authorization,
+            approval_record=approval,
+            launch_observation=revoked,
+        )
+
+    assert not _started_receipt_path(request).exists()
 
 
 def test_build_inventory_accepts_pushed_publication_descendant(tmp_path):
@@ -321,6 +536,8 @@ def test_build_inventory_rejects_source_drift_in_pushed_descendant(
             launch_observation=launch_observation,
         )
 
+    assert not _started_receipt_path(request).exists()
+
 
 def test_build_inventory_rejects_unpushed_head_before_discovery(
     tmp_path, monkeypatch
@@ -352,6 +569,8 @@ def test_build_inventory_rejects_unpushed_head_before_discovery(
             approval_record=approval,
             launch_observation=launch_observation,
         )
+
+    assert not _started_receipt_path(request).exists()
 
 
 def test_build_inventory_rejects_source_commit_outside_pushed_ancestry(
@@ -386,6 +605,8 @@ def test_build_inventory_rejects_source_commit_outside_pushed_ancestry(
             approval_record=approval,
             launch_observation=launch_observation,
         )
+
+    assert not _started_receipt_path(request).exists()
 
 
 def test_historical_exclusion_roles_include_failed_and_untouched_reservations(

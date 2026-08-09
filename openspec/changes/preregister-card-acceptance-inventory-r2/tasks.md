@@ -1,8 +1,8 @@
 ## 1. Durable One-Shot Boundary
 
-- [ ] 1.1 Add RED regressions proving a build that writes its receipt and fails before publication cannot be invoked again; pre-existing empty, truncated, and invalid receipt bytes remain unchanged and block before source discovery; and pre-start validation failures create no receipt or source-discovery side effect.
-- [ ] 1.2 Implement canonical request-bound exclusive receipt creation under the output-specific attempts root after pre-start validation and before historical path/blob/seed discovery; preserve the receipt after every terminal path.
-- [ ] 1.3 Run focused receipt/source-boundary nodes, the complete seed-inventory pytest file, compile/import isolation, strict OpenSpec, diff checks, and independent review; commit and push the clean implementation as the exact r2 source commit.
+- [x] 1.1 Add RED regressions proving a build that writes its receipt and fails before publication cannot be invoked again; pre-existing empty, truncated, and invalid receipt bytes remain unchanged and block before source discovery; and pre-start validation failures create no receipt or source-discovery side effect.
+- [x] 1.2 Implement canonical request-bound exclusive receipt creation under the output-specific attempts root after pre-start validation and before historical path/blob/seed discovery; preserve the receipt after every terminal path.
+- [x] 1.3 Run focused receipt/source-boundary nodes, the complete seed-inventory pytest file, compile/import isolation, strict OpenSpec, diff checks, and independent review; commit and push the clean implementation as the exact r2 source commit.
 
 ## 2. Source-Only Preflight
 
