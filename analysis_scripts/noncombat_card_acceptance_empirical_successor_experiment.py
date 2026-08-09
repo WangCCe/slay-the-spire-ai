@@ -298,10 +298,26 @@ RESOURCE_LEDGER_SCHEMA_VERSION = (
 MARKER_SCHEMA_VERSION = (
     "noncombat-card-acceptance-empirical-successor-marker-v1"
 )
+TRAINING_CHECKPOINT_BINDING_SCHEMA_VERSION = (
+    "noncombat-card-acceptance-empirical-successor-training-checkpoint-binding-v1"
+)
+TRAINING_CONTINUATION_SCHEMA_VERSION = (
+    "noncombat-card-acceptance-empirical-successor-training-continuation-v1"
+)
 LEASE_FILENAME = ".execution.lease"
 ACCESS_JOURNAL_FILENAME = "access_journal.jsonl"
 RESOURCE_LEDGER_FILENAME = "resource_ledger.jsonl"
 _ACTIVE_EXECUTION_LEASES: set[str] = set()
+_CHECKPOINT_COMPONENT_NAMES = (
+    "candidate_card_generator",
+    "candidate_model",
+    "candidate_noncard_generator",
+    "candidate_optimizer",
+    "control_card_generator",
+    "control_model",
+    "control_noncard_generator",
+    "control_optimizer",
+)
 
 
 class SuccessorControlError(ValueError):
@@ -1680,6 +1696,259 @@ def publish_write_once_marker(
     }
     encoded = canonical_json_bytes(marker)
     _atomic_write_once_or_identical(path, encoded)
+    return marker
+
+
+def _normalize_complete_checkpoint_binding(value: object) -> dict[str, Any]:
+    binding = _copy_mapping(value, "complete training checkpoint binding")
+    _require_fields(
+        binding,
+        {
+            "checkpoint_sha256",
+            "completed_pairs",
+            "component_sha256",
+            "next_chunk_index",
+            "training_environment_accesses",
+            "training_optimizer_steps",
+        },
+        "complete training checkpoint binding",
+    )
+    index = binding["next_chunk_index"]
+    if isinstance(index, bool) or not isinstance(index, int) or not 1 <= index <= 8:
+        raise SuccessorControlError("checkpoint chunk index is invalid")
+    expected_coordinates = {
+        "completed_pairs": index * 64,
+        "training_environment_accesses": index * 128,
+        "training_optimizer_steps": index * 2,
+    }
+    for name, expected in expected_coordinates.items():
+        value_at_coordinate = binding[name]
+        if (
+            isinstance(value_at_coordinate, bool)
+            or not isinstance(value_at_coordinate, int)
+            or value_at_coordinate != expected
+        ):
+            raise SuccessorControlError(
+                "complete training checkpoint coordinate mismatch"
+            )
+    binding["checkpoint_sha256"] = _digest(
+        binding["checkpoint_sha256"],
+        "complete training checkpoint identity",
+    )
+    components = _copy_mapping(
+        binding["component_sha256"],
+        "complete training checkpoint components",
+    )
+    if tuple(sorted(components)) != _CHECKPOINT_COMPONENT_NAMES:
+        raise SuccessorControlError(
+            "complete training checkpoint component fields mismatch"
+        )
+    binding["component_sha256"] = {
+        name: _digest(components[name], f"checkpoint {name} identity")
+        for name in _CHECKPOINT_COMPONENT_NAMES
+    }
+    return binding
+
+
+def _validate_complete_paired_access_prefix(
+    journal: Mapping[str, Any], *, expected_accesses: int
+) -> None:
+    if journal["debited_accesses"] != expected_accesses or expected_accesses % 128:
+        raise SuccessorControlError(
+            "partial training chunk cannot be replayed"
+        )
+    events = journal["events"][1:]
+    previous_seed: int | None = None
+    for index in range(0, len(events), 2):
+        candidate = events[index]
+        control = events[index + 1]
+        seed = candidate["seed"]
+        if (
+            candidate["arm"] != "candidate"
+            or control["arm"] != "control"
+            or control["seed"] != seed
+            or (previous_seed is not None and seed <= previous_seed)
+        ):
+            raise SuccessorControlError(
+                "training access prefix differs from paired seed order"
+            )
+        previous_seed = seed
+
+
+def _checkpoint_marker(
+    context: _ValidatedExecutionContext,
+    binding: Mapping[str, Any],
+) -> dict[str, Any]:
+    return {
+        "binding": _normalize_complete_checkpoint_binding(binding),
+        "identity": _context_identity(context),
+        "schema_version": TRAINING_CHECKPOINT_BINDING_SCHEMA_VERSION,
+    }
+
+
+def publish_complete_training_checkpoint(
+    context: _ValidatedExecutionContext,
+    lease: ExecutionLease,
+    *,
+    binding: Mapping[str, Any],
+) -> dict[str, Any]:
+    """Publish one complete-boundary checkpoint binding or exact same bytes."""
+    context, output = _require_execution_lease(context, lease)
+    _execution_context_for_operation(context, "checkpoint")
+    if context.stage != "training":
+        raise SuccessorControlError("training checkpoint requires training stage")
+    marker = _checkpoint_marker(context, binding)
+    coordinates = marker["binding"]
+    journal = load_access_journal(context, lease)
+    _validate_complete_paired_access_prefix(
+        journal,
+        expected_accesses=coordinates["training_environment_accesses"],
+    )
+    ledger = load_resource_ledger(context, lease)
+    resources = ledger["resources"]
+    if (
+        resources["environment_accesses"]
+        != coordinates["training_environment_accesses"]
+        or resources["optimizer_steps"]
+        != coordinates["training_optimizer_steps"]
+        or resources["shadow_optimizer_steps"] != 0
+    ):
+        raise SuccessorControlError(
+            "training checkpoint resource prefix mismatch"
+        )
+    index = coordinates["next_chunk_index"]
+    existing = _load_training_checkpoint_markers(context, output)
+    if len(existing) not in {index - 1, index}:
+        raise SuccessorControlError("training checkpoint sequence has a gap")
+    if len(existing) == index and existing[-1] != marker:
+        raise SuccessorControlError("training checkpoint replacement is forbidden")
+    path = output / "checkpoints" / f"chunk_{index:04d}.json"
+    _atomic_write_once_or_identical(path, canonical_json_bytes(marker))
+    return marker
+
+
+def _load_training_checkpoint_markers(
+    context: _ValidatedExecutionContext,
+    output: Path,
+) -> list[dict[str, Any]]:
+    directory = output / "checkpoints"
+    if not directory.exists():
+        return []
+    try:
+        paths = sorted(directory.glob("chunk_*.json"))
+    except OSError as exc:
+        raise SuccessorControlError("training checkpoints cannot be listed") from exc
+    markers: list[dict[str, Any]] = []
+    for expected_index, path in enumerate(paths, start=1):
+        if path.name != f"chunk_{expected_index:04d}.json":
+            raise SuccessorControlError("training checkpoint sequence mismatch")
+        try:
+            marker = _parse_canonical_mapping(
+                path.read_bytes(),
+                "training checkpoint marker",
+            )
+        except OSError as exc:
+            raise SuccessorControlError(
+                "training checkpoint marker cannot be read"
+            ) from exc
+        _require_fields(
+            marker,
+            {"binding", "identity", "schema_version"},
+            "training checkpoint marker",
+        )
+        if (
+            marker["schema_version"]
+            != TRAINING_CHECKPOINT_BINDING_SCHEMA_VERSION
+            or marker["identity"] != _context_identity(context)
+        ):
+            raise SuccessorControlError("training checkpoint marker mismatch")
+        normalized = _checkpoint_marker(context, marker["binding"])
+        if marker != normalized or normalized["binding"]["next_chunk_index"] != (
+            expected_index
+        ):
+            raise SuccessorControlError("training checkpoint binding mismatch")
+        markers.append(marker)
+    return markers
+
+
+def classify_execution_reopen(
+    context: _ValidatedExecutionContext,
+    lease: ExecutionLease,
+) -> dict[str, Any]:
+    """Classify only repeated pre-seed setup or the sole complete continuation."""
+    context, output = _require_execution_lease(context, lease)
+    if context.stage != "training":
+        raise SuccessorControlError("only training setup may reopen")
+    for forbidden_stage in ("canary", "holdout"):
+        if (output / "stages" / f"{forbidden_stage}.json").exists():
+            raise SuccessorControlError(
+                "post-canary continuation, retry, or replacement is forbidden"
+            )
+    continuation_path = output / "training_continuation.json"
+    if continuation_path.exists():
+        raise SuccessorControlError("training continuation was already used")
+    journal = load_access_journal(context, lease)
+    if journal["debited_accesses"] == 0:
+        return {
+            "debited_accesses": 0,
+            "identity": _context_identity(context),
+            "verdict": "pre_seed_setup_reopen",
+        }
+    checkpoints = _load_training_checkpoint_markers(context, output)
+    if not checkpoints:
+        raise SuccessorControlError(
+            "partial uncheckpointed training chunk cannot be replayed"
+        )
+    latest = checkpoints[-1]
+    binding = latest["binding"]
+    if binding["next_chunk_index"] >= 8:
+        raise SuccessorControlError(
+            "completed training cannot consume a continuation"
+        )
+    _validate_complete_paired_access_prefix(
+        journal,
+        expected_accesses=binding["training_environment_accesses"],
+    )
+    ledger = load_resource_ledger(context, lease)
+    resources = ledger["resources"]
+    if (
+        resources["environment_accesses"]
+        != binding["training_environment_accesses"]
+        or resources["optimizer_steps"] != binding["training_optimizer_steps"]
+        or resources["shadow_optimizer_steps"] != 0
+    ):
+        raise SuccessorControlError(
+            "complete checkpoint resource prefix mismatch"
+        )
+    return {
+        "checkpoint_sha256": binding["checkpoint_sha256"],
+        "completed_pairs": binding["completed_pairs"],
+        "debited_accesses": journal["debited_accesses"],
+        "identity": _context_identity(context),
+        "next_chunk_index": binding["next_chunk_index"],
+        "verdict": "complete_checkpoint_continuation",
+    }
+
+
+def authorize_training_continuation(
+    context: _ValidatedExecutionContext,
+    lease: ExecutionLease,
+) -> dict[str, Any]:
+    """Consume the one manual continuation identity at a complete boundary."""
+    context, output = _require_execution_lease(context, lease)
+    eligibility = classify_execution_reopen(context, lease)
+    if eligibility["verdict"] != "complete_checkpoint_continuation":
+        raise SuccessorControlError(
+            "pre-seed setup reopen does not consume training continuation"
+        )
+    marker = {
+        **eligibility,
+        "schema_version": TRAINING_CONTINUATION_SCHEMA_VERSION,
+    }
+    path = output / "training_continuation.json"
+    if path.exists():
+        raise SuccessorControlError("training continuation was already used")
+    _atomic_write_once_or_identical(path, canonical_json_bytes(marker))
     return marker
 
 

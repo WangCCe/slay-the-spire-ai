@@ -835,3 +835,140 @@ def test_journal_is_write_ahead_resources_are_monotonic_and_markers_write_once(
                 kind="stage",
                 payload={"stage": "training", "status": "changed"},
             )
+
+
+def _complete_checkpoint_binding(chunk_index: int = 1):
+    return {
+        "checkpoint_sha256": "4" * 64,
+        "completed_pairs": chunk_index * 64,
+        "component_sha256": {
+            "candidate_card_generator": "5" * 64,
+            "candidate_model": "6" * 64,
+            "candidate_noncard_generator": "7" * 64,
+            "candidate_optimizer": "8" * 64,
+            "control_card_generator": "9" * 64,
+            "control_model": "a" * 64,
+            "control_noncard_generator": "b" * 64,
+            "control_optimizer": "c" * 64,
+        },
+        "next_chunk_index": chunk_index,
+        "training_environment_accesses": chunk_index * 128,
+        "training_optimizer_steps": chunk_index * 2,
+    }
+
+
+def _debit_complete_training_chunk(control, context, lease, start_seed=80_000):
+    for seed in range(start_seed, start_seed + 64):
+        for arm in ("candidate", "control"):
+            control.perform_journaled_environment_access(
+                context,
+                lease,
+                seed=seed,
+                arm=arm,
+                purpose="training",
+                access=lambda: None,
+            )
+
+
+def test_pre_seed_setup_can_reopen_repeatedly_under_same_identity(tmp_path):
+    control = _control()
+    context = _training_context(control)
+    with control.ExecutionLease(
+        tmp_path / "execution",
+        context=context,
+        child_process_id=6100,
+        process_alive=lambda process_id: process_id == 6100,
+    ) as lease:
+        control.initialize_access_journal(context, lease)
+        control.initialize_resource_ledger(context, lease)
+
+        first = control.classify_execution_reopen(context, lease)
+        second = control.classify_execution_reopen(context, lease)
+
+        assert first == second
+        assert first["verdict"] == "pre_seed_setup_reopen"
+        assert first["debited_accesses"] == 0
+
+
+def test_only_one_complete_checkpoint_training_continuation_is_authorized(tmp_path):
+    control = _control()
+    context = _training_context(control)
+    output = tmp_path / "execution"
+    with control.ExecutionLease(
+        output,
+        context=context,
+        child_process_id=6101,
+        process_alive=lambda process_id: process_id == 6101,
+    ) as lease:
+        control.initialize_access_journal(context, lease)
+        control.initialize_resource_ledger(context, lease)
+        _debit_complete_training_chunk(control, context, lease)
+        control.advance_resource_ledger(
+            context,
+            lease,
+            charged_seconds=10.0,
+            environment_accesses=128,
+            optimizer_steps=2,
+            shadow_optimizer_steps=0,
+            reason="complete-training-chunk",
+        )
+        checkpoint = control.publish_complete_training_checkpoint(
+            context,
+            lease,
+            binding=_complete_checkpoint_binding(),
+        )
+
+        eligibility = control.classify_execution_reopen(context, lease)
+        continuation = control.authorize_training_continuation(
+            context,
+            lease,
+        )
+
+        assert eligibility["verdict"] == "complete_checkpoint_continuation"
+        assert eligibility["checkpoint_sha256"] == checkpoint["binding"][
+            "checkpoint_sha256"
+        ]
+        assert continuation["checkpoint_sha256"] == eligibility[
+            "checkpoint_sha256"
+        ]
+        with pytest.raises(control.SuccessorControlError, match="continuation|used"):
+            control.authorize_training_continuation(context, lease)
+
+
+def test_partial_chunk_and_post_canary_reopen_fail_closed(tmp_path):
+    control = _control()
+    context = _training_context(control)
+    partial_output = tmp_path / "partial"
+    with control.ExecutionLease(
+        partial_output,
+        context=context,
+        child_process_id=6102,
+        process_alive=lambda process_id: process_id == 6102,
+    ) as lease:
+        control.initialize_access_journal(context, lease)
+        control.initialize_resource_ledger(context, lease)
+        for arm in ("candidate", "control"):
+            control.perform_journaled_environment_access(
+                context,
+                lease,
+                seed=90_000,
+                arm=arm,
+                purpose="training",
+                access=lambda: None,
+            )
+        with pytest.raises(control.SuccessorControlError, match="partial|checkpoint"):
+            control.classify_execution_reopen(context, lease)
+
+    canary_output = tmp_path / "post-canary"
+    with control.ExecutionLease(
+        canary_output,
+        context=context,
+        child_process_id=6103,
+        process_alive=lambda process_id: process_id == 6103,
+    ) as lease:
+        control.initialize_access_journal(context, lease)
+        control.initialize_resource_ledger(context, lease)
+        (canary_output / "stages").mkdir()
+        (canary_output / "stages" / "canary.json").write_bytes(b"started\n")
+        with pytest.raises(control.SuccessorControlError, match="canary|post"):
+            control.classify_execution_reopen(context, lease)

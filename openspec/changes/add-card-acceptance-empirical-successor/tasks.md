@@ -23,7 +23,7 @@
 - [x] 3.2 Implement separate inventory, training, canary, and holdout requests/authorizations plus independent render/validation commands and stage-specific authority maps.
 - [x] 3.3 Implement one private immutable execution context reused across journal, resource, checkpoint, stage, rollback, and terminal operations without per-seed registration rescans.
 - [x] 3.4 Implement exclusive child-process lease ownership, write-ahead access journals, monotonic elapsed/resource reconciliation, and write-once bootstrap/stage markers.
-- [ ] 3.5 Implement pre-seed setup reopen and the sole complete-checkpoint training continuation; reject partial-chunk replay and every post-canary resume/retry/update/replacement.
+- [x] 3.5 Implement pre-seed setup reopen and the sole complete-checkpoint training continuation; reject partial-chunk replay and every post-canary resume/retry/update/replacement.
 - [ ] 3.6 Implement atomic artifact/checkpoint publication, terminal intent, terminal document, manifest-last closure, and ambiguous staging failure behavior.
 - [ ] 3.7 Implement exact experiment-target rollback to the registered control plus candidate-disabled and production-isolation verification.
 - [ ] 3.8 Bind the existing standing-delegation schema to immutable external-human grant provenance and add approval-time plus launch-time current-conversation revocation observations for every delegated stage.
