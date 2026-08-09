@@ -71,6 +71,13 @@ the failed owning file only when the delta alone does not restore at least the
 previous qualified margin. No other file was added, changed, or failed in the
 observed gate, so no other candidate is eligible.
 
+After the separate deadline fix, the runtime file passed 24 tests in 16.14
+seconds. Substituting that fresher measurement predicts `296.21 - 16.14 =
+280.07` seconds, leaving 19.93 seconds below the ceiling. The selected boundary
+therefore remains unchanged and still exceeds the frozen 15.25-second margin
+rule. Git comparison from the prior qualification commit confirms that the
+runtime file and untracked pending audit file are the only test-tree changes.
+
 Both selected files remain in `full`. Any change to either file or its owned
 source requires direct focused execution before `commit`; therefore the
 exclusion does not become a substitute for relevant correctness evidence.

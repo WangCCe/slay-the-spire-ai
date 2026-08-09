@@ -1261,6 +1261,24 @@ The next authorized sequence is:
     requalification succeeds. The RL next gate remains a separately reviewed
     source-only proposal distinguishing supported card acceptance from
     conditional card-choice collapse.
+57. Preserve the 2026-08-09 r2 pytest gate requalification as superseding item
+    56. The next conforming `commit` invocation had invalidated item 56's
+    bounded-feedback claim: it reported 3,638 passes, 16 skips, and one runtime
+    deadline failure in 300.24 seconds of pytest, 303.60 seconds including
+    orchestration, and was not retried. The deadline defect was repaired in
+    separate commit `35b4249c0`; the complete runtime file then passed 24 tests
+    in 16.14 seconds. The only test delta since item 56 is the pending 46-test
+    card-acceptance audit, which passed directly in 7.39 seconds. Excluding it
+    alone predicts only 3.79 seconds of margin; also excluding the sole failed
+    runtime owner predicts 19.93 seconds, above item 56's prior 15.25-second
+    margin. The frozen 17-file candidate passed 39 runner tests in 1.53 seconds,
+    emits exactly 17 `commit` ignores, and leaves `full` unchanged. The final
+    `commit` then passed 3,571 tests with 16 skips in 259.47 seconds of pytest,
+    262.89 seconds including orchestration, leaving 37.11 seconds below the
+    unchanged ceiling. Unchanged `full` passed 5,401 tests with 18 skips in
+    2,248.44 seconds of pytest, 2,252.15 seconds including orchestration. Both
+    were invoked exactly once; neither was retried and no later exclusion was
+    added. Fresh gameplay validation is not applicable.
 
 ## Work Lanes
 
@@ -1415,15 +1433,13 @@ OpenSpec changes authorize them.
   invoked once and was not followed by the `full` profile. Include its runtime
   attribution in the separate read-only test-duration audit before changing
   test tiers, test selection, or timing limits.
-- Treat the 2026-08-09 tiered-gate requalification as the current timing
-  baseline: `commit` passed 3,593 tests with 16 skips in 281.23 seconds of
-  pytest, 284.75 seconds including orchestration, and the unchanged `full`
-  profile passed 5,353 tests with 18 skips in 2,283.45 seconds of pytest,
-  2,287.43 seconds including orchestration. The 15-file `full_only` boundary
-  is valid only with direct focused coverage for excluded ownership and a
-  complete `full` boundary. Any later conforming `commit` invocation above
-  300 seconds invalidates the timing claim until a measured requalification
-  passes; do not retry or silently tune solely because a gate is slow.
+- Treat the 2026-08-09 r2 tiered-gate requalification as the current timing
+  baseline: `commit` passed 3,571 tests with 16 skips in 259.47 seconds of
+  pytest, 262.89 seconds including orchestration, and unchanged `full` passed
+  5,401 tests with 18 skips in 2,248.44 seconds of pytest, 2,252.15 seconds
+  including orchestration. The 17-file boundary requires direct coverage for
+  excluded ownership; any later over-ceiling invocation invalidates timing
+  qualification without authorizing a retry or post-result exclusion.
 
 Historical reports and archived changes retain the objectives and authority
 boundaries that applied when they were written. This document is the canonical

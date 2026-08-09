@@ -19,6 +19,10 @@ Each `full_only` entry has measured runtime evidence and a repository-owned
 rationale. Exclusion applies only to routine `commit`: changing an excluded
 file or source that it specifically owns requires running that file (or a
 stricter focused set) directly before the complete boundary.
+For this rule, a `full_only` file owns each source module it directly imports
+or references as an executable path. Shared source may have multiple owning
+files; run every affected owner, or a documented stricter focused set that
+covers the same changed behavior.
 
 | Change class | Required validation |
 |---|---|
@@ -30,10 +34,12 @@ stricter focused set) directly before the complete boundary.
 | Documentation only | No pytest unless executable examples or manifest change |
 
 The runner never retries a failure and returns pytest's result unchanged.
-The current `commit` qualification is valid only while a conforming invocation
-remains at or below five minutes. Any later over-ceiling run invalidates that
-timing claim until a measured requalification passes; a green but slow run is
-still correctness evidence, not bounded-feedback evidence.
+The current 17-file `commit` boundary qualified with 3,571 passes and 16 skips
+in 262.89 seconds including orchestration, 37.11 seconds below the five-minute
+ceiling. Its unchanged `full` boundary passed 5,401 tests with 18 skips and no
+exclusions. A later conforming `commit` invocation above five minutes
+invalidates this timing claim until a measured requalification passes. The
+runner does not retry a slow or failed result.
 Before launching pytest, an ordinary run prints and flushes the selected profile
 and the fully assembled Windows command. `--dry-run` prints the same information
 with an explicit dry-run label but does not create test state or launch pytest.

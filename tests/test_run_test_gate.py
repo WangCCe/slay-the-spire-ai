@@ -59,6 +59,10 @@ EXPECTED_REPOSITORY_FULL_ONLY = {
         "adaptive-route source-only artifact and replay coverage in the "
         "320.32s measured lifecycle group"
     ),
+    "tests/test_audit_card_acceptance_conditional_choice.py": (
+        "card acceptance source-only import isolation and deterministic "
+        "publication coverage measured at 7.39s for 46 tests"
+    ),
     "tests/test_noncombat_cross_fitted_empirical_successor_readiness.py": (
         "readiness source binding, subprocess rehearsal, and Git replay in the "
         "320.32s measured lifecycle group"
@@ -66,6 +70,10 @@ EXPECTED_REPOSITORY_FULL_ONLY = {
     "tests/test_noncombat_cross_fitted_hierarchical_learning_control.py": (
         "execution lifecycle, real registration, crash recovery, and checkpoint "
         "coverage in the 320.32s measured lifecycle group"
+    ),
+    "tests/test_noncombat_cross_fitted_hierarchical_learning_runtime.py": (
+        "Torch rollout, update, checkpoint, and deadline coverage measured at "
+        "16.14s for 24 tests after the deadline repair"
     ),
     "tests/test_noncombat_cross_fitted_hierarchical_learning_verifier.py": (
         "independent terminal and immutable bundle replay measured at about "
