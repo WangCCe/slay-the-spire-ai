@@ -218,3 +218,13 @@ reports/noncombat_cross_fitted_hierarchical_learning_successor_*/** -text whites
 # Preserve card-acceptance consumed-evidence manifest and review bytes.
 reports/noncombat_card_acceptance_empirical_successor_preservation_20260809.json -text whitespace=cr-at-eol
 reports/noncombat_card_acceptance_empirical_successor_preservation_20260809_review.json -text whitespace=cr-at-eol
+
+# Preserve card-acceptance empirical successor source and evidence bytes.
+analysis_scripts/noncombat_card_acceptance_empirical_successor_experiment.py text eol=lf
+analysis_scripts/noncombat_card_acceptance_empirical_successor_runtime.py text eol=lf
+analysis_scripts/noncombat_card_acceptance_empirical_successor_seed_inventory.py text eol=lf
+analysis_scripts/verify_noncombat_card_acceptance_empirical_successor.py text eol=lf
+tests/test_noncombat_card_acceptance_empirical_successor_*.py text eol=lf
+openspec/changes/add-card-acceptance-empirical-successor/** text eol=lf
+reports/noncombat_card_acceptance_empirical_successor_* -text whitespace=cr-at-eol
+reports/noncombat_card_acceptance_empirical_successor_*/** -text whitespace=cr-at-eol

@@ -1,15 +1,15 @@
 ## 1. RED Contract Coverage
 
 - [x] 1.1 From the reviewed pre-implementation Git tree, publish, independently verify, commit, and push the separate consumed-evidence preservation manifest with both fixed closed path/root arrays, exact source hashes, canonical directory-inventory digests, and manifest/tree bindings before any implementation edit.
-- [ ] 1.2 Add failing import-isolation and immutable-metadata tests for the new control plane and independent verifier.
-- [ ] 1.3 Add failing bootstrap tests for exact base-to-five-ranker key/byte mapping, candidate/control disjoint parameter/storage identity, frozen non-card bytes, and canonical paired-checkpoint reproduction.
-- [ ] 1.4 Add failing objective tests for the four exact components, card-decision denominator, equal per-family conditional entropy, omitted cross-head entropies, and gradient ownership.
-- [ ] 1.5 Add failing optimizer tests for candidate and control parameter ownership, one fixed Adam group per arm, arm-local global clipping, independent component reconstruction, and replayable moments.
-- [ ] 1.6 Add failing policy tests for disjoint-head candidate versus shared-head control, per-arm separate RNG streams, card family-then-candidate sampling, frozen non-card routing, unique greedy evaluation, and tie rejection.
+- [x] 1.2 Add failing import-isolation and immutable-metadata tests for the new control plane and independent verifier.
+- [x] 1.3 Add failing bootstrap tests for exact base-to-five-ranker key/byte mapping, candidate/control disjoint parameter/storage identity, frozen non-card bytes, and canonical paired-checkpoint reproduction.
+- [x] 1.4 Add failing objective tests for the four exact components, card-decision denominator, equal per-family conditional entropy, omitted cross-head entropies, and gradient ownership.
+- [x] 1.5 Add failing optimizer tests for candidate and control parameter ownership, one fixed Adam group per arm, arm-local global clipping, independent component reconstruction, and replayable moments.
+- [x] 1.6 Add failing policy tests for disjoint-head candidate versus shared-head control, per-arm separate RNG streams, card family-then-candidate sampling, frozen non-card routing, unique greedy evaluation, and tie rejection.
 
 ## 2. Runtime And Checkpoints
 
-- [ ] 2.1 Implement deterministic matched candidate/control bootstrap, metadata, state validation, paired checkpoint encoding, and exact restore under new schemas.
+- [x] 2.1 Implement deterministic matched candidate/control bootstrap, metadata, state validation, paired checkpoint encoding, and exact restore under new schemas.
 - [ ] 2.2 Implement paired card-only rollout routing with candidate disjoint heads, control shared head, frozen per-arm non-card policies, and separate checkpointed generators.
 - [ ] 2.3 Integrate the registered cross-fitted baseline independently per arm and construct exact unscaled card-reward advantages without post-processing.
 - [ ] 2.4 Implement the matched four-component losses, per-arm gradient ledgers/global clips, fixed Adam steps, and retained replay evidence.
