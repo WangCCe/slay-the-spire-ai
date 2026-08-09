@@ -177,6 +177,73 @@ def test_independent_verifier_rejects_live_or_wrong_lease_owner(tmp_path):
         )
 
 
+@pytest.mark.parametrize(
+    "failure_kind",
+    (
+        "truncation",
+        "unknown_field",
+        "wrong_order",
+        "wrong_digest",
+        "wrong_stage",
+        "byte_ceiling",
+        "elapsed_charge",
+        "publication_order",
+    ),
+)
+def test_independent_lifecycle_verifier_fail_closed_matrix(
+    tmp_path,
+    monkeypatch,
+    failure_kind,
+):
+    verifier = _verifier()
+    control = _control()
+    output, identity, _manifest = _publish_terminal_fixture(tmp_path)
+    expected_identity = copy.deepcopy(identity)
+    if failure_kind == "truncation":
+        journal = output / "access_journal.jsonl"
+        journal.write_bytes(journal.read_bytes()[:-1])
+    elif failure_kind == "unknown_field":
+        terminal_path = output / "terminal.json"
+        terminal = json.loads(terminal_path.read_bytes())
+        terminal["unknown_field"] = True
+        terminal_path.write_bytes(control.canonical_json_bytes(terminal))
+    elif failure_kind == "wrong_order":
+        ledger_path = output / "resource_ledger.jsonl"
+        events = ledger_path.read_bytes().splitlines(keepends=True)
+        assert len(events) >= 2
+        events[0], events[-1] = events[-1], events[0]
+        ledger_path.write_bytes(b"".join(events))
+    elif failure_kind == "wrong_digest":
+        manifest_path = output / "artifact_manifest.json"
+        manifest = json.loads(manifest_path.read_bytes())
+        manifest["manifest_sha256"] = "0" * 64
+        manifest_path.write_bytes(control.canonical_json_bytes(manifest))
+    elif failure_kind == "wrong_stage":
+        expected_identity["stage"] = "holdout"
+    elif failure_kind == "byte_ceiling":
+        monkeypatch.setattr(verifier, "_MAX_ARTIFACT_BYTES", 8)
+    elif failure_kind == "elapsed_charge":
+        ledger_path = output / "resource_ledger.jsonl"
+        events = [json.loads(line) for line in ledger_path.read_bytes().splitlines()]
+        assert len(events) >= 2
+        events[-1]["resources"]["charged_seconds"] = -1.0
+        ledger_path.write_bytes(
+            b"".join(control.canonical_json_bytes(event) for event in events)
+        )
+    elif failure_kind == "publication_order":
+        (output / "artifact_manifest.json").unlink()
+    else:
+        raise AssertionError(failure_kind)
+
+    with pytest.raises(verifier.VerificationError):
+        verifier.verify_terminal_bundle(
+            output,
+            expected_identity=expected_identity,
+            expected_child_process_id=71_001,
+            owner_alive=lambda _process_id: False,
+        )
+
+
 def test_independent_verifier_reconstructs_matched_bootstrap_without_torch():
     runtime = _runtime()
     verifier = _verifier()
