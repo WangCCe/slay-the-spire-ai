@@ -49,6 +49,6 @@
   validation and diff review, then make one final capability-publication commit
   containing only manifest/tests/docs/report/direction/synced archived change
   files and push `master`. Record fresh gameplay validation as not applicable.
-- [ ] 5.2 Return to `audit-card-acceptance-conditional-choice`, use the new
+- [x] 5.2 Return to `audit-card-acceptance-conditional-choice`, use the new
   direct-file plus requalified-gate evidence for its source boundary, and do
   not rerun the invalidated 303.60-second invocation.
