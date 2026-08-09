@@ -7,6 +7,7 @@ import copy
 import hashlib
 import importlib
 import json
+import re
 import sys
 from collections.abc import Callable, Mapping, Sequence
 from pathlib import Path, PurePosixPath
@@ -27,6 +28,12 @@ SOURCE_INVENTORY_SCHEMA_VERSION = (
 )
 CONFIG_IDENTITY_SCHEMA_VERSION = (
     "noncombat-card-acceptance-empirical-successor-config-identity-v1"
+)
+STAGE_REQUEST_SCHEMA_VERSION = (
+    "noncombat-card-acceptance-empirical-successor-stage-request-v1"
+)
+STAGE_AUTHORIZATION_SCHEMA_VERSION = (
+    "noncombat-card-acceptance-empirical-successor-stage-authorization-v1"
 )
 RUNTIME_MODULE_NAME = (
     "analysis_scripts.noncombat_card_acceptance_empirical_successor_runtime"
@@ -163,6 +170,110 @@ _PUBLIC_DEPENDENCY_SPECS = (
         ("DEFAULT_HIDDEN_DIM", "StateConditionedCandidateRanker"),
     ),
 )
+_STAGES = ("inventory", "training", "canary", "holdout")
+_EXECUTION_OPERATION_NAMES = (
+    "checkpoint_publication",
+    "cohort_materialization",
+    "environment_construction",
+    "evaluation",
+    "evidence_publication",
+    "experiment_model_loading",
+    "model_fitting",
+    "native_loading",
+    "repository_evidence_read",
+    "seed_access",
+    "seed_discovery",
+    "shadow_optimizer_step",
+    "training",
+)
+_STAGE_ENABLED_OPERATIONS = {
+    "inventory": frozenset(
+        {
+            "cohort_materialization",
+            "repository_evidence_read",
+            "seed_discovery",
+        }
+    ),
+    "training": frozenset(
+        {
+            "checkpoint_publication",
+            "environment_construction",
+            "evidence_publication",
+            "experiment_model_loading",
+            "model_fitting",
+            "native_loading",
+            "seed_access",
+            "training",
+        }
+    ),
+    "canary": frozenset(
+        {
+            "environment_construction",
+            "evaluation",
+            "evidence_publication",
+            "experiment_model_loading",
+            "native_loading",
+            "seed_access",
+            "shadow_optimizer_step",
+        }
+    ),
+    "holdout": frozenset(
+        {
+            "environment_construction",
+            "evaluation",
+            "evidence_publication",
+            "experiment_model_loading",
+            "native_loading",
+            "seed_access",
+        }
+    ),
+}
+_STAGE_PREREQUISITE_FIELDS = {
+    "inventory": (),
+    "training": ("registration_sha256",),
+    "canary": (
+        "frozen_seal_sha256",
+        "registration_sha256",
+        "training_terminal_sha256",
+    ),
+    "holdout": (
+        "canary_terminal_sha256",
+        "frozen_seal_sha256",
+        "registration_sha256",
+    ),
+}
+_STAGE_RESOURCES: dict[str, dict[str, int | float]] = {
+    "inventory": {"max_materialized_seeds": 1_152},
+    "training": {
+        "max_charged_seconds": 28_800.0,
+        "max_environment_accesses": 1_024,
+        "max_optimizer_steps": 16,
+        "max_pairs": 512,
+    },
+    "canary": {
+        "max_environment_accesses": 512,
+        "max_pairs": 128,
+        "max_shadow_optimizer_steps": 1,
+    },
+    "holdout": {
+        "bootstrap_resamples": 10_000,
+        "max_environment_accesses": 1_024,
+        "max_pairs": 512,
+    },
+}
+_STAGE_EXCLUSIONS = (
+    "causal_claim",
+    "communication_mod",
+    "formal_rl",
+    "gameplay",
+    "ope",
+    "production_model_loading",
+    "promotion",
+    "qualification",
+)
+_SHA256_RE = re.compile(r"[0-9a-f]{64}")
+_COMMIT_RE = re.compile(r"[0-9a-f]{40}")
+_IDENTIFIER_RE = re.compile(r"[a-z0-9][a-z0-9._:-]{2,191}")
 
 
 class SuccessorControlError(ValueError):
@@ -187,6 +298,88 @@ def canonical_json_bytes(value: object) -> bytes:
 def canonical_json_sha256(value: object) -> str:
     """Digest the exact canonical JSON representation."""
     return hashlib.sha256(canonical_json_bytes(value)).hexdigest()
+
+
+def _copy_mapping(value: object, label: str) -> dict[str, Any]:
+    if not isinstance(value, Mapping):
+        raise SuccessorControlError(f"{label} must be a mapping")
+    return copy.deepcopy(dict(value))
+
+
+def _require_fields(
+    value: Mapping[str, Any], expected: set[str], label: str
+) -> None:
+    if set(value) != expected:
+        raise SuccessorControlError(f"{label} fields mismatch")
+
+
+def _digest(value: object, label: str) -> str:
+    if not isinstance(value, str) or _SHA256_RE.fullmatch(value) is None:
+        raise SuccessorControlError(f"{label} must be a SHA-256 digest")
+    return value
+
+
+def _commit(value: object, label: str) -> str:
+    if not isinstance(value, str) or _COMMIT_RE.fullmatch(value) is None:
+        raise SuccessorControlError(f"{label} must be a full Git commit")
+    return value
+
+
+def _identifier(value: object, label: str) -> str:
+    if not isinstance(value, str) or _IDENTIFIER_RE.fullmatch(value) is None:
+        raise SuccessorControlError(f"{label} is invalid")
+    return value
+
+
+def _canonical_absolute_path(value: object, label: str) -> str:
+    if not isinstance(value, str) or not value or "\\" in value:
+        raise SuccessorControlError(f"{label} must be a canonical absolute path")
+    windows_absolute = re.fullmatch(r"[A-Za-z]:/[^\x00]+", value) is not None
+    posix_absolute = value.startswith("/")
+    pure = PurePosixPath(value[3:] if windows_absolute else value)
+    if (
+        not (windows_absolute or posix_absolute)
+        or value.endswith("/")
+        or "." in pure.parts
+        or ".." in pure.parts
+    ):
+        raise SuccessorControlError(f"{label} must be a canonical absolute path")
+    return value
+
+
+def _stage(value: object) -> str:
+    if value not in _STAGES:
+        raise SuccessorControlError("empirical stage is invalid")
+    return str(value)
+
+
+def _reject_duplicate_pairs(pairs: list[tuple[str, Any]]) -> dict[str, Any]:
+    result: dict[str, Any] = {}
+    for key, value in pairs:
+        if key in result:
+            raise SuccessorControlError(f"duplicate JSON key: {key}")
+        result[key] = value
+    return result
+
+
+def _reject_json_constant(value: str) -> None:
+    raise SuccessorControlError(f"non-finite JSON constant: {value}")
+
+
+def _read_json_mapping(path: Path | str, label: str) -> dict[str, Any]:
+    candidate = Path(path).resolve()
+    try:
+        payload = candidate.read_bytes()
+        value = json.loads(
+            payload.decode("utf-8"),
+            object_pairs_hook=_reject_duplicate_pairs,
+            parse_constant=_reject_json_constant,
+        )
+    except SuccessorControlError:
+        raise
+    except (OSError, UnicodeDecodeError, json.JSONDecodeError) as exc:
+        raise SuccessorControlError(f"{label} cannot be read") from exc
+    return _copy_mapping(value, label)
 
 
 def _authority() -> dict[str, bool]:
@@ -479,20 +672,283 @@ def experiment_configuration_identity() -> dict[str, Any]:
     }
 
 
+def stage_execution_authority(stage: str) -> dict[str, bool]:
+    """Return the exact operation map for one empirical stage."""
+    normalized_stage = _stage(stage)
+    enabled = _STAGE_ENABLED_OPERATIONS[normalized_stage]
+    return {name: name in enabled for name in _EXECUTION_OPERATION_NAMES}
+
+
+def stage_resources(stage: str) -> dict[str, int | float]:
+    """Return fresh fixed ceilings for one empirical stage."""
+    return copy.deepcopy(_STAGE_RESOURCES[_stage(stage)])
+
+
+def _normalize_configuration_identity(value: object) -> dict[str, Any]:
+    identity = _copy_mapping(value, "configuration identity")
+    if identity != experiment_configuration_identity():
+        raise SuccessorControlError("configuration identity mismatch")
+    return identity
+
+
+def _normalize_prerequisites(
+    value: object, *, stage: str
+) -> dict[str, str]:
+    prerequisites = _copy_mapping(value, "stage prerequisite bindings")
+    expected_fields = _STAGE_PREREQUISITE_FIELDS[stage]
+    if tuple(sorted(prerequisites)) != expected_fields:
+        raise SuccessorControlError("stage prerequisite bindings mismatch")
+    return {
+        name: _digest(prerequisites[name], f"{name} prerequisite")
+        for name in expected_fields
+    }
+
+
+def _stage_request_body(
+    *,
+    stage: str,
+    request_id: str,
+    source_commit: str,
+    source_inventory_sha256: str,
+    configuration_identity: Mapping[str, Any],
+    prerequisite_bindings: Mapping[str, Any],
+    output_root: str,
+) -> dict[str, Any]:
+    normalized_stage = _stage(stage)
+    normalized_request_id = _identifier(request_id, "stage request id")
+    if not normalized_request_id.endswith(f"-{normalized_stage}-request-v1"):
+        raise SuccessorControlError("stage request id does not bind its stage")
+    return {
+        "configuration_identity": _normalize_configuration_identity(
+            configuration_identity
+        ),
+        "downstream_authority": _authority(),
+        "execution_authority": stage_execution_authority(normalized_stage),
+        "exclusions": list(_STAGE_EXCLUSIONS),
+        "output_root": _canonical_absolute_path(output_root, "stage output root"),
+        "prerequisite_bindings": _normalize_prerequisites(
+            prerequisite_bindings,
+            stage=normalized_stage,
+        ),
+        "request_id": normalized_request_id,
+        "resources": stage_resources(normalized_stage),
+        "schema_version": STAGE_REQUEST_SCHEMA_VERSION,
+        "source_commit": _commit(source_commit, "stage source commit"),
+        "source_inventory_sha256": _digest(
+            source_inventory_sha256,
+            "stage source inventory identity",
+        ),
+        "stage": normalized_stage,
+    }
+
+
+def build_stage_request(
+    *,
+    stage: str,
+    request_id: str,
+    source_commit: str,
+    source_inventory_sha256: str,
+    configuration_identity: Mapping[str, Any],
+    prerequisite_bindings: Mapping[str, Any],
+    output_root: str,
+) -> dict[str, Any]:
+    """Render one exact stage request without publishing or granting authority."""
+    body = _stage_request_body(
+        stage=stage,
+        request_id=request_id,
+        source_commit=source_commit,
+        source_inventory_sha256=source_inventory_sha256,
+        configuration_identity=configuration_identity,
+        prerequisite_bindings=prerequisite_bindings,
+        output_root=output_root,
+    )
+    return {**body, "request_sha256": canonical_json_sha256(body)}
+
+
+def validate_stage_request(value: Mapping[str, Any]) -> dict[str, Any]:
+    """Reconstruct a stage request and reject every caller-supplied drift."""
+    request = _copy_mapping(value, "stage request")
+    _require_fields(
+        request,
+        {
+            "configuration_identity",
+            "downstream_authority",
+            "execution_authority",
+            "exclusions",
+            "output_root",
+            "prerequisite_bindings",
+            "request_id",
+            "request_sha256",
+            "resources",
+            "schema_version",
+            "source_commit",
+            "source_inventory_sha256",
+            "stage",
+        },
+        "stage request",
+    )
+    if request["schema_version"] != STAGE_REQUEST_SCHEMA_VERSION:
+        raise SuccessorControlError("stage request schema mismatch")
+    expected = build_stage_request(
+        stage=request["stage"],
+        request_id=request["request_id"],
+        source_commit=request["source_commit"],
+        source_inventory_sha256=request["source_inventory_sha256"],
+        configuration_identity=request["configuration_identity"],
+        prerequisite_bindings=request["prerequisite_bindings"],
+        output_root=request["output_root"],
+    )
+    if request != expected:
+        raise SuccessorControlError("stage request differs from exact terms")
+    return request
+
+
+def _stage_authorization_body(
+    *,
+    request: Mapping[str, Any],
+    authorization_id: str,
+    request_review_sha256: str,
+    approval_record_sha256: str,
+) -> dict[str, Any]:
+    normalized_request = validate_stage_request(request)
+    stage = normalized_request["stage"]
+    normalized_id = _identifier(authorization_id, "stage authorization id")
+    if not normalized_id.endswith(f"-{stage}-authorization-v1"):
+        raise SuccessorControlError(
+            "stage authorization id does not bind its stage"
+        )
+    return {
+        "approval_record_sha256": _digest(
+            approval_record_sha256,
+            "approval record identity",
+        ),
+        "authorization_id": normalized_id,
+        "downstream_authority": _authority(),
+        "execution_authority": copy.deepcopy(
+            normalized_request["execution_authority"]
+        ),
+        "request_id": normalized_request["request_id"],
+        "request_review_sha256": _digest(
+            request_review_sha256,
+            "request review identity",
+        ),
+        "request_sha256": normalized_request["request_sha256"],
+        "schema_version": STAGE_AUTHORIZATION_SCHEMA_VERSION,
+        "stage": stage,
+    }
+
+
+def build_stage_authorization(
+    *,
+    request: Mapping[str, Any],
+    authorization_id: str,
+    request_review_sha256: str,
+    approval_record_sha256: str,
+) -> dict[str, Any]:
+    """Bind one reviewed request to an externally validated approval record."""
+    body = _stage_authorization_body(
+        request=request,
+        authorization_id=authorization_id,
+        request_review_sha256=request_review_sha256,
+        approval_record_sha256=approval_record_sha256,
+    )
+    return {**body, "authorization_sha256": canonical_json_sha256(body)}
+
+
+def validate_stage_authorization(
+    value: Mapping[str, Any], request: Mapping[str, Any]
+) -> dict[str, Any]:
+    """Require exact request, review, approval-record, and authority bindings."""
+    authorization = _copy_mapping(value, "stage authorization")
+    _require_fields(
+        authorization,
+        {
+            "approval_record_sha256",
+            "authorization_id",
+            "authorization_sha256",
+            "downstream_authority",
+            "execution_authority",
+            "request_id",
+            "request_review_sha256",
+            "request_sha256",
+            "schema_version",
+            "stage",
+        },
+        "stage authorization",
+    )
+    if authorization["schema_version"] != STAGE_AUTHORIZATION_SCHEMA_VERSION:
+        raise SuccessorControlError("stage authorization schema mismatch")
+    expected = build_stage_authorization(
+        request=request,
+        authorization_id=authorization["authorization_id"],
+        request_review_sha256=authorization["request_review_sha256"],
+        approval_record_sha256=authorization["approval_record_sha256"],
+    )
+    if authorization != expected:
+        raise SuccessorControlError(
+            "stage authorization differs from exact request binding"
+        )
+    return authorization
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         description="Card-acceptance empirical successor source controls"
     )
     subparsers = parser.add_subparsers(dest="command", required=True)
     subparsers.add_parser("contract", help="print the immutable source contract")
+    render_request = subparsers.add_parser(
+        "render-request", help="render one exact stage request"
+    )
+    render_request.add_argument("--definition", required=True)
+    validate_request = subparsers.add_parser(
+        "validate-request", help="validate one exact stage request"
+    )
+    validate_request.add_argument("--request", required=True)
+    render_authorization = subparsers.add_parser(
+        "render-authorization", help="render one exact stage authorization"
+    )
+    render_authorization.add_argument("--request", required=True)
+    render_authorization.add_argument("--definition", required=True)
+    validate_authorization = subparsers.add_parser(
+        "validate-authorization", help="validate one exact stage authorization"
+    )
+    validate_authorization.add_argument("--request", required=True)
+    validate_authorization.add_argument("--authorization", required=True)
     return parser
 
 
 def main(argv: Sequence[str] | None = None) -> int:
     args = build_parser().parse_args(argv)
-    if args.command != "contract":
+    if args.command == "contract":
+        output = experiment_contract()
+    elif args.command == "render-request":
+        definition = _read_json_mapping(args.definition, "request definition")
+        output = build_stage_request(**definition)
+    elif args.command == "validate-request":
+        output = validate_stage_request(
+            _read_json_mapping(args.request, "stage request")
+        )
+    elif args.command == "render-authorization":
+        request = validate_stage_request(
+            _read_json_mapping(args.request, "stage request")
+        )
+        definition = _read_json_mapping(
+            args.definition,
+            "authorization definition",
+        )
+        output = build_stage_authorization(request=request, **definition)
+    elif args.command == "validate-authorization":
+        request = validate_stage_request(
+            _read_json_mapping(args.request, "stage request")
+        )
+        output = validate_stage_authorization(
+            _read_json_mapping(args.authorization, "stage authorization"),
+            request,
+        )
+    else:
         raise SuccessorControlError("unknown source-only command")
-    sys.stdout.buffer.write(canonical_json_bytes(experiment_contract()))
+    sys.stdout.buffer.write(canonical_json_bytes(output))
     return 0
 
 

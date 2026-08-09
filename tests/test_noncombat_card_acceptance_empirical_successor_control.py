@@ -8,6 +8,8 @@ from pathlib import Path
 import subprocess
 import sys
 
+import pytest
+
 
 ROOT = Path(__file__).resolve().parents[1]
 CONTROL_MODULE = (
@@ -336,3 +338,213 @@ def test_runtime_import_is_explicitly_deferred():
 
     assert loaded is sentinel
     assert imported == [RUNTIME_MODULE]
+
+
+def _stage_prerequisites(stage: str) -> dict[str, str]:
+    if stage == "inventory":
+        return {}
+    if stage == "training":
+        return {"registration_sha256": "c" * 64}
+    if stage == "canary":
+        return {
+            "frozen_seal_sha256": "d" * 64,
+            "registration_sha256": "c" * 64,
+            "training_terminal_sha256": "e" * 64,
+        }
+    if stage == "holdout":
+        return {
+            "canary_terminal_sha256": "f" * 64,
+            "frozen_seal_sha256": "d" * 64,
+            "registration_sha256": "c" * 64,
+        }
+    raise AssertionError(stage)
+
+
+def _stage_request(control, stage: str):
+    return control.build_stage_request(
+        stage=stage,
+        request_id=f"card-acceptance-20260809-{stage}-request-v1",
+        source_commit="a" * 40,
+        source_inventory_sha256="b" * 64,
+        configuration_identity=control.experiment_configuration_identity(),
+        prerequisite_bindings=_stage_prerequisites(stage),
+        output_root=f"D:/synthetic/card-acceptance-successor/{stage}",
+    )
+
+
+def test_stage_requests_have_exact_disjoint_authority_and_resource_maps():
+    control = _control()
+    expected_enabled = {
+        "inventory": {
+            "cohort_materialization",
+            "repository_evidence_read",
+            "seed_discovery",
+        },
+        "training": {
+            "checkpoint_publication",
+            "environment_construction",
+            "evidence_publication",
+            "experiment_model_loading",
+            "model_fitting",
+            "native_loading",
+            "seed_access",
+            "training",
+        },
+        "canary": {
+            "environment_construction",
+            "evaluation",
+            "evidence_publication",
+            "experiment_model_loading",
+            "native_loading",
+            "seed_access",
+            "shadow_optimizer_step",
+        },
+        "holdout": {
+            "environment_construction",
+            "evaluation",
+            "evidence_publication",
+            "experiment_model_loading",
+            "native_loading",
+            "seed_access",
+        },
+    }
+
+    for stage in ("inventory", "training", "canary", "holdout"):
+        request = _stage_request(control, stage)
+        assert control.validate_stage_request(request) == request
+        assert request["stage"] == stage
+        assert set(request["downstream_authority"].values()) == {False}
+        assert {
+            name for name, enabled in request["execution_authority"].items() if enabled
+        } == expected_enabled[stage]
+        assert request["request_sha256"] == control.canonical_json_sha256(
+            {key: value for key, value in request.items() if key != "request_sha256"}
+        )
+
+    assert _stage_request(control, "training")["resources"] == {
+        "max_charged_seconds": 28_800.0,
+        "max_environment_accesses": 1_024,
+        "max_optimizer_steps": 16,
+        "max_pairs": 512,
+    }
+    assert _stage_request(control, "canary")["resources"] == {
+        "max_environment_accesses": 512,
+        "max_pairs": 128,
+        "max_shadow_optimizer_steps": 1,
+    }
+    assert _stage_request(control, "holdout")["resources"] == {
+        "bootstrap_resamples": 10_000,
+        "max_environment_accesses": 1_024,
+        "max_pairs": 512,
+    }
+
+
+def test_stage_request_validation_rejects_cross_stage_or_authority_mutation():
+    control = _control()
+    request = _stage_request(control, "canary")
+
+    changed = json.loads(json.dumps(request))
+    changed["execution_authority"]["training"] = True
+    changed["request_sha256"] = control.canonical_json_sha256(
+        {key: value for key, value in changed.items() if key != "request_sha256"}
+    )
+    with pytest.raises(control.SuccessorControlError, match="request|authority"):
+        control.validate_stage_request(changed)
+
+    changed = json.loads(json.dumps(request))
+    changed["prerequisite_bindings"].pop("frozen_seal_sha256")
+    changed["request_sha256"] = control.canonical_json_sha256(
+        {key: value for key, value in changed.items() if key != "request_sha256"}
+    )
+    with pytest.raises(control.SuccessorControlError, match="prerequisite|request"):
+        control.validate_stage_request(changed)
+
+
+def test_stage_authorization_binds_exact_reviewed_request_and_approval_record():
+    control = _control()
+    request = _stage_request(control, "training")
+
+    authorization = control.build_stage_authorization(
+        request=request,
+        authorization_id="card-acceptance-20260809-training-authorization-v1",
+        request_review_sha256="1" * 64,
+        approval_record_sha256="2" * 64,
+    )
+
+    assert control.validate_stage_authorization(authorization, request) == (
+        authorization
+    )
+    assert authorization["request_sha256"] == request["request_sha256"]
+    assert authorization["execution_authority"] == request["execution_authority"]
+    assert set(authorization["downstream_authority"].values()) == {False}
+    changed = json.loads(json.dumps(authorization))
+    changed["request_sha256"] = "3" * 64
+    changed["authorization_sha256"] = control.canonical_json_sha256(
+        {
+            key: value
+            for key, value in changed.items()
+            if key != "authorization_sha256"
+        }
+    )
+    with pytest.raises(control.SuccessorControlError, match="authorization|request"):
+        control.validate_stage_authorization(changed, request)
+
+
+def test_request_and_authorization_cli_render_and_validate_canonical_bytes(
+    tmp_path, capsys
+):
+    control = _control()
+    definition = {
+        "configuration_identity": control.experiment_configuration_identity(),
+        "output_root": "D:/synthetic/card-acceptance-successor/inventory",
+        "prerequisite_bindings": {},
+        "request_id": "card-acceptance-20260809-inventory-request-v1",
+        "source_commit": "a" * 40,
+        "source_inventory_sha256": "b" * 64,
+        "stage": "inventory",
+    }
+    definition_path = tmp_path / "request-definition.json"
+    definition_path.write_text(json.dumps(definition), encoding="utf-8")
+
+    assert control.main(["render-request", "--definition", str(definition_path)]) == 0
+    request_bytes = capsys.readouterr().out.encode("ascii")
+    request = json.loads(request_bytes)
+    assert request_bytes == control.canonical_json_bytes(request)
+    request_path = tmp_path / "request.json"
+    request_path.write_bytes(request_bytes)
+    assert control.main(["validate-request", "--request", str(request_path)]) == 0
+    assert capsys.readouterr().out.encode("ascii") == request_bytes
+
+    authorization_definition = {
+        "approval_record_sha256": "2" * 64,
+        "authorization_id": (
+            "card-acceptance-20260809-inventory-authorization-v1"
+        ),
+        "request_review_sha256": "1" * 64,
+    }
+    authorization_definition_path = tmp_path / "authorization-definition.json"
+    authorization_definition_path.write_text(
+        json.dumps(authorization_definition), encoding="utf-8"
+    )
+    assert control.main(
+        [
+            "render-authorization",
+            "--request",
+            str(request_path),
+            "--definition",
+            str(authorization_definition_path),
+        ]
+    ) == 0
+    authorization_bytes = capsys.readouterr().out.encode("ascii")
+    authorization_path = tmp_path / "authorization.json"
+    authorization_path.write_bytes(authorization_bytes)
+    assert control.main(
+        [
+            "validate-authorization",
+            "--request",
+            str(request_path),
+            "--authorization",
+            str(authorization_path),
+        ]
+    ) == 0
+    assert capsys.readouterr().out.encode("ascii") == authorization_bytes
