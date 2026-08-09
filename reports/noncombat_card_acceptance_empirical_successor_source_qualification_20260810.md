@@ -224,3 +224,35 @@ change production agent imports, CommunicationMod configuration, production
 checkpoint discovery/loading, or live gameplay policy behavior. No game,
 CommunicationMod process, native simulator, model, checkpoint, cohort, or seed
 was started, loaded, materialized, or accessed during source qualification.
+
+## Pre-Publication Hardening Addendum
+
+Task `6.1` dry-run review found two source-only publication blockers before any
+request was committed. First, the inventory preflight required
+`request.source_commit == HEAD == origin/master`, which made the required pushed
+request, approval, and authorization descendants impossible. It now requires
+`HEAD == origin/master`, tracked-clean state, and the request source commit to be
+an ancestor, while still reconstructing the complete current source inventory
+and requiring its digest to equal the request binding. Regressions cover a valid
+pushed publication descendant, unpushed HEAD, a source commit outside pushed
+ancestry, and source drift in a pushed descendant before discovery.
+
+Second, the successor standing-delegation validator accepted any nonempty grant
+that was fully re-signed. Producer validation now fixes the exact preserved
+external-human grant from message `item-22027`; the independent verifier fixes
+the same grant independently. A source-binding regression proves the grant,
+original delegation digest, and file digest match the preservation artifact.
+Full-chain regressions prove valid nonempty text, timestamp, message-id, or
+task-id substitutions remain rejected after every dependent digest is rebuilt.
+
+The final affected producer, inventory, and independent-verifier suite passed
+`198 passed in 134.96s (0:02:14)`. Three affected scripts compiled, strict
+OpenSpec validation passed, and `git diff --check` passed. Independent review
+reported no actionable findings and confirmed no authority or publication-order
+regression. The configured commit and full gates were not rerun because task
+`5.5` registered exactly one invocation of each; the original passing gate
+results remain the repository-wide evidence, and this addendum records focused
+post-qualification evidence only. No request, approval, authorization, or output
+root was published; temporary untracked request drafts were discarded before
+this correction. No seed inventory, cohort, native module, model, runtime, game,
+or CommunicationMod operation was created, loaded, or accessed.

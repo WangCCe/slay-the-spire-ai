@@ -159,6 +159,20 @@ _STANDING_DELEGATION_SCOPE = {
         "noncombat-card-acceptance-empirical-successor-stage-request-v1"
     ),
 }
+_STANDING_DELEGATION_GRANT = {
+    "granted_at": "2026-08-08T09:46:47Z",
+    "provenance": {
+        "message_id": "item-22027",
+        "source": "external-human-message",
+        "task_id": "019eb771-30f7-7ed2-9af2-ea4b22fadc11",
+    },
+    "verbatim_text": (
+        "\u540e\u9762\u80fd\u4e0d\u80fd\u6539\u6210\u4e0d\u9700\u8981"
+        "\u8fd9\u6837\u7cbe\u786e\u7684\u6388\u6743\uff0c\u8fd9\u4e2a"
+        "\u4ed3\u5e93\u53ea\u6709\u6211\u81ea\u5df1\uff0c\u4f60\u53ef"
+        "\u4ee5\u5168\u6743\u4ee3\u8868\u6211\u3002"
+    ),
+}
 _DELEGATED_APPROVAL_RESOLVER = "codex-agent-under-standing-delegation-v1"
 _REPOSITORY_ID = "WangCCe/slay-the-spire-ai"
 _INVENTORY_CONFIGURATION_IDENTITY = {
@@ -2727,6 +2741,7 @@ def verify_inventory_authority_evidence(value: object) -> dict[str, Any]:
             or delegation["exclusions"] != list(_STANDING_DELEGATION_EXCLUSIONS)
             or delegation["revocation"] != _STANDING_DELEGATION_REVOCATION
             or scope != _STANDING_DELEGATION_SCOPE
+            or grant != _STANDING_DELEGATION_GRANT
         ):
             raise VerificationError("inventory standing delegation provenance differs")
         expected_task = provenance["task_id"]

@@ -2245,17 +2245,7 @@ def test_rollback_rejects_unregistered_authority_and_ambiguous_target_staging(
 def _standing_delegation(control):
     body = {
         "exclusions": list(control.STANDING_DELEGATION_EXCLUSIONS),
-        "grant": {
-            "granted_at": "2026-08-08T09:46:47+00:00",
-            "provenance": {
-                "message_id": "external-human-grant-message",
-                "source": "external-human-message",
-                "task_id": "successor-control-test-task",
-            },
-            "verbatim_text": (
-                "This repository is solely maintained by me; you may represent me."
-            ),
-        },
+        "grant": copy.deepcopy(control.STANDING_DELEGATION_GRANT),
         "revocation": control.STANDING_DELEGATION_REVOCATION,
         "schema_version": control.STANDING_DELEGATION_SCHEMA_VERSION,
         "scope": {
@@ -2265,6 +2255,17 @@ def _standing_delegation(control):
         },
     }
     return {**body, "delegation_sha256": control.canonical_json_sha256(body)}
+
+
+def test_standing_delegation_grant_matches_preserved_external_record():
+    control = _control()
+    source = control.STANDING_DELEGATION_GRANT_SOURCE
+    payload = (ROOT / source["path"]).read_bytes()
+    preserved = json.loads(payload)
+
+    assert hashlib.sha256(payload).hexdigest() == source["file_sha256"]
+    assert preserved["delegation_sha256"] == source["delegation_sha256"]
+    assert preserved["grant"] == control.STANDING_DELEGATION_GRANT
 
 
 def _revocation_observation(
@@ -2277,8 +2278,10 @@ def _revocation_observation(
     message_timestamp,
     available=True,
     revoked=False,
-    task_id="successor-control-test-task",
+    task_id=None,
 ):
+    if task_id is None:
+        task_id = delegation["grant"]["provenance"]["task_id"]
     watermark = {
         "message_id": f"latest-human-{phase}",
         "message_timestamp": message_timestamp,
@@ -2523,8 +2526,35 @@ def test_standing_delegation_rejects_generated_scope_and_grant_tampering():
 
     changed_text = copy.deepcopy(delegation)
     changed_text["grant"]["verbatim_text"] = "changed"
-    with pytest.raises(control.SuccessorControlError, match="identity|digest"):
+    with pytest.raises(control.SuccessorControlError, match="immutable|grant"):
         control.validate_standing_delegation(changed_text)
+
+
+@pytest.mark.parametrize(
+    ("field", "value"),
+    (
+        ("verbatim_text", "A different but still nonempty human grant."),
+        ("granted_at", "2026-08-08T09:46:48Z"),
+        ("message_id", "item-forged"),
+        ("task_id", "task-forged"),
+    ),
+)
+def test_standing_delegation_rejects_rehashed_grant_substitution(field, value):
+    control = _control()
+    delegation = _standing_delegation(control)
+    if field in {"message_id", "task_id"}:
+        delegation["grant"]["provenance"][field] = value
+    else:
+        delegation["grant"][field] = value
+    body = {
+        key: item
+        for key, item in delegation.items()
+        if key != "delegation_sha256"
+    }
+    delegation["delegation_sha256"] = control.canonical_json_sha256(body)
+
+    with pytest.raises(control.SuccessorControlError, match="immutable|grant"):
+        control.validate_standing_delegation(delegation)
 
 
 def _external_approval_message(

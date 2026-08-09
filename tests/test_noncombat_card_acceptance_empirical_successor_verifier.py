@@ -1138,15 +1138,7 @@ def _seed_inventory_authority_evidence():
     )
     delegation_body = {
         "exclusions": list(control.STANDING_DELEGATION_EXCLUSIONS),
-        "grant": {
-            "granted_at": "2026-08-08T09:46:47+00:00",
-            "provenance": {
-                "message_id": "verifier-standing-grant",
-                "source": "external-human-message",
-                "task_id": "verifier-task",
-            },
-            "verbatim_text": "The agent may represent this repository.",
-        },
+        "grant": copy.deepcopy(control.STANDING_DELEGATION_GRANT),
         "revocation": control.STANDING_DELEGATION_REVOCATION,
         "schema_version": control.STANDING_DELEGATION_SCHEMA_VERSION,
         "scope": {
@@ -1164,7 +1156,7 @@ def _seed_inventory_authority_evidence():
         watermark = {
             "message_id": f"verifier-{phase}-message",
             "message_timestamp": message_timestamp,
-            "task_id": "verifier-task",
+            "task_id": delegation["grant"]["provenance"]["task_id"],
         }
         body = {
             "authoritative_state_available": True,
@@ -1587,6 +1579,7 @@ def _rehash_inventory_request_chain(evidence, *, previous_request_sha256):
     ("mutation", "message"),
     (
         ("standing_scope", "scope|delegation|request class"),
+        ("changed_grant", "grant|provenance"),
         ("launch_task", "task|provenance|watermark"),
         ("blank_grant", "grant|nonempty|text"),
         ("nul_grant", "grant|nonempty|text"),
@@ -1604,6 +1597,10 @@ def test_independent_inventory_verifier_rejects_rehashed_authority_semantics(
         envelope["approval_record"]["delegation"]["scope"][
             "request_class"
         ] = "forged-request-class"
+    elif mutation == "changed_grant":
+        envelope["approval_record"]["delegation"]["grant"][
+            "verbatim_text"
+        ] = "A different but still nonempty human grant."
     elif mutation == "launch_task":
         envelope["build_launch_observation"][
             "latest_human_message_watermark"

@@ -743,10 +743,19 @@ def _validate_inventory_authority(
             repo_root,
             ["status", "--porcelain=v1", "--untracked-files=no"],
         )
-        if head != expected_commit or remote != expected_commit:
+        if head != remote:
             raise SeedInventoryBlocked(
-                "source commit is not the exact pushed origin/master identity"
+                "current HEAD is not the exact pushed origin/master identity"
             )
+        try:
+            _git_command(
+                repo_root,
+                ["merge-base", "--is-ancestor", expected_commit, head],
+            )
+        except SeedInventoryBlocked as exc:
+            raise SeedInventoryBlocked(
+                "source commit is not an ancestor of pushed origin/master"
+            ) from exc
         if tracked_status:
             raise SeedInventoryBlocked("source tracked worktree is not clean")
         source_inventory = _mapping(

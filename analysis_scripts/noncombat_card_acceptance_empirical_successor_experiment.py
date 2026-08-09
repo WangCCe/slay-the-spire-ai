@@ -269,6 +269,32 @@ STANDING_DELEGATION_EXCLUSIONS = (
     "destructive-unrelated-repository-or-filesystem-operation",
     "substitute-another-request-digest",
 )
+STANDING_DELEGATION_GRANT_SOURCE = {
+    "delegation_sha256": (
+        "9720eede9ca1eb41d65277ec9e1fcff024931c06720d2d322bc4f29c55ae97ff"
+    ),
+    "file_sha256": (
+        "6dac765272edc2a730f9d03075c97ebccc373a704fcc6d1bf4674dbc29a699dc"
+    ),
+    "path": (
+        "reports/noncombat_cross_fitted_hierarchical_learning_"
+        "standing_delegation_20260808.json"
+    ),
+}
+STANDING_DELEGATION_GRANT = {
+    "granted_at": "2026-08-08T09:46:47Z",
+    "provenance": {
+        "message_id": "item-22027",
+        "source": "external-human-message",
+        "task_id": "019eb771-30f7-7ed2-9af2-ea4b22fadc11",
+    },
+    "verbatim_text": (
+        "\u540e\u9762\u80fd\u4e0d\u80fd\u6539\u6210\u4e0d\u9700\u8981"
+        "\u8fd9\u6837\u7cbe\u786e\u7684\u6388\u6743\uff0c\u8fd9\u4e2a"
+        "\u4ed3\u5e93\u53ea\u6709\u6211\u81ea\u5df1\uff0c\u4f60\u53ef"
+        "\u4ee5\u5168\u6743\u4ee3\u8868\u6211\u3002"
+    ),
+}
 _EXECUTION_CONTEXT_OPERATIONS = (
     "artifact",
     "journal",
@@ -1802,6 +1828,10 @@ def validate_standing_delegation(value: Mapping[str, Any]) -> dict[str, Any]:
             "standing delegation verbatim grant text",
         ),
     }
+    if normalized_grant != STANDING_DELEGATION_GRANT:
+        raise SuccessorControlError(
+            "standing delegation grant differs from immutable external-human grant"
+        )
     scope = _copy_mapping(delegation["scope"], "standing delegation scope")
     _require_fields(
         scope,

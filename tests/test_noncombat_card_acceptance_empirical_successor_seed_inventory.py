@@ -84,15 +84,7 @@ def _commit_files(tmp_path: Path, files: dict[str, bytes]) -> tuple[Path, str]:
 def _inventory_standing_delegation():
     body = {
         "exclusions": list(control.STANDING_DELEGATION_EXCLUSIONS),
-        "grant": {
-            "granted_at": "2026-08-08T09:46:47+00:00",
-            "provenance": {
-                "message_id": "inventory-external-human-grant",
-                "source": "external-human-message",
-                "task_id": "inventory-test-task",
-            },
-            "verbatim_text": "The agent may represent this solo-maintainer repository.",
-        },
+        "grant": copy.deepcopy(control.STANDING_DELEGATION_GRANT),
         "revocation": control.STANDING_DELEGATION_REVOCATION,
         "schema_version": control.STANDING_DELEGATION_SCHEMA_VERSION,
         "scope": {
@@ -116,7 +108,7 @@ def _inventory_revocation_observation(
     watermark = {
         "message_id": f"inventory-latest-human-{phase}",
         "message_timestamp": message_timestamp,
-        "task_id": "inventory-test-task",
+        "task_id": delegation["grant"]["provenance"]["task_id"],
     }
     body = {
         "authoritative_state_available": True,
@@ -259,6 +251,141 @@ def test_build_inventory_publishes_exact_fresh_disjoint_cohorts(tmp_path):
     assert artifact["inventory_sha256"] == hashlib.sha256(
         seed_inventory.canonical_json_bytes(body)
     ).hexdigest()
+
+
+def test_build_inventory_accepts_pushed_publication_descendant(tmp_path):
+    repo, source_commit = _commit_files(
+        tmp_path,
+        {"reports/history/seeds.json": _json_bytes({"used_seeds": [1]})},
+    )
+    request, authorization, approval, launch_observation = _inventory_authority(
+        repo, source_commit
+    )
+    publication = repo / "reports" / "published_inventory_authorization.json"
+    publication.write_bytes(_json_bytes({"authorization": "published"}))
+    _git(repo, "add", publication.relative_to(repo).as_posix())
+    _git(repo, "commit", "-q", "-m", "publish inventory authority")
+    published_commit = _git(repo, "rev-parse", "HEAD")
+    _git(repo, "update-ref", "refs/remotes/origin/master", published_commit)
+
+    artifact = seed_inventory.build_inventory(
+        repo_root=repo,
+        request=request,
+        authorization=authorization,
+        approval_record=approval,
+        launch_observation=launch_observation,
+    )
+
+    assert artifact["repository_commit"] == source_commit
+    assert published_commit != source_commit
+
+
+def test_build_inventory_rejects_source_drift_in_pushed_descendant(
+    tmp_path, monkeypatch
+):
+    repo, source_commit = _commit_files(
+        tmp_path,
+        {"reports/history/seeds.json": _json_bytes({"used_seeds": [1]})},
+    )
+    request, authorization, approval, launch_observation = _inventory_authority(
+        repo, source_commit
+    )
+    changed_source = repo / "analysis_scripts" / "changed_source.py"
+    changed_source.parent.mkdir(parents=True, exist_ok=True)
+    changed_source.write_text("CHANGED = True\n", encoding="ascii")
+    _git(repo, "add", changed_source.relative_to(repo).as_posix())
+    _git(repo, "commit", "-q", "-m", "change bound source")
+    published_commit = _git(repo, "rev-parse", "HEAD")
+    _git(repo, "update-ref", "refs/remotes/origin/master", published_commit)
+    changed_inventory = copy.deepcopy(_SOURCE_INVENTORY)
+    changed_inventory["inventory_sha256"] = "a" * 64
+    monkeypatch.setattr(
+        control,
+        "build_source_inventory",
+        lambda _repo_root: copy.deepcopy(changed_inventory),
+    )
+
+    def forbidden(*_args, **_kwargs):
+        raise AssertionError("source discovery ran after source inventory drift")
+
+    monkeypatch.setattr(seed_inventory, "_list_registered_source_paths", forbidden)
+    with pytest.raises(
+        seed_inventory.SeedInventoryBlocked,
+        match="source inventory digest",
+    ):
+        seed_inventory.build_inventory(
+            repo_root=repo,
+            request=request,
+            authorization=authorization,
+            approval_record=approval,
+            launch_observation=launch_observation,
+        )
+
+
+def test_build_inventory_rejects_unpushed_head_before_discovery(
+    tmp_path, monkeypatch
+):
+    repo, source_commit = _commit_files(
+        tmp_path,
+        {"reports/history/seeds.json": _json_bytes({"used_seeds": [1]})},
+    )
+    request, authorization, approval, launch_observation = _inventory_authority(
+        repo, source_commit
+    )
+    publication = repo / "reports" / "unpublished_authorization.json"
+    publication.write_bytes(_json_bytes({"authorization": "unpublished"}))
+    _git(repo, "add", publication.relative_to(repo).as_posix())
+    _git(repo, "commit", "-q", "-m", "unpublished inventory authority")
+
+    def forbidden(*_args, **_kwargs):
+        raise AssertionError("source discovery ran before pushed Git qualification")
+
+    monkeypatch.setattr(seed_inventory, "_list_registered_source_paths", forbidden)
+    with pytest.raises(
+        seed_inventory.SeedInventoryBlocked,
+        match="pushed origin/master",
+    ):
+        seed_inventory.build_inventory(
+            repo_root=repo,
+            request=request,
+            authorization=authorization,
+            approval_record=approval,
+            launch_observation=launch_observation,
+        )
+
+
+def test_build_inventory_rejects_source_commit_outside_pushed_ancestry(
+    tmp_path, monkeypatch
+):
+    repo, pushed_commit = _commit_files(
+        tmp_path,
+        {"reports/history/seeds.json": _json_bytes({"used_seeds": [1]})},
+    )
+    future = repo / "reports" / "future_source.json"
+    future.write_bytes(_json_bytes({"source": "future"}))
+    _git(repo, "add", future.relative_to(repo).as_posix())
+    _git(repo, "commit", "-q", "-m", "future source")
+    future_commit = _git(repo, "rev-parse", "HEAD")
+    request, authorization, approval, launch_observation = _inventory_authority(
+        repo, future_commit
+    )
+    _git(repo, "checkout", "-q", pushed_commit)
+
+    def forbidden(*_args, **_kwargs):
+        raise AssertionError("source discovery ran before source ancestry qualification")
+
+    monkeypatch.setattr(seed_inventory, "_list_registered_source_paths", forbidden)
+    with pytest.raises(
+        seed_inventory.SeedInventoryBlocked,
+        match="ancestor",
+    ):
+        seed_inventory.build_inventory(
+            repo_root=repo,
+            request=request,
+            authorization=authorization,
+            approval_record=approval,
+            launch_observation=launch_observation,
+        )
 
 
 def test_historical_exclusion_roles_include_failed_and_untouched_reservations(
