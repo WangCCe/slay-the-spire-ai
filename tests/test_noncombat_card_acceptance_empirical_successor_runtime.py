@@ -287,6 +287,88 @@ def _synthetic_paired_rollouts(runtime, bootstrap, *, start_seed: int = 100):
     return tuple(pairs)
 
 
+def _canary_arm_rollout(runtime, *, arm: str, seed: int, family: str):
+    if family == "bowl":
+        family_logits = torch.tensor([2.0, -2.0], dtype=torch.float32)
+        selected_action_id = "bowl"
+    elif family == "take":
+        family_logits = torch.tensor([-2.0, 2.0], dtype=torch.float32)
+        selected_action_id = "take-b"
+    else:
+        raise AssertionError(family)
+    terms = build_card_acceptance_policy_terms(
+        family_logits,
+        torch.tensor([0.0, -1.0, 1.0], dtype=torch.float32),
+        _candidates(),
+        selected_action_id,
+        category="card_reward",
+    )
+    decision = runtime.ArmRolloutDecision(
+        arm=arm,
+        category="card_reward",
+        decision_id=f"{arm}:seed-{seed}:decision-0",
+        decision_index=0,
+        selected_action_id=selected_action_id,
+        state_features=torch.zeros(HASH_DIM, dtype=torch.float32),
+        card_terms=terms,
+        diagnostic={
+            "family_order": list(terms.family_order),
+            "multi_family": True,
+            "selected_family": terms.selected_family,
+            "unique_greedy_family_id": terms.unique_greedy_family_id,
+        },
+    )
+    return runtime.ArmEpisodeRollout(
+        arm=arm,
+        seed=seed,
+        trajectory_id=f"{arm}:seed-{seed}",
+        decisions=(decision,),
+        transitions=(),
+        rewards=(0.0,),
+        final_snapshot={
+            "state": {"outcome": "player_loss", "seed": str(seed)},
+            "terminal": True,
+        },
+        floor_progress=0.0,
+        terminal_victory=0,
+        unsupported_reason=None,
+    )
+
+
+def _canary_pair(runtime, seed: int, *, family: str | None = None):
+    selected_family = family or ("bowl" if seed % 2 == 0 else "take")
+    return runtime.PairedEpisodeRollout(
+        seed=seed,
+        candidate=_canary_arm_rollout(
+            runtime,
+            arm="candidate",
+            seed=seed,
+            family=selected_family,
+        ),
+        control=_canary_arm_rollout(
+            runtime,
+            arm="control",
+            seed=seed,
+            family=selected_family,
+        ),
+    )
+
+
+def _canary_arm_bindings():
+    return {
+        "candidate": {
+            "checkpoint_sha256": "1" * 64,
+            "configuration_sha256": "2" * 64,
+            "source_sha256": "3" * 64,
+        },
+        "control": {
+            "checkpoint_sha256": "4" * 64,
+            "configuration_sha256": "5" * 64,
+            "source_sha256": "3" * 64,
+        },
+    }
+
+
 def test_matched_bootstrap_copies_one_base_into_five_storage_disjoint_rankers():
     runtime = _runtime()
 
@@ -1532,5 +1614,261 @@ def test_family_saturation_keeps_canary_and_holdout_zero_and_blocks_more_trainin
             after_environment=lambda _arm, _seed: None,
             deadline=100.0,
             clock=lambda: 0.0,
+        )
+    assert environment_calls == []
+
+
+def test_canary_concentration_requires_both_balanced_64_denominators():
+    runtime = _runtime()
+    balanced = tuple(
+        _canary_pair(runtime, seed).candidate for seed in range(128)
+    )
+
+    passing = runtime.classify_canary_concentration(balanced)
+
+    assert passing["passed"] is True
+    for gate in ("selected_family", "unique_greedy_family"):
+        assert passing[gate]["denominator"] == 128
+        assert passing[gate]["family_count"] == 2
+        assert passing[gate]["maximum_rate"] == 0.5
+
+    concentrated = tuple(
+        _canary_pair(
+            runtime,
+            seed,
+            family="bowl" if seed < 122 else "take",
+        ).candidate
+        for seed in range(128)
+    )
+    failing = runtime.classify_canary_concentration(concentrated)
+    assert failing["passed"] is False
+    assert failing["selected_family"]["maximum_rate"] == 122 / 128
+    assert failing["unique_greedy_family"]["maximum_rate"] == 122 / 128
+
+    too_small = runtime.classify_canary_concentration(balanced[:63])
+    assert too_small["passed"] is False
+    assert too_small["selected_family"]["denominator"] == 63
+    assert too_small["unique_greedy_family"]["denominator"] == 63
+
+
+def test_family_only_shadow_adam_changes_only_clone_family_state():
+    runtime = _runtime()
+    bootstrap = runtime.build_matched_bootstrap()
+    optimizers = runtime.build_arm_optimizers(bootstrap)
+    optimizers.candidate.zero_grad(set_to_none=True)
+    warmup_loss = sum(
+        parameter.square().sum()
+        for parameter in optimizers.candidate.param_groups[0]["params"]
+    )
+    warmup_loss.backward()
+    torch.nn.utils.clip_grad_norm_(
+        optimizers.candidate.param_groups[0]["params"],
+        1.0,
+    )
+    optimizers.candidate.step()
+    rollout = runtime.rollout_arm_frozen_evaluation(
+        bootstrap,
+        arm="candidate",
+        environment_factory=lambda seed: _RolloutEnvironment(
+            seed,
+            ("card_reward",),
+        ),
+        seed=43,
+    )
+    before_bootstrap = runtime.encode_paired_bootstrap(bootstrap)
+    before_optimizer = runtime.encode_optimizer_state(optimizers.candidate)
+
+    evidence = runtime.apply_family_only_shadow_step(
+        bootstrap,
+        candidate_optimizer=optimizers.candidate,
+        decision=rollout.decisions[0],
+    )
+
+    assert runtime.encode_paired_bootstrap(bootstrap) == before_bootstrap
+    assert runtime.encode_optimizer_state(optimizers.candidate) == before_optimizer
+    assert evidence["advantage"] == 1.0
+    assert evidence["gradient_reset_mode"] == "set_to_none=true"
+    assert evidence["shadow_optimizer_steps"] == 1
+    assert evidence["family_gradient_nonzero"] is True
+    assert evidence["family_parameter_changed"] is True
+    assert evidence["conditional_parameter_unchanged"] is True
+    assert evidence["conditional_optimizer_state_unchanged"] is True
+    assert evidence["conditional_output_unchanged"] is True
+    assert evidence["postclip_global_norm"] <= 1.0 + 1e-6
+
+
+def test_structural_canary_commits_first_outputs_before_exact_replay(
+    monkeypatch,
+):
+    runtime = _runtime()
+    bootstrap = runtime.build_matched_bootstrap()
+    optimizers = runtime.build_arm_optimizers(bootstrap)
+    seeds = tuple(range(2_000, 2_128))
+    environment_calls = []
+    rollout_calls = {seed: 0 for seed in seeds}
+    commitments = []
+
+    def environment_factory(seed: int):
+        environment_calls.append(seed)
+        return object()
+
+    def paired_rollout(_bootstrap, *, environment_factory, seed, **_kwargs):
+        environment_factory(seed)
+        environment_factory(seed)
+        rollout_calls[seed] += 1
+        return _canary_pair(runtime, seed)
+
+    def publish(commitment):
+        assert len(environment_calls) == 4 * commitment["seed_index"] + 2
+        commitments.append(copy.deepcopy(commitment))
+
+    monkeypatch.setattr(
+        runtime,
+        "rollout_paired_frozen_evaluation",
+        paired_rollout,
+    )
+    monkeypatch.setattr(
+        runtime,
+        "apply_family_only_shadow_step",
+        lambda *_args, **_kwargs: {
+            "family_parameter_changed": True,
+            "shadow_optimizer_steps": 1,
+        },
+    )
+
+    result = runtime.run_structural_canary(
+        bootstrap,
+        candidate_optimizer=optimizers.candidate,
+        environment_factory=environment_factory,
+        seeds=seeds,
+        arm_bindings=_canary_arm_bindings(),
+        publish_commitment=publish,
+    )
+
+    assert result.verdict == "canary_passed"
+    assert result.resource_use == {
+        "canary_environment_accesses": 512,
+        "shadow_optimizer_steps": 1,
+    }
+    assert len(result.commitments) == 256
+    assert tuple(commitments) == result.commitments
+    assert all(count == 2 for count in rollout_calls.values())
+    assert environment_calls == [seed for seed in seeds for _ in range(4)]
+    for index, commitment in enumerate(commitments):
+        assert commitment["sequence_index"] == index
+        assert commitment["seed_index"] == index // 2
+        assert commitment["arm"] == ("candidate" if index % 2 == 0 else "control")
+        expected_previous = "0" * 64 if index == 0 else commitments[index - 1][
+            "commitment_sha256"
+        ]
+        assert commitment["previous_commitment_sha256"] == expected_previous
+        body = {
+            key: value
+            for key, value in commitment.items()
+            if key != "commitment_sha256"
+        }
+        assert commitment["commitment_sha256"] == runtime.canonical_runtime_sha256(
+            body
+        )
+
+
+def test_structural_canary_rejects_replay_drift_after_commitment(monkeypatch):
+    runtime = _runtime()
+    bootstrap = runtime.build_matched_bootstrap()
+    optimizers = runtime.build_arm_optimizers(bootstrap)
+    seeds = tuple(range(3_000, 3_128))
+    calls = {seed: 0 for seed in seeds}
+    published = []
+
+    def paired_rollout(_bootstrap, *, seed, **_kwargs):
+        calls[seed] += 1
+        pair = _canary_pair(runtime, seed)
+        if calls[seed] == 2:
+            pair.candidate.final_snapshot["state"]["outcome"] = "player_victory"
+        return pair
+
+    monkeypatch.setattr(
+        runtime,
+        "rollout_paired_frozen_evaluation",
+        paired_rollout,
+    )
+
+    with pytest.raises(runtime.SuccessorRuntimeError, match="replay"):
+        runtime.run_structural_canary(
+            bootstrap,
+            candidate_optimizer=optimizers.candidate,
+            environment_factory=lambda seed: object(),
+            seeds=seeds,
+            arm_bindings=_canary_arm_bindings(),
+            publish_commitment=lambda commitment: published.append(commitment),
+        )
+    assert [row["arm"] for row in published] == ["candidate", "control"]
+
+
+def test_structural_canary_concentration_failure_skips_shadow(monkeypatch):
+    runtime = _runtime()
+    bootstrap = runtime.build_matched_bootstrap()
+    optimizers = runtime.build_arm_optimizers(bootstrap)
+    seeds = tuple(range(4_000, 4_128))
+    commitments = []
+
+    monkeypatch.setattr(
+        runtime,
+        "rollout_paired_frozen_evaluation",
+        lambda _bootstrap, *, seed, **_kwargs: _canary_pair(
+            runtime,
+            seed,
+            family="bowl",
+        ),
+    )
+    monkeypatch.setattr(
+        runtime,
+        "apply_family_only_shadow_step",
+        lambda *_args, **_kwargs: (_ for _ in ()).throw(
+            AssertionError("concentration failure reached shadow step")
+        ),
+    )
+
+    result = runtime.run_structural_canary(
+        bootstrap,
+        candidate_optimizer=optimizers.candidate,
+        environment_factory=lambda seed: object(),
+        seeds=seeds,
+        arm_bindings=_canary_arm_bindings(),
+        publish_commitment=lambda commitment: commitments.append(commitment),
+    )
+
+    assert result.verdict == "canary_failed_concentration"
+    assert result.concentration["passed"] is False
+    assert result.shadow_step is None
+    assert result.resource_use == {
+        "canary_environment_accesses": 512,
+        "shadow_optimizer_steps": 0,
+    }
+    assert len(commitments) == 256
+
+
+@pytest.mark.parametrize(
+    "seeds",
+    (
+        tuple(range(127)),
+        tuple(reversed(range(128))),
+        tuple(range(127)) + (126,),
+    ),
+)
+def test_structural_canary_rejects_nonexact_schedule_before_environment(seeds):
+    runtime = _runtime()
+    bootstrap = runtime.build_matched_bootstrap()
+    optimizers = runtime.build_arm_optimizers(bootstrap)
+    environment_calls = []
+
+    with pytest.raises(runtime.SuccessorRuntimeError, match="128 ascending unique"):
+        runtime.run_structural_canary(
+            bootstrap,
+            candidate_optimizer=optimizers.candidate,
+            environment_factory=lambda seed: environment_calls.append(seed),
+            seeds=seeds,
+            arm_bindings=_canary_arm_bindings(),
+            publish_commitment=lambda _commitment: None,
         )
     assert environment_calls == []

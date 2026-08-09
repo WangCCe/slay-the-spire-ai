@@ -55,6 +55,9 @@ TRAINING_CHECKPOINT_SCHEMA_VERSION = (
 RUNTIME_METADATA_SCHEMA_VERSION = (
     "noncombat-card-acceptance-empirical-successor-runtime-metadata-v1"
 )
+CANARY_COMMITMENT_SCHEMA_VERSION = (
+    "noncombat-card-acceptance-empirical-successor-canary-commitment-v1"
+)
 MODEL_SEED = 0
 CARD_GENERATOR_SEED = 0
 NONCARD_GENERATOR_SEED = 1
@@ -71,6 +74,10 @@ MAX_SHADOW_OPTIMIZER_STEPS = 1
 MAX_CANARY_ENVIRONMENT_ACCESSES = 512
 MAX_HOLDOUT_ENVIRONMENT_ACCESSES = 1_024
 MAX_TOTAL_ENVIRONMENT_ACCESSES = 2_560
+CANARY_PAIR_COUNT = 128
+CANARY_MIN_FAMILY_DENOMINATOR = 64
+CANARY_MIN_FAMILY_COUNT = 2
+CANARY_MAX_FAMILY_RATE = 0.95
 REGISTERED_SUPPORT_BLOCKERS = (
     "unsupported_shop_courier_restock_semantics",
 )
@@ -180,6 +187,8 @@ class ArmRolloutDecision:
     state_features: torch.Tensor
     card_terms: CardAcceptancePolicyTerms | None
     diagnostic: Mapping[str, Any]
+    candidate_features: torch.Tensor | None = None
+    candidates: tuple[Mapping[str, Any], ...] = ()
 
 
 @dataclass(frozen=True)
@@ -305,6 +314,16 @@ class BoundedTrainingResult:
     checkpoint: bytes
 
 
+@dataclass(frozen=True)
+class StructuralCanaryResult:
+    verdict: str
+    seeds: tuple[int, ...]
+    commitments: tuple[Mapping[str, Any], ...]
+    concentration: Mapping[str, Any]
+    shadow_step: Mapping[str, Any] | None
+    resource_use: Mapping[str, int]
+
+
 _DTYPES: dict[str, torch.dtype] = {
     "bool": torch.bool,
     "float32": torch.float32,
@@ -424,6 +443,11 @@ def _rankers(bootstrap: PairedBootstrap) -> tuple[StateConditionedCandidateRanke
         bootstrap.control.shared_card_ranker,
         bootstrap.control.frozen_noncard_ranker,
     )
+
+
+def canonical_runtime_sha256(value: object) -> str:
+    """Return the runtime's canonical SHA-256 for reviewable evidence objects."""
+    return hashlib.sha256(_canonical_json_bytes(value)).hexdigest()
 
 
 def _new_ranker() -> StateConditionedCandidateRanker:
@@ -1649,6 +1673,8 @@ def _sample_arm_training_decision(
         state_features=policy_input.state_features.detach().clone(),
         card_terms=card_terms,
         diagnostic=diagnostic,
+        candidate_features=policy_input.candidate_features.detach().clone(),
+        candidates=tuple(copy.deepcopy(candidates)),
     )
 
 
@@ -1776,6 +1802,8 @@ def _select_arm_frozen_decision(
         state_features=policy_input.state_features.detach().clone(),
         card_terms=card_terms,
         diagnostic=diagnostic,
+        candidate_features=policy_input.candidate_features.detach().clone(),
+        candidates=tuple(copy.deepcopy(candidates)),
     )
 
 
@@ -2087,6 +2115,579 @@ def rollout_paired_frozen_evaluation(
     if encode_paired_bootstrap(bootstrap) != before:
         raise SuccessorRuntimeError("frozen evaluation mutated bootstrap state")
     return PairedEpisodeRollout(seed=seed, candidate=candidate, control=control)
+
+
+def _card_terms_evidence(terms: CardAcceptancePolicyTerms) -> dict[str, Any]:
+    return {
+        "action_ids": list(terms.action_ids),
+        "candidate_families": list(terms.candidate_families),
+        "conditional_log_probabilities": _encode_tensor(
+            terms.conditional_log_probabilities
+        ),
+        "conditional_probabilities": _encode_tensor(terms.conditional_probabilities),
+        "family_entropy": _encode_tensor(terms.family_entropy),
+        "family_log_probabilities": _encode_tensor(terms.family_log_probabilities),
+        "family_order": list(terms.family_order),
+        "family_probabilities": _encode_tensor(terms.family_probabilities),
+        "selected_action_id": terms.selected_action_id,
+        "selected_conditional_log_probability": _encode_tensor(
+            terms.selected_conditional_log_probability
+        ),
+        "selected_family": terms.selected_family,
+        "selected_family_log_probability": _encode_tensor(
+            terms.selected_family_log_probability
+        ),
+        "two_stage_greedy_action_ids": list(terms.two_stage_greedy_action_ids),
+        "unique_greedy_family_id": terms.unique_greedy_family_id,
+        "unique_two_stage_greedy_action_id": (
+            terms.unique_two_stage_greedy_action_id
+        ),
+    }
+
+
+def _arm_canary_output(rollout: ArmEpisodeRollout) -> dict[str, Any]:
+    if not isinstance(rollout, ArmEpisodeRollout):
+        raise SuccessorRuntimeError("canary rollout type differs")
+    if rollout.unsupported_reason is not None:
+        raise SuccessorRuntimeError("canary rollout has an unsupported outcome")
+    decisions: list[dict[str, Any]] = []
+    for expected_index, decision in enumerate(rollout.decisions):
+        if (
+            decision.arm != rollout.arm
+            or decision.decision_index != expected_index
+            or decision.decision_id
+            != f"{rollout.arm}:seed-{rollout.seed}:decision-{expected_index}"
+        ):
+            raise SuccessorRuntimeError("canary decision coordinate differs")
+        if decision.category == "card_reward":
+            if (
+                not isinstance(decision.card_terms, CardAcceptancePolicyTerms)
+                or decision.card_terms.selected_action_id
+                != decision.selected_action_id
+            ):
+                raise SuccessorRuntimeError("canary card policy terms differ")
+            card_terms = _card_terms_evidence(decision.card_terms)
+        else:
+            if decision.card_terms is not None:
+                raise SuccessorRuntimeError("canary non-card decision has card terms")
+            card_terms = None
+        decisions.append(
+            {
+                "candidate_features": (
+                    None
+                    if decision.candidate_features is None
+                    else _encode_tensor(decision.candidate_features)
+                ),
+                "candidates": copy.deepcopy(list(decision.candidates)),
+                "card_terms": card_terms,
+                "category": decision.category,
+                "decision_id": decision.decision_id,
+                "decision_index": decision.decision_index,
+                "diagnostic": copy.deepcopy(dict(decision.diagnostic)),
+                "selected_action_id": decision.selected_action_id,
+                "state_features": _encode_tensor(decision.state_features),
+            }
+        )
+    output = {
+        "arm": rollout.arm,
+        "decisions": decisions,
+        "seed": rollout.seed,
+        "terminal": {
+            "final_snapshot": copy.deepcopy(rollout.final_snapshot),
+            "floor_progress": float(rollout.floor_progress),
+            "rewards": [float(value) for value in rollout.rewards],
+            "terminal_victory": rollout.terminal_victory,
+            "trajectory_id": rollout.trajectory_id,
+            "transitions": copy.deepcopy(list(rollout.transitions)),
+            "unsupported_reason": rollout.unsupported_reason,
+        },
+    }
+    _canonical_json_bytes(output)
+    return output
+
+
+def _normalize_canary_arm_bindings(value: object) -> dict[str, dict[str, str]]:
+    if not isinstance(value, Mapping) or set(value) != {"candidate", "control"}:
+        raise SuccessorRuntimeError("canary arm bindings differ")
+    normalized: dict[str, dict[str, str]] = {}
+    for arm in ("candidate", "control"):
+        binding = value[arm]
+        if not isinstance(binding, Mapping) or set(binding) != {
+            "checkpoint_sha256",
+            "configuration_sha256",
+            "source_sha256",
+        }:
+            raise SuccessorRuntimeError(f"{arm} canary binding fields differ")
+        normalized[arm] = {}
+        for name in (
+            "checkpoint_sha256",
+            "configuration_sha256",
+            "source_sha256",
+        ):
+            digest = binding[name]
+            if (
+                not isinstance(digest, str)
+                or len(digest) != 64
+                or any(character not in "0123456789abcdef" for character in digest)
+            ):
+                raise SuccessorRuntimeError(f"{arm} canary binding digest differs")
+            normalized[arm][name] = digest
+    return normalized
+
+
+def _build_canary_commitment(
+    *,
+    rollout: ArmEpisodeRollout,
+    arm_binding: Mapping[str, str],
+    seed_index: int,
+    sequence_index: int,
+    previous_sha256: str,
+) -> dict[str, Any]:
+    output = _arm_canary_output(rollout)
+    body = {
+        "arm": rollout.arm,
+        "arm_binding": copy.deepcopy(dict(arm_binding)),
+        "output": output,
+        "output_sha256": canonical_runtime_sha256(output),
+        "previous_commitment_sha256": previous_sha256,
+        "schema_version": CANARY_COMMITMENT_SCHEMA_VERSION,
+        "seed": rollout.seed,
+        "seed_index": seed_index,
+        "sequence_index": sequence_index,
+    }
+    return {**body, "commitment_sha256": canonical_runtime_sha256(body)}
+
+
+def _family_concentration_gate(values: Sequence[str]) -> dict[str, Any]:
+    counts: dict[str, int] = {}
+    for value in values:
+        counts[value] = counts.get(value, 0) + 1
+    denominator = len(values)
+    maximum_count = max(counts.values(), default=0)
+    maximum_rate = 0.0 if denominator == 0 else maximum_count / denominator
+    passed = (
+        denominator >= CANARY_MIN_FAMILY_DENOMINATOR
+        and len(counts) >= CANARY_MIN_FAMILY_COUNT
+        and maximum_rate <= CANARY_MAX_FAMILY_RATE
+    )
+    return {
+        "counts": {key: counts[key] for key in sorted(counts)},
+        "denominator": denominator,
+        "family_count": len(counts),
+        "maximum_count": maximum_count,
+        "maximum_rate": maximum_rate,
+        "passed": passed,
+    }
+
+
+def classify_canary_concentration(
+    candidate_rollouts: Sequence[ArmEpisodeRollout],
+) -> dict[str, Any]:
+    """Apply the two fixed 64/2/0.95 candidate-family canary gates."""
+    selected_families: list[str] = []
+    greedy_families: list[str] = []
+    for rollout in candidate_rollouts:
+        if not isinstance(rollout, ArmEpisodeRollout) or rollout.arm != "candidate":
+            raise SuccessorRuntimeError("canary concentration requires candidate rollouts")
+        if rollout.unsupported_reason is not None:
+            raise SuccessorRuntimeError("canary concentration has unsupported rollout")
+        for decision in rollout.decisions:
+            if decision.category != "card_reward":
+                continue
+            terms = decision.card_terms
+            if not isinstance(terms, CardAcceptancePolicyTerms):
+                raise SuccessorRuntimeError("canary card decision terms differ")
+            if len(terms.family_order) < CANARY_MIN_FAMILY_COUNT:
+                continue
+            if terms.selected_family not in terms.family_order:
+                raise SuccessorRuntimeError("canary selected family is invalid")
+            selected_families.append(terms.selected_family)
+            if terms.unique_greedy_family_id is not None:
+                if terms.unique_greedy_family_id not in terms.family_order:
+                    raise SuccessorRuntimeError("canary greedy family is invalid")
+                greedy_families.append(terms.unique_greedy_family_id)
+    selected_gate = _family_concentration_gate(selected_families)
+    greedy_gate = _family_concentration_gate(greedy_families)
+    return {
+        "passed": selected_gate["passed"] and greedy_gate["passed"],
+        "selected_family": selected_gate,
+        "unique_greedy_family": greedy_gate,
+    }
+
+
+def _optimizer_parameter_state(
+    optimizer: torch.optim.Optimizer,
+    named_parameters: Sequence[tuple[str, torch.nn.Parameter]],
+    *,
+    prefix: str,
+) -> dict[str, Any]:
+    return {
+        name: _encode_state_value(optimizer.state.get(parameter, {}))
+        for name, parameter in named_parameters
+        if name.startswith(prefix)
+    }
+
+
+def _conditional_output_evidence(
+    output: CardAcceptancePolicyOutput,
+    terms: CardAcceptancePolicyTerms,
+) -> dict[str, Any]:
+    return {
+        "conditional_logits": _encode_tensor(output.conditional_logits),
+        "conditional_probabilities": _encode_tensor(terms.conditional_probabilities),
+        "selected_conditional_log_probability": _encode_tensor(
+            terms.selected_conditional_log_probability
+        ),
+    }
+
+
+def apply_family_only_shadow_step(
+    bootstrap: PairedBootstrap,
+    *,
+    candidate_optimizer: torch.optim.Optimizer,
+    decision: ArmRolloutDecision,
+) -> dict[str, Any]:
+    """Apply one registered family-only Adam step to an isolated candidate clone."""
+    _validate_rollout_bootstrap(bootstrap)
+    original_named = _arm_named_trainable_parameters(bootstrap, arm="candidate")
+    if tuple(parameter for _, parameter in original_named) != _validated_registered_adam(
+        candidate_optimizer
+    ):
+        raise SuccessorRuntimeError("shadow candidate optimizer ownership differs")
+    if (
+        not isinstance(decision, ArmRolloutDecision)
+        or decision.arm != "candidate"
+        or decision.category != "card_reward"
+        or not isinstance(decision.card_terms, CardAcceptancePolicyTerms)
+        or len(decision.card_terms.family_order) < CANARY_MIN_FAMILY_COUNT
+        or decision.card_terms.selected_action_id != decision.selected_action_id
+        or decision.candidate_features is None
+        or not decision.candidates
+        or sum(
+            candidate.get("action_id") == decision.selected_action_id
+            for candidate in decision.candidates
+        )
+        != 1
+    ):
+        raise SuccessorRuntimeError("shadow decision is not a valid multi-family card reward")
+
+    original_bootstrap = encode_paired_bootstrap(bootstrap)
+    original_optimizer = encode_optimizer_state(candidate_optimizer)
+    shadow_bootstrap = restore_paired_bootstrap(original_bootstrap)
+    shadow_optimizers = build_arm_optimizers(shadow_bootstrap)
+    shadow_optimizer = restore_optimizer_state(
+        shadow_optimizers.candidate,
+        original_optimizer,
+    )
+    named = _arm_named_trainable_parameters(shadow_bootstrap, arm="candidate")
+    parameters = tuple(parameter for _, parameter in named)
+    if parameters != _validated_registered_adam(shadow_optimizer):
+        raise SuccessorRuntimeError("shadow optimizer parameter order differs")
+
+    output_before = forward_card_policy(
+        shadow_bootstrap,
+        arm="candidate",
+        state_features=decision.state_features.detach().clone(),
+        candidate_features=decision.candidate_features.detach().clone(),
+        candidates=decision.candidates,
+    )
+    terms_before = build_card_acceptance_policy_terms(
+        output_before.family_logits,
+        output_before.conditional_logits,
+        decision.candidates,
+        decision.selected_action_id,
+        category="card_reward",
+    )
+    if terms_before.selected_family != decision.card_terms.selected_family:
+        raise SuccessorRuntimeError("shadow selected family differs from sealed decision")
+    family_loss = -terms_before.selected_family_log_probability
+    entropy_loss = -ENTROPY_COEFFICIENT * terms_before.family_entropy
+    loss = family_loss + entropy_loss
+    if not bool(torch.isfinite(loss).item()):
+        raise SuccessorRuntimeError("shadow family-only loss is not finite")
+
+    family_before = _encode_model_state(
+        shadow_bootstrap.candidate.card_policy.family_head
+    )
+    conditional_before = _encode_model_state(
+        shadow_bootstrap.candidate.card_policy.conditional_ranker
+    )
+    conditional_optimizer_before = _optimizer_parameter_state(
+        shadow_optimizer,
+        named,
+        prefix="conditional_ranker.",
+    )
+    optimizer_before = encode_optimizer_state(shadow_optimizer)
+    conditional_output_before = _conditional_output_evidence(
+        output_before,
+        terms_before,
+    )
+
+    shadow_optimizer.zero_grad(set_to_none=True)
+    gradients = torch.autograd.grad(loss, parameters, allow_unused=True)
+    family_gradients: list[torch.Tensor] = []
+    encoded_gradients: dict[str, Any] = {}
+    for (name, parameter), gradient in zip(named, gradients, strict=True):
+        if name.startswith("family_head."):
+            if gradient is None or not bool(torch.isfinite(gradient).all().item()):
+                raise SuccessorRuntimeError("shadow family gradient is invalid")
+            parameter.grad = gradient.detach().clone()
+            family_gradients.append(parameter.grad)
+            encoded_gradients[name] = _encode_tensor(parameter.grad)
+        else:
+            if gradient is not None and bool(torch.count_nonzero(gradient).item()):
+                raise SuccessorRuntimeError("shadow conditional gradient is nonzero")
+            parameter.grad = None
+    if not family_gradients or not any(
+        bool(torch.count_nonzero(gradient).item()) for gradient in family_gradients
+    ):
+        raise SuccessorRuntimeError("shadow family gradient must be finite and nonzero")
+    preclip_global_norm = float(
+        torch.nn.utils.clip_grad_norm_(parameters, 1.0).item()
+    )
+    applied = tuple(
+        parameter.grad
+        for parameter in parameters
+        if parameter.grad is not None
+    )
+    postclip_global_norm = _global_gradient_norm(applied)
+    if (
+        not math.isfinite(preclip_global_norm)
+        or postclip_global_norm > 1.0 + 1e-6
+    ):
+        raise SuccessorRuntimeError("shadow global gradient clip differs")
+    shadow_optimizer.step()
+
+    family_after = _encode_model_state(
+        shadow_bootstrap.candidate.card_policy.family_head
+    )
+    conditional_after = _encode_model_state(
+        shadow_bootstrap.candidate.card_policy.conditional_ranker
+    )
+    conditional_optimizer_after = _optimizer_parameter_state(
+        shadow_optimizer,
+        named,
+        prefix="conditional_ranker.",
+    )
+    optimizer_after = encode_optimizer_state(shadow_optimizer)
+    with torch.no_grad():
+        output_after = forward_card_policy(
+            shadow_bootstrap,
+            arm="candidate",
+            state_features=decision.state_features.detach().clone(),
+            candidate_features=decision.candidate_features.detach().clone(),
+            candidates=decision.candidates,
+        )
+        terms_after = build_card_acceptance_policy_terms(
+            output_after.family_logits,
+            output_after.conditional_logits,
+            decision.candidates,
+            decision.selected_action_id,
+            category="card_reward",
+        )
+    conditional_output_after = _conditional_output_evidence(
+        output_after,
+        terms_after,
+    )
+    family_changed = family_after != family_before
+    conditional_unchanged = conditional_after == conditional_before
+    conditional_optimizer_unchanged = (
+        conditional_optimizer_after == conditional_optimizer_before
+    )
+    conditional_output_unchanged = (
+        conditional_output_after == conditional_output_before
+    )
+    if (
+        not family_changed
+        or not conditional_unchanged
+        or not conditional_optimizer_unchanged
+        or not conditional_output_unchanged
+    ):
+        raise SuccessorRuntimeError("shadow family-only invariance differs")
+    if (
+        encode_paired_bootstrap(bootstrap) != original_bootstrap
+        or encode_optimizer_state(candidate_optimizer) != original_optimizer
+    ):
+        raise SuccessorRuntimeError("shadow step mutated a sealed arm")
+    evidence = {
+        "advantage": 1.0,
+        "candidate_optimizer_state_after": optimizer_after,
+        "candidate_optimizer_state_before": optimizer_before,
+        "conditional_optimizer_state_unchanged": conditional_optimizer_unchanged,
+        "conditional_output_after": conditional_output_after,
+        "conditional_output_before": conditional_output_before,
+        "conditional_output_unchanged": conditional_output_unchanged,
+        "conditional_parameter_unchanged": conditional_unchanged,
+        "decision_id": decision.decision_id,
+        "entropy_coefficient": ENTROPY_COEFFICIENT,
+        "entropy_loss": float(entropy_loss.detach().item()),
+        "family_gradient_nonzero": True,
+        "family_gradients": encoded_gradients,
+        "family_loss": float(family_loss.detach().item()),
+        "family_parameter_changed": family_changed,
+        "family_state_after": family_after,
+        "family_state_before": family_before,
+        "loss": float(loss.detach().item()),
+        "postclip_global_norm": postclip_global_norm,
+        "preclip_global_norm": preclip_global_norm,
+        "selected_family": terms_before.selected_family,
+        "gradient_reset_mode": "set_to_none=true",
+        "shadow_optimizer_steps": 1,
+    }
+    return {**evidence, "evidence_sha256": canonical_runtime_sha256(evidence)}
+
+
+def _validated_canary_seeds(value: Sequence[int]) -> tuple[int, ...]:
+    if isinstance(value, (str, bytes)) or not isinstance(value, Sequence):
+        raise SuccessorRuntimeError("canary seeds must be a sequence")
+    seeds = tuple(value)
+    if (
+        len(seeds) != CANARY_PAIR_COUNT
+        or any(
+            isinstance(seed, bool) or not isinstance(seed, int) or seed < 0
+            for seed in seeds
+        )
+        or seeds != tuple(sorted(set(seeds)))
+    ):
+        raise SuccessorRuntimeError("canary requires 128 ascending unique seeds")
+    return seeds
+
+
+def run_structural_canary(
+    bootstrap: PairedBootstrap,
+    *,
+    candidate_optimizer: torch.optim.Optimizer,
+    environment_factory: Callable[[int], Any],
+    seeds: Sequence[int],
+    arm_bindings: Mapping[str, Mapping[str, str]],
+    publish_commitment: Callable[[Mapping[str, Any]], None],
+    deadline: float | None = None,
+    clock: Callable[[], float] = time.monotonic,
+) -> StructuralCanaryResult:
+    """Run the fixed first-output, exact-replay, structural 128-pair canary."""
+    _validate_rollout_bootstrap(bootstrap)
+    normalized_seeds = _validated_canary_seeds(seeds)
+    normalized_bindings = _normalize_canary_arm_bindings(arm_bindings)
+    if not callable(environment_factory) or not callable(publish_commitment):
+        raise SuccessorRuntimeError("canary factory and publisher must be callable")
+    expected_parameters = tuple(
+        parameter
+        for _, parameter in _arm_named_trainable_parameters(
+            bootstrap,
+            arm="candidate",
+        )
+    )
+    if expected_parameters != _validated_registered_adam(candidate_optimizer):
+        raise SuccessorRuntimeError("canary candidate optimizer ownership differs")
+    if not callable(clock):
+        raise SuccessorRuntimeError("canary clock must be callable")
+    now = float(clock())
+    active_deadline = now + MAX_CHARGED_SECONDS if deadline is None else float(deadline)
+    if (
+        not math.isfinite(now)
+        or not math.isfinite(active_deadline)
+        or active_deadline < now
+        or active_deadline > now + MAX_CHARGED_SECONDS
+    ):
+        raise SuccessorRuntimeError("canary deadline exceeds the registered bound")
+    original_bootstrap = encode_paired_bootstrap(bootstrap)
+    original_optimizer = encode_optimizer_state(candidate_optimizer)
+    commitments: list[dict[str, Any]] = []
+    candidate_rollouts: list[ArmEpisodeRollout] = []
+    previous_sha256 = "0" * 64
+
+    for seed_index, seed in enumerate(normalized_seeds):
+        first = rollout_paired_frozen_evaluation(
+            bootstrap,
+            environment_factory=environment_factory,
+            seed=seed,
+            deadline=active_deadline,
+            clock=clock,
+        )
+        if first.seed != seed:
+            raise SuccessorRuntimeError("canary first-run seed differs")
+        first_by_arm = {
+            "candidate": first.candidate,
+            "control": first.control,
+        }
+        first_commitments: dict[str, dict[str, Any]] = {}
+        for arm in ("candidate", "control"):
+            rollout = first_by_arm[arm]
+            if rollout.arm != arm or rollout.seed != seed:
+                raise SuccessorRuntimeError("canary first-run arm coordinate differs")
+            commitment = _build_canary_commitment(
+                rollout=rollout,
+                arm_binding=normalized_bindings[arm],
+                seed_index=seed_index,
+                sequence_index=len(commitments),
+                previous_sha256=previous_sha256,
+            )
+            publish_commitment(copy.deepcopy(commitment))
+            commitments.append(commitment)
+            first_commitments[arm] = commitment
+            previous_sha256 = commitment["commitment_sha256"]
+
+        replay = rollout_paired_frozen_evaluation(
+            bootstrap,
+            environment_factory=environment_factory,
+            seed=seed,
+            deadline=active_deadline,
+            clock=clock,
+        )
+        if replay.seed != seed:
+            raise SuccessorRuntimeError("canary replay seed differs")
+        replay_by_arm = {
+            "candidate": replay.candidate,
+            "control": replay.control,
+        }
+        for arm in ("candidate", "control"):
+            if canonical_runtime_sha256(_arm_canary_output(replay_by_arm[arm])) != (
+                first_commitments[arm]["output_sha256"]
+            ):
+                raise SuccessorRuntimeError(
+                    f"canary {arm} replay differs from first-output commitment"
+                )
+        candidate_rollouts.append(first.candidate)
+
+    concentration = classify_canary_concentration(candidate_rollouts)
+    shadow_step: Mapping[str, Any] | None = None
+    verdict = "canary_failed_concentration"
+    shadow_optimizer_steps = 0
+    if concentration["passed"]:
+        first_valid = next(
+            decision
+            for rollout in candidate_rollouts
+            for decision in rollout.decisions
+            if decision.category == "card_reward"
+            and isinstance(decision.card_terms, CardAcceptancePolicyTerms)
+            and len(decision.card_terms.family_order) >= CANARY_MIN_FAMILY_COUNT
+        )
+        shadow_step = apply_family_only_shadow_step(
+            bootstrap,
+            candidate_optimizer=candidate_optimizer,
+            decision=first_valid,
+        )
+        if shadow_step.get("shadow_optimizer_steps") != 1:
+            raise SuccessorRuntimeError("canary shadow step count differs")
+        shadow_optimizer_steps = 1
+        verdict = "canary_passed"
+
+    if (
+        encode_paired_bootstrap(bootstrap) != original_bootstrap
+        or encode_optimizer_state(candidate_optimizer) != original_optimizer
+    ):
+        raise SuccessorRuntimeError("structural canary mutated a sealed arm")
+    return StructuralCanaryResult(
+        verdict=verdict,
+        seeds=normalized_seeds,
+        commitments=tuple(commitments),
+        concentration=concentration,
+        shadow_step=shadow_step,
+        resource_use={
+            "canary_environment_accesses": 4 * len(normalized_seeds),
+            "shadow_optimizer_steps": shadow_optimizer_steps,
+        },
+    )
 
 
 def _validate_baseline_vector(
