@@ -9,6 +9,7 @@ import hashlib
 import json
 import math
 from numbers import Integral, Real
+import random
 import struct
 import time
 from typing import Any, Literal
@@ -78,6 +79,9 @@ CANARY_PAIR_COUNT = 128
 CANARY_MIN_FAMILY_DENOMINATOR = 64
 CANARY_MIN_FAMILY_COUNT = 2
 CANARY_MAX_FAMILY_RATE = 0.95
+HOLDOUT_PAIR_COUNT = 512
+HOLDOUT_BOOTSTRAP_SEED = 0
+HOLDOUT_BOOTSTRAP_RESAMPLES = 10_000
 REGISTERED_SUPPORT_BLOCKERS = (
     "unsupported_shop_courier_restock_semantics",
 )
@@ -321,6 +325,20 @@ class StructuralCanaryResult:
     commitments: tuple[Mapping[str, Any], ...]
     concentration: Mapping[str, Any]
     shadow_step: Mapping[str, Any] | None
+    resource_use: Mapping[str, int]
+
+
+@dataclass(frozen=True)
+class UntouchedHoldoutResult:
+    verdict: str
+    outcome_class: str | None
+    seeds: tuple[int, ...]
+    pairs: tuple[Mapping[str, Any], ...]
+    concentration: Mapping[str, Any]
+    bootstrap: Mapping[str, Any] | None
+    victory_counts: Mapping[str, int]
+    arm_bindings: Mapping[str, Mapping[str, str]]
+    verified_canary: Mapping[str, Any]
     resource_use: Mapping[str, int]
 
 
@@ -2687,6 +2705,279 @@ def run_structural_canary(
             "canary_environment_accesses": 4 * len(normalized_seeds),
             "shadow_optimizer_steps": shadow_optimizer_steps,
         },
+    )
+
+
+def paired_floor_bootstrap_interval(
+    differences: Sequence[float],
+) -> dict[str, int | float | str]:
+    """Reproduce the fixed seed-0, 10,000-resample paired-floor interval."""
+    if isinstance(differences, (str, bytes)) or not isinstance(
+        differences, Sequence
+    ):
+        raise SuccessorRuntimeError("paired floor differences must be a sequence")
+    normalized: list[float] = []
+    for value in differences:
+        if isinstance(value, bool) or not isinstance(value, Real):
+            raise SuccessorRuntimeError("paired floor difference must be numeric")
+        converted = float(value)
+        if not math.isfinite(converted):
+            raise SuccessorRuntimeError("paired floor difference must be finite")
+        normalized.append(converted)
+    if len(normalized) != HOLDOUT_PAIR_COUNT:
+        raise SuccessorRuntimeError("paired floor bootstrap requires 512 values")
+
+    generator = random.Random(HOLDOUT_BOOTSTRAP_SEED)
+    means: list[float] = []
+    for _ in range(HOLDOUT_BOOTSTRAP_RESAMPLES):
+        total = 0.0
+        for _ in range(HOLDOUT_PAIR_COUNT):
+            total += normalized[generator.randrange(HOLDOUT_PAIR_COUNT)]
+        means.append(total / HOLDOUT_PAIR_COUNT)
+    means.sort()
+
+    def quantile(probability: float) -> float:
+        position = (HOLDOUT_BOOTSTRAP_RESAMPLES - 1) * probability
+        lower = math.floor(position)
+        upper = math.ceil(position)
+        fraction = position - lower
+        return means[lower] + fraction * (means[upper] - means[lower])
+
+    return {
+        "bootstrap_seed": HOLDOUT_BOOTSTRAP_SEED,
+        "lower": quantile(0.025),
+        "pair_count": HOLDOUT_PAIR_COUNT,
+        "quantile_method": "linear-position-(n-1)-p-v1",
+        "resample_count": HOLDOUT_BOOTSTRAP_RESAMPLES,
+        "upper": quantile(0.975),
+    }
+
+
+def classify_holdout_outcome(
+    *,
+    candidate_victories: int,
+    control_victories: int,
+    paired_floor_lower: float,
+) -> dict[str, Any]:
+    """Classify one of the six victory-comparison x floor-signal cells."""
+    for label, value in (
+        ("candidate", candidate_victories),
+        ("control", control_victories),
+    ):
+        if (
+            isinstance(value, bool)
+            or not isinstance(value, int)
+            or not 0 <= value <= HOLDOUT_PAIR_COUNT
+        ):
+            raise SuccessorRuntimeError(f"{label} victory count is invalid")
+    if isinstance(paired_floor_lower, bool) or not isinstance(
+        paired_floor_lower, Real
+    ):
+        raise SuccessorRuntimeError("paired floor lower bound is invalid")
+    lower = float(paired_floor_lower)
+    if not math.isfinite(lower):
+        raise SuccessorRuntimeError("paired floor lower bound must be finite")
+
+    if candidate_victories > control_victories:
+        comparison = "greater"
+    elif candidate_victories == control_victories:
+        comparison = "equal"
+    else:
+        comparison = "fewer"
+    floor_signal = lower > 0.0
+    if comparison == "greater" and floor_signal:
+        outcome = "victory_and_floor_signal"
+    elif comparison == "equal" and floor_signal:
+        outcome = "floor_only_signal"
+    elif (comparison == "greater" and not floor_signal) or (
+        comparison == "fewer" and floor_signal
+    ):
+        outcome = "inconclusive_signal"
+    else:
+        outcome = "no_learning_signal"
+    return {
+        "candidate_victories": candidate_victories,
+        "control_victories": control_victories,
+        "floor_signal": floor_signal,
+        "outcome_class": outcome,
+        "paired_floor_lower": lower,
+        "victory_comparison": comparison,
+    }
+
+
+def _validated_holdout_seeds(value: Sequence[int]) -> tuple[int, ...]:
+    if isinstance(value, (str, bytes)) or not isinstance(value, Sequence):
+        raise SuccessorRuntimeError("holdout seeds must be a sequence")
+    seeds = tuple(value)
+    if (
+        len(seeds) != HOLDOUT_PAIR_COUNT
+        or any(
+            isinstance(seed, bool) or not isinstance(seed, int) or seed < 0
+            for seed in seeds
+        )
+        or seeds != tuple(sorted(set(seeds)))
+    ):
+        raise SuccessorRuntimeError("holdout requires 512 ascending unique seeds")
+    return seeds
+
+
+def _normalize_verified_canary(value: object) -> dict[str, Any]:
+    if not isinstance(value, Mapping) or set(value) != {
+        "terminal_sha256",
+        "verdict",
+        "verified",
+    }:
+        raise SuccessorRuntimeError("verified canary binding is missing or incomplete")
+    digest = value["terminal_sha256"]
+    if (
+        not isinstance(digest, str)
+        or len(digest) != 64
+        or any(character not in "0123456789abcdef" for character in digest)
+        or value["verdict"] != "canary_passed"
+        or value["verified"] is not True
+    ):
+        raise SuccessorRuntimeError("verified canary did not pass exactly")
+    return {
+        "terminal_sha256": digest,
+        "verdict": "canary_passed",
+        "verified": True,
+    }
+
+
+def _validated_terminal_victory(rollout: ArmEpisodeRollout) -> int:
+    value = rollout.terminal_victory
+    if isinstance(value, bool) or not isinstance(value, int) or value not in {0, 1}:
+        raise SuccessorRuntimeError("holdout terminal victory is invalid")
+    state = rollout.final_snapshot.get("state")
+    if not isinstance(state, Mapping):
+        raise SuccessorRuntimeError("holdout terminal state is invalid")
+    expected_outcome = "player_victory" if value else "player_loss"
+    if state.get("outcome") != expected_outcome:
+        raise SuccessorRuntimeError("holdout victory and terminal outcome differ")
+    return value
+
+
+def _holdout_pair_evidence(
+    pair: PairedEpisodeRollout,
+    *,
+    expected_seed: int,
+    seed_index: int,
+) -> dict[str, Any]:
+    if not isinstance(pair, PairedEpisodeRollout) or pair.seed != expected_seed:
+        raise SuccessorRuntimeError("holdout pair seed differs")
+    if (
+        pair.candidate.arm != "candidate"
+        or pair.control.arm != "control"
+        or pair.candidate.seed != expected_seed
+        or pair.control.seed != expected_seed
+    ):
+        raise SuccessorRuntimeError("holdout pair arm coordinate differs")
+    candidate_output = _arm_canary_output(pair.candidate)
+    control_output = _arm_canary_output(pair.control)
+    candidate_floor = float(pair.candidate.floor_progress)
+    control_floor = float(pair.control.floor_progress)
+    difference = candidate_floor - control_floor
+    if not all(
+        math.isfinite(value)
+        for value in (candidate_floor, control_floor, difference)
+    ):
+        raise SuccessorRuntimeError("holdout floor_progress must be finite")
+    return {
+        "candidate_floor_progress": candidate_floor,
+        "candidate_output_sha256": canonical_runtime_sha256(candidate_output),
+        "candidate_victory": _validated_terminal_victory(pair.candidate),
+        "control_floor_progress": control_floor,
+        "control_output_sha256": canonical_runtime_sha256(control_output),
+        "control_victory": _validated_terminal_victory(pair.control),
+        "floor_progress_difference": difference,
+        "seed": expected_seed,
+        "seed_index": seed_index,
+    }
+
+
+def run_untouched_holdout(
+    bootstrap: PairedBootstrap,
+    *,
+    environment_factory: Callable[[int], Any],
+    seeds: Sequence[int],
+    arm_bindings: Mapping[str, Mapping[str, str]],
+    verified_canary: Mapping[str, Any],
+    deadline: float | None = None,
+    clock: Callable[[], float] = time.monotonic,
+) -> UntouchedHoldoutResult:
+    """Run both frozen arms once on each untouched registered holdout seed."""
+    _validate_rollout_bootstrap(bootstrap)
+    normalized_canary = _normalize_verified_canary(verified_canary)
+    normalized_seeds = _validated_holdout_seeds(seeds)
+    normalized_bindings = _normalize_canary_arm_bindings(arm_bindings)
+    if not callable(environment_factory) or not callable(clock):
+        raise SuccessorRuntimeError("holdout factory and clock must be callable")
+    now = float(clock())
+    active_deadline = now + MAX_CHARGED_SECONDS if deadline is None else float(deadline)
+    if (
+        not math.isfinite(now)
+        or not math.isfinite(active_deadline)
+        or active_deadline < now
+        or active_deadline > now + MAX_CHARGED_SECONDS
+    ):
+        raise SuccessorRuntimeError("holdout deadline exceeds the registered bound")
+    original_bootstrap = encode_paired_bootstrap(bootstrap)
+    pair_rows: list[dict[str, Any]] = []
+    candidate_rollouts: list[ArmEpisodeRollout] = []
+    for seed_index, seed in enumerate(normalized_seeds):
+        pair = rollout_paired_frozen_evaluation(
+            bootstrap,
+            environment_factory=environment_factory,
+            seed=seed,
+            deadline=active_deadline,
+            clock=clock,
+        )
+        pair_rows.append(
+            _holdout_pair_evidence(
+                pair,
+                expected_seed=seed,
+                seed_index=seed_index,
+            )
+        )
+        candidate_rollouts.append(pair.candidate)
+    if encode_paired_bootstrap(bootstrap) != original_bootstrap:
+        raise SuccessorRuntimeError("holdout mutated a frozen arm")
+
+    concentration = classify_canary_concentration(candidate_rollouts)
+    victory_counts = {
+        "candidate": sum(row["candidate_victory"] for row in pair_rows),
+        "control": sum(row["control_victory"] for row in pair_rows),
+    }
+    common = {
+        "seeds": normalized_seeds,
+        "pairs": tuple(pair_rows),
+        "concentration": concentration,
+        "victory_counts": victory_counts,
+        "arm_bindings": normalized_bindings,
+        "verified_canary": normalized_canary,
+        "resource_use": {"holdout_environment_accesses": 2 * len(normalized_seeds)},
+    }
+    if not concentration["passed"]:
+        return UntouchedHoldoutResult(
+            verdict="holdout_failed_concentration",
+            outcome_class=None,
+            bootstrap=None,
+            **common,
+        )
+
+    interval = paired_floor_bootstrap_interval(
+        tuple(row["floor_progress_difference"] for row in pair_rows)
+    )
+    outcome = classify_holdout_outcome(
+        candidate_victories=victory_counts["candidate"],
+        control_victories=victory_counts["control"],
+        paired_floor_lower=float(interval["lower"]),
+    )
+    return UntouchedHoldoutResult(
+        verdict="holdout_completed",
+        outcome_class=outcome["outcome_class"],
+        bootstrap=interval,
+        **common,
     )
 
 

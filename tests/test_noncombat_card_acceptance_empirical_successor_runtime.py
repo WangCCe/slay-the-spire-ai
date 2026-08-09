@@ -4,6 +4,8 @@ import copy
 from dataclasses import replace
 import importlib
 import json
+import math
+import random
 
 import pytest
 import torch
@@ -367,6 +369,46 @@ def _canary_arm_bindings():
             "source_sha256": "3" * 64,
         },
     }
+
+
+def _verified_canary_binding():
+    return {
+        "terminal_sha256": "6" * 64,
+        "verdict": "canary_passed",
+        "verified": True,
+    }
+
+
+def _holdout_pair(
+    runtime,
+    seed: int,
+    *,
+    family: str | None = None,
+    candidate_floor: float = 1.0,
+    control_floor: float = 0.0,
+    candidate_victory: int = 1,
+    control_victory: int = 0,
+):
+    pair = _canary_pair(runtime, seed, family=family)
+
+    def updated(rollout, floor_progress: float, victory: int):
+        outcome = "player_victory" if victory else "player_loss"
+        return replace(
+            rollout,
+            final_snapshot={
+                "state": {"outcome": outcome, "seed": str(seed)},
+                "terminal": True,
+            },
+            floor_progress=floor_progress,
+            rewards=(floor_progress,),
+            terminal_victory=victory,
+        )
+
+    return runtime.PairedEpisodeRollout(
+        seed=seed,
+        candidate=updated(pair.candidate, candidate_floor, candidate_victory),
+        control=updated(pair.control, control_floor, control_victory),
+    )
 
 
 def test_matched_bootstrap_copies_one_base_into_five_storage_disjoint_rankers():
@@ -1870,5 +1912,205 @@ def test_structural_canary_rejects_nonexact_schedule_before_environment(seeds):
             seeds=seeds,
             arm_bindings=_canary_arm_bindings(),
             publish_commitment=lambda _commitment: None,
+        )
+    assert environment_calls == []
+
+
+def test_holdout_bootstrap_uses_exact_seed_zero_draw_order_and_linear_quantiles():
+    runtime = _runtime()
+    differences = tuple((index - 255.5) / 256.0 for index in range(512))
+    generator = random.Random(0)
+    means = []
+    for _ in range(10_000):
+        total = 0.0
+        for _ in range(512):
+            total += differences[generator.randrange(512)]
+        means.append(total / 512)
+    means.sort()
+
+    def quantile(probability: float) -> float:
+        position = (10_000 - 1) * probability
+        lower = math.floor(position)
+        upper = math.ceil(position)
+        fraction = position - lower
+        return means[lower] + fraction * (means[upper] - means[lower])
+
+    interval = runtime.paired_floor_bootstrap_interval(differences)
+
+    assert interval == {
+        "bootstrap_seed": 0,
+        "lower": quantile(0.025),
+        "pair_count": 512,
+        "quantile_method": "linear-position-(n-1)-p-v1",
+        "resample_count": 10_000,
+        "upper": quantile(0.975),
+    }
+
+
+@pytest.mark.parametrize(
+    ("candidate", "control", "lower", "comparison", "floor_signal", "outcome"),
+    (
+        (2, 1, 0.1, "greater", True, "victory_and_floor_signal"),
+        (1, 1, 0.1, "equal", True, "floor_only_signal"),
+        (2, 1, 0.0, "greater", False, "inconclusive_signal"),
+        (1, 2, 0.1, "fewer", True, "inconclusive_signal"),
+        (1, 1, 0.0, "equal", False, "no_learning_signal"),
+        (1, 2, -0.1, "fewer", False, "no_learning_signal"),
+    ),
+)
+def test_holdout_outcome_truth_table_is_exhaustive_and_disjoint(
+    candidate,
+    control,
+    lower,
+    comparison,
+    floor_signal,
+    outcome,
+):
+    runtime = _runtime()
+    result = runtime.classify_holdout_outcome(
+        candidate_victories=candidate,
+        control_victories=control,
+        paired_floor_lower=lower,
+    )
+    assert result == {
+        "candidate_victories": candidate,
+        "control_victories": control,
+        "floor_signal": floor_signal,
+        "outcome_class": outcome,
+        "paired_floor_lower": lower,
+        "victory_comparison": comparison,
+    }
+
+
+def test_untouched_holdout_runs_each_arm_once_and_classifies_complete_evidence(
+    monkeypatch,
+):
+    runtime = _runtime()
+    bootstrap = runtime.build_matched_bootstrap()
+    seeds = tuple(range(5_000, 5_512))
+    environment_calls = []
+    rollout_calls = []
+
+    def environment_factory(seed: int):
+        environment_calls.append(seed)
+        return object()
+
+    def paired_rollout(_bootstrap, *, environment_factory, seed, **_kwargs):
+        environment_factory(seed)
+        environment_factory(seed)
+        rollout_calls.append(seed)
+        return _holdout_pair(runtime, seed)
+
+    monkeypatch.setattr(
+        runtime,
+        "rollout_paired_frozen_evaluation",
+        paired_rollout,
+    )
+    before = runtime.encode_paired_bootstrap(bootstrap)
+
+    result = runtime.run_untouched_holdout(
+        bootstrap,
+        environment_factory=environment_factory,
+        seeds=seeds,
+        arm_bindings=_canary_arm_bindings(),
+        verified_canary=_verified_canary_binding(),
+    )
+
+    assert runtime.encode_paired_bootstrap(bootstrap) == before
+    assert result.verdict == "holdout_completed"
+    assert result.outcome_class == "victory_and_floor_signal"
+    assert result.victory_counts == {"candidate": 512, "control": 0}
+    assert result.bootstrap is not None
+    assert result.bootstrap["lower"] > 0.0
+    assert result.concentration["passed"] is True
+    assert result.resource_use == {"holdout_environment_accesses": 1_024}
+    assert len(result.pairs) == 512
+    assert [row["seed"] for row in result.pairs] == list(seeds)
+    assert all(row["floor_progress_difference"] == 1.0 for row in result.pairs)
+    assert rollout_calls == list(seeds)
+    assert environment_calls == [seed for seed in seeds for _ in range(2)]
+
+
+def test_untouched_holdout_separates_concentration_failure_from_outcome(monkeypatch):
+    runtime = _runtime()
+    bootstrap = runtime.build_matched_bootstrap()
+    seeds = tuple(range(6_000, 6_512))
+    monkeypatch.setattr(
+        runtime,
+        "rollout_paired_frozen_evaluation",
+        lambda _bootstrap, *, seed, **_kwargs: _holdout_pair(
+            runtime,
+            seed,
+            family="bowl",
+        ),
+    )
+
+    result = runtime.run_untouched_holdout(
+        bootstrap,
+        environment_factory=lambda seed: object(),
+        seeds=seeds,
+        arm_bindings=_canary_arm_bindings(),
+        verified_canary=_verified_canary_binding(),
+    )
+
+    assert result.verdict == "holdout_failed_concentration"
+    assert result.outcome_class is None
+    assert result.bootstrap is None
+    assert result.concentration["passed"] is False
+    assert result.resource_use == {"holdout_environment_accesses": 1_024}
+
+
+@pytest.mark.parametrize(
+    "verified_canary",
+    (
+        None,
+        {
+            "terminal_sha256": "6" * 64,
+            "verdict": "canary_failed_concentration",
+            "verified": True,
+        },
+        {
+            "terminal_sha256": "6" * 64,
+            "verdict": "canary_passed",
+            "verified": False,
+        },
+    ),
+)
+def test_holdout_rejects_missing_or_failed_canary_before_environment(
+    verified_canary,
+):
+    runtime = _runtime()
+    bootstrap = runtime.build_matched_bootstrap()
+    environment_calls = []
+    with pytest.raises(runtime.SuccessorRuntimeError, match="canary"):
+        runtime.run_untouched_holdout(
+            bootstrap,
+            environment_factory=lambda seed: environment_calls.append(seed),
+            seeds=tuple(range(512)),
+            arm_bindings=_canary_arm_bindings(),
+            verified_canary=verified_canary,
+        )
+    assert environment_calls == []
+
+
+@pytest.mark.parametrize(
+    "seeds",
+    (
+        tuple(range(511)),
+        tuple(reversed(range(512))),
+        tuple(range(511)) + (510,),
+    ),
+)
+def test_holdout_rejects_nonexact_schedule_before_environment(seeds):
+    runtime = _runtime()
+    bootstrap = runtime.build_matched_bootstrap()
+    environment_calls = []
+    with pytest.raises(runtime.SuccessorRuntimeError, match="512 ascending unique"):
+        runtime.run_untouched_holdout(
+            bootstrap,
+            environment_factory=lambda seed: environment_calls.append(seed),
+            seeds=seeds,
+            arm_bindings=_canary_arm_bindings(),
+            verified_canary=_verified_canary_binding(),
         )
     assert environment_calls == []
