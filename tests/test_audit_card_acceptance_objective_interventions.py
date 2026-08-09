@@ -256,7 +256,7 @@ def test_repository_build_holds_inactive_lease_during_analysis(
         nonlocal active
         active = True
         try:
-            yield
+            yield audit.EXPECTED_IDENTITY
         finally:
             active = False
 
@@ -280,19 +280,36 @@ def test_repository_build_holds_inactive_lease_during_analysis(
             "windows": audit.summarize_windows(chunks),
         }
 
-    def verify(*_args: object, **_kwargs: object) -> dict[str, object]:
+    def verify(
+        output: Path, *, root: Path, lease_identity: Mapping[str, str]
+    ) -> dict[str, object]:
         assert active
+        assert output == (REPO_ROOT / audit.DEFAULT_TERMINAL_ROOT).resolve()
+        assert root == REPO_ROOT.resolve()
+        assert lease_identity == audit.EXPECTED_IDENTITY
         return verification
+
+    def reject_outer_verifier(*_args: object, **_kwargs: object) -> None:
+        raise AssertionError("outer verifier must not reacquire the held lease")
 
     monkeypatch.setattr(
         prior_module.baseline.verifier,
-        "verify_terminal_bundle",
+        "_verify_terminal_bundle_contents",
         verify,
+    )
+    monkeypatch.setattr(
+        prior_module.baseline.verifier,
+        "verify_terminal_bundle",
+        reject_outer_verifier,
     )
     monkeypatch.setattr(
         prior_module.baseline, "validate_verifier_result", lambda *_: None
     )
-    monkeypatch.setattr(prior_module.baseline, "hold_inactive_lease", held)
+    monkeypatch.setattr(
+        prior_module.baseline.verifier,
+        "_hold_inactive_execution_lease",
+        held,
+    )
     monkeypatch.setattr(prior_module.baseline, "_validate_snapshot", lambda *_: None)
     monkeypatch.setattr(audit, "forbidden_loaded_modules", lambda: [])
     monkeypatch.setattr(
@@ -305,6 +322,38 @@ def test_repository_build_holds_inactive_lease_during_analysis(
     result = audit.build_repository_audit(REPO_ROOT, source_commit="a" * 40)
     assert result["verdict"] == "bounded_conditional_conflict_guard_feasible"
     assert active is False
+
+
+@pytest.mark.parametrize(
+    "message",
+    [
+        "execution lease owner is still alive",
+        "execution lease owner liveness is ambiguous",
+    ],
+)
+def test_repository_build_rejects_noninactive_execution_lease(
+    monkeypatch: pytest.MonkeyPatch, message: str
+) -> None:
+    prior_module = audit._load_prior()
+
+    @contextmanager
+    def rejected(_path: Path):
+        raise prior_module.baseline.verifier.VerifierError(message)
+        yield audit.EXPECTED_IDENTITY
+
+    monkeypatch.setattr(
+        prior_module.baseline.verifier,
+        "_hold_inactive_execution_lease",
+        rejected,
+    )
+    monkeypatch.setattr(
+        audit,
+        "verify_pushed_source",
+        lambda *_args, **_kwargs: {"bindings": {}, "commit": "a" * 40},
+    )
+
+    with pytest.raises(audit.AuditError, match=message):
+        audit.build_repository_audit(REPO_ROOT, source_commit="a" * 40)
 
 
 def test_recorded_gradient_decode_reconstructs_and_clips() -> None:
@@ -623,9 +672,11 @@ verification = {
 }
 @contextlib.contextmanager
 def held(_path):
-    yield
-prior.baseline.hold_inactive_lease = held
-prior.baseline.verifier.verify_terminal_bundle = lambda *_args, **_kwargs: verification
+    yield audit.EXPECTED_IDENTITY
+prior.baseline.verifier._hold_inactive_execution_lease = held
+prior.baseline.verifier._verify_terminal_bundle_contents = (
+    lambda *_args, **_kwargs: verification
+)
 prior.baseline.validate_verifier_result = lambda *_args: None
 prior.baseline._validate_snapshot = lambda *_args: None
 audit.verify_pushed_source = lambda *_args, **_kwargs: {

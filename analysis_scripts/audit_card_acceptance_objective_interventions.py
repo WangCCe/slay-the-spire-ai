@@ -978,12 +978,16 @@ def build_repository_audit(
     terminal_root = (root / DEFAULT_TERMINAL_ROOT).resolve()
     source = verify_pushed_source(root, source_commit)
     prior_module = _load_prior()
-    with prior_module.baseline.hold_inactive_lease(
-        terminal_root / ".execution.lease"
-    ):
-        try:
-            verification = prior_module.baseline.verifier.verify_terminal_bundle(
-                terminal_root, repo_root=root
+    try:
+        with prior_module.baseline.verifier._hold_inactive_execution_lease(
+            terminal_root / ".execution.lease"
+        ) as lease_identity:
+            verification = (
+                prior_module.baseline.verifier._verify_terminal_bundle_contents(
+                    terminal_root,
+                    root=root,
+                    lease_identity=lease_identity,
+                )
             )
             prior_module.baseline.validate_verifier_result(verification)
             prior_json_path = prior_module.baseline._regular_file(
@@ -999,10 +1003,10 @@ def build_repository_audit(
             )
             prior_module.baseline._validate_snapshot(terminal_root)
             analysis = _analyze_bound_chunks(terminal_root, prior_report)
-        except AuditError:
-            raise
-        except (OSError, ValueError) as exc:
-            raise AuditError(f"bound evidence verification failed: {exc}") from exc
+    except AuditError:
+        raise
+    except (OSError, ValueError) as exc:
+        raise AuditError(f"bound evidence verification failed: {exc}") from exc
     forbidden = forbidden_loaded_modules()
     if forbidden:
         raise AuditError(f"forbidden modules loaded: {forbidden}")

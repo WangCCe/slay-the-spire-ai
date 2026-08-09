@@ -47,6 +47,12 @@ the named terminal, manifest, checkpoints, and eight gzip chunk artifacts
 under the inactive execution lease. It will independently reverify containment,
 canonical encodings, digests, sizes, vector dtype/shape/order, chunk order, and
 the full-gradient reconstruction while binding every reused source helper.
+The audit is the single lease owner and invokes the source-bound independent
+verifier lease guard once. That guard validates the bounded regular lease,
+owner liveness, complete execution identity, and stable path before yielding
+the parsed identity to the verifier contents and the remaining analysis; the
+audit does not call the outer lease-acquiring wrapper and therefore cannot
+attempt a second non-reentrant lock.
 
 Alternative: consume only the compact gradient geometry already published.
 Rejected because norms and dots cannot reconstruct transformed vectors or
