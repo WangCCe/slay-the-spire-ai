@@ -2,24 +2,36 @@
 
 from __future__ import annotations
 
-from collections.abc import Mapping, Sequence
+from collections.abc import Callable, Mapping, Sequence
+import copy
 from dataclasses import dataclass
+import hashlib
 import json
 import math
 from numbers import Integral, Real
+import time
 from typing import Any, Literal
 
 import torch
 
+from analysis_scripts import noncombat_formal_reward_contract as formal_reward_contract
+from analysis_scripts import noncombat_simulator_adapter as simulator_adapter
 from analysis_scripts.noncombat_card_acceptance_objective import (
+    CardAcceptanceObjectiveError,
     CardAcceptancePolicyTerms,
+    build_card_acceptance_policy_terms,
 )
 from analysis_scripts.noncombat_card_acceptance_policy import (
     CardAcceptancePolicy,
+    CardAcceptancePolicyError,
     CardAcceptancePolicyOutput,
     build_family_features,
 )
-from analysis_scripts.noncombat_state_conditioned_policy_input import HASH_DIM
+from analysis_scripts.noncombat_state_conditioned_policy_input import (
+    HASH_DIM,
+    PolicyInputError,
+    project_state_conditioned_policy_input,
+)
 from analysis_scripts.noncombat_state_conditioned_ranker import (
     DEFAULT_HIDDEN_DIM,
     StateConditionedCandidateRanker,
@@ -40,6 +52,11 @@ LEARNING_RATE = 0.001
 MAX_BOOTSTRAP_BYTES = 64 * 1024 * 1024
 GRADIENT_RECONSTRUCTION_RTOL = 1e-6
 GRADIENT_RECONSTRUCTION_ATOL = 1e-7
+MAX_DECISIONS_PER_EPISODE = 500
+MAX_CHARGED_SECONDS = 28_800.0
+REGISTERED_SUPPORT_BLOCKERS = (
+    "unsupported_shop_courier_restock_semantics",
+)
 ArmName = Literal["candidate", "control"]
 
 _REGISTERED_ADAM_OPTIONS: dict[str, Any] = {
@@ -105,6 +122,39 @@ class ArmOptimizerStepEvidence:
     postclip_global_norm: float
     optimizer_state_before: dict[str, Any]
     optimizer_state_after: dict[str, Any]
+
+
+@dataclass(frozen=True)
+class ArmRolloutDecision:
+    arm: ArmName
+    category: str
+    decision_id: str
+    decision_index: int
+    selected_action_id: str
+    state_features: torch.Tensor
+    card_terms: CardAcceptancePolicyTerms | None
+    diagnostic: Mapping[str, Any]
+
+
+@dataclass(frozen=True)
+class ArmEpisodeRollout:
+    arm: ArmName
+    seed: int
+    trajectory_id: str
+    decisions: tuple[ArmRolloutDecision, ...]
+    transitions: tuple[dict[str, Any], ...]
+    rewards: tuple[float, ...]
+    final_snapshot: dict[str, Any]
+    floor_progress: float
+    terminal_victory: int
+    unsupported_reason: str | None
+
+
+@dataclass(frozen=True)
+class PairedEpisodeRollout:
+    seed: int
+    candidate: ArmEpisodeRollout
+    control: ArmEpisodeRollout
 
 
 _DTYPES: dict[str, torch.dtype] = {
@@ -1060,13 +1110,514 @@ def score_noncard_candidates(
     return ranker(state_features, candidate_features)
 
 
+def _generator_state_sha256(generator: torch.Generator) -> str:
+    state = generator.get_state()
+    return hashlib.sha256(bytes(state.tolist())).hexdigest()
+
+
+def _arm_generator(
+    bootstrap: PairedBootstrap,
+    *,
+    arm: ArmName,
+    card: bool,
+) -> torch.Generator:
+    name = f"{arm}_{'card' if card else 'noncard'}"
+    generator = bootstrap.generators.get(name)
+    if not isinstance(generator, torch.Generator) or generator.device.type != "cpu":
+        raise SuccessorRuntimeError(f"generator {name} must remain on CPU")
+    return generator
+
+
+def _environment_state(
+    environment: Any,
+) -> tuple[dict[str, Any], list[dict[str, Any]]]:
+    for method_name in ("snapshot", "legal_actions", "clone", "step"):
+        if not callable(getattr(environment, method_name, None)):
+            raise SuccessorRuntimeError(
+                f"environment.{method_name} must be callable"
+            )
+    try:
+        snapshot = simulator_adapter.validate_snapshot(environment.snapshot())
+        if snapshot["adapter_api_version"] != simulator_adapter.ADAPTER_API_VERSION:
+            raise SuccessorRuntimeError("environment must expose exact adapter API v3")
+        candidates = simulator_adapter.validate_candidates(
+            environment.legal_actions(), category=snapshot["category"]
+        )
+    except simulator_adapter.SimulatorAdapterError as exc:
+        raise SuccessorRuntimeError(str(exc)) from exc
+    except SuccessorRuntimeError:
+        raise
+    except Exception as exc:
+        raise SuccessorRuntimeError("environment state access failed") from exc
+    return snapshot, candidates
+
+
+def _assert_source_unchanged(
+    environment: Any,
+    expected_snapshot: Mapping[str, Any],
+    expected_candidates: Sequence[Mapping[str, Any]],
+) -> None:
+    try:
+        actual_snapshot = environment.snapshot()
+        actual_candidates = environment.legal_actions()
+    except Exception as exc:
+        raise SuccessorRuntimeError(
+            "source environment could not be re-read"
+        ) from exc
+    if simulator_adapter.canonical_json_bytes(actual_snapshot) != (
+        simulator_adapter.canonical_json_bytes(expected_snapshot)
+    ) or simulator_adapter.canonical_json_bytes(actual_candidates) != (
+        simulator_adapter.canonical_json_bytes(list(expected_candidates))
+    ):
+        raise SuccessorRuntimeError(
+            "cloned action application mutated the source environment"
+        )
+
+
+def _validate_transition(
+    transition: Any,
+    *,
+    before: Mapping[str, Any],
+    candidates: Sequence[Mapping[str, Any]],
+    selected_action_id: str,
+    after: Mapping[str, Any],
+) -> dict[str, Any]:
+    if not isinstance(transition, Mapping):
+        raise SuccessorRuntimeError("transition must be a mapping")
+    value = dict(transition)
+    if value.get("selected_action_id") != selected_action_id:
+        raise SuccessorRuntimeError("transition selected action differs")
+    if value.get("category") != before["category"]:
+        raise SuccessorRuntimeError("transition category differs")
+    if simulator_adapter.canonical_json_bytes(value.get("candidate_actions")) != (
+        simulator_adapter.canonical_json_bytes(list(candidates))
+    ):
+        raise SuccessorRuntimeError("transition candidate order differs")
+    if simulator_adapter.canonical_json_bytes(value.get("source_state")) != (
+        simulator_adapter.canonical_json_bytes(before["state"])
+    ):
+        raise SuccessorRuntimeError("transition source state differs")
+    successor = value.get("successor")
+    expected_successor = {
+        "category": after["category"],
+        "state": after["state"],
+        "terminal": after["terminal"],
+    }
+    if not isinstance(successor, Mapping) or (
+        simulator_adapter.canonical_json_bytes(dict(successor))
+        != simulator_adapter.canonical_json_bytes(expected_successor)
+    ):
+        raise SuccessorRuntimeError("transition successor differs")
+    return value
+
+
+def _model_state_bytes(model: torch.nn.Module) -> bytes:
+    return (
+        json.dumps(
+            _encode_model_state(model),
+            allow_nan=False,
+            ensure_ascii=True,
+            separators=(",", ":"),
+            sort_keys=True,
+        ).encode("ascii")
+        + b"\n"
+    )
+
+
+def _validate_rollout_bootstrap(bootstrap: PairedBootstrap) -> None:
+    _paired_bootstrap_object(bootstrap)
+    frozen_rankers = (
+        bootstrap.candidate.frozen_noncard_ranker,
+        bootstrap.control.frozen_noncard_ranker,
+    )
+    if _model_state_bytes(frozen_rankers[0]) != _model_state_bytes(
+        frozen_rankers[1]
+    ):
+        raise SuccessorRuntimeError("frozen non-card ranker bytes differ")
+    storage_pointers: set[int] = set()
+    for ranker in _rankers(bootstrap):
+        for parameter in ranker.parameters():
+            if parameter.device.type != "cpu" or parameter.dtype != torch.float32:
+                raise SuccessorRuntimeError(
+                    "rollout ranker parameters must remain CPU float32"
+                )
+            pointer = parameter.untyped_storage().data_ptr()
+            if pointer in storage_pointers:
+                raise SuccessorRuntimeError(
+                    "rollout ranker parameter storage must remain disjoint"
+                )
+            storage_pointers.add(pointer)
+    for ranker in frozen_rankers:
+        if ranker.training or any(
+            parameter.requires_grad for parameter in ranker.parameters()
+        ):
+            raise SuccessorRuntimeError(
+                "frozen non-card rankers must remain eval and gradient disabled"
+            )
+
+
+def _sample_arm_training_decision(
+    bootstrap: PairedBootstrap,
+    *,
+    arm: ArmName,
+    snapshot: Mapping[str, Any],
+    candidates: Sequence[Mapping[str, Any]],
+    seed: int,
+    decision_index: int,
+) -> ArmRolloutDecision:
+    try:
+        policy_input = project_state_conditioned_policy_input(snapshot, candidates)
+    except PolicyInputError as exc:
+        raise SuccessorRuntimeError(str(exc)) from exc
+
+    decision_id = f"{arm}:seed-{seed}:decision-{decision_index}"
+    category = snapshot["category"]
+    if category not in simulator_adapter.TARGET_CATEGORIES:
+        raise SuccessorRuntimeError("nonterminal episode category is unsupported")
+    if category == "card_reward":
+        generator = _arm_generator(bootstrap, arm=arm, card=True)
+        before_generator = _generator_state_sha256(generator)
+        try:
+            output = forward_card_policy(
+                bootstrap,
+                arm=arm,
+                state_features=policy_input.state_features,
+                candidate_features=policy_input.candidate_features,
+                candidates=candidates,
+            )
+            provisional = build_card_acceptance_policy_terms(
+                output.family_logits,
+                output.conditional_logits,
+                candidates,
+                str(candidates[0]["action_id"]),
+                category="card_reward",
+            )
+            selected_action_id = select_two_stage_action(
+                provisional,
+                generator=generator,
+                greedy=False,
+            )
+            terms = build_card_acceptance_policy_terms(
+                output.family_logits,
+                output.conditional_logits,
+                candidates,
+                selected_action_id,
+                category="card_reward",
+            )
+        except (
+            CardAcceptanceObjectiveError,
+            CardAcceptancePolicyError,
+            RuntimeError,
+            TypeError,
+            ValueError,
+        ) as exc:
+            raise SuccessorRuntimeError(str(exc)) from exc
+        diagnostic: dict[str, Any] = {
+            "action_generator_state_sha256": {
+                "after": _generator_state_sha256(generator),
+                "before": before_generator,
+            },
+            "category": category,
+            "decision_id": decision_id,
+            "decision_index": decision_index,
+            "family_order": list(terms.family_order),
+            "family_probabilities": {
+                family: float(terms.family_probabilities[index].detach().item())
+                for index, family in enumerate(terms.family_order)
+            },
+            "multi_family": len(terms.family_order) > 1,
+            "selected_action_id": selected_action_id,
+            "selected_family": terms.selected_family,
+            "selection_mode": "family-first-then-conditional-v1",
+            "unique_greedy_family_id": terms.unique_greedy_family_id,
+        }
+        card_terms: CardAcceptancePolicyTerms | None = terms
+    else:
+        generator = _arm_generator(bootstrap, arm=arm, card=False)
+        before_generator = _generator_state_sha256(generator)
+        try:
+            scores = score_noncard_candidates(
+                bootstrap,
+                arm=arm,
+                category=str(category),
+                state_features=policy_input.state_features,
+                candidate_features=policy_input.candidate_features,
+            )
+            probabilities = torch.softmax(scores, dim=0)
+            if not bool(torch.isfinite(probabilities).all().item()):
+                raise SuccessorRuntimeError(
+                    "non-card probabilities must be finite"
+                )
+            selected_index = int(
+                torch.multinomial(
+                    probabilities.detach(), 1, generator=generator
+                ).item()
+            )
+        except (RuntimeError, TypeError, ValueError) as exc:
+            raise SuccessorRuntimeError(str(exc)) from exc
+        selected_action_id = str(candidates[selected_index]["action_id"])
+        diagnostic = {
+            "action_generator_state_sha256": {
+                "after": _generator_state_sha256(generator),
+                "before": before_generator,
+            },
+            "candidate_probabilities": {
+                str(candidate["action_id"]): float(
+                    probabilities[index].detach().item()
+                )
+                for index, candidate in enumerate(candidates)
+            },
+            "candidate_scores": {
+                str(candidate["action_id"]): float(scores[index].detach().item())
+                for index, candidate in enumerate(candidates)
+            },
+            "category": category,
+            "decision_id": decision_id,
+            "decision_index": decision_index,
+            "selected_action_id": selected_action_id,
+            "selection_mode": "frozen-raw-score-softmax-v1",
+        }
+        card_terms = None
+
+    return ArmRolloutDecision(
+        arm=arm,
+        category=str(category),
+        decision_id=decision_id,
+        decision_index=decision_index,
+        selected_action_id=selected_action_id,
+        state_features=policy_input.state_features.detach().clone(),
+        card_terms=card_terms,
+        diagnostic=diagnostic,
+    )
+
+
+def rollout_arm_training_episode(
+    bootstrap: PairedBootstrap,
+    *,
+    arm: ArmName,
+    environment_factory: Callable[[int], Any],
+    seed: int,
+    max_decisions: int = MAX_DECISIONS_PER_EPISODE,
+    deadline: float | None = None,
+    clock: Callable[[], float] = time.monotonic,
+) -> ArmEpisodeRollout:
+    """Run one clone-only arm trajectory with card-only trainable routing."""
+    normalized_arm = _validated_arm(arm)
+    _validate_rollout_bootstrap(bootstrap)
+    if isinstance(seed, bool) or not isinstance(seed, int) or seed < 0:
+        raise SuccessorRuntimeError("episode seed must be a nonnegative integer")
+    if (
+        isinstance(max_decisions, bool)
+        or not isinstance(max_decisions, int)
+        or not 0 < max_decisions <= MAX_DECISIONS_PER_EPISODE
+    ):
+        raise SuccessorRuntimeError("episode decision ceiling is invalid")
+    if not callable(environment_factory) or not callable(clock):
+        raise SuccessorRuntimeError(
+            "episode environment factory and clock must be callable"
+        )
+    now = float(clock())
+    active_deadline = now + MAX_CHARGED_SECONDS if deadline is None else float(deadline)
+    if (
+        not math.isfinite(now)
+        or not math.isfinite(active_deadline)
+        or active_deadline < now
+        or active_deadline > now + MAX_CHARGED_SECONDS
+    ):
+        raise SuccessorRuntimeError("episode deadline exceeds the registered bound")
+    if float(clock()) > active_deadline:
+        raise SuccessorRuntimeError(
+            "wall-time limit reached before environment construction"
+        )
+    try:
+        environment = environment_factory(seed)
+    except Exception as exc:
+        raise SuccessorRuntimeError("environment construction failed") from exc
+    root_environment = environment
+    root_snapshot, root_candidates = _environment_state(root_environment)
+    frozen_ranker = (
+        bootstrap.candidate.frozen_noncard_ranker
+        if normalized_arm == "candidate"
+        else bootstrap.control.frozen_noncard_ranker
+    )
+    frozen_before = _model_state_bytes(frozen_ranker)
+
+    decisions: list[ArmRolloutDecision] = []
+    transitions: list[dict[str, Any]] = []
+    rewards: list[float] = []
+    floor_progress = 0.0
+    terminal_victory = 0
+    unsupported_reason: str | None = None
+    while True:
+        if float(clock()) > active_deadline:
+            raise SuccessorRuntimeError("wall-time limit reached before decision")
+        snapshot, candidates = _environment_state(environment)
+        if snapshot["terminal"]:
+            break
+        if len(decisions) >= max_decisions:
+            raise SuccessorRuntimeError("episode decision ceiling reached")
+        decision = _sample_arm_training_decision(
+            bootstrap,
+            arm=normalized_arm,
+            snapshot=snapshot,
+            candidates=candidates,
+            seed=seed,
+            decision_index=len(decisions),
+        )
+        source_snapshot = copy.deepcopy(snapshot)
+        source_candidates = copy.deepcopy(candidates)
+        try:
+            successor = environment.clone()
+        except Exception as exc:
+            raise SuccessorRuntimeError("environment clone failed") from exc
+        if successor is environment:
+            raise SuccessorRuntimeError(
+                "environment clone must return a distinct branch"
+            )
+        _assert_source_unchanged(environment, source_snapshot, source_candidates)
+        try:
+            transition = successor.step(decision.selected_action_id)
+            after = simulator_adapter.validate_snapshot(successor.snapshot())
+        except RuntimeError as exc:
+            reason = str(exc)
+            if reason not in REGISTERED_SUPPORT_BLOCKERS:
+                raise SuccessorRuntimeError(
+                    f"unregistered simulator support blocker: {reason}"
+                ) from exc
+            _assert_source_unchanged(
+                environment, source_snapshot, source_candidates
+            )
+            unsupported_reason = reason
+            decisions.append(decision)
+            rewards.append(0.0)
+            break
+        except simulator_adapter.SimulatorAdapterError as exc:
+            raise SuccessorRuntimeError(str(exc)) from exc
+        except Exception as exc:
+            raise SuccessorRuntimeError("cloned action application failed") from exc
+        if after["adapter_api_version"] != simulator_adapter.ADAPTER_API_VERSION:
+            raise SuccessorRuntimeError(
+                "successor branch drifted from exact adapter API v3"
+            )
+        _assert_source_unchanged(environment, source_snapshot, source_candidates)
+        normalized_transition = _validate_transition(
+            transition,
+            before=snapshot,
+            candidates=candidates,
+            selected_action_id=decision.selected_action_id,
+            after=after,
+        )
+        try:
+            channels = formal_reward_contract.reward_channels(
+                normalized_transition
+            )
+            formal_reward_contract.validate_scalarization(
+                "strict_primary_dominance", victory_weight=2.0
+            )
+        except formal_reward_contract.RewardContractBlocked as exc:
+            raise SuccessorRuntimeError(str(exc)) from exc
+        reward = 2.0 * float(channels["terminal_victory"]) + float(
+            channels["floor_progress"]
+        )
+        if not math.isfinite(reward):
+            raise SuccessorRuntimeError("formal reward must be finite")
+        decisions.append(decision)
+        transitions.append(normalized_transition)
+        rewards.append(reward)
+        floor_progress += float(channels["floor_progress"])
+        terminal_victory = max(
+            terminal_victory, int(channels["terminal_victory"])
+        )
+        environment = successor
+
+    _assert_source_unchanged(root_environment, root_snapshot, root_candidates)
+    try:
+        final_snapshot = simulator_adapter.validate_snapshot(environment.snapshot())
+    except simulator_adapter.SimulatorAdapterError as exc:
+        raise SuccessorRuntimeError(str(exc)) from exc
+    if unsupported_reason is None:
+        if final_snapshot["terminal"] is not True:
+            raise SuccessorRuntimeError("supported episode did not terminate")
+        if final_snapshot["state"].get("outcome") not in {
+            "player_loss",
+            "player_victory",
+        }:
+            raise SuccessorRuntimeError("terminal episode outcome is invalid")
+    if not decisions:
+        raise SuccessorRuntimeError(
+            "training episode must contain at least one decision"
+        )
+    _validate_rollout_bootstrap(bootstrap)
+    if _model_state_bytes(frozen_ranker) != frozen_before:
+        raise SuccessorRuntimeError("frozen non-card ranker changed during rollout")
+    return ArmEpisodeRollout(
+        arm=normalized_arm,
+        seed=seed,
+        trajectory_id=f"{normalized_arm}:seed-{seed}",
+        decisions=tuple(decisions),
+        transitions=tuple(transitions),
+        rewards=tuple(rewards),
+        final_snapshot=final_snapshot,
+        floor_progress=floor_progress,
+        terminal_victory=terminal_victory,
+        unsupported_reason=unsupported_reason,
+    )
+
+
+def rollout_paired_training_episode(
+    bootstrap: PairedBootstrap,
+    *,
+    environment_factory: Callable[[int], Any],
+    seed: int,
+    max_decisions: int = MAX_DECISIONS_PER_EPISODE,
+    deadline: float | None = None,
+    clock: Callable[[], float] = time.monotonic,
+) -> PairedEpisodeRollout:
+    """Run candidate then control from one seed using disjoint arm state."""
+    if not callable(clock):
+        raise SuccessorRuntimeError("paired episode clock must be callable")
+    now = float(clock())
+    paired_deadline = now + MAX_CHARGED_SECONDS if deadline is None else float(deadline)
+    if (
+        not math.isfinite(now)
+        or not math.isfinite(paired_deadline)
+        or paired_deadline < now
+        or paired_deadline > now + MAX_CHARGED_SECONDS
+    ):
+        raise SuccessorRuntimeError(
+            "paired episode deadline exceeds the registered bound"
+        )
+    candidate = rollout_arm_training_episode(
+        bootstrap,
+        arm="candidate",
+        environment_factory=environment_factory,
+        seed=seed,
+        max_decisions=max_decisions,
+        deadline=paired_deadline,
+        clock=clock,
+    )
+    control = rollout_arm_training_episode(
+        bootstrap,
+        arm="control",
+        environment_factory=environment_factory,
+        seed=seed,
+        max_decisions=max_decisions,
+        deadline=paired_deadline,
+        clock=clock,
+    )
+    return PairedEpisodeRollout(seed=seed, candidate=candidate, control=control)
+
+
 __all__ = [
     "ArmCardRewardObjective",
+    "ArmEpisodeRollout",
     "ArmOptimizerStepEvidence",
     "ArmOptimizers",
+    "ArmRolloutDecision",
     "CandidateArm",
     "ControlArm",
     "PairedBootstrap",
+    "PairedEpisodeRollout",
     "SuccessorRuntimeError",
     "apply_arm_optimizer_step",
     "build_arm_card_reward_objective",
@@ -1077,6 +1628,8 @@ __all__ = [
     "forward_card_policy",
     "restore_optimizer_state",
     "restore_paired_bootstrap",
+    "rollout_arm_training_episode",
+    "rollout_paired_training_episode",
     "runtime_metadata",
     "score_noncard_candidates",
     "select_two_stage_action",

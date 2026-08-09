@@ -10,10 +10,20 @@ import torch
 from analysis_scripts.noncombat_card_acceptance_objective import (
     build_card_acceptance_policy_terms,
 )
-from analysis_scripts.noncombat_state_conditioned_policy_input import HASH_DIM
+from analysis_scripts.noncombat_state_conditioned_policy_input import (
+    HASH_DIM,
+    project_state_conditioned_policy_input,
+)
 from analysis_scripts.noncombat_state_conditioned_ranker import (
     DEFAULT_HIDDEN_DIM,
     StateConditionedCandidateRanker,
+)
+from analysis_scripts.noncombat_simulator_adapter import (
+    ADAPTER_API_VERSION,
+    NATIVE_TARGET_POLICY_ID,
+    SOURCE_TYPE,
+    STATE_SCHEMA_VERSION,
+    build_transition,
 )
 
 
@@ -109,6 +119,104 @@ def _candidate_objective(runtime, bootstrap, advantage: float = 1.0):
         category="card_reward",
     )
     return runtime.build_arm_card_reward_objective(((terms, advantage),))
+
+
+def _rollout_provenance() -> dict[str, object]:
+    return {
+        "adapter_commit": "1" * 40,
+        "adapter_source_sha256": "2" * 64,
+        "build": {
+            "adapter_api_version": ADAPTER_API_VERSION,
+            "baseline_policy_id": "test-baseline-v1",
+            "compiler": "test-compiler",
+            "cpp_standard": 201703,
+            "native_target_policy_id": NATIVE_TARGET_POLICY_ID,
+            "pybind11_version": "3.0.2",
+            "python": "3.10.18",
+        },
+        "module_sha256": "3" * 64,
+        "module_size_bytes": 123,
+        "simulator_commit": "4" * 40,
+        "simulator_dirty": False,
+        "simulator_source_file_count": 79,
+        "simulator_source_sha256": "5" * 64,
+        "submodules": {"json": "6" * 40, "pybind11": "7" * 40},
+    }
+
+
+def _rollout_candidates(category: str) -> list[dict[str, object]]:
+    if category == "card_reward":
+        rows = (
+            ("bowl", "bowl", "Singing Bowl"),
+            ("take-a", "take", "Take A"),
+            ("take-b", "take", "Take B"),
+        )
+    elif category == "route":
+        rows = (
+            ("left", "monster", "Left"),
+            ("right", "elite", "Right"),
+        )
+    else:
+        raise AssertionError(f"unsupported test category: {category}")
+    return [
+        {
+            "action_id": action_id,
+            "available": True,
+            "category": category,
+            "kind": kind,
+            "label": label,
+            "raw": {},
+        }
+        for action_id, kind, label in rows
+    ]
+
+
+class _RolloutEnvironment:
+    def __init__(self, seed: int, categories: tuple[str, ...]) -> None:
+        self.seed = seed
+        self.categories = categories
+        self.index = 0
+
+    def snapshot(self) -> dict[str, object]:
+        terminal = self.index == len(self.categories)
+        return {
+            "adapter_api_version": ADAPTER_API_VERSION,
+            "baseline_control": {"history": [], "policy_id": "test-control"},
+            "category": None if terminal else self.categories[self.index],
+            "decision_count": self.index,
+            "schema_version": STATE_SCHEMA_VERSION,
+            "source_type": SOURCE_TYPE,
+            "state": {
+                "cur_hp": 80,
+                "floor": self.index,
+                "gold": 100 + self.seed,
+                "outcome": "player_loss" if terminal else "undecided",
+                "seed": str(self.seed),
+            },
+            "terminal": terminal,
+        }
+
+    def legal_actions(self) -> list[dict[str, object]]:
+        if self.index == len(self.categories):
+            return []
+        return _rollout_candidates(self.categories[self.index])
+
+    def clone(self):
+        return copy.deepcopy(self)
+
+    def step(self, action_id: str) -> dict[str, object]:
+        before = self.snapshot()
+        candidates = self.legal_actions()
+        if action_id not in {row["action_id"] for row in candidates}:
+            raise RuntimeError("illegal test action")
+        self.index += 1
+        return build_transition(
+            before=before,
+            candidates=candidates,
+            selected_action_id=action_id,
+            after=self.snapshot(),
+            provenance=_rollout_provenance(),
+        )
 
 
 def test_matched_bootstrap_copies_one_base_into_five_storage_disjoint_rankers():
@@ -628,3 +736,176 @@ def test_noncard_routing_uses_only_the_frozen_ranker_for_each_arm():
             state_features=state_features,
             candidate_features=candidate_features,
         )
+
+
+@pytest.mark.parametrize(
+    ("category", "advanced_generator", "untouched_generator"),
+    (
+        ("card_reward", "candidate_card", "candidate_noncard"),
+        ("route", "candidate_noncard", "candidate_card"),
+    ),
+)
+def test_arm_training_rollout_advances_only_the_category_owned_generator(
+    category: str,
+    advanced_generator: str,
+    untouched_generator: str,
+):
+    runtime = _runtime()
+    bootstrap = runtime.build_matched_bootstrap()
+    before = {
+        name: generator.get_state().clone()
+        for name, generator in bootstrap.generators.items()
+    }
+    expected_route_action: str | None = None
+    expected_route_generator_state: torch.Tensor | None = None
+    if category == "route":
+        environment = _RolloutEnvironment(17, (category,))
+        snapshot = environment.snapshot()
+        candidates = environment.legal_actions()
+        policy_input = project_state_conditioned_policy_input(snapshot, candidates)
+        scores = runtime.score_noncard_candidates(
+            bootstrap,
+            arm="candidate",
+            category=category,
+            state_features=policy_input.state_features,
+            candidate_features=policy_input.candidate_features,
+        )
+        expected_generator = torch.Generator(device="cpu")
+        expected_generator.set_state(before[advanced_generator].clone())
+        expected_index = int(
+            torch.multinomial(
+                torch.softmax(scores, dim=0).detach(),
+                1,
+                generator=expected_generator,
+            ).item()
+        )
+        expected_route_action = str(candidates[expected_index]["action_id"])
+        expected_route_generator_state = expected_generator.get_state().clone()
+
+    rollout = runtime.rollout_arm_training_episode(
+        bootstrap,
+        arm="candidate",
+        environment_factory=lambda seed: _RolloutEnvironment(seed, (category,)),
+        seed=17,
+    )
+
+    assert rollout.arm == "candidate"
+    assert rollout.seed == 17
+    assert len(rollout.decisions) == 1
+    assert rollout.decisions[0].category == category
+    assert (rollout.decisions[0].card_terms is not None) == (
+        category == "card_reward"
+    )
+    assert not torch.equal(
+        bootstrap.generators[advanced_generator].get_state(),
+        before[advanced_generator],
+    )
+    assert torch.equal(
+        bootstrap.generators[untouched_generator].get_state(),
+        before[untouched_generator],
+    )
+    assert torch.equal(
+        bootstrap.generators["control_card"].get_state(),
+        before["control_card"],
+    )
+    assert torch.equal(
+        bootstrap.generators["control_noncard"].get_state(),
+        before["control_noncard"],
+    )
+    assert rollout.final_snapshot["terminal"] is True
+    assert rollout.terminal_victory == 0
+    if category == "route":
+        assert rollout.decisions[0].selected_action_id == expected_route_action
+        assert expected_route_generator_state is not None
+        assert torch.equal(
+            bootstrap.generators[advanced_generator].get_state(),
+            expected_route_generator_state,
+        )
+
+
+@pytest.mark.parametrize("drift", ("requires_grad", "bytes"))
+def test_rollout_rejects_frozen_noncard_drift_before_environment_construction(
+    drift: str,
+):
+    runtime = _runtime()
+    bootstrap = runtime.build_matched_bootstrap()
+    if drift == "requires_grad":
+        bootstrap.candidate.frozen_noncard_ranker.requires_grad_(True)
+    else:
+        with torch.no_grad():
+            next(
+                bootstrap.candidate.frozen_noncard_ranker.parameters()
+            ).add_(1.0)
+    factory_calls: list[int] = []
+
+    def environment_factory(seed: int):
+        factory_calls.append(seed)
+        return _RolloutEnvironment(seed, ("route",))
+
+    with pytest.raises(runtime.SuccessorRuntimeError, match="frozen non-card"):
+        runtime.rollout_arm_training_episode(
+            bootstrap,
+            arm="candidate",
+            environment_factory=environment_factory,
+            seed=31,
+        )
+
+    assert factory_calls == []
+
+
+def test_paired_training_rollout_uses_same_seed_fixed_arm_order_and_frozen_routing():
+    runtime = _runtime()
+    bootstrap = runtime.build_matched_bootstrap()
+    frozen_before = {
+        arm: {
+            name: tensor.detach().clone()
+            for name, tensor in ranker.state_dict().items()
+        }
+        for arm, ranker in (
+            ("candidate", bootstrap.candidate.frozen_noncard_ranker),
+            ("control", bootstrap.control.frozen_noncard_ranker),
+        )
+    }
+    factory_calls: list[int] = []
+
+    def environment_factory(seed: int):
+        factory_calls.append(seed)
+        return _RolloutEnvironment(seed, ("card_reward", "route"))
+
+    paired = runtime.rollout_paired_training_episode(
+        bootstrap,
+        environment_factory=environment_factory,
+        seed=23,
+    )
+
+    assert factory_calls == [23, 23]
+    assert paired.seed == 23
+    assert paired.candidate.arm == "candidate"
+    assert paired.control.arm == "control"
+    for arm_rollout in (paired.candidate, paired.control):
+        assert tuple(row.category for row in arm_rollout.decisions) == (
+            "card_reward",
+            "route",
+        )
+        assert arm_rollout.decisions[0].card_terms is not None
+        assert arm_rollout.decisions[1].card_terms is None
+        assert len(arm_rollout.transitions) == 2
+        assert arm_rollout.floor_progress > 0.0
+    assert paired.candidate.floor_progress == paired.control.floor_progress
+    assert tuple(
+        row.selected_action_id for row in paired.candidate.decisions
+    ) == tuple(row.selected_action_id for row in paired.control.decisions)
+    assert torch.equal(
+        bootstrap.generators["candidate_card"].get_state(),
+        bootstrap.generators["control_card"].get_state(),
+    )
+    assert torch.equal(
+        bootstrap.generators["candidate_noncard"].get_state(),
+        bootstrap.generators["control_noncard"].get_state(),
+    )
+    for arm, ranker in (
+        ("candidate", bootstrap.candidate.frozen_noncard_ranker),
+        ("control", bootstrap.control.frozen_noncard_ranker),
+    ):
+        for name, tensor in ranker.state_dict().items():
+            assert torch.equal(tensor, frozen_before[arm][name])

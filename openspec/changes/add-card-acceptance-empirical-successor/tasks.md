@@ -10,7 +10,7 @@
 ## 2. Runtime And Checkpoints
 
 - [x] 2.1 Implement deterministic matched candidate/control bootstrap, metadata, state validation, paired checkpoint encoding, and exact restore under new schemas.
-- [ ] 2.2 Implement paired card-only rollout routing with candidate disjoint heads, control shared head, frozen per-arm non-card policies, and separate checkpointed generators.
+- [x] 2.2 Implement paired card-only rollout routing with candidate disjoint heads, control shared head, frozen per-arm non-card policies, and separate checkpointed generators.
 - [ ] 2.3 Integrate the registered cross-fitted baseline independently per arm and construct exact unscaled card-reward advantages without post-processing.
 - [ ] 2.4 Implement the matched four-component losses, per-arm gradient ledgers/global clips, fixed Adam steps, and retained replay evidence.
 - [ ] 2.5 Implement at most eight 64-seed paired training chunks, exact completion when no stop fires, complete-boundary paired checkpointing, resource accounting, and candidate-only four-chunk exact greedy-family saturation stop.
