@@ -176,6 +176,7 @@ _PUBLIC_DEPENDENCY_SPECS = (
 )
 _STAGES = ("inventory", "training", "canary", "holdout")
 _EXECUTION_CONTEXT_OPERATIONS = (
+    "artifact",
     "journal",
     "resource",
     "checkpoint",
@@ -304,9 +305,29 @@ TRAINING_CHECKPOINT_BINDING_SCHEMA_VERSION = (
 TRAINING_CONTINUATION_SCHEMA_VERSION = (
     "noncombat-card-acceptance-empirical-successor-training-continuation-v1"
 )
+ARTIFACT_INVENTORY_SCHEMA_VERSION = (
+    "noncombat-card-acceptance-empirical-successor-artifact-inventory-v1"
+)
+TERMINAL_INTENT_SCHEMA_VERSION = (
+    "noncombat-card-acceptance-empirical-successor-terminal-intent-v1"
+)
+TERMINAL_SCHEMA_VERSION = (
+    "noncombat-card-acceptance-empirical-successor-terminal-v1"
+)
+MANIFEST_SCHEMA_VERSION = (
+    "noncombat-card-acceptance-empirical-successor-artifact-manifest-v1"
+)
 LEASE_FILENAME = ".execution.lease"
 ACCESS_JOURNAL_FILENAME = "access_journal.jsonl"
 RESOURCE_LEDGER_FILENAME = "resource_ledger.jsonl"
+TERMINAL_INTENT_FILENAME = "terminal_intent.json"
+TERMINAL_FILENAME = "terminal.json"
+MANIFEST_FILENAME = "artifact_manifest.json"
+_TERMINAL_PUBLICATION_FILENAMES = (
+    TERMINAL_INTENT_FILENAME,
+    TERMINAL_FILENAME,
+    MANIFEST_FILENAME,
+)
 _ACTIVE_EXECUTION_LEASES: set[str] = set()
 _CHECKPOINT_COMPONENT_NAMES = (
     "candidate_card_generator",
@@ -1357,7 +1378,19 @@ def _require_execution_lease(
 
 
 def _atomic_write_once_or_identical(path: Path, payload: bytes) -> bytes:
-    path.parent.mkdir(parents=True, exist_ok=True)
+    if not isinstance(payload, bytes):
+        raise SuccessorControlError("write-once artifact payload must be bytes")
+    try:
+        path.parent.mkdir(parents=True, exist_ok=True)
+    except OSError as exc:
+        raise SuccessorControlError(
+            f"write-once artifact parent cannot be created: {path.name}"
+        ) from exc
+    temporary = path.with_name(f".{path.name}.tmp")
+    if temporary.exists():
+        raise SuccessorControlError(
+            f"write-once artifact has ambiguous staging: {path.name}"
+        )
     if path.exists():
         try:
             existing = path.read_bytes()
@@ -1370,24 +1403,137 @@ def _atomic_write_once_or_identical(path: Path, payload: bytes) -> bytes:
                 f"write-once artifact drifted: {path.name}"
             )
         return existing
-    temporary = path.with_name(f".{path.name}.tmp")
-    if temporary.exists():
-        raise SuccessorControlError(
-            f"write-once artifact has ambiguous staging: {path.name}"
-        )
+    created_temporary = False
     try:
         with temporary.open("xb") as handle:
+            created_temporary = True
             handle.write(payload)
             handle.flush()
             os.fsync(handle.fileno())
-        os.replace(temporary, path)
-    except BaseException:
+        os.link(temporary, path)
+        temporary.unlink()
+        created_temporary = False
+    except BaseException as exc:
         try:
-            temporary.unlink(missing_ok=True)
+            if created_temporary:
+                temporary.unlink(missing_ok=True)
         except OSError:
             pass
-        raise
+        if isinstance(exc, SuccessorControlError):
+            raise
+        raise SuccessorControlError(
+            f"write-once artifact publication failed: {path.name}"
+        ) from exc
     return payload
+
+
+def _require_terminal_publication_open(output: Path) -> None:
+    for name in _TERMINAL_PUBLICATION_FILENAMES:
+        path = output / name
+        if path.with_name(f".{path.name}.tmp").exists():
+            raise SuccessorControlError(
+                f"terminal publication has ambiguous staging: {name}"
+            )
+        if path.exists():
+            raise SuccessorControlError("terminal publication is closed")
+
+
+def _managed_relative_path(value: object) -> str:
+    if not isinstance(value, str) or not value or "\\" in value or ":" in value:
+        raise SuccessorControlError("managed artifact path is invalid")
+    pure = PurePosixPath(value)
+    if (
+        pure.is_absolute()
+        or pure.as_posix() != value
+        or value.endswith("/")
+        or any(part in {"", ".", ".."} for part in pure.parts)
+        or value in {LEASE_FILENAME, *_TERMINAL_PUBLICATION_FILENAMES}
+        or any(part.startswith(".") and part.endswith(".tmp") for part in pure.parts)
+    ):
+        raise SuccessorControlError("managed artifact path is invalid")
+    return value
+
+
+def _managed_artifact_target(output: Path, relative_path: object) -> tuple[str, Path]:
+    relative = _managed_relative_path(relative_path)
+    pure = PurePosixPath(relative)
+    target = output.joinpath(*pure.parts)
+    cursor = output
+    for part in pure.parts:
+        cursor = cursor / part
+        if cursor.exists() and cursor.is_symlink():
+            raise SuccessorControlError("managed artifact path contains a symlink")
+    return relative, target
+
+
+def _artifact_binding(relative_path: str, path: Path) -> dict[str, Any]:
+    if path.is_symlink() or not path.is_file():
+        raise SuccessorControlError(
+            f"managed artifact is not a regular file: {relative_path}"
+        )
+    try:
+        payload = path.read_bytes()
+    except OSError as exc:
+        raise SuccessorControlError(
+            f"managed artifact cannot be read: {relative_path}"
+        ) from exc
+    return {
+        "path": relative_path,
+        "sha256": hashlib.sha256(payload).hexdigest(),
+        "size_bytes": len(payload),
+    }
+
+
+def _observe_artifact_inventory(
+    output: Path, *, excluded_paths: Sequence[str]
+) -> dict[str, Any]:
+    excluded = set(excluded_paths)
+    rows: list[dict[str, Any]] = []
+    try:
+        candidates = sorted(
+            output.rglob("*"),
+            key=lambda path: path.relative_to(output).as_posix(),
+        )
+    except OSError as exc:
+        raise SuccessorControlError("managed artifacts cannot be listed") from exc
+    for path in candidates:
+        relative = path.relative_to(output).as_posix()
+        if path.is_symlink():
+            raise SuccessorControlError(
+                f"managed artifact path contains a symlink: {relative}"
+            )
+        if path.is_dir():
+            continue
+        if relative == LEASE_FILENAME or relative in excluded:
+            continue
+        if path.name.startswith(".") and path.name.endswith(".tmp"):
+            raise SuccessorControlError(
+                f"managed artifact has ambiguous staging: {relative}"
+            )
+        rows.append(_artifact_binding(relative, path))
+    body = {
+        "artifact_count": len(rows),
+        "artifacts": rows,
+        "schema_version": ARTIFACT_INVENTORY_SCHEMA_VERSION,
+        "stored_size_bytes": sum(row["size_bytes"] for row in rows),
+    }
+    return {**body, "artifact_inventory_sha256": canonical_json_sha256(body)}
+
+
+def publish_managed_artifact(
+    context: _ValidatedExecutionContext,
+    lease: ExecutionLease,
+    *,
+    relative_path: str,
+    payload: bytes,
+) -> dict[str, Any]:
+    """Atomically publish exact evidence bytes while terminalization is open."""
+    context, output = _require_execution_lease(context, lease)
+    _execution_context_for_operation(context, "artifact")
+    _require_terminal_publication_open(output)
+    relative, path = _managed_artifact_target(output, relative_path)
+    _atomic_write_once_or_identical(path, payload)
+    return _artifact_binding(relative, path)
 
 
 def _append_durable(path: Path, payload: bytes) -> None:
@@ -1413,6 +1559,7 @@ def initialize_access_journal(
 ) -> dict[str, Any]:
     context, output = _require_execution_lease(context, lease)
     _execution_context_for_operation(context, "journal")
+    _require_terminal_publication_open(output)
     _atomic_write_once_or_identical(
         output / ACCESS_JOURNAL_FILENAME,
         canonical_json_bytes(_journal_header(context)),
@@ -1472,6 +1619,7 @@ def perform_journaled_environment_access(
     access: Callable[[], Any],
 ) -> Any:
     context, output = _require_execution_lease(context, lease)
+    _require_terminal_publication_open(output)
     if isinstance(seed, bool) or not isinstance(seed, int) or seed < 0:
         raise SuccessorControlError("environment seed is invalid")
     if arm not in {"candidate", "control"}:
@@ -1532,6 +1680,7 @@ def initialize_resource_ledger(
 ) -> dict[str, Any]:
     context, output = _require_execution_lease(context, lease)
     _execution_context_for_operation(context, "resource")
+    _require_terminal_publication_open(output)
     _atomic_write_once_or_identical(
         output / RESOURCE_LEDGER_FILENAME,
         canonical_json_bytes(_resource_header(context)),
@@ -1601,6 +1750,7 @@ def advance_resource_ledger(
     reason: str,
 ) -> dict[str, Any]:
     context, output = _require_execution_lease(context, lease)
+    _require_terminal_publication_open(output)
     ledger = load_resource_ledger(context, lease)
     resources: dict[str, int | float] = {
         "charged_seconds": charged_seconds,
@@ -1680,6 +1830,7 @@ def publish_write_once_marker(
     payload: Mapping[str, Any],
 ) -> dict[str, Any]:
     context, output = _require_execution_lease(context, lease)
+    _require_terminal_publication_open(output)
     if kind == "bootstrap":
         _execution_context_for_operation(context, "checkpoint")
         path = output / "bootstrap.json"
@@ -1795,6 +1946,7 @@ def publish_complete_training_checkpoint(
     """Publish one complete-boundary checkpoint binding or exact same bytes."""
     context, output = _require_execution_lease(context, lease)
     _execution_context_for_operation(context, "checkpoint")
+    _require_terminal_publication_open(output)
     if context.stage != "training":
         raise SuccessorControlError("training checkpoint requires training stage")
     marker = _checkpoint_marker(context, binding)
@@ -1877,6 +2029,7 @@ def classify_execution_reopen(
 ) -> dict[str, Any]:
     """Classify only repeated pre-seed setup or the sole complete continuation."""
     context, output = _require_execution_lease(context, lease)
+    _require_terminal_publication_open(output)
     if context.stage != "training":
         raise SuccessorControlError("only training setup may reopen")
     for forbidden_stage in ("canary", "holdout"):
@@ -1950,6 +2103,244 @@ def authorize_training_continuation(
         raise SuccessorControlError("training continuation was already used")
     _atomic_write_once_or_identical(path, canonical_json_bytes(marker))
     return marker
+
+
+def _read_canonical_document(path: Path, label: str) -> dict[str, Any]:
+    try:
+        payload = path.read_bytes()
+    except OSError as exc:
+        raise SuccessorControlError(f"{label} publication order is incomplete") from exc
+    return _parse_canonical_mapping(payload, label)
+
+
+def _journal_prefix_binding(
+    context: _ValidatedExecutionContext, lease: ExecutionLease
+) -> dict[str, Any]:
+    journal = load_access_journal(context, lease)
+    return {
+        "debited_accesses": journal["debited_accesses"],
+        "event_count": len(journal["events"]),
+        "last_event_sha256": canonical_json_sha256(journal["events"][-1]),
+    }
+
+
+def _resource_prefix_binding(
+    context: _ValidatedExecutionContext, lease: ExecutionLease
+) -> dict[str, Any]:
+    ledger = load_resource_ledger(context, lease)
+    return {
+        "last_event_sha256": canonical_json_sha256(ledger["events"][-1]),
+        "resources": copy.deepcopy(ledger["resources"]),
+        "revision": ledger["revision"],
+    }
+
+
+def _terminal_prefix_inventory(output: Path) -> dict[str, Any]:
+    return _observe_artifact_inventory(
+        output,
+        excluded_paths=_TERMINAL_PUBLICATION_FILENAMES,
+    )
+
+
+def _validate_terminal_intent_document(
+    context: _ValidatedExecutionContext,
+    lease: ExecutionLease,
+    value: Mapping[str, Any],
+) -> dict[str, Any]:
+    context, output = _require_execution_lease(context, lease)
+    intent = _copy_mapping(value, "terminal intent")
+    _require_fields(
+        intent,
+        {
+            "artifact_prefix",
+            "details",
+            "downstream_authority",
+            "identity",
+            "journal_prefix",
+            "resource_prefix",
+            "schema_version",
+            "terminal_intent_sha256",
+            "verdict",
+        },
+        "terminal intent",
+    )
+    if intent["schema_version"] != TERMINAL_INTENT_SCHEMA_VERSION:
+        raise SuccessorControlError("terminal intent schema mismatch")
+    if (
+        intent["identity"] != _context_identity(context)
+        or intent["downstream_authority"]
+        != context.request["downstream_authority"]
+    ):
+        raise SuccessorControlError("terminal intent identity drifted")
+    _identifier(intent["verdict"], "terminal verdict")
+    _copy_mapping(intent["details"], "terminal details")
+    _copy_mapping(intent["artifact_prefix"], "terminal artifact prefix")
+    _copy_mapping(intent["journal_prefix"], "terminal journal prefix")
+    _copy_mapping(intent["resource_prefix"], "terminal resource prefix")
+    digest = _digest(
+        intent["terminal_intent_sha256"],
+        "terminal intent identity",
+    )
+    body = {
+        key: item
+        for key, item in intent.items()
+        if key != "terminal_intent_sha256"
+    }
+    if digest != canonical_json_sha256(body):
+        raise SuccessorControlError("terminal intent identity drifted")
+    if intent["artifact_prefix"] != _terminal_prefix_inventory(output):
+        raise SuccessorControlError("terminal intent artifact prefix drifted")
+    if intent["journal_prefix"] != _journal_prefix_binding(context, lease):
+        raise SuccessorControlError("terminal intent journal prefix drifted")
+    if intent["resource_prefix"] != _resource_prefix_binding(context, lease):
+        raise SuccessorControlError("terminal intent resource prefix drifted")
+    return intent
+
+
+def _stored_terminal_intent(
+    context: _ValidatedExecutionContext,
+    lease: ExecutionLease,
+    supplied: Mapping[str, Any] | None = None,
+) -> dict[str, Any]:
+    context, output = _require_execution_lease(context, lease)
+    path = output / TERMINAL_INTENT_FILENAME
+    stored = _read_canonical_document(path, "terminal intent")
+    if supplied is not None:
+        normalized_supplied = _copy_mapping(supplied, "terminal intent")
+        if canonical_json_bytes(normalized_supplied) != canonical_json_bytes(stored):
+            raise SuccessorControlError(
+                "supplied terminal intent differs from published bytes"
+            )
+    return _validate_terminal_intent_document(context, lease, stored)
+
+
+def publish_terminal_intent(
+    context: _ValidatedExecutionContext,
+    lease: ExecutionLease,
+    *,
+    verdict: str,
+    details: Mapping[str, Any],
+) -> dict[str, Any]:
+    """Reconcile final resources and freeze the complete pre-terminal prefix."""
+    context, output = _require_execution_lease(context, lease)
+    _execution_context_for_operation(context, "terminal")
+    _require_terminal_publication_open(output)
+    normalized_verdict = _identifier(verdict, "terminal verdict")
+    normalized_details = _copy_mapping(details, "terminal details")
+    reconcile_resource_ledger(context, lease)
+    body = {
+        "artifact_prefix": _terminal_prefix_inventory(output),
+        "details": normalized_details,
+        "downstream_authority": _copy_mapping(
+            context.request["downstream_authority"],
+            "terminal downstream authority",
+        ),
+        "identity": _context_identity(context),
+        "journal_prefix": _journal_prefix_binding(context, lease),
+        "resource_prefix": _resource_prefix_binding(context, lease),
+        "schema_version": TERMINAL_INTENT_SCHEMA_VERSION,
+        "verdict": normalized_verdict,
+    }
+    intent = {
+        **body,
+        "terminal_intent_sha256": canonical_json_sha256(body),
+    }
+    _atomic_write_once_or_identical(
+        output / TERMINAL_INTENT_FILENAME,
+        canonical_json_bytes(intent),
+    )
+    return intent
+
+
+def _expected_terminal_document(intent: Mapping[str, Any]) -> dict[str, Any]:
+    body = {
+        "artifact_prefix_sha256": intent["artifact_prefix"][
+            "artifact_inventory_sha256"
+        ],
+        "details": copy.deepcopy(intent["details"]),
+        "downstream_authority": copy.deepcopy(intent["downstream_authority"]),
+        "identity": copy.deepcopy(intent["identity"]),
+        "journal_prefix": copy.deepcopy(intent["journal_prefix"]),
+        "resource_prefix": copy.deepcopy(intent["resource_prefix"]),
+        "schema_version": TERMINAL_SCHEMA_VERSION,
+        "terminal_intent_sha256": intent["terminal_intent_sha256"],
+        "verdict": intent["verdict"],
+    }
+    return {**body, "terminal_sha256": canonical_json_sha256(body)}
+
+
+def publish_terminal_document(
+    context: _ValidatedExecutionContext,
+    lease: ExecutionLease,
+    *,
+    terminal_intent: Mapping[str, Any] | None = None,
+) -> dict[str, Any]:
+    """Publish the terminal document only from the exact durable intent."""
+    context, output = _require_execution_lease(context, lease)
+    _execution_context_for_operation(context, "terminal")
+    manifest = output / MANIFEST_FILENAME
+    if manifest.exists() or manifest.with_name(f".{manifest.name}.tmp").exists():
+        raise SuccessorControlError("terminal publication order is closed")
+    intent = _stored_terminal_intent(context, lease, terminal_intent)
+    terminal = _expected_terminal_document(intent)
+    _atomic_write_once_or_identical(
+        output / TERMINAL_FILENAME,
+        canonical_json_bytes(terminal),
+    )
+    return terminal
+
+
+def _stored_terminal_document(
+    context: _ValidatedExecutionContext,
+    lease: ExecutionLease,
+    supplied: Mapping[str, Any] | None = None,
+) -> dict[str, Any]:
+    context, output = _require_execution_lease(context, lease)
+    stored = _read_canonical_document(output / TERMINAL_FILENAME, "terminal")
+    if supplied is not None:
+        normalized_supplied = _copy_mapping(supplied, "terminal")
+        if canonical_json_bytes(normalized_supplied) != canonical_json_bytes(stored):
+            raise SuccessorControlError(
+                "supplied terminal differs from published bytes"
+            )
+    intent = _stored_terminal_intent(context, lease)
+    expected = _expected_terminal_document(intent)
+    if stored != expected:
+        raise SuccessorControlError("terminal document drifted")
+    return stored
+
+
+def publish_artifact_manifest(
+    context: _ValidatedExecutionContext,
+    lease: ExecutionLease,
+    *,
+    terminal_document: Mapping[str, Any] | None = None,
+) -> dict[str, Any]:
+    """Close managed evidence by publishing the artifact manifest last."""
+    context, output = _require_execution_lease(context, lease)
+    _execution_context_for_operation(context, "terminal")
+    terminal = _stored_terminal_document(context, lease, terminal_document)
+    inventory = _observe_artifact_inventory(
+        output,
+        excluded_paths=(MANIFEST_FILENAME,),
+    )
+    body = {
+        "artifact_inventory": inventory,
+        "downstream_authority": _copy_mapping(
+            context.request["downstream_authority"],
+            "manifest downstream authority",
+        ),
+        "identity": _context_identity(context),
+        "schema_version": MANIFEST_SCHEMA_VERSION,
+        "terminal_intent_sha256": terminal["terminal_intent_sha256"],
+        "terminal_sha256": terminal["terminal_sha256"],
+    }
+    manifest = {**body, "manifest_sha256": canonical_json_sha256(body)}
+    _atomic_write_once_or_identical(
+        output / MANIFEST_FILENAME,
+        canonical_json_bytes(manifest),
+    )
+    return manifest
 
 
 def build_parser() -> argparse.ArgumentParser:

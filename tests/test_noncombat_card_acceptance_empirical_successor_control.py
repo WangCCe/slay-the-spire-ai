@@ -972,3 +972,215 @@ def test_partial_chunk_and_post_canary_reopen_fail_closed(tmp_path):
         (canary_output / "stages" / "canary.json").write_bytes(b"started\n")
         with pytest.raises(control.SuccessorControlError, match="canary|post"):
             control.classify_execution_reopen(context, lease)
+
+
+def test_artifact_terminal_intent_terminal_and_manifest_close_in_order(tmp_path):
+    control = _control()
+    context = _training_context(control)
+    output = tmp_path / "execution"
+    clock_values = iter((100.0, 102.5))
+
+    with control.ExecutionLease(
+        output,
+        context=context,
+        child_process_id=6200,
+        process_alive=lambda process_id: process_id == 6200,
+        clock=lambda: next(clock_values),
+    ) as lease:
+        control.initialize_access_journal(context, lease)
+        control.initialize_resource_ledger(context, lease)
+        artifact = control.publish_managed_artifact(
+            context,
+            lease,
+            relative_path="evidence/summary.json",
+            payload=control.canonical_json_bytes({"synthetic": True}),
+        )
+
+        intent = control.publish_terminal_intent(
+            context,
+            lease,
+            verdict="training_completed",
+            details={"reason": "synthetic-source-only-test"},
+        )
+        prefix_paths = [
+            row["path"] for row in intent["artifact_prefix"]["artifacts"]
+        ]
+        assert prefix_paths == sorted(prefix_paths)
+        assert artifact in intent["artifact_prefix"]["artifacts"]
+        assert control.ACCESS_JOURNAL_FILENAME in prefix_paths
+        assert control.RESOURCE_LEDGER_FILENAME in prefix_paths
+        assert intent["resource_prefix"]["resources"]["charged_seconds"] == 2.5
+        with pytest.raises(control.SuccessorControlError, match="terminal|closed"):
+            control.publish_managed_artifact(
+                context,
+                lease,
+                relative_path="evidence/late.json",
+                payload=b"late\n",
+            )
+
+        terminal = control.publish_terminal_document(
+            context,
+            lease,
+            terminal_intent=intent,
+        )
+        manifest = control.publish_artifact_manifest(
+            context,
+            lease,
+            terminal_document=terminal,
+        )
+
+        assert terminal["terminal_intent_sha256"] == intent[
+            "terminal_intent_sha256"
+        ]
+        assert manifest["terminal_sha256"] == terminal["terminal_sha256"]
+        manifest_paths = [
+            row["path"] for row in manifest["artifact_inventory"]["artifacts"]
+        ]
+        assert control.TERMINAL_INTENT_FILENAME in manifest_paths
+        assert control.TERMINAL_FILENAME in manifest_paths
+        assert control.MANIFEST_FILENAME not in manifest_paths
+        assert (output / control.MANIFEST_FILENAME).read_bytes() == (
+            control.canonical_json_bytes(manifest)
+        )
+
+
+def test_terminal_publication_rejects_incomplete_order_and_prefix_drift(tmp_path):
+    control = _control()
+    context = _training_context(control)
+    output = tmp_path / "execution"
+    clock_values = iter((200.0, 201.0))
+
+    with control.ExecutionLease(
+        output,
+        context=context,
+        child_process_id=6201,
+        process_alive=lambda process_id: process_id == 6201,
+        clock=lambda: next(clock_values),
+    ) as lease:
+        control.initialize_access_journal(context, lease)
+        control.initialize_resource_ledger(context, lease)
+        artifact_path = output / "evidence" / "summary.json"
+        control.publish_managed_artifact(
+            context,
+            lease,
+            relative_path="evidence/summary.json",
+            payload=b'{"value":1}\n',
+        )
+
+        with pytest.raises(control.SuccessorControlError, match="intent|order"):
+            control.publish_terminal_document(context, lease)
+        assert not (output / control.TERMINAL_FILENAME).exists()
+
+        intent = control.publish_terminal_intent(
+            context,
+            lease,
+            verdict="training_failed",
+            details={"reason": "synthetic"},
+        )
+        with pytest.raises(control.SuccessorControlError, match="terminal|order"):
+            control.publish_artifact_manifest(context, lease)
+        assert not (output / control.MANIFEST_FILENAME).exists()
+
+        artifact_path.write_bytes(b'{"value":2}\n')
+        with pytest.raises(control.SuccessorControlError, match="prefix|drift"):
+            control.publish_terminal_document(
+                context,
+                lease,
+                terminal_intent=intent,
+            )
+        assert artifact_path.read_bytes() == b'{"value":2}\n'
+        assert not (output / control.TERMINAL_FILENAME).exists()
+
+
+def test_existing_drift_and_ambiguous_staging_fail_without_repair(tmp_path):
+    control = _control()
+    context = _training_context(control)
+    output = tmp_path / "execution"
+
+    with control.ExecutionLease(
+        output,
+        context=context,
+        child_process_id=6202,
+        process_alive=lambda process_id: process_id == 6202,
+    ) as lease:
+        control.initialize_access_journal(context, lease)
+        control.initialize_resource_ledger(context, lease)
+        artifact_path = output / "evidence" / "summary.bin"
+        artifact_path.parent.mkdir()
+        artifact_path.write_bytes(b"original")
+
+        with pytest.raises(control.SuccessorControlError, match="drift"):
+            control.publish_managed_artifact(
+                context,
+                lease,
+                relative_path="evidence/summary.bin",
+                payload=b"replacement",
+            )
+        assert artifact_path.read_bytes() == b"original"
+
+        staging = artifact_path.with_name(f".{artifact_path.name}.tmp")
+        staging.write_bytes(b"ambiguous")
+        with pytest.raises(control.SuccessorControlError, match="ambiguous staging"):
+            control.publish_managed_artifact(
+                context,
+                lease,
+                relative_path="evidence/summary.bin",
+                payload=b"original",
+            )
+        assert artifact_path.read_bytes() == b"original"
+        assert staging.read_bytes() == b"ambiguous"
+
+        absent_path = output / "evidence" / "absent.bin"
+        absent_staging = absent_path.with_name(f".{absent_path.name}.tmp")
+        absent_staging.write_bytes(b"unowned")
+        with pytest.raises(control.SuccessorControlError, match="ambiguous staging"):
+            control.publish_managed_artifact(
+                context,
+                lease,
+                relative_path="evidence/absent.bin",
+                payload=b"new",
+            )
+        assert not absent_path.exists()
+        assert absent_staging.read_bytes() == b"unowned"
+
+
+def test_checkpoint_republication_rejects_ambiguous_staging(tmp_path):
+    control = _control()
+    context = _training_context(control)
+    output = tmp_path / "execution"
+
+    with control.ExecutionLease(
+        output,
+        context=context,
+        child_process_id=6203,
+        process_alive=lambda process_id: process_id == 6203,
+    ) as lease:
+        control.initialize_access_journal(context, lease)
+        control.initialize_resource_ledger(context, lease)
+        _debit_complete_training_chunk(control, context, lease)
+        control.advance_resource_ledger(
+            context,
+            lease,
+            charged_seconds=10.0,
+            environment_accesses=128,
+            optimizer_steps=2,
+            shadow_optimizer_steps=0,
+            reason="complete-training-chunk",
+        )
+        marker = control.publish_complete_training_checkpoint(
+            context,
+            lease,
+            binding=_complete_checkpoint_binding(),
+        )
+        checkpoint = output / "checkpoints" / "chunk_0001.json"
+        staging = checkpoint.with_name(f".{checkpoint.name}.tmp")
+        staging.write_bytes(b"ambiguous")
+
+        with pytest.raises(control.SuccessorControlError, match="ambiguous staging"):
+            control.publish_complete_training_checkpoint(
+                context,
+                lease,
+                binding=_complete_checkpoint_binding(),
+            )
+        assert checkpoint.read_bytes() == control.canonical_json_bytes(marker)
+        assert staging.read_bytes() == b"ambiguous"
