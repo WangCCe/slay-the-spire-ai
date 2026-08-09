@@ -65,6 +65,12 @@ GRADIENT_RECONSTRUCTION_RTOL = 1e-6
 GRADIENT_RECONSTRUCTION_ATOL = 1e-7
 MAX_DECISIONS_PER_EPISODE = 500
 MAX_CHARGED_SECONDS = 28_800.0
+MAX_TRAINING_ENVIRONMENT_ACCESSES = 1_024
+MAX_TRAINING_OPTIMIZER_STEPS = 16
+MAX_SHADOW_OPTIMIZER_STEPS = 1
+MAX_CANARY_ENVIRONMENT_ACCESSES = 512
+MAX_HOLDOUT_ENVIRONMENT_ACCESSES = 1_024
+MAX_TOTAL_ENVIRONMENT_ACCESSES = 2_560
 REGISTERED_SUPPORT_BLOCKERS = (
     "unsupported_shop_courier_restock_semantics",
 )
@@ -1646,17 +1652,144 @@ def _sample_arm_training_decision(
     )
 
 
-def rollout_arm_training_episode(
+def _select_arm_frozen_decision(
+    bootstrap: PairedBootstrap,
+    *,
+    arm: ArmName,
+    snapshot: Mapping[str, Any],
+    candidates: Sequence[Mapping[str, Any]],
+    seed: int,
+    decision_index: int,
+) -> ArmRolloutDecision:
+    try:
+        policy_input = project_state_conditioned_policy_input(snapshot, candidates)
+    except PolicyInputError as exc:
+        raise SuccessorRuntimeError(str(exc)) from exc
+
+    decision_id = f"{arm}:seed-{seed}:decision-{decision_index}"
+    category = snapshot["category"]
+    if category not in simulator_adapter.TARGET_CATEGORIES:
+        raise SuccessorRuntimeError("nonterminal episode category is unsupported")
+
+    with torch.no_grad():
+        if category == "card_reward":
+            try:
+                output = forward_card_policy(
+                    bootstrap,
+                    arm=arm,
+                    state_features=policy_input.state_features,
+                    candidate_features=policy_input.candidate_features,
+                    candidates=candidates,
+                )
+                provisional = build_card_acceptance_policy_terms(
+                    output.family_logits,
+                    output.conditional_logits,
+                    candidates,
+                    str(candidates[0]["action_id"]),
+                    category="card_reward",
+                )
+                selected_action_id = select_two_stage_action(
+                    provisional,
+                    greedy=True,
+                )
+                terms = build_card_acceptance_policy_terms(
+                    output.family_logits,
+                    output.conditional_logits,
+                    candidates,
+                    selected_action_id,
+                    category="card_reward",
+                )
+            except (
+                CardAcceptanceObjectiveError,
+                CardAcceptancePolicyError,
+                RuntimeError,
+                TypeError,
+                ValueError,
+            ) as exc:
+                raise SuccessorRuntimeError(str(exc)) from exc
+            diagnostic: dict[str, Any] = {
+                "category": category,
+                "decision_id": decision_id,
+                "decision_index": decision_index,
+                "family_order": list(terms.family_order),
+                "family_probabilities": {
+                    family: float(terms.family_probabilities[index].item())
+                    for index, family in enumerate(terms.family_order)
+                },
+                "multi_family": len(terms.family_order) > 1,
+                "selected_action_id": selected_action_id,
+                "selected_family": terms.selected_family,
+                "selection_mode": "unique-two-stage-greedy-v1",
+                "two_stage_greedy_action_ids": list(
+                    terms.two_stage_greedy_action_ids
+                ),
+                "unique_greedy_family_id": terms.unique_greedy_family_id,
+            }
+            card_terms: CardAcceptancePolicyTerms | None = terms
+        else:
+            try:
+                scores = score_noncard_candidates(
+                    bootstrap,
+                    arm=arm,
+                    category=str(category),
+                    state_features=policy_input.state_features,
+                    candidate_features=policy_input.candidate_features,
+                )
+            except (RuntimeError, TypeError, ValueError) as exc:
+                raise SuccessorRuntimeError(str(exc)) from exc
+            if not bool(torch.isfinite(scores).all().item()):
+                raise SuccessorRuntimeError("non-card scores must be finite")
+            maximum = torch.max(scores)
+            maximum_indices = torch.nonzero(
+                scores == maximum,
+                as_tuple=False,
+            ).reshape(-1)
+            maximum_action_ids = [
+                str(candidates[int(index.item())]["action_id"])
+                for index in maximum_indices
+            ]
+            if len(maximum_action_ids) != 1:
+                raise SuccessorRuntimeError(
+                    "non-card raw-score maximum tie has no unique choice"
+                )
+            selected_action_id = maximum_action_ids[0]
+            diagnostic = {
+                "candidate_scores": {
+                    str(candidate["action_id"]): float(scores[index].item())
+                    for index, candidate in enumerate(candidates)
+                },
+                "category": category,
+                "decision_id": decision_id,
+                "decision_index": decision_index,
+                "raw_score_max_action_ids": maximum_action_ids,
+                "selected_action_id": selected_action_id,
+                "selection_mode": "unique-raw-score-greedy-v1",
+            }
+            card_terms = None
+
+    return ArmRolloutDecision(
+        arm=arm,
+        category=str(category),
+        decision_id=decision_id,
+        decision_index=decision_index,
+        selected_action_id=selected_action_id,
+        state_features=policy_input.state_features.detach().clone(),
+        card_terms=card_terms,
+        diagnostic=diagnostic,
+    )
+
+
+def _rollout_arm_episode(
     bootstrap: PairedBootstrap,
     *,
     arm: ArmName,
     environment_factory: Callable[[int], Any],
     seed: int,
+    decision_selector: Callable[..., ArmRolloutDecision],
     max_decisions: int = MAX_DECISIONS_PER_EPISODE,
     deadline: float | None = None,
     clock: Callable[[], float] = time.monotonic,
 ) -> ArmEpisodeRollout:
-    """Run one clone-only arm trajectory with card-only trainable routing."""
     normalized_arm = _validated_arm(arm)
     _validate_rollout_bootstrap(bootstrap)
     if isinstance(seed, bool) or not isinstance(seed, int) or seed < 0:
@@ -1711,7 +1844,7 @@ def rollout_arm_training_episode(
             break
         if len(decisions) >= max_decisions:
             raise SuccessorRuntimeError("episode decision ceiling reached")
-        decision = _sample_arm_training_decision(
+        decision = decision_selector(
             bootstrap,
             arm=normalized_arm,
             snapshot=snapshot,
@@ -1800,7 +1933,7 @@ def rollout_arm_training_episode(
             raise SuccessorRuntimeError("terminal episode outcome is invalid")
     if not decisions:
         raise SuccessorRuntimeError(
-            "training episode must contain at least one decision"
+            "episode must contain at least one decision"
         )
     _validate_rollout_bootstrap(bootstrap)
     if _model_state_bytes(frozen_ranker) != frozen_before:
@@ -1816,6 +1949,52 @@ def rollout_arm_training_episode(
         floor_progress=floor_progress,
         terminal_victory=terminal_victory,
         unsupported_reason=unsupported_reason,
+    )
+
+
+def rollout_arm_training_episode(
+    bootstrap: PairedBootstrap,
+    *,
+    arm: ArmName,
+    environment_factory: Callable[[int], Any],
+    seed: int,
+    max_decisions: int = MAX_DECISIONS_PER_EPISODE,
+    deadline: float | None = None,
+    clock: Callable[[], float] = time.monotonic,
+) -> ArmEpisodeRollout:
+    """Run one clone-only arm trajectory with card-only trainable routing."""
+    return _rollout_arm_episode(
+        bootstrap,
+        arm=arm,
+        environment_factory=environment_factory,
+        seed=seed,
+        decision_selector=_sample_arm_training_decision,
+        max_decisions=max_decisions,
+        deadline=deadline,
+        clock=clock,
+    )
+
+
+def rollout_arm_frozen_evaluation(
+    bootstrap: PairedBootstrap,
+    *,
+    arm: ArmName,
+    environment_factory: Callable[[int], Any],
+    seed: int,
+    max_decisions: int = MAX_DECISIONS_PER_EPISODE,
+    deadline: float | None = None,
+    clock: Callable[[], float] = time.monotonic,
+) -> ArmEpisodeRollout:
+    """Run one clone-only arm trajectory without sampling or mutation."""
+    return _rollout_arm_episode(
+        bootstrap,
+        arm=arm,
+        environment_factory=environment_factory,
+        seed=seed,
+        decision_selector=_select_arm_frozen_decision,
+        max_decisions=max_decisions,
+        deadline=deadline,
+        clock=clock,
     )
 
 
@@ -1860,6 +2039,53 @@ def rollout_paired_training_episode(
         deadline=paired_deadline,
         clock=clock,
     )
+    return PairedEpisodeRollout(seed=seed, candidate=candidate, control=control)
+
+
+def rollout_paired_frozen_evaluation(
+    bootstrap: PairedBootstrap,
+    *,
+    environment_factory: Callable[[int], Any],
+    seed: int,
+    max_decisions: int = MAX_DECISIONS_PER_EPISODE,
+    deadline: float | None = None,
+    clock: Callable[[], float] = time.monotonic,
+) -> PairedEpisodeRollout:
+    """Evaluate both arms greedily while preserving every bootstrap byte."""
+    if not callable(clock):
+        raise SuccessorRuntimeError("paired evaluation clock must be callable")
+    before = encode_paired_bootstrap(bootstrap)
+    now = float(clock())
+    paired_deadline = now + MAX_CHARGED_SECONDS if deadline is None else float(deadline)
+    if (
+        not math.isfinite(now)
+        or not math.isfinite(paired_deadline)
+        or paired_deadline < now
+        or paired_deadline > now + MAX_CHARGED_SECONDS
+    ):
+        raise SuccessorRuntimeError(
+            "paired evaluation deadline exceeds the registered bound"
+        )
+    candidate = rollout_arm_frozen_evaluation(
+        bootstrap,
+        arm="candidate",
+        environment_factory=environment_factory,
+        seed=seed,
+        max_decisions=max_decisions,
+        deadline=paired_deadline,
+        clock=clock,
+    )
+    control = rollout_arm_frozen_evaluation(
+        bootstrap,
+        arm="control",
+        environment_factory=environment_factory,
+        seed=seed,
+        max_decisions=max_decisions,
+        deadline=paired_deadline,
+        clock=clock,
+    )
+    if encode_paired_bootstrap(bootstrap) != before:
+        raise SuccessorRuntimeError("frozen evaluation mutated bootstrap state")
     return PairedEpisodeRollout(seed=seed, candidate=candidate, control=control)
 
 
@@ -3078,6 +3304,60 @@ def training_resource_use(runtime: PairedTrainingRuntime) -> dict[str, int]:
     }
 
 
+def build_successor_resource_ledger(
+    *,
+    training_environment_accesses: int,
+    training_optimizer_steps: int,
+    shadow_optimizer_steps: int,
+    canary_environment_accesses: int,
+    holdout_environment_accesses: int,
+) -> dict[str, int]:
+    """Validate and total the complete successor resource coordinates."""
+    values = {
+        "training_environment_accesses": training_environment_accesses,
+        "training_optimizer_steps": training_optimizer_steps,
+        "shadow_optimizer_steps": shadow_optimizer_steps,
+        "canary_environment_accesses": canary_environment_accesses,
+        "holdout_environment_accesses": holdout_environment_accesses,
+    }
+    for name, value in values.items():
+        if isinstance(value, bool) or not isinstance(value, int) or value < 0:
+            raise SuccessorRuntimeError(
+                f"{name.replace('_', ' ')} must be a nonnegative integer"
+            )
+    ceilings = {
+        "training_environment_accesses": MAX_TRAINING_ENVIRONMENT_ACCESSES,
+        "training_optimizer_steps": MAX_TRAINING_OPTIMIZER_STEPS,
+        "shadow_optimizer_steps": MAX_SHADOW_OPTIMIZER_STEPS,
+        "canary_environment_accesses": MAX_CANARY_ENVIRONMENT_ACCESSES,
+        "holdout_environment_accesses": MAX_HOLDOUT_ENVIRONMENT_ACCESSES,
+    }
+    for name, ceiling in ceilings.items():
+        if values[name] > ceiling:
+            raise SuccessorRuntimeError(
+                f"{name.replace('_', ' ')} exceeds the registered ceiling"
+            )
+
+    total_environment_accesses = (
+        training_environment_accesses
+        + canary_environment_accesses
+        + holdout_environment_accesses
+    )
+    if total_environment_accesses > MAX_TOTAL_ENVIRONMENT_ACCESSES:
+        raise SuccessorRuntimeError(
+            "total environment accesses exceed the registered ceiling"
+        )
+    return {
+        "canary_environment_accesses": canary_environment_accesses,
+        "holdout_environment_accesses": holdout_environment_accesses,
+        "shadow_optimizer_steps": shadow_optimizer_steps,
+        "total_environment_accesses": total_environment_accesses,
+        "total_optimizer_steps": training_optimizer_steps + shadow_optimizer_steps,
+        "training_environment_accesses": training_environment_accesses,
+        "training_optimizer_steps": training_optimizer_steps,
+    }
+
+
 def run_bounded_paired_training(
     runtime: PairedTrainingRuntime,
     *,
@@ -3164,6 +3444,7 @@ __all__ = [
     "build_arm_optimizers",
     "build_matched_bootstrap",
     "build_paired_cross_fitted_baselines",
+    "build_successor_resource_ledger",
     "classify_candidate_family_saturation",
     "collect_and_complete_paired_training_chunk",
     "complete_paired_training_chunk",
@@ -3176,7 +3457,9 @@ __all__ = [
     "restore_optimizer_state",
     "restore_paired_bootstrap",
     "restore_paired_training_checkpoint",
+    "rollout_arm_frozen_evaluation",
     "rollout_arm_training_episode",
+    "rollout_paired_frozen_evaluation",
     "rollout_paired_training_episode",
     "run_bounded_paired_training",
     "runtime_metadata",

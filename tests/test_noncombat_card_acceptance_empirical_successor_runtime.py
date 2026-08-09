@@ -990,6 +990,99 @@ def test_paired_training_rollout_uses_same_seed_fixed_arm_order_and_frozen_routi
             assert torch.equal(tensor, frozen_before[arm][name])
 
 
+def test_paired_frozen_evaluation_is_greedy_repeatable_and_state_immutable():
+    runtime = _runtime()
+    bootstrap = runtime.build_matched_bootstrap()
+    before = runtime.encode_paired_bootstrap(bootstrap)
+
+    first = runtime.rollout_paired_frozen_evaluation(
+        bootstrap,
+        environment_factory=lambda seed: _RolloutEnvironment(
+            seed, ("card_reward", "route")
+        ),
+        seed=29,
+    )
+    second = runtime.rollout_paired_frozen_evaluation(
+        bootstrap,
+        environment_factory=lambda seed: _RolloutEnvironment(
+            seed, ("card_reward", "route")
+        ),
+        seed=29,
+    )
+
+    assert runtime.encode_paired_bootstrap(bootstrap) == before
+    for arm_first, arm_second in (
+        (first.candidate, second.candidate),
+        (first.control, second.control),
+    ):
+        assert tuple(
+            decision.selected_action_id for decision in arm_first.decisions
+        ) == tuple(
+            decision.selected_action_id for decision in arm_second.decisions
+        )
+        card = arm_first.decisions[0]
+        route = arm_first.decisions[1]
+        assert card.card_terms is not None
+        assert card.selected_action_id == (
+            card.card_terms.unique_two_stage_greedy_action_id
+        )
+        maximum_ids = route.diagnostic["raw_score_max_action_ids"]
+        assert maximum_ids == [route.selected_action_id]
+        assert arm_first.final_snapshot == arm_second.final_snapshot
+
+
+def test_frozen_noncard_evaluation_rejects_raw_score_ties():
+    runtime = _runtime()
+    bootstrap = runtime.build_matched_bootstrap()
+    with torch.no_grad():
+        for ranker in (
+            bootstrap.candidate.frozen_noncard_ranker,
+            bootstrap.control.frozen_noncard_ranker,
+        ):
+            for parameter in ranker.parameters():
+                parameter.zero_()
+
+    with pytest.raises(
+        runtime.SuccessorRuntimeError,
+        match="non-card.*tie|raw-score.*tie|unique",
+    ):
+        runtime.rollout_paired_frozen_evaluation(
+            bootstrap,
+            environment_factory=lambda seed: _RolloutEnvironment(seed, ("route",)),
+            seed=31,
+        )
+
+
+def test_successor_resource_ledger_keeps_training_and_shadow_steps_distinct():
+    runtime = _runtime()
+
+    ledger = runtime.build_successor_resource_ledger(
+        training_environment_accesses=1_024,
+        training_optimizer_steps=16,
+        shadow_optimizer_steps=1,
+        canary_environment_accesses=512,
+        holdout_environment_accesses=1_024,
+    )
+
+    assert ledger == {
+        "canary_environment_accesses": 512,
+        "holdout_environment_accesses": 1_024,
+        "shadow_optimizer_steps": 1,
+        "total_environment_accesses": 2_560,
+        "total_optimizer_steps": 17,
+        "training_environment_accesses": 1_024,
+        "training_optimizer_steps": 16,
+    }
+    with pytest.raises(runtime.SuccessorRuntimeError, match="shadow"):
+        runtime.build_successor_resource_ledger(
+            training_environment_accesses=0,
+            training_optimizer_steps=0,
+            shadow_optimizer_steps=2,
+            canary_environment_accesses=0,
+            holdout_environment_accesses=0,
+        )
+
+
 def test_state_only_baseline_folding_is_fixed_float32_modulo_128():
     runtime = _runtime()
     source = torch.ones(HASH_DIM, dtype=torch.float32)

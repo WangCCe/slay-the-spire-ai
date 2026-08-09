@@ -14,7 +14,7 @@
 - [x] 2.3 Integrate the registered cross-fitted baseline independently per arm and construct exact unscaled card-reward advantages without post-processing.
 - [x] 2.4 Implement the matched four-component losses, per-arm gradient ledgers/global clips, fixed Adam steps, and retained replay evidence.
 - [x] 2.5 Implement at most eight 64-seed paired training chunks, exact completion when no stop fires, complete-boundary paired checkpointing, resource accounting, and candidate-only four-chunk exact greedy-family saturation stop.
-- [ ] 2.6 Implement frozen candidate/control evaluation, two-stage tie-free card selection, bounded decision/terminal evidence, and a distinct resource ledger for 16 training optimizer steps plus at most one isolated non-mutating canary shadow step.
+- [x] 2.6 Implement frozen candidate/control evaluation, two-stage tie-free card selection, bounded decision/terminal evidence, and a distinct resource ledger for 16 training optimizer steps plus at most one isolated non-mutating canary shadow step.
 - [x] 2.7 Add saturation-boundary regressions for fewer than four chunks, first trigger at chunk four, exact no-stop `512 pairs/8 updates per arm`, and zero canary/holdout access after a stop.
 
 ## 3. Control Plane And Lifecycle
