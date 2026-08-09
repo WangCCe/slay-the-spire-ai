@@ -215,9 +215,24 @@ def test_verifier_contract_is_independent_and_keeps_all_empirical_authority_fals
     assert set(contract["authority"].values()) == {False}
 
 
-def test_source_inventory_binds_closed_modules_and_transitive_dependencies(tmp_path):
+def test_source_inventory_binds_closed_modules_and_transitive_dependencies(
+    tmp_path, monkeypatch
+):
     control = _control()
     declaration = control.module_dependency_inventory()
+    preservation = {
+        "artifact_file_count": 13,
+        "artifact_root_count": 3,
+        "manifest_sha256": "9" * 64,
+        "source_file_count": 5,
+        "verified": True,
+    }
+    observations = []
+    monkeypatch.setattr(
+        control,
+        "verify_consumed_evidence_preservation",
+        lambda repo_root: (observations.append(Path(repo_root)), preservation)[1],
+    )
     expected_dependencies = (
         "analysis_scripts_package",
         "action_family_distribution",
@@ -254,14 +269,396 @@ def test_source_inventory_binds_closed_modules_and_transitive_dependencies(tmp_p
 
     assert first == second
     assert first["schema_version"] == (
-        "noncombat-card-acceptance-empirical-successor-source-inventory-v1"
+        "noncombat-card-acceptance-empirical-successor-source-inventory-v2"
     )
+    assert first["consumed_evidence_preservation"] == preservation
+    assert observations == [tmp_path.resolve(), tmp_path.resolve()]
     body = {key: value for key, value in first.items() if key != "inventory_sha256"}
     assert first["inventory_sha256"] == control.canonical_json_sha256(body)
     assert all(row["size_bytes"] > 0 for row in first["modules"])
     changed_path = tmp_path / declaration["public_dependencies"][0]["path"]
     changed_path.write_bytes(b"changed\n")
     assert control.build_source_inventory(tmp_path) != first
+
+
+def _preservation_json_payload(value):
+    return json.dumps(
+        value,
+        sort_keys=True,
+        separators=(",", ":"),
+        ensure_ascii=True,
+        allow_nan=False,
+    ).encode("ascii")
+
+
+def _preservation_file_row(path, payload):
+    git_blob = b"blob " + str(len(payload)).encode("ascii") + b"\0" + payload
+    return {
+        "git_blob_oid": hashlib.sha1(git_blob).hexdigest(),
+        "path": path,
+        "sha256": hashlib.sha256(payload).hexdigest(),
+        "size_bytes": len(payload),
+    }
+
+
+def _preservation_git(repo, *args):
+    completed = subprocess.run(
+        ["git", *args],
+        cwd=repo,
+        check=True,
+        capture_output=True,
+        text=True,
+    )
+    return completed.stdout.strip()
+
+
+def _write_preservation_fixture(tmp_path, monkeypatch, control):
+    source_paths = ("consumed/source_a.py", "consumed/source_b.py")
+    artifact_file_paths = ("reports/consumed.json",)
+    artifact_root_paths = ("reports/consumed-root",)
+    source_payloads = (b"VALUE = 1\n", b"OTHER = 2\n")
+    artifact_payload = b'{"consumed":true}\n'
+    rooted_payload = b"fixed-evidence\n"
+
+    for path, payload in zip(source_paths, source_payloads, strict=True):
+        target = tmp_path / path
+        target.parent.mkdir(parents=True, exist_ok=True)
+        target.write_bytes(payload)
+    artifact_target = tmp_path / artifact_file_paths[0]
+    artifact_target.parent.mkdir(parents=True, exist_ok=True)
+    artifact_target.write_bytes(artifact_payload)
+    rooted_target = tmp_path / artifact_root_paths[0] / "nested" / "evidence.bin"
+    rooted_target.parent.mkdir(parents=True, exist_ok=True)
+    rooted_target.write_bytes(rooted_payload)
+
+    _preservation_git(tmp_path, "init", "-q")
+    _preservation_git(tmp_path, "config", "user.email", "synthetic@example.invalid")
+    _preservation_git(tmp_path, "config", "user.name", "Synthetic Test")
+    _preservation_git(
+        tmp_path,
+        "add",
+        "consumed",
+        "reports/consumed.json",
+        "reports/consumed-root",
+    )
+    _preservation_git(tmp_path, "commit", "-q", "-m", "synthetic baseline")
+    baseline_commit = _preservation_git(tmp_path, "rev-parse", "HEAD")
+    baseline_tree = _preservation_git(tmp_path, "rev-parse", "HEAD^{tree}")
+
+    entries = [
+        {"path": "nested", "type": "directory"},
+        {
+            "path": "nested/evidence.bin",
+            "sha256": hashlib.sha256(rooted_payload).hexdigest(),
+            "size_bytes": len(rooted_payload),
+            "type": "file",
+        },
+    ]
+    baseline = {
+        "remote_commit": baseline_commit,
+        "remote_ref": "origin/master",
+        "source_commit": baseline_commit,
+        "source_tree": baseline_tree,
+        "tracked_worktree_clean": True,
+    }
+    body = {
+        "artifact_files": [
+            _preservation_file_row(artifact_file_paths[0], artifact_payload)
+        ],
+        "artifact_roots": [
+            {
+                "directory_count": 1,
+                "directory_inventory_sha256": hashlib.sha256(
+                    _preservation_json_payload(entries)
+                ).hexdigest(),
+                "entries": entries,
+                "file_count": 1,
+                "root": artifact_root_paths[0],
+                "total_file_bytes": len(rooted_payload),
+            }
+        ],
+        "baseline": baseline,
+        "closed_artifact_file_paths": list(artifact_file_paths),
+        "closed_artifact_root_paths": list(artifact_root_paths),
+        "closed_source_paths": list(source_paths),
+        "created_at_utc": "2026-08-10T00:00:00+00:00",
+        "directory_inventory_schema": "sorted-relative-path-type-rows-v1",
+        "manifest_id": "synthetic-preservation-v1",
+        "schema_version": "synthetic-preservation-schema-v1",
+        "source_files": [
+            _preservation_file_row(path, payload)
+            for path, payload in zip(source_paths, source_payloads, strict=True)
+        ],
+    }
+    manifest = {
+        **body,
+        "manifest_sha256": hashlib.sha256(
+            _preservation_json_payload(body)
+        ).hexdigest(),
+    }
+    manifest_path = tmp_path / "reports" / "preservation.json"
+    manifest_path.write_bytes(_preservation_json_payload(manifest) + b"\n")
+    _preservation_git(tmp_path, "add", "reports/preservation.json")
+    _preservation_git(tmp_path, "commit", "-q", "-m", "publish preservation")
+    publication_commit = _preservation_git(tmp_path, "rev-parse", "HEAD")
+    publication_tree = _preservation_git(tmp_path, "rev-parse", "HEAD^{tree}")
+    _preservation_git(
+        tmp_path,
+        "update-ref",
+        "refs/remotes/origin/master",
+        publication_commit,
+    )
+
+    monkeypatch.setattr(
+        control,
+        "CONSUMED_EVIDENCE_PRESERVATION_SCHEMA_VERSION",
+        manifest["schema_version"],
+    )
+    monkeypatch.setattr(
+        control,
+        "CONSUMED_EVIDENCE_PRESERVATION_MANIFEST_ID",
+        manifest["manifest_id"],
+    )
+    monkeypatch.setattr(
+        control,
+        "CONSUMED_EVIDENCE_PRESERVATION_MANIFEST_PATH",
+        "reports/preservation.json",
+    )
+    monkeypatch.setattr(
+        control,
+        "CONSUMED_EVIDENCE_PRESERVATION_MANIFEST_SHA256",
+        manifest["manifest_sha256"],
+    )
+    monkeypatch.setattr(
+        control,
+        "CONSUMED_EVIDENCE_PRESERVATION_BASELINE",
+        baseline,
+    )
+    monkeypatch.setattr(
+        control,
+        "CONSUMED_EVIDENCE_PRESERVATION_SOURCE_PATHS",
+        source_paths,
+    )
+    monkeypatch.setattr(
+        control,
+        "CONSUMED_EVIDENCE_PRESERVATION_ARTIFACT_FILE_PATHS",
+        artifact_file_paths,
+    )
+    monkeypatch.setattr(
+        control,
+        "CONSUMED_EVIDENCE_PRESERVATION_ARTIFACT_ROOT_PATHS",
+        artifact_root_paths,
+    )
+    monkeypatch.setattr(
+        control,
+        "CONSUMED_EVIDENCE_PRESERVATION_PUBLICATION_COMMIT",
+        publication_commit,
+        raising=False,
+    )
+    monkeypatch.setattr(
+        control,
+        "CONSUMED_EVIDENCE_PRESERVATION_PUBLICATION_TREE",
+        publication_tree,
+        raising=False,
+    )
+    return manifest_path
+
+
+def _rewrite_preservation_manifest(path, monkeypatch, control, manifest):
+    body = {key: value for key, value in manifest.items() if key != "manifest_sha256"}
+    manifest["manifest_sha256"] = hashlib.sha256(
+        _preservation_json_payload(body)
+    ).hexdigest()
+    path.write_bytes(_preservation_json_payload(manifest) + b"\n")
+    monkeypatch.setattr(
+        control,
+        "CONSUMED_EVIDENCE_PRESERVATION_MANIFEST_SHA256",
+        manifest["manifest_sha256"],
+    )
+    repo = path.parents[1]
+    _preservation_git(repo, "add", "-A")
+    _preservation_git(repo, "commit", "-q", "--amend", "--no-edit")
+    publication_commit = _preservation_git(repo, "rev-parse", "HEAD")
+    publication_tree = _preservation_git(repo, "rev-parse", "HEAD^{tree}")
+    _preservation_git(
+        repo,
+        "update-ref",
+        "refs/remotes/origin/master",
+        publication_commit,
+    )
+    monkeypatch.setattr(
+        control,
+        "CONSUMED_EVIDENCE_PRESERVATION_PUBLICATION_COMMIT",
+        publication_commit,
+        raising=False,
+    )
+    monkeypatch.setattr(
+        control,
+        "CONSUMED_EVIDENCE_PRESERVATION_PUBLICATION_TREE",
+        publication_tree,
+        raising=False,
+    )
+
+
+def test_reviewed_consumed_evidence_manifest_reobserves_current_repository():
+    control = _control()
+
+    result = control.verify_consumed_evidence_preservation(ROOT)
+
+    assert result == {
+        "artifact_file_count": 13,
+        "artifact_root_count": 3,
+        "baseline_source_commit": (
+            "6f620434ba962216fb4cab11bd4bb0a8aefc4674"
+        ),
+        "baseline_source_tree": (
+            "ad7c1c4f18af90966577c01a2851444ff66c66e1"
+        ),
+        "manifest_sha256": (
+            "6d5ec05d51a53a73c053e1591b3fb85d746c06efdc5c1b96f82a176e3de4e992"
+        ),
+        "publication_commit": (
+            "df706481140f62fd5b08aaa370d27b27360430f2"
+        ),
+        "publication_tree": "a04b20e870bad125d090f4e1b2ad90b438536e60",
+        "pushed_remote_ref": "origin/master",
+        "source_file_count": 5,
+        "verified": True,
+    }
+
+
+def test_consumed_evidence_preservation_accepts_exact_synthetic_fixture(
+    tmp_path, monkeypatch
+):
+    control = _control()
+    _write_preservation_fixture(tmp_path, monkeypatch, control)
+
+    result = control.verify_consumed_evidence_preservation(tmp_path)
+
+    assert result["verified"] is True
+    assert result["source_file_count"] == 2
+    assert result["artifact_file_count"] == 1
+    assert result["artifact_root_count"] == 1
+
+
+def test_consumed_evidence_preservation_requires_reviewed_git_publication(
+    tmp_path, monkeypatch
+):
+    control = _control()
+    _write_preservation_fixture(tmp_path, monkeypatch, control)
+    (tmp_path / ".git").rename(tmp_path / "git-disabled")
+
+    with pytest.raises(control.SuccessorControlError, match="Git|git|publication"):
+        control.verify_consumed_evidence_preservation(tmp_path)
+
+
+@pytest.mark.parametrize(
+    ("mutation", "message"),
+    (
+        ("changed", "source.*mismatch"),
+        ("missing", "missing"),
+        ("extra", "artifact root.*mismatch"),
+        ("reordered", "closed source"),
+        ("successor_import", "imports successor"),
+        ("successor_dynamic_import", "imports successor"),
+        ("successor_nested_dynamic_import", "imports successor"),
+        ("successor_getattr_dynamic_import", "imports successor"),
+        ("successor_getattr_alias_dynamic_import", "imports successor"),
+        ("successor_importlib_module_alias", "imports successor"),
+    ),
+)
+def test_consumed_evidence_preservation_rejects_closed_mutation_matrix(
+    tmp_path, monkeypatch, mutation, message
+):
+    control = _control()
+    manifest_path = _write_preservation_fixture(tmp_path, monkeypatch, control)
+    manifest = json.loads(manifest_path.read_bytes())
+
+    if mutation == "changed":
+        (tmp_path / manifest["closed_source_paths"][0]).write_bytes(b"VALUE = 9\n")
+    elif mutation == "missing":
+        (tmp_path / manifest["closed_artifact_file_paths"][0]).unlink()
+    elif mutation == "extra":
+        (tmp_path / manifest["closed_artifact_root_paths"][0] / "extra.bin").write_bytes(
+            b"extra\n"
+        )
+    elif mutation == "reordered":
+        manifest["closed_source_paths"].reverse()
+        manifest["source_files"].reverse()
+        _rewrite_preservation_manifest(
+            manifest_path, monkeypatch, control, manifest
+        )
+    elif mutation in {
+        "successor_import",
+        "successor_dynamic_import",
+        "successor_nested_dynamic_import",
+        "successor_getattr_dynamic_import",
+        "successor_getattr_alias_dynamic_import",
+        "successor_importlib_module_alias",
+    }:
+        path = tmp_path / manifest["closed_source_paths"][0]
+        if mutation == "successor_import":
+            payload = (
+                b"import analysis_scripts."
+                b"noncombat_card_acceptance_empirical_successor_runtime\n"
+            )
+        elif mutation == "successor_dynamic_import":
+            payload = (
+                b"import importlib\n"
+                b"importlib.import_module(\n"
+                b"    'analysis_scripts."
+                b"noncombat_card_acceptance_empirical_successor_runtime'\n"
+                b")\n"
+            )
+        elif mutation == "successor_nested_dynamic_import":
+            payload = (
+                b"def load_successor():\n"
+                b"    from importlib import import_module as load\n"
+                b"    return load(\n"
+                b"        'analysis_scripts."
+                b"noncombat_card_acceptance_empirical_successor_runtime'\n"
+                b"    )\n"
+            )
+        elif mutation == "successor_getattr_dynamic_import":
+            payload = (
+                b"import importlib\n"
+                b"getattr(importlib, 'import_module')(\n"
+                b"    'analysis_scripts."
+                b"noncombat_card_acceptance_empirical_successor_runtime'\n"
+                b")\n"
+            )
+        elif mutation == "successor_getattr_alias_dynamic_import":
+            payload = (
+                b"import importlib\n"
+                b"lookup = getattr\n"
+                b"loader = lookup(importlib, 'import_module')\n"
+                b"loader(\n"
+                b"    'analysis_scripts."
+                b"noncombat_card_acceptance_empirical_successor_runtime'\n"
+                b")\n"
+            )
+        else:
+            payload = (
+                b"import importlib\n"
+                b"module_loader = importlib\n"
+                b"loader = module_loader.import_module\n"
+                b"loader(\n"
+                b"    'analysis_scripts."
+                b"noncombat_card_acceptance_empirical_successor_runtime'\n"
+                b")\n"
+            )
+        path.write_bytes(payload)
+        manifest["source_files"][0] = _preservation_file_row(
+            manifest["closed_source_paths"][0], payload
+        )
+        _rewrite_preservation_manifest(
+            manifest_path, monkeypatch, control, manifest
+        )
+    else:
+        raise AssertionError(mutation)
+
+    with pytest.raises(control.SuccessorControlError, match=message):
+        control.verify_consumed_evidence_preservation(tmp_path)
 
 
 def test_experiment_configuration_identity_binds_canonical_contract():

@@ -42,13 +42,13 @@
 
 ## 5. Source-Only Qualification
 
-- [ ] 5.1 Run focused successor, architecture, cross-fitted dependency, lifecycle, inventory, and independent-verifier pytest with the registered Windows pytest temp convention.
-- [ ] 5.2 Run import-isolation probes and deterministic fixture/publication reconstruction in fresh processes.
-- [ ] 5.3 Reobserve the consumed-evidence preservation manifest after implementation and run mutation regressions proving changed, missing, extra, reordered, or successor-importing consumed entries fail.
-- [ ] 5.4 Run strict OpenSpec validation and request an independent code/spec/authority review; resolve all actionable findings.
-- [ ] 5.5 Run the configured commit test gate once and the configured full gate once at their reviewed boundaries, recording correctness and duration without retrying solely for timing.
-- [ ] 5.6 Record that fresh gameplay validation is not applicable because production imports, CommunicationMod configuration, and production checkpoint loading remain unchanged.
-- [ ] 5.7 Commit and push the clean source-only implementation before any cohort materialization, native loading, or seed access.
+- [x] 5.1 Run focused successor, architecture, cross-fitted dependency, lifecycle, inventory, and independent-verifier pytest with the registered Windows pytest temp convention.
+- [x] 5.2 Run import-isolation probes and deterministic fixture/publication reconstruction in fresh processes.
+- [x] 5.3 Reobserve the consumed-evidence preservation manifest after implementation and run mutation regressions proving changed, missing, extra, reordered, or successor-importing consumed entries fail.
+- [x] 5.4 Run strict OpenSpec validation and request an independent code/spec/authority review; resolve all actionable findings.
+- [x] 5.5 Run the configured commit test gate once and the configured full gate once at their reviewed boundaries, recording correctness and duration without retrying solely for timing.
+- [x] 5.6 Record that fresh gameplay validation is not applicable because production imports, CommunicationMod configuration, and production checkpoint loading remain unchanged.
+- [x] 5.7 Commit and push the clean source-only implementation before any cohort materialization, native loading, or seed access.
 
 ## 6. Registration And Training
 

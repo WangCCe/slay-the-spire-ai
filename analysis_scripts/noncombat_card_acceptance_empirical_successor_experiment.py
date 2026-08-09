@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import argparse
+import ast
 import copy
 import gzip
 import hashlib
@@ -13,6 +14,7 @@ import math
 import os
 import re
 import struct
+import subprocess
 import sys
 import time
 import uuid
@@ -32,7 +34,7 @@ DEPENDENCY_INVENTORY_SCHEMA_VERSION = (
     "noncombat-card-acceptance-empirical-successor-module-inventory-v1"
 )
 SOURCE_INVENTORY_SCHEMA_VERSION = (
-    "noncombat-card-acceptance-empirical-successor-source-inventory-v1"
+    "noncombat-card-acceptance-empirical-successor-source-inventory-v2"
 )
 CONFIG_IDENTITY_SCHEMA_VERSION = (
     "noncombat-card-acceptance-empirical-successor-config-identity-v1"
@@ -63,6 +65,61 @@ EXTERNAL_REVOCATION_OBSERVATION_SCHEMA_VERSION = (
 )
 RUNTIME_MODULE_NAME = (
     "analysis_scripts.noncombat_card_acceptance_empirical_successor_runtime"
+)
+CONSUMED_EVIDENCE_PRESERVATION_SCHEMA_VERSION = (
+    "noncombat-card-acceptance-consumed-evidence-preservation-v1"
+)
+CONSUMED_EVIDENCE_PRESERVATION_MANIFEST_ID = (
+    "noncombat-card-acceptance-empirical-successor-preservation-20260809"
+)
+CONSUMED_EVIDENCE_PRESERVATION_MANIFEST_PATH = (
+    "reports/noncombat_card_acceptance_empirical_successor_preservation_20260809.json"
+)
+CONSUMED_EVIDENCE_PRESERVATION_MANIFEST_SHA256 = (
+    "6d5ec05d51a53a73c053e1591b3fb85d746c06efdc5c1b96f82a176e3de4e992"
+)
+CONSUMED_EVIDENCE_PRESERVATION_PUBLICATION_COMMIT = (
+    "df706481140f62fd5b08aaa370d27b27360430f2"
+)
+CONSUMED_EVIDENCE_PRESERVATION_PUBLICATION_TREE = (
+    "a04b20e870bad125d090f4e1b2ad90b438536e60"
+)
+CONSUMED_EVIDENCE_DIRECTORY_INVENTORY_SCHEMA = (
+    "sorted-relative-path-type-rows-v1"
+)
+CONSUMED_EVIDENCE_PRESERVATION_BASELINE = {
+    "remote_commit": "6f620434ba962216fb4cab11bd4bb0a8aefc4674",
+    "remote_ref": "origin/master",
+    "source_commit": "6f620434ba962216fb4cab11bd4bb0a8aefc4674",
+    "source_tree": "ad7c1c4f18af90966577c01a2851444ff66c66e1",
+    "tracked_worktree_clean": True,
+}
+CONSUMED_EVIDENCE_PRESERVATION_SOURCE_PATHS = (
+    "analysis_scripts/noncombat_cross_fitted_hierarchical_learning_experiment.py",
+    "analysis_scripts/noncombat_cross_fitted_hierarchical_learning_runtime.py",
+    "analysis_scripts/verify_noncombat_cross_fitted_hierarchical_learning_experiment.py",
+    "analysis_scripts/noncombat_cross_fitted_hierarchical_learning_seed_inventory.py",
+    "openspec/specs/noncombat-cross-fitted-hierarchical-learning-successor/spec.md",
+)
+CONSUMED_EVIDENCE_PRESERVATION_ARTIFACT_FILE_PATHS = (
+    "reports/noncombat_cross_fitted_hierarchical_learning_successor_20260808_r2_registration.json",
+    "reports/noncombat_cross_fitted_hierarchical_learning_successor_20260808_r2_registration_review.json",
+    "reports/noncombat_cross_fitted_hierarchical_learning_successor_20260808_r2_execution_request.json",
+    "reports/noncombat_cross_fitted_hierarchical_learning_successor_20260808_r2_execution_request_review.json",
+    "reports/noncombat_cross_fitted_hierarchical_learning_standing_delegation_20260808.json",
+    "reports/noncombat_cross_fitted_hierarchical_learning_successor_20260808_r2_delegated_approval.json",
+    "reports/noncombat_cross_fitted_hierarchical_learning_successor_20260808_r2_delegated_approval_review.json",
+    "reports/noncombat_cross_fitted_hierarchical_learning_successor_20260808_r2_authorization.json",
+    "reports/noncombat_cross_fitted_hierarchical_learning_successor_20260808_r2_authorization_review.json",
+    "reports/noncombat_cross_fitted_hierarchical_learning_successor_20260808_r2_execution_preflight.json",
+    "reports/noncombat_cross_fitted_hierarchical_learning_successor_20260808_r2_postmortem.json",
+    "reports/noncombat_cross_fitted_hierarchical_learning_successor_20260808_r2_postmortem.md",
+    "reports/noncombat_cross_fitted_empirical_successor_readiness_20260808_r5_closeout.json",
+)
+CONSUMED_EVIDENCE_PRESERVATION_ARTIFACT_ROOT_PATHS = (
+    "reports/noncombat_cross_fitted_hierarchical_learning_successor_20260808_r2",
+    "reports/noncombat_cross_fitted_empirical_successor_readiness_20260808_r5",
+    "reports/noncombat_cross_fitted_empirical_successor_readiness_attempts/ffd9acc444258483d172529eccfe8ccb05c9bb9b",
 )
 
 _AUTHORITY_NAMES = (
@@ -770,9 +827,489 @@ def build_source_inventory(repo_root: Path | str) -> dict[str, Any]:
         ) from exc
     body = {
         **observed,
+        "consumed_evidence_preservation": verify_consumed_evidence_preservation(
+            root
+        ),
         "schema_version": SOURCE_INVENTORY_SCHEMA_VERSION,
     }
     return {**body, "inventory_sha256": canonical_json_sha256(body)}
+
+
+def _preservation_relative_path(value: object, label: str) -> str:
+    if not isinstance(value, str) or not value or "\\" in value or ":" in value:
+        raise SuccessorControlError(f"{label} path is invalid")
+    pure = PurePosixPath(value)
+    if (
+        pure.is_absolute()
+        or pure.as_posix() != value
+        or value.endswith("/")
+        or any(part in {"", ".", ".."} for part in pure.parts)
+    ):
+        raise SuccessorControlError(f"{label} path is invalid")
+    return value
+
+
+def _read_preserved_file(root: Path, relative_path: object, label: str) -> bytes:
+    relative = _preservation_relative_path(relative_path, label)
+    path = root.joinpath(*PurePosixPath(relative).parts)
+    cursor = root
+    for part in PurePosixPath(relative).parts:
+        cursor = cursor / part
+        if cursor.is_symlink():
+            raise SuccessorControlError(f"{label} path contains a symlink: {relative}")
+    if not path.is_file():
+        raise SuccessorControlError(f"{label} is missing: {relative}")
+    try:
+        return path.read_bytes()
+    except OSError as exc:
+        raise SuccessorControlError(f"{label} cannot be read: {relative}") from exc
+
+
+def _preservation_file_binding(relative_path: str, payload: bytes) -> dict[str, Any]:
+    git_blob = b"blob " + str(len(payload)).encode("ascii") + b"\0" + payload
+    return {
+        "git_blob_oid": hashlib.sha1(git_blob).hexdigest(),
+        "path": relative_path,
+        "sha256": hashlib.sha256(payload).hexdigest(),
+        "size_bytes": len(payload),
+    }
+
+
+def _static_import_string(
+    value: ast.expr, constants: Mapping[str, str]
+) -> str | None:
+    if isinstance(value, ast.Constant) and isinstance(value.value, str):
+        return value.value
+    if isinstance(value, ast.Name):
+        return constants.get(value.id)
+    if isinstance(value, ast.BinOp) and isinstance(value.op, ast.Add):
+        left = _static_import_string(value.left, constants)
+        right = _static_import_string(value.right, constants)
+        if left is not None and right is not None:
+            return left + right
+    return None
+
+
+def _is_dynamic_import_callable(
+    value: ast.expr,
+    *,
+    getattr_aliases: set[str],
+    importlib_aliases: set[str],
+    import_module_aliases: set[str],
+) -> bool:
+    if isinstance(value, ast.Name):
+        return value.id == "__import__" or value.id in import_module_aliases
+    if isinstance(value, ast.Attribute):
+        return (
+            value.attr == "import_module"
+            and isinstance(value.value, ast.Name)
+            and value.value.id in importlib_aliases
+        )
+    return (
+        isinstance(value, ast.Call)
+        and isinstance(value.func, ast.Name)
+        and value.func.id in getattr_aliases
+        and len(value.args) >= 2
+        and isinstance(value.args[0], ast.Name)
+        and value.args[0].id in importlib_aliases
+        and isinstance(value.args[1], ast.Constant)
+        and value.args[1].value == "import_module"
+    )
+
+
+def _reject_successor_import(relative_path: str, payload: bytes) -> None:
+    if not relative_path.endswith(".py"):
+        return
+    try:
+        tree = ast.parse(payload.decode("utf-8"), filename=relative_path)
+    except (SyntaxError, UnicodeDecodeError) as exc:
+        raise SuccessorControlError(
+            f"consumed source is not valid UTF-8 Python: {relative_path}"
+        ) from exc
+    imported_names: list[str] = []
+    getattr_aliases = {"getattr"}
+    importlib_aliases: set[str] = set()
+    import_module_aliases: set[str] = set()
+    string_constants: dict[str, str] = {}
+    for node in tree.body:
+        if isinstance(node, ast.Assign) and len(node.targets) == 1:
+            target = node.targets[0]
+            if isinstance(target, ast.Name):
+                value = _static_import_string(node.value, string_constants)
+                if value is not None:
+                    string_constants[target.id] = value
+        elif isinstance(node, ast.AnnAssign) and isinstance(node.target, ast.Name):
+            if node.value is not None:
+                value = _static_import_string(node.value, string_constants)
+                if value is not None:
+                    string_constants[node.target.id] = value
+    for node in ast.walk(tree):
+        if isinstance(node, ast.Import):
+            for alias in node.names:
+                if alias.name == "importlib":
+                    importlib_aliases.add(alias.asname or "importlib")
+        elif isinstance(node, ast.ImportFrom) and node.module == "importlib":
+            for alias in node.names:
+                if alias.name == "import_module":
+                    import_module_aliases.add(alias.asname or alias.name)
+    alias_assignments = [
+        node
+        for node in ast.walk(tree)
+        if isinstance(node, (ast.Assign, ast.AnnAssign))
+    ]
+    changed = True
+    while changed:
+        changed = False
+        for node in alias_assignments:
+            targets = node.targets if isinstance(node, ast.Assign) else [node.target]
+            value = node.value
+            if value is None:
+                continue
+            if isinstance(value, ast.Name) and value.id in getattr_aliases:
+                for target in targets:
+                    if isinstance(target, ast.Name) and target.id not in getattr_aliases:
+                        getattr_aliases.add(target.id)
+                        changed = True
+            if isinstance(value, ast.Name) and value.id in importlib_aliases:
+                for target in targets:
+                    if isinstance(target, ast.Name) and target.id not in importlib_aliases:
+                        importlib_aliases.add(target.id)
+                        changed = True
+            is_import_callable = _is_dynamic_import_callable(
+                value,
+                getattr_aliases=getattr_aliases,
+                importlib_aliases=importlib_aliases,
+                import_module_aliases=import_module_aliases,
+            )
+            if not is_import_callable:
+                continue
+            for target in targets:
+                if (
+                    isinstance(target, ast.Name)
+                    and target.id not in import_module_aliases
+                ):
+                    import_module_aliases.add(target.id)
+                    changed = True
+    for node in ast.walk(tree):
+        if isinstance(node, ast.Import):
+            imported_names.extend(alias.name for alias in node.names)
+        elif isinstance(node, ast.ImportFrom):
+            if node.module:
+                imported_names.append(node.module)
+            imported_names.extend(alias.name for alias in node.names)
+        elif isinstance(node, ast.Call):
+            dynamic_import = _is_dynamic_import_callable(
+                node.func,
+                getattr_aliases=getattr_aliases,
+                importlib_aliases=importlib_aliases,
+                import_module_aliases=import_module_aliases,
+            )
+            if dynamic_import:
+                if not node.args:
+                    raise SuccessorControlError(
+                        f"consumed source dynamic import is unresolved: {relative_path}"
+                    )
+                target = _static_import_string(node.args[0], string_constants)
+                if target is None:
+                    raise SuccessorControlError(
+                        f"consumed source dynamic import is unresolved: {relative_path}"
+                    )
+                imported_names.append(target)
+    if any("card_acceptance_empirical_successor" in name for name in imported_names):
+        raise SuccessorControlError(
+            f"consumed source imports successor: {relative_path}"
+        )
+
+
+def _observe_preserved_directory(root: Path, relative_path: object) -> dict[str, Any]:
+    relative = _preservation_relative_path(relative_path, "artifact root")
+    directory = root.joinpath(*PurePosixPath(relative).parts)
+    cursor = root
+    for part in PurePosixPath(relative).parts:
+        cursor = cursor / part
+        if cursor.is_symlink():
+            raise SuccessorControlError(
+                f"artifact root path contains a symlink: {relative}"
+            )
+    if not directory.is_dir():
+        raise SuccessorControlError(f"artifact root is missing: {relative}")
+    try:
+        candidates = sorted(
+            directory.rglob("*"),
+            key=lambda path: path.relative_to(directory).as_posix(),
+        )
+        entries: list[dict[str, Any]] = []
+        total_file_bytes = 0
+        directory_count = 0
+        file_count = 0
+        for path in candidates:
+            entry_path = path.relative_to(directory).as_posix()
+            if path.is_symlink():
+                raise SuccessorControlError(
+                    f"artifact root contains a symlink: {relative}/{entry_path}"
+                )
+            if path.is_dir():
+                directory_count += 1
+                entries.append({"path": entry_path, "type": "directory"})
+            elif path.is_file():
+                payload = path.read_bytes()
+                file_count += 1
+                total_file_bytes += len(payload)
+                entries.append(
+                    {
+                        "path": entry_path,
+                        "sha256": hashlib.sha256(payload).hexdigest(),
+                        "size_bytes": len(payload),
+                        "type": "file",
+                    }
+                )
+            else:
+                raise SuccessorControlError(
+                    f"artifact root contains a non-file entry: {relative}/{entry_path}"
+                )
+    except OSError as exc:
+        raise SuccessorControlError(
+            f"artifact root cannot be observed: {relative}"
+        ) from exc
+    inventory_payload = canonical_json_bytes(entries)[:-1]
+    return {
+        "directory_count": directory_count,
+        "directory_inventory_sha256": hashlib.sha256(inventory_payload).hexdigest(),
+        "entries": entries,
+        "file_count": file_count,
+        "root": relative,
+        "total_file_bytes": total_file_bytes,
+    }
+
+
+def _preservation_git_command(root: Path, args: Sequence[str]) -> bytes:
+    completed = subprocess.run(
+        ["git", *args],
+        cwd=root,
+        check=False,
+        capture_output=True,
+    )
+    if completed.returncode != 0:
+        stderr = completed.stderr.decode("utf-8", errors="replace").strip()
+        raise SuccessorControlError(
+            f"preservation Git {' '.join(args)} failed: {stderr}"
+        )
+    return completed.stdout
+
+
+def _verify_preservation_git_boundary(root: Path, manifest_payload: bytes) -> None:
+    try:
+        top_level = Path(
+            _preservation_git_command(root, ["rev-parse", "--show-toplevel"])
+            .decode("utf-8", errors="strict")
+            .strip()
+        ).resolve()
+        baseline_commit = CONSUMED_EVIDENCE_PRESERVATION_BASELINE[
+            "source_commit"
+        ]
+        baseline_tree = (
+            _preservation_git_command(
+                root,
+                ["rev-parse", f"{baseline_commit}^{{tree}}"],
+            )
+            .decode("ascii", errors="strict")
+            .strip()
+        )
+        publication_commit = CONSUMED_EVIDENCE_PRESERVATION_PUBLICATION_COMMIT
+        publication_tree = (
+            _preservation_git_command(
+                root,
+                ["rev-parse", f"{publication_commit}^{{tree}}"],
+            )
+            .decode("ascii", errors="strict")
+            .strip()
+        )
+        parents = (
+            _preservation_git_command(
+                root,
+                ["show", "-s", "--format=%P", publication_commit],
+            )
+            .decode("ascii", errors="strict")
+            .strip()
+            .split()
+        )
+    except UnicodeDecodeError as exc:
+        raise SuccessorControlError("preservation Git identity is not decodable") from exc
+    if top_level != root:
+        raise SuccessorControlError("preservation root is not the Git top level")
+    if baseline_tree != CONSUMED_EVIDENCE_PRESERVATION_BASELINE["source_tree"]:
+        raise SuccessorControlError("preservation baseline Git tree mismatch")
+    if publication_tree != CONSUMED_EVIDENCE_PRESERVATION_PUBLICATION_TREE:
+        raise SuccessorControlError("preservation publication Git tree mismatch")
+    if parents != [baseline_commit]:
+        raise SuccessorControlError("preservation publication parent mismatch")
+    committed_manifest = _preservation_git_command(
+        root,
+        [
+            "show",
+            f"{publication_commit}:{CONSUMED_EVIDENCE_PRESERVATION_MANIFEST_PATH}",
+        ],
+    )
+    if committed_manifest != manifest_payload:
+        raise SuccessorControlError("preservation publication manifest mismatch")
+    _preservation_git_command(
+        root,
+        [
+            "merge-base",
+            "--is-ancestor",
+            publication_commit,
+            CONSUMED_EVIDENCE_PRESERVATION_BASELINE["remote_ref"],
+        ],
+    )
+
+
+def verify_consumed_evidence_preservation(
+    repo_root: Path | str,
+) -> dict[str, Any]:
+    """Reobserve the fixed consumed evidence without importing its modules."""
+    root = Path(repo_root).resolve()
+    if not root.is_dir():
+        raise SuccessorControlError("preservation repository root is missing")
+    manifest_payload = _read_preserved_file(
+        root,
+        CONSUMED_EVIDENCE_PRESERVATION_MANIFEST_PATH,
+        "preservation manifest",
+    )
+    _verify_preservation_git_boundary(root, manifest_payload)
+    try:
+        manifest = json.loads(
+            manifest_payload.decode("ascii"),
+            object_pairs_hook=_reject_duplicate_pairs,
+        )
+    except (UnicodeDecodeError, json.JSONDecodeError) as exc:
+        raise SuccessorControlError("preservation manifest is not canonical JSON") from exc
+    if not isinstance(manifest, Mapping):
+        raise SuccessorControlError("preservation manifest must be a mapping")
+    manifest = dict(manifest)
+    if manifest_payload != canonical_json_bytes(manifest):
+        raise SuccessorControlError("preservation manifest is not canonical JSON")
+    _require_fields(
+        manifest,
+        {
+            "artifact_files",
+            "artifact_roots",
+            "baseline",
+            "closed_artifact_file_paths",
+            "closed_artifact_root_paths",
+            "closed_source_paths",
+            "created_at_utc",
+            "directory_inventory_schema",
+            "manifest_id",
+            "manifest_sha256",
+            "schema_version",
+            "source_files",
+        },
+        "preservation manifest",
+    )
+    body = {key: value for key, value in manifest.items() if key != "manifest_sha256"}
+    observed_manifest_sha256 = hashlib.sha256(
+        canonical_json_bytes(body)[:-1]
+    ).hexdigest()
+    if manifest.get("manifest_sha256") != observed_manifest_sha256:
+        raise SuccessorControlError("preservation manifest self digest mismatch")
+    if observed_manifest_sha256 != CONSUMED_EVIDENCE_PRESERVATION_MANIFEST_SHA256:
+        raise SuccessorControlError("reviewed preservation manifest digest mismatch")
+    if manifest.get("schema_version") != CONSUMED_EVIDENCE_PRESERVATION_SCHEMA_VERSION:
+        raise SuccessorControlError("preservation manifest schema mismatch")
+    if manifest.get("manifest_id") != CONSUMED_EVIDENCE_PRESERVATION_MANIFEST_ID:
+        raise SuccessorControlError("preservation manifest identity mismatch")
+    if manifest.get("directory_inventory_schema") != (
+        CONSUMED_EVIDENCE_DIRECTORY_INVENTORY_SCHEMA
+    ):
+        raise SuccessorControlError("preservation directory schema mismatch")
+    if manifest.get("baseline") != CONSUMED_EVIDENCE_PRESERVATION_BASELINE:
+        raise SuccessorControlError("preservation baseline mismatch")
+    _timestamp(manifest.get("created_at_utc"), "preservation creation timestamp")
+
+    expected_path_sections = (
+        (
+            "closed_source_paths",
+            CONSUMED_EVIDENCE_PRESERVATION_SOURCE_PATHS,
+            "closed source",
+        ),
+        (
+            "closed_artifact_file_paths",
+            CONSUMED_EVIDENCE_PRESERVATION_ARTIFACT_FILE_PATHS,
+            "closed artifact file",
+        ),
+        (
+            "closed_artifact_root_paths",
+            CONSUMED_EVIDENCE_PRESERVATION_ARTIFACT_ROOT_PATHS,
+            "closed artifact root",
+        ),
+    )
+    for key, expected, label in expected_path_sections:
+        if manifest.get(key) != list(expected):
+            raise SuccessorControlError(f"{label} path array mismatch")
+
+    file_sections = (
+        (
+            "source_files",
+            CONSUMED_EVIDENCE_PRESERVATION_SOURCE_PATHS,
+            "consumed source",
+            True,
+        ),
+        (
+            "artifact_files",
+            CONSUMED_EVIDENCE_PRESERVATION_ARTIFACT_FILE_PATHS,
+            "consumed artifact file",
+            False,
+        ),
+    )
+    for key, paths, label, reject_import in file_sections:
+        rows = manifest.get(key)
+        if not isinstance(rows, list) or len(rows) != len(paths):
+            raise SuccessorControlError(f"{label} row count mismatch")
+        if any(not isinstance(row, Mapping) for row in rows):
+            raise SuccessorControlError(f"{label} row is invalid")
+        if [row.get("path") for row in rows] != list(paths):
+            raise SuccessorControlError(f"{label} row order mismatch")
+        for expected_row, relative_path in zip(rows, paths, strict=True):
+            payload = _read_preserved_file(root, relative_path, label)
+            observed_row = _preservation_file_binding(relative_path, payload)
+            if dict(expected_row) != observed_row:
+                raise SuccessorControlError(f"{label} bytes mismatch: {relative_path}")
+            if reject_import:
+                _reject_successor_import(relative_path, payload)
+
+    root_rows = manifest.get("artifact_roots")
+    root_paths = CONSUMED_EVIDENCE_PRESERVATION_ARTIFACT_ROOT_PATHS
+    if not isinstance(root_rows, list) or len(root_rows) != len(root_paths):
+        raise SuccessorControlError("artifact root row count mismatch")
+    if any(not isinstance(row, Mapping) for row in root_rows):
+        raise SuccessorControlError("artifact root row is invalid")
+    if [row.get("root") for row in root_rows] != list(root_paths):
+        raise SuccessorControlError("artifact root row order mismatch")
+    for expected_row, relative_path in zip(root_rows, root_paths, strict=True):
+        observed_row = _observe_preserved_directory(root, relative_path)
+        if dict(expected_row) != observed_row:
+            raise SuccessorControlError(f"artifact root inventory mismatch: {relative_path}")
+
+    return {
+        "artifact_file_count": len(
+            CONSUMED_EVIDENCE_PRESERVATION_ARTIFACT_FILE_PATHS
+        ),
+        "artifact_root_count": len(
+            CONSUMED_EVIDENCE_PRESERVATION_ARTIFACT_ROOT_PATHS
+        ),
+        "baseline_source_commit": CONSUMED_EVIDENCE_PRESERVATION_BASELINE[
+            "source_commit"
+        ],
+        "baseline_source_tree": CONSUMED_EVIDENCE_PRESERVATION_BASELINE[
+            "source_tree"
+        ],
+        "manifest_sha256": observed_manifest_sha256,
+        "publication_commit": CONSUMED_EVIDENCE_PRESERVATION_PUBLICATION_COMMIT,
+        "publication_tree": CONSUMED_EVIDENCE_PRESERVATION_PUBLICATION_TREE,
+        "pushed_remote_ref": CONSUMED_EVIDENCE_PRESERVATION_BASELINE["remote_ref"],
+        "source_file_count": len(CONSUMED_EVIDENCE_PRESERVATION_SOURCE_PATHS),
+        "verified": True,
+    }
 
 
 def external_file_binding(path: Path | str) -> dict[str, Any]:

@@ -12,6 +12,7 @@ import random
 import re
 import struct
 from collections.abc import Callable, Mapping, Sequence
+from datetime import datetime
 from pathlib import Path, PurePosixPath
 from typing import Any
 
@@ -73,7 +74,14 @@ SOURCE_REGISTRY_SCHEMA_VERSION = (
     "noncombat-card-acceptance-empirical-successor-seed-source-registry-v1"
 )
 SEED_INVENTORY_SCHEMA_VERSION = (
-    "noncombat-card-acceptance-empirical-successor-seed-inventory-v1"
+    "noncombat-card-acceptance-empirical-successor-seed-inventory-v3"
+)
+INVENTORY_AUTHORITY_EVIDENCE_SCHEMA_VERSION = (
+    "noncombat-card-acceptance-empirical-successor-"
+    "seed-inventory-authority-evidence-v1"
+)
+SOURCE_INVENTORY_SCHEMA_VERSION = (
+    "noncombat-card-acceptance-empirical-successor-source-inventory-v2"
 )
 OUTPUT_ROOT_POLICY_VERSION = (
     "noncombat-card-acceptance-empirical-successor-output-root-policy-v1"
@@ -118,6 +126,61 @@ _AUTHORITY_NAMES = (
     "seed_access",
     "training",
 )
+_INVENTORY_EXECUTION_AUTHORITY = {
+    "checkpoint_publication": False,
+    "cohort_materialization": True,
+    "environment_construction": False,
+    "evaluation": False,
+    "evidence_publication": False,
+    "experiment_model_loading": False,
+    "model_fitting": False,
+    "native_loading": False,
+    "repository_evidence_read": True,
+    "seed_access": False,
+    "seed_discovery": True,
+    "shadow_optimizer_step": False,
+    "training": False,
+}
+_STANDING_DELEGATION_EXCLUSIONS = (
+    "bypass-codex-host-or-operating-system-approval",
+    "change-request-bound-source-path-cohort-resource-retry-or-authority-terms",
+    "destructive-unrelated-repository-or-filesystem-operation",
+    "substitute-another-request-digest",
+)
+_STANDING_DELEGATION_REVOCATION = (
+    "future-explicit-human-revocation-before-approval-publication-v1"
+)
+_STANDING_DELEGATION_SCOPE = {
+    "pushed_remote_ref": "origin/master",
+    "registration_id_prefix": (
+        "noncombat-card-acceptance-empirical-successor-"
+    ),
+    "request_class": (
+        "noncombat-card-acceptance-empirical-successor-stage-request-v1"
+    ),
+}
+_DELEGATED_APPROVAL_RESOLVER = "codex-agent-under-standing-delegation-v1"
+_REPOSITORY_ID = "WangCCe/slay-the-spire-ai"
+_INVENTORY_CONFIGURATION_IDENTITY = {
+    "canonical_size_bytes": 2824,
+    "contract_sha256": (
+        "69efdcb18fc16e65715ff38f2a4985f49cade47bdfa734e299874031007605a2"
+    ),
+    "schema_version": (
+        "noncombat-card-acceptance-empirical-successor-config-identity-v1"
+    ),
+}
+_INVENTORY_STAGE_EXCLUSIONS = (
+    "causal_claim",
+    "communication_mod",
+    "formal_rl",
+    "gameplay",
+    "ope",
+    "production_model_loading",
+    "promotion",
+    "qualification",
+)
+_INVENTORY_STAGE_RESOURCES = {"max_materialized_seeds": 1_152}
 _RESOURCE_LIMITS = {
     "training": {
         "charged_seconds": 28_800.0,
@@ -2347,12 +2410,524 @@ def _verify_seed_source_registry(value: object) -> dict[str, Any]:
     return normalized
 
 
+def _self_digest_document(
+    value: object,
+    *,
+    digest_field: str,
+    label: str,
+) -> dict[str, Any]:
+    document = _mapping(value, label)
+    digest = _digest(document.get(digest_field), f"{label} digest")
+    body = {key: item for key, item in document.items() if key != digest_field}
+    if digest != _canonical_sha256(body):
+        raise VerificationError(f"{label} digest differs")
+    return document
+
+
+def _authority_timestamp(value: object, label: str) -> datetime:
+    if not isinstance(value, str):
+        raise VerificationError(f"{label} differs")
+    try:
+        timestamp = datetime.fromisoformat(value.replace("Z", "+00:00"))
+    except ValueError as exc:
+        raise VerificationError(f"{label} differs") from exc
+    if timestamp.tzinfo is None:
+        raise VerificationError(f"{label} differs")
+    return timestamp
+
+
+def _authority_nonempty_string(value: object, label: str) -> str:
+    if (
+        not isinstance(value, str)
+        or not value.strip()
+        or "\0" in value
+    ):
+        raise VerificationError(f"{label} must be nonempty")
+    return value
+
+
+def _authority_watermark(value: object, label: str) -> tuple[dict[str, Any], datetime]:
+    watermark = _mapping(value, label)
+    _fields(
+        watermark,
+        {"message_id", "message_timestamp", "task_id"},
+        label,
+    )
+    for field in ("message_id", "task_id"):
+        _authority_nonempty_string(watermark[field], f"{label} {field}")
+    return watermark, _authority_timestamp(
+        watermark["message_timestamp"],
+        f"{label} timestamp",
+    )
+
+
+def _verify_inventory_observation(
+    value: object,
+    *,
+    mode: str,
+    phase: str,
+    request_sha256: str,
+    anchor_sha256: str,
+) -> tuple[dict[str, Any], datetime, datetime]:
+    observation = _self_digest_document(
+        value,
+        digest_field="observation_sha256",
+        label=f"inventory {phase} observation",
+    )
+    anchor_field = (
+        "delegation_sha256"
+        if mode == "standing-delegation"
+        else "approval_message_sha256"
+    )
+    schema = (
+        "noncombat-card-acceptance-empirical-successor-"
+        "revocation-observation-v1"
+        if mode == "standing-delegation"
+        else "noncombat-card-acceptance-empirical-successor-"
+        "external-revocation-observation-v1"
+    )
+    _fields(
+        observation,
+        {
+            anchor_field,
+            "authoritative_state_available",
+            "authority_mode",
+            "checked_at",
+            "latest_human_message_watermark",
+            "observation_sha256",
+            "phase",
+            "request_sha256",
+            "revocation_message_watermark",
+            "revocation_observed",
+            "schema_version",
+            "stage",
+        },
+        f"inventory {phase} observation",
+    )
+    if (
+        observation["schema_version"] != schema
+        or observation["authority_mode"] != mode
+        or observation["phase"] != phase
+        or observation["stage"] != "inventory"
+        or observation["request_sha256"] != request_sha256
+        or observation[anchor_field] != anchor_sha256
+        or observation["authoritative_state_available"] is not True
+        or observation["revocation_observed"] is not False
+        or observation["revocation_message_watermark"] is not None
+    ):
+        raise VerificationError(f"inventory {phase} observation binding differs")
+    checked_at = _authority_timestamp(
+        observation["checked_at"],
+        f"inventory {phase} checked-at timestamp",
+    )
+    _, watermark_at = _authority_watermark(
+        observation["latest_human_message_watermark"],
+        f"inventory {phase} watermark",
+    )
+    if checked_at < watermark_at:
+        raise VerificationError(f"inventory {phase} observation is stale")
+    return observation, checked_at, watermark_at
+
+
+def _expected_external_bound_request_terms(
+    request: Mapping[str, Any],
+) -> dict[str, Any]:
+    return {
+        "configuration_identity": copy.deepcopy(request["configuration_identity"]),
+        "downstream_authority": copy.deepcopy(request["downstream_authority"]),
+        "execution_authority": copy.deepcopy(request["execution_authority"]),
+        "exclusions": copy.deepcopy(request["exclusions"]),
+        "output_root": request["output_root"],
+        "prerequisite_bindings": copy.deepcopy(request["prerequisite_bindings"]),
+        "pushed_remote_ref": "origin/master",
+        "repository_id": _REPOSITORY_ID,
+        "request_class": (
+            "noncombat-card-acceptance-empirical-successor-stage-request-v1"
+        ),
+        "request_id": request["request_id"],
+        "request_sha256": request["request_sha256"],
+        "resources": copy.deepcopy(request["resources"]),
+        "source_commit": request["source_commit"],
+        "source_inventory_sha256": request["source_inventory_sha256"],
+        "stage": request["stage"],
+    }
+
+
+def verify_inventory_authority_evidence(value: object) -> dict[str, Any]:
+    """Independently reconstruct inventory request, human authority, and source."""
+    evidence = _self_digest_document(
+        value,
+        digest_field="authority_evidence_sha256",
+        label="inventory authority evidence",
+    )
+    _fields(
+        evidence,
+        {
+            "approval_record",
+            "authority_evidence_sha256",
+            "authorization",
+            "build_launch_observation",
+            "request",
+            "schema_version",
+            "source_inventory",
+        },
+        "inventory authority evidence",
+    )
+    if evidence["schema_version"] != INVENTORY_AUTHORITY_EVIDENCE_SCHEMA_VERSION:
+        raise VerificationError("inventory authority evidence schema differs")
+
+    source_inventory = _self_digest_document(
+        evidence["source_inventory"],
+        digest_field="inventory_sha256",
+        label="inventory source inventory",
+    )
+    _fields(
+        source_inventory,
+        {
+            "consumed_evidence_preservation",
+            "inventory_sha256",
+            "modules",
+            "public_dependencies",
+            "schema_version",
+        },
+        "inventory source inventory",
+    )
+    preservation = _mapping(
+        source_inventory["consumed_evidence_preservation"],
+        "inventory consumed-evidence preservation",
+    )
+    if (
+        source_inventory["schema_version"] != SOURCE_INVENTORY_SCHEMA_VERSION
+        or not isinstance(source_inventory["modules"], list)
+        or not isinstance(source_inventory["public_dependencies"], list)
+        or preservation.get("verified") is not True
+    ):
+        raise VerificationError("inventory source qualification differs")
+    _digest(
+        preservation.get("manifest_sha256"),
+        "inventory preservation manifest digest",
+    )
+
+    request = _self_digest_document(
+        evidence["request"],
+        digest_field="request_sha256",
+        label="inventory request",
+    )
+    _fields(
+        request,
+        {
+            "configuration_identity",
+            "downstream_authority",
+            "execution_authority",
+            "exclusions",
+            "output_root",
+            "prerequisite_bindings",
+            "request_id",
+            "request_sha256",
+            "resources",
+            "schema_version",
+            "source_commit",
+            "source_inventory_sha256",
+            "stage",
+        },
+        "inventory request",
+    )
+    downstream = _mapping(
+        request["downstream_authority"],
+        "inventory request downstream authority",
+    )
+    _fields(downstream, set(_AUTHORITY_NAMES), "inventory request downstream authority")
+    output_root = request["output_root"]
+    canonical_output_root = (
+        isinstance(output_root, str)
+        and Path(output_root).is_absolute()
+        and Path(output_root).resolve().as_posix() == output_root
+    )
+    if (
+        request["schema_version"]
+        != "noncombat-card-acceptance-empirical-successor-stage-request-v1"
+        or request["stage"] != "inventory"
+        or not isinstance(request["request_id"], str)
+        or _IDENTIFIER_RE.fullmatch(request["request_id"]) is None
+        or not request["request_id"].endswith("-inventory-request-v1")
+        or not isinstance(request["source_commit"], str)
+        or _COMMIT_RE.fullmatch(request["source_commit"]) is None
+        or request["source_inventory_sha256"]
+        != source_inventory["inventory_sha256"]
+        or request["execution_authority"] != _INVENTORY_EXECUTION_AUTHORITY
+        or set(downstream.values()) != {False}
+        or request["prerequisite_bindings"] != {}
+        or request["configuration_identity"] != _INVENTORY_CONFIGURATION_IDENTITY
+        or request["exclusions"] != list(_INVENTORY_STAGE_EXCLUSIONS)
+        or request["resources"] != _INVENTORY_STAGE_RESOURCES
+        or not canonical_output_root
+    ):
+        raise VerificationError("inventory request authority or source differs")
+
+    approval = _self_digest_document(
+        evidence["approval_record"],
+        digest_field="approval_sha256",
+        label="inventory approval record",
+    )
+    mode = approval.get("approval_mode")
+    if mode == "standing-delegation":
+        _fields(
+            approval,
+            {
+                "approval_mode",
+                "approval_observation",
+                "approval_sha256",
+                "approved_request_sha256",
+                "delegation",
+                "request_review_sha256",
+                "resolution",
+                "schema_version",
+                "stage",
+            },
+            "inventory delegated approval",
+        )
+        delegation = _self_digest_document(
+            approval["delegation"],
+            digest_field="delegation_sha256",
+            label="inventory standing delegation",
+        )
+        _fields(
+            delegation,
+            {"delegation_sha256", "exclusions", "grant", "revocation", "schema_version", "scope"},
+            "inventory standing delegation",
+        )
+        grant = _mapping(delegation["grant"], "inventory standing grant")
+        _fields(grant, {"granted_at", "provenance", "verbatim_text"}, "inventory standing grant")
+        provenance = _mapping(grant["provenance"], "inventory standing provenance")
+        _fields(provenance, {"message_id", "source", "task_id"}, "inventory standing provenance")
+        _authority_nonempty_string(
+            provenance["message_id"],
+            "inventory standing provenance message id",
+        )
+        _authority_nonempty_string(
+            provenance["task_id"],
+            "inventory standing provenance task id",
+        )
+        _authority_nonempty_string(
+            grant["verbatim_text"],
+            "inventory standing grant text",
+        )
+        scope = _mapping(delegation["scope"], "inventory standing scope")
+        _fields(
+            scope,
+            {"pushed_remote_ref", "registration_id_prefix", "request_class"},
+            "inventory standing scope",
+        )
+        if (
+            delegation["schema_version"]
+            != "noncombat-cross-fitted-hierarchical-learning-standing-delegation-v1"
+            or approval["schema_version"]
+            != "noncombat-card-acceptance-empirical-successor-delegated-approval-v1"
+            or provenance["source"] != "external-human-message"
+            or delegation["exclusions"] != list(_STANDING_DELEGATION_EXCLUSIONS)
+            or delegation["revocation"] != _STANDING_DELEGATION_REVOCATION
+            or scope != _STANDING_DELEGATION_SCOPE
+        ):
+            raise VerificationError("inventory standing delegation provenance differs")
+        expected_task = provenance["task_id"]
+        anchor_sha256 = delegation["delegation_sha256"]
+        approval_observation, approval_checked, approval_watermark = (
+            _verify_inventory_observation(
+                approval["approval_observation"],
+                mode=mode,
+                phase="approval",
+                request_sha256=request["request_sha256"],
+                anchor_sha256=anchor_sha256,
+            )
+        )
+        if _authority_timestamp(grant["granted_at"], "inventory grant timestamp") > approval_watermark:
+            raise VerificationError("inventory standing grant postdates approval")
+        if (
+            approval_observation["latest_human_message_watermark"]["task_id"]
+            != expected_task
+        ):
+            raise VerificationError("inventory approval watermark task provenance differs")
+        resolution = _mapping(approval["resolution"], "inventory delegated resolution")
+        _fields(
+            resolution,
+            {"approval_observation_sha256", "delegation_sha256", "request_review_sha256", "request_sha256", "resolved_at", "resolver"},
+            "inventory delegated resolution",
+        )
+        if (
+            resolution["approval_observation_sha256"]
+            != approval_observation["observation_sha256"]
+            or resolution["delegation_sha256"] != anchor_sha256
+            or resolution["request_sha256"] != request["request_sha256"]
+            or resolution["request_review_sha256"]
+            != approval["request_review_sha256"]
+            or _authority_timestamp(resolution["resolved_at"], "inventory resolution timestamp")
+            != approval_checked
+            or resolution["resolver"] != _DELEGATED_APPROVAL_RESOLVER
+        ):
+            raise VerificationError("inventory delegated resolution differs")
+    elif mode == "external-human-approval":
+        _fields(
+            approval,
+            {
+                "approval_message",
+                "approval_mode",
+                "approval_observation",
+                "approval_sha256",
+                "approved_request_sha256",
+                "bound_request_terms",
+                "request_published_at",
+                "request_review_sha256",
+                "schema_version",
+                "stage",
+            },
+            "inventory external approval",
+        )
+        message = _self_digest_document(
+            approval["approval_message"],
+            digest_field="approval_message_sha256",
+            label="inventory external approval message",
+        )
+        _fields(
+            message,
+            {"approval_message_sha256", "approved_at", "provenance", "schema_version", "verbatim_approval_text"},
+            "inventory external approval message",
+        )
+        provenance = _mapping(message["provenance"], "inventory external provenance")
+        _fields(provenance, {"message_id", "source", "task_id"}, "inventory external provenance")
+        _authority_nonempty_string(
+            provenance["message_id"],
+            "inventory external provenance message id",
+        )
+        _authority_nonempty_string(
+            provenance["task_id"],
+            "inventory external provenance task id",
+        )
+        approval_text = _authority_nonempty_string(
+            message["verbatim_approval_text"],
+            "inventory external approval text",
+        )
+        bound_request_terms = _mapping(
+            approval["bound_request_terms"],
+            "inventory external bound request terms",
+        )
+        if (
+            approval["schema_version"]
+            != "noncombat-card-acceptance-empirical-successor-external-human-approval-v1"
+            or message["schema_version"]
+            != "noncombat-card-acceptance-empirical-successor-external-approval-message-v1"
+            or provenance["source"] != "external-human-message"
+            or approval_text.count(request["request_sha256"]) != 1
+            or bound_request_terms != _expected_external_bound_request_terms(request)
+        ):
+            raise VerificationError("inventory external approval provenance differs")
+        expected_task = provenance["task_id"]
+        anchor_sha256 = message["approval_message_sha256"]
+        approval_observation, approval_checked, approval_watermark = _verify_inventory_observation(
+            approval["approval_observation"],
+            mode=mode,
+            phase="approval",
+            request_sha256=request["request_sha256"],
+            anchor_sha256=anchor_sha256,
+        )
+        if _authority_timestamp(message["approved_at"], "inventory approval timestamp") > approval_watermark:
+            raise VerificationError("inventory external approval postdates observation")
+        if (
+            approval_observation["latest_human_message_watermark"]["task_id"]
+            != expected_task
+            or _authority_timestamp(
+                approval["request_published_at"],
+                "inventory request publication timestamp",
+            )
+            >= _authority_timestamp(
+                message["approved_at"],
+                "inventory external approval timestamp",
+            )
+        ):
+            raise VerificationError("inventory external approval ordering differs")
+    else:
+        raise VerificationError("inventory approval mode differs")
+    if (
+        approval.get("approved_request_sha256") != request["request_sha256"]
+        or approval.get("stage") != "inventory"
+    ):
+        raise VerificationError("inventory approval request binding differs")
+    _digest(
+        approval.get("request_review_sha256"),
+        "inventory approval request review digest",
+    )
+
+    authorization = _self_digest_document(
+        evidence["authorization"],
+        digest_field="authorization_sha256",
+        label="inventory authorization",
+    )
+    _fields(
+        authorization,
+        {
+            "approval_record_sha256",
+            "authorization_id",
+            "authorization_sha256",
+            "downstream_authority",
+            "execution_authority",
+            "request_id",
+            "request_review_sha256",
+            "request_sha256",
+            "schema_version",
+            "stage",
+        },
+        "inventory authorization",
+    )
+    if (
+        authorization["schema_version"]
+        != "noncombat-card-acceptance-empirical-successor-stage-authorization-v1"
+        or authorization["stage"] != "inventory"
+        or not isinstance(authorization["authorization_id"], str)
+        or _IDENTIFIER_RE.fullmatch(authorization["authorization_id"]) is None
+        or not authorization["authorization_id"].endswith(
+            "-inventory-authorization-v1"
+        )
+        or authorization["request_id"] != request["request_id"]
+        or authorization["request_sha256"] != request["request_sha256"]
+        or authorization["request_review_sha256"]
+        != approval["request_review_sha256"]
+        or authorization["approval_record_sha256"] != approval["approval_sha256"]
+        or authorization["execution_authority"] != _INVENTORY_EXECUTION_AUTHORITY
+        or authorization["downstream_authority"] != downstream
+    ):
+        raise VerificationError("inventory authorization binding differs")
+    _digest(
+        authorization["request_review_sha256"],
+        "inventory authorization request review digest",
+    )
+
+    launch, launch_checked, launch_watermark = _verify_inventory_observation(
+        evidence["build_launch_observation"],
+        mode=mode,
+        phase="launch",
+        request_sha256=request["request_sha256"],
+        anchor_sha256=anchor_sha256,
+    )
+    if launch_checked < approval_checked or launch_watermark < approval_watermark:
+        raise VerificationError("inventory build launch observation is stale")
+    if launch["latest_human_message_watermark"]["task_id"] != expected_task:
+        raise VerificationError("inventory launch watermark task provenance differs")
+    return {
+        **evidence,
+        "approval_record": approval,
+        "authorization": authorization,
+        "build_launch_observation": launch,
+        "request": request,
+        "source_inventory": source_inventory,
+    }
+
+
 def verify_seed_inventory_evidence(value: object) -> dict[str, Any]:
     """Reconstruct one fixed fresh-cohort inventory from its canonical claims."""
     inventory = _mapping(value, "seed inventory")
     _fields(
         inventory,
         {
+            "authority_evidence",
             "authorization_sha256",
             "cohort_counts",
             "cohorts",
@@ -2360,12 +2935,14 @@ def verify_seed_inventory_evidence(value: object) -> dict[str, Any]:
             "excluded_seeds",
             "excluded_seeds_sha256",
             "inventory_sha256",
+            "launch_authority_sha256",
             "request_sha256",
             "repository_commit",
             "role_sha256",
             "row_count",
             "rows",
             "schema_version",
+            "source_inventory_sha256",
             "source_registry",
         },
         "seed inventory",
@@ -2378,6 +2955,30 @@ def verify_seed_inventory_evidence(value: object) -> dict[str, Any]:
         raise VerificationError("seed inventory identity differs")
     _digest(inventory["request_sha256"], "inventory request digest")
     _digest(inventory["authorization_sha256"], "inventory authorization digest")
+    _digest(inventory["launch_authority_sha256"], "inventory launch authority digest")
+    _digest(inventory["source_inventory_sha256"], "inventory source inventory digest")
+    authority_evidence = verify_inventory_authority_evidence(
+        inventory["authority_evidence"]
+    )
+    if inventory["request_sha256"] != authority_evidence["request"]["request_sha256"]:
+        raise VerificationError("inventory request authority binding differs")
+    if (
+        inventory["authorization_sha256"]
+        != authority_evidence["authorization"]["authorization_sha256"]
+    ):
+        raise VerificationError("inventory authorization binding differs")
+    if (
+        inventory["launch_authority_sha256"]
+        != authority_evidence["build_launch_observation"]["observation_sha256"]
+    ):
+        raise VerificationError("inventory build launch authority binding differs")
+    if (
+        inventory["source_inventory_sha256"]
+        != authority_evidence["source_inventory"]["inventory_sha256"]
+    ):
+        raise VerificationError("inventory source inventory binding differs")
+    if inventory["repository_commit"] != authority_evidence["request"]["source_commit"]:
+        raise VerificationError("inventory source commit binding differs")
     registry = _verify_seed_source_registry(inventory["source_registry"])
     if registry["repository_commit"] != inventory["repository_commit"]:
         raise VerificationError("inventory repository binding differs")
@@ -2496,6 +3097,7 @@ def verify_seed_inventory_evidence(value: object) -> dict[str, Any]:
         raise VerificationError("inventory role digests differ")
     normalized = {
         **inventory,
+        "authority_evidence": authority_evidence,
         "cohorts": normalized_cohorts,
         "excluded_seeds": excluded,
         "role_sha256": role_sha256,

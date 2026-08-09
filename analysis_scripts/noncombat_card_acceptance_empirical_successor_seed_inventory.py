@@ -26,7 +26,11 @@ SOURCE_REGISTRY_SCHEMA_VERSION = (
     "noncombat-card-acceptance-empirical-successor-seed-source-registry-v1"
 )
 SEED_INVENTORY_SCHEMA_VERSION = (
-    "noncombat-card-acceptance-empirical-successor-seed-inventory-v1"
+    "noncombat-card-acceptance-empirical-successor-seed-inventory-v3"
+)
+INVENTORY_AUTHORITY_EVIDENCE_SCHEMA_VERSION = (
+    "noncombat-card-acceptance-empirical-successor-"
+    "seed-inventory-authority-evidence-v1"
 )
 OUTPUT_ROOT_POLICY_VERSION = (
     "noncombat-card-acceptance-empirical-successor-output-root-policy-v1"
@@ -112,6 +116,7 @@ _REGISTRY_FIELDS = {
     "sources",
 }
 _INVENTORY_FIELDS = {
+    "authority_evidence",
     "authorization_sha256",
     "cohort_counts",
     "cohorts",
@@ -119,13 +124,24 @@ _INVENTORY_FIELDS = {
     "excluded_seeds",
     "excluded_seeds_sha256",
     "inventory_sha256",
+    "launch_authority_sha256",
     "request_sha256",
     "repository_commit",
     "role_sha256",
     "row_count",
     "rows",
     "schema_version",
+    "source_inventory_sha256",
     "source_registry",
+}
+_AUTHORITY_EVIDENCE_FIELDS = {
+    "approval_record",
+    "authority_evidence_sha256",
+    "authorization",
+    "build_launch_observation",
+    "request",
+    "schema_version",
+    "source_inventory",
 }
 
 
@@ -648,8 +664,19 @@ def _build_source_registry_and_rows(
 
 
 def _validate_inventory_authority(
-    request: object, authorization: object
-) -> tuple[dict[str, Any], dict[str, Any]]:
+    *,
+    repo_root: Path,
+    request: object,
+    authorization: object,
+    approval_record: object,
+    launch_observation: object,
+) -> tuple[
+    dict[str, Any],
+    dict[str, Any],
+    dict[str, Any],
+    dict[str, Any],
+    dict[str, Any],
+]:
     if not isinstance(authorization, Mapping):
         raise SeedInventoryBlocked("inventory authorization must be a mapping")
     try:
@@ -662,6 +689,23 @@ def _validate_inventory_authority(
             normalized_request,
         )
         expected = control.stage_execution_authority("inventory")
+        approval = _mapping(approval_record, "inventory approval record")
+        if approval.get("approval_mode") == "standing-delegation":
+            normalized_launch = control.validate_delegated_stage_launch(
+                request=normalized_request,
+                authorization=normalized_authorization,
+                delegated_approval=approval,
+                launch_observation=launch_observation,
+            )
+        elif approval.get("approval_mode") == "external-human-approval":
+            normalized_launch = control.validate_external_human_stage_launch(
+                request=normalized_request,
+                authorization=normalized_authorization,
+                external_approval=approval,
+                launch_observation=launch_observation,
+            )
+        else:
+            raise SeedInventoryBlocked("inventory approval mode is invalid")
     except SeedInventoryBlocked:
         raise
     except Exception as exc:
@@ -673,7 +717,200 @@ def _validate_inventory_authority(
         or set(normalized_authorization["downstream_authority"].values()) != {False}
     ):
         raise SeedInventoryBlocked("inventory authority map is invalid")
-    return normalized_request, normalized_authorization
+
+    try:
+        if not repo_root.is_dir():
+            raise SeedInventoryBlocked("source repository root is missing")
+        top_level = Path(
+            _git_command(repo_root, ["rev-parse", "--show-toplevel"])
+            .decode("utf-8", errors="strict")
+            .strip()
+        ).resolve()
+        if top_level != repo_root:
+            raise SeedInventoryBlocked("repository root is not the Git top level")
+        expected_commit = normalized_request["source_commit"]
+        head = (
+            _git_command(repo_root, ["rev-parse", "HEAD"])
+            .decode("ascii", errors="strict")
+            .strip()
+        )
+        remote = (
+            _git_command(repo_root, ["rev-parse", "origin/master"])
+            .decode("ascii", errors="strict")
+            .strip()
+        )
+        tracked_status = _git_command(
+            repo_root,
+            ["status", "--porcelain=v1", "--untracked-files=no"],
+        )
+        if head != expected_commit or remote != expected_commit:
+            raise SeedInventoryBlocked(
+                "source commit is not the exact pushed origin/master identity"
+            )
+        if tracked_status:
+            raise SeedInventoryBlocked("source tracked worktree is not clean")
+        source_inventory = _mapping(
+            control.build_source_inventory(repo_root),
+            "source inventory",
+        )
+        source_digest = _digest(
+            source_inventory.get("inventory_sha256"),
+            "source inventory digest",
+        )
+        if source_digest != normalized_request["source_inventory_sha256"]:
+            raise SeedInventoryBlocked("source inventory digest differs from request")
+        preservation = _mapping(
+            source_inventory.get("consumed_evidence_preservation"),
+            "consumed evidence preservation",
+        )
+        if preservation.get("verified") is not True:
+            raise SeedInventoryBlocked("consumed evidence preservation is not verified")
+        _digest(
+            preservation.get("manifest_sha256"),
+            "consumed evidence preservation manifest digest",
+        )
+    except (OSError, UnicodeDecodeError, SeedInventoryBlocked) as exc:
+        raise SeedInventoryBlocked(f"source qualification failed: {exc}") from exc
+    except Exception as exc:
+        raise SeedInventoryBlocked(f"source qualification failed: {exc}") from exc
+    return (
+        normalized_request,
+        normalized_authorization,
+        approval,
+        normalized_launch,
+        source_inventory,
+    )
+
+
+def _normalize_authority_evidence(value: object) -> dict[str, Any]:
+    evidence = _mapping(value, "inventory authority evidence")
+    _require_exact_keys(
+        evidence,
+        _AUTHORITY_EVIDENCE_FIELDS,
+        "inventory authority evidence",
+    )
+    if evidence["schema_version"] != INVENTORY_AUTHORITY_EVIDENCE_SCHEMA_VERSION:
+        raise SeedInventoryBlocked("inventory authority evidence schema mismatch")
+    body = {
+        key: item
+        for key, item in evidence.items()
+        if key != "authority_evidence_sha256"
+    }
+    if _digest(
+        evidence["authority_evidence_sha256"],
+        "inventory authority evidence digest",
+    ) != _canonical_sha256(body):
+        raise SeedInventoryBlocked("inventory authority evidence digest mismatch")
+
+    request = _mapping(evidence["request"], "inventory evidence request")
+    authorization = _mapping(
+        evidence["authorization"],
+        "inventory evidence authorization",
+    )
+    approval = _mapping(
+        evidence["approval_record"],
+        "inventory evidence approval record",
+    )
+    launch = _mapping(
+        evidence["build_launch_observation"],
+        "inventory evidence build launch observation",
+    )
+    source_inventory = _mapping(
+        evidence["source_inventory"],
+        "inventory evidence source inventory",
+    )
+    try:
+        control = importlib.import_module(_CONTROL_MODULE)
+        normalized_request = control.validate_stage_request(request)
+        normalized_authorization = control.validate_stage_authorization(
+            authorization,
+            normalized_request,
+        )
+        if approval.get("approval_mode") == "standing-delegation":
+            normalized_approval = control.validate_delegated_approval(
+                approval,
+                normalized_request,
+            )
+            normalized_launch = control.validate_delegated_stage_launch(
+                request=normalized_request,
+                authorization=normalized_authorization,
+                delegated_approval=normalized_approval,
+                launch_observation=launch,
+            )
+        elif approval.get("approval_mode") == "external-human-approval":
+            normalized_approval = control.validate_external_human_approval(
+                approval,
+                normalized_request,
+            )
+            normalized_launch = control.validate_external_human_stage_launch(
+                request=normalized_request,
+                authorization=normalized_authorization,
+                external_approval=normalized_approval,
+                launch_observation=launch,
+            )
+        else:
+            raise SeedInventoryBlocked("inventory evidence approval mode is invalid")
+    except SeedInventoryBlocked:
+        raise
+    except Exception as exc:
+        raise SeedInventoryBlocked(
+            f"inventory authority evidence is invalid: {exc}"
+        ) from exc
+
+    source_body = {
+        key: item
+        for key, item in source_inventory.items()
+        if key != "inventory_sha256"
+    }
+    source_digest = _digest(
+        source_inventory.get("inventory_sha256"),
+        "inventory evidence source inventory digest",
+    )
+    if source_digest != _canonical_sha256(source_body):
+        raise SeedInventoryBlocked("inventory evidence source inventory digest mismatch")
+    preservation = _mapping(
+        source_inventory.get("consumed_evidence_preservation"),
+        "inventory evidence consumed preservation",
+    )
+    if preservation.get("verified") is not True:
+        raise SeedInventoryBlocked("inventory evidence preservation is not verified")
+    _digest(
+        preservation.get("manifest_sha256"),
+        "inventory evidence preservation manifest digest",
+    )
+    if normalized_request["source_inventory_sha256"] != source_digest:
+        raise SeedInventoryBlocked("inventory evidence source binding mismatch")
+    return {
+        **evidence,
+        "approval_record": normalized_approval,
+        "authorization": normalized_authorization,
+        "build_launch_observation": normalized_launch,
+        "request": normalized_request,
+        "source_inventory": source_inventory,
+    }
+
+
+def _build_authority_evidence(
+    *,
+    request: Mapping[str, Any],
+    authorization: Mapping[str, Any],
+    approval_record: Mapping[str, Any],
+    build_launch_observation: Mapping[str, Any],
+    source_inventory: Mapping[str, Any],
+) -> dict[str, Any]:
+    body = {
+        "approval_record": copy.deepcopy(dict(approval_record)),
+        "authorization": copy.deepcopy(dict(authorization)),
+        "build_launch_observation": copy.deepcopy(
+            dict(build_launch_observation)
+        ),
+        "request": copy.deepcopy(dict(request)),
+        "schema_version": INVENTORY_AUTHORITY_EVIDENCE_SCHEMA_VERSION,
+        "source_inventory": copy.deepcopy(dict(source_inventory)),
+    }
+    return _normalize_authority_evidence(
+        {**body, "authority_evidence_sha256": _canonical_sha256(body)}
+    )
 
 
 def _select_fresh_cohorts(excluded_seeds: list[int]) -> dict[str, list[int]]:
@@ -719,18 +956,22 @@ def _inventory_body(
     *,
     request: Mapping[str, Any],
     authorization: Mapping[str, Any],
+    authority_evidence: Mapping[str, Any],
+    launch_observation: Mapping[str, Any],
     source_registry: Mapping[str, Any],
     rows: list[dict[str, Any]],
     excluded_seeds: list[int],
     cohorts: Mapping[str, list[int]],
 ) -> dict[str, Any]:
     return {
+        "authority_evidence": copy.deepcopy(dict(authority_evidence)),
         "authorization_sha256": authorization["authorization_sha256"],
         "cohort_counts": copy.deepcopy(_ROLE_COUNTS),
         "cohorts": copy.deepcopy(dict(cohorts)),
         "excluded_seed_count": len(excluded_seeds),
         "excluded_seeds": list(excluded_seeds),
         "excluded_seeds_sha256": _canonical_sha256(excluded_seeds),
+        "launch_authority_sha256": launch_observation["observation_sha256"],
         "request_sha256": request["request_sha256"],
         "repository_commit": request["source_commit"],
         "role_sha256": {
@@ -739,6 +980,7 @@ def _inventory_body(
         "row_count": len(rows),
         "rows": copy.deepcopy(rows),
         "schema_version": SEED_INVENTORY_SCHEMA_VERSION,
+        "source_inventory_sha256": request["source_inventory_sha256"],
         "source_registry": copy.deepcopy(dict(source_registry)),
     }
 
@@ -842,6 +1084,36 @@ def validate_inventory(value: object) -> dict[str, Any]:
     inventory["authorization_sha256"] = _digest(
         inventory["authorization_sha256"], "inventory authorization digest"
     )
+    inventory["launch_authority_sha256"] = _digest(
+        inventory["launch_authority_sha256"], "inventory launch authority digest"
+    )
+    inventory["source_inventory_sha256"] = _digest(
+        inventory["source_inventory_sha256"], "inventory source inventory digest"
+    )
+    authority_evidence = _normalize_authority_evidence(
+        inventory["authority_evidence"]
+    )
+    if inventory["request_sha256"] != authority_evidence["request"]["request_sha256"]:
+        raise SeedInventoryBlocked("inventory request authority evidence binding mismatch")
+    if (
+        inventory["authorization_sha256"]
+        != authority_evidence["authorization"]["authorization_sha256"]
+    ):
+        raise SeedInventoryBlocked(
+            "inventory authorization authority evidence binding mismatch"
+        )
+    if (
+        inventory["launch_authority_sha256"]
+        != authority_evidence["build_launch_observation"]["observation_sha256"]
+    ):
+        raise SeedInventoryBlocked("inventory build launch authority binding mismatch")
+    if (
+        inventory["source_inventory_sha256"]
+        != authority_evidence["source_inventory"]["inventory_sha256"]
+    ):
+        raise SeedInventoryBlocked("inventory source inventory binding mismatch")
+    if inventory["repository_commit"] != authority_evidence["request"]["source_commit"]:
+        raise SeedInventoryBlocked("inventory source commit binding mismatch")
     registry = _normalize_source_registry(inventory["source_registry"])
     if registry["repository_commit"] != inventory["repository_commit"]:
         raise SeedInventoryBlocked("inventory repository binding mismatch")
@@ -943,6 +1215,7 @@ def validate_inventory(value: object) -> dict[str, Any]:
 
     normalized = {
         **inventory,
+        "authority_evidence": authority_evidence,
         "cohorts": cohorts,
         "excluded_seeds": excluded,
         "role_sha256": role_sha256,
@@ -996,23 +1269,43 @@ def build_inventory(
     repo_root: Path | str,
     request: object,
     authorization: object,
+    approval_record: object,
+    launch_observation: object,
 ) -> dict[str, Any]:
     """Build and publish one authorized inventory at the request-bound root."""
-    normalized_request, normalized_authorization = _validate_inventory_authority(
-        request,
-        authorization,
+    root = Path(repo_root).resolve()
+    (
+        normalized_request,
+        normalized_authorization,
+        normalized_approval,
+        normalized_launch,
+        source_inventory,
+    ) = _validate_inventory_authority(
+        repo_root=root,
+        request=request,
+        authorization=authorization,
+        approval_record=approval_record,
+        launch_observation=launch_observation,
     )
     _require_unmaterialized(normalized_request)
-    root = Path(repo_root).resolve()
     registry, rows, excluded = _build_source_registry_and_rows(
         root,
         repository_commit=normalized_request["source_commit"],
         output_root=normalized_request["output_root"],
     )
     cohorts = _select_fresh_cohorts(excluded)
+    authority_evidence = _build_authority_evidence(
+        request=normalized_request,
+        authorization=normalized_authorization,
+        approval_record=normalized_approval,
+        build_launch_observation=normalized_launch,
+        source_inventory=source_inventory,
+    )
     body = _inventory_body(
         request=normalized_request,
         authorization=normalized_authorization,
+        authority_evidence=authority_evidence,
+        launch_observation=normalized_launch,
         source_registry=registry,
         rows=rows,
         excluded_seeds=excluded,
@@ -1045,23 +1338,42 @@ def verify_inventory(
     repo_root: Path | str,
     request: object,
     authorization: object,
+    approval_record: object,
+    launch_observation: object,
 ) -> dict[str, Any]:
     """Read and reconstruct an inventory without selecting or publishing cohorts."""
-    normalized_request, normalized_authorization = _validate_inventory_authority(
-        request,
-        authorization,
+    root = Path(repo_root).resolve()
+    (
+        normalized_request,
+        normalized_authorization,
+        _normalized_approval,
+        _normalized_launch,
+        _source_inventory,
+    ) = (
+        _validate_inventory_authority(
+            repo_root=root,
+            request=request,
+            authorization=authorization,
+            approval_record=approval_record,
+            launch_observation=launch_observation,
+        )
     )
     materialized = _read_materialized_inventory(normalized_request)
+    build_evidence = materialized["authority_evidence"]
     if (
         materialized["request_sha256"] != normalized_request["request_sha256"]
         or materialized["authorization_sha256"]
         != normalized_authorization["authorization_sha256"]
         or materialized["repository_commit"] != normalized_request["source_commit"]
+        or materialized["source_inventory_sha256"]
+        != normalized_request["source_inventory_sha256"]
+        or materialized["launch_authority_sha256"]
+        != build_evidence["build_launch_observation"]["observation_sha256"]
     ):
         raise SeedInventoryBlocked("materialized inventory authority binding mismatch")
 
     registry, rows, excluded = _build_source_registry_and_rows(
-        Path(repo_root).resolve(),
+        root,
         repository_commit=normalized_request["source_commit"],
         output_root=normalized_request["output_root"],
     )
@@ -1088,15 +1400,24 @@ def main(argv: list[str] | None = None) -> int:
         command_parser.add_argument("--repo-root", required=True)
         command_parser.add_argument("--request", required=True)
         command_parser.add_argument("--authorization", required=True)
+        command_parser.add_argument("--approval-record", required=True)
+        command_parser.add_argument("--launch-observation", required=True)
     args = parser.parse_args(argv)
     request = _load_json_file(args.request, "inventory request")
     authorization = _load_json_file(args.authorization, "inventory authorization")
+    approval_record = _load_json_file(args.approval_record, "inventory approval record")
+    launch_observation = _load_json_file(
+        args.launch_observation,
+        "inventory launch observation",
+    )
     operation = build_inventory if args.command == "build-inventory" else verify_inventory
     try:
         artifact = operation(
             repo_root=args.repo_root,
             request=request,
             authorization=authorization,
+            approval_record=approval_record,
+            launch_observation=launch_observation,
         )
     except (OSError, SeedInventoryBlocked) as exc:
         parser.error(str(exc))
@@ -1113,6 +1434,7 @@ __all__ = [
     "CANONICAL_SEARCH_START",
     "HOLDOUT_SEED_COUNT",
     "INVENTORY_FILENAME",
+    "INVENTORY_AUTHORITY_EVIDENCE_SCHEMA_VERSION",
     "SEED_INVENTORY_SCHEMA_VERSION",
     "SOURCE_REGISTRY_SCHEMA_VERSION",
     "SeedInventoryBlocked",

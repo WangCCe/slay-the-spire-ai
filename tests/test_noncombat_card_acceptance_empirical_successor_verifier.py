@@ -1110,8 +1110,124 @@ def test_independent_rollback_verifier_rejects_postpublication_drift(
         )
 
 
+def _seed_inventory_authority_evidence():
+    control = _control()
+    source_body = {
+        "consumed_evidence_preservation": {
+            "manifest_sha256": "9" * 64,
+            "verified": True,
+        },
+        "modules": [],
+        "public_dependencies": [],
+        "schema_version": (
+            "noncombat-card-acceptance-empirical-successor-source-inventory-v2"
+        ),
+    }
+    source_inventory = {
+        **source_body,
+        "inventory_sha256": control.canonical_json_sha256(source_body),
+    }
+    request = control.build_stage_request(
+        stage="inventory",
+        request_id="card-acceptance-verifier-inventory-request-v1",
+        source_commit="d" * 40,
+        source_inventory_sha256=source_inventory["inventory_sha256"],
+        configuration_identity=control.experiment_configuration_identity(),
+        prerequisite_bindings={},
+        output_root="D:/synthetic/card-acceptance-verifier/inventory",
+    )
+    delegation_body = {
+        "exclusions": list(control.STANDING_DELEGATION_EXCLUSIONS),
+        "grant": {
+            "granted_at": "2026-08-08T09:46:47+00:00",
+            "provenance": {
+                "message_id": "verifier-standing-grant",
+                "source": "external-human-message",
+                "task_id": "verifier-task",
+            },
+            "verbatim_text": "The agent may represent this repository.",
+        },
+        "revocation": control.STANDING_DELEGATION_REVOCATION,
+        "schema_version": control.STANDING_DELEGATION_SCHEMA_VERSION,
+        "scope": {
+            "pushed_remote_ref": "origin/master",
+            "registration_id_prefix": control.DELEGATED_REGISTRATION_ID_PREFIX,
+            "request_class": control.DELEGATED_REQUEST_CLASS,
+        },
+    }
+    delegation = {
+        **delegation_body,
+        "delegation_sha256": control.canonical_json_sha256(delegation_body),
+    }
+
+    def observation(phase, checked_at, message_timestamp):
+        watermark = {
+            "message_id": f"verifier-{phase}-message",
+            "message_timestamp": message_timestamp,
+            "task_id": "verifier-task",
+        }
+        body = {
+            "authoritative_state_available": True,
+            "authority_mode": "standing-delegation",
+            "checked_at": checked_at,
+            "delegation_sha256": delegation["delegation_sha256"],
+            "latest_human_message_watermark": watermark,
+            "phase": phase,
+            "request_sha256": request["request_sha256"],
+            "revocation_message_watermark": None,
+            "revocation_observed": False,
+            "schema_version": control.REVOCATION_OBSERVATION_SCHEMA_VERSION,
+            "stage": "inventory",
+        }
+        return {**body, "observation_sha256": control.canonical_json_sha256(body)}
+
+    approval_observation = observation(
+        "approval",
+        "2026-08-09T10:00:00+00:00",
+        "2026-08-09T09:59:59+00:00",
+    )
+    approval = control.bind_delegated_approval(
+        request=request,
+        request_review_sha256="c" * 64,
+        delegation=delegation,
+        approval_observation=approval_observation,
+        resolved_at="2026-08-09T10:00:00+00:00",
+    )
+    authorization = control.build_stage_authorization(
+        request=request,
+        authorization_id="card-acceptance-verifier-inventory-authorization-v1",
+        request_review_sha256="c" * 64,
+        approval_record_sha256=approval["approval_sha256"],
+    )
+    launch = observation(
+        "launch",
+        "2026-08-09T10:01:00+00:00",
+        "2026-08-09T10:00:59+00:00",
+    )
+    body = {
+        "approval_record": approval,
+        "authorization": authorization,
+        "build_launch_observation": launch,
+        "request": request,
+        "schema_version": (
+            "noncombat-card-acceptance-empirical-successor-"
+            "seed-inventory-authority-evidence-v1"
+        ),
+        "source_inventory": source_inventory,
+    }
+    return {
+        **body,
+        "authority_evidence_sha256": control.canonical_json_sha256(body),
+    }
+
+
 def _seed_inventory_evidence():
     verifier = _verifier()
+    authority_evidence = _seed_inventory_authority_evidence()
+    request = authority_evidence["request"]
+    authorization = authority_evidence["authorization"]
+    launch = authority_evidence["build_launch_observation"]
+    source_inventory = authority_evidence["source_inventory"]
     source_payload = b'{"used_seeds":[0,2]}\n'
     source_path = "reports/history/seeds.json"
     sources = [
@@ -1175,7 +1291,8 @@ def _seed_inventory_evidence():
         "holdout": selected[640:1_152],
     }
     body = {
-        "authorization_sha256": "e" * 64,
+        "authority_evidence": authority_evidence,
+        "authorization_sha256": authorization["authorization_sha256"],
         "cohort_counts": {"training": 512, "canary": 128, "holdout": 512},
         "cohorts": cohorts,
         "excluded_seed_count": 2,
@@ -1183,7 +1300,8 @@ def _seed_inventory_evidence():
         "excluded_seeds_sha256": hashlib.sha256(
             verifier.canonical_json_bytes([0, 2])
         ).hexdigest(),
-        "request_sha256": "f" * 64,
+        "launch_authority_sha256": launch["observation_sha256"],
+        "request_sha256": request["request_sha256"],
         "repository_commit": "d" * 40,
         "role_sha256": {
             role: hashlib.sha256(verifier.canonical_json_bytes(seeds)).hexdigest()
@@ -1192,8 +1310,9 @@ def _seed_inventory_evidence():
         "row_count": len(rows),
         "rows": rows,
         "schema_version": (
-            "noncombat-card-acceptance-empirical-successor-seed-inventory-v1"
+            "noncombat-card-acceptance-empirical-successor-seed-inventory-v3"
         ),
+        "source_inventory_sha256": source_inventory["inventory_sha256"],
         "source_registry": registry,
     }
     return {
@@ -1202,6 +1321,93 @@ def _seed_inventory_evidence():
             verifier.canonical_json_bytes(body)
         ).hexdigest(),
     }
+
+
+def _external_seed_inventory_evidence():
+    control = _control()
+    evidence = _seed_inventory_evidence()
+    envelope = evidence["authority_evidence"]
+    request = envelope["request"]
+    approved_at = "2026-08-09T09:59:00+00:00"
+    provenance = {
+        "message_id": "verifier-external-approval",
+        "source": "external-human-message",
+        "task_id": "verifier-task",
+    }
+    approval_text = f"I approve exact request {request['request_sha256']}."
+    message_body = {
+        "approved_at": approved_at,
+        "provenance": provenance,
+        "schema_version": control.EXTERNAL_APPROVAL_MESSAGE_SCHEMA_VERSION,
+        "verbatim_approval_text": approval_text,
+    }
+    message = {
+        **message_body,
+        "approval_message_sha256": control.canonical_json_sha256(message_body),
+    }
+
+    def observation(phase, checked_at, message_timestamp):
+        body = {
+            "approval_message_sha256": message["approval_message_sha256"],
+            "authoritative_state_available": True,
+            "authority_mode": "external-human-approval",
+            "checked_at": checked_at,
+            "latest_human_message_watermark": {
+                "message_id": f"verifier-external-{phase}",
+                "message_timestamp": message_timestamp,
+                "task_id": "verifier-task",
+            },
+            "phase": phase,
+            "request_sha256": request["request_sha256"],
+            "revocation_message_watermark": None,
+            "revocation_observed": False,
+            "schema_version": control.EXTERNAL_REVOCATION_OBSERVATION_SCHEMA_VERSION,
+            "stage": "inventory",
+        }
+        return {**body, "observation_sha256": control.canonical_json_sha256(body)}
+
+    approval_observation = observation(
+        "approval",
+        "2026-08-09T10:00:00+00:00",
+        "2026-08-09T09:59:59+00:00",
+    )
+    approval = control.bind_external_human_approval(
+        request=request,
+        request_review_sha256="c" * 64,
+        request_published_at="2026-08-09T09:58:00+00:00",
+        approval_text=approval_text,
+        approved_at=approved_at,
+        provenance=provenance,
+        approval_observation=approval_observation,
+    )
+    authorization = control.build_stage_authorization(
+        request=request,
+        authorization_id="card-acceptance-verifier-inventory-authorization-v1",
+        request_review_sha256="c" * 64,
+        approval_record_sha256=approval["approval_sha256"],
+    )
+    launch = observation(
+        "launch",
+        "2026-08-09T10:01:00+00:00",
+        "2026-08-09T10:00:59+00:00",
+    )
+    envelope_body = {
+        "approval_record": approval,
+        "authorization": authorization,
+        "build_launch_observation": launch,
+        "request": request,
+        "schema_version": envelope["schema_version"],
+        "source_inventory": envelope["source_inventory"],
+    }
+    evidence["authority_evidence"] = {
+        **envelope_body,
+        "authority_evidence_sha256": control.canonical_json_sha256(envelope_body),
+    }
+    evidence["authorization_sha256"] = authorization["authorization_sha256"]
+    evidence["launch_authority_sha256"] = launch["observation_sha256"]
+    body = {key: value for key, value in evidence.items() if key != "inventory_sha256"}
+    evidence["inventory_sha256"] = control.canonical_json_sha256(body)
+    return evidence
 
 
 def test_independent_verifier_reconstructs_fixed_seed_inventory():
@@ -1219,10 +1425,285 @@ def test_independent_verifier_reconstructs_fixed_seed_inventory():
     }
 
 
+def test_independent_verifier_reconstructs_external_inventory_authority():
+    verifier = _verifier()
+    evidence = _external_seed_inventory_evidence()
+
+    assert verifier.verify_seed_inventory_evidence(evidence)["verified"] is True
+
+
 def test_independent_inventory_verifier_rejects_nonfresh_cohort():
     verifier = _verifier()
     evidence = _seed_inventory_evidence()
     evidence["cohorts"]["training"][0] = 0
 
     with pytest.raises(verifier.VerificationError, match="cohort|selection|fresh"):
+        verifier.verify_seed_inventory_evidence(evidence)
+
+
+@pytest.mark.parametrize(
+    ("field", "message"),
+    (
+        ("launch_authority_sha256", "launch|authority"),
+        ("source_inventory_sha256", "source inventory|source"),
+    ),
+)
+def test_independent_inventory_verifier_rejects_rehashed_authority_substitution(
+    field, message
+):
+    verifier = _verifier()
+    evidence = _seed_inventory_evidence()
+    evidence[field] = "1" * 64
+    body = {key: value for key, value in evidence.items() if key != "inventory_sha256"}
+    evidence["inventory_sha256"] = hashlib.sha256(
+        verifier.canonical_json_bytes(body)
+    ).hexdigest()
+
+    with pytest.raises(verifier.VerificationError, match=message):
+        verifier.verify_seed_inventory_evidence(evidence)
+
+
+def _rehash_standing_inventory_authority_chain(evidence):
+    control = _control()
+    envelope = evidence["authority_evidence"]
+    approval = envelope["approval_record"]
+    delegation = approval["delegation"]
+
+    def rehash(document, digest_field):
+        body = {
+            key: value for key, value in document.items() if key != digest_field
+        }
+        document[digest_field] = control.canonical_json_sha256(body)
+
+    rehash(delegation, "delegation_sha256")
+    approval_observation = approval["approval_observation"]
+    approval_observation["delegation_sha256"] = delegation["delegation_sha256"]
+    rehash(approval_observation, "observation_sha256")
+    approval["resolution"]["delegation_sha256"] = delegation["delegation_sha256"]
+    approval["resolution"]["approval_observation_sha256"] = approval_observation[
+        "observation_sha256"
+    ]
+    rehash(approval, "approval_sha256")
+    authorization = envelope["authorization"]
+    authorization["approval_record_sha256"] = approval["approval_sha256"]
+    rehash(authorization, "authorization_sha256")
+    launch = envelope["build_launch_observation"]
+    launch["delegation_sha256"] = delegation["delegation_sha256"]
+    rehash(launch, "observation_sha256")
+    rehash(envelope, "authority_evidence_sha256")
+    evidence["authorization_sha256"] = authorization["authorization_sha256"]
+    evidence["launch_authority_sha256"] = launch["observation_sha256"]
+    rehash(evidence, "inventory_sha256")
+
+
+def _rehash_external_inventory_authority_chain(evidence):
+    control = _control()
+    envelope = evidence["authority_evidence"]
+    approval = envelope["approval_record"]
+
+    def rehash(document, digest_field):
+        body = {
+            key: value for key, value in document.items() if key != digest_field
+        }
+        document[digest_field] = control.canonical_json_sha256(body)
+
+    rehash(approval, "approval_sha256")
+    authorization = envelope["authorization"]
+    authorization["approval_record_sha256"] = approval["approval_sha256"]
+    rehash(authorization, "authorization_sha256")
+    rehash(envelope, "authority_evidence_sha256")
+    evidence["authorization_sha256"] = authorization["authorization_sha256"]
+    rehash(evidence, "inventory_sha256")
+
+
+def _rehash_inventory_request_chain(evidence, *, previous_request_sha256):
+    control = _control()
+    envelope = evidence["authority_evidence"]
+    request = envelope["request"]
+
+    def rehash(document, digest_field):
+        body = {
+            key: value for key, value in document.items() if key != digest_field
+        }
+        document[digest_field] = control.canonical_json_sha256(body)
+
+    rehash(request, "request_sha256")
+    approval = envelope["approval_record"]
+    approval_observation = approval["approval_observation"]
+    approval_observation["request_sha256"] = request["request_sha256"]
+    if approval["approval_mode"] == "external-human-approval":
+        message = approval["approval_message"]
+        message["verbatim_approval_text"] = message["verbatim_approval_text"].replace(
+            previous_request_sha256,
+            request["request_sha256"],
+        )
+        rehash(message, "approval_message_sha256")
+        approval_observation["approval_message_sha256"] = message[
+            "approval_message_sha256"
+        ]
+        bound_request_terms = approval["bound_request_terms"]
+        for name in (
+            "configuration_identity",
+            "downstream_authority",
+            "execution_authority",
+            "exclusions",
+            "output_root",
+            "prerequisite_bindings",
+            "request_id",
+            "request_sha256",
+            "resources",
+            "source_commit",
+            "source_inventory_sha256",
+            "stage",
+        ):
+            bound_request_terms[name] = copy.deepcopy(request[name])
+    rehash(approval_observation, "observation_sha256")
+    approval["approved_request_sha256"] = request["request_sha256"]
+    if approval["approval_mode"] == "standing-delegation":
+        approval["resolution"]["request_sha256"] = request["request_sha256"]
+        approval["resolution"]["approval_observation_sha256"] = (
+            approval_observation["observation_sha256"]
+        )
+    rehash(approval, "approval_sha256")
+    authorization = envelope["authorization"]
+    authorization["request_sha256"] = request["request_sha256"]
+    authorization["approval_record_sha256"] = approval["approval_sha256"]
+    rehash(authorization, "authorization_sha256")
+    launch = envelope["build_launch_observation"]
+    launch["request_sha256"] = request["request_sha256"]
+    if approval["approval_mode"] == "external-human-approval":
+        launch["approval_message_sha256"] = approval["approval_message"][
+            "approval_message_sha256"
+        ]
+    rehash(launch, "observation_sha256")
+    rehash(envelope, "authority_evidence_sha256")
+    evidence["request_sha256"] = request["request_sha256"]
+    evidence["authorization_sha256"] = authorization["authorization_sha256"]
+    evidence["launch_authority_sha256"] = launch["observation_sha256"]
+    rehash(evidence, "inventory_sha256")
+
+
+@pytest.mark.parametrize(
+    ("mutation", "message"),
+    (
+        ("standing_scope", "scope|delegation|request class"),
+        ("launch_task", "task|provenance|watermark"),
+        ("blank_grant", "grant|nonempty|text"),
+        ("nul_grant", "grant|nonempty|text"),
+        ("blank_task", "task|provenance|nonempty"),
+        ("blank_message_id", "message|provenance|nonempty"),
+    ),
+)
+def test_independent_inventory_verifier_rejects_rehashed_authority_semantics(
+    mutation, message
+):
+    verifier = _verifier()
+    evidence = _seed_inventory_evidence()
+    envelope = evidence["authority_evidence"]
+    if mutation == "standing_scope":
+        envelope["approval_record"]["delegation"]["scope"][
+            "request_class"
+        ] = "forged-request-class"
+    elif mutation == "launch_task":
+        envelope["build_launch_observation"][
+            "latest_human_message_watermark"
+        ]["task_id"] = "forged-task"
+    elif mutation == "blank_grant":
+        envelope["approval_record"]["delegation"]["grant"][
+            "verbatim_text"
+        ] = " "
+    elif mutation == "nul_grant":
+        envelope["approval_record"]["delegation"]["grant"][
+            "verbatim_text"
+        ] = "valid\0grant"
+    elif mutation == "blank_task":
+        approval = envelope["approval_record"]
+        approval["delegation"]["grant"]["provenance"]["task_id"] = " "
+        approval["approval_observation"]["latest_human_message_watermark"][
+            "task_id"
+        ] = " "
+        envelope["build_launch_observation"][
+            "latest_human_message_watermark"
+        ]["task_id"] = " "
+    elif mutation == "blank_message_id":
+        envelope["approval_record"]["delegation"]["grant"]["provenance"][
+            "message_id"
+        ] = " "
+    else:
+        raise AssertionError(mutation)
+    _rehash_standing_inventory_authority_chain(evidence)
+
+    with pytest.raises(verifier.VerificationError, match=message):
+        verifier.verify_seed_inventory_evidence(evidence)
+
+
+@pytest.mark.parametrize(
+    ("mutation", "message"),
+    (
+        ("bound_terms", "bound|provenance|request"),
+        ("publication_order", "ordering|publication|approval"),
+    ),
+)
+def test_independent_inventory_verifier_rejects_rehashed_external_semantics(
+    mutation, message
+):
+    verifier = _verifier()
+    evidence = _external_seed_inventory_evidence()
+    approval = evidence["authority_evidence"]["approval_record"]
+    if mutation == "bound_terms":
+        approval["bound_request_terms"]["resources"]["charged_seconds"] = 1.0
+    elif mutation == "publication_order":
+        approval["request_published_at"] = "2026-08-09T10:02:00+00:00"
+    else:
+        raise AssertionError(mutation)
+    _rehash_external_inventory_authority_chain(evidence)
+
+    with pytest.raises(verifier.VerificationError, match=message):
+        verifier.verify_seed_inventory_evidence(evidence)
+
+
+@pytest.mark.parametrize(
+    ("mutation", "message"),
+    (
+        ("resources", "resource|request"),
+        ("exclusions", "exclusion|request"),
+        ("configuration", "configuration|request"),
+    ),
+)
+def test_independent_inventory_verifier_rejects_rehashed_fixed_request(
+    mutation, message
+):
+    verifier = _verifier()
+    evidence = _seed_inventory_evidence()
+    request = evidence["authority_evidence"]["request"]
+    previous_request_sha256 = request["request_sha256"]
+    if mutation == "resources":
+        request["resources"]["max_materialized_seeds"] = 1
+    elif mutation == "exclusions":
+        request["exclusions"].remove("gameplay")
+    elif mutation == "configuration":
+        request["configuration_identity"]["contract_sha256"] = "1" * 64
+    else:
+        raise AssertionError(mutation)
+    _rehash_inventory_request_chain(
+        evidence,
+        previous_request_sha256=previous_request_sha256,
+    )
+
+    with pytest.raises(verifier.VerificationError, match=message):
+        verifier.verify_seed_inventory_evidence(evidence)
+
+
+def test_independent_inventory_verifier_rejects_rehashed_external_request():
+    verifier = _verifier()
+    evidence = _external_seed_inventory_evidence()
+    request = evidence["authority_evidence"]["request"]
+    previous_request_sha256 = request["request_sha256"]
+    request["resources"]["max_materialized_seeds"] = 1
+    _rehash_inventory_request_chain(
+        evidence,
+        previous_request_sha256=previous_request_sha256,
+    )
+
+    with pytest.raises(verifier.VerificationError, match="resource|request"):
         verifier.verify_seed_inventory_evidence(evidence)
