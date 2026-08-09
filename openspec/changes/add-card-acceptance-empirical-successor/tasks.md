@@ -1,6 +1,6 @@
 ## 1. RED Contract Coverage
 
-- [ ] 1.1 From the reviewed pre-implementation Git tree, publish, independently verify, commit, and push the separate consumed-evidence preservation manifest with both fixed closed path/root arrays, exact source hashes, canonical directory-inventory digests, and manifest/tree bindings before any implementation edit.
+- [x] 1.1 From the reviewed pre-implementation Git tree, publish, independently verify, commit, and push the separate consumed-evidence preservation manifest with both fixed closed path/root arrays, exact source hashes, canonical directory-inventory digests, and manifest/tree bindings before any implementation edit.
 - [ ] 1.2 Add failing import-isolation and immutable-metadata tests for the new control plane and independent verifier.
 - [ ] 1.3 Add failing bootstrap tests for exact base-to-five-ranker key/byte mapping, candidate/control disjoint parameter/storage identity, frozen non-card bytes, and canonical paired-checkpoint reproduction.
 - [ ] 1.4 Add failing objective tests for the four exact components, card-decision denominator, equal per-family conditional entropy, omitted cross-head entropies, and gradient ownership.

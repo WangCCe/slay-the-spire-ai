@@ -214,3 +214,7 @@ openspec/changes/archive/*-repair-cross-fitted-execution-control-plane/** text e
 # Preserve cross-fitted hierarchical successor execution evidence byte-for-byte.
 reports/noncombat_cross_fitted_hierarchical_learning_successor_* -text whitespace=cr-at-eol
 reports/noncombat_cross_fitted_hierarchical_learning_successor_*/** -text whitespace=cr-at-eol
+
+# Preserve card-acceptance consumed-evidence manifest and review bytes.
+reports/noncombat_card_acceptance_empirical_successor_preservation_20260809.json -text whitespace=cr-at-eol
+reports/noncombat_card_acceptance_empirical_successor_preservation_20260809_review.json -text whitespace=cr-at-eol
