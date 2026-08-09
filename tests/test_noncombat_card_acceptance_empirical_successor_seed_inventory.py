@@ -142,6 +142,116 @@ def test_build_inventory_publishes_exact_fresh_disjoint_cohorts(tmp_path):
     ).hexdigest()
 
 
+def test_historical_exclusion_roles_include_failed_and_untouched_reservations(
+    tmp_path,
+):
+    repo, commit = _commit_files(
+        tmp_path,
+        {
+            "reports/history/roles.json": _json_bytes(
+                {
+                    "consumed_seed": 101,
+                    "failed_accesses": [{"seed": 102}],
+                    "prior_untouched_holdout_seeds": [103, 104],
+                    "reserved_seed": 105,
+                }
+            )
+        },
+    )
+    request, authorization = _inventory_authority(repo, commit)
+
+    artifact = seed_inventory.build_inventory(
+        repo_root=repo,
+        request=request,
+        authorization=authorization,
+    )
+
+    assert {101, 102, 103, 104, 105} <= set(artifact["excluded_seeds"])
+    assert {(row["seed"], row["role"]) for row in artifact["rows"]} == {
+        (101, "consumed"),
+        (102, "failed_access"),
+        (103, "holdout"),
+        (104, "holdout"),
+        (105, "reserved"),
+    }
+    assert seed_inventory.verify_inventory(
+        repo_root=repo,
+        request=request,
+        authorization=authorization,
+    ) == artifact
+
+
+def test_generated_roots_are_excluded_before_blob_loading_and_recursion(
+    tmp_path, monkeypatch
+):
+    legitimate = "reports/history/seeds.json"
+    generated = {
+        "reports/noncombat_card_acceptance_empirical_successor_old/rows.json": (
+            _json_bytes({"used_seed": 0})
+        ),
+        "reports/noncombat_card_acceptance_empirical_successor_attempts/a/rows.json": (
+            _json_bytes({"failed_seed": 1})
+        ),
+        "reports/.noncombat_card_acceptance_empirical_successor_old.x.scratch/rows.json": (
+            _json_bytes({"reserved_seed": 2})
+        ),
+        "reports/.noncombat_card_acceptance_empirical_successor_old.x.sealed/rows.json": (
+            _json_bytes({"holdout_seed": 3})
+        ),
+        "reports/.noncombat_card_acceptance_empirical_successor_old.x.staging/rows.json.gz": (
+            b"not a gzip stream"
+        ),
+        "reports/.noncombat_card_acceptance_empirical_successor_old.x.tmp/rows.json": (
+            _json_bytes({"training_seed": 5})
+        ),
+    }
+    repo, commit = _commit_files(
+        tmp_path,
+        {
+            legitimate: _json_bytes({"used_seed": 99}),
+            **generated,
+        },
+    )
+    request, authorization = _inventory_authority(repo, commit)
+    loaded_paths = []
+    original_blob_batch = seed_inventory._git_blob_batch
+
+    def observe_blob_batch(repo_root, *, repository_commit, paths):
+        loaded_paths.extend(paths)
+        return original_blob_batch(
+            repo_root,
+            repository_commit=repository_commit,
+            paths=paths,
+        )
+
+    monkeypatch.setattr(seed_inventory, "_git_blob_batch", observe_blob_batch)
+
+    artifact = seed_inventory.build_inventory(
+        repo_root=repo,
+        request=request,
+        authorization=authorization,
+    )
+
+    assert loaded_paths == [legitimate]
+    assert {source["path"] for source in artifact["source_registry"]["sources"]} == {
+        legitimate
+    }
+    assert {root["kind"] for root in artifact["source_registry"]["excluded_roots"]} == {
+        "attempt",
+        "candidate",
+        "scratch",
+        "sealed",
+        "staging",
+        "temporary",
+    }
+    assert 99 in artifact["excluded_seeds"]
+    assert {0, 1, 2, 3, 4, 5}.isdisjoint(artifact["excluded_seeds"])
+    assert all(
+        row["source_path"] not in generated
+        for row in artifact["rows"]
+    )
+
+
 def test_verify_inventory_reconstructs_without_selector_or_materializer(
     tmp_path, monkeypatch
 ):
