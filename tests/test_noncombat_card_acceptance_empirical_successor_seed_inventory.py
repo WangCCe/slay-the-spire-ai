@@ -456,6 +456,15 @@ def test_generated_roots_are_excluded_before_blob_loading_and_recursion(
         "reports/.noncombat_card_acceptance_empirical_successor_old.x.tmp/rows.json": (
             _json_bytes({"training_seed": 5})
         ),
+        "reports/.readiness.r3.staging/candidate_seed_inventory.json.gz": (
+            b"not a gzip stream"
+        ),
+        "reports/.historical_inventory.x.scratch/rows.json": b"malformed",
+        "reports/.historical_inventory.x.sealed/rows.json": b"malformed",
+        "reports/.historical_inventory.x.staging/rows.json.gz": b"malformed",
+        "reports/.historical_inventory.x.temporary/rows.json": b"malformed",
+        "reports/.historical_inventory.x.tmp/rows.json": b"malformed",
+        "reports/historical_inventory_attempts/a/rows.json": b"malformed",
     }
     repo, commit = _commit_files(
         tmp_path,
@@ -500,12 +509,130 @@ def test_generated_roots_are_excluded_before_blob_loading_and_recursion(
         "staging",
         "temporary",
     }
+    excluded_by_path = {
+        root["path"]: root["kind"]
+        for root in artifact["source_registry"]["excluded_roots"]
+    }
+    assert excluded_by_path["reports/.readiness.r3.staging"] == "staging"
+    assert excluded_by_path["reports/.historical_inventory.x.scratch"] == "scratch"
+    assert excluded_by_path["reports/.historical_inventory.x.sealed"] == "sealed"
+    assert excluded_by_path["reports/.historical_inventory.x.staging"] == "staging"
+    assert excluded_by_path[
+        "reports/.historical_inventory.x.temporary"
+    ] == "temporary"
+    assert excluded_by_path["reports/.historical_inventory.x.tmp"] == "temporary"
+    assert excluded_by_path["reports/historical_inventory_attempts"] == "attempt"
     assert 99 in artifact["excluded_seeds"]
     assert {0, 1, 2, 3, 4, 5}.isdisjoint(artifact["excluded_seeds"])
     assert all(
         row["source_path"] not in generated
         for row in artifact["rows"]
     )
+    assert artifact["source_registry"]["excluded_roots"] == sorted(
+        artifact["source_registry"]["excluded_roots"],
+        key=lambda row: row["path"],
+    )
+
+
+def test_exact_readiness_staging_path_is_excluded_before_blob_request(
+    tmp_path, monkeypatch
+):
+    path = (
+        "reports/.noncombat_cross_fitted_empirical_successor_readiness_20260808_r3."
+        "5777eef4a43065e6246481926f95d6cfcba04c88.staging/"
+        "candidate_seed_inventory.json.gz"
+    )
+    root = path.rsplit("/", 1)[0]
+    requested_paths = []
+
+    monkeypatch.setattr(
+        seed_inventory,
+        "_list_tree_report_paths",
+        lambda _repo_root, _repository_commit: [path],
+    )
+
+    def observe_blob_batch(_repo_root, *, repository_commit, paths):
+        assert repository_commit == "0" * 40
+        requested_paths.extend(paths)
+        return {}
+
+    monkeypatch.setattr(seed_inventory, "_git_blob_batch", observe_blob_batch)
+
+    registry, rows, excluded = seed_inventory._build_source_registry_and_rows(
+        tmp_path,
+        repository_commit="0" * 40,
+        output_root=(tmp_path / "reports" / "candidate").as_posix(),
+    )
+
+    assert requested_paths == []
+    assert registry["sources"] == []
+    assert registry["excluded_roots"] == [{"kind": "staging", "path": root}]
+    assert rows == []
+    assert excluded == []
+
+
+def test_generated_root_tokens_in_ordinary_paths_remain_eligible(
+    tmp_path, monkeypatch
+):
+    ordinary = {
+        "reports/history/staging-result.json": _json_bytes({"used_seed": 91}),
+        "reports/history/scratch/rows.json": _json_bytes({"used_seed": 92}),
+        "reports/history/sealed-evidence/rows.json": _json_bytes({"used_seed": 93}),
+        "reports/history/temporary.tmp-result.json": _json_bytes({"used_seed": 94}),
+        "reports/history_attempt_log/rows.json": _json_bytes({"used_seed": 95}),
+        "reports/history.staging/rows.json": _json_bytes({"used_seed": 96}),
+        "reports/.staging.archive/rows.json": _json_bytes({"used_seed": 97}),
+    }
+    repo, commit = _commit_files(tmp_path, ordinary)
+    request, authorization, approval, launch_observation = _inventory_authority(
+        repo, commit
+    )
+    loaded_paths = []
+    original_blob_batch = seed_inventory._git_blob_batch
+
+    def observe_blob_batch(repo_root, *, repository_commit, paths):
+        loaded_paths.extend(paths)
+        return original_blob_batch(
+            repo_root,
+            repository_commit=repository_commit,
+            paths=paths,
+        )
+
+    monkeypatch.setattr(seed_inventory, "_git_blob_batch", observe_blob_batch)
+
+    artifact = seed_inventory.build_inventory(
+        repo_root=repo,
+        request=request,
+        authorization=authorization,
+        approval_record=approval,
+        launch_observation=launch_observation,
+    )
+
+    assert loaded_paths == sorted(ordinary)
+    assert artifact["source_registry"]["excluded_roots"] == []
+    assert {row["path"] for row in artifact["source_registry"]["sources"]} == set(
+        ordinary
+    )
+    assert {91, 92, 93, 94, 95, 96, 97} <= set(artifact["excluded_seeds"])
+
+
+def test_malformed_ordinary_generated_token_path_still_fails_closed(tmp_path):
+    repo, commit = _commit_files(
+        tmp_path,
+        {"reports/history/ordinary.staging.json": b"{"},
+    )
+    request, authorization, approval, launch_observation = _inventory_authority(
+        repo, commit
+    )
+
+    with pytest.raises(seed_inventory.SeedInventoryBlocked, match="invalid strict JSON"):
+        seed_inventory.build_inventory(
+            repo_root=repo,
+            request=request,
+            authorization=authorization,
+            approval_record=approval,
+            launch_observation=launch_observation,
+        )
 
 
 def test_verify_inventory_reconstructs_without_selector_or_materializer(

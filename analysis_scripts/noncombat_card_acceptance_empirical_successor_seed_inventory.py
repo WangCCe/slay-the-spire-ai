@@ -87,6 +87,13 @@ _GENERATED_ROOT_KINDS = (
     "staging",
     "temporary",
 )
+_GENERATED_HIDDEN_ROOT_SUFFIXES = (
+    (".scratch", "scratch"),
+    (".sealed", "sealed"),
+    (".staging", "staging"),
+    (".temporary", "temporary"),
+    (".tmp", "temporary"),
+)
 _SUCCESSOR_REPORT_PREFIX = "noncombat_card_acceptance_empirical_successor_"
 _SUCCESSOR_HIDDEN_PREFIX = ".noncombat_card_acceptance_empirical_successor_"
 
@@ -303,26 +310,20 @@ def _classify_generated_root(
                 return "attempt", root
             hidden_prefix = f".{basename}."
             if name.startswith(hidden_prefix):
-                for suffix, kind in (
-                    (".scratch", "scratch"),
-                    (".sealed", "sealed"),
-                    (".staging", "staging"),
-                    (".temporary", "temporary"),
-                    (".tmp", "temporary"),
-                ):
+                for suffix, kind in _GENERATED_HIDDEN_ROOT_SUFFIXES:
                     if name.endswith(suffix):
                         return kind, root
 
         if ancestor.parent.as_posix() != "reports":
             continue
+        if name.startswith("."):
+            for suffix, kind in _GENERATED_HIDDEN_ROOT_SUFFIXES:
+                if name.endswith(suffix):
+                    return kind, root
+        if name.endswith("_attempts"):
+            return "attempt", root
         if name.startswith(_SUCCESSOR_HIDDEN_PREFIX):
-            for suffix, kind in (
-                (".scratch", "scratch"),
-                (".sealed", "sealed"),
-                (".staging", "staging"),
-                (".temporary", "temporary"),
-                (".tmp", "temporary"),
-            ):
+            for suffix, kind in _GENERATED_HIDDEN_ROOT_SUFFIXES:
                 if name.endswith(suffix):
                     return kind, root
             return "temporary", root
