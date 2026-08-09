@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import importlib
+import copy
 import hashlib
 import json
 import os
@@ -548,3 +549,126 @@ def test_request_and_authorization_cli_render_and_validate_canonical_bytes(
         ]
     ) == 0
     assert capsys.readouterr().out.encode("ascii") == authorization_bytes
+
+
+def test_private_execution_context_validates_once_and_owns_immutable_values():
+    control = _control()
+    registration_body = {
+        "registration_id": "card-acceptance-20260809-registration-v1",
+        "schema_version": "synthetic-registration-v1",
+    }
+    registration = {
+        **registration_body,
+        "registration_sha256": control.canonical_json_sha256(registration_body),
+    }
+    request = control.build_stage_request(
+        stage="training",
+        request_id="card-acceptance-20260809-training-request-v1",
+        source_commit="a" * 40,
+        source_inventory_sha256="b" * 64,
+        configuration_identity=control.experiment_configuration_identity(),
+        prerequisite_bindings={
+            "registration_sha256": registration["registration_sha256"]
+        },
+        output_root="D:/synthetic/card-acceptance-successor/training",
+    )
+    authorization = control.build_stage_authorization(
+        request=request,
+        authorization_id="card-acceptance-20260809-training-authorization-v1",
+        request_review_sha256="1" * 64,
+        approval_record_sha256="2" * 64,
+    )
+    validations = []
+
+    def validate_registration(value):
+        validations.append(value)
+        assert value["registration_sha256"] == control.canonical_json_sha256(
+            {
+                key: item
+                for key, item in value.items()
+                if key != "registration_sha256"
+            }
+        )
+        return copy.deepcopy(dict(value))
+
+    context = control._build_validated_execution_context(
+        registration=registration,
+        request=request,
+        authorization=authorization,
+        registration_validator=validate_registration,
+    )
+    registration["registration_id"] = "mutated"
+    request["request_id"] = "mutated"
+    authorization["authorization_id"] = "mutated"
+
+    assert len(validations) == 1
+    assert control._require_execution_context(context) is context
+    assert context.registration is context.registration
+    assert context.request is context.request
+    assert context.authorization is context.authorization
+    for operation in (
+        "journal",
+        "resource",
+        "checkpoint",
+        "stage",
+        "rollback",
+        "terminal",
+    ):
+        assert control._execution_context_for_operation(context, operation) is context
+    assert len(validations) == 1
+    assert context.registration["registration_id"] == (
+        "card-acceptance-20260809-registration-v1"
+    )
+    assert context.request["request_id"].endswith("-training-request-v1")
+    assert context.authorization["authorization_id"].endswith(
+        "-training-authorization-v1"
+    )
+    with pytest.raises(TypeError, match="immutable"):
+        context.registration["registration_id"] = "changed"
+    with pytest.raises(TypeError, match="immutable"):
+        context.request["execution_authority"]["training"] = False
+    with pytest.raises(TypeError, match="immutable"):
+        context.stage = "holdout"
+
+
+def test_execution_context_rejects_rewrap_and_registration_binding_mismatch():
+    control = _control()
+    registration = {
+        "registration_id": "card-acceptance-20260809-registration-v1",
+        "registration_sha256": "9" * 64,
+    }
+    request = _stage_request(control, "training")
+    authorization = control.build_stage_authorization(
+        request=request,
+        authorization_id="card-acceptance-20260809-training-authorization-v1",
+        request_review_sha256="1" * 64,
+        approval_record_sha256="2" * 64,
+    )
+
+    with pytest.raises(control.SuccessorControlError, match="registration"):
+        control._build_validated_execution_context(
+            registration=registration,
+            request=request,
+            authorization=authorization,
+            registration_validator=lambda value: copy.deepcopy(dict(value)),
+        )
+
+    bound_registration = {
+        **registration,
+        "registration_sha256": request["prerequisite_bindings"][
+            "registration_sha256"
+        ],
+    }
+    context = control._build_validated_execution_context(
+        registration=bound_registration,
+        request=request,
+        authorization=authorization,
+        registration_validator=lambda value: copy.deepcopy(dict(value)),
+    )
+    with pytest.raises(control.SuccessorControlError, match="raw|context"):
+        control._build_validated_execution_context(
+            registration=context,
+            request=request,
+            authorization=authorization,
+            registration_validator=lambda value: value,
+        )

@@ -171,6 +171,14 @@ _PUBLIC_DEPENDENCY_SPECS = (
     ),
 )
 _STAGES = ("inventory", "training", "canary", "holdout")
+_EXECUTION_CONTEXT_OPERATIONS = (
+    "journal",
+    "resource",
+    "checkpoint",
+    "stage",
+    "rollback",
+    "terminal",
+)
 _EXECUTION_OPERATION_NAMES = (
     "checkpoint_publication",
     "cohort_materialization",
@@ -889,6 +897,185 @@ def validate_stage_authorization(
             "stage authorization differs from exact request binding"
         )
     return authorization
+
+
+class _FrozenExecutionDict(dict[str, Any]):
+    """JSON-compatible mapping owned by one process-local execution context."""
+
+    @staticmethod
+    def _immutable(*_args: Any, **_kwargs: Any) -> None:
+        raise TypeError("validated execution context is immutable")
+
+    __setitem__ = _immutable
+    __delitem__ = _immutable
+    clear = _immutable
+    pop = _immutable
+    popitem = _immutable
+    setdefault = _immutable
+    update = _immutable
+    __ior__ = _immutable
+
+
+class _FrozenExecutionList(list[Any]):
+    """JSON-compatible sequence owned by one process-local execution context."""
+
+    @staticmethod
+    def _immutable(*_args: Any, **_kwargs: Any) -> None:
+        raise TypeError("validated execution context is immutable")
+
+    __setitem__ = _immutable
+    __delitem__ = _immutable
+    append = _immutable
+    clear = _immutable
+    extend = _immutable
+    insert = _immutable
+    pop = _immutable
+    remove = _immutable
+    reverse = _immutable
+    sort = _immutable
+    __iadd__ = _immutable
+    __imul__ = _immutable
+
+
+def _freeze_execution_value(value: Any) -> Any:
+    if isinstance(value, dict):
+        return _FrozenExecutionDict(
+            {key: _freeze_execution_value(item) for key, item in value.items()}
+        )
+    if isinstance(value, list):
+        return _FrozenExecutionList(_freeze_execution_value(item) for item in value)
+    if isinstance(value, tuple):
+        return tuple(_freeze_execution_value(item) for item in value)
+    return value
+
+
+class _ValidatedExecutionContext:
+    """Own one validated registration/request/authorization tuple exactly once."""
+
+    __slots__ = (
+        "_authorization",
+        "_registration",
+        "_request",
+        "_sealed",
+        "_stage",
+    )
+
+    def __init__(
+        self,
+        *,
+        registration: _FrozenExecutionDict,
+        request: _FrozenExecutionDict,
+        authorization: _FrozenExecutionDict,
+        stage: str,
+    ) -> None:
+        object.__setattr__(self, "_registration", registration)
+        object.__setattr__(self, "_request", request)
+        object.__setattr__(self, "_authorization", authorization)
+        object.__setattr__(self, "_stage", stage)
+        object.__setattr__(self, "_sealed", True)
+
+    def __setattr__(self, _name: str, _value: Any) -> None:
+        if getattr(self, "_sealed", False):
+            raise TypeError("validated execution context is immutable")
+        object.__setattr__(self, _name, _value)
+
+    def __delattr__(self, _name: str) -> None:
+        raise TypeError("validated execution context is immutable")
+
+    def __copy__(self):
+        raise TypeError("validated execution context cannot be copied")
+
+    def __deepcopy__(self, _memo: dict[int, Any]):
+        raise TypeError("validated execution context cannot be copied")
+
+    @property
+    def registration(self) -> Mapping[str, Any]:
+        return self._registration
+
+    @property
+    def request(self) -> Mapping[str, Any]:
+        return self._request
+
+    @property
+    def authorization(self) -> Mapping[str, Any]:
+        return self._authorization
+
+    @property
+    def stage(self) -> str:
+        return self._stage
+
+
+def _build_validated_execution_context(
+    *,
+    registration: Mapping[str, Any],
+    request: Mapping[str, Any],
+    authorization: Mapping[str, Any],
+    registration_validator: Callable[[Mapping[str, Any]], Mapping[str, Any]],
+) -> _ValidatedExecutionContext:
+    """Validate raw stage bindings once, then retain recursively frozen values."""
+    if type(registration) is _ValidatedExecutionContext:
+        raise SuccessorControlError(
+            "execution context must be built from raw registration"
+        )
+    if not callable(registration_validator):
+        raise SuccessorControlError("registration validator must be callable")
+    normalized_request = validate_stage_request(request)
+    if normalized_request["stage"] == "inventory":
+        raise SuccessorControlError(
+            "inventory does not use an empirical registration context"
+        )
+    normalized_authorization = validate_stage_authorization(
+        authorization,
+        normalized_request,
+    )
+    try:
+        normalized_registration = _copy_mapping(
+            registration_validator(registration),
+            "validated registration",
+        )
+    except SuccessorControlError:
+        raise
+    except Exception as exc:
+        raise SuccessorControlError("registration validation failed") from exc
+    registration_sha256 = _digest(
+        normalized_registration.get("registration_sha256"),
+        "registration identity",
+    )
+    if registration_sha256 != normalized_request["prerequisite_bindings"].get(
+        "registration_sha256"
+    ):
+        raise SuccessorControlError("execution registration binding mismatch")
+    frozen_registration = _freeze_execution_value(normalized_registration)
+    frozen_request = _freeze_execution_value(normalized_request)
+    frozen_authorization = _freeze_execution_value(normalized_authorization)
+    if not all(
+        type(value) is _FrozenExecutionDict
+        for value in (frozen_registration, frozen_request, frozen_authorization)
+    ):
+        raise SuccessorControlError("execution context ownership failed")
+    return _ValidatedExecutionContext(
+        registration=frozen_registration,
+        request=frozen_request,
+        authorization=frozen_authorization,
+        stage=normalized_request["stage"],
+    )
+
+
+def _require_execution_context(value: object) -> _ValidatedExecutionContext:
+    """Reject raw mappings so all lifecycle operations share the exact context."""
+    if type(value) is not _ValidatedExecutionContext:
+        raise SuccessorControlError("validated execution context is required")
+    return value
+
+
+def _execution_context_for_operation(
+    value: object, operation: str
+) -> _ValidatedExecutionContext:
+    """Route every lifecycle operation through the same process-owned context."""
+    context = _require_execution_context(value)
+    if operation not in _EXECUTION_CONTEXT_OPERATIONS:
+        raise SuccessorControlError("execution context operation is invalid")
+    return context
 
 
 def build_parser() -> argparse.ArgumentParser:
