@@ -1346,6 +1346,46 @@ The next authorized sequence is:
     testable design, preserve conditional choice, define canary/holdout and
     rollback criteria, and grant no empirical execution until separately
     reviewed and authorized.
+60. Preserve the completed source-only card-acceptance objective architecture
+    contract. Planning commits `a3e2edc70` and `9909abe49` fixed the reviewed
+    public API, report schema, authority inventory, and future empirical-entry
+    boundary before implementation. Source commit `23051ad5a` adds two
+    independent public `StateConditionedCandidateRanker` instances with exact
+    `family_head.*` and `conditional_ranker.*` checkpoint namespaces. Exact
+    candidate kinds remain separate, including `take`, `skip`, and `bowl`;
+    family features use canonical float64-accumulated means with checked
+    float32 conversion, and the active acceptance coordinate is
+    `z_take - logsumexp(all explicit non-take family logits)` in float64.
+    Selected family terms update only the family head, selected conditional
+    terms and unweighted per-family entropy update only the conditional head,
+    and expected conditional plus joint entropy remain explicitly cross-head.
+    The six registered synthetic fixtures execute rather than serving as
+    labels, all 12 published invariants pass, and report construction preserves
+    caller RNG state. Two fresh isolated processes produced byte-identical
+    canonical reports: JSON SHA-256
+    `244bbfd045f901d2f1302d1976d1618d9725c56d8d86db22dd207c2724d792e1`
+    at 5,113 bytes and Markdown SHA-256
+    `8cd16e1943e6e46c41e3f2c95714ee3ab13c4ab4e2efb74667d0bce6a269234e`
+    at 1,088 bytes. The final focused suite passes 42 tests; the direct legacy
+    preservation boundary passes 107. The single `commit` gate is correctness-
+    green with 3,651 passes and 16 skips in 296.62 seconds of pytest, but its
+    300.29-second total exceeds the qualified five-minute feedback ceiling by
+    0.29 seconds and therefore invalidates timing qualification without
+    authorizing a retry or post-result exclusion. The unchanged `full` gate
+    passes 5,481 tests with 18 skips in 2,339.93 seconds of pytest, 2,343.85
+    seconds including orchestration; all strict OpenSpec validation passes
+    80/80 and final independent review has no P1/P2. Fresh gameplay validation
+    is not applicable because existing runtime, experiment, checkpoint,
+    production agent, and CommunicationMod imports remain unchanged. Every
+    architecture/objective choice beyond this contract, fitting, training,
+    replay, evaluation, OPE, model/native loading, seed access, gameplay,
+    qualification, promotion, policy-quality, causal, and formal-RL authority
+    remains false. A future empirical successor requires a separate OpenSpec
+    change and execution authorization with new frozen candidate/control
+    identities, candidate disabled by default, one at-most-once 128-pair
+    structural canary, one untouched 512-seed paired holdout, and exact rollback
+    to the registered control. It must separately choose initialization, loss
+    coefficients, optimizer, cohort, and policy-quality thresholds.
 
 ## Work Lanes
 
@@ -1513,6 +1553,14 @@ OpenSpec changes authorize them.
   including orchestration. The 17-file boundary requires direct coverage for
   excluded ownership; any later over-ceiling invocation invalidates timing
   qualification without authorizing a retry or post-result exclusion.
+- Treat the 2026-08-09 card-acceptance architecture `commit` gate as
+  correctness-green but no longer timing-qualified: 3,651 tests passed with 16
+  skips in 296.62 seconds of pytest and 300.29 seconds including orchestration,
+  exceeding the five-minute total ceiling by 0.29 seconds. It was invoked once
+  and was not retried. Include this result in the next separate read-only
+  duration audit before changing tiers, targets, or limits; the unchanged
+  `full` result remains 5,481 passed, 18 skipped in 2,339.93 seconds of pytest
+  and 2,343.85 seconds including orchestration.
 
 Historical reports and archived changes retain the objectives and authority
 boundaries that applied when they were written. This document is the canonical

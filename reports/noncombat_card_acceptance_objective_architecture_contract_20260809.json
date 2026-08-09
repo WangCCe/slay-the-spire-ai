@@ -1,0 +1,155 @@
+{
+  "authority": {
+    "architecture_selection": false,
+    "causal_claim": false,
+    "coefficient_selection": false,
+    "cohort_materialization": false,
+    "communication_mod": false,
+    "environment_construction": false,
+    "evaluation": false,
+    "execution": false,
+    "fitting": false,
+    "formal_rl": false,
+    "gameplay": false,
+    "loss_construction": false,
+    "model_loading": false,
+    "native_loading": false,
+    "objective_selection": false,
+    "ope": false,
+    "optimizer_selection": false,
+    "policy_promotion": false,
+    "policy_quality": false,
+    "qualification": false,
+    "replay": false,
+    "reward_selection": false,
+    "seed_access": false,
+    "training": false
+  },
+  "contracts": {
+    "architecture": {
+      "checkpoint_namespaces": {
+        "conditional_ranker": "conditional_ranker.*",
+        "family_head": "family_head.*"
+      },
+      "family_aggregation": "canonical-mean-projected-candidate-features-v1",
+      "family_order": "lexicographic-kind",
+      "input_projection": "caller-supplied-preprojected-float32-v1",
+      "parameter_sharing": "none"
+    },
+    "objective": {
+      "acceptance_coordinate": "z_take-logsumexp-all-explicit-non-take-families-float64-v1",
+      "entropy_decomposition": "joint=family+expected_conditional",
+      "gradient_ownership": "selected-family:family-head;selected-conditional:conditional-ranker;expected-conditional:cross-head-v1",
+      "probability_factorization": "p(family)*p(candidate|family)",
+      "tie_policy": "lexicographic-all-maxima-no-unique-on-tie-v1"
+    },
+    "synthetic_evidence": {
+      "fixture_ids": [
+        "float32-extremes",
+        "permutation",
+        "take-only",
+        "take-skip-bowl",
+        "take-skip-smooth",
+        "ties"
+      ],
+      "invariants": {
+        "acceptance_independent_of_conditional": true,
+        "conditional_gradient_isolated": true,
+        "conditional_independent_of_acceptance": true,
+        "entropy_identity": true,
+        "expected_conditional_entropy_cross_head": true,
+        "extremes_finite": true,
+        "family_gradient_isolated": true,
+        "family_permutation_invariant": true,
+        "gradient_reconstruction_exact": true,
+        "parameter_identity_disjoint": true,
+        "parameter_storage_disjoint": true,
+        "probability_normalized": true
+      }
+    }
+  },
+  "dependencies": {
+    "prohibited_modules": [
+      "analysis_scripts.noncombat_cross_fitted_hierarchical_learning_experiment",
+      "analysis_scripts.noncombat_cross_fitted_hierarchical_learning_runtime",
+      "analysis_scripts.noncombat_simulator_adapter",
+      "analysis_scripts.noncombat_simulator_rl_experiment",
+      "analysis_scripts.noncombat_state_conditioned_policy_input",
+      "analysis_scripts.verify_noncombat_cross_fitted_hierarchical_learning_experiment",
+      "spirecomm",
+      "sts_lightspeed_noncombat_adapter"
+    ],
+    "required": {
+      "ranker": {
+        "architecture_id": "state-conditioned-candidate-ranker-mlp-v1",
+        "class": "StateConditionedCandidateRanker",
+        "module": "analysis_scripts.noncombat_state_conditioned_ranker"
+      }
+    }
+  },
+  "future_empirical_entry": {
+    "authorization": "not-authorized-source-only-contract",
+    "canary": {
+      "at_most_once": true,
+      "candidate_disabled_before_authorization": true,
+      "control_reproduction_required": true,
+      "family_only_shadow_step_required": true,
+      "max_candidate_family_rate": 0.95,
+      "minimum_family_identities_per_set": 2,
+      "paired_episodes": 128,
+      "selected_family_denominator_min": 64,
+      "unique_greedy_denominator_min": 64
+    },
+    "holdout": {
+      "at_most_once": true,
+      "frozen_arms": true,
+      "paired_seeds": 512,
+      "requires_canary_pass": true
+    },
+    "prohibitions": [
+      "candidate-enable-before-authorization",
+      "post-canary-replacement",
+      "post-canary-resume",
+      "post-canary-retry",
+      "post-canary-tuning",
+      "post-canary-update",
+      "seed-inventory-reuse"
+    ],
+    "required_bindings": [
+      "candidate_checkpoint_sha256",
+      "candidate_config_sha256",
+      "candidate_source_sha256",
+      "control_checkpoint_sha256",
+      "control_config_sha256",
+      "control_source_sha256",
+      "seed_inventory_sha256",
+      "source_commit"
+    ],
+    "rollback": {
+      "authority_required": true,
+      "candidate_disabled": true,
+      "promotion_authority": false,
+      "target_binding_required": true,
+      "trigger_classes": [
+        "authority",
+        "canary",
+        "holdout",
+        "identity",
+        "legality",
+        "preflight",
+        "publication"
+      ]
+    }
+  },
+  "limitations": [
+    "mean-family-features-lose-within-family-detail",
+    "source-only-no-empirical-policy-quality",
+    "two-head-checkpoints-require-new-identity",
+    "variable-family-sets-require-validation"
+  ],
+  "schemas": {
+    "objective": "noncombat-card-acceptance-objective-v1",
+    "policy": "noncombat-card-acceptance-policy-v1",
+    "report": "noncombat-card-acceptance-objective-architecture-contract-report-v1"
+  }
+}
