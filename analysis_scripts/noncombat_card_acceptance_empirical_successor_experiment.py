@@ -317,12 +317,32 @@ TERMINAL_SCHEMA_VERSION = (
 MANIFEST_SCHEMA_VERSION = (
     "noncombat-card-acceptance-empirical-successor-artifact-manifest-v1"
 )
+ROLLBACK_AUTHORITY_SCHEMA_VERSION = (
+    "noncombat-card-acceptance-empirical-successor-rollback-authority-v1"
+)
+EXPERIMENT_TARGET_SCHEMA_VERSION = (
+    "noncombat-card-acceptance-empirical-successor-experiment-target-v1"
+)
+ROLLBACK_OBSERVATION_SCHEMA_VERSION = (
+    "noncombat-card-acceptance-empirical-successor-rollback-observation-v1"
+)
 LEASE_FILENAME = ".execution.lease"
 ACCESS_JOURNAL_FILENAME = "access_journal.jsonl"
 RESOURCE_LEDGER_FILENAME = "resource_ledger.jsonl"
 TERMINAL_INTENT_FILENAME = "terminal_intent.json"
 TERMINAL_FILENAME = "terminal.json"
 MANIFEST_FILENAME = "artifact_manifest.json"
+ROLLBACK_OBSERVATION_FILENAME = "rollback.json"
+ROLLBACK_TARGET_STAGING_SUFFIX = ".rollback.tmp"
+ROLLBACK_TRIGGER_CLASSES = (
+    "authority",
+    "identity",
+    "legality",
+    "preflight",
+    "canary",
+    "holdout",
+    "publication",
+)
 _TERMINAL_PUBLICATION_FILENAMES = (
     TERMINAL_INTENT_FILENAME,
     TERMINAL_FILENAME,
@@ -700,6 +720,163 @@ def build_isolation_identity(
             production_checkpoint_root
         ),
     }
+
+
+def _normalize_file_binding(value: object, label: str) -> dict[str, Any]:
+    binding = _copy_mapping(value, label)
+    _require_fields(binding, {"path", "sha256", "size_bytes"}, label)
+    binding["path"] = _canonical_absolute_path(binding["path"], f"{label} path")
+    binding["sha256"] = _digest(binding["sha256"], f"{label} identity")
+    size = binding["size_bytes"]
+    if isinstance(size, bool) or not isinstance(size, int) or size <= 0:
+        raise SuccessorControlError(f"{label} size is invalid")
+    return binding
+
+
+def _normalize_directory_tree_binding(value: object, label: str) -> dict[str, Any]:
+    binding = _copy_mapping(value, label)
+    _require_fields(
+        binding,
+        {"file_count", "root", "sha256", "size_bytes"},
+        label,
+    )
+    binding["root"] = _canonical_absolute_path(binding["root"], f"{label} root")
+    binding["sha256"] = _digest(binding["sha256"], f"{label} identity")
+    for name in ("file_count", "size_bytes"):
+        item = binding[name]
+        if isinstance(item, bool) or not isinstance(item, int) or item < 0:
+            raise SuccessorControlError(f"{label} {name} is invalid")
+    return binding
+
+
+def _normalize_isolation_identity(value: object) -> dict[str, Any]:
+    identity = _copy_mapping(value, "production isolation identity")
+    _require_fields(
+        identity,
+        {"communication_mod_config", "production_checkpoints"},
+        "production isolation identity",
+    )
+    return {
+        "communication_mod_config": _normalize_file_binding(
+            identity["communication_mod_config"],
+            "CommunicationMod configuration",
+        ),
+        "production_checkpoints": _normalize_directory_tree_binding(
+            identity["production_checkpoints"],
+            "production checkpoint inventory",
+        ),
+    }
+
+
+def _control_target_document(
+    *,
+    checkpoint: Mapping[str, Any],
+    configuration: Mapping[str, Any],
+) -> dict[str, Any]:
+    body = {
+        "candidate_enabled": False,
+        "checkpoint": _normalize_file_binding(
+            checkpoint,
+            "control checkpoint",
+        ),
+        "configuration": _normalize_file_binding(
+            configuration,
+            "control configuration",
+        ),
+        "schema_version": EXPERIMENT_TARGET_SCHEMA_VERSION,
+        "selected_arm": "control",
+    }
+    return {**body, "target_sha256": canonical_json_sha256(body)}
+
+
+def build_rollback_authority(
+    *,
+    target_relative_path: str,
+    control_checkpoint: Mapping[str, Any],
+    control_configuration: Mapping[str, Any],
+    production_isolation: Mapping[str, Any],
+) -> dict[str, Any]:
+    """Bind the sole local control target and read-only production identities."""
+    relative = _managed_relative_path(target_relative_path)
+    if relative == ROLLBACK_OBSERVATION_FILENAME:
+        raise SuccessorControlError("rollback target conflicts with evidence path")
+    body = {
+        "candidate_disabled_value": False,
+        "control_target": _control_target_document(
+            checkpoint=control_checkpoint,
+            configuration=control_configuration,
+        ),
+        "production_isolation": _normalize_isolation_identity(
+            production_isolation
+        ),
+        "schema_version": ROLLBACK_AUTHORITY_SCHEMA_VERSION,
+        "target_relative_path": relative,
+        "trigger_classes": list(ROLLBACK_TRIGGER_CLASSES),
+    }
+    return {**body, "rollback_authority_sha256": canonical_json_sha256(body)}
+
+
+def validate_rollback_authority(value: Mapping[str, Any]) -> dict[str, Any]:
+    authority = _copy_mapping(value, "rollback authority")
+    _require_fields(
+        authority,
+        {
+            "candidate_disabled_value",
+            "control_target",
+            "production_isolation",
+            "rollback_authority_sha256",
+            "schema_version",
+            "target_relative_path",
+            "trigger_classes",
+        },
+        "rollback authority",
+    )
+    if (
+        authority["schema_version"] != ROLLBACK_AUTHORITY_SCHEMA_VERSION
+        or authority["candidate_disabled_value"] is not False
+        or authority["trigger_classes"] != list(ROLLBACK_TRIGGER_CLASSES)
+    ):
+        raise SuccessorControlError("rollback authority contract mismatch")
+    target = _copy_mapping(authority["control_target"], "control target")
+    _require_fields(
+        target,
+        {
+            "candidate_enabled",
+            "checkpoint",
+            "configuration",
+            "schema_version",
+            "selected_arm",
+            "target_sha256",
+        },
+        "control target",
+    )
+    normalized_target = _control_target_document(
+        checkpoint=target["checkpoint"],
+        configuration=target["configuration"],
+    )
+    if target != normalized_target:
+        raise SuccessorControlError("rollback control target mismatch")
+    normalized = {
+        "candidate_disabled_value": False,
+        "control_target": normalized_target,
+        "production_isolation": _normalize_isolation_identity(
+            authority["production_isolation"]
+        ),
+        "schema_version": ROLLBACK_AUTHORITY_SCHEMA_VERSION,
+        "target_relative_path": _managed_relative_path(
+            authority["target_relative_path"]
+        ),
+        "trigger_classes": list(ROLLBACK_TRIGGER_CLASSES),
+    }
+    if normalized["target_relative_path"] == ROLLBACK_OBSERVATION_FILENAME:
+        raise SuccessorControlError("rollback target conflicts with evidence path")
+    digest = _digest(
+        authority["rollback_authority_sha256"],
+        "rollback authority identity",
+    )
+    if digest != canonical_json_sha256(normalized):
+        raise SuccessorControlError("rollback authority identity mismatch")
+    return {**normalized, "rollback_authority_sha256": digest}
 
 
 def _load_runtime_module(
@@ -2341,6 +2518,225 @@ def publish_artifact_manifest(
         canonical_json_bytes(manifest),
     )
     return manifest
+
+
+def _observe_control_identities(
+    authority: Mapping[str, Any],
+    observer: Callable[[Path | str], Mapping[str, Any]],
+) -> dict[str, Any]:
+    expected = authority["control_target"]
+    observed = {
+        "checkpoint": _normalize_file_binding(
+            observer(expected["checkpoint"]["path"]),
+            "observed control checkpoint",
+        ),
+        "configuration": _normalize_file_binding(
+            observer(expected["configuration"]["path"]),
+            "observed control configuration",
+        ),
+    }
+    return {
+        "matches_registered": observed
+        == {
+            "checkpoint": expected["checkpoint"],
+            "configuration": expected["configuration"],
+        },
+        "observed": observed,
+    }
+
+
+def _observe_production_isolation(
+    authority: Mapping[str, Any],
+    file_observer: Callable[[Path | str], Mapping[str, Any]],
+    directory_observer: Callable[[Path | str], Mapping[str, Any]],
+) -> dict[str, Any]:
+    expected = authority["production_isolation"]
+    observed = {
+        "communication_mod_config": _normalize_file_binding(
+            file_observer(expected["communication_mod_config"]["path"]),
+            "observed CommunicationMod configuration",
+        ),
+        "production_checkpoints": _normalize_directory_tree_binding(
+            directory_observer(expected["production_checkpoints"]["root"]),
+            "observed production checkpoint inventory",
+        ),
+    }
+    return {
+        "matches_registered": observed == expected,
+        "observed": observed,
+    }
+
+
+def _capture_identity_observation(
+    operation: Callable[[], dict[str, Any]], *, label: str
+) -> dict[str, Any]:
+    try:
+        return operation()
+    except Exception as exc:
+        return {
+            "error": f"{label}: {type(exc).__name__}: {exc}",
+            "matches_registered": False,
+            "observed": None,
+        }
+
+
+def _atomic_replace_rollback_target(path: Path, payload: bytes) -> None:
+    try:
+        path.parent.mkdir(parents=True, exist_ok=True)
+    except OSError as exc:
+        raise SuccessorControlError("rollback target parent cannot be created") from exc
+    staging = path.with_name(f".{path.name}{ROLLBACK_TARGET_STAGING_SUFFIX}")
+    if staging.exists():
+        raise SuccessorControlError("rollback target has ambiguous staging")
+    if path.exists():
+        try:
+            if path.read_bytes() == payload:
+                return
+        except OSError as exc:
+            raise SuccessorControlError("rollback target cannot be read") from exc
+    created_staging = False
+    try:
+        with staging.open("xb") as handle:
+            created_staging = True
+            handle.write(payload)
+            handle.flush()
+            os.fsync(handle.fileno())
+        os.replace(staging, path)
+        created_staging = False
+        if path.read_bytes() != payload:
+            raise SuccessorControlError("rollback target verification failed")
+    except BaseException as exc:
+        try:
+            if created_staging:
+                staging.unlink(missing_ok=True)
+        except OSError:
+            pass
+        if isinstance(exc, SuccessorControlError):
+            raise
+        raise SuccessorControlError("rollback target replacement failed") from exc
+
+
+def execute_registered_rollback(
+    context: _ValidatedExecutionContext,
+    lease: ExecutionLease,
+    *,
+    rollback_authority: Mapping[str, Any],
+    trigger_class: str,
+    external_binding_observer: Callable[[Path | str], Mapping[str, Any]]
+    | None = None,
+    checkpoint_snapshot_observer: Callable[
+        [Path | str], Mapping[str, Any]
+    ]
+    | None = None,
+) -> dict[str, Any]:
+    """Restore only the registered local control target and observe production."""
+    context, output = _require_execution_lease(context, lease)
+    _execution_context_for_operation(context, "rollback")
+    _require_terminal_publication_open(output)
+    authority = validate_rollback_authority(rollback_authority)
+    if context.registration.get("rollback_authority_sha256") != authority[
+        "rollback_authority_sha256"
+    ]:
+        raise SuccessorControlError("rollback authority is not registered")
+    normalized_trigger = _identifier(trigger_class, "rollback trigger class")
+    if normalized_trigger not in ROLLBACK_TRIGGER_CLASSES:
+        raise SuccessorControlError("rollback trigger class is not registered")
+
+    relative, target = _managed_artifact_target(
+        output,
+        authority["target_relative_path"],
+    )
+    before_target = (
+        _artifact_binding(relative, target) if target.exists() else None
+    )
+    file_observer = external_binding_observer or external_file_binding
+    directory_observer = (
+        checkpoint_snapshot_observer or snapshot_directory_tree
+    )
+    control_before = _capture_identity_observation(
+        lambda: _observe_control_identities(authority, file_observer),
+        label="control identity observation before rollback",
+    )
+    production_before = _capture_identity_observation(
+        lambda: _observe_production_isolation(
+            authority,
+            file_observer,
+            directory_observer,
+        ),
+        label="production isolation observation before rollback",
+    )
+
+    target_bytes = canonical_json_bytes(authority["control_target"])
+    _atomic_replace_rollback_target(target, target_bytes)
+    try:
+        restored_target = _parse_canonical_mapping(
+            target.read_bytes(),
+            "restored control target",
+        )
+    except OSError as exc:
+        raise SuccessorControlError("restored control target cannot be read") from exc
+    control_target_verified = restored_target == authority["control_target"]
+    if not control_target_verified or restored_target["candidate_enabled"] is not False:
+        raise SuccessorControlError("rollback control target verification failed")
+
+    control_after = _capture_identity_observation(
+        lambda: _observe_control_identities(authority, file_observer),
+        label="control identity observation after rollback",
+    )
+    production_after = _capture_identity_observation(
+        lambda: _observe_production_isolation(
+            authority,
+            file_observer,
+            directory_observer,
+        ),
+        label="production isolation observation after rollback",
+    )
+    control_identities_verified = (
+        control_before["matches_registered"] is True
+        and control_after["matches_registered"] is True
+    )
+    production_isolation_verified = (
+        production_before["matches_registered"] is True
+        and production_after["matches_registered"] is True
+    )
+    if not control_identities_verified:
+        status = "rollback_control_identity_failure"
+    elif not production_isolation_verified:
+        status = "rollback_isolation_failure"
+    else:
+        status = "rollback_verified"
+    body = {
+        "candidate_enabled": False,
+        "control_identities_after": control_after,
+        "control_identities_before": control_before,
+        "control_identities_verified": control_identities_verified,
+        "control_target_after": _artifact_binding(relative, target),
+        "control_target_before": before_target,
+        "control_target_verified": control_target_verified,
+        "downstream_authority": _copy_mapping(
+            context.request["downstream_authority"],
+            "rollback downstream authority",
+        ),
+        "identity": _context_identity(context),
+        "production_isolation_after": production_after,
+        "production_isolation_before": production_before,
+        "production_isolation_verified": production_isolation_verified,
+        "rollback_authority_sha256": authority["rollback_authority_sha256"],
+        "schema_version": ROLLBACK_OBSERVATION_SCHEMA_VERSION,
+        "status": status,
+        "trigger_class": normalized_trigger,
+    }
+    observation = {
+        **body,
+        "rollback_observation_sha256": canonical_json_sha256(body),
+    }
+    publish_managed_artifact(
+        context,
+        lease,
+        relative_path=ROLLBACK_OBSERVATION_FILENAME,
+        payload=canonical_json_bytes(observation),
+    )
+    return observation
 
 
 def build_parser() -> argparse.ArgumentParser:

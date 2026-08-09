@@ -674,11 +674,13 @@ def test_execution_context_rejects_rewrap_and_registration_binding_mismatch():
         )
 
 
-def _training_context(control):
+def _training_context(control, *, registration_fields=None):
     registration = {
         "registration_id": "card-acceptance-20260809-registration-v1",
         "registration_sha256": "c" * 64,
     }
+    if registration_fields is not None:
+        registration.update(copy.deepcopy(dict(registration_fields)))
     request = _stage_request(control, "training")
     authorization = control.build_stage_authorization(
         request=request,
@@ -1184,3 +1186,200 @@ def test_checkpoint_republication_rejects_ambiguous_staging(tmp_path):
             )
         assert checkpoint.read_bytes() == control.canonical_json_bytes(marker)
         assert staging.read_bytes() == b"ambiguous"
+
+
+def _rollback_authority(control, tmp_path):
+    control_checkpoint = tmp_path / "experiment" / "control-checkpoint.bin"
+    control_configuration = tmp_path / "experiment" / "control-config.json"
+    production_config = tmp_path / "production" / "config.properties"
+    production_checkpoints = tmp_path / "production" / "checkpoints"
+    control_checkpoint.parent.mkdir(parents=True)
+    production_checkpoints.mkdir(parents=True)
+    control_checkpoint.write_bytes(b"registered-control-checkpoint")
+    control_configuration.write_bytes(b'{"arm":"control"}\n')
+    production_config.parent.mkdir(parents=True, exist_ok=True)
+    production_config.write_bytes(b'command="production"\n')
+    (production_checkpoints / "production.bin").write_bytes(
+        b"registered-production-checkpoint"
+    )
+    authority = control.build_rollback_authority(
+        target_relative_path="experiment_target.json",
+        control_checkpoint=control.external_file_binding(control_checkpoint),
+        control_configuration=control.external_file_binding(control_configuration),
+        production_isolation=control.build_isolation_identity(
+            communication_mod_config=production_config,
+            production_checkpoint_root=production_checkpoints,
+        ),
+    )
+    paths = {
+        "control_checkpoint": control_checkpoint,
+        "control_configuration": control_configuration,
+        "production_config": production_config,
+        "production_checkpoints": production_checkpoints,
+    }
+    return authority, paths
+
+
+def test_registered_rollback_restores_control_target_and_verifies_isolation(
+    tmp_path,
+):
+    control = _control()
+    authority, paths = _rollback_authority(control, tmp_path)
+    context = _training_context(
+        control,
+        registration_fields={
+            "rollback_authority_sha256": authority["rollback_authority_sha256"]
+        },
+    )
+    output = tmp_path / "execution"
+    original_bytes = {
+        name: path.read_bytes() for name, path in paths.items() if path.is_file()
+    }
+
+    with control.ExecutionLease(
+        output,
+        context=context,
+        child_process_id=6300,
+        process_alive=lambda process_id: process_id == 6300,
+    ) as lease:
+        control.initialize_access_journal(context, lease)
+        control.initialize_resource_ledger(context, lease)
+        target = output / authority["target_relative_path"]
+        target.write_bytes(
+            control.canonical_json_bytes(
+                {
+                    "candidate_enabled": True,
+                    "selected_arm": "candidate",
+                }
+            )
+        )
+        observation = control.execute_registered_rollback(
+            context,
+            lease,
+            rollback_authority=authority,
+            trigger_class="canary",
+        )
+
+        assert observation["status"] == "rollback_verified"
+        assert observation["candidate_enabled"] is False
+        assert observation["control_target_verified"] is True
+        assert observation["production_isolation_verified"] is True
+        assert observation["production_isolation_before"]["matches_registered"] is True
+        assert observation["production_isolation_after"]["matches_registered"] is True
+        assert json.loads(target.read_bytes()) == authority["control_target"]
+        assert (output / control.ROLLBACK_OBSERVATION_FILENAME).read_bytes() == (
+            control.canonical_json_bytes(observation)
+        )
+        intent = control.publish_terminal_intent(
+            context,
+            lease,
+            verdict="rollback_completed",
+            details={"rollback_observation_sha256": observation[
+                "rollback_observation_sha256"
+            ]},
+        )
+        prefix_paths = {
+            row["path"] for row in intent["artifact_prefix"]["artifacts"]
+        }
+        assert authority["target_relative_path"] in prefix_paths
+        assert control.ROLLBACK_OBSERVATION_FILENAME in prefix_paths
+
+    assert {
+        name: path.read_bytes() for name, path in paths.items() if path.is_file()
+    } == original_bytes
+
+
+def test_rollback_records_external_production_drift_without_repair(tmp_path):
+    control = _control()
+    authority, paths = _rollback_authority(control, tmp_path)
+    context = _training_context(
+        control,
+        registration_fields={
+            "rollback_authority_sha256": authority["rollback_authority_sha256"]
+        },
+    )
+    drifted_config = b'command="externally-drifted"\n'
+    paths["production_config"].write_bytes(drifted_config)
+    (paths["production_checkpoints"] / "external.bin").write_bytes(b"external")
+    output = tmp_path / "execution"
+
+    with control.ExecutionLease(
+        output,
+        context=context,
+        child_process_id=6301,
+        process_alive=lambda process_id: process_id == 6301,
+    ) as lease:
+        target = output / authority["target_relative_path"]
+        target.write_bytes(b'{"candidate_enabled":true}\n')
+        observation = control.execute_registered_rollback(
+            context,
+            lease,
+            rollback_authority=authority,
+            trigger_class="identity",
+        )
+
+        assert observation["status"] == "rollback_isolation_failure"
+        assert observation["candidate_enabled"] is False
+        assert observation["control_target_verified"] is True
+        assert observation["production_isolation_verified"] is False
+        assert observation["production_isolation_before"]["matches_registered"] is False
+        assert observation["production_isolation_after"]["matches_registered"] is False
+        assert json.loads(target.read_bytes()) == authority["control_target"]
+
+    assert paths["production_config"].read_bytes() == drifted_config
+    assert (paths["production_checkpoints"] / "external.bin").read_bytes() == b"external"
+
+
+def test_rollback_rejects_unregistered_authority_and_ambiguous_target_staging(
+    tmp_path,
+):
+    control = _control()
+    authority, _paths = _rollback_authority(control, tmp_path)
+    unregistered = _training_context(control)
+    unregistered_output = tmp_path / "unregistered"
+    with control.ExecutionLease(
+        unregistered_output,
+        context=unregistered,
+        child_process_id=6302,
+        process_alive=lambda process_id: process_id == 6302,
+    ) as lease:
+        with pytest.raises(control.SuccessorControlError, match="registered|authority"):
+            control.execute_registered_rollback(
+                unregistered,
+                lease,
+                rollback_authority=authority,
+                trigger_class="canary",
+            )
+        assert not (unregistered_output / authority["target_relative_path"]).exists()
+
+    registered = _training_context(
+        control,
+        registration_fields={
+            "rollback_authority_sha256": authority["rollback_authority_sha256"]
+        },
+    )
+    output = tmp_path / "ambiguous"
+    with control.ExecutionLease(
+        output,
+        context=registered,
+        child_process_id=6303,
+        process_alive=lambda process_id: process_id == 6303,
+    ) as lease:
+        target = output / authority["target_relative_path"]
+        candidate_bytes = b'{"candidate_enabled":true}\n'
+        target.write_bytes(candidate_bytes)
+        staging = target.with_name(
+            f".{target.name}{control.ROLLBACK_TARGET_STAGING_SUFFIX}"
+        )
+        staging.write_bytes(b"ambiguous")
+
+        with pytest.raises(control.SuccessorControlError, match="ambiguous staging"):
+            control.execute_registered_rollback(
+                registered,
+                lease,
+                rollback_authority=authority,
+                trigger_class="canary",
+            )
+        assert target.read_bytes() == candidate_bytes
+        assert staging.read_bytes() == b"ambiguous"
+        assert not (output / control.ROLLBACK_OBSERVATION_FILENAME).exists()
