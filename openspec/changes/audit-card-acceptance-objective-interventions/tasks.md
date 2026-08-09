@@ -5,22 +5,22 @@
 
 ## 2. Regression Contracts
 
-- [ ] 2.1 Add RED trust-root, lease, containment, byte-binding, vector reconstruction, clipping, malformed-input, and helper-source identity tests.
-- [ ] 2.2 Add RED recorded, family-policy-ablation, conflict-projection, non-conflict identity, zero-conditional-norm, and fixed-verdict tests.
-- [ ] 2.3 Add RED independent-acceptance, conditional-perturbation, max-pooled coupling, tie, extreme-value, and analytical-versus-finite-difference synthetic tests.
-- [ ] 2.4 Add RED import-isolation, deterministic canonical JSON/Markdown, no-raw-vector, 1 MiB JSON/64 KiB Markdown bound, and exact all-false authority tests.
+- [x] 2.1 Add RED trust-root, lease, containment, byte-binding, vector reconstruction, clipping, malformed-input, and helper-source identity tests.
+- [x] 2.2 Add RED recorded, family-policy-ablation, conflict-projection, non-conflict identity, zero-conditional-norm, and fixed-verdict tests.
+- [x] 2.3 Add RED independent-acceptance, conditional-perturbation, max-pooled coupling, tie, extreme-value, and analytical-versus-finite-difference synthetic tests.
+- [x] 2.4 Add RED import-isolation, deterministic canonical JSON/Markdown, no-raw-vector, 1 MiB JSON/64 KiB Markdown bound, and exact all-false authority tests.
 
 ## 3. Source-Only Implementation
 
-- [ ] 3.1 Implement strict published-audit trust-root validation and independent reopening of only the bound r2 source evidence under the inactive lease.
-- [ ] 3.2 Implement standard-library vector decoding, exact recorded reconstruction, frozen clipping, and the three fixed gradient compositions.
-- [ ] 3.3 Implement synthetic independent-coordinate contracts, fixed feasibility predicates, compact canonical reports, and fail-closed publication.
-- [ ] 3.4 Pass focused tests, py_compile, import-isolation checks, strict OpenSpec validation, and diff checks without loading Torch, model/native/runtime/game modules, seeds, or CommunicationMod.
+- [x] 3.1 Implement strict published-audit trust-root validation and independent reopening of only the bound r2 source evidence under the inactive lease.
+- [x] 3.2 Implement standard-library vector decoding, exact recorded reconstruction, frozen clipping, and the three fixed gradient compositions.
+- [x] 3.3 Implement synthetic independent-coordinate contracts, fixed feasibility predicates, compact canonical reports, and fail-closed publication.
+- [x] 3.4 Pass focused tests, py_compile, import-isolation checks, strict OpenSpec validation, and diff checks without loading Torch, model/native/runtime/game modules, seeds, or CommunicationMod.
 
 ## 4. Source Boundary
 
-- [ ] 4.1 Run the requalified repository `commit` gate once and record test or infrastructure evidence without blind retry.
-- [ ] 4.2 Obtain independent source review with no unresolved correctness or authority findings.
+- [x] 4.1 Run the requalified repository `commit` gate once and record test or infrastructure evidence without blind retry. The one invocation reported 3,601 passes, 16 skips, and one test-isolation failure in 294.13 seconds; the failed node and focused boundary were repaired and verified without retrying the gate.
+- [x] 4.2 Obtain independent source review with no unresolved correctness or authority findings.
 - [ ] 4.3 Commit and push source and tests before either publication process opens sealed evidence.
 
 ## 5. Deterministic Publication And Closeout
