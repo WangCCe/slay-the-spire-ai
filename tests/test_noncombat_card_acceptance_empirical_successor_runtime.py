@@ -645,6 +645,17 @@ def test_runtime_step_reconstructs_components_clips_globally_and_replays_moments
     )
     assert first_evidence.preclip_global_norm > 1.0
     assert first_evidence.postclip_global_norm <= 1.0 + 1e-6
+    assert len(first_evidence.parameter_names) == len(first_parameters)
+    assert len(first_evidence.pre_parameters) == len(first_parameters)
+    assert len(first_evidence.post_parameters) == len(first_parameters)
+    assert any(
+        not torch.equal(before, after)
+        for before, after in zip(
+            first_evidence.pre_parameters,
+            first_evidence.post_parameters,
+            strict=True,
+        )
+    )
     for index, combined in enumerate(first_evidence.combined_gradients):
         reconstructed = torch.zeros_like(combined)
         for component in first_evidence.component_gradients:
@@ -1064,3 +1075,109 @@ def test_cross_fitted_baseline_rejects_incomplete_reordered_or_unsupported_pairs
         match="complete supported trajectories",
     ):
         runtime.build_paired_cross_fitted_baselines(unsupported_pairs)
+
+
+def test_paired_chunk_update_applies_one_named_step_per_arm_and_preserves_frozen_state():
+    runtime = _runtime()
+    bootstrap = runtime.build_matched_bootstrap()
+    optimizers = runtime.build_arm_optimizers(bootstrap)
+    pairs = _synthetic_paired_rollouts(runtime, bootstrap)
+    frozen_before = {
+        arm: {
+            name: tensor.detach().clone()
+            for name, tensor in ranker.state_dict().items()
+        }
+        for arm, ranker in (
+            ("candidate", bootstrap.candidate.frozen_noncard_ranker),
+            ("control", bootstrap.control.frozen_noncard_ranker),
+        )
+    }
+    generators_before = {
+        name: generator.get_state().clone()
+        for name, generator in bootstrap.generators.items()
+    }
+
+    update = runtime.apply_paired_cross_fitted_chunk_update(
+        bootstrap,
+        optimizers,
+        pairs,
+    )
+
+    assert update.seeds == tuple(range(100, 164))
+    assert update.candidate.arm == "candidate"
+    assert update.control.arm == "control"
+    assert update.candidate.objective.card_decision_count == 64
+    assert update.control.objective.card_decision_count == 64
+    assert all(
+        name.startswith(("family_head.", "conditional_ranker."))
+        for name in update.candidate.optimizer_step.parameter_names
+    )
+    assert all(
+        name.startswith("shared_card_ranker.")
+        for name in update.control.optimizer_step.parameter_names
+    )
+    for arm_update in (update.candidate, update.control):
+        step = arm_update.optimizer_step
+        assert any(
+            not torch.equal(before, after)
+            for before, after in zip(
+                step.pre_parameters,
+                step.post_parameters,
+                strict=True,
+            )
+        )
+        assert step.postclip_global_norm <= 1.0 + 1e-6
+    assert runtime.encode_optimizer_state(optimizers.candidate) == (
+        update.candidate.optimizer_step.optimizer_state_after
+    )
+    assert runtime.encode_optimizer_state(optimizers.control) == (
+        update.control.optimizer_step.optimizer_state_after
+    )
+    for arm, ranker in (
+        ("candidate", bootstrap.candidate.frozen_noncard_ranker),
+        ("control", bootstrap.control.frozen_noncard_ranker),
+    ):
+        for name, tensor in ranker.state_dict().items():
+            assert torch.equal(tensor, frozen_before[arm][name])
+    for name, generator in bootstrap.generators.items():
+        assert torch.equal(generator.get_state(), generators_before[name])
+
+
+def test_paired_chunk_validates_both_arms_before_the_candidate_step():
+    runtime = _runtime()
+    bootstrap = runtime.build_matched_bootstrap()
+    optimizers = runtime.build_arm_optimizers(bootstrap)
+    pairs = _synthetic_paired_rollouts(runtime, bootstrap)
+    bootstrap_before = runtime.encode_paired_bootstrap(bootstrap)
+    candidate_optimizer_before = runtime.encode_optimizer_state(
+        optimizers.candidate
+    )
+    optimizers.control.param_groups[0]["lr"] = 9.0
+
+    with pytest.raises(runtime.SuccessorRuntimeError, match="option|lr"):
+        runtime.apply_paired_cross_fitted_chunk_update(
+            bootstrap,
+            optimizers,
+            pairs,
+        )
+
+    assert runtime.encode_paired_bootstrap(bootstrap) == bootstrap_before
+    assert (
+        runtime.encode_optimizer_state(optimizers.candidate)
+        == candidate_optimizer_before
+    )
+    assert all(
+        parameter.grad is None
+        for parameter in optimizers.candidate.param_groups[0]["params"]
+    )
+    assert all(
+        parameter.grad is None
+        for parameter in optimizers.control.param_groups[0]["params"]
+    )
+
+
+def test_card_objective_rejects_a_zero_card_reward_chunk():
+    runtime = _runtime()
+
+    with pytest.raises(runtime.SuccessorRuntimeError, match="requires decisions"):
+        runtime.build_arm_card_reward_objective(())

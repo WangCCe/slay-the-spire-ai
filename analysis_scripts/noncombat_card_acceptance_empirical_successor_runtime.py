@@ -134,14 +134,31 @@ class ArmCardRewardObjective:
 
 @dataclass(frozen=True)
 class ArmOptimizerStepEvidence:
+    parameter_names: tuple[str, ...]
     component_order: tuple[str, ...]
     component_gradients: tuple[tuple[torch.Tensor | None, ...], ...]
     combined_gradients: tuple[torch.Tensor, ...]
     applied_gradients: tuple[torch.Tensor, ...]
+    pre_parameters: tuple[torch.Tensor, ...]
+    post_parameters: tuple[torch.Tensor, ...]
     preclip_global_norm: float
     postclip_global_norm: float
     optimizer_state_before: dict[str, Any]
     optimizer_state_after: dict[str, Any]
+
+
+@dataclass(frozen=True)
+class _PreparedArmOptimizerStep:
+    parameters: tuple[torch.nn.Parameter, ...]
+    parameter_names: tuple[str, ...]
+    component_order: tuple[str, ...]
+    component_gradients: tuple[tuple[torch.Tensor | None, ...], ...]
+    combined_gradients: tuple[torch.Tensor, ...]
+    applied_gradients: tuple[torch.Tensor, ...]
+    pre_parameters: tuple[torch.Tensor, ...]
+    preclip_global_norm: float
+    postclip_global_norm: float
+    optimizer_state_before: dict[str, Any]
 
 
 @dataclass(frozen=True)
@@ -228,6 +245,22 @@ class PairedCrossFittedBaselines:
     seeds: tuple[int, ...]
     candidate: ArmCrossFittedBaseline
     control: ArmCrossFittedBaseline
+
+
+@dataclass(frozen=True)
+class ArmChunkUpdateEvidence:
+    arm: ArmName
+    decision_ids: tuple[str, ...]
+    objective: ArmCardRewardObjective
+    optimizer_step: ArmOptimizerStepEvidence
+
+
+@dataclass(frozen=True)
+class PairedChunkUpdateEvidence:
+    seeds: tuple[int, ...]
+    baselines: PairedCrossFittedBaselines
+    candidate: ArmChunkUpdateEvidence
+    control: ArmChunkUpdateEvidence
 
 
 _DTYPES: dict[str, torch.dtype] = {
@@ -978,13 +1011,35 @@ def _global_gradient_norm(gradients: Sequence[torch.Tensor]) -> float:
     return float(norm.item())
 
 
-def apply_arm_optimizer_step(
+def _validated_parameter_names(
+    value: Sequence[str] | None,
+    *,
+    count: int,
+) -> tuple[str, ...]:
+    if value is None:
+        return tuple(f"parameter-{index:04d}" for index in range(count))
+    if isinstance(value, (str, bytes)) or not isinstance(value, Sequence):
+        raise SuccessorRuntimeError("optimizer parameter names must be a sequence")
+    names = tuple(value)
+    if (
+        len(names) != count
+        or len(set(names)) != count
+        or any(not isinstance(name, str) or not name for name in names)
+    ):
+        raise SuccessorRuntimeError(
+            "optimizer parameter names must be unique and aligned"
+        )
+    return names
+
+
+def _prepare_arm_optimizer_step(
     optimizer: torch.optim.Optimizer,
     objective: ArmCardRewardObjective,
     *,
     parameters: Sequence[torch.nn.Parameter],
-) -> ArmOptimizerStepEvidence:
-    """Validate, reconstruct, globally clip, and apply one registered arm step."""
+    parameter_names: Sequence[str] | None,
+) -> _PreparedArmOptimizerStep:
+    """Validate and clip one arm without changing parameters or Adam moments."""
     registered_parameters = _validated_registered_adam(optimizer)
     supplied_parameters = tuple(parameters)
     if len(supplied_parameters) != len(registered_parameters) or any(
@@ -994,6 +1049,10 @@ def apply_arm_optimizer_step(
         )
     ):
         raise SuccessorRuntimeError("optimizer parameter order differs")
+    normalized_parameter_names = _validated_parameter_names(
+        parameter_names,
+        count=len(registered_parameters),
+    )
     if not isinstance(objective, ArmCardRewardObjective):
         raise SuccessorRuntimeError("optimizer objective type differs")
     if objective.card_decision_count <= 0:
@@ -1088,6 +1147,9 @@ def apply_arm_optimizer_step(
         combined_gradients.append(combined.detach().clone())
 
     optimizer_state_before = encode_optimizer_state(optimizer)
+    pre_parameters = tuple(
+        parameter.detach().clone() for parameter in registered_parameters
+    )
     optimizer.zero_grad(set_to_none=True)
     for parameter, gradient in zip(
         registered_parameters, combined_gradients, strict=True
@@ -1108,19 +1170,89 @@ def apply_arm_optimizer_step(
     postclip_global_norm = _global_gradient_norm(applied_gradients)
     if postclip_global_norm > 1.0 + 1e-6:
         raise SuccessorRuntimeError("optimizer gradient clipping ceiling exceeded")
-    optimizer.step()
-    optimizer_state_after = encode_optimizer_state(optimizer)
-
-    return ArmOptimizerStepEvidence(
+    return _PreparedArmOptimizerStep(
+        parameters=registered_parameters,
+        parameter_names=normalized_parameter_names,
         component_order=component_order,
         component_gradients=component_gradients,
         combined_gradients=tuple(combined_gradients),
         applied_gradients=applied_gradients,
+        pre_parameters=pre_parameters,
         preclip_global_norm=preclip_global_norm,
         postclip_global_norm=postclip_global_norm,
         optimizer_state_before=optimizer_state_before,
+    )
+
+
+def _commit_prepared_arm_step(
+    optimizer: torch.optim.Optimizer,
+    prepared: _PreparedArmOptimizerStep,
+) -> ArmOptimizerStepEvidence:
+    registered_parameters = _validated_registered_adam(optimizer)
+    if len(registered_parameters) != len(prepared.parameters) or any(
+        actual is not expected
+        for actual, expected in zip(
+            registered_parameters, prepared.parameters, strict=True
+        )
+    ):
+        raise SuccessorRuntimeError("prepared optimizer parameter order differs")
+    if encode_optimizer_state(optimizer) != prepared.optimizer_state_before:
+        raise SuccessorRuntimeError("optimizer state changed after preparation")
+    if any(
+        not torch.equal(parameter.detach(), expected)
+        for parameter, expected in zip(
+            registered_parameters, prepared.pre_parameters, strict=True
+        )
+    ):
+        raise SuccessorRuntimeError("parameters changed after preparation")
+
+    optimizer.zero_grad(set_to_none=True)
+    for parameter, gradient in zip(
+        registered_parameters, prepared.applied_gradients, strict=True
+    ):
+        if (
+            gradient.device != parameter.device
+            or gradient.dtype != parameter.dtype
+            or gradient.shape != parameter.shape
+            or not bool(torch.isfinite(gradient).all().item())
+        ):
+            raise SuccessorRuntimeError("prepared applied gradient differs")
+        parameter.grad = gradient.detach().clone()
+    optimizer.step()
+    post_parameters = tuple(
+        parameter.detach().clone() for parameter in registered_parameters
+    )
+    optimizer_state_after = encode_optimizer_state(optimizer)
+    return ArmOptimizerStepEvidence(
+        parameter_names=prepared.parameter_names,
+        component_order=prepared.component_order,
+        component_gradients=prepared.component_gradients,
+        combined_gradients=prepared.combined_gradients,
+        applied_gradients=prepared.applied_gradients,
+        pre_parameters=prepared.pre_parameters,
+        post_parameters=post_parameters,
+        preclip_global_norm=prepared.preclip_global_norm,
+        postclip_global_norm=prepared.postclip_global_norm,
+        optimizer_state_before=prepared.optimizer_state_before,
         optimizer_state_after=optimizer_state_after,
     )
+
+
+def apply_arm_optimizer_step(
+    optimizer: torch.optim.Optimizer,
+    objective: ArmCardRewardObjective,
+    *,
+    parameters: Sequence[torch.nn.Parameter],
+    parameter_names: Sequence[str] | None = None,
+) -> ArmOptimizerStepEvidence:
+    """Validate, reconstruct, globally clip, and apply one registered arm step."""
+    prepared = _prepare_arm_optimizer_step(
+        optimizer,
+        objective,
+        parameters=parameters,
+        parameter_names=parameter_names,
+    )
+    return _commit_prepared_arm_step(optimizer, prepared)
 
 
 def select_two_stage_action(
@@ -2258,10 +2390,146 @@ def build_arm_card_reward_rows(
     return tuple(rows)
 
 
+def _arm_named_trainable_parameters(
+    bootstrap: PairedBootstrap,
+    *,
+    arm: ArmName,
+) -> tuple[tuple[str, torch.nn.Parameter], ...]:
+    normalized_arm = _validated_arm(arm)
+    if normalized_arm == "candidate":
+        rows = tuple(
+            (f"family_head.{name}", parameter)
+            for name, parameter in (
+                bootstrap.candidate.card_policy.family_head.named_parameters()
+            )
+        ) + tuple(
+            (f"conditional_ranker.{name}", parameter)
+            for name, parameter in (
+                bootstrap.candidate.card_policy.conditional_ranker.named_parameters()
+            )
+        )
+    else:
+        rows = tuple(
+            (f"shared_card_ranker.{name}", parameter)
+            for name, parameter in (
+                bootstrap.control.shared_card_ranker.named_parameters()
+            )
+        )
+    names = tuple(name for name, _ in rows)
+    if not rows or len(set(names)) != len(rows):
+        raise SuccessorRuntimeError("arm trainable parameter names differ")
+    return rows
+
+
+def apply_paired_cross_fitted_chunk_update(
+    bootstrap: PairedBootstrap,
+    optimizers: ArmOptimizers,
+    episodes: Sequence[PairedEpisodeRollout],
+) -> PairedChunkUpdateEvidence:
+    """Validate both arm updates before applying exactly one Adam step per arm."""
+    _validate_rollout_bootstrap(bootstrap)
+    if not isinstance(optimizers, ArmOptimizers):
+        raise SuccessorRuntimeError("paired update optimizers differ")
+    baselines = build_paired_cross_fitted_baselines(episodes)
+    candidate_rows = build_arm_card_reward_rows(
+        episodes,
+        arm="candidate",
+        baseline=baselines.candidate,
+    )
+    control_rows = build_arm_card_reward_rows(
+        episodes,
+        arm="control",
+        baseline=baselines.control,
+    )
+    candidate_objective = build_arm_card_reward_objective(candidate_rows)
+    control_objective = build_arm_card_reward_objective(control_rows)
+
+    candidate_named = _arm_named_trainable_parameters(
+        bootstrap,
+        arm="candidate",
+    )
+    control_named = _arm_named_trainable_parameters(
+        bootstrap,
+        arm="control",
+    )
+    frozen_before = (
+        _model_state_bytes(bootstrap.candidate.frozen_noncard_ranker),
+        _model_state_bytes(bootstrap.control.frozen_noncard_ranker),
+    )
+    generator_before = {
+        name: generator.get_state().clone()
+        for name, generator in bootstrap.generators.items()
+    }
+    try:
+        candidate_prepared = _prepare_arm_optimizer_step(
+            optimizers.candidate,
+            candidate_objective,
+            parameters=tuple(parameter for _, parameter in candidate_named),
+            parameter_names=tuple(name for name, _ in candidate_named),
+        )
+        control_prepared = _prepare_arm_optimizer_step(
+            optimizers.control,
+            control_objective,
+            parameters=tuple(parameter for _, parameter in control_named),
+            parameter_names=tuple(name for name, _ in control_named),
+        )
+    except Exception:
+        optimizers.candidate.zero_grad(set_to_none=True)
+        optimizers.control.zero_grad(set_to_none=True)
+        raise
+
+    candidate_step = _commit_prepared_arm_step(
+        optimizers.candidate,
+        candidate_prepared,
+    )
+    control_step = _commit_prepared_arm_step(
+        optimizers.control,
+        control_prepared,
+    )
+    _validate_rollout_bootstrap(bootstrap)
+    frozen_after = (
+        _model_state_bytes(bootstrap.candidate.frozen_noncard_ranker),
+        _model_state_bytes(bootstrap.control.frozen_noncard_ranker),
+    )
+    if frozen_after != frozen_before:
+        raise SuccessorRuntimeError("paired update changed frozen non-card bytes")
+    if any(
+        not torch.equal(bootstrap.generators[name].get_state(), before)
+        for name, before in generator_before.items()
+    ):
+        raise SuccessorRuntimeError("paired update changed an arm generator")
+
+    return PairedChunkUpdateEvidence(
+        seeds=baselines.seeds,
+        baselines=baselines,
+        candidate=ArmChunkUpdateEvidence(
+            arm="candidate",
+            decision_ids=tuple(
+                decision.decision_id
+                for decision in baselines.candidate.decisions
+                if decision.category == "card_reward"
+            ),
+            objective=candidate_objective,
+            optimizer_step=candidate_step,
+        ),
+        control=ArmChunkUpdateEvidence(
+            arm="control",
+            decision_ids=tuple(
+                decision.decision_id
+                for decision in baselines.control.decisions
+                if decision.category == "card_reward"
+            ),
+            objective=control_objective,
+            optimizer_step=control_step,
+        ),
+    )
+
+
 __all__ = [
     "ArmBaselineDecision",
     "ArmBaselinePrediction",
     "ArmCardRewardObjective",
+    "ArmChunkUpdateEvidence",
     "ArmCrossFittedBaseline",
     "ArmEpisodeRollout",
     "ArmOptimizerStepEvidence",
@@ -2270,11 +2538,13 @@ __all__ = [
     "CandidateArm",
     "ControlArm",
     "PairedBootstrap",
+    "PairedChunkUpdateEvidence",
     "PairedCrossFittedBaselines",
     "PairedEpisodeRollout",
     "RidgeFoldModel",
     "SuccessorRuntimeError",
     "apply_arm_optimizer_step",
+    "apply_paired_cross_fitted_chunk_update",
     "build_arm_card_reward_rows",
     "build_arm_card_reward_objective",
     "build_arm_optimizers",
