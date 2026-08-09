@@ -1279,6 +1279,38 @@ The next authorized sequence is:
     2,248.44 seconds of pytest, 2,252.15 seconds including orchestration. Both
     were invoked exactly once; neither was retried and no later exclusion was
     added. Fresh gameplay validation is not applicable.
+58. Preserve the completed card-acceptance-versus-conditional-choice audit and
+    its bounded
+    `acceptance_pressure_with_conditional_concentration_but_mixed_direct_pressure`
+    verdict. Plan commit `aaea73c0c`, source commit `60275dd34`, and publication
+    source identity `d70a98f97a4f193bfd59c85c5d3b227d74518ec7` were pushed
+    before analytical publication. Two fresh isolated source-only processes
+    independently verified the unchanged sealed r2 bundle and produced byte-
+    identical reports: JSON SHA-256
+    `0a10f7e763a40d7a6de751abaa6ac3aa13e02bace06ff6453fd79942d2447f33`
+    at 56,923 bytes and Markdown SHA-256
+    `3a789e7924bdf2de55c2e27c98dfefeffb0ef58334dc7cd410f31c243af85825`
+    at 1,877 bytes. Exact reconstruction retained 11,729 decisions, 512
+    trajectories, and all 3,536 eligible card rewards; 3,522 rows had three
+    take candidates and 14 had four. Acceptance pressure was positive in all
+    eight chunks. Mean normalized take entropy strictly declined from
+    `0.99997064045` to `0.99986125183`, while mean top-two conditional gap
+    strictly increased from `0.00274131737` to `0.00596556638`. Direct
+    conditional greedy-margin pressure remained mixed in the final window,
+    with chunk sums `-0.00040437431`, `0.00181875185`, `-0.00144275997`, and
+    `0.00129044526`. All gradient clip factors were one; exact shared-gradient
+    geometry remains non-causal because no per-row score Jacobian was retained.
+    Audit tests passed 46 tests in 7.39 seconds; the final runtime/audit/runner
+    focused set passed 109 tests in 25.95 seconds. The requalified `commit`
+    and unchanged `full` results are recorded in item 57. Fresh gameplay
+    validation was not applicable. Every training, replay, evaluation, OPE,
+    model/native loading, gameplay, CommunicationMod, qualification,
+    promotion, policy-quality, causal, and formal-RL authority remains false.
+    The next gate is a separate source-only acceptance-coordinate objective-
+    intervention proposal. It must preserve conditional card-choice support,
+    compare explicit synthetic invariants and existing-row counterfactual
+    gradients, select no coefficient or model by this audit alone, and grant
+    no fitting, training, empirical execution, evaluation, or promotion.
 
 ## Work Lanes
 
@@ -1356,12 +1388,15 @@ are complete. The contract preserves selected family plus conditional log
     victory or evaluation evidence was observed. The source-only audit in item
     55 then found supported positive direct `take` pressure on both clipped and
     unclipped rows and in every final-window chunk, so lower-bound clipping is
-    not a sufficient explanation for the concentration. Do not start an
-    immediate successor. First review a source-only mechanism proposal that
-    separates supported card acceptance from conditional card-choice collapse.
-    Until that gate passes, do not load a production model, evaluate, run OPE,
-    launch gameplay or CommunicationMod, qualify, promote, or infer policy
-    quality or causal value from mechanism completion alone.
+    not a sufficient explanation for the concentration. Item 58 now separates
+    that consistent acceptance coordinate from conditional card-choice
+    concentration: concentration progressed monotonically, but final-window
+    direct conditional margin pressure remained mixed. Do not start an
+    immediate empirical successor. First review the source-only acceptance-
+    coordinate objective-intervention proposal defined in item 58. Until that
+    gate passes, do not load a production model, evaluate, run OPE, launch
+    gameplay or CommunicationMod, qualify, promote, or infer policy quality or
+    causal value from mechanism completion alone.
 
 Live gameplay is a maintenance and registered-evaluation lane only. Launch it
 for a crash, stuck state, repeated A-class simulator/mechanics defect, or an

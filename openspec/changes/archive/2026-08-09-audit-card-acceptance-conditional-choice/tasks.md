@@ -44,14 +44,14 @@
 
 ## 5. Publish And Close
 
-- [ ] 5.1 Run two fresh isolated source-only audits from the pushed source using
+- [x] 5.1 Run two fresh isolated source-only audits from the pushed source using
   separate staging/output paths; require byte-identical JSON and Markdown,
   exact 3,536-row/eight-chunk reconstruction, unchanged consumed inputs, and
   the bounded verdict before publishing the canonical pair.
-- [ ] 5.2 Verify canonical report hashes, source/input bindings, report size,
+- [x] 5.2 Verify canonical report hashes, source/input bindings, report size,
   all-false authority, and no forbidden imports; update project direction and
   record that fresh gameplay validation is not applicable.
-- [ ] 5.3 Run focused report/source regressions and the configured `full` phase-
+- [x] 5.3 Run focused report/source regressions and the configured `full` phase-
   close boundary once, preserve exact results without duration retries, sync
   and archive the OpenSpec change, run final strict validation and diff review,
   commit the cohesive publication, and push `master` without unrelated files.
