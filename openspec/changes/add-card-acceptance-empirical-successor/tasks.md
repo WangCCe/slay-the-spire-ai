@@ -52,7 +52,7 @@
 
 ## 6. Registration And Training
 
-- [ ] 6.1 From the clean pushed implementation, render, review, publish, and push one exact source-only inventory request/authorization with a fresh revocation observation and no native/environment/model authority.
+- [x] 6.1 From the clean pushed implementation, render, review, publish, and push one exact source-only inventory request/authorization with a fresh revocation observation and no native/environment/model authority.
 - [ ] 6.2 Recheck fresh launch-time revocation state, run `build-inventory` at most once, then run distinct post-build verification and create the independently verified fresh exclusion inventory and all-false `512/128/512` empirical registration without native loading or environment seed access.
 - [ ] 6.3 Commit and push the registration, then render and independently review the exact bounded training request.
 - [ ] 6.4 Recheck fresh approval-time revocation state, then publish and push one exact tracked training authorization from a valid standing-delegation resolution or exact external-human approval record.
