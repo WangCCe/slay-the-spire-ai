@@ -1,7 +1,7 @@
 ## 1. Planning Boundary
 
 - [x] 1.1 Independently review the proposal, design, new capability spec, explicit family/conditional API, gradient-ownership claims, future successor gate, rollback, and all-false authority with no unresolved P1 or P2. Final independent review found no P1/P2 after the exact import, family, numerical, successor, API, metadata-value, and nested-report contracts were fixed.
-- [ ] 1.2 Run strict OpenSpec and diff validation, then commit and push the complete planning boundary before implementation.
+- [x] 1.2 Run strict OpenSpec and diff validation, then commit and push the complete planning boundary before implementation. Strict validation, diff checks, and the complete reviewed planning boundary were pushed in commit `a3e2edc70`.
 
 ## 2. Regression Contracts
 
