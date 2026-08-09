@@ -5,22 +5,22 @@
 
 ## 2. Regression Contracts
 
-- [ ] 2.1 Add RED architecture tests for exact dependency metadata, disjoint head parameters/storage/namespaces, float64-accumulated and range-checked family means, complete `take/skip/bowl` identity, permutations, one-family fallback, float32 feature extremes, malformed inputs, prohibited transitive imports, and unchanged legacy imports.
-- [ ] 2.2 Add RED explicit-logit objective tests for aligned family/conditional/joint probabilities, exact `z_take-logsumexp(z_skip,z_bowl)` acceptance, selected terms, per-family/expected/joint entropy, complete three-family ties and permutations, missing `take`, float32 logit extremes with finite float64 acceptance, and finite autograd.
-- [ ] 2.3 Add RED gradient-ownership tests proving family-policy isolation, conditional-policy and per-family-entropy isolation, exact named-component reconstruction, and explicit cross-head dependence of expected conditional entropy.
-- [ ] 2.4 Add RED exact signatures, ordered dataclass fields and tensor shapes/dtypes, metadata mappings, schema versions, nested report fields and dated paths, 131,072-byte JSON/32,768-byte Markdown bounds, checkpoint namespace, exact prohibited-module import isolation, no-loss/coefficient/update API, preservation, fixed future-entry fields, and exact all-false authority tests.
+- [x] 2.1 Add RED architecture tests for exact dependency metadata, disjoint head parameters/storage/namespaces, float64-accumulated and range-checked family means, complete `take/skip/bowl` identity, permutations, one-family fallback, float32 feature extremes, malformed inputs, prohibited transitive imports, and unchanged legacy imports.
+- [x] 2.2 Add RED explicit-logit objective tests for aligned family/conditional/joint probabilities, exact `z_take-logsumexp(z_skip,z_bowl)` acceptance, selected terms, per-family/expected/joint entropy, complete three-family ties and permutations, missing `take`, float32 logit extremes with finite float64 acceptance, and finite autograd.
+- [x] 2.3 Add RED gradient-ownership tests proving family-policy isolation, conditional-policy and per-family-entropy isolation, exact named-component reconstruction, and explicit cross-head dependence of expected conditional entropy.
+- [x] 2.4 Add RED exact signatures, ordered dataclass fields and tensor shapes/dtypes, metadata mappings, schema versions, nested report fields and dated paths, 131,072-byte JSON/32,768-byte Markdown bounds, checkpoint namespace, exact prohibited-module import isolation, no-loss/coefficient/update API, preservation, fixed future-entry fields, and exact all-false authority tests. The two-file focused suite failed RED only because both new modules were absent (`2` collection errors in `6.78s`).
 
 ## 3. Source-Only Implementation
 
-- [ ] 3.1 Implement `noncombat_card_acceptance_policy.py` over preprojected tensors with validated card-reward inputs, float64-accumulated canonical exact-family aggregation, two non-aliased public ranker instances, acceptance metadata, stable checkpoint namespaces, and no policy-input/simulator/runtime imports.
-- [ ] 3.2 Implement `noncombat_card_acceptance_objective.py` with explicit family and conditional logits, selected policy terms, entropy decomposition, greedy tie sets, and no loss, coefficient, advantage, optimizer, sampling, or update API.
-- [ ] 3.3 Implement deterministic synthetic ownership evidence and canonical JSON/Markdown rendering with exact schemas, field sets, byte bounds, future successor binding/metric/rollback fields, limitations, and fixed all-false authority.
+- [x] 3.1 Implement `noncombat_card_acceptance_policy.py` over preprojected tensors with validated card-reward inputs, float64-accumulated canonical exact-family aggregation, two non-aliased public ranker instances, acceptance metadata, stable checkpoint namespaces, and no policy-input/simulator/runtime imports.
+- [x] 3.2 Implement `noncombat_card_acceptance_objective.py` with explicit family and conditional logits, selected policy terms, entropy decomposition, greedy tie sets, and no loss, coefficient, advantage, optimizer, sampling, or update API.
+- [x] 3.3 Implement deterministic synthetic ownership evidence and canonical JSON/Markdown rendering with exact schemas, field sets, byte bounds, future successor binding/metric/rollback fields, limitations, and fixed all-false authority. The new focused suite passed `40` tests in `19.22s`.
 
 ## 4. Verification And Source Boundary
 
-- [ ] 4.1 Pass the new focused suite, direct ranker/distribution/objective and legacy-import preservation dependencies, py_compile, fresh-process exact prohibited-module isolation, strict OpenSpec validation, and diff checks.
-- [ ] 4.2 Obtain independent implementation review with no unresolved correctness, gradient-ownership, preservation, checkpoint, or authority findings.
-- [ ] 4.3 Run the configured repository `commit` gate once and record any test, duration, or infrastructure result without blind retry.
+- [x] 4.1 Pass the new focused suite, direct ranker/distribution/objective and legacy-import preservation dependencies, py_compile, fresh-process exact prohibited-module isolation, strict OpenSpec validation, and diff checks. The combined source/preservation suite passed `107` tests in `42.01s`; py_compile, strict OpenSpec, and diff checks passed.
+- [x] 4.2 Obtain independent implementation review with no unresolved correctness, gradient-ownership, preservation, checkpoint, or authority findings. Three fixture/signature/permutation P2 findings were fixed; the final re-review found no P1/P2 and the focused suite passed `42` tests in `17.68s`.
+- [x] 4.3 Run the configured repository `commit` gate once and record any test, duration, or infrastructure result without blind retry. The single invocation passed `3651` tests with `16` skips in `296.62s` pytest time and `300.29s` total gate time.
 - [ ] 4.4 Commit and push the complete source, tests, report renderer, and source-only review boundary before canonical publication.
 
 ## 5. Publication And Closeout
