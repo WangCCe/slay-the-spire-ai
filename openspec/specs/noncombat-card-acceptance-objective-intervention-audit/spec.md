@@ -1,7 +1,11 @@
 # noncombat-card-acceptance-objective-intervention-audit Specification
 
 ## Purpose
-TBD - created by archiving change audit-card-acceptance-objective-interventions. Update Purpose after archive.
+Define an immutable source-only audit that reconstructs sealed card-reward
+gradients, compares fixed parameter-free objective interventions, verifies an
+independent acceptance coordinate in synthetic score space, and publishes a
+bounded authority-free verdict.
+
 ## Requirements
 ### Requirement: Published trust root and sealed gradients are immutable
 The audit SHALL require the exact canonical 20260809 card-acceptance JSON and
