@@ -23,5 +23,5 @@
 
 ## 5. Closeout
 
-- [ ] 5.1 Commit and push the verified inventory/registration or terminal failure as one bounded outcome, updating parent task 6.2 only after successful independent verification and registration.
+- [x] 5.1 Commit and push the verified inventory/registration or terminal failure as one bounded outcome, updating parent task 6.2 only after successful independent verification and registration.
 - [ ] 5.2 Publish the r2 postmortem, sync the delta specs, archive this change, strict-validate the global OpenSpec set, and push the source-only closeout without granting task 6.3 training authority.
