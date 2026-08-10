@@ -7,7 +7,7 @@
 
 - [x] 2.1 Render and independently review deterministic isolated dispatch, the exact source inventory, and a content-blind path preflight binding pushed source, terminal predecessors, fixed schemas/ceilings, exclusions, and absent r5 write surfaces.
 - [x] 2.2 Render and independently review one r5 inventory request using the unchanged production inventory stage map: only `repository_evidence_read`, `seed_discovery`, and `cohort_materialization` are enabled and every downstream authority is false. Commit and push the dispatch/source/preflight/request boundary.
-- [ ] 2.3 After the request boundary is pushed, resolve and independently review one standing-delegation approval and exact inventory authorization; commit and push the approval/authorization boundary.
+- [x] 2.3 After the request boundary is pushed, resolve and independently review one standing-delegation approval and exact inventory authorization; commit and push the approval/authorization boundary.
 - [ ] 2.4 After the approval/authorization boundary is pushed, recheck current delegation revocation state, capture and independently review one fresh launch observation, then commit and push the launch boundary.
 - [ ] 2.5 Run the complete owning control, seed-inventory, and standalone-verifier tests plus compile and strict OpenSpec validation under the registered Windows temp convention. Reuse the pushed `5803 passed, 18 skipped` full gate because no code/test behavior changes; record gameplay validation as not applicable.
 - [ ] 2.6 From pushed tracked-clean HEAD, publish/review/push one final pre-start gate and separately recheck exact source/command/authority bytes, fresh revocation state, process absence, predecessor preservation, and every r5 build-write absence condition.
