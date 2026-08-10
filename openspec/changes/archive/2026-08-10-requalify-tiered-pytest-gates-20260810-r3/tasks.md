@@ -27,4 +27,4 @@
 
 ## 6. Closeout
 
-- [ ] 6.1 On success, reverify the gate-affecting hashes, commit/push the frozen selection with content matching the hash ledger, then sync/archive in an independent closeout commit/push. On failure, publish only independently reviewed terminal evidence and archived planning. Strict-validate the completed closeout without changing policy/RL authority.
+- [x] 6.1 On the failure path, publish only independently reviewed terminal evidence and archived planning without syncing the failed delta; strict-validate and push the completed closeout without changing policy/RL authority.
