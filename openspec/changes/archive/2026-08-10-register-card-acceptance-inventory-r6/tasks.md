@@ -26,4 +26,4 @@
 
 ## 4. Closeout
 
-- [ ] 4.1 Publish a bounded closeout, sync applicable main specs, archive r6, strict-validate globally, verify tracked path hygiene, and commit/push the archive without training, evaluation, gameplay, OPE, qualification, or promotion.
+- [x] 4.1 Publish a bounded closeout, sync applicable main specs, archive r6, strict-validate globally, verify tracked path hygiene, and commit/push the archive without training, evaluation, gameplay, OPE, qualification, or promotion.
