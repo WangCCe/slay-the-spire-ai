@@ -1,0 +1,130 @@
+{
+  "approval": {
+    "approval_sha256": "c2e4c710f896df6e624ca09e5a5acf6f8de11a297a566ccd4acb2d30785f7d68",
+    "file_sha256": "d16ed0592cb7f8f1744cf66b9cc2bf6909b93e99bc67255a0b122d10d50478be",
+    "path": "reports/noncombat_card_acceptance_empirical_successor_20260810_r4_inventory_delegated_approval.json",
+    "size_bytes": 2781
+  },
+  "approval_review": {
+    "file_sha256": "48f5694ad7b95b1e71903c7cd6370cf22738cd12a1068fbc994b0384d598cb33",
+    "path": "reports/noncombat_card_acceptance_empirical_successor_20260810_r4_inventory_delegated_approval_review.json",
+    "review_sha256": "04df8d5e17dacc4878ea8fcb65c80f8531dbf63c3d3c488f19600b6561cc7be1",
+    "size_bytes": 4043
+  },
+  "authority": {
+    "downstream": {
+      "causal": false,
+      "communication_mod": false,
+      "environment_construction": false,
+      "evaluation": false,
+      "execution": false,
+      "formal_rl": false,
+      "gameplay": false,
+      "model_fitting": false,
+      "native_loading": false,
+      "ope": false,
+      "production_model_loading": false,
+      "promotion": false,
+      "qualification": false,
+      "seed_access": false,
+      "training": false
+    },
+    "execution": {
+      "checkpoint_publication": false,
+      "cohort_materialization": true,
+      "environment_construction": false,
+      "evaluation": false,
+      "evidence_publication": false,
+      "experiment_model_loading": false,
+      "model_fitting": false,
+      "native_loading": false,
+      "repository_evidence_read": true,
+      "seed_access": false,
+      "seed_discovery": true,
+      "shadow_optimizer_step": false,
+      "training": false
+    }
+  },
+  "authorization": {
+    "authorization_sha256": "d766afcb84a9fca6efe0cf3fb88f0b8b10e4eb7be52b8d52e9f5a499a820d338",
+    "file_sha256": "5427b5761695ff7f6c183523c9e0f271bdab3d3c6b56f49e280fd3c34e5ca891",
+    "path": "reports/noncombat_card_acceptance_empirical_successor_20260810_r4_inventory_authorization.json",
+    "size_bytes": 1370
+  },
+  "compact_contract": {
+    "cli_completion_max_bytes": 2048,
+    "inventory_max_bytes": 67108864,
+    "seed_inventory_schema_version": "noncombat-card-acceptance-empirical-successor-seed-inventory-v4"
+  },
+  "independent_review": {
+    "candidate_commit": "8cf16ce0c622300143ae51ed4159d745ae3d23aa",
+    "findings": [],
+    "method": "codex-commit-review",
+    "result": "passed",
+    "session_id": "019febb9-82c9-7cd0-92f3-4716708a830b"
+  },
+  "lifecycle": {
+    "authority_candidate_commit": "8cf16ce0c622300143ae51ed4159d745ae3d23aa",
+    "inventory_started": false,
+    "launch_observation_published": false,
+    "output_root_exists": false,
+    "pushed_request_boundary_commit": "e9fefbc564d8ecaf43b899bba4c13f5b9da9ac60",
+    "started_receipt_exists": false
+  },
+  "path_preflight": {
+    "file_sha256": "c27c10f74fd6c310986602bef8d5f3c00b7ab45113fe2b86fd013f66cbfcdcb1",
+    "path": "reports/noncombat_card_acceptance_empirical_successor_20260810_r4_path_preflight.json",
+    "preflight_sha256": "d70a9ad03614032103622ceef75eceffd0131e5fddd9ae4465f06f63fb1c9ac4",
+    "review_file_sha256": "c7f21e09101ea91301e756f8a1f056a94b7303e932a7b5c5dbcd348ca1f63969",
+    "review_path": "reports/noncombat_card_acceptance_empirical_successor_20260810_r4_path_preflight_review.json",
+    "review_sha256": "64e83a97211080940964f7e51e5aa3bdbff923abb467d7059a65cce2600772ae"
+  },
+  "performed_operations": {
+    "cohort_materialization": false,
+    "environment_construction": false,
+    "evaluation": false,
+    "gameplay": false,
+    "model_fitting": false,
+    "model_loading": false,
+    "native_loading": false,
+    "repository_evidence_read": true,
+    "r3_inventory_content_access": false,
+    "seed_access": false,
+    "seed_discovery": false,
+    "training": false
+  },
+  "request": {
+    "file_sha256": "b6a8952b4581da49993e21aff4681e1eac90c8faa84322f9a4fb6b2424c5c454",
+    "path": "reports/noncombat_card_acceptance_empirical_successor_20260810_r4_inventory_request.json",
+    "request_review_sha256": "165cbd9a1cb7d2756ce9919b3aeee2aa9ed5173286db8a968458f0efcbbcb433",
+    "request_sha256": "f46f7dc1aa656e859e085e89fe8d120f02aaad0ae8a028e29a6bee52ca40381d",
+    "size_bytes": 1685
+  },
+  "review_sha256": "8fc7208388773f24e486f2e97b828778cabdb626c6994ee99c4a022cbcce45d2",
+  "reviewed_at": "2026-08-10T12:56:54.642Z",
+  "revocation_anchor": {
+    "approval_observation_sha256": "62a3cc722ccf2f1fd069b4b53c2001069ad199c26c78a38e27b55f783fca6eec",
+    "latest_human_message": {
+      "message_id": "msg_019fe6f1-4c00-71a3-931d-70a0635dc16c",
+      "message_timestamp": "2026-08-09T23:09:25.346Z",
+      "task_id": "019eb771-30f7-7ed2-9af2-ea4b22fadc11"
+    },
+    "no_later_explicit_revocation_observed": true
+  },
+  "schema_version": "noncombat-card-acceptance-empirical-successor-r4-inventory-authorization-review-v1",
+  "source_commit": "710599ec6c2a9f7964da1e43084d2d577dffb7b3",
+  "status": "verified",
+  "validation": {
+    "approval_chain_exact": true,
+    "canonical_round_trip": true,
+    "compact_schema_and_ceilings_bound": true,
+    "inventory_absent": true,
+    "native_or_runtime_imported": false,
+    "output_root_absent": true,
+    "predecessor_substitution_rejected": true,
+    "producer_validation": true,
+    "pushed_request_boundary_exact": true,
+    "requested_authority_equals_authorized_authority": true,
+    "started_receipt_absent": true
+  }
+}
