@@ -19,7 +19,7 @@
 
 ## 4. Verify Once And Register
 
-- [ ] 4.1 From a successful pushed build only, freeze the six build-evidence prerequisites; render and independently review one canonical `inventory-verification` request using the unchanged read-only verification stage map, then commit and push the request boundary.
+- [x] 4.1 From a successful pushed build only, freeze the six build-evidence prerequisites; render and independently review one canonical `inventory-verification` request using the unchanged read-only verification stage map, then commit and push the request boundary.
 - [ ] 4.2 After the verification request is pushed, resolve and independently review one standing-delegation approval and exact verification authorization; commit and push the approval/authorization boundary.
 - [ ] 4.3 After that boundary is pushed, recheck current delegation revocation state, capture and independently review one fresh verification launch observation, then commit and push the launch boundary.
 - [ ] 4.4 Recheck pushed cleanliness, exact six-file CLI identity, fresh revocation state, process absence, verification-receipt absence, output closure, and predecessor-content denial; invoke hardened `verify-inventory` once without retry or substitution.

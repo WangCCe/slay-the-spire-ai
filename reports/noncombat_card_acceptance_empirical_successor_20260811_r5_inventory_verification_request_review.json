@@ -1,0 +1,75 @@
+{
+  "artifact": {
+    "file_sha256": "f3f7e92a898b4fcc9e7ed67e103dafd8d4a6769b931167f9f75856f6ce3d6c08",
+    "path": "reports/noncombat_card_acceptance_empirical_successor_20260811_r5_inventory_verification_request.json",
+    "request_sha256": "1d228f164d6a35f9e48f5822ea55565401994fd605a725991ea934d2f0baefb3",
+    "size_bytes": 2314
+  },
+  "build_boundary": {
+    "commit": "bb482502b0b4d441902ce4bf7e5a2ae6c42de8f6",
+    "inventory_file_sha256": "8ffa0bf81ed66281cd48169928bc6133b4ec49d6b5b964eda7f86f3c8ae8a773",
+    "inventory_sha256": "deecb81010b76b4fbd197bef1eb732577481ae01591b9fa1a92b0428fe0526f3",
+    "inventory_tracked": true,
+    "receipt_sha256": "c2e77d14c57e09d821b7d809796dffb15d5c9a25ab2595dafa289e0546c88e56"
+  },
+  "git": {
+    "head": "bb482502b0b4d441902ce4bf7e5a2ae6c42de8f6",
+    "origin_master": "bb482502b0b4d441902ce4bf7e5a2ae6c42de8f6",
+    "tracked_worktree_clean": true
+  },
+  "independent_review": {
+    "agent_id": "019fea71-5be2-7e82-b92a-9ef7710e1a66",
+    "findings": [],
+    "method": "static-text-only-subagent-review",
+    "result": "passed",
+    "tool_execution_permitted": false
+  },
+  "lifecycle": {
+    "approval_exists": false,
+    "authorization_exists": false,
+    "launch_observation_exists": false,
+    "registration_exists": false,
+    "verification_completion_exists": false,
+    "verification_invoked": false,
+    "verification_process_count": 0,
+    "verification_started_receipt_exists": false
+  },
+  "performed_operations": {
+    "candidate_blob_reads": false,
+    "cohort_reconstruction": false,
+    "environment_construction": false,
+    "evaluation": false,
+    "gameplay": false,
+    "inventory_read": false,
+    "model_loading": false,
+    "native_loading": false,
+    "predecessor_inventory_content_access": false,
+    "seed_discovery": false,
+    "training": false,
+    "verification": false
+  },
+  "request_authority": {
+    "cohort_materialization": false,
+    "repository_evidence_read": true,
+    "seed_discovery": true,
+    "all_other_execution_authority": false,
+    "all_downstream_authority": false
+  },
+  "review_rounds": [
+    {
+      "findings": [
+        "P1 current absence and non-executable state was not evidenced after request creation"
+      ],
+      "resolution": "added this request-boundary review binding the request, pushed build boundary, current pushed-clean state, tracked inventory, explicit approval/authorization/launch/receipt/completion/registration absence, zero verifier processes, and verification_invoked=false"
+    },
+    {
+      "findings": [],
+      "resolution": "none"
+    }
+  ],
+  "review_sha256": "c4da7e73f99a9bff1aeac8e37204aab25679cc8cf46a451f0a76110fc400180b",
+  "reviewed_at": "2026-08-10T18:41:49.107Z",
+  "schema_version": "noncombat-card-acceptance-empirical-successor-r5-inventory-verification-request-review-v1",
+  "source_commit": "525c302df2d54cf06c756a9dc55fbae4ed9cb8b0",
+  "status": "verified"
+}
