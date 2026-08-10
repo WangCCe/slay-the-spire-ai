@@ -23,4 +23,4 @@
   - Initial full gate exposed the pre-existing nested-deadline floating-point boundary defect: 5771 passed, 18 skipped, 1 failed; pytest 2457.21s, gate 2461.01s.
   - After the separately reviewed deadline fix, final full gate: 5773 passed, 18 skipped; pytest 2476.43s, gate 2480.15s.
   - Fresh gameplay validation: not applicable; compact inventory and deadline-boundary repairs do not alter production imports or gameplay behavior.
-- [ ] 3.5 Commit and push the source-only repair, sync and archive this change, strict-validate the global OpenSpec set, and leave parent task 6.2 plus every r4/training/downstream authority incomplete.
+- [x] 3.5 Commit and push the source-only repair, sync and archive this change, strict-validate the global OpenSpec set, and leave parent task 6.2 plus every r4/training/downstream authority incomplete.
