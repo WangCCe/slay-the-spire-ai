@@ -5,9 +5,9 @@
 
 ## 2. Publish Dispatch, Source, And Request Boundary
 
-- [ ] 2.1 Run and preserve the exact side-effect-free production `-I ... check-dispatch` observation; independently review its command, isolation, script/control identities, deterministic bytes, and absence of authority/Git/seed/receipt/output access.
-- [ ] 2.2 Render the fixed r3 source inventory and path-only preflight binding source `3dd915e7c`, exact dispatch, current pushed/clean ancestry, both terminal predecessors, complete candidate path identity, generated-root exclusions, and absent r3 output/staging/attempts/receipt paths; independently review without candidate blob or seed-value access.
-- [ ] 2.3 Render and independently review the distinct r3 inventory request with fixed request id/output root, `max_materialized_seeds=1152`, only repository-evidence/seed-discovery/cohort-materialization authority, and every native/model/environment/training/evaluation/gameplay/qualification/promotion/downstream authority false.
+- [x] 2.1 Run and preserve the exact side-effect-free production `-I ... check-dispatch` observation; independently review its command, isolation, script/control identities, deterministic bytes, and absence of authority/Git/seed/receipt/output access.
+- [x] 2.2 Render the fixed r3 source inventory and path-only preflight binding source `3dd915e7c`, exact dispatch, current pushed/clean ancestry, both terminal predecessors, complete candidate path identity, generated-root exclusions, and absent r3 output/staging/attempts/receipt paths; independently review without candidate blob or seed-value access.
+- [x] 2.3 Render and independently review the distinct r3 inventory request with fixed request id/output root, `max_materialized_seeds=1152`, only repository-evidence/seed-discovery/cohort-materialization authority, and every native/model/environment/training/evaluation/gameplay/qualification/promotion/downstream authority false.
 - [ ] 2.4 Commit and push the dispatch/source/preflight/request artifacts and reviews as one immutable request boundary; do not edit source or tests.
 
 ## 3. Publish Delegated Authority Boundary

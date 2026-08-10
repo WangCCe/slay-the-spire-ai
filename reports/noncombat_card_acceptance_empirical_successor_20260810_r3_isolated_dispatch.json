@@ -1,0 +1,36 @@
+{
+  "canonical_binding": {
+    "command": [
+      "D:/anaconda/envs/stsai/python.exe",
+      "-I",
+      "D:/PycharmProjects/slay-the-spire-ai/analysis_scripts/noncombat_card_acceptance_empirical_successor_seed_inventory.py",
+      "check-dispatch"
+    ],
+    "control_contract_sha256": "69efdcb18fc16e65715ff38f2a4985f49cade47bdfa734e299874031007605a2",
+    "control_module": "analysis_scripts.noncombat_card_acceptance_empirical_successor_experiment",
+    "control_module_path": "analysis_scripts/noncombat_card_acceptance_empirical_successor_experiment.py",
+    "interpreter": "D:/anaconda/envs/stsai/python.exe",
+    "isolated_mode": true,
+    "schema_version": "noncombat-card-acceptance-empirical-successor-seed-inventory-dispatch-check-v1",
+    "script_path": "D:/PycharmProjects/slay-the-spire-ai/analysis_scripts/noncombat_card_acceptance_empirical_successor_seed_inventory.py",
+    "script_sha256": "a47567db10fc713cf4670353e5f51b29be087cef58bfbdb462ff1447700f316f",
+    "working_directory": "D:/PycharmProjects/slay-the-spire-ai"
+  },
+  "canonical_binding_sha256": "d86acacfef56ab7dc1f3916ed18804715cf549042a1a54577b80df94121b8485",
+  "canonical_binding_size_bytes": 923,
+  "exit_code": 0,
+  "observed_at": "2026-08-10T04:43:41.179Z",
+  "performed_operations": {
+    "authority_artifact_read": false,
+    "candidate_blob_read": false,
+    "cohort_materialization": false,
+    "git_evidence_read": false,
+    "output_or_receipt_write": false,
+    "seed_access": false,
+    "seed_discovery": false
+  },
+  "repeated_byte_identical": true,
+  "schema_version": "noncombat-card-acceptance-empirical-successor-isolated-dispatch-observation-v1",
+  "source_commit": "3dd915e7c51591f71179254ad616b5588b0347ae",
+  "status": "passed"
+}
