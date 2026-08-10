@@ -1,0 +1,67 @@
+{
+  "artifacts": {
+    "approval_sha256": "c2e4c710f896df6e624ca09e5a5acf6f8de11a297a566ccd4acb2d30785f7d68",
+    "authorization_sha256": "d766afcb84a9fca6efe0cf3fb88f0b8b10e4eb7be52b8d52e9f5a499a820d338",
+    "dispatch_binding_sha256": "b89c993f6466850626de1aac8a1ee2a46327e32dcdd3df4244220a7eced67cfa",
+    "launch_observation_sha256": "a93409cab982206d9cc3f0adbde30a67af1f3b6e406a2d8acde6ec1e8260d669",
+    "path_preflight_sha256": "d70a9ad03614032103622ceef75eceffd0131e5fddd9ae4465f06f63fb1c9ac4",
+    "prestart_test_evidence_sha256": "fe2c0c124f6d49e9aaa6d601153c2deee54e659bd094215d3afe331b38f2b3ef",
+    "request_sha256": "f46f7dc1aa656e859e085e89fe8d120f02aaad0ae8a028e29a6bee52ca40381d",
+    "source_inventory_sha256": "81fdbaa7bcd945ee4ac66d26540a50d4db982b811df87250e04b13464a31f727"
+  },
+  "checks": {
+    "all_terminal_predecessors_exact": true,
+    "authority_source_validation_exact": true,
+    "compact_schema_and_ceilings_exact": true,
+    "gate_self_digest_exact": true,
+    "git_pushed_and_clean_at_gate": true,
+    "launch_review_exact": true,
+    "openspec_result_exact": true,
+    "owning_pytest_result_exact": true,
+    "r3_terminal_output_content_unaccessed": true,
+    "source_modules_unchanged_since_fixed_commit": true,
+    "write_surfaces_absent": true
+  },
+  "gate": {
+    "file_sha256": "cc67850382a4bd1e7a0df1ce6419f71ba2fb2468fc23a8b93c67ae01264ae886",
+    "gate_sha256": "59171aa61c1073c2d4eaa8b134fd1b5c06275fe8640818765aba8f12e4f1bf7d",
+    "path": "reports/noncombat_card_acceptance_empirical_successor_20260810_r4_inventory_prestart_gate.json",
+    "size_bytes": 7273
+  },
+  "independent_review": {
+    "candidate_commit": "9f99da677b734c907691f46f099e617924a64f8e",
+    "findings": [],
+    "method": "codex-commit-review",
+    "result": "passed",
+    "session_id": "019febe4-17b8-7951-8347-1b518a963be5"
+  },
+  "performed_operations": {
+    "build_invocation": false,
+    "candidate_blob_reads": false,
+    "cohort_materialization": false,
+    "environment_construction": false,
+    "evaluation": false,
+    "gameplay": false,
+    "model_fitting": false,
+    "model_loading": false,
+    "native_loading": false,
+    "r3_inventory_content_access": false,
+    "repository_evidence_read": true,
+    "seed_access": false,
+    "seed_discovery": false,
+    "training": false
+  },
+  "reconstructed": {
+    "fixed_source_commit": "710599ec6c2a9f7964da1e43084d2d577dffb7b3",
+    "gate_base_head": "0f59d3eeb339a4783e88c6150c5662eafbaea3a9",
+    "openspec_failed": 0,
+    "openspec_passed": 84,
+    "owning_pytest_passed": 101,
+    "predecessor_count": 3,
+    "write_surface_count": 6
+  },
+  "review_sha256": "d84eca17f77e5fd294bda117f5ddfc4c1768b4cf75a8b1766de3abe6cbc22058",
+  "reviewed_at": "2026-08-10T13:40:10.556Z",
+  "schema_version": "noncombat-card-acceptance-empirical-successor-r4-inventory-prestart-gate-review-v1",
+  "status": "verified"
+}
