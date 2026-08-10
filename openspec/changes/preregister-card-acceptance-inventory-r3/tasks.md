@@ -12,8 +12,8 @@
 
 ## 3. Publish Delegated Authority Boundary
 
-- [ ] 3.1 Reobserve approval-time revocation state, resolve only the immutable standing external-human grant to the exact r3 request, and independently review the new request-bound delegated approval without creating or broadening the grant.
-- [ ] 3.2 Render and independently review the exact r3 inventory authorization, requiring all request/source/path/digest/resource/authority bindings and rejecting every r1/r2 or modified substitute.
+- [x] 3.1 Reobserve approval-time revocation state, resolve only the immutable standing external-human grant to the exact r3 request, and independently review the new request-bound delegated approval without creating or broadening the grant.
+- [x] 3.2 Render and independently review the exact r3 inventory authorization, requiring all request/source/path/digest/resource/authority bindings and rejecting every r1/r2 or modified substitute.
 - [ ] 3.3 Commit and push delegated approval, authorization, and their reviews together; verify current HEAD equals pushed `origin/master` and remains tracked-clean.
 
 ## 4. Freeze Launch And Pre-Start Gate
