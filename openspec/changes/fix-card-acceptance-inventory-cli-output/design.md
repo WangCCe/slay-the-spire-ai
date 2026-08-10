@@ -41,14 +41,19 @@ for `build-inventory` and `verify-inventory` it will pass that mapping to a new
 completion builder and serialize only the builder result. The envelope has a
 frozen schema version
 `noncombat-card-acceptance-empirical-successor-inventory-cli-completion-v1`
-and exactly these twelve fields: `schema_version`, `operation`, `status`,
+and exactly these fourteen fields: `schema_version`, `operation`, `status`,
 `request_sha256`, `output_path`, `inventory_path`, `inventory_size_bytes`,
-`inventory_file_sha256`, `inventory_sha256`, `receipt_path`,
-`receipt_sha256`, and `completion_sha256`. The only operation/status pairs are
-`build-inventory`/`published` and `verify-inventory`/`verified`.
+`inventory_file_sha256`, `inventory_sha256`,
+`inventory_launch_observation_sha256`,
+`operation_launch_observation_sha256`, `receipt_path`, `receipt_sha256`, and
+`completion_sha256`. The only operation/status pairs are
+`build-inventory`/`published` and `verify-inventory`/`verified`. The inventory
+launch is the build launch bound by the artifact and receipt; the operation
+launch is the current build or verification authority. They are equal for a
+build and may differ for a separately authorized verification.
 
 `completion_sha256` is the production canonical SHA-256 of the exact other
-eleven fields, excluding `completion_sha256` itself. Paths are resolved absolute
+thirteen fields, excluding `completion_sha256` itself. Paths are resolved absolute
 paths rendered with forward slashes. The encoded envelope includes the
 production canonical trailing newline.
 
@@ -67,7 +72,9 @@ artifact. It will open the inventory once, stream it through SHA-256 with a
 fixed-size buffer, and compare pre-read file identity, post-read file identity,
 and final path identity before publishing completion. The envelope binds both
 that `inventory_file_sha256` and the artifact's already validated semantic
-`inventory_sha256`.
+`inventory_sha256`. For verification, receipt launch validation uses the
+artifact's inventory/build launch while the envelope separately binds the fresh
+operation launch that authorized verification.
 
 Relying only on the returned mapping was rejected because an observer could
 receive a completion for a substituted path or receipt after unexpected drift.

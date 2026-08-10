@@ -5,13 +5,15 @@ After `build-inventory` or `verify-inventory` returns a validated inventory,
 the CLI SHALL write one canonical completion envelope rather than serializing
 the full inventory to stdout. The envelope schema version SHALL be
 `noncombat-card-acceptance-empirical-successor-inventory-cli-completion-v1` and
-its exact fields SHALL be `schema_version`, `operation`, `status`,
+its exact fourteen fields SHALL be `schema_version`, `operation`, `status`,
 `request_sha256`, `output_path`, `inventory_path`, `inventory_size_bytes`,
-`inventory_file_sha256`, `inventory_sha256`, `receipt_path`, `receipt_sha256`,
-and `completion_sha256`. The only valid operation/status pairs SHALL be
+`inventory_file_sha256`, `inventory_sha256`,
+`inventory_launch_observation_sha256`,
+`operation_launch_observation_sha256`, `receipt_path`, `receipt_sha256`, and
+`completion_sha256`. The only valid operation/status pairs SHALL be
 `build-inventory`/`published` and `verify-inventory`/`verified`. All paths SHALL
 be resolved absolute paths rendered with forward slashes. `completion_sha256`
-SHALL be the production canonical SHA-256 over the exact other eleven fields,
+SHALL be the production canonical SHA-256 over the exact other thirteen fields,
 excluding `completion_sha256` itself, including the canonical trailing newline;
 the complete encoded envelope SHALL be no more than 2,048 bytes.
 
@@ -24,6 +26,10 @@ once through a fixed-size streaming SHA-256, bind the resulting
 unchanged before, during, and immediately after that read. It SHALL NOT parse
 or reconstruct inventory content, alter direct Python operation results, or
 grant verification, registration, training, or downstream authority.
+`inventory_launch_observation_sha256` SHALL bind the build launch recorded by
+the artifact and receipt, while `operation_launch_observation_sha256` SHALL bind
+the current CLI operation launch. They SHALL match for build and MAY differ for
+a distinctly authorized verification.
 
 #### Scenario: Large build result completes with bounded stdout
 - **WHEN** `build-inventory` returns a validated mapping whose non-envelope content is arbitrarily large and its closed output and receipt identities match
@@ -31,7 +37,7 @@ grant verification, registration, training, or downstream authority.
 
 #### Scenario: Verification result uses the same bounded contract
 - **WHEN** `verify-inventory` independently reconstructs a closed inventory successfully
-- **THEN** the CLI emits a `verified` completion envelope with the same exact identity fields and does not serialize reconstructed rows, exclusions, or cohorts
+- **THEN** the CLI emits a `verified` completion envelope that separately binds the inventory/build launch and current verification launch and does not serialize reconstructed rows, exclusions, or cohorts
 
 #### Scenario: Completion identity drifts
 - **WHEN** the output is not closed, staging exists, the inventory or receipt is missing, non-regular, symlinked, noncanonical, or digest-invalid, file identity or size changes during hashing, or request/authorization/launch/source/artifact identities differ

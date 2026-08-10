@@ -15,6 +15,7 @@ import json
 import math
 import os
 import re
+import stat
 import subprocess
 import sys
 from collections.abc import Mapping
@@ -53,6 +54,12 @@ DISPATCH_CHECK_SCHEMA_VERSION = (
     "noncombat-card-acceptance-empirical-successor-"
     "seed-inventory-dispatch-check-v1"
 )
+CLI_COMPLETION_SCHEMA_VERSION = (
+    "noncombat-card-acceptance-empirical-successor-"
+    "inventory-cli-completion-v1"
+)
+CLI_COMPLETION_MAX_BYTES = 2_048
+CLI_COMPLETION_HASH_CHUNK_BYTES = 1024 * 1024
 OUTPUT_ROOT_POLICY_VERSION = (
     "noncombat-card-acceptance-empirical-successor-output-root-policy-v1"
 )
@@ -170,6 +177,38 @@ _AUTHORITY_EVIDENCE_FIELDS = {
     "request",
     "schema_version",
     "source_inventory",
+}
+_STARTED_RECEIPT_FIELDS = {
+    "approval_sha256",
+    "authorization_id",
+    "authorization_sha256",
+    "launch_observation_sha256",
+    "receipt_sha256",
+    "request_id",
+    "request_sha256",
+    "schema_version",
+    "source_commit",
+    "source_inventory_sha256",
+}
+_CLI_COMPLETION_FIELDS = {
+    "completion_sha256",
+    "inventory_file_sha256",
+    "inventory_launch_observation_sha256",
+    "inventory_path",
+    "inventory_sha256",
+    "inventory_size_bytes",
+    "operation",
+    "operation_launch_observation_sha256",
+    "output_path",
+    "receipt_path",
+    "receipt_sha256",
+    "request_sha256",
+    "schema_version",
+    "status",
+}
+_CLI_COMPLETION_STATUS = {
+    "build-inventory": "published",
+    "verify-inventory": "verified",
 }
 
 
@@ -1365,6 +1404,174 @@ def _started_receipt_path(request: Mapping[str, Any]) -> Path:
     )
 
 
+def _file_identity(value: os.stat_result) -> tuple[int, int, int, int, int, int]:
+    return (
+        value.st_dev,
+        value.st_ino,
+        value.st_mode,
+        value.st_size,
+        value.st_mtime_ns,
+        value.st_ctime_ns,
+    )
+
+
+def _stream_regular_file_sha256(path: Path, label: str) -> tuple[str, int]:
+    if path.is_symlink():
+        raise SeedInventoryBlocked(f"{label} must not be a symlink")
+    try:
+        before = path.stat()
+        if not stat.S_ISREG(before.st_mode):
+            raise SeedInventoryBlocked(f"{label} must be a regular file")
+        digest = hashlib.sha256()
+        with path.open("rb") as handle:
+            opened = os.fstat(handle.fileno())
+            if _file_identity(before) != _file_identity(opened):
+                raise SeedInventoryBlocked(f"{label} identity changed before hashing")
+            while True:
+                chunk = handle.read(CLI_COMPLETION_HASH_CHUNK_BYTES)
+                if not chunk:
+                    break
+                digest.update(chunk)
+            closed = os.fstat(handle.fileno())
+        after = path.stat()
+    except SeedInventoryBlocked:
+        raise
+    except OSError as exc:
+        raise SeedInventoryBlocked(f"{label} identity read failed: {exc}") from exc
+    if (
+        _file_identity(opened) != _file_identity(closed)
+        or _file_identity(closed) != _file_identity(after)
+    ):
+        raise SeedInventoryBlocked(f"{label} identity changed during hashing")
+    return digest.hexdigest(), closed.st_size
+
+
+def _completion_receipt(
+    *,
+    request: Mapping[str, Any],
+    authorization: Mapping[str, Any],
+    approval_record: Mapping[str, Any],
+    inventory_launch_observation_sha256: str,
+) -> tuple[Path, dict[str, Any]]:
+    path = _started_receipt_path(request)
+    if path.is_symlink():
+        raise SeedInventoryBlocked("inventory started receipt must not be a symlink")
+    try:
+        raw = path.read_bytes()
+    except OSError as exc:
+        raise SeedInventoryBlocked(f"inventory started receipt read failed: {exc}") from exc
+    receipt = _mapping(
+        _strict_json(raw, "inventory started receipt"),
+        "inventory started receipt",
+    )
+    _require_exact_keys(receipt, _STARTED_RECEIPT_FIELDS, "inventory started receipt")
+    if raw != canonical_json_bytes(receipt):
+        raise SeedInventoryBlocked("inventory started receipt is not canonical")
+    if receipt["schema_version"] != STARTED_RECEIPT_SCHEMA_VERSION:
+        raise SeedInventoryBlocked("inventory started receipt schema mismatch")
+    body = {key: value for key, value in receipt.items() if key != "receipt_sha256"}
+    if _digest(
+        receipt["receipt_sha256"], "started receipt digest"
+    ) != _canonical_sha256(body):
+        raise SeedInventoryBlocked("inventory started receipt digest mismatch")
+    expected = {
+        "approval_sha256": approval_record.get("approval_sha256"),
+        "authorization_id": authorization.get("authorization_id"),
+        "authorization_sha256": authorization.get("authorization_sha256"),
+        "launch_observation_sha256": inventory_launch_observation_sha256,
+        "request_id": request.get("request_id"),
+        "request_sha256": request.get("request_sha256"),
+        "source_commit": request.get("source_commit"),
+        "source_inventory_sha256": request.get("source_inventory_sha256"),
+    }
+    if any(receipt[key] != value for key, value in expected.items()):
+        raise SeedInventoryBlocked("inventory started receipt authority binding mismatch")
+    return path, receipt
+
+
+def _build_cli_completion(
+    *,
+    operation: str,
+    request: Mapping[str, Any],
+    authorization: Mapping[str, Any],
+    approval_record: Mapping[str, Any],
+    launch_observation: Mapping[str, Any],
+    artifact: Mapping[str, Any],
+) -> dict[str, Any]:
+    if operation not in _CLI_COMPLETION_STATUS:
+        raise SeedInventoryBlocked("inventory CLI completion operation is invalid")
+    if not isinstance(artifact, Mapping):
+        raise SeedInventoryBlocked("inventory CLI completion artifact must be a mapping")
+    raw_output = Path(request["output_root"])
+    if raw_output.is_symlink():
+        raise SeedInventoryBlocked("inventory output must not be a symlink")
+    output, staging = _inventory_paths(request)
+    if staging.exists():
+        raise SeedInventoryBlocked("inventory staging is ambiguous")
+    if not output.is_dir() or output.is_symlink():
+        raise SeedInventoryBlocked("materialized inventory output is missing")
+    try:
+        entries = sorted(path.name for path in output.iterdir())
+    except OSError as exc:
+        raise SeedInventoryBlocked(f"materialized inventory output read failed: {exc}") from exc
+    if entries != [INVENTORY_FILENAME]:
+        raise SeedInventoryBlocked("materialized inventory output is not closed")
+    inventory_path = output / INVENTORY_FILENAME
+    inventory_file_sha256, inventory_size_bytes = _stream_regular_file_sha256(
+        inventory_path,
+        "materialized inventory file",
+    )
+    inventory_launch_observation_sha256 = _digest(
+        artifact.get("launch_authority_sha256"),
+        "completion inventory launch observation digest",
+    )
+    operation_launch_observation_sha256 = _digest(
+        launch_observation.get("observation_sha256"),
+        "completion operation launch observation digest",
+    )
+    receipt_path, receipt = _completion_receipt(
+        request=request,
+        authorization=authorization,
+        approval_record=approval_record,
+        inventory_launch_observation_sha256=inventory_launch_observation_sha256,
+    )
+    artifact_bindings = {
+        "authorization_sha256": authorization.get("authorization_sha256"),
+        "request_sha256": request.get("request_sha256"),
+        "source_inventory_sha256": request.get("source_inventory_sha256"),
+    }
+    if any(artifact.get(key) != value for key, value in artifact_bindings.items()):
+        raise SeedInventoryBlocked("inventory CLI completion artifact binding mismatch")
+    body = {
+        "inventory_file_sha256": inventory_file_sha256,
+        "inventory_launch_observation_sha256": (
+            inventory_launch_observation_sha256
+        ),
+        "inventory_path": inventory_path.resolve().as_posix(),
+        "inventory_sha256": _digest(
+            artifact.get("inventory_sha256"), "completion inventory digest"
+        ),
+        "inventory_size_bytes": inventory_size_bytes,
+        "operation": operation,
+        "operation_launch_observation_sha256": (
+            operation_launch_observation_sha256
+        ),
+        "output_path": output.resolve().as_posix(),
+        "receipt_path": receipt_path.resolve().as_posix(),
+        "receipt_sha256": receipt["receipt_sha256"],
+        "request_sha256": _digest(
+            request.get("request_sha256"), "completion request digest"
+        ),
+        "schema_version": CLI_COMPLETION_SCHEMA_VERSION,
+        "status": _CLI_COMPLETION_STATUS[operation],
+    }
+    completion = {**body, "completion_sha256": _canonical_sha256(body)}
+    _require_exact_keys(completion, _CLI_COMPLETION_FIELDS, "inventory CLI completion")
+    if len(canonical_json_bytes(completion)) > CLI_COMPLETION_MAX_BYTES:
+        raise SeedInventoryBlocked("inventory CLI completion exceeds byte limit")
+    return completion
+
+
 def _require_unmaterialized(request: Mapping[str, Any]) -> None:
     output, staging = _inventory_paths(request)
     if output.exists():
@@ -1599,9 +1806,17 @@ def main(argv: list[str] | None = None) -> int:
             approval_record=approval_record,
             launch_observation=launch_observation,
         )
+        completion = _build_cli_completion(
+            operation=args.command,
+            request=request,
+            authorization=authorization,
+            approval_record=approval_record,
+            launch_observation=launch_observation,
+            artifact=artifact,
+        )
     except (OSError, SeedInventoryBlocked) as exc:
         parser.error(str(exc))
-    sys.stdout.buffer.write(canonical_json_bytes(artifact))
+    sys.stdout.buffer.write(canonical_json_bytes(completion))
     return 0
 
 
@@ -1612,6 +1827,8 @@ if __name__ == "__main__":
 __all__ = [
     "CANARY_SEED_COUNT",
     "CANONICAL_SEARCH_START",
+    "CLI_COMPLETION_MAX_BYTES",
+    "CLI_COMPLETION_SCHEMA_VERSION",
     "DISPATCH_CHECK_SCHEMA_VERSION",
     "HOLDOUT_SEED_COUNT",
     "INVENTORY_FILENAME",

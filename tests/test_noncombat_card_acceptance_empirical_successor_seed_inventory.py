@@ -922,6 +922,20 @@ def test_verify_inventory_reconstructs_without_selector_or_materializer(
     assert artifact["launch_authority_sha256"] == launch_observation[
         "observation_sha256"
     ]
+    completion = seed_inventory._build_cli_completion(
+        operation="verify-inventory",
+        request=request,
+        authorization=authorization,
+        approval_record=approval,
+        launch_observation=fresh_launch_observation,
+        artifact=artifact,
+    )
+    assert completion["inventory_launch_observation_sha256"] == (
+        launch_observation["observation_sha256"]
+    )
+    assert completion["operation_launch_observation_sha256"] == (
+        fresh_launch_observation["observation_sha256"]
+    )
 
 
 def test_inventory_authority_fails_before_source_discovery(tmp_path, monkeypatch):
@@ -1121,59 +1135,260 @@ def test_inventory_validation_rejects_unknown_fields(tmp_path):
         seed_inventory.validate_inventory(changed)
 
 
-def test_inventory_cli_requires_and_forwards_approval_and_launch(
-    tmp_path, monkeypatch, capsysbinary
-):
+def _cli_completion_fixture(tmp_path):
+    output = tmp_path / "closed-output"
+    output.mkdir()
+    inventory_path = output / seed_inventory.INVENTORY_FILENAME
+    inventory_bytes = b"closed inventory bytes\n"
+    inventory_path.write_bytes(inventory_bytes)
+    request = {
+        "output_root": output.as_posix(),
+        "request_id": "bounded-cli-test-request-v1",
+        "request_sha256": "1" * 64,
+        "source_commit": "2" * 40,
+        "source_inventory_sha256": "3" * 64,
+    }
+    authorization = {
+        "authorization_id": "bounded-cli-test-authorization-v1",
+        "authorization_sha256": "4" * 64,
+    }
+    approval = {"approval_sha256": "5" * 64}
+    launch = {"observation_sha256": "6" * 64}
+    values = {
+        "request": request,
+        "authorization": authorization,
+        "approval": approval,
+        "launch": launch,
+    }
     paths = {}
-    for name in ("request", "authorization", "approval", "launch"):
+    for name, value in values.items():
         path = tmp_path / f"{name}.json"
-        path.write_bytes(_json_bytes({"name": name}))
+        path.write_bytes(_json_bytes(value))
         paths[name] = path
-    observed = {}
+
+    receipt_body = {
+        "approval_sha256": approval["approval_sha256"],
+        "authorization_id": authorization["authorization_id"],
+        "authorization_sha256": authorization["authorization_sha256"],
+        "launch_observation_sha256": launch["observation_sha256"],
+        "request_id": request["request_id"],
+        "request_sha256": request["request_sha256"],
+        "schema_version": seed_inventory.STARTED_RECEIPT_SCHEMA_VERSION,
+        "source_commit": request["source_commit"],
+        "source_inventory_sha256": request["source_inventory_sha256"],
+    }
+    receipt = {
+        **receipt_body,
+        "receipt_sha256": hashlib.sha256(_json_bytes(receipt_body)).hexdigest(),
+    }
+    receipt_path = _started_receipt_path(request)
+    receipt_path.parent.mkdir(parents=True)
+    receipt_path.write_bytes(_json_bytes(receipt))
+
+    artifact = {
+        "authorization_sha256": authorization["authorization_sha256"],
+        "ignored_payload": "x" * (2 * 1024 * 1024),
+        "inventory_sha256": "7" * 64,
+        "launch_authority_sha256": launch["observation_sha256"],
+        "request_sha256": request["request_sha256"],
+        "source_inventory_sha256": request["source_inventory_sha256"],
+    }
+    return {
+        "approval": approval,
+        "artifact": artifact,
+        "authorization": authorization,
+        "inventory_bytes": inventory_bytes,
+        "inventory_path": inventory_path,
+        "launch": launch,
+        "output": output,
+        "paths": paths,
+        "receipt": receipt,
+        "receipt_path": receipt_path,
+        "request": request,
+    }
+
+
+def _cli_arguments(fixture, operation, *, include_launch=True):
+    result = [
+        operation,
+        "--repo-root",
+        str(fixture["output"].parent),
+        "--request",
+        str(fixture["paths"]["request"]),
+        "--authorization",
+        str(fixture["paths"]["authorization"]),
+        "--approval-record",
+        str(fixture["paths"]["approval"]),
+    ]
+    if include_launch:
+        result.extend(
+            ["--launch-observation", str(fixture["paths"]["launch"])]
+        )
+    return result
+
+
+def _expected_cli_completion(fixture, operation, status):
+    body = {
+        "inventory_file_sha256": hashlib.sha256(
+            fixture["inventory_bytes"]
+        ).hexdigest(),
+        "inventory_launch_observation_sha256": fixture["artifact"][
+            "launch_authority_sha256"
+        ],
+        "inventory_path": fixture["inventory_path"].resolve().as_posix(),
+        "inventory_sha256": fixture["artifact"]["inventory_sha256"],
+        "inventory_size_bytes": len(fixture["inventory_bytes"]),
+        "operation": operation,
+        "operation_launch_observation_sha256": fixture["launch"][
+            "observation_sha256"
+        ],
+        "output_path": fixture["output"].resolve().as_posix(),
+        "receipt_path": fixture["receipt_path"].resolve().as_posix(),
+        "receipt_sha256": fixture["receipt"]["receipt_sha256"],
+        "request_sha256": fixture["request"]["request_sha256"],
+        "schema_version": seed_inventory.CLI_COMPLETION_SCHEMA_VERSION,
+        "status": status,
+    }
+    return {
+        **body,
+        "completion_sha256": hashlib.sha256(_json_bytes(body)).hexdigest(),
+    }
+
+
+def _build_completion(fixture, *, operation="build-inventory"):
+    return seed_inventory._build_cli_completion(
+        operation=operation,
+        request=fixture["request"],
+        authorization=fixture["authorization"],
+        approval_record=fixture["approval"],
+        launch_observation=fixture["launch"],
+        artifact=fixture["artifact"],
+    )
+
+
+@pytest.mark.parametrize(
+    ("operation", "function_name", "status"),
+    [
+        ("build-inventory", "build_inventory", "published"),
+        ("verify-inventory", "verify_inventory", "verified"),
+    ],
+)
+def test_inventory_cli_forwards_authority_and_emits_bounded_completion(
+    tmp_path,
+    monkeypatch,
+    capsysbinary,
+    operation,
+    function_name,
+    status,
+):
+    fixture = _cli_completion_fixture(tmp_path)
 
     def fake_build_inventory(**kwargs):
         observed.update(kwargs)
-        return {"verified": True}
+        return copy.deepcopy(fixture["artifact"])
 
-    monkeypatch.setattr(seed_inventory, "build_inventory", fake_build_inventory)
-    assert seed_inventory.main(
-        [
-            "build-inventory",
-            "--repo-root",
-            str(tmp_path),
-            "--request",
-            str(paths["request"]),
-            "--authorization",
-            str(paths["authorization"]),
-            "--approval-record",
-            str(paths["approval"]),
-            "--launch-observation",
-            str(paths["launch"]),
-        ]
-    ) == 0
+    observed = {}
+    monkeypatch.setattr(seed_inventory, function_name, fake_build_inventory)
+    assert seed_inventory.main(_cli_arguments(fixture, operation)) == 0
     assert observed == {
-        "approval_record": {"name": "approval"},
-        "authorization": {"name": "authorization"},
-        "launch_observation": {"name": "launch"},
-        "repo_root": str(tmp_path),
-        "request": {"name": "request"},
+        "approval_record": fixture["approval"],
+        "authorization": fixture["authorization"],
+        "launch_observation": fixture["launch"],
+        "repo_root": str(fixture["output"].parent),
+        "request": fixture["request"],
     }
-    assert capsysbinary.readouterr().out == _json_bytes({"verified": True})
+    stdout = capsysbinary.readouterr().out
+    assert stdout == _json_bytes(
+        _expected_cli_completion(fixture, operation, status)
+    )
+    assert len(stdout) <= seed_inventory.CLI_COMPLETION_MAX_BYTES
+
+
+def test_inventory_cli_requires_launch_observation(tmp_path):
+    fixture = _cli_completion_fixture(tmp_path)
 
     with pytest.raises(SystemExit, match="2"):
         seed_inventory.main(
-            [
-                "verify-inventory",
-                "--repo-root",
-                str(tmp_path),
-                "--request",
-                str(paths["request"]),
-                "--authorization",
-                str(paths["authorization"]),
-                "--approval-record",
-                str(paths["approval"]),
-            ]
+            _cli_arguments(fixture, "verify-inventory", include_launch=False)
         )
+
+
+@pytest.mark.parametrize(
+    "failure_kind",
+    ["staging", "open_output", "noncanonical_receipt", "receipt_digest"],
+)
+def test_inventory_cli_completion_failure_writes_no_stdout(
+    tmp_path, monkeypatch, capsysbinary, failure_kind
+):
+    fixture = _cli_completion_fixture(tmp_path)
+    if failure_kind == "staging":
+        _output, staging = seed_inventory._inventory_paths(fixture["request"])
+        staging.mkdir()
+    elif failure_kind == "open_output":
+        (fixture["output"] / "unexpected.json").write_bytes(b"{}\n")
+    elif failure_kind == "noncanonical_receipt":
+        fixture["receipt_path"].write_text(
+            json.dumps(fixture["receipt"], indent=2), encoding="utf-8"
+        )
+    else:
+        fixture["receipt"]["receipt_sha256"] = "0" * 64
+        fixture["receipt_path"].write_bytes(_json_bytes(fixture["receipt"]))
+    monkeypatch.setattr(
+        seed_inventory,
+        "build_inventory",
+        lambda **_kwargs: copy.deepcopy(fixture["artifact"]),
+    )
+    with pytest.raises(SystemExit, match="2"):
+        seed_inventory.main(_cli_arguments(fixture, "build-inventory"))
+    captured = capsysbinary.readouterr()
+    assert captured.out == b""
+
+
+def test_inventory_completion_rejects_file_identity_drift(tmp_path, monkeypatch):
+    fixture = _cli_completion_fixture(tmp_path)
+    original = seed_inventory._file_identity
+    calls = 0
+
+    def drifting_identity(value):
+        nonlocal calls
+        calls += 1
+        identity = original(value)
+        if calls >= 4:
+            return (*identity[:-1], identity[-1] + 1)
+        return identity
+
+    monkeypatch.setattr(seed_inventory, "_file_identity", drifting_identity)
+    with pytest.raises(
+        seed_inventory.SeedInventoryBlocked, match="identity changed during hashing"
+    ):
+        _build_completion(fixture)
+
+
+@pytest.mark.parametrize("path_key", ["output", "inventory_path", "receipt_path"])
+def test_inventory_completion_rejects_symlink(tmp_path, monkeypatch, path_key):
+    fixture = _cli_completion_fixture(tmp_path)
+    original = Path.is_symlink
+
+    def selected_path_is_symlink(path):
+        return path == fixture[path_key] or original(path)
+
+    monkeypatch.setattr(Path, "is_symlink", selected_path_is_symlink)
+    with pytest.raises(seed_inventory.SeedInventoryBlocked, match="symlink"):
+        _build_completion(fixture)
+
+
+def test_inventory_completion_rejects_artifact_binding_drift(tmp_path):
+    fixture = _cli_completion_fixture(tmp_path)
+    fixture["artifact"]["request_sha256"] = "8" * 64
+    with pytest.raises(seed_inventory.SeedInventoryBlocked, match="artifact binding"):
+        _build_completion(fixture)
+
+
+def test_inventory_completion_enforces_frozen_byte_limit(tmp_path, monkeypatch):
+    fixture = _cli_completion_fixture(tmp_path)
+    monkeypatch.setattr(seed_inventory, "CLI_COMPLETION_MAX_BYTES", 64)
+    with pytest.raises(seed_inventory.SeedInventoryBlocked, match="byte limit"):
+        _build_completion(fixture)
 
 
 def test_isolated_dispatch_check_is_canonical_and_deterministic():
