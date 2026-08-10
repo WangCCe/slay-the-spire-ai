@@ -1,0 +1,71 @@
+{
+    "artifacts": {
+        "approval_sha256": "ba4faf357431d076c0449d72bd025eba230ba472b7e3112923c6254747606a32",
+        "authorization_sha256": "66b77d00cfe634426b5f264d13ffcd5ac88ea7f4baa403f1ba907fa438ba265e",
+        "build_command_sha256": "599b69fde053056b9d24f1cfbadcfb27f747c19d1c96c0c4838ffd93a103ec64",
+        "dispatch_binding_sha256": "26fa10342284b87570017ac937331eee4bce6d85759bfe978b4f1d1e322445e8",
+        "launch_observation_sha256": "618838e934a9eb07f6973242b488e4dc17640aa0ee6dadbff54fcd42544bf934",
+        "path_preflight_sha256": "00a746c4e9d016c439b67ef169ace9cb7c504753b1a2a8b0d000837d63b39a7e",
+        "prestart_test_evidence_sha256": "641a0b16d9c0100549d144d01228264f534eb60f307667b2acca132082ef293c",
+        "request_sha256": "1457d6661b4fb69f74c41db8bb60a80d0674244d2ef3110e0155d7f842965daa",
+        "source_inventory_sha256": "e9b6ded429aa182b31b6f025596ddfc94b0109f1d69217ff336b7c537832d302"
+    },
+    "checks": {
+        "all_terminal_predecessors_exact_and_preserved": true,
+        "authority_source_validation_exact": true,
+        "build_not_invoked": true,
+        "command_is_one_shot_and_exact": true,
+        "gate_self_digest_exact": true,
+        "git_pushed_and_clean_at_gate": true,
+        "launch_review_exact": true,
+        "openspec_result_exact": true,
+        "owning_pytest_result_exact": true,
+        "predecessor_inventory_content_unaccessed": true,
+        "process_absence_exact": true,
+        "prohibited_authority_all_false": true,
+        "source_modules_exact": true,
+        "write_surfaces_absent": true
+    },
+    "gate": {
+        "file_sha256": "7f7eb7e6753ff9c9e169f61921b055fa8ecdb9375bbf933b89498c40a8808dfe",
+        "gate_sha256": "4f73149ff5a5b831ae31647af5e01759b9e079a7c1a87e655a3b6629dd1f5bb9",
+        "path": "reports/noncombat_card_acceptance_empirical_successor_20260811_r5_inventory_prestart_gate.json",
+        "size_bytes": 9861
+    },
+    "independent_review": {
+        "agent_id": "019fea71-5be2-7e82-b92a-9ef7710e1a66",
+        "findings": [],
+        "method": "static-text-only-subagent-review",
+        "result": "passed",
+        "tool_execution_permitted": false
+    },
+    "performed_operations": {
+        "build_invocation": false,
+        "candidate_blob_reads": false,
+        "cohort_materialization": false,
+        "environment_construction": false,
+        "evaluation": false,
+        "gameplay": false,
+        "model_loading": false,
+        "native_loading": false,
+        "predecessor_inventory_content_access": false,
+        "seed_access": false,
+        "seed_discovery": false,
+        "training": false
+    },
+    "reconstructed": {
+        "fixed_source_commit": "525c302df2d54cf06c756a9dc55fbae4ed9cb8b0",
+        "full_gate": "5803 passed, 18 skipped",
+        "gate_base_head": "a8cdf4fe9385edfd40eea0172be86c6c655e0d1b",
+        "openspec_failed": 0,
+        "openspec_passed": 84,
+        "owning_pytest_passed": 265,
+        "predecessor_count": 4,
+        "python_process_count": 0,
+        "write_surface_count": 11
+    },
+    "review_sha256": "22e5b398ee459d0417a5ded0f397906c5eb9636bd2af6b7b233003f9640e72e3",
+    "reviewed_at": "2026-08-10T18:19:19.870Z",
+    "schema_version": "noncombat-card-acceptance-empirical-successor-r5-inventory-prestart-gate-review-v1",
+    "status": "verified"
+}
