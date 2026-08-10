@@ -21,7 +21,7 @@
 
 - [x] 4.1 From a successful pushed build only, freeze the six build-evidence prerequisites; render and independently review one canonical `inventory-verification` request using the unchanged read-only verification stage map, then commit and push the request boundary.
 - [x] 4.2 After the verification request is pushed, resolve and independently review one standing-delegation approval and exact verification authorization; commit and push the approval/authorization boundary.
-- [ ] 4.3 After that boundary is pushed, recheck current delegation revocation state, capture and independently review one fresh verification launch observation, then commit and push the launch boundary.
+- [x] 4.3 After that boundary is pushed, recheck current delegation revocation state, capture and independently review one fresh verification launch observation, then commit and push the launch boundary.
 - [ ] 4.4 Recheck pushed cleanliness, exact six-file CLI identity, fresh revocation state, process absence, verification-receipt absence, output closure, and predecessor-content denial; invoke hardened `verify-inventory` once without retry or substitution.
 - [ ] 4.5 On source-only verification success, run the standalone verifier over the same compact artifact and independently review exact agreement. Any failure closes r5 terminal without registration or parent-task changes.
 - [ ] 4.6 Only after exact dual verification, publish and independently review one canonical all-false r5 registration, complete parent task 6.2, leave 6.3 unchecked, and commit/push the bounded success evidence without training authority.

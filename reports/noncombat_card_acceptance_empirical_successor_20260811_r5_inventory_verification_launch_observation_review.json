@@ -1,0 +1,67 @@
+{
+  "artifact": {
+    "file_sha256": "5abf0fd17a5fae06ac09332bc3b2452710ff05cbc979e9db9276c00d1ec9978c",
+    "observation_sha256": "55c2976111b627f4877fec522f2dd851f7239b6e3f3bfb2574d3c35495c576ec",
+    "path": "reports/noncombat_card_acceptance_empirical_successor_20260811_r5_inventory_verification_launch_observation.json",
+    "size_bytes": 769
+  },
+  "authority_chain": {
+    "approval_sha256": "895fad43f2b2a8e794ec916dc9cc8921cbd30ab4d86f1c068efff351ed54882b",
+    "authorization_sha256": "24ad682d4bae8639692724da7a8c4d8fcb3a7feeccee96df0d18a445196792ea",
+    "authority_boundary_review_file_sha256": "443365b7650726d682786318bc3ebacf62826bfd88a581f4e45f4a8631683760",
+    "authority_boundary_review_sha256": "8845e0cf3172901b87cf08e8c4a043c6e8f920ed81d21c4dd4772db9fdacf2fa",
+    "pushed_authority_boundary_commit": "bba72b6e065a44db4d873af0f86160e2bc54f136",
+    "request_sha256": "1d228f164d6a35f9e48f5822ea55565401994fd605a725991ea934d2f0baefb3"
+  },
+  "git": {
+    "head": "bba72b6e065a44db4d873af0f86160e2bc54f136",
+    "origin_master": "bba72b6e065a44db4d873af0f86160e2bc54f136",
+    "tracked_worktree_clean": true
+  },
+  "independent_review": {
+    "agent_id": "019fea71-5be2-7e82-b92a-9ef7710e1a66",
+    "findings": [],
+    "method": "static-text-only-subagent-review",
+    "result": "passed",
+    "tool_execution_permitted": false
+  },
+  "lifecycle": {
+    "launch_observation_exists": true,
+    "registration_exists": false,
+    "verification_completion_exists": false,
+    "verification_invoked": false,
+    "verification_process_count": 0,
+    "verification_started_receipt_exists": false
+  },
+  "performed_operations": {
+    "candidate_blob_reads": false,
+    "cohort_reconstruction": false,
+    "environment_construction": false,
+    "evaluation": false,
+    "gameplay": false,
+    "inventory_read": false,
+    "model_loading": false,
+    "native_loading": false,
+    "predecessor_inventory_content_access": false,
+    "seed_discovery": false,
+    "training": false,
+    "verification": false
+  },
+  "review_rounds": [
+    {
+      "findings": [
+        "P1 post-launch lifecycle evidence was missing"
+      ],
+      "resolution": "added this post-launch observation proving verification receipt/completion/registration absent, zero verifier processes, and verification_invoked=false after the exact launch artifact exists"
+    },
+    {
+      "findings": [],
+      "resolution": "none"
+    }
+  ],
+  "review_sha256": "2e0ffd38003339b700b564b3dd2485da84dfd6ca9cea9ff1140887123478274d",
+  "reviewed_at": "2026-08-10T18:56:11.533Z",
+  "schema_version": "noncombat-card-acceptance-empirical-successor-r5-inventory-verification-launch-observation-review-v1",
+  "source_commit": "525c302df2d54cf06c756a9dc55fbae4ed9cb8b0",
+  "status": "verified"
+}
