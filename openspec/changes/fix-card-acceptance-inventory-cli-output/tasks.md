@@ -17,8 +17,8 @@
 ## 4. Verify And Publish
 
 - [x] 4.1 Run the focused CLI/receipt/output nodes, then the complete owning seed-inventory pytest file under the registered Windows temp parent; run compile/import isolation and strict OpenSpec validation.
-- [ ] 4.2 Run the repository commit test gate instead of the raw unpartitioned full suite, record timing/result, run diff checks, and obtain independent code review with no unresolved finding. Fresh gameplay validation is not applicable because no gameplay path changes.
-- [ ] 4.3 Commit and push the cohesive source/test/change result; grant no r4 inventory invocation, registration, training, evaluation, qualification, promotion, or gameplay authority.
+- [x] 4.2 Run the repository commit test gate instead of the raw unpartitioned full suite, record timing/result, run diff checks, and obtain independent code review with no unresolved finding. Fresh gameplay validation is not applicable because no gameplay path changes.
+- [x] 4.3 Commit and push the cohesive source/test/change result; grant no r4 inventory invocation, registration, training, evaluation, qualification, promotion, or gameplay authority.
 
 ## 5. Closeout
 
