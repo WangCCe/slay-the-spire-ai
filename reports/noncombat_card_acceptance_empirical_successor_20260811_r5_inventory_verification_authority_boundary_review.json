@@ -1,0 +1,81 @@
+{
+  "approval": {
+    "approval_observation_sha256": "9ec59e479bc9b53c775f2fd9dc2db099d2fb99b68bf7ac7e7f66793e1381a232",
+    "approval_sha256": "895fad43f2b2a8e794ec916dc9cc8921cbd30ab4d86f1c068efff351ed54882b",
+    "file_sha256": "307d800629bee91266c078bdab4f7c262432ccbcb16b7aae93dba8d1783167ea",
+    "path": "reports/noncombat_card_acceptance_empirical_successor_20260811_r5_inventory_verification_delegated_approval.json",
+    "size_bytes": 2807
+  },
+  "authorization": {
+    "authorization_sha256": "24ad682d4bae8639692724da7a8c4d8fcb3a7feeccee96df0d18a445196792ea",
+    "file_sha256": "a2db0a26d2318714834de89a49c525bfddc49b6bd74217964543a21672ef5c17",
+    "path": "reports/noncombat_card_acceptance_empirical_successor_20260811_r5_inventory_verification_authorization.json",
+    "size_bytes": 1410
+  },
+  "git": {
+    "head": "f11391a00e340fd250b454bad911d8f5ab96c4fb",
+    "origin_master": "f11391a00e340fd250b454bad911d8f5ab96c4fb",
+    "tracked_worktree_clean": true
+  },
+  "independent_review": {
+    "agent_id": "019fea71-5be2-7e82-b92a-9ef7710e1a66",
+    "findings": [],
+    "method": "static-text-only-subagent-review",
+    "result": "passed",
+    "tool_execution_permitted": false
+  },
+  "lifecycle": {
+    "approval_exists": true,
+    "authorization_exists": true,
+    "launch_observation_exists": false,
+    "registration_exists": false,
+    "verification_completion_exists": false,
+    "verification_invoked": false,
+    "verification_process_count": 0,
+    "verification_started_receipt_exists": false
+  },
+  "performed_operations": {
+    "candidate_blob_reads": false,
+    "cohort_reconstruction": false,
+    "environment_construction": false,
+    "evaluation": false,
+    "gameplay": false,
+    "inventory_read": false,
+    "model_loading": false,
+    "native_loading": false,
+    "predecessor_inventory_content_access": false,
+    "seed_discovery": false,
+    "training": false,
+    "verification": false
+  },
+  "request": {
+    "file_sha256": "f3f7e92a898b4fcc9e7ed67e103dafd8d4a6769b931167f9f75856f6ce3d6c08",
+    "pushed_boundary_commit": "f11391a00e340fd250b454bad911d8f5ab96c4fb",
+    "request_review_file_sha256": "d55ab72cc400b31876fc6d08ea476fe150ff722a870ed8cf98b76d34f607aecc",
+    "request_review_sha256": "c4da7e73f99a9bff1aeac8e37204aab25679cc8cf46a451f0a76110fc400180b",
+    "request_sha256": "1d228f164d6a35f9e48f5822ea55565401994fd605a725991ea934d2f0baefb3"
+  },
+  "review_rounds": [
+    {
+      "findings": [
+        "P1 lifecycle absence evidence predated verification approval and authorization creation"
+      ],
+      "resolution": "added this post-authorization boundary observation binding current pushed-clean request state, present exact approval/authorization, explicit launch/receipt/completion/registration absence, zero verifier processes, and verification_invoked=false"
+    },
+    {
+      "findings": [],
+      "resolution": "none"
+    }
+  ],
+  "revocation_check": {
+    "authoritative_state_available": true,
+    "checked_at": "2026-08-10T18:48:14.546Z",
+    "latest_human_message_id": "msg_019fe6f1-4c00-71a3-931d-70a0635dc16c",
+    "revocation_observed": false
+  },
+  "review_sha256": "8845e0cf3172901b87cf08e8c4a043c6e8f920ed81d21c4dd4772db9fdacf2fa",
+  "reviewed_at": "2026-08-10T18:49:50.694Z",
+  "schema_version": "noncombat-card-acceptance-empirical-successor-r5-inventory-verification-authority-boundary-review-v1",
+  "source_commit": "525c302df2d54cf06c756a9dc55fbae4ed9cb8b0",
+  "status": "verified"
+}
