@@ -4,6 +4,8 @@ import copy
 import hashlib
 import json
 import subprocess
+import sys
+import types
 from pathlib import Path
 
 import pytest
@@ -12,6 +14,29 @@ import analysis_scripts.noncombat_card_acceptance_empirical_successor_experiment
 from analysis_scripts import (
     noncombat_card_acceptance_empirical_successor_seed_inventory as seed_inventory,
 )
+
+
+ROOT = Path(__file__).resolve().parents[1]
+SEED_INVENTORY_SCRIPT = (
+    ROOT
+    / "analysis_scripts"
+    / "noncombat_card_acceptance_empirical_successor_seed_inventory.py"
+)
+
+
+def _dispatch_process_identity(*, isolated_mode=True):
+    interpreter = Path(sys.executable).resolve().as_posix()
+    script_path = SEED_INVENTORY_SCRIPT.resolve().as_posix()
+    return {
+        "command": [interpreter, "-I", script_path, "check-dispatch"],
+        "interpreter": interpreter,
+        "isolated_mode": isolated_mode,
+        "script_path": script_path,
+        "script_sha256": hashlib.sha256(
+            SEED_INVENTORY_SCRIPT.read_bytes()
+        ).hexdigest(),
+        "working_directory": ROOT.resolve().as_posix(),
+    }
 
 
 _SOURCE_INVENTORY_BODY = {
@@ -1148,4 +1173,134 @@ def test_inventory_cli_requires_and_forwards_approval_and_launch(
                 "--approval-record",
                 str(paths["approval"]),
             ]
+        )
+
+
+def test_isolated_dispatch_check_is_canonical_and_deterministic():
+    command = [
+        sys.executable,
+        "-I",
+        str(SEED_INVENTORY_SCRIPT),
+        "check-dispatch",
+    ]
+    runs = [
+        subprocess.run(
+            command,
+            cwd=ROOT,
+            check=False,
+            capture_output=True,
+            text=False,
+        )
+        for _ in range(2)
+    ]
+
+    for completed in runs:
+        assert completed.returncode == 0, completed.stderr.decode(
+            "utf-8", errors="replace"
+        )
+        assert completed.stderr == b""
+    assert runs[0].stdout == runs[1].stdout
+
+    artifact = json.loads(runs[0].stdout)
+    process_identity = _dispatch_process_identity()
+    assert artifact == {
+        **process_identity,
+        "control_contract_sha256": hashlib.sha256(
+            _json_bytes(control.experiment_contract())
+        ).hexdigest(),
+        "control_module": (
+            "analysis_scripts."
+            "noncombat_card_acceptance_empirical_successor_experiment"
+        ),
+        "control_module_path": (
+            "analysis_scripts/"
+            "noncombat_card_acceptance_empirical_successor_experiment.py"
+        ),
+        "schema_version": (
+            "noncombat-card-acceptance-empirical-successor-"
+            "seed-inventory-dispatch-check-v1"
+        ),
+    }
+    assert runs[0].stdout == seed_inventory.canonical_json_bytes(artifact)
+
+
+def test_dispatch_evidence_has_no_inventory_lifecycle_side_effects(
+    monkeypatch, capsysbinary
+):
+    def forbidden(*_args, **_kwargs):
+        raise AssertionError("inventory lifecycle operation reached")
+
+    for name in (
+        "_build_source_registry_and_rows",
+        "_git_blob_batch",
+        "_git_command",
+        "_inventory_paths",
+        "_list_registered_source_paths",
+        "_load_json_file",
+        "_publish_inventory_once",
+        "_require_unmaterialized",
+        "_select_fresh_cohorts",
+        "_start_inventory_once",
+        "_started_receipt_path",
+        "_validate_inventory_authority",
+        "build_inventory",
+        "verify_inventory",
+    ):
+        monkeypatch.setattr(seed_inventory, name, forbidden)
+
+    expected_path = SEED_INVENTORY_SCRIPT.with_name(
+        "noncombat_card_acceptance_empirical_successor_experiment.py"
+    )
+    control = types.SimpleNamespace(
+        __file__=str(expected_path),
+        experiment_contract=lambda: {"contract": "source-only"},
+    )
+
+    def import_module(name):
+        assert name == (
+            "analysis_scripts."
+            "noncombat_card_acceptance_empirical_successor_experiment"
+        )
+        return control
+
+    monkeypatch.setattr(seed_inventory.importlib, "import_module", import_module)
+    monkeypatch.setattr(
+        seed_inventory,
+        "_dispatch_process_identity",
+        _dispatch_process_identity,
+    )
+
+    assert seed_inventory.main(["check-dispatch"]) == 0
+    artifact = json.loads(capsysbinary.readouterr().out)
+
+    assert artifact["control_contract_sha256"] == hashlib.sha256(
+        _json_bytes(control.experiment_contract())
+    ).hexdigest()
+    assert artifact["control_module_path"] == (
+        "analysis_scripts/"
+        "noncombat_card_acceptance_empirical_successor_experiment.py"
+    )
+
+
+def test_dispatch_evidence_requires_isolated_mode():
+    with pytest.raises(seed_inventory.SeedInventoryBlocked, match="isolated mode"):
+        seed_inventory._build_dispatch_evidence(
+            process_identity=_dispatch_process_identity(isolated_mode=False)
+        )
+
+
+def test_dispatch_evidence_rejects_control_module_path_drift(monkeypatch, tmp_path):
+    control = types.SimpleNamespace(
+        __file__=str(tmp_path / "substituted_control.py"),
+        experiment_contract=lambda: {"contract": "substituted"},
+    )
+    monkeypatch.setattr(
+        seed_inventory.importlib,
+        "import_module",
+        lambda _name: control,
+    )
+
+    with pytest.raises(seed_inventory.SeedInventoryBlocked, match="path is invalid"):
+        seed_inventory._build_dispatch_evidence(
+            process_identity=_dispatch_process_identity()
         )

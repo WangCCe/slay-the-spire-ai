@@ -22,6 +22,19 @@ from pathlib import Path, PurePosixPath
 from typing import Any
 
 
+def _bootstrap_direct_script_imports() -> None:
+    if __package__:
+        return
+    repo_root = str(Path(__file__).resolve().parents[1])
+    if repo_root in sys.path:
+        sys.path.remove(repo_root)
+    sys.path.insert(0, repo_root)
+
+
+if __name__ == "__main__":
+    _bootstrap_direct_script_imports()
+
+
 SOURCE_REGISTRY_SCHEMA_VERSION = (
     "noncombat-card-acceptance-empirical-successor-seed-source-registry-v1"
 )
@@ -35,6 +48,10 @@ INVENTORY_AUTHORITY_EVIDENCE_SCHEMA_VERSION = (
 STARTED_RECEIPT_SCHEMA_VERSION = (
     "noncombat-card-acceptance-empirical-successor-"
     "seed-inventory-started-receipt-v1"
+)
+DISPATCH_CHECK_SCHEMA_VERSION = (
+    "noncombat-card-acceptance-empirical-successor-"
+    "seed-inventory-dispatch-check-v1"
 )
 OUTPUT_ROOT_POLICY_VERSION = (
     "noncombat-card-acceptance-empirical-successor-output-root-policy-v1"
@@ -666,6 +683,95 @@ def _build_source_registry_and_rows(
         "registry_sha256": _canonical_sha256(registry_body),
     }
     return registry, rows, sorted({row["seed"] for row in rows})
+
+
+def _dispatch_process_identity() -> dict[str, Any]:
+    if sys.flags.isolated != 1:
+        raise SeedInventoryBlocked("inventory dispatch check requires isolated mode")
+    try:
+        interpreter = Path(sys.executable).resolve()
+        script_path = Path(__file__).resolve()
+        working_directory = Path.cwd().resolve()
+        if working_directory != script_path.parents[1]:
+            raise SeedInventoryBlocked(
+                "inventory dispatch working directory is invalid"
+            )
+        original_argv = list(sys.orig_argv)
+        if (
+            len(original_argv) != 4
+            or Path(original_argv[0]).resolve() != interpreter
+            or original_argv[1] != "-I"
+            or Path(original_argv[2]).resolve() != script_path
+            or original_argv[3] != "check-dispatch"
+        ):
+            raise SeedInventoryBlocked("inventory dispatch command is invalid")
+        script_sha256 = hashlib.sha256(script_path.read_bytes()).hexdigest()
+    except (OSError, TypeError, ValueError) as exc:
+        raise SeedInventoryBlocked(
+            f"inventory dispatch identity is invalid: {exc}"
+        ) from exc
+    normalized_interpreter = interpreter.as_posix()
+    normalized_script = script_path.as_posix()
+    return {
+        "command": [
+            normalized_interpreter,
+            "-I",
+            normalized_script,
+            "check-dispatch",
+        ],
+        "interpreter": normalized_interpreter,
+        "isolated_mode": True,
+        "script_path": normalized_script,
+        "script_sha256": script_sha256,
+        "working_directory": working_directory.as_posix(),
+    }
+
+
+def _build_dispatch_evidence(
+    *, process_identity: Mapping[str, Any]
+) -> dict[str, Any]:
+    identity = dict(process_identity)
+    _require_exact_keys(
+        identity,
+        {
+            "command",
+            "interpreter",
+            "isolated_mode",
+            "script_path",
+            "script_sha256",
+            "working_directory",
+        },
+        "inventory dispatch process identity",
+    )
+    if identity["isolated_mode"] is not True:
+        raise SeedInventoryBlocked("inventory dispatch check requires isolated mode")
+    try:
+        control = importlib.import_module(_CONTROL_MODULE)
+        control_path = Path(control.__file__).resolve()
+        expected_path = Path(__file__).resolve().with_name(
+            "noncombat_card_acceptance_empirical_successor_experiment.py"
+        )
+        if control_path != expected_path:
+            raise SeedInventoryBlocked("inventory control module path is invalid")
+        contract = control.experiment_contract()
+    except SeedInventoryBlocked:
+        raise
+    except Exception as exc:
+        raise SeedInventoryBlocked(f"inventory dispatch check failed: {exc}") from exc
+    return {
+        **identity,
+        "control_contract_sha256": _canonical_sha256(contract),
+        "control_module": _CONTROL_MODULE,
+        "control_module_path": control_path.relative_to(
+            Path(__file__).resolve().parents[1]
+        ).as_posix(),
+        "schema_version": DISPATCH_CHECK_SCHEMA_VERSION,
+    }
+
+
+def check_dispatch() -> dict[str, Any]:
+    """Validate the exact isolated control-module entrypoint without I/O."""
+    return _build_dispatch_evidence(process_identity=_dispatch_process_identity())
 
 
 def _validate_inventory_authority(
@@ -1461,6 +1567,7 @@ def _load_json_file(path: str, label: str) -> dict[str, Any]:
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     subparsers = parser.add_subparsers(dest="command", required=True)
+    subparsers.add_parser("check-dispatch")
     for command in ("build-inventory", "verify-inventory"):
         command_parser = subparsers.add_parser(command)
         command_parser.add_argument("--repo-root", required=True)
@@ -1469,6 +1576,13 @@ def main(argv: list[str] | None = None) -> int:
         command_parser.add_argument("--approval-record", required=True)
         command_parser.add_argument("--launch-observation", required=True)
     args = parser.parse_args(argv)
+    if args.command == "check-dispatch":
+        try:
+            artifact = check_dispatch()
+        except SeedInventoryBlocked as exc:
+            parser.error(str(exc))
+        sys.stdout.buffer.write(canonical_json_bytes(artifact))
+        return 0
     request = _load_json_file(args.request, "inventory request")
     authorization = _load_json_file(args.authorization, "inventory authorization")
     approval_record = _load_json_file(args.approval_record, "inventory approval record")
@@ -1498,6 +1612,7 @@ if __name__ == "__main__":
 __all__ = [
     "CANARY_SEED_COUNT",
     "CANONICAL_SEARCH_START",
+    "DISPATCH_CHECK_SCHEMA_VERSION",
     "HOLDOUT_SEED_COUNT",
     "INVENTORY_FILENAME",
     "INVENTORY_AUTHORITY_EVIDENCE_SCHEMA_VERSION",
@@ -1507,6 +1622,7 @@ __all__ = [
     "TRAINING_SEED_COUNT",
     "build_inventory",
     "canonical_json_bytes",
+    "check_dispatch",
     "validate_inventory",
     "verify_inventory",
 ]
