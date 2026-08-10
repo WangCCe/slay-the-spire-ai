@@ -1,0 +1,66 @@
+## Why
+
+The reviewed r6 training request is pushed, but the repository exposes no
+registered command that composes the existing request/authorization checks,
+execution context, lease, journal, resource ledger, runtime training loop,
+checkpoints, and terminal publication. Publishing training authority before
+that command exists would authorize an unlaunchable and unauditable workflow.
+
+## What Changes
+
+- Add one narrow CPU training runner with a closed `preflight`, `run-training`,
+  and `terminalize-dead-owner` command set.
+- Add a canonical launch manifest that binds the pushed r6 registration,
+  training request/review, runner source, interpreter, registered experiment
+  source, additive registration verifier, output root, resource ceilings, and
+  exact command set before any authorization is accepted.
+- Compose the existing validated execution context, exclusive lease,
+  write-ahead access/resource accounting, registered 512-seed schedule,
+  `run_bounded_paired_training`, eight complete-boundary checkpoints, and one
+  terminal or rollback publication.
+- Add a fully authorized dead-owner terminalization path that can close an
+  existing partial prefix after proving the prior process is dead, without
+  runtime/model/native loading, seed access, environment construction, or
+  training replay.
+- Keep runtime/native imports behind complete registration, request,
+  authorization, approval/launch-observation, source, production-isolation,
+  output-root, and process-liveness validation.
+- Add source-only dry-run and failure-path tests that prove malformed, changed,
+  incomplete, partial-chunk, or over-budget launches fail before native/model/
+  environment/seed access.
+- Preserve the pushed r6 registration and request as immutable request-only
+  evidence. Do not publish task 6.4 authorization or run task 6.5 training in
+  this change.
+
+Success means a reviewed pushed runner can reproduce one exact preflight and
+closed command set, and focused plus repository gates prove lifecycle closure
+without loading native/model/runtime execution dependencies. The rollback boundary is
+the first runner process invocation: before it, remove only uncommitted runner
+planning/preflight artifacts; after it, preserve every receipt, lease,
+checkpoint, journal, terminal, complete, or partial output and never substitute
+or retry the identity outside the existing complete-boundary continuation rule.
+
+## Capabilities
+
+### New Capabilities
+
+- `noncombat-card-acceptance-training-runner`: Exact source-bound launch
+  manifest, command set, lifecycle composition, dead-owner terminalization,
+  publication, and fail-closed
+  verification for the paired card-acceptance training stage.
+
+### Modified Capabilities
+
+- `noncombat-card-acceptance-empirical-successor`: Require a reviewed pushed
+  training runner and launch manifest before training authorization or
+  execution becomes eligible.
+
+## Impact
+
+- New source-only runner module and focused tests under `analysis_scripts/` and
+  `tests/`.
+- Narrow integration with the existing card-acceptance control, runtime,
+  registration validator, simulator adapter, and standalone verifier APIs.
+- New bounded launch-manifest/preflight reports only; no CommunicationMod,
+  gameplay policy, production checkpoint, training hyperparameter, cohort,
+  model architecture, native dependency, or resource-ceiling change.

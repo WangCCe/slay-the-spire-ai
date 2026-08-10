@@ -1,0 +1,164 @@
+## Context
+
+The r6 inventory registration and bounded training request are independently
+reviewed and pushed. The registered experiment control exposes validation,
+authority, lease, journal, resource, checkpoint, continuation, terminal, and
+rollback APIs. The runtime exposes the complete paired training loop. No source
+module composes those APIs into one production command, so parent task 6.4 must
+remain blocked even though request publication is valid.
+
+The experiment control/runtime bytes remain identical to source commit
+`525c302df2d54cf06c756a9dc55fbae4ed9cb8b0`. Registration support was added
+later to the seed-inventory producer and independent verifier. The runner must
+bind that additive support without redefining the registered experiment source
+or rewriting the pushed r6 registration/request.
+
+## Goals / Non-Goals
+
+**Goals:**
+
+- Provide one exact Windows CPU runner with a canonical launch manifest and a
+  closed `preflight`, `run-training`, and `terminalize-dead-owner` command set.
+- Validate every immutable registration/request/authorization/approval/source/
+  path/resource binding before runtime or native import.
+- Compose the existing execution context, lease, write-ahead accounting,
+  registered training schedule, complete checkpoints, and terminal lifecycle.
+- Preserve the existing setup reopen and sole complete-checkpoint continuation
+  semantics without adding retry or tuning paths.
+- Close a partial prefix after a proven process death without restoring runtime
+  state, accessing seeds, or replaying any environment.
+- Make every pre-runtime failure testable without native, model, environment,
+  checkpoint, or seed access.
+
+**Non-Goals:**
+
+- Publishing training authorization, resolving the current conversation
+  watermark, or launching task 6.5.
+- Changing the model, objective, optimizer, cohorts, resources, simulator,
+  native dependency, runtime algorithm, or r6 request.
+- Adding canary/holdout execution, gameplay integration, CommunicationMod, OPE,
+  qualification, promotion, or production model loading.
+- Generalizing a reusable job framework beyond this exact training stage.
+
+## Decisions
+
+### Add a standalone runner without modifying registered experiment modules
+
+Create `noncombat_card_acceptance_empirical_successor_training_runner.py`. It
+imports only the standard library and the source-only control plane at module
+load. The independent registration verifier and Torch/native runtime are loaded
+through explicit private loaders only after the runner has validated the launch
+manifest, request, authorization, approval, launch observation, source bytes,
+output state, and resource identity.
+
+This preserves the registered experiment control/runtime identity. Modifying
+the existing experiment CLI was rejected because it would invalidate the
+source commit and source-inventory digest carried by the r6 registration and
+request. A generic orchestration framework was rejected because it adds no
+evidence for the immediate training boundary.
+
+### Freeze a launch manifest before authorization
+
+The canonical launch manifest binds the r6 registration/request/review paths
+and digests, exact runner path/hash/pushed commit, registered experiment source
+commit/inventory, current additive registration-verifier path/hash, Windows
+interpreter, output root, resource map, denied operations, and exact closed CLI
+set. It binds the exact argument shape and authority requirements of all three
+commands; an unregistered command or argument is source drift.
+It grants no execution authority. The manifest and a text-only independent
+review must be pushed before parent task 6.4 may publish authorization.
+
+Keeping this separate from the already pushed stage request avoids rewriting a
+valid request. The later runner requires both the existing stage authorization
+and the exact manifest, so neither can substitute for the other.
+
+### Use one process-owned lifecycle
+
+The runner process validates all source-only inputs, builds one immutable
+execution context, and acquires the existing `ExecutionLease` under its own PID.
+All journal, resource, checkpoint, stage, terminal, and rollback operations use
+that exact context and lease. Runtime import and environment construction occur
+only inside this owned lifecycle.
+
+The runner passes the registration's exact sorted 512-seed training cohort to
+`run_bounded_paired_training`, journals candidate then control before each
+environment, charges resources monotonically, publishes each complete 64-pair
+checkpoint, and publishes exactly one independently verifiable terminal or
+rollback classification.
+
+If the training owner dies after creating a lifecycle prefix but before
+terminal publication, a separately invoked `terminalize-dead-owner` command may
+close that prefix. It first validates the exact manifest, stage authorization,
+approval and launch observations, proves the recorded owner is dead, acquires
+the existing stale-owner lease path, and verifies the journal/resource/
+checkpoint prefix. It may then publish only the process-failure terminal and
+rollback evidence prescribed by the control plane. It never restores runtime
+state, decodes or opens the seed inventory, imports runtime/native/model code,
+constructs an environment, consumes continuation authority, or replays a seed.
+
+### Split source-only preflight from execution
+
+`preflight` strict-parses and canonical-compares the manifest and public control
+artifacts, verifies pushed/tracked source identities, requires the output root
+to be absent, prints one bounded all-false completion, and exits before opening
+any output child, registration seed decoding, runtime/native/model import,
+environment construction, lease acquisition, checkpoint access, or output
+creation. An existing output root is a source-only preflight NO-GO; preflight
+does not inspect or classify it.
+
+`run-training` repeats the immutable source checks, validates full authority,
+and only then inspects bounded lifecycle state. It accepts an absent output,
+same-identity zero-debit setup reopen, or the existing one-time continuation
+from a fully verified complete checkpoint. A partial chunk cannot continue or
+replay. `terminalize-dead-owner` is closure rather than recovery: it may seal a
+proven-dead owner's existing prefix as a process failure, but cannot make that
+identity runnable again.
+
+### Keep authorization outside this change
+
+This change ends after reviewed pushed source and launch manifest. Current-task
+watermark inspection is unavailable while the task response is active, so no
+approval-time observation is inferred. A later user turn or authoritative task
+inspection must provide the fresh watermark required by the existing standing
+delegation validator.
+
+## Risks / Trade-offs
+
+- [Risk] A launcher outside the registered source could alter execution. -> Bind
+  the exact runner bytes, commit, interpreter, command, and verifier bytes in a
+  pushed manifest and reject every drift before runtime import.
+- [Risk] Validation itself reveals seeds or loads runtime code. -> Keep preflight
+  content/path checks separate and test importer/open ordering with fail-fast
+  sentinels.
+- [Risk] The callback-driven runtime and control accounting can diverge. -> Make
+  the runner the sole adapter and test exact candidate/control debit order,
+  checkpoint coordinates, resource totals, and terminal closure.
+- [Risk] A crash leaves a partial output. -> Preserve the lease, journal,
+  checkpoint, and partial bytes; reject same-identity replay except the existing
+  complete-boundary continuation, and permit only the authorized dead-owner
+  terminalizer to publish a non-replay process-failure closure.
+- [Risk] Runner work expands into canary/holdout. -> Limit stage to `training`
+  and reject other stage requests and authorization maps.
+
+## Migration Plan
+
+1. Commit and push this reviewed planning boundary without authorization.
+2. Add RED source-only manifest/CLI/import-order/lifecycle and dead-owner
+   terminalization regressions.
+3. Implement the minimal runner and standalone manifest verifier.
+4. Run focused tests, compile/import probes, registered gates, strict OpenSpec,
+   and tool-prohibited source review; commit and push source.
+5. Render, independently review, commit, and push one r6 launch manifest and
+   source-only preflight. Bind all three commands; do not create authorization,
+   terminalize output, or run training.
+6. Return to parent task 6.4 only after authoritative current-message watermark
+   observation is available.
+
+Before any `run-training` process invocation, rollback removes only uncommitted
+runner planning or preflight artifacts. After invocation, preserve all complete
+or partial lifecycle evidence and do not delete, replace, retune, or retry the
+identity outside its existing complete-boundary continuation.
+
+## Open Questions
+
+None.
