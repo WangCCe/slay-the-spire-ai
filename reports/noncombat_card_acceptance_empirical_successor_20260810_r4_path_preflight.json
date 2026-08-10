@@ -1,0 +1,150 @@
+{
+  "candidate_paths": {
+    "count": 805,
+    "sha256": "306c4cf6bf9d3a631d5d91152b8641d2cfc0954a841199aac5700119b55f0c71"
+  },
+  "checks": {
+    "all_predecessors_exact_and_terminal": true,
+    "compact_contract_exact": true,
+    "current_head_equals_origin_master": true,
+    "dispatch_exact": true,
+    "generated_roots_classified_before_blob_access": true,
+    "r3_terminal_output_content_unaccessed": true,
+    "r4_attempts_absent": true,
+    "r4_output_absent": true,
+    "r4_receipt_absent": true,
+    "r4_registration_absent": true,
+    "r4_staging_absent": true,
+    "r4_verification_absent": true,
+    "source_commit_is_current_head_ancestor": true,
+    "source_inventory_exact": true,
+    "tracked_worktree_clean": true,
+    "unsupported_or_ambiguous_path_absent": true
+  },
+  "compact_contract": {
+    "cli_completion_max_bytes": 2048,
+    "cli_completion_schema_version": "noncombat-card-acceptance-empirical-successor-inventory-cli-completion-v1",
+    "inventory_max_bytes": 67108864,
+    "seed_inventory_schema_version": "noncombat-card-acceptance-empirical-successor-seed-inventory-v4",
+    "standalone_verifier_sha256": "7e816343bbe870ed7280e316aa4ebed914fdbb36bc54283edaf0528b1e679dc0"
+  },
+  "dispatch": {
+    "canonical_binding_sha256": "b89c993f6466850626de1aac8a1ee2a46327e32dcdd3df4244220a7eced67cfa",
+    "canonical_binding_size_bytes": 924,
+    "observation_file_sha256": "f0659182c8dcd4703583e2ff09661847393265a394df9b4b23a8eabb34eec017",
+    "observation_path": "reports/noncombat_card_acceptance_empirical_successor_20260810_r4_isolated_dispatch.json",
+    "status": "observed_pending_review"
+  },
+  "excluded_roots": [
+    {
+      "kind": "staging",
+      "path": "reports/.noncombat_cross_fitted_empirical_successor_readiness_20260808_r3.5777eef4a43065e6246481926f95d6cfcba04c88.staging"
+    },
+    {
+      "kind": "attempt",
+      "path": "reports/noncombat_card_acceptance_empirical_successor_20260810_r3_attempts"
+    },
+    {
+      "kind": "attempt",
+      "path": "reports/noncombat_cross_fitted_empirical_successor_readiness_attempts"
+    }
+  ],
+  "excluded_roots_sha256": "64aa0ec4823578d934984c6a92086d189d0a4838431aefa1c6d0033ba3790535",
+  "git_state": {
+    "current_head": "baf40aef36c56f0f775be3f5efd5fd7c2c4776e1",
+    "origin_master": "baf40aef36c56f0f775be3f5efd5fd7c2c4776e1",
+    "pushed_remote_ref": "origin/master",
+    "source_commit_is_ancestor": true,
+    "tracked_worktree_clean": true
+  },
+  "observed_at": "2026-08-10T11:52:56.724Z",
+  "operations": {
+    "candidate_blob_reads": false,
+    "cohort_materialization": false,
+    "environment_construction": false,
+    "evaluation": false,
+    "gameplay": false,
+    "model_loading": false,
+    "native_loading": false,
+    "predecessor_tracked_evidence_read": true,
+    "r3_inventory_content_access": false,
+    "repository_path_enumeration": true,
+    "seed_discovery": false,
+    "seed_value_reads": false,
+    "source_inventory_read": true,
+    "training": false
+  },
+  "output_state": {
+    "attempts_exists": false,
+    "attempts_root": "D:/PycharmProjects/slay-the-spire-ai/reports/noncombat_card_acceptance_empirical_successor_20260810_r4_attempts",
+    "output_exists": false,
+    "output_root": "D:/PycharmProjects/slay-the-spire-ai/reports/noncombat_card_acceptance_empirical_successor_20260810_r4",
+    "receipt_exists": false,
+    "receipt_path": "D:/PycharmProjects/slay-the-spire-ai/reports/noncombat_card_acceptance_empirical_successor_20260810_r4_attempts/f46f7dc1aa656e859e085e89fe8d120f02aaad0ae8a028e29a6bee52ca40381d/started.json",
+    "registration_exists": false,
+    "registration_path": "D:/PycharmProjects/slay-the-spire-ai/reports/noncombat_card_acceptance_empirical_successor_20260810_r4_registration.json",
+    "staging_exists": false,
+    "staging_path": "D:/PycharmProjects/slay-the-spire-ai/reports/.noncombat_card_acceptance_empirical_successor_20260810_r4.f46f7dc1aa656e859e085e89fe8d120f02aaad0ae8a028e29a6bee52ca40381d.staging",
+    "verification_exists": false,
+    "verification_path": "D:/PycharmProjects/slay-the-spire-ai/reports/noncombat_card_acceptance_empirical_successor_20260810_r4_inventory_verification.json"
+  },
+  "predecessors": {
+    "r1": {
+      "failure_file_sha256": "3b8abbdc73f193afdca71e09aa1a7de89d920c906421ef0cba980abaa7ef3898",
+      "failure_review_file_sha256": "2a0246ffcec639efc13b9f531f73cf6119fea5e837bf769402111e33216b5b19",
+      "failure_sha256": "4b59914dfe94d5511f2172608d101e7ad7bbbb52b01a7a6fab1c7b305115fa92",
+      "launch_file_sha256": "97b21e19484686325f6431e2731bd1d610062dbe7a465fdc5238f52733580f38",
+      "launch_observation_sha256": "3f006cbf5921f71e97411db0bb4c61e755d97f572e610f2ce4bb09ff60312996",
+      "request_file_sha256": "ef65854169602d7fa539ea148bd9c7aa906d6850e6716f3fe62f40821fad2c07",
+      "request_sha256": "d6016a7e8d47c7131cf903c97f0fd80f7ea8c013c653fb625cf983bc73c7d628",
+      "review_sha256": "d50678313ac4be90afc3197da1623a0a4789c7e41337e261f8bae95219b91a0e",
+      "same_identity_retry_allowed": false,
+      "terminal": true
+    },
+    "r2": {
+      "failure_file_sha256": "49fb2c7f59d73974e937423ca605a9e28af699da4ad6f77615ad02d7be9bbc38",
+      "failure_review_file_sha256": "ed82d65fdc2aa238c3666b6bd50d2cbcd05e605dce118db910f105d225f18d4a",
+      "failure_sha256": "d44f6d900c902d94af20fba365725e9cc46c423a3ab10cbcedf16747e80ec3fb",
+      "launch_file_sha256": "b95cbc0f233658005e8b7aae1e89f602e884038c1e02f801926380b3b534d55e",
+      "launch_observation_sha256": "d03621aa28922a26536987c6e420e2d3e1dc7d0be8434dcaf63b5c255ebe6369",
+      "request_file_sha256": "6dcc1e6d6795b66f42b7079937d907a554603e252d929537bcd0c90db01b4cb4",
+      "request_sha256": "adcea551f0323b990135e095076fe5913819b2927d60ffac061518f3dd89b4cd",
+      "review_sha256": "9c917fb424e5b082680ba1b875d0557a5a84cb332e64478e5963d9dc7cd04104",
+      "same_identity_retry_allowed": false,
+      "terminal": true
+    },
+    "r3": {
+      "artifact_content_accessed": false,
+      "artifact_path": "D:/PycharmProjects/slay-the-spire-ai/reports/noncombat_card_acceptance_empirical_successor_20260810_r3/seed_inventory.json",
+      "artifact_present": true,
+      "artifact_status": "published_unverified",
+      "failure_file_sha256": "f33d7c06027249a5d7de7c3810d80d9efd8f38b0e85096f61057f91d7fba1b23",
+      "failure_review_file_sha256": "b75817fdf083051a921c57a1795843da2c23126721d4bd93abfd3e52c58383f6",
+      "failure_sha256": "6803150661670be0b193b51fdd3e03c0a5fbda0232a2d9fc8927edf2abe8694a",
+      "launch_file_sha256": "893037bdb4a11bbf940691234a42209477357b657d94d58255c04bee61b4eae7",
+      "launch_observation_sha256": "7ebe50b8a29bc488506ab1f073aa5df2fbb47a8f888bcc5bf51014555073c26c",
+      "postmortem_file_sha256": "1314106858f357764907c44d387c84e5de72412f34cdf16f0eb4bfe342fb7f95",
+      "receipt_file_sha256": "9d4be5cbdac1af1432306ca6af1214d2bca9c63a79224e047650f067ba05b8b4",
+      "receipt_sha256": "5c7ef6d72581965c456530e0b33cf21d9a98e0f731f12a89c6b0f64384d4e061",
+      "request_file_sha256": "75003389c6a020978a14f9006c797b77d33cb9c3d2ae2726afc071dd4a3f40b1",
+      "request_sha256": "3ef7d2f30c95341d4f951f3932323046cb405efe0dfb624207c9e98ad31d599b",
+      "review_sha256": "946810043041362d1144a18685a8dc65645910050d3b59a702f029f4eafc2264",
+      "same_identity_retry_allowed": false,
+      "terminal": true,
+      "verification_allowed": false
+    }
+  },
+  "preflight_sha256": "438e363c461e55065ee32ee7c9b82bb6c5e60ed28db173cbd475c8b051eea21f",
+  "request_identity": {
+    "output_root": "D:/PycharmProjects/slay-the-spire-ai/reports/noncombat_card_acceptance_empirical_successor_20260810_r4",
+    "request_id": "noncombat-card-acceptance-empirical-successor-20260810-r4-inventory-request-v1",
+    "request_sha256": "f46f7dc1aa656e859e085e89fe8d120f02aaad0ae8a028e29a6bee52ca40381d"
+  },
+  "schema_version": "noncombat-card-acceptance-empirical-successor-r4-path-preflight-v1",
+  "source_commit": "710599ec6c2a9f7964da1e43084d2d577dffb7b3",
+  "source_inventory": {
+    "file_sha256": "2afc66abbf02e417254c2068151d3533b873ccb300e5ad0fbf7b61f392654e1c",
+    "inventory_sha256": "81fdbaa7bcd945ee4ac66d26540a50d4db982b811df87250e04b13464a31f727",
+    "path": "reports/noncombat_card_acceptance_empirical_successor_20260810_r4_source_inventory.json"
+  }
+}
