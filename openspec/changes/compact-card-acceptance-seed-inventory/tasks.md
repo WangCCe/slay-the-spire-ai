@@ -1,6 +1,6 @@
 ## 1. Planning And RED Evidence
 
-- [ ] 1.1 Strict-validate and independently review the proposal, design, delta spec, and tasks; resolve every actionable planning finding before source edits.
+- [x] 1.1 Strict-validate and independently review the proposal, design, delta spec, and tasks; resolve every actionable planning finding before source edits.
 - [ ] 1.2 Add failing tests that require the v4 exact field set, reject v3 or unknown inline `rows`, and preserve all existing authority, receipt, cohort, and digest bindings.
 - [ ] 1.3 Add failing repeated-provenance tests proving traversal equivalence, exact per-source/total row counts, unique excluded seeds, and compact artifact size independent of occurrence-row payload size.
 - [ ] 1.4 Add a failing publication regression proving canonical inventory bytes above 64 MiB fail before staging or output creation.
