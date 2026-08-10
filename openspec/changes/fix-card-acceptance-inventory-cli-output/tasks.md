@@ -6,7 +6,7 @@
 ## 2. Add Red Regressions
 
 - [x] 2.1 Replace the existing full-artifact CLI expectation with RED build and verify tests for the exact fourteen-field bounded completion schema, canonical self-digest preimage, operation/status pair, distinct inventory/operation launch bindings, output/receipt/inventory byte identities, and the 2,048-byte maximum.
-- [x] 2.2 Add RED cases proving a large ignored operation payload does not grow stdout; staging, output closure, receipt canonicality/digest, file replacement during streaming hash, symlink, identity drift, and oversized-envelope failures write no stdout.
+- [x] 2.2 Add RED cases proving a large ignored operation payload does not grow stdout; staging, output closure, receipt regularity/canonicality/digest/stability, file replacement during streaming hash, symlink, identity drift, and oversized-envelope failures write no stdout.
 - [x] 2.3 Preserve explicit regressions for byte-identical `check-dispatch` output and unchanged direct `build_inventory`/`verify_inventory` full-mapping returns.
 
 ## 3. Implement Bounded Completion

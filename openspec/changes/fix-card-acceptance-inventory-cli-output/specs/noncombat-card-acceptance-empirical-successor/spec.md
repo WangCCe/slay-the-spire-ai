@@ -20,7 +20,8 @@ the complete encoded envelope SHALL be no more than 2,048 bytes.
 Completion generation SHALL require a closed output containing only a regular
 non-symlink `seed_inventory.json`, no staging root, a canonical regular
 non-symlink receipt with exact request/authorization/launch/source bindings,
-and matching returned-artifact identities. It SHALL read the inventory bytes
+stable identity before and after receipt reading, and matching returned-artifact
+identities. It SHALL read the inventory bytes
 once through a fixed-size streaming SHA-256, bind the resulting
 `inventory_file_sha256`, and require regular-file identity and size to remain
 unchanged before, during, and immediately after that read. It SHALL NOT parse
@@ -40,7 +41,7 @@ a distinctly authorized verification.
 - **THEN** the CLI emits a `verified` completion envelope that separately binds the inventory/build launch and current verification launch and does not serialize reconstructed rows, exclusions, or cohorts
 
 #### Scenario: Completion identity drifts
-- **WHEN** the output is not closed, staging exists, the inventory or receipt is missing, non-regular, symlinked, noncanonical, or digest-invalid, file identity or size changes during hashing, or request/authorization/launch/source/artifact identities differ
+- **WHEN** the output is not closed, staging exists, the inventory or receipt is missing, non-regular, symlinked, noncanonical, or digest-invalid, receipt identity changes during reading, inventory identity or size changes during hashing, or request/authorization/launch/source/artifact identities differ
 - **THEN** completion generation fails closed without writing partial or full inventory stdout and grants no registration or downstream authority
 
 #### Scenario: Completion exceeds its frozen bound

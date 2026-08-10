@@ -1446,6 +1446,32 @@ def _stream_regular_file_sha256(path: Path, label: str) -> tuple[str, int]:
     return digest.hexdigest(), closed.st_size
 
 
+def _read_stable_regular_file(path: Path, label: str) -> bytes:
+    if path.is_symlink():
+        raise SeedInventoryBlocked(f"{label} must not be a symlink")
+    try:
+        before = path.stat()
+        if not stat.S_ISREG(before.st_mode):
+            raise SeedInventoryBlocked(f"{label} must be a regular file")
+        with path.open("rb") as handle:
+            opened = os.fstat(handle.fileno())
+            if _file_identity(before) != _file_identity(opened):
+                raise SeedInventoryBlocked(f"{label} identity changed before read")
+            payload = handle.read()
+            closed = os.fstat(handle.fileno())
+        after = path.stat()
+    except SeedInventoryBlocked:
+        raise
+    except OSError as exc:
+        raise SeedInventoryBlocked(f"{label} identity read failed: {exc}") from exc
+    if (
+        _file_identity(opened) != _file_identity(closed)
+        or _file_identity(closed) != _file_identity(after)
+    ):
+        raise SeedInventoryBlocked(f"{label} identity changed during read")
+    return payload
+
+
 def _completion_receipt(
     *,
     request: Mapping[str, Any],
@@ -1454,12 +1480,7 @@ def _completion_receipt(
     inventory_launch_observation_sha256: str,
 ) -> tuple[Path, dict[str, Any]]:
     path = _started_receipt_path(request)
-    if path.is_symlink():
-        raise SeedInventoryBlocked("inventory started receipt must not be a symlink")
-    try:
-        raw = path.read_bytes()
-    except OSError as exc:
-        raise SeedInventoryBlocked(f"inventory started receipt read failed: {exc}") from exc
+    raw = _read_stable_regular_file(path, "inventory started receipt")
     receipt = _mapping(
         _strict_json(raw, "inventory started receipt"),
         "inventory started receipt",

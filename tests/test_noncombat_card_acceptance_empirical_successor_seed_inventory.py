@@ -1364,6 +1364,49 @@ def test_inventory_completion_rejects_file_identity_drift(tmp_path, monkeypatch)
         _build_completion(fixture)
 
 
+def test_inventory_completion_rejects_non_regular_receipt(tmp_path, monkeypatch):
+    fixture = _cli_completion_fixture(tmp_path)
+    monkeypatch.setattr(seed_inventory.stat, "S_ISREG", lambda _mode: False)
+    with pytest.raises(seed_inventory.SeedInventoryBlocked, match="regular file"):
+        seed_inventory._completion_receipt(
+            request=fixture["request"],
+            authorization=fixture["authorization"],
+            approval_record=fixture["approval"],
+            inventory_launch_observation_sha256=fixture["artifact"][
+                "launch_authority_sha256"
+            ],
+        )
+
+
+def test_inventory_completion_rejects_receipt_identity_drift(
+    tmp_path, monkeypatch
+):
+    fixture = _cli_completion_fixture(tmp_path)
+    original = seed_inventory._file_identity
+    calls = 0
+
+    def drifting_identity(value):
+        nonlocal calls
+        calls += 1
+        identity = original(value)
+        if calls >= 4:
+            return (*identity[:-1], identity[-1] + 1)
+        return identity
+
+    monkeypatch.setattr(seed_inventory, "_file_identity", drifting_identity)
+    with pytest.raises(
+        seed_inventory.SeedInventoryBlocked, match="identity changed during read"
+    ):
+        seed_inventory._completion_receipt(
+            request=fixture["request"],
+            authorization=fixture["authorization"],
+            approval_record=fixture["approval"],
+            inventory_launch_observation_sha256=fixture["artifact"][
+                "launch_authority_sha256"
+            ],
+        )
+
+
 @pytest.mark.parametrize("path_key", ["output", "inventory_path", "receipt_path"])
 def test_inventory_completion_rejects_symlink(tmp_path, monkeypatch, path_key):
     fixture = _cli_completion_fixture(tmp_path)

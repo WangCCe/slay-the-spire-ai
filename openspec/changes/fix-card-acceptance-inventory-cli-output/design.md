@@ -66,7 +66,7 @@ state and leaves the observer coupled to inventory size.
 The builder will require a closed output directory containing only
 `seed_inventory.json`, no staging root, a regular non-symlink inventory file,
 and a canonical regular non-symlink started receipt. It will validate the
-receipt's exact field set and self-digest, then require its request,
+receipt's stable file identity, exact field set, and self-digest, then require its request,
 authorization, launch, and source identities to match the request and returned
 artifact. It will open the inventory once, stream it through SHA-256 with a
 fixed-size buffer, and compare pre-read file identity, post-read file identity,
@@ -106,8 +106,9 @@ small. Only the common build/verify branch changes to emit the envelope.
   identity and size before/after the stream and against the final path stat;
   fail closed without stdout on any mismatch.
 - [Receipt revalidation could introduce a new post-publication failure] -> Use
-  the same canonical primitives and exact known receipt schema, cover success
-  and tamper cases, and keep failure terminal/fail-closed.
+  the same stable regular-file checks, canonical primitives, and exact known
+  receipt schema, cover success and tamper cases, and keep failure
+  terminal/fail-closed.
 - [Future long paths could exceed the bound] -> Enforce the explicit 2,048-byte
   maximum and fail before writing any partial completion output.
 - [Changing stdout could break callers that consumed full artifacts] -> The
