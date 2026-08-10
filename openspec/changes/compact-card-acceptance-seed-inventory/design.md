@@ -49,9 +49,12 @@ format. Retain the complete sorted unique `excluded_seeds` array and its digest.
 The source registry digest commits the ordered set of exact input bytes and
 their per-source counts. The inventory digest commits that registry, total row
 count, excluded set, cohorts, authority evidence, and all role digests. The
-independent verifier rescans the bound bytes and compares all of those values,
-so omitting path-level row duplication does not permit the producer to omit or
-substitute a seed undetected.
+source-only `verify-inventory` operation rescans the bound bytes and compares
+all of those values, so omitting path-level row duplication does not permit the
+producer to omit or substitute a seed undetected. The separate successor
+verifier validates the exact v4 field set, aggregate count consistency,
+canonical excluded set, cohort selection, and all digests without acquiring
+repository-read authority.
 
 Alternative: gzip the existing 2.675 GB JSON. Rejected because verification
 would still inflate and retain the full row array, canonical digest work would
@@ -107,8 +110,8 @@ identity and its own request/approval/authorization/output roots.
 ## Risks / Trade-offs
 
 - [Risk] A downstream reader expects inline `rows`. -> Mitigation: repository
-  search and focused tests must prove only the inventory module/tests consume
-  the unregistered v3 shape; v4 rejects unknown `rows` explicitly.
+  search and focused tests update the independent successor verifier together
+  with the producer; v4 rejects unknown `rows` explicitly.
 - [Risk] Aggregate evidence hides producer omission. -> Mitigation: the
   independent verifier rescans exact source bytes and compares ordered source
   identities, per-source and total counts, complete excluded seeds, and cohorts.
@@ -126,7 +129,8 @@ identity and its own request/approval/authorization/output roots.
 1. Add RED tests for v4 exact fields, repeated-row compaction, traversal
    equivalence, independent reconstruction, and the 64 MiB publication gate.
 2. Implement the occurrence iterator, aggregate registry builder, v4
-   validation, compact build/verify comparison, and bounded publication.
+   validation, compact build/verify comparison, bounded publication, and v4
+   structural support in the independent successor verifier.
 3. Run focused inventory tests, owning successor tests, compile checks, strict
    OpenSpec validation, and one configured commit gate; independently review
    source/spec/authority behavior and resolve actionable findings.

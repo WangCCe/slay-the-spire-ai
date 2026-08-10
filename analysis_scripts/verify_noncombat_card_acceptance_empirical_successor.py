@@ -74,8 +74,9 @@ SOURCE_REGISTRY_SCHEMA_VERSION = (
     "noncombat-card-acceptance-empirical-successor-seed-source-registry-v1"
 )
 SEED_INVENTORY_SCHEMA_VERSION = (
-    "noncombat-card-acceptance-empirical-successor-seed-inventory-v3"
+    "noncombat-card-acceptance-empirical-successor-seed-inventory-v4"
 )
+INVENTORY_MAX_BYTES = 64 * 1024 * 1024
 INVENTORY_AUTHORITY_EVIDENCE_SCHEMA_VERSION = (
     "noncombat-card-acceptance-empirical-successor-"
     "seed-inventory-authority-evidence-v1"
@@ -284,21 +285,6 @@ _HOLDOUT_OUTCOME_CLASSES = (
 )
 _INVENTORY_ROLE_COUNTS = {"training": 512, "canary": 128, "holdout": 512}
 _INVENTORY_ROLE_ORDER = ("training", "canary", "holdout")
-_INVENTORY_ROW_ROLES = {
-    "canary",
-    "consumed",
-    "diagnostic",
-    "evaluation",
-    "failed_access",
-    "holdout",
-    "qualification",
-    "reserved",
-    "seed",
-    "selected",
-    "smoke",
-    "training",
-    "used",
-}
 _INVENTORY_GENERATED_ROOT_KINDS = (
     "attempt",
     "candidate",
@@ -2955,7 +2941,6 @@ def verify_seed_inventory_evidence(value: object) -> dict[str, Any]:
             "repository_commit",
             "role_sha256",
             "row_count",
-            "rows",
             "schema_version",
             "source_inventory_sha256",
             "source_registry",
@@ -2997,74 +2982,21 @@ def verify_seed_inventory_evidence(value: object) -> dict[str, Any]:
     registry = _verify_seed_source_registry(inventory["source_registry"])
     if registry["repository_commit"] != inventory["repository_commit"]:
         raise VerificationError("inventory repository binding differs")
-    raw_rows = inventory["rows"]
-    if not isinstance(raw_rows, list):
-        raise VerificationError("inventory rows differ")
-    rows: list[dict[str, Any]] = []
-    for raw_row in raw_rows:
-        row = _mapping(raw_row, "inventory row")
-        _fields(
-            row,
-            {"document_index", "json_path", "role", "seed", "source_path"},
-            "inventory row",
-        )
-        row["document_index"] = _inventory_nonnegative(
-            row["document_index"],
-            "inventory row document index",
-        )
-        if not isinstance(row["json_path"], str) or not row["json_path"].startswith(
-            "/"
-        ):
-            raise VerificationError("inventory row JSON path differs")
-        if row["role"] not in _INVENTORY_ROW_ROLES:
-            raise VerificationError("inventory row role differs")
-        row["seed"] = _inventory_nonnegative(row["seed"], "inventory row seed")
-        row["source_path"] = _inventory_report_path(
-            row["source_path"],
-            "inventory row source path",
-        )
-        rows.append(row)
-    row_key = lambda row: (
-        row["seed"],
-        row["source_path"],
-        row["document_index"],
-        row["json_path"],
-        row["role"],
+    sources = registry["sources"]
+    row_count = _inventory_nonnegative(
+        inventory["row_count"], "inventory row count"
     )
-    if rows != sorted(rows, key=row_key) or len(
-        {
-            (
-                row["document_index"],
-                row["json_path"],
-                row["role"],
-                row["seed"],
-                row["source_path"],
-            )
-            for row in rows
-        }
-    ) != len(rows):
-        raise VerificationError("inventory rows are not canonical")
-    sources = {source["path"]: source for source in registry["sources"]}
-    rows_by_source: dict[str, list[dict[str, Any]]] = {
-        path: [] for path in sources
-    }
-    for row in rows:
-        if row["source_path"] not in rows_by_source:
-            raise VerificationError("inventory row source is not registered")
-        rows_by_source[row["source_path"]].append(row)
-    for path, source in sources.items():
-        if source["row_count"] != len(rows_by_source[path]) or any(
-            row["document_index"] >= source["document_count"]
-            for row in rows_by_source[path]
-        ):
-            raise VerificationError("inventory source row counts differ")
-    if _inventory_nonnegative(inventory["row_count"], "inventory row count") != len(
-        rows
-    ):
+    if row_count != sum(source["row_count"] for source in sources):
         raise VerificationError("inventory row count differs")
-    excluded = sorted({row["seed"] for row in rows})
-    if inventory["excluded_seeds"] != excluded:
-        raise VerificationError("inventory exclusion union differs")
+    raw_excluded = inventory["excluded_seeds"]
+    if not isinstance(raw_excluded, list):
+        raise VerificationError("inventory excluded seeds differ")
+    excluded = [
+        _inventory_nonnegative(seed, "inventory excluded seed")
+        for seed in raw_excluded
+    ]
+    if excluded != sorted(set(excluded)):
+        raise VerificationError("inventory excluded seeds are not canonical")
     if _inventory_nonnegative(
         inventory["excluded_seed_count"],
         "inventory excluded-seed count",
@@ -3116,9 +3048,11 @@ def verify_seed_inventory_evidence(value: object) -> dict[str, Any]:
         "cohorts": normalized_cohorts,
         "excluded_seeds": excluded,
         "role_sha256": role_sha256,
-        "rows": rows,
+        "row_count": row_count,
         "source_registry": registry,
     }
+    if len(canonical_json_bytes(normalized)) > INVENTORY_MAX_BYTES:
+        raise VerificationError("seed inventory exceeds byte limit")
     body = {key: item for key, item in normalized.items() if key != "inventory_sha256"}
     if _digest(normalized["inventory_sha256"], "seed inventory digest") != (
         _canonical_sha256(body)

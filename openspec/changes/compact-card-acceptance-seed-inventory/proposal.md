@@ -52,6 +52,7 @@ None.
 ## Impact
 
 The implementation changes only the standard-library card-acceptance seed
-inventory module, its focused tests, and the corresponding specification. It
-adds no dependency and changes no runtime policy, simulator, model/checkpoint,
-CommunicationMod configuration, or gameplay behavior.
+inventory module, the independent successor verifier, their focused tests, and
+the corresponding specification. It adds no dependency and changes no runtime
+policy, simulator, model/checkpoint, CommunicationMod configuration, or
+gameplay behavior.

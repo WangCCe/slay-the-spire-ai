@@ -9,9 +9,13 @@ sorted unique excluded-seed set and digest; fixed cohorts and role digests;
 authority evidence; and the whole-inventory digest. It SHALL NOT inline
 per-occurrence provenance rows.
 
-Build and verification SHALL independently traverse the same registered source
-bytes with the existing role semantics and compare the exact source registry,
-per-source and total row counts, excluded seeds, cohorts, and digests. Inventory
+Build and the source-only `verify-inventory` operation SHALL independently
+traverse the same registered source bytes with the existing role semantics and
+compare the exact source registry, per-source and total row counts, excluded
+seeds, cohorts, and digests. The separate successor verifier SHALL accept only
+the exact v4 field set and SHALL independently validate aggregate count
+consistency, canonical excluded seeds, fixed cohort selection, role digests, and
+the whole-inventory digest without repository-read authority. Inventory
 construction SHALL accumulate counts and unique seeds without retaining a
 repository-wide occurrence-row list. Canonical inventory bytes SHALL be no more
 than 64 MiB and SHALL be checked before staging or output publication.
@@ -23,6 +27,10 @@ than 64 MiB and SHALL be checked before staging or output publication.
 #### Scenario: Independent compact reconstruction matches
 - **WHEN** build and verification scan the same closed registered source bytes
 - **THEN** they reconstruct identical source identities, per-source and total row counts, excluded seeds, cohorts, role digests, and whole-inventory digest without comparing inline occurrence rows
+
+#### Scenario: Independent successor verification receives v4 evidence
+- **WHEN** the standalone successor verifier receives a structurally valid compact inventory after source-only reconstruction
+- **THEN** it validates the exact v4 fields, aggregate counts, canonical excluded seeds, fixed cohorts, authority bindings, and digests without requiring inline rows or repository access
 
 #### Scenario: Aggregate evidence drifts
 - **WHEN** a source byte identity, document count, row count, total row count, excluded seed, cohort, role digest, or inventory digest differs during validation or independent verification

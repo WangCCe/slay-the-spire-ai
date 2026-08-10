@@ -1266,16 +1266,6 @@ def _seed_inventory_evidence():
             verifier.canonical_json_bytes(registry_body)
         ).hexdigest(),
     }
-    rows = [
-        {
-            "document_index": 0,
-            "json_path": f"/used_seeds/{index}",
-            "role": "used",
-            "seed": seed,
-            "source_path": source_path,
-        }
-        for index, seed in enumerate((0, 2))
-    ]
     selected = [seed for seed in range(1_154) if seed not in {0, 2}]
     cohorts = {
         "training": selected[:512],
@@ -1299,10 +1289,9 @@ def _seed_inventory_evidence():
             role: hashlib.sha256(verifier.canonical_json_bytes(seeds)).hexdigest()
             for role, seeds in cohorts.items()
         },
-        "row_count": len(rows),
-        "rows": rows,
+        "row_count": 2,
         "schema_version": (
-            "noncombat-card-acceptance-empirical-successor-seed-inventory-v3"
+            "noncombat-card-acceptance-empirical-successor-seed-inventory-v4"
         ),
         "source_inventory_sha256": source_inventory["inventory_sha256"],
         "source_registry": registry,
@@ -1415,6 +1404,57 @@ def test_independent_verifier_reconstructs_fixed_seed_inventory():
         "source_count": 1,
         "verified": True,
     }
+
+
+def test_independent_inventory_verifier_rejects_inline_rows():
+    verifier = _verifier()
+    evidence = _seed_inventory_evidence()
+    evidence["rows"] = []
+    body = {key: value for key, value in evidence.items() if key != "inventory_sha256"}
+    evidence["inventory_sha256"] = hashlib.sha256(
+        verifier.canonical_json_bytes(body)
+    ).hexdigest()
+
+    with pytest.raises(verifier.VerificationError, match="fields"):
+        verifier.verify_seed_inventory_evidence(evidence)
+
+
+def test_independent_inventory_verifier_rejects_aggregate_count_mismatch():
+    verifier = _verifier()
+    evidence = _seed_inventory_evidence()
+    evidence["row_count"] += 1
+    body = {key: value for key, value in evidence.items() if key != "inventory_sha256"}
+    evidence["inventory_sha256"] = hashlib.sha256(
+        verifier.canonical_json_bytes(body)
+    ).hexdigest()
+
+    with pytest.raises(verifier.VerificationError, match="row count"):
+        verifier.verify_seed_inventory_evidence(evidence)
+
+
+def test_independent_inventory_verifier_rejects_noncanonical_exclusions():
+    verifier = _verifier()
+    evidence = _seed_inventory_evidence()
+    evidence["excluded_seeds"] = [2, 0]
+    evidence["excluded_seeds_sha256"] = hashlib.sha256(
+        verifier.canonical_json_bytes(evidence["excluded_seeds"])
+    ).hexdigest()
+    body = {key: value for key, value in evidence.items() if key != "inventory_sha256"}
+    evidence["inventory_sha256"] = hashlib.sha256(
+        verifier.canonical_json_bytes(body)
+    ).hexdigest()
+
+    with pytest.raises(verifier.VerificationError, match="not canonical"):
+        verifier.verify_seed_inventory_evidence(evidence)
+
+
+def test_independent_inventory_verifier_enforces_compact_byte_limit(monkeypatch):
+    verifier = _verifier()
+    evidence = _seed_inventory_evidence()
+    monkeypatch.setattr(verifier, "INVENTORY_MAX_BYTES", 64)
+
+    with pytest.raises(verifier.VerificationError, match="byte limit"):
+        verifier.verify_seed_inventory_evidence(evidence)
 
 
 def test_independent_verifier_reconstructs_external_inventory_authority():

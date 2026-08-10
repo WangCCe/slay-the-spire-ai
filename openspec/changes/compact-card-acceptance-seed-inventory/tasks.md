@@ -11,6 +11,7 @@
 - [x] 2.2 Implement v4 compact inventory construction and validation with exact source registry, row counts, excluded seeds, cohorts, role digests, authority evidence, and whole-inventory digest.
 - [x] 2.3 Update independent `verify-inventory` reconstruction to compare aggregate evidence without materializing or comparing inline occurrence rows.
 - [x] 2.4 Enforce the 64 MiB canonical pre-publication ceiling while preserving atomic publication, direct API behavior, and the existing bounded CLI completion envelope.
+- [x] 2.5 Update the independent successor verifier and fixtures for the exact v4 aggregate schema, count consistency, inline-row rejection, cohort selection, authority bindings, and digests.
 
 ## 3. Verification And Closeout
 
