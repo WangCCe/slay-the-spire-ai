@@ -1,0 +1,153 @@
+{
+  "artifact_bindings": {
+    "approval": {
+      "approval_sha256": "c2e4c710f896df6e624ca09e5a5acf6f8de11a297a566ccd4acb2d30785f7d68",
+      "file_sha256": "d16ed0592cb7f8f1744cf66b9cc2bf6909b93e99bc67255a0b122d10d50478be",
+      "review_file_sha256": "48f5694ad7b95b1e71903c7cd6370cf22738cd12a1068fbc994b0384d598cb33",
+      "review_sha256": "04df8d5e17dacc4878ea8fcb65c80f8531dbf63c3d3c488f19600b6561cc7be1"
+    },
+    "authorization": {
+      "authorization_sha256": "d766afcb84a9fca6efe0cf3fb88f0b8b10e4eb7be52b8d52e9f5a499a820d338",
+      "file_sha256": "5427b5761695ff7f6c183523c9e0f271bdab3d3c6b56f49e280fd3c34e5ca891",
+      "review_file_sha256": "70a1ba73c70820f83ceb2b2ae83f691d61279d9f9a6619da9d5a05844bee3b30",
+      "review_sha256": "8fc7208388773f24e486f2e97b828778cabdb626c6994ee99c4a022cbcce45d2"
+    },
+    "dispatch": {
+      "binding_sha256": "b89c993f6466850626de1aac8a1ee2a46327e32dcdd3df4244220a7eced67cfa",
+      "file_sha256": "f0659182c8dcd4703583e2ff09661847393265a394df9b4b23a8eabb34eec017",
+      "review_file_sha256": "16a8e411f3dbb07ea12bc17dee8e60c5f0df1900e60075adaee85d18a364a494",
+      "review_sha256": "85e0dbb16850920d278f6213a5211875267c191bc6e95e92f84b8730136a3665"
+    },
+    "launch": {
+      "file_sha256": "1f96186c8152fae744ab07757f643e8bc235bcb4e4beca129a6e5ea51da1c6f4",
+      "observation_sha256": "a93409cab982206d9cc3f0adbde30a67af1f3b6e406a2d8acde6ec1e8260d669",
+      "review_file_sha256": "3b247d29b270e969d4ce40653d9f0ab3882cca8b95971de9f2492d7fc703c4a2",
+      "review_sha256": "a58ddb876fae6ac5df8397c485da6ee2ebaab2c64142496d6f6a120decea1a62"
+    },
+    "path_preflight": {
+      "file_sha256": "c27c10f74fd6c310986602bef8d5f3c00b7ab45113fe2b86fd013f66cbfcdcb1",
+      "preflight_sha256": "d70a9ad03614032103622ceef75eceffd0131e5fddd9ae4465f06f63fb1c9ac4",
+      "review_file_sha256": "c7f21e09101ea91301e756f8a1f056a94b7303e932a7b5c5dbcd348ca1f63969",
+      "review_sha256": "64e83a97211080940964f7e51e5aa3bdbff923abb467d7059a65cce2600772ae"
+    },
+    "prestart_test_evidence": {
+      "evidence_sha256": "fe2c0c124f6d49e9aaa6d601153c2deee54e659bd094215d3afe331b38f2b3ef",
+      "file_sha256": "8f2031f330d80b37c9505e532f8ea1dc8ccbeefc52f456147c47c662d9650103"
+    },
+    "request": {
+      "file_sha256": "b6a8952b4581da49993e21aff4681e1eac90c8faa84322f9a4fb6b2424c5c454",
+      "request_sha256": "f46f7dc1aa656e859e085e89fe8d120f02aaad0ae8a028e29a6bee52ca40381d",
+      "review_file_sha256": "141afaa680661851b646371b6ac2fef1c7323b910c9d3a7ec7d3fe7a8fa1e1d4",
+      "review_sha256": "165cbd9a1cb7d2756ce9919b3aeee2aa9ed5173286db8a968458f0efcbbcb433"
+    },
+    "source_inventory": {
+      "file_sha256": "2afc66abbf02e417254c2068151d3533b873ccb300e5ad0fbf7b61f392654e1c",
+      "inventory_sha256": "81fdbaa7bcd945ee4ac66d26540a50d4db982b811df87250e04b13464a31f727"
+    }
+  },
+  "authority_source_validation": {
+    "approval_sha256": "c2e4c710f896df6e624ca09e5a5acf6f8de11a297a566ccd4acb2d30785f7d68",
+    "authorization_sha256": "d766afcb84a9fca6efe0cf3fb88f0b8b10e4eb7be52b8d52e9f5a499a820d338",
+    "launch_observation_sha256": "a93409cab982206d9cc3f0adbde30a67af1f3b6e406a2d8acde6ec1e8260d669",
+    "method": "seed_inventory._validate_inventory_authority",
+    "request_sha256": "f46f7dc1aa656e859e085e89fe8d120f02aaad0ae8a028e29a6bee52ca40381d",
+    "source_inventory_sha256": "81fdbaa7bcd945ee4ac66d26540a50d4db982b811df87250e04b13464a31f727",
+    "status": "passed"
+  },
+  "compact_contract": {
+    "cli_completion_max_bytes": 2048,
+    "cohort_counts": {
+      "canary": 128,
+      "holdout": 512,
+      "training": 512
+    },
+    "inventory_max_bytes": 67108864,
+    "max_materialized_seeds": 1152,
+    "seed_inventory_schema_version": "noncombat-card-acceptance-empirical-successor-seed-inventory-v4"
+  },
+  "gate_sha256": "59171aa61c1073c2d4eaa8b134fd1b5c06275fe8640818765aba8f12e4f1bf7d",
+  "git": {
+    "head": "0f59d3eeb339a4783e88c6150c5662eafbaea3a9",
+    "origin_master": "0f59d3eeb339a4783e88c6150c5662eafbaea3a9",
+    "source_commit_is_ancestor": true,
+    "tracked_worktree_clean": true
+  },
+  "openspec": {
+    "failed_items": 0,
+    "passed_items": 84,
+    "scope": "all",
+    "status": "passed",
+    "strict": true
+  },
+  "performed_operations": {
+    "build_invocation": false,
+    "candidate_blob_reads": false,
+    "cohort_materialization": false,
+    "environment_construction": false,
+    "evaluation": false,
+    "gameplay": false,
+    "model_fitting": false,
+    "model_loading": false,
+    "native_loading": false,
+    "r3_inventory_content_access": false,
+    "repository_evidence_read": true,
+    "seed_access": false,
+    "seed_discovery": false,
+    "training": false
+  },
+  "predecessors": {
+    "binding_preflight_sha256": "d70a9ad03614032103622ceef75eceffd0131e5fddd9ae4465f06f63fb1c9ac4",
+    "r1": {
+      "failure_sha256": "4b59914dfe94d5511f2172608d101e7ad7bbbb52b01a7a6fab1c7b305115fa92",
+      "request_sha256": "d6016a7e8d47c7131cf903c97f0fd80f7ea8c013c653fb625cf983bc73c7d628",
+      "same_identity_retry_allowed": false,
+      "terminal": true
+    },
+    "r2": {
+      "failure_sha256": "d44f6d900c902d94af20fba365725e9cc46c423a3ab10cbcedf16747e80ec3fb",
+      "request_sha256": "adcea551f0323b990135e095076fe5913819b2927d60ffac061518f3dd89b4cd",
+      "same_identity_retry_allowed": false,
+      "terminal": true
+    },
+    "r3": {
+      "artifact_content_accessed": false,
+      "artifact_present": true,
+      "artifact_status": "published_unverified",
+      "failure_sha256": "6803150661670be0b193b51fdd3e03c0a5fbda0232a2d9fc8927edf2abe8694a",
+      "request_sha256": "3ef7d2f30c95341d4f951f3932323046cb405efe0dfb624207c9e98ad31d599b",
+      "same_identity_retry_allowed": false,
+      "terminal": true,
+      "verification_allowed": false
+    }
+  },
+  "recorded_at": "2026-08-10T13:32:40.321Z",
+  "schema_version": "noncombat-card-acceptance-empirical-successor-r4-inventory-prestart-gate-v1",
+  "source_commit": "710599ec6c2a9f7964da1e43084d2d577dffb7b3",
+  "status": "passed",
+  "write_surface_absence": {
+    "attempts_root": {
+      "exists": false,
+      "path": "D:/PycharmProjects/slay-the-spire-ai/reports/noncombat_card_acceptance_empirical_successor_20260810_r4_attempts"
+    },
+    "output_root": {
+      "exists": false,
+      "path": "D:/PycharmProjects/slay-the-spire-ai/reports/noncombat_card_acceptance_empirical_successor_20260810_r4"
+    },
+    "registration": {
+      "exists": false,
+      "path": "D:/PycharmProjects/slay-the-spire-ai/reports/noncombat_card_acceptance_empirical_successor_20260810_r4_registration.json"
+    },
+    "staging_root": {
+      "exists": false,
+      "path": "D:/PycharmProjects/slay-the-spire-ai/reports/.noncombat_card_acceptance_empirical_successor_20260810_r4.f46f7dc1aa656e859e085e89fe8d120f02aaad0ae8a028e29a6bee52ca40381d.staging"
+    },
+    "started_receipt": {
+      "exists": false,
+      "path": "D:/PycharmProjects/slay-the-spire-ai/reports/noncombat_card_acceptance_empirical_successor_20260810_r4_attempts/f46f7dc1aa656e859e085e89fe8d120f02aaad0ae8a028e29a6bee52ca40381d/started.json"
+    },
+    "verification": {
+      "exists": false,
+      "path": "D:/PycharmProjects/slay-the-spire-ai/reports/noncombat_card_acceptance_empirical_successor_20260810_r4_inventory_verification.json"
+    }
+  }
+}
