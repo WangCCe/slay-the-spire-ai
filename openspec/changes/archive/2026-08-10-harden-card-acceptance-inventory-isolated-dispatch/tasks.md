@@ -17,4 +17,4 @@
 ## 4. Closeout
 
 - [x] 4.1 Commit and push the isolated-dispatch repair as one source-only boundary.
-- [ ] 4.2 Sync the delta spec, archive this change, strict-validate the global OpenSpec set, and push the completed closeout without creating an r3 request, registration, or training authority.
+- [x] 4.2 Sync the delta spec, archive this change, strict-validate the global OpenSpec set, and push the completed closeout without creating an r3 request, registration, or training authority.
