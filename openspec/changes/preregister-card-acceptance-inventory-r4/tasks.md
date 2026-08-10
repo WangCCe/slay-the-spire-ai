@@ -1,7 +1,7 @@
 ## 1. Freeze R4 Planning
 
 - [x] 1.1 Reconfirm pushed source `710599ec6`, compact schema v4, 64 MiB inventory and 2,048-byte CLI ceilings, bounded/full-gate evidence, r1/r2/r3 terminal evidence, parent task 6.2 state, and absent r4 write surfaces without reading candidate blobs, seed values, or r3 inventory content.
-- [ ] 1.2 Strict-validate and independently review the complete r4 proposal/spec/design/tasks, resolve every actionable finding, then commit and push planning artifacts alone.
+- [x] 1.2 Strict-validate and independently review the complete r4 proposal/spec/design/tasks, resolve every actionable finding, then commit and push planning artifacts alone.
 
 ## 2. Publish Dispatch, Source, And Request Boundary
 
