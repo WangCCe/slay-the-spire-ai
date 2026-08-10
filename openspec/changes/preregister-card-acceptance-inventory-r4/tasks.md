@@ -20,7 +20,7 @@
 
 - [x] 4.1 After the authority commit is pushed, capture and independently review one fresh launch-time revocation observation bound to exact r4 request/approval/authorization and current conversation state; commit and push the launch boundary.
 - [x] 4.2 Reproduce exact dispatch bytes, run the complete owning seed-inventory and standalone-verifier pytest files under the registered Windows temp convention, compile changed source identities, and strict-validate OpenSpec. Record fresh gameplay as not applicable and do not rerun the 41-minute full gate because no code/test behavior changed after its pushed source boundary.
-- [ ] 4.3 From a pushed tracked-clean base, build and independently review a final pre-start gate proving all authority/source/predecessor/preflight/schema/ceiling identities match; r3 terminal output content was not accessed; and every r4 write surface remains absent. Commit and push the gate.
+- [x] 4.3 From a pushed tracked-clean base, build and independently review a final pre-start gate proving all authority/source/predecessor/preflight/schema/ceiling identities match; r3 terminal output content was not accessed; and every r4 write surface remains absent. Commit and push the gate.
 - [ ] 4.4 After the gate push, perform a separate no-write recheck of HEAD/origin, tracked cleanliness, gate bytes, process absence, terminal-r3 preservation, and every r4 absence condition. Stop before launch if any code/test edit or ambiguous content access is required.
 
 ## 5. Materialize, Verify, Or Close Terminal
