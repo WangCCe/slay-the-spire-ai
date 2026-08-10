@@ -33,7 +33,10 @@
     "canonical_binding_size_bytes": 924,
     "observation_file_sha256": "f0659182c8dcd4703583e2ff09661847393265a394df9b4b23a8eabb34eec017",
     "observation_path": "reports/noncombat_card_acceptance_empirical_successor_20260810_r4_isolated_dispatch.json",
-    "status": "observed_pending_review"
+    "review_file_sha256": "16a8e411f3dbb07ea12bc17dee8e60c5f0df1900e60075adaee85d18a364a494",
+    "review_path": "reports/noncombat_card_acceptance_empirical_successor_20260810_r4_isolated_dispatch_review.json",
+    "review_sha256": "85e0dbb16850920d278f6213a5211875267c191bc6e95e92f84b8730136a3665",
+    "status": "verified"
   },
   "excluded_roots": [
     {
@@ -134,7 +137,7 @@
       "verification_allowed": false
     }
   },
-  "preflight_sha256": "438e363c461e55065ee32ee7c9b82bb6c5e60ed28db173cbd475c8b051eea21f",
+  "preflight_sha256": "d70a9ad03614032103622ceef75eceffd0131e5fddd9ae4465f06f63fb1c9ac4",
   "request_identity": {
     "output_root": "D:/PycharmProjects/slay-the-spire-ai/reports/noncombat_card_acceptance_empirical_successor_20260810_r4",
     "request_id": "noncombat-card-acceptance-empirical-successor-20260810-r4-inventory-request-v1",

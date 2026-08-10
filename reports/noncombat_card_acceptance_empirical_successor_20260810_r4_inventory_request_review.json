@@ -1,0 +1,110 @@
+{
+  "artifacts": {
+    "dispatch_observation": {
+      "file_sha256": "f0659182c8dcd4703583e2ff09661847393265a394df9b4b23a8eabb34eec017",
+      "path": "reports/noncombat_card_acceptance_empirical_successor_20260810_r4_isolated_dispatch.json"
+    },
+    "dispatch_review": {
+      "file_sha256": "16a8e411f3dbb07ea12bc17dee8e60c5f0df1900e60075adaee85d18a364a494",
+      "path": "reports/noncombat_card_acceptance_empirical_successor_20260810_r4_isolated_dispatch_review.json",
+      "review_sha256": "85e0dbb16850920d278f6213a5211875267c191bc6e95e92f84b8730136a3665"
+    },
+    "path_preflight": {
+      "file_sha256": "c27c10f74fd6c310986602bef8d5f3c00b7ab45113fe2b86fd013f66cbfcdcb1",
+      "path": "reports/noncombat_card_acceptance_empirical_successor_20260810_r4_path_preflight.json",
+      "preflight_sha256": "d70a9ad03614032103622ceef75eceffd0131e5fddd9ae4465f06f63fb1c9ac4"
+    },
+    "path_preflight_review": {
+      "file_sha256": "c7f21e09101ea91301e756f8a1f056a94b7303e932a7b5c5dbcd348ca1f63969",
+      "path": "reports/noncombat_card_acceptance_empirical_successor_20260810_r4_path_preflight_review.json",
+      "review_sha256": "64e83a97211080940964f7e51e5aa3bdbff923abb467d7059a65cce2600772ae"
+    },
+    "request": {
+      "file_sha256": "b6a8952b4581da49993e21aff4681e1eac90c8faa84322f9a4fb6b2424c5c454",
+      "path": "reports/noncombat_card_acceptance_empirical_successor_20260810_r4_inventory_request.json",
+      "request_sha256": "f46f7dc1aa656e859e085e89fe8d120f02aaad0ae8a028e29a6bee52ca40381d",
+      "size_bytes": 1685
+    },
+    "source_inventory": {
+      "file_sha256": "2afc66abbf02e417254c2068151d3533b873ccb300e5ad0fbf7b61f392654e1c",
+      "inventory_sha256": "81fdbaa7bcd945ee4ac66d26540a50d4db982b811df87250e04b13464a31f727",
+      "path": "reports/noncombat_card_acceptance_empirical_successor_20260810_r4_source_inventory.json",
+      "size_bytes": 5208
+    }
+  },
+  "compact_contract": {
+    "cli_completion_max_bytes": 2048,
+    "inventory_max_bytes": 67108864,
+    "seed_inventory_schema_version": "noncombat-card-acceptance-empirical-successor-seed-inventory-v4"
+  },
+  "downstream_artifacts": {
+    "authorization": {
+      "exists": false,
+      "path": "reports/noncombat_card_acceptance_empirical_successor_20260810_r4_inventory_authorization.json"
+    },
+    "delegated_approval": {
+      "exists": false,
+      "path": "reports/noncombat_card_acceptance_empirical_successor_20260810_r4_inventory_delegated_approval.json"
+    },
+    "launch_observation": {
+      "exists": false,
+      "path": "reports/noncombat_card_acceptance_empirical_successor_20260810_r4_inventory_launch_observation.json"
+    },
+    "output_root": {
+      "exists": false,
+      "path": "D:/PycharmProjects/slay-the-spire-ai/reports/noncombat_card_acceptance_empirical_successor_20260810_r4"
+    },
+    "started_receipt": {
+      "exists": false,
+      "path": "D:/PycharmProjects/slay-the-spire-ai/reports/noncombat_card_acceptance_empirical_successor_20260810_r4_attempts/f46f7dc1aa656e859e085e89fe8d120f02aaad0ae8a028e29a6bee52ca40381d/started.json"
+    }
+  },
+  "independent_review": {
+    "candidate_commit": "222e7d1e6109f2e492ccc8b0a8b2b841498dacab",
+    "findings": [],
+    "method": "codex-commit-review",
+    "result": "passed",
+    "session_id": "019feb97-1839-7a40-9754-0f4ba0e695bf"
+  },
+  "performed_operations": {
+    "candidate_blob_reads": false,
+    "cohort_materialization": false,
+    "environment_construction": false,
+    "evaluation": false,
+    "gameplay": false,
+    "model_fitting": false,
+    "model_loading": false,
+    "native_loading": false,
+    "r3_inventory_content_access": false,
+    "repository_evidence_read": true,
+    "seed_access": false,
+    "seed_discovery": false,
+    "training": false
+  },
+  "post_review_binding_changes": {
+    "dispatch_review_binding_added": true,
+    "preflight_review_added": true,
+    "production_canonical_self_digests_recomputed": true,
+    "substantive_source_path_request_or_authority_change": false
+  },
+  "review_sha256": "165cbd9a1cb7d2756ce9919b3aeee2aa9ed5173286db8a968458f0efcbbcb433",
+  "reviewed_at": "2026-08-10T12:19:51.628Z",
+  "schema_version": "noncombat-card-acceptance-empirical-successor-r4-inventory-request-review-v1",
+  "source_commit": "710599ec6c2a9f7964da1e43084d2d577dffb7b3",
+  "status": "passed",
+  "validation": {
+    "canonical_request_round_trip": true,
+    "compact_schema_and_ceilings_bound": true,
+    "dispatch_command_and_source_exact": true,
+    "downstream_authority_all_false": true,
+    "fixed_inventory_authority_reconstructed": true,
+    "native_or_runtime_imported": false,
+    "output_root_absent": true,
+    "path_preflight_exact_and_reviewed": true,
+    "r3_terminal_output_content_unaccessed": true,
+    "source_commit_ancestral": true,
+    "source_inventory_reconstructed": true,
+    "source_modules_unchanged_since_fixed_commit": true,
+    "started_receipt_absent": true
+  }
+}

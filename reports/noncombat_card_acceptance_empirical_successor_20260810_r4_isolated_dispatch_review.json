@@ -1,0 +1,49 @@
+{
+  "artifact": {
+    "canonical_binding_sha256": "b89c993f6466850626de1aac8a1ee2a46327e32dcdd3df4244220a7eced67cfa",
+    "canonical_binding_size_bytes": 924,
+    "file_sha256": "f0659182c8dcd4703583e2ff09661847393265a394df9b4b23a8eabb34eec017",
+    "path": "reports/noncombat_card_acceptance_empirical_successor_20260810_r4_isolated_dispatch.json"
+  },
+  "expected": {
+    "cli_completion_max_bytes": 2048,
+    "control_contract_sha256": "69efdcb18fc16e65715ff38f2a4985f49cade47bdfa734e299874031007605a2",
+    "interpreter": "D:/anaconda/envs/stsai/python.exe",
+    "inventory_max_bytes": 67108864,
+    "isolated_mode": true,
+    "script_sha256": "fd8d2008088f33e6559197e7a744756a6a3ada8347f31972f13d0bc4848ad497",
+    "seed_inventory_schema_version": "noncombat-card-acceptance-empirical-successor-seed-inventory-v4",
+    "source_commit": "710599ec6c2a9f7964da1e43084d2d577dffb7b3",
+    "working_directory": "D:/PycharmProjects/slay-the-spire-ai"
+  },
+  "independent_review": {
+    "findings": [],
+    "method": "codex-commit-review",
+    "result": "passed",
+    "session_id": "019feb97-1839-7a40-9754-0f4ba0e695bf"
+  },
+  "performed_operations": {
+    "authority_artifact_read": false,
+    "candidate_blob_read": false,
+    "cohort_materialization": false,
+    "git_evidence_read": false,
+    "output_or_receipt_write": false,
+    "r3_inventory_content_access": false,
+    "seed_access": false,
+    "seed_discovery": false
+  },
+  "review_sha256": "85e0dbb16850920d278f6213a5211875267c191bc6e95e92f84b8730136a3665",
+  "reviewed_at": "2026-08-10T12:15:57.796Z",
+  "reviewed_boundary_commit": "222e7d1e6109f2e492ccc8b0a8b2b841498dacab",
+  "schema_version": "noncombat-card-acceptance-empirical-successor-r4-isolated-dispatch-review-v1",
+  "status": "verified",
+  "validation": {
+    "canonical_binding_complete": true,
+    "command_tuple_exact": true,
+    "compact_schema_and_ceilings_bound_by_source": true,
+    "control_module_and_contract_exact": true,
+    "no_empirical_or_authority_side_effect": true,
+    "repeated_bytes_exact": true,
+    "script_and_source_exact": true
+  }
+}

@@ -1,0 +1,53 @@
+{
+  "artifact": {
+    "file_sha256": "c27c10f74fd6c310986602bef8d5f3c00b7ab45113fe2b86fd013f66cbfcdcb1",
+    "path": "reports/noncombat_card_acceptance_empirical_successor_20260810_r4_path_preflight.json",
+    "preflight_sha256": "d70a9ad03614032103622ceef75eceffd0131e5fddd9ae4465f06f63fb1c9ac4",
+    "size_bytes": 8545
+  },
+  "independent_review": {
+    "candidate_commit": "222e7d1e6109f2e492ccc8b0a8b2b841498dacab",
+    "findings": [],
+    "method": "codex-commit-review",
+    "result": "passed",
+    "session_id": "019feb97-1839-7a40-9754-0f4ba0e695bf"
+  },
+  "post_review_binding_changes": {
+    "dispatch_review_binding_added": true,
+    "production_canonical_self_digest_recomputed": true,
+    "substantive_source_path_request_or_authority_change": false
+  },
+  "performed_operations": {
+    "candidate_blob_reads": false,
+    "cohort_materialization": false,
+    "environment_construction": false,
+    "evaluation": false,
+    "gameplay": false,
+    "model_loading": false,
+    "native_loading": false,
+    "predecessor_tracked_evidence_read": true,
+    "r3_inventory_content_access": false,
+    "repository_path_enumeration": true,
+    "seed_discovery": false,
+    "seed_value_reads": false,
+    "source_inventory_read": true,
+    "training": false
+  },
+  "review_sha256": "64e83a97211080940964f7e51e5aa3bdbff923abb467d7059a65cce2600772ae",
+  "reviewed_at": "2026-08-10T12:19:51.628Z",
+  "schema_version": "noncombat-card-acceptance-empirical-successor-r4-path-preflight-review-v1",
+  "status": "passed",
+  "validation": {
+    "all_predecessors_terminal_and_exact": true,
+    "candidate_paths_reconstructed_without_blob_reads": true,
+    "compact_schema_and_ceilings_exact": true,
+    "dispatch_observation_and_review_exact": true,
+    "excluded_roots_reconstructed": true,
+    "fixed_source_ancestry_exact": true,
+    "r3_terminal_output_content_unaccessed": true,
+    "r4_write_surfaces_absent": true,
+    "request_identity_exact": true,
+    "source_inventory_reconstructed": true,
+    "tracked_pushed_state_exact_at_observation": true
+  }
+}
