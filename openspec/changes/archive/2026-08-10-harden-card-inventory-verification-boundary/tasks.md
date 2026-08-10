@@ -21,4 +21,4 @@
 - [x] 4.1 Run complete owning control, seed-inventory, and standalone-verifier pytest files under a fresh Windows system-temp basetemp; record fresh gameplay validation as not applicable (`265 passed`; source-only control change).
 - [x] 4.2 Perform a static-only independent review that is explicitly prohibited from executing inventory commands or tests; resolve every actionable finding and rerun focused tests if source changes.
 - [x] 4.3 Run the repository full pytest gate once, strict-validate all OpenSpec items, compile changed Python files, and verify tracked diff/path hygiene without reading r3 inventory content or running r4/r5 verification (`5803 passed, 18 skipped`; `84/84` OpenSpec items valid).
-- [ ] 4.4 Commit and push one coherent hardening boundary, sync the modified main spec, archive this completed change, strict-validate globally, and leave parent tasks 6.2/6.3 plus every r5/training/downstream authority unchanged.
+- [x] 4.4 Commit and push one coherent hardening boundary, sync the modified main spec, archive this completed change, strict-validate globally, and leave parent tasks 6.2/6.3 plus every r5/training/downstream authority unchanged.
