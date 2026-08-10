@@ -32,4 +32,4 @@
 
 ## 6. Closeout
 
-- [ ] 6.1 Publish a bounded r4 postmortem recording exact operations, outcome, downstream denial, test evidence, and fresh gameplay validation as not applicable. Sync applicable delta specs, archive the completed change, strict-validate globally, and push closeout without granting later-stage authority.
+- [x] 6.1 Publish a bounded r4 postmortem recording exact operations, outcome, downstream denial, test evidence, and fresh gameplay validation as not applicable. Sync applicable delta specs, archive the completed change, strict-validate globally, and push closeout without granting later-stage authority.
