@@ -62,15 +62,68 @@ evidence for the immediate training boundary.
 The canonical launch manifest binds the r6 registration/request/review paths
 and digests, exact runner path/hash/pushed commit, registered experiment source
 commit/inventory, current additive registration-verifier path/hash, Windows
-interpreter, output root, resource map, denied operations, and exact closed CLI
+interpreter, the exact source-inventory path/hash already bound by the r6
+registration request, output root, resource map, denied operations, and exact closed CLI
 set. It binds the exact argument shape and authority requirements of all three
-commands; an unregistered command or argument is source drift.
+commands; an unregistered command or argument is source drift. It also binds
+one canonical rollback-authority document/hash, exact candidate-disabled local
+control target, control checkpoint/config identities, and read-only production
+CommunicationMod/checkpoint inventory.
 It grants no execution authority. The manifest and a text-only independent
 review must be pushed before parent task 6.4 may publish authorization.
 
 Keeping this separate from the already pushed stage request avoids rewriting a
 valid request. The later runner requires both the existing stage authorization
 and the exact manifest, so neither can substitute for the other.
+
+### Bind each reviewed command transitively after authority exists
+
+The source-only preflight manifest grants no authority. Its canonical runner
+composite contains the launch-manifest SHA, exact command identity,
+rollback-authority SHA, request SHA, registration SHA, output root, resource
+map, and a proof that every command operation is a subset of the request's
+execution authority. Rollback is restricted to restoring the candidate-disabled
+target JSON inside the bound output root plus byte-level identity observation;
+it cannot broaden model, native, environment, seed, gameplay, production-model,
+qualification, promotion, or downstream authority.
+
+For standing delegation, a deterministic runner-composite resolver validates
+the existing delegated stage approval, immutable broad grant and exclusions,
+and a fresh runner launch observation that names the composite digest. It may
+bind only a proven request-subordinate composite. For exact external-human mode,
+the approval message and fresh runner launch observation must carry the exact
+composite digest verbatim. Both modes produce an all-false run envelope binding
+the stage authorization, approval mode/record, launch observation, and composite.
+The envelope is independently reviewed and pushed before `run-training`.
+
+`terminalize-dead-owner` never reuses the run envelope as current authority.
+After the prior owner is proven dead, a new composite and fresh authority
+resolution bind the run-envelope SHA, old owner, lease bytes, output root,
+journal/resource/checkpoint prefix, fixed failure classification, manifest and
+rollback SHA. The independently reviewed pushed terminalization envelope is
+required before stale-lease reclamation. Its SHA is written to a closure marker
+before rollback and terminal publication. A sibling terminalization guard,
+created by the original run before the managed output root and excluded from
+its artifact inventory, serializes closure commands. While holding that guard,
+the terminalizer revalidates process death, exact lease bytes, the envelope-
+bound failure prefix, and terminal absence immediately before stale-lease
+reclamation; a conflict releases the guard without changing the execution lease
+or managed output.
+
+If a terminalizer dies after lease reclamation or closure-marker publication,
+the same terminalization envelope may perform an idempotent closure-only resume.
+It must prove the new terminalizer owner dead, preserve the original bound
+failure prefix exactly, accept only the identical closure marker and already
+published registered rollback/terminal suffix, and continue the fixed closure
+sequence. It cannot create a new failure classification, access runtime/seeds,
+or make training runnable. Ambiguous staging remains fail-closed evidence and is
+never deleted or repaired automatically.
+
+The runner revalidates every transitive edge. This bridges the older request/
+stage-authorization schema to the new source-bound runner without modifying
+registered control bytes or treating an envelope as authority by itself. Any
+missing, unpushed, stale, revoked, mismatched, broadened, or wrong-command edge
+fails before lifecycle acquisition or rollback-context creation.
 
 ### Use one process-owned lifecycle
 
@@ -80,34 +133,73 @@ All journal, resource, checkpoint, stage, terminal, and rollback operations use
 that exact context and lease. Runtime import and environment construction occur
 only inside this owned lifecycle.
 
-The runner passes the registration's exact sorted 512-seed training cohort to
-`run_bounded_paired_training`, journals candidate then control before each
-environment, charges resources monotonically, publishes each complete 64-pair
-checkpoint, and publishes exactly one independently verifiable terminal or
-rollback classification.
+The runner partitions the registration's exact sorted 512-seed training cohort
+into eight fixed slices and calls `collect_and_complete_paired_training_chunk`
+once per remaining 64-pair chunk. It journals candidate then control before each
+environment, charges resources monotonically, and publishes that chunk's
+canonical checkpoint before starting the next slice. The runner derives the
+control plane's eight component hashes from canonical checkpoint subdocuments;
+the independent runner verifier repeats that derivation from raw bytes. This
+preserves the registered runtime bytes while making complete boundaries durable.
+
+Before the first chunk the runner publishes a canonical zero-progress initial
+checkpoint bound to the registered matched bootstrap. For every chunk it
+publishes a chain record containing the predecessor checkpoint file SHA,
+initial component hashes/counters, final checkpoint file SHA, final component
+hashes/counters, and chunk seeds. The in-memory initial checkpoint bytes must
+equal the predecessor's final bytes; on continuation, the restored runtime must
+re-encode to the same predecessor bytes. Any discontinuity fails before the
+next environment access or control-plane checkpoint publication.
+
+The pushed r6 registration file remains byte-for-byte immutable and retains its
+original self-digest. After the runner independently validates that registration
+against the manifest-bound source inventory and independently validates the
+manifest-bound rollback authority, its registration validator returns a
+process-local execution view that adds only `rollback_authority_sha256`. The
+original `registration_sha256` remains the request/lease identity. A write-once
+runner-launch marker binds the manifest SHA, run-envelope SHA, command identity,
+and rollback SHA
+inside the managed artifact prefix so the independent runner verifier can
+reconstruct this composition. No file registration is rewritten or rehashed.
+
+Before runtime import, an authorized `run-training` launch reobserves the
+manifest-bound control and production-isolation identities. Family saturation
+or any registered failure path executes the existing registered rollback before
+terminal publication. Successful no-collapse training publishes its training
+terminal without enabling the candidate and leaves later canary/holdout
+authorization separate.
 
 If the training owner dies after creating a lifecycle prefix but before
 terminal publication, a separately invoked `terminalize-dead-owner` command may
-close that prefix. It first validates the exact manifest, stage authorization,
-approval and launch observations, proves the recorded owner is dead, acquires
-the existing stale-owner lease path, and verifies the journal/resource/
-checkpoint prefix. It may then publish only the process-failure terminal and
-rollback evidence prescribed by the control plane. It never restores runtime
-state, decodes or opens the seed inventory, imports runtime/native/model code,
-constructs an environment, consumes continuation authority, or replays a seed.
+close that prefix. While holding the sibling terminalization guard, it first
+validates the exact manifest, stage authorization, approval and launch
+observations, proves the recorded owner is dead, and verifies the exact lease
+bytes, envelope-bound journal/resource/checkpoint prefix, and terminal absence.
+Only then may it reclaim the stale-owner lease. It may then publish only the process-failure terminal and
+registered rollback evidence prescribed by the control plane. Rollback restores
+only the experiment-local candidate-disabled target JSON and reobserves the
+bound control checkpoint/config and production identities as byte-level
+bindings; it never restores a training/runtime checkpoint or loads checkpoint
+bytes as a model.
+The terminalizer never restores runtime state, decodes or opens the seed
+inventory, imports runtime/native/model code, constructs an environment,
+consumes continuation authority, or replays a seed.
 
 ### Split source-only preflight from execution
 
 `preflight` strict-parses and canonical-compares the manifest and public control
 artifacts, verifies pushed/tracked source identities, requires the output root
 to be absent, prints one bounded all-false completion, and exits before opening
-any output child, registration seed decoding, runtime/native/model import,
-environment construction, lease acquisition, checkpoint access, or output
-creation. An existing output root is a source-only preflight NO-GO; preflight
-does not inspect or classify it.
+any output child or rollback-authority target, registration seed decoding,
+runtime/native/model import, environment construction, lease acquisition,
+checkpoint/config access, or output creation. It validates only the canonical
+rollback-authority document/digest and the source-inventory binding copied from
+the canonical r6 registration request; it does not open the inventory. An existing output root is a source-only
+preflight NO-GO; preflight does not inspect or classify it.
 
-`run-training` repeats the immutable source checks, validates full authority,
-and only then inspects bounded lifecycle state. It accepts an absent output,
+`run-training` repeats the immutable source checks, validates full authority and
+the pushed command-specific run envelope, and only then inspects bounded
+lifecycle state. It accepts an absent output,
 same-identity zero-debit setup reopen, or the existing one-time continuation
 from a fully verified complete checkpoint. A partial chunk cannot continue or
 replay. `terminalize-dead-owner` is closure rather than recovery: it may seal a
@@ -133,6 +225,10 @@ delegation validator.
 - [Risk] The callback-driven runtime and control accounting can diverge. -> Make
   the runner the sole adapter and test exact candidate/control debit order,
   checkpoint coordinates, resource totals, and terminal closure.
+- [Risk] The inventory registration predates rollback-authority binding. -> Keep
+  its bytes and digest immutable, bind the exact rollback authority in the
+  pushed launch manifest, add only its hash to a process-local validated context
+  view, and publish a launch marker that the independent verifier reconstructs.
 - [Risk] A crash leaves a partial output. -> Preserve the lease, journal,
   checkpoint, and partial bytes; reject same-identity replay except the existing
   complete-boundary continuation, and permit only the authorized dead-owner
@@ -152,7 +248,9 @@ delegation validator.
    source-only preflight. Bind all three commands; do not create authorization,
    terminalize output, or run training.
 6. Return to parent task 6.4 only after authoritative current-message watermark
-   observation is available.
+   observation is available. After stage authority exists, render, review, and
+   push the exact run envelope before training. A terminalization envelope may
+   be rendered only after a proven dead owner requires closure.
 
 Before any `run-training` process invocation, rollback removes only uncommitted
 runner planning or preflight artifacts. After invocation, preserve all complete

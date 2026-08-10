@@ -12,11 +12,20 @@ that command exists would authorize an unlaunchable and unauditable workflow.
   and `terminalize-dead-owner` command set.
 - Add a canonical launch manifest that binds the pushed r6 registration,
   training request/review, runner source, interpreter, registered experiment
-  source, additive registration verifier, output root, resource ceilings, and
-  exact command set before any authorization is accepted.
+  source, additive registration verifier, exact r6-bound source-inventory
+  path/hash, output root, resource ceilings, and
+  exact command set before any authorization is accepted. The manifest also
+  binds one canonical rollback authority, including the candidate-disabled
+  control target and read-only production-isolation identities.
+- Add command-specific canonical execution envelopes. A run envelope is
+  rendered only after complete stage authority exists and binds the manifest/
+  command/rollback composite through the existing standing-delegation resolver
+  or an exact external-human approval. A separate dead-owner envelope is
+  rendered only after a failed owner and immutable prefix exist. Each envelope
+  cannot broaden the request and must be reviewed and pushed before its command.
 - Compose the existing validated execution context, exclusive lease,
   write-ahead access/resource accounting, registered 512-seed schedule,
-  `run_bounded_paired_training`, eight complete-boundary checkpoints, and one
+  the fixed chunk-level paired runtime, eight complete-boundary checkpoints, and one
   terminal or rollback publication.
 - Add a fully authorized dead-owner terminalization path that can close an
   existing partial prefix after proving the prior process is dead, without
@@ -38,7 +47,9 @@ without loading native/model/runtime execution dependencies. The rollback bounda
 the first runner process invocation: before it, remove only uncommitted runner
 planning/preflight artifacts; after it, preserve every receipt, lease,
 checkpoint, journal, terminal, complete, or partial output and never substitute
-or retry the identity outside the existing complete-boundary continuation rule.
+or retry the identity outside the existing complete-boundary continuation rule
+or an idempotent same-envelope closure-only resume that performs no empirical
+operation.
 
 ## Capabilities
 

@@ -49,16 +49,27 @@ Add one narrow training runner and source-only launch manifest that:
    Windows interpreter, output root, resource ceilings, and closed preflight,
    training, and dead-owner terminalization command set;
 2. validates the later stage authorization and fresh approval/launch
-   observations before runtime or native import;
+   observations before runtime or native import, then requires a reviewed pushed
+   command-specific envelope using the standing-delegation resolver or exact
+   external-human approval to bind authority to a request-subordinate manifest/
+   command/rollback composite without broadening the request;
 3. verifies the registered control/runtime and public dependency bytes while
    separately binding the additive registration verifier used at launch;
 4. owns the execution context, lease, access/resource ledgers, exact 512-seed
-   schedule, eight complete checkpoints, and one terminal classification;
+   schedule, eight per-chunk durable checkpoints, independently reconstructed
+   component hashes, predecessor-linked canonical state continuity, and one
+   terminal classification;
 5. preserves setup-only reopen and the single complete-boundary continuation,
    while rejecting partial-chunk retry, substitution, tuning, or raised bounds;
-6. can terminalize a proven dead owner's partial prefix as process failure
-   without runtime restoration, seed access, environment construction, or replay;
-7. provides source-only dry-run/preflight tests that require the output root to
+6. binds an exact candidate-disabled rollback authority, control target, and
+   production-isolation identities without rewriting the r6 registration file;
+7. can terminalize a proven dead owner's partial prefix through registered
+   rollback and process failure without runtime restoration, seed access,
+   environment construction, model loading, or replay, using a fresh envelope
+   bound to the exact old owner, lease and existing prefix rather than the prior
+   run envelope, with a sibling guard, final pre-reclaim verification, and
+   idempotent same-envelope closure-only resume;
+8. provides source-only dry-run/preflight tests that require the output root to
    be absent and load no native module, model, environment, seed, or checkpoint
    before any authorization is created.
 
