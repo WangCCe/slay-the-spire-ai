@@ -18,7 +18,7 @@
 
 ## 4. Freeze Launch And Pre-Start Gate
 
-- [ ] 4.1 After the authority commit is pushed, capture and independently review one fresh launch-time revocation observation bound to the exact request/approval/authorization and current conversation state; commit and push the launch boundary.
+- [x] 4.1 After the authority commit is pushed, capture and independently review one fresh launch-time revocation observation bound to the exact request/approval/authorization and current conversation state; commit and push the launch boundary.
 - [ ] 4.2 Reproduce the exact dispatch bytes, run the complete owning seed-inventory pytest file plus isolated-dispatch regression under the registered Windows temp parent, strict-validate OpenSpec, validate authority/source identity, and record the unqualified repository commit timing profile as not applicable because no code/test behavior changed.
 - [ ] 4.3 From a pushed tracked-clean base, build and independently review a final pre-start gate proving all authority/source/predecessor/preflight identities match and r3 output/staging/attempts/receipt paths remain absent; then commit and push that gate.
 - [ ] 4.4 After the gate commit is pushed, perform a separate no-write recheck that current HEAD equals `origin/master`, tracked files are clean, the committed gate bytes match, no unexpected child exists, and every r3 absence condition still holds. Stop before launch on any drift or if a code/test edit is required.
