@@ -1,7 +1,7 @@
 ## 1. Freeze Planning
 
-- [ ] 1.1 Strict-validate and independently review the proposal, design, delta spec, and tasks; resolve every actionable finding before code edits.
-- [ ] 1.2 Commit and push the planning-only change from a tracked-clean source boundary without staging r3 output or unrelated historical artifacts.
+- [x] 1.1 Strict-validate and independently review the proposal, design, delta spec, and tasks; resolve every actionable finding before code edits.
+- [x] 1.2 Commit and push the planning-only change from a tracked-clean source boundary without staging r3 output or unrelated historical artifacts.
 
 ## 2. Add Red Regressions
 
