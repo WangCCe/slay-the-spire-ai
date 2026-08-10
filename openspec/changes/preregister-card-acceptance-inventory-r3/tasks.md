@@ -1,7 +1,7 @@
 ## 1. Freeze R3 Planning
 
 - [x] 1.1 Reconfirm the pushed isolated-dispatch source commit/digests, exact `build_inventory` authority-to-receipt ordering, r1/r2 terminal evidence, parent task 6.2 state, and absent r3 output/staging/attempts/receipt paths without reading candidate blobs or seeds.
-- [ ] 1.2 Strict-validate and independently review the complete r3 proposal/spec/design/tasks, resolve every actionable finding, then commit and push the planning artifacts alone.
+- [x] 1.2 Strict-validate and independently review the complete r3 proposal/spec/design/tasks, resolve every actionable finding, then commit and push the planning artifacts alone.
 
 ## 2. Publish Dispatch, Source, And Request Boundary
 
