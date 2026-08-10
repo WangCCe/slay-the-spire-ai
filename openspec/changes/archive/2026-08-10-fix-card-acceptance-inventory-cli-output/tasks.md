@@ -22,4 +22,4 @@
 
 ## 5. Closeout
 
-- [ ] 5.1 Sync the delta spec, archive the completed change, strict-validate the global OpenSpec set, and push closeout. Leave any r4 proposal as a distinct later decision.
+- [x] 5.1 Sync the delta spec, archive the completed change, strict-validate the global OpenSpec set, and push closeout. Leave any r4 proposal as a distinct later decision.
