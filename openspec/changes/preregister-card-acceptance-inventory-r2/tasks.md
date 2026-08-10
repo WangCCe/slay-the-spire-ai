@@ -12,7 +12,7 @@
 ## 3. Distinct R2 Authority Chain
 
 - [x] 3.1 Render and independently review the fixed r2 source inventory, request, and request review with a new request id/output root and all native, model, environment, training, evaluation, gameplay, qualification, and promotion authority false.
-- [ ] 3.2 Render and independently review a fresh r2 request-bound delegated approval and authorization using only the exact preserved standing human grant; commit and push each defined publication boundary before launch.
+- [x] 3.2 Render and independently review a fresh r2 request-bound delegated approval and authorization using only the exact preserved standing human grant; commit and push each defined publication boundary before launch.
 - [ ] 3.3 Capture and independently review a fresh launch-time revocation observation after all r2 authority boundaries are pushed, then recheck source, preflight, receipt/output absence, and tracked-clean state.
 
 ## 4. One-Shot Inventory Outcome
