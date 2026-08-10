@@ -1,0 +1,97 @@
+{
+  "artifact_state": {
+    "inventory_output_exists": false,
+    "started_receipt_exists": false
+  },
+  "dispatch_reproduction": {
+    "attempts": 2,
+    "byte_identical": true,
+    "canonical_binding_sha256": "b89c993f6466850626de1aac8a1ee2a46327e32dcdd3df4244220a7eced67cfa",
+    "canonical_binding_size_bytes": 924,
+    "exit_codes": [
+      0,
+      0
+    ],
+    "stderr_empty": true
+  },
+  "evidence_base_commit": "5d26a47d83dcb8de4b3ed40a4a1c0696818de26e",
+  "evidence_sha256": "fe2c0c124f6d49e9aaa6d601153c2deee54e659bd094215d3afe331b38f2b3ef",
+  "full_gate": {
+    "prior_fixed_source_result": {
+      "passed": 5773,
+      "skipped": 18,
+      "status": "passed"
+    },
+    "reason_not_rerun": "no-code-or-test-behavior-change-after-pushed-fixed-source-boundary",
+    "rerun": false
+  },
+  "gameplay_validation": {
+    "reason": "source-only-inventory-control-boundary-with-no-gameplay-code-change",
+    "status": "not-applicable"
+  },
+  "openspec_validation": {
+    "failed": 0,
+    "passed": 84,
+    "scope": "all",
+    "strict": true
+  },
+  "performed_operations": {
+    "candidate_blob_reads": false,
+    "cohort_materialization": false,
+    "environment_construction": false,
+    "evaluation": false,
+    "gameplay": false,
+    "model_fitting": false,
+    "model_loading": false,
+    "native_loading": false,
+    "r3_inventory_content_access": false,
+    "seed_access": false,
+    "seed_discovery": false,
+    "training": false
+  },
+  "pytest": {
+    "attempts": [
+      {
+        "basetemp": "C:/Users/20571/AppData/Local/Temp/codex-pytest-stsai/r4-prestart-20260810-2109",
+        "elapsed_seconds": 100.8,
+        "exit_code": 1,
+        "reason": "WinError-5-during-pytest-basetemp-setup-and-session-cleanup",
+        "result": "infrastructure-failure",
+        "test_evidence_valid": false
+      },
+      {
+        "basetemp": "C:/Users/20571/AppData/Local/Temp/codex-pytest-stsai/r4-prestart-20260810-2111",
+        "elevated_filesystem_permission": true,
+        "exit_code": 0,
+        "passed": 101,
+        "pytest_seconds": 103.66,
+        "result": "passed",
+        "test_evidence_valid": true,
+        "wall_seconds": 106.9
+      }
+    ],
+    "cacheprovider_disabled": true,
+    "tests": [
+      "tests/test_noncombat_card_acceptance_empirical_successor_seed_inventory.py",
+      "tests/test_noncombat_card_acceptance_empirical_successor_verifier.py"
+    ]
+  },
+  "recorded_at": "2026-08-10T13:27:11.182Z",
+  "schema_version": "noncombat-card-acceptance-empirical-successor-r4-prestart-test-evidence-v1",
+  "source_commit": "710599ec6c2a9f7964da1e43084d2d577dffb7b3",
+  "source_compile": [
+    {
+      "path": "analysis_scripts/noncombat_card_acceptance_empirical_successor_seed_inventory.py",
+      "sha256": "fd8d2008088f33e6559197e7a744756a6a3ada8347f31972f13d0bc4848ad497",
+      "size_bytes": 68234,
+      "status": "passed"
+    },
+    {
+      "path": "analysis_scripts/verify_noncombat_card_acceptance_empirical_successor.py",
+      "sha256": "7e816343bbe870ed7280e316aa4ebed914fdbb36bc54283edaf0528b1e679dc0",
+      "size_bytes": 154711,
+      "status": "passed"
+    }
+  ],
+  "status": "passed"
+}
