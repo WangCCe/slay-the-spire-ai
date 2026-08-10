@@ -9,9 +9,11 @@ discipline alone could not prevent an unregistered source-rescanning operation.
 ## What Changes
 
 - Require `verify-inventory` to consume a distinct canonical verification
-  request, reviewed verification authorization, and fresh verification launch
-  observation in addition to the immutable build request/authorization,
-  approval, receipt, and inventory it verifies.
+  request, reviewed verification authorization, verification approval, and
+  fresh verification launch observation plus the immutable build request and
+  authorization it verifies. Reconstruct build approval/launch identity from
+  the canonical build receipt and inventory authority evidence rather than
+  accepting caller-selected build approval/launch files.
 - Reject missing, predecessor, mismatched, unknown-field, noncanonical, or
   broadened verification authority before inventory, registered Git blob,
   seed, cohort, native, model, or environment access.
@@ -23,8 +25,9 @@ discipline alone could not prevent an unregistered source-rescanning operation.
   reconstruction authority, and all-false downstream authority.
 - Keep `build-inventory` compatibility unchanged and add RED/GREEN regressions
   for missing distinct authority, old build launch substitution, pre-access
-  rejection, receipt interruption, duplicate invocation, and one exact
-  source-only verification completion.
+  rejection through both CLI and direct API, receipt interruption, duplicate
+  invocation, post-receipt stdout failure, and one exact source-only
+  verification completion.
 - Do not preregister r5, run another inventory verifier, publish a registration,
   train, evaluate, load native/model/runtime state, start gameplay, or grant
   downstream authority in this change.
@@ -46,8 +49,9 @@ None.
 ### Modified Capabilities
 
 - `noncombat-card-acceptance-empirical-successor`: Make distinct verification
-  request/authorization/launch evidence and an immutable one-shot verification
-  receipt mandatory production inputs before source-only reconstruction.
+  request/authorization/approval/launch evidence and an immutable one-shot
+  verification receipt mandatory production inputs before source-only
+  reconstruction.
 
 ## Impact
 

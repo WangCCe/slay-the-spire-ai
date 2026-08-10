@@ -55,15 +55,30 @@ the CLI could ignore it, which is the failure this change must prevent.
 
 ### Give verification an explicit CLI contract
 
-Keep `build-inventory` arguments unchanged. `verify-inventory` receives
-explicit build request/authorization paths plus a distinct verification
-request, verification authorization, verification approval record, and fresh
-verification launch observation. The parser rejects the legacy four-argument
+Keep `build-inventory` arguments unchanged. `verify-inventory` requires
+`--repo-root` plus exactly six evidence flags:
+`--inventory-request`, `--inventory-authorization`,
+`--verification-request`, `--verification-authorization`,
+`--verification-approval-record`, and
+`--verification-launch-observation`. The parser rejects the legacy
+`--request`/`--authorization`/`--approval-record`/`--launch-observation`
 verification command before calling any operation function.
 
-The verifier first validates both authority chains, exact prerequisites,
-pushed tracked-clean ancestry, source identities, output path, schemas, and
-ceilings. It does not trust caller-selected digests from the inventory.
+Build approval and launch files are not caller inputs to verification. Before
+the verification receipt, the verifier reads and validates the canonical build
+receipt derived from the build request, then binds its approval and launch
+digests. After the verification receipt, the materialized inventory's embedded
+authority evidence must reconstruct the same build approval and launch. This
+prevents callers from selecting a substitute build approval/launch file while
+retaining full post-receipt evidence validation.
+
+The verifier first validates the build request/authorization, the complete
+verification authority chain, exact declared prerequisites, canonical build
+receipt, pushed tracked-clean ancestry, source identities, output path,
+schemas, and ceilings. It does not trust caller-selected digests from the
+inventory. Declared digest mismatches fail before the verification receipt;
+actual inventory file or semantic drift can only be discovered after the
+receipt and is therefore terminal.
 
 ### Claim verification once before evidence reconstruction
 
@@ -95,12 +110,13 @@ receipt.
 ### Prove the boundary with synthetic fixtures only
 
 Tests use temporary Git repositories and compact fixtures. Required RED/GREEN
-coverage includes the exact escaped r4 command shape, missing or substituted
-verification artifacts, authority broadening, prerequisite drift, access-order
-spies, empty/partial/valid receipt collisions, interruption during receipt
-write, post-receipt failure, duplicate invocation, exact reconstruction, and
-both CLI completion envelopes. No tracked r4/r3 inventory is executed by the
-test or review process.
+coverage includes the exact escaped r4 command shape, direct API build-only or
+missing-verification calls, missing or substituted verification artifacts,
+authority broadening, prerequisite drift, access-order spies,
+empty/partial/valid receipt collisions, interruption during receipt write,
+post-receipt reconstruction or stdout failure, duplicate invocation, exact
+reconstruction, and both CLI completion envelopes. No tracked r4/r3 inventory
+is executed by the test or review process.
 
 ## Risks / Trade-offs
 
