@@ -1311,7 +1311,7 @@ def _resolve_deadline(
     resolved = _finite_float(deadline, f"{label} deadline")
     if resolved < now:
         raise RuntimeBlocked(f"wall-time limit reached before {label}")
-    if resolved - now > MAX_WALL_SECONDS:
+    if resolved > now + MAX_WALL_SECONDS:
         raise RuntimeBlocked(f"{label} deadline exceeds the wall-time ceiling")
     return resolved
 

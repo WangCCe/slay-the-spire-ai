@@ -493,6 +493,15 @@ def test_evaluation_default_deadline_is_bounded_before_environment_construction(
     assert touched == []
 
 
+def test_resolved_default_deadline_accepts_exact_ceiling_at_nonzero_clock():
+    now = 245_428.437
+    deadline = runtime._resolve_deadline(None, lambda: now, label="outer")
+
+    assert runtime._resolve_deadline(deadline, lambda: now, label="nested") == deadline
+    with pytest.raises(runtime.RuntimeBlocked, match="exceeds"):
+        runtime._resolve_deadline(deadline + 1.0, lambda: now, label="nested")
+
+
 def test_failed_training_chunk_rolls_back_model_optimizer_generator_and_coordinates():
     state = runtime.initialize_training_runtime()
     model_before = _model_bytes(state.model)
