@@ -17,9 +17,9 @@
 
 ## 4. One-Shot Inventory Outcome
 
-- [ ] 4.1 Run the focused receipt/source-boundary and seed-inventory tests under the registered Windows pytest temp parent, strict-validate OpenSpec, and invoke r2 `build-inventory` at most once only if every pre-start gate passes.
-- [ ] 4.2 On success, run the distinct read-only `verify-inventory`, independently reconstruct exact source/row/cohort commitments, and publish one all-false `512/128/512` registration; on failure, publish and review one terminal failure with no registration and no retry, resume, replacement, tuning, or source/path change.
-- [ ] 4.3 Record that fresh gameplay validation, CommunicationMod, native/model loading, training, evaluation, qualification, and promotion are not applicable to this source-only inventory identity.
+- [x] 4.1 Run the focused receipt/source-boundary and seed-inventory tests under the registered Windows pytest temp parent, strict-validate OpenSpec, and invoke r2 `build-inventory` at most once only if every pre-start gate passes.
+- [x] 4.2 On success, run the distinct read-only `verify-inventory`, independently reconstruct exact source/row/cohort commitments, and publish one all-false `512/128/512` registration; on failure, publish and review one terminal failure with no registration and no retry, resume, replacement, tuning, or source/path change.
+- [x] 4.3 Record that fresh gameplay validation, CommunicationMod, native/model loading, training, evaluation, qualification, and promotion are not applicable to this source-only inventory identity.
 
 ## 5. Closeout
 
