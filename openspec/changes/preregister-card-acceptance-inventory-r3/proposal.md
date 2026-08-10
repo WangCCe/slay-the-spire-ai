@@ -16,9 +16,11 @@ registration before any training request is eligible.
   approval, authorization, and launch observation; preserve every r1/r2
   artifact and identity as terminal evidence.
 - Treat the durable request-bound started receipt, rather than mere process
-  creation, as the one-shot inventory boundary. A pre-start failure creates no
-  empirical side effect and does not itself consume r3, while any existing or
-  partial receipt permanently consumes that request.
+  creation, as the one-shot inventory boundary. A pre-start failure does not
+  itself consume r3 only after a bounded failure plus independent complete-
+  side-effect review; any ambiguous effect or existing/partial receipt blocks
+  or permanently consumes that request. The same request permits at most one
+  reviewed pre-start reinvocation; a second pre-start failure closes r3.
 - Run one logical r3 build start only after exact dispatch, source/path,
   authority, pushed/clean-tree, output/receipt absence, and focused test gates
   pass. Do not change source, path, request, cohort, thresholds, or authority in

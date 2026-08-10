@@ -2,16 +2,31 @@
 
 ### Requirement: Inventory build start is durably one-shot
 After all pre-start authority and source validations pass, `build-inventory`
-SHALL atomically persist a canonical request-bound started receipt before
-historical path discovery, blob reads, or seed discovery. An existing or partial
-receipt SHALL block every later invocation of the same request regardless of
-output or staging state. The receipt SHALL remain immutable after success or
+SHALL atomically claim the request-bound started path through exclusive file
+creation, write the canonical receipt, flush it, and fsync it before historical
+path discovery, blob reads, or seed discovery. Existence is the consumption
+boundary: an in-progress, empty, partial, invalid, or complete receipt SHALL
+block every later invocation of the same request regardless of output or
+staging state. The receipt bytes SHALL remain immutable after success or
 failure. Process creation or failure before receipt creation SHALL NOT by
 itself classify the request as started or terminal. A pre-start invocation MAY
-be repeated only after independent review proves that the exact source,
-command, request, path, approval, authorization, launch observation, and bytes
-are unchanged and that no receipt or empirical side effect exists; otherwise a
-distinct successor identity is required.
+be repeated only after a bounded failure artifact and independent review prove
+that the exact source, command, request, path, approval, authorization,
+resource, cohort, and authority bindings are unchanged; every registered write
+surface is absent or unchanged; no unexpected child remains; and no candidate
+blob, seed, or cohort was accessed. A fresh reviewed revocation observation MAY
+replace only the prior launch observation for the same exact authority chain.
+The original launch SHALL remain immutable, and a separate canonical
+reinvocation review SHALL bind the pre-start failure, original launch,
+replacement launch, unchanged request/approval/authorization chain,
+external-only repair, complete side-effect verdict, and one-use eligibility.
+Any missing or ambiguous observation or other changed binding requires a
+distinct successor identity. Separately registered source/path preflights MAY
+enumerate Git paths before request publication; they are not build-owned
+historical path discovery or candidate-blob processing. Each request permits at
+most one reviewed pre-start reinvocation. Starting that second process consumes
+its eligibility even if no receipt is created; another pre-start failure closes
+the request and requires a distinct successor.
 
 #### Scenario: First invocation fails before publication
 - **WHEN** an authorized inventory invocation writes its started receipt and then fails during historical source processing before output or staging publication
@@ -21,16 +36,36 @@ distinct successor identity is required.
 - **WHEN** the request-bound started path contains an empty file, truncated JSON, or invalid canonical receipt from an interrupted first invocation
 - **THEN** every later invocation is rejected before source discovery and the existing bytes are preserved without parsing, repair, replacement, or deletion
 
+#### Scenario: Receipt write is interrupted
+- **WHEN** exclusive receipt creation succeeds but canonical writing, flush, or fsync is interrupted or fails
+- **THEN** the existing empty or partial path consumes the request, remains immutable evidence, and blocks every later invocation before source discovery
+
 #### Scenario: Validation fails before start
-- **WHEN** authority, source inventory, pushed ancestry, tracked cleanliness, output absence, request identity, or process-entrypoint validation fails before receipt creation
-- **THEN** no started receipt, historical path discovery, blob read, seed discovery, cohort materialization, or output publication occurs and the identity is not consumed solely by process creation
+- **WHEN** the `build-inventory` invocation fails authority, source inventory, pushed ancestry, tracked cleanliness, output absence, request identity, or process-entrypoint validation before receipt creation
+- **THEN** no started receipt, build-owned historical path discovery, candidate-blob read, seed discovery, cohort materialization, or output publication occurs and the identity is not consumed solely by process creation
 
 #### Scenario: Exact pre-start invocation is reconsidered
-- **WHEN** an independently reviewed pre-start failure created no receipt or empirical side effect and an external-only repair leaves every bound input byte unchanged
-- **THEN** the exact invocation may be repeated without treating it as a retry of started inventory work
+- **WHEN** a bounded independently reviewed pre-start failure proves every registered write/process/access surface complete and clean and an external-only repair leaves request/source/authority bytes unchanged
+- **THEN** the exact invocation may be repeated with a fresh reviewed revocation observation only after a canonical reinvocation review binds the failure, immutable original launch, replacement launch, unchanged authority chain, and one-use eligibility
+
+#### Scenario: Replacement launch is not chained
+- **WHEN** a new launch observation lacks the exact pre-start failure, original-launch, unchanged-authority, complete-side-effect, or one-use review binding
+- **THEN** it cannot authorize another invocation of the same request
+
+#### Scenario: Reviewed reinvocation starts
+- **WHEN** the sole canonical reinvocation review authorizes invocation ordinal two and that process is created
+- **THEN** its one-use eligibility is consumed and no second reinvocation review may authorize the same request
+
+#### Scenario: Reviewed reinvocation fails before receipt
+- **WHEN** invocation ordinal two fails before receipt creation
+- **THEN** the system publishes a reviewed prestart-terminal artifact, closes r3 without registration, and requires a distinct successor rather than a third invocation
+
+#### Scenario: Pre-start side effects are incomplete or ambiguous
+- **WHEN** the failure artifact or review cannot prove one registered path, child-process, tracked-file, candidate-blob, seed, or cohort observation
+- **THEN** r3 remains blocked and the same request cannot be invoked again
 
 #### Scenario: A pre-start repair changes a binding
-- **WHEN** correcting a pre-start failure would change code, source commit, command, request, path, approval, authorization, launch observation, or another bound byte
+- **WHEN** correcting a pre-start failure would change code, source commit, command, request, path, approval, authorization, resource, cohort, authority, or another non-revocation bound byte
 - **THEN** the current identity remains blocked and only a distinct preregistered successor may use the changed binding
 
 #### Scenario: Inventory publication succeeds
@@ -112,7 +147,8 @@ bind the fixed source/request/authorization/launch/receipt/inventory identities,
 the exact ordered 512 training, 128 canary, and 512 holdout cohorts, their role
 digests, and an all-false downstream authority and empirical-operation map. It
 SHALL use the preregistered schema and field set, derive its self-digest from
-canonical JSON, and grant no training-request or execution authority.
+canonical JSON, reject every missing, unknown, duplicate, or non-boolean
+authority/operation field, and grant no training-request or execution authority.
 
 #### Scenario: Independent reconstruction matches
 - **WHEN** the read-only verifier reproduces every source row, exclusion, cohort, role digest, whole-inventory digest, and authority binding from the closed r3 output
@@ -124,4 +160,4 @@ canonical JSON, and grant no training-request or execution authority.
 
 #### Scenario: Registration schema is frozen before seed access
 - **WHEN** the r3 planning boundary is published
-- **THEN** the registration schema version, identity, exact field set, canonical self-digest rule, cohort/role mapping, and all-false authority key sets are fixed before build and cannot change in response to the inventory outcome
+- **THEN** the registration schema version, identity, exact field set, canonical self-digest rule, cohort/role mapping, and the closed fifteen-key authority plus ten-key empirical-operation maps are fixed before build and cannot change in response to the inventory outcome

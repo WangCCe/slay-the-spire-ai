@@ -70,14 +70,48 @@ fixed source inventory.
 
 ### Make receipt creation the logical one-shot boundary
 
-A process that fails before `started.json` exists has not started empirical
-inventory work. It creates no cohort or empirical side effect and does not
-consume r3 solely because a process was created. It is not automatically
-retried: first preserve and independently diagnose the pre-start failure. The
-same identity may be invoked again only if the command, source, request, paths,
-approval, authorization, launch observation, and all bytes remain exact and the
-repair is external to those bindings, such as a host permission issue. Any code
-or bound-artifact change requires a new successor identity.
+A process that fails before `started.json` exists has not necessarily started
+empirical inventory work. It does not consume r3 solely because a process was
+created, but it is not automatically retried. First publish a bounded
+`noncombat-card-acceptance-empirical-successor-prestart-failure-v1` artifact and
+independent review. The artifact binds the exact command/exit/phase, source,
+request, approval, authorization and launch digests; before/after output,
+staging, attempts and receipt identities; registered repository/temp paths;
+candidate-blob/seed/cohort access flags; tracked-file status; live child
+process observation; cause classification; and its canonical self-digest.
+
+The review must prove that execution stopped before `_start_inventory_once`,
+all registered write surfaces are unchanged or absent, no unexpected child
+remains, and candidate blobs, seeds, and cohorts were not accessed. Any missing,
+unobserved, or ambiguous side-effect surface blocks r3 and requires a distinct
+successor. Only an exact external repair such as a host permission correction
+may make the same request eligible again. Source, command, request, path,
+approval, authorization, resource, cohort, and authority bytes remain fixed.
+Because revocation state is time-dependent, the prior launch observation is
+replaced only by a newly observed and reviewed launch artifact for the same
+request/approval/authorization; no other bound artifact may change. The
+original launch artifact remains immutable. A separate canonical
+`noncombat-card-acceptance-empirical-successor-prestart-reinvocation-review-v1`
+must bind the pre-start failure digest, original and replacement launch
+observation digests, unchanged request/approval/authorization digests,
+external-repair classification, complete side-effect verdict, and one-use
+eligibility verdict. The next invocation uses the replacement launch, and any
+receipt binds that replacement digest. A second pre-start failure requires a
+bounded `prestart-terminal` artifact and a distinct successor rather than
+another failure/replacement chain.
+
+The request state machine is fixed as `uninvoked -> prestart-failed ->
+reinvocation-authorized -> reinvocation-started`. Only one canonical
+reinvocation review with `invocation_ordinal=2` may exist. Process creation for
+that second invocation consumes its one-use eligibility even if no receipt is
+created. A second pre-start failure closes r3 without empirical registration;
+it does not authorize a third invocation of the same request.
+
+Path-only preflight may enumerate registered Git report paths and source-only
+inventory identities before authority publication. This is distinct from the
+build-owned historical path discovery and candidate-blob processing in
+`_build_source_registry_and_rows`, which remains strictly after receipt
+creation.
 
 Once any empty, partial, invalid, or complete receipt exists, r3 is permanently
 consumed. A later source, selection, publication, or verification failure is
@@ -153,10 +187,16 @@ Its exact top-level fields are `schema_version`, `registration_id`,
 `approval_sha256`, `authorization_sha256`, `launch_observation_sha256`,
 `receipt_sha256`, `inventory_sha256`, `cohorts`, `role_sha256`, `authority`,
 `empirical_operations`, and `registration_sha256`. `cohorts` and `role_sha256`
-use exactly the inventory role keys and values. `authority` and
-`empirical_operations` use the existing architecture key sets with every value
-false. `registration_sha256` is the SHA-256 of canonical JSON for the other
-fields. No outcome-dependent field or threshold may be added after build.
+use exactly the inventory role keys and values. `authority` has exactly
+`causal`, `communication_mod`, `environment_construction`, `evaluation`,
+`execution`, `formal_rl`, `gameplay`, `model_fitting`, `native_loading`, `ope`,
+`production_model_loading`, `promotion`, `qualification`, `seed_access`, and
+`training`. `empirical_operations` has exactly `communication_mod`,
+`environment_construction`, `evaluation`, `model_fitting`, `model_loading`,
+`native_loading`, `ope`, `runtime_fitting`, `seed_access`, and `training`.
+Every value is false; missing, unknown, duplicate, or non-boolean fields fail.
+`registration_sha256` is the SHA-256 of canonical JSON for the other fields. No
+outcome-dependent field or threshold may be added after build.
 
 On any started failure, publish and independently review one bounded terminal
 report, leave task 6.2 unchecked, archive r3, and grant no successor or training
@@ -165,8 +205,10 @@ authority.
 ## Risks / Trade-offs
 
 - [Risk] Pre-start reinvocation is mistaken for empirical retry. -> Mitigation:
-  require absent receipt/output/staging/attempts, byte-identical identity, an
-  independently reviewed external-only cause, and no automatic retry.
+  require a bounded failure plus independent complete-side-effect review,
+  unchanged request/source/authority bytes, a chained fresh revocation
+  observation, and at most one reviewed reinvocation; ambiguity or a second
+  pre-start failure requires a distinct successor.
 - [Risk] Historical report growth introduces another malformed source. ->
   Mitigation: freeze and review the complete path set before authority; ordinary
   malformed sources still fail closed after the receipt.
@@ -191,10 +233,11 @@ authority.
    push the authority boundary.
 4. Observe fresh launch-time revocation state after that push, review it, and
    push the launch boundary.
-5. Run, review, commit, and push the frozen pre-start gate; immediately recheck
-   pushed/clean identity and absence paths, then invoke one logical build
-   start. If a pre-start failure occurs, stop for review under the receipt-
-   defined rule.
+5. Build and review the frozen pre-start gate from a pushed clean base, commit
+   and push it, then perform a separate no-write pushed/clean/absence recheck
+   immediately before invoking one logical build start. If a pre-start failure
+   occurs, publish and review the bounded failure before any eligibility
+   decision under the receipt-defined rule.
 6. On build success, run distinct verification, independently reconstruct and
    publish the all-false registration, update parent task 6.2, and push.
 7. On terminal failure, publish its review without registration. In either
