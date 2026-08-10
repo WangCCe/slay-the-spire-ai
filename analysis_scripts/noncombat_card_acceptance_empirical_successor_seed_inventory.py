@@ -50,6 +50,10 @@ STARTED_RECEIPT_SCHEMA_VERSION = (
     "noncombat-card-acceptance-empirical-successor-"
     "seed-inventory-started-receipt-v1"
 )
+VERIFICATION_STARTED_RECEIPT_SCHEMA_VERSION = (
+    "noncombat-card-acceptance-empirical-successor-"
+    "inventory-verification-started-receipt-v1"
+)
 DISPATCH_CHECK_SCHEMA_VERSION = (
     "noncombat-card-acceptance-empirical-successor-"
     "seed-inventory-dispatch-check-v1"
@@ -57,6 +61,10 @@ DISPATCH_CHECK_SCHEMA_VERSION = (
 CLI_COMPLETION_SCHEMA_VERSION = (
     "noncombat-card-acceptance-empirical-successor-"
     "inventory-cli-completion-v1"
+)
+VERIFICATION_CLI_COMPLETION_SCHEMA_VERSION = (
+    "noncombat-card-acceptance-empirical-successor-"
+    "inventory-verification-cli-completion-v1"
 )
 CLI_COMPLETION_MAX_BYTES = 2_048
 CLI_COMPLETION_HASH_CHUNK_BYTES = 1024 * 1024
@@ -174,6 +182,24 @@ _STARTED_RECEIPT_FIELDS = {
     "source_commit",
     "source_inventory_sha256",
 }
+_VERIFICATION_STARTED_RECEIPT_FIELDS = {
+    "approval_sha256",
+    "authorization_id",
+    "authorization_sha256",
+    "inventory_authorization_sha256",
+    "inventory_file_sha256",
+    "inventory_launch_observation_sha256",
+    "inventory_receipt_sha256",
+    "inventory_request_sha256",
+    "inventory_sha256",
+    "launch_observation_sha256",
+    "receipt_sha256",
+    "request_id",
+    "request_sha256",
+    "schema_version",
+    "source_commit",
+    "source_inventory_sha256",
+}
 _CLI_COMPLETION_FIELDS = {
     "completion_sha256",
     "inventory_file_sha256",
@@ -190,9 +216,26 @@ _CLI_COMPLETION_FIELDS = {
     "schema_version",
     "status",
 }
+_VERIFICATION_CLI_COMPLETION_FIELDS = {
+    "completion_sha256",
+    "inventory_authorization_sha256",
+    "inventory_file_sha256",
+    "inventory_launch_observation_sha256",
+    "inventory_receipt_sha256",
+    "inventory_request_sha256",
+    "inventory_sha256",
+    "inventory_size_bytes",
+    "operation",
+    "schema_version",
+    "source_inventory_sha256",
+    "status",
+    "verification_authorization_sha256",
+    "verification_launch_observation_sha256",
+    "verification_receipt_sha256",
+    "verification_request_sha256",
+}
 _CLI_COMPLETION_STATUS = {
     "build-inventory": "published",
-    "verify-inventory": "verified",
 }
 
 
@@ -800,6 +843,76 @@ def check_dispatch() -> dict[str, Any]:
     return _build_dispatch_evidence(process_identity=_dispatch_process_identity())
 
 
+def _validate_source_qualification(
+    *, repo_root: Path, request: Mapping[str, Any], control: Any
+) -> dict[str, Any]:
+    try:
+        if not repo_root.is_dir():
+            raise SeedInventoryBlocked("source repository root is missing")
+        top_level = Path(
+            _git_command(repo_root, ["rev-parse", "--show-toplevel"])
+            .decode("utf-8", errors="strict")
+            .strip()
+        ).resolve()
+        if top_level != repo_root:
+            raise SeedInventoryBlocked("repository root is not the Git top level")
+        expected_commit = request["source_commit"]
+        head = (
+            _git_command(repo_root, ["rev-parse", "HEAD"])
+            .decode("ascii", errors="strict")
+            .strip()
+        )
+        remote = (
+            _git_command(repo_root, ["rev-parse", "origin/master"])
+            .decode("ascii", errors="strict")
+            .strip()
+        )
+        tracked_status = _git_command(
+            repo_root,
+            ["status", "--porcelain=v1", "--untracked-files=no"],
+        )
+        if head != remote:
+            raise SeedInventoryBlocked(
+                "current HEAD is not the exact pushed origin/master identity"
+            )
+        try:
+            _git_command(
+                repo_root,
+                ["merge-base", "--is-ancestor", expected_commit, head],
+            )
+        except SeedInventoryBlocked as exc:
+            raise SeedInventoryBlocked(
+                "source commit is not an ancestor of pushed origin/master"
+            ) from exc
+        if tracked_status:
+            raise SeedInventoryBlocked("source tracked worktree is not clean")
+        source_inventory = _mapping(
+            control.build_source_inventory(repo_root),
+            "source inventory",
+        )
+        source_digest = _digest(
+            source_inventory.get("inventory_sha256"),
+            "source inventory digest",
+        )
+        if source_digest != request["source_inventory_sha256"]:
+            raise SeedInventoryBlocked("source inventory digest differs from request")
+        preservation = _mapping(
+            source_inventory.get("consumed_evidence_preservation"),
+            "consumed evidence preservation",
+        )
+        if preservation.get("verified") is not True:
+            raise SeedInventoryBlocked("consumed evidence preservation is not verified")
+        _digest(
+            preservation.get("manifest_sha256"),
+            "consumed evidence preservation manifest digest",
+        )
+    except (OSError, UnicodeDecodeError, SeedInventoryBlocked) as exc:
+        raise SeedInventoryBlocked(f"source qualification failed: {exc}") from exc
+    except Exception as exc:
+        raise SeedInventoryBlocked(f"source qualification failed: {exc}") from exc
+    return source_inventory
+
+
 def _validate_inventory_authority(
     *,
     repo_root: Path,
@@ -855,76 +968,167 @@ def _validate_inventory_authority(
     ):
         raise SeedInventoryBlocked("inventory authority map is invalid")
 
-    try:
-        if not repo_root.is_dir():
-            raise SeedInventoryBlocked("source repository root is missing")
-        top_level = Path(
-            _git_command(repo_root, ["rev-parse", "--show-toplevel"])
-            .decode("utf-8", errors="strict")
-            .strip()
-        ).resolve()
-        if top_level != repo_root:
-            raise SeedInventoryBlocked("repository root is not the Git top level")
-        expected_commit = normalized_request["source_commit"]
-        head = (
-            _git_command(repo_root, ["rev-parse", "HEAD"])
-            .decode("ascii", errors="strict")
-            .strip()
-        )
-        remote = (
-            _git_command(repo_root, ["rev-parse", "origin/master"])
-            .decode("ascii", errors="strict")
-            .strip()
-        )
-        tracked_status = _git_command(
-            repo_root,
-            ["status", "--porcelain=v1", "--untracked-files=no"],
-        )
-        if head != remote:
-            raise SeedInventoryBlocked(
-                "current HEAD is not the exact pushed origin/master identity"
-            )
-        try:
-            _git_command(
-                repo_root,
-                ["merge-base", "--is-ancestor", expected_commit, head],
-            )
-        except SeedInventoryBlocked as exc:
-            raise SeedInventoryBlocked(
-                "source commit is not an ancestor of pushed origin/master"
-            ) from exc
-        if tracked_status:
-            raise SeedInventoryBlocked("source tracked worktree is not clean")
-        source_inventory = _mapping(
-            control.build_source_inventory(repo_root),
-            "source inventory",
-        )
-        source_digest = _digest(
-            source_inventory.get("inventory_sha256"),
-            "source inventory digest",
-        )
-        if source_digest != normalized_request["source_inventory_sha256"]:
-            raise SeedInventoryBlocked("source inventory digest differs from request")
-        preservation = _mapping(
-            source_inventory.get("consumed_evidence_preservation"),
-            "consumed evidence preservation",
-        )
-        if preservation.get("verified") is not True:
-            raise SeedInventoryBlocked("consumed evidence preservation is not verified")
-        _digest(
-            preservation.get("manifest_sha256"),
-            "consumed evidence preservation manifest digest",
-        )
-    except (OSError, UnicodeDecodeError, SeedInventoryBlocked) as exc:
-        raise SeedInventoryBlocked(f"source qualification failed: {exc}") from exc
-    except Exception as exc:
-        raise SeedInventoryBlocked(f"source qualification failed: {exc}") from exc
+    source_inventory = _validate_source_qualification(
+        repo_root=repo_root,
+        request=normalized_request,
+        control=control,
+    )
     return (
         normalized_request,
         normalized_authorization,
         approval,
         normalized_launch,
         source_inventory,
+    )
+
+
+def _validate_verification_authority(
+    *,
+    repo_root: Path,
+    inventory_request: object,
+    inventory_authorization: object,
+    verification_request: object,
+    verification_authorization: object,
+    verification_approval_record: object,
+    verification_launch_observation: object,
+) -> tuple[
+    dict[str, Any],
+    dict[str, Any],
+    dict[str, Any],
+    dict[str, Any],
+    dict[str, Any],
+    dict[str, Any],
+    dict[str, Any],
+    dict[str, Any],
+]:
+    try:
+        control = importlib.import_module(_CONTROL_MODULE)
+        normalized_inventory_request = control.validate_stage_request(
+            inventory_request
+        )
+        if normalized_inventory_request["stage"] != "inventory":
+            raise SeedInventoryBlocked("verification requires inventory build request")
+        normalized_inventory_authorization = control.validate_stage_authorization(
+            inventory_authorization,
+            normalized_inventory_request,
+        )
+        if normalized_inventory_authorization["execution_authority"] != (
+            control.stage_execution_authority("inventory")
+        ):
+            raise SeedInventoryBlocked("inventory build authority map is invalid")
+
+        normalized_verification_request = control.validate_stage_request(
+            verification_request
+        )
+        if normalized_verification_request["stage"] != "inventory-verification":
+            raise SeedInventoryBlocked(
+                "verification operation requires inventory-verification stage"
+            )
+        normalized_verification_authorization = control.validate_stage_authorization(
+            verification_authorization,
+            normalized_verification_request,
+        )
+        approval = _mapping(
+            verification_approval_record,
+            "inventory verification approval record",
+        )
+        if approval.get("approval_mode") == "standing-delegation":
+            normalized_launch = control.validate_delegated_stage_launch(
+                request=normalized_verification_request,
+                authorization=normalized_verification_authorization,
+                delegated_approval=approval,
+                launch_observation=verification_launch_observation,
+            )
+        elif approval.get("approval_mode") == "external-human-approval":
+            normalized_launch = control.validate_external_human_stage_launch(
+                request=normalized_verification_request,
+                authorization=normalized_verification_authorization,
+                external_approval=approval,
+                launch_observation=verification_launch_observation,
+            )
+        else:
+            raise SeedInventoryBlocked("inventory verification approval mode is invalid")
+    except SeedInventoryBlocked:
+        raise
+    except Exception as exc:
+        raise SeedInventoryBlocked(
+            f"inventory verification authorization is invalid: {exc}"
+        ) from exc
+
+    expected_verification_authority = control.stage_execution_authority(
+        "inventory-verification"
+    )
+    if (
+        normalized_verification_request["execution_authority"]
+        != expected_verification_authority
+        or normalized_verification_authorization["execution_authority"]
+        != expected_verification_authority
+        or set(normalized_verification_request["downstream_authority"].values())
+        != {False}
+        or set(
+            normalized_verification_authorization["downstream_authority"].values()
+        )
+        != {False}
+    ):
+        raise SeedInventoryBlocked("inventory verification authority map is invalid")
+
+    if (
+        normalized_verification_request["source_commit"]
+        != normalized_inventory_request["source_commit"]
+        or normalized_verification_request["source_inventory_sha256"]
+        != normalized_inventory_request["source_inventory_sha256"]
+        or normalized_verification_request["output_root"]
+        != normalized_inventory_request["output_root"]
+    ):
+        raise SeedInventoryBlocked("inventory verification source binding mismatch")
+    resources = normalized_verification_request["resources"]
+    if resources != {
+        "max_cli_completion_bytes": CLI_COMPLETION_MAX_BYTES,
+        "max_inventory_bytes": INVENTORY_MAX_BYTES,
+    }:
+        raise SeedInventoryBlocked("inventory verification resource binding mismatch")
+    if _started_receipt_path(normalized_verification_request).exists():
+        raise SeedInventoryBlocked("inventory verification request already started")
+
+    source_inventory = _validate_source_qualification(
+        repo_root=repo_root,
+        request=normalized_verification_request,
+        control=control,
+    )
+    _receipt_path, inventory_receipt = _read_inventory_started_receipt(
+        request=normalized_inventory_request,
+        authorization=normalized_inventory_authorization,
+    )
+    prerequisites = normalized_verification_request["prerequisite_bindings"]
+    expected_prerequisites = {
+        "inventory_authorization_sha256": normalized_inventory_authorization[
+            "authorization_sha256"
+        ],
+        "inventory_file_sha256": _digest(
+            prerequisites["inventory_file_sha256"],
+            "declared inventory file digest",
+        ),
+        "inventory_launch_observation_sha256": inventory_receipt[
+            "launch_observation_sha256"
+        ],
+        "inventory_receipt_sha256": inventory_receipt["receipt_sha256"],
+        "inventory_request_sha256": normalized_inventory_request["request_sha256"],
+        "inventory_sha256": _digest(
+            prerequisites["inventory_sha256"],
+            "declared inventory semantic digest",
+        ),
+    }
+    if prerequisites != expected_prerequisites:
+        raise SeedInventoryBlocked("inventory verification prerequisite mismatch")
+    return (
+        normalized_inventory_request,
+        normalized_inventory_authorization,
+        normalized_verification_request,
+        normalized_verification_authorization,
+        approval,
+        normalized_launch,
+        source_inventory,
+        inventory_receipt,
     )
 
 
@@ -1414,12 +1618,10 @@ def _read_stable_regular_file(path: Path, label: str) -> bytes:
     return payload
 
 
-def _completion_receipt(
+def _read_inventory_started_receipt(
     *,
     request: Mapping[str, Any],
     authorization: Mapping[str, Any],
-    approval_record: Mapping[str, Any],
-    inventory_launch_observation_sha256: str,
 ) -> tuple[Path, dict[str, Any]]:
     path = _started_receipt_path(request)
     raw = _read_stable_regular_file(path, "inventory started receipt")
@@ -1438,14 +1640,32 @@ def _completion_receipt(
     ) != _canonical_sha256(body):
         raise SeedInventoryBlocked("inventory started receipt digest mismatch")
     expected = {
-        "approval_sha256": approval_record.get("approval_sha256"),
         "authorization_id": authorization.get("authorization_id"),
         "authorization_sha256": authorization.get("authorization_sha256"),
-        "launch_observation_sha256": inventory_launch_observation_sha256,
         "request_id": request.get("request_id"),
         "request_sha256": request.get("request_sha256"),
         "source_commit": request.get("source_commit"),
         "source_inventory_sha256": request.get("source_inventory_sha256"),
+    }
+    if any(receipt[key] != value for key, value in expected.items()):
+        raise SeedInventoryBlocked("inventory started receipt authority binding mismatch")
+    return path, receipt
+
+
+def _completion_receipt(
+    *,
+    request: Mapping[str, Any],
+    authorization: Mapping[str, Any],
+    approval_record: Mapping[str, Any],
+    inventory_launch_observation_sha256: str,
+) -> tuple[Path, dict[str, Any]]:
+    path, receipt = _read_inventory_started_receipt(
+        request=request,
+        authorization=authorization,
+    )
+    expected = {
+        "approval_sha256": approval_record.get("approval_sha256"),
+        "launch_observation_sha256": inventory_launch_observation_sha256,
     }
     if any(receipt[key] != value for key, value in expected.items()):
         raise SeedInventoryBlocked("inventory started receipt authority binding mismatch")
@@ -1535,6 +1755,116 @@ def _build_cli_completion(
     return completion
 
 
+def _build_verification_cli_completion(
+    *,
+    inventory_request: Mapping[str, Any],
+    inventory_authorization: Mapping[str, Any],
+    verification_request: Mapping[str, Any],
+    verification_authorization: Mapping[str, Any],
+    verification_approval_record: Mapping[str, Any],
+    verification_launch_observation: Mapping[str, Any],
+    artifact: Mapping[str, Any],
+) -> dict[str, Any]:
+    if not isinstance(artifact, Mapping):
+        raise SeedInventoryBlocked(
+            "inventory verification CLI completion artifact must be a mapping"
+        )
+    raw_output = Path(inventory_request["output_root"])
+    if raw_output.is_symlink():
+        raise SeedInventoryBlocked("inventory output must not be a symlink")
+    output, staging = _inventory_paths(inventory_request)
+    if staging.exists():
+        raise SeedInventoryBlocked("inventory staging is ambiguous")
+    if not output.is_dir() or output.is_symlink():
+        raise SeedInventoryBlocked("materialized inventory output is missing")
+    try:
+        entries = sorted(path.name for path in output.iterdir())
+    except OSError as exc:
+        raise SeedInventoryBlocked(
+            f"materialized inventory output read failed: {exc}"
+        ) from exc
+    if entries != [INVENTORY_FILENAME]:
+        raise SeedInventoryBlocked("materialized inventory output is not closed")
+    inventory_path = output / INVENTORY_FILENAME
+    inventory_file_sha256, inventory_size_bytes = _stream_regular_file_sha256(
+        inventory_path,
+        "materialized inventory file",
+    )
+    inventory_receipt_path, inventory_receipt = _read_inventory_started_receipt(
+        request=inventory_request,
+        authorization=inventory_authorization,
+    )
+    verification_receipt_path, verification_receipt = (
+        _read_verification_started_receipt(
+            inventory_request=inventory_request,
+            inventory_authorization=inventory_authorization,
+            inventory_receipt=inventory_receipt,
+            verification_request=verification_request,
+            verification_authorization=verification_authorization,
+            verification_approval_record=verification_approval_record,
+            verification_launch_observation=verification_launch_observation,
+        )
+    )
+    prerequisites = verification_request["prerequisite_bindings"]
+    artifact_bindings = {
+        "authorization_sha256": inventory_authorization.get(
+            "authorization_sha256"
+        ),
+        "inventory_sha256": prerequisites.get("inventory_sha256"),
+        "launch_authority_sha256": inventory_receipt.get(
+            "launch_observation_sha256"
+        ),
+        "request_sha256": inventory_request.get("request_sha256"),
+        "source_inventory_sha256": inventory_request.get(
+            "source_inventory_sha256"
+        ),
+    }
+    if any(artifact.get(key) != value for key, value in artifact_bindings.items()):
+        raise SeedInventoryBlocked(
+            "inventory verification CLI completion artifact binding mismatch"
+        )
+    if inventory_file_sha256 != prerequisites["inventory_file_sha256"]:
+        raise SeedInventoryBlocked(
+            "inventory verification CLI completion file digest mismatch"
+        )
+    body = {
+        "inventory_authorization_sha256": inventory_authorization[
+            "authorization_sha256"
+        ],
+        "inventory_file_sha256": inventory_file_sha256,
+        "inventory_launch_observation_sha256": inventory_receipt[
+            "launch_observation_sha256"
+        ],
+        "inventory_receipt_sha256": inventory_receipt["receipt_sha256"],
+        "inventory_request_sha256": inventory_request["request_sha256"],
+        "inventory_sha256": artifact["inventory_sha256"],
+        "inventory_size_bytes": inventory_size_bytes,
+        "operation": "verify-inventory",
+        "schema_version": VERIFICATION_CLI_COMPLETION_SCHEMA_VERSION,
+        "source_inventory_sha256": inventory_request["source_inventory_sha256"],
+        "status": "verified",
+        "verification_authorization_sha256": verification_authorization[
+            "authorization_sha256"
+        ],
+        "verification_launch_observation_sha256": verification_launch_observation[
+            "observation_sha256"
+        ],
+        "verification_receipt_sha256": verification_receipt["receipt_sha256"],
+        "verification_request_sha256": verification_request["request_sha256"],
+    }
+    completion = {**body, "completion_sha256": _canonical_sha256(body)}
+    _require_exact_keys(
+        completion,
+        _VERIFICATION_CLI_COMPLETION_FIELDS,
+        "inventory verification CLI completion",
+    )
+    if len(canonical_json_bytes(completion)) > CLI_COMPLETION_MAX_BYTES:
+        raise SeedInventoryBlocked(
+            "inventory verification CLI completion exceeds byte limit"
+        )
+    return completion
+
+
 def _require_unmaterialized(request: Mapping[str, Any]) -> None:
     output, staging = _inventory_paths(request)
     if output.exists():
@@ -1577,6 +1907,133 @@ def _start_inventory_once(
     except OSError as exc:
         raise SeedInventoryBlocked(f"inventory start receipt failed: {exc}") from exc
     return receipt
+
+
+def _start_verification_once(
+    *,
+    inventory_request: Mapping[str, Any],
+    inventory_authorization: Mapping[str, Any],
+    inventory_receipt: Mapping[str, Any],
+    verification_request: Mapping[str, Any],
+    verification_authorization: Mapping[str, Any],
+    verification_approval_record: Mapping[str, Any],
+    verification_launch_observation: Mapping[str, Any],
+    source_inventory: Mapping[str, Any],
+) -> dict[str, Any]:
+    path = _started_receipt_path(verification_request)
+    if path.exists():
+        raise SeedInventoryBlocked("inventory verification request already started")
+    prerequisites = verification_request["prerequisite_bindings"]
+    body = {
+        "approval_sha256": verification_approval_record["approval_sha256"],
+        "authorization_id": verification_authorization["authorization_id"],
+        "authorization_sha256": verification_authorization["authorization_sha256"],
+        "inventory_authorization_sha256": inventory_authorization[
+            "authorization_sha256"
+        ],
+        "inventory_file_sha256": prerequisites["inventory_file_sha256"],
+        "inventory_launch_observation_sha256": inventory_receipt[
+            "launch_observation_sha256"
+        ],
+        "inventory_receipt_sha256": inventory_receipt["receipt_sha256"],
+        "inventory_request_sha256": inventory_request["request_sha256"],
+        "inventory_sha256": prerequisites["inventory_sha256"],
+        "launch_observation_sha256": verification_launch_observation[
+            "observation_sha256"
+        ],
+        "request_id": verification_request["request_id"],
+        "request_sha256": verification_request["request_sha256"],
+        "schema_version": VERIFICATION_STARTED_RECEIPT_SCHEMA_VERSION,
+        "source_commit": verification_request["source_commit"],
+        "source_inventory_sha256": source_inventory["inventory_sha256"],
+    }
+    receipt = {**body, "receipt_sha256": _canonical_sha256(body)}
+    try:
+        path.parent.mkdir(parents=True, exist_ok=True)
+        with path.open("xb") as handle:
+            handle.write(canonical_json_bytes(receipt))
+            handle.flush()
+            os.fsync(handle.fileno())
+    except FileExistsError as exc:
+        raise SeedInventoryBlocked(
+            "inventory verification request already started"
+        ) from exc
+    except OSError as exc:
+        raise SeedInventoryBlocked(
+            f"inventory verification start receipt failed: {exc}"
+        ) from exc
+    return receipt
+
+
+def _read_verification_started_receipt(
+    *,
+    inventory_request: Mapping[str, Any],
+    inventory_authorization: Mapping[str, Any],
+    inventory_receipt: Mapping[str, Any],
+    verification_request: Mapping[str, Any],
+    verification_authorization: Mapping[str, Any],
+    verification_approval_record: Mapping[str, Any],
+    verification_launch_observation: Mapping[str, Any],
+) -> tuple[Path, dict[str, Any]]:
+    path = _started_receipt_path(verification_request)
+    raw = _read_stable_regular_file(path, "inventory verification started receipt")
+    receipt = _mapping(
+        _strict_json(raw, "inventory verification started receipt"),
+        "inventory verification started receipt",
+    )
+    _require_exact_keys(
+        receipt,
+        _VERIFICATION_STARTED_RECEIPT_FIELDS,
+        "inventory verification started receipt",
+    )
+    if raw != canonical_json_bytes(receipt):
+        raise SeedInventoryBlocked(
+            "inventory verification started receipt is not canonical"
+        )
+    if receipt["schema_version"] != VERIFICATION_STARTED_RECEIPT_SCHEMA_VERSION:
+        raise SeedInventoryBlocked(
+            "inventory verification started receipt schema mismatch"
+        )
+    body = {key: value for key, value in receipt.items() if key != "receipt_sha256"}
+    if _digest(
+        receipt["receipt_sha256"],
+        "inventory verification receipt digest",
+    ) != _canonical_sha256(body):
+        raise SeedInventoryBlocked(
+            "inventory verification started receipt digest mismatch"
+        )
+    prerequisites = verification_request["prerequisite_bindings"]
+    expected = {
+        "approval_sha256": verification_approval_record.get("approval_sha256"),
+        "authorization_id": verification_authorization.get("authorization_id"),
+        "authorization_sha256": verification_authorization.get(
+            "authorization_sha256"
+        ),
+        "inventory_authorization_sha256": inventory_authorization.get(
+            "authorization_sha256"
+        ),
+        "inventory_file_sha256": prerequisites.get("inventory_file_sha256"),
+        "inventory_launch_observation_sha256": inventory_receipt.get(
+            "launch_observation_sha256"
+        ),
+        "inventory_receipt_sha256": inventory_receipt.get("receipt_sha256"),
+        "inventory_request_sha256": inventory_request.get("request_sha256"),
+        "inventory_sha256": prerequisites.get("inventory_sha256"),
+        "launch_observation_sha256": verification_launch_observation.get(
+            "observation_sha256"
+        ),
+        "request_id": verification_request.get("request_id"),
+        "request_sha256": verification_request.get("request_sha256"),
+        "source_commit": verification_request.get("source_commit"),
+        "source_inventory_sha256": verification_request.get(
+            "source_inventory_sha256"
+        ),
+    }
+    if any(receipt[key] != value for key, value in expected.items()):
+        raise SeedInventoryBlocked(
+            "inventory verification started receipt authority binding mismatch"
+        )
+    return path, receipt
 
 
 def _publish_inventory_once(
@@ -1677,55 +2134,90 @@ def _read_materialized_inventory(request: Mapping[str, Any]) -> dict[str, Any]:
         raise SeedInventoryBlocked("materialized inventory file is invalid")
     if path.stat().st_size > INVENTORY_MAX_BYTES:
         raise SeedInventoryBlocked("materialized inventory exceeds byte limit")
-    raw = path.read_bytes()
+    raw = _read_stable_regular_file(path, "materialized inventory file")
     if len(raw) > INVENTORY_MAX_BYTES:
         raise SeedInventoryBlocked("materialized inventory exceeds byte limit")
-    return validate_inventory(_strict_json(raw, INVENTORY_FILENAME))
+    artifact = validate_inventory(_strict_json(raw, INVENTORY_FILENAME))
+    if raw != canonical_json_bytes(artifact):
+        raise SeedInventoryBlocked("materialized inventory is not canonical")
+    return artifact
 
 
 def verify_inventory(
     *,
     repo_root: Path | str,
-    request: object,
-    authorization: object,
-    approval_record: object,
-    launch_observation: object,
+    inventory_request: object,
+    inventory_authorization: object,
+    verification_request: object,
+    verification_authorization: object,
+    verification_approval_record: object,
+    verification_launch_observation: object,
 ) -> dict[str, Any]:
     """Read and reconstruct an inventory without selecting or publishing cohorts."""
     root = Path(repo_root).resolve()
     (
-        normalized_request,
-        normalized_authorization,
-        _normalized_approval,
-        _normalized_launch,
-        _source_inventory,
-    ) = (
-        _validate_inventory_authority(
-            repo_root=root,
-            request=request,
-            authorization=authorization,
-            approval_record=approval_record,
-            launch_observation=launch_observation,
-        )
+        normalized_inventory_request,
+        normalized_inventory_authorization,
+        normalized_verification_request,
+        normalized_verification_authorization,
+        normalized_verification_approval,
+        normalized_verification_launch,
+        source_inventory,
+        inventory_receipt,
+    ) = _validate_verification_authority(
+        repo_root=root,
+        inventory_request=inventory_request,
+        inventory_authorization=inventory_authorization,
+        verification_request=verification_request,
+        verification_authorization=verification_authorization,
+        verification_approval_record=verification_approval_record,
+        verification_launch_observation=verification_launch_observation,
     )
-    materialized = _read_materialized_inventory(normalized_request)
+    _start_verification_once(
+        inventory_request=normalized_inventory_request,
+        inventory_authorization=normalized_inventory_authorization,
+        inventory_receipt=inventory_receipt,
+        verification_request=normalized_verification_request,
+        verification_authorization=normalized_verification_authorization,
+        verification_approval_record=normalized_verification_approval,
+        verification_launch_observation=normalized_verification_launch,
+        source_inventory=source_inventory,
+    )
+    materialized = _read_materialized_inventory(normalized_inventory_request)
+    inventory_bytes = canonical_json_bytes(materialized)
+    prerequisites = normalized_verification_request["prerequisite_bindings"]
+    if (
+        hashlib.sha256(inventory_bytes).hexdigest()
+        != prerequisites["inventory_file_sha256"]
+        or len(inventory_bytes) > normalized_verification_request["resources"][
+            "max_inventory_bytes"
+        ]
+        or materialized["inventory_sha256"] != prerequisites["inventory_sha256"]
+    ):
+        raise SeedInventoryBlocked("materialized inventory declared binding mismatch")
     build_evidence = materialized["authority_evidence"]
     if (
-        materialized["request_sha256"] != normalized_request["request_sha256"]
+        materialized["request_sha256"]
+        != normalized_inventory_request["request_sha256"]
         or materialized["authorization_sha256"]
-        != normalized_authorization["authorization_sha256"]
-        or materialized["repository_commit"] != normalized_request["source_commit"]
+        != normalized_inventory_authorization["authorization_sha256"]
+        or materialized["repository_commit"]
+        != normalized_inventory_request["source_commit"]
         or materialized["source_inventory_sha256"]
-        != normalized_request["source_inventory_sha256"]
+        != normalized_inventory_request["source_inventory_sha256"]
         or materialized["launch_authority_sha256"]
-        != build_evidence["build_launch_observation"]["observation_sha256"]
+        != inventory_receipt["launch_observation_sha256"]
+        or build_evidence["approval_record"]["approval_sha256"]
+        != inventory_receipt["approval_sha256"]
+        or build_evidence["build_launch_observation"]["observation_sha256"]
+        != inventory_receipt["launch_observation_sha256"]
     ):
         raise SeedInventoryBlocked("materialized inventory authority binding mismatch")
 
     registry, row_count, excluded = _build_source_registry_and_exclusions(
         root,
-        repository_commit=normalized_request["source_commit"],
-        output_root=normalized_request["output_root"],
+        repository_commit=normalized_inventory_request["source_commit"],
+        output_root=normalized_inventory_request["output_root"],
     )
     if canonical_json_bytes(materialized["source_registry"]) != canonical_json_bytes(
         registry
@@ -1740,22 +2232,36 @@ def verify_inventory(
     return materialized
 
 
-def _load_json_file(path: str, label: str) -> dict[str, Any]:
-    value = _strict_json(Path(path).read_bytes(), label)
-    return _mapping(value, label)
+def _load_json_file(
+    path: str, label: str, *, require_canonical: bool = False
+) -> dict[str, Any]:
+    raw = _read_stable_regular_file(Path(path), label)
+    value = _mapping(_strict_json(raw, label), label)
+    if require_canonical and raw != canonical_json_bytes(value):
+        raise SeedInventoryBlocked(f"{label} is not canonical")
+    return value
 
 
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     subparsers = parser.add_subparsers(dest="command", required=True)
     subparsers.add_parser("check-dispatch")
-    for command in ("build-inventory", "verify-inventory"):
-        command_parser = subparsers.add_parser(command)
-        command_parser.add_argument("--repo-root", required=True)
-        command_parser.add_argument("--request", required=True)
-        command_parser.add_argument("--authorization", required=True)
-        command_parser.add_argument("--approval-record", required=True)
-        command_parser.add_argument("--launch-observation", required=True)
+    build_parser = subparsers.add_parser("build-inventory")
+    build_parser.add_argument("--repo-root", required=True)
+    build_parser.add_argument("--request", required=True)
+    build_parser.add_argument("--authorization", required=True)
+    build_parser.add_argument("--approval-record", required=True)
+    build_parser.add_argument("--launch-observation", required=True)
+    verification_parser = subparsers.add_parser("verify-inventory")
+    verification_parser.add_argument("--repo-root", required=True)
+    verification_parser.add_argument("--inventory-request", required=True)
+    verification_parser.add_argument("--inventory-authorization", required=True)
+    verification_parser.add_argument("--verification-request", required=True)
+    verification_parser.add_argument("--verification-authorization", required=True)
+    verification_parser.add_argument("--verification-approval-record", required=True)
+    verification_parser.add_argument(
+        "--verification-launch-observation", required=True
+    )
     args = parser.parse_args(argv)
     if args.command == "check-dispatch":
         try:
@@ -1764,33 +2270,89 @@ def main(argv: list[str] | None = None) -> int:
             parser.error(str(exc))
         sys.stdout.buffer.write(canonical_json_bytes(artifact))
         return 0
-    request = _load_json_file(args.request, "inventory request")
-    authorization = _load_json_file(args.authorization, "inventory authorization")
-    approval_record = _load_json_file(args.approval_record, "inventory approval record")
-    launch_observation = _load_json_file(
-        args.launch_observation,
-        "inventory launch observation",
-    )
-    operation = build_inventory if args.command == "build-inventory" else verify_inventory
     try:
-        artifact = operation(
-            repo_root=args.repo_root,
-            request=request,
-            authorization=authorization,
-            approval_record=approval_record,
-            launch_observation=launch_observation,
-        )
-        completion = _build_cli_completion(
-            operation=args.command,
-            request=request,
-            authorization=authorization,
-            approval_record=approval_record,
-            launch_observation=launch_observation,
-            artifact=artifact,
-        )
+        if args.command == "build-inventory":
+            request = _load_json_file(args.request, "inventory request")
+            authorization = _load_json_file(
+                args.authorization, "inventory authorization"
+            )
+            approval_record = _load_json_file(
+                args.approval_record, "inventory approval record"
+            )
+            launch_observation = _load_json_file(
+                args.launch_observation,
+                "inventory launch observation",
+            )
+            artifact = build_inventory(
+                repo_root=args.repo_root,
+                request=request,
+                authorization=authorization,
+                approval_record=approval_record,
+                launch_observation=launch_observation,
+            )
+            completion = _build_cli_completion(
+                operation=args.command,
+                request=request,
+                authorization=authorization,
+                approval_record=approval_record,
+                launch_observation=launch_observation,
+                artifact=artifact,
+            )
+        else:
+            inventory_request = _load_json_file(
+                args.inventory_request,
+                "inventory request",
+                require_canonical=True,
+            )
+            inventory_authorization = _load_json_file(
+                args.inventory_authorization,
+                "inventory authorization",
+                require_canonical=True,
+            )
+            verification_request = _load_json_file(
+                args.verification_request,
+                "inventory verification request",
+                require_canonical=True,
+            )
+            verification_authorization = _load_json_file(
+                args.verification_authorization,
+                "inventory verification authorization",
+                require_canonical=True,
+            )
+            verification_approval_record = _load_json_file(
+                args.verification_approval_record,
+                "inventory verification approval record",
+                require_canonical=True,
+            )
+            verification_launch_observation = _load_json_file(
+                args.verification_launch_observation,
+                "inventory verification launch observation",
+                require_canonical=True,
+            )
+            artifact = verify_inventory(
+                repo_root=args.repo_root,
+                inventory_request=inventory_request,
+                inventory_authorization=inventory_authorization,
+                verification_request=verification_request,
+                verification_authorization=verification_authorization,
+                verification_approval_record=verification_approval_record,
+                verification_launch_observation=verification_launch_observation,
+            )
+            completion = _build_verification_cli_completion(
+                inventory_request=inventory_request,
+                inventory_authorization=inventory_authorization,
+                verification_request=verification_request,
+                verification_authorization=verification_authorization,
+                verification_approval_record=verification_approval_record,
+                verification_launch_observation=verification_launch_observation,
+                artifact=artifact,
+            )
     except (OSError, SeedInventoryBlocked) as exc:
         parser.error(str(exc))
-    sys.stdout.buffer.write(canonical_json_bytes(completion))
+    payload = canonical_json_bytes(completion)
+    if sys.stdout.buffer.write(payload) != len(payload):
+        raise OSError("inventory CLI completion stdout write was incomplete")
+    sys.stdout.buffer.flush()
     return 0
 
 
@@ -1812,6 +2374,8 @@ __all__ = [
     "SOURCE_REGISTRY_SCHEMA_VERSION",
     "SeedInventoryBlocked",
     "TRAINING_SEED_COUNT",
+    "VERIFICATION_CLI_COMPLETION_SCHEMA_VERSION",
+    "VERIFICATION_STARTED_RECEIPT_SCHEMA_VERSION",
     "build_inventory",
     "canonical_json_bytes",
     "check_dispatch",

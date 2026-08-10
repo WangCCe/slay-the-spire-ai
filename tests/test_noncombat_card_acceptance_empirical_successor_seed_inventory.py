@@ -194,6 +194,103 @@ def _inventory_authority(repo: Path, commit: str):
     return request, authorization, approval, launch_observation
 
 
+def _inventory_verification_authority(
+    repo: Path,
+    commit: str,
+    *,
+    inventory_request,
+    inventory_authorization,
+    inventory_artifact,
+):
+    inventory_path = (
+        Path(inventory_request["output_root"])
+        / seed_inventory.INVENTORY_FILENAME
+    )
+    inventory_receipt = json.loads(
+        _started_receipt_path(inventory_request).read_text(encoding="ascii")
+    )
+    prerequisites = {
+        "inventory_authorization_sha256": inventory_authorization[
+            "authorization_sha256"
+        ],
+        "inventory_file_sha256": hashlib.sha256(
+            inventory_path.read_bytes()
+        ).hexdigest(),
+        "inventory_launch_observation_sha256": inventory_receipt[
+            "launch_observation_sha256"
+        ],
+        "inventory_receipt_sha256": inventory_receipt["receipt_sha256"],
+        "inventory_request_sha256": inventory_request["request_sha256"],
+        "inventory_sha256": inventory_artifact["inventory_sha256"],
+    }
+    request = control.build_stage_request(
+        stage="inventory-verification",
+        request_id="card-acceptance-20260810-inventory-verification-request-v1",
+        source_commit=commit,
+        source_inventory_sha256=_SOURCE_INVENTORY["inventory_sha256"],
+        configuration_identity=control.experiment_configuration_identity(),
+        prerequisite_bindings=prerequisites,
+        output_root=inventory_request["output_root"],
+    )
+    delegation = _inventory_standing_delegation()
+    approval_observation = _inventory_revocation_observation(
+        request,
+        delegation,
+        phase="approval",
+        checked_at="2026-08-10T10:00:00+00:00",
+        message_timestamp="2026-08-10T09:59:59+00:00",
+    )
+    approval = control.bind_delegated_approval(
+        request=request,
+        request_review_sha256="d" * 64,
+        delegation=delegation,
+        approval_observation=approval_observation,
+        resolved_at="2026-08-10T10:00:00+00:00",
+    )
+    authorization = control.build_stage_authorization(
+        request=request,
+        authorization_id=(
+            "card-acceptance-20260810-inventory-verification-authorization-v1"
+        ),
+        request_review_sha256="d" * 64,
+        approval_record_sha256=approval["approval_sha256"],
+    )
+    launch_observation = _inventory_revocation_observation(
+        request,
+        delegation,
+        phase="launch",
+        checked_at="2026-08-10T10:01:00+00:00",
+        message_timestamp="2026-08-10T10:00:59+00:00",
+    )
+    return request, authorization, approval, launch_observation
+
+
+def _verification_kwargs(
+    repo: Path,
+    commit: str,
+    *,
+    inventory_request,
+    inventory_authorization,
+    inventory_artifact,
+):
+    request, authorization, approval, launch = _inventory_verification_authority(
+        repo,
+        commit,
+        inventory_request=inventory_request,
+        inventory_authorization=inventory_authorization,
+        inventory_artifact=inventory_artifact,
+    )
+    return {
+        "repo_root": repo,
+        "inventory_request": inventory_request,
+        "inventory_authorization": inventory_authorization,
+        "verification_request": request,
+        "verification_authorization": authorization,
+        "verification_approval_record": approval,
+        "verification_launch_observation": launch,
+    }
+
+
 def _first_eligible(excluded: set[int], count: int) -> list[int]:
     selected = []
     candidate = 0
@@ -211,6 +308,62 @@ def _started_receipt_path(request) -> Path:
         / request["request_sha256"]
         / "started.json"
     )
+
+
+def _verification_arguments(
+    *,
+    repo,
+    inventory_request,
+    inventory_authorization,
+    verification_request,
+    verification_authorization,
+    verification_approval,
+    verification_launch,
+):
+    values = {
+        "inventory-request": inventory_request,
+        "inventory-authorization": inventory_authorization,
+        "verification-request": verification_request,
+        "verification-authorization": verification_authorization,
+        "verification-approval-record": verification_approval,
+        "verification-launch-observation": verification_launch,
+    }
+    arguments = ["verify-inventory", "--repo-root", str(repo)]
+    for flag, value in values.items():
+        path = repo.parent / f"{flag}.json"
+        path.write_bytes(_json_bytes(value))
+        arguments.extend([f"--{flag}", str(path)])
+    return arguments
+
+
+def _synthetic_verification(tmp_path: Path):
+    repo, commit = _commit_files(
+        tmp_path,
+        {"reports/history/seeds.json": _json_bytes({"used_seeds": [1, 4]})},
+    )
+    request, authorization, approval, launch = _inventory_authority(repo, commit)
+    artifact = seed_inventory.build_inventory(
+        repo_root=repo,
+        request=request,
+        authorization=authorization,
+        approval_record=approval,
+        launch_observation=launch,
+    )
+    verification = _verification_kwargs(
+        repo,
+        commit,
+        inventory_request=request,
+        inventory_authorization=authorization,
+        inventory_artifact=artifact,
+    )
+    return {
+        "artifact": artifact,
+        "commit": commit,
+        "inventory_approval": approval,
+        "inventory_launch": launch,
+        "repo": repo,
+        "verification": verification,
+    }
 
 
 def test_build_inventory_publishes_exact_fresh_disjoint_cohorts(tmp_path):
@@ -773,13 +926,14 @@ def test_historical_exclusion_roles_include_failed_and_untouched_reservations(
         (104, "holdout"),
         (105, "reserved"),
     }
-    assert seed_inventory.verify_inventory(
-        repo_root=repo,
-        request=request,
-        authorization=authorization,
-        approval_record=approval,
-        launch_observation=launch_observation,
-    ) == artifact
+    verification = _verification_kwargs(
+        repo,
+        commit,
+        inventory_request=request,
+        inventory_authorization=authorization,
+        inventory_artifact=artifact,
+    )
+    assert seed_inventory.verify_inventory(**verification) == artifact
 
 
 def test_generated_roots_are_excluded_before_blob_loading_and_recursion(
@@ -1006,38 +1160,59 @@ def test_verify_inventory_reconstructs_without_selector_or_materializer(
 
     monkeypatch.setattr(seed_inventory, "_select_fresh_cohorts", forbidden)
     monkeypatch.setattr(seed_inventory, "_publish_inventory_once", forbidden)
-    fresh_launch_observation = _inventory_revocation_observation(
-        request,
-        approval["delegation"],
-        phase="launch",
-        checked_at="2026-08-09T10:02:00+00:00",
-        message_timestamp="2026-08-09T10:01:59+00:00",
+    verification = _verification_kwargs(
+        repo,
+        commit,
+        inventory_request=request,
+        inventory_authorization=authorization,
+        inventory_artifact=artifact,
     )
-
-    assert seed_inventory.verify_inventory(
-        repo_root=repo,
-        request=request,
-        authorization=authorization,
-        approval_record=approval,
-        launch_observation=fresh_launch_observation,
-    ) == artifact
+    assert seed_inventory.verify_inventory(**verification) == artifact
     assert artifact["launch_authority_sha256"] == launch_observation[
         "observation_sha256"
     ]
-    completion = seed_inventory._build_cli_completion(
-        operation="verify-inventory",
-        request=request,
-        authorization=authorization,
-        approval_record=approval,
-        launch_observation=fresh_launch_observation,
+    completion = seed_inventory._build_verification_cli_completion(
+        inventory_request=request,
+        inventory_authorization=authorization,
+        verification_request=verification["verification_request"],
+        verification_authorization=verification["verification_authorization"],
+        verification_approval_record=verification[
+            "verification_approval_record"
+        ],
+        verification_launch_observation=verification[
+            "verification_launch_observation"
+        ],
         artifact=artifact,
     )
     assert completion["inventory_launch_observation_sha256"] == (
         launch_observation["observation_sha256"]
     )
-    assert completion["operation_launch_observation_sha256"] == (
-        fresh_launch_observation["observation_sha256"]
+    assert completion["verification_launch_observation_sha256"] == (
+        verification["verification_launch_observation"]["observation_sha256"]
     )
+    verification_receipt_path = _started_receipt_path(
+        verification["verification_request"]
+    )
+    verification_receipt = json.loads(
+        verification_receipt_path.read_text(encoding="ascii")
+    )
+    assert verification_receipt_path.read_bytes() == _json_bytes(
+        verification_receipt
+    )
+
+    def reject_duplicate_access(*_args, **_kwargs):
+        raise AssertionError("successful duplicate reached source qualification")
+
+    monkeypatch.setattr(
+        seed_inventory,
+        "_validate_source_qualification",
+        reject_duplicate_access,
+    )
+    with pytest.raises(
+        seed_inventory.SeedInventoryBlocked,
+        match="verification request already started",
+    ):
+        seed_inventory.verify_inventory(**verification)
 
 
 def test_inventory_authority_fails_before_source_discovery(tmp_path, monkeypatch):
@@ -1168,17 +1343,18 @@ def test_inventory_is_write_once_and_rejects_mutated_materialized_bytes(tmp_path
         )
 
     path = Path(request["output_root"]) / seed_inventory.INVENTORY_FILENAME
+    verification = _verification_kwargs(
+        repo,
+        commit,
+        inventory_request=request,
+        inventory_authorization=authorization,
+        inventory_artifact=json.loads(path.read_text(encoding="ascii")),
+    )
     changed = json.loads(path.read_text(encoding="ascii"))
     changed["cohorts"]["training"][0] += 1
     path.write_bytes(_json_bytes(changed))
     with pytest.raises(seed_inventory.SeedInventoryBlocked, match="cohort|inventory"):
-        seed_inventory.verify_inventory(
-            repo_root=repo,
-            request=request,
-            authorization=authorization,
-            approval_record=approval,
-            launch_observation=launch_observation,
-        )
+        seed_inventory.verify_inventory(**verification)
 
 
 def test_verify_inventory_rejects_rehashed_aggregate_count_drift(tmp_path):
@@ -1211,18 +1387,19 @@ def test_verify_inventory_rejects_rehashed_aggregate_count_drift(tmp_path):
     body = {key: value for key, value in changed.items() if key != "inventory_sha256"}
     changed["inventory_sha256"] = hashlib.sha256(_json_bytes(body)).hexdigest()
     path.write_bytes(_json_bytes(changed))
+    verification = _verification_kwargs(
+        repo,
+        commit,
+        inventory_request=request,
+        inventory_authorization=authorization,
+        inventory_artifact=changed,
+    )
 
     with pytest.raises(
         seed_inventory.SeedInventoryBlocked,
         match="source registry reconstruction",
     ):
-        seed_inventory.verify_inventory(
-            repo_root=repo,
-            request=request,
-            authorization=authorization,
-            approval_record=approval,
-            launch_observation=launch_observation,
-        )
+        seed_inventory.verify_inventory(**verification)
 
 
 def test_verify_inventory_rejects_oversized_file_before_read(tmp_path, monkeypatch):
@@ -1269,18 +1446,19 @@ def test_verify_inventory_rejects_rehashed_build_launch_substitution(tmp_path):
     body = {key: value for key, value in changed.items() if key != "inventory_sha256"}
     changed["inventory_sha256"] = hashlib.sha256(_json_bytes(body)).hexdigest()
     path.write_bytes(_json_bytes(changed))
+    verification = _verification_kwargs(
+        repo,
+        commit,
+        inventory_request=request,
+        inventory_authorization=authorization,
+        inventory_artifact=changed,
+    )
 
     with pytest.raises(
         seed_inventory.SeedInventoryBlocked,
         match="authority evidence|launch authority|build launch",
     ):
-        seed_inventory.verify_inventory(
-            repo_root=repo,
-            request=request,
-            authorization=authorization,
-            approval_record=approval,
-            launch_observation=launch_observation,
-        )
+        seed_inventory.verify_inventory(**verification)
 
 
 def test_inventory_validation_rejects_unknown_fields(tmp_path):
@@ -1435,20 +1613,10 @@ def _build_completion(fixture, *, operation="build-inventory"):
     )
 
 
-@pytest.mark.parametrize(
-    ("operation", "function_name", "status"),
-    [
-        ("build-inventory", "build_inventory", "published"),
-        ("verify-inventory", "verify_inventory", "verified"),
-    ],
-)
-def test_inventory_cli_forwards_authority_and_emits_bounded_completion(
+def test_build_inventory_cli_forwards_authority_and_emits_bounded_completion(
     tmp_path,
     monkeypatch,
     capsysbinary,
-    operation,
-    function_name,
-    status,
 ):
     fixture = _cli_completion_fixture(tmp_path)
 
@@ -1457,8 +1625,8 @@ def test_inventory_cli_forwards_authority_and_emits_bounded_completion(
         return copy.deepcopy(fixture["artifact"])
 
     observed = {}
-    monkeypatch.setattr(seed_inventory, function_name, fake_build_inventory)
-    assert seed_inventory.main(_cli_arguments(fixture, operation)) == 0
+    monkeypatch.setattr(seed_inventory, "build_inventory", fake_build_inventory)
+    assert seed_inventory.main(_cli_arguments(fixture, "build-inventory")) == 0
     assert observed == {
         "approval_record": fixture["approval"],
         "authorization": fixture["authorization"],
@@ -1468,18 +1636,459 @@ def test_inventory_cli_forwards_authority_and_emits_bounded_completion(
     }
     stdout = capsysbinary.readouterr().out
     assert stdout == _json_bytes(
-        _expected_cli_completion(fixture, operation, status)
+        _expected_cli_completion(fixture, "build-inventory", "published")
     )
     assert len(stdout) <= seed_inventory.CLI_COMPLETION_MAX_BYTES
 
 
-def test_inventory_cli_requires_launch_observation(tmp_path):
+def test_build_inventory_cli_requires_launch_observation(tmp_path):
     fixture = _cli_completion_fixture(tmp_path)
 
     with pytest.raises(SystemExit, match="2"):
         seed_inventory.main(
-            _cli_arguments(fixture, "verify-inventory", include_launch=False)
+            _cli_arguments(fixture, "build-inventory", include_launch=False)
         )
+
+
+def test_build_inventory_cli_preserves_noncanonical_json_compatibility(
+    tmp_path, monkeypatch, capsysbinary
+):
+    fixture = _cli_completion_fixture(tmp_path)
+    fixture["paths"]["request"].write_text(
+        json.dumps(fixture["request"], indent=2),
+        encoding="ascii",
+    )
+    monkeypatch.setattr(
+        seed_inventory,
+        "build_inventory",
+        lambda **_kwargs: copy.deepcopy(fixture["artifact"]),
+    )
+
+    assert seed_inventory.main(_cli_arguments(fixture, "build-inventory")) == 0
+    assert json.loads(capsysbinary.readouterr().out) == _expected_cli_completion(
+        fixture,
+        "build-inventory",
+        "published",
+    )
+
+
+def test_verify_inventory_cli_requires_distinct_authority_and_emits_completion(
+    tmp_path, monkeypatch, capsysbinary
+):
+    repo, commit = _commit_files(
+        tmp_path,
+        {"reports/history/seeds.json": _json_bytes({"used_seeds": [1, 4]})},
+    )
+    request, authorization, approval, launch = _inventory_authority(repo, commit)
+    artifact = seed_inventory.build_inventory(
+        repo_root=repo,
+        request=request,
+        authorization=authorization,
+        approval_record=approval,
+        launch_observation=launch,
+    )
+    verification = _verification_kwargs(
+        repo,
+        commit,
+        inventory_request=request,
+        inventory_authorization=authorization,
+        inventory_artifact=artifact,
+    )
+    arguments = _verification_arguments(
+        repo=repo,
+        inventory_request=request,
+        inventory_authorization=authorization,
+        verification_request=verification["verification_request"],
+        verification_authorization=verification["verification_authorization"],
+        verification_approval=verification["verification_approval_record"],
+        verification_launch=verification["verification_launch_observation"],
+    )
+    real_verify = seed_inventory.verify_inventory
+    observed = {}
+
+    def recording_verify(**kwargs):
+        observed.update(kwargs)
+        return real_verify(**kwargs)
+
+    monkeypatch.setattr(seed_inventory, "verify_inventory", recording_verify)
+    assert seed_inventory.main(arguments) == 0
+    expected = {**verification, "repo_root": str(repo)}
+    assert observed == expected
+    completion = json.loads(capsysbinary.readouterr().out)
+    assert completion["schema_version"] == (
+        seed_inventory.VERIFICATION_CLI_COMPLETION_SCHEMA_VERSION
+    )
+    assert completion["status"] == "verified"
+    assert completion["inventory_receipt_sha256"] == json.loads(
+        _started_receipt_path(request).read_text(encoding="ascii")
+    )["receipt_sha256"]
+    assert completion["verification_receipt_sha256"] == json.loads(
+        _started_receipt_path(verification["verification_request"]).read_text(
+            encoding="ascii"
+        )
+    )["receipt_sha256"]
+    assert len(_json_bytes(completion)) <= seed_inventory.CLI_COMPLETION_MAX_BYTES
+
+
+def test_verify_cli_rejects_legacy_build_authority_shape_before_dispatch(
+    tmp_path, monkeypatch
+):
+    fixture = _cli_completion_fixture(tmp_path)
+
+    def forbidden(**_kwargs):
+        raise AssertionError("legacy verification command reached operation dispatch")
+
+    monkeypatch.setattr(seed_inventory, "verify_inventory", forbidden)
+    with pytest.raises(SystemExit, match="2"):
+        seed_inventory.main(_cli_arguments(fixture, "verify-inventory"))
+
+
+def test_verify_direct_api_requires_distinct_authority_before_any_access(
+    tmp_path, monkeypatch
+):
+    def forbidden(**_kwargs):
+        raise AssertionError("build-only direct verification reached authority access")
+
+    monkeypatch.setattr(seed_inventory, "_validate_inventory_authority", forbidden)
+    with pytest.raises(TypeError):
+        seed_inventory.verify_inventory(
+            repo_root=tmp_path,
+            request={},
+            authorization={},
+            approval_record={},
+            launch_observation={},
+        )
+
+
+@pytest.mark.parametrize(
+    "case",
+    [
+        "missing_request_field",
+        "unknown_request_field",
+        "missing_authorization_field",
+        "unknown_authorization_field",
+        "missing_approval_field",
+        "unknown_approval_field",
+        "missing_launch_field",
+        "unknown_launch_field",
+        "stale_launch",
+        "predecessor_authorization",
+        "predecessor_approval",
+        "predecessor_launch",
+    ],
+)
+def test_verify_authority_rejects_malformed_or_predecessor_artifacts_before_access(
+    tmp_path, monkeypatch, case
+):
+    fixture = _synthetic_verification(tmp_path)
+    verification = copy.deepcopy(fixture["verification"])
+    if case == "missing_request_field":
+        verification["verification_request"].pop("stage")
+    elif case == "unknown_request_field":
+        verification["verification_request"]["unexpected"] = False
+    elif case == "missing_authorization_field":
+        verification["verification_authorization"].pop("stage")
+    elif case == "unknown_authorization_field":
+        verification["verification_authorization"]["unexpected"] = False
+    elif case == "missing_approval_field":
+        verification["verification_approval_record"].pop("approval_sha256")
+    elif case == "unknown_approval_field":
+        verification["verification_approval_record"]["unexpected"] = False
+    elif case == "missing_launch_field":
+        verification["verification_launch_observation"].pop("phase")
+    elif case == "unknown_launch_field":
+        verification["verification_launch_observation"]["unexpected"] = False
+    elif case == "stale_launch":
+        request = verification["verification_request"]
+        delegation = verification["verification_approval_record"]["delegation"]
+        verification["verification_launch_observation"] = (
+            _inventory_revocation_observation(
+                request,
+                delegation,
+                phase="launch",
+                checked_at="2026-08-10T09:59:00+00:00",
+                message_timestamp="2026-08-10T09:58:59+00:00",
+            )
+        )
+    elif case == "predecessor_authorization":
+        verification["verification_authorization"] = verification[
+            "inventory_authorization"
+        ]
+    elif case == "predecessor_approval":
+        verification["verification_approval_record"] = fixture[
+            "inventory_approval"
+        ]
+    else:
+        verification["verification_launch_observation"] = fixture[
+            "inventory_launch"
+        ]
+
+    def forbidden(*_args, **_kwargs):
+        raise AssertionError("invalid verification authority reached evidence access")
+
+    for name in (
+        "_build_source_registry_and_exclusions",
+        "_read_inventory_started_receipt",
+        "_read_materialized_inventory",
+        "_validate_source_qualification",
+    ):
+        monkeypatch.setattr(seed_inventory, name, forbidden)
+    with pytest.raises(seed_inventory.SeedInventoryBlocked):
+        seed_inventory.verify_inventory(**verification)
+    assert not _started_receipt_path(
+        fixture["verification"]["verification_request"]
+    ).exists()
+
+
+def test_verify_cli_rejects_noncanonical_authority_before_dispatch(
+    tmp_path, monkeypatch
+):
+    fixture = _synthetic_verification(tmp_path)
+    verification = fixture["verification"]
+    arguments = _verification_arguments(
+        repo=fixture["repo"],
+        inventory_request=verification["inventory_request"],
+        inventory_authorization=verification["inventory_authorization"],
+        verification_request=verification["verification_request"],
+        verification_authorization=verification["verification_authorization"],
+        verification_approval=verification["verification_approval_record"],
+        verification_launch=verification["verification_launch_observation"],
+    )
+    (fixture["repo"].parent / "verification-request.json").write_text(
+        json.dumps(verification["verification_request"], indent=2),
+        encoding="ascii",
+    )
+
+    def forbidden(**_kwargs):
+        raise AssertionError("noncanonical authority reached verification dispatch")
+
+    monkeypatch.setattr(seed_inventory, "verify_inventory", forbidden)
+    with pytest.raises(SystemExit, match="2"):
+        seed_inventory.main(arguments)
+    assert not _started_receipt_path(verification["verification_request"]).exists()
+
+
+@pytest.mark.parametrize("collision", ["empty", "partial", "invalid", "complete"])
+def test_verify_receipt_collision_is_terminal_before_evidence_access(
+    tmp_path, monkeypatch, collision
+):
+    fixture = _synthetic_verification(tmp_path)
+    verification = fixture["verification"]
+    path = _started_receipt_path(verification["verification_request"])
+    if collision == "complete":
+        inventory_receipt = json.loads(
+            _started_receipt_path(verification["inventory_request"]).read_text(
+                encoding="ascii"
+            )
+        )
+        seed_inventory._start_verification_once(
+            inventory_request=verification["inventory_request"],
+            inventory_authorization=verification["inventory_authorization"],
+            inventory_receipt=inventory_receipt,
+            verification_request=verification["verification_request"],
+            verification_authorization=verification["verification_authorization"],
+            verification_approval_record=verification[
+                "verification_approval_record"
+            ],
+            verification_launch_observation=verification[
+                "verification_launch_observation"
+            ],
+            source_inventory=_SOURCE_INVENTORY,
+        )
+    else:
+        path.parent.mkdir(parents=True)
+        path.write_bytes(
+            {"empty": b"", "partial": b'{"schema', "invalid": b"{}\n"}[
+                collision
+            ]
+        )
+
+    def forbidden(*_args, **_kwargs):
+        raise AssertionError("receipt collision reached evidence access")
+
+    for name in (
+        "_build_source_registry_and_exclusions",
+        "_read_inventory_started_receipt",
+        "_read_materialized_inventory",
+        "_validate_source_qualification",
+    ):
+        monkeypatch.setattr(seed_inventory, name, forbidden)
+    with pytest.raises(
+        seed_inventory.SeedInventoryBlocked,
+        match="verification request already started",
+    ):
+        seed_inventory.verify_inventory(**verification)
+
+
+def test_verify_receipt_precedes_inventory_access_and_blocks_retry(
+    tmp_path, monkeypatch
+):
+    fixture = _synthetic_verification(tmp_path)
+    verification = fixture["verification"]
+    path = _started_receipt_path(verification["verification_request"])
+
+    def reject_inventory(*_args, **_kwargs):
+        assert path.is_file()
+        raise seed_inventory.SeedInventoryBlocked("synthetic post-receipt failure")
+
+    monkeypatch.setattr(seed_inventory, "_read_materialized_inventory", reject_inventory)
+    with pytest.raises(
+        seed_inventory.SeedInventoryBlocked, match="synthetic post-receipt failure"
+    ):
+        seed_inventory.verify_inventory(**verification)
+    receipt_bytes = path.read_bytes()
+
+    def forbidden(*_args, **_kwargs):
+        raise AssertionError("duplicate verification reached evidence access")
+
+    monkeypatch.setattr(seed_inventory, "_validate_source_qualification", forbidden)
+    with pytest.raises(
+        seed_inventory.SeedInventoryBlocked,
+        match="verification request already started",
+    ):
+        seed_inventory.verify_inventory(**verification)
+    assert path.read_bytes() == receipt_bytes
+
+
+def test_verify_receipt_fsync_failure_consumes_identity(tmp_path, monkeypatch):
+    fixture = _synthetic_verification(tmp_path)
+    verification = fixture["verification"]
+    path = _started_receipt_path(verification["verification_request"])
+    real_fsync = seed_inventory.os.fsync
+
+    def fail_fsync(_fd):
+        raise OSError("synthetic verification receipt fsync failure")
+
+    monkeypatch.setattr(seed_inventory.os, "fsync", fail_fsync)
+    with pytest.raises(
+        seed_inventory.SeedInventoryBlocked, match="start receipt failed"
+    ):
+        seed_inventory.verify_inventory(**verification)
+    assert path.exists()
+    monkeypatch.setattr(seed_inventory.os, "fsync", real_fsync)
+
+    def forbidden(*_args, **_kwargs):
+        raise AssertionError("interrupted receipt retry reached evidence access")
+
+    monkeypatch.setattr(seed_inventory, "_validate_source_qualification", forbidden)
+    with pytest.raises(
+        seed_inventory.SeedInventoryBlocked,
+        match="verification request already started",
+    ):
+        seed_inventory.verify_inventory(**verification)
+
+
+@pytest.mark.parametrize("phase", ["write", "flush"])
+def test_verify_receipt_write_or_flush_failure_consumes_identity(
+    tmp_path, monkeypatch, phase
+):
+    fixture = _synthetic_verification(tmp_path)
+    verification = fixture["verification"]
+    path = _started_receipt_path(verification["verification_request"])
+    real_open = Path.open
+
+    class InterruptingHandle:
+        def __init__(self, handle):
+            self._handle = handle
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, exc_type, exc, traceback):
+            return self._handle.__exit__(exc_type, exc, traceback)
+
+        def write(self, payload):
+            if phase == "write":
+                self._handle.write(payload[: max(1, len(payload) // 2)])
+                raise OSError("synthetic verification receipt write failure")
+            return self._handle.write(payload)
+
+        def flush(self):
+            if phase == "flush":
+                raise OSError("synthetic verification receipt flush failure")
+            return self._handle.flush()
+
+        def fileno(self):
+            return self._handle.fileno()
+
+    def interrupting_open(candidate, mode="r", *args, **kwargs):
+        handle = real_open(candidate, mode, *args, **kwargs)
+        if candidate == path and mode == "xb":
+            return InterruptingHandle(handle)
+        return handle
+
+    monkeypatch.setattr(Path, "open", interrupting_open)
+    with pytest.raises(
+        seed_inventory.SeedInventoryBlocked, match="start receipt failed"
+    ):
+        seed_inventory.verify_inventory(**verification)
+    assert path.exists()
+    monkeypatch.setattr(Path, "open", real_open)
+
+    def forbidden(*_args, **_kwargs):
+        raise AssertionError("interrupted receipt retry reached evidence access")
+
+    monkeypatch.setattr(seed_inventory, "_validate_source_qualification", forbidden)
+    with pytest.raises(
+        seed_inventory.SeedInventoryBlocked,
+        match="verification request already started",
+    ):
+        seed_inventory.verify_inventory(**verification)
+
+
+@pytest.mark.parametrize("failure_mode", ["error", "short-write", "flush"])
+def test_verify_stdout_failure_consumes_identity(
+    tmp_path, monkeypatch, failure_mode
+):
+    fixture = _synthetic_verification(tmp_path)
+    verification = fixture["verification"]
+    arguments = _verification_arguments(
+        repo=fixture["repo"],
+        inventory_request=verification["inventory_request"],
+        inventory_authorization=verification["inventory_authorization"],
+        verification_request=verification["verification_request"],
+        verification_authorization=verification["verification_authorization"],
+        verification_approval=verification["verification_approval_record"],
+        verification_launch=verification["verification_launch_observation"],
+    )
+
+    class FailingBuffer:
+        @staticmethod
+        def write(payload):
+            if failure_mode == "short-write":
+                return len(payload) - 1
+            if failure_mode == "error":
+                raise OSError("synthetic verification stdout failure")
+            return len(payload)
+
+        @staticmethod
+        def flush():
+            if failure_mode == "flush":
+                raise OSError("synthetic verification stdout flush failure")
+
+    original_stdout = seed_inventory.sys.stdout
+    monkeypatch.setattr(
+        seed_inventory.sys,
+        "stdout",
+        types.SimpleNamespace(buffer=FailingBuffer()),
+    )
+    with pytest.raises(
+        OSError,
+        match="stdout failure|stdout write was incomplete|stdout flush failure",
+    ):
+        seed_inventory.main(arguments)
+    monkeypatch.setattr(seed_inventory.sys, "stdout", original_stdout)
+    assert _started_receipt_path(verification["verification_request"]).is_file()
+
+    def forbidden(*_args, **_kwargs):
+        raise AssertionError("stdout retry reached evidence access")
+
+    monkeypatch.setattr(seed_inventory, "_validate_source_qualification", forbidden)
+    with pytest.raises(
+        seed_inventory.SeedInventoryBlocked,
+        match="verification request already started",
+    ):
+        seed_inventory.verify_inventory(**verification)
 
 
 @pytest.mark.parametrize(

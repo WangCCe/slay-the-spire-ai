@@ -743,6 +743,15 @@ def test_runtime_import_is_explicitly_deferred():
 def _stage_prerequisites(stage: str) -> dict[str, str]:
     if stage == "inventory":
         return {}
+    if stage == "inventory-verification":
+        return {
+            "inventory_authorization_sha256": "2" * 64,
+            "inventory_file_sha256": "3" * 64,
+            "inventory_launch_observation_sha256": "4" * 64,
+            "inventory_receipt_sha256": "5" * 64,
+            "inventory_request_sha256": "1" * 64,
+            "inventory_sha256": "6" * 64,
+        }
     if stage == "training":
         return {"registration_sha256": "c" * 64}
     if stage == "canary":
@@ -780,6 +789,10 @@ def test_stage_requests_have_exact_disjoint_authority_and_resource_maps():
             "repository_evidence_read",
             "seed_discovery",
         },
+        "inventory-verification": {
+            "repository_evidence_read",
+            "seed_discovery",
+        },
         "training": {
             "checkpoint_publication",
             "environment_construction",
@@ -809,7 +822,13 @@ def test_stage_requests_have_exact_disjoint_authority_and_resource_maps():
         },
     }
 
-    for stage in ("inventory", "training", "canary", "holdout"):
+    for stage in (
+        "inventory",
+        "inventory-verification",
+        "training",
+        "canary",
+        "holdout",
+    ):
         request = _stage_request(control, stage)
         assert control.validate_stage_request(request) == request
         assert request["stage"] == stage
@@ -826,6 +845,10 @@ def test_stage_requests_have_exact_disjoint_authority_and_resource_maps():
         "max_environment_accesses": 1_024,
         "max_optimizer_steps": 16,
         "max_pairs": 512,
+    }
+    assert _stage_request(control, "inventory-verification")["resources"] == {
+        "max_cli_completion_bytes": 2_048,
+        "max_inventory_bytes": 64 * 1024 * 1024,
     }
     assert _stage_request(control, "canary")["resources"] == {
         "max_environment_accesses": 512,
@@ -857,6 +880,19 @@ def test_stage_request_validation_rejects_cross_stage_or_authority_mutation():
         {key: value for key, value in changed.items() if key != "request_sha256"}
     )
     with pytest.raises(control.SuccessorControlError, match="prerequisite|request"):
+        control.validate_stage_request(changed)
+
+
+def test_inventory_verification_request_rejects_broadened_authority():
+    control = _control()
+    request = _stage_request(control, "inventory-verification")
+    changed = json.loads(json.dumps(request))
+    changed["execution_authority"]["model_loading"] = True
+    changed["request_sha256"] = control.canonical_json_sha256(
+        {key: value for key, value in changed.items() if key != "request_sha256"}
+    )
+
+    with pytest.raises(control.SuccessorControlError, match="request|authority"):
         control.validate_stage_request(changed)
 
 
@@ -2306,7 +2342,10 @@ def _revocation_observation(
     }
 
 
-@pytest.mark.parametrize("stage", ("inventory", "training", "canary", "holdout"))
+@pytest.mark.parametrize(
+    "stage",
+    ("inventory", "inventory-verification", "training", "canary", "holdout"),
+)
 def test_standing_delegation_binds_exact_stage_and_fresh_launch_observation(stage):
     control = _control()
     request = _stage_request(control, stage)
@@ -2356,7 +2395,7 @@ def test_standing_delegation_binds_exact_stage_and_fresh_launch_observation(stag
         delegated_approval=approval,
         launch_observation=launch_observation,
     ) == launch_observation
-    if stage != "inventory":
+    if stage not in {"inventory", "inventory-verification"}:
         registration = {
             "registration_id": "card-acceptance-20260809-registration-v1",
             "registration_sha256": request["prerequisite_bindings"][
@@ -2615,7 +2654,10 @@ def _external_revocation_observation(
     }
 
 
-@pytest.mark.parametrize("stage", ("inventory", "training", "canary", "holdout"))
+@pytest.mark.parametrize(
+    "stage",
+    ("inventory", "inventory-verification", "training", "canary", "holdout"),
+)
 def test_exact_external_human_approval_binds_one_stage_and_fresh_launch(stage):
     control = _control()
     request = _stage_request(control, stage)
@@ -2673,7 +2715,7 @@ def test_exact_external_human_approval_binds_one_stage_and_fresh_launch(stage):
         external_approval=approval,
         launch_observation=launch_observation,
     ) == launch_observation
-    if stage != "inventory":
+    if stage not in {"inventory", "inventory-verification"}:
         registration = {
             "registration_id": "card-acceptance-20260809-registration-v1",
             "registration_sha256": request["prerequisite_bindings"][

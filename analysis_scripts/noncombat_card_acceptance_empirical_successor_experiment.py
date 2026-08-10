@@ -253,7 +253,13 @@ _PUBLIC_DEPENDENCY_SPECS = (
         ("DEFAULT_HIDDEN_DIM", "StateConditionedCandidateRanker"),
     ),
 )
-_STAGES = ("inventory", "training", "canary", "holdout")
+_STAGES = (
+    "inventory",
+    "inventory-verification",
+    "training",
+    "canary",
+    "holdout",
+)
 DELEGATED_REGISTRATION_ID_PREFIX = (
     "noncombat-card-acceptance-empirical-successor-"
 )
@@ -327,6 +333,12 @@ _STAGE_ENABLED_OPERATIONS = {
             "seed_discovery",
         }
     ),
+    "inventory-verification": frozenset(
+        {
+            "repository_evidence_read",
+            "seed_discovery",
+        }
+    ),
     "training": frozenset(
         {
             "checkpoint_publication",
@@ -363,6 +375,14 @@ _STAGE_ENABLED_OPERATIONS = {
 }
 _STAGE_PREREQUISITE_FIELDS = {
     "inventory": (),
+    "inventory-verification": (
+        "inventory_authorization_sha256",
+        "inventory_file_sha256",
+        "inventory_launch_observation_sha256",
+        "inventory_receipt_sha256",
+        "inventory_request_sha256",
+        "inventory_sha256",
+    ),
     "training": ("registration_sha256",),
     "canary": (
         "frozen_seal_sha256",
@@ -377,6 +397,10 @@ _STAGE_PREREQUISITE_FIELDS = {
 }
 _STAGE_RESOURCES: dict[str, dict[str, int | float]] = {
     "inventory": {"max_materialized_seeds": 1_152},
+    "inventory-verification": {
+        "max_cli_completion_bytes": 2_048,
+        "max_inventory_bytes": 64 * 1024 * 1024,
+    },
     "training": {
         "max_charged_seconds": 28_800.0,
         "max_environment_accesses": 1_024,
