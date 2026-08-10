@@ -31,4 +31,4 @@
 
 ## 6. Closeout
 
-- [ ] 6.1 Publish a bounded r3 postmortem recording exact operations, outcome, downstream denial, and fresh gameplay validation as not applicable. Sync applicable delta specs, archive the completed change, strict-validate the global OpenSpec set, and push closeout without granting training or later-stage authority.
+- [x] 6.1 Publish a bounded r3 postmortem recording exact operations, outcome, downstream denial, and fresh gameplay validation as not applicable. Sync applicable delta specs, archive the completed change, strict-validate the global OpenSpec set, and push closeout without granting training or later-stage authority.
