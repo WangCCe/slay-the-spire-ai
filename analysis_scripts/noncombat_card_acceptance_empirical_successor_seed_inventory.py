@@ -66,6 +66,12 @@ VERIFICATION_CLI_COMPLETION_SCHEMA_VERSION = (
     "noncombat-card-acceptance-empirical-successor-"
     "inventory-verification-cli-completion-v1"
 )
+REGISTRATION_SCHEMA_VERSION = (
+    "noncombat-card-acceptance-empirical-successor-registration-v1"
+)
+REGISTRATION_ID = (
+    "noncombat-card-acceptance-empirical-successor-20260811-r6-registration-v1"
+)
 CLI_COMPLETION_MAX_BYTES = 2_048
 CLI_COMPLETION_HASH_CHUNK_BYTES = 1024 * 1024
 INVENTORY_MAX_BYTES = 64 * 1024 * 1024
@@ -236,6 +242,60 @@ _VERIFICATION_CLI_COMPLETION_FIELDS = {
 }
 _CLI_COMPLETION_STATUS = {
     "build-inventory": "published",
+}
+REGISTRATION_FIELDS = {
+    "approval_sha256",
+    "authority",
+    "authorization_sha256",
+    "cohorts",
+    "empirical_operations",
+    "inventory_sha256",
+    "launch_observation_sha256",
+    "output_root",
+    "receipt_sha256",
+    "registration_id",
+    "registration_sha256",
+    "request_sha256",
+    "role_sha256",
+    "schema_version",
+    "source_commit",
+    "source_inventory_sha256",
+}
+REGISTRATION_AUTHORITY_KEYS = {
+    "causal",
+    "communication_mod",
+    "environment_construction",
+    "evaluation",
+    "execution",
+    "formal_rl",
+    "gameplay",
+    "model_fitting",
+    "native_loading",
+    "ope",
+    "production_model_loading",
+    "promotion",
+    "qualification",
+    "seed_access",
+    "training",
+}
+REGISTRATION_EMPIRICAL_OPERATION_KEYS = {
+    "communication_mod",
+    "environment_construction",
+    "evaluation",
+    "model_fitting",
+    "model_loading",
+    "native_loading",
+    "ope",
+    "runtime_fitting",
+    "seed_access",
+    "training",
+}
+_REGISTRATION_STANDALONE_RESULT_FIELDS = {
+    "cohort_counts",
+    "excluded_seed_count",
+    "inventory_sha256",
+    "source_count",
+    "verified",
 }
 
 
@@ -545,6 +605,18 @@ def _strict_json(payload: bytes, label: str) -> object:
         raise
     except json.JSONDecodeError as exc:
         raise SeedInventoryBlocked(f"{label} is invalid strict JSON: {exc}") from exc
+
+
+def parse_canonical_mapping_bytes(
+    payload: bytes, label: str = "registration evidence"
+) -> dict[str, Any]:
+    """Decode one duplicate-free canonical trailing-newline JSON mapping."""
+    if not isinstance(payload, bytes):
+        raise SeedInventoryBlocked(f"{label} must be bytes")
+    value = _mapping(_strict_json(payload, label), label)
+    if payload != canonical_json_bytes(value):
+        raise SeedInventoryBlocked(f"{label} is not canonical")
+    return value
 
 
 def _parse_documents(path: str, payload: bytes, format_name: str) -> list[object]:
@@ -1533,6 +1605,278 @@ def validate_inventory(value: object) -> dict[str, Any]:
     return normalized
 
 
+def _validate_registration_receipt(
+    value: object,
+    *,
+    fields: set[str],
+    schema_version: str,
+    label: str,
+) -> dict[str, Any]:
+    receipt = _mapping(value, label)
+    _require_exact_keys(receipt, fields, label)
+    if receipt["schema_version"] != schema_version:
+        raise SeedInventoryBlocked(f"{label} schema mismatch")
+    body = {key: item for key, item in receipt.items() if key != "receipt_sha256"}
+    if _digest(receipt["receipt_sha256"], f"{label} digest") != _canonical_sha256(body):
+        raise SeedInventoryBlocked(f"{label} digest mismatch")
+    return receipt
+
+
+def _validate_registration_completion(value: object) -> dict[str, Any]:
+    completion = _mapping(value, "verification completion")
+    _require_exact_keys(
+        completion,
+        _VERIFICATION_CLI_COMPLETION_FIELDS,
+        "verification completion",
+    )
+    if (
+        completion["schema_version"] != VERIFICATION_CLI_COMPLETION_SCHEMA_VERSION
+        or completion["operation"] != "verify-inventory"
+        or completion["status"] != "verified"
+    ):
+        raise SeedInventoryBlocked("verification completion identity mismatch")
+    body = {
+        key: item for key, item in completion.items() if key != "completion_sha256"
+    }
+    if _digest(
+        completion["completion_sha256"], "verification completion digest"
+    ) != _canonical_sha256(body):
+        raise SeedInventoryBlocked("verification completion digest mismatch")
+    return completion
+
+
+def _validate_all_false_map(
+    value: object, expected_keys: set[str], label: str
+) -> dict[str, bool]:
+    result = _mapping(value, label)
+    _require_exact_keys(result, expected_keys, label)
+    if any(item is not False for item in result.values()):
+        raise SeedInventoryBlocked(f"{label} must contain only false booleans")
+    return result
+
+
+def validate_inventory_registration(
+    value: object,
+    inventory: object,
+    *,
+    expected_receipt_sha256: str | None = None,
+) -> dict[str, Any]:
+    """Validate one frozen all-false registration against a seed inventory."""
+    normalized_inventory = validate_inventory(inventory)
+    registration = _mapping(value, "inventory registration")
+    _require_exact_keys(registration, REGISTRATION_FIELDS, "inventory registration")
+    if (
+        registration["schema_version"] != REGISTRATION_SCHEMA_VERSION
+        or registration["registration_id"] != REGISTRATION_ID
+    ):
+        raise SeedInventoryBlocked("inventory registration identity mismatch")
+    authority = _validate_all_false_map(
+        registration["authority"], REGISTRATION_AUTHORITY_KEYS, "registration authority"
+    )
+    empirical_operations = _validate_all_false_map(
+        registration["empirical_operations"],
+        REGISTRATION_EMPIRICAL_OPERATION_KEYS,
+        "registration empirical operations",
+    )
+    cohorts = _mapping(registration["cohorts"], "registration cohorts")
+    _require_exact_keys(cohorts, set(_ROLE_ORDER), "registration cohorts")
+    role_sha256 = _mapping(registration["role_sha256"], "registration role digests")
+    _require_exact_keys(role_sha256, set(_ROLE_ORDER), "registration role digests")
+    expected = {
+        "approval_sha256": normalized_inventory["authority_evidence"][
+            "approval_record"
+        ]["approval_sha256"],
+        "authorization_sha256": normalized_inventory["authorization_sha256"],
+        "cohorts": normalized_inventory["cohorts"],
+        "inventory_sha256": normalized_inventory["inventory_sha256"],
+        "launch_observation_sha256": normalized_inventory[
+            "launch_authority_sha256"
+        ],
+        "output_root": normalized_inventory["authority_evidence"]["request"][
+            "output_root"
+        ],
+        "request_sha256": normalized_inventory["request_sha256"],
+        "role_sha256": normalized_inventory["role_sha256"],
+        "source_commit": normalized_inventory["repository_commit"],
+        "source_inventory_sha256": normalized_inventory[
+            "source_inventory_sha256"
+        ],
+    }
+    for key, item in expected.items():
+        if registration[key] != item:
+            raise SeedInventoryBlocked(
+                f"inventory registration {key} binding mismatch"
+            )
+    receipt_sha256 = _digest(
+        registration["receipt_sha256"], "registration receipt digest"
+    )
+    if (
+        expected_receipt_sha256 is not None
+        and receipt_sha256
+        != _digest(expected_receipt_sha256, "expected registration receipt digest")
+    ):
+        raise SeedInventoryBlocked("inventory registration receipt binding mismatch")
+    normalized = {
+        **registration,
+        "authority": authority,
+        "cohorts": copy.deepcopy(dict(cohorts)),
+        "empirical_operations": empirical_operations,
+        "role_sha256": copy.deepcopy(dict(role_sha256)),
+    }
+    body = {
+        key: item for key, item in normalized.items() if key != "registration_sha256"
+    }
+    if _digest(
+        normalized["registration_sha256"], "registration digest"
+    ) != _canonical_sha256(body):
+        raise SeedInventoryBlocked("inventory registration digest mismatch")
+    return normalized
+
+
+def build_inventory_registration(
+    *,
+    inventory: object,
+    build_receipt: object,
+    verification_receipt: object,
+    verification_completion: object,
+    standalone_result: object,
+) -> dict[str, Any]:
+    """Build the fixed r6 registration from already-verified r5 mappings."""
+    normalized_inventory = validate_inventory(inventory)
+    evidence = normalized_inventory["authority_evidence"]
+    request = evidence["request"]
+    authorization = evidence["authorization"]
+    approval = evidence["approval_record"]
+    build = _validate_registration_receipt(
+        build_receipt,
+        fields=_STARTED_RECEIPT_FIELDS,
+        schema_version=STARTED_RECEIPT_SCHEMA_VERSION,
+        label="build receipt",
+    )
+    expected_build = {
+        "approval_sha256": approval["approval_sha256"],
+        "authorization_id": authorization["authorization_id"],
+        "authorization_sha256": normalized_inventory["authorization_sha256"],
+        "launch_observation_sha256": normalized_inventory[
+            "launch_authority_sha256"
+        ],
+        "request_id": request["request_id"],
+        "request_sha256": normalized_inventory["request_sha256"],
+        "source_commit": normalized_inventory["repository_commit"],
+        "source_inventory_sha256": normalized_inventory[
+            "source_inventory_sha256"
+        ],
+    }
+    if any(build[key] != item for key, item in expected_build.items()):
+        raise SeedInventoryBlocked("build receipt inventory binding mismatch")
+
+    verification = _validate_registration_receipt(
+        verification_receipt,
+        fields=_VERIFICATION_STARTED_RECEIPT_FIELDS,
+        schema_version=VERIFICATION_STARTED_RECEIPT_SCHEMA_VERSION,
+        label="verification receipt",
+    )
+    inventory_bytes = canonical_json_bytes(normalized_inventory)
+    inventory_file_sha256 = hashlib.sha256(inventory_bytes).hexdigest()
+    expected_verification = {
+        "inventory_authorization_sha256": normalized_inventory[
+            "authorization_sha256"
+        ],
+        "inventory_file_sha256": inventory_file_sha256,
+        "inventory_launch_observation_sha256": normalized_inventory[
+            "launch_authority_sha256"
+        ],
+        "inventory_receipt_sha256": build["receipt_sha256"],
+        "inventory_request_sha256": normalized_inventory["request_sha256"],
+        "inventory_sha256": normalized_inventory["inventory_sha256"],
+        "source_commit": normalized_inventory["repository_commit"],
+        "source_inventory_sha256": normalized_inventory[
+            "source_inventory_sha256"
+        ],
+    }
+    if any(verification[key] != item for key, item in expected_verification.items()):
+        raise SeedInventoryBlocked("verification receipt inventory binding mismatch")
+
+    completion = _validate_registration_completion(verification_completion)
+    expected_completion = {
+        "inventory_authorization_sha256": expected_verification[
+            "inventory_authorization_sha256"
+        ],
+        "inventory_file_sha256": expected_verification[
+            "inventory_file_sha256"
+        ],
+        "inventory_launch_observation_sha256": expected_verification[
+            "inventory_launch_observation_sha256"
+        ],
+        "inventory_receipt_sha256": expected_verification[
+            "inventory_receipt_sha256"
+        ],
+        "inventory_request_sha256": expected_verification[
+            "inventory_request_sha256"
+        ],
+        "inventory_sha256": expected_verification["inventory_sha256"],
+        "inventory_size_bytes": len(inventory_bytes),
+        "source_inventory_sha256": expected_verification[
+            "source_inventory_sha256"
+        ],
+        "verification_authorization_sha256": verification[
+            "authorization_sha256"
+        ],
+        "verification_launch_observation_sha256": verification[
+            "launch_observation_sha256"
+        ],
+        "verification_receipt_sha256": verification["receipt_sha256"],
+        "verification_request_sha256": verification["request_sha256"],
+    }
+    if any(completion[key] != item for key, item in expected_completion.items()):
+        raise SeedInventoryBlocked("verification completion evidence binding mismatch")
+
+    standalone = _mapping(standalone_result, "standalone verification result")
+    _require_exact_keys(
+        standalone,
+        _REGISTRATION_STANDALONE_RESULT_FIELDS,
+        "standalone verification result",
+    )
+    expected_standalone = {
+        "cohort_counts": normalized_inventory["cohort_counts"],
+        "excluded_seed_count": normalized_inventory["excluded_seed_count"],
+        "inventory_sha256": normalized_inventory["inventory_sha256"],
+        "source_count": normalized_inventory["source_registry"]["source_count"],
+        "verified": True,
+    }
+    if any(standalone.get(key) != item for key, item in expected_standalone.items()):
+        raise SeedInventoryBlocked("standalone verification result binding mismatch")
+
+    body = {
+        "approval_sha256": approval["approval_sha256"],
+        "authority": {key: False for key in sorted(REGISTRATION_AUTHORITY_KEYS)},
+        "authorization_sha256": normalized_inventory["authorization_sha256"],
+        "cohorts": copy.deepcopy(normalized_inventory["cohorts"]),
+        "empirical_operations": {
+            key: False for key in sorted(REGISTRATION_EMPIRICAL_OPERATION_KEYS)
+        },
+        "inventory_sha256": normalized_inventory["inventory_sha256"],
+        "launch_observation_sha256": normalized_inventory[
+            "launch_authority_sha256"
+        ],
+        "output_root": request["output_root"],
+        "receipt_sha256": build["receipt_sha256"],
+        "registration_id": REGISTRATION_ID,
+        "request_sha256": normalized_inventory["request_sha256"],
+        "role_sha256": copy.deepcopy(normalized_inventory["role_sha256"]),
+        "schema_version": REGISTRATION_SCHEMA_VERSION,
+        "source_commit": normalized_inventory["repository_commit"],
+        "source_inventory_sha256": normalized_inventory[
+            "source_inventory_sha256"
+        ],
+    }
+    return validate_inventory_registration(
+        {**body, "registration_sha256": _canonical_sha256(body)},
+        normalized_inventory,
+        expected_receipt_sha256=build["receipt_sha256"],
+    )
+
+
 def _inventory_paths(request: Mapping[str, Any]) -> tuple[Path, Path]:
     output = Path(request["output_root"]).resolve()
     staging = output.with_name(
@@ -2370,6 +2714,11 @@ __all__ = [
     "HOLDOUT_SEED_COUNT",
     "INVENTORY_FILENAME",
     "INVENTORY_AUTHORITY_EVIDENCE_SCHEMA_VERSION",
+    "REGISTRATION_AUTHORITY_KEYS",
+    "REGISTRATION_EMPIRICAL_OPERATION_KEYS",
+    "REGISTRATION_FIELDS",
+    "REGISTRATION_ID",
+    "REGISTRATION_SCHEMA_VERSION",
     "SEED_INVENTORY_SCHEMA_VERSION",
     "SOURCE_REGISTRY_SCHEMA_VERSION",
     "SeedInventoryBlocked",
@@ -2377,8 +2726,11 @@ __all__ = [
     "VERIFICATION_CLI_COMPLETION_SCHEMA_VERSION",
     "VERIFICATION_STARTED_RECEIPT_SCHEMA_VERSION",
     "build_inventory",
+    "build_inventory_registration",
     "canonical_json_bytes",
     "check_dispatch",
     "validate_inventory",
+    "validate_inventory_registration",
     "verify_inventory",
+    "parse_canonical_mapping_bytes",
 ]

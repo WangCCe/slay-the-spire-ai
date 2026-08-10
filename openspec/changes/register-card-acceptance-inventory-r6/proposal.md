@@ -11,19 +11,22 @@ the already-proven all-false registration through a path-allowlisted API.
 - Add producer and independent standard-library validators for the frozen
   `noncombat-card-acceptance-empirical-successor-registration-v1` schema.
 - Add a registration builder that accepts only explicitly supplied canonical r5
-  inventory, build receipt, verification receipt/completion, and standalone
-  result; it performs no path discovery or directory enumeration.
-- Add strict raw-byte parsing at the allowlisted driver boundary so duplicate
-  keys or bytes that differ from canonical trailing-newline JSON are rejected
-  before mappings reach the builder.
+  inventory, build receipt, verification receipt/completion, and the exact
+  five-field result reconstructed in-process by the independent standalone
+  verifier; it performs no path discovery or directory enumeration.
+- Add strict raw-byte parsing for all six JSON evidence inputs at the
+  allowlisted driver boundary so duplicate keys or bytes that differ from
+  canonical trailing-newline JSON are rejected before mappings reach the
+  builder, including the immutable canonical JSON verification review.
 - Add a dedicated one-shot registration driver that validates the exact
-  allowlist without enumeration, claims an immutable receipt before input
-  access, opens every input once, and exclusively publishes the validated
-  registration.
+  allowlist without enumeration, claims an immutable invocation receipt before
+  request or evidence access, opens the request and every evidence input once,
+  and exclusively publishes the validated registration.
 - Freeze one canonical self-digested driver request and one exact CLI whose only
-  caller-selected evidence path is that request. The request binds the pushed
-  preflight, six input identities, receipt/output paths, registration identity,
-  and source commits.
+  caller-selected evidence path is that request. The CLI carries the separately
+  reviewed expected request SHA-256 and receipt path; the request digest binds
+  the pushed preflight, six input identities, receipt/output paths,
+  registration identity, and source commits.
 - Preregister r6 as a registration-only identity. It does not rebuild or
   reverify the inventory and does not grant seed, native, model, environment,
   gameplay, training, evaluation, OPE, qualification, promotion, or execution

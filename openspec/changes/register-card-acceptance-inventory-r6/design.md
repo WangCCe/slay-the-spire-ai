@@ -17,10 +17,12 @@ state differs from that terminal boundary.
 - Implement one pure producer builder/validator and one independent
   standard-library validator for the frozen registration schema.
 - Implement a one-shot driver that claims its receipt, strict-parses and
-  canonical-byte-compares every allowlisted input, accounts for one open each,
-  and publishes exclusively without directory discovery.
+  canonical-byte-compares all six JSON evidence inputs, accounts for one open
+  each, and publishes
+  exclusively without directory discovery.
 - Require exact r5 inventory, build receipt, verification receipt/completion,
-  and standalone-result agreement before the builder returns a registration.
+  hash-pinned historical standalone evidence, and a fresh exact five-field
+  standard-library reconstruction before the builder returns a registration.
 - Render and review one canonical r6 registration through an explicit path
   allowlist and complete only parent task 6.2.
 - Make broad root enumeration, predecessor paths, unknown fields, noncanonical
@@ -84,20 +86,42 @@ terminal prerequisite makes r6 NO-GO.
 ### Put path and publication enforcement in a dedicated driver
 
 `noncombat_card_acceptance_empirical_successor_registration.py` owns the
-one-shot lifecycle. It accepts one exact request-like allowlist mapping, rejects
+one-shot lifecycle. Its exact CLI supplies a separately reviewed expected
+request SHA-256 and receipt path. It exclusively publishes the immutable
+invocation receipt before reading or resolving the request path. It then
+accepts one exact request-like allowlist mapping, rejects
 unknown/additional/duplicate paths and symlinks, and never calls directory or
-glob enumeration. The first driver process invocation consumes r6. Before any
-input open it exclusively creates, writes, flushes, and fsyncs an immutable
-started receipt. It then opens every input exactly once, verifies stable regular
-file identity and registered hash/size, strict-parses canonical bytes, and
-passes mappings to the pure APIs.
+glob enumeration. The first driver process invocation consumes r6. The
+receipt's expected request digest transitively binds the preflight, all six
+input identities, output path, source commits, and downstream denial before
+the request control input is opened. It then opens the request and every
+evidence input exactly once, verifies stable regular
+file identity and registered hash/size, strict-parses all six canonical JSON
+inputs, reruns the independent
+standard-library inventory reconstruction in-process, and passes that fresh
+exact five-field result with the four authority/inventory mappings to the
+producer. The historical standalone wrapper remains an exact hash-pinned,
+reviewed prerequisite but does not self-authorize registration construction.
+
+The receipt writer keeps its exclusive `x+b` handle open, fsyncs and reads back
+the canonical bytes through that same handle. Receipt, request validation,
+evidence access, validation, and publication are one private lifecycle with
+function-local state; no independently callable start or publication stage
+exists. Production `main()` derives isolation from `sys.flags.isolated` and the
+trusted root from the driver module, while test-only injection remains behind
+the private complete-lifecycle helper rather than exported publication APIs.
 
 Focused tests monkeypatch directory enumeration to fail if called, account for
-one input open, and cover symlink/additional-path rejection, existing or partial
-receipt, exclusive output collision, short write, flush failure, and fsync
-failure. Any process creation, receipt, parsing, validation, access, publication,
-or accounting failure is terminal for r6 even when no input or output was
-successfully opened.
+one request open and one open per evidence input, and cover self-digested
+request substitution, malformed request, wrong root, missing isolated mode,
+symlink/alias/additional-path rejection, existing or partial receipt, exclusive
+output collision, short write, flush failure, and fsync failure. Any process
+creation, receipt, parsing, validation, access, publication, or accounting
+failure is terminal for r6 even when no evidence or output was opened.
+One synthetic end-to-end test uses the real inventory builder, fresh standalone
+inventory reconstruction, producer registration builder/validator, final
+independent registration validator, receipt lifecycle, and exclusive output;
+stubbed driver tests remain only for isolated failure injection.
 
 The transport is frozen as one canonical request file with schema
 `noncombat-card-acceptance-empirical-successor-registration-request-v1`.
@@ -106,17 +130,22 @@ Its exact fields are `schema_version`, `request_id`, `registration_id`,
 `preflight_sha256`, `input_bindings`, `receipt_path`, `output_path`,
 `registration_schema_version`, `downstream_authority`, and `request_sha256`.
 `input_bindings` has exactly six named entries, each containing absolute
-canonical path, SHA-256, and size. The downstream map is exact and all false;
+canonical path, SHA-256, size, and `content_kind`. All six entries use
+`canonical_json`, including the canonical JSON verification review. The
+downstream map is exact and all false;
 `request_sha256` covers every other field with trailing-newline canonical JSON.
 
 The only process shape is the registered Windows interpreter with `-I`, the
-fixed driver script, subcommand `publish-registration`, fixed repo root, and one
-`--request` path. The request is a control input, not one of the six evidence
-inputs, and is committed/pushed before launch. The driver never opens the
-preflight itself; it validates the pushed preflight digest embedded in the
-request. The immutable receipt binds request/preflight digests, all six input
-identities, receipt/output paths, registration id/schema, both source commits,
-and the observed exact CLI identity.
+fixed driver script, subcommand `publish-registration`, fixed repo root,
+`--request`, `--expected-request-sha256`, and `--receipt-path`. The request is a
+control input, not one of the six evidence inputs, and is committed/pushed
+before launch. The driver never opens the preflight itself. Before request
+access, the immutable receipt binds the exact command, receipt path,
+registration identity/schema, and expected request digest; that digest
+transitively binds the preflight digest, all six input identities, output path,
+both source commits, and downstream denial. After receipt publication, the
+driver requires the request self-digest and bytes to equal the separately
+reviewed expected digest.
 
 ### Publish only after in-memory dual validation
 
@@ -166,8 +195,9 @@ training request, approval, authorization, and execution remain absent.
    focused tests and the registered test gate, then commit and push source.
 3. Publish and review an exact content-blind r6 path/evidence preflight.
 4. From pushed tracked-clean HEAD, invoke the driver once; it claims its receipt,
-   loads each allowlisted canonical r5 input once, strict-parses it, renders and
-   dual-validates one registration in memory, then exclusively publishes it.
+   loads each allowlisted r5 input once, strict-parses all six JSON inputs,
+   renders and dual-validates one
+   registration in memory, then exclusively publishes it.
 5. Commit/push the registration and parent 6.2 update, leave 6.3 unchanged,
    then archive r6 without creating downstream authority.
 

@@ -3,32 +3,40 @@
 ### Requirement: Registration-only r6 consumes exact verified r5 evidence
 R6 SHALL preserve the pushed r5 incident and archive boundaries as terminal and
 SHALL NOT rebuild or reverify its inventory. Before mappings reach a pure
-producer builder, the allowlisted driver SHALL strict-parse each raw r5 input,
-reject duplicate keys, and require byte equality with canonical
-trailing-newline JSON. The builder SHALL require complete agreement among the
+producer builder, the allowlisted driver SHALL strict-parse each of the six
+raw JSON r5 evidence inputs, reject duplicate keys, and require byte equality
+with canonical trailing-newline JSON. The builder SHALL require complete agreement among the
 inventory, build receipt, verification receipt, verification completion, and
-standalone result before rendering one registration with the frozen v1 schema
-and distinct r6 identity.
+the exact five-field result freshly reconstructed by the independent
+standard-library verifier before rendering one registration with the frozen v1
+schema and distinct r6 identity. The historical standalone wrapper SHALL remain
+an exact hash-pinned review prerequisite but SHALL NOT authorize construction.
 The first r6 registration-driver process invocation SHALL use the frozen
 canonical request and exact CLI and SHALL consume the identity.
-The driver SHALL exclusively publish an immutable started receipt before any
-input open. Any process, receipt, input, parsing, validation, access-accounting,
+The exact CLI SHALL carry a separately reviewed expected request SHA-256 and
+receipt path. The driver SHALL exclusively publish an immutable started receipt
+before request resolution or any input open. The receipt SHALL bind the exact
+command, expected request digest, receipt path, and registration identity; the
+expected request digest SHALL transitively bind the preflight, six evidence
+identities, output path, source commits, and downstream denial. Any process,
+receipt, input, parsing, validation, access-accounting,
 output, or publication failure SHALL be terminal without reopening or retry.
-The receipt SHALL bind the request and preflight digests, six input identities,
-receipt/output paths, registration identity/schema, implementation and
-inventory source commits, and exact command identity.
 
 #### Scenario: Exact r5 evidence agrees
-- **WHEN** every allowlisted r5 mapping is canonical and its source, request, authority, receipt, inventory, cohort, role, completion, and standalone bindings agree
+- **WHEN** every allowlisted r5 mapping is canonical, historical standalone/review mappings are exact, and fresh standalone reconstruction agrees with source, request, authority, receipt, inventory, cohort, role, and completion bindings
 - **THEN** the builder returns one canonical all-false r6 registration without filesystem discovery or downstream authority
 
 #### Scenario: Verification prerequisite drifts
 - **WHEN** a verification receipt, completion, standalone result, inventory field, or historical authority binding differs or is missing
 - **THEN** registration construction fails without publishing a registration or completing parent task 6.2
 
-#### Scenario: Input bytes are noncanonical
-- **WHEN** an allowlisted input contains duplicate keys or bytes that differ from canonical trailing-newline JSON
+#### Scenario: JSON input bytes are noncanonical
+- **WHEN** one of the six allowlisted JSON evidence inputs contains duplicate keys or bytes that differ from canonical trailing-newline JSON
 - **THEN** the driver rejects it before decoded mappings reach registration construction
+
+#### Scenario: Verification review bytes drift
+- **WHEN** the allowlisted verification review differs from canonical trailing-newline JSON or its registered path, hash, size, or `canonical_json` content kind
+- **THEN** the driver rejects it without publishing registration
 
 #### Scenario: R5 is treated as registered
 - **WHEN** a caller uses the r5 registration identity, writes the r5 registration path, or claims the r5 terminal failure is resolved
@@ -37,6 +45,10 @@ inventory source commits, and exact command identity.
 #### Scenario: Driver fails before input access
 - **WHEN** the first r6 driver invocation fails before or during receipt publication and no input has been opened
 - **THEN** r6 is still consumed, every created receipt byte is preserved, and same-identity reinvocation is forbidden
+
+#### Scenario: Request parsing fails
+- **WHEN** the registered invocation encounters malformed request bytes, a wrong root, or missing isolated mode
+- **THEN** its invocation receipt already exists with the trusted request digest and exact command, and r6 remains terminal without reinvocation
 
 ### Requirement: Frozen registration validation is independently reproducible
 The producer validator and independent standard-library validator SHALL enforce

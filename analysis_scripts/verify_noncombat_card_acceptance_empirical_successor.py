@@ -76,6 +76,12 @@ SOURCE_REGISTRY_SCHEMA_VERSION = (
 SEED_INVENTORY_SCHEMA_VERSION = (
     "noncombat-card-acceptance-empirical-successor-seed-inventory-v4"
 )
+INVENTORY_REGISTRATION_SCHEMA_VERSION = (
+    "noncombat-card-acceptance-empirical-successor-registration-v1"
+)
+INVENTORY_REGISTRATION_ID = (
+    "noncombat-card-acceptance-empirical-successor-20260811-r6-registration-v1"
+)
 INVENTORY_MAX_BYTES = 64 * 1024 * 1024
 INVENTORY_AUTHORITY_EVIDENCE_SCHEMA_VERSION = (
     "noncombat-card-acceptance-empirical-successor-"
@@ -285,6 +291,36 @@ _HOLDOUT_OUTCOME_CLASSES = (
 )
 _INVENTORY_ROLE_COUNTS = {"training": 512, "canary": 128, "holdout": 512}
 _INVENTORY_ROLE_ORDER = ("training", "canary", "holdout")
+_INVENTORY_REGISTRATION_FIELDS = {
+    "approval_sha256",
+    "authority",
+    "authorization_sha256",
+    "cohorts",
+    "empirical_operations",
+    "inventory_sha256",
+    "launch_observation_sha256",
+    "output_root",
+    "receipt_sha256",
+    "registration_id",
+    "registration_sha256",
+    "request_sha256",
+    "role_sha256",
+    "schema_version",
+    "source_commit",
+    "source_inventory_sha256",
+}
+_INVENTORY_REGISTRATION_EMPIRICAL_OPERATION_NAMES = (
+    "communication_mod",
+    "environment_construction",
+    "evaluation",
+    "model_fitting",
+    "model_loading",
+    "native_loading",
+    "ope",
+    "runtime_fitting",
+    "seed_access",
+    "training",
+)
 _INVENTORY_GENERATED_ROOT_KINDS = (
     "attempt",
     "candidate",
@@ -374,6 +410,213 @@ def _parse_canonical_mapping(payload: bytes, label: str) -> dict[str, Any]:
     if payload != canonical_json_bytes(normalized):
         raise VerificationError(f"{label} is not canonical")
     return normalized
+
+
+def parse_canonical_registration_bytes(raw: bytes) -> dict[str, Any]:
+    """Strictly decode one canonical frozen inventory registration."""
+    if not isinstance(raw, bytes):
+        raise VerificationError("inventory registration bytes are invalid")
+    registration = _parse_canonical_mapping(raw, "inventory registration")
+    _fields(
+        registration,
+        _INVENTORY_REGISTRATION_FIELDS,
+        "inventory registration",
+    )
+    return registration
+
+
+def _closed_false_registration_map(
+    value: object,
+    names: Sequence[str],
+    label: str,
+) -> dict[str, bool]:
+    normalized = _mapping(value, label)
+    _fields(normalized, set(names), label)
+    for name in names:
+        item = normalized[name]
+        if type(item) is not bool:
+            raise VerificationError(f"{label}.{name} must be boolean")
+        if item:
+            raise VerificationError(f"{label}.{name} must remain false")
+    return {name: False for name in names}
+
+
+def _registration_cohort(value: object, role: str) -> list[int]:
+    if not isinstance(value, list):
+        raise VerificationError(f"inventory registration {role} cohort differs")
+    cohort: list[int] = []
+    for seed in value:
+        if isinstance(seed, bool) or not isinstance(seed, int) or seed < 0:
+            raise VerificationError(
+                f"inventory registration {role} cohort differs"
+            )
+        cohort.append(seed)
+    if len(cohort) != _INVENTORY_ROLE_COUNTS[role]:
+        raise VerificationError(f"inventory registration {role} cohort differs")
+    return cohort
+
+
+def verify_inventory_registration(
+    registration: object,
+    inventory: object,
+) -> dict[str, Any]:
+    """Verify a frozen all-false registration against a validated inventory."""
+    normalized = _mapping(registration, "inventory registration")
+    _fields(
+        normalized,
+        _INVENTORY_REGISTRATION_FIELDS,
+        "inventory registration",
+    )
+    if (
+        normalized["schema_version"] != INVENTORY_REGISTRATION_SCHEMA_VERSION
+        or normalized["registration_id"] != INVENTORY_REGISTRATION_ID
+    ):
+        raise VerificationError("inventory registration identity differs")
+
+    authority = _closed_false_registration_map(
+        normalized["authority"],
+        _AUTHORITY_NAMES,
+        "inventory registration authority",
+    )
+    empirical_operations = _closed_false_registration_map(
+        normalized["empirical_operations"],
+        _INVENTORY_REGISTRATION_EMPIRICAL_OPERATION_NAMES,
+        "inventory registration empirical operations",
+    )
+
+    validated_inventory = _mapping(inventory, "validated inventory")
+    inventory_cohorts = _mapping(
+        validated_inventory.get("cohorts"),
+        "validated inventory cohorts",
+    )
+    registration_cohorts = _mapping(
+        normalized["cohorts"],
+        "inventory registration cohorts",
+    )
+    _fields(
+        inventory_cohorts,
+        set(_INVENTORY_ROLE_ORDER),
+        "validated inventory cohorts",
+    )
+    _fields(
+        registration_cohorts,
+        set(_INVENTORY_ROLE_ORDER),
+        "inventory registration cohorts",
+    )
+    cohorts: dict[str, list[int]] = {}
+    for role in _INVENTORY_ROLE_ORDER:
+        cohort = _registration_cohort(registration_cohorts[role], role)
+        inventory_cohort = _registration_cohort(inventory_cohorts[role], role)
+        if cohort != inventory_cohort:
+            raise VerificationError("inventory registration cohort binding differs")
+        cohorts[role] = cohort
+
+    inventory_roles = _mapping(
+        validated_inventory.get("role_sha256"),
+        "validated inventory role digests",
+    )
+    registration_roles = _mapping(
+        normalized["role_sha256"],
+        "inventory registration role digests",
+    )
+    _fields(
+        inventory_roles,
+        set(_INVENTORY_ROLE_ORDER),
+        "validated inventory role digests",
+    )
+    _fields(
+        registration_roles,
+        set(_INVENTORY_ROLE_ORDER),
+        "inventory registration role digests",
+    )
+    for role in _INVENTORY_ROLE_ORDER:
+        expected_digest = _canonical_sha256(cohorts[role])
+        if (
+            _digest(
+                registration_roles[role],
+                f"inventory registration {role} role digest",
+            )
+            != expected_digest
+            or _digest(
+                inventory_roles[role],
+                f"validated inventory {role} role digest",
+            )
+            != expected_digest
+        ):
+            raise VerificationError("inventory registration role binding differs")
+
+    authority_evidence = _mapping(
+        validated_inventory.get("authority_evidence"),
+        "validated inventory authority evidence",
+    )
+    request = _mapping(
+        authority_evidence.get("request"),
+        "validated inventory request",
+    )
+    approval = _mapping(
+        authority_evidence.get("approval_record"),
+        "validated inventory approval",
+    )
+    evidence_bindings = {
+        "source_commit": validated_inventory.get("repository_commit"),
+        "source_inventory_sha256": validated_inventory.get(
+            "source_inventory_sha256"
+        ),
+        "output_root": request.get("output_root"),
+        "request_sha256": validated_inventory.get("request_sha256"),
+        "approval_sha256": approval.get("approval_sha256"),
+        "authorization_sha256": validated_inventory.get("authorization_sha256"),
+        "launch_observation_sha256": validated_inventory.get(
+            "launch_authority_sha256"
+        ),
+        "inventory_sha256": validated_inventory.get("inventory_sha256"),
+    }
+    for field, expected in evidence_bindings.items():
+        if normalized[field] != expected:
+            raise VerificationError(
+                f"inventory registration {field} evidence binding differs"
+            )
+    if (
+        not isinstance(normalized["source_commit"], str)
+        or _COMMIT_RE.fullmatch(normalized["source_commit"]) is None
+    ):
+        raise VerificationError("inventory registration source commit differs")
+    if (
+        not isinstance(normalized["output_root"], str)
+        or not normalized["output_root"]
+        or "\x00" in normalized["output_root"]
+    ):
+        raise VerificationError("inventory registration output root differs")
+    for field in (
+        "source_inventory_sha256",
+        "request_sha256",
+        "approval_sha256",
+        "authorization_sha256",
+        "launch_observation_sha256",
+        "receipt_sha256",
+        "inventory_sha256",
+    ):
+        _digest(normalized[field], f"inventory registration {field}")
+
+    body = {
+        key: item
+        for key, item in normalized.items()
+        if key != "registration_sha256"
+    }
+    if _digest(
+        normalized["registration_sha256"],
+        "inventory registration digest",
+    ) != _canonical_sha256(body):
+        raise VerificationError("inventory registration digest differs")
+    return {
+        "authority": authority,
+        "cohort_counts": copy.deepcopy(_INVENTORY_ROLE_COUNTS),
+        "empirical_operations": empirical_operations,
+        "inventory_sha256": normalized["inventory_sha256"],
+        "registration_id": normalized["registration_id"],
+        "registration_sha256": normalized["registration_sha256"],
+        "verified": True,
+    }
 
 
 def _runtime_canonical_json_bytes(value: object) -> bytes:

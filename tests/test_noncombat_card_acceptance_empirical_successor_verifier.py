@@ -1744,3 +1744,213 @@ def test_independent_inventory_verifier_rejects_rehashed_external_request():
 
     with pytest.raises(verifier.VerificationError, match="resource|request"):
         verifier.verify_seed_inventory_evidence(evidence)
+
+
+_REGISTRATION_SCHEMA_VERSION = (
+    "noncombat-card-acceptance-empirical-successor-registration-v1"
+)
+_REGISTRATION_ID = (
+    "noncombat-card-acceptance-empirical-successor-20260811-r6-registration-v1"
+)
+_REGISTRATION_AUTHORITY_NAMES = (
+    "causal",
+    "communication_mod",
+    "environment_construction",
+    "evaluation",
+    "execution",
+    "formal_rl",
+    "gameplay",
+    "model_fitting",
+    "native_loading",
+    "ope",
+    "production_model_loading",
+    "promotion",
+    "qualification",
+    "seed_access",
+    "training",
+)
+_REGISTRATION_EMPIRICAL_OPERATION_NAMES = (
+    "communication_mod",
+    "environment_construction",
+    "evaluation",
+    "model_fitting",
+    "model_loading",
+    "native_loading",
+    "ope",
+    "runtime_fitting",
+    "seed_access",
+    "training",
+)
+
+
+def _inventory_registration_fixture(verifier):
+    cohorts = {
+        "training": list(range(512)),
+        "canary": list(range(512, 640)),
+        "holdout": list(range(640, 1_152)),
+    }
+    role_sha256 = {
+        role: hashlib.sha256(verifier.canonical_json_bytes(seeds)).hexdigest()
+        for role, seeds in cohorts.items()
+    }
+    output_root = "D:/synthetic/card-acceptance-r5"
+    inventory = {
+        "authority_evidence": {
+            "approval_record": {"approval_sha256": "4" * 64},
+            "request": {"output_root": output_root},
+        },
+        "authorization_sha256": "5" * 64,
+        "cohorts": cohorts,
+        "inventory_sha256": "8" * 64,
+        "launch_authority_sha256": "6" * 64,
+        "repository_commit": "1" * 40,
+        "request_sha256": "3" * 64,
+        "role_sha256": role_sha256,
+        "source_inventory_sha256": "2" * 64,
+    }
+    registration = {
+        "approval_sha256": "4" * 64,
+        "authority": {name: False for name in _REGISTRATION_AUTHORITY_NAMES},
+        "authorization_sha256": "5" * 64,
+        "cohorts": copy.deepcopy(cohorts),
+        "empirical_operations": {
+            name: False for name in _REGISTRATION_EMPIRICAL_OPERATION_NAMES
+        },
+        "inventory_sha256": "8" * 64,
+        "launch_observation_sha256": "6" * 64,
+        "output_root": output_root,
+        "receipt_sha256": "7" * 64,
+        "registration_id": _REGISTRATION_ID,
+        "request_sha256": "3" * 64,
+        "role_sha256": copy.deepcopy(role_sha256),
+        "schema_version": _REGISTRATION_SCHEMA_VERSION,
+        "source_commit": "1" * 40,
+        "source_inventory_sha256": "2" * 64,
+    }
+    _rehash_inventory_registration(verifier, registration)
+    return inventory, registration
+
+
+def _rehash_inventory_registration(verifier, registration):
+    body = {
+        key: value
+        for key, value in registration.items()
+        if key != "registration_sha256"
+    }
+    registration["registration_sha256"] = hashlib.sha256(
+        verifier.canonical_json_bytes(body)
+    ).hexdigest()
+
+
+def test_independent_inventory_registration_verifier_accepts_canonical_bytes():
+    verifier = _verifier()
+    inventory, registration = _inventory_registration_fixture(verifier)
+
+    parsed = verifier.parse_canonical_registration_bytes(
+        verifier.canonical_json_bytes(registration)
+    )
+    result = verifier.verify_inventory_registration(parsed, inventory)
+
+    assert parsed == registration
+    assert result == {
+        "authority": {name: False for name in _REGISTRATION_AUTHORITY_NAMES},
+        "cohort_counts": {"training": 512, "canary": 128, "holdout": 512},
+        "empirical_operations": {
+            name: False for name in _REGISTRATION_EMPIRICAL_OPERATION_NAMES
+        },
+        "inventory_sha256": inventory["inventory_sha256"],
+        "registration_id": _REGISTRATION_ID,
+        "registration_sha256": registration["registration_sha256"],
+        "verified": True,
+    }
+
+
+def test_independent_inventory_registration_parser_rejects_duplicate_fields():
+    verifier = _verifier()
+    _inventory, registration = _inventory_registration_fixture(verifier)
+    canonical = verifier.canonical_json_bytes(registration)
+    duplicate = b'{"registration_id":"duplicate",' + canonical[1:]
+
+    with pytest.raises(verifier.VerificationError, match="duplicate"):
+        verifier.parse_canonical_registration_bytes(duplicate)
+
+
+def test_independent_inventory_registration_parser_rejects_unknown_or_noncanonical_fields():
+    verifier = _verifier()
+    _inventory, registration = _inventory_registration_fixture(verifier)
+    unknown = copy.deepcopy(registration)
+    unknown["unexpected"] = False
+
+    with pytest.raises(verifier.VerificationError, match="fields"):
+        verifier.parse_canonical_registration_bytes(
+            verifier.canonical_json_bytes(unknown)
+        )
+    with pytest.raises(verifier.VerificationError, match="canonical"):
+        verifier.parse_canonical_registration_bytes(
+            verifier.canonical_json_bytes(registration).removesuffix(b"\n")
+        )
+
+
+@pytest.mark.parametrize(
+    ("mapping_name", "field", "value"),
+    (
+        ("authority", "training", True),
+        ("authority", "training", 0),
+        ("empirical_operations", "evaluation", True),
+        ("empirical_operations", "evaluation", "false"),
+    ),
+)
+def test_independent_inventory_registration_verifier_rejects_open_or_nonboolean_maps(
+    mapping_name, field, value
+):
+    verifier = _verifier()
+    inventory, registration = _inventory_registration_fixture(verifier)
+    registration[mapping_name][field] = value
+    _rehash_inventory_registration(verifier, registration)
+
+    with pytest.raises(verifier.VerificationError, match="false|boolean"):
+        verifier.verify_inventory_registration(registration, inventory)
+
+
+@pytest.mark.parametrize("mutation", ("cohort", "role_digest"))
+def test_independent_inventory_registration_verifier_rejects_cohort_or_role_drift(
+    mutation,
+):
+    verifier = _verifier()
+    inventory, registration = _inventory_registration_fixture(verifier)
+    if mutation == "cohort":
+        registration["cohorts"]["training"][0] = 99_999
+        registration["role_sha256"]["training"] = hashlib.sha256(
+            verifier.canonical_json_bytes(registration["cohorts"]["training"])
+        ).hexdigest()
+    else:
+        registration["role_sha256"]["training"] = "9" * 64
+    _rehash_inventory_registration(verifier, registration)
+
+    with pytest.raises(verifier.VerificationError, match="cohort|role"):
+        verifier.verify_inventory_registration(registration, inventory)
+
+
+@pytest.mark.parametrize(
+    ("field", "replacement"),
+    (
+        ("source_commit", "0" * 40),
+        ("source_inventory_sha256", "0" * 64),
+        ("output_root", "D:/synthetic/different"),
+        ("request_sha256", "0" * 64),
+        ("approval_sha256", "0" * 64),
+        ("authorization_sha256", "0" * 64),
+        ("launch_observation_sha256", "0" * 64),
+        ("inventory_sha256", "0" * 64),
+    ),
+)
+def test_independent_inventory_registration_verifier_rejects_evidence_mismatch(
+    field, replacement
+):
+    verifier = _verifier()
+    inventory, registration = _inventory_registration_fixture(verifier)
+    registration[field] = replacement
+    _rehash_inventory_registration(verifier, registration)
+
+    with pytest.raises(verifier.VerificationError, match="evidence|binding"):
+        verifier.verify_inventory_registration(registration, inventory)

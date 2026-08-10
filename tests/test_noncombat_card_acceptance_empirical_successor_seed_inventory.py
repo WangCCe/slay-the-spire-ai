@@ -2340,3 +2340,163 @@ def test_dispatch_evidence_rejects_control_module_path_drift(monkeypatch, tmp_pa
         seed_inventory._build_dispatch_evidence(
             process_identity=_dispatch_process_identity()
         )
+
+
+def _registration_evidence(tmp_path: Path):
+    repo, commit = _commit_files(
+        tmp_path,
+        {"reports/history/seeds.json": _json_bytes({"used_seeds": [0, 2]})},
+    )
+    request, authorization, approval, launch = _inventory_authority(repo, commit)
+    inventory = seed_inventory.build_inventory(
+        repo_root=repo,
+        request=request,
+        authorization=authorization,
+        approval_record=approval,
+        launch_observation=launch,
+    )
+    build_receipt = json.loads(
+        _started_receipt_path(request).read_text(encoding="ascii")
+    )
+    verification = _verification_kwargs(
+        repo,
+        commit,
+        inventory_request=request,
+        inventory_authorization=authorization,
+        inventory_artifact=inventory,
+    )
+    verified = seed_inventory.verify_inventory(**verification)
+    verification_receipt = json.loads(
+        _started_receipt_path(verification["verification_request"]).read_text(
+            encoding="ascii"
+        )
+    )
+    verification_completion = seed_inventory._build_verification_cli_completion(
+        inventory_request=request,
+        inventory_authorization=authorization,
+        verification_request=verification["verification_request"],
+        verification_authorization=verification["verification_authorization"],
+        verification_approval_record=verification["verification_approval_record"],
+        verification_launch_observation=verification[
+            "verification_launch_observation"
+        ],
+        artifact=verified,
+    )
+    standalone_result = {
+        "cohort_counts": copy.deepcopy(inventory["cohort_counts"]),
+        "excluded_seed_count": inventory["excluded_seed_count"],
+        "inventory_sha256": inventory["inventory_sha256"],
+        "source_count": inventory["source_registry"]["source_count"],
+        "verified": True,
+    }
+    return {
+        "inventory": inventory,
+        "build_receipt": build_receipt,
+        "verification_receipt": verification_receipt,
+        "verification_completion": verification_completion,
+        "standalone_result": standalone_result,
+    }
+
+
+def test_registration_parser_requires_duplicate_free_canonical_bytes():
+    value = {"a": 1, "b": False}
+    assert seed_inventory.parse_canonical_mapping_bytes(_json_bytes(value)) == value
+
+    with pytest.raises(seed_inventory.SeedInventoryBlocked, match="duplicate"):
+        seed_inventory.parse_canonical_mapping_bytes(b'{"a":1,"a":2}\n')
+    with pytest.raises(seed_inventory.SeedInventoryBlocked, match="canonical"):
+        seed_inventory.parse_canonical_mapping_bytes(b'{"a": 1}\n')
+
+
+def test_registration_builder_binds_verified_inventory_without_discovery(
+    tmp_path, monkeypatch
+):
+    evidence = _registration_evidence(tmp_path)
+
+    def forbidden(*_args, **_kwargs):
+        raise AssertionError("registration builder performed filesystem discovery")
+
+    monkeypatch.setattr(seed_inventory, "_list_registered_source_paths", forbidden)
+    monkeypatch.setattr(seed_inventory, "_build_source_registry_and_exclusions", forbidden)
+    registration = seed_inventory.build_inventory_registration(**evidence)
+
+    assert set(registration) == seed_inventory.REGISTRATION_FIELDS
+    assert registration["schema_version"] == seed_inventory.REGISTRATION_SCHEMA_VERSION
+    assert registration["registration_id"] == seed_inventory.REGISTRATION_ID
+    assert registration["cohorts"] == evidence["inventory"]["cohorts"]
+    assert registration["role_sha256"] == evidence["inventory"]["role_sha256"]
+    assert all(value is False for value in registration["authority"].values())
+    assert all(
+        value is False for value in registration["empirical_operations"].values()
+    )
+    assert registration["registration_sha256"] == hashlib.sha256(
+        _json_bytes(
+            {
+                key: value
+                for key, value in registration.items()
+                if key != "registration_sha256"
+            }
+        )
+    ).hexdigest()
+    assert (
+        seed_inventory.validate_inventory_registration(
+            registration,
+            evidence["inventory"],
+            expected_receipt_sha256=evidence["build_receipt"]["receipt_sha256"],
+        )
+        == registration
+    )
+
+
+@pytest.mark.parametrize(
+    "mutate,match",
+    [
+        (
+            lambda evidence: evidence["verification_completion"].update(
+                inventory_sha256="0" * 64
+            ),
+            "verification completion|binding",
+        ),
+        (
+            lambda evidence: evidence["standalone_result"].update(verified=False),
+            "standalone",
+        ),
+        (
+            lambda evidence: evidence["standalone_result"].update(extra=False),
+            "standalone.*fields",
+        ),
+    ],
+)
+def test_registration_builder_rejects_evidence_drift(tmp_path, mutate, match):
+    evidence = _registration_evidence(tmp_path)
+    mutate(evidence)
+    with pytest.raises(seed_inventory.SeedInventoryBlocked, match=match):
+        seed_inventory.build_inventory_registration(**evidence)
+
+
+@pytest.mark.parametrize(
+    "mutate,match",
+    [
+        (lambda value: value["authority"].update(training=True), "authority"),
+        (lambda value: value["authority"].update(training=0), "authority"),
+        (lambda value: value["cohorts"]["training"].reverse(), "cohort"),
+        (lambda value: value.update(extra=False), "fields"),
+    ],
+)
+def test_registration_validator_rejects_schema_or_authority_drift(
+    tmp_path, mutate, match
+):
+    evidence = _registration_evidence(tmp_path)
+    registration = seed_inventory.build_inventory_registration(**evidence)
+    mutate(registration)
+    body = {
+        key: value for key, value in registration.items() if key != "registration_sha256"
+    }
+    registration["registration_sha256"] = hashlib.sha256(_json_bytes(body)).hexdigest()
+
+    with pytest.raises(seed_inventory.SeedInventoryBlocked, match=match):
+        seed_inventory.validate_inventory_registration(
+            registration,
+            evidence["inventory"],
+            expected_receipt_sha256=evidence["build_receipt"]["receipt_sha256"],
+        )

@@ -11,18 +11,25 @@ The preflight SHALL also bind the pushed r5 incident and archive commits, absent
 r5 registration, and unchanged incomplete parent tasks 6.2/6.3.
 After that preflight is pushed, the system SHALL publish and review one
 canonical self-digested driver request binding the preflight digest, exact six
-evidence inputs, receipt/output paths, registration identity/schema,
+evidence inputs with six `canonical_json` content kinds, receipt/output paths,
+registration identity/schema,
 implementation and inventory source commits, exact all-false downstream map,
-and sole permitted CLI shape. The driver SHALL read the request as its only
-caller-selected control path and SHALL NOT open the preflight file.
+and sole permitted CLI shape with separately reviewed expected request digest
+and receipt path. The driver SHALL publish its invocation receipt before
+reading the request as its only caller-selected control path and SHALL NOT open
+the preflight file.
 
 #### Scenario: Exact allowlist is used
-- **WHEN** every input path and byte identity equals the pushed r5 evidence and every r6 receipt/output path is absent
-- **THEN** the one-shot driver may claim its immutable receipt, open each allowlisted canonical input exactly once, and pass decoded mappings to the pure registration builder
+- **WHEN** every input path, content kind, and byte identity equals the pushed r5 evidence and every r6 receipt/output path is absent
+- **THEN** the one-shot driver may claim its immutable receipt, open each allowlisted input exactly once, pass the required decoded JSON mappings to the pure registration builder, and account for all six canonical inputs
 
 #### Scenario: Driver request drifts
 - **WHEN** the request bytes, self-digest, preflight binding, input set, source commit, receipt/output path, registration identity, downstream map, or command shape differs
 - **THEN** the first invocation fails closed without substituting another request or retrying r6
+
+#### Scenario: A self-digested substitute request is supplied
+- **WHEN** request bytes are internally canonical and self-digested but differ from the expected request SHA-256 frozen in the exact CLI and invocation receipt
+- **THEN** the driver rejects the substitute after preserving the receipt and before evidence access
 
 #### Scenario: A report root is searched
 - **WHEN** registration planning or execution enumerates, globs, or text-searches `reports` or another root containing protected predecessor inventories
