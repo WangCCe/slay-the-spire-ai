@@ -1,7 +1,7 @@
 ## 1. Freeze The Candidate Boundary
 
 - [x] 1.1 Verify from Git that the seven named files are the complete ordinary test-file delta after `52edf92f8`, excluding only the already-full-only conditional-choice file; record the 262.89s, 515.35s, and 528.59s timing evidence.
-- [ ] 1.2 Strict-validate and independently review the complete planning artifacts, then commit and push them alone as the immutable candidate-set boundary.
+- [x] 1.2 Strict-validate and independently review the complete planning artifacts, then commit and push them alone as the immutable candidate-set boundary.
 
 ## 2. Measure Attribution Once
 
