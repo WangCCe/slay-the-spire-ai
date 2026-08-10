@@ -29,4 +29,4 @@
 ## 5. Closeout
 
 - [x] 5.1 Publish a bounded r5 success or terminal postmortem recording exact operations, receipts, outcomes, non-retry status, downstream denial, test evidence, and gameplay validation as not applicable.
-- [ ] 5.2 Sync applicable main specs, archive this change, strict-validate globally, verify tracked path hygiene, and commit/push closeout without creating a training request or granting later-stage authority.
+- [x] 5.2 Sync applicable main specs, archive this change, strict-validate globally, verify tracked path hygiene, and commit/push closeout without creating a training request or granting later-stage authority.
