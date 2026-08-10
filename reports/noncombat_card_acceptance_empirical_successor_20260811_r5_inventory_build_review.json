@@ -1,0 +1,78 @@
+{
+    "build": {
+        "command_sha256": "599b69fde053056b9d24f1cfbadcfb27f747c19d1c96c0c4838ffd93a103ec64",
+        "exit_code": 0,
+        "invocation_count": 1,
+        "reinvocation_allowed": false,
+        "source_head": "d8e44cbe943007d77b91993b724fdc709363decb",
+        "wall_seconds": 315.5
+    },
+    "completion": {
+        "completion_sha256": "003f3a88765468b539a41ace30dfa5177f12094a9aaf072dff2f81e3146e3b7a",
+        "file_sha256": "96be206818d5795841735c1eb19ef6aedd8249b0ad2c87fcf3e8854fcbfcb23e",
+        "path": "reports/noncombat_card_acceptance_empirical_successor_20260811_r5_inventory_build_completion.json",
+        "size_bytes": 1286
+    },
+    "independent_review": {
+        "agent_id": "019fea71-5be2-7e82-b92a-9ef7710e1a66",
+        "findings": [],
+        "method": "static-text-only-subagent-review",
+        "result": "passed",
+        "tool_execution_permitted": false
+    },
+    "inventory": {
+        "file_sha256": "8ffa0bf81ed66281cd48169928bc6133b4ec49d6b5b964eda7f86f3c8ae8a773",
+        "inventory_sha256": "deecb81010b76b4fbd197bef1eb732577481ae01591b9fa1a92b0428fe0526f3",
+        "path": "reports/noncombat_card_acceptance_empirical_successor_20260811_r5/seed_inventory.json",
+        "size_bytes": 255499
+    },
+    "performed_operations": {
+        "candidate_blob_reads": true,
+        "cohort_materialization": true,
+        "environment_construction": false,
+        "evaluation": false,
+        "gameplay": false,
+        "model_loading": false,
+        "native_loading": false,
+        "predecessor_inventory_content_access": false,
+        "repository_evidence_read": true,
+        "seed_access": false,
+        "seed_discovery": true,
+        "training": false,
+        "verification": false
+    },
+    "post_build_isolation": {
+        "attempt_directory_count": 1,
+        "inventory_process_count": 0,
+        "output_file_count": 1,
+        "predecessor_roots_present": true,
+        "predecessor_inventory_content_access": false,
+        "registration_exists": false,
+        "staging_exists": false,
+        "verification_authority_exists": false,
+        "verification_completion_exists": false,
+        "verification_invoked": false
+    },
+    "receipt": {
+        "file_sha256": "df4079ccf1d79b056db917161473c7968a516bb6bcf5a70d5142888d9c46cf16",
+        "path": "reports/noncombat_card_acceptance_empirical_successor_20260811_r5_attempts/1457d6661b4fb69f74c41db8bb60a80d0674244d2ef3110e0155d7f842965daa/started.json",
+        "receipt_sha256": "c2e77d14c57e09d821b7d809796dffb15d5c9a25ab2595dafa289e0546c88e56",
+        "size_bytes": 891
+    },
+    "review_sha256": "f586722122300b5efe092105369bdebaafa34702a9b9614ed332b8cd8f666da6",
+    "reviewed_at": "2026-08-10T18:33:18.030Z",
+    "schema_version": "noncombat-card-acceptance-empirical-successor-r5-inventory-build-review-v1",
+    "source_commit": "525c302df2d54cf06c756a9dc55fbae4ed9cb8b0",
+    "status": "verified",
+    "validation": {
+        "completion_self_digest_exact": true,
+        "inventory_file_hash_and_size_exact": true,
+        "one_shot_lifecycle_exact": true,
+        "post_build_isolation_exact": true,
+        "prestart_gate_exact": true,
+        "receipt_binding_exact": true,
+        "registration_denied": true,
+        "request_authorization_launch_source_bindings_exact": true,
+        "verification_not_run": true
+    }
+}

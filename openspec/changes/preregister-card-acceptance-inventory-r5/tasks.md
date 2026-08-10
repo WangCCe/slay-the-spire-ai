@@ -14,8 +14,8 @@
 
 ## 3. Build Once Or Close
 
-- [ ] 3.1 Invoke the exact r5 `build-inventory` process once under a bounded outer observer. Do not retry or reinvoke after any process creation, failure, ambiguity, missing completion, unexpected child, or changed binding.
-- [ ] 3.2 On success, independently review and commit/push the canonical compact inventory, immutable build receipt, bounded completion, exact hashes/sizes, and post-build isolation. On failure, publish/review/push terminal evidence and skip every verification/registration task.
+- [x] 3.1 Invoke the exact r5 `build-inventory` process once under a bounded outer observer. Do not retry or reinvoke after any process creation, failure, ambiguity, missing completion, unexpected child, or changed binding.
+- [x] 3.2 On success, independently review and commit/push the canonical compact inventory, immutable build receipt, bounded completion, exact hashes/sizes, and post-build isolation. On failure, publish/review/push terminal evidence and skip every verification/registration task.
 
 ## 4. Verify Once And Register
 
