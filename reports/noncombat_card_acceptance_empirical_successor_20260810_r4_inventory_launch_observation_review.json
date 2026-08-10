@@ -1,0 +1,81 @@
+{
+  "artifact": {
+    "file_sha256": "1f96186c8152fae744ab07757f643e8bc235bcb4e4beca129a6e5ea51da1c6f4",
+    "observation_sha256": "a93409cab982206d9cc3f0adbde30a67af1f3b6e406a2d8acde6ec1e8260d669",
+    "path": "reports/noncombat_card_acceptance_empirical_successor_20260810_r4_inventory_launch_observation.json",
+    "size_bytes": 756
+  },
+  "authority_chain": {
+    "approval": {
+      "approval_sha256": "c2e4c710f896df6e624ca09e5a5acf6f8de11a297a566ccd4acb2d30785f7d68",
+      "file_sha256": "d16ed0592cb7f8f1744cf66b9cc2bf6909b93e99bc67255a0b122d10d50478be",
+      "path": "reports/noncombat_card_acceptance_empirical_successor_20260810_r4_inventory_delegated_approval.json",
+      "review_file_sha256": "48f5694ad7b95b1e71903c7cd6370cf22738cd12a1068fbc994b0384d598cb33",
+      "review_sha256": "04df8d5e17dacc4878ea8fcb65c80f8531dbf63c3d3c488f19600b6561cc7be1"
+    },
+    "authorization": {
+      "authorization_sha256": "d766afcb84a9fca6efe0cf3fb88f0b8b10e4eb7be52b8d52e9f5a499a820d338",
+      "file_sha256": "5427b5761695ff7f6c183523c9e0f271bdab3d3c6b56f49e280fd3c34e5ca891",
+      "path": "reports/noncombat_card_acceptance_empirical_successor_20260810_r4_inventory_authorization.json",
+      "review_file_sha256": "70a1ba73c70820f83ceb2b2ae83f691d61279d9f9a6619da9d5a05844bee3b30",
+      "review_sha256": "8fc7208388773f24e486f2e97b828778cabdb626c6994ee99c4a022cbcce45d2"
+    },
+    "pushed_authority_boundary_commit": "5806066f64a40b9e40e81dc85b32c4fce8b26799",
+    "request": {
+      "file_sha256": "b6a8952b4581da49993e21aff4681e1eac90c8faa84322f9a4fb6b2424c5c454",
+      "path": "reports/noncombat_card_acceptance_empirical_successor_20260810_r4_inventory_request.json",
+      "request_sha256": "f46f7dc1aa656e859e085e89fe8d120f02aaad0ae8a028e29a6bee52ca40381d",
+      "review_file_sha256": "141afaa680661851b646371b6ac2fef1c7323b910c9d3a7ec7d3fe7a8fa1e1d4",
+      "review_sha256": "165cbd9a1cb7d2756ce9919b3aeee2aa9ed5173286db8a968458f0efcbbcb433"
+    }
+  },
+  "independent_review": {
+    "candidate_commit": "33af7aff127d444b94eb19556b0ff8d97ef3f5cd",
+    "findings": [
+      {
+        "priority": "P1",
+        "resolution": "resolved-by-this-boundary-review-pending-final-commit-review",
+        "summary": "publish-the-required-independent-launch-review"
+      }
+    ],
+    "method": "codex-commit-review",
+    "result": "actionable-finding-addressed",
+    "session_id": "019febcc-3629-7811-9a72-c54f84a22050"
+  },
+  "lifecycle": {
+    "build_invoked": false,
+    "inventory_output_exists": false,
+    "started_receipt_exists": false
+  },
+  "performed_operations": {
+    "candidate_blob_reads": false,
+    "cohort_materialization": false,
+    "environment_construction": false,
+    "evaluation": false,
+    "gameplay": false,
+    "model_loading": false,
+    "native_loading": false,
+    "r3_inventory_content_access": false,
+    "seed_access": false,
+    "seed_discovery": false,
+    "training": false
+  },
+  "review_sha256": "a58ddb876fae6ac5df8397c485da6ee2ebaab2c64142496d6f6a120decea1a62",
+  "reviewed_at": "2026-08-10T13:14:16.967Z",
+  "schema_version": "noncombat-card-acceptance-empirical-successor-r4-inventory-launch-observation-review-v1",
+  "source_commit": "710599ec6c2a9f7964da1e43084d2d577dffb7b3",
+  "status": "verified",
+  "validation": {
+    "approval_chain_exact": true,
+    "authorization_chain_exact": true,
+    "canonical_observation_exact": true,
+    "current_conversation_nonrevocation_exact": true,
+    "launch_phase_exact": true,
+    "native_or_runtime_imported": false,
+    "output_root_absent": true,
+    "producer_launch_validation": true,
+    "pushed_authority_boundary_exact": true,
+    "request_chain_exact": true,
+    "started_receipt_absent": true
+  }
+}
