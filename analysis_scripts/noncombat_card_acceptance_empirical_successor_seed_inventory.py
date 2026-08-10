@@ -18,7 +18,7 @@ import re
 import stat
 import subprocess
 import sys
-from collections.abc import Mapping
+from collections.abc import Iterator, Mapping
 from pathlib import Path, PurePosixPath
 from typing import Any
 
@@ -40,7 +40,7 @@ SOURCE_REGISTRY_SCHEMA_VERSION = (
     "noncombat-card-acceptance-empirical-successor-seed-source-registry-v1"
 )
 SEED_INVENTORY_SCHEMA_VERSION = (
-    "noncombat-card-acceptance-empirical-successor-seed-inventory-v3"
+    "noncombat-card-acceptance-empirical-successor-seed-inventory-v4"
 )
 INVENTORY_AUTHORITY_EVIDENCE_SCHEMA_VERSION = (
     "noncombat-card-acceptance-empirical-successor-"
@@ -60,6 +60,7 @@ CLI_COMPLETION_SCHEMA_VERSION = (
 )
 CLI_COMPLETION_MAX_BYTES = 2_048
 CLI_COMPLETION_HASH_CHUNK_BYTES = 1024 * 1024
+INVENTORY_MAX_BYTES = 64 * 1024 * 1024
 OUTPUT_ROOT_POLICY_VERSION = (
     "noncombat-card-acceptance-empirical-successor-output-root-policy-v1"
 )
@@ -81,21 +82,6 @@ _ROLE_COUNTS = {
     "training": TRAINING_SEED_COUNT,
 }
 _ROLE_ORDER = ("training", "canary", "holdout")
-_ROW_ROLES = {
-    "canary",
-    "consumed",
-    "diagnostic",
-    "evaluation",
-    "failed_access",
-    "holdout",
-    "qualification",
-    "reserved",
-    "seed",
-    "selected",
-    "smoke",
-    "training",
-    "used",
-}
 _COHORT_ROLES = {
     "canary": "canary",
     "diagnostic": "diagnostic",
@@ -133,7 +119,6 @@ _SOURCE_FIELDS = {
     "sha256",
     "size_bytes",
 }
-_ROW_FIELDS = {"document_index", "json_path", "role", "seed", "source_path"}
 _ROOT_FIELDS = {"kind", "path"}
 _POLICY_FIELDS = {
     "candidate_output_root",
@@ -164,7 +149,6 @@ _INVENTORY_FIELDS = {
     "repository_commit",
     "role_sha256",
     "row_count",
-    "rows",
     "schema_version",
     "source_inventory_sha256",
     "source_registry",
@@ -592,11 +576,9 @@ def _seed_scalar(value: object) -> int | None:
     return None
 
 
-def _seed_rows(
+def _iter_seed_rows(
     value: object, *, source_path: str, document_index: int
-) -> list[dict[str, Any]]:
-    rows: list[dict[str, Any]] = []
-
+) -> Iterator[dict[str, Any]]:
     def visit(
         node: object,
         pointer: str,
@@ -604,7 +586,7 @@ def _seed_rows(
         seed_context: bool,
         role: str,
         cohorts_mapping: bool,
-    ) -> None:
+    ) -> Iterator[dict[str, Any]]:
         if isinstance(node, Mapping):
             for key in sorted(node):
                 if not isinstance(key, str):
@@ -613,7 +595,7 @@ def _seed_rows(
                 key_has_seed = "seed" in folded
                 cohort_role = _COHORT_ROLES.get(folded) if cohorts_mapping else None
                 child_role = cohort_role or _semantic_role(key, role)
-                visit(
+                yield from visit(
                     node[key],
                     _json_pointer(pointer, key),
                     seed_context=seed_context or key_has_seed or cohort_role is not None,
@@ -623,7 +605,7 @@ def _seed_rows(
             return
         if isinstance(node, list):
             for index, child in enumerate(node):
-                visit(
+                yield from visit(
                     child,
                     _json_pointer(pointer, index),
                     seed_context=seed_context,
@@ -633,27 +615,32 @@ def _seed_rows(
             return
         seed = _seed_scalar(node) if seed_context else None
         if seed is not None:
-            rows.append(
-                {
-                    "document_index": document_index,
-                    "json_path": pointer,
-                    "role": role,
-                    "seed": seed,
-                    "source_path": source_path,
-                }
-            )
+            yield {
+                "document_index": document_index,
+                "json_path": pointer,
+                "role": role,
+                "seed": seed,
+                "source_path": source_path,
+            }
 
-    visit(value, "", seed_context=False, role="seed", cohorts_mapping=False)
-    return rows
+    yield from visit(
+        value,
+        "",
+        seed_context=False,
+        role="seed",
+        cohorts_mapping=False,
+    )
 
 
-def _row_sort_key(row: Mapping[str, Any]) -> tuple[object, ...]:
-    return (
-        row["seed"],
-        row["source_path"],
-        row["document_index"],
-        row["json_path"],
-        row["role"],
+def _seed_rows(
+    value: object, *, source_path: str, document_index: int
+) -> list[dict[str, Any]]:
+    return list(
+        _iter_seed_rows(
+            value,
+            source_path=source_path,
+            document_index=document_index,
+        )
     )
 
 
@@ -667,9 +654,9 @@ def _output_root_policy(repo_root: Path, output_root: str) -> dict[str, Any]:
     }
 
 
-def _build_source_registry_and_rows(
+def _build_source_registry_and_exclusions(
     repo_root: Path, *, repository_commit: str, output_root: str
-) -> tuple[dict[str, Any], list[dict[str, Any]], list[int]]:
+) -> tuple[dict[str, Any], int, list[int]]:
     paths, excluded_roots = _list_registered_source_paths(
         repo_root,
         repository_commit=repository_commit,
@@ -681,34 +668,34 @@ def _build_source_registry_and_rows(
         paths=paths,
     )
     sources: list[dict[str, Any]] = []
-    rows: list[dict[str, Any]] = []
+    total_row_count = 0
+    excluded_seeds: set[int] = set()
     for path in paths:
         payload = blobs[path]
         format_name = _artifact_format(path)
         if format_name is None:
             raise SeedInventoryBlocked(f"registered source format changed: {path}")
         documents = _parse_documents(path, payload, format_name)
-        source_rows: list[dict[str, Any]] = []
+        source_row_count = 0
         for document_index, document in enumerate(documents):
-            source_rows.extend(
-                _seed_rows(
-                    document,
-                    source_path=path,
-                    document_index=document_index,
-                )
-            )
-        rows.extend(source_rows)
+            for row in _iter_seed_rows(
+                document,
+                source_path=path,
+                document_index=document_index,
+            ):
+                source_row_count += 1
+                excluded_seeds.add(row["seed"])
+        total_row_count += source_row_count
         sources.append(
             {
                 "document_count": len(documents),
                 "format": format_name,
                 "path": path,
-                "row_count": len(source_rows),
+                "row_count": source_row_count,
                 "sha256": hashlib.sha256(payload).hexdigest(),
                 "size_bytes": len(payload),
             }
         )
-    rows.sort(key=_row_sort_key)
     registry_body = {
         "excluded_roots": excluded_roots,
         "output_root_policy": _output_root_policy(repo_root, output_root),
@@ -721,7 +708,7 @@ def _build_source_registry_and_rows(
         **registry_body,
         "registry_sha256": _canonical_sha256(registry_body),
     }
-    return registry, rows, sorted({row["seed"] for row in rows})
+    return registry, total_row_count, sorted(excluded_seeds)
 
 
 def _dispatch_process_identity() -> dict[str, Any]:
@@ -1118,7 +1105,7 @@ def _inventory_body(
     authority_evidence: Mapping[str, Any],
     launch_observation: Mapping[str, Any],
     source_registry: Mapping[str, Any],
-    rows: list[dict[str, Any]],
+    row_count: int,
     excluded_seeds: list[int],
     cohorts: Mapping[str, list[int]],
 ) -> dict[str, Any]:
@@ -1136,8 +1123,7 @@ def _inventory_body(
         "role_sha256": {
             role: _canonical_sha256(cohorts[role]) for role in _ROLE_ORDER
         },
-        "row_count": len(rows),
-        "rows": copy.deepcopy(rows),
+        "row_count": row_count,
         "schema_version": SEED_INVENTORY_SCHEMA_VERSION,
         "source_inventory_sha256": request["source_inventory_sha256"],
         "source_registry": copy.deepcopy(dict(source_registry)),
@@ -1277,63 +1263,19 @@ def validate_inventory(value: object) -> dict[str, Any]:
     if registry["repository_commit"] != inventory["repository_commit"]:
         raise SeedInventoryBlocked("inventory repository binding mismatch")
 
-    raw_rows = inventory["rows"]
-    if not isinstance(raw_rows, list):
-        raise SeedInventoryBlocked("seed inventory rows must be a list")
-    rows: list[dict[str, Any]] = []
-    for index, raw_row in enumerate(raw_rows):
-        row = _mapping(raw_row, f"seed row[{index}]")
-        _require_exact_keys(row, _ROW_FIELDS, f"seed row[{index}]")
-        row["document_index"] = _nonnegative_integer(
-            row["document_index"], f"seed row[{index}] document index"
-        )
-        if not isinstance(row["json_path"], str) or not row["json_path"].startswith("/"):
-            raise SeedInventoryBlocked(f"seed row[{index}] JSON path is invalid")
-        if row["role"] not in _ROW_ROLES:
-            raise SeedInventoryBlocked(f"seed row[{index}] role is invalid")
-        row["seed"] = _nonnegative_integer(row["seed"], f"seed row[{index}] seed")
-        row["source_path"] = _canonical_report_path(
-            row["source_path"], f"seed row[{index}] source path"
-        )
-        rows.append(row)
-    if rows != sorted(rows, key=_row_sort_key):
-        raise SeedInventoryBlocked("seed inventory rows are not canonical")
-    identities = {
-        (
-            row["document_index"],
-            row["json_path"],
-            row["role"],
-            row["seed"],
-            row["source_path"],
-        )
-        for row in rows
-    }
-    if len(identities) != len(rows):
-        raise SeedInventoryBlocked("seed inventory rows contain duplicates")
-    sources = {source["path"]: source for source in registry["sources"]}
-    rows_by_source = {path: [] for path in sources}
-    for row in rows:
-        if row["source_path"] not in rows_by_source:
-            raise SeedInventoryBlocked("seed row source is not registered")
-        rows_by_source[row["source_path"]].append(row)
-    for path, source in sources.items():
-        if source["row_count"] != len(rows_by_source[path]) or any(
-            row["document_index"] >= source["document_count"]
-            for row in rows_by_source[path]
-        ):
-            raise SeedInventoryBlocked("seed source row counts mismatch")
-    if _nonnegative_integer(inventory["row_count"], "inventory row count") != len(rows):
+    row_count = _nonnegative_integer(inventory["row_count"], "inventory row count")
+    if row_count != sum(source["row_count"] for source in registry["sources"]):
         raise SeedInventoryBlocked("seed inventory row count mismatch")
 
-    excluded = sorted({row["seed"] for row in rows})
     raw_excluded = inventory["excluded_seeds"]
     if not isinstance(raw_excluded, list):
         raise SeedInventoryBlocked("excluded seeds must be a list")
     normalized_excluded = [
         _nonnegative_integer(seed, "excluded seed") for seed in raw_excluded
     ]
-    if normalized_excluded != excluded:
-        raise SeedInventoryBlocked("seed inventory exclusion union mismatch")
+    if normalized_excluded != sorted(set(normalized_excluded)):
+        raise SeedInventoryBlocked("excluded seeds are not canonical")
+    excluded = normalized_excluded
     if _nonnegative_integer(
         inventory["excluded_seed_count"], "excluded seed count"
     ) != len(excluded):
@@ -1378,7 +1320,7 @@ def validate_inventory(value: object) -> dict[str, Any]:
         "cohorts": cohorts,
         "excluded_seeds": excluded,
         "role_sha256": role_sha256,
-        "rows": rows,
+        "row_count": row_count,
         "source_registry": registry,
     }
     body = {key: value for key, value in normalized.items() if key != "inventory_sha256"}
@@ -1642,12 +1584,15 @@ def _publish_inventory_once(
 ) -> None:
     output, staging = _inventory_paths(request)
     _require_unmaterialized(request)
+    payload = canonical_json_bytes(artifact)
+    if len(payload) > INVENTORY_MAX_BYTES:
+        raise SeedInventoryBlocked("inventory canonical payload exceeds byte limit")
     output.parent.mkdir(parents=True, exist_ok=True)
     try:
         staging.mkdir()
         path = staging / INVENTORY_FILENAME
         with path.open("xb") as handle:
-            handle.write(canonical_json_bytes(artifact))
+            handle.write(payload)
             handle.flush()
             os.fsync(handle.fileno())
         os.rename(staging, output)
@@ -1688,7 +1633,7 @@ def build_inventory(
         launch_observation=normalized_launch,
         source_inventory=source_inventory,
     )
-    registry, rows, excluded = _build_source_registry_and_rows(
+    registry, row_count, excluded = _build_source_registry_and_exclusions(
         root,
         repository_commit=normalized_request["source_commit"],
         output_root=normalized_request["output_root"],
@@ -1707,7 +1652,7 @@ def build_inventory(
         authority_evidence=authority_evidence,
         launch_observation=normalized_launch,
         source_registry=registry,
-        rows=rows,
+        row_count=row_count,
         excluded_seeds=excluded,
         cohorts=cohorts,
     )
@@ -1730,7 +1675,12 @@ def _read_materialized_inventory(request: Mapping[str, Any]) -> dict[str, Any]:
     path = output / INVENTORY_FILENAME
     if not path.is_file() or path.is_symlink():
         raise SeedInventoryBlocked("materialized inventory file is invalid")
-    return validate_inventory(_strict_json(path.read_bytes(), INVENTORY_FILENAME))
+    if path.stat().st_size > INVENTORY_MAX_BYTES:
+        raise SeedInventoryBlocked("materialized inventory exceeds byte limit")
+    raw = path.read_bytes()
+    if len(raw) > INVENTORY_MAX_BYTES:
+        raise SeedInventoryBlocked("materialized inventory exceeds byte limit")
+    return validate_inventory(_strict_json(raw, INVENTORY_FILENAME))
 
 
 def verify_inventory(
@@ -1772,7 +1722,7 @@ def verify_inventory(
     ):
         raise SeedInventoryBlocked("materialized inventory authority binding mismatch")
 
-    registry, rows, excluded = _build_source_registry_and_rows(
+    registry, row_count, excluded = _build_source_registry_and_exclusions(
         root,
         repository_commit=normalized_request["source_commit"],
         output_root=normalized_request["output_root"],
@@ -1781,7 +1731,10 @@ def verify_inventory(
         registry
     ):
         raise SeedInventoryBlocked("inventory source registry reconstruction mismatch")
-    if materialized["rows"] != rows or materialized["excluded_seeds"] != excluded:
+    if (
+        materialized["row_count"] != row_count
+        or materialized["excluded_seeds"] != excluded
+    ):
         raise SeedInventoryBlocked("inventory historical reconstruction mismatch")
     _verify_materialized_cohorts(materialized["cohorts"], excluded)
     return materialized
@@ -1849,6 +1802,7 @@ __all__ = [
     "CANARY_SEED_COUNT",
     "CANONICAL_SEARCH_START",
     "CLI_COMPLETION_MAX_BYTES",
+    "INVENTORY_MAX_BYTES",
     "CLI_COMPLETION_SCHEMA_VERSION",
     "DISPATCH_CHECK_SCHEMA_VERSION",
     "HOLDOUT_SEED_COUNT",

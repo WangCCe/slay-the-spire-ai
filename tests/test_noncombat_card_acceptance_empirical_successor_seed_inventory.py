@@ -288,6 +288,101 @@ def test_build_inventory_publishes_exact_fresh_disjoint_cohorts(tmp_path):
     ).hexdigest()
 
 
+def test_compact_inventory_v4_omits_inline_provenance_rows(tmp_path):
+    repo, commit = _commit_files(
+        tmp_path,
+        {
+            "reports/history/repeated.json": _json_bytes(
+                {"used_seeds": [7] * 4_096}
+            )
+        },
+    )
+    request, authorization, approval, launch_observation = _inventory_authority(
+        repo, commit
+    )
+
+    artifact = seed_inventory.build_inventory(
+        repo_root=repo,
+        request=request,
+        authorization=authorization,
+        approval_record=approval,
+        launch_observation=launch_observation,
+    )
+
+    assert artifact["schema_version"].endswith("seed-inventory-v4")
+    assert "rows" not in artifact
+    assert artifact["row_count"] == 4_096
+    assert artifact["source_registry"]["sources"][0]["row_count"] == 4_096
+    assert artifact["excluded_seeds"] == [7]
+    assert len(seed_inventory.canonical_json_bytes(artifact)) < 100_000
+
+
+def test_compact_source_scan_preserves_counts_and_unique_exclusions(tmp_path):
+    repo, commit = _commit_files(
+        tmp_path,
+        {
+            "reports/history/a.json": _json_bytes(
+                {"used_seeds": [7, 7], "reserved_seed": 8}
+            ),
+            "reports/history/b.jsonl": (
+                _json_bytes({"failed_seed": 8})
+                + _json_bytes({"holdout_seeds": [9, 9]})
+            ),
+        },
+    )
+
+    registry, row_count, excluded = (
+        seed_inventory._build_source_registry_and_exclusions(
+            repo,
+            repository_commit=commit,
+            output_root=(repo / "reports" / "candidate").as_posix(),
+        )
+    )
+
+    assert [source["row_count"] for source in registry["sources"]] == [3, 3]
+    assert row_count == 6
+    assert excluded == [7, 8, 9]
+
+
+def test_compact_validation_rejects_legacy_inline_rows(tmp_path):
+    repo, commit = _commit_files(
+        tmp_path,
+        {"reports/history/seeds.json": _json_bytes({"used_seed": 1})},
+    )
+    request, authorization, approval, launch_observation = _inventory_authority(
+        repo, commit
+    )
+    artifact = seed_inventory.build_inventory(
+        repo_root=repo,
+        request=request,
+        authorization=authorization,
+        approval_record=approval,
+        launch_observation=launch_observation,
+    )
+    changed = copy.deepcopy(artifact)
+    changed["rows"] = []
+    body = {key: value for key, value in changed.items() if key != "inventory_sha256"}
+    changed["inventory_sha256"] = hashlib.sha256(_json_bytes(body)).hexdigest()
+
+    with pytest.raises(seed_inventory.SeedInventoryBlocked, match="fields"):
+        seed_inventory.validate_inventory(changed)
+
+
+def test_inventory_byte_ceiling_fails_before_publication(tmp_path, monkeypatch):
+    output = tmp_path / "reports" / "candidate"
+    request = {
+        "output_root": output.as_posix(),
+        "request_sha256": "1" * 64,
+    }
+    monkeypatch.setattr(seed_inventory, "INVENTORY_MAX_BYTES", 64)
+
+    with pytest.raises(seed_inventory.SeedInventoryBlocked, match="byte limit"):
+        seed_inventory._publish_inventory_once(request, {"payload": "x" * 128})
+
+    assert not output.exists()
+    assert not list(output.parent.glob(f".{output.name}.*.staging"))
+
+
 def test_started_receipt_persists_and_blocks_retry_after_source_failure(
     tmp_path, monkeypatch
 ):
@@ -307,7 +402,7 @@ def test_started_receipt_persists_and_blocks_retry_after_source_failure(
 
     monkeypatch.setattr(
         seed_inventory,
-        "_build_source_registry_and_rows",
+        "_build_source_registry_and_exclusions",
         fail_after_start,
     )
 
@@ -389,7 +484,7 @@ def test_partial_started_receipt_blocks_before_source_discovery(
 
     monkeypatch.setattr(
         seed_inventory,
-        "_build_source_registry_and_rows",
+        "_build_source_registry_and_exclusions",
         forbidden,
     )
 
@@ -436,7 +531,7 @@ def test_competing_started_receipt_writer_wins_without_source_discovery(
     monkeypatch.setattr(Path, "open", competing_open)
     monkeypatch.setattr(
         seed_inventory,
-        "_build_source_registry_and_rows",
+        "_build_source_registry_and_exclusions",
         forbidden,
     )
 
@@ -477,7 +572,7 @@ def test_prestart_authority_failure_creates_no_started_receipt(
 
     monkeypatch.setattr(
         seed_inventory,
-        "_build_source_registry_and_rows",
+        "_build_source_registry_and_exclusions",
         forbidden,
     )
 
@@ -637,17 +732,16 @@ def test_build_inventory_rejects_source_commit_outside_pushed_ancestry(
 def test_historical_exclusion_roles_include_failed_and_untouched_reservations(
     tmp_path,
 ):
+    source = {
+        "consumed_seed": 101,
+        "failed_accesses": [{"seed": 102}],
+        "prior_untouched_holdout_seeds": [103, 104],
+        "reserved_seed": 105,
+    }
     repo, commit = _commit_files(
         tmp_path,
         {
-            "reports/history/roles.json": _json_bytes(
-                {
-                    "consumed_seed": 101,
-                    "failed_accesses": [{"seed": 102}],
-                    "prior_untouched_holdout_seeds": [103, 104],
-                    "reserved_seed": 105,
-                }
-            )
+            "reports/history/roles.json": _json_bytes(source)
         },
     )
     request, authorization, approval, launch_observation = _inventory_authority(
@@ -663,7 +757,16 @@ def test_historical_exclusion_roles_include_failed_and_untouched_reservations(
     )
 
     assert {101, 102, 103, 104, 105} <= set(artifact["excluded_seeds"])
-    assert {(row["seed"], row["role"]) for row in artifact["rows"]} == {
+    assert artifact["row_count"] == 5
+    assert artifact["source_registry"]["sources"][0]["row_count"] == 5
+    assert {
+        (row["seed"], row["role"])
+        for row in seed_inventory._seed_rows(
+            source,
+            source_path="reports/history/roles.json",
+            document_index=0,
+        )
+    } == {
         (101, "consumed"),
         (102, "failed_access"),
         (103, "holdout"),
@@ -770,10 +873,7 @@ def test_generated_roots_are_excluded_before_blob_loading_and_recursion(
     assert excluded_by_path["reports/historical_inventory_attempts"] == "attempt"
     assert 99 in artifact["excluded_seeds"]
     assert {0, 1, 2, 3, 4, 5}.isdisjoint(artifact["excluded_seeds"])
-    assert all(
-        row["source_path"] not in generated
-        for row in artifact["rows"]
-    )
+    assert "rows" not in artifact
     assert artifact["source_registry"]["excluded_roots"] == sorted(
         artifact["source_registry"]["excluded_roots"],
         key=lambda row: row["path"],
@@ -804,16 +904,18 @@ def test_exact_readiness_staging_path_is_excluded_before_blob_request(
 
     monkeypatch.setattr(seed_inventory, "_git_blob_batch", observe_blob_batch)
 
-    registry, rows, excluded = seed_inventory._build_source_registry_and_rows(
-        tmp_path,
-        repository_commit="0" * 40,
-        output_root=(tmp_path / "reports" / "candidate").as_posix(),
+    registry, row_count, excluded = (
+        seed_inventory._build_source_registry_and_exclusions(
+            tmp_path,
+            repository_commit="0" * 40,
+            output_root=(tmp_path / "reports" / "candidate").as_posix(),
+        )
     )
 
     assert requested_paths == []
     assert registry["sources"] == []
     assert registry["excluded_roots"] == [{"kind": "staging", "path": root}]
-    assert rows == []
+    assert row_count == 0
     assert excluded == []
 
 
@@ -1077,6 +1179,73 @@ def test_inventory_is_write_once_and_rejects_mutated_materialized_bytes(tmp_path
             approval_record=approval,
             launch_observation=launch_observation,
         )
+
+
+def test_verify_inventory_rejects_rehashed_aggregate_count_drift(tmp_path):
+    repo, commit = _commit_files(
+        tmp_path,
+        {"reports/history/seeds.json": _json_bytes({"used_seeds": [1, 2]})},
+    )
+    request, authorization, approval, launch_observation = _inventory_authority(
+        repo, commit
+    )
+    seed_inventory.build_inventory(
+        repo_root=repo,
+        request=request,
+        authorization=authorization,
+        approval_record=approval,
+        launch_observation=launch_observation,
+    )
+    path = Path(request["output_root"]) / seed_inventory.INVENTORY_FILENAME
+    changed = json.loads(path.read_text(encoding="ascii"))
+    changed["source_registry"]["sources"][0]["row_count"] += 1
+    changed["row_count"] += 1
+    registry_body = {
+        key: value
+        for key, value in changed["source_registry"].items()
+        if key != "registry_sha256"
+    }
+    changed["source_registry"]["registry_sha256"] = hashlib.sha256(
+        _json_bytes(registry_body)
+    ).hexdigest()
+    body = {key: value for key, value in changed.items() if key != "inventory_sha256"}
+    changed["inventory_sha256"] = hashlib.sha256(_json_bytes(body)).hexdigest()
+    path.write_bytes(_json_bytes(changed))
+
+    with pytest.raises(
+        seed_inventory.SeedInventoryBlocked,
+        match="source registry reconstruction",
+    ):
+        seed_inventory.verify_inventory(
+            repo_root=repo,
+            request=request,
+            authorization=authorization,
+            approval_record=approval,
+            launch_observation=launch_observation,
+        )
+
+
+def test_verify_inventory_rejects_oversized_file_before_read(tmp_path, monkeypatch):
+    output = tmp_path / "reports" / "candidate"
+    output.mkdir(parents=True)
+    path = output / seed_inventory.INVENTORY_FILENAME
+    path.write_bytes(b"x" * 65)
+    request = {
+        "output_root": output.as_posix(),
+        "request_sha256": "1" * 64,
+    }
+    original_read_bytes = Path.read_bytes
+
+    def reject_inventory_read(candidate):
+        if candidate == path:
+            raise AssertionError("oversized inventory bytes were read")
+        return original_read_bytes(candidate)
+
+    monkeypatch.setattr(seed_inventory, "INVENTORY_MAX_BYTES", 64)
+    monkeypatch.setattr(Path, "read_bytes", reject_inventory_read)
+
+    with pytest.raises(seed_inventory.SeedInventoryBlocked, match="byte limit"):
+        seed_inventory._read_materialized_inventory(request)
 
 
 def test_verify_inventory_rejects_rehashed_build_launch_substitution(tmp_path):
@@ -1489,7 +1658,7 @@ def test_dispatch_evidence_has_no_inventory_lifecycle_side_effects(
         raise AssertionError("inventory lifecycle operation reached")
 
     for name in (
-        "_build_source_registry_and_rows",
+        "_build_source_registry_and_exclusions",
         "_git_blob_batch",
         "_git_command",
         "_inventory_paths",
