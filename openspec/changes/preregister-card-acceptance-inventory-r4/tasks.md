@@ -5,9 +5,9 @@
 
 ## 2. Publish Dispatch, Source, And Request Boundary
 
-- [ ] 2.1 Run and preserve the exact side-effect-free compact-v4 production `-I ... check-dispatch` observation; independently review command, isolation, script/control identities, deterministic bytes, ceilings, and absence of authority/Git/seed/receipt/output access.
-- [ ] 2.2 Render the fixed r4 source inventory and path-only preflight binding source `710599ec6`, exact dispatch, current pushed/clean ancestry, all terminal predecessors, compact schema/ceilings, candidate path identity, generated/predecessor exclusions, and absent r4 output/staging/attempt/receipt/verification/registration paths; independently review without candidate blob, seed-value, or r3 inventory-content access.
-- [ ] 2.3 Render and independently review the distinct r4 inventory request with fixed request id/output root, `max_materialized_seeds=1152`, fixed `512/128/512` cohorts, 64 MiB inventory and 2,048-byte completion ceilings, only source-only build authority, and every native/model/environment/training/evaluation/gameplay/formal-RL/OPE/qualification/promotion/downstream authority false.
+- [x] 2.1 Run and preserve the exact side-effect-free compact-v4 production `-I ... check-dispatch` observation; independently review command, isolation, script/control identities, deterministic bytes, ceilings, and absence of authority/Git/seed/receipt/output access.
+- [x] 2.2 Render the fixed r4 source inventory and path-only preflight binding source `710599ec6`, exact dispatch, current pushed/clean ancestry, all terminal predecessors, compact schema/ceilings, candidate path identity, generated/predecessor exclusions, and absent r4 output/staging/attempt/receipt/verification/registration paths; independently review without candidate blob, seed-value, or r3 inventory-content access.
+- [x] 2.3 Render and independently review the distinct r4 inventory request with fixed request id/output root, `max_materialized_seeds=1152`, fixed `512/128/512` cohorts, 64 MiB inventory and 2,048-byte completion ceilings, only source-only build authority, and every native/model/environment/training/evaluation/gameplay/formal-RL/OPE/qualification/promotion/downstream authority false.
 - [ ] 2.4 Commit and push dispatch/source/preflight/request artifacts and reviews as one immutable request boundary; do not edit source or tests.
 
 ## 3. Publish Delegated Authority Boundary
