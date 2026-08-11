@@ -526,8 +526,18 @@ def _external_observation(control, request, message, *, phase, checked_at):
 )
 def test_authorized_runner_envelope_resolves_exact_composite(authority_mode):
     runner, manifest, payloads = _manifest()
-    control = _control()
     request = json.loads(payloads["training_request"])
+    documents = _authorized_runner_documents(
+        runner, manifest, request, authority_mode
+    )
+
+    assert documents["authority"]["validated"] is True
+    assert documents["authority"]["authority_mode"] == authority_mode
+    assert documents["authority"]["command"] == "run-training"
+
+
+def _authorized_runner_documents(runner, manifest, request, authority_mode):
+    control = _control()
     composite = runner.build_runner_composite(manifest, "run-training")
     review_sha256 = manifest["artifacts"]["training_request_review"]["sha256"]
 
@@ -616,17 +626,133 @@ def test_authorized_runner_envelope_resolves_exact_composite(authority_mode):
         envelope_id=f"card-acceptance-r6-{authority_mode}-run-envelope-v1",
     )
 
-    result = runner.validate_authorized_command_envelope(
+    authority = runner.validate_authorized_command_envelope(
         envelope=envelope,
         manifest=manifest,
         request=request,
         authorization=authorization,
         approval=approval,
     )
+    return {
+        "approval": approval,
+        "authority": authority,
+        "authorization": authorization,
+        "envelope": envelope,
+        "request": request,
+    }
 
-    assert result["validated"] is True
-    assert result["authority_mode"] == authority_mode
-    assert result["command"] == "run-training"
+
+@pytest.mark.parametrize(
+    "authority_mode", ("standing-delegation", "external-human-approval")
+)
+def test_authorized_training_context_freezes_exact_execution_registration(
+    authority_mode,
+):
+    (
+        runner,
+        _inventory,
+        _inventory_payload,
+        registration,
+        _registration_payload,
+        manifest,
+        _composite,
+        request,
+    ) = _registered_input_fixture(include_request=True)
+    control = _control()
+    documents = _authorized_runner_documents(
+        runner, manifest, request, authority_mode
+    )
+    execution_registration = {
+        **copy.deepcopy(registration),
+        "rollback_authority_sha256": manifest["rollback_authority"][
+            "rollback_authority_sha256"
+        ],
+    }
+
+    context = runner._build_authorized_training_context(
+        control_api=control,
+        launch_manifest=manifest,
+        command_envelope=documents["envelope"],
+        authority=documents["authority"],
+        original_registration=registration,
+        execution_registration=execution_registration,
+        request=request,
+        authorization=documents["authorization"],
+        approval=documents["approval"],
+    )
+
+    assert context.registration == execution_registration
+    assert context.request == request
+    assert context.authorization == documents["authorization"]
+    assert control._context_identity(context) == {
+        "authorization_sha256": documents["authorization"][
+            "authorization_sha256"
+        ],
+        "launch_authority_sha256": documents["envelope"][
+            "runner_launch_observation"
+        ]["control_observation"]["observation_sha256"],
+        "registration_sha256": registration["registration_sha256"],
+        "request_sha256": request["request_sha256"],
+        "stage": "training",
+    }
+    with pytest.raises(TypeError, match="immutable"):
+        context.registration["rollback_authority_sha256"] = "0" * 64
+
+
+def test_authorized_training_context_rejects_authority_and_registration_drift():
+    (
+        runner,
+        _inventory,
+        _inventory_payload,
+        registration,
+        _registration_payload,
+        manifest,
+        _composite,
+        request,
+    ) = _registered_input_fixture(include_request=True)
+    documents = _authorized_runner_documents(
+        runner, manifest, request, "standing-delegation"
+    )
+    execution_registration = {
+        **copy.deepcopy(registration),
+        "rollback_authority_sha256": manifest["rollback_authority"][
+            "rollback_authority_sha256"
+        ],
+    }
+    base = {
+        "control_api": _control(),
+        "launch_manifest": manifest,
+        "command_envelope": documents["envelope"],
+        "authority": documents["authority"],
+        "original_registration": registration,
+        "execution_registration": execution_registration,
+        "request": request,
+        "authorization": documents["authorization"],
+        "approval": documents["approval"],
+    }
+    mutations = []
+    drifted_authority = copy.deepcopy(documents["authority"])
+    drifted_authority["envelope_sha256"] = "0" * 64
+    mutations.append({"authority": drifted_authority})
+    drifted_original = copy.deepcopy(registration)
+    drifted_original["registration_id"] = "drifted-registration"
+    mutations.append({"original_registration": drifted_original})
+    drifted_execution = copy.deepcopy(execution_registration)
+    drifted_execution["rollback_authority_sha256"] = "0" * 64
+    mutations.append({"execution_registration": drifted_execution})
+    extra_execution = copy.deepcopy(execution_registration)
+    extra_execution["unexpected"] = True
+    mutations.append({"execution_registration": extra_execution})
+    drifted_envelope = copy.deepcopy(documents["envelope"])
+    drifted_envelope["runner_launch_observation"]["control_observation"][
+        "checked_at"
+    ] = "2026-08-11T02:04:00+00:00"
+    mutations.append({"command_envelope": drifted_envelope})
+
+    for mutation in mutations:
+        arguments = {**base, **mutation}
+        with pytest.raises(runner.TrainingRunnerBlocked):
+            runner._build_authorized_training_context(**arguments)
 
 
 def test_external_authority_requires_composite_in_approval_and_observation():
@@ -1015,7 +1141,7 @@ def test_training_schedule_preserves_partial_prefix_without_closeout_or_checkpoi
     ]
 
 
-def _registered_input_fixture():
+def _registered_input_fixture(*, include_request=False):
     runner = _runner()
     inventory = {
         "cohorts": {
@@ -1087,7 +1213,7 @@ def _registered_input_fixture():
     ]
     manifest = runner.build_launch_manifest(definition)
     composite = runner.build_runner_composite(manifest, "run-training")
-    return (
+    result = (
         runner,
         inventory,
         inventory_payload,
@@ -1096,6 +1222,7 @@ def _registered_input_fixture():
         manifest,
         composite,
     )
+    return (*result, request) if include_request else result
 
 
 def _pre_access_receipt_binding(path, payload, calls=None):

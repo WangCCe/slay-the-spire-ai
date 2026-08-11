@@ -893,6 +893,176 @@ def validate_authorized_command_envelope(
     }
 
 
+def _build_authorized_training_context(
+    *,
+    control_api: Any,
+    launch_manifest: Mapping[str, Any],
+    command_envelope: Mapping[str, Any],
+    authority: Mapping[str, Any],
+    original_registration: Mapping[str, Any],
+    execution_registration: Mapping[str, Any],
+    request: Mapping[str, Any],
+    authorization: Mapping[str, Any],
+    approval: Mapping[str, Any],
+) -> Any:
+    """Freeze the exact runner authority and rollback-bound registration."""
+    required_control_operations = (
+        "_build_delegated_execution_context",
+        "_build_external_human_execution_context",
+        "_context_identity",
+        "validate_stage_authorization",
+        "validate_stage_request",
+    )
+    if any(
+        not callable(getattr(control_api, name, None))
+        for name in required_control_operations
+    ):
+        raise TrainingRunnerBlocked("training context control API is incomplete")
+
+    manifest = validate_launch_manifest(launch_manifest)
+    envelope = validate_command_envelope(command_envelope, manifest)
+    normalized_authority = _mapping(authority, "runner command authority")
+    _fields(
+        normalized_authority,
+        {
+            "authority_mode",
+            "command",
+            "composite_sha256",
+            "downstream_authority",
+            "envelope_sha256",
+            "runner_launch_observation_sha256",
+            "stage_authorization_sha256",
+            "validated",
+        },
+        "runner command authority",
+    )
+    revalidated_authority = validate_authorized_command_envelope(
+        envelope=envelope,
+        manifest=manifest,
+        request=request,
+        authorization=authorization,
+        approval=approval,
+    )
+    if (
+        normalized_authority != revalidated_authority
+        or revalidated_authority["validated"] is not True
+        or revalidated_authority["command"] != "run-training"
+    ):
+        raise TrainingRunnerBlocked("training context authority differs")
+
+    registration = _mapping(
+        original_registration, "original training registration"
+    )
+    registration_sha256 = _digest(
+        registration.get("registration_sha256"),
+        "original training registration identity",
+    )
+    if "rollback_authority_sha256" in registration:
+        raise TrainingRunnerBlocked(
+            "original training registration contains execution authority"
+        )
+    registration_body = {
+        key: value
+        for key, value in registration.items()
+        if key != "registration_sha256"
+    }
+    if registration_sha256 != canonical_json_sha256(registration_body):
+        raise TrainingRunnerBlocked("original training registration digest differs")
+    rollback_sha256 = manifest["rollback_authority"][
+        "rollback_authority_sha256"
+    ]
+    expected_execution_registration = {
+        **copy.deepcopy(registration),
+        "rollback_authority_sha256": rollback_sha256,
+    }
+    observed_execution_registration = _mapping(
+        execution_registration, "execution training registration"
+    )
+    if observed_execution_registration != expected_execution_registration:
+        raise TrainingRunnerBlocked("execution training registration differs")
+
+    try:
+        normalized_request = control_api.validate_stage_request(request)
+        normalized_authorization = control_api.validate_stage_authorization(
+            authorization, normalized_request
+        )
+    except Exception as exc:
+        raise TrainingRunnerBlocked("training context stage authority differs") from exc
+    if (
+        normalized_request["stage"] != "training"
+        or normalized_request["request_sha256"]
+        != manifest["request_contract"]["request_sha256"]
+        or normalized_request["prerequisite_bindings"]["registration_sha256"]
+        != registration_sha256
+    ):
+        raise TrainingRunnerBlocked("training context request differs")
+
+    def validate_exact_execution_registration(
+        value: Mapping[str, Any],
+    ) -> dict[str, Any]:
+        observed = _mapping(value, "context execution registration")
+        if observed != expected_execution_registration:
+            raise TrainingRunnerBlocked("context execution registration differs")
+        return copy.deepcopy(expected_execution_registration)
+
+    runner_observation = envelope["runner_launch_observation"]
+    if (
+        runner_observation["observation_sha256"]
+        != revalidated_authority["runner_launch_observation_sha256"]
+    ):
+        raise TrainingRunnerBlocked("training context runner observation differs")
+    control_observation = runner_observation["control_observation"]
+    context_arguments = {
+        "registration": copy.deepcopy(expected_execution_registration),
+        "request": copy.deepcopy(normalized_request),
+        "authorization": copy.deepcopy(normalized_authorization),
+        "launch_observation": copy.deepcopy(control_observation),
+        "registration_validator": validate_exact_execution_registration,
+    }
+    try:
+        if revalidated_authority["authority_mode"] == "standing-delegation":
+            context = control_api._build_delegated_execution_context(
+                **context_arguments,
+                delegated_approval=copy.deepcopy(dict(approval)),
+            )
+        else:
+            context = control_api._build_external_human_execution_context(
+                **context_arguments,
+                external_approval=copy.deepcopy(dict(approval)),
+            )
+        context_identity = _mapping(
+            control_api._context_identity(context),
+            "authorized training context identity",
+        )
+    except TrainingRunnerBlocked:
+        raise
+    except Exception as exc:
+        raise TrainingRunnerBlocked(
+            "authorized training context construction failed"
+        ) from exc
+    expected_context_identity = {
+        "authorization_sha256": normalized_authorization[
+            "authorization_sha256"
+        ],
+        "launch_authority_sha256": control_observation["observation_sha256"],
+        "registration_sha256": registration_sha256,
+        "request_sha256": normalized_request["request_sha256"],
+        "stage": "training",
+    }
+    if (
+        getattr(context, "registration", None)
+        != expected_execution_registration
+        or getattr(context, "request", None) != normalized_request
+        or getattr(context, "authorization", None) != normalized_authorization
+        or getattr(context, "authority_observation", None)
+        != control_observation
+        or getattr(context, "stage", None) != "training"
+        or context_identity != expected_context_identity
+    ):
+        raise TrainingRunnerBlocked("authorized training context differs")
+    return context
+
+
 def _checkpoint_snapshot(payload: bytes) -> dict[str, Any]:
     checkpoint = _parse_canonical_mapping(payload, "paired training checkpoint")
     _fields(
