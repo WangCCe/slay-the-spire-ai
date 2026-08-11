@@ -707,6 +707,18 @@ def test_runner_verifier_import_is_standard_library_only():
     }
 
 
+def test_runner_verifier_rejects_runtime_checkpoint_trailing_newline():
+    verifier = _verifier()
+    support = _runner_test_support()
+    checkpoint = support._fake_runtime_checkpoint(support._runner(), 0)
+
+    snapshot = verifier._checkpoint_snapshot(checkpoint)
+
+    assert snapshot["coordinates"]["next_chunk_index"] == 0
+    with pytest.raises(verifier.VerificationError, match="not canonical"):
+        verifier._checkpoint_snapshot(checkpoint + b"\n")
+
+
 def test_standalone_verifier_reconstructs_terminalized_runner_without_seed_inventory(
     tmp_path,
     monkeypatch,

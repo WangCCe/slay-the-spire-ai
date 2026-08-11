@@ -1963,7 +1963,7 @@ def _checkpoint_snapshot(payload: bytes) -> dict[str, Any]:
         raise VerificationError("runtime checkpoint is invalid JSON") from exc
     checkpoint = _mapping(parsed, "runtime checkpoint")
     runtime_bytes = json.dumps(checkpoint, allow_nan=False, ensure_ascii=True, separators=(",", ":"), sort_keys=True).encode("ascii")
-    if payload not in {runtime_bytes, runtime_bytes + b"\n"}:
+    if payload != runtime_bytes:
         raise VerificationError("runtime checkpoint is not canonical")
     _fields(checkpoint, {"bootstrap", "completed_chunk_summaries", "coordinates", "optimizers", "schema_version", "stopped_for_family_saturation"}, "runtime checkpoint")
     bootstrap = _mapping(checkpoint["bootstrap"], "checkpoint bootstrap")

@@ -2667,7 +2667,7 @@ def _fake_runtime_checkpoint(runner, chunk_index: int, *, stopped=False) -> byte
             "schema_version": "synthetic-training-checkpoint-v1",
             "stopped_for_family_saturation": stopped,
         }
-    )
+    ).removesuffix(b"\n")
 
 
 class _FakeTrainingRuntimeApi:

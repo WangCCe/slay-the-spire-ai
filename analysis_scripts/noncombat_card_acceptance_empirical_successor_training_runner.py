@@ -303,6 +303,12 @@ def _parse_canonical_mapping(payload: bytes, label: str) -> dict[str, Any]:
     return normalized
 
 
+def _parse_runtime_checkpoint_mapping(payload: bytes) -> dict[str, Any]:
+    if not isinstance(payload, bytes) or payload.endswith(b"\n"):
+        raise TrainingRunnerBlocked("paired training checkpoint is not canonical")
+    return _parse_canonical_mapping(payload + b"\n", "paired training checkpoint")
+
+
 def _digest(value: object, label: str) -> str:
     if not isinstance(value, str) or _SHA256_RE.fullmatch(value) is None:
         raise TrainingRunnerBlocked(f"{label} must be a SHA-256 digest")
@@ -1419,7 +1425,7 @@ def _build_authorized_training_context(
 
 
 def _checkpoint_snapshot(payload: bytes) -> dict[str, Any]:
-    checkpoint = _parse_canonical_mapping(payload, "paired training checkpoint")
+    checkpoint = _parse_runtime_checkpoint_mapping(payload)
     _fields(
         checkpoint,
         {

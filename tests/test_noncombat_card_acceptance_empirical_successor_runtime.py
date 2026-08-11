@@ -41,6 +41,23 @@ def _runtime():
     return importlib.import_module(RUNTIME_MODULE)
 
 
+def test_registered_zero_progress_checkpoint_matches_runner_snapshot_format():
+    runtime = _runtime()
+    runner = importlib.import_module(
+        "analysis_scripts.noncombat_card_acceptance_empirical_successor_training_runner"
+    )
+
+    checkpoint = runtime.encode_paired_training_checkpoint(
+        runtime.initialize_paired_training_runtime()
+    )
+    snapshot = runner._checkpoint_snapshot(checkpoint)
+
+    assert not checkpoint.endswith(b"\n")
+    assert set(snapshot["coordinates"].values()) == {0}
+    assert snapshot["checkpoint_sha256"] == hashlib.sha256(checkpoint).hexdigest()
+    assert snapshot["stopped_for_family_saturation"] is False
+
+
 def _candidates() -> list[dict[str, object]]:
     return [
         {
