@@ -1001,6 +1001,226 @@ def test_training_schedule_preserves_partial_prefix_without_closeout_or_checkpoi
     ]
 
 
+def _registered_input_fixture():
+    runner = _runner()
+    inventory = {
+        "cohorts": {
+            "canary": list(range(1_000, 1_128)),
+            "holdout": list(range(2_000, 2_512)),
+            "training": list(range(512)),
+        },
+        "inventory_sha256": "d" * 64,
+    }
+    inventory_payload = runner.canonical_json_bytes(inventory)
+    registration_body = {
+        "authority": {"training": False},
+        "cohorts": copy.deepcopy(inventory["cohorts"]),
+        "empirical_operations": {"training": False},
+        "inventory_sha256": inventory["inventory_sha256"],
+        "registration_id": "synthetic-r6-registration-v1",
+        "schema_version": "synthetic-r6-registration-schema-v1",
+    }
+    registration = {
+        **registration_body,
+        "registration_sha256": runner.canonical_json_sha256(registration_body),
+    }
+    registration_payload = runner.canonical_json_bytes(registration)
+    return (
+        runner,
+        inventory,
+        inventory_payload,
+        registration,
+        registration_payload,
+    )
+
+
+def test_registered_training_inputs_open_only_after_complete_authority():
+    runner, inventory, inventory_payload, registration, registration_payload = (
+        _registered_input_fixture()
+    )
+    calls = []
+    rollback_sha256 = "e" * 64
+
+    result = runner._open_registered_training_inputs(
+        authority_validator=lambda: (
+            calls.append("authority")
+            or {
+                "command": "run-training",
+                "composite_sha256": "b" * 64,
+                "envelope_sha256": "a" * 64,
+                "validated": True,
+            }
+        ),
+        expected_envelope_sha256="a" * 64,
+        expected_composite_sha256="b" * 64,
+        registration_reader=lambda: (
+            calls.append("registration") or registration_payload
+        ),
+        registration_binding=_binding(
+            "reports/synthetic-r6-registration.json", registration_payload
+        ),
+        inventory_reader=lambda: calls.append("inventory") or inventory_payload,
+        inventory_binding=_external_binding(
+            "D:/synthetic/inventory.json",
+            hashlib.sha256(inventory_payload).hexdigest(),
+        )
+        | {"size_bytes": len(inventory_payload)},
+        inventory_parser=lambda payload: (
+            calls.append("inventory-parser") or json.loads(payload)
+        ),
+        producer_validator=lambda value, evidence: (
+            calls.append("producer")
+            or (
+                copy.deepcopy(value)
+                if evidence == inventory
+                else pytest.fail("producer received another inventory")
+            )
+        ),
+        independent_verifier=lambda value, evidence: (
+            calls.append("independent-verifier")
+            or {
+                "authority": copy.deepcopy(value["authority"]),
+                "cohort_counts": {"canary": 128, "holdout": 512, "training": 512},
+                "empirical_operations": copy.deepcopy(
+                    value["empirical_operations"]
+                ),
+                "inventory_sha256": value["inventory_sha256"],
+                "registration_id": value["registration_id"],
+                "registration_sha256": value["registration_sha256"],
+                "verified": evidence == inventory,
+            }
+        ),
+        rollback_authority_sha256=rollback_sha256,
+    )
+
+    assert calls == [
+        "authority",
+        "registration",
+        "inventory",
+        "inventory-parser",
+        "producer",
+        "independent-verifier",
+    ]
+    assert result["training_seeds"] == tuple(range(512))
+    assert result["registration"] == registration
+    assert "rollback_authority_sha256" not in result["registration"]
+    assert result["execution_registration"] == {
+        **registration,
+        "rollback_authority_sha256": rollback_sha256,
+    }
+    assert runner.canonical_json_bytes(result["registration"]) == registration_payload
+
+
+def test_registered_training_inputs_fail_before_any_protected_or_runtime_access():
+    runner, _inventory, inventory_payload, _registration, registration_payload = (
+        _registered_input_fixture()
+    )
+    calls = []
+
+    with pytest.raises(runner.TrainingRunnerBlocked, match="authority"):
+        runner._open_registered_training_inputs(
+            authority_validator=lambda: (_ for _ in ()).throw(
+                runner.TrainingRunnerBlocked("synthetic authority failure")
+            ),
+            expected_envelope_sha256="a" * 64,
+            expected_composite_sha256="b" * 64,
+            registration_reader=lambda: calls.append("registration")
+            or registration_payload,
+            registration_binding=_binding("registration.json", registration_payload),
+            inventory_reader=lambda: calls.append("inventory") or inventory_payload,
+            inventory_binding={
+                "path": "D:/synthetic/inventory.json",
+                "sha256": hashlib.sha256(inventory_payload).hexdigest(),
+                "size_bytes": len(inventory_payload),
+            },
+            inventory_parser=lambda payload: json.loads(payload),
+            producer_validator=lambda value, evidence: value,
+            independent_verifier=lambda value, evidence: {"verified": True},
+            rollback_authority_sha256="e" * 64,
+        )
+
+    assert calls == []
+
+
+@pytest.mark.parametrize("changed_field", ("envelope_sha256", "composite_sha256"))
+def test_registered_training_inputs_reject_authorized_identity_substitution(
+    changed_field,
+):
+    runner, _inventory, inventory_payload, _registration, registration_payload = (
+        _registered_input_fixture()
+    )
+    calls = []
+    authority = {
+        "command": "run-training",
+        "composite_sha256": "b" * 64,
+        "envelope_sha256": "a" * 64,
+        "validated": True,
+    }
+    authority[changed_field] = "c" * 64
+
+    with pytest.raises(runner.TrainingRunnerBlocked, match="authority"):
+        runner._open_registered_training_inputs(
+            authority_validator=lambda: authority,
+            expected_envelope_sha256="a" * 64,
+            expected_composite_sha256="b" * 64,
+            registration_reader=lambda: calls.append("registration")
+            or registration_payload,
+            registration_binding=_binding("registration.json", registration_payload),
+            inventory_reader=lambda: calls.append("inventory") or inventory_payload,
+            inventory_binding={
+                "path": "D:/synthetic/inventory.json",
+                "sha256": hashlib.sha256(inventory_payload).hexdigest(),
+                "size_bytes": len(inventory_payload),
+            },
+            inventory_parser=lambda payload: json.loads(payload),
+            producer_validator=lambda value, evidence: value,
+            independent_verifier=lambda value, evidence: {"verified": True},
+            rollback_authority_sha256="e" * 64,
+        )
+
+    assert calls == []
+
+
+def test_registered_training_inputs_reject_validator_disagreement():
+    runner, inventory, inventory_payload, registration, registration_payload = (
+        _registered_input_fixture()
+    )
+
+    with pytest.raises(runner.TrainingRunnerBlocked, match="agreement"):
+        runner._open_registered_training_inputs(
+            authority_validator=lambda: {
+                "command": "run-training",
+                "composite_sha256": "b" * 64,
+                "envelope_sha256": "a" * 64,
+                "validated": True,
+            },
+            expected_envelope_sha256="a" * 64,
+            expected_composite_sha256="b" * 64,
+            registration_reader=lambda: registration_payload,
+            registration_binding=_binding("registration.json", registration_payload),
+            inventory_reader=lambda: inventory_payload,
+            inventory_binding={
+                "path": "D:/synthetic/inventory.json",
+                "sha256": hashlib.sha256(inventory_payload).hexdigest(),
+                "size_bytes": len(inventory_payload),
+            },
+            inventory_parser=lambda payload: copy.deepcopy(inventory),
+            producer_validator=lambda value, evidence: copy.deepcopy(value),
+            independent_verifier=lambda value, evidence: {
+                "authority": copy.deepcopy(value["authority"]),
+                "cohort_counts": {"canary": 128, "holdout": 512, "training": 512},
+                "empirical_operations": copy.deepcopy(
+                    value["empirical_operations"]
+                ),
+                "inventory_sha256": value["inventory_sha256"],
+                "registration_id": value["registration_id"],
+                "registration_sha256": "f" * 64,
+                "verified": True,
+            },
+            rollback_authority_sha256="e" * 64,
+        )
+
+
 def _preflight_fixture(tmp_path: Path):
     root = tmp_path.resolve().as_posix()
     runner, manifest, payloads = _manifest(root)

@@ -861,6 +861,7 @@ def validate_authorized_command_envelope(
     return {
         "authority_mode": normalized_envelope["authority_mode"],
         "command": normalized_envelope["command"],
+        "composite_sha256": normalized_envelope["composite"]["composite_sha256"],
         "downstream_authority": copy.deepcopy(
             normalized_envelope["downstream_authority"]
         ),
@@ -967,6 +968,163 @@ def _checkpoint_snapshot(payload: bytes) -> dict[str, Any]:
         "stopped_for_family_saturation": checkpoint[
             "stopped_for_family_saturation"
         ],
+    }
+
+
+def _open_registered_training_inputs(
+    *,
+    authority_validator: Callable[[], Mapping[str, Any]],
+    expected_envelope_sha256: str,
+    expected_composite_sha256: str,
+    registration_reader: Callable[[], bytes],
+    registration_binding: Mapping[str, Any],
+    inventory_reader: Callable[[], bytes],
+    inventory_binding: Mapping[str, Any],
+    inventory_parser: Callable[[bytes], Mapping[str, Any]],
+    producer_validator: Callable[
+        [Mapping[str, Any], Mapping[str, Any]], Mapping[str, Any]
+    ],
+    independent_verifier: Callable[
+        [Mapping[str, Any], Mapping[str, Any]], Mapping[str, Any]
+    ],
+    rollback_authority_sha256: str,
+) -> dict[str, Any]:
+    """Open the registered cohort only after one complete command authority check."""
+    callbacks = (
+        authority_validator,
+        registration_reader,
+        inventory_reader,
+        inventory_parser,
+        producer_validator,
+        independent_verifier,
+    )
+    if not all(callable(callback) for callback in callbacks):
+        raise TrainingRunnerBlocked("registered input callback is invalid")
+    authority = _mapping(authority_validator(), "runner command authority")
+    expected_envelope = _digest(expected_envelope_sha256, "expected run envelope")
+    expected_composite = _digest(expected_composite_sha256, "expected runner composite")
+    if (
+        authority.get("validated") is not True
+        or authority.get("command") != "run-training"
+        or authority.get("envelope_sha256") != expected_envelope
+        or authority.get("composite_sha256") != expected_composite
+    ):
+        raise TrainingRunnerBlocked("run-training authority is incomplete")
+
+    normalized_registration_binding = _artifact_binding(
+        registration_binding, "registered inventory artifact"
+    )
+    registration_payload = registration_reader()
+    if not isinstance(registration_payload, bytes) or not _binding_matches(
+        registration_payload, normalized_registration_binding
+    ):
+        raise TrainingRunnerBlocked("registered inventory artifact differs")
+    registration = _parse_canonical_mapping(
+        registration_payload, "registered inventory artifact"
+    )
+
+    normalized_inventory_binding = _external_binding(
+        inventory_binding, "registered source inventory"
+    )
+    inventory_payload = inventory_reader()
+    if not isinstance(inventory_payload, bytes) or not _binding_matches(
+        inventory_payload, normalized_inventory_binding
+    ):
+        raise TrainingRunnerBlocked("registered source inventory differs")
+    _parse_canonical_mapping(inventory_payload, "registered source inventory")
+    try:
+        inventory = _mapping(inventory_parser(inventory_payload), "validated source inventory")
+        if canonical_json_bytes(inventory) != inventory_payload:
+            raise TrainingRunnerBlocked("validated source inventory bytes differ")
+        producer_result = _mapping(
+            producer_validator(
+                _parse_canonical_mapping(registration_payload, "producer registration"),
+                _parse_canonical_mapping(inventory_payload, "producer inventory"),
+            ),
+            "producer registration validation",
+        )
+        independent_result = _mapping(
+            independent_verifier(
+                _parse_canonical_mapping(
+                    registration_payload, "independent registration"
+                ),
+                _parse_canonical_mapping(inventory_payload, "independent inventory"),
+            ),
+            "independent registration validation",
+        )
+    except TrainingRunnerBlocked:
+        raise
+    except Exception as exc:
+        raise TrainingRunnerBlocked("registration validation failed") from exc
+    if producer_result != registration:
+        raise TrainingRunnerBlocked("producer registration agreement differs")
+    registration_sha256 = _digest(
+        registration.get("registration_sha256"), "inventory registration"
+    )
+    expected_independent_fields = {
+        "authority",
+        "cohort_counts",
+        "empirical_operations",
+        "inventory_sha256",
+        "registration_id",
+        "registration_sha256",
+        "verified",
+    }
+    if set(independent_result) != expected_independent_fields:
+        raise TrainingRunnerBlocked("independent registration agreement fields differ")
+    expected_cohort_counts = {"canary": 128, "holdout": 512, "training": 512}
+    if (
+        independent_result["verified"] is not True
+        or independent_result["registration_sha256"] != registration_sha256
+        or independent_result["registration_id"] != registration.get("registration_id")
+        or independent_result["inventory_sha256"] != registration.get("inventory_sha256")
+        or independent_result["authority"] != registration.get("authority")
+        or independent_result["empirical_operations"]
+        != registration.get("empirical_operations")
+        or independent_result["cohort_counts"] != expected_cohort_counts
+    ):
+        raise TrainingRunnerBlocked("independent registration agreement differs")
+    registration_body = {
+        key: value
+        for key, value in registration.items()
+        if key != "registration_sha256"
+    }
+    if registration_sha256 != canonical_json_sha256(registration_body):
+        raise TrainingRunnerBlocked("inventory registration self-digest differs")
+    _all_boolean_mapping(
+        registration.get("authority"),
+        "inventory registration authority",
+        require_false=True,
+    )
+    _all_boolean_mapping(
+        registration.get("empirical_operations"),
+        "inventory registration empirical operations",
+        require_false=True,
+    )
+    cohorts = _mapping(registration.get("cohorts"), "inventory registration cohorts")
+    _fields(cohorts, {"canary", "holdout", "training"}, "inventory registration cohorts")
+    training_seeds = cohorts["training"]
+    if (
+        not isinstance(training_seeds, list)
+        or len(training_seeds) != 512
+        or tuple(training_seeds) != tuple(sorted(set(training_seeds)))
+        or any(
+            isinstance(seed, bool) or not isinstance(seed, int) or seed < 0
+            for seed in training_seeds
+        )
+    ):
+        raise TrainingRunnerBlocked("registered training cohort differs")
+    rollback_sha256 = _digest(
+        rollback_authority_sha256, "registered rollback authority"
+    )
+    return {
+        "authority": copy.deepcopy(authority),
+        "execution_registration": {
+            **copy.deepcopy(registration),
+            "rollback_authority_sha256": rollback_sha256,
+        },
+        "registration": copy.deepcopy(registration),
+        "training_seeds": tuple(training_seeds),
     }
 
 
