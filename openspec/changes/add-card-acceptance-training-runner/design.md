@@ -79,6 +79,35 @@ Keeping this separate from the already pushed stage request avoids rewriting a
 valid request. The later runner requires both the existing stage authorization
 and the exact manifest, so neither can substitute for the other.
 
+### Publish the r6 zero-progress control anchor before the manifest
+
+The rollback authority cannot point at the consumed 20260805 state-conditioned
+final model or any later consumed checkpoint. Those bytes represent a failed
+candidate experiment, not the matched r6 control. It also cannot point at a
+future checkpoint inside the absent training output root because authorized
+execution must be able to reobserve the rollback identities before a failure
+needs closure.
+
+Before rendering the launch manifest, use the unchanged registered runtime in
+two fresh isolated CPU processes to construct the fixed matched bootstrap and
+paired optimizers, encode the canonical zero-progress paired training
+checkpoint, restore it, and prove exact re-encoding. In the same bounded
+operation, encode the exact control-plane experiment contract and prove that
+its canonical size and SHA-256 equal the configuration identity already bound
+by the r6 request. Both processes must produce byte-identical checkpoint and
+configuration artifacts with zero chunk, pair, environment-access, and
+optimizer-step counters.
+
+This is a control-anchor publication, not empirical execution. It may import
+the registered Torch runtime and construct the fixed deterministic models and
+optimizers solely for serialization. It may not load the native adapter,
+decode or open the empirical seed inventory, construct an environment, execute
+an optimizer step, fit, train, evaluate, acquire the training lease, or create
+the training output root. The two artifacts plus a bounded verification record
+are reviewed, committed, and pushed before the launch manifest binds their
+absolute paths, hashes, and sizes. Source-only preflight later validates only
+the canonical rollback-authority document and does not open either anchor.
+
 ### Bind each reviewed command transitively after authority exists
 
 The source-only preflight manifest grants no authority. Its canonical runner
@@ -268,6 +297,10 @@ delegation validator.
   terminalizer to publish a non-replay process-failure closure.
 - [Risk] Runner work expands into canary/holdout. -> Limit stage to `training`
   and reject other stage requests and authorization maps.
+- [Risk] A convenient old model is mislabeled as the r6 rollback control. ->
+  Reject consumed candidate/checkpoint artifacts and bind only the separately
+  reproduced zero-progress paired checkpoint plus exact r6 experiment
+  configuration.
 
 ## Migration Plan
 
@@ -277,10 +310,14 @@ delegation validator.
 3. Implement the minimal runner and standalone manifest verifier.
 4. Run focused tests, compile/import probes, registered gates, strict OpenSpec,
    and tool-prohibited source review; commit and push source.
-5. Render, independently review, commit, and push one r6 launch manifest and
-   source-only preflight. Bind all three commands; do not create authorization,
-   terminalize output, or run training.
-6. Return to parent task 6.4 only after authoritative current-message watermark
+5. Reproduce, independently verify, commit, and push the deterministic r6
+   zero-progress paired checkpoint and exact experiment configuration without
+   native, environment, empirical-seed, optimizer-step, fitting, training, or
+   evaluation access.
+6. Render, independently review, commit, and push one r6 launch manifest and
+   source-only preflight. Bind all three commands and the pushed control anchor;
+   do not create authorization, terminalize output, or run training.
+7. Return to parent task 6.4 only after authoritative current-message watermark
    observation is available. After stage authority exists, render, review, and
    push the exact run envelope before training. A terminalization envelope may
    be rendered only after a proven dead owner requires closure.

@@ -10,6 +10,14 @@ that command exists would authorize an unlaunchable and unauditable workflow.
 
 - Add one narrow CPU training runner with a closed `preflight`, `run-training`,
   and `terminalize-dead-owner` command set.
+- Publish one tracked r6 bootstrap control anchor before the launch manifest:
+  the exact canonical zero-progress paired training checkpoint and exact
+  experiment configuration. Two fresh isolated CPU processes must reproduce
+  the same bytes and restore/re-encode the checkpoint exactly. This bounded
+  publication may construct the registered fixed initialization but may not
+  load native code, open the empirical seed inventory, construct an
+  environment, take an optimizer step, fit, train, evaluate, or create the
+  training output root.
 - Add a canonical launch manifest that binds the pushed r6 registration,
   training request/review, runner source, interpreter, registered experiment
   source, additive seed-inventory producer and independent registration
@@ -45,9 +53,12 @@ that command exists would authorize an unlaunchable and unauditable workflow.
   evidence. Do not publish task 6.4 authorization or run task 6.5 training in
   this change.
 
-Success means a reviewed pushed runner can reproduce one exact preflight and
-closed command set, and focused plus repository gates prove lifecycle closure
-without loading native/model/runtime execution dependencies. The rollback boundary is
+Success means a reviewed pushed runner and deterministic bootstrap control
+anchor can reproduce one exact preflight and closed command set, and focused
+plus repository gates prove lifecycle closure. Source-only preflight remains
+free of native/model/runtime execution dependencies; the earlier anchor
+publication is restricted to deterministic zero-progress model construction
+and serialization. The rollback boundary is
 the first runner process invocation: before it, remove only uncommitted runner
 planning/preflight artifacts; after it, preserve every receipt, lease,
 checkpoint, journal, terminal, complete, or partial output and never substitute
@@ -76,6 +87,7 @@ operation.
   `tests/`.
 - Narrow integration with the existing card-acceptance control, runtime,
   registration validator, simulator adapter, and standalone verifier APIs.
-- New bounded launch-manifest/preflight reports only; no CommunicationMod,
+- New bounded bootstrap-control, launch-manifest, and preflight reports only;
+  no CommunicationMod,
   gameplay policy, production checkpoint, training hyperparameter, cohort,
   model architecture, native dependency, or resource-ceiling change.

@@ -1,5 +1,32 @@
 ## ADDED Requirements
 
+### Requirement: Rollback control is anchored before manifest publication
+Before launch-manifest publication, the system SHALL publish and track one
+canonical r6 zero-progress paired training checkpoint and one canonical exact
+experiment configuration. The checkpoint SHALL be constructed from the
+registered fixed matched bootstrap and paired optimizers, contain zero chunk,
+pair, environment-access, and optimizer-step progress, restore and re-encode
+byte-identically, and remain outside the absent training output root. The
+configuration bytes SHALL reproduce the configuration identity already bound
+by the r6 request.
+
+Two fresh isolated CPU processes SHALL produce byte-identical checkpoint and
+configuration bytes. This bounded publication MAY import the exact registered
+Torch runtime and construct only the deterministic zero-progress models and
+optimizers needed for serialization. It SHALL NOT load native code, open or
+decode the empirical seed inventory, construct an environment, execute an
+optimizer step, fit, train, evaluate, acquire the training lease, or create the
+training output root. The artifacts and a bounded verification record SHALL be
+reviewed, committed, and pushed before they become eligible rollback bindings.
+
+#### Scenario: Deterministic control anchor is reproduced
+- **WHEN** two fresh isolated processes construct the registered zero-progress paired state and exact experiment configuration
+- **THEN** both byte streams agree exactly, checkpoint restore/re-encode is exact, every progress counter is zero, and the pushed artifacts become eligible for the launch manifest without granting execution authority
+
+#### Scenario: A consumed or empirical artifact is offered as the control anchor
+- **WHEN** an old candidate/final model, consumed checkpoint, future output-root path, native-loaded result, empirical-seed result, trained state, or nonzero-progress checkpoint is offered
+- **THEN** control-anchor publication is rejected before launch-manifest or authorization publication
+
 ### Requirement: Training launch is bound to one exact runner command set
 The system SHALL publish and independently review one canonical launch manifest
 that binds the pushed r6 registration, training request and review, runner
@@ -17,7 +44,7 @@ manifest SHALL grant no authority and SHALL be pushed before training
 authorization becomes eligible.
 
 #### Scenario: Exact launch manifest is reviewed
-- **WHEN** every registered path, digest, source, interpreter, command, resource, exclusion, and all-false downstream binding agrees
+- **WHEN** every registered path, digest, source, interpreter, command, resource, exclusion, pushed zero-progress control anchor, and all-false downstream binding agrees
 - **THEN** the manifest becomes eligible for source-only preflight without authorizing or starting training
 
 #### Scenario: Runner or command drifts

@@ -15,4 +15,4 @@ SHALL remain blocked until separate valid approval and launch observations exist
 
 #### Scenario: Runner source boundary is complete
 - **WHEN** runner source, tests, launch-manifest schema, source-only preflight, independent verification, configured gates, and review are pushed without empirical access
-- **THEN** only rendering and reviewing one exact launch manifest becomes eligible; authorization and execution remain separate later boundaries
+- **THEN** only publishing the deterministic zero-progress control anchor and then rendering/reviewing one exact launch manifest become eligible; authorization and execution remain separate later boundaries
