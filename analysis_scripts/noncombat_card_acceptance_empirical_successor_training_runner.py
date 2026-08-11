@@ -51,6 +51,9 @@ CONTINUATION_ATTEMPT_SCHEMA_VERSION = (
 REOPEN_ATTEMPT_SCHEMA_VERSION = (
     "noncombat-card-acceptance-training-runner-reopen-attempt-v1"
 )
+RUNNER_AUTHORITY_GUARD_SCHEMA_VERSION = (
+    "noncombat-card-acceptance-training-runner-authority-guard-v1"
+)
 CONTROL_ARTIFACT_INVENTORY_SCHEMA_VERSION = (
     "noncombat-card-acceptance-empirical-successor-artifact-inventory-v1"
 )
@@ -77,6 +80,7 @@ FORBIDDEN_IMPORT_PREFIXES = (
     "analysis_scripts.noncombat_simulator_adapter",
 )
 PREFLIGHT_MAX_BYTES = 4096
+AUTHORIZED_DOCUMENT_MAX_BYTES = 1024 * 1024
 
 _SHA256_RE = re.compile(r"[0-9a-f]{64}")
 _COMMIT_RE = re.compile(r"[0-9a-f]{40}")
@@ -802,33 +806,47 @@ def validate_authorized_command_envelope(
         control = importlib.import_module(
             "analysis_scripts.noncombat_card_acceptance_empirical_successor_experiment"
         )
-        normalized_request = control.validate_stage_request(request)
-        normalized_authorization = control.validate_stage_authorization(
-            authorization, normalized_request
+        normalized_request = _mapping(
+            control.validate_stage_request(request),
+            "validated stage request",
         )
+        normalized_authorization = _mapping(
+            control.validate_stage_authorization(
+                authorization, normalized_request
+            ),
+            "validated stage authorization",
+        )
+        contract = normalized_manifest["request_contract"]
+        observed_contract = {
+            "downstream_authority": normalized_request["downstream_authority"],
+            "execution_authority": normalized_request["execution_authority"],
+            "output_root": normalized_request["output_root"],
+            "registration_sha256": normalized_request[
+                "prerequisite_bindings"
+            ]["registration_sha256"],
+            "request_sha256": normalized_request["request_sha256"],
+            "resources": normalized_request["resources"],
+            "source_commit": normalized_request["source_commit"],
+            "source_inventory_sha256": normalized_request[
+                "source_inventory_sha256"
+            ],
+        }
+        authorization_sha256 = normalized_authorization[
+            "authorization_sha256"
+        ]
+        authorization_approval_sha256 = normalized_authorization[
+            "approval_record_sha256"
+        ]
+    except TrainingRunnerBlocked:
+        raise
     except Exception as exc:
         raise TrainingRunnerBlocked("stage authority validation failed") from exc
-    contract = normalized_manifest["request_contract"]
-    observed_contract = {
-        "downstream_authority": normalized_request["downstream_authority"],
-        "execution_authority": normalized_request["execution_authority"],
-        "output_root": normalized_request["output_root"],
-        "registration_sha256": normalized_request["prerequisite_bindings"][
-            "registration_sha256"
-        ],
-        "request_sha256": normalized_request["request_sha256"],
-        "resources": normalized_request["resources"],
-        "source_commit": normalized_request["source_commit"],
-        "source_inventory_sha256": normalized_request[
-            "source_inventory_sha256"
-        ],
-    }
     if observed_contract != contract:
         raise TrainingRunnerBlocked("authorized request differs from runner manifest")
     if (
-        normalized_authorization["authorization_sha256"]
+        authorization_sha256
         != normalized_envelope["stage_authorization_sha256"]
-        or normalized_authorization["approval_record_sha256"]
+        or authorization_approval_sha256
         != normalized_envelope["approval_sha256"]
     ):
         raise TrainingRunnerBlocked("command envelope stage authority differs")
@@ -836,18 +854,27 @@ def validate_authorized_command_envelope(
     control_observation = runner_observation["control_observation"]
     try:
         if normalized_envelope["authority_mode"] == "standing-delegation":
-            normalized_approval = control.validate_delegated_approval(
-                approval, normalized_request
+            normalized_approval = _mapping(
+                control.validate_delegated_approval(
+                    approval, normalized_request
+                ),
+                "validated delegated approval",
             )
-            normalized_launch = control.validate_delegated_stage_launch(
-                request=normalized_request,
-                authorization=normalized_authorization,
-                delegated_approval=normalized_approval,
-                launch_observation=control_observation,
+            normalized_launch = _mapping(
+                control.validate_delegated_stage_launch(
+                    request=normalized_request,
+                    authorization=normalized_authorization,
+                    delegated_approval=normalized_approval,
+                    launch_observation=control_observation,
+                ),
+                "validated delegated launch",
             )
         else:
-            normalized_approval = control.validate_external_human_approval(
-                approval, normalized_request
+            normalized_approval = _mapping(
+                control.validate_external_human_approval(
+                    approval, normalized_request
+                ),
+                "validated external-human approval",
             )
             approval_text = normalized_approval["approval_message"][
                 "verbatim_approval_text"
@@ -859,22 +886,24 @@ def validate_authorized_command_envelope(
                 raise TrainingRunnerBlocked(
                     "external-human approval does not name runner composite"
                 )
-            normalized_launch = control.validate_external_human_stage_launch(
-                request=normalized_request,
-                authorization=normalized_authorization,
-                external_approval=normalized_approval,
-                launch_observation=control_observation,
+            normalized_launch = _mapping(
+                control.validate_external_human_stage_launch(
+                    request=normalized_request,
+                    authorization=normalized_authorization,
+                    external_approval=normalized_approval,
+                    launch_observation=control_observation,
+                ),
+                "validated external-human launch",
             )
+        approval_sha256 = normalized_approval["approval_sha256"]
+        if normalized_launch != control_observation:
+            raise TrainingRunnerBlocked("runner launch observation differs")
+        if approval_sha256 != normalized_envelope["approval_sha256"]:
+            raise TrainingRunnerBlocked("runner approval identity differs")
     except TrainingRunnerBlocked:
         raise
     except Exception as exc:
         raise TrainingRunnerBlocked("runner command authority validation failed") from exc
-    if normalized_launch != control_observation:
-        raise TrainingRunnerBlocked("runner launch observation differs")
-    if normalized_approval["approval_sha256"] != normalized_envelope[
-        "approval_sha256"
-    ]:
-        raise TrainingRunnerBlocked("runner approval identity differs")
     return {
         "authority_mode": normalized_envelope["authority_mode"],
         "command": normalized_envelope["command"],
@@ -886,9 +915,7 @@ def validate_authorized_command_envelope(
         "runner_launch_observation_sha256": runner_observation[
             "observation_sha256"
         ],
-        "stage_authorization_sha256": normalized_authorization[
-            "authorization_sha256"
-        ],
+        "stage_authorization_sha256": authorization_sha256,
         "validated": True,
     }
 
@@ -910,11 +937,20 @@ def _build_authorized_training_context(
         "_build_delegated_execution_context",
         "_build_external_human_execution_context",
         "_context_identity",
+        "_require_execution_context",
         "validate_stage_authorization",
         "validate_stage_request",
     )
+    try:
+        bound_control = importlib.import_module(
+            "analysis_scripts.noncombat_card_acceptance_empirical_successor_experiment"
+        )
+    except Exception as exc:
+        raise TrainingRunnerBlocked("bound training control is unavailable") from exc
+    if control_api is not bound_control:
+        raise TrainingRunnerBlocked("training context control API is not bound")
     if any(
-        not callable(getattr(control_api, name, None))
+        not callable(getattr(bound_control, name, None))
         for name in required_control_operations
     ):
         raise TrainingRunnerBlocked("training context control API is incomplete")
@@ -982,18 +1018,38 @@ def _build_authorized_training_context(
         raise TrainingRunnerBlocked("execution training registration differs")
 
     try:
-        normalized_request = control_api.validate_stage_request(request)
-        normalized_authorization = control_api.validate_stage_authorization(
-            authorization, normalized_request
+        supplied_request = _mapping(request, "training context request")
+        supplied_authorization = _mapping(
+            authorization, "training context authorization"
         )
+        normalized_request = _mapping(
+            bound_control.validate_stage_request(supplied_request),
+            "validated training context request",
+        )
+        normalized_authorization = _mapping(
+            bound_control.validate_stage_authorization(
+                supplied_authorization, normalized_request
+            ),
+            "validated training context authorization",
+        )
+        if (
+            normalized_request != supplied_request
+            or normalized_authorization != supplied_authorization
+        ):
+            raise TrainingRunnerBlocked("training context stage authority changed")
+        request_stage = normalized_request["stage"]
+        request_sha256 = normalized_request["request_sha256"]
+        request_registration_sha256 = normalized_request[
+            "prerequisite_bindings"
+        ]["registration_sha256"]
+    except TrainingRunnerBlocked:
+        raise
     except Exception as exc:
         raise TrainingRunnerBlocked("training context stage authority differs") from exc
     if (
-        normalized_request["stage"] != "training"
-        or normalized_request["request_sha256"]
-        != manifest["request_contract"]["request_sha256"]
-        or normalized_request["prerequisite_bindings"]["registration_sha256"]
-        != registration_sha256
+        request_stage != "training"
+        or request_sha256 != manifest["request_contract"]["request_sha256"]
+        or request_registration_sha256 != registration_sha256
     ):
         raise TrainingRunnerBlocked("training context request differs")
 
@@ -1021,17 +1077,19 @@ def _build_authorized_training_context(
     }
     try:
         if revalidated_authority["authority_mode"] == "standing-delegation":
-            context = control_api._build_delegated_execution_context(
+            context = bound_control._build_delegated_execution_context(
                 **context_arguments,
                 delegated_approval=copy.deepcopy(dict(approval)),
             )
         else:
-            context = control_api._build_external_human_execution_context(
+            context = bound_control._build_external_human_execution_context(
                 **context_arguments,
                 external_approval=copy.deepcopy(dict(approval)),
             )
+        if bound_control._require_execution_context(context) is not context:
+            raise TrainingRunnerBlocked("authorized training context type differs")
         context_identity = _mapping(
-            control_api._context_identity(context),
+            bound_control._context_identity(context),
             "authorized training context identity",
         )
     except TrainingRunnerBlocked:
@@ -1798,16 +1856,45 @@ def _validated_artifact_inventory(value: object) -> dict[str, Any]:
     return {**body, "artifact_inventory_sha256": inventory["artifact_inventory_sha256"]}
 
 
+def _validated_runner_authority_identity(value: object) -> dict[str, str]:
+    identity = _mapping(value, "runner authority identity")
+    _fields(
+        identity,
+        {
+            "composite_sha256",
+            "launch_manifest_sha256",
+            "rollback_authority_sha256",
+            "run_envelope_sha256",
+        },
+        "runner authority identity",
+    )
+    return {
+        name: _digest(identity[name], f"runner authority {name}")
+        for name in sorted(identity)
+    }
+
+
+def _runner_authority_guard_payload(identity: Mapping[str, Any]) -> bytes:
+    body = {
+        "authority": _validated_runner_authority_identity(identity),
+        "schema_version": RUNNER_AUTHORITY_GUARD_SCHEMA_VERSION,
+    }
+    return canonical_json_bytes(
+        {**body, "guard_sha256": canonical_json_sha256(body)}
+    )
+
+
 def _validated_reopen_observation(
     value: Mapping[str, Any],
     *,
     expected_context_identity: Mapping[str, Any],
+    expected_runner_authority_identity: Mapping[str, Any],
     process_alive: Callable[[int], bool],
 ) -> dict[str, Any]:
     observation = _mapping(value, "read-only training reopen observation")
     _fields(
         observation,
-        {"classification", "recovery"},
+        {"classification", "recovery", "runner_authority_identity"},
         "read-only training reopen observation",
     )
     classification = _mapping(
@@ -1817,6 +1904,11 @@ def _validated_reopen_observation(
     context_identity = _mapping(
         expected_context_identity, "expected reopen context identity"
     )
+    runner_authority_identity = _validated_runner_authority_identity(
+        expected_runner_authority_identity
+    )
+    if observation["runner_authority_identity"] != runner_authority_identity:
+        raise TrainingRunnerBlocked("read-only reopen runner authority differs")
     verdict = classification.get("verdict")
     if verdict == "pre_seed_setup_reopen":
         _fields(
@@ -1924,6 +2016,7 @@ def _validated_reopen_observation(
                 "artifact_inventory": artifact_inventory,
                 "classification": classification,
                 "context_identity": context_identity,
+                "runner_authority_identity": runner_authority_identity,
             }
         )
         if prefix_sha256 != expected_prefix_sha256:
@@ -1953,6 +2046,7 @@ def _validated_reopen_observation(
     return {
         "classification": copy.deepcopy(classification),
         "recovery": copy.deepcopy(recovery),
+        "runner_authority_identity": copy.deepcopy(runner_authority_identity),
     }
 
 
@@ -1985,6 +2079,7 @@ def _observe_training_reopen_read_only(
     control_api: Any,
     context: Any,
     output_root: Path | str,
+    runner_authority_identity: Mapping[str, Any],
     process_alive: Callable[[int], bool],
     observed_lease_payload: bytes | None = None,
 ) -> dict[str, Any]:
@@ -1992,6 +2087,22 @@ def _observe_training_reopen_read_only(
     if not callable(process_alive):
         raise TrainingRunnerBlocked("read-only reopen liveness observer is invalid")
     output = Path(output_root).resolve()
+    normalized_runner_authority = _validated_runner_authority_identity(
+        runner_authority_identity
+    )
+    guard_path = output.parent / f".{output.name}.execution.guard"
+    if guard_path.exists():
+        try:
+            guard_payload = guard_path.read_bytes()
+        except OSError as exc:
+            raise TrainingRunnerBlocked("runner authority guard is unreadable") from exc
+        expected_guard_payload = _runner_authority_guard_payload(
+            normalized_runner_authority
+        )
+        if guard_payload != expected_guard_payload:
+            raise TrainingRunnerBlocked("runner authority guard differs")
+    elif output.exists():
+        raise TrainingRunnerBlocked("existing output lacks runner authority guard")
     try:
         context_identity = _mapping(
             control_api._context_identity(context),
@@ -2009,6 +2120,9 @@ def _observe_training_reopen_read_only(
                 "verdict": "pre_seed_setup_reopen",
             },
             "recovery": {"mode": "fresh_output"},
+            "runner_authority_identity": copy.deepcopy(
+                normalized_runner_authority
+            ),
         }
     if not output.is_dir():
         raise TrainingRunnerBlocked("training output root is not a directory")
@@ -2089,6 +2203,7 @@ def _observe_training_reopen_read_only(
         "artifact_inventory": artifact_inventory,
         "classification": classification,
         "context_identity": context_identity,
+        "runner_authority_identity": normalized_runner_authority,
     }
     return _validated_reopen_observation(
         {
@@ -2101,8 +2216,10 @@ def _observe_training_reopen_read_only(
                 "prefix_sha256": canonical_json_sha256(prefix_body),
                 "runner_launch": runner_launch,
             },
+            "runner_authority_identity": normalized_runner_authority,
         },
         expected_context_identity=context_identity,
+        expected_runner_authority_identity=normalized_runner_authority,
         process_alive=process_alive,
     )
 
@@ -2137,6 +2254,10 @@ class _AtomicObservedExecutionLease:
     def guard_path(self) -> Path:
         return self.output.parent / f".{self.output.name}.execution.guard"
 
+    @property
+    def guard_lock_path(self) -> Path:
+        return self.output.parent / f".{self.output.name}.execution.guard.lock"
+
     @staticmethod
     def _cleanup_stage(path: Path) -> None:
         try:
@@ -2153,6 +2274,12 @@ class _AtomicObservedExecutionLease:
     def __enter__(self) -> Any:
         control = self.control_api
         observation = self.observation
+        runner_authority_identity = _validated_runner_authority_identity(
+            observation.get("runner_authority_identity")
+        )
+        guard_payload = _runner_authority_guard_payload(
+            runner_authority_identity
+        )
         recovery = _mapping(observation.get("recovery"), "atomic lease recovery")
         mode = recovery.get("mode")
         if mode not in {"fresh_output", "dead_owner_reclaim"}:
@@ -2188,8 +2315,8 @@ class _AtomicObservedExecutionLease:
         stage_path: Path | None = None
         state_prepared = False
         try:
-            self.guard_path.parent.mkdir(parents=True, exist_ok=True)
-            guard_handle = self.guard_path.open("a+b", buffering=0)
+            self.guard_lock_path.parent.mkdir(parents=True, exist_ok=True)
+            guard_handle = self.guard_lock_path.open("a+b", buffering=0)
             guard_handle.seek(0, os.SEEK_END)
             if guard_handle.tell() == 0:
                 guard_handle.write(b"\0")
@@ -2197,6 +2324,34 @@ class _AtomicObservedExecutionLease:
                 os.fsync(guard_handle.fileno())
             control._lock_file(guard_handle)
             locked = True
+            if self.guard_path.exists():
+                try:
+                    observed_guard_payload = self.guard_path.read_bytes()
+                except OSError as exc:
+                    raise TrainingRunnerBlocked(
+                        "atomic runner authority guard is unreadable"
+                    ) from exc
+                if observed_guard_payload != guard_payload:
+                    raise TrainingRunnerBlocked(
+                        "atomic runner authority guard differs"
+                    )
+            else:
+                if self.output.exists():
+                    raise TrainingRunnerBlocked(
+                        "existing output lacks atomic runner authority guard"
+                    )
+                guard_stage_path = self.output.parent / (
+                    f".{self.output.name}.execution.guard.{uuid.uuid4().hex}.staging"
+                )
+                try:
+                    with guard_stage_path.open("xb") as guard_stage:
+                        guard_stage.write(guard_payload)
+                        guard_stage.flush()
+                        os.fsync(guard_stage.fileno())
+                    _move_path_write_through(guard_stage_path, self.guard_path)
+                except Exception:
+                    self._cleanup_stage(guard_stage_path)
+                    raise
             reclaimed_owner = None
             if mode == "fresh_output":
                 if self.output.exists():
@@ -2211,6 +2366,7 @@ class _AtomicObservedExecutionLease:
                     control_api=control,
                     context=self.context,
                     output_root=self.output,
+                    runner_authority_identity=runner_authority_identity,
                     process_alive=self.process_alive,
                     observed_lease_payload=prior_payload,
                 )
@@ -2407,9 +2563,18 @@ def _execute_training_lifecycle(
     expected_context_identity = _mapping(
         context_identity_observer(context), "training lifecycle context identity"
     )
+    runner_authority_identity = _validated_runner_authority_identity(
+        {
+            "composite_sha256": authority["composite_sha256"],
+            "launch_manifest_sha256": manifest_digest,
+            "rollback_authority_sha256": rollback_digest,
+            "run_envelope_sha256": envelope_digest,
+        }
+    )
     observed_reopen = _validated_reopen_observation(
         reopen_observer(output, context, process_alive),
         expected_context_identity=expected_context_identity,
+        expected_runner_authority_identity=runner_authority_identity,
         process_alive=process_alive,
     )
     observed_classification = observed_reopen["classification"]
@@ -2671,6 +2836,233 @@ def _default_repo_observer(manifest: Mapping[str, Any]) -> dict[str, Any]:
         "runner_ancestor": True,
         "source_commit_bound": source_commit_bound,
         "tracked": observed_tracked == set(tracked),
+    }
+
+
+def _default_authorized_source_observer(
+    manifest: Mapping[str, Any], authority_paths: Sequence[str]
+) -> dict[str, Any]:
+    root = Path(manifest["repository_root"])
+    try:
+        authority_relative = [
+            Path(path).resolve().relative_to(root).as_posix()
+            for path in authority_paths
+        ]
+        manifest_relative = Path(manifest["manifest_path"]).relative_to(
+            root
+        ).as_posix()
+    except ValueError as exc:
+        raise TrainingRunnerBlocked(
+            "authorized command artifact is outside repository"
+        ) from exc
+    artifact_paths = [
+        manifest["artifacts"][name]["path"] for name in ARTIFACT_NAMES
+    ]
+    tracked = list(
+        dict.fromkeys([manifest_relative, *artifact_paths, *authority_relative])
+    )
+    observed_tracked = set(
+        _git_text(root, "ls-files", "--error-unmatch", "--", *tracked).splitlines()
+    )
+    head = _git_text(root, "rev-parse", "HEAD")
+    pushed = _git_text(root, "rev-parse", manifest["pushed_ref"])
+    authority_bindings = {}
+    for absolute_path, relative_path in zip(
+        authority_paths, authority_relative
+    ):
+        payload = _git_bytes(root, "show", f"{head}:{relative_path}")
+        authority_bindings[absolute_path] = {
+            "path": absolute_path,
+            "sha256": hashlib.sha256(payload).hexdigest(),
+            "size_bytes": len(payload),
+        }
+    runner_commit = manifest["runner_source_commit"]
+    _git_text(root, "merge-base", "--is-ancestor", runner_commit, "HEAD")
+    source_commit_bound = all(
+        _binding_matches(
+            _git_bytes(root, "show", f"{runner_commit}:{binding['path']}"), binding
+        )
+        for binding in manifest["artifacts"].values()
+    )
+    return {
+        "authority_bindings": authority_bindings,
+        "clean": _git_text(root, "status", "--porcelain=v1", "--", *tracked) == "",
+        "head": head,
+        "pushed": pushed,
+        "runner_ancestor": True,
+        "source_commit_bound": source_commit_bound,
+        "tracked": (
+            observed_tracked == set(tracked)
+            and _git_text(root, "rev-parse", "HEAD") == head
+            and _git_text(root, "rev-parse", manifest["pushed_ref"])
+            == pushed
+        ),
+    }
+
+
+def _load_authorized_command_documents(
+    *,
+    command: str,
+    manifest_path: Path | str,
+    envelope_path: Path | str,
+    authorization_path: Path | str,
+    approval_path: Path | str,
+    launch_observation_path: Path | str,
+    artifact_reader: Callable[[Path], bytes] | None = None,
+    source_observer: Callable[
+        [Mapping[str, Any], Sequence[str]], Mapping[str, Any]
+    ]
+    | None = None,
+) -> dict[str, Any]:
+    """Load one pushed command authority without opening empirical inputs."""
+    if command != "run-training":
+        raise TrainingRunnerBlocked("authorized command loader command differs")
+    reader = artifact_reader or _default_artifact_reader
+    observer = source_observer or _default_authorized_source_observer
+    if not callable(reader) or not callable(observer):
+        raise TrainingRunnerBlocked("authorized command loader callback is invalid")
+
+    paths = {
+        "--manifest": Path(manifest_path).resolve(),
+        "--envelope": Path(envelope_path).resolve(),
+        "--authorization": Path(authorization_path).resolve(),
+        "--approval": Path(approval_path).resolve(),
+        "--launch-observation": Path(launch_observation_path).resolve(),
+    }
+
+    def read_bounded(path: Path, label: str) -> bytes:
+        payload = reader(path)
+        if (
+            not isinstance(payload, bytes)
+            or not payload
+            or len(payload) > AUTHORIZED_DOCUMENT_MAX_BYTES
+        ):
+            raise TrainingRunnerBlocked(f"{label} bytes are invalid")
+        return payload
+
+    authority_payloads = {
+        "--manifest": read_bounded(paths["--manifest"], "launch manifest")
+    }
+    manifest = parse_launch_manifest_bytes(authority_payloads["--manifest"])
+    if paths["--manifest"].as_posix() != manifest["manifest_path"]:
+        raise TrainingRunnerBlocked("authorized command manifest path differs")
+    command_value = manifest["commands"]["run_training"]
+    expected_paths = dict(zip(command_value[4::2], command_value[5::2]))
+    observed_paths = {name: path.as_posix() for name, path in paths.items()}
+    if observed_paths != expected_paths:
+        raise TrainingRunnerBlocked("authorized command path differs")
+
+    root = Path(manifest["repository_root"])
+    request_path = root / PurePosixPath(
+        manifest["artifacts"]["training_request"]["path"]
+    )
+    request_payload = read_bounded(request_path, "training request")
+    if not _binding_matches(
+        request_payload, manifest["artifacts"]["training_request"]
+    ):
+        raise TrainingRunnerBlocked("authorized training request binding differs")
+    request = _parse_canonical_mapping(request_payload, "training request")
+    authority_payloads["--envelope"] = read_bounded(
+        paths["--envelope"], "run envelope"
+    )
+    envelope = parse_command_envelope_bytes(
+        authority_payloads["--envelope"], manifest
+    )
+    authority_payloads["--authorization"] = read_bounded(
+        paths["--authorization"], "stage authorization"
+    )
+    authorization = _parse_canonical_mapping(
+        authority_payloads["--authorization"],
+        "stage authorization",
+    )
+    authority_payloads["--approval"] = read_bounded(
+        paths["--approval"], "stage approval"
+    )
+    approval = _parse_canonical_mapping(
+        authority_payloads["--approval"],
+        "stage approval",
+    )
+    authority_payloads["--launch-observation"] = read_bounded(
+        paths["--launch-observation"], "runner launch observation"
+    )
+    launch_observation = _parse_canonical_mapping(
+        authority_payloads["--launch-observation"],
+        "runner launch observation",
+    )
+    if launch_observation != envelope["runner_launch_observation"]:
+        raise TrainingRunnerBlocked("bound runner launch observation differs")
+
+    authority_path_values = [
+        paths[name].as_posix()
+        for name in (
+            "--manifest",
+            "--envelope",
+            "--authorization",
+            "--approval",
+            "--launch-observation",
+        )
+    ]
+    try:
+        source = _mapping(
+            observer(manifest, authority_path_values),
+            "authorized command source observation",
+        )
+    except TrainingRunnerBlocked:
+        raise
+    except Exception as exc:
+        raise TrainingRunnerBlocked(
+            "authorized command source observation failed"
+        ) from exc
+    _fields(
+        source,
+        {
+            "authority_bindings",
+            "clean",
+            "head",
+            "pushed",
+            "runner_ancestor",
+            "source_commit_bound",
+            "tracked",
+        },
+        "authorized command source observation",
+    )
+    observed_authority_bindings = _mapping(
+        source["authority_bindings"], "pushed authority bindings"
+    )
+    if set(observed_authority_bindings) != set(authority_path_values):
+        raise TrainingRunnerBlocked("pushed authority binding paths differ")
+    for name, payload in authority_payloads.items():
+        path = paths[name].as_posix()
+        binding = _external_binding(
+            observed_authority_bindings[path], "pushed authority artifact"
+        )
+        if binding["path"] != path or not _binding_matches(payload, binding):
+            raise TrainingRunnerBlocked("pushed authority bytes differ")
+    if (
+        source["clean"] is not True
+        or source["tracked"] is not True
+        or source["runner_ancestor"] is not True
+        or source["source_commit_bound"] is not True
+        or _commit(source["head"], "authorized source head")
+        != _commit(source["pushed"], "authorized pushed head")
+    ):
+        raise TrainingRunnerBlocked("authorized command pushed source differs")
+    authority = validate_authorized_command_envelope(
+        envelope=envelope,
+        manifest=manifest,
+        request=request,
+        authorization=authorization,
+        approval=approval,
+    )
+    return {
+        "approval": copy.deepcopy(approval),
+        "authority": authority,
+        "authorization": copy.deepcopy(authorization),
+        "envelope": copy.deepcopy(envelope),
+        "launch_observation": copy.deepcopy(launch_observation),
+        "manifest": copy.deepcopy(manifest),
+        "request": copy.deepcopy(request),
+        "source_observation": source,
     }
 
 

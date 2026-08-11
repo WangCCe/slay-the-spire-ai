@@ -754,6 +754,208 @@ def test_authorized_training_context_rejects_authority_and_registration_drift():
         with pytest.raises(runner.TrainingRunnerBlocked):
             runner._build_authorized_training_context(**arguments)
 
+    class DriftedControlProxy:
+        def __getattr__(self, name):
+            return getattr(base["control_api"], name)
+
+    with pytest.raises(runner.TrainingRunnerBlocked, match="not bound"):
+        runner._build_authorized_training_context(
+            **{**base, "control_api": DriftedControlProxy()}
+        )
+
+
+@pytest.mark.parametrize(
+    "malformed_result", ("request", "authorization", "approval", "launch")
+)
+def test_authorized_envelope_wraps_each_malformed_control_result(
+    monkeypatch, malformed_result
+):
+    runner, manifest, payloads = _manifest()
+    request = json.loads(payloads["training_request"])
+    control = _control()
+    documents = _authorized_runner_documents(
+        runner, manifest, request, "standing-delegation"
+    )
+    if malformed_result == "request":
+        monkeypatch.setattr(control, "validate_stage_request", lambda _value: {})
+    elif malformed_result == "authorization":
+        monkeypatch.setattr(
+            control,
+            "validate_stage_authorization",
+            lambda _authorization, _request: {},
+        )
+    elif malformed_result == "approval":
+        monkeypatch.setattr(
+            control,
+            "validate_delegated_approval",
+            lambda _approval, _request: {},
+        )
+    else:
+        monkeypatch.setattr(
+            control,
+            "validate_delegated_stage_launch",
+            lambda **_kwargs: {},
+        )
+
+    with pytest.raises(runner.TrainingRunnerBlocked):
+        runner.validate_authorized_command_envelope(
+            envelope=documents["envelope"],
+            manifest=manifest,
+            request=request,
+            authorization=documents["authorization"],
+            approval=documents["approval"],
+        )
+
+
+def _authorized_document_fixture():
+    runner, manifest, payloads = _manifest()
+    request = json.loads(payloads["training_request"])
+    documents = _authorized_runner_documents(
+        runner, manifest, request, "standing-delegation"
+    )
+    command = manifest["commands"]["run_training"]
+    paths = dict(zip(command[4::2], command[5::2]))
+    raw_payloads = {
+        manifest["manifest_path"]: runner.canonical_json_bytes(manifest),
+        paths["--approval"]: runner.canonical_json_bytes(documents["approval"]),
+        paths["--authorization"]: runner.canonical_json_bytes(
+            documents["authorization"]
+        ),
+        paths["--envelope"]: runner.canonical_json_bytes(documents["envelope"]),
+        paths["--launch-observation"]: runner.canonical_json_bytes(
+            documents["envelope"]["runner_launch_observation"]
+        ),
+        (
+            Path(manifest["repository_root"])
+            / manifest["artifacts"]["training_request"]["path"]
+        ).resolve().as_posix(): payloads["training_request"],
+    }
+    bound_payloads = {
+        str(Path(path).resolve()): payload for path, payload in raw_payloads.items()
+    }
+    return runner, manifest, documents, paths, bound_payloads
+
+
+def _pushed_authority_observation(authority_paths, payloads):
+    return {
+        "authority_bindings": {
+            path: _binding(path, payloads[str(Path(path).resolve())])
+            for path in authority_paths
+        },
+        "clean": True,
+        "head": "a" * 40,
+        "pushed": "a" * 40,
+        "runner_ancestor": True,
+        "source_commit_bound": True,
+        "tracked": True,
+    }
+
+
+def test_bound_authorized_command_documents_require_exact_pushed_paths():
+    runner, manifest, documents, paths, payloads = _authorized_document_fixture()
+    calls = []
+
+    result = runner._load_authorized_command_documents(
+        command="run-training",
+        manifest_path=Path(manifest["manifest_path"]),
+        envelope_path=Path(paths["--envelope"]),
+        authorization_path=Path(paths["--authorization"]),
+        approval_path=Path(paths["--approval"]),
+        launch_observation_path=Path(paths["--launch-observation"]),
+        artifact_reader=lambda path: (
+            calls.append(("read", path.resolve().as_posix()))
+            or payloads[str(path.resolve())]
+        ),
+        source_observer=lambda value, observed_paths: (
+            calls.append(("source", tuple(observed_paths)))
+            or _pushed_authority_observation(observed_paths, payloads)
+        ),
+    )
+
+    assert result["manifest"] == manifest
+    assert result["envelope"] == documents["envelope"]
+    assert result["request"] == documents["request"]
+    assert result["authorization"] == documents["authorization"]
+    assert result["approval"] == documents["approval"]
+    assert result["authority"] == documents["authority"]
+    assert calls[-1][0] == "source"
+    assert set(calls[-1][1]) == {
+        manifest["manifest_path"],
+        paths["--approval"],
+        paths["--authorization"],
+        paths["--envelope"],
+        paths["--launch-observation"],
+    }
+
+
+def test_bound_authorized_command_documents_reject_path_and_source_drift():
+    runner, manifest, _documents, paths, payloads = _authorized_document_fixture()
+    base = {
+        "command": "run-training",
+        "manifest_path": Path(manifest["manifest_path"]),
+        "envelope_path": Path(paths["--envelope"]),
+        "authorization_path": Path(paths["--authorization"]),
+        "approval_path": Path(paths["--approval"]),
+        "launch_observation_path": Path(paths["--launch-observation"]),
+        "artifact_reader": lambda path: payloads[str(path.resolve())],
+        "source_observer": lambda _value, observed_paths: (
+            _pushed_authority_observation(observed_paths, payloads)
+        ),
+    }
+
+    with pytest.raises(runner.TrainingRunnerBlocked, match="command path"):
+        runner._load_authorized_command_documents(
+            **{**base, "envelope_path": Path("D:/synthetic/wrong-envelope.json")}
+        )
+
+    drifted_source = _pushed_authority_observation(paths.values(), payloads)
+    drifted_source["clean"] = False
+    with pytest.raises(runner.TrainingRunnerBlocked, match="pushed source"):
+        runner._load_authorized_command_documents(
+            **{
+                **base,
+                "source_observer": lambda _value, _paths: drifted_source,
+            }
+        )
+
+    drifted_bytes = _pushed_authority_observation(paths.values(), payloads)
+    envelope_path = paths["--envelope"]
+    drifted_bytes["authority_bindings"][envelope_path] = _binding(
+        envelope_path, b"different pushed envelope\n"
+    )
+    with pytest.raises(runner.TrainingRunnerBlocked, match="pushed authority bytes"):
+        runner._load_authorized_command_documents(
+            **{
+                **base,
+                "source_observer": lambda _value, _paths: drifted_bytes,
+            }
+        )
+
+
+def test_bound_authorized_command_documents_reject_launch_observation_drift():
+    runner, manifest, documents, paths, payloads = _authorized_document_fixture()
+    drifted_observation = copy.deepcopy(
+        documents["envelope"]["runner_launch_observation"]
+    )
+    drifted_observation["composite_binding_text"] += " drift"
+    payloads[str(Path(paths["--launch-observation"]).resolve())] = (
+        runner.canonical_json_bytes(drifted_observation)
+    )
+
+    with pytest.raises(runner.TrainingRunnerBlocked, match="launch observation"):
+        runner._load_authorized_command_documents(
+            command="run-training",
+            manifest_path=Path(manifest["manifest_path"]),
+            envelope_path=Path(paths["--envelope"]),
+            authorization_path=Path(paths["--authorization"]),
+            approval_path=Path(paths["--approval"]),
+            launch_observation_path=Path(paths["--launch-observation"]),
+            artifact_reader=lambda path: payloads[str(path.resolve())],
+            source_observer=lambda _value, observed_paths: (
+                _pushed_authority_observation(observed_paths, payloads)
+            ),
+        )
+
 
 def test_external_authority_requires_composite_in_approval_and_observation():
     runner, manifest, payloads = _manifest()
@@ -1708,11 +1910,21 @@ def _setup_reopen_observation():
             "verdict": "pre_seed_setup_reopen",
         },
         "recovery": {"mode": "fresh_output"},
+        "runner_authority_identity": _runner_authority_identity(),
     }
 
 
 def _outer_context_identity():
     return {"audit_id": "synthetic-training"}
+
+
+def _runner_authority_identity():
+    return {
+        "composite_sha256": "b" * 64,
+        "launch_manifest_sha256": "9" * 64,
+        "rollback_authority_sha256": "d" * 64,
+        "run_envelope_sha256": "a" * 64,
+    }
 
 
 def _synthetic_artifact_inventory(runner, runner_launch_sha256=None):
@@ -1762,6 +1974,7 @@ def _stale_setup_reopen_observation(runner, runner_launch_sha256):
                     "artifact_inventory": artifact_inventory,
                     "classification": classification,
                     "context_identity": _outer_context_identity(),
+                    "runner_authority_identity": _runner_authority_identity(),
                 }
             ),
             "runner_launch": {
@@ -1769,6 +1982,7 @@ def _stale_setup_reopen_observation(runner, runner_launch_sha256):
                 "state": "present",
             },
         },
+        "runner_authority_identity": _runner_authority_identity(),
     }
 
 
@@ -1802,6 +2016,7 @@ def _continuation_reopen_observation(
                     "artifact_inventory": artifact_inventory,
                     "classification": classification,
                     "context_identity": _outer_context_identity(),
+                    "runner_authority_identity": _runner_authority_identity(),
                 }
             ),
             "runner_launch": {
@@ -1809,6 +2024,7 @@ def _continuation_reopen_observation(
                 "state": "present",
             },
         },
+        "runner_authority_identity": _runner_authority_identity(),
     }
 
 
@@ -1856,6 +2072,7 @@ def test_read_only_reopen_observer_and_atomic_lease_create_fresh_output(tmp_path
         control_api=control,
         context=context,
         output_root=output,
+        runner_authority_identity=_runner_authority_identity(),
         process_alive=lambda _process_id: False,
     )
 
@@ -1866,6 +2083,7 @@ def test_read_only_reopen_observer_and_atomic_lease_create_fresh_output(tmp_path
             "verdict": "pre_seed_setup_reopen",
         },
         "recovery": {"mode": "fresh_output"},
+        "runner_authority_identity": _runner_authority_identity(),
     }
     with runner._AtomicObservedExecutionLease(
         control_api=control,
@@ -1886,10 +2104,69 @@ def test_read_only_reopen_observer_and_atomic_lease_create_fresh_output(tmp_path
         ]
 
 
-def _dead_zero_debit_output(runner, control, context, output, old_process_id):
-    with control.ExecutionLease(
-        output,
+@pytest.mark.parametrize(
+    "changed_field",
+    (
+        "composite_sha256",
+        "launch_manifest_sha256",
+        "rollback_authority_sha256",
+        "run_envelope_sha256",
+    ),
+)
+def test_runner_authority_guard_rejects_drift_before_launch_marker(
+    tmp_path, changed_field
+):
+    runner = _runner()
+    control = _control()
+    output = tmp_path / "authority-bound-training"
+    context = _real_training_context(control, output)
+    authority = _runner_authority_identity()
+    observation = runner._observe_training_reopen_read_only(
+        control_api=control,
         context=context,
+        output_root=output,
+        runner_authority_identity=authority,
+        process_alive=lambda _process_id: False,
+    )
+    with runner._AtomicObservedExecutionLease(
+        control_api=control,
+        context=context,
+        output_root=output,
+        observation=observation,
+        child_process_id=72_005,
+        process_alive=lambda process_id: process_id == 72_005,
+        clock=lambda: 1.0,
+    ) as lease:
+        control.initialize_access_journal(context, lease)
+        control.initialize_resource_ledger(context, lease)
+
+    drifted_authority = copy.deepcopy(authority)
+    drifted_authority[changed_field] = "0" * 64
+    with pytest.raises(runner.TrainingRunnerBlocked, match="authority guard"):
+        runner._observe_training_reopen_read_only(
+            control_api=control,
+            context=context,
+            output_root=output,
+            runner_authority_identity=drifted_authority,
+            process_alive=lambda _process_id: False,
+        )
+
+    assert not (output / "runner_launch.json").exists()
+
+
+def _dead_zero_debit_output(runner, control, context, output, old_process_id):
+    observation = runner._observe_training_reopen_read_only(
+        control_api=control,
+        context=context,
+        output_root=output,
+        runner_authority_identity=_runner_authority_identity(),
+        process_alive=lambda _process_id: False,
+    )
+    with runner._AtomicObservedExecutionLease(
+        control_api=control,
+        context=context,
+        output_root=output,
+        observation=observation,
         child_process_id=old_process_id,
         process_alive=lambda process_id: process_id == old_process_id,
         clock=lambda: 0.0,
@@ -1922,6 +2199,7 @@ def test_atomic_observed_lease_reclaims_exact_dead_zero_debit_prefix(tmp_path):
         control_api=control,
         context=context,
         output_root=output,
+        runner_authority_identity=_runner_authority_identity(),
         process_alive=process_alive,
     )
 
@@ -1961,6 +2239,7 @@ def test_atomic_observed_lease_rejects_prefix_race_without_rewriting_lease(
         control_api=control,
         context=context,
         output_root=output,
+        runner_authority_identity=_runner_authority_identity(),
         process_alive=process_alive,
     )
     lease_path = output / control.LEASE_FILENAME
@@ -1982,7 +2261,7 @@ def test_atomic_observed_lease_rejects_prefix_race_without_rewriting_lease(
     assert lease_path.read_bytes() == original_lease
 
 
-def test_atomic_observed_lease_fresh_commit_failure_leaves_output_absent(
+def test_atomic_authority_guard_commit_failure_leaves_guard_and_output_absent(
     tmp_path, monkeypatch
 ):
     runner = _runner()
@@ -1993,6 +2272,7 @@ def test_atomic_observed_lease_fresh_commit_failure_leaves_output_absent(
         control_api=control,
         context=context,
         output_root=output,
+        runner_authority_identity=_runner_authority_identity(),
         process_alive=lambda _process_id: False,
     )
     monkeypatch.setattr(
@@ -2016,7 +2296,92 @@ def test_atomic_observed_lease_fresh_commit_failure_leaves_output_absent(
             pytest.fail("failed fresh commit acquired a lease")
 
     assert not output.exists()
+    assert not (output.parent / f".{output.name}.execution.guard").exists()
     assert list(output.parent.glob(f".{output.name}.*.staging")) == []
+
+
+def test_atomic_output_commit_failure_preserves_complete_authority_guard(
+    tmp_path, monkeypatch
+):
+    runner = _runner()
+    control = _control()
+    output = tmp_path / "failed-output-commit-training"
+    context = _real_training_context(control, output)
+    authority = _runner_authority_identity()
+    observation = runner._observe_training_reopen_read_only(
+        control_api=control,
+        context=context,
+        output_root=output,
+        runner_authority_identity=authority,
+        process_alive=lambda _process_id: False,
+    )
+    move_path = runner._move_path_write_through
+    calls = []
+
+    def fail_second_move(source, destination, **kwargs):
+        calls.append((source, destination))
+        if len(calls) == 2:
+            raise OSError("synthetic output move failure")
+        return move_path(source, destination, **kwargs)
+
+    monkeypatch.setattr(runner, "_move_path_write_through", fail_second_move)
+
+    with pytest.raises(runner.TrainingRunnerBlocked, match="atomic execution"):
+        with runner._AtomicObservedExecutionLease(
+            control_api=control,
+            context=context,
+            output_root=output,
+            observation=observation,
+            child_process_id=72_032,
+            process_alive=lambda process_id: process_id == 72_032,
+            clock=lambda: 1.0,
+        ):
+            pytest.fail("failed output commit acquired a lease")
+
+    assert len(calls) == 2
+    assert not output.exists()
+    assert (
+        output.parent / f".{output.name}.execution.guard"
+    ).read_bytes() == runner._runner_authority_guard_payload(authority)
+    assert runner._observe_training_reopen_read_only(
+        control_api=control,
+        context=context,
+        output_root=output,
+        runner_authority_identity=authority,
+        process_alive=lambda _process_id: False,
+    ) == observation
+
+
+def test_atomic_authority_guard_recovers_after_lock_file_only(tmp_path):
+    runner = _runner()
+    control = _control()
+    output = tmp_path / "lock-only-training"
+    lock_path = output.parent / f".{output.name}.execution.guard.lock"
+    lock_path.write_bytes(b"\0")
+    context = _real_training_context(control, output)
+    authority = _runner_authority_identity()
+    observation = runner._observe_training_reopen_read_only(
+        control_api=control,
+        context=context,
+        output_root=output,
+        runner_authority_identity=authority,
+        process_alive=lambda _process_id: False,
+    )
+
+    with runner._AtomicObservedExecutionLease(
+        control_api=control,
+        context=context,
+        output_root=output,
+        observation=observation,
+        child_process_id=72_033,
+        process_alive=lambda process_id: process_id == 72_033,
+        clock=lambda: 1.0,
+    ):
+        pass
+
+    assert (
+        output.parent / f".{output.name}.execution.guard"
+    ).read_bytes() == runner._runner_authority_guard_payload(authority)
 
 
 def test_atomic_observed_lease_stale_commit_failure_preserves_old_lease(
@@ -2034,6 +2399,7 @@ def test_atomic_observed_lease_stale_commit_failure_preserves_old_lease(
         control_api=control,
         context=context,
         output_root=output,
+        runner_authority_identity=_runner_authority_identity(),
         process_alive=process_alive,
     )
     lease_path = output / control.LEASE_FILENAME
@@ -2079,6 +2445,7 @@ def test_atomic_stale_cleanup_failure_keeps_residue_outside_managed_output(
         control_api=control,
         context=context,
         output_root=output,
+        runner_authority_identity=_runner_authority_identity(),
         process_alive=process_alive,
     )
     lease_path = output / control.LEASE_FILENAME
@@ -2117,6 +2484,7 @@ def test_atomic_stale_cleanup_failure_keeps_residue_outside_managed_output(
         control_api=control,
         context=context,
         output_root=output,
+        runner_authority_identity=_runner_authority_identity(),
         process_alive=process_alive,
     ) == observation
     residues[0].unlink()
@@ -2139,6 +2507,7 @@ def test_read_only_reopen_rejects_malformed_prior_reclaimed_owner(tmp_path):
             control_api=control,
             context=context,
             output_root=output,
+            runner_authority_identity=_runner_authority_identity(),
             process_alive=lambda _process_id: False,
         )
 
@@ -2213,11 +2582,12 @@ def test_read_only_continuation_observation_rejects_identity_drift(changed_field
         observation["recovery"]["old_owner"]["token"] = "not-a-token"
 
     with pytest.raises(runner.TrainingRunnerBlocked):
-        runner._validated_reopen_observation(
-            observation,
-            expected_context_identity=_outer_context_identity(),
-            process_alive=lambda _process_id: False,
-        )
+            runner._validated_reopen_observation(
+                observation,
+                expected_context_identity=_outer_context_identity(),
+                expected_runner_authority_identity=_runner_authority_identity(),
+                process_alive=lambda _process_id: False,
+            )
 
 
 def test_read_only_continuation_observation_requires_dead_owner():
@@ -2228,6 +2598,7 @@ def test_read_only_continuation_observation_requires_dead_owner():
         runner._validated_reopen_observation(
             observation,
             expected_context_identity=_outer_context_identity(),
+            expected_runner_authority_identity=_runner_authority_identity(),
             process_alive=lambda _process_id: True,
         )
 
