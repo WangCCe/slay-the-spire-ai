@@ -327,16 +327,18 @@ reconstruct every canonical digest independently before the next boundary.
 
 An exact inventory, training, canary, or holdout request may use a canonical delegated-
 approval resolution only when a recorded solo-maintainer grant explicitly
-covers this repository, request class, resource bounds, false downstream
-authorities, and has not been revoked. The resolution binds the exact reviewed
-request digest and is not represented as verbatim human text. Proposal approval,
+covers this repository, request class, fixed exclusions, and revocation rule,
+and has not been revoked. The resolution binds the exact reviewed request digest
+and therefore its resource bounds, execution authority, and false downstream
+authorities; it is not represented as verbatim human text. Proposal approval,
 agent review, or an unbound permission cannot authorize execution.
 
 The delegation manifest uses the existing canonical standing-delegation schema
 and binds an external-human grant that predates and is outside the successor
 request: verbatim grant text, grant timestamp, message/task IDs, source kind,
-repository/request-class scope, ceilings, exclusions, revocation rule, and
-self-digest. Neither this change nor a request may create or modify its grant.
+repository/request-class scope, exclusions, revocation rule, and self-digest.
+Neither this change nor a request may create or modify its grant or retrofit
+generated request terms into those immutable human-grant bytes.
 Approval publication and every inventory, training, canary, or holdout launch
 require a fresh authoritative current-conversation revocation observation with
 checked-at time and latest observed human-message watermark. If the controller
@@ -344,6 +346,11 @@ cannot inspect that conversation state, or if a later explicit revocation is
 observed, delegated approval is invalid. Human provenance and revocation remain
 a procedural trust boundary; the verifier proves canonical binding, not human
 identity.
+
+Authorization publication uses one source-only chain validator over the exact
+request, original request-review bytes, approval record, and authorization. This
+closes the publication boundary before launch-time validation composes the later
+runner observation and command envelope.
 
 As an alternative to delegation, an exact external-human approval is valid only
 after the exact request and its independent review are tracked and pushed. Its

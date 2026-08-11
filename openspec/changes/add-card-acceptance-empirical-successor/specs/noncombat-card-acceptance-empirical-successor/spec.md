@@ -372,13 +372,21 @@ post-training seal, canary request/authorization, and holdout
 request/authorization SHALL be separate tracked and pushed boundaries. An exact
 request MAY use a canonical delegated-approval resolution only when a recorded
 solo-maintainer grant under the existing standing-delegation schema explicitly
-covers this repository, request class, resource bounds, false downstream
-authorities, and has not been revoked. The grant SHALL predate and remain
+covers this repository, request class, fixed exclusions, and revocation rule,
+and has not been revoked. The grant SHALL predate and remain
 outside the successor request and SHALL bind verbatim external-human grant
-text, timestamp, message/task IDs, source kind, scope, ceilings, exclusions,
-revocation rule, and self-digest. This change, its producer, and its request
-SHALL NOT create or modify the grant. The resolution SHALL bind the exact
-request digest and SHALL NOT be represented as verbatim external-human text.
+text, timestamp, message/task IDs, source kind, scope, exclusions, revocation
+rule, and self-digest. This change, its producer, and its request SHALL NOT
+create or modify the grant. The resolution SHALL bind the exact independently
+reviewed request digest and thereby bind that request's resource bounds,
+execution authority, and false downstream authorities. It SHALL NOT be
+represented as verbatim external-human text.
+
+Before authorization publication, one source-only validation operation SHALL
+consume the exact request, original independent-review bytes, approval record,
+and authorization record. It SHALL validate both approval modes, recompute the
+review byte digest, and prove every request-review-approval-authorization link;
+standalone validation of digest-shaped authorization fields is insufficient.
 
 Approval publication and every inventory, training, canary, and holdout launch
 SHALL require a fresh authoritative current-conversation revocation observation
@@ -404,6 +412,10 @@ boundary.
 #### Scenario: Standing delegation resolves an exact request
 - **WHEN** canonical grant, scope, revocation state, registration, request, independent review, and digest bindings all validate
 - **THEN** a tracked authorization may be published without requiring the maintainer to transcribe the generated tuple
+
+#### Scenario: Authorization publication omits approval evidence
+- **WHEN** an authorization has a valid self-digest but its review bytes or approval record are absent, changed, or do not bind the same request
+- **THEN** publication validation rejects it before the authorization becomes a tracked execution boundary
 
 #### Scenario: Delegation is revoked after authorization publication
 - **WHEN** the fresh launch-time observation contains a later explicit human revocation than the bound grant or approval

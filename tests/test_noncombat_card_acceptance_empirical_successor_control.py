@@ -27,10 +27,17 @@ SEED_MODULE = (
 VERIFIER_MODULE = (
     "analysis_scripts.verify_noncombat_card_acceptance_empirical_successor"
 )
+AUTHORIZATION_PUBLICATION_VALIDATOR_MODULE = (
+    "analysis_scripts.validate_noncombat_card_acceptance_authorization_publication"
+)
 
 
 def _control():
     return importlib.import_module(CONTROL_MODULE)
+
+
+def _authorization_publication_validator():
+    return importlib.import_module(AUTHORIZATION_PUBLICATION_VALIDATOR_MODULE)
 
 
 def _verifier():
@@ -2422,6 +2429,191 @@ def test_standing_delegation_binds_exact_stage_and_fresh_launch_observation(stag
         )
         with pytest.raises(TypeError, match="immutable"):
             context.authority_observation["phase"] = "approval"
+
+
+def test_authorization_publication_validates_complete_approval_review_chain(
+    tmp_path, capsys, monkeypatch
+):
+    control = _control()
+    publication = _authorization_publication_validator()
+    request = _stage_request(control, "training")
+    delegation = _standing_delegation(control)
+    review_bytes = b"# Exact request review\n\nNo findings.\n"
+    review_sha256 = hashlib.sha256(review_bytes).hexdigest()
+    approval_observation = _revocation_observation(
+        control,
+        request,
+        delegation,
+        phase="approval",
+        checked_at="2026-08-09T10:00:00+00:00",
+        message_timestamp="2026-08-09T09:59:59+00:00",
+    )
+    approval = control.bind_delegated_approval(
+        request=request,
+        request_review_sha256=review_sha256,
+        delegation=delegation,
+        approval_observation=approval_observation,
+        resolved_at="2026-08-09T10:00:00+00:00",
+    )
+    authorization = control.build_stage_authorization(
+        request=request,
+        authorization_id="card-acceptance-20260809-training-authorization-v1",
+        request_review_sha256=review_sha256,
+        approval_record_sha256=approval["approval_sha256"],
+    )
+
+    expected = {
+        "approval_mode": "standing-delegation",
+        "approval_sha256": approval["approval_sha256"],
+        "authorization_sha256": authorization["authorization_sha256"],
+        "request_review_sha256": review_sha256,
+        "request_sha256": request["request_sha256"],
+        "stage": "training",
+        "validated": True,
+    }
+    assert publication.validate_stage_authorization_publication(
+        request=request,
+        authorization=authorization,
+        approval=approval,
+        request_review_bytes=review_bytes,
+    ) == expected
+
+    request_path = tmp_path / "request.json"
+    review_path = tmp_path / "request-review.md"
+    approval_path = tmp_path / "approval.json"
+    authorization_path = tmp_path / "authorization.json"
+    request_path.write_bytes(control.canonical_json_bytes(request))
+    review_path.write_bytes(review_bytes)
+    approval_path.write_bytes(control.canonical_json_bytes(approval))
+    authorization_path.write_bytes(control.canonical_json_bytes(authorization))
+    assert publication.main(
+        [
+            "--request",
+            str(request_path),
+            "--request-review",
+            str(review_path),
+            "--approval",
+            str(approval_path),
+            "--authorization",
+            str(authorization_path),
+        ]
+    ) == 0
+    assert capsys.readouterr().out.encode("ascii") == control.canonical_json_bytes(
+        expected
+    )
+
+    with pytest.raises(publication.PublicationValidationError, match="review"):
+        publication.validate_stage_authorization_publication(
+            request=request,
+            authorization=authorization,
+            approval=approval,
+            request_review_bytes=review_bytes + b"changed\n",
+        )
+
+    changed = copy.deepcopy(authorization)
+    changed["approval_record_sha256"] = "f" * 64
+    changed["authorization_sha256"] = control.canonical_json_sha256(
+        {
+            key: value
+            for key, value in changed.items()
+            if key != "authorization_sha256"
+        }
+    )
+    with pytest.raises(publication.PublicationValidationError, match="approval"):
+        publication.validate_stage_authorization_publication(
+            request=request,
+            authorization=changed,
+            approval=approval,
+            request_review_bytes=review_bytes,
+        )
+
+    approval_text = f"I approve exact request {request['request_sha256']}."
+    approval_message = _external_approval_message(
+        control,
+        approval_text=approval_text,
+        approved_at="2026-08-09T11:01:00+00:00",
+    )
+    external_observation = _external_revocation_observation(
+        control,
+        request,
+        approval_message,
+        phase="approval",
+        checked_at="2026-08-09T11:02:00+00:00",
+        message_timestamp="2026-08-09T11:01:59+00:00",
+    )
+    external_approval = control.bind_external_human_approval(
+        request=request,
+        request_review_sha256=review_sha256,
+        request_published_at="2026-08-09T11:00:00+00:00",
+        approval_text=approval_text,
+        approved_at="2026-08-09T11:01:00+00:00",
+        provenance=approval_message["provenance"],
+        approval_observation=external_observation,
+    )
+    external_authorization = control.build_stage_authorization(
+        request=request,
+        authorization_id="card-acceptance-external-training-authorization-v1",
+        request_review_sha256=review_sha256,
+        approval_record_sha256=external_approval["approval_sha256"],
+    )
+    external_result = publication.validate_stage_authorization_publication(
+        request=request,
+        authorization=external_authorization,
+        approval=external_approval,
+        request_review_bytes=review_bytes,
+    )
+    assert external_result["approval_mode"] == "external-human-approval"
+    assert external_result["approval_sha256"] == external_approval[
+        "approval_sha256"
+    ]
+    assert external_result["authorization_sha256"] == external_authorization[
+        "authorization_sha256"
+    ]
+
+    changed_control_path = tmp_path / "changed-control.py"
+    changed_control_path.write_bytes(
+        publication.CONTROL_PATH.read_bytes() + b"# changed\n"
+    )
+    monkeypatch.setattr(publication, "CONTROL_PATH", changed_control_path)
+    with pytest.raises(
+        publication.PublicationValidationError, match="control module"
+    ):
+        publication.validate_stage_authorization_publication(
+            request=request,
+            authorization=authorization,
+            approval=approval,
+            request_review_bytes=review_bytes,
+        )
+
+
+@pytest.mark.parametrize(
+    ("payload", "error"),
+    (
+        (b"", "byte size"),
+        (b'{"key":1,"key":2}', "duplicate JSON key"),
+        (b'{"value":NaN}', "non-finite JSON constant"),
+        (b"[]", "JSON object"),
+    ),
+)
+def test_authorization_publication_rejects_malformed_json_boundaries(
+    tmp_path, payload, error
+):
+    publication = _authorization_publication_validator()
+    candidate = tmp_path / "candidate.json"
+    candidate.write_bytes(payload)
+    with pytest.raises(publication.PublicationValidationError, match=error):
+        publication._read_json_mapping(candidate, "candidate")
+
+
+def test_authorization_publication_rejects_input_over_byte_ceiling(
+    tmp_path, monkeypatch
+):
+    publication = _authorization_publication_validator()
+    candidate = tmp_path / "candidate.json"
+    candidate.write_bytes(b"123456789")
+    monkeypatch.setattr(publication, "MAX_INPUT_BYTES", 8)
+    with pytest.raises(publication.PublicationValidationError, match="byte size"):
+        publication._read_json_mapping(candidate, "candidate")
 
 
 def test_delegated_approval_rejects_unavailable_or_revoked_conversation_state():
