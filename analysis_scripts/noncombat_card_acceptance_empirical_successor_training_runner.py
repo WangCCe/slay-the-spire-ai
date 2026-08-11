@@ -18,6 +18,7 @@ import re
 import subprocess
 import struct
 import sys
+import time
 import types
 import uuid
 from collections.abc import Callable, Mapping, Sequence
@@ -1834,6 +1835,117 @@ def _checkpoint_control_binding(snapshot: Mapping[str, Any]) -> dict[str, Any]:
     }
 
 
+def _close_training_stage(
+    *,
+    control_api: Any,
+    context: Any,
+    lease: Any,
+    rollback_authority: Mapping[str, Any],
+    verdict: str,
+    final_snapshot: Mapping[str, Any],
+) -> dict[str, Any]:
+    """Publish the fixed training terminal chain, rolling back saturation first."""
+    operations = (
+        "execute_registered_rollback",
+        "publish_artifact_manifest",
+        "publish_terminal_document",
+        "publish_terminal_intent",
+    )
+    if any(not callable(getattr(control_api, name, None)) for name in operations):
+        raise TrainingRunnerBlocked("training closeout control API differs")
+    snapshot = _mapping(final_snapshot, "training closeout checkpoint")
+    coordinates = _mapping(
+        snapshot.get("coordinates"), "training closeout coordinates"
+    )
+    completed_chunks = coordinates.get("next_chunk_index")
+    stopped = snapshot.get("stopped_for_family_saturation")
+    if (
+        isinstance(completed_chunks, bool)
+        or not isinstance(completed_chunks, int)
+        or not 1 <= completed_chunks <= 8
+        or type(stopped) is not bool
+    ):
+        raise TrainingRunnerBlocked("training closeout checkpoint differs")
+    if verdict == "training_completed_without_family_saturation":
+        if completed_chunks != 8 or stopped:
+            raise TrainingRunnerBlocked("completed training closeout differs")
+        rollback = None
+    elif verdict == "experiment_stopped_during_training_for_family_saturation":
+        if not stopped:
+            raise TrainingRunnerBlocked("saturated training closeout differs")
+        rollback = _mapping(
+            control_api.execute_registered_rollback(
+                context,
+                lease,
+                rollback_authority=copy.deepcopy(rollback_authority),
+                failure_paths=["training_family_saturation"],
+            ),
+            "training saturation rollback",
+        )
+        if (
+            rollback.get("status") != "rollback_verified"
+            or rollback.get("candidate_enabled") is not False
+            or rollback.get("rollback_required") is not True
+            or rollback.get("failure_paths") != ["training_family_saturation"]
+        ):
+            raise TrainingRunnerBlocked("training saturation rollback differs")
+    else:
+        raise TrainingRunnerBlocked("training closeout verdict differs")
+
+    details = {
+        "completed_chunks": completed_chunks,
+        "final_checkpoint": _checkpoint_control_binding(snapshot),
+        "stopped_for_family_saturation": stopped,
+    }
+    if rollback is not None:
+        details["rollback_observation_sha256"] = _digest(
+            rollback.get("rollback_observation_sha256"),
+            "training saturation rollback observation",
+        )
+    intent = _mapping(
+        control_api.publish_terminal_intent(
+            context,
+            lease,
+            verdict=verdict,
+            details=details,
+        ),
+        "training terminal intent",
+    )
+    terminal = _mapping(
+        control_api.publish_terminal_document(
+            context,
+            lease,
+            terminal_intent=intent,
+        ),
+        "training terminal document",
+    )
+    manifest = _mapping(
+        control_api.publish_artifact_manifest(
+            context,
+            lease,
+            terminal_document=terminal,
+        ),
+        "training artifact manifest",
+    )
+    return {
+        "artifact_manifest_sha256": _digest(
+            manifest.get("manifest_sha256"), "training artifact manifest"
+        ),
+        "rollback_observation_sha256": (
+            None
+            if rollback is None
+            else rollback["rollback_observation_sha256"]
+        ),
+        "terminal_intent_sha256": _digest(
+            intent.get("terminal_intent_sha256"), "training terminal intent"
+        ),
+        "terminal_sha256": _digest(
+            terminal.get("terminal_sha256"), "training terminal document"
+        ),
+        "verdict": verdict,
+    }
+
+
 def _run_training_schedule(
     *,
     control_api: Any,
@@ -1845,7 +1957,7 @@ def _run_training_schedule(
     environment_factory: Callable[[int], Any],
     deadline: float,
     clock: Callable[[], float],
-    closeout: Callable[[str, Mapping[str, Any]], Any],
+    closeout: Callable[..., Any],
 ) -> dict[str, Any]:
     """Compose exact per-chunk runtime work under durable control-plane hooks."""
     seed_values = tuple(training_seeds)
@@ -2785,7 +2897,7 @@ def _execute_training_lifecycle(
     process_alive: Callable[[int], bool],
     deadline: float,
     clock: Callable[[], float],
-    closeout: Callable[[str, Mapping[str, Any]], Any],
+    closeout: Callable[..., Any],
 ) -> dict[str, Any]:
     """Own one authorized lease and lazily compose setup or exact continuation."""
     callbacks = (
@@ -3062,7 +3174,13 @@ def _execute_training_lifecycle(
             environment_factory=environment_factory,
             deadline=deadline,
             clock=clock,
-            closeout=closeout,
+            closeout=lambda verdict, snapshot: closeout(
+                control_api=control_api,
+                context=context,
+                lease=lease,
+                verdict=verdict,
+                final_snapshot=snapshot,
+            ),
         )
 
 
@@ -4564,9 +4682,8 @@ def _compose_authorized_training_command_for_qualification(
     launch_observation_path: Path | str,
     process_id: int,
     process_alive: Callable[[int], bool],
-    deadline: float,
     clock: Callable[[], float],
-    closeout: Callable[[str, Mapping[str, Any]], Any],
+    interpreter_path: Path | str | None = None,
     artifact_reader: Callable[[Path], bytes] | None = None,
     source_observer: Callable[
         [Mapping[str, Any], Sequence[str]], Mapping[str, Any]
@@ -4583,7 +4700,6 @@ def _compose_authorized_training_command_for_qualification(
     callbacks = (
         process_alive,
         clock,
-        closeout,
         reader,
         receipt_publisher,
     )
@@ -4604,6 +4720,20 @@ def _compose_authorized_training_command_for_qualification(
         source_observer=source_observer,
     )
     manifest = documents["manifest"]
+    observed_interpreter = Path(interpreter_path or sys.executable).resolve().as_posix()
+    if observed_interpreter.casefold() != manifest["interpreter"].casefold():
+        raise TrainingRunnerBlocked("authorized training interpreter differs")
+    started = float(clock())
+    max_seconds = manifest["resources"].get("max_charged_seconds")
+    if (
+        not math.isfinite(started)
+        or isinstance(max_seconds, bool)
+        or not isinstance(max_seconds, (int, float))
+        or not math.isfinite(float(max_seconds))
+        or max_seconds <= 0
+    ):
+        raise TrainingRunnerBlocked("authorized training deadline differs")
+    deadline = started + float(max_seconds)
     try:
         control = importlib.import_module(
             "analysis_scripts.noncombat_card_acceptance_empirical_successor_experiment"
@@ -4815,7 +4945,62 @@ def _compose_authorized_training_command_for_qualification(
         process_alive=process_alive,
         deadline=deadline,
         clock=clock,
-        closeout=closeout,
+        closeout=lambda **kwargs: _close_training_stage(
+            rollback_authority=manifest["rollback_authority"],
+            **kwargs,
+        ),
+    )
+
+
+def _windows_process_alive(process_id: int) -> bool:
+    if isinstance(process_id, bool) or not isinstance(process_id, int) or process_id <= 0:
+        return False
+    if process_id == os.getpid():
+        return True
+    if os.name != "nt":
+        return False
+    try:
+        import ctypes
+        from ctypes import wintypes
+    except ImportError:
+        return False
+    kernel32 = ctypes.WinDLL("kernel32", use_last_error=True)
+    open_process = kernel32.OpenProcess
+    open_process.argtypes = (wintypes.DWORD, wintypes.BOOL, wintypes.DWORD)
+    open_process.restype = wintypes.HANDLE
+    wait_for_single_object = kernel32.WaitForSingleObject
+    wait_for_single_object.argtypes = (wintypes.HANDLE, wintypes.DWORD)
+    wait_for_single_object.restype = wintypes.DWORD
+    close_handle = kernel32.CloseHandle
+    close_handle.argtypes = (wintypes.HANDLE,)
+    close_handle.restype = wintypes.BOOL
+    handle = open_process(0x00100000, False, process_id)
+    if not handle:
+        return ctypes.get_last_error() == 5
+    try:
+        return wait_for_single_object(handle, 0) == 0x00000102
+    finally:
+        close_handle(handle)
+
+
+def _execute_authorized_training_command(
+    *,
+    manifest_path: Path | str,
+    envelope_path: Path | str,
+    authorization_path: Path | str,
+    approval_path: Path | str,
+    launch_observation_path: Path | str,
+) -> dict[str, Any]:
+    """Run the fixed production composition after CLI qualification opens it."""
+    return _compose_authorized_training_command_for_qualification(
+        manifest_path=manifest_path,
+        envelope_path=envelope_path,
+        authorization_path=authorization_path,
+        approval_path=approval_path,
+        launch_observation_path=launch_observation_path,
+        process_id=os.getpid(),
+        process_alive=_windows_process_alive,
+        clock=time.monotonic,
     )
 
 

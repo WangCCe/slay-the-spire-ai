@@ -107,7 +107,7 @@ re-encode identically before the next environment access.
 
 #### Scenario: Eight chunks complete without saturation
 - **WHEN** all 512 pairs and 16 optimizer steps complete within bounds without the preregistered family-collapse stop
-- **THEN** eight complete checkpoint bindings and one no-collapse training terminal are published with 1024 exact environment debits
+- **THEN** eight complete checkpoint bindings and one no-collapse training terminal intent/document/manifest chain are published with 1024 exact environment debits and no rollback
 
 #### Scenario: Chunk state does not equal its predecessor
 - **WHEN** any model, optimizer, generator, counter, canonical checkpoint byte, or predecessor digest differs before a new chunk
@@ -115,7 +115,11 @@ re-encode identically before the next environment access.
 
 #### Scenario: Family saturation stops training
 - **WHEN** the fixed training family-collapse rule triggers at a complete chunk boundary
-- **THEN** the runner executes the registered candidate-disabled rollback, publishes the exact terminal stop with zero canary/holdout access, and permits no seal, retry, tuning, or further training
+- **THEN** the runner requires a verified registered candidate-disabled `training_family_saturation` rollback before publishing the exact terminal intent/document/manifest stop with zero canary/holdout access, and permits no seal, retry, tuning, or further training
+
+#### Scenario: Production adapter inputs are fixed
+- **WHEN** `run-training` reaches the production adapter
+- **THEN** the current interpreter equals the manifest binding, the deadline is derived only from manifest `max_charged_seconds`, and no caller-supplied runtime, environment, closeout, process, clock, or resource override is accepted
 
 #### Scenario: Failure occurs inside a partial chunk
 - **WHEN** process, environment, model, accounting, checkpoint, deadline, byte, or publication failure occurs before the next complete checkpoint

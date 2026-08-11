@@ -185,6 +185,13 @@ terminal publication. Successful no-collapse training publishes its training
 terminal without enabling the candidate and leaves later canary/holdout
 authorization separate.
 
+The production adapter derives its monotonic deadline only from the manifest-
+bound `max_charged_seconds`, requires the current interpreter to equal the
+manifest path, and exposes no runtime, environment, closeout, process, clock, or
+resource override. Its fixed training closeout publishes intent, terminal, and
+artifact manifest in order; family saturation first requires a verified
+`training_family_saturation` rollback observation.
+
 If the training owner dies after creating a lifecycle prefix but before
 terminal publication, a separately invoked `terminalize-dead-owner` command may
 close that prefix. While holding the sibling terminalization guard, it first

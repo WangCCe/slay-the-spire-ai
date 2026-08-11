@@ -5,6 +5,7 @@ import copy
 import hashlib
 import importlib
 import json
+import math
 import os
 from pathlib import Path
 import subprocess
@@ -2118,6 +2119,7 @@ def validate_inventory_registration(registration, inventory):
         str(verifier_path): verifier_payload,
     }
     calls = []
+    fixed_closeouts = []
 
     def reader(path):
         normalized = str(path.resolve())
@@ -2132,6 +2134,9 @@ def validate_inventory_registration(registration, inventory):
 
     def execute_lifecycle(**kwargs):
         calls.append("lifecycle")
+        assert kwargs["deadline"] == manifest["resources"][
+            "max_charged_seconds"
+        ]
         registered = kwargs["registered_inputs_loader"]()
         context = kwargs["context_builder"](
             registered["execution_registration"],
@@ -2146,6 +2151,13 @@ def validate_inventory_registration(registration, inventory):
         calls.append("environment")
         assert runtime == "synthetic-runtime"
         assert environment_factory(7) == ("synthetic-environment", 7)
+        kwargs["closeout"](
+            control_api=_control(),
+            context=context,
+            lease=object(),
+            verdict="training_completed_without_family_saturation",
+            final_snapshot={"synthetic": "snapshot"},
+        )
         return {
             "context_identity": kwargs["context_identity_observer"](context),
             "training_seeds": registered["training_seeds"],
@@ -2173,6 +2185,22 @@ def validate_inventory_registration(registration, inventory):
         "_load_source_bound_training_dependencies",
         load_training_dependencies,
     )
+    monkeypatch.setattr(
+        runner,
+        "_close_training_stage",
+        lambda **kwargs: (
+            calls.append("fixed-closeout")
+            or fixed_closeouts.append(
+                {
+                    "final_snapshot": copy.deepcopy(kwargs["final_snapshot"]),
+                    "rollback_authority": copy.deepcopy(
+                        kwargs["rollback_authority"]
+                    ),
+                    "verdict": kwargs["verdict"],
+                }
+            )
+        ),
+    )
 
     result = runner._compose_authorized_training_command_for_qualification(
         manifest_path=Path(manifest["manifest_path"]),
@@ -2182,9 +2210,8 @@ def validate_inventory_registration(registration, inventory):
         launch_observation_path=Path(paths["--launch-observation"]),
         process_id=73_001,
         process_alive=lambda process_id: process_id == 73_001,
-        deadline=100.0,
         clock=lambda: 0.0,
-        closeout=lambda *_args: pytest.fail("composition reached closeout"),
+        interpreter_path=manifest["interpreter"],
         artifact_reader=reader,
         source_observer=lambda _value, observed_paths: (
             _pushed_authority_observation(observed_paths, payloads)
@@ -2204,10 +2231,14 @@ def validate_inventory_registration(registration, inventory):
         "training-dependencies",
         "runtime",
         "environment",
+        "fixed-closeout",
     ]
     assert result["training_seeds"] == tuple(range(512))
     assert result["context_identity"]["registration_sha256"] == registration[
         "registration_sha256"
+    ]
+    assert fixed_closeouts[0]["rollback_authority"] == manifest[
+        "rollback_authority"
     ]
 
 
@@ -2232,12 +2263,67 @@ def test_qualification_composition_rejects_preloaded_runtime_before_authority(
             launch_observation_path=Path("D:/synthetic/observation.json"),
             process_id=73_002,
             process_alive=lambda _process_id: True,
-            deadline=100.0,
             clock=lambda: 0.0,
-            closeout=lambda *_args: pytest.fail("preloaded closeout called"),
+            interpreter_path="D:/synthetic/python.exe",
             artifact_reader=lambda _path: pytest.fail(
                 "preloaded runtime reached authority artifacts"
             ),
+        )
+
+
+def test_production_training_adapter_exposes_only_bound_paths(monkeypatch):
+    runner = _runner()
+    captured = []
+    paths = {
+        "manifest_path": Path("D:/synthetic/manifest.json"),
+        "envelope_path": Path("D:/synthetic/envelope.json"),
+        "authorization_path": Path("D:/synthetic/authorization.json"),
+        "approval_path": Path("D:/synthetic/approval.json"),
+        "launch_observation_path": Path("D:/synthetic/observation.json"),
+    }
+    monkeypatch.setattr(
+        runner,
+        "_compose_authorized_training_command_for_qualification",
+        lambda **kwargs: captured.append(kwargs) or {"fixed": True},
+    )
+
+    assert runner._execute_authorized_training_command(**paths) == {
+        "fixed": True
+    }
+    call = captured[0]
+    assert {name: call[name] for name in paths} == paths
+    assert set(call) == {
+        *paths,
+        "clock",
+        "process_alive",
+        "process_id",
+    }
+    assert call["process_id"] == os.getpid()
+    assert call["process_alive"](os.getpid()) is True
+    assert math.isfinite(call["clock"]())
+
+
+def test_run_training_cli_remains_closed_before_qualification():
+    runner = _runner()
+
+    with pytest.raises(
+        runner.TrainingRunnerBlocked,
+        match="unavailable until lifecycle qualification completes",
+    ):
+        runner.main(
+            [
+                "run-training",
+                "--manifest",
+                "D:/synthetic/manifest.json",
+                "--envelope",
+                "D:/synthetic/envelope.json",
+                "--authorization",
+                "D:/synthetic/authorization.json",
+                "--approval",
+                "D:/synthetic/approval.json",
+                "--launch-observation",
+                "D:/synthetic/observation.json",
+            ]
         )
 
 
@@ -2479,6 +2565,119 @@ class _FakeTrainingControlApi:
     ):
         self.complete_checkpoints.append(copy.deepcopy(binding))
         return {"binding": copy.deepcopy(binding)}
+
+
+class _FakeTrainingCloseoutControl:
+    def __init__(self, *, rollback_status="rollback_verified"):
+        self.calls = []
+        self.rollback_status = rollback_status
+
+    def execute_registered_rollback(
+        self, _context, _lease, *, rollback_authority, failure_paths
+    ):
+        self.calls.append(
+            ("rollback", copy.deepcopy(rollback_authority), list(failure_paths))
+        )
+        return {
+            "candidate_enabled": False,
+            "failure_paths": list(failure_paths),
+            "rollback_observation_sha256": "a" * 64,
+            "rollback_required": True,
+            "status": self.rollback_status,
+        }
+
+    def publish_terminal_intent(
+        self, _context, _lease, *, verdict, details
+    ):
+        self.calls.append(("intent", verdict, copy.deepcopy(details)))
+        return {"terminal_intent_sha256": "b" * 64}
+
+    def publish_terminal_document(
+        self, _context, _lease, *, terminal_intent
+    ):
+        self.calls.append(("terminal", copy.deepcopy(terminal_intent)))
+        return {"terminal_sha256": "c" * 64}
+
+    def publish_artifact_manifest(
+        self, _context, _lease, *, terminal_document
+    ):
+        self.calls.append(("manifest", copy.deepcopy(terminal_document)))
+        return {"manifest_sha256": "d" * 64}
+
+
+@pytest.mark.parametrize(
+    ("verdict", "chunk_index", "stopped", "expected_operations"),
+    (
+        (
+            "training_completed_without_family_saturation",
+            8,
+            False,
+            ["intent", "terminal", "manifest"],
+        ),
+        (
+            "experiment_stopped_during_training_for_family_saturation",
+            3,
+            True,
+            ["rollback", "intent", "terminal", "manifest"],
+        ),
+    ),
+)
+def test_training_closeout_uses_fixed_terminal_and_rollback_order(
+    verdict,
+    chunk_index,
+    stopped,
+    expected_operations,
+):
+    runner = _runner()
+    control = _FakeTrainingCloseoutControl()
+    snapshot = runner._checkpoint_snapshot(
+        _fake_runtime_checkpoint(runner, chunk_index, stopped=stopped)
+    )
+
+    result = runner._close_training_stage(
+        control_api=control,
+        context=object(),
+        lease=object(),
+        rollback_authority={"rollback_authority_sha256": "e" * 64},
+        verdict=verdict,
+        final_snapshot=snapshot,
+    )
+
+    assert [item[0] for item in control.calls] == expected_operations
+    intent = next(item for item in control.calls if item[0] == "intent")
+    assert intent[2]["completed_chunks"] == chunk_index
+    assert intent[2]["stopped_for_family_saturation"] is stopped
+    assert ("rollback_observation_sha256" in intent[2]) is stopped
+    assert result == {
+        "artifact_manifest_sha256": "d" * 64,
+        "rollback_observation_sha256": "a" * 64 if stopped else None,
+        "terminal_intent_sha256": "b" * 64,
+        "terminal_sha256": "c" * 64,
+        "verdict": verdict,
+    }
+
+
+def test_training_saturation_closeout_rejects_unverified_rollback():
+    runner = _runner()
+    control = _FakeTrainingCloseoutControl(rollback_status="rollback_isolation_failure")
+    snapshot = runner._checkpoint_snapshot(
+        _fake_runtime_checkpoint(runner, 2, stopped=True)
+    )
+
+    with pytest.raises(
+        runner.TrainingRunnerBlocked,
+        match="saturation rollback differs",
+    ):
+        runner._close_training_stage(
+            control_api=control,
+            context=object(),
+            lease=object(),
+            rollback_authority={"rollback_authority_sha256": "e" * 64},
+            verdict="experiment_stopped_during_training_for_family_saturation",
+            final_snapshot=snapshot,
+        )
+
+    assert [item[0] for item in control.calls] == ["rollback"]
 
 
 def _run_fake_training_schedule(
@@ -4041,7 +4240,9 @@ def test_training_lifecycle_setup_orders_authority_lease_marker_and_lazy_loaders
         process_alive=lambda process_id: process_id == 71_001,
         deadline=100.0,
         clock=lambda: 0.0,
-        closeout=lambda verdict, snapshot: closeouts.append((verdict, snapshot)),
+        closeout=lambda **kwargs: closeouts.append(
+            (kwargs["verdict"], kwargs["final_snapshot"])
+        ),
     )
 
     assert calls[:11] == [
@@ -4114,7 +4315,7 @@ def test_training_lifecycle_rejects_rollback_in_original_registration():
             process_alive=lambda _process_id: True,
             deadline=100.0,
             clock=lambda: 0.0,
-            closeout=lambda *_args: pytest.fail(
+            closeout=lambda **_kwargs: pytest.fail(
                 "invalid original registration reached closeout"
             ),
         )
@@ -4180,7 +4381,7 @@ def test_training_lifecycle_rejects_compare_and_acquire_drift_before_writes(
             process_alive=lambda process_id: process_id == 71_006,
             deadline=100.0,
             clock=lambda: 0.0,
-            closeout=lambda _verdict, _snapshot: None,
+            closeout=lambda **_kwargs: None,
         )
 
     assert "lease-enter" in calls
@@ -4237,7 +4438,7 @@ def test_training_lifecycle_stale_setup_preserves_original_launch():
         process_alive=lambda process_id: process_id == 71_005,
         deadline=100.0,
         clock=lambda: 0.0,
-        closeout=lambda _verdict, _snapshot: None,
+        closeout=lambda **_kwargs: None,
     )
 
     assert result["completed_chunks"] == 8
@@ -4309,7 +4510,7 @@ def test_training_lifecycle_continuation_restores_exact_complete_checkpoint():
         process_alive=lambda process_id: process_id == 71_002,
         deadline=100.0,
         clock=lambda: 0.0,
-        closeout=lambda _verdict, _snapshot: None,
+        closeout=lambda **_kwargs: None,
     )
 
     assert calls.index("authorize-continuation") < calls.index(
@@ -4410,7 +4611,7 @@ def test_training_lifecycle_attempt_collision_blocks_before_runtime_loading():
             process_alive=lambda process_id: process_id == 71_004,
             deadline=100.0,
             clock=lambda: 0.0,
-            closeout=lambda _verdict, _snapshot: None,
+            closeout=lambda **_kwargs: None,
         )
 
     assert "continuation-attempt-collision" in calls
@@ -4461,7 +4662,7 @@ def test_training_lifecycle_partial_reopen_blocks_before_runtime_loading():
             process_alive=lambda process_id: process_id == 71_003,
             deadline=100.0,
             clock=lambda: 0.0,
-            closeout=lambda _verdict, _snapshot: None,
+            closeout=lambda **_kwargs: None,
         )
 
     assert "runtime-loader" not in calls
