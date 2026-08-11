@@ -464,6 +464,14 @@ process is proven dead.
 - **WHEN** the shell or launcher process exits but the lease-bound runtime child remains alive
 - **THEN** monitoring treats execution as active and does not read, reclaim, repair, resume, or replace its output
 
+#### Scenario: Dead-owner terminalization uses a fresh command observation
+- **WHEN** a pushed terminalization authority has a fresh non-revoked launch observation and binds a dead owner's original pushed run envelope
+- **THEN** the fresh observation authorizes only the closure command, the original run observation reconstructs the lease-bound lifecycle identity, both chains require the same request, approval, and authorization, and registration remains opaque
+
+#### Scenario: Terminalization cannot reconstruct the original run identity
+- **WHEN** the bound original run envelope, launch observation, request, approval, authorization, lease, or failure prefix differs
+- **THEN** terminalization fails before closure publication, performs no empirical access, and grants no training retry
+
 #### Scenario: A terminal path omits elapsed charge
 - **WHEN** failure occurs before the first checkpoint or in any later stage
 - **THEN** terminal publication is invalid unless final charged time and exact access prefix are durably reconciled

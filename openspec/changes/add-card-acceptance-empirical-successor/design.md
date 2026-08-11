@@ -386,6 +386,14 @@ retry, replacement, update, or tuning is permitted after canary start.
 Lease ownership binds the actual native/runtime child process, not only a shell
 wrapper. Monitoring may inspect liveness while that child is alive and may read
 or reclaim the lease/output only after the bound process is proven dead.
+Dead-owner terminalization keeps two launch observations deliberately separate:
+one fresh pushed observation authorizes the terminalization command, while the
+original pushed run observation reconstructs the immutable lifecycle context
+named by the lease. The terminalizer must independently validate both authority
+chains, require the same request, approval, and authorization, keep registration
+opaque, and bind the original run-envelope digest before it may publish closure.
+A mismatch before closure publication writes no recovery evidence and grants no
+training retry.
 
 ### Bound resources and publish independently readable evidence
 

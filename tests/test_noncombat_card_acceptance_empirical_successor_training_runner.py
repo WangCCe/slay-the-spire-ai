@@ -1080,6 +1080,192 @@ def _authorized_runner_documents(
     }
 
 
+def _paired_run_terminalization_documents(
+    runner, manifest, request, authority_mode
+):
+    control = _control()
+    review_sha256 = manifest["artifacts"]["training_request_review"]["sha256"]
+    run_composite = runner.build_runner_composite(manifest, "run-training")
+    terminal_composite = runner.build_runner_composite(
+        manifest, "terminalize-dead-owner"
+    )
+    if authority_mode == "standing-delegation":
+        delegation = _standing_delegation(control)
+        approval_observation = _delegated_observation(
+            control,
+            request,
+            delegation,
+            phase="approval",
+            checked_at="2026-08-11T02:00:00+00:00",
+        )
+        approval = control.bind_delegated_approval(
+            request=request,
+            request_review_sha256=review_sha256,
+            delegation=delegation,
+            approval_observation=approval_observation,
+            resolved_at=approval_observation["checked_at"],
+        )
+        run_control_observation = _delegated_observation(
+            control,
+            request,
+            delegation,
+            phase="launch",
+            checked_at="2026-08-11T02:02:00+00:00",
+        )
+        terminal_control_observation = _delegated_observation(
+            control,
+            request,
+            delegation,
+            phase="launch",
+            checked_at="2026-08-11T02:04:00+00:00",
+        )
+        run_binding_text = (
+            runner.STANDING_COMPOSITE_BINDING_PREFIX
+            + run_composite["composite_sha256"]
+        )
+        terminal_binding_text = (
+            runner.STANDING_COMPOSITE_BINDING_PREFIX
+            + terminal_composite["composite_sha256"]
+        )
+    else:
+        approval_text = (
+            f"I approve exact request {request['request_sha256']} and exact runner "
+            f"composites {run_composite['composite_sha256']} and "
+            f"{terminal_composite['composite_sha256']}."
+        )
+        message_body = {
+            "approved_at": "2026-08-11T02:01:00+00:00",
+            "provenance": {
+                "message_id": "paired-run-terminalization-approval-message",
+                "source": "external-human-message",
+                "task_id": "paired-run-terminalization-approval-task",
+            },
+            "schema_version": control.EXTERNAL_APPROVAL_MESSAGE_SCHEMA_VERSION,
+            "verbatim_approval_text": approval_text,
+        }
+        message = {
+            **message_body,
+            "approval_message_sha256": control.canonical_json_sha256(
+                message_body
+            ),
+        }
+        approval_observation = _external_observation(
+            control,
+            request,
+            message,
+            phase="approval",
+            checked_at="2026-08-11T02:02:00+00:00",
+        )
+        approval = control.bind_external_human_approval(
+            request=request,
+            request_review_sha256=review_sha256,
+            request_published_at="2026-08-11T02:00:00+00:00",
+            approval_text=message["verbatim_approval_text"],
+            approved_at=message["approved_at"],
+            provenance=message["provenance"],
+            approval_observation=approval_observation,
+        )
+        run_control_observation = _external_observation(
+            control,
+            request,
+            message,
+            phase="launch",
+            checked_at="2026-08-11T02:03:00+00:00",
+        )
+        terminal_control_observation = _external_observation(
+            control,
+            request,
+            message,
+            phase="launch",
+            checked_at="2026-08-11T02:04:00+00:00",
+        )
+        run_binding_text = (
+            "Exact external approval names run composite "
+            + run_composite["composite_sha256"]
+            + "."
+        )
+        terminal_binding_text = (
+            "Exact external approval names terminalization composite "
+            + terminal_composite["composite_sha256"]
+            + "."
+        )
+    authorization = control.build_stage_authorization(
+        request=request,
+        authorization_id=(
+            f"card-acceptance-r6-{authority_mode}-paired-training-authorization-v1"
+        ),
+        request_review_sha256=review_sha256,
+        approval_record_sha256=approval["approval_sha256"],
+    )
+    run_runner_observation = runner.build_runner_launch_observation(
+        run_composite,
+        "run-training",
+        run_control_observation,
+        authority_mode=authority_mode,
+        composite_binding_text=run_binding_text,
+    )
+    run_envelope = runner.build_command_envelope(
+        command="run-training",
+        composite=run_composite,
+        stage_authorization_sha256=authorization["authorization_sha256"],
+        authority_mode=authority_mode,
+        approval_sha256=approval["approval_sha256"],
+        runner_launch_observation=run_runner_observation,
+        envelope_id=f"card-acceptance-r6-{authority_mode}-original-run-envelope-v1",
+    )
+    terminal_runner_observation = runner.build_runner_launch_observation(
+        terminal_composite,
+        "terminalize-dead-owner",
+        terminal_control_observation,
+        authority_mode=authority_mode,
+        composite_binding_text=terminal_binding_text,
+    )
+    terminal_envelope = runner.build_command_envelope(
+        command="terminalize-dead-owner",
+        composite=terminal_composite,
+        stage_authorization_sha256=authorization["authorization_sha256"],
+        authority_mode=authority_mode,
+        approval_sha256=approval["approval_sha256"],
+        runner_launch_observation=terminal_runner_observation,
+        envelope_id=(
+            f"card-acceptance-r6-{authority_mode}-terminalization-envelope-v1"
+        ),
+        terminalization_binding={
+            "closure_guard": manifest["terminalization_guard"],
+            "failure_paths": ["process_identity_failure"],
+            "lease_sha256": "7" * 64,
+            "owner": {
+                "acquired_monotonic": 1.0,
+                "child_process_id": 71_001,
+                "token": "1" * 32,
+            },
+            "prefix_sha256": "8" * 64,
+            "run_envelope_sha256": run_envelope["envelope_sha256"],
+        },
+    )
+
+    def documents(command, envelope):
+        return {
+            "approval": approval,
+            "authority": runner.validate_authorized_command_envelope(
+                envelope=envelope,
+                manifest=manifest,
+                request=request,
+                authorization=authorization,
+                approval=approval,
+            ),
+            "authorization": authorization,
+            "envelope": envelope,
+            "manifest": manifest,
+            "request": request,
+        }
+
+    return (
+        documents("run-training", run_envelope),
+        documents("terminalize-dead-owner", terminal_envelope),
+    )
+
+
 @pytest.mark.parametrize(
     "authority_mode", ("standing-delegation", "external-human-approval")
 )
@@ -1137,6 +1323,168 @@ def test_authorized_training_context_freezes_exact_execution_registration(
         context.registration["rollback_authority_sha256"] = "0" * 64
 
 
+@pytest.mark.parametrize(
+    "authority_mode", ("standing-delegation", "external-human-approval")
+)
+def test_terminalization_context_preserves_original_run_launch_identity(
+    authority_mode,
+):
+    runner, manifest, payloads = _manifest()
+    request = json.loads(payloads["training_request"])
+    control = _control()
+    run_documents, terminal_documents = _paired_run_terminalization_documents(
+        runner, manifest, request, authority_mode
+    )
+    run_observation = run_documents["envelope"]["runner_launch_observation"][
+        "control_observation"
+    ]
+    terminal_control_observation = terminal_documents["envelope"][
+        "runner_launch_observation"
+    ]["control_observation"]
+    registration = {
+        "registration_sha256": manifest["request_contract"][
+            "registration_sha256"
+        ]
+    }
+    execution_registration = {
+        **registration,
+        "rollback_authority_sha256": manifest["rollback_authority"][
+            "rollback_authority_sha256"
+        ],
+    }
+
+    context = runner._build_authorized_training_context(
+        control_api=control,
+        launch_manifest=manifest,
+        command_envelope=terminal_documents["envelope"],
+        authority=terminal_documents["authority"],
+        original_registration=registration,
+        execution_registration=execution_registration,
+        request=request,
+        authorization=run_documents["authorization"],
+        approval=run_documents["approval"],
+        expected_command="terminalize-dead-owner",
+        registration_identity_only=True,
+        context_launch_observation=run_observation,
+    )
+
+    assert run_observation["observation_sha256"] != (
+        terminal_control_observation["observation_sha256"]
+    )
+    assert context.authority_observation == run_observation
+    assert control._context_identity(context)["launch_authority_sha256"] == (
+        run_observation["observation_sha256"]
+    )
+
+
+def _minimal_terminalization_authority_documents(authority_mode):
+    run_observation = {
+        "authority_mode": authority_mode,
+        "checked_at": "2026-08-11T02:02:00+00:00",
+        "latest_human_message_watermark": {
+            "message_timestamp": "2026-08-11T02:00:00+00:00"
+        },
+        "observation_sha256": "1" * 64,
+    }
+    terminal_observation = {
+        **copy.deepcopy(run_observation),
+        "checked_at": "2026-08-11T02:03:00+00:00",
+        "observation_sha256": "2" * 64,
+    }
+    shared = {
+        "approval": {"approval_sha256": "3" * 64},
+        "authorization": {"authorization_sha256": "4" * 64},
+        "request": {"request_sha256": "5" * 64},
+    }
+    run = {
+        **copy.deepcopy(shared),
+        "authority": {"envelope_sha256": "6" * 64},
+        "envelope": {
+            "runner_launch_observation": {
+                "control_observation": run_observation
+            }
+        },
+    }
+    terminal = {
+        **copy.deepcopy(shared),
+        "envelope": {
+            "runner_launch_observation": {
+                "control_observation": terminal_observation
+            },
+            "terminalization_binding": {
+                "run_envelope_sha256": "6" * 64
+            },
+        },
+    }
+    return terminal, run
+
+
+@pytest.mark.parametrize(
+    "authority_mode", ("standing-delegation", "external-human-approval")
+)
+@pytest.mark.parametrize(
+    "mutation",
+    (
+        "reused-observation",
+        "older-command-check",
+        "regressed-human-watermark",
+    ),
+)
+def test_terminalization_original_run_authority_requires_fresh_command(
+    authority_mode, mutation
+):
+    runner = _runner()
+    terminal, run = _minimal_terminalization_authority_documents(authority_mode)
+    command = terminal["envelope"]["runner_launch_observation"][
+        "control_observation"
+    ]
+    original = run["envelope"]["runner_launch_observation"][
+        "control_observation"
+    ]
+    if mutation == "reused-observation":
+        terminal["envelope"]["runner_launch_observation"][
+            "control_observation"
+        ] = copy.deepcopy(original)
+    elif mutation == "older-command-check":
+        command["checked_at"] = "2026-08-11T02:01:00+00:00"
+    else:
+        command["latest_human_message_watermark"][
+            "message_timestamp"
+        ] = "2026-08-11T01:59:00+00:00"
+
+    with pytest.raises(
+        runner.TrainingRunnerBlocked,
+        match="command observation is not fresh",
+    ):
+        runner._terminalization_original_run_authority(
+            terminal_documents=terminal,
+            run_documents=run,
+        )
+
+
+@pytest.mark.parametrize(
+    "mutation", ("run-envelope", "request", "authorization", "approval")
+)
+def test_terminalization_original_run_authority_rejects_drift(mutation):
+    runner = _runner()
+    terminal, run = _minimal_terminalization_authority_documents(
+        "standing-delegation"
+    )
+    if mutation == "run-envelope":
+        run["authority"]["envelope_sha256"] = "0" * 64
+    else:
+        run[mutation][f"{mutation}_sha256"] = "0" * 64
+
+    with pytest.raises(
+        runner.TrainingRunnerBlocked,
+        match="original run authority differs",
+    ):
+        runner._terminalization_original_run_authority(
+            terminal_documents=terminal,
+            run_documents=run,
+        )
+
+
 def test_authorized_training_context_rejects_authority_and_registration_drift():
     (
         runner,
@@ -1186,6 +1534,13 @@ def test_authorized_training_context_rejects_authority_and_registration_drift():
         "checked_at"
     ] = "2026-08-11T02:04:00+00:00"
     mutations.append({"command_envelope": drifted_envelope})
+    mutations.append(
+        {
+            "context_launch_observation": documents["envelope"][
+                "runner_launch_observation"
+            ]["control_observation"]
+        }
+    )
 
     for mutation in mutations:
         arguments = {**base, **mutation}
@@ -1370,35 +1725,47 @@ def test_bound_authorized_command_documents_accept_exact_terminalization_paths()
     assert result["envelope"] == documents["envelope"]
 
 
+@pytest.mark.parametrize(
+    "authority_mode", ("standing-delegation", "external-human-approval")
+)
 def test_terminalization_composition_uses_registration_identity_without_reading_payload(
-    monkeypatch,
+    monkeypatch, authority_mode
 ):
-    runner, manifest, _payloads = _manifest()
-    run = _run_envelope(runner, manifest)
-    binding = {
-        "closure_guard": manifest["terminalization_guard"],
-        "failure_paths": ["process_identity_failure"],
-        "lease_sha256": "7" * 64,
-        "owner": {
-            "acquired_monotonic": 1.0,
-            "child_process_id": 71_001,
-            "token": "1" * 32,
-        },
-        "prefix_sha256": "8" * 64,
-        "run_envelope_sha256": run["envelope_sha256"],
-    }
-    runner, manifest, documents, paths, _payloads = _authorized_document_fixture(
-        command="terminalize-dead-owner",
-        terminalization_binding=binding,
+    runner, manifest, payloads = _manifest()
+    request = json.loads(payloads["training_request"])
+    run_loaded, terminal_loaded = _paired_run_terminalization_documents(
+        runner, manifest, request, authority_mode
     )
-    loaded = {**documents, "manifest": manifest}
+    documents = terminal_loaded
+    command = manifest["commands"]["terminalize_dead_owner"]
+    paths = dict(zip(command[4::2], command[5::2]))
+    run_control_observation = run_loaded["envelope"][
+        "runner_launch_observation"
+    ]["control_observation"]
     captured = {}
+    loaded_commands = []
+    opaque_observations = []
 
     monkeypatch.setattr(
         runner,
-        "_load_authorized_command_documents",
-        lambda **_kwargs: copy.deepcopy(loaded),
+        "_default_authorized_source_observer",
+        lambda _value, _paths, *, opaque_artifact_names=(): (
+            opaque_observations.append(tuple(opaque_artifact_names)) or {}
+        ),
     )
+
+    def load_documents(**kwargs):
+        loaded_commands.append(kwargs["command"])
+        if kwargs["command"] == "run-training":
+            kwargs["source_observer"](manifest, ())
+        selected = (
+            terminal_loaded
+            if kwargs["command"] == "terminalize-dead-owner"
+            else run_loaded
+        )
+        return copy.deepcopy(selected)
+
+    monkeypatch.setattr(runner, "_load_authorized_command_documents", load_documents)
 
     def execute(**kwargs):
         captured.update(kwargs)
@@ -1421,12 +1788,18 @@ def test_terminalization_composition_uses_registration_identity_without_reading_
     )
 
     assert result == {"verdict": "synthetic-terminalized"}
+    assert loaded_commands == ["terminalize-dead-owner", "run-training"]
+    assert opaque_observations == [("registration",)]
     assert dict(captured["context"].registration) == {
         "registration_sha256": manifest["request_contract"]["registration_sha256"],
         "rollback_authority_sha256": manifest["rollback_authority"][
             "rollback_authority_sha256"
         ],
     }
+    assert captured["context"].authority_observation == run_control_observation
+    assert run_control_observation != documents["envelope"][
+        "runner_launch_observation"
+    ]["control_observation"]
 
 
 def test_terminalization_command_loader_keeps_registration_opaque_to_default_observer(

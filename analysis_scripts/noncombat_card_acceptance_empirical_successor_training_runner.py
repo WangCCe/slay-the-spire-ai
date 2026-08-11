@@ -5,6 +5,7 @@ from __future__ import annotations
 import argparse
 from contextlib import ExitStack, contextmanager
 import copy
+from datetime import datetime, timezone
 import hashlib
 import importlib
 import importlib.abc
@@ -1256,6 +1257,7 @@ def _build_authorized_training_context(
     approval: Mapping[str, Any],
     expected_command: str = "run-training",
     registration_identity_only: bool = False,
+    context_launch_observation: Mapping[str, Any] | None = None,
 ) -> Any:
     """Freeze the exact runner authority and rollback-bound registration."""
     required_control_operations = (
@@ -1401,7 +1403,21 @@ def _build_authorized_training_context(
         != revalidated_authority["runner_launch_observation_sha256"]
     ):
         raise TrainingRunnerBlocked("training context runner observation differs")
-    control_observation = runner_observation["control_observation"]
+    command_control_observation = runner_observation["control_observation"]
+    if context_launch_observation is None:
+        control_observation = command_control_observation
+    else:
+        if (
+            expected_command != "terminalize-dead-owner"
+            or registration_identity_only is not True
+        ):
+            raise TrainingRunnerBlocked(
+                "separate context launch observation is not terminalization-bound"
+            )
+        control_observation = _mapping(
+            context_launch_observation,
+            "terminalization run launch observation",
+        )
     context_arguments = {
         "registration": copy.deepcopy(expected_execution_registration),
         "request": copy.deepcopy(normalized_request),
@@ -1453,6 +1469,96 @@ def _build_authorized_training_context(
     ):
         raise TrainingRunnerBlocked("authorized training context differs")
     return context
+
+
+def _terminalization_run_observation(
+    *,
+    command_observation: Mapping[str, Any],
+    run_observation: Mapping[str, Any],
+) -> dict[str, Any]:
+    """Require fresh closure authority without changing the lease identity."""
+    command = _mapping(command_observation, "terminalization command observation")
+    run = _mapping(run_observation, "terminalization run observation")
+
+    def timestamp(value: object, label: str) -> datetime:
+        if not isinstance(value, str) or not value:
+            raise TrainingRunnerBlocked(f"{label} is invalid")
+        normalized = value[:-1] + "+00:00" if value.endswith("Z") else value
+        try:
+            parsed = datetime.fromisoformat(normalized)
+        except ValueError as exc:
+            raise TrainingRunnerBlocked(f"{label} is invalid") from exc
+        if parsed.tzinfo is None:
+            raise TrainingRunnerBlocked(f"{label} is invalid")
+        return parsed.astimezone(timezone.utc)
+
+    command_checked = timestamp(
+        command.get("checked_at"), "terminalization command checked-at timestamp"
+    )
+    run_checked = timestamp(
+        run.get("checked_at"), "terminalization run checked-at timestamp"
+    )
+    command_watermark = _mapping(
+        command.get("latest_human_message_watermark"),
+        "terminalization command watermark",
+    )
+    run_watermark = _mapping(
+        run.get("latest_human_message_watermark"),
+        "terminalization run watermark",
+    )
+    if (
+        command.get("observation_sha256") == run.get("observation_sha256")
+        or command_checked <= run_checked
+        or timestamp(
+            command_watermark.get("message_timestamp"),
+            "terminalization command watermark timestamp",
+        )
+        < timestamp(
+            run_watermark.get("message_timestamp"),
+            "terminalization run watermark timestamp",
+        )
+    ):
+        raise TrainingRunnerBlocked(
+            "terminalization command observation is not fresh"
+        )
+    return copy.deepcopy(dict(run))
+
+
+def _terminalization_original_run_authority(
+    *,
+    terminal_documents: Mapping[str, Any],
+    run_documents: Mapping[str, Any],
+) -> dict[str, Any]:
+    terminal = _mapping(terminal_documents, "terminalization documents")
+    run = _mapping(run_documents, "terminalization original run documents")
+    terminal_envelope = _mapping(
+        terminal.get("envelope"), "terminalization envelope"
+    )
+    binding = _mapping(
+        terminal_envelope.get("terminalization_binding"),
+        "terminalization binding",
+    )
+    run_authority = _mapping(
+        run.get("authority"), "terminalization original run authority"
+    )
+    if (
+        run_authority.get("envelope_sha256")
+        != binding.get("run_envelope_sha256")
+        or run.get("request") != terminal.get("request")
+        or run.get("authorization") != terminal.get("authorization")
+        or run.get("approval") != terminal.get("approval")
+    ):
+        raise TrainingRunnerBlocked(
+            "terminalization original run authority differs"
+        )
+    return _terminalization_run_observation(
+        command_observation=terminal_envelope["runner_launch_observation"][
+            "control_observation"
+        ],
+        run_observation=run["envelope"]["runner_launch_observation"][
+            "control_observation"
+        ],
+    )
 
 
 def _checkpoint_snapshot(payload: bytes) -> dict[str, Any]:
@@ -6359,6 +6465,34 @@ def _compose_authorized_dead_owner_terminalization_for_qualification(
         source_observer=source_observer,
     )
     manifest = documents["manifest"]
+    run_command = manifest["commands"]["run_training"]
+    run_paths = dict(zip(run_command[4::2], run_command[5::2]))
+
+    def observe_original_run_source(
+        value: Mapping[str, Any], paths: Sequence[str]
+    ) -> Mapping[str, Any]:
+        if source_observer is not None:
+            return source_observer(value, paths)
+        return _default_authorized_source_observer(
+            value,
+            paths,
+            opaque_artifact_names=("registration",),
+        )
+
+    run_documents = _load_authorized_command_documents(
+        command="run-training",
+        manifest_path=manifest_path,
+        envelope_path=run_paths["--envelope"],
+        authorization_path=run_paths["--authorization"],
+        approval_path=run_paths["--approval"],
+        launch_observation_path=run_paths["--launch-observation"],
+        artifact_reader=reader,
+        source_observer=observe_original_run_source,
+    )
+    run_control_observation = _terminalization_original_run_authority(
+        terminal_documents=documents,
+        run_documents=run_documents,
+    )
     observed_interpreter = Path(interpreter_path or sys.executable).resolve().as_posix()
     if observed_interpreter.casefold() != manifest["interpreter"].casefold():
         raise TrainingRunnerBlocked("terminalization interpreter differs")
@@ -6389,6 +6523,7 @@ def _compose_authorized_dead_owner_terminalization_for_qualification(
         approval=documents["approval"],
         expected_command="terminalize-dead-owner",
         registration_identity_only=True,
+        context_launch_observation=run_control_observation,
     )
     if _forbidden_imports_loaded():
         raise TrainingRunnerBlocked(
