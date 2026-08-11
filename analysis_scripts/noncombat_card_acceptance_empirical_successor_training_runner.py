@@ -51,6 +51,9 @@ CONTINUATION_ATTEMPT_SCHEMA_VERSION = (
 REOPEN_ATTEMPT_SCHEMA_VERSION = (
     "noncombat-card-acceptance-training-runner-reopen-attempt-v1"
 )
+CONTROL_ARTIFACT_INVENTORY_SCHEMA_VERSION = (
+    "noncombat-card-acceptance-empirical-successor-artifact-inventory-v1"
+)
 PUSHED_REF = "origin/master"
 COMMAND_NAMES = ("preflight", "run-training", "terminalize-dead-owner")
 STANDING_COMPOSITE_BINDING_PREFIX = (
@@ -1220,7 +1223,7 @@ def _publish_exclusive_pre_access_receipt(
             os.fsync(handle.fileno())
         if os.name == "nt":
             try:
-                _move_file_write_through(publication_path, path)
+                _move_path_write_through(publication_path, path)
             except OSError:
                 try:
                     publication_path.unlink()
@@ -1248,7 +1251,16 @@ def _fsync_directory(path: Path) -> None:
         os.close(descriptor)
 
 
-def _move_file_write_through(source: Path, destination: Path) -> None:
+def _move_path_write_through(
+    source: Path, destination: Path, *, replace: bool = False
+) -> None:
+    if os.name != "nt":
+        if replace:
+            os.replace(source, destination)
+        else:
+            os.rename(source, destination)
+        _fsync_directory(destination.parent)
+        return
     import ctypes
     from ctypes import wintypes
 
@@ -1256,7 +1268,8 @@ def _move_file_write_through(source: Path, destination: Path) -> None:
     move_file_ex = kernel32.MoveFileExW
     move_file_ex.argtypes = (wintypes.LPCWSTR, wintypes.LPCWSTR, wintypes.DWORD)
     move_file_ex.restype = wintypes.BOOL
-    if not move_file_ex(str(source), str(destination), 0x00000008):
+    flags = 0x00000008 | (0x00000001 if replace else 0)
+    if not move_file_ex(str(source), str(destination), flags):
         raise ctypes.WinError(ctypes.get_last_error())
 
 
@@ -1529,6 +1542,92 @@ def _validated_original_runner_launch(
     return launch
 
 
+def _validated_artifact_inventory(value: object) -> dict[str, Any]:
+    inventory = _mapping(value, "dead owner artifact inventory")
+    _fields(
+        inventory,
+        {
+            "artifact_count",
+            "artifact_inventory_sha256",
+            "artifacts",
+            "schema_version",
+            "stored_size_bytes",
+            "uncompressed_size_bytes",
+        },
+        "dead owner artifact inventory",
+    )
+    artifacts = inventory["artifacts"]
+    if (
+        inventory["schema_version"]
+        != CONTROL_ARTIFACT_INVENTORY_SCHEMA_VERSION
+        or not isinstance(artifacts, list)
+        or isinstance(inventory["artifact_count"], bool)
+        or not isinstance(inventory["artifact_count"], int)
+        or inventory["artifact_count"] != len(artifacts)
+    ):
+        raise TrainingRunnerBlocked("dead owner artifact inventory differs")
+    normalized_rows = []
+    paths = []
+    stored_total = 0
+    uncompressed_total = 0
+    row_fields = {
+        "encoding",
+        "path",
+        "stored_sha256",
+        "stored_size_bytes",
+        "uncompressed_sha256",
+        "uncompressed_size_bytes",
+    }
+    for value in artifacts:
+        row = _mapping(value, "dead owner artifact inventory row")
+        _fields(row, row_fields, "dead owner artifact inventory row")
+        path = _relative_path(row["path"], "managed artifact path")
+        if any(
+            part.startswith(".") and part.endswith(".tmp")
+            for part in PurePosixPath(path).parts
+        ):
+            raise TrainingRunnerBlocked("managed artifact path is ambiguous")
+        if row["encoding"] not in {
+            "identity-bytes-v1",
+            "deterministic-gzip-v1",
+        }:
+            raise TrainingRunnerBlocked("managed artifact encoding differs")
+        _digest(row["stored_sha256"], "managed stored artifact")
+        _digest(row["uncompressed_sha256"], "managed uncompressed artifact")
+        for field in ("stored_size_bytes", "uncompressed_size_bytes"):
+            size = row[field]
+            if isinstance(size, bool) or not isinstance(size, int) or size < 0:
+                raise TrainingRunnerBlocked("managed artifact size differs")
+        if row["encoding"] == "identity-bytes-v1" and (
+            row["stored_sha256"] != row["uncompressed_sha256"]
+            or row["stored_size_bytes"] != row["uncompressed_size_bytes"]
+        ):
+            raise TrainingRunnerBlocked("managed identity artifact differs")
+        paths.append(path)
+        stored_total += row["stored_size_bytes"]
+        uncompressed_total += row["uncompressed_size_bytes"]
+        normalized_rows.append(copy.deepcopy(row))
+    if paths != sorted(set(paths)):
+        raise TrainingRunnerBlocked("managed artifact paths differ")
+    for field, total in (
+        ("stored_size_bytes", stored_total),
+        ("uncompressed_size_bytes", uncompressed_total),
+    ):
+        value = inventory[field]
+        if isinstance(value, bool) or not isinstance(value, int) or value != total:
+            raise TrainingRunnerBlocked("dead owner artifact inventory total differs")
+    body = {
+        "artifact_count": len(normalized_rows),
+        "artifacts": normalized_rows,
+        "schema_version": CONTROL_ARTIFACT_INVENTORY_SCHEMA_VERSION,
+        "stored_size_bytes": stored_total,
+        "uncompressed_size_bytes": uncompressed_total,
+    }
+    if inventory["artifact_inventory_sha256"] != canonical_json_sha256(body):
+        raise TrainingRunnerBlocked("dead owner artifact inventory digest differs")
+    return {**body, "artifact_inventory_sha256": inventory["artifact_inventory_sha256"]}
+
+
 def _validated_reopen_observation(
     value: Mapping[str, Any],
     *,
@@ -1597,6 +1696,7 @@ def _validated_reopen_observation(
         _fields(
             recovery,
             {
+                "artifact_inventory",
                 "lease_sha256",
                 "mode",
                 "old_owner",
@@ -1607,6 +1707,9 @@ def _validated_reopen_observation(
         )
         _digest(recovery["lease_sha256"], "dead owner lease")
         prefix_sha256 = _digest(recovery["prefix_sha256"], "dead owner prefix")
+        artifact_inventory = _validated_artifact_inventory(
+            recovery["artifact_inventory"]
+        )
         old_owner = _mapping(recovery["old_owner"], "dead lease owner")
         runner_launch = _mapping(
             recovery["runner_launch"], "dead owner runner launch"
@@ -1648,12 +1751,27 @@ def _validated_reopen_observation(
             raise TrainingRunnerBlocked("dead lease owner identity differs")
         expected_prefix_sha256 = canonical_json_sha256(
             {
+                "artifact_inventory": artifact_inventory,
                 "classification": classification,
                 "context_identity": context_identity,
             }
         )
         if prefix_sha256 != expected_prefix_sha256:
             raise TrainingRunnerBlocked("dead owner prefix identity differs")
+        launch_rows = [
+            row
+            for row in artifact_inventory["artifacts"]
+            if isinstance(row, Mapping) and row.get("path") == "runner_launch.json"
+        ]
+        if (
+            (launch_state == "absent" and launch_rows)
+            or (launch_state == "present" and len(launch_rows) != 1)
+            or (
+                launch_state == "present"
+                and launch_rows[0].get("stored_sha256") != runner_launch["sha256"]
+            )
+        ):
+            raise TrainingRunnerBlocked("dead owner runner launch inventory differs")
         try:
             old_owner_alive = process_alive(old_process_id)
         except Exception as exc:
@@ -1690,6 +1808,346 @@ def _validated_lease_owner(value: object, label: str) -> dict[str, Any]:
     ):
         raise TrainingRunnerBlocked(f"{label} identity differs")
     return owner
+
+
+def _observe_training_reopen_read_only(
+    *,
+    control_api: Any,
+    context: Any,
+    output_root: Path | str,
+    process_alive: Callable[[int], bool],
+    observed_lease_payload: bytes | None = None,
+) -> dict[str, Any]:
+    """Classify a bounded lifecycle prefix without acquiring or changing it."""
+    if not callable(process_alive):
+        raise TrainingRunnerBlocked("read-only reopen liveness observer is invalid")
+    output = Path(output_root).resolve()
+    try:
+        context_identity = _mapping(
+            control_api._context_identity(context),
+            "read-only reopen context identity",
+        )
+    except Exception as exc:
+        raise TrainingRunnerBlocked("read-only reopen context is invalid") from exc
+    if not output.exists():
+        if observed_lease_payload is not None:
+            raise TrainingRunnerBlocked("absent output has observed lease bytes")
+        return {
+            "classification": {
+                "debited_accesses": 0,
+                "identity": copy.deepcopy(context_identity),
+                "verdict": "pre_seed_setup_reopen",
+            },
+            "recovery": {"mode": "fresh_output"},
+        }
+    if not output.is_dir():
+        raise TrainingRunnerBlocked("training output root is not a directory")
+    lease_path = output / control_api.LEASE_FILENAME
+    if observed_lease_payload is None:
+        try:
+            lease_payload = lease_path.read_bytes()
+        except OSError as exc:
+            raise TrainingRunnerBlocked("existing output lacks a readable lease") from exc
+    elif isinstance(observed_lease_payload, bytes):
+        lease_payload = observed_lease_payload
+    else:
+        raise TrainingRunnerBlocked("observed execution lease bytes are invalid")
+    lease_record = _parse_canonical_mapping(lease_payload, "observed execution lease")
+    _fields(
+        lease_record,
+        {"identity", "owner", "reclaimed_owner", "schema_version"},
+        "observed execution lease",
+    )
+    old_owner = _validated_lease_owner(
+        lease_record["owner"], "observed execution lease owner"
+    )
+    prior_reclaimed_owner = lease_record["reclaimed_owner"]
+    if prior_reclaimed_owner is not None:
+        _validated_lease_owner(
+            prior_reclaimed_owner, "observed prior reclaimed lease owner"
+        )
+    if (
+        lease_record["schema_version"] != control_api.LEASE_SCHEMA_VERSION
+        or lease_record["identity"] != context_identity
+    ):
+        raise TrainingRunnerBlocked("observed execution lease identity differs")
+    try:
+        owner_alive = process_alive(old_owner["child_process_id"])
+    except Exception as exc:
+        raise TrainingRunnerBlocked("observed lease owner liveness failed") from exc
+    if owner_alive is not False:
+        raise TrainingRunnerBlocked("observed execution lease owner is not dead")
+
+    try:
+        probe = control_api.ExecutionLease(
+            output,
+            context=context,
+            child_process_id=old_owner["child_process_id"],
+            process_alive=process_alive,
+        )
+        probe.held = True
+        try:
+            classification = _mapping(
+                control_api.classify_execution_reopen(context, probe),
+                "read-only control reopen classification",
+            )
+        finally:
+            probe.held = False
+        artifact_inventory = _mapping(
+            control_api._observe_artifact_inventory(
+                output, excluded_paths=()
+            ),
+            "read-only managed artifact inventory",
+        )
+    except TrainingRunnerBlocked:
+        raise
+    except Exception as exc:
+        raise TrainingRunnerBlocked("read-only training reopen failed") from exc
+    launch_rows = [
+        row
+        for row in artifact_inventory.get("artifacts", ())
+        if isinstance(row, Mapping) and row.get("path") == "runner_launch.json"
+    ]
+    if len(launch_rows) > 1:
+        raise TrainingRunnerBlocked("runner launch inventory is ambiguous")
+    runner_launch = (
+        {"sha256": launch_rows[0]["stored_sha256"], "state": "present"}
+        if launch_rows
+        else {"state": "absent"}
+    )
+    prefix_body = {
+        "artifact_inventory": artifact_inventory,
+        "classification": classification,
+        "context_identity": context_identity,
+    }
+    return _validated_reopen_observation(
+        {
+            "classification": classification,
+            "recovery": {
+                "artifact_inventory": artifact_inventory,
+                "lease_sha256": hashlib.sha256(lease_payload).hexdigest(),
+                "mode": "dead_owner_reclaim",
+                "old_owner": old_owner,
+                "prefix_sha256": canonical_json_sha256(prefix_body),
+                "runner_launch": runner_launch,
+            },
+        },
+        expected_context_identity=context_identity,
+        process_alive=process_alive,
+    )
+
+
+class _AtomicObservedExecutionLease:
+    """Commit a fully prepared lease while holding one output-sibling guard."""
+
+    def __init__(
+        self,
+        *,
+        control_api: Any,
+        context: Any,
+        output_root: Path | str,
+        observation: Mapping[str, Any],
+        child_process_id: int,
+        process_alive: Callable[[int], bool],
+        clock: Callable[[], float],
+    ) -> None:
+        self.control_api = control_api
+        self.context = context
+        self.output = Path(output_root).resolve()
+        self.observation = copy.deepcopy(dict(observation))
+        self.child_process_id = child_process_id
+        self.process_alive = process_alive
+        self.clock = clock
+        self.lease: Any | None = None
+        self._active_key: str | None = None
+        self._committed_payload: bytes | None = None
+        self._guard_handle: Any | None = None
+
+    @property
+    def guard_path(self) -> Path:
+        return self.output.parent / f".{self.output.name}.execution.guard"
+
+    @staticmethod
+    def _cleanup_stage(path: Path) -> None:
+        try:
+            if path.is_dir():
+                children = list(path.iterdir())
+                if len(children) == 1 and children[0].is_file():
+                    children[0].unlink()
+                path.rmdir()
+            elif path.exists():
+                path.unlink()
+        except OSError:
+            pass
+
+    def __enter__(self) -> Any:
+        control = self.control_api
+        observation = self.observation
+        recovery = _mapping(observation.get("recovery"), "atomic lease recovery")
+        mode = recovery.get("mode")
+        if mode not in {"fresh_output", "dead_owner_reclaim"}:
+            raise TrainingRunnerBlocked("atomic lease recovery mode differs")
+        try:
+            if self.process_alive(self.child_process_id) is not True:
+                raise TrainingRunnerBlocked("atomic lease child is not alive")
+        except TrainingRunnerBlocked:
+            raise
+        except Exception as exc:
+            raise TrainingRunnerBlocked("atomic lease child liveness failed") from exc
+        started = float(self.clock())
+        if not math.isfinite(started) or started < 0.0:
+            raise TrainingRunnerBlocked("atomic lease clock is invalid")
+        owner = {
+            "acquired_monotonic": started,
+            "child_process_id": self.child_process_id,
+            "token": uuid.uuid4().hex,
+        }
+        lease = control.ExecutionLease(
+            self.output,
+            context=self.context,
+            child_process_id=self.child_process_id,
+            process_alive=self.process_alive,
+            allow_stale_reclaim=mode == "dead_owner_reclaim",
+            clock=self.clock,
+        )
+        key = os.path.normcase(str(lease.path))
+        if key in control._ACTIVE_EXECUTION_LEASES:
+            raise TrainingRunnerBlocked("atomic execution lease is already held")
+        guard_handle = None
+        locked = False
+        stage_path: Path | None = None
+        state_prepared = False
+        try:
+            self.guard_path.parent.mkdir(parents=True, exist_ok=True)
+            guard_handle = self.guard_path.open("a+b", buffering=0)
+            guard_handle.seek(0, os.SEEK_END)
+            if guard_handle.tell() == 0:
+                guard_handle.write(b"\0")
+                guard_handle.flush()
+                os.fsync(guard_handle.fileno())
+            control._lock_file(guard_handle)
+            locked = True
+            reclaimed_owner = None
+            if mode == "fresh_output":
+                if self.output.exists():
+                    raise TrainingRunnerBlocked("fresh atomic output changed")
+            else:
+                if not self.output.is_dir() or not lease.path.is_file():
+                    raise TrainingRunnerBlocked("stale output lease is unavailable")
+                prior_payload = lease.path.read_bytes()
+                if hashlib.sha256(prior_payload).hexdigest() != recovery["lease_sha256"]:
+                    raise TrainingRunnerBlocked("atomic lease bytes changed")
+                observed_under_lock = _observe_training_reopen_read_only(
+                    control_api=control,
+                    context=self.context,
+                    output_root=self.output,
+                    process_alive=self.process_alive,
+                    observed_lease_payload=prior_payload,
+                )
+                if observed_under_lock != observation:
+                    raise TrainingRunnerBlocked("atomic reopen prefix changed")
+                prior_lease = _parse_canonical_mapping(
+                    prior_payload, "atomic prior execution lease"
+                )
+                reclaimed_owner = _validated_lease_owner(
+                    prior_lease["owner"], "atomic prior execution lease owner"
+                )
+            payload = {
+                "identity": control._context_identity(self.context),
+                "owner": owner,
+                "reclaimed_owner": reclaimed_owner,
+                "schema_version": control.LEASE_SCHEMA_VERSION,
+            }
+            encoded_payload = canonical_json_bytes(payload)
+            if mode == "fresh_output":
+                stage_path = self.output.parent / (
+                    f".{self.output.name}.{uuid.uuid4().hex}.staging"
+                )
+                stage_path.mkdir(parents=False, exist_ok=False)
+                staged_lease = stage_path / control.LEASE_FILENAME
+            else:
+                stage_path = self.output.parent / (
+                    f".{self.output.name}.lease.{uuid.uuid4().hex}.staging"
+                )
+                staged_lease = stage_path
+            with staged_lease.open("xb") as staged_handle:
+                staged_handle.write(encoded_payload)
+                staged_handle.flush()
+                os.fsync(staged_handle.fileno())
+            lease.owner = owner
+            lease.reclaimed_owner = reclaimed_owner
+            lease.started_monotonic = started
+            lease.held = True
+            lease.acquisition_mode = mode
+            lease.acquisition_observation_sha256 = canonical_json_sha256(observation)
+            lease.reclaimed_lease_sha256 = recovery.get("lease_sha256")
+            lease.reclaimed_prefix_sha256 = recovery.get("prefix_sha256")
+            control._ACTIVE_EXECUTION_LEASES.add(key)
+            self.lease = lease
+            self._active_key = key
+            self._committed_payload = encoded_payload
+            self._guard_handle = guard_handle
+            state_prepared = True
+            try:
+                if mode == "fresh_output":
+                    _move_path_write_through(stage_path, self.output)
+                else:
+                    _move_path_write_through(stage_path, lease.path, replace=True)
+                return lease
+            except Exception:
+                lease.held = False
+                control._ACTIVE_EXECUTION_LEASES.discard(key)
+                self.lease = None
+                self._active_key = None
+                self._committed_payload = None
+                self._guard_handle = None
+                state_prepared = False
+                raise
+        except Exception as exc:
+            if state_prepared:
+                lease.held = False
+                control._ACTIVE_EXECUTION_LEASES.discard(key)
+                self.lease = None
+                self._active_key = None
+                self._committed_payload = None
+                self._guard_handle = None
+            if stage_path is not None:
+                self._cleanup_stage(stage_path)
+            if locked and guard_handle is not None:
+                try:
+                    control._unlock_file(guard_handle)
+                except OSError:
+                    pass
+            if guard_handle is not None:
+                guard_handle.close()
+            if isinstance(exc, TrainingRunnerBlocked):
+                raise
+            raise TrainingRunnerBlocked("atomic execution lease failed") from exc
+
+    def __exit__(self, exc_type: Any, exc: Any, traceback: Any) -> Any:
+        lease = self.lease
+        guard_handle = self._guard_handle
+        if lease is None or guard_handle is None:
+            return False
+        control = self.control_api
+        drifted = False
+        try:
+            try:
+                drifted = lease.path.read_bytes() != self._committed_payload
+            except OSError:
+                drifted = True
+            lease.held = False
+            if self._active_key is not None:
+                control._ACTIVE_EXECUTION_LEASES.discard(self._active_key)
+        finally:
+            try:
+                control._unlock_file(guard_handle)
+            finally:
+                guard_handle.close()
+                self._guard_handle = None
+        if drifted:
+            raise TrainingRunnerBlocked("atomic execution lease drifted")
+        return False
 
 
 def _execute_training_lifecycle(

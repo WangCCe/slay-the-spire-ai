@@ -1588,11 +1588,41 @@ def _outer_context_identity():
     return {"audit_id": "synthetic-training"}
 
 
+def _synthetic_artifact_inventory(runner, runner_launch_sha256=None):
+    artifacts = []
+    if runner_launch_sha256 is not None:
+        artifacts.append(
+            {
+                "encoding": "identity-bytes-v1",
+                "path": "runner_launch.json",
+                "stored_sha256": runner_launch_sha256,
+                "stored_size_bytes": 1,
+                "uncompressed_sha256": runner_launch_sha256,
+                "uncompressed_size_bytes": 1,
+            }
+        )
+    body = {
+        "artifact_count": len(artifacts),
+        "artifacts": artifacts,
+        "schema_version": runner.CONTROL_ARTIFACT_INVENTORY_SCHEMA_VERSION,
+        "stored_size_bytes": len(artifacts),
+        "uncompressed_size_bytes": len(artifacts),
+    }
+    return {
+        **body,
+        "artifact_inventory_sha256": runner.canonical_json_sha256(body),
+    }
+
+
 def _stale_setup_reopen_observation(runner, runner_launch_sha256):
     classification = _setup_reopen_observation()["classification"]
+    artifact_inventory = _synthetic_artifact_inventory(
+        runner, runner_launch_sha256
+    )
     return {
         "classification": classification,
         "recovery": {
+            "artifact_inventory": artifact_inventory,
             "lease_sha256": "7" * 64,
             "mode": "dead_owner_reclaim",
             "old_owner": {
@@ -1602,6 +1632,7 @@ def _stale_setup_reopen_observation(runner, runner_launch_sha256):
             },
             "prefix_sha256": runner.canonical_json_sha256(
                 {
+                    "artifact_inventory": artifact_inventory,
                     "classification": classification,
                     "context_identity": _outer_context_identity(),
                 }
@@ -1625,9 +1656,13 @@ def _continuation_reopen_observation(
         "next_chunk_index": 1,
         "verdict": "complete_checkpoint_continuation",
     }
+    artifact_inventory = _synthetic_artifact_inventory(
+        runner, runner_launch_sha256
+    )
     return {
         "classification": classification,
         "recovery": {
+            "artifact_inventory": artifact_inventory,
             "lease_sha256": "7" * 64,
             "mode": "dead_owner_reclaim",
             "old_owner": {
@@ -1637,6 +1672,7 @@ def _continuation_reopen_observation(
             },
             "prefix_sha256": runner.canonical_json_sha256(
                 {
+                    "artifact_inventory": artifact_inventory,
                     "classification": classification,
                     "context_identity": _outer_context_identity(),
                 }
@@ -1647,6 +1683,379 @@ def _continuation_reopen_observation(
             },
         },
     }
+
+
+def _real_training_context(control, output):
+    registration_body = {
+        "registration_id": "synthetic-runner-registration-v1",
+        "schema_version": "synthetic-runner-registration-schema-v1",
+    }
+    registration = {
+        **registration_body,
+        "registration_sha256": control.canonical_json_sha256(registration_body),
+    }
+    request = control.build_stage_request(
+        stage="training",
+        request_id="synthetic-runner-training-request-v1",
+        source_commit="a" * 40,
+        source_inventory_sha256="b" * 64,
+        configuration_identity=control.experiment_configuration_identity(),
+        prerequisite_bindings={
+            "registration_sha256": registration["registration_sha256"]
+        },
+        output_root=output.resolve().as_posix(),
+    )
+    authorization = control.build_stage_authorization(
+        request=request,
+        authorization_id="synthetic-runner-training-authorization-v1",
+        request_review_sha256="c" * 64,
+        approval_record_sha256="d" * 64,
+    )
+    return control._build_validated_execution_context(
+        registration=registration,
+        request=request,
+        authorization=authorization,
+        registration_validator=lambda value: copy.deepcopy(dict(value)),
+    )
+
+
+def test_read_only_reopen_observer_and_atomic_lease_create_fresh_output(tmp_path):
+    runner = _runner()
+    control = _control()
+    output = tmp_path / "fresh-training"
+    context = _real_training_context(control, output)
+
+    observation = runner._observe_training_reopen_read_only(
+        control_api=control,
+        context=context,
+        output_root=output,
+        process_alive=lambda _process_id: False,
+    )
+
+    assert observation == {
+        "classification": {
+            "debited_accesses": 0,
+            "identity": control._context_identity(context),
+            "verdict": "pre_seed_setup_reopen",
+        },
+        "recovery": {"mode": "fresh_output"},
+    }
+    with runner._AtomicObservedExecutionLease(
+        control_api=control,
+        context=context,
+        output_root=output,
+        observation=observation,
+        child_process_id=72_001,
+        process_alive=lambda process_id: process_id == 72_001,
+        clock=lambda: 1.0,
+    ) as lease:
+        assert lease.owner["child_process_id"] == 72_001
+        assert lease.reclaimed_owner is None
+        assert lease.acquisition_mode == "fresh_output"
+        control.initialize_access_journal(context, lease)
+        control.initialize_resource_ledger(context, lease)
+        assert control.classify_execution_reopen(context, lease) == observation[
+            "classification"
+        ]
+
+
+def _dead_zero_debit_output(runner, control, context, output, old_process_id):
+    with control.ExecutionLease(
+        output,
+        context=context,
+        child_process_id=old_process_id,
+        process_alive=lambda process_id: process_id == old_process_id,
+        clock=lambda: 0.0,
+    ) as lease:
+        control.initialize_access_journal(context, lease)
+        control.initialize_resource_ledger(context, lease)
+        control.publish_managed_artifact(
+            context,
+            lease,
+            relative_path="runner_launch.json",
+            payload=runner._runner_launch_payload(
+                manifest_sha256="9" * 64,
+                process_id=old_process_id,
+                rollback_authority_sha256="d" * 64,
+                run_envelope_sha256="a" * 64,
+            ),
+        )
+
+
+def test_atomic_observed_lease_reclaims_exact_dead_zero_debit_prefix(tmp_path):
+    runner = _runner()
+    control = _control()
+    output = tmp_path / "stale-training"
+    context = _real_training_context(control, output)
+    old_process_id = 72_010
+    new_process_id = 72_011
+    _dead_zero_debit_output(runner, control, context, output, old_process_id)
+    process_alive = lambda process_id: process_id == new_process_id
+    observation = runner._observe_training_reopen_read_only(
+        control_api=control,
+        context=context,
+        output_root=output,
+        process_alive=process_alive,
+    )
+
+    with runner._AtomicObservedExecutionLease(
+        control_api=control,
+        context=context,
+        output_root=output,
+        observation=observation,
+        child_process_id=new_process_id,
+        process_alive=process_alive,
+        clock=lambda: 2.0,
+    ) as lease:
+        assert lease.reclaimed_owner == observation["recovery"]["old_owner"]
+        assert lease.reclaimed_lease_sha256 == observation["recovery"][
+            "lease_sha256"
+        ]
+        assert lease.reclaimed_prefix_sha256 == observation["recovery"][
+            "prefix_sha256"
+        ]
+        assert control.classify_execution_reopen(context, lease) == observation[
+            "classification"
+        ]
+
+
+def test_atomic_observed_lease_rejects_prefix_race_without_rewriting_lease(
+    tmp_path,
+):
+    runner = _runner()
+    control = _control()
+    output = tmp_path / "raced-training"
+    context = _real_training_context(control, output)
+    old_process_id = 72_020
+    new_process_id = 72_021
+    _dead_zero_debit_output(runner, control, context, output, old_process_id)
+    process_alive = lambda process_id: process_id == new_process_id
+    observation = runner._observe_training_reopen_read_only(
+        control_api=control,
+        context=context,
+        output_root=output,
+        process_alive=process_alive,
+    )
+    lease_path = output / control.LEASE_FILENAME
+    original_lease = lease_path.read_bytes()
+    (output / "raced-artifact.json").write_bytes(b"{}")
+
+    with pytest.raises(runner.TrainingRunnerBlocked, match="prefix changed"):
+        with runner._AtomicObservedExecutionLease(
+            control_api=control,
+            context=context,
+            output_root=output,
+            observation=observation,
+            child_process_id=new_process_id,
+            process_alive=process_alive,
+            clock=lambda: 2.0,
+        ):
+            pytest.fail("raced prefix acquired an execution lease")
+
+    assert lease_path.read_bytes() == original_lease
+
+
+def test_atomic_observed_lease_fresh_commit_failure_leaves_output_absent(
+    tmp_path, monkeypatch
+):
+    runner = _runner()
+    control = _control()
+    output = tmp_path / "failed-fresh-training"
+    context = _real_training_context(control, output)
+    observation = runner._observe_training_reopen_read_only(
+        control_api=control,
+        context=context,
+        output_root=output,
+        process_alive=lambda _process_id: False,
+    )
+    monkeypatch.setattr(
+        runner,
+        "_move_path_write_through",
+        lambda source, destination, **kwargs: (_ for _ in ()).throw(
+            OSError("synthetic fresh move failure")
+        ),
+    )
+
+    with pytest.raises(runner.TrainingRunnerBlocked, match="atomic execution"):
+        with runner._AtomicObservedExecutionLease(
+            control_api=control,
+            context=context,
+            output_root=output,
+            observation=observation,
+            child_process_id=72_031,
+            process_alive=lambda process_id: process_id == 72_031,
+            clock=lambda: 1.0,
+        ):
+            pytest.fail("failed fresh commit acquired a lease")
+
+    assert not output.exists()
+    assert list(output.parent.glob(f".{output.name}.*.staging")) == []
+
+
+def test_atomic_observed_lease_stale_commit_failure_preserves_old_lease(
+    tmp_path, monkeypatch
+):
+    runner = _runner()
+    control = _control()
+    output = tmp_path / "failed-stale-training"
+    context = _real_training_context(control, output)
+    old_process_id = 72_040
+    new_process_id = 72_041
+    _dead_zero_debit_output(runner, control, context, output, old_process_id)
+    process_alive = lambda process_id: process_id == new_process_id
+    observation = runner._observe_training_reopen_read_only(
+        control_api=control,
+        context=context,
+        output_root=output,
+        process_alive=process_alive,
+    )
+    lease_path = output / control.LEASE_FILENAME
+    original_lease = lease_path.read_bytes()
+    monkeypatch.setattr(
+        runner,
+        "_move_path_write_through",
+        lambda source, destination, **kwargs: (_ for _ in ()).throw(
+            OSError("synthetic stale move failure")
+        ),
+    )
+
+    with pytest.raises(runner.TrainingRunnerBlocked, match="atomic execution"):
+        with runner._AtomicObservedExecutionLease(
+            control_api=control,
+            context=context,
+            output_root=output,
+            observation=observation,
+            child_process_id=new_process_id,
+            process_alive=process_alive,
+            clock=lambda: 2.0,
+        ):
+            pytest.fail("failed stale commit acquired a lease")
+
+    assert lease_path.read_bytes() == original_lease
+    assert list(
+        output.parent.glob(f".{output.name}.lease.*.staging")
+    ) == []
+
+
+def test_atomic_stale_cleanup_failure_keeps_residue_outside_managed_output(
+    tmp_path, monkeypatch
+):
+    runner = _runner()
+    control = _control()
+    output = tmp_path / "cleanup-failed-stale-training"
+    context = _real_training_context(control, output)
+    old_process_id = 72_050
+    new_process_id = 72_051
+    _dead_zero_debit_output(runner, control, context, output, old_process_id)
+    process_alive = lambda process_id: process_id == new_process_id
+    observation = runner._observe_training_reopen_read_only(
+        control_api=control,
+        context=context,
+        output_root=output,
+        process_alive=process_alive,
+    )
+    lease_path = output / control.LEASE_FILENAME
+    original_lease = lease_path.read_bytes()
+    monkeypatch.setattr(
+        runner,
+        "_move_path_write_through",
+        lambda source, destination, **kwargs: (_ for _ in ()).throw(
+            OSError("synthetic stale move failure")
+        ),
+    )
+    monkeypatch.setattr(
+        runner._AtomicObservedExecutionLease,
+        "_cleanup_stage",
+        staticmethod(lambda path: None),
+    )
+
+    with pytest.raises(runner.TrainingRunnerBlocked, match="atomic execution"):
+        with runner._AtomicObservedExecutionLease(
+            control_api=control,
+            context=context,
+            output_root=output,
+            observation=observation,
+            child_process_id=new_process_id,
+            process_alive=process_alive,
+            clock=lambda: 2.0,
+        ):
+            pytest.fail("cleanup-failed stale commit acquired a lease")
+
+    residues = list(
+        output.parent.glob(f".{output.name}.lease.*.staging")
+    )
+    assert len(residues) == 1
+    assert lease_path.read_bytes() == original_lease
+    assert runner._observe_training_reopen_read_only(
+        control_api=control,
+        context=context,
+        output_root=output,
+        process_alive=process_alive,
+    ) == observation
+    residues[0].unlink()
+
+
+def test_read_only_reopen_rejects_malformed_prior_reclaimed_owner(tmp_path):
+    runner = _runner()
+    control = _control()
+    output = tmp_path / "malformed-reclaimed-owner"
+    context = _real_training_context(control, output)
+    old_process_id = 72_060
+    _dead_zero_debit_output(runner, control, context, output, old_process_id)
+    lease_path = output / control.LEASE_FILENAME
+    lease = json.loads(lease_path.read_bytes())
+    lease["reclaimed_owner"] = "malformed-owner"
+    lease_path.write_bytes(runner.canonical_json_bytes(lease))
+
+    with pytest.raises(runner.TrainingRunnerBlocked, match="reclaimed lease owner"):
+        runner._observe_training_reopen_read_only(
+            control_api=control,
+            context=context,
+            output_root=output,
+            process_alive=lambda _process_id: False,
+        )
+
+
+@pytest.mark.parametrize(
+    "changed_field",
+    (
+        "schema_version",
+        "artifact_count",
+        "stored_size_bytes",
+        "duplicate_path",
+        "invalid_path",
+        "identity_digest",
+    ),
+)
+def test_artifact_inventory_rejects_re_self_digested_semantic_drift(
+    changed_field,
+):
+    runner = _runner()
+    inventory = _synthetic_artifact_inventory(runner, "8" * 64)
+    if changed_field == "schema_version":
+        inventory["schema_version"] = "substituted-schema-v1"
+    elif changed_field == "artifact_count":
+        inventory["artifact_count"] = 2
+    elif changed_field == "stored_size_bytes":
+        inventory["stored_size_bytes"] = 2
+    elif changed_field == "duplicate_path":
+        inventory["artifacts"].append(copy.deepcopy(inventory["artifacts"][0]))
+        inventory["artifact_count"] = 2
+        inventory["stored_size_bytes"] = 2
+        inventory["uncompressed_size_bytes"] = 2
+    elif changed_field == "invalid_path":
+        inventory["artifacts"][0]["path"] = "../runner_launch.json"
+    else:
+        inventory["artifacts"][0]["uncompressed_sha256"] = "f" * 64
+    body = {
+        key: value
+        for key, value in inventory.items()
+        if key != "artifact_inventory_sha256"
+    }
+    inventory["artifact_inventory_sha256"] = runner.canonical_json_sha256(body)
+
+    with pytest.raises(runner.TrainingRunnerBlocked):
+        runner._validated_artifact_inventory(inventory)
 
 
 @pytest.mark.parametrize(
