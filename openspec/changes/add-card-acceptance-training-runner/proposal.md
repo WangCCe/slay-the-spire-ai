@@ -14,7 +14,8 @@ that command exists would authorize an unlaunchable and unauditable workflow.
   training request/review, runner source, interpreter, registered experiment
   source, additive seed-inventory producer and independent registration
   verifier sources, exact r6-bound source-inventory
-  path/hash, output root, resource ceilings, and
+  path/hash, exact native module path/hash/size, DLL directories, adapter API,
+  provenance/hash, output root, resource ceilings, and
   exact command set before any authorization is accepted. The manifest also
   binds one canonical rollback authority, including the candidate-disabled
   control target and read-only production-isolation identities.

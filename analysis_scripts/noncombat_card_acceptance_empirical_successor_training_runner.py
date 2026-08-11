@@ -3,13 +3,17 @@
 from __future__ import annotations
 
 import argparse
+from contextlib import contextmanager
 import copy
 import hashlib
 import importlib
+import importlib.abc
+import importlib.util
 import json
 import math
 import os
 from pathlib import Path, PurePosixPath
+import platform
 import re
 import subprocess
 import sys
@@ -41,6 +45,15 @@ RUNNER_COMPOSITE_SCHEMA_VERSION = (
 RUNNER_LAUNCH_OBSERVATION_SCHEMA_VERSION = (
     "noncombat-card-acceptance-training-runner-launch-observation-v1"
 )
+_REGISTERED_ADAPTER_PUBLIC_SYMBOLS = (
+    "ADAPTER_API_VERSION",
+    "SimulatorAdapterError",
+    "TARGET_CATEGORIES",
+    "canonical_json_bytes",
+    "validate_candidates",
+    "validate_snapshot",
+)
+_NATIVE_DLL_DIRECTORY_HANDLES: list[Any] = []
 COMMAND_ENVELOPE_SCHEMA_VERSION = (
     "noncombat-card-acceptance-training-runner-command-envelope-v1"
 )
@@ -121,6 +134,7 @@ _MANIFEST_DEFINITION_FIELDS = {
     "interpreter",
     "launch_id",
     "manifest_path",
+    "native_identity",
     "output_root",
     "pushed_ref",
     "repository_root",
@@ -358,6 +372,57 @@ def _external_binding(value: object, label: str) -> dict[str, Any]:
     }
 
 
+def _native_identity(value: object) -> dict[str, Any]:
+    identity = _mapping(value, "native identity")
+    _fields(
+        identity,
+        {
+            "adapter_api_version",
+            "dll_directories",
+            "module",
+            "provenance",
+            "provenance_sha256",
+        },
+        "native identity",
+    )
+    adapter_api_version = identity["adapter_api_version"]
+    if adapter_api_version != "sts-lightspeed-noncombat-adapter-v3":
+        raise TrainingRunnerBlocked("native identity adapter API differs")
+    directories = identity["dll_directories"]
+    if (
+        not isinstance(directories, list)
+        or not directories
+        or any(not isinstance(path, str) for path in directories)
+        or directories != sorted(set(directories))
+    ):
+        raise TrainingRunnerBlocked("native identity DLL directories differ")
+    normalized_directories = [
+        _absolute_path(path, "native identity DLL directory")
+        for path in directories
+    ]
+    module = _external_binding(identity["module"], "native identity module")
+    provenance = _mapping(identity["provenance"], "native identity provenance")
+    if not provenance:
+        raise TrainingRunnerBlocked("native identity provenance is empty")
+    build = _mapping(provenance.get("build"), "native identity build")
+    if (
+        build.get("adapter_api_version") != adapter_api_version
+        or provenance.get("module_sha256") != module["sha256"]
+        or _digest(
+            identity["provenance_sha256"], "native identity provenance digest"
+        )
+        != canonical_json_sha256(provenance)
+    ):
+        raise TrainingRunnerBlocked("native identity provenance differs")
+    return {
+        "adapter_api_version": adapter_api_version,
+        "dll_directories": normalized_directories,
+        "module": module,
+        "provenance": copy.deepcopy(provenance),
+        "provenance_sha256": canonical_json_sha256(provenance),
+    }
+
+
 def _validate_rollback_authority(value: object) -> dict[str, Any]:
     authority = _mapping(value, "rollback authority")
     try:
@@ -535,6 +600,7 @@ def _normalize_launch_definition(value: object) -> dict[str, Any]:
         "interpreter": interpreter,
         "launch_id": _identifier(definition["launch_id"], "launch id"),
         "manifest_path": manifest_path,
+        "native_identity": _native_identity(definition["native_identity"]),
         "output_root": output_root,
         "pushed_ref": PUSHED_REF,
         "repository_root": repository_root,
@@ -1445,6 +1511,13 @@ def _open_registered_training_inputs(
         )
     ):
         raise TrainingRunnerBlocked("registered training cohort differs")
+    authority_evidence = _mapping(
+        inventory.get("authority_evidence"), "seed inventory authority evidence"
+    )
+    source_inventory = _mapping(
+        authority_evidence.get("source_inventory"),
+        "seed inventory registered source inventory",
+    )
     return {
         "authority": copy.deepcopy(authority),
         "execution_registration": {
@@ -1453,6 +1526,7 @@ def _open_registered_training_inputs(
         },
         "registration": copy.deepcopy(registration),
         "pre_access_receipt": receipt_binding,
+        "source_inventory": copy.deepcopy(source_inventory),
         "training_seeds": tuple(training_seeds),
     }
 
@@ -3189,6 +3263,689 @@ def _load_registration_validation_dependencies(
     }
 
 
+def _source_inventory_execution_bindings(
+    *,
+    launch_manifest: Mapping[str, Any],
+    source_inventory: Mapping[str, Any],
+) -> dict[str, dict[str, Any]]:
+    manifest = validate_launch_manifest(launch_manifest)
+    inventory = _mapping(source_inventory, "registered source inventory")
+    if (
+        _digest(
+            inventory.get("inventory_sha256"),
+            "registered source inventory digest",
+        )
+        != manifest["registered_source"]["source_inventory_sha256"]
+    ):
+        raise TrainingRunnerBlocked("registered source inventory identity differs")
+    modules = inventory.get("modules")
+    dependencies = inventory.get("public_dependencies")
+    if not isinstance(modules, list) or not isinstance(dependencies, list):
+        raise TrainingRunnerBlocked("registered source inventory sections differ")
+
+    root = Path(manifest["repository_root"])
+    rows: dict[str, dict[str, Any]] = {}
+    overrides = {
+        "analysis_scripts.noncombat_card_acceptance_empirical_successor_seed_inventory": (
+            "seed_inventory",
+            "registration_producer_source",
+        ),
+        "analysis_scripts.verify_noncombat_card_acceptance_empirical_successor": (
+            "independent_verifier",
+            "registration_verifier_source",
+        ),
+    }
+    seen_overrides = set()
+    for section_name, values in (
+        ("modules", modules),
+        ("public_dependencies", dependencies),
+    ):
+        for index, value in enumerate(values):
+            row = _mapping(value, f"registered source {section_name}[{index}]")
+            expected_fields = (
+                {"name", "path", "role", "sha256", "size_bytes"}
+                if section_name == "modules"
+                else {
+                    "name",
+                    "path",
+                    "public_symbols",
+                    "sha256",
+                    "size_bytes",
+                }
+            )
+            _fields(
+                row,
+                expected_fields,
+                f"registered source {section_name}[{index}]",
+            )
+            binding = _artifact_binding(
+                {
+                    "path": row.get("path"),
+                    "sha256": row.get("sha256"),
+                    "size_bytes": row.get("size_bytes"),
+                },
+                f"registered source {section_name}[{index}]",
+            )
+            if section_name == "modules":
+                module_name = row.get("name")
+                if not isinstance(module_name, str) or not module_name:
+                    raise TrainingRunnerBlocked(
+                        "registered source module name differs"
+                    )
+            else:
+                public_symbols = row["public_symbols"]
+                if (
+                    not isinstance(public_symbols, list)
+                    or not public_symbols
+                    or any(
+                        not isinstance(symbol, str) or not symbol
+                        for symbol in public_symbols
+                    )
+                    or public_symbols != sorted(set(public_symbols))
+                ):
+                    raise TrainingRunnerBlocked(
+                        "registered public dependency symbols differ"
+                    )
+                path = PurePosixPath(binding["path"])
+                if path.suffix != ".py" or path.parts[:1] != ("analysis_scripts",):
+                    raise TrainingRunnerBlocked(
+                        "registered public dependency path differs"
+                    )
+                module_name = ".".join(path.with_suffix("").parts)
+                if module_name.endswith(".__init__"):
+                    module_name = module_name.removesuffix(".__init__")
+                if (
+                    module_name == "analysis_scripts.noncombat_simulator_adapter"
+                    and public_symbols
+                    != list(_REGISTERED_ADAPTER_PUBLIC_SYMBOLS)
+                ):
+                    raise TrainingRunnerBlocked(
+                        "registered simulator adapter public API differs"
+                    )
+            if module_name in overrides:
+                if section_name != "modules":
+                    raise TrainingRunnerBlocked(
+                        "registered additive override section differs"
+                    )
+                expected_role, artifact_name = overrides[module_name]
+                if (
+                    row["role"] != expected_role
+                    or binding["path"]
+                    != manifest["artifacts"][artifact_name]["path"]
+                ):
+                    raise TrainingRunnerBlocked(
+                        "registered additive override identity differs"
+                    )
+                seen_overrides.add(module_name)
+                continue
+            if module_name in rows or any(
+                item["path"] == binding["path"] for item in rows.values()
+            ):
+                raise TrainingRunnerBlocked("registered execution source is duplicated")
+            rows[module_name] = {
+                **binding,
+                "absolute_path": str((root / PurePosixPath(binding["path"])).resolve()),
+                "module_name": module_name,
+            }
+
+    if seen_overrides != set(overrides):
+        raise TrainingRunnerBlocked("registered additive override is incomplete")
+
+    required = {
+        "control": "analysis_scripts.noncombat_card_acceptance_empirical_successor_experiment",
+        "runtime": "analysis_scripts.noncombat_card_acceptance_empirical_successor_runtime",
+        "adapter": "analysis_scripts.noncombat_simulator_adapter",
+    }
+    if any(name not in rows for name in required.values()):
+        raise TrainingRunnerBlocked("registered execution source is incomplete")
+    if (
+        {
+            field: rows[required["control"]][field]
+            for field in _ARTIFACT_FIELDS
+        }
+        != manifest["artifacts"]["control_source"]
+        or {
+            field: rows[required["runtime"]][field]
+            for field in _ARTIFACT_FIELDS
+        }
+        != manifest["artifacts"]["runtime_source"]
+    ):
+        raise TrainingRunnerBlocked("registered execution manifest source differs")
+    return rows
+
+
+def _default_external_binding_observer(path: Path | str) -> dict[str, Any]:
+    target = Path(path).resolve()
+    digest = hashlib.sha256()
+    size = 0
+    try:
+        with target.open("rb") as handle:
+            while chunk := handle.read(1024 * 1024):
+                digest.update(chunk)
+                size += len(chunk)
+    except OSError as exc:
+        raise TrainingRunnerBlocked("bound external artifact cannot be read") from exc
+    return {
+        "path": target.as_posix(),
+        "sha256": digest.hexdigest(),
+        "size_bytes": size,
+    }
+
+
+@contextmanager
+def _default_locked_external_binding(
+    path: Path | str,
+) -> Any:
+    """Hold a Windows read/share lock while observing and loading a native file."""
+    if os.name != "nt":
+        raise TrainingRunnerBlocked(
+            "locked native loading requires the registered Windows platform"
+        )
+    try:
+        import ctypes
+        from ctypes import wintypes
+        import msvcrt
+    except ImportError as exc:
+        raise TrainingRunnerBlocked("Windows native locking is unavailable") from exc
+
+    target = Path(path).resolve()
+    kernel32 = ctypes.WinDLL("kernel32", use_last_error=True)
+    create_file = kernel32.CreateFileW
+    create_file.argtypes = (
+        wintypes.LPCWSTR,
+        wintypes.DWORD,
+        wintypes.DWORD,
+        wintypes.LPVOID,
+        wintypes.DWORD,
+        wintypes.DWORD,
+        wintypes.HANDLE,
+    )
+    create_file.restype = wintypes.HANDLE
+    close_handle = kernel32.CloseHandle
+    close_handle.argtypes = (wintypes.HANDLE,)
+    close_handle.restype = wintypes.BOOL
+    handle = create_file(
+        str(target),
+        0x80000000,  # GENERIC_READ
+        0x00000001,  # FILE_SHARE_READ; deny concurrent write and delete
+        None,
+        3,  # OPEN_EXISTING
+        0x00000080,  # FILE_ATTRIBUTE_NORMAL
+        None,
+    )
+    if handle == wintypes.HANDLE(-1).value:
+        raise TrainingRunnerBlocked(
+            "bound native artifact cannot be locked"
+        ) from OSError(ctypes.get_last_error(), "CreateFileW failed", str(target))
+    try:
+        file_descriptor = msvcrt.open_osfhandle(
+            int(handle),
+            os.O_RDONLY | getattr(os, "O_BINARY", 0),
+        )
+    except OSError as exc:
+        close_handle(handle)
+        raise TrainingRunnerBlocked(
+            "bound native artifact lock cannot be adopted"
+        ) from exc
+
+    try:
+        with os.fdopen(file_descriptor, "rb", closefd=True) as stream:
+            def observe() -> dict[str, Any]:
+                digest = hashlib.sha256()
+                size = 0
+                try:
+                    stream.seek(0)
+                    while chunk := stream.read(1024 * 1024):
+                        digest.update(chunk)
+                        size += len(chunk)
+                except OSError as exc:
+                    raise TrainingRunnerBlocked(
+                        "locked native artifact cannot be read"
+                    ) from exc
+                return {
+                    "path": target.as_posix(),
+                    "sha256": digest.hexdigest(),
+                    "size_bytes": size,
+                }
+
+            yield observe
+    except OSError as exc:
+        raise TrainingRunnerBlocked("bound native artifact lock failed") from exc
+
+
+def _load_registered_native_module(
+    module_path: Path | str,
+    *,
+    dll_directories: Sequence[Path | str],
+) -> Any:
+    module_file = Path(module_path).resolve()
+    if not hasattr(os, "add_dll_directory"):
+        raise TrainingRunnerBlocked("registered DLL loading is unavailable")
+    try:
+        for directory in dll_directories:
+            _NATIVE_DLL_DIRECTORY_HANDLES.append(
+                os.add_dll_directory(str(Path(directory).resolve()))
+            )
+        existing = sys.modules.get("sts_lightspeed_noncombat_adapter")
+        if existing is not None:
+            if Path(getattr(existing, "__file__", "")).resolve() != module_file:
+                raise TrainingRunnerBlocked(
+                    "registered native module was loaded from another path"
+                )
+            return existing
+        spec = importlib.util.spec_from_file_location(
+            "sts_lightspeed_noncombat_adapter",
+            module_file,
+        )
+        if spec is None or spec.loader is None:
+            raise TrainingRunnerBlocked(
+                "registered native module import specification is unavailable"
+            )
+        module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+        sys.modules["sts_lightspeed_noncombat_adapter"] = module
+        return module
+    except TrainingRunnerBlocked:
+        raise
+    except Exception as exc:
+        raise TrainingRunnerBlocked(
+            "registered native module could not be loaded"
+        ) from exc
+
+
+class _TrainingNativeEnvironment:
+    def __init__(self, *, adapter: Any, native: Any, provenance: Mapping[str, Any]):
+        self._adapter = adapter
+        self._native = native
+        self._provenance = copy.deepcopy(dict(provenance))
+
+    def snapshot(self) -> dict[str, Any]:
+        return self._adapter.validate_snapshot(
+            json.loads(self._native.snapshot_json())
+        )
+
+    def legal_actions(self) -> list[dict[str, Any]]:
+        snapshot = self.snapshot()
+        return self._adapter.validate_candidates(
+            json.loads(self._native.legal_actions_json()),
+            category=snapshot["category"],
+        )
+
+    def clone(self) -> "_TrainingNativeEnvironment":
+        return _TrainingNativeEnvironment(
+            adapter=self._adapter,
+            native=self._native.clone(),
+            provenance=self._provenance,
+        )
+
+    def step(self, action_id: str) -> dict[str, Any]:
+        before = self.snapshot()
+        candidates = self.legal_actions()
+        if [item["action_id"] for item in candidates].count(action_id) != 1:
+            raise TrainingRunnerBlocked(
+                "training action must select one registered candidate"
+            )
+        self._native.step(action_id)
+        after = self.snapshot()
+        return {
+            "baseline_control": after["baseline_control"],
+            "candidate_actions": candidates,
+            "category": before["category"],
+            "evidence_class": "simulator_transition",
+            "live_evidence": {
+                "known_propensity": False,
+                "live_outcome_join": False,
+                "ope_overlap": False,
+                "target_supported_victory": False,
+            },
+            "provenance": copy.deepcopy(self._provenance),
+            "schema_version": "noncombat-simulator-transition-v1",
+            "selected_action_id": action_id,
+            "source_state": before["state"],
+            "source_type": "sts_lightspeed_simulation",
+            "successor": {
+                "category": after["category"],
+                "state": after["state"],
+                "terminal": after["terminal"],
+            },
+            "training_authority": {
+                "formal_noncombat_rl": False,
+                "live_policy_loading": False,
+                "live_study_launch": False,
+                "ope_reinterpretation": False,
+                "policy_promotion": False,
+            },
+        }
+
+
+class _BoundSourceLoader(importlib.abc.Loader):
+    def __init__(self, *, module_name: str, path: str, payload: bytes) -> None:
+        self._module_name = module_name
+        self._path = path
+        self._payload = payload
+
+    def exec_module(self, module: types.ModuleType) -> None:
+        module.__file__ = self._path
+        code = compile(
+            self._payload,
+            self._path,
+            "exec",
+            dont_inherit=True,
+        )
+        exec(code, module.__dict__)
+
+
+class _BoundSourceFinder(importlib.abc.MetaPathFinder):
+    def __init__(
+        self,
+        *,
+        sources: Mapping[str, tuple[str, bytes]],
+        allowed_preloaded: Sequence[str],
+    ) -> None:
+        self._sources = dict(sources)
+        self._allowed_preloaded = frozenset(allowed_preloaded)
+
+    def find_spec(
+        self,
+        fullname: str,
+        path: Sequence[str] | None = None,
+        target: types.ModuleType | None = None,
+    ) -> Any:
+        del path, target
+        source = self._sources.get(fullname)
+        if source is not None:
+            source_path, payload = source
+            return importlib.util.spec_from_loader(
+                fullname,
+                _BoundSourceLoader(
+                    module_name=fullname,
+                    path=source_path,
+                    payload=payload,
+                ),
+                origin=source_path,
+            )
+        if (
+            fullname.startswith("analysis_scripts.")
+            and fullname not in self._allowed_preloaded
+        ):
+            raise ImportError(f"unregistered local execution import: {fullname}")
+        return None
+
+
+def _load_source_bound_training_dependencies(
+    *,
+    control_api: Any,
+    launch_manifest: Mapping[str, Any],
+    source_inventory: Mapping[str, Any],
+    artifact_reader: Callable[[Path], bytes] | None = None,
+    module_importer: Callable[[str], Any] | None = None,
+    module_registry: Mapping[str, Any] | None = None,
+    external_binding_observer: Callable[[Path | str], Mapping[str, Any]] | None = None,
+    native_module_loader: Callable[..., Any] | None = None,
+    directory_observer: Callable[[Path], bool] | None = None,
+    python_version: Callable[[], str] | None = None,
+) -> dict[str, Any]:
+    """Load the registered adapter, native module and runtime after source checks."""
+    manifest = validate_launch_manifest(launch_manifest)
+    reader = artifact_reader or _default_artifact_reader
+    importer = module_importer or importlib.import_module
+    registry = module_registry if module_registry is not None else sys.modules
+    load_native = native_module_loader or _load_registered_native_module
+    is_directory = directory_observer or (lambda path: path.is_dir())
+    version = python_version or platform.python_version
+    callbacks = (reader, importer, load_native, is_directory, version)
+    if not all(callable(callback) for callback in callbacks):
+        raise TrainingRunnerBlocked("training dependency callback is invalid")
+    if external_binding_observer is not None and not callable(
+        external_binding_observer
+    ):
+        raise TrainingRunnerBlocked("training native observer is invalid")
+
+    if external_binding_observer is None:
+        native_binding_guard = _default_locked_external_binding
+    else:
+        @contextmanager
+        def native_binding_guard(path: Path | str) -> Any:
+            yield lambda: external_binding_observer(path)
+
+    if any(
+        name == prefix or name.startswith(prefix + ".")
+        for name in registry
+        for prefix in (
+            "torch",
+            "sts_lightspeed_noncombat_adapter",
+            "analysis_scripts.noncombat_card_acceptance_empirical_successor_runtime",
+            "analysis_scripts.noncombat_simulator_adapter",
+        )
+    ):
+        raise TrainingRunnerBlocked("training execution dependency is preloaded")
+
+    sources = _source_inventory_execution_bindings(
+        launch_manifest=manifest,
+        source_inventory=source_inventory,
+    )
+    before: dict[str, bytes] = {}
+    for name in sorted(sources):
+        binding = sources[name]
+        payload = reader(Path(binding["absolute_path"]))
+        if not isinstance(payload, bytes) or not _binding_matches(payload, binding):
+            raise TrainingRunnerBlocked(f"registered execution source differs: {name}")
+        before[name] = payload
+
+    finder = None
+    if module_importer is None:
+        allowed_preloaded = {
+            "analysis_scripts",
+            "analysis_scripts.noncombat_card_acceptance_empirical_successor_experiment",
+            "analysis_scripts.noncombat_card_acceptance_empirical_successor_training_runner",
+        }
+        unexpectedly_preloaded = sorted(
+            name
+            for name in sources
+            if name in registry and name not in allowed_preloaded
+        )
+        if unexpectedly_preloaded:
+            raise TrainingRunnerBlocked(
+                "registered execution source is preloaded: "
+                + ", ".join(unexpectedly_preloaded)
+            )
+        finder = _BoundSourceFinder(
+            sources={
+                name: (binding["absolute_path"], before[name])
+                for name, binding in sources.items()
+                if name not in allowed_preloaded
+            },
+            allowed_preloaded=tuple(allowed_preloaded),
+        )
+        sys.meta_path.insert(0, finder)
+
+    adapter_name = "analysis_scripts.noncombat_simulator_adapter"
+    runtime_name = (
+        "analysis_scripts.noncombat_card_acceptance_empirical_successor_runtime"
+    )
+    try:
+        try:
+            adapter = importer(adapter_name)
+        except Exception as exc:
+            raise TrainingRunnerBlocked(
+                "source-bound simulator adapter is unavailable"
+            ) from exc
+        if Path(getattr(adapter, "__file__", "")).resolve() != Path(
+            sources[adapter_name]["absolute_path"]
+        ):
+            raise TrainingRunnerBlocked("source-bound simulator adapter path differs")
+        adapter_operations = (
+            "canonical_json_bytes",
+            "validate_candidates",
+            "validate_snapshot",
+        )
+        if (
+            getattr(adapter, "ADAPTER_API_VERSION", None)
+            != manifest["native_identity"]["adapter_api_version"]
+            or getattr(adapter, "TARGET_CATEGORIES", None)
+            != ("card_reward", "event", "route", "shop")
+            or not isinstance(getattr(adapter, "SimulatorAdapterError", None), type)
+            or any(
+                not callable(getattr(adapter, name, None))
+                for name in adapter_operations
+            )
+        ):
+            raise TrainingRunnerBlocked("source-bound simulator adapter API differs")
+        if any(
+            name == prefix or name.startswith(prefix + ".")
+            for name in registry
+            for prefix in ("torch", "sts_lightspeed_noncombat_adapter")
+        ):
+            raise TrainingRunnerBlocked(
+                "simulator adapter loaded execution dependency early"
+            )
+
+        native = manifest["native_identity"]
+        if not all(is_directory(Path(path)) for path in native["dll_directories"]):
+            raise TrainingRunnerBlocked("registered native DLL directory is unavailable")
+        with native_binding_guard(native["module"]["path"]) as observe_native:
+            observed_native_before = _external_binding(
+                observe_native(),
+                "native module before load",
+            )
+            if observed_native_before != native["module"]:
+                raise TrainingRunnerBlocked("native module bytes differ before load")
+            native_module = load_native(
+                native["module"]["path"],
+                dll_directories=[Path(path) for path in native["dll_directories"]],
+            )
+            if any(name == "torch" or name.startswith("torch.") for name in registry):
+                raise TrainingRunnerBlocked("native loading imported Torch out of order")
+            observed_native_after = _external_binding(
+                observe_native(),
+                "native module after load",
+            )
+            if observed_native_after != native["module"]:
+                raise TrainingRunnerBlocked("native module bytes differ after load")
+        try:
+            if (
+                Path(getattr(native_module, "__file__", "")).resolve()
+                != Path(native["module"]["path"])
+                or any(
+                    not callable(getattr(native_module, name, None))
+                    for name in ("Environment", "adapter_api_version", "build_info_json")
+                )
+                or native_module.adapter_api_version()
+                != native["adapter_api_version"]
+            ):
+                raise TrainingRunnerBlocked("loaded native adapter API differs")
+            provenance = copy.deepcopy(native["provenance"])
+            build = json.loads(
+                native_module.build_info_json(),
+                object_pairs_hook=_reject_duplicate_pairs,
+                parse_constant=_reject_json_constant,
+            )
+            build = _mapping(build, "loaded native build")
+        except TrainingRunnerBlocked:
+            raise
+        except Exception as exc:
+            raise TrainingRunnerBlocked("loaded native provenance is invalid") from exc
+        build["python"] = version()
+        if (
+            provenance != native["provenance"]
+            or provenance.get("build") != build
+            or provenance.get("module_sha256") != native["module"]["sha256"]
+            or (
+                "module_size_bytes" in provenance
+                and provenance["module_size_bytes"] != native["module"]["size_bytes"]
+            )
+            or canonical_json_sha256(provenance) != native["provenance_sha256"]
+        ):
+            raise TrainingRunnerBlocked("loaded native provenance differs")
+
+        try:
+            runtime = importer(runtime_name)
+        except Exception as exc:
+            raise TrainingRunnerBlocked(
+                "source-bound training runtime is unavailable"
+            ) from exc
+        if Path(getattr(runtime, "__file__", "")).resolve() != Path(
+            sources[runtime_name]["absolute_path"]
+        ):
+            raise TrainingRunnerBlocked("source-bound training runtime path differs")
+        try:
+            expected_metadata = _mapping(
+                control_api.expected_runtime_metadata(), "expected runtime metadata"
+            )
+            observed_metadata = _mapping(runtime.runtime_metadata(), "runtime metadata")
+        except TrainingRunnerBlocked:
+            raise
+        except Exception as exc:
+            raise TrainingRunnerBlocked("training runtime metadata is invalid") from exc
+        if observed_metadata != expected_metadata:
+            raise TrainingRunnerBlocked("training runtime metadata differs")
+        runtime_operations = (
+            "collect_and_complete_paired_training_chunk",
+            "encode_paired_training_checkpoint",
+            "initialize_paired_training_runtime",
+            "restore_paired_training_checkpoint",
+            "runtime_metadata",
+            "training_progress_verdict",
+        )
+        if any(
+            not callable(getattr(runtime, name, None))
+            for name in runtime_operations
+        ):
+            raise TrainingRunnerBlocked("training runtime API differs")
+    finally:
+        if finder is not None:
+            try:
+                sys.meta_path.remove(finder)
+            except ValueError:
+                pass
+
+    for name in sorted(sources):
+        binding = sources[name]
+        after = reader(Path(binding["absolute_path"]))
+        if (
+            not isinstance(after, bytes)
+            or after != before[name]
+            or not _binding_matches(after, binding)
+        ):
+            raise TrainingRunnerBlocked(
+                f"registered execution source changed during load: {name}"
+            )
+
+    native_environment = getattr(native_module, "Environment", None)
+    if not callable(native_environment):
+        raise TrainingRunnerBlocked("loaded environment constructors are unavailable")
+    try:
+        contract = _mapping(control_api.experiment_contract(), "training contract")
+        environment = _mapping(contract.get("environment"), "training environment")
+        ascension = environment["ascension"]
+    except (KeyError, TypeError, TrainingRunnerBlocked) as exc:
+        raise TrainingRunnerBlocked("training environment contract is invalid") from exc
+    if environment != {
+        "adapter_api_version": "sts-lightspeed-noncombat-adapter-v3",
+        "ascension": 0,
+        "device": "cpu",
+    }:
+        raise TrainingRunnerBlocked("training environment ascension differs")
+
+    def environment_factory(seed: int) -> Any:
+        if isinstance(seed, bool) or not isinstance(seed, int) or seed < 0:
+            raise TrainingRunnerBlocked("training environment seed differs")
+        return _TrainingNativeEnvironment(
+            adapter=adapter,
+            native=native_environment(seed, ascension),
+            provenance=copy.deepcopy(provenance),
+        )
+
+    return {
+        "adapter": adapter,
+        "environment_factory": environment_factory,
+        "native_module": native_module,
+        "provenance": copy.deepcopy(provenance),
+        "runtime": runtime,
+        "source_bindings": copy.deepcopy(sources),
+    }
+
+
 def _compose_authorized_training_command_for_qualification(
     *,
     manifest_path: Path | str,
@@ -3200,8 +3957,6 @@ def _compose_authorized_training_command_for_qualification(
     process_alive: Callable[[int], bool],
     deadline: float,
     clock: Callable[[], float],
-    runtime_loader: Callable[[], Any],
-    environment_factory_loader: Callable[[], Callable[[int], Any]],
     closeout: Callable[[str, Mapping[str, Any]], Any],
     artifact_reader: Callable[[Path], bytes] | None = None,
     source_observer: Callable[
@@ -3219,8 +3974,6 @@ def _compose_authorized_training_command_for_qualification(
     callbacks = (
         process_alive,
         clock,
-        runtime_loader,
-        environment_factory_loader,
         closeout,
         reader,
         receipt_publisher,
@@ -3254,6 +4007,8 @@ def _compose_authorized_training_command_for_qualification(
     ).resolve()
     inventory_path = Path(manifest["source_inventory"]["path"]).resolve()
     dependency_state: dict[str, Any] = {}
+    registered_state: dict[str, Any] = {}
+    training_dependency_state: dict[str, Any] = {}
 
     def load_dependencies() -> None:
         dependencies = _mapping(
@@ -3319,7 +4074,7 @@ def _compose_authorized_training_command_for_qualification(
         )
 
     def open_registered_inputs() -> Mapping[str, Any]:
-        return _open_registered_training_inputs(
+        registered = _open_registered_training_inputs(
             authority_validator=validate_current_authority,
             expected_envelope_sha256=documents["authority"]["envelope_sha256"],
             expected_composite_sha256=documents["authority"]["composite_sha256"],
@@ -3339,6 +4094,49 @@ def _compose_authorized_training_command_for_qualification(
             ],
             pre_input_validator=load_dependencies,
         )
+        registered_state.update(copy.deepcopy(registered))
+        return registered
+
+    def load_training_dependencies() -> Mapping[str, Any]:
+        if training_dependency_state:
+            return training_dependency_state
+        source_inventory = registered_state.get("source_inventory")
+        if not isinstance(source_inventory, Mapping):
+            raise TrainingRunnerBlocked(
+                "validated source inventory is unavailable to runtime loader"
+            )
+        loaded = _mapping(
+            _load_source_bound_training_dependencies(
+                control_api=control,
+                launch_manifest=manifest,
+                source_inventory=copy.deepcopy(source_inventory),
+            ),
+            "source-bound training dependencies",
+        )
+        _fields(
+            loaded,
+            {
+                "adapter",
+                "environment_factory",
+                "native_module",
+                "provenance",
+                "runtime",
+                "source_bindings",
+            },
+            "source-bound training dependencies",
+        )
+        if not callable(loaded["environment_factory"]):
+            raise TrainingRunnerBlocked(
+                "source-bound training environment factory is invalid"
+            )
+        training_dependency_state.update(loaded)
+        return training_dependency_state
+
+    def resolved_runtime_loader() -> Any:
+        return load_training_dependencies()["runtime"]
+
+    def resolved_environment_factory_loader() -> Callable[[int], Any]:
+        return load_training_dependencies()["environment_factory"]
 
     def build_context(
         execution_registration: Mapping[str, Any],
@@ -3394,8 +4192,8 @@ def _compose_authorized_training_command_for_qualification(
                 clock=now,
             )
         ),
-        runtime_loader=runtime_loader,
-        environment_factory_loader=environment_factory_loader,
+        runtime_loader=resolved_runtime_loader,
+        environment_factory_loader=resolved_environment_factory_loader,
         checkpoint_reader=reader,
         launch_marker_reader=reader,
         output_root=Path(manifest["output_root"]),

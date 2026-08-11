@@ -6,7 +6,8 @@ that binds the pushed r6 registration, training request and review, runner
 source path/hash/commit, registered experiment source commit/inventory, additive
 seed-inventory producer path/hash, independent registration verifier path/hash,
 exact source-inventory path/hash already bound
-by the r6 registration request, Windows interpreter, output root, resource
+by the r6 registration request, exact native module path/hash/size, DLL
+directories, adapter API and provenance/hash, Windows interpreter, output root, resource
 ceilings, denied operations, and the closed `preflight`, `run-training`, and
 `terminalize-dead-owner` CLI shapes. It SHALL also bind one canonical rollback
 authority and hash, exact candidate-disabled control target, control checkpoint/
@@ -57,6 +58,10 @@ before importing the runtime or constructing an environment.
 - **WHEN** source-only preflight is run for the reviewed manifest without a stage authorization
 - **THEN** it records readiness only and no runtime, native module, model, environment, seed, checkpoint, or output is accessed
 
+#### Scenario: Native identity is present during source-only preflight
+- **WHEN** the canonical manifest contains the reviewed native module, DLL-directory, adapter-API, and provenance bindings
+- **THEN** preflight validates only their canonical document shape and opens none of the bound native paths
+
 #### Scenario: Launch authority is stale or revoked
 - **WHEN** approval or launch observation is unavailable, stale, from another task/request, or records revocation
 - **THEN** `run-training` fails before consuming the execution identity or loading runtime dependencies
@@ -76,6 +81,16 @@ authority may it create a process-local validated registration view that adds
 `rollback_authority_sha256` while retaining the original registration identity.
 It SHALL publish a write-once runner-launch marker binding the manifest,
 run-envelope, command, and rollback identities before empirical access.
+
+After the durable pre-access receipt and source-inventory validation, the runner
+SHALL reobserve all registered local source bytes and the manifest-bound native
+module bytes, reject preloaded or unregistered execution modules, hold a Windows
+read/share handle that denies concurrent write/delete from native observation
+through extension initialization, and load the source-bound simulator adapter,
+registered native module, and Torch runtime in that order. The runner SHALL use
+only simulator-adapter symbols declared by the registered source inventory. The
+loaded adapter API and native provenance SHALL equal the launch manifest
+identity before constructing the fixed-ascension environment factory.
 
 The runner SHALL publish a canonical zero-progress initial checkpoint bound to
 the registered matched bootstrap. Each completed chunk SHALL publish a chain

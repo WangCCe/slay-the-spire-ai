@@ -5,6 +5,7 @@ import copy
 import hashlib
 import importlib
 import json
+import os
 from pathlib import Path
 import subprocess
 import sys
@@ -57,6 +58,28 @@ def _binding(path: str, payload: bytes) -> dict:
 
 def _external_binding(path: str, digest: str) -> dict:
     return {"path": path, "sha256": digest, "size_bytes": 1}
+
+
+def _native_identity(root: str, runner) -> dict:
+    module_sha256 = "e" * 64
+    provenance = {
+        "build": {
+            "adapter_api_version": "sts-lightspeed-noncombat-adapter-v3",
+            "python": "3.synthetic",
+        },
+        "module_sha256": module_sha256,
+        "module_size_bytes": 1,
+    }
+    return {
+        "adapter_api_version": "sts-lightspeed-noncombat-adapter-v3",
+        "dll_directories": [f"{root}/native/bin"],
+        "module": _external_binding(
+            f"{root}/native/sts_lightspeed_noncombat_adapter.pyd",
+            module_sha256,
+        ),
+        "provenance": provenance,
+        "provenance_sha256": runner.canonical_json_sha256(provenance),
+    }
 
 
 def _rollback_authority(root: str) -> dict:
@@ -196,6 +219,7 @@ def _fixture(root: str = "D:/synthetic/card-acceptance-runner"):
         "interpreter": interpreter,
         "launch_id": "card-acceptance-r6-training-launch-manifest-v1",
         "manifest_path": manifest_path,
+        "native_identity": _native_identity(root, runner),
         "output_root": output_root,
         "pushed_ref": "origin/master",
         "repository_root": root,
@@ -328,7 +352,9 @@ def test_launch_manifest_parser_rejects_duplicate_unknown_and_noncanonical_bytes
         runner.parse_launch_manifest_bytes(canonical.removesuffix(b"\n"))
 
 
-@pytest.mark.parametrize("mutation", ("command", "downstream", "rollback"))
+@pytest.mark.parametrize(
+    "mutation", ("command", "downstream", "native", "rollback")
+)
 def test_launch_manifest_rejects_rehashed_semantic_drift(mutation):
     runner, manifest, _payloads = _manifest()
     changed = copy.deepcopy(manifest)
@@ -336,6 +362,8 @@ def test_launch_manifest_rejects_rehashed_semantic_drift(mutation):
         changed["commands"]["run_training"].append("--extra")
     elif mutation == "downstream":
         changed["downstream_authority"]["training"] = True
+    elif mutation == "native":
+        changed["native_identity"]["provenance"]["module_sha256"] = "f" * 64
     else:
         changed["rollback_authority"]["target_relative_path"] = "changed.json"
     changed["manifest_sha256"] = runner.canonical_json_sha256(
@@ -344,6 +372,20 @@ def test_launch_manifest_rejects_rehashed_semantic_drift(mutation):
 
     with pytest.raises(runner.TrainingRunnerBlocked):
         runner.validate_launch_manifest(changed)
+
+
+def test_launch_manifest_rejects_non_string_native_dll_directory_cleanly():
+    runner, definition, _payloads = _fixture()
+    definition["native_identity"]["dll_directories"] = [
+        definition["native_identity"]["dll_directories"][0],
+        7,
+    ]
+
+    with pytest.raises(
+        runner.TrainingRunnerBlocked,
+        match="native identity DLL directories differ",
+    ):
+        runner.build_launch_manifest(definition)
 
 
 def test_composites_are_command_specific_and_terminalization_is_subordinate():
@@ -1076,6 +1118,558 @@ def test_registration_validation_dependency_drift_fails_before_import():
         )
 
 
+def _training_dependency_fixture():
+    runner, definition, payloads = _fixture()
+    root = Path(definition["repository_root"])
+    adapter_payload = b"# synthetic simulator adapter\n"
+    rows = {
+        "control": {
+            "name": CONTROL_MODULE,
+            "role": "control_plane",
+            **_binding(
+                definition["artifacts"]["control_source"]["path"],
+                payloads["control_source"],
+            ),
+        },
+        "runtime": {
+            "name": "analysis_scripts.noncombat_card_acceptance_empirical_successor_runtime",
+            "role": "torch_runtime",
+            **_binding(
+                definition["artifacts"]["runtime_source"]["path"],
+                payloads["runtime_source"],
+            ),
+        },
+        "adapter": {
+            "name": "simulator_adapter",
+            "public_symbols": list(
+                runner._REGISTERED_ADAPTER_PUBLIC_SYMBOLS
+            ),
+            **_binding(
+                "analysis_scripts/noncombat_simulator_adapter.py",
+                adapter_payload,
+            ),
+        },
+        "producer": {
+            "name": "analysis_scripts.noncombat_card_acceptance_empirical_successor_seed_inventory",
+            "path": definition["artifacts"]["registration_producer_source"]["path"],
+            "role": "seed_inventory",
+            "sha256": "a" * 64,
+            "size_bytes": 1,
+        },
+        "verifier": {
+            "name": "analysis_scripts.verify_noncombat_card_acceptance_empirical_successor",
+            "path": definition["artifacts"]["registration_verifier_source"]["path"],
+            "role": "independent_verifier",
+            "sha256": "b" * 64,
+            "size_bytes": 1,
+        },
+    }
+    source_inventory = {
+        "inventory_sha256": definition["registered_source"][
+            "source_inventory_sha256"
+        ],
+        "modules": [
+            rows["control"],
+            rows["runtime"],
+            rows["producer"],
+            rows["verifier"],
+        ],
+        "public_dependencies": [rows["adapter"]],
+        "schema_version": "synthetic-source-inventory-v1",
+    }
+    manifest = runner.build_launch_manifest(definition)
+    source_payloads = {
+        str((root / rows["control"]["path"]).resolve()): payloads[
+            "control_source"
+        ],
+        str((root / rows["runtime"]["path"]).resolve()): payloads[
+            "runtime_source"
+        ],
+        str((root / rows["adapter"]["path"]).resolve()): adapter_payload,
+    }
+    return runner, manifest, source_inventory, source_payloads
+
+
+def test_source_bound_training_dependencies_load_in_registered_order():
+    runner, manifest, source_inventory, source_payloads = (
+        _training_dependency_fixture()
+    )
+    calls = []
+    registry = {}
+    control = _control()
+    native_identity = manifest["native_identity"]
+
+    class Native:
+        __file__ = native_identity["module"]["path"]
+
+        @staticmethod
+        def adapter_api_version():
+            return native_identity["adapter_api_version"]
+
+        @staticmethod
+        def build_info_json():
+            return json.dumps(
+                {
+                    key: value
+                    for key, value in native_identity["provenance"]["build"].items()
+                    if key != "python"
+                }
+            )
+
+        @staticmethod
+        def Environment(seed, ascension):
+            calls.append(("native-environment", seed, ascension))
+            return (seed, ascension)
+
+    class Adapter:
+        ADAPTER_API_VERSION = "sts-lightspeed-noncombat-adapter-v3"
+        SimulatorAdapterError = ValueError
+        TARGET_CATEGORIES = ("card_reward", "event", "route", "shop")
+        __file__ = str(
+            (
+                Path(manifest["repository_root"])
+                / source_inventory["public_dependencies"][0]["path"]
+            ).resolve()
+        )
+
+        @staticmethod
+        def load_native_module(path, *, dll_directories):
+            calls.append(
+                (
+                    "native",
+                    str(Path(path).resolve()),
+                    tuple(str(Path(item).resolve()) for item in dll_directories),
+                )
+            )
+            registry["sts_lightspeed_noncombat_adapter"] = Native
+            return Native
+
+        @staticmethod
+        def validate_provenance(value):
+            return copy.deepcopy(value)
+
+        canonical_json_bytes = staticmethod(lambda value: json.dumps(value).encode())
+        validate_candidates = staticmethod(lambda value, **_kwargs: value)
+        validate_snapshot = staticmethod(lambda value: value)
+
+    class Runtime:
+        __file__ = str(
+            (
+                Path(manifest["repository_root"])
+                / source_inventory["modules"][1]["path"]
+            ).resolve()
+        )
+
+        @staticmethod
+        def runtime_metadata():
+            return control.expected_runtime_metadata()
+
+        collect_and_complete_paired_training_chunk = staticmethod(lambda *_args, **_kwargs: None)
+        encode_paired_training_checkpoint = staticmethod(lambda _state: b"checkpoint")
+        initialize_paired_training_runtime = staticmethod(lambda: object())
+        restore_paired_training_checkpoint = staticmethod(lambda _payload: object())
+        training_progress_verdict = staticmethod(lambda _state: "training_completed_without_family_saturation")
+
+    def importer(name):
+        calls.append(("import", name))
+        if name == "analysis_scripts.noncombat_simulator_adapter":
+            return Adapter
+        if name == (
+            "analysis_scripts.noncombat_card_acceptance_empirical_successor_runtime"
+        ):
+            registry["torch"] = object()
+            return Runtime
+        raise AssertionError(f"unexpected import: {name}")
+
+    reads = []
+
+    def reader(path):
+        normalized = str(path.resolve())
+        reads.append(normalized)
+        return source_payloads[normalized]
+
+    dependencies = runner._load_source_bound_training_dependencies(
+        control_api=control,
+        launch_manifest=manifest,
+        source_inventory=source_inventory,
+        artifact_reader=reader,
+        module_importer=importer,
+        module_registry=registry,
+        external_binding_observer=lambda path: (
+            calls.append(("native-binding", str(Path(path).resolve())))
+            or copy.deepcopy(native_identity["module"])
+        ),
+        native_module_loader=Adapter.load_native_module,
+        directory_observer=lambda _path: True,
+        python_version=lambda: native_identity["provenance"]["build"].get(
+            "python"
+        ),
+    )
+
+    assert calls[:4] == [
+        ("import", "analysis_scripts.noncombat_simulator_adapter"),
+        ("native-binding", str(Path(native_identity["module"]["path"]).resolve())),
+        (
+            "native",
+            str(Path(native_identity["module"]["path"]).resolve()),
+            tuple(
+                str(Path(item).resolve())
+                for item in native_identity["dll_directories"]
+            ),
+        ),
+        ("native-binding", str(Path(native_identity["module"]["path"]).resolve())),
+    ]
+    assert calls[4] == (
+        "import",
+        "analysis_scripts.noncombat_card_acceptance_empirical_successor_runtime",
+    )
+    assert len(reads) == 6
+    assert dependencies["runtime"] is Runtime
+    environment = dependencies["environment_factory"](17)
+    assert environment._native == (17, 0)
+    assert calls[-1] == ("native-environment", 17, 0)
+
+
+def test_source_bound_training_dependency_drift_fails_before_import():
+    runner, manifest, source_inventory, source_payloads = (
+        _training_dependency_fixture()
+    )
+    runtime_path = str(
+        (
+            Path(manifest["repository_root"])
+            / source_inventory["modules"][1]["path"]
+        ).resolve()
+    )
+    source_payloads[runtime_path] = b"# drifted runtime\n"
+    calls = []
+
+    with pytest.raises(runner.TrainingRunnerBlocked, match="source differs"):
+        runner._load_source_bound_training_dependencies(
+            control_api=_control(),
+            launch_manifest=manifest,
+            source_inventory=source_inventory,
+            artifact_reader=lambda path: source_payloads[str(path.resolve())],
+            module_importer=lambda name: calls.append(name),
+            module_registry={},
+            external_binding_observer=lambda _path: pytest.fail(
+                "source drift observed native bytes"
+            ),
+            directory_observer=lambda _path: True,
+            python_version=lambda: "synthetic",
+        )
+
+    assert calls == []
+
+
+@pytest.mark.parametrize(
+    "mutation",
+    (
+        lambda inventory: inventory["modules"].pop(2),
+        lambda inventory: inventory["modules"][2].__setitem__(
+            "role", "wrong-role"
+        ),
+    ),
+)
+def test_source_bound_training_dependencies_require_exact_additive_overrides(
+    mutation,
+):
+    runner, manifest, source_inventory, _source_payloads = (
+        _training_dependency_fixture()
+    )
+    mutation(source_inventory)
+
+    with pytest.raises(
+        runner.TrainingRunnerBlocked,
+        match="registered additive override",
+    ):
+        runner._load_source_bound_training_dependencies(
+            control_api=_control(),
+            launch_manifest=manifest,
+            source_inventory=source_inventory,
+            artifact_reader=lambda _path: pytest.fail(
+                "invalid additive override reached registered source"
+            ),
+            module_importer=lambda name: pytest.fail(
+                f"invalid additive override imported {name}"
+            ),
+            module_registry={},
+            external_binding_observer=lambda _path: pytest.fail(
+                "invalid additive override observed native bytes"
+            ),
+            directory_observer=lambda _path: True,
+            python_version=lambda: "synthetic",
+        )
+
+
+def test_source_bound_training_dependencies_reject_expanded_adapter_public_api():
+    runner, manifest, source_inventory, _source_payloads = (
+        _training_dependency_fixture()
+    )
+    source_inventory["public_dependencies"][0]["public_symbols"] = sorted(
+        source_inventory["public_dependencies"][0]["public_symbols"]
+        + ["load_native_module"]
+    )
+
+    with pytest.raises(
+        runner.TrainingRunnerBlocked,
+        match="simulator adapter public API differs",
+    ):
+        runner._load_source_bound_training_dependencies(
+            control_api=_control(),
+            launch_manifest=manifest,
+            source_inventory=source_inventory,
+            artifact_reader=lambda _path: pytest.fail(
+                "expanded adapter API reached registered source"
+            ),
+            module_importer=lambda name: pytest.fail(
+                f"expanded adapter API imported {name}"
+            ),
+            module_registry={},
+            external_binding_observer=lambda _path: pytest.fail(
+                "expanded adapter API observed native bytes"
+            ),
+            directory_observer=lambda _path: True,
+            python_version=lambda: "synthetic",
+        )
+
+
+def test_source_bound_training_dependencies_reject_incomplete_adapter_api():
+    runner, manifest, source_inventory, source_payloads = (
+        _training_dependency_fixture()
+    )
+    adapter_path = (
+        Path(manifest["repository_root"])
+        / source_inventory["public_dependencies"][0]["path"]
+    ).resolve()
+
+    class IncompleteAdapter:
+        ADAPTER_API_VERSION = "sts-lightspeed-noncombat-adapter-v3"
+        SimulatorAdapterError = ValueError
+        TARGET_CATEGORIES = ("card_reward", "event", "route", "shop")
+        __file__ = str(adapter_path)
+
+    with pytest.raises(
+        runner.TrainingRunnerBlocked,
+        match="simulator adapter API differs",
+    ):
+        runner._load_source_bound_training_dependencies(
+            control_api=_control(),
+            launch_manifest=manifest,
+            source_inventory=source_inventory,
+            artifact_reader=lambda path: source_payloads[str(path.resolve())],
+            module_importer=lambda name: (
+                IncompleteAdapter
+                if name == "analysis_scripts.noncombat_simulator_adapter"
+                else pytest.fail(f"incomplete adapter imported {name}")
+            ),
+            module_registry={},
+            external_binding_observer=lambda _path: pytest.fail(
+                "incomplete adapter observed native bytes"
+            ),
+            directory_observer=lambda _path: True,
+            python_version=lambda: "synthetic",
+        )
+
+
+def test_source_bound_training_dependencies_reject_incomplete_runtime_api():
+    runner, manifest, source_inventory, source_payloads = (
+        _training_dependency_fixture()
+    )
+    native_identity = manifest["native_identity"]
+    adapter_path = (
+        Path(manifest["repository_root"])
+        / source_inventory["public_dependencies"][0]["path"]
+    ).resolve()
+    runtime_path = (
+        Path(manifest["repository_root"])
+        / source_inventory["modules"][1]["path"]
+    ).resolve()
+    native_module = SimpleNamespace(
+        __file__=native_identity["module"]["path"],
+        Environment=lambda seed, ascension: (seed, ascension),
+        adapter_api_version=lambda: native_identity["adapter_api_version"],
+        build_info_json=lambda: json.dumps(
+            {
+                key: value
+                for key, value in native_identity["provenance"]["build"].items()
+                if key != "python"
+            }
+        ),
+    )
+    adapter = SimpleNamespace(
+        __file__=str(adapter_path),
+        ADAPTER_API_VERSION="sts-lightspeed-noncombat-adapter-v3",
+        SimulatorAdapterError=ValueError,
+        TARGET_CATEGORIES=("card_reward", "event", "route", "shop"),
+        NativeSimulatorEnvironment=lambda **kwargs: kwargs,
+        canonical_json_bytes=lambda value: json.dumps(value).encode(),
+        load_native_module=lambda _path, **_kwargs: native_module,
+        validate_candidates=lambda value, **_kwargs: value,
+        validate_provenance=lambda value: copy.deepcopy(value),
+        validate_snapshot=lambda value: value,
+    )
+    runtime = SimpleNamespace(
+        __file__=str(runtime_path),
+        runtime_metadata=lambda: _control().expected_runtime_metadata(),
+    )
+
+    with pytest.raises(
+        runner.TrainingRunnerBlocked,
+        match="training runtime API differs",
+    ):
+        runner._load_source_bound_training_dependencies(
+            control_api=_control(),
+            launch_manifest=manifest,
+            source_inventory=source_inventory,
+            artifact_reader=lambda path: source_payloads[str(path.resolve())],
+            module_importer=lambda name: (
+                adapter
+                if name == "analysis_scripts.noncombat_simulator_adapter"
+                else runtime
+            ),
+            module_registry={},
+            external_binding_observer=lambda _path: copy.deepcopy(
+                native_identity["module"]
+            ),
+            native_module_loader=adapter.load_native_module,
+            directory_observer=lambda _path: True,
+            python_version=lambda: native_identity["provenance"]["build"].get(
+                "python"
+            ),
+        )
+
+
+@pytest.mark.parametrize("preloaded", ("torch", "sts_lightspeed_noncombat_adapter"))
+def test_source_bound_training_dependencies_reject_preloaded_execution(preloaded):
+    runner, manifest, source_inventory, _source_payloads = (
+        _training_dependency_fixture()
+    )
+
+    with pytest.raises(runner.TrainingRunnerBlocked, match="preloaded"):
+        runner._load_source_bound_training_dependencies(
+            control_api=_control(),
+            launch_manifest=manifest,
+            source_inventory=source_inventory,
+            artifact_reader=lambda _path: pytest.fail(
+                "preloaded execution reached registered source"
+            ),
+            module_importer=lambda name: pytest.fail(
+                f"preloaded execution imported {name}"
+            ),
+            module_registry={preloaded: object()},
+            external_binding_observer=lambda _path: pytest.fail(
+                "preloaded execution observed native bytes"
+            ),
+            directory_observer=lambda _path: True,
+            python_version=lambda: "synthetic",
+        )
+
+
+def test_bound_source_finder_executes_only_registered_local_bytes():
+    runner = _runner()
+    module_name = "analysis_scripts.synthetic_bound_training_dependency"
+    blocked_name = "analysis_scripts.synthetic_unregistered_training_dependency"
+    path = "D:/synthetic/analysis_scripts/synthetic_bound_training_dependency.py"
+    finder = runner._BoundSourceFinder(
+        sources={module_name: (path, b"BOUND_VALUE = 'registered-bytes'\n")},
+        allowed_preloaded=("analysis_scripts", RUNNER_MODULE, CONTROL_MODULE),
+    )
+    sys.meta_path.insert(0, finder)
+    try:
+        loaded = importlib.import_module(module_name)
+        assert loaded.BOUND_VALUE == "registered-bytes"
+        assert Path(loaded.__file__).as_posix() == Path(path).as_posix()
+        with pytest.raises(ImportError, match="unregistered local execution import"):
+            importlib.import_module(blocked_name)
+    finally:
+        sys.meta_path.remove(finder)
+        sys.modules.pop(module_name, None)
+        sys.modules.pop(blocked_name, None)
+
+
+def test_training_native_environment_exposes_registered_runtime_contract():
+    runner = _runner()
+    before = {
+        "adapter_api_version": "sts-lightspeed-noncombat-adapter-v3",
+        "baseline_control": {"state": "before"},
+        "category": "shop",
+        "state": {"floor": 7},
+        "terminal": False,
+    }
+    after = {
+        "adapter_api_version": "sts-lightspeed-noncombat-adapter-v3",
+        "baseline_control": {"state": "after"},
+        "category": None,
+        "state": {"floor": 8},
+        "terminal": False,
+    }
+    candidates = [{"action_id": "skip"}]
+
+    class NativeEnvironment:
+        def __init__(self, stepped=False):
+            self.stepped = stepped
+
+        def snapshot_json(self):
+            return json.dumps(after if self.stepped else before)
+
+        def legal_actions_json(self):
+            return json.dumps(candidates)
+
+        def clone(self):
+            return NativeEnvironment(self.stepped)
+
+        def step(self, action_id):
+            assert action_id == "skip"
+            self.stepped = True
+
+    adapter = SimpleNamespace(
+        validate_snapshot=lambda value: copy.deepcopy(value),
+        validate_candidates=lambda value, **_kwargs: copy.deepcopy(value),
+    )
+    environment = runner._TrainingNativeEnvironment(
+        adapter=adapter,
+        native=NativeEnvironment(),
+        provenance={"module_sha256": "a" * 64},
+    )
+
+    clone = environment.clone()
+    assert clone.snapshot() == before
+    transition = environment.step("skip")
+    assert transition["baseline_control"] == after["baseline_control"]
+    assert transition["candidate_actions"] == candidates
+    assert transition["category"] == "shop"
+    assert transition["provenance"] == {"module_sha256": "a" * 64}
+    assert transition["schema_version"] == "noncombat-simulator-transition-v1"
+    assert transition["selected_action_id"] == "skip"
+    assert transition["source_state"] == before["state"]
+    assert transition["source_type"] == "sts_lightspeed_simulation"
+    assert transition["successor"] == {
+        "category": None,
+        "state": after["state"],
+        "terminal": False,
+    }
+
+
+@pytest.mark.skipif(os.name != "nt", reason="Windows native lock contract")
+def test_locked_external_binding_denies_write_until_native_load_finishes(tmp_path):
+    runner = _runner()
+    module_path = tmp_path / "synthetic-native.pyd"
+    payload = b"synthetic-native-bytes"
+    module_path.write_bytes(payload)
+
+    with runner._default_locked_external_binding(module_path) as observe:
+        assert observe() == {
+            "path": module_path.resolve().as_posix(),
+            "sha256": hashlib.sha256(payload).hexdigest(),
+            "size_bytes": len(payload),
+        }
+        with pytest.raises(OSError):
+            module_path.write_bytes(b"replacement")
+        assert observe()["sha256"] == hashlib.sha256(payload).hexdigest()
+
+    module_path.write_bytes(b"replacement")
+
+
 def test_qualification_composition_composes_receipt_validation_and_context(
     monkeypatch,
 ):
@@ -1188,12 +1782,39 @@ def validate_inventory_registration(registration, inventory):
         )
         assert _control()._require_execution_context(context) is context
         assert kwargs["context_identity_observer"](context)["stage"] == "training"
+        runtime = kwargs["runtime_loader"]()
+        calls.append("runtime")
+        environment_factory = kwargs["environment_factory_loader"]()
+        calls.append("environment")
+        assert runtime == "synthetic-runtime"
+        assert environment_factory(7) == ("synthetic-environment", 7)
         return {
             "context_identity": kwargs["context_identity_observer"](context),
             "training_seeds": registered["training_seeds"],
         }
 
+    def load_training_dependencies(**kwargs):
+        calls.append("training-dependencies")
+        return {
+            "adapter": object(),
+            "environment_factory": lambda seed: (
+                "synthetic-environment",
+                seed,
+            ),
+            "native_module": object(),
+            "provenance": {"synthetic": True},
+            "runtime": "synthetic-runtime",
+            "source_bindings": {
+                "source_inventory": copy.deepcopy(kwargs["source_inventory"])
+            },
+        }
+
     monkeypatch.setattr(runner, "_execute_training_lifecycle", execute_lifecycle)
+    monkeypatch.setattr(
+        runner,
+        "_load_source_bound_training_dependencies",
+        load_training_dependencies,
+    )
 
     result = runner._compose_authorized_training_command_for_qualification(
         manifest_path=Path(manifest["manifest_path"]),
@@ -1205,10 +1826,6 @@ def validate_inventory_registration(registration, inventory):
         process_alive=lambda process_id: process_id == 73_001,
         deadline=100.0,
         clock=lambda: 0.0,
-        runtime_loader=lambda: pytest.fail("composition loaded runtime"),
-        environment_factory_loader=lambda: pytest.fail(
-            "composition loaded environment"
-        ),
         closeout=lambda *_args: pytest.fail("composition reached closeout"),
         artifact_reader=reader,
         source_observer=lambda _value, observed_paths: (
@@ -1226,6 +1843,9 @@ def validate_inventory_registration(registration, inventory):
         "dependencies",
         "registration",
         "inventory",
+        "training-dependencies",
+        "runtime",
+        "environment",
     ]
     assert result["training_seeds"] == tuple(range(512))
     assert result["context_identity"]["registration_sha256"] == registration[
@@ -1256,10 +1876,6 @@ def test_qualification_composition_rejects_preloaded_runtime_before_authority(
             process_alive=lambda _process_id: True,
             deadline=100.0,
             clock=lambda: 0.0,
-            runtime_loader=lambda: pytest.fail("preloaded runtime loader called"),
-            environment_factory_loader=lambda: pytest.fail(
-                "preloaded environment loader called"
-            ),
             closeout=lambda *_args: pytest.fail("preloaded closeout called"),
             artifact_reader=lambda _path: pytest.fail(
                 "preloaded runtime reached authority artifacts"
@@ -1656,6 +2272,14 @@ def test_training_schedule_preserves_partial_prefix_without_closeout_or_checkpoi
 def _registered_input_fixture(*, include_request=False):
     runner = _runner()
     inventory = {
+        "authority_evidence": {
+            "source_inventory": {
+                "inventory_sha256": "3" * 64,
+                "modules": [],
+                "public_dependencies": [],
+                "schema_version": "synthetic-source-inventory-v1",
+            }
+        },
         "cohorts": {
             "canary": list(range(1_000, 1_128)),
             "holdout": list(range(2_000, 2_512)),
@@ -1832,6 +2456,9 @@ def test_registered_training_inputs_open_only_after_complete_authority():
         **registration,
         "rollback_authority_sha256": rollback_sha256,
     }
+    assert result["source_inventory"] == inventory["authority_evidence"][
+        "source_inventory"
+    ]
     assert result["pre_access_receipt"]["path"].endswith(
         ".training.pre-access-71001.json"
     )
@@ -3533,6 +4160,10 @@ def test_source_only_preflight_is_inert_and_does_not_open_source_inventory(tmp_p
     assert set(result["authority"].values()) == {False}
     assert set(result["empirical_operations"].values()) == {False}
     assert manifest["source_inventory"]["path"] not in reads
+    assert manifest["native_identity"]["module"]["path"] not in reads
+    assert not any(
+        path in reads for path in manifest["native_identity"]["dll_directories"]
+    )
     assert not any(
         name == item or name.startswith(item + ".")
         for name in sys.modules
