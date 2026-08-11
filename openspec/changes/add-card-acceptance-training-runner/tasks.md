@@ -24,7 +24,7 @@
 - [x] 4.1 Run focused runner/control/runtime/verifier pytest under the Windows system-temp convention, compile checks, and direct import probes proving runner/verifier imports do not load Torch/native/model/runtime execution modules.
 - [x] 4.2 Run deterministic source-only preflight, run-envelope, and dead-owner terminalization-envelope fixtures plus mutation/failure-order probes in fresh processes; require preflight zero native/model/environment/seed/checkpoint/output access, terminalizer zero empirical/replay access, and exact bounded completion.
 - [x] 4.3 Run the configured commit gate and configured full gate once each at the reviewed boundary, record duration and infrastructure-only failures without retrying for cleanup/timing, strict-validate OpenSpec globally, and record live gameplay validation as not applicable.
-- [ ] 4.4 Give a tool-prohibited reviewer exact source/diff/test evidence only, resolve every actionable finding, then commit and push the tracked-clean runner source boundary without authorization or training.
+- [x] 4.4 Give a tool-prohibited reviewer exact source/diff/test evidence only, resolve every actionable finding, then commit and push the tracked-clean runner source boundary without authorization or training.
 
 ## 5. Publish Runner Readiness
 
