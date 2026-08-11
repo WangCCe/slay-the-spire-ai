@@ -60,6 +60,14 @@ EXPECTED_SOURCE_ARTIFACT_PATHS = {
         "analysis_scripts/noncombat_card_acceptance_empirical_successor_runtime.py"
     ),
 }
+DENIED_OPERATIONS = (
+    "communication_mod",
+    "gameplay",
+    "ope",
+    "production_model_loading",
+    "promotion",
+    "qualification",
+)
 
 
 def _is_forbidden_runner_import(name: str) -> bool:
@@ -334,14 +342,7 @@ def _fixture(root: str = "D:/synthetic/card-acceptance-runner"):
                 *terminalization_inputs,
             ],
         },
-        "denied_operations": [
-            "communication_mod",
-            "gameplay",
-            "ope",
-            "production_model_loading",
-            "promotion",
-            "qualification",
-        ],
+        "denied_operations": list(DENIED_OPERATIONS),
         "downstream_authority": copy.deepcopy(request["downstream_authority"]),
         "empirical_operations": {
             "communication_mod": False,
@@ -463,6 +464,7 @@ def test_launch_manifest_is_canonical_repeatable_and_self_digested():
     original = copy.deepcopy(definition)
 
     assert runner.EXPECTED_SOURCE_ARTIFACT_PATHS == EXPECTED_SOURCE_ARTIFACT_PATHS
+    assert runner.DENIED_OPERATIONS == DENIED_OPERATIONS
     first = runner.build_launch_manifest(definition)
     second = runner.build_launch_manifest(copy.deepcopy(definition))
 
@@ -498,6 +500,19 @@ def test_launch_manifest_rejects_duplicate_artifact_paths():
     with pytest.raises(
         runner.TrainingRunnerBlocked,
         match="launch manifest artifact paths are duplicated",
+    ):
+        runner.build_launch_manifest(definition)
+
+
+def test_launch_manifest_rejects_expanded_denied_operations():
+    runner, definition, _payloads = _fixture()
+    definition["denied_operations"] = sorted(
+        [*definition["denied_operations"], "causal_claim", "formal_rl"]
+    )
+
+    with pytest.raises(
+        runner.TrainingRunnerBlocked,
+        match="launch manifest denied operations differ",
     ):
         runner.build_launch_manifest(definition)
 

@@ -152,6 +152,14 @@ EXPECTED_SOURCE_ARTIFACT_PATHS = {
         "analysis_scripts/noncombat_card_acceptance_empirical_successor_runtime.py"
     ),
 }
+DENIED_OPERATIONS = (
+    "communication_mod",
+    "gameplay",
+    "ope",
+    "production_model_loading",
+    "promotion",
+    "qualification",
+)
 FORBIDDEN_IMPORT_PREFIXES = (
     "torch",
     "sts_lightspeed_noncombat_adapter",
@@ -815,13 +823,8 @@ def _normalize_launch_definition(value: object) -> dict[str, Any]:
     ):
         raise TrainingRunnerBlocked("launch manifest request binding differs")
     denied = definition["denied_operations"]
-    if (
-        not isinstance(denied, list)
-        or not denied
-        or denied != sorted(set(denied))
-        or any(not isinstance(item, str) or not item for item in denied)
-    ):
-        raise TrainingRunnerBlocked("denied operations must be sorted and unique")
+    if denied != list(DENIED_OPERATIONS):
+        raise TrainingRunnerBlocked("launch manifest denied operations differ")
     return {
         "artifacts": artifacts,
         "commands": commands,
