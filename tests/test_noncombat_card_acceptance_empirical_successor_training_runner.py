@@ -6,6 +6,7 @@ import hashlib
 import importlib
 import json
 from pathlib import Path
+import subprocess
 import sys
 from types import SimpleNamespace
 
@@ -27,6 +28,7 @@ FORBIDDEN_IMPORTS = (
 ARTIFACT_NAMES = (
     "control_source",
     "registration",
+    "registration_producer_source",
     "registration_request",
     "registration_verifier_source",
     "runner_source",
@@ -114,6 +116,7 @@ def _fixture(root: str = "D:/synthetic/card-acceptance-runner"):
         "registration": runner.canonical_json_bytes(
             {"registration_sha256": registration_sha256}
         ),
+        "registration_producer_source": b"# synthetic registration producer\n",
         "registration_request": runner.canonical_json_bytes(
             registration_request
         ),
@@ -269,6 +272,27 @@ def test_training_runner_import_is_source_only(monkeypatch):
 
     monkeypatch.setattr(builtins, "__import__", guarded)
     assert importlib.import_module(RUNNER_MODULE).__name__ == RUNNER_MODULE
+
+
+def test_training_runner_direct_script_bootstraps_under_isolated_mode(tmp_path):
+    runner_path = (
+        Path(__file__).resolve().parents[1]
+        / "analysis_scripts"
+        / "noncombat_card_acceptance_empirical_successor_training_runner.py"
+    )
+
+    completed = subprocess.run(
+        [sys.executable, "-I", str(runner_path), "--help"],
+        cwd=tmp_path,
+        check=False,
+        capture_output=True,
+        text=True,
+        encoding="utf-8",
+    )
+
+    assert completed.returncode == 0, completed.stderr
+    assert "run-training" in completed.stdout
+    assert "terminalize-dead-owner" in completed.stdout
 
 
 def test_launch_manifest_is_canonical_repeatable_and_self_digested():
@@ -957,6 +981,292 @@ def test_bound_authorized_command_documents_reject_launch_observation_drift():
         )
 
 
+def test_registration_validation_dependencies_execute_only_bound_source_bytes(
+    monkeypatch,
+):
+    runner, manifest, _payloads = _manifest()
+    producer_payload = b"""import json
+def parse_canonical_mapping_bytes(payload, label):
+    return json.loads(payload)
+def validate_inventory(value):
+    return dict(value)
+def validate_inventory_registration(registration, inventory):
+    return dict(registration)
+"""
+    verifier_payload = b"""def verify_inventory_registration(registration, inventory):
+    return {"registration_sha256": registration["registration_sha256"], "verified": True}
+"""
+    definition = {
+        key: copy.deepcopy(value)
+        for key, value in manifest.items()
+        if key not in {"manifest_sha256", "schema_version"}
+    }
+    definition["artifacts"]["registration_producer_source"] = _binding(
+        definition["artifacts"]["registration_producer_source"]["path"],
+        producer_payload,
+    )
+    definition["artifacts"]["registration_verifier_source"] = _binding(
+        definition["artifacts"]["registration_verifier_source"]["path"],
+        verifier_payload,
+    )
+    manifest = runner.build_launch_manifest(definition)
+    root = Path(manifest["repository_root"])
+    source_payloads = {
+        str(
+            (
+                root
+                / manifest["artifacts"]["registration_producer_source"]["path"]
+            ).resolve()
+        ): producer_payload,
+        str(
+            (
+                root
+                / manifest["artifacts"]["registration_verifier_source"]["path"]
+            ).resolve()
+        ): verifier_payload,
+    }
+    original_import_module = runner.importlib.import_module
+    forbidden_modules = {
+        "analysis_scripts.noncombat_card_acceptance_empirical_successor_seed_inventory",
+        "analysis_scripts.verify_noncombat_card_acceptance_empirical_successor",
+    }
+
+    def import_module(name):
+        if name in forbidden_modules:
+            pytest.fail(f"bound source loader imported {name}")
+        return original_import_module(name)
+
+    monkeypatch.setattr(runner.importlib, "import_module", import_module)
+
+    dependencies = runner._load_registration_validation_dependencies(
+        launch_manifest=manifest,
+        artifact_reader=lambda path: source_payloads[str(path.resolve())],
+    )
+
+    assert dependencies["inventory_parser"](b'{"inventory_sha256":"d"}\n') == {
+        "inventory_sha256": "d"
+    }
+    assert set(dependencies["source_bindings"]) == {"producer", "independent"}
+
+
+def test_registration_validation_dependency_drift_fails_before_import():
+    runner, manifest, payloads = _manifest()
+    root = Path(manifest["repository_root"])
+    producer_path = (
+        root / manifest["artifacts"]["registration_producer_source"]["path"]
+    ).resolve()
+    source_payloads = {
+        str((root / manifest["artifacts"][name]["path"]).resolve()): payloads[
+            name
+        ]
+        for name in (
+            "registration_producer_source",
+            "registration_verifier_source",
+        )
+    }
+    source_payloads[str(producer_path)] = b"# drifted producer\n"
+
+    with pytest.raises(
+        runner.TrainingRunnerBlocked,
+        match="producer dependency source differs",
+    ):
+        runner._load_registration_validation_dependencies(
+            launch_manifest=manifest,
+            artifact_reader=lambda path: source_payloads[str(path.resolve())],
+        )
+
+
+def test_qualification_composition_composes_receipt_validation_and_context(
+    monkeypatch,
+):
+    (
+        runner,
+        inventory,
+        inventory_payload,
+        registration,
+        registration_payload,
+        manifest,
+        _composite,
+        request,
+    ) = _registered_input_fixture(include_request=True)
+    producer_payload = b"""import json
+def parse_canonical_mapping_bytes(payload, label):
+    return json.loads(payload)
+def validate_inventory(value):
+    return dict(value)
+def validate_inventory_registration(registration, inventory):
+    return dict(registration)
+"""
+    verifier_payload = b"""def verify_inventory_registration(registration, inventory):
+    return {
+        "authority": dict(registration["authority"]),
+        "cohort_counts": {name: len(values) for name, values in registration["cohorts"].items()},
+        "empirical_operations": dict(registration["empirical_operations"]),
+        "inventory_sha256": registration["inventory_sha256"],
+        "registration_id": registration["registration_id"],
+        "registration_sha256": registration["registration_sha256"],
+        "verified": True,
+    }
+"""
+    definition = {
+        key: copy.deepcopy(value)
+        for key, value in manifest.items()
+        if key not in {"manifest_sha256", "schema_version"}
+    }
+    definition["artifacts"]["registration_producer_source"] = _binding(
+        definition["artifacts"]["registration_producer_source"]["path"],
+        producer_payload,
+    )
+    definition["artifacts"]["registration_verifier_source"] = _binding(
+        definition["artifacts"]["registration_verifier_source"]["path"],
+        verifier_payload,
+    )
+    manifest = runner.build_launch_manifest(definition)
+    documents = _authorized_runner_documents(
+        runner, manifest, request, "standing-delegation"
+    )
+    command = manifest["commands"]["run_training"]
+    paths = dict(zip(command[4::2], command[5::2]))
+    root = Path(manifest["repository_root"])
+    registration_path = (
+        root / manifest["artifacts"]["registration"]["path"]
+    ).resolve()
+    request_path = (
+        root / manifest["artifacts"]["training_request"]["path"]
+    ).resolve()
+    inventory_path = Path(manifest["source_inventory"]["path"]).resolve()
+    producer_path = (
+        root / manifest["artifacts"]["registration_producer_source"]["path"]
+    ).resolve()
+    verifier_path = (
+        root / manifest["artifacts"]["registration_verifier_source"]["path"]
+    ).resolve()
+    payloads = {
+        str(Path(manifest["manifest_path"]).resolve()): runner.canonical_json_bytes(
+            manifest
+        ),
+        str(Path(paths["--approval"]).resolve()): runner.canonical_json_bytes(
+            documents["approval"]
+        ),
+        str(Path(paths["--authorization"]).resolve()): runner.canonical_json_bytes(
+            documents["authorization"]
+        ),
+        str(Path(paths["--envelope"]).resolve()): runner.canonical_json_bytes(
+            documents["envelope"]
+        ),
+        str(Path(paths["--launch-observation"]).resolve()): (
+            runner.canonical_json_bytes(
+                documents["envelope"]["runner_launch_observation"]
+            )
+        ),
+        str(request_path): runner.canonical_json_bytes(request),
+        str(registration_path): registration_payload,
+        str(inventory_path): inventory_payload,
+        str(producer_path): producer_payload,
+        str(verifier_path): verifier_payload,
+    }
+    calls = []
+
+    def reader(path):
+        normalized = str(path.resolve())
+        if normalized in {str(producer_path), str(verifier_path)}:
+            if "dependencies" not in calls:
+                calls.append("dependencies")
+        elif normalized == str(registration_path):
+            calls.append("registration")
+        elif normalized == str(inventory_path):
+            calls.append("inventory")
+        return payloads[normalized]
+
+    def execute_lifecycle(**kwargs):
+        calls.append("lifecycle")
+        registered = kwargs["registered_inputs_loader"]()
+        context = kwargs["context_builder"](
+            registered["execution_registration"],
+            registered["registration"],
+            registered["authority"],
+        )
+        assert _control()._require_execution_context(context) is context
+        assert kwargs["context_identity_observer"](context)["stage"] == "training"
+        return {
+            "context_identity": kwargs["context_identity_observer"](context),
+            "training_seeds": registered["training_seeds"],
+        }
+
+    monkeypatch.setattr(runner, "_execute_training_lifecycle", execute_lifecycle)
+
+    result = runner._compose_authorized_training_command_for_qualification(
+        manifest_path=Path(manifest["manifest_path"]),
+        envelope_path=Path(paths["--envelope"]),
+        authorization_path=Path(paths["--authorization"]),
+        approval_path=Path(paths["--approval"]),
+        launch_observation_path=Path(paths["--launch-observation"]),
+        process_id=73_001,
+        process_alive=lambda process_id: process_id == 73_001,
+        deadline=100.0,
+        clock=lambda: 0.0,
+        runtime_loader=lambda: pytest.fail("composition loaded runtime"),
+        environment_factory_loader=lambda: pytest.fail(
+            "composition loaded environment"
+        ),
+        closeout=lambda *_args: pytest.fail("composition reached closeout"),
+        artifact_reader=reader,
+        source_observer=lambda _value, observed_paths: (
+            _pushed_authority_observation(observed_paths, payloads)
+        ),
+        pre_access_receipt_publisher=lambda path, payload: (
+            calls.append("pre-access-receipt")
+            or _pre_access_receipt_binding(path, payload)
+        ),
+    )
+
+    assert calls == [
+        "lifecycle",
+        "pre-access-receipt",
+        "dependencies",
+        "registration",
+        "inventory",
+    ]
+    assert result["training_seeds"] == tuple(range(512))
+    assert result["context_identity"]["registration_sha256"] == registration[
+        "registration_sha256"
+    ]
+
+
+def test_qualification_composition_rejects_preloaded_runtime_before_authority(
+    monkeypatch,
+):
+    runner = _runner()
+    runtime_name = (
+        "analysis_scripts.noncombat_card_acceptance_empirical_successor_runtime"
+    )
+    monkeypatch.setitem(sys.modules, runtime_name, SimpleNamespace())
+
+    with pytest.raises(
+        runner.TrainingRunnerBlocked,
+        match="started after runtime dependency load",
+    ):
+        runner._compose_authorized_training_command_for_qualification(
+            manifest_path=Path("D:/synthetic/manifest.json"),
+            envelope_path=Path("D:/synthetic/envelope.json"),
+            authorization_path=Path("D:/synthetic/authorization.json"),
+            approval_path=Path("D:/synthetic/approval.json"),
+            launch_observation_path=Path("D:/synthetic/observation.json"),
+            process_id=73_002,
+            process_alive=lambda _process_id: True,
+            deadline=100.0,
+            clock=lambda: 0.0,
+            runtime_loader=lambda: pytest.fail("preloaded runtime loader called"),
+            environment_factory_loader=lambda: pytest.fail(
+                "preloaded environment loader called"
+            ),
+            closeout=lambda *_args: pytest.fail("preloaded closeout called"),
+            artifact_reader=lambda _path: pytest.fail(
+                "preloaded runtime reached authority artifacts"
+            ),
+        )
+
+
 def test_external_authority_requires_composite_in_approval_and_observation():
     runner, manifest, payloads = _manifest()
     control = _control()
@@ -1502,11 +1812,13 @@ def test_registered_training_inputs_open_only_after_complete_authority():
             }
         ),
         rollback_authority_sha256=rollback_sha256,
+        pre_input_validator=lambda: calls.append("dependencies"),
     )
 
     assert calls == [
         "authority",
         "pre-access-receipt",
+        "dependencies",
         "registration",
         "inventory",
         "inventory-parser",
@@ -1536,6 +1848,67 @@ def test_registered_training_inputs_open_only_after_complete_authority():
         {key: value for key, value in receipt.items() if key != "receipt_sha256"}
     )
     assert runner.canonical_json_bytes(result["registration"]) == registration_payload
+
+
+def test_registration_dependency_failure_preserves_receipt_before_input_access():
+    (
+        runner,
+        _inventory,
+        _inventory_payload,
+        _registration,
+        _registration_payload,
+        manifest,
+        composite,
+    ) = _registered_input_fixture()
+    calls = []
+
+    with pytest.raises(runner.TrainingRunnerBlocked, match="dependency drift"):
+        runner._open_registered_training_inputs(
+            authority_validator=lambda: calls.append("authority")
+            or {
+                "command": "run-training",
+                "composite_sha256": composite["composite_sha256"],
+                "envelope_sha256": "a" * 64,
+                "validated": True,
+            },
+            expected_envelope_sha256="a" * 64,
+            expected_composite_sha256=composite["composite_sha256"],
+            launch_manifest=manifest,
+            output_root=Path(manifest["output_root"]),
+            process_id=71_002,
+            pre_access_receipt_publisher=lambda path, payload: (
+                calls.append("pre-access-receipt")
+                or _pre_access_receipt_binding(path, payload)
+            ),
+            registration_reader=lambda: pytest.fail(
+                "dependency drift opened registration"
+            ),
+            registration_binding=manifest["artifacts"]["registration"],
+            inventory_reader=lambda: pytest.fail(
+                "dependency drift opened inventory"
+            ),
+            inventory_binding=manifest["source_inventory"],
+            inventory_parser=lambda _payload: pytest.fail(
+                "dependency drift parsed inventory"
+            ),
+            producer_validator=lambda *_args: pytest.fail(
+                "dependency drift called producer"
+            ),
+            independent_verifier=lambda *_args: pytest.fail(
+                "dependency drift called verifier"
+            ),
+            rollback_authority_sha256=manifest["rollback_authority"][
+                "rollback_authority_sha256"
+            ],
+            pre_input_validator=lambda: (
+                calls.append("dependencies")
+                or (_ for _ in ()).throw(
+                    runner.TrainingRunnerBlocked("dependency drift")
+                )
+            ),
+        )
+
+    assert calls == ["authority", "pre-access-receipt", "dependencies"]
 
 
 def test_registered_training_inputs_fail_before_any_protected_or_runtime_access():
@@ -3165,6 +3538,49 @@ def test_source_only_preflight_is_inert_and_does_not_open_source_inventory(tmp_p
         for name in sys.modules
         for item in FORBIDDEN_IMPORTS
     )
+
+
+def test_source_only_preflight_rejects_registration_producer_source_drift(
+    tmp_path,
+):
+    runner, manifest, manifest_path, payload_by_path = _preflight_fixture(tmp_path)
+    producer_path = (
+        Path(manifest["repository_root"])
+        / manifest["artifacts"]["registration_producer_source"]["path"]
+    ).resolve().as_posix()
+    reads = []
+
+    def reader(path: Path) -> bytes:
+        normalized = path.resolve().as_posix()
+        reads.append(normalized)
+        if normalized == manifest_path.resolve().as_posix():
+            return manifest_path.read_bytes()
+        if normalized == producer_path:
+            return b"# drifted registration producer\n"
+        if normalized == manifest["source_inventory"]["path"]:
+            raise AssertionError("producer drift opened seed inventory")
+        return payload_by_path[normalized]
+
+    with pytest.raises(
+        runner.TrainingRunnerBlocked,
+        match="registration_producer_source",
+    ):
+        runner.source_only_preflight(
+            manifest_path,
+            repo_observer=lambda _manifest: {
+                "clean": True,
+                "head": "9" * 40,
+                "pushed": "9" * 40,
+                "runner_ancestor": True,
+                "source_commit_bound": True,
+                "tracked": True,
+            },
+            artifact_reader=reader,
+            output_exists=lambda _path: False,
+            interpreter_path=manifest["interpreter"],
+        )
+
+    assert manifest["source_inventory"]["path"] not in reads
 
 
 def test_existing_output_rejects_before_any_bound_artifact_or_child_access(tmp_path):

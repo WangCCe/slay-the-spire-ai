@@ -13,9 +13,23 @@ from pathlib import Path, PurePosixPath
 import re
 import subprocess
 import sys
+import types
 import uuid
 from collections.abc import Callable, Mapping, Sequence
 from typing import Any
+
+
+def _bootstrap_direct_script_imports() -> None:
+    if __package__:
+        return
+    repo_root = str(Path(__file__).resolve().parents[1])
+    if repo_root in sys.path:
+        sys.path.remove(repo_root)
+    sys.path.insert(0, repo_root)
+
+
+if __name__ == "__main__":
+    _bootstrap_direct_script_imports()
 
 
 LAUNCH_MANIFEST_SCHEMA_VERSION = (
@@ -65,6 +79,7 @@ STANDING_COMPOSITE_BINDING_PREFIX = (
 ARTIFACT_NAMES = (
     "control_source",
     "registration",
+    "registration_producer_source",
     "registration_request",
     "registration_verifier_source",
     "runner_source",
@@ -1237,6 +1252,7 @@ def _open_registered_training_inputs(
         [Mapping[str, Any], Mapping[str, Any]], Mapping[str, Any]
     ],
     rollback_authority_sha256: str,
+    pre_input_validator: Callable[[], None] | None = None,
 ) -> dict[str, Any]:
     """Open the registered cohort only after one complete command authority check."""
     callbacks = (
@@ -1250,6 +1266,8 @@ def _open_registered_training_inputs(
     )
     if not all(callable(callback) for callback in callbacks):
         raise TrainingRunnerBlocked("registered input callback is invalid")
+    if pre_input_validator is not None and not callable(pre_input_validator):
+        raise TrainingRunnerBlocked("registered input pre-input validator is invalid")
     authority = _mapping(authority_validator(), "runner command authority")
     expected_envelope = _digest(expected_envelope_sha256, "expected run envelope")
     expected_composite = _digest(expected_composite_sha256, "expected runner composite")
@@ -1318,6 +1336,15 @@ def _open_registered_training_inputs(
         or not _binding_matches(receipt_payload, receipt_binding)
     ):
         raise TrainingRunnerBlocked("pre-access receipt publication differs")
+    if pre_input_validator is not None:
+        try:
+            pre_input_validator()
+        except TrainingRunnerBlocked:
+            raise
+        except Exception as exc:
+            raise TrainingRunnerBlocked(
+                "registered input pre-input validation failed"
+            ) from exc
 
     registration_payload = registration_reader()
     if not isinstance(registration_payload, bytes) or not _binding_matches(
@@ -3079,6 +3106,310 @@ def _load_authorized_command_documents(
         "request": copy.deepcopy(request),
         "source_observation": source,
     }
+
+
+def _load_registration_validation_dependencies(
+    *,
+    launch_manifest: Mapping[str, Any],
+    artifact_reader: Callable[[Path], bytes] | None = None,
+) -> dict[str, Any]:
+    """Load both registration validators from their manifest-bound sources."""
+    manifest = validate_launch_manifest(launch_manifest)
+    reader = artifact_reader or _default_artifact_reader
+    if not callable(reader):
+        raise TrainingRunnerBlocked(
+            "registration validation dependency callback is invalid"
+        )
+    definitions = {
+        "producer": (
+            "registration_producer_source",
+            "analysis_scripts.noncombat_card_acceptance_empirical_successor_seed_inventory",
+        ),
+        "independent": (
+            "registration_verifier_source",
+            "analysis_scripts.verify_noncombat_card_acceptance_empirical_successor",
+        ),
+    }
+    root = Path(manifest["repository_root"])
+    loaded = {}
+    source_bindings = {}
+    for role, (artifact_name, module_name) in definitions.items():
+        binding = manifest["artifacts"][artifact_name]
+        path = (root / PurePosixPath(binding["path"])).resolve()
+        before = reader(path)
+        if not isinstance(before, bytes) or not _binding_matches(before, binding):
+            raise TrainingRunnerBlocked(
+                f"registration {role} dependency source differs"
+            )
+        try:
+            code = compile(before, str(path), "exec", dont_inherit=True)
+            module = types.ModuleType(module_name)
+            module.__file__ = str(path)
+            module.__package__ = module_name.rpartition(".")[0]
+            exec(code, module.__dict__)
+        except Exception as exc:
+            raise TrainingRunnerBlocked(
+                f"registration {role} dependency execution failed"
+            ) from exc
+        after = reader(path)
+        if (
+            not isinstance(after, bytes)
+            or after != before
+            or not _binding_matches(after, binding)
+        ):
+            raise TrainingRunnerBlocked(
+                f"registration {role} dependency execution source differs"
+            )
+        loaded[role] = module
+        source_bindings[role] = copy.deepcopy(binding)
+
+    producer = loaded["producer"]
+    independent = loaded["independent"]
+    required = (
+        getattr(producer, "parse_canonical_mapping_bytes", None),
+        getattr(producer, "validate_inventory", None),
+        getattr(producer, "validate_inventory_registration", None),
+        getattr(independent, "verify_inventory_registration", None),
+    )
+    if not all(callable(operation) for operation in required):
+        raise TrainingRunnerBlocked(
+            "registration validation dependency API is incomplete"
+        )
+
+    def parse_inventory(payload: bytes) -> Mapping[str, Any]:
+        return producer.validate_inventory(
+            producer.parse_canonical_mapping_bytes(payload, "source inventory")
+        )
+
+    return {
+        "independent_verifier": independent.verify_inventory_registration,
+        "inventory_parser": parse_inventory,
+        "producer_validator": producer.validate_inventory_registration,
+        "source_bindings": source_bindings,
+    }
+
+
+def _compose_authorized_training_command_for_qualification(
+    *,
+    manifest_path: Path | str,
+    envelope_path: Path | str,
+    authorization_path: Path | str,
+    approval_path: Path | str,
+    launch_observation_path: Path | str,
+    process_id: int,
+    process_alive: Callable[[int], bool],
+    deadline: float,
+    clock: Callable[[], float],
+    runtime_loader: Callable[[], Any],
+    environment_factory_loader: Callable[[], Callable[[int], Any]],
+    closeout: Callable[[str, Mapping[str, Any]], Any],
+    artifact_reader: Callable[[Path], bytes] | None = None,
+    source_observer: Callable[
+        [Mapping[str, Any], Sequence[str]], Mapping[str, Any]
+    ]
+    | None = None,
+    pre_access_receipt_publisher: Callable[[Path, bytes], Mapping[str, Any]]
+    | None = None,
+) -> dict[str, Any]:
+    """Exercise exact pre-runtime composition while the production CLI is closed."""
+    reader = artifact_reader or _default_artifact_reader
+    receipt_publisher = (
+        pre_access_receipt_publisher or _publish_exclusive_pre_access_receipt
+    )
+    callbacks = (
+        process_alive,
+        clock,
+        runtime_loader,
+        environment_factory_loader,
+        closeout,
+        reader,
+        receipt_publisher,
+    )
+    if not all(callable(callback) for callback in callbacks):
+        raise TrainingRunnerBlocked("authorized training command callback is invalid")
+    if _forbidden_imports_loaded():
+        raise TrainingRunnerBlocked(
+            "training command composition started after runtime dependency load"
+        )
+    documents = _load_authorized_command_documents(
+        command="run-training",
+        manifest_path=manifest_path,
+        envelope_path=envelope_path,
+        authorization_path=authorization_path,
+        approval_path=approval_path,
+        launch_observation_path=launch_observation_path,
+        artifact_reader=reader,
+        source_observer=source_observer,
+    )
+    manifest = documents["manifest"]
+    try:
+        control = importlib.import_module(
+            "analysis_scripts.noncombat_card_acceptance_empirical_successor_experiment"
+        )
+    except Exception as exc:
+        raise TrainingRunnerBlocked("bound training control is unavailable") from exc
+    root = Path(manifest["repository_root"])
+    registration_path = (
+        root / PurePosixPath(manifest["artifacts"]["registration"]["path"])
+    ).resolve()
+    inventory_path = Path(manifest["source_inventory"]["path"]).resolve()
+    dependency_state: dict[str, Any] = {}
+
+    def load_dependencies() -> None:
+        dependencies = _mapping(
+            _load_registration_validation_dependencies(
+                launch_manifest=manifest,
+                artifact_reader=reader,
+            ),
+            "registration validation dependencies",
+        )
+        _fields(
+            dependencies,
+            {
+                "independent_verifier",
+                "inventory_parser",
+                "producer_validator",
+                "source_bindings",
+            },
+            "registration validation dependencies",
+        )
+        if not all(
+            callable(dependencies[name])
+            for name in (
+                "independent_verifier",
+                "inventory_parser",
+                "producer_validator",
+            )
+        ):
+            raise TrainingRunnerBlocked(
+                "registration validation dependency operation is invalid"
+            )
+        expected_bindings = {
+            "independent": manifest["artifacts"]["registration_verifier_source"],
+            "producer": manifest["artifacts"]["registration_producer_source"],
+        }
+        if dependencies["source_bindings"] != expected_bindings:
+            raise TrainingRunnerBlocked(
+                "registration validation dependency binding differs"
+            )
+        dependency_state.update(dependencies)
+        if _forbidden_imports_loaded():
+            raise TrainingRunnerBlocked(
+                "registration validation loaded runtime dependencies"
+            )
+
+    def dependency_operation(name: str) -> Callable[..., Any]:
+        def invoke(*args: Any) -> Any:
+            operation = dependency_state.get(name)
+            if not callable(operation):
+                raise TrainingRunnerBlocked(
+                    "registration validation dependency was not loaded"
+                )
+            return operation(*args)
+
+        return invoke
+
+    def validate_current_authority() -> Mapping[str, Any]:
+        return validate_authorized_command_envelope(
+            envelope=documents["envelope"],
+            manifest=manifest,
+            request=documents["request"],
+            authorization=documents["authorization"],
+            approval=documents["approval"],
+        )
+
+    def open_registered_inputs() -> Mapping[str, Any]:
+        return _open_registered_training_inputs(
+            authority_validator=validate_current_authority,
+            expected_envelope_sha256=documents["authority"]["envelope_sha256"],
+            expected_composite_sha256=documents["authority"]["composite_sha256"],
+            launch_manifest=manifest,
+            output_root=Path(manifest["output_root"]),
+            process_id=process_id,
+            pre_access_receipt_publisher=receipt_publisher,
+            registration_reader=lambda: reader(registration_path),
+            registration_binding=manifest["artifacts"]["registration"],
+            inventory_reader=lambda: reader(inventory_path),
+            inventory_binding=manifest["source_inventory"],
+            inventory_parser=dependency_operation("inventory_parser"),
+            producer_validator=dependency_operation("producer_validator"),
+            independent_verifier=dependency_operation("independent_verifier"),
+            rollback_authority_sha256=manifest["rollback_authority"][
+                "rollback_authority_sha256"
+            ],
+            pre_input_validator=load_dependencies,
+        )
+
+    def build_context(
+        execution_registration: Mapping[str, Any],
+        original_registration: Mapping[str, Any],
+        authority: Mapping[str, Any],
+    ) -> Any:
+        return _build_authorized_training_context(
+            control_api=control,
+            launch_manifest=manifest,
+            command_envelope=documents["envelope"],
+            authority=authority,
+            original_registration=original_registration,
+            execution_registration=execution_registration,
+            request=documents["request"],
+            authorization=documents["authorization"],
+            approval=documents["approval"],
+        )
+
+    runner_authority_identity = {
+        "composite_sha256": documents["authority"]["composite_sha256"],
+        "launch_manifest_sha256": manifest["manifest_sha256"],
+        "rollback_authority_sha256": manifest["rollback_authority"][
+            "rollback_authority_sha256"
+        ],
+        "run_envelope_sha256": documents["authority"]["envelope_sha256"],
+    }
+    if _forbidden_imports_loaded():
+        raise TrainingRunnerBlocked(
+            "training command composition reached lifecycle after runtime dependency load"
+        )
+    return _execute_training_lifecycle(
+        control_api=control,
+        registered_inputs_loader=open_registered_inputs,
+        context_builder=build_context,
+        context_identity_observer=control._context_identity,
+        reopen_observer=lambda output, context, alive: (
+            _observe_training_reopen_read_only(
+                control_api=control,
+                context=context,
+                output_root=output,
+                runner_authority_identity=runner_authority_identity,
+                process_alive=alive,
+            )
+        ),
+        lease_factory=lambda output, context, observation, child, alive, now: (
+            _AtomicObservedExecutionLease(
+                control_api=control,
+                context=context,
+                output_root=output,
+                observation=observation,
+                child_process_id=child,
+                process_alive=alive,
+                clock=now,
+            )
+        ),
+        runtime_loader=runtime_loader,
+        environment_factory_loader=environment_factory_loader,
+        checkpoint_reader=reader,
+        launch_marker_reader=reader,
+        output_root=Path(manifest["output_root"]),
+        manifest_sha256=manifest["manifest_sha256"],
+        run_envelope_sha256=documents["authority"]["envelope_sha256"],
+        rollback_authority_sha256=manifest["rollback_authority"][
+            "rollback_authority_sha256"
+        ],
+        process_id=process_id,
+        process_alive=process_alive,
+        deadline=deadline,
+        clock=clock,
+        closeout=closeout,
+    )
 
 
 def _binding_matches(payload: bytes, binding: Mapping[str, Any]) -> bool:

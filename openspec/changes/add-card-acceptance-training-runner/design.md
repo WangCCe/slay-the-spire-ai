@@ -61,7 +61,8 @@ evidence for the immediate training boundary.
 
 The canonical launch manifest binds the r6 registration/request/review paths
 and digests, exact runner path/hash/pushed commit, registered experiment source
-commit/inventory, current additive registration-verifier path/hash, Windows
+commit/inventory, current additive seed-inventory producer path/hash,
+independent registration-verifier path/hash, Windows
 interpreter, the exact source-inventory path/hash already bound by the r6
 registration request, output root, resource map, denied operations, and exact closed CLI
 set. It binds the exact argument shape and authority requirements of all three

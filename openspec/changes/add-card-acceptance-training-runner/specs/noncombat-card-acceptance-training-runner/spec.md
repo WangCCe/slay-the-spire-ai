@@ -4,7 +4,8 @@
 The system SHALL publish and independently review one canonical launch manifest
 that binds the pushed r6 registration, training request and review, runner
 source path/hash/commit, registered experiment source commit/inventory, additive
-registration verifier path/hash, exact source-inventory path/hash already bound
+seed-inventory producer path/hash, independent registration verifier path/hash,
+exact source-inventory path/hash already bound
 by the r6 registration request, Windows interpreter, output root, resource
 ceilings, denied operations, and the closed `preflight`, `run-training`, and
 `terminalize-dead-owner` CLI shapes. It SHALL also bind one canonical rollback

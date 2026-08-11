@@ -12,7 +12,8 @@ that command exists would authorize an unlaunchable and unauditable workflow.
   and `terminalize-dead-owner` command set.
 - Add a canonical launch manifest that binds the pushed r6 registration,
   training request/review, runner source, interpreter, registered experiment
-  source, additive registration verifier, exact r6-bound source-inventory
+  source, additive seed-inventory producer and independent registration
+  verifier sources, exact r6-bound source-inventory
   path/hash, output root, resource ceilings, and
   exact command set before any authorization is accepted. The manifest also
   binds one canonical rollback authority, including the candidate-disabled
