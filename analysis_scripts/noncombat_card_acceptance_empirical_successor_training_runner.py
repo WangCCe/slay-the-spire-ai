@@ -6430,9 +6430,21 @@ def main(argv: Sequence[str] | None = None) -> int:
     if args.command == "preflight":
         sys.stdout.buffer.write(canonical_json_bytes(source_only_preflight(args.manifest)))
         return 0
-    raise TrainingRunnerBlocked(
-        f"{args.command} is unavailable until lifecycle qualification completes"
-    )
+    arguments = {
+        "manifest_path": args.manifest,
+        "envelope_path": args.envelope,
+        "authorization_path": args.authorization,
+        "approval_path": args.approval,
+        "launch_observation_path": args.launch_observation,
+    }
+    if args.command == "run-training":
+        result = _execute_authorized_training_command(**arguments)
+    else:
+        result = _execute_authorized_dead_owner_terminalization_command(
+            **arguments
+        )
+    sys.stdout.buffer.write(canonical_json_bytes(result))
+    return 0
 
 
 if __name__ == "__main__":

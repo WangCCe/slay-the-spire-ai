@@ -2497,28 +2497,56 @@ def test_production_training_adapter_exposes_only_bound_paths(monkeypatch):
     assert math.isfinite(call["clock"]())
 
 
-def test_run_training_cli_remains_closed_before_qualification():
+@pytest.mark.parametrize(
+    ("command", "operation"),
+    (
+        ("run-training", "_execute_authorized_training_command"),
+        (
+            "terminalize-dead-owner",
+            "_execute_authorized_dead_owner_terminalization_command",
+        ),
+    ),
+)
+def test_authorized_cli_dispatches_only_the_closed_command_arguments(
+    monkeypatch,
+    capsys,
+    command,
+    operation,
+):
     runner = _runner()
+    captured = []
+    monkeypatch.setattr(
+        runner,
+        operation,
+        lambda **kwargs: captured.append(kwargs) or {"command": command},
+    )
 
-    with pytest.raises(
-        runner.TrainingRunnerBlocked,
-        match="unavailable until lifecycle qualification completes",
-    ):
-        runner.main(
-            [
-                "run-training",
-                "--manifest",
-                "D:/synthetic/manifest.json",
-                "--envelope",
-                "D:/synthetic/envelope.json",
-                "--authorization",
-                "D:/synthetic/authorization.json",
-                "--approval",
-                "D:/synthetic/approval.json",
-                "--launch-observation",
-                "D:/synthetic/observation.json",
-            ]
-        )
+    assert runner.main(
+        [
+            command,
+            "--manifest",
+            "D:/synthetic/manifest.json",
+            "--envelope",
+            "D:/synthetic/envelope.json",
+            "--authorization",
+            "D:/synthetic/authorization.json",
+            "--approval",
+            "D:/synthetic/approval.json",
+            "--launch-observation",
+            "D:/synthetic/observation.json",
+        ]
+    ) == 0
+
+    assert json.loads(capsys.readouterr().out) == {"command": command}
+    assert captured == [
+        {
+            "approval_path": Path("D:/synthetic/approval.json"),
+            "authorization_path": Path("D:/synthetic/authorization.json"),
+            "envelope_path": Path("D:/synthetic/envelope.json"),
+            "launch_observation_path": Path("D:/synthetic/observation.json"),
+            "manifest_path": Path("D:/synthetic/manifest.json"),
+        }
+    ]
 
 
 def test_external_authority_requires_composite_in_approval_and_observation():
