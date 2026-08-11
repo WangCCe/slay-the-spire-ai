@@ -765,6 +765,13 @@ class _FakeTrainingRuntimeApi:
             stopped=state.get("stopped", False),
         )
 
+    def initialize_paired_training_runtime(self):
+        return {"chunk_index": 0}
+
+    def restore_paired_training_checkpoint(self, payload):
+        parsed = json.loads(payload)
+        return {"chunk_index": parsed["coordinates"]["next_chunk_index"]}
+
     def collect_and_complete_paired_training_chunk(
         self,
         state,
@@ -819,6 +826,13 @@ class _FakeTrainingControlApi:
     def publish_managed_artifact(
         self, _context, _lease, *, relative_path, payload
     ):
+        for existing_path, existing_payload, existing_binding in self.artifacts:
+            if existing_path == relative_path:
+                if existing_payload != payload:
+                    raise self.runner.TrainingRunnerBlocked(
+                        "synthetic managed artifact collision"
+                    )
+                return existing_binding
         binding = {
             "path": relative_path,
             "sha256": hashlib.sha256(payload).hexdigest(),
@@ -1025,46 +1039,114 @@ def _registered_input_fixture():
         "registration_sha256": runner.canonical_json_sha256(registration_body),
     }
     registration_payload = runner.canonical_json_bytes(registration)
+    root = "D:/synthetic/registered-inputs"
+    _base_runner, definition, payloads = _fixture(root)
+    control = _control()
+    source_inventory_binding = {
+        "path": f"{root}/inventory/seed_inventory.json",
+        "sha256": hashlib.sha256(inventory_payload).hexdigest(),
+        "size_bytes": len(inventory_payload),
+    }
+    request = control.build_stage_request(
+        stage="training",
+        request_id="synthetic-r6-training-request-v1",
+        source_commit=definition["registered_source"]["source_commit"],
+        source_inventory_sha256=inventory["inventory_sha256"],
+        configuration_identity=control.experiment_configuration_identity(),
+        prerequisite_bindings={
+            "registration_sha256": registration["registration_sha256"]
+        },
+        output_root=definition["output_root"],
+    )
+    payloads["registration"] = registration_payload
+    payloads["training_request"] = control.canonical_json_bytes(request)
+    definition["artifacts"]["registration"] = _binding(
+        definition["artifacts"]["registration"]["path"], registration_payload
+    )
+    definition["artifacts"]["training_request"] = _binding(
+        definition["artifacts"]["training_request"]["path"],
+        payloads["training_request"],
+    )
+    definition["downstream_authority"] = copy.deepcopy(
+        request["downstream_authority"]
+    )
+    definition["request_contract"] = {
+        "downstream_authority": copy.deepcopy(request["downstream_authority"]),
+        "execution_authority": copy.deepcopy(request["execution_authority"]),
+        "output_root": definition["output_root"],
+        "registration_sha256": registration["registration_sha256"],
+        "request_sha256": request["request_sha256"],
+        "resources": copy.deepcopy(request["resources"]),
+        "source_commit": definition["registered_source"]["source_commit"],
+        "source_inventory_sha256": inventory["inventory_sha256"],
+    }
+    definition["resources"] = copy.deepcopy(request["resources"])
+    definition["source_inventory"] = source_inventory_binding
+    definition["registered_source"]["source_inventory_sha256"] = inventory[
+        "inventory_sha256"
+    ]
+    manifest = runner.build_launch_manifest(definition)
+    composite = runner.build_runner_composite(manifest, "run-training")
     return (
         runner,
         inventory,
         inventory_payload,
         registration,
         registration_payload,
+        manifest,
+        composite,
     )
+
+
+def _pre_access_receipt_binding(path, payload, calls=None):
+    if calls is not None:
+        calls.append("pre-access-receipt")
+    return {
+        "path": path.resolve().as_posix(),
+        "sha256": hashlib.sha256(payload).hexdigest(),
+        "size_bytes": len(payload),
+    }
 
 
 def test_registered_training_inputs_open_only_after_complete_authority():
-    runner, inventory, inventory_payload, registration, registration_payload = (
-        _registered_input_fixture()
-    )
+    (
+        runner,
+        inventory,
+        inventory_payload,
+        registration,
+        registration_payload,
+        manifest,
+        composite,
+    ) = _registered_input_fixture()
     calls = []
-    rollback_sha256 = "e" * 64
+    receipt_payloads = []
+    rollback_sha256 = manifest["rollback_authority"]["rollback_authority_sha256"]
 
     result = runner._open_registered_training_inputs(
         authority_validator=lambda: (
             calls.append("authority")
             or {
                 "command": "run-training",
-                "composite_sha256": "b" * 64,
+                "composite_sha256": composite["composite_sha256"],
                 "envelope_sha256": "a" * 64,
                 "validated": True,
             }
         ),
         expected_envelope_sha256="a" * 64,
-        expected_composite_sha256="b" * 64,
+        expected_composite_sha256=composite["composite_sha256"],
+        launch_manifest=manifest,
+        output_root=Path(manifest["output_root"]),
+        process_id=71_001,
+        pre_access_receipt_publisher=lambda path, payload: (
+            receipt_payloads.append((path, payload))
+            or _pre_access_receipt_binding(path, payload, calls)
+        ),
         registration_reader=lambda: (
             calls.append("registration") or registration_payload
         ),
-        registration_binding=_binding(
-            "reports/synthetic-r6-registration.json", registration_payload
-        ),
+        registration_binding=manifest["artifacts"]["registration"],
         inventory_reader=lambda: calls.append("inventory") or inventory_payload,
-        inventory_binding=_external_binding(
-            "D:/synthetic/inventory.json",
-            hashlib.sha256(inventory_payload).hexdigest(),
-        )
-        | {"size_bytes": len(inventory_payload)},
+        inventory_binding=manifest["source_inventory"],
         inventory_parser=lambda payload: (
             calls.append("inventory-parser") or json.loads(payload)
         ),
@@ -1095,6 +1177,7 @@ def test_registered_training_inputs_open_only_after_complete_authority():
 
     assert calls == [
         "authority",
+        "pre-access-receipt",
         "registration",
         "inventory",
         "inventory-parser",
@@ -1108,13 +1191,34 @@ def test_registered_training_inputs_open_only_after_complete_authority():
         **registration,
         "rollback_authority_sha256": rollback_sha256,
     }
+    assert result["pre_access_receipt"]["path"].endswith(
+        ".training.pre-access-71001.json"
+    )
+    receipt_path, receipt_payload = receipt_payloads[0]
+    receipt = json.loads(receipt_payload)
+    assert receipt_path.resolve().as_posix() == result["pre_access_receipt"]["path"]
+    assert receipt["launch_manifest_sha256"] == manifest["manifest_sha256"]
+    assert receipt["output_root"] == manifest["output_root"]
+    assert receipt["process_id"] == 71_001
+    assert receipt["receipt_path"] == result["pre_access_receipt"]["path"]
+    assert receipt["registration"] == manifest["artifacts"]["registration"]
+    assert receipt["source_inventory"] == manifest["source_inventory"]
+    assert receipt["receipt_sha256"] == runner.canonical_json_sha256(
+        {key: value for key, value in receipt.items() if key != "receipt_sha256"}
+    )
     assert runner.canonical_json_bytes(result["registration"]) == registration_payload
 
 
 def test_registered_training_inputs_fail_before_any_protected_or_runtime_access():
-    runner, _inventory, inventory_payload, _registration, registration_payload = (
-        _registered_input_fixture()
-    )
+    (
+        runner,
+        _inventory,
+        inventory_payload,
+        _registration,
+        registration_payload,
+        manifest,
+        composite,
+    ) = _registered_input_fixture()
     calls = []
 
     with pytest.raises(runner.TrainingRunnerBlocked, match="authority"):
@@ -1123,20 +1227,24 @@ def test_registered_training_inputs_fail_before_any_protected_or_runtime_access(
                 runner.TrainingRunnerBlocked("synthetic authority failure")
             ),
             expected_envelope_sha256="a" * 64,
-            expected_composite_sha256="b" * 64,
+            expected_composite_sha256=composite["composite_sha256"],
+            launch_manifest=manifest,
+            output_root=Path(manifest["output_root"]),
+            process_id=71_001,
+            pre_access_receipt_publisher=lambda path, payload: _pre_access_receipt_binding(
+                path, payload, calls
+            ),
             registration_reader=lambda: calls.append("registration")
             or registration_payload,
-            registration_binding=_binding("registration.json", registration_payload),
+            registration_binding=manifest["artifacts"]["registration"],
             inventory_reader=lambda: calls.append("inventory") or inventory_payload,
-            inventory_binding={
-                "path": "D:/synthetic/inventory.json",
-                "sha256": hashlib.sha256(inventory_payload).hexdigest(),
-                "size_bytes": len(inventory_payload),
-            },
+            inventory_binding=manifest["source_inventory"],
             inventory_parser=lambda payload: json.loads(payload),
             producer_validator=lambda value, evidence: value,
             independent_verifier=lambda value, evidence: {"verified": True},
-            rollback_authority_sha256="e" * 64,
+            rollback_authority_sha256=manifest["rollback_authority"][
+                "rollback_authority_sha256"
+            ],
         )
 
     assert calls == []
@@ -1146,13 +1254,19 @@ def test_registered_training_inputs_fail_before_any_protected_or_runtime_access(
 def test_registered_training_inputs_reject_authorized_identity_substitution(
     changed_field,
 ):
-    runner, _inventory, inventory_payload, _registration, registration_payload = (
-        _registered_input_fixture()
-    )
+    (
+        runner,
+        _inventory,
+        inventory_payload,
+        _registration,
+        registration_payload,
+        manifest,
+        composite,
+    ) = _registered_input_fixture()
     calls = []
     authority = {
         "command": "run-training",
-        "composite_sha256": "b" * 64,
+        "composite_sha256": composite["composite_sha256"],
         "envelope_sha256": "a" * 64,
         "validated": True,
     }
@@ -1162,48 +1276,118 @@ def test_registered_training_inputs_reject_authorized_identity_substitution(
         runner._open_registered_training_inputs(
             authority_validator=lambda: authority,
             expected_envelope_sha256="a" * 64,
-            expected_composite_sha256="b" * 64,
+            expected_composite_sha256=composite["composite_sha256"],
+            launch_manifest=manifest,
+            output_root=Path(manifest["output_root"]),
+            process_id=71_001,
+            pre_access_receipt_publisher=lambda path, payload: _pre_access_receipt_binding(
+                path, payload, calls
+            ),
             registration_reader=lambda: calls.append("registration")
             or registration_payload,
-            registration_binding=_binding("registration.json", registration_payload),
+            registration_binding=manifest["artifacts"]["registration"],
             inventory_reader=lambda: calls.append("inventory") or inventory_payload,
-            inventory_binding={
-                "path": "D:/synthetic/inventory.json",
-                "sha256": hashlib.sha256(inventory_payload).hexdigest(),
-                "size_bytes": len(inventory_payload),
-            },
+            inventory_binding=manifest["source_inventory"],
             inventory_parser=lambda payload: json.loads(payload),
             producer_validator=lambda value, evidence: value,
             independent_verifier=lambda value, evidence: {"verified": True},
-            rollback_authority_sha256="e" * 64,
+            rollback_authority_sha256=manifest["rollback_authority"][
+                "rollback_authority_sha256"
+            ],
+        )
+
+    assert calls == []
+
+
+@pytest.mark.parametrize(
+    "changed_field", ("registration_path", "source_path", "output_root")
+)
+def test_registered_training_inputs_reject_manifest_binding_substitution(
+    changed_field,
+):
+    (
+        runner,
+        _inventory,
+        inventory_payload,
+        _registration,
+        registration_payload,
+        manifest,
+        composite,
+    ) = _registered_input_fixture()
+    calls = []
+    registration_binding = copy.deepcopy(manifest["artifacts"]["registration"])
+    inventory_binding = copy.deepcopy(manifest["source_inventory"])
+    output_root = Path(manifest["output_root"])
+    if changed_field == "registration_path":
+        registration_binding["path"] = "synthetic/substituted-registration.bin"
+    elif changed_field == "source_path":
+        inventory_binding["path"] = (
+            "D:/synthetic/registered-inputs/inventory/substituted.json"
+        )
+    else:
+        output_root = output_root.parent / "substituted-training"
+
+    with pytest.raises(runner.TrainingRunnerBlocked, match="manifest binding"):
+        runner._open_registered_training_inputs(
+            authority_validator=lambda: {
+                "command": "run-training",
+                "composite_sha256": composite["composite_sha256"],
+                "envelope_sha256": "a" * 64,
+                "validated": True,
+            },
+            expected_envelope_sha256="a" * 64,
+            expected_composite_sha256=composite["composite_sha256"],
+            launch_manifest=manifest,
+            output_root=output_root,
+            process_id=71_001,
+            pre_access_receipt_publisher=lambda path, payload: (
+                calls.append("pre-access-receipt")
+            ),
+            registration_reader=lambda: calls.append("registration")
+            or registration_payload,
+            registration_binding=registration_binding,
+            inventory_reader=lambda: calls.append("inventory") or inventory_payload,
+            inventory_binding=inventory_binding,
+            inventory_parser=lambda payload: json.loads(payload),
+            producer_validator=lambda value, evidence: value,
+            independent_verifier=lambda value, evidence: {"verified": True},
+            rollback_authority_sha256=manifest["rollback_authority"][
+                "rollback_authority_sha256"
+            ],
         )
 
     assert calls == []
 
 
 def test_registered_training_inputs_reject_validator_disagreement():
-    runner, inventory, inventory_payload, registration, registration_payload = (
-        _registered_input_fixture()
-    )
+    (
+        runner,
+        inventory,
+        inventory_payload,
+        registration,
+        registration_payload,
+        manifest,
+        composite,
+    ) = _registered_input_fixture()
 
     with pytest.raises(runner.TrainingRunnerBlocked, match="agreement"):
         runner._open_registered_training_inputs(
             authority_validator=lambda: {
                 "command": "run-training",
-                "composite_sha256": "b" * 64,
+                "composite_sha256": composite["composite_sha256"],
                 "envelope_sha256": "a" * 64,
                 "validated": True,
             },
             expected_envelope_sha256="a" * 64,
-            expected_composite_sha256="b" * 64,
+            expected_composite_sha256=composite["composite_sha256"],
+            launch_manifest=manifest,
+            output_root=Path(manifest["output_root"]),
+            process_id=71_001,
+            pre_access_receipt_publisher=_pre_access_receipt_binding,
             registration_reader=lambda: registration_payload,
-            registration_binding=_binding("registration.json", registration_payload),
+            registration_binding=manifest["artifacts"]["registration"],
             inventory_reader=lambda: inventory_payload,
-            inventory_binding={
-                "path": "D:/synthetic/inventory.json",
-                "sha256": hashlib.sha256(inventory_payload).hexdigest(),
-                "size_bytes": len(inventory_payload),
-            },
+            inventory_binding=manifest["source_inventory"],
             inventory_parser=lambda payload: copy.deepcopy(inventory),
             producer_validator=lambda value, evidence: copy.deepcopy(value),
             independent_verifier=lambda value, evidence: {
@@ -1217,8 +1401,746 @@ def test_registered_training_inputs_reject_validator_disagreement():
                 "registration_sha256": "f" * 64,
                 "verified": True,
             },
-            rollback_authority_sha256="e" * 64,
+            rollback_authority_sha256=manifest["rollback_authority"][
+                "rollback_authority_sha256"
+            ],
         )
+
+
+@pytest.mark.parametrize("changed_field", ("path", "sha256"))
+def test_registered_training_inputs_reject_receipt_binding_before_protected_reads(
+    changed_field,
+):
+    (
+        runner,
+        _inventory,
+        inventory_payload,
+        _registration,
+        registration_payload,
+        manifest,
+        composite,
+    ) = _registered_input_fixture()
+    calls = []
+
+    with pytest.raises(runner.TrainingRunnerBlocked, match="receipt publication"):
+        runner._open_registered_training_inputs(
+            authority_validator=lambda: {
+                "command": "run-training",
+                "composite_sha256": composite["composite_sha256"],
+                "envelope_sha256": "a" * 64,
+                "validated": True,
+            },
+            expected_envelope_sha256="a" * 64,
+            expected_composite_sha256=composite["composite_sha256"],
+            launch_manifest=manifest,
+            output_root=Path(manifest["output_root"]),
+            process_id=71_001,
+            pre_access_receipt_publisher=lambda path, payload: {
+                **_pre_access_receipt_binding(path, payload, calls),
+                changed_field: (
+                    "D:/synthetic/wrong-pre-access-receipt.json"
+                    if changed_field == "path"
+                    else "f" * 64
+                ),
+            },
+            registration_reader=lambda: calls.append("registration")
+            or registration_payload,
+            registration_binding=manifest["artifacts"]["registration"],
+            inventory_reader=lambda: calls.append("inventory") or inventory_payload,
+            inventory_binding=manifest["source_inventory"],
+            inventory_parser=lambda payload: json.loads(payload),
+            producer_validator=lambda value, evidence: value,
+            independent_verifier=lambda value, evidence: {"verified": True},
+            rollback_authority_sha256=manifest["rollback_authority"][
+                "rollback_authority_sha256"
+            ],
+        )
+
+    assert calls == ["pre-access-receipt"]
+
+
+def test_pre_access_receipt_publisher_is_exclusive_and_durable(tmp_path):
+    runner = _runner()
+    path = tmp_path / ".training.pre-access-71001.json"
+    payload = b"synthetic-receipt"
+
+    binding = runner._publish_exclusive_pre_access_receipt(path, payload)
+
+    assert path.read_bytes() == payload
+    assert binding == {
+        "path": path.resolve().as_posix(),
+        "sha256": hashlib.sha256(payload).hexdigest(),
+        "size_bytes": len(payload),
+    }
+    with pytest.raises(runner.TrainingRunnerBlocked, match="publication failed"):
+        runner._publish_exclusive_pre_access_receipt(path, payload)
+    assert list(path.parent.glob(f"{path.name}.*.staging")) == []
+
+
+class _FakeExecutionLease:
+    def __init__(self, calls, process_id, observed):
+        self.calls = calls
+        self.owner = {
+            "acquired_monotonic": 1.0,
+            "child_process_id": process_id,
+            "token": f"{process_id:032x}",
+        }
+        recovery = observed["recovery"]
+        self.acquisition_mode = recovery["mode"]
+        self.acquisition_observation_sha256 = _runner().canonical_json_sha256(
+            observed
+        )
+        self.reclaimed_owner = copy.deepcopy(recovery.get("old_owner"))
+        self.reclaimed_lease_sha256 = recovery.get("lease_sha256")
+        self.reclaimed_prefix_sha256 = recovery.get("prefix_sha256")
+
+    def __enter__(self):
+        self.calls.append("lease-enter")
+        return self
+
+    def __exit__(self, exc_type, exc, traceback):
+        self.calls.append("lease-exit")
+        return False
+
+
+class _FakeOuterTrainingControl(_FakeTrainingControlApi):
+    def __init__(self, runner, calls, reopen):
+        super().__init__(runner)
+        self.calls = calls
+        self.reopen = reopen
+
+    def initialize_access_journal(self, _context, _lease):
+        self.calls.append("journal")
+
+    def initialize_resource_ledger(self, _context, _lease):
+        self.calls.append("resource")
+
+    def publish_managed_artifact(
+        self, context, lease, *, relative_path, payload
+    ):
+        if relative_path == "runner_launch.json":
+            self.calls.append("runner-launch-marker")
+        elif relative_path.startswith("continuation_attempts/"):
+            self.calls.append("continuation-attempt-marker")
+        return super().publish_managed_artifact(
+            context, lease, relative_path=relative_path, payload=payload
+        )
+
+    def classify_execution_reopen(self, _context, _lease):
+        self.calls.append("classify-reopen")
+        if isinstance(self.reopen, Exception):
+            raise self.reopen
+        return copy.deepcopy(self.reopen)
+
+    def authorize_training_continuation(self, _context, _lease):
+        self.calls.append("authorize-continuation")
+        return copy.deepcopy(self.reopen)
+
+    def publish_write_once_marker(self, _context, _lease, *, kind, payload):
+        self.calls.append(f"{kind}-marker")
+        return {"kind": kind, "payload": copy.deepcopy(payload)}
+
+
+class _CollisionOuterTrainingControl(_FakeOuterTrainingControl):
+    def publish_managed_artifact(
+        self, context, lease, *, relative_path, payload
+    ):
+        if relative_path.startswith("continuation_attempts/"):
+            self.calls.append("continuation-attempt-collision")
+            raise self.runner.TrainingRunnerBlocked(
+                "synthetic managed artifact collision"
+            )
+        return super().publish_managed_artifact(
+            context, lease, relative_path=relative_path, payload=payload
+        )
+
+
+def _outer_registered_inputs(start_chunk=0):
+    return {
+        "authority": {
+            "command": "run-training",
+            "composite_sha256": "b" * 64,
+            "envelope_sha256": "a" * 64,
+            "validated": True,
+        },
+        "execution_registration": {
+            "registration_sha256": "c" * 64,
+            "rollback_authority_sha256": "d" * 64,
+        },
+        "registration": {"registration_sha256": "c" * 64},
+        "training_seeds": tuple(range(512)),
+        "start_chunk": start_chunk,
+    }
+
+
+def _setup_reopen_observation():
+    return {
+        "classification": {
+            "debited_accesses": 0,
+            "identity": {"audit_id": "synthetic-training"},
+            "verdict": "pre_seed_setup_reopen",
+        },
+        "recovery": {"mode": "fresh_output"},
+    }
+
+
+def _outer_context_identity():
+    return {"audit_id": "synthetic-training"}
+
+
+def _stale_setup_reopen_observation(runner, runner_launch_sha256):
+    classification = _setup_reopen_observation()["classification"]
+    return {
+        "classification": classification,
+        "recovery": {
+            "lease_sha256": "7" * 64,
+            "mode": "dead_owner_reclaim",
+            "old_owner": {
+                "acquired_monotonic": 0.0,
+                "child_process_id": 70_001,
+                "token": "1" * 32,
+            },
+            "prefix_sha256": runner.canonical_json_sha256(
+                {
+                    "classification": classification,
+                    "context_identity": _outer_context_identity(),
+                }
+            ),
+            "runner_launch": {
+                "sha256": runner_launch_sha256,
+                "state": "present",
+            },
+        },
+    }
+
+
+def _continuation_reopen_observation(
+    runner, checkpoint_sha256, runner_launch_sha256="8" * 64
+):
+    classification = {
+        "checkpoint_sha256": checkpoint_sha256,
+        "completed_pairs": 64,
+        "debited_accesses": 128,
+        "identity": _outer_context_identity(),
+        "next_chunk_index": 1,
+        "verdict": "complete_checkpoint_continuation",
+    }
+    return {
+        "classification": classification,
+        "recovery": {
+            "lease_sha256": "7" * 64,
+            "mode": "dead_owner_reclaim",
+            "old_owner": {
+                "acquired_monotonic": 0.0,
+                "child_process_id": 70_001,
+                "token": "1" * 32,
+            },
+            "prefix_sha256": runner.canonical_json_sha256(
+                {
+                    "classification": classification,
+                    "context_identity": _outer_context_identity(),
+                }
+            ),
+            "runner_launch": {
+                "sha256": runner_launch_sha256,
+                "state": "present",
+            },
+        },
+    }
+
+
+@pytest.mark.parametrize(
+    "changed_field",
+    (
+        "completed_pairs",
+        "debited_accesses",
+        "context_identity",
+        "prefix_sha256",
+        "old_owner_extra",
+        "old_owner_token",
+    ),
+)
+def test_read_only_continuation_observation_rejects_identity_drift(changed_field):
+    runner = _runner()
+    observation = _continuation_reopen_observation(runner, "6" * 64)
+    if changed_field == "completed_pairs":
+        observation["classification"]["completed_pairs"] = 63
+    elif changed_field == "debited_accesses":
+        observation["classification"]["debited_accesses"] = 127
+    elif changed_field == "context_identity":
+        observation["classification"]["identity"] = {"audit_id": "substituted"}
+    elif changed_field == "prefix_sha256":
+        observation["recovery"]["prefix_sha256"] = "f" * 64
+    elif changed_field == "old_owner_extra":
+        observation["recovery"]["old_owner"]["extra"] = True
+    else:
+        observation["recovery"]["old_owner"]["token"] = "not-a-token"
+
+    with pytest.raises(runner.TrainingRunnerBlocked):
+        runner._validated_reopen_observation(
+            observation,
+            expected_context_identity=_outer_context_identity(),
+            process_alive=lambda _process_id: False,
+        )
+
+
+def test_read_only_continuation_observation_requires_dead_owner():
+    runner = _runner()
+    observation = _continuation_reopen_observation(runner, "6" * 64)
+
+    with pytest.raises(runner.TrainingRunnerBlocked, match="not dead"):
+        runner._validated_reopen_observation(
+            observation,
+            expected_context_identity=_outer_context_identity(),
+            process_alive=lambda _process_id: True,
+        )
+
+
+@pytest.mark.parametrize(
+    "changed_field",
+    (
+        "launch_manifest_sha256",
+        "rollback_authority_sha256",
+        "run_envelope_sha256",
+    ),
+)
+def test_original_runner_launch_rejects_re_self_digested_identity_drift(
+    changed_field,
+):
+    runner = _runner()
+    launch = json.loads(
+        runner._runner_launch_payload(
+            manifest_sha256="9" * 64,
+            process_id=70_001,
+            rollback_authority_sha256="d" * 64,
+            run_envelope_sha256="a" * 64,
+        )
+    )
+    launch[changed_field] = "f" * 64
+    body = {key: value for key, value in launch.items() if key != "launch_sha256"}
+    launch["launch_sha256"] = runner.canonical_json_sha256(body)
+
+    with pytest.raises(runner.TrainingRunnerBlocked, match="launch differs"):
+        runner._validated_original_runner_launch(
+            runner.canonical_json_bytes(launch),
+            manifest_sha256="9" * 64,
+            rollback_authority_sha256="d" * 64,
+            run_envelope_sha256="a" * 64,
+        )
+
+
+def test_training_lifecycle_setup_orders_authority_lease_marker_and_lazy_loaders():
+    runner = _runner()
+    calls = []
+    control = _FakeOuterTrainingControl(
+        runner,
+        calls,
+        _setup_reopen_observation()["classification"],
+    )
+    runtime = _FakeTrainingRuntimeApi(runner)
+    closeouts = []
+
+    result = runner._execute_training_lifecycle(
+        control_api=control,
+        registered_inputs_loader=lambda: calls.append("registered-inputs")
+        or _outer_registered_inputs(),
+        context_builder=lambda execution_registration: calls.append("context")
+        or copy.deepcopy(execution_registration),
+        context_identity_observer=lambda context: _outer_context_identity(),
+        reopen_observer=lambda output, context, process_alive: (
+            calls.append("reopen-observer") or _setup_reopen_observation()
+        ),
+        lease_factory=lambda output, context, observed, process_id, process_alive, clock: (
+            calls.append("lease-factory")
+            or _FakeExecutionLease(calls, process_id, observed)
+        ),
+        runtime_loader=lambda: calls.append("runtime-loader") or runtime,
+        environment_factory_loader=lambda: calls.append("environment-loader")
+        or (lambda seed: control.environments.append(seed)),
+        checkpoint_reader=lambda _path: pytest.fail("setup read a checkpoint"),
+        launch_marker_reader=lambda _path: pytest.fail(
+            "setup read an original launch marker"
+        ),
+        output_root=Path("D:/synthetic/training-output"),
+        manifest_sha256="9" * 64,
+        run_envelope_sha256="a" * 64,
+        rollback_authority_sha256="d" * 64,
+        process_id=71_001,
+        process_alive=lambda process_id: process_id == 71_001,
+        deadline=100.0,
+        clock=lambda: 0.0,
+        closeout=lambda verdict, snapshot: closeouts.append((verdict, snapshot)),
+    )
+
+    assert calls[:11] == [
+        "registered-inputs",
+        "context",
+        "reopen-observer",
+        "lease-factory",
+        "lease-enter",
+        "journal",
+        "resource",
+        "classify-reopen",
+        "runner-launch-marker",
+        "runtime-loader",
+        "bootstrap-marker",
+    ]
+    assert calls.index("stage-marker") < calls.index("environment-loader")
+    assert calls[-1] == "lease-exit"
+    assert result["verdict"] == "training_completed_without_family_saturation"
+    assert closeouts[0][0] == "training_completed_without_family_saturation"
+
+
+@pytest.mark.parametrize(
+    "changed_field",
+    (
+        "acquisition_mode",
+        "acquisition_observation_sha256",
+        "current_owner_process_id",
+        "reclaimed_owner",
+        "reclaimed_lease_sha256",
+        "reclaimed_prefix_sha256",
+    ),
+)
+def test_training_lifecycle_rejects_compare_and_acquire_drift_before_writes(
+    changed_field,
+):
+    runner = _runner()
+    calls = []
+    observation = _setup_reopen_observation()
+    control = _FakeOuterTrainingControl(
+        runner, calls, observation["classification"]
+    )
+
+    def lease_factory(output, context, observed, process_id, process_alive, clock):
+        calls.append("lease-factory")
+        lease = _FakeExecutionLease(calls, process_id, observed)
+        if changed_field == "current_owner_process_id":
+            lease.owner["child_process_id"] = 1
+        else:
+            setattr(
+                lease,
+                changed_field,
+                {"child_process_id": 1}
+                if changed_field == "reclaimed_owner"
+                else "f" * 64,
+            )
+        return lease
+
+    with pytest.raises(runner.TrainingRunnerBlocked, match="lease"):
+        runner._execute_training_lifecycle(
+            control_api=control,
+            registered_inputs_loader=lambda: _outer_registered_inputs(),
+            context_builder=lambda execution_registration: copy.deepcopy(
+                execution_registration
+            ),
+            context_identity_observer=lambda context: _outer_context_identity(),
+            reopen_observer=lambda output, context, process_alive: copy.deepcopy(
+                observation
+            ),
+            lease_factory=lease_factory,
+            runtime_loader=lambda: calls.append("runtime-loader"),
+            environment_factory_loader=lambda: calls.append("environment-loader"),
+            checkpoint_reader=lambda path: calls.append("checkpoint-reader"),
+            launch_marker_reader=lambda path: calls.append("launch-marker-reader"),
+            output_root=Path("D:/synthetic/training-output"),
+            manifest_sha256="9" * 64,
+            run_envelope_sha256="a" * 64,
+            rollback_authority_sha256="d" * 64,
+            process_id=71_006,
+            process_alive=lambda process_id: process_id == 71_006,
+            deadline=100.0,
+            clock=lambda: 0.0,
+            closeout=lambda _verdict, _snapshot: None,
+        )
+
+    assert "lease-enter" in calls
+    assert "journal" not in calls
+    assert "resource" not in calls
+    assert "classify-reopen" not in calls
+    assert "runtime-loader" not in calls
+
+
+def test_training_lifecycle_stale_setup_preserves_original_launch():
+    runner = _runner()
+    calls = []
+    original_launch = runner._runner_launch_payload(
+        manifest_sha256="9" * 64,
+        process_id=70_001,
+        rollback_authority_sha256="d" * 64,
+        run_envelope_sha256="a" * 64,
+    )
+    observation = _stale_setup_reopen_observation(
+        runner, hashlib.sha256(original_launch).hexdigest()
+    )
+    control = _FakeOuterTrainingControl(
+        runner, calls, observation["classification"]
+    )
+    runtime = _FakeTrainingRuntimeApi(runner)
+
+    result = runner._execute_training_lifecycle(
+        control_api=control,
+        registered_inputs_loader=lambda: _outer_registered_inputs(),
+        context_builder=lambda execution_registration: copy.deepcopy(
+            execution_registration
+        ),
+        context_identity_observer=lambda context: _outer_context_identity(),
+        reopen_observer=lambda output, context, process_alive: copy.deepcopy(
+            observation
+        ),
+        lease_factory=lambda output, context, observed, process_id, process_alive, clock: (
+            _FakeExecutionLease(calls, process_id, observed)
+        ),
+        runtime_loader=lambda: calls.append("runtime-loader") or runtime,
+        environment_factory_loader=lambda: (
+            lambda seed: control.environments.append(seed)
+        ),
+        checkpoint_reader=lambda path: pytest.fail("stale setup read checkpoint"),
+        launch_marker_reader=lambda path: calls.append(
+            f"launch-marker-read:{path.name}"
+        )
+        or original_launch,
+        output_root=Path("D:/synthetic/training-output"),
+        manifest_sha256="9" * 64,
+        run_envelope_sha256="a" * 64,
+        rollback_authority_sha256="d" * 64,
+        process_id=71_005,
+        process_alive=lambda process_id: process_id == 71_005,
+        deadline=100.0,
+        clock=lambda: 0.0,
+        closeout=lambda _verdict, _snapshot: None,
+    )
+
+    assert result["completed_chunks"] == 8
+    assert "runner-launch-marker" not in calls
+    assert calls.index("classify-reopen") < calls.index("journal")
+    reopen_path, reopen_payload, _binding = next(
+        artifact
+        for artifact in control.artifacts
+        if artifact[0].startswith("reopen_attempts/")
+    )
+    reopen_attempt = json.loads(reopen_payload)
+    assert reopen_path == (
+        f"reopen_attempts/{reopen_attempt['attempt_sha256']}.json"
+    )
+    assert reopen_attempt["verdict"] == "pre_seed_setup_reopen"
+    assert "checkpoint_sha256" not in reopen_attempt
+    assert "continuation_authorization_sha256" not in reopen_attempt
+
+
+def test_training_lifecycle_continuation_restores_exact_complete_checkpoint():
+    runner = _runner()
+    calls = []
+    checkpoint = _fake_runtime_checkpoint(runner, 1)
+    checkpoint_sha256 = hashlib.sha256(checkpoint).hexdigest()
+    original_launch = runner._runner_launch_payload(
+        manifest_sha256="9" * 64,
+        process_id=70_001,
+        rollback_authority_sha256="d" * 64,
+        run_envelope_sha256="a" * 64,
+    )
+    observation = _continuation_reopen_observation(
+        runner,
+        checkpoint_sha256,
+        hashlib.sha256(original_launch).hexdigest(),
+    )
+    reopen = observation["classification"]
+    control = _FakeOuterTrainingControl(runner, calls, reopen)
+    runtime = _FakeTrainingRuntimeApi(runner)
+
+    result = runner._execute_training_lifecycle(
+        control_api=control,
+        registered_inputs_loader=lambda: calls.append("registered-inputs")
+        or _outer_registered_inputs(start_chunk=1),
+        context_builder=lambda execution_registration: copy.deepcopy(
+            execution_registration
+        ),
+        context_identity_observer=lambda context: _outer_context_identity(),
+        reopen_observer=lambda output, context, process_alive: (
+            calls.append("reopen-observer") or copy.deepcopy(observation)
+        ),
+        lease_factory=lambda output, context, observed, process_id, process_alive, clock: (
+            calls.append("lease-factory")
+            or _FakeExecutionLease(calls, process_id, observed)
+        ),
+        runtime_loader=lambda: calls.append("runtime-loader") or runtime,
+        environment_factory_loader=lambda: calls.append("environment-loader")
+        or (lambda seed: control.environments.append(seed)),
+        checkpoint_reader=lambda path: calls.append(f"checkpoint-read:{path.name}")
+        or checkpoint,
+        launch_marker_reader=lambda path: calls.append(
+            f"launch-marker-read:{path.name}"
+        )
+        or original_launch,
+        output_root=Path("D:/synthetic/training-output"),
+        manifest_sha256="9" * 64,
+        run_envelope_sha256="a" * 64,
+        rollback_authority_sha256="d" * 64,
+        process_id=71_002,
+        process_alive=lambda process_id: process_id == 71_002,
+        deadline=100.0,
+        clock=lambda: 0.0,
+        closeout=lambda _verdict, _snapshot: None,
+    )
+
+    assert calls.index("authorize-continuation") < calls.index(
+        "checkpoint-read:chunk_0001.json"
+    )
+    assert calls.index("launch-marker-read:runner_launch.json") < calls.index(
+        "lease-factory"
+    )
+    assert "runner-launch-marker" not in calls
+    assert calls.index("continuation-attempt-marker") < calls.index(
+        "runtime-loader"
+    )
+    attempt_path, attempt_payload, attempt_binding = next(
+        artifact
+        for artifact in control.artifacts
+        if artifact[0].startswith("continuation_attempts/")
+    )
+    attempt = json.loads(attempt_payload)
+    attempt_body = {
+        key: value for key, value in attempt.items() if key != "attempt_sha256"
+    }
+    assert attempt_path == f"continuation_attempts/{attempt['attempt_sha256']}.json"
+    assert attempt_binding["sha256"] == hashlib.sha256(attempt_payload).hexdigest()
+    assert attempt["attempt_sha256"] == runner.canonical_json_sha256(attempt_body)
+    assert attempt["checkpoint_sha256"] == checkpoint_sha256
+    assert attempt["continuation_authorization_sha256"] == (
+        runner.canonical_json_sha256(reopen)
+    )
+    assert attempt["current_owner"] == {
+        "acquired_monotonic": 1.0,
+        "child_process_id": 71_002,
+        "token": f"{71_002:032x}",
+    }
+    assert attempt["launch_manifest_sha256"] == "9" * 64
+    assert attempt["next_chunk_index"] == 1
+    assert attempt["original_launch_sha256"] == json.loads(original_launch)[
+        "launch_sha256"
+    ]
+    assert attempt["prior_lease_sha256"] == observation["recovery"][
+        "lease_sha256"
+    ]
+    assert attempt["prior_owner"] == observation["recovery"]["old_owner"]
+    assert attempt["prior_prefix_sha256"] == observation["recovery"][
+        "prefix_sha256"
+    ]
+    assert attempt["rollback_authority_sha256"] == "d" * 64
+    assert attempt["run_envelope_sha256"] == "a" * 64
+    assert control.debits[0] == ("candidate", 64)
+    assert result["completed_chunks"] == 8
+
+
+def test_training_lifecycle_attempt_collision_blocks_before_runtime_loading():
+    runner = _runner()
+    calls = []
+    checkpoint = _fake_runtime_checkpoint(runner, 1)
+    checkpoint_sha256 = hashlib.sha256(checkpoint).hexdigest()
+    original_launch = runner._runner_launch_payload(
+        manifest_sha256="9" * 64,
+        process_id=70_001,
+        rollback_authority_sha256="d" * 64,
+        run_envelope_sha256="a" * 64,
+    )
+    observation = _continuation_reopen_observation(
+        runner,
+        checkpoint_sha256,
+        hashlib.sha256(original_launch).hexdigest(),
+    )
+    control = _CollisionOuterTrainingControl(
+        runner, calls, observation["classification"]
+    )
+
+    with pytest.raises(runner.TrainingRunnerBlocked, match="collision"):
+        runner._execute_training_lifecycle(
+            control_api=control,
+            registered_inputs_loader=lambda: _outer_registered_inputs(start_chunk=1),
+            context_builder=lambda execution_registration: copy.deepcopy(
+                execution_registration
+            ),
+            context_identity_observer=lambda context: _outer_context_identity(),
+            reopen_observer=lambda output, context, process_alive: copy.deepcopy(
+                observation
+            ),
+            lease_factory=lambda output, context, observed, process_id, process_alive, clock: (
+                _FakeExecutionLease(calls, process_id, observed)
+            ),
+            runtime_loader=lambda: calls.append("runtime-loader"),
+            environment_factory_loader=lambda: calls.append("environment-loader"),
+            checkpoint_reader=lambda path: calls.append(
+                f"checkpoint-read:{path.name}"
+            )
+            or checkpoint,
+            launch_marker_reader=lambda path: original_launch,
+            output_root=Path("D:/synthetic/training-output"),
+            manifest_sha256="9" * 64,
+            run_envelope_sha256="a" * 64,
+            rollback_authority_sha256="d" * 64,
+            process_id=71_004,
+            process_alive=lambda process_id: process_id == 71_004,
+            deadline=100.0,
+            clock=lambda: 0.0,
+            closeout=lambda _verdict, _snapshot: None,
+        )
+
+    assert "continuation-attempt-collision" in calls
+    assert "runtime-loader" not in calls
+    assert "environment-loader" not in calls
+    assert not any(call.startswith("checkpoint-read:") for call in calls)
+
+
+def test_training_lifecycle_partial_reopen_blocks_before_runtime_loading():
+    runner = _runner()
+    calls = []
+    control = _FakeOuterTrainingControl(
+        runner,
+        calls,
+        _setup_reopen_observation()["classification"],
+    )
+
+    with pytest.raises(runner.TrainingRunnerBlocked, match="partial"):
+        runner._execute_training_lifecycle(
+            control_api=control,
+            registered_inputs_loader=lambda: calls.append("registered-inputs")
+            or _outer_registered_inputs(),
+            context_builder=lambda execution_registration: copy.deepcopy(
+                execution_registration
+            ),
+            context_identity_observer=lambda context: _outer_context_identity(),
+            reopen_observer=lambda output, context, process_alive: (
+                calls.append("reopen-observer")
+                or (_ for _ in ()).throw(
+                    runner.TrainingRunnerBlocked("partial checkpoint prefix")
+                )
+            ),
+            lease_factory=lambda output, context, observed, process_id, process_alive, clock: (
+                calls.append("lease-factory")
+                or _FakeExecutionLease(calls, process_id, observed)
+            ),
+            runtime_loader=lambda: calls.append("runtime-loader"),
+            environment_factory_loader=lambda: calls.append("environment-loader"),
+            checkpoint_reader=lambda path: calls.append(f"checkpoint-read:{path.name}"),
+            launch_marker_reader=lambda path: calls.append(
+                f"launch-marker-read:{path.name}"
+            ),
+            output_root=Path("D:/synthetic/training-output"),
+            manifest_sha256="9" * 64,
+            run_envelope_sha256="a" * 64,
+            rollback_authority_sha256="d" * 64,
+            process_id=71_003,
+            process_alive=lambda process_id: process_id == 71_003,
+            deadline=100.0,
+            clock=lambda: 0.0,
+            closeout=lambda _verdict, _snapshot: None,
+        )
+
+    assert "runtime-loader" not in calls
+    assert "environment-loader" not in calls
+    assert "lease-factory" not in calls
+    assert "journal" not in calls
+    assert "resource" not in calls
+    assert "runner-launch-marker" not in calls
 
 
 def _preflight_fixture(tmp_path: Path):

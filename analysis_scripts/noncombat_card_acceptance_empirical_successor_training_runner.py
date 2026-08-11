@@ -8,10 +8,12 @@ import hashlib
 import importlib
 import json
 import math
+import os
 from pathlib import Path, PurePosixPath
 import re
 import subprocess
 import sys
+import uuid
 from collections.abc import Callable, Mapping, Sequence
 from typing import Any
 
@@ -36,6 +38,18 @@ INITIAL_CHECKPOINT_SCHEMA_VERSION = (
 )
 CHECKPOINT_CHAIN_SCHEMA_VERSION = (
     "noncombat-card-acceptance-training-runner-checkpoint-chain-v1"
+)
+RUNNER_LAUNCH_MARKER_SCHEMA_VERSION = (
+    "noncombat-card-acceptance-training-runner-launch-marker-v1"
+)
+PRE_ACCESS_RECEIPT_SCHEMA_VERSION = (
+    "noncombat-card-acceptance-training-runner-pre-access-receipt-v1"
+)
+CONTINUATION_ATTEMPT_SCHEMA_VERSION = (
+    "noncombat-card-acceptance-training-runner-continuation-attempt-v1"
+)
+REOPEN_ATTEMPT_SCHEMA_VERSION = (
+    "noncombat-card-acceptance-training-runner-reopen-attempt-v1"
 )
 PUSHED_REF = "origin/master"
 COMMAND_NAMES = ("preflight", "run-training", "terminalize-dead-owner")
@@ -976,6 +990,10 @@ def _open_registered_training_inputs(
     authority_validator: Callable[[], Mapping[str, Any]],
     expected_envelope_sha256: str,
     expected_composite_sha256: str,
+    launch_manifest: Mapping[str, Any],
+    output_root: Path | str,
+    process_id: int,
+    pre_access_receipt_publisher: Callable[[Path, bytes], Mapping[str, Any]],
     registration_reader: Callable[[], bytes],
     registration_binding: Mapping[str, Any],
     inventory_reader: Callable[[], bytes],
@@ -992,6 +1010,7 @@ def _open_registered_training_inputs(
     """Open the registered cohort only after one complete command authority check."""
     callbacks = (
         authority_validator,
+        pre_access_receipt_publisher,
         registration_reader,
         inventory_reader,
         inventory_parser,
@@ -1003,6 +1022,15 @@ def _open_registered_training_inputs(
     authority = _mapping(authority_validator(), "runner command authority")
     expected_envelope = _digest(expected_envelope_sha256, "expected run envelope")
     expected_composite = _digest(expected_composite_sha256, "expected runner composite")
+    manifest = validate_launch_manifest(launch_manifest)
+    manifest_digest = manifest["manifest_sha256"]
+    if isinstance(process_id, bool) or not isinstance(process_id, int) or process_id <= 0:
+        raise TrainingRunnerBlocked("registered input process identity is invalid")
+    output = Path(
+        _absolute_path(
+            Path(output_root).resolve().as_posix(), "registered input output root"
+        )
+    )
     if (
         authority.get("validated") is not True
         or authority.get("command") != "run-training"
@@ -1014,6 +1042,52 @@ def _open_registered_training_inputs(
     normalized_registration_binding = _artifact_binding(
         registration_binding, "registered inventory artifact"
     )
+    normalized_inventory_binding = _external_binding(
+        inventory_binding, "registered source inventory"
+    )
+    rollback_sha256 = _digest(
+        rollback_authority_sha256, "registered rollback authority"
+    )
+    manifest_composite = build_runner_composite(manifest, "run-training")
+    if (
+        output.as_posix() != manifest["output_root"]
+        or normalized_registration_binding != manifest["artifacts"]["registration"]
+        or normalized_inventory_binding != manifest["source_inventory"]
+        or rollback_sha256
+        != manifest["rollback_authority"]["rollback_authority_sha256"]
+        or expected_composite != manifest_composite["composite_sha256"]
+    ):
+        raise TrainingRunnerBlocked("registered input manifest binding differs")
+    receipt_path = output.parent / f".{output.name}.pre-access-{process_id}.json"
+    receipt_body = {
+        "command": "run-training",
+        "composite_sha256": expected_composite,
+        "launch_manifest_sha256": manifest_digest,
+        "output_root": output.as_posix(),
+        "process_id": process_id,
+        "receipt_path": receipt_path.resolve().as_posix(),
+        "registration": copy.deepcopy(normalized_registration_binding),
+        "rollback_authority_sha256": rollback_sha256,
+        "run_envelope_sha256": expected_envelope,
+        "schema_version": PRE_ACCESS_RECEIPT_SCHEMA_VERSION,
+        "source_inventory": copy.deepcopy(normalized_inventory_binding),
+    }
+    receipt_payload = canonical_json_bytes(
+        {
+            **receipt_body,
+            "receipt_sha256": canonical_json_sha256(receipt_body),
+        }
+    )
+    receipt_binding = _external_binding(
+        pre_access_receipt_publisher(receipt_path, receipt_payload),
+        "pre-access receipt",
+    )
+    if (
+        receipt_binding["path"] != receipt_path.resolve().as_posix()
+        or not _binding_matches(receipt_payload, receipt_binding)
+    ):
+        raise TrainingRunnerBlocked("pre-access receipt publication differs")
+
     registration_payload = registration_reader()
     if not isinstance(registration_payload, bytes) or not _binding_matches(
         registration_payload, normalized_registration_binding
@@ -1023,9 +1097,6 @@ def _open_registered_training_inputs(
         registration_payload, "registered inventory artifact"
     )
 
-    normalized_inventory_binding = _external_binding(
-        inventory_binding, "registered source inventory"
-    )
     inventory_payload = inventory_reader()
     if not isinstance(inventory_payload, bytes) or not _binding_matches(
         inventory_payload, normalized_inventory_binding
@@ -1070,6 +1141,8 @@ def _open_registered_training_inputs(
         "registration_sha256",
         "verified",
     }
+
+
     if set(independent_result) != expected_independent_fields:
         raise TrainingRunnerBlocked("independent registration agreement fields differ")
     expected_cohort_counts = {"canary": 128, "holdout": 512, "training": 512}
@@ -1114,9 +1187,6 @@ def _open_registered_training_inputs(
         )
     ):
         raise TrainingRunnerBlocked("registered training cohort differs")
-    rollback_sha256 = _digest(
-        rollback_authority_sha256, "registered rollback authority"
-    )
     return {
         "authority": copy.deepcopy(authority),
         "execution_registration": {
@@ -1124,8 +1194,70 @@ def _open_registered_training_inputs(
             "rollback_authority_sha256": rollback_sha256,
         },
         "registration": copy.deepcopy(registration),
+        "pre_access_receipt": receipt_binding,
         "training_seeds": tuple(training_seeds),
     }
+
+
+def _publish_exclusive_pre_access_receipt(
+    path: Path, payload: bytes
+) -> dict[str, Any]:
+    if (
+        not isinstance(path, Path)
+        or not path.is_absolute()
+        or not isinstance(payload, bytes)
+    ):
+        raise TrainingRunnerBlocked("pre-access receipt publication input is invalid")
+    publication_path = path
+    if os.name == "nt":
+        publication_path = path.with_name(
+            f"{path.name}.{uuid.uuid4().hex}.staging"
+        )
+    try:
+        with publication_path.open("xb") as handle:
+            handle.write(payload)
+            handle.flush()
+            os.fsync(handle.fileno())
+        if os.name == "nt":
+            try:
+                _move_file_write_through(publication_path, path)
+            except OSError:
+                try:
+                    publication_path.unlink()
+                except OSError:
+                    pass
+                raise
+        else:
+            _fsync_directory(path.parent)
+    except OSError as exc:
+        raise TrainingRunnerBlocked("pre-access receipt publication failed") from exc
+    return {
+        "path": path.resolve().as_posix(),
+        "sha256": hashlib.sha256(payload).hexdigest(),
+        "size_bytes": len(payload),
+    }
+
+
+def _fsync_directory(path: Path) -> None:
+    if not isinstance(path, Path) or not path.is_absolute():
+        raise OSError("directory sync path is invalid")
+    descriptor = os.open(path, os.O_RDONLY)
+    try:
+        os.fsync(descriptor)
+    finally:
+        os.close(descriptor)
+
+
+def _move_file_write_through(source: Path, destination: Path) -> None:
+    import ctypes
+    from ctypes import wintypes
+
+    kernel32 = ctypes.WinDLL("kernel32", use_last_error=True)
+    move_file_ex = kernel32.MoveFileExW
+    move_file_ex.argtypes = (wintypes.LPCWSTR, wintypes.LPCWSTR, wintypes.DWORD)
+    move_file_ex.restype = wintypes.BOOL
+    if not move_file_ex(str(source), str(destination), 0x00000008):
+        raise ctypes.WinError(ctypes.get_last_error())
 
 
 def _initial_checkpoint_record(payload: bytes) -> dict[str, Any]:
@@ -1328,6 +1460,527 @@ def _run_training_schedule(
         "final_checkpoint_sha256": final_snapshot["checkpoint_sha256"],
         "verdict": verdict,
     }
+
+
+def _runner_launch_payload(
+    *,
+    manifest_sha256: str,
+    process_id: int,
+    rollback_authority_sha256: str,
+    run_envelope_sha256: str,
+) -> bytes:
+    if isinstance(process_id, bool) or not isinstance(process_id, int) or process_id <= 0:
+        raise TrainingRunnerBlocked("runner launch process identity is invalid")
+    body = {
+        "command": "run-training",
+        "launch_manifest_sha256": _digest(
+            manifest_sha256, "runner launch manifest"
+        ),
+        "process_id": process_id,
+        "rollback_authority_sha256": _digest(
+            rollback_authority_sha256, "runner launch rollback authority"
+        ),
+        "run_envelope_sha256": _digest(
+            run_envelope_sha256, "runner launch envelope"
+        ),
+        "schema_version": RUNNER_LAUNCH_MARKER_SCHEMA_VERSION,
+    }
+    return canonical_json_bytes(
+        {**body, "launch_sha256": canonical_json_sha256(body)}
+    )
+
+
+def _validated_original_runner_launch(
+    payload: bytes,
+    *,
+    manifest_sha256: str,
+    rollback_authority_sha256: str,
+    run_envelope_sha256: str,
+) -> dict[str, Any]:
+    if not isinstance(payload, bytes):
+        raise TrainingRunnerBlocked("original runner launch is invalid")
+    launch = _parse_canonical_mapping(payload, "original runner launch")
+    _fields(
+        launch,
+        {
+            "command",
+            "launch_manifest_sha256",
+            "launch_sha256",
+            "process_id",
+            "rollback_authority_sha256",
+            "run_envelope_sha256",
+            "schema_version",
+        },
+        "original runner launch",
+    )
+    body = {key: value for key, value in launch.items() if key != "launch_sha256"}
+    if (
+        launch["command"] != "run-training"
+        or launch["schema_version"] != RUNNER_LAUNCH_MARKER_SCHEMA_VERSION
+        or launch["launch_manifest_sha256"] != manifest_sha256
+        or launch["rollback_authority_sha256"] != rollback_authority_sha256
+        or launch["run_envelope_sha256"] != run_envelope_sha256
+        or launch["launch_sha256"] != canonical_json_sha256(body)
+        or isinstance(launch["process_id"], bool)
+        or not isinstance(launch["process_id"], int)
+        or launch["process_id"] <= 0
+    ):
+        raise TrainingRunnerBlocked("original runner launch differs")
+    return launch
+
+
+def _validated_reopen_observation(
+    value: Mapping[str, Any],
+    *,
+    expected_context_identity: Mapping[str, Any],
+    process_alive: Callable[[int], bool],
+) -> dict[str, Any]:
+    observation = _mapping(value, "read-only training reopen observation")
+    _fields(
+        observation,
+        {"classification", "recovery"},
+        "read-only training reopen observation",
+    )
+    classification = _mapping(
+        observation["classification"], "read-only reopen classification"
+    )
+    recovery = _mapping(observation["recovery"], "read-only reopen recovery")
+    context_identity = _mapping(
+        expected_context_identity, "expected reopen context identity"
+    )
+    verdict = classification.get("verdict")
+    if verdict == "pre_seed_setup_reopen":
+        _fields(
+            classification,
+            {"debited_accesses", "identity", "verdict"},
+            "read-only setup reopen classification",
+        )
+        if classification["debited_accesses"] != 0:
+            raise TrainingRunnerBlocked("read-only setup reopen prefix differs")
+    elif verdict == "complete_checkpoint_continuation":
+        _fields(
+            classification,
+            {
+                "checkpoint_sha256",
+                "completed_pairs",
+                "debited_accesses",
+                "identity",
+                "next_chunk_index",
+                "verdict",
+            },
+            "read-only continuation classification",
+        )
+        _digest(
+            classification["checkpoint_sha256"],
+            "read-only continuation checkpoint",
+        )
+        index = classification["next_chunk_index"]
+        if (
+            isinstance(index, bool)
+            or not isinstance(index, int)
+            or not 1 <= index < 8
+            or classification["completed_pairs"] != index * 64
+            or classification["debited_accesses"] != index * 128
+        ):
+            raise TrainingRunnerBlocked("read-only continuation index differs")
+    else:
+        raise TrainingRunnerBlocked("read-only training reopen verdict differs")
+    if classification["identity"] != context_identity:
+        raise TrainingRunnerBlocked("read-only reopen context identity differs")
+
+    mode = recovery.get("mode")
+    if mode == "fresh_output":
+        _fields(recovery, {"mode"}, "fresh output recovery")
+        if verdict != "pre_seed_setup_reopen":
+            raise TrainingRunnerBlocked("continuation cannot use fresh output")
+    elif mode == "dead_owner_reclaim":
+        _fields(
+            recovery,
+            {
+                "lease_sha256",
+                "mode",
+                "old_owner",
+                "prefix_sha256",
+                "runner_launch",
+            },
+            "dead owner recovery",
+        )
+        _digest(recovery["lease_sha256"], "dead owner lease")
+        prefix_sha256 = _digest(recovery["prefix_sha256"], "dead owner prefix")
+        old_owner = _mapping(recovery["old_owner"], "dead lease owner")
+        runner_launch = _mapping(
+            recovery["runner_launch"], "dead owner runner launch"
+        )
+        launch_state = runner_launch.get("state")
+        if launch_state == "absent":
+            _fields(runner_launch, {"state"}, "absent runner launch")
+            if verdict == "complete_checkpoint_continuation":
+                raise TrainingRunnerBlocked(
+                    "continuation lacks an original runner launch"
+                )
+        elif launch_state == "present":
+            _fields(
+                runner_launch,
+                {"sha256", "state"},
+                "present runner launch",
+            )
+            _digest(runner_launch["sha256"], "dead owner runner launch")
+        else:
+            raise TrainingRunnerBlocked("dead owner runner launch state differs")
+        _fields(
+            old_owner,
+            {"acquired_monotonic", "child_process_id", "token"},
+            "dead lease owner",
+        )
+        old_process_id = old_owner.get("child_process_id")
+        acquired_monotonic = old_owner.get("acquired_monotonic")
+        if (
+            isinstance(old_process_id, bool)
+            or not isinstance(old_process_id, int)
+            or old_process_id <= 0
+            or isinstance(acquired_monotonic, bool)
+            or not isinstance(acquired_monotonic, (int, float))
+            or not math.isfinite(float(acquired_monotonic))
+            or acquired_monotonic < 0
+            or not isinstance(old_owner.get("token"), str)
+            or re.fullmatch(r"[0-9a-f]{32}", old_owner["token"]) is None
+        ):
+            raise TrainingRunnerBlocked("dead lease owner identity differs")
+        expected_prefix_sha256 = canonical_json_sha256(
+            {
+                "classification": classification,
+                "context_identity": context_identity,
+            }
+        )
+        if prefix_sha256 != expected_prefix_sha256:
+            raise TrainingRunnerBlocked("dead owner prefix identity differs")
+        try:
+            old_owner_alive = process_alive(old_process_id)
+        except Exception as exc:
+            raise TrainingRunnerBlocked("dead lease owner liveness failed") from exc
+        if old_owner_alive is not False:
+            raise TrainingRunnerBlocked("observed lease owner is not dead")
+    else:
+        raise TrainingRunnerBlocked("read-only reopen recovery mode differs")
+    return {
+        "classification": copy.deepcopy(classification),
+        "recovery": copy.deepcopy(recovery),
+    }
+
+
+def _validated_lease_owner(value: object, label: str) -> dict[str, Any]:
+    owner = _mapping(value, label)
+    _fields(
+        owner,
+        {"acquired_monotonic", "child_process_id", "token"},
+        label,
+    )
+    acquired_monotonic = owner["acquired_monotonic"]
+    process_id = owner["child_process_id"]
+    if (
+        isinstance(acquired_monotonic, bool)
+        or not isinstance(acquired_monotonic, (int, float))
+        or not math.isfinite(float(acquired_monotonic))
+        or acquired_monotonic < 0
+        or isinstance(process_id, bool)
+        or not isinstance(process_id, int)
+        or process_id <= 0
+        or not isinstance(owner["token"], str)
+        or re.fullmatch(r"[0-9a-f]{32}", owner["token"]) is None
+    ):
+        raise TrainingRunnerBlocked(f"{label} identity differs")
+    return owner
+
+
+def _execute_training_lifecycle(
+    *,
+    control_api: Any,
+    registered_inputs_loader: Callable[[], Mapping[str, Any]],
+    context_builder: Callable[[Mapping[str, Any]], Any],
+    context_identity_observer: Callable[[Any], Mapping[str, Any]],
+    reopen_observer: Callable[
+        [Path, Any, Callable[[int], bool]], Mapping[str, Any]
+    ],
+    lease_factory: Callable[
+        [
+            Path,
+            Any,
+            Mapping[str, Any],
+            int,
+            Callable[[int], bool],
+            Callable[[], float],
+        ],
+        Any,
+    ],
+    runtime_loader: Callable[[], Any],
+    environment_factory_loader: Callable[[], Callable[[int], Any]],
+    checkpoint_reader: Callable[[Path], bytes],
+    launch_marker_reader: Callable[[Path], bytes],
+    output_root: Path | str,
+    manifest_sha256: str,
+    run_envelope_sha256: str,
+    rollback_authority_sha256: str,
+    process_id: int,
+    process_alive: Callable[[int], bool],
+    deadline: float,
+    clock: Callable[[], float],
+    closeout: Callable[[str, Mapping[str, Any]], Any],
+) -> dict[str, Any]:
+    """Own one authorized lease and lazily compose setup or exact continuation."""
+    callbacks = (
+        registered_inputs_loader,
+        context_builder,
+        context_identity_observer,
+        reopen_observer,
+        lease_factory,
+        runtime_loader,
+        environment_factory_loader,
+        checkpoint_reader,
+        launch_marker_reader,
+        process_alive,
+        clock,
+        closeout,
+    )
+    if not all(callable(callback) for callback in callbacks):
+        raise TrainingRunnerBlocked("training lifecycle callback is invalid")
+    if isinstance(process_id, bool) or not isinstance(process_id, int) or process_id <= 0:
+        raise TrainingRunnerBlocked("training lifecycle process identity is invalid")
+    output = Path(
+        _absolute_path(
+            Path(output_root).resolve().as_posix(), "training lifecycle output"
+        )
+    )
+    manifest_digest = _digest(manifest_sha256, "training launch manifest")
+    envelope_digest = _digest(run_envelope_sha256, "training run envelope")
+    rollback_digest = _digest(
+        rollback_authority_sha256, "training rollback authority"
+    )
+
+    registered = _mapping(
+        registered_inputs_loader(), "registered training lifecycle inputs"
+    )
+    authority = _mapping(registered.get("authority"), "registered runner authority")
+    execution_registration = _mapping(
+        registered.get("execution_registration"), "execution registration view"
+    )
+    training_seeds = registered.get("training_seeds")
+    if (
+        authority.get("validated") is not True
+        or authority.get("command") != "run-training"
+        or authority.get("envelope_sha256") != envelope_digest
+        or execution_registration.get("rollback_authority_sha256")
+        != rollback_digest
+        or not isinstance(training_seeds, tuple)
+        or len(training_seeds) != 512
+        or training_seeds != tuple(sorted(set(training_seeds)))
+    ):
+        raise TrainingRunnerBlocked("registered training lifecycle inputs differ")
+    context = context_builder(copy.deepcopy(execution_registration))
+    expected_context_identity = _mapping(
+        context_identity_observer(context), "training lifecycle context identity"
+    )
+    observed_reopen = _validated_reopen_observation(
+        reopen_observer(output, context, process_alive),
+        expected_context_identity=expected_context_identity,
+        process_alive=process_alive,
+    )
+    observed_classification = observed_reopen["classification"]
+    observed_reopen_sha256 = canonical_json_sha256(observed_reopen)
+    verdict = observed_classification["verdict"]
+    recovery = observed_reopen["recovery"]
+    observed_launch = recovery.get("runner_launch")
+    if observed_launch is not None and observed_launch["state"] == "present":
+        original_launch_payload = launch_marker_reader(output / "runner_launch.json")
+        if (
+            not isinstance(original_launch_payload, bytes)
+            or hashlib.sha256(original_launch_payload).hexdigest()
+            != observed_launch["sha256"]
+        ):
+            raise TrainingRunnerBlocked("observed runner launch binding differs")
+        original_launch = _validated_original_runner_launch(
+            original_launch_payload,
+            manifest_sha256=manifest_digest,
+            rollback_authority_sha256=rollback_digest,
+            run_envelope_sha256=envelope_digest,
+        )
+    else:
+        original_launch = None
+    lease_handle = lease_factory(
+        output,
+        context,
+        copy.deepcopy(observed_reopen),
+        process_id,
+        process_alive,
+        clock,
+    )
+    with lease_handle as lease:
+        if (
+            getattr(lease, "acquisition_mode", None) != recovery["mode"]
+            or getattr(lease, "acquisition_observation_sha256", None)
+            != observed_reopen_sha256
+        ):
+            raise TrainingRunnerBlocked(
+                "training lease compare-and-acquire proof differs"
+            )
+        current_owner = _validated_lease_owner(
+            getattr(lease, "owner", None), "current training lease owner"
+        )
+        if current_owner["child_process_id"] != process_id:
+            raise TrainingRunnerBlocked("current training lease owner differs")
+        if recovery["mode"] == "dead_owner_reclaim":
+            if (
+                getattr(lease, "reclaimed_owner", None) != recovery["old_owner"]
+                or getattr(lease, "reclaimed_lease_sha256", None)
+                != recovery["lease_sha256"]
+                or getattr(lease, "reclaimed_prefix_sha256", None)
+                != recovery["prefix_sha256"]
+            ):
+                raise TrainingRunnerBlocked("training lease recovery proof differs")
+        else:
+            if any(
+                getattr(lease, name, None) is not None
+                for name in (
+                    "reclaimed_owner",
+                    "reclaimed_lease_sha256",
+                    "reclaimed_prefix_sha256",
+                )
+            ):
+                raise TrainingRunnerBlocked("fresh training lease reclaimed evidence")
+            control_api.initialize_access_journal(context, lease)
+            control_api.initialize_resource_ledger(context, lease)
+        reopen = _mapping(
+            control_api.classify_execution_reopen(context, lease),
+            "training lifecycle reopen",
+        )
+        if reopen != observed_classification:
+            raise TrainingRunnerBlocked("training lifecycle reopen changed after lease")
+        if recovery["mode"] == "dead_owner_reclaim":
+            control_api.initialize_access_journal(context, lease)
+            control_api.initialize_resource_ledger(context, lease)
+        if verdict == "complete_checkpoint_continuation":
+            continuation = _mapping(
+                control_api.authorize_training_continuation(context, lease),
+                "training continuation authorization",
+            )
+            if any(
+                continuation.get(name) != expected
+                for name, expected in observed_classification.items()
+            ):
+                raise TrainingRunnerBlocked(
+                    "training continuation authorization differs"
+                )
+        else:
+            continuation = None
+
+        if verdict == "pre_seed_setup_reopen" and original_launch is None:
+            control_api.publish_managed_artifact(
+                context,
+                lease,
+                relative_path="runner_launch.json",
+                payload=_runner_launch_payload(
+                    manifest_sha256=manifest_digest,
+                    process_id=process_id,
+                    rollback_authority_sha256=rollback_digest,
+                    run_envelope_sha256=envelope_digest,
+                ),
+            )
+        else:
+            attempt_body = {
+                "current_owner": copy.deepcopy(current_owner),
+                "launch_manifest_sha256": manifest_digest,
+                "original_launch_sha256": original_launch["launch_sha256"],
+                "prior_lease_sha256": recovery["lease_sha256"],
+                "prior_owner": copy.deepcopy(recovery["old_owner"]),
+                "prior_prefix_sha256": recovery["prefix_sha256"],
+                "rollback_authority_sha256": rollback_digest,
+                "run_envelope_sha256": envelope_digest,
+                "verdict": verdict,
+            }
+            if continuation is None:
+                attempt_body["schema_version"] = REOPEN_ATTEMPT_SCHEMA_VERSION
+                attempt_directory = "reopen_attempts"
+            else:
+                attempt_body.update(
+                    {
+                        "checkpoint_sha256": continuation["checkpoint_sha256"],
+                        "continuation_authorization_sha256": canonical_json_sha256(
+                            continuation
+                        ),
+                        "next_chunk_index": continuation["next_chunk_index"],
+                        "schema_version": CONTINUATION_ATTEMPT_SCHEMA_VERSION,
+                    }
+                )
+                attempt_directory = "continuation_attempts"
+            attempt = {
+                **attempt_body,
+                "attempt_sha256": canonical_json_sha256(attempt_body),
+            }
+            control_api.publish_managed_artifact(
+                context,
+                lease,
+                relative_path=(
+                    f"{attempt_directory}/{attempt['attempt_sha256']}.json"
+                ),
+                payload=canonical_json_bytes(attempt),
+            )
+        runtime_api = runtime_loader()
+        if verdict == "pre_seed_setup_reopen":
+            runtime_state = runtime_api.initialize_paired_training_runtime()
+            initial_checkpoint = runtime_api.encode_paired_training_checkpoint(
+                runtime_state
+            )
+            initial_snapshot = _checkpoint_snapshot(initial_checkpoint)
+            if initial_snapshot["coordinates"]["next_chunk_index"] != 0:
+                raise TrainingRunnerBlocked("training setup is not zero progress")
+            control_api.publish_write_once_marker(
+                context,
+                lease,
+                kind="bootstrap",
+                payload={
+                    "checkpoint_sha256": initial_snapshot["checkpoint_sha256"],
+                    "component_sha256": initial_snapshot["component_sha256"],
+                },
+            )
+            control_api.publish_write_once_marker(
+                context,
+                lease,
+                kind="stage",
+                payload={"stage": "training", "status": "started"},
+            )
+        else:
+            index = continuation["next_chunk_index"]
+            if isinstance(index, bool) or not isinstance(index, int) or not 1 <= index < 8:
+                raise TrainingRunnerBlocked("training continuation index differs")
+            checkpoint_path = output / "runtime_checkpoints" / f"chunk_{index:04d}.json"
+            checkpoint = checkpoint_reader(checkpoint_path)
+            if (
+                not isinstance(checkpoint, bytes)
+                or hashlib.sha256(checkpoint).hexdigest()
+                != continuation["checkpoint_sha256"]
+            ):
+                raise TrainingRunnerBlocked("training continuation checkpoint differs")
+            runtime_state = runtime_api.restore_paired_training_checkpoint(checkpoint)
+            if runtime_api.encode_paired_training_checkpoint(runtime_state) != checkpoint:
+                raise TrainingRunnerBlocked("training continuation re-encoding differs")
+            restored = _checkpoint_snapshot(checkpoint)
+            if restored["coordinates"]["next_chunk_index"] != index:
+                raise TrainingRunnerBlocked("training continuation coordinate differs")
+
+        environment_factory = environment_factory_loader()
+        if not callable(environment_factory):
+            raise TrainingRunnerBlocked("training environment factory is invalid")
+        return _run_training_schedule(
+            control_api=control_api,
+            runtime_api=runtime_api,
+            context=context,
+            lease=lease,
+            runtime_state=runtime_state,
+            training_seeds=training_seeds,
+            environment_factory=environment_factory,
+            deadline=deadline,
+            clock=clock,
+            closeout=closeout,
+        )
 
 
 def _default_artifact_reader(path: Path) -> bytes:
