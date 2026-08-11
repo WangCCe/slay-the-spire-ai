@@ -132,6 +132,26 @@ ARTIFACT_NAMES = (
     "training_request",
     "training_request_review",
 )
+EXPECTED_SOURCE_ARTIFACT_PATHS = {
+    "control_source": (
+        "analysis_scripts/noncombat_card_acceptance_empirical_successor_experiment.py"
+    ),
+    "registration_producer_source": (
+        "analysis_scripts/noncombat_card_acceptance_empirical_successor_seed_inventory.py"
+    ),
+    "registration_verifier_source": (
+        "analysis_scripts/verify_noncombat_card_acceptance_empirical_successor.py"
+    ),
+    "runner_source": (
+        "analysis_scripts/noncombat_card_acceptance_empirical_successor_training_runner.py"
+    ),
+    "runner_verifier_source": (
+        "analysis_scripts/verify_noncombat_card_acceptance_empirical_successor_training_runner.py"
+    ),
+    "runtime_source": (
+        "analysis_scripts/noncombat_card_acceptance_empirical_successor_runtime.py"
+    ),
+}
 FORBIDDEN_IMPORT_PREFIXES = (
     "torch",
     "sts_lightspeed_noncombat_adapter",
@@ -726,6 +746,14 @@ def _normalize_launch_definition(value: object) -> dict[str, Any]:
         name: _artifact_binding(artifacts_value[name], f"artifact {name}")
         for name in ARTIFACT_NAMES
     }
+    if any(
+        artifacts[name]["path"] != path
+        for name, path in EXPECTED_SOURCE_ARTIFACT_PATHS.items()
+    ):
+        raise TrainingRunnerBlocked("launch manifest source path differs")
+    artifact_paths = [binding["path"] for binding in artifacts.values()]
+    if len(artifact_paths) != len(set(artifact_paths)):
+        raise TrainingRunnerBlocked("launch manifest artifact paths are duplicated")
     runner_path = (Path(repository_root) / artifacts["runner_source"]["path"]).resolve().as_posix()
     interpreter = _absolute_path(definition["interpreter"], "runner interpreter")
     commands_value = _mapping(definition["commands"], "runner commands")

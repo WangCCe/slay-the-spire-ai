@@ -40,6 +40,26 @@ ARTIFACT_NAMES = (
     "training_request",
     "training_request_review",
 )
+EXPECTED_SOURCE_ARTIFACT_PATHS = {
+    "control_source": (
+        "analysis_scripts/noncombat_card_acceptance_empirical_successor_experiment.py"
+    ),
+    "registration_producer_source": (
+        "analysis_scripts/noncombat_card_acceptance_empirical_successor_seed_inventory.py"
+    ),
+    "registration_verifier_source": (
+        "analysis_scripts/verify_noncombat_card_acceptance_empirical_successor.py"
+    ),
+    "runner_source": (
+        "analysis_scripts/noncombat_card_acceptance_empirical_successor_training_runner.py"
+    ),
+    "runner_verifier_source": (
+        "analysis_scripts/verify_noncombat_card_acceptance_empirical_successor_training_runner.py"
+    ),
+    "runtime_source": (
+        "analysis_scripts/noncombat_card_acceptance_empirical_successor_runtime.py"
+    ),
+}
 
 
 def _is_forbidden_runner_import(name: str) -> bool:
@@ -255,7 +275,10 @@ def _fixture(root: str = "D:/synthetic/card-acceptance-runner"):
         "training_request_review": b"reviewed: no findings\n",
     }
     artifacts = {
-        name: _binding(f"synthetic/{name}.bin", payloads[name])
+        name: _binding(
+            EXPECTED_SOURCE_ARTIFACT_PATHS.get(name, f"synthetic/{name}.bin"),
+            payloads[name],
+        )
         for name in ARTIFACT_NAMES
     }
     interpreter = f"{root}/python/python.exe"
@@ -439,6 +462,7 @@ def test_launch_manifest_is_canonical_repeatable_and_self_digested():
     runner, definition, _payloads = _fixture()
     original = copy.deepcopy(definition)
 
+    assert runner.EXPECTED_SOURCE_ARTIFACT_PATHS == EXPECTED_SOURCE_ARTIFACT_PATHS
     first = runner.build_launch_manifest(definition)
     second = runner.build_launch_manifest(copy.deepcopy(definition))
 
@@ -448,6 +472,34 @@ def test_launch_manifest_is_canonical_repeatable_and_self_digested():
         {key: value for key, value in first.items() if key != "manifest_sha256"}
     )
     assert runner.validate_launch_manifest(first) == first
+
+
+@pytest.mark.parametrize("artifact_name", tuple(EXPECTED_SOURCE_ARTIFACT_PATHS))
+def test_launch_manifest_rejects_bound_source_path_drift(artifact_name):
+    runner, definition, payloads = _fixture()
+    definition["artifacts"][artifact_name] = _binding(
+        f"drifted/{artifact_name}.py",
+        payloads[artifact_name],
+    )
+
+    with pytest.raises(
+        runner.TrainingRunnerBlocked,
+        match="launch manifest source path differs",
+    ):
+        runner.build_launch_manifest(definition)
+
+
+def test_launch_manifest_rejects_duplicate_artifact_paths():
+    runner, definition, _payloads = _fixture()
+    definition["artifacts"]["training_request_review"]["path"] = definition[
+        "artifacts"
+    ]["training_request"]["path"]
+
+    with pytest.raises(
+        runner.TrainingRunnerBlocked,
+        match="launch manifest artifact paths are duplicated",
+    ):
+        runner.build_launch_manifest(definition)
 
 
 def test_launch_manifest_parser_rejects_duplicate_unknown_and_noncanonical_bytes():
@@ -2225,6 +2277,7 @@ def test_locked_external_binding_denies_write_until_native_load_finishes(tmp_pat
 
 def test_qualification_composition_composes_receipt_validation_and_context(
     monkeypatch,
+    tmp_path,
 ):
     (
         runner,
@@ -2235,7 +2288,10 @@ def test_qualification_composition_composes_receipt_validation_and_context(
         manifest,
         _composite,
         request,
-    ) = _registered_input_fixture(include_request=True)
+    ) = _registered_input_fixture(
+        include_request=True,
+        root=(tmp_path / "registered-inputs").resolve().as_posix(),
+    )
     producer_payload = b"""import json
 def parse_canonical_mapping_bytes(payload, label):
     return json.loads(payload)
@@ -3048,7 +3104,11 @@ def test_training_schedule_preserves_partial_prefix_without_closeout_or_checkpoi
     ]
 
 
-def _registered_input_fixture(*, include_request=False):
+def _registered_input_fixture(
+    *,
+    include_request=False,
+    root="D:/synthetic/registered-inputs",
+):
     runner = _runner()
     inventory = {
         "authority_evidence": {
@@ -3080,7 +3140,6 @@ def _registered_input_fixture(*, include_request=False):
         "registration_sha256": runner.canonical_json_sha256(registration_body),
     }
     registration_payload = runner.canonical_json_bytes(registration)
-    root = "D:/synthetic/registered-inputs"
     _base_runner, definition, payloads = _fixture(root)
     control = _control()
     source_inventory_binding = {
