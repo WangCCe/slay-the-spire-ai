@@ -7,6 +7,7 @@ import importlib
 import json
 from pathlib import Path
 import sys
+from types import SimpleNamespace
 
 import pytest
 
@@ -708,6 +709,296 @@ def test_external_authority_requires_composite_in_approval_and_observation():
             authorization=authorization,
             approval=approval,
         )
+
+
+def _fake_runtime_checkpoint(runner, chunk_index: int, *, stopped=False) -> bytes:
+    return runner.canonical_json_bytes(
+        {
+            "bootstrap": {
+                "architecture": {"hidden_dim": 64},
+                "generators": {
+                    "candidate_card": {"chunk": chunk_index, "slot": 1},
+                    "candidate_noncard": {"chunk": chunk_index, "slot": 2},
+                    "control_card": {"chunk": chunk_index, "slot": 3},
+                    "control_noncard": {"chunk": chunk_index, "slot": 4},
+                },
+                "models": {
+                    "candidate": {"chunk": chunk_index, "weights": [1, 2]},
+                    "control": {"chunk": chunk_index, "weights": [3, 4]},
+                },
+                "schema_version": "synthetic-bootstrap-v1",
+            },
+            "completed_chunk_summaries": [
+                {"chunk_index": index} for index in range(chunk_index)
+            ],
+            "coordinates": {
+                "candidate_optimizer_updates": chunk_index,
+                "completed_decisions": chunk_index * 10,
+                "completed_pairs": chunk_index * 64,
+                "control_optimizer_updates": chunk_index,
+                "next_chunk_index": chunk_index,
+                "training_environment_accesses": chunk_index * 128,
+                "training_optimizer_steps": chunk_index * 2,
+            },
+            "optimizers": {
+                "candidate": {"chunk": chunk_index, "state": "candidate"},
+                "control": {"chunk": chunk_index, "state": "control"},
+            },
+            "schema_version": "synthetic-training-checkpoint-v1",
+            "stopped_for_family_saturation": stopped,
+        }
+    )
+
+
+class _FakeTrainingRuntimeApi:
+    def __init__(self, runner, *, saturation_chunk=None, fail_after_debits=None):
+        self.runner = runner
+        self.saturation_chunk = saturation_chunk
+        self.fail_after_debits = fail_after_debits
+        self.debits_seen = 0
+        self.chunk_calls = []
+
+    def encode_paired_training_checkpoint(self, state):
+        return _fake_runtime_checkpoint(
+            self.runner,
+            state["chunk_index"],
+            stopped=state.get("stopped", False),
+        )
+
+    def collect_and_complete_paired_training_chunk(
+        self,
+        state,
+        *,
+        environment_factory,
+        seeds,
+        chunk_index,
+        before_environment,
+        after_environment,
+        deadline,
+        clock,
+    ):
+        assert tuple(seeds) == tuple(range(chunk_index * 64, (chunk_index + 1) * 64))
+        assert deadline == 100.0
+        assert clock() == 0.0
+        self.chunk_calls.append((chunk_index, tuple(seeds)))
+        for seed in seeds:
+            for arm in ("candidate", "control"):
+                before_environment(arm, seed)
+                self.debits_seen += 1
+                if self.fail_after_debits == self.debits_seen:
+                    raise RuntimeError("synthetic partial chunk failure")
+                environment_factory(seed)
+                after_environment(arm, seed)
+        state["chunk_index"] += 1
+        stop = state["chunk_index"] == self.saturation_chunk
+        state["stopped"] = stop
+        checkpoint = self.encode_paired_training_checkpoint(state)
+        return SimpleNamespace(
+            checkpoint=checkpoint,
+            saturation={"stop": stop},
+            seeds=tuple(seeds),
+        )
+
+    def training_progress_verdict(self, state):
+        if state["chunk_index"] == self.saturation_chunk:
+            return "experiment_stopped_during_training_for_family_saturation"
+        if state["chunk_index"] == 8:
+            return "training_completed_without_family_saturation"
+        return "training_incomplete"
+
+
+class _FakeTrainingControlApi:
+    def __init__(self, runner):
+        self.runner = runner
+        self.debits = []
+        self.environments = []
+        self.artifacts = []
+        self.resource_advances = []
+        self.complete_checkpoints = []
+
+    def publish_managed_artifact(
+        self, _context, _lease, *, relative_path, payload
+    ):
+        binding = {
+            "path": relative_path,
+            "sha256": hashlib.sha256(payload).hexdigest(),
+            "size_bytes": len(payload),
+        }
+        self.artifacts.append((relative_path, payload, binding))
+        return binding
+
+    def perform_journaled_environment_access(
+        self, _context, _lease, *, seed, arm, purpose, access
+    ):
+        assert purpose == "training"
+        self.debits.append((arm, seed))
+        return access()
+
+    def reconcile_resource_ledger(self, _context, _lease):
+        return {
+            "resources": {
+                "charged_seconds": len(self.debits) / 10.0,
+                "environment_accesses": len(self.debits),
+                "optimizer_steps": len(self.complete_checkpoints) * 2,
+                "shadow_optimizer_steps": 0,
+            }
+        }
+
+    def advance_resource_ledger(self, _context, _lease, **resources):
+        self.resource_advances.append(copy.deepcopy(resources))
+        return {"resources": copy.deepcopy(resources)}
+
+    def publish_complete_training_checkpoint(
+        self, _context, _lease, *, binding
+    ):
+        self.complete_checkpoints.append(copy.deepcopy(binding))
+        return {"binding": copy.deepcopy(binding)}
+
+
+def _run_fake_training_schedule(
+    *, saturation_chunk=None, fail_after_debits=None, start_chunk=0
+):
+    runner = _runner()
+    control = _FakeTrainingControlApi(runner)
+    runtime = _FakeTrainingRuntimeApi(
+        runner,
+        saturation_chunk=saturation_chunk,
+        fail_after_debits=fail_after_debits,
+    )
+    state = {"chunk_index": start_chunk}
+    closeouts = []
+    result = runner._run_training_schedule(
+        control_api=control,
+        runtime_api=runtime,
+        context=object(),
+        lease=object(),
+        runtime_state=state,
+        training_seeds=tuple(range(512)),
+        environment_factory=lambda seed: control.environments.append(seed),
+        deadline=100.0,
+        clock=lambda: 0.0,
+        closeout=lambda verdict, snapshot: closeouts.append(
+            (verdict, copy.deepcopy(snapshot))
+        ),
+    )
+    return runner, control, runtime, state, closeouts, result
+
+
+def test_training_schedule_publishes_zero_checkpoint_and_eight_linked_chunks():
+    runner, control, runtime, state, closeouts, result = _run_fake_training_schedule()
+
+    assert state["chunk_index"] == 8
+    assert len(runtime.chunk_calls) == 8
+    assert control.debits == [
+        (arm, seed) for seed in range(512) for arm in ("candidate", "control")
+    ]
+    assert control.environments == [seed for seed in range(512) for _ in range(2)]
+    assert len(control.complete_checkpoints) == 8
+    assert closeouts[0][0] == "training_completed_without_family_saturation"
+    assert result["completed_chunks"] == 8
+    assert result["environment_debits"] == 1024
+
+    artifacts = {path: payload for path, payload, _binding in control.artifacts}
+    assert "runtime_checkpoints/chunk_0000.json" in artifacts
+    assert "checkpoint_chains/initial.json" in artifacts
+    predecessor = artifacts["runtime_checkpoints/chunk_0000.json"]
+    for index in range(1, 9):
+        checkpoint = artifacts[f"runtime_checkpoints/chunk_{index:04d}.json"]
+        chain = json.loads(artifacts[f"checkpoint_chains/chunk_{index:04d}.json"])
+        assert chain["chunk_index"] == index - 1
+        assert chain["seeds"] == list(range((index - 1) * 64, index * 64))
+        assert chain["initial"]["checkpoint_sha256"] == hashlib.sha256(
+            predecessor
+        ).hexdigest()
+        assert chain["final"]["checkpoint_sha256"] == hashlib.sha256(
+            checkpoint
+        ).hexdigest()
+        predecessor = checkpoint
+    assert set(control.complete_checkpoints[-1]["component_sha256"]) == {
+        "candidate_card_generator",
+        "candidate_model",
+        "candidate_noncard_generator",
+        "candidate_optimizer",
+        "control_card_generator",
+        "control_model",
+        "control_noncard_generator",
+        "control_optimizer",
+    }
+    final_checkpoint = json.loads(predecessor)
+    assert control.complete_checkpoints[-1]["component_sha256"][
+        "candidate_model"
+    ] == runner.canonical_json_sha256(
+        final_checkpoint["bootstrap"]["models"]["candidate"]
+    )
+
+
+def test_training_schedule_continues_only_after_exact_complete_predecessor():
+    _runner_module, control, runtime, state, closeouts, result = (
+        _run_fake_training_schedule(start_chunk=1)
+    )
+
+    assert state["chunk_index"] == 8
+    assert [index for index, _seeds in runtime.chunk_calls] == list(range(1, 8))
+    assert control.debits[0] == ("candidate", 64)
+    assert control.debits[-1] == ("control", 511)
+    assert len(control.debits) == 896
+    assert len(control.complete_checkpoints) == 7
+    assert closeouts[0][0] == "training_completed_without_family_saturation"
+    assert result["completed_chunks"] == 8
+    assert not any(
+        path == "checkpoint_chains/initial.json"
+        for path, _payload, _binding in control.artifacts
+    )
+
+
+def test_training_schedule_stops_and_closes_at_family_saturation_boundary():
+    _runner_module, control, runtime, state, closeouts, result = (
+        _run_fake_training_schedule(saturation_chunk=4)
+    )
+
+    assert state["chunk_index"] == 4
+    assert len(runtime.chunk_calls) == 4
+    assert len(control.debits) == 512
+    assert len(control.complete_checkpoints) == 4
+    assert closeouts[0][0] == (
+        "experiment_stopped_during_training_for_family_saturation"
+    )
+    assert result["completed_chunks"] == 4
+    assert not any(
+        path.endswith("chunk_0005.json") for path, _payload, _binding in control.artifacts
+    )
+
+
+def test_training_schedule_preserves_partial_prefix_without_closeout_or_checkpoint():
+    runner = _runner()
+    control = _FakeTrainingControlApi(runner)
+    runtime = _FakeTrainingRuntimeApi(runner, fail_after_debits=3)
+    state = {"chunk_index": 0}
+    closeouts = []
+
+    with pytest.raises(RuntimeError, match="partial chunk"):
+        runner._run_training_schedule(
+            control_api=control,
+            runtime_api=runtime,
+            context=object(),
+            lease=object(),
+            runtime_state=state,
+            training_seeds=tuple(range(512)),
+            environment_factory=lambda seed: control.environments.append(seed),
+            deadline=100.0,
+            clock=lambda: 0.0,
+            closeout=lambda verdict, snapshot: closeouts.append(
+                (verdict, copy.deepcopy(snapshot))
+            ),
+        )
+
+    assert control.debits == [("candidate", 0), ("control", 0), ("candidate", 1)]
+    assert closeouts == []
+    assert control.complete_checkpoints == []
+    assert [path for path, _payload, _binding in control.artifacts] == [
+        "runtime_checkpoints/chunk_0000.json",
+        "checkpoint_chains/initial.json",
+    ]
 
 
 def _preflight_fixture(tmp_path: Path):

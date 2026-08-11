@@ -31,6 +31,12 @@ COMMAND_ENVELOPE_SCHEMA_VERSION = (
 PREFLIGHT_SCHEMA_VERSION = (
     "noncombat-card-acceptance-training-runner-source-preflight-v1"
 )
+INITIAL_CHECKPOINT_SCHEMA_VERSION = (
+    "noncombat-card-acceptance-training-runner-initial-checkpoint-v1"
+)
+CHECKPOINT_CHAIN_SCHEMA_VERSION = (
+    "noncombat-card-acceptance-training-runner-checkpoint-chain-v1"
+)
 PUSHED_REF = "origin/master"
 COMMAND_NAMES = ("preflight", "run-training", "terminalize-dead-owner")
 STANDING_COMPOSITE_BINDING_PREFIX = (
@@ -866,6 +872,303 @@ def validate_authorized_command_envelope(
             "authorization_sha256"
         ],
         "validated": True,
+    }
+
+
+def _checkpoint_snapshot(payload: bytes) -> dict[str, Any]:
+    checkpoint = _parse_canonical_mapping(payload, "paired training checkpoint")
+    _fields(
+        checkpoint,
+        {
+            "bootstrap",
+            "completed_chunk_summaries",
+            "coordinates",
+            "optimizers",
+            "schema_version",
+            "stopped_for_family_saturation",
+        },
+        "paired training checkpoint",
+    )
+    bootstrap = _mapping(checkpoint["bootstrap"], "checkpoint bootstrap")
+    _fields(
+        bootstrap,
+        {"architecture", "generators", "models", "schema_version"},
+        "checkpoint bootstrap",
+    )
+    models = _mapping(bootstrap["models"], "checkpoint models")
+    _fields(models, {"candidate", "control"}, "checkpoint models")
+    generators = _mapping(bootstrap["generators"], "checkpoint generators")
+    _fields(
+        generators,
+        {
+            "candidate_card",
+            "candidate_noncard",
+            "control_card",
+            "control_noncard",
+        },
+        "checkpoint generators",
+    )
+    optimizers = _mapping(checkpoint["optimizers"], "checkpoint optimizers")
+    _fields(optimizers, {"candidate", "control"}, "checkpoint optimizers")
+    coordinates = _mapping(checkpoint["coordinates"], "checkpoint coordinates")
+    coordinate_names = {
+        "candidate_optimizer_updates",
+        "completed_decisions",
+        "completed_pairs",
+        "control_optimizer_updates",
+        "next_chunk_index",
+        "training_environment_accesses",
+        "training_optimizer_steps",
+    }
+    _fields(coordinates, coordinate_names, "checkpoint coordinates")
+    normalized_coordinates: dict[str, int] = {}
+    for name in coordinate_names:
+        value = coordinates[name]
+        if isinstance(value, bool) or not isinstance(value, int) or value < 0:
+            raise TrainingRunnerBlocked("checkpoint coordinate is invalid")
+        normalized_coordinates[name] = value
+    index = normalized_coordinates["next_chunk_index"]
+    if index > 8 or any(
+        (
+            normalized_coordinates["completed_pairs"] != index * 64,
+            normalized_coordinates["training_environment_accesses"] != index * 128,
+            normalized_coordinates["candidate_optimizer_updates"] != index,
+            normalized_coordinates["control_optimizer_updates"] != index,
+            normalized_coordinates["training_optimizer_steps"] != index * 2,
+        )
+    ):
+        raise TrainingRunnerBlocked("checkpoint coordinate boundary differs")
+    summaries = checkpoint["completed_chunk_summaries"]
+    if not isinstance(summaries, list) or len(summaries) != index:
+        raise TrainingRunnerBlocked("checkpoint chunk summaries differ")
+    if type(checkpoint["stopped_for_family_saturation"]) is not bool:
+        raise TrainingRunnerBlocked("checkpoint saturation flag is invalid")
+    component_sha256 = {
+        "candidate_card_generator": canonical_json_sha256(
+            generators["candidate_card"]
+        ),
+        "candidate_model": canonical_json_sha256(models["candidate"]),
+        "candidate_noncard_generator": canonical_json_sha256(
+            generators["candidate_noncard"]
+        ),
+        "candidate_optimizer": canonical_json_sha256(optimizers["candidate"]),
+        "control_card_generator": canonical_json_sha256(generators["control_card"]),
+        "control_model": canonical_json_sha256(models["control"]),
+        "control_noncard_generator": canonical_json_sha256(
+            generators["control_noncard"]
+        ),
+        "control_optimizer": canonical_json_sha256(optimizers["control"]),
+    }
+    return {
+        "checkpoint_sha256": hashlib.sha256(payload).hexdigest(),
+        "component_sha256": component_sha256,
+        "coordinates": normalized_coordinates,
+        "size_bytes": len(payload),
+        "stopped_for_family_saturation": checkpoint[
+            "stopped_for_family_saturation"
+        ],
+    }
+
+
+def _initial_checkpoint_record(payload: bytes) -> dict[str, Any]:
+    snapshot = _checkpoint_snapshot(payload)
+    if snapshot["coordinates"]["next_chunk_index"] != 0 or snapshot[
+        "stopped_for_family_saturation"
+    ]:
+        raise TrainingRunnerBlocked("initial checkpoint is not zero progress")
+    body = {
+        "checkpoint": snapshot,
+        "schema_version": INITIAL_CHECKPOINT_SCHEMA_VERSION,
+    }
+    return {**body, "initial_checkpoint_sha256": canonical_json_sha256(body)}
+
+
+def _checkpoint_chain_record(
+    *,
+    initial_payload: bytes,
+    final_payload: bytes,
+    chunk_index: int,
+    seeds: Sequence[int],
+) -> dict[str, Any]:
+    if isinstance(chunk_index, bool) or not isinstance(chunk_index, int):
+        raise TrainingRunnerBlocked("checkpoint chain index is invalid")
+    initial = _checkpoint_snapshot(initial_payload)
+    final = _checkpoint_snapshot(final_payload)
+    seed_values = tuple(seeds)
+    if (
+        not 0 <= chunk_index < 8
+        or len(seed_values) != 64
+        or seed_values != tuple(sorted(set(seed_values)))
+        or any(isinstance(seed, bool) or not isinstance(seed, int) or seed < 0 for seed in seed_values)
+        or initial["coordinates"]["next_chunk_index"] != chunk_index
+        or final["coordinates"]["next_chunk_index"] != chunk_index + 1
+    ):
+        raise TrainingRunnerBlocked("checkpoint chain boundary differs")
+    body = {
+        "chunk_index": chunk_index,
+        "final": final,
+        "initial": initial,
+        "schema_version": CHECKPOINT_CHAIN_SCHEMA_VERSION,
+        "seeds": list(seed_values),
+    }
+    return {**body, "chain_sha256": canonical_json_sha256(body)}
+
+
+def _checkpoint_control_binding(snapshot: Mapping[str, Any]) -> dict[str, Any]:
+    coordinates = snapshot["coordinates"]
+    return {
+        "checkpoint_sha256": snapshot["checkpoint_sha256"],
+        "completed_pairs": coordinates["completed_pairs"],
+        "component_sha256": copy.deepcopy(snapshot["component_sha256"]),
+        "next_chunk_index": coordinates["next_chunk_index"],
+        "training_environment_accesses": coordinates[
+            "training_environment_accesses"
+        ],
+        "training_optimizer_steps": coordinates["training_optimizer_steps"],
+    }
+
+
+def _run_training_schedule(
+    *,
+    control_api: Any,
+    runtime_api: Any,
+    context: Any,
+    lease: Any,
+    runtime_state: Any,
+    training_seeds: Sequence[int],
+    environment_factory: Callable[[int], Any],
+    deadline: float,
+    clock: Callable[[], float],
+    closeout: Callable[[str, Mapping[str, Any]], Any],
+) -> dict[str, Any]:
+    """Compose exact per-chunk runtime work under durable control-plane hooks."""
+    seed_values = tuple(training_seeds)
+    if (
+        len(seed_values) != 512
+        or seed_values != tuple(sorted(set(seed_values)))
+        or any(isinstance(seed, bool) or not isinstance(seed, int) or seed < 0 for seed in seed_values)
+    ):
+        raise TrainingRunnerBlocked("training seed schedule differs")
+    if not callable(environment_factory) or not callable(clock) or not callable(closeout):
+        raise TrainingRunnerBlocked("training schedule callback is invalid")
+
+    predecessor = runtime_api.encode_paired_training_checkpoint(runtime_state)
+    predecessor_snapshot = _checkpoint_snapshot(predecessor)
+    start_index = predecessor_snapshot["coordinates"]["next_chunk_index"]
+    if start_index >= 8 or predecessor_snapshot["stopped_for_family_saturation"]:
+        raise TrainingRunnerBlocked("training schedule cannot start from terminal state")
+    control_api.publish_managed_artifact(
+        context,
+        lease,
+        relative_path=f"runtime_checkpoints/chunk_{start_index:04d}.json",
+        payload=predecessor,
+    )
+    if start_index == 0:
+        control_api.publish_managed_artifact(
+            context,
+            lease,
+            relative_path="checkpoint_chains/initial.json",
+            payload=canonical_json_bytes(_initial_checkpoint_record(predecessor)),
+        )
+
+    completed_chunks = start_index
+    final_snapshot = predecessor_snapshot
+    for chunk_index in range(start_index, 8):
+        if runtime_api.encode_paired_training_checkpoint(runtime_state) != predecessor:
+            raise TrainingRunnerBlocked("runtime predecessor checkpoint differs")
+        chunk_seeds = seed_values[chunk_index * 64 : (chunk_index + 1) * 64]
+
+        def before_environment(arm: str, seed: int) -> None:
+            control_api.perform_journaled_environment_access(
+                context,
+                lease,
+                seed=seed,
+                arm=arm,
+                purpose="training",
+                access=lambda: None,
+            )
+
+        def after_environment(_arm: str, _seed: int) -> None:
+            control_api.reconcile_resource_ledger(context, lease)
+
+        try:
+            completed = runtime_api.collect_and_complete_paired_training_chunk(
+                runtime_state,
+                environment_factory=environment_factory,
+                seeds=chunk_seeds,
+                chunk_index=chunk_index,
+                before_environment=before_environment,
+                after_environment=after_environment,
+                deadline=deadline,
+                clock=clock,
+            )
+        except Exception:
+            control_api.reconcile_resource_ledger(context, lease)
+            raise
+        final_payload = completed.checkpoint
+        if (
+            not isinstance(final_payload, bytes)
+            or final_payload != runtime_api.encode_paired_training_checkpoint(runtime_state)
+            or tuple(completed.seeds) != chunk_seeds
+        ):
+            raise TrainingRunnerBlocked("runtime final checkpoint differs")
+        chain = _checkpoint_chain_record(
+            initial_payload=predecessor,
+            final_payload=final_payload,
+            chunk_index=chunk_index,
+            seeds=chunk_seeds,
+        )
+        final_snapshot = chain["final"]
+        ledger = control_api.reconcile_resource_ledger(context, lease)
+        control_api.advance_resource_ledger(
+            context,
+            lease,
+            charged_seconds=ledger["resources"]["charged_seconds"],
+            environment_accesses=final_snapshot["coordinates"][
+                "training_environment_accesses"
+            ],
+            optimizer_steps=final_snapshot["coordinates"][
+                "training_optimizer_steps"
+            ],
+            shadow_optimizer_steps=0,
+            reason=f"complete-training-chunk-{chunk_index:04d}",
+        )
+        control_api.publish_managed_artifact(
+            context,
+            lease,
+            relative_path=f"runtime_checkpoints/chunk_{chunk_index + 1:04d}.json",
+            payload=final_payload,
+        )
+        control_api.publish_managed_artifact(
+            context,
+            lease,
+            relative_path=f"checkpoint_chains/chunk_{chunk_index + 1:04d}.json",
+            payload=canonical_json_bytes(chain),
+        )
+        control_api.publish_complete_training_checkpoint(
+            context,
+            lease,
+            binding=_checkpoint_control_binding(final_snapshot),
+        )
+        predecessor = final_payload
+        completed_chunks = chunk_index + 1
+        if completed.saturation["stop"] is True:
+            break
+
+    verdict = runtime_api.training_progress_verdict(runtime_state)
+    if verdict not in {
+        "training_completed_without_family_saturation",
+        "experiment_stopped_during_training_for_family_saturation",
+    }:
+        raise TrainingRunnerBlocked("training schedule ended without terminal verdict")
+    closeout(verdict, final_snapshot)
+    return {
+        "completed_chunks": completed_chunks,
+        "environment_debits": final_snapshot["coordinates"][
+            "training_environment_accesses"
+        ],
+        "final_checkpoint_sha256": final_snapshot["checkpoint_sha256"],
+        "verdict": verdict,
     }
 
 
