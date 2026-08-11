@@ -2399,6 +2399,125 @@ def _hold_terminalization_guard(
         handle.close()
 
 
+@contextmanager
+def _hold_exact_dead_owner_execution_lease(
+    *,
+    control_api: Any,
+    context: Any,
+    output_root: Path | str,
+    expected_owner: Mapping[str, Any],
+    expected_lease_sha256: str,
+    process_id: int,
+    process_alive: Callable[[int], bool],
+    clock: Callable[[], float],
+) -> Any:
+    """Lock an exact stale lease without changing its registered owner bytes."""
+    owner = _validated_lease_owner(expected_owner, "preserved stale lease owner")
+    lease_sha256 = _digest(
+        expected_lease_sha256, "preserved stale lease identity"
+    )
+    if not callable(process_alive) or not callable(clock):
+        raise TrainingRunnerBlocked("preserved stale lease observers are invalid")
+    try:
+        if process_alive(process_id) is not True:
+            raise TrainingRunnerBlocked(
+                "preserved stale lease terminalizer is not alive"
+            )
+        if process_alive(owner["child_process_id"]) is not False:
+            raise TrainingRunnerBlocked(
+                "preserved stale lease owner is not proven dead"
+            )
+    except TrainingRunnerBlocked:
+        raise
+    except Exception as exc:
+        raise TrainingRunnerBlocked(
+            "preserved stale lease liveness observation failed"
+        ) from exc
+
+    output = Path(output_root).resolve()
+    lease = control_api.ExecutionLease(
+        output,
+        context=context,
+        child_process_id=process_id,
+        process_alive=process_alive,
+        allow_stale_reclaim=True,
+        clock=clock,
+    )
+    key = os.path.normcase(str(lease.path))
+    if key in control_api._ACTIVE_EXECUTION_LEASES:
+        raise TrainingRunnerBlocked("preserved stale execution lease is already held")
+    try:
+        handle = lease.path.open("r+b", buffering=0)
+    except OSError as exc:
+        raise TrainingRunnerBlocked(
+            "preserved stale execution lease is unavailable"
+        ) from exc
+    locked = False
+    activated = False
+    try:
+        try:
+            control_api._lock_file(handle)
+            locked = True
+        except OSError as exc:
+            raise TrainingRunnerBlocked(
+                "preserved stale execution lease is already held"
+            ) from exc
+        handle.seek(0)
+        payload = handle.read()
+        if hashlib.sha256(payload).hexdigest() != lease_sha256:
+            raise TrainingRunnerBlocked(
+                "terminalization preserved stale execution lease bytes differ"
+            )
+        record = _parse_canonical_mapping(payload, "preserved stale execution lease")
+        _fields(
+            record,
+            {"identity", "owner", "reclaimed_owner", "schema_version"},
+            "preserved stale execution lease",
+        )
+        if (
+            record["schema_version"] != control_api.LEASE_SCHEMA_VERSION
+            or record["identity"] != control_api._context_identity(context)
+            or record["owner"] != owner
+        ):
+            raise TrainingRunnerBlocked(
+                "preserved stale execution lease identity differs"
+            )
+        ambiguous = sorted(
+            path.name
+            for path in output.iterdir()
+            if path.name.startswith(".") and path.name.endswith(".tmp")
+        )
+        if ambiguous:
+            raise TrainingRunnerBlocked(
+                "preserved stale execution lease has ambiguous staging"
+            )
+        lease.owner = copy.deepcopy(owner)
+        lease.reclaimed_owner = copy.deepcopy(owner)
+        lease.started_monotonic = float(owner["acquired_monotonic"])
+        lease._handle = handle
+        lease.held = True
+        control_api._ACTIVE_EXECUTION_LEASES.add(key)
+        activated = True
+        try:
+            yield lease
+        finally:
+            handle.seek(0)
+            if handle.read() != payload:
+                raise TrainingRunnerBlocked(
+                    "preserved stale execution lease changed while held"
+                )
+    finally:
+        lease._handle = None
+        lease.held = False
+        if activated:
+            control_api._ACTIVE_EXECUTION_LEASES.discard(key)
+        try:
+            if locked:
+                control_api._unlock_file(handle)
+        finally:
+            handle.close()
+
+
 def _terminalization_failure_prefix(
     *,
     control_api: Any,
@@ -3269,15 +3388,14 @@ def _execute_dead_owner_terminalization(
         ):
             raise TrainingRunnerBlocked("terminalization lease changed before reclaim")
 
-        lease_handle = control_api.ExecutionLease(
-            output,
+        lease_handle = _hold_exact_dead_owner_execution_lease(
+            control_api=control_api,
             context=context,
-            child_process_id=process_id,
+            output_root=output,
+            expected_owner=current_lease["owner"],
+            expected_lease_sha256=binding["lease_sha256"],
+            process_id=process_id,
             process_alive=process_alive,
-            allow_stale_reclaim=True,
-            expected_stale_owner=current_lease["owner"],
-            expected_stale_lease_sha256=binding["lease_sha256"],
-            preserve_stale_owner=True,
             clock=clock,
         )
         try:

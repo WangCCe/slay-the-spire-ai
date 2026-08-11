@@ -2958,9 +2958,6 @@ class ExecutionLease:
         child_process_id: int,
         process_alive: Callable[[int], bool],
         allow_stale_reclaim: bool = False,
-        expected_stale_owner: Mapping[str, Any] | None = None,
-        expected_stale_lease_sha256: str | None = None,
-        preserve_stale_owner: bool = False,
         clock: Callable[[], float] = time.monotonic,
     ) -> None:
         self.output_path = Path(output_path).resolve()
@@ -2971,35 +2968,10 @@ class ExecutionLease:
         )
         if not callable(process_alive) or not callable(clock):
             raise SuccessorControlError("lease observers must be callable")
-        if type(allow_stale_reclaim) is not bool or type(preserve_stale_owner) is not bool:
-            raise SuccessorControlError("lease recovery modes must be boolean")
-        if preserve_stale_owner and (
-            not allow_stale_reclaim
-            or expected_stale_owner is None
-            or expected_stale_lease_sha256 is None
-        ):
-            raise SuccessorControlError(
-                "preserved stale lease requires exact expected bytes"
-            )
-        if (
-            expected_stale_owner is not None or expected_stale_lease_sha256 is not None
-        ) and not allow_stale_reclaim:
-            raise SuccessorControlError(
-                "expected stale lease requires stale reclaim authority"
-            )
+        if type(allow_stale_reclaim) is not bool:
+            raise SuccessorControlError("allow_stale_reclaim must be boolean")
         self.process_alive = process_alive
         self.allow_stale_reclaim = allow_stale_reclaim
-        self.expected_stale_owner = (
-            _copy_mapping(expected_stale_owner, "expected stale lease owner")
-            if expected_stale_owner is not None
-            else None
-        )
-        self.expected_stale_lease_sha256 = (
-            _digest(expected_stale_lease_sha256, "expected stale lease identity")
-            if expected_stale_lease_sha256 is not None
-            else None
-        )
-        self.preserve_stale_owner = preserve_stale_owner
         self.clock = clock
         self.path = self.output_path / LEASE_FILENAME
         self.owner: dict[str, Any] | None = None
@@ -3046,14 +3018,6 @@ class ExecutionLease:
             raw = handle.read()
             existing: dict[str, Any] | None = None
             if raw not in {b"", b"\0"}:
-                if (
-                    self.expected_stale_lease_sha256 is not None
-                    and hashlib.sha256(raw).hexdigest()
-                    != self.expected_stale_lease_sha256
-                ):
-                    raise SuccessorControlError(
-                        "execution lease stale bytes differ"
-                    )
                 existing = _parse_canonical_mapping(raw, "execution lease")
                 if existing.get("schema_version") != LEASE_SCHEMA_VERSION:
                     raise SuccessorControlError("execution lease schema mismatch")
@@ -3071,13 +3035,6 @@ class ExecutionLease:
                     old_owner.get("child_process_id"),
                     "lease owner child process id",
                 )
-                if (
-                    self.expected_stale_owner is not None
-                    and old_owner != self.expected_stale_owner
-                ):
-                    raise SuccessorControlError(
-                        "execution lease stale owner differs"
-                    )
                 try:
                     old_alive = self.process_alive(old_pid)
                 except Exception as exc:
@@ -3098,20 +3055,6 @@ class ExecutionLease:
                         "stale execution lease has ambiguous temporary output"
                     )
                 self.reclaimed_owner = old_owner
-                if self.preserve_stale_owner:
-                    started = float(old_owner.get("acquired_monotonic"))
-                    if not math.isfinite(started) or started < 0.0:
-                        raise SuccessorControlError(
-                            "preserved lease monotonic clock is invalid"
-                        )
-                    self.started_monotonic = started
-                    self.owner = old_owner
-                    self._handle = handle
-                    self.held = True
-                    _ACTIVE_EXECUTION_LEASES.add(key)
-                    return self
-            elif self.expected_stale_owner is not None:
-                raise SuccessorControlError("expected stale execution lease is absent")
             started = float(self.clock())
             if not math.isfinite(started) or started < 0.0:
                 raise SuccessorControlError("lease monotonic clock is invalid")
@@ -3155,14 +3098,7 @@ class ExecutionLease:
             return
         try:
             handle.seek(0)
-            raw = handle.read()
-            if (
-                self.preserve_stale_owner
-                and hashlib.sha256(raw).hexdigest()
-                != self.expected_stale_lease_sha256
-            ):
-                raise SuccessorControlError("preserved execution lease bytes drifted")
-            payload = _parse_canonical_mapping(raw, "execution lease")
+            payload = _parse_canonical_mapping(handle.read(), "execution lease")
             if (
                 payload.get("identity") != _context_identity(self.context)
                 or payload.get("owner") != self.owner
