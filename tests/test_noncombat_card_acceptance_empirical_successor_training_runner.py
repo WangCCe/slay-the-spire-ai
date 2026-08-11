@@ -42,6 +42,31 @@ ARTIFACT_NAMES = (
 )
 
 
+def _is_forbidden_runner_import(name: str) -> bool:
+    return any(
+        name == prefix or name.startswith(prefix + ".")
+        for prefix in FORBIDDEN_IMPORTS
+    )
+
+
+@pytest.fixture(autouse=True)
+def _isolate_runner_process_import_boundary():
+    inherited = {
+        name: module
+        for name, module in tuple(sys.modules.items())
+        if _is_forbidden_runner_import(name)
+    }
+    for name in inherited:
+        sys.modules.pop(name, None)
+    try:
+        yield
+    finally:
+        for name in tuple(sys.modules):
+            if _is_forbidden_runner_import(name):
+                sys.modules.pop(name, None)
+        sys.modules.update(inherited)
+
+
 def _runner():
     return importlib.import_module(RUNNER_MODULE)
 
@@ -236,17 +261,29 @@ def _fixture(root: str = "D:/synthetic/card-acceptance-runner"):
     interpreter = f"{root}/python/python.exe"
     runner_path = f"{root}/{artifacts['runner_source']['path']}"
     manifest_path = f"{root}/authority/launch_manifest.json"
-    common_inputs = [
+    run_inputs = [
         "--manifest",
         manifest_path,
         "--envelope",
-        f"{root}/authority/envelope.json",
+        f"{root}/authority/run_envelope.json",
         "--authorization",
-        f"{root}/authority/authorization.json",
+        f"{root}/authority/run_authorization.json",
         "--approval",
-        f"{root}/authority/approval.json",
+        f"{root}/authority/run_approval.json",
         "--launch-observation",
-        f"{root}/authority/launch_observation.json",
+        f"{root}/authority/run_launch_observation.json",
+    ]
+    terminalization_inputs = [
+        "--manifest",
+        manifest_path,
+        "--envelope",
+        f"{root}/authority/terminalization_envelope.json",
+        "--authorization",
+        f"{root}/authority/terminalization_authorization.json",
+        "--approval",
+        f"{root}/authority/terminalization_approval.json",
+        "--launch-observation",
+        f"{root}/authority/terminalization_launch_observation.json",
     ]
     definition = {
         "artifacts": artifacts,
@@ -264,14 +301,14 @@ def _fixture(root: str = "D:/synthetic/card-acceptance-runner"):
                 "-I",
                 runner_path,
                 "run-training",
-                *common_inputs,
+                *run_inputs,
             ],
             "terminalize_dead_owner": [
                 interpreter,
                 "-I",
                 runner_path,
                 "terminalize-dead-owner",
-                *common_inputs,
+                *terminalization_inputs,
             ],
         },
         "denied_operations": [
@@ -690,7 +727,11 @@ def test_run_and_terminalization_envelopes_cannot_substitute():
             "closure_guard": manifest["terminalization_guard"],
             "failure_paths": ["process_identity_failure"],
             "lease_sha256": "9" * 64,
-            "owner": {"child_process_id": 71_001},
+            "owner": {
+                "acquired_monotonic": 1.0,
+                "child_process_id": 71_001,
+                "token": "1" * 32,
+            },
             "prefix_sha256": "a" * 64,
             "run_envelope_sha256": run["envelope_sha256"],
         },
@@ -857,9 +898,17 @@ def test_authorized_runner_envelope_resolves_exact_composite(authority_mode):
     assert documents["authority"]["command"] == "run-training"
 
 
-def _authorized_runner_documents(runner, manifest, request, authority_mode):
+def _authorized_runner_documents(
+    runner,
+    manifest,
+    request,
+    authority_mode,
+    *,
+    command="run-training",
+    terminalization_binding=None,
+):
     control = _control()
-    composite = runner.build_runner_composite(manifest, "run-training")
+    composite = runner.build_runner_composite(manifest, command)
     review_sha256 = manifest["artifacts"]["training_request_review"]["sha256"]
 
     if authority_mode == "standing-delegation":
@@ -925,26 +974,27 @@ def _authorized_runner_documents(runner, manifest, request, authority_mode):
     authorization = control.build_stage_authorization(
         request=request,
         authorization_id=(
-            f"card-acceptance-r6-{authority_mode}-training-authorization-v1"
+            f"card-acceptance-r6-{authority_mode}-{command}-training-authorization-v1"
         ),
         request_review_sha256=review_sha256,
         approval_record_sha256=approval["approval_sha256"],
     )
     runner_observation = runner.build_runner_launch_observation(
         composite,
-        "run-training",
+        command,
         control_observation,
         authority_mode=authority_mode,
         composite_binding_text=binding_text,
     )
     envelope = runner.build_command_envelope(
-        command="run-training",
+        command=command,
         composite=composite,
         stage_authorization_sha256=authorization["authorization_sha256"],
         authority_mode=authority_mode,
         approval_sha256=approval["approval_sha256"],
         runner_launch_observation=runner_observation,
-        envelope_id=f"card-acceptance-r6-{authority_mode}-run-envelope-v1",
+        envelope_id=f"card-acceptance-r6-{authority_mode}-{command}-envelope-v1",
+        terminalization_binding=terminalization_binding,
     )
 
     authority = runner.validate_authorized_command_envelope(
@@ -1128,14 +1178,21 @@ def test_authorized_envelope_wraps_each_malformed_control_result(
         )
 
 
-def _authorized_document_fixture():
+def _authorized_document_fixture(*, command="run-training", terminalization_binding=None):
     runner, manifest, payloads = _manifest()
     request = json.loads(payloads["training_request"])
     documents = _authorized_runner_documents(
-        runner, manifest, request, "standing-delegation"
+        runner,
+        manifest,
+        request,
+        "standing-delegation",
+        command=command,
+        terminalization_binding=terminalization_binding,
     )
-    command = manifest["commands"]["run_training"]
-    paths = dict(zip(command[4::2], command[5::2]))
+    command_value = manifest["commands"][
+        "run_training" if command == "run-training" else "terminalize_dead_owner"
+    ]
+    paths = dict(zip(command_value[4::2], command_value[5::2]))
     raw_payloads = {
         manifest["manifest_path"]: runner.canonical_json_bytes(manifest),
         paths["--approval"]: runner.canonical_json_bytes(documents["approval"]),
@@ -1207,6 +1264,143 @@ def test_bound_authorized_command_documents_require_exact_pushed_paths():
         paths["--envelope"],
         paths["--launch-observation"],
     }
+
+
+def test_bound_authorized_command_documents_accept_exact_terminalization_paths():
+    runner, manifest, _payloads = _manifest()
+    run = _run_envelope(runner, manifest)
+    binding = {
+        "closure_guard": manifest["terminalization_guard"],
+        "failure_paths": ["process_identity_failure"],
+        "lease_sha256": "7" * 64,
+        "owner": {
+            "acquired_monotonic": 1.0,
+            "child_process_id": 71_001,
+            "token": "1" * 32,
+        },
+        "prefix_sha256": "8" * 64,
+        "run_envelope_sha256": run["envelope_sha256"],
+    }
+    runner, manifest, documents, paths, payloads = _authorized_document_fixture(
+        command="terminalize-dead-owner",
+        terminalization_binding=binding,
+    )
+
+    result = runner._load_authorized_command_documents(
+        command="terminalize-dead-owner",
+        manifest_path=Path(manifest["manifest_path"]),
+        envelope_path=Path(paths["--envelope"]),
+        authorization_path=Path(paths["--authorization"]),
+        approval_path=Path(paths["--approval"]),
+        launch_observation_path=Path(paths["--launch-observation"]),
+        artifact_reader=lambda path: payloads[str(path.resolve())],
+        source_observer=lambda _value, observed_paths: (
+            _pushed_authority_observation(observed_paths, payloads)
+        ),
+    )
+
+    assert result["authority"]["command"] == "terminalize-dead-owner"
+    assert result["envelope"] == documents["envelope"]
+
+
+def test_terminalization_composition_uses_registration_identity_without_reading_payload(
+    monkeypatch,
+):
+    runner, manifest, _payloads = _manifest()
+    run = _run_envelope(runner, manifest)
+    binding = {
+        "closure_guard": manifest["terminalization_guard"],
+        "failure_paths": ["process_identity_failure"],
+        "lease_sha256": "7" * 64,
+        "owner": {
+            "acquired_monotonic": 1.0,
+            "child_process_id": 71_001,
+            "token": "1" * 32,
+        },
+        "prefix_sha256": "8" * 64,
+        "run_envelope_sha256": run["envelope_sha256"],
+    }
+    runner, manifest, documents, paths, _payloads = _authorized_document_fixture(
+        command="terminalize-dead-owner",
+        terminalization_binding=binding,
+    )
+    loaded = {**documents, "manifest": manifest}
+    captured = {}
+
+    monkeypatch.setattr(
+        runner,
+        "_load_authorized_command_documents",
+        lambda **_kwargs: copy.deepcopy(loaded),
+    )
+
+    def execute(**kwargs):
+        captured.update(kwargs)
+        return {"verdict": "synthetic-terminalized"}
+
+    monkeypatch.setattr(runner, "_execute_dead_owner_terminalization", execute)
+    result = runner._compose_authorized_dead_owner_terminalization_for_qualification(
+        manifest_path=Path(manifest["manifest_path"]),
+        envelope_path=Path(paths["--envelope"]),
+        authorization_path=Path(paths["--authorization"]),
+        approval_path=Path(paths["--approval"]),
+        launch_observation_path=Path(paths["--launch-observation"]),
+        process_id=73_001,
+        process_alive=lambda process_id: process_id == 73_001,
+        clock=lambda: 0.0,
+        interpreter_path=manifest["interpreter"],
+        artifact_reader=lambda _path: pytest.fail(
+            "terminalization opened registration or another empirical artifact"
+        ),
+    )
+
+    assert result == {"verdict": "synthetic-terminalized"}
+    assert dict(captured["context"].registration) == {
+        "registration_sha256": manifest["request_contract"]["registration_sha256"],
+        "rollback_authority_sha256": manifest["rollback_authority"][
+            "rollback_authority_sha256"
+        ],
+    }
+
+
+def test_terminalization_command_loader_keeps_registration_opaque_to_default_observer(
+    monkeypatch,
+):
+    runner, manifest, _payloads = _manifest()
+    run = _run_envelope(runner, manifest)
+    binding = {
+        "closure_guard": manifest["terminalization_guard"],
+        "failure_paths": ["process_identity_failure"],
+        "lease_sha256": "7" * 64,
+        "owner": {
+            "acquired_monotonic": 1.0,
+            "child_process_id": 71_001,
+            "token": "1" * 32,
+        },
+        "prefix_sha256": "8" * 64,
+        "run_envelope_sha256": run["envelope_sha256"],
+    }
+    runner, manifest, _documents, paths, payloads = _authorized_document_fixture(
+        command="terminalize-dead-owner",
+        terminalization_binding=binding,
+    )
+    captured = []
+
+    def observe(value, observed_paths, *, opaque_artifact_names=()):
+        captured.append(tuple(opaque_artifact_names))
+        return _pushed_authority_observation(observed_paths, payloads)
+
+    monkeypatch.setattr(runner, "_default_authorized_source_observer", observe)
+    runner._load_authorized_command_documents(
+        command="terminalize-dead-owner",
+        manifest_path=Path(manifest["manifest_path"]),
+        envelope_path=Path(paths["--envelope"]),
+        authorization_path=Path(paths["--authorization"]),
+        approval_path=Path(paths["--approval"]),
+        launch_observation_path=Path(paths["--launch-observation"]),
+        artifact_reader=lambda path: payloads[str(path.resolve())],
+    )
+
+    assert captured == [("registration",)]
 
 
 def test_bound_authorized_command_documents_reject_path_and_source_drift():
@@ -3619,6 +3813,606 @@ def _real_training_context(control, output):
     )
 
 
+def _terminalization_test_fixture(tmp_path, *, partial_chunk=False):
+    runner = _runner()
+    control = _control()
+    root = tmp_path.resolve()
+    output = root / "output" / "training"
+    checkpoint = root / "external" / "control-checkpoint.bin"
+    configuration = root / "external" / "control-configuration.json"
+    communication = root / "external" / "config.properties"
+    production_checkpoints = root / "external" / "production-checkpoints"
+    checkpoint.parent.mkdir(parents=True)
+    checkpoint.write_bytes(b"control-checkpoint\n")
+    configuration.write_bytes(b"{}\n")
+    communication.write_bytes(b"command=production\n")
+    production_checkpoints.mkdir()
+    (production_checkpoints / "production.bin").write_bytes(b"production\n")
+    rollback_authority = control.build_rollback_authority(
+        target_relative_path="control/selected-arm.json",
+        control_checkpoint=control.external_file_binding(checkpoint),
+        control_configuration=control.external_file_binding(configuration),
+        production_isolation={
+            "communication_mod_config": control.external_file_binding(communication),
+            "production_checkpoints": control.snapshot_directory_tree(
+                production_checkpoints
+            ),
+        },
+    )
+    _runner_value, definition, _payloads = _fixture(root.as_posix())
+    definition["rollback_authority"] = rollback_authority
+    manifest = runner.build_launch_manifest(definition)
+
+    registration_body = {
+        "registration_id": "synthetic-terminalization-registration-v1",
+        "schema_version": "synthetic-terminalization-registration-schema-v1",
+    }
+    original_registration = {
+        **registration_body,
+        "registration_sha256": control.canonical_json_sha256(registration_body),
+    }
+    execution_registration = {
+        **copy.deepcopy(original_registration),
+        "rollback_authority_sha256": rollback_authority[
+            "rollback_authority_sha256"
+        ],
+    }
+    request = control.build_stage_request(
+        stage="training",
+        request_id="synthetic-terminalization-training-request-v1",
+        source_commit=manifest["registered_source"]["source_commit"],
+        source_inventory_sha256=manifest["registered_source"][
+            "source_inventory_sha256"
+        ],
+        configuration_identity=control.experiment_configuration_identity(),
+        prerequisite_bindings={
+            "registration_sha256": original_registration["registration_sha256"]
+        },
+        output_root=output.as_posix(),
+    )
+    authorization = control.build_stage_authorization(
+        request=request,
+        authorization_id="synthetic-terminalization-training-authorization-v1",
+        request_review_sha256="c" * 64,
+        approval_record_sha256="d" * 64,
+    )
+    context = control._build_validated_execution_context(
+        registration=execution_registration,
+        request=request,
+        authorization=authorization,
+        registration_validator=lambda value: copy.deepcopy(dict(value)),
+    )
+    runner._ensure_terminalization_guard(manifest)
+    old_process_id = 73_001
+    run_envelope_sha256 = "a" * 64
+    run_composite = runner.build_runner_composite(manifest, "run-training")
+    runner_authority = {
+        "composite_sha256": run_composite["composite_sha256"],
+        "launch_manifest_sha256": manifest["manifest_sha256"],
+        "rollback_authority_sha256": rollback_authority[
+            "rollback_authority_sha256"
+        ],
+        "run_envelope_sha256": run_envelope_sha256,
+    }
+    fresh = runner._observe_training_reopen_read_only(
+        control_api=control,
+        context=context,
+        output_root=output,
+        runner_authority_identity=runner_authority,
+        process_alive=lambda _process_id: False,
+    )
+    with runner._AtomicObservedExecutionLease(
+        control_api=control,
+        context=context,
+        output_root=output,
+        observation=fresh,
+        child_process_id=old_process_id,
+        process_alive=lambda process_id: process_id == old_process_id,
+        clock=lambda: 1.0,
+    ) as lease:
+        control.initialize_access_journal(context, lease)
+        control.initialize_resource_ledger(context, lease)
+        control.publish_managed_artifact(
+            context,
+            lease,
+            relative_path="runner_launch.json",
+            payload=runner._runner_launch_payload(
+                manifest_sha256=manifest["manifest_sha256"],
+                process_id=old_process_id,
+                rollback_authority_sha256=rollback_authority[
+                    "rollback_authority_sha256"
+                ],
+                run_envelope_sha256=run_envelope_sha256,
+            ),
+        )
+        if partial_chunk:
+            control.perform_journaled_environment_access(
+                context,
+                lease,
+                seed=50_000,
+                arm="candidate",
+                purpose="training",
+                access=lambda: None,
+            )
+            control.advance_resource_ledger(
+                context,
+                lease,
+                charged_seconds=0.0,
+                environment_accesses=1,
+                optimizer_steps=0,
+                shadow_optimizer_steps=0,
+                reason="synthetic-partial-chunk",
+            )
+    prefix = runner._terminalization_failure_prefix(
+        control_api=control,
+        context=context,
+        output_root=output,
+        runner_authority_identity=runner_authority,
+        process_alive=lambda _process_id: False,
+    )
+    terminal_composite = runner.build_runner_composite(
+        manifest, "terminalize-dead-owner"
+    )
+    launch_observation = runner.build_runner_launch_observation(
+        terminal_composite,
+        "terminalize-dead-owner",
+        _control_observation(terminal_composite["request_sha256"]),
+        authority_mode="standing-delegation",
+        composite_binding_text=(
+            runner.STANDING_COMPOSITE_BINDING_PREFIX
+            + terminal_composite["composite_sha256"]
+        ),
+    )
+    envelope = runner.build_command_envelope(
+        command="terminalize-dead-owner",
+        composite=terminal_composite,
+        stage_authorization_sha256="7" * 64,
+        authority_mode="standing-delegation",
+        approval_sha256="8" * 64,
+        runner_launch_observation=launch_observation,
+        envelope_id="synthetic-dead-owner-terminalization-envelope-v1",
+        terminalization_binding={
+            "closure_guard": manifest["terminalization_guard"],
+            "failure_paths": ["process_identity_failure"],
+            "lease_sha256": prefix["lease_sha256"],
+            "owner": prefix["owner"],
+            "prefix_sha256": prefix["prefix_sha256"],
+            "run_envelope_sha256": run_envelope_sha256,
+        },
+    )
+    authority = {
+        "command": "terminalize-dead-owner",
+        "composite_sha256": terminal_composite["composite_sha256"],
+        "envelope_sha256": envelope["envelope_sha256"],
+        "validated": True,
+    }
+    return SimpleNamespace(
+        authority=authority,
+        context=context,
+        control=control,
+        envelope=envelope,
+        manifest=manifest,
+        old_process_id=old_process_id,
+        output=output,
+        rollback_authority=rollback_authority,
+        runner=runner,
+    )
+
+
+def _execute_terminalization_fixture(fixture, *, process_id, process_alive):
+    return fixture.runner._execute_dead_owner_terminalization(
+        control_api=fixture.control,
+        context=fixture.context,
+        launch_manifest=fixture.manifest,
+        command_envelope=fixture.envelope,
+        authority=fixture.authority,
+        rollback_authority=fixture.rollback_authority,
+        process_id=process_id,
+        process_alive=process_alive,
+        clock=lambda: 2.0,
+    )
+
+
+def test_dead_owner_terminalization_closes_frozen_prefix_and_is_idempotent(tmp_path):
+    fixture = _terminalization_test_fixture(tmp_path)
+    lease_path = fixture.output / fixture.control.LEASE_FILENAME
+    lease_before = lease_path.read_bytes()
+    resource_before = (
+        fixture.output / fixture.control.RESOURCE_LEDGER_FILENAME
+    ).read_bytes()
+
+    first = _execute_terminalization_fixture(
+        fixture,
+        process_id=73_002,
+        process_alive=lambda process_id: process_id == 73_002,
+    )
+
+    assert first["verdict"] == "training_process_failure_terminalized"
+    assert (
+        fixture.output / fixture.runner.TERMINALIZATION_CLOSURE_FILENAME
+    ).is_file()
+    assert (fixture.output / fixture.control.ROLLBACK_OBSERVATION_FILENAME).is_file()
+    assert (fixture.output / fixture.control.TERMINAL_FILENAME).is_file()
+    assert (fixture.output / fixture.control.MANIFEST_FILENAME).is_file()
+    assert (
+        fixture.output / fixture.control.RESOURCE_LEDGER_FILENAME
+    ).read_bytes() == resource_before
+    assert lease_path.read_bytes() == lease_before
+    assert (
+        fixture.output / fixture.rollback_authority["target_relative_path"]
+    ).read_bytes() == fixture.control.canonical_json_bytes(
+        fixture.rollback_authority["control_target"]
+    )
+
+    second = _execute_terminalization_fixture(
+        fixture,
+        process_id=73_003,
+        process_alive=lambda process_id: process_id == 73_003,
+    )
+    assert second == first
+    assert lease_path.read_bytes() == lease_before
+
+
+def test_dead_owner_terminalization_closes_partial_chunk_without_replay(tmp_path):
+    fixture = _terminalization_test_fixture(tmp_path, partial_chunk=True)
+    journal_before = (
+        fixture.output / fixture.control.ACCESS_JOURNAL_FILENAME
+    ).read_bytes()
+    resource_before = (
+        fixture.output / fixture.control.RESOURCE_LEDGER_FILENAME
+    ).read_bytes()
+
+    result = _execute_terminalization_fixture(
+        fixture,
+        process_id=73_006,
+        process_alive=lambda process_id: process_id == 73_006,
+    )
+
+    assert result["verdict"] == "training_process_failure_terminalized"
+    assert (
+        fixture.output / fixture.control.ACCESS_JOURNAL_FILENAME
+    ).read_bytes() == journal_before
+    assert (
+        fixture.output / fixture.control.RESOURCE_LEDGER_FILENAME
+    ).read_bytes() == resource_before
+
+
+def test_dead_owner_terminalization_resumes_after_target_write_before_rollback(
+    tmp_path, monkeypatch
+):
+    fixture = _terminalization_test_fixture(tmp_path)
+    publish = fixture.control.publish_managed_artifact
+
+    def fail_rollback(context, lease, *, relative_path, payload):
+        if relative_path == fixture.control.ROLLBACK_OBSERVATION_FILENAME:
+            raise OSError("synthetic rollback publication interruption")
+        return publish(
+            context, lease, relative_path=relative_path, payload=payload
+        )
+
+    monkeypatch.setattr(fixture.control, "publish_managed_artifact", fail_rollback)
+    with pytest.raises(fixture.runner.TrainingRunnerBlocked, match="terminalization"):
+        _execute_terminalization_fixture(
+            fixture,
+            process_id=73_012,
+            process_alive=lambda process_id: process_id == 73_012,
+        )
+    assert (
+        fixture.output / fixture.runner.TERMINALIZATION_CLOSURE_FILENAME
+    ).is_file()
+    assert not (fixture.output / fixture.control.ROLLBACK_OBSERVATION_FILENAME).exists()
+    assert (
+        fixture.output / fixture.rollback_authority["target_relative_path"]
+    ).read_bytes() == fixture.control.canonical_json_bytes(
+        fixture.rollback_authority["control_target"]
+    )
+
+    monkeypatch.setattr(fixture.control, "publish_managed_artifact", publish)
+    result = _execute_terminalization_fixture(
+        fixture,
+        process_id=73_013,
+        process_alive=lambda process_id: process_id == 73_013,
+    )
+    assert result["verdict"] == "training_process_failure_terminalized"
+
+
+def test_dead_owner_terminalization_recovers_after_closure_publication_failure(
+    tmp_path, monkeypatch
+):
+    fixture = _terminalization_test_fixture(tmp_path)
+    lease_path = fixture.output / fixture.control.LEASE_FILENAME
+    lease_before = lease_path.read_bytes()
+    publish = fixture.control.publish_managed_artifact
+
+    def fail_closure(context, lease, *, relative_path, payload):
+        if relative_path == fixture.runner.TERMINALIZATION_CLOSURE_FILENAME:
+            raise OSError("synthetic closure publication interruption")
+        return publish(context, lease, relative_path=relative_path, payload=payload)
+
+    monkeypatch.setattr(fixture.control, "publish_managed_artifact", fail_closure)
+    with pytest.raises(fixture.runner.TrainingRunnerBlocked, match="terminalization"):
+        _execute_terminalization_fixture(
+            fixture,
+            process_id=73_014,
+            process_alive=lambda process_id: process_id == 73_014,
+        )
+    assert lease_path.read_bytes() == lease_before
+    assert not (
+        fixture.output / fixture.runner.TERMINALIZATION_CLOSURE_FILENAME
+    ).exists()
+
+    monkeypatch.setattr(fixture.control, "publish_managed_artifact", publish)
+    result = _execute_terminalization_fixture(
+        fixture,
+        process_id=73_015,
+        process_alive=lambda process_id: process_id == 73_015,
+    )
+    assert result["verdict"] == "training_process_failure_terminalized"
+    assert lease_path.read_bytes() == lease_before
+
+
+def test_dead_owner_terminalization_revalidates_prefix_under_execution_lease(
+    tmp_path, monkeypatch
+):
+    fixture = _terminalization_test_fixture(tmp_path)
+    journal = fixture.output / fixture.control.ACCESS_JOURNAL_FILENAME
+    lease_path = fixture.output / fixture.control.LEASE_FILENAME
+    lease_before = lease_path.read_bytes()
+    observe = fixture.runner._terminalization_failure_prefix
+    calls = 0
+
+    def race(**kwargs):
+        nonlocal calls
+        calls += 1
+        if calls == 2:
+            journal.write_bytes(journal.read_bytes() + b"{}\n")
+        return observe(**kwargs)
+
+    monkeypatch.setattr(fixture.runner, "_terminalization_failure_prefix", race)
+    with pytest.raises(fixture.runner.TrainingRunnerBlocked):
+        _execute_terminalization_fixture(
+            fixture,
+            process_id=73_025,
+            process_alive=lambda process_id: process_id == 73_025,
+        )
+
+    assert calls == 2
+    assert lease_path.read_bytes() == lease_before
+    assert not (
+        fixture.output / fixture.runner.TERMINALIZATION_CLOSURE_FILENAME
+    ).exists()
+
+
+def test_dead_owner_terminalization_rejects_lease_race_without_rewriting_winner(
+    tmp_path,
+):
+    fixture = _terminalization_test_fixture(tmp_path)
+    lease_path = fixture.output / fixture.control.LEASE_FILENAME
+    winner = json.loads(lease_path.read_bytes())
+    winner["reclaimed_owner"] = {
+        "acquired_monotonic": 0.5,
+        "child_process_id": 73_020,
+        "token": "e" * 32,
+    }
+    winner_bytes = fixture.control.canonical_json_bytes(winner)
+
+    def race(process_id):
+        if process_id == 73_019:
+            lease_path.write_bytes(winner_bytes)
+            return True
+        return False
+
+    with pytest.raises(fixture.runner.TrainingRunnerBlocked, match="terminalization"):
+        _execute_terminalization_fixture(
+            fixture,
+            process_id=73_019,
+            process_alive=race,
+        )
+    assert lease_path.read_bytes() == winner_bytes
+
+
+def test_dead_owner_terminalization_rejects_semantic_frozen_intent_drift(
+    tmp_path, monkeypatch
+):
+    fixture = _terminalization_test_fixture(tmp_path)
+    publish_terminal = fixture.control.publish_terminal_document
+
+    def fail_terminal(*_args, **_kwargs):
+        raise OSError("synthetic terminal publication interruption")
+
+    monkeypatch.setattr(fixture.control, "publish_terminal_document", fail_terminal)
+    with pytest.raises(fixture.runner.TrainingRunnerBlocked, match="terminalization"):
+        _execute_terminalization_fixture(
+            fixture,
+            process_id=73_016,
+            process_alive=lambda process_id: process_id == 73_016,
+        )
+    intent_path = fixture.output / fixture.control.TERMINAL_INTENT_FILENAME
+    drifted = json.loads(intent_path.read_bytes())
+    drifted["details"]["failure_paths"] = ["child_identity_failure"]
+    body = {
+        key: value for key, value in drifted.items() if key != "terminal_intent_sha256"
+    }
+    drifted["terminal_intent_sha256"] = fixture.runner.canonical_json_sha256(body)
+    intent_path.write_bytes(fixture.runner.canonical_json_bytes(drifted))
+
+    monkeypatch.setattr(fixture.control, "publish_terminal_document", publish_terminal)
+    with pytest.raises(fixture.runner.TrainingRunnerBlocked, match="intent differs"):
+        _execute_terminalization_fixture(
+            fixture,
+            process_id=73_017,
+            process_alive=lambda process_id: process_id == 73_017,
+        )
+
+
+def test_complete_dead_owner_terminalization_rejects_self_consistent_intent_drift(
+    tmp_path,
+):
+    fixture = _terminalization_test_fixture(tmp_path)
+    _execute_terminalization_fixture(
+        fixture,
+        process_id=73_018,
+        process_alive=lambda process_id: process_id == 73_018,
+    )
+    intent_path = fixture.output / fixture.control.TERMINAL_INTENT_FILENAME
+    terminal_path = fixture.output / fixture.control.TERMINAL_FILENAME
+    manifest_path = fixture.output / fixture.control.MANIFEST_FILENAME
+    drifted_intent = json.loads(intent_path.read_bytes())
+    drifted_intent["details"]["failure_paths"] = ["child_identity_failure"]
+    intent_body = {
+        key: value
+        for key, value in drifted_intent.items()
+        if key != "terminal_intent_sha256"
+    }
+    drifted_intent["terminal_intent_sha256"] = fixture.runner.canonical_json_sha256(
+        intent_body
+    )
+    intent_path.write_bytes(fixture.runner.canonical_json_bytes(drifted_intent))
+
+    drifted_terminal = json.loads(terminal_path.read_bytes())
+    drifted_terminal["terminal_intent_sha256"] = drifted_intent[
+        "terminal_intent_sha256"
+    ]
+    terminal_body = {
+        key: value
+        for key, value in drifted_terminal.items()
+        if key != "terminal_sha256"
+    }
+    drifted_terminal["terminal_sha256"] = fixture.runner.canonical_json_sha256(
+        terminal_body
+    )
+    terminal_path.write_bytes(fixture.runner.canonical_json_bytes(drifted_terminal))
+
+    drifted_manifest = json.loads(manifest_path.read_bytes())
+    drifted_manifest["artifact_inventory"] = fixture.control._observe_artifact_inventory(
+        fixture.output, excluded_paths=(fixture.control.MANIFEST_FILENAME,)
+    )
+    drifted_manifest["terminal_intent_sha256"] = drifted_intent[
+        "terminal_intent_sha256"
+    ]
+    drifted_manifest["terminal_sha256"] = drifted_terminal["terminal_sha256"]
+    manifest_body = {
+        key: value
+        for key, value in drifted_manifest.items()
+        if key != "manifest_sha256"
+    }
+    drifted_manifest["manifest_sha256"] = fixture.runner.canonical_json_sha256(
+        manifest_body
+    )
+    manifest_path.write_bytes(fixture.runner.canonical_json_bytes(drifted_manifest))
+
+    with pytest.raises(fixture.runner.TrainingRunnerBlocked, match="intent differs"):
+        _execute_terminalization_fixture(
+            fixture,
+            process_id=73_021,
+            process_alive=lambda process_id: process_id == 73_021,
+        )
+
+
+def test_complete_dead_owner_terminalization_does_not_repair_rollback_target_drift(
+    tmp_path,
+):
+    fixture = _terminalization_test_fixture(tmp_path)
+    target = fixture.output / fixture.rollback_authority["target_relative_path"]
+    assert not target.exists()
+    _execute_terminalization_fixture(
+        fixture,
+        process_id=73_023,
+        process_alive=lambda process_id: process_id == 73_023,
+    )
+    target.unlink()
+
+    with pytest.raises(
+        fixture.runner.TrainingRunnerBlocked,
+        match="complete terminalization rollback target drifted",
+    ):
+        _execute_terminalization_fixture(
+            fixture,
+            process_id=73_024,
+            process_alive=lambda process_id: process_id == 73_024,
+        )
+
+    assert not target.exists()
+
+
+def test_complete_dead_owner_terminalization_revalidates_target_under_lease(
+    tmp_path, monkeypatch
+):
+    fixture = _terminalization_test_fixture(tmp_path)
+    target = fixture.output / fixture.rollback_authority["target_relative_path"]
+    _execute_terminalization_fixture(
+        fixture,
+        process_id=73_026,
+        process_alive=lambda process_id: process_id == 73_026,
+    )
+    observe = fixture.runner._terminalization_resume_state
+    calls = 0
+
+    def race(**kwargs):
+        nonlocal calls
+        calls += 1
+        if calls == 2:
+            target.unlink()
+        return observe(**kwargs)
+
+    monkeypatch.setattr(fixture.runner, "_terminalization_resume_state", race)
+    with pytest.raises(
+        fixture.runner.TrainingRunnerBlocked,
+        match="complete terminalization rollback target drifted",
+    ):
+        _execute_terminalization_fixture(
+            fixture,
+            process_id=73_027,
+            process_alive=lambda process_id: process_id == 73_027,
+        )
+
+    assert calls == 2
+    assert not target.exists()
+
+
+def test_dead_owner_terminalization_rejects_live_owner_without_lease_change(tmp_path):
+    fixture = _terminalization_test_fixture(tmp_path)
+    lease_path = fixture.output / fixture.control.LEASE_FILENAME
+    lease_before = lease_path.read_bytes()
+
+    with pytest.raises(fixture.runner.TrainingRunnerBlocked, match="not dead"):
+        _execute_terminalization_fixture(
+            fixture,
+            process_id=73_022,
+            process_alive=lambda process_id: process_id
+            in {fixture.old_process_id, 73_022},
+        )
+
+    assert lease_path.read_bytes() == lease_before
+    assert not (
+        fixture.output / fixture.runner.TERMINALIZATION_CLOSURE_FILENAME
+    ).exists()
+
+
+def test_dead_owner_terminalization_rejects_prefix_drift_and_staging(tmp_path):
+    fixture = _terminalization_test_fixture(tmp_path)
+    lease_path = fixture.output / fixture.control.LEASE_FILENAME
+    lease_before = lease_path.read_bytes()
+    (fixture.output / "unexpected.json").write_bytes(b"{}\n")
+
+    with pytest.raises(fixture.runner.TrainingRunnerBlocked, match="prefix"):
+        _execute_terminalization_fixture(
+            fixture,
+            process_id=73_032,
+            process_alive=lambda process_id: process_id == 73_032,
+        )
+    assert lease_path.read_bytes() == lease_before
+    (fixture.output / "unexpected.json").unlink()
+    (fixture.output / ".ambiguous.tmp").write_bytes(b"partial")
+    with pytest.raises(fixture.runner.TrainingRunnerBlocked):
+        _execute_terminalization_fixture(
+            fixture,
+            process_id=73_033,
+            process_alive=lambda process_id: process_id == 73_033,
+        )
+    assert lease_path.read_bytes() == lease_before
+
+
 def test_read_only_reopen_observer_and_atomic_lease_create_fresh_output(tmp_path):
     runner = _runner()
     control = _control()
@@ -4684,6 +5478,100 @@ def _preflight_fixture(tmp_path: Path):
         for name in ARTIFACT_NAMES
     }
     return runner, manifest, manifest_path, payload_by_path
+
+
+def test_direct_script_bootstrap_preserves_stdlib_precedence(tmp_path, monkeypatch):
+    runner = _runner()
+    fake_root = tmp_path / "repo"
+    fake_package = fake_root / "analysis_scripts"
+    fake_package.mkdir(parents=True)
+    fake_runner = fake_package / "training_runner.py"
+    fake_runner.write_text("# synthetic runner\n", encoding="utf-8")
+    (fake_root / "fractions.py").write_text(
+        "raise AssertionError('repository shadow imported')\n", encoding="utf-8"
+    )
+    original_package = sys.modules.pop("analysis_scripts", None)
+    original_fractions = sys.modules.pop("fractions", None)
+    original_path = list(sys.path)
+    try:
+        monkeypatch.setattr(runner, "__package__", "")
+        monkeypatch.setattr(runner, "__file__", str(fake_runner))
+        monkeypatch.setattr(sys, "path", list(original_path))
+
+        runner._bootstrap_direct_script_imports()
+        imported = importlib.import_module("fractions")
+
+        assert Path(imported.__file__).resolve() != (fake_root / "fractions.py")
+        assert sys.path[-1] == str(fake_root.resolve())
+        assert list(sys.modules["analysis_scripts"].__path__) == [
+            str(fake_package.resolve())
+        ]
+    finally:
+        sys.modules.pop("analysis_scripts", None)
+        sys.modules.pop("fractions", None)
+        if original_package is not None:
+            sys.modules["analysis_scripts"] = original_package
+        if original_fractions is not None:
+            sys.modules["fractions"] = original_fractions
+
+
+@pytest.mark.parametrize(
+    "observer_name", ("_default_repo_observer", "_default_authorized_source_observer")
+)
+def test_default_source_observers_bind_ancestry_to_captured_head(
+    tmp_path, monkeypatch, observer_name
+):
+    runner, manifest, _manifest_path, payload_by_path = _preflight_fixture(tmp_path)
+    head = "a" * 40
+    calls: list[tuple[str, ...]] = []
+    byte_calls: list[tuple[str, ...]] = []
+
+    def git_text(_root: Path, *args: str) -> str:
+        calls.append(args)
+        if args[:2] == ("ls-files", "--error-unmatch"):
+            return "\n".join(args[args.index("--") + 1 :])
+        if args[:2] == ("status", "--porcelain=v1"):
+            return ""
+        if args[:2] == ("rev-parse", "HEAD"):
+            return head
+        if args[:2] == ("rev-parse", manifest["pushed_ref"]):
+            return head
+        if args[:2] == ("merge-base", "--is-ancestor"):
+            return ""
+        raise AssertionError(args)
+
+    def git_bytes(_root: Path, *args: str) -> bytes:
+        byte_calls.append(args)
+        _commit, relative_path = args[1].split(":", 1)
+        absolute_path = (Path(manifest["repository_root"]) / relative_path).resolve()
+        if absolute_path.as_posix() in payload_by_path:
+            return payload_by_path[absolute_path.as_posix()]
+        return b"authorized command artifact\n"
+
+    monkeypatch.setattr(runner, "_git_text", git_text)
+    monkeypatch.setattr(runner, "_git_bytes", git_bytes)
+    observer = getattr(runner, observer_name)
+    if observer_name == "_default_repo_observer":
+        observation = observer(manifest)
+    else:
+        authority_path = Path(manifest["repository_root"]) / "authority.json"
+        observation = observer(
+            manifest,
+            [str(authority_path)],
+            opaque_artifact_names=("registration",),
+        )
+
+    assert observation["tracked"] is True
+    ancestry_calls = [call for call in calls if call[:2] == ("merge-base", "--is-ancestor")]
+    assert ancestry_calls == [
+        ("merge-base", "--is-ancestor", manifest["runner_source_commit"], head)
+    ]
+    if observer_name == "_default_authorized_source_observer":
+        registration_path = manifest["artifacts"]["registration"]["path"]
+        assert not any(call[1].endswith(f":{registration_path}") for call in byte_calls)
+        status_calls = [call for call in calls if call[:2] == ("status", "--porcelain=v1")]
+        assert len(status_calls) == 1
+        assert registration_path not in status_calls[0]
 
 
 def test_source_only_preflight_is_inert_and_does_not_open_source_inventory(tmp_path):

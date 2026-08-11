@@ -28,10 +28,29 @@ from typing import Any
 def _bootstrap_direct_script_imports() -> None:
     if __package__:
         return
-    repo_root = str(Path(__file__).resolve().parents[1])
-    if repo_root in sys.path:
-        sys.path.remove(repo_root)
-    sys.path.insert(0, repo_root)
+    repo_root = Path(__file__).resolve().parents[1]
+    package_root = repo_root / "analysis_scripts"
+    existing_package = sys.modules.get("analysis_scripts")
+    if existing_package is None:
+        package = types.ModuleType("analysis_scripts")
+        package.__file__ = str(package_root / "__init__.py")
+        package.__package__ = "analysis_scripts"
+        package.__path__ = [str(package_root)]
+        package.__spec__ = importlib.util.spec_from_loader(
+            "analysis_scripts", loader=None, is_package=True
+        )
+        sys.modules["analysis_scripts"] = package
+    else:
+        package_paths = {
+            Path(path).resolve() for path in getattr(existing_package, "__path__", ())
+        }
+        if package_paths != {package_root}:
+            raise RuntimeError("analysis_scripts package is not repository-bound")
+
+    repo_root_text = str(repo_root)
+    while repo_root_text in sys.path:
+        sys.path.remove(repo_root_text)
+    sys.path.append(repo_root_text)
 
 
 if __name__ == "__main__":
@@ -87,6 +106,12 @@ REOPEN_ATTEMPT_SCHEMA_VERSION = (
 RUNNER_AUTHORITY_GUARD_SCHEMA_VERSION = (
     "noncombat-card-acceptance-training-runner-authority-guard-v1"
 )
+TERMINALIZATION_GUARD_SCHEMA_VERSION = (
+    "noncombat-card-acceptance-training-runner-terminalization-guard-v1"
+)
+TERMINALIZATION_CLOSURE_SCHEMA_VERSION = (
+    "noncombat-card-acceptance-training-runner-terminalization-closure-v1"
+)
 CONTROL_ARTIFACT_INVENTORY_SCHEMA_VERSION = (
     "noncombat-card-acceptance-empirical-successor-artifact-inventory-v1"
 )
@@ -115,6 +140,7 @@ FORBIDDEN_IMPORT_PREFIXES = (
 )
 PREFLIGHT_MAX_BYTES = 4096
 AUTHORIZED_DOCUMENT_MAX_BYTES = 1024 * 1024
+TERMINALIZATION_CLOSURE_FILENAME = "terminalization_closure.json"
 
 _SHA256_RE = re.compile(r"[0-9a-f]{64}")
 _COMMIT_RE = re.compile(r"[0-9a-f]{40}")
@@ -947,9 +973,7 @@ def _terminalization_binding(value: object) -> dict[str, Any]:
         or any(not isinstance(item, str) or not item for item in failure_paths)
     ):
         raise TrainingRunnerBlocked("terminalization failure paths are invalid")
-    owner = _mapping(binding["owner"], "terminalization owner")
-    if not owner:
-        raise TrainingRunnerBlocked("terminalization owner is empty")
+    owner = _validated_lease_owner(binding["owner"], "terminalization owner")
     return {
         "closure_guard": _absolute_path(
             binding["closure_guard"], "terminalization closure guard"
@@ -1036,6 +1060,12 @@ def validate_command_envelope(
     )
     if envelope != expected:
         raise TrainingRunnerBlocked("command envelope binding differs")
+    if (
+        envelope["command"] == "terminalize-dead-owner"
+        and envelope["terminalization_binding"]["closure_guard"]
+        != manifest["terminalization_guard"]
+    ):
+        raise TrainingRunnerBlocked("terminalization closure guard differs")
     return envelope
 
 
@@ -1187,6 +1217,8 @@ def _build_authorized_training_context(
     request: Mapping[str, Any],
     authorization: Mapping[str, Any],
     approval: Mapping[str, Any],
+    expected_command: str = "run-training",
+    registration_identity_only: bool = False,
 ) -> Any:
     """Freeze the exact runner authority and rollback-bound registration."""
     required_control_operations = (
@@ -1238,7 +1270,7 @@ def _build_authorized_training_context(
     if (
         normalized_authority != revalidated_authority
         or revalidated_authority["validated"] is not True
-        or revalidated_authority["command"] != "run-training"
+        or revalidated_authority["command"] != expected_command
     ):
         raise TrainingRunnerBlocked("training context authority differs")
 
@@ -1249,17 +1281,26 @@ def _build_authorized_training_context(
         registration.get("registration_sha256"),
         "original training registration identity",
     )
-    if "rollback_authority_sha256" in registration:
+    if registration_identity_only:
+        if (
+            expected_command != "terminalize-dead-owner"
+            or set(registration) != {"registration_sha256"}
+        ):
+            raise TrainingRunnerBlocked(
+                "identity-only registration is not terminalization-bound"
+            )
+    elif "rollback_authority_sha256" in registration:
         raise TrainingRunnerBlocked(
             "original training registration contains execution authority"
         )
-    registration_body = {
-        key: value
-        for key, value in registration.items()
-        if key != "registration_sha256"
-    }
-    if registration_sha256 != canonical_json_sha256(registration_body):
-        raise TrainingRunnerBlocked("original training registration digest differs")
+    else:
+        registration_body = {
+            key: value
+            for key, value in registration.items()
+            if key != "registration_sha256"
+        }
+        if registration_sha256 != canonical_json_sha256(registration_body):
+            raise TrainingRunnerBlocked("original training registration digest differs")
     rollback_sha256 = manifest["rollback_authority"][
         "rollback_authority_sha256"
     ]
@@ -2271,6 +2312,1081 @@ def _runner_authority_guard_payload(identity: Mapping[str, Any]) -> bytes:
     )
 
 
+def _terminalization_guard_payload(manifest: Mapping[str, Any]) -> bytes:
+    normalized = validate_launch_manifest(manifest)
+    body = {
+        "launch_manifest_sha256": normalized["manifest_sha256"],
+        "output_root": normalized["output_root"],
+        "schema_version": TERMINALIZATION_GUARD_SCHEMA_VERSION,
+    }
+    return canonical_json_bytes(
+        {**body, "guard_sha256": canonical_json_sha256(body)}
+    )
+
+
+def _ensure_terminalization_guard(manifest: Mapping[str, Any]) -> dict[str, Any]:
+    """Create the output-sibling closure guard before managed output exists."""
+    normalized = validate_launch_manifest(manifest)
+    path = Path(normalized["terminalization_guard"])
+    payload = _terminalization_guard_payload(normalized)
+    staging = path.with_name(f".{path.name}.tmp")
+    try:
+        path.parent.mkdir(parents=True, exist_ok=True)
+        if staging.exists():
+            raise TrainingRunnerBlocked("terminalization guard has ambiguous staging")
+        if path.exists():
+            if path.read_bytes() != payload:
+                raise TrainingRunnerBlocked("terminalization guard differs")
+        else:
+            if Path(normalized["output_root"]).exists():
+                raise TrainingRunnerBlocked(
+                    "existing output lacks terminalization guard"
+                )
+            with staging.open("xb") as handle:
+                handle.write(payload)
+                handle.flush()
+                os.fsync(handle.fileno())
+            try:
+                os.link(staging, path)
+            except FileExistsError:
+                if path.read_bytes() != payload:
+                    raise TrainingRunnerBlocked("terminalization guard differs")
+            finally:
+                staging.unlink(missing_ok=True)
+    except TrainingRunnerBlocked:
+        raise
+    except OSError as exc:
+        raise TrainingRunnerBlocked("terminalization guard publication failed") from exc
+    return {
+        "path": path.resolve().as_posix(),
+        "sha256": hashlib.sha256(payload).hexdigest(),
+        "size_bytes": len(payload),
+    }
+
+
+@contextmanager
+def _hold_terminalization_guard(
+    *, control_api: Any, manifest: Mapping[str, Any]
+) -> Any:
+    normalized = validate_launch_manifest(manifest)
+    path = Path(normalized["terminalization_guard"])
+    payload = _terminalization_guard_payload(normalized)
+    staging = path.with_name(f".{path.name}.tmp")
+    if staging.exists():
+        raise TrainingRunnerBlocked("terminalization guard has ambiguous staging")
+    try:
+        handle = path.open("r+b", buffering=0)
+    except OSError as exc:
+        raise TrainingRunnerBlocked("terminalization guard is unavailable") from exc
+    locked = False
+    try:
+        control_api._lock_file(handle)
+        locked = True
+        handle.seek(0)
+        if handle.read() != payload or staging.exists():
+            raise TrainingRunnerBlocked("terminalization guard changed")
+        yield path
+    except TrainingRunnerBlocked:
+        raise
+    except Exception as exc:
+        raise TrainingRunnerBlocked("terminalization guard failed") from exc
+    finally:
+        if locked:
+            try:
+                control_api._unlock_file(handle)
+            except OSError:
+                pass
+        handle.close()
+
+
+def _terminalization_failure_prefix(
+    *,
+    control_api: Any,
+    context: Any,
+    output_root: Path | str,
+    runner_authority_identity: Mapping[str, Any],
+    process_alive: Callable[[int], bool],
+    lease_payload_override: bytes | None = None,
+    held_lease: Any | None = None,
+) -> dict[str, Any]:
+    """Validate and bind a nonterminal dead-owner prefix, including partial chunks."""
+    output = Path(output_root).resolve()
+    if not output.is_dir() or output.is_symlink():
+        raise TrainingRunnerBlocked("terminalization output root is invalid")
+    authority_identity = _validated_runner_authority_identity(
+        runner_authority_identity
+    )
+    authority_guard = output.parent / f".{output.name}.execution.guard"
+    try:
+        if authority_guard.read_bytes() != _runner_authority_guard_payload(
+            authority_identity
+        ):
+            raise TrainingRunnerBlocked("terminalization runner authority guard differs")
+        lease_payload = (
+            lease_payload_override
+            if lease_payload_override is not None
+            else (output / control_api.LEASE_FILENAME).read_bytes()
+        )
+    except TrainingRunnerBlocked:
+        raise
+    except OSError as exc:
+        raise TrainingRunnerBlocked("terminalization prefix is unreadable") from exc
+    lease_record = _parse_canonical_mapping(lease_payload, "terminalization lease")
+    _fields(
+        lease_record,
+        {"identity", "owner", "reclaimed_owner", "schema_version"},
+        "terminalization lease",
+    )
+    owner = _validated_lease_owner(
+        lease_record["owner"], "terminalization lease owner"
+    )
+    if lease_record["reclaimed_owner"] is not None:
+        _validated_lease_owner(
+            lease_record["reclaimed_owner"], "terminalization reclaimed owner"
+        )
+    context_identity = _mapping(
+        control_api._context_identity(context), "terminalization context identity"
+    )
+    if (
+        lease_record["schema_version"] != control_api.LEASE_SCHEMA_VERSION
+        or lease_record["identity"] != context_identity
+    ):
+        raise TrainingRunnerBlocked("terminalization lease identity differs")
+    try:
+        owner_alive = process_alive(owner["child_process_id"])
+    except Exception as exc:
+        raise TrainingRunnerBlocked("terminalization owner liveness failed") from exc
+    if owner_alive is not False:
+        raise TrainingRunnerBlocked("terminalization owner is not dead")
+
+    terminal_names = (
+        control_api.TERMINAL_INTENT_FILENAME,
+        control_api.TERMINAL_FILENAME,
+        control_api.MANIFEST_FILENAME,
+    )
+    if any((output / name).exists() for name in terminal_names):
+        raise TrainingRunnerBlocked("terminalization prefix is already terminal")
+    owns_probe = held_lease is None
+    probe = held_lease
+    if probe is None:
+        probe = control_api.ExecutionLease(
+            output,
+            context=context,
+            child_process_id=owner["child_process_id"],
+            process_alive=process_alive,
+        )
+        probe.held = True
+    try:
+        journal_prefix = _mapping(
+            control_api._journal_prefix_binding(context, probe),
+            "terminalization journal prefix",
+        )
+        resource_prefix = _mapping(
+            control_api._resource_prefix_binding(context, probe),
+            "terminalization resource prefix",
+        )
+        checkpoint_markers = [
+            copy.deepcopy(marker)
+            for marker in control_api._load_training_checkpoint_markers(
+                context, output
+            )
+        ]
+        artifact_inventory = _validated_artifact_inventory(
+            control_api._observe_artifact_inventory(output, excluded_paths=())
+        )
+    except TrainingRunnerBlocked:
+        raise
+    except Exception as exc:
+        raise TrainingRunnerBlocked("terminalization prefix validation failed") from exc
+    finally:
+        if owns_probe:
+            probe.held = False
+    if any(
+        row["path"]
+        in {
+            TERMINALIZATION_CLOSURE_FILENAME,
+            control_api.ROLLBACK_OBSERVATION_FILENAME,
+            *terminal_names,
+        }
+        for row in artifact_inventory["artifacts"]
+    ):
+        raise TrainingRunnerBlocked("terminalization prefix contains closure evidence")
+    launch_rows = [
+        row
+        for row in artifact_inventory["artifacts"]
+        if row["path"] == "runner_launch.json"
+    ]
+    if len(launch_rows) != 1:
+        raise TrainingRunnerBlocked("terminalization runner launch is unavailable")
+    try:
+        launch_payload = (output / "runner_launch.json").read_bytes()
+    except OSError as exc:
+        raise TrainingRunnerBlocked("terminalization runner launch is unreadable") from exc
+    if hashlib.sha256(launch_payload).hexdigest() != launch_rows[0]["stored_sha256"]:
+        raise TrainingRunnerBlocked("terminalization runner launch binding differs")
+    launch = _validated_original_runner_launch(
+        launch_payload,
+        manifest_sha256=authority_identity["launch_manifest_sha256"],
+        rollback_authority_sha256=authority_identity["rollback_authority_sha256"],
+        run_envelope_sha256=authority_identity["run_envelope_sha256"],
+    )
+    if launch["process_id"] != owner["child_process_id"]:
+        raise TrainingRunnerBlocked("terminalization launch owner differs")
+    body = {
+        "artifact_inventory": artifact_inventory,
+        "checkpoint_markers": checkpoint_markers,
+        "context_identity": context_identity,
+        "journal_prefix": journal_prefix,
+        "lease_sha256": hashlib.sha256(lease_payload).hexdigest(),
+        "owner": owner,
+        "resource_prefix": resource_prefix,
+        "runner_authority_identity": authority_identity,
+        "runner_launch": launch,
+    }
+    return {**body, "prefix_sha256": canonical_json_sha256(body)}
+
+
+def _validate_terminalization_failure_prefix(value: object) -> dict[str, Any]:
+    prefix = _mapping(value, "terminalization failure prefix")
+    _fields(
+        prefix,
+        {
+            "artifact_inventory",
+            "checkpoint_markers",
+            "context_identity",
+            "journal_prefix",
+            "lease_sha256",
+            "owner",
+            "prefix_sha256",
+            "resource_prefix",
+            "runner_authority_identity",
+            "runner_launch",
+        },
+        "terminalization failure prefix",
+    )
+    normalized = {
+        "artifact_inventory": _validated_artifact_inventory(
+            prefix["artifact_inventory"]
+        ),
+        "checkpoint_markers": copy.deepcopy(prefix["checkpoint_markers"]),
+        "context_identity": _mapping(
+            prefix["context_identity"], "terminalization prefix context"
+        ),
+        "journal_prefix": _mapping(
+            prefix["journal_prefix"], "terminalization prefix journal"
+        ),
+        "lease_sha256": _digest(
+            prefix["lease_sha256"], "terminalization prefix lease"
+        ),
+        "owner": _validated_lease_owner(
+            prefix["owner"], "terminalization prefix owner"
+        ),
+        "resource_prefix": _mapping(
+            prefix["resource_prefix"], "terminalization prefix resource"
+        ),
+        "runner_authority_identity": _validated_runner_authority_identity(
+            prefix["runner_authority_identity"]
+        ),
+        "runner_launch": _mapping(
+            prefix["runner_launch"], "terminalization prefix launch"
+        ),
+    }
+    if not isinstance(normalized["checkpoint_markers"], list):
+        raise TrainingRunnerBlocked("terminalization checkpoint prefix differs")
+    expected = canonical_json_sha256(normalized)
+    if _digest(prefix["prefix_sha256"], "terminalization prefix") != expected:
+        raise TrainingRunnerBlocked("terminalization failure prefix digest differs")
+    return {**normalized, "prefix_sha256": expected}
+
+
+def _identity_observation_matches(
+    value: object, expected: Mapping[str, Any], label: str
+) -> dict[str, Any]:
+    observation = _mapping(value, label)
+    if set(observation) == {"error", "matches_registered", "observed"}:
+        if observation["error"] is not None:
+            raise TrainingRunnerBlocked(f"{label} differs")
+        observation.pop("error")
+    _fields(observation, {"matches_registered", "observed"}, label)
+    if (
+        observation["matches_registered"] is not True
+        or observation["observed"] != expected
+    ):
+        raise TrainingRunnerBlocked(f"{label} differs")
+    return observation
+
+
+def _build_terminalization_rollback_plan(
+    *,
+    control_api: Any,
+    context: Any,
+    output_root: Path | str,
+    rollback_authority: Mapping[str, Any],
+    failure_paths: Sequence[str],
+    external_binding_observer: Callable[[Path | str], Mapping[str, Any]] | None = None,
+    checkpoint_snapshot_observer: Callable[[Path | str], Mapping[str, Any]]
+    | None = None,
+) -> dict[str, Any]:
+    authority = _validate_rollback_authority(rollback_authority)
+    output = Path(output_root).resolve()
+    file_observer = external_binding_observer or control_api.external_file_binding
+    directory_observer = (
+        checkpoint_snapshot_observer or control_api.snapshot_directory_tree
+    )
+    classification = _mapping(
+        control_api.classify_terminal_closeout(failure_paths=failure_paths),
+        "terminalization rollback classification",
+    )
+    if classification["failure_paths"] != list(failure_paths):
+        raise TrainingRunnerBlocked("terminalization failure classification differs")
+    expected_control = {
+        "checkpoint": authority["control_target"]["checkpoint"],
+        "configuration": authority["control_target"]["configuration"],
+    }
+    control_before = _identity_observation_matches(
+        control_api._capture_identity_observation(
+            lambda: control_api._observe_control_identities(authority, file_observer),
+            label="control identity observation before rollback",
+        ),
+        expected_control,
+        "terminalization control identity before rollback",
+    )
+    production_before = _identity_observation_matches(
+        control_api._capture_identity_observation(
+            lambda: control_api._observe_production_isolation(
+                authority, file_observer, directory_observer
+            ),
+            label="production isolation observation before rollback",
+        ),
+        authority["production_isolation"],
+        "terminalization production isolation before rollback",
+    )
+    relative, target = control_api._managed_artifact_target(
+        output, authority["target_relative_path"]
+    )
+    target_before = (
+        control_api._artifact_binding(relative, target) if target.exists() else None
+    )
+    target_payload = canonical_json_bytes(authority["control_target"])
+    target_after = {
+        "path": relative,
+        "sha256": hashlib.sha256(target_payload).hexdigest(),
+        "size_bytes": len(target_payload),
+    }
+    body = {
+        "classification": classification,
+        "control_identities_before": control_before,
+        "control_target_after": target_after,
+        "control_target_before": target_before,
+        "production_isolation_before": production_before,
+        "rollback_authority_sha256": authority["rollback_authority_sha256"],
+    }
+    return {**body, "rollback_plan_sha256": canonical_json_sha256(body)}
+
+
+def _validate_terminalization_rollback_plan(
+    value: object, *, rollback_authority: Mapping[str, Any]
+) -> dict[str, Any]:
+    plan = _mapping(value, "terminalization rollback plan")
+    _fields(
+        plan,
+        {
+            "classification",
+            "control_identities_before",
+            "control_target_after",
+            "control_target_before",
+            "production_isolation_before",
+            "rollback_authority_sha256",
+            "rollback_plan_sha256",
+        },
+        "terminalization rollback plan",
+    )
+    authority = _validate_rollback_authority(rollback_authority)
+    if plan["rollback_authority_sha256"] != authority["rollback_authority_sha256"]:
+        raise TrainingRunnerBlocked("terminalization rollback authority differs")
+    body = {key: item for key, item in plan.items() if key != "rollback_plan_sha256"}
+    if _digest(plan["rollback_plan_sha256"], "terminalization rollback plan") != canonical_json_sha256(body):
+        raise TrainingRunnerBlocked("terminalization rollback plan digest differs")
+    classification = _mapping(plan["classification"], "terminalization classification")
+    expected_classification = importlib.import_module(
+        "analysis_scripts.noncombat_card_acceptance_empirical_successor_experiment"
+    ).classify_terminal_closeout(failure_paths=classification.get("failure_paths"))
+    if classification != expected_classification:
+        raise TrainingRunnerBlocked("terminalization rollback classification differs")
+    for name in ("control_target_before", "control_target_after"):
+        binding = plan[name]
+        if binding is not None:
+            normalized = _artifact_binding(binding, f"terminalization {name}")
+            if normalized["path"] != authority["target_relative_path"]:
+                raise TrainingRunnerBlocked("terminalization rollback target differs")
+    return copy.deepcopy(plan)
+
+
+def _terminalization_closure_document(
+    *,
+    manifest_sha256: str,
+    terminalization_envelope_sha256: str,
+    failure_prefix: Mapping[str, Any],
+    failure_paths: Sequence[str],
+    rollback_plan: Mapping[str, Any],
+    run_envelope_sha256: str,
+) -> dict[str, Any]:
+    body = {
+        "command": "terminalize-dead-owner",
+        "failure_paths": list(failure_paths),
+        "failure_prefix": _validate_terminalization_failure_prefix(failure_prefix),
+        "launch_manifest_sha256": _digest(
+            manifest_sha256, "terminalization closure manifest"
+        ),
+        "rollback_plan": copy.deepcopy(dict(rollback_plan)),
+        "run_envelope_sha256": _digest(
+            run_envelope_sha256, "terminalization closure run envelope"
+        ),
+        "schema_version": TERMINALIZATION_CLOSURE_SCHEMA_VERSION,
+        "terminalization_envelope_sha256": _digest(
+            terminalization_envelope_sha256,
+            "terminalization closure envelope",
+        ),
+    }
+    return {**body, "closure_sha256": canonical_json_sha256(body)}
+
+
+def _parse_terminalization_closure(
+    payload: bytes,
+    *,
+    manifest_sha256: str,
+    terminalization_envelope_sha256: str,
+    rollback_authority: Mapping[str, Any],
+    run_envelope_sha256: str,
+) -> dict[str, Any]:
+    closure = _parse_canonical_mapping(payload, "terminalization closure")
+    _fields(
+        closure,
+        {
+            "closure_sha256",
+            "command",
+            "failure_paths",
+            "failure_prefix",
+            "launch_manifest_sha256",
+            "rollback_plan",
+            "run_envelope_sha256",
+            "schema_version",
+            "terminalization_envelope_sha256",
+        },
+        "terminalization closure",
+    )
+    if (
+        closure["command"] != "terminalize-dead-owner"
+        or closure["schema_version"] != TERMINALIZATION_CLOSURE_SCHEMA_VERSION
+        or closure["launch_manifest_sha256"] != manifest_sha256
+        or closure["terminalization_envelope_sha256"]
+        != terminalization_envelope_sha256
+        or closure["run_envelope_sha256"] != run_envelope_sha256
+    ):
+        raise TrainingRunnerBlocked("terminalization closure identity differs")
+    prefix = _validate_terminalization_failure_prefix(closure["failure_prefix"])
+    plan = _validate_terminalization_rollback_plan(
+        closure["rollback_plan"], rollback_authority=rollback_authority
+    )
+    expected = _terminalization_closure_document(
+        manifest_sha256=manifest_sha256,
+        terminalization_envelope_sha256=terminalization_envelope_sha256,
+        failure_prefix=prefix,
+        failure_paths=closure["failure_paths"],
+        rollback_plan=plan,
+        run_envelope_sha256=run_envelope_sha256,
+    )
+    if closure != expected:
+        raise TrainingRunnerBlocked("terminalization closure differs")
+    return closure
+
+
+def _managed_inventory_row_from_binding(binding: Mapping[str, Any]) -> dict[str, Any]:
+    normalized = _artifact_binding(binding, "terminalization artifact binding")
+    return {
+        "encoding": "identity-bytes-v1",
+        "path": normalized["path"],
+        "stored_sha256": normalized["sha256"],
+        "stored_size_bytes": normalized["size_bytes"],
+        "uncompressed_sha256": normalized["sha256"],
+        "uncompressed_size_bytes": normalized["size_bytes"],
+    }
+
+
+def _terminalization_resume_state(
+    *,
+    control_api: Any,
+    context: Any,
+    output_root: Path | str,
+    closure: Mapping[str, Any],
+    closure_payload: bytes,
+    rollback_authority: Mapping[str, Any],
+) -> dict[str, Any]:
+    output = Path(output_root).resolve()
+    authority = _validate_rollback_authority(rollback_authority)
+    prefix = _validate_terminalization_failure_prefix(closure["failure_prefix"])
+    plan = _validate_terminalization_rollback_plan(
+        closure["rollback_plan"], rollback_authority=authority
+    )
+    inventory = _validated_artifact_inventory(
+        control_api._observe_artifact_inventory(output, excluded_paths=())
+    )
+    observed = {row["path"]: row for row in inventory["artifacts"]}
+    base = {
+        row["path"]: row for row in prefix["artifact_inventory"]["artifacts"]
+    }
+    suffix_order = (
+        TERMINALIZATION_CLOSURE_FILENAME,
+        control_api.ROLLBACK_OBSERVATION_FILENAME,
+        control_api.TERMINAL_INTENT_FILENAME,
+        control_api.TERMINAL_FILENAME,
+        control_api.MANIFEST_FILENAME,
+    )
+    present = {name: name in observed for name in suffix_order}
+    if not present[TERMINALIZATION_CLOSURE_FILENAME]:
+        raise TrainingRunnerBlocked("terminalization closure marker is missing")
+    try:
+        stored_closure = (output / TERMINALIZATION_CLOSURE_FILENAME).read_bytes()
+    except OSError as exc:
+        raise TrainingRunnerBlocked("terminalization closure marker is unreadable") from exc
+    if stored_closure != closure_payload:
+        raise TrainingRunnerBlocked("terminalization closure marker changed")
+    seen_gap = False
+    for name in suffix_order:
+        if not present[name]:
+            seen_gap = True
+        elif seen_gap:
+            raise TrainingRunnerBlocked("terminalization suffix order differs")
+
+    reconstructed = copy.deepcopy(observed)
+    for name in suffix_order:
+        reconstructed.pop(name, None)
+    target_path = authority["target_relative_path"]
+    target_row = reconstructed.get(target_path)
+    base_target = base.get(target_path)
+    after_target = _managed_inventory_row_from_binding(plan["control_target_after"])
+    if present[control_api.MANIFEST_FILENAME] and target_row != after_target:
+        raise TrainingRunnerBlocked("complete terminalization rollback target drifted")
+    if target_row == after_target:
+        if base_target is None:
+            reconstructed.pop(target_path, None)
+        else:
+            reconstructed[target_path] = copy.deepcopy(base_target)
+    elif target_row != base_target:
+        raise TrainingRunnerBlocked("terminalization rollback target prefix differs")
+    if [reconstructed[name] for name in sorted(reconstructed)] != [
+        base[name] for name in sorted(base)
+    ]:
+        raise TrainingRunnerBlocked("terminalization failure prefix changed")
+    if prefix["context_identity"] != control_api._context_identity(context):
+        raise TrainingRunnerBlocked("terminalization prefix context changed")
+    return {
+        "complete": present[control_api.MANIFEST_FILENAME],
+        "inventory": inventory,
+        "plan": plan,
+        "present": present,
+    }
+
+
+def _current_dead_terminalization_lease(
+    *,
+    control_api: Any,
+    context: Any,
+    output_root: Path | str,
+    process_alive: Callable[[int], bool],
+) -> dict[str, Any]:
+    output = Path(output_root).resolve()
+    try:
+        payload = (output / control_api.LEASE_FILENAME).read_bytes()
+    except OSError as exc:
+        raise TrainingRunnerBlocked("terminalization lease is unreadable") from exc
+    lease = _parse_canonical_mapping(payload, "current terminalization lease")
+    _fields(
+        lease,
+        {"identity", "owner", "reclaimed_owner", "schema_version"},
+        "current terminalization lease",
+    )
+    owner = _validated_lease_owner(lease["owner"], "current terminalization owner")
+    if lease["reclaimed_owner"] is not None:
+        _validated_lease_owner(
+            lease["reclaimed_owner"], "current terminalization reclaimed owner"
+        )
+    if (
+        lease["schema_version"] != control_api.LEASE_SCHEMA_VERSION
+        or lease["identity"] != control_api._context_identity(context)
+    ):
+        raise TrainingRunnerBlocked("current terminalization lease identity differs")
+    try:
+        alive = process_alive(owner["child_process_id"])
+    except Exception as exc:
+        raise TrainingRunnerBlocked("current terminalization liveness failed") from exc
+    if alive is not False:
+        raise TrainingRunnerBlocked("current terminalization owner is not dead")
+    return {
+        "lease_sha256": hashlib.sha256(payload).hexdigest(),
+        "owner": owner,
+        "payload": payload,
+    }
+
+
+def _execute_or_resume_terminalization_rollback(
+    *,
+    control_api: Any,
+    context: Any,
+    lease: Any,
+    rollback_authority: Mapping[str, Any],
+    rollback_plan: Mapping[str, Any],
+    external_binding_observer: Callable[[Path | str], Mapping[str, Any]] | None = None,
+    checkpoint_snapshot_observer: Callable[[Path | str], Mapping[str, Any]]
+    | None = None,
+) -> dict[str, Any]:
+    authority = _validate_rollback_authority(rollback_authority)
+    plan = _validate_terminalization_rollback_plan(
+        rollback_plan, rollback_authority=authority
+    )
+    output = Path(context.request["output_root"]).resolve()
+    file_observer = external_binding_observer or control_api.external_file_binding
+    directory_observer = (
+        checkpoint_snapshot_observer or control_api.snapshot_directory_tree
+    )
+    relative, target = control_api._managed_artifact_target(
+        output, authority["target_relative_path"]
+    )
+    target_payload = canonical_json_bytes(authority["control_target"])
+    if target.exists():
+        try:
+            current_target = target.read_bytes()
+        except OSError as exc:
+            raise TrainingRunnerBlocked("terminalization rollback target is unreadable") from exc
+    else:
+        current_target = None
+    before_binding = plan["control_target_before"]
+    before_matches = (
+        current_target is None
+        if before_binding is None
+        else current_target is not None
+        and hashlib.sha256(current_target).hexdigest() == before_binding["sha256"]
+        and len(current_target) == before_binding["size_bytes"]
+    )
+    if current_target != target_payload:
+        if not before_matches:
+            raise TrainingRunnerBlocked("terminalization rollback target changed")
+        try:
+            control_api._atomic_replace_rollback_target(target, target_payload)
+        except Exception as exc:
+            raise TrainingRunnerBlocked("terminalization rollback target failed") from exc
+    control_after = _identity_observation_matches(
+        control_api._capture_identity_observation(
+            lambda: control_api._observe_control_identities(authority, file_observer),
+            label="control identity observation after rollback",
+        ),
+        {
+            "checkpoint": authority["control_target"]["checkpoint"],
+            "configuration": authority["control_target"]["configuration"],
+        },
+        "terminalization control identity after rollback",
+    )
+    production_after = _identity_observation_matches(
+        control_api._capture_identity_observation(
+            lambda: control_api._observe_production_isolation(
+                authority, file_observer, directory_observer
+            ),
+            label="production isolation observation after rollback",
+        ),
+        authority["production_isolation"],
+        "terminalization production isolation after rollback",
+    )
+    after_binding = control_api._artifact_binding(relative, target)
+    if after_binding != plan["control_target_after"]:
+        raise TrainingRunnerBlocked("terminalization rollback target verification differs")
+    classification = plan["classification"]
+    body = {
+        "candidate_enabled": False,
+        "closeout_kind": classification["closeout_kind"],
+        "control_identities_after": control_after,
+        "control_identities_before": plan["control_identities_before"],
+        "control_identities_verified": True,
+        "control_target_after": after_binding,
+        "control_target_before": before_binding,
+        "control_target_verified": True,
+        "downstream_authority": copy.deepcopy(
+            dict(context.request["downstream_authority"])
+        ),
+        "failure_paths": copy.deepcopy(classification["failure_paths"]),
+        "identity": control_api._context_identity(context),
+        "outcome_class": classification["outcome_class"],
+        "production_isolation_after": production_after,
+        "production_isolation_before": plan["production_isolation_before"],
+        "production_isolation_verified": True,
+        "rollback_authority_sha256": authority["rollback_authority_sha256"],
+        "rollback_required": classification["rollback_required"],
+        "schema_version": control_api.ROLLBACK_OBSERVATION_SCHEMA_VERSION,
+        "status": "rollback_verified",
+        "trigger_class": classification["trigger_class"],
+    }
+    observation = {
+        **body,
+        "rollback_observation_sha256": canonical_json_sha256(body),
+    }
+    path = output / control_api.ROLLBACK_OBSERVATION_FILENAME
+    if path.exists():
+        try:
+            stored = _parse_canonical_mapping(
+                path.read_bytes(), "terminalization rollback observation"
+            )
+        except OSError as exc:
+            raise TrainingRunnerBlocked("terminalization rollback is unreadable") from exc
+        if stored != observation:
+            raise TrainingRunnerBlocked("terminalization rollback observation differs")
+    else:
+        control_api.publish_managed_artifact(
+            context,
+            lease,
+            relative_path=control_api.ROLLBACK_OBSERVATION_FILENAME,
+            payload=canonical_json_bytes(observation),
+        )
+    return observation
+
+
+def _publish_or_load_frozen_terminalization_intent(
+    *,
+    control_api: Any,
+    context: Any,
+    lease: Any,
+    details: Mapping[str, Any],
+) -> dict[str, Any]:
+    output = Path(context.request["output_root"]).resolve()
+    path = output / control_api.TERMINAL_INTENT_FILENAME
+    body = {
+        "artifact_prefix": control_api._terminal_prefix_inventory(output),
+        "details": copy.deepcopy(dict(details)),
+        "downstream_authority": copy.deepcopy(
+            dict(context.request["downstream_authority"])
+        ),
+        "identity": control_api._context_identity(context),
+        "journal_prefix": control_api._journal_prefix_binding(context, lease),
+        "resource_prefix": control_api._resource_prefix_binding(context, lease),
+        "schema_version": control_api.TERMINAL_INTENT_SCHEMA_VERSION,
+        "verdict": "training_process_failure_terminalized",
+    }
+    intent = {**body, "terminal_intent_sha256": canonical_json_sha256(body)}
+    if path.exists():
+        stored = _mapping(
+            control_api._stored_terminal_intent(context, lease),
+            "terminalization terminal intent",
+        )
+        if stored != intent:
+            raise TrainingRunnerBlocked("terminalization terminal intent differs")
+        return stored
+    control_api._execution_context_for_operation(context, "terminal")
+    control_api._require_terminal_publication_open(output)
+    control_api._publish_bounded_artifact(
+        output,
+        relative_path=control_api.TERMINAL_INTENT_FILENAME,
+        payload=canonical_json_bytes(intent),
+    )
+    return intent
+
+
+def _load_expected_complete_terminalization_chain(
+    *, control_api: Any, context: Any, lease: Any, intent: Mapping[str, Any]
+) -> dict[str, Any]:
+    output = Path(context.request["output_root"]).resolve()
+    stored_intent = _mapping(
+        control_api._stored_terminal_intent(context, lease, supplied=intent),
+        "complete terminalization intent",
+    )
+    terminal = _mapping(
+        control_api._stored_terminal_document(context, lease),
+        "complete terminalization terminal",
+    )
+    try:
+        manifest = _parse_canonical_mapping(
+            (output / control_api.MANIFEST_FILENAME).read_bytes(),
+            "complete terminalization manifest",
+        )
+    except OSError as exc:
+        raise TrainingRunnerBlocked("complete terminalization manifest is unreadable") from exc
+    expected_body = {
+        "artifact_inventory": control_api._observe_artifact_inventory(
+            output, excluded_paths=(control_api.MANIFEST_FILENAME,)
+        ),
+        "downstream_authority": copy.deepcopy(
+            dict(context.request["downstream_authority"])
+        ),
+        "identity": control_api._context_identity(context),
+        "schema_version": control_api.MANIFEST_SCHEMA_VERSION,
+        "terminal_intent_sha256": terminal["terminal_intent_sha256"],
+        "terminal_sha256": terminal["terminal_sha256"],
+    }
+    expected_manifest = {
+        **expected_body,
+        "manifest_sha256": canonical_json_sha256(expected_body),
+    }
+    if manifest != expected_manifest:
+        raise TrainingRunnerBlocked("complete terminalization manifest differs")
+    return {
+        "artifact_manifest_sha256": manifest["manifest_sha256"],
+        "terminal_intent_sha256": stored_intent["terminal_intent_sha256"],
+        "terminal_sha256": terminal["terminal_sha256"],
+        "verdict": terminal["verdict"],
+    }
+
+
+def _execute_dead_owner_terminalization(
+    *,
+    control_api: Any,
+    context: Any,
+    launch_manifest: Mapping[str, Any],
+    command_envelope: Mapping[str, Any],
+    authority: Mapping[str, Any],
+    rollback_authority: Mapping[str, Any],
+    process_id: int,
+    process_alive: Callable[[int], bool],
+    clock: Callable[[], float],
+    external_binding_observer: Callable[[Path | str], Mapping[str, Any]] | None = None,
+    checkpoint_snapshot_observer: Callable[[Path | str], Mapping[str, Any]]
+    | None = None,
+) -> dict[str, Any]:
+    """Close one exact dead-owner prefix without empirical access or replay."""
+    callbacks = (process_alive, clock)
+    if not all(callable(callback) for callback in callbacks):
+        raise TrainingRunnerBlocked("terminalization callback is invalid")
+    if isinstance(process_id, bool) or not isinstance(process_id, int) or process_id <= 0:
+        raise TrainingRunnerBlocked("terminalization process identity is invalid")
+    manifest = validate_launch_manifest(launch_manifest)
+    envelope = validate_command_envelope(command_envelope, manifest)
+    normalized_authority = _mapping(authority, "terminalization authority")
+    if (
+        envelope["command"] != "terminalize-dead-owner"
+        or normalized_authority.get("validated") is not True
+        or normalized_authority.get("command") != "terminalize-dead-owner"
+        or normalized_authority.get("envelope_sha256")
+        != envelope["envelope_sha256"]
+        or normalized_authority.get("composite_sha256")
+        != envelope["composite"]["composite_sha256"]
+    ):
+        raise TrainingRunnerBlocked("terminalization command authority differs")
+    binding = envelope["terminalization_binding"]
+    rollback = _validate_rollback_authority(rollback_authority)
+    if rollback != manifest["rollback_authority"]:
+        raise TrainingRunnerBlocked("terminalization rollback authority changed")
+    try:
+        normalized_failure_paths = control_api.classify_terminal_closeout(
+            failure_paths=binding["failure_paths"]
+        )["failure_paths"]
+    except Exception as exc:
+        raise TrainingRunnerBlocked("terminalization failure paths differ") from exc
+    if normalized_failure_paths != binding["failure_paths"]:
+        raise TrainingRunnerBlocked("terminalization failure paths are not canonical")
+    output = Path(manifest["output_root"]).resolve()
+    run_composite = build_runner_composite(manifest, "run-training")
+    runner_authority_identity = {
+        "composite_sha256": run_composite["composite_sha256"],
+        "launch_manifest_sha256": manifest["manifest_sha256"],
+        "rollback_authority_sha256": rollback["rollback_authority_sha256"],
+        "run_envelope_sha256": binding["run_envelope_sha256"],
+    }
+    closure_path = output / TERMINALIZATION_CLOSURE_FILENAME
+
+    with _hold_terminalization_guard(control_api=control_api, manifest=manifest):
+        if closure_path.exists():
+            try:
+                closure_payload = closure_path.read_bytes()
+            except OSError as exc:
+                raise TrainingRunnerBlocked(
+                    "terminalization closure marker is unreadable"
+                ) from exc
+            closure = _parse_terminalization_closure(
+                closure_payload,
+                manifest_sha256=manifest["manifest_sha256"],
+                terminalization_envelope_sha256=envelope["envelope_sha256"],
+                rollback_authority=rollback,
+                run_envelope_sha256=binding["run_envelope_sha256"],
+            )
+            prefix = closure["failure_prefix"]
+            if (
+                prefix["owner"] != binding["owner"]
+                or prefix["lease_sha256"] != binding["lease_sha256"]
+                or prefix["prefix_sha256"] != binding["prefix_sha256"]
+                or closure["failure_paths"] != binding["failure_paths"]
+            ):
+                raise TrainingRunnerBlocked("terminalization closure binding differs")
+        else:
+            prefix = _terminalization_failure_prefix(
+                control_api=control_api,
+                context=context,
+                output_root=output,
+                runner_authority_identity=runner_authority_identity,
+                process_alive=process_alive,
+            )
+            if (
+                prefix["owner"] != binding["owner"]
+                or prefix["lease_sha256"] != binding["lease_sha256"]
+                or prefix["prefix_sha256"] != binding["prefix_sha256"]
+            ):
+                raise TrainingRunnerBlocked("terminalization failure prefix differs")
+            rollback_plan = _build_terminalization_rollback_plan(
+                control_api=control_api,
+                context=context,
+                output_root=output,
+                rollback_authority=rollback,
+                failure_paths=binding["failure_paths"],
+                external_binding_observer=external_binding_observer,
+                checkpoint_snapshot_observer=checkpoint_snapshot_observer,
+            )
+            closure = _terminalization_closure_document(
+                manifest_sha256=manifest["manifest_sha256"],
+                terminalization_envelope_sha256=envelope["envelope_sha256"],
+                failure_prefix=prefix,
+                failure_paths=binding["failure_paths"],
+                rollback_plan=rollback_plan,
+                run_envelope_sha256=binding["run_envelope_sha256"],
+            )
+            closure_payload = canonical_json_bytes(closure)
+
+        state = (
+            _terminalization_resume_state(
+                control_api=control_api,
+                context=context,
+                output_root=output,
+                closure=closure,
+                closure_payload=closure_payload,
+                rollback_authority=rollback,
+            )
+            if closure_path.exists()
+            else None
+        )
+        current_lease = _current_dead_terminalization_lease(
+            control_api=control_api,
+            context=context,
+            output_root=output,
+            process_alive=process_alive,
+        )
+        if (
+            current_lease["owner"] != binding["owner"]
+            or current_lease["lease_sha256"] != binding["lease_sha256"]
+        ):
+            raise TrainingRunnerBlocked("terminalization lease changed before reclaim")
+
+        lease_handle = control_api.ExecutionLease(
+            output,
+            context=context,
+            child_process_id=process_id,
+            process_alive=process_alive,
+            allow_stale_reclaim=True,
+            expected_stale_owner=current_lease["owner"],
+            expected_stale_lease_sha256=binding["lease_sha256"],
+            preserve_stale_owner=True,
+            clock=clock,
+        )
+        try:
+            with lease_handle as lease:
+                if lease.reclaimed_owner != current_lease["owner"]:
+                    raise TrainingRunnerBlocked(
+                        "terminalization lease reclamation proof differs"
+                    )
+                if closure_path.exists():
+                    state = _terminalization_resume_state(
+                        control_api=control_api,
+                        context=context,
+                        output_root=output,
+                        closure=closure,
+                        closure_payload=closure_payload,
+                        rollback_authority=rollback,
+                    )
+                else:
+                    locked_prefix = _terminalization_failure_prefix(
+                        control_api=control_api,
+                        context=context,
+                        output_root=output,
+                        runner_authority_identity=runner_authority_identity,
+                        process_alive=process_alive,
+                        lease_payload_override=current_lease["payload"],
+                        held_lease=lease,
+                    )
+                    if locked_prefix != prefix:
+                        raise TrainingRunnerBlocked(
+                            "terminalization failure prefix changed under lease"
+                        )
+                    locked_plan = _build_terminalization_rollback_plan(
+                        control_api=control_api,
+                        context=context,
+                        output_root=output,
+                        rollback_authority=rollback,
+                        failure_paths=binding["failure_paths"],
+                        external_binding_observer=external_binding_observer,
+                        checkpoint_snapshot_observer=checkpoint_snapshot_observer,
+                    )
+                    if locked_plan != closure["rollback_plan"]:
+                        raise TrainingRunnerBlocked(
+                            "terminalization rollback plan changed under lease"
+                        )
+                if not closure_path.exists():
+                    control_api.publish_managed_artifact(
+                        context,
+                        lease,
+                        relative_path=TERMINALIZATION_CLOSURE_FILENAME,
+                        payload=closure_payload,
+                    )
+                rollback_observation = _execute_or_resume_terminalization_rollback(
+                    control_api=control_api,
+                    context=context,
+                    lease=lease,
+                    rollback_authority=rollback,
+                    rollback_plan=closure["rollback_plan"],
+                    external_binding_observer=external_binding_observer,
+                    checkpoint_snapshot_observer=checkpoint_snapshot_observer,
+                )
+                details = {
+                    "closure_sha256": closure["closure_sha256"],
+                    "failure_paths": copy.deepcopy(binding["failure_paths"]),
+                    "original_lease_sha256": binding["lease_sha256"],
+                    "original_owner": copy.deepcopy(binding["owner"]),
+                    "original_prefix_sha256": binding["prefix_sha256"],
+                    "rollback_observation_sha256": rollback_observation[
+                        "rollback_observation_sha256"
+                    ],
+                    "run_envelope_sha256": binding["run_envelope_sha256"],
+                    "terminalization_envelope_sha256": envelope["envelope_sha256"],
+                }
+                intent = _publish_or_load_frozen_terminalization_intent(
+                    control_api=control_api,
+                    context=context,
+                    lease=lease,
+                    details=details,
+                )
+                if state is not None and state["complete"]:
+                    return _load_expected_complete_terminalization_chain(
+                        control_api=control_api,
+                        context=context,
+                        lease=lease,
+                        intent=intent,
+                    )
+                terminal = _mapping(
+                    control_api.publish_terminal_document(
+                        context, lease, terminal_intent=intent
+                    ),
+                    "terminalization terminal document",
+                )
+                artifact_manifest = _mapping(
+                    control_api.publish_artifact_manifest(
+                        context, lease, terminal_document=terminal
+                    ),
+                    "terminalization artifact manifest",
+                )
+                return {
+                    "artifact_manifest_sha256": artifact_manifest["manifest_sha256"],
+                    "terminal_intent_sha256": intent["terminal_intent_sha256"],
+                    "terminal_sha256": terminal["terminal_sha256"],
+                    "verdict": terminal["verdict"],
+                }
+        except TrainingRunnerBlocked:
+            raise
+        except Exception as exc:
+            raise TrainingRunnerBlocked("dead-owner terminalization failed") from exc
+
+
 def _validated_reopen_observation(
     value: Mapping[str, Any],
     *,
@@ -3229,8 +4345,10 @@ def _default_repo_observer(manifest: Mapping[str, Any]) -> dict[str, Any]:
     observed_tracked = set(
         _git_text(root, "ls-files", "--error-unmatch", "--", *tracked).splitlines()
     )
+    head = _git_text(root, "rev-parse", "HEAD")
+    pushed = _git_text(root, "rev-parse", manifest["pushed_ref"])
     runner_commit = manifest["runner_source_commit"]
-    _git_text(root, "merge-base", "--is-ancestor", runner_commit, "HEAD")
+    _git_text(root, "merge-base", "--is-ancestor", runner_commit, head)
     source_commit_bound = all(
         _binding_matches(
             _git_bytes(root, "show", f"{runner_commit}:{binding['path']}"), binding
@@ -3239,17 +4357,30 @@ def _default_repo_observer(manifest: Mapping[str, Any]) -> dict[str, Any]:
     )
     return {
         "clean": _git_text(root, "status", "--porcelain=v1", "--", *tracked) == "",
-        "head": _git_text(root, "rev-parse", "HEAD"),
-        "pushed": _git_text(root, "rev-parse", manifest["pushed_ref"]),
+        "head": head,
+        "pushed": pushed,
         "runner_ancestor": True,
         "source_commit_bound": source_commit_bound,
-        "tracked": observed_tracked == set(tracked),
+        "tracked": (
+            observed_tracked == set(tracked)
+            and _git_text(root, "rev-parse", "HEAD") == head
+            and _git_text(root, "rev-parse", manifest["pushed_ref"])
+            == pushed
+        ),
     }
 
 
 def _default_authorized_source_observer(
-    manifest: Mapping[str, Any], authority_paths: Sequence[str]
+    manifest: Mapping[str, Any],
+    authority_paths: Sequence[str],
+    *,
+    opaque_artifact_names: Sequence[str] = (),
 ) -> dict[str, Any]:
+    opaque_names = set(opaque_artifact_names)
+    if len(opaque_names) != len(tuple(opaque_artifact_names)) or not opaque_names.issubset(
+        ARTIFACT_NAMES
+    ):
+        raise TrainingRunnerBlocked("opaque source artifact names differ")
     root = Path(manifest["repository_root"])
     try:
         authority_relative = [
@@ -3269,6 +4400,19 @@ def _default_authorized_source_observer(
     tracked = list(
         dict.fromkeys([manifest_relative, *artifact_paths, *authority_relative])
     )
+    clean_paths = list(
+        dict.fromkeys(
+            [
+                manifest_relative,
+                *(
+                    manifest["artifacts"][name]["path"]
+                    for name in ARTIFACT_NAMES
+                    if name not in opaque_names
+                ),
+                *authority_relative,
+            ]
+        )
+    )
     observed_tracked = set(
         _git_text(root, "ls-files", "--error-unmatch", "--", *tracked).splitlines()
     )
@@ -3285,16 +4429,18 @@ def _default_authorized_source_observer(
             "size_bytes": len(payload),
         }
     runner_commit = manifest["runner_source_commit"]
-    _git_text(root, "merge-base", "--is-ancestor", runner_commit, "HEAD")
+    _git_text(root, "merge-base", "--is-ancestor", runner_commit, head)
     source_commit_bound = all(
         _binding_matches(
             _git_bytes(root, "show", f"{runner_commit}:{binding['path']}"), binding
         )
-        for binding in manifest["artifacts"].values()
+        for name, binding in manifest["artifacts"].items()
+        if name not in opaque_names
     )
     return {
         "authority_bindings": authority_bindings,
-        "clean": _git_text(root, "status", "--porcelain=v1", "--", *tracked) == "",
+        "clean": _git_text(root, "status", "--porcelain=v1", "--", *clean_paths)
+        == "",
         "head": head,
         "pushed": pushed,
         "runner_ancestor": True,
@@ -3323,10 +4469,19 @@ def _load_authorized_command_documents(
     | None = None,
 ) -> dict[str, Any]:
     """Load one pushed command authority without opening empirical inputs."""
-    if command != "run-training":
+    if command not in {"run-training", "terminalize-dead-owner"}:
         raise TrainingRunnerBlocked("authorized command loader command differs")
     reader = artifact_reader or _default_artifact_reader
-    observer = source_observer or _default_authorized_source_observer
+    if source_observer is None:
+        opaque_names = ("registration",) if command == "terminalize-dead-owner" else ()
+
+        def observer(value: Mapping[str, Any], paths: Sequence[str]) -> Mapping[str, Any]:
+            return _default_authorized_source_observer(
+                value, paths, opaque_artifact_names=opaque_names
+            )
+
+    else:
+        observer = source_observer
     if not callable(reader) or not callable(observer):
         raise TrainingRunnerBlocked("authorized command loader callback is invalid")
 
@@ -3354,7 +4509,10 @@ def _load_authorized_command_documents(
     manifest = parse_launch_manifest_bytes(authority_payloads["--manifest"])
     if paths["--manifest"].as_posix() != manifest["manifest_path"]:
         raise TrainingRunnerBlocked("authorized command manifest path differs")
-    command_value = manifest["commands"]["run_training"]
+    command_key = (
+        "run_training" if command == "run-training" else "terminalize_dead_owner"
+    )
+    command_value = manifest["commands"][command_key]
     expected_paths = dict(zip(command_value[4::2], command_value[5::2]))
     observed_paths = {name: path.as_posix() for name, path in paths.items()}
     if observed_paths != expected_paths:
@@ -3371,11 +4529,13 @@ def _load_authorized_command_documents(
         raise TrainingRunnerBlocked("authorized training request binding differs")
     request = _parse_canonical_mapping(request_payload, "training request")
     authority_payloads["--envelope"] = read_bounded(
-        paths["--envelope"], "run envelope"
+        paths["--envelope"], f"{command} envelope"
     )
     envelope = parse_command_envelope_bytes(
         authority_payloads["--envelope"], manifest
     )
+    if envelope["command"] != command:
+        raise TrainingRunnerBlocked("authorized command envelope differs")
     authority_payloads["--authorization"] = read_bounded(
         paths["--authorization"], "stage authorization"
     )
@@ -4906,6 +6066,7 @@ def _compose_authorized_training_command_for_qualification(
         raise TrainingRunnerBlocked(
             "training command composition reached lifecycle after runtime dependency load"
         )
+    _ensure_terminalization_guard(manifest)
     return _execute_training_lifecycle(
         control_api=control,
         registered_inputs_loader=open_registered_inputs,
@@ -4993,6 +6154,115 @@ def _execute_authorized_training_command(
 ) -> dict[str, Any]:
     """Run the fixed production composition after CLI qualification opens it."""
     return _compose_authorized_training_command_for_qualification(
+        manifest_path=manifest_path,
+        envelope_path=envelope_path,
+        authorization_path=authorization_path,
+        approval_path=approval_path,
+        launch_observation_path=launch_observation_path,
+        process_id=os.getpid(),
+        process_alive=_windows_process_alive,
+        clock=time.monotonic,
+    )
+
+
+def _compose_authorized_dead_owner_terminalization_for_qualification(
+    *,
+    manifest_path: Path | str,
+    envelope_path: Path | str,
+    authorization_path: Path | str,
+    approval_path: Path | str,
+    launch_observation_path: Path | str,
+    process_id: int,
+    process_alive: Callable[[int], bool],
+    clock: Callable[[], float],
+    interpreter_path: Path | str | None = None,
+    artifact_reader: Callable[[Path], bytes] | None = None,
+    source_observer: Callable[
+        [Mapping[str, Any], Sequence[str]], Mapping[str, Any]
+    ]
+    | None = None,
+    external_binding_observer: Callable[[Path | str], Mapping[str, Any]] | None = None,
+    checkpoint_snapshot_observer: Callable[[Path | str], Mapping[str, Any]]
+    | None = None,
+) -> dict[str, Any]:
+    """Compose closure-only authority without opening inventory or runtime inputs."""
+    reader = artifact_reader or _default_artifact_reader
+    if not all(callable(callback) for callback in (reader, process_alive, clock)):
+        raise TrainingRunnerBlocked("terminalization composition callback is invalid")
+    if _forbidden_imports_loaded():
+        raise TrainingRunnerBlocked(
+            "terminalization composition started after runtime dependency load"
+        )
+    documents = _load_authorized_command_documents(
+        command="terminalize-dead-owner",
+        manifest_path=manifest_path,
+        envelope_path=envelope_path,
+        authorization_path=authorization_path,
+        approval_path=approval_path,
+        launch_observation_path=launch_observation_path,
+        artifact_reader=reader,
+        source_observer=source_observer,
+    )
+    manifest = documents["manifest"]
+    observed_interpreter = Path(interpreter_path or sys.executable).resolve().as_posix()
+    if observed_interpreter.casefold() != manifest["interpreter"].casefold():
+        raise TrainingRunnerBlocked("terminalization interpreter differs")
+    try:
+        control = importlib.import_module(
+            "analysis_scripts.noncombat_card_acceptance_empirical_successor_experiment"
+        )
+    except Exception as exc:
+        raise TrainingRunnerBlocked("bound terminalization control is unavailable") from exc
+    registration = {
+        "registration_sha256": manifest["request_contract"]["registration_sha256"]
+    }
+    execution_registration = {
+        **copy.deepcopy(registration),
+        "rollback_authority_sha256": manifest["rollback_authority"][
+            "rollback_authority_sha256"
+        ],
+    }
+    context = _build_authorized_training_context(
+        control_api=control,
+        launch_manifest=manifest,
+        command_envelope=documents["envelope"],
+        authority=documents["authority"],
+        original_registration=registration,
+        execution_registration=execution_registration,
+        request=documents["request"],
+        authorization=documents["authorization"],
+        approval=documents["approval"],
+        expected_command="terminalize-dead-owner",
+        registration_identity_only=True,
+    )
+    if _forbidden_imports_loaded():
+        raise TrainingRunnerBlocked(
+            "terminalization composition loaded runtime dependencies"
+        )
+    return _execute_dead_owner_terminalization(
+        control_api=control,
+        context=context,
+        launch_manifest=manifest,
+        command_envelope=documents["envelope"],
+        authority=documents["authority"],
+        rollback_authority=manifest["rollback_authority"],
+        process_id=process_id,
+        process_alive=process_alive,
+        clock=clock,
+        external_binding_observer=external_binding_observer,
+        checkpoint_snapshot_observer=checkpoint_snapshot_observer,
+    )
+
+
+def _execute_authorized_dead_owner_terminalization_command(
+    *,
+    manifest_path: Path | str,
+    envelope_path: Path | str,
+    authorization_path: Path | str,
+    approval_path: Path | str,
+    launch_observation_path: Path | str,
+) -> dict[str, Any]:
+    return _compose_authorized_dead_owner_terminalization_for_qualification(
         manifest_path=manifest_path,
         envelope_path=envelope_path,
         authorization_path=authorization_path,

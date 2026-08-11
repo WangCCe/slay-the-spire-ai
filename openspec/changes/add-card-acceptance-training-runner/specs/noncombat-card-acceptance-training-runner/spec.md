@@ -139,21 +139,23 @@ access training seeds, load runtime/native/model modules, construct an
 environment, consume a continuation, or replay training.
 
 The terminalizer SHALL hold a bound sibling guard outside the managed output
-while revalidating owner death, exact lease bytes, the envelope-bound prefix and
-terminal absence immediately before stale-lease reclamation. A conflict SHALL
-leave the execution lease and managed output unchanged.
+and the execution-lease file lock while revalidating owner death, exact unchanged
+stale-owner lease bytes, the envelope-bound prefix and terminal absence. It SHALL
+retain the original lease owner bytes throughout closure rather than assign the
+lease to the terminalizer. A conflict SHALL leave the execution lease and
+managed output unchanged.
 
 #### Scenario: Proven dead owner has a valid partial prefix
 - **WHEN** the recorded owner is proven dead, the existing prefix is internally consistent and nonterminal, and a fresh reviewed pushed terminalization envelope binds that owner, lease, run envelope, prefix, failure classification, manifest and rollback identity
-- **THEN** the terminalizer reclaims the stale-owner lease, publishes a closure marker binding the terminalization-envelope SHA, restores only the exact experiment-local candidate-disabled control target, reobserves bound control/production identities without model loading, and publishes exactly one process-failure terminal and registered rollback evidence without empirical access or replay
+- **THEN** the terminalizer locks and retains the exact stale-owner lease without rewriting it, publishes a closure marker binding the terminalization-envelope SHA, restores only the exact experiment-local candidate-disabled control target, reobserves bound control/production identities without model loading, and publishes exactly one process-failure terminal and registered rollback evidence without empirical access or replay
 
 #### Scenario: A prior run envelope is offered for terminalization
 - **WHEN** terminalization authority reuses the run envelope or omits a fresh owner/prefix-bound terminalization envelope
-- **THEN** terminalization refuses before stale-lease reclamation or output change
+- **THEN** terminalization refuses before stale-owner lease locking or output change
 
 #### Scenario: Terminalizer dies after closure starts
-- **WHEN** the terminalizer owner dies after lease reclamation or identical closure-marker publication and the original failure prefix plus any durable closure suffix remain exact
-- **THEN** the same terminalization envelope may resume only the idempotent rollback/terminal sequence after a fresh liveness check, without runtime, seed, environment, continuation, or training access
+- **WHEN** the terminalizer process dies after stale-owner lease locking or identical closure-marker publication and the original failure prefix plus any durable closure suffix remain exact
+- **THEN** the same terminalization envelope may resume only the idempotent rollback/terminal sequence after proving the original owner remains dead and reacquiring both locks, without runtime, seed, environment, continuation, or training access
 
 #### Scenario: Terminalizer resume finds drift or staging
 - **WHEN** a closure-only resume finds changed failure evidence, a different closure marker or classification, unbound suffix artifacts, or ambiguous staging

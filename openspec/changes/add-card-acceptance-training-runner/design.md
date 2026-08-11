@@ -104,23 +104,25 @@ After the prior owner is proven dead, a new composite and fresh authority
 resolution bind the run-envelope SHA, old owner, lease bytes, output root,
 journal/resource/checkpoint prefix, fixed failure classification, manifest and
 rollback SHA. The independently reviewed pushed terminalization envelope is
-required before stale-lease reclamation. Its SHA is written to a closure marker
-before rollback and terminal publication. A sibling terminalization guard,
+required before acquiring the stale-owner lease lock. Its SHA is written to a
+closure marker before rollback and terminal publication. A sibling terminalization guard,
 created by the original run before the managed output root and excluded from
 its artifact inventory, serializes closure commands. While holding that guard,
-the terminalizer revalidates process death, exact lease bytes, the envelope-
-bound failure prefix, and terminal absence immediately before stale-lease
-reclamation; a conflict releases the guard without changing the execution lease
-or managed output.
+the terminalizer acquires the execution-lease file lock and revalidates process
+death, exact unchanged stale-owner lease bytes, the envelope-bound failure
+prefix, and terminal absence. It retains the original owner bytes throughout
+closure rather than assigning the lease to the terminalizer; a conflict releases
+both locks without changing the execution lease or managed output.
 
-If a terminalizer dies after lease reclamation or closure-marker publication,
+If a terminalizer dies after acquiring the stale-owner lease lock or publishing
+the closure marker,
 the same terminalization envelope may perform an idempotent closure-only resume.
-It must prove the new terminalizer owner dead, preserve the original bound
-failure prefix exactly, accept only the identical closure marker and already
-published registered rollback/terminal suffix, and continue the fixed closure
-sequence. It cannot create a new failure classification, access runtime/seeds,
-or make training runnable. Ambiguous staging remains fail-closed evidence and is
-never deleted or repaired automatically.
+It must prove the original owner remains dead, reacquire both locks, preserve the
+original bound failure prefix exactly, accept only the identical closure marker
+and already published registered rollback/terminal suffix, and continue the
+fixed closure sequence. It cannot create a new failure classification, access
+runtime/seeds, or make training runnable. Ambiguous staging remains fail-closed
+evidence and is never deleted or repaired automatically.
 
 The runner revalidates every transitive edge. This bridges the older request/
 stage-authorization schema to the new source-bound runner without modifying
@@ -198,8 +200,9 @@ close that prefix. While holding the sibling terminalization guard, it first
 validates the exact manifest, stage authorization, approval and launch
 observations, proves the recorded owner is dead, and verifies the exact lease
 bytes, envelope-bound journal/resource/checkpoint prefix, and terminal absence.
-Only then may it reclaim the stale-owner lease. It may then publish only the process-failure terminal and
-registered rollback evidence prescribed by the control plane. Rollback restores
+It keeps the stale-owner lease file locked without rewriting its owner while it
+publishes only the process-failure terminal and registered rollback evidence
+prescribed by the control plane. Rollback restores
 only the experiment-local candidate-disabled target JSON and reobserves the
 bound control checkpoint/config and production identities as byte-level
 bindings; it never restores a training/runtime checkpoint or loads checkpoint

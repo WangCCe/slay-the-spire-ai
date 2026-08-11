@@ -1185,6 +1185,53 @@ def test_execution_lease_binds_live_child_and_requires_dead_owner_recovery(tmp_p
         assert reclaimed.reclaimed_owner["child_process_id"] == 4242
 
 
+def test_execution_lease_can_hold_exact_dead_owner_without_rewriting_it(tmp_path):
+    control = _control()
+    context = _training_context(control)
+    output = tmp_path / "preserved-dead-owner"
+    with control.ExecutionLease(
+        output,
+        context=context,
+        child_process_id=4242,
+        process_alive=lambda process_id: process_id == 4242,
+        clock=lambda: 1.0,
+    ):
+        pass
+    lease_path = output / control.LEASE_FILENAME
+    original_bytes = lease_path.read_bytes()
+    original_owner = json.loads(original_bytes)["owner"]
+
+    with control.ExecutionLease(
+        output,
+        context=context,
+        child_process_id=4243,
+        process_alive=lambda process_id: process_id == 4243,
+        allow_stale_reclaim=True,
+        expected_stale_owner=original_owner,
+        expected_stale_lease_sha256=hashlib.sha256(original_bytes).hexdigest(),
+        preserve_stale_owner=True,
+        clock=lambda: 2.0,
+    ) as held:
+        assert held.owner == original_owner
+        assert held.reclaimed_owner == original_owner
+
+    assert lease_path.read_bytes() == original_bytes
+    drifted_owner = {**original_owner, "token": "f" * 32}
+    with pytest.raises(control.SuccessorControlError, match="stale owner differs"):
+        with control.ExecutionLease(
+            output,
+            context=context,
+            child_process_id=4243,
+            process_alive=lambda process_id: process_id == 4243,
+            allow_stale_reclaim=True,
+            expected_stale_owner=drifted_owner,
+            expected_stale_lease_sha256=hashlib.sha256(original_bytes).hexdigest(),
+            preserve_stale_owner=True,
+        ):
+            pass
+    assert lease_path.read_bytes() == original_bytes
+
+
 def test_journal_is_write_ahead_resources_are_monotonic_and_markers_write_once(
     tmp_path,
 ):
