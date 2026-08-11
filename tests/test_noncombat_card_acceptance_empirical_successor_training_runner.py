@@ -2646,13 +2646,20 @@ def test_training_lifecycle_setup_orders_authority_lease_marker_and_lazy_loaders
     )
     runtime = _FakeTrainingRuntimeApi(runner)
     closeouts = []
+    context_inputs = []
+
+    def build_context(execution_registration, original_registration, authority):
+        calls.append("context")
+        context_inputs.append(
+            (execution_registration, original_registration, authority)
+        )
+        return copy.deepcopy(execution_registration)
 
     result = runner._execute_training_lifecycle(
         control_api=control,
         registered_inputs_loader=lambda: calls.append("registered-inputs")
         or _outer_registered_inputs(),
-        context_builder=lambda execution_registration: calls.append("context")
-        or copy.deepcopy(execution_registration),
+        context_builder=build_context,
         context_identity_observer=lambda context: _outer_context_identity(),
         reopen_observer=lambda output, context, process_alive: (
             calls.append("reopen-observer") or _setup_reopen_observation()
@@ -2693,9 +2700,66 @@ def test_training_lifecycle_setup_orders_authority_lease_marker_and_lazy_loaders
         "bootstrap-marker",
     ]
     assert calls.index("stage-marker") < calls.index("environment-loader")
+    assert context_inputs == [
+        (
+            _outer_registered_inputs()["execution_registration"],
+            _outer_registered_inputs()["registration"],
+            _outer_registered_inputs()["authority"],
+        )
+    ]
     assert calls[-1] == "lease-exit"
     assert result["verdict"] == "training_completed_without_family_saturation"
     assert closeouts[0][0] == "training_completed_without_family_saturation"
+
+
+def test_training_lifecycle_rejects_rollback_in_original_registration():
+    runner = _runner()
+    registered = _outer_registered_inputs()
+    registered["registration"]["rollback_authority_sha256"] = "d" * 64
+
+    with pytest.raises(
+        runner.TrainingRunnerBlocked,
+        match="registered training lifecycle inputs differ",
+    ):
+        runner._execute_training_lifecycle(
+            control_api=SimpleNamespace(),
+            registered_inputs_loader=lambda: registered,
+            context_builder=lambda *_args: pytest.fail(
+                "invalid original registration reached context construction"
+            ),
+            context_identity_observer=lambda _context: pytest.fail(
+                "invalid original registration reached context identity"
+            ),
+            reopen_observer=lambda *_args: pytest.fail(
+                "invalid original registration reached reopen"
+            ),
+            lease_factory=lambda *_args: pytest.fail(
+                "invalid original registration reached lease"
+            ),
+            runtime_loader=lambda: pytest.fail(
+                "invalid original registration loaded runtime"
+            ),
+            environment_factory_loader=lambda: pytest.fail(
+                "invalid original registration loaded environment"
+            ),
+            checkpoint_reader=lambda _path: pytest.fail(
+                "invalid original registration read checkpoint"
+            ),
+            launch_marker_reader=lambda _path: pytest.fail(
+                "invalid original registration read launch marker"
+            ),
+            output_root=Path("D:/synthetic/training-output"),
+            manifest_sha256="9" * 64,
+            run_envelope_sha256="a" * 64,
+            rollback_authority_sha256="d" * 64,
+            process_id=71_001,
+            process_alive=lambda _process_id: True,
+            deadline=100.0,
+            clock=lambda: 0.0,
+            closeout=lambda *_args: pytest.fail(
+                "invalid original registration reached closeout"
+            ),
+        )
 
 
 @pytest.mark.parametrize(
@@ -2738,7 +2802,7 @@ def test_training_lifecycle_rejects_compare_and_acquire_drift_before_writes(
         runner._execute_training_lifecycle(
             control_api=control,
             registered_inputs_loader=lambda: _outer_registered_inputs(),
-            context_builder=lambda execution_registration: copy.deepcopy(
+            context_builder=lambda execution_registration, original_registration, authority: copy.deepcopy(
                 execution_registration
             ),
             context_identity_observer=lambda context: _outer_context_identity(),
@@ -2788,7 +2852,7 @@ def test_training_lifecycle_stale_setup_preserves_original_launch():
     result = runner._execute_training_lifecycle(
         control_api=control,
         registered_inputs_loader=lambda: _outer_registered_inputs(),
-        context_builder=lambda execution_registration: copy.deepcopy(
+        context_builder=lambda execution_registration, original_registration, authority: copy.deepcopy(
             execution_registration
         ),
         context_identity_observer=lambda context: _outer_context_identity(),
@@ -2859,7 +2923,7 @@ def test_training_lifecycle_continuation_restores_exact_complete_checkpoint():
         control_api=control,
         registered_inputs_loader=lambda: calls.append("registered-inputs")
         or _outer_registered_inputs(start_chunk=1),
-        context_builder=lambda execution_registration: copy.deepcopy(
+        context_builder=lambda execution_registration, original_registration, authority: copy.deepcopy(
             execution_registration
         ),
         context_identity_observer=lambda context: _outer_context_identity(),
@@ -2963,7 +3027,7 @@ def test_training_lifecycle_attempt_collision_blocks_before_runtime_loading():
         runner._execute_training_lifecycle(
             control_api=control,
             registered_inputs_loader=lambda: _outer_registered_inputs(start_chunk=1),
-            context_builder=lambda execution_registration: copy.deepcopy(
+            context_builder=lambda execution_registration, original_registration, authority: copy.deepcopy(
                 execution_registration
             ),
             context_identity_observer=lambda context: _outer_context_identity(),
@@ -3011,7 +3075,7 @@ def test_training_lifecycle_partial_reopen_blocks_before_runtime_loading():
             control_api=control,
             registered_inputs_loader=lambda: calls.append("registered-inputs")
             or _outer_registered_inputs(),
-            context_builder=lambda execution_registration: copy.deepcopy(
+            context_builder=lambda execution_registration, original_registration, authority: copy.deepcopy(
                 execution_registration
             ),
             context_identity_observer=lambda context: _outer_context_identity(),

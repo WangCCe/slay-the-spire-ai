@@ -2480,7 +2480,9 @@ def _execute_training_lifecycle(
     *,
     control_api: Any,
     registered_inputs_loader: Callable[[], Mapping[str, Any]],
-    context_builder: Callable[[Mapping[str, Any]], Any],
+    context_builder: Callable[
+        [Mapping[str, Any], Mapping[str, Any], Mapping[str, Any]], Any
+    ],
     context_identity_observer: Callable[[Any], Mapping[str, Any]],
     reopen_observer: Callable[
         [Path, Any, Callable[[int], bool]], Mapping[str, Any]
@@ -2547,6 +2549,9 @@ def _execute_training_lifecycle(
     execution_registration = _mapping(
         registered.get("execution_registration"), "execution registration view"
     )
+    original_registration = _mapping(
+        registered.get("registration"), "original registration view"
+    )
     training_seeds = registered.get("training_seeds")
     if (
         authority.get("validated") is not True
@@ -2554,12 +2559,22 @@ def _execute_training_lifecycle(
         or authority.get("envelope_sha256") != envelope_digest
         or execution_registration.get("rollback_authority_sha256")
         != rollback_digest
+        or "rollback_authority_sha256" in original_registration
+        or execution_registration
+        != {
+            **copy.deepcopy(original_registration),
+            "rollback_authority_sha256": rollback_digest,
+        }
         or not isinstance(training_seeds, tuple)
         or len(training_seeds) != 512
         or training_seeds != tuple(sorted(set(training_seeds)))
     ):
         raise TrainingRunnerBlocked("registered training lifecycle inputs differ")
-    context = context_builder(copy.deepcopy(execution_registration))
+    context = context_builder(
+        copy.deepcopy(execution_registration),
+        copy.deepcopy(original_registration),
+        copy.deepcopy(authority),
+    )
     expected_context_identity = _mapping(
         context_identity_observer(context), "training lifecycle context identity"
     )
