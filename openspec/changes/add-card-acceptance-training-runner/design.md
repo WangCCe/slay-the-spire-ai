@@ -63,7 +63,8 @@ The canonical launch manifest binds the r6 registration/request/review paths
 and digests, exact runner path/hash/pushed commit, registered experiment source
 commit/inventory, current additive seed-inventory producer path/hash,
 independent registration-verifier path/hash, exact native module
-path/hash/size, DLL directories, adapter API and provenance/hash, Windows
+path/hash/size, recursive PE import graph, every non-host dependent DLL
+path/hash/size, explicit trusted-host imports, DLL directories, adapter API and provenance/hash, Windows
 interpreter, the exact source-inventory path/hash already bound by the r6
 registration request, output root, resource map, denied operations, and exact closed CLI
 set. It binds the exact argument shape and authority requirements of all three
@@ -167,11 +168,17 @@ reconstruct this composition. No file registration is rewritten or rehashed.
 Before runtime import, an authorized `run-training` launch reobserves the
 manifest-bound control and production-isolation identities. After complete
 authority, durable pre-access receipt, and source-inventory validation, it
-reobserves every registered local source and the manifest-bound native module
-bytes under a Windows read/share lock that denies concurrent write/delete,
+reobserves every registered local source, reconstructs the manifest-bound PE
+import graph, and locks the native module plus every non-host dependent DLL
+under Windows read/share handles that deny concurrent write/delete,
 then loads the source-bound adapter, native module, and Torch runtime in that
 order. The runner uses only the simulator-adapter symbols declared by the
-registered source inventory. Source-only preflight validates only the canonical native-identity
+registered source inventory, rejects delay-load imports, and rechecks that every
+dependency basename resolves uniquely to its manifest path across the module,
+declared DLL, and interpreter directories. While all file locks remain held, it
+preloads every non-host dependency by absolute manifest path in leaf-to-root
+order and verifies the loaded module path before initializing the extension.
+Source-only preflight validates only the canonical native-identity
 document and never opens the module or DLL directories. Family saturation
 or any registered failure path executes the existing registered rollback before
 terminal publication. Successful no-collapse training publishes its training
@@ -229,10 +236,12 @@ delegation validator.
   the exact runner bytes, commit, interpreter, command, and verifier bytes in a
   pushed manifest and reject every drift before runtime import.
 - [Risk] The environment loader could select an unregistered native build. ->
-  Bind native bytes, DLL directories, adapter API, and provenance in the launch
-  manifest; reobserve them only after complete authority, hold a write/delete-
-  denying Windows read/share lock through native initialization, and reject
-  drift before native or Torch loading.
+  Bind native bytes, recursive PE imports, every non-host dependent DLL,
+  explicit trusted-host imports, DLL directories, adapter API, and provenance in the launch manifest;
+  reobserve them only after complete authority, hold write/delete-denying
+  Windows read/share locks through native initialization, and reject drift or
+  unresolved, delay-load, shadowed, cyclic, or preloaded imports before native
+  or Torch loading.
 - [Risk] Validation itself reveals seeds or loads runtime code. -> Keep preflight
   content/path checks separate and test importer/open ordering with fail-fast
   sentinels.

@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import argparse
-from contextlib import contextmanager
+from contextlib import ExitStack, contextmanager
 import copy
 import hashlib
 import importlib
@@ -16,6 +16,7 @@ from pathlib import Path, PurePosixPath
 import platform
 import re
 import subprocess
+import struct
 import sys
 import types
 import uuid
@@ -54,6 +55,10 @@ _REGISTERED_ADAPTER_PUBLIC_SYMBOLS = (
     "validate_snapshot",
 )
 _NATIVE_DLL_DIRECTORY_HANDLES: list[Any] = []
+_TRUSTED_HOST_NATIVE_IMPORTS = frozenset(
+    ("kernel32.dll", "msvcrt.dll", "python310.dll")
+)
+_NATIVE_DEPENDENCY_MODULE_HANDLES: list[int] = []
 COMMAND_ENVELOPE_SCHEMA_VERSION = (
     "noncombat-card-acceptance-training-runner-command-envelope-v1"
 )
@@ -372,12 +377,176 @@ def _external_binding(value: object, label: str) -> dict[str, Any]:
     }
 
 
+def _native_import_name(value: object, label: str) -> str:
+    if (
+        not isinstance(value, str)
+        or not value
+        or value != value.casefold()
+        or "/" in value
+        or "\\" in value
+        or "\x00" in value
+        or not value.endswith(".dll")
+    ):
+        raise TrainingRunnerBlocked(f"{label} is invalid")
+    return value
+
+
+def _is_trusted_host_native_import(name: str) -> bool:
+    return (
+        name in _TRUSTED_HOST_NATIVE_IMPORTS
+        or name.startswith("api-ms-win-")
+        or name.startswith("ext-ms-win-")
+    )
+
+
+def _native_dependency_order_from_normalized(
+    *,
+    module_path: str,
+    dependencies: Sequence[Mapping[str, Any]],
+    imports: Sequence[Mapping[str, Any]],
+) -> list[str]:
+    dependencies_by_name = {
+        Path(item["path"]).name.casefold(): item["path"]
+        for item in dependencies
+    }
+    edges = {item["path"]: item["imports"] for item in imports}
+    visiting = set()
+    visited = set()
+    order = []
+
+    def visit(path: str) -> None:
+        if path in visited:
+            return
+        if path in visiting:
+            raise TrainingRunnerBlocked("native dependency graph is cyclic")
+        visiting.add(path)
+        for name in edges[path]:
+            dependency_path = dependencies_by_name.get(name)
+            if dependency_path is not None:
+                visit(dependency_path)
+        visiting.remove(path)
+        visited.add(path)
+        if path != module_path:
+            order.append(path)
+
+    visit(module_path)
+    if set(order) != {item["path"] for item in dependencies}:
+        raise TrainingRunnerBlocked("native dependency load order is incomplete")
+    return order
+
+
+def _native_dependency_closure(
+    value: object,
+    *,
+    module: Mapping[str, Any],
+) -> dict[str, Any]:
+    closure = _mapping(value, "native dependency closure")
+    _fields(
+        closure,
+        {"dependencies", "imports", "trusted_host_imports"},
+        "native dependency closure",
+    )
+    dependencies_value = closure["dependencies"]
+    imports_value = closure["imports"]
+    host_value = closure["trusted_host_imports"]
+    if (
+        not isinstance(dependencies_value, list)
+        or not isinstance(imports_value, list)
+        or not isinstance(host_value, list)
+    ):
+        raise TrainingRunnerBlocked("native dependency closure sections differ")
+
+    dependencies = [
+        _external_binding(item, f"native dependency[{index}]")
+        for index, item in enumerate(dependencies_value)
+    ]
+    dependency_paths = [item["path"] for item in dependencies]
+    if (
+        dependency_paths != sorted(set(dependency_paths))
+        or module["path"] in dependency_paths
+    ):
+        raise TrainingRunnerBlocked("native dependency paths differ")
+    dependencies_by_name: dict[str, dict[str, Any]] = {}
+    for dependency in dependencies:
+        name = Path(dependency["path"]).name.casefold()
+        if name in dependencies_by_name:
+            raise TrainingRunnerBlocked("native dependency basenames differ")
+        dependencies_by_name[name] = dependency
+
+    imports: list[dict[str, Any]] = []
+    for index, item in enumerate(imports_value):
+        row = _mapping(item, f"native imports[{index}]")
+        _fields(row, {"imports", "path"}, f"native imports[{index}]")
+        path = _absolute_path(row["path"], f"native imports[{index}] path")
+        names_value = row["imports"]
+        if not isinstance(names_value, list):
+            raise TrainingRunnerBlocked("native import names differ")
+        names = [
+            _native_import_name(name, f"native imports[{index}] name")
+            for name in names_value
+        ]
+        if names != sorted(set(names)):
+            raise TrainingRunnerBlocked("native import names differ")
+        imports.append({"imports": names, "path": path})
+    import_paths = [item["path"] for item in imports]
+    expected_paths = sorted([module["path"], *dependency_paths])
+    if import_paths != expected_paths:
+        raise TrainingRunnerBlocked("native import graph paths differ")
+
+    trusted_host_imports = [
+        _native_import_name(name, "trusted native host import")
+        for name in host_value
+    ]
+    if (
+        trusted_host_imports != sorted(set(trusted_host_imports))
+        or any(
+            not _is_trusted_host_native_import(name)
+            for name in trusted_host_imports
+        )
+    ):
+        raise TrainingRunnerBlocked("trusted native host imports differ")
+
+    observed_host_imports = set()
+    reachable = {module["path"]}
+    edges = {item["path"]: item["imports"] for item in imports}
+    pending = [module["path"]]
+    while pending:
+        source = pending.pop()
+        for name in edges[source]:
+            dependency = dependencies_by_name.get(name)
+            if dependency is not None:
+                if dependency["path"] not in reachable:
+                    reachable.add(dependency["path"])
+                    pending.append(dependency["path"])
+            elif _is_trusted_host_native_import(name):
+                observed_host_imports.add(name)
+            else:
+                raise TrainingRunnerBlocked(
+                    "native dependency closure has an unresolved import"
+                )
+    if reachable != set(expected_paths):
+        raise TrainingRunnerBlocked("native dependency closure is unreachable")
+    if sorted(observed_host_imports) != trusted_host_imports:
+        raise TrainingRunnerBlocked("native dependency host imports differ")
+    _native_dependency_order_from_normalized(
+        module_path=module["path"],
+        dependencies=dependencies,
+        imports=imports,
+    )
+    return {
+        "dependencies": dependencies,
+        "imports": imports,
+        "trusted_host_imports": trusted_host_imports,
+    }
+
+
 def _native_identity(value: object) -> dict[str, Any]:
     identity = _mapping(value, "native identity")
     _fields(
         identity,
         {
             "adapter_api_version",
+            "dependency_closure",
             "dll_directories",
             "module",
             "provenance",
@@ -401,6 +570,10 @@ def _native_identity(value: object) -> dict[str, Any]:
         for path in directories
     ]
     module = _external_binding(identity["module"], "native identity module")
+    dependency_closure = _native_dependency_closure(
+        identity["dependency_closure"],
+        module=module,
+    )
     provenance = _mapping(identity["provenance"], "native identity provenance")
     if not provenance:
         raise TrainingRunnerBlocked("native identity provenance is empty")
@@ -416,6 +589,7 @@ def _native_identity(value: object) -> dict[str, Any]:
         raise TrainingRunnerBlocked("native identity provenance differs")
     return {
         "adapter_api_version": adapter_api_version,
+        "dependency_closure": dependency_closure,
         "dll_directories": normalized_directories,
         "module": module,
         "provenance": copy.deepcopy(provenance),
@@ -3432,6 +3606,216 @@ def _default_external_binding_observer(path: Path | str) -> dict[str, Any]:
     }
 
 
+def _pe_import_names(payload: bytes) -> list[str]:
+    """Read normal and delay-load DLL names from one PE image."""
+    if not isinstance(payload, bytes) or len(payload) < 64 or payload[:2] != b"MZ":
+        raise TrainingRunnerBlocked("native dependency is not a PE image")
+
+    def unpack(format_string: str, offset: int, label: str) -> tuple[Any, ...]:
+        try:
+            return struct.unpack_from(format_string, payload, offset)
+        except (struct.error, TypeError) as exc:
+            raise TrainingRunnerBlocked(f"native PE {label} is truncated") from exc
+
+    pe_offset = unpack("<I", 0x3C, "DOS header")[0]
+    if pe_offset < 64 or payload[pe_offset : pe_offset + 4] != b"PE\x00\x00":
+        raise TrainingRunnerBlocked("native dependency PE signature differs")
+    file_header = pe_offset + 4
+    section_count = unpack("<H", file_header + 2, "file header")[0]
+    optional_size = unpack("<H", file_header + 16, "file header")[0]
+    if section_count <= 0 or section_count > 96:
+        raise TrainingRunnerBlocked("native PE section count differs")
+    optional = file_header + 20
+    magic = unpack("<H", optional, "optional header")[0]
+    if magic == 0x20B:
+        directory_count_offset = optional + 108
+        directories_offset = optional + 112
+    elif magic == 0x10B:
+        directory_count_offset = optional + 92
+        directories_offset = optional + 96
+    else:
+        raise TrainingRunnerBlocked("native PE optional-header magic differs")
+    if optional_size < directories_offset - optional:
+        raise TrainingRunnerBlocked("native PE optional header differs")
+    directory_count = unpack(
+        "<I", directory_count_offset, "data-directory count"
+    )[0]
+    section_offset = optional + optional_size
+    sections = []
+    for index in range(section_count):
+        offset = section_offset + index * 40
+        virtual_size, virtual_address, raw_size, raw_offset = unpack(
+            "<IIII", offset + 8, f"section[{index}]"
+        )
+        sections.append(
+            (virtual_address, max(virtual_size, raw_size), raw_offset, raw_size)
+        )
+
+    def rva_offset(rva: int, label: str) -> int:
+        if rva == 0:
+            raise TrainingRunnerBlocked(f"native PE {label} RVA is absent")
+        for virtual_address, span, raw_offset, raw_size in sections:
+            if virtual_address <= rva < virtual_address + span:
+                relative = rva - virtual_address
+                if relative >= raw_size:
+                    break
+                result = raw_offset + relative
+                if result >= len(payload):
+                    break
+                return result
+        if rva < section_offset and rva < len(payload):
+            return rva
+        raise TrainingRunnerBlocked(f"native PE {label} RVA differs")
+
+    def c_string(rva: int, label: str) -> str:
+        offset = rva_offset(rva, label)
+        end = payload.find(b"\x00", offset, min(len(payload), offset + 512))
+        if end < 0:
+            raise TrainingRunnerBlocked(f"native PE {label} is unterminated")
+        try:
+            name = payload[offset:end].decode("ascii").casefold()
+        except UnicodeDecodeError as exc:
+            raise TrainingRunnerBlocked(f"native PE {label} is not ASCII") from exc
+        return _native_import_name(name, f"native PE {label}")
+
+    names = set()
+
+    def directory(index: int) -> tuple[int, int]:
+        if directory_count <= index:
+            return 0, 0
+        return unpack(
+            "<II", directories_offset + index * 8, f"directory[{index}]"
+        )
+
+    import_rva, import_size = directory(1)
+    if import_rva:
+        descriptor = rva_offset(import_rva, "import directory")
+        limit = min(4096, max(1, import_size // 20 + 1))
+        for index in range(limit):
+            values = unpack("<IIIII", descriptor + index * 20, "import descriptor")
+            if values == (0, 0, 0, 0, 0):
+                break
+            names.add(c_string(values[3], "import name"))
+        else:
+            raise TrainingRunnerBlocked("native PE import directory is unterminated")
+
+    delay_rva, delay_size = directory(13)
+    if delay_rva:
+        descriptor = rva_offset(delay_rva, "delay-import directory")
+        limit = min(4096, max(1, delay_size // 32 + 1))
+        for index in range(limit):
+            values = unpack(
+                "<IIIIIIII", descriptor + index * 32, "delay-import descriptor"
+            )
+            if values == (0, 0, 0, 0, 0, 0, 0, 0):
+                break
+            raise TrainingRunnerBlocked("native PE delay imports are unsupported")
+        else:
+            raise TrainingRunnerBlocked(
+                "native PE delay-import directory is unterminated"
+            )
+    return sorted(names)
+
+
+def build_native_dependency_closure(
+    *,
+    module_path: Path | str,
+    dll_directories: Sequence[Path | str],
+    interpreter_path: Path | str,
+    artifact_reader: Callable[[Path], bytes] | None = None,
+) -> dict[str, Any]:
+    """Resolve recursive non-host PE dependencies without loading them."""
+    reader = artifact_reader or _default_artifact_reader
+    if not callable(reader) or isinstance(dll_directories, (str, bytes)):
+        raise TrainingRunnerBlocked("native dependency discovery input differs")
+    module = Path(module_path).resolve()
+    interpreter = Path(interpreter_path).resolve()
+    directories = []
+    for value in (module.parent, *(Path(path).resolve() for path in dll_directories), interpreter.parent):
+        if value not in directories:
+            directories.append(value)
+    if not module.is_file() or not interpreter.is_file() or any(
+        not path.is_dir() for path in directories
+    ):
+        raise TrainingRunnerBlocked("native dependency discovery path is unavailable")
+
+    indexes: list[dict[str, Path]] = []
+    try:
+        for directory in directories:
+            index: dict[str, Path] = {}
+            for child in directory.iterdir():
+                if not child.is_file():
+                    continue
+                name = child.name.casefold()
+                if name in index:
+                    raise TrainingRunnerBlocked(
+                        "native dependency directory has ambiguous names"
+                    )
+                index[name] = child.resolve()
+            indexes.append(index)
+    except OSError as exc:
+        raise TrainingRunnerBlocked(
+            "native dependency directory cannot be enumerated"
+        ) from exc
+
+    payloads: dict[str, bytes] = {}
+    imports: dict[str, list[str]] = {}
+    pending = [module]
+    dependencies: dict[str, Path] = {}
+    trusted_host_imports = set()
+    while pending:
+        source = pending.pop()
+        path = source.resolve().as_posix()
+        if path in imports:
+            continue
+        payload = reader(source)
+        if not isinstance(payload, bytes):
+            raise TrainingRunnerBlocked("native dependency reader returned non-bytes")
+        payloads[path] = payload
+        names = _pe_import_names(payload)
+        imports[path] = names
+        for name in names:
+            if _is_trusted_host_native_import(name):
+                trusted_host_imports.add(name)
+                continue
+            resolved = next((index[name] for index in indexes if name in index), None)
+            if resolved is None:
+                raise TrainingRunnerBlocked(
+                    f"native dependency import is unresolved: {name}"
+                )
+            resolved_path = resolved.as_posix()
+            if resolved_path == module.as_posix():
+                raise TrainingRunnerBlocked("native dependency imports the module")
+            existing = dependencies.get(name)
+            if existing is not None and existing != resolved:
+                raise TrainingRunnerBlocked("native dependency resolution differs")
+            dependencies[name] = resolved
+            if resolved_path not in imports:
+                pending.append(resolved)
+        if len(imports) + len(pending) > 256:
+            raise TrainingRunnerBlocked("native dependency closure is too large")
+
+    dependency_bindings = sorted(
+        (
+            {
+                "path": path.as_posix(),
+                "sha256": hashlib.sha256(payloads[path.as_posix()]).hexdigest(),
+                "size_bytes": len(payloads[path.as_posix()]),
+            }
+            for path in set(dependencies.values())
+        ),
+        key=lambda item: item["path"],
+    )
+    return {
+        "dependencies": dependency_bindings,
+        "imports": [
+            {"imports": imports[path], "path": path}
+            for path in sorted(imports)
+        ],
+        "trusted_host_imports": sorted(trusted_host_imports),
+    }
+
+
 @contextmanager
 def _default_locked_external_binding(
     path: Path | str,
@@ -3672,6 +4056,183 @@ class _BoundSourceFinder(importlib.abc.MetaPathFinder):
         return None
 
 
+def _observe_native_dependency_closure(
+    native_identity: Mapping[str, Any],
+) -> dict[str, Any]:
+    native = _mapping(native_identity, "native identity for dependency observation")
+    module = _external_binding(native.get("module"), "observed native module")
+    expected = _native_dependency_closure(
+        native.get("dependency_closure"),
+        module=module,
+    )
+    dependencies_by_name = {
+        Path(item["path"]).name.casefold(): item
+        for item in expected["dependencies"]
+    }
+    imports = []
+    trusted_host_imports = set()
+    for binding in [module, *expected["dependencies"]]:
+        try:
+            payload = Path(binding["path"]).read_bytes()
+        except OSError as exc:
+            raise TrainingRunnerBlocked(
+                "locked native dependency cannot be parsed"
+            ) from exc
+        names = _pe_import_names(payload)
+        for name in names:
+            if name in dependencies_by_name:
+                continue
+            if not _is_trusted_host_native_import(name):
+                raise TrainingRunnerBlocked(
+                    "observed native dependency import is unresolved"
+                )
+            trusted_host_imports.add(name)
+        imports.append({"imports": names, "path": binding["path"]})
+    return _native_dependency_closure(
+        {
+            "dependencies": copy.deepcopy(expected["dependencies"]),
+            "imports": sorted(imports, key=lambda item: item["path"]),
+            "trusted_host_imports": sorted(trusted_host_imports),
+        },
+        module=module,
+    )
+
+
+def _validate_native_dependency_resolution(
+    native_identity: Mapping[str, Any],
+    *,
+    interpreter_path: Path | str,
+) -> dict[str, Any]:
+    native = _mapping(native_identity, "native identity for resolution")
+    module = _external_binding(native.get("module"), "resolved native module")
+    closure = _native_dependency_closure(
+        native.get("dependency_closure"),
+        module=module,
+    )
+    interpreter = Path(interpreter_path).resolve()
+    directories = []
+    for directory in (
+        Path(module["path"]).parent,
+        *(Path(path).resolve() for path in native.get("dll_directories", ())),
+        interpreter.parent,
+    ):
+        if directory not in directories:
+            directories.append(directory)
+    if not interpreter.is_file() or any(not directory.is_dir() for directory in directories):
+        raise TrainingRunnerBlocked("native dependency resolution path is unavailable")
+
+    try:
+        entries = {
+            directory: [
+                child.resolve()
+                for child in directory.iterdir()
+                if child.is_file()
+            ]
+            for directory in directories
+        }
+    except OSError as exc:
+        raise TrainingRunnerBlocked(
+            "native dependency resolution directory cannot be enumerated"
+        ) from exc
+
+    resolved = []
+    for dependency in closure["dependencies"]:
+        name = Path(dependency["path"]).name.casefold()
+        matches = sorted(
+            {
+                child.as_posix()
+                for directory in directories
+                for child in entries[directory]
+                if child.name.casefold() == name
+            }
+        )
+        if matches != [dependency["path"]]:
+            raise TrainingRunnerBlocked(
+                "native dependency resolution is shadowed or unavailable"
+            )
+        resolved.append({"name": name, "path": dependency["path"]})
+    return {
+        "directories": [directory.as_posix() for directory in directories],
+        "dependencies": resolved,
+    }
+
+
+def _preload_registered_native_dependencies(
+    native_identity: Mapping[str, Any],
+) -> dict[str, Any]:
+    native = _mapping(native_identity, "native identity for dependency preload")
+    module = _external_binding(native.get("module"), "preloaded native module")
+    closure = _native_dependency_closure(
+        native.get("dependency_closure"),
+        module=module,
+    )
+    order = _native_dependency_order_from_normalized(
+        module_path=module["path"],
+        dependencies=closure["dependencies"],
+        imports=closure["imports"],
+    )
+    if os.name != "nt":
+        raise TrainingRunnerBlocked(
+            "native dependency preload requires the registered Windows platform"
+        )
+    try:
+        import ctypes
+        from ctypes import wintypes
+    except ImportError as exc:
+        raise TrainingRunnerBlocked(
+            "Windows native dependency preload is unavailable"
+        ) from exc
+
+    kernel32 = ctypes.WinDLL("kernel32", use_last_error=True)
+    get_module_handle = kernel32.GetModuleHandleW
+    get_module_handle.argtypes = (wintypes.LPCWSTR,)
+    get_module_handle.restype = wintypes.HMODULE
+    load_library = kernel32.LoadLibraryExW
+    load_library.argtypes = (wintypes.LPCWSTR, wintypes.HANDLE, wintypes.DWORD)
+    load_library.restype = wintypes.HMODULE
+    get_module_filename = kernel32.GetModuleFileNameW
+    get_module_filename.argtypes = (
+        wintypes.HMODULE,
+        wintypes.LPWSTR,
+        wintypes.DWORD,
+    )
+    get_module_filename.restype = wintypes.DWORD
+    loaded = []
+    for path in order:
+        name = Path(path).name
+        if get_module_handle(name):
+            raise TrainingRunnerBlocked(
+                "registered native dependency was preloaded"
+            )
+        handle = load_library(
+            str(Path(path).resolve()),
+            None,
+            0x00000100 | 0x00000400,
+        )
+        if not handle:
+            raise TrainingRunnerBlocked(
+                "registered native dependency could not be preloaded"
+            ) from OSError(
+                ctypes.get_last_error(),
+                "LoadLibraryExW failed",
+                path,
+            )
+        buffer = ctypes.create_unicode_buffer(32768)
+        length = get_module_filename(handle, buffer, len(buffer))
+        if not length or length >= len(buffer):
+            raise TrainingRunnerBlocked(
+                "preloaded native dependency path is unavailable"
+            )
+        observed_path = Path(buffer.value).resolve().as_posix()
+        if observed_path.casefold() != path.casefold():
+            raise TrainingRunnerBlocked(
+                "preloaded native dependency path differs"
+            )
+        _NATIVE_DEPENDENCY_MODULE_HANDLES.append(int(handle))
+        loaded.append({"name": name.casefold(), "path": path})
+    return {"dependencies": loaded}
+
+
 def _load_source_bound_training_dependencies(
     *,
     control_api: Any,
@@ -3681,7 +4242,10 @@ def _load_source_bound_training_dependencies(
     module_importer: Callable[[str], Any] | None = None,
     module_registry: Mapping[str, Any] | None = None,
     external_binding_observer: Callable[[Path | str], Mapping[str, Any]] | None = None,
+    native_import_observer: Callable[[Mapping[str, Any]], Mapping[str, Any]] | None = None,
     native_module_loader: Callable[..., Any] | None = None,
+    native_dependency_preloader: Callable[[Mapping[str, Any]], Mapping[str, Any]] | None = None,
+    native_resolution_validator: Callable[..., Mapping[str, Any] | None] | None = None,
     directory_observer: Callable[[Path], bool] | None = None,
     python_version: Callable[[], str] | None = None,
 ) -> dict[str, Any]:
@@ -3691,9 +4255,27 @@ def _load_source_bound_training_dependencies(
     importer = module_importer or importlib.import_module
     registry = module_registry if module_registry is not None else sys.modules
     load_native = native_module_loader or _load_registered_native_module
+    observe_native_imports = (
+        native_import_observer or _observe_native_dependency_closure
+    )
+    validate_native_resolution = (
+        native_resolution_validator or _validate_native_dependency_resolution
+    )
+    preload_native_dependencies = (
+        native_dependency_preloader or _preload_registered_native_dependencies
+    )
     is_directory = directory_observer or (lambda path: path.is_dir())
     version = python_version or platform.python_version
-    callbacks = (reader, importer, load_native, is_directory, version)
+    callbacks = (
+        reader,
+        importer,
+        load_native,
+        observe_native_imports,
+        preload_native_dependencies,
+        validate_native_resolution,
+        is_directory,
+        version,
+    )
     if not all(callable(callback) for callback in callbacks):
         raise TrainingRunnerBlocked("training dependency callback is invalid")
     if external_binding_observer is not None and not callable(
@@ -3803,25 +4385,52 @@ def _load_source_bound_training_dependencies(
         native = manifest["native_identity"]
         if not all(is_directory(Path(path)) for path in native["dll_directories"]):
             raise TrainingRunnerBlocked("registered native DLL directory is unavailable")
-        with native_binding_guard(native["module"]["path"]) as observe_native:
-            observed_native_before = _external_binding(
-                observe_native(),
-                "native module before load",
+        native_bindings = [
+            native["module"],
+            *native["dependency_closure"]["dependencies"],
+        ]
+        with ExitStack() as native_locks:
+            native_observers = {
+                binding["path"]: native_locks.enter_context(
+                    native_binding_guard(binding["path"])
+                )
+                for binding in native_bindings
+            }
+            for binding in native_bindings:
+                observed = _external_binding(
+                    native_observers[binding["path"]](),
+                    "native dependency before load",
+                )
+                if observed != binding:
+                    raise TrainingRunnerBlocked(
+                        "native dependency bytes differ before load"
+                    )
+            observed_closure = _native_dependency_closure(
+                observe_native_imports(copy.deepcopy(native)),
+                module=native["module"],
             )
-            if observed_native_before != native["module"]:
-                raise TrainingRunnerBlocked("native module bytes differ before load")
+            if observed_closure != native["dependency_closure"]:
+                raise TrainingRunnerBlocked("native dependency import graph differs")
+            validate_native_resolution(
+                copy.deepcopy(native),
+                interpreter_path=manifest["interpreter"],
+            )
+            preload_native_dependencies(copy.deepcopy(native))
             native_module = load_native(
                 native["module"]["path"],
                 dll_directories=[Path(path) for path in native["dll_directories"]],
             )
             if any(name == "torch" or name.startswith("torch.") for name in registry):
                 raise TrainingRunnerBlocked("native loading imported Torch out of order")
-            observed_native_after = _external_binding(
-                observe_native(),
-                "native module after load",
-            )
-            if observed_native_after != native["module"]:
-                raise TrainingRunnerBlocked("native module bytes differ after load")
+            for binding in native_bindings:
+                observed = _external_binding(
+                    native_observers[binding["path"]](),
+                    "native dependency after load",
+                )
+                if observed != binding:
+                    raise TrainingRunnerBlocked(
+                        "native dependency bytes differ after load"
+                    )
         try:
             if (
                 Path(getattr(native_module, "__file__", "")).resolve()

@@ -6,8 +6,9 @@ that binds the pushed r6 registration, training request and review, runner
 source path/hash/commit, registered experiment source commit/inventory, additive
 seed-inventory producer path/hash, independent registration verifier path/hash,
 exact source-inventory path/hash already bound
-by the r6 registration request, exact native module path/hash/size, DLL
-directories, adapter API and provenance/hash, Windows interpreter, output root, resource
+by the r6 registration request, exact native module path/hash/size, recursive PE
+import graph, every non-host dependent DLL path/hash/size, explicit trusted-host
+imports, DLL directories, adapter API and provenance/hash, Windows interpreter, output root, resource
 ceilings, denied operations, and the closed `preflight`, `run-training`, and
 `terminalize-dead-owner` CLI shapes. It SHALL also bind one canonical rollback
 authority and hash, exact candidate-disabled control target, control checkpoint/
@@ -59,7 +60,7 @@ before importing the runtime or constructing an environment.
 - **THEN** it records readiness only and no runtime, native module, model, environment, seed, checkpoint, or output is accessed
 
 #### Scenario: Native identity is present during source-only preflight
-- **WHEN** the canonical manifest contains the reviewed native module, DLL-directory, adapter-API, and provenance bindings
+- **WHEN** the canonical manifest contains the reviewed native module, recursive PE import graph, dependent-DLL, DLL-directory, adapter-API, and provenance bindings
 - **THEN** preflight validates only their canonical document shape and opens none of the bound native paths
 
 #### Scenario: Launch authority is stale or revoked
@@ -84,9 +85,13 @@ run-envelope, command, and rollback identities before empirical access.
 
 After the durable pre-access receipt and source-inventory validation, the runner
 SHALL reobserve all registered local source bytes and the manifest-bound native
-module bytes, reject preloaded or unregistered execution modules, hold a Windows
-read/share handle that denies concurrent write/delete from native observation
-through extension initialization, and load the source-bound simulator adapter,
+module bytes, reconstruct the recursive PE import graph, reject unbound
+non-host imports, delay-load imports, shadowed dependency resolution, and
+preloaded or unregistered execution modules, hold Windows
+read/share handles for the module and every bound dependent DLL that deny
+concurrent write/delete from native observation through extension
+initialization, preload every non-host DLL by absolute manifest path in
+leaf-to-root order, verify each loaded path, and load the source-bound simulator adapter,
 registered native module, and Torch runtime in that order. The runner SHALL use
 only simulator-adapter symbols declared by the registered source inventory. The
 loaded adapter API and native provenance SHALL equal the launch manifest

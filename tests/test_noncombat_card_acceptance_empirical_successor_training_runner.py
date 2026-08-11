@@ -8,6 +8,7 @@ import json
 import os
 from pathlib import Path
 import subprocess
+import struct
 import sys
 from types import SimpleNamespace
 
@@ -62,6 +63,9 @@ def _external_binding(path: str, digest: str) -> dict:
 
 def _native_identity(root: str, runner) -> dict:
     module_sha256 = "e" * 64
+    module_path = f"{root}/native/sts_lightspeed_noncombat_adapter.pyd"
+    dependency_path = f"{root}/native/bin/synthetic-runtime.dll"
+    dependency = _external_binding(dependency_path, "d" * 64)
     provenance = {
         "build": {
             "adapter_api_version": "sts-lightspeed-noncombat-adapter-v3",
@@ -72,14 +76,88 @@ def _native_identity(root: str, runner) -> dict:
     }
     return {
         "adapter_api_version": "sts-lightspeed-noncombat-adapter-v3",
+        "dependency_closure": {
+            "dependencies": [dependency],
+            "imports": [
+                {"imports": [], "path": dependency_path},
+                {"imports": ["synthetic-runtime.dll"], "path": module_path},
+            ],
+            "trusted_host_imports": [],
+        },
         "dll_directories": [f"{root}/native/bin"],
         "module": _external_binding(
-            f"{root}/native/sts_lightspeed_noncombat_adapter.pyd",
+            module_path,
             module_sha256,
         ),
         "provenance": provenance,
         "provenance_sha256": runner.canonical_json_sha256(provenance),
     }
+
+
+def _synthetic_pe(import_names=(), delay_import_names=()):
+    names = tuple(import_names)
+    delay_names = tuple(delay_import_names)
+    payload = bytearray(0xA00)
+    payload[:2] = b"MZ"
+    struct.pack_into("<I", payload, 0x3C, 0x80)
+    payload[0x80:0x84] = b"PE\x00\x00"
+    file_header = 0x84
+    struct.pack_into("<H", payload, file_header, 0x8664)
+    struct.pack_into("<H", payload, file_header + 2, 1)
+    struct.pack_into("<H", payload, file_header + 16, 0xF0)
+    optional = file_header + 20
+    struct.pack_into("<H", payload, optional, 0x20B)
+    struct.pack_into("<Q", payload, optional + 24, 0x180000000)
+    struct.pack_into("<I", payload, optional + 108, 16)
+    raw_offset = 0x200
+    if names:
+        struct.pack_into("<II", payload, optional + 112 + 8, 0x1000, (len(names) + 1) * 20)
+    if delay_names:
+        struct.pack_into(
+            "<II",
+            payload,
+            optional + 112 + 13 * 8,
+            0x1400,
+            (len(delay_names) + 1) * 32,
+        )
+    section = optional + 0xF0
+    payload[section : section + 8] = b".rdata\x00\x00"
+    struct.pack_into("<IIII", payload, section + 8, 0x800, 0x1000, 0x800, raw_offset)
+    name_offset = raw_offset + (len(names) + 1) * 20
+    for index, name in enumerate(names):
+        encoded = name.encode("ascii") + b"\x00"
+        struct.pack_into(
+            "<IIIII",
+            payload,
+            raw_offset + index * 20,
+            0,
+            0,
+            0,
+            0x1000 + name_offset - raw_offset,
+            0,
+        )
+        payload[name_offset : name_offset + len(encoded)] = encoded
+        name_offset += len(encoded)
+    delay_offset = 0x600
+    delay_name_offset = delay_offset + (len(delay_names) + 1) * 32
+    for index, name in enumerate(delay_names):
+        encoded = name.encode("ascii") + b"\x00"
+        struct.pack_into(
+            "<IIIIIIII",
+            payload,
+            delay_offset + index * 32,
+            1,
+            0x1000 + delay_name_offset - raw_offset,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+        )
+        payload[delay_name_offset : delay_name_offset + len(encoded)] = encoded
+        delay_name_offset += len(encoded)
+    return bytes(payload)
 
 
 def _rollback_authority(root: str) -> dict:
@@ -386,6 +464,182 @@ def test_launch_manifest_rejects_non_string_native_dll_directory_cleanly():
         match="native identity DLL directories differ",
     ):
         runner.build_launch_manifest(definition)
+
+
+def test_pe_import_parser_and_recursive_dependency_closure_are_canonical(tmp_path):
+    runner = _runner()
+    module_directory = tmp_path / "module"
+    dll_directory = tmp_path / "dll"
+    interpreter_directory = tmp_path / "python"
+    module_directory.mkdir()
+    dll_directory.mkdir()
+    interpreter_directory.mkdir()
+    module_path = module_directory / "adapter.pyd"
+    dependency_path = dll_directory / "runtime.dll"
+    interpreter_path = interpreter_directory / "python.exe"
+    module_path.write_bytes(
+        _synthetic_pe(("RUNTIME.DLL", "KERNEL32.dll", "python310.dll"))
+    )
+    dependency_path.write_bytes(
+        _synthetic_pe(("api-ms-win-crt-runtime-l1-1-0.dll",))
+    )
+    interpreter_path.write_bytes(b"synthetic-interpreter")
+
+    assert runner._pe_import_names(module_path.read_bytes()) == [
+        "kernel32.dll",
+        "python310.dll",
+        "runtime.dll",
+    ]
+    with pytest.raises(
+        runner.TrainingRunnerBlocked,
+        match="delay imports are unsupported",
+    ):
+        runner._pe_import_names(
+            _synthetic_pe(delay_import_names=("LATE.dll",))
+        )
+    closure = runner.build_native_dependency_closure(
+        module_path=module_path,
+        dll_directories=[dll_directory],
+        interpreter_path=interpreter_path,
+    )
+
+    assert closure["dependencies"] == [
+        _binding(dependency_path.resolve().as_posix(), dependency_path.read_bytes())
+    ]
+    assert closure["imports"] == [
+        {
+            "imports": ["api-ms-win-crt-runtime-l1-1-0.dll"],
+            "path": dependency_path.resolve().as_posix(),
+        },
+        {
+            "imports": ["kernel32.dll", "python310.dll", "runtime.dll"],
+            "path": module_path.resolve().as_posix(),
+        },
+    ]
+    assert closure["imports"] == sorted(
+        closure["imports"], key=lambda item: item["path"]
+    )
+    assert closure["trusted_host_imports"] == [
+        "api-ms-win-crt-runtime-l1-1-0.dll",
+        "kernel32.dll",
+        "python310.dll",
+    ]
+
+
+@pytest.mark.parametrize("import_name", ("unbound.dll", "python311.dll"))
+def test_launch_manifest_rejects_unresolved_native_import(import_name):
+    runner, definition, _payloads = _fixture()
+    module_path = definition["native_identity"]["module"]["path"]
+    definition["native_identity"]["dependency_closure"] = {
+        "dependencies": [],
+        "imports": [{"imports": [import_name], "path": module_path}],
+        "trusted_host_imports": [],
+    }
+
+    with pytest.raises(
+        runner.TrainingRunnerBlocked,
+        match="unresolved import",
+    ):
+        runner.build_launch_manifest(definition)
+
+
+def test_native_dependency_resolution_rejects_higher_priority_shadow(tmp_path):
+    runner = _runner()
+    module_directory = tmp_path / "module"
+    dll_directory = tmp_path / "dll"
+    interpreter_directory = tmp_path / "python"
+    module_directory.mkdir()
+    dll_directory.mkdir()
+    interpreter_directory.mkdir()
+    module_path = module_directory / "adapter.pyd"
+    dependency_path = dll_directory / "runtime.dll"
+    interpreter_path = interpreter_directory / "python.exe"
+    module_path.write_bytes(b"module")
+    dependency_path.write_bytes(b"dependency")
+    interpreter_path.write_bytes(b"interpreter")
+    module_binding = _binding(module_path.resolve().as_posix(), b"module")
+    dependency_binding = _binding(
+        dependency_path.resolve().as_posix(), b"dependency"
+    )
+    imports = sorted(
+        (
+            {
+                "imports": ["runtime.dll"],
+                "path": module_path.resolve().as_posix(),
+            },
+            {"imports": [], "path": dependency_path.resolve().as_posix()},
+        ),
+        key=lambda item: item["path"],
+    )
+    native = {
+        "dependency_closure": {
+            "dependencies": [dependency_binding],
+            "imports": imports,
+            "trusted_host_imports": [],
+        },
+        "dll_directories": [dll_directory.resolve().as_posix()],
+        "module": module_binding,
+    }
+
+    observed = runner._validate_native_dependency_resolution(
+        native,
+        interpreter_path=interpreter_path,
+    )
+    assert observed["dependencies"] == [
+        {
+            "name": "runtime.dll",
+            "path": dependency_path.resolve().as_posix(),
+        }
+    ]
+
+    (module_directory / "RUNTIME.DLL").write_bytes(b"shadow")
+    with pytest.raises(
+        runner.TrainingRunnerBlocked,
+        match="shadowed or unavailable",
+    ):
+        runner._validate_native_dependency_resolution(
+            native,
+            interpreter_path=interpreter_path,
+        )
+
+
+def test_native_dependency_order_is_leaf_first_and_rejects_cycles():
+    runner = _runner()
+    module_path = "D:/synthetic/native/adapter.pyd"
+    leaf_path = "D:/synthetic/native/leaf.dll"
+    parent_path = "D:/synthetic/native/parent.dll"
+    dependencies = [
+        _external_binding(leaf_path, "a" * 64),
+        _external_binding(parent_path, "b" * 64),
+    ]
+    imports = sorted(
+        (
+            {"imports": ["parent.dll"], "path": module_path},
+            {"imports": [], "path": leaf_path},
+            {"imports": ["leaf.dll"], "path": parent_path},
+        ),
+        key=lambda item: item["path"],
+    )
+
+    assert runner._native_dependency_order_from_normalized(
+        module_path=module_path,
+        dependencies=dependencies,
+        imports=imports,
+    ) == [leaf_path, parent_path]
+
+    cyclic = copy.deepcopy(imports)
+    next(item for item in cyclic if item["path"] == leaf_path)["imports"] = [
+        "parent.dll"
+    ]
+    with pytest.raises(
+        runner.TrainingRunnerBlocked,
+        match="graph is cyclic",
+    ):
+        runner._native_dependency_order_from_normalized(
+            module_path=module_path,
+            dependencies=dependencies,
+            imports=cyclic,
+        )
 
 
 def test_composites_are_command_specific_and_terminalization_is_subordinate():
@@ -1198,6 +1452,13 @@ def test_source_bound_training_dependencies_load_in_registered_order():
     registry = {}
     control = _control()
     native_identity = manifest["native_identity"]
+    native_bindings = {
+        item["path"]: item
+        for item in [
+            native_identity["module"],
+            *native_identity["dependency_closure"]["dependencies"],
+        ]
+    }
 
     class Native:
         __file__ = native_identity["module"]["path"]
@@ -1296,19 +1557,40 @@ def test_source_bound_training_dependencies_load_in_registered_order():
         module_importer=importer,
         module_registry=registry,
         external_binding_observer=lambda path: (
-            calls.append(("native-binding", str(Path(path).resolve())))
-            or copy.deepcopy(native_identity["module"])
+            calls.append(("native-binding", Path(path).resolve().as_posix()))
+            or copy.deepcopy(native_bindings[Path(path).resolve().as_posix()])
+        ),
+        native_import_observer=lambda native: copy.deepcopy(
+            native["dependency_closure"]
+        ),
+        native_dependency_preloader=lambda native: (
+            calls.append(
+                (
+                    "preload",
+                    tuple(
+                        item["path"]
+                        for item in native["dependency_closure"]["dependencies"]
+                    ),
+                )
+            )
+            or {"dependencies": []}
         ),
         native_module_loader=Adapter.load_native_module,
+        native_resolution_validator=lambda *_args, **_kwargs: None,
         directory_observer=lambda _path: True,
         python_version=lambda: native_identity["provenance"]["build"].get(
             "python"
         ),
     )
 
-    assert calls[:4] == [
+    dependency_path = native_identity["dependency_closure"]["dependencies"][0][
+        "path"
+    ]
+    assert calls[:7] == [
         ("import", "analysis_scripts.noncombat_simulator_adapter"),
-        ("native-binding", str(Path(native_identity["module"]["path"]).resolve())),
+        ("native-binding", native_identity["module"]["path"]),
+        ("native-binding", dependency_path),
+        ("preload", (dependency_path,)),
         (
             "native",
             str(Path(native_identity["module"]["path"]).resolve()),
@@ -1317,9 +1599,10 @@ def test_source_bound_training_dependencies_load_in_registered_order():
                 for item in native_identity["dll_directories"]
             ),
         ),
-        ("native-binding", str(Path(native_identity["module"]["path"]).resolve())),
+        ("native-binding", native_identity["module"]["path"]),
+        ("native-binding", dependency_path),
     ]
-    assert calls[4] == (
+    assert calls[7] == (
         "import",
         "analysis_scripts.noncombat_card_acceptance_empirical_successor_runtime",
     )
@@ -1359,6 +1642,67 @@ def test_source_bound_training_dependency_drift_fails_before_import():
         )
 
     assert calls == []
+
+
+def test_source_bound_native_import_graph_drift_fails_before_native_load():
+    runner, manifest, source_inventory, source_payloads = (
+        _training_dependency_fixture()
+    )
+    native_identity = manifest["native_identity"]
+    native_bindings = {
+        item["path"]: item
+        for item in [
+            native_identity["module"],
+            *native_identity["dependency_closure"]["dependencies"],
+        ]
+    }
+    adapter_path = (
+        Path(manifest["repository_root"])
+        / source_inventory["public_dependencies"][0]["path"]
+    ).resolve()
+
+    class Adapter:
+        ADAPTER_API_VERSION = "sts-lightspeed-noncombat-adapter-v3"
+        SimulatorAdapterError = ValueError
+        TARGET_CATEGORIES = ("card_reward", "event", "route", "shop")
+        __file__ = str(adapter_path)
+        canonical_json_bytes = staticmethod(lambda value: json.dumps(value).encode())
+        validate_candidates = staticmethod(lambda value, **_kwargs: value)
+        validate_snapshot = staticmethod(lambda value: value)
+
+    drifted = copy.deepcopy(native_identity["dependency_closure"])
+    module_row = next(
+        item
+        for item in drifted["imports"]
+        if item["path"] == native_identity["module"]["path"]
+    )
+    module_row["imports"] = []
+
+    with pytest.raises(
+        runner.TrainingRunnerBlocked,
+        match="closure is unreachable",
+    ):
+        runner._load_source_bound_training_dependencies(
+            control_api=_control(),
+            launch_manifest=manifest,
+            source_inventory=source_inventory,
+            artifact_reader=lambda path: source_payloads[str(path.resolve())],
+            module_importer=lambda name: (
+                Adapter
+                if name == "analysis_scripts.noncombat_simulator_adapter"
+                else pytest.fail(f"import graph drift imported {name}")
+            ),
+            module_registry={},
+            external_binding_observer=lambda path: copy.deepcopy(
+                native_bindings[Path(path).resolve().as_posix()]
+            ),
+            native_import_observer=lambda _native: drifted,
+            native_module_loader=lambda *_args, **_kwargs: pytest.fail(
+                "import graph drift loaded native module"
+            ),
+            directory_observer=lambda _path: True,
+            python_version=lambda: "synthetic",
+        )
 
 
 @pytest.mark.parametrize(
@@ -1476,6 +1820,13 @@ def test_source_bound_training_dependencies_reject_incomplete_runtime_api():
         _training_dependency_fixture()
     )
     native_identity = manifest["native_identity"]
+    native_bindings = {
+        item["path"]: item
+        for item in [
+            native_identity["module"],
+            *native_identity["dependency_closure"]["dependencies"],
+        ]
+    }
     adapter_path = (
         Path(manifest["repository_root"])
         / source_inventory["public_dependencies"][0]["path"]
@@ -1528,10 +1879,17 @@ def test_source_bound_training_dependencies_reject_incomplete_runtime_api():
                 else runtime
             ),
             module_registry={},
-            external_binding_observer=lambda _path: copy.deepcopy(
-                native_identity["module"]
+            external_binding_observer=lambda path: copy.deepcopy(
+                native_bindings[Path(path).resolve().as_posix()]
             ),
+            native_import_observer=lambda native: copy.deepcopy(
+                native["dependency_closure"]
+            ),
+            native_dependency_preloader=lambda _native: {
+                "dependencies": []
+            },
             native_module_loader=adapter.load_native_module,
+            native_resolution_validator=lambda *_args, **_kwargs: None,
             directory_observer=lambda _path: True,
             python_version=lambda: native_identity["provenance"]["build"].get(
                 "python"
@@ -4161,6 +4519,12 @@ def test_source_only_preflight_is_inert_and_does_not_open_source_inventory(tmp_p
     assert set(result["empirical_operations"].values()) == {False}
     assert manifest["source_inventory"]["path"] not in reads
     assert manifest["native_identity"]["module"]["path"] not in reads
+    assert not any(
+        item["path"] in reads
+        for item in manifest["native_identity"]["dependency_closure"][
+            "dependencies"
+        ]
+    )
     assert not any(
         path in reads for path in manifest["native_identity"]["dll_directories"]
     )
