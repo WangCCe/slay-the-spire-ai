@@ -7,8 +7,8 @@
 ## 2. Hybrid Native-Baseline Rollouts
 
 - [x] 2.1 Add RED regressions proving candidate non-card and all control decisions use source-preserving native SimpleAgent actions with no learned fallback.
-- [x] 2.2 Implement separate-seed-matched candidate/control rollouts with hierarchical candidate card routing and frozen native control routing.
-- [x] 2.3 Verify source immutability, legal action mapping, terminal outcomes, zero control optimizer state, and native-query failure closure.
+- [ ] 2.2 Implement separate-seed-matched candidate/control rollouts with hierarchical candidate card routing and frozen native control routing.
+- [ ] 2.3 Verify source immutability, legal action mapping, terminal outcomes, zero control optimizer state, and native-query failure closure.
 
 ## 3. Card-Only Warm Start
 

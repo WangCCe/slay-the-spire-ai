@@ -2037,8 +2037,18 @@ def _rollout_arm_episode(
             )
         _assert_source_unchanged(environment, source_snapshot, source_candidates)
         try:
-            transition = successor.step(decision.selected_action_id)
+            if snapshot["category"] in native_categories:
+                native_step = getattr(successor, "step_native_baseline", None)
+                if not callable(native_step):
+                    raise SuccessorRuntimeError(
+                        "environment.step_native_baseline must be callable"
+                    )
+                transition = native_step()
+            else:
+                transition = successor.step(decision.selected_action_id)
             after = simulator_adapter.validate_snapshot(successor.snapshot())
+        except SuccessorRuntimeError:
+            raise
         except RuntimeError as exc:
             reason = str(exc)
             if reason not in REGISTERED_SUPPORT_BLOCKERS:

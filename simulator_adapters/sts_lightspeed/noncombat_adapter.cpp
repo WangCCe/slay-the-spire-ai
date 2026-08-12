@@ -306,7 +306,11 @@ public:
             throw std::invalid_argument("action is not legal in the current target decision: " + actionId);
         }
 
-        nativeBaselineContinuationValid_ = false;
+        // A card-only policy changes deck state but not SimpleAgent's persistent
+        // route path. Other external decisions can invalidate that path.
+        if (category() != "card_reward") {
+            nativeBaselineContinuationValid_ = false;
+        }
         applyCandidate(*it);
         ++decisionCount_;
         advanceToDecision();

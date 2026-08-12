@@ -248,6 +248,7 @@ class _RolloutEnvironment:
 
 class _NativeRolloutEnvironment(_RolloutEnvironment):
     query_log: list[tuple[str, str, int]] = []
+    native_step_log: list[tuple[str, str, int]] = []
 
     def __init__(
         self,
@@ -280,6 +281,15 @@ class _NativeRolloutEnvironment(_RolloutEnvironment):
             "policy_id": NATIVE_TARGET_POLICY_ID,
             "schema_version": NATIVE_BASELINE_ACTION_SCHEMA_VERSION,
         }
+
+    def step_native_baseline(self) -> dict[str, object]:
+        category = str(self.snapshot()["category"])
+        self.native_step_log.append((self.role, category, self.index))
+        action_id = {
+            "card_reward": "take-a",
+            "route": "right",
+        }.get(category, "missing")
+        return super().step(action_id)
 
 
 def _synthetic_paired_rollouts(runtime, bootstrap, *, start_seed: int = 100):
@@ -1217,6 +1227,7 @@ def test_card_only_native_baseline_frozen_rollout_routes_exact_roles():
     before = runtime.encode_paired_bootstrap(bootstrap)
     factory_calls = []
     _NativeRolloutEnvironment.query_log = []
+    _NativeRolloutEnvironment.native_step_log = []
 
     def environment_factory(seed: int):
         role = "candidate" if not factory_calls else "control"
@@ -1234,6 +1245,11 @@ def test_card_only_native_baseline_frozen_rollout_routes_exact_roles():
     assert factory_calls == [37, 37]
     assert runtime.encode_paired_bootstrap(bootstrap) == before
     assert _NativeRolloutEnvironment.query_log == [
+        ("candidate", "route", 1),
+        ("control", "card_reward", 0),
+        ("control", "route", 1),
+    ]
+    assert _NativeRolloutEnvironment.native_step_log == [
         ("candidate", "route", 1),
         ("control", "card_reward", 0),
         ("control", "route", 1),
@@ -1267,6 +1283,7 @@ def test_card_only_native_baseline_training_samples_only_candidate_cards():
     }
     factory_calls = []
     _NativeRolloutEnvironment.query_log = []
+    _NativeRolloutEnvironment.native_step_log = []
 
     def environment_factory(seed: int):
         role = "candidate" if not factory_calls else "control"
@@ -1291,6 +1308,11 @@ def test_card_only_native_baseline_training_samples_only_candidate_cards():
     )
     assert all(decision.card_terms is None for decision in paired.control.decisions)
     assert _NativeRolloutEnvironment.query_log == [
+        ("candidate", "route", 1),
+        ("control", "card_reward", 0),
+        ("control", "route", 1),
+    ]
+    assert _NativeRolloutEnvironment.native_step_log == [
         ("candidate", "route", 1),
         ("control", "card_reward", 0),
         ("control", "route", 1),
