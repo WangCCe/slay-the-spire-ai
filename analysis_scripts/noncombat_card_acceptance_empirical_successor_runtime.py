@@ -1854,6 +1854,63 @@ def _select_arm_frozen_decision(
     )
 
 
+def _select_native_baseline_decision(
+    bootstrap: PairedBootstrap,
+    *,
+    arm: ArmName,
+    environment: Any,
+    snapshot: Mapping[str, Any],
+    candidates: Sequence[Mapping[str, Any]],
+    seed: int,
+    decision_index: int,
+) -> ArmRolloutDecision:
+    del bootstrap
+    try:
+        policy_input = project_state_conditioned_policy_input(snapshot, candidates)
+    except PolicyInputError as exc:
+        raise SuccessorRuntimeError(str(exc)) from exc
+    query = getattr(environment, "native_baseline_action", None)
+    if not callable(query):
+        raise SuccessorRuntimeError(
+            "environment.native_baseline_action must be callable"
+        )
+    source_snapshot = copy.deepcopy(snapshot)
+    source_candidates = copy.deepcopy(candidates)
+    try:
+        raw_action = query()
+    except Exception as exc:
+        raise SuccessorRuntimeError(f"native baseline query failed: {exc}") from exc
+    _assert_source_unchanged(environment, source_snapshot, source_candidates)
+    try:
+        action = simulator_adapter.validate_native_baseline_action(
+            raw_action,
+            category=snapshot["category"],
+            candidates=candidates,
+        )
+    except simulator_adapter.SimulatorAdapterError as exc:
+        raise SuccessorRuntimeError(str(exc)) from exc
+    decision_id = f"{arm}:seed-{seed}:decision-{decision_index}"
+    return ArmRolloutDecision(
+        arm=arm,
+        category=str(snapshot["category"]),
+        decision_id=decision_id,
+        decision_index=decision_index,
+        selected_action_id=action["action_id"],
+        state_features=policy_input.state_features.detach().clone(),
+        card_terms=None,
+        diagnostic={
+            "category": snapshot["category"],
+            "decision_id": decision_id,
+            "decision_index": decision_index,
+            "native_policy_id": action["policy_id"],
+            "selected_action_id": action["action_id"],
+            "selection_mode": "native-simple-agent-v1",
+        },
+        candidate_features=policy_input.candidate_features.detach().clone(),
+        candidates=tuple(copy.deepcopy(candidates)),
+    )
+
+
 def _rollout_arm_episode(
     bootstrap: PairedBootstrap,
     *,
@@ -1864,6 +1921,7 @@ def _rollout_arm_episode(
     max_decisions: int = MAX_DECISIONS_PER_EPISODE,
     deadline: float | None = None,
     clock: Callable[[], float] = time.monotonic,
+    native_baseline_categories: Sequence[str] = (),
 ) -> ArmEpisodeRollout:
     normalized_arm = _validated_arm(arm)
     _validate_rollout_bootstrap(bootstrap)
@@ -1879,6 +1937,14 @@ def _rollout_arm_episode(
         raise SuccessorRuntimeError(
             "episode environment factory and clock must be callable"
         )
+    if isinstance(native_baseline_categories, (str, bytes)):
+        raise SuccessorRuntimeError("native baseline categories must be a sequence")
+    native_categories = tuple(native_baseline_categories)
+    if len(set(native_categories)) != len(native_categories) or any(
+        category not in simulator_adapter.TARGET_CATEGORIES
+        for category in native_categories
+    ):
+        raise SuccessorRuntimeError("native baseline categories are invalid")
     now = float(clock())
     active_deadline = now + MAX_CHARGED_SECONDS if deadline is None else float(deadline)
     if (
@@ -1919,14 +1985,25 @@ def _rollout_arm_episode(
             break
         if len(decisions) >= max_decisions:
             raise SuccessorRuntimeError("episode decision ceiling reached")
-        decision = decision_selector(
-            bootstrap,
-            arm=normalized_arm,
-            snapshot=snapshot,
-            candidates=candidates,
-            seed=seed,
-            decision_index=len(decisions),
-        )
+        if snapshot["category"] in native_categories:
+            decision = _select_native_baseline_decision(
+                bootstrap,
+                arm=normalized_arm,
+                environment=environment,
+                snapshot=snapshot,
+                candidates=candidates,
+                seed=seed,
+                decision_index=len(decisions),
+            )
+        else:
+            decision = decision_selector(
+                bootstrap,
+                arm=normalized_arm,
+                snapshot=snapshot,
+                candidates=candidates,
+                seed=seed,
+                decision_index=len(decisions),
+            )
         source_snapshot = copy.deepcopy(snapshot)
         source_candidates = copy.deepcopy(candidates)
         try:
@@ -2036,6 +2113,7 @@ def rollout_arm_training_episode(
     max_decisions: int = MAX_DECISIONS_PER_EPISODE,
     deadline: float | None = None,
     clock: Callable[[], float] = time.monotonic,
+    native_baseline_categories: Sequence[str] = (),
 ) -> ArmEpisodeRollout:
     """Run one clone-only arm trajectory with card-only trainable routing."""
     return _rollout_arm_episode(
@@ -2047,6 +2125,7 @@ def rollout_arm_training_episode(
         max_decisions=max_decisions,
         deadline=deadline,
         clock=clock,
+        native_baseline_categories=native_baseline_categories,
     )
 
 
@@ -2059,6 +2138,7 @@ def rollout_arm_frozen_evaluation(
     max_decisions: int = MAX_DECISIONS_PER_EPISODE,
     deadline: float | None = None,
     clock: Callable[[], float] = time.monotonic,
+    native_baseline_categories: Sequence[str] = (),
 ) -> ArmEpisodeRollout:
     """Run one clone-only arm trajectory without sampling or mutation."""
     return _rollout_arm_episode(
@@ -2067,6 +2147,103 @@ def rollout_arm_frozen_evaluation(
         environment_factory=environment_factory,
         seed=seed,
         decision_selector=_select_arm_frozen_decision,
+        max_decisions=max_decisions,
+        deadline=deadline,
+        clock=clock,
+        native_baseline_categories=native_baseline_categories,
+    )
+
+
+def _rollout_paired_card_only_native_baseline(
+    bootstrap: PairedBootstrap,
+    *,
+    environment_factory: Callable[[int], Any],
+    seed: int,
+    frozen: bool,
+    max_decisions: int,
+    deadline: float | None,
+    clock: Callable[[], float],
+) -> PairedEpisodeRollout:
+    if not callable(clock):
+        raise SuccessorRuntimeError("paired episode clock must be callable")
+    before = encode_paired_bootstrap(bootstrap) if frozen else None
+    now = float(clock())
+    paired_deadline = now + MAX_CHARGED_SECONDS if deadline is None else float(deadline)
+    if (
+        not math.isfinite(now)
+        or not math.isfinite(paired_deadline)
+        or paired_deadline < now
+        or paired_deadline > now + MAX_CHARGED_SECONDS
+    ):
+        raise SuccessorRuntimeError(
+            "paired episode deadline exceeds the registered bound"
+        )
+    rollout = rollout_arm_frozen_evaluation if frozen else rollout_arm_training_episode
+    candidate = rollout(
+        bootstrap,
+        arm="candidate",
+        environment_factory=environment_factory,
+        seed=seed,
+        max_decisions=max_decisions,
+        deadline=paired_deadline,
+        clock=clock,
+        native_baseline_categories=tuple(
+            category
+            for category in simulator_adapter.TARGET_CATEGORIES
+            if category != "card_reward"
+        ),
+    )
+    control = rollout(
+        bootstrap,
+        arm="control",
+        environment_factory=environment_factory,
+        seed=seed,
+        max_decisions=max_decisions,
+        deadline=paired_deadline,
+        clock=clock,
+        native_baseline_categories=simulator_adapter.TARGET_CATEGORIES,
+    )
+    if before is not None and encode_paired_bootstrap(bootstrap) != before:
+        raise SuccessorRuntimeError("frozen evaluation mutated bootstrap state")
+    return PairedEpisodeRollout(seed=seed, candidate=candidate, control=control)
+
+
+def rollout_paired_card_only_native_baseline_training_episode(
+    bootstrap: PairedBootstrap,
+    *,
+    environment_factory: Callable[[int], Any],
+    seed: int,
+    max_decisions: int = MAX_DECISIONS_PER_EPISODE,
+    deadline: float | None = None,
+    clock: Callable[[], float] = time.monotonic,
+) -> PairedEpisodeRollout:
+    """Sample candidate cards while native SimpleAgent owns every other action."""
+    return _rollout_paired_card_only_native_baseline(
+        bootstrap,
+        environment_factory=environment_factory,
+        seed=seed,
+        frozen=False,
+        max_decisions=max_decisions,
+        deadline=deadline,
+        clock=clock,
+    )
+
+
+def rollout_paired_card_only_native_baseline_frozen_evaluation(
+    bootstrap: PairedBootstrap,
+    *,
+    environment_factory: Callable[[int], Any],
+    seed: int,
+    max_decisions: int = MAX_DECISIONS_PER_EPISODE,
+    deadline: float | None = None,
+    clock: Callable[[], float] = time.monotonic,
+) -> PairedEpisodeRollout:
+    """Greedily evaluate candidate cards against an all-native frozen control."""
+    return _rollout_paired_card_only_native_baseline(
+        bootstrap,
+        environment_factory=environment_factory,
+        seed=seed,
+        frozen=True,
         max_decisions=max_decisions,
         deadline=deadline,
         clock=clock,

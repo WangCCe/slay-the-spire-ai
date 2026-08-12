@@ -25,6 +25,7 @@ from analysis_scripts.noncombat_state_conditioned_ranker import (
 )
 from analysis_scripts.noncombat_simulator_adapter import (
     ADAPTER_API_VERSION,
+    NATIVE_BASELINE_ACTION_SCHEMA_VERSION,
     NATIVE_TARGET_POLICY_ID,
     SOURCE_TYPE,
     STATE_SCHEMA_VERSION,
@@ -243,6 +244,42 @@ class _RolloutEnvironment:
             after=self.snapshot(),
             provenance=_rollout_provenance(),
         )
+
+
+class _NativeRolloutEnvironment(_RolloutEnvironment):
+    query_log: list[tuple[str, str, int]] = []
+
+    def __init__(
+        self,
+        seed: int,
+        categories: tuple[str, ...],
+        *,
+        role: str,
+        failure: str | None = None,
+    ) -> None:
+        super().__init__(seed, categories)
+        self.role = role
+        self.failure = failure
+
+    def native_baseline_action(self) -> dict[str, object]:
+        category = self.snapshot()["category"]
+        self.query_log.append((self.role, str(category), self.index))
+        if self.failure == "error":
+            raise RuntimeError("native query failed")
+        if self.failure == "mutation":
+            self.index += 1
+        action_id = {
+            "card_reward": "take-a",
+            "route": "right",
+        }.get(category, "missing")
+        if self.failure == "unmapped":
+            action_id = "missing"
+        return {
+            "action_id": action_id,
+            "category": category,
+            "policy_id": NATIVE_TARGET_POLICY_ID,
+            "schema_version": NATIVE_BASELINE_ACTION_SCHEMA_VERSION,
+        }
 
 
 def _synthetic_paired_rollouts(runtime, bootstrap, *, start_seed: int = 100):
@@ -1172,6 +1209,118 @@ def test_paired_frozen_evaluation_is_greedy_repeatable_and_state_immutable():
         maximum_ids = route.diagnostic["raw_score_max_action_ids"]
         assert maximum_ids == [route.selected_action_id]
         assert arm_first.final_snapshot == arm_second.final_snapshot
+
+
+def test_card_only_native_baseline_frozen_rollout_routes_exact_roles():
+    runtime = _runtime()
+    bootstrap = runtime.build_matched_bootstrap()
+    before = runtime.encode_paired_bootstrap(bootstrap)
+    factory_calls = []
+    _NativeRolloutEnvironment.query_log = []
+
+    def environment_factory(seed: int):
+        role = "candidate" if not factory_calls else "control"
+        factory_calls.append(seed)
+        return _NativeRolloutEnvironment(
+            seed, ("card_reward", "route"), role=role
+        )
+
+    paired = runtime.rollout_paired_card_only_native_baseline_frozen_evaluation(
+        bootstrap,
+        environment_factory=environment_factory,
+        seed=37,
+    )
+
+    assert factory_calls == [37, 37]
+    assert runtime.encode_paired_bootstrap(bootstrap) == before
+    assert _NativeRolloutEnvironment.query_log == [
+        ("candidate", "route", 1),
+        ("control", "card_reward", 0),
+        ("control", "route", 1),
+    ]
+    candidate_card, candidate_route = paired.candidate.decisions
+    control_card, control_route = paired.control.decisions
+    assert candidate_card.card_terms is not None
+    assert candidate_card.diagnostic["selection_mode"] == "unique-two-stage-greedy-v1"
+    assert candidate_route.card_terms is None
+    assert candidate_route.selected_action_id == "right"
+    assert candidate_route.diagnostic["selection_mode"] == "native-simple-agent-v1"
+    assert control_card.card_terms is None
+    assert control_card.selected_action_id == "take-a"
+    assert control_route.selected_action_id == "right"
+    assert all(
+        decision.diagnostic["selection_mode"] == "native-simple-agent-v1"
+        for decision in paired.control.decisions
+    )
+    assert paired.candidate.unsupported_reason is None
+    assert paired.control.unsupported_reason is None
+    assert paired.candidate.final_snapshot["terminal"] is True
+    assert paired.control.final_snapshot["terminal"] is True
+
+
+def test_card_only_native_baseline_training_samples_only_candidate_cards():
+    runtime = _runtime()
+    bootstrap = runtime.build_matched_bootstrap()
+    control_generators_before = {
+        name: bootstrap.generators[name].get_state().clone()
+        for name in ("control_card", "control_noncard")
+    }
+    factory_calls = []
+    _NativeRolloutEnvironment.query_log = []
+
+    def environment_factory(seed: int):
+        role = "candidate" if not factory_calls else "control"
+        factory_calls.append(seed)
+        return _NativeRolloutEnvironment(
+            seed, ("card_reward", "route"), role=role
+        )
+
+    paired = runtime.rollout_paired_card_only_native_baseline_training_episode(
+        bootstrap,
+        environment_factory=environment_factory,
+        seed=39,
+    )
+
+    assert factory_calls == [39, 39]
+    assert paired.candidate.decisions[0].card_terms is not None
+    assert paired.candidate.decisions[0].diagnostic["selection_mode"] == (
+        "family-first-then-conditional-v1"
+    )
+    assert paired.candidate.decisions[1].diagnostic["selection_mode"] == (
+        "native-simple-agent-v1"
+    )
+    assert all(decision.card_terms is None for decision in paired.control.decisions)
+    assert _NativeRolloutEnvironment.query_log == [
+        ("candidate", "route", 1),
+        ("control", "card_reward", 0),
+        ("control", "route", 1),
+    ]
+    for name, state in control_generators_before.items():
+        assert torch.equal(bootstrap.generators[name].get_state(), state)
+
+
+@pytest.mark.parametrize(
+    ("failure", "message"),
+    [
+        ("mutation", "mutated"),
+        ("unmapped", "exactly one"),
+        ("error", "native baseline query failed"),
+    ],
+)
+def test_card_only_native_baseline_rollout_fails_closed_without_learned_fallback(
+    failure, message
+):
+    runtime = _runtime()
+    bootstrap = runtime.build_matched_bootstrap()
+
+    with pytest.raises(runtime.SuccessorRuntimeError, match=message):
+        runtime.rollout_paired_card_only_native_baseline_frozen_evaluation(
+            bootstrap,
+            environment_factory=lambda seed: _NativeRolloutEnvironment(
+                seed, ("route",), role="candidate", failure=failure
+            ),
+            seed=41,
+        )
 
 
 def test_frozen_noncard_evaluation_rejects_raw_score_ties():
