@@ -858,6 +858,7 @@ def validate_preimplementation_file(
     *,
     repo_root: Path | str,
     profile: DiagnosticProfile = V1_PROFILE,
+    verify_native_artifacts: bool = True,
 ) -> dict[str, Any]:
     profile = _coerce_profile(profile)
     root = Path(repo_root).resolve()
@@ -879,8 +880,9 @@ def validate_preimplementation_file(
     if profile == V1_PROFILE:
         for row in baseline["tracked_evidence"]:
             _verify_binding(repo_root=root, binding=row, repository_relative=True)
-        for row in baseline["module_evidence"]:
-            _verify_binding(repo_root=root, binding=row, repository_relative=True)
+        if verify_native_artifacts:
+            for row in baseline["module_evidence"]:
+                _verify_binding(repo_root=root, binding=row, repository_relative=True)
         return baseline
 
     lineage = baseline["lineage"]
@@ -892,14 +894,16 @@ def validate_preimplementation_file(
         consumed["registration"],
         consumed["closeout"],
         *consumed["artifacts"],
-        baseline["module"],
     ]
+    if verify_native_artifacts:
+        bindings.append(baseline["module"])
     for row in bindings:
         _verify_binding(repo_root=root, binding=row, repository_relative=True)
     validate_preimplementation_file(
         root / consumed["preimplementation"]["path"],
         repo_root=root,
         profile=V1_PROFILE,
+        verify_native_artifacts=verify_native_artifacts,
     )
     v1_registration_path = root / consumed["registration"]["path"]
     v1_registration = load_registration(
@@ -960,9 +964,6 @@ def validate_registration_evidence(
         binding=identity["preimplementation"],
         repository_relative=True,
     )
-    validate_preimplementation_file(
-        preimplementation_path, repo_root=root, profile=profile
-    )
     contract_path = _verify_binding(
         repo_root=root,
         binding=identity["contract_file"],
@@ -977,6 +978,9 @@ def validate_registration_evidence(
         "source_sha256"
     ]:
         raise DiagnosticBlocked("implementation_source_hash_mismatch")
+    validate_preimplementation_file(
+        preimplementation_path, repo_root=root, profile=profile
+    )
     try:
         predecessor.predecessor._verify_sources_at_commit(
             root, implementation["commit"], implementation["source_files"]

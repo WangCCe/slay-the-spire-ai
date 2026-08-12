@@ -99,6 +99,15 @@ D:\anaconda\envs\stsai\python.exe -m pytest -q -p no:cacheprovider `
   gate once with the exact elevated command permission it needs; do not first
   launch a non-elevated gate that may fail only during nested pytest cleanup.
 
+### Native Build Artifact Directories
+
+Treat an ignored native module path as immutable once a committed registration,
+manifest, or preimplementation artifact binds its hash. Never reconfigure or
+rebuild an existing `.sts_lightspeed*_build` directory for a later experiment.
+Use a new run-scoped build directory, verify its module hash, and bind that new
+path in the new registration. This keeps historical source-only checks from
+depending on mutually incompatible bytes at one mutable path.
+
 ---
 
 # AI Agent Development Guide

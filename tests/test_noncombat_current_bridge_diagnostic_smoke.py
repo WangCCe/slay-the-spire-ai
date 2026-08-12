@@ -749,7 +749,10 @@ def test_committed_r2_preimplementation_is_canonical_and_exact():
 
     assert path.read_bytes() == _canonical_bytes(payload)
     validated = smoke.validate_preimplementation_file(
-        path, repo_root=REPO_ROOT, profile=smoke.R2_PROFILE
+        path,
+        repo_root=REPO_ROOT,
+        profile=smoke.R2_PROFILE,
+        verify_native_artifacts=False,
     )
     assert validated["lineage"]["consumed_v1"]["failure"] == {
         "category_counts": {
