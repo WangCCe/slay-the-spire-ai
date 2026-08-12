@@ -38,6 +38,90 @@ if __name__ == "__main__":
     _bootstrap_direct_script_imports()
 
 
+_EARLY_NATIVE_HANDLES: list[Any] = []
+
+
+def _early_preload_resume_native() -> None:
+    if len(sys.argv) < 2 or sys.argv[1] != "run-resume-worker":
+        return
+    try:
+        registration_index = sys.argv.index("--registration") + 1
+        registration_path = Path(sys.argv[registration_index]).resolve()
+        registration = json.loads(registration_path.read_text(encoding="ascii"))
+        if registration.get("schema_version") != (
+            "noncombat-card-only-native-baseline-pilot-resume-registration-v1"
+        ):
+            raise RuntimeError("resume worker registration schema differs")
+        native = registration["native"]["identity"]
+        module_path = Path(native["module"]["path"]).resolve()
+        dependencies = {
+            Path(binding["path"]).name.casefold(): Path(binding["path"]).resolve()
+            for binding in native["dependency_closure"]["dependencies"]
+        }
+        imports_by_path = {
+            Path(row["path"]).resolve(): tuple(
+                str(name).casefold() for name in row["imports"]
+            )
+            for row in native["dependency_closure"]["imports"]
+        }
+        order: list[Path] = []
+        visiting: set[Path] = set()
+        visited: set[Path] = set()
+
+        def visit(path: Path) -> None:
+            if path in visiting:
+                raise RuntimeError("resume worker dependency cycle differs")
+            if path in visited:
+                return
+            visiting.add(path)
+            for name in imports_by_path.get(path, ()):
+                dependency = dependencies.get(name)
+                if dependency is not None:
+                    visit(dependency)
+            visiting.remove(path)
+            visited.add(path)
+            if path != module_path:
+                order.append(path)
+
+        visit(module_path)
+        if set(order) != set(dependencies.values()):
+            raise RuntimeError("resume worker dependency graph differs")
+
+        import ctypes
+        from ctypes import wintypes
+
+        kernel32 = ctypes.WinDLL("kernel32", use_last_error=True)
+        load_library = kernel32.LoadLibraryExW
+        load_library.argtypes = (wintypes.LPCWSTR, wintypes.HANDLE, wintypes.DWORD)
+        load_library.restype = wintypes.HMODULE
+        for path in order:
+            handle = load_library(
+                str(path), None, 0x00000100 | 0x00000400
+            )
+            if not handle:
+                raise OSError(
+                    ctypes.get_last_error(), "LoadLibraryExW failed", str(path)
+                )
+            _EARLY_NATIVE_HANDLES.append(int(handle))
+        for directory in native["dll_directories"]:
+            _EARLY_NATIVE_HANDLES.append(os.add_dll_directory(str(Path(directory))))
+        spec = importlib.util.spec_from_file_location(
+            "sts_lightspeed_noncombat_adapter", module_path
+        )
+        if spec is None or spec.loader is None:
+            raise RuntimeError("resume worker native specification is unavailable")
+        module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+        if module.adapter_api_version() != "sts-lightspeed-noncombat-adapter-v3":
+            raise RuntimeError("resume worker native API differs")
+        sys.modules["sts_lightspeed_noncombat_adapter"] = module
+    except (IndexError, KeyError, OSError, RuntimeError, ValueError) as exc:
+        raise RuntimeError("resume worker early native load failed") from exc
+
+
+_early_preload_resume_native()
+
+
 from analysis_scripts.bottled_policy_oracle import BottledPolicyOracle
 from analysis_scripts import noncombat_card_acceptance_empirical_successor_runtime as runtime
 from analysis_scripts import noncombat_card_only_native_baseline_rl_pilot as pilot
@@ -772,7 +856,8 @@ def classify_frozen_comparison(pairs: Sequence[Any]) -> dict[str, Any]:
 
 
 def _load_environment_factory(native_identity: Mapping[str, Any]) -> Callable[[int], Any]:
-    _preload_native_dependencies(native_identity)
+    if "sts_lightspeed_noncombat_adapter" not in sys.modules:
+        _preload_native_dependencies(native_identity)
     module_binding = native_identity["module"]
     try:
         module = adapter.load_native_module(
@@ -843,7 +928,19 @@ def _preload_native_dependencies(native_identity: Mapping[str, Any]) -> None:
         raise CardOnlyRunnerBlocked("native dependency preload requires Windows")
     try:
         import ctypes
+        from ctypes import wintypes
 
+        kernel32 = ctypes.WinDLL("kernel32", use_last_error=True)
+        load_library = kernel32.LoadLibraryExW
+        load_library.argtypes = (wintypes.LPCWSTR, wintypes.HANDLE, wintypes.DWORD)
+        load_library.restype = wintypes.HMODULE
+        get_module_filename = kernel32.GetModuleFileNameW
+        get_module_filename.argtypes = (
+            wintypes.HMODULE,
+            wintypes.LPWSTR,
+            wintypes.DWORD,
+        )
+        get_module_filename.restype = wintypes.DWORD
         for path in _native_dependency_order(native_identity):
             binding = next(
                 item
@@ -852,9 +949,23 @@ def _preload_native_dependencies(native_identity: Mapping[str, Any]) -> None:
             )
             if _file_binding(path) != binding:
                 raise CardOnlyRunnerBlocked("registered native dependency bytes differ")
-            _NATIVE_DEPENDENCY_HANDLES.append(
-                ctypes.WinDLL(str(path), winmode=0x00000100 | 0x00000400)
+            handle = load_library(
+                str(path), None, 0x00000100 | 0x00000400
             )
+            if not handle:
+                raise OSError(
+                    ctypes.get_last_error(), "LoadLibraryExW failed", str(path)
+                )
+            buffer = ctypes.create_unicode_buffer(32768)
+            length = get_module_filename(handle, buffer, len(buffer))
+            if not length or length >= len(buffer) or (
+                Path(buffer.value).resolve().as_posix().casefold()
+                != path.as_posix().casefold()
+            ):
+                raise CardOnlyRunnerBlocked(
+                    "preloaded native dependency path differs"
+                )
+            _NATIVE_DEPENDENCY_HANDLES.append(int(handle))
     except CardOnlyRunnerBlocked:
         raise
     except (ImportError, OSError, StopIteration) as exc:
@@ -1088,6 +1199,42 @@ def terminalize_native_load_failure(registration: Mapping[str, Any]) -> dict[str
     return terminal
 
 
+def terminalize_resume_native_load_failure(
+    registration: Mapping[str, Any],
+) -> dict[str, Any]:
+    value = validate_registration(registration)
+    resume = value.get("resume_from")
+    if resume is None:
+        raise CardOnlyRunnerBlocked("initial attempt cannot use resume terminalization")
+    output = Path(value["output_dir"]).resolve()
+    if any(output.glob("chunk_*.json")):
+        raise CardOnlyRunnerBlocked("resume attempt has chunk evidence")
+    checkpoint = _file_binding(output / "checkpoint_000.json")
+    if checkpoint["sha256"] != resume["artifacts"]["checkpoint_000.json"]["sha256"]:
+        raise CardOnlyRunnerBlocked("resume zero-step checkpoint differs")
+    warm_report = _read_canonical(resume["artifacts"]["warm_start.json"]["path"])
+    terminal = {
+        "downstream_authority": dict(FALSE_DOWNSTREAM_AUTHORITY),
+        "environment_accesses": 0,
+        "optimizer_steps": warm_report["optimizer_steps"],
+        "rollback": "native_simple_agent",
+        "schema_version": TERMINAL_SCHEMA_VERSION,
+        "stop_reason": "native_dependency_preload_failure_before_environment_access",
+        "verdict": "card_only_native_baseline_pilot_not_ready",
+        "warm_start_gate": warm_report["gate"]["verdict"],
+    }
+    _write_canonical(output / "terminal.json", terminal)
+    _publish_report(
+        output,
+        preflight=_read_canonical(output / "preflight.json"),
+        warm_start=warm_report,
+        chunks=(),
+        comparison=None,
+        terminal=terminal,
+    )
+    return terminal
+
+
 def _parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description=__doc__)
     subparsers = parser.add_subparsers(dest="command", required=True)
@@ -1110,8 +1257,14 @@ def _parser() -> argparse.ArgumentParser:
     preflight.add_argument("--registration", required=True)
     run = subparsers.add_parser("run")
     run.add_argument("--registration", required=True)
+    resume_worker = subparsers.add_parser("run-resume-worker")
+    resume_worker.add_argument("--registration", required=True)
     terminalize = subparsers.add_parser("terminalize-native-load-failure")
     terminalize.add_argument("--registration", required=True)
+    resume_terminalize = subparsers.add_parser(
+        "terminalize-resume-native-load-failure"
+    )
+    resume_terminalize.add_argument("--registration", required=True)
     return parser
 
 
@@ -1150,11 +1303,36 @@ def main(argv: Sequence[str] | None = None) -> int:
             terminal = terminalize_native_load_failure(registration)
             print(_canonical_bytes(terminal).decode("ascii"))
             return 0
+        if args.command == "terminalize-resume-native-load-failure":
+            terminal = terminalize_resume_native_load_failure(registration)
+            print(_canonical_bytes(terminal).decode("ascii"))
+            return 0
+        if args.command == "run" and registration.get("resume_from") is not None:
+            preflight_registration(registration)
+            completed = subprocess.run(
+                [
+                    sys.executable,
+                    "-I",
+                    str(Path(__file__).resolve()),
+                    "run-resume-worker",
+                    "--registration",
+                    str(Path(args.registration).resolve()),
+                ],
+                cwd=Path(registration["source"]["repo_root"]),
+                capture_output=True,
+                text=True,
+                encoding="utf-8",
+            )
+            if completed.stdout:
+                print(completed.stdout, end="")
+            if completed.stderr:
+                print(completed.stderr, end="", file=sys.stderr)
+            return completed.returncode
         terminal = execute_pilot(registration)
         print(_canonical_bytes(terminal).decode("ascii"))
         return 0
     except (CardOnlyRunnerBlocked, pilot.CardOnlyPilotBlocked, adapter.SimulatorAdapterError) as exc:
-        if args.command == "run" and registration is not None:
+        if args.command in {"run", "run-resume-worker"} and registration is not None:
             output_value = registration.get("output_dir")
             if isinstance(output_value, str):
                 output = Path(output_value).resolve()
