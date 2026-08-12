@@ -3098,10 +3098,9 @@ def fold_baseline_state_features(source: torch.Tensor) -> torch.Tensor:
         width=BASELINE_SOURCE_DIM,
         label="policy state features",
     )
-    folded = torch.zeros(BASELINE_FEATURE_DIM, dtype=torch.float32, device="cpu")
-    for source_index in range(BASELINE_SOURCE_DIM):
-        target_index = source_index % BASELINE_FEATURE_DIM
-        folded[target_index] = folded[target_index] + source_value[source_index]
+    folded = source_value[:BASELINE_FEATURE_DIM].clone()
+    for offset in range(BASELINE_FEATURE_DIM, BASELINE_SOURCE_DIM, BASELINE_FEATURE_DIM):
+        folded.add_(source_value[offset : offset + BASELINE_FEATURE_DIM])
     if not bool(torch.isfinite(folded).all().item()):
         raise SuccessorRuntimeError("folded state features must remain finite")
     return folded
@@ -3328,15 +3327,44 @@ def _fold_manifest(
     return manifest
 
 
-def _augmented_sparse_float64_features(
-    decision: ArmBaselineDecision,
-) -> tuple[tuple[int, float], ...]:
-    entries = [(0, 1.0)]
-    for feature_index in range(BASELINE_FEATURE_DIM):
-        value = float(decision.state_features[feature_index].item())
-        if value != 0.0:
-            entries.append((feature_index + 1, value))
-    return tuple(entries)
+def _build_fold_normal_equations(
+    *,
+    held_out_ids: tuple[str, ...],
+    trajectory_order: Sequence[str],
+    by_trajectory: Mapping[str, tuple[ArmBaselineDecision, ...]],
+) -> tuple[torch.Tensor, torch.Tensor]:
+    """Accumulate the registered trajectory-weighted ridge moments in batches."""
+    held_out_set = set(held_out_ids)
+    width = BASELINE_FEATURE_DIM + 1
+    normal_matrix = torch.zeros((width, width), dtype=torch.float64)
+    rhs = torch.zeros(width, dtype=torch.float64)
+    for trajectory_id in trajectory_order:
+        if trajectory_id in held_out_set:
+            continue
+        trajectory = by_trajectory[trajectory_id]
+        state_features = torch.stack(
+            tuple(decision.state_features for decision in trajectory)
+        ).to(dtype=torch.float64)
+        intercept = torch.ones((len(trajectory), 1), dtype=torch.float64)
+        augmented = torch.cat((intercept, state_features), dim=1)
+        targets = torch.tensor(
+            tuple(float(decision.raw_return) for decision in trajectory),
+            dtype=torch.float64,
+        )
+        weight = 1.0 / (FIT_TRAJECTORIES_PER_FOLD * len(trajectory))
+        normal_matrix.addmm_(
+            augmented.transpose(0, 1),
+            augmented,
+            beta=1.0,
+            alpha=weight,
+        )
+        rhs.addmv_(
+            augmented.transpose(0, 1),
+            targets,
+            beta=1.0,
+            alpha=weight,
+        )
+    return normal_matrix, rhs
 
 
 def _fit_fold_model(
@@ -3352,24 +3380,11 @@ def _fit_fold_model(
         raise SuccessorRuntimeError("every fold must fit exactly 48 trajectories")
 
     width = BASELINE_FEATURE_DIM + 1
-    normal_matrix = torch.zeros((width, width), dtype=torch.float64)
-    rhs = torch.zeros(width, dtype=torch.float64)
-    for trajectory_id in trajectory_order:
-        if trajectory_id in held_out_set:
-            continue
-        trajectory = by_trajectory[trajectory_id]
-        weight = 1.0 / (FIT_TRAJECTORIES_PER_FOLD * len(trajectory))
-        for decision in trajectory:
-            target = float(decision.raw_return)
-            features = _augmented_sparse_float64_features(decision)
-            for row_index, row_value in features:
-                rhs[row_index] = float(rhs[row_index].item()) + (
-                    weight * target * row_value
-                )
-                for column_index, column_value in features:
-                    normal_matrix[row_index, column_index] = float(
-                        normal_matrix[row_index, column_index].item()
-                    ) + (weight * row_value * column_value)
+    normal_matrix, rhs = _build_fold_normal_equations(
+        held_out_ids=held_out_ids,
+        trajectory_order=trajectory_order,
+        by_trajectory=by_trajectory,
+    )
     ridge = torch.zeros(width, dtype=torch.float64)
     ridge[1:] = RIDGE_COEFFICIENT
     normal_matrix += torch.diag(ridge)
@@ -3386,31 +3401,11 @@ def _fit_fold_model(
         raise SuccessorRuntimeError("ridge coefficients must be finite")
 
     coefficient_values = tuple(float(value) for value in coefficients.tolist())
-    product_sums = torch.tensor(
-        [
-            math.fsum(
-                abs(
-                    float(normal_matrix[row_index, column_index].item())
-                    * coefficient_values[column_index]
-                )
-                for column_index in range(width)
-            )
-            for row_index in range(width)
-        ],
-        dtype=torch.float64,
+    product_sums = torch.sum(
+        torch.abs(normal_matrix) * torch.abs(coefficients).unsqueeze(0),
+        dim=1,
     )
-    residuals = torch.tensor(
-        [
-            math.fsum(
-                float(normal_matrix[row_index, column_index].item())
-                * coefficient_values[column_index]
-                for column_index in range(width)
-            )
-            - float(rhs[row_index].item())
-            for row_index in range(width)
-        ],
-        dtype=torch.float64,
-    )
+    residuals = torch.mv(normal_matrix, coefficients) - rhs
     for coordinate in range(width):
         scale = max(
             abs(float(rhs[coordinate].item())),

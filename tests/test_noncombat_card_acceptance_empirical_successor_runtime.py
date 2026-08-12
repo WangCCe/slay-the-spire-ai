@@ -1236,10 +1236,74 @@ def test_state_only_baseline_folding_is_fixed_float32_modulo_128():
     assert folded.dtype == torch.float32
     assert folded.device.type == "cpu"
     assert torch.equal(folded, torch.full((128,), 8.0, dtype=torch.float32))
+    ordered_source = torch.sin(torch.arange(HASH_DIM, dtype=torch.float32))
+    scalar_reference = torch.zeros(128, dtype=torch.float32)
+    for source_index in range(HASH_DIM):
+        target_index = source_index % 128
+        scalar_reference[target_index] += ordered_source[source_index]
+    assert torch.equal(
+        runtime.fold_baseline_state_features(ordered_source),
+        scalar_reference,
+    )
     with pytest.raises(runtime.SuccessorRuntimeError, match="1024|shape"):
         runtime.fold_baseline_state_features(source[:-1])
     with pytest.raises(runtime.SuccessorRuntimeError, match="float32|dtype"):
         runtime.fold_baseline_state_features(source.to(dtype=torch.float64))
+
+
+def test_fold_normal_equations_match_scalar_trajectory_weighting():
+    runtime = _runtime()
+    trajectories = {}
+    for seed, rows in (
+        (10, ((0.25, ((0, 1.0), (7, -0.5))), (0.5, ((2, 2.0),)))),
+        (11, ((0.75, ((0, -1.0), (3, 0.25))),)),
+        (12, ((1.0, ((5, 4.0),)),)),
+    ):
+        trajectory_id = f"candidate:seed-{seed}"
+        decisions = []
+        for index, (raw_return, entries) in enumerate(rows):
+            state_features = torch.zeros(128, dtype=torch.float32)
+            for feature_index, value in entries:
+                state_features[feature_index] = value
+            decisions.append(
+                runtime.ArmBaselineDecision(
+                    arm="candidate",
+                    category="card_reward",
+                    decision_id=f"{trajectory_id}:decision-{index}",
+                    decision_index=index,
+                    raw_return=raw_return,
+                    reward=raw_return,
+                    seed=seed,
+                    state_features=state_features,
+                    trajectory_id=trajectory_id,
+                )
+            )
+        trajectories[trajectory_id] = tuple(decisions)
+
+    trajectory_order = tuple(trajectories)
+    held_out_ids = (trajectory_order[-1],)
+    actual_matrix, actual_rhs = runtime._build_fold_normal_equations(
+        held_out_ids=held_out_ids,
+        trajectory_order=trajectory_order,
+        by_trajectory=trajectories,
+    )
+
+    expected_matrix = torch.zeros((129, 129), dtype=torch.float64)
+    expected_rhs = torch.zeros(129, dtype=torch.float64)
+    for trajectory_id in trajectory_order[:-1]:
+        trajectory = trajectories[trajectory_id]
+        weight = 1.0 / (runtime.FIT_TRAJECTORIES_PER_FOLD * len(trajectory))
+        for decision in trajectory:
+            features = (1.0, *tuple(float(value) for value in decision.state_features))
+            for row_index, row_value in enumerate(features):
+                expected_rhs[row_index] += weight * decision.raw_return * row_value
+                for column_index, column_value in enumerate(features):
+                    expected_matrix[row_index, column_index] += (
+                        weight * row_value * column_value
+                    )
+
+    torch.testing.assert_close(actual_matrix, expected_matrix, rtol=0.0, atol=1e-15)
+    torch.testing.assert_close(actual_rhs, expected_rhs, rtol=0.0, atol=1e-15)
 
 
 def test_paired_cross_fitted_baselines_are_arm_local_and_advantages_are_unscaled():
