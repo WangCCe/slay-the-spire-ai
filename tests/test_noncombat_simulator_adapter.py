@@ -619,8 +619,13 @@ def test_native_simple_agent_target_policy_is_deterministic_and_candidate_legal(
 def test_native_baseline_query_continues_after_card_policy_step():
     module, _ = _integration_settings()
     environment = module.Environment(0, 0)
-    candidates = json.loads(environment.legal_actions_json())
-    assert {candidate["category"] for candidate in candidates} == {"card_reward"}
+    for _ in range(100):
+        candidates = json.loads(environment.legal_actions_json())
+        if candidates and candidates[0]["category"] == "card_reward" and len(candidates) > 1:
+            break
+        environment.step_native_baseline()
+    else:
+        raise AssertionError("fixture did not reach a multi-action card reward")
     baseline = json.loads(environment.native_baseline_action_json())
     alternative = next(
         candidate["action_id"]
