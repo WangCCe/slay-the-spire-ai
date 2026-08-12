@@ -7,8 +7,8 @@
 ## 2. Hybrid Native-Baseline Rollouts
 
 - [x] 2.1 Add RED regressions proving candidate non-card and all control decisions use source-preserving native SimpleAgent actions with no learned fallback.
-- [ ] 2.2 Implement separate-seed-matched candidate/control rollouts with hierarchical candidate card routing and frozen native control routing.
-- [ ] 2.3 Verify source immutability, legal action mapping, terminal outcomes, zero control optimizer state, and native-query failure closure.
+- [x] 2.2 Implement separate-seed-matched candidate/control rollouts with hierarchical candidate card routing and frozen native control routing.
+- [x] 2.3 Verify source immutability, legal action mapping, terminal outcomes, zero control optimizer state, and native-query failure closure.
 
 ## 3. Card-Only Warm Start
 
@@ -27,11 +27,11 @@
 ## 5. Bounded Pilot And Report
 
 - [x] 5.1 Publish a compact source/native/Bottled/corpus/config registration and preflight that denies protected cohorts, game processes, CommunicationMod, and production checkpoints.
-- [ ] 5.2 Run the warm-start gate once; only on pass, run at most four residual chunks on the consumed development cohort.
-- [ ] 5.3 Run one frozen candidate-versus-native-control comparison and publish the strict ready/not-ready verdict with rollback state.
+- [x] 5.2 Run the warm-start gate once; only on pass, run at most four residual chunks on the consumed development cohort.
+- [x] 5.3 Run one frozen candidate-versus-native-control comparison and publish the strict ready/not-ready verdict with rollback state.
 
 ## 6. Verification And Closeout
 
-- [ ] 6.1 Run focused Bottled, adapter, warm-start, hybrid-rollout, residual-runtime, checkpoint, and report tests using the scoped system-temp pytest root.
+- [x] 6.1 Run focused Bottled, adapter, warm-start, hybrid-rollout, residual-runtime, checkpoint, and report tests using the scoped system-temp pytest root.
 - [ ] 6.2 Run the repository pytest gate once after focused tests pass; do not launch live gameplay because no live loader or policy changes under this capability.
 - [ ] 6.3 Run strict OpenSpec validation, review the final diff and authority flags, then commit and push cohesive implementation/evidence boundaries.
