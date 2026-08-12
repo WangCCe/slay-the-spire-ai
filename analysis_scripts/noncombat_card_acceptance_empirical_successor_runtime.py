@@ -1141,6 +1141,7 @@ def _prepare_arm_optimizer_step(
     *,
     parameters: Sequence[torch.nn.Parameter],
     parameter_names: Sequence[str] | None,
+    reconstruct_components: bool = True,
 ) -> _PreparedArmOptimizerStep:
     """Validate and clip one arm without changing parameters or Adam moments."""
     registered_parameters = _validated_registered_adam(optimizer)
@@ -1161,12 +1162,6 @@ def _prepare_arm_optimizer_step(
     if objective.card_decision_count <= 0:
         raise SuccessorRuntimeError("optimizer objective has no card decisions")
 
-    component_order = (
-        "family_policy",
-        "conditional_policy",
-        "family_entropy",
-        "conditional_entropy",
-    )
     components = (
         objective.family_policy_loss,
         objective.conditional_policy_loss,
@@ -1191,20 +1186,35 @@ def _prepare_arm_optimizer_step(
     if not torch.equal(reconstructed_loss, objective.total_loss):
         raise SuccessorRuntimeError("optimizer objective reconstruction differs")
 
-    raw_component_gradients = tuple(
-        torch.autograd.grad(
-            component,
+    if reconstruct_components:
+        component_order = (
+            "family_policy",
+            "conditional_policy",
+            "family_entropy",
+            "conditional_entropy",
+        )
+        raw_component_gradients = tuple(
+            torch.autograd.grad(
+                component,
+                registered_parameters,
+                allow_unused=True,
+                retain_graph=True,
+            )
+            for component in components
+        )
+        total_gradients = torch.autograd.grad(
+            objective.total_loss,
             registered_parameters,
             allow_unused=True,
-            retain_graph=True,
         )
-        for component in components
-    )
-    total_gradients = torch.autograd.grad(
-        objective.total_loss,
-        registered_parameters,
-        allow_unused=True,
-    )
+    else:
+        component_order = ("total_loss",)
+        total_gradients = torch.autograd.grad(
+            objective.total_loss,
+            registered_parameters,
+            allow_unused=True,
+        )
+        raw_component_gradients = (total_gradients,)
     component_gradients = tuple(
         tuple(
             None
@@ -3660,10 +3670,12 @@ def _arm_named_trainable_parameters(
     return rows
 
 
-def apply_paired_cross_fitted_chunk_update(
+def _apply_paired_cross_fitted_chunk_update(
     bootstrap: PairedBootstrap,
     optimizers: ArmOptimizers,
     episodes: Sequence[PairedEpisodeRollout],
+    *,
+    reconstruct_components: bool,
 ) -> PairedChunkUpdateEvidence:
     """Validate both arm updates before applying exactly one Adam step per arm."""
     _validate_rollout_bootstrap(bootstrap)
@@ -3705,12 +3717,14 @@ def apply_paired_cross_fitted_chunk_update(
             candidate_objective,
             parameters=tuple(parameter for _, parameter in candidate_named),
             parameter_names=tuple(name for name, _ in candidate_named),
+            reconstruct_components=reconstruct_components,
         )
         control_prepared = _prepare_arm_optimizer_step(
             optimizers.control,
             control_objective,
             parameters=tuple(parameter for _, parameter in control_named),
             parameter_names=tuple(name for name, _ in control_named),
+            reconstruct_components=reconstruct_components,
         )
     except Exception:
         optimizers.candidate.zero_grad(set_to_none=True)
@@ -3761,6 +3775,34 @@ def apply_paired_cross_fitted_chunk_update(
             objective=control_objective,
             optimizer_step=control_step,
         ),
+    )
+
+
+def apply_paired_cross_fitted_chunk_update(
+    bootstrap: PairedBootstrap,
+    optimizers: ArmOptimizers,
+    episodes: Sequence[PairedEpisodeRollout],
+) -> PairedChunkUpdateEvidence:
+    """Apply the full qualification-grade gradient evidence update."""
+    return _apply_paired_cross_fitted_chunk_update(
+        bootstrap,
+        optimizers,
+        episodes,
+        reconstruct_components=True,
+    )
+
+
+def apply_paired_cross_fitted_chunk_update_exploratory(
+    bootstrap: PairedBootstrap,
+    optimizers: ArmOptimizers,
+    episodes: Sequence[PairedEpisodeRollout],
+) -> PairedChunkUpdateEvidence:
+    """Apply the same total loss with one backward pass per exploratory arm."""
+    return _apply_paired_cross_fitted_chunk_update(
+        bootstrap,
+        optimizers,
+        episodes,
+        reconstruct_components=False,
     )
 
 
@@ -4112,11 +4154,12 @@ def restore_paired_training_checkpoint(value: object) -> PairedTrainingRuntime:
     return runtime
 
 
-def complete_paired_training_chunk(
+def _complete_paired_training_chunk(
     runtime: PairedTrainingRuntime,
     episodes: Sequence[PairedEpisodeRollout],
     *,
     chunk_index: int,
+    exploratory: bool,
 ) -> CompletedPairedTrainingChunk:
     """Apply and checkpoint one exact 64-pair complete training chunk."""
     _validate_paired_training_runtime(runtime)
@@ -4131,11 +4174,12 @@ def complete_paired_training_chunk(
     if chunk_index >= 8:
         raise SuccessorRuntimeError("training already completed eight chunks")
     source = tuple(episodes)
-    update = apply_paired_cross_fitted_chunk_update(
-        runtime.bootstrap,
-        runtime.optimizers,
-        source,
+    update_operation = (
+        apply_paired_cross_fitted_chunk_update_exploratory
+        if exploratory
+        else apply_paired_cross_fitted_chunk_update
     )
+    update = update_operation(runtime.bootstrap, runtime.optimizers, source)
     summary = _candidate_chunk_summary(source, chunk_index=chunk_index)
     runtime.completed_chunk_summaries.append(summary)
     runtime.next_chunk_index += 1
@@ -4161,6 +4205,36 @@ def complete_paired_training_chunk(
         update=update,
         saturation=saturation,
         checkpoint=checkpoint,
+    )
+
+
+def complete_paired_training_chunk(
+    runtime: PairedTrainingRuntime,
+    episodes: Sequence[PairedEpisodeRollout],
+    *,
+    chunk_index: int,
+) -> CompletedPairedTrainingChunk:
+    """Apply and checkpoint one qualification-grade training chunk."""
+    return _complete_paired_training_chunk(
+        runtime,
+        episodes,
+        chunk_index=chunk_index,
+        exploratory=False,
+    )
+
+
+def complete_paired_training_chunk_exploratory(
+    runtime: PairedTrainingRuntime,
+    episodes: Sequence[PairedEpisodeRollout],
+    *,
+    chunk_index: int,
+) -> CompletedPairedTrainingChunk:
+    """Apply and checkpoint one total-loss-only exploratory training chunk."""
+    return _complete_paired_training_chunk(
+        runtime,
+        episodes,
+        chunk_index=chunk_index,
+        exploratory=True,
     )
 
 
@@ -4420,6 +4494,7 @@ __all__ = [
     "SuccessorRuntimeError",
     "apply_arm_optimizer_step",
     "apply_paired_cross_fitted_chunk_update",
+    "apply_paired_cross_fitted_chunk_update_exploratory",
     "build_arm_card_reward_rows",
     "build_arm_card_reward_objective",
     "build_arm_optimizers",
@@ -4429,6 +4504,7 @@ __all__ = [
     "classify_candidate_family_saturation",
     "collect_and_complete_paired_training_chunk",
     "complete_paired_training_chunk",
+    "complete_paired_training_chunk_exploratory",
     "encode_optimizer_state",
     "encode_paired_bootstrap",
     "encode_paired_training_checkpoint",

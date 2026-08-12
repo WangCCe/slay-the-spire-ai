@@ -1410,6 +1410,84 @@ def test_paired_chunk_update_applies_one_named_step_per_arm_and_preserves_frozen
         runtime.restore_paired_training_checkpoint(drift_payload)
 
 
+def test_exploratory_total_loss_update_matches_full_update_numerically():
+    runtime = _runtime()
+    full = runtime.initialize_paired_training_runtime()
+    exploratory = runtime.initialize_paired_training_runtime()
+
+    full_completed = runtime.complete_paired_training_chunk(
+        full,
+        _synthetic_paired_rollouts(runtime, full.bootstrap),
+        chunk_index=0,
+    )
+    exploratory_completed = runtime.complete_paired_training_chunk_exploratory(
+        exploratory,
+        _synthetic_paired_rollouts(runtime, exploratory.bootstrap),
+        chunk_index=0,
+    )
+
+    assert full_completed.update.candidate.optimizer_step.component_order == (
+        "family_policy",
+        "conditional_policy",
+        "family_entropy",
+        "conditional_entropy",
+    )
+    for full_step, exploratory_step in (
+        (
+            full_completed.update.candidate.optimizer_step,
+            exploratory_completed.update.candidate.optimizer_step,
+        ),
+        (
+            full_completed.update.control.optimizer_step,
+            exploratory_completed.update.control.optimizer_step,
+        ),
+    ):
+        assert exploratory_step.component_order == ("total_loss",)
+        assert exploratory_step.preclip_global_norm == pytest.approx(
+            full_step.preclip_global_norm, rel=1e-6, abs=1e-8
+        )
+        assert exploratory_step.postclip_global_norm == pytest.approx(
+            full_step.postclip_global_norm, rel=1e-6, abs=1e-8
+        )
+        for full_parameter, exploratory_parameter in zip(
+            full_step.post_parameters,
+            exploratory_step.post_parameters,
+            strict=True,
+        ):
+            torch.testing.assert_close(
+                exploratory_parameter,
+                full_parameter,
+                rtol=1e-5,
+                atol=5e-7,
+            )
+        full_optimizer_state = runtime._decode_state_value(
+            full_step.optimizer_state_after,
+            "full optimizer state",
+        )
+        exploratory_optimizer_state = runtime._decode_state_value(
+            exploratory_step.optimizer_state_after,
+            "exploratory optimizer state",
+        )
+        assert (
+            exploratory_optimizer_state["param_groups"]
+            == full_optimizer_state["param_groups"]
+        )
+        for full_state, exploratory_state in zip(
+            full_optimizer_state["state"].values(),
+            exploratory_optimizer_state["state"].values(),
+            strict=True,
+        ):
+            for field in ("step", "exp_avg", "exp_avg_sq"):
+                torch.testing.assert_close(
+                    exploratory_state[field],
+                    full_state[field],
+                    rtol=1e-5,
+                    atol=5e-7,
+                )
+    assert exploratory.completed_pairs == full.completed_pairs == 64
+    assert exploratory.training_optimizer_steps == full.training_optimizer_steps == 2
+
+
 def test_paired_chunk_validates_both_arms_before_the_candidate_step():
     runtime = _runtime()
     bootstrap = runtime.build_matched_bootstrap()
