@@ -38,6 +38,20 @@ The final candidate-control paired mean floor difference was `-0.007401` on
 the same development cohort. Both arms had zero victories and zero unsupported
 episodes. Bootstrap bytes were unchanged by both frozen evaluations.
 
+## Matched-State Diagnosis
+
+A fixed zero-step candidate policy generated 108 card-reward source states over
+16 consumed development seeds. On those exact states, zero-step candidate and
+control mean take probability was `0.5011`, with `73 take / 35 skip` greedy
+families. After the first update, candidate mean take probability was only
+`0.5085`, but every greedy family was take. The final candidate mean was
+`0.5146`, again with `108 take / 0 skip`.
+
+The stop therefore detected a greedy decision-boundary collapse, not a
+low-entropy probability collapse. Raising the entropy coefficient is not a
+mechanism-backed response: the family distribution remained close to 50/50
+while a small common margin shift changed every deterministic decision.
+
 ## Decision
 
 The training loop is operational and its update throughput is no longer the
@@ -46,8 +60,9 @@ but the candidate architecture did not beat the control and both policies
 collapsed to the `take` family. This is a no-go for holdout, qualification, or
 promotion.
 
-Keep the saturation boundary unchanged. The next experiment should isolate why
-the first update eliminates `skip` decisions, using source-state-matched family
-logit, entropy, advantage, and gradient diagnostics. Do not spend a new holdout
-or continue training from the saturated checkpoint until that mechanism has a
-bounded intervention and a predeclared regression criterion.
+Keep the saturation boundary unchanged and do not spend a new holdout or
+continue from the saturated checkpoint. The next pilot should replace random
+non-card behavior with the native SimpleAgent baseline, use a card-policy warm
+start, train only the card residual, and compare against a frozen native
+SimpleAgent control. This directly tests card learning on competent trajectories
+without treating SimpleAgent labels as reward or permanent ground truth.
