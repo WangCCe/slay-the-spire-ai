@@ -12,10 +12,10 @@
 
 ## 3. Card-Only Warm Start
 
-- [ ] 3.1 Project mapped train/validation rows through the current state-conditioned card feature bridge and hierarchical family/conditional targets.
-- [ ] 3.2 Implement the fixed deterministic supervised schedule and canonical zero-step/final model encoding.
-- [ ] 3.3 Implement the one-shot validation gate for mapping, family/exact-action agreement, relative improvement, and 5%-95% take coverage.
-- [ ] 3.4 Add deterministic replay, head ownership, no-reward, no-validation-update, and failed-gate-no-RL regressions.
+- [x] 3.1 Project mapped train/validation rows through the current state-conditioned card feature bridge and hierarchical family/conditional targets.
+- [x] 3.2 Implement the fixed deterministic supervised schedule and canonical zero-step/final model encoding.
+- [x] 3.3 Implement the one-shot validation gate for mapping, family/exact-action agreement, relative improvement, and 5%-95% take coverage.
+- [x] 3.4 Add deterministic replay, head ownership, no-reward, no-validation-update, and failed-gate-no-RL regressions.
 
 ## 4. Candidate-Only Residual Runtime
 

@@ -69,6 +69,22 @@ effectively all-take. Loading the older all-category warm-start model was
 rejected because it failed its rollout floor gate and does not match the dual
 card-head architecture.
 
+The fixed supervised schedule uses model and shuffle seed `0`, CPU Adam with
+learning rate `0.001`, betas `(0.9, 0.999)`, epsilon `1e-8`, zero weight decay,
+`128` epochs, and deterministic batches of `32`. Each batch minimizes the
+equally weighted sum of mean family cross entropy and mean selected-family
+conditional cross entropy. Singleton-family conditional terms remain explicit
+zero-loss terms. There is no early stopping, validation-driven selection, or
+schedule change after observing the one validation result.
+
+The archived corpus uses adapter API v2 while the current leakage-controlled
+feature projection requires exact API v3. The v3 source change adds event option
+semantics; card-reward snapshots retain the v2 state and candidate contract.
+The pilot therefore permits one card-only projection copy that changes only
+`adapter_api_version` from v2 to v3 after validating the original hash,
+category, legal candidates, and `decision_count == decision_index`. The bound
+v2 source snapshot remains unchanged and is retained in every label row.
+
 ### Train only a candidate card residual
 
 After the warm-start gate passes, the pilot may run at most four 64-pair chunks

@@ -4,6 +4,7 @@ import json
 from pathlib import Path
 
 import pytest
+import torch
 
 from analysis_scripts.bottled_policy_oracle import BottledOracleResult
 from analysis_scripts.noncombat_card_only_native_baseline_rl_pilot import (
@@ -12,8 +13,14 @@ from analysis_scripts.noncombat_card_only_native_baseline_rl_pilot import (
     DEMONSTRATION_SCHEMA_VERSION,
     BoundCardCorpus,
     CardOnlyPilotBlocked,
+    WARM_START_EPOCHS,
+    classify_card_warm_start_gate,
+    encode_candidate_card_policy,
     label_bound_card_corpus,
     load_bound_card_corpus,
+    project_bottled_card_labels,
+    require_card_warm_start_gate,
+    run_fixed_card_warm_start,
 )
 from analysis_scripts.noncombat_simulator_adapter import (
     ADAPTER_API_VERSION,
@@ -78,9 +85,10 @@ def _card_row(*, cohort="train", bowl=False, duplicate=False):
         )
     )
     snapshot = {
-        "adapter_api_version": ADAPTER_API_VERSION,
+        "adapter_api_version": "sts-lightspeed-noncombat-adapter-v2",
         "baseline_control": {"history": [], "policy_id": NATIVE_TARGET_POLICY_ID},
         "category": "card_reward",
+        "decision_count": 0,
         "schema_version": STATE_SCHEMA_VERSION,
         "source_type": SOURCE_TYPE,
         "state": {
@@ -301,3 +309,164 @@ def test_bottled_bridge_requires_clean_bound_checkout(tmp_path):
         label_bound_card_corpus(
             corpus, FakeOracle((), commit="different"), expected_bottled_commit="abc123"
         )
+
+
+def _labeled_fixture(tmp_path, *, validation_label="skip"):
+    corpus = _load_fixture(tmp_path / f"labels-{validation_label}.json")
+    return label_bound_card_corpus(
+        corpus,
+        FakeOracle(("Anger", validation_label)),
+        expected_bottled_commit="abc123",
+    )
+
+
+def test_labeled_rows_project_through_current_card_feature_bridge(tmp_path):
+    labels = _labeled_fixture(tmp_path)
+
+    train = project_bottled_card_labels(labels, cohort="train")
+    validation = project_bottled_card_labels(labels, cohort="validation")
+
+    assert len(train) == len(validation) == 1
+    assert train[0].target_action_id == "take-0"
+    assert train[0].target_family == "take"
+    assert validation[0].target_action_id == "skip"
+    assert train[0].state_features.shape == (1024,)
+    assert train[0].candidate_features.shape == (2, 1024)
+    assert train[0].source_adapter_api_version == "sts-lightspeed-noncombat-adapter-v2"
+    assert train[0].projection_adapter_api_version == ADAPTER_API_VERSION
+    assert train[0].snapshot["adapter_api_version"].endswith("v2")
+    assert not hasattr(train[0], "reward")
+    assert not hasattr(train[0], "successor")
+
+
+def test_labeled_row_projection_rejects_ambiguous_target(tmp_path):
+    labels = _labeled_fixture(tmp_path)
+    labels["rows"]["train"][0]["bottled_action_id"] = "missing"
+
+    with pytest.raises(CardOnlyPilotBlocked, match="exactly one"):
+        project_bottled_card_labels(labels, cohort="train")
+
+
+def test_labeled_row_projection_rejects_decision_count_drift(tmp_path):
+    labels = _labeled_fixture(tmp_path)
+    row = labels["rows"]["train"][0]
+    row["source_snapshot"]["decision_count"] = 9
+    row["source_snapshot_sha256"] = hashlib.sha256(
+        canonical_json_bytes(row["source_snapshot"])
+    ).hexdigest()
+
+    with pytest.raises(CardOnlyPilotBlocked, match="decision_count"):
+        project_bottled_card_labels(labels, cohort="train")
+
+
+def test_batched_warm_start_loss_matches_scalar_policy_loss_and_gradients(tmp_path):
+    from analysis_scripts import noncombat_card_only_native_baseline_rl_pilot as pilot
+    from analysis_scripts import (
+        noncombat_card_acceptance_empirical_successor_runtime as runtime,
+    )
+
+    row = project_bottled_card_labels(_labeled_fixture(tmp_path), cohort="train")[0]
+    batched_bootstrap = runtime.build_matched_bootstrap()
+    scalar_bootstrap = runtime.build_matched_bootstrap()
+    batched_policy = batched_bootstrap.candidate.card_policy
+    scalar_policy = scalar_bootstrap.candidate.card_policy
+
+    batched_family, batched_conditional = pilot._warm_start_losses(
+        batched_policy, (row,)
+    )
+    (batched_family + batched_conditional).backward()
+    output = scalar_policy(
+        row.state_features,
+        row.candidate_features,
+        row.candidates,
+        category="card_reward",
+    )
+    family_index = output.family_batch.family_order.index(row.target_family)
+    scalar_family = torch.nn.functional.cross_entropy(
+        output.family_logits.unsqueeze(0), torch.tensor([family_index])
+    )
+    action_ids = output.family_batch.action_ids
+    target_index = action_ids.index(row.target_action_id)
+    family_indices = output.family_batch.family_candidate_indices[family_index]
+    scalar_conditional = torch.nn.functional.cross_entropy(
+        output.conditional_logits[
+            torch.tensor(family_indices, dtype=torch.long)
+        ].unsqueeze(0),
+        torch.tensor([family_indices.index(target_index)]),
+    )
+    (scalar_family + scalar_conditional).backward()
+
+    assert torch.equal(batched_family, scalar_family)
+    assert torch.equal(batched_conditional, scalar_conditional)
+    for (batched_name, batched_parameter), (scalar_name, scalar_parameter) in zip(
+        batched_policy.named_parameters(),
+        scalar_policy.named_parameters(),
+        strict=True,
+    ):
+        assert batched_name == scalar_name
+        assert torch.equal(batched_parameter.grad, scalar_parameter.grad)
+
+
+def test_fixed_card_warm_start_is_deterministic_and_validation_does_not_train(
+    tmp_path,
+):
+    from analysis_scripts import (
+        noncombat_card_acceptance_empirical_successor_runtime as runtime,
+    )
+
+    labels = _labeled_fixture(tmp_path, validation_label="skip")
+    alternate_validation = _labeled_fixture(
+        tmp_path, validation_label="Anger"
+    )
+    first = run_fixed_card_warm_start(runtime.build_matched_bootstrap(), labels)
+    replay = run_fixed_card_warm_start(runtime.build_matched_bootstrap(), labels)
+    changed_validation = run_fixed_card_warm_start(
+        runtime.build_matched_bootstrap(), alternate_validation
+    )
+
+    assert WARM_START_EPOCHS == 128
+    assert first.zero_model == replay.zero_model
+    assert first.final_model == replay.final_model
+    assert first.history == replay.history
+    assert first.final_model == changed_validation.final_model
+    assert first.zero_model != first.final_model
+    assert len(first.history) == WARM_START_EPOCHS
+    assert first.optimizer_steps == WARM_START_EPOCHS
+    assert first.configuration["batch_size"] == 32
+    assert first.configuration["learning_rate"] == 0.001
+    assert encode_candidate_card_policy(first.bootstrap) == first.final_model
+    assert first.zero_validation != changed_validation.zero_validation
+
+
+def test_warm_start_gate_classification_and_failed_gate_block_residual_access(
+    tmp_path,
+):
+    from analysis_scripts import (
+        noncombat_card_acceptance_empirical_successor_runtime as runtime,
+    )
+
+    passed = classify_card_warm_start_gate(
+        {
+            "action_agreement": 0.40,
+            "family_agreement": 0.55,
+            "non_take_rate": 0.50,
+            "row_count": 100,
+            "take_rate": 0.50,
+        },
+        {
+            "action_agreement": 0.65,
+            "family_agreement": 0.75,
+            "non_take_rate": 0.45,
+            "row_count": 100,
+            "take_rate": 0.55,
+        },
+    )
+    assert passed["verdict"] == "card_warm_start_gate_passed"
+    assert set(passed["checks"].values()) == {True}
+
+    failed = run_fixed_card_warm_start(
+        runtime.build_matched_bootstrap(), _labeled_fixture(tmp_path)
+    )
+    assert failed.gate["verdict"] == "card_warm_start_gate_failed"
+    with pytest.raises(CardOnlyPilotBlocked, match="residual RL is not authorized"):
+        require_card_warm_start_gate(failed)
