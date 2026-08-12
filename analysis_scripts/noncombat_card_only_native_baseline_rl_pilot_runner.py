@@ -45,6 +45,9 @@ from analysis_scripts import noncombat_simulator_adapter as adapter
 
 
 REGISTRATION_SCHEMA_VERSION = "noncombat-card-only-native-baseline-pilot-registration-v1"
+RESUME_REGISTRATION_SCHEMA_VERSION = (
+    "noncombat-card-only-native-baseline-pilot-resume-registration-v1"
+)
 PREFLIGHT_SCHEMA_VERSION = "noncombat-card-only-native-baseline-pilot-preflight-v1"
 REPORT_SCHEMA_VERSION = "noncombat-card-only-native-baseline-pilot-report-v1"
 TERMINAL_SCHEMA_VERSION = "noncombat-card-only-native-baseline-pilot-terminal-v1"
@@ -91,6 +94,7 @@ FALSE_DOWNSTREAM_AUTHORITY = {
         "qualification",
     )
 }
+_NATIVE_DEPENDENCY_HANDLES: list[Any] = []
 REGISTERED_OPERATIONS = {
     "communication_mod": False,
     "environment_construction": True,
@@ -357,15 +361,76 @@ def build_registration(
     )
 
 
+def build_resume_registration(
+    *,
+    repo_root: Path | str,
+    source_commit: str,
+    native_manifest_path: Path | str,
+    bottled_repo: Path | str,
+    output_dir: Path | str,
+    resume_output_dir: Path | str,
+) -> dict[str, Any]:
+    registration = build_registration(
+        repo_root=repo_root,
+        source_commit=source_commit,
+        native_manifest_path=native_manifest_path,
+        bottled_repo=bottled_repo,
+        output_dir=output_dir,
+    )
+    resume_root = Path(resume_output_dir).resolve()
+    required = {
+        name: _file_binding(resume_root / name)
+        for name in (
+            "checkpoint_000.json",
+            "preflight.json",
+            "registration.json",
+            "report.json",
+            "terminal.json",
+            "warm_start.json",
+            "warm_start_checkpoint.json",
+        )
+    }
+    terminal = _read_canonical(resume_root / "terminal.json")
+    if terminal != {
+        "downstream_authority": FALSE_DOWNSTREAM_AUTHORITY,
+        "environment_accesses": 0,
+        "optimizer_steps": 1280,
+        "rollback": "native_simple_agent",
+        "schema_version": TERMINAL_SCHEMA_VERSION,
+        "stop_reason": "native_load_failure_before_environment_access",
+        "verdict": "card_only_native_baseline_pilot_not_ready",
+        "warm_start_gate": "card_warm_start_gate_passed",
+    }:
+        raise CardOnlyRunnerBlocked("resume source terminal differs")
+    registration["resume_from"] = {
+        "artifacts": required,
+        "environment_accesses": 0,
+        "output_dir": resume_root.as_posix(),
+        "stop_reason": "native_load_failure_before_environment_access",
+    }
+    registration["schema_version"] = RESUME_REGISTRATION_SCHEMA_VERSION
+    return validate_registration(registration)
+
+
 def validate_registration(value: Mapping[str, Any]) -> dict[str, Any]:
     if not isinstance(value, Mapping):
         raise CardOnlyRunnerBlocked("registration must be an object")
     registration = copy.deepcopy(dict(value))
-    if set(registration) != {
+    base_fields = {
         "bottled", "configuration", "corpus", "downstream_authority", "native",
         "operations", "output_dir", "production_isolation", "schedule",
         "schema_version", "source",
-    } or registration.get("schema_version") != REGISTRATION_SCHEMA_VERSION:
+    }
+    schema_version = registration.get("schema_version")
+    expected_fields = (
+        base_fields | {"resume_from"}
+        if schema_version == RESUME_REGISTRATION_SCHEMA_VERSION
+        else base_fields
+    )
+    if set(registration) != expected_fields or schema_version not in {
+        REGISTRATION_SCHEMA_VERSION,
+        RESUME_REGISTRATION_SCHEMA_VERSION,
+    }:
         raise CardOnlyRunnerBlocked("registration fields differ")
     if registration["downstream_authority"] != FALSE_DOWNSTREAM_AUTHORITY:
         raise CardOnlyRunnerBlocked("registration downstream authority differs")
@@ -456,6 +521,31 @@ def validate_registration(value: Mapping[str, Any]) -> dict[str, Any]:
         raise CardOnlyRunnerBlocked("registration production isolation differs")
     if not isinstance(registration.get("output_dir"), str):
         raise CardOnlyRunnerBlocked("registration output directory differs")
+    if schema_version == RESUME_REGISTRATION_SCHEMA_VERSION:
+        resume = registration.get("resume_from")
+        expected_artifacts = {
+            "checkpoint_000.json",
+            "preflight.json",
+            "registration.json",
+            "report.json",
+            "terminal.json",
+            "warm_start.json",
+            "warm_start_checkpoint.json",
+        }
+        if (
+            not isinstance(resume, dict)
+            or set(resume) != {
+                "artifacts",
+                "environment_accesses",
+                "output_dir",
+                "stop_reason",
+            }
+            or set(resume.get("artifacts", {})) != expected_artifacts
+            or resume.get("environment_accesses") != 0
+            or resume.get("stop_reason")
+            != "native_load_failure_before_environment_access"
+        ):
+            raise CardOnlyRunnerBlocked("resume registration boundary differs")
     return registration
 
 
@@ -551,6 +641,15 @@ def preflight_registration(
     checkpoint_root = Path(isolation["production_checkpoints"]["path"]).resolve()
     if output.exists() or output == checkpoint_root or checkpoint_root in output.parents:
         raise CardOnlyRunnerBlocked("pilot output boundary differs")
+    resume = value.get("resume_from")
+    if resume is not None:
+        if any(
+            not _binding_matches(binding)
+            for binding in resume["artifacts"].values()
+        ):
+            raise CardOnlyRunnerBlocked("resume source artifact differs")
+        if Path(resume["output_dir"]).resolve() == output:
+            raise CardOnlyRunnerBlocked("resume source and destination overlap")
     return {
         "checks": {
             "bottled_clean_and_bound": True,
@@ -673,11 +772,15 @@ def classify_frozen_comparison(pairs: Sequence[Any]) -> dict[str, Any]:
 
 
 def _load_environment_factory(native_identity: Mapping[str, Any]) -> Callable[[int], Any]:
+    _preload_native_dependencies(native_identity)
     module_binding = native_identity["module"]
-    module = adapter.load_native_module(
-        module_binding["path"],
-        dll_directories=native_identity["dll_directories"],
-    )
+    try:
+        module = adapter.load_native_module(
+            module_binding["path"],
+            dll_directories=native_identity["dll_directories"],
+        )
+    except (ImportError, OSError, adapter.SimulatorAdapterError) as exc:
+        raise CardOnlyRunnerBlocked("registered native module could not be loaded") from exc
     if Path(module.__file__).resolve().as_posix() != module_binding["path"]:
         raise CardOnlyRunnerBlocked("loaded native module path differs")
     if _file_binding(module.__file__) != module_binding:
@@ -697,6 +800,67 @@ def _load_environment_factory(native_identity: Mapping[str, Any]) -> Callable[[i
         return adapter.NativeSimulatorEnvironment(module.Environment(seed, 0), provenance)
 
     return factory
+
+
+def _native_dependency_order(native_identity: Mapping[str, Any]) -> tuple[Path, ...]:
+    closure = native_identity["dependency_closure"]
+    module_path = Path(native_identity["module"]["path"]).resolve()
+    dependencies = {
+        Path(binding["path"]).name.casefold(): Path(binding["path"]).resolve()
+        for binding in closure["dependencies"]
+    }
+    imports_by_path = {
+        Path(row["path"]).resolve(): tuple(str(name).casefold() for name in row["imports"])
+        for row in closure.get("imports", ())
+    }
+    order: list[Path] = []
+    visiting: set[Path] = set()
+    visited: set[Path] = set()
+
+    def visit(path: Path) -> None:
+        if path in visiting:
+            raise CardOnlyRunnerBlocked("registered native dependency cycle differs")
+        if path in visited:
+            return
+        visiting.add(path)
+        for name in imports_by_path.get(path, ()):
+            dependency = dependencies.get(name)
+            if dependency is not None:
+                visit(dependency)
+        visiting.remove(path)
+        visited.add(path)
+        if path != module_path:
+            order.append(path)
+
+    visit(module_path)
+    if set(order) != set(dependencies.values()):
+        raise CardOnlyRunnerBlocked("registered native dependency graph differs")
+    return tuple(order)
+
+
+def _preload_native_dependencies(native_identity: Mapping[str, Any]) -> None:
+    if os.name != "nt":
+        raise CardOnlyRunnerBlocked("native dependency preload requires Windows")
+    try:
+        import ctypes
+
+        for path in _native_dependency_order(native_identity):
+            binding = next(
+                item
+                for item in native_identity["dependency_closure"]["dependencies"]
+                if Path(item["path"]).resolve() == path
+            )
+            if _file_binding(path) != binding:
+                raise CardOnlyRunnerBlocked("registered native dependency bytes differ")
+            _NATIVE_DEPENDENCY_HANDLES.append(
+                ctypes.WinDLL(str(path), winmode=0x00000100 | 0x00000400)
+            )
+    except CardOnlyRunnerBlocked:
+        raise
+    except (ImportError, OSError, StopIteration) as exc:
+        raise CardOnlyRunnerBlocked(
+            "registered native dependency could not be preloaded"
+        ) from exc
 
 
 def execute_pilot(
@@ -726,30 +890,67 @@ def execute_pilot(
         oracle,
         expected_bottled_commit=value["bottled"]["commit_short"],
     )
-    warm_start = pilot.run_fixed_card_warm_start(runtime.build_matched_bootstrap(), labels)
-    warm_report = {
-        "configuration": warm_start.configuration,
-        "final_model_sha256": hashlib.sha256(warm_start.final_model).hexdigest(),
-        "final_validation": _compact_validation(warm_start.final_validation),
-        "gate": warm_start.gate,
-        "label_counts": labels["counts"],
-        "optimizer_steps": warm_start.optimizer_steps,
-        "zero_model_sha256": hashlib.sha256(warm_start.zero_model).hexdigest(),
-        "zero_validation": _compact_validation(warm_start.zero_validation),
-    }
-    _write_canonical(output / "warm_start.json", warm_report)
-    warm_checkpoint = runtime.encode_paired_bootstrap(warm_start.bootstrap)
-    _write_bytes(output / "warm_start_checkpoint.json", warm_checkpoint)
+    resume = value.get("resume_from")
+    warm_start = None
+    if resume is None:
+        warm_start = pilot.run_fixed_card_warm_start(
+            runtime.build_matched_bootstrap(), labels
+        )
+        warm_report = {
+            "configuration": warm_start.configuration,
+            "final_model_sha256": hashlib.sha256(warm_start.final_model).hexdigest(),
+            "final_validation": _compact_validation(warm_start.final_validation),
+            "gate": warm_start.gate,
+            "label_counts": labels["counts"],
+            "optimizer_steps": warm_start.optimizer_steps,
+            "zero_model_sha256": hashlib.sha256(warm_start.zero_model).hexdigest(),
+            "zero_validation": _compact_validation(warm_start.zero_validation),
+        }
+        _write_canonical(output / "warm_start.json", warm_report)
+        warm_checkpoint = runtime.encode_paired_bootstrap(warm_start.bootstrap)
+        _write_bytes(output / "warm_start_checkpoint.json", warm_checkpoint)
+    else:
+        warm_report = _read_canonical(resume["artifacts"]["warm_start.json"]["path"])
+        if warm_report.get("gate", {}).get("verdict") != (
+            "card_warm_start_gate_passed"
+        ):
+            raise CardOnlyRunnerBlocked("resumed warm-start gate differs")
+        probe_rows = pilot.project_bottled_card_labels(labels, cohort="validation")
+        residual = pilot.restore_card_only_residual_checkpoint(
+            Path(resume["artifacts"]["checkpoint_000.json"]["path"]).read_bytes(),
+            probe_rows=probe_rows,
+        )
+        if (
+            residual.next_chunk_index != 0
+            or residual.environment_accesses != 0
+            or residual.candidate_optimizer_steps != 0
+            or residual.warm_start_model_sha256
+            != warm_report["final_model_sha256"]
+        ):
+            raise CardOnlyRunnerBlocked("resumed zero-step checkpoint differs")
+        _write_canonical(
+            output / "resume.json",
+            {
+                "environment_accesses": 0,
+                "source_artifacts": copy.deepcopy(resume["artifacts"]),
+                "source_output_dir": resume["output_dir"],
+                "stop_reason": resume["stop_reason"],
+            },
+        )
+        _write_bytes(
+            output / "checkpoint_000.json",
+            pilot.encode_card_only_residual_checkpoint(residual),
+        )
 
-    if warm_start.gate["verdict"] != "card_warm_start_gate_passed":
+    if warm_report["gate"]["verdict"] != "card_warm_start_gate_passed":
         terminal = {
             "downstream_authority": dict(FALSE_DOWNSTREAM_AUTHORITY),
             "environment_accesses": 0,
-            "optimizer_steps": warm_start.optimizer_steps,
+            "optimizer_steps": warm_report["optimizer_steps"],
             "rollback": "native_simple_agent",
             "schema_version": TERMINAL_SCHEMA_VERSION,
             "verdict": "card_only_native_baseline_pilot_not_ready",
-            "warm_start_gate": warm_start.gate["verdict"],
+            "warm_start_gate": warm_report["gate"]["verdict"],
         }
         _write_canonical(output / "terminal.json", terminal)
         _publish_report(
@@ -762,11 +963,14 @@ def execute_pilot(
         )
         return terminal
 
-    residual = pilot.initialize_card_only_residual_runtime(warm_start, labels)
-    _write_canonical(
-        output / "checkpoint_000.json",
-        json.loads(pilot.encode_card_only_residual_checkpoint(residual)),
-    )
+    if resume is None:
+        if warm_start is None:
+            raise CardOnlyRunnerBlocked("warm-start result is unavailable")
+        residual = pilot.initialize_card_only_residual_runtime(warm_start, labels)
+        _write_canonical(
+            output / "checkpoint_000.json",
+            json.loads(pilot.encode_card_only_residual_checkpoint(residual)),
+        )
     environment_factory = environment_factory_loader(value["native"]["identity"])
     chunks = []
     for chunk_index, seeds in enumerate(value["schedule"]["residual_chunk_seeds"]):
@@ -821,12 +1025,12 @@ def execute_pilot(
         "comparison": comparison,
         "downstream_authority": dict(FALSE_DOWNSTREAM_AUTHORITY),
         "environment_accesses": environment_accesses,
-        "optimizer_steps": warm_start.optimizer_steps + residual.candidate_optimizer_steps,
+        "optimizer_steps": warm_report["optimizer_steps"] + residual.candidate_optimizer_steps,
         "rollback": "native_simple_agent",
         "schema_version": TERMINAL_SCHEMA_VERSION,
         "stopped_for_concentration": residual.stopped_for_concentration,
         "verdict": comparison["verdict"],
-        "warm_start_gate": warm_start.gate["verdict"],
+        "warm_start_gate": warm_report["gate"]["verdict"],
     }
     _write_canonical(output / "terminal.json", terminal)
     _publish_report(
@@ -835,6 +1039,50 @@ def execute_pilot(
         warm_start=warm_report,
         chunks=chunks,
         comparison=comparison,
+        terminal=terminal,
+    )
+    return terminal
+
+
+def terminalize_native_load_failure(registration: Mapping[str, Any]) -> dict[str, Any]:
+    value = validate_registration(registration)
+    if value.get("resume_from") is not None:
+        raise CardOnlyRunnerBlocked("resume attempt cannot use initial terminalization")
+    output = Path(value["output_dir"]).resolve()
+    expected = {
+        "checkpoint_000.json",
+        "preflight.json",
+        "registration.json",
+        "warm_start.json",
+        "warm_start_checkpoint.json",
+    }
+    observed = {path.name for path in output.iterdir() if path.is_file()}
+    if observed != expected:
+        raise CardOnlyRunnerBlocked("failed attempt artifact boundary differs")
+    if _read_canonical(output / "registration.json") != value:
+        raise CardOnlyRunnerBlocked("failed attempt registration differs")
+    warm_report = _read_canonical(output / "warm_start.json")
+    if warm_report.get("gate", {}).get("verdict") != (
+        "card_warm_start_gate_passed"
+    ):
+        raise CardOnlyRunnerBlocked("failed attempt warm-start gate differs")
+    terminal = {
+        "downstream_authority": dict(FALSE_DOWNSTREAM_AUTHORITY),
+        "environment_accesses": 0,
+        "optimizer_steps": warm_report["optimizer_steps"],
+        "rollback": "native_simple_agent",
+        "schema_version": TERMINAL_SCHEMA_VERSION,
+        "stop_reason": "native_load_failure_before_environment_access",
+        "verdict": "card_only_native_baseline_pilot_not_ready",
+        "warm_start_gate": warm_report["gate"]["verdict"],
+    }
+    _write_canonical(output / "terminal.json", terminal)
+    _publish_report(
+        output,
+        preflight=_read_canonical(output / "preflight.json"),
+        warm_start=warm_report,
+        chunks=(),
+        comparison=None,
         terminal=terminal,
     )
     return terminal
@@ -850,10 +1098,20 @@ def _parser() -> argparse.ArgumentParser:
     register.add_argument("--bottled-repo", required=True)
     register.add_argument("--output-dir", required=True)
     register.add_argument("--registration", required=True)
+    resume = subparsers.add_parser("register-resume")
+    resume.add_argument("--repo-root", required=True)
+    resume.add_argument("--source-commit", required=True)
+    resume.add_argument("--native-manifest", required=True)
+    resume.add_argument("--bottled-repo", required=True)
+    resume.add_argument("--output-dir", required=True)
+    resume.add_argument("--resume-output-dir", required=True)
+    resume.add_argument("--registration", required=True)
     preflight = subparsers.add_parser("preflight")
     preflight.add_argument("--registration", required=True)
     run = subparsers.add_parser("run")
     run.add_argument("--registration", required=True)
+    terminalize = subparsers.add_parser("terminalize-native-load-failure")
+    terminalize.add_argument("--registration", required=True)
     return parser
 
 
@@ -872,9 +1130,25 @@ def main(argv: Sequence[str] | None = None) -> int:
             binding = _write_canonical(args.registration, registration)
             print(_canonical_bytes(binding).decode("ascii"))
             return 0
+        if args.command == "register-resume":
+            registration = build_resume_registration(
+                repo_root=args.repo_root,
+                source_commit=args.source_commit,
+                native_manifest_path=args.native_manifest,
+                bottled_repo=args.bottled_repo,
+                output_dir=args.output_dir,
+                resume_output_dir=args.resume_output_dir,
+            )
+            binding = _write_canonical(args.registration, registration)
+            print(_canonical_bytes(binding).decode("ascii"))
+            return 0
         registration = _read_canonical(args.registration)
         if args.command == "preflight":
             print(_canonical_bytes(preflight_registration(registration)).decode("ascii"))
+            return 0
+        if args.command == "terminalize-native-load-failure":
+            terminal = terminalize_native_load_failure(registration)
+            print(_canonical_bytes(terminal).decode("ascii"))
             return 0
         terminal = execute_pilot(registration)
         print(_canonical_bytes(terminal).decode("ascii"))

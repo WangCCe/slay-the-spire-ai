@@ -245,3 +245,129 @@ def test_frozen_comparison_requires_noninferiority_and_card_coverage():
     assert concentrated["verdict"] == "card_only_native_baseline_pilot_not_ready"
     assert concentrated["checks"]["candidate_card_coverage"] is False
     assert inferior["checks"]["candidate_floor_noninferior"] is False
+
+
+def test_native_dependencies_are_topologically_ordered_and_load_failure_is_controlled(
+    tmp_path, monkeypatch
+):
+    pthread = tmp_path / "libwinpthread-1.dll"
+    gcc = tmp_path / "libgcc_s_seh-1.dll"
+    stdcpp = tmp_path / "libstdc++-6.dll"
+    module = tmp_path / "adapter.pyd"
+    identity = {
+        "dependency_closure": {
+            "dependencies": [
+                {"path": gcc.as_posix(), "sha256": "1" * 64, "size_bytes": 1},
+                {"path": stdcpp.as_posix(), "sha256": "2" * 64, "size_bytes": 1},
+                {"path": pthread.as_posix(), "sha256": "3" * 64, "size_bytes": 1},
+            ],
+            "imports": [
+                {"path": module.as_posix(), "imports": [gcc.name, stdcpp.name]},
+                {"path": gcc.as_posix(), "imports": [pthread.name]},
+                {"path": stdcpp.as_posix(), "imports": [gcc.name, pthread.name]},
+                {"path": pthread.as_posix(), "imports": []},
+            ],
+        },
+        "dll_directories": [tmp_path.as_posix()],
+        "module": {"path": module.as_posix(), "sha256": "4" * 64, "size_bytes": 1},
+    }
+
+    assert runner._native_dependency_order(identity) == (pthread, gcc, stdcpp)
+
+    monkeypatch.setattr(runner, "_preload_native_dependencies", lambda _identity: None)
+    monkeypatch.setattr(
+        runner.adapter,
+        "load_native_module",
+        lambda *_args, **_kwargs: (_ for _ in ()).throw(ImportError("fixture")),
+    )
+    with pytest.raises(runner.CardOnlyRunnerBlocked, match="could not be loaded"):
+        runner._load_environment_factory(identity)
+
+
+def test_resume_execution_reuses_zero_step_checkpoint_without_warm_start(
+    tmp_path, monkeypatch
+):
+    registration = _registration(tmp_path)
+    registration["schema_version"] = runner.RESUME_REGISTRATION_SCHEMA_VERSION
+    source = tmp_path / "source"
+    source.mkdir()
+    warm_report = {
+        "final_model_sha256": "a" * 64,
+        "gate": {"verdict": "card_warm_start_gate_passed"},
+        "optimizer_steps": 1280,
+    }
+    runner._write_canonical(source / "warm_start.json", warm_report)
+    (source / "checkpoint_000.json").write_bytes(b"checkpoint")
+    artifacts = {}
+    for name in (
+        "checkpoint_000.json",
+        "preflight.json",
+        "registration.json",
+        "report.json",
+        "terminal.json",
+        "warm_start.json",
+        "warm_start_checkpoint.json",
+    ):
+        path = source / name
+        if not path.exists():
+            path.write_bytes(b"x")
+        artifacts[name] = runner._file_binding(path)
+    registration["resume_from"] = {
+        "artifacts": artifacts,
+        "environment_accesses": 0,
+        "output_dir": source.as_posix(),
+        "stop_reason": "native_load_failure_before_environment_access",
+    }
+    runner.validate_registration(registration)
+    monkeypatch.setattr(
+        runner,
+        "preflight_registration",
+        lambda *_args, **_kwargs: {
+            "schema_version": runner.PREFLIGHT_SCHEMA_VERSION,
+            "verdict": "preflight_passed",
+        },
+    )
+    monkeypatch.setattr(runner.pilot, "load_bound_card_corpus", lambda *_args, **_kwargs: object())
+    monkeypatch.setattr(runner, "BottledPolicyOracle", lambda _path: object())
+    monkeypatch.setattr(
+        runner.pilot,
+        "label_bound_card_corpus",
+        lambda *_args, **_kwargs: {"counts": {"total": 477}},
+    )
+    monkeypatch.setattr(runner.pilot, "project_bottled_card_labels", lambda *_args, **_kwargs: (object(),))
+    residual = SimpleNamespace(
+        bootstrap=object(),
+        candidate_optimizer_steps=0,
+        environment_accesses=0,
+        next_chunk_index=0,
+        warm_start_model_sha256="a" * 64,
+    )
+    monkeypatch.setattr(
+        runner.pilot,
+        "restore_card_only_residual_checkpoint",
+        lambda *_args, **_kwargs: residual,
+    )
+    monkeypatch.setattr(
+        runner.pilot,
+        "encode_card_only_residual_checkpoint",
+        lambda _runtime: b"restored",
+    )
+    warm_calls = []
+    monkeypatch.setattr(
+        runner.pilot,
+        "run_fixed_card_warm_start",
+        lambda *_args: warm_calls.append(True),
+    )
+
+    with pytest.raises(runner.CardOnlyRunnerBlocked, match="fixture native stop"):
+        runner.execute_pilot(
+            registration,
+            clock=lambda: 0.0,
+            process_observer=lambda: (),
+            environment_factory_loader=lambda _identity: (_ for _ in ()).throw(
+                runner.CardOnlyRunnerBlocked("fixture native stop")
+            ),
+        )
+
+    assert warm_calls == []
+    assert (Path(registration["output_dir"]) / "resume.json").is_file()
