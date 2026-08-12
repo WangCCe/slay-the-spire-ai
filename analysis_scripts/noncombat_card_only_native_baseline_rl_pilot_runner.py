@@ -49,7 +49,7 @@ def _early_preload_resume_native() -> None:
         registration_path = Path(sys.argv[registration_index]).resolve()
         registration = json.loads(registration_path.read_text(encoding="ascii"))
         if registration.get("schema_version") != (
-            "noncombat-card-only-native-baseline-pilot-resume-registration-v1"
+            "noncombat-card-only-native-baseline-pilot-resume-registration-v2"
         ):
             raise RuntimeError("resume worker registration schema differs")
         native = registration["native"]["identity"]
@@ -128,9 +128,9 @@ from analysis_scripts import noncombat_card_only_native_baseline_rl_pilot as pil
 from analysis_scripts import noncombat_simulator_adapter as adapter
 
 
-REGISTRATION_SCHEMA_VERSION = "noncombat-card-only-native-baseline-pilot-registration-v1"
+REGISTRATION_SCHEMA_VERSION = "noncombat-card-only-native-baseline-pilot-registration-v2"
 RESUME_REGISTRATION_SCHEMA_VERSION = (
-    "noncombat-card-only-native-baseline-pilot-resume-registration-v1"
+    "noncombat-card-only-native-baseline-pilot-resume-registration-v2"
 )
 PREFLIGHT_SCHEMA_VERSION = "noncombat-card-only-native-baseline-pilot-preflight-v1"
 REPORT_SCHEMA_VERSION = "noncombat-card-only-native-baseline-pilot-report-v1"
@@ -405,6 +405,9 @@ def build_registration(
             "configuration": {
                 "comparison": "one-frozen-candidate-vs-native-control-v1",
                 "maximum_charged_seconds": MAX_CHARGED_SECONDS,
+                "maximum_censored_pairs_per_chunk": (
+                    pilot.MAX_CENSORED_PAIRS_PER_CHUNK
+                ),
                 "maximum_environment_accesses": MAX_ENVIRONMENT_ACCESSES,
                 "maximum_residual_chunks": MAX_RESIDUAL_CHUNKS,
                 "residual_chunk_pairs": 64,
@@ -522,6 +525,7 @@ def validate_registration(value: Mapping[str, Any]) -> dict[str, Any]:
     if not isinstance(configuration, dict) or configuration != {
         "comparison": "one-frozen-candidate-vs-native-control-v1",
         "maximum_charged_seconds": MAX_CHARGED_SECONDS,
+        "maximum_censored_pairs_per_chunk": pilot.MAX_CENSORED_PAIRS_PER_CHUNK,
         "maximum_environment_accesses": MAX_ENVIRONMENT_ACCESSES,
         "maximum_residual_chunks": MAX_RESIDUAL_CHUNKS,
         "residual_chunk_pairs": 64,
@@ -788,8 +792,10 @@ def _publish_report(
 def _chunk_summary(completed: pilot.CompletedCardOnlyResidualChunk) -> dict[str, Any]:
     pairs = completed.episodes
     return {
+        "attempted_pairs": len(completed.attempted_seeds),
         "candidate_floor_mean": sum(pair.candidate.floor_progress for pair in pairs) / len(pairs),
         "candidate_victories": sum(pair.candidate.terminal_victory for pair in pairs),
+        "censored_pairs": copy.deepcopy(list(completed.censored_pairs)),
         "chunk_index": completed.chunk_index,
         "control_floor_mean": sum(pair.control.floor_progress for pair in pairs) / len(pairs),
         "control_optimizer_steps": 0,
@@ -799,6 +805,7 @@ def _chunk_summary(completed: pilot.CompletedCardOnlyResidualChunk) -> dict[str,
         "probe": copy.deepcopy(completed.probe),
         "seed_max": completed.seeds[-1],
         "seed_min": completed.seeds[0],
+        "supported_pairs": len(completed.seeds),
     }
 
 

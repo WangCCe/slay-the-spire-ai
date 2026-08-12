@@ -23,6 +23,9 @@ current setup.
   auxiliary comparison, not the acceptance teacher.
 - Run a bounded candidate-only residual RL pilot on already-consumed development
   seeds only when the warm start passes its fixed card-action validation gate.
+- Censor at most eight pairs per chunk only when they hit the preregistered
+  Courier-restock simulator blocker; report every censored seed and arm, and
+  keep unknown support failures fail-closed.
 - Compare the frozen candidate with native SimpleAgent on the same development
   cohort and require non-inferior mean floor, no victory regression, no
   unsupported episodes, and both card families to remain between 5% and 95% of

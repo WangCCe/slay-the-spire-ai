@@ -94,11 +94,19 @@ accelerated four-fold, trajectory-disjoint baseline and the existing formal
 victory-plus-floor reward. Native control has no optimizer and no learned
 parameters.
 
-After each chunk, the candidate is evaluated on a fixed source-state probe
-collected before RL. The pilot stops before another chunk if any episode is
-unsupported, checkpoint restoration differs, a gradient is invalid, or frozen
-greedy take/non-take coverage leaves the inclusive 5% to 95% interval. It does
-not change a coefficient, threshold, seed, or schedule after observing a result.
+Each registered chunk attempts the same 64 consumed development seeds once. A
+pair that reaches the declared `unsupported_shop_courier_restock_semantics`
+boundary is censored with its seed, arm, category, decision id, and reason. The
+candidate-only four-fold update may proceed on 56 to 64 supported pairs; more
+than eight censored pairs, any unknown blocker, or fewer than 56 supported pairs
+stops before an optimizer step. This avoids introducing replacement or fresh
+seeds while keeping the known native support gap visible.
+
+After each completed chunk, the candidate is evaluated on a fixed source-state
+probe collected before RL. The pilot stops before another chunk if checkpoint
+restoration differs, a gradient is invalid, or frozen greedy take/non-take
+coverage leaves the inclusive 5% to 95% interval. It does not change a
+coefficient, threshold, seed, or schedule after observing a result.
 
 ### Treat development comparison as a proposal gate only
 
@@ -118,8 +126,9 @@ SimpleAgent as the effective baseline and terminates this pilot.
 - **The native control is not differentiable** -> Train candidate only and keep
   paired control rollouts strictly evaluative.
 - **Card-only changes may alter later state support** -> Preserve complete
-  trajectories, legal candidate sets, and per-seed paired outcomes; block on an
-  unsupported transition.
+  trajectories, legal candidate sets, and per-seed paired outcomes; censor only
+  the declared Courier-restock blocker within a fixed eight-pair ceiling and
+  block every other unsupported transition.
 - **Thresholds may be hard to reach with 302 train rows** -> Use a single fixed
   gate and stop on failure rather than tune within the change.
 

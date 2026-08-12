@@ -600,9 +600,15 @@ def _fake_residual_pairs(*, unsupported=False):
     pairs = []
     for seed in range(64):
         candidate_decision = SimpleNamespace(
-            card_terms=object(), category="card_reward"
+            card_terms=object(),
+            category="card_reward",
+            decision_id=f"candidate:seed-{seed}:decision-0",
         )
-        control_decision = SimpleNamespace(card_terms=None, category="card_reward")
+        control_decision = SimpleNamespace(
+            card_terms=None,
+            category="card_reward",
+            decision_id=f"control:seed-{seed}:decision-0",
+        )
         candidate = SimpleNamespace(
             decisions=(candidate_decision,),
             final_snapshot={"terminal": True},
@@ -678,6 +684,82 @@ def test_residual_unsupported_pair_blocks_before_optimizer_step(tmp_path):
     with pytest.raises(CardOnlyPilotBlocked, match="unsupported"):
         complete_card_only_residual_chunk(
             runtime, _fake_residual_pairs(unsupported=True), chunk_index=0
+        )
+
+    assert encode_card_only_residual_checkpoint(runtime) == before
+
+
+def test_residual_censors_declared_courier_pair_and_keeps_complete_boundary(
+    tmp_path, monkeypatch
+):
+    from analysis_scripts import noncombat_card_only_native_baseline_rl_pilot as pilot
+
+    runtime = _residual_runtime(tmp_path)
+    pairs = list(_fake_residual_pairs())
+    pairs[0].candidate.unsupported_reason = (
+        "unsupported_shop_courier_restock_semantics"
+    )
+
+    def fake_update(bootstrap, optimizer, episodes):
+        assert len(episodes) == 63
+        for parameter in optimizer.param_groups[0]["params"]:
+            parameter.grad = torch.full_like(parameter, 1e-6)
+        optimizer.step()
+        optimizer.zero_grad(set_to_none=True)
+        return {"fixture": True}
+
+    monkeypatch.setattr(
+        pilot.successor_runtime,
+        "apply_candidate_cross_fitted_chunk_update_exploratory",
+        fake_update,
+    )
+    monkeypatch.setattr(
+        pilot,
+        "evaluate_card_warm_start",
+        lambda *_args, **_kwargs: {
+            "non_take_rate": 0.5,
+            "take_rate": 0.5,
+        },
+    )
+
+    completed = complete_card_only_residual_chunk(
+        runtime, tuple(pairs), chunk_index=0
+    )
+
+    assert len(completed.attempted_seeds) == 64
+    assert len(completed.seeds) == 63
+    assert completed.censored_pairs == (
+        {
+            "blockers": [
+                {
+                    "arm": "candidate",
+                    "category": "card_reward",
+                    "decision_id": "candidate:seed-0:decision-0",
+                    "reason": "unsupported_shop_courier_restock_semantics",
+                }
+            ],
+            "seed": 0,
+        },
+    )
+    restored = restore_card_only_residual_checkpoint(
+        completed.checkpoint, probe_rows=runtime.probe_rows
+    )
+    assert restored.next_chunk_index == 1
+    assert restored.environment_accesses == 128
+
+
+def test_residual_courier_censor_bound_blocks_before_optimizer_step(tmp_path):
+    runtime = _residual_runtime(tmp_path)
+    before = encode_card_only_residual_checkpoint(runtime)
+    pairs = list(_fake_residual_pairs())
+    for pair in pairs[:9]:
+        pair.candidate.unsupported_reason = (
+            "unsupported_shop_courier_restock_semantics"
+        )
+
+    with pytest.raises(CardOnlyPilotBlocked, match="censor bound"):
+        complete_card_only_residual_chunk(
+            runtime, tuple(pairs), chunk_index=0
         )
 
     assert encode_card_only_residual_checkpoint(runtime) == before

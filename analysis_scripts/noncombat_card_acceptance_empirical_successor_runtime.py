@@ -97,6 +97,7 @@ FOLD_COUNT = 4
 TRAJECTORIES_PER_CHUNK = 64
 HELD_OUT_TRAJECTORIES_PER_FOLD = 16
 FIT_TRAJECTORIES_PER_FOLD = 48
+MIN_CANDIDATE_TRAJECTORIES_PER_CHUNK = 56
 RIDGE_COEFFICIENT = 0.001
 RIDGE_RESIDUAL_ATOL = 1e-9
 RIDGE_RESIDUAL_RTOL = 1e-9
@@ -3345,14 +3346,15 @@ def _build_arm_baseline_decisions(
     episodes: Sequence[ArmEpisodeRollout],
     *,
     arm: ArmName,
+    expected_trajectory_count: int = TRAJECTORIES_PER_CHUNK,
 ) -> tuple[ArmBaselineDecision, ...]:
     normalized_arm = _validated_arm(arm)
     if isinstance(episodes, (str, bytes)) or not isinstance(episodes, Sequence):
         raise SuccessorRuntimeError("arm episodes must be a sequence")
     source = tuple(episodes)
-    if len(source) != TRAJECTORIES_PER_CHUNK:
+    if len(source) != expected_trajectory_count:
         raise SuccessorRuntimeError(
-            "cross-fitted baseline requires exactly 64 trajectories per arm"
+            "cross-fitted baseline trajectory count differs"
         )
     seeds = tuple(episode.seed for episode in source)
     if any(
@@ -3456,6 +3458,7 @@ def _normalize_baseline_decisions(
     decisions: Sequence[ArmBaselineDecision],
     *,
     arm: ArmName,
+    expected_trajectory_count: int = TRAJECTORIES_PER_CHUNK,
 ) -> tuple[
     tuple[ArmBaselineDecision, ...],
     tuple[str, ...],
@@ -3477,9 +3480,9 @@ def _normalize_baseline_decisions(
             label="baseline state features",
         )
         by_trajectory.setdefault(decision.trajectory_id, []).append(decision)
-    if len(by_trajectory) != TRAJECTORIES_PER_CHUNK:
+    if len(by_trajectory) != expected_trajectory_count:
         raise SuccessorRuntimeError(
-            "cross-fitted baseline requires exactly 64 trajectories"
+            "cross-fitted baseline trajectory count differs"
         )
 
     seed_by_trajectory: dict[str, int] = {}
@@ -3525,12 +3528,10 @@ def _fold_manifest(
         )
         for fold_index in range(FOLD_COUNT)
     }
-    if any(
-        len(trajectory_ids) != HELD_OUT_TRAJECTORIES_PER_FOLD
-        for trajectory_ids in manifest.values()
-    ):
+    fold_sizes = tuple(len(trajectory_ids) for trajectory_ids in manifest.values())
+    if not fold_sizes or min(fold_sizes) <= 0 or max(fold_sizes) - min(fold_sizes) > 1:
         raise SuccessorRuntimeError(
-            "every fold must hold out exactly 16 trajectories"
+            "cross-fitted folds must be nonempty and balanced"
         )
     return manifest
 
@@ -3546,6 +3547,9 @@ def _build_fold_normal_equations(
     width = BASELINE_FEATURE_DIM + 1
     normal_matrix = torch.zeros((width, width), dtype=torch.float64)
     rhs = torch.zeros(width, dtype=torch.float64)
+    fit_trajectory_count = len(trajectory_order) - len(held_out_set)
+    if fit_trajectory_count <= 0:
+        raise SuccessorRuntimeError("cross-fitted fold has no fit trajectories")
     for trajectory_id in trajectory_order:
         if trajectory_id in held_out_set:
             continue
@@ -3559,7 +3563,7 @@ def _build_fold_normal_equations(
             tuple(float(decision.raw_return) for decision in trajectory),
             dtype=torch.float64,
         )
-        weight = 1.0 / (FIT_TRAJECTORIES_PER_FOLD * len(trajectory))
+        weight = 1.0 / (fit_trajectory_count * len(trajectory))
         normal_matrix.addmm_(
             augmented.transpose(0, 1),
             augmented,
@@ -3584,8 +3588,8 @@ def _fit_fold_model(
 ) -> RidgeFoldModel:
     held_out_set = set(held_out_ids)
     fit_ids = tuple(sorted(set(trajectory_order).difference(held_out_set)))
-    if len(fit_ids) != FIT_TRAJECTORIES_PER_FOLD:
-        raise SuccessorRuntimeError("every fold must fit exactly 48 trajectories")
+    if not fit_ids or len(fit_ids) + len(held_out_ids) != len(trajectory_order):
+        raise SuccessorRuntimeError("cross-fitted fold partition differs")
 
     width = BASELINE_FEATURE_DIM + 1
     normal_matrix, rhs = _build_fold_normal_equations(
@@ -3669,11 +3673,13 @@ def _build_cross_fitted_arm_baseline(
     decisions: Sequence[ArmBaselineDecision],
     *,
     arm: ArmName,
+    expected_trajectory_count: int = TRAJECTORIES_PER_CHUNK,
 ) -> ArmCrossFittedBaseline:
     normalized_arm = _validated_arm(arm)
     canonical, trajectory_order, by_trajectory = _normalize_baseline_decisions(
         decisions,
         arm=normalized_arm,
+        expected_trajectory_count=expected_trajectory_count,
     )
     fold_trajectories = _fold_manifest(trajectory_order)
     models = tuple(
@@ -3786,9 +3792,13 @@ def build_candidate_cross_fitted_baseline(
     if isinstance(episodes, (str, bytes)) or not isinstance(episodes, Sequence):
         raise SuccessorRuntimeError("candidate episodes must be a sequence")
     source = tuple(episodes)
-    if len(source) != TRAJECTORIES_PER_CHUNK:
+    if not (
+        MIN_CANDIDATE_TRAJECTORIES_PER_CHUNK
+        <= len(source)
+        <= TRAJECTORIES_PER_CHUNK
+    ):
         raise SuccessorRuntimeError(
-            "candidate cross-fitted baseline requires exactly 64 pairs"
+            "candidate cross-fitted baseline requires 56 to 64 pairs"
         )
     seeds = tuple(pair.seed for pair in source)
     if any(
@@ -3801,9 +3811,15 @@ def build_candidate_cross_fitted_baseline(
             "candidate episodes must use one unique ascending seed slice"
         )
     decisions = _build_arm_baseline_decisions(
-        tuple(pair.candidate for pair in source), arm="candidate"
+        tuple(pair.candidate for pair in source),
+        arm="candidate",
+        expected_trajectory_count=len(source),
     )
-    return _build_cross_fitted_arm_baseline(decisions, arm="candidate")
+    return _build_cross_fitted_arm_baseline(
+        decisions,
+        arm="candidate",
+        expected_trajectory_count=len(source),
+    )
 
 
 def build_arm_card_reward_rows(
@@ -3817,8 +3833,9 @@ def build_arm_card_reward_rows(
     if not isinstance(baseline, ArmCrossFittedBaseline) or baseline.arm != normalized_arm:
         raise SuccessorRuntimeError("card reward baseline arm differs")
     source = tuple(episodes)
-    if len(source) != TRAJECTORIES_PER_CHUNK:
-        raise SuccessorRuntimeError("card reward rows require exactly 64 pairs")
+    trajectory_count = len({decision.trajectory_id for decision in baseline.decisions})
+    if len(source) != trajectory_count:
+        raise SuccessorRuntimeError("card reward pair count differs from baseline")
     arm_episodes = tuple(
         pair.candidate if normalized_arm == "candidate" else pair.control
         for pair in source

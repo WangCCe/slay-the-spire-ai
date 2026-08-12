@@ -21,6 +21,9 @@ def _registration(tmp_path):
         "configuration": {
             "comparison": "one-frozen-candidate-vs-native-control-v1",
             "maximum_charged_seconds": runner.MAX_CHARGED_SECONDS,
+            "maximum_censored_pairs_per_chunk": (
+                runner.pilot.MAX_CENSORED_PAIRS_PER_CHUNK
+            ),
             "maximum_environment_accesses": runner.MAX_ENVIRONMENT_ACCESSES,
             "maximum_residual_chunks": runner.MAX_RESIDUAL_CHUNKS,
             "residual_chunk_pairs": 64,

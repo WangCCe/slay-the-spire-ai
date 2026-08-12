@@ -1463,7 +1463,8 @@ def test_fold_normal_equations_match_scalar_trajectory_weighting():
     expected_rhs = torch.zeros(129, dtype=torch.float64)
     for trajectory_id in trajectory_order[:-1]:
         trajectory = trajectories[trajectory_id]
-        weight = 1.0 / (runtime.FIT_TRAJECTORIES_PER_FOLD * len(trajectory))
+        fit_trajectory_count = len(trajectory_order) - len(held_out_ids)
+        weight = 1.0 / (fit_trajectory_count * len(trajectory))
         for decision in trajectory:
             features = (1.0, *tuple(float(value) for value in decision.state_features))
             for row_index, row_value in enumerate(features):
@@ -1550,6 +1551,25 @@ def test_cross_fitted_baseline_rejects_incomplete_reordered_or_unsupported_pairs
         match="complete supported trajectories",
     ):
         runtime.build_paired_cross_fitted_baselines(unsupported_pairs)
+
+
+def test_candidate_cross_fitted_baseline_accepts_bounded_censored_cohort():
+    runtime = _runtime()
+    pairs = _synthetic_paired_rollouts(
+        runtime,
+        runtime.build_matched_bootstrap(),
+    )[:-1]
+
+    baseline = runtime.build_candidate_cross_fitted_baseline(pairs)
+
+    assert len({decision.trajectory_id for decision in baseline.decisions}) == 63
+    assert sorted(map(len, baseline.fold_trajectories.values())) == [15, 16, 16, 16]
+    assert sorted(len(model.fit_trajectory_ids) for model in baseline.models) == [
+        47,
+        47,
+        47,
+        48,
+    ]
 
 
 def test_paired_chunk_update_applies_one_named_step_per_arm_and_preserves_frozen_state():

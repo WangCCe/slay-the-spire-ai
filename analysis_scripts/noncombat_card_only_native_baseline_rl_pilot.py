@@ -145,12 +145,17 @@ class CardOnlyResidualRuntime:
 @dataclass(frozen=True)
 class CompletedCardOnlyResidualChunk:
     chunk_index: int
+    attempted_seeds: tuple[int, ...]
     seeds: tuple[int, ...]
+    censored_pairs: tuple[dict[str, Any], ...]
     episodes: tuple[Any, ...]
     update: Any
     probe: dict[str, Any]
     checkpoint: bytes
     runtime: CardOnlyResidualRuntime
+
+
+MAX_CENSORED_PAIRS_PER_CHUNK = 8
 
 
 def _mapping(value: object, label: str) -> dict[str, Any]:
@@ -1253,28 +1258,54 @@ def restore_card_only_residual_checkpoint(
 
 def _validate_residual_pairs(
     episodes: Sequence[Any], *, chunk_index: int
-) -> tuple[Any, ...]:
+) -> tuple[tuple[Any, ...], tuple[dict[str, Any], ...]]:
     source = tuple(episodes)
     if len(source) != 64:
         raise CardOnlyPilotBlocked("card residual chunk requires exactly 64 pairs")
     seeds = tuple(pair.seed for pair in source)
     if seeds != tuple(sorted(set(seeds))):
         raise CardOnlyPilotBlocked("card residual chunk seeds must be ascending unique")
+    supported = []
+    censored = []
     for pair in source:
+        blockers = []
         for arm_name, arm in (("candidate", pair.candidate), ("control", pair.control)):
             if arm.unsupported_reason is not None:
-                raise CardOnlyPilotBlocked(
-                    f"card residual {arm_name} episode is unsupported"
+                if arm.unsupported_reason not in successor_runtime.REGISTERED_SUPPORT_BLOCKERS:
+                    raise CardOnlyPilotBlocked(
+                        f"card residual {arm_name} episode is unsupported by an unknown blocker"
+                    )
+                last_decision = arm.decisions[-1] if arm.decisions else None
+                blockers.append(
+                    {
+                        "arm": arm_name,
+                        "category": (
+                            None if last_decision is None else last_decision.category
+                        ),
+                        "decision_id": (
+                            None if last_decision is None else last_decision.decision_id
+                        ),
+                        "reason": arm.unsupported_reason,
+                    }
                 )
+                continue
             if arm.final_snapshot.get("terminal") is not True:
                 raise CardOnlyPilotBlocked(
                     f"card residual {arm_name} episode is not terminal"
                 )
+        if blockers:
+            censored.append({"blockers": blockers, "seed": pair.seed})
+            continue
         if any(decision.card_terms is not None for decision in pair.control.decisions):
             raise CardOnlyPilotBlocked("native control carried learned card terms")
+        supported.append(pair)
+    if len(censored) > MAX_CENSORED_PAIRS_PER_CHUNK:
+        raise CardOnlyPilotBlocked("card residual support censor bound exceeded")
+    if len(supported) < successor_runtime.MIN_CANDIDATE_TRAJECTORIES_PER_CHUNK:
+        raise CardOnlyPilotBlocked("card residual supported pair floor is unmet")
     if isinstance(chunk_index, bool) or not isinstance(chunk_index, int):
         raise CardOnlyPilotBlocked("card residual chunk index is invalid")
-    return source
+    return tuple(supported), tuple(censored)
 
 
 def complete_card_only_residual_chunk(
@@ -1292,7 +1323,10 @@ def complete_card_only_residual_chunk(
         raise CardOnlyPilotBlocked("card residual runtime cannot start another chunk")
     if chunk_index != working.next_chunk_index:
         raise CardOnlyPilotBlocked("card residual chunk index differs")
-    pairs = _validate_residual_pairs(episodes, chunk_index=chunk_index)
+    attempted_pairs = tuple(episodes)
+    pairs, censored_pairs = _validate_residual_pairs(
+        attempted_pairs, chunk_index=chunk_index
+    )
     try:
         update = successor_runtime.apply_candidate_cross_fitted_chunk_update_exploratory(
             working.bootstrap, working.candidate_optimizer, pairs
@@ -1307,8 +1341,11 @@ def complete_card_only_residual_chunk(
             for pair in pairs
             for decision in pair.candidate.decisions
         ),
+        "attempted_pairs": len(attempted_pairs),
+        "censored_pairs": copy.deepcopy(list(censored_pairs)),
         "chunk_index": chunk_index,
         "probe": probe,
+        "supported_pairs": len(pairs),
         "seed_max": pairs[-1].seed,
         "seed_min": pairs[0].seed,
     }
@@ -1330,7 +1367,9 @@ def complete_card_only_residual_chunk(
         raise CardOnlyPilotBlocked("card residual checkpoint restore differs")
     return CompletedCardOnlyResidualChunk(
         chunk_index=chunk_index,
+        attempted_seeds=tuple(pair.seed for pair in attempted_pairs),
         seeds=tuple(pair.seed for pair in pairs),
+        censored_pairs=censored_pairs,
         episodes=pairs,
         update=update,
         probe=probe,

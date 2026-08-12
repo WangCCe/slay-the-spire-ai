@@ -22,6 +22,7 @@
 - [x] 4.1 Adapt the accelerated four-fold baseline and optimizer step so only candidate card parameters update and native control remains optimizer-free.
 - [x] 4.2 Add the fixed pre-RL source-state probe, complete-boundary checkpoint restore, resource accounting, and 5%-95% concentration stop.
 - [x] 4.3 Add regressions for one complete chunk, invalid gradients/rewards, unsupported episodes, deadline failure, concentration stop, and partial-checkpoint rejection.
+- [x] 4.4 Add bounded pair-level censoring for the declared Courier blocker, dynamic 56-64 pair candidate cross-fitting, and explicit support coverage reporting.
 
 ## 5. Bounded Pilot And Report
 

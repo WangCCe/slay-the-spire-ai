@@ -48,19 +48,26 @@ not reward or permanent policy truth.
 
 ### Requirement: Residual training is candidate-card-only and bounded
 After the warm-start gate passes, the pilot SHALL run at most four complete
-64-pair chunks on exactly the already-consumed seeds `1000..1031` and
-`2000..2031`. Only candidate card parameters and optimizer moments SHALL change.
+64-pair attempted cohorts on exactly the already-consumed seeds `1000..1031`
+and `2000..2031`. It MAY censor at most eight pairs that hit only the declared
+Courier-restock simulator blocker and SHALL update on 56 to 64 supported pairs.
+Only candidate card parameters and optimizer moments SHALL change.
 
 #### Scenario: One residual chunk completes
-- **WHEN** 64 complete supported candidate/native-control pairs pass the fixed deadline and four-fold candidate baseline contract
+- **WHEN** one 64-seed attempt yields at least 56 complete supported candidate/native-control pairs within the fixed deadline and four-fold candidate baseline contract
 - **THEN** the runner applies exactly one candidate Adam step from card-reward advantages, writes a restorable complete-boundary checkpoint, and records zero control optimizer steps
+
+#### Scenario: Declared Courier blocker is censored
+- **WHEN** either arm of a pair reaches `unsupported_shop_courier_restock_semantics`
+- **THEN** the whole pair is excluded from the update and its seed, arm, category, decision id, and reason are reported
+- **AND** the runner does not retry the seed, replace it, or consume a new seed
 
 #### Scenario: Fixed probe detects boundary concentration
 - **WHEN** a completed chunk makes frozen greedy take or non-take coverage on the pre-RL source-state probe fall below 0.05 or exceed 0.95
 - **THEN** training stops before another environment access and preserves the last complete checkpoint
 
 #### Scenario: Residual execution becomes invalid
-- **WHEN** an episode is unsupported, a gradient or reward is invalid, a deadline or resource bound is exceeded, or checkpoint restore differs
+- **WHEN** a chunk has more than eight censored pairs, an unknown support blocker, fewer than 56 supported pairs, an invalid gradient or reward, an exceeded deadline or resource bound, or checkpoint restore differs
 - **THEN** the pilot stops without retrying, changing seeds, tuning, or loading a partial checkpoint
 
 ### Requirement: Development comparison has a strict no-go boundary
