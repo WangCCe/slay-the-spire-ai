@@ -1572,6 +1572,23 @@ def test_candidate_cross_fitted_baseline_accepts_bounded_censored_cohort():
     ]
 
 
+def test_candidate_cross_fitted_update_accepts_bounded_censored_cohort():
+    runtime = _runtime()
+    bootstrap = runtime.build_matched_bootstrap()
+    pairs = _synthetic_paired_rollouts(runtime, bootstrap)[:-1]
+    optimizer = runtime.build_candidate_card_optimizer(bootstrap)
+
+    update = runtime.apply_candidate_cross_fitted_chunk_update_exploratory(
+        bootstrap,
+        optimizer,
+        pairs,
+    )
+
+    assert update.seeds == tuple(range(100, 163))
+    assert update.candidate.optimizer_step.preclip_global_norm >= 0.0
+    assert len(optimizer.state) > 0
+
+
 def test_paired_chunk_update_applies_one_named_step_per_arm_and_preserves_frozen_state():
     runtime = _runtime()
     training = runtime.initialize_paired_training_runtime()

@@ -29,6 +29,7 @@ from analysis_scripts.noncombat_card_only_native_baseline_rl_pilot import (
     project_bottled_card_labels,
     require_card_warm_start_gate,
     restore_card_only_residual_checkpoint,
+    summarize_card_only_residual_collection,
     run_fixed_card_warm_start,
 )
 from analysis_scripts.noncombat_simulator_adapter import (
@@ -746,6 +747,25 @@ def test_residual_censors_declared_courier_pair_and_keeps_complete_boundary(
     )
     assert restored.next_chunk_index == 1
     assert restored.environment_accesses == 128
+
+
+def test_residual_collection_summary_precedes_optimizer_and_reports_support():
+    pairs = list(_fake_residual_pairs())
+    for pair in pairs:
+        pair.candidate.decisions[0].diagnostic = {"selected_family": "take"}
+    pairs[0].candidate.unsupported_reason = (
+        "unsupported_shop_courier_restock_semantics"
+    )
+
+    summary = summarize_card_only_residual_collection(
+        tuple(pairs), chunk_index=0
+    )
+
+    assert summary["attempted_pairs"] == 64
+    assert summary["supported_pairs"] == 63
+    assert summary["supported_seeds"] == list(range(1, 64))
+    assert summary["candidate_card_family_counts"] == {"take": 63}
+    assert summary["censored_pairs"][0]["seed"] == 0
 
 
 def test_residual_courier_censor_bound_blocks_before_optimizer_step(tmp_path):

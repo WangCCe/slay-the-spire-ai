@@ -133,7 +133,7 @@ RESUME_REGISTRATION_SCHEMA_VERSION = (
     "noncombat-card-only-native-baseline-pilot-resume-registration-v2"
 )
 PREFLIGHT_SCHEMA_VERSION = "noncombat-card-only-native-baseline-pilot-preflight-v1"
-REPORT_SCHEMA_VERSION = "noncombat-card-only-native-baseline-pilot-report-v1"
+REPORT_SCHEMA_VERSION = "noncombat-card-only-native-baseline-pilot-report-v2"
 TERMINAL_SCHEMA_VERSION = "noncombat-card-only-native-baseline-pilot-terminal-v1"
 CONSUMED_DEVELOPMENT_SEEDS = tuple(range(1000, 1032)) + tuple(range(2000, 2032))
 MAX_RESIDUAL_CHUNKS = 4
@@ -773,10 +773,15 @@ def _publish_report(
     comparison: Mapping[str, Any] | None,
     terminal: Mapping[str, Any],
 ) -> None:
+    collections = [
+        _read_canonical(path)
+        for path in sorted(output.glob("chunk_*_collection.json"))
+    ]
     _write_canonical(
         output / "report.json",
         {
             "chunks": copy.deepcopy(list(chunks)),
+            "collections": collections,
             "comparison": copy.deepcopy(comparison),
             "downstream_authority": dict(FALSE_DOWNSTREAM_AUTHORITY),
             "preflight": copy.deepcopy(dict(preflight)),
@@ -1099,6 +1104,9 @@ def execute_pilot(
             chunk_index=chunk_index,
             deadline=deadline,
             clock=clock,
+            after_collection=lambda summary, index=chunk_index: _write_canonical(
+                output / f"chunk_{index:03d}_collection.json", summary
+            ),
         )
         residual = completed.runtime
         summary = _chunk_summary(completed)

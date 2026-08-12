@@ -206,6 +206,33 @@ def test_failed_warm_start_gate_never_loads_native(tmp_path, monkeypatch):
     assert (Path(registration["output_dir"]) / "report.json").is_file()
 
 
+def test_failure_report_includes_preupdate_collection(tmp_path):
+    output = tmp_path / "output"
+    output.mkdir()
+    collection = {
+        "attempted_pairs": 64,
+        "schema_version": "noncombat-card-only-residual-collection-v1",
+        "supported_pairs": 63,
+    }
+    runner._write_canonical(output / "chunk_000_collection.json", collection)
+    terminal = {
+        "verdict": "card_only_native_baseline_pilot_not_ready",
+    }
+
+    runner._publish_report(
+        output,
+        preflight={"verdict": "execution_failed"},
+        warm_start=None,
+        chunks=(),
+        comparison=None,
+        terminal=terminal,
+    )
+
+    report = runner._read_canonical(output / "report.json")
+    assert report["collections"] == [collection]
+    assert report["schema_version"] == runner.REPORT_SCHEMA_VERSION
+
+
 def _comparison_pairs(*, all_take=False, candidate_floor=2.0, control_floor=1.0):
     pairs = []
     for index, seed in enumerate(runner.CONSUMED_DEVELOPMENT_SEEDS):

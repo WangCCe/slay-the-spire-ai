@@ -62,6 +62,11 @@ Only candidate card parameters and optimizer moments SHALL change.
 - **THEN** the whole pair is excluded from the update and its seed, arm, category, decision id, and reason are reported
 - **AND** the runner does not retry the seed, replace it, or consume a new seed
 
+#### Scenario: Collection reaches the optimizer boundary
+- **WHEN** all 64 registered pair attempts finish and pass the support floor
+- **THEN** the runner publishes the attempted seeds, supported seeds, censored pairs, and candidate card-family counts before computing or applying an optimizer step
+- **AND** a later gradient failure retains this collection evidence without publishing a partial checkpoint
+
 #### Scenario: Fixed probe detects boundary concentration
 - **WHEN** a completed chunk makes frozen greedy take or non-take coverage on the pre-RL source-state probe fall below 0.05 or exceed 0.95
 - **THEN** training stops before another environment access and preserves the last complete checkpoint

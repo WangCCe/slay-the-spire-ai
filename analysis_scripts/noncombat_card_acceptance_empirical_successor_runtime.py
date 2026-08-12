@@ -1270,14 +1270,26 @@ def _prepare_arm_optimizer_step(
                     )
                 combined = combined + evidence_gradient
         total = total_gradients[parameter_index]
-        if total is None or not torch.allclose(
+        if total is None:
+            raise SuccessorRuntimeError(
+                "optimizer total gradient is missing for "
+                f"{normalized_parameter_names[parameter_index]}"
+            )
+        total_evidence = total.detach().to(dtype=torch.float64)
+        if not bool(torch.isfinite(total_evidence).all().item()):
+            raise SuccessorRuntimeError(
+                "optimizer total gradient is nonfinite for "
+                f"{normalized_parameter_names[parameter_index]}"
+            )
+        if not torch.allclose(
             combined,
-            total.detach().to(dtype=torch.float64),
+            total_evidence,
             rtol=GRADIENT_RECONSTRUCTION_RTOL,
             atol=GRADIENT_RECONSTRUCTION_ATOL,
         ):
             raise SuccessorRuntimeError(
-                "optimizer total gradient reconstruction differs"
+                "optimizer total gradient reconstruction differs for "
+                f"{normalized_parameter_names[parameter_index]}"
             )
         combined_gradients.append(combined.detach().clone())
 

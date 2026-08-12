@@ -1308,6 +1308,33 @@ def _validate_residual_pairs(
     return tuple(supported), tuple(censored)
 
 
+def summarize_card_only_residual_collection(
+    episodes: Sequence[Any], *, chunk_index: int
+) -> dict[str, Any]:
+    attempted = tuple(episodes)
+    supported, censored = _validate_residual_pairs(
+        attempted, chunk_index=chunk_index
+    )
+    family_counts = Counter(
+        decision.diagnostic.get("selected_family")
+        for pair in supported
+        for decision in pair.candidate.decisions
+        if decision.category == "card_reward"
+    )
+    if None in family_counts:
+        raise CardOnlyPilotBlocked("card residual family diagnostic is missing")
+    return {
+        "attempted_pairs": len(attempted),
+        "attempted_seeds": [pair.seed for pair in attempted],
+        "candidate_card_family_counts": dict(sorted(family_counts.items())),
+        "censored_pairs": copy.deepcopy(list(censored)),
+        "chunk_index": chunk_index,
+        "schema_version": "noncombat-card-only-residual-collection-v1",
+        "supported_pairs": len(supported),
+        "supported_seeds": [pair.seed for pair in supported],
+    }
+
+
 def complete_card_only_residual_chunk(
     runtime: CardOnlyResidualRuntime,
     episodes: Sequence[Any],
@@ -1388,6 +1415,7 @@ def collect_and_complete_card_only_residual_chunk(
     clock: Any = time.monotonic,
     before_pair: Any = lambda _seed: None,
     after_pair: Any = lambda _seed: None,
+    after_collection: Any = lambda _summary: None,
 ) -> CompletedCardOnlyResidualChunk:
     _validate_card_only_residual_runtime(runtime)
     original_checkpoint = encode_card_only_residual_checkpoint(runtime)
@@ -1400,6 +1428,11 @@ def collect_and_complete_card_only_residual_chunk(
         or normalized_seeds != tuple(sorted(set(normalized_seeds)))
     ):
         raise CardOnlyPilotBlocked("card residual collection requires 64 ascending seeds")
+    if not all(
+        callable(callback)
+        for callback in (before_pair, after_pair, after_collection)
+    ):
+        raise CardOnlyPilotBlocked("card residual collection callback is invalid")
     now = float(clock())
     if not math.isfinite(now) or not math.isfinite(float(deadline)) or now > float(
         deadline
@@ -1422,6 +1455,10 @@ def collect_and_complete_card_only_residual_chunk(
             )
             after_pair(seed)
             episodes.append(pair)
+        collection_summary = summarize_card_only_residual_collection(
+            tuple(episodes), chunk_index=chunk_index
+        )
+        after_collection(copy.deepcopy(collection_summary))
         return complete_card_only_residual_chunk(
             working, tuple(episodes), chunk_index=chunk_index
         )
@@ -1463,5 +1500,6 @@ __all__ = [
     "project_bottled_card_labels",
     "require_card_warm_start_gate",
     "restore_card_only_residual_checkpoint",
+    "summarize_card_only_residual_collection",
     "run_fixed_card_warm_start",
 ]
