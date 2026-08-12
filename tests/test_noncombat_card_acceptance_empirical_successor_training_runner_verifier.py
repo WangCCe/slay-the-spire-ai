@@ -656,6 +656,64 @@ def _verify(fixture, **overrides):
     )
 
 
+def _recovery_review(
+    fixture, runner_payload: bytes, verifier_payload: bytes
+) -> dict:
+    verifier = _verifier()
+    envelope_payload = fixture.envelope_path.read_bytes()
+    launch_payload = fixture.launch_observation_path.read_bytes()
+    envelope = json.loads(envelope_payload)
+    binding = envelope["terminalization_binding"]
+    body = {
+        "failed_v1_attempt": {
+            "closure_artifacts_written": False,
+            "envelope_sha256": "9" * 64,
+            "environment_accesses": 0,
+            "error": "terminalization lease identity differs",
+            "failure_phase": "pre-start-validation",
+            "invoked_once": True,
+            "retry_same_envelope": False,
+        },
+        "failure_prefix": {
+            "failure_paths": binding["failure_paths"],
+            "lease_sha256": binding["lease_sha256"],
+            "owner_child_process_id": binding["owner"]["child_process_id"],
+            "prefix_sha256": binding["prefix_sha256"],
+            "run_envelope_sha256": binding["run_envelope_sha256"],
+        },
+        "recovery_source": {
+            "runner_path": fixture.manifest["artifacts"]["runner_source"][
+                "path"
+            ],
+            "runner_sha256": hashlib.sha256(runner_payload).hexdigest(),
+            "runner_size_bytes": len(runner_payload),
+        },
+        "recovery_verifier": {
+            "verifier_path": fixture.manifest["artifacts"][
+                "runner_verifier_source"
+            ]["path"],
+            "verifier_sha256": hashlib.sha256(verifier_payload).hexdigest(),
+            "verifier_size_bytes": len(verifier_payload),
+        },
+        "recovery_v2": {
+            "command_execution_operations": ["evidence_publication"],
+            "downstream_authority_all_false": True,
+            "envelope_file_sha256": hashlib.sha256(envelope_payload).hexdigest(),
+            "envelope_id": envelope["envelope_id"],
+            "envelope_sha256": envelope["envelope_sha256"],
+            "launch_file_sha256": hashlib.sha256(launch_payload).hexdigest(),
+            "launch_observation_sha256": envelope[
+                "runner_launch_observation"
+            ]["observation_sha256"],
+            "pushed_source_validation_pending": True,
+            "terminalization_invoked": False,
+        },
+        "reviewed_at": "2026-08-11T22:55:36+00:00",
+        "schema_version": verifier.RECOVERY_REVIEW_SCHEMA_VERSION,
+    }
+    return _self_digest(body, "review_sha256")
+
+
 def _allow_synthetic_checkpoint_semantics(monkeypatch):
     verifier = _verifier()
     original_loader = verifier._load_bound_base_verifier
@@ -740,6 +798,130 @@ def test_standalone_verifier_reconstructs_terminalized_runner_without_seed_inven
     assert result["verdict"] == "training_process_failure_terminalized"
     assert result["authority"] and not any(result["authority"].values())
     assert result["checkpoint_count"] == 0
+
+
+def test_verifier_accepts_pushed_descendant_of_bound_runner_commit(tmp_path):
+    fixture = _terminalized_fixture(tmp_path)
+    descendant = "2" * 40
+
+    def observe(_manifest, _paths, observed_bindings):
+        return {
+            "clean": True,
+            "head": descendant,
+            "head_bindings": copy.deepcopy(observed_bindings),
+            "pushed": descendant,
+            "pushed_bindings": copy.deepcopy(observed_bindings),
+            "runner_ancestor": True,
+            "source_commit_bound": True,
+            "tracked": True,
+        }
+
+    result = _verify(fixture, source_observer=observe)
+
+    assert result["verified"] is True
+
+
+def test_verifier_accepts_exact_reviewed_recovery_runner_source(tmp_path):
+    fixture = _terminalized_fixture(tmp_path)
+    runner_path = (
+        Path(fixture.manifest["repository_root"])
+        / fixture.manifest["artifacts"]["runner_source"]["path"]
+    )
+    runner_payload = runner_path.read_bytes() + b"# reviewed recovery fix\n"
+    runner_path.write_bytes(runner_payload)
+    verifier_path = (
+        Path(fixture.manifest["repository_root"])
+        / fixture.manifest["artifacts"]["runner_verifier_source"]["path"]
+    )
+    verifier_payload = verifier_path.read_bytes() + b"# recovery verifier fix\n"
+    verifier_path.write_bytes(verifier_payload)
+    review = _recovery_review(fixture, runner_payload, verifier_payload)
+    review_path = (
+        Path(fixture.manifest["repository_root"])
+        / _verifier().RECOVERY_REVIEW_RELATIVE_PATH
+    )
+    _write(review_path, _canonical(review))
+
+    result = _verify(fixture, recovery_review_path=review_path)
+
+    assert result["verified"] is True
+    assert result["recovery_review_sha256"] == review["review_sha256"]
+
+
+@pytest.mark.parametrize(
+    "drift", ("runner", "verifier", "envelope", "review-digest")
+)
+def test_verifier_rejects_recovery_attestation_drift(tmp_path, drift):
+    fixture = _terminalized_fixture(tmp_path)
+    runner_path = (
+        Path(fixture.manifest["repository_root"])
+        / fixture.manifest["artifacts"]["runner_source"]["path"]
+    )
+    runner_payload = runner_path.read_bytes() + b"# reviewed recovery fix\n"
+    runner_path.write_bytes(runner_payload)
+    verifier_path = (
+        Path(fixture.manifest["repository_root"])
+        / fixture.manifest["artifacts"]["runner_verifier_source"]["path"]
+    )
+    verifier_payload = verifier_path.read_bytes() + b"# recovery verifier fix\n"
+    verifier_path.write_bytes(verifier_payload)
+    review = _recovery_review(fixture, runner_payload, verifier_payload)
+    if drift == "runner":
+        review["recovery_source"]["runner_sha256"] = "0" * 64
+        review = _self_digest(review, "review_sha256")
+    elif drift == "verifier":
+        review["recovery_verifier"]["verifier_sha256"] = "0" * 64
+        review = _self_digest(review, "review_sha256")
+    elif drift == "envelope":
+        review["recovery_v2"]["envelope_sha256"] = "0" * 64
+        review = _self_digest(review, "review_sha256")
+    else:
+        review["review_sha256"] = "0" * 64
+    review_path = (
+        Path(fixture.manifest["repository_root"])
+        / _verifier().RECOVERY_REVIEW_RELATIVE_PATH
+    )
+    _write(review_path, _canonical(review))
+
+    with pytest.raises(
+        _verifier().VerificationError,
+        match="recovery|identity|bound source",
+    ):
+        _verify(fixture, recovery_review_path=review_path)
+
+
+@pytest.mark.parametrize("source_name", ("runner", "verifier"))
+def test_verifier_requires_recovery_binding_when_manifest_source_is_unchanged(
+    tmp_path, source_name
+):
+    fixture = _terminalized_fixture(tmp_path)
+    runner_path = (
+        Path(fixture.manifest["repository_root"])
+        / fixture.manifest["artifacts"]["runner_source"]["path"]
+    )
+    verifier_path = (
+        Path(fixture.manifest["repository_root"])
+        / fixture.manifest["artifacts"]["runner_verifier_source"]["path"]
+    )
+    review = _recovery_review(
+        fixture, runner_path.read_bytes(), verifier_path.read_bytes()
+    )
+    if source_name == "runner":
+        review["recovery_source"]["runner_sha256"] = "0" * 64
+    else:
+        review["recovery_verifier"]["verifier_sha256"] = "0" * 64
+    review = _self_digest(review, "review_sha256")
+    review_path = (
+        Path(fixture.manifest["repository_root"])
+        / _verifier().RECOVERY_REVIEW_RELATIVE_PATH
+    )
+    _write(review_path, _canonical(review))
+
+    with pytest.raises(
+        _verifier().VerificationError,
+        match="recovery source artifact differs",
+    ):
+        _verify(fixture, recovery_review_path=review_path)
 
 
 def test_bound_base_verifier_executes_observed_bytes_without_path_reopen(tmp_path):

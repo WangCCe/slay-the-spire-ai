@@ -20,6 +20,14 @@ from typing import Any
 LAUNCH_MANIFEST_SCHEMA_VERSION = (
     "noncombat-card-acceptance-training-runner-launch-manifest-v1"
 )
+RECOVERY_REVIEW_SCHEMA_VERSION = (
+    "noncombat-card-acceptance-empirical-successor-r6-"
+    "terminalization-recovery-boundary-review-v2"
+)
+RECOVERY_REVIEW_RELATIVE_PATH = (
+    "reports/noncombat_card_acceptance_empirical_successor_20260811_r6_"
+    "training_terminalization_recovery_boundary_review.json"
+)
 RUNNER_COMPOSITE_SCHEMA_VERSION = (
     "noncombat-card-acceptance-training-runner-command-composite-v1"
 )
@@ -1612,6 +1620,136 @@ def _validate_envelope(manifest: Mapping[str, Any], value: object) -> dict[str, 
     return envelope
 
 
+def _validate_recovery_review(
+    value: object,
+    *,
+    manifest: Mapping[str, Any],
+    envelope: Mapping[str, Any],
+    envelope_payload: bytes,
+    launch_payload: bytes,
+) -> dict[str, Any]:
+    review = _mapping(value, "terminalization recovery review")
+    _fields(
+        review,
+        {
+            "failed_v1_attempt",
+            "failure_prefix",
+            "recovery_source",
+            "recovery_verifier",
+            "recovery_v2",
+            "review_sha256",
+            "reviewed_at",
+            "schema_version",
+        },
+        "terminalization recovery review",
+    )
+    if review["schema_version"] != RECOVERY_REVIEW_SCHEMA_VERSION:
+        raise VerificationError("terminalization recovery review schema differs")
+    _self_digest(
+        review,
+        "review_sha256",
+        "terminalization recovery review",
+    )
+    source = _mapping(review["recovery_source"], "terminalization recovery source")
+    _fields(
+        source,
+        {"runner_path", "runner_sha256", "runner_size_bytes"},
+        "terminalization recovery source",
+    )
+    _sha(source["runner_sha256"], "terminalization recovery runner")
+    if (
+        source["runner_path"]
+        != manifest["artifacts"]["runner_source"]["path"]
+        or isinstance(source["runner_size_bytes"], bool)
+        or not isinstance(source["runner_size_bytes"], int)
+        or source["runner_size_bytes"] <= 0
+    ):
+        raise VerificationError("terminalization recovery source differs")
+    verifier_source = _mapping(
+        review["recovery_verifier"], "terminalization recovery verifier"
+    )
+    _fields(
+        verifier_source,
+        {"verifier_path", "verifier_sha256", "verifier_size_bytes"},
+        "terminalization recovery verifier",
+    )
+    _sha(verifier_source["verifier_sha256"], "terminalization recovery verifier")
+    if (
+        verifier_source["verifier_path"]
+        != manifest["artifacts"]["runner_verifier_source"]["path"]
+        or isinstance(verifier_source["verifier_size_bytes"], bool)
+        or not isinstance(verifier_source["verifier_size_bytes"], int)
+        or verifier_source["verifier_size_bytes"] <= 0
+    ):
+        raise VerificationError("terminalization recovery verifier differs")
+    recovery = _mapping(review["recovery_v2"], "terminalization recovery v2")
+    _fields(
+        recovery,
+        {
+            "command_execution_operations",
+            "downstream_authority_all_false",
+            "envelope_file_sha256",
+            "envelope_id",
+            "envelope_sha256",
+            "launch_file_sha256",
+            "launch_observation_sha256",
+            "pushed_source_validation_pending",
+            "terminalization_invoked",
+        },
+        "terminalization recovery v2",
+    )
+    if (
+        recovery["command_execution_operations"] != ["evidence_publication"]
+        or recovery["downstream_authority_all_false"] is not True
+        or recovery["envelope_id"] != envelope["envelope_id"]
+        or recovery["envelope_sha256"] != envelope["envelope_sha256"]
+        or recovery["envelope_file_sha256"]
+        != hashlib.sha256(envelope_payload).hexdigest()
+        or recovery["launch_file_sha256"]
+        != hashlib.sha256(launch_payload).hexdigest()
+        or recovery["launch_observation_sha256"]
+        != envelope["runner_launch_observation"]["observation_sha256"]
+        or recovery["pushed_source_validation_pending"] is not True
+        or recovery["terminalization_invoked"] is not False
+    ):
+        raise VerificationError("terminalization recovery v2 differs")
+    failed = _mapping(review["failed_v1_attempt"], "failed v1 attempt")
+    _fields(
+        failed,
+        {
+            "closure_artifacts_written",
+            "envelope_sha256",
+            "environment_accesses",
+            "error",
+            "failure_phase",
+            "invoked_once",
+            "retry_same_envelope",
+        },
+        "failed v1 attempt",
+    )
+    if (
+        failed["closure_artifacts_written"] is not False
+        or failed["environment_accesses"] != 0
+        or failed["failure_phase"] != "pre-start-validation"
+        or failed["invoked_once"] is not True
+        or failed["retry_same_envelope"] is not False
+        or failed["envelope_sha256"] == envelope["envelope_sha256"]
+    ):
+        raise VerificationError("failed v1 recovery boundary differs")
+    prefix = _mapping(review["failure_prefix"], "terminalization recovery prefix")
+    binding = envelope["terminalization_binding"]
+    if (
+        prefix.get("failure_paths") != binding["failure_paths"]
+        or prefix.get("lease_sha256") != binding["lease_sha256"]
+        or prefix.get("prefix_sha256") != binding["prefix_sha256"]
+        or prefix.get("run_envelope_sha256") != binding["run_envelope_sha256"]
+        or prefix.get("owner_child_process_id")
+        != binding["owner"]["child_process_id"]
+    ):
+        raise VerificationError("terminalization recovery prefix differs")
+    return copy.deepcopy(dict(review))
+
+
 def _observe_bound_sources(
     manifest: Mapping[str, Any],
     authority_payloads: Mapping[str, bytes],
@@ -1619,6 +1757,7 @@ def _observe_bound_sources(
         [Mapping[str, Any], Sequence[str], Mapping[str, Mapping[str, Any]]],
         Mapping[str, Any],
     ],
+    recovery_review: Mapping[str, Any] | None = None,
 ) -> dict[str, bytes]:
     root = Path(manifest["repository_root"])
     payloads: dict[str, bytes] = {}
@@ -1638,7 +1777,38 @@ def _observe_bound_sources(
             payload = path.read_bytes()
         except OSError as exc:
             raise VerificationError(f"bound source artifact cannot be read: {name}") from exc
-        if len(payload) != binding["size_bytes"] or hashlib.sha256(payload).hexdigest() != binding["sha256"]:
+        recovery_binding = None
+        recovery_path_field = None
+        recovery_size_field = None
+        recovery_sha_field = None
+        if recovery_review is not None and name == "runner_source":
+            recovery_binding = _mapping(
+                recovery_review.get("recovery_source"),
+                "terminalization recovery source",
+            )
+            recovery_path_field = "runner_path"
+            recovery_size_field = "runner_size_bytes"
+            recovery_sha_field = "runner_sha256"
+        elif recovery_review is not None and name == "runner_verifier_source":
+            recovery_binding = _mapping(
+                recovery_review.get("recovery_verifier"),
+                "terminalization recovery verifier",
+            )
+            recovery_path_field = "verifier_path"
+            recovery_size_field = "verifier_size_bytes"
+            recovery_sha_field = "verifier_sha256"
+        if recovery_binding is not None:
+            if (
+                recovery_binding[recovery_path_field] != binding["path"]
+                or recovery_binding[recovery_size_field] != len(payload)
+                or recovery_binding[recovery_sha_field]
+                != hashlib.sha256(payload).hexdigest()
+            ):
+                raise VerificationError(f"recovery source artifact differs: {name}")
+        elif (
+            len(payload) != binding["size_bytes"]
+            or hashlib.sha256(payload).hexdigest() != binding["sha256"]
+        ):
             raise VerificationError(f"bound source artifact differs: {name}")
         payloads[name] = payload
         absolute = path.as_posix()
@@ -1715,8 +1885,8 @@ def _observe_bound_sources(
         or observation["tracked"] is not True
         or observation["runner_ancestor"] is not True
         or observation["source_commit_bound"] is not True
-        or observation["head"] != manifest["runner_source_commit"]
-        or observation["pushed"] != observation["head"]
+        or _commit(observation["head"], "observed source HEAD")
+        != _commit(observation["pushed"], "observed pushed HEAD")
     ):
         raise VerificationError("pushed source boundary differs")
     return payloads
@@ -2458,6 +2628,7 @@ def verify_terminalized_runner_bundle(
     authorization_path: Path | str,
     approval_path: Path | str,
     launch_observation_path: Path | str,
+    recovery_review_path: Path | str | None = None,
     source_observer: Callable[
         [Mapping[str, Any], Sequence[str], Mapping[str, Mapping[str, Any]]],
         Mapping[str, Any],
@@ -2496,16 +2667,41 @@ def verify_terminalized_runner_bundle(
     )
     if launch != envelope["runner_launch_observation"]:
         raise VerificationError("standalone launch observation differs from envelope")
+    recovery_review = None
+    recovery_payload = None
+    if recovery_review_path is not None:
+        recovery_path = Path(recovery_review_path).resolve()
+        expected_recovery_path = (
+            Path(manifest["repository_root"]) / RECOVERY_REVIEW_RELATIVE_PATH
+        ).resolve()
+        if recovery_path != expected_recovery_path:
+            raise VerificationError("terminalization recovery review path differs")
+        recovery_document, recovery_payload = _read_canonical_payload(
+            recovery_path, "terminalization recovery review"
+        )
+        recovery_review = _validate_recovery_review(
+            recovery_document,
+            manifest=manifest,
+            envelope=envelope,
+            envelope_payload=envelope_payload,
+            launch_payload=launch_payload,
+        )
+    authority_payloads = {
+        paths["--manifest"].as_posix(): manifest_payload,
+        paths["--envelope"].as_posix(): envelope_payload,
+        paths["--authorization"].as_posix(): authorization_payload,
+        paths["--approval"].as_posix(): approval_payload,
+        paths["--launch-observation"].as_posix(): launch_payload,
+    }
+    if recovery_payload is not None:
+        authority_payloads[Path(recovery_review_path).resolve().as_posix()] = (
+            recovery_payload
+        )
     source_payloads = _observe_bound_sources(
         manifest,
-        {
-            paths["--manifest"].as_posix(): manifest_payload,
-            paths["--envelope"].as_posix(): envelope_payload,
-            paths["--authorization"].as_posix(): authorization_payload,
-            paths["--approval"].as_posix(): approval_payload,
-            paths["--launch-observation"].as_posix(): launch_payload,
-        },
+        authority_payloads,
         source_observer or _default_source_observer,
+        recovery_review=recovery_review,
     )
     request = _validate_request(manifest, source_payloads["training_request"])
     training_cohort = _validate_registration_sources(
@@ -2572,7 +2768,7 @@ def verify_terminalized_runner_bundle(
         or terminal_result.get("authority") != {name: False for name in AUTHORITY_NAMES}
     ):
         raise VerificationError("terminalized runner authority or rollback differs")
-    return {
+    result = {
         "authority": {name: False for name in AUTHORITY_NAMES},
         "checkpoint_count": checkpoint_count,
         "closure_sha256": closure["closure_sha256"],
@@ -2584,6 +2780,9 @@ def verify_terminalized_runner_bundle(
         "verdict": terminal_result["verdict"],
         "verified": True,
     }
+    if recovery_review is not None:
+        result["recovery_review_sha256"] = recovery_review["review_sha256"]
+    return result
 
 
 def _default_process_alive(process_id: int) -> bool:
@@ -2638,6 +2837,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--authorization", type=Path, required=True)
     parser.add_argument("--approval", type=Path, required=True)
     parser.add_argument("--launch-observation", type=Path, required=True)
+    parser.add_argument("--recovery-review", type=Path)
     return parser
 
 
@@ -2649,6 +2849,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         authorization_path=args.authorization,
         approval_path=args.approval,
         launch_observation_path=args.launch_observation,
+        recovery_review_path=args.recovery_review,
     )
     print(canonical_json_bytes(result).decode("ascii"), end="")
     return 0
