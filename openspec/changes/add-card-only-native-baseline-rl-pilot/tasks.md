@@ -1,8 +1,8 @@
 ## 1. Bound Existing Evidence
 
-- [ ] 1.1 Add a source-bound reader for the archived warm-start train/validation card rows that rejects final-test access and corpus drift.
-- [ ] 1.2 Add a Bottled card-label bridge that binds the clean checkout, maps every label to one legal candidate, and reports family/confidence/disagreement counts.
-- [ ] 1.3 Add focused regressions for missing context, ambiguous labels, bowl mapping, corpus drift, and final-test denial.
+- [x] 1.1 Add a source-bound reader for the archived warm-start train/validation card rows that rejects final-test access and corpus drift.
+- [x] 1.2 Add a Bottled card-label bridge that binds the clean checkout, maps every label to one legal candidate, and reports family/confidence/disagreement counts.
+- [x] 1.3 Add focused regressions for missing context, ambiguous labels, bowl mapping, corpus drift, and final-test denial.
 
 ## 2. Hybrid Native-Baseline Rollouts
 
