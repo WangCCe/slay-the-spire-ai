@@ -1,6 +1,6 @@
 # Project Direction
 
-Last updated: 2026-08-08
+Last updated: 2026-08-12
 
 ## Current Phase
 
@@ -1386,8 +1386,33 @@ The next authorized sequence is:
     structural canary, one untouched 512-seed paired holdout, and exact rollback
     to the registered control. It must separately choose initialization, loss
     coefficients, optimizer, cohort, and policy-quality thresholds.
+61. Preserve the r6 card-acceptance empirical successor as a terminal
+    infrastructure failure with no learning evidence. Its one logical training
+    identity stopped before native loading, environment construction, seed
+    access, checkpoint publication, or optimizer work because the registered
+    zero-byte `analysis_scripts/__init__.py` package marker was rejected by a
+    generic positive-size source binding. Independent terminal verification
+    reconstructed zero accesses and updates, verified rollback to the control,
+    and kept candidate, canary, holdout, qualification, promotion, gameplay,
+    and production authority false. Do not retry r6 or reinterpret it as a
+    policy result. The immediate lane is a focused zero-byte source-binding
+    repair followed by a new exploratory smoke-training identity. Exploratory
+    runs may be repaired and repeated under new attempt identities; frozen
+    no-retry cohorts, complete independent review, and full qualification gates
+    are deferred until a usable model candidate exists. Allocate routine effort
+    primarily to training and result analysis, use focused tests for concrete
+    blockers, and reserve full gates and independent review for shared-risk or
+    qualification boundaries.
 
 ## Work Lanes
+
+The active lane is exploratory card-acceptance training. First repair the
+legitimate zero-byte source-binding boundary with focused regressions, then run
+a short new-identity smoke that proves environment construction, episode
+throughput, optimizer progress, and checkpoint publication. If healthy, extend
+to a bounded multi-hour exploratory run before designing another qualification
+chain. This lane is simulator-only and does not authorize production loading,
+CommunicationMod, gameplay, policy promotion, or formal-RL claims.
 
 The offline production candidate-schema fix, anti-retry review, r2 successor,
 potion, relic, and card-cost identity repairs, post-repair Current baseline

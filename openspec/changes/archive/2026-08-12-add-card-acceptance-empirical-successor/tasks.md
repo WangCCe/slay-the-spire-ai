@@ -56,15 +56,15 @@
 - [x] 6.2 Recheck fresh launch-time revocation state, run `build-inventory` at most once, then run distinct post-build verification and create the independently verified fresh exclusion inventory and all-false `512/128/512` empirical registration without native loading or environment seed access.
 - [x] 6.3 Commit and push the registration, then render and independently review the exact bounded training request.
 - [x] 6.4 Recheck fresh approval-time revocation state, then publish and push one exact tracked training authorization from a valid standing-delegation resolution or exact external-human approval record.
-- [ ] 6.5 Recheck fresh revocation state and run at most one logical paired training identity, using only its registered setup reopen or complete-boundary continuation rule.
-- [ ] 6.6 Independently verify and preserve training completion, exact family-collapse stop, or terminal failure before deciding canary eligibility.
-- [ ] 6.7 Only after the exact independently verified no-collapse verdict proves 512 pairs, eight chunks, and eight updates per arm, publish and verify the frozen candidate/control seal with candidate disabled and exact control target; collapse/failure checkpoints remain ineligible evidence only.
+- [x] 6.5 Recheck fresh revocation state and run at most one logical paired training identity, using only its registered setup reopen or complete-boundary continuation rule. The sole r6 identity failed before environment access and was not retried.
+- [x] 6.6 Independently verify and preserve training completion, exact family-collapse stop, or terminal failure before deciding canary eligibility. The pushed verifier reconstructed the terminal failure, zero-access resource ledger, and rollback.
+- [x] 6.7 Only after the exact independently verified no-collapse verdict proves 512 pairs, eight chunks, and eight updates per arm, publish and verify the frozen candidate/control seal with candidate disabled and exact control target; collapse/failure checkpoints remain ineligible evidence only. Not applicable because r6 produced a verified terminal failure and no eligible checkpoint.
 
 ## 7. Canary, Holdout, And Closeout
 
-- [ ] 7.1 Render, review, publish, and push one exact canary request/authorization only for a valid frozen seal and fresh revocation observation.
-- [ ] 7.2 Recheck fresh revocation state, run the canary at most once, independently verify registered output commitments, exact replay, shadow replay, and every structural gate, and preserve zero holdout access on any failure.
-- [ ] 7.3 Only after verified canary passage, render, review, publish, and push one exact untouched holdout request/authorization with a fresh revocation observation.
-- [ ] 7.4 Recheck fresh revocation state, run the holdout at most once, and independently reconstruct its structural evidence, bootstrap interval, victory counts, and exact outcome class.
-- [ ] 7.5 Publish a bounded postmortem, use normal closeout for a complete four-class holdout or one mapped rollback trigger for a failure, restore/verify the control target and production isolation, keep every downstream authority false, and preserve all consumed identities.
-- [ ] 7.6 Sync the delta spec, update project direction, archive the completed change, strict-validate the global OpenSpec set, commit, and push closeout.
+- [x] 7.1 Render, review, publish, and push one exact canary request/authorization only for a valid frozen seal and fresh revocation observation. Not applicable because no frozen seal was eligible.
+- [x] 7.2 Recheck fresh revocation state, run the canary at most once, independently verify registered output commitments, exact replay, shadow replay, and every structural gate, and preserve zero holdout access on any failure. Not applicable; canary access remained zero.
+- [x] 7.3 Only after verified canary passage, render, review, publish, and push one exact untouched holdout request/authorization with a fresh revocation observation. Not applicable because canary was ineligible.
+- [x] 7.4 Recheck fresh revocation state, run the holdout at most once, and independently reconstruct its structural evidence, bootstrap interval, victory counts, and exact outcome class. Not applicable; holdout access remained zero.
+- [x] 7.5 Publish a bounded postmortem, use normal closeout for a complete four-class holdout or one mapped rollback trigger for a failure, restore/verify the control target and production isolation, keep every downstream authority false, and preserve all consumed identities.
+- [x] 7.6 Sync the delta spec, update project direction, archive the completed change, strict-validate the global OpenSpec set, commit, and push closeout.
