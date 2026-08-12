@@ -25,7 +25,7 @@
 
 ## 5. Bounded Pilot And Report
 
-- [ ] 5.1 Publish a compact source/native/Bottled/corpus/config registration and preflight that denies protected cohorts, game processes, CommunicationMod, and production checkpoints.
+- [x] 5.1 Publish a compact source/native/Bottled/corpus/config registration and preflight that denies protected cohorts, game processes, CommunicationMod, and production checkpoints.
 - [ ] 5.2 Run the warm-start gate once; only on pass, run at most four residual chunks on the consumed development cohort.
 - [ ] 5.3 Run one frozen candidate-versus-native-control comparison and publish the strict ready/not-ready verdict with rollback state.
 
