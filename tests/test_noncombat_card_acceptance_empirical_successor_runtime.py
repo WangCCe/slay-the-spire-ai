@@ -1623,6 +1623,142 @@ def test_paired_chunk_update_applies_one_named_step_per_arm_and_preserves_frozen
         runtime.restore_paired_training_checkpoint(drift_payload)
 
 
+def test_candidate_only_chunk_update_has_no_control_optimizer_or_terms():
+    runtime = _runtime()
+    bootstrap = runtime.build_matched_bootstrap()
+    optimizer = runtime.build_candidate_card_optimizer(bootstrap)
+    pairs = _synthetic_paired_rollouts(runtime, bootstrap)
+    native_control_pairs = tuple(
+        replace(
+            pair,
+            control=replace(
+                pair.control,
+                decisions=tuple(
+                    replace(decision, card_terms=None)
+                    for decision in pair.control.decisions
+                ),
+            ),
+        )
+        for pair in pairs
+    )
+    control_before = {
+        name: tensor.detach().clone()
+        for name, tensor in bootstrap.control.shared_card_ranker.state_dict().items()
+    }
+    candidate_before = {
+        name: tensor.detach().clone()
+        for name, tensor in bootstrap.candidate.card_policy.state_dict().items()
+    }
+
+    update = runtime.apply_candidate_cross_fitted_chunk_update_exploratory(
+        bootstrap, optimizer, native_control_pairs
+    )
+
+    assert update.seeds == tuple(range(100, 164))
+    assert update.baseline.arm == "candidate"
+    assert update.candidate.objective.card_decision_count == 64
+    assert update.candidate.optimizer_step.component_order == ("total_loss",)
+    assert all(
+        name.startswith(("family_head.", "conditional_ranker."))
+        for name in update.candidate.optimizer_step.parameter_names
+    )
+    assert any(
+        not torch.equal(candidate_before[name], tensor)
+        for name, tensor in bootstrap.candidate.card_policy.state_dict().items()
+    )
+    for name, tensor in bootstrap.control.shared_card_ranker.state_dict().items():
+        assert torch.equal(tensor, control_before[name])
+    encoded_optimizer = runtime._decode_state_value(
+        runtime.encode_optimizer_state(optimizer), "candidate optimizer"
+    )
+    assert all(
+        float(state["step"].item()) == 1.0
+        for state in encoded_optimizer["state"].values()
+    )
+
+
+def test_candidate_only_chunk_update_rejects_nonfinite_reward_and_gradient(
+    monkeypatch,
+):
+    runtime = _runtime()
+    bootstrap = runtime.build_matched_bootstrap()
+    optimizer = runtime.build_candidate_card_optimizer(bootstrap)
+    pairs = _synthetic_paired_rollouts(runtime, bootstrap)
+    native_control_pairs = tuple(
+        replace(
+            pair,
+            control=replace(
+                pair.control,
+                decisions=tuple(
+                    replace(decision, card_terms=None)
+                    for decision in pair.control.decisions
+                ),
+            ),
+        )
+        for pair in pairs
+    )
+    candidate_before = {
+        name: tensor.detach().clone()
+        for name, tensor in bootstrap.candidate.card_policy.state_dict().items()
+    }
+
+    invalid_reward_pairs = (
+        replace(
+            native_control_pairs[0],
+            candidate=replace(
+                native_control_pairs[0].candidate, rewards=(float("nan"),)
+            ),
+        ),
+        *native_control_pairs[1:],
+    )
+    with pytest.raises(runtime.SuccessorRuntimeError, match="finite"):
+        runtime.apply_candidate_cross_fitted_chunk_update_exploratory(
+            bootstrap, optimizer, invalid_reward_pairs
+        )
+
+    original_objective = runtime.build_arm_card_reward_objective
+    candidate_parameter = next(
+        bootstrap.candidate.card_policy.family_head.parameters()
+    )
+
+    class _NonFiniteGradient(torch.autograd.Function):
+        @staticmethod
+        def forward(ctx, value):
+            ctx.shape = value.shape
+            return value.new_zeros(())
+
+        @staticmethod
+        def backward(ctx, gradient):
+            return torch.full(
+                ctx.shape,
+                float("nan"),
+                dtype=gradient.dtype,
+                device=gradient.device,
+            )
+
+    def invalid_gradient_objective(rows):
+        objective = original_objective(rows)
+        return replace(
+            objective,
+            total_loss=(
+                objective.total_loss
+                + _NonFiniteGradient.apply(candidate_parameter)
+            ),
+        )
+
+    monkeypatch.setattr(
+        runtime, "build_arm_card_reward_objective", invalid_gradient_objective
+    )
+    with pytest.raises(runtime.SuccessorRuntimeError, match="gradient contract"):
+        runtime.apply_candidate_cross_fitted_chunk_update_exploratory(
+            bootstrap, optimizer, native_control_pairs
+        )
+
+    assert optimizer.state == {}
+    for name, tensor in bootstrap.candidate.card_policy.state_dict().items():
+        assert torch.equal(tensor, candidate_before[name])
+
+
 def test_exploratory_total_loss_update_matches_full_update_numerically():
     runtime = _runtime()
     full = runtime.initialize_paired_training_runtime()

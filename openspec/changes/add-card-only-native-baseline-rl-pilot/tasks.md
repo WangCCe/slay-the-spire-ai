@@ -19,9 +19,9 @@
 
 ## 4. Candidate-Only Residual Runtime
 
-- [ ] 4.1 Adapt the accelerated four-fold baseline and optimizer step so only candidate card parameters update and native control remains optimizer-free.
-- [ ] 4.2 Add the fixed pre-RL source-state probe, complete-boundary checkpoint restore, resource accounting, and 5%-95% concentration stop.
-- [ ] 4.3 Add regressions for one complete chunk, invalid gradients/rewards, unsupported episodes, deadline failure, concentration stop, and partial-checkpoint rejection.
+- [x] 4.1 Adapt the accelerated four-fold baseline and optimizer step so only candidate card parameters update and native control remains optimizer-free.
+- [x] 4.2 Add the fixed pre-RL source-state probe, complete-boundary checkpoint restore, resource accounting, and 5%-95% concentration stop.
+- [x] 4.3 Add regressions for one complete chunk, invalid gradients/rewards, unsupported episodes, deadline failure, concentration stop, and partial-checkpoint rejection.
 
 ## 5. Bounded Pilot And Report
 

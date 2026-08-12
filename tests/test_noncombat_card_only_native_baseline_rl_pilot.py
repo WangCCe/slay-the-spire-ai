@@ -1,7 +1,9 @@
 import copy
+from dataclasses import replace
 import hashlib
 import json
 from pathlib import Path
+from types import SimpleNamespace
 
 import pytest
 import torch
@@ -12,14 +14,21 @@ from analysis_scripts.noncombat_card_only_native_baseline_rl_pilot import (
     DATASET_SCHEMA_VERSION,
     DEMONSTRATION_SCHEMA_VERSION,
     BoundCardCorpus,
+    CardWarmStartResult,
     CardOnlyPilotBlocked,
     WARM_START_EPOCHS,
     classify_card_warm_start_gate,
+    classify_card_probe,
+    collect_and_complete_card_only_residual_chunk,
+    complete_card_only_residual_chunk,
+    encode_card_only_residual_checkpoint,
     encode_candidate_card_policy,
     label_bound_card_corpus,
     load_bound_card_corpus,
+    initialize_card_only_residual_runtime,
     project_bottled_card_labels,
     require_card_warm_start_gate,
+    restore_card_only_residual_checkpoint,
     run_fixed_card_warm_start,
 )
 from analysis_scripts.noncombat_simulator_adapter import (
@@ -470,3 +479,239 @@ def test_warm_start_gate_classification_and_failed_gate_block_residual_access(
     assert failed.gate["verdict"] == "card_warm_start_gate_failed"
     with pytest.raises(CardOnlyPilotBlocked, match="residual RL is not authorized"):
         require_card_warm_start_gate(failed)
+
+
+def _passed_warm_start(runtime):
+    bootstrap = runtime.build_matched_bootstrap()
+    model = encode_candidate_card_policy(bootstrap)
+    metrics = {
+        "action_agreement": 0.75,
+        "family_agreement": 0.80,
+        "non_take_rate": 0.45,
+        "predictions": [],
+        "row_count": 100,
+        "take_rate": 0.55,
+    }
+    return CardWarmStartResult(
+        bootstrap=bootstrap,
+        configuration={"fixture": True},
+        zero_model=model,
+        final_model=model,
+        zero_validation={**metrics, "family_agreement": 0.60},
+        final_validation=metrics,
+        gate={"passed": True, "verdict": "card_warm_start_gate_passed"},
+        history=(),
+        optimizer_steps=0,
+    )
+
+
+def _residual_runtime(tmp_path):
+    from analysis_scripts import (
+        noncombat_card_acceptance_empirical_successor_runtime as runtime,
+    )
+
+    labels = _labeled_fixture(tmp_path)
+    return initialize_card_only_residual_runtime(
+        _passed_warm_start(runtime), labels
+    )
+
+
+def test_zero_step_residual_checkpoint_round_trips_without_control_optimizer(tmp_path):
+    runtime = _residual_runtime(tmp_path)
+
+    checkpoint = encode_card_only_residual_checkpoint(runtime)
+    restored = restore_card_only_residual_checkpoint(
+        checkpoint, probe_rows=runtime.probe_rows
+    )
+    parsed = json.loads(checkpoint)
+
+    assert encode_card_only_residual_checkpoint(restored) == checkpoint
+    assert "candidate_optimizer" in parsed
+    assert "control_optimizer" not in parsed
+    assert parsed["coordinates"] == {
+        "candidate_optimizer_steps": 0,
+        "completed_decisions": 0,
+        "completed_pairs": 0,
+        "environment_accesses": 0,
+        "next_chunk_index": 0,
+    }
+
+
+def test_residual_checkpoint_rejects_partial_or_probe_drift(tmp_path):
+    runtime = _residual_runtime(tmp_path)
+    parsed = json.loads(encode_card_only_residual_checkpoint(runtime))
+    parsed["partial"] = True
+    partial = json.dumps(
+        parsed, ensure_ascii=True, separators=(",", ":"), sort_keys=True
+    ).encode("ascii")
+
+    with pytest.raises(CardOnlyPilotBlocked, match="fields differ"):
+        restore_card_only_residual_checkpoint(
+            partial, probe_rows=runtime.probe_rows
+        )
+    with pytest.raises(CardOnlyPilotBlocked, match="probe"):
+        restore_card_only_residual_checkpoint(
+            encode_card_only_residual_checkpoint(runtime),
+            probe_rows=(),
+        )
+
+
+def test_residual_collection_deadline_and_failure_preserve_complete_checkpoint(
+    tmp_path, monkeypatch
+):
+    from analysis_scripts import noncombat_card_only_native_baseline_rl_pilot as pilot
+
+    runtime = _residual_runtime(tmp_path)
+    before = encode_card_only_residual_checkpoint(runtime)
+    environment_calls = []
+
+    with pytest.raises(CardOnlyPilotBlocked, match="deadline"):
+        collect_and_complete_card_only_residual_chunk(
+            runtime,
+            environment_factory=lambda seed: environment_calls.append(seed),
+            seeds=tuple(range(64)),
+            chunk_index=0,
+            deadline=0.0,
+            clock=lambda: 1.0,
+        )
+    assert environment_calls == []
+    assert encode_card_only_residual_checkpoint(runtime) == before
+
+    monkeypatch.setattr(
+        pilot.successor_runtime,
+        "rollout_paired_card_only_native_baseline_training_episode",
+        lambda *_args, **_kwargs: (_ for _ in ()).throw(
+            pilot.successor_runtime.SuccessorRuntimeError("fixture failure")
+        ),
+    )
+    with pytest.raises(CardOnlyPilotBlocked, match="fixture failure"):
+        collect_and_complete_card_only_residual_chunk(
+            runtime,
+            environment_factory=lambda seed: object(),
+            seeds=tuple(range(64)),
+            chunk_index=0,
+            deadline=10.0,
+            clock=lambda: 0.0,
+        )
+    assert encode_card_only_residual_checkpoint(runtime) == before
+
+
+def _fake_residual_pairs(*, unsupported=False):
+    pairs = []
+    for seed in range(64):
+        candidate_decision = SimpleNamespace(
+            card_terms=object(), category="card_reward"
+        )
+        control_decision = SimpleNamespace(card_terms=None, category="card_reward")
+        candidate = SimpleNamespace(
+            decisions=(candidate_decision,),
+            final_snapshot={"terminal": True},
+            rewards=(0.0,),
+            seed=seed,
+            unsupported_reason=("fixture unsupported" if unsupported and seed == 0 else None),
+        )
+        control = SimpleNamespace(
+            decisions=(control_decision,),
+            final_snapshot={"terminal": True},
+            rewards=(0.0,),
+            seed=seed,
+            unsupported_reason=None,
+        )
+        pairs.append(SimpleNamespace(seed=seed, candidate=candidate, control=control))
+    return tuple(pairs)
+
+
+def test_residual_concentration_stop_is_checkpointed_before_more_access(
+    tmp_path, monkeypatch
+):
+    from analysis_scripts import noncombat_card_only_native_baseline_rl_pilot as pilot
+
+    runtime = _residual_runtime(tmp_path)
+
+    def fake_update(bootstrap, optimizer, _episodes):
+        for parameter in optimizer.param_groups[0]["params"]:
+            parameter.grad = torch.full_like(parameter, 1e-6)
+        optimizer.step()
+        optimizer.zero_grad(set_to_none=True)
+        return {"fixture": True}
+
+    monkeypatch.setattr(
+        pilot.successor_runtime,
+        "apply_candidate_cross_fitted_chunk_update_exploratory",
+        fake_update,
+    )
+    monkeypatch.setattr(
+        pilot,
+        "evaluate_card_warm_start",
+        lambda *_args, **_kwargs: {
+            "action_agreement": 0.0,
+            "family_agreement": 0.0,
+            "non_take_rate": 0.0,
+            "predictions": [],
+            "row_count": 1,
+            "take_rate": 1.0,
+        },
+    )
+
+    completed = complete_card_only_residual_chunk(
+        runtime, _fake_residual_pairs(), chunk_index=0
+    )
+
+    assert classify_card_probe({"take_rate": 1.0, "non_take_rate": 0.0})[
+        "stop"
+    ] is True
+    assert completed.probe["stop"] is True
+    assert completed.runtime.stopped_for_concentration is True
+    assert restore_card_only_residual_checkpoint(
+        completed.checkpoint, probe_rows=runtime.probe_rows
+    ).stopped_for_concentration is True
+    with pytest.raises(CardOnlyPilotBlocked, match="cannot start"):
+        complete_card_only_residual_chunk(
+            completed.runtime, _fake_residual_pairs(), chunk_index=1
+        )
+
+
+def test_residual_unsupported_pair_blocks_before_optimizer_step(tmp_path):
+    runtime = _residual_runtime(tmp_path)
+    before = encode_card_only_residual_checkpoint(runtime)
+
+    with pytest.raises(CardOnlyPilotBlocked, match="unsupported"):
+        complete_card_only_residual_chunk(
+            runtime, _fake_residual_pairs(unsupported=True), chunk_index=0
+        )
+
+    assert encode_card_only_residual_checkpoint(runtime) == before
+
+
+def test_residual_probe_failure_preserves_complete_checkpoint(tmp_path, monkeypatch):
+    from analysis_scripts import noncombat_card_only_native_baseline_rl_pilot as pilot
+
+    runtime = _residual_runtime(tmp_path)
+    before = encode_card_only_residual_checkpoint(runtime)
+
+    def fake_update(bootstrap, optimizer, _episodes):
+        for parameter in optimizer.param_groups[0]["params"]:
+            parameter.grad = torch.full_like(parameter, 1e-6)
+        optimizer.step()
+        optimizer.zero_grad(set_to_none=True)
+        return {"fixture": True}
+
+    monkeypatch.setattr(
+        pilot.successor_runtime,
+        "apply_candidate_cross_fitted_chunk_update_exploratory",
+        fake_update,
+    )
+    monkeypatch.setattr(
+        pilot,
+        "evaluate_card_warm_start",
+        lambda *_args, **_kwargs: (_ for _ in ()).throw(
+            CardOnlyPilotBlocked("fixture probe failure")
+        ),
+    )
+
+    with pytest.raises(CardOnlyPilotBlocked, match="fixture probe failure"):
+        complete_card_only_residual_chunk(
+            runtime, _fake_residual_pairs(), chunk_index=0
+        )
+
+    assert encode_card_only_residual_checkpoint(runtime) == before

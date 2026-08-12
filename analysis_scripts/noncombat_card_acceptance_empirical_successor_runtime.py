@@ -290,6 +290,13 @@ class PairedChunkUpdateEvidence:
     control: ArmChunkUpdateEvidence
 
 
+@dataclass(frozen=True)
+class CandidateChunkUpdateEvidence:
+    seeds: tuple[int, ...]
+    baseline: ArmCrossFittedBaseline
+    candidate: ArmChunkUpdateEvidence
+
+
 @dataclass
 class PairedTrainingRuntime:
     bootstrap: PairedBootstrap
@@ -910,6 +917,20 @@ def build_arm_optimizers(bootstrap: PairedBootstrap) -> ArmOptimizers:
         candidate=torch.optim.Adam(candidate_parameters, **_REGISTERED_ADAM_OPTIONS),
         control=torch.optim.Adam(control_parameters, **_REGISTERED_ADAM_OPTIONS),
     )
+
+
+def build_candidate_card_optimizer(
+    bootstrap: PairedBootstrap,
+) -> torch.optim.Adam:
+    """Build the fixed Adam owning only candidate hierarchical card heads."""
+    _validate_rollout_bootstrap(bootstrap)
+    parameters = tuple(
+        parameter
+        for _, parameter in _arm_named_trainable_parameters(
+            bootstrap, arm="candidate"
+        )
+    )
+    return torch.optim.Adam(parameters, **_REGISTERED_ADAM_OPTIONS)
 
 
 def _validated_registered_adam(
@@ -3748,6 +3769,33 @@ def build_paired_cross_fitted_baselines(
     )
 
 
+def build_candidate_cross_fitted_baseline(
+    episodes: Sequence[PairedEpisodeRollout],
+) -> ArmCrossFittedBaseline:
+    """Fit the registered four-fold baseline from candidate trajectories only."""
+    if isinstance(episodes, (str, bytes)) or not isinstance(episodes, Sequence):
+        raise SuccessorRuntimeError("candidate episodes must be a sequence")
+    source = tuple(episodes)
+    if len(source) != TRAJECTORIES_PER_CHUNK:
+        raise SuccessorRuntimeError(
+            "candidate cross-fitted baseline requires exactly 64 pairs"
+        )
+    seeds = tuple(pair.seed for pair in source)
+    if any(
+        not isinstance(pair, PairedEpisodeRollout)
+        or pair.candidate.seed != pair.seed
+        or pair.control.seed != pair.seed
+        for pair in source
+    ) or seeds != tuple(sorted(set(seeds))):
+        raise SuccessorRuntimeError(
+            "candidate episodes must use one unique ascending seed slice"
+        )
+    decisions = _build_arm_baseline_decisions(
+        tuple(pair.candidate for pair in source), arm="candidate"
+    )
+    return _build_cross_fitted_arm_baseline(decisions, arm="candidate")
+
+
 def build_arm_card_reward_rows(
     episodes: Sequence[PairedEpisodeRollout],
     *,
@@ -3975,6 +4023,77 @@ def apply_paired_cross_fitted_chunk_update_exploratory(
         optimizers,
         episodes,
         reconstruct_components=False,
+    )
+
+
+def apply_candidate_cross_fitted_chunk_update_exploratory(
+    bootstrap: PairedBootstrap,
+    candidate_optimizer: torch.optim.Optimizer,
+    episodes: Sequence[PairedEpisodeRollout],
+) -> CandidateChunkUpdateEvidence:
+    """Apply one accelerated candidate-card step with no control optimizer."""
+    _validate_rollout_bootstrap(bootstrap)
+    candidate_named = _arm_named_trainable_parameters(
+        bootstrap, arm="candidate"
+    )
+    expected_parameters = tuple(parameter for _, parameter in candidate_named)
+    actual_parameters = _validated_registered_adam(candidate_optimizer)
+    if len(actual_parameters) != len(expected_parameters) or any(
+        actual is not expected
+        for actual, expected in zip(
+            actual_parameters, expected_parameters, strict=True
+        )
+    ):
+        raise SuccessorRuntimeError("candidate optimizer parameter ownership differs")
+
+    baseline = build_candidate_cross_fitted_baseline(episodes)
+    rows = build_arm_card_reward_rows(
+        episodes, arm="candidate", baseline=baseline
+    )
+    objective = build_arm_card_reward_objective(rows)
+    guarded_before = (
+        _model_state_bytes(bootstrap.candidate.frozen_noncard_ranker),
+        _model_state_bytes(bootstrap.control.shared_card_ranker),
+        _model_state_bytes(bootstrap.control.frozen_noncard_ranker),
+    )
+    generators_before = {
+        name: generator.get_state().clone()
+        for name, generator in bootstrap.generators.items()
+    }
+    prepared = _prepare_arm_optimizer_step(
+        candidate_optimizer,
+        objective,
+        parameters=expected_parameters,
+        parameter_names=tuple(name for name, _ in candidate_named),
+        reconstruct_components=False,
+    )
+    step = _commit_prepared_arm_step(candidate_optimizer, prepared)
+    _validate_rollout_bootstrap(bootstrap)
+    guarded_after = (
+        _model_state_bytes(bootstrap.candidate.frozen_noncard_ranker),
+        _model_state_bytes(bootstrap.control.shared_card_ranker),
+        _model_state_bytes(bootstrap.control.frozen_noncard_ranker),
+    )
+    if guarded_after != guarded_before:
+        raise SuccessorRuntimeError("candidate update changed guarded model bytes")
+    if any(
+        not torch.equal(bootstrap.generators[name].get_state(), state)
+        for name, state in generators_before.items()
+    ):
+        raise SuccessorRuntimeError("candidate update changed an arm generator")
+    return CandidateChunkUpdateEvidence(
+        seeds=tuple(pair.seed for pair in episodes),
+        baseline=baseline,
+        candidate=ArmChunkUpdateEvidence(
+            arm="candidate",
+            decision_ids=tuple(
+                decision.decision_id
+                for decision in baseline.decisions
+                if decision.category == "card_reward"
+            ),
+            objective=objective,
+            optimizer_step=step,
+        ),
     )
 
 

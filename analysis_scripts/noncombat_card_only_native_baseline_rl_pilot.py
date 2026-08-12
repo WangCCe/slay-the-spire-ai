@@ -5,6 +5,8 @@ from __future__ import annotations
 import copy
 import hashlib
 import json
+import math
+import time
 from collections import Counter
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
@@ -119,6 +121,36 @@ class CardWarmStartResult:
     gate: dict[str, Any]
     history: tuple[dict[str, Any], ...]
     optimizer_steps: int
+
+
+@dataclass
+class CardOnlyResidualRuntime:
+    bootstrap: Any
+    candidate_optimizer: torch.optim.Adam
+    probe_rows: tuple[ProjectedCardLabel, ...]
+    warm_start_model_sha256: str
+    next_chunk_index: int = 0
+    completed_pairs: int = 0
+    completed_decisions: int = 0
+    environment_accesses: int = 0
+    candidate_optimizer_steps: int = 0
+    completed_chunk_summaries: list[dict[str, Any]] | None = None
+    stopped_for_concentration: bool = False
+
+    def __post_init__(self) -> None:
+        if self.completed_chunk_summaries is None:
+            self.completed_chunk_summaries = []
+
+
+@dataclass(frozen=True)
+class CompletedCardOnlyResidualChunk:
+    chunk_index: int
+    seeds: tuple[int, ...]
+    episodes: tuple[Any, ...]
+    update: Any
+    probe: dict[str, Any]
+    checkpoint: bytes
+    runtime: CardOnlyResidualRuntime
 
 
 def _mapping(value: object, label: str) -> dict[str, Any]:
@@ -956,6 +988,415 @@ def require_card_warm_start_gate(result: CardWarmStartResult) -> Any:
     return result.bootstrap
 
 
+def _probe_sha256(rows: Sequence[ProjectedCardLabel]) -> str:
+    if not rows:
+        raise CardOnlyPilotBlocked("card residual probe must be nonempty")
+    payload = [
+        {
+            "candidate_action_ids": [
+                candidate["action_id"] for candidate in row.candidates
+            ],
+            "cohort": row.cohort,
+            "decision_index": row.decision_index,
+            "projection_adapter_api_version": row.projection_adapter_api_version,
+            "seed": row.seed,
+            "source_adapter_api_version": row.source_adapter_api_version,
+            "source_snapshot_sha256": hashlib.sha256(
+                canonical_json_bytes(row.snapshot)
+            ).hexdigest(),
+            "target_action_id": row.target_action_id,
+            "target_family": row.target_family,
+        }
+        for row in rows
+    ]
+    return hashlib.sha256(canonical_json_bytes(payload)).hexdigest()
+
+
+def classify_card_probe(metrics: Mapping[str, Any]) -> dict[str, Any]:
+    value = _mapping(metrics, "card residual probe")
+    take_rate = float(value.get("take_rate"))
+    non_take_rate = float(value.get("non_take_rate"))
+    if (
+        not math.isfinite(take_rate)
+        or not math.isfinite(non_take_rate)
+        or abs((take_rate + non_take_rate) - 1.0) > 1e-12
+    ):
+        raise CardOnlyPilotBlocked("card residual probe rates are invalid")
+    passed = (
+        WARM_START_MIN_FAMILY_COVERAGE
+        <= take_rate
+        <= WARM_START_MAX_FAMILY_COVERAGE
+        and WARM_START_MIN_FAMILY_COVERAGE
+        <= non_take_rate
+        <= WARM_START_MAX_FAMILY_COVERAGE
+    )
+    return {
+        "non_take_rate": non_take_rate,
+        "passed": passed,
+        "stop": not passed,
+        "take_rate": take_rate,
+    }
+
+
+def initialize_card_only_residual_runtime(
+    warm_start: CardWarmStartResult,
+    label_artifact: Mapping[str, Any],
+) -> CardOnlyResidualRuntime:
+    bootstrap = require_card_warm_start_gate(warm_start)
+    if encode_candidate_card_policy(bootstrap) != warm_start.final_model:
+        raise CardOnlyPilotBlocked("warm-start final model binding differs")
+    probe_rows = project_bottled_card_labels(
+        label_artifact, cohort="validation"
+    )
+    runtime = CardOnlyResidualRuntime(
+        bootstrap=bootstrap,
+        candidate_optimizer=successor_runtime.build_candidate_card_optimizer(
+            bootstrap
+        ),
+        probe_rows=probe_rows,
+        warm_start_model_sha256=hashlib.sha256(warm_start.final_model).hexdigest(),
+    )
+    _validate_card_only_residual_runtime(runtime)
+    return runtime
+
+
+def _validate_card_only_residual_runtime(runtime: CardOnlyResidualRuntime) -> None:
+    if not isinstance(runtime, CardOnlyResidualRuntime):
+        raise CardOnlyPilotBlocked("card residual runtime type mismatch")
+    if not isinstance(runtime.completed_chunk_summaries, list):
+        raise CardOnlyPilotBlocked("card residual summaries must be a list")
+    coordinates = (
+        runtime.next_chunk_index,
+        runtime.completed_pairs,
+        runtime.completed_decisions,
+        runtime.environment_accesses,
+        runtime.candidate_optimizer_steps,
+    )
+    if any(
+        isinstance(value, bool) or not isinstance(value, int) or value < 0
+        for value in coordinates
+    ):
+        raise CardOnlyPilotBlocked("card residual coordinate is invalid")
+    if not 0 <= runtime.next_chunk_index <= 4:
+        raise CardOnlyPilotBlocked("card residual chunk coordinate exceeds four")
+    if (
+        runtime.completed_pairs != 64 * runtime.next_chunk_index
+        or runtime.environment_accesses != 128 * runtime.next_chunk_index
+        or runtime.candidate_optimizer_steps != runtime.next_chunk_index
+        or len(runtime.completed_chunk_summaries) != runtime.next_chunk_index
+    ):
+        raise CardOnlyPilotBlocked("card residual resource coordinates differ")
+    if runtime.completed_decisions > runtime.environment_accesses * 500:
+        raise CardOnlyPilotBlocked("card residual decision coordinate exceeds bound")
+    if not isinstance(runtime.stopped_for_concentration, bool):
+        raise CardOnlyPilotBlocked("card residual concentration coordinate is invalid")
+    expected_stop = False
+    if runtime.completed_chunk_summaries:
+        latest = runtime.completed_chunk_summaries[-1]
+        if not isinstance(latest, Mapping):
+            raise CardOnlyPilotBlocked("card residual summary is invalid")
+        probe = latest.get("probe")
+        if not isinstance(probe, Mapping) or not isinstance(probe.get("stop"), bool):
+            raise CardOnlyPilotBlocked("card residual summary probe is invalid")
+        expected_stop = probe["stop"]
+    if runtime.stopped_for_concentration is not expected_stop:
+        raise CardOnlyPilotBlocked("card residual concentration coordinate differs")
+    if (
+        not isinstance(runtime.warm_start_model_sha256, str)
+        or len(runtime.warm_start_model_sha256) != 64
+    ):
+        raise CardOnlyPilotBlocked("warm-start model identity is invalid")
+    _probe_sha256(runtime.probe_rows)
+    try:
+        successor_runtime.encode_paired_bootstrap(runtime.bootstrap)
+        expected_parameters = tuple(
+            parameter
+            for _, parameter in successor_runtime._arm_named_trainable_parameters(
+                runtime.bootstrap, arm="candidate"
+            )
+        )
+        actual_parameters = tuple(
+            parameter
+            for group in runtime.candidate_optimizer.param_groups
+            for parameter in group["params"]
+        )
+        if tuple(map(id, actual_parameters)) != tuple(map(id, expected_parameters)):
+            raise CardOnlyPilotBlocked(
+                "candidate optimizer parameter ownership differs"
+            )
+        optimizer_state = successor_runtime._decode_state_value(
+            successor_runtime.encode_optimizer_state(runtime.candidate_optimizer),
+            "candidate optimizer",
+        )
+    except successor_runtime.SuccessorRuntimeError as exc:
+        raise CardOnlyPilotBlocked(str(exc)) from exc
+    optimizer_states = optimizer_state["state"]
+    if runtime.candidate_optimizer_steps == 0:
+        if optimizer_states:
+            raise CardOnlyPilotBlocked("zero-step candidate optimizer has moments")
+    elif not optimizer_states or any(
+        float(state["step"].item()) != float(runtime.candidate_optimizer_steps)
+        for state in optimizer_states.values()
+    ):
+        raise CardOnlyPilotBlocked("candidate optimizer step coordinate differs")
+
+
+def _canonical_ascii(value: Any) -> bytes:
+    try:
+        return json.dumps(
+            value,
+            allow_nan=False,
+            ensure_ascii=True,
+            separators=(",", ":"),
+            sort_keys=True,
+        ).encode("ascii")
+    except (TypeError, ValueError) as exc:
+        raise CardOnlyPilotBlocked("card residual checkpoint is not canonical JSON") from exc
+
+
+def encode_card_only_residual_checkpoint(
+    runtime: CardOnlyResidualRuntime,
+) -> bytes:
+    _validate_card_only_residual_runtime(runtime)
+    return _canonical_ascii(
+        {
+            "bootstrap": json.loads(
+                successor_runtime.encode_paired_bootstrap(runtime.bootstrap)
+            ),
+            "candidate_optimizer": successor_runtime.encode_optimizer_state(
+                runtime.candidate_optimizer
+            ),
+            "coordinates": {
+                "candidate_optimizer_steps": runtime.candidate_optimizer_steps,
+                "completed_decisions": runtime.completed_decisions,
+                "completed_pairs": runtime.completed_pairs,
+                "environment_accesses": runtime.environment_accesses,
+                "next_chunk_index": runtime.next_chunk_index,
+            },
+            "probe_sha256": _probe_sha256(runtime.probe_rows),
+            "schema_version": "noncombat-card-only-residual-checkpoint-v1",
+            "stopped_for_concentration": runtime.stopped_for_concentration,
+            "summaries": copy.deepcopy(runtime.completed_chunk_summaries),
+            "warm_start_model_sha256": runtime.warm_start_model_sha256,
+        }
+    )
+
+
+def restore_card_only_residual_checkpoint(
+    value: bytes,
+    *,
+    probe_rows: Sequence[ProjectedCardLabel],
+) -> CardOnlyResidualRuntime:
+    if not isinstance(value, bytes) or not value:
+        raise CardOnlyPilotBlocked("card residual checkpoint bytes are invalid")
+    try:
+        parsed = json.loads(value.decode("ascii"))
+    except (UnicodeDecodeError, json.JSONDecodeError) as exc:
+        raise CardOnlyPilotBlocked("card residual checkpoint JSON is invalid") from exc
+    if _canonical_ascii(parsed) != value:
+        raise CardOnlyPilotBlocked("card residual checkpoint is not canonical")
+    checkpoint = _mapping(parsed, "card residual checkpoint")
+    if set(checkpoint) != {
+        "bootstrap",
+        "candidate_optimizer",
+        "coordinates",
+        "probe_sha256",
+        "schema_version",
+        "stopped_for_concentration",
+        "summaries",
+        "warm_start_model_sha256",
+    } or checkpoint.get("schema_version") != (
+        "noncombat-card-only-residual-checkpoint-v1"
+    ):
+        raise CardOnlyPilotBlocked("card residual checkpoint fields differ")
+    normalized_probe = tuple(probe_rows)
+    if checkpoint.get("probe_sha256") != _probe_sha256(normalized_probe):
+        raise CardOnlyPilotBlocked("card residual probe binding differs")
+    try:
+        bootstrap = successor_runtime.restore_paired_bootstrap(
+            _canonical_ascii(checkpoint["bootstrap"])
+        )
+        optimizer = successor_runtime.build_candidate_card_optimizer(bootstrap)
+        successor_runtime.restore_optimizer_state(
+            optimizer, checkpoint["candidate_optimizer"]
+        )
+    except successor_runtime.SuccessorRuntimeError as exc:
+        raise CardOnlyPilotBlocked(str(exc)) from exc
+    coordinates = _mapping(checkpoint.get("coordinates"), "residual coordinates")
+    if set(coordinates) != {
+        "candidate_optimizer_steps",
+        "completed_decisions",
+        "completed_pairs",
+        "environment_accesses",
+        "next_chunk_index",
+    }:
+        raise CardOnlyPilotBlocked("card residual coordinate fields differ")
+    summaries = checkpoint.get("summaries")
+    if not isinstance(summaries, list):
+        raise CardOnlyPilotBlocked("card residual summaries are invalid")
+    runtime = CardOnlyResidualRuntime(
+        bootstrap=bootstrap,
+        candidate_optimizer=optimizer,
+        probe_rows=normalized_probe,
+        warm_start_model_sha256=checkpoint["warm_start_model_sha256"],
+        next_chunk_index=coordinates["next_chunk_index"],
+        completed_pairs=coordinates["completed_pairs"],
+        completed_decisions=coordinates["completed_decisions"],
+        environment_accesses=coordinates["environment_accesses"],
+        candidate_optimizer_steps=coordinates["candidate_optimizer_steps"],
+        completed_chunk_summaries=copy.deepcopy(summaries),
+        stopped_for_concentration=checkpoint["stopped_for_concentration"],
+    )
+    _validate_card_only_residual_runtime(runtime)
+    return runtime
+
+
+def _validate_residual_pairs(
+    episodes: Sequence[Any], *, chunk_index: int
+) -> tuple[Any, ...]:
+    source = tuple(episodes)
+    if len(source) != 64:
+        raise CardOnlyPilotBlocked("card residual chunk requires exactly 64 pairs")
+    seeds = tuple(pair.seed for pair in source)
+    if seeds != tuple(sorted(set(seeds))):
+        raise CardOnlyPilotBlocked("card residual chunk seeds must be ascending unique")
+    for pair in source:
+        for arm_name, arm in (("candidate", pair.candidate), ("control", pair.control)):
+            if arm.unsupported_reason is not None:
+                raise CardOnlyPilotBlocked(
+                    f"card residual {arm_name} episode is unsupported"
+                )
+            if arm.final_snapshot.get("terminal") is not True:
+                raise CardOnlyPilotBlocked(
+                    f"card residual {arm_name} episode is not terminal"
+                )
+        if any(decision.card_terms is not None for decision in pair.control.decisions):
+            raise CardOnlyPilotBlocked("native control carried learned card terms")
+    if isinstance(chunk_index, bool) or not isinstance(chunk_index, int):
+        raise CardOnlyPilotBlocked("card residual chunk index is invalid")
+    return source
+
+
+def complete_card_only_residual_chunk(
+    runtime: CardOnlyResidualRuntime,
+    episodes: Sequence[Any],
+    *,
+    chunk_index: int,
+) -> CompletedCardOnlyResidualChunk:
+    _validate_card_only_residual_runtime(runtime)
+    original_checkpoint = encode_card_only_residual_checkpoint(runtime)
+    working = restore_card_only_residual_checkpoint(
+        original_checkpoint, probe_rows=runtime.probe_rows
+    )
+    if working.stopped_for_concentration or working.next_chunk_index >= 4:
+        raise CardOnlyPilotBlocked("card residual runtime cannot start another chunk")
+    if chunk_index != working.next_chunk_index:
+        raise CardOnlyPilotBlocked("card residual chunk index differs")
+    pairs = _validate_residual_pairs(episodes, chunk_index=chunk_index)
+    try:
+        update = successor_runtime.apply_candidate_cross_fitted_chunk_update_exploratory(
+            working.bootstrap, working.candidate_optimizer, pairs
+        )
+    except successor_runtime.SuccessorRuntimeError as exc:
+        raise CardOnlyPilotBlocked(str(exc)) from exc
+    probe_metrics = evaluate_card_warm_start(working.bootstrap, working.probe_rows)
+    probe = classify_card_probe(probe_metrics)
+    summary = {
+        "candidate_card_decisions": sum(
+            decision.category == "card_reward"
+            for pair in pairs
+            for decision in pair.candidate.decisions
+        ),
+        "chunk_index": chunk_index,
+        "probe": probe,
+        "seed_max": pairs[-1].seed,
+        "seed_min": pairs[0].seed,
+    }
+    working.next_chunk_index += 1
+    working.completed_pairs += 64
+    working.completed_decisions += sum(
+        len(pair.candidate.decisions) + len(pair.control.decisions)
+        for pair in pairs
+    )
+    working.environment_accesses += 128
+    working.candidate_optimizer_steps += 1
+    working.completed_chunk_summaries.append(summary)
+    working.stopped_for_concentration = probe["stop"]
+    checkpoint = encode_card_only_residual_checkpoint(working)
+    restored = restore_card_only_residual_checkpoint(
+        checkpoint, probe_rows=working.probe_rows
+    )
+    if encode_card_only_residual_checkpoint(restored) != checkpoint:
+        raise CardOnlyPilotBlocked("card residual checkpoint restore differs")
+    return CompletedCardOnlyResidualChunk(
+        chunk_index=chunk_index,
+        seeds=tuple(pair.seed for pair in pairs),
+        episodes=pairs,
+        update=update,
+        probe=probe,
+        checkpoint=checkpoint,
+        runtime=working,
+    )
+
+
+def collect_and_complete_card_only_residual_chunk(
+    runtime: CardOnlyResidualRuntime,
+    *,
+    environment_factory: Any,
+    seeds: Sequence[int],
+    chunk_index: int,
+    deadline: float,
+    clock: Any = time.monotonic,
+    before_pair: Any = lambda _seed: None,
+    after_pair: Any = lambda _seed: None,
+) -> CompletedCardOnlyResidualChunk:
+    _validate_card_only_residual_runtime(runtime)
+    original_checkpoint = encode_card_only_residual_checkpoint(runtime)
+    working = restore_card_only_residual_checkpoint(
+        original_checkpoint, probe_rows=runtime.probe_rows
+    )
+    normalized_seeds = tuple(seeds)
+    if (
+        len(normalized_seeds) != 64
+        or normalized_seeds != tuple(sorted(set(normalized_seeds)))
+    ):
+        raise CardOnlyPilotBlocked("card residual collection requires 64 ascending seeds")
+    now = float(clock())
+    if not math.isfinite(now) or not math.isfinite(float(deadline)) or now > float(
+        deadline
+    ):
+        raise CardOnlyPilotBlocked("card residual deadline reached before collection")
+    episodes = []
+    try:
+        for seed in normalized_seeds:
+            if float(clock()) > float(deadline):
+                raise CardOnlyPilotBlocked(
+                    "card residual deadline reached during collection"
+                )
+            before_pair(seed)
+            pair = successor_runtime.rollout_paired_card_only_native_baseline_training_episode(
+                working.bootstrap,
+                environment_factory=environment_factory,
+                seed=seed,
+                deadline=float(deadline),
+                clock=clock,
+            )
+            after_pair(seed)
+            episodes.append(pair)
+        return complete_card_only_residual_chunk(
+            working, tuple(episodes), chunk_index=chunk_index
+        )
+    except CardOnlyPilotBlocked:
+        raise
+    except successor_runtime.SuccessorRuntimeError as exc:
+        raise CardOnlyPilotBlocked(str(exc)) from exc
+    finally:
+        if encode_card_only_residual_checkpoint(runtime) != original_checkpoint:
+            raise CardOnlyPilotBlocked(
+                "partial card residual collection mutated complete checkpoint"
+            )
+
+
 __all__ = [
     "ALLOWED_CORPUS_COHORTS",
     "BOUND_CARD_ROW_COUNTS",
@@ -965,15 +1406,23 @@ __all__ = [
     "BOUND_REGISTRATION_SHA256",
     "BoundCardCorpus",
     "CardWarmStartResult",
+    "CardOnlyResidualRuntime",
     "CardOnlyPilotBlocked",
+    "CompletedCardOnlyResidualChunk",
     "ProjectedCardLabel",
     "card_warm_start_configuration",
+    "classify_card_probe",
     "classify_card_warm_start_gate",
+    "collect_and_complete_card_only_residual_chunk",
+    "complete_card_only_residual_chunk",
     "encode_candidate_card_policy",
+    "encode_card_only_residual_checkpoint",
     "evaluate_card_warm_start",
+    "initialize_card_only_residual_runtime",
     "label_bound_card_corpus",
     "load_bound_card_corpus",
     "project_bottled_card_labels",
     "require_card_warm_start_gate",
+    "restore_card_only_residual_checkpoint",
     "run_fixed_card_warm_start",
 ]
