@@ -413,11 +413,18 @@ def _resources(value: object) -> dict[str, int | float]:
     return result
 
 
-def _artifact_binding(value: object, label: str) -> dict[str, Any]:
+def _artifact_binding(
+    value: object, label: str, *, allow_empty: bool = False
+) -> dict[str, Any]:
     binding = _mapping(value, label)
     _fields(binding, _ARTIFACT_FIELDS, label)
     size = binding["size_bytes"]
-    if isinstance(size, bool) or not isinstance(size, int) or size <= 0:
+    if (
+        isinstance(size, bool)
+        or not isinstance(size, int)
+        or size < 0
+        or (size == 0 and not allow_empty)
+    ):
         raise TrainingRunnerBlocked(f"{label} size is invalid")
     return {
         "path": _relative_path(binding["path"], f"{label} path"),
@@ -5031,6 +5038,11 @@ def _source_inventory_execution_bindings(
                 expected_fields,
                 f"registered source {section_name}[{index}]",
             )
+            is_package_marker = (
+                section_name == "public_dependencies"
+                and isinstance(row.get("path"), str)
+                and PurePosixPath(row["path"]).name == "__init__.py"
+            )
             binding = _artifact_binding(
                 {
                     "path": row.get("path"),
@@ -5038,6 +5050,7 @@ def _source_inventory_execution_bindings(
                     "size_bytes": row.get("size_bytes"),
                 },
                 f"registered source {section_name}[{index}]",
+                allow_empty=is_package_marker,
             )
             if section_name == "modules":
                 module_name = row.get("name")
@@ -5049,12 +5062,13 @@ def _source_inventory_execution_bindings(
                 public_symbols = row["public_symbols"]
                 if (
                     not isinstance(public_symbols, list)
-                    or not public_symbols
                     or any(
                         not isinstance(symbol, str) or not symbol
                         for symbol in public_symbols
                     )
                     or public_symbols != sorted(set(public_symbols))
+                    or (not public_symbols and not is_package_marker)
+                    or (public_symbols and is_package_marker)
                 ):
                     raise TrainingRunnerBlocked(
                         "registered public dependency symbols differ"

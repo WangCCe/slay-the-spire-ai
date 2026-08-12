@@ -2079,6 +2079,64 @@ def _training_dependency_fixture():
     return runner, manifest, source_inventory, source_payloads
 
 
+def _empty_package_dependency() -> dict:
+    return {
+        "name": "analysis_scripts_package",
+        "path": "analysis_scripts/__init__.py",
+        "public_symbols": [],
+        "sha256": hashlib.sha256(b"").hexdigest(),
+        "size_bytes": 0,
+    }
+
+
+def test_registered_execution_sources_accept_empty_package_marker():
+    runner, manifest, source_inventory, _source_payloads = (
+        _training_dependency_fixture()
+    )
+    source_inventory["public_dependencies"].append(_empty_package_dependency())
+
+    sources = runner._source_inventory_execution_bindings(
+        launch_manifest=manifest,
+        source_inventory=source_inventory,
+    )
+
+    assert sources["analysis_scripts"]["size_bytes"] == 0
+    assert sources["analysis_scripts"]["sha256"] == hashlib.sha256(b"").hexdigest()
+
+
+def test_registered_execution_sources_reject_empty_nonpackage_dependency():
+    runner, manifest, source_inventory, _source_payloads = (
+        _training_dependency_fixture()
+    )
+    source_inventory["public_dependencies"][0].update(
+        {"sha256": hashlib.sha256(b"").hexdigest(), "size_bytes": 0}
+    )
+
+    with pytest.raises(runner.TrainingRunnerBlocked, match="size is invalid"):
+        runner._source_inventory_execution_bindings(
+            launch_manifest=manifest,
+            source_inventory=source_inventory,
+        )
+
+
+def test_registered_execution_sources_reject_package_marker_public_symbols():
+    runner, manifest, source_inventory, _source_payloads = (
+        _training_dependency_fixture()
+    )
+    package = _empty_package_dependency()
+    package["public_symbols"] = ["unexpected"]
+    source_inventory["public_dependencies"].append(package)
+
+    with pytest.raises(
+        runner.TrainingRunnerBlocked,
+        match="public dependency symbols differ",
+    ):
+        runner._source_inventory_execution_bindings(
+            launch_manifest=manifest,
+            source_inventory=source_inventory,
+        )
+
+
 def test_source_bound_training_dependencies_load_in_registered_order():
     runner, manifest, source_inventory, source_payloads = (
         _training_dependency_fixture()
