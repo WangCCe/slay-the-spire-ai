@@ -94,6 +94,12 @@ accelerated four-fold, trajectory-disjoint baseline and the existing formal
 victory-plus-floor reward. Native control has no optimizer and no learned
 parameters.
 
+Rollout policy terms retain their autograd graph, so the candidate optimizer
+must own the exact same working bootstrap that generated those terms. The
+collector restores one disposable working runtime before environment access,
+runs all pairs and the update against that runtime, and restores its complete
+entry checkpoint in place if update, probe, or publication validation fails.
+
 Each registered chunk attempts the same 64 consumed development seeds once. A
 pair that reaches the declared `unsupported_shop_courier_restock_semantics`
 boundary is censored with its seed, arm, category, decision id, and reason. The

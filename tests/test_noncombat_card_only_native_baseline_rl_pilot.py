@@ -604,6 +604,7 @@ def _fake_residual_pairs(*, unsupported=False):
             card_terms=object(),
             category="card_reward",
             decision_id=f"candidate:seed-{seed}:decision-0",
+            diagnostic={"selected_family": "take"},
         )
         control_decision = SimpleNamespace(
             card_terms=None,
@@ -751,8 +752,6 @@ def test_residual_censors_declared_courier_pair_and_keeps_complete_boundary(
 
 def test_residual_collection_summary_precedes_optimizer_and_reports_support():
     pairs = list(_fake_residual_pairs())
-    for pair in pairs:
-        pair.candidate.decisions[0].diagnostic = {"selected_family": "take"}
     pairs[0].candidate.unsupported_reason = (
         "unsupported_shop_courier_restock_semantics"
     )
@@ -766,6 +765,60 @@ def test_residual_collection_summary_precedes_optimizer_and_reports_support():
     assert summary["supported_seeds"] == list(range(1, 64))
     assert summary["candidate_card_family_counts"] == {"take": 63}
     assert summary["censored_pairs"][0]["seed"] == 0
+
+
+def test_residual_collection_updates_the_rollout_owning_bootstrap(
+    tmp_path, monkeypatch
+):
+    from analysis_scripts import noncombat_card_only_native_baseline_rl_pilot as pilot
+
+    runtime = _residual_runtime(tmp_path)
+    pairs = _fake_residual_pairs()
+    rollout_bootstrap_ids = []
+
+    def fake_rollout(bootstrap, *, seed, **_kwargs):
+        rollout_bootstrap_ids.append(id(bootstrap))
+        return pairs[seed]
+
+    def fake_update(bootstrap, optimizer, episodes):
+        assert set(rollout_bootstrap_ids) == {id(bootstrap)}
+        assert len(episodes) == 64
+        for parameter in optimizer.param_groups[0]["params"]:
+            parameter.grad = torch.full_like(parameter, 1e-6)
+        optimizer.step()
+        optimizer.zero_grad(set_to_none=True)
+        return {"fixture": True}
+
+    monkeypatch.setattr(
+        pilot.successor_runtime,
+        "rollout_paired_card_only_native_baseline_training_episode",
+        fake_rollout,
+    )
+    monkeypatch.setattr(
+        pilot.successor_runtime,
+        "apply_candidate_cross_fitted_chunk_update_exploratory",
+        fake_update,
+    )
+    monkeypatch.setattr(
+        pilot,
+        "evaluate_card_warm_start",
+        lambda *_args, **_kwargs: {
+            "non_take_rate": 0.5,
+            "take_rate": 0.5,
+        },
+    )
+
+    completed = collect_and_complete_card_only_residual_chunk(
+        runtime,
+        environment_factory=lambda seed: seed,
+        seeds=tuple(range(64)),
+        chunk_index=0,
+        deadline=10.0,
+        clock=lambda: 0.0,
+    )
+
+    assert completed.runtime.next_chunk_index == 1
+    assert runtime.next_chunk_index == 0
 
 
 def test_residual_courier_censor_bound_blocks_before_optimizer_step(tmp_path):

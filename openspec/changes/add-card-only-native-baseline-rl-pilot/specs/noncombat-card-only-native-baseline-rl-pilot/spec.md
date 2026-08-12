@@ -56,6 +56,7 @@ Only candidate card parameters and optimizer moments SHALL change.
 #### Scenario: One residual chunk completes
 - **WHEN** one 64-seed attempt yields at least 56 complete supported candidate/native-control pairs within the fixed deadline and four-fold candidate baseline contract
 - **THEN** the runner applies exactly one candidate Adam step from card-reward advantages, writes a restorable complete-boundary checkpoint, and records zero control optimizer steps
+- **AND** the optimizer owns the same working candidate parameters that generated every retained policy term
 
 #### Scenario: Declared Courier blocker is censored
 - **WHEN** either arm of a pair reaches `unsupported_shop_courier_restock_semantics`
@@ -74,6 +75,7 @@ Only candidate card parameters and optimizer moments SHALL change.
 #### Scenario: Residual execution becomes invalid
 - **WHEN** a chunk has more than eight censored pairs, an unknown support blocker, fewer than 56 supported pairs, an invalid gradient or reward, an exceeded deadline or resource bound, or checkpoint restore differs
 - **THEN** the pilot stops without retrying, changing seeds, tuning, or loading a partial checkpoint
+- **AND** restores the working runtime to its complete entry checkpoint before returning the failure
 
 ### Requirement: Development comparison has a strict no-go boundary
 The pilot SHALL compare one frozen final candidate against native SimpleAgent on

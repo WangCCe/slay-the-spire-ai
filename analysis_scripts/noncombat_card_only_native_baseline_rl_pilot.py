@@ -1343,66 +1343,87 @@ def complete_card_only_residual_chunk(
 ) -> CompletedCardOnlyResidualChunk:
     _validate_card_only_residual_runtime(runtime)
     original_checkpoint = encode_card_only_residual_checkpoint(runtime)
-    working = restore_card_only_residual_checkpoint(
-        original_checkpoint, probe_rows=runtime.probe_rows
-    )
-    if working.stopped_for_concentration or working.next_chunk_index >= 4:
-        raise CardOnlyPilotBlocked("card residual runtime cannot start another chunk")
-    if chunk_index != working.next_chunk_index:
-        raise CardOnlyPilotBlocked("card residual chunk index differs")
-    attempted_pairs = tuple(episodes)
-    pairs, censored_pairs = _validate_residual_pairs(
-        attempted_pairs, chunk_index=chunk_index
-    )
     try:
+        working = runtime
+        if working.stopped_for_concentration or working.next_chunk_index >= 4:
+            raise CardOnlyPilotBlocked(
+                "card residual runtime cannot start another chunk"
+            )
+        if chunk_index != working.next_chunk_index:
+            raise CardOnlyPilotBlocked("card residual chunk index differs")
+        attempted_pairs = tuple(episodes)
+        pairs, censored_pairs = _validate_residual_pairs(
+            attempted_pairs, chunk_index=chunk_index
+        )
         update = successor_runtime.apply_candidate_cross_fitted_chunk_update_exploratory(
             working.bootstrap, working.candidate_optimizer, pairs
         )
-    except successor_runtime.SuccessorRuntimeError as exc:
-        raise CardOnlyPilotBlocked(str(exc)) from exc
-    probe_metrics = evaluate_card_warm_start(working.bootstrap, working.probe_rows)
-    probe = classify_card_probe(probe_metrics)
-    summary = {
-        "candidate_card_decisions": sum(
-            decision.category == "card_reward"
+        probe_metrics = evaluate_card_warm_start(
+            working.bootstrap, working.probe_rows
+        )
+        probe = classify_card_probe(probe_metrics)
+        summary = {
+            "candidate_card_decisions": sum(
+                decision.category == "card_reward"
+                for pair in pairs
+                for decision in pair.candidate.decisions
+            ),
+            "attempted_pairs": len(attempted_pairs),
+            "censored_pairs": copy.deepcopy(list(censored_pairs)),
+            "chunk_index": chunk_index,
+            "probe": probe,
+            "supported_pairs": len(pairs),
+            "seed_max": pairs[-1].seed,
+            "seed_min": pairs[0].seed,
+        }
+        working.next_chunk_index += 1
+        working.completed_pairs += 64
+        working.completed_decisions += sum(
+            len(pair.candidate.decisions) + len(pair.control.decisions)
             for pair in pairs
-            for decision in pair.candidate.decisions
-        ),
-        "attempted_pairs": len(attempted_pairs),
-        "censored_pairs": copy.deepcopy(list(censored_pairs)),
-        "chunk_index": chunk_index,
-        "probe": probe,
-        "supported_pairs": len(pairs),
-        "seed_max": pairs[-1].seed,
-        "seed_min": pairs[0].seed,
-    }
-    working.next_chunk_index += 1
-    working.completed_pairs += 64
-    working.completed_decisions += sum(
-        len(pair.candidate.decisions) + len(pair.control.decisions)
-        for pair in pairs
-    )
-    working.environment_accesses += 128
-    working.candidate_optimizer_steps += 1
-    working.completed_chunk_summaries.append(summary)
-    working.stopped_for_concentration = probe["stop"]
-    checkpoint = encode_card_only_residual_checkpoint(working)
-    restored = restore_card_only_residual_checkpoint(
-        checkpoint, probe_rows=working.probe_rows
-    )
-    if encode_card_only_residual_checkpoint(restored) != checkpoint:
-        raise CardOnlyPilotBlocked("card residual checkpoint restore differs")
-    return CompletedCardOnlyResidualChunk(
-        chunk_index=chunk_index,
-        attempted_seeds=tuple(pair.seed for pair in attempted_pairs),
-        seeds=tuple(pair.seed for pair in pairs),
-        censored_pairs=censored_pairs,
-        episodes=pairs,
-        update=update,
-        probe=probe,
-        checkpoint=checkpoint,
-        runtime=working,
-    )
+        )
+        working.environment_accesses += 128
+        working.candidate_optimizer_steps += 1
+        working.completed_chunk_summaries.append(summary)
+        working.stopped_for_concentration = probe["stop"]
+        checkpoint = encode_card_only_residual_checkpoint(working)
+        restored = restore_card_only_residual_checkpoint(
+            checkpoint, probe_rows=working.probe_rows
+        )
+        if encode_card_only_residual_checkpoint(restored) != checkpoint:
+            raise CardOnlyPilotBlocked("card residual checkpoint restore differs")
+        return CompletedCardOnlyResidualChunk(
+            chunk_index=chunk_index,
+            attempted_seeds=tuple(pair.seed for pair in attempted_pairs),
+            seeds=tuple(pair.seed for pair in pairs),
+            censored_pairs=censored_pairs,
+            episodes=pairs,
+            update=update,
+            probe=probe,
+            checkpoint=checkpoint,
+            runtime=working,
+        )
+    except Exception as exc:
+        restored = restore_card_only_residual_checkpoint(
+            original_checkpoint, probe_rows=runtime.probe_rows
+        )
+        for field in (
+            "bootstrap",
+            "candidate_optimizer",
+            "probe_rows",
+            "warm_start_model_sha256",
+            "next_chunk_index",
+            "completed_pairs",
+            "completed_decisions",
+            "environment_accesses",
+            "candidate_optimizer_steps",
+            "completed_chunk_summaries",
+            "stopped_for_concentration",
+        ):
+            setattr(runtime, field, getattr(restored, field))
+        if isinstance(exc, successor_runtime.SuccessorRuntimeError):
+            raise CardOnlyPilotBlocked(str(exc)) from exc
+        raise
 
 
 def collect_and_complete_card_only_residual_chunk(
