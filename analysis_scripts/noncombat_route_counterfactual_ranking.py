@@ -52,6 +52,13 @@ MAX_CHARGED_SECONDS = 14_400.0
 SCHEMA_VERSION = "noncombat-route-counterfactual-ranking-v1"
 DATASET_SCHEMA_VERSION = "noncombat-route-counterfactual-dataset-v1"
 MODEL_SCHEMA_VERSION = "noncombat-route-counterfactual-model-v1"
+BOUND_SOURCE_PATHS = (
+    Path("analysis_scripts/noncombat_route_counterfactual_ranking.py"),
+    Path("analysis_scripts/noncombat_card_action_counterfactual_credit.py"),
+    Path("analysis_scripts/noncombat_current_policy_simulator_bridge.py"),
+    Path("analysis_scripts/noncombat_state_conditioned_policy_input.py"),
+    Path("analysis_scripts/noncombat_state_conditioned_ranker.py"),
+)
 _EARLY_NATIVE_HANDLES: list[Any] = []
 
 
@@ -1106,19 +1113,13 @@ def _sha256_file(path: Path) -> str:
 
 
 def _source_identity(repo_root: Path) -> dict[str, Any]:
-    paths = (
-        Path("analysis_scripts/noncombat_route_counterfactual_ranking.py"),
-        Path("analysis_scripts/noncombat_card_action_counterfactual_credit.py"),
-        Path("analysis_scripts/noncombat_state_conditioned_policy_input.py"),
-        Path("analysis_scripts/noncombat_state_conditioned_ranker.py"),
-    )
     files = [
         {
             "path": path.as_posix(),
             "sha256": _sha256_file(repo_root / path),
             "size_bytes": (repo_root / path).stat().st_size,
         }
-        for path in paths
+        for path in BOUND_SOURCE_PATHS
     ]
     try:
         commit = subprocess.run(
@@ -1180,7 +1181,7 @@ def _write_artifacts(output: Path, result: ExperimentResult, identity: dict[str,
             "",
             f"Action changes versus Current: {changes['action_changes']}; corrected: {changes['corrected']}; worsened: {changes['worsened']}.",
             "",
-            "Native SimpleAgent continuation is fixed downstream context, not an unbiased live-policy value estimate. No gameplay, CommunicationMod, production checkpoint, qualification, or promotion authority is granted.",
+            "Frozen Current-policy continuation is fixed downstream context, not an unbiased live-policy value estimate. No gameplay, CommunicationMod, production checkpoint, qualification, or promotion authority is granted.",
             "",
         )
     )

@@ -433,3 +433,13 @@ def test_run_experiment_rejects_train_development_seed_overlap_before_access() -
             development_seeds=(102, 103),
             clock=forbidden,
         )
+
+
+def test_source_identity_binds_current_policy_bridge() -> None:
+    assert ranking.BOUND_SOURCE_PATHS == (
+        ranking.Path("analysis_scripts/noncombat_route_counterfactual_ranking.py"),
+        ranking.Path("analysis_scripts/noncombat_card_action_counterfactual_credit.py"),
+        ranking.Path("analysis_scripts/noncombat_current_policy_simulator_bridge.py"),
+        ranking.Path("analysis_scripts/noncombat_state_conditioned_policy_input.py"),
+        ranking.Path("analysis_scripts/noncombat_state_conditioned_ranker.py"),
+    )

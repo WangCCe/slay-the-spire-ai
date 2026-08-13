@@ -13,4 +13,4 @@
 
 - [x] 3.1 Run strict OpenSpec validation and focused pytest
 - [x] 3.2 Execute the fixed native route experiment once and inspect the generated evidence
-- [ ] 3.3 Record the verdict, complete the change tasks, and publish one cohesive commit
+- [x] 3.3 Record the verdict, complete the change tasks, and publish one cohesive commit
