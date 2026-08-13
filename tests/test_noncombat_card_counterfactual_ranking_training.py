@@ -175,6 +175,21 @@ def test_partition_censors_only_registered_blocker_without_replacement():
         )
 
 
+def test_partition_accepts_audit_without_changing_collection_semantics():
+    partition = ranking.collect_counterfactual_partition(
+        _PartitionEnvironment,
+        name="audit",
+        seeds=(30,),
+        max_action_branches=4,
+        max_censored_seeds=0,
+        max_card_states_per_seed=1,
+    )
+
+    assert partition.name == "audit"
+    assert [row.seed for row in partition.rows] == [30]
+    assert partition.action_branches == 4
+
+
 def _ranking_candidates() -> tuple[dict[str, object], ...]:
     return (
         _candidate("card_reward", "take-a", "take"),
@@ -244,3 +259,103 @@ def test_tracked_r7_entry_checkpoint_restores_without_optimizer_moments():
     optimizer = runtime.build_candidate_card_optimizer(bootstrap)
 
     assert optimizer.state == {}
+
+
+def test_full_counterfactual_partition_round_trips_byte_exactly():
+    row = _ranking_row(10, 10)
+    partition = ranking.CounterfactualPartition(
+        name="train",
+        seeds=(10,),
+        rows=(row,),
+        action_branches=4,
+        root_native_transitions=2,
+        censored_seeds=(),
+        budget_exhausted=False,
+    )
+
+    encoded = ranking.encode_counterfactual_partition(partition)
+    restored = ranking.restore_counterfactual_partition(encoded)
+
+    assert ranking.encode_counterfactual_partition(restored) == encoded
+    assert torch.equal(restored.rows[0].state_features, row.state_features)
+    assert torch.equal(restored.rows[0].candidate_features, row.candidate_features)
+    assert restored.rows[0].action_returns == row.action_returns
+
+
+def test_scorer_weight_optimizer_owns_exactly_128_values_and_freezes_rest():
+    bootstrap = runtime.build_matched_bootstrap()
+
+    optimizer = ranking.build_scorer_weight_optimizer(bootstrap)
+
+    owned = tuple(
+        parameter
+        for group in optimizer.param_groups
+        for parameter in group["params"]
+    )
+    assert sum(parameter.numel() for parameter in owned) == 128
+    assert owned == (
+        bootstrap.candidate.card_policy.family_head.scorer.weight,
+        bootstrap.candidate.card_policy.conditional_ranker.scorer.weight,
+    )
+    assert all(parameter.requires_grad for parameter in owned)
+    assert all(
+        not parameter.requires_grad
+        for parameter in bootstrap.candidate.card_policy.parameters()
+        if all(parameter is not item for item in owned)
+    )
+    assert optimizer.state == {}
+
+
+def test_scorer_weight_training_changes_only_owned_weights():
+    bootstrap = runtime.build_matched_bootstrap()
+    train_rows = tuple(_ranking_row(seed, seed) for seed in range(10, 14))
+    development_rows = (
+        _ranking_row(20, 20),
+        _ranking_row(21, 21),
+    )
+    frozen_before = ranking._frozen_model_bytes(bootstrap)
+
+    completed = ranking.train_scorer_weight_ranking(
+        bootstrap,
+        train_rows=train_rows,
+        development_rows=development_rows,
+        training_steps=4,
+    )
+
+    assert completed.report["fit"]["trainable_parameter_count"] == 128
+    assert completed.report["fit"]["final_loss"] < completed.report["fit"][
+        "first_step_loss"
+    ]
+    assert ranking._frozen_model_bytes(bootstrap) == frozen_before
+    assert completed.entry_model != completed.trained_model
+
+
+def test_audit_is_read_only_and_uses_same_fixed_metric_gate():
+    entry = runtime.build_matched_bootstrap()
+    trained = runtime.restore_paired_bootstrap(runtime.encode_paired_bootstrap(entry))
+    train_rows = tuple(_ranking_row(seed, seed) for seed in range(10, 14))
+    development_rows = (_ranking_row(20, 20), _ranking_row(21, 21))
+    ranking.train_scorer_weight_ranking(
+        trained,
+        train_rows=train_rows,
+        development_rows=development_rows,
+        training_steps=4,
+    )
+    entry_before = runtime.encode_paired_bootstrap(entry)
+    trained_before = runtime.encode_paired_bootstrap(trained)
+
+    audit = ranking.audit_scorer_weight_model(
+        entry,
+        trained,
+        (_ranking_row(30, 30), _ranking_row(31, 31)),
+    )
+
+    assert set(audit["checks"]) == {
+        "corrected_action",
+        "maximum_regret_nonincreasing",
+        "mean_regret_decreased",
+        "pairwise_accuracy_increased",
+        "unique_best_accuracy_nondecreasing",
+    }
+    assert runtime.encode_paired_bootstrap(entry) == entry_before
+    assert runtime.encode_paired_bootstrap(trained) == trained_before

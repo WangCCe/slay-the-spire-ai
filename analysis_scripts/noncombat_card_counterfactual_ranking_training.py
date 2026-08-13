@@ -42,6 +42,9 @@ DATASET_SCHEMA_VERSION = "noncombat-card-counterfactual-ranking-dataset-v1"
 TRAINING_REPORT_SCHEMA_VERSION = (
     "noncombat-card-counterfactual-ranking-training-v1"
 )
+SCORER_WEIGHT_REPORT_SCHEMA_VERSION = (
+    "noncombat-card-counterfactual-scorer-weight-training-v1"
+)
 
 
 class CounterfactualRankingBlocked(RuntimeError):
@@ -79,6 +82,133 @@ class CompletedCounterfactualRankingTraining:
     report: dict[str, Any]
     entry_model: bytes
     trained_model: bytes
+
+
+def encode_counterfactual_partition(
+    partition: CounterfactualPartition,
+) -> bytes:
+    """Encode full reusable feature/return rows as canonical JSON."""
+    if not isinstance(partition, CounterfactualPartition):
+        raise CounterfactualRankingBlocked("partition type differs")
+    try:
+        rows = [
+            {
+                "action_returns": list(row.action_returns),
+                "candidate_features": runtime._encode_tensor(
+                    row.candidate_features
+                ),
+                "candidates": copy.deepcopy(list(row.candidates)),
+                "decision_index": row.decision_index,
+                "seed": row.seed,
+                "source_sha256": row.source_sha256,
+                "state_features": runtime._encode_tensor(row.state_features),
+            }
+            for row in partition.rows
+        ]
+    except runtime.SuccessorRuntimeError as exc:
+        raise CounterfactualRankingBlocked(str(exc)) from exc
+    return _canonical_ascii(
+        {
+            "action_branches": partition.action_branches,
+            "budget_exhausted": partition.budget_exhausted,
+            "censored_seeds": copy.deepcopy(list(partition.censored_seeds)),
+            "name": partition.name,
+            "root_native_transitions": partition.root_native_transitions,
+            "rows": rows,
+            "schema_version": DATASET_SCHEMA_VERSION,
+            "seeds": list(partition.seeds),
+        }
+    )
+
+
+def restore_counterfactual_partition(payload: bytes) -> CounterfactualPartition:
+    """Restore and validate a canonical reusable counterfactual dataset."""
+    try:
+        value = json.loads(payload.decode("ascii"))
+    except (UnicodeDecodeError, json.JSONDecodeError) as exc:
+        raise CounterfactualRankingBlocked("partition JSON is invalid") from exc
+    if not isinstance(value, dict) or _canonical_ascii(value) != payload:
+        raise CounterfactualRankingBlocked("partition bytes are not canonical")
+    if set(value) != {
+        "action_branches",
+        "budget_exhausted",
+        "censored_seeds",
+        "name",
+        "root_native_transitions",
+        "rows",
+        "schema_version",
+        "seeds",
+    } or value.get("schema_version") != DATASET_SCHEMA_VERSION:
+        raise CounterfactualRankingBlocked("partition fields differ")
+    if value["name"] not in {"train", "holdout", "audit"}:
+        raise CounterfactualRankingBlocked("partition name differs")
+    seeds = tuple(value["seeds"])
+    if not seeds or len(set(seeds)) != len(seeds) or any(
+        isinstance(seed, bool) or not isinstance(seed, int) or seed < 0
+        for seed in seeds
+    ):
+        raise CounterfactualRankingBlocked("partition seeds differ")
+    rows: list[CounterfactualRankingRow] = []
+    try:
+        for index, raw in enumerate(value["rows"]):
+            if not isinstance(raw, dict) or set(raw) != {
+                "action_returns",
+                "candidate_features",
+                "candidates",
+                "decision_index",
+                "seed",
+                "source_sha256",
+                "state_features",
+            }:
+                raise CounterfactualRankingBlocked(
+                    f"partition row {index} fields differ"
+                )
+            state_features = runtime._decode_tensor(
+                raw["state_features"], f"partition row {index} state"
+            )
+            candidate_features = runtime._decode_tensor(
+                raw["candidate_features"], f"partition row {index} candidates"
+            )
+            candidates = tuple(copy.deepcopy(raw["candidates"]))
+            returns = tuple(float(value) for value in raw["action_returns"])
+            if (
+                state_features.dtype != torch.float32
+                or state_features.ndim != 1
+                or candidate_features.dtype != torch.float32
+                or candidate_features.ndim != 2
+                or candidate_features.shape[0] != len(candidates)
+                or len(candidates) != len(returns)
+                or not candidates
+                or any(not math.isfinite(item) for item in returns)
+            ):
+                raise CounterfactualRankingBlocked(
+                    f"partition row {index} tensor alignment differs"
+                )
+            rows.append(
+                CounterfactualRankingRow(
+                    seed=raw["seed"],
+                    decision_index=raw["decision_index"],
+                    source_sha256=raw["source_sha256"],
+                    state_features=state_features,
+                    candidate_features=candidate_features,
+                    candidates=candidates,
+                    action_returns=returns,
+                )
+            )
+    except (KeyError, TypeError, ValueError, runtime.SuccessorRuntimeError) as exc:
+        raise CounterfactualRankingBlocked("partition row restore failed") from exc
+    partition = CounterfactualPartition(
+        name=value["name"],
+        seeds=seeds,
+        rows=tuple(rows),
+        action_branches=value["action_branches"],
+        root_native_transitions=value["root_native_transitions"],
+        censored_seeds=tuple(copy.deepcopy(value["censored_seeds"])),
+        budget_exhausted=value["budget_exhausted"],
+    )
+    if encode_counterfactual_partition(partition) != payload:
+        raise CounterfactualRankingBlocked("partition round trip differs")
+    return partition
 
 
 def _canonical_ascii(value: Any) -> bytes:
@@ -131,7 +261,7 @@ def collect_counterfactual_partition(
 ) -> CounterfactualPartition:
     """Collect complete source rows without exposing holdout data to fitting."""
     normalized_seeds = tuple(seeds)
-    if name not in {"train", "holdout"}:
+    if name not in {"train", "holdout", "audit"}:
         raise CounterfactualRankingBlocked("partition name differs")
     if not callable(environment_factory) or not callable(clock):
         raise CounterfactualRankingBlocked("partition factory and clock are required")
@@ -573,3 +703,210 @@ def train_counterfactual_ranking(
         entry_model=entry_model,
         trained_model=trained_model,
     )
+
+
+def _scorer_weight_parameters(
+    bootstrap: runtime.PairedBootstrap,
+) -> tuple[torch.nn.Parameter, torch.nn.Parameter]:
+    policy = bootstrap.candidate.card_policy
+    for parameter in policy.parameters():
+        parameter.requires_grad_(False)
+        parameter.grad = None
+    parameters = (
+        policy.family_head.scorer.weight,
+        policy.conditional_ranker.scorer.weight,
+    )
+    for parameter in parameters:
+        parameter.requires_grad_(True)
+    if sum(parameter.numel() for parameter in parameters) != 128:
+        raise CounterfactualRankingBlocked(
+            "scorer-weight parameter count differs"
+        )
+    return parameters
+
+
+def build_scorer_weight_optimizer(
+    bootstrap: runtime.PairedBootstrap,
+) -> torch.optim.Adam:
+    """Build fresh Adam state over exactly the two scorer weight tensors."""
+    parameters = _scorer_weight_parameters(bootstrap)
+    optimizer = torch.optim.Adam(parameters, **runtime._REGISTERED_ADAM_OPTIONS)
+    if optimizer.state:
+        raise CounterfactualRankingBlocked("scorer optimizer must start fresh")
+    return optimizer
+
+
+def _frozen_model_bytes(bootstrap: runtime.PairedBootstrap) -> bytes:
+    try:
+        value = json.loads(runtime.encode_paired_bootstrap(bootstrap))
+        candidate = value["models"]["candidate"]
+        del candidate["family_head"]["scorer.weight"]
+        del candidate["conditional_ranker"]["scorer.weight"]
+    except (KeyError, runtime.SuccessorRuntimeError) as exc:
+        raise CounterfactualRankingBlocked("frozen model encoding failed") from exc
+    return _canonical_ascii(value)
+
+
+def comparison_gate(
+    entry: Mapping[str, Any],
+    trained: Mapping[str, Any],
+) -> tuple[dict[str, bool], int, int]:
+    """Classify fixed regret/ranking gates and action-flip diagnostics."""
+    entry_predictions = {
+        row["source_sha256"]: row for row in entry["predictions"]
+    }
+    trained_predictions = {
+        row["source_sha256"]: row for row in trained["predictions"]
+    }
+    if set(entry_predictions) != set(trained_predictions):
+        raise CounterfactualRankingBlocked("comparison source identity differs")
+    action_flips = 0
+    corrected_to_best = 0
+    for source_sha256, before in entry_predictions.items():
+        after = trained_predictions[source_sha256]
+        if before["predicted_action_id"] != after["predicted_action_id"]:
+            action_flips += 1
+        if (
+            before["predicted_action_id"] not in before["actual_best_action_ids"]
+            and after["predicted_action_id"] in after["actual_best_action_ids"]
+        ):
+            corrected_to_best += 1
+    checks = {
+        "corrected_action": corrected_to_best >= 1,
+        "maximum_regret_nonincreasing": (
+            trained["maximum_top_action_regret"]
+            <= entry["maximum_top_action_regret"]
+        ),
+        "mean_regret_decreased": (
+            trained["mean_top_action_regret"]
+            < entry["mean_top_action_regret"]
+        ),
+        "pairwise_accuracy_increased": (
+            trained["weighted_pairwise_accuracy"]
+            > entry["weighted_pairwise_accuracy"]
+        ),
+        "unique_best_accuracy_nondecreasing": (
+            trained["unique_best_accuracy"] >= entry["unique_best_accuracy"]
+        ),
+    }
+    return checks, action_flips, corrected_to_best
+
+
+def train_scorer_weight_ranking(
+    bootstrap: runtime.PairedBootstrap,
+    *,
+    train_rows: Sequence[CounterfactualRankingRow],
+    development_rows: Sequence[CounterfactualRankingRow],
+    training_steps: int = TRAINING_STEPS,
+) -> CompletedCounterfactualRankingTraining:
+    """Fit only the two scorer weights and classify exposed development."""
+    train_rows = tuple(train_rows)
+    development_rows = tuple(development_rows)
+    if {row.seed for row in train_rows} & {row.seed for row in development_rows}:
+        raise CounterfactualRankingBlocked("train and development seeds overlap")
+    if isinstance(training_steps, bool) or not isinstance(training_steps, int) or training_steps <= 0:
+        raise CounterfactualRankingBlocked("training step count is invalid")
+    entry_model = pilot.encode_candidate_card_policy(bootstrap)
+    frozen_before = _frozen_model_bytes(bootstrap)
+    entry_train = evaluate_ranking(bootstrap, train_rows)
+    entry_development = evaluate_ranking(bootstrap, development_rows)
+    optimizer = build_scorer_weight_optimizer(bootstrap)
+    loss_history: list[float] = []
+    for _ in range(training_steps):
+        optimizer.zero_grad(set_to_none=True)
+        loss = pairwise_ranking_loss(bootstrap, train_rows)
+        loss_history.append(float(loss.detach().item()))
+        loss.backward()
+        owned = {
+            id(parameter)
+            for group in optimizer.param_groups
+            for parameter in group["params"]
+        }
+        for parameter in bootstrap.candidate.card_policy.parameters():
+            if id(parameter) in owned:
+                if parameter.grad is None or not bool(
+                    torch.isfinite(parameter.grad).all().item()
+                ):
+                    raise CounterfactualRankingBlocked(
+                        "scorer-weight gradient is invalid"
+                    )
+            elif parameter.grad is not None:
+                raise CounterfactualRankingBlocked(
+                    "frozen card parameter received a gradient"
+                )
+        optimizer.step()
+    final_loss = float(pairwise_ranking_loss(bootstrap, train_rows).detach().item())
+    trained_train = evaluate_ranking(bootstrap, train_rows)
+    trained_development = evaluate_ranking(bootstrap, development_rows)
+    trained_model = pilot.encode_candidate_card_policy(bootstrap)
+    if _frozen_model_bytes(bootstrap) != frozen_before:
+        raise CounterfactualRankingBlocked("frozen model state changed")
+    if trained_model == entry_model:
+        raise CounterfactualRankingBlocked("scorer-weight model did not change")
+    checks, flips, corrected = comparison_gate(
+        entry_development, trained_development
+    )
+    checks["train_loss_decreased"] = final_loss < loss_history[0]
+    ready = all(checks.values())
+    return CompletedCounterfactualRankingTraining(
+        report={
+            "checks": checks,
+            "development": {
+                "action_flips": flips,
+                "corrected_to_best": corrected,
+                "entry": entry_development,
+                "trained": trained_development,
+            },
+            "entry_model_sha256": hashlib.sha256(entry_model).hexdigest(),
+            "fit": {
+                "final_loss": final_loss,
+                "first_step_loss": loss_history[0],
+                "loss_history": loss_history,
+                "optimizer_steps": training_steps,
+                "trainable_parameter_count": 128,
+                "trainable_parameters": [
+                    "family_head.scorer.weight",
+                    "conditional_ranker.scorer.weight",
+                ],
+            },
+            "schema_version": SCORER_WEIGHT_REPORT_SCHEMA_VERSION,
+            "train": {"entry": entry_train, "trained": trained_train},
+            "trained_model_sha256": hashlib.sha256(trained_model).hexdigest(),
+            "verdict": (
+                "card_counterfactual_scorer_weight_development_passed"
+                if ready
+                else "card_counterfactual_scorer_weight_development_not_ready"
+            ),
+        },
+        entry_model=entry_model,
+        trained_model=trained_model,
+    )
+
+
+def audit_scorer_weight_model(
+    entry_bootstrap: runtime.PairedBootstrap,
+    trained_bootstrap: runtime.PairedBootstrap,
+    rows: Sequence[CounterfactualRankingRow],
+) -> dict[str, Any]:
+    """Evaluate one untouched consumed audit without fitting either model."""
+    entry_model = pilot.encode_candidate_card_policy(entry_bootstrap)
+    trained_before = pilot.encode_candidate_card_policy(trained_bootstrap)
+    entry = evaluate_ranking(entry_bootstrap, rows)
+    trained = evaluate_ranking(trained_bootstrap, rows)
+    checks, flips, corrected = comparison_gate(entry, trained)
+    if pilot.encode_candidate_card_policy(entry_bootstrap) != entry_model or (
+        pilot.encode_candidate_card_policy(trained_bootstrap) != trained_before
+    ):
+        raise CounterfactualRankingBlocked("audit mutated a model")
+    return {
+        "action_flips": flips,
+        "checks": checks,
+        "corrected_to_best": corrected,
+        "entry": entry,
+        "trained": trained,
+        "verdict": (
+            "card_counterfactual_scorer_weight_audit_passed"
+            if all(checks.values())
+            else "card_counterfactual_scorer_weight_audit_not_ready"
+        ),
+    }
