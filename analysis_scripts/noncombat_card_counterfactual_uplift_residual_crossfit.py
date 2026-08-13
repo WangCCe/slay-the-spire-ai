@@ -41,7 +41,6 @@ if __name__ == "__main__":
 from analysis_scripts import noncombat_card_counterfactual_ranking_training as ranking
 from analysis_scripts import noncombat_card_counterfactual_ranking_training_runner as base_runner
 from analysis_scripts import noncombat_card_only_native_baseline_rl_pilot as pilot
-from analysis_scripts import noncombat_card_only_native_baseline_rl_pilot_runner as pilot_runner
 
 
 SCHEMA_VERSION = "noncombat-card-counterfactual-uplift-residual-crossfit-v1"
@@ -160,7 +159,14 @@ def _binding(path: Path | str) -> dict[str, Any]:
 
 def _source_bindings(repo_root: Path, source_commit: str) -> dict[str, Any]:
     try:
-        if pilot_runner._git(repo_root, "cat-file", "-t", source_commit) != "commit":
+        commit_type = subprocess.run(
+            ["git", "cat-file", "-t", source_commit],
+            cwd=repo_root,
+            check=True,
+            capture_output=True,
+            text=True,
+        ).stdout.strip()
+        if commit_type != "commit":
             raise UpliftCrossfitBlocked("source commit is unavailable")
         subprocess.run(
             ["git", "merge-base", "--is-ancestor", source_commit, "HEAD"],
