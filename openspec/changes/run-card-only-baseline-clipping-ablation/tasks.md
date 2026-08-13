@@ -15,7 +15,7 @@
 ## 3. Verification And Execution
 
 - [x] 3.1 Run py_compile and focused runtime/runner regressions in a scoped system-temp pytest directory (`12 passed in 66.21s`).
-- [ ] 3.2 Validate the OpenSpec change strictly and verify the runner source-only preflight.
-- [ ] 3.3 Execute the registered ablation once, within 64 environment accesses, and publish compact terminal/report artifacts.
-- [ ] 3.4 Verify input hashes, reproduction, support, authority, output isolation, and absence of CommunicationMod/game/production-checkpoint changes.
-- [ ] 3.5 Record the mechanism go/no-go and commit only code, tests, OpenSpec state, and compact evidence; retain model checkpoints locally.
+- [x] 3.2 Validate the OpenSpec change strictly and verify the runner source-only preflight.
+- [x] 3.3 Execute the registered ablation once, within 64 environment accesses, and publish compact terminal/report artifacts.
+- [x] 3.4 Verify input hashes, reproduction, support, authority, output isolation, and absence of CommunicationMod/game/production-checkpoint changes.
+- [x] 3.5 Record the mechanism go/no-go and commit only code, tests, OpenSpec state, and compact evidence; retain model checkpoints locally.
