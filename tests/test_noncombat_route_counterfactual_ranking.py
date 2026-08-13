@@ -449,6 +449,76 @@ def test_current_continuation_accepts_event_source(
     assert source.stage == 1
 
 
+@pytest.mark.parametrize(
+    ("downstream_category", "expected"),
+    [
+        ("shop", ranking.CURRENT_SHOP_MAPPING_BLOCKER),
+        ("route", "Current continuation failed: candidate_mapping_absent"),
+    ],
+)
+def test_current_continuation_registers_only_shop_candidate_mapping_absence(
+    monkeypatch: pytest.MonkeyPatch,
+    downstream_category: str,
+    expected: str,
+) -> None:
+    source = object()
+    advanced = object()
+    source_snapshot = {
+        "category": "event",
+        "decision_count": 0,
+        "state": {"floor": 1, "outcome": "undecided"},
+        "terminal": False,
+    }
+    advanced_snapshot = {
+        "category": downstream_category,
+        "decision_count": 1,
+        "state": {"floor": 1, "outcome": "undecided"},
+        "terminal": False,
+    }
+    monkeypatch.setattr(
+        ranking.credit,
+        "_environment_state",
+        lambda environment: (
+            (source_snapshot, [{"action_id": "event:continue"}])
+            if environment is source
+            else (advanced_snapshot, [{"action_id": f"{downstream_category}:leave"}])
+        ),
+    )
+    monkeypatch.setattr(
+        ranking.credit,
+        "_apply_forced_action",
+        lambda environment, action_id: (
+            advanced,
+            {"reward": 0.0, "selected_action_id": action_id},
+        ),
+    )
+    monkeypatch.setattr(
+        ranking.credit,
+        "_transition_reward",
+        lambda _transition: (0.0, 0.0, 0),
+    )
+
+    class BlockedSession:
+        def evaluate(self, **_kwargs: Any) -> Any:
+            raise ranking.current_bridge.BridgeBlocked("candidate_mapping_absent")
+
+    with pytest.raises(ranking.credit.CounterfactualCreditBlocked, match=expected):
+        ranking.evaluate_action_with_current_continuation(
+            source,
+            action_id="event:continue",
+            continuation_session_factory=BlockedSession,
+            source_category="event",
+            max_decisions=4,
+        )
+
+    blocker = ranking.credit.CounterfactualCreditBlocked(expected)
+    assert ranking._registered_support_blocker(blocker) == (
+        ranking.CURRENT_SHOP_MAPPING_BLOCKER
+        if downstream_category == "shop"
+        else None
+    )
+
+
 def test_train_and_evaluate_model_are_deterministic_on_learnable_rows() -> None:
     rows = tuple(
         _route_row(seed, good_first=seed % 2 == 0) for seed in range(40, 48)

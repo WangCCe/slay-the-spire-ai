@@ -1,0 +1,25 @@
+{
+  "artifacts": [
+    {
+      "path": "configuration.json",
+      "sha256": "6120cef365af8a209c7b1e0c367190a6f07a160053f10a65e4cb84f3f7ac9b32",
+      "size_bytes": 1067
+    },
+    {
+      "path": "dataset.json",
+      "sha256": "ba140e71411088879c3259849841f28eafa0ed03e1756ecf115a25dfbfa033e0",
+      "size_bytes": 2118907
+    },
+    {
+      "path": "metrics.json",
+      "sha256": "b60d8252f462341bebc04d018ac4014b0a925e65d3288a08dd15db3b24519e5f",
+      "size_bytes": 81060
+    },
+    {
+      "path": "report.json",
+      "sha256": "3c5333ee9d92a7637900801cf194b95b3a5fefb482c64f6e9a394c9ad978fd40",
+      "size_bytes": 5759
+    }
+  ],
+  "schema_version": "noncombat-event-option-ranker-shadow-manifest-v1"
+}

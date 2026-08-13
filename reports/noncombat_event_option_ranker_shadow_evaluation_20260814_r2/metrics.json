@@ -1,0 +1,2222 @@
+{
+  "changes_vs_current": {
+    "action_changes": 86,
+    "corrected": 23,
+    "worsened": 16
+  },
+  "checks": {
+    "action_changes_at_least_one": true,
+    "corrects_at_least_one_current_decision": true,
+    "event_diversity": true,
+    "informative_support": true,
+    "maximum_regret_noninferior_to_current": true,
+    "mean_regret_improves_current": true,
+    "p95_regret_noninferior_to_current": true,
+    "source_support": true,
+    "worsened_not_more_than_corrected": true
+  },
+  "confidence": {
+    "disagreement_count": 86,
+    "maximum": 0.5078942775726318,
+    "minimum": 0.5002853870391846
+  },
+  "current": {
+    "maximum_regret": 0.5087719298245614,
+    "mean_regret": 0.06472062509214212,
+    "p95_regret": 0.2982456140350877,
+    "predictions": [
+      {
+        "action_id": "event:world_of_goop:option:0",
+        "decision_index": 3,
+        "regret": 0.0,
+        "seed": 94400,
+        "source_sha256": "278a43258ea7b18caa5a62371f3bafb7b1d5f2d804cce3c378976f7ec6db7888"
+      },
+      {
+        "action_id": "event:big_fish:option:1",
+        "decision_index": 5,
+        "regret": 0.2982456140350877,
+        "seed": 94400,
+        "source_sha256": "ac42b5cfc6feabdcbb73ee9575949c571ed7753ab77b349faf729985079ba4e2"
+      },
+      {
+        "action_id": "event:shining_light:option:0",
+        "decision_index": 13,
+        "regret": 0.2982456140350877,
+        "seed": 94401,
+        "source_sha256": "a1e6d7af357cce12e173e83e4cd904e729e25d15f1d346a902c56d5bcc6b5cb4"
+      },
+      {
+        "action_id": "event:golden_shrine:option:0",
+        "decision_index": 24,
+        "regret": 0.0,
+        "seed": 94401,
+        "source_sha256": "c22ca1189c324d5a1451bc55a3036583e7bb36a33bfe82f3c5ec0d3429b741a4"
+      },
+      {
+        "action_id": "event:living_wall:option:2",
+        "decision_index": 8,
+        "regret": 0.0,
+        "seed": 94402,
+        "source_sha256": "b744d20eae4fa976f0e17fe599c104593593588f905ef1bed7984fe101b240ef"
+      },
+      {
+        "action_id": "event:masked_bandits:option:1",
+        "decision_index": 33,
+        "regret": 0.0,
+        "seed": 94402,
+        "source_sha256": "bf4142600acb712353aa622c11d8b935ac06b0bde4ed5a48fa804768d88be7c0"
+      },
+      {
+        "action_id": "event:wing_statue:option:0",
+        "decision_index": 3,
+        "regret": 0.0,
+        "seed": 94403,
+        "source_sha256": "bcaec918bc70a7677a578d97c0751821ee44b91c36e530184fe62d1011497da2"
+      },
+      {
+        "action_id": "event:world_of_goop:option:0",
+        "decision_index": 9,
+        "regret": 0.01754385964912286,
+        "seed": 94403,
+        "source_sha256": "152e056edac63e9f59cdcf525ea50ff6a908f40091176397d79cbe5af2434f77"
+      },
+      {
+        "action_id": "event:scrap_ooze:option:0",
+        "decision_index": 8,
+        "regret": 0.0,
+        "seed": 94404,
+        "source_sha256": "ab81fbaa620f625feb3da73463d59566c43e848c9ba42ec8fbd571607a10a00f"
+      },
+      {
+        "action_id": "event:scrap_ooze:option:0",
+        "decision_index": 9,
+        "regret": 0.0,
+        "seed": 94404,
+        "source_sha256": "046856e847376341fab9a1fd18963611a7690542e2ef8857065bfe4b2dd7e23f"
+      },
+      {
+        "action_id": "event:living_wall:option:2",
+        "decision_index": 3,
+        "regret": 0.21052631578947367,
+        "seed": 94405,
+        "source_sha256": "6f52a897a57ea0e2a8ef35092a345f6ca64fa1d20f012a8e80a3697d31d58d27"
+      },
+      {
+        "action_id": "event:big_fish:option:1",
+        "decision_index": 11,
+        "regret": 0.4385964912280702,
+        "seed": 94405,
+        "source_sha256": "93d6a70daf5153358a81f3f2ac72045931e11eff22aa510f06f4ebbc00131094"
+      },
+      {
+        "action_id": "event:world_of_goop:option:0",
+        "decision_index": 11,
+        "regret": 0.0,
+        "seed": 94406,
+        "source_sha256": "0a5c7c4b58d16862bbc1b3405efaa793c7b8a82ab95088884d6a2760f29a68f0"
+      },
+      {
+        "action_id": "event:scrap_ooze:option:0",
+        "decision_index": 23,
+        "regret": 0.0,
+        "seed": 94406,
+        "source_sha256": "be6380298ee37ba96002e98730acebca35c3df0b87406dcd5d0a9353992d3a7c"
+      },
+      {
+        "action_id": "event:upgrade_shrine:option:0",
+        "decision_index": 18,
+        "regret": 0.0,
+        "seed": 94407,
+        "source_sha256": "00da9182ac4945c4b04e7e22a1aadf1bf620e9fba6d4f1d9f1b5ac45f3f550af"
+      },
+      {
+        "action_id": "event:shining_light:option:0",
+        "decision_index": 8,
+        "regret": 0.0,
+        "seed": 94408,
+        "source_sha256": "71e29ce5b6aad8610cc50a15ab7349f400798a1b02bae8866ef443d38cb49fe2"
+      },
+      {
+        "action_id": "event:the_ssssserpent:option:1",
+        "decision_index": 15,
+        "regret": 0.21052631578947367,
+        "seed": 94408,
+        "source_sha256": "e90aa427edf16be516454a2442356925e8325d132dc85c51982be62f08c6991b"
+      },
+      {
+        "action_id": "event:scrap_ooze:option:0",
+        "decision_index": 4,
+        "regret": 0.0,
+        "seed": 94409,
+        "source_sha256": "c06cad52a2f7184f744cf0f38c3d3d930d29ebafb8c39479f0217bc2ab60d414"
+      },
+      {
+        "action_id": "event:scrap_ooze:option:0",
+        "decision_index": 5,
+        "regret": 0.0,
+        "seed": 94409,
+        "source_sha256": "8d95b2b0e13f1f1528b4e50995ce16a6de1eff8c710550256333b32d1696ece5"
+      },
+      {
+        "action_id": "event:the_ssssserpent:option:1",
+        "decision_index": 3,
+        "regret": 0.29824561403508765,
+        "seed": 94410,
+        "source_sha256": "99132028f04a1b43519cb6d36fff3ad72e6dc17268a15063cabf4661d60ddb42"
+      },
+      {
+        "action_id": "event:world_of_goop:option:0",
+        "decision_index": 7,
+        "regret": 0.03508771929824561,
+        "seed": 94410,
+        "source_sha256": "cc2b101b4e31d9aa1ff36d2b31fab205af93565ba84e6afd3db2164da43a9492"
+      },
+      {
+        "action_id": "event:wing_statue:option:0",
+        "decision_index": 8,
+        "regret": 0.0,
+        "seed": 94411,
+        "source_sha256": "46b05f1e02083304e61703e4626dd29bf73e1ca968ef4a63bca8ca25fe61552e"
+      },
+      {
+        "action_id": "event:golden_idol:option:0",
+        "decision_index": 10,
+        "regret": 0.0,
+        "seed": 94412,
+        "source_sha256": "86a2467644a69dde9b1b317162a82c109bae3f8be730f5dc06d2e0de5182e872"
+      },
+      {
+        "action_id": "event:golden_idol:option:0",
+        "decision_index": 4,
+        "regret": 0.03508771929824561,
+        "seed": 94413,
+        "source_sha256": "a9af9f303d947ce1126746f705428bcfae56e44790079948125180e48ed91349"
+      },
+      {
+        "action_id": "event:living_wall:option:2",
+        "decision_index": 8,
+        "regret": 0.0,
+        "seed": 94413,
+        "source_sha256": "6bdf76401fcf97a82ff7b033a59a614d8ba7414f096d459d7743780e537a6dbf"
+      },
+      {
+        "action_id": "event:wing_statue:option:0",
+        "decision_index": 9,
+        "regret": 0.0,
+        "seed": 94414,
+        "source_sha256": "f477251c671e50f00103cbc59a6183efe9dc43247ba62d4b21db92247ebc24fa"
+      },
+      {
+        "action_id": "event:big_fish:option:1",
+        "decision_index": 11,
+        "regret": 0.0,
+        "seed": 94414,
+        "source_sha256": "acfd299f1585eded14a42487877a51b79e4b1fbdfd0e8c08f6aaa90f91ad4d07"
+      },
+      {
+        "action_id": "event:golden_shrine:option:0",
+        "decision_index": 3,
+        "regret": 0.21052631578947367,
+        "seed": 94415,
+        "source_sha256": "b4ff56d6859070cda25242319e9b594198eaad9fe43df51e6bdee315a3ef2569"
+      },
+      {
+        "action_id": "event:purifier:option:0",
+        "decision_index": 12,
+        "regret": 0.5087719298245614,
+        "seed": 94415,
+        "source_sha256": "850f68a5eca390f46f0a778210eab2589ffbcb23251f57f572e1c9cff5afd221"
+      },
+      {
+        "action_id": "event:world_of_goop:option:0",
+        "decision_index": 4,
+        "regret": 0.0,
+        "seed": 94416,
+        "source_sha256": "7cef13262a81c785c16bc357ca1385d0aacc073768946a46666daffac418f664"
+      },
+      {
+        "action_id": "event:golden_idol:option:0",
+        "decision_index": 6,
+        "regret": 0.0,
+        "seed": 94416,
+        "source_sha256": "cb3447f355c08540eb58f9f8e280cc956fdced7595597117b8d1d45c8136f617"
+      },
+      {
+        "action_id": "event:living_wall:option:2",
+        "decision_index": 3,
+        "regret": 0.0,
+        "seed": 94417,
+        "source_sha256": "d50373bd0f1ca430ac006861f6c3d58cefcf07e942d902bdef5fafce61fce7f4"
+      },
+      {
+        "action_id": "event:the_woman_in_blue:option:0",
+        "decision_index": 7,
+        "regret": 0.0,
+        "seed": 94417,
+        "source_sha256": "44e42dd36ddd39eba6894862dc4dff2e3b7f95685e2c684ed1aa974353751932"
+      },
+      {
+        "action_id": "event:big_fish:option:1",
+        "decision_index": 7,
+        "regret": 0.0,
+        "seed": 94418,
+        "source_sha256": "ffe267bc783fc36418b84d90205ba0df78d721b1a26bf166ec57c4a95f6ce9ad"
+      },
+      {
+        "action_id": "event:dead_adventurer:option:1",
+        "decision_index": 15,
+        "regret": 0.0,
+        "seed": 94418,
+        "source_sha256": "35379a3205fbf6504a498c56d5590bf3e2728f9b71cae73029b6ecf02974b192"
+      },
+      {
+        "action_id": "event:upgrade_shrine:option:0",
+        "decision_index": 7,
+        "regret": 0.0,
+        "seed": 94419,
+        "source_sha256": "dd0d709c8f40944f0c0b5e8100ed3415f96582ac1ec1939781f8c6a59cc44d79"
+      },
+      {
+        "action_id": "event:scrap_ooze:option:0",
+        "decision_index": 7,
+        "regret": 0.0,
+        "seed": 94420,
+        "source_sha256": "7782731e52f57870c5fdf22d8bbaeefd39c58d782370970c785378435d3739f2"
+      },
+      {
+        "action_id": "event:scrap_ooze:option:0",
+        "decision_index": 8,
+        "regret": 0.0,
+        "seed": 94420,
+        "source_sha256": "d781ca696317f79d07c41aef671176382dfd7565ee6ea2776c0a3744d41245ef"
+      },
+      {
+        "action_id": "event:big_fish:option:1",
+        "decision_index": 6,
+        "regret": 0.0,
+        "seed": 94421,
+        "source_sha256": "ddc3e2d5dabcf1a33d7d76ea58f53ccd221aad9521546d981e883ae2c4dbb083"
+      },
+      {
+        "action_id": "event:the_ssssserpent:option:1",
+        "decision_index": 10,
+        "regret": 0.0,
+        "seed": 94421,
+        "source_sha256": "0c0990441cc8483e4ecd14cdbe78f1196b8d0753c634cf04a1ab5f8637e565f3"
+      },
+      {
+        "action_id": "event:note_for_yourself:option:1",
+        "decision_index": 3,
+        "regret": 0.0,
+        "seed": 94422,
+        "source_sha256": "46d5a3481bd10c6f5212b0112e8e4d582bf5f39d537b32283bdf3fa909f6c49b"
+      },
+      {
+        "action_id": "event:the_ssssserpent:option:1",
+        "decision_index": 19,
+        "regret": 0.0,
+        "seed": 94422,
+        "source_sha256": "91f57e7b82ce18d75f69abf8b841a07d9e5ba50c843ecd90a5f2a0ee08e1b8ba"
+      },
+      {
+        "action_id": "event:shining_light:option:0",
+        "decision_index": 5,
+        "regret": 0.0,
+        "seed": 94423,
+        "source_sha256": "067fcc2ae2bfa62e18e077c03e917ede9b4f2cebba147553c2defa0d537717d5"
+      },
+      {
+        "action_id": "event:living_wall:option:2",
+        "decision_index": 12,
+        "regret": 0.2982456140350877,
+        "seed": 94423,
+        "source_sha256": "0d60abaffe70a43610c650e0e2d1097d27018364c47db2dcb75e1b552f73f9e2"
+      },
+      {
+        "action_id": "event:world_of_goop:option:0",
+        "decision_index": 10,
+        "regret": 0.0,
+        "seed": 94424,
+        "source_sha256": "210b4d1bfd9c185355745bcdae495e809dc8eada922b67ecc1d76d50669b4218"
+      },
+      {
+        "action_id": "event:purifier:option:0",
+        "decision_index": 17,
+        "regret": 0.0,
+        "seed": 94424,
+        "source_sha256": "32ac3d180e8cb1f61bf67afca468fb64bf12fb759efcdad3475577f9ab23e8a0"
+      },
+      {
+        "action_id": "event:world_of_goop:option:0",
+        "decision_index": 5,
+        "regret": 0.0,
+        "seed": 94425,
+        "source_sha256": "f9480fff365bd0c6ec113df68a9490221d90b3802e27be77964280fcf8c4b304"
+      },
+      {
+        "action_id": "event:shining_light:option:0",
+        "decision_index": 7,
+        "regret": 0.0,
+        "seed": 94425,
+        "source_sha256": "0c3acc7b58a90df72265a422f86ccc1996cc58fb1cd7275fa14c31a1c00b0109"
+      },
+      {
+        "action_id": "event:shining_light:option:0",
+        "decision_index": 4,
+        "regret": 0.0,
+        "seed": 94426,
+        "source_sha256": "0c933e624a706e5e3b1c3a1a48b42ad9e5b5f0e060046595f8031c6782aed53b"
+      },
+      {
+        "action_id": "event:golden_shrine:option:0",
+        "decision_index": 8,
+        "regret": 0.29824561403508776,
+        "seed": 94426,
+        "source_sha256": "d3a2ad0a9e09e9933ae1392a27e449a70a16835a5514b6ad53754a864b42f96e"
+      },
+      {
+        "action_id": "event:big_fish:option:1",
+        "decision_index": 3,
+        "regret": 0.14035087719298245,
+        "seed": 94427,
+        "source_sha256": "8444c23eda62869741b2395a52547c58d6e1657e722ced8509c9c097dcfd516e"
+      },
+      {
+        "action_id": "event:transmorgrifier:option:0",
+        "decision_index": 9,
+        "regret": 0.0,
+        "seed": 94427,
+        "source_sha256": "a3dac38ffc25a9b4982916201b4990c57d7f8c9ca4efb936dec6aac8e4d6a42e"
+      },
+      {
+        "action_id": "event:world_of_goop:option:0",
+        "decision_index": 3,
+        "regret": 0.0,
+        "seed": 94428,
+        "source_sha256": "878772e60f02750be1a08bec339a84f6d678515be85063966de2e207adc66ec0"
+      },
+      {
+        "action_id": "event:shining_light:option:0",
+        "decision_index": 19,
+        "regret": 0.2982456140350877,
+        "seed": 94428,
+        "source_sha256": "a24a2e95562c2ad140db93d7514c5a626915b85f10c12fb3326e28685d5a0368"
+      },
+      {
+        "action_id": "event:living_wall:option:2",
+        "decision_index": 4,
+        "regret": 0.15789473684210525,
+        "seed": 94429,
+        "source_sha256": "1169ed3bdd30d3fc778c57ebdc3e46e425bc861c5fd06fc4e4425dee0daf90be"
+      },
+      {
+        "action_id": "event:the_ssssserpent:option:1",
+        "decision_index": 8,
+        "regret": 0.0,
+        "seed": 94429,
+        "source_sha256": "d3d8b915f480c1e5c28913f05001d4a9ff93fca8ef3d328c569a335578e0e991"
+      },
+      {
+        "action_id": "event:shining_light:option:0",
+        "decision_index": 3,
+        "regret": 0.29824561403508765,
+        "seed": 94430,
+        "source_sha256": "02c2fa5e4a18b90646f2b3d98ad6f71c15907055cf35908bffa8f87742f96e6a"
+      },
+      {
+        "action_id": "event:wing_statue:option:0",
+        "decision_index": 7,
+        "regret": 0.0,
+        "seed": 94430,
+        "source_sha256": "4388ab931849701f7c5f00092234f6f5ee96ba8426f6cac6e1586b0048678141"
+      },
+      {
+        "action_id": "event:ominous_forge:option:0",
+        "decision_index": 3,
+        "regret": 0.0,
+        "seed": 94431,
+        "source_sha256": "0198639a315f894119bbaf68545c947b72e0f78890c4caf3ccd30e3ccea010f8"
+      },
+      {
+        "action_id": "event:we_meet_again:option:0",
+        "decision_index": 9,
+        "regret": 0.40350877192982454,
+        "seed": 94431,
+        "source_sha256": "2863830168fcfd19b8bb491a87d7d071f28e938e195627de40fa93e5a2dbee88"
+      },
+      {
+        "action_id": "event:world_of_goop:option:0",
+        "decision_index": 7,
+        "regret": 0.0,
+        "seed": 94432,
+        "source_sha256": "fe067de3c0ba28d511be03bdca0c541ddae3281fb0847a7f2d15731c0d9e8ee1"
+      },
+      {
+        "action_id": "event:wing_statue:option:0",
+        "decision_index": 9,
+        "regret": 0.0,
+        "seed": 94432,
+        "source_sha256": "8d6d4ed9a8bab376795b6c2a70b2a0c4576f4ab3f96870cfcfb86dfc5e8d466a"
+      },
+      {
+        "action_id": "event:world_of_goop:option:0",
+        "decision_index": 11,
+        "regret": 0.0,
+        "seed": 94433,
+        "source_sha256": "0628325ebd6380d4eb74665af435c368e3943a4b1d2ffc076302c93224fd37bb"
+      },
+      {
+        "action_id": "event:upgrade_shrine:option:0",
+        "decision_index": 17,
+        "regret": 0.0,
+        "seed": 94433,
+        "source_sha256": "086c46f23dc28f7e57f95d0eaf0581992944214461af60ad3ce10266ee269a55"
+      },
+      {
+        "action_id": "event:upgrade_shrine:option:0",
+        "decision_index": 4,
+        "regret": 0.0,
+        "seed": 94434,
+        "source_sha256": "12e56e569ed6b1750f057a4c8dc931b925db79e49b0f8434b54e8ecc225feb68"
+      },
+      {
+        "action_id": "event:purifier:option:0",
+        "decision_index": 8,
+        "regret": 0.0,
+        "seed": 94434,
+        "source_sha256": "2b67e951ac745a22a758ed89c5678f4c1de4972d0ad1507a5b147bc8ef2b9c6f"
+      },
+      {
+        "action_id": "event:the_cleric:option:1",
+        "decision_index": 9,
+        "regret": 0.0,
+        "seed": 94435,
+        "source_sha256": "5bd03071b0001ae3c1eb6b90bf8589bf02595b13f8e231719cb1e8099e53c2e0"
+      },
+      {
+        "action_id": "event:ominous_forge:option:0",
+        "decision_index": 5,
+        "regret": 0.0,
+        "seed": 94436,
+        "source_sha256": "6ddbb1bb75d15900d911acc1fccafa02fcd2045edd59c27b205170766c4e14bc"
+      },
+      {
+        "action_id": "event:purifier:option:0",
+        "decision_index": 16,
+        "regret": 0.0,
+        "seed": 94436,
+        "source_sha256": "8523c6d2a82f3f0c965888616f3cb57e11da92334d4705ed3330a062f90d6658"
+      },
+      {
+        "action_id": "event:ominous_forge:option:0",
+        "decision_index": 3,
+        "regret": 0.29824561403508765,
+        "seed": 94437,
+        "source_sha256": "ea953ec243612abfecc7d163f30fa96e02d1cef6492720f99512b95849e11074"
+      },
+      {
+        "action_id": "event:wing_statue:option:0",
+        "decision_index": 11,
+        "regret": 0.0,
+        "seed": 94437,
+        "source_sha256": "28e889a1bc8f877a8a5deb07ba3c3cdb6be4a77f2607ba781a9b51f2bfd403fe"
+      },
+      {
+        "action_id": "event:wing_statue:option:0",
+        "decision_index": 3,
+        "regret": 0.0,
+        "seed": 94438,
+        "source_sha256": "7f669c03e8514dd9b16d4e366f1f77f2a66ef12330d0c2e1f945625346f0aded"
+      },
+      {
+        "action_id": "event:shining_light:option:0",
+        "decision_index": 5,
+        "regret": 0.4912280701754385,
+        "seed": 94438,
+        "source_sha256": "f833320c3e0a2362dc5b7df5f04182dc670a4b3231e7a2d9d1b5b0d508949e2f"
+      },
+      {
+        "action_id": "event:golden_idol:option:0",
+        "decision_index": 6,
+        "regret": 0.0,
+        "seed": 94439,
+        "source_sha256": "9fc21e1df8ef57d23a3cf25f0b2ff65f0c18e77a2681ceb24cdc21740c86e274"
+      },
+      {
+        "action_id": "event:the_ssssserpent:option:1",
+        "decision_index": 8,
+        "regret": 0.0,
+        "seed": 94439,
+        "source_sha256": "92ee2a1f2cfbb2968e5cb82951096b2682b1aa57fc43538dee4d62d52042f164"
+      },
+      {
+        "action_id": "event:wing_statue:option:0",
+        "decision_index": 5,
+        "regret": 0.0,
+        "seed": 94440,
+        "source_sha256": "a6ffbfcf33bf7501b6264e9c40ca007cdbe08605303c08e9b661fea10ebd813f"
+      },
+      {
+        "action_id": "event:living_wall:option:2",
+        "decision_index": 7,
+        "regret": 0.0,
+        "seed": 94440,
+        "source_sha256": "3b5ba3262e4c63b19b05504c9446818bbb6c4e2137f90d0b1d9eea8ddcd08d75"
+      },
+      {
+        "action_id": "event:scrap_ooze:option:0",
+        "decision_index": 3,
+        "regret": 0.0,
+        "seed": 94441,
+        "source_sha256": "098bf4450dd8e02d3de9daa00734b257a4773f82b756ad8bb2ef04b1aad7d8b5"
+      },
+      {
+        "action_id": "event:scrap_ooze:option:0",
+        "decision_index": 4,
+        "regret": 0.0,
+        "seed": 94441,
+        "source_sha256": "84271e5c84b11bef04eaf17b89a75b76601e0a299676dfaa55a649b60afcad92"
+      },
+      {
+        "action_id": "event:big_fish:option:1",
+        "decision_index": 11,
+        "regret": 0.0,
+        "seed": 94442,
+        "source_sha256": "d5dfa64c2481a5da9f8399f8f1c6b6e469ba2d17b6f81562200411e093c24a65"
+      },
+      {
+        "action_id": "event:shining_light:option:0",
+        "decision_index": 14,
+        "regret": 0.0,
+        "seed": 94442,
+        "source_sha256": "561d2152c15f17b6420682a932338f76618d096c1f3f6c9112b64d4dcec9d083"
+      },
+      {
+        "action_id": "event:shining_light:option:0",
+        "decision_index": 3,
+        "regret": 0.0,
+        "seed": 94443,
+        "source_sha256": "63d4fe9e97feedc7dae6e20e7cae81a3a15a6cff0d17a0460a7941557a65e2e6"
+      },
+      {
+        "action_id": "event:big_fish:option:1",
+        "decision_index": 18,
+        "regret": 0.0,
+        "seed": 94443,
+        "source_sha256": "70fe22172a308985e1c7c66b08e8dec469f91b9105c4ab8cc040b76c25746e8b"
+      },
+      {
+        "action_id": "event:golden_idol:option:0",
+        "decision_index": 5,
+        "regret": 0.0,
+        "seed": 94444,
+        "source_sha256": "efb72a5177d30e02f65df450a280dd64c2da6ab9486e314311a2e543d1159be7"
+      },
+      {
+        "action_id": "event:living_wall:option:2",
+        "decision_index": 8,
+        "regret": 0.0,
+        "seed": 94445,
+        "source_sha256": "ea481646044978a9fd55c23e8630680735592235d7ba5e820f7db246e8857513"
+      },
+      {
+        "action_id": "event:golden_idol:option:0",
+        "decision_index": 13,
+        "regret": 0.2982456140350877,
+        "seed": 94446,
+        "source_sha256": "d08488c05a7d287c14f615f1a40f0297b3a13a0fa568bfe738bfe1e92039d0db"
+      },
+      {
+        "action_id": "event:transmorgrifier:option:0",
+        "decision_index": 20,
+        "regret": 0.2982456140350877,
+        "seed": 94446,
+        "source_sha256": "92f81b1606c0661f00e1eb1d45db76d6bdf4b9576d11384391f5620065684d42"
+      },
+      {
+        "action_id": "event:wing_statue:option:0",
+        "decision_index": 10,
+        "regret": 0.1578947368421053,
+        "seed": 94447,
+        "source_sha256": "563aeb9226f9393630184513808b8cd2fe900baf14d03ffe77410d305ccf257e"
+      },
+      {
+        "action_id": "event:we_meet_again:option:0",
+        "decision_index": 13,
+        "regret": 0.052631578947368474,
+        "seed": 94447,
+        "source_sha256": "0e18d6b871ab46ae50945fa33897e1330f7d8e8450c2b55a89974f9bfb1f040f"
+      },
+      {
+        "action_id": "event:transmorgrifier:option:0",
+        "decision_index": 3,
+        "regret": 0.0,
+        "seed": 94448,
+        "source_sha256": "103d4945ec01d1fdd903879c47b5162ac96160baa203b6b787e05920f35dee85"
+      },
+      {
+        "action_id": "event:scrap_ooze:option:0",
+        "decision_index": 10,
+        "regret": 0.0,
+        "seed": 94448,
+        "source_sha256": "76784cc8e836d13a648ff9a77e7c79742133165ea19f390008103dd15597d9b3"
+      },
+      {
+        "action_id": "event:upgrade_shrine:option:0",
+        "decision_index": 11,
+        "regret": 0.0,
+        "seed": 94449,
+        "source_sha256": "a2d2693bd20cdd8410a40e244191c2c4dc2ed0111727cc913450be04fb04f94b"
+      },
+      {
+        "action_id": "event:living_wall:option:2",
+        "decision_index": 25,
+        "regret": 0.0,
+        "seed": 94449,
+        "source_sha256": "f2451aba36862e4908de5ce7dfabd4e5827314f8259220b07480445ea35e9684"
+      },
+      {
+        "action_id": "event:the_ssssserpent:option:1",
+        "decision_index": 5,
+        "regret": 0.0,
+        "seed": 94450,
+        "source_sha256": "da235e12ed2c71d82715099d38b166ed9bb2c61b52d7b127bbae1c2c1ab5ff87"
+      },
+      {
+        "action_id": "event:scrap_ooze:option:0",
+        "decision_index": 11,
+        "regret": 0.0,
+        "seed": 94450,
+        "source_sha256": "ec520c3f78ca0c7cabe4e9a562c57b4473b664650678c9eb65b39b669f1e97fb"
+      },
+      {
+        "action_id": "event:the_ssssserpent:option:1",
+        "decision_index": 3,
+        "regret": 0.0,
+        "seed": 94451,
+        "source_sha256": "2ba9f62b855ffc7da029b8006c88ad1dc0b8d59912ea852323be3c84bd711657"
+      },
+      {
+        "action_id": "event:wing_statue:option:0",
+        "decision_index": 9,
+        "regret": 0.0,
+        "seed": 94451,
+        "source_sha256": "6926d568dedfc00feabd8e35f960e263e432c379aeef8c4ed630d99f20755d30"
+      },
+      {
+        "action_id": "event:world_of_goop:option:0",
+        "decision_index": 11,
+        "regret": 0.15789473684210525,
+        "seed": 94452,
+        "source_sha256": "43de573d4827da892144606fd298295b5c50526e8b6db8442db09957cdebe1c1"
+      },
+      {
+        "action_id": "event:scrap_ooze:option:0",
+        "decision_index": 23,
+        "regret": 0.0,
+        "seed": 94452,
+        "source_sha256": "8b71284eea0c6d51eef45ddafeb9f9c7ca34d7bf757f6580e122b26fb5462c72"
+      },
+      {
+        "action_id": "event:wing_statue:option:0",
+        "decision_index": 3,
+        "regret": 0.07017543859649122,
+        "seed": 94453,
+        "source_sha256": "ffbbb425c6f30413efaa221865738fac3c37cbf469c9536974f50420de6fd12c"
+      },
+      {
+        "action_id": "event:golden_idol:option:0",
+        "decision_index": 7,
+        "regret": 0.12280701754385964,
+        "seed": 94453,
+        "source_sha256": "81008966b85f562c96775b09d81751c8c46ccd6ffc07a08cc5e7e6f425e55501"
+      },
+      {
+        "action_id": "event:the_ssssserpent:option:1",
+        "decision_index": 3,
+        "regret": 0.0,
+        "seed": 94454,
+        "source_sha256": "fcbee0086d10e9374c3a10884707ab9382ff81faaf327a10fb05e7bea61adeb8"
+      },
+      {
+        "action_id": "event:scrap_ooze:option:0",
+        "decision_index": 14,
+        "regret": 0.0,
+        "seed": 94454,
+        "source_sha256": "11131a3978d3d90a64074407092f04dc8a3abb861f2364056bb5fe57afc2350c"
+      },
+      {
+        "action_id": "event:the_cleric:option:1",
+        "decision_index": 3,
+        "regret": 0.0,
+        "seed": 94455,
+        "source_sha256": "b214fa0cd84992e6063684d2cde668b302339b441771c742f440f3c177606317"
+      },
+      {
+        "action_id": "event:shining_light:option:0",
+        "decision_index": 5,
+        "regret": 0.0,
+        "seed": 94455,
+        "source_sha256": "3b74d5ba5387b7a0ad45b0ada5a1200b8e096351641d3b9f014ee0294de9ec3d"
+      },
+      {
+        "action_id": "event:world_of_goop:option:0",
+        "decision_index": 4,
+        "regret": 0.29824561403508765,
+        "seed": 94456,
+        "source_sha256": "b556e4ba993953bc07154dcd8054eed58327c6304c89ccdc88242cf1a514e361"
+      },
+      {
+        "action_id": "event:transmorgrifier:option:0",
+        "decision_index": 6,
+        "regret": 0.2982456140350877,
+        "seed": 94456,
+        "source_sha256": "011ca5bec21e8c4c58867f1e3b98c48a2bd15e21e2a4f6397beddb533b9b57c0"
+      },
+      {
+        "action_id": "event:world_of_goop:option:0",
+        "decision_index": 3,
+        "regret": 0.29824561403508765,
+        "seed": 94457,
+        "source_sha256": "1eab7b7fa90d22646a3ad85f688c4293d5217bacdb26a59fdda8dfc37eaa278c"
+      },
+      {
+        "action_id": "event:living_wall:option:2",
+        "decision_index": 7,
+        "regret": 0.0,
+        "seed": 94457,
+        "source_sha256": "46d803aa1f97a1aedc606cd84db7c93828186020ae7a609ffcadd6f33e5fbe36"
+      },
+      {
+        "action_id": "event:the_ssssserpent:option:1",
+        "decision_index": 3,
+        "regret": 0.0,
+        "seed": 94458,
+        "source_sha256": "c7e15a05f9370d2e5c901f3e9ac6bc207c35fcdb12168964ca8c577e9a92c11a"
+      },
+      {
+        "action_id": "event:world_of_goop:option:0",
+        "decision_index": 5,
+        "regret": 0.0,
+        "seed": 94458,
+        "source_sha256": "983783d85859ecee3a29aca0ac28872911360d8f0864e3a7b568abea39e5ecd9"
+      },
+      {
+        "action_id": "event:the_ssssserpent:option:1",
+        "decision_index": 3,
+        "regret": 0.0,
+        "seed": 94459,
+        "source_sha256": "b876979f2117f3ca82c5522c7b1ee8c264f902f62dea6e5a3f6f0e27364608db"
+      },
+      {
+        "action_id": "event:wing_statue:option:0",
+        "decision_index": 9,
+        "regret": 0.0,
+        "seed": 94459,
+        "source_sha256": "671c8c69197f0426db69d3016591efee057611a965cf9be88ef5e6b81dbfc391"
+      },
+      {
+        "action_id": "event:world_of_goop:option:0",
+        "decision_index": 5,
+        "regret": 0.10526315789473684,
+        "seed": 94460,
+        "source_sha256": "772d70dc909b4735f944c30ab918c2a25c6e6aa84b4b9209880e896deaf373be"
+      },
+      {
+        "action_id": "event:the_cleric:option:0",
+        "decision_index": 9,
+        "regret": 0.0,
+        "seed": 94461,
+        "source_sha256": "e6e3811fe65d20a9bed6973ce87ae8cbb98add8eb313dcdf48f48b3a9b767cf2"
+      },
+      {
+        "action_id": "event:scrap_ooze:option:0",
+        "decision_index": 11,
+        "regret": 0.0,
+        "seed": 94461,
+        "source_sha256": "b4fff285a5abae17d2eb925c8651d4a1568d08299d39d850f04615fafb3eb441"
+      },
+      {
+        "action_id": "event:scrap_ooze:option:0",
+        "decision_index": 3,
+        "regret": 0.0,
+        "seed": 94462,
+        "source_sha256": "c36c3551ec50d364ab2fe1b3dd5260e9273f6cd8d0dbb20df7d1cb9ebb14def9"
+      },
+      {
+        "action_id": "event:note_for_yourself:option:1",
+        "decision_index": 8,
+        "regret": 0.0,
+        "seed": 94462,
+        "source_sha256": "39a08b5acbdf1a66c32b63014fbcf4d6d02ceba046c306a007883d98672ff1d0"
+      },
+      {
+        "action_id": "event:note_for_yourself:option:1",
+        "decision_index": 3,
+        "regret": 0.29824561403508765,
+        "seed": 94463,
+        "source_sha256": "e68ca2979cda0abd7d3c5b83f6c2c7dd491e967fd3e63fbb1f4462d64b65149b"
+      }
+    ],
+    "unique_best_accuracy": 0.40384615384615385,
+    "unique_best_rows": 52
+  },
+  "per_event": {
+    "Accursed Blacksmith": {
+      "action_changes": 2,
+      "corrected": 1,
+      "current_regret": 0.29824561403508765,
+      "selected_regret": 0.0,
+      "source_states": 3,
+      "worsened": 0
+    },
+    "Big Fish": {
+      "action_changes": 8,
+      "corrected": 1,
+      "current_regret": 0.8771929824561404,
+      "selected_regret": 0.631578947368421,
+      "source_states": 8,
+      "worsened": 1
+    },
+    "Dead Adventurer": {
+      "action_changes": 1,
+      "corrected": 0,
+      "current_regret": 0.0,
+      "selected_regret": 0.0,
+      "source_states": 1,
+      "worsened": 0
+    },
+    "Golden Idol": {
+      "action_changes": 7,
+      "corrected": 3,
+      "current_regret": 0.45614035087719296,
+      "selected_regret": 0.2982456140350877,
+      "source_states": 7,
+      "worsened": 1
+    },
+    "Golden Shrine": {
+      "action_changes": 2,
+      "corrected": 1,
+      "current_regret": 0.5087719298245614,
+      "selected_regret": 0.29824561403508776,
+      "source_states": 3,
+      "worsened": 0
+    },
+    "Golden Wing": {
+      "action_changes": 12,
+      "corrected": 1,
+      "current_regret": 0.22807017543859653,
+      "selected_regret": 0.8070175438596491,
+      "source_states": 12,
+      "worsened": 3
+    },
+    "Liars Game": {
+      "action_changes": 0,
+      "corrected": 0,
+      "current_regret": 0.5087719298245613,
+      "selected_regret": 0.5087719298245613,
+      "source_states": 11,
+      "worsened": 0
+    },
+    "Living Wall": {
+      "action_changes": 10,
+      "corrected": 2,
+      "current_regret": 0.6666666666666667,
+      "selected_regret": 1.1052631578947367,
+      "source_states": 10,
+      "worsened": 3
+    },
+    "Masked Bandits": {
+      "action_changes": 0,
+      "corrected": 0,
+      "current_regret": 0.0,
+      "selected_regret": 0.0,
+      "source_states": 1,
+      "worsened": 0
+    },
+    "Note For Yourself": {
+      "action_changes": 0,
+      "corrected": 0,
+      "current_regret": 0.29824561403508765,
+      "selected_regret": 0.29824561403508765,
+      "source_states": 3,
+      "worsened": 0
+    },
+    "Purifier": {
+      "action_changes": 4,
+      "corrected": 1,
+      "current_regret": 0.5087719298245614,
+      "selected_regret": 0.0,
+      "source_states": 4,
+      "worsened": 0
+    },
+    "Scrap Ooze": {
+      "action_changes": 0,
+      "corrected": 0,
+      "current_regret": 0.0,
+      "selected_regret": 0.0,
+      "source_states": 15,
+      "worsened": 0
+    },
+    "Shining Light": {
+      "action_changes": 11,
+      "corrected": 4,
+      "current_regret": 1.3859649122807016,
+      "selected_regret": 0.7017543859649121,
+      "source_states": 11,
+      "worsened": 3
+    },
+    "The Cleric": {
+      "action_changes": 2,
+      "corrected": 0,
+      "current_regret": 0.0,
+      "selected_regret": 0.0,
+      "source_states": 3,
+      "worsened": 0
+    },
+    "The Woman in Blue": {
+      "action_changes": 1,
+      "corrected": 0,
+      "current_regret": 0.0,
+      "selected_regret": 0.0,
+      "source_states": 1,
+      "worsened": 0
+    },
+    "Transmorgrifier": {
+      "action_changes": 4,
+      "corrected": 2,
+      "current_regret": 0.5964912280701754,
+      "selected_regret": 0.14035087719298245,
+      "source_states": 4,
+      "worsened": 1
+    },
+    "Upgrade Shrine": {
+      "action_changes": 5,
+      "corrected": 0,
+      "current_regret": 0.0,
+      "selected_regret": 0.24561403508771928,
+      "source_states": 5,
+      "worsened": 1
+    },
+    "WeMeetAgain": {
+      "action_changes": 2,
+      "corrected": 1,
+      "current_regret": 0.456140350877193,
+      "selected_regret": 0.052631578947368474,
+      "source_states": 2,
+      "worsened": 0
+    },
+    "World of Goop": {
+      "action_changes": 15,
+      "corrected": 6,
+      "current_regret": 0.9122807017543859,
+      "selected_regret": 0.42105263157894735,
+      "source_states": 15,
+      "worsened": 3
+    }
+  },
+  "selected": {
+    "confidence_threshold": 0.5,
+    "maximum_regret": 0.29824561403508776,
+    "mean_regret": 0.046292201090962694,
+    "override_count": 86,
+    "p95_regret": 0.2982456140350877,
+    "predictions": [
+      {
+        "action_id": "event:world_of_goop:option:1",
+        "confidence": 0.502275824546814,
+        "current_action_id": "event:world_of_goop:option:0",
+        "decision_index": 3,
+        "learned_action_id": "event:world_of_goop:option:1",
+        "regret": 0.0,
+        "seed": 94400,
+        "source_sha256": "278a43258ea7b18caa5a62371f3bafb7b1d5f2d804cce3c378976f7ec6db7888"
+      },
+      {
+        "action_id": "event:big_fish:option:0",
+        "confidence": 0.5011425018310547,
+        "current_action_id": "event:big_fish:option:1",
+        "decision_index": 5,
+        "learned_action_id": "event:big_fish:option:0",
+        "regret": 0.2982456140350877,
+        "seed": 94400,
+        "source_sha256": "ac42b5cfc6feabdcbb73ee9575949c571ed7753ab77b349faf729985079ba4e2"
+      },
+      {
+        "action_id": "event:shining_light:option:1",
+        "confidence": 0.5071991682052612,
+        "current_action_id": "event:shining_light:option:0",
+        "decision_index": 13,
+        "learned_action_id": "event:shining_light:option:1",
+        "regret": 0.0,
+        "seed": 94401,
+        "source_sha256": "a1e6d7af357cce12e173e83e4cd904e729e25d15f1d346a902c56d5bcc6b5cb4"
+      },
+      {
+        "action_id": "event:golden_shrine:option:0",
+        "confidence": 0.5,
+        "current_action_id": "event:golden_shrine:option:0",
+        "decision_index": 24,
+        "learned_action_id": "event:golden_shrine:option:0",
+        "regret": 0.0,
+        "seed": 94401,
+        "source_sha256": "c22ca1189c324d5a1451bc55a3036583e7bb36a33bfe82f3c5ec0d3429b741a4"
+      },
+      {
+        "action_id": "event:living_wall:option:0",
+        "confidence": 0.5031619668006897,
+        "current_action_id": "event:living_wall:option:2",
+        "decision_index": 8,
+        "learned_action_id": "event:living_wall:option:0",
+        "regret": 0.0,
+        "seed": 94402,
+        "source_sha256": "b744d20eae4fa976f0e17fe599c104593593588f905ef1bed7984fe101b240ef"
+      },
+      {
+        "action_id": "event:masked_bandits:option:1",
+        "confidence": 0.5,
+        "current_action_id": "event:masked_bandits:option:1",
+        "decision_index": 33,
+        "learned_action_id": "event:masked_bandits:option:1",
+        "regret": 0.0,
+        "seed": 94402,
+        "source_sha256": "bf4142600acb712353aa622c11d8b935ac06b0bde4ed5a48fa804768d88be7c0"
+      },
+      {
+        "action_id": "event:wing_statue:option:2",
+        "confidence": 0.5013860464096069,
+        "current_action_id": "event:wing_statue:option:0",
+        "decision_index": 3,
+        "learned_action_id": "event:wing_statue:option:2",
+        "regret": 0.29824561403508765,
+        "seed": 94403,
+        "source_sha256": "bcaec918bc70a7677a578d97c0751821ee44b91c36e530184fe62d1011497da2"
+      },
+      {
+        "action_id": "event:world_of_goop:option:1",
+        "confidence": 0.5010501742362976,
+        "current_action_id": "event:world_of_goop:option:0",
+        "decision_index": 9,
+        "learned_action_id": "event:world_of_goop:option:1",
+        "regret": 0.0,
+        "seed": 94403,
+        "source_sha256": "152e056edac63e9f59cdcf525ea50ff6a908f40091176397d79cbe5af2434f77"
+      },
+      {
+        "action_id": "event:scrap_ooze:option:0",
+        "confidence": 0.5,
+        "current_action_id": "event:scrap_ooze:option:0",
+        "decision_index": 8,
+        "learned_action_id": "event:scrap_ooze:option:0",
+        "regret": 0.0,
+        "seed": 94404,
+        "source_sha256": "ab81fbaa620f625feb3da73463d59566c43e848c9ba42ec8fbd571607a10a00f"
+      },
+      {
+        "action_id": "event:scrap_ooze:option:0",
+        "confidence": 0.5,
+        "current_action_id": "event:scrap_ooze:option:0",
+        "decision_index": 9,
+        "learned_action_id": "event:scrap_ooze:option:0",
+        "regret": 0.0,
+        "seed": 94404,
+        "source_sha256": "046856e847376341fab9a1fd18963611a7690542e2ef8857065bfe4b2dd7e23f"
+      },
+      {
+        "action_id": "event:living_wall:option:0",
+        "confidence": 0.5024608373641968,
+        "current_action_id": "event:living_wall:option:2",
+        "decision_index": 3,
+        "learned_action_id": "event:living_wall:option:0",
+        "regret": 0.0,
+        "seed": 94405,
+        "source_sha256": "6f52a897a57ea0e2a8ef35092a345f6ca64fa1d20f012a8e80a3697d31d58d27"
+      },
+      {
+        "action_id": "event:big_fish:option:0",
+        "confidence": 0.5008719563484192,
+        "current_action_id": "event:big_fish:option:1",
+        "decision_index": 11,
+        "learned_action_id": "event:big_fish:option:0",
+        "regret": 0.0,
+        "seed": 94405,
+        "source_sha256": "93d6a70daf5153358a81f3f2ac72045931e11eff22aa510f06f4ebbc00131094"
+      },
+      {
+        "action_id": "event:world_of_goop:option:1",
+        "confidence": 0.501541256904602,
+        "current_action_id": "event:world_of_goop:option:0",
+        "decision_index": 11,
+        "learned_action_id": "event:world_of_goop:option:1",
+        "regret": 0.0,
+        "seed": 94406,
+        "source_sha256": "0a5c7c4b58d16862bbc1b3405efaa793c7b8a82ab95088884d6a2760f29a68f0"
+      },
+      {
+        "action_id": "event:scrap_ooze:option:0",
+        "confidence": 0.5,
+        "current_action_id": "event:scrap_ooze:option:0",
+        "decision_index": 23,
+        "learned_action_id": "event:scrap_ooze:option:0",
+        "regret": 0.0,
+        "seed": 94406,
+        "source_sha256": "be6380298ee37ba96002e98730acebca35c3df0b87406dcd5d0a9353992d3a7c"
+      },
+      {
+        "action_id": "event:upgrade_shrine:option:1",
+        "confidence": 0.5024686455726624,
+        "current_action_id": "event:upgrade_shrine:option:0",
+        "decision_index": 18,
+        "learned_action_id": "event:upgrade_shrine:option:1",
+        "regret": 0.24561403508771928,
+        "seed": 94407,
+        "source_sha256": "00da9182ac4945c4b04e7e22a1aadf1bf620e9fba6d4f1d9f1b5ac45f3f550af"
+      },
+      {
+        "action_id": "event:shining_light:option:1",
+        "confidence": 0.5049927234649658,
+        "current_action_id": "event:shining_light:option:0",
+        "decision_index": 8,
+        "learned_action_id": "event:shining_light:option:1",
+        "regret": 0.0,
+        "seed": 94408,
+        "source_sha256": "71e29ce5b6aad8610cc50a15ab7349f400798a1b02bae8866ef443d38cb49fe2"
+      },
+      {
+        "action_id": "event:the_ssssserpent:option:1",
+        "confidence": 0.5,
+        "current_action_id": "event:the_ssssserpent:option:1",
+        "decision_index": 15,
+        "learned_action_id": "event:the_ssssserpent:option:1",
+        "regret": 0.21052631578947367,
+        "seed": 94408,
+        "source_sha256": "e90aa427edf16be516454a2442356925e8325d132dc85c51982be62f08c6991b"
+      },
+      {
+        "action_id": "event:scrap_ooze:option:0",
+        "confidence": 0.5,
+        "current_action_id": "event:scrap_ooze:option:0",
+        "decision_index": 4,
+        "learned_action_id": "event:scrap_ooze:option:0",
+        "regret": 0.0,
+        "seed": 94409,
+        "source_sha256": "c06cad52a2f7184f744cf0f38c3d3d930d29ebafb8c39479f0217bc2ab60d414"
+      },
+      {
+        "action_id": "event:scrap_ooze:option:0",
+        "confidence": 0.5,
+        "current_action_id": "event:scrap_ooze:option:0",
+        "decision_index": 5,
+        "learned_action_id": "event:scrap_ooze:option:0",
+        "regret": 0.0,
+        "seed": 94409,
+        "source_sha256": "8d95b2b0e13f1f1528b4e50995ce16a6de1eff8c710550256333b32d1696ece5"
+      },
+      {
+        "action_id": "event:the_ssssserpent:option:1",
+        "confidence": 0.5,
+        "current_action_id": "event:the_ssssserpent:option:1",
+        "decision_index": 3,
+        "learned_action_id": "event:the_ssssserpent:option:1",
+        "regret": 0.29824561403508765,
+        "seed": 94410,
+        "source_sha256": "99132028f04a1b43519cb6d36fff3ad72e6dc17268a15063cabf4661d60ddb42"
+      },
+      {
+        "action_id": "event:world_of_goop:option:1",
+        "confidence": 0.5020285248756409,
+        "current_action_id": "event:world_of_goop:option:0",
+        "decision_index": 7,
+        "learned_action_id": "event:world_of_goop:option:1",
+        "regret": 0.0,
+        "seed": 94410,
+        "source_sha256": "cc2b101b4e31d9aa1ff36d2b31fab205af93565ba84e6afd3db2164da43a9492"
+      },
+      {
+        "action_id": "event:wing_statue:option:2",
+        "confidence": 0.50068598985672,
+        "current_action_id": "event:wing_statue:option:0",
+        "decision_index": 8,
+        "learned_action_id": "event:wing_statue:option:2",
+        "regret": 0.0,
+        "seed": 94411,
+        "source_sha256": "46b05f1e02083304e61703e4626dd29bf73e1ca968ef4a63bca8ca25fe61552e"
+      },
+      {
+        "action_id": "event:golden_idol:option:1",
+        "confidence": 0.5014968514442444,
+        "current_action_id": "event:golden_idol:option:0",
+        "decision_index": 10,
+        "learned_action_id": "event:golden_idol:option:1",
+        "regret": 0.0,
+        "seed": 94412,
+        "source_sha256": "86a2467644a69dde9b1b317162a82c109bae3f8be730f5dc06d2e0de5182e872"
+      },
+      {
+        "action_id": "event:golden_idol:option:1",
+        "confidence": 0.5030657052993774,
+        "current_action_id": "event:golden_idol:option:0",
+        "decision_index": 4,
+        "learned_action_id": "event:golden_idol:option:1",
+        "regret": 0.0,
+        "seed": 94413,
+        "source_sha256": "a9af9f303d947ce1126746f705428bcfae56e44790079948125180e48ed91349"
+      },
+      {
+        "action_id": "event:living_wall:option:0",
+        "confidence": 0.5027536153793335,
+        "current_action_id": "event:living_wall:option:2",
+        "decision_index": 8,
+        "learned_action_id": "event:living_wall:option:0",
+        "regret": 0.19298245614035087,
+        "seed": 94413,
+        "source_sha256": "6bdf76401fcf97a82ff7b033a59a614d8ba7414f096d459d7743780e537a6dbf"
+      },
+      {
+        "action_id": "event:wing_statue:option:2",
+        "confidence": 0.5019063949584961,
+        "current_action_id": "event:wing_statue:option:0",
+        "decision_index": 9,
+        "learned_action_id": "event:wing_statue:option:2",
+        "regret": 0.0,
+        "seed": 94414,
+        "source_sha256": "f477251c671e50f00103cbc59a6183efe9dc43247ba62d4b21db92247ebc24fa"
+      },
+      {
+        "action_id": "event:big_fish:option:0",
+        "confidence": 0.5015087127685547,
+        "current_action_id": "event:big_fish:option:1",
+        "decision_index": 11,
+        "learned_action_id": "event:big_fish:option:0",
+        "regret": 0.0,
+        "seed": 94414,
+        "source_sha256": "acfd299f1585eded14a42487877a51b79e4b1fbdfd0e8c08f6aaa90f91ad4d07"
+      },
+      {
+        "action_id": "event:golden_shrine:option:2",
+        "confidence": 0.5028573870658875,
+        "current_action_id": "event:golden_shrine:option:0",
+        "decision_index": 3,
+        "learned_action_id": "event:golden_shrine:option:2",
+        "regret": 0.0,
+        "seed": 94415,
+        "source_sha256": "b4ff56d6859070cda25242319e9b594198eaad9fe43df51e6bdee315a3ef2569"
+      },
+      {
+        "action_id": "event:purifier:option:1",
+        "confidence": 0.5018386840820312,
+        "current_action_id": "event:purifier:option:0",
+        "decision_index": 12,
+        "learned_action_id": "event:purifier:option:1",
+        "regret": 0.0,
+        "seed": 94415,
+        "source_sha256": "850f68a5eca390f46f0a778210eab2589ffbcb23251f57f572e1c9cff5afd221"
+      },
+      {
+        "action_id": "event:world_of_goop:option:1",
+        "confidence": 0.5027750730514526,
+        "current_action_id": "event:world_of_goop:option:0",
+        "decision_index": 4,
+        "learned_action_id": "event:world_of_goop:option:1",
+        "regret": 0.0,
+        "seed": 94416,
+        "source_sha256": "7cef13262a81c785c16bc357ca1385d0aacc073768946a46666daffac418f664"
+      },
+      {
+        "action_id": "event:golden_idol:option:1",
+        "confidence": 0.5021286606788635,
+        "current_action_id": "event:golden_idol:option:0",
+        "decision_index": 6,
+        "learned_action_id": "event:golden_idol:option:1",
+        "regret": 0.2982456140350877,
+        "seed": 94416,
+        "source_sha256": "cb3447f355c08540eb58f9f8e280cc956fdced7595597117b8d1d45c8136f617"
+      },
+      {
+        "action_id": "event:living_wall:option:0",
+        "confidence": 0.5028801560401917,
+        "current_action_id": "event:living_wall:option:2",
+        "decision_index": 3,
+        "learned_action_id": "event:living_wall:option:0",
+        "regret": 0.29824561403508765,
+        "seed": 94417,
+        "source_sha256": "d50373bd0f1ca430ac006861f6c3d58cefcf07e942d902bdef5fafce61fce7f4"
+      },
+      {
+        "action_id": "event:the_woman_in_blue:option:2",
+        "confidence": 0.5013850331306458,
+        "current_action_id": "event:the_woman_in_blue:option:0",
+        "decision_index": 7,
+        "learned_action_id": "event:the_woman_in_blue:option:2",
+        "regret": 0.0,
+        "seed": 94417,
+        "source_sha256": "44e42dd36ddd39eba6894862dc4dff2e3b7f95685e2c684ed1aa974353751932"
+      },
+      {
+        "action_id": "event:big_fish:option:0",
+        "confidence": 0.5030167698860168,
+        "current_action_id": "event:big_fish:option:1",
+        "decision_index": 7,
+        "learned_action_id": "event:big_fish:option:0",
+        "regret": 0.0,
+        "seed": 94418,
+        "source_sha256": "ffe267bc783fc36418b84d90205ba0df78d721b1a26bf166ec57c4a95f6ce9ad"
+      },
+      {
+        "action_id": "event:dead_adventurer:option:0",
+        "confidence": 0.5013130903244019,
+        "current_action_id": "event:dead_adventurer:option:1",
+        "decision_index": 15,
+        "learned_action_id": "event:dead_adventurer:option:0",
+        "regret": 0.0,
+        "seed": 94418,
+        "source_sha256": "35379a3205fbf6504a498c56d5590bf3e2728f9b71cae73029b6ecf02974b192"
+      },
+      {
+        "action_id": "event:upgrade_shrine:option:1",
+        "confidence": 0.5018178224563599,
+        "current_action_id": "event:upgrade_shrine:option:0",
+        "decision_index": 7,
+        "learned_action_id": "event:upgrade_shrine:option:1",
+        "regret": 0.0,
+        "seed": 94419,
+        "source_sha256": "dd0d709c8f40944f0c0b5e8100ed3415f96582ac1ec1939781f8c6a59cc44d79"
+      },
+      {
+        "action_id": "event:scrap_ooze:option:0",
+        "confidence": 0.5,
+        "current_action_id": "event:scrap_ooze:option:0",
+        "decision_index": 7,
+        "learned_action_id": "event:scrap_ooze:option:0",
+        "regret": 0.0,
+        "seed": 94420,
+        "source_sha256": "7782731e52f57870c5fdf22d8bbaeefd39c58d782370970c785378435d3739f2"
+      },
+      {
+        "action_id": "event:scrap_ooze:option:0",
+        "confidence": 0.5,
+        "current_action_id": "event:scrap_ooze:option:0",
+        "decision_index": 8,
+        "learned_action_id": "event:scrap_ooze:option:0",
+        "regret": 0.0,
+        "seed": 94420,
+        "source_sha256": "d781ca696317f79d07c41aef671176382dfd7565ee6ea2776c0a3744d41245ef"
+      },
+      {
+        "action_id": "event:big_fish:option:0",
+        "confidence": 0.5016452074050903,
+        "current_action_id": "event:big_fish:option:1",
+        "decision_index": 6,
+        "learned_action_id": "event:big_fish:option:0",
+        "regret": 0.0,
+        "seed": 94421,
+        "source_sha256": "ddc3e2d5dabcf1a33d7d76ea58f53ccd221aad9521546d981e883ae2c4dbb083"
+      },
+      {
+        "action_id": "event:the_ssssserpent:option:1",
+        "confidence": 0.5,
+        "current_action_id": "event:the_ssssserpent:option:1",
+        "decision_index": 10,
+        "learned_action_id": "event:the_ssssserpent:option:1",
+        "regret": 0.0,
+        "seed": 94421,
+        "source_sha256": "0c0990441cc8483e4ecd14cdbe78f1196b8d0753c634cf04a1ab5f8637e565f3"
+      },
+      {
+        "action_id": "event:note_for_yourself:option:1",
+        "confidence": 0.5,
+        "current_action_id": "event:note_for_yourself:option:1",
+        "decision_index": 3,
+        "learned_action_id": "event:note_for_yourself:option:1",
+        "regret": 0.0,
+        "seed": 94422,
+        "source_sha256": "46d5a3481bd10c6f5212b0112e8e4d582bf5f39d537b32283bdf3fa909f6c49b"
+      },
+      {
+        "action_id": "event:the_ssssserpent:option:1",
+        "confidence": 0.5,
+        "current_action_id": "event:the_ssssserpent:option:1",
+        "decision_index": 19,
+        "learned_action_id": "event:the_ssssserpent:option:1",
+        "regret": 0.0,
+        "seed": 94422,
+        "source_sha256": "91f57e7b82ce18d75f69abf8b841a07d9e5ba50c843ecd90a5f2a0ee08e1b8ba"
+      },
+      {
+        "action_id": "event:shining_light:option:1",
+        "confidence": 0.5071446895599365,
+        "current_action_id": "event:shining_light:option:0",
+        "decision_index": 5,
+        "learned_action_id": "event:shining_light:option:1",
+        "regret": 0.10526315789473684,
+        "seed": 94423,
+        "source_sha256": "067fcc2ae2bfa62e18e077c03e917ede9b4f2cebba147553c2defa0d537717d5"
+      },
+      {
+        "action_id": "event:living_wall:option:0",
+        "confidence": 0.5019952058792114,
+        "current_action_id": "event:living_wall:option:2",
+        "decision_index": 12,
+        "learned_action_id": "event:living_wall:option:0",
+        "regret": 0.2982456140350877,
+        "seed": 94423,
+        "source_sha256": "0d60abaffe70a43610c650e0e2d1097d27018364c47db2dcb75e1b552f73f9e2"
+      },
+      {
+        "action_id": "event:world_of_goop:option:1",
+        "confidence": 0.5016597509384155,
+        "current_action_id": "event:world_of_goop:option:0",
+        "decision_index": 10,
+        "learned_action_id": "event:world_of_goop:option:1",
+        "regret": 0.0,
+        "seed": 94424,
+        "source_sha256": "210b4d1bfd9c185355745bcdae495e809dc8eada922b67ecc1d76d50669b4218"
+      },
+      {
+        "action_id": "event:purifier:option:1",
+        "confidence": 0.5021894574165344,
+        "current_action_id": "event:purifier:option:0",
+        "decision_index": 17,
+        "learned_action_id": "event:purifier:option:1",
+        "regret": 0.0,
+        "seed": 94424,
+        "source_sha256": "32ac3d180e8cb1f61bf67afca468fb64bf12fb759efcdad3475577f9ab23e8a0"
+      },
+      {
+        "action_id": "event:world_of_goop:option:1",
+        "confidence": 0.5011034607887268,
+        "current_action_id": "event:world_of_goop:option:0",
+        "decision_index": 5,
+        "learned_action_id": "event:world_of_goop:option:1",
+        "regret": 0.0,
+        "seed": 94425,
+        "source_sha256": "f9480fff365bd0c6ec113df68a9490221d90b3802e27be77964280fcf8c4b304"
+      },
+      {
+        "action_id": "event:shining_light:option:1",
+        "confidence": 0.5078942775726318,
+        "current_action_id": "event:shining_light:option:0",
+        "decision_index": 7,
+        "learned_action_id": "event:shining_light:option:1",
+        "regret": 0.0,
+        "seed": 94425,
+        "source_sha256": "0c3acc7b58a90df72265a422f86ccc1996cc58fb1cd7275fa14c31a1c00b0109"
+      },
+      {
+        "action_id": "event:shining_light:option:1",
+        "confidence": 0.50494784116745,
+        "current_action_id": "event:shining_light:option:0",
+        "decision_index": 4,
+        "learned_action_id": "event:shining_light:option:1",
+        "regret": 0.0,
+        "seed": 94426,
+        "source_sha256": "0c933e624a706e5e3b1c3a1a48b42ad9e5b5f0e060046595f8031c6782aed53b"
+      },
+      {
+        "action_id": "event:golden_shrine:option:2",
+        "confidence": 0.502720832824707,
+        "current_action_id": "event:golden_shrine:option:0",
+        "decision_index": 8,
+        "learned_action_id": "event:golden_shrine:option:2",
+        "regret": 0.29824561403508776,
+        "seed": 94426,
+        "source_sha256": "d3a2ad0a9e09e9933ae1392a27e449a70a16835a5514b6ad53754a864b42f96e"
+      },
+      {
+        "action_id": "event:big_fish:option:0",
+        "confidence": 0.5017871856689453,
+        "current_action_id": "event:big_fish:option:1",
+        "decision_index": 3,
+        "learned_action_id": "event:big_fish:option:0",
+        "regret": 0.14035087719298245,
+        "seed": 94427,
+        "source_sha256": "8444c23eda62869741b2395a52547c58d6e1657e722ced8509c9c097dcfd516e"
+      },
+      {
+        "action_id": "event:transmorgrifier:option:1",
+        "confidence": 0.5022300481796265,
+        "current_action_id": "event:transmorgrifier:option:0",
+        "decision_index": 9,
+        "learned_action_id": "event:transmorgrifier:option:1",
+        "regret": 0.14035087719298245,
+        "seed": 94427,
+        "source_sha256": "a3dac38ffc25a9b4982916201b4990c57d7f8c9ca4efb936dec6aac8e4d6a42e"
+      },
+      {
+        "action_id": "event:world_of_goop:option:1",
+        "confidence": 0.5011014342308044,
+        "current_action_id": "event:world_of_goop:option:0",
+        "decision_index": 3,
+        "learned_action_id": "event:world_of_goop:option:1",
+        "regret": 0.03508771929824561,
+        "seed": 94428,
+        "source_sha256": "878772e60f02750be1a08bec339a84f6d678515be85063966de2e207adc66ec0"
+      },
+      {
+        "action_id": "event:shining_light:option:1",
+        "confidence": 0.5053756237030029,
+        "current_action_id": "event:shining_light:option:0",
+        "decision_index": 19,
+        "learned_action_id": "event:shining_light:option:1",
+        "regret": 0.0,
+        "seed": 94428,
+        "source_sha256": "a24a2e95562c2ad140db93d7514c5a626915b85f10c12fb3326e28685d5a0368"
+      },
+      {
+        "action_id": "event:living_wall:option:0",
+        "confidence": 0.5043904781341553,
+        "current_action_id": "event:living_wall:option:2",
+        "decision_index": 4,
+        "learned_action_id": "event:living_wall:option:0",
+        "regret": 0.017543859649122806,
+        "seed": 94429,
+        "source_sha256": "1169ed3bdd30d3fc778c57ebdc3e46e425bc861c5fd06fc4e4425dee0daf90be"
+      },
+      {
+        "action_id": "event:the_ssssserpent:option:1",
+        "confidence": 0.5,
+        "current_action_id": "event:the_ssssserpent:option:1",
+        "decision_index": 8,
+        "learned_action_id": "event:the_ssssserpent:option:1",
+        "regret": 0.0,
+        "seed": 94429,
+        "source_sha256": "d3d8b915f480c1e5c28913f05001d4a9ff93fca8ef3d328c569a335578e0e991"
+      },
+      {
+        "action_id": "event:shining_light:option:1",
+        "confidence": 0.5062482953071594,
+        "current_action_id": "event:shining_light:option:0",
+        "decision_index": 3,
+        "learned_action_id": "event:shining_light:option:1",
+        "regret": 0.0,
+        "seed": 94430,
+        "source_sha256": "02c2fa5e4a18b90646f2b3d98ad6f71c15907055cf35908bffa8f87742f96e6a"
+      },
+      {
+        "action_id": "event:wing_statue:option:2",
+        "confidence": 0.5020900964736938,
+        "current_action_id": "event:wing_statue:option:0",
+        "decision_index": 7,
+        "learned_action_id": "event:wing_statue:option:2",
+        "regret": 0.29824561403508776,
+        "seed": 94430,
+        "source_sha256": "4388ab931849701f7c5f00092234f6f5ee96ba8426f6cac6e1586b0048678141"
+      },
+      {
+        "action_id": "event:ominous_forge:option:0",
+        "confidence": 0.5,
+        "current_action_id": "event:ominous_forge:option:0",
+        "decision_index": 3,
+        "learned_action_id": "event:ominous_forge:option:0",
+        "regret": 0.0,
+        "seed": 94431,
+        "source_sha256": "0198639a315f894119bbaf68545c947b72e0f78890c4caf3ccd30e3ccea010f8"
+      },
+      {
+        "action_id": "event:we_meet_again:option:2",
+        "confidence": 0.5015653967857361,
+        "current_action_id": "event:we_meet_again:option:0",
+        "decision_index": 9,
+        "learned_action_id": "event:we_meet_again:option:2",
+        "regret": 0.0,
+        "seed": 94431,
+        "source_sha256": "2863830168fcfd19b8bb491a87d7d071f28e938e195627de40fa93e5a2dbee88"
+      },
+      {
+        "action_id": "event:world_of_goop:option:1",
+        "confidence": 0.5026031732559204,
+        "current_action_id": "event:world_of_goop:option:0",
+        "decision_index": 7,
+        "learned_action_id": "event:world_of_goop:option:1",
+        "regret": 0.2982456140350877,
+        "seed": 94432,
+        "source_sha256": "fe067de3c0ba28d511be03bdca0c541ddae3281fb0847a7f2d15731c0d9e8ee1"
+      },
+      {
+        "action_id": "event:wing_statue:option:2",
+        "confidence": 0.5021312832832336,
+        "current_action_id": "event:wing_statue:option:0",
+        "decision_index": 9,
+        "learned_action_id": "event:wing_statue:option:2",
+        "regret": 0.0,
+        "seed": 94432,
+        "source_sha256": "8d6d4ed9a8bab376795b6c2a70b2a0c4576f4ab3f96870cfcfb86dfc5e8d466a"
+      },
+      {
+        "action_id": "event:world_of_goop:option:1",
+        "confidence": 0.5021482706069946,
+        "current_action_id": "event:world_of_goop:option:0",
+        "decision_index": 11,
+        "learned_action_id": "event:world_of_goop:option:1",
+        "regret": 0.0,
+        "seed": 94433,
+        "source_sha256": "0628325ebd6380d4eb74665af435c368e3943a4b1d2ffc076302c93224fd37bb"
+      },
+      {
+        "action_id": "event:upgrade_shrine:option:1",
+        "confidence": 0.5021476149559021,
+        "current_action_id": "event:upgrade_shrine:option:0",
+        "decision_index": 17,
+        "learned_action_id": "event:upgrade_shrine:option:1",
+        "regret": 0.0,
+        "seed": 94433,
+        "source_sha256": "086c46f23dc28f7e57f95d0eaf0581992944214461af60ad3ce10266ee269a55"
+      },
+      {
+        "action_id": "event:upgrade_shrine:option:1",
+        "confidence": 0.5021867752075195,
+        "current_action_id": "event:upgrade_shrine:option:0",
+        "decision_index": 4,
+        "learned_action_id": "event:upgrade_shrine:option:1",
+        "regret": 0.0,
+        "seed": 94434,
+        "source_sha256": "12e56e569ed6b1750f057a4c8dc931b925db79e49b0f8434b54e8ecc225feb68"
+      },
+      {
+        "action_id": "event:purifier:option:1",
+        "confidence": 0.501482367515564,
+        "current_action_id": "event:purifier:option:0",
+        "decision_index": 8,
+        "learned_action_id": "event:purifier:option:1",
+        "regret": 0.0,
+        "seed": 94434,
+        "source_sha256": "2b67e951ac745a22a758ed89c5678f4c1de4972d0ad1507a5b147bc8ef2b9c6f"
+      },
+      {
+        "action_id": "event:the_cleric:option:0",
+        "confidence": 0.5021296143531799,
+        "current_action_id": "event:the_cleric:option:1",
+        "decision_index": 9,
+        "learned_action_id": "event:the_cleric:option:0",
+        "regret": 0.0,
+        "seed": 94435,
+        "source_sha256": "5bd03071b0001ae3c1eb6b90bf8589bf02595b13f8e231719cb1e8099e53c2e0"
+      },
+      {
+        "action_id": "event:ominous_forge:option:1",
+        "confidence": 0.5002853870391846,
+        "current_action_id": "event:ominous_forge:option:0",
+        "decision_index": 5,
+        "learned_action_id": "event:ominous_forge:option:1",
+        "regret": 0.0,
+        "seed": 94436,
+        "source_sha256": "6ddbb1bb75d15900d911acc1fccafa02fcd2045edd59c27b205170766c4e14bc"
+      },
+      {
+        "action_id": "event:purifier:option:1",
+        "confidence": 0.5014562010765076,
+        "current_action_id": "event:purifier:option:0",
+        "decision_index": 16,
+        "learned_action_id": "event:purifier:option:1",
+        "regret": 0.0,
+        "seed": 94436,
+        "source_sha256": "8523c6d2a82f3f0c965888616f3cb57e11da92334d4705ed3330a062f90d6658"
+      },
+      {
+        "action_id": "event:ominous_forge:option:1",
+        "confidence": 0.5008124113082886,
+        "current_action_id": "event:ominous_forge:option:0",
+        "decision_index": 3,
+        "learned_action_id": "event:ominous_forge:option:1",
+        "regret": 0.0,
+        "seed": 94437,
+        "source_sha256": "ea953ec243612abfecc7d163f30fa96e02d1cef6492720f99512b95849e11074"
+      },
+      {
+        "action_id": "event:wing_statue:option:2",
+        "confidence": 0.5015534162521362,
+        "current_action_id": "event:wing_statue:option:0",
+        "decision_index": 11,
+        "learned_action_id": "event:wing_statue:option:2",
+        "regret": 0.0,
+        "seed": 94437,
+        "source_sha256": "28e889a1bc8f877a8a5deb07ba3c3cdb6be4a77f2607ba781a9b51f2bfd403fe"
+      },
+      {
+        "action_id": "event:wing_statue:option:2",
+        "confidence": 0.5015486478805542,
+        "current_action_id": "event:wing_statue:option:0",
+        "decision_index": 3,
+        "learned_action_id": "event:wing_statue:option:2",
+        "regret": 0.0,
+        "seed": 94438,
+        "source_sha256": "7f669c03e8514dd9b16d4e366f1f77f2a66ef12330d0c2e1f945625346f0aded"
+      },
+      {
+        "action_id": "event:shining_light:option:1",
+        "confidence": 0.5047048330307007,
+        "current_action_id": "event:shining_light:option:0",
+        "decision_index": 5,
+        "learned_action_id": "event:shining_light:option:1",
+        "regret": 0.0,
+        "seed": 94438,
+        "source_sha256": "f833320c3e0a2362dc5b7df5f04182dc670a4b3231e7a2d9d1b5b0d508949e2f"
+      },
+      {
+        "action_id": "event:golden_idol:option:1",
+        "confidence": 0.5020397305488586,
+        "current_action_id": "event:golden_idol:option:0",
+        "decision_index": 6,
+        "learned_action_id": "event:golden_idol:option:1",
+        "regret": 0.0,
+        "seed": 94439,
+        "source_sha256": "9fc21e1df8ef57d23a3cf25f0b2ff65f0c18e77a2681ceb24cdc21740c86e274"
+      },
+      {
+        "action_id": "event:the_ssssserpent:option:1",
+        "confidence": 0.5,
+        "current_action_id": "event:the_ssssserpent:option:1",
+        "decision_index": 8,
+        "learned_action_id": "event:the_ssssserpent:option:1",
+        "regret": 0.0,
+        "seed": 94439,
+        "source_sha256": "92ee2a1f2cfbb2968e5cb82951096b2682b1aa57fc43538dee4d62d52042f164"
+      },
+      {
+        "action_id": "event:wing_statue:option:2",
+        "confidence": 0.5014552474021912,
+        "current_action_id": "event:wing_statue:option:0",
+        "decision_index": 5,
+        "learned_action_id": "event:wing_statue:option:2",
+        "regret": 0.0,
+        "seed": 94440,
+        "source_sha256": "a6ffbfcf33bf7501b6264e9c40ca007cdbe08605303c08e9b661fea10ebd813f"
+      },
+      {
+        "action_id": "event:living_wall:option:0",
+        "confidence": 0.5031819939613342,
+        "current_action_id": "event:living_wall:option:2",
+        "decision_index": 7,
+        "learned_action_id": "event:living_wall:option:0",
+        "regret": 0.0,
+        "seed": 94440,
+        "source_sha256": "3b5ba3262e4c63b19b05504c9446818bbb6c4e2137f90d0b1d9eea8ddcd08d75"
+      },
+      {
+        "action_id": "event:scrap_ooze:option:0",
+        "confidence": 0.5,
+        "current_action_id": "event:scrap_ooze:option:0",
+        "decision_index": 3,
+        "learned_action_id": "event:scrap_ooze:option:0",
+        "regret": 0.0,
+        "seed": 94441,
+        "source_sha256": "098bf4450dd8e02d3de9daa00734b257a4773f82b756ad8bb2ef04b1aad7d8b5"
+      },
+      {
+        "action_id": "event:scrap_ooze:option:0",
+        "confidence": 0.5,
+        "current_action_id": "event:scrap_ooze:option:0",
+        "decision_index": 4,
+        "learned_action_id": "event:scrap_ooze:option:0",
+        "regret": 0.0,
+        "seed": 94441,
+        "source_sha256": "84271e5c84b11bef04eaf17b89a75b76601e0a299676dfaa55a649b60afcad92"
+      },
+      {
+        "action_id": "event:big_fish:option:0",
+        "confidence": 0.5023911595344543,
+        "current_action_id": "event:big_fish:option:1",
+        "decision_index": 11,
+        "learned_action_id": "event:big_fish:option:0",
+        "regret": 0.0,
+        "seed": 94442,
+        "source_sha256": "d5dfa64c2481a5da9f8399f8f1c6b6e469ba2d17b6f81562200411e093c24a65"
+      },
+      {
+        "action_id": "event:shining_light:option:1",
+        "confidence": 0.506038248538971,
+        "current_action_id": "event:shining_light:option:0",
+        "decision_index": 14,
+        "learned_action_id": "event:shining_light:option:1",
+        "regret": 0.29824561403508765,
+        "seed": 94442,
+        "source_sha256": "561d2152c15f17b6420682a932338f76618d096c1f3f6c9112b64d4dcec9d083"
+      },
+      {
+        "action_id": "event:shining_light:option:1",
+        "confidence": 0.5070176720619202,
+        "current_action_id": "event:shining_light:option:0",
+        "decision_index": 3,
+        "learned_action_id": "event:shining_light:option:1",
+        "regret": 0.29824561403508765,
+        "seed": 94443,
+        "source_sha256": "63d4fe9e97feedc7dae6e20e7cae81a3a15a6cff0d17a0460a7941557a65e2e6"
+      },
+      {
+        "action_id": "event:big_fish:option:0",
+        "confidence": 0.5008087158203125,
+        "current_action_id": "event:big_fish:option:1",
+        "decision_index": 18,
+        "learned_action_id": "event:big_fish:option:0",
+        "regret": 0.19298245614035087,
+        "seed": 94443,
+        "source_sha256": "70fe22172a308985e1c7c66b08e8dec469f91b9105c4ab8cc040b76c25746e8b"
+      },
+      {
+        "action_id": "event:golden_idol:option:1",
+        "confidence": 0.5035308003425598,
+        "current_action_id": "event:golden_idol:option:0",
+        "decision_index": 5,
+        "learned_action_id": "event:golden_idol:option:1",
+        "regret": 0.0,
+        "seed": 94444,
+        "source_sha256": "efb72a5177d30e02f65df450a280dd64c2da6ab9486e314311a2e543d1159be7"
+      },
+      {
+        "action_id": "event:living_wall:option:0",
+        "confidence": 0.5030050873756409,
+        "current_action_id": "event:living_wall:option:2",
+        "decision_index": 8,
+        "learned_action_id": "event:living_wall:option:0",
+        "regret": 0.0,
+        "seed": 94445,
+        "source_sha256": "ea481646044978a9fd55c23e8630680735592235d7ba5e820f7db246e8857513"
+      },
+      {
+        "action_id": "event:golden_idol:option:1",
+        "confidence": 0.5009730458259583,
+        "current_action_id": "event:golden_idol:option:0",
+        "decision_index": 13,
+        "learned_action_id": "event:golden_idol:option:1",
+        "regret": 0.0,
+        "seed": 94446,
+        "source_sha256": "d08488c05a7d287c14f615f1a40f0297b3a13a0fa568bfe738bfe1e92039d0db"
+      },
+      {
+        "action_id": "event:transmorgrifier:option:1",
+        "confidence": 0.5013701915740967,
+        "current_action_id": "event:transmorgrifier:option:0",
+        "decision_index": 20,
+        "learned_action_id": "event:transmorgrifier:option:1",
+        "regret": 0.0,
+        "seed": 94446,
+        "source_sha256": "92f81b1606c0661f00e1eb1d45db76d6bdf4b9576d11384391f5620065684d42"
+      },
+      {
+        "action_id": "event:wing_statue:option:2",
+        "confidence": 0.5005901455879211,
+        "current_action_id": "event:wing_statue:option:0",
+        "decision_index": 10,
+        "learned_action_id": "event:wing_statue:option:2",
+        "regret": 0.21052631578947367,
+        "seed": 94447,
+        "source_sha256": "563aeb9226f9393630184513808b8cd2fe900baf14d03ffe77410d305ccf257e"
+      },
+      {
+        "action_id": "event:we_meet_again:option:2",
+        "confidence": 0.5007638335227966,
+        "current_action_id": "event:we_meet_again:option:0",
+        "decision_index": 13,
+        "learned_action_id": "event:we_meet_again:option:2",
+        "regret": 0.052631578947368474,
+        "seed": 94447,
+        "source_sha256": "0e18d6b871ab46ae50945fa33897e1330f7d8e8450c2b55a89974f9bfb1f040f"
+      },
+      {
+        "action_id": "event:transmorgrifier:option:1",
+        "confidence": 0.5020498633384705,
+        "current_action_id": "event:transmorgrifier:option:0",
+        "decision_index": 3,
+        "learned_action_id": "event:transmorgrifier:option:1",
+        "regret": 0.0,
+        "seed": 94448,
+        "source_sha256": "103d4945ec01d1fdd903879c47b5162ac96160baa203b6b787e05920f35dee85"
+      },
+      {
+        "action_id": "event:scrap_ooze:option:0",
+        "confidence": 0.5,
+        "current_action_id": "event:scrap_ooze:option:0",
+        "decision_index": 10,
+        "learned_action_id": "event:scrap_ooze:option:0",
+        "regret": 0.0,
+        "seed": 94448,
+        "source_sha256": "76784cc8e836d13a648ff9a77e7c79742133165ea19f390008103dd15597d9b3"
+      },
+      {
+        "action_id": "event:upgrade_shrine:option:1",
+        "confidence": 0.5020800828933716,
+        "current_action_id": "event:upgrade_shrine:option:0",
+        "decision_index": 11,
+        "learned_action_id": "event:upgrade_shrine:option:1",
+        "regret": 0.0,
+        "seed": 94449,
+        "source_sha256": "a2d2693bd20cdd8410a40e244191c2c4dc2ed0111727cc913450be04fb04f94b"
+      },
+      {
+        "action_id": "event:living_wall:option:0",
+        "confidence": 0.50215083360672,
+        "current_action_id": "event:living_wall:option:2",
+        "decision_index": 25,
+        "learned_action_id": "event:living_wall:option:0",
+        "regret": 0.0,
+        "seed": 94449,
+        "source_sha256": "f2451aba36862e4908de5ce7dfabd4e5827314f8259220b07480445ea35e9684"
+      },
+      {
+        "action_id": "event:the_ssssserpent:option:1",
+        "confidence": 0.5,
+        "current_action_id": "event:the_ssssserpent:option:1",
+        "decision_index": 5,
+        "learned_action_id": "event:the_ssssserpent:option:1",
+        "regret": 0.0,
+        "seed": 94450,
+        "source_sha256": "da235e12ed2c71d82715099d38b166ed9bb2c61b52d7b127bbae1c2c1ab5ff87"
+      },
+      {
+        "action_id": "event:scrap_ooze:option:0",
+        "confidence": 0.5,
+        "current_action_id": "event:scrap_ooze:option:0",
+        "decision_index": 11,
+        "learned_action_id": "event:scrap_ooze:option:0",
+        "regret": 0.0,
+        "seed": 94450,
+        "source_sha256": "ec520c3f78ca0c7cabe4e9a562c57b4473b664650678c9eb65b39b669f1e97fb"
+      },
+      {
+        "action_id": "event:the_ssssserpent:option:1",
+        "confidence": 0.5,
+        "current_action_id": "event:the_ssssserpent:option:1",
+        "decision_index": 3,
+        "learned_action_id": "event:the_ssssserpent:option:1",
+        "regret": 0.0,
+        "seed": 94451,
+        "source_sha256": "2ba9f62b855ffc7da029b8006c88ad1dc0b8d59912ea852323be3c84bd711657"
+      },
+      {
+        "action_id": "event:wing_statue:option:2",
+        "confidence": 0.5023938417434692,
+        "current_action_id": "event:wing_statue:option:0",
+        "decision_index": 9,
+        "learned_action_id": "event:wing_statue:option:2",
+        "regret": 0.0,
+        "seed": 94451,
+        "source_sha256": "6926d568dedfc00feabd8e35f960e263e432c379aeef8c4ed630d99f20755d30"
+      },
+      {
+        "action_id": "event:world_of_goop:option:1",
+        "confidence": 0.5020817518234253,
+        "current_action_id": "event:world_of_goop:option:0",
+        "decision_index": 11,
+        "learned_action_id": "event:world_of_goop:option:1",
+        "regret": 0.0,
+        "seed": 94452,
+        "source_sha256": "43de573d4827da892144606fd298295b5c50526e8b6db8442db09957cdebe1c1"
+      },
+      {
+        "action_id": "event:scrap_ooze:option:0",
+        "confidence": 0.5,
+        "current_action_id": "event:scrap_ooze:option:0",
+        "decision_index": 23,
+        "learned_action_id": "event:scrap_ooze:option:0",
+        "regret": 0.0,
+        "seed": 94452,
+        "source_sha256": "8b71284eea0c6d51eef45ddafeb9f9c7ca34d7bf757f6580e122b26fb5462c72"
+      },
+      {
+        "action_id": "event:wing_statue:option:2",
+        "confidence": 0.5020220279693604,
+        "current_action_id": "event:wing_statue:option:0",
+        "decision_index": 3,
+        "learned_action_id": "event:wing_statue:option:2",
+        "regret": 0.0,
+        "seed": 94453,
+        "source_sha256": "ffbbb425c6f30413efaa221865738fac3c37cbf469c9536974f50420de6fd12c"
+      },
+      {
+        "action_id": "event:golden_idol:option:1",
+        "confidence": 0.5027258396148682,
+        "current_action_id": "event:golden_idol:option:0",
+        "decision_index": 7,
+        "learned_action_id": "event:golden_idol:option:1",
+        "regret": 0.0,
+        "seed": 94453,
+        "source_sha256": "81008966b85f562c96775b09d81751c8c46ccd6ffc07a08cc5e7e6f425e55501"
+      },
+      {
+        "action_id": "event:the_ssssserpent:option:1",
+        "confidence": 0.5,
+        "current_action_id": "event:the_ssssserpent:option:1",
+        "decision_index": 3,
+        "learned_action_id": "event:the_ssssserpent:option:1",
+        "regret": 0.0,
+        "seed": 94454,
+        "source_sha256": "fcbee0086d10e9374c3a10884707ab9382ff81faaf327a10fb05e7bea61adeb8"
+      },
+      {
+        "action_id": "event:scrap_ooze:option:0",
+        "confidence": 0.5,
+        "current_action_id": "event:scrap_ooze:option:0",
+        "decision_index": 14,
+        "learned_action_id": "event:scrap_ooze:option:0",
+        "regret": 0.0,
+        "seed": 94454,
+        "source_sha256": "11131a3978d3d90a64074407092f04dc8a3abb861f2364056bb5fe57afc2350c"
+      },
+      {
+        "action_id": "event:the_cleric:option:0",
+        "confidence": 0.5032088160514832,
+        "current_action_id": "event:the_cleric:option:1",
+        "decision_index": 3,
+        "learned_action_id": "event:the_cleric:option:0",
+        "regret": 0.0,
+        "seed": 94455,
+        "source_sha256": "b214fa0cd84992e6063684d2cde668b302339b441771c742f440f3c177606317"
+      },
+      {
+        "action_id": "event:shining_light:option:1",
+        "confidence": 0.5034535527229309,
+        "current_action_id": "event:shining_light:option:0",
+        "decision_index": 5,
+        "learned_action_id": "event:shining_light:option:1",
+        "regret": 0.0,
+        "seed": 94455,
+        "source_sha256": "3b74d5ba5387b7a0ad45b0ada5a1200b8e096351641d3b9f014ee0294de9ec3d"
+      },
+      {
+        "action_id": "event:world_of_goop:option:1",
+        "confidence": 0.501934826374054,
+        "current_action_id": "event:world_of_goop:option:0",
+        "decision_index": 4,
+        "learned_action_id": "event:world_of_goop:option:1",
+        "regret": 0.0,
+        "seed": 94456,
+        "source_sha256": "b556e4ba993953bc07154dcd8054eed58327c6304c89ccdc88242cf1a514e361"
+      },
+      {
+        "action_id": "event:transmorgrifier:option:1",
+        "confidence": 0.5021841526031494,
+        "current_action_id": "event:transmorgrifier:option:0",
+        "decision_index": 6,
+        "learned_action_id": "event:transmorgrifier:option:1",
+        "regret": 0.0,
+        "seed": 94456,
+        "source_sha256": "011ca5bec21e8c4c58867f1e3b98c48a2bd15e21e2a4f6397beddb533b9b57c0"
+      },
+      {
+        "action_id": "event:world_of_goop:option:1",
+        "confidence": 0.5018622875213623,
+        "current_action_id": "event:world_of_goop:option:0",
+        "decision_index": 3,
+        "learned_action_id": "event:world_of_goop:option:1",
+        "regret": 0.0,
+        "seed": 94457,
+        "source_sha256": "1eab7b7fa90d22646a3ad85f688c4293d5217bacdb26a59fdda8dfc37eaa278c"
+      },
+      {
+        "action_id": "event:living_wall:option:0",
+        "confidence": 0.5005916357040405,
+        "current_action_id": "event:living_wall:option:2",
+        "decision_index": 7,
+        "learned_action_id": "event:living_wall:option:0",
+        "regret": 0.29824561403508776,
+        "seed": 94457,
+        "source_sha256": "46d803aa1f97a1aedc606cd84db7c93828186020ae7a609ffcadd6f33e5fbe36"
+      },
+      {
+        "action_id": "event:the_ssssserpent:option:1",
+        "confidence": 0.5,
+        "current_action_id": "event:the_ssssserpent:option:1",
+        "decision_index": 3,
+        "learned_action_id": "event:the_ssssserpent:option:1",
+        "regret": 0.0,
+        "seed": 94458,
+        "source_sha256": "c7e15a05f9370d2e5c901f3e9ac6bc207c35fcdb12168964ca8c577e9a92c11a"
+      },
+      {
+        "action_id": "event:world_of_goop:option:1",
+        "confidence": 0.5022904872894287,
+        "current_action_id": "event:world_of_goop:option:0",
+        "decision_index": 5,
+        "learned_action_id": "event:world_of_goop:option:1",
+        "regret": 0.08771929824561403,
+        "seed": 94458,
+        "source_sha256": "983783d85859ecee3a29aca0ac28872911360d8f0864e3a7b568abea39e5ecd9"
+      },
+      {
+        "action_id": "event:the_ssssserpent:option:1",
+        "confidence": 0.5,
+        "current_action_id": "event:the_ssssserpent:option:1",
+        "decision_index": 3,
+        "learned_action_id": "event:the_ssssserpent:option:1",
+        "regret": 0.0,
+        "seed": 94459,
+        "source_sha256": "b876979f2117f3ca82c5522c7b1ee8c264f902f62dea6e5a3f6f0e27364608db"
+      },
+      {
+        "action_id": "event:wing_statue:option:2",
+        "confidence": 0.5006884336471558,
+        "current_action_id": "event:wing_statue:option:0",
+        "decision_index": 9,
+        "learned_action_id": "event:wing_statue:option:2",
+        "regret": 0.0,
+        "seed": 94459,
+        "source_sha256": "671c8c69197f0426db69d3016591efee057611a965cf9be88ef5e6b81dbfc391"
+      },
+      {
+        "action_id": "event:world_of_goop:option:1",
+        "confidence": 0.5012764930725098,
+        "current_action_id": "event:world_of_goop:option:0",
+        "decision_index": 5,
+        "learned_action_id": "event:world_of_goop:option:1",
+        "regret": 0.0,
+        "seed": 94460,
+        "source_sha256": "772d70dc909b4735f944c30ab918c2a25c6e6aa84b4b9209880e896deaf373be"
+      },
+      {
+        "action_id": "event:the_cleric:option:0",
+        "confidence": 0.5,
+        "current_action_id": "event:the_cleric:option:0",
+        "decision_index": 9,
+        "learned_action_id": "event:the_cleric:option:0",
+        "regret": 0.0,
+        "seed": 94461,
+        "source_sha256": "e6e3811fe65d20a9bed6973ce87ae8cbb98add8eb313dcdf48f48b3a9b767cf2"
+      },
+      {
+        "action_id": "event:scrap_ooze:option:0",
+        "confidence": 0.5,
+        "current_action_id": "event:scrap_ooze:option:0",
+        "decision_index": 11,
+        "learned_action_id": "event:scrap_ooze:option:0",
+        "regret": 0.0,
+        "seed": 94461,
+        "source_sha256": "b4fff285a5abae17d2eb925c8651d4a1568d08299d39d850f04615fafb3eb441"
+      },
+      {
+        "action_id": "event:scrap_ooze:option:0",
+        "confidence": 0.5,
+        "current_action_id": "event:scrap_ooze:option:0",
+        "decision_index": 3,
+        "learned_action_id": "event:scrap_ooze:option:0",
+        "regret": 0.0,
+        "seed": 94462,
+        "source_sha256": "c36c3551ec50d364ab2fe1b3dd5260e9273f6cd8d0dbb20df7d1cb9ebb14def9"
+      },
+      {
+        "action_id": "event:note_for_yourself:option:1",
+        "confidence": 0.5,
+        "current_action_id": "event:note_for_yourself:option:1",
+        "decision_index": 8,
+        "learned_action_id": "event:note_for_yourself:option:1",
+        "regret": 0.0,
+        "seed": 94462,
+        "source_sha256": "39a08b5acbdf1a66c32b63014fbcf4d6d02ceba046c306a007883d98672ff1d0"
+      },
+      {
+        "action_id": "event:note_for_yourself:option:1",
+        "confidence": 0.5,
+        "current_action_id": "event:note_for_yourself:option:1",
+        "decision_index": 3,
+        "learned_action_id": "event:note_for_yourself:option:1",
+        "regret": 0.29824561403508765,
+        "seed": 94463,
+        "source_sha256": "e68ca2979cda0abd7d3c5b83f6c2c7dd491e967fd3e63fbb1f4462d64b65149b"
+      }
+    ],
+    "unique_best_accuracy": 0.5576923076923077,
+    "unique_best_rows": 52
+  },
+  "shadow_access_count": 1,
+  "verdict": "event_ranker_shadow_benefit_replicated"
+}

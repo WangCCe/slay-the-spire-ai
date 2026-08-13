@@ -52,6 +52,7 @@ MAX_CHARGED_SECONDS = 14_400.0
 SCHEMA_VERSION = "noncombat-route-counterfactual-ranking-v1"
 DATASET_SCHEMA_VERSION = "noncombat-route-counterfactual-dataset-v1"
 MODEL_SCHEMA_VERSION = "noncombat-route-counterfactual-model-v1"
+CURRENT_SHOP_MAPPING_BLOCKER = "unsupported_current_shop_candidate_mapping_absent"
 BOUND_SOURCE_PATHS = (
     Path("analysis_scripts/noncombat_route_counterfactual_ranking.py"),
     Path("analysis_scripts/noncombat_card_action_counterfactual_credit.py"),
@@ -237,7 +238,10 @@ def _registered_support_blocker(exc: BaseException) -> str | None:
         seen.add(id(current))
         messages.append(str(current))
         current = current.__cause__ or current.__context__
-    for blocker in model_codec.REGISTERED_SUPPORT_BLOCKERS:
+    for blocker in (
+        *model_codec.REGISTERED_SUPPORT_BLOCKERS,
+        CURRENT_SHOP_MAPPING_BLOCKER,
+    ):
         if any(blocker in message for message in messages):
             return blocker
     return None
@@ -474,6 +478,13 @@ def evaluate_action_with_current_continuation(
             )
             selected_action_id = evaluation["action_id"]
         except current_bridge.BridgeBlocked as exc:
+            if (
+                snapshot.get("category") == "shop"
+                and exc.reason == "candidate_mapping_absent"
+            ):
+                raise credit.CounterfactualCreditBlocked(
+                    CURRENT_SHOP_MAPPING_BLOCKER
+                ) from exc
             raise credit.CounterfactualCreditBlocked(
                 f"Current continuation failed: {exc.reason}"
             ) from exc
