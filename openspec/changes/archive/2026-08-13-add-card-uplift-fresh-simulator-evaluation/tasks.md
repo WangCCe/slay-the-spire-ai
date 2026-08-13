@@ -17,4 +17,4 @@
 
 ## 4. Closure
 
-- [ ] 4.1 Inspect the fresh result, record the live-shadow go/no-go decision, sync/archive the change, and commit/push scoped evidence
+- [x] 4.1 Inspect the fresh result, record the live-shadow go/no-go decision, sync/archive the change, and commit/push scoped evidence
