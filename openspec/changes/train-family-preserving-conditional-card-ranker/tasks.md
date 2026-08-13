@@ -11,5 +11,5 @@
 ## 3. Verification And Evidence
 
 - [x] 3.1 Run focused and adjacent tests, compilation, diff checks, and strict OpenSpec validation; do not run the unrelated 47-minute full suite or gameplay for this source-only experiment.
-- [ ] 3.2 Commit and push the source-bound runner, execute it once, verify canonical artifacts, and publish pass/no-go evidence.
-- [ ] 3.3 Keep `92320..92383` untouched and create no audit proposal unless every development gate passes.
+- [x] 3.2 Commit and push the source-bound runner, execute it once, verify canonical artifacts, and publish pass/no-go evidence.
+- [x] 3.3 Keep `92320..92383` untouched and create no audit proposal unless every development gate passes.
