@@ -59,8 +59,12 @@ showing whether targeted residual fitting solves the observed failure.
 After collection, the runner will restore the existing large train/development
 datasets, verify schedule and source identity, and create merged partitions
 whose seeds and rows are the disjoint unions of the old and targeted
-partitions. Duplicate source hashes or cross-partition seed overlap fail before
-fitting.
+partitions. Before merging, targeted rows are projected to the frozen entry
+model's exact `3 take + 1 skip` action boundary; complete Question Card or
+generated-choice rows outside that boundary remain in the corpus and are
+reported as excluded from fitting. Duplicate source hashes, cross-partition
+seed overlap, insufficient projected support, or lost target-card coverage fail
+before fitting.
 
 ### Freeze entry, refit only the residual
 

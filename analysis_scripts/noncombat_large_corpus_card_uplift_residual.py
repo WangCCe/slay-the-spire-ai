@@ -302,6 +302,32 @@ def _target_card_ids(
     }
 
 
+def _project_ranking_compatible_rows(
+    rows: Sequence[ranking.CounterfactualRankingRow],
+) -> tuple[tuple[ranking.CounterfactualRankingRow, ...], dict[str, Any]]:
+    compatible: list[ranking.CounterfactualRankingRow] = []
+    excluded: list[dict[str, Any]] = []
+    for row in rows:
+        kinds = tuple(candidate.get("kind") for candidate in row.candidates)
+        if len(row.candidates) == 4 and kinds == ("take", "take", "take", "skip"):
+            compatible.append(row)
+        else:
+            excluded.append(
+                {
+                    "action_count": len(row.candidates),
+                    "action_kinds": list(kinds),
+                    "decision_index": row.decision_index,
+                    "seed": row.seed,
+                    "source_sha256": row.source_sha256,
+                }
+            )
+    return tuple(compatible), {
+        "compatible_source_states": len(compatible),
+        "excluded_source_states": excluded,
+        "source_states": len(rows),
+    }
+
+
 def _validate_rare_corpus_metadata(
     root: Path,
 ) -> tuple[dict[str, Any], dict[str, Any]]:
@@ -336,7 +362,11 @@ def _load_rare_partition(
     expected_name: str,
     expected_seeds: Sequence[int],
     minimum_rows: int,
-) -> tuple[tuple[ranking.CounterfactualRankingRow, ...], dict[str, Any]]:
+) -> tuple[
+    tuple[ranking.CounterfactualRankingRow, ...],
+    dict[str, Any],
+    dict[str, Any],
+]:
     path = root / f"{dataset_key}_dataset_full.json"
     binding = _binding(path)
     if report.get("datasets", {}).get(dataset_key) != binding:
@@ -352,10 +382,15 @@ def _load_rare_partition(
         or partition.budget_exhausted
     ):
         raise LargeCorpusResidualBlocked(f"rare {dataset_key} partition differs")
-    rows = uplift.validate_rows(partition.rows)
+    compatible, projection = _project_ranking_compatible_rows(partition.rows)
+    if len(compatible) < minimum_rows:
+        raise LargeCorpusResidualBlocked(
+            f"rare {dataset_key} projected support differs"
+        )
+    rows = uplift.validate_rows(compatible)
     if _target_card_ids(rows) != set(corpus.IRONCLAD_RARE_CARD_IDS):
         raise LargeCorpusResidualBlocked(f"rare {dataset_key} support differs")
-    return rows, binding
+    return rows, binding, projection
 
 
 def _load_rare_train_inputs(
@@ -363,7 +398,7 @@ def _load_rare_train_inputs(
 ) -> tuple[tuple[ranking.CounterfactualRankingRow, ...], dict[str, Any]]:
     root = rare_corpus_root.resolve()
     report, _registration = _validate_rare_corpus_metadata(root)
-    rows, dataset_binding = _load_rare_partition(
+    rows, dataset_binding, projection = _load_rare_partition(
         root,
         report=report,
         dataset_key="train",
@@ -375,13 +410,18 @@ def _load_rare_train_inputs(
         "rare_corpus_registration": _binding(root / "registration.json"),
         "rare_corpus_report": _binding(root / "report.json"),
         "rare_train_dataset": dataset_binding,
+        "rare_train_projection": projection,
     }
 
 
 def _load_rare_development_inputs(
     rare_corpus_root: Path,
     report: Mapping[str, Any],
-) -> tuple[tuple[ranking.CounterfactualRankingRow, ...], dict[str, Any]]:
+) -> tuple[
+    tuple[ranking.CounterfactualRankingRow, ...],
+    dict[str, Any],
+    dict[str, Any],
+]:
     return _load_rare_partition(
         rare_corpus_root.resolve(),
         report=report,
@@ -897,11 +937,14 @@ def execute_rare(
         corpus_path, corpus_report
     )
     rare_corpus_report = _read_canonical(rare_corpus_path / "report.json")
-    rare_development, rare_development_binding = _load_rare_development_inputs(
-        rare_corpus_path, rare_corpus_report
-    )
+    (
+        rare_development,
+        rare_development_binding,
+        rare_development_projection,
+    ) = _load_rare_development_inputs(rare_corpus_path, rare_corpus_report)
     inputs["development_dataset"] = development_binding
     inputs["rare_development_dataset"] = rare_development_binding
+    inputs["rare_development_projection"] = rare_development_projection
     development_rows = _merge_disjoint_rows(
         existing_development, rare_development
     )
@@ -1047,6 +1090,10 @@ def execute_rare(
         "operations": copy.deepcopy(OPERATIONS),
         "rare_development_checks": rare_checks,
         "rare_development_comparison": rare_comparison,
+        "rare_source_projection": {
+            "development": rare_development_projection,
+            "train": inputs["rare_train_projection"],
+        },
         "rare_best_take_to_skip_errors": {
             "base": base_skip_errors,
             "candidate": candidate_skip_errors,

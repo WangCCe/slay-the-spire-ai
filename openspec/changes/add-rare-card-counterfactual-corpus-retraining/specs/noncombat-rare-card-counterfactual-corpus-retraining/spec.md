@@ -35,7 +35,9 @@ The runner SHALL verify and merge the existing large train/development rows
 with their corresponding targeted rows, reject duplicate source hashes or
 cross-partition seed overlap, keep the r7 entry checkpoint byte-identical, and
 select and fit the fixed card-uplift residual family using merged train rows
-only.
+only. It SHALL project targeted rows to the frozen entry model's exact three-take
+plus one-skip action boundary, report every excluded complete row, and preserve
+the unprojected canonical corpus.
 
 #### Scenario: Residual fitting begins
 - **WHEN** both source corpora and all lineage bindings pass before development access
@@ -44,6 +46,10 @@ only.
 #### Scenario: Corpus lineage differs
 - **WHEN** a dataset, source hash, schedule, checkpoint, or partition identity differs
 - **THEN** fitting stops and no development or audit result is claimed
+
+#### Scenario: Complete source is outside the entry action boundary
+- **WHEN** a targeted source contains other than exactly three take actions and one skip action
+- **THEN** the source remains in the canonical corpus, is excluded deterministically from fitting, and is counted in projection diagnostics
 
 ### Requirement: One-shot rare-card development gate
 The runner SHALL restore the fitted residual before reading development rows

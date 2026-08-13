@@ -280,6 +280,36 @@ def test_merge_rows_requires_disjoint_seeds_and_source_identities():
         runner._merge_disjoint_rows(existing, (repeated_source,))
 
 
+def test_project_ranking_compatible_rows_excludes_non_three_take_sources():
+    compatible = _row(350)
+    too_many = replace(
+        _row(351),
+        candidate_features=torch.zeros((5, 2), dtype=torch.float32),
+        candidates=(
+            *_row(351).candidates[:3],
+            _candidate(3, "IMMOLATE"),
+            _row(351).candidates[3],
+        ),
+        action_returns=(0.4, 0.2, 0.1, 0.3, 0.0),
+    )
+
+    projected, diagnostics = runner._project_ranking_compatible_rows(
+        (compatible, too_many)
+    )
+
+    assert projected == (compatible,)
+    assert diagnostics["compatible_source_states"] == 1
+    assert diagnostics["excluded_source_states"] == [
+        {
+            "action_count": 5,
+            "action_kinds": ["take", "take", "take", "take", "skip"],
+            "decision_index": too_many.decision_index,
+            "seed": too_many.seed,
+            "source_sha256": too_many.source_sha256,
+        }
+    ]
+
+
 def test_rare_development_gate_prevents_new_best_take_to_skip_errors():
     rows = (_row(500, cards=("IMMOLATE", "BASH", "ANGER")),)
     base_scores = {rows[0].source_sha256: (-2.0, -1.0, -1.5, 2.0)}
@@ -352,6 +382,7 @@ def test_execute_rare_persists_model_before_development_rows(tmp_path, monkeypat
                 "rare_corpus_registration": {"path": "rare-registration"},
                 "rare_corpus_report": {"path": "rare-report"},
                 "rare_train_dataset": {"path": "rare-train"},
+                "rare_train_projection": {"excluded_source_states": []},
             },
         ),
     )
@@ -372,7 +403,11 @@ def test_execute_rare_persists_model_before_development_rows(tmp_path, monkeypat
 
     def load_rare(_root, _report):
         assert_model_persisted()
-        return rare_development, {"path": "rare-development"}
+        return (
+            rare_development,
+            {"path": "rare-development"},
+            {"excluded_source_states": []},
+        )
 
     monkeypatch.setattr(runner, "_load_development_inputs", load_existing)
     monkeypatch.setattr(runner, "_load_rare_development_inputs", load_rare)
