@@ -1,8 +1,8 @@
 ## 1. Candidate-Only Residual Runtime
 
-- [ ] 1.1 Add RED regressions proving candidate-only collection never constructs or queries a control environment.
-- [ ] 1.2 Accept complete candidate arm rollouts in the existing four-fold baseline, card-row alignment, and candidate optimizer path without changing paired behavior.
-- [ ] 1.3 Add bounded Courier censoring, 56-trajectory support, ownership, invalid-gradient, and rollback regressions for candidate-only chunks.
+- [x] 1.1 Add RED regressions proving candidate-only collection never constructs or queries a control environment.
+- [x] 1.2 Accept complete candidate arm rollouts in the existing four-fold baseline, card-row alignment, and candidate optimizer path without changing paired behavior.
+- [x] 1.3 Add bounded Courier censoring, 56-trajectory support, ownership, invalid-gradient, and rollback regressions for candidate-only chunks.
 
 ## 2. Continuation Runner
 

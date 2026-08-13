@@ -2198,6 +2198,32 @@ def rollout_arm_frozen_evaluation(
     )
 
 
+def rollout_candidate_card_only_native_baseline_training_episode(
+    bootstrap: PairedBootstrap,
+    *,
+    environment_factory: Callable[[int], Any],
+    seed: int,
+    max_decisions: int = MAX_DECISIONS_PER_EPISODE,
+    deadline: float | None = None,
+    clock: Callable[[], float] = time.monotonic,
+) -> ArmEpisodeRollout:
+    """Sample candidate card actions without constructing a control episode."""
+    return rollout_arm_training_episode(
+        bootstrap,
+        arm="candidate",
+        environment_factory=environment_factory,
+        seed=seed,
+        max_decisions=max_decisions,
+        deadline=deadline,
+        clock=clock,
+        native_baseline_categories=tuple(
+            category
+            for category in simulator_adapter.TARGET_CATEGORIES
+            if category != "card_reward"
+        ),
+    )
+
+
 def _rollout_paired_card_only_native_baseline(
     bootstrap: PairedBootstrap,
     *,
@@ -3797,10 +3823,9 @@ def build_paired_cross_fitted_baselines(
     )
 
 
-def build_candidate_cross_fitted_baseline(
-    episodes: Sequence[PairedEpisodeRollout],
-) -> ArmCrossFittedBaseline:
-    """Fit the registered four-fold baseline from candidate trajectories only."""
+def _candidate_arm_episodes(
+    episodes: Sequence[PairedEpisodeRollout | ArmEpisodeRollout],
+) -> tuple[ArmEpisodeRollout, ...]:
     if isinstance(episodes, (str, bytes)) or not isinstance(episodes, Sequence):
         raise SuccessorRuntimeError("candidate episodes must be a sequence")
     source = tuple(episodes)
@@ -3810,32 +3835,48 @@ def build_candidate_cross_fitted_baseline(
         <= TRAJECTORIES_PER_CHUNK
     ):
         raise SuccessorRuntimeError(
-            "candidate cross-fitted baseline requires 56 to 64 pairs"
+            "candidate cross-fitted baseline requires 56 to 64 trajectories"
         )
-    seeds = tuple(pair.seed for pair in source)
-    if any(
-        not isinstance(pair, PairedEpisodeRollout)
-        or pair.candidate.seed != pair.seed
-        or pair.control.seed != pair.seed
-        for pair in source
-    ) or seeds != tuple(sorted(set(seeds))):
+    normalized = []
+    for value in source:
+        if isinstance(value, PairedEpisodeRollout):
+            if value.candidate.seed != value.seed or value.control.seed != value.seed:
+                raise SuccessorRuntimeError("candidate paired episode seed differs")
+            episode = value.candidate
+        elif isinstance(value, ArmEpisodeRollout):
+            episode = value
+        else:
+            raise SuccessorRuntimeError("candidate episode identity differs")
+        if episode.arm != "candidate":
+            raise SuccessorRuntimeError("candidate episode arm differs")
+        normalized.append(episode)
+    seeds = tuple(episode.seed for episode in normalized)
+    if seeds != tuple(sorted(set(seeds))):
         raise SuccessorRuntimeError(
             "candidate episodes must use one unique ascending seed slice"
         )
+    return tuple(normalized)
+
+
+def build_candidate_cross_fitted_baseline(
+    episodes: Sequence[PairedEpisodeRollout | ArmEpisodeRollout],
+) -> ArmCrossFittedBaseline:
+    """Fit the registered four-fold baseline from candidate trajectories only."""
+    candidate_episodes = _candidate_arm_episodes(episodes)
     decisions = _build_arm_baseline_decisions(
-        tuple(pair.candidate for pair in source),
+        candidate_episodes,
         arm="candidate",
-        expected_trajectory_count=len(source),
+        expected_trajectory_count=len(candidate_episodes),
     )
     return _build_cross_fitted_arm_baseline(
         decisions,
         arm="candidate",
-        expected_trajectory_count=len(source),
+        expected_trajectory_count=len(candidate_episodes),
     )
 
 
 def build_arm_card_reward_rows(
-    episodes: Sequence[PairedEpisodeRollout],
+    episodes: Sequence[PairedEpisodeRollout | ArmEpisodeRollout],
     *,
     arm: ArmName,
     baseline: ArmCrossFittedBaseline,
@@ -3848,10 +3889,12 @@ def build_arm_card_reward_rows(
     trajectory_count = len({decision.trajectory_id for decision in baseline.decisions})
     if len(source) != trajectory_count:
         raise SuccessorRuntimeError("card reward pair count differs from baseline")
-    arm_episodes = tuple(
-        pair.candidate if normalized_arm == "candidate" else pair.control
-        for pair in source
-    )
+    if normalized_arm == "candidate":
+        arm_episodes = _candidate_arm_episodes(source)
+    else:
+        if any(not isinstance(pair, PairedEpisodeRollout) for pair in source):
+            raise SuccessorRuntimeError("control card reward rows require pairs")
+        arm_episodes = tuple(pair.control for pair in source)
     rollout_decisions = tuple(
         decision for episode in arm_episodes for decision in episode.decisions
     )
@@ -4068,7 +4111,7 @@ def apply_paired_cross_fitted_chunk_update_exploratory(
 def apply_candidate_cross_fitted_chunk_update_exploratory(
     bootstrap: PairedBootstrap,
     candidate_optimizer: torch.optim.Optimizer,
-    episodes: Sequence[PairedEpisodeRollout],
+    episodes: Sequence[PairedEpisodeRollout | ArmEpisodeRollout],
 ) -> CandidateChunkUpdateEvidence:
     """Apply one accelerated candidate-card step with no control optimizer."""
     _validate_rollout_bootstrap(bootstrap)
@@ -4121,7 +4164,7 @@ def apply_candidate_cross_fitted_chunk_update_exploratory(
     ):
         raise SuccessorRuntimeError("candidate update changed an arm generator")
     return CandidateChunkUpdateEvidence(
-        seeds=tuple(pair.seed for pair in episodes),
+        seeds=tuple(episode.seed for episode in _candidate_arm_episodes(episodes)),
         baseline=baseline,
         candidate=ArmChunkUpdateEvidence(
             arm="candidate",
@@ -4846,6 +4889,7 @@ __all__ = [
     "restore_paired_training_checkpoint",
     "rollout_arm_frozen_evaluation",
     "rollout_arm_training_episode",
+    "rollout_candidate_card_only_native_baseline_training_episode",
     "rollout_paired_frozen_evaluation",
     "rollout_paired_training_episode",
     "run_bounded_paired_training",

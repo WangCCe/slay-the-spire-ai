@@ -1321,6 +1321,43 @@ def test_card_only_native_baseline_training_samples_only_candidate_cards():
         assert torch.equal(bootstrap.generators[name].get_state(), state)
 
 
+def test_candidate_only_card_training_never_constructs_control_environment():
+    runtime = _runtime()
+    bootstrap = runtime.build_matched_bootstrap()
+    factory_calls = []
+    _NativeRolloutEnvironment.query_log = []
+    _NativeRolloutEnvironment.native_step_log = []
+
+    def environment_factory(seed: int):
+        factory_calls.append(seed)
+        return _NativeRolloutEnvironment(
+            seed, ("card_reward", "route"), role="candidate"
+        )
+
+    episode = runtime.rollout_candidate_card_only_native_baseline_training_episode(
+        bootstrap,
+        environment_factory=environment_factory,
+        seed=43,
+    )
+
+    assert factory_calls == [43]
+    assert episode.arm == "candidate"
+    assert episode.decisions[0].card_terms is not None
+    assert episode.decisions[0].diagnostic["selection_mode"] == (
+        "family-first-then-conditional-v1"
+    )
+    assert episode.decisions[1].card_terms is None
+    assert episode.decisions[1].diagnostic["selection_mode"] == (
+        "native-simple-agent-v1"
+    )
+    assert _NativeRolloutEnvironment.query_log == [
+        ("candidate", "route", 1),
+    ]
+    assert _NativeRolloutEnvironment.native_step_log == [
+        ("candidate", "route", 1),
+    ]
+
+
 @pytest.mark.parametrize(
     ("failure", "message"),
     [
@@ -1582,6 +1619,26 @@ def test_candidate_cross_fitted_update_accepts_bounded_censored_cohort():
         bootstrap,
         optimizer,
         pairs,
+    )
+
+    assert update.seeds == tuple(range(100, 163))
+    assert update.candidate.optimizer_step.preclip_global_norm >= 0.0
+    assert len(optimizer.state) > 0
+
+
+def test_candidate_cross_fitted_update_accepts_candidate_arm_rollouts():
+    runtime = _runtime()
+    bootstrap = runtime.build_matched_bootstrap()
+    candidate_episodes = tuple(
+        pair.candidate
+        for pair in _synthetic_paired_rollouts(runtime, bootstrap)[:-1]
+    )
+    optimizer = runtime.build_candidate_card_optimizer(bootstrap)
+
+    update = runtime.apply_candidate_cross_fitted_chunk_update_exploratory(
+        bootstrap,
+        optimizer,
+        candidate_episodes,
     )
 
     assert update.seeds == tuple(range(100, 163))
