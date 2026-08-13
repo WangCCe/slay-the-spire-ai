@@ -1,0 +1,37 @@
+{
+  "censor_reasons": {
+    "unsupported_shop_courier_restock_semantics": 4
+  },
+  "censored_pairs": 4,
+  "checks": {
+    "complete_pair_support": true,
+    "event_exposure_support": true,
+    "improved_not_fewer_than_worsened": false,
+    "improves_at_least_one_pair": true,
+    "mean_floor_noninferior_to_current": false,
+    "mean_return_improves_current": false,
+    "no_paired_victory_loss": true,
+    "override_support": true,
+    "victory_count_noninferior_to_current": true
+  },
+  "complete_pairs": 124,
+  "current": {
+    "mean_floor": 22.387096774193548,
+    "mean_return": 0.39275608375778154,
+    "victories": 0
+  },
+  "event_exposed_pairs": 122,
+  "improved_pairs": 30,
+  "override_pairs": 115,
+  "selected": {
+    "mean_floor": 22.274193548387096,
+    "mean_return": 0.3907753254102999,
+    "total_event_overrides": 331,
+    "victories": 0
+  },
+  "tied_pairs": 63,
+  "verdict": "event_ranker_paired_trajectory_integration_not_ready",
+  "victory_gains": 0,
+  "victory_losses": 0,
+  "worsened_pairs": 31
+}

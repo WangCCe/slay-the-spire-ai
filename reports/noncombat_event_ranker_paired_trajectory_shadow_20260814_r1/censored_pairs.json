@@ -1,0 +1,22 @@
+[
+  {
+    "arm": "current",
+    "reason": "unsupported_shop_courier_restock_semantics",
+    "seed": 94602
+  },
+  {
+    "arm": "current",
+    "reason": "unsupported_shop_courier_restock_semantics",
+    "seed": 94603
+  },
+  {
+    "arm": "current",
+    "reason": "unsupported_shop_courier_restock_semantics",
+    "seed": 94647
+  },
+  {
+    "arm": "current",
+    "reason": "unsupported_shop_courier_restock_semantics",
+    "seed": 94685
+  }
+]
