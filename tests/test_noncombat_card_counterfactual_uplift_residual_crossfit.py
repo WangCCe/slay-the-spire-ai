@@ -1,6 +1,8 @@
 from __future__ import annotations
 
-import copy
+from pathlib import Path
+import subprocess
+import sys
 
 import pytest
 import torch
@@ -156,3 +158,21 @@ def test_published_binding_uses_final_path(tmp_path):
     assert (staging / "report.json").read_bytes() == b"{}"
     assert binding["path"] == (output / "report.json").as_posix()
     assert binding["size_bytes"] == 2
+
+
+def test_isolated_direct_entry_can_load_package():
+    completed = subprocess.run(
+        [
+            sys.executable,
+            "-I",
+            str(Path(crossfit.__file__).resolve()),
+            "--help",
+        ],
+        cwd=Path(crossfit.__file__).resolve().parents[1],
+        check=False,
+        capture_output=True,
+        text=True,
+    )
+
+    assert completed.returncode == 0, completed.stderr
+    assert "--source-commit" in completed.stdout

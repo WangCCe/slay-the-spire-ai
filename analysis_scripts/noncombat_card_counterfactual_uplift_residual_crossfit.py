@@ -6,13 +6,37 @@ import argparse
 import copy
 from dataclasses import dataclass
 import hashlib
+import importlib.util
 import json
 import math
 from pathlib import Path
 import subprocess
+import sys
+import types
 from collections import defaultdict
 from collections.abc import Mapping, Sequence
 from typing import Any
+
+
+def _bootstrap_direct_script_imports() -> None:
+    if __package__:
+        return
+    repo_root = Path(__file__).resolve().parents[1]
+    package_root = repo_root / "analysis_scripts"
+    package = types.ModuleType("analysis_scripts")
+    package.__file__ = str(package_root / "__init__.py")
+    package.__package__ = "analysis_scripts"
+    package.__path__ = [str(package_root)]
+    package.__spec__ = importlib.util.spec_from_loader(
+        "analysis_scripts", loader=None, is_package=True
+    )
+    sys.modules["analysis_scripts"] = package
+    sys.path.append(str(repo_root))
+
+
+if __name__ == "__main__":
+    _bootstrap_direct_script_imports()
+
 
 from analysis_scripts import noncombat_card_counterfactual_ranking_training as ranking
 from analysis_scripts import noncombat_card_counterfactual_ranking_training_runner as base_runner
