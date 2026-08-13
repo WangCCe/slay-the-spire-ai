@@ -14,12 +14,12 @@
 
 ## 3. Bounded Training Execution
 
-- [ ] 3.1 Publish and verify one source-bound registration with at most 1,152 environment accesses and eight charged hours.
-- [ ] 3.2 Execute or resume the registered 16-step continuation without changing seeds, coefficients, thresholds, or schedule.
-- [ ] 3.3 Analyze action flips, family support, model movement, candidate training outcomes, and the terminal supported-pair comparison.
+- [x] 3.1 Publish and verify one source-bound registration with at most 1,152 environment accesses and eight charged hours.
+- [x] 3.2 Execute or resume the registered 16-step continuation without changing seeds, coefficients, thresholds, or schedule.
+- [x] 3.3 Analyze action flips, family support, model movement, candidate training outcomes, and the terminal supported-pair comparison.
 
 ## 4. Verification And Closeout
 
-- [ ] 4.1 Run the focused candidate-runtime and continuation-runner tests using a scoped system-temp pytest root.
-- [ ] 4.2 Run the repository pytest gate once after the empirical terminal artifact exists; do not repeat it solely for infrastructure cleanup.
-- [ ] 4.3 Run strict OpenSpec validation, review authority and production-isolation evidence, then commit and push cohesive code and empirical boundaries.
+- [x] 4.1 Run the focused candidate-runtime and continuation-runner tests using a scoped system-temp pytest root.
+- [x] 4.2 Run the repository pytest gate once after the empirical terminal artifact exists; do not repeat it solely for infrastructure cleanup. (`6138 passed, 19 skipped` in 45 minutes 2 seconds.)
+- [x] 4.3 Run strict OpenSpec validation, review authority and production-isolation evidence, then commit and push cohesive code and empirical boundaries.
