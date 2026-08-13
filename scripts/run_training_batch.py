@@ -107,6 +107,9 @@ def build_child_env(args):
     exploration_config = getattr(args, "noncombat_exploration_config", None)
     if exploration_config:
         env["STS_NONCOMBAT_EXPLORATION_CONFIG"] = str(exploration_config)
+    card_shadow_config = getattr(args, "card_uplift_shadow_config", None)
+    if card_shadow_config:
+        env["STS_CARD_UPLIFT_SHADOW_CONFIG"] = str(card_shadow_config)
     return env
 
 
@@ -325,6 +328,11 @@ def parse_args():
         help="Explicit configuration passed as STS_NONCOMBAT_EXPLORATION_CONFIG.",
     )
     parser.add_argument(
+        "--card-uplift-shadow-config",
+        default=None,
+        help="Explicit configuration passed as STS_CARD_UPLIFT_SHADOW_CONFIG.",
+    )
+    parser.add_argument(
         "--truncate-log-after-backup",
         action="store_true",
         help="Clear the active log after copying it. Use only between batches.",
@@ -364,6 +372,12 @@ def main():
     if exploration_config:
         print(
             f"[training-batch] noncombat exploration config: {exploration_config}",
+            file=sys.stderr,
+        )
+    card_shadow_config = child_env.get("STS_CARD_UPLIFT_SHADOW_CONFIG")
+    if card_shadow_config:
+        print(
+            f"[training-batch] card uplift shadow config: {card_shadow_config}",
             file=sys.stderr,
         )
     print_restart_guidance(args)

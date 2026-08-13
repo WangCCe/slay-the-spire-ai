@@ -647,6 +647,20 @@ def initialize_noncombat_exploration_if_configured(
     )
 
 
+def initialize_card_uplift_shadow_if_configured(*, environ=None):
+    """Keep card-uplift shadow scoring inert without an explicit config."""
+
+    environment = os.environ if environ is None else environ
+    raw_path = environment.get("STS_CARD_UPLIFT_SHADOW_CONFIG")
+    if raw_path is None or not str(raw_path).strip():
+        return None
+    from spirecomm.ai.card_uplift_shadow import (
+        initialize_card_uplift_shadow_runtime,
+    )
+
+    return initialize_card_uplift_shadow_runtime(environ=environment)
+
+
 def is_study_handshake_configured(environ=None):
     environment = os.environ if environ is None else environ
     from spirecomm.communication.study_handshake import HANDSHAKE_ATTEMPT_ENV
@@ -1229,6 +1243,18 @@ if __name__ == "__main__":
             coordinator.start_input_thread()
             logging.info("CommunicationMod stdin reader started after RL initialization")
 
+    try:
+        card_uplift_shadow_runtime = initialize_card_uplift_shadow_if_configured(
+            environ=os.environ
+        )
+    except Exception as exc:
+        logging.critical(
+            "Card-uplift shadow startup rejected: %s: %s",
+            type(exc).__name__,
+            exc,
+        )
+        sys.exit(2)
+
     # Register callbacks after agent is created
     coordinator.register_command_error_callback(agent.handle_error)
     state_change_callback = agent.get_next_action_in_game
@@ -1236,6 +1262,10 @@ if __name__ == "__main__":
         state_change_callback = exploration_runtime.wrap_state_callback(
             state_change_callback,
             policy_agent=agent,
+        )
+    if card_uplift_shadow_runtime is not None:
+        state_change_callback = card_uplift_shadow_runtime.wrap_state_callback(
+            state_change_callback
         )
     coordinator.register_state_change_callback(state_change_callback)
     coordinator.register_out_of_game_callback(agent.get_next_action_out_of_game)
