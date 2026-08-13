@@ -53,4 +53,3 @@ authority false.
 #### Scenario: Corpus report is published
 - **WHEN** both canonical datasets pass every fixed check
 - **THEN** the verdict authorizes only a separate source-only training proposal and no policy claim
-
