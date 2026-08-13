@@ -12,10 +12,10 @@
 
 ## 3. Empirical Training
 
-- [ ] 3.1 Register and execute one consumed-seed train/holdout pilot with at most 192 native action continuations
-- [ ] 3.2 Inspect support, train-loss, held-out regret, pairwise accuracy, unique-best accuracy, maximum regret, corrected flips, and isolation gates
-- [ ] 3.3 Record the fixed ready/not-ready verdict and keep the fitted checkpoint experiment-local
+- [x] 3.1 Register and execute one consumed-seed train/holdout pilot with at most 192 native action continuations
+- [x] 3.2 Inspect support, train-loss, held-out regret, pairwise accuracy, unique-best accuracy, maximum regret, corrected flips, and isolation gates
+- [x] 3.3 Record the fixed ready/not-ready verdict and keep the fitted checkpoint experiment-local
 
 ## 4. Closure
 
-- [ ] 4.1 Sync the accepted capability, archive the change, and commit/push only scoped implementation and evidence
+- [x] 4.1 Sync the accepted capability, archive the change, and commit/push only scoped implementation and evidence
