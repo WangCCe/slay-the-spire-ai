@@ -51,4 +51,3 @@ policy authority false beyond the registered source-only development study.
 #### Scenario: Artifacts are published
 - **WHEN** the fixed run completes
 - **THEN** every artifact has a final-path hash and the entry checkpoint remains byte-identical
-
