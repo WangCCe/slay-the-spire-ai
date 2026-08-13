@@ -250,3 +250,15 @@ reports/noncombat_card_uplift_live_shadow_* text eol=lf
 reports/noncombat_card_uplift_live_shadow_*/** text eol=lf
 openspec/specs/noncombat-card-uplift-live-shadow/** text eol=lf
 openspec/changes/archive/*-add-card-uplift-live-shadow-adapter/** text eol=lf
+
+# Preserve rare-card counterfactual collection and residual source bytes.
+analysis_scripts/noncombat_card_counterfactual_corpus_expansion_runner.py text eol=lf
+analysis_scripts/noncombat_large_corpus_card_uplift_residual.py text eol=lf
+tests/test_noncombat_card_counterfactual_corpus_expansion_runner.py text eol=lf
+tests/test_noncombat_card_counterfactual_ranking_training.py text eol=lf
+tests/test_noncombat_large_corpus_card_uplift_residual.py text eol=lf
+openspec/changes/add-rare-card-counterfactual-corpus-retraining/** text eol=lf
+reports/noncombat_rare_card_counterfactual_corpus_* text eol=lf
+reports/noncombat_rare_card_counterfactual_corpus_*/** text eol=lf
+reports/noncombat_rare_card_uplift_residual_* text eol=lf
+reports/noncombat_rare_card_uplift_residual_*/** text eol=lf

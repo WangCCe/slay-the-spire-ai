@@ -33,14 +33,23 @@ def _provenance() -> dict[str, object]:
     }
 
 
-def _candidate(category: str, action_id: str, kind: str) -> dict[str, object]:
+def _candidate(
+    category: str,
+    action_id: str,
+    kind: str,
+    *,
+    card_id: str | None = None,
+) -> dict[str, object]:
+    raw = {"action_id": action_id}
+    if card_id is not None:
+        raw["id"] = card_id
     return {
         "action_id": action_id,
         "available": True,
         "category": category,
         "kind": kind,
         "label": action_id,
-        "raw": {"action_id": action_id},
+        "raw": raw,
     }
 
 
@@ -122,6 +131,74 @@ class _PartitionEnvironment:
         return self.step("take-a" if self.stage == 0 else "continue")
 
 
+class _TargetPartitionEnvironment:
+    def __init__(self, seed: int, *, stage: int = 0, score: int = 0) -> None:
+        self.seed = seed
+        self.stage = stage
+        self.score = score
+
+    def snapshot(self) -> dict[str, object]:
+        terminal = self.stage == 4
+        categories = ("card_reward", "route", "card_reward", "card_reward")
+        return {
+            "adapter_api_version": ADAPTER_API_VERSION,
+            "baseline_control": {"history": [], "policy_id": "test-native"},
+            "category": None if terminal else categories[self.stage],
+            "decision_count": self.stage,
+            "schema_version": STATE_SCHEMA_VERSION,
+            "source_type": SOURCE_TYPE,
+            "state": {
+                "floor": self.score if terminal else self.stage,
+                "outcome": "player_loss" if terminal else "undecided",
+                "seed": str(self.seed),
+            },
+            "terminal": terminal,
+        }
+
+    def legal_actions(self) -> list[dict[str, object]]:
+        if self.stage == 0:
+            return [
+                _candidate("card_reward", "take-strike", "take", card_id="STRIKE"),
+                _candidate("card_reward", "skip-0", "skip"),
+            ]
+        if self.stage == 1:
+            return [_candidate("route", "continue", "map_node")]
+        if self.stage == 2:
+            return [
+                _candidate("card_reward", "take-immolate", "take", card_id="IMMOLATE"),
+                _candidate("card_reward", "take-bash", "take", card_id="BASH"),
+                _candidate("card_reward", "skip-2", "skip"),
+            ]
+        if self.stage == 3:
+            return [
+                _candidate("card_reward", "take-offering", "take", card_id="OFFERING"),
+                _candidate("card_reward", "skip-3", "skip"),
+            ]
+        return []
+
+    def clone(self):
+        return type(self)(self.seed, stage=self.stage, score=self.score)
+
+    def step(self, action_id: str) -> dict[str, object]:
+        before = self.snapshot()
+        candidates = self.legal_actions()
+        if action_id not in {candidate["action_id"] for candidate in candidates}:
+            raise RuntimeError("illegal action")
+        if action_id.startswith("take-"):
+            self.score += 1
+        self.stage += 1
+        return build_transition(
+            before=before,
+            candidates=candidates,
+            selected_action_id=action_id,
+            after=self.snapshot(),
+            provenance=_provenance(),
+        )
+
+    def step_native_baseline(self) -> dict[str, object]:
+        return self.step(self.legal_actions()[0]["action_id"])
+
+
 def test_partition_collects_complete_rows_and_stops_before_partial_source():
     partition = ranking.collect_counterfactual_partition(
         _PartitionEnvironment,
@@ -188,6 +265,55 @@ def test_partition_accepts_audit_without_changing_collection_semantics():
     assert partition.name == "audit"
     assert [row.seed for row in partition.rows] == [30]
     assert partition.action_branches == 4
+
+
+def test_partition_filters_for_target_take_card_ids_and_preserves_default():
+    targeted = ranking.collect_counterfactual_partition(
+        _TargetPartitionEnvironment,
+        name="train",
+        seeds=(40,),
+        max_action_branches=5,
+        max_censored_seeds=0,
+        max_card_states_per_seed=2,
+        eligible_take_card_ids=frozenset({"IMMOLATE", "OFFERING"}),
+    )
+
+    assert [row.decision_index for row in targeted.rows] == [2, 3]
+    assert targeted.action_branches == 5
+
+    bounded = ranking.collect_counterfactual_partition(
+        _TargetPartitionEnvironment,
+        name="train",
+        seeds=(40,),
+        max_action_branches=3,
+        max_censored_seeds=0,
+        max_card_states_per_seed=1,
+        eligible_take_card_ids=frozenset({"IMMOLATE", "OFFERING"}),
+    )
+    assert [row.decision_index for row in bounded.rows] == [2]
+
+    default = ranking.collect_counterfactual_partition(
+        _TargetPartitionEnvironment,
+        name="train",
+        seeds=(40,),
+        max_action_branches=5,
+        max_censored_seeds=0,
+        max_card_states_per_seed=2,
+    )
+    assert [row.decision_index for row in default.rows] == [0, 2]
+
+
+@pytest.mark.parametrize("invalid", [set(), {""}, {"IMMOLATE", 1}])
+def test_partition_rejects_invalid_target_take_card_ids(invalid):
+    with pytest.raises(ranking.CounterfactualRankingBlocked, match="eligible card ids"):
+        ranking.collect_counterfactual_partition(
+            _TargetPartitionEnvironment,
+            name="train",
+            seeds=(40,),
+            max_action_branches=8,
+            max_censored_seeds=0,
+            eligible_take_card_ids=invalid,
+        )
 
 
 def _ranking_candidates() -> tuple[dict[str, object], ...]:

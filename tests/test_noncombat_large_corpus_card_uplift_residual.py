@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import copy
+from dataclasses import replace
 import json
 from pathlib import Path
 import subprocess
@@ -261,3 +262,130 @@ def test_isolated_direct_entry_can_load_package():
 
     assert completed.returncode == 0, completed.stderr
     assert "--source-commit" in completed.stdout
+
+
+def test_merge_rows_requires_disjoint_seeds_and_source_identities():
+    existing = _rows(100, 3)
+    targeted = _rows(200, 2)
+
+    merged = runner._merge_disjoint_rows(existing, targeted)
+
+    assert [row.seed for row in merged] == [100, 101, 102, 200, 201]
+    with pytest.raises(runner.LargeCorpusResidualBlocked, match="seed overlap"):
+        runner._merge_disjoint_rows(existing, (_row(100, 1),))
+    repeated_source = replace(
+        _row(300), source_sha256=existing[0].source_sha256
+    )
+    with pytest.raises(runner.LargeCorpusResidualBlocked, match="source overlap"):
+        runner._merge_disjoint_rows(existing, (repeated_source,))
+
+
+def test_rare_development_gate_prevents_new_best_take_to_skip_errors():
+    rows = (_row(500, cards=("IMMOLATE", "BASH", "ANGER")),)
+    base_scores = {rows[0].source_sha256: (-2.0, -1.0, -1.5, 2.0)}
+    candidate_scores = {rows[0].source_sha256: (2.0, -1.0, -1.5, -2.0)}
+
+    assert runner._best_take_to_skip_errors(rows, base_scores) == 1
+    assert runner._best_take_to_skip_errors(rows, candidate_scores) == 0
+
+    base = {
+        "mean_top_action_regret": 0.4,
+        "weighted_pairwise_accuracy": 0.5,
+    }
+    candidate = {
+        "mean_top_action_regret": 0.2,
+        "weighted_pairwise_accuracy": 0.5,
+    }
+    passing = runner._rare_development_checks(
+        base,
+        candidate,
+        base_best_take_to_skip_errors=1,
+        candidate_best_take_to_skip_errors=0,
+    )
+    failing = runner._rare_development_checks(
+        base,
+        candidate,
+        base_best_take_to_skip_errors=0,
+        candidate_best_take_to_skip_errors=1,
+    )
+
+    assert all(passing.values())
+    assert failing["best_take_to_skip_errors_nonincreasing"] is False
+
+
+def test_execute_rare_persists_model_before_development_rows(tmp_path, monkeypatch):
+    existing_train = _rows(100, 10)
+    rare_ids = sorted(corpus.IRONCLAD_RARE_CARD_IDS)
+    rare_train = tuple(
+        _row(200 + index, cards=(card_id, "B", "C"))
+        for index, card_id in enumerate(rare_ids)
+    )
+    existing_development = _rows(300, 10)
+    rare_development = tuple(
+        _row(400 + index, cards=(card_id, "B", "C"))
+        for index, card_id in enumerate(rare_ids)
+    )
+    output = tmp_path / "rare-output"
+    events = []
+    monkeypatch.setattr(runner, "_source_bindings", lambda _root, _commit: {})
+    monkeypatch.setattr(
+        runner,
+        "_load_train_inputs",
+        lambda _root: (
+            existing_train,
+            object(),
+            {
+                "corpus_registration": {"path": "registration"},
+                "corpus_report": {"path": "report"},
+                "entry_checkpoint": {"path": "entry"},
+                "lineage_registration": {"path": "lineage"},
+                "train_dataset": {"path": "train"},
+            },
+        ),
+    )
+    monkeypatch.setattr(
+        runner,
+        "_load_rare_train_inputs",
+        lambda _root: (
+            rare_train,
+            {
+                "rare_corpus_registration": {"path": "rare-registration"},
+                "rare_corpus_report": {"path": "rare-report"},
+                "rare_train_dataset": {"path": "rare-train"},
+            },
+        ),
+    )
+    monkeypatch.setattr(runner.pilot, "encode_candidate_card_policy", lambda _x: b"entry")
+    monkeypatch.setattr(runner, "_base_scores", lambda _bootstrap, rows: _base_scores(rows))
+    monkeypatch.setattr(runner, "_read_canonical", lambda _path: {"datasets": {}})
+
+    def assert_model_persisted():
+        model_path = output.with_name(f".{output.name}.{'c' * 40}.staging") / (
+            "residual_model.json"
+        )
+        assert model_path.is_file()
+        events.append("development_loaded")
+
+    def load_existing(_root, _report):
+        assert_model_persisted()
+        return existing_development, {"path": "development"}
+
+    def load_rare(_root, _report):
+        assert_model_persisted()
+        return rare_development, {"path": "rare-development"}
+
+    monkeypatch.setattr(runner, "_load_development_inputs", load_existing)
+    monkeypatch.setattr(runner, "_load_rare_development_inputs", load_rare)
+
+    report = runner.execute_rare(
+        repo_root=tmp_path,
+        source_commit="c" * 40,
+        corpus_root=tmp_path / "corpus",
+        rare_corpus_root=tmp_path / "rare-corpus",
+        output_dir=output,
+    )
+
+    assert events == ["development_loaded", "development_loaded"]
+    assert report["target_model_card_ids"] == rare_ids
+    assert report["audit_accessed"] is False
+    assert (output / "artifact_manifest.json").is_file()

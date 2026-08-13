@@ -42,13 +42,16 @@ if __name__ == "__main__":
 REGISTRATION_SCHEMA_VERSION = (
     "noncombat-card-counterfactual-corpus-expansion-registration-v1"
 )
+RARE_REGISTRATION_SCHEMA_VERSION = (
+    "noncombat-rare-card-counterfactual-corpus-registration-v1"
+)
 _EARLY_NATIVE_HANDLES: list[Any] = []
 
 
 def _is_direct_worker_invocation() -> bool:
     return (
         len(sys.argv) >= 2
-        and sys.argv[1] == "run-worker"
+        and sys.argv[1] in {"run-worker", "rare-run-worker"}
         and Path(sys.argv[0]).resolve() == Path(__file__).resolve()
     )
 
@@ -61,7 +64,10 @@ def _early_preload_native() -> None:
             sys.argv[sys.argv.index("--registration") + 1]
         ).resolve()
         registration = json.loads(registration_path.read_text(encoding="ascii"))
-        if registration.get("schema_version") != REGISTRATION_SCHEMA_VERSION:
+        if registration.get("schema_version") not in {
+            REGISTRATION_SCHEMA_VERSION,
+            RARE_REGISTRATION_SCHEMA_VERSION,
+        }:
             raise RuntimeError("corpus worker registration schema differs")
         native = registration["native"]["identity"]
         module_path = Path(native["module"]["path"]).resolve()
@@ -163,6 +169,48 @@ DEFAULT_LINEAGE_REPORT = Path(
 DEFAULT_OUTPUT_DIR = Path(
     "reports/noncombat_card_counterfactual_corpus_expansion_20260813_r1"
 )
+RARE_TRAIN_SEEDS = tuple(range(92000, 92256))
+RARE_DEVELOPMENT_SEEDS = tuple(range(92256, 92320))
+RARE_RESERVED_AUDIT_SEEDS = tuple(range(92320, 92384))
+IRONCLAD_RARE_CARD_IDS = frozenset(
+    {
+        "BARRICADE",
+        "BERSERK",
+        "BLUDGEON",
+        "BRUTALITY",
+        "CORRUPTION",
+        "DEMON_FORM",
+        "DOUBLE_TAP",
+        "EXHUME",
+        "FEED",
+        "FIEND_FIRE",
+        "IMMOLATE",
+        "IMPERVIOUS",
+        "JUGGERNAUT",
+        "LIMIT_BREAK",
+        "OFFERING",
+        "REAPER",
+    }
+)
+RARE_MAX_TRAIN_BRANCHES = 2_048
+RARE_MAX_DEVELOPMENT_BRANCHES = 512
+RARE_MAX_TRAIN_CENSORED_SEEDS = 16
+RARE_MAX_DEVELOPMENT_CENSORED_SEEDS = 4
+RARE_MIN_TRAIN_SOURCE_STATES = 250
+RARE_MIN_DEVELOPMENT_SOURCE_STATES = 60
+RARE_MAX_CHARGED_SECONDS = 14_400.0
+RARE_REPORT_SCHEMA_VERSION = "noncombat-rare-card-counterfactual-corpus-report-v1"
+RARE_PREFLIGHT_SCHEMA_VERSION = (
+    "noncombat-rare-card-counterfactual-corpus-preflight-v1"
+)
+RARE_TERMINAL_SCHEMA_VERSION = (
+    "noncombat-rare-card-counterfactual-corpus-terminal-v1"
+)
+DEFAULT_PRIOR_CORPUS_REGISTRATION = DEFAULT_OUTPUT_DIR / "registration.json"
+DEFAULT_PRIOR_CORPUS_REPORT = DEFAULT_OUTPUT_DIR / "report.json"
+DEFAULT_RARE_OUTPUT_DIR = Path(
+    "reports/noncombat_rare_card_counterfactual_corpus_20260813_r1"
+)
 BOUND_SOURCE_PATHS = (
     "analysis_scripts/noncombat_card_acceptance_empirical_successor_runtime.py",
     "analysis_scripts/noncombat_card_acceptance_objective.py",
@@ -209,6 +257,8 @@ OPERATIONS = {
     "seed_access": True,
     "training": False,
 }
+RARE_AUTHORITY = copy.deepcopy(AUTHORITY)
+RARE_OPERATIONS = copy.deepcopy(OPERATIONS)
 
 
 class CorpusExpansionBlocked(RuntimeError):
@@ -226,6 +276,32 @@ def _configuration() -> dict[str, Any]:
         "maximum_train_censored_seeds": MAX_TRAIN_CENSORED_SEEDS,
         "minimum_development_source_states": MIN_DEVELOPMENT_SOURCE_STATES,
         "minimum_train_source_states": MIN_TRAIN_SOURCE_STATES,
+    }
+
+
+def _rare_configuration() -> dict[str, Any]:
+    return {
+        "eligible_take_card_ids": sorted(IRONCLAD_RARE_CARD_IDS),
+        "maximum_card_states_per_seed": ranking.MAX_CARD_STATES_PER_SEED,
+        "maximum_charged_seconds": RARE_MAX_CHARGED_SECONDS,
+        "maximum_dataset_bytes": MAX_DATASET_BYTES,
+        "maximum_development_branches": RARE_MAX_DEVELOPMENT_BRANCHES,
+        "maximum_development_censored_seeds": (
+            RARE_MAX_DEVELOPMENT_CENSORED_SEEDS
+        ),
+        "maximum_train_branches": RARE_MAX_TRAIN_BRANCHES,
+        "maximum_train_censored_seeds": RARE_MAX_TRAIN_CENSORED_SEEDS,
+        "minimum_development_source_states": RARE_MIN_DEVELOPMENT_SOURCE_STATES,
+        "minimum_train_source_states": RARE_MIN_TRAIN_SOURCE_STATES,
+    }
+
+
+def _rare_schedule() -> dict[str, Any]:
+    return {
+        "development_seeds": list(RARE_DEVELOPMENT_SEEDS),
+        "reserved_audit_seeds": list(RARE_RESERVED_AUDIT_SEEDS),
+        "seed_status": "new-targeted-train-development-with-untouched-audit",
+        "train_seeds": list(RARE_TRAIN_SEEDS),
     }
 
 
@@ -469,6 +545,217 @@ def preflight_registration(
     }
 
 
+def build_rare_registration(
+    *,
+    repo_root: Path | str,
+    source_commit: str,
+    prior_corpus_registration_path: Path | str,
+    prior_corpus_report_path: Path | str,
+    output_dir: Path | str,
+) -> dict[str, Any]:
+    root = Path(repo_root).resolve()
+    prior_registration_path = Path(prior_corpus_registration_path).resolve()
+    prior_report_path = Path(prior_corpus_report_path).resolve()
+    prior_registration = validate_registration(
+        base_runner._read_canonical(prior_registration_path)
+    )
+    prior_report = base_runner._read_canonical(prior_report_path)
+    if (
+        prior_report.get("verdict")
+        != "card_counterfactual_corpus_ready_for_source_only_training_proposal"
+        or prior_report.get("schedule") != prior_registration["schedule"]
+        or prior_report.get("audit_accessed") is not False
+        or prior_report.get("training_performed") is not False
+    ):
+        raise CorpusExpansionBlocked("prior corpus evidence differs")
+    try:
+        if pilot_runner._git(root, "cat-file", "-t", source_commit) != "commit":
+            raise CorpusExpansionBlocked("source commit is unavailable")
+    except pilot_runner.CardOnlyRunnerBlocked as exc:
+        raise CorpusExpansionBlocked("source commit is unavailable") from exc
+    output = Path(output_dir).resolve()
+    checkpoint_root = base_runner.PRODUCTION_CHECKPOINT_ROOT.resolve()
+    if output == checkpoint_root or checkpoint_root in output.parents:
+        raise CorpusExpansionBlocked("output overlaps production checkpoints")
+    return validate_rare_registration(
+        {
+            "authority": copy.deepcopy(RARE_AUTHORITY),
+            "configuration": _rare_configuration(),
+            "inputs": {
+                "prior_corpus_registration": pilot_runner._file_binding(
+                    prior_registration_path
+                ),
+                "prior_corpus_report": pilot_runner._file_binding(
+                    prior_report_path
+                ),
+            },
+            "native": copy.deepcopy(prior_registration["native"]),
+            "operations": copy.deepcopy(RARE_OPERATIONS),
+            "output_dir": output.as_posix(),
+            "production_isolation": copy.deepcopy(
+                prior_registration["production_isolation"]
+            ),
+            "schedule": _rare_schedule(),
+            "schema_version": RARE_REGISTRATION_SCHEMA_VERSION,
+            "source": {
+                "bindings": _source_bindings(root, source_commit),
+                "commit": source_commit,
+                "repo_root": root.as_posix(),
+            },
+        }
+    )
+
+
+def validate_rare_registration(value: Mapping[str, Any]) -> dict[str, Any]:
+    if not isinstance(value, Mapping):
+        raise CorpusExpansionBlocked("rare registration must be an object")
+    registration = copy.deepcopy(dict(value))
+    if set(registration) != {
+        "authority",
+        "configuration",
+        "inputs",
+        "native",
+        "operations",
+        "output_dir",
+        "production_isolation",
+        "schedule",
+        "schema_version",
+        "source",
+    } or registration.get("schema_version") != RARE_REGISTRATION_SCHEMA_VERSION:
+        raise CorpusExpansionBlocked("rare registration fields differ")
+    if registration["authority"] != RARE_AUTHORITY:
+        raise CorpusExpansionBlocked("rare authority differs")
+    if registration["configuration"] != _rare_configuration():
+        raise CorpusExpansionBlocked("rare configuration differs")
+    if registration["operations"] != RARE_OPERATIONS:
+        raise CorpusExpansionBlocked("rare operations differ")
+    if registration["schedule"] != _rare_schedule():
+        raise CorpusExpansionBlocked("rare schedule differs")
+    schedule_sets = [
+        set(registration["schedule"][name])
+        for name in (
+            "train_seeds",
+            "development_seeds",
+            "reserved_audit_seeds",
+        )
+    ]
+    if any(
+        left & right
+        for index, left in enumerate(schedule_sets)
+        for right in schedule_sets[index + 1 :]
+    ):
+        raise CorpusExpansionBlocked("rare schedule overlaps")
+    inputs = registration.get("inputs")
+    if not isinstance(inputs, dict) or set(inputs) != {
+        "prior_corpus_registration",
+        "prior_corpus_report",
+    }:
+        raise CorpusExpansionBlocked("rare inputs differ")
+    source = registration.get("source")
+    if (
+        not isinstance(source, dict)
+        or set(source) != {"bindings", "commit", "repo_root"}
+        or set(source.get("bindings", {})) != set(BOUND_SOURCE_PATHS)
+        or not isinstance(source.get("commit"), str)
+        or len(source["commit"]) != 40
+    ):
+        raise CorpusExpansionBlocked("rare source differs")
+    bindings = [*inputs.values(), *source["bindings"].values()]
+    if any(
+        not isinstance(binding, dict)
+        or set(binding) != {"path", "sha256", "size_bytes"}
+        for binding in bindings
+    ):
+        raise CorpusExpansionBlocked("rare file bindings differ")
+    native = registration.get("native")
+    identity = native.get("identity") if isinstance(native, dict) else None
+    if not isinstance(identity, dict) or identity.get(
+        "adapter_api_version"
+    ) != adapter.ADAPTER_API_VERSION:
+        raise CorpusExpansionBlocked("rare native identity differs")
+    if not isinstance(registration.get("output_dir"), str):
+        raise CorpusExpansionBlocked("rare output differs")
+    return registration
+
+
+def preflight_rare_registration(
+    value: Mapping[str, Any],
+    *,
+    process_observer: Callable[[], Sequence[Mapping[str, Any]]] = (
+        pilot_runner._forbidden_processes
+    ),
+) -> dict[str, Any]:
+    registration = validate_rare_registration(value)
+    source = registration["source"]
+    root = Path(source["repo_root"]).resolve()
+    try:
+        subprocess.run(
+            ["git", "merge-base", "--is-ancestor", source["commit"], "HEAD"],
+            cwd=root,
+            check=True,
+            capture_output=True,
+        )
+    except (OSError, subprocess.CalledProcessError) as exc:
+        raise CorpusExpansionBlocked("registered rare source is not an ancestor") from exc
+    if _source_bindings(root, source["commit"]) != source["bindings"] or any(
+        not _binding_matches(binding)
+        for binding in registration["inputs"].values()
+    ):
+        raise CorpusExpansionBlocked("registered rare source or inputs differ")
+    prior_registration = validate_registration(
+        base_runner._read_canonical(
+            registration["inputs"]["prior_corpus_registration"]["path"]
+        )
+    )
+    prior_report = base_runner._read_canonical(
+        registration["inputs"]["prior_corpus_report"]["path"]
+    )
+    if (
+        prior_report.get("verdict")
+        != "card_counterfactual_corpus_ready_for_source_only_training_proposal"
+        or prior_report.get("schedule") != prior_registration["schedule"]
+        or prior_report.get("audit_accessed") is not False
+        or prior_report.get("training_performed") is not False
+        or prior_registration["native"] != registration["native"]
+        or prior_registration["production_isolation"]
+        != registration["production_isolation"]
+    ):
+        raise CorpusExpansionBlocked("prior corpus lineage differs")
+    native = registration["native"]["identity"]
+    native_bindings = [
+        native["module"],
+        *native["dependency_closure"]["dependencies"],
+    ]
+    if any(not _binding_matches(binding) for binding in native_bindings):
+        raise CorpusExpansionBlocked("rare native bytes differ")
+    if not base_runner.production_isolation_matches(registration):
+        raise CorpusExpansionBlocked("rare production isolation differs")
+    if list(process_observer()):
+        raise CorpusExpansionBlocked("game or CommunicationMod is active")
+    output = Path(registration["output_dir"]).resolve()
+    checkpoint_root = Path(
+        registration["production_isolation"]["production_checkpoints"]["path"]
+    ).resolve()
+    if output.exists() or output == checkpoint_root or checkpoint_root in output.parents:
+        raise CorpusExpansionBlocked("rare output boundary differs")
+    return {
+        "checks": {
+            "audit_reserved_and_unaccessed": True,
+            "forbidden_processes_absent": True,
+            "native_bytes_bound_without_loading": True,
+            "prior_corpus_bound": True,
+            "production_isolation_bound": True,
+            "schedules_disjoint_and_fixed": True,
+            "source_bytes_bound": True,
+        },
+        "registration_sha256": hashlib.sha256(
+            base_runner._canonical_bytes(registration)
+        ).hexdigest(),
+        "schema_version": RARE_PREFLIGHT_SCHEMA_VERSION,
+        "verdict": "preflight_passed",
+    }
+
+
 def _collect(
     factory: Callable[[int], Any],
     *,
@@ -487,6 +774,32 @@ def _collect(
             max_action_branches=max_action_branches,
             max_censored_seeds=max_censored_seeds,
             max_card_states_per_seed=ranking.MAX_CARD_STATES_PER_SEED,
+            deadline=deadline,
+            clock=clock,
+        )
+    except ranking.CounterfactualRankingBlocked as exc:
+        raise CorpusExpansionBlocked(str(exc)) from exc
+
+
+def _collect_rare(
+    factory: Callable[[int], Any],
+    *,
+    name: str,
+    seeds: Sequence[int],
+    max_action_branches: int,
+    max_censored_seeds: int,
+    deadline: float,
+    clock: Callable[[], float],
+) -> ranking.CounterfactualPartition:
+    try:
+        return ranking.collect_counterfactual_partition(
+            factory,
+            name=name,
+            seeds=seeds,
+            max_action_branches=max_action_branches,
+            max_censored_seeds=max_censored_seeds,
+            max_card_states_per_seed=ranking.MAX_CARD_STATES_PER_SEED,
+            eligible_take_card_ids=IRONCLAD_RARE_CARD_IDS,
             deadline=deadline,
             clock=clock,
         )
@@ -551,6 +864,187 @@ def partition_diagnostics(
         "take_card_ids": sorted(take_card_ids),
         "unique_take_card_ids": len(take_card_ids),
     }
+
+
+def _rare_partition_diagnostics(
+    partition: ranking.CounterfactualPartition,
+    *,
+    expected_name: str,
+    expected_seeds: Sequence[int],
+    minimum_states: int,
+    maximum_branches: int,
+    maximum_censored_seeds: int,
+) -> dict[str, Any]:
+    if partition.name != expected_name or partition.seeds != tuple(expected_seeds):
+        raise CorpusExpansionBlocked(f"{expected_name} rare partition identity differs")
+    if len(partition.rows) < minimum_states:
+        raise CorpusExpansionBlocked(f"{expected_name} rare source support floor is unmet")
+    if partition.budget_exhausted or partition.action_branches > maximum_branches:
+        raise CorpusExpansionBlocked(f"{expected_name} rare branch boundary differs")
+    if len(partition.censored_seeds) > maximum_censored_seeds:
+        raise CorpusExpansionBlocked(f"{expected_name} rare censor boundary differs")
+    counts = Counter(row.seed for row in partition.rows)
+    if any(count > ranking.MAX_CARD_STATES_PER_SEED for count in counts.values()):
+        raise CorpusExpansionBlocked(f"{expected_name} rare per-seed state limit differs")
+    source_hashes = [row.source_sha256 for row in partition.rows]
+    if len(source_hashes) != len(set(source_hashes)):
+        raise CorpusExpansionBlocked(f"{expected_name} rare source identity repeats")
+    for row in partition.rows:
+        row_ids = {
+            candidate.get("raw", {}).get("id")
+            for candidate in row.candidates
+            if candidate.get("kind") == "take"
+            and isinstance(candidate.get("raw"), Mapping)
+        }
+        if not row_ids & IRONCLAD_RARE_CARD_IDS:
+            raise CorpusExpansionBlocked(
+                f"{expected_name} contains a non-target source state"
+            )
+    diagnostics = partition_diagnostics(partition)
+    diagnostics["decision_index_summary"] = {
+        "maximum": max(row.decision_index for row in partition.rows),
+        "minimum": min(row.decision_index for row in partition.rows),
+    }
+    diagnostics["target_take_card_ids"] = sorted(
+        set(diagnostics["take_card_ids"]) & IRONCLAD_RARE_CARD_IDS
+    )
+    diagnostics["target_take_card_state_counts"] = {
+        card_id: sum(
+            any(
+                candidate.get("kind") == "take"
+                and isinstance(candidate.get("raw"), Mapping)
+                and candidate["raw"].get("id") == card_id
+                for candidate in row.candidates
+            )
+            for row in partition.rows
+        )
+        for card_id in sorted(IRONCLAD_RARE_CARD_IDS)
+    }
+    if diagnostics["target_take_card_ids"] != sorted(IRONCLAD_RARE_CARD_IDS):
+        raise CorpusExpansionBlocked(
+            f"{expected_name} rare card coverage is incomplete"
+        )
+    return diagnostics
+
+
+def execute_rare(
+    value: Mapping[str, Any],
+    *,
+    clock: Callable[[], float] = time.monotonic,
+    process_observer: Callable[[], Sequence[Mapping[str, Any]]] = (
+        pilot_runner._forbidden_processes
+    ),
+    environment_factory_loader: Callable[
+        [Mapping[str, Any]], Callable[[int], Any]
+    ] = pilot_runner._load_environment_factory,
+) -> dict[str, Any]:
+    registration = validate_rare_registration(value)
+    preflight = preflight_rare_registration(
+        registration, process_observer=process_observer
+    )
+    started = float(clock())
+    if not math.isfinite(started):
+        raise CorpusExpansionBlocked("rare runner clock is invalid")
+    deadline = started + RARE_MAX_CHARGED_SECONDS
+    factory = environment_factory_loader(registration["native"]["identity"])
+    configuration = registration["configuration"]
+    train = _collect_rare(
+        factory,
+        name="train",
+        seeds=RARE_TRAIN_SEEDS,
+        max_action_branches=RARE_MAX_TRAIN_BRANCHES,
+        max_censored_seeds=RARE_MAX_TRAIN_CENSORED_SEEDS,
+        deadline=deadline,
+        clock=clock,
+    )
+    development = _collect_rare(
+        factory,
+        name="holdout",
+        seeds=RARE_DEVELOPMENT_SEEDS,
+        max_action_branches=RARE_MAX_DEVELOPMENT_BRANCHES,
+        max_censored_seeds=RARE_MAX_DEVELOPMENT_CENSORED_SEEDS,
+        deadline=deadline,
+        clock=clock,
+    )
+    train_diagnostics = _rare_partition_diagnostics(
+        train,
+        expected_name="train",
+        expected_seeds=RARE_TRAIN_SEEDS,
+        minimum_states=RARE_MIN_TRAIN_SOURCE_STATES,
+        maximum_branches=RARE_MAX_TRAIN_BRANCHES,
+        maximum_censored_seeds=RARE_MAX_TRAIN_CENSORED_SEEDS,
+    )
+    development_diagnostics = _rare_partition_diagnostics(
+        development,
+        expected_name="holdout",
+        expected_seeds=RARE_DEVELOPMENT_SEEDS,
+        minimum_states=RARE_MIN_DEVELOPMENT_SOURCE_STATES,
+        maximum_branches=RARE_MAX_DEVELOPMENT_BRANCHES,
+        maximum_censored_seeds=RARE_MAX_DEVELOPMENT_CENSORED_SEEDS,
+    )
+    train_hashes = {row.source_sha256 for row in train.rows}
+    development_hashes = {row.source_sha256 for row in development.rows}
+    if train_hashes & development_hashes:
+        raise CorpusExpansionBlocked("rare train and development sources overlap")
+    train_payload = _encode_dataset(train)
+    development_payload = _encode_dataset(development)
+    if not base_runner.production_isolation_matches(registration):
+        raise CorpusExpansionBlocked("production isolation changed during rare collection")
+    if list(process_observer()):
+        raise CorpusExpansionBlocked("game or CommunicationMod started during rare collection")
+    elapsed = float(clock()) - started
+    if (
+        not math.isfinite(elapsed)
+        or elapsed < 0
+        or elapsed > configuration["maximum_charged_seconds"]
+    ):
+        raise CorpusExpansionBlocked("rare charged time exceeds registration")
+
+    output = Path(registration["output_dir"]).resolve()
+    output.mkdir(parents=False, exist_ok=False)
+    base_runner._write_canonical(output / "registration.json", registration)
+    base_runner._write_canonical(output / "preflight.json", preflight)
+    train_binding = base_runner._write_bytes(
+        output / "train_dataset_full.json", train_payload
+    )
+    development_binding = base_runner._write_bytes(
+        output / "development_dataset_full.json", development_payload
+    )
+    report = {
+        "audit_accessed": False,
+        "authority": copy.deepcopy(RARE_AUTHORITY),
+        "coverage": {
+            "development": development_diagnostics,
+            "train": train_diagnostics,
+        },
+        "datasets": {
+            "development": development_binding,
+            "train": train_binding,
+        },
+        "execution": {
+            "charged_seconds": elapsed,
+            "operations": copy.deepcopy(RARE_OPERATIONS),
+            "production_isolation_passed": True,
+            "source_commit": registration["source"]["commit"],
+        },
+        "schedule": copy.deepcopy(registration["schedule"]),
+        "schema_version": RARE_REPORT_SCHEMA_VERSION,
+        "training_performed": False,
+        "verdict": "rare_card_counterfactual_corpus_ready_for_residual_training",
+    }
+    report_binding = base_runner._write_canonical(output / "report.json", report)
+    terminal = {
+        "action_branches": train.action_branches + development.action_branches,
+        "audit_accessed": False,
+        "authority": copy.deepcopy(RARE_AUTHORITY),
+        "development_source_states": len(development.rows),
+        "report": report_binding,
+        "schema_version": RARE_TERMINAL_SCHEMA_VERSION,
+        "train_source_states": len(train.rows),
+        "verdict": report["verdict"],
+    }
+    base_runner._write_canonical(output / "terminal.json", terminal)
+    return terminal
 
 
 def execute(
@@ -672,7 +1166,22 @@ def _parser() -> argparse.ArgumentParser:
     register.add_argument("--lineage-report", default=str(DEFAULT_LINEAGE_REPORT))
     register.add_argument("--output-dir", default=str(DEFAULT_OUTPUT_DIR))
     register.add_argument("--registration", required=True)
+    rare_register = subparsers.add_parser("rare-register")
+    rare_register.add_argument("--repo-root", required=True)
+    rare_register.add_argument("--source-commit", required=True)
+    rare_register.add_argument(
+        "--prior-corpus-registration",
+        default=str(DEFAULT_PRIOR_CORPUS_REGISTRATION),
+    )
+    rare_register.add_argument(
+        "--prior-corpus-report", default=str(DEFAULT_PRIOR_CORPUS_REPORT)
+    )
+    rare_register.add_argument("--output-dir", default=str(DEFAULT_RARE_OUTPUT_DIR))
+    rare_register.add_argument("--registration", required=True)
     for name in ("preflight", "run", "run-worker"):
+        command = subparsers.add_parser(name)
+        command.add_argument("--registration", required=True)
+    for name in ("rare-preflight", "rare-run", "rare-run-worker"):
         command = subparsers.add_parser(name)
         command.add_argument("--registration", required=True)
     return parser
@@ -692,7 +1201,44 @@ def main(argv: Sequence[str] | None = None) -> int:
             binding = base_runner._write_canonical(args.registration, registration)
             print(base_runner._canonical_bytes(binding).decode("ascii"))
             return 0
+        if args.command == "rare-register":
+            registration = build_rare_registration(
+                repo_root=args.repo_root,
+                source_commit=args.source_commit,
+                prior_corpus_registration_path=args.prior_corpus_registration,
+                prior_corpus_report_path=args.prior_corpus_report,
+                output_dir=args.output_dir,
+            )
+            binding = base_runner._write_canonical(args.registration, registration)
+            print(base_runner._canonical_bytes(binding).decode("ascii"))
+            return 0
         registration = base_runner._read_canonical(args.registration)
+        if args.command == "rare-preflight":
+            print(
+                base_runner._canonical_bytes(
+                    preflight_rare_registration(registration)
+                ).decode("ascii")
+            )
+            return 0
+        if args.command == "rare-run":
+            preflight_rare_registration(registration)
+            completed = subprocess.run(
+                [
+                    sys.executable,
+                    "-I",
+                    str(Path(__file__).resolve()),
+                    "rare-run-worker",
+                    "--registration",
+                    str(Path(args.registration).resolve()),
+                ],
+                cwd=Path(registration["source"]["repo_root"]),
+                check=False,
+            )
+            return completed.returncode
+        if args.command == "rare-run-worker":
+            terminal = execute_rare(registration)
+            print(base_runner._canonical_bytes(terminal).decode("ascii"))
+            return 0
         if args.command == "preflight":
             print(
                 base_runner._canonical_bytes(

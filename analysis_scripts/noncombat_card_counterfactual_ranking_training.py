@@ -256,6 +256,7 @@ def collect_counterfactual_partition(
     max_censored_seeds: int,
     max_card_states_per_seed: int = MAX_CARD_STATES_PER_SEED,
     max_decisions: int = credit.MAX_DECISIONS_PER_CONTINUATION,
+    eligible_take_card_ids: frozenset[str] | None = None,
     deadline: float | None = None,
     clock: Callable[[], float] = time.monotonic,
 ) -> CounterfactualPartition:
@@ -278,6 +279,15 @@ def collect_counterfactual_partition(
         raise CounterfactualRankingBlocked("partition limits are invalid")
     if not normalized_seeds or len(set(normalized_seeds)) != len(normalized_seeds):
         raise CounterfactualRankingBlocked("partition seeds are invalid")
+    if eligible_take_card_ids is not None and (
+        not isinstance(eligible_take_card_ids, frozenset)
+        or not eligible_take_card_ids
+        or any(
+            not isinstance(card_id, str) or not card_id
+            for card_id in eligible_take_card_ids
+        )
+    ):
+        raise CounterfactualRankingBlocked("partition eligible card ids are invalid")
     active_deadline = float("inf") if deadline is None else float(deadline)
     if deadline is not None and not math.isfinite(active_deadline):
         raise CounterfactualRankingBlocked("partition deadline is invalid")
@@ -305,8 +315,15 @@ def collect_counterfactual_partition(
                 break
             if decision_index >= max_decisions:
                 raise CounterfactualRankingBlocked("root decision ceiling reached")
+            card_id_eligible = eligible_take_card_ids is None or any(
+                candidate.get("kind") == "take"
+                and isinstance(candidate.get("raw"), Mapping)
+                and candidate["raw"].get("id") in eligible_take_card_ids
+                for candidate in candidates
+            )
             eligible = (
                 snapshot["category"] == "card_reward"
+                and card_id_eligible
                 and evaluated_for_seed < max_card_states_per_seed
             )
             if eligible:
