@@ -15,8 +15,8 @@
 
 ## 3. Bound Execution
 
-- [ ] 3.1 Bind source, checkpoint `004`, historical checkpoint `005`, parent registration, native/corpus/probe context, seed schedule, size ceilings, and production isolation.
-- [ ] 3.2 Run py_compile, focused regressions, strict OpenSpec validation, and source-only preflight.
+- [x] 3.1 Bind source, checkpoint `004`, historical checkpoint `005`, parent registration, native/corpus/probe context, seed schedule, size ceilings, and production isolation.
+- [x] 3.2 Run py_compile, focused regressions, strict OpenSpec validation, and source-only preflight.
 - [ ] 3.3 Execute one 64-access replay collection and one full/scorer optimizer step each.
 - [ ] 3.4 Verify replay bindings, reproduction, hidden freeze, support, authority, and production/CommunicationMod isolation.
 - [ ] 3.5 Record the scorer-only go/no-go, commit compact evidence plus the reusable replay, and keep branch checkpoints local.
