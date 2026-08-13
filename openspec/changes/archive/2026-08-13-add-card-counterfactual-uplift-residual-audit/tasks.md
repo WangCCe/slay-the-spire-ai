@@ -13,8 +13,8 @@
 
 - [x] 3.1 Add focused regressions for fixed configuration, pre-access fitting, no-refit evaluation, support limits, and verdicts
 - [x] 3.2 Run focused pytest, compilation, and strict OpenSpec validation
-- [ ] 3.3 Register, preflight, and execute the consumed audit once
+- [x] 3.3 Register, preflight, and execute the consumed audit once
 
 ## 4. Closure
 
-- [ ] 4.1 Inspect action-level audit evidence, sync/archive the change, and commit/push scoped artifacts
+- [x] 4.1 Inspect action-level audit evidence, sync/archive the change, and commit/push scoped artifacts
