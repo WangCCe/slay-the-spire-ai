@@ -118,6 +118,7 @@ def _complete_arm(
         "card_interventions": interventions,
         "categories": {"card_reward": interventions},
         "decisions": 1,
+        "native_card_fallbacks": 0,
         "outcome": "player_loss",
         "seed": seed,
         "status": "complete",
@@ -130,7 +131,7 @@ def _complete_arm(
 def test_registration_fixes_fresh_schedule_limits_and_false_authority(tmp_path):
     registration = runner.validate_registration(_registration(tmp_path))
 
-    assert registration["schedule"]["fresh_seeds"] == list(range(90000, 90064))
+    assert registration["schedule"]["fresh_seeds"] == list(range(90100, 90164))
     assert registration["configuration"]["maximum_episode_rollouts"] == 128
     assert registration["configuration"]["gates"]["minimum_complete_pairs"] == 56
     assert registration["operations"]["fresh_simulator_evaluation"] is True
@@ -141,7 +142,7 @@ def test_registration_fixes_fresh_schedule_limits_and_false_authority(tmp_path):
 @pytest.mark.parametrize(
     "mutation",
     (
-        lambda value: value["schedule"].__setitem__("fresh_seeds", [90000]),
+        lambda value: value["schedule"].__setitem__("fresh_seeds", [90100]),
         lambda value: value["configuration"]["gates"].__setitem__(
             "minimum_complete_pairs", 1
         ),
@@ -208,6 +209,60 @@ def test_rollout_routes_only_candidate_card_rewards_through_residual(
     assert result["status"] == "complete"
     assert result["card_interventions"] == 1
     assert result["categories"] == {"card_reward": 1, "event": 1, "route": 1}
+
+
+def test_candidate_uses_native_fallback_for_unsupported_card_reward(monkeypatch):
+    def state(environment):
+        if environment.index:
+            return (
+                {
+                    "category": "terminal",
+                    "state": {"floor": 10, "outcome": "player_loss"},
+                    "terminal": True,
+                },
+                [],
+            )
+        return (
+            {
+                "category": "card_reward",
+                "state": {"floor": 1},
+                "terminal": False,
+            },
+            [
+                {"action_id": "card:0", "kind": "take", "raw": {"id": "A"}},
+                {"action_id": "card:skip", "kind": "skip", "raw": {}},
+            ],
+        )
+
+    monkeypatch.setattr(runner.credit, "_environment_state", state)
+
+    def advance_native(environment):
+        environment.index += 1
+        return environment, {"selected_action_id": "card:skip"}
+
+    monkeypatch.setattr(runner.credit, "_advance_native", advance_native)
+    monkeypatch.setattr(
+        runner,
+        "_candidate_card_step",
+        lambda *_args, **_kwargs: pytest.fail("unsupported reward must use native"),
+    )
+    model = uplift.UpliftModel(0.0, {}, {})
+    configuration = uplift.ResidualConfiguration(shrinkage=1, strength=128)
+
+    result = runner._rollout_episode(
+        lambda _seed: _Environment(("unused",)),
+        seed=90000,
+        arm="candidate",
+        bootstrap=object(),
+        model=model,
+        configuration=configuration,
+        deadline=100.0,
+        clock=lambda: 0.0,
+    )
+
+    assert result["status"] == "complete"
+    assert result["card_decisions"] == []
+    assert result["native_card_fallbacks"] == 1
 
 
 def test_rollout_records_registered_support_censor(monkeypatch):

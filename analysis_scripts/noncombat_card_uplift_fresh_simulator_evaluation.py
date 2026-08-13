@@ -160,10 +160,11 @@ REPORT_SCHEMA_VERSION = (
 TERMINAL_SCHEMA_VERSION = (
     "noncombat-card-uplift-fresh-simulator-evaluation-terminal-v1"
 )
-FRESH_SEEDS = tuple(range(90000, 90064))
+FRESH_SEEDS = tuple(range(90100, 90164))
 EXCLUDED_SEED_RANGES = (
     {"end": 1031, "reason": "predecessor-card-fit-and-holdout", "start": 1000},
     {"end": 80383, "reason": "large-corpus-train-development-audit", "start": 80000},
+    {"end": 90063, "reason": "failed-fresh-evaluation-r1", "start": 90000},
 )
 MAX_PAIRED_SEEDS = 64
 MAX_EPISODE_ROLLOUTS = 128
@@ -180,7 +181,7 @@ DEFAULT_AUDIT_ROOT = Path(
     "reports/noncombat_large_corpus_card_uplift_residual_audit_20260813_r1"
 )
 DEFAULT_OUTPUT_DIR = Path(
-    "reports/noncombat_card_uplift_fresh_simulator_evaluation_20260813_r1"
+    "reports/noncombat_card_uplift_fresh_simulator_evaluation_20260813_r2"
 )
 BOUND_SOURCE_PATHS = tuple(
     sorted(
@@ -626,6 +627,17 @@ def _candidate_card_step(
     }
 
 
+def _is_supported_card_reward(
+    candidates: Sequence[Mapping[str, Any]],
+) -> bool:
+    return tuple(candidate.get("kind") for candidate in candidates) == (
+        "take",
+        "take",
+        "take",
+        "skip",
+    )
+
+
 def _check_deadline(deadline: float, clock: Callable[[], float]) -> None:
     if float(clock()) > deadline:
         raise FreshSimulatorEvaluationBlocked("wall-time bound exceeded")
@@ -653,6 +665,7 @@ def _rollout_episode(
     actions: list[dict[str, Any]] = []
     categories: Counter[str] = Counter()
     card_rows: list[dict[str, Any]] = []
+    native_card_fallbacks = 0
     while True:
         _check_deadline(deadline, clock)
         snapshot, candidates = credit._environment_state(environment)
@@ -665,7 +678,11 @@ def _rollout_episode(
         category = str(snapshot["category"])
         categories[category] += 1
         try:
-            if arm == "candidate" and category == "card_reward":
+            if (
+                arm == "candidate"
+                and category == "card_reward"
+                and _is_supported_card_reward(candidates)
+            ):
                 environment, transition, card_row = _candidate_card_step(
                     environment,
                     bootstrap=bootstrap,
@@ -674,6 +691,9 @@ def _rollout_episode(
                 )
                 card_rows.append(card_row)
             else:
+                native_card_fallbacks += int(
+                    arm == "candidate" and category == "card_reward"
+                )
                 environment, transition = credit._advance_native(environment)
         except credit.CounterfactualCreditBlocked as exc:
             reason = ranking.registered_support_blocker(exc)
@@ -689,6 +709,7 @@ def _rollout_episode(
                 "card_interventions": sum(row["intervened"] for row in card_rows),
                 "categories": dict(sorted(categories.items())),
                 "decisions": len(actions),
+                "native_card_fallbacks": native_card_fallbacks,
                 "outcome": None,
                 "seed": seed,
                 "status": "censored",
@@ -733,6 +754,7 @@ def _rollout_episode(
         "card_interventions": sum(row["intervened"] for row in card_rows),
         "categories": dict(sorted(categories.items())),
         "decisions": len(actions),
+        "native_card_fallbacks": native_card_fallbacks,
         "outcome": str(outcome),
         "seed": seed,
         "status": "complete",

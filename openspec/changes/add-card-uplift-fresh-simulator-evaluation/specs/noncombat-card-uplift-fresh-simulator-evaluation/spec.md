@@ -3,7 +3,8 @@
 ### Requirement: Registration binds frozen inputs and an untouched cohort
 The evaluator SHALL bind the tracked source commit, native module identity, r7
 entry checkpoint, residual model, predecessor train/development/audit evidence,
-seeds `90000..90063`, interpreter, limits, gates, output, and authority before
+the consumed failed r1 seeds `90000..90063`, replacement seeds `90100..90163`,
+interpreter, limits, gates, output, and authority before
 constructing an environment. The cohort MUST be disjoint from every seed used
 to fit, select, develop, or audit the residual.
 

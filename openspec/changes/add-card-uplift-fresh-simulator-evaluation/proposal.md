@@ -7,7 +7,8 @@ paired whole-run evaluation is the next bounded test before any live adapter.
 
 ## What Changes
 
-- Register untouched seeds `90000..90063` for one paired simulator evaluation.
+- Preserve failed r1 seeds `90000..90063` as consumed and register untouched
+  seeds `90100..90163` for the sole successor paired simulator evaluation.
 - Compare a frozen r7-plus-residual candidate against the native baseline in
   independent environments on every seed.
 - Let the candidate intervene only at ordinary four-action card rewards; all

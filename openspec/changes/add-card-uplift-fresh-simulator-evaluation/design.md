@@ -26,10 +26,11 @@ simulator runs while every other decision remains native.
 
 ### Use independent paired environments
 
-For each seed in `90000..90063`, run one native-control episode and one
-candidate episode from independent environment instances. Pair terminal floors
-by seed. This controls the initial simulator draw without sharing mutable state
-between arms.
+The r1 cohort `90000..90063` stopped after a card-boundary implementation
+failure and is permanently consumed. For each replacement seed in
+`90100..90163`, run one native-control episode and one candidate episode from
+independent environment instances. Pair terminal floors by seed. This controls
+the initial simulator draw without sharing mutable state between arms.
 
 ### Intervene only at supported card rewards
 
