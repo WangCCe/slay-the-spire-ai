@@ -16,9 +16,9 @@
 
 ## 4. Empirical Pilot
 
-- [ ] 4.1 Register and execute the staged consumed-seed pilot once
-- [ ] 4.2 Inspect development and conditional audit evidence, record the fixed verdict, and keep the model experiment-local
+- [x] 4.1 Register and execute the staged consumed-seed pilot once
+- [x] 4.2 Inspect development and conditional audit evidence, record the fixed verdict, and keep the model experiment-local
 
 ## 5. Closure
 
-- [ ] 5.1 Sync the capability, archive the change, and commit/push scoped evidence
+- [x] 5.1 Sync the capability, archive the change, and commit/push scoped evidence
