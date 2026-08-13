@@ -13,8 +13,8 @@
 
 - [x] 3.1 Add focused regressions for lineage, no-refit ordering, schedule isolation, support floors, and gates
 - [x] 3.2 Run compilation, focused pytest, and strict OpenSpec validation
-- [ ] 3.3 Register, preflight, and execute the reserved audit once
+- [x] 3.3 Register, preflight, and execute the reserved audit once
 
 ## 4. Closure
 
-- [ ] 4.1 Inspect the independent result, sync/archive the change, and commit/push scoped evidence
+- [x] 4.1 Inspect the independent result, sync/archive the change, and commit/push scoped evidence
