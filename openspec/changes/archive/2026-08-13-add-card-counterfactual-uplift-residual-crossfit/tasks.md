@@ -13,8 +13,8 @@
 
 - [x] 3.1 Add focused tests for leakage rejection, deterministic selection, model immutability, and verdict classification
 - [x] 3.2 Run focused pytest, Python compilation, and strict OpenSpec validation
-- [ ] 3.3 Execute the source-only cross-fit once and inspect the fixed audit go/no-go verdict
+- [x] 3.3 Execute the source-only cross-fit once and inspect the fixed audit go/no-go verdict
 
 ## 4. Closure
 
-- [ ] 4.1 Sync the capability, archive the change, and commit/push scoped evidence
+- [x] 4.1 Sync the capability, archive the change, and commit/push scoped evidence
