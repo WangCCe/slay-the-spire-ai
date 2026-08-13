@@ -13,10 +13,10 @@
 ## 3. Empirical POC
 
 - [x] 3.1 Run focused evaluator and runner tests with a fresh system-temp pytest child
-- [ ] 3.2 Execute the POC once on the fixed consumed development support and publish compact source/action/return evidence
-- [ ] 3.3 Inspect the determinism, complete-state, informative-state, unique-best, budget, and isolation gates and record the fixed viable/not-ready verdict
+- [x] 3.2 Execute the POC once on the fixed consumed development support and publish compact source/action/return evidence
+- [x] 3.3 Inspect the determinism, complete-state, informative-state, unique-best, budget, and isolation gates and record the fixed viable/not-ready verdict
 
 ## 4. Closure
 
-- [ ] 4.1 Re-run OpenSpec strict validation and document why no full gameplay test gate is required for isolated analysis-only code
-- [ ] 4.2 Sync the accepted capability spec, archive the completed change, and commit the implementation and evidence without staging unrelated reports or local checkpoints
+- [x] 4.1 Re-run OpenSpec strict validation and document why no full gameplay test gate is required for isolated analysis-only code
+- [x] 4.2 Sync the accepted capability spec, archive the completed change, and commit the implementation and evidence without staging unrelated reports or local checkpoints
