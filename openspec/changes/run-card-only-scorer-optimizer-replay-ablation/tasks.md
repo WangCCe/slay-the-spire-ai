@@ -1,17 +1,17 @@
 ## 1. Replay Codec
 
-- [ ] 1.1 Add RED regressions for deterministic gzip, bounded decode, tensor/order drift, and episode round-trip identity.
-- [ ] 1.2 Implement canonical trajectory and post-collection generator encoding without autograd or native objects.
-- [ ] 1.3 Implement bounded replay loading and exact deterministic re-encoding verification.
-- [ ] 1.4 Prove decoded replay can rebuild the current cross-fitted objective and update.
+- [x] 1.1 Add RED regressions for deterministic gzip, bounded decode, tensor/order drift, and episode round-trip identity.
+- [x] 1.2 Implement canonical trajectory and post-collection generator encoding without autograd or native objects.
+- [x] 1.3 Implement bounded replay loading and exact deterministic re-encoding verification.
+- [x] 1.4 Prove decoded replay can rebuild the current cross-fitted objective and update.
 
 ## 2. Scorer Optimizer Ablation
 
-- [ ] 2.1 Add regressions for exact scorer parameter selection, Adam state slicing, and hidden-parameter exclusion.
-- [ ] 2.2 Implement scorer-only Adam construction from checkpoint `004` moments and registered options.
-- [ ] 2.3 Implement atomic full/scorer branch updates from decoded replay and compact telemetry.
-- [ ] 2.4 Require exact branch A bootstrap/optimizer reproduction and exact branch B hidden-byte preservation.
-- [ ] 2.5 Implement the fixed 80-percent retained-TV classification with false downstream authority.
+- [x] 2.1 Add regressions for exact scorer parameter selection, Adam state slicing, and hidden-parameter exclusion.
+- [x] 2.2 Implement scorer-only Adam construction from checkpoint `004` moments and registered options.
+- [x] 2.3 Implement atomic full/scorer branch updates from decoded replay and compact telemetry.
+- [x] 2.4 Require exact branch A bootstrap/optimizer reproduction and exact branch B hidden-byte preservation.
+- [x] 2.5 Implement the fixed 80-percent retained-TV classification with false downstream authority.
 
 ## 3. Bound Execution
 
