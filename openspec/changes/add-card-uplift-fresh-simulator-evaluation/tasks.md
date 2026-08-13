@@ -1,7 +1,7 @@
 ## 1. Registration And Preflight
 
-- [ ] 1.1 Bind source, frozen model lineage, native identity, fresh seeds, limits, gates, output, and false production authorities
-- [ ] 1.2 Fail closed on drift, overlap, output reuse, active game processes, or mutable model/source bytes
+- [x] 1.1 Bind source, frozen model lineage, native identity, fresh seeds, limits, gates, output, and false production authorities
+- [x] 1.2 Fail closed on drift, overlap, output reuse, active game processes, or mutable model/source bytes
 
 ## 2. Paired Evaluator
 
@@ -12,8 +12,8 @@
 ## 3. Verification And Execution
 
 - [x] 3.1 Add focused regressions for policy routing, deterministic ranking, pairing, censors, bootstrap, and gates
-- [ ] 3.2 Run compilation, focused and adjacent pytest, strict OpenSpec validation, and source-only preflight
-- [ ] 3.3 Commit and push the preregistered implementation before one bounded fresh evaluation
+- [x] 3.2 Run compilation, focused and adjacent pytest, strict OpenSpec validation, and source-only preflight
+- [x] 3.3 Commit and push the preregistered implementation before one bounded fresh evaluation
 
 ## 4. Closure
 
