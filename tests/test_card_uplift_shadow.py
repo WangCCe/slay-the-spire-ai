@@ -1,6 +1,7 @@
 import copy
 import hashlib
 import json
+from pathlib import Path
 from types import SimpleNamespace
 
 import pytest
@@ -234,3 +235,12 @@ def test_batch_child_env_forwards_explicit_shadow_config(monkeypatch):
     env = build_child_env(args)
 
     assert env[shadow.CONFIG_ENV] == args.card_uplift_shadow_config
+
+
+def test_rl_input_reader_starts_after_callbacks_are_registered():
+    source = Path(main.__file__).read_text(encoding="utf-8")
+    entrypoint = source.split('if __name__ == "__main__":', 1)[1]
+
+    assert entrypoint.index("register_state_change_callback") < entrypoint.index(
+        "coordinator.start_input_thread()"
+    )

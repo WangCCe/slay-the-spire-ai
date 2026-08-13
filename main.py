@@ -1225,23 +1225,18 @@ if __name__ == "__main__":
 
     # Create agent with player class and RL-specific options
     # This may take several seconds for RL agents (PyTorch, model loading)
-    try:
-        agent = create_agent(
-            agent_type=agent_type,
-            player_class=chosen_class,
-            training=training,
-            model_path=model_path,
-            epsilon=epsilon,
-            elite_mode=elite_route_mode,
-            rl_version=rl_version,
-            expert_mix_enabled=expert_mix_enabled,
-            expert_mix_prob=expert_mix_prob,
-            expert_warmup_steps=expert_warmup_steps,
-        )
-    finally:
-        if input_thread_deferred:
-            coordinator.start_input_thread()
-            logging.info("CommunicationMod stdin reader started after RL initialization")
+    agent = create_agent(
+        agent_type=agent_type,
+        player_class=chosen_class,
+        training=training,
+        model_path=model_path,
+        epsilon=epsilon,
+        elite_mode=elite_route_mode,
+        rl_version=rl_version,
+        expert_mix_enabled=expert_mix_enabled,
+        expert_mix_prob=expert_mix_prob,
+        expert_warmup_steps=expert_warmup_steps,
+    )
 
     try:
         card_uplift_shadow_runtime = initialize_card_uplift_shadow_if_configured(
@@ -1269,6 +1264,11 @@ if __name__ == "__main__":
         )
     coordinator.register_state_change_callback(state_change_callback)
     coordinator.register_out_of_game_callback(agent.get_next_action_out_of_game)
+    if input_thread_deferred:
+        coordinator.start_input_thread()
+        logging.info(
+            "CommunicationMod stdin reader started after callback registration"
+        )
 
     # Play games forever - IRONCLAD ONLY for testing
     game_count = 0
