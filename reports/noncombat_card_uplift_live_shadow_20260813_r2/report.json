@@ -1,0 +1,166 @@
+{
+  "artifacts": {
+    "configuration": {
+      "path": "reports/noncombat_card_uplift_live_shadow_20260813_r2_config.json",
+      "sha256": "c4eee2bdc93e0740081a6d4cc88d3ef2e39e05c3825b832c4fc5e1440ce5b671",
+      "size_bytes": 5871
+    },
+    "run_records": [
+      {
+        "path": "reports/noncombat_card_uplift_live_shadow_20260813_r2/1786628660.run",
+        "sha256": "67e59485fbb971d12657856b8078115aacf96f44d052785e863dd06623b188d2",
+        "size_bytes": 3488
+      },
+      {
+        "path": "reports/noncombat_card_uplift_live_shadow_20260813_r2/1786628808.run",
+        "sha256": "681a6c233265aece08d34e49640b1c620ef61649ba7d43e24ba11768c84c0b74",
+        "size_bytes": 5816
+      },
+      {
+        "path": "reports/noncombat_card_uplift_live_shadow_20260813_r2/1786628973.run",
+        "sha256": "2ee14d201866b43b703aa34705c5727070fc112cb2bcfb38285f150cdf7136ce",
+        "size_bytes": 4445
+      },
+      {
+        "path": "reports/noncombat_card_uplift_live_shadow_20260813_r2/1786629119.run",
+        "sha256": "73ce235932972aef522e90916deaa96f8c4598f432337d342804dda376459f7a",
+        "size_bytes": 5999
+      },
+      {
+        "path": "reports/noncombat_card_uplift_live_shadow_20260813_r2/1786629212.run",
+        "sha256": "38c6595c59e32b7ccedbc653316e64eae97e120980af6a1ca1341ac0e0d8f793",
+        "size_bytes": 3444
+      }
+    ],
+    "shadow_rows": {
+      "path": "reports/noncombat_card_uplift_live_shadow_20260813_r2/shadow_rows.jsonl",
+      "sha256": "0a959e4b2a43fe2a0b69a075506ae4ed7d714f5cc2a28b8b78642c2bd915d8d6",
+      "size_bytes": 80486
+    }
+  },
+  "authority": {
+    "action_selection": false,
+    "causal_claim": false,
+    "exploration": false,
+    "formal_rl": false,
+    "model_fitting": false,
+    "policy_quality": false,
+    "promotion": false,
+    "qualification": false,
+    "training": false
+  },
+  "checks": {
+    "canonical_rows": true,
+    "complete_rows_at_least_12": true,
+    "configuration_binding_intact": true,
+    "disagreements_at_least_3": true,
+    "exactly_five_fresh_runs": true,
+    "finite_scores_and_latency": true,
+    "maximum_latency_at_most_200_ms": true,
+    "model_bindings_intact": true,
+    "no_duplicate_decisions": true,
+    "source_binding_intact": true,
+    "zero_action_substitutions": true,
+    "zero_runtime_errors": true
+  },
+  "execution": {
+    "end_local": "2026-08-13T21:53:35+08:00",
+    "maximum_games": 5,
+    "mode": "eval",
+    "projection_version": "live-best-effort-v1",
+    "source_commit": "d537b7a45f143aa0c2d2a256ee71a3f5b3395d3f",
+    "start_local": "2026-08-13T21:43:08+08:00",
+    "training": false
+  },
+  "latency_ms": {
+    "bound": 200.0,
+    "bound_basis": "AGENTS.md native Windows production decision envelope",
+    "maximum": 127.81180000456516,
+    "mean": 63.71780925891707,
+    "median": 60.04704999941168,
+    "minimum": 48.60259999986738,
+    "p95": 68.48729999910574
+  },
+  "model": {
+    "entry_checkpoint_sha256": "a5aa7f5c6b7862d4675db4db49977ca6a47e928951e5264fb738c778c2275071",
+    "residual_model_sha256": "85a79fccc65b392e12bdb214d02fcfe2676aaef4357e178584beda977debdede"
+  },
+  "predecessor_attempt": {
+    "cohort_consumed": false,
+    "game_started": false,
+    "output_created": false,
+    "reason": "stdin reader received the initial menu state before callback registration",
+    "replacement_fix_commit": "d537b7a45f143aa0c2d2a256ee71a3f5b3395d3f",
+    "registration": "reports/noncombat_card_uplift_live_shadow_20260813_r1_config.json"
+  },
+  "rows": {
+    "agreement": 20,
+    "complete": 54,
+    "disagreement": 34,
+    "error": 0,
+    "ineligible": 4,
+    "ineligible_reasons": {
+      "generated_combat_card_choice": 4
+    },
+    "total": 58
+  },
+  "runs": [
+    {
+      "complete_rows": 7,
+      "disagreements": 5,
+      "floor_reached": 16,
+      "ineligible_rows": 1,
+      "killed_by": "The Guardian",
+      "marker_timestamp": 1786628663,
+      "run_file": "1786628660.run",
+      "seed": "-493068490049530259",
+      "victory": false
+    },
+    {
+      "complete_rows": 14,
+      "disagreements": 12,
+      "floor_reached": 33,
+      "ineligible_rows": 1,
+      "killed_by": "Automaton",
+      "marker_timestamp": 1786628811,
+      "run_file": "1786628808.run",
+      "seed": "3844807509603212671",
+      "victory": false
+    },
+    {
+      "complete_rows": 12,
+      "disagreements": 5,
+      "floor_reached": 22,
+      "ineligible_rows": 0,
+      "killed_by": "3 Cultists",
+      "marker_timestamp": 1786628976,
+      "run_file": "1786628973.run",
+      "seed": "653118097312045776",
+      "victory": false
+    },
+    {
+      "complete_rows": 14,
+      "disagreements": 9,
+      "floor_reached": 33,
+      "ineligible_rows": 2,
+      "killed_by": "Collector",
+      "marker_timestamp": 1786629122,
+      "run_file": "1786629119.run",
+      "seed": "5005010144806266570",
+      "victory": false
+    },
+    {
+      "complete_rows": 7,
+      "disagreements": 3,
+      "floor_reached": 16,
+      "ineligible_rows": 0,
+      "killed_by": "Slime Boss",
+      "marker_timestamp": 1786629215,
+      "run_file": "1786629212.run",
+      "seed": "6581939875999392934",
+      "victory": false
+    }
+  ],
+  "schema_version": "noncombat-card-uplift-live-shadow-report-v1",
+  "verdict": "card_uplift_live_shadow_ready_for_intervention_canary_proposal"
+}

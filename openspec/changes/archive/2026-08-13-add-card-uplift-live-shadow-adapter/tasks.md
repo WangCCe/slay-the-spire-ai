@@ -17,5 +17,5 @@
 
 ## 4. Fresh Gameplay
 
-- [ ] 4.1 Register one at-most-five-game no-training shadow config and run the fresh cohort
-- [ ] 4.2 Analyze coverage, disagreements, latency, errors, and action-substitution evidence; archive and commit the result
+- [x] 4.1 Register one at-most-five-game no-training shadow config and run the fresh cohort
+- [x] 4.2 Analyze coverage, disagreements, latency, errors, and action-substitution evidence; archive and commit the result

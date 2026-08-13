@@ -228,3 +228,25 @@ tests/test_noncombat_card_acceptance_empirical_successor_*.py text eol=lf
 openspec/changes/add-card-acceptance-empirical-successor/** text eol=lf
 reports/noncombat_card_acceptance_empirical_successor_* -text whitespace=cr-at-eol
 reports/noncombat_card_acceptance_empirical_successor_*/** -text whitespace=cr-at-eol
+
+# Preserve card-uplift live-shadow source and evidence bytes.
+analysis_scripts/noncombat_card_acceptance_objective.py text eol=lf
+analysis_scripts/noncombat_card_acceptance_policy.py text eol=lf
+analysis_scripts/noncombat_card_counterfactual_ranking_training.py text eol=lf
+analysis_scripts/noncombat_card_counterfactual_uplift_residual_crossfit.py text eol=lf
+analysis_scripts/noncombat_state_conditioned_policy_input.py text eol=lf
+analysis_scripts/noncombat_state_conditioned_ranker.py text eol=lf
+scripts/run_training_batch.py text eol=lf
+spirecomm/ai/card_uplift_shadow.py text eol=lf
+spirecomm/communication/action.py text eol=lf
+spirecomm/spire/card.py text eol=lf
+spirecomm/spire/game.py text eol=lf
+spirecomm/spire/map.py text eol=lf
+spirecomm/spire/potion.py text eol=lf
+spirecomm/spire/relic.py text eol=lf
+spirecomm/spire/screen.py text eol=lf
+tests/test_card_uplift_shadow.py text eol=lf
+reports/noncombat_card_uplift_live_shadow_* text eol=lf
+reports/noncombat_card_uplift_live_shadow_*/** text eol=lf
+openspec/specs/noncombat-card-uplift-live-shadow/** text eol=lf
+openspec/changes/archive/*-add-card-uplift-live-shadow-adapter/** text eol=lf
