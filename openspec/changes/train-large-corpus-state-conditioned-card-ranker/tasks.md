@@ -16,5 +16,5 @@
 ## 4. Verification And Execution
 
 - [x] 4.1 Run focused and adjacent tests, compilation, diff checks, and strict OpenSpec validation; do not repeat the 47-minute unrelated full suite.
-- [ ] 4.2 Commit and push the source-bound runner, execute it once, verify artifacts, and publish the pass/no-go evidence.
-- [ ] 4.3 Access no reserved audit seed; propose a separate audit only if the development verdict passes.
+- [x] 4.2 Commit and push the source-bound runner, execute it once, verify artifacts, and publish the pass/no-go evidence.
+- [x] 4.3 Access no reserved audit seed; propose a separate audit only if the development verdict passes.
