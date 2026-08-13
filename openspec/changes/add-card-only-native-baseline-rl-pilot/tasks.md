@@ -35,4 +35,4 @@
 - [x] 6.1 Run focused Bottled, adapter, warm-start, hybrid-rollout, residual-runtime, checkpoint, and report tests using the scoped system-temp pytest root.
 - [ ] 6.2 Run the repository pytest gate once after focused tests pass; do not launch live gameplay because no live loader or policy changes under this capability.
   - Attempted once after r7: `6122 passed, 19 skipped, 2 failed` in 42 minutes. Both failures were historical native-artifact identity tests; the path-reuse defect was fixed and its complete focused file passed `55` tests. The full gate was not repeated under the one-run and iteration-time constraints.
-- [ ] 6.3 Run strict OpenSpec validation, review the final diff and authority flags, then commit and push cohesive implementation/evidence boundaries.
+- [x] 6.3 Run strict OpenSpec validation, review the final diff and authority flags, then commit and push cohesive implementation/evidence boundaries.
