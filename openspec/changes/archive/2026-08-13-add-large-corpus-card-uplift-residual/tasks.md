@@ -13,8 +13,8 @@
 
 - [x] 3.1 Add focused regressions for fold isolation, selection leakage, freeze ordering, gates, and artifact lineage
 - [x] 3.2 Run compilation, focused pytest, and strict OpenSpec validation
-- [ ] 3.3 Execute the source-only training/development study once
+- [x] 3.3 Execute the source-only training/development study once
 
 ## 4. Closure
 
-- [ ] 4.1 Inspect the fixed result, sync/archive the change, and commit/push scoped evidence
+- [x] 4.1 Inspect the fixed result, sync/archive the change, and commit/push scoped evidence
