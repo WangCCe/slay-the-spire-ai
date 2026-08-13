@@ -264,3 +264,12 @@ reports/noncombat_rare_card_counterfactual_corpus_* text eol=lf
 reports/noncombat_rare_card_counterfactual_corpus_*/** text eol=lf
 reports/noncombat_rare_card_uplift_residual_* text eol=lf
 reports/noncombat_rare_card_uplift_residual_*/** text eol=lf
+
+# Preserve large-corpus state-conditioned card ranking source and evidence bytes.
+analysis_scripts/noncombat_large_corpus_state_conditioned_card_ranking.py text eol=lf
+tests/test_noncombat_large_corpus_state_conditioned_card_ranking.py text eol=lf
+openspec/changes/train-large-corpus-state-conditioned-card-ranker/** text eol=lf
+openspec/changes/archive/*-train-large-corpus-state-conditioned-card-ranker/** text eol=lf
+openspec/specs/noncombat-large-corpus-state-conditioned-card-ranking/** text eol=lf
+reports/noncombat_large_corpus_state_conditioned_card_ranking_* text eol=lf
+reports/noncombat_large_corpus_state_conditioned_card_ranking_*/** text eol=lf
