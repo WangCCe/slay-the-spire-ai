@@ -6,11 +6,11 @@
 
 ## 2. Continuation Runner
 
-- [ ] 2.1 Bind the source commit, r7 registration and checkpoint 004, native module, corpus, probe, schedule, production isolation, and false authority before seed access.
-- [ ] 2.2 Implement 16 candidate-only chunks numbered 4 through 19 with canonical complete-boundary checkpoints and resumable journal state.
-- [ ] 2.3 Record per-step probe action/family flips, take coverage, model identity, and parameter L2 distance from the entry checkpoint.
-- [ ] 2.4 Collect one terminal native control arm and one frozen candidate arm, join by seed, apply bounded comparison censoring, and publish the fixed verdict.
-- [ ] 2.5 Add focused registration, preflight, checkpoint-resume, behavior-gate, resource-accounting, and terminal-report regressions.
+- [x] 2.1 Bind the source commit, r7 registration and checkpoint 004, native module, corpus, probe, schedule, production isolation, and false authority before seed access.
+- [x] 2.2 Implement 16 candidate-only chunks numbered 4 through 19 with canonical complete-boundary checkpoints and resumable journal state.
+- [x] 2.3 Record per-step probe action/family flips, take coverage, model identity, and parameter L2 distance from the entry checkpoint.
+- [x] 2.4 Collect one terminal native control arm and one frozen candidate arm, join by seed, apply bounded comparison censoring, and publish the fixed verdict.
+- [x] 2.5 Add focused registration, preflight, checkpoint-resume, behavior-gate, resource-accounting, and terminal-report regressions.
 
 ## 3. Bounded Training Execution
 
