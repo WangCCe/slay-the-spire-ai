@@ -98,6 +98,22 @@ def test_unseen_card_uses_fit_only_global_prior():
     assert scores[3] == 0.0
 
 
+def test_uplift_model_round_trips_and_scores_without_refitting():
+    rows = _rows()
+    configuration = crossfit.ResidualConfiguration(shrinkage=3, strength=128)
+    model = crossfit.fit_uplift_model(rows, shrinkage=configuration.shrinkage)
+
+    payload = crossfit.encode_uplift_model(model, configuration)
+    restored, restored_configuration = crossfit.restore_uplift_model(payload)
+    scores, unseen = crossfit.score_residual_rows(
+        rows, _base_scores(rows), restored, restored_configuration
+    )
+
+    assert crossfit.encode_uplift_model(restored, restored_configuration) == payload
+    assert set(scores) == {row.source_sha256 for row in rows}
+    assert unseen == 0
+
+
 def test_cross_fit_rejects_overlapping_or_incomplete_seed_folds():
     rows = _rows()
     with pytest.raises(crossfit.UpliftCrossfitBlocked, match="seed isolation"):

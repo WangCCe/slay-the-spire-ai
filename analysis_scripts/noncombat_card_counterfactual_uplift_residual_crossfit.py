@@ -50,6 +50,7 @@ PREDICTIONS_SCHEMA_VERSION = f"{SCHEMA_VERSION}-predictions"
 METRICS_SCHEMA_VERSION = f"{SCHEMA_VERSION}-metrics"
 REPORT_SCHEMA_VERSION = f"{SCHEMA_VERSION}-report"
 MANIFEST_SCHEMA_VERSION = f"{SCHEMA_VERSION}-manifest"
+MODEL_SCHEMA_VERSION = f"{SCHEMA_VERSION}-model"
 
 OUTER_FOLD_COUNT = 4
 INNER_FOLD_COUNT = 3
@@ -280,6 +281,75 @@ def fit_uplift_model(
     )
 
 
+def encode_uplift_model(
+    model: UpliftModel, configuration: ResidualConfiguration
+) -> bytes:
+    if (
+        not isinstance(model, UpliftModel)
+        or configuration not in GRID
+        or not math.isfinite(model.global_uplift)
+        or set(model.card_uplifts) != set(model.card_counts)
+        or any(
+            not isinstance(card_id, str)
+            or not card_id
+            or not math.isfinite(value)
+            or isinstance(model.card_counts[card_id], bool)
+            or not isinstance(model.card_counts[card_id], int)
+            or model.card_counts[card_id] <= 0
+            for card_id, value in model.card_uplifts.items()
+        )
+    ):
+        raise UpliftCrossfitBlocked("uplift model encoding differs")
+    return _canonical_bytes(
+        {
+            "card_counts": model.card_counts,
+            "card_uplifts": model.card_uplifts,
+            "configuration": configuration.as_dict(),
+            "global_uplift": model.global_uplift,
+            "schema_version": MODEL_SCHEMA_VERSION,
+        }
+    )
+
+
+def restore_uplift_model(
+    payload: bytes,
+) -> tuple[UpliftModel, ResidualConfiguration]:
+    try:
+        value = json.loads(payload.decode("ascii"))
+    except (UnicodeDecodeError, json.JSONDecodeError) as exc:
+        raise UpliftCrossfitBlocked("uplift model JSON is invalid") from exc
+    if (
+        not isinstance(value, dict)
+        or _canonical_bytes(value) != payload
+        or set(value)
+        != {
+            "card_counts",
+            "card_uplifts",
+            "configuration",
+            "global_uplift",
+            "schema_version",
+        }
+        or value.get("schema_version") != MODEL_SCHEMA_VERSION
+    ):
+        raise UpliftCrossfitBlocked("uplift model fields differ")
+    try:
+        configuration = ResidualConfiguration(**value["configuration"])
+        model = UpliftModel(
+            global_uplift=float(value["global_uplift"]),
+            card_uplifts={
+                str(key): float(item) for key, item in value["card_uplifts"].items()
+            },
+            card_counts={
+                str(key): int(item) for key, item in value["card_counts"].items()
+            },
+        )
+    except (AttributeError, TypeError, ValueError) as exc:
+        raise UpliftCrossfitBlocked("uplift model restore failed") from exc
+    if encode_uplift_model(model, configuration) != payload:
+        raise UpliftCrossfitBlocked("uplift model round trip differs")
+    return model, configuration
+
+
 def compose_scores(
     row: ranking.CounterfactualRankingRow,
     base_scores: Sequence[float],
@@ -304,6 +374,29 @@ def compose_scores(
             raise UpliftCrossfitBlocked("composed score is nonfinite")
         scores.append(score)
     return tuple(scores), unseen
+
+
+def score_residual_rows(
+    rows: Sequence[ranking.CounterfactualRankingRow],
+    base_scores: Mapping[str, Sequence[float]],
+    model: UpliftModel,
+    configuration: ResidualConfiguration,
+) -> tuple[dict[str, tuple[float, ...]], int]:
+    normalized = validate_rows(rows)
+    if set(base_scores) != {row.source_sha256 for row in normalized}:
+        raise UpliftCrossfitBlocked("base score source coverage differs")
+    scores: dict[str, tuple[float, ...]] = {}
+    unseen_count = 0
+    for row in normalized:
+        row_scores, unseen = compose_scores(
+            row,
+            base_scores[row.source_sha256],
+            model,
+            strength=configuration.strength,
+        )
+        scores[row.source_sha256] = row_scores
+        unseen_count += unseen
+    return scores, unseen_count
 
 
 def evaluate_scores(
