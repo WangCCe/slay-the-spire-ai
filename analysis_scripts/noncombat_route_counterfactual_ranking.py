@@ -400,27 +400,30 @@ def _branch_outcome(trace: credit.BranchTrace, candidate: Mapping[str, Any]) -> 
     }
 
 
-def evaluate_route_action_with_current_continuation(
+def evaluate_action_with_current_continuation(
     source_environment: Any,
     *,
     action_id: str,
     continuation_session_factory: Callable[[], Any],
-    source_category: str = "route",
+    source_category: str,
     max_decisions: int = MAX_DECISIONS_PER_CONTINUATION,
     deadline: float | None = None,
     clock: Callable[[], float] = time.monotonic,
 ) -> credit.BranchTrace:
-    """Force a route action, then re-decide from every branched state."""
-    if source_category != "route":
+    """Force one target action, then re-decide from every branched state."""
+    if source_category not in adapter.TARGET_CATEGORIES:
         raise credit.CounterfactualCreditBlocked(
-            "Current continuation requires a route source"
+            "Current continuation source category is unsupported"
         )
     source_snapshot, source_candidates = credit._environment_state(
         source_environment
     )
-    if source_snapshot["terminal"] or source_snapshot["category"] != "route":
+    if (
+        source_snapshot["terminal"]
+        or source_snapshot["category"] != source_category
+    ):
         raise credit.CounterfactualCreditBlocked(
-            "source must be a live route state"
+            f"source must be a live {source_category} state"
         )
     if isinstance(max_decisions, bool) or not isinstance(max_decisions, int) or (
         max_decisions <= 0
@@ -509,6 +512,32 @@ def evaluate_route_action_with_current_continuation(
         terminal_victory=terminal_victory,
         total_return=math.fsum(rewards),
         transition_count=len(transitions),
+    )
+
+
+def evaluate_route_action_with_current_continuation(
+    source_environment: Any,
+    *,
+    action_id: str,
+    continuation_session_factory: Callable[[], Any],
+    source_category: str = "route",
+    max_decisions: int = MAX_DECISIONS_PER_CONTINUATION,
+    deadline: float | None = None,
+    clock: Callable[[], float] = time.monotonic,
+) -> credit.BranchTrace:
+    """Force a route action and preserve the route experiment API."""
+    if source_category != "route":
+        raise credit.CounterfactualCreditBlocked(
+            "route continuation requires a route source"
+        )
+    return evaluate_action_with_current_continuation(
+        source_environment,
+        action_id=action_id,
+        continuation_session_factory=continuation_session_factory,
+        source_category=source_category,
+        max_decisions=max_decisions,
+        deadline=deadline,
+        clock=clock,
     )
 
 

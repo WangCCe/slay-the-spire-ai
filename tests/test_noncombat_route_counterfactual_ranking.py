@@ -398,6 +398,57 @@ def test_current_continuation_redecides_after_off_path_route_action(
     assert source.stage == 0
 
 
+def test_current_continuation_accepts_event_source(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    _install_fake_route_protocol(monkeypatch)
+    source = _FakeRouteEnvironment(29, stage=1)
+    session = _CurrentBaseline()
+
+    def apply_forced_action(
+        environment: _FakeRouteEnvironment, action_id: str
+    ) -> tuple[_FakeRouteEnvironment, dict[str, Any]]:
+        assert action_id in {
+            candidate["action_id"] for candidate in environment.legal_actions()
+        }
+        advanced = environment.clone()
+        advanced.stage += 1
+        return advanced, {
+            "reward": 1.0 / 57.0,
+            "selected_action_id": action_id,
+        }
+
+    monkeypatch.setattr(ranking.credit, "_apply_forced_action", apply_forced_action)
+    monkeypatch.setattr(
+        ranking.credit,
+        "_transition_reward",
+        lambda transition: (transition["reward"], transition["reward"], 0),
+    )
+    monkeypatch.setattr(
+        ranking.credit,
+        "_assert_source_unchanged",
+        lambda environment, snapshot, candidates: None,
+    )
+    monkeypatch.setattr(
+        ranking.credit,
+        "_terminal_summary",
+        lambda snapshot: {"floor": snapshot["state"]["floor"], "outcome": "player_loss"},
+    )
+    monkeypatch.setattr(ranking.credit, "_sha256_json", lambda _value: "b" * 64)
+
+    trace = ranking.evaluate_action_with_current_continuation(
+        source,
+        action_id="event:continue",
+        continuation_session_factory=lambda: session,
+        source_category="event",
+        max_decisions=8,
+    )
+
+    assert trace.action_sequence == ("event:continue", "route:2:c")
+    assert [call["decision_index"] for call in session.calls] == [2]
+    assert source.stage == 1
+
+
 def test_train_and_evaluate_model_are_deterministic_on_learnable_rows() -> None:
     rows = tuple(
         _route_row(seed, good_first=seed % 2 == 0) for seed in range(40, 48)

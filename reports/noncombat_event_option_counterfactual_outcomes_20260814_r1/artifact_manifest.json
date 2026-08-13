@@ -1,0 +1,25 @@
+{
+  "artifacts": [
+    {
+      "path": "censored_sources.json",
+      "sha256": "510f1392283c0c6de757704e9c6e0ad053e6d29c07ca261205fa51376f579547",
+      "size_bytes": 558
+    },
+    {
+      "path": "configuration.json",
+      "sha256": "c86e6396eca89abb072a4e59d4d08ec15f50852e7f68f37d71ac191087bc7c81",
+      "size_bytes": 1161
+    },
+    {
+      "path": "report.json",
+      "sha256": "79977f19056e116628129c8cd0190a97dccb550e02356fa4b3a9d59bcc895963",
+      "size_bytes": 4650
+    },
+    {
+      "path": "source_rows.json",
+      "sha256": "ea278c9ac24a37f5be8e3687eba72be72463ae18a9a1c17c10488f7b0398eaca",
+      "size_bytes": 824242
+    }
+  ],
+  "schema_version": "noncombat-event-option-counterfactual-manifest-v1"
+}

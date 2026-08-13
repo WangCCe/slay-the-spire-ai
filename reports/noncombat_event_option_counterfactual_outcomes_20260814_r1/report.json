@@ -1,0 +1,130 @@
+{
+  "authority": {
+    "formal_rl": false,
+    "gameplay": false,
+    "model_fitting": false,
+    "policy_loading": false,
+    "promotion": false,
+    "qualification": false
+  },
+  "charged_seconds": 987.9060000000027,
+  "checks": {
+    "complete_source_floor": true,
+    "distinct_event_floor": true,
+    "informative_source_floor": true,
+    "replay_count": true,
+    "replay_identity": true
+  },
+  "identity": {
+    "current_bridge_input": {
+      "path": "D:/PycharmProjects/slay-the-spire-ai/reports/noncombat_current_policy_simulator_bridge_20260802_r2_input.json",
+      "sha256": "b251f7eefa558610b58c2dc23525f60302e6ae9f99bd11da72faa6c9a138f8f6"
+    },
+    "metadata": {
+      "path": "D:\\SteamLibrary\\steamapps\\common\\SlayTheSpire\\export\\items.json",
+      "sha256": "e23784ea8ed3092e3bfa9918240e162a9cbcb837badfb53c612eb0d83cc811dc",
+      "size_bytes": 240371
+    },
+    "native_module": {
+      "path": "D:/PycharmProjects/slay-the-spire-ai/.sts_lightspeed_adapter_v3_sold_inventory_build/sts_lightspeed_noncombat_adapter.cp310-win_amd64.pyd",
+      "sha256": "3a2563b51b9ef9df962c7a502cfd29ad5423497844a5ebb3bfb671c56c99369b",
+      "size_bytes": 4225536
+    },
+    "native_registration": {
+      "path": "D:/PycharmProjects/slay-the-spire-ai/reports/noncombat_card_counterfactual_corpus_expansion_20260813_r1/registration.json",
+      "sha256": "7096c3f131ba3e3fbe542a4505986b964206d4a9dc8cb4c58ae9b62fb25206d7"
+    },
+    "source": {
+      "commit": "106e858f757bd3524a876a4e52617d51aa5bff28",
+      "files": [
+        {
+          "path": "analysis_scripts/noncombat_event_option_counterfactual_outcomes.py",
+          "sha256": "73526e38afa5615d256081c74884369d53b27d4f33dfbb4f54d13827de539974",
+          "size_bytes": 29726
+        },
+        {
+          "path": "analysis_scripts/noncombat_route_counterfactual_ranking.py",
+          "sha256": "8aae18e71f42cb7d4f52d438c5fc9b96c0bafeda6145e89ed709e017fb23450a",
+          "size_bytes": 53420
+        },
+        {
+          "path": "analysis_scripts/noncombat_card_action_counterfactual_credit.py",
+          "sha256": "8f4028d209c10d6ecdc7b9387cf54ffb1a35fc31b97496c44ff9bd66d10e3c21",
+          "size_bytes": 20220
+        },
+        {
+          "path": "analysis_scripts/noncombat_current_policy_simulator_bridge.py",
+          "sha256": "1bbcd6008c78338b76b9d95e28d52e95a997734542b5a27fc9896bacb7c8ffce",
+          "size_bytes": 102865
+        },
+        {
+          "path": "analysis_scripts/noncombat_state_conditioned_policy_input.py",
+          "sha256": "f460bcb2cf2569b73ae08e640545fbd25996ae3e5d806339bff550aa12f484be",
+          "size_bytes": 8149
+        },
+        {
+          "path": "analysis_scripts/noncombat_state_conditioned_ranker.py",
+          "sha256": "60d1b710127e27c0bb283f073d6b166ccae14d9902ffb6d1911caa107d745678",
+          "size_bytes": 4549
+        },
+        {
+          "path": "analysis_scripts/noncombat_event_option_semantics.py",
+          "sha256": "2a18688d61ae70612b43683e06f3f2381d998f0fe3bebf9fbdf3e4cd9602af6b",
+          "size_bytes": 29305
+        }
+      ],
+      "source_sha256": "17737bf632735238dc8ed1051e5275f9654e97f4a4bcdf197be08448f196b977"
+    }
+  },
+  "operations": {
+    "communication_mod": false,
+    "gameplay": false,
+    "model_fitting": false,
+    "native_loading": true,
+    "production_checkpoint_access": false,
+    "seed_access": true
+  },
+  "schema_version": "noncombat-event-option-counterfactual-outcomes-v1",
+  "summary": {
+    "action_branches": 287,
+    "budget_exhausted": false,
+    "censor_reasons": {
+      "unsupported_shop_courier_restock_semantics": 3
+    },
+    "censored_sources": 3,
+    "complete_source_states": 122,
+    "distinct_event_ids": 21,
+    "event_counts": {
+      "Accursed Blacksmith": 1,
+      "Big Fish": 13,
+      "Dead Adventurer": 2,
+      "Drug Dealer": 1,
+      "Face Trader": 1,
+      "Golden Idol": 12,
+      "Golden Wing": 16,
+      "Liars Game": 15,
+      "Living Wall": 6,
+      "Mushrooms": 5,
+      "Note For Yourself": 1,
+      "Purifier": 3,
+      "Scrap Ooze": 12,
+      "Shining Light": 11,
+      "The Cleric": 9,
+      "The Mausoleum": 1,
+      "The Woman in Blue": 1,
+      "Transmorgrifier": 1,
+      "Upgrade Shrine": 1,
+      "WeMeetAgain": 1,
+      "World of Goop": 9
+    },
+    "informative_source_states": 49,
+    "replay_passed": 16,
+    "return_spread_maximum": 2.3157894736842106,
+    "return_spread_mean": 0.08944492378487201,
+    "root_native_transitions": 2703,
+    "semantics_source_counts": {
+      "sts_lightspeed_reachable_event_observation_v3": 122
+    }
+  },
+  "verdict": "event_option_counterfactual_signal_viable_for_learning_proposal"
+}

@@ -1,0 +1,23 @@
+[
+  {
+    "decision_index": 5,
+    "event_id": "Scrap Ooze",
+    "reason": "unsupported_shop_courier_restock_semantics",
+    "seed": 94027,
+    "source_sha256": "7b94b81a96ba1502565813bc964a248866bc35a2c055b66adf07ae570bee9081"
+  },
+  {
+    "decision_index": 15,
+    "event_id": null,
+    "reason": "unsupported_shop_courier_restock_semantics",
+    "seed": 94027,
+    "source_sha256": null
+  },
+  {
+    "decision_index": 51,
+    "event_id": null,
+    "reason": "unsupported_shop_courier_restock_semantics",
+    "seed": 94043,
+    "source_sha256": null
+  }
+]
