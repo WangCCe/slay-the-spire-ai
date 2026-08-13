@@ -4,7 +4,10 @@
 The pilot SHALL collect complete action-return rows from train seeds `1000..1015`
 and holdout seeds `1016..1023`. It MUST evaluate at most two card-reward states
 per seed, at most 128 train action branches, and at most 64 holdout action
-branches, and MUST stop before a partial source state.
+branches, and MUST stop before a partial source state. Only the registered
+Courier restock simulator blocker MAY censor a seed, with at most two train
+censors and one holdout censor, no replacement, and minimum support of 24 train
+and 12 holdout complete source states.
 
 #### Scenario: Partition labels are collected
 - **WHEN** a seed reaches an eligible card-reward source within its state and branch bounds
@@ -13,6 +16,14 @@ branches, and MUST stop before a partial source state.
 #### Scenario: Next source exceeds a branch budget
 - **WHEN** all legal actions at the next source would exceed the partition branch budget
 - **THEN** collection stops before that source without replacing seeds or changing the split
+
+#### Scenario: Registered Courier blocker occurs
+- **WHEN** a fixed seed reaches the registered Courier restock simulator blocker within the partition censor limit
+- **THEN** the seed is recorded as censored without replacement and only its previously complete source rows remain eligible
+
+#### Scenario: Unknown or excessive blocker occurs
+- **WHEN** a blocker is unregistered or the fixed partition censor limit is exceeded
+- **THEN** the pilot fails before training
 
 ### Requirement: Isolated entry model and optimizer
 The pilot SHALL restore the tracked r7 card-policy model from

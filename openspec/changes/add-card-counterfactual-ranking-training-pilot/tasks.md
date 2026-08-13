@@ -1,14 +1,14 @@
 ## 1. Dataset And Objective
 
-- [ ] 1.1 Add focused tests and implementation for fixed train/holdout source collection with complete-source branch bounds
-- [ ] 1.2 Add the return-margin-weighted hierarchical pairwise loss and entry/holdout ranking metrics
-- [ ] 1.3 Restore the tracked r7 entry model with a fresh candidate-card optimizer and prove non-card/control immutability
+- [x] 1.1 Add focused tests and implementation for fixed train/holdout source collection, registered blocker censors, support floors, and complete-source branch bounds
+- [x] 1.2 Add the return-margin-weighted hierarchical pairwise loss and entry/holdout ranking metrics
+- [x] 1.3 Restore the tracked r7 entry model with a fresh candidate-card optimizer and prove non-card/control immutability
 
 ## 2. Bounded Training Runner
 
-- [ ] 2.1 Add a thin runner binding source, r7 checkpoint, native bytes, fixed partitions, and production isolation
-- [ ] 2.2 Add runner regressions for no holdout-in-loss, exact 32-step bound, false downstream authority, and isolation failure
-- [ ] 2.3 Run focused pytest and strict OpenSpec validation without the unrelated full gameplay suite
+- [x] 2.1 Add a thin runner binding source, r7 checkpoint, native bytes, fixed partitions, and production isolation
+- [x] 2.2 Add runner regressions for no holdout-in-loss, exact 32-step bound, false downstream authority, and isolation failure
+- [x] 2.3 Run focused pytest and strict OpenSpec validation without the unrelated full gameplay suite
 
 ## 3. Empirical Training
 

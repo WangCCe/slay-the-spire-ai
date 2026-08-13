@@ -28,7 +28,10 @@ rankings rather than victory improvement.
 Train seeds are `1000..1015`; holdout seeds are `1016..1023`. Each partition
 evaluates at most two card states per seed and stops before any source whose full
 candidate set would exceed the 128/64 branch budget. Holdout labels are collected
-before fitting and never enter the loss.
+before fitting and never enter the loss. The already-registered Courier restock
+blocker may censor at most two train seeds and one holdout seed without
+replacement; training requires at least 24 complete train and 12 complete
+holdout source states.
 
 ### Restart optimizer state for the changed objective
 
@@ -60,6 +63,8 @@ on pass.
   metrics without tuning thresholds.
 - [Counterfactual generation is expensive] -> Cap total continuations at 192 and
   stop only at whole-source boundaries.
+- [Known Courier restock semantics are unsupported] -> Censor only that registered
+  blocker within fixed 2/1 seed limits and do not replace censored seeds.
 - [Training can damage existing policy behavior] -> Require held-out regret,
   pairwise accuracy, unique-best accuracy, and maximum-regret guards; retain r7
   and native SimpleAgent as rollback.

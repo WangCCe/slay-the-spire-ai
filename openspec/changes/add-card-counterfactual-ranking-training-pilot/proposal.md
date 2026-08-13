@@ -11,6 +11,9 @@ ranking improves disjoint consumed-seed counterfactual predictions.
 - Collect complete action-return labels from consumed train seeds `1000..1015`
   and disjoint consumed holdout seeds `1016..1023`, using at most two card states
   per seed and at most 128/64 action branches respectively.
+- Permit only the pre-registered Courier restock simulator blocker to censor a
+  seed, with at most two train censors and one holdout censor, no replacement,
+  and minimum support of 24 train and 12 holdout source states.
 - Restore the tracked r7 card-policy checkpoint as an isolated entry model and
   build a new candidate-card Adam optimizer; do not reuse trajectory optimizer
   moments across the changed objective.
