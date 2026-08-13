@@ -273,3 +273,12 @@ openspec/changes/archive/*-train-large-corpus-state-conditioned-card-ranker/** t
 openspec/specs/noncombat-large-corpus-state-conditioned-card-ranking/** text eol=lf
 reports/noncombat_large_corpus_state_conditioned_card_ranking_* text eol=lf
 reports/noncombat_large_corpus_state_conditioned_card_ranking_*/** text eol=lf
+
+# Preserve family-preserving conditional card ranking source and evidence bytes.
+analysis_scripts/noncombat_family_preserving_conditional_card_ranking.py text eol=lf
+tests/test_noncombat_family_preserving_conditional_card_ranking.py text eol=lf
+openspec/changes/train-family-preserving-conditional-card-ranker/** text eol=lf
+openspec/changes/archive/*-train-family-preserving-conditional-card-ranker/** text eol=lf
+openspec/specs/noncombat-family-preserving-conditional-card-ranking/** text eol=lf
+reports/noncombat_family_preserving_conditional_card_ranking_* text eol=lf
+reports/noncombat_family_preserving_conditional_card_ranking_*/** text eol=lf
