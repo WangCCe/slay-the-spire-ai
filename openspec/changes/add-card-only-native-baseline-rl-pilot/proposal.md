@@ -27,7 +27,8 @@ current setup.
   Courier-restock simulator blocker; report every censored seed and arm, and
   keep unknown support failures fail-closed.
 - Compare the frozen candidate with native SimpleAgent on the same development
-  cohort and require non-inferior mean floor, no victory regression, no
+  cohort, censor only the same declared Courier-restock pairs within the fixed
+  bound, and require non-inferior mean floor, no victory regression, no unknown
   unsupported episodes, and both card families to remain between 5% and 95% of
   greedy multi-family decisions.
 - Publish a compact report and checkpoint outside production discovery. Passing

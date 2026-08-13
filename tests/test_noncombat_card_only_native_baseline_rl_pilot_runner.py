@@ -19,7 +19,7 @@ def _registration(tmp_path):
             "tree": "c" * 40,
         },
         "configuration": {
-            "comparison": "one-frozen-candidate-vs-native-control-v1",
+            "comparison": runner.COMPARISON_CONTRACT,
             "maximum_charged_seconds": runner.MAX_CHARGED_SECONDS,
             "maximum_censored_pairs_per_chunk": (
                 runner.pilot.MAX_CENSORED_PAIRS_PER_CHUNK
@@ -239,19 +239,23 @@ def _comparison_pairs(*, all_take=False, candidate_floor=2.0, control_floor=1.0)
         family = "take" if all_take or index % 2 == 0 else "skip"
         decision = SimpleNamespace(
             category="card_reward",
+            decision_id=f"candidate:{seed}:card-reward",
             diagnostic={"multi_family": True, "selected_family": family},
+            card_terms=object(),
         )
         pairs.append(
             SimpleNamespace(
                 seed=seed,
                 candidate=SimpleNamespace(
                     decisions=(decision,),
+                    final_snapshot={"terminal": True},
                     floor_progress=candidate_floor,
                     terminal_victory=1 if index == 0 else 0,
                     unsupported_reason=None,
                 ),
                 control=SimpleNamespace(
                     decisions=(),
+                    final_snapshot={"terminal": True},
                     floor_progress=control_floor,
                     terminal_victory=0,
                     unsupported_reason=None,
@@ -275,6 +279,48 @@ def test_frozen_comparison_requires_noninferiority_and_card_coverage():
     assert concentrated["verdict"] == "card_only_native_baseline_pilot_not_ready"
     assert concentrated["checks"]["candidate_card_coverage"] is False
     assert inferior["checks"]["candidate_floor_noninferior"] is False
+
+
+def test_frozen_comparison_censors_declared_courier_pair_from_metrics():
+    pairs = list(_comparison_pairs())
+    pairs[0].candidate.unsupported_reason = (
+        "unsupported_shop_courier_restock_semantics"
+    )
+    pairs[0].candidate.floor_progress = -100.0
+    pairs[0].control.floor_progress = 100.0
+
+    comparison = runner.classify_frozen_comparison(tuple(pairs))
+
+    assert comparison["verdict"] == "ready_to_propose_fresh_card_only_evaluation"
+    assert comparison["attempted_pairs"] == 64
+    assert comparison["supported_pairs"] == 63
+    assert comparison["candidate"]["mean_floor_progress"] == 2.0
+    assert comparison["control"]["mean_floor_progress"] == 1.0
+    assert comparison["unsupported_episodes"] == 1
+    assert comparison["checks"]["supported"] is True
+    assert comparison["censored_pairs"] == [
+        {
+            "blockers": [
+                {
+                    "arm": "candidate",
+                    "category": "card_reward",
+                    "decision_id": (
+                        f"candidate:{runner.CONSUMED_DEVELOPMENT_SEEDS[0]}:card-reward"
+                    ),
+                    "reason": "unsupported_shop_courier_restock_semantics",
+                }
+            ],
+            "seed": runner.CONSUMED_DEVELOPMENT_SEEDS[0],
+        }
+    ]
+
+
+def test_frozen_comparison_rejects_unknown_support_blocker():
+    pairs = list(_comparison_pairs())
+    pairs[0].candidate.unsupported_reason = "unsupported_unknown_semantics"
+
+    with pytest.raises(runner.CardOnlyRunnerBlocked, match="unknown blocker"):
+        runner.classify_frozen_comparison(tuple(pairs))
 
 
 def test_native_dependencies_are_topologically_ordered_and_load_failure_is_controlled(

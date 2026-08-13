@@ -117,9 +117,12 @@ coefficient, threshold, seed, or schedule after observing a result.
 ### Treat development comparison as a proposal gate only
 
 The final frozen comparison uses the same consumed development seeds. Candidate
-must have no fewer victories, no lower mean floor progress, no unsupported
-episodes, and 5% to 95% greedy take coverage relative to native control. A pass
-only permits proposing a fresh isolated evaluation. A fail keeps native
+and control pairs use the same bounded censoring contract as residual training:
+only the declared Courier-restock blocker may exclude a whole pair, at most
+eight pairs may be excluded, and every other unsupported transition fails
+closed. Candidate must have no fewer victories, no lower mean floor progress,
+and 5% to 95% greedy take coverage on the 56 to 64 complete supported pairs. A
+pass only permits proposing a fresh isolated evaluation. A fail keeps native
 SimpleAgent as the effective baseline and terminates this pilot.
 
 ## Risks / Trade-offs

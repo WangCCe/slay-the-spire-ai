@@ -83,12 +83,13 @@ the same consumed development cohort. This comparison SHALL determine only
 whether a separate fresh-evaluation proposal is justified.
 
 #### Scenario: Development proposal gate passes
-- **WHEN** all 64 frozen pairs complete with zero unsupported episodes, candidate victories are at least control victories, candidate mean floor progress is at least control mean floor progress, and candidate greedy take coverage is between 0.05 and 0.95 inclusive
+- **WHEN** the 64 frozen pair attempts yield 56 to 64 complete supported pairs after censoring at most eight pairs that hit only the declared Courier-restock blocker, candidate victories are at least control victories, candidate mean floor progress is at least control mean floor progress, and candidate greedy take coverage is between 0.05 and 0.95 inclusive on the supported pairs
 - **THEN** the verdict is `ready_to_propose_fresh_card_only_evaluation`
+- **AND** every censored seed and arm is reported without retry or replacement
 - **AND** no fresh evaluation, qualification, promotion, or live loading starts under this change
 
 #### Scenario: Development proposal gate fails
-- **WHEN** any frozen comparison or coverage condition fails
+- **WHEN** the censor bound or support floor fails, an unknown blocker occurs, or any frozen comparison or coverage condition fails
 - **THEN** the verdict is `card_only_native_baseline_pilot_not_ready`
 - **AND** native SimpleAgent remains the rollback baseline without another pilot run
 

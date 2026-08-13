@@ -135,6 +135,7 @@ RESUME_REGISTRATION_SCHEMA_VERSION = (
 PREFLIGHT_SCHEMA_VERSION = "noncombat-card-only-native-baseline-pilot-preflight-v1"
 REPORT_SCHEMA_VERSION = "noncombat-card-only-native-baseline-pilot-report-v2"
 TERMINAL_SCHEMA_VERSION = "noncombat-card-only-native-baseline-pilot-terminal-v1"
+COMPARISON_CONTRACT = "one-frozen-candidate-vs-native-control-v2"
 CONSUMED_DEVELOPMENT_SEEDS = tuple(range(1000, 1032)) + tuple(range(2000, 2032))
 MAX_RESIDUAL_CHUNKS = 4
 MAX_ENVIRONMENT_ACCESSES = 640
@@ -403,7 +404,7 @@ def build_registration(
         {
             "bottled": _bottled_identity(bottled_repo),
             "configuration": {
-                "comparison": "one-frozen-candidate-vs-native-control-v1",
+                "comparison": COMPARISON_CONTRACT,
                 "maximum_charged_seconds": MAX_CHARGED_SECONDS,
                 "maximum_censored_pairs_per_chunk": (
                     pilot.MAX_CENSORED_PAIRS_PER_CHUNK
@@ -523,7 +524,7 @@ def validate_registration(value: Mapping[str, Any]) -> dict[str, Any]:
         raise CardOnlyRunnerBlocked("registration downstream authority differs")
     configuration = registration.get("configuration")
     if not isinstance(configuration, dict) or configuration != {
-        "comparison": "one-frozen-candidate-vs-native-control-v1",
+        "comparison": COMPARISON_CONTRACT,
         "maximum_charged_seconds": MAX_CHARGED_SECONDS,
         "maximum_censored_pairs_per_chunk": pilot.MAX_CENSORED_PAIRS_PER_CHUNK,
         "maximum_environment_accesses": MAX_ENVIRONMENT_ACCESSES,
@@ -818,18 +819,28 @@ def classify_frozen_comparison(pairs: Sequence[Any]) -> dict[str, Any]:
     source = tuple(pairs)
     if len(source) != 64 or tuple(pair.seed for pair in source) != CONSUMED_DEVELOPMENT_SEEDS:
         raise CardOnlyRunnerBlocked("frozen comparison cohort differs")
+    try:
+        supported, censored = pilot._validate_residual_pairs(
+            source, chunk_index=MAX_RESIDUAL_CHUNKS
+        )
+    except pilot.CardOnlyPilotBlocked as exc:
+        raise CardOnlyRunnerBlocked(f"frozen comparison support is invalid: {exc}") from exc
     unsupported = sum(
-        arm.unsupported_reason is not None
-        for pair in source
-        for arm in (pair.candidate, pair.control)
+        len(censored_pair["blockers"]) for censored_pair in censored
     )
-    candidate_victories = sum(pair.candidate.terminal_victory for pair in source)
-    control_victories = sum(pair.control.terminal_victory for pair in source)
-    candidate_floor_mean = sum(pair.candidate.floor_progress for pair in source) / 64
-    control_floor_mean = sum(pair.control.floor_progress for pair in source) / 64
+    candidate_victories = sum(
+        pair.candidate.terminal_victory for pair in supported
+    )
+    control_victories = sum(pair.control.terminal_victory for pair in supported)
+    candidate_floor_mean = sum(
+        pair.candidate.floor_progress for pair in supported
+    ) / len(supported)
+    control_floor_mean = sum(
+        pair.control.floor_progress for pair in supported
+    ) / len(supported)
     multi_family = [
         decision
-        for pair in source
+        for pair in supported
         for decision in pair.candidate.decisions
         if decision.category == "card_reward"
         and decision.diagnostic.get("multi_family") is True
@@ -843,20 +854,23 @@ def classify_frozen_comparison(pairs: Sequence[Any]) -> dict[str, Any]:
         "candidate_floor_noninferior": candidate_floor_mean >= control_floor_mean,
         "candidate_victories_noninferior": candidate_victories >= control_victories,
         "candidate_card_coverage": take_rate is not None and 0.05 <= take_rate <= 0.95,
-        "supported": unsupported == 0,
+        "supported": True,
     }
     ready = all(checks.values())
     return {
+        "attempted_pairs": len(source),
         "candidate": {
             "mean_floor_progress": candidate_floor_mean,
             "victories": candidate_victories,
         },
+        "censored_pairs": copy.deepcopy(list(censored)),
         "checks": checks,
         "control": {
             "mean_floor_progress": control_floor_mean,
             "victories": control_victories,
         },
         "multi_family_card_decisions": len(multi_family),
+        "supported_pairs": len(supported),
         "take_rate": take_rate,
         "unsupported_episodes": unsupported,
         "verdict": (
