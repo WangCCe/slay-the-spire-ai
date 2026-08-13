@@ -34,15 +34,29 @@ DEFAULT_TRAINING_DIR = Path(
 DEFAULT_OUTPUT_DIR = Path(
     "reports/noncombat_event_ranker_paired_trajectory_shadow_20260814_r1"
 )
+SUPPORTED_OUTPUT_DIR = Path(
+    "reports/noncombat_supported_event_ranker_paired_trajectory_shadow_20260814_r1"
+)
 SEEDS = tuple(range(94600, 94728))
+SUPPORTED_SEEDS = tuple(range(94800, 94928))
 MAX_DECISIONS = 512
 MAX_CENSORED_PAIRS = 16
 MIN_COMPLETE_PAIRS = 112
 MIN_EVENT_EXPOSED_PAIRS = 96
 MIN_OVERRIDE_PAIRS = 64
+MIN_SUPPORT_EXPOSED_PAIRS = 64
 MAX_CHARGED_SECONDS = 7_200.0
 SCHEMA_VERSION = "noncombat-event-ranker-paired-trajectory-shadow-v1"
 MANIFEST_SCHEMA_VERSION = "noncombat-event-ranker-paired-trajectory-manifest-v1"
+SUPPORTED_SCHEMA_VERSION = (
+    "noncombat-supported-event-ranker-paired-trajectory-shadow-v1"
+)
+SUPPORTED_MANIFEST_SCHEMA_VERSION = (
+    "noncombat-supported-event-ranker-paired-trajectory-manifest-v1"
+)
+EVENT_SUPPORT_SIGNATURE_SCHEMA_VERSION = (
+    "noncombat-event-candidate-support-signature-v1"
+)
 BOUND_SOURCE_PATHS = (
     Path("analysis_scripts/noncombat_event_ranker_paired_trajectory_shadow.py"),
     Path("analysis_scripts/noncombat_event_option_ranker_shadow_evaluation.py"),
@@ -53,6 +67,9 @@ BOUND_SOURCE_PATHS = (
     Path("analysis_scripts/noncombat_state_conditioned_policy_input.py"),
     Path("analysis_scripts/noncombat_state_conditioned_ranker.py"),
     Path("analysis_scripts/noncombat_event_option_semantics.py"),
+    Path("analysis_scripts/noncombat_policy_model.py"),
+    Path("analysis_scripts/noncombat_simulator_adapter.py"),
+    Path("analysis_scripts/noncombat_simulator_rl_experiment.py"),
 )
 _EARLY_NATIVE_HANDLES: list[Any] = []
 
@@ -74,7 +91,11 @@ def _bootstrap_direct_script_imports() -> None:
 
 
 def _early_preload_native() -> None:
-    if not (__name__ == "__main__" and len(sys.argv) >= 2 and sys.argv[1] == "run"):
+    if not (
+        __name__ == "__main__"
+        and len(sys.argv) >= 2
+        and sys.argv[1] in {"run", "run-supported"}
+    ):
         return
     try:
         if "--native-registration" in sys.argv:
@@ -156,6 +177,7 @@ from analysis_scripts import noncombat_event_option_counterfactual_ranking as tr
 from analysis_scripts import noncombat_event_option_ranker_shadow_evaluation as shadow
 from analysis_scripts import noncombat_route_counterfactual_ranking as route
 from analysis_scripts.noncombat_state_conditioned_policy_input import (
+    policy_input_metadata,
     project_state_conditioned_policy_input,
 )
 from analysis_scripts.noncombat_state_conditioned_ranker import StateConditionedCandidateRanker
@@ -190,6 +212,61 @@ def _registered_blocker(exc: BaseException) -> str | None:
     return None
 
 
+def event_candidate_support_signature(
+    candidates: Sequence[Mapping[str, Any]],
+) -> str:
+    semantics: list[dict[str, Any]] = []
+    action_ids: set[str] = set()
+    event_ids: set[str] = set()
+    for candidate in candidates:
+        action_id = candidate.get("action_id")
+        kind = candidate.get("kind")
+        raw = candidate.get("raw")
+        if (
+            candidate.get("category") != "event"
+            or not isinstance(action_id, str)
+            or not action_id.startswith("event:")
+            or kind != "event_option"
+            or not isinstance(raw, Mapping)
+            or candidate.get("available") is not True
+            or not isinstance(candidate.get("label"), str)
+        ):
+            raise PairedTrajectoryBlocked("event support candidate semantics differ")
+        if action_id in action_ids:
+            raise PairedTrajectoryBlocked("event support candidate actions repeat")
+        event_id = raw.get("event_id")
+        if not isinstance(event_id, str) or not event_id:
+            raise PairedTrajectoryBlocked("event support event identity differs")
+        action_ids.add(action_id)
+        event_ids.add(event_id)
+        semantics.append(copy.deepcopy(dict(candidate)))
+    if len(semantics) <= 1:
+        raise PairedTrajectoryBlocked("event support candidate set is not multi-option")
+    if len(event_ids) != 1:
+        raise PairedTrajectoryBlocked("event support event identities differ")
+    semantics.sort(key=_canonical_bytes)
+    return _sha256_json(
+        {
+            "candidates": semantics,
+            "event_id": next(iter(event_ids)),
+            "schema_version": EVENT_SUPPORT_SIGNATURE_SCHEMA_VERSION,
+            "target_category": "event",
+        }
+    )
+
+
+def _event_action_prefix(candidates: Sequence[Mapping[str, Any]]) -> str:
+    try:
+        prefixes = {
+            str(candidate["action_id"]).split(":", 2)[1] for candidate in candidates
+        }
+    except (IndexError, KeyError) as exc:
+        raise PairedTrajectoryBlocked("event action prefix differs") from exc
+    if len(prefixes) != 1:
+        raise PairedTrajectoryBlocked("event action prefixes differ")
+    return next(iter(prefixes))
+
+
 def select_event_overlay_action(
     model: StateConditionedCandidateRanker,
     *,
@@ -197,12 +274,40 @@ def select_event_overlay_action(
     candidates: Sequence[Mapping[str, Any]],
     current_action_id: str,
     confidence_threshold: float,
+    support_signatures: Mapping[str, int] | None = None,
 ) -> tuple[str, dict[str, Any] | None]:
     action_ids = [str(candidate["action_id"]) for candidate in candidates]
     if current_action_id not in action_ids:
         raise PairedTrajectoryBlocked("Current trajectory action is not legal")
     if snapshot.get("category") != "event" or len(action_ids) <= 1:
         return current_action_id, None
+    support_fields: dict[str, Any] = {}
+    if support_signatures is not None:
+        support_signature = event_candidate_support_signature(candidates)
+        event_action_prefix = _event_action_prefix(candidates)
+        support_count = int(support_signatures.get(support_signature, 0))
+        support_fields = {
+            "event_action_prefix": event_action_prefix,
+            "support_signature": support_signature,
+            "training_support_count": support_count,
+        }
+        if support_count <= 0:
+            return current_action_id, {
+                "candidate_action_ids": action_ids,
+                "candidate_count": len(action_ids),
+                "confidence": None,
+                "current_action_id": current_action_id,
+                "fallback_reason": "candidate_semantics_absent_from_training",
+                "learned_action_id": None,
+                "overridden": False,
+                "ranker_evaluated": False,
+                "selected_action_id": current_action_id,
+                "source_sha256": _sha256_json(
+                    {"candidate_actions": list(candidates), "snapshot": snapshot}
+                ),
+                "support_status": "fallback",
+                **support_fields,
+            }
     if confidence_threshold not in training.CONFIDENCE_THRESHOLDS:
         raise PairedTrajectoryBlocked("bound confidence threshold differs")
     try:
@@ -223,17 +328,22 @@ def select_event_overlay_action(
         if learned_index != current_index and confidence >= confidence_threshold
         else current_action_id
     )
-    return selected_action_id, {
+    row = {
+        "candidate_action_ids": action_ids,
         "candidate_count": len(action_ids),
         "confidence": confidence,
         "current_action_id": current_action_id,
         "learned_action_id": action_ids[learned_index],
         "overridden": selected_action_id != current_action_id,
+        "ranker_evaluated": True,
         "selected_action_id": selected_action_id,
         "source_sha256": _sha256_json(
             {"candidate_actions": list(candidates), "snapshot": snapshot}
         ),
     }
+    if support_signatures is not None:
+        row.update({"support_status": "supported", **support_fields})
+    return selected_action_id, row
 
 
 def run_trajectory(
@@ -243,6 +353,7 @@ def run_trajectory(
     seed: int,
     model: StateConditionedCandidateRanker | None,
     confidence_threshold: float | None,
+    support_signatures: Mapping[str, int] | None = None,
     max_decisions: int = MAX_DECISIONS,
     deadline: float | None = None,
     clock: Callable[[], float] = time.monotonic,
@@ -291,6 +402,7 @@ def run_trajectory(
                 candidates=candidates,
                 current_action_id=current_action_id,
                 confidence_threshold=confidence_threshold,
+                support_signatures=support_signatures,
             )
         elif snapshot.get("category") == "event" and len(candidates) > 1:
             event_row = {
@@ -338,6 +450,12 @@ def run_trajectory(
         "floor": floor,
         "outcome": outcome,
         "override_count": sum(bool(row["overridden"]) for row in event_decisions),
+        "support_fallback_count": sum(
+            row.get("support_status") == "fallback" for row in event_decisions
+        ),
+        "support_source_count": sum(
+            row.get("support_status") == "supported" for row in event_decisions
+        ),
         "terminal_state_sha256": _sha256_json(final_snapshot),
         "total_return": total_return,
         "victory": victory,
@@ -350,6 +468,7 @@ def collect_pairs(
     model: StateConditionedCandidateRanker,
     *,
     confidence_threshold: float,
+    support_signatures: Mapping[str, int] | None = None,
     seeds: Sequence[int] = SEEDS,
     max_censored_pairs: int = MAX_CENSORED_PAIRS,
     maximum_charged_seconds: float = MAX_CHARGED_SECONDS,
@@ -373,6 +492,9 @@ def collect_pairs(
                     seed=seed,
                     model=arm_model,
                     confidence_threshold=(confidence_threshold if arm_model is not None else None),
+                    support_signatures=(
+                        support_signatures if arm_model is not None else None
+                    ),
                     deadline=deadline,
                     clock=clock,
                 )
@@ -479,6 +601,96 @@ def evaluate_pairs(
     return metrics, verdict
 
 
+def evaluate_supported_pairs(
+    pairs: Sequence[Mapping[str, Any]],
+    censored: Sequence[Mapping[str, Any]],
+    *,
+    minimum_complete_pairs: int = MIN_COMPLETE_PAIRS,
+    minimum_event_exposed_pairs: int = MIN_EVENT_EXPOSED_PAIRS,
+    minimum_support_exposed_pairs: int = MIN_SUPPORT_EXPOSED_PAIRS,
+    minimum_override_pairs: int = MIN_OVERRIDE_PAIRS,
+) -> tuple[dict[str, Any], str]:
+    metrics, _raw_verdict = evaluate_pairs(
+        pairs,
+        censored,
+        minimum_complete_pairs=minimum_complete_pairs,
+        minimum_event_exposed_pairs=minimum_event_exposed_pairs,
+        minimum_override_pairs=minimum_override_pairs,
+    )
+    support_exposed_pairs = 0
+    fallback_pairs = 0
+    supported_sources = 0
+    fallback_sources = 0
+    fallback_events: Counter[str] = Counter()
+    accounting_complete = True
+    out_of_support_overrides = 0
+    invalid_override_statuses = 0
+    for pair in pairs:
+        selected = pair["selected"]
+        event_decisions = tuple(selected.get("event_decisions", ()))
+        statuses = [row.get("support_status") for row in event_decisions]
+        supported = sum(status == "supported" for status in statuses)
+        fallbacks = sum(status == "fallback" for status in statuses)
+        support_exposed_pairs += supported > 0
+        fallback_pairs += fallbacks > 0
+        supported_sources += supported
+        fallback_sources += fallbacks
+        if (
+            supported != selected.get("support_source_count")
+            or fallbacks != selected.get("support_fallback_count")
+            or supported + fallbacks != selected.get("event_source_count")
+            or any(status not in {"supported", "fallback"} for status in statuses)
+        ):
+            accounting_complete = False
+        for row in event_decisions:
+            if row.get("overridden") and row.get("support_status") != "supported":
+                invalid_override_statuses += 1
+            if row.get("support_status") == "fallback":
+                fallback_events[str(row.get("event_action_prefix"))] += 1
+                out_of_support_overrides += bool(row.get("overridden"))
+                if (
+                    row.get("fallback_reason")
+                    != "candidate_semantics_absent_from_training"
+                    or row.get("selected_action_id") != row.get("current_action_id")
+                    or row.get("ranker_evaluated") is not False
+                    or row.get("learned_action_id") is not None
+                    or row.get("confidence") is not None
+                    or int(row.get("training_support_count", -1)) != 0
+                ):
+                    accounting_complete = False
+    checks = dict(metrics["checks"])
+    checks.update(
+        {
+            "fallback_accounting_complete": accounting_complete,
+            "no_out_of_support_overrides": (
+                out_of_support_overrides == 0 and invalid_override_statuses == 0
+            ),
+            "support_exposure": support_exposed_pairs
+            >= minimum_support_exposed_pairs,
+        }
+    )
+    verdict = (
+        "supported_event_ranker_paired_trajectory_integration_ready"
+        if all(checks.values())
+        else "supported_event_ranker_paired_trajectory_integration_not_ready"
+    )
+    metrics.update(
+        {
+            "checks": checks,
+            "support": {
+                "fallback_event_counts": dict(sorted(fallback_events.items())),
+                "fallback_pairs": fallback_pairs,
+                "fallback_sources": fallback_sources,
+                "out_of_support_overrides": out_of_support_overrides,
+                "support_exposed_pairs": support_exposed_pairs,
+                "supported_sources": supported_sources,
+            },
+            "verdict": verdict,
+        }
+    )
+    return metrics, verdict
+
+
 def _read_json(path: Path) -> dict[str, Any]:
     try:
         value = json.loads(path.read_text(encoding="ascii"))
@@ -495,6 +707,101 @@ def _sha256_file(path: Path) -> str:
         for chunk in iter(lambda: stream.read(1024 * 1024), b""):
             digest.update(chunk)
     return digest.hexdigest()
+
+
+def load_bound_training_support(
+    training_dir: Path,
+) -> tuple[dict[str, int], dict[str, Any]]:
+    root = training_dir.resolve()
+    manifest_path = root / "artifact_manifest.json"
+    dataset_path = root / "train_dataset.json"
+    manifest_payload = manifest_path.read_bytes()
+    manifest = _read_json(manifest_path)
+    if (
+        _canonical_bytes(manifest) != manifest_payload
+        or manifest.get("schema_version") != training.MANIFEST_SCHEMA_VERSION
+    ):
+        raise PairedTrajectoryBlocked("training artifact manifest differs")
+    expected_artifacts = {
+        "configuration.json",
+        "development_dataset.json",
+        "metrics.json",
+        "model.json",
+        "report.json",
+        "train_dataset.json",
+    }
+    bindings: dict[str, Mapping[str, Any]] = {}
+    for row in manifest.get("artifacts", ()):
+        if not isinstance(row, Mapping):
+            raise PairedTrajectoryBlocked("training artifact binding differs")
+        name = row.get("path")
+        if (
+            not isinstance(name, str)
+            or Path(name).name != name
+            or name in bindings
+        ):
+            raise PairedTrajectoryBlocked("training artifact path differs")
+        bindings[name] = row
+    if set(bindings) != expected_artifacts:
+        raise PairedTrajectoryBlocked("training artifact members differ")
+    for name, binding in bindings.items():
+        path = root / name
+        if (
+            not path.is_file()
+            or path.stat().st_size != binding.get("size_bytes")
+            or _sha256_file(path) != binding.get("sha256")
+        ):
+            raise PairedTrajectoryBlocked(f"training {name} manifest binding differs")
+        try:
+            value = json.loads(path.read_text(encoding="ascii"))
+        except (UnicodeDecodeError, json.JSONDecodeError) as exc:
+            raise PairedTrajectoryBlocked(f"training {name} JSON differs") from exc
+        if _canonical_bytes(value) != path.read_bytes():
+            raise PairedTrajectoryBlocked(f"training {name} is not canonical")
+    payload = dataset_path.read_bytes()
+    try:
+        partition = training.restore_event_partition(payload)
+        if training.encode_event_partition(partition) != payload:
+            raise PairedTrajectoryBlocked("training dataset round-trip differs")
+        if partition.name != "train":
+            raise PairedTrajectoryBlocked("training partition name differs")
+        configuration = _read_json(root / "configuration.json")
+        if tuple(configuration.get("train_seeds", ())) != partition.seeds:
+            raise PairedTrajectoryBlocked("training partition seeds differ")
+        signature_counts = Counter(
+            event_candidate_support_signature(row.candidates)
+            for row in partition.rows
+        )
+        event_ids = training._event_ids(partition)
+    except training.EventRankingBlocked as exc:
+        raise PairedTrajectoryBlocked(str(exc)) from exc
+    if not signature_counts or not event_ids:
+        raise PairedTrajectoryBlocked("training support is empty")
+    support_values = [
+        {"signature": signature, "training_row_count": count}
+        for signature, count in sorted(signature_counts.items())
+    ]
+    identity = {
+        "artifact_bindings": [copy.deepcopy(dict(bindings[name])) for name in sorted(bindings)],
+        "dataset": {
+            "path": dataset_path.as_posix(),
+            "sha256": _sha256_file(dataset_path),
+            "size_bytes": dataset_path.stat().st_size,
+        },
+        "event_ids": list(event_ids),
+        "manifest": {
+            "path": manifest_path.as_posix(),
+            "sha256": _sha256_file(manifest_path),
+        },
+        "per_signature_counts": {
+            signature: count for signature, count in sorted(signature_counts.items())
+        },
+        "policy_input": policy_input_metadata(),
+        "signature_count": len(signature_counts),
+        "signature_schema_version": EVENT_SUPPORT_SIGNATURE_SCHEMA_VERSION,
+        "support_sha256": _sha256_json(support_values),
+    }
+    return dict(signature_counts), identity
 
 
 def _source_identity(repo_root: Path) -> dict[str, Any]:
@@ -528,6 +835,9 @@ def _write_artifacts(
     censored: Sequence[Mapping[str, Any]],
     metrics: dict[str, Any],
     report: dict[str, Any],
+    manifest_schema_version: str = MANIFEST_SCHEMA_VERSION,
+    report_title: str = "Event Ranker Paired Full-Trajectory Shadow",
+    selected_label: str = "Event overlay",
 ) -> None:
     output.mkdir(parents=False, exist_ok=False)
     artifacts = {
@@ -544,11 +854,11 @@ def _write_artifacts(
             {"path": name, "sha256": hashlib.sha256(payload).hexdigest(), "size_bytes": len(payload)}
             for name, payload in sorted(artifacts.items())
         ],
-        "schema_version": MANIFEST_SCHEMA_VERSION,
+        "schema_version": manifest_schema_version,
     }
     (output / "artifact_manifest.json").write_bytes(_canonical_bytes(manifest))
-    lines = (
-        "# Event Ranker Paired Full-Trajectory Shadow",
+    lines = [
+        f"# {report_title}",
         "",
         f"- Verdict: `{metrics['verdict']}`",
         f"- Charged seconds: `{report['charged_seconds']:.3f}`",
@@ -560,12 +870,26 @@ def _write_artifacts(
         "| Arm | Victories | Mean floor | Mean return |",
         "| --- | ---: | ---: | ---: |",
         f"| Current | {metrics['current']['victories']} | {metrics['current']['mean_floor']:.6f} | {metrics['current']['mean_return']:.6f} |",
-        f"| Event overlay | {metrics['selected']['victories']} | {metrics['selected']['mean_floor']:.6f} | {metrics['selected']['mean_return']:.6f} |",
+        f"| {selected_label} | {metrics['selected']['victories']} | {metrics['selected']['mean_floor']:.6f} | {metrics['selected']['mean_return']:.6f} |",
         "",
         f"Improved pairs: {metrics['improved_pairs']}; worsened: {metrics['worsened_pairs']}; tied: {metrics['tied_pairs']}; victory gains: {metrics['victory_gains']}; victory losses: {metrics['victory_losses']}.",
-        "",
-        "This is a no-training simulator shadow. It grants no gameplay, production loading, qualification, or promotion authority.",
-        "",
+    ]
+    if "support" in metrics:
+        support = metrics["support"]
+        lines.extend(
+            [
+                "",
+                "## Training Support",
+                "",
+                f"Supported sources: {support['supported_sources']}; fallbacks: {support['fallback_sources']}; support-exposed pairs: {support['support_exposed_pairs']}; fallback pairs: {support['fallback_pairs']}.",
+            ]
+        )
+    lines.extend(
+        [
+            "",
+            "This is a no-training simulator shadow. It grants no gameplay, production loading, qualification, or promotion authority.",
+            "",
+        ]
     )
     (output / "report.md").write_text("\n".join(lines), encoding="ascii", newline="\n")
 
@@ -576,6 +900,13 @@ def execute_cli(args: argparse.Namespace) -> dict[str, Any]:
     output = Path(args.output_dir).resolve()
     if output.exists():
         raise PairedTrajectoryBlocked("output directory already exists")
+    supported_mode = args.command == "run-supported"
+    support_signatures: dict[str, int] | None = None
+    support_identity: dict[str, Any] | None = None
+    if supported_mode:
+        support_signatures, support_identity = load_bound_training_support(
+            Path(args.training_dir)
+        )
     model, training_identity = shadow.load_bound_model(Path(args.training_dir))
     native_registration_path = Path(args.native_registration).resolve()
     bridge_input_path = Path(args.current_bridge_input).resolve()
@@ -609,8 +940,13 @@ def execute_cli(args: argparse.Namespace) -> dict[str, Any]:
         session_factory,
         model,
         confidence_threshold=training_identity["selected_confidence_threshold"],
+        seeds=(SUPPORTED_SEEDS if supported_mode else SEEDS),
+        support_signatures=support_signatures,
     )
-    metrics, verdict = evaluate_pairs(pairs, censored)
+    if supported_mode:
+        metrics, verdict = evaluate_supported_pairs(pairs, censored)
+    else:
+        metrics, verdict = evaluate_pairs(pairs, censored)
     if list(native_runner._forbidden_processes()):
         raise PairedTrajectoryBlocked("game or CommunicationMod started during execution")
     configuration = {
@@ -620,9 +956,13 @@ def execute_cli(args: argparse.Namespace) -> dict[str, Any]:
         "minimum_complete_pairs": MIN_COMPLETE_PAIRS,
         "minimum_event_exposed_pairs": MIN_EVENT_EXPOSED_PAIRS,
         "minimum_override_pairs": MIN_OVERRIDE_PAIRS,
-        "schema_version": SCHEMA_VERSION,
-        "seeds": list(SEEDS),
+        "schema_version": (
+            SUPPORTED_SCHEMA_VERSION if supported_mode else SCHEMA_VERSION
+        ),
+        "seeds": list(SUPPORTED_SEEDS if supported_mode else SEEDS),
     }
+    if supported_mode:
+        configuration["minimum_support_exposed_pairs"] = MIN_SUPPORT_EXPOSED_PAIRS
     identity = {
         "current_bridge_input": {"path": bridge_input_path.as_posix(), "sha256": _sha256_file(bridge_input_path)},
         "metadata": copy.deepcopy(metadata_binding),
@@ -631,13 +971,17 @@ def execute_cli(args: argparse.Namespace) -> dict[str, Any]:
         "source": _source_identity(repo_root),
         "training": training_identity,
     }
+    if supported_mode:
+        identity["training_support"] = support_identity
     report = {
         "authority": {"formal_rl": False, "gameplay": False, "policy_loading": False, "promotion": False, "qualification": False},
         "charged_seconds": elapsed,
         "identity": identity,
         "operations": {"communication_mod": False, "gameplay": False, "model_fitting": False, "model_loading": True, "native_loading": True, "production_checkpoint_access": False, "seed_access": True, "training": False},
         "paired_access_count": 1,
-        "schema_version": SCHEMA_VERSION,
+        "schema_version": (
+            SUPPORTED_SCHEMA_VERSION if supported_mode else SCHEMA_VERSION
+        ),
         "verdict": verdict,
     }
     _write_artifacts(
@@ -647,6 +991,17 @@ def execute_cli(args: argparse.Namespace) -> dict[str, Any]:
         censored=censored,
         metrics=metrics,
         report=report,
+        manifest_schema_version=(
+            SUPPORTED_MANIFEST_SCHEMA_VERSION
+            if supported_mode
+            else MANIFEST_SCHEMA_VERSION
+        ),
+        report_title=(
+            "Supported Event Ranker Paired Full-Trajectory Shadow"
+            if supported_mode
+            else "Event Ranker Paired Full-Trajectory Shadow"
+        ),
+        selected_label=("Supported overlay" if supported_mode else "Event overlay"),
     )
     return {"complete_pairs": len(pairs), "output_dir": output.as_posix(), "verdict": verdict}
 
@@ -654,18 +1009,28 @@ def execute_cli(args: argparse.Namespace) -> dict[str, Any]:
 def _parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description=__doc__)
     subparsers = parser.add_subparsers(dest="command", required=True)
-    run = subparsers.add_parser("run")
-    run.add_argument("--repo-root", default=str(Path(__file__).resolve().parents[1]))
-    run.add_argument("--native-registration", default=str(DEFAULT_NATIVE_REGISTRATION))
-    run.add_argument("--current-bridge-input", default=str(DEFAULT_CURRENT_BRIDGE_INPUT))
-    run.add_argument("--training-dir", default=str(DEFAULT_TRAINING_DIR))
-    run.add_argument("--output-dir", default=str(DEFAULT_OUTPUT_DIR))
+    for command, output_dir in (
+        ("run", DEFAULT_OUTPUT_DIR),
+        ("run-supported", SUPPORTED_OUTPUT_DIR),
+    ):
+        run = subparsers.add_parser(command)
+        run.add_argument(
+            "--repo-root", default=str(Path(__file__).resolve().parents[1])
+        )
+        run.add_argument(
+            "--native-registration", default=str(DEFAULT_NATIVE_REGISTRATION)
+        )
+        run.add_argument(
+            "--current-bridge-input", default=str(DEFAULT_CURRENT_BRIDGE_INPUT)
+        )
+        run.add_argument("--training-dir", default=str(DEFAULT_TRAINING_DIR))
+        run.add_argument("--output-dir", default=str(output_dir))
     return parser
 
 
 def main(argv: Sequence[str] | None = None) -> int:
     args = _parser().parse_args(argv)
-    if args.command != "run":
+    if args.command not in {"run", "run-supported"}:
         raise PairedTrajectoryBlocked("unsupported command")
     print(json.dumps(execute_cli(args), ensure_ascii=True, sort_keys=True))
     return 0

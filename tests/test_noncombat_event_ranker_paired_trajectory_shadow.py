@@ -155,6 +155,70 @@ def test_selected_trajectory_overlays_only_multi_option_event(
     ]
 
 
+def test_support_signature_is_order_independent_and_semantic() -> None:
+    candidates = [_candidate("event", 0), _candidate("event", 1)]
+    signature = paired.event_candidate_support_signature(candidates)
+    assert paired.event_candidate_support_signature(list(reversed(candidates))) == signature
+
+    changed = json.loads(json.dumps(candidates))
+    changed[0]["raw"]["follow_up_control"] = "different"
+    assert paired.event_candidate_support_signature(changed) != signature
+
+
+def test_unsupported_event_falls_back_without_model_projection(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    _install_protocol(monkeypatch)
+    monkeypatch.setattr(
+        paired,
+        "project_state_conditioned_policy_input",
+        lambda *_args, **_kwargs: pytest.fail("unsupported event invoked model projection"),
+    )
+
+    selected = paired.run_trajectory(
+        lambda _seed: _Environment(),
+        lambda _seed: _Session(),
+        seed=1,
+        model=_FixedModel(),
+        confidence_threshold=0.5,
+        support_signatures={"absent": 1},
+    )
+
+    assert selected["action_sequence"][0] == "event:test:option:0"
+    assert selected["override_count"] == 0
+    assert selected["support_fallback_count"] == 1
+    assert selected["support_source_count"] == 0
+    assert selected["event_decisions"][0]["support_status"] == "fallback"
+    assert selected["event_decisions"][0]["fallback_reason"] == (
+        "candidate_semantics_absent_from_training"
+    )
+
+
+def test_supported_event_invokes_frozen_overlay(monkeypatch: pytest.MonkeyPatch) -> None:
+    _install_protocol(monkeypatch)
+    support = {
+        paired.event_candidate_support_signature(
+            [_candidate("event", 0), _candidate("event", 1)]
+        ): 3
+    }
+
+    selected = paired.run_trajectory(
+        lambda _seed: _Environment(),
+        lambda _seed: _Session(),
+        seed=1,
+        model=_FixedModel(),
+        confidence_threshold=0.5,
+        support_signatures=support,
+    )
+
+    assert selected["action_sequence"][0] == "event:test:option:1"
+    assert selected["override_count"] == 1
+    assert selected["support_fallback_count"] == 0
+    assert selected["support_source_count"] == 1
+    assert selected["event_decisions"][0]["support_status"] == "supported"
+    assert selected["event_decisions"][0]["training_support_count"] == 3
+
+
 def _arm(*, floor: int, victory: int, events: int = 1, overrides: int = 0) -> dict[str, Any]:
     return {
         "event_source_count": events,
@@ -193,6 +257,57 @@ def test_paired_gate_accepts_value_gain_and_rejects_lost_victory() -> None:
     assert bad["victory_losses"] == 1
 
 
+def test_supported_gate_requires_complete_fallback_accounting() -> None:
+    current = _arm(floor=10, victory=0)
+    selected = _arm(floor=20, victory=0, overrides=1)
+    selected.update(
+        {
+            "event_decisions": [
+                {
+                    "current_action_id": "event:test:option:0",
+                    "overridden": True,
+                    "selected_action_id": "event:test:option:1",
+                    "support_status": "supported",
+                }
+            ],
+            "support_fallback_count": 0,
+            "support_source_count": 1,
+        }
+    )
+    metrics, verdict = paired.evaluate_supported_pairs(
+        [_pair(1, current, selected)],
+        [],
+        minimum_complete_pairs=1,
+        minimum_event_exposed_pairs=1,
+        minimum_support_exposed_pairs=1,
+        minimum_override_pairs=1,
+    )
+
+    assert verdict == "supported_event_ranker_paired_trajectory_integration_ready"
+    assert all(metrics["checks"].values())
+    assert metrics["support"]["supported_sources"] == 1
+
+    selected["event_decisions"][0].update(
+        {
+            "fallback_reason": "candidate_semantics_absent_from_training",
+            "support_status": "fallback",
+        }
+    )
+    selected["support_fallback_count"] = 1
+    selected["support_source_count"] = 0
+    bad, bad_verdict = paired.evaluate_supported_pairs(
+        [_pair(2, current, selected)],
+        [],
+        minimum_complete_pairs=1,
+        minimum_event_exposed_pairs=1,
+        minimum_support_exposed_pairs=0,
+        minimum_override_pairs=1,
+    )
+    assert bad_verdict == "supported_event_ranker_paired_trajectory_integration_not_ready"
+    assert bad["checks"]["no_out_of_support_overrides"] is False
+    assert bad["checks"]["fallback_accounting_complete"] is False
+
+
 def test_registered_pair_blocker_is_narrow() -> None:
     assert paired._registered_blocker(
         paired.credit.CounterfactualCreditBlocked(paired.route.CURRENT_SHOP_MAPPING_BLOCKER)
@@ -222,3 +337,34 @@ def test_paired_artifacts_are_manifest_bound(tmp_path: Path) -> None:
         payload = (output / binding["path"]).read_bytes()
         assert len(payload) == binding["size_bytes"]
         assert hashlib.sha256(payload).hexdigest() == binding["sha256"]
+
+
+def test_bound_training_support_restores_manifest_dataset(tmp_path: Path) -> None:
+    support, identity = paired.load_bound_training_support(paired.DEFAULT_TRAINING_DIR)
+
+    assert len(support) == 31
+    assert len(identity["event_ids"]) == 25
+    assert identity["signature_count"] == len(support)
+
+    source = paired.DEFAULT_TRAINING_DIR / "train_dataset.json"
+    payload = source.read_bytes() + b"\n"
+    broken = tmp_path / "broken-training"
+    broken.mkdir()
+    (broken / "train_dataset.json").write_bytes(payload)
+    (broken / "artifact_manifest.json").write_text(
+        json.dumps(
+            {
+                "artifacts": [
+                    {
+                        "path": "train_dataset.json",
+                        "sha256": hashlib.sha256(source.read_bytes()).hexdigest(),
+                        "size_bytes": source.stat().st_size,
+                    }
+                ]
+            }
+        ),
+        encoding="ascii",
+    )
+
+    with pytest.raises(paired.PairedTrajectoryBlocked, match="manifest"):
+        paired.load_bound_training_support(broken)
