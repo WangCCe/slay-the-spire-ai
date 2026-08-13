@@ -1,0 +1,2335 @@
+{
+  "changes_vs_current": {
+    "action_changes": 37,
+    "corrected": 6,
+    "worsened": 5
+  },
+  "checks": {
+    "action_changes_at_least_one": true,
+    "corrects_at_least_one_current_decision": true,
+    "development_event_diversity": true,
+    "development_informative_support": true,
+    "development_support": true,
+    "maximum_regret_noninferior_to_current": true,
+    "mean_regret_improves_current": true,
+    "p95_regret_noninferior_to_current": true,
+    "raw_pairwise_accuracy_improves_initialization": true,
+    "worsened_not_more_than_corrected": true
+  },
+  "development": {
+    "current": {
+      "maximum_regret": 0.2982456140350877,
+      "mean_regret": 0.02438299137674695,
+      "p95_regret": 0.2631578947368421,
+      "predictions": [
+        {
+          "action_id": "event:living_wall:option:2",
+          "decision_index": 8,
+          "regret": 0.0,
+          "seed": 94228,
+          "source_sha256": "b8b6460806d6e6d8171a6322ade1da7f5e2f4e00bf4646ab10d1e25171d61d82"
+        },
+        {
+          "action_id": "event:the_cleric:option:1",
+          "decision_index": 10,
+          "regret": 0.0,
+          "seed": 94228,
+          "source_sha256": "04edf255d970384a74bf5a8ea46448fe29616141436a4308ef4bebd74fbd4f9e"
+        },
+        {
+          "action_id": "event:we_meet_again:option:1",
+          "decision_index": 3,
+          "regret": 0.0,
+          "seed": 94229,
+          "source_sha256": "1f1a82aa06242c216123346797021634a41b6dd4130ef1cfca6b4e0a729c1304"
+        },
+        {
+          "action_id": "event:the_ssssserpent:option:1",
+          "decision_index": 9,
+          "regret": 0.0,
+          "seed": 94229,
+          "source_sha256": "e351a3a7aaa7069f8a3dea00c8f3048453a8780aa76431d87205183b6b2cc202"
+        },
+        {
+          "action_id": "event:scrap_ooze:option:0",
+          "decision_index": 5,
+          "regret": 0.0,
+          "seed": 94230,
+          "source_sha256": "053ce2480574d42211ecb81d3fbb8cc9bbfc7373f71b7cf9f7ca94f0bbb0bf06"
+        },
+        {
+          "action_id": "event:scrap_ooze:option:0",
+          "decision_index": 6,
+          "regret": 0.0,
+          "seed": 94230,
+          "source_sha256": "245fb945491faa4fec6a6781ab75a10d57a35becabc1c7d967592639bad0cc8b"
+        },
+        {
+          "action_id": "event:big_fish:option:1",
+          "decision_index": 8,
+          "regret": 0.0,
+          "seed": 94231,
+          "source_sha256": "a9913da7f1caae387063556f3b88ed710352f67f4545a8768bca2d1ba99f9468"
+        },
+        {
+          "action_id": "event:upgrade_shrine:option:0",
+          "decision_index": 10,
+          "regret": 0.0,
+          "seed": 94231,
+          "source_sha256": "5c985daae8df6f649ba109cd3461c2bbd08b25a85b6aafed8da55753b0270b73"
+        },
+        {
+          "action_id": "event:world_of_goop:option:0",
+          "decision_index": 4,
+          "regret": 0.0,
+          "seed": 94232,
+          "source_sha256": "3444e94239e5adaa0c9e9aaa78b00d93272fd684b37a2800e9497cacdd116938"
+        },
+        {
+          "action_id": "event:golden_idol:option:0",
+          "decision_index": 10,
+          "regret": 0.0,
+          "seed": 94232,
+          "source_sha256": "9a25a7627f448d5754ef43efcb4a566bb21c27f9541b144ea19196c6df7d075b"
+        },
+        {
+          "action_id": "event:wing_statue:option:0",
+          "decision_index": 5,
+          "regret": 0.12280701754385964,
+          "seed": 94233,
+          "source_sha256": "f840ecbb3178b590cceb795a4764160b7468582c1397316677850338e664a29c"
+        },
+        {
+          "action_id": "event:world_of_goop:option:0",
+          "decision_index": 3,
+          "regret": 0.0,
+          "seed": 94234,
+          "source_sha256": "e975f157247c60e78f025c95214e4752265ec82edcad6f4d5c283c0427144873"
+        },
+        {
+          "action_id": "event:hypnotizing_colored_mushrooms:option:0",
+          "decision_index": 16,
+          "regret": 0.19298245614035087,
+          "seed": 94234,
+          "source_sha256": "f7f33889d17c6fee603b6e726f126f849bef20392e31aac823df470b3467a6d8"
+        },
+        {
+          "action_id": "event:the_ssssserpent:option:1",
+          "decision_index": 6,
+          "regret": 0.0,
+          "seed": 94235,
+          "source_sha256": "ce269dbed0084c8ce4be72131b588c28fc2a6b28cacdb49a7a7576929a32d7a8"
+        },
+        {
+          "action_id": "event:the_cleric:option:1",
+          "decision_index": 10,
+          "regret": 0.2982456140350877,
+          "seed": 94235,
+          "source_sha256": "f1a5728a2e323264649dd49d9a5ce7d1f673ef795ba8b41417a5044c182c164a"
+        },
+        {
+          "action_id": "event:wing_statue:option:0",
+          "decision_index": 5,
+          "regret": 0.0,
+          "seed": 94236,
+          "source_sha256": "a281daad011ee5dd55ec83c20a712b753907c3d639fb93d64087a1427542731e"
+        },
+        {
+          "action_id": "event:note_for_yourself:option:1",
+          "decision_index": 7,
+          "regret": 0.0,
+          "seed": 94236,
+          "source_sha256": "0e84e0877788feabe08a319b6375eaf25244a3045c6860e8c99b89755b0d9c77"
+        },
+        {
+          "action_id": "event:golden_shrine:option:0",
+          "decision_index": 5,
+          "regret": 0.0,
+          "seed": 94237,
+          "source_sha256": "d457cec153c7317a99dd739823121aed6b55cf64c7ad0ee7eab2cd1be60762c3"
+        },
+        {
+          "action_id": "event:purifier:option:0",
+          "decision_index": 12,
+          "regret": 0.0,
+          "seed": 94237,
+          "source_sha256": "422e8bd16dabbc7b832bffd11502a68f0a371c00361b38b0ffa400b438dd871e"
+        },
+        {
+          "action_id": "event:wing_statue:option:0",
+          "decision_index": 10,
+          "regret": 0.0,
+          "seed": 94238,
+          "source_sha256": "7f2a9e5d026d925898fd7cd8309ff46d9dcc2197b544786a900eaf940a644c2e"
+        },
+        {
+          "action_id": "event:golden_idol:option:0",
+          "decision_index": 7,
+          "regret": 0.05263157894736842,
+          "seed": 94239,
+          "source_sha256": "0f0836ce9418ea1936e39674c7af28ab2470e8be2c91ebb9eb580135b9465023"
+        },
+        {
+          "action_id": "event:the_ssssserpent:option:1",
+          "decision_index": 16,
+          "regret": 0.0,
+          "seed": 94239,
+          "source_sha256": "d347815277e1b647e0ceed972731419c580fd19fbe5e780f05506fa8034a9706"
+        },
+        {
+          "action_id": "event:big_fish:option:1",
+          "decision_index": 4,
+          "regret": 0.0,
+          "seed": 94240,
+          "source_sha256": "df0de1b67469fa408131fc5e4fdb8926c53b567a2b32136dbab706df635399e3"
+        },
+        {
+          "action_id": "event:world_of_goop:option:0",
+          "decision_index": 9,
+          "regret": 0.0,
+          "seed": 94240,
+          "source_sha256": "9b8381c590ac306a5dafeff6a96dd3b935a14434c1050ee1984af97b35f25923"
+        },
+        {
+          "action_id": "event:wing_statue:option:0",
+          "decision_index": 10,
+          "regret": 0.15789473684210525,
+          "seed": 94241,
+          "source_sha256": "42a91328a72113c9a6db7107f89c1880926e798e25752f1ad24df58814a01adf"
+        },
+        {
+          "action_id": "event:the_ssssserpent:option:1",
+          "decision_index": 13,
+          "regret": 0.0,
+          "seed": 94241,
+          "source_sha256": "43828b0d6a6de30c477ddb615bf42cd5eeb16b9465df1dc9ec6dbbfee40be3d4"
+        },
+        {
+          "action_id": "event:big_fish:option:1",
+          "decision_index": 3,
+          "regret": 0.0,
+          "seed": 94242,
+          "source_sha256": "961217959ef91741a8b8735797d5612866660fc9af42d6d97a42921accd355fe"
+        },
+        {
+          "action_id": "event:scrap_ooze:option:0",
+          "decision_index": 7,
+          "regret": 0.0,
+          "seed": 94242,
+          "source_sha256": "d6afe95d5bec88a6a1b8550b0a5b4ed587bec5a1d361180b77d756e109f61e14"
+        },
+        {
+          "action_id": "event:big_fish:option:1",
+          "decision_index": 7,
+          "regret": 0.0,
+          "seed": 94243,
+          "source_sha256": "100eb0c1643c59dddb26168d38a64ac22f6ef70ec60248345d416aacde914310"
+        },
+        {
+          "action_id": "event:the_cleric:option:1",
+          "decision_index": 6,
+          "regret": 0.0,
+          "seed": 94244,
+          "source_sha256": "052d980d473f6ee7cd3ec9cd53c8f226d557ea87353dc11519e78bddb0b54a7a"
+        },
+        {
+          "action_id": "event:golden_idol:option:0",
+          "decision_index": 8,
+          "regret": 0.2631578947368421,
+          "seed": 94244,
+          "source_sha256": "274b89b8ba0806e61bd27c6dd7f98de60f76d5b7157184d14d8c7a75561868ea"
+        },
+        {
+          "action_id": "event:scrap_ooze:option:0",
+          "decision_index": 3,
+          "regret": 0.29824561403508765,
+          "seed": 94245,
+          "source_sha256": "22862c398a6b435864b642cfa5ed927b9e91f0cf454f6b06bf1e95cbba977003"
+        },
+        {
+          "action_id": "event:the_ssssserpent:option:1",
+          "decision_index": 5,
+          "regret": 0.0,
+          "seed": 94245,
+          "source_sha256": "570b7d365c9fd7fa6e5919f0339a580ebec48d01e7a2f2f746062e8c14971924"
+        },
+        {
+          "action_id": "event:wing_statue:option:0",
+          "decision_index": 22,
+          "regret": 0.0,
+          "seed": 94246,
+          "source_sha256": "c29463bfda8994a5231f4b83b520eba4e4f7786db7aa4e160dc0d5c912e2c7b6"
+        },
+        {
+          "action_id": "event:dead_adventurer:option:1",
+          "decision_index": 25,
+          "regret": 0.0,
+          "seed": 94246,
+          "source_sha256": "d54bc6508110b1c42d9f07e58ba6cebc725e131a6e9fd1af4024f6982d33a265"
+        },
+        {
+          "action_id": "event:scrap_ooze:option:0",
+          "decision_index": 3,
+          "regret": 0.0,
+          "seed": 94247,
+          "source_sha256": "8c1071726aaa4ceb22bbebde6a826448162556c6f44ee140bb7a68c239788e9b"
+        },
+        {
+          "action_id": "event:scrap_ooze:option:0",
+          "decision_index": 4,
+          "regret": 0.0,
+          "seed": 94247,
+          "source_sha256": "a0923023be73fd91831447e0e497504fcd7b6dc079dbe46705501d9711432cb0"
+        },
+        {
+          "action_id": "event:scrap_ooze:option:0",
+          "decision_index": 3,
+          "regret": 0.0,
+          "seed": 94248,
+          "source_sha256": "ce62810ede4f3efe6cd8ccc2bfa71968c168a76e6eb7ceb3d3e3899af017c740"
+        },
+        {
+          "action_id": "event:scrap_ooze:option:0",
+          "decision_index": 4,
+          "regret": 0.0,
+          "seed": 94248,
+          "source_sha256": "6f38356c09b2b50616b560a5f506903586d185c7cbdb51d88d3b621f75eefe90"
+        },
+        {
+          "action_id": "event:the_ssssserpent:option:1",
+          "decision_index": 3,
+          "regret": 0.0,
+          "seed": 94249,
+          "source_sha256": "22da0ed5ce04ed4cc0027ee8e96a10d72db82d909c160af5e3ad2be257403fde"
+        },
+        {
+          "action_id": "event:shining_light:option:0",
+          "decision_index": 10,
+          "regret": 0.0,
+          "seed": 94249,
+          "source_sha256": "9155ebe56eeb456c9aeb9969d356ad8503fadd04a9ab6e7137a8986e7bb02894"
+        },
+        {
+          "action_id": "event:golden_idol:option:0",
+          "decision_index": 5,
+          "regret": 0.0,
+          "seed": 94251,
+          "source_sha256": "c3fc8d57436999b7c923390a4340563a94eed7f1b79e0761258fcc187df2a200"
+        },
+        {
+          "action_id": "event:the_cleric:option:1",
+          "decision_index": 9,
+          "regret": 0.0,
+          "seed": 94251,
+          "source_sha256": "5b0eb7315a9a9d8aeb115a8d417ed762bc0c09728a2e33e74539588fd6270ffa"
+        },
+        {
+          "action_id": "event:wing_statue:option:0",
+          "decision_index": 3,
+          "regret": 0.0,
+          "seed": 94252,
+          "source_sha256": "def6aa7a771023c80a541762ba2850f519035ada4c3972339ebd33fe79ab8315"
+        },
+        {
+          "action_id": "event:dead_adventurer:option:1",
+          "decision_index": 16,
+          "regret": 0.0,
+          "seed": 94252,
+          "source_sha256": "822824d97965a906e371f64bb8a37f1d48113a98fb9612c7c1374fd9d6cdaecc"
+        },
+        {
+          "action_id": "event:scrap_ooze:option:0",
+          "decision_index": 3,
+          "regret": 0.0,
+          "seed": 94253,
+          "source_sha256": "be82fce513f359076420dbf2591e28f1f591e1426405d302e159981e3e61d67a"
+        },
+        {
+          "action_id": "event:forgotten_altar:option:1",
+          "decision_index": 39,
+          "regret": 0.0,
+          "seed": 94253,
+          "source_sha256": "363bb7c2b9eee620c13153e935a4ed29e44882790e5c396e44862b0e03111422"
+        },
+        {
+          "action_id": "event:ominous_forge:option:0",
+          "decision_index": 6,
+          "regret": 0.0,
+          "seed": 94254,
+          "source_sha256": "bab833c37c62ba54ffc8c47c57eed430c2a33e7c960056090fe78de0b6accaf1"
+        },
+        {
+          "action_id": "event:scrap_ooze:option:0",
+          "decision_index": 10,
+          "regret": 0.0,
+          "seed": 94254,
+          "source_sha256": "7349b1819d4496121f59b6f97bb1291c02dc7474005998f4c5b1f00b28f31bfa"
+        },
+        {
+          "action_id": "event:living_wall:option:2",
+          "decision_index": 7,
+          "regret": 0.0,
+          "seed": 94255,
+          "source_sha256": "a335d48ffa68862eda3fed90f0ab38287c3c1dd8a737a9e338cc858e2588e57e"
+        },
+        {
+          "action_id": "event:face_trader:option:0",
+          "decision_index": 9,
+          "regret": 0.0,
+          "seed": 94255,
+          "source_sha256": "a3996a9dc3593ecb989b52e2e4e8ebf3abc96605aee3b5d921455520e4712133"
+        },
+        {
+          "action_id": "event:purifier:option:0",
+          "decision_index": 4,
+          "regret": 0.0,
+          "seed": 94256,
+          "source_sha256": "04ba362c9e4e31af6232e048be7b7391f5d9c5ff5c06c002df61fe59ca252b87"
+        },
+        {
+          "action_id": "event:scrap_ooze:option:0",
+          "decision_index": 11,
+          "regret": 0.0,
+          "seed": 94256,
+          "source_sha256": "ca0dea17a80f9c31fb446e2985aab4343015db6becda025b0a329c0d39f6ab64"
+        },
+        {
+          "action_id": "event:the_cleric:option:1",
+          "decision_index": 3,
+          "regret": 0.0,
+          "seed": 94257,
+          "source_sha256": "5f302b849d2ed67decccd350379459c779760358a7a37995900a3764dd33a860"
+        },
+        {
+          "action_id": "event:golden_idol:option:0",
+          "decision_index": 5,
+          "regret": 0.05263157894736842,
+          "seed": 94257,
+          "source_sha256": "52dc674140c52fa09daf0e514d76e4f8163255d39a42a598d5933e44c6ca894f"
+        },
+        {
+          "action_id": "event:golden_idol:option:0",
+          "decision_index": 5,
+          "regret": 0.0,
+          "seed": 94258,
+          "source_sha256": "31a85b2021209b7ebfdef9e33c78b453b4cf3ab8da7264f70625beecf363edd3"
+        },
+        {
+          "action_id": "event:shining_light:option:0",
+          "decision_index": 11,
+          "regret": 0.0,
+          "seed": 94258,
+          "source_sha256": "6f8ab3a98ba598fc866a820169adceea70d0aa7edbfd9539d584a7261ce4f848"
+        },
+        {
+          "action_id": "event:we_meet_again:option:0",
+          "decision_index": 3,
+          "regret": 0.0,
+          "seed": 94259,
+          "source_sha256": "c77b27d7f55a6dec3ed1ebeb588d9045424ed1a4c9baa591051e6c3270b7df9a"
+        },
+        {
+          "action_id": "event:big_fish:option:1",
+          "decision_index": 23,
+          "regret": 0.0,
+          "seed": 94259,
+          "source_sha256": "638d0147b73fdd61a907225fc643999702733c03110b9a1cab6e4e8940c46730"
+        }
+      ],
+      "unique_best_accuracy": 0.5882352941176471,
+      "unique_best_rows": 17
+    },
+    "gated": {
+      "confidence_threshold": 0.5,
+      "maximum_regret": 0.29824561403508765,
+      "mean_regret": 0.01486767766874814,
+      "override_count": 37,
+      "p95_regret": 0.15789473684210525,
+      "predictions": [
+        {
+          "action_id": "event:living_wall:option:0",
+          "confidence": 0.503421425819397,
+          "current_action_id": "event:living_wall:option:2",
+          "decision_index": 8,
+          "learned_action_id": "event:living_wall:option:0",
+          "regret": 0.0,
+          "seed": 94228,
+          "source_sha256": "b8b6460806d6e6d8171a6322ade1da7f5e2f4e00bf4646ab10d1e25171d61d82"
+        },
+        {
+          "action_id": "event:the_cleric:option:0",
+          "confidence": 0.5030032396316528,
+          "current_action_id": "event:the_cleric:option:1",
+          "decision_index": 10,
+          "learned_action_id": "event:the_cleric:option:0",
+          "regret": 0.0,
+          "seed": 94228,
+          "source_sha256": "04edf255d970384a74bf5a8ea46448fe29616141436a4308ef4bebd74fbd4f9e"
+        },
+        {
+          "action_id": "event:we_meet_again:option:2",
+          "confidence": 0.5031837821006775,
+          "current_action_id": "event:we_meet_again:option:1",
+          "decision_index": 3,
+          "learned_action_id": "event:we_meet_again:option:2",
+          "regret": 0.0,
+          "seed": 94229,
+          "source_sha256": "1f1a82aa06242c216123346797021634a41b6dd4130ef1cfca6b4e0a729c1304"
+        },
+        {
+          "action_id": "event:the_ssssserpent:option:1",
+          "confidence": 0.5,
+          "current_action_id": "event:the_ssssserpent:option:1",
+          "decision_index": 9,
+          "learned_action_id": "event:the_ssssserpent:option:1",
+          "regret": 0.0,
+          "seed": 94229,
+          "source_sha256": "e351a3a7aaa7069f8a3dea00c8f3048453a8780aa76431d87205183b6b2cc202"
+        },
+        {
+          "action_id": "event:scrap_ooze:option:0",
+          "confidence": 0.5,
+          "current_action_id": "event:scrap_ooze:option:0",
+          "decision_index": 5,
+          "learned_action_id": "event:scrap_ooze:option:0",
+          "regret": 0.0,
+          "seed": 94230,
+          "source_sha256": "053ce2480574d42211ecb81d3fbb8cc9bbfc7373f71b7cf9f7ca94f0bbb0bf06"
+        },
+        {
+          "action_id": "event:scrap_ooze:option:0",
+          "confidence": 0.5,
+          "current_action_id": "event:scrap_ooze:option:0",
+          "decision_index": 6,
+          "learned_action_id": "event:scrap_ooze:option:0",
+          "regret": 0.0,
+          "seed": 94230,
+          "source_sha256": "245fb945491faa4fec6a6781ab75a10d57a35becabc1c7d967592639bad0cc8b"
+        },
+        {
+          "action_id": "event:big_fish:option:0",
+          "confidence": 0.5021179914474487,
+          "current_action_id": "event:big_fish:option:1",
+          "decision_index": 8,
+          "learned_action_id": "event:big_fish:option:0",
+          "regret": 0.0,
+          "seed": 94231,
+          "source_sha256": "a9913da7f1caae387063556f3b88ed710352f67f4545a8768bca2d1ba99f9468"
+        },
+        {
+          "action_id": "event:upgrade_shrine:option:1",
+          "confidence": 0.5024378299713135,
+          "current_action_id": "event:upgrade_shrine:option:0",
+          "decision_index": 10,
+          "learned_action_id": "event:upgrade_shrine:option:1",
+          "regret": 0.0,
+          "seed": 94231,
+          "source_sha256": "5c985daae8df6f649ba109cd3461c2bbd08b25a85b6aafed8da55753b0270b73"
+        },
+        {
+          "action_id": "event:world_of_goop:option:1",
+          "confidence": 0.502504825592041,
+          "current_action_id": "event:world_of_goop:option:0",
+          "decision_index": 4,
+          "learned_action_id": "event:world_of_goop:option:1",
+          "regret": 0.15789473684210525,
+          "seed": 94232,
+          "source_sha256": "3444e94239e5adaa0c9e9aaa78b00d93272fd684b37a2800e9497cacdd116938"
+        },
+        {
+          "action_id": "event:golden_idol:option:1",
+          "confidence": 0.5020365715026855,
+          "current_action_id": "event:golden_idol:option:0",
+          "decision_index": 10,
+          "learned_action_id": "event:golden_idol:option:1",
+          "regret": 0.07017543859649122,
+          "seed": 94232,
+          "source_sha256": "9a25a7627f448d5754ef43efcb4a566bb21c27f9541b144ea19196c6df7d075b"
+        },
+        {
+          "action_id": "event:wing_statue:option:2",
+          "confidence": 0.5009767413139343,
+          "current_action_id": "event:wing_statue:option:0",
+          "decision_index": 5,
+          "learned_action_id": "event:wing_statue:option:2",
+          "regret": 0.0,
+          "seed": 94233,
+          "source_sha256": "f840ecbb3178b590cceb795a4764160b7468582c1397316677850338e664a29c"
+        },
+        {
+          "action_id": "event:world_of_goop:option:1",
+          "confidence": 0.5016660094261169,
+          "current_action_id": "event:world_of_goop:option:0",
+          "decision_index": 3,
+          "learned_action_id": "event:world_of_goop:option:1",
+          "regret": 0.0,
+          "seed": 94234,
+          "source_sha256": "e975f157247c60e78f025c95214e4752265ec82edcad6f4d5c283c0427144873"
+        },
+        {
+          "action_id": "event:hypnotizing_colored_mushrooms:option:0",
+          "confidence": 0.5,
+          "current_action_id": "event:hypnotizing_colored_mushrooms:option:0",
+          "decision_index": 16,
+          "learned_action_id": "event:hypnotizing_colored_mushrooms:option:0",
+          "regret": 0.19298245614035087,
+          "seed": 94234,
+          "source_sha256": "f7f33889d17c6fee603b6e726f126f849bef20392e31aac823df470b3467a6d8"
+        },
+        {
+          "action_id": "event:the_ssssserpent:option:1",
+          "confidence": 0.5,
+          "current_action_id": "event:the_ssssserpent:option:1",
+          "decision_index": 6,
+          "learned_action_id": "event:the_ssssserpent:option:1",
+          "regret": 0.0,
+          "seed": 94235,
+          "source_sha256": "ce269dbed0084c8ce4be72131b588c28fc2a6b28cacdb49a7a7576929a32d7a8"
+        },
+        {
+          "action_id": "event:the_cleric:option:0",
+          "confidence": 0.5022019743919373,
+          "current_action_id": "event:the_cleric:option:1",
+          "decision_index": 10,
+          "learned_action_id": "event:the_cleric:option:0",
+          "regret": 0.0,
+          "seed": 94235,
+          "source_sha256": "f1a5728a2e323264649dd49d9a5ce7d1f673ef795ba8b41417a5044c182c164a"
+        },
+        {
+          "action_id": "event:wing_statue:option:2",
+          "confidence": 0.5011780261993408,
+          "current_action_id": "event:wing_statue:option:0",
+          "decision_index": 5,
+          "learned_action_id": "event:wing_statue:option:2",
+          "regret": 0.0,
+          "seed": 94236,
+          "source_sha256": "a281daad011ee5dd55ec83c20a712b753907c3d639fb93d64087a1427542731e"
+        },
+        {
+          "action_id": "event:note_for_yourself:option:1",
+          "confidence": 0.5,
+          "current_action_id": "event:note_for_yourself:option:1",
+          "decision_index": 7,
+          "learned_action_id": "event:note_for_yourself:option:1",
+          "regret": 0.0,
+          "seed": 94236,
+          "source_sha256": "0e84e0877788feabe08a319b6375eaf25244a3045c6860e8c99b89755b0d9c77"
+        },
+        {
+          "action_id": "event:golden_shrine:option:2",
+          "confidence": 0.5026249885559082,
+          "current_action_id": "event:golden_shrine:option:0",
+          "decision_index": 5,
+          "learned_action_id": "event:golden_shrine:option:2",
+          "regret": 0.0,
+          "seed": 94237,
+          "source_sha256": "d457cec153c7317a99dd739823121aed6b55cf64c7ad0ee7eab2cd1be60762c3"
+        },
+        {
+          "action_id": "event:purifier:option:1",
+          "confidence": 0.5013402700424194,
+          "current_action_id": "event:purifier:option:0",
+          "decision_index": 12,
+          "learned_action_id": "event:purifier:option:1",
+          "regret": 0.0,
+          "seed": 94237,
+          "source_sha256": "422e8bd16dabbc7b832bffd11502a68f0a371c00361b38b0ffa400b438dd871e"
+        },
+        {
+          "action_id": "event:wing_statue:option:2",
+          "confidence": 0.5021477937698364,
+          "current_action_id": "event:wing_statue:option:0",
+          "decision_index": 10,
+          "learned_action_id": "event:wing_statue:option:2",
+          "regret": 0.0,
+          "seed": 94238,
+          "source_sha256": "7f2a9e5d026d925898fd7cd8309ff46d9dcc2197b544786a900eaf940a644c2e"
+        },
+        {
+          "action_id": "event:golden_idol:option:1",
+          "confidence": 0.5015451908111572,
+          "current_action_id": "event:golden_idol:option:0",
+          "decision_index": 7,
+          "learned_action_id": "event:golden_idol:option:1",
+          "regret": 0.0,
+          "seed": 94239,
+          "source_sha256": "0f0836ce9418ea1936e39674c7af28ab2470e8be2c91ebb9eb580135b9465023"
+        },
+        {
+          "action_id": "event:the_ssssserpent:option:1",
+          "confidence": 0.5,
+          "current_action_id": "event:the_ssssserpent:option:1",
+          "decision_index": 16,
+          "learned_action_id": "event:the_ssssserpent:option:1",
+          "regret": 0.0,
+          "seed": 94239,
+          "source_sha256": "d347815277e1b647e0ceed972731419c580fd19fbe5e780f05506fa8034a9706"
+        },
+        {
+          "action_id": "event:big_fish:option:0",
+          "confidence": 0.5029216408729553,
+          "current_action_id": "event:big_fish:option:1",
+          "decision_index": 4,
+          "learned_action_id": "event:big_fish:option:0",
+          "regret": 0.0,
+          "seed": 94240,
+          "source_sha256": "df0de1b67469fa408131fc5e4fdb8926c53b567a2b32136dbab706df635399e3"
+        },
+        {
+          "action_id": "event:world_of_goop:option:1",
+          "confidence": 0.500436544418335,
+          "current_action_id": "event:world_of_goop:option:0",
+          "decision_index": 9,
+          "learned_action_id": "event:world_of_goop:option:1",
+          "regret": 0.0,
+          "seed": 94240,
+          "source_sha256": "9b8381c590ac306a5dafeff6a96dd3b935a14434c1050ee1984af97b35f25923"
+        },
+        {
+          "action_id": "event:wing_statue:option:2",
+          "confidence": 0.5012145638465881,
+          "current_action_id": "event:wing_statue:option:0",
+          "decision_index": 10,
+          "learned_action_id": "event:wing_statue:option:2",
+          "regret": 0.0,
+          "seed": 94241,
+          "source_sha256": "42a91328a72113c9a6db7107f89c1880926e798e25752f1ad24df58814a01adf"
+        },
+        {
+          "action_id": "event:the_ssssserpent:option:1",
+          "confidence": 0.5,
+          "current_action_id": "event:the_ssssserpent:option:1",
+          "decision_index": 13,
+          "learned_action_id": "event:the_ssssserpent:option:1",
+          "regret": 0.0,
+          "seed": 94241,
+          "source_sha256": "43828b0d6a6de30c477ddb615bf42cd5eeb16b9465df1dc9ec6dbbfee40be3d4"
+        },
+        {
+          "action_id": "event:big_fish:option:0",
+          "confidence": 0.5014904737472534,
+          "current_action_id": "event:big_fish:option:1",
+          "decision_index": 3,
+          "learned_action_id": "event:big_fish:option:0",
+          "regret": 0.0,
+          "seed": 94242,
+          "source_sha256": "961217959ef91741a8b8735797d5612866660fc9af42d6d97a42921accd355fe"
+        },
+        {
+          "action_id": "event:scrap_ooze:option:0",
+          "confidence": 0.5,
+          "current_action_id": "event:scrap_ooze:option:0",
+          "decision_index": 7,
+          "learned_action_id": "event:scrap_ooze:option:0",
+          "regret": 0.0,
+          "seed": 94242,
+          "source_sha256": "d6afe95d5bec88a6a1b8550b0a5b4ed587bec5a1d361180b77d756e109f61e14"
+        },
+        {
+          "action_id": "event:big_fish:option:0",
+          "confidence": 0.5014106631278992,
+          "current_action_id": "event:big_fish:option:1",
+          "decision_index": 7,
+          "learned_action_id": "event:big_fish:option:0",
+          "regret": 0.0,
+          "seed": 94243,
+          "source_sha256": "100eb0c1643c59dddb26168d38a64ac22f6ef70ec60248345d416aacde914310"
+        },
+        {
+          "action_id": "event:the_cleric:option:0",
+          "confidence": 0.503607988357544,
+          "current_action_id": "event:the_cleric:option:1",
+          "decision_index": 6,
+          "learned_action_id": "event:the_cleric:option:0",
+          "regret": 0.0,
+          "seed": 94244,
+          "source_sha256": "052d980d473f6ee7cd3ec9cd53c8f226d557ea87353dc11519e78bddb0b54a7a"
+        },
+        {
+          "action_id": "event:golden_idol:option:1",
+          "confidence": 0.5033655762672424,
+          "current_action_id": "event:golden_idol:option:0",
+          "decision_index": 8,
+          "learned_action_id": "event:golden_idol:option:1",
+          "regret": 0.0,
+          "seed": 94244,
+          "source_sha256": "274b89b8ba0806e61bd27c6dd7f98de60f76d5b7157184d14d8c7a75561868ea"
+        },
+        {
+          "action_id": "event:scrap_ooze:option:0",
+          "confidence": 0.5,
+          "current_action_id": "event:scrap_ooze:option:0",
+          "decision_index": 3,
+          "learned_action_id": "event:scrap_ooze:option:0",
+          "regret": 0.29824561403508765,
+          "seed": 94245,
+          "source_sha256": "22862c398a6b435864b642cfa5ed927b9e91f0cf454f6b06bf1e95cbba977003"
+        },
+        {
+          "action_id": "event:the_ssssserpent:option:1",
+          "confidence": 0.5,
+          "current_action_id": "event:the_ssssserpent:option:1",
+          "decision_index": 5,
+          "learned_action_id": "event:the_ssssserpent:option:1",
+          "regret": 0.0,
+          "seed": 94245,
+          "source_sha256": "570b7d365c9fd7fa6e5919f0339a580ebec48d01e7a2f2f746062e8c14971924"
+        },
+        {
+          "action_id": "event:wing_statue:option:2",
+          "confidence": 0.5024272203445435,
+          "current_action_id": "event:wing_statue:option:0",
+          "decision_index": 22,
+          "learned_action_id": "event:wing_statue:option:2",
+          "regret": 0.0,
+          "seed": 94246,
+          "source_sha256": "c29463bfda8994a5231f4b83b520eba4e4f7786db7aa4e160dc0d5c912e2c7b6"
+        },
+        {
+          "action_id": "event:dead_adventurer:option:1",
+          "confidence": 0.5,
+          "current_action_id": "event:dead_adventurer:option:1",
+          "decision_index": 25,
+          "learned_action_id": "event:dead_adventurer:option:1",
+          "regret": 0.0,
+          "seed": 94246,
+          "source_sha256": "d54bc6508110b1c42d9f07e58ba6cebc725e131a6e9fd1af4024f6982d33a265"
+        },
+        {
+          "action_id": "event:scrap_ooze:option:0",
+          "confidence": 0.5,
+          "current_action_id": "event:scrap_ooze:option:0",
+          "decision_index": 3,
+          "learned_action_id": "event:scrap_ooze:option:0",
+          "regret": 0.0,
+          "seed": 94247,
+          "source_sha256": "8c1071726aaa4ceb22bbebde6a826448162556c6f44ee140bb7a68c239788e9b"
+        },
+        {
+          "action_id": "event:scrap_ooze:option:0",
+          "confidence": 0.5,
+          "current_action_id": "event:scrap_ooze:option:0",
+          "decision_index": 4,
+          "learned_action_id": "event:scrap_ooze:option:0",
+          "regret": 0.0,
+          "seed": 94247,
+          "source_sha256": "a0923023be73fd91831447e0e497504fcd7b6dc079dbe46705501d9711432cb0"
+        },
+        {
+          "action_id": "event:scrap_ooze:option:0",
+          "confidence": 0.5,
+          "current_action_id": "event:scrap_ooze:option:0",
+          "decision_index": 3,
+          "learned_action_id": "event:scrap_ooze:option:0",
+          "regret": 0.0,
+          "seed": 94248,
+          "source_sha256": "ce62810ede4f3efe6cd8ccc2bfa71968c168a76e6eb7ceb3d3e3899af017c740"
+        },
+        {
+          "action_id": "event:scrap_ooze:option:0",
+          "confidence": 0.5,
+          "current_action_id": "event:scrap_ooze:option:0",
+          "decision_index": 4,
+          "learned_action_id": "event:scrap_ooze:option:0",
+          "regret": 0.0,
+          "seed": 94248,
+          "source_sha256": "6f38356c09b2b50616b560a5f506903586d185c7cbdb51d88d3b621f75eefe90"
+        },
+        {
+          "action_id": "event:the_ssssserpent:option:1",
+          "confidence": 0.5,
+          "current_action_id": "event:the_ssssserpent:option:1",
+          "decision_index": 3,
+          "learned_action_id": "event:the_ssssserpent:option:1",
+          "regret": 0.0,
+          "seed": 94249,
+          "source_sha256": "22da0ed5ce04ed4cc0027ee8e96a10d72db82d909c160af5e3ad2be257403fde"
+        },
+        {
+          "action_id": "event:shining_light:option:1",
+          "confidence": 0.5060145258903503,
+          "current_action_id": "event:shining_light:option:0",
+          "decision_index": 10,
+          "learned_action_id": "event:shining_light:option:1",
+          "regret": 0.0,
+          "seed": 94249,
+          "source_sha256": "9155ebe56eeb456c9aeb9969d356ad8503fadd04a9ab6e7137a8986e7bb02894"
+        },
+        {
+          "action_id": "event:golden_idol:option:1",
+          "confidence": 0.5024601221084595,
+          "current_action_id": "event:golden_idol:option:0",
+          "decision_index": 5,
+          "learned_action_id": "event:golden_idol:option:1",
+          "regret": 0.0,
+          "seed": 94251,
+          "source_sha256": "c3fc8d57436999b7c923390a4340563a94eed7f1b79e0761258fcc187df2a200"
+        },
+        {
+          "action_id": "event:the_cleric:option:0",
+          "confidence": 0.503056526184082,
+          "current_action_id": "event:the_cleric:option:1",
+          "decision_index": 9,
+          "learned_action_id": "event:the_cleric:option:0",
+          "regret": 0.0,
+          "seed": 94251,
+          "source_sha256": "5b0eb7315a9a9d8aeb115a8d417ed762bc0c09728a2e33e74539588fd6270ffa"
+        },
+        {
+          "action_id": "event:wing_statue:option:1",
+          "confidence": 0.500897228717804,
+          "current_action_id": "event:wing_statue:option:0",
+          "decision_index": 3,
+          "learned_action_id": "event:wing_statue:option:1",
+          "regret": 0.08771929824561403,
+          "seed": 94252,
+          "source_sha256": "def6aa7a771023c80a541762ba2850f519035ada4c3972339ebd33fe79ab8315"
+        },
+        {
+          "action_id": "event:dead_adventurer:option:0",
+          "confidence": 0.5007169246673584,
+          "current_action_id": "event:dead_adventurer:option:1",
+          "decision_index": 16,
+          "learned_action_id": "event:dead_adventurer:option:0",
+          "regret": 0.0,
+          "seed": 94252,
+          "source_sha256": "822824d97965a906e371f64bb8a37f1d48113a98fb9612c7c1374fd9d6cdaecc"
+        },
+        {
+          "action_id": "event:scrap_ooze:option:0",
+          "confidence": 0.5,
+          "current_action_id": "event:scrap_ooze:option:0",
+          "decision_index": 3,
+          "learned_action_id": "event:scrap_ooze:option:0",
+          "regret": 0.0,
+          "seed": 94253,
+          "source_sha256": "be82fce513f359076420dbf2591e28f1f591e1426405d302e159981e3e61d67a"
+        },
+        {
+          "action_id": "event:forgotten_altar:option:1",
+          "confidence": 0.5,
+          "current_action_id": "event:forgotten_altar:option:1",
+          "decision_index": 39,
+          "learned_action_id": "event:forgotten_altar:option:1",
+          "regret": 0.0,
+          "seed": 94253,
+          "source_sha256": "363bb7c2b9eee620c13153e935a4ed29e44882790e5c396e44862b0e03111422"
+        },
+        {
+          "action_id": "event:ominous_forge:option:0",
+          "confidence": 0.5,
+          "current_action_id": "event:ominous_forge:option:0",
+          "decision_index": 6,
+          "learned_action_id": "event:ominous_forge:option:0",
+          "regret": 0.0,
+          "seed": 94254,
+          "source_sha256": "bab833c37c62ba54ffc8c47c57eed430c2a33e7c960056090fe78de0b6accaf1"
+        },
+        {
+          "action_id": "event:scrap_ooze:option:0",
+          "confidence": 0.5,
+          "current_action_id": "event:scrap_ooze:option:0",
+          "decision_index": 10,
+          "learned_action_id": "event:scrap_ooze:option:0",
+          "regret": 0.0,
+          "seed": 94254,
+          "source_sha256": "7349b1819d4496121f59b6f97bb1291c02dc7474005998f4c5b1f00b28f31bfa"
+        },
+        {
+          "action_id": "event:living_wall:option:0",
+          "confidence": 0.5027570724487305,
+          "current_action_id": "event:living_wall:option:2",
+          "decision_index": 7,
+          "learned_action_id": "event:living_wall:option:0",
+          "regret": 0.0,
+          "seed": 94255,
+          "source_sha256": "a335d48ffa68862eda3fed90f0ab38287c3c1dd8a737a9e338cc858e2588e57e"
+        },
+        {
+          "action_id": "event:face_trader:option:2",
+          "confidence": 0.5036439299583435,
+          "current_action_id": "event:face_trader:option:0",
+          "decision_index": 9,
+          "learned_action_id": "event:face_trader:option:2",
+          "regret": 0.0,
+          "seed": 94255,
+          "source_sha256": "a3996a9dc3593ecb989b52e2e4e8ebf3abc96605aee3b5d921455520e4712133"
+        },
+        {
+          "action_id": "event:purifier:option:1",
+          "confidence": 0.5009428262710571,
+          "current_action_id": "event:purifier:option:0",
+          "decision_index": 4,
+          "learned_action_id": "event:purifier:option:1",
+          "regret": 0.0,
+          "seed": 94256,
+          "source_sha256": "04ba362c9e4e31af6232e048be7b7391f5d9c5ff5c06c002df61fe59ca252b87"
+        },
+        {
+          "action_id": "event:scrap_ooze:option:0",
+          "confidence": 0.5,
+          "current_action_id": "event:scrap_ooze:option:0",
+          "decision_index": 11,
+          "learned_action_id": "event:scrap_ooze:option:0",
+          "regret": 0.0,
+          "seed": 94256,
+          "source_sha256": "ca0dea17a80f9c31fb446e2985aab4343015db6becda025b0a329c0d39f6ab64"
+        },
+        {
+          "action_id": "event:the_cleric:option:0",
+          "confidence": 0.5030189752578735,
+          "current_action_id": "event:the_cleric:option:1",
+          "decision_index": 3,
+          "learned_action_id": "event:the_cleric:option:0",
+          "regret": 0.05263157894736842,
+          "seed": 94257,
+          "source_sha256": "5f302b849d2ed67decccd350379459c779760358a7a37995900a3764dd33a860"
+        },
+        {
+          "action_id": "event:golden_idol:option:1",
+          "confidence": 0.5034441947937012,
+          "current_action_id": "event:golden_idol:option:0",
+          "decision_index": 5,
+          "learned_action_id": "event:golden_idol:option:1",
+          "regret": 0.0,
+          "seed": 94257,
+          "source_sha256": "52dc674140c52fa09daf0e514d76e4f8163255d39a42a598d5933e44c6ca894f"
+        },
+        {
+          "action_id": "event:golden_idol:option:1",
+          "confidence": 0.5020338892936707,
+          "current_action_id": "event:golden_idol:option:0",
+          "decision_index": 5,
+          "learned_action_id": "event:golden_idol:option:1",
+          "regret": 0.0,
+          "seed": 94258,
+          "source_sha256": "31a85b2021209b7ebfdef9e33c78b453b4cf3ab8da7264f70625beecf363edd3"
+        },
+        {
+          "action_id": "event:shining_light:option:1",
+          "confidence": 0.5050690770149231,
+          "current_action_id": "event:shining_light:option:0",
+          "decision_index": 11,
+          "learned_action_id": "event:shining_light:option:1",
+          "regret": 0.017543859649122806,
+          "seed": 94258,
+          "source_sha256": "6f8ab3a98ba598fc866a820169adceea70d0aa7edbfd9539d584a7261ce4f848"
+        },
+        {
+          "action_id": "event:we_meet_again:option:3",
+          "confidence": 0.5002458095550537,
+          "current_action_id": "event:we_meet_again:option:0",
+          "decision_index": 3,
+          "learned_action_id": "event:we_meet_again:option:3",
+          "regret": 0.0,
+          "seed": 94259,
+          "source_sha256": "c77b27d7f55a6dec3ed1ebeb588d9045424ed1a4c9baa591051e6c3270b7df9a"
+        },
+        {
+          "action_id": "event:big_fish:option:0",
+          "confidence": 0.5029670596122742,
+          "current_action_id": "event:big_fish:option:1",
+          "decision_index": 23,
+          "learned_action_id": "event:big_fish:option:0",
+          "regret": 0.0,
+          "seed": 94259,
+          "source_sha256": "638d0147b73fdd61a907225fc643999702733c03110b9a1cab6e4e8940c46730"
+        }
+      ],
+      "unique_best_accuracy": 0.6470588235294118,
+      "unique_best_rows": 17
+    },
+    "raw": {
+      "maximum_regret": 0.29824561403508765,
+      "mean_regret": 0.01486767766874814,
+      "p95_regret": 0.15789473684210525,
+      "predictions": [
+        {
+          "action_id": "event:living_wall:option:0",
+          "decision_index": 8,
+          "regret": 0.0,
+          "seed": 94228,
+          "source_sha256": "b8b6460806d6e6d8171a6322ade1da7f5e2f4e00bf4646ab10d1e25171d61d82"
+        },
+        {
+          "action_id": "event:the_cleric:option:0",
+          "decision_index": 10,
+          "regret": 0.0,
+          "seed": 94228,
+          "source_sha256": "04edf255d970384a74bf5a8ea46448fe29616141436a4308ef4bebd74fbd4f9e"
+        },
+        {
+          "action_id": "event:we_meet_again:option:2",
+          "decision_index": 3,
+          "regret": 0.0,
+          "seed": 94229,
+          "source_sha256": "1f1a82aa06242c216123346797021634a41b6dd4130ef1cfca6b4e0a729c1304"
+        },
+        {
+          "action_id": "event:the_ssssserpent:option:1",
+          "decision_index": 9,
+          "regret": 0.0,
+          "seed": 94229,
+          "source_sha256": "e351a3a7aaa7069f8a3dea00c8f3048453a8780aa76431d87205183b6b2cc202"
+        },
+        {
+          "action_id": "event:scrap_ooze:option:0",
+          "decision_index": 5,
+          "regret": 0.0,
+          "seed": 94230,
+          "source_sha256": "053ce2480574d42211ecb81d3fbb8cc9bbfc7373f71b7cf9f7ca94f0bbb0bf06"
+        },
+        {
+          "action_id": "event:scrap_ooze:option:0",
+          "decision_index": 6,
+          "regret": 0.0,
+          "seed": 94230,
+          "source_sha256": "245fb945491faa4fec6a6781ab75a10d57a35becabc1c7d967592639bad0cc8b"
+        },
+        {
+          "action_id": "event:big_fish:option:0",
+          "decision_index": 8,
+          "regret": 0.0,
+          "seed": 94231,
+          "source_sha256": "a9913da7f1caae387063556f3b88ed710352f67f4545a8768bca2d1ba99f9468"
+        },
+        {
+          "action_id": "event:upgrade_shrine:option:1",
+          "decision_index": 10,
+          "regret": 0.0,
+          "seed": 94231,
+          "source_sha256": "5c985daae8df6f649ba109cd3461c2bbd08b25a85b6aafed8da55753b0270b73"
+        },
+        {
+          "action_id": "event:world_of_goop:option:1",
+          "decision_index": 4,
+          "regret": 0.15789473684210525,
+          "seed": 94232,
+          "source_sha256": "3444e94239e5adaa0c9e9aaa78b00d93272fd684b37a2800e9497cacdd116938"
+        },
+        {
+          "action_id": "event:golden_idol:option:1",
+          "decision_index": 10,
+          "regret": 0.07017543859649122,
+          "seed": 94232,
+          "source_sha256": "9a25a7627f448d5754ef43efcb4a566bb21c27f9541b144ea19196c6df7d075b"
+        },
+        {
+          "action_id": "event:wing_statue:option:2",
+          "decision_index": 5,
+          "regret": 0.0,
+          "seed": 94233,
+          "source_sha256": "f840ecbb3178b590cceb795a4764160b7468582c1397316677850338e664a29c"
+        },
+        {
+          "action_id": "event:world_of_goop:option:1",
+          "decision_index": 3,
+          "regret": 0.0,
+          "seed": 94234,
+          "source_sha256": "e975f157247c60e78f025c95214e4752265ec82edcad6f4d5c283c0427144873"
+        },
+        {
+          "action_id": "event:hypnotizing_colored_mushrooms:option:0",
+          "decision_index": 16,
+          "regret": 0.19298245614035087,
+          "seed": 94234,
+          "source_sha256": "f7f33889d17c6fee603b6e726f126f849bef20392e31aac823df470b3467a6d8"
+        },
+        {
+          "action_id": "event:the_ssssserpent:option:1",
+          "decision_index": 6,
+          "regret": 0.0,
+          "seed": 94235,
+          "source_sha256": "ce269dbed0084c8ce4be72131b588c28fc2a6b28cacdb49a7a7576929a32d7a8"
+        },
+        {
+          "action_id": "event:the_cleric:option:0",
+          "decision_index": 10,
+          "regret": 0.0,
+          "seed": 94235,
+          "source_sha256": "f1a5728a2e323264649dd49d9a5ce7d1f673ef795ba8b41417a5044c182c164a"
+        },
+        {
+          "action_id": "event:wing_statue:option:2",
+          "decision_index": 5,
+          "regret": 0.0,
+          "seed": 94236,
+          "source_sha256": "a281daad011ee5dd55ec83c20a712b753907c3d639fb93d64087a1427542731e"
+        },
+        {
+          "action_id": "event:note_for_yourself:option:1",
+          "decision_index": 7,
+          "regret": 0.0,
+          "seed": 94236,
+          "source_sha256": "0e84e0877788feabe08a319b6375eaf25244a3045c6860e8c99b89755b0d9c77"
+        },
+        {
+          "action_id": "event:golden_shrine:option:2",
+          "decision_index": 5,
+          "regret": 0.0,
+          "seed": 94237,
+          "source_sha256": "d457cec153c7317a99dd739823121aed6b55cf64c7ad0ee7eab2cd1be60762c3"
+        },
+        {
+          "action_id": "event:purifier:option:1",
+          "decision_index": 12,
+          "regret": 0.0,
+          "seed": 94237,
+          "source_sha256": "422e8bd16dabbc7b832bffd11502a68f0a371c00361b38b0ffa400b438dd871e"
+        },
+        {
+          "action_id": "event:wing_statue:option:2",
+          "decision_index": 10,
+          "regret": 0.0,
+          "seed": 94238,
+          "source_sha256": "7f2a9e5d026d925898fd7cd8309ff46d9dcc2197b544786a900eaf940a644c2e"
+        },
+        {
+          "action_id": "event:golden_idol:option:1",
+          "decision_index": 7,
+          "regret": 0.0,
+          "seed": 94239,
+          "source_sha256": "0f0836ce9418ea1936e39674c7af28ab2470e8be2c91ebb9eb580135b9465023"
+        },
+        {
+          "action_id": "event:the_ssssserpent:option:1",
+          "decision_index": 16,
+          "regret": 0.0,
+          "seed": 94239,
+          "source_sha256": "d347815277e1b647e0ceed972731419c580fd19fbe5e780f05506fa8034a9706"
+        },
+        {
+          "action_id": "event:big_fish:option:0",
+          "decision_index": 4,
+          "regret": 0.0,
+          "seed": 94240,
+          "source_sha256": "df0de1b67469fa408131fc5e4fdb8926c53b567a2b32136dbab706df635399e3"
+        },
+        {
+          "action_id": "event:world_of_goop:option:1",
+          "decision_index": 9,
+          "regret": 0.0,
+          "seed": 94240,
+          "source_sha256": "9b8381c590ac306a5dafeff6a96dd3b935a14434c1050ee1984af97b35f25923"
+        },
+        {
+          "action_id": "event:wing_statue:option:2",
+          "decision_index": 10,
+          "regret": 0.0,
+          "seed": 94241,
+          "source_sha256": "42a91328a72113c9a6db7107f89c1880926e798e25752f1ad24df58814a01adf"
+        },
+        {
+          "action_id": "event:the_ssssserpent:option:1",
+          "decision_index": 13,
+          "regret": 0.0,
+          "seed": 94241,
+          "source_sha256": "43828b0d6a6de30c477ddb615bf42cd5eeb16b9465df1dc9ec6dbbfee40be3d4"
+        },
+        {
+          "action_id": "event:big_fish:option:0",
+          "decision_index": 3,
+          "regret": 0.0,
+          "seed": 94242,
+          "source_sha256": "961217959ef91741a8b8735797d5612866660fc9af42d6d97a42921accd355fe"
+        },
+        {
+          "action_id": "event:scrap_ooze:option:0",
+          "decision_index": 7,
+          "regret": 0.0,
+          "seed": 94242,
+          "source_sha256": "d6afe95d5bec88a6a1b8550b0a5b4ed587bec5a1d361180b77d756e109f61e14"
+        },
+        {
+          "action_id": "event:big_fish:option:0",
+          "decision_index": 7,
+          "regret": 0.0,
+          "seed": 94243,
+          "source_sha256": "100eb0c1643c59dddb26168d38a64ac22f6ef70ec60248345d416aacde914310"
+        },
+        {
+          "action_id": "event:the_cleric:option:0",
+          "decision_index": 6,
+          "regret": 0.0,
+          "seed": 94244,
+          "source_sha256": "052d980d473f6ee7cd3ec9cd53c8f226d557ea87353dc11519e78bddb0b54a7a"
+        },
+        {
+          "action_id": "event:golden_idol:option:1",
+          "decision_index": 8,
+          "regret": 0.0,
+          "seed": 94244,
+          "source_sha256": "274b89b8ba0806e61bd27c6dd7f98de60f76d5b7157184d14d8c7a75561868ea"
+        },
+        {
+          "action_id": "event:scrap_ooze:option:0",
+          "decision_index": 3,
+          "regret": 0.29824561403508765,
+          "seed": 94245,
+          "source_sha256": "22862c398a6b435864b642cfa5ed927b9e91f0cf454f6b06bf1e95cbba977003"
+        },
+        {
+          "action_id": "event:the_ssssserpent:option:1",
+          "decision_index": 5,
+          "regret": 0.0,
+          "seed": 94245,
+          "source_sha256": "570b7d365c9fd7fa6e5919f0339a580ebec48d01e7a2f2f746062e8c14971924"
+        },
+        {
+          "action_id": "event:wing_statue:option:2",
+          "decision_index": 22,
+          "regret": 0.0,
+          "seed": 94246,
+          "source_sha256": "c29463bfda8994a5231f4b83b520eba4e4f7786db7aa4e160dc0d5c912e2c7b6"
+        },
+        {
+          "action_id": "event:dead_adventurer:option:1",
+          "decision_index": 25,
+          "regret": 0.0,
+          "seed": 94246,
+          "source_sha256": "d54bc6508110b1c42d9f07e58ba6cebc725e131a6e9fd1af4024f6982d33a265"
+        },
+        {
+          "action_id": "event:scrap_ooze:option:0",
+          "decision_index": 3,
+          "regret": 0.0,
+          "seed": 94247,
+          "source_sha256": "8c1071726aaa4ceb22bbebde6a826448162556c6f44ee140bb7a68c239788e9b"
+        },
+        {
+          "action_id": "event:scrap_ooze:option:0",
+          "decision_index": 4,
+          "regret": 0.0,
+          "seed": 94247,
+          "source_sha256": "a0923023be73fd91831447e0e497504fcd7b6dc079dbe46705501d9711432cb0"
+        },
+        {
+          "action_id": "event:scrap_ooze:option:0",
+          "decision_index": 3,
+          "regret": 0.0,
+          "seed": 94248,
+          "source_sha256": "ce62810ede4f3efe6cd8ccc2bfa71968c168a76e6eb7ceb3d3e3899af017c740"
+        },
+        {
+          "action_id": "event:scrap_ooze:option:0",
+          "decision_index": 4,
+          "regret": 0.0,
+          "seed": 94248,
+          "source_sha256": "6f38356c09b2b50616b560a5f506903586d185c7cbdb51d88d3b621f75eefe90"
+        },
+        {
+          "action_id": "event:the_ssssserpent:option:1",
+          "decision_index": 3,
+          "regret": 0.0,
+          "seed": 94249,
+          "source_sha256": "22da0ed5ce04ed4cc0027ee8e96a10d72db82d909c160af5e3ad2be257403fde"
+        },
+        {
+          "action_id": "event:shining_light:option:1",
+          "decision_index": 10,
+          "regret": 0.0,
+          "seed": 94249,
+          "source_sha256": "9155ebe56eeb456c9aeb9969d356ad8503fadd04a9ab6e7137a8986e7bb02894"
+        },
+        {
+          "action_id": "event:golden_idol:option:1",
+          "decision_index": 5,
+          "regret": 0.0,
+          "seed": 94251,
+          "source_sha256": "c3fc8d57436999b7c923390a4340563a94eed7f1b79e0761258fcc187df2a200"
+        },
+        {
+          "action_id": "event:the_cleric:option:0",
+          "decision_index": 9,
+          "regret": 0.0,
+          "seed": 94251,
+          "source_sha256": "5b0eb7315a9a9d8aeb115a8d417ed762bc0c09728a2e33e74539588fd6270ffa"
+        },
+        {
+          "action_id": "event:wing_statue:option:1",
+          "decision_index": 3,
+          "regret": 0.08771929824561403,
+          "seed": 94252,
+          "source_sha256": "def6aa7a771023c80a541762ba2850f519035ada4c3972339ebd33fe79ab8315"
+        },
+        {
+          "action_id": "event:dead_adventurer:option:0",
+          "decision_index": 16,
+          "regret": 0.0,
+          "seed": 94252,
+          "source_sha256": "822824d97965a906e371f64bb8a37f1d48113a98fb9612c7c1374fd9d6cdaecc"
+        },
+        {
+          "action_id": "event:scrap_ooze:option:0",
+          "decision_index": 3,
+          "regret": 0.0,
+          "seed": 94253,
+          "source_sha256": "be82fce513f359076420dbf2591e28f1f591e1426405d302e159981e3e61d67a"
+        },
+        {
+          "action_id": "event:forgotten_altar:option:1",
+          "decision_index": 39,
+          "regret": 0.0,
+          "seed": 94253,
+          "source_sha256": "363bb7c2b9eee620c13153e935a4ed29e44882790e5c396e44862b0e03111422"
+        },
+        {
+          "action_id": "event:ominous_forge:option:0",
+          "decision_index": 6,
+          "regret": 0.0,
+          "seed": 94254,
+          "source_sha256": "bab833c37c62ba54ffc8c47c57eed430c2a33e7c960056090fe78de0b6accaf1"
+        },
+        {
+          "action_id": "event:scrap_ooze:option:0",
+          "decision_index": 10,
+          "regret": 0.0,
+          "seed": 94254,
+          "source_sha256": "7349b1819d4496121f59b6f97bb1291c02dc7474005998f4c5b1f00b28f31bfa"
+        },
+        {
+          "action_id": "event:living_wall:option:0",
+          "decision_index": 7,
+          "regret": 0.0,
+          "seed": 94255,
+          "source_sha256": "a335d48ffa68862eda3fed90f0ab38287c3c1dd8a737a9e338cc858e2588e57e"
+        },
+        {
+          "action_id": "event:face_trader:option:2",
+          "decision_index": 9,
+          "regret": 0.0,
+          "seed": 94255,
+          "source_sha256": "a3996a9dc3593ecb989b52e2e4e8ebf3abc96605aee3b5d921455520e4712133"
+        },
+        {
+          "action_id": "event:purifier:option:1",
+          "decision_index": 4,
+          "regret": 0.0,
+          "seed": 94256,
+          "source_sha256": "04ba362c9e4e31af6232e048be7b7391f5d9c5ff5c06c002df61fe59ca252b87"
+        },
+        {
+          "action_id": "event:scrap_ooze:option:0",
+          "decision_index": 11,
+          "regret": 0.0,
+          "seed": 94256,
+          "source_sha256": "ca0dea17a80f9c31fb446e2985aab4343015db6becda025b0a329c0d39f6ab64"
+        },
+        {
+          "action_id": "event:the_cleric:option:0",
+          "decision_index": 3,
+          "regret": 0.05263157894736842,
+          "seed": 94257,
+          "source_sha256": "5f302b849d2ed67decccd350379459c779760358a7a37995900a3764dd33a860"
+        },
+        {
+          "action_id": "event:golden_idol:option:1",
+          "decision_index": 5,
+          "regret": 0.0,
+          "seed": 94257,
+          "source_sha256": "52dc674140c52fa09daf0e514d76e4f8163255d39a42a598d5933e44c6ca894f"
+        },
+        {
+          "action_id": "event:golden_idol:option:1",
+          "decision_index": 5,
+          "regret": 0.0,
+          "seed": 94258,
+          "source_sha256": "31a85b2021209b7ebfdef9e33c78b453b4cf3ab8da7264f70625beecf363edd3"
+        },
+        {
+          "action_id": "event:shining_light:option:1",
+          "decision_index": 11,
+          "regret": 0.017543859649122806,
+          "seed": 94258,
+          "source_sha256": "6f8ab3a98ba598fc866a820169adceea70d0aa7edbfd9539d584a7261ce4f848"
+        },
+        {
+          "action_id": "event:we_meet_again:option:3",
+          "decision_index": 3,
+          "regret": 0.0,
+          "seed": 94259,
+          "source_sha256": "c77b27d7f55a6dec3ed1ebeb588d9045424ed1a4c9baa591051e6c3270b7df9a"
+        },
+        {
+          "action_id": "event:big_fish:option:0",
+          "decision_index": 23,
+          "regret": 0.0,
+          "seed": 94259,
+          "source_sha256": "638d0147b73fdd61a907225fc643999702733c03110b9a1cab6e4e8940c46730"
+        }
+      ],
+      "unique_best_accuracy": 0.6470588235294118,
+      "unique_best_rows": 17,
+      "weighted_pairwise_accuracy": 0.7267759562841531
+    },
+    "untrained": {
+      "maximum_regret": 0.2982456140350877,
+      "mean_regret": 0.029140648230746358,
+      "p95_regret": 0.29824561403508765,
+      "predictions": [
+        {
+          "action_id": "event:living_wall:option:0",
+          "decision_index": 8,
+          "regret": 0.0,
+          "seed": 94228,
+          "source_sha256": "b8b6460806d6e6d8171a6322ade1da7f5e2f4e00bf4646ab10d1e25171d61d82"
+        },
+        {
+          "action_id": "event:the_cleric:option:1",
+          "decision_index": 10,
+          "regret": 0.0,
+          "seed": 94228,
+          "source_sha256": "04edf255d970384a74bf5a8ea46448fe29616141436a4308ef4bebd74fbd4f9e"
+        },
+        {
+          "action_id": "event:we_meet_again:option:1",
+          "decision_index": 3,
+          "regret": 0.0,
+          "seed": 94229,
+          "source_sha256": "1f1a82aa06242c216123346797021634a41b6dd4130ef1cfca6b4e0a729c1304"
+        },
+        {
+          "action_id": "event:the_ssssserpent:option:1",
+          "decision_index": 9,
+          "regret": 0.0,
+          "seed": 94229,
+          "source_sha256": "e351a3a7aaa7069f8a3dea00c8f3048453a8780aa76431d87205183b6b2cc202"
+        },
+        {
+          "action_id": "event:scrap_ooze:option:0",
+          "decision_index": 5,
+          "regret": 0.0,
+          "seed": 94230,
+          "source_sha256": "053ce2480574d42211ecb81d3fbb8cc9bbfc7373f71b7cf9f7ca94f0bbb0bf06"
+        },
+        {
+          "action_id": "event:scrap_ooze:option:0",
+          "decision_index": 6,
+          "regret": 0.0,
+          "seed": 94230,
+          "source_sha256": "245fb945491faa4fec6a6781ab75a10d57a35becabc1c7d967592639bad0cc8b"
+        },
+        {
+          "action_id": "event:big_fish:option:0",
+          "decision_index": 8,
+          "regret": 0.0,
+          "seed": 94231,
+          "source_sha256": "a9913da7f1caae387063556f3b88ed710352f67f4545a8768bca2d1ba99f9468"
+        },
+        {
+          "action_id": "event:upgrade_shrine:option:0",
+          "decision_index": 10,
+          "regret": 0.0,
+          "seed": 94231,
+          "source_sha256": "5c985daae8df6f649ba109cd3461c2bbd08b25a85b6aafed8da55753b0270b73"
+        },
+        {
+          "action_id": "event:world_of_goop:option:0",
+          "decision_index": 4,
+          "regret": 0.0,
+          "seed": 94232,
+          "source_sha256": "3444e94239e5adaa0c9e9aaa78b00d93272fd684b37a2800e9497cacdd116938"
+        },
+        {
+          "action_id": "event:golden_idol:option:1",
+          "decision_index": 10,
+          "regret": 0.07017543859649122,
+          "seed": 94232,
+          "source_sha256": "9a25a7627f448d5754ef43efcb4a566bb21c27f9541b144ea19196c6df7d075b"
+        },
+        {
+          "action_id": "event:wing_statue:option:2",
+          "decision_index": 5,
+          "regret": 0.0,
+          "seed": 94233,
+          "source_sha256": "f840ecbb3178b590cceb795a4764160b7468582c1397316677850338e664a29c"
+        },
+        {
+          "action_id": "event:world_of_goop:option:1",
+          "decision_index": 3,
+          "regret": 0.0,
+          "seed": 94234,
+          "source_sha256": "e975f157247c60e78f025c95214e4752265ec82edcad6f4d5c283c0427144873"
+        },
+        {
+          "action_id": "event:hypnotizing_colored_mushrooms:option:1",
+          "decision_index": 16,
+          "regret": 0.0,
+          "seed": 94234,
+          "source_sha256": "f7f33889d17c6fee603b6e726f126f849bef20392e31aac823df470b3467a6d8"
+        },
+        {
+          "action_id": "event:the_ssssserpent:option:1",
+          "decision_index": 6,
+          "regret": 0.0,
+          "seed": 94235,
+          "source_sha256": "ce269dbed0084c8ce4be72131b588c28fc2a6b28cacdb49a7a7576929a32d7a8"
+        },
+        {
+          "action_id": "event:the_cleric:option:1",
+          "decision_index": 10,
+          "regret": 0.2982456140350877,
+          "seed": 94235,
+          "source_sha256": "f1a5728a2e323264649dd49d9a5ce7d1f673ef795ba8b41417a5044c182c164a"
+        },
+        {
+          "action_id": "event:wing_statue:option:0",
+          "decision_index": 5,
+          "regret": 0.0,
+          "seed": 94236,
+          "source_sha256": "a281daad011ee5dd55ec83c20a712b753907c3d639fb93d64087a1427542731e"
+        },
+        {
+          "action_id": "event:note_for_yourself:option:1",
+          "decision_index": 7,
+          "regret": 0.0,
+          "seed": 94236,
+          "source_sha256": "0e84e0877788feabe08a319b6375eaf25244a3045c6860e8c99b89755b0d9c77"
+        },
+        {
+          "action_id": "event:golden_shrine:option:2",
+          "decision_index": 5,
+          "regret": 0.0,
+          "seed": 94237,
+          "source_sha256": "d457cec153c7317a99dd739823121aed6b55cf64c7ad0ee7eab2cd1be60762c3"
+        },
+        {
+          "action_id": "event:purifier:option:0",
+          "decision_index": 12,
+          "regret": 0.0,
+          "seed": 94237,
+          "source_sha256": "422e8bd16dabbc7b832bffd11502a68f0a371c00361b38b0ffa400b438dd871e"
+        },
+        {
+          "action_id": "event:wing_statue:option:2",
+          "decision_index": 10,
+          "regret": 0.0,
+          "seed": 94238,
+          "source_sha256": "7f2a9e5d026d925898fd7cd8309ff46d9dcc2197b544786a900eaf940a644c2e"
+        },
+        {
+          "action_id": "event:golden_idol:option:0",
+          "decision_index": 7,
+          "regret": 0.05263157894736842,
+          "seed": 94239,
+          "source_sha256": "0f0836ce9418ea1936e39674c7af28ab2470e8be2c91ebb9eb580135b9465023"
+        },
+        {
+          "action_id": "event:the_ssssserpent:option:1",
+          "decision_index": 16,
+          "regret": 0.0,
+          "seed": 94239,
+          "source_sha256": "d347815277e1b647e0ceed972731419c580fd19fbe5e780f05506fa8034a9706"
+        },
+        {
+          "action_id": "event:big_fish:option:2",
+          "decision_index": 4,
+          "regret": 0.017543859649122806,
+          "seed": 94240,
+          "source_sha256": "df0de1b67469fa408131fc5e4fdb8926c53b567a2b32136dbab706df635399e3"
+        },
+        {
+          "action_id": "event:world_of_goop:option:0",
+          "decision_index": 9,
+          "regret": 0.0,
+          "seed": 94240,
+          "source_sha256": "9b8381c590ac306a5dafeff6a96dd3b935a14434c1050ee1984af97b35f25923"
+        },
+        {
+          "action_id": "event:wing_statue:option:2",
+          "decision_index": 10,
+          "regret": 0.0,
+          "seed": 94241,
+          "source_sha256": "42a91328a72113c9a6db7107f89c1880926e798e25752f1ad24df58814a01adf"
+        },
+        {
+          "action_id": "event:the_ssssserpent:option:1",
+          "decision_index": 13,
+          "regret": 0.0,
+          "seed": 94241,
+          "source_sha256": "43828b0d6a6de30c477ddb615bf42cd5eeb16b9465df1dc9ec6dbbfee40be3d4"
+        },
+        {
+          "action_id": "event:big_fish:option:0",
+          "decision_index": 3,
+          "regret": 0.0,
+          "seed": 94242,
+          "source_sha256": "961217959ef91741a8b8735797d5612866660fc9af42d6d97a42921accd355fe"
+        },
+        {
+          "action_id": "event:scrap_ooze:option:0",
+          "decision_index": 7,
+          "regret": 0.0,
+          "seed": 94242,
+          "source_sha256": "d6afe95d5bec88a6a1b8550b0a5b4ed587bec5a1d361180b77d756e109f61e14"
+        },
+        {
+          "action_id": "event:big_fish:option:0",
+          "decision_index": 7,
+          "regret": 0.0,
+          "seed": 94243,
+          "source_sha256": "100eb0c1643c59dddb26168d38a64ac22f6ef70ec60248345d416aacde914310"
+        },
+        {
+          "action_id": "event:the_cleric:option:2",
+          "decision_index": 6,
+          "regret": 0.0,
+          "seed": 94244,
+          "source_sha256": "052d980d473f6ee7cd3ec9cd53c8f226d557ea87353dc11519e78bddb0b54a7a"
+        },
+        {
+          "action_id": "event:golden_idol:option:0",
+          "decision_index": 8,
+          "regret": 0.2631578947368421,
+          "seed": 94244,
+          "source_sha256": "274b89b8ba0806e61bd27c6dd7f98de60f76d5b7157184d14d8c7a75561868ea"
+        },
+        {
+          "action_id": "event:scrap_ooze:option:0",
+          "decision_index": 3,
+          "regret": 0.29824561403508765,
+          "seed": 94245,
+          "source_sha256": "22862c398a6b435864b642cfa5ed927b9e91f0cf454f6b06bf1e95cbba977003"
+        },
+        {
+          "action_id": "event:the_ssssserpent:option:1",
+          "decision_index": 5,
+          "regret": 0.0,
+          "seed": 94245,
+          "source_sha256": "570b7d365c9fd7fa6e5919f0339a580ebec48d01e7a2f2f746062e8c14971924"
+        },
+        {
+          "action_id": "event:wing_statue:option:1",
+          "decision_index": 22,
+          "regret": 0.0,
+          "seed": 94246,
+          "source_sha256": "c29463bfda8994a5231f4b83b520eba4e4f7786db7aa4e160dc0d5c912e2c7b6"
+        },
+        {
+          "action_id": "event:dead_adventurer:option:1",
+          "decision_index": 25,
+          "regret": 0.0,
+          "seed": 94246,
+          "source_sha256": "d54bc6508110b1c42d9f07e58ba6cebc725e131a6e9fd1af4024f6982d33a265"
+        },
+        {
+          "action_id": "event:scrap_ooze:option:0",
+          "decision_index": 3,
+          "regret": 0.0,
+          "seed": 94247,
+          "source_sha256": "8c1071726aaa4ceb22bbebde6a826448162556c6f44ee140bb7a68c239788e9b"
+        },
+        {
+          "action_id": "event:scrap_ooze:option:0",
+          "decision_index": 4,
+          "regret": 0.0,
+          "seed": 94247,
+          "source_sha256": "a0923023be73fd91831447e0e497504fcd7b6dc079dbe46705501d9711432cb0"
+        },
+        {
+          "action_id": "event:scrap_ooze:option:0",
+          "decision_index": 3,
+          "regret": 0.0,
+          "seed": 94248,
+          "source_sha256": "ce62810ede4f3efe6cd8ccc2bfa71968c168a76e6eb7ceb3d3e3899af017c740"
+        },
+        {
+          "action_id": "event:scrap_ooze:option:0",
+          "decision_index": 4,
+          "regret": 0.0,
+          "seed": 94248,
+          "source_sha256": "6f38356c09b2b50616b560a5f506903586d185c7cbdb51d88d3b621f75eefe90"
+        },
+        {
+          "action_id": "event:the_ssssserpent:option:0",
+          "decision_index": 3,
+          "regret": 0.15789473684210525,
+          "seed": 94249,
+          "source_sha256": "22da0ed5ce04ed4cc0027ee8e96a10d72db82d909c160af5e3ad2be257403fde"
+        },
+        {
+          "action_id": "event:shining_light:option:0",
+          "decision_index": 10,
+          "regret": 0.0,
+          "seed": 94249,
+          "source_sha256": "9155ebe56eeb456c9aeb9969d356ad8503fadd04a9ab6e7137a8986e7bb02894"
+        },
+        {
+          "action_id": "event:golden_idol:option:0",
+          "decision_index": 5,
+          "regret": 0.0,
+          "seed": 94251,
+          "source_sha256": "c3fc8d57436999b7c923390a4340563a94eed7f1b79e0761258fcc187df2a200"
+        },
+        {
+          "action_id": "event:the_cleric:option:1",
+          "decision_index": 9,
+          "regret": 0.0,
+          "seed": 94251,
+          "source_sha256": "5b0eb7315a9a9d8aeb115a8d417ed762bc0c09728a2e33e74539588fd6270ffa"
+        },
+        {
+          "action_id": "event:wing_statue:option:2",
+          "decision_index": 3,
+          "regret": 0.0,
+          "seed": 94252,
+          "source_sha256": "def6aa7a771023c80a541762ba2850f519035ada4c3972339ebd33fe79ab8315"
+        },
+        {
+          "action_id": "event:dead_adventurer:option:1",
+          "decision_index": 16,
+          "regret": 0.0,
+          "seed": 94252,
+          "source_sha256": "822824d97965a906e371f64bb8a37f1d48113a98fb9612c7c1374fd9d6cdaecc"
+        },
+        {
+          "action_id": "event:scrap_ooze:option:0",
+          "decision_index": 3,
+          "regret": 0.0,
+          "seed": 94253,
+          "source_sha256": "be82fce513f359076420dbf2591e28f1f591e1426405d302e159981e3e61d67a"
+        },
+        {
+          "action_id": "event:forgotten_altar:option:2",
+          "decision_index": 39,
+          "regret": 0.2982456140350877,
+          "seed": 94253,
+          "source_sha256": "363bb7c2b9eee620c13153e935a4ed29e44882790e5c396e44862b0e03111422"
+        },
+        {
+          "action_id": "event:ominous_forge:option:0",
+          "decision_index": 6,
+          "regret": 0.0,
+          "seed": 94254,
+          "source_sha256": "bab833c37c62ba54ffc8c47c57eed430c2a33e7c960056090fe78de0b6accaf1"
+        },
+        {
+          "action_id": "event:scrap_ooze:option:0",
+          "decision_index": 10,
+          "regret": 0.0,
+          "seed": 94254,
+          "source_sha256": "7349b1819d4496121f59b6f97bb1291c02dc7474005998f4c5b1f00b28f31bfa"
+        },
+        {
+          "action_id": "event:living_wall:option:0",
+          "decision_index": 7,
+          "regret": 0.0,
+          "seed": 94255,
+          "source_sha256": "a335d48ffa68862eda3fed90f0ab38287c3c1dd8a737a9e338cc858e2588e57e"
+        },
+        {
+          "action_id": "event:face_trader:option:1",
+          "decision_index": 9,
+          "regret": 0.0,
+          "seed": 94255,
+          "source_sha256": "a3996a9dc3593ecb989b52e2e4e8ebf3abc96605aee3b5d921455520e4712133"
+        },
+        {
+          "action_id": "event:purifier:option:0",
+          "decision_index": 4,
+          "regret": 0.0,
+          "seed": 94256,
+          "source_sha256": "04ba362c9e4e31af6232e048be7b7391f5d9c5ff5c06c002df61fe59ca252b87"
+        },
+        {
+          "action_id": "event:scrap_ooze:option:0",
+          "decision_index": 11,
+          "regret": 0.0,
+          "seed": 94256,
+          "source_sha256": "ca0dea17a80f9c31fb446e2985aab4343015db6becda025b0a329c0d39f6ab64"
+        },
+        {
+          "action_id": "event:the_cleric:option:0",
+          "decision_index": 3,
+          "regret": 0.05263157894736842,
+          "seed": 94257,
+          "source_sha256": "5f302b849d2ed67decccd350379459c779760358a7a37995900a3764dd33a860"
+        },
+        {
+          "action_id": "event:golden_idol:option:0",
+          "decision_index": 5,
+          "regret": 0.05263157894736842,
+          "seed": 94257,
+          "source_sha256": "52dc674140c52fa09daf0e514d76e4f8163255d39a42a598d5933e44c6ca894f"
+        },
+        {
+          "action_id": "event:golden_idol:option:0",
+          "decision_index": 5,
+          "regret": 0.0,
+          "seed": 94258,
+          "source_sha256": "31a85b2021209b7ebfdef9e33c78b453b4cf3ab8da7264f70625beecf363edd3"
+        },
+        {
+          "action_id": "event:shining_light:option:0",
+          "decision_index": 11,
+          "regret": 0.0,
+          "seed": 94258,
+          "source_sha256": "6f8ab3a98ba598fc866a820169adceea70d0aa7edbfd9539d584a7261ce4f848"
+        },
+        {
+          "action_id": "event:we_meet_again:option:1",
+          "decision_index": 3,
+          "regret": 0.1578947368421053,
+          "seed": 94259,
+          "source_sha256": "c77b27d7f55a6dec3ed1ebeb588d9045424ed1a4c9baa591051e6c3270b7df9a"
+        },
+        {
+          "action_id": "event:big_fish:option:0",
+          "decision_index": 23,
+          "regret": 0.0,
+          "seed": 94259,
+          "source_sha256": "638d0147b73fdd61a907225fc643999702733c03110b9a1cab6e4e8940c46730"
+        }
+      ],
+      "unique_best_accuracy": 0.5294117647058824,
+      "unique_best_rows": 17,
+      "weighted_pairwise_accuracy": 0.39890710382513656
+    }
+  },
+  "development_access_count": 1,
+  "selection": {
+    "checkpoints": [
+      {
+        "epoch": 1,
+        "fit_final_loss": 0.6934206883112589,
+        "raw_tune": {
+          "maximum_regret": 0.47368421052631576,
+          "mean_regret": 0.059139784946236555,
+          "p95_regret": 0.2982456140350877,
+          "unique_best_accuracy": 0.5,
+          "unique_best_rows": 26,
+          "weighted_pairwise_accuracy": 0.569825436408978
+        },
+        "thresholds": [
+          {
+            "changes_vs_current": {
+              "action_changes": 39,
+              "corrected": 11,
+              "worsened": 8
+            },
+            "confidence_threshold": 0.5,
+            "maximum_regret": 0.47368421052631576,
+            "mean_regret": 0.059139784946236555,
+            "override_count": 39,
+            "p95_regret": 0.2982456140350877
+          },
+          {
+            "changes_vs_current": {
+              "action_changes": 0,
+              "corrected": 0,
+              "worsened": 0
+            },
+            "confidence_threshold": 0.55,
+            "maximum_regret": 0.5964912280701755,
+            "mean_regret": 0.0656479909451047,
+            "override_count": 0,
+            "p95_regret": 0.29824561403508776
+          },
+          {
+            "changes_vs_current": {
+              "action_changes": 0,
+              "corrected": 0,
+              "worsened": 0
+            },
+            "confidence_threshold": 0.6,
+            "maximum_regret": 0.5964912280701755,
+            "mean_regret": 0.0656479909451047,
+            "override_count": 0,
+            "p95_regret": 0.29824561403508776
+          },
+          {
+            "changes_vs_current": {
+              "action_changes": 0,
+              "corrected": 0,
+              "worsened": 0
+            },
+            "confidence_threshold": 0.7,
+            "maximum_regret": 0.5964912280701755,
+            "mean_regret": 0.0656479909451047,
+            "override_count": 0,
+            "p95_regret": 0.29824561403508776
+          },
+          {
+            "changes_vs_current": {
+              "action_changes": 0,
+              "corrected": 0,
+              "worsened": 0
+            },
+            "confidence_threshold": 0.8,
+            "maximum_regret": 0.5964912280701755,
+            "mean_regret": 0.0656479909451047,
+            "override_count": 0,
+            "p95_regret": 0.29824561403508776
+          },
+          {
+            "changes_vs_current": {
+              "action_changes": 0,
+              "corrected": 0,
+              "worsened": 0
+            },
+            "confidence_threshold": 0.9,
+            "maximum_regret": 0.5964912280701755,
+            "mean_regret": 0.0656479909451047,
+            "override_count": 0,
+            "p95_regret": 0.29824561403508776
+          }
+        ]
+      },
+      {
+        "epoch": 2,
+        "fit_final_loss": 0.6903994282086691,
+        "raw_tune": {
+          "maximum_regret": 0.4736842105263158,
+          "mean_regret": 0.060271646859083185,
+          "p95_regret": 0.2982456140350877,
+          "unique_best_accuracy": 0.5,
+          "unique_best_rows": 26,
+          "weighted_pairwise_accuracy": 0.5773067331670827
+        },
+        "thresholds": [
+          {
+            "changes_vs_current": {
+              "action_changes": 41,
+              "corrected": 11,
+              "worsened": 9
+            },
+            "confidence_threshold": 0.5,
+            "maximum_regret": 0.4736842105263158,
+            "mean_regret": 0.060271646859083185,
+            "override_count": 41,
+            "p95_regret": 0.2982456140350877
+          },
+          {
+            "changes_vs_current": {
+              "action_changes": 0,
+              "corrected": 0,
+              "worsened": 0
+            },
+            "confidence_threshold": 0.55,
+            "maximum_regret": 0.5964912280701755,
+            "mean_regret": 0.0656479909451047,
+            "override_count": 0,
+            "p95_regret": 0.29824561403508776
+          },
+          {
+            "changes_vs_current": {
+              "action_changes": 0,
+              "corrected": 0,
+              "worsened": 0
+            },
+            "confidence_threshold": 0.6,
+            "maximum_regret": 0.5964912280701755,
+            "mean_regret": 0.0656479909451047,
+            "override_count": 0,
+            "p95_regret": 0.29824561403508776
+          },
+          {
+            "changes_vs_current": {
+              "action_changes": 0,
+              "corrected": 0,
+              "worsened": 0
+            },
+            "confidence_threshold": 0.7,
+            "maximum_regret": 0.5964912280701755,
+            "mean_regret": 0.0656479909451047,
+            "override_count": 0,
+            "p95_regret": 0.29824561403508776
+          },
+          {
+            "changes_vs_current": {
+              "action_changes": 0,
+              "corrected": 0,
+              "worsened": 0
+            },
+            "confidence_threshold": 0.8,
+            "maximum_regret": 0.5964912280701755,
+            "mean_regret": 0.0656479909451047,
+            "override_count": 0,
+            "p95_regret": 0.29824561403508776
+          },
+          {
+            "changes_vs_current": {
+              "action_changes": 0,
+              "corrected": 0,
+              "worsened": 0
+            },
+            "confidence_threshold": 0.9,
+            "maximum_regret": 0.5964912280701755,
+            "mean_regret": 0.0656479909451047,
+            "override_count": 0,
+            "p95_regret": 0.29824561403508776
+          }
+        ]
+      },
+      {
+        "epoch": 4,
+        "fit_final_loss": 0.6853347520033518,
+        "raw_tune": {
+          "maximum_regret": 0.4736842105263158,
+          "mean_regret": 0.06112054329371816,
+          "p95_regret": 0.2982456140350877,
+          "unique_best_accuracy": 0.46153846153846156,
+          "unique_best_rows": 26,
+          "weighted_pairwise_accuracy": 0.5735660847880303
+        },
+        "thresholds": [
+          {
+            "changes_vs_current": {
+              "action_changes": 41,
+              "corrected": 11,
+              "worsened": 10
+            },
+            "confidence_threshold": 0.5,
+            "maximum_regret": 0.4736842105263158,
+            "mean_regret": 0.06112054329371816,
+            "override_count": 41,
+            "p95_regret": 0.2982456140350877
+          },
+          {
+            "changes_vs_current": {
+              "action_changes": 0,
+              "corrected": 0,
+              "worsened": 0
+            },
+            "confidence_threshold": 0.55,
+            "maximum_regret": 0.5964912280701755,
+            "mean_regret": 0.0656479909451047,
+            "override_count": 0,
+            "p95_regret": 0.29824561403508776
+          },
+          {
+            "changes_vs_current": {
+              "action_changes": 0,
+              "corrected": 0,
+              "worsened": 0
+            },
+            "confidence_threshold": 0.6,
+            "maximum_regret": 0.5964912280701755,
+            "mean_regret": 0.0656479909451047,
+            "override_count": 0,
+            "p95_regret": 0.29824561403508776
+          },
+          {
+            "changes_vs_current": {
+              "action_changes": 0,
+              "corrected": 0,
+              "worsened": 0
+            },
+            "confidence_threshold": 0.7,
+            "maximum_regret": 0.5964912280701755,
+            "mean_regret": 0.0656479909451047,
+            "override_count": 0,
+            "p95_regret": 0.29824561403508776
+          },
+          {
+            "changes_vs_current": {
+              "action_changes": 0,
+              "corrected": 0,
+              "worsened": 0
+            },
+            "confidence_threshold": 0.8,
+            "maximum_regret": 0.5964912280701755,
+            "mean_regret": 0.0656479909451047,
+            "override_count": 0,
+            "p95_regret": 0.29824561403508776
+          },
+          {
+            "changes_vs_current": {
+              "action_changes": 0,
+              "corrected": 0,
+              "worsened": 0
+            },
+            "confidence_threshold": 0.9,
+            "maximum_regret": 0.5964912280701755,
+            "mean_regret": 0.0656479909451047,
+            "override_count": 0,
+            "p95_regret": 0.29824561403508776
+          }
+        ]
+      },
+      {
+        "epoch": 8,
+        "fit_final_loss": 0.6672633786996206,
+        "raw_tune": {
+          "maximum_regret": 0.4736842105263158,
+          "mean_regret": 0.06112054329371816,
+          "p95_regret": 0.2982456140350877,
+          "unique_best_accuracy": 0.46153846153846156,
+          "unique_best_rows": 26,
+          "weighted_pairwise_accuracy": 0.6396508728179554
+        },
+        "thresholds": [
+          {
+            "changes_vs_current": {
+              "action_changes": 41,
+              "corrected": 11,
+              "worsened": 10
+            },
+            "confidence_threshold": 0.5,
+            "maximum_regret": 0.4736842105263158,
+            "mean_regret": 0.06112054329371816,
+            "override_count": 41,
+            "p95_regret": 0.2982456140350877
+          },
+          {
+            "changes_vs_current": {
+              "action_changes": 3,
+              "corrected": 2,
+              "worsened": 0
+            },
+            "confidence_threshold": 0.55,
+            "maximum_regret": 0.5964912280701755,
+            "mean_regret": 0.05970571590265987,
+            "override_count": 3,
+            "p95_regret": 0.2982456140350877
+          },
+          {
+            "changes_vs_current": {
+              "action_changes": 0,
+              "corrected": 0,
+              "worsened": 0
+            },
+            "confidence_threshold": 0.6,
+            "maximum_regret": 0.5964912280701755,
+            "mean_regret": 0.0656479909451047,
+            "override_count": 0,
+            "p95_regret": 0.29824561403508776
+          },
+          {
+            "changes_vs_current": {
+              "action_changes": 0,
+              "corrected": 0,
+              "worsened": 0
+            },
+            "confidence_threshold": 0.7,
+            "maximum_regret": 0.5964912280701755,
+            "mean_regret": 0.0656479909451047,
+            "override_count": 0,
+            "p95_regret": 0.29824561403508776
+          },
+          {
+            "changes_vs_current": {
+              "action_changes": 0,
+              "corrected": 0,
+              "worsened": 0
+            },
+            "confidence_threshold": 0.8,
+            "maximum_regret": 0.5964912280701755,
+            "mean_regret": 0.0656479909451047,
+            "override_count": 0,
+            "p95_regret": 0.29824561403508776
+          },
+          {
+            "changes_vs_current": {
+              "action_changes": 0,
+              "corrected": 0,
+              "worsened": 0
+            },
+            "confidence_threshold": 0.9,
+            "maximum_regret": 0.5964912280701755,
+            "mean_regret": 0.0656479909451047,
+            "override_count": 0,
+            "p95_regret": 0.29824561403508776
+          }
+        ]
+      },
+      {
+        "epoch": 16,
+        "fit_final_loss": 0.6044413348038992,
+        "raw_tune": {
+          "maximum_regret": 0.4736842105263158,
+          "mean_regret": 0.06112054329371816,
+          "p95_regret": 0.2982456140350877,
+          "unique_best_accuracy": 0.46153846153846156,
+          "unique_best_rows": 26,
+          "weighted_pairwise_accuracy": 0.6396508728179554
+        },
+        "thresholds": [
+          {
+            "changes_vs_current": {
+              "action_changes": 41,
+              "corrected": 11,
+              "worsened": 10
+            },
+            "confidence_threshold": 0.5,
+            "maximum_regret": 0.4736842105263158,
+            "mean_regret": 0.06112054329371816,
+            "override_count": 41,
+            "p95_regret": 0.2982456140350877
+          },
+          {
+            "changes_vs_current": {
+              "action_changes": 30,
+              "corrected": 9,
+              "worsened": 9
+            },
+            "confidence_threshold": 0.55,
+            "maximum_regret": 0.5263157894736842,
+            "mean_regret": 0.06932654216185624,
+            "override_count": 30,
+            "p95_regret": 0.29824561403508776
+          },
+          {
+            "changes_vs_current": {
+              "action_changes": 16,
+              "corrected": 6,
+              "worsened": 4
+            },
+            "confidence_threshold": 0.6,
+            "maximum_regret": 0.5263157894736842,
+            "mean_regret": 0.06564799094510469,
+            "override_count": 16,
+            "p95_regret": 0.29824561403508776
+          },
+          {
+            "changes_vs_current": {
+              "action_changes": 2,
+              "corrected": 1,
+              "worsened": 0
+            },
+            "confidence_threshold": 0.7,
+            "maximum_regret": 0.5964912280701755,
+            "mean_regret": 0.060837577815506506,
+            "override_count": 2,
+            "p95_regret": 0.2982456140350877
+          },
+          {
+            "changes_vs_current": {
+              "action_changes": 0,
+              "corrected": 0,
+              "worsened": 0
+            },
+            "confidence_threshold": 0.8,
+            "maximum_regret": 0.5964912280701755,
+            "mean_regret": 0.0656479909451047,
+            "override_count": 0,
+            "p95_regret": 0.29824561403508776
+          },
+          {
+            "changes_vs_current": {
+              "action_changes": 0,
+              "corrected": 0,
+              "worsened": 0
+            },
+            "confidence_threshold": 0.9,
+            "maximum_regret": 0.5964912280701755,
+            "mean_regret": 0.0656479909451047,
+            "override_count": 0,
+            "p95_regret": 0.29824561403508776
+          }
+        ]
+      }
+    ],
+    "current_tune": {
+      "maximum_regret": 0.5964912280701755,
+      "mean_regret": 0.0656479909451047,
+      "p95_regret": 0.29824561403508776,
+      "unique_best_accuracy": 0.38461538461538464,
+      "unique_best_rows": 26
+    },
+    "selected_confidence_threshold": 0.5,
+    "selected_epoch": 1
+  },
+  "verdict": "event_counterfactual_ranker_ready_for_shadow_evaluation_proposal"
+}

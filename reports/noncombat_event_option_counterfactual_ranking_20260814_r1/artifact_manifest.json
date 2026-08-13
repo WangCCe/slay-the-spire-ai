@@ -1,0 +1,35 @@
+{
+  "artifacts": [
+    {
+      "path": "configuration.json",
+      "sha256": "24ee395bf524a18c02b840f41eff0c2fcaf9a4f7a8fd380d1f0e422fdcfe6293",
+      "size_bytes": 2246
+    },
+    {
+      "path": "development_dataset.json",
+      "sha256": "774a45da31e644ca7f08b401214f1a783704c6e31b8b6fea4daba526d083c9b3",
+      "size_bytes": 1050852
+    },
+    {
+      "path": "metrics.json",
+      "sha256": "c823b3873eb5b60fa45912a51b738f655bc4429e04ef790de88466a43649cae4",
+      "size_bytes": 85124
+    },
+    {
+      "path": "model.json",
+      "sha256": "b89d0902f39312c75e255b5668fb1d1416310966377b52724aa5fa305a2cd8fa",
+      "size_bytes": 3997195
+    },
+    {
+      "path": "report.json",
+      "sha256": "46c62f9592a71e288251c1e2f54477da22c547a4111b7cfde942cc49bb4affe6",
+      "size_bytes": 5233
+    },
+    {
+      "path": "train_dataset.json",
+      "sha256": "94f693218abdb1ca06e0ca6fcc9e35f553dc9e81fda8bc9678f323069b9ad837",
+      "size_bytes": 4412283
+    }
+  ],
+  "schema_version": "noncombat-event-option-counterfactual-manifest-v1"
+}

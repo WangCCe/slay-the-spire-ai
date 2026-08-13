@@ -541,10 +541,11 @@ def evaluate_route_action_with_current_continuation(
     )
 
 
-def collect_route_partition(
+def collect_outcome_partition(
     environment_factory: Callable[[int], Any],
     baseline_session_factory: Callable[[int], Any],
     *,
+    target_category: str,
     name: str,
     seeds: Sequence[int],
     max_source_states: int,
@@ -562,6 +563,8 @@ def collect_route_partition(
         credit.evaluate_action_branch_for_category
     ),
 ) -> RoutePartition:
+    if target_category not in adapter.TARGET_CATEGORIES:
+        raise RouteExperimentBlocked("partition target category differs")
     if name not in {"train", "development"}:
         raise RouteExperimentBlocked("partition name differs")
     normalized_seeds = tuple(seeds)
@@ -610,7 +613,7 @@ def collect_route_partition(
             if decision_index >= max_decisions:
                 raise RouteExperimentBlocked("root decision ceiling reached")
             eligible = (
-                snapshot["category"] == "route"
+                snapshot["category"] == target_category
                 and len(candidates) > 1
                 and route_states < max_route_states_per_seed
             )
@@ -635,14 +638,16 @@ def collect_route_partition(
                     policy_input = projector(snapshot, candidates)
                 except Exception as exc:
                     raise RouteExperimentBlocked(
-                        "route baseline or projection failed for "
+                        f"{target_category} baseline or projection failed for "
                         f"seed {seed} decision {decision_index}"
                     ) from exc
                 current_action_id = current.get("action_id")
                 if current_action_id not in {
                     candidate["action_id"] for candidate in candidates
                 }:
-                    raise RouteExperimentBlocked("Current route action is not source legal")
+                    raise RouteExperimentBlocked(
+                        f"Current {target_category} action is not source legal"
+                    )
                 outcomes: list[dict[str, Any]] = []
                 censor_reason: str | None = None
                 for candidate in candidates:
@@ -651,7 +656,7 @@ def collect_route_partition(
                         trace = branch_evaluator(
                             environment,
                             action_id=candidate["action_id"],
-                            source_category="route",
+                            source_category=target_category,
                             max_decisions=max_decisions,
                             deadline=None if deadline is None else active_deadline,
                             clock=clock,
@@ -663,7 +668,7 @@ def collect_route_partition(
                         break
                     except Exception as exc:
                         raise RouteExperimentBlocked(
-                            "route branch evaluation failed"
+                            f"{target_category} branch evaluation failed"
                         ) from exc
                     outcomes.append(_branch_outcome(trace, candidate))
                 if censor_reason is not None:
@@ -681,7 +686,9 @@ def collect_route_partition(
                         )
                 else:
                     if len(outcomes) != len(candidates):
-                        raise RouteExperimentBlocked("route source row is incomplete")
+                        raise RouteExperimentBlocked(
+                            f"{target_category} source row is incomplete"
+                        )
                     row = RouteRow(
                         seed=seed,
                         decision_index=decision_index,
@@ -731,6 +738,20 @@ def collect_route_partition(
         root_native_transitions=root_transitions,
         censored_sources=tuple(censored),
         budget_exhausted=budget_exhausted,
+    )
+
+
+def collect_route_partition(
+    environment_factory: Callable[[int], Any],
+    baseline_session_factory: Callable[[int], Any],
+    **kwargs: Any,
+) -> RoutePartition:
+    """Preserve the route-specific collector API over the shared boundary."""
+    return collect_outcome_partition(
+        environment_factory,
+        baseline_session_factory,
+        target_category="route",
+        **kwargs,
     )
 
 

@@ -1,0 +1,159 @@
+{
+  "authority": {
+    "formal_rl": false,
+    "gameplay": false,
+    "policy_loading": false,
+    "promotion": false,
+    "qualification": false
+  },
+  "charged_seconds": 2395.5160000000033,
+  "development": {
+    "action_branches": 140,
+    "budget_exhausted": false,
+    "censor_reasons": {
+      "unsupported_shop_courier_restock_semantics": 1
+    },
+    "censored_sources": 1,
+    "distinct_event_ids": 19,
+    "event_ids": [
+      "Accursed Blacksmith",
+      "Big Fish",
+      "Dead Adventurer",
+      "Face Trader",
+      "Forgotten Altar",
+      "Golden Idol",
+      "Golden Shrine",
+      "Golden Wing",
+      "Liars Game",
+      "Living Wall",
+      "Mushrooms",
+      "Note For Yourself",
+      "Purifier",
+      "Scrap Ooze",
+      "Shining Light",
+      "The Cleric",
+      "Upgrade Shrine",
+      "WeMeetAgain",
+      "World of Goop"
+    ],
+    "informative_source_states": 23,
+    "return_spread_maximum": 0.5964912280701754,
+    "return_spread_mean": 0.07077014570324115,
+    "root_native_transitions": 1180,
+    "source_states": 59
+  },
+  "development_access_count": 1,
+  "identity": {
+    "current_bridge_input": {
+      "path": "D:/PycharmProjects/slay-the-spire-ai/reports/noncombat_current_policy_simulator_bridge_20260802_r2_input.json",
+      "sha256": "b251f7eefa558610b58c2dc23525f60302e6ae9f99bd11da72faa6c9a138f8f6"
+    },
+    "metadata": {
+      "path": "D:\\SteamLibrary\\steamapps\\common\\SlayTheSpire\\export\\items.json",
+      "sha256": "e23784ea8ed3092e3bfa9918240e162a9cbcb837badfb53c612eb0d83cc811dc",
+      "size_bytes": 240371
+    },
+    "native_module": {
+      "path": "D:/PycharmProjects/slay-the-spire-ai/.sts_lightspeed_adapter_v3_sold_inventory_build/sts_lightspeed_noncombat_adapter.cp310-win_amd64.pyd",
+      "sha256": "3a2563b51b9ef9df962c7a502cfd29ad5423497844a5ebb3bfb671c56c99369b",
+      "size_bytes": 4225536
+    },
+    "native_registration": {
+      "path": "D:/PycharmProjects/slay-the-spire-ai/reports/noncombat_card_counterfactual_corpus_expansion_20260813_r1/registration.json",
+      "sha256": "7096c3f131ba3e3fbe542a4505986b964206d4a9dc8cb4c58ae9b62fb25206d7"
+    },
+    "source": {
+      "commit": "73ae9d53e643e69f26196e82c447369a0bc9e1fd",
+      "files": [
+        {
+          "path": "analysis_scripts/noncombat_event_option_counterfactual_ranking.py",
+          "sha256": "31de1612b33b67c636b15130717fe0392e6e9299e23b0d2507c943efa49fe44a",
+          "size_bytes": 32462
+        },
+        {
+          "path": "analysis_scripts/noncombat_route_counterfactual_ranking.py",
+          "sha256": "6bbc3dd4e5099c53bf5a8508cd2af7f01b0c6f8231535f1739c8a0f246366932",
+          "size_bytes": 54153
+        },
+        {
+          "path": "analysis_scripts/noncombat_card_action_counterfactual_credit.py",
+          "sha256": "8f4028d209c10d6ecdc7b9387cf54ffb1a35fc31b97496c44ff9bd66d10e3c21",
+          "size_bytes": 20220
+        },
+        {
+          "path": "analysis_scripts/noncombat_current_policy_simulator_bridge.py",
+          "sha256": "1bbcd6008c78338b76b9d95e28d52e95a997734542b5a27fc9896bacb7c8ffce",
+          "size_bytes": 102865
+        },
+        {
+          "path": "analysis_scripts/noncombat_state_conditioned_policy_input.py",
+          "sha256": "f460bcb2cf2569b73ae08e640545fbd25996ae3e5d806339bff550aa12f484be",
+          "size_bytes": 8149
+        },
+        {
+          "path": "analysis_scripts/noncombat_state_conditioned_ranker.py",
+          "sha256": "60d1b710127e27c0bb283f073d6b166ccae14d9902ffb6d1911caa107d745678",
+          "size_bytes": 4549
+        },
+        {
+          "path": "analysis_scripts/noncombat_event_option_semantics.py",
+          "sha256": "2a18688d61ae70612b43683e06f3f2381d998f0fe3bebf9fbdf3e4cd9602af6b",
+          "size_bytes": 29305
+        }
+      ],
+      "source_sha256": "28ebdf333db349e55b53382ff9c5aa55df307bc4278551a162dae3089550ed51"
+    }
+  },
+  "operations": {
+    "communication_mod": false,
+    "gameplay": false,
+    "model_fitting": true,
+    "native_loading": true,
+    "production_checkpoint_access": false,
+    "seed_access": true,
+    "training": true
+  },
+  "schema_version": "noncombat-event-option-counterfactual-ranking-v1",
+  "train": {
+    "action_branches": 603,
+    "budget_exhausted": false,
+    "censor_reasons": {
+      "unsupported_shop_courier_restock_semantics": 11
+    },
+    "censored_sources": 11,
+    "distinct_event_ids": 25,
+    "event_ids": [
+      "Accursed Blacksmith",
+      "Addict",
+      "Beggar",
+      "Big Fish",
+      "Cursed Tome",
+      "Dead Adventurer",
+      "Face Trader",
+      "Forgotten Altar",
+      "Ghosts",
+      "Golden Idol",
+      "Golden Shrine",
+      "Golden Wing",
+      "Liars Game",
+      "Living Wall",
+      "Masked Bandits",
+      "Note For Yourself",
+      "Purifier",
+      "Scrap Ooze",
+      "Shining Light",
+      "The Cleric",
+      "The Woman in Blue",
+      "Transmorgrifier",
+      "Upgrade Shrine",
+      "WeMeetAgain",
+      "World of Goop"
+    ],
+    "informative_source_states": 106,
+    "return_spread_maximum": 0.7543859649122806,
+    "return_spread_mean": 0.09258861439312567,
+    "root_native_transitions": 4903,
+    "source_states": 245
+  },
+  "verdict": "event_counterfactual_ranker_ready_for_shadow_evaluation_proposal"
+}
