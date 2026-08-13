@@ -13,8 +13,8 @@
 
 - [x] 3.1 Add focused tests for schedule isolation, branch/censor limits, audit nonaccess, support floors, and diagnostics
 - [x] 3.2 Run focused pytest, compilation, and strict OpenSpec validation
-- [ ] 3.3 Register, preflight, and execute the bounded corpus collection once
+- [x] 3.3 Register, preflight, and execute the bounded corpus collection once
 
 ## 4. Closure
 
-- [ ] 4.1 Inspect corpus quality, sync/archive the change, and commit/push scoped evidence
+- [x] 4.1 Inspect corpus quality, sync/archive the change, and commit/push scoped evidence
