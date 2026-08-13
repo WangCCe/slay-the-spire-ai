@@ -49,4 +49,3 @@ production loading, OPE, and causal authority false.
 #### Scenario: Audit report is published
 - **WHEN** fixed evaluation completes
 - **THEN** exact metrics, flips, censors, unseen cards, and isolation evidence are published without modifying production state
-
