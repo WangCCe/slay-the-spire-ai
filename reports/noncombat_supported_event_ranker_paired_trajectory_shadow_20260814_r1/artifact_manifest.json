@@ -1,0 +1,30 @@
+{
+  "artifacts": [
+    {
+      "path": "censored_pairs.json",
+      "sha256": "70c10e6de84882100bbc1f25846fa6af1117e77d1c712b510f32767a1f6839c4",
+      "size_bytes": 657
+    },
+    {
+      "path": "configuration.json",
+      "sha256": "e0d7dac68c68fc69a0449831c794304472f066cdaf3526f3a8dfd3e055f4040e",
+      "size_bytes": 1750
+    },
+    {
+      "path": "metrics.json",
+      "sha256": "0df1f981d8b0b50cbeab116c407496a1e700ca85e83ef30b3104d1da5ff9fc09",
+      "size_bytes": 1814
+    },
+    {
+      "path": "pairs.json",
+      "sha256": "f3296d41129edba152cb2545842ec9f7032c7081eb467730114da362a2e1681c",
+      "size_bytes": 1058577
+    },
+    {
+      "path": "report.json",
+      "sha256": "dada20986c308b6ec79bf60545c7ddd301c9a33892d32643d00a2f714cc84328",
+      "size_bytes": 11516
+    }
+  ],
+  "schema_version": "noncombat-supported-event-ranker-paired-trajectory-manifest-v1"
+}

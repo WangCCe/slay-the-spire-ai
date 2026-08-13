@@ -1,0 +1,67 @@
+{
+  "censor_reasons": {
+    "unsupported_shop_courier_restock_semantics": 6
+  },
+  "censored_pairs": 6,
+  "checks": {
+    "complete_pair_support": true,
+    "event_exposure_support": true,
+    "fallback_accounting_complete": true,
+    "improved_not_fewer_than_worsened": false,
+    "improves_at_least_one_pair": true,
+    "mean_floor_noninferior_to_current": false,
+    "mean_return_improves_current": false,
+    "no_out_of_support_overrides": true,
+    "no_paired_victory_loss": false,
+    "override_support": true,
+    "support_exposure": true,
+    "victory_count_noninferior_to_current": true
+  },
+  "complete_pairs": 122,
+  "current": {
+    "mean_floor": 21.83606557377049,
+    "mean_return": 0.3994823123382226,
+    "victories": 1
+  },
+  "event_exposed_pairs": 121,
+  "improved_pairs": 21,
+  "override_pairs": 113,
+  "selected": {
+    "mean_floor": 21.57377049180328,
+    "mean_return": 0.39488064423353464,
+    "total_event_overrides": 252,
+    "victories": 1
+  },
+  "support": {
+    "fallback_event_counts": {
+      "ancient_writing": 8,
+      "augmenter": 4,
+      "designer_in_spire": 1,
+      "duplicator": 1,
+      "falling": 3,
+      "hypnotizing_colored_mushrooms": 17,
+      "knowing_skull": 4,
+      "mindbloom": 3,
+      "mysterious_sphere": 2,
+      "n_loth": 4,
+      "sensory_stone": 3,
+      "the_joust": 1,
+      "the_library": 10,
+      "the_mausoleum": 9,
+      "the_nest": 13,
+      "tomb_of_lord_red_mask": 3,
+      "vampires": 8,
+      "winding_halls": 2
+    },
+    "fallback_pairs": 49,
+    "fallback_sources": 96,
+    "out_of_support_overrides": 0,
+    "support_exposed_pairs": 120,
+    "supported_sources": 393
+  },
+  "tied_pairs": 67,
+  "verdict": "supported_event_ranker_paired_trajectory_integration_not_ready",
+  "victory_gains": 1,
+  "victory_losses": 1,
+  "worsened_pairs": 34
+}

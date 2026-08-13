@@ -1,0 +1,32 @@
+[
+  {
+    "arm": "current",
+    "reason": "unsupported_shop_courier_restock_semantics",
+    "seed": 94836
+  },
+  {
+    "arm": "current",
+    "reason": "unsupported_shop_courier_restock_semantics",
+    "seed": 94850
+  },
+  {
+    "arm": "current",
+    "reason": "unsupported_shop_courier_restock_semantics",
+    "seed": 94906
+  },
+  {
+    "arm": "current",
+    "reason": "unsupported_shop_courier_restock_semantics",
+    "seed": 94909
+  },
+  {
+    "arm": "current",
+    "reason": "unsupported_shop_courier_restock_semantics",
+    "seed": 94914
+  },
+  {
+    "arm": "current",
+    "reason": "unsupported_shop_courier_restock_semantics",
+    "seed": 94915
+  }
+]
