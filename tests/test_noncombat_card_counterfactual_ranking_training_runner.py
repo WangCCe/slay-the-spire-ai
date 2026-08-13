@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import copy
 import json
+from pathlib import Path
 
 import pytest
 
@@ -12,6 +13,18 @@ from analysis_scripts.noncombat_simulator_adapter import ADAPTER_API_VERSION
 
 def _binding(path: str) -> dict[str, object]:
     return {"path": path, "sha256": "a" * 64, "size_bytes": 1}
+
+
+def test_worker_preload_only_owns_direct_script_entry(monkeypatch):
+    monkeypatch.setattr(
+        runner.sys,
+        "argv",
+        [str(Path(runner.__file__).with_name("other_runner.py")), "run-worker"],
+    )
+    assert runner._is_direct_worker_invocation() is False
+
+    monkeypatch.setattr(runner.sys, "argv", [runner.__file__, "run-worker"])
+    assert runner._is_direct_worker_invocation() is True
 
 
 def _registration(tmp_path) -> dict[str, object]:

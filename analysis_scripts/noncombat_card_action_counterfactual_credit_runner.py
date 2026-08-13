@@ -44,8 +44,16 @@ REGISTRATION_SCHEMA_VERSION = (
 _EARLY_NATIVE_HANDLES: list[Any] = []
 
 
+def _is_direct_worker_invocation() -> bool:
+    return (
+        len(sys.argv) >= 2
+        and sys.argv[1] == "run-worker"
+        and Path(sys.argv[0]).resolve() == Path(__file__).resolve()
+    )
+
+
 def _early_preload_native() -> None:
-    if len(sys.argv) < 2 or sys.argv[1] != "run-worker":
+    if not _is_direct_worker_invocation():
         return
     try:
         registration_path = Path(
