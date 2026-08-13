@@ -835,6 +835,10 @@ class MetadataCatalog:
         if isinstance(upgrades, bool) or not isinstance(upgrades, int) or upgrades < 0:
             raise BridgeBlocked("card_upgrade_count_invalid", name)
         upgraded = source.get("upgraded")
+        if card_id == "SEARING_BLOW" and upgraded is True and upgrades == 0:
+            # Generated upgraded rewards can set the generic flag without
+            # incrementing Searing Blow's misc-backed upgrade counter.
+            upgrades = 1
         if not isinstance(upgraded, bool) or upgraded != (upgrades > 0):
             raise BridgeBlocked("card_upgrade_flag_mismatch", name)
         misc = source.get("misc", 0)
@@ -1383,9 +1387,11 @@ def map_current_action(
                 normalized, lambda candidate: candidate["kind"] == kind, category=category
             )
         if isinstance(action, CancelAction):
+            kinds = {candidate["kind"] for candidate in normalized}
+            abstention_kind = "skip" if "skip" in kinds else "bowl"
             return _unique_match(
                 normalized,
-                lambda candidate: candidate["kind"] == "skip",
+                lambda candidate: candidate["kind"] == abstention_kind,
                 category=category,
             )
         if not isinstance(action, CardRewardAction):

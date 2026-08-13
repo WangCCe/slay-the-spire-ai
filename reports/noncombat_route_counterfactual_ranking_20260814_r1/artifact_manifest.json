@@ -1,0 +1,35 @@
+{
+  "artifacts": [
+    {
+      "path": "configuration.json",
+      "sha256": "51aabc8effd25fb09418efb6a4e97e50f571f55f6c08bf96a6f9a2e578ede5be",
+      "size_bytes": 2152
+    },
+    {
+      "path": "development_dataset.json",
+      "sha256": "f4f5c3f87cc93ec58bb7f1b9a7a93c2078e4459bbd5dd4f1f13034b58d1650ce",
+      "size_bytes": 1597704
+    },
+    {
+      "path": "metrics.json",
+      "sha256": "5d5930b03016046bef33f8f382e39856b6d95b1b4104f20ca6eba0d59ee94c73",
+      "size_bytes": 69738
+    },
+    {
+      "path": "model.json",
+      "sha256": "827bc21508c8a922c44c914b6aea490f497d5403e0ae102925821b7db42ed9ed",
+      "size_bytes": 3996267
+    },
+    {
+      "path": "report.json",
+      "sha256": "2fbc6d33a3383eefdbfbb6f81f4cee2bb17d4620807b060cb152de0facab106f",
+      "size_bytes": 3674
+    },
+    {
+      "path": "train_dataset.json",
+      "sha256": "f7d0b6df222acb57e20fe4f3507dfcf96c5124e06e582a37165989fc7a8554cd",
+      "size_bytes": 6621431
+    }
+  ],
+  "schema_version": "noncombat-route-counterfactual-manifest-v1"
+}

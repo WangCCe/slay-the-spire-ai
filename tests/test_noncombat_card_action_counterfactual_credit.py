@@ -155,6 +155,93 @@ class _DriftingReplayEnvironment(_CreditEnvironment):
         return super().step(action_id)
 
 
+class _RouteCreditEnvironment(_CreditEnvironment):
+    def __init__(
+        self,
+        seed: int,
+        *,
+        stage: int = 0,
+        selected_route: str | None = None,
+        shared: dict[str, object] | None = None,
+        fail_native: bool = False,
+    ) -> None:
+        super().__init__(
+            seed,
+            stage=stage,
+            shared=shared,
+            fail_native=fail_native,
+        )
+        self.selected_route = selected_route
+
+    def snapshot(self) -> dict[str, object]:
+        terminal = self.stage == 1
+        floor = {None: 0, "route:left": 2, "route:right": 5}[self.selected_route]
+        return {
+            "adapter_api_version": ADAPTER_API_VERSION,
+            "baseline_control": {
+                "history": [],
+                "policy_id": "test-native-simple-agent",
+            },
+            "category": None if terminal else "route",
+            "decision_count": self.stage,
+            "schema_version": STATE_SCHEMA_VERSION,
+            "source_type": SOURCE_TYPE,
+            "state": {
+                "floor": floor,
+                "outcome": "player_loss" if terminal else "undecided",
+                "seed": str(self.seed),
+            },
+            "terminal": terminal,
+        }
+
+    def legal_actions(self) -> list[dict[str, object]]:
+        if self.stage:
+            return []
+        return [
+            {
+                **_candidate("route", "route:left"),
+                "kind": "map_node",
+                "raw": {"room": "MONSTER", "x": 0, "y": 0},
+            },
+            {
+                **_candidate("route", "route:right"),
+                "kind": "map_node",
+                "raw": {"room": "ELITE", "x": 1, "y": 0},
+            },
+        ]
+
+    def clone(self):
+        return type(self)(
+            self.seed,
+            stage=self.stage,
+            selected_route=self.selected_route,
+            shared=self.shared,
+            fail_native=self.fail_native,
+        )
+
+    def step(self, action_id: str) -> dict[str, object]:
+        before = self.snapshot()
+        candidates = self.legal_actions()
+        if action_id not in {candidate["action_id"] for candidate in candidates}:
+            raise RuntimeError("illegal action")
+        self.selected_route = action_id
+        self.stage = 1
+        return build_transition(
+            before=before,
+            candidates=candidates,
+            selected_action_id=action_id,
+            after=self.snapshot(),
+            provenance=_provenance(),
+        )
+
+
+class _MutatingRouteEnvironment(_RouteCreditEnvironment):
+    def clone(self):
+        clone = super().clone()
+        self.stage = 1
+        return clone
+
+
 def test_source_evaluation_covers_all_actions_and_uses_native_continuation():
     environment = _CreditEnvironment(1000)
 
@@ -187,6 +274,33 @@ def test_branch_accumulates_formal_reward_and_exact_action_sequence():
     assert trace.floor_progress == pytest.approx(3.0 / 57.0)
     assert trace.total_return == pytest.approx(3.0 / 57.0)
     assert trace.terminal_summary["outcome"] == "player_loss"
+
+
+def test_category_aware_branch_accepts_route_and_rejects_mismatch():
+    trace = credit.evaluate_action_branch_for_category(
+        _RouteCreditEnvironment(1001),
+        action_id="route:right",
+        source_category="route",
+    )
+
+    assert trace.action_sequence == ("route:right",)
+    assert trace.floor_progress == pytest.approx(5.0 / 57.0)
+
+    with pytest.raises(credit.CounterfactualCreditBlocked, match="card_reward"):
+        credit.evaluate_action_branch_for_category(
+            _RouteCreditEnvironment(1001),
+            action_id="route:right",
+            source_category="card_reward",
+        )
+
+
+def test_category_aware_route_branch_preserves_source_state():
+    with pytest.raises(credit.CounterfactualCreditBlocked, match="mutated"):
+        credit.evaluate_action_branch_for_category(
+            _MutatingRouteEnvironment(1001),
+            action_id="route:left",
+            source_category="route",
+        )
 
 
 def test_source_mutation_and_unsupported_native_transition_fail_closed():

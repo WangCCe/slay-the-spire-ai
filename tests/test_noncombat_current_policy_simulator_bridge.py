@@ -570,6 +570,25 @@ def test_card_metadata_cost_domain_preserves_registered_skill_upgrades(
     assert card.cost_for_turn == -2
 
 
+def test_card_metadata_normalizes_generated_upgraded_searing_blow_reward(
+    tmp_path,
+):
+    catalog = _card_metadata_catalog(
+        tmp_path,
+        [_card_metadata("Searing Blow", "Attack", cost="2", description="Deal damage.")],
+    )
+    source = _source_card("SEARING_BLOW", "Searing Blow")
+    source["upgraded"] = True
+    before = copy.deepcopy(source)
+
+    card = catalog.card(source, role="reward")
+
+    assert card.name == "Searing Blow"
+    assert card.upgrades == 1
+    assert card.cost == 2
+    assert source == before
+
+
 def test_card_metadata_cost_domain_hydrates_production_shaped_injury_deck(
     tmp_path,
 ):
@@ -992,6 +1011,37 @@ def test_card_reward_abstention_modes_map_exactly(action, kind, expected):
         )
         == expected
     )
+
+
+def test_card_reward_cancel_uses_bowl_when_skip_is_not_legal():
+    candidates = [
+        _candidate(
+            "card_reward",
+            "take",
+            "card_reward:take:0:0:body_slam",
+            slot=0,
+        ),
+        _candidate("card_reward", "bowl", "card_reward:bowl:0"),
+    ]
+
+    assert map_current_action(
+        category="card_reward",
+        action=CancelAction(),
+        candidates=candidates,
+    ) == "card_reward:bowl:0"
+
+
+def test_card_reward_cancel_prefers_skip_when_both_abstentions_are_legal():
+    candidates = [
+        _candidate("card_reward", "skip", "card_reward:skip:0"),
+        _candidate("card_reward", "bowl", "card_reward:bowl:0"),
+    ]
+
+    assert map_current_action(
+        category="card_reward",
+        action=CancelAction(),
+        candidates=candidates,
+    ) == "card_reward:skip:0"
 
 
 @pytest.mark.parametrize(

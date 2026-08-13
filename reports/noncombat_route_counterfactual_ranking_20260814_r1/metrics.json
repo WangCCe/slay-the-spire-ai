@@ -1,0 +1,2013 @@
+{
+  "changes_vs_current": {
+    "action_changes": 42,
+    "corrected": 10,
+    "worsened": 10
+  },
+  "checks": {
+    "corrects_at_least_one_current_decision": true,
+    "development_support": true,
+    "maximum_regret_noninferior_to_current": false,
+    "mean_regret_improves_current": false,
+    "pairwise_accuracy_improves_initialization": true,
+    "worsened_not_more_than_corrected": true
+  },
+  "development": {
+    "current": {
+      "maximum_regret": 0.29824561403508776,
+      "mean_regret": 0.04249512670565302,
+      "predictions": [
+        {
+          "action_id": "route:map_node:1:0",
+          "decision_index": 0,
+          "regret": 0.0,
+          "seed": 93128,
+          "source_sha256": "f68d0ac7952c05a9410333f49fe49e46523eb3cf87feaa29d44e6ddbd10d8802"
+        },
+        {
+          "action_id": "route:map_node:1:2",
+          "decision_index": 4,
+          "regret": 0.0,
+          "seed": 93128,
+          "source_sha256": "ac4fd5b7cfbc674e3ce74f8ff909f2597150d138d5bdaabf9f06d4a33f73a496"
+        },
+        {
+          "action_id": "route:map_node:2:3",
+          "decision_index": 6,
+          "regret": 0.0,
+          "seed": 93128,
+          "source_sha256": "0de2e6d23ea425c5b439452b8d4caa05dde95ba4e112a6337a772aed46b06d7b"
+        },
+        {
+          "action_id": "route:map_node:0:0",
+          "decision_index": 0,
+          "regret": 0.0,
+          "seed": 93129,
+          "source_sha256": "737c799676cf184f259ace4eb6dbdd35f669477ba87dd338bc6ed0961eb272d5"
+        },
+        {
+          "action_id": "route:map_node:1:3",
+          "decision_index": 6,
+          "regret": 0.0,
+          "seed": 93129,
+          "source_sha256": "fa60548c00efafab84ec9bfa15bcd49f4b4d1a0217a30cf75f5065e9010f26bf"
+        },
+        {
+          "action_id": "route:map_node:4:6",
+          "decision_index": 11,
+          "regret": 0.0,
+          "seed": 93129,
+          "source_sha256": "24feee17a061e84a92857af04ff216a341aec3392dd8b5dee9c0394f0b92f84e"
+        },
+        {
+          "action_id": "route:map_node:4:0",
+          "decision_index": 0,
+          "regret": 0.10526315789473684,
+          "seed": 93130,
+          "source_sha256": "84025d00ff7b26e474a01f39abd1047fefbbd24f420ffe506b42481565d5e815"
+        },
+        {
+          "action_id": "route:map_node:1:8",
+          "decision_index": 16,
+          "regret": 0.0,
+          "seed": 93130,
+          "source_sha256": "b01430e2f6b6fe67681d3f96c24e861a0874a20e67e89c855920a47f42f33c34"
+        },
+        {
+          "action_id": "route:map_node:0:12",
+          "decision_index": 22,
+          "regret": 0.0,
+          "seed": 93130,
+          "source_sha256": "a8fe5d46bbb8aa84da4be74938ec5081689d245d7570e610747310c8a9a7d95f"
+        },
+        {
+          "action_id": "route:map_node:4:0",
+          "decision_index": 0,
+          "regret": 0.0,
+          "seed": 93131,
+          "source_sha256": "2c8c6850fa7d15d55ede338970eee0a118cffa6fb04b3f636b4525e8e3e3eecb"
+        },
+        {
+          "action_id": "route:map_node:1:2",
+          "decision_index": 4,
+          "regret": 0.0,
+          "seed": 93131,
+          "source_sha256": "68448800637db46157722da3be62aea37de6e43eff349bd216aec568f2dda3cf"
+        },
+        {
+          "action_id": "route:map_node:4:5",
+          "decision_index": 9,
+          "regret": 0.0,
+          "seed": 93131,
+          "source_sha256": "3ef84f033035a318dd7865af1a4bb946c6c4f9dd3db44cd1650d3961f820b684"
+        },
+        {
+          "action_id": "route:map_node:1:0",
+          "decision_index": 0,
+          "regret": 0.0,
+          "seed": 93132,
+          "source_sha256": "9053282a7d086a0a58f08f66817ec137d13686e13b32f3ab3863ec68e471aaed"
+        },
+        {
+          "action_id": "route:map_node:2:1",
+          "decision_index": 2,
+          "regret": 0.0,
+          "seed": 93132,
+          "source_sha256": "87c8c1b0beed1f73e552b8ba973646e53f8499f708381c01d0c4d053b7ce1fc7"
+        },
+        {
+          "action_id": "route:map_node:1:2",
+          "decision_index": 4,
+          "regret": 0.26315789473684215,
+          "seed": 93132,
+          "source_sha256": "a0050131737e5ff30bb71eb5d2e81545eb1fa59971ae9e4d002c52a92caa1d94"
+        },
+        {
+          "action_id": "route:map_node:1:0",
+          "decision_index": 0,
+          "regret": 0.0,
+          "seed": 93133,
+          "source_sha256": "89bbda615995fd0a965be197cf577615844c8c2e26633fec862dd85b4c637c06"
+        },
+        {
+          "action_id": "route:map_node:1:6",
+          "decision_index": 11,
+          "regret": 0.08771929824561403,
+          "seed": 93133,
+          "source_sha256": "9c9a7cef3014e5b8124cb16cd53b36898256e31c7e592193531ce4e0ff5086a4"
+        },
+        {
+          "action_id": "route:map_node:0:8",
+          "decision_index": 15,
+          "regret": 0.0,
+          "seed": 93133,
+          "source_sha256": "3d23d0a38375b611e74c97fc7ecfc944ffc1418165214a44440946267ccc3687"
+        },
+        {
+          "action_id": "route:map_node:3:0",
+          "decision_index": 0,
+          "regret": 0.0,
+          "seed": 93134,
+          "source_sha256": "fa0369b85498562f74f41d3b58aa0242dab0d2196feead4402b299bf39a69100"
+        },
+        {
+          "action_id": "route:map_node:3:3",
+          "decision_index": 6,
+          "regret": 0.0,
+          "seed": 93134,
+          "source_sha256": "3a44e3fff1b65eaf3e32d212e861e2037dcb00878c05c652a0b6ef28f709c252"
+        },
+        {
+          "action_id": "route:map_node:5:4",
+          "decision_index": 8,
+          "regret": 0.0,
+          "seed": 93134,
+          "source_sha256": "d2a965a8f4d3b26588f92cdc279ada7952e49202fe1714b7aa7ab9147288c073"
+        },
+        {
+          "action_id": "route:map_node:5:0",
+          "decision_index": 1,
+          "regret": 0.0,
+          "seed": 93135,
+          "source_sha256": "144dac392c0ca2cf39bc92079b5a27447e652d52b8c33fed3e58274726ab1ee9"
+        },
+        {
+          "action_id": "route:map_node:2:2",
+          "decision_index": 5,
+          "regret": 0.05263157894736842,
+          "seed": 93135,
+          "source_sha256": "5f6f4343eecbf03cd2f2c3c1b9cd83c73d7d8472ea2043fc34e932045d53d6eb"
+        },
+        {
+          "action_id": "route:map_node:2:5",
+          "decision_index": 12,
+          "regret": 0.0,
+          "seed": 93135,
+          "source_sha256": "2ed073d6d698a91008a63dc24540ce8089c137a8457a273ba0c23035a2df0d1a"
+        },
+        {
+          "action_id": "route:map_node:4:3",
+          "decision_index": 7,
+          "regret": 0.0,
+          "seed": 93136,
+          "source_sha256": "25779f29b3f98ebbb39917546cf159db057c3feb5dae590bd71c587325d255fa"
+        },
+        {
+          "action_id": "route:map_node:5:0",
+          "decision_index": 1,
+          "regret": 0.22807017543859653,
+          "seed": 93137,
+          "source_sha256": "94a9077bdcf58913ceac375e4b43203b6e17d98c9f09e69f50560f7a319e133c"
+        },
+        {
+          "action_id": "route:map_node:0:3",
+          "decision_index": 6,
+          "regret": 0.14035087719298245,
+          "seed": 93137,
+          "source_sha256": "3996f1637e05702d7a040adae7f6a91ca18f9eec427b316572e03eac87bcdc04"
+        },
+        {
+          "action_id": "route:map_node:4:9",
+          "decision_index": 15,
+          "regret": 0.0,
+          "seed": 93137,
+          "source_sha256": "b5d7e585c392d4249cb571b37798b8f3f5e6c8768125889ebb68ce56bfad47f9"
+        },
+        {
+          "action_id": "route:map_node:0:0",
+          "decision_index": 0,
+          "regret": 0.29824561403508776,
+          "seed": 93138,
+          "source_sha256": "0542486717decce89c02661836d62a9788f4175ea9f51e7308afbd088125e289"
+        },
+        {
+          "action_id": "route:map_node:5:4",
+          "decision_index": 9,
+          "regret": 0.0,
+          "seed": 93138,
+          "source_sha256": "b4fa366758605c2c206067363bb7f4a505a77c40f96b9f0addbd8d74a0615f0f"
+        },
+        {
+          "action_id": "route:map_node:5:5",
+          "decision_index": 11,
+          "regret": 0.0,
+          "seed": 93138,
+          "source_sha256": "33a2cf0645d80dba6871b45f04eeab8d560a56156ee21665fdf0138cc924976b"
+        },
+        {
+          "action_id": "route:map_node:4:0",
+          "decision_index": 0,
+          "regret": 0.0,
+          "seed": 93139,
+          "source_sha256": "90e7b1715a7ecd837a3b758b45fc6613e2eddf96aff0000ac142796d661ed037"
+        },
+        {
+          "action_id": "route:map_node:3:1",
+          "decision_index": 2,
+          "regret": 0.0,
+          "seed": 93139,
+          "source_sha256": "321db179ba4da0d16d4fa77bc990ab7945d38aff177639b763d0f87b1c6960f9"
+        },
+        {
+          "action_id": "route:map_node:5:2",
+          "decision_index": 4,
+          "regret": 0.0,
+          "seed": 93139,
+          "source_sha256": "d74eb00c954af9f14ef09afb8d98d579a19691c6cddcd91d58a7c0ab3008fe0d"
+        },
+        {
+          "action_id": "route:map_node:0:0",
+          "decision_index": 0,
+          "regret": 0.0,
+          "seed": 93140,
+          "source_sha256": "8947987f87ad2d9466f1803035bfc799a0db9fde1c8eaa0345142df79433492e"
+        },
+        {
+          "action_id": "route:map_node:4:1",
+          "decision_index": 2,
+          "regret": 0.0,
+          "seed": 93140,
+          "source_sha256": "a105d4e336a8e7eb849932a83a6daba7c53084620e0b036311ce3901d9a78830"
+        },
+        {
+          "action_id": "route:map_node:3:12",
+          "decision_index": 22,
+          "regret": 0.0,
+          "seed": 93140,
+          "source_sha256": "d43ffdd44d9e6e8e3ca621f84dc7f1d217d2b348adb628789880c968bcd8a443"
+        },
+        {
+          "action_id": "route:map_node:0:0",
+          "decision_index": 0,
+          "regret": 0.0,
+          "seed": 93141,
+          "source_sha256": "d6ac5eba0d3286b503ef0d0eb1ac97ecb25efb033b4ed5337eed7dbd0fedc67d"
+        },
+        {
+          "action_id": "route:map_node:1:2",
+          "decision_index": 4,
+          "regret": 0.0,
+          "seed": 93141,
+          "source_sha256": "4792c24be6ba4f593c78346bdb770104b0bbdd9eef45612279005f236037b6ee"
+        },
+        {
+          "action_id": "route:map_node:1:3",
+          "decision_index": 6,
+          "regret": 0.0,
+          "seed": 93141,
+          "source_sha256": "1908bf3f021ad7fd21b09ca9ecd970e2976f6c3cb1ace153185c0f1b280ac620"
+        },
+        {
+          "action_id": "route:map_node:4:0",
+          "decision_index": 0,
+          "regret": 0.0,
+          "seed": 93142,
+          "source_sha256": "18fb7ca31662b2174e40bb27cd42c71d83f114f0eccb85b0704c4f32550f407c"
+        },
+        {
+          "action_id": "route:map_node:1:2",
+          "decision_index": 5,
+          "regret": 0.0,
+          "seed": 93142,
+          "source_sha256": "50da74a7ff4e6ad055d61306fbd5b765710b9f8d6df8801a2f6dbda21c96a7de"
+        },
+        {
+          "action_id": "route:map_node:2:0",
+          "decision_index": 0,
+          "regret": 0.0,
+          "seed": 93143,
+          "source_sha256": "8c1da7fce0d94521e814e02e89a84b83b831edc10d3714f4d20c26368cb3ee2d"
+        },
+        {
+          "action_id": "route:map_node:4:3",
+          "decision_index": 6,
+          "regret": 0.0,
+          "seed": 93143,
+          "source_sha256": "2a5bd933915b9e1669108288ae51ff88e0dc211119704579e0e44f4026af01d6"
+        },
+        {
+          "action_id": "route:map_node:4:4",
+          "decision_index": 8,
+          "regret": 0.0,
+          "seed": 93143,
+          "source_sha256": "2a03fdb1cd2ab41b761ce821310214173759667f0c03424d1fb394c992af5187"
+        },
+        {
+          "action_id": "route:map_node:3:3",
+          "decision_index": 11,
+          "regret": 0.0,
+          "seed": 93144,
+          "source_sha256": "0b9abccfa2c0f644725402f0ea4bb2e52eff2816e2eba2a054d513464053327d"
+        },
+        {
+          "action_id": "route:map_node:0:0",
+          "decision_index": 0,
+          "regret": 0.0,
+          "seed": 93145,
+          "source_sha256": "336a1fee55c02a74cc55577beaaf3e920802558a6f9d09eb1d2dd3b7da28352e"
+        },
+        {
+          "action_id": "route:map_node:3:4",
+          "decision_index": 8,
+          "regret": 0.0,
+          "seed": 93145,
+          "source_sha256": "aaaa7df2d7f40d95f470c19f39cbdc7702f714d130068455fec6c5cab8596507"
+        },
+        {
+          "action_id": "route:map_node:4:6",
+          "decision_index": 11,
+          "regret": 0.0,
+          "seed": 93145,
+          "source_sha256": "c394dfe1a714d3f57ad9102c2a607ac921c1ea4afad6a2df0e1a5c1741ec3c75"
+        },
+        {
+          "action_id": "route:map_node:1:0",
+          "decision_index": 0,
+          "regret": 0.10526315789473684,
+          "seed": 93146,
+          "source_sha256": "238ee4f7bc47044466b56c33a49810f4c89b096c598d05baa7f02da31c6208c2"
+        },
+        {
+          "action_id": "route:map_node:3:3",
+          "decision_index": 9,
+          "regret": 0.0,
+          "seed": 93146,
+          "source_sha256": "124e7950d0426e595b2dd6247c716c65c86c210dcda539ed67db5d84313d2cbf"
+        },
+        {
+          "action_id": "route:map_node:2:10",
+          "decision_index": 21,
+          "regret": 0.21052631578947367,
+          "seed": 93146,
+          "source_sha256": "ee37167e764dfe31f17e7d4229f020a5831dbabb233d7b827c9534ec8850c565"
+        },
+        {
+          "action_id": "route:map_node:1:0",
+          "decision_index": 0,
+          "regret": 0.0,
+          "seed": 93147,
+          "source_sha256": "5fd51b6b07064d3d3812d88e7634a4cd4f20fea1afad5620dac1a2ac424ded2d"
+        },
+        {
+          "action_id": "route:map_node:2:1",
+          "decision_index": 2,
+          "regret": 0.0,
+          "seed": 93147,
+          "source_sha256": "4c4cf2bca1b297306f5bbba01684070a2db4f992d2fda9e98fd69f10b33be7a8"
+        },
+        {
+          "action_id": "route:map_node:2:4",
+          "decision_index": 8,
+          "regret": 0.0,
+          "seed": 93147,
+          "source_sha256": "32a277b6f476706dab49cd4593e69af99417387220b94bc025a927d551b87d03"
+        },
+        {
+          "action_id": "route:map_node:1:0",
+          "decision_index": 0,
+          "regret": 0.0,
+          "seed": 93148,
+          "source_sha256": "6438032f635c31478c0a9eae3e36ec6beca9c8381cd53fa3dcf19a2c64074301"
+        },
+        {
+          "action_id": "route:map_node:2:1",
+          "decision_index": 2,
+          "regret": 0.12280701754385964,
+          "seed": 93148,
+          "source_sha256": "eab22e94f2946045af92d30f7aeb62fac4b0242219ce47c58e45871b7e8a13d7"
+        },
+        {
+          "action_id": "route:map_node:2:4",
+          "decision_index": 8,
+          "regret": 0.07017543859649122,
+          "seed": 93148,
+          "source_sha256": "d69471d55289986dc90063b61364992fb4eaa5ec0454f552652f8c95b85b5120"
+        },
+        {
+          "action_id": "route:map_node:0:0",
+          "decision_index": 1,
+          "regret": 0.0,
+          "seed": 93149,
+          "source_sha256": "00a4a7816afb40ab61e66e587b599179d55c813c0d30c4445f1caa7330c385b9"
+        },
+        {
+          "action_id": "route:map_node:5:3",
+          "decision_index": 7,
+          "regret": 0.0,
+          "seed": 93149,
+          "source_sha256": "bde69df616a1f68c0ce59bbed0edf6a6c3d037cc9f0054ffff5cc104a665a504"
+        },
+        {
+          "action_id": "route:map_node:4:0",
+          "decision_index": 1,
+          "regret": 0.0,
+          "seed": 93150,
+          "source_sha256": "49f90b9a5e04889e789d6f9749cce0dceadcfe2bdebd7d04c7576a996aabc3b8"
+        },
+        {
+          "action_id": "route:map_node:0:3",
+          "decision_index": 7,
+          "regret": 0.0,
+          "seed": 93150,
+          "source_sha256": "96a42ff1e0643bc6f95bfda73e0242b8b810590c689392c1dad0488845c1701e"
+        },
+        {
+          "action_id": "route:map_node:0:8",
+          "decision_index": 15,
+          "regret": 0.2982456140350877,
+          "seed": 93150,
+          "source_sha256": "717cf03022ec07ac867521501194d36406eabcc230c5c93a3030d67abd014b77"
+        },
+        {
+          "action_id": "route:map_node:2:0",
+          "decision_index": 1,
+          "regret": 0.0,
+          "seed": 93151,
+          "source_sha256": "b80bc5d07c3f34bbd4b72415e1d4b66372a1b24c68482a5794205cb0be2b88da"
+        },
+        {
+          "action_id": "route:map_node:4:5",
+          "decision_index": 11,
+          "regret": 0.0,
+          "seed": 93151,
+          "source_sha256": "25d63d881c94511a914f9127e281b9a9626a033b8a6d4ebee75e4d81c7fcd58e"
+        },
+        {
+          "action_id": "route:map_node:3:8",
+          "decision_index": 16,
+          "regret": 0.0,
+          "seed": 93151,
+          "source_sha256": "a2e5cbf2b7f59287f74e411b31e7be3bc7396d3e3eb4e6a97f1a61d438f67b07"
+        },
+        {
+          "action_id": "route:map_node:2:0",
+          "decision_index": 0,
+          "regret": 0.0,
+          "seed": 93152,
+          "source_sha256": "86b6ad2f6e77c5359ddc846cef2eccf197c95e40c7c9ec19425c1a02c91522b3"
+        },
+        {
+          "action_id": "route:map_node:1:1",
+          "decision_index": 2,
+          "regret": 0.0,
+          "seed": 93152,
+          "source_sha256": "3f34c751963297828f19b2e2d42213429ad97761574d750560589f3eab2a4839"
+        },
+        {
+          "action_id": "route:map_node:0:4",
+          "decision_index": 8,
+          "regret": 0.0,
+          "seed": 93152,
+          "source_sha256": "1c3607f15543bbf7d1ec837fe1fbedab0aed97ef8d0f464c77ab93f3eb43a5e8"
+        },
+        {
+          "action_id": "route:map_node:4:0",
+          "decision_index": 0,
+          "regret": 0.2982456140350877,
+          "seed": 93153,
+          "source_sha256": "bb3148f77a19fcc9a4482636948cb7da80f00e82e8764a9cf42d6909878fb08f"
+        },
+        {
+          "action_id": "route:map_node:5:4",
+          "decision_index": 8,
+          "regret": 0.05263157894736842,
+          "seed": 93153,
+          "source_sha256": "43becc477b852a87a58577a0f7c010844060993a99c0ff90bfcd49c08201894a"
+        },
+        {
+          "action_id": "route:map_node:4:5",
+          "decision_index": 11,
+          "regret": 0.0,
+          "seed": 93153,
+          "source_sha256": "8fae0fd36ee53138ca82cc34e5b81b073f8c6e30c64f8cb3b049f17a96667b85"
+        },
+        {
+          "action_id": "route:map_node:4:0",
+          "decision_index": 0,
+          "regret": 0.0,
+          "seed": 93154,
+          "source_sha256": "1bce744004442818c45d00191f92cccedb2815175837569eb85d0e8e6a1e8d67"
+        },
+        {
+          "action_id": "route:map_node:3:5",
+          "decision_index": 10,
+          "regret": 0.0,
+          "seed": 93154,
+          "source_sha256": "cbff3539d7d8dbbaac0ac1507fdfbefacd4546c477bff214de9c728aba50836e"
+        },
+        {
+          "action_id": "route:map_node:2:7",
+          "decision_index": 13,
+          "regret": 0.05263157894736842,
+          "seed": 93154,
+          "source_sha256": "2a4d034cf392a421faa7a4c81a73bd197679286e7e80793a493ea7bf5fbda580"
+        },
+        {
+          "action_id": "route:map_node:2:0",
+          "decision_index": 0,
+          "regret": 0.26315789473684215,
+          "seed": 93155,
+          "source_sha256": "cac850dbf4fad40cef0397722d0a3696def6693f8798562b904b3938c46e62bd"
+        },
+        {
+          "action_id": "route:map_node:2:3",
+          "decision_index": 6,
+          "regret": 0.2982456140350877,
+          "seed": 93155,
+          "source_sha256": "6098cbc1f00d5c358aa780b7adbf30114c9369818f956c0780c7966813ad7e17"
+        },
+        {
+          "action_id": "route:map_node:3:6",
+          "decision_index": 11,
+          "regret": 0.0,
+          "seed": 93155,
+          "source_sha256": "e76de46112b9eeae2ec7887cb8ff28cf2d190bd92cedea63a744641357dcd87c"
+        },
+        {
+          "action_id": "route:map_node:1:0",
+          "decision_index": 0,
+          "regret": 0.0,
+          "seed": 93156,
+          "source_sha256": "9398f99a20400e6e96543dc10dfd539c23a016e1f6e7a5869c3176099feb47c2"
+        },
+        {
+          "action_id": "route:map_node:2:1",
+          "decision_index": 2,
+          "regret": 0.0,
+          "seed": 93156,
+          "source_sha256": "2d0f98f80c3e6508326f43c530859e8702afd1c4b20b681d660911efea47b9cd"
+        },
+        {
+          "action_id": "route:map_node:3:3",
+          "decision_index": 6,
+          "regret": 0.0,
+          "seed": 93156,
+          "source_sha256": "aec4cc28e9e03cacbbc495e5ec6585d4aa24920c289e9d685850b2fa714b77c1"
+        },
+        {
+          "action_id": "route:map_node:6:0",
+          "decision_index": 0,
+          "regret": 0.0,
+          "seed": 93157,
+          "source_sha256": "59e8798ea53d4cc5f0d49b9dbae6931d8d22d8823e9bae882caec0bda73a6b79"
+        },
+        {
+          "action_id": "route:map_node:1:3",
+          "decision_index": 6,
+          "regret": 0.07017543859649122,
+          "seed": 93157,
+          "source_sha256": "a911471caadfd86aba44c360d9b118bd2c45fbd105461b845d206c2929077f46"
+        },
+        {
+          "action_id": "route:map_node:2:8",
+          "decision_index": 16,
+          "regret": 0.0,
+          "seed": 93157,
+          "source_sha256": "f59f0b48bd762cc4f74ab84d617d8a7653965b003a066dc6e6dec659524f8d4a"
+        },
+        {
+          "action_id": "route:map_node:4:0",
+          "decision_index": 0,
+          "regret": 0.29824561403508776,
+          "seed": 93158,
+          "source_sha256": "557f5dc708ef331381aa60cf3fa0202d63292a1838fb02901e708ec0f91ae13b"
+        },
+        {
+          "action_id": "route:map_node:6:3",
+          "decision_index": 6,
+          "regret": 0.24561403508771928,
+          "seed": 93158,
+          "source_sha256": "6563f4cf42e81ea6b1e0d95bee7825292cc17303a9cd53771cbb138dc6e21f9b"
+        },
+        {
+          "action_id": "route:map_node:5:4",
+          "decision_index": 10,
+          "regret": 0.0,
+          "seed": 93158,
+          "source_sha256": "cf3e5b1565faedf25bea35bd97dd5857d488b7525390300a2a36d052d4a1938f"
+        },
+        {
+          "action_id": "route:map_node:5:0",
+          "decision_index": 0,
+          "regret": 0.0,
+          "seed": 93159,
+          "source_sha256": "dbbefba8c6b01406c6db2c03fef31185c692629da0d2436bffc633c18ed4fe8e"
+        },
+        {
+          "action_id": "route:map_node:4:2",
+          "decision_index": 3,
+          "regret": 0.26315789473684215,
+          "seed": 93159,
+          "source_sha256": "56dfd308e8b6adc89cfc689b6e290198c1077c3dfc5b15667d37503ee263947b"
+        },
+        {
+          "action_id": "route:map_node:4:4",
+          "decision_index": 7,
+          "regret": 0.0,
+          "seed": 93159,
+          "source_sha256": "3f29532e442903c3757a3b224d963ee840c8f93fd0e05118e2d5be70ce973246"
+        }
+      ],
+      "unique_best_accuracy": 0.5434782608695652,
+      "unique_best_rows": 46
+    },
+    "trained": {
+      "maximum_regret": 0.5087719298245614,
+      "mean_regret": 0.04269005847953216,
+      "predictions": [
+        {
+          "action_id": "route:map_node:1:0",
+          "decision_index": 0,
+          "regret": 0.0,
+          "seed": 93128,
+          "source_sha256": "f68d0ac7952c05a9410333f49fe49e46523eb3cf87feaa29d44e6ddbd10d8802"
+        },
+        {
+          "action_id": "route:map_node:2:2",
+          "decision_index": 4,
+          "regret": 0.0,
+          "seed": 93128,
+          "source_sha256": "ac4fd5b7cfbc674e3ce74f8ff909f2597150d138d5bdaabf9f06d4a33f73a496"
+        },
+        {
+          "action_id": "route:map_node:2:3",
+          "decision_index": 6,
+          "regret": 0.0,
+          "seed": 93128,
+          "source_sha256": "0de2e6d23ea425c5b439452b8d4caa05dde95ba4e112a6337a772aed46b06d7b"
+        },
+        {
+          "action_id": "route:map_node:4:0",
+          "decision_index": 0,
+          "regret": 0.15789473684210525,
+          "seed": 93129,
+          "source_sha256": "737c799676cf184f259ace4eb6dbdd35f669477ba87dd338bc6ed0961eb272d5"
+        },
+        {
+          "action_id": "route:map_node:1:3",
+          "decision_index": 6,
+          "regret": 0.0,
+          "seed": 93129,
+          "source_sha256": "fa60548c00efafab84ec9bfa15bcd49f4b4d1a0217a30cf75f5065e9010f26bf"
+        },
+        {
+          "action_id": "route:map_node:4:6",
+          "decision_index": 11,
+          "regret": 0.0,
+          "seed": 93129,
+          "source_sha256": "24feee17a061e84a92857af04ff216a341aec3392dd8b5dee9c0394f0b92f84e"
+        },
+        {
+          "action_id": "route:map_node:4:0",
+          "decision_index": 0,
+          "regret": 0.10526315789473684,
+          "seed": 93130,
+          "source_sha256": "84025d00ff7b26e474a01f39abd1047fefbbd24f420ffe506b42481565d5e815"
+        },
+        {
+          "action_id": "route:map_node:2:8",
+          "decision_index": 16,
+          "regret": 0.0,
+          "seed": 93130,
+          "source_sha256": "b01430e2f6b6fe67681d3f96c24e861a0874a20e67e89c855920a47f42f33c34"
+        },
+        {
+          "action_id": "route:map_node:0:12",
+          "decision_index": 22,
+          "regret": 0.0,
+          "seed": 93130,
+          "source_sha256": "a8fe5d46bbb8aa84da4be74938ec5081689d245d7570e610747310c8a9a7d95f"
+        },
+        {
+          "action_id": "route:map_node:4:0",
+          "decision_index": 0,
+          "regret": 0.0,
+          "seed": 93131,
+          "source_sha256": "2c8c6850fa7d15d55ede338970eee0a118cffa6fb04b3f636b4525e8e3e3eecb"
+        },
+        {
+          "action_id": "route:map_node:1:2",
+          "decision_index": 4,
+          "regret": 0.0,
+          "seed": 93131,
+          "source_sha256": "68448800637db46157722da3be62aea37de6e43eff349bd216aec568f2dda3cf"
+        },
+        {
+          "action_id": "route:map_node:4:5",
+          "decision_index": 9,
+          "regret": 0.0,
+          "seed": 93131,
+          "source_sha256": "3ef84f033035a318dd7865af1a4bb946c6c4f9dd3db44cd1650d3961f820b684"
+        },
+        {
+          "action_id": "route:map_node:2:0",
+          "decision_index": 0,
+          "regret": 0.0,
+          "seed": 93132,
+          "source_sha256": "9053282a7d086a0a58f08f66817ec137d13686e13b32f3ab3863ec68e471aaed"
+        },
+        {
+          "action_id": "route:map_node:2:1",
+          "decision_index": 2,
+          "regret": 0.0,
+          "seed": 93132,
+          "source_sha256": "87c8c1b0beed1f73e552b8ba973646e53f8499f708381c01d0c4d053b7ce1fc7"
+        },
+        {
+          "action_id": "route:map_node:2:2",
+          "decision_index": 4,
+          "regret": 0.0,
+          "seed": 93132,
+          "source_sha256": "a0050131737e5ff30bb71eb5d2e81545eb1fa59971ae9e4d002c52a92caa1d94"
+        },
+        {
+          "action_id": "route:map_node:2:0",
+          "decision_index": 0,
+          "regret": 0.0,
+          "seed": 93133,
+          "source_sha256": "89bbda615995fd0a965be197cf577615844c8c2e26633fec862dd85b4c637c06"
+        },
+        {
+          "action_id": "route:map_node:1:6",
+          "decision_index": 11,
+          "regret": 0.08771929824561403,
+          "seed": 93133,
+          "source_sha256": "9c9a7cef3014e5b8124cb16cd53b36898256e31c7e592193531ce4e0ff5086a4"
+        },
+        {
+          "action_id": "route:map_node:1:8",
+          "decision_index": 15,
+          "regret": 0.0,
+          "seed": 93133,
+          "source_sha256": "3d23d0a38375b611e74c97fc7ecfc944ffc1418165214a44440946267ccc3687"
+        },
+        {
+          "action_id": "route:map_node:3:0",
+          "decision_index": 0,
+          "regret": 0.0,
+          "seed": 93134,
+          "source_sha256": "fa0369b85498562f74f41d3b58aa0242dab0d2196feead4402b299bf39a69100"
+        },
+        {
+          "action_id": "route:map_node:4:3",
+          "decision_index": 6,
+          "regret": 0.0,
+          "seed": 93134,
+          "source_sha256": "3a44e3fff1b65eaf3e32d212e861e2037dcb00878c05c652a0b6ef28f709c252"
+        },
+        {
+          "action_id": "route:map_node:5:4",
+          "decision_index": 8,
+          "regret": 0.0,
+          "seed": 93134,
+          "source_sha256": "d2a965a8f4d3b26588f92cdc279ada7952e49202fe1714b7aa7ab9147288c073"
+        },
+        {
+          "action_id": "route:map_node:4:0",
+          "decision_index": 1,
+          "regret": 0.0,
+          "seed": 93135,
+          "source_sha256": "144dac392c0ca2cf39bc92079b5a27447e652d52b8c33fed3e58274726ab1ee9"
+        },
+        {
+          "action_id": "route:map_node:2:2",
+          "decision_index": 5,
+          "regret": 0.05263157894736842,
+          "seed": 93135,
+          "source_sha256": "5f6f4343eecbf03cd2f2c3c1b9cd83c73d7d8472ea2043fc34e932045d53d6eb"
+        },
+        {
+          "action_id": "route:map_node:2:5",
+          "decision_index": 12,
+          "regret": 0.0,
+          "seed": 93135,
+          "source_sha256": "2ed073d6d698a91008a63dc24540ce8089c137a8457a273ba0c23035a2df0d1a"
+        },
+        {
+          "action_id": "route:map_node:4:3",
+          "decision_index": 7,
+          "regret": 0.0,
+          "seed": 93136,
+          "source_sha256": "25779f29b3f98ebbb39917546cf159db057c3feb5dae590bd71c587325d255fa"
+        },
+        {
+          "action_id": "route:map_node:5:0",
+          "decision_index": 1,
+          "regret": 0.22807017543859653,
+          "seed": 93137,
+          "source_sha256": "94a9077bdcf58913ceac375e4b43203b6e17d98c9f09e69f50560f7a319e133c"
+        },
+        {
+          "action_id": "route:map_node:1:3",
+          "decision_index": 6,
+          "regret": 0.0,
+          "seed": 93137,
+          "source_sha256": "3996f1637e05702d7a040adae7f6a91ca18f9eec427b316572e03eac87bcdc04"
+        },
+        {
+          "action_id": "route:map_node:2:9",
+          "decision_index": 15,
+          "regret": 0.07017543859649122,
+          "seed": 93137,
+          "source_sha256": "b5d7e585c392d4249cb571b37798b8f3f5e6c8768125889ebb68ce56bfad47f9"
+        },
+        {
+          "action_id": "route:map_node:2:0",
+          "decision_index": 0,
+          "regret": 0.29824561403508776,
+          "seed": 93138,
+          "source_sha256": "0542486717decce89c02661836d62a9788f4175ea9f51e7308afbd088125e289"
+        },
+        {
+          "action_id": "route:map_node:5:4",
+          "decision_index": 9,
+          "regret": 0.0,
+          "seed": 93138,
+          "source_sha256": "b4fa366758605c2c206067363bb7f4a505a77c40f96b9f0addbd8d74a0615f0f"
+        },
+        {
+          "action_id": "route:map_node:5:5",
+          "decision_index": 11,
+          "regret": 0.0,
+          "seed": 93138,
+          "source_sha256": "33a2cf0645d80dba6871b45f04eeab8d560a56156ee21665fdf0138cc924976b"
+        },
+        {
+          "action_id": "route:map_node:4:0",
+          "decision_index": 0,
+          "regret": 0.0,
+          "seed": 93139,
+          "source_sha256": "90e7b1715a7ecd837a3b758b45fc6613e2eddf96aff0000ac142796d661ed037"
+        },
+        {
+          "action_id": "route:map_node:4:1",
+          "decision_index": 2,
+          "regret": 0.0,
+          "seed": 93139,
+          "source_sha256": "321db179ba4da0d16d4fa77bc990ab7945d38aff177639b763d0f87b1c6960f9"
+        },
+        {
+          "action_id": "route:map_node:4:2",
+          "decision_index": 4,
+          "regret": 0.0,
+          "seed": 93139,
+          "source_sha256": "d74eb00c954af9f14ef09afb8d98d579a19691c6cddcd91d58a7c0ab3008fe0d"
+        },
+        {
+          "action_id": "route:map_node:5:0",
+          "decision_index": 0,
+          "regret": 0.0,
+          "seed": 93140,
+          "source_sha256": "8947987f87ad2d9466f1803035bfc799a0db9fde1c8eaa0345142df79433492e"
+        },
+        {
+          "action_id": "route:map_node:4:1",
+          "decision_index": 2,
+          "regret": 0.0,
+          "seed": 93140,
+          "source_sha256": "a105d4e336a8e7eb849932a83a6daba7c53084620e0b036311ce3901d9a78830"
+        },
+        {
+          "action_id": "route:map_node:5:12",
+          "decision_index": 22,
+          "regret": 0.2982456140350877,
+          "seed": 93140,
+          "source_sha256": "d43ffdd44d9e6e8e3ca621f84dc7f1d217d2b348adb628789880c968bcd8a443"
+        },
+        {
+          "action_id": "route:map_node:4:0",
+          "decision_index": 0,
+          "regret": 0.10526315789473684,
+          "seed": 93141,
+          "source_sha256": "d6ac5eba0d3286b503ef0d0eb1ac97ecb25efb033b4ed5337eed7dbd0fedc67d"
+        },
+        {
+          "action_id": "route:map_node:1:2",
+          "decision_index": 4,
+          "regret": 0.0,
+          "seed": 93141,
+          "source_sha256": "4792c24be6ba4f593c78346bdb770104b0bbdd9eef45612279005f236037b6ee"
+        },
+        {
+          "action_id": "route:map_node:1:3",
+          "decision_index": 6,
+          "regret": 0.0,
+          "seed": 93141,
+          "source_sha256": "1908bf3f021ad7fd21b09ca9ecd970e2976f6c3cb1ace153185c0f1b280ac620"
+        },
+        {
+          "action_id": "route:map_node:4:0",
+          "decision_index": 0,
+          "regret": 0.0,
+          "seed": 93142,
+          "source_sha256": "18fb7ca31662b2174e40bb27cd42c71d83f114f0eccb85b0704c4f32550f407c"
+        },
+        {
+          "action_id": "route:map_node:0:2",
+          "decision_index": 5,
+          "regret": 0.0,
+          "seed": 93142,
+          "source_sha256": "50da74a7ff4e6ad055d61306fbd5b765710b9f8d6df8801a2f6dbda21c96a7de"
+        },
+        {
+          "action_id": "route:map_node:2:0",
+          "decision_index": 0,
+          "regret": 0.0,
+          "seed": 93143,
+          "source_sha256": "8c1da7fce0d94521e814e02e89a84b83b831edc10d3714f4d20c26368cb3ee2d"
+        },
+        {
+          "action_id": "route:map_node:4:3",
+          "decision_index": 6,
+          "regret": 0.0,
+          "seed": 93143,
+          "source_sha256": "2a5bd933915b9e1669108288ae51ff88e0dc211119704579e0e44f4026af01d6"
+        },
+        {
+          "action_id": "route:map_node:5:4",
+          "decision_index": 8,
+          "regret": 0.0,
+          "seed": 93143,
+          "source_sha256": "2a03fdb1cd2ab41b761ce821310214173759667f0c03424d1fb394c992af5187"
+        },
+        {
+          "action_id": "route:map_node:4:3",
+          "decision_index": 11,
+          "regret": 0.19298245614035087,
+          "seed": 93144,
+          "source_sha256": "0b9abccfa2c0f644725402f0ea4bb2e52eff2816e2eba2a054d513464053327d"
+        },
+        {
+          "action_id": "route:map_node:4:0",
+          "decision_index": 0,
+          "regret": 0.0,
+          "seed": 93145,
+          "source_sha256": "336a1fee55c02a74cc55577beaaf3e920802558a6f9d09eb1d2dd3b7da28352e"
+        },
+        {
+          "action_id": "route:map_node:3:4",
+          "decision_index": 8,
+          "regret": 0.0,
+          "seed": 93145,
+          "source_sha256": "aaaa7df2d7f40d95f470c19f39cbdc7702f714d130068455fec6c5cab8596507"
+        },
+        {
+          "action_id": "route:map_node:3:6",
+          "decision_index": 11,
+          "regret": 0.0,
+          "seed": 93145,
+          "source_sha256": "c394dfe1a714d3f57ad9102c2a607ac921c1ea4afad6a2df0e1a5c1741ec3c75"
+        },
+        {
+          "action_id": "route:map_node:4:0",
+          "decision_index": 0,
+          "regret": 0.017543859649122806,
+          "seed": 93146,
+          "source_sha256": "238ee4f7bc47044466b56c33a49810f4c89b096c598d05baa7f02da31c6208c2"
+        },
+        {
+          "action_id": "route:map_node:2:3",
+          "decision_index": 9,
+          "regret": 0.0,
+          "seed": 93146,
+          "source_sha256": "124e7950d0426e595b2dd6247c716c65c86c210dcda539ed67db5d84313d2cbf"
+        },
+        {
+          "action_id": "route:map_node:3:10",
+          "decision_index": 21,
+          "regret": 0.0,
+          "seed": 93146,
+          "source_sha256": "ee37167e764dfe31f17e7d4229f020a5831dbabb233d7b827c9534ec8850c565"
+        },
+        {
+          "action_id": "route:map_node:2:0",
+          "decision_index": 0,
+          "regret": 0.0,
+          "seed": 93147,
+          "source_sha256": "5fd51b6b07064d3d3812d88e7634a4cd4f20fea1afad5620dac1a2ac424ded2d"
+        },
+        {
+          "action_id": "route:map_node:2:1",
+          "decision_index": 2,
+          "regret": 0.0,
+          "seed": 93147,
+          "source_sha256": "4c4cf2bca1b297306f5bbba01684070a2db4f992d2fda9e98fd69f10b33be7a8"
+        },
+        {
+          "action_id": "route:map_node:2:4",
+          "decision_index": 8,
+          "regret": 0.0,
+          "seed": 93147,
+          "source_sha256": "32a277b6f476706dab49cd4593e69af99417387220b94bc025a927d551b87d03"
+        },
+        {
+          "action_id": "route:map_node:2:0",
+          "decision_index": 0,
+          "regret": 0.0,
+          "seed": 93148,
+          "source_sha256": "6438032f635c31478c0a9eae3e36ec6beca9c8381cd53fa3dcf19a2c64074301"
+        },
+        {
+          "action_id": "route:map_node:2:1",
+          "decision_index": 2,
+          "regret": 0.12280701754385964,
+          "seed": 93148,
+          "source_sha256": "eab22e94f2946045af92d30f7aeb62fac4b0242219ce47c58e45871b7e8a13d7"
+        },
+        {
+          "action_id": "route:map_node:2:4",
+          "decision_index": 8,
+          "regret": 0.07017543859649122,
+          "seed": 93148,
+          "source_sha256": "d69471d55289986dc90063b61364992fb4eaa5ec0454f552652f8c95b85b5120"
+        },
+        {
+          "action_id": "route:map_node:3:0",
+          "decision_index": 1,
+          "regret": 0.24561403508771928,
+          "seed": 93149,
+          "source_sha256": "00a4a7816afb40ab61e66e587b599179d55c813c0d30c4445f1caa7330c385b9"
+        },
+        {
+          "action_id": "route:map_node:6:3",
+          "decision_index": 7,
+          "regret": 0.2807017543859649,
+          "seed": 93149,
+          "source_sha256": "bde69df616a1f68c0ce59bbed0edf6a6c3d037cc9f0054ffff5cc104a665a504"
+        },
+        {
+          "action_id": "route:map_node:2:0",
+          "decision_index": 1,
+          "regret": 0.5087719298245614,
+          "seed": 93150,
+          "source_sha256": "49f90b9a5e04889e789d6f9749cce0dceadcfe2bdebd7d04c7576a996aabc3b8"
+        },
+        {
+          "action_id": "route:map_node:2:3",
+          "decision_index": 7,
+          "regret": 0.0,
+          "seed": 93150,
+          "source_sha256": "96a42ff1e0643bc6f95bfda73e0242b8b810590c689392c1dad0488845c1701e"
+        },
+        {
+          "action_id": "route:map_node:1:8",
+          "decision_index": 15,
+          "regret": 0.0,
+          "seed": 93150,
+          "source_sha256": "717cf03022ec07ac867521501194d36406eabcc230c5c93a3030d67abd014b77"
+        },
+        {
+          "action_id": "route:map_node:2:0",
+          "decision_index": 1,
+          "regret": 0.0,
+          "seed": 93151,
+          "source_sha256": "b80bc5d07c3f34bbd4b72415e1d4b66372a1b24c68482a5794205cb0be2b88da"
+        },
+        {
+          "action_id": "route:map_node:4:5",
+          "decision_index": 11,
+          "regret": 0.0,
+          "seed": 93151,
+          "source_sha256": "25d63d881c94511a914f9127e281b9a9626a033b8a6d4ebee75e4d81c7fcd58e"
+        },
+        {
+          "action_id": "route:map_node:4:8",
+          "decision_index": 16,
+          "regret": 0.0,
+          "seed": 93151,
+          "source_sha256": "a2e5cbf2b7f59287f74e411b31e7be3bc7396d3e3eb4e6a97f1a61d438f67b07"
+        },
+        {
+          "action_id": "route:map_node:2:0",
+          "decision_index": 0,
+          "regret": 0.0,
+          "seed": 93152,
+          "source_sha256": "86b6ad2f6e77c5359ddc846cef2eccf197c95e40c7c9ec19425c1a02c91522b3"
+        },
+        {
+          "action_id": "route:map_node:1:1",
+          "decision_index": 2,
+          "regret": 0.0,
+          "seed": 93152,
+          "source_sha256": "3f34c751963297828f19b2e2d42213429ad97761574d750560589f3eab2a4839"
+        },
+        {
+          "action_id": "route:map_node:0:4",
+          "decision_index": 8,
+          "regret": 0.0,
+          "seed": 93152,
+          "source_sha256": "1c3607f15543bbf7d1ec837fe1fbedab0aed97ef8d0f464c77ab93f3eb43a5e8"
+        },
+        {
+          "action_id": "route:map_node:4:0",
+          "decision_index": 0,
+          "regret": 0.2982456140350877,
+          "seed": 93153,
+          "source_sha256": "bb3148f77a19fcc9a4482636948cb7da80f00e82e8764a9cf42d6909878fb08f"
+        },
+        {
+          "action_id": "route:map_node:5:4",
+          "decision_index": 8,
+          "regret": 0.05263157894736842,
+          "seed": 93153,
+          "source_sha256": "43becc477b852a87a58577a0f7c010844060993a99c0ff90bfcd49c08201894a"
+        },
+        {
+          "action_id": "route:map_node:4:5",
+          "decision_index": 11,
+          "regret": 0.0,
+          "seed": 93153,
+          "source_sha256": "8fae0fd36ee53138ca82cc34e5b81b073f8c6e30c64f8cb3b049f17a96667b85"
+        },
+        {
+          "action_id": "route:map_node:4:0",
+          "decision_index": 0,
+          "regret": 0.0,
+          "seed": 93154,
+          "source_sha256": "1bce744004442818c45d00191f92cccedb2815175837569eb85d0e8e6a1e8d67"
+        },
+        {
+          "action_id": "route:map_node:3:5",
+          "decision_index": 10,
+          "regret": 0.0,
+          "seed": 93154,
+          "source_sha256": "cbff3539d7d8dbbaac0ac1507fdfbefacd4546c477bff214de9c728aba50836e"
+        },
+        {
+          "action_id": "route:map_node:3:7",
+          "decision_index": 13,
+          "regret": 0.0,
+          "seed": 93154,
+          "source_sha256": "2a4d034cf392a421faa7a4c81a73bd197679286e7e80793a493ea7bf5fbda580"
+        },
+        {
+          "action_id": "route:map_node:2:0",
+          "decision_index": 0,
+          "regret": 0.26315789473684215,
+          "seed": 93155,
+          "source_sha256": "cac850dbf4fad40cef0397722d0a3696def6693f8798562b904b3938c46e62bd"
+        },
+        {
+          "action_id": "route:map_node:0:3",
+          "decision_index": 6,
+          "regret": 0.0,
+          "seed": 93155,
+          "source_sha256": "6098cbc1f00d5c358aa780b7adbf30114c9369818f956c0780c7966813ad7e17"
+        },
+        {
+          "action_id": "route:map_node:3:6",
+          "decision_index": 11,
+          "regret": 0.0,
+          "seed": 93155,
+          "source_sha256": "e76de46112b9eeae2ec7887cb8ff28cf2d190bd92cedea63a744641357dcd87c"
+        },
+        {
+          "action_id": "route:map_node:4:0",
+          "decision_index": 0,
+          "regret": 0.10526315789473684,
+          "seed": 93156,
+          "source_sha256": "9398f99a20400e6e96543dc10dfd539c23a016e1f6e7a5869c3176099feb47c2"
+        },
+        {
+          "action_id": "route:map_node:0:1",
+          "decision_index": 2,
+          "regret": 0.03508771929824561,
+          "seed": 93156,
+          "source_sha256": "2d0f98f80c3e6508326f43c530859e8702afd1c4b20b681d660911efea47b9cd"
+        },
+        {
+          "action_id": "route:map_node:3:3",
+          "decision_index": 6,
+          "regret": 0.0,
+          "seed": 93156,
+          "source_sha256": "aec4cc28e9e03cacbbc495e5ec6585d4aa24920c289e9d685850b2fa714b77c1"
+        },
+        {
+          "action_id": "route:map_node:2:0",
+          "decision_index": 0,
+          "regret": 0.0,
+          "seed": 93157,
+          "source_sha256": "59e8798ea53d4cc5f0d49b9dbae6931d8d22d8823e9bae882caec0bda73a6b79"
+        },
+        {
+          "action_id": "route:map_node:2:3",
+          "decision_index": 6,
+          "regret": 0.0,
+          "seed": 93157,
+          "source_sha256": "a911471caadfd86aba44c360d9b118bd2c45fbd105461b845d206c2929077f46"
+        },
+        {
+          "action_id": "route:map_node:2:8",
+          "decision_index": 16,
+          "regret": 0.0,
+          "seed": 93157,
+          "source_sha256": "f59f0b48bd762cc4f74ab84d617d8a7653965b003a066dc6e6dec659524f8d4a"
+        },
+        {
+          "action_id": "route:map_node:2:0",
+          "decision_index": 0,
+          "regret": 0.0,
+          "seed": 93158,
+          "source_sha256": "557f5dc708ef331381aa60cf3fa0202d63292a1838fb02901e708ec0f91ae13b"
+        },
+        {
+          "action_id": "route:map_node:6:3",
+          "decision_index": 6,
+          "regret": 0.24561403508771928,
+          "seed": 93158,
+          "source_sha256": "6563f4cf42e81ea6b1e0d95bee7825292cc17303a9cd53771cbb138dc6e21f9b"
+        },
+        {
+          "action_id": "route:map_node:5:4",
+          "decision_index": 10,
+          "regret": 0.0,
+          "seed": 93158,
+          "source_sha256": "cf3e5b1565faedf25bea35bd97dd5857d488b7525390300a2a36d052d4a1938f"
+        },
+        {
+          "action_id": "route:map_node:5:0",
+          "decision_index": 0,
+          "regret": 0.0,
+          "seed": 93159,
+          "source_sha256": "dbbefba8c6b01406c6db2c03fef31185c692629da0d2436bffc633c18ed4fe8e"
+        },
+        {
+          "action_id": "route:map_node:5:2",
+          "decision_index": 3,
+          "regret": 0.0,
+          "seed": 93159,
+          "source_sha256": "56dfd308e8b6adc89cfc689b6e290198c1077c3dfc5b15667d37503ee263947b"
+        },
+        {
+          "action_id": "route:map_node:5:4",
+          "decision_index": 7,
+          "regret": 0.0,
+          "seed": 93159,
+          "source_sha256": "3f29532e442903c3757a3b224d963ee840c8f93fd0e05118e2d5be70ce973246"
+        }
+      ],
+      "unique_best_accuracy": 0.5652173913043478,
+      "unique_best_rows": 46,
+      "weighted_pairwise_accuracy": 0.6319248826291078
+    },
+    "untrained": {
+      "maximum_regret": 0.5087719298245614,
+      "mean_regret": 0.05419103313840156,
+      "predictions": [
+        {
+          "action_id": "route:map_node:0:0",
+          "decision_index": 0,
+          "regret": 0.0,
+          "seed": 93128,
+          "source_sha256": "f68d0ac7952c05a9410333f49fe49e46523eb3cf87feaa29d44e6ddbd10d8802"
+        },
+        {
+          "action_id": "route:map_node:1:2",
+          "decision_index": 4,
+          "regret": 0.0,
+          "seed": 93128,
+          "source_sha256": "ac4fd5b7cfbc674e3ce74f8ff909f2597150d138d5bdaabf9f06d4a33f73a496"
+        },
+        {
+          "action_id": "route:map_node:2:3",
+          "decision_index": 6,
+          "regret": 0.0,
+          "seed": 93128,
+          "source_sha256": "0de2e6d23ea425c5b439452b8d4caa05dde95ba4e112a6337a772aed46b06d7b"
+        },
+        {
+          "action_id": "route:map_node:6:0",
+          "decision_index": 0,
+          "regret": 0.15789473684210525,
+          "seed": 93129,
+          "source_sha256": "737c799676cf184f259ace4eb6dbdd35f669477ba87dd338bc6ed0961eb272d5"
+        },
+        {
+          "action_id": "route:map_node:1:3",
+          "decision_index": 6,
+          "regret": 0.0,
+          "seed": 93129,
+          "source_sha256": "fa60548c00efafab84ec9bfa15bcd49f4b4d1a0217a30cf75f5065e9010f26bf"
+        },
+        {
+          "action_id": "route:map_node:4:6",
+          "decision_index": 11,
+          "regret": 0.0,
+          "seed": 93129,
+          "source_sha256": "24feee17a061e84a92857af04ff216a341aec3392dd8b5dee9c0394f0b92f84e"
+        },
+        {
+          "action_id": "route:map_node:0:0",
+          "decision_index": 0,
+          "regret": 0.0,
+          "seed": 93130,
+          "source_sha256": "84025d00ff7b26e474a01f39abd1047fefbbd24f420ffe506b42481565d5e815"
+        },
+        {
+          "action_id": "route:map_node:2:8",
+          "decision_index": 16,
+          "regret": 0.0,
+          "seed": 93130,
+          "source_sha256": "b01430e2f6b6fe67681d3f96c24e861a0874a20e67e89c855920a47f42f33c34"
+        },
+        {
+          "action_id": "route:map_node:0:12",
+          "decision_index": 22,
+          "regret": 0.0,
+          "seed": 93130,
+          "source_sha256": "a8fe5d46bbb8aa84da4be74938ec5081689d245d7570e610747310c8a9a7d95f"
+        },
+        {
+          "action_id": "route:map_node:4:0",
+          "decision_index": 0,
+          "regret": 0.0,
+          "seed": 93131,
+          "source_sha256": "2c8c6850fa7d15d55ede338970eee0a118cffa6fb04b3f636b4525e8e3e3eecb"
+        },
+        {
+          "action_id": "route:map_node:1:2",
+          "decision_index": 4,
+          "regret": 0.0,
+          "seed": 93131,
+          "source_sha256": "68448800637db46157722da3be62aea37de6e43eff349bd216aec568f2dda3cf"
+        },
+        {
+          "action_id": "route:map_node:2:5",
+          "decision_index": 9,
+          "regret": 0.10526315789473684,
+          "seed": 93131,
+          "source_sha256": "3ef84f033035a318dd7865af1a4bb946c6c4f9dd3db44cd1650d3961f820b684"
+        },
+        {
+          "action_id": "route:map_node:1:0",
+          "decision_index": 0,
+          "regret": 0.0,
+          "seed": 93132,
+          "source_sha256": "9053282a7d086a0a58f08f66817ec137d13686e13b32f3ab3863ec68e471aaed"
+        },
+        {
+          "action_id": "route:map_node:2:1",
+          "decision_index": 2,
+          "regret": 0.0,
+          "seed": 93132,
+          "source_sha256": "87c8c1b0beed1f73e552b8ba973646e53f8499f708381c01d0c4d053b7ce1fc7"
+        },
+        {
+          "action_id": "route:map_node:1:2",
+          "decision_index": 4,
+          "regret": 0.26315789473684215,
+          "seed": 93132,
+          "source_sha256": "a0050131737e5ff30bb71eb5d2e81545eb1fa59971ae9e4d002c52a92caa1d94"
+        },
+        {
+          "action_id": "route:map_node:4:0",
+          "decision_index": 0,
+          "regret": 0.0,
+          "seed": 93133,
+          "source_sha256": "89bbda615995fd0a965be197cf577615844c8c2e26633fec862dd85b4c637c06"
+        },
+        {
+          "action_id": "route:map_node:0:6",
+          "decision_index": 11,
+          "regret": 0.0,
+          "seed": 93133,
+          "source_sha256": "9c9a7cef3014e5b8124cb16cd53b36898256e31c7e592193531ce4e0ff5086a4"
+        },
+        {
+          "action_id": "route:map_node:1:8",
+          "decision_index": 15,
+          "regret": 0.0,
+          "seed": 93133,
+          "source_sha256": "3d23d0a38375b611e74c97fc7ecfc944ffc1418165214a44440946267ccc3687"
+        },
+        {
+          "action_id": "route:map_node:6:0",
+          "decision_index": 0,
+          "regret": 0.29824561403508776,
+          "seed": 93134,
+          "source_sha256": "fa0369b85498562f74f41d3b58aa0242dab0d2196feead4402b299bf39a69100"
+        },
+        {
+          "action_id": "route:map_node:3:3",
+          "decision_index": 6,
+          "regret": 0.0,
+          "seed": 93134,
+          "source_sha256": "3a44e3fff1b65eaf3e32d212e861e2037dcb00878c05c652a0b6ef28f709c252"
+        },
+        {
+          "action_id": "route:map_node:5:4",
+          "decision_index": 8,
+          "regret": 0.0,
+          "seed": 93134,
+          "source_sha256": "d2a965a8f4d3b26588f92cdc279ada7952e49202fe1714b7aa7ab9147288c073"
+        },
+        {
+          "action_id": "route:map_node:4:0",
+          "decision_index": 1,
+          "regret": 0.0,
+          "seed": 93135,
+          "source_sha256": "144dac392c0ca2cf39bc92079b5a27447e652d52b8c33fed3e58274726ab1ee9"
+        },
+        {
+          "action_id": "route:map_node:2:2",
+          "decision_index": 5,
+          "regret": 0.05263157894736842,
+          "seed": 93135,
+          "source_sha256": "5f6f4343eecbf03cd2f2c3c1b9cd83c73d7d8472ea2043fc34e932045d53d6eb"
+        },
+        {
+          "action_id": "route:map_node:0:5",
+          "decision_index": 12,
+          "regret": 0.24561403508771928,
+          "seed": 93135,
+          "source_sha256": "2ed073d6d698a91008a63dc24540ce8089c137a8457a273ba0c23035a2df0d1a"
+        },
+        {
+          "action_id": "route:map_node:2:3",
+          "decision_index": 7,
+          "regret": 0.0,
+          "seed": 93136,
+          "source_sha256": "25779f29b3f98ebbb39917546cf159db057c3feb5dae590bd71c587325d255fa"
+        },
+        {
+          "action_id": "route:map_node:5:0",
+          "decision_index": 1,
+          "regret": 0.22807017543859653,
+          "seed": 93137,
+          "source_sha256": "94a9077bdcf58913ceac375e4b43203b6e17d98c9f09e69f50560f7a319e133c"
+        },
+        {
+          "action_id": "route:map_node:1:3",
+          "decision_index": 6,
+          "regret": 0.0,
+          "seed": 93137,
+          "source_sha256": "3996f1637e05702d7a040adae7f6a91ca18f9eec427b316572e03eac87bcdc04"
+        },
+        {
+          "action_id": "route:map_node:2:9",
+          "decision_index": 15,
+          "regret": 0.07017543859649122,
+          "seed": 93137,
+          "source_sha256": "b5d7e585c392d4249cb571b37798b8f3f5e6c8768125889ebb68ce56bfad47f9"
+        },
+        {
+          "action_id": "route:map_node:5:0",
+          "decision_index": 0,
+          "regret": 0.29824561403508776,
+          "seed": 93138,
+          "source_sha256": "0542486717decce89c02661836d62a9788f4175ea9f51e7308afbd088125e289"
+        },
+        {
+          "action_id": "route:map_node:5:4",
+          "decision_index": 9,
+          "regret": 0.0,
+          "seed": 93138,
+          "source_sha256": "b4fa366758605c2c206067363bb7f4a505a77c40f96b9f0addbd8d74a0615f0f"
+        },
+        {
+          "action_id": "route:map_node:5:5",
+          "decision_index": 11,
+          "regret": 0.0,
+          "seed": 93138,
+          "source_sha256": "33a2cf0645d80dba6871b45f04eeab8d560a56156ee21665fdf0138cc924976b"
+        },
+        {
+          "action_id": "route:map_node:0:0",
+          "decision_index": 0,
+          "regret": 0.17543859649122806,
+          "seed": 93139,
+          "source_sha256": "90e7b1715a7ecd837a3b758b45fc6613e2eddf96aff0000ac142796d661ed037"
+        },
+        {
+          "action_id": "route:map_node:3:1",
+          "decision_index": 2,
+          "regret": 0.0,
+          "seed": 93139,
+          "source_sha256": "321db179ba4da0d16d4fa77bc990ab7945d38aff177639b763d0f87b1c6960f9"
+        },
+        {
+          "action_id": "route:map_node:5:2",
+          "decision_index": 4,
+          "regret": 0.0,
+          "seed": 93139,
+          "source_sha256": "d74eb00c954af9f14ef09afb8d98d579a19691c6cddcd91d58a7c0ab3008fe0d"
+        },
+        {
+          "action_id": "route:map_node:5:0",
+          "decision_index": 0,
+          "regret": 0.0,
+          "seed": 93140,
+          "source_sha256": "8947987f87ad2d9466f1803035bfc799a0db9fde1c8eaa0345142df79433492e"
+        },
+        {
+          "action_id": "route:map_node:6:1",
+          "decision_index": 2,
+          "regret": 0.0,
+          "seed": 93140,
+          "source_sha256": "a105d4e336a8e7eb849932a83a6daba7c53084620e0b036311ce3901d9a78830"
+        },
+        {
+          "action_id": "route:map_node:3:12",
+          "decision_index": 22,
+          "regret": 0.0,
+          "seed": 93140,
+          "source_sha256": "d43ffdd44d9e6e8e3ca621f84dc7f1d217d2b348adb628789880c968bcd8a443"
+        },
+        {
+          "action_id": "route:map_node:4:0",
+          "decision_index": 0,
+          "regret": 0.10526315789473684,
+          "seed": 93141,
+          "source_sha256": "d6ac5eba0d3286b503ef0d0eb1ac97ecb25efb033b4ed5337eed7dbd0fedc67d"
+        },
+        {
+          "action_id": "route:map_node:1:2",
+          "decision_index": 4,
+          "regret": 0.0,
+          "seed": 93141,
+          "source_sha256": "4792c24be6ba4f593c78346bdb770104b0bbdd9eef45612279005f236037b6ee"
+        },
+        {
+          "action_id": "route:map_node:1:3",
+          "decision_index": 6,
+          "regret": 0.0,
+          "seed": 93141,
+          "source_sha256": "1908bf3f021ad7fd21b09ca9ecd970e2976f6c3cb1ace153185c0f1b280ac620"
+        },
+        {
+          "action_id": "route:map_node:5:0",
+          "decision_index": 0,
+          "regret": 0.0,
+          "seed": 93142,
+          "source_sha256": "18fb7ca31662b2174e40bb27cd42c71d83f114f0eccb85b0704c4f32550f407c"
+        },
+        {
+          "action_id": "route:map_node:1:2",
+          "decision_index": 5,
+          "regret": 0.0,
+          "seed": 93142,
+          "source_sha256": "50da74a7ff4e6ad055d61306fbd5b765710b9f8d6df8801a2f6dbda21c96a7de"
+        },
+        {
+          "action_id": "route:map_node:6:0",
+          "decision_index": 0,
+          "regret": 0.0,
+          "seed": 93143,
+          "source_sha256": "8c1da7fce0d94521e814e02e89a84b83b831edc10d3714f4d20c26368cb3ee2d"
+        },
+        {
+          "action_id": "route:map_node:4:3",
+          "decision_index": 6,
+          "regret": 0.0,
+          "seed": 93143,
+          "source_sha256": "2a5bd933915b9e1669108288ae51ff88e0dc211119704579e0e44f4026af01d6"
+        },
+        {
+          "action_id": "route:map_node:3:4",
+          "decision_index": 8,
+          "regret": 0.0,
+          "seed": 93143,
+          "source_sha256": "2a03fdb1cd2ab41b761ce821310214173759667f0c03424d1fb394c992af5187"
+        },
+        {
+          "action_id": "route:map_node:3:3",
+          "decision_index": 11,
+          "regret": 0.0,
+          "seed": 93144,
+          "source_sha256": "0b9abccfa2c0f644725402f0ea4bb2e52eff2816e2eba2a054d513464053327d"
+        },
+        {
+          "action_id": "route:map_node:4:0",
+          "decision_index": 0,
+          "regret": 0.0,
+          "seed": 93145,
+          "source_sha256": "336a1fee55c02a74cc55577beaaf3e920802558a6f9d09eb1d2dd3b7da28352e"
+        },
+        {
+          "action_id": "route:map_node:3:4",
+          "decision_index": 8,
+          "regret": 0.0,
+          "seed": 93145,
+          "source_sha256": "aaaa7df2d7f40d95f470c19f39cbdc7702f714d130068455fec6c5cab8596507"
+        },
+        {
+          "action_id": "route:map_node:3:6",
+          "decision_index": 11,
+          "regret": 0.0,
+          "seed": 93145,
+          "source_sha256": "c394dfe1a714d3f57ad9102c2a607ac921c1ea4afad6a2df0e1a5c1741ec3c75"
+        },
+        {
+          "action_id": "route:map_node:4:0",
+          "decision_index": 0,
+          "regret": 0.017543859649122806,
+          "seed": 93146,
+          "source_sha256": "238ee4f7bc47044466b56c33a49810f4c89b096c598d05baa7f02da31c6208c2"
+        },
+        {
+          "action_id": "route:map_node:2:3",
+          "decision_index": 9,
+          "regret": 0.0,
+          "seed": 93146,
+          "source_sha256": "124e7950d0426e595b2dd6247c716c65c86c210dcda539ed67db5d84313d2cbf"
+        },
+        {
+          "action_id": "route:map_node:3:10",
+          "decision_index": 21,
+          "regret": 0.0,
+          "seed": 93146,
+          "source_sha256": "ee37167e764dfe31f17e7d4229f020a5831dbabb233d7b827c9534ec8850c565"
+        },
+        {
+          "action_id": "route:map_node:1:0",
+          "decision_index": 0,
+          "regret": 0.0,
+          "seed": 93147,
+          "source_sha256": "5fd51b6b07064d3d3812d88e7634a4cd4f20fea1afad5620dac1a2ac424ded2d"
+        },
+        {
+          "action_id": "route:map_node:1:1",
+          "decision_index": 2,
+          "regret": 0.0,
+          "seed": 93147,
+          "source_sha256": "4c4cf2bca1b297306f5bbba01684070a2db4f992d2fda9e98fd69f10b33be7a8"
+        },
+        {
+          "action_id": "route:map_node:0:4",
+          "decision_index": 8,
+          "regret": 0.0,
+          "seed": 93147,
+          "source_sha256": "32a277b6f476706dab49cd4593e69af99417387220b94bc025a927d551b87d03"
+        },
+        {
+          "action_id": "route:map_node:6:0",
+          "decision_index": 0,
+          "regret": 0.08771929824561403,
+          "seed": 93148,
+          "source_sha256": "6438032f635c31478c0a9eae3e36ec6beca9c8381cd53fa3dcf19a2c64074301"
+        },
+        {
+          "action_id": "route:map_node:1:1",
+          "decision_index": 2,
+          "regret": 0.0,
+          "seed": 93148,
+          "source_sha256": "eab22e94f2946045af92d30f7aeb62fac4b0242219ce47c58e45871b7e8a13d7"
+        },
+        {
+          "action_id": "route:map_node:1:4",
+          "decision_index": 8,
+          "regret": 0.0,
+          "seed": 93148,
+          "source_sha256": "d69471d55289986dc90063b61364992fb4eaa5ec0454f552652f8c95b85b5120"
+        },
+        {
+          "action_id": "route:map_node:0:0",
+          "decision_index": 1,
+          "regret": 0.0,
+          "seed": 93149,
+          "source_sha256": "00a4a7816afb40ab61e66e587b599179d55c813c0d30c4445f1caa7330c385b9"
+        },
+        {
+          "action_id": "route:map_node:5:3",
+          "decision_index": 7,
+          "regret": 0.0,
+          "seed": 93149,
+          "source_sha256": "bde69df616a1f68c0ce59bbed0edf6a6c3d037cc9f0054ffff5cc104a665a504"
+        },
+        {
+          "action_id": "route:map_node:0:0",
+          "decision_index": 1,
+          "regret": 0.5087719298245614,
+          "seed": 93150,
+          "source_sha256": "49f90b9a5e04889e789d6f9749cce0dceadcfe2bdebd7d04c7576a996aabc3b8"
+        },
+        {
+          "action_id": "route:map_node:0:3",
+          "decision_index": 7,
+          "regret": 0.0,
+          "seed": 93150,
+          "source_sha256": "96a42ff1e0643bc6f95bfda73e0242b8b810590c689392c1dad0488845c1701e"
+        },
+        {
+          "action_id": "route:map_node:0:8",
+          "decision_index": 15,
+          "regret": 0.2982456140350877,
+          "seed": 93150,
+          "source_sha256": "717cf03022ec07ac867521501194d36406eabcc230c5c93a3030d67abd014b77"
+        },
+        {
+          "action_id": "route:map_node:4:0",
+          "decision_index": 1,
+          "regret": 0.29824561403508776,
+          "seed": 93151,
+          "source_sha256": "b80bc5d07c3f34bbd4b72415e1d4b66372a1b24c68482a5794205cb0be2b88da"
+        },
+        {
+          "action_id": "route:map_node:5:5",
+          "decision_index": 11,
+          "regret": 0.17543859649122806,
+          "seed": 93151,
+          "source_sha256": "25d63d881c94511a914f9127e281b9a9626a033b8a6d4ebee75e4d81c7fcd58e"
+        },
+        {
+          "action_id": "route:map_node:3:8",
+          "decision_index": 16,
+          "regret": 0.0,
+          "seed": 93151,
+          "source_sha256": "a2e5cbf2b7f59287f74e411b31e7be3bc7396d3e3eb4e6a97f1a61d438f67b07"
+        },
+        {
+          "action_id": "route:map_node:5:0",
+          "decision_index": 0,
+          "regret": 0.17543859649122806,
+          "seed": 93152,
+          "source_sha256": "86b6ad2f6e77c5359ddc846cef2eccf197c95e40c7c9ec19425c1a02c91522b3"
+        },
+        {
+          "action_id": "route:map_node:3:1",
+          "decision_index": 2,
+          "regret": 0.17543859649122806,
+          "seed": 93152,
+          "source_sha256": "3f34c751963297828f19b2e2d42213429ad97761574d750560589f3eab2a4839"
+        },
+        {
+          "action_id": "route:map_node:1:4",
+          "decision_index": 8,
+          "regret": 0.0,
+          "seed": 93152,
+          "source_sha256": "1c3607f15543bbf7d1ec837fe1fbedab0aed97ef8d0f464c77ab93f3eb43a5e8"
+        },
+        {
+          "action_id": "route:map_node:5:0",
+          "decision_index": 0,
+          "regret": 0.22807017543859653,
+          "seed": 93153,
+          "source_sha256": "bb3148f77a19fcc9a4482636948cb7da80f00e82e8764a9cf42d6909878fb08f"
+        },
+        {
+          "action_id": "route:map_node:5:4",
+          "decision_index": 8,
+          "regret": 0.05263157894736842,
+          "seed": 93153,
+          "source_sha256": "43becc477b852a87a58577a0f7c010844060993a99c0ff90bfcd49c08201894a"
+        },
+        {
+          "action_id": "route:map_node:6:5",
+          "decision_index": 11,
+          "regret": 0.08771929824561403,
+          "seed": 93153,
+          "source_sha256": "8fae0fd36ee53138ca82cc34e5b81b073f8c6e30c64f8cb3b049f17a96667b85"
+        },
+        {
+          "action_id": "route:map_node:1:0",
+          "decision_index": 0,
+          "regret": 0.21052631578947373,
+          "seed": 93154,
+          "source_sha256": "1bce744004442818c45d00191f92cccedb2815175837569eb85d0e8e6a1e8d67"
+        },
+        {
+          "action_id": "route:map_node:3:5",
+          "decision_index": 10,
+          "regret": 0.0,
+          "seed": 93154,
+          "source_sha256": "cbff3539d7d8dbbaac0ac1507fdfbefacd4546c477bff214de9c728aba50836e"
+        },
+        {
+          "action_id": "route:map_node:2:7",
+          "decision_index": 13,
+          "regret": 0.05263157894736842,
+          "seed": 93154,
+          "source_sha256": "2a4d034cf392a421faa7a4c81a73bd197679286e7e80793a493ea7bf5fbda580"
+        },
+        {
+          "action_id": "route:map_node:0:0",
+          "decision_index": 0,
+          "regret": 0.0,
+          "seed": 93155,
+          "source_sha256": "cac850dbf4fad40cef0397722d0a3696def6693f8798562b904b3938c46e62bd"
+        },
+        {
+          "action_id": "route:map_node:0:3",
+          "decision_index": 6,
+          "regret": 0.0,
+          "seed": 93155,
+          "source_sha256": "6098cbc1f00d5c358aa780b7adbf30114c9369818f956c0780c7966813ad7e17"
+        },
+        {
+          "action_id": "route:map_node:3:6",
+          "decision_index": 11,
+          "regret": 0.0,
+          "seed": 93155,
+          "source_sha256": "e76de46112b9eeae2ec7887cb8ff28cf2d190bd92cedea63a744641357dcd87c"
+        },
+        {
+          "action_id": "route:map_node:4:0",
+          "decision_index": 0,
+          "regret": 0.10526315789473684,
+          "seed": 93156,
+          "source_sha256": "9398f99a20400e6e96543dc10dfd539c23a016e1f6e7a5869c3176099feb47c2"
+        },
+        {
+          "action_id": "route:map_node:0:1",
+          "decision_index": 2,
+          "regret": 0.03508771929824561,
+          "seed": 93156,
+          "source_sha256": "2d0f98f80c3e6508326f43c530859e8702afd1c4b20b681d660911efea47b9cd"
+        },
+        {
+          "action_id": "route:map_node:3:3",
+          "decision_index": 6,
+          "regret": 0.0,
+          "seed": 93156,
+          "source_sha256": "aec4cc28e9e03cacbbc495e5ec6585d4aa24920c289e9d685850b2fa714b77c1"
+        },
+        {
+          "action_id": "route:map_node:5:0",
+          "decision_index": 0,
+          "regret": 0.0,
+          "seed": 93157,
+          "source_sha256": "59e8798ea53d4cc5f0d49b9dbae6931d8d22d8823e9bae882caec0bda73a6b79"
+        },
+        {
+          "action_id": "route:map_node:1:3",
+          "decision_index": 6,
+          "regret": 0.07017543859649122,
+          "seed": 93157,
+          "source_sha256": "a911471caadfd86aba44c360d9b118bd2c45fbd105461b845d206c2929077f46"
+        },
+        {
+          "action_id": "route:map_node:2:8",
+          "decision_index": 16,
+          "regret": 0.0,
+          "seed": 93157,
+          "source_sha256": "f59f0b48bd762cc4f74ab84d617d8a7653965b003a066dc6e6dec659524f8d4a"
+        },
+        {
+          "action_id": "route:map_node:6:0",
+          "decision_index": 0,
+          "regret": 0.29824561403508776,
+          "seed": 93158,
+          "source_sha256": "557f5dc708ef331381aa60cf3fa0202d63292a1838fb02901e708ec0f91ae13b"
+        },
+        {
+          "action_id": "route:map_node:5:3",
+          "decision_index": 6,
+          "regret": 0.0,
+          "seed": 93158,
+          "source_sha256": "6563f4cf42e81ea6b1e0d95bee7825292cc17303a9cd53771cbb138dc6e21f9b"
+        },
+        {
+          "action_id": "route:map_node:6:4",
+          "decision_index": 10,
+          "regret": 0.0,
+          "seed": 93158,
+          "source_sha256": "cf3e5b1565faedf25bea35bd97dd5857d488b7525390300a2a36d052d4a1938f"
+        },
+        {
+          "action_id": "route:map_node:5:0",
+          "decision_index": 0,
+          "regret": 0.0,
+          "seed": 93159,
+          "source_sha256": "dbbefba8c6b01406c6db2c03fef31185c692629da0d2436bffc633c18ed4fe8e"
+        },
+        {
+          "action_id": "route:map_node:5:2",
+          "decision_index": 3,
+          "regret": 0.0,
+          "seed": 93159,
+          "source_sha256": "56dfd308e8b6adc89cfc689b6e290198c1077c3dfc5b15667d37503ee263947b"
+        },
+        {
+          "action_id": "route:map_node:5:4",
+          "decision_index": 7,
+          "regret": 0.0,
+          "seed": 93159,
+          "source_sha256": "3f29532e442903c3757a3b224d963ee840c8f93fd0e05118e2d5be70ce973246"
+        }
+      ],
+      "unique_best_accuracy": 0.45652173913043476,
+      "unique_best_rows": 46,
+      "weighted_pairwise_accuracy": 0.5126760563380283
+    }
+  },
+  "development_access_count": 1,
+  "selection": {
+    "checkpoints": [
+      {
+        "epoch": 1,
+        "fit_final_loss": 0.6920150385962592,
+        "tune": {
+          "maximum_regret": 2.5438596491228074,
+          "mean_regret": 0.09375589511412942,
+          "unique_best_accuracy": 0.49056603773584906,
+          "unique_best_rows": 53,
+          "weighted_pairwise_accuracy": 0.5633952254641909
+        }
+      },
+      {
+        "epoch": 2,
+        "fit_final_loss": 0.6855188078350491,
+        "tune": {
+          "maximum_regret": 0.5087719298245614,
+          "mean_regret": 0.0762120354650066,
+          "unique_best_accuracy": 0.4528301886792453,
+          "unique_best_rows": 53,
+          "weighted_pairwise_accuracy": 0.612732095490716
+        }
+      },
+      {
+        "epoch": 4,
+        "fit_final_loss": 0.6709904869397482,
+        "tune": {
+          "maximum_regret": 0.5087719298245614,
+          "mean_regret": 0.0660252782493869,
+          "unique_best_accuracy": 0.5283018867924528,
+          "unique_best_rows": 53,
+          "weighted_pairwise_accuracy": 0.6610079575596814
+        }
+      },
+      {
+        "epoch": 8,
+        "fit_final_loss": 0.6190150247679816,
+        "tune": {
+          "maximum_regret": 0.5087719298245614,
+          "mean_regret": 0.0660252782493869,
+          "unique_best_accuracy": 0.5283018867924528,
+          "unique_best_rows": 53,
+          "weighted_pairwise_accuracy": 0.6360742705570289
+        }
+      },
+      {
+        "epoch": 16,
+        "fit_final_loss": 0.5161907275517782,
+        "tune": {
+          "maximum_regret": 0.5087719298245614,
+          "mean_regret": 0.0660252782493869,
+          "unique_best_accuracy": 0.5283018867924528,
+          "unique_best_rows": 53,
+          "weighted_pairwise_accuracy": 0.6334217506631298
+        }
+      }
+    ],
+    "selected_epoch": 4
+  },
+  "training_final_history": [
+    {
+      "epoch": 1,
+      "mean_batch_loss": 0.6932060966889063
+    },
+    {
+      "epoch": 2,
+      "mean_batch_loss": 0.6871790488560995
+    },
+    {
+      "epoch": 3,
+      "mean_batch_loss": 0.6803440004587173
+    },
+    {
+      "epoch": 4,
+      "mean_batch_loss": 0.6714329719543457
+    }
+  ],
+  "verdict": "route_counterfactual_ranker_not_ready_after_development"
+}

@@ -230,22 +230,30 @@ def _terminal_summary(snapshot: Mapping[str, Any]) -> dict[str, Any]:
     }
 
 
-def evaluate_action_branch(
+def evaluate_action_branch_for_category(
     source_environment: Any,
     *,
     action_id: str,
+    source_category: str,
     max_decisions: int = MAX_DECISIONS_PER_CONTINUATION,
     deadline: float | None = None,
     clock: Callable[[], float] = time.monotonic,
 ) -> BranchTrace:
-    """Force one source action and use native SimpleAgent to terminal."""
+    """Force one target-category action and use native SimpleAgent to terminal."""
     if isinstance(max_decisions, bool) or not isinstance(max_decisions, int) or (
         max_decisions <= 0
     ):
         raise CounterfactualCreditBlocked("continuation decision ceiling is invalid")
+    if source_category not in adapter.TARGET_CATEGORIES:
+        raise CounterfactualCreditBlocked("source category is not supported")
     source_snapshot, source_candidates = _environment_state(source_environment)
-    if source_snapshot["terminal"] or source_snapshot["category"] != "card_reward":
-        raise CounterfactualCreditBlocked("source must be a live card-reward state")
+    if (
+        source_snapshot["terminal"]
+        or source_snapshot["category"] != source_category
+    ):
+        raise CounterfactualCreditBlocked(
+            f"source must be a live {source_category} state"
+        )
     active_deadline = float("inf") if deadline is None else float(deadline)
     if not callable(clock):
         raise CounterfactualCreditBlocked("branch clock must be callable")
@@ -297,6 +305,25 @@ def evaluate_action_branch(
         terminal_victory=terminal_victory,
         total_return=math.fsum(rewards),
         transition_count=len(transitions),
+    )
+
+
+def evaluate_action_branch(
+    source_environment: Any,
+    *,
+    action_id: str,
+    max_decisions: int = MAX_DECISIONS_PER_CONTINUATION,
+    deadline: float | None = None,
+    clock: Callable[[], float] = time.monotonic,
+) -> BranchTrace:
+    """Force one card-reward action and use native SimpleAgent to terminal."""
+    return evaluate_action_branch_for_category(
+        source_environment,
+        action_id=action_id,
+        source_category="card_reward",
+        max_decisions=max_decisions,
+        deadline=deadline,
+        clock=clock,
     )
 
 
