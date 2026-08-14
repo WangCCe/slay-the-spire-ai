@@ -1,0 +1,61 @@
+{
+  "schema_version": 1,
+  "diagnosis_id": "combat-rl-update-stability-diagnosis-20260815-r1",
+  "source_commit": "915024f58eea87d8f09bb8c771a840a5d25dac0f",
+  "analysis_script": {
+    "path": "analysis_scripts/combat_rl_dropout_update_ablation.py",
+    "sha256": "1a211bcb3f8e3bd3d8b972704c424eb0a42ef8d1a38ce4b4ef5e314dbdf6f2ef"
+  },
+  "inputs": {
+    "entry_checkpoint_sha256": "79afdd2290323646010f7715fb9a96922d2b9dc05baee271ca0a1042eac4f3d6",
+    "candidate_checkpoint_sha256": "72bc4ac046ce933935e1ad46a11bccb25963933999eafee97588c03e1aaebad",
+    "retained_replay_transitions": 4096,
+    "source_replay_transitions": 5223
+  },
+  "full_replay_probe": {
+    "entry_smooth_l1": 5.115571,
+    "final_smooth_l1": 4.587903,
+    "entry_absolute_td_p50": 1.559717,
+    "final_absolute_td_p50": 1.07502,
+    "entry_final_greedy_action_agreement": 0.542969,
+    "entry_q_margin_p50": 0.268136,
+    "reward_mean": -1.72854,
+    "terminal_count": 309,
+    "terminal_share": 0.075439,
+    "final_next_dropout_mean_per_pass_flip_share": 0.10479,
+    "final_next_dropout_ever_flipped_share": 0.4729
+  },
+  "raw_reports": [
+    {
+      "path": "reports/combat_rl_dropout_update_ablation_20260815_r1/report.json",
+      "sha256": "cd59d2e0d218145fbfbcbafeda9ca4cb0df8233bb793761b79cf558f21403e03"
+    },
+    {
+      "path": "reports/combat_rl_gradient_clip_ablation_20260815_r1/report.json",
+      "sha256": "9f3918df7e6fbb648bab65f64535ad604713b486e51e02f2d75e62cff346a306"
+    },
+    {
+      "path": "reports/combat_rl_optimizer_lr_ablation_20260815_r1/report.json",
+      "sha256": "ea18074887b93bb43686ac382363c9027bbc74f02d505c2dd93f4a7591408cf7"
+    }
+  ],
+  "gate_uncertainty": {
+    "candidate_paired_wins": 1,
+    "baseline_paired_wins": 4,
+    "ties": 5,
+    "candidate_floor_total": 167,
+    "baseline_floor_total": 181,
+    "paired_mean_floor_delta": -1.4,
+    "paired_floor_delta_sample_sd": 8.15,
+    "exact_two_sided_sign_test_p": 0.375
+  },
+  "training_default_changes": {
+    "dropout": false,
+    "gradient_clip": false,
+    "optimizer_reset": false,
+    "learning_rate": false,
+    "update_horizon": false
+  },
+  "decision": "retain_defaults_and_run_fresh_training_replicate_after_event_guard",
+  "failed_candidate_status": "not_promoted_and_not_continued"
+}
