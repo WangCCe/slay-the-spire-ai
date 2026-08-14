@@ -1,0 +1,49 @@
+{
+  "schema_version": 1,
+  "gate_id": "combat-rl-schema2-r2-zero-epsilon-gate-20260815-r1",
+  "source_commit": "8fe71578493689b94c6c3a69be106ff3de382899",
+  "candidate_checkpoint": {
+    "path": "reports/combat_rl_schema2_fresh_replication_20260815_r2/rl_combat_model_ep40_steps17053.pth",
+    "sha256": "2968ba273e9cba92070dbf1b51159aa739c5f6e8c254c6b5999fe28af4a7d262"
+  },
+  "baseline_checkpoint": {
+    "path": "reports/combat_rl_legacy_replay_collection_20260814_r1/rl_combat_model_ep15_steps13413.pth",
+    "sha256": "79afdd2290323646010f7715fb9a96922d2b9dc05baee271ca0a1042eac4f3d6"
+  },
+  "evaluation": {
+    "arm_order": ["candidate", "baseline"],
+    "games_per_arm": 20,
+    "agent": "combat_rl",
+    "rl_space_version": "v2",
+    "mode": "eval",
+    "epsilon": 0.0,
+    "elite_route": "conservative",
+    "ascension": 0,
+    "seed_pool": "reports/combat_rl_schema2_r2_zero_epsilon_gate_20260815_r1_seed_pool.txt",
+    "same_seed_order": true,
+    "training_disabled": true,
+    "expert_mix_disabled": true,
+    "card_uplift_disabled": true,
+    "decision_trace_disabled": true,
+    "sim_divergence_trace_disabled": true,
+    "shared_event_policy_commit": "c1c7d0775a155a316a4580fe64cb2ea8e3fc3575"
+  },
+  "promotion_rule": {
+    "candidate_paired_floor_wins_must_exceed_baseline": true,
+    "candidate_victories_must_be_at_least_baseline": true,
+    "candidate_act_2_entries_must_be_at_least_baseline": true,
+    "candidate_act_2_boss_reaches_must_be_at_least_baseline": true,
+    "candidate_total_floors_must_be_at_least_baseline": true,
+    "both_arms_must_have_zero_integrity_warnings": true,
+    "all_seed_pairs_must_match": true,
+    "all_conditions_required": true
+  },
+  "execution_constraints": {
+    "pre_start_validation_repairs_allowed": true,
+    "stop_and_report_after_started_arm_failure": true,
+    "no_seed_change_after_start": true,
+    "no_threshold_change_after_start": true,
+    "no_model_or_parameter_change_between_arms": true,
+    "no_promotion_from_training_outcomes": true
+  }
+}
