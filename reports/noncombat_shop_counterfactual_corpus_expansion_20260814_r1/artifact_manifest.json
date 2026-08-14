@@ -1,0 +1,30 @@
+{
+  "artifacts": [
+    {
+      "path": "configuration.json",
+      "sha256": "5edbb86e12360111c9f4d50ffc8ef49474f490439ebd3a168530ac9e5d1d38bd",
+      "size_bytes": 10898
+    },
+    {
+      "path": "dataset.json",
+      "sha256": "99efae73450c3848b04ea487a2e9ca9597430a78d1bebbea61b27bb00da0b3de",
+      "size_bytes": 20289346
+    },
+    {
+      "path": "metrics.json",
+      "sha256": "a9fcd922848a42a1a58e26357b5a03163e3cdc7141f724e351c19175e7c18aaf",
+      "size_bytes": 607
+    },
+    {
+      "path": "report.json",
+      "sha256": "6957843121714efbce9b50116afd7eb86e2d81365e52a25f6074f7a88db198b6",
+      "size_bytes": 4886
+    },
+    {
+      "path": "report.md",
+      "sha256": "c42cc393fb96ae3322acbafad5bb9b5c9c099357622195d9af301e24ab7c7905",
+      "size_bytes": 310
+    }
+  ],
+  "schema_version": "noncombat-shop-counterfactual-corpus-expansion-manifest-v1"
+}

@@ -7,5 +7,5 @@
 ## 2. Verification And Collection
 
 - [x] 2.1 Validate OpenSpec and run only the focused collector tests with an isolated system-temp basetemp.
-- [ ] 2.2 Run source-only preflight, commit the bound collector, and verify no active game or CommunicationMod process.
-- [ ] 2.3 Execute the native expansion once, verify 384 unique sources and all artifacts, record the verdict, and archive the change.
+- [x] 2.2 Run source-only preflight, commit the bound collector, and verify no active game or CommunicationMod process.
+- [x] 2.3 Execute the native expansion once, verify 384 unique sources and all artifacts, record the verdict, and archive the change.

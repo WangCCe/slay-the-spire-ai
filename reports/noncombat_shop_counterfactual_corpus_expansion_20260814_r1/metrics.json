@@ -1,0 +1,23 @@
+{
+  "action_kinds": {
+    "buy_card": 2317,
+    "buy_potion": 956,
+    "buy_relic": 295,
+    "leave": 384,
+    "remove_card": 381
+  },
+  "checks": {
+    "action_branch_bound": true,
+    "action_kind_support": true,
+    "complete_source_support": true,
+    "historical_independence": true,
+    "informative_source_support": true,
+    "replay_support": true,
+    "unique_source_support": true
+  },
+  "combined_source_count": 496,
+  "expansion_source_count": 384,
+  "historical_source_count": 112,
+  "informative_source_count": 335,
+  "verdict": "shop_counterfactual_expansion_ready_for_retraining_proposal"
+}
