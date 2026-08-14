@@ -22,7 +22,7 @@
   },
   "output": {
     "directory": "reports/combat_rl_schema2_fresh_replication_20260815_r3",
-    "production_checkpoint_modification_allowed": false
+    "production_checkpoint_promotion_allowed": false
   },
   "failure_policy": {
     "pre_start_validation_repairs_allowed": true,
