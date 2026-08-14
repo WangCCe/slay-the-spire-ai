@@ -1,0 +1,233 @@
+{
+  "bindings": [
+    {
+      "cohort": "train64",
+      "partition_name": "train",
+      "path": "D:/PycharmProjects/slay-the-spire-ai/reports/noncombat_state_conditioned_shop_ranking_20260814_r1/train_dataset.json",
+      "sha256": "e346d26e2e29d297b316d9247ef9cf6619bb3fce274b0b88f34d69a9be5f736a",
+      "source_count": 64
+    },
+    {
+      "cohort": "development16",
+      "partition_name": "development",
+      "path": "D:/PycharmProjects/slay-the-spire-ai/reports/noncombat_state_conditioned_shop_ranking_20260814_r1/development_dataset.json",
+      "sha256": "c802f80ca72ea32f1caf42d1699faf92f607aac97af03b8b495f70ad9e07ba8e",
+      "source_count": 16
+    },
+    {
+      "cohort": "robust16",
+      "partition_name": "development",
+      "path": "D:/PycharmProjects/slay-the-spire-ai/reports/noncombat_shop_robust_initialization_evaluation_20260814_r1/evaluation_dataset.json",
+      "sha256": "74a76101fabb6a61424f34a411d602e96be46f8f459ccc464b641ebb0c5e89a2",
+      "source_count": 16
+    },
+    {
+      "cohort": "relative16",
+      "partition_name": "development",
+      "path": "D:/PycharmProjects/slay-the-spire-ai/reports/noncombat_current_relative_shop_ranking_20260814_r1/fresh_dataset.json",
+      "sha256": "76dde3cdcd058d6d9920f9795ddaf241915baa02f261776ab9b17bdbb49c4ae3",
+      "source_count": 16
+    },
+    {
+      "cohort": "expansion384",
+      "partition_name": "train",
+      "path": "D:/PycharmProjects/slay-the-spire-ai/reports/noncombat_shop_counterfactual_corpus_expansion_20260814_r1/dataset.json",
+      "sha256": "99efae73450c3848b04ea487a2e9ca9597430a78d1bebbea61b27bb00da0b3de",
+      "source_count": 384
+    }
+  ],
+  "cohorts": {
+    "development16": {
+      "action_branches": 196,
+      "best_action_kinds": {
+        "buy_card": 15,
+        "remove_card": 1
+      },
+      "current": {
+        "maximum_regret": 0.29824561403508776,
+        "mean_regret": 0.13157894736842105,
+        "unique_best_accuracy": 0.25,
+        "unique_best_rows": 4
+      },
+      "current_action_kinds": {
+        "buy_relic": 1,
+        "remove_card": 15
+      },
+      "informative_sources": 14,
+      "mean_return_spread": 0.24671052631578946,
+      "source_count": 16
+    },
+    "expansion384": {
+      "action_branches": 4333,
+      "best_action_kinds": {
+        "buy_card": 318,
+        "buy_potion": 21,
+        "buy_relic": 27,
+        "leave": 6,
+        "remove_card": 12
+      },
+      "current": {
+        "maximum_regret": 2.6140350877192984,
+        "mean_regret": 0.17607821637426901,
+        "unique_best_accuracy": 0.06474820143884892,
+        "unique_best_rows": 139
+      },
+      "current_action_kinds": {
+        "buy_card": 22,
+        "buy_relic": 1,
+        "leave": 3,
+        "remove_card": 358
+      },
+      "informative_sources": 335,
+      "mean_return_spread": 0.2835343567251462,
+      "source_count": 384
+    },
+    "relative16": {
+      "action_branches": 182,
+      "best_action_kinds": {
+        "buy_card": 14,
+        "buy_relic": 1,
+        "leave": 1
+      },
+      "current": {
+        "maximum_regret": 0.5263157894736842,
+        "mean_regret": 0.18092105263157893,
+        "unique_best_accuracy": 0.0,
+        "unique_best_rows": 7
+      },
+      "current_action_kinds": {
+        "buy_relic": 2,
+        "leave": 1,
+        "remove_card": 13
+      },
+      "informative_sources": 15,
+      "mean_return_spread": 0.22587719298245612,
+      "source_count": 16
+    },
+    "robust16": {
+      "action_branches": 197,
+      "best_action_kinds": {
+        "buy_card": 12,
+        "buy_potion": 1,
+        "buy_relic": 3
+      },
+      "current": {
+        "maximum_regret": 2.3157894736842106,
+        "mean_regret": 0.3201754385964912,
+        "unique_best_accuracy": 0.0,
+        "unique_best_rows": 8
+      },
+      "current_action_kinds": {
+        "remove_card": 16
+      },
+      "informative_sources": 11,
+      "mean_return_spread": 0.5098684210526316,
+      "source_count": 16
+    },
+    "train64": {
+      "action_branches": 742,
+      "best_action_kinds": {
+        "buy_card": 51,
+        "buy_potion": 5,
+        "buy_relic": 4,
+        "leave": 1,
+        "remove_card": 3
+      },
+      "current": {
+        "maximum_regret": 2.508771929824561,
+        "mean_regret": 0.19873903508771928,
+        "unique_best_accuracy": 0.09523809523809523,
+        "unique_best_rows": 21
+      },
+      "current_action_kinds": {
+        "buy_card": 2,
+        "buy_relic": 2,
+        "remove_card": 60
+      },
+      "informative_sources": 56,
+      "mean_return_spread": 0.3001644736842105,
+      "source_count": 64
+    }
+  },
+  "feature_width": 1024,
+  "fold_support": {
+    "0": {
+      "cohorts": {
+        "development16": 1,
+        "expansion384": 84,
+        "relative16": 5,
+        "robust16": 6,
+        "train64": 13
+      },
+      "source_count": 109
+    },
+    "1": {
+      "cohorts": {
+        "development16": 4,
+        "expansion384": 86,
+        "relative16": 3,
+        "robust16": 4,
+        "train64": 10
+      },
+      "source_count": 107
+    },
+    "2": {
+      "cohorts": {
+        "development16": 4,
+        "expansion384": 75,
+        "relative16": 4,
+        "robust16": 2,
+        "train64": 17
+      },
+      "source_count": 102
+    },
+    "3": {
+      "cohorts": {
+        "development16": 1,
+        "expansion384": 66,
+        "relative16": 1,
+        "robust16": 2,
+        "train64": 16
+      },
+      "source_count": 86
+    },
+    "4": {
+      "cohorts": {
+        "development16": 6,
+        "expansion384": 73,
+        "relative16": 3,
+        "robust16": 2,
+        "train64": 8
+      },
+      "source_count": 92
+    }
+  },
+  "overall": {
+    "action_branches": 5650,
+    "best_action_kinds": {
+      "buy_card": 410,
+      "buy_potion": 27,
+      "buy_relic": 35,
+      "leave": 8,
+      "remove_card": 16
+    },
+    "current": {
+      "maximum_regret": 2.6140350877192984,
+      "mean_regret": 0.1823712507074137,
+      "unique_best_accuracy": 0.0670391061452514,
+      "unique_best_rows": 179
+    },
+    "current_action_kinds": {
+      "buy_card": 24,
+      "buy_relic": 6,
+      "leave": 4,
+      "remove_card": 462
+    },
+    "informative_sources": 431,
+    "mean_return_spread": 0.28993350311262023,
+    "source_count": 496
+  },
+  "schema_version": "noncombat-cross-validated-shop-ensemble-v1",
+  "source_count": 496,
+  "unique_source_count": 496
+}

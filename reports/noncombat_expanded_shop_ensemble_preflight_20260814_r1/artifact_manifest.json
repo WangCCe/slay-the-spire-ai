@@ -1,0 +1,35 @@
+{
+  "artifacts": [
+    {
+      "path": "configuration.json",
+      "sha256": "1a2bddf080fd3d395d5afe934ad0b015b7cabc8f62fc70f8467184587310570b",
+      "size_bytes": 2758
+    },
+    {
+      "path": "corpus_audit.json",
+      "sha256": "2ac7b34019dc02d32b99930ddf670197804b5938788088d2c8684f6ea77d02d3",
+      "size_bytes": 6356
+    },
+    {
+      "path": "model.json",
+      "sha256": "5310a7f41e6a2fef0f7db6469dca71c040cb9bd3eb014fd1a34a275fd7db60d0",
+      "size_bytes": 21242382
+    },
+    {
+      "path": "oof_metrics.json",
+      "sha256": "2f421903b04c5a201a8b490b13322135acc063de5aabf4ba3a0eef2e579ab9a3",
+      "size_bytes": 261462
+    },
+    {
+      "path": "report.json",
+      "sha256": "aebffc5769428a8f6ae08f1d84b0f3920a7f815132e3a0207beaed67dcde9b42",
+      "size_bytes": 3523
+    },
+    {
+      "path": "report.md",
+      "sha256": "fb5280f03edf1fece3df183b1a470ae10901ee8d33fb0cc6afe29577bd3904b8",
+      "size_bytes": 227
+    }
+  ],
+  "schema_version": "noncombat-cross-validated-shop-ensemble-manifest-v1"
+}

@@ -6,5 +6,5 @@
 ## 2. Training And Evaluation
 
 - [x] 2.1 Validate OpenSpec, run focused wrapper tests, and commit the source-bound runner.
-- [ ] 2.2 Run the 496-source OOF preflight once and persist either the frozen selection or terminal no-go.
+- [x] 2.2 Run the 496-source OOF preflight once and persist either the frozen selection or terminal no-go.
 - [ ] 2.3 If OOF is eligible, run the reserved 32-source fresh gate once; verify artifacts, record the verdict, and archive the change.
