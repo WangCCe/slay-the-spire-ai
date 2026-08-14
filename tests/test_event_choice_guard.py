@@ -53,6 +53,42 @@ def test_event_choice_uses_available_choice_count_before_screen_options():
     assert action.choice_index == 0
 
 
+def test_scrap_ooze_leaves_when_deeper_cost_would_be_lethal():
+    agent = _agent_for_event(
+        "Scrap Ooze",
+        [
+            EventOption("[Deeper] Lose 6 HP. 55%: Find a Relic.", "Deeper"),
+            EventOption("[Leave] Leave.", "Leave"),
+        ],
+        ["Deeper", "Leave"],
+        hp=6,
+        max_hp=80,
+    )
+
+    action = agent.handle_screen()
+
+    assert isinstance(action, ChooseAction)
+    assert action.choice_index == 1
+
+
+def test_scrap_ooze_keeps_reaching_when_cost_is_survivable():
+    agent = _agent_for_event(
+        "Scrap Ooze",
+        [
+            EventOption("[Deeper] Lose 6 HP. 55%: Find a Relic.", "Deeper"),
+            EventOption("[Leave] Leave.", "Leave"),
+        ],
+        ["Deeper", "Leave"],
+        hp=7,
+        max_hp=80,
+    )
+
+    action = agent.handle_screen()
+
+    assert isinstance(action, ChooseAction)
+    assert action.choice_index == 0
+
+
 def test_golden_idol_takes_relic_when_take_is_available():
     agent = _agent_for_event(
         "Golden Idol",

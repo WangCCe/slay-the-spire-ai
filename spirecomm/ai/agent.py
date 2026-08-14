@@ -1,6 +1,7 @@
 import time
 import random
 import logging
+import re
 import sys
 from copy import deepcopy
 from dataclasses import dataclass
@@ -957,7 +958,48 @@ class SimpleAgent:
         labels_for_selection = choice_labels[:option_count] or screen_labels[:option_count]
 
         choice_index = 0
-        if event_id in {"Golden Idol", "GoldenIdol"}:
+        if event_id in {"Scrap Ooze", "ScrapOoze"}:
+            available_options = []
+            for option in getattr(screen, "options", None) or []:
+                if getattr(option, "disabled", False):
+                    continue
+                raw_index = getattr(option, "choice_index", None)
+                try:
+                    compact_index = int(raw_index)
+                except (TypeError, ValueError):
+                    compact_index = len(available_options)
+                if 0 <= compact_index < option_count:
+                    available_options.append((compact_index, option))
+
+            selected_option = next(
+                (
+                    option
+                    for compact_index, option in available_options
+                    if compact_index == choice_index
+                ),
+                None,
+            )
+            selected_text = str(getattr(selected_option, "text", None) or "")
+            hp_cost_match = re.search(r"\blose\s+(\d+)\s+hp\b", selected_text, re.IGNORECASE)
+            raw_current_hp = getattr(self.game, "current_hp", None)
+            current_hp = self._safe_float(raw_current_hp, 0.0)
+            if (
+                selected_option is not None
+                and raw_current_hp is not None
+                and current_hp > 0
+                and hp_cost_match is not None
+                and float(hp_cost_match.group(1)) >= current_hp
+            ):
+                for compact_index, option in available_options:
+                    safe_label = str(
+                        getattr(option, "label", None)
+                        or getattr(option, "text", None)
+                        or ""
+                    ).lower()
+                    if "leave" in safe_label or "back away" in safe_label:
+                        choice_index = compact_index
+                        break
+        elif event_id in {"Golden Idol", "GoldenIdol"}:
             relics = getattr(self.game, "relics", []) or []
 
             def _has_relic(keyword):
