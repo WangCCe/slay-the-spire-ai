@@ -1,0 +1,46 @@
+{
+  "schema_version": 1,
+  "gate_id": "combat-rl-schema2-zero-epsilon-gate-20260815-r1",
+  "source_commit": "83b5a354d",
+  "candidate_checkpoint": {
+    "path": "reports/combat_rl_schema2_continuation_20260815_r1/rl_combat_model_ep40_steps17071.pth",
+    "sha256": "72bc4ac046ce933935e1ad46a11bccb25963933999eafee97588c03e1aaebad"
+  },
+  "baseline_checkpoint": {
+    "path": "D:/SteamLibrary/steamapps/common/SlayTheSpire/checkpoints_archive/combat_rl/rl_combat_model_ep9_steps11848.pth.20260814-191449.bak",
+    "sha256": "780f6a94754b741e8e68d278d44dc68a80cf2b137c2d6fd8a39c7f042c936558"
+  },
+  "evaluation": {
+    "arm_order": ["candidate", "baseline"],
+    "games_per_arm": 10,
+    "agent": "combat_rl",
+    "rl_space_version": "v2",
+    "mode": "eval",
+    "epsilon": 0.0,
+    "elite_route": "conservative",
+    "ascension": 0,
+    "seed_pool": "reports/combat_rl_schema2_zero_epsilon_gate_20260815_r1_seed_pool.txt",
+    "same_seed_order": true,
+    "training_disabled": true,
+    "expert_mix_disabled": true,
+    "card_uplift_disabled": true,
+    "decision_trace_disabled": true,
+    "sim_divergence_trace_disabled": true
+  },
+  "promotion_rule": {
+    "candidate_paired_floor_wins_must_exceed_baseline": true,
+    "candidate_victories_must_be_at_least_baseline": true,
+    "candidate_act_2_entries_must_be_at_least_baseline": true,
+    "candidate_act_2_boss_reaches_must_be_at_least_baseline": true,
+    "candidate_total_floors_must_be_at_least_baseline": true,
+    "both_arms_must_have_zero_integrity_warnings": true,
+    "all_conditions_required": true
+  },
+  "execution_constraints": {
+    "no_retry": true,
+    "no_seed_change": true,
+    "no_threshold_change": true,
+    "no_parameter_change_between_arms": true,
+    "no_promotion_from_training_outcomes": true
+  }
+}
