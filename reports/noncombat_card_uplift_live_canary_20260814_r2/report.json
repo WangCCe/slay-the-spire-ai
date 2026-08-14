@@ -1,0 +1,109 @@
+{
+  "artifacts": {
+    "canary_rows": {
+      "path": "reports/noncombat_card_uplift_live_canary_20260814_r2/canary_rows.jsonl",
+      "sha256": "23dcee25aab09055bb53ebfddbd6deeb54b4a76ec9884f8d15747d366e9dc19c",
+      "size_bytes": 55381
+    },
+    "configuration": {
+      "path": "reports/noncombat_card_uplift_live_canary_20260814_r2_config.json",
+      "sha256": "ba5889fdb968b110874d4fd5db0e17e5c82980e335c78968c69462a39732d82e",
+      "size_bytes": 5870
+    },
+    "previous_configuration": {
+      "path": "reports/noncombat_card_uplift_live_canary_20260814_r2_previous_config.properties",
+      "sha256": "b42093aef81a17ff1e3eb2dec4187c3af48a1a512a355c9d4d613c4cde2803c1",
+      "size_bytes": 528
+    },
+    "run_records": [
+      {
+        "path": "reports/noncombat_card_uplift_live_canary_20260814_r2/1786700135.run",
+        "sha256": "dd303e193ba18847bdff343f644a1005309fb9a561b0058a6399925810a069eb",
+        "size_bytes": 3652
+      },
+      {
+        "path": "reports/noncombat_card_uplift_live_canary_20260814_r2/1786700307.run",
+        "sha256": "2335ab40600a9f9516f8216d02e9785cd7266ec3878860ff687d5e82ca8a15b1",
+        "size_bytes": 6334
+      },
+      {
+        "path": "reports/noncombat_card_uplift_live_canary_20260814_r2/1786700508.run",
+        "sha256": "e41bd597d9c7a8bf6841f9137a98d73f1d85f2477c4e092ef1ded73f31a83ed1",
+        "size_bytes": 5839
+      }
+    ]
+  },
+  "authority": {
+    "causal_claim": false,
+    "formal_rl": false,
+    "model_fitting": false,
+    "policy_quality": false,
+    "production_model_loading": false,
+    "promotion": false,
+    "qualification": false,
+    "training": false
+  },
+  "checks": {
+    "configuration_restored_exactly": true,
+    "exactly_three_fresh_runs": true,
+    "intact_model_and_source_bindings": true,
+    "latency_maximum_at_most_200_ms": true,
+    "substitutions_at_least_eight": true,
+    "unique_canonical_rows": true,
+    "zero_invalid_actions": true,
+    "zero_runtime_errors": true
+  },
+  "execution": {
+    "maximum_games": 3,
+    "mode": "eval-card-uplift-canary",
+    "source_commit": "80f61947a2e0efecc3d53a7064f7f44b88d488a3",
+    "training": false
+  },
+  "latency_ms": {
+    "bound": 200.0,
+    "maximum": 147.518299985677,
+    "mean": 66.43581999960588,
+    "median": 62.16860000859015,
+    "minimum": 0.0477999856229872,
+    "p95": 111.81259999284521
+  },
+  "rows": {
+    "agreement": 11,
+    "complete": 37,
+    "error": 0,
+    "ineligible": 3,
+    "substituted": 26,
+    "total": 40
+  },
+  "runs": [
+    {
+      "floor_reached": 16,
+      "killed_by": "The Guardian",
+      "playtime": 71,
+      "run_file": "1786700135.run",
+      "seed": "6480821046057522905",
+      "substitutions": 6,
+      "victory": false
+    },
+    {
+      "floor_reached": 38,
+      "killed_by": "4 Shapes",
+      "playtime": 166,
+      "run_file": "1786700307.run",
+      "seed": "-8357535006267843483",
+      "substitutions": 13,
+      "victory": false
+    },
+    {
+      "floor_reached": 33,
+      "killed_by": "Collector",
+      "playtime": 196,
+      "run_file": "1786700508.run",
+      "seed": "8444594454242312669",
+      "substitutions": 7,
+      "victory": false
+    }
+  ],
+  "schema_version": "noncombat-card-uplift-live-canary-report-v1",
+  "verdict": "card_uplift_live_canary_operational_pass_without_victory"
+}

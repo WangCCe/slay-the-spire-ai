@@ -248,6 +248,8 @@ spirecomm/spire/screen.py text eol=lf
 tests/test_card_uplift_shadow.py text eol=lf
 reports/noncombat_card_uplift_live_shadow_* text eol=lf
 reports/noncombat_card_uplift_live_shadow_*/** text eol=lf
+reports/noncombat_card_uplift_live_canary_* text eol=lf
+reports/noncombat_card_uplift_live_canary_*/** text eol=lf
 openspec/specs/noncombat-card-uplift-live-shadow/** text eol=lf
 openspec/changes/archive/*-add-card-uplift-live-shadow-adapter/** text eol=lf
 
