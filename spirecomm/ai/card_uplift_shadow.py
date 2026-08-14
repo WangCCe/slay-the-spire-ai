@@ -19,10 +19,13 @@ from typing import Any
 
 CONFIG_ENV = "STS_CARD_UPLIFT_SHADOW_CONFIG"
 CANARY_CONFIG_ENV = "STS_CARD_UPLIFT_CANARY_CONFIG"
+EVALUATION_CONFIG_ENV = "STS_CARD_UPLIFT_EVALUATION_CONFIG"
 CONFIG_SCHEMA_VERSION = "noncombat-card-uplift-live-shadow-config-v1"
 CANARY_CONFIG_SCHEMA_VERSION = "noncombat-card-uplift-live-canary-config-v1"
+EVALUATION_CONFIG_SCHEMA_VERSION = "noncombat-card-uplift-live-evaluation-config-v1"
 ROW_SCHEMA_VERSION = "noncombat-card-uplift-live-shadow-row-v1"
 CANARY_ROW_SCHEMA_VERSION = "noncombat-card-uplift-live-canary-row-v1"
+EVALUATION_ROW_SCHEMA_VERSION = "noncombat-card-uplift-live-evaluation-row-v1"
 PROJECTION_VERSION = "live-best-effort-v1"
 CANARY_TORCH_THREAD_LIMIT = 2
 SOURCE_PATHS = (
@@ -195,13 +198,17 @@ def build_configuration(
     )
 
 
-def build_canary_configuration(
+def _build_intervention_configuration(
     *,
     repo_root: Path | str,
     source_commit: str,
     entry_checkpoint: Path | str,
     residual_model: Path | str,
     output_path: Path | str,
+    maximum_games: int,
+    label: str,
+    schema_version: str,
+    validator: Callable[[Mapping[str, Any]], dict[str, Any]],
 ) -> dict[str, Any]:
     root = Path(repo_root).resolve()
     try:
@@ -213,24 +220,69 @@ def build_canary_configuration(
             text=True,
         ).stdout.strip()
     except (OSError, subprocess.CalledProcessError) as exc:
-        raise CardUpliftShadowError("canary source commit is unavailable") from exc
+        raise CardUpliftShadowError(
+            f"{label} source commit is unavailable"
+        ) from exc
     if commit_type != "commit":
-        raise CardUpliftShadowError("canary source commit is unavailable")
-    return validate_canary_configuration(
+        raise CardUpliftShadowError(f"{label} source commit is unavailable")
+    return validator(
         {
             "authority": copy.deepcopy(CANARY_AUTHORITY),
             "entry_checkpoint": _binding(entry_checkpoint),
-            "maximum_games": 3,
+            "maximum_games": maximum_games,
             "output_path": Path(output_path).resolve().as_posix(),
             "projection_version": PROJECTION_VERSION,
             "residual_model": _binding(residual_model),
-            "schema_version": CANARY_CONFIG_SCHEMA_VERSION,
+            "schema_version": schema_version,
             "source": {
                 "bindings": _source_bindings(root, source_commit),
                 "commit": source_commit,
                 "repo_root": root.as_posix(),
             },
         }
+    )
+
+
+def build_canary_configuration(
+    *,
+    repo_root: Path | str,
+    source_commit: str,
+    entry_checkpoint: Path | str,
+    residual_model: Path | str,
+    output_path: Path | str,
+) -> dict[str, Any]:
+    return _build_intervention_configuration(
+        repo_root=repo_root,
+        source_commit=source_commit,
+        entry_checkpoint=entry_checkpoint,
+        residual_model=residual_model,
+        output_path=output_path,
+        maximum_games=3,
+        label="canary",
+        schema_version=CANARY_CONFIG_SCHEMA_VERSION,
+        validator=validate_canary_configuration,
+    )
+
+
+def build_evaluation_configuration(
+    *,
+    repo_root: Path | str,
+    source_commit: str,
+    entry_checkpoint: Path | str,
+    residual_model: Path | str,
+    output_path: Path | str,
+    maximum_games: int,
+) -> dict[str, Any]:
+    return _build_intervention_configuration(
+        repo_root=repo_root,
+        source_commit=source_commit,
+        entry_checkpoint=entry_checkpoint,
+        residual_model=residual_model,
+        output_path=output_path,
+        maximum_games=maximum_games,
+        label="evaluation",
+        schema_version=EVALUATION_CONFIG_SCHEMA_VERSION,
+        validator=validate_evaluation_configuration,
     )
 
 
@@ -281,9 +333,15 @@ def validate_configuration(value: Mapping[str, Any]) -> dict[str, Any]:
     return config
 
 
-def validate_canary_configuration(value: Mapping[str, Any]) -> dict[str, Any]:
+def _validate_intervention_configuration(
+    value: Mapping[str, Any],
+    *,
+    label: str,
+    schema_version: str,
+    valid_game_ceiling: Callable[[Any], bool],
+) -> dict[str, Any]:
     if not isinstance(value, Mapping):
-        raise CardUpliftShadowError("canary config must be an object")
+        raise CardUpliftShadowError(f"{label} config must be an object")
     config = copy.deepcopy(dict(value))
     if set(config) != {
         "authority",
@@ -294,14 +352,14 @@ def validate_canary_configuration(value: Mapping[str, Any]) -> dict[str, Any]:
         "residual_model",
         "schema_version",
         "source",
-    } or config.get("schema_version") != CANARY_CONFIG_SCHEMA_VERSION:
-        raise CardUpliftShadowError("canary config fields differ")
+    } or config.get("schema_version") != schema_version:
+        raise CardUpliftShadowError(f"{label} config fields differ")
     if config["authority"] != CANARY_AUTHORITY:
-        raise CardUpliftShadowError("canary authority differs")
+        raise CardUpliftShadowError(f"{label} authority differs")
     if config["projection_version"] != PROJECTION_VERSION:
-        raise CardUpliftShadowError("canary projection version differs")
-    if config["maximum_games"] != 3:
-        raise CardUpliftShadowError("canary game ceiling differs")
+        raise CardUpliftShadowError(f"{label} projection version differs")
+    if not valid_game_ceiling(config["maximum_games"]):
+        raise CardUpliftShadowError(f"{label} game ceiling differs")
     for name in ("entry_checkpoint", "residual_model"):
         binding = config.get(name)
         if not isinstance(binding, dict) or set(binding) != {
@@ -309,7 +367,7 @@ def validate_canary_configuration(value: Mapping[str, Any]) -> dict[str, Any]:
             "sha256",
             "size_bytes",
         }:
-            raise CardUpliftShadowError(f"canary {name} binding differs")
+            raise CardUpliftShadowError(f"{label} {name} binding differs")
     source = config.get("source")
     if (
         not isinstance(source, dict)
@@ -318,14 +376,36 @@ def validate_canary_configuration(value: Mapping[str, Any]) -> dict[str, Any]:
         or not isinstance(source.get("commit"), str)
         or len(source["commit"]) != 40
     ):
-        raise CardUpliftShadowError("canary source differs")
+        raise CardUpliftShadowError(f"{label} source differs")
     if not isinstance(config.get("output_path"), str) or not config["output_path"]:
-        raise CardUpliftShadowError("canary output path differs")
+        raise CardUpliftShadowError(f"{label} output path differs")
     output = Path(config["output_path"]).resolve()
     checkpoint_root = Path(source["repo_root"]).resolve() / "checkpoints"
     if output == checkpoint_root or checkpoint_root in output.parents:
-        raise CardUpliftShadowError("canary output overlaps checkpoints")
+        raise CardUpliftShadowError(f"{label} output overlaps checkpoints")
     return config
+
+
+def validate_canary_configuration(value: Mapping[str, Any]) -> dict[str, Any]:
+    return _validate_intervention_configuration(
+        value,
+        label="canary",
+        schema_version=CANARY_CONFIG_SCHEMA_VERSION,
+        valid_game_ceiling=lambda maximum: maximum == 3,
+    )
+
+
+def validate_evaluation_configuration(value: Mapping[str, Any]) -> dict[str, Any]:
+    return _validate_intervention_configuration(
+        value,
+        label="evaluation",
+        schema_version=EVALUATION_CONFIG_SCHEMA_VERSION,
+        valid_game_ceiling=lambda maximum: (
+            not isinstance(maximum, bool)
+            and isinstance(maximum, int)
+            and 1 <= maximum <= 25
+        ),
+    )
 
 
 def _verify_configuration(config: Mapping[str, Any]) -> None:
@@ -638,10 +718,12 @@ class CardUpliftShadowRuntime:
     ) -> None:
         self.config = dict(config)
         _verify_configuration(self.config)
+        intervention_schema = row_schema_version in {
+            CANARY_ROW_SCHEMA_VERSION,
+            EVALUATION_ROW_SCHEMA_VERSION,
+        }
         self.torch_threads = (
-            _configure_canary_torch_threads()
-            if row_schema_version == CANARY_ROW_SCHEMA_VERSION
-            else None
+            _configure_canary_torch_threads() if intervention_schema else None
         )
         from analysis_scripts import noncombat_card_counterfactual_ranking_training as ranking
         from analysis_scripts import noncombat_card_counterfactual_uplift_residual_crossfit as uplift
@@ -931,6 +1013,14 @@ class CardUpliftCanaryRuntime(CardUpliftShadowRuntime):
         return wrapped
 
 
+class CardUpliftEvaluationRuntime(CardUpliftCanaryRuntime):
+    def __init__(self, config: Mapping[str, Any]):
+        self._initialize(
+            validate_evaluation_configuration(config),
+            EVALUATION_ROW_SCHEMA_VERSION,
+        )
+
+
 def initialize_card_uplift_shadow_runtime(
     *, environ: Mapping[str, str] | None = None
 ) -> CardUpliftShadowRuntime | None:
@@ -951,33 +1041,58 @@ def initialize_card_uplift_canary_runtime(
     return CardUpliftCanaryRuntime(_read_canonical(path))
 
 
+def initialize_card_uplift_evaluation_runtime(
+    *, environ: Mapping[str, str] | None = None
+) -> CardUpliftEvaluationRuntime | None:
+    environment = os.environ if environ is None else environ
+    path = environment.get(EVALUATION_CONFIG_ENV)
+    if path is None or not str(path).strip():
+        return None
+    return CardUpliftEvaluationRuntime(_read_canonical(path))
+
+
 def _parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("command", choices=("register", "register-canary"))
+    parser.add_argument(
+        "command", choices=("register", "register-canary", "register-evaluation")
+    )
     parser.add_argument("--repo-root", required=True)
     parser.add_argument("--source-commit", required=True)
     parser.add_argument("--entry-checkpoint", required=True)
     parser.add_argument("--residual-model", required=True)
     parser.add_argument("--output-path", required=True)
     parser.add_argument("--config", required=True)
+    parser.add_argument("--maximum-games", type=int)
     return parser
 
 
 def main(argv: Sequence[str] | None = None) -> int:
     args = _parser().parse_args(argv)
     try:
-        builder = (
-            build_canary_configuration
-            if args.command == "register-canary"
-            else build_configuration
-        )
-        config = builder(
-            repo_root=args.repo_root,
-            source_commit=args.source_commit,
-            entry_checkpoint=args.entry_checkpoint,
-            residual_model=args.residual_model,
-            output_path=args.output_path,
-        )
+        common = {
+            "repo_root": args.repo_root,
+            "source_commit": args.source_commit,
+            "entry_checkpoint": args.entry_checkpoint,
+            "residual_model": args.residual_model,
+            "output_path": args.output_path,
+        }
+        if args.command == "register-evaluation":
+            if args.maximum_games is None:
+                raise CardUpliftShadowError("evaluation maximum games is required")
+            config = build_evaluation_configuration(
+                **common, maximum_games=args.maximum_games
+            )
+        else:
+            if args.maximum_games is not None:
+                raise CardUpliftShadowError(
+                    "maximum games is only valid for evaluation"
+                )
+            builder = (
+                build_canary_configuration
+                if args.command == "register-canary"
+                else build_configuration
+            )
+            config = builder(**common)
         target = Path(args.config).resolve()
         target.write_bytes(_canonical_bytes(config))
         print(_canonical_bytes(_binding(target)).decode("ascii"), end="")

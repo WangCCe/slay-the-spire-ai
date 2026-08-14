@@ -97,6 +97,14 @@ def _canary_config(tmp_path):
     return config
 
 
+def _evaluation_config(tmp_path, maximum_games=10):
+    config = _canary_config(tmp_path)
+    config["maximum_games"] = maximum_games
+    config["output_path"] = (tmp_path / "evaluation.jsonl").as_posix()
+    config["schema_version"] = shadow.EVALUATION_CONFIG_SCHEMA_VERSION
+    return config
+
+
 def _canary_runtime(tmp_path):
     runtime = shadow.CardUpliftCanaryRuntime.__new__(shadow.CardUpliftCanaryRuntime)
     runtime.config = shadow.validate_canary_configuration(_canary_config(tmp_path))
@@ -162,6 +170,25 @@ def test_canary_configuration_requires_action_authority_and_three_games(tmp_path
     config["source"]["bindings"].pop(shadow.SOURCE_PATHS[-1])
     with pytest.raises(shadow.CardUpliftShadowError, match="source"):
         shadow.validate_configuration(config)
+
+
+@pytest.mark.parametrize("maximum_games", (1, 10, 25))
+def test_evaluation_configuration_accepts_bounded_game_ceiling(
+    tmp_path, maximum_games
+):
+    config = _evaluation_config(tmp_path, maximum_games)
+
+    assert shadow.validate_evaluation_configuration(config) == config
+
+
+@pytest.mark.parametrize("maximum_games", (False, 0, 26, 1.5))
+def test_evaluation_configuration_rejects_invalid_game_ceiling(
+    tmp_path, maximum_games
+):
+    with pytest.raises(shadow.CardUpliftShadowError, match="game ceiling"):
+        shadow.validate_evaluation_configuration(
+            _evaluation_config(tmp_path, maximum_games)
+        )
 
 
 def test_canary_torch_threads_are_capped_without_raising_lower_settings(monkeypatch):
@@ -399,6 +426,29 @@ def test_batch_child_env_forwards_canary_and_rejects_mode_conflict(monkeypatch):
         build_child_env(args)
 
 
+def test_batch_child_env_forwards_evaluation_and_rejects_three_way_conflict():
+    args = SimpleNamespace(
+        card_uplift_canary_config=None,
+        card_uplift_evaluation_config=r"D:\tmp\card-uplift-evaluation.json",
+        card_uplift_shadow_config=None,
+        decision_trace_path=None,
+        game_dir=r"D:\SteamLibrary\steamapps\common\SlayTheSpire",
+        noncombat_exploration_config=None,
+        sim_divergence_trace_path=None,
+        skip_decision_trace=True,
+        skip_sim_divergence_trace=True,
+    )
+
+    env = build_child_env(args)
+    assert (
+        env[shadow.EVALUATION_CONFIG_ENV] == args.card_uplift_evaluation_config
+    )
+
+    args.card_uplift_canary_config = r"D:\tmp\card-uplift-canary.json"
+    with pytest.raises(ValueError, match="mutually exclusive"):
+        build_child_env(args)
+
+
 def test_main_rejects_shadow_and_canary_mode_conflict():
     with pytest.raises(ValueError, match="mutually exclusive"):
         main.initialize_card_uplift_shadow_if_configured(
@@ -407,6 +457,19 @@ def test_main_rejects_shadow_and_canary_mode_conflict():
                 shadow.CANARY_CONFIG_ENV: "canary.json",
             }
         )
+
+
+def test_main_dispatches_explicit_evaluation_config(monkeypatch):
+    sentinel = object()
+    monkeypatch.setattr(
+        shadow,
+        "initialize_card_uplift_evaluation_runtime",
+        lambda *, environ: sentinel,
+    )
+
+    assert main.initialize_card_uplift_shadow_if_configured(
+        environ={shadow.EVALUATION_CONFIG_ENV: "evaluation.json"}
+    ) is sentinel
 
 
 def test_rl_input_reader_starts_after_callbacks_are_registered():

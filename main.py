@@ -653,19 +653,26 @@ def initialize_card_uplift_shadow_if_configured(*, environ=None):
     environment = os.environ if environ is None else environ
     raw_path = environment.get("STS_CARD_UPLIFT_SHADOW_CONFIG")
     canary_path = environment.get("STS_CARD_UPLIFT_CANARY_CONFIG")
+    evaluation_path = environment.get("STS_CARD_UPLIFT_EVALUATION_CONFIG")
     shadow_configured = raw_path is not None and bool(str(raw_path).strip())
     canary_configured = canary_path is not None and bool(str(canary_path).strip())
-    if shadow_configured and canary_configured:
-        raise ValueError("card-uplift shadow and canary modes are mutually exclusive")
-    if not shadow_configured and not canary_configured:
+    evaluation_configured = evaluation_path is not None and bool(
+        str(evaluation_path).strip()
+    )
+    if sum((shadow_configured, canary_configured, evaluation_configured)) > 1:
+        raise ValueError("card-uplift modes are mutually exclusive")
+    if not any((shadow_configured, canary_configured, evaluation_configured)):
         return None
     from spirecomm.ai.card_uplift_shadow import (
         initialize_card_uplift_canary_runtime,
+        initialize_card_uplift_evaluation_runtime,
         initialize_card_uplift_shadow_runtime,
     )
 
     if canary_configured:
         return initialize_card_uplift_canary_runtime(environ=environment)
+    if evaluation_configured:
+        return initialize_card_uplift_evaluation_runtime(environ=environment)
     return initialize_card_uplift_shadow_runtime(environ=environment)
 
 

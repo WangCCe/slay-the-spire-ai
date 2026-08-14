@@ -109,12 +109,20 @@ def build_child_env(args):
         env["STS_NONCOMBAT_EXPLORATION_CONFIG"] = str(exploration_config)
     card_shadow_config = getattr(args, "card_uplift_shadow_config", None)
     card_canary_config = getattr(args, "card_uplift_canary_config", None)
-    if card_shadow_config and card_canary_config:
-        raise ValueError("card uplift shadow and canary configs are mutually exclusive")
+    card_evaluation_config = getattr(args, "card_uplift_evaluation_config", None)
+    configured = (
+        card_shadow_config,
+        card_canary_config,
+        card_evaluation_config,
+    )
+    if sum(bool(value) for value in configured) > 1:
+        raise ValueError("card uplift configs are mutually exclusive")
     if card_shadow_config:
         env["STS_CARD_UPLIFT_SHADOW_CONFIG"] = str(card_shadow_config)
     if card_canary_config:
         env["STS_CARD_UPLIFT_CANARY_CONFIG"] = str(card_canary_config)
+    if card_evaluation_config:
+        env["STS_CARD_UPLIFT_EVALUATION_CONFIG"] = str(card_evaluation_config)
     return env
 
 
@@ -343,6 +351,11 @@ def parse_args():
         help="Explicit configuration passed as STS_CARD_UPLIFT_CANARY_CONFIG.",
     )
     parser.add_argument(
+        "--card-uplift-evaluation-config",
+        default=None,
+        help="Explicit configuration passed as STS_CARD_UPLIFT_EVALUATION_CONFIG.",
+    )
+    parser.add_argument(
         "--truncate-log-after-backup",
         action="store_true",
         help="Clear the active log after copying it. Use only between batches.",
@@ -394,6 +407,12 @@ def main():
     if card_canary_config:
         print(
             f"[training-batch] card uplift canary config: {card_canary_config}",
+            file=sys.stderr,
+        )
+    card_evaluation_config = child_env.get("STS_CARD_UPLIFT_EVALUATION_CONFIG")
+    if card_evaluation_config:
+        print(
+            f"[training-batch] card uplift evaluation config: {card_evaluation_config}",
             file=sys.stderr,
         )
     print_restart_guidance(args)
