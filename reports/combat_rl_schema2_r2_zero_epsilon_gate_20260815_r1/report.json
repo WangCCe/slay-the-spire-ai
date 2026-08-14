@@ -1,0 +1,122 @@
+{
+  "schema_version": 1,
+  "gate_id": "combat-rl-schema2-r2-zero-epsilon-gate-20260815-r1",
+  "source_commit": "8fe71578493689b94c6c3a69be106ff3de382899",
+  "preregistration_commit": "7abfec002",
+  "candidate_started_at": "2026-08-15T03:27:26+08:00",
+  "candidate_finished_at": "2026-08-15T04:05:02+08:00",
+  "baseline_started_at": "2026-08-15T04:08:18+08:00",
+  "baseline_finished_at": "2026-08-15T04:45:40+08:00",
+  "candidate_checkpoint": {
+    "path": "reports/combat_rl_schema2_fresh_replication_20260815_r2/rl_combat_model_ep40_steps17053.pth",
+    "sha256": "2968ba273e9cba92070dbf1b51159aa739c5f6e8c254c6b5999fe28af4a7d262"
+  },
+  "baseline_checkpoint": {
+    "path": "reports/combat_rl_legacy_replay_collection_20260814_r1/rl_combat_model_ep15_steps13413.pth",
+    "sha256": "79afdd2290323646010f7715fb9a96922d2b9dc05baee271ca0a1042eac4f3d6"
+  },
+  "evaluation": {
+    "games_per_arm": 20,
+    "epsilon": 0.0,
+    "elite_route": "conservative",
+    "same_seed_order": true,
+    "training_disabled": true,
+    "expert_mix_disabled": true,
+    "all_seed_pairs_match": true
+  },
+  "candidate": {
+    "victories": 0,
+    "floor_total": 456,
+    "floor_mean": 22.8,
+    "floor_median": 21.5,
+    "act_2_entered": 13,
+    "act_2_boss_reached": 3,
+    "act_3_entered": 0,
+    "floors": [33, 16, 27, 29, 16, 24, 33, 16, 16, 28, 16, 33, 22, 24, 19, 21, 21, 16, 16, 30]
+  },
+  "baseline": {
+    "victories": 0,
+    "floor_total": 441,
+    "floor_mean": 22.05,
+    "floor_median": 17.5,
+    "act_2_entered": 10,
+    "act_2_boss_reached": 6,
+    "act_3_entered": 0,
+    "floors": [33, 11, 16, 16, 16, 22, 33, 16, 25, 16, 16, 33, 22, 33, 33, 16, 19, 33, 16, 16]
+  },
+  "paired": {
+    "candidate_wins": 8,
+    "baseline_wins": 4,
+    "ties": 8,
+    "floor_deltas": [0, 5, 11, 13, 0, 2, 0, 0, -9, 12, 0, 0, 0, -9, -14, 5, 2, -17, 0, 14],
+    "floor_delta_mean": 0.75,
+    "floor_delta_median": 0.0,
+    "two_sided_exact_sign_test_p": 0.3876953125
+  },
+  "candidate_integrity": {
+    "replay_rejected": 0,
+    "close_episode_failed": 0,
+    "checkpoint_save_failed": 0,
+    "rl_agent_failed": 0,
+    "nan_matches": 0,
+    "max_games_reached_matches": 1,
+    "communication_mod_error_log_growth_bytes": 658,
+    "communication_mod_error_log_growth_classification": "wrapper command and dependency load messages only"
+  },
+  "baseline_integrity": {
+    "replay_rejected": 0,
+    "close_episode_failed": 0,
+    "checkpoint_save_failed": 0,
+    "rl_agent_failed": 0,
+    "nan_matches": 0,
+    "max_games_reached_matches": 1,
+    "communication_mod_error_log_growth_bytes": 657,
+    "communication_mod_error_log_growth_classification": "wrapper command and dependency load messages only"
+  },
+  "promotion_conditions": {
+    "candidate_paired_floor_wins_exceed_baseline": true,
+    "candidate_victories_at_least_baseline": true,
+    "candidate_act_2_entries_at_least_baseline": true,
+    "candidate_act_2_boss_reaches_at_least_baseline": false,
+    "candidate_total_floors_at_least_baseline": true,
+    "both_arms_zero_integrity_warnings": true,
+    "all_seed_pairs_match": true
+  },
+  "pairs": [
+    {"index": 0, "seed": "2B7M4Q9X6K3VT", "seed_played": "7841536156961128503", "candidate_run": "candidate_runs/1786735849.run", "candidate_floor": 33, "candidate_killed_by": "Collector", "baseline_run": "baseline_runs/1786738316.run", "baseline_floor": 33, "baseline_killed_by": "Collector", "floor_delta": 0},
+    {"index": 1, "seed": "3D8P5R1Y7N4WC", "seed_played": "-7029970613752114494", "candidate_run": "candidate_runs/1786735925.run", "candidate_floor": 16, "candidate_killed_by": "Hexaghost", "baseline_run": "baseline_runs/1786738367.run", "baseline_floor": 11, "baseline_killed_by": "Gremlin Gang", "floor_delta": 5},
+    {"index": 2, "seed": "4F9T6L2Z8H5QJ", "seed_played": "-3454576048970238847", "candidate_run": "candidate_runs/1786736056.run", "candidate_floor": 27, "candidate_killed_by": "Centurion and Healer", "baseline_run": "baseline_runs/1786738458.run", "baseline_floor": 16, "baseline_killed_by": "The Guardian", "floor_delta": 11},
+    {"index": 3, "seed": "5G1V7C3M9K6RX", "seed_played": "-715457059980199", "candidate_run": "candidate_runs/1786736169.run", "candidate_floor": 29, "candidate_killed_by": "Snake Plant", "baseline_run": "baseline_runs/1786738516.run", "baseline_floor": 16, "baseline_killed_by": "Hexaghost", "floor_delta": 13},
+    {"index": 4, "seed": "6H2W8D4N1L7SY", "seed_played": "3477893889455408937", "candidate_run": "candidate_runs/1786736233.run", "candidate_floor": 16, "candidate_killed_by": "The Guardian", "baseline_run": "baseline_runs/1786738600.run", "baseline_floor": 16, "baseline_killed_by": "The Guardian", "floor_delta": 0},
+    {"index": 5, "seed": "7J3X9F5P2M8TZ", "seed_played": "7053052457696647448", "candidate_run": "candidate_runs/1786736353.run", "candidate_floor": 24, "candidate_killed_by": "Masked Bandits", "baseline_run": "baseline_runs/1786738723.run", "baseline_floor": 22, "baseline_killed_by": "Centurion and Healer", "floor_delta": 2},
+    {"index": 6, "seed": "8K4Y1G6Q3N9VA", "seed_played": "-7915102536362525022", "candidate_run": "candidate_runs/1786736498.run", "candidate_floor": 33, "candidate_killed_by": "Automaton", "baseline_run": "baseline_runs/1786738867.run", "baseline_floor": 33, "baseline_killed_by": "Automaton", "floor_delta": 0},
+    {"index": 7, "seed": "9L5Z2H7R4P1WB", "seed_played": "-4436493189833641286", "candidate_run": "candidate_runs/1786736567.run", "candidate_floor": 16, "candidate_killed_by": "The Guardian", "baseline_run": "baseline_runs/1786738937.run", "baseline_floor": 16, "baseline_killed_by": "The Guardian", "floor_delta": 0},
+    {"index": 8, "seed": "A1M6B3J8S5Q2C", "seed_played": "-2943547974835103775", "candidate_run": "candidate_runs/1786736647.run", "candidate_floor": 16, "candidate_killed_by": "Slime Boss", "baseline_run": "baseline_runs/1786739051.run", "baseline_floor": 25, "baseline_killed_by": "Shelled Parasite and Fungi", "floor_delta": -9},
+    {"index": 9, "seed": "B2N7C4K9T6R3D", "seed_played": "535061371693790986", "candidate_run": "candidate_runs/1786736811.run", "candidate_floor": 28, "candidate_killed_by": "3 Cultists", "baseline_run": "baseline_runs/1786739155.run", "baseline_floor": 16, "baseline_killed_by": "Hexaghost", "floor_delta": 12},
+    {"index": 10, "seed": "C3P8D5L1V7S4F", "seed_played": "4013670717751489498", "candidate_run": "candidate_runs/1786736900.run", "candidate_floor": 16, "candidate_killed_by": "The Guardian", "baseline_run": "baseline_runs/1786739233.run", "baseline_floor": 16, "baseline_killed_by": "The Guardian", "floor_delta": 0},
+    {"index": 11, "seed": "D4Q9F6M2W8T5G", "seed_played": "7492282316155774884", "candidate_run": "candidate_runs/1786737060.run", "candidate_floor": 33, "candidate_killed_by": "Collector", "baseline_run": "baseline_runs/1786739385.run", "baseline_floor": 33, "baseline_killed_by": "Collector", "floor_delta": 0},
+    {"index": 12, "seed": "E5R1G7N3X9V6H", "seed_played": "-7476561751772927621", "candidate_run": "candidate_runs/1786737189.run", "candidate_floor": 22, "candidate_killed_by": "Chosen and Byrds", "baseline_run": "baseline_runs/1786739512.run", "baseline_floor": 22, "baseline_killed_by": "Chosen and Byrds", "floor_delta": 0},
+    {"index": 13, "seed": "F6S2H8P4Y1W7J", "seed_played": "-3997952405244418734", "candidate_run": "candidate_runs/1786737283.run", "candidate_floor": 24, "candidate_killed_by": "Masked Bandits", "baseline_run": "baseline_runs/1786739660.run", "baseline_floor": 33, "baseline_killed_by": "Collector", "floor_delta": -9},
+    {"index": 14, "seed": "G7T3J9Q5Z2X8K", "seed_played": "-519340806840133348", "candidate_run": "candidate_runs/1786737388.run", "candidate_floor": 19, "candidate_killed_by": "Masked Bandits", "baseline_run": "baseline_runs/1786739825.run", "baseline_floor": 33, "baseline_killed_by": "Collector", "floor_delta": -14},
+    {"index": 15, "seed": "H8V4K1R6A3Y9L", "seed_played": "2962026507951089538", "candidate_run": "candidate_runs/1786737522.run", "candidate_floor": 21, "candidate_killed_by": "3 Byrds", "baseline_run": "baseline_runs/1786739928.run", "baseline_floor": 16, "baseline_killed_by": "Slime Boss", "floor_delta": 5},
+    {"index": 16, "seed": "J9W5L2S7B4Z1M", "seed_played": "-8626887711172927007", "candidate_run": "candidate_runs/1786737630.run", "candidate_floor": 21, "candidate_killed_by": "3 Cultists", "baseline_run": "baseline_runs/1786740041.run", "baseline_floor": 19, "baseline_killed_by": "Masked Bandits", "floor_delta": 2},
+    {"index": 17, "seed": "K1X6M3T8C5A2N", "seed_played": "-6017220781001484746", "candidate_run": "candidate_runs/1786737695.run", "candidate_floor": 16, "candidate_killed_by": "Hexaghost", "baseline_run": "baseline_runs/1786740202.run", "baseline_floor": 33, "baseline_killed_by": "Champ", "floor_delta": -17},
+    {"index": 18, "seed": "L2Y7N4V9D6B3P", "seed_played": "-2538611432634324360", "candidate_run": "candidate_runs/1786737770.run", "candidate_floor": 16, "candidate_killed_by": "The Guardian", "baseline_run": "baseline_runs/1786740275.run", "baseline_floor": 16, "baseline_killed_by": "The Guardian", "floor_delta": 0},
+    {"index": 19, "seed": "M3Z8P5W1F7C4Q", "seed_played": "939997913423374151", "candidate_run": "candidate_runs/1786737899.run", "candidate_floor": 30, "candidate_killed_by": "Sentry and Sphere", "baseline_run": "baseline_runs/1786740337.run", "baseline_floor": 16, "baseline_killed_by": "The Guardian", "floor_delta": 14}
+  ],
+  "configuration_evidence": {
+    "preregistration": "reports/combat_rl_schema2_r2_zero_epsilon_gate_20260815_r1_preregistration.json",
+    "preregistration_sha256": "27e50716a86aab6a6beaaac6791876bd3faa10204afe7402561ccf530fe211c2",
+    "seed_pool_sha256": "35d63b7d343f72460b5b94ef545a5d68c5cb8e3ca42db3d29b631dd930bfa422",
+    "candidate_launch_config_sha256": "891f77c58774da425732bbe43b33fb5a488f8ad88fc9319c489b39a4ba5aac2e",
+    "baseline_launch_config_sha256": "cb1f5117eb4f8cc4108a1a36e2d492515725f634490a4d792fc7f8c30b9abd36",
+    "candidate_marker_range": ["1786735852", "1786737902"],
+    "baseline_marker_range": ["1786738319", "1786740340"],
+    "restored_config_sha256": "b42093aef81a17ff1e3eb2dec4187c3af48a1a512a355c9d4d613c4cde2803c1",
+    "restored_after_gate": true,
+    "game_process_closed_after_gate": true
+  },
+  "gate_pass": false,
+  "failed_conditions": ["candidate_act_2_boss_reaches_at_least_baseline"],
+  "decision": "do_not_promote_candidate"
+}
