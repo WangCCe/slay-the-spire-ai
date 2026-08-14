@@ -1,0 +1,31 @@
+{
+  "checkpoint": {
+    "checkpoint_kind": "weights",
+    "checkpoint_schema_version": 2,
+    "path": "D:\\PycharmProjects\\slay-the-spire-ai\\reports\\combat_rl_checkpoint_soup_20260815_r1\\combat_rl_r1_r2_r3_mean_weights.pth",
+    "sha256": "ffb0133a563875a97178bdb2e1052b1d0cff0d21c239bebf0ece33ad1b81233e",
+    "size_bytes": 2272016
+  },
+  "components": {
+    "r1": {
+      "path": "D:\\PycharmProjects\\slay-the-spire-ai\\reports\\combat_rl_schema2_continuation_20260815_r1\\rl_combat_model_ep40_steps17071.pth",
+      "sha256": "72bc4ac046ce933935e1ad46a11bccb25963933999eeafee97588c03e1aaebad"
+    },
+    "r2": {
+      "path": "D:\\PycharmProjects\\slay-the-spire-ai\\reports\\combat_rl_schema2_fresh_replication_20260815_r2\\rl_combat_model_ep40_steps17053.pth",
+      "sha256": "2968ba273e9cba92070dbf1b51159aa739c5f6e8c254c6b5999fe28af4a7d262"
+    },
+    "r3": {
+      "path": "D:\\PycharmProjects\\slay-the-spire-ai\\reports\\combat_rl_schema2_fresh_replication_20260815_r3\\rl_combat_model_ep40_steps17026.pth",
+      "sha256": "f1a606a0eb7c85d8d74bea79b11baf49ab552f58bcb4dd7f2459e1b43b2cf62a"
+    }
+  },
+  "diagnosis_report": {
+    "path": "D:\\PycharmProjects\\slay-the-spire-ai\\reports\\combat_rl_checkpoint_soup_diagnosis_20260815_r1\\report.json",
+    "selected_soup": "replicate_mean",
+    "sha256": "efd31a2fe9a400fc361b5bcce6ff565783276b86c487f828b96a13508cb8850f"
+  },
+  "schema_version": 1,
+  "source_commit": "083073e9952f77edcddfa759410db9b5eb46ec48",
+  "training_state_inherited": false
+}
