@@ -284,3 +284,9 @@ openspec/changes/archive/*-train-family-preserving-conditional-card-ranker/** te
 openspec/specs/noncombat-family-preserving-conditional-card-ranking/** text eol=lf
 reports/noncombat_family_preserving_conditional_card_ranking_* text eol=lf
 reports/noncombat_family_preserving_conditional_card_ranking_*/** text eol=lf
+
+# Preserve bounded card-uplift live-evaluation source and evidence bytes.
+openspec/changes/add-card-uplift-live-evaluation/** text eol=lf
+openspec/changes/archive/*-add-card-uplift-live-evaluation/** text eol=lf
+reports/noncombat_card_uplift_live_evaluation_* text eol=lf
+reports/noncombat_card_uplift_live_evaluation_*/** text eol=lf

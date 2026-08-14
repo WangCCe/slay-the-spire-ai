@@ -8,10 +8,10 @@
 
 - [x] 2.1 Run the card-uplift focused pytest files and validate the OpenSpec change (`31 passed`; strict validation passed).
 - [x] 2.2 Run the repository commit gate once after focused verification (`4567 passed`, `17 skipped`, and three pre-existing historical baseline-lineage failures in files untouched by this change; no retry).
-- [ ] 2.3 Commit and push the source-bound live-evaluation capability.
+- [x] 2.3 Commit and push the source-bound live-evaluation capability (`1b2030022`).
 
 ## 3. Fresh Gameplay Evidence
 
-- [ ] 3.1 Register a 10-game fresh evaluation configuration bound to the committed source and frozen candidate artifacts.
-- [ ] 3.2 Save the ordinary CommunicationMod configuration, run and monitor the fresh candidate cohort, then restore the saved bytes.
-- [ ] 3.3 Publish run, intervention, error, latency, victory, isolation, and rollback evidence and classify the next decision.
+- [x] 3.1 Register a 10-game fresh evaluation configuration bound to the committed source and frozen candidate artifacts.
+- [x] 3.2 Save the ordinary CommunicationMod configuration, run and monitor the fresh candidate cohort, then restore the saved bytes.
+- [x] 3.3 Publish run, intervention, error, latency, victory, isolation, and rollback evidence and classify the next decision.

@@ -1,0 +1,77 @@
+{
+  "schema_version": "noncombat-card-uplift-live-evaluation-report-v1",
+  "evaluation_id": "noncombat-card-uplift-live-evaluation-20260814-r1",
+  "verdict": "card_uplift_live_evaluation_operational_pass_without_victory",
+  "promotion_decision": "no_go",
+  "source_commit": "1b2030022eb34f7e538254f19b9d07f7f1e07f75",
+  "configuration": {
+    "path": "reports/noncombat_card_uplift_live_evaluation_20260814_r1_config.json",
+    "sha256": "f2656456566bc88a8f12fb32d4133b66f31090e6bc21503657ae3b94a7b77f8f",
+    "maximum_games": 10,
+    "entry_checkpoint_sha256": "a5aa7f5c6b7862d4675db4db49977ca6a47e928951e5264fb738c778c2275071",
+    "residual_model_sha256": "85a79fccc65b392e12bdb214d02fcfe2676aaef4357e178584beda977debdede"
+  },
+  "runtime": {
+    "started_at_local": "2026-08-14T18:20:55+08:00",
+    "finished_at_local": "2026-08-14T18:36:19+08:00",
+    "completed_games": 10,
+    "evaluation_process_exited": true,
+    "communication_mod_config_restored": true,
+    "communication_mod_config_backup_sha256": "b42093aef81a17ff1e3eb2dec4187c3af48a1a512a355c9d4d613c4cde2803c1",
+    "communication_mod_config_restored_sha256": "b42093aef81a17ff1e3eb2dec4187c3af48a1a512a355c9d4d613c4cde2803c1",
+    "ai_debug_failure_markers": 0,
+    "communication_mod_errors_last_100_lines_failure_markers": 0
+  },
+  "decision_rows": {
+    "path": "reports/noncombat_card_uplift_live_evaluation_20260814_r1/evaluation_rows.jsonl",
+    "sha256": "8876eb0ce6bd4fabaa3cf268d7de16afe02f51a3ab658c0b0368f38d3f8d8779",
+    "total": 95,
+    "complete": 83,
+    "ineligible": 12,
+    "errors": 0,
+    "ineligible_reasons": {
+      "generated_combat_card_choice": 8,
+      "singing_bowl_present": 4
+    },
+    "agreements": 21,
+    "substitutions": 62,
+    "substitution_rate_among_complete": 0.7469879518072289,
+    "candidate_skip_total": 37,
+    "current_skip_total": 4,
+    "substitutions_to_skip": 34,
+    "substitutions_from_skip": 1,
+    "take_to_take_substitutions": 27,
+    "unseen_take_action_rows": 9,
+    "latency_ms": {
+      "mean": 52.1762189464521,
+      "median": 57.82849999377504,
+      "p95": 69.53329997486435,
+      "maximum": 109.48400001507252
+    }
+  },
+  "outcomes": {
+    "victories": 0,
+    "mean_floor": 18.4,
+    "median_floor": 16.0,
+    "maximum_floor": 33,
+    "floor_reached": [7, 16, 16, 12, 16, 8, 27, 16, 33, 33]
+  },
+  "runs": [
+    {"file":"1786702921.run","sha256":"1a727c8c2e27cee1eebdaadf944516eff7eefeca7d19162d8b58398f09f9259b","seed_played":"-94388446499042873","floor_reached":7,"victory":false,"killed_by":"3 Sentries","playtime_seconds":41,"deck_size":15},
+    {"file":"1786702984.run","sha256":"b1fd3b69d3e6ebc47613a720a717c50ca24d5756c702084e186cb4569ac4f3c7","seed_played":"6262004061678501130","floor_reached":16,"victory":false,"killed_by":"The Guardian","playtime_seconds":59,"deck_size":18},
+    {"file":"1786703083.run","sha256":"4a01c827e1bbc5825ba6ae8a18229fe359af82d9e0807958a6043bddc5755094","seed_played":"-1496310916568639749","floor_reached":16,"victory":false,"killed_by":"The Guardian","playtime_seconds":94,"deck_size":19},
+    {"file":"1786703160.run","sha256":"6ec6068718cee7fe2b2a499c4f05c8c94d9b4febb6d6b53c486068ba5719243d","seed_played":"2426813284755187112","floor_reached":12,"victory":false,"killed_by":"Lots of Slimes","playtime_seconds":73,"deck_size":16},
+    {"file":"1786703228.run","sha256":"78a25abb4549dc979969a97912c65497006b8b205f9a73743ec86669c7471ba7","seed_played":"-1622507530551266734","floor_reached":16,"victory":false,"killed_by":"Hexaghost","playtime_seconds":64,"deck_size":15},
+    {"file":"1786703258.run","sha256":"36a5e04e9130d4dea68bec32a87d1cfd89dd9f4dc24c26c219eaef800b305c2a","seed_played":"-1724633684991443347","floor_reached":8,"victory":false,"killed_by":"Gremlin Nob","playtime_seconds":26,"deck_size":13},
+    {"file":"1786703408.run","sha256":"0336d716b6e631168ef975d09a9ec2f48fea675932f920df2cc8801a04df1969","seed_played":"3069523256066178880","floor_reached":27,"victory":false,"killed_by":"3 Cultists","playtime_seconds":146,"deck_size":21},
+    {"file":"1786703479.run","sha256":"4991efa398e0e9219affad5db7321b64e1cb19b013726bd78baf19e50571ccc6","seed_played":"-846151994304447793","floor_reached":16,"victory":false,"killed_by":"The Guardian","playtime_seconds":66,"deck_size":17},
+    {"file":"1786703642.run","sha256":"a3e552b8aa23bd31c8ca28a28c328aaa3158ff2d35486b8be46eacb0708aed5c","seed_played":"400722356582234121","floor_reached":33,"victory":false,"killed_by":"Collector","playtime_seconds":158,"deck_size":23},
+    {"file":"1786703776.run","sha256":"365cb59757a7bb535a7f71acc1b72f21fb2e7b0b5e5ee67deeef448cb47d1cf9","seed_played":"3565798865398725384","floor_reached":33,"victory":false,"killed_by":"Automaton","playtime_seconds":130,"deck_size":21}
+  ],
+  "interpretation": {
+    "operational_claim": "The frozen candidate completed the bounded live cohort without row-level errors or latency breach, and the ordinary CommunicationMod configuration was restored exactly.",
+    "policy_claim": "No policy-quality or causal claim is supported because this was an unpaired 10-game cohort with zero victories.",
+    "diagnostic": "The 74.7 percent substitution rate and 37 candidate skips versus 4 Current skips indicate a large live policy shift dominated by rejecting cards.",
+    "next_step": "Do not promote or merely extend the same cohort. Calibrate the card policy with a bounded training experiment targeting excessive skip and intervention rates, then require fresh simulator and live evidence."
+  }
+}
