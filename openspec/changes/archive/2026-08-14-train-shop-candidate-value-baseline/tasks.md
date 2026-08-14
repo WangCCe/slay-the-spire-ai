@@ -12,6 +12,6 @@
 
 ## 3. Execution
 
-- [ ] 3.1 Execute the fixed CPU training once against the committed corpus
-- [ ] 3.2 Verify artifact hashes and terminal holdout verdict
-- [ ] 3.3 Archive the change, commit evidence, and push `master`
+- [x] 3.1 Execute the fixed CPU training once against the committed corpus
+- [x] 3.2 Verify artifact hashes and terminal holdout verdict
+- [x] 3.3 Archive the change, commit evidence, and push `master`

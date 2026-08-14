@@ -1,0 +1,65 @@
+{
+  "authority": {
+    "formal_rl": false,
+    "gameplay": false,
+    "policy_loading": false,
+    "promotion": false,
+    "qualification": false
+  },
+  "charged_seconds": 12.468999999997322,
+  "fit": {
+    "action_branches": 280,
+    "informative_sources": 18,
+    "source_count": 24
+  },
+  "holdout": {
+    "action_branches": 140,
+    "informative_sources": 10,
+    "source_count": 11
+  },
+  "holdout_access_count": 1,
+  "identity": {
+    "corpus": {
+      "path": "D:/PycharmProjects/slay-the-spire-ai/reports/noncombat_shop_counterfactual_outcomes_20260814_r1/source_rows.json",
+      "sha256": "5c66ed86b06202ab5f23b0023591c7991aa20301ccb2b60252d7113cfe86b2af",
+      "size_bytes": 1345108
+    },
+    "source": {
+      "commit": "18cff1638704273e4c2de4d5da39561ecafdbd51",
+      "files": [
+        {
+          "path": "analysis_scripts/noncombat_shop_candidate_value_baseline.py",
+          "sha256": "ebc6ff9c5ceb6056e40608928bc6e5343d2bd546061e669b09e8cbe517f95c53",
+          "size_bytes": 25920
+        },
+        {
+          "path": "analysis_scripts/noncombat_state_conditioned_ranker.py",
+          "sha256": "60d1b710127e27c0bb283f073d6b166ccae14d9902ffb6d1911caa107d745678",
+          "size_bytes": 4549
+        }
+      ],
+      "source_sha256": "479548c62caa79df1d27b60b948ee600f9f1af985e5d4371ececa141ca2f8e08"
+    }
+  },
+  "limitations": [
+    "candidate-only",
+    "no full game state",
+    "single small holdout"
+  ],
+  "operations": {
+    "communication_mod": false,
+    "gameplay": false,
+    "model_fitting": true,
+    "native_loading": false,
+    "production_checkpoint_access": false,
+    "protected_seed_access": false,
+    "training": true
+  },
+  "schema_version": "noncombat-shop-candidate-value-baseline-v1",
+  "tune": {
+    "action_branches": 92,
+    "informative_sources": 8,
+    "source_count": 8
+  },
+  "verdict": "shop_candidate_value_baseline_not_ready_after_holdout"
+}

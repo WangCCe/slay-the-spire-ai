@@ -1,0 +1,334 @@
+{
+  "changes_vs_current": {
+    "action_changes": 11,
+    "corrected": 3,
+    "worsened": 2
+  },
+  "checks": {
+    "corrects_at_least_one_current_decision": true,
+    "holdout_support": true,
+    "maximum_regret_noninferior_to_current": true,
+    "mean_regret_improves_current": true,
+    "pairwise_accuracy_improves_initialization": false,
+    "worsened_not_more_than_corrected": true
+  },
+  "holdout": {
+    "current": {
+      "maximum_regret": 0.5964912280701754,
+      "mean_regret": 0.2376395534290271,
+      "predictions": [
+        {
+          "action_id": "shop:buy_card:1:perfected_strike",
+          "decision_index": 7,
+          "regret": 0.22807017543859648,
+          "seed": 95037,
+          "source_sha256": "945b898809c1be592529f00e5f886369f33ad3253df6f04370f0f31292f914ea"
+        },
+        {
+          "action_id": "shop:remove_card",
+          "decision_index": 12,
+          "regret": 0.5964912280701753,
+          "seed": 95029,
+          "source_sha256": "c2feaa992809cbea9013e671997447660a74079296b68175097d55c5785a312d"
+        },
+        {
+          "action_id": "shop:remove_card",
+          "decision_index": 5,
+          "regret": 0.2982456140350877,
+          "seed": 95018,
+          "source_sha256": "4604814c42a7f055f6aafd19cb7c6df7e053818c599008b7c0ebd2b77782a239"
+        },
+        {
+          "action_id": "shop:remove_card",
+          "decision_index": 14,
+          "regret": 0.15789473684210525,
+          "seed": 95023,
+          "source_sha256": "1946a2d8e42746a408dca7d99c514d64b899820ea6e79c70abccdb970bcd56f4"
+        },
+        {
+          "action_id": "shop:remove_card",
+          "decision_index": 9,
+          "regret": 0.03508771929824561,
+          "seed": 95014,
+          "source_sha256": "ebdd02470fcefe2b8bfb9cecb9b2ad42094290518f89f1536e1555a9f147a3e1"
+        },
+        {
+          "action_id": "shop:remove_card",
+          "decision_index": 15,
+          "regret": 0.5964912280701754,
+          "seed": 95039,
+          "source_sha256": "bb23011a4254c5297d32e040add990cd43832877fa2486e8520194a45b92e867"
+        },
+        {
+          "action_id": "shop:remove_card",
+          "decision_index": 16,
+          "regret": 0.2982456140350877,
+          "seed": 95028,
+          "source_sha256": "2f9dc7f2c9cec7a25e76320c35db9339deee1bf074fbf50544f85414cac3d671"
+        },
+        {
+          "action_id": "shop:remove_card",
+          "decision_index": 24,
+          "regret": 0.40350877192982454,
+          "seed": 95030,
+          "source_sha256": "b7f537becd87e86042bc251230d1c3daa49ae3d1a887e796caf20816c4f4d634"
+        },
+        {
+          "action_id": "shop:remove_card",
+          "decision_index": 32,
+          "regret": 0.0,
+          "seed": 95054,
+          "source_sha256": "7ce45657f94dad08ae9102276032b1884470a3ed537a7e2645f1d689b0867407"
+        },
+        {
+          "action_id": "shop:remove_card",
+          "decision_index": 19,
+          "regret": 0.0,
+          "seed": 95032,
+          "source_sha256": "8e99de2e57bebf8750af5b16b8e4f05da481b082c42b96eaf86730ba29f2cf54"
+        },
+        {
+          "action_id": "shop:remove_card",
+          "decision_index": 15,
+          "regret": 0.0,
+          "seed": 95026,
+          "source_sha256": "4411da405ab9472e804f2c736eba84ca6ba85d5faaafdd851322787f26573fe2"
+        }
+      ]
+    },
+    "trained": {
+      "maximum_regret": 0.5964912280701754,
+      "mean_regret": 0.19457735247208927,
+      "predictions": [
+        {
+          "action_id": "shop:buy_card:4:feel_no_pain",
+          "decision_index": 7,
+          "regret": 0.24561403508771928,
+          "seed": 95037,
+          "source_sha256": "945b898809c1be592529f00e5f886369f33ad3253df6f04370f0f31292f914ea"
+        },
+        {
+          "action_id": "shop:buy_card:2:armaments",
+          "decision_index": 12,
+          "regret": 0.5964912280701753,
+          "seed": 95029,
+          "source_sha256": "c2feaa992809cbea9013e671997447660a74079296b68175097d55c5785a312d"
+        },
+        {
+          "action_id": "shop:buy_card:3:second_wind",
+          "decision_index": 5,
+          "regret": 0.2982456140350877,
+          "seed": 95018,
+          "source_sha256": "4604814c42a7f055f6aafd19cb7c6df7e053818c599008b7c0ebd2b77782a239"
+        },
+        {
+          "action_id": "shop:buy_card:4:fire_breathing",
+          "decision_index": 14,
+          "regret": 0.0,
+          "seed": 95023,
+          "source_sha256": "1946a2d8e42746a408dca7d99c514d64b899820ea6e79c70abccdb970bcd56f4"
+        },
+        {
+          "action_id": "shop:buy_card:0:anger",
+          "decision_index": 9,
+          "regret": 0.0,
+          "seed": 95014,
+          "source_sha256": "ebdd02470fcefe2b8bfb9cecb9b2ad42094290518f89f1536e1555a9f147a3e1"
+        },
+        {
+          "action_id": "shop:buy_card:4:feel_no_pain",
+          "decision_index": 15,
+          "regret": 0.5964912280701754,
+          "seed": 95039,
+          "source_sha256": "bb23011a4254c5297d32e040add990cd43832877fa2486e8520194a45b92e867"
+        },
+        {
+          "action_id": "shop:buy_card:4:feel_no_pain",
+          "decision_index": 16,
+          "regret": 0.2982456140350877,
+          "seed": 95028,
+          "source_sha256": "2f9dc7f2c9cec7a25e76320c35db9339deee1bf074fbf50544f85414cac3d671"
+        },
+        {
+          "action_id": "shop:buy_card:2:armaments",
+          "decision_index": 24,
+          "regret": 0.0,
+          "seed": 95030,
+          "source_sha256": "b7f537becd87e86042bc251230d1c3daa49ae3d1a887e796caf20816c4f4d634"
+        },
+        {
+          "action_id": "shop:buy_relic:0:ancient_tea_set",
+          "decision_index": 32,
+          "regret": 0.0,
+          "seed": 95054,
+          "source_sha256": "7ce45657f94dad08ae9102276032b1884470a3ed537a7e2645f1d689b0867407"
+        },
+        {
+          "action_id": "shop:buy_card:3:bloodletting",
+          "decision_index": 19,
+          "regret": 0.10526315789473684,
+          "seed": 95032,
+          "source_sha256": "8e99de2e57bebf8750af5b16b8e4f05da481b082c42b96eaf86730ba29f2cf54"
+        },
+        {
+          "action_id": "shop:buy_card:4:fire_breathing",
+          "decision_index": 15,
+          "regret": 0.0,
+          "seed": 95026,
+          "source_sha256": "4411da405ab9472e804f2c736eba84ca6ba85d5faaafdd851322787f26573fe2"
+        }
+      ],
+      "weighted_pairwise_accuracy": 0.6310718586912897
+    },
+    "untrained": {
+      "maximum_regret": 0.5964912280701754,
+      "mean_regret": 0.20733652312599682,
+      "predictions": [
+        {
+          "action_id": "shop:buy_card:4:feel_no_pain",
+          "decision_index": 7,
+          "regret": 0.24561403508771928,
+          "seed": 95037,
+          "source_sha256": "945b898809c1be592529f00e5f886369f33ad3253df6f04370f0f31292f914ea"
+        },
+        {
+          "action_id": "shop:buy_card:3:infernal_blade",
+          "decision_index": 12,
+          "regret": 0.29824561403508765,
+          "seed": 95029,
+          "source_sha256": "c2feaa992809cbea9013e671997447660a74079296b68175097d55c5785a312d"
+        },
+        {
+          "action_id": "shop:buy_potion:2:liquid_bronze",
+          "decision_index": 5,
+          "regret": 0.2982456140350877,
+          "seed": 95018,
+          "source_sha256": "4604814c42a7f055f6aafd19cb7c6df7e053818c599008b7c0ebd2b77782a239"
+        },
+        {
+          "action_id": "shop:buy_card:4:fire_breathing",
+          "decision_index": 14,
+          "regret": 0.0,
+          "seed": 95023,
+          "source_sha256": "1946a2d8e42746a408dca7d99c514d64b899820ea6e79c70abccdb970bcd56f4"
+        },
+        {
+          "action_id": "shop:buy_card:3:battle_trance",
+          "decision_index": 9,
+          "regret": 0.03508771929824561,
+          "seed": 95014,
+          "source_sha256": "ebdd02470fcefe2b8bfb9cecb9b2ad42094290518f89f1536e1555a9f147a3e1"
+        },
+        {
+          "action_id": "shop:buy_card:4:feel_no_pain",
+          "decision_index": 15,
+          "regret": 0.5964912280701754,
+          "seed": 95039,
+          "source_sha256": "bb23011a4254c5297d32e040add990cd43832877fa2486e8520194a45b92e867"
+        },
+        {
+          "action_id": "shop:buy_card:4:feel_no_pain",
+          "decision_index": 16,
+          "regret": 0.2982456140350877,
+          "seed": 95028,
+          "source_sha256": "2f9dc7f2c9cec7a25e76320c35db9339deee1bf074fbf50544f85414cac3d671"
+        },
+        {
+          "action_id": "shop:buy_card:6:transmutation",
+          "decision_index": 24,
+          "regret": 0.40350877192982454,
+          "seed": 95030,
+          "source_sha256": "b7f537becd87e86042bc251230d1c3daa49ae3d1a887e796caf20816c4f4d634"
+        },
+        {
+          "action_id": "shop:buy_card:3:battle_trance",
+          "decision_index": 32,
+          "regret": 0.10526315789473684,
+          "seed": 95054,
+          "source_sha256": "7ce45657f94dad08ae9102276032b1884470a3ed537a7e2645f1d689b0867407"
+        },
+        {
+          "action_id": "shop:buy_potion:0:entropic_brew",
+          "decision_index": 19,
+          "regret": 0.0,
+          "seed": 95032,
+          "source_sha256": "8e99de2e57bebf8750af5b16b8e4f05da481b082c42b96eaf86730ba29f2cf54"
+        },
+        {
+          "action_id": "shop:buy_card:4:fire_breathing",
+          "decision_index": 15,
+          "regret": 0.0,
+          "seed": 95026,
+          "source_sha256": "4411da405ab9472e804f2c736eba84ca6ba85d5faaafdd851322787f26573fe2"
+        }
+      ],
+      "weighted_pairwise_accuracy": 0.6358892011240476
+    }
+  },
+  "selection": {
+    "checkpoints": [
+      {
+        "epoch": 1,
+        "fit_final_loss": 0.6948020756244659,
+        "tune": {
+          "maximum_regret": 0.2982456140350877,
+          "mean_regret": 0.08333333333333333,
+          "weighted_pairwise_accuracy": 0.5210008936550488
+        }
+      },
+      {
+        "epoch": 2,
+        "fit_final_loss": 0.6922842860221863,
+        "tune": {
+          "maximum_regret": 0.2982456140350877,
+          "mean_regret": 0.08333333333333333,
+          "weighted_pairwise_accuracy": 0.5098302055406607
+        }
+      },
+      {
+        "epoch": 4,
+        "fit_final_loss": 0.688090592622757,
+        "tune": {
+          "maximum_regret": 0.2982456140350877,
+          "mean_regret": 0.08991228070175439,
+          "weighted_pairwise_accuracy": 0.5147453083109914
+        }
+      },
+      {
+        "epoch": 8,
+        "fit_final_loss": 0.6796231865882874,
+        "tune": {
+          "maximum_regret": 0.2982456140350877,
+          "mean_regret": 0.08991228070175439,
+          "weighted_pairwise_accuracy": 0.5294906166219838
+        }
+      },
+      {
+        "epoch": 16,
+        "fit_final_loss": 0.6571662724018097,
+        "tune": {
+          "maximum_regret": 0.2982456140350877,
+          "mean_regret": 0.12719298245614036,
+          "weighted_pairwise_accuracy": 0.5415549597855225
+        }
+      },
+      {
+        "epoch": 32,
+        "fit_final_loss": 0.5817844271659851,
+        "tune": {
+          "maximum_regret": 0.40350877192982454,
+          "mean_regret": 0.14035087719298245,
+          "weighted_pairwise_accuracy": 0.5160857908847182
+        }
+      }
+    ],
+    "selected_epoch": 1
+  },
+  "training_final_history": [
+    {
+      "epoch": 1,
+      "mean_batch_loss": 0.6944302320480347
+    }
+  ],
+  "verdict": "shop_candidate_value_baseline_not_ready_after_holdout"
+}

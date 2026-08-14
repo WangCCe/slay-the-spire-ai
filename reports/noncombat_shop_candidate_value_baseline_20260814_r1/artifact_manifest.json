@@ -1,0 +1,35 @@
+{
+  "artifacts": [
+    {
+      "path": "configuration.json",
+      "sha256": "fe097b0553479cc915852b46de4550cf397febd56c4e4e2ad4e73e1d08088cfe",
+      "size_bytes": 490
+    },
+    {
+      "path": "metrics.json",
+      "sha256": "7cb5961bd7974a7654c60fc52509aa79cd5f08bf2646f2a98f5842fd92b3019e",
+      "size_bytes": 11323
+    },
+    {
+      "path": "model.json",
+      "sha256": "935868947f171480fe2bc3bfa3e12d2a42cc42e80f98cb474c717a5b25a98305",
+      "size_bytes": 535523
+    },
+    {
+      "path": "report.json",
+      "sha256": "4613612493a117f3543f5643af77476979c8ff6a0000840eb7815743a516250c",
+      "size_bytes": 1904
+    },
+    {
+      "path": "report.md",
+      "sha256": "4a070d6f32245469e359c4369234c7df62b747006297e891b981fa7a1bb04ada",
+      "size_bytes": 380
+    },
+    {
+      "path": "split.json",
+      "sha256": "485358d7c389627c715a82576d2382661f6ce74284b003ad243156652f3cfca1",
+      "size_bytes": 3265
+    }
+  ],
+  "schema_version": "noncombat-shop-candidate-value-manifest-v1"
+}

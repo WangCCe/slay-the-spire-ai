@@ -1,0 +1,29 @@
+{
+  "action_kinds": [
+    "buy_card",
+    "buy_potion",
+    "buy_relic",
+    "leave",
+    "remove_card"
+  ],
+  "batch_size": 16,
+  "checkpoint_epochs": [
+    1,
+    2,
+    4,
+    8,
+    16,
+    32
+  ],
+  "feature_dim": 138,
+  "feature_scope": "candidate-only-zero-state",
+  "identity_buckets": 128,
+  "learning_rate": 0.001,
+  "model_seed": 20260814,
+  "schema_version": "noncombat-shop-candidate-value-baseline-v1",
+  "split_sizes": {
+    "fit": 24,
+    "holdout": 11,
+    "tune": 8
+  }
+}
