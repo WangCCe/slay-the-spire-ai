@@ -1,0 +1,96 @@
+{
+  "schema_version": "combat-rl-zero-epsilon-entry-control-run-manifest-v1",
+  "evaluation_id": "combat-rl-zero-epsilon-entry-control-20260814-r1",
+  "runs": [
+    {
+      "file": "1786712417.run",
+      "sha256": "afcd31bc68da497b427dfa9b67f5c0f77647913f96ac4302906e32bcf85110d7",
+      "seed_played": "9209689532192004817",
+      "floor_reached": 29,
+      "victory": false,
+      "killed_by": "Chosen and Byrds",
+      "playtime_seconds": 161
+    },
+    {
+      "file": "1786712500.run",
+      "sha256": "31df7ec91ab9d938478012d7b2cf32d10e915102d291aefcd1521961ce41e75f",
+      "seed_played": "-2866486656163280727",
+      "floor_reached": 16,
+      "victory": false,
+      "killed_by": "Slime Boss",
+      "playtime_seconds": 79
+    },
+    {
+      "file": "1786712598.run",
+      "sha256": "82f42d6d6032b954ef1a8c5360c85e2fab642b6f17d5cc7d05790b685a4d2965",
+      "seed_played": "1610888734135879705",
+      "floor_reached": 16,
+      "victory": false,
+      "killed_by": "Slime Boss",
+      "playtime_seconds": 94
+    },
+    {
+      "file": "1786712676.run",
+      "sha256": "cac8fcd7fa8cf4e28e4711f70fad538e75515c62b9a639ca237efe256ccfae5f",
+      "seed_played": "427606053080496492",
+      "floor_reached": 16,
+      "victory": false,
+      "killed_by": "The Guardian",
+      "playtime_seconds": 74
+    },
+    {
+      "file": "1786712853.run",
+      "sha256": "e134fe1c63089a3493a42ebf7309f69261a1e6deb889f674662292617a58a26d",
+      "seed_played": "-2005631666677113177",
+      "floor_reached": 31,
+      "victory": false,
+      "killed_by": "Centurion and Healer",
+      "playtime_seconds": 173
+    },
+    {
+      "file": "1786712979.run",
+      "sha256": "35db6cbc14b060f72ac6fe4f92c5a80c5740cdc75b7d0a5e6a33382d9d61e66d",
+      "seed_played": "2305580404575532492",
+      "floor_reached": 33,
+      "victory": false,
+      "killed_by": "Automaton",
+      "playtime_seconds": 122
+    },
+    {
+      "file": "1786713039.run",
+      "sha256": "b1fdaea23d45d015d397df8c5e1432dd81a8fbb3ed0479659ff63add2f560139",
+      "seed_played": "4056516101062618517",
+      "floor_reached": 16,
+      "victory": false,
+      "killed_by": "Hexaghost",
+      "playtime_seconds": 56
+    },
+    {
+      "file": "1786713150.run",
+      "sha256": "b638af4e71fc56b0dc47099914c8d8a9efbdc061080102a7812ed5c098a193fd",
+      "seed_played": "-2043522512006878243",
+      "floor_reached": 16,
+      "victory": false,
+      "killed_by": "Hexaghost",
+      "playtime_seconds": 107
+    },
+    {
+      "file": "1786713295.run",
+      "sha256": "42b7919d0b6c710d9200c9103b06ca368449ddb4449275e126d500d83fa4be04",
+      "seed_played": "564967493253523316",
+      "floor_reached": 28,
+      "victory": false,
+      "killed_by": "Centurion and Healer",
+      "playtime_seconds": 140
+    },
+    {
+      "file": "1786713490.run",
+      "sha256": "91adaf8993b0e4b95d5ae922c460f3308427007aa5d04959d9a9548cb9c9303f",
+      "seed_played": "7043560878239216383",
+      "floor_reached": 33,
+      "victory": false,
+      "killed_by": "Automaton",
+      "playtime_seconds": 190
+    }
+  ]
+}

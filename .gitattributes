@@ -300,3 +300,6 @@ reports/combat_rl_training_*/** text eol=lf
 reports/combat_rl_training_*/*.pth -text
 reports/combat_rl_zero_epsilon_evaluation_* text eol=lf
 reports/combat_rl_zero_epsilon_evaluation_*/** text eol=lf
+reports/combat_rl_zero_epsilon_entry_control_* text eol=lf
+reports/combat_rl_zero_epsilon_entry_control_*/** text eol=lf
+reports/combat_rl_zero_epsilon_entry_control_*/*.run -text

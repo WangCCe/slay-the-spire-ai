@@ -1,0 +1,105 @@
+{
+  "schema_version": "combat-rl-zero-epsilon-entry-control-report-v1",
+  "evaluation_id": "combat-rl-zero-epsilon-entry-control-20260814-r1",
+  "verdict": "post_training_checkpoint_failed_matched_greedy_improvement_gate",
+  "training_continuation_decision": "pause_and_diagnose",
+  "source_commit": "0b6f5747d28d3a90f78ee5ddf7d3f010cfff8994",
+  "configuration": {
+    "agent": "combat_rl",
+    "mode": "eval",
+    "epsilon": 0.0,
+    "elite_route": "conservative",
+    "ascension": 0,
+    "maximum_games": 10,
+    "fixed_seed_pool": true,
+    "decision_trace_enabled": false,
+    "sim_divergence_trace_enabled": false
+  },
+  "lineage": {
+    "training_games": 25,
+    "training_transitions": 3638,
+    "entry_checkpoint": {
+      "path": "D:/SteamLibrary/steamapps/common/SlayTheSpire/checkpoints_archive/combat_rl/rl_combat_model_ep9_steps11848.pth.20260814-191449.bak",
+      "sha256": "780f6a94754b741e8e68d278d44dc68a80cf2b137c2d6fd8a39c7f042c936558",
+      "size_bytes": 6541162,
+      "episode": 5,
+      "total_steps": 11848
+    },
+    "post_training_checkpoint": {
+      "path": "reports/combat_rl_training_20260814_r1/rl_combat_model_ep49_steps15486.pth",
+      "sha256": "b3f2efcb58a98fc5faf3b64f25c070fc63769fe2999040128044c7b98e12d3da",
+      "size_bytes": 6541220,
+      "episode": 25,
+      "total_steps": 15486
+    }
+  },
+  "runtime": {
+    "started_at_local": "2026-08-14T20:57:23+08:00",
+    "finished_at_local": "2026-08-14T21:18:13+08:00",
+    "completed_games": 10,
+    "evaluation_process_exited": true,
+    "communication_mod_config_restored": true,
+    "communication_mod_config_backup_sha256": "b42093aef81a17ff1e3eb2dec4187c3af48a1a512a355c9d4d613c4cde2803c1",
+    "communication_mod_config_restored_sha256": "b42093aef81a17ff1e3eb2dec4187c3af48a1a512a355c9d4d613c4cde2803c1",
+    "ai_log_error_markers": 0
+  },
+  "entry_checkpoint_outcomes": {
+    "victories": 0,
+    "floor_total": 234,
+    "mean_floor": 23.4,
+    "median_floor": 22.0,
+    "maximum_floor": 33,
+    "act_1_boss_reaches": 10,
+    "act_2_entries": 5,
+    "act_3_entries": 0,
+    "floor_reached": [29,16,16,16,31,33,16,16,28,33]
+  },
+  "post_training_checkpoint_outcomes": {
+    "victories": 0,
+    "floor_total": 224,
+    "mean_floor": 22.4,
+    "median_floor": 16.0,
+    "maximum_floor": 33,
+    "act_1_boss_reaches": 9,
+    "act_2_entries": 4,
+    "act_3_entries": 0,
+    "floor_reached": [16,16,14,16,33,33,33,16,16,31]
+  },
+  "paired_comparison": {
+    "floor_total_difference_post_minus_entry": -10,
+    "mean_floor_difference_post_minus_entry": -1.0,
+    "median_paired_difference": 0.0,
+    "post_training_wins": 2,
+    "entry_checkpoint_wins": 4,
+    "ties": 4,
+    "paired_rows": [
+      {"seed_played":"9209689532192004817","entry_floor":29,"post_floor":16,"difference":-13},
+      {"seed_played":"-2866486656163280727","entry_floor":16,"post_floor":16,"difference":0},
+      {"seed_played":"1610888734135879705","entry_floor":16,"post_floor":14,"difference":-2},
+      {"seed_played":"427606053080496492","entry_floor":16,"post_floor":16,"difference":0},
+      {"seed_played":"-2005631666677113177","entry_floor":31,"post_floor":33,"difference":2},
+      {"seed_played":"2305580404575532492","entry_floor":33,"post_floor":33,"difference":0},
+      {"seed_played":"4056516101062618517","entry_floor":16,"post_floor":33,"difference":17},
+      {"seed_played":"-2043522512006878243","entry_floor":16,"post_floor":16,"difference":0},
+      {"seed_played":"564967493253523316","entry_floor":28,"post_floor":16,"difference":-12},
+      {"seed_played":"7043560878239216383","entry_floor":33,"post_floor":31,"difference":-2}
+    ]
+  },
+  "artifacts": {
+    "entry_run_manifest": "reports/combat_rl_zero_epsilon_entry_control_20260814_r1/run_manifest.json",
+    "entry_run_manifest_sha256": "fd7286a1957eb0a7f568813d1552289ecfe887238d7e3dd94c1f26dcf10874e4",
+    "entry_run_count": 10,
+    "post_run_manifest": "reports/combat_rl_zero_epsilon_evaluation_20260814_r1/run_manifest.json",
+    "post_run_manifest_sha256": "1d099efe0dff36733a1f30a80c74b69c24b3b43205a1b35154a57e5d8651eda7",
+    "seed_pool": "reports/combat_rl_zero_epsilon_entry_control_20260814_r1_seed_pool.txt",
+    "seed_pool_sha256": "61b4545745ec6f76f78c8cc2621b85da5c41678461653cf8290bb4f78986a76e",
+    "launch_config": "reports/combat_rl_zero_epsilon_entry_control_20260814_r1_launch_config.properties",
+    "launch_config_sha256": "3f0b891a6e69ace5f78772a0308fd22b4d5af1dd7bb79ee85cbbaf7229d6e46c"
+  },
+  "interpretation": {
+    "operational_claim": "The exact frozen entry checkpoint completed all 10 matched seeds at epsilon zero without logged error markers.",
+    "policy_claim": "The 25-game update did not improve the matched greedy end-to-end policy: it lost total and mean floor, paired wins, Act 1 boss reach, and Act 2 entry count.",
+    "scope_limit": "Ten paired seeds reject an unqualified training continuation but do not establish a statistically significant regression or isolate combat decisions from the fixed shared safety layer.",
+    "next_step": "Diagnose update stability, replay composition, target-network behavior, reward scale, and action-value drift offline before authorizing another live training batch."
+  }
+}
