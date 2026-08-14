@@ -1,0 +1,103 @@
+{
+  "schema_version": 1,
+  "experiment_id": "combat-rl-legacy-replay-collection-20260814-r1",
+  "source_commit": "acb3e644e6ed6631616a5228415638589ef10149",
+  "started_at": "2026-08-14T23:58:16+08:00",
+  "finished_at": "2026-08-15T00:16:41+08:00",
+  "configuration": {
+    "agent": "combat_rl",
+    "rl_space_version": "v2",
+    "mode": "train_with_legacy_replay_warmup",
+    "maximum_games": 10,
+    "elite_route": "conservative",
+    "ascension": 0,
+    "expert_mix_enabled": true,
+    "expert_mix_probability": 0.3,
+    "card_uplift_enabled": false,
+    "fixed_seed_pool": false,
+    "decision_trace_enabled": false,
+    "sim_divergence_trace_enabled": false
+  },
+  "entry_checkpoint": {
+    "path": "D:/SteamLibrary/steamapps/common/SlayTheSpire/checkpoints_archive/combat_rl/rl_combat_model_ep9_steps11848.pth.20260814-191449.bak",
+    "sha256": "780f6a94754b741e8e68d278d44dc68a80cf2b137c2d6fd8a39c7f042c936558",
+    "checkpoint_schema_version": 1,
+    "payload_episode": 5,
+    "total_steps": 11848,
+    "epsilon": 0.887444,
+    "optimizer_step": 2679,
+    "online_state_sha256": "d9b577137a9a5be92c440e9abca2047207a9d85bf4765c06c8d80167e120f60c"
+  },
+  "output_checkpoint": {
+    "path": "reports/combat_rl_legacy_replay_collection_20260814_r1/rl_combat_model_ep15_steps13413.pth",
+    "sha256": "79afdd2290323646010f7715fb9a96922d2b9dc05baee271ca0a1042eac4f3d6",
+    "checkpoint_schema_version": 2,
+    "checkpoint_kind": "training",
+    "payload_episode": 15,
+    "total_steps": 13413,
+    "epsilon": 0.887444,
+    "optimizer_step": 2679,
+    "learning_starts": 4096,
+    "replay_transition_count": 1565,
+    "replay_source_transition_count": 1565,
+    "replay_truncated": false,
+    "online_state_sha256": "d9b577137a9a5be92c440e9abca2047207a9d85bf4765c06c8d80167e120f60c",
+    "target_state_sha256": "d9b577137a9a5be92c440e9abca2047207a9d85bf4765c06c8d80167e120f60c",
+    "all_tensors_finite": true
+  },
+  "collection_delta": {
+    "accepted_transitions": 1565,
+    "optimizer_steps": 0,
+    "episode_count": 10,
+    "online_weights_changed": false,
+    "target_weights_changed": false,
+    "epsilon_changed": false,
+    "remaining_learning_warmup_transitions": 2531
+  },
+  "runtime_integrity": {
+    "replay_rejected": 0,
+    "close_episode_failed": 0,
+    "checkpoint_save_failed": 0,
+    "rl_agent_failed": 0,
+    "nan_matches": 0,
+    "max_games_reached_matches": 1,
+    "checkpoint_temporary_files_remaining": 0,
+    "communication_mod_error_log_growth_bytes": 0
+  },
+  "outcomes": {
+    "games": 10,
+    "victories": 0,
+    "floor_total": 218,
+    "floor_mean": 21.8,
+    "act_2_entered": 4,
+    "act_2_boss_reached": 2,
+    "act_3_entered": 1,
+    "floors": [20, 16, 41, 33, 16, 16, 16, 16, 28, 16]
+  },
+  "runs": [
+    {"file": "runs/1786723223.run", "marker": "1786723226", "sha256": "603347ec56c140a71458a0dae7362fef7836b1bbdc6af03ad8c636c3ac20ced4", "seed_played": "-8923518866786329631", "floor_reached": 20, "victory": false, "killed_by": "Masked Bandits"},
+    {"file": "runs/1786723294.run", "marker": "1786723297", "sha256": "75add690f4b0ae0eabdb275a2ff14d3ec804a3f4c7a4861db71ef5c0ace7c7d9", "seed_played": "-2447157165035770873", "floor_reached": 16, "victory": false, "killed_by": "The Guardian"},
+    {"file": "runs/1786723486.run", "marker": "1786723489", "sha256": "136d98edf5a8a9d8838f146bc8c22e5517cacaf6f34261488fafffc5a4fd5c94", "seed_played": "6688118122577893993", "floor_reached": 41, "victory": false, "killed_by": "Spire Growth"},
+    {"file": "runs/1786723670.run", "marker": "1786723673", "sha256": "66ed6da17261fc35f00fea1937abd72eeb65935e4d6b1313ad7bc68318bc0021", "seed_played": "-5135645950482010025", "floor_reached": 33, "victory": false, "killed_by": "Champ"},
+    {"file": "runs/1786723733.run", "marker": "1786723736", "sha256": "25f61f40d6351dc1c1558c9004d468fbe7654d2870dfdf0f65c61d7dcbb26355", "seed_played": "-7632057570444474208", "floor_reached": 16, "victory": false, "killed_by": "The Guardian"},
+    {"file": "runs/1786723825.run", "marker": "1786723828", "sha256": "62192d4755498a92cb94873ea40b53077928e50dc41001f655aee72ad4a999b7", "seed_played": "6926578186805464164", "floor_reached": 16, "victory": false, "killed_by": "Hexaghost"},
+    {"file": "runs/1786723897.run", "marker": "1786723900", "sha256": "0cac26cdec75fae68b14f18bf51e1d8d960c393ca12f3c20abf69e3a540df47e", "seed_played": "4953028770689299453", "floor_reached": 16, "victory": false, "killed_by": "The Guardian"},
+    {"file": "runs/1786723994.run", "marker": "1786723997", "sha256": "b3122dfabaf749843394ce984355d72decc4e865014260bc4264f882379b300e", "seed_played": "-7727454407838525467", "floor_reached": 16, "victory": false, "killed_by": "The Guardian"},
+    {"file": "runs/1786724122.run", "marker": "1786724125", "sha256": "a24f1c58dd790798664fb62486754a4d95e31b8a4eed91c1ba335b6b28a6589f", "seed_played": "2508290623173593705", "floor_reached": 28, "victory": false, "killed_by": "Colosseum Slavers"},
+    {"file": "runs/1786724198.run", "marker": "1786724201", "sha256": "4cf4ba946597b96dd58b08e2e1a44c58d6694e41c2348ab2015dd1573a902687", "seed_played": "7207338330048545008", "floor_reached": 16, "victory": false, "killed_by": "The Guardian"}
+  ],
+  "configuration_evidence": {
+    "launch_config": "reports/combat_rl_legacy_replay_collection_20260814_r1_launch_config.properties",
+    "launch_config_sha256": "72cd8338faad78ae777c5f8ebb57c0bf253e89e398ae45f08b437794fff2d449",
+    "restored_config": "reports/combat_rl_legacy_replay_collection_20260814_r1_previous_config.properties",
+    "restored_config_sha256": "b42093aef81a17ff1e3eb2dec4187c3af48a1a512a355c9d4d613c4cde2803c1",
+    "restored_after_batch": true,
+    "game_process_closed_after_batch": true
+  },
+  "decision": "resume_repair_validated_continue_collection_until_learning_starts",
+  "notes": [
+    "This batch validates resume-state collection behavior; gameplay outcomes are not promotion evidence because the online policy did not change and exploration/expert mixing remained enabled.",
+    "Each ai_games marker was written three seconds after its corresponding .run filename timestamp; both identities are recorded explicitly.",
+    "No formal matched evaluation is warranted before optimizer updates occur."
+  ]
+}
