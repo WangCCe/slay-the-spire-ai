@@ -1,0 +1,120 @@
+{
+  "authority": {
+    "formal_rl": false,
+    "gameplay": false,
+    "policy_intervention": false,
+    "promotion": false,
+    "qualification": false
+  },
+  "charged_seconds": 459.35899999999674,
+  "fresh": {
+    "action_branches": 182,
+    "budget_exhausted": true,
+    "censored_sources": 0,
+    "informative_sources": 15,
+    "maximum_return_spread": 0.5614035087719298,
+    "mean_return_spread": 0.22587719298245612,
+    "root_native_transitions": 792,
+    "source_count": 16
+  },
+  "identity": {
+    "current_bridge_input": {
+      "path": "D:/PycharmProjects/slay-the-spire-ai/reports/noncombat_current_policy_simulator_bridge_20260802_r2_input.json",
+      "sha256": "b251f7eefa558610b58c2dc23525f60302e6ae9f99bd11da72faa6c9a138f8f6"
+    },
+    "metadata": {
+      "path": "D:\\SteamLibrary\\steamapps\\common\\SlayTheSpire\\export\\items.json",
+      "sha256": "e23784ea8ed3092e3bfa9918240e162a9cbcb837badfb53c612eb0d83cc811dc",
+      "size_bytes": 240371
+    },
+    "native_module": {
+      "path": "D:/PycharmProjects/slay-the-spire-ai/.sts_lightspeed_adapter_v3_sold_inventory_build/sts_lightspeed_noncombat_adapter.cp310-win_amd64.pyd",
+      "sha256": "3a2563b51b9ef9df962c7a502cfd29ad5423497844a5ebb3bfb671c56c99369b",
+      "size_bytes": 4225536
+    },
+    "native_registration": {
+      "path": "D:/PycharmProjects/slay-the-spire-ai/reports/noncombat_card_counterfactual_corpus_expansion_20260813_r1/registration.json",
+      "sha256": "7096c3f131ba3e3fbe542a4505986b964206d4a9dc8cb4c58ae9b62fb25206d7"
+    },
+    "source": {
+      "commit": "0067f2e364ba42310b58753fe7eda847f8b47b50",
+      "files": [
+        {
+          "path": "analysis_scripts/noncombat_current_relative_shop_ranking.py",
+          "sha256": "9750fec0f911fe398593f0075ad21bcac03c84b020b2ee7216356413ab5b0c53",
+          "size_bytes": 22812
+        },
+        {
+          "path": "analysis_scripts/noncombat_state_conditioned_shop_ranking.py",
+          "sha256": "37e102fb640d9ec8cf3075064d23d2f681809f39d1e2c13dcd94a4c5cc73147c",
+          "size_bytes": 21228
+        },
+        {
+          "path": "analysis_scripts/noncombat_shop_counterfactual_outcomes.py",
+          "sha256": "ff6bafa71cfe0e560fd1e93d6bd83c579c91f82b23009a044e4d42d7009291f9",
+          "size_bytes": 27253
+        },
+        {
+          "path": "analysis_scripts/noncombat_event_option_counterfactual_outcomes.py",
+          "sha256": "cdc405f1f99505bca63d37c6fb17a8c567533fb54973c4925bbf346118d8aeac",
+          "size_bytes": 27301
+        },
+        {
+          "path": "analysis_scripts/noncombat_native_preload.py",
+          "sha256": "b76c1dd47ce6b5c42734ac607c099b490c0c9d7c3c50886cf349081eb101e90c",
+          "size_bytes": 2941
+        },
+        {
+          "path": "analysis_scripts/noncombat_route_counterfactual_ranking.py",
+          "sha256": "f57d161f934bc88a1fbbe8e8569c5ce9d89cc212765435067d4502a74c58b627",
+          "size_bytes": 54570
+        },
+        {
+          "path": "analysis_scripts/noncombat_card_action_counterfactual_credit.py",
+          "sha256": "8f4028d209c10d6ecdc7b9387cf54ffb1a35fc31b97496c44ff9bd66d10e3c21",
+          "size_bytes": 20220
+        },
+        {
+          "path": "analysis_scripts/noncombat_current_policy_simulator_bridge.py",
+          "sha256": "1bbcd6008c78338b76b9d95e28d52e95a997734542b5a27fc9896bacb7c8ffce",
+          "size_bytes": 102865
+        },
+        {
+          "path": "analysis_scripts/noncombat_state_conditioned_policy_input.py",
+          "sha256": "f460bcb2cf2569b73ae08e640545fbd25996ae3e5d806339bff550aa12f484be",
+          "size_bytes": 8149
+        },
+        {
+          "path": "analysis_scripts/noncombat_state_conditioned_ranker.py",
+          "sha256": "60d1b710127e27c0bb283f073d6b166ccae14d9902ffb6d1911caa107d745678",
+          "size_bytes": 4549
+        },
+        {
+          "path": "analysis_scripts/noncombat_event_option_semantics.py",
+          "sha256": "2a18688d61ae70612b43683e06f3f2381d998f0fe3bebf9fbdf3e4cd9602af6b",
+          "size_bytes": 29305
+        }
+      ],
+      "source_sha256": "6ee6da6b238b8c0b644516d6dce9b4223fdc788409734a8f846287e85de1e458"
+    }
+  },
+  "operations": {
+    "communication_mod": false,
+    "evaluation": true,
+    "gameplay": false,
+    "model_fitting": true,
+    "native_loading": true,
+    "prior_development_access": false,
+    "prior_fresh_access": false,
+    "production_checkpoint_access": false,
+    "protected_seed_access": false,
+    "training": true
+  },
+  "schema_version": "noncombat-current-relative-shop-ranking-v1",
+  "train_binding": {
+    "path": "D:/PycharmProjects/slay-the-spire-ai/reports/noncombat_state_conditioned_shop_ranking_20260814_r1/train_dataset.json",
+    "sha256": "e346d26e2e29d297b316d9247ef9cf6619bb3fce274b0b88f34d69a9be5f736a",
+    "source_count": 64
+  },
+  "verdict": "current_relative_shop_ranker_not_ready_after_fresh_evaluation"
+}

@@ -1,0 +1,30 @@
+{
+  "artifacts": [
+    {
+      "path": "configuration.json",
+      "sha256": "a8e37bb6a03ea43abacc0633815b67329f9f9f2056cd89bf4a7183ac872b417b",
+      "size_bytes": 806
+    },
+    {
+      "path": "fresh_dataset.json",
+      "sha256": "76dde3cdcd058d6d9920f9795ddaf241915baa02f261776ab9b17bdbb49c4ae3",
+      "size_bytes": 814846
+    },
+    {
+      "path": "metrics.json",
+      "sha256": "b1600ff1b1913aaea22b4afd87a59409f6d56fb06f6fb175c1bea52121399094",
+      "size_bytes": 30244
+    },
+    {
+      "path": "model.json",
+      "sha256": "642a332ebec266403d40bf2f0eeb429802ae7eef27e2d5f8b8b9d185606c5595",
+      "size_bytes": 3985273
+    },
+    {
+      "path": "report.json",
+      "sha256": "487f9828fd0fbf71868373c5f5f2a93981c345226cdc0c000913895c9d0ae993",
+      "size_bytes": 4870
+    }
+  ],
+  "schema_version": "noncombat-current-relative-shop-manifest-v1"
+}

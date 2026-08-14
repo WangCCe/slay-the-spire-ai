@@ -17,6 +17,6 @@
 
 ## 4. Execution
 
-- [ ] 4.1 Execute the fixed training and fresh evaluation once
-- [ ] 4.2 Verify artifact hashes and terminal verdict
-- [ ] 4.3 Archive the change, commit evidence, and push `master`
+- [x] 4.1 Execute the fixed training and fresh evaluation once
+- [x] 4.2 Verify artifact hashes and terminal verdict
+- [x] 4.3 Archive the change, commit evidence, and push `master`

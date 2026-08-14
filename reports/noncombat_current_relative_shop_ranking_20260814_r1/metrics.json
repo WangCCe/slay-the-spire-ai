@@ -1,0 +1,911 @@
+{
+  "changes_vs_current": {
+    "action_changes": 16,
+    "corrected": 3,
+    "worsened": 4
+  },
+  "checks": {
+    "corrects_at_least_one_current_decision": true,
+    "fresh_informative_support": true,
+    "fresh_support": true,
+    "maximum_regret_noninferior_to_current": false,
+    "mean_regret_improves_current": false,
+    "overrides_at_least_one": true,
+    "worsened_not_more_than_corrected": false
+  },
+  "fresh": {
+    "current": {
+      "maximum_regret": 0.5263157894736842,
+      "mean_regret": 0.18092105263157893,
+      "predictions": [
+        {
+          "action_id": "shop:remove_card",
+          "decision_index": 3,
+          "regret": 0.10526315789473684,
+          "seed": 95460,
+          "source_sha256": "a7e02d4acdade258cb80a6b579b022614148d435744bd062ac9862f6b50754dd"
+        },
+        {
+          "action_id": "shop:remove_card",
+          "decision_index": 8,
+          "regret": 0.2631578947368421,
+          "seed": 95461,
+          "source_sha256": "119b7158bb00683c551f5727458f774f3a2f6b0f52a091d8d6340ea4769a8598"
+        },
+        {
+          "action_id": "shop:remove_card",
+          "decision_index": 6,
+          "regret": 0.2982456140350877,
+          "seed": 95464,
+          "source_sha256": "72f65badf20beb4e35c94107e6b03c9aaf48357e8e7519be1953b11233c597f6"
+        },
+        {
+          "action_id": "shop:remove_card",
+          "decision_index": 7,
+          "regret": 0.07017543859649122,
+          "seed": 95465,
+          "source_sha256": "6dbb57586cd97f45d32c95911b71a05c1daa4cb4a2a52c4634ca3a269b71ef5b"
+        },
+        {
+          "action_id": "shop:remove_card",
+          "decision_index": 3,
+          "regret": 0.26315789473684215,
+          "seed": 95466,
+          "source_sha256": "daf0d1cfeda18f6b8b8c03b2fd155f49c3ac55e6a564aa728a8cdd5ede94ffcb"
+        },
+        {
+          "action_id": "shop:leave",
+          "decision_index": 19,
+          "regret": 0.2982456140350877,
+          "seed": 95467,
+          "source_sha256": "10aecb4f8259374ceb150a674a6c71a8d29016ab8871e5fb511b95f8a14002df"
+        },
+        {
+          "action_id": "shop:remove_card",
+          "decision_index": 5,
+          "regret": 0.07017543859649122,
+          "seed": 95468,
+          "source_sha256": "22a336a6e8fc55c7fbdb7ccb747cab7d18381397cc73e58b6924a78eb9d146ca"
+        },
+        {
+          "action_id": "shop:remove_card",
+          "decision_index": 3,
+          "regret": 0.29824561403508765,
+          "seed": 95469,
+          "source_sha256": "91130bd4b6e45d715772b6d4917c22755eaafeeb51f7c4f1ee4d92e404106fac"
+        },
+        {
+          "action_id": "shop:remove_card",
+          "decision_index": 8,
+          "regret": 0.2982456140350877,
+          "seed": 95471,
+          "source_sha256": "9e94d0597cc679f1de2324c8770cdab4674bab9551608944f98d1cdb055e8781"
+        },
+        {
+          "action_id": "shop:remove_card",
+          "decision_index": 9,
+          "regret": 0.07017543859649122,
+          "seed": 95472,
+          "source_sha256": "480c14b1a2aa36f736646caca79fd5ef2dd241f19f39200ba1ae798d816f0e9b"
+        },
+        {
+          "action_id": "shop:buy_relic:2:membership_card",
+          "decision_index": 21,
+          "regret": 0.0,
+          "seed": 95473,
+          "source_sha256": "b360ec42bcebe00f6d03a0f79b92a12269491837db5c3d0c1b341e2e85af4b31"
+        },
+        {
+          "action_id": "shop:remove_card",
+          "decision_index": 7,
+          "regret": 0.0,
+          "seed": 95474,
+          "source_sha256": "ce507bfd07c5e2c16be0069e33969b7dca8f2a0dedaa006bf046503e9f4c3994"
+        },
+        {
+          "action_id": "shop:remove_card",
+          "decision_index": 23,
+          "regret": 0.03508771929824561,
+          "seed": 95476,
+          "source_sha256": "c821e825aef3854610e65b11e60a68dc9f69954eb9a939a48ef0585b6b2a63b7"
+        },
+        {
+          "action_id": "shop:remove_card",
+          "decision_index": 6,
+          "regret": 0.0,
+          "seed": 95478,
+          "source_sha256": "7f88b41e73b84f5d29ae838d863f676c4dd188f7cc595fd95bcd7155c172fe2c"
+        },
+        {
+          "action_id": "shop:buy_relic:2:membership_card",
+          "decision_index": 7,
+          "regret": 0.5263157894736842,
+          "seed": 95480,
+          "source_sha256": "5bde461773fd460db90b9e5e792cfc7597e53241258af98b9f4d396df14fd7ee"
+        },
+        {
+          "action_id": "shop:remove_card",
+          "decision_index": 16,
+          "regret": 0.2982456140350877,
+          "seed": 95482,
+          "source_sha256": "839c18dfb81e5ff8e599a008773e4a55fb439f78a33275a87ce8682ceee7903c"
+        }
+      ],
+      "unique_best_accuracy": 0.0,
+      "unique_best_rows": 7
+    },
+    "gated": {
+      "maximum_regret": 0.5614035087719298,
+      "mean_regret": 0.18969298245614033,
+      "override_count": 16,
+      "p95_regret": 0.5614035087719298,
+      "predictions": [
+        {
+          "action_id": "shop:buy_card:3:second_wind",
+          "current_action_id": "shop:remove_card",
+          "decision_index": 3,
+          "learned_action_id": "shop:buy_card:3:second_wind",
+          "regret": 0.10526315789473684,
+          "score_advantage": 1.583637684583664,
+          "seed": 95460,
+          "source_sha256": "a7e02d4acdade258cb80a6b579b022614148d435744bd062ac9862f6b50754dd"
+        },
+        {
+          "action_id": "shop:leave",
+          "current_action_id": "shop:remove_card",
+          "decision_index": 8,
+          "learned_action_id": "shop:leave",
+          "regret": 0.2631578947368421,
+          "score_advantage": 1.0392316281795502,
+          "seed": 95461,
+          "source_sha256": "119b7158bb00683c551f5727458f774f3a2f6b0f52a091d8d6340ea4769a8598"
+        },
+        {
+          "action_id": "shop:buy_card:0:perfected_strike",
+          "current_action_id": "shop:remove_card",
+          "decision_index": 6,
+          "learned_action_id": "shop:buy_card:0:perfected_strike",
+          "regret": 0.05263157894736842,
+          "score_advantage": 1.7389280498027802,
+          "seed": 95464,
+          "source_sha256": "72f65badf20beb4e35c94107e6b03c9aaf48357e8e7519be1953b11233c597f6"
+        },
+        {
+          "action_id": "shop:buy_card:1:sword_boomerang",
+          "current_action_id": "shop:remove_card",
+          "decision_index": 7,
+          "learned_action_id": "shop:buy_card:1:sword_boomerang",
+          "regret": 0.07017543859649122,
+          "score_advantage": 1.182938039302826,
+          "seed": 95465,
+          "source_sha256": "6dbb57586cd97f45d32c95911b71a05c1daa4cb4a2a52c4634ca3a269b71ef5b"
+        },
+        {
+          "action_id": "shop:buy_card:1:pummel",
+          "current_action_id": "shop:remove_card",
+          "decision_index": 3,
+          "learned_action_id": "shop:buy_card:1:pummel",
+          "regret": 0.26315789473684215,
+          "score_advantage": 1.0946259796619415,
+          "seed": 95466,
+          "source_sha256": "daf0d1cfeda18f6b8b8c03b2fd155f49c3ac55e6a564aa728a8cdd5ede94ffcb"
+        },
+        {
+          "action_id": "shop:buy_card:4:combust",
+          "current_action_id": "shop:leave",
+          "decision_index": 19,
+          "learned_action_id": "shop:buy_card:4:combust",
+          "regret": 0.22807017543859648,
+          "score_advantage": 0.43557626008987427,
+          "seed": 95467,
+          "source_sha256": "10aecb4f8259374ceb150a674a6c71a8d29016ab8871e5fb511b95f8a14002df"
+        },
+        {
+          "action_id": "shop:buy_card:2:shrug_it_off",
+          "current_action_id": "shop:remove_card",
+          "decision_index": 5,
+          "learned_action_id": "shop:buy_card:2:shrug_it_off",
+          "regret": 0.10526315789473684,
+          "score_advantage": 0.7362713813781738,
+          "seed": 95468,
+          "source_sha256": "22a336a6e8fc55c7fbdb7ccb747cab7d18381397cc73e58b6924a78eb9d146ca"
+        },
+        {
+          "action_id": "shop:buy_card:1:clothesline",
+          "current_action_id": "shop:remove_card",
+          "decision_index": 3,
+          "learned_action_id": "shop:buy_card:1:clothesline",
+          "regret": 0.29824561403508765,
+          "score_advantage": 1.3323608338832855,
+          "seed": 95469,
+          "source_sha256": "91130bd4b6e45d715772b6d4917c22755eaafeeb51f7c4f1ee4d92e404106fac"
+        },
+        {
+          "action_id": "shop:leave",
+          "current_action_id": "shop:remove_card",
+          "decision_index": 8,
+          "learned_action_id": "shop:leave",
+          "regret": 0.2982456140350877,
+          "score_advantage": 1.1262276768684387,
+          "seed": 95471,
+          "source_sha256": "9e94d0597cc679f1de2324c8770cdab4674bab9551608944f98d1cdb055e8781"
+        },
+        {
+          "action_id": "shop:buy_card:0:uppercut",
+          "current_action_id": "shop:remove_card",
+          "decision_index": 9,
+          "learned_action_id": "shop:buy_card:0:uppercut",
+          "regret": 0.0,
+          "score_advantage": 0.9838499873876572,
+          "seed": 95472,
+          "source_sha256": "480c14b1a2aa36f736646caca79fd5ef2dd241f19f39200ba1ae798d816f0e9b"
+        },
+        {
+          "action_id": "shop:leave",
+          "current_action_id": "shop:buy_relic:2:membership_card",
+          "decision_index": 21,
+          "learned_action_id": "shop:leave",
+          "regret": 0.19298245614035087,
+          "score_advantage": 0.4209745228290558,
+          "seed": 95473,
+          "source_sha256": "b360ec42bcebe00f6d03a0f79b92a12269491837db5c3d0c1b341e2e85af4b31"
+        },
+        {
+          "action_id": "shop:buy_card:0:rampage",
+          "current_action_id": "shop:remove_card",
+          "decision_index": 7,
+          "learned_action_id": "shop:buy_card:0:rampage",
+          "regret": 0.0,
+          "score_advantage": 1.077636957168579,
+          "seed": 95474,
+          "source_sha256": "ce507bfd07c5e2c16be0069e33969b7dca8f2a0dedaa006bf046503e9f4c3994"
+        },
+        {
+          "action_id": "shop:buy_card:1:twin_strike",
+          "current_action_id": "shop:remove_card",
+          "decision_index": 23,
+          "learned_action_id": "shop:buy_card:1:twin_strike",
+          "regret": 0.2982456140350877,
+          "score_advantage": 1.689163476228714,
+          "seed": 95476,
+          "source_sha256": "c821e825aef3854610e65b11e60a68dc9f69954eb9a939a48ef0585b6b2a63b7"
+        },
+        {
+          "action_id": "shop:buy_card:1:sword_boomerang",
+          "current_action_id": "shop:remove_card",
+          "decision_index": 6,
+          "learned_action_id": "shop:buy_card:1:sword_boomerang",
+          "regret": 0.0,
+          "score_advantage": 1.5698164030909538,
+          "seed": 95478,
+          "source_sha256": "7f88b41e73b84f5d29ae838d863f676c4dd188f7cc595fd95bcd7155c172fe2c"
+        },
+        {
+          "action_id": "shop:buy_card:5:trip",
+          "current_action_id": "shop:buy_relic:2:membership_card",
+          "decision_index": 7,
+          "learned_action_id": "shop:buy_card:5:trip",
+          "regret": 0.5614035087719298,
+          "score_advantage": 1.120599053800106,
+          "seed": 95480,
+          "source_sha256": "5bde461773fd460db90b9e5e792cfc7597e53241258af98b9f4d396df14fd7ee"
+        },
+        {
+          "action_id": "shop:buy_card:1:twin_strike",
+          "current_action_id": "shop:remove_card",
+          "decision_index": 16,
+          "learned_action_id": "shop:buy_card:1:twin_strike",
+          "regret": 0.2982456140350877,
+          "score_advantage": 0.9847213625907898,
+          "seed": 95482,
+          "source_sha256": "839c18dfb81e5ff8e599a008773e4a55fb439f78a33275a87ce8682ceee7903c"
+        }
+      ],
+      "score_margin": 0.2
+    },
+    "raw": {
+      "maximum_regret": 0.5614035087719298,
+      "mean_regret": 0.18969298245614033,
+      "predictions": [
+        {
+          "action_id": "shop:buy_card:3:second_wind",
+          "decision_index": 3,
+          "regret": 0.10526315789473684,
+          "seed": 95460,
+          "source_sha256": "a7e02d4acdade258cb80a6b579b022614148d435744bd062ac9862f6b50754dd"
+        },
+        {
+          "action_id": "shop:leave",
+          "decision_index": 8,
+          "regret": 0.2631578947368421,
+          "seed": 95461,
+          "source_sha256": "119b7158bb00683c551f5727458f774f3a2f6b0f52a091d8d6340ea4769a8598"
+        },
+        {
+          "action_id": "shop:buy_card:0:perfected_strike",
+          "decision_index": 6,
+          "regret": 0.05263157894736842,
+          "seed": 95464,
+          "source_sha256": "72f65badf20beb4e35c94107e6b03c9aaf48357e8e7519be1953b11233c597f6"
+        },
+        {
+          "action_id": "shop:buy_card:1:sword_boomerang",
+          "decision_index": 7,
+          "regret": 0.07017543859649122,
+          "seed": 95465,
+          "source_sha256": "6dbb57586cd97f45d32c95911b71a05c1daa4cb4a2a52c4634ca3a269b71ef5b"
+        },
+        {
+          "action_id": "shop:buy_card:1:pummel",
+          "decision_index": 3,
+          "regret": 0.26315789473684215,
+          "seed": 95466,
+          "source_sha256": "daf0d1cfeda18f6b8b8c03b2fd155f49c3ac55e6a564aa728a8cdd5ede94ffcb"
+        },
+        {
+          "action_id": "shop:buy_card:4:combust",
+          "decision_index": 19,
+          "regret": 0.22807017543859648,
+          "seed": 95467,
+          "source_sha256": "10aecb4f8259374ceb150a674a6c71a8d29016ab8871e5fb511b95f8a14002df"
+        },
+        {
+          "action_id": "shop:buy_card:2:shrug_it_off",
+          "decision_index": 5,
+          "regret": 0.10526315789473684,
+          "seed": 95468,
+          "source_sha256": "22a336a6e8fc55c7fbdb7ccb747cab7d18381397cc73e58b6924a78eb9d146ca"
+        },
+        {
+          "action_id": "shop:buy_card:1:clothesline",
+          "decision_index": 3,
+          "regret": 0.29824561403508765,
+          "seed": 95469,
+          "source_sha256": "91130bd4b6e45d715772b6d4917c22755eaafeeb51f7c4f1ee4d92e404106fac"
+        },
+        {
+          "action_id": "shop:leave",
+          "decision_index": 8,
+          "regret": 0.2982456140350877,
+          "seed": 95471,
+          "source_sha256": "9e94d0597cc679f1de2324c8770cdab4674bab9551608944f98d1cdb055e8781"
+        },
+        {
+          "action_id": "shop:buy_card:0:uppercut",
+          "decision_index": 9,
+          "regret": 0.0,
+          "seed": 95472,
+          "source_sha256": "480c14b1a2aa36f736646caca79fd5ef2dd241f19f39200ba1ae798d816f0e9b"
+        },
+        {
+          "action_id": "shop:leave",
+          "decision_index": 21,
+          "regret": 0.19298245614035087,
+          "seed": 95473,
+          "source_sha256": "b360ec42bcebe00f6d03a0f79b92a12269491837db5c3d0c1b341e2e85af4b31"
+        },
+        {
+          "action_id": "shop:buy_card:0:rampage",
+          "decision_index": 7,
+          "regret": 0.0,
+          "seed": 95474,
+          "source_sha256": "ce507bfd07c5e2c16be0069e33969b7dca8f2a0dedaa006bf046503e9f4c3994"
+        },
+        {
+          "action_id": "shop:buy_card:1:twin_strike",
+          "decision_index": 23,
+          "regret": 0.2982456140350877,
+          "seed": 95476,
+          "source_sha256": "c821e825aef3854610e65b11e60a68dc9f69954eb9a939a48ef0585b6b2a63b7"
+        },
+        {
+          "action_id": "shop:buy_card:1:sword_boomerang",
+          "decision_index": 6,
+          "regret": 0.0,
+          "seed": 95478,
+          "source_sha256": "7f88b41e73b84f5d29ae838d863f676c4dd188f7cc595fd95bcd7155c172fe2c"
+        },
+        {
+          "action_id": "shop:buy_card:5:trip",
+          "decision_index": 7,
+          "regret": 0.5614035087719298,
+          "seed": 95480,
+          "source_sha256": "5bde461773fd460db90b9e5e792cfc7597e53241258af98b9f4d396df14fd7ee"
+        },
+        {
+          "action_id": "shop:buy_card:1:twin_strike",
+          "decision_index": 16,
+          "regret": 0.2982456140350877,
+          "seed": 95482,
+          "source_sha256": "839c18dfb81e5ff8e599a008773e4a55fb439f78a33275a87ce8682ceee7903c"
+        }
+      ],
+      "unique_best_accuracy": 0.0,
+      "unique_best_rows": 7,
+      "weighted_pairwise_accuracy": 0.468917710196779
+    }
+  },
+  "selection": {
+    "checkpoints": [
+      {
+        "epoch": 1,
+        "fit_final_loss": 0.6940394441286722,
+        "margins": [
+          {
+            "changes_vs_current": {
+              "action_changes": 16,
+              "corrected": 0,
+              "worsened": 4
+            },
+            "eligible": false,
+            "maximum_regret": 0.5964912280701754,
+            "mean_regret": 0.16557017543859648,
+            "override_count": 16,
+            "score_margin": 0.0
+          },
+          {
+            "changes_vs_current": {
+              "action_changes": 13,
+              "corrected": 0,
+              "worsened": 3
+            },
+            "eligible": false,
+            "maximum_regret": 0.5964912280701754,
+            "mean_regret": 0.1600877192982456,
+            "override_count": 13,
+            "score_margin": 0.01
+          },
+          {
+            "changes_vs_current": {
+              "action_changes": 5,
+              "corrected": 0,
+              "worsened": 1
+            },
+            "eligible": false,
+            "maximum_regret": 0.5964912280701754,
+            "mean_regret": 0.13596491228070173,
+            "override_count": 5,
+            "score_margin": 0.02
+          },
+          {
+            "changes_vs_current": {
+              "action_changes": 0,
+              "corrected": 0,
+              "worsened": 0
+            },
+            "eligible": false,
+            "maximum_regret": 0.5964912280701754,
+            "mean_regret": 0.1337719298245614,
+            "override_count": 0,
+            "score_margin": 0.05
+          },
+          {
+            "changes_vs_current": {
+              "action_changes": 0,
+              "corrected": 0,
+              "worsened": 0
+            },
+            "eligible": false,
+            "maximum_regret": 0.5964912280701754,
+            "mean_regret": 0.1337719298245614,
+            "override_count": 0,
+            "score_margin": 0.1
+          },
+          {
+            "changes_vs_current": {
+              "action_changes": 0,
+              "corrected": 0,
+              "worsened": 0
+            },
+            "eligible": false,
+            "maximum_regret": 0.5964912280701754,
+            "mean_regret": 0.1337719298245614,
+            "override_count": 0,
+            "score_margin": 0.2
+          }
+        ]
+      },
+      {
+        "epoch": 2,
+        "fit_final_loss": 0.6899169286092123,
+        "margins": [
+          {
+            "changes_vs_current": {
+              "action_changes": 16,
+              "corrected": 2,
+              "worsened": 1
+            },
+            "eligible": false,
+            "maximum_regret": 0.29824561403508776,
+            "mean_regret": 0.11513157894736842,
+            "override_count": 16,
+            "score_margin": 0.0
+          },
+          {
+            "changes_vs_current": {
+              "action_changes": 16,
+              "corrected": 2,
+              "worsened": 1
+            },
+            "eligible": false,
+            "maximum_regret": 0.29824561403508776,
+            "mean_regret": 0.11513157894736842,
+            "override_count": 16,
+            "score_margin": 0.01
+          },
+          {
+            "changes_vs_current": {
+              "action_changes": 13,
+              "corrected": 1,
+              "worsened": 1
+            },
+            "eligible": false,
+            "maximum_regret": 0.5964912280701754,
+            "mean_regret": 0.1337719298245614,
+            "override_count": 13,
+            "score_margin": 0.02
+          },
+          {
+            "changes_vs_current": {
+              "action_changes": 0,
+              "corrected": 0,
+              "worsened": 0
+            },
+            "eligible": false,
+            "maximum_regret": 0.5964912280701754,
+            "mean_regret": 0.1337719298245614,
+            "override_count": 0,
+            "score_margin": 0.05
+          },
+          {
+            "changes_vs_current": {
+              "action_changes": 0,
+              "corrected": 0,
+              "worsened": 0
+            },
+            "eligible": false,
+            "maximum_regret": 0.5964912280701754,
+            "mean_regret": 0.1337719298245614,
+            "override_count": 0,
+            "score_margin": 0.1
+          },
+          {
+            "changes_vs_current": {
+              "action_changes": 0,
+              "corrected": 0,
+              "worsened": 0
+            },
+            "eligible": false,
+            "maximum_regret": 0.5964912280701754,
+            "mean_regret": 0.1337719298245614,
+            "override_count": 0,
+            "score_margin": 0.2
+          }
+        ]
+      },
+      {
+        "epoch": 4,
+        "fit_final_loss": 0.6816962957382202,
+        "margins": [
+          {
+            "changes_vs_current": {
+              "action_changes": 15,
+              "corrected": 3,
+              "worsened": 1
+            },
+            "eligible": false,
+            "maximum_regret": 0.29824561403508776,
+            "mean_regret": 0.10087719298245613,
+            "override_count": 15,
+            "score_margin": 0.0
+          },
+          {
+            "changes_vs_current": {
+              "action_changes": 15,
+              "corrected": 3,
+              "worsened": 1
+            },
+            "eligible": false,
+            "maximum_regret": 0.29824561403508776,
+            "mean_regret": 0.10087719298245613,
+            "override_count": 15,
+            "score_margin": 0.01
+          },
+          {
+            "changes_vs_current": {
+              "action_changes": 15,
+              "corrected": 3,
+              "worsened": 1
+            },
+            "eligible": false,
+            "maximum_regret": 0.29824561403508776,
+            "mean_regret": 0.10087719298245613,
+            "override_count": 15,
+            "score_margin": 0.02
+          },
+          {
+            "changes_vs_current": {
+              "action_changes": 13,
+              "corrected": 2,
+              "worsened": 1
+            },
+            "eligible": false,
+            "maximum_regret": 0.5964912280701754,
+            "mean_regret": 0.11951754385964912,
+            "override_count": 13,
+            "score_margin": 0.05
+          },
+          {
+            "changes_vs_current": {
+              "action_changes": 0,
+              "corrected": 0,
+              "worsened": 0
+            },
+            "eligible": false,
+            "maximum_regret": 0.5964912280701754,
+            "mean_regret": 0.1337719298245614,
+            "override_count": 0,
+            "score_margin": 0.1
+          },
+          {
+            "changes_vs_current": {
+              "action_changes": 0,
+              "corrected": 0,
+              "worsened": 0
+            },
+            "eligible": false,
+            "maximum_regret": 0.5964912280701754,
+            "mean_regret": 0.1337719298245614,
+            "override_count": 0,
+            "score_margin": 0.2
+          }
+        ]
+      },
+      {
+        "epoch": 8,
+        "fit_final_loss": 0.6575436592102051,
+        "margins": [
+          {
+            "changes_vs_current": {
+              "action_changes": 15,
+              "corrected": 3,
+              "worsened": 1
+            },
+            "eligible": false,
+            "maximum_regret": 0.29824561403508776,
+            "mean_regret": 0.10087719298245613,
+            "override_count": 15,
+            "score_margin": 0.0
+          },
+          {
+            "changes_vs_current": {
+              "action_changes": 15,
+              "corrected": 3,
+              "worsened": 1
+            },
+            "eligible": false,
+            "maximum_regret": 0.29824561403508776,
+            "mean_regret": 0.10087719298245613,
+            "override_count": 15,
+            "score_margin": 0.01
+          },
+          {
+            "changes_vs_current": {
+              "action_changes": 15,
+              "corrected": 3,
+              "worsened": 1
+            },
+            "eligible": false,
+            "maximum_regret": 0.29824561403508776,
+            "mean_regret": 0.10087719298245613,
+            "override_count": 15,
+            "score_margin": 0.02
+          },
+          {
+            "changes_vs_current": {
+              "action_changes": 15,
+              "corrected": 3,
+              "worsened": 1
+            },
+            "eligible": false,
+            "maximum_regret": 0.29824561403508776,
+            "mean_regret": 0.10087719298245613,
+            "override_count": 15,
+            "score_margin": 0.05
+          },
+          {
+            "changes_vs_current": {
+              "action_changes": 13,
+              "corrected": 2,
+              "worsened": 1
+            },
+            "eligible": false,
+            "maximum_regret": 0.5964912280701754,
+            "mean_regret": 0.11951754385964912,
+            "override_count": 13,
+            "score_margin": 0.1
+          },
+          {
+            "changes_vs_current": {
+              "action_changes": 0,
+              "corrected": 0,
+              "worsened": 0
+            },
+            "eligible": false,
+            "maximum_regret": 0.5964912280701754,
+            "mean_regret": 0.1337719298245614,
+            "override_count": 0,
+            "score_margin": 0.2
+          }
+        ]
+      },
+      {
+        "epoch": 16,
+        "fit_final_loss": 0.571315328280131,
+        "margins": [
+          {
+            "changes_vs_current": {
+              "action_changes": 15,
+              "corrected": 3,
+              "worsened": 1
+            },
+            "eligible": false,
+            "maximum_regret": 0.5964912280701754,
+            "mean_regret": 0.11732456140350876,
+            "override_count": 15,
+            "score_margin": 0.0
+          },
+          {
+            "changes_vs_current": {
+              "action_changes": 15,
+              "corrected": 3,
+              "worsened": 1
+            },
+            "eligible": false,
+            "maximum_regret": 0.5964912280701754,
+            "mean_regret": 0.11732456140350876,
+            "override_count": 15,
+            "score_margin": 0.01
+          },
+          {
+            "changes_vs_current": {
+              "action_changes": 15,
+              "corrected": 3,
+              "worsened": 1
+            },
+            "eligible": false,
+            "maximum_regret": 0.5964912280701754,
+            "mean_regret": 0.11732456140350876,
+            "override_count": 15,
+            "score_margin": 0.02
+          },
+          {
+            "changes_vs_current": {
+              "action_changes": 15,
+              "corrected": 3,
+              "worsened": 1
+            },
+            "eligible": false,
+            "maximum_regret": 0.5964912280701754,
+            "mean_regret": 0.11732456140350876,
+            "override_count": 15,
+            "score_margin": 0.05
+          },
+          {
+            "changes_vs_current": {
+              "action_changes": 15,
+              "corrected": 3,
+              "worsened": 1
+            },
+            "eligible": false,
+            "maximum_regret": 0.5964912280701754,
+            "mean_regret": 0.11732456140350876,
+            "override_count": 15,
+            "score_margin": 0.1
+          },
+          {
+            "changes_vs_current": {
+              "action_changes": 15,
+              "corrected": 3,
+              "worsened": 1
+            },
+            "eligible": false,
+            "maximum_regret": 0.5964912280701754,
+            "mean_regret": 0.11732456140350876,
+            "override_count": 15,
+            "score_margin": 0.2
+          }
+        ]
+      },
+      {
+        "epoch": 32,
+        "fit_final_loss": 0.3230220874150594,
+        "margins": [
+          {
+            "changes_vs_current": {
+              "action_changes": 15,
+              "corrected": 4,
+              "worsened": 0
+            },
+            "eligible": true,
+            "maximum_regret": 0.5964912280701754,
+            "mean_regret": 0.11293859649122806,
+            "override_count": 15,
+            "score_margin": 0.0
+          },
+          {
+            "changes_vs_current": {
+              "action_changes": 15,
+              "corrected": 4,
+              "worsened": 0
+            },
+            "eligible": true,
+            "maximum_regret": 0.5964912280701754,
+            "mean_regret": 0.11293859649122806,
+            "override_count": 15,
+            "score_margin": 0.01
+          },
+          {
+            "changes_vs_current": {
+              "action_changes": 15,
+              "corrected": 4,
+              "worsened": 0
+            },
+            "eligible": true,
+            "maximum_regret": 0.5964912280701754,
+            "mean_regret": 0.11293859649122806,
+            "override_count": 15,
+            "score_margin": 0.02
+          },
+          {
+            "changes_vs_current": {
+              "action_changes": 15,
+              "corrected": 4,
+              "worsened": 0
+            },
+            "eligible": true,
+            "maximum_regret": 0.5964912280701754,
+            "mean_regret": 0.11293859649122806,
+            "override_count": 15,
+            "score_margin": 0.05
+          },
+          {
+            "changes_vs_current": {
+              "action_changes": 15,
+              "corrected": 4,
+              "worsened": 0
+            },
+            "eligible": true,
+            "maximum_regret": 0.5964912280701754,
+            "mean_regret": 0.11293859649122806,
+            "override_count": 15,
+            "score_margin": 0.1
+          },
+          {
+            "changes_vs_current": {
+              "action_changes": 15,
+              "corrected": 4,
+              "worsened": 0
+            },
+            "eligible": true,
+            "maximum_regret": 0.5964912280701754,
+            "mean_regret": 0.11293859649122806,
+            "override_count": 15,
+            "score_margin": 0.2
+          }
+        ]
+      }
+    ],
+    "current_tune": {
+      "maximum_regret": 0.5964912280701754,
+      "mean_regret": 0.1337719298245614,
+      "unique_best_accuracy": 0.0,
+      "unique_best_rows": 6
+    },
+    "fit_sources": 48,
+    "selected_epoch": 32,
+    "selected_score_margin": 0.2,
+    "tune_sources": 16
+  },
+  "verdict": "current_relative_shop_ranker_not_ready_after_fresh_evaluation"
+}
