@@ -1,0 +1,99 @@
+{
+  "schema_version": 1,
+  "experiment_id": "combat-rl-repaired-training-20260814-r1",
+  "source_commit": "0ff8ffb64fc24656e74bdc586257eaa4866b9e58",
+  "started_at": "2026-08-14T22:02:30+08:00",
+  "finished_at": "2026-08-14T22:28:32+08:00",
+  "configuration": {
+    "agent": "combat_rl",
+    "rl_space_version": "v2",
+    "mode": "train",
+    "maximum_games": 10,
+    "elite_route": "conservative",
+    "ascension": 0,
+    "expert_mix_enabled": true,
+    "expert_mix_probability": 0.3,
+    "card_uplift_enabled": false,
+    "fixed_seed_pool": false,
+    "decision_trace_enabled": false,
+    "sim_divergence_trace_enabled": false
+  },
+  "entry_checkpoint": {
+    "path": "D:/SteamLibrary/steamapps/common/SlayTheSpire/checkpoints_archive/combat_rl/rl_combat_model_ep9_steps11848.pth.20260814-191449.bak",
+    "sha256": "780f6a94754b741e8e68d278d44dc68a80cf2b137c2d6fd8a39c7f042c936558",
+    "payload_episode": 5,
+    "total_steps": 11848,
+    "epsilon": 0.887444,
+    "optimizer_step": 2679
+  },
+  "output_checkpoint": {
+    "path": "reports/combat_rl_repaired_training_20260814_r1/rl_combat_model_ep19_steps14035.pth",
+    "sha256": "dcbe7fddc212aaa6ae2a09adebe44265f83d4fd8c92a80e3269a22f7e5843e3a",
+    "payload_episode": 10,
+    "total_steps": 14035,
+    "epsilon": 0.866696,
+    "optimizer_step": 3194,
+    "all_tensors_finite": true
+  },
+  "training_delta": {
+    "accepted_transitions": 2187,
+    "optimizer_steps": 515,
+    "whole_model_relative_l2": 0.024779215455055237,
+    "embedding_relative_l2": 0.0035675347317010164,
+    "hidden_relative_l2": 0.11710604280233383,
+    "value_stream_relative_l2": 0.13011416792869568,
+    "advantage_stream_relative_l2": 0.19337818026542664,
+    "dead_output_layer_relative_l2": 0.0
+  },
+  "runtime_integrity": {
+    "replay_rejected": 0,
+    "pending_finish_failed": 0,
+    "executed_action_bind_failed": 0,
+    "rl_agent_failed": 0,
+    "strict_nan_matches": 0,
+    "outer_guard_replacements": {
+      "lethal": 21,
+      "energy": 89,
+      "potion": 21,
+      "survival": 18,
+      "boss": 6,
+      "total": 155
+    }
+  },
+  "outcomes": {
+    "games": 10,
+    "victories": 0,
+    "floor_total": 281,
+    "floor_mean": 28.1,
+    "floor_median": 32.0,
+    "act_1_boss_reached": 10,
+    "act_2_entered": 9,
+    "act_2_boss_reached": 5,
+    "floors": [25, 33, 16, 33, 22, 33, 22, 33, 33, 31]
+  },
+  "runs": [
+    {"file": "runs/1786716304.run", "sha256": "cf251cd5b920893760dfcb77f4ece00db760cf8b0d8bb9ce37052a63a9f275a6", "seed_played": "-441896505481849062", "floor_reached": 25, "victory": false, "killed_by": "3 Cultists"},
+    {"file": "runs/1786716447.run", "sha256": "2c05b6f45f09b0e91616e7a9e55cdfec687d9db6055af8ecc653c98eb54a4c91", "seed_played": "-6999057769512594708", "floor_reached": 33, "victory": false, "killed_by": "Champ"},
+    {"file": "runs/1786716528.run", "sha256": "b2be633a27c1dfebc1bc21b19d63c117e79b112e4a07748f9b808c66d7864978", "seed_played": "6908824665425577202", "floor_reached": 16, "victory": false, "killed_by": "Slime Boss"},
+    {"file": "runs/1786716720.run", "sha256": "76c2587529924ed1b51a873ee1d7e4368e662ab1019647d26f83bc79079d6f0a", "seed_played": "-3294134916916169287", "floor_reached": 33, "victory": false, "killed_by": "Automaton"},
+    {"file": "runs/1786716864.run", "sha256": "1f639965b72217164f832398c16cde0c257567bba36a966a296fdff7493c84e3", "seed_played": "-1846531290450767465", "floor_reached": 22, "victory": false, "killed_by": "Centurion and Healer"},
+    {"file": "runs/1786717054.run", "sha256": "437cd3f8fa8c3848717ceab3237685bfb4c0e10b0fc7abf34b5e16ac1dc216a4", "seed_played": "-3916267798237508051", "floor_reached": 33, "victory": false, "killed_by": "Collector"},
+    {"file": "runs/1786717179.run", "sha256": "9db7a9e57aabcb8a8caafc7ac0fa52e14cac9896b910e1a43ef527697aca0088", "seed_played": "-3061665163207083334", "floor_reached": 22, "victory": false, "killed_by": "Snake Plant"},
+    {"file": "runs/1786717332.run", "sha256": "f7d816da682aa4f2896a0fdd9940fd0da038e85f4b39cf4711e26fe62d1547a7", "seed_played": "-6047558691650118902", "floor_reached": 33, "victory": false, "killed_by": "Automaton"},
+    {"file": "runs/1786717532.run", "sha256": "138814e707d91c38ba30158742cbea82ab7fa30aef2fcb72720c76d57db5b902", "seed_played": "-1177788047489312607", "floor_reached": 33, "victory": false, "killed_by": "Automaton"},
+    {"file": "runs/1786717709.run", "sha256": "5bd7adb7d1b78fbe6b4cadb6ec9c81e2755761d171e1a8d26a8b6dc1aaa5cbf5", "seed_played": "-5637389209284433126", "floor_reached": 31, "victory": false, "killed_by": "Snecko"}
+  ],
+  "configuration_evidence": {
+    "launch_config": "reports/combat_rl_repaired_training_20260814_r1_launch_config.properties",
+    "launch_config_sha256": "7c95b3ba66401eee54401d93d7a3f582ae4c8254fdcf0df14151ac487ee9ab3c",
+    "restored_config": "reports/combat_rl_repaired_training_20260814_r1_previous_config.properties",
+    "restored_config_sha256": "b42093aef81a17ff1e3eb2dec4187c3af48a1a512a355c9d4d613c4cde2803c",
+    "restored_after_batch": true
+  },
+  "decision": "candidate_requires_matched_zero_epsilon_gate",
+  "notes": [
+    "Training outcomes include exploration and expert mixing and are not promotion evidence.",
+    "The checkpoint filename episode and payload episode remain inconsistent; total_steps and hashes identify the artifact.",
+    "The game process was closed after the batch and CommunicationMod config was restored."
+  ]
+}
