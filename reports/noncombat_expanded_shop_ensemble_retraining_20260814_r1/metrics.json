@@ -1,0 +1,1037 @@
+{
+  "changes_vs_current": {
+    "action_changes": 29,
+    "corrected": 7,
+    "worsened": 7
+  },
+  "checks": {
+    "corrects_at_least_one_current_decision": true,
+    "fresh_informative_support": true,
+    "fresh_support": true,
+    "maximum_regret_noninferior_to_current": true,
+    "mean_regret_improves_current": false,
+    "overrides_at_least_one": true,
+    "worsened_not_more_than_corrected": true
+  },
+  "fresh": {
+    "current": {
+      "maximum_regret": 2.017543859649123,
+      "mean_regret": 0.15625,
+      "predictions": [
+        {
+          "action_id": "shop:remove_card",
+          "decision_index": 7,
+          "regret": 0.05263157894736842,
+          "seed": 95492,
+          "source_sha256": "14c3cd8541ed4db464f9ca750564b5fe2a5fa38091d18fff283f85504bf48064"
+        },
+        {
+          "action_id": "shop:remove_card",
+          "decision_index": 3,
+          "regret": 0.0,
+          "seed": 95493,
+          "source_sha256": "374e5a6c5c42e7ec996e13f09e990fd87e3612ca60c4594c5696d193a46f0ad1"
+        },
+        {
+          "action_id": "shop:remove_card",
+          "decision_index": 21,
+          "regret": 0.0,
+          "seed": 95494,
+          "source_sha256": "cecc71ce7dd4db4155385cbf01146268ff853a0fa66e5fd19bcf3abd0a819093"
+        },
+        {
+          "action_id": "shop:remove_card",
+          "decision_index": 4,
+          "regret": 0.0350877192982455,
+          "seed": 95495,
+          "source_sha256": "70e4a9c57784faebac677be1bde89f4d5343c47ea2fbe6a639ee9cad17c56d93"
+        },
+        {
+          "action_id": "shop:remove_card",
+          "decision_index": 3,
+          "regret": 0.0,
+          "seed": 95497,
+          "source_sha256": "4310ef8ea84fee2d72a3882e464f88063800ec27ee25006f00aa3a1e3836d47f"
+        },
+        {
+          "action_id": "shop:remove_card",
+          "decision_index": 3,
+          "regret": 0.0,
+          "seed": 95498,
+          "source_sha256": "45acd65229aacd4c4ea40d70f612347f3e379f005c13293bfb0e7a67988813a0"
+        },
+        {
+          "action_id": "shop:remove_card",
+          "decision_index": 4,
+          "regret": 0.0,
+          "seed": 95499,
+          "source_sha256": "55f4f05eed57210778e6452c0043fe94e3ad54339635784d35a84de22d40d70c"
+        },
+        {
+          "action_id": "shop:buy_card:0:perfected_strike",
+          "decision_index": 5,
+          "regret": 0.15789473684210525,
+          "seed": 95500,
+          "source_sha256": "5540cb8c48acf99db74b2aca7143644a5f0b815c96dac1ba65342012532d2f62"
+        },
+        {
+          "action_id": "shop:remove_card",
+          "decision_index": 10,
+          "regret": 0.0,
+          "seed": 95501,
+          "source_sha256": "5633ff5299d993f322949d09842b29ca99192955a025ba82e1e37f594f3f99d2"
+        },
+        {
+          "action_id": "shop:remove_card",
+          "decision_index": 23,
+          "regret": 0.2982456140350877,
+          "seed": 95502,
+          "source_sha256": "2bb341bac906fc138283544b09e4aa9a664b8dd7aeb1476a6a58cacc279aa382"
+        },
+        {
+          "action_id": "shop:remove_card",
+          "decision_index": 17,
+          "regret": 2.017543859649123,
+          "seed": 95503,
+          "source_sha256": "2dbd5fd05810e05251a19bad189333478b4c60b326159ba8b92a3644c05229f7"
+        },
+        {
+          "action_id": "shop:remove_card",
+          "decision_index": 3,
+          "regret": 0.0,
+          "seed": 95507,
+          "source_sha256": "be023caa6908bfd5fd1aa37ffc4aa439f0ae6932b772cc91191faf0bb349fd66"
+        },
+        {
+          "action_id": "shop:remove_card",
+          "decision_index": 4,
+          "regret": 0.052631578947368474,
+          "seed": 95509,
+          "source_sha256": "c5d79b05744434630540c2a28aa10227af292ea0191a97f33b75c8d15051b7b3"
+        },
+        {
+          "action_id": "shop:remove_card",
+          "decision_index": 5,
+          "regret": 0.10526315789473684,
+          "seed": 95510,
+          "source_sha256": "cd05234f828d04f6b30165c3ddf42bd801d0f415b751019ac32d5e22a06bc0ed"
+        },
+        {
+          "action_id": "shop:remove_card",
+          "decision_index": 7,
+          "regret": 0.0,
+          "seed": 95512,
+          "source_sha256": "0a7bcdb638de9a8b6b4bc2eed3a2a5b2c5b97744b65f8234044c6cec1103c98a"
+        },
+        {
+          "action_id": "shop:remove_card",
+          "decision_index": 9,
+          "regret": 0.0,
+          "seed": 95513,
+          "source_sha256": "cb0fd750bc466943457499c5d85c66f1dfd578f8fc56ebe192ecb4e4b2d3e59f"
+        },
+        {
+          "action_id": "shop:remove_card",
+          "decision_index": 6,
+          "regret": 0.4561403508771929,
+          "seed": 95516,
+          "source_sha256": "ddd9aa62ceea3b297a262642625a1e0a59143af34bafd065e72b4a2fc059a761"
+        },
+        {
+          "action_id": "shop:remove_card",
+          "decision_index": 5,
+          "regret": 0.0,
+          "seed": 95517,
+          "source_sha256": "8b433848d575150bdc45f07c8ac4b62ea840346f7ffdea71af925a7259bece3b"
+        },
+        {
+          "action_id": "shop:remove_card",
+          "decision_index": 5,
+          "regret": 0.10526315789473684,
+          "seed": 95518,
+          "source_sha256": "5dc8524f958e5210ea6164b5cd306002b1d5e769bf44d1aee201491241a608fc"
+        },
+        {
+          "action_id": "shop:remove_card",
+          "decision_index": 18,
+          "regret": 0.17543859649122806,
+          "seed": 95519,
+          "source_sha256": "94ea987340d6972e2a7eff94da1c4b017d712b6e54344e7fdcc7ced98296e633"
+        },
+        {
+          "action_id": "shop:remove_card",
+          "decision_index": 7,
+          "regret": 0.017543859649122806,
+          "seed": 95521,
+          "source_sha256": "7785640565913359295e4552c50def8190803f897e559d2124a3134030d91ee8"
+        },
+        {
+          "action_id": "shop:remove_card",
+          "decision_index": 4,
+          "regret": 0.0,
+          "seed": 95522,
+          "source_sha256": "e6de6e1fa35252a011f048e26170543f3f63ed4174904a14fab0ffbb2c8d6537"
+        },
+        {
+          "action_id": "shop:remove_card",
+          "decision_index": 10,
+          "regret": 0.0,
+          "seed": 95524,
+          "source_sha256": "b8bd9dc1f47d208253101aeb9f702f6745c775a19ee48b3da9b5a5006c3a4834"
+        },
+        {
+          "action_id": "shop:remove_card",
+          "decision_index": 6,
+          "regret": 0.03508771929824561,
+          "seed": 95525,
+          "source_sha256": "fb6f95bd6a4c01086c5ed39815a9acc9d490478af9b1656d589c4570903e7cf6"
+        },
+        {
+          "action_id": "shop:remove_card",
+          "decision_index": 3,
+          "regret": 0.29824561403508765,
+          "seed": 95526,
+          "source_sha256": "6ce8f6d3d17ceea95182cf0f839ee9b4b482084c283e3245849baeb7aa9dc095"
+        },
+        {
+          "action_id": "shop:remove_card",
+          "decision_index": 4,
+          "regret": 0.29824561403508776,
+          "seed": 95527,
+          "source_sha256": "caf657bbc97d17ae7d3e6bc022b067092611ecff2a3726b142963a4b7c5e6bd4"
+        },
+        {
+          "action_id": "shop:remove_card",
+          "decision_index": 23,
+          "regret": 0.08771929824561403,
+          "seed": 95528,
+          "source_sha256": "ba69dd9dd6529ba1493ec14bda128a90eb77d3b85df16dcdcbdebbbd03a36763"
+        },
+        {
+          "action_id": "shop:buy_relic:2:membership_card",
+          "decision_index": 17,
+          "regret": 0.10526315789473689,
+          "seed": 95529,
+          "source_sha256": "ff216cef9936641f878e84dbd24dacd080c4ea3b64ae1a141e8fe58567e2352a"
+        },
+        {
+          "action_id": "shop:remove_card",
+          "decision_index": 9,
+          "regret": 0.10526315789473684,
+          "seed": 95531,
+          "source_sha256": "486163cc5f2b4103f3aa84d9fe15ae5c209b5d5373082ac185a20790a2ac1798"
+        },
+        {
+          "action_id": "shop:remove_card",
+          "decision_index": 9,
+          "regret": 0.29824561403508776,
+          "seed": 95532,
+          "source_sha256": "ff1d04551cc0a6d6e6126c95fef7df4b4005c5559933f5c7c80570ffdb9c0504"
+        },
+        {
+          "action_id": "shop:remove_card",
+          "decision_index": 4,
+          "regret": 0.0,
+          "seed": 95533,
+          "source_sha256": "226ba25555827a4520d50472652fcc066530a212f188c6a8aa5f739168d9c1c6"
+        },
+        {
+          "action_id": "shop:remove_card",
+          "decision_index": 7,
+          "regret": 0.29824561403508776,
+          "seed": 95534,
+          "source_sha256": "cbd81d0fe8e3bbda3baead27fc90865c14a68a5474658e8eeeef69be87948c55"
+        }
+      ],
+      "unique_best_accuracy": 0.15384615384615385,
+      "unique_best_rows": 13
+    },
+    "gated": {
+      "maximum_regret": 2.017543859649123,
+      "mean_regret": 0.24232456140350878,
+      "override_count": 29,
+      "p95_regret": 2.017543859649123,
+      "predictions": [
+        {
+          "action_id": "shop:buy_card:1:anger",
+          "current_action_id": "shop:remove_card",
+          "decision_index": 7,
+          "learned_action_id": "shop:buy_card:1:anger",
+          "mean_centered_score": 1.2946876287460327,
+          "regret": 0.0,
+          "seed": 95492,
+          "source_sha256": "14c3cd8541ed4db464f9ca750564b5fe2a5fa38091d18fff283f85504bf48064",
+          "vote_count": 5,
+          "vote_fraction": 1.0
+        },
+        {
+          "action_id": "shop:buy_card:3:shrug_it_off",
+          "current_action_id": "shop:remove_card",
+          "decision_index": 3,
+          "learned_action_id": "shop:buy_card:3:shrug_it_off",
+          "mean_centered_score": 0.5143089890480042,
+          "regret": 0.29824561403508765,
+          "seed": 95493,
+          "source_sha256": "374e5a6c5c42e7ec996e13f09e990fd87e3612ca60c4594c5696d193a46f0ad1",
+          "vote_count": 5,
+          "vote_fraction": 1.0
+        },
+        {
+          "action_id": "shop:buy_potion:1:fairy_potion",
+          "current_action_id": "shop:remove_card",
+          "decision_index": 21,
+          "learned_action_id": "shop:buy_potion:1:fairy_potion",
+          "mean_centered_score": 0.9877892732620239,
+          "regret": 0.0,
+          "seed": 95494,
+          "source_sha256": "cecc71ce7dd4db4155385cbf01146268ff853a0fa66e5fd19bcf3abd0a819093",
+          "vote_count": 5,
+          "vote_fraction": 1.0
+        },
+        {
+          "action_id": "shop:buy_card:1:cleave",
+          "current_action_id": "shop:remove_card",
+          "decision_index": 4,
+          "learned_action_id": "shop:buy_card:1:cleave",
+          "mean_centered_score": 1.610974907875061,
+          "regret": 0.4385964912280701,
+          "seed": 95495,
+          "source_sha256": "70e4a9c57784faebac677be1bde89f4d5343c47ea2fbe6a639ee9cad17c56d93",
+          "vote_count": 5,
+          "vote_fraction": 1.0
+        },
+        {
+          "action_id": "shop:buy_card:0:pommel_strike",
+          "current_action_id": "shop:remove_card",
+          "decision_index": 3,
+          "learned_action_id": "shop:buy_card:0:pommel_strike",
+          "mean_centered_score": 0.7794740796089172,
+          "regret": 0.29824561403508765,
+          "seed": 95497,
+          "source_sha256": "4310ef8ea84fee2d72a3882e464f88063800ec27ee25006f00aa3a1e3836d47f",
+          "vote_count": 5,
+          "vote_fraction": 1.0
+        },
+        {
+          "action_id": "shop:buy_card:1:uppercut",
+          "current_action_id": "shop:remove_card",
+          "decision_index": 3,
+          "learned_action_id": "shop:buy_card:1:uppercut",
+          "mean_centered_score": 1.1498721837997437,
+          "regret": 0.26315789473684204,
+          "seed": 95498,
+          "source_sha256": "45acd65229aacd4c4ea40d70f612347f3e379f005c13293bfb0e7a67988813a0",
+          "vote_count": 5,
+          "vote_fraction": 1.0
+        },
+        {
+          "action_id": "shop:buy_potion:0:fear_potion",
+          "current_action_id": "shop:remove_card",
+          "decision_index": 4,
+          "learned_action_id": "shop:buy_potion:0:fear_potion",
+          "mean_centered_score": 1.1906744241714478,
+          "regret": 0.0,
+          "seed": 95499,
+          "source_sha256": "55f4f05eed57210778e6452c0043fe94e3ad54339635784d35a84de22d40d70c",
+          "vote_count": 5,
+          "vote_fraction": 1.0
+        },
+        {
+          "action_id": "shop:buy_card:2:shrug_it_off",
+          "current_action_id": "shop:buy_card:0:perfected_strike",
+          "decision_index": 5,
+          "learned_action_id": "shop:buy_card:2:shrug_it_off",
+          "mean_centered_score": 0.59039306640625,
+          "regret": 0.15789473684210525,
+          "seed": 95500,
+          "source_sha256": "5540cb8c48acf99db74b2aca7143644a5f0b815c96dac1ba65342012532d2f62",
+          "vote_count": 5,
+          "vote_fraction": 1.0
+        },
+        {
+          "action_id": "shop:buy_potion:2:entropic_brew",
+          "current_action_id": "shop:remove_card",
+          "decision_index": 10,
+          "learned_action_id": "shop:buy_potion:2:entropic_brew",
+          "mean_centered_score": 1.295575737953186,
+          "regret": 0.0,
+          "seed": 95501,
+          "source_sha256": "5633ff5299d993f322949d09842b29ca99192955a025ba82e1e37f594f3f99d2",
+          "vote_count": 5,
+          "vote_fraction": 1.0
+        },
+        {
+          "action_id": "shop:buy_relic:1:bronze_scales",
+          "current_action_id": "shop:remove_card",
+          "decision_index": 23,
+          "learned_action_id": "shop:buy_relic:1:bronze_scales",
+          "mean_centered_score": 0.9031772613525391,
+          "regret": 0.2982456140350877,
+          "seed": 95502,
+          "source_sha256": "2bb341bac906fc138283544b09e4aa9a664b8dd7aeb1476a6a58cacc279aa382",
+          "vote_count": 5,
+          "vote_fraction": 1.0
+        },
+        {
+          "action_id": "shop:buy_relic:2:strange_spoon",
+          "current_action_id": "shop:remove_card",
+          "decision_index": 17,
+          "learned_action_id": "shop:buy_relic:2:strange_spoon",
+          "mean_centered_score": 0.8903692960739136,
+          "regret": 2.017543859649123,
+          "seed": 95503,
+          "source_sha256": "2dbd5fd05810e05251a19bad189333478b4c60b326159ba8b92a3644c05229f7",
+          "vote_count": 5,
+          "vote_fraction": 1.0
+        },
+        {
+          "action_id": "shop:buy_potion:2:ancient_potion",
+          "current_action_id": "shop:remove_card",
+          "decision_index": 3,
+          "learned_action_id": "shop:buy_potion:2:ancient_potion",
+          "mean_centered_score": 0.617525577545166,
+          "regret": 0.0,
+          "seed": 95507,
+          "source_sha256": "be023caa6908bfd5fd1aa37ffc4aa439f0ae6932b772cc91191faf0bb349fd66",
+          "vote_count": 5,
+          "vote_fraction": 1.0
+        },
+        {
+          "action_id": "shop:remove_card",
+          "current_action_id": "shop:remove_card",
+          "decision_index": 4,
+          "learned_action_id": "shop:buy_card:4:inflame",
+          "mean_centered_score": 1.641237497329712,
+          "regret": 0.052631578947368474,
+          "seed": 95509,
+          "source_sha256": "c5d79b05744434630540c2a28aa10227af292ea0191a97f33b75c8d15051b7b3",
+          "vote_count": 4,
+          "vote_fraction": 0.8
+        },
+        {
+          "action_id": "shop:buy_potion:0:fear_potion",
+          "current_action_id": "shop:remove_card",
+          "decision_index": 5,
+          "learned_action_id": "shop:buy_potion:0:fear_potion",
+          "mean_centered_score": 1.1941616535186768,
+          "regret": 0.10526315789473684,
+          "seed": 95510,
+          "source_sha256": "cd05234f828d04f6b30165c3ddf42bd801d0f415b751019ac32d5e22a06bc0ed",
+          "vote_count": 5,
+          "vote_fraction": 1.0
+        },
+        {
+          "action_id": "shop:leave",
+          "current_action_id": "shop:remove_card",
+          "decision_index": 7,
+          "learned_action_id": "shop:leave",
+          "mean_centered_score": 0.22199754416942596,
+          "regret": 0.0,
+          "seed": 95512,
+          "source_sha256": "0a7bcdb638de9a8b6b4bc2eed3a2a5b2c5b97744b65f8234044c6cec1103c98a",
+          "vote_count": 5,
+          "vote_fraction": 1.0
+        },
+        {
+          "action_id": "shop:buy_card:0:pommel_strike",
+          "current_action_id": "shop:remove_card",
+          "decision_index": 9,
+          "learned_action_id": "shop:buy_card:0:pommel_strike",
+          "mean_centered_score": 0.7609633803367615,
+          "regret": 0.2982456140350877,
+          "seed": 95513,
+          "source_sha256": "cb0fd750bc466943457499c5d85c66f1dfd578f8fc56ebe192ecb4e4b2d3e59f",
+          "vote_count": 5,
+          "vote_fraction": 1.0
+        },
+        {
+          "action_id": "shop:buy_card:5:blind",
+          "current_action_id": "shop:remove_card",
+          "decision_index": 6,
+          "learned_action_id": "shop:buy_card:5:blind",
+          "mean_centered_score": 1.6314728260040283,
+          "regret": 0.1578947368421052,
+          "seed": 95516,
+          "source_sha256": "ddd9aa62ceea3b297a262642625a1e0a59143af34bafd065e72b4a2fc059a761",
+          "vote_count": 5,
+          "vote_fraction": 1.0
+        },
+        {
+          "action_id": "shop:buy_card:0:cleave",
+          "current_action_id": "shop:remove_card",
+          "decision_index": 5,
+          "learned_action_id": "shop:buy_card:0:cleave",
+          "mean_centered_score": 1.3995592594146729,
+          "regret": 0.0,
+          "seed": 95517,
+          "source_sha256": "8b433848d575150bdc45f07c8ac4b62ea840346f7ffdea71af925a7259bece3b",
+          "vote_count": 5,
+          "vote_fraction": 1.0
+        },
+        {
+          "action_id": "shop:remove_card",
+          "current_action_id": "shop:remove_card",
+          "decision_index": 5,
+          "learned_action_id": "shop:buy_card:0:dropkick",
+          "mean_centered_score": 0.6985622644424438,
+          "regret": 0.10526315789473684,
+          "seed": 95518,
+          "source_sha256": "5dc8524f958e5210ea6164b5cd306002b1d5e769bf44d1aee201491241a608fc",
+          "vote_count": 4,
+          "vote_fraction": 0.8
+        },
+        {
+          "action_id": "shop:buy_relic:0:pen_nib",
+          "current_action_id": "shop:remove_card",
+          "decision_index": 18,
+          "learned_action_id": "shop:buy_relic:0:pen_nib",
+          "mean_centered_score": 0.9089924693107605,
+          "regret": 0.0,
+          "seed": 95519,
+          "source_sha256": "94ea987340d6972e2a7eff94da1c4b017d712b6e54344e7fdcc7ced98296e633",
+          "vote_count": 5,
+          "vote_fraction": 1.0
+        },
+        {
+          "action_id": "shop:buy_card:0:pommel_strike",
+          "current_action_id": "shop:remove_card",
+          "decision_index": 7,
+          "learned_action_id": "shop:buy_card:0:pommel_strike",
+          "mean_centered_score": 0.7540550231933594,
+          "regret": 0.0,
+          "seed": 95521,
+          "source_sha256": "7785640565913359295e4552c50def8190803f897e559d2124a3134030d91ee8",
+          "vote_count": 5,
+          "vote_fraction": 1.0
+        },
+        {
+          "action_id": "shop:buy_card:0:anger",
+          "current_action_id": "shop:remove_card",
+          "decision_index": 4,
+          "learned_action_id": "shop:buy_card:0:anger",
+          "mean_centered_score": 1.3611005544662476,
+          "regret": 0.0,
+          "seed": 95522,
+          "source_sha256": "e6de6e1fa35252a011f048e26170543f3f63ed4174904a14fab0ffbb2c8d6537",
+          "vote_count": 5,
+          "vote_fraction": 1.0
+        },
+        {
+          "action_id": "shop:buy_potion:0:fairy_potion",
+          "current_action_id": "shop:remove_card",
+          "decision_index": 10,
+          "learned_action_id": "shop:buy_potion:0:fairy_potion",
+          "mean_centered_score": 1.1399648189544678,
+          "regret": 0.14035087719298245,
+          "seed": 95524,
+          "source_sha256": "b8bd9dc1f47d208253101aeb9f702f6745c775a19ee48b3da9b5a5006c3a4834",
+          "vote_count": 5,
+          "vote_fraction": 1.0
+        },
+        {
+          "action_id": "shop:buy_potion:1:swift_potion",
+          "current_action_id": "shop:remove_card",
+          "decision_index": 6,
+          "learned_action_id": "shop:buy_potion:1:swift_potion",
+          "mean_centered_score": 0.5951342582702637,
+          "regret": 0.03508771929824561,
+          "seed": 95525,
+          "source_sha256": "fb6f95bd6a4c01086c5ed39815a9acc9d490478af9b1656d589c4570903e7cf6",
+          "vote_count": 5,
+          "vote_fraction": 1.0
+        },
+        {
+          "action_id": "shop:buy_card:5:swift_strike",
+          "current_action_id": "shop:remove_card",
+          "decision_index": 3,
+          "learned_action_id": "shop:buy_card:5:swift_strike",
+          "mean_centered_score": 1.3649441003799438,
+          "regret": 0.0,
+          "seed": 95526,
+          "source_sha256": "6ce8f6d3d17ceea95182cf0f839ee9b4b482084c283e3245849baeb7aa9dc095",
+          "vote_count": 5,
+          "vote_fraction": 1.0
+        },
+        {
+          "action_id": "shop:remove_card",
+          "current_action_id": "shop:remove_card",
+          "decision_index": 4,
+          "learned_action_id": "shop:buy_card:3:dual_wield",
+          "mean_centered_score": 1.0328924655914307,
+          "regret": 0.29824561403508776,
+          "seed": 95527,
+          "source_sha256": "caf657bbc97d17ae7d3e6bc022b067092611ecff2a3726b142963a4b7c5e6bd4",
+          "vote_count": 4,
+          "vote_fraction": 0.8
+        },
+        {
+          "action_id": "shop:buy_card:1:cleave",
+          "current_action_id": "shop:remove_card",
+          "decision_index": 23,
+          "learned_action_id": "shop:buy_card:1:cleave",
+          "mean_centered_score": 1.6807998418807983,
+          "regret": 0.08771929824561403,
+          "seed": 95528,
+          "source_sha256": "ba69dd9dd6529ba1493ec14bda128a90eb77d3b85df16dcdcbdebbbd03a36763",
+          "vote_count": 5,
+          "vote_fraction": 1.0
+        },
+        {
+          "action_id": "shop:buy_card:6:master_of_strategy",
+          "current_action_id": "shop:buy_relic:2:membership_card",
+          "decision_index": 17,
+          "learned_action_id": "shop:buy_card:6:master_of_strategy",
+          "mean_centered_score": 0.4363476634025574,
+          "regret": 0.0,
+          "seed": 95529,
+          "source_sha256": "ff216cef9936641f878e84dbd24dacd080c4ea3b64ae1a141e8fe58567e2352a",
+          "vote_count": 5,
+          "vote_fraction": 1.0
+        },
+        {
+          "action_id": "shop:buy_card:4:inflame",
+          "current_action_id": "shop:remove_card",
+          "decision_index": 9,
+          "learned_action_id": "shop:buy_card:4:inflame",
+          "mean_centered_score": 1.6201181411743164,
+          "regret": 0.08771929824561403,
+          "seed": 95531,
+          "source_sha256": "486163cc5f2b4103f3aa84d9fe15ae5c209b5d5373082ac185a20790a2ac1798",
+          "vote_count": 5,
+          "vote_fraction": 1.0
+        },
+        {
+          "action_id": "shop:buy_card:5:dramatic_entrance",
+          "current_action_id": "shop:remove_card",
+          "decision_index": 9,
+          "learned_action_id": "shop:buy_card:5:dramatic_entrance",
+          "mean_centered_score": 0.9964665174484253,
+          "regret": 0.29824561403508776,
+          "seed": 95532,
+          "source_sha256": "ff1d04551cc0a6d6e6126c95fef7df4b4005c5559933f5c7c80570ffdb9c0504",
+          "vote_count": 5,
+          "vote_fraction": 1.0
+        },
+        {
+          "action_id": "shop:buy_card:1:anger",
+          "current_action_id": "shop:remove_card",
+          "decision_index": 4,
+          "learned_action_id": "shop:buy_card:1:anger",
+          "mean_centered_score": 1.2802095413208008,
+          "regret": 2.017543859649123,
+          "seed": 95533,
+          "source_sha256": "226ba25555827a4520d50472652fcc066530a212f188c6a8aa5f739168d9c1c6",
+          "vote_count": 5,
+          "vote_fraction": 1.0
+        },
+        {
+          "action_id": "shop:buy_potion:0:liquid_bronze",
+          "current_action_id": "shop:remove_card",
+          "decision_index": 7,
+          "learned_action_id": "shop:buy_potion:0:liquid_bronze",
+          "mean_centered_score": 0.5246025323867798,
+          "regret": 0.29824561403508776,
+          "seed": 95534,
+          "source_sha256": "cbd81d0fe8e3bbda3baead27fc90865c14a68a5474658e8eeeef69be87948c55",
+          "vote_count": 5,
+          "vote_fraction": 1.0
+        }
+      ],
+      "vote_quorum": 5
+    },
+    "raw": {
+      "maximum_regret": 2.017543859649123,
+      "mean_regret": 0.25,
+      "override_count": 32,
+      "p95_regret": 2.017543859649123,
+      "predictions": [
+        {
+          "action_id": "shop:buy_card:1:anger",
+          "current_action_id": "shop:remove_card",
+          "decision_index": 7,
+          "learned_action_id": "shop:buy_card:1:anger",
+          "mean_centered_score": 1.2946876287460327,
+          "regret": 0.0,
+          "seed": 95492,
+          "source_sha256": "14c3cd8541ed4db464f9ca750564b5fe2a5fa38091d18fff283f85504bf48064",
+          "vote_count": 5,
+          "vote_fraction": 1.0
+        },
+        {
+          "action_id": "shop:buy_card:3:shrug_it_off",
+          "current_action_id": "shop:remove_card",
+          "decision_index": 3,
+          "learned_action_id": "shop:buy_card:3:shrug_it_off",
+          "mean_centered_score": 0.5143089890480042,
+          "regret": 0.29824561403508765,
+          "seed": 95493,
+          "source_sha256": "374e5a6c5c42e7ec996e13f09e990fd87e3612ca60c4594c5696d193a46f0ad1",
+          "vote_count": 5,
+          "vote_fraction": 1.0
+        },
+        {
+          "action_id": "shop:buy_potion:1:fairy_potion",
+          "current_action_id": "shop:remove_card",
+          "decision_index": 21,
+          "learned_action_id": "shop:buy_potion:1:fairy_potion",
+          "mean_centered_score": 0.9877892732620239,
+          "regret": 0.0,
+          "seed": 95494,
+          "source_sha256": "cecc71ce7dd4db4155385cbf01146268ff853a0fa66e5fd19bcf3abd0a819093",
+          "vote_count": 5,
+          "vote_fraction": 1.0
+        },
+        {
+          "action_id": "shop:buy_card:1:cleave",
+          "current_action_id": "shop:remove_card",
+          "decision_index": 4,
+          "learned_action_id": "shop:buy_card:1:cleave",
+          "mean_centered_score": 1.610974907875061,
+          "regret": 0.4385964912280701,
+          "seed": 95495,
+          "source_sha256": "70e4a9c57784faebac677be1bde89f4d5343c47ea2fbe6a639ee9cad17c56d93",
+          "vote_count": 5,
+          "vote_fraction": 1.0
+        },
+        {
+          "action_id": "shop:buy_card:0:pommel_strike",
+          "current_action_id": "shop:remove_card",
+          "decision_index": 3,
+          "learned_action_id": "shop:buy_card:0:pommel_strike",
+          "mean_centered_score": 0.7794740796089172,
+          "regret": 0.29824561403508765,
+          "seed": 95497,
+          "source_sha256": "4310ef8ea84fee2d72a3882e464f88063800ec27ee25006f00aa3a1e3836d47f",
+          "vote_count": 5,
+          "vote_fraction": 1.0
+        },
+        {
+          "action_id": "shop:buy_card:1:uppercut",
+          "current_action_id": "shop:remove_card",
+          "decision_index": 3,
+          "learned_action_id": "shop:buy_card:1:uppercut",
+          "mean_centered_score": 1.1498721837997437,
+          "regret": 0.26315789473684204,
+          "seed": 95498,
+          "source_sha256": "45acd65229aacd4c4ea40d70f612347f3e379f005c13293bfb0e7a67988813a0",
+          "vote_count": 5,
+          "vote_fraction": 1.0
+        },
+        {
+          "action_id": "shop:buy_potion:0:fear_potion",
+          "current_action_id": "shop:remove_card",
+          "decision_index": 4,
+          "learned_action_id": "shop:buy_potion:0:fear_potion",
+          "mean_centered_score": 1.1906744241714478,
+          "regret": 0.0,
+          "seed": 95499,
+          "source_sha256": "55f4f05eed57210778e6452c0043fe94e3ad54339635784d35a84de22d40d70c",
+          "vote_count": 5,
+          "vote_fraction": 1.0
+        },
+        {
+          "action_id": "shop:buy_card:2:shrug_it_off",
+          "current_action_id": "shop:buy_card:0:perfected_strike",
+          "decision_index": 5,
+          "learned_action_id": "shop:buy_card:2:shrug_it_off",
+          "mean_centered_score": 0.59039306640625,
+          "regret": 0.15789473684210525,
+          "seed": 95500,
+          "source_sha256": "5540cb8c48acf99db74b2aca7143644a5f0b815c96dac1ba65342012532d2f62",
+          "vote_count": 5,
+          "vote_fraction": 1.0
+        },
+        {
+          "action_id": "shop:buy_potion:2:entropic_brew",
+          "current_action_id": "shop:remove_card",
+          "decision_index": 10,
+          "learned_action_id": "shop:buy_potion:2:entropic_brew",
+          "mean_centered_score": 1.295575737953186,
+          "regret": 0.0,
+          "seed": 95501,
+          "source_sha256": "5633ff5299d993f322949d09842b29ca99192955a025ba82e1e37f594f3f99d2",
+          "vote_count": 5,
+          "vote_fraction": 1.0
+        },
+        {
+          "action_id": "shop:buy_relic:1:bronze_scales",
+          "current_action_id": "shop:remove_card",
+          "decision_index": 23,
+          "learned_action_id": "shop:buy_relic:1:bronze_scales",
+          "mean_centered_score": 0.9031772613525391,
+          "regret": 0.2982456140350877,
+          "seed": 95502,
+          "source_sha256": "2bb341bac906fc138283544b09e4aa9a664b8dd7aeb1476a6a58cacc279aa382",
+          "vote_count": 5,
+          "vote_fraction": 1.0
+        },
+        {
+          "action_id": "shop:buy_relic:2:strange_spoon",
+          "current_action_id": "shop:remove_card",
+          "decision_index": 17,
+          "learned_action_id": "shop:buy_relic:2:strange_spoon",
+          "mean_centered_score": 0.8903692960739136,
+          "regret": 2.017543859649123,
+          "seed": 95503,
+          "source_sha256": "2dbd5fd05810e05251a19bad189333478b4c60b326159ba8b92a3644c05229f7",
+          "vote_count": 5,
+          "vote_fraction": 1.0
+        },
+        {
+          "action_id": "shop:buy_potion:2:ancient_potion",
+          "current_action_id": "shop:remove_card",
+          "decision_index": 3,
+          "learned_action_id": "shop:buy_potion:2:ancient_potion",
+          "mean_centered_score": 0.617525577545166,
+          "regret": 0.0,
+          "seed": 95507,
+          "source_sha256": "be023caa6908bfd5fd1aa37ffc4aa439f0ae6932b772cc91191faf0bb349fd66",
+          "vote_count": 5,
+          "vote_fraction": 1.0
+        },
+        {
+          "action_id": "shop:buy_card:4:inflame",
+          "current_action_id": "shop:remove_card",
+          "decision_index": 4,
+          "learned_action_id": "shop:buy_card:4:inflame",
+          "mean_centered_score": 1.641237497329712,
+          "regret": 0.0,
+          "seed": 95509,
+          "source_sha256": "c5d79b05744434630540c2a28aa10227af292ea0191a97f33b75c8d15051b7b3",
+          "vote_count": 4,
+          "vote_fraction": 0.8
+        },
+        {
+          "action_id": "shop:buy_potion:0:fear_potion",
+          "current_action_id": "shop:remove_card",
+          "decision_index": 5,
+          "learned_action_id": "shop:buy_potion:0:fear_potion",
+          "mean_centered_score": 1.1941616535186768,
+          "regret": 0.10526315789473684,
+          "seed": 95510,
+          "source_sha256": "cd05234f828d04f6b30165c3ddf42bd801d0f415b751019ac32d5e22a06bc0ed",
+          "vote_count": 5,
+          "vote_fraction": 1.0
+        },
+        {
+          "action_id": "shop:leave",
+          "current_action_id": "shop:remove_card",
+          "decision_index": 7,
+          "learned_action_id": "shop:leave",
+          "mean_centered_score": 0.22199754416942596,
+          "regret": 0.0,
+          "seed": 95512,
+          "source_sha256": "0a7bcdb638de9a8b6b4bc2eed3a2a5b2c5b97744b65f8234044c6cec1103c98a",
+          "vote_count": 5,
+          "vote_fraction": 1.0
+        },
+        {
+          "action_id": "shop:buy_card:0:pommel_strike",
+          "current_action_id": "shop:remove_card",
+          "decision_index": 9,
+          "learned_action_id": "shop:buy_card:0:pommel_strike",
+          "mean_centered_score": 0.7609633803367615,
+          "regret": 0.2982456140350877,
+          "seed": 95513,
+          "source_sha256": "cb0fd750bc466943457499c5d85c66f1dfd578f8fc56ebe192ecb4e4b2d3e59f",
+          "vote_count": 5,
+          "vote_fraction": 1.0
+        },
+        {
+          "action_id": "shop:buy_card:5:blind",
+          "current_action_id": "shop:remove_card",
+          "decision_index": 6,
+          "learned_action_id": "shop:buy_card:5:blind",
+          "mean_centered_score": 1.6314728260040283,
+          "regret": 0.1578947368421052,
+          "seed": 95516,
+          "source_sha256": "ddd9aa62ceea3b297a262642625a1e0a59143af34bafd065e72b4a2fc059a761",
+          "vote_count": 5,
+          "vote_fraction": 1.0
+        },
+        {
+          "action_id": "shop:buy_card:0:cleave",
+          "current_action_id": "shop:remove_card",
+          "decision_index": 5,
+          "learned_action_id": "shop:buy_card:0:cleave",
+          "mean_centered_score": 1.3995592594146729,
+          "regret": 0.0,
+          "seed": 95517,
+          "source_sha256": "8b433848d575150bdc45f07c8ac4b62ea840346f7ffdea71af925a7259bece3b",
+          "vote_count": 5,
+          "vote_fraction": 1.0
+        },
+        {
+          "action_id": "shop:buy_card:0:dropkick",
+          "current_action_id": "shop:remove_card",
+          "decision_index": 5,
+          "learned_action_id": "shop:buy_card:0:dropkick",
+          "mean_centered_score": 0.6985622644424438,
+          "regret": 0.10526315789473684,
+          "seed": 95518,
+          "source_sha256": "5dc8524f958e5210ea6164b5cd306002b1d5e769bf44d1aee201491241a608fc",
+          "vote_count": 4,
+          "vote_fraction": 0.8
+        },
+        {
+          "action_id": "shop:buy_relic:0:pen_nib",
+          "current_action_id": "shop:remove_card",
+          "decision_index": 18,
+          "learned_action_id": "shop:buy_relic:0:pen_nib",
+          "mean_centered_score": 0.9089924693107605,
+          "regret": 0.0,
+          "seed": 95519,
+          "source_sha256": "94ea987340d6972e2a7eff94da1c4b017d712b6e54344e7fdcc7ced98296e633",
+          "vote_count": 5,
+          "vote_fraction": 1.0
+        },
+        {
+          "action_id": "shop:buy_card:0:pommel_strike",
+          "current_action_id": "shop:remove_card",
+          "decision_index": 7,
+          "learned_action_id": "shop:buy_card:0:pommel_strike",
+          "mean_centered_score": 0.7540550231933594,
+          "regret": 0.0,
+          "seed": 95521,
+          "source_sha256": "7785640565913359295e4552c50def8190803f897e559d2124a3134030d91ee8",
+          "vote_count": 5,
+          "vote_fraction": 1.0
+        },
+        {
+          "action_id": "shop:buy_card:0:anger",
+          "current_action_id": "shop:remove_card",
+          "decision_index": 4,
+          "learned_action_id": "shop:buy_card:0:anger",
+          "mean_centered_score": 1.3611005544662476,
+          "regret": 0.0,
+          "seed": 95522,
+          "source_sha256": "e6de6e1fa35252a011f048e26170543f3f63ed4174904a14fab0ffbb2c8d6537",
+          "vote_count": 5,
+          "vote_fraction": 1.0
+        },
+        {
+          "action_id": "shop:buy_potion:0:fairy_potion",
+          "current_action_id": "shop:remove_card",
+          "decision_index": 10,
+          "learned_action_id": "shop:buy_potion:0:fairy_potion",
+          "mean_centered_score": 1.1399648189544678,
+          "regret": 0.14035087719298245,
+          "seed": 95524,
+          "source_sha256": "b8bd9dc1f47d208253101aeb9f702f6745c775a19ee48b3da9b5a5006c3a4834",
+          "vote_count": 5,
+          "vote_fraction": 1.0
+        },
+        {
+          "action_id": "shop:buy_potion:1:swift_potion",
+          "current_action_id": "shop:remove_card",
+          "decision_index": 6,
+          "learned_action_id": "shop:buy_potion:1:swift_potion",
+          "mean_centered_score": 0.5951342582702637,
+          "regret": 0.03508771929824561,
+          "seed": 95525,
+          "source_sha256": "fb6f95bd6a4c01086c5ed39815a9acc9d490478af9b1656d589c4570903e7cf6",
+          "vote_count": 5,
+          "vote_fraction": 1.0
+        },
+        {
+          "action_id": "shop:buy_card:5:swift_strike",
+          "current_action_id": "shop:remove_card",
+          "decision_index": 3,
+          "learned_action_id": "shop:buy_card:5:swift_strike",
+          "mean_centered_score": 1.3649441003799438,
+          "regret": 0.0,
+          "seed": 95526,
+          "source_sha256": "6ce8f6d3d17ceea95182cf0f839ee9b4b482084c283e3245849baeb7aa9dc095",
+          "vote_count": 5,
+          "vote_fraction": 1.0
+        },
+        {
+          "action_id": "shop:buy_card:3:dual_wield",
+          "current_action_id": "shop:remove_card",
+          "decision_index": 4,
+          "learned_action_id": "shop:buy_card:3:dual_wield",
+          "mean_centered_score": 1.0328924655914307,
+          "regret": 0.5964912280701754,
+          "seed": 95527,
+          "source_sha256": "caf657bbc97d17ae7d3e6bc022b067092611ecff2a3726b142963a4b7c5e6bd4",
+          "vote_count": 4,
+          "vote_fraction": 0.8
+        },
+        {
+          "action_id": "shop:buy_card:1:cleave",
+          "current_action_id": "shop:remove_card",
+          "decision_index": 23,
+          "learned_action_id": "shop:buy_card:1:cleave",
+          "mean_centered_score": 1.6807998418807983,
+          "regret": 0.08771929824561403,
+          "seed": 95528,
+          "source_sha256": "ba69dd9dd6529ba1493ec14bda128a90eb77d3b85df16dcdcbdebbbd03a36763",
+          "vote_count": 5,
+          "vote_fraction": 1.0
+        },
+        {
+          "action_id": "shop:buy_card:6:master_of_strategy",
+          "current_action_id": "shop:buy_relic:2:membership_card",
+          "decision_index": 17,
+          "learned_action_id": "shop:buy_card:6:master_of_strategy",
+          "mean_centered_score": 0.4363476634025574,
+          "regret": 0.0,
+          "seed": 95529,
+          "source_sha256": "ff216cef9936641f878e84dbd24dacd080c4ea3b64ae1a141e8fe58567e2352a",
+          "vote_count": 5,
+          "vote_fraction": 1.0
+        },
+        {
+          "action_id": "shop:buy_card:4:inflame",
+          "current_action_id": "shop:remove_card",
+          "decision_index": 9,
+          "learned_action_id": "shop:buy_card:4:inflame",
+          "mean_centered_score": 1.6201181411743164,
+          "regret": 0.08771929824561403,
+          "seed": 95531,
+          "source_sha256": "486163cc5f2b4103f3aa84d9fe15ae5c209b5d5373082ac185a20790a2ac1798",
+          "vote_count": 5,
+          "vote_fraction": 1.0
+        },
+        {
+          "action_id": "shop:buy_card:5:dramatic_entrance",
+          "current_action_id": "shop:remove_card",
+          "decision_index": 9,
+          "learned_action_id": "shop:buy_card:5:dramatic_entrance",
+          "mean_centered_score": 0.9964665174484253,
+          "regret": 0.29824561403508776,
+          "seed": 95532,
+          "source_sha256": "ff1d04551cc0a6d6e6126c95fef7df4b4005c5559933f5c7c80570ffdb9c0504",
+          "vote_count": 5,
+          "vote_fraction": 1.0
+        },
+        {
+          "action_id": "shop:buy_card:1:anger",
+          "current_action_id": "shop:remove_card",
+          "decision_index": 4,
+          "learned_action_id": "shop:buy_card:1:anger",
+          "mean_centered_score": 1.2802095413208008,
+          "regret": 2.017543859649123,
+          "seed": 95533,
+          "source_sha256": "226ba25555827a4520d50472652fcc066530a212f188c6a8aa5f739168d9c1c6",
+          "vote_count": 5,
+          "vote_fraction": 1.0
+        },
+        {
+          "action_id": "shop:buy_potion:0:liquid_bronze",
+          "current_action_id": "shop:remove_card",
+          "decision_index": 7,
+          "learned_action_id": "shop:buy_potion:0:liquid_bronze",
+          "mean_centered_score": 0.5246025323867798,
+          "regret": 0.29824561403508776,
+          "seed": 95534,
+          "source_sha256": "cbd81d0fe8e3bbda3baead27fc90865c14a68a5474658e8eeeef69be87948c55",
+          "vote_count": 5,
+          "vote_fraction": 1.0
+        }
+      ],
+      "vote_quorum": 1
+    }
+  },
+  "verdict": "cross_validated_shop_ensemble_not_ready_after_fresh_evaluation"
+}

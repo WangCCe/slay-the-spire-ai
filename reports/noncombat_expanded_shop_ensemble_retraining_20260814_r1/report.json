@@ -1,0 +1,122 @@
+{
+  "authority": {
+    "formal_rl": false,
+    "gameplay": false,
+    "policy_intervention": false,
+    "promotion": false,
+    "qualification": false
+  },
+  "charged_seconds": 1217.25,
+  "fresh": {
+    "action_branches": 357,
+    "budget_exhausted": true,
+    "censored_sources": 0,
+    "informative_sources": 28,
+    "maximum_return_spread": 2.6140350877192984,
+    "mean_return_spread": 0.34978070175438597,
+    "root_native_transitions": 1570,
+    "source_count": 32
+  },
+  "historical_source_count": 496,
+  "identity": {
+    "current_bridge_input": {
+      "path": "D:/PycharmProjects/slay-the-spire-ai/reports/noncombat_current_policy_simulator_bridge_20260802_r2_input.json",
+      "sha256": "b251f7eefa558610b58c2dc23525f60302e6ae9f99bd11da72faa6c9a138f8f6"
+    },
+    "metadata": {
+      "path": "D:\\SteamLibrary\\steamapps\\common\\SlayTheSpire\\export\\items.json",
+      "sha256": "e23784ea8ed3092e3bfa9918240e162a9cbcb837badfb53c612eb0d83cc811dc",
+      "size_bytes": 240371
+    },
+    "native_module": {
+      "path": "D:/PycharmProjects/slay-the-spire-ai/.sts_lightspeed_adapter_v3_sold_inventory_build/sts_lightspeed_noncombat_adapter.cp310-win_amd64.pyd",
+      "sha256": "3a2563b51b9ef9df962c7a502cfd29ad5423497844a5ebb3bfb671c56c99369b",
+      "size_bytes": 4225536
+    },
+    "native_registration": {
+      "path": "D:/PycharmProjects/slay-the-spire-ai/reports/noncombat_card_counterfactual_corpus_expansion_20260813_r1/registration.json",
+      "sha256": "7096c3f131ba3e3fbe542a4505986b964206d4a9dc8cb4c58ae9b62fb25206d7"
+    },
+    "source": {
+      "commit": "4f45ea948e55768d1be2778790dcc74074e82dd8",
+      "files": [
+        {
+          "path": "analysis_scripts/noncombat_expanded_shop_ensemble_retraining.py",
+          "sha256": "f10f3804b1aa4bdf76a4b954f6dd5f56998c3176d2bfec47c206c8cc1103a992",
+          "size_bytes": 11099
+        },
+        {
+          "path": "analysis_scripts/noncombat_cross_validated_shop_ensemble.py",
+          "sha256": "84b90cb7c7900731fc3a89696074a38e27a818f3c335908115d250722241636f",
+          "size_bytes": 43995
+        },
+        {
+          "path": "analysis_scripts/noncombat_state_conditioned_shop_ranking.py",
+          "sha256": "37e102fb640d9ec8cf3075064d23d2f681809f39d1e2c13dcd94a4c5cc73147c",
+          "size_bytes": 21228
+        },
+        {
+          "path": "analysis_scripts/noncombat_shop_counterfactual_outcomes.py",
+          "sha256": "ff6bafa71cfe0e560fd1e93d6bd83c579c91f82b23009a044e4d42d7009291f9",
+          "size_bytes": 27253
+        },
+        {
+          "path": "analysis_scripts/noncombat_event_option_counterfactual_outcomes.py",
+          "sha256": "cdc405f1f99505bca63d37c6fb17a8c567533fb54973c4925bbf346118d8aeac",
+          "size_bytes": 27301
+        },
+        {
+          "path": "analysis_scripts/noncombat_native_preload.py",
+          "sha256": "b76c1dd47ce6b5c42734ac607c099b490c0c9d7c3c50886cf349081eb101e90c",
+          "size_bytes": 2941
+        },
+        {
+          "path": "analysis_scripts/noncombat_route_counterfactual_ranking.py",
+          "sha256": "f57d161f934bc88a1fbbe8e8569c5ce9d89cc212765435067d4502a74c58b627",
+          "size_bytes": 54570
+        },
+        {
+          "path": "analysis_scripts/noncombat_card_action_counterfactual_credit.py",
+          "sha256": "8f4028d209c10d6ecdc7b9387cf54ffb1a35fc31b97496c44ff9bd66d10e3c21",
+          "size_bytes": 20220
+        },
+        {
+          "path": "analysis_scripts/noncombat_current_policy_simulator_bridge.py",
+          "sha256": "1bbcd6008c78338b76b9d95e28d52e95a997734542b5a27fc9896bacb7c8ffce",
+          "size_bytes": 102865
+        },
+        {
+          "path": "analysis_scripts/noncombat_state_conditioned_policy_input.py",
+          "sha256": "f460bcb2cf2569b73ae08e640545fbd25996ae3e5d806339bff550aa12f484be",
+          "size_bytes": 8149
+        },
+        {
+          "path": "analysis_scripts/noncombat_state_conditioned_ranker.py",
+          "sha256": "60d1b710127e27c0bb283f073d6b166ccae14d9902ffb6d1911caa107d745678",
+          "size_bytes": 4549
+        },
+        {
+          "path": "analysis_scripts/noncombat_event_option_semantics.py",
+          "sha256": "2a18688d61ae70612b43683e06f3f2381d998f0fe3bebf9fbdf3e4cd9602af6b",
+          "size_bytes": 29305
+        }
+      ],
+      "source_sha256": "a5885e7b068e3c861f1d44bd9f6b9db5add52ce5fb8eb7dbf28c3d264329d6b4"
+    }
+  },
+  "operations": {
+    "communication_mod": false,
+    "evaluation": true,
+    "fresh_source_access": true,
+    "gameplay": false,
+    "historical_corpus_access": true,
+    "model_fitting": true,
+    "model_loading": true,
+    "native_loading": true,
+    "production_checkpoint_access": false,
+    "protected_seed_access": false,
+    "training": true
+  },
+  "schema_version": "noncombat-cross-validated-shop-ensemble-v1",
+  "verdict": "cross_validated_shop_ensemble_not_ready_after_fresh_evaluation"
+}

@@ -1,0 +1,45 @@
+{
+  "artifacts": [
+    {
+      "path": "configuration.json",
+      "sha256": "1a2bddf080fd3d395d5afe934ad0b015b7cabc8f62fc70f8467184587310570b",
+      "size_bytes": 2758
+    },
+    {
+      "path": "corpus_audit.json",
+      "sha256": "2ac7b34019dc02d32b99930ddf670197804b5938788088d2c8684f6ea77d02d3",
+      "size_bytes": 6356
+    },
+    {
+      "path": "fresh_dataset.json",
+      "sha256": "302eb3b3567cd139c10b8847bf4d75c617c30a47b22b0f863710967745dbb5c1",
+      "size_bytes": 1715029
+    },
+    {
+      "path": "metrics.json",
+      "sha256": "c8f316301ad10d88f8bb32f097529086c93a4ddb94915cd8fbda1ce46f11b588",
+      "size_bytes": 40115
+    },
+    {
+      "path": "model.json",
+      "sha256": "5310a7f41e6a2fef0f7db6469dca71c040cb9bd3eb014fd1a34a275fd7db60d0",
+      "size_bytes": 21242382
+    },
+    {
+      "path": "oof_metrics.json",
+      "sha256": "8fef8c52792acaf812d5fb434ea9d0e54e3d779f59e38912b8ce12be5f254bde",
+      "size_bytes": 261406
+    },
+    {
+      "path": "report.json",
+      "sha256": "89dd6d36c1d9430f0b34a315dbe3ac67eca03cb5e83ee4ba773c0693cf045dc1",
+      "size_bytes": 4882
+    },
+    {
+      "path": "report.md",
+      "sha256": "88e129bbf2571efe77e5b0eaa3de32c308c14973aa7a4d4b66a0ca849e214525",
+      "size_bytes": 355
+    }
+  ],
+  "schema_version": "noncombat-cross-validated-shop-ensemble-manifest-v1"
+}
