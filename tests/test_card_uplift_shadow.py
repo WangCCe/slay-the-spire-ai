@@ -164,6 +164,21 @@ def test_canary_configuration_requires_action_authority_and_three_games(tmp_path
         shadow.validate_configuration(config)
 
 
+def test_canary_torch_threads_are_capped_without_raising_lower_settings(monkeypatch):
+    import torch
+
+    active = {"threads": 8}
+
+    monkeypatch.setattr(torch, "get_num_threads", lambda: active["threads"])
+    monkeypatch.setattr(
+        torch, "set_num_threads", lambda value: active.update(threads=value)
+    )
+
+    assert shadow._configure_canary_torch_threads() == 2
+    active["threads"] = 1
+    assert shadow._configure_canary_torch_threads() == 1
+
+
 def test_project_live_card_reward_builds_bounded_api_v3_shape():
     snapshot, candidates, shifts = shadow.project_live_card_reward(
         _game(),

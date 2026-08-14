@@ -24,6 +24,7 @@ CANARY_CONFIG_SCHEMA_VERSION = "noncombat-card-uplift-live-canary-config-v1"
 ROW_SCHEMA_VERSION = "noncombat-card-uplift-live-shadow-row-v1"
 CANARY_ROW_SCHEMA_VERSION = "noncombat-card-uplift-live-canary-row-v1"
 PROJECTION_VERSION = "live-best-effort-v1"
+CANARY_TORCH_THREAD_LIMIT = 2
 SOURCE_PATHS = (
     "analysis_scripts/noncombat_card_acceptance_empirical_successor_runtime.py",
     "analysis_scripts/noncombat_card_acceptance_objective.py",
@@ -78,6 +79,19 @@ _UPGRADE_SUFFIX_RE = re.compile(r"\+\d*$")
 
 class CardUpliftShadowError(ValueError):
     """Raised when explicitly configured shadow mode is invalid."""
+
+
+def _configure_canary_torch_threads() -> int:
+    """Bound small-model inference threads before the canary starts scoring."""
+    import torch
+
+    current = int(torch.get_num_threads())
+    if current > CANARY_TORCH_THREAD_LIMIT:
+        torch.set_num_threads(CANARY_TORCH_THREAD_LIMIT)
+    active = int(torch.get_num_threads())
+    if active > CANARY_TORCH_THREAD_LIMIT:
+        raise CardUpliftShadowError("canary torch thread limit was not applied")
+    return active
 
 
 def _canonical_bytes(value: Any) -> bytes:
@@ -624,6 +638,11 @@ class CardUpliftShadowRuntime:
     ) -> None:
         self.config = dict(config)
         _verify_configuration(self.config)
+        self.torch_threads = (
+            _configure_canary_torch_threads()
+            if row_schema_version == CANARY_ROW_SCHEMA_VERSION
+            else None
+        )
         from analysis_scripts import noncombat_card_counterfactual_ranking_training as ranking
         from analysis_scripts import noncombat_card_counterfactual_uplift_residual_crossfit as uplift
 
@@ -855,7 +874,7 @@ class CardUpliftShadowRuntime:
             candidates=tuple(copy.deepcopy(candidates)),
             action_returns=(0.0, 0.0, 0.0, 0.0),
         )
-        with torch.no_grad():
+        with torch.inference_mode():
             base_scores = tuple(
                 float(value)
                 for value in self._ranking._joint_log_probabilities(
