@@ -1,0 +1,25 @@
+{
+  "artifacts": [
+    {
+      "path": "censored_sources.json",
+      "sha256": "a444e211233451fa51a2c8e47f10fd08819107948181cc36b1bc396f61249877",
+      "size_bytes": 283
+    },
+    {
+      "path": "configuration.json",
+      "sha256": "fe36b81edb52cc69bbb41eda0a109eb97dd6f4420fbd1e44004818f7f06abd86",
+      "size_bytes": 1281
+    },
+    {
+      "path": "report.json",
+      "sha256": "7e893bc98242ec3668eb53d2287cf4180f5528000bae113e67f7e84ccde37311",
+      "size_bytes": 4674
+    },
+    {
+      "path": "source_rows.json",
+      "sha256": "5c66ed86b06202ab5f23b0023591c7991aa20301ccb2b60252d7113cfe86b2af",
+      "size_bytes": 1345108
+    }
+  ],
+  "schema_version": "noncombat-shop-counterfactual-manifest-v1"
+}

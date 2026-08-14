@@ -1,0 +1,14 @@
+[
+  {
+    "decision_index": 25,
+    "reason": "unsupported_shop_courier_restock_semantics",
+    "seed": 95007,
+    "source_sha256": null
+  },
+  {
+    "decision_index": 16,
+    "reason": "unsupported_shop_courier_restock_semantics",
+    "seed": 95045,
+    "source_sha256": null
+  }
+]
