@@ -1,0 +1,104 @@
+{
+  "schema_version": 1,
+  "gate_id": "combat-rl-schema2-zero-epsilon-gate-20260815-r1",
+  "source_commit": "28fcccf3d2792677eee86ecd3e13ddc2890b030d",
+  "candidate_started_at": "2026-08-15T01:26:56+08:00",
+  "candidate_finished_at": "2026-08-15T01:40:14+08:00",
+  "baseline_started_at": "2026-08-15T01:44:01+08:00",
+  "baseline_finished_at": "2026-08-15T01:59:04+08:00",
+  "candidate_checkpoint": {
+    "path": "reports/combat_rl_schema2_continuation_20260815_r1/rl_combat_model_ep40_steps17071.pth",
+    "sha256": "72bc4ac046ce933935e1ad46a11bccb25963933999eafee97588c03e1aaebad"
+  },
+  "baseline_checkpoint": {
+    "path": "D:/SteamLibrary/steamapps/common/SlayTheSpire/checkpoints_archive/combat_rl/rl_combat_model_ep9_steps11848.pth.20260814-191449.bak",
+    "sha256": "780f6a94754b741e8e68d278d44dc68a80cf2b137c2d6fd8a39c7f042c936558"
+  },
+  "evaluation": {
+    "games_per_arm": 10,
+    "epsilon": 0.0,
+    "elite_route": "conservative",
+    "same_seed_order": true,
+    "training_disabled": true,
+    "expert_mix_disabled": true,
+    "all_seed_pairs_match": true
+  },
+  "candidate": {
+    "victories": 0,
+    "floor_total": 167,
+    "floor_mean": 16.7,
+    "floor_median": 16,
+    "act_2_entered": 1,
+    "act_2_boss_reached": 1,
+    "act_3_entered": 0,
+    "floors": [16, 16, 16, 33, 16, 14, 16, 8, 16, 16]
+  },
+  "baseline": {
+    "victories": 0,
+    "floor_total": 181,
+    "floor_mean": 18.1,
+    "floor_median": 16,
+    "act_2_entered": 2,
+    "act_2_boss_reached": 0,
+    "act_3_entered": 0,
+    "floors": [16, 16, 31, 16, 22, 16, 16, 16, 16, 16]
+  },
+  "paired": {
+    "candidate_wins": 1,
+    "baseline_wins": 4,
+    "ties": 5,
+    "floor_deltas": [0, 0, -15, 17, -6, -2, 0, -8, 0, 0]
+  },
+  "candidate_integrity": {
+    "replay_rejected": 0,
+    "close_episode_failed": 0,
+    "checkpoint_save_failed": 0,
+    "rl_agent_failed": 0,
+    "nan_matches": 0,
+    "max_games_reached_matches": 1,
+    "communication_mod_error_log_growth_bytes": 650,
+    "communication_mod_error_log_growth_classification": "wrapper command and dependency load messages only"
+  },
+  "baseline_integrity": {
+    "replay_rejected": 0,
+    "close_episode_failed": 0,
+    "checkpoint_save_failed": 0,
+    "rl_agent_failed": 0,
+    "nan_matches": 0,
+    "max_games_reached_matches": 1,
+    "communication_mod_error_log_growth_bytes": 657,
+    "communication_mod_error_log_growth_classification": "wrapper command and dependency load messages only"
+  },
+  "promotion_conditions": {
+    "candidate_paired_floor_wins_exceed_baseline": false,
+    "candidate_victories_at_least_baseline": true,
+    "candidate_act_2_entries_at_least_baseline": false,
+    "candidate_act_2_boss_reaches_at_least_baseline": true,
+    "candidate_total_floors_at_least_baseline": false,
+    "both_arms_zero_integrity_warnings": true,
+    "all_seed_pairs_match": true
+  },
+  "pairs": [
+    {"index": 0, "seed_played": "7111404964407940926", "candidate_run": "candidate_runs/1786728495.run", "candidate_floor": 16, "candidate_killed_by": "Hexaghost", "baseline_run": "baseline_runs/1786729519.run", "baseline_floor": 16, "baseline_killed_by": "Hexaghost", "floor_delta": 0},
+    {"index": 1, "seed_played": "4493461811812380556", "candidate_run": "candidate_runs/1786728562.run", "candidate_floor": 16, "candidate_killed_by": "Slime Boss", "baseline_run": "baseline_runs/1786729585.run", "baseline_floor": 16, "baseline_killed_by": "Slime Boss", "floor_delta": 0},
+    {"index": 2, "seed_played": "-4193300734780708041", "candidate_run": "candidate_runs/1786728643.run", "candidate_floor": 16, "candidate_killed_by": "Hexaghost", "baseline_run": "baseline_runs/1786729746.run", "baseline_floor": 31, "baseline_killed_by": "Sentry and Sphere", "floor_delta": -15},
+    {"index": 3, "seed_played": "-5835102473856031035", "candidate_run": "candidate_runs/1786728814.run", "candidate_floor": 33, "candidate_killed_by": "Automaton", "baseline_run": "baseline_runs/1786729844.run", "baseline_floor": 16, "baseline_killed_by": "The Guardian", "floor_delta": 17},
+    {"index": 4, "seed_played": "1460897268084422135", "candidate_run": "candidate_runs/1786728892.run", "candidate_floor": 16, "candidate_killed_by": "Hexaghost", "baseline_run": "baseline_runs/1786729972.run", "baseline_floor": 22, "baseline_killed_by": "Sentry and Sphere", "floor_delta": -6},
+    {"index": 5, "seed_played": "7885992979473231301", "candidate_run": "candidate_runs/1786728934.run", "candidate_floor": 14, "candidate_killed_by": null, "candidate_terminal_cause": "Scrap Ooze repeated Deeper choices until HP reached zero", "baseline_run": "baseline_runs/1786730026.run", "baseline_floor": 16, "baseline_killed_by": "Hexaghost", "floor_delta": -2},
+    {"index": 6, "seed_played": "-4133470461194894239", "candidate_run": "candidate_runs/1786729027.run", "candidate_floor": 16, "candidate_killed_by": "Slime Boss", "baseline_run": "baseline_runs/1786730115.run", "baseline_floor": 16, "baseline_killed_by": "Slime Boss", "floor_delta": 0},
+    {"index": 7, "seed_played": "-8572462466739108147", "candidate_run": "candidate_runs/1786729068.run", "candidate_floor": 8, "candidate_killed_by": "Gremlin Nob", "baseline_run": "baseline_runs/1786730191.run", "baseline_floor": 16, "baseline_killed_by": "Hexaghost", "floor_delta": -8},
+    {"index": 8, "seed_played": "-5540447117681733804", "candidate_run": "candidate_runs/1786729135.run", "candidate_floor": 16, "candidate_killed_by": "The Guardian", "baseline_run": "baseline_runs/1786730260.run", "baseline_floor": 16, "baseline_killed_by": "The Guardian", "floor_delta": 0},
+    {"index": 9, "seed_played": "1664360683060268467", "candidate_run": "candidate_runs/1786729211.run", "candidate_floor": 16, "candidate_killed_by": "Slime Boss", "baseline_run": "baseline_runs/1786730341.run", "baseline_floor": 16, "baseline_killed_by": "Slime Boss", "floor_delta": 0}
+  ],
+  "configuration_evidence": {
+    "candidate_launch_config": "reports/combat_rl_schema2_zero_epsilon_gate_20260815_r1_candidate_launch_config.properties",
+    "candidate_launch_config_sha256": "cfc8103988fe08eda56ef49de26e6547dabf4e6d44394514bbacdadaa5776092",
+    "baseline_launch_config": "reports/combat_rl_schema2_zero_epsilon_gate_20260815_r1_baseline_launch_config.properties",
+    "baseline_launch_config_sha256": "d91855f5be265ed8f706192bee018a1ec3a23929b5398fe431c1366a826ac605",
+    "restored_config_sha256": "b42093aef81a17ff1e3eb2dec4187c3af48a1a512a355c9d4d613c4cde2803c1",
+    "restored_after_gate": true,
+    "game_process_closed_after_gate": true
+  },
+  "gate_pass": false,
+  "decision": "do_not_continue_candidate"
+}
