@@ -1,0 +1,35 @@
+{
+  "artifacts": [
+    {
+      "path": "configuration.json",
+      "sha256": "f8305bfdacd803686440ca3188c2a022d069bc5d53911b1d2d36f7aafcf9b597",
+      "size_bytes": 1744
+    },
+    {
+      "path": "development_dataset.json",
+      "sha256": "c802f80ca72ea32f1caf42d1699faf92f607aac97af03b8b495f70ad9e07ba8e",
+      "size_bytes": 918021
+    },
+    {
+      "path": "metrics.json",
+      "sha256": "310f9590fcc6a1afcdd5a7490484f1b2de6c90c3de6ac8ba26ff139a61223e51",
+      "size_bytes": 15396
+    },
+    {
+      "path": "model.json",
+      "sha256": "3aa983a52a8bbe385735c6c18cd1b4b7f06c20b987edd7a07da8a30a51708b06",
+      "size_bytes": 3996780
+    },
+    {
+      "path": "report.json",
+      "sha256": "017aa7490cd4ded4792fb7f2bf56fa4eab23150d90bc5e9c56987f69efdba10a",
+      "size_bytes": 4636
+    },
+    {
+      "path": "train_dataset.json",
+      "sha256": "e346d26e2e29d297b316d9247ef9cf6619bb3fce274b0b88f34d69a9be5f736a",
+      "size_bytes": 3438617
+    }
+  ],
+  "schema_version": "noncombat-state-conditioned-shop-manifest-v1"
+}

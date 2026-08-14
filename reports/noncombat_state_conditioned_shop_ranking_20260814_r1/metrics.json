@@ -1,0 +1,460 @@
+{
+  "changes_vs_current": {
+    "action_changes": 16,
+    "corrected": 6,
+    "worsened": 4
+  },
+  "checks": {
+    "corrects_at_least_one_current_decision": true,
+    "development_informative_support": true,
+    "development_support": true,
+    "maximum_regret_noninferior_to_current": true,
+    "mean_regret_improves_current": true,
+    "pairwise_accuracy_improves_initialization": false,
+    "worsened_not_more_than_corrected": true
+  },
+  "development": {
+    "current": {
+      "maximum_regret": 0.29824561403508776,
+      "mean_regret": 0.13157894736842105,
+      "predictions": [
+        {
+          "action_id": "shop:remove_card",
+          "decision_index": 7,
+          "regret": 0.0,
+          "seed": 95396,
+          "source_sha256": "7b1a0b8833ce16125b9e0c778172535a18e37664694cf8aed9cf3cb74ee6b0f8"
+        },
+        {
+          "action_id": "shop:remove_card",
+          "decision_index": 3,
+          "regret": 0.0,
+          "seed": 95397,
+          "source_sha256": "3142e994e47ba247d2abe4f1e1b09c254ae401d315f544631b2b8501d056e085"
+        },
+        {
+          "action_id": "shop:remove_card",
+          "decision_index": 17,
+          "regret": 0.0,
+          "seed": 95398,
+          "source_sha256": "e97feb7432ed8a306ae6e686a5dd8b0045602846199a31723e184f122f4a26bc"
+        },
+        {
+          "action_id": "shop:remove_card",
+          "decision_index": 21,
+          "regret": 0.07017543859649122,
+          "seed": 95399,
+          "source_sha256": "ac064f23e9c113bf4919bfa8960c22a6cdfb60b6266aa2d270e3f06f8e4be2c6"
+        },
+        {
+          "action_id": "shop:remove_card",
+          "decision_index": 19,
+          "regret": 0.0,
+          "seed": 95400,
+          "source_sha256": "10a2d1c7ddce17b6dfbba3df5c424b0ed0412a1cdf43aea74ce14b6165c1ce91"
+        },
+        {
+          "action_id": "shop:remove_card",
+          "decision_index": 7,
+          "regret": 0.0,
+          "seed": 95401,
+          "source_sha256": "f159ded98dc6120d315f926b0eefe28cb4155983d81f2fe674e26179fc442578"
+        },
+        {
+          "action_id": "shop:remove_card",
+          "decision_index": 18,
+          "regret": 0.2631578947368421,
+          "seed": 95402,
+          "source_sha256": "274a2c1bfb7727bc02eee84c1c104f468cd61c7dc1dbed37383ec08f81b34f72"
+        },
+        {
+          "action_id": "shop:remove_card",
+          "decision_index": 3,
+          "regret": 0.2631578947368421,
+          "seed": 95403,
+          "source_sha256": "7418814eeb78b0e32ab236620048f019cb0156889b11e302ce9958ef32715ae9"
+        },
+        {
+          "action_id": "shop:remove_card",
+          "decision_index": 5,
+          "regret": 0.2982456140350877,
+          "seed": 95404,
+          "source_sha256": "44383f6e31230c32373dd9b187612a6901916fcf2ca698f775bcb2fa8370eb0e"
+        },
+        {
+          "action_id": "shop:remove_card",
+          "decision_index": 10,
+          "regret": 0.2982456140350877,
+          "seed": 95405,
+          "source_sha256": "feac453f24eaf17a7c6aa175c6d6c8b2b10e0671c59f0ff47844a760a494e6c6"
+        },
+        {
+          "action_id": "shop:buy_relic:2:membership_card",
+          "decision_index": 5,
+          "regret": 0.017543859649122806,
+          "seed": 95406,
+          "source_sha256": "03e27587688a86f9992032be4146abc61eefb84cb9394e19214aa0fa62dd1c24"
+        },
+        {
+          "action_id": "shop:remove_card",
+          "decision_index": 6,
+          "regret": 0.0,
+          "seed": 95407,
+          "source_sha256": "0fe525872ac1f5f16d9874ee4a5a97f8bb24f6b6e0b0e987c80c4f5ce9c68843"
+        },
+        {
+          "action_id": "shop:remove_card",
+          "decision_index": 18,
+          "regret": 0.2982456140350877,
+          "seed": 95408,
+          "source_sha256": "8c2130d1bd1722f709b7817d19979e2bf797e74aa0f069c7c1f6a30fab667221"
+        },
+        {
+          "action_id": "shop:remove_card",
+          "decision_index": 14,
+          "regret": 0.0,
+          "seed": 95411,
+          "source_sha256": "83f4f247b8a12ce597f846a7a009fca85de8b58fbdc6eb568c3bcb7849033618"
+        },
+        {
+          "action_id": "shop:remove_card",
+          "decision_index": 4,
+          "regret": 0.29824561403508765,
+          "seed": 95412,
+          "source_sha256": "e24851f10edfa38cbf30ed47b2ec063b878fb43faf933aed9b871925f6ab7fc7"
+        },
+        {
+          "action_id": "shop:remove_card",
+          "decision_index": 7,
+          "regret": 0.29824561403508776,
+          "seed": 95413,
+          "source_sha256": "1b33d2fa45d0366e386fbb325ef4d8b361c5c556a4bca6661af1942b5790bf7c"
+        }
+      ],
+      "unique_best_accuracy": 0.25,
+      "unique_best_rows": 4
+    },
+    "trained": {
+      "maximum_regret": 0.2982456140350877,
+      "mean_regret": 0.12609649122807015,
+      "predictions": [
+        {
+          "action_id": "shop:leave",
+          "decision_index": 7,
+          "regret": 0.0,
+          "seed": 95396,
+          "source_sha256": "7b1a0b8833ce16125b9e0c778172535a18e37664694cf8aed9cf3cb74ee6b0f8"
+        },
+        {
+          "action_id": "shop:leave",
+          "decision_index": 3,
+          "regret": 0.0,
+          "seed": 95397,
+          "source_sha256": "3142e994e47ba247d2abe4f1e1b09c254ae401d315f544631b2b8501d056e085"
+        },
+        {
+          "action_id": "shop:leave",
+          "decision_index": 17,
+          "regret": 0.1929824561403508,
+          "seed": 95398,
+          "source_sha256": "e97feb7432ed8a306ae6e686a5dd8b0045602846199a31723e184f122f4a26bc"
+        },
+        {
+          "action_id": "shop:leave",
+          "decision_index": 21,
+          "regret": 0.0,
+          "seed": 95399,
+          "source_sha256": "ac064f23e9c113bf4919bfa8960c22a6cdfb60b6266aa2d270e3f06f8e4be2c6"
+        },
+        {
+          "action_id": "shop:leave",
+          "decision_index": 19,
+          "regret": 0.2982456140350877,
+          "seed": 95400,
+          "source_sha256": "10a2d1c7ddce17b6dfbba3df5c424b0ed0412a1cdf43aea74ce14b6165c1ce91"
+        },
+        {
+          "action_id": "shop:leave",
+          "decision_index": 7,
+          "regret": 0.0,
+          "seed": 95401,
+          "source_sha256": "f159ded98dc6120d315f926b0eefe28cb4155983d81f2fe674e26179fc442578"
+        },
+        {
+          "action_id": "shop:leave",
+          "decision_index": 18,
+          "regret": 0.2631578947368421,
+          "seed": 95402,
+          "source_sha256": "274a2c1bfb7727bc02eee84c1c104f468cd61c7dc1dbed37383ec08f81b34f72"
+        },
+        {
+          "action_id": "shop:leave",
+          "decision_index": 3,
+          "regret": 0.19298245614035092,
+          "seed": 95403,
+          "source_sha256": "7418814eeb78b0e32ab236620048f019cb0156889b11e302ce9958ef32715ae9"
+        },
+        {
+          "action_id": "shop:leave",
+          "decision_index": 5,
+          "regret": 0.10526315789473684,
+          "seed": 95404,
+          "source_sha256": "44383f6e31230c32373dd9b187612a6901916fcf2ca698f775bcb2fa8370eb0e"
+        },
+        {
+          "action_id": "shop:leave",
+          "decision_index": 10,
+          "regret": 0.0,
+          "seed": 95405,
+          "source_sha256": "feac453f24eaf17a7c6aa175c6d6c8b2b10e0671c59f0ff47844a760a494e6c6"
+        },
+        {
+          "action_id": "shop:leave",
+          "decision_index": 5,
+          "regret": 0.017543859649122806,
+          "seed": 95406,
+          "source_sha256": "03e27587688a86f9992032be4146abc61eefb84cb9394e19214aa0fa62dd1c24"
+        },
+        {
+          "action_id": "shop:leave",
+          "decision_index": 6,
+          "regret": 0.2982456140350877,
+          "seed": 95407,
+          "source_sha256": "0fe525872ac1f5f16d9874ee4a5a97f8bb24f6b6e0b0e987c80c4f5ce9c68843"
+        },
+        {
+          "action_id": "shop:leave",
+          "decision_index": 18,
+          "regret": 0.10526315789473684,
+          "seed": 95408,
+          "source_sha256": "8c2130d1bd1722f709b7817d19979e2bf797e74aa0f069c7c1f6a30fab667221"
+        },
+        {
+          "action_id": "shop:leave",
+          "decision_index": 14,
+          "regret": 0.24561403508771928,
+          "seed": 95411,
+          "source_sha256": "83f4f247b8a12ce597f846a7a009fca85de8b58fbdc6eb568c3bcb7849033618"
+        },
+        {
+          "action_id": "shop:leave",
+          "decision_index": 4,
+          "regret": 0.29824561403508765,
+          "seed": 95412,
+          "source_sha256": "e24851f10edfa38cbf30ed47b2ec063b878fb43faf933aed9b871925f6ab7fc7"
+        },
+        {
+          "action_id": "shop:leave",
+          "decision_index": 7,
+          "regret": 0.0,
+          "seed": 95413,
+          "source_sha256": "1b33d2fa45d0366e386fbb325ef4d8b361c5c556a4bca6661af1942b5790bf7c"
+        }
+      ],
+      "unique_best_accuracy": 0.0,
+      "unique_best_rows": 4,
+      "weighted_pairwise_accuracy": 0.5707652303120362
+    },
+    "untrained": {
+      "maximum_regret": 0.2982456140350877,
+      "mean_regret": 0.13267543859649122,
+      "predictions": [
+        {
+          "action_id": "shop:buy_potion:0:regen_potion",
+          "decision_index": 7,
+          "regret": 0.0,
+          "seed": 95396,
+          "source_sha256": "7b1a0b8833ce16125b9e0c778172535a18e37664694cf8aed9cf3cb74ee6b0f8"
+        },
+        {
+          "action_id": "shop:buy_card:4:metallicize",
+          "decision_index": 3,
+          "regret": 0.0,
+          "seed": 95397,
+          "source_sha256": "3142e994e47ba247d2abe4f1e1b09c254ae401d315f544631b2b8501d056e085"
+        },
+        {
+          "action_id": "shop:buy_card:2:seeing_red",
+          "decision_index": 17,
+          "regret": 0.0,
+          "seed": 95398,
+          "source_sha256": "e97feb7432ed8a306ae6e686a5dd8b0045602846199a31723e184f122f4a26bc"
+        },
+        {
+          "action_id": "shop:buy_relic:2:toolbox",
+          "decision_index": 21,
+          "regret": 0.19298245614035087,
+          "seed": 95399,
+          "source_sha256": "ac064f23e9c113bf4919bfa8960c22a6cdfb60b6266aa2d270e3f06f8e4be2c6"
+        },
+        {
+          "action_id": "shop:buy_card:6:magnetism",
+          "decision_index": 19,
+          "regret": 0.2982456140350877,
+          "seed": 95400,
+          "source_sha256": "10a2d1c7ddce17b6dfbba3df5c424b0ed0412a1cdf43aea74ce14b6165c1ce91"
+        },
+        {
+          "action_id": "shop:buy_card:4:combust",
+          "decision_index": 7,
+          "regret": 0.0,
+          "seed": 95401,
+          "source_sha256": "f159ded98dc6120d315f926b0eefe28cb4155983d81f2fe674e26179fc442578"
+        },
+        {
+          "action_id": "shop:remove_card",
+          "decision_index": 18,
+          "regret": 0.2631578947368421,
+          "seed": 95402,
+          "source_sha256": "274a2c1bfb7727bc02eee84c1c104f468cd61c7dc1dbed37383ec08f81b34f72"
+        },
+        {
+          "action_id": "shop:buy_potion:0:regen_potion",
+          "decision_index": 3,
+          "regret": 0.19298245614035092,
+          "seed": 95403,
+          "source_sha256": "7418814eeb78b0e32ab236620048f019cb0156889b11e302ce9958ef32715ae9"
+        },
+        {
+          "action_id": "shop:buy_potion:1:dexterity_potion",
+          "decision_index": 5,
+          "regret": 0.0,
+          "seed": 95404,
+          "source_sha256": "44383f6e31230c32373dd9b187612a6901916fcf2ca698f775bcb2fa8370eb0e"
+        },
+        {
+          "action_id": "shop:buy_card:4:evolve",
+          "decision_index": 10,
+          "regret": 0.2982456140350877,
+          "seed": 95405,
+          "source_sha256": "feac453f24eaf17a7c6aa175c6d6c8b2b10e0671c59f0ff47844a760a494e6c6"
+        },
+        {
+          "action_id": "shop:buy_card:5:impatience",
+          "decision_index": 5,
+          "regret": 0.0,
+          "seed": 95406,
+          "source_sha256": "03e27587688a86f9992032be4146abc61eefb84cb9394e19214aa0fa62dd1c24"
+        },
+        {
+          "action_id": "shop:buy_card:5:enlightenment",
+          "decision_index": 6,
+          "regret": 0.2982456140350877,
+          "seed": 95407,
+          "source_sha256": "0fe525872ac1f5f16d9874ee4a5a97f8bb24f6b6e0b0e987c80c4f5ce9c68843"
+        },
+        {
+          "action_id": "shop:remove_card",
+          "decision_index": 18,
+          "regret": 0.2982456140350877,
+          "seed": 95408,
+          "source_sha256": "8c2130d1bd1722f709b7817d19979e2bf797e74aa0f069c7c1f6a30fab667221"
+        },
+        {
+          "action_id": "shop:buy_card:2:warcry",
+          "decision_index": 14,
+          "regret": 0.24561403508771928,
+          "seed": 95411,
+          "source_sha256": "83f4f247b8a12ce597f846a7a009fca85de8b58fbdc6eb568c3bcb7849033618"
+        },
+        {
+          "action_id": "shop:buy_card:3:battle_trance",
+          "decision_index": 4,
+          "regret": 0.0350877192982455,
+          "seed": 95412,
+          "source_sha256": "e24851f10edfa38cbf30ed47b2ec063b878fb43faf933aed9b871925f6ab7fc7"
+        },
+        {
+          "action_id": "shop:buy_card:4:inflame",
+          "decision_index": 7,
+          "regret": 0.0,
+          "seed": 95413,
+          "source_sha256": "1b33d2fa45d0366e386fbb325ef4d8b361c5c556a4bca6661af1942b5790bf7c"
+        }
+      ],
+      "unique_best_accuracy": 0.0,
+      "unique_best_rows": 4,
+      "weighted_pairwise_accuracy": 0.5781946508172371
+    }
+  },
+  "development_access_count": 1,
+  "selection": {
+    "checkpoints": [
+      {
+        "epoch": 1,
+        "fit_final_loss": 0.6950131058692932,
+        "tune": {
+          "maximum_regret": 0.5964912280701754,
+          "mean_regret": 0.15021929824561403,
+          "unique_best_accuracy": 0.0,
+          "unique_best_rows": 6,
+          "weighted_pairwise_accuracy": 0.5562816188870149
+        }
+      },
+      {
+        "epoch": 2,
+        "fit_final_loss": 0.6885692477226257,
+        "tune": {
+          "maximum_regret": 0.3859649122807018,
+          "mean_regret": 0.13486842105263158,
+          "unique_best_accuracy": 0.0,
+          "unique_best_rows": 6,
+          "weighted_pairwise_accuracy": 0.5638701517706575
+        }
+      },
+      {
+        "epoch": 4,
+        "fit_final_loss": 0.6787071824073792,
+        "tune": {
+          "maximum_regret": 0.3859649122807018,
+          "mean_regret": 0.13486842105263158,
+          "unique_best_accuracy": 0.0,
+          "unique_best_rows": 6,
+          "weighted_pairwise_accuracy": 0.5674536256323777
+        }
+      },
+      {
+        "epoch": 8,
+        "fit_final_loss": 0.6543761193752289,
+        "tune": {
+          "maximum_regret": 0.3859649122807018,
+          "mean_regret": 0.13486842105263158,
+          "unique_best_accuracy": 0.0,
+          "unique_best_rows": 6,
+          "weighted_pairwise_accuracy": 0.5432124789207421
+        }
+      },
+      {
+        "epoch": 16,
+        "fit_final_loss": 0.586455225944519,
+        "tune": {
+          "maximum_regret": 0.5964912280701754,
+          "mean_regret": 0.16885964912280702,
+          "unique_best_accuracy": 0.16666666666666666,
+          "unique_best_rows": 6,
+          "weighted_pairwise_accuracy": 0.5042158516020235
+        }
+      }
+    ],
+    "selected_epoch": 4
+  },
+  "training_final_history": [
+    {
+      "epoch": 1,
+      "mean_batch_loss": 0.6939001977443695
+    },
+    {
+      "epoch": 2,
+      "mean_batch_loss": 0.6877616941928864
+    },
+    {
+      "epoch": 3,
+      "mean_batch_loss": 0.6827440559864044
+    },
+    {
+      "epoch": 4,
+      "mean_batch_loss": 0.6774657368659973
+    }
+  ],
+  "verdict": "state_conditioned_shop_ranker_not_ready_after_development"
+}

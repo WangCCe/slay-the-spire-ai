@@ -16,6 +16,6 @@
 
 ## 4. Execution
 
-- [ ] 4.1 Execute the fixed native CPU experiment once
-- [ ] 4.2 Verify artifact hashes and terminal development verdict
-- [ ] 4.3 Archive the change, commit evidence, and push `master`
+- [x] 4.1 Execute the fixed native CPU experiment once
+- [x] 4.2 Verify artifact hashes and terminal development verdict
+- [x] 4.3 Archive the change, commit evidence, and push `master`
