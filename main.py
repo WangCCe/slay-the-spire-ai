@@ -648,16 +648,24 @@ def initialize_noncombat_exploration_if_configured(
 
 
 def initialize_card_uplift_shadow_if_configured(*, environ=None):
-    """Keep card-uplift shadow scoring inert without an explicit config."""
+    """Keep card-uplift scoring or intervention inert without explicit config."""
 
     environment = os.environ if environ is None else environ
     raw_path = environment.get("STS_CARD_UPLIFT_SHADOW_CONFIG")
-    if raw_path is None or not str(raw_path).strip():
+    canary_path = environment.get("STS_CARD_UPLIFT_CANARY_CONFIG")
+    shadow_configured = raw_path is not None and bool(str(raw_path).strip())
+    canary_configured = canary_path is not None and bool(str(canary_path).strip())
+    if shadow_configured and canary_configured:
+        raise ValueError("card-uplift shadow and canary modes are mutually exclusive")
+    if not shadow_configured and not canary_configured:
         return None
     from spirecomm.ai.card_uplift_shadow import (
+        initialize_card_uplift_canary_runtime,
         initialize_card_uplift_shadow_runtime,
     )
 
+    if canary_configured:
+        return initialize_card_uplift_canary_runtime(environ=environment)
     return initialize_card_uplift_shadow_runtime(environ=environment)
 
 
@@ -1244,7 +1252,7 @@ if __name__ == "__main__":
         )
     except Exception as exc:
         logging.critical(
-            "Card-uplift shadow startup rejected: %s: %s",
+            "Card-uplift runtime startup rejected: %s: %s",
             type(exc).__name__,
             exc,
         )

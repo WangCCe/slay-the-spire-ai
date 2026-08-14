@@ -68,6 +68,43 @@ def _runtime(tmp_path):
     runtime.config_sha256 = hashlib.sha256(
         shadow._canonical_bytes(runtime.config)
     ).hexdigest()
+    runtime.row_schema_version = shadow.ROW_SCHEMA_VERSION
+    runtime.run_key = None
+    runtime.run_count = 0
+    runtime.last_floor = -1
+    runtime.disabled = False
+    runtime.decision_count = 0
+    runtime.current_map_node = None
+    runtime.encounter = "INVALID"
+    runtime.seen = set()
+    runtime._score = lambda snapshot, candidates: {
+        "base_scores": [0.1, 0.2, 0.3, 0.0],
+        "candidate_action_ids": [row["action_id"] for row in candidates],
+        "composed_scores": [0.1, 0.2, 0.3, 0.0],
+        "shadow_action_id": candidates[2]["action_id"],
+        "source_sha256": "c" * 64,
+        "unseen_take_actions": 0,
+    }
+    return runtime
+
+
+def _canary_config(tmp_path):
+    config = _config(tmp_path)
+    config["authority"] = copy.deepcopy(shadow.CANARY_AUTHORITY)
+    config["maximum_games"] = 3
+    config["output_path"] = (tmp_path / "canary.jsonl").as_posix()
+    config["schema_version"] = shadow.CANARY_CONFIG_SCHEMA_VERSION
+    return config
+
+
+def _canary_runtime(tmp_path):
+    runtime = shadow.CardUpliftCanaryRuntime.__new__(shadow.CardUpliftCanaryRuntime)
+    runtime.config = shadow.validate_canary_configuration(_canary_config(tmp_path))
+    runtime.output_path = tmp_path / "canary.jsonl"
+    runtime.config_sha256 = hashlib.sha256(
+        shadow._canonical_bytes(runtime.config)
+    ).hexdigest()
+    runtime.row_schema_version = shadow.CANARY_ROW_SCHEMA_VERSION
     runtime.run_key = None
     runtime.run_count = 0
     runtime.last_floor = -1
@@ -106,6 +143,20 @@ def test_configuration_rejects_authority_and_source_drift(tmp_path):
     config["authority"]["action_selection"] = True
     with pytest.raises(shadow.CardUpliftShadowError, match="authority"):
         shadow.validate_configuration(config)
+
+
+def test_canary_configuration_requires_action_authority_and_three_games(tmp_path):
+    config = _canary_config(tmp_path)
+    assert shadow.validate_canary_configuration(config) == config
+
+    config["maximum_games"] = 4
+    with pytest.raises(shadow.CardUpliftShadowError, match="game ceiling"):
+        shadow.validate_canary_configuration(config)
+
+    config = _canary_config(tmp_path)
+    config["authority"]["action_selection"] = False
+    with pytest.raises(shadow.CardUpliftShadowError, match="authority"):
+        shadow.validate_canary_configuration(config)
 
     config = _config(tmp_path)
     config["source"]["bindings"].pop(shadow.SOURCE_PATHS[-1])
@@ -174,6 +225,69 @@ def test_complete_row_preserves_current_action_and_deduplicates(tmp_path):
     assert rows[0]["agreement"] is False
 
 
+def test_canary_substitutes_exact_live_card_and_records_it(tmp_path):
+    runtime = _canary_runtime(tmp_path)
+    game = _game()
+    current = CardRewardAction(game.screen.cards[0])
+
+    selected = runtime.wrap_state_callback(lambda _game: current)(game)
+
+    assert isinstance(selected, CardRewardAction)
+    assert selected is not current
+    assert selected.name == game.screen.cards[2].name
+    row = _rows(runtime.output_path)[0]
+    assert row["schema_version"] == shadow.CANARY_ROW_SCHEMA_VERSION
+    assert row["action_substituted"] is True
+    assert row["agreement"] is False
+    assert row["status"] == "complete"
+
+
+def test_canary_agreement_returns_current_action_object(tmp_path):
+    runtime = _canary_runtime(tmp_path)
+    game = _game()
+    current = CardRewardAction(game.screen.cards[2])
+
+    selected = runtime.wrap_state_callback(lambda _game: current)(game)
+
+    assert selected is current
+    assert _rows(runtime.output_path)[0]["action_substituted"] is False
+
+
+def test_canary_ineligible_falls_back_without_disabling(tmp_path):
+    runtime = _canary_runtime(tmp_path)
+    game = _game(can_bowl=True)
+    current = CardRewardAction(bowl=True)
+
+    selected = runtime.wrap_state_callback(lambda _game: current)(game)
+
+    assert selected is current
+    assert runtime.disabled is False
+    row = _rows(runtime.output_path)[0]
+    assert row["status"] == "ineligible"
+    assert row["ineligibility_reason"] == "singing_bowl_present"
+
+
+def test_canary_scoring_error_falls_back_and_disables_later_intervention(tmp_path):
+    runtime = _canary_runtime(tmp_path)
+    first_game = _game(seed=301)
+    first = CardRewardAction(first_game.screen.cards[0])
+
+    def fail_score(snapshot, candidates):
+        raise RuntimeError("scorer failed")
+
+    runtime._score = fail_score
+    selected = runtime.wrap_state_callback(lambda _game: first)(first_game)
+
+    assert selected is first
+    assert runtime.disabled is True
+    assert _rows(runtime.output_path)[0]["status"] == "error"
+
+    second_game = _game(seed=302)
+    second = CardRewardAction(second_game.screen.cards[0])
+    assert runtime.wrap_state_callback(lambda _game: second)(second_game) is second
+    assert len(_rows(runtime.output_path)) == 1
+
+
 def test_ineligible_and_scoring_error_rows_are_distinct(tmp_path):
     runtime = _runtime(tmp_path)
     bowl_game = _game(seed=201, can_bowl=True)
@@ -220,6 +334,19 @@ def test_runtime_stops_observing_after_five_runs(tmp_path):
     assert not runtime.output_path.exists()
 
 
+def test_canary_stops_intervening_after_three_runs(tmp_path):
+    runtime = _canary_runtime(tmp_path)
+    action = CancelAction()
+    for seed in range(1, 5):
+        game = _game(seed=seed)
+        game.screen_type = ScreenType.NONE
+        runtime._process(game, action, allow_substitution=True)
+
+    assert runtime.run_count == 4
+    assert runtime.disabled is True
+    assert not runtime.output_path.exists()
+
+
 def test_batch_child_env_forwards_explicit_shadow_config(monkeypatch):
     monkeypatch.delenv(shadow.CONFIG_ENV, raising=False)
     args = SimpleNamespace(
@@ -235,6 +362,36 @@ def test_batch_child_env_forwards_explicit_shadow_config(monkeypatch):
     env = build_child_env(args)
 
     assert env[shadow.CONFIG_ENV] == args.card_uplift_shadow_config
+
+
+def test_batch_child_env_forwards_canary_and_rejects_mode_conflict(monkeypatch):
+    args = SimpleNamespace(
+        card_uplift_canary_config=r"D:\tmp\card-uplift-canary.json",
+        card_uplift_shadow_config=None,
+        decision_trace_path=None,
+        game_dir=r"D:\SteamLibrary\steamapps\common\SlayTheSpire",
+        noncombat_exploration_config=None,
+        sim_divergence_trace_path=None,
+        skip_decision_trace=True,
+        skip_sim_divergence_trace=True,
+    )
+
+    env = build_child_env(args)
+    assert env[shadow.CANARY_CONFIG_ENV] == args.card_uplift_canary_config
+
+    args.card_uplift_shadow_config = r"D:\tmp\card-uplift-shadow.json"
+    with pytest.raises(ValueError, match="mutually exclusive"):
+        build_child_env(args)
+
+
+def test_main_rejects_shadow_and_canary_mode_conflict():
+    with pytest.raises(ValueError, match="mutually exclusive"):
+        main.initialize_card_uplift_shadow_if_configured(
+            environ={
+                shadow.CONFIG_ENV: "shadow.json",
+                shadow.CANARY_CONFIG_ENV: "canary.json",
+            }
+        )
 
 
 def test_rl_input_reader_starts_after_callbacks_are_registered():

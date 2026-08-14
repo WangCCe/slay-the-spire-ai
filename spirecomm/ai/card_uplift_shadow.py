@@ -18,8 +18,11 @@ from typing import Any
 
 
 CONFIG_ENV = "STS_CARD_UPLIFT_SHADOW_CONFIG"
+CANARY_CONFIG_ENV = "STS_CARD_UPLIFT_CANARY_CONFIG"
 CONFIG_SCHEMA_VERSION = "noncombat-card-uplift-live-shadow-config-v1"
+CANARY_CONFIG_SCHEMA_VERSION = "noncombat-card-uplift-live-canary-config-v1"
 ROW_SCHEMA_VERSION = "noncombat-card-uplift-live-shadow-row-v1"
+CANARY_ROW_SCHEMA_VERSION = "noncombat-card-uplift-live-canary-row-v1"
 PROJECTION_VERSION = "live-best-effort-v1"
 SOURCE_PATHS = (
     "analysis_scripts/noncombat_card_acceptance_empirical_successor_runtime.py",
@@ -58,6 +61,7 @@ AUTHORITY = {
         "training",
     )
 }
+CANARY_AUTHORITY = {**AUTHORITY, "action_selection": True}
 KNOWN_PROJECTION_SHIFTS = (
     "baseline_history_unavailable",
     "burning_elite_metadata_estimated",
@@ -177,6 +181,45 @@ def build_configuration(
     )
 
 
+def build_canary_configuration(
+    *,
+    repo_root: Path | str,
+    source_commit: str,
+    entry_checkpoint: Path | str,
+    residual_model: Path | str,
+    output_path: Path | str,
+) -> dict[str, Any]:
+    root = Path(repo_root).resolve()
+    try:
+        commit_type = subprocess.run(
+            ["git", "cat-file", "-t", source_commit],
+            cwd=root,
+            check=True,
+            capture_output=True,
+            text=True,
+        ).stdout.strip()
+    except (OSError, subprocess.CalledProcessError) as exc:
+        raise CardUpliftShadowError("canary source commit is unavailable") from exc
+    if commit_type != "commit":
+        raise CardUpliftShadowError("canary source commit is unavailable")
+    return validate_canary_configuration(
+        {
+            "authority": copy.deepcopy(CANARY_AUTHORITY),
+            "entry_checkpoint": _binding(entry_checkpoint),
+            "maximum_games": 3,
+            "output_path": Path(output_path).resolve().as_posix(),
+            "projection_version": PROJECTION_VERSION,
+            "residual_model": _binding(residual_model),
+            "schema_version": CANARY_CONFIG_SCHEMA_VERSION,
+            "source": {
+                "bindings": _source_bindings(root, source_commit),
+                "commit": source_commit,
+                "repo_root": root.as_posix(),
+            },
+        }
+    )
+
+
 def validate_configuration(value: Mapping[str, Any]) -> dict[str, Any]:
     if not isinstance(value, Mapping):
         raise CardUpliftShadowError("shadow config must be an object")
@@ -221,6 +264,53 @@ def validate_configuration(value: Mapping[str, Any]) -> dict[str, Any]:
     checkpoint_root = Path(source["repo_root"]).resolve() / "checkpoints"
     if output == checkpoint_root or checkpoint_root in output.parents:
         raise CardUpliftShadowError("shadow output overlaps checkpoints")
+    return config
+
+
+def validate_canary_configuration(value: Mapping[str, Any]) -> dict[str, Any]:
+    if not isinstance(value, Mapping):
+        raise CardUpliftShadowError("canary config must be an object")
+    config = copy.deepcopy(dict(value))
+    if set(config) != {
+        "authority",
+        "entry_checkpoint",
+        "maximum_games",
+        "output_path",
+        "projection_version",
+        "residual_model",
+        "schema_version",
+        "source",
+    } or config.get("schema_version") != CANARY_CONFIG_SCHEMA_VERSION:
+        raise CardUpliftShadowError("canary config fields differ")
+    if config["authority"] != CANARY_AUTHORITY:
+        raise CardUpliftShadowError("canary authority differs")
+    if config["projection_version"] != PROJECTION_VERSION:
+        raise CardUpliftShadowError("canary projection version differs")
+    if config["maximum_games"] != 3:
+        raise CardUpliftShadowError("canary game ceiling differs")
+    for name in ("entry_checkpoint", "residual_model"):
+        binding = config.get(name)
+        if not isinstance(binding, dict) or set(binding) != {
+            "path",
+            "sha256",
+            "size_bytes",
+        }:
+            raise CardUpliftShadowError(f"canary {name} binding differs")
+    source = config.get("source")
+    if (
+        not isinstance(source, dict)
+        or set(source) != {"bindings", "commit", "repo_root"}
+        or set(source.get("bindings", {})) != set(SOURCE_PATHS)
+        or not isinstance(source.get("commit"), str)
+        or len(source["commit"]) != 40
+    ):
+        raise CardUpliftShadowError("canary source differs")
+    if not isinstance(config.get("output_path"), str) or not config["output_path"]:
+        raise CardUpliftShadowError("canary output path differs")
+    output = Path(config["output_path"]).resolve()
+    checkpoint_root = Path(source["repo_root"]).resolve() / "checkpoints"
+    if output == checkpoint_root or checkpoint_root in output.parents:
+        raise CardUpliftShadowError("canary output overlaps checkpoints")
     return config
 
 
@@ -406,6 +496,32 @@ def _action_id(action: Any, candidates: Sequence[Mapping[str, Any]]) -> str:
     return str(matches[0])
 
 
+def _live_action_for_id(
+    game: Any,
+    candidates: Sequence[Mapping[str, Any]],
+    action_id: str,
+) -> Any:
+    matches = [candidate for candidate in candidates if candidate["action_id"] == action_id]
+    if len(matches) != 1:
+        raise CardUpliftShadowError("candidate card action mapping is not unique")
+    candidate = matches[0]
+    if candidate["kind"] == "skip":
+        from spirecomm.communication.action import CancelAction
+
+        return CancelAction()
+    if candidate["kind"] != "take":
+        raise CardUpliftShadowError("candidate card action kind is unsupported")
+    slot = candidate.get("raw", {}).get("slot")
+    cards = list(getattr(getattr(game, "screen", None), "cards", None) or [])
+    if isinstance(slot, bool) or not isinstance(slot, int) or not 0 <= slot < len(cards):
+        raise CardUpliftShadowError("candidate card slot is invalid")
+    if _base_name(getattr(cards[slot], "name", "")) != _base_name(candidate["label"]):
+        raise CardUpliftShadowError("candidate card offer mapping differs")
+    from spirecomm.communication.action import CardRewardAction
+
+    return CardRewardAction(cards[slot])
+
+
 def project_live_card_reward(
     game: Any,
     *,
@@ -499,7 +615,14 @@ def project_live_card_reward(
 
 class CardUpliftShadowRuntime:
     def __init__(self, config: Mapping[str, Any]):
-        self.config = validate_configuration(config)
+        self._initialize(validate_configuration(config), ROW_SCHEMA_VERSION)
+
+    def _initialize(
+        self,
+        config: Mapping[str, Any],
+        row_schema_version: str,
+    ) -> None:
+        self.config = dict(config)
         _verify_configuration(self.config)
         from analysis_scripts import noncombat_card_counterfactual_ranking_training as ranking
         from analysis_scripts import noncombat_card_counterfactual_uplift_residual_crossfit as uplift
@@ -519,6 +642,7 @@ class CardUpliftShadowRuntime:
         self._uplift = uplift
         self.output_path = Path(self.config["output_path"]).resolve()
         self.config_sha256 = hashlib.sha256(_canonical_bytes(self.config)).hexdigest()
+        self.row_schema_version = row_schema_version
         self.run_key: tuple[str, int] | None = None
         self.run_count = 0
         self.last_floor = -1
@@ -549,7 +673,7 @@ class CardUpliftShadowRuntime:
             self.last_floor = floor
             return
         self.run_count += 1
-        self.disabled = self.run_count > self.config["maximum_games"]
+        self.disabled = self.disabled or self.run_count > self.config["maximum_games"]
         self.run_key = key
         self.last_floor = floor
         self.decision_count = 0
@@ -606,21 +730,24 @@ class CardUpliftShadowRuntime:
         ).hexdigest()
 
     def observe(self, game: Any, action: Any) -> None:
+        self._process(game, action, allow_substitution=False)
+
+    def _process(self, game: Any, action: Any, *, allow_substitution: bool) -> Any:
         self._reset_if_needed(game)
         if self.disabled:
-            return
+            return action
         category = _category(game)
         self._update_context(game, action, category)
         if category is None:
-            return
+            return action
         key = self._decision_key(game, action, category)
         if key in self.seen:
-            return
+            return action
         self.seen.add(key)
         ordinal = self.decision_count
         self.decision_count += 1
         if category != "card_reward":
-            return
+            return action
         started = time.perf_counter()
         screen = getattr(game, "screen", None)
         cards = list(getattr(screen, "cards", None) or [])
@@ -641,7 +768,7 @@ class CardUpliftShadowRuntime:
             "offer_sha256": _offer_hash(cards),
             "projection_version": PROJECTION_VERSION,
             "run_key": list(self.run_key or ("0", 0)),
-            "schema_version": ROW_SCHEMA_VERSION,
+            "schema_version": self.row_schema_version,
             "shadow_action_id": None,
             "source_commit": self.config["source"]["commit"],
             "source_sha256": None,
@@ -664,13 +791,21 @@ class CardUpliftShadowRuntime:
                 "status": "ineligible",
             }
             self._append(row)
-            return
+            return action
+        selected_action = action
         try:
             current_action_id = _action_id(action, candidates)
             result = self._score(snapshot, candidates)
+            if allow_substitution and current_action_id != result["shadow_action_id"]:
+                selected_action = _live_action_for_id(
+                    game,
+                    candidates,
+                    str(result["shadow_action_id"]),
+                )
             row = {
                 **base,
                 **result,
+                "action_substituted": selected_action is not action,
                 "agreement": current_action_id == result["shadow_action_id"],
                 "current_action_id": current_action_id,
                 "known_projection_shifts": list(shifts),
@@ -678,6 +813,8 @@ class CardUpliftShadowRuntime:
                 "status": "complete",
             }
         except Exception as exc:
+            if allow_substitution:
+                self.disabled = True
             row = {
                 **base,
                 "error": f"{type(exc).__name__}: {exc}",
@@ -687,6 +824,7 @@ class CardUpliftShadowRuntime:
                 "status": "error",
             }
         self._append(row)
+        return selected_action
 
     def _score(
         self,
@@ -754,6 +892,26 @@ class CardUpliftShadowRuntime:
             handle.write(payload)
 
 
+class CardUpliftCanaryRuntime(CardUpliftShadowRuntime):
+    def __init__(self, config: Mapping[str, Any]):
+        self._initialize(
+            validate_canary_configuration(config),
+            CANARY_ROW_SCHEMA_VERSION,
+        )
+
+    def wrap_state_callback(self, current_callback: Callable[[Any], Any]):
+        def wrapped(game: Any) -> Any:
+            action = current_callback(game)
+            try:
+                return self._process(game, action, allow_substitution=True)
+            except Exception as exc:
+                self.disabled = True
+                logger.error("[CARD_UPLIFT_CANARY] intervention failed: %s", exc)
+                return action
+
+        return wrapped
+
+
 def initialize_card_uplift_shadow_runtime(
     *, environ: Mapping[str, str] | None = None
 ) -> CardUpliftShadowRuntime | None:
@@ -764,9 +922,19 @@ def initialize_card_uplift_shadow_runtime(
     return CardUpliftShadowRuntime(_read_canonical(path))
 
 
+def initialize_card_uplift_canary_runtime(
+    *, environ: Mapping[str, str] | None = None
+) -> CardUpliftCanaryRuntime | None:
+    environment = os.environ if environ is None else environ
+    path = environment.get(CANARY_CONFIG_ENV)
+    if path is None or not str(path).strip():
+        return None
+    return CardUpliftCanaryRuntime(_read_canonical(path))
+
+
 def _parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("command", choices=("register",))
+    parser.add_argument("command", choices=("register", "register-canary"))
     parser.add_argument("--repo-root", required=True)
     parser.add_argument("--source-commit", required=True)
     parser.add_argument("--entry-checkpoint", required=True)
@@ -779,7 +947,12 @@ def _parser() -> argparse.ArgumentParser:
 def main(argv: Sequence[str] | None = None) -> int:
     args = _parser().parse_args(argv)
     try:
-        config = build_configuration(
+        builder = (
+            build_canary_configuration
+            if args.command == "register-canary"
+            else build_configuration
+        )
+        config = builder(
             repo_root=args.repo_root,
             source_commit=args.source_commit,
             entry_checkpoint=args.entry_checkpoint,

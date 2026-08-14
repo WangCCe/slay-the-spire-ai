@@ -108,8 +108,13 @@ def build_child_env(args):
     if exploration_config:
         env["STS_NONCOMBAT_EXPLORATION_CONFIG"] = str(exploration_config)
     card_shadow_config = getattr(args, "card_uplift_shadow_config", None)
+    card_canary_config = getattr(args, "card_uplift_canary_config", None)
+    if card_shadow_config and card_canary_config:
+        raise ValueError("card uplift shadow and canary configs are mutually exclusive")
     if card_shadow_config:
         env["STS_CARD_UPLIFT_SHADOW_CONFIG"] = str(card_shadow_config)
+    if card_canary_config:
+        env["STS_CARD_UPLIFT_CANARY_CONFIG"] = str(card_canary_config)
     return env
 
 
@@ -333,6 +338,11 @@ def parse_args():
         help="Explicit configuration passed as STS_CARD_UPLIFT_SHADOW_CONFIG.",
     )
     parser.add_argument(
+        "--card-uplift-canary-config",
+        default=None,
+        help="Explicit configuration passed as STS_CARD_UPLIFT_CANARY_CONFIG.",
+    )
+    parser.add_argument(
         "--truncate-log-after-backup",
         action="store_true",
         help="Clear the active log after copying it. Use only between batches.",
@@ -378,6 +388,12 @@ def main():
     if card_shadow_config:
         print(
             f"[training-batch] card uplift shadow config: {card_shadow_config}",
+            file=sys.stderr,
+        )
+    card_canary_config = child_env.get("STS_CARD_UPLIFT_CANARY_CONFIG")
+    if card_canary_config:
+        print(
+            f"[training-batch] card uplift canary config: {card_canary_config}",
             file=sys.stderr,
         )
     print_restart_guidance(args)
