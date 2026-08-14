@@ -1,0 +1,49 @@
+{
+  "schema_version": 1,
+  "gate_id": "combat-rl-repaired-zero-epsilon-gate-20260814-r1",
+  "registered_at": "2026-08-14T22:39:00+08:00",
+  "source_commit": "2cc02f71fc8bf70a3c363d6a707ca8e5c1115c2b",
+  "seed_pool": "reports/combat_rl_repaired_zero_epsilon_gate_20260814_r1_seed_pool.txt",
+  "ordered_seeds": [
+    "CTZU7IHWUJJDV",
+    "5UJKX5AIB8C69",
+    "JMM7I4LJLLNXM",
+    "RLP857WIP0NZR",
+    "LXUIRMZVNFSM0",
+    "U4K79UTELSZ5R",
+    "2ZDGIA1I2730Y",
+    "QXOO1VVWNVOR9",
+    "CQJ6VCPQLV03J",
+    "DANLWC8EJ3BNX"
+  ],
+  "candidate": {
+    "path": "reports/combat_rl_repaired_training_20260814_r1/rl_combat_model_ep19_steps14035.pth",
+    "sha256": "dcbe7fddc212aaa6ae2a09adebe44265f83d4fd8c92a80e3269a22f7e5843e3a"
+  },
+  "baseline": {
+    "path": "D:/SteamLibrary/steamapps/common/SlayTheSpire/checkpoints_archive/combat_rl/rl_combat_model_ep9_steps11848.pth.20260814-191449.bak",
+    "sha256": "780f6a94754b741e8e68d278d44dc68a80cf2b137c2d6fd8a39c7f042c936558"
+  },
+  "evaluation": {
+    "order": ["candidate", "baseline"],
+    "games_per_arm": 10,
+    "epsilon": 0.0,
+    "elite_route": "conservative",
+    "ascension": 0,
+    "training": false,
+    "expert_mix": false,
+    "card_uplift": false
+  },
+  "promotion_rule": {
+    "required": [
+      "candidate_paired_floor_wins > baseline_paired_floor_wins",
+      "candidate_victories >= baseline_victories",
+      "candidate_act_2_entries >= baseline_act_2_entries",
+      "candidate_act_2_boss_reaches >= baseline_act_2_boss_reaches",
+      "candidate_floor_total >= baseline_floor_total",
+      "both_arms_have_zero_integrity_warnings"
+    ],
+    "on_pass": "allow_one_additional_bounded_repaired_training_batch",
+    "on_fail": "stop_combat_rl_training_and_investigate_learner_stability"
+  }
+}
