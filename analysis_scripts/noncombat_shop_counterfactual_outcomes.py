@@ -13,8 +13,24 @@ import logging
 import math
 from pathlib import Path
 import subprocess
+import sys
 import time
 from typing import Any
+
+from analysis_scripts.noncombat_native_preload import preload_native_registration
+
+
+if __name__ == "__main__" and len(sys.argv) >= 2:
+    if sys.argv[1] == "run":
+        if "--native-registration" in sys.argv:
+            _registration = Path(
+                sys.argv[sys.argv.index("--native-registration") + 1]
+            ).resolve()
+        else:
+            _registration = Path(
+                "reports/noncombat_card_counterfactual_corpus_expansion_20260813_r1/registration.json"
+            ).resolve()
+        preload_native_registration(_registration)
 
 from analysis_scripts import noncombat_card_action_counterfactual_credit as credit
 from analysis_scripts import noncombat_card_only_native_baseline_rl_pilot_runner as native_runner
@@ -514,7 +530,8 @@ def execute_cli(args: argparse.Namespace) -> dict[str, Any]:
         raise ShopOutcomeBlocked("Current policy metadata bytes differ")
     if list(native_runner._forbidden_processes()):
         raise ShopOutcomeBlocked("game or CommunicationMod is active")
-    event.preload_native_registration(native_registration_path)
+    if "sts_lightspeed_noncombat_adapter" not in sys.modules:
+        preload_native_registration(native_registration_path)
     environment_factory = native_runner._load_environment_factory(native_identity)
     metadata = current_bridge.MetadataCatalog(metadata_path)
 

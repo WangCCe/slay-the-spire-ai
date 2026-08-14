@@ -4,8 +4,6 @@ from __future__ import annotations
 
 import argparse
 import copy
-import ctypes
-from ctypes import wintypes
 from dataclasses import asdict, dataclass
 import hashlib
 import importlib.util
@@ -44,7 +42,6 @@ MIN_COMPLETE_SOURCE_STATES = 64
 MIN_INFORMATIVE_SOURCE_STATES = 32
 MIN_DISTINCT_EVENT_IDS = 8
 SCHEMA_VERSION = "noncombat-event-option-counterfactual-outcomes-v1"
-_EARLY_NATIVE_HANDLES: list[Any] = []
 
 
 def _bootstrap_direct_script_imports() -> None:
@@ -64,63 +61,9 @@ def _bootstrap_direct_script_imports() -> None:
 
 
 def preload_native_registration(registration_path: Path) -> None:
-    try:
-        registration = json.loads(registration_path.read_text(encoding="ascii"))
-        native = registration["native"]["identity"]
-        module_path = Path(native["module"]["path"]).resolve()
-        dependencies = {
-            Path(binding["path"]).name.casefold(): Path(binding["path"]).resolve()
-            for binding in native["dependency_closure"]["dependencies"]
-        }
-        imports_by_path = {
-            Path(row["path"]).resolve(): tuple(
-                str(name).casefold() for name in row["imports"]
-            )
-            for row in native["dependency_closure"]["imports"]
-        }
-        order: list[Path] = []
-        visiting: set[Path] = set()
-        visited: set[Path] = set()
+    from analysis_scripts.noncombat_native_preload import preload_native_registration as load
 
-        def visit(path: Path) -> None:
-            if path in visiting:
-                raise RuntimeError("native dependency cycle differs")
-            if path in visited:
-                return
-            visiting.add(path)
-            for name in imports_by_path.get(path, ()):
-                dependency = dependencies.get(name)
-                if dependency is not None:
-                    visit(dependency)
-            visiting.remove(path)
-            visited.add(path)
-            if path != module_path:
-                order.append(path)
-
-        visit(module_path)
-        if set(order) != set(dependencies.values()):
-            raise RuntimeError("native dependency graph differs")
-        kernel32 = ctypes.WinDLL("kernel32", use_last_error=True)
-        load_library = kernel32.LoadLibraryExW
-        load_library.argtypes = (wintypes.LPCWSTR, wintypes.HANDLE, wintypes.DWORD)
-        load_library.restype = wintypes.HMODULE
-        for path in order:
-            handle = load_library(str(path), None, 0x00000100 | 0x00000400)
-            if not handle:
-                raise OSError(ctypes.get_last_error(), "LoadLibraryExW failed", str(path))
-            _EARLY_NATIVE_HANDLES.append(int(handle))
-        for directory in native["dll_directories"]:
-            _EARLY_NATIVE_HANDLES.append(os.add_dll_directory(directory))
-        spec = importlib.util.spec_from_file_location(
-            "sts_lightspeed_noncombat_adapter", module_path
-        )
-        if spec is None or spec.loader is None:
-            raise RuntimeError("native module spec is unavailable")
-        module = importlib.util.module_from_spec(spec)
-        spec.loader.exec_module(module)
-        sys.modules["sts_lightspeed_noncombat_adapter"] = module
-    except (IndexError, KeyError, OSError, RuntimeError, ValueError) as exc:
-        raise RuntimeError("counterfactual POC native load failed") from exc
+    load(registration_path)
 
 
 def _early_preload_native() -> None:
@@ -534,6 +477,7 @@ def _sha256_file(path: Path) -> str:
 
 BOUND_SOURCE_PATHS = (
     Path("analysis_scripts/noncombat_event_option_counterfactual_outcomes.py"),
+    Path("analysis_scripts/noncombat_native_preload.py"),
     *route.BOUND_SOURCE_PATHS,
     Path("analysis_scripts/noncombat_event_option_semantics.py"),
 )
