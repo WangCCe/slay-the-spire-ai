@@ -1367,12 +1367,14 @@ if __name__ == "__main__":
                 break
 
         # Play the game
+        game_completed = False
         try:
             result = coordinator.play_one_game(
                 chosen_class,
                 ascension_level=current_ascension,
                 seed=active_seed,
             )
+            game_completed = True
         except EOFError as e:
             # Handle broken pipe (Communication Mod or game crashed)
             import traceback
@@ -1424,6 +1426,39 @@ if __name__ == "__main__":
                         "Could not finalize non-combat exploration trajectory: %s",
                         exc,
                     )
+            if training and (is_rl_agent or is_combat_rl_agent):
+                try:
+                    if game_completed:
+                        finalize_training_episode = getattr(
+                            agent,
+                            "finalize_training_episode",
+                            None,
+                        )
+                        if callable(finalize_training_episode):
+                            terminal_state = (
+                                getattr(coordinator, "game_over_state", None)
+                                or getattr(coordinator, "last_game_state", None)
+                            )
+                            if terminal_state is not None:
+                                finalize_training_episode(terminal_state)
+                            else:
+                                abort_training_episode = getattr(
+                                    agent,
+                                    "abort_training_episode",
+                                    None,
+                                )
+                                if callable(abort_training_episode):
+                                    abort_training_episode()
+                    else:
+                        abort_training_episode = getattr(
+                            agent,
+                            "abort_training_episode",
+                            None,
+                        )
+                        if callable(abort_training_episode):
+                            abort_training_episode()
+                except Exception as exc:
+                    logging.error("Could not close RL training episode: %s", exc)
 
         # Record game result if statistics available or RL agent in training
         if is_rl_agent and training:

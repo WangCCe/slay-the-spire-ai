@@ -1184,6 +1184,8 @@ class CombatRLAgent:
             except Exception as e:
                 logger.debug(f"Tracking failed: {e}")
 
+        self._observe_rl_training_state(game)
+
         debounce_action = self._maybe_debounce_reward_screen(game)
         if debounce_action is not None:
             return debounce_action
@@ -1487,7 +1489,7 @@ class CombatRLAgent:
                 elif (
                     wait_action := self._maybe_wait_for_empty_hand_refresh(action, game)
                 ) is not None:
-                    return wait_action
+                    return self._with_combat_action_context(wait_action, game)
                 elif (replacement := self._get_slime_split_aoe_survival_replacement(game)) is not None:
                     self.rl_failure_count = 0
                     self._fallback_turn_key = self._combat_turn_key(game)
@@ -1605,7 +1607,7 @@ class CombatRLAgent:
                 elif (
                     wait_action := self._maybe_wait_for_empty_hand_refresh(action, game)
                 ) is not None:
-                    return wait_action
+                    return self._with_combat_action_context(wait_action, game)
                 elif self._should_override_awakened_one_power(action, game):
                     replacement = self._get_awakened_one_safe_replacement(game)
                     if replacement is not None:
@@ -1819,7 +1821,7 @@ class CombatRLAgent:
         fallback_action = self.fallback_agent.get_next_action_in_game(game)
         wait_action = self._maybe_wait_for_empty_hand_refresh(fallback_action, game)
         if wait_action is not None:
-            return wait_action
+            return self._with_combat_action_context(wait_action, game)
         return self._finalize_fallback_action(fallback_action, game)
 
     def _finalize_fallback_action(self, action, game):
@@ -1875,14 +1877,23 @@ class CombatRLAgent:
         )
         return self._with_combat_action_context(committed, game)
 
-    @staticmethod
-    def _with_combat_action_context(action: Optional[Action], game: Game) -> Optional[Action]:
+    def _with_combat_action_context(self, action: Optional[Action], game: Game) -> Optional[Action]:
         from spirecomm.communication.action import EndTurnAction
         from spirecomm.ai.decision_trace import write_decision_trace_event
 
         if isinstance(action, EndTurnAction):
             action.expected_floor = getattr(game, "floor", None)
             action.expected_turn = getattr(game, "turn", None)
+        rl_agent = getattr(self, "rl_agent", None)
+        commit_action = getattr(rl_agent, "commit_executed_action", None)
+        if callable(commit_action):
+            try:
+                commit_action(game, action)
+            except Exception as exc:
+                logger.warning("Could not bind emitted action to RL transition: %s", exc)
+                discard = getattr(rl_agent, "discard_pending_transition", None)
+                if callable(discard):
+                    discard()
         if action is not None and not getattr(action, "_decision_trace_written", False):
             if write_decision_trace_event(action, game, source="combat_rl"):
                 action._decision_trace_written = True
@@ -1894,6 +1905,30 @@ class CombatRLAgent:
             except Exception as exc:
                 logger.debug("sim divergence expected-state record failed: %s", exc)
         return action
+
+    def _observe_rl_training_state(self, game: Game) -> None:
+        rl_agent = getattr(self, "rl_agent", None)
+        observe = getattr(rl_agent, "observe_next_state", None)
+        if not callable(observe):
+            return
+        if (
+            self._is_finished_combat_transition(game)
+            and not any(
+                getattr(monster, "half_dead", False)
+                for monster in (getattr(game, "monsters", []) or [])
+            )
+        ):
+            return
+        terminal = not getattr(game, "in_combat", False) or "GAME_OVER" in str(
+            getattr(game, "screen_type", "")
+        )
+        try:
+            observe(game, terminal=terminal)
+        except Exception as exc:
+            logger.warning("Could not finish pending RL transition: %s", exc)
+            discard = getattr(rl_agent, "discard_pending_transition", None)
+            if callable(discard):
+                discard()
 
     def _maybe_use_potion_guard(self, game: Game) -> Optional[Action]:
         """Use a potion in dangerous combat states before high-exploration RL acts."""
@@ -5897,6 +5932,24 @@ class CombatRLAgent:
                 self.fallback_agent.game_tracker.player_class = str(self.player_class).replace('PlayerClass.', '')
             except Exception as e:
                 logger.warning(f"Failed to reset game tracker: {e}")
+
+    def finalize_training_episode(self, game: Game) -> None:
+        finalize = getattr(
+            getattr(self, "rl_agent", None),
+            "finalize_training_episode",
+            None,
+        )
+        if callable(finalize):
+            finalize(game)
+
+    def abort_training_episode(self) -> None:
+        discard = getattr(
+            getattr(self, "rl_agent", None),
+            "discard_pending_transition",
+            None,
+        )
+        if callable(discard):
+            discard()
 
     def save_model(self, model_path: str, episode: int = 0) -> None:
         """Save RL model checkpoint."""

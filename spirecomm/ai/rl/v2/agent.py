@@ -277,38 +277,11 @@ class RLAgentV2:
         action_index: int,
         action_mask: np.ndarray,
     ) -> None:
-        if self.pending_transition is not None:
-            reward_info = {}
-            action_context = self._build_action_context(self.pending_transition)
-            reward = self.reward_calculator.calculate_step_reward(
-                current_game=game,
-                last_game=self.pending_transition.game,
-                action_type="combat",
-                debug_info=reward_info,
-                action_context=action_context,
-            )
-            done = self._is_terminal(game)
-
-            self.trainer.store_transition(
-                continuous=self.pending_transition.continuous,
-                card_ids=self.pending_transition.card_ids,
-                potion_ids=self.pending_transition.potion_ids,
-                relic_ids=self.pending_transition.relic_ids,
-                action=self.pending_transition.action_index,
-                reward=reward,
-                next_continuous=encoded.continuous,
-                next_card_ids=encoded.card_ids,
-                next_potion_ids=encoded.potion_ids,
-                next_relic_ids=encoded.relic_ids,
-                done=done,
-                action_mask=self.pending_transition.action_mask,
-                next_action_mask=action_mask,
-            )
-
-            loss = self.trainer.train_step()
-            if loss is not None:
-                self.episode_reward += reward
-                self.episode_steps += 1
+        self.observe_next_state(
+            game,
+            encoded=encoded,
+            action_mask=action_mask,
+        )
 
         self.pending_transition = PendingTransition(
             continuous=encoded.continuous,
@@ -319,6 +292,137 @@ class RLAgentV2:
             action_mask=action_mask,
             game=game,
         )
+
+    def observe_next_state(
+        self,
+        game: Game,
+        *,
+        terminal: bool = False,
+        encoded=None,
+        action_mask: Optional[np.ndarray] = None,
+    ) -> Optional[float]:
+        """Finish the pending transition against the next observed game state."""
+        if not self.training_mode or self.trainer is None or self.pending_transition is None:
+            return None
+
+        pending = self.pending_transition
+        reward_info = {}
+        action_context = self._build_action_context(pending)
+        reward = self.reward_calculator.calculate_step_reward(
+            current_game=game,
+            last_game=pending.game,
+            action_type="combat",
+            debug_info=reward_info,
+            action_context=action_context,
+        )
+        done = bool(terminal or self._is_terminal(game))
+
+        if done:
+            next_continuous = None
+            next_card_ids = None
+            next_potion_ids = None
+            next_relic_ids = None
+            next_action_mask = np.zeros(self.action_encoder.MAX_ACTIONS, dtype=bool)
+        else:
+            if encoded is None:
+                encoded = self.state_encoder.encode(game)
+            if action_mask is None:
+                action_mask = np.array(
+                    self.action_encoder.get_action_mask(game),
+                    dtype=bool,
+                )
+            next_continuous = encoded.continuous
+            next_card_ids = encoded.card_ids
+            next_potion_ids = encoded.potion_ids
+            next_relic_ids = encoded.relic_ids
+            next_action_mask = action_mask
+
+        accepted = self.trainer.store_transition(
+            continuous=pending.continuous,
+            card_ids=pending.card_ids,
+            potion_ids=pending.potion_ids,
+            relic_ids=pending.relic_ids,
+            action=pending.action_index,
+            reward=reward,
+            next_continuous=next_continuous,
+            next_card_ids=next_card_ids,
+            next_potion_ids=next_potion_ids,
+            next_relic_ids=next_relic_ids,
+            done=done,
+            action_mask=pending.action_mask,
+            next_action_mask=next_action_mask,
+        )
+        self.pending_transition = None
+        if accepted is False:
+            logger.warning("Replay rejected a pending RL transition")
+            return None
+        self.episode_reward += reward
+        self.episode_steps += 1
+        return self.trainer.train_step()
+
+    def commit_executed_action(self, game: Game, action) -> bool:
+        """Bind replay attribution to the action emitted after outer safety guards."""
+        if not self.training_mode or self.trainer is None:
+            return False
+
+        same_state_pending = (
+            self.pending_transition is not None
+            and self.pending_transition.game is game
+        )
+        action_index = self.action_encoder.encode_action(action, game)
+        if not getattr(game, "in_combat", False) or action_index is None:
+            if same_state_pending:
+                self.pending_transition = None
+            return False
+
+        action_mask = np.array(
+            self.action_encoder.get_action_mask(game),
+            dtype=bool,
+        )
+        if (
+            action_index < 0
+            or action_index >= len(action_mask)
+            or not action_mask[action_index]
+        ):
+            if same_state_pending:
+                self.pending_transition = None
+            logger.warning(
+                "Executed combat action is outside the current RL mask; transition discarded: %s",
+                type(action).__name__,
+            )
+            return False
+
+        if same_state_pending:
+            self.pending_transition.action_index = action_index
+            self.pending_transition.action_mask = action_mask
+            return True
+
+        if self.pending_transition is not None:
+            logger.warning("Pending transition was not observed before a new emitted action")
+            return False
+
+        encoded = self.state_encoder.encode(game)
+        self.pending_transition = PendingTransition(
+            continuous=encoded.continuous,
+            card_ids=encoded.card_ids,
+            potion_ids=encoded.potion_ids,
+            relic_ids=encoded.relic_ids,
+            action_index=action_index,
+            action_mask=action_mask,
+            game=game,
+        )
+        return True
+
+    def finalize_training_episode(self, game: Game) -> Optional[float]:
+        if game is None:
+            return None
+        return self.observe_next_state(game, terminal=True)
+
+    def discard_pending_transition(self) -> None:
+        self.pending_transition = None
+
+    def abort_training_episode(self) -> None:
+        self.discard_pending_transition()
 
     def _maybe_get_expert_action_index(self, game: Game, action_mask: np.ndarray) -> Optional[int]:
         if not self.training_mode or self.expert_agent is None or self.trainer is None:

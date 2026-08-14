@@ -98,6 +98,7 @@
         "tests/test_ironclad_card_reward_guards.py",
         "tests/test_rest_guard.py",
         "tests/test_decision_context_guards.py",
+        "tests/test_rl_v2_training_transitions.py",
         "tests/test_offline_decision_comparator.py"
       ]
     },

@@ -155,8 +155,8 @@ class DQNTrainerV2:
         done: bool,
         action_mask: np.ndarray = None,
         next_action_mask: np.ndarray = None,
-    ) -> None:
-        self.replay_buffer.add(
+    ) -> bool:
+        accepted = self.replay_buffer.add(
             continuous,
             card_ids,
             potion_ids,
@@ -171,7 +171,9 @@ class DQNTrainerV2:
             action_mask=action_mask,
             next_action_mask=next_action_mask,
         )
-        self.total_steps += 1
+        if accepted:
+            self.total_steps += 1
+        return accepted
 
     def train_step(self) -> Optional[float]:
         if not self.replay_buffer.is_ready(self.batch_size):
@@ -235,6 +237,7 @@ class DQNTrainerV2:
                 action_mask=next_action_masks,
             )
             next_q = next_target_q.gather(1, next_actions).squeeze(1)
+            next_q = torch.where(dones.bool(), torch.zeros_like(next_q), next_q)
             target_q = rewards + (1 - dones) * self.gamma * next_q
 
         loss = F.smooth_l1_loss(current_q, target_q)

@@ -137,7 +137,9 @@ def test_combat_action_context_writes_decision_trace_when_enabled(monkeypatch, t
     trace_path = tmp_path / "trace.jsonl"
     monkeypatch.setenv("STS_DECISION_TRACE_FILE", str(trace_path))
 
-    action = CombatRLAgent._with_combat_action_context(EndTurnAction(), _game())
+    agent = CombatRLAgent.__new__(CombatRLAgent)
+    agent.rl_agent = None
+    action = agent._with_combat_action_context(EndTurnAction(), _game())
 
     assert action.expected_floor == 7
     assert action.expected_turn == 2

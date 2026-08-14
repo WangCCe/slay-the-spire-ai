@@ -41,21 +41,21 @@ class ReplayBufferV2:
         done: bool,
         action_mask: np.ndarray = None,
         next_action_mask: np.ndarray = None,
-    ) -> None:
+    ) -> bool:
         if continuous is not None and len(continuous) != self.continuous_dim:
-            return
+            return False
         if next_continuous is not None and len(next_continuous) != self.continuous_dim:
-            return
+            return False
         if card_ids is not None and len(card_ids) != self.card_slots:
-            return
+            return False
         if potion_ids is not None and len(potion_ids) != self.potion_slots:
-            return
+            return False
         if relic_ids is not None and len(relic_ids) != self.relic_slots:
-            return
+            return False
         if action_mask is not None and len(action_mask) != self.action_dim:
-            return
+            return False
         if next_action_mask is not None and len(next_action_mask) != self.action_dim:
-            return
+            return False
 
         transition = (
             continuous,
@@ -79,6 +79,7 @@ class ReplayBufferV2:
             self.buffer[self.position] = transition
 
         self.position = (self.position + 1) % self.buffer_size
+        return True
 
     def sample(self, batch_size: int) -> Tuple[np.ndarray, ...]:
         if len(self.buffer) < batch_size:
