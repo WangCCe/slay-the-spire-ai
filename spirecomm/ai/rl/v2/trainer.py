@@ -33,6 +33,7 @@ class DQNTrainerV2:
         batch_size: int = 128,
         target_update_freq: int = 2000,
         train_freq: int = 4,
+        learning_starts: int = None,
         epsilon_start: float = 1.0,
         epsilon_end: float = 0.05,
         epsilon_decay: int = 100000,
@@ -51,6 +52,10 @@ class DQNTrainerV2:
         self.batch_size = batch_size
         self.target_update_freq = target_update_freq
         self.train_freq = train_freq
+        self.learning_starts = max(
+            int(batch_size if learning_starts is None else learning_starts),
+            int(batch_size),
+        )
         self.device = device
         self.learning_rate = learning_rate
         self.network_type = network_type
@@ -176,7 +181,7 @@ class DQNTrainerV2:
         return accepted
 
     def train_step(self) -> Optional[float]:
-        if not self.replay_buffer.is_ready(self.batch_size):
+        if len(self.replay_buffer) < self.learning_starts:
             return None
         if self.total_steps % self.train_freq != 0:
             return None

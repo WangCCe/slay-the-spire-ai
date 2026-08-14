@@ -2,9 +2,12 @@ import math
 from types import SimpleNamespace
 
 import numpy as np
+import pytest
+import torch
 
 from spirecomm.ai.rl.agent import CombatRLAgent
 from spirecomm.ai.rl.v2.agent import PendingTransition, RLAgentV2
+from spirecomm.ai.rl.v2.replay_buffer import ReplayBufferV2
 from spirecomm.ai.rl.v2.trainer import DQNTrainerV2
 from spirecomm.communication.action import EndTurnAction
 
@@ -36,12 +39,16 @@ class _RewardCalculator:
     def calculate_step_reward(self, *, current_game, **_kwargs):
         return current_game.reward
 
+    def reset(self):
+        pass
+
 
 class _Trainer:
     def __init__(self, loss=None):
         self.loss = loss
         self.transitions = []
         self.train_calls = 0
+        self.episode_count = 0
 
     def store_transition(self, **transition):
         self.transitions.append(transition)
@@ -49,6 +56,9 @@ class _Trainer:
     def train_step(self):
         self.train_calls += 1
         return self.loss
+
+    def update_episode_count(self):
+        self.episode_count += 1
 
 
 def _encoded(value):
@@ -81,6 +91,7 @@ def _agent(trainer=None):
     agent.action_encoder = _ActionEncoder()
     agent.state_encoder = _StateEncoder()
     agent.reward_calculator = _RewardCalculator()
+    agent.expert_agent = None
     agent.pending_transition = None
     agent.episode_reward = 0.0
     agent.episode_steps = 0
@@ -156,7 +167,7 @@ def test_nonterminal_observation_uses_next_state_and_counts_transition_without_l
     assert agent.episode_steps == 1
 
 
-def _real_trainer():
+def _real_trainer(*, learning_starts=4):
     return DQNTrainerV2(
         continuous_dim=2,
         action_dim=2,
@@ -170,6 +181,7 @@ def _real_trainer():
         potion_embed_dim=2,
         relic_embed_dim=2,
         batch_size=4,
+        learning_starts=learning_starts,
         train_freq=1,
         target_update_freq=8,
         device="cpu",
@@ -216,6 +228,258 @@ def test_terminal_all_false_next_mask_produces_finite_loss():
 
     assert loss is not None
     assert math.isfinite(loss)
+
+
+def test_learning_starts_blocks_updates_after_batch_size_is_reached():
+    trainer = _real_trainer(learning_starts=5)
+    for _ in range(4):
+        assert _store_real_transition(trainer) is True
+
+    assert trainer.train_step() is None
+    assert len(trainer.optimizer.state) == 0
+
+    assert _store_real_transition(trainer) is True
+    assert trainer.train_step() is not None
+    assert len(trainer.optimizer.state) > 0
+
+
+def test_replay_checkpoint_round_trip_keeps_bounded_chronological_tail():
+    replay = ReplayBufferV2(
+        buffer_size=5,
+        continuous_dim=2,
+        action_dim=2,
+        card_slots=1,
+        potion_slots=1,
+        relic_slots=1,
+    )
+    for value in range(8):
+        done = value == 7
+        assert replay.add(
+            continuous=np.array([value, value + 0.5], dtype=np.float32),
+            card_ids=np.array([value], dtype=np.int64),
+            potion_ids=np.array([value + 1], dtype=np.int64),
+            relic_ids=np.array([value + 2], dtype=np.int64),
+            action=value % 2,
+            reward=float(value),
+            next_continuous=None
+            if done
+            else np.array([value + 1, value + 1.5], dtype=np.float32),
+            next_card_ids=None if done else np.array([value + 1], dtype=np.int64),
+            next_potion_ids=None if done else np.array([value + 2], dtype=np.int64),
+            next_relic_ids=None if done else np.array([value + 3], dtype=np.int64),
+            done=done,
+            action_mask=np.ones(2, dtype=bool),
+            next_action_mask=np.zeros(2, dtype=bool)
+            if done
+            else np.ones(2, dtype=bool),
+        )
+
+    state = replay.state_dict(max_transitions=3)
+    restored = ReplayBufferV2(
+        buffer_size=5,
+        continuous_dim=2,
+        action_dim=2,
+        card_slots=1,
+        potion_slots=1,
+        relic_slots=1,
+    )
+    restored.load_state_dict(state)
+
+    assert len(restored) == 3
+    assert state["source_transition_count"] == 5
+    assert state["truncated"] is True
+    assert [transition[5] for transition in restored.buffer] == [5.0, 6.0, 7.0]
+    assert restored.buffer[-1][10] is True
+    assert restored.buffer[-1][6] is None
+    assert restored.position == 3
+
+
+def _checkpoint_agent(*, learning_starts=4):
+    agent = RLAgentV2.__new__(RLAgentV2)
+    agent.device = "cpu"
+    agent.training_mode = True
+    agent.training = True
+    agent.network_type = "dueling"
+    agent.trainer = _real_trainer(learning_starts=learning_starts)
+    agent.network = agent.trainer.online_network
+    agent.state_encoder = SimpleNamespace(
+        feature_dim=2,
+        CARD_SLOTS=1,
+        POTION_SLOTS=1,
+        RELIC_SLOTS=1,
+    )
+    agent.action_encoder = SimpleNamespace(MAX_ACTIONS=2)
+    agent.id_mapper = SimpleNamespace(
+        card_vocab_size=3,
+        potion_vocab_size=3,
+        relic_vocab_size=3,
+    )
+    return agent
+
+
+def _optimizer_step(trainer):
+    steps = [
+        int(state["step"].item())
+        for state in trainer.optimizer.state.values()
+        if "step" in state
+    ]
+    return max(steps) if steps else 0
+
+
+def test_v2_checkpoint_round_trip_restores_target_replay_optimizer_and_episode(tmp_path):
+    source = _checkpoint_agent(learning_starts=6)
+    for _ in range(6):
+        assert _store_real_transition(source.trainer) is True
+        source.trainer.train_step()
+    source.trainer.episode_count = 7
+    source.trainer.epsilon = 0.42
+    with torch.no_grad():
+        for parameter in source.trainer.target_network.parameters():
+            parameter.add_(0.25)
+
+    path = tmp_path / "v2-resume.pth"
+    source.save_model(str(path), episode=999)
+    restored = _checkpoint_agent()
+    restored.load_model(str(path))
+
+    assert restored.trainer.episode_count == 7
+    assert restored.trainer.total_steps == 6
+    assert restored.trainer.epsilon == pytest.approx(0.42)
+    assert restored.trainer.learning_starts == 6
+    assert len(restored.trainer.replay_buffer) == 6
+    assert _optimizer_step(restored.trainer) == _optimizer_step(source.trainer)
+    assert all(
+        torch.equal(restored.trainer.online_network.state_dict()[key], value)
+        for key, value in source.trainer.online_network.state_dict().items()
+    )
+    assert all(
+        torch.equal(restored.trainer.target_network.state_dict()[key], value)
+        for key, value in source.trainer.target_network.state_dict().items()
+    )
+    assert any(
+        not torch.equal(restored.trainer.target_network.state_dict()[key], value)
+        for key, value in restored.trainer.online_network.state_dict().items()
+    )
+
+    assert _store_real_transition(restored.trainer) is True
+    restored.trainer.train_step()
+    assert any(
+        not torch.equal(restored.trainer.target_network.state_dict()[key], value)
+        for key, value in restored.trainer.online_network.state_dict().items()
+    )
+    assert _store_real_transition(restored.trainer) is True
+    restored.trainer.train_step()
+    assert all(
+        torch.equal(restored.trainer.target_network.state_dict()[key], value)
+        for key, value in restored.trainer.online_network.state_dict().items()
+    )
+
+
+def test_schema2_training_checkpoint_requires_complete_resume_state(tmp_path):
+    source = _checkpoint_agent()
+    path = tmp_path / "incomplete-v2.pth"
+    checkpoint = {
+        "checkpoint_schema_version": RLAgentV2.CHECKPOINT_SCHEMA_VERSION,
+        "checkpoint_kind": "training",
+        "metadata": source._build_metadata().as_dict(),
+        "online_network_state_dict": source.network.state_dict(),
+        "target_network_state_dict": source.trainer.target_network.state_dict(),
+        "replay_buffer_state_dict": source.trainer.replay_buffer.state_dict(),
+    }
+    torch.save(checkpoint, path)
+
+    with pytest.raises(ValueError, match="missing training state"):
+        _checkpoint_agent().load_model(str(path))
+
+
+def test_legacy_checkpoint_restores_optimizer_and_uses_replay_warmup(tmp_path):
+    source = _checkpoint_agent()
+    for _ in range(4):
+        assert _store_real_transition(source.trainer) is True
+        source.trainer.train_step()
+    assert _optimizer_step(source.trainer) > 0
+
+    path = tmp_path / "legacy-v2.pth"
+    torch.save(
+        {
+            "metadata": source._build_metadata().as_dict(),
+            "rl_space_version": "v2",
+            "online_network_state_dict": source.network.state_dict(),
+            "optimizer_state_dict": source.trainer.optimizer.state_dict(),
+            "episode": 5,
+            "epsilon": 0.6,
+            "total_steps": 123,
+        },
+        path,
+    )
+
+    restored = _checkpoint_agent(learning_starts=2048)
+    restored.load_model(str(path))
+
+    assert restored.trainer.episode_count == 5
+    assert restored.trainer.total_steps == 123
+    assert restored.trainer.epsilon == pytest.approx(0.6)
+    assert restored.trainer.learning_starts == RLAgentV2.CHECKPOINT_REPLAY_LIMIT
+    assert len(restored.trainer.replay_buffer) == 0
+    assert _optimizer_step(restored.trainer) == _optimizer_step(source.trainer)
+    assert all(
+        torch.equal(restored.trainer.target_network.state_dict()[key], value)
+        for key, value in restored.trainer.online_network.state_dict().items()
+    )
+    for _ in range(restored.trainer.learning_starts - 1):
+        assert _store_real_transition(restored.trainer) is True
+    assert restored.trainer.train_step() is None
+
+
+def test_schema2_weights_checkpoint_loads_for_degraded_training_resume(tmp_path):
+    source = _checkpoint_agent()
+    source.training_mode = False
+    source.training = False
+    path = tmp_path / "weights-v2.pth"
+    source.save_model(str(path))
+
+    restored = _checkpoint_agent()
+    restored.load_model(str(path))
+
+    assert len(restored.trainer.replay_buffer) == 0
+    assert restored.trainer.learning_starts == RLAgentV2.CHECKPOINT_REPLAY_LIMIT
+    assert all(
+        torch.equal(restored.trainer.target_network.state_dict()[key], value)
+        for key, value in restored.trainer.online_network.state_dict().items()
+    )
+
+
+def test_unknown_checkpoint_schema_is_rejected(tmp_path):
+    source = _checkpoint_agent()
+    path = tmp_path / "future-v2.pth"
+    torch.save(
+        {
+            "checkpoint_schema_version": RLAgentV2.CHECKPOINT_SCHEMA_VERSION + 1,
+            "checkpoint_kind": "training",
+            "metadata": source._build_metadata().as_dict(),
+            "online_network_state_dict": source.network.state_dict(),
+        },
+        path,
+    )
+
+    with pytest.raises(ValueError, match="Unsupported checkpoint schema"):
+        _checkpoint_agent().load_model(str(path))
+
+
+def test_episode_count_advances_on_completion_not_reset():
+    terminal = _game(2, in_combat=False, reward=-200.0)
+    trainer = _Trainer()
+    agent = _agent(trainer)
+
+    agent.reset()
+    assert trainer.episode_count == 0
+
+    agent.pending_transition = _pending(_game(1))
+    agent.finalize_training_episode(terminal)
+    assert trainer.episode_count == 1
+
+    agent.reset()
+    assert trainer.episode_count == 1
 
 
 def test_combat_wrapper_binds_the_final_emitted_action():

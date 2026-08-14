@@ -17,7 +17,10 @@ from spirecomm.spire.numeric import coerce_int
 
 from spirecomm.ai.heuristics.card_types import card_type_name
 from spirecomm.ai.rl.reward import RewardCalculator
-from spirecomm.ai.rl.checkpoint_io import load_torch_checkpoint
+from spirecomm.ai.rl.checkpoint_io import (
+    load_torch_checkpoint,
+    save_torch_checkpoint,
+)
 
 from .action_encoder import ActionEncoderV2
 from .action_space import ACTION_DIM, PLAY_CARD_COUNT
@@ -74,6 +77,8 @@ class RLAgentV2:
     """
 
     RL_SPACE_VERSION = "v2"
+    CHECKPOINT_SCHEMA_VERSION = 2
+    CHECKPOINT_REPLAY_LIMIT = 4096
 
     def __init__(
         self,
@@ -416,7 +421,10 @@ class RLAgentV2:
     def finalize_training_episode(self, game: Game) -> Optional[float]:
         if game is None:
             return None
-        return self.observe_next_state(game, terminal=True)
+        result = self.observe_next_state(game, terminal=True)
+        if self.trainer is not None:
+            self.trainer.update_episode_count()
+        return result
 
     def discard_pending_transition(self) -> None:
         self.pending_transition = None
@@ -528,8 +536,6 @@ class RLAgentV2:
         self.episode_reward = 0.0
         self.episode_steps = 0
         self.reward_calculator.reset()
-        if self.trainer is not None:
-            self.trainer.update_episode_count()
         if self.expert_agent is not None and hasattr(self.expert_agent, "game_tracker"):
             try:
                 from spirecomm.ai.tracker import GameTracker
@@ -556,12 +562,69 @@ class RLAgentV2:
 
         if self.training_mode and self.trainer is not None:
             self.trainer.online_network.load_state_dict(state_dict)
-            self.trainer.target_network.load_state_dict(state_dict)
+            schema_version = int(checkpoint.get("checkpoint_schema_version", 1))
+            if schema_version > self.CHECKPOINT_SCHEMA_VERSION:
+                raise ValueError(
+                    f"Unsupported checkpoint schema {schema_version}: {model_path}"
+                )
+            checkpoint_kind = checkpoint.get(
+                "checkpoint_kind", "legacy" if schema_version == 1 else None
+            )
+            target_state = checkpoint.get("target_network_state_dict")
+            replay_state_present = "replay_buffer_state_dict" in checkpoint
+            replay_state = checkpoint.get("replay_buffer_state_dict")
+            if schema_version == self.CHECKPOINT_SCHEMA_VERSION and checkpoint_kind == "training":
+                required_fields = {
+                    "episode",
+                    "epsilon",
+                    "learning_starts",
+                    "optimizer_state_dict",
+                    "total_steps",
+                }
+                missing_fields = sorted(required_fields.difference(checkpoint))
+                if target_state is None or not replay_state_present or missing_fields:
+                    raise ValueError(
+                        f"Checkpoint schema {schema_version} missing training state "
+                        f"{missing_fields}: {model_path}"
+                    )
+                learning_starts = int(checkpoint["learning_starts"])
+                if not (
+                    self.trainer.batch_size
+                    <= learning_starts
+                    <= self.trainer.replay_buffer.buffer_size
+                ):
+                    raise ValueError(
+                        f"Checkpoint learning_starts out of range: {learning_starts}"
+                    )
+                self.trainer.target_network.load_state_dict(target_state)
+                self.trainer.replay_buffer.load_state_dict(replay_state)
+                self.trainer.learning_starts = learning_starts
+            elif checkpoint_kind in {"legacy", "weights"}:
+                self.trainer.target_network.load_state_dict(state_dict)
+                self.trainer.replay_buffer.clear()
+                self.trainer.learning_starts = max(
+                    self.trainer.learning_starts,
+                    self.CHECKPOINT_REPLAY_LIMIT,
+                )
+                logger.warning(
+                    "%s v2 checkpoint has no replay/target continuation state; "
+                    "require %s replay transitions before learning resumes",
+                    checkpoint_kind.capitalize(),
+                    self.trainer.learning_starts,
+                )
+            else:
+                raise ValueError(
+                    f"Unsupported checkpoint kind {checkpoint_kind!r} for schema "
+                    f"{schema_version}: {model_path}"
+                )
             optimizer_state = checkpoint.get("optimizer_state_dict")
             if optimizer_state is not None:
                 self.trainer.optimizer.load_state_dict(optimizer_state)
             self.trainer.epsilon = checkpoint.get("epsilon", self.trainer.epsilon)
             self.trainer.total_steps = checkpoint.get("total_steps", self.trainer.total_steps)
+            self.trainer.episode_count = int(
+                checkpoint.get("episode", self.trainer.episode_count)
+            )
             logger.info("Loaded v2 trainer checkpoint from %s", model_path)
         else:
             self.network.load_state_dict(state_dict)
@@ -571,6 +634,8 @@ class RLAgentV2:
     def save_model(self, model_path: str, episode: int = 0) -> None:
         metadata = self._build_metadata()
         checkpoint = {
+            "checkpoint_schema_version": self.CHECKPOINT_SCHEMA_VERSION,
+            "checkpoint_kind": "training" if self.training_mode else "weights",
             "metadata": metadata.as_dict(),
             "rl_space_version": metadata.rl_space_version,
             "online_network_state_dict": self.network.state_dict(),
@@ -578,15 +643,21 @@ class RLAgentV2:
         }
 
         if self.training_mode and self.trainer is not None:
+            checkpoint["episode"] = self.trainer.episode_count
             checkpoint.update(
                 {
+                    "target_network_state_dict": self.trainer.target_network.state_dict(),
+                    "replay_buffer_state_dict": self.trainer.replay_buffer.state_dict(
+                        max_transitions=self.CHECKPOINT_REPLAY_LIMIT
+                    ),
                     "optimizer_state_dict": self.trainer.optimizer.state_dict(),
                     "epsilon": self.trainer.epsilon,
+                    "learning_starts": self.trainer.learning_starts,
                     "total_steps": self.trainer.total_steps,
                 }
             )
 
-        torch.save(checkpoint, model_path)
+        save_torch_checkpoint(checkpoint, model_path)
         logger.info("Saved v2 checkpoint to %s", model_path)
 
     def _build_metadata(self) -> CheckpointMetadata:
