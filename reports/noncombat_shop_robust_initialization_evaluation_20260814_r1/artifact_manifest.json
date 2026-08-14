@@ -1,0 +1,25 @@
+{
+  "artifacts": [
+    {
+      "path": "configuration.json",
+      "sha256": "aa2a88a9618c246a38be70a712a0f5016cb584104a43f296f5765eba51b93734",
+      "size_bytes": 918
+    },
+    {
+      "path": "evaluation_dataset.json",
+      "sha256": "74a76101fabb6a61424f34a411d602e96be46f8f459ccc464b641ebb0c5e89a2",
+      "size_bytes": 868513
+    },
+    {
+      "path": "metrics.json",
+      "sha256": "698ec256965fe5dd0b0548e830683f45cb73fd402758e4e6d231ff505e8041b6",
+      "size_bytes": 14990
+    },
+    {
+      "path": "report.json",
+      "sha256": "dd4e88f7aed494245402baea25b6ab463fe9701f7676a3098a8f4b0e38e8310e",
+      "size_bytes": 4829
+    }
+  ],
+  "schema_version": "noncombat-shop-robust-initialization-manifest-v1"
+}
