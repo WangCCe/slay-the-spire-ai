@@ -291,3 +291,5 @@ openspec/changes/archive/*-add-card-uplift-live-evaluation/** text eol=lf
 openspec/specs/noncombat-card-uplift-live-evaluation/** text eol=lf
 reports/noncombat_card_uplift_live_evaluation_* text eol=lf
 reports/noncombat_card_uplift_live_evaluation_*/** text eol=lf
+reports/noncombat_card_uplift_live_matched_current_* text eol=lf
+reports/noncombat_card_uplift_live_matched_current_*/** text eol=lf

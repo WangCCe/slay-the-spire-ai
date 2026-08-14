@@ -1,0 +1,60 @@
+{
+  "schema_version": "noncombat-card-uplift-live-matched-current-report-v1",
+  "evaluation_id": "noncombat-card-uplift-live-matched-current-20260814-r1",
+  "verdict": "descriptive_candidate_noninferior_with_stochastic_pairing",
+  "promotion_decision": "no_go",
+  "source_commit": "0906693fd60a490fe595539ea70c2902e138a2cd",
+  "candidate_evidence": {
+    "report": "reports/noncombat_card_uplift_live_evaluation_20260814_r1/report.json",
+    "source_commit": "1b2030022eb34f7e538254f19b9d07f7f1e07f75",
+    "residual_model_sha256": "85a79fccc65b392e12bdb214d02fcfe2676aaef4357e178584beda977debdede"
+  },
+  "current_control": {
+    "agent": "combat_rl",
+    "mode": "eval",
+    "epsilon": 0.05,
+    "elite_route": "conservative",
+    "ascension": 0,
+    "card_uplift_enabled": false,
+    "seed_pool": "reports/noncombat_card_uplift_live_matched_current_20260814_r1_seed_pool.txt",
+    "seed_pool_sha256": "b4ab14c161e2ddddf9ac89343cd8dee81586a15d9a5303db5b6beaa6d595f9ad",
+    "maximum_games": 10
+  },
+  "runtime": {
+    "started_at_local": "2026-08-14T18:51:31+08:00",
+    "finished_at_local": "2026-08-14T19:07:04+08:00",
+    "completed_games": 10,
+    "evaluation_process_exited": true,
+    "communication_mod_config_restored": true,
+    "communication_mod_config_backup_sha256": "b42093aef81a17ff1e3eb2dec4187c3af48a1a512a355c9d4d613c4cde2803c1",
+    "communication_mod_config_restored_sha256": "b42093aef81a17ff1e3eb2dec4187c3af48a1a512a355c9d4d613c4cde2803c1",
+    "ai_debug_failure_markers": 0,
+    "communication_mod_errors_last_100_lines_failure_markers": 0
+  },
+  "outcomes": {
+    "candidate": {"games":10,"victories":0,"floor_total":184,"mean_floor":18.4,"maximum_floor":33},
+    "current": {"games":10,"victories":0,"floor_total":168,"mean_floor":16.8,"maximum_floor":31},
+    "candidate_minus_current_floor_total": 16,
+    "candidate_minus_current_mean_floor": 1.6,
+    "same_seed_same_terminal_result": 5,
+    "zero_candidate_substitution_divergences": 1
+  },
+  "pairs": [
+    {"seed_played":"-94388446499042873","candidate_file":"1786702921.run","current_file":"1786704759.run","candidate_floor":7,"current_floor":7,"candidate_minus_current":0,"candidate_death":"3 Sentries","current_death":"3 Sentries","candidate_substitutions":3,"current_sha256":"e6908fb1473d6ab4176789859a373afe4f329d3b740c003623b0d22b90342185"},
+    {"seed_played":"6262004061678501130","candidate_file":"1786702984.run","current_file":"1786704834.run","candidate_floor":16,"current_floor":16,"candidate_minus_current":0,"candidate_death":"The Guardian","current_death":"The Guardian","candidate_substitutions":2,"current_sha256":"a26bb3fd3f90ec20b4f38e8545ab814571ce87ec7bb026b1c464b3d57ffc022b"},
+    {"seed_played":"-1496310916568639749","candidate_file":"1786703083.run","current_file":"1786704916.run","candidate_floor":16,"current_floor":16,"candidate_minus_current":0,"candidate_death":"The Guardian","current_death":"The Guardian","candidate_substitutions":9,"current_sha256":"e276cf53eb46d11dbd5f927d60da272c6663a04b019a8293e7098485f2cb8ae5"},
+    {"seed_played":"2426813284755187112","candidate_file":"1786703160.run","current_file":"1786705000.run","candidate_floor":12,"current_floor":14,"candidate_minus_current":-2,"candidate_death":"Lots of Slimes","current_death":"Exordium Thugs","candidate_substitutions":6,"current_sha256":"b6c601a23daf4f8d0db8cb441c979e679a0014f436226269c0e23885f8f736c3"},
+    {"seed_played":"-1622507530551266734","candidate_file":"1786703228.run","current_file":"1786705096.run","candidate_floor":16,"current_floor":16,"candidate_minus_current":0,"candidate_death":"Hexaghost","current_death":"Hexaghost","candidate_substitutions":5,"current_sha256":"33436e6668e4446bd7dda72bd42fa2a126864015659651998e6fc0c8c8d51f33"},
+    {"seed_played":"-1724633684991443347","candidate_file":"1786703258.run","current_file":"1786705177.run","candidate_floor":8,"current_floor":16,"candidate_minus_current":-8,"candidate_death":"Gremlin Nob","current_death":"The Guardian","candidate_substitutions":0,"current_sha256":"cfa163dc209be2f7cc9887e88f7b95c4ebfaadba1c9810c7fe92f736019a38ef"},
+    {"seed_played":"3069523256066178880","candidate_file":"1786703408.run","current_file":"1786705356.run","candidate_floor":27,"current_floor":31,"candidate_minus_current":-4,"candidate_death":"3 Cultists","current_death":"Cultist and Chosen","candidate_substitutions":6,"current_sha256":"06508372f70d88ee473445284100b8819c5bffadcc59c39ceb83c6969d4e28e9"},
+    {"seed_played":"-846151994304447793","candidate_file":"1786703479.run","current_file":"1786705421.run","candidate_floor":16,"current_floor":16,"candidate_minus_current":0,"candidate_death":"The Guardian","current_death":"The Guardian","candidate_substitutions":8,"current_sha256":"7e0fdc4f95d4b1da9e36c5de7f956357224be994d86fee8fce38cc7a4d62460f"},
+    {"seed_played":"400722356582234121","candidate_file":"1786703642.run","current_file":"1786705544.run","candidate_floor":33,"current_floor":20,"candidate_minus_current":13,"candidate_death":"Collector","current_death":"Snecko","candidate_substitutions":11,"current_sha256":"f70e5a424ecdb472ee84272503e6a12d9e0525e860727b7252b761e0eadef1ec"},
+    {"seed_played":"3565798865398725384","candidate_file":"1786703776.run","current_file":"1786705621.run","candidate_floor":33,"current_floor":16,"candidate_minus_current":17,"candidate_death":"Automaton","current_death":"The Guardian","candidate_substitutions":12,"current_sha256":"a4828b42570efe674b43a2c291eb0a975a8c7519102d5673f0514a8224f21040"}
+  ],
+  "interpretation": {
+    "descriptive_result": "The candidate cohort reached 16 more total floors than Current on the same ordered seed list, with zero victories in either arm.",
+    "attribution_limit": "Both arms used independent epsilon-0.05 combat exploration. One seed diverged despite zero card-uplift substitutions and identical card choices through the candidate death floor, so seed matching did not create deterministic paired trajectories.",
+    "card_policy_decision": "Keep the candidate frozen as experimental. The evidence does not justify promotion, rollback, or skip-specific calibration.",
+    "next_step": "Spend the next training budget on the shared combat policy. Future live card-policy comparisons must set epsilon to zero before interpreting same-seed deltas."
+  }
+}
