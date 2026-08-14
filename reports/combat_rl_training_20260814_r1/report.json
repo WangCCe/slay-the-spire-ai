@@ -1,0 +1,85 @@
+{
+  "schema_version": "combat-rl-training-report-v1",
+  "training_id": "combat-rl-training-20260814-r1",
+  "verdict": "training_complete_ready_for_zero_exploration_evaluation",
+  "promotion_decision": "no_go_pending_evaluation",
+  "source_commit": "849b4adff8b710b1f7826982c8ca2af59936c443",
+  "configuration": {
+    "agent": "combat_rl",
+    "rl_space_version": "v2",
+    "mode": "train",
+    "maximum_games": 25,
+    "elite_route": "conservative",
+    "ascension": 0,
+    "expert_mix_enabled": true,
+    "expert_mix_probability": 0.3,
+    "card_uplift_enabled": false,
+    "fixed_seed_pool": false
+  },
+  "entry_checkpoint": {
+    "path": "D:/SteamLibrary/steamapps/common/SlayTheSpire/checkpoints/rl_combat_model_ep9_steps11848.pth",
+    "sha256": "780f6a94754b741e8e68d278d44dc68a80cf2b137c2d6fd8a39c7f042c936558",
+    "size_bytes": 6541162,
+    "episode": 5,
+    "total_steps": 11848,
+    "epsilon": 0.887444
+  },
+  "final_checkpoint": {
+    "path": "reports/combat_rl_training_20260814_r1/rl_combat_model_ep49_steps15486.pth",
+    "sha256": "b3f2efcb58a98fc5faf3b64f25c070fc63769fe2999040128044c7b98e12d3da",
+    "size_bytes": 6541220,
+    "episode": 25,
+    "total_steps": 15486,
+    "epsilon": 0.852902,
+    "added_transitions": 3638,
+    "final_average_loss": 1.6999
+  },
+  "runtime": {
+    "started_at_local": "2026-08-14T19:14:29+08:00",
+    "finished_at_local": "2026-08-14T20:11:02+08:00",
+    "completed_games": 25,
+    "training_process_exited": true,
+    "communication_mod_config_restored": true,
+    "communication_mod_config_backup_sha256": "b42093aef81a17ff1e3eb2dec4187c3af48a1a512a355c9d4d613c4cde2803c1",
+    "communication_mod_config_restored_sha256": "b42093aef81a17ff1e3eb2dec4187c3af48a1a512a355c9d4d613c4cde2803c1",
+    "training_log_error_markers": 0,
+    "training_log_fallback_markers": 0
+  },
+  "outcomes": {
+    "victories": 0,
+    "floor_total": 580,
+    "mean_floor": 23.2,
+    "median_floor": 20,
+    "maximum_floor": 50,
+    "act_1_boss_reaches": 25,
+    "act_2_entries": 13,
+    "act_3_entries": 1,
+    "potions_used": 0,
+    "floor_reached": [16,16,33,16,20,16,33,33,16,29,16,33,22,22,33,16,16,25,33,16,22,16,16,50,16],
+    "death_counts": {
+      "Hexaghost": 5,
+      "The Guardian": 5,
+      "Automaton": 2,
+      "Centurion and Healer": 2,
+      "Champ": 2,
+      "Collector": 2,
+      "Slime Boss": 2,
+      "Chosen and Byrds": 1,
+      "Cultist and Chosen": 1,
+      "Donu and Deca": 1,
+      "Gremlin Leader": 1,
+      "Sentry and Sphere": 1
+    }
+  },
+  "artifacts": {
+    "run_manifest": "reports/combat_rl_training_20260814_r1/run_manifest.json",
+    "run_manifest_sha256": "54992084938ac61d3beb90e1b8c9d28f2c421c56a9adbef4cf6ef1faeb7b386c",
+    "run_count": 25
+  },
+  "interpretation": {
+    "training_claim": "The resumed v2 combat policy consumed 3638 new live combat transitions and performed gradient updates after its replay buffer reached readiness.",
+    "outcome_claim": "Training-time outcomes were substantially deeper than the historical May training batch and included one Act 3 boss attempt, but high exploration and expert mixing prevent a policy-quality claim.",
+    "diagnostic": "All 25 runs reached an Act 1 boss, while zero recorded potion uses persisted. Shared combat policy quality and potion action coverage remain higher priorities than card-reward calibration.",
+    "next_step": "Evaluate the frozen final checkpoint for 10 fresh conservative games with epsilon exactly zero before continuing training or modifying combat rewards."
+  }
+}

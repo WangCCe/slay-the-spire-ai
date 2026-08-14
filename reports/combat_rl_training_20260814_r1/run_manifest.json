@@ -1,0 +1,256 @@
+{
+  "schema_version": "combat-rl-training-run-manifest-v1",
+  "training_id": "combat-rl-training-20260814-r1",
+  "runs": [
+    {
+      "file": "1786706187.run",
+      "sha256": "7c7ccc7ffe27c38b395520ce38b37add0e455cc90561b42d2e3d05205f493977",
+      "seed_played": "9114086235017165032",
+      "floor_reached": 16,
+      "victory": false,
+      "killed_by": "Slime Boss",
+      "playtime_seconds": 84,
+      "potions_used": 0
+    },
+    {
+      "file": "1786706267.run",
+      "sha256": "cfaa5911738d2d1ea99a04849b9ca1a64a6413b12721b304b1fa9279727312a5",
+      "seed_played": "-802689752517252295",
+      "floor_reached": 16,
+      "victory": false,
+      "killed_by": "Hexaghost",
+      "playtime_seconds": 75,
+      "potions_used": 0
+    },
+    {
+      "file": "1786706427.run",
+      "sha256": "c152f666fbd97c2eb694dc9672ce9ea2c160a6667e7d63d1797ce4adbb4ef970",
+      "seed_played": "188673116050672305",
+      "floor_reached": 33,
+      "victory": false,
+      "killed_by": "Collector",
+      "playtime_seconds": 155,
+      "potions_used": 0
+    },
+    {
+      "file": "1786706507.run",
+      "sha256": "74e62eadd33984c995f53b6d1ddc7af7e2afb4ba7792c4022dbbcbe6b12d2988",
+      "seed_played": "-7699058213285933597",
+      "floor_reached": 16,
+      "victory": false,
+      "killed_by": "The Guardian",
+      "playtime_seconds": 76,
+      "potions_used": 0
+    },
+    {
+      "file": "1786706638.run",
+      "sha256": "975fce91aa8b8aec3ba9582b1d4051ad19f21de7359eaf965fff00b4addd51dc",
+      "seed_played": "-4369140819329119698",
+      "floor_reached": 20,
+      "victory": false,
+      "killed_by": "Chosen and Byrds",
+      "playtime_seconds": 127,
+      "potions_used": 0
+    },
+    {
+      "file": "1786706730.run",
+      "sha256": "bcb52c8a5fc1042c5a2df7403a121f8bfb233273dc03678ac481def27643dc16",
+      "seed_played": "613354542472270013",
+      "floor_reached": 16,
+      "victory": false,
+      "killed_by": "Hexaghost",
+      "playtime_seconds": 88,
+      "potions_used": 0
+    },
+    {
+      "file": "1786706905.run",
+      "sha256": "ada02c43d6d99e60e857018c68c1d7ea7f4a731d2515d8f79303347120ec5938",
+      "seed_played": "-6464051876551760455",
+      "floor_reached": 33,
+      "victory": false,
+      "killed_by": "Champ",
+      "playtime_seconds": 170,
+      "potions_used": 0
+    },
+    {
+      "file": "1786707106.run",
+      "sha256": "ef9780a6735754edd3af0464e8a9b69f1ff44ef5cb518dfe40c2359686c8c7e5",
+      "seed_played": "-7994179158662301353",
+      "floor_reached": 33,
+      "victory": false,
+      "killed_by": "Automaton",
+      "playtime_seconds": 196,
+      "potions_used": 0
+    },
+    {
+      "file": "1786707187.run",
+      "sha256": "af64ee895c376c1c06b6ebe2ca54bb3c30a72bb9b9189cd1a7da64ee6d51a140",
+      "seed_played": "4273042366127586524",
+      "floor_reached": 16,
+      "victory": false,
+      "killed_by": "Hexaghost",
+      "playtime_seconds": 77,
+      "potions_used": 0
+    },
+    {
+      "file": "1786707345.run",
+      "sha256": "66ff78343bf0e7fd1a07afea705cb9999ee2bff4d6ed8f1235367fc2f972f272",
+      "seed_played": "-899617983042217958",
+      "floor_reached": 29,
+      "victory": false,
+      "killed_by": "Cultist and Chosen",
+      "playtime_seconds": 153,
+      "potions_used": 0
+    },
+    {
+      "file": "1786707422.run",
+      "sha256": "feed65219ffbe668d489c6a0326aa4ba20bb4cfc9ea6bfaa9b7f7550080c2aed",
+      "seed_played": "-917418212546116406",
+      "floor_reached": 16,
+      "victory": false,
+      "killed_by": "Hexaghost",
+      "playtime_seconds": 73,
+      "potions_used": 0
+    },
+    {
+      "file": "1786707570.run",
+      "sha256": "a7b8158ac317f7a5e9aa2b5e0df7e94a1ab4aad87f320bb89767b1b2a0ec0eed",
+      "seed_played": "5529187133508058938",
+      "floor_reached": 33,
+      "victory": false,
+      "killed_by": "Champ",
+      "playtime_seconds": 144,
+      "potions_used": 0
+    },
+    {
+      "file": "1786707692.run",
+      "sha256": "fb35b36287ac467a74bc8da54ea5c99b256c1f8a605fea0348aab2e6ef60b8ea",
+      "seed_played": "1013663932996290529",
+      "floor_reached": 22,
+      "victory": false,
+      "killed_by": "Centurion and Healer",
+      "playtime_seconds": 117,
+      "potions_used": 0
+    },
+    {
+      "file": "1786707849.run",
+      "sha256": "401917366d1883471e6950437e8cc47477b5409ec7f2e7b998f358a0a34b730b",
+      "seed_played": "-5885852732755264416",
+      "floor_reached": 22,
+      "victory": false,
+      "killed_by": "Sentry and Sphere",
+      "playtime_seconds": 152,
+      "potions_used": 0
+    },
+    {
+      "file": "1786708061.run",
+      "sha256": "e1bd52c47de92a2cc2515ed12f048ab510577a8a5bacf725b3a881cae1aa7b03",
+      "seed_played": "1428041094250726385",
+      "floor_reached": 33,
+      "victory": false,
+      "killed_by": "Automaton",
+      "playtime_seconds": 208,
+      "potions_used": 0
+    },
+    {
+      "file": "1786708132.run",
+      "sha256": "461eb14ee49f6b5ca133bcfdf749242cfd2d0b5505137899d1edf50bbe279938",
+      "seed_played": "-3715330648286109192",
+      "floor_reached": 16,
+      "victory": false,
+      "killed_by": "The Guardian",
+      "playtime_seconds": 67,
+      "potions_used": 0
+    },
+    {
+      "file": "1786708238.run",
+      "sha256": "b9f394797148f2d1e0f42f1cd5dd36f1badc30f7afdd136aac7688a596a8aeee",
+      "seed_played": "-2478251792230571972",
+      "floor_reached": 16,
+      "victory": false,
+      "killed_by": "Slime Boss",
+      "playtime_seconds": 102,
+      "potions_used": 0
+    },
+    {
+      "file": "1786708380.run",
+      "sha256": "ab3b9dae9e9536b246569fccbdf97b9710e5b47383d4428fe254c1240143019a",
+      "seed_played": "-3232600518783010995",
+      "floor_reached": 25,
+      "victory": false,
+      "killed_by": "Gremlin Leader",
+      "playtime_seconds": 137,
+      "potions_used": 0
+    },
+    {
+      "file": "1786708580.run",
+      "sha256": "8b1ea85f520d5ca091f92f99f3ea4e688a92f1f813113b4d4607a01558bb9ad6",
+      "seed_played": "-7873493264459421750",
+      "floor_reached": 33,
+      "victory": false,
+      "killed_by": "Collector",
+      "playtime_seconds": 195,
+      "potions_used": 0
+    },
+    {
+      "file": "1786708641.run",
+      "sha256": "0e0b33c22960f293bad446488c7f251d965f5de5a3da434b8294de96d6b51e8a",
+      "seed_played": "3781159268378571836",
+      "floor_reached": 16,
+      "victory": false,
+      "killed_by": "The Guardian",
+      "playtime_seconds": 56,
+      "potions_used": 0
+    },
+    {
+      "file": "1786708766.run",
+      "sha256": "789941e1eb9de0d87a8aa6cf4f7a9209228a56f0da65db0c42429c45eb9ec0a8",
+      "seed_played": "6283763612048363999",
+      "floor_reached": 22,
+      "victory": false,
+      "killed_by": "Centurion and Healer",
+      "playtime_seconds": 120,
+      "potions_used": 0
+    },
+    {
+      "file": "1786708868.run",
+      "sha256": "ae0d10f5a536cc40b8333503b0cc6b1b38b5013db6a316dff75ad7344536c0a0",
+      "seed_played": "513383863805052177",
+      "floor_reached": 16,
+      "victory": false,
+      "killed_by": "The Guardian",
+      "playtime_seconds": 98,
+      "potions_used": 0
+    },
+    {
+      "file": "1786708966.run",
+      "sha256": "e71ff84b8433a0a348b93acfed726f0ce07452db284bb8c3b222d79b9aad97eb",
+      "seed_played": "-6758317979168276798",
+      "floor_reached": 16,
+      "victory": false,
+      "killed_by": "The Guardian",
+      "playtime_seconds": 94,
+      "potions_used": 0
+    },
+    {
+      "file": "1786709360.run",
+      "sha256": "fb42ed5e30b11b3de54ddd521c195fe579acf11bfcf47546b36c366b93bc022b",
+      "seed_played": "-4103488196766404862",
+      "floor_reached": 50,
+      "victory": false,
+      "killed_by": "Donu and Deca",
+      "playtime_seconds": 389,
+      "potions_used": 0
+    },
+    {
+      "file": "1786709459.run",
+      "sha256": "21da2b05b15cd4bc63e3d7100a5d99c434855c75329aff67a0b491ce42d00d32",
+      "seed_played": "3080134882366771116",
+      "floor_reached": 16,
+      "victory": false,
+      "killed_by": "Hexaghost",
+      "playtime_seconds": 95,
+      "potions_used": 0
+    }
+  ]
+}

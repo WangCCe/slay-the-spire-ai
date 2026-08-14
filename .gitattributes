@@ -293,3 +293,8 @@ reports/noncombat_card_uplift_live_evaluation_* text eol=lf
 reports/noncombat_card_uplift_live_evaluation_*/** text eol=lf
 reports/noncombat_card_uplift_live_matched_current_* text eol=lf
 reports/noncombat_card_uplift_live_matched_current_*/** text eol=lf
+
+# Preserve combat RL training evidence and keep model checkpoints binary.
+reports/combat_rl_training_* text eol=lf
+reports/combat_rl_training_*/** text eol=lf
+reports/combat_rl_training_*/*.pth -text
