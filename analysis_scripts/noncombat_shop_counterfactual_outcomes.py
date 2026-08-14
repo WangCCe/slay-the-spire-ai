@@ -37,6 +37,9 @@ from analysis_scripts import noncombat_card_only_native_baseline_rl_pilot_runner
 from analysis_scripts import noncombat_current_policy_simulator_bridge as current_bridge
 from analysis_scripts import noncombat_event_option_counterfactual_outcomes as event
 from analysis_scripts import noncombat_route_counterfactual_ranking as route
+from analysis_scripts.noncombat_state_conditioned_policy_input import (
+    StateConditionedPolicyInput,
+)
 
 
 DEFAULT_NATIVE_REGISTRATION = event.DEFAULT_NATIVE_REGISTRATION
@@ -70,6 +73,8 @@ class ShopOutcomeRow:
     candidates: tuple[dict[str, Any], ...]
     branch_outcomes: tuple[dict[str, Any], ...]
     replay: dict[str, Any] | None
+    state_features: Any | None = None
+    candidate_features: Any | None = None
 
     @property
     def action_returns(self) -> tuple[float, ...]:
@@ -141,6 +146,11 @@ def collect_shop_outcomes(
     maximum_charged_seconds: float = MAX_CHARGED_SECONDS,
     clock: Callable[[], float] = time.monotonic,
     branch_evaluator: Callable[..., credit.BranchTrace] | None = None,
+    projector: Callable[
+        [Mapping[str, Any], Sequence[Mapping[str, Any]]],
+        StateConditionedPolicyInput,
+    ]
+    | None = None,
 ) -> ShopOutcomeResult:
     normalized_seeds = tuple(seeds)
     limits = (
@@ -248,6 +258,20 @@ def collect_shop_outcomes(
                 if current_action_id not in legal_action_ids:
                     raise ShopOutcomeBlocked("Current shop action is not source legal")
                 action_kinds = tuple(_candidate_kind(candidate) for candidate in candidates)
+                policy_input: StateConditionedPolicyInput | None = None
+                if projector is not None:
+                    try:
+                        policy_input = projector(snapshot, candidates)
+                    except Exception as exc:
+                        raise ShopOutcomeBlocked("shop policy projection failed") from exc
+                    if (
+                        policy_input.state_features.ndim != 1
+                        or policy_input.candidate_features.ndim != 2
+                        or policy_input.candidate_features.shape[0] != len(candidates)
+                        or policy_input.candidate_features.shape[1]
+                        != policy_input.state_features.shape[0]
+                    ):
+                        raise ShopOutcomeBlocked("shop policy projection shape differs")
                 traces: list[credit.BranchTrace] = []
                 outcomes: list[dict[str, Any]] = []
                 censor_reason: str | None = None
@@ -321,6 +345,16 @@ def collect_shop_outcomes(
                             candidates=tuple(copy.deepcopy(candidates)),
                             branch_outcomes=tuple(outcomes),
                             replay=replay,
+                            state_features=(
+                                policy_input.state_features.detach().clone()
+                                if policy_input is not None
+                                else None
+                            ),
+                            candidate_features=(
+                                policy_input.candidate_features.detach().clone()
+                                if policy_input is not None
+                                else None
+                            ),
                         )
                     )
                     source_hashes.add(source_sha256)
@@ -416,7 +450,21 @@ def _write_artifacts(
     identity: Mapping[str, Any],
 ) -> None:
     output.mkdir(parents=False, exist_ok=False)
-    rows = [asdict(row) for row in result.rows]
+    rows = []
+    for row in result.rows:
+        serialized = asdict(row)
+        state_features = serialized.pop("state_features")
+        candidate_features = serialized.pop("candidate_features")
+        if (state_features is None) != (candidate_features is None):
+            raise ShopOutcomeBlocked("shop row feature presence differs")
+        if state_features is not None:
+            serialized["state_features"] = route._encode_sparse_tensor(
+                row.state_features
+            )
+            serialized["candidate_features"] = route._encode_sparse_tensor(
+                row.candidate_features
+            )
+        rows.append(serialized)
     summary = _summary(result)
     report = {
         "authority": {

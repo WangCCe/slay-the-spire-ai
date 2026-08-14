@@ -8,8 +8,12 @@ from pathlib import Path
 from typing import Any
 
 import pytest
+import torch
 
 from analysis_scripts import noncombat_shop_counterfactual_outcomes as shop
+from analysis_scripts.noncombat_state_conditioned_policy_input import (
+    StateConditionedPolicyInput,
+)
 
 
 KINDS = ("buy_card", "buy_relic", "purge", "leave")
@@ -107,6 +111,7 @@ def _collect(
     *,
     seeds: tuple[int, ...] = (1,),
     replay_source_count: int = 1,
+    projector: Any | None = None,
 ) -> shop.ShopOutcomeResult:
     ticks = iter(range(10_000))
     return shop.collect_shop_outcomes(
@@ -125,6 +130,7 @@ def _collect(
         maximum_charged_seconds=10_000,
         clock=lambda: next(ticks),
         branch_evaluator=evaluator,
+        projector=projector,
     )
 
 
@@ -183,6 +189,33 @@ def test_registered_support_failure_censors_incomplete_source(
     assert result.censored_sources[0]["reason"] == (
         "unsupported_shop_courier_restock_semantics"
     )
+
+
+def test_opt_in_projection_is_captured_with_candidate_alignment(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    _install_protocol(monkeypatch)
+
+    def projector(
+        _snapshot: dict[str, Any], candidates: list[dict[str, Any]]
+    ) -> StateConditionedPolicyInput:
+        return StateConditionedPolicyInput(
+            state_features=torch.tensor([0.25, 1.0], dtype=torch.float32),
+            candidate_features=torch.arange(
+                len(candidates) * 2, dtype=torch.float32
+            ).reshape(len(candidates), 2),
+        )
+
+    result = _collect(
+        lambda _environment, *, action_id, **_kwargs: _trace(action_id),
+        projector=projector,
+    )
+
+    assert torch.equal(
+        result.rows[0].state_features,
+        torch.tensor([0.25, 1.0], dtype=torch.float32),
+    )
+    assert result.rows[0].candidate_features.shape == (4, 2)
 
 
 def test_replay_drift_fails_viability_without_discarding_complete_row(
@@ -246,7 +279,10 @@ def test_artifacts_bind_rows_report_and_manifest(
         assert len(payload) == binding["size_bytes"]
         assert hashlib.sha256(payload).hexdigest() == binding["sha256"]
     report = json.loads((output / "report.json").read_text("ascii"))
+    source_rows = json.loads((output / "source_rows.json").read_text("ascii"))
     assert report["verdict"] == "shop_counterfactual_signal_viable_for_learning_proposal"
     assert report["summary"]["action_kinds"] == sorted(KINDS)
     assert report["operations"]["training"] is False
+    assert "state_features" not in source_rows[0]
+    assert "candidate_features" not in source_rows[0]
     assert (output / "report.md").is_file()
