@@ -5856,7 +5856,10 @@ class CombatRLAgent:
             return False
         if hasattr(card, "is_playable") and not getattr(card, "is_playable", False):
             return False
-        if not card_play_conditions_allow(card, game):
+        if not card_play_conditions_allow(
+            card,
+            self._remaining_hand_cards_after_effect_source(game, card),
+        ):
             return False
 
         energy = self._player_energy(game)

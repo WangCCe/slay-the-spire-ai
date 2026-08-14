@@ -75,6 +75,52 @@ def test_potion_guard_uses_damage_potion_in_danger():
     assert action.target_index == 0
 
 
+def test_current_combat_action_allows_clash_with_only_attacks_remaining():
+    clash = SimpleNamespace(
+        name="Clash",
+        card_id="Clash",
+        type=CardType.ATTACK,
+        cost=0,
+        is_playable=True,
+    )
+    strike = SimpleNamespace(
+        name="Strike",
+        card_id="Strike_R",
+        type=CardType.ATTACK,
+        cost=1,
+        is_playable=True,
+    )
+    game = _game(hand=[clash, strike])
+
+    assert _agent()._is_current_combat_action_playable(
+        PlayCardAction(card_index=0, target_index=0),
+        game,
+    )
+
+
+def test_current_combat_action_rejects_clash_with_skill_remaining():
+    clash = SimpleNamespace(
+        name="Clash",
+        card_id="Clash",
+        type=CardType.ATTACK,
+        cost=0,
+        is_playable=True,
+    )
+    defend = SimpleNamespace(
+        name="Defend",
+        card_id="Defend_R",
+        type=CardType.SKILL,
+        cost=1,
+        is_playable=True,
+    )
+    game = _game(hand=[clash, defend])
+
+    assert not _agent()._is_current_combat_action_playable(
+        PlayCardAction(card_index=0, target_index=0),
+        game,
+    )
+
+
 def test_potion_guard_accepts_missing_can_use_on_damage_potion():
     potion = SimpleNamespace(
         potion_id="Fire Potion",
