@@ -13,5 +13,5 @@
 ## 3. Verification And Publication
 
 - [x] 3.1 Run OpenSpec validation and the focused test module using an isolated system-temp pytest directory.
-- [ ] 3.2 Commit the source-bound runner, run the 112-source selection-only preflight, and either freeze an eligible configuration before fresh access or persist the terminal OOF no-go.
-- [ ] 3.3 Execute the fresh experiment once, verify artifact hashes and operation disclosures, record the terminal verdict, and archive the completed change.
+- [x] 3.2 Commit the source-bound runner, run the 112-source selection-only preflight, and either freeze an eligible configuration before fresh access or persist the terminal OOF no-go.
+- [x] 3.3 Execute the fresh experiment once when OOF-eligible; otherwise verify no-go artifact hashes and operation disclosures, record the terminal verdict without fresh access, and archive the completed change.
