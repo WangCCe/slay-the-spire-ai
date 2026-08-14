@@ -1,0 +1,103 @@
+{
+  "schema_version": 1,
+  "gate_id": "combat-rl-repaired-zero-epsilon-gate-20260814-r1",
+  "registration_commit": "5aa75e8bba7534975f15f72c96c6fce11b2c02f0",
+  "code_source_commit": "2cc02f71fc8bf70a3c363d6a707ca8e5c1115c2b",
+  "candidate_arm": {
+    "started_at": "2026-08-14T22:40:28+08:00",
+    "finished_at": "2026-08-14T22:56:53+08:00",
+    "checkpoint_sha256": "dcbe7fddc212aaa6ae2a09adebe44265f83d4fd8c92a80e3269a22f7e5843e3a",
+    "floors": [16, 20, 16, 16, 33, 22, 16, 16, 16, 16],
+    "floor_total": 187,
+    "floor_mean": 18.7,
+    "floor_median": 16.0,
+    "victories": 0,
+    "act_2_entries": 3,
+    "act_2_boss_reaches": 1,
+    "act_3_entries": 0,
+    "runtime_integrity_warnings": 0,
+    "runtime_log_sha256": "ec0ab8a16728e553ecddaac5009acee99bf6792b2469bed14754660028f650ca"
+  },
+  "baseline_arm": {
+    "started_at": "2026-08-14T22:58:21+08:00",
+    "finished_at": "2026-08-14T23:18:19+08:00",
+    "checkpoint_sha256": "780f6a94754b741e8e68d278d44dc68a80cf2b137c2d6fd8a39c7f042c936558",
+    "floors": [16, 50, 16, 16, 33, 21, 16, 16, 33, 16],
+    "floor_total": 233,
+    "floor_mean": 23.3,
+    "floor_median": 16.0,
+    "victories": 0,
+    "act_2_entries": 4,
+    "act_2_boss_reaches": 3,
+    "act_3_entries": 1,
+    "runtime_integrity_warnings": 0,
+    "runtime_log_sha256": "335ed50c4ef6f65df97297c557f4da0cd04c1976fa08468167fedb14b9a01480"
+  },
+  "paired_comparison": {
+    "candidate_wins": 1,
+    "baseline_wins": 2,
+    "ties": 7,
+    "candidate_minus_baseline_floor_total": -46,
+    "candidate_minus_baseline_floor_mean": -4.6,
+    "pairs": [
+      {"index": 1, "seed_played": "6456627573405040778", "candidate_floor": 16, "baseline_floor": 16, "delta": 0},
+      {"index": 2, "seed_played": "1303345143936144428", "candidate_floor": 20, "baseline_floor": 50, "delta": -30},
+      {"index": 3, "seed_played": "-7396424597558801147", "candidate_floor": 16, "baseline_floor": 16, "delta": 0},
+      {"index": 4, "seed_played": "-2279607424927663689", "candidate_floor": 16, "baseline_floor": 16, "delta": 0},
+      {"index": 5, "seed_played": "347703993373359881", "candidate_floor": 33, "baseline_floor": 33, "delta": 0},
+      {"index": 6, "seed_played": "6205615836085604521", "candidate_floor": 22, "baseline_floor": 21, "delta": 1},
+      {"index": 7, "seed_played": "-8368468361161259033", "candidate_floor": 16, "baseline_floor": 16, "delta": 0},
+      {"index": 8, "seed_played": "-4663630392327997161", "candidate_floor": 16, "baseline_floor": 16, "delta": 0},
+      {"index": 9, "seed_played": "6123840550933086892", "candidate_floor": 16, "baseline_floor": 33, "delta": -17},
+      {"index": 10, "seed_played": "8067042344269420330", "candidate_floor": 16, "baseline_floor": 16, "delta": 0}
+    ]
+  },
+  "promotion_checks": {
+    "candidate_paired_floor_wins_gt_baseline": false,
+    "candidate_victories_gte_baseline": true,
+    "candidate_act_2_entries_gte_baseline": false,
+    "candidate_act_2_boss_reaches_gte_baseline": false,
+    "candidate_floor_total_gte_baseline": false,
+    "both_arms_zero_integrity_warnings": true,
+    "overall_pass": false
+  },
+  "runs": {
+    "candidate": [
+      {"file": "candidate_runs/1786718517.run", "sha256": "ded4692e553da9af743682b4ff5e31c62ce58971e0f897c05a288a1f76076099"},
+      {"file": "candidate_runs/1786718614.run", "sha256": "e544f92c6c655c8cbf6e1f9223e100643ec7277c408b04bc0b2b27b67d21e986"},
+      {"file": "candidate_runs/1786718682.run", "sha256": "fb61798e63c39134492dec990cb8a335966af24df1d08002411d6677ae3043ea"},
+      {"file": "candidate_runs/1786718756.run", "sha256": "2c51e689e84672cca96bced0705098eccd6cc0add569396c7f4f8939e6622fb6"},
+      {"file": "candidate_runs/1786718956.run", "sha256": "9418a74acc4eedde8fa24c7589a29d9b286a5cd77a91273fa93e417443115616"},
+      {"file": "candidate_runs/1786719070.run", "sha256": "6941d5570f0dce85ec7f2a5e3242016f6156a2e51cf7e332ff6cdc9a2a64bd26"},
+      {"file": "candidate_runs/1786719167.run", "sha256": "08b106b2b083f36a9fe368f4bb0c826ee1d66be6f56563615d46c6c9e35d3000"},
+      {"file": "candidate_runs/1786719242.run", "sha256": "565f283a420b873691c968c00e663fb0522eaa7db538f6af7dfd0dee551233ce"},
+      {"file": "candidate_runs/1786719328.run", "sha256": "561b8a92583e1b1c609e763915ed5fcf9a42acefc34d5d656ef60473f51928c8"},
+      {"file": "candidate_runs/1786719410.run", "sha256": "f5f84e3971379f5796645e4292243b4f9cf936fc3a5ca79a98022c0e7a8c5c1a"}
+    ],
+    "baseline": [
+      {"file": "baseline_runs/1786719589.run", "sha256": "3ed8f9756b6f7e00135385cfbb51d23835734a1d1430252fedeaf1f1f7687211"},
+      {"file": "baseline_runs/1786719794.run", "sha256": "10ba44f8aefc76461ae849f571c4d45f00c2df75ea4608f1b77c5fa4b64ccf3a"},
+      {"file": "baseline_runs/1786719862.run", "sha256": "c5acac996b4e6b463a7215530e5d12453ab45273cfedeef433d74e0a9a6f2348"},
+      {"file": "baseline_runs/1786719934.run", "sha256": "2c0385a593a3daa6e41c54ef349f6e3f2331284f4886e383acc0d78e39766636"},
+      {"file": "baseline_runs/1786720142.run", "sha256": "7b169d2d6da5c2ce06fd01ab14ae024f60e7bf2e2e49e65dd3ddcacf9523d92d"},
+      {"file": "baseline_runs/1786720253.run", "sha256": "4a1afceb58b9d576aa3cde6abd970305b37677aec0b5b0e2b66fe01891b13a8f"},
+      {"file": "baseline_runs/1786720350.run", "sha256": "d1a392531e863108d20d0910286c8b26aff1a02614ec3c90fadc0b08ba8d9135"},
+      {"file": "baseline_runs/1786720430.run", "sha256": "b731ac309b50f0c2b7f0594b2ff910a90ef17b8387bd3ef9c8d4b282ce5cd3ed"},
+      {"file": "baseline_runs/1786720620.run", "sha256": "109ddb4ba03ad8287059e7f04aebbedb9defcf9084cf44c4c643a5e6943434cf"},
+      {"file": "baseline_runs/1786720696.run", "sha256": "18184dae8d187727815346086de68bba4d3984def299444f4adfabb739856e5b"}
+    ]
+  },
+  "evidence_hashes": {
+    "seed_pool_sha256": "1c545c735b6d152f7d04b57de054f7f222b57f9fa66d738c2790f384daff56a1",
+    "registration_sha256": "259bda7978eb91213d0d4c3f2466a1b32527710706a394e962f90871d2d0a4dc",
+    "candidate_launch_config_sha256": "e23848b9716fe965d92e4029bf2e760d62e79f1f1791ce464e7f5b36264c39b0",
+    "baseline_launch_config_sha256": "055783c3442f12ede91e64a59b290b83481d686571e6a89e6dd372916fe88e0e",
+    "restored_config_sha256": "b42093aef81a17ff1e3eb2dec4187c3af48a1a512a355c9d4d613c4cde2803c1"
+  },
+  "decision": "stop_combat_rl_training_and_investigate_learner_stability",
+  "notes": [
+    "The repaired transition pipeline remained operationally clean, but the trained policy failed the preregistered promotion rule.",
+    "No additional games should be trained from the repaired candidate checkpoint.",
+    "CommunicationMod config was restored and the game process was closed after the gate."
+  ]
+}
