@@ -12,7 +12,7 @@
 
 ## 3. Live Canary
 
-- [ ] 3.1 Commit and push the tested runtime, then create one source-bound canary configuration
-- [ ] 3.2 Run exactly three fresh Ironclad games with Windows Python and restore the prior CommunicationMod command
-- [ ] 3.3 Publish canonical rows, run records, errors, latency, substitutions, outcomes, and the fixed operational verdict
-- [ ] 3.4 Archive the change, commit the evidence, and push `master`
+- [x] 3.1 Commit and push the tested runtime, then create one source-bound canary configuration
+- [x] 3.2 Run exactly three fresh Ironclad games with Windows Python and restore the prior CommunicationMod command
+- [x] 3.3 Publish canonical rows, run records, errors, latency, substitutions, outcomes, and the fixed operational verdict
+- [x] 3.4 Archive the failed canary without syncing a capability, commit the evidence, and push `master`
