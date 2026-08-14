@@ -8,10 +8,10 @@ All 25 games reached an Act 1 boss. Thirteen entered Act 2, one reached floor 50
 
 These are training-time outcomes under epsilon near 0.85 and a 30% expert action mixture. They show useful trajectory coverage, not the quality of the final greedy policy. The final checkpoint is therefore preserved but not promoted.
 
-## Persistent Gap
+## Potion Record Correction
 
-The 25 run records contain zero potion uses. This repeats the May training diagnostic despite deeper runs and thousands of new transitions. Before another long training continuation, the action mask, encoding, selection frequency, and reward treatment for potion actions should be checked if the zero-exploration evaluation also shows no potion use.
+The 25 run records contain zero entries in `potions_floor_usage`, but the bounded decision-trace window contains 2,179 combat decisions with a usable potion and 108 actual `PotionAction` rows. The run-record field is therefore not reliable evidence of potion behavior for this CommunicationMod path. Potion action reachability is not the next blocker.
 
 ## Next Step
 
-Run 10 fresh conservative evaluation games from the preserved final checkpoint with `--epsilon 0`. Keep card uplift disabled so the result measures the shared combat policy. Continue training only if the greedy checkpoint is operational and does not regress; otherwise diagnose the checkpoint/replay and potion-action path before spending another batch.
+The final checkpoint completed 10 fresh conservative evaluation games with `--epsilon 0`, reaching a mean floor of 22.4 and no victories. Use those exact seeds for an `epsilon=0` evaluation of the frozen entry checkpoint. Continue training only if the post-training checkpoint improves the matched greedy comparison.

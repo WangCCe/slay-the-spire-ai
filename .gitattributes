@@ -298,3 +298,5 @@ reports/noncombat_card_uplift_live_matched_current_*/** text eol=lf
 reports/combat_rl_training_* text eol=lf
 reports/combat_rl_training_*/** text eol=lf
 reports/combat_rl_training_*/*.pth -text
+reports/combat_rl_zero_epsilon_evaluation_* text eol=lf
+reports/combat_rl_zero_epsilon_evaluation_*/** text eol=lf

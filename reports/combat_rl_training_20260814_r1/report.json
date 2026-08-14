@@ -54,7 +54,7 @@
     "act_1_boss_reaches": 25,
     "act_2_entries": 13,
     "act_3_entries": 1,
-    "potions_used": 0,
+    "run_record_potions_floor_usage_count": 0,
     "floor_reached": [16,16,33,16,20,16,33,33,16,29,16,33,22,22,33,16,16,25,33,16,22,16,16,50,16],
     "death_counts": {
       "Hexaghost": 5,
@@ -76,10 +76,19 @@
     "run_manifest_sha256": "54992084938ac61d3beb90e1b8c9d28f2c421c56a9adbef4cf6ef1faeb7b386c",
     "run_count": 25
   },
+  "potion_trace_evidence": {
+    "path": "reports/combat_rl_training_20260814_r1/potion_action_trace.jsonl",
+    "sha256": "2cfc660cb7950f4707c28a54c58b788a63b77f44abd6a30979570dc9eee5a53f",
+    "combat_rows": 5437,
+    "held_potion_rows": 2183,
+    "usable_potion_rows": 2179,
+    "potion_action_rows": 108,
+    "run_record_usage_field_reliable": false
+  },
   "interpretation": {
     "training_claim": "The resumed v2 combat policy consumed 3638 new live combat transitions and performed gradient updates after its replay buffer reached readiness.",
     "outcome_claim": "Training-time outcomes were substantially deeper than the historical May training batch and included one Act 3 boss attempt, but high exploration and expert mixing prevent a policy-quality claim.",
-    "diagnostic": "All 25 runs reached an Act 1 boss, while zero recorded potion uses persisted. Shared combat policy quality and potion action coverage remain higher priorities than card-reward calibration.",
-    "next_step": "Evaluate the frozen final checkpoint for 10 fresh conservative games with epsilon exactly zero before continuing training or modifying combat rewards."
+    "diagnostic": "All 25 runs reached an Act 1 boss. The decision trace records 108 PotionAction rows, proving that the zero run-record potion count is a recording limitation rather than an action-coverage failure.",
+    "next_step": "Compare the frozen final checkpoint against the frozen entry checkpoint on the same 10 fresh conservative seeds with epsilon exactly zero before continuing training."
   }
 }

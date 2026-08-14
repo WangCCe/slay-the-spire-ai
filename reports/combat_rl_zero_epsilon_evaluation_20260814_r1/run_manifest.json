@@ -1,0 +1,106 @@
+{
+  "schema_version": "combat-rl-zero-epsilon-evaluation-run-manifest-v1",
+  "evaluation_id": "combat-rl-zero-epsilon-evaluation-20260814-r1",
+  "runs": [
+    {
+      "file": "1786710193.run",
+      "sha256": "c0e536b47313f6c2226281c89ddfceb2f1921f1c62523773b25fe2c53532385d",
+      "seed_played": "9209689532192004817",
+      "floor_reached": 16,
+      "victory": false,
+      "killed_by": "Hexaghost",
+      "playtime_seconds": 87,
+      "potions_used": 0
+    },
+    {
+      "file": "1786710285.run",
+      "sha256": "ce64538052ac3550c75c9603145f16298c072e0975f5205650e80a369fbe686d",
+      "seed_played": "-2866486656163280727",
+      "floor_reached": 16,
+      "victory": false,
+      "killed_by": "Slime Boss",
+      "playtime_seconds": 88,
+      "potions_used": 0
+    },
+    {
+      "file": "1786710348.run",
+      "sha256": "459974ee4bcbdd97b6ab0a01b49926b906cffce5807252de364a30dc9be5c5ea",
+      "seed_played": "1610888734135879705",
+      "floor_reached": 14,
+      "victory": false,
+      "killed_by": "Gremlin Gang",
+      "playtime_seconds": 59,
+      "potions_used": 0
+    },
+    {
+      "file": "1786710419.run",
+      "sha256": "60866d444f64c92ea1b521502b9574139099ac5da477e3f81e2404af221fb8eb",
+      "seed_played": "427606053080496492",
+      "floor_reached": 16,
+      "victory": false,
+      "killed_by": "The Guardian",
+      "playtime_seconds": 67,
+      "potions_used": 0
+    },
+    {
+      "file": "1786710604.run",
+      "sha256": "e0f14f944840ca5251aa8fda5ce8d0640b05936f3a9e7277954065ffa6d13367",
+      "seed_played": "-2005631666677113177",
+      "floor_reached": 33,
+      "victory": false,
+      "killed_by": "Champ",
+      "playtime_seconds": 180,
+      "potions_used": 0
+    },
+    {
+      "file": "1786710783.run",
+      "sha256": "9d93a092057a679b2763dbb0343bc12d040330a4d026e282d4678add2a5499cc",
+      "seed_played": "2305580404575532492",
+      "floor_reached": 33,
+      "victory": false,
+      "killed_by": "Automaton",
+      "playtime_seconds": 175,
+      "potions_used": 0
+    },
+    {
+      "file": "1786710951.run",
+      "sha256": "56179ea6bd6fc40182f5777bda4e53b2208a797b460c0c4a671a33db266b85b1",
+      "seed_played": "4056516101062618517",
+      "floor_reached": 33,
+      "victory": false,
+      "killed_by": "Collector",
+      "playtime_seconds": 162,
+      "potions_used": 0
+    },
+    {
+      "file": "1786711067.run",
+      "sha256": "942438bfa27de14528b17c2dda062a9caad3d170a64d1a88daac77da52960fa4",
+      "seed_played": "-2043522512006878243",
+      "floor_reached": 16,
+      "victory": false,
+      "killed_by": "Hexaghost",
+      "playtime_seconds": 112,
+      "potions_used": 0
+    },
+    {
+      "file": "1786711160.run",
+      "sha256": "e3e0924e5ae268e5b6d2d5bd9e07e3e23664ea7c73b5485eac9e0a94afa5b3fa",
+      "seed_played": "564967493253523316",
+      "floor_reached": 16,
+      "victory": false,
+      "killed_by": "The Guardian",
+      "playtime_seconds": 88,
+      "potions_used": 0
+    },
+    {
+      "file": "1786711367.run",
+      "sha256": "0484b046eba475041cb4c8694bc529a3dd0ac89ea65020934ede51e42b48fa2f",
+      "seed_played": "7043560878239216383",
+      "floor_reached": 31,
+      "victory": false,
+      "killed_by": "Cultist and Chosen",
+      "playtime_seconds": 203,
+      "potions_used": 0
+    }
+  ]
+}

@@ -1,0 +1,77 @@
+{
+  "schema_version": "combat-rl-zero-epsilon-evaluation-report-v1",
+  "evaluation_id": "combat-rl-zero-epsilon-evaluation-20260814-r1",
+  "verdict": "zero_epsilon_checkpoint_operational_without_victory_requires_entry_control",
+  "promotion_decision": "no_go",
+  "source_commit": "46c2f72c8a5c9bccd935af2c1f57f227da10209e",
+  "configuration": {
+    "agent": "combat_rl",
+    "mode": "eval",
+    "epsilon": 0.0,
+    "elite_route": "conservative",
+    "ascension": 0,
+    "maximum_games": 10,
+    "card_uplift_enabled": false,
+    "fixed_seed_pool": false
+  },
+  "checkpoint": {
+    "path": "reports/combat_rl_training_20260814_r1/rl_combat_model_ep49_steps15486.pth",
+    "sha256": "b3f2efcb58a98fc5faf3b64f25c070fc63769fe2999040128044c7b98e12d3da",
+    "size_bytes": 6541220,
+    "episode": 25,
+    "total_steps": 15486
+  },
+  "runtime": {
+    "started_at_local": "2026-08-14T20:21:15+08:00",
+    "finished_at_local": "2026-08-14T20:42:47+08:00",
+    "completed_games": 10,
+    "evaluation_process_exited": true,
+    "communication_mod_config_restored": true,
+    "communication_mod_config_backup_sha256": "b42093aef81a17ff1e3eb2dec4187c3af48a1a512a355c9d4d613c4cde2803c1",
+    "communication_mod_config_restored_sha256": "b42093aef81a17ff1e3eb2dec4187c3af48a1a512a355c9d4d613c4cde2803c1",
+    "evaluation_log_error_markers": 0,
+    "evaluation_log_fallback_markers": 0
+  },
+  "outcomes": {
+    "victories": 0,
+    "floor_total": 224,
+    "mean_floor": 22.4,
+    "median_floor": 16.0,
+    "maximum_floor": 33,
+    "act_1_boss_reaches": 9,
+    "act_2_entries": 4,
+    "act_3_entries": 0,
+    "run_record_potions_floor_usage_count": 0,
+    "floor_reached": [16,16,14,16,33,33,33,16,16,31],
+    "death_counts": {
+      "Hexaghost": 2,
+      "The Guardian": 2,
+      "Automaton": 1,
+      "Champ": 1,
+      "Collector": 1,
+      "Cultist and Chosen": 1,
+      "Gremlin Gang": 1,
+      "Slime Boss": 1
+    }
+  },
+  "artifacts": {
+    "run_manifest": "reports/combat_rl_zero_epsilon_evaluation_20260814_r1/run_manifest.json",
+    "run_manifest_sha256": "1d099efe0dff36733a1f30a80c74b69c24b3b43205a1b35154a57e5d8651eda7",
+    "run_count": 10,
+    "potion_action_trace": "reports/combat_rl_zero_epsilon_evaluation_20260814_r1/potion_action_trace.jsonl",
+    "potion_action_trace_sha256": "b892df53f0d5f86253f31d438e9e8a81bdf6b985318ecd57f301eaed6476bec1"
+  },
+  "potion_trace_evidence": {
+    "combat_rows": 2048,
+    "held_potion_rows": 809,
+    "usable_potion_rows": 807,
+    "potion_action_rows": 42,
+    "run_record_usage_field_reliable": false
+  },
+  "interpretation": {
+    "operational_claim": "The frozen post-training checkpoint completed all 10 zero-exploration games without RL errors or fallback.",
+    "policy_claim": "The greedy policy reached a mean floor of 22.4 and three Act 2 bosses but produced no victory, so it is not ready for promotion or another unqualified training continuation.",
+    "potion_claim": "The decision trace proves potion actions are reachable and selected; zero run-record potion usage is a recording limitation.",
+    "next_step": "Evaluate the frozen pre-training checkpoint on these exact 10 seeds with epsilon zero, then continue training only if the post-training policy wins the matched greedy comparison."
+  }
+}
