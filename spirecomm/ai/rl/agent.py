@@ -1076,6 +1076,8 @@ class CombatRLAgent:
         "hemokinesis": 2,
     }
     SELF_VULNERABLE_CARDS = frozenset({"berserk"})
+    # A 1,000-run audit found no completed combat beyond turn 36.
+    LONG_COMBAT_FALLBACK_TURN = 40
 
     def __init__(
         self,
@@ -1112,6 +1114,7 @@ class CombatRLAgent:
         self._reward_screen_waited = False
         self._noncombat_exploration_preview = False
         self._fallback_turn_key = None
+        self._long_combat_fallback_floor = None
         self._empty_hand_refresh_wait_key = None
 
         # Import OptimizedAgent
@@ -1229,6 +1232,25 @@ class CombatRLAgent:
                 "[POST_COMBAT_GUARD] in_combat still true but no monsters alive; waiting for reward transition"
             )
             return WaitAction(timeout=1)
+
+        if self._should_force_long_combat_fallback(game):
+            floor = getattr(game, "floor", None)
+            if getattr(self, "_long_combat_fallback_floor", None) != floor:
+                logger.warning(
+                    "[LONG_COMBAT_GUARD] Bypassing RL from floor=%s turn=%s onward",
+                    floor,
+                    getattr(game, "turn", None),
+                )
+                self._long_combat_fallback_floor = floor
+            self._fallback_turn_key = None
+            fallback_action = self.fallback_agent.get_next_action_in_game(game)
+            wait_action = self._maybe_wait_for_empty_hand_refresh(
+                fallback_action,
+                game,
+            )
+            if wait_action is not None:
+                return self._with_combat_action_context(wait_action, game)
+            return self._finalize_fallback_action(fallback_action, game)
 
         if self._should_use_fallback_turn_takeover(game):
             logger.info(
@@ -2262,6 +2284,27 @@ class CombatRLAgent:
         if getattr(game, "screen_type", None) not in (None, ScreenType.NONE):
             return None
         return (getattr(game, "floor", None), getattr(game, "turn", None))
+
+    def _should_force_long_combat_fallback(self, game: Game) -> bool:
+        from spirecomm.spire.screen import ScreenType
+
+        is_main_combat = (
+            getattr(game, "in_combat", False)
+            and getattr(game, "screen_type", None) in (None, ScreenType.NONE)
+            and bool(self._alive_monsters(game))
+        )
+        if not is_main_combat:
+            self._long_combat_fallback_floor = None
+            return False
+
+        try:
+            turn = int(getattr(game, "turn", 0) or 0)
+        except (TypeError, ValueError):
+            turn = 0
+        if turn < self.LONG_COMBAT_FALLBACK_TURN:
+            self._long_combat_fallback_floor = None
+            return False
+        return True
 
     def _should_use_fallback_turn_takeover(self, game: Game) -> bool:
         active_key = getattr(self, "_fallback_turn_key", None)
