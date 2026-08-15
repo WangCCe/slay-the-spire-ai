@@ -1,0 +1,45 @@
+{
+  "schema_version": 1,
+  "gate_id": "combat-rl-guardian-successor-zero-epsilon-gate-20260815-r1",
+  "source_commit": "c401f36ca305fa78b818577527f56229d2403539",
+  "candidate_checkpoint": {
+    "path": "reports/combat_rl_guardian_curriculum_continuation_20260815_r1/rl_combat_model_ep52_steps20485.pth",
+    "sha256": "c290675852686218d5c9bba81bd90b0554650bf0489f2c8d4952a7f87825b6fa"
+  },
+  "parent_checkpoint": {
+    "path": "reports/combat_rl_compact_monster_slots_training_20260815_r1/rl_combat_model_ep40_steps18580.pth",
+    "sha256": "162c700d9b1ab7d5119f476b9b2551f4e909eb4d462cbee14b30c7b6a2764b05"
+  },
+  "evaluation": {
+    "arm_order": ["candidate", "parent"],
+    "games_per_arm": 20,
+    "mode": "eval",
+    "epsilon": 0.0,
+    "elite_route": "conservative",
+    "ascension": 0,
+    "seed_pool": "reports/combat_rl_guardian_successor_zero_epsilon_gate_20260815_r1_seed_pool.txt",
+    "seed_pool_sha256": "a7401c7c20c36182c3e13f23557ba2642674e7035f010b0c9b63fa98031fad2c",
+    "candidate_launch_config_sha256": "2f4eb822173ad70538a5e84467ec643c5fecc8eadc8f3218a7c1e7d5c105fe1f",
+    "parent_launch_config_sha256": "897172c7aef3cef7de6813b919ddcb93ab157631bd81c225fde4773fc0dcb54c",
+    "same_seed_order": true,
+    "fresh_against_prior_combat_rl_seed_pools": true,
+    "training_disabled": true,
+    "expert_mix_disabled": true
+  },
+  "promotion_rule": {
+    "candidate_paired_floor_wins_must_exceed_parent": true,
+    "candidate_victories_must_be_at_least_parent": true,
+    "candidate_act_2_entries_must_be_at_least_parent": true,
+    "candidate_act_2_boss_reaches_must_be_at_least_parent": true,
+    "candidate_total_floors_must_be_at_least_parent": true,
+    "both_arms_must_have_zero_integrity_warnings": true,
+    "all_seed_pairs_must_match": true,
+    "all_conditions_required": true
+  },
+  "execution_constraints": {
+    "stop_after_started_arm_failure": true,
+    "no_seed_or_threshold_change_after_start": true,
+    "no_model_or_parameter_change_between_arms": true,
+    "no_automatic_promotion": true
+  }
+}
