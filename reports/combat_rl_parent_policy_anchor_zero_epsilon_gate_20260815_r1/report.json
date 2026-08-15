@@ -1,0 +1,78 @@
+{
+  "schema_version": 1,
+  "gate_id": "combat-rl-parent-policy-anchor-zero-epsilon-gate-20260815-r1",
+  "source_commit": "42d55eeee",
+  "candidate_checkpoint": {
+    "path": "reports/combat_rl_parent_policy_anchor_smoke_20260815_r1/rl_combat_model_ep60_steps22620.pth",
+    "sha256": "8a60f45d2c1e5e32b2c1c95f8799cae99144d8fd4a070386e32a9be1e5b12b7d"
+  },
+  "parent_checkpoint": {
+    "path": "reports/combat_rl_compact_monster_slots_training_20260815_r1/rl_combat_model_ep40_steps18580.pth",
+    "sha256": "162c700d9b1ab7d5119f476b9b2551f4e909eb4d462cbee14b30c7b6a2764b05"
+  },
+  "candidate_arm": {
+    "started_at": "2026-08-15T23:09:07+08:00",
+    "stopped_at": "2026-08-15T23:33:20+08:00",
+    "planned_games": 20,
+    "completed_games": 8,
+    "victories": 0,
+    "floor_total": 180,
+    "floor_mean": 22.5,
+    "floor_median": 17.5,
+    "act_2_entered": 4,
+    "act_2_boss_reached": 2,
+    "act_3_entered": 0,
+    "floors": [33, 19, 31, 16, 16, 33, 16, 16],
+    "run_files": [
+      "1786806747.run",
+      "1786806851.run",
+      "1786807036.run",
+      "1786807102.run",
+      "1786807181.run",
+      "1786807373.run",
+      "1786807456.run",
+      "1786807535.run"
+    ],
+    "communication_mod_error_growth_bytes": 954,
+    "integrity_clean": false
+  },
+  "integrity_failure": {
+    "kind": "live_policy_nontermination",
+    "seed_token": "0TP19MYO9CPA8",
+    "seed_ordinal": 9,
+    "floor": 19,
+    "monster": "Spheric Guardian",
+    "maximum_observed_turn": 249,
+    "protocol_state_updates_continued": true,
+    "rl_failure_count": 0,
+    "repeated_guard": "ENERGY_GUARD fallback turn takeover",
+    "screenshot": "reports/combat_rl_parent_policy_anchor_zero_epsilon_gate_20260815_r1/candidate_floor19_turn189.png",
+    "screenshot_turn": 189,
+    "screenshot_enemy_block": 651,
+    "natural_completion_observed": false,
+    "operator_action": "stop_candidate_arm_without_retry"
+  },
+  "parent_arm": {
+    "started": false,
+    "reason": "all promotion conditions were already impossible after candidate integrity failure"
+  },
+  "promotion_conditions": {
+    "candidate_completed_registered_game_count": false,
+    "candidate_integrity_clean": false,
+    "parent_integrity_clean": null,
+    "all_seed_pairs_match": false,
+    "paired_floor_wins_exceed_parent": null,
+    "victories_at_least_parent": null,
+    "act_2_entries_at_least_parent": null,
+    "act_2_boss_reaches_at_least_parent": null,
+    "total_floors_at_least_parent": null,
+    "all_conditions_passed": false
+  },
+  "runtime_integrity": {
+    "configuration_restored_to_parent": true,
+    "restored_config_sha256": "d4d1dd35fd53985796922e5915a8b4ab51373109d08addff2bdcdfebf01a00e4",
+    "processes_closed": true,
+    "no_retry_or_seed_change": true
+  },
+  "decision": "reject_anchor_candidate_retain_promoted_parent_due_live_policy_nontermination"
+}
