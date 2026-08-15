@@ -1,0 +1,45 @@
+{
+  "schema_version": 1,
+  "gate_id": "combat-rl-parent-policy-anchor-zero-epsilon-gate-20260815-r1",
+  "source_commit": "01a847f52",
+  "candidate_checkpoint": {
+    "path": "reports/combat_rl_parent_policy_anchor_smoke_20260815_r1/rl_combat_model_ep60_steps22620.pth",
+    "sha256": "8a60f45d2c1e5e32b2c1c95f8799cae99144d8fd4a070386e32a9be1e5b12b7d"
+  },
+  "parent_checkpoint": {
+    "path": "reports/combat_rl_compact_monster_slots_training_20260815_r1/rl_combat_model_ep40_steps18580.pth",
+    "sha256": "162c700d9b1ab7d5119f476b9b2551f4e909eb4d462cbee14b30c7b6a2764b05"
+  },
+  "evaluation": {
+    "arm_order": ["candidate", "parent"],
+    "games_per_arm": 20,
+    "mode": "eval",
+    "epsilon": 0.0,
+    "elite_route": "conservative",
+    "ascension": 0,
+    "seed_pool": "reports/combat_rl_parent_policy_anchor_zero_epsilon_gate_20260815_r1_seed_pool.txt",
+    "seed_pool_sha256": "6394b5fc47e89e5cfc5a06f55c246afb643e193d8877cf3d61c0b4ab6a06c6a9",
+    "candidate_launch_config_sha256": "ebd9ad5abe7bd73f223c9024bb9587b523ff039d0cc7a031fc14813ce6735a3f",
+    "parent_launch_config_sha256": "8226f83171d77912f562285a62abd28e076327263521a2f80675b959e1412e02",
+    "same_seed_order": true,
+    "fresh_against_prior_combat_rl_seed_pools": true,
+    "training_disabled": true,
+    "expert_mix_disabled": true
+  },
+  "promotion_rule": {
+    "candidate_paired_floor_wins_must_exceed_parent": true,
+    "candidate_victories_must_be_at_least_parent": true,
+    "candidate_act_2_entries_must_be_at_least_parent": true,
+    "candidate_act_2_boss_reaches_must_be_at_least_parent": true,
+    "candidate_total_floors_must_be_at_least_parent": true,
+    "both_arms_must_have_zero_integrity_warnings": true,
+    "all_seed_pairs_must_match": true,
+    "all_conditions_required": true
+  },
+  "execution_constraints": {
+    "stop_after_started_arm_failure": true,
+    "no_seed_or_threshold_change_after_start": true,
+    "no_model_or_parameter_change_between_arms": true,
+    "no_automatic_promotion": true
+  }
+}
