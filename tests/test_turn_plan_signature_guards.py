@@ -362,6 +362,62 @@ def test_optimized_agent_continues_cached_sequence_after_played_card_leaves_hand
     assert agent.combat_planner.calls == 1
 
 
+def test_optimized_agent_replans_when_cached_card_is_no_longer_playable(monkeypatch):
+    first_card = _card("Bloodletting", "Bloodletting", uuid="bloodletting", cost=0)
+    planned_strike = _card("Strike_R", "Strike", uuid="strike", cost=1)
+    fallback = _card("Defend_R", "Defend", uuid="defend", cost=1)
+    first_action = PlayCardAction(card=first_card)
+    stale_action = PlayCardAction(card=planned_strike)
+    fallback_action = PlayCardAction(card=fallback)
+    planned_context = SimpleNamespace(act=1, threat_category=None, turn=3, floor=14)
+
+    class FixedPlanner:
+        last_plan_kind = None
+
+        def __init__(self):
+            self.calls = 0
+
+        def plan_turn(self, _context):
+            self.calls += 1
+            if self.calls == 1:
+                return [first_action, stale_action]
+            return [fallback_action]
+
+    monkeypatch.setattr("spirecomm.ai.agent.DecisionContext", lambda _game: planned_context)
+    monkeypatch.setattr(
+        "spirecomm.ai.heuristics.simulation.select_combat_mode_with_monster_data",
+        lambda _context: "test-mode",
+    )
+
+    agent = OptimizedAgent.__new__(OptimizedAgent)
+    agent.game = _game([first_card, planned_strike])
+    agent.game.play_available = True
+    agent.current_action_sequence = []
+    agent.current_action_index = 0
+    agent.current_plan_signature = None
+    agent.current_plan_kind = None
+    agent.replan_count_this_turn = 0
+    agent._current_combat_mode = "test-mode"
+    agent.combat_planner = FixedPlanner()
+    agent.game_tracker = None
+    agent.decision_history = []
+    agent.player_class = "IRONCLAD"
+
+    assert agent._get_optimized_play_card_action() is first_action
+
+    unplayable_strike = _card(
+        "Strike_R", "Strike", uuid="strike", cost=1, is_playable=False
+    )
+    agent.game = _game([unplayable_strike, fallback])
+    agent.game.play_available = True
+
+    action = agent._get_optimized_play_card_action()
+
+    assert action is fallback_action
+    assert action is not stale_action
+    assert agent.combat_planner.calls == 2
+
+
 def test_optimized_agent_clear_current_combat_plan_clears_provenance():
     action = PlayCardAction(card=_card("Strike_R", "Strike", uuid="strike"))
     agent = OptimizedAgent.__new__(OptimizedAgent)

@@ -4045,14 +4045,14 @@ class OptimizedAgent(SimpleAgent):
                     if getattr(hand_card, "uuid", None) == card_uuid:
                         action.card = hand_card
                         action.card_index = idx
-                        return self._cached_sequence_target_available(
+                        return self._cached_sequence_card_available(
                             action,
                             hand_card,
                         )
                 return False
 
             if 0 <= getattr(action, "card_index", -1) < len(hand):
-                return self._cached_sequence_target_available(
+                return self._cached_sequence_card_available(
                     action,
                     hand[action.card_index],
                 )
@@ -4060,7 +4060,7 @@ class OptimizedAgent(SimpleAgent):
             if card is not None:
                 try:
                     action.card_index = hand.index(card)
-                    return self._cached_sequence_target_available(action, card)
+                    return self._cached_sequence_card_available(action, card)
                 except (ValueError, AttributeError):
                     return False
 
@@ -4077,6 +4077,11 @@ class OptimizedAgent(SimpleAgent):
             return potion in (potions or [])
 
         return True
+
+    def _cached_sequence_card_available(self, action, card) -> bool:
+        if not card_is_playable(card):
+            return False
+        return self._cached_sequence_target_available(action, card)
 
     def _cached_sequence_target_available(self, action, card) -> bool:
         if not card_requires_target(card):
