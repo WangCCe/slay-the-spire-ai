@@ -1,0 +1,66 @@
+{
+  "schema_version": 1,
+  "experiment_id": "combat-rl-compact-monster-slot-smoke-20260815-r1",
+  "source_commit": "ae7b668fde68636385bca72bf6563f5f5df57f06",
+  "started_at": "2026-08-15T14:16:17+08:00",
+  "finished_at": "2026-08-15T14:21:28+08:00",
+  "entry_checkpoint": {
+    "path": "reports/combat_rl_legacy_replay_collection_20260814_r1/rl_combat_model_ep15_steps13413.pth",
+    "sha256": "79afdd2290323646010f7715fb9a96922d2b9dc05baee271ca0a1042eac4f3d6",
+    "episode": 15,
+    "total_steps": 13413,
+    "optimizer_step": 2679,
+    "replay_transition_count": 1565
+  },
+  "output_checkpoint": {
+    "path": "reports/combat_rl_compact_monster_slot_smoke_20260815_r1/rl_combat_model_ep17_steps13837.pth",
+    "sha256": "ef5a6108ffdca9d987d6e1928b10cd6921436338c5d5a0c6c97eef4dec640a8b",
+    "episode": 17,
+    "total_steps": 13837,
+    "optimizer_step": 2679,
+    "replay_transition_count": 1989,
+    "replay_source_transition_count": 1989,
+    "all_tensors_finite": true
+  },
+  "training_delta": {
+    "accepted_transitions": 424,
+    "optimizer_steps": 0,
+    "learning_threshold_reached": false
+  },
+  "expert_action_evidence": {
+    "expert_selected": 398,
+    "expert_mix_skipped": 0,
+    "expert_action_masked_out": 0,
+    "expert_action_failed": 0,
+    "expert_action_not_encodable": 0,
+    "raw_target_index_6_actions": 5,
+    "expert_raw_target_index_6_actions": 4,
+    "expert_raw_target_index_6_actions_returned_without_guard_replacement": 3
+  },
+  "outcomes": {
+    "games": 2,
+    "victories": 0,
+    "floors": [33, 16],
+    "slime_boss_encounters": 2,
+    "run_files": ["1786774796.run", "1786774885.run"]
+  },
+  "pre_start_attempt": {
+    "status": "failed_before_game_start",
+    "reason": "seed_played signed integers are not valid CommunicationMod seed arguments",
+    "games_started": 0,
+    "training_transitions": 0,
+    "correction": "recovered original seed strings from the matched gate's ordered seed pool"
+  },
+  "runtime_integrity": {
+    "successful_attempt_communication_mod_error_growth_bytes": 961,
+    "configuration_restored": true,
+    "processes_closed": true
+  },
+  "configuration_evidence": {
+    "launch_config_sha256": "46284a0e97d84d8fc79b46cfef1f948d746c4ad92cd7b26bfb25e2cbc29f76c0",
+    "seed_pool_sha256": "4e7dd08b3125ab33ab4a2b1aeb23ada35de683700e0371d9130461cba156c8b4",
+    "restored_config_sha256": "b42093aef81a17ff1e3eb2dec4187c3af48a1a512a355c9d4d613c4cde2803c1"
+  },
+  "smoke_pass": true,
+  "decision": "proceed_to_fresh_bounded_expert_dominant_training"
+}
