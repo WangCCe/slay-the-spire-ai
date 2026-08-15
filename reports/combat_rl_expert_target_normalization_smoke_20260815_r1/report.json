@@ -1,0 +1,64 @@
+{
+  "schema_version": 1,
+  "experiment_id": "combat-rl-expert-target-normalization-smoke-20260815-r1",
+  "source_commit": "d957a595d66636a6b6e68cc7a3c458012c284f8b",
+  "started_at": "2026-08-15T10:54:57+08:00",
+  "finished_at": "2026-08-15T11:07:06+08:00",
+  "entry_checkpoint_sha256": "79afdd2290323646010f7715fb9a96922d2b9dc05baee271ca0a1042eac4f3d6",
+  "output_checkpoint": {
+    "path": "reports/combat_rl_expert_target_normalization_smoke_20260815_r1/rl_combat_model_ep20_steps14459.pth",
+    "sha256": "3697c134e81e0bd571422ccfd14ecabd8b5e5c50bbc1df90dd9a8469c686a994",
+    "episode": 20,
+    "total_steps": 14459,
+    "epsilon": 0.887444,
+    "optimizer_step": 2679,
+    "replay_transition_count": 2611,
+    "optimizer_updates_during_smoke": 0
+  },
+  "expert_action_source": {
+    "events": 916,
+    "expert_selected": 641,
+    "expert_mix_skipped": 269,
+    "expert_action_masked_out": 6,
+    "expert_action_failed": 0,
+    "expert_action_not_encodable": 0,
+    "expert_attempted_share": 0.7063,
+    "successful_expert_share": 0.6998,
+    "masked_among_expert_attempts": 0.0093,
+    "masked_classification": {
+      "cached_card_no_longer_playable": 5,
+      "raw_monster_index_exceeds_schema_slots": 1
+    }
+  },
+  "outcomes": {
+    "games": 5,
+    "victories": 0,
+    "floor_total": 129,
+    "floor_mean": 25.8,
+    "floor_median": 28,
+    "act_2_entered": 4,
+    "act_2_boss_reached": 1,
+    "act_3_entered": 0,
+    "floors": [33, 22, 30, 16, 28],
+    "run_files": ["1786762698.run", "1786762861.run", "1786763036.run", "1786763107.run", "1786763223.run"]
+  },
+  "runtime_integrity": {
+    "replay_rejected": 0,
+    "rl_agent_failed": 0,
+    "close_episode_failed": 0,
+    "checkpoint_save_failed": 0,
+    "communication_mod_error_log_growth_bytes": 556,
+    "configuration_restored": true,
+    "processes_closed": true
+  },
+  "configuration_evidence": {
+    "execution_manifest_sha256": "0949fffd5ce89783094d5e3023a5ce5677d8ffbdf55b6a2c76109690e11b7d68",
+    "launch_config_sha256": "9af2dcbf5a9029e615805c37a94e66d9909e0780ad83a3eb3ed078943bc2395c",
+    "restored_config_sha256": "b42093aef81a17ff1e3eb2dec4187c3af48a1a512a355c9d4d613c4cde2803c1"
+  },
+  "repair_commits": {
+    "target_normalization": "d957a595d66636a6b6e68cc7a3c458012c284f8b",
+    "cached_card_playability": "ac6a2ef5278b6c9a1b985ae30257b1e20c64b623"
+  },
+  "decision": "target_normalization_effective_cache_playability_requires_short_retest"
+}
