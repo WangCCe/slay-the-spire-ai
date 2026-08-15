@@ -14,4 +14,4 @@
 
 - [x] 3.1 Run the focused RL v2 and training-batch pytest files with a scoped Windows basetemp.
 - [x] 3.2 Run the repository full pytest gate and record the result without rerunning infrastructure-only failures. The single run reached the 1,804-second outer command timeout without a pytest summary and was not retried; this is infrastructure evidence, not a pass or test failure.
-- [ ] 3.3 Run one bounded anchored training smoke from the promoted parent, report finite/TD/anchor/agreement evidence, and decide whether a fresh matched gate is justified.
+- [x] 3.3 Run one bounded anchored training smoke from the promoted parent, report finite/TD/anchor/agreement evidence, and decide whether a fresh matched gate is justified.

@@ -1,0 +1,134 @@
+{
+  "schema_version": 1,
+  "experiment_id": "combat-rl-parent-policy-anchor-smoke-20260815-r1",
+  "source_commit": "7b45053d43ce2fb31cbd1259a10c16adb3891935",
+  "preregistration_commit": "37f1fdf23",
+  "started_at": "2026-08-15T22:08:34+08:00",
+  "finished_at": "2026-08-15T22:55:43+08:00",
+  "parent_checkpoint": {
+    "path": "reports/combat_rl_compact_monster_slots_training_20260815_r1/rl_combat_model_ep40_steps18580.pth",
+    "sha256": "162c700d9b1ab7d5119f476b9b2551f4e909eb4d462cbee14b30c7b6a2764b05",
+    "episode": 40,
+    "total_steps": 18580,
+    "optimizer_step": 3339
+  },
+  "output_checkpoint": {
+    "path": "reports/combat_rl_parent_policy_anchor_smoke_20260815_r1/rl_combat_model_ep60_steps22620.pth",
+    "sha256": "8a60f45d2c1e5e32b2c1c95f8799cae99144d8fd4a070386e32a9be1e5b12b7d",
+    "episode": 60,
+    "total_steps": 22620,
+    "epsilon": 0.78511,
+    "optimizer_step": 4349,
+    "replay_transition_count": 4096,
+    "replay_source_transition_count": 8136,
+    "replay_truncated": true,
+    "all_checkpoint_values_finite": true
+  },
+  "anchor_evidence": {
+    "weight": 0.25,
+    "frozen_anchor_state_exactly_equals_parent_online_state": true,
+    "last_total_loss": 3.1133222579956055,
+    "last_td_loss": 2.976926803588867,
+    "last_anchor_loss": 0.545581579208374,
+    "logged_anchor_update_count": 34,
+    "logged_anchor_loss_min": 0.46935,
+    "logged_anchor_loss_mean": 0.569829617647059,
+    "logged_anchor_loss_max": 0.79812,
+    "successor_replay_cross_entropy_to_parent_greedy": 0.5202414393424988
+  },
+  "training_delta": {
+    "accepted_transitions": 4040,
+    "optimizer_steps": 1010,
+    "whole_model_relative_l2": 0.0230574203236704
+  },
+  "comparison_on_successor_replay": {
+    "transition_count": 4096,
+    "terminal_count": 253,
+    "parent_smooth_l1": 3.4030725955963135,
+    "successor_smooth_l1": 3.1150195598602295,
+    "parent_absolute_td_p50": 1.3554127216339111,
+    "successor_absolute_td_p50": 1.6053756475448608,
+    "parent_absolute_td_p95": 10.138261795043945,
+    "successor_absolute_td_p95": 7.511189937591553,
+    "parent_q_margin_p50": 0.6841659545898438,
+    "successor_q_margin_p50": 1.9796943664550781,
+    "parent_q_margin_p05": 0.04223604127764702,
+    "successor_q_margin_p05": 0.1303226351737976,
+    "parent_executed_action_greedy_share": 0.27978515625,
+    "successor_executed_action_greedy_share": 0.233154296875,
+    "parent_successor_greedy_action_agreement": 0.811279296875,
+    "executed_actions_all_valid": true
+  },
+  "unanchored_reference": {
+    "experiment_id": "combat-rl-broad-replay-continuation-20260815-r1",
+    "same_training_seed_order": true,
+    "parent_successor_greedy_action_agreement": 0.63427734375,
+    "agreement_improvement": 0.177001953125
+  },
+  "expert_action_full_batch": {
+    "expert_selected": 1950,
+    "expert_mix_skipped": 815,
+    "expert_action_masked_out": 0,
+    "expert_action_not_encodable": 0,
+    "expert_action_failed": 0,
+    "replay_rejected_transition": 0,
+    "successful_expert_share": 0.705244122965642
+  },
+  "outcomes": {
+    "authority": "training_context_only",
+    "games": 20,
+    "victories": 0,
+    "floor_total": 499,
+    "floor_mean": 24.95,
+    "floor_median": 23.0,
+    "act_2_entered": 13,
+    "act_2_boss_reached": 5,
+    "act_3_entered": 1,
+    "floors": [50, 16, 16, 24, 33, 16, 33, 30, 22, 16, 16, 33, 20, 29, 16, 33, 21, 30, 29, 16],
+    "run_files": [
+      "1786803191.run",
+      "1786803288.run",
+      "1786803386.run",
+      "1786803526.run",
+      "1786803720.run",
+      "1786803822.run",
+      "1786804027.run",
+      "1786804168.run",
+      "1786804314.run",
+      "1786804404.run",
+      "1786804494.run",
+      "1786804701.run",
+      "1786804844.run",
+      "1786805001.run",
+      "1786805058.run",
+      "1786805209.run",
+      "1786805343.run",
+      "1786805539.run",
+      "1786805679.run",
+      "1786805739.run"
+    ]
+  },
+  "runtime_integrity": {
+    "communication_mod_error_growth_bytes": 1013,
+    "configuration_restored_to_parent": true,
+    "restored_config_sha256": "d4d1dd35fd53985796922e5915a8b4ab51373109d08addff2bdcdfebf01a00e4",
+    "processes_closed": true
+  },
+  "configuration_evidence": {
+    "launch_config_sha256": "7d4a7a32c3725ecdb9c8be0d6dc81fc012cfc7a845849325f7ac386cdc97ec86",
+    "consumed_seed_pool_sha256": "a7401c7c20c36182c3e13f23557ba2642674e7035f010b0c9b63fa98031fad2c"
+  },
+  "preregistered_decision_rule": {
+    "exact_game_count_passed": true,
+    "finite_checkpoint_passed": true,
+    "persisted_anchor_weight_passed": true,
+    "frozen_anchor_identity_passed": true,
+    "zero_expert_or_transition_failures_passed": true,
+    "successor_replay_td_fit_passed": true,
+    "minimum_parent_agreement_passed": true,
+    "positive_finite_anchor_loss_passed": true,
+    "production_configuration_restored_passed": true,
+    "all_rules_passed": true
+  },
+  "decision": "approve_one_fresh_matched_zero_epsilon_live_gate_against_promoted_parent"
+}
