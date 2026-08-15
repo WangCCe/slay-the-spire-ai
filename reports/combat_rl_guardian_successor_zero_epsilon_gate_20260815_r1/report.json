@@ -1,0 +1,108 @@
+{
+  "schema_version": 1,
+  "gate_id": "combat-rl-guardian-successor-zero-epsilon-gate-20260815-r1",
+  "source_commit": "f29dad24cf21c2d4b24ad8593b76b65978351eb3",
+  "candidate_checkpoint": {
+    "path": "reports/combat_rl_guardian_curriculum_continuation_20260815_r1/rl_combat_model_ep52_steps20485.pth",
+    "sha256": "c290675852686218d5c9bba81bd90b0554650bf0489f2c8d4952a7f87825b6fa"
+  },
+  "parent_checkpoint": {
+    "path": "reports/combat_rl_compact_monster_slots_training_20260815_r1/rl_combat_model_ep40_steps18580.pth",
+    "sha256": "162c700d9b1ab7d5119f476b9b2551f4e909eb4d462cbee14b30c7b6a2764b05"
+  },
+  "candidate": {
+    "games": 20,
+    "victories": 0,
+    "floor_total": 500,
+    "floor_mean": 25.0,
+    "floor_median": 24.0,
+    "act_2_entered": 14,
+    "act_2_boss_reached": 6,
+    "act_3_entered": 1,
+    "floors": [50, 16, 16, 24, 16, 24, 16, 30, 33, 33, 24, 33, 20, 20, 33, 31, 16, 13, 33, 19],
+    "run_files": [
+      "1786785955.run",
+      "1786786048.run",
+      "1786786132.run",
+      "1786786249.run",
+      "1786786322.run",
+      "1786786472.run",
+      "1786786547.run",
+      "1786786694.run",
+      "1786786868.run",
+      "1786787031.run",
+      "1786787156.run",
+      "1786787333.run",
+      "1786787436.run",
+      "1786787548.run",
+      "1786787683.run",
+      "1786787814.run",
+      "1786787885.run",
+      "1786787952.run",
+      "1786788120.run",
+      "1786788206.run"
+    ],
+    "communication_mod_error_growth_bytes": 958
+  },
+  "parent": {
+    "games": 20,
+    "victories": 0,
+    "floor_total": 560,
+    "floor_mean": 28.0,
+    "floor_median": 29.5,
+    "act_2_entered": 14,
+    "act_2_boss_reached": 9,
+    "act_3_entered": 3,
+    "floors": [42, 50, 16, 24, 16, 25, 33, 30, 42, 33, 24, 33, 16, 29, 33, 33, 16, 16, 33, 16],
+    "run_files": [
+      "1786788525.run",
+      "1786788822.run",
+      "1786788907.run",
+      "1786789024.run",
+      "1786789097.run",
+      "1786789237.run",
+      "1786789408.run",
+      "1786789546.run",
+      "1786789804.run",
+      "1786789971.run",
+      "1786790095.run",
+      "1786790272.run",
+      "1786790348.run",
+      "1786790497.run",
+      "1786790638.run",
+      "1786790778.run",
+      "1786790843.run",
+      "1786790916.run",
+      "1786791092.run",
+      "1786791149.run"
+    ],
+    "communication_mod_error_growth_bytes": 956
+  },
+  "paired": {
+    "candidate_wins": 3,
+    "parent_wins": 7,
+    "ties": 10,
+    "floor_deltas": [8, -34, 0, 0, 0, -1, -17, 0, -9, 0, 0, 0, 4, -9, 0, -2, 0, -3, 0, 3],
+    "floor_delta_mean": -3.0,
+    "floor_delta_median": 0.0,
+    "two_sided_sign_test_p": 0.34375,
+    "all_seed_pairs_match": true
+  },
+  "promotion_conditions": {
+    "paired_floor_wins_exceed_parent": false,
+    "victories_at_least_parent": true,
+    "act_2_entries_at_least_parent": true,
+    "act_2_boss_reaches_at_least_parent": false,
+    "total_floors_at_least_parent": false,
+    "candidate_integrity_clean": true,
+    "parent_integrity_clean": true,
+    "all_seed_pairs_match": true,
+    "all_conditions_passed": false
+  },
+  "runtime_integrity": {
+    "configuration_restored_to_parent": true,
+    "restored_config_sha256": "d4d1dd35fd53985796922e5915a8b4ab51373109d08addff2bdcdfebf01a00e4",
+    "processes_closed": true
+  },
+  "decision": "reject_candidate_retain_promoted_parent"
+}
