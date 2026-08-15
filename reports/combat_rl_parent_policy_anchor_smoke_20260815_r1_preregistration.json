@@ -1,0 +1,41 @@
+{
+  "schema_version": 1,
+  "experiment_id": "combat-rl-parent-policy-anchor-smoke-20260815-r1",
+  "source_commit": "7b45053d43ce2fb31cbd1259a10c16adb3891935",
+  "objective": "Test whether a fixed frozen-parent policy loss prevents the policy forgetting seen in the rejected unanchored broad continuation while retaining TD learning.",
+  "parent_checkpoint": {
+    "path": "reports/combat_rl_compact_monster_slots_training_20260815_r1/rl_combat_model_ep40_steps18580.pth",
+    "sha256": "162c700d9b1ab7d5119f476b9b2551f4e909eb4d462cbee14b30c7b6a2764b05"
+  },
+  "training_cohort": {
+    "seed_pool_path": "reports/combat_rl_guardian_successor_zero_epsilon_gate_20260815_r1_seed_pool.txt",
+    "seed_pool_sha256": "a7401c7c20c36182c3e13f23557ba2642674e7035f010b0c9b63fa98031fad2c",
+    "max_games": 20,
+    "expert_mix_probability": 0.7,
+    "parent_policy_anchor_weight": 0.25,
+    "same_as_rejected_unanchored_broad_continuation": true
+  },
+  "fixed_decision_rule": {
+    "require_exact_game_count": 20,
+    "require_finite_checkpoint_tensors": true,
+    "require_persisted_anchor_weight": 0.25,
+    "require_frozen_anchor_state_equal_to_parent_online_state": true,
+    "require_zero_expert_or_transition_failures": true,
+    "require_successor_replay_smooth_l1_below_parent": true,
+    "minimum_parent_successor_greedy_action_agreement": 0.72,
+    "require_positive_finite_recorded_anchor_loss": true,
+    "require_production_configuration_restored": true
+  },
+  "authority": {
+    "training_cohort_outcomes_are_evaluation": false,
+    "offline_replay_metrics_can_promote": false,
+    "all_fixed_rules_can_authorize_one_fresh_matched_zero_epsilon_gate": true,
+    "failure_can_trigger_same_run_retry_or_weight_tuning": false
+  },
+  "unanchored_reference": {
+    "experiment_id": "combat-rl-broad-replay-continuation-20260815-r1",
+    "parent_successor_greedy_action_agreement": 0.63427734375,
+    "parent_replay_smooth_l1": 3.406641721725464,
+    "successor_replay_smooth_l1": 2.9217398166656494
+  }
+}
