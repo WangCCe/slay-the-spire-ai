@@ -1,0 +1,91 @@
+{
+  "schema_version": 1,
+  "experiment_id": "combat-rl-compact-monster-slots-training-20260815-r1",
+  "source_commit": "6ac57fd6626a11a82c71619e7b123ae45aa0d132",
+  "started_at": "2026-08-15T14:26:31+08:00",
+  "finished_at": "2026-08-15T15:25:50+08:00",
+  "entry_checkpoint": {
+    "path": "reports/combat_rl_legacy_replay_collection_20260814_r1/rl_combat_model_ep15_steps13413.pth",
+    "sha256": "79afdd2290323646010f7715fb9a96922d2b9dc05baee271ca0a1042eac4f3d6",
+    "episode": 15,
+    "total_steps": 13413,
+    "epsilon": 0.887444,
+    "optimizer_step": 2679,
+    "replay_transition_count": 1565
+  },
+  "output_checkpoint": {
+    "path": "reports/combat_rl_compact_monster_slots_training_20260815_r1/rl_combat_model_ep40_steps18580.pth",
+    "sha256": "162c700d9b1ab7d5119f476b9b2551f4e909eb4d462cbee14b30c7b6a2764b05",
+    "episode": 40,
+    "total_steps": 18580,
+    "epsilon": 0.82349,
+    "optimizer_step": 3339,
+    "replay_transition_count": 4096,
+    "replay_source_transition_count": 6732,
+    "replay_truncated": true,
+    "all_tensors_finite": true
+  },
+  "training_delta": {
+    "accepted_transitions": 5167,
+    "accepted_transitions_after_learning_threshold": 2636,
+    "optimizer_steps": 660,
+    "whole_model_relative_l2": 0.027446442689402377,
+    "embedding_relative_l2": 0.004250700209217063,
+    "hidden_relative_l2": 0.10604229283573853,
+    "value_stream_relative_l2": 0.11299485335707694,
+    "advantage_stream_relative_l2": 0.2306437680217784,
+    "target_vs_online_relative_l2": 0.008220847365023782
+  },
+  "comparison_on_candidate_replay": {
+    "transition_count": 4096,
+    "terminal_count": 249,
+    "reward_mean": -0.8604937791824341,
+    "entry_smooth_l1": 4.278210163116455,
+    "candidate_smooth_l1": 3.1497139930725098,
+    "entry_absolute_td_p50": 1.4996700286865234,
+    "candidate_absolute_td_p50": 1.188283085823059,
+    "entry_absolute_td_p95": 11.211745262145996,
+    "candidate_absolute_td_p95": 9.764183044433594,
+    "entry_q_margin_p50": 0.22637939453125,
+    "candidate_q_margin_p50": 0.6669197082519531,
+    "entry_q_margin_p05": 0.019412517547607422,
+    "candidate_q_margin_p05": 0.03908491134643555,
+    "entry_executed_action_greedy_share": 0.3486328125,
+    "candidate_executed_action_greedy_share": 0.274658203125,
+    "entry_candidate_greedy_action_agreement": 0.478759765625,
+    "executed_actions_all_valid": true
+  },
+  "expert_action_retained_log_window": {
+    "started_at": "2026-08-15T15:16:37+08:00",
+    "complete_through_batch_end": true,
+    "expert_selected": 522,
+    "expert_mix_skipped": 228,
+    "expert_action_masked_out": 0,
+    "expert_action_not_encodable": 0,
+    "expert_action_failed": 0,
+    "successful_expert_share": 0.696,
+    "full_batch_counts_unavailable_due_to_log_rotation": true
+  },
+  "outcomes": {
+    "games": 25,
+    "victories": 0,
+    "floor_total": 608,
+    "floor_mean": 24.32,
+    "floor_median": 24,
+    "act_2_entered": 17,
+    "act_2_boss_reached": 8,
+    "act_3_entered": 0,
+    "floors": [30, 24, 8, 16, 33, 33, 33, 16, 29, 21, 16, 20, 33, 30, 16, 24, 33, 21, 16, 33, 25, 16, 16, 33, 33],
+    "run_files": ["1786775364.run", "1786775523.run", "1786775572.run", "1786775649.run", "1786775911.run", "1786776088.run", "1786776268.run", "1786776342.run", "1786776542.run", "1786776655.run", "1786776723.run", "1786776837.run", "1786777001.run", "1786777170.run", "1786777270.run", "1786777391.run", "1786777576.run", "1786777695.run", "1786777806.run", "1786777993.run", "1786778140.run", "1786778221.run", "1786778312.run", "1786778562.run", "1786778746.run"]
+  },
+  "runtime_integrity": {
+    "communication_mod_error_growth_bytes": 842,
+    "configuration_restored": true,
+    "processes_closed": true
+  },
+  "configuration_evidence": {
+    "launch_config_sha256": "a6c961992cd43ebac42ce0a111251ef3afb886d899fdd1cf82db2b01f19070c8",
+    "restored_config_sha256": "b42093aef81a17ff1e3eb2dec4187c3af48a1a512a355c9d4d613c4cde2803c1"
+  },
+  "decision": "approve_one_fresh_matched_zero_epsilon_live_gate"
+}
