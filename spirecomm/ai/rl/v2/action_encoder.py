@@ -32,6 +32,7 @@ from spirecomm.ai.heuristics.card_types import card_is_playable, card_requires_t
 from spirecomm.ai.heuristics.potions import game_real_potions
 
 from . import action_space as space
+from .monster_slots import compact_monster_slots, is_targetable_monster
 
 
 class ActionEncoderV2:
@@ -48,9 +49,14 @@ class ActionEncoderV2:
             card_index = self._resolve_card_index(game, action)
             if card_index is None or card_index >= space.MAX_CARD_SLOTS:
                 return None
-            target_slot = self._resolve_target_slot(action)
             hand = getattr(game, "hand", []) or []
-            if card_index < len(hand) and not card_requires_target(hand[card_index]):
+            requires_target = card_index < len(hand) and card_requires_target(
+                hand[card_index]
+            )
+            target_slot = self._resolve_target_slot(action, game)
+            if requires_target and target_slot == 0:
+                return None
+            if not requires_target:
                 target_slot = 0
             return self.encode_play_card(card_index, target_slot)
 
@@ -60,7 +66,18 @@ class ActionEncoderV2:
             potion_index = self._resolve_potion_index(game, action)
             if potion_index is None or potion_index >= space.MAX_POTION_SLOTS:
                 return None
-            target_slot = self._resolve_target_slot(action)
+            raw_potions = getattr(game, "potions", None)
+            potions = raw_potions if raw_potions is not None else game_real_potions(game)
+            potions = potions or []
+            if potion_index >= len(potions):
+                return None
+            potion = potions[potion_index]
+            requires_target = getattr(potion, "requires_target", False)
+            target_slot = self._resolve_target_slot(action, game)
+            if requires_target and target_slot == 0:
+                return None
+            if not requires_target:
+                target_slot = 0
             return self.encode_use_potion(potion_index, target_slot)
 
         if isinstance(action, (ConfirmAction, CancelAction, LeaveAction, ProceedAction)):
@@ -369,28 +386,34 @@ class ActionEncoderV2:
 
     @staticmethod
     def _is_targetable_monster(monster) -> bool:
-        current_hp = ActionEncoderV2._safe_int(getattr(monster, "current_hp", 0), default=0)
-        return (
-            current_hp > 0
-            and not getattr(monster, "is_gone", False)
-            and not getattr(monster, "half_dead", False)
-        )
+        return is_targetable_monster(monster)
 
-    @staticmethod
-    def _resolve_target_slot(action) -> int:
+    @classmethod
+    def _resolve_target_slot(cls, action, game: Game) -> int:
+        target_monster = getattr(action, "target_monster", None)
         target_index = getattr(action, "target_index", None)
         if target_index is None:
-            target_monster = getattr(action, "target_monster", None)
             if target_monster is not None:
                 target_index = getattr(target_monster, "monster_index", None)
+        if target_index is None and target_monster is not None:
+            for raw_index, monster in enumerate(getattr(game, "monsters", None) or []):
+                if monster is target_monster:
+                    target_index = raw_index
+                    break
         if target_index is None:
             return 0
-        target_index = ActionEncoderV2._safe_int(target_index, default=None)
+        target_index = cls._safe_int(target_index, default=None)
         if target_index is None:
             return 0
         if target_index < 0:
             return 0
-        return min(space.TARGET_SLOTS - 1, target_index + 1)
+        for target_slot, (raw_index, _) in enumerate(
+            compact_monster_slots(game, space.TARGET_SLOTS - 1),
+            start=1,
+        ):
+            if raw_index == target_index:
+                return target_slot
+        return 0
 
     @staticmethod
     def _encode_system_action(action) -> Optional[int]:
@@ -596,12 +619,10 @@ class ActionEncoderV2:
 
     def _mask_combat_actions(self, mask: List[bool], game: Game) -> None:
         hand = game.hand or []
-        monsters = game.monsters or []
-        alive_targets = [
-            idx + 1
-            for idx, monster in enumerate(monsters[:5])
-            if self._is_targetable_monster(monster)
-        ]
+        alive_targets = range(
+            1,
+            len(compact_monster_slots(game, space.TARGET_SLOTS - 1)) + 1,
+        )
 
         if getattr(game, "play_available", True):
             for card_idx, card in enumerate(hand[:space.MAX_CARD_SLOTS]):
@@ -882,10 +903,9 @@ class ActionEncoderV2:
     def _map_alive_target(game: Game, target_index: int) -> Optional[int]:
         if target_index <= 0:
             return None
-        monsters = game.monsters or []
-        monster_index = target_index - 1
-        if monster_index < len(monsters):
-            monster = monsters[monster_index]
-            if ActionEncoderV2._is_targetable_monster(monster):
-                return monster_index
+        slots = compact_monster_slots(game, space.TARGET_SLOTS - 1)
+        slot_index = target_index - 1
+        if slot_index < len(slots):
+            raw_index, _ = slots[slot_index]
+            return raw_index
         return None

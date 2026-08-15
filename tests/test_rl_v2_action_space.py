@@ -70,7 +70,11 @@ def test_encode_potion_action_uses_get_real_potions_without_raw_potions():
 
 def test_encode_play_card_action_accepts_numeric_string_card_index():
     encoder = ActionEncoderV2()
-    game = _make_game(screen_type=None, in_combat=True, hand=[_make_card()])
+    game = _make_game(
+        screen_type=None,
+        in_combat=True,
+        hand=[_make_card(has_target=False)],
+    )
 
     action_index = encoder.encode_action(
         PlayCardAction(card_index="0", target_index=None),
@@ -144,7 +148,12 @@ def test_encode_play_card_action_rejects_nonfinite_card_index():
 
 def test_encode_play_card_action_accepts_decimal_string_target_index():
     encoder = ActionEncoderV2()
-    game = _make_game(screen_type=None, in_combat=True, hand=[_make_card()])
+    game = _make_game(
+        screen_type=None,
+        in_combat=True,
+        hand=[_make_card()],
+        monsters=[_make_monster()],
+    )
 
     action_index = encoder.encode_action(
         PlayCardAction(card_index=0, target_index="0.0"),
@@ -199,8 +208,8 @@ def test_combat_mask_ignores_half_dead_monsters():
 
     mask = encoder.get_action_mask(game)
 
-    assert not mask[space.encode_play_card(0, 1)]
-    assert mask[space.encode_play_card(0, 2)]
+    assert mask[space.encode_play_card(0, 1)]
+    assert not mask[space.encode_play_card(0, 2)]
 
 
 def test_combat_mask_accepts_numeric_string_monster_hp():
@@ -214,8 +223,66 @@ def test_combat_mask_accepts_numeric_string_monster_hp():
 
     mask = encoder.get_action_mask(game)
 
-    assert not mask[space.encode_play_card(0, 1)]
-    assert mask[space.encode_play_card(0, 2)]
+    assert mask[space.encode_play_card(0, 1)]
+    assert not mask[space.encode_play_card(0, 2)]
+
+
+def test_combat_target_slots_compact_late_live_monsters_for_cards_and_potions():
+    encoder = ActionEncoderV2()
+    potion = SimpleNamespace(
+        potion_id="Fire Potion",
+        can_use=True,
+        requires_target=True,
+    )
+    monsters = [_make_monster(hp=0) for _ in range(6)] + [_make_monster(hp=12)]
+    game = _make_game(
+        screen_type=None,
+        in_combat=True,
+        hand=[_make_card(has_target=True)],
+        monsters=monsters,
+        potions=[potion],
+    )
+
+    mask = encoder.get_action_mask(game)
+    card_action = encoder.decode_action(space.encode_play_card(0, 1), game)
+    potion_action = encoder.decode_action(space.encode_use_potion(0, 1), game)
+
+    assert mask[space.encode_play_card(0, 1)]
+    assert mask[space.encode_use_potion(0, 1)]
+    assert not mask[space.encode_play_card(0, 2)]
+    assert isinstance(card_action, PlayCardAction)
+    assert card_action.target_index == 6
+    assert isinstance(potion_action, PotionAction)
+    assert potion_action.target_index == 6
+
+
+def test_encode_actions_map_raw_late_monster_index_to_compact_target_slot():
+    encoder = ActionEncoderV2()
+    potion = SimpleNamespace(
+        potion_id="Fire Potion",
+        can_use=True,
+        requires_target=True,
+    )
+    monsters = [_make_monster(hp=0) for _ in range(6)] + [_make_monster(hp=12)]
+    game = _make_game(
+        screen_type=None,
+        in_combat=True,
+        hand=[_make_card(has_target=True)],
+        monsters=monsters,
+        potions=[potion],
+    )
+
+    card_index = encoder.encode_action(
+        PlayCardAction(card_index=0, target_index=6),
+        game,
+    )
+    potion_index = encoder.encode_action(
+        PotionAction(True, potion_index=0, target_index=6),
+        game,
+    )
+
+    assert card_index == space.encode_play_card(0, 1)
+    assert potion_index == space.encode_use_potion(0, 1)
 
 
 def test_combat_mask_nontarget_card():

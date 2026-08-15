@@ -20,6 +20,20 @@ class _IdMapper:
         return []
 
 
+def _monster(hp, max_hp=40, *, is_gone=False, half_dead=False):
+    return SimpleNamespace(
+        current_hp=hp,
+        max_hp=max_hp,
+        block=0,
+        intent=Intent.BUFF,
+        move_adjusted_damage=0,
+        move_hits=0,
+        powers=[],
+        is_gone=is_gone,
+        half_dead=half_dead,
+    )
+
+
 def test_state_encoder_rejects_nonfinite_numeric_inputs():
     game = SimpleNamespace(
         player=SimpleNamespace(
@@ -112,3 +126,16 @@ def test_state_encoder_treats_half_dead_monsters_as_not_alive():
 
     first_monster_alive = encoded.continuous[StateEncoderV2.PLAYER_FEATURES]
     assert first_monster_alive == 0.0
+
+
+def test_state_encoder_compacts_late_live_monster_into_first_slot():
+    encoder = StateEncoderV2(id_mapper=_IdMapper())
+    game = SimpleNamespace(monsters=[_monster(0) for _ in range(6)] + [_monster(12)])
+
+    features = encoder._encode_monsters(game)
+
+    assert features[0] == 1.0
+    assert np.isclose(features[1], 0.3)
+    assert features[StateEncoderV2.MONSTER_FEATURES :] == [
+        0.0
+    ] * (4 * StateEncoderV2.MONSTER_FEATURES)

@@ -19,6 +19,7 @@ from spirecomm.ai.heuristics.potions import game_real_potions
 from spirecomm.ai.intent_utils import intent_is_attack, intent_tokens
 
 from .id_mapping import IdMapper, load_default_id_mapper
+from .monster_slots import compact_monster_slots, is_targetable_monster
 from .types import EncodedStateV2
 
 
@@ -161,7 +162,10 @@ class StateEncoderV2:
 
     def _encode_monsters(self, game: Game) -> List[float]:
         features: List[float] = []
-        monsters = game.monsters or []
+        monsters = [
+            monster
+            for _, monster in compact_monster_slots(game, self.MONSTER_SLOTS)
+        ]
         for idx in range(self.MONSTER_SLOTS):
             if idx < len(monsters):
                 features.extend(self._encode_monster(monsters[idx]))
@@ -175,13 +179,7 @@ class StateEncoderV2:
         hp_ratio = self._safe_ratio(current_hp, max_hp, 1.0)
         block = max(self._safe_float(getattr(monster, "block", 0), 0.0), 0.0)
         block_ratio = min(block, 100) / 100.0
-        is_alive = (
-            1.0
-            if current_hp > 0
-            and not getattr(monster, "is_gone", False)
-            and not getattr(monster, "half_dead", False)
-            else 0.0
-        )
+        is_alive = 1.0 if is_targetable_monster(monster) else 0.0
 
         intent = self._normalize_intent(getattr(monster, "intent", Intent.UNKNOWN))
         intent_one_hot = [1.0 if intent == value else 0.0 for value in self.INTENT_ORDER]
