@@ -1,0 +1,84 @@
+{
+  "schema_version": 1,
+  "gate_id": "combat-rl-expert-dominant-zero-epsilon-gate-20260815-r1",
+  "source_commit": "cb40b92c4a9200b1c7fb6af006750f94301e9c32",
+  "preregistration_commit": "8c2c5eb4c829b36e0330853f547f866403a5d280",
+  "candidate_started_at": "2026-08-15T12:35:13+08:00",
+  "candidate_finished_at": "2026-08-15T13:12:21+08:00",
+  "baseline_started_at": "2026-08-15T13:13:08+08:00",
+  "baseline_finished_at": "2026-08-15T13:55:37+08:00",
+  "candidate_checkpoint": {
+    "path": "reports/combat_rl_expert_dominant_replication_20260815_r3/rl_combat_model_ep40_steps17658.pth",
+    "sha256": "943dc702cc35cf1b873c8f13f759abe9686e1d77271c57cbb5bfe14aa39177d8"
+  },
+  "baseline_checkpoint": {
+    "path": "reports/combat_rl_legacy_replay_collection_20260814_r1/rl_combat_model_ep15_steps13413.pth",
+    "sha256": "79afdd2290323646010f7715fb9a96922d2b9dc05baee271ca0a1042eac4f3d6"
+  },
+  "evaluation": {
+    "games_per_arm": 20,
+    "epsilon": 0.0,
+    "same_seed_order": true,
+    "training_disabled": true,
+    "expert_mix_disabled": true,
+    "all_seed_pairs_match": true
+  },
+  "candidate": {
+    "victories": 0,
+    "floor_total": 466,
+    "floor_mean": 23.3,
+    "floor_median": 19.0,
+    "act_2_entered": 10,
+    "act_2_boss_reached": 7,
+    "act_3_entered": 0,
+    "floors": [16, 16, 16, 33, 16, 16, 33, 33, 33, 28, 25, 22, 33, 33, 33, 16, 16, 16, 16, 16]
+  },
+  "baseline": {
+    "victories": 0,
+    "floor_total": 473,
+    "floor_mean": 23.65,
+    "floor_median": 21.5,
+    "act_2_entered": 11,
+    "act_2_boss_reached": 7,
+    "act_3_entered": 0,
+    "floors": [16, 20, 16, 16, 23, 16, 16, 16, 33, 33, 31, 16, 33, 33, 33, 16, 24, 33, 33, 16]
+  },
+  "paired": {
+    "candidate_wins": 4,
+    "baseline_wins": 7,
+    "ties": 9,
+    "floor_deltas": [0, -4, 0, 17, -7, 0, 17, 17, 0, -5, -6, 6, 0, 0, 0, 0, -8, -17, -17, 0],
+    "floor_delta_mean": -0.35,
+    "floor_delta_median": 0.0,
+    "two_sided_exact_sign_test_p": 0.548828125
+  },
+  "promotion_conditions": {
+    "candidate_paired_floor_wins_exceed_baseline": false,
+    "candidate_victories_at_least_baseline": true,
+    "candidate_act_2_entries_at_least_baseline": false,
+    "candidate_act_2_boss_reaches_at_least_baseline": true,
+    "candidate_total_floors_at_least_baseline": false,
+    "both_arms_zero_integrity_warnings": true,
+    "all_seed_pairs_match": true
+  },
+  "integrity": {
+    "candidate_communication_mod_error_growth_bytes": 665,
+    "baseline_communication_mod_error_growth_bytes": 662,
+    "configuration_restored": true,
+    "processes_closed": true
+  },
+  "configuration_evidence": {
+    "preregistration_sha256": "7bd29d483c49f5845d2e6aa6fce62c3979565af99f10c9a41a0fefbaaa0563cf",
+    "seed_pool_sha256": "16c37baed7805420e73a5a146b6701c376aafbbd2174db82af3f765fa999a659",
+    "candidate_launch_config_sha256": "fdc48d8ccffa5f7fadb99fd059fe8e674433844cc3a853eb11a727b68a314242",
+    "baseline_launch_config_sha256": "73056d13e7e8c9be297638989bef79877c2f2ac1db36f68c76b3cdd2a2f0a15c",
+    "restored_config_sha256": "b42093aef81a17ff1e3eb2dec4187c3af48a1a512a355c9d4d613c4cde2803c1"
+  },
+  "gate_pass": false,
+  "failed_conditions": [
+    "candidate_paired_floor_wins_exceed_baseline",
+    "candidate_act_2_entries_at_least_baseline",
+    "candidate_total_floors_at_least_baseline"
+  ],
+  "decision": "do_not_promote_or_continue_candidate"
+}
