@@ -1,0 +1,41 @@
+{
+  "schema_version": 1,
+  "experiment_id": "combat-rl-expert-dominant-replication-20260815-r1",
+  "source_commit": "9d5208a4b51c5d49c4bbcd78f78d8423952dffff",
+  "entry_checkpoint": {
+    "path": "reports/combat_rl_legacy_replay_collection_20260814_r1/rl_combat_model_ep15_steps13413.pth",
+    "sha256": "79afdd2290323646010f7715fb9a96922d2b9dc05baee271ca0a1042eac4f3d6"
+  },
+  "configuration": {
+    "agent": "combat_rl",
+    "rl_space_version": "v2",
+    "mode": "train",
+    "maximum_games": 25,
+    "elite_route": "conservative",
+    "ascension": 0,
+    "expert_mix_enabled": true,
+    "expert_mix_probability": 0.7,
+    "fixed_seed_pool": false,
+    "card_uplift_enabled": false,
+    "decision_trace_enabled": false,
+    "sim_divergence_trace_enabled": false,
+    "only_change_from_r1_r2_r3_recipe": "expert_mix_probability: 0.3 -> 0.7"
+  },
+  "nominal_post_warmup_action_source_at_entry_epsilon": {
+    "entry_epsilon": 0.887444,
+    "expert_share": 0.7,
+    "random_share": 0.2662332,
+    "network_greedy_share": 0.0337668,
+    "caveat": "Expert encoding failures fall back to the epsilon-greedy branch."
+  },
+  "output": {
+    "directory": "reports/combat_rl_expert_dominant_replication_20260815_r1",
+    "production_checkpoint_promotion_allowed": false
+  },
+  "failure_policy": {
+    "pre_start_validation_repairs_allowed": true,
+    "stop_and_report_after_started_batch_failure": true,
+    "no_parameter_change_after_start": true,
+    "no_promotion_from_training_outcomes": true
+  }
+}
