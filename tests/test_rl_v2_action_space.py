@@ -80,6 +80,31 @@ def test_encode_play_card_action_accepts_numeric_string_card_index():
     assert action_index == space.encode_play_card(0, 0)
 
 
+def test_encode_play_card_action_relocates_card_uuid_before_stale_index():
+    encoder = ActionEncoderV2()
+    hand = [
+        SimpleNamespace(uuid="flex", has_target=False, is_playable=True),
+        SimpleNamespace(uuid="strike", has_target=True, is_playable=True),
+    ]
+    stale_strike = SimpleNamespace(
+        uuid="strike", has_target=True, is_playable=True
+    )
+    game = _make_game(
+        screen_type=None,
+        in_combat=True,
+        hand=hand,
+        monsters=[_make_monster()],
+    )
+
+    action_index = encoder.encode_action(
+        PlayCardAction(card=stale_strike, card_index=0, target_index=0),
+        game,
+    )
+
+    assert action_index == space.encode_play_card(1, 1)
+    assert encoder.get_action_mask(game)[action_index]
+
+
 def test_encode_play_card_action_rejects_nonfinite_card_index():
     encoder = ActionEncoderV2()
     game = _make_game(screen_type=None, in_combat=True, hand=[_make_card()])

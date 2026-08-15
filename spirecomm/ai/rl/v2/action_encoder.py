@@ -275,18 +275,20 @@ class ActionEncoderV2:
         return mask
 
     def _resolve_card_index(self, game: Game, action: PlayCardAction) -> Optional[int]:
-        card_index = self._safe_int(getattr(action, "card_index", None), default=-1)
-        if card_index >= 0:
-            return card_index
         card = getattr(action, "card", None)
-        if card is None:
-            return None
         hand = getattr(game, "hand", []) or []
-        card_uuid = getattr(card, "uuid", None)
-        if card_uuid is not None:
+        if card is not None and getattr(card, "uuid", None) is not None:
+            card_uuid = card.uuid
             for idx, hand_card in enumerate(hand):
                 if getattr(hand_card, "uuid", None) == card_uuid:
                     return idx
+            return None
+
+        card_index = self._safe_int(getattr(action, "card_index", None), default=-1)
+        if card_index >= 0:
+            return card_index
+        if card is None:
+            return None
         try:
             return hand.index(card)
         except Exception:
