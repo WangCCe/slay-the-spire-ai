@@ -3,6 +3,7 @@ import importlib.machinery
 import os
 import sys
 import logging
+import math
 import glob
 import shutil
 import stat
@@ -447,6 +448,7 @@ def create_agent(
     expert_mix_enabled=None,
     expert_mix_prob=None,
     expert_warmup_steps=None,
+    parent_policy_anchor_weight=None,
 ):
     """
     Create an agent instance.
@@ -528,6 +530,7 @@ def create_agent(
                 expert_mix_enabled=expert_mix_enabled,
                 expert_mix_prob=expert_mix_prob,
                 expert_warmup_steps=expert_warmup_steps,
+                parent_policy_anchor_weight=parent_policy_anchor_weight,
             )
             logging.info(f"Combat RL Agent created successfully")
             logging.info(f"  State dim: {agent.rl_agent.state_encoder.feature_dim}, Action dim: {agent.rl_agent.action_encoder.MAX_ACTIONS}")
@@ -585,6 +588,7 @@ def create_agent(
                 expert_mix_enabled=expert_mix_enabled,
                 expert_mix_prob=expert_mix_prob,
                 expert_warmup_steps=expert_warmup_steps,
+                parent_policy_anchor_weight=parent_policy_anchor_weight,
             )
             logging.info(f"RL Agent created successfully")
             logging.info(f"  State dim: {agent.state_encoder.feature_dim}, Action dim: {agent.action_encoder.MAX_ACTIONS}")
@@ -859,6 +863,7 @@ if __name__ == "__main__":
     expert_mix_enabled = None
     expert_mix_prob = None
     expert_warmup_steps = None
+    parent_policy_anchor_weight = None
 
     parser = argparse.ArgumentParser(
         prog="python main.py",
@@ -950,6 +955,13 @@ if __name__ == "__main__":
         default=None,
         metavar="N",
         help="Expert-only warmup steps before mixing (default: env STS_RL_EXPERT_WARMUP_STEPS or 5000)",
+    )
+    parser.add_argument(
+        "--parent-policy-anchor-weight",
+        type=float,
+        default=None,
+        metavar="W",
+        help="Frozen parent-policy loss weight for RL v2 checkpoint continuation training",
     )
     parser.add_argument(
         "--ascension",
@@ -1084,6 +1096,26 @@ if __name__ == "__main__":
     if expert_warmup_steps is not None and expert_warmup_steps < 0:
         logging.error(f"--expert-mix-warmup must be >= 0, got {expert_warmup_steps}")
         sys.exit(1)
+
+    if args.parent_policy_anchor_weight is not None:
+        parent_policy_anchor_weight = args.parent_policy_anchor_weight
+        if (
+            not math.isfinite(parent_policy_anchor_weight)
+            or parent_policy_anchor_weight < 0.0
+        ):
+            parser.error("--parent-policy-anchor-weight must be finite and non-negative")
+        if parent_policy_anchor_weight > 0.0:
+            if not training:
+                parser.error("--parent-policy-anchor-weight requires --train")
+            effective_rl_version = str(
+                rl_version or os.environ.get("STS_RL_VERSION", "v1")
+            ).lower()
+            if effective_rl_version != "v2":
+                parser.error("--parent-policy-anchor-weight requires --rl-version v2")
+            if agent_type not in {"rl", "combat_rl"}:
+                parser.error(
+                    "--parent-policy-anchor-weight requires --agent rl or combat_rl"
+                )
 
     if expert_mix_enabled and not training:
         logging.warning("Expert mix enabled but training is off; expert mix will be ignored.")
@@ -1251,6 +1283,7 @@ if __name__ == "__main__":
         expert_mix_enabled=expert_mix_enabled,
         expert_mix_prob=expert_mix_prob,
         expert_warmup_steps=expert_warmup_steps,
+        parent_policy_anchor_weight=parent_policy_anchor_weight,
     )
 
     try:

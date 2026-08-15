@@ -19,6 +19,7 @@ class Args:
     expert_mix = False
     expert_mix_prob = None
     expert_mix_warmup = None
+    parent_policy_anchor_weight = None
     game_dir = r"D:\SteamLibrary\steamapps\common\SlayTheSpire"
     decision_trace_path = None
     skip_decision_trace = False
@@ -64,6 +65,28 @@ def test_eval_batch_command_forwards_eval_without_train():
     assert "--train" not in cmd
     assert "--epsilon" in cmd
     assert cmd[cmd.index("--epsilon") + 1] == "0.05"
+
+
+def test_training_batch_forwards_parent_policy_anchor_weight():
+    args = Args()
+    args.model = "checkpoints/parent.pth"
+    args.parent_policy_anchor_weight = 0.25
+
+    cmd = build_main_command(args)
+
+    assert "--parent-policy-anchor-weight" in cmd
+    assert cmd[cmd.index("--parent-policy-anchor-weight") + 1] == "0.25"
+
+
+def test_eval_batch_does_not_forward_parent_policy_anchor_weight():
+    args = Args()
+    args.eval = True
+    args.model = "checkpoints/parent.pth"
+    args.parent_policy_anchor_weight = 0.25
+
+    cmd = build_main_command(args)
+
+    assert "--parent-policy-anchor-weight" not in cmd
 
 
 def test_optimized_exploration_batch_never_enables_training_or_rl_loading_flags():

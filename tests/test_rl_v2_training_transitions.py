@@ -167,7 +167,7 @@ def test_nonterminal_observation_uses_next_state_and_counts_transition_without_l
     assert agent.episode_steps == 1
 
 
-def _real_trainer(*, learning_starts=4):
+def _real_trainer(*, learning_starts=4, parent_policy_anchor_weight=0.0):
     return DQNTrainerV2(
         continuous_dim=2,
         action_dim=2,
@@ -185,6 +185,7 @@ def _real_trainer(*, learning_starts=4):
         train_freq=1,
         target_update_freq=8,
         device="cpu",
+        parent_policy_anchor_weight=parent_policy_anchor_weight,
     )
 
 
@@ -243,6 +244,72 @@ def test_learning_starts_blocks_updates_after_batch_size_is_reached():
     assert len(trainer.optimizer.state) > 0
 
 
+def test_zero_parent_policy_anchor_preserves_td_only_training():
+    trainer = _real_trainer()
+    for _ in range(4):
+        assert _store_real_transition(trainer) is True
+
+    loss = trainer.train_step()
+
+    assert trainer.parent_policy_anchor_network is None
+    assert trainer.last_parent_policy_anchor_loss == 0.0
+    assert loss == pytest.approx(trainer.last_td_loss)
+
+
+def test_parent_policy_anchor_adds_finite_masked_loss_without_training_anchor():
+    trainer = _real_trainer(parent_policy_anchor_weight=0.5)
+    trainer.set_parent_policy_anchor(trainer.online_network.state_dict())
+    anchor_before = {
+        key: value.detach().clone()
+        for key, value in trainer.parent_policy_anchor_network.state_dict().items()
+    }
+    for _ in range(4):
+        assert _store_real_transition(trainer) is True
+
+    loss = trainer.train_step()
+
+    assert math.isfinite(loss)
+    assert trainer.last_parent_policy_anchor_loss > 0.0
+    assert loss == pytest.approx(
+        trainer.last_td_loss
+        + trainer.parent_policy_anchor_weight
+        * trainer.last_parent_policy_anchor_loss
+    )
+    assert all(
+        torch.equal(
+            trainer.parent_policy_anchor_network.state_dict()[key], value
+        )
+        for key, value in anchor_before.items()
+    )
+    assert all(
+        parameter.grad is None
+        for parameter in trainer.parent_policy_anchor_network.parameters()
+    )
+
+
+def test_parent_policy_anchor_label_respects_stored_action_mask():
+    trainer = _real_trainer(parent_policy_anchor_weight=0.5)
+    trainer.set_parent_policy_anchor(trainer.online_network.state_dict())
+    with torch.no_grad():
+        trainer.parent_policy_anchor_network.advantage_stream[-1].bias[1] = 100.0
+
+    continuous = torch.zeros((1, 2), dtype=torch.float32)
+    card_ids = torch.zeros((1, 1), dtype=torch.int64)
+    potion_ids = torch.zeros((1, 1), dtype=torch.int64)
+    relic_ids = torch.zeros((1, 1), dtype=torch.int64)
+    mask = torch.tensor([[True, False]])
+
+    actions = trainer.get_parent_policy_anchor_actions(
+        continuous,
+        card_ids,
+        potion_ids,
+        relic_ids,
+        mask,
+    )
+
+    assert actions.tolist() == [0]
+
+
 def test_replay_checkpoint_round_trip_keeps_bounded_chronological_tail():
     replay = ReplayBufferV2(
         buffer_size=5,
@@ -294,13 +361,16 @@ def test_replay_checkpoint_round_trip_keeps_bounded_chronological_tail():
     assert restored.position == 3
 
 
-def _checkpoint_agent(*, learning_starts=4):
+def _checkpoint_agent(*, learning_starts=4, parent_policy_anchor_weight=0.0):
     agent = RLAgentV2.__new__(RLAgentV2)
     agent.device = "cpu"
     agent.training_mode = True
     agent.training = True
     agent.network_type = "dueling"
-    agent.trainer = _real_trainer(learning_starts=learning_starts)
+    agent.trainer = _real_trainer(
+        learning_starts=learning_starts,
+        parent_policy_anchor_weight=parent_policy_anchor_weight,
+    )
     agent.network = agent.trainer.online_network
     agent.state_encoder = SimpleNamespace(
         feature_dim=2,
@@ -372,6 +442,72 @@ def test_v2_checkpoint_round_trip_restores_target_replay_optimizer_and_episode(t
     assert all(
         torch.equal(restored.trainer.target_network.state_dict()[key], value)
         for key, value in restored.trainer.online_network.state_dict().items()
+    )
+
+
+def test_positive_parent_policy_anchor_requires_parent_checkpoint():
+    with pytest.raises(ValueError, match="parent checkpoint"):
+        RLAgentV2(
+            training=True,
+            device="cpu",
+            parent_policy_anchor_weight=0.25,
+        )
+
+
+def test_existing_checkpoint_becomes_initial_parent_policy_anchor(tmp_path):
+    source = _checkpoint_agent()
+    with torch.no_grad():
+        for parameter in source.trainer.online_network.parameters():
+            parameter.add_(0.125)
+    path = tmp_path / "unanchored-parent.pth"
+    source.save_model(str(path))
+
+    restored = _checkpoint_agent(parent_policy_anchor_weight=0.25)
+    restored.load_model(str(path))
+
+    assert restored.trainer.parent_policy_anchor_network is not None
+    assert all(
+        torch.equal(
+            restored.trainer.parent_policy_anchor_network.state_dict()[key],
+            value,
+        )
+        for key, value in source.trainer.online_network.state_dict().items()
+    )
+    assert all(
+        not parameter.requires_grad
+        for parameter in restored.trainer.parent_policy_anchor_network.parameters()
+    )
+
+
+def test_anchored_checkpoint_resume_restores_original_parent_policy(tmp_path):
+    source = _checkpoint_agent(parent_policy_anchor_weight=0.25)
+    source.trainer.set_parent_policy_anchor(source.trainer.online_network.state_dict())
+    anchor_state = {
+        key: value.detach().clone()
+        for key, value in source.trainer.parent_policy_anchor_network.state_dict().items()
+    }
+    with torch.no_grad():
+        for parameter in source.trainer.online_network.parameters():
+            parameter.add_(0.5)
+    path = tmp_path / "anchored-resume.pth"
+    source.save_model(str(path))
+
+    restored = _checkpoint_agent(parent_policy_anchor_weight=0.25)
+    restored.load_model(str(path))
+
+    assert all(
+        torch.equal(
+            restored.trainer.parent_policy_anchor_network.state_dict()[key],
+            value,
+        )
+        for key, value in anchor_state.items()
+    )
+    assert any(
+        not torch.equal(
+            restored.trainer.online_network.state_dict()[key],
+            value,
+        )
+        for key, value in anchor_state.items()
     )
 
 

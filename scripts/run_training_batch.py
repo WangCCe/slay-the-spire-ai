@@ -83,6 +83,9 @@ def build_main_command(args):
         cmd.extend(["--expert-mix-prob", str(args.expert_mix_prob)])
     if is_rl_agent and args.expert_mix_warmup is not None and not eval_mode:
         cmd.extend(["--expert-mix-warmup", str(args.expert_mix_warmup)])
+    anchor_weight = getattr(args, "parent_policy_anchor_weight", None)
+    if is_rl_agent and anchor_weight is not None and not eval_mode:
+        cmd.extend(["--parent-policy-anchor-weight", str(anchor_weight)])
 
     return cmd
 
@@ -294,6 +297,7 @@ def parse_args():
     parser.add_argument("--expert-mix", action="store_true")
     parser.add_argument("--expert-mix-prob", type=float, default=None)
     parser.add_argument("--expert-mix-warmup", type=int, default=None)
+    parser.add_argument("--parent-policy-anchor-weight", type=float, default=None)
 
     parser.add_argument("--game-dir", default=DEFAULT_GAME_DIR)
     parser.add_argument("--character", default="IRONCLAD")

@@ -869,6 +869,7 @@ def create_agent(
     expert_mix_enabled: Optional[bool] = None,
     expert_mix_prob: Optional[float] = None,
     expert_warmup_steps: Optional[int] = None,
+    parent_policy_anchor_weight: Optional[float] = None,
 ) -> RLAgent:
     """
     Create RL agent with specified configuration.
@@ -899,7 +900,11 @@ def create_agent(
             expert_mix_enabled=expert_mix_enabled,
             expert_mix_prob=expert_mix_prob,
             expert_warmup_steps=expert_warmup_steps,
+            parent_policy_anchor_weight=parent_policy_anchor_weight,
         )
+
+    if parent_policy_anchor_weight not in (None, 0, 0.0):
+        raise ValueError("parent policy anchor is only supported for RL v2")
 
     return RLAgent(
         model_path=model_path,
@@ -1084,6 +1089,7 @@ class CombatRLAgent:
         expert_mix_enabled: Optional[bool] = None,
         expert_mix_prob: Optional[float] = None,
         expert_warmup_steps: Optional[int] = None,
+        parent_policy_anchor_weight: Optional[float] = None,
     ):
         """
         Initialize CombatRLAgent with RL and OptimizedAgent instances.
@@ -1139,8 +1145,11 @@ class CombatRLAgent:
                 expert_mix_enabled=expert_mix_enabled,
                 expert_mix_prob=expert_mix_prob,
                 expert_warmup_steps=expert_warmup_steps,
+                parent_policy_anchor_weight=parent_policy_anchor_weight,
             )
         else:
+            if parent_policy_anchor_weight not in (None, 0, 0.0):
+                raise ValueError("parent policy anchor is only supported for RL v2")
             self.rl_agent = RLAgent(
                 model_path=model_path,
                 training=training,

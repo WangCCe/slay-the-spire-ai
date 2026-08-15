@@ -2,7 +2,8 @@
 DQN trainer for RL v2 with embedding inputs.
 """
 
-from typing import Optional
+from typing import Mapping, Optional
+import copy
 from collections import deque
 import logging
 
@@ -42,6 +43,7 @@ class DQNTrainerV2:
         card_embed_dim: int = 32,
         potion_embed_dim: int = 8,
         relic_embed_dim: int = 16,
+        parent_policy_anchor_weight: float = 0.0,
     ):
         self.continuous_dim = continuous_dim
         self.action_dim = action_dim
@@ -59,6 +61,9 @@ class DQNTrainerV2:
         self.device = device
         self.learning_rate = learning_rate
         self.network_type = network_type
+        if not np.isfinite(parent_policy_anchor_weight) or parent_policy_anchor_weight < 0:
+            raise ValueError("parent_policy_anchor_weight must be finite and non-negative")
+        self.parent_policy_anchor_weight = float(parent_policy_anchor_weight)
 
         self.online_network = create_dqn_v2(
             network_type=network_type,
@@ -94,6 +99,7 @@ class DQNTrainerV2:
         self.target_network.eval()
 
         self.optimizer = torch.optim.Adam(self.online_network.parameters(), lr=learning_rate)
+        self.parent_policy_anchor_network = None
         self.replay_buffer = ReplayBufferV2(
             buffer_size=buffer_size,
             continuous_dim=continuous_dim,
@@ -111,6 +117,40 @@ class DQNTrainerV2:
         self.episode_count = 0
         self.loss_history = deque(maxlen=100)
         self.last_loss = None
+        self.last_td_loss = None
+        self.last_parent_policy_anchor_loss = 0.0
+
+    def set_parent_policy_anchor(self, state_dict: Mapping[str, torch.Tensor]) -> None:
+        if self.parent_policy_anchor_weight <= 0.0:
+            raise ValueError("parent policy anchor weight must be positive")
+        anchor = copy.deepcopy(self.online_network)
+        anchor.load_state_dict(state_dict)
+        anchor.eval()
+        for parameter in anchor.parameters():
+            parameter.requires_grad_(False)
+        self.parent_policy_anchor_network = anchor
+
+    def get_parent_policy_anchor_actions(
+        self,
+        continuous: torch.Tensor,
+        card_ids: torch.Tensor,
+        potion_ids: torch.Tensor,
+        relic_ids: torch.Tensor,
+        action_masks: torch.Tensor,
+    ) -> torch.Tensor:
+        if self.parent_policy_anchor_network is None:
+            raise RuntimeError("parent policy anchor network is not initialized")
+        if not bool(action_masks.any(dim=1).all()):
+            raise ValueError("parent policy anchor requires at least one valid action")
+        with torch.no_grad():
+            anchor_q = self.parent_policy_anchor_network(
+                continuous=continuous,
+                card_ids=card_ids,
+                potion_ids=potion_ids,
+                relic_ids=relic_ids,
+                action_mask=action_masks,
+            )
+            return anchor_q.argmax(dim=1)
 
     def select_action(
         self,
@@ -216,14 +256,14 @@ class DQNTrainerV2:
         action_masks = torch.from_numpy(action_masks).to(self.device)
         next_action_masks = torch.from_numpy(next_action_masks).to(self.device)
 
-        current_q = self.online_network(
+        current_q_values = self.online_network(
             continuous=continuous,
             card_ids=card_ids,
             potion_ids=potion_ids,
             relic_ids=relic_ids,
             action_mask=action_masks,
         )
-        current_q = current_q.gather(1, actions.unsqueeze(1)).squeeze(1)
+        current_q = current_q_values.gather(1, actions.unsqueeze(1)).squeeze(1)
 
         with torch.no_grad():
             next_online_q = self.online_network(
@@ -245,8 +285,21 @@ class DQNTrainerV2:
             next_q = torch.where(dones.bool(), torch.zeros_like(next_q), next_q)
             target_q = rewards + (1 - dones) * self.gamma * next_q
 
-        loss = F.smooth_l1_loss(current_q, target_q)
+        td_loss = F.smooth_l1_loss(current_q, target_q)
+        anchor_loss = torch.zeros((), dtype=td_loss.dtype, device=self.device)
+        if self.parent_policy_anchor_weight > 0.0:
+            anchor_actions = self.get_parent_policy_anchor_actions(
+                continuous,
+                card_ids,
+                potion_ids,
+                relic_ids,
+                action_masks,
+            )
+            anchor_loss = F.cross_entropy(current_q_values, anchor_actions)
+        loss = td_loss + self.parent_policy_anchor_weight * anchor_loss
         loss_value = float(loss.item())
+        self.last_td_loss = float(td_loss.item())
+        self.last_parent_policy_anchor_loss = float(anchor_loss.item())
         self.loss_history.append(loss_value)
         self.last_loss = loss_value
 
@@ -254,6 +307,17 @@ class DQNTrainerV2:
         loss.backward()
         torch.nn.utils.clip_grad_norm_(self.online_network.parameters(), max_norm=10.0)
         self.optimizer.step()
+
+        if self.parent_policy_anchor_weight > 0.0 and self.total_steps % 100 == 0:
+            logger.info(
+                "RL parent policy anchor update: total_steps=%s total_loss=%.6f "
+                "td_loss=%.6f anchor_loss=%.6f weight=%.6f",
+                self.total_steps,
+                loss_value,
+                self.last_td_loss,
+                self.last_parent_policy_anchor_loss,
+                self.parent_policy_anchor_weight,
+            )
 
         if self.total_steps % self.target_update_freq == 0:
             self.target_network.load_state_dict(self.online_network.state_dict())

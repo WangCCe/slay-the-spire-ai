@@ -4,6 +4,7 @@ RL v2 agent implementation with embedding-based observations.
 
 from dataclasses import dataclass
 import logging
+import math
 import os
 from typing import Optional
 
@@ -91,6 +92,7 @@ class RLAgentV2:
         expert_mix_enabled: Optional[bool] = None,
         expert_mix_prob: Optional[float] = None,
         expert_warmup_steps: Optional[int] = None,
+        parent_policy_anchor_weight: Optional[float] = None,
     ):
         self.device = device
         self.training_mode = training
@@ -98,6 +100,23 @@ class RLAgentV2:
         self.epsilon = epsilon
         self.network_type = network_type
         self.chosen_class = PlayerClass.IRONCLAD
+        if parent_policy_anchor_weight is None:
+            parent_policy_anchor_weight = float(
+                os.environ.get("STS_RL_PARENT_POLICY_ANCHOR_WEIGHT", "0")
+            )
+        if (
+            not math.isfinite(parent_policy_anchor_weight)
+            or parent_policy_anchor_weight < 0.0
+        ):
+            raise ValueError(
+                "parent policy anchor weight must be finite and non-negative"
+            )
+        if parent_policy_anchor_weight > 0.0 and (not training or not model_path):
+            raise ValueError(
+                "positive parent policy anchor weight requires RL v2 training "
+                "with a parent checkpoint"
+            )
+        self.parent_policy_anchor_weight = float(parent_policy_anchor_weight)
 
         self.id_mapper = id_mapper or load_default_id_mapper()
         self.state_encoder = StateEncoderV2(self.id_mapper)
@@ -125,6 +144,7 @@ class RLAgentV2:
                 relic_vocab=self.id_mapper.relic_vocab_size,
                 device=device,
                 network_type=self.network_type,
+                parent_policy_anchor_weight=self.parent_policy_anchor_weight,
             )
             self.network = self.trainer.online_network
         else:
@@ -164,6 +184,10 @@ class RLAgentV2:
             self.expert_mix_enabled,
             self.expert_mix_prob,
             self.expert_warmup_steps,
+        )
+        logger.info(
+            "RLAgentV2 parent policy anchor config: weight=%.6f",
+            self.parent_policy_anchor_weight,
         )
         if self.training_mode and self.expert_mix_enabled:
             try:
@@ -633,6 +657,27 @@ class RLAgentV2:
             self.trainer.episode_count = int(
                 checkpoint.get("episode", self.trainer.episode_count)
             )
+            if self.trainer.parent_policy_anchor_weight > 0.0:
+                anchor_state = checkpoint.get("parent_policy_anchor_state_dict")
+                stored_weight = checkpoint.get("parent_policy_anchor_weight")
+                if anchor_state is not None:
+                    if stored_weight is None or not math.isclose(
+                        float(stored_weight),
+                        self.trainer.parent_policy_anchor_weight,
+                    ):
+                        raise ValueError(
+                            "anchored checkpoint weight does not match requested "
+                            "parent policy anchor weight"
+                        )
+                else:
+                    anchor_state = state_dict
+                self.trainer.set_parent_policy_anchor(anchor_state)
+                logger.info(
+                    "Loaded frozen parent policy anchor from %s",
+                    "checkpoint anchor state"
+                    if checkpoint.get("parent_policy_anchor_state_dict") is not None
+                    else "starting checkpoint online policy",
+                )
             logger.info("Loaded v2 trainer checkpoint from %s", model_path)
         else:
             self.network.load_state_dict(state_dict)
@@ -664,6 +709,18 @@ class RLAgentV2:
                     "total_steps": self.trainer.total_steps,
                 }
             )
+            if self.trainer.parent_policy_anchor_network is not None:
+                checkpoint.update(
+                    {
+                        "parent_policy_anchor_weight": self.trainer.parent_policy_anchor_weight,
+                        "parent_policy_anchor_state_dict": self.trainer.parent_policy_anchor_network.state_dict(),
+                        "training_metrics": {
+                            "last_total_loss": self.trainer.last_loss,
+                            "last_td_loss": self.trainer.last_td_loss,
+                            "last_parent_policy_anchor_loss": self.trainer.last_parent_policy_anchor_loss,
+                        },
+                    }
+                )
 
         save_torch_checkpoint(checkpoint, model_path)
         logger.info("Saved v2 checkpoint to %s", model_path)
@@ -729,6 +786,7 @@ def create_agent_v2(
     expert_mix_enabled: Optional[bool] = None,
     expert_mix_prob: Optional[float] = None,
     expert_warmup_steps: Optional[int] = None,
+    parent_policy_anchor_weight: Optional[float] = None,
 ) -> RLAgentV2:
     return RLAgentV2(
         model_path=model_path,
@@ -739,4 +797,5 @@ def create_agent_v2(
         expert_mix_enabled=expert_mix_enabled,
         expert_mix_prob=expert_mix_prob,
         expert_warmup_steps=expert_warmup_steps,
+        parent_policy_anchor_weight=parent_policy_anchor_weight,
     )
