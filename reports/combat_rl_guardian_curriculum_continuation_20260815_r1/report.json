@@ -1,0 +1,118 @@
+{
+  "schema_version": 1,
+  "experiment_id": "combat-rl-guardian-curriculum-continuation-20260815-r1",
+  "source_commit": "0a3ae850a8a5ed0de0bbea1d035885728461235f",
+  "started_at": "2026-08-15T16:47:15+08:00",
+  "finished_at": "2026-08-15T17:10:23+08:00",
+  "parent_checkpoint": {
+    "path": "reports/combat_rl_compact_monster_slots_training_20260815_r1/rl_combat_model_ep40_steps18580.pth",
+    "sha256": "162c700d9b1ab7d5119f476b9b2551f4e909eb4d462cbee14b30c7b6a2764b05",
+    "episode": 40,
+    "total_steps": 18580,
+    "epsilon": 0.82349,
+    "optimizer_step": 3339,
+    "replay_transition_count": 4096
+  },
+  "output_checkpoint": {
+    "path": "reports/combat_rl_guardian_curriculum_continuation_20260815_r1/rl_combat_model_ep52_steps20485.pth",
+    "sha256": "c290675852686218d5c9bba81bd90b0554650bf0489f2c8d4952a7f87825b6fa",
+    "episode": 52,
+    "total_steps": 20485,
+    "epsilon": 0.805402,
+    "optimizer_step": 3815,
+    "replay_transition_count": 4096,
+    "replay_source_transition_count": 6001,
+    "replay_truncated": true,
+    "all_tensors_finite": true
+  },
+  "training_delta": {
+    "accepted_transitions": 1905,
+    "optimizer_steps": 476,
+    "whole_model_relative_l2": 0.013041076377846473,
+    "embedding_relative_l2": 0.0023970150548403586,
+    "hidden_relative_l2": 0.06904875447368991,
+    "value_stream_relative_l2": 0.06348825375933068,
+    "advantage_stream_relative_l2": 0.07660696884075475,
+    "target_vs_online_relative_l2": 0.004734833397727923
+  },
+  "comparison_on_successor_replay": {
+    "transition_count": 4096,
+    "terminal_count": 267,
+    "reward_mean": -1.142911672592163,
+    "parent_smooth_l1": 3.4014196395874023,
+    "successor_smooth_l1": 2.9689338207244873,
+    "parent_absolute_td_p50": 1.3325181007385254,
+    "successor_absolute_td_p50": 1.1923375129699707,
+    "parent_absolute_td_p95": 9.851353645324707,
+    "successor_absolute_td_p95": 8.55889892578125,
+    "parent_q_margin_p50": 0.9403848648071289,
+    "successor_q_margin_p50": 0.8738808631896973,
+    "parent_q_margin_p05": 0.04778432846069336,
+    "successor_q_margin_p05": 0.05437970161437988,
+    "parent_executed_action_greedy_share": 0.276611328125,
+    "successor_executed_action_greedy_share": 0.263671875,
+    "parent_successor_greedy_action_agreement": 0.68896484375,
+    "executed_actions_all_valid": true
+  },
+  "expert_action_full_batch": {
+    "expert_selected": 1119,
+    "expert_mix_skipped": 477,
+    "expert_action_masked_out": 0,
+    "expert_action_not_encodable": 0,
+    "expert_action_failed": 0,
+    "transition_store_failed": 0,
+    "successful_expert_share": 0.7011278195488722
+  },
+  "curriculum": {
+    "games": 12,
+    "latest_gate_parent_guardian_failure_seeds": 8,
+    "prior_consumed_guardian_failure_seeds": 4,
+    "guardian_passed": 4,
+    "guardian_failed": 8,
+    "latest_gate_subset_guardian_passed": 3,
+    "prior_consumed_subset_guardian_passed": 1,
+    "evaluation_authority": false,
+    "seed_reuse_allowed_for_future_gate": false
+  },
+  "outcomes": {
+    "games": 12,
+    "victories": 0,
+    "floor_total": 260,
+    "floor_mean": 21.666666666666668,
+    "floor_median": 16,
+    "act_2_entered": 4,
+    "act_2_boss_reached": 4,
+    "act_3_entered": 0,
+    "floors": [16, 16, 16, 16, 16, 33, 33, 33, 16, 16, 33, 16],
+    "killed_by": {
+      "The Guardian": 8,
+      "Collector": 3,
+      "Automaton": 1
+    },
+    "run_files": [
+      "1786783732.run",
+      "1786783807.run",
+      "1786783893.run",
+      "1786783962.run",
+      "1786784042.run",
+      "1786784159.run",
+      "1786784339.run",
+      "1786784519.run",
+      "1786784584.run",
+      "1786784697.run",
+      "1786784900.run",
+      "1786785020.run"
+    ]
+  },
+  "runtime_integrity": {
+    "communication_mod_error_growth_bytes": 974,
+    "configuration_restored": true,
+    "processes_closed": true
+  },
+  "configuration_evidence": {
+    "seed_pool_sha256": "861a2c45e29332c7877ebaf9c55dab9a3744b9727dfc413b86997344a251f2c7",
+    "launch_config_sha256": "041aae8e5b3a379df2373580cd61a5f8480fdcc588b85693007be96c821ca8af",
+    "restored_config_sha256": "d4d1dd35fd53985796922e5915a8b4ab51373109d08addff2bdcdfebf01a00e4"
+  },
+  "decision": "approve_one_fresh_matched_zero_epsilon_live_gate_against_promoted_parent"
+}
