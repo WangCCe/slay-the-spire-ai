@@ -1,0 +1,82 @@
+{
+  "schema_version": 1,
+  "gate_id": "combat-rl-compact-monster-slots-zero-epsilon-gate-20260815-r1",
+  "candidate_source_commit": "add7d51c052a396b21131c9ac848d84939ca97e6",
+  "preregistration_commit": "d3b1a74cc8dbbf1b8e56c3dd3d04a5f6be6fd4e0",
+  "candidate_checkpoint": {
+    "path": "reports/combat_rl_compact_monster_slots_training_20260815_r1/rl_combat_model_ep40_steps18580.pth",
+    "sha256": "162c700d9b1ab7d5119f476b9b2551f4e909eb4d462cbee14b30c7b6a2764b05"
+  },
+  "baseline_checkpoint": {
+    "path": "reports/combat_rl_legacy_replay_collection_20260814_r1/rl_combat_model_ep15_steps13413.pth",
+    "sha256": "79afdd2290323646010f7715fb9a96922d2b9dc05baee271ca0a1042eac4f3d6"
+  },
+  "evaluation": {
+    "games_per_arm": 20,
+    "epsilon": 0.0,
+    "same_seed_order": true,
+    "training_disabled": true,
+    "expert_mix_disabled": true,
+    "all_seed_pairs_match": true
+  },
+  "candidate": {
+    "victories": 0,
+    "floor_total": 410,
+    "floor_mean": 20.5,
+    "floor_median": 16,
+    "act_2_entered": 8,
+    "act_2_boss_reached": 3,
+    "act_3_entered": 0,
+    "floors": [16, 16, 22, 31, 16, 20, 13, 16, 16, 33, 19, 16, 30, 33, 16, 33, 16, 16, 16, 16]
+  },
+  "baseline": {
+    "victories": 0,
+    "floor_total": 349,
+    "floor_mean": 17.45,
+    "floor_median": 16,
+    "act_2_entered": 3,
+    "act_2_boss_reached": 1,
+    "act_3_entered": 0,
+    "floors": [24, 16, 20, 16, 16, 16, 16, 16, 16, 33, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16]
+  },
+  "paired": {
+    "candidate_wins": 7,
+    "baseline_wins": 2,
+    "ties": 11,
+    "floor_deltas": [-8, 0, 2, 15, 0, 4, -3, 0, 0, 0, 3, 0, 14, 17, 0, 17, 0, 0, 0, 0],
+    "floor_delta_mean": 3.05,
+    "floor_delta_median": 0,
+    "two_sided_exact_sign_test_p": 0.1796875
+  },
+  "promotion_conditions": {
+    "candidate_paired_floor_wins_exceed_baseline": true,
+    "candidate_victories_at_least_baseline": true,
+    "candidate_act_2_entries_at_least_baseline": true,
+    "candidate_act_2_boss_reaches_at_least_baseline": true,
+    "candidate_total_floors_at_least_baseline": true,
+    "both_arms_zero_integrity_warnings": true,
+    "all_seed_pairs_match": true
+  },
+  "integrity": {
+    "candidate_communication_mod_error_growth_bytes": 959,
+    "baseline_communication_mod_error_growth_bytes": 953,
+    "configuration_restored_before_promotion": true,
+    "processes_closed": true
+  },
+  "configuration_evidence": {
+    "seed_pool_sha256": "d31e1d99ad9d7bd7faede6b3dd056081cec2445e59ca7becfcb521446346c0a0",
+    "candidate_launch_config_sha256": "8b86ede5cc8d90448eba9e22d980fc8a39d97ff0c38f57788b87b26a3593f8f8",
+    "baseline_launch_config_sha256": "be44d3dff35d92895d462ae908dcb6d13271d6934ef830ba3645a5b7349e8a28",
+    "rollback_config_sha256": "b42093aef81a17ff1e3eb2dec4187c3af48a1a512a355c9d4d613c4cde2803c1",
+    "promoted_config_sha256": "d4d1dd35fd53985796922e5915a8b4ab51373109d08addff2bdcdfebf01a00e4"
+  },
+  "gate_pass": true,
+  "failed_conditions": [],
+  "promotion": {
+    "applied": true,
+    "config_path": "reports/combat_rl_compact_monster_slots_promotion_20260815.properties",
+    "explicit_model_binding": true,
+    "rollback_checkpoint": "reports/combat_rl_legacy_replay_collection_20260814_r1/rl_combat_model_ep15_steps13413.pth"
+  },
+  "decision": "promote_candidate_and_keep_entry_checkpoint_for_rollback"
+}
