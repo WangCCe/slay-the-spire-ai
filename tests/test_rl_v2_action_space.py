@@ -105,6 +105,31 @@ def test_encode_play_card_action_relocates_card_uuid_before_stale_index():
     assert encoder.get_action_mask(game)[action_index]
 
 
+def test_encode_play_card_action_drops_stale_target_for_uuid_bound_nontarget_card():
+    encoder = ActionEncoderV2()
+    hand = [
+        SimpleNamespace(uuid="armaments", has_target=False, is_playable=True),
+        SimpleNamespace(uuid="strike", has_target=True, is_playable=True),
+    ]
+    stale_armaments = SimpleNamespace(
+        uuid="armaments", has_target=False, is_playable=True
+    )
+    game = _make_game(
+        screen_type=None,
+        in_combat=True,
+        hand=hand,
+        monsters=[_make_monster()],
+    )
+
+    action_index = encoder.encode_action(
+        PlayCardAction(card=stale_armaments, card_index=1, target_index=0),
+        game,
+    )
+
+    assert action_index == space.encode_play_card(0, 0)
+    assert encoder.get_action_mask(game)[action_index]
+
+
 def test_encode_play_card_action_rejects_nonfinite_card_index():
     encoder = ActionEncoderV2()
     game = _make_game(screen_type=None, in_combat=True, hand=[_make_card()])

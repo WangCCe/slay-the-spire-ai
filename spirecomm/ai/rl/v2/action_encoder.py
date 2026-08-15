@@ -49,6 +49,9 @@ class ActionEncoderV2:
             if card_index is None or card_index >= space.MAX_CARD_SLOTS:
                 return None
             target_slot = self._resolve_target_slot(action)
+            hand = getattr(game, "hand", []) or []
+            if card_index < len(hand) and not card_requires_target(hand[card_index]):
+                target_slot = 0
             return self.encode_play_card(card_index, target_slot)
 
         if isinstance(action, PotionAction):

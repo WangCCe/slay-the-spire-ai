@@ -464,10 +464,18 @@ class RLAgentV2:
             )
             return None
         if expert_index >= len(action_mask) or not action_mask[expert_index]:
+            expert_card = getattr(expert_action, "card", None)
+            target_monster = getattr(expert_action, "target_monster", None)
             logger.info(
-                "Expert action masked out: index=%s action=%s",
+                "Expert action masked out: index=%s action=%s card_index=%s "
+                "card_id=%s card_uuid=%s target_index=%s target_monster_index=%s",
                 expert_index,
                 type(expert_action).__name__ if expert_action is not None else "None",
+                getattr(expert_action, "card_index", None),
+                getattr(expert_card, "card_id", None),
+                getattr(expert_card, "uuid", None),
+                getattr(expert_action, "target_index", None),
+                getattr(target_monster, "monster_index", None),
             )
             return None
 
