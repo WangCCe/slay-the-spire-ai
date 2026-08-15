@@ -1,0 +1,76 @@
+{
+  "schema_version": 1,
+  "gate_id": "combat-rl-broad-replay-successor-zero-epsilon-gate-20260815-r1",
+  "source_commit": "f0389cd241ab01ffba7b208013770139e52cb755",
+  "candidate_checkpoint": {
+    "path": "reports/combat_rl_broad_replay_continuation_20260815_r1/rl_combat_model_ep60_steps22175.pth",
+    "sha256": "9de2b8bef7522cf1b07a1a503d43c0c585c3ec9b18d67709db546e82791646dc"
+  },
+  "parent_checkpoint": {
+    "path": "reports/combat_rl_compact_monster_slots_training_20260815_r1/rl_combat_model_ep40_steps18580.pth",
+    "sha256": "162c700d9b1ab7d5119f476b9b2551f4e909eb4d462cbee14b30c7b6a2764b05"
+  },
+  "candidate": {
+    "games": 20,
+    "victories": 0,
+    "floor_total": 463,
+    "floor_mean": 23.15,
+    "floor_median": 16.0,
+    "act_2_entered": 8,
+    "act_2_boss_reached": 6,
+    "act_3_entered": 1,
+    "floors": [16, 29, 16, 16, 16, 33, 33, 16, 16, 16, 16, 33, 50, 16, 33, 16, 27, 16, 16, 33],
+    "run_files": [
+      "1786794848.run", "1786794970.run", "1786795035.run", "1786795126.run", "1786795208.run",
+      "1786795334.run", "1786795474.run", "1786795555.run", "1786795634.run", "1786795700.run",
+      "1786795769.run", "1786795941.run", "1786796207.run", "1786796283.run", "1786796443.run",
+      "1786796518.run", "1786796629.run", "1786796685.run", "1786796763.run", "1786796970.run"
+    ],
+    "communication_mod_error_growth_bytes": 955
+  },
+  "parent": {
+    "games": 20,
+    "victories": 0,
+    "floor_total": 531,
+    "floor_mean": 26.55,
+    "floor_median": 26.0,
+    "act_2_entered": 13,
+    "act_2_boss_reached": 7,
+    "act_3_entered": 3,
+    "floors": [16, 30, 24, 16, 29, 33, 45, 16, 21, 16, 39, 33, 50, 21, 28, 16, 33, 16, 16, 33],
+    "run_files": [
+      "1786797121.run", "1786797241.run", "1786797337.run", "1786797428.run", "1786797585.run",
+      "1786797723.run", "1786797948.run", "1786798022.run", "1786798130.run", "1786798197.run",
+      "1786798382.run", "1786798561.run", "1786798825.run", "1786798951.run", "1786799095.run",
+      "1786799171.run", "1786799301.run", "1786799363.run", "1786799445.run", "1786799657.run"
+    ],
+    "communication_mod_error_growth_bytes": 960
+  },
+  "paired": {
+    "candidate_wins": 1,
+    "parent_wins": 8,
+    "ties": 11,
+    "floor_deltas": [0, -1, -8, 0, -13, 0, -12, 0, -5, 0, -23, 0, 0, -5, 5, 0, -6, 0, 0, 0],
+    "floor_delta_mean": -3.4,
+    "floor_delta_median": 0.0,
+    "two_sided_sign_test_p": 0.0390625,
+    "all_seed_pairs_match": true
+  },
+  "promotion_conditions": {
+    "paired_floor_wins_exceed_parent": false,
+    "victories_at_least_parent": true,
+    "act_2_entries_at_least_parent": false,
+    "act_2_boss_reaches_at_least_parent": false,
+    "total_floors_at_least_parent": false,
+    "candidate_integrity_clean": true,
+    "parent_integrity_clean": true,
+    "all_seed_pairs_match": true,
+    "all_conditions_passed": false
+  },
+  "runtime_integrity": {
+    "configuration_restored_to_parent": true,
+    "restored_config_sha256": "d4d1dd35fd53985796922e5915a8b4ab51373109d08addff2bdcdfebf01a00e4",
+    "processes_closed": true
+  },
+  "decision": "reject_candidate_retain_promoted_parent_and_stop_unanchored_continuations"
+}
