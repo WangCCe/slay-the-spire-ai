@@ -1,0 +1,22 @@
+{
+  "schema_version": 1,
+  "experiment_id": "combat-rl-expert-target-normalization-smoke-20260815-r2",
+  "source_commit": "ac6a2ef5278b6c9a1b985ae30257b1e20c64b623",
+  "entry_checkpoint": {
+    "path": "reports/combat_rl_legacy_replay_collection_20260814_r1/rl_combat_model_ep15_steps13413.pth",
+    "sha256": "79afdd2290323646010f7715fb9a96922d2b9dc05baee271ca0a1042eac4f3d6"
+  },
+  "launch_config": {
+    "path": "reports/combat_rl_expert_target_normalization_smoke_20260815_r1_launch_config.properties",
+    "sha256": "9af2dcbf5a9029e615805c37a94e66d9909e0780ad83a3eb3ed078943bc2395c"
+  },
+  "gate": {
+    "successful_expert_share_minimum": 0.68,
+    "cached_card_no_longer_playable_rejections_must_equal": 0,
+    "expert_action_failed_must_equal": 0,
+    "runtime_integrity_warnings_must_equal": 0,
+    "raw_monster_index_schema_rejections_are_reported_separately": true,
+    "checkpoint_promotion_allowed": false
+  },
+  "output_directory": "reports/combat_rl_expert_target_normalization_smoke_20260815_r2"
+}
