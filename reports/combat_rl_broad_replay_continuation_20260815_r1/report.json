@@ -1,0 +1,110 @@
+{
+  "schema_version": 1,
+  "experiment_id": "combat-rl-broad-replay-continuation-20260815-r1",
+  "source_commit": "020f201b802fc7954c63f019e1720d6ae1d345f6",
+  "started_at": "2026-08-15T18:59:51+08:00",
+  "finished_at": "2026-08-15T19:42:50+08:00",
+  "parent_checkpoint": {
+    "path": "reports/combat_rl_compact_monster_slots_training_20260815_r1/rl_combat_model_ep40_steps18580.pth",
+    "sha256": "162c700d9b1ab7d5119f476b9b2551f4e909eb4d462cbee14b30c7b6a2764b05",
+    "episode": 40,
+    "total_steps": 18580,
+    "epsilon": 0.82349,
+    "optimizer_step": 3339,
+    "replay_transition_count": 4096
+  },
+  "output_checkpoint": {
+    "path": "reports/combat_rl_broad_replay_continuation_20260815_r1/rl_combat_model_ep60_steps22175.pth",
+    "sha256": "9de2b8bef7522cf1b07a1a503d43c0c585c3ec9b18d67709db546e82791646dc",
+    "episode": 60,
+    "total_steps": 22175,
+    "epsilon": 0.789366,
+    "optimizer_step": 4237,
+    "replay_transition_count": 4096,
+    "replay_source_transition_count": 7691,
+    "replay_truncated": true,
+    "all_tensors_finite": true
+  },
+  "training_delta": {
+    "accepted_transitions": 3595,
+    "optimizer_steps": 898,
+    "whole_model_relative_l2": 0.020430736004838385,
+    "embedding_relative_l2": 0.003591990896098758,
+    "hidden_relative_l2": 0.11210260766168265,
+    "value_stream_relative_l2": 0.08640199844591287,
+    "advantage_stream_relative_l2": 0.11381478277095174,
+    "target_vs_online_relative_l2": 0.0019570321115697097
+  },
+  "comparison_on_successor_replay": {
+    "transition_count": 4096,
+    "terminal_count": 261,
+    "reward_mean": -1.0276528596878052,
+    "parent_smooth_l1": 3.406641721725464,
+    "successor_smooth_l1": 2.9217398166656494,
+    "parent_absolute_td_p50": 1.3323736190795898,
+    "successor_absolute_td_p50": 1.1737110614776611,
+    "parent_absolute_td_p95": 9.956618309020996,
+    "successor_absolute_td_p95": 8.37447452545166,
+    "parent_q_margin_p50": 0.885345458984375,
+    "successor_q_margin_p50": 0.6513063907623291,
+    "parent_q_margin_p05": 0.04886007308959961,
+    "successor_q_margin_p05": 0.04895448684692383,
+    "parent_executed_action_greedy_share": 0.288330078125,
+    "successor_executed_action_greedy_share": 0.30078125,
+    "parent_successor_greedy_action_agreement": 0.63427734375,
+    "executed_actions_all_valid": true
+  },
+  "expert_action_full_batch": {
+    "expert_selected": 1693,
+    "expert_mix_skipped": 724,
+    "expert_action_masked_out": 0,
+    "expert_action_not_encodable": 0,
+    "expert_action_failed": 0,
+    "transition_store_failed": 0,
+    "successful_expert_share": 0.7004551096400497
+  },
+  "outcomes": {
+    "games": 20,
+    "victories": 0,
+    "floor_total": 457,
+    "floor_mean": 22.85,
+    "floor_median": 19.5,
+    "act_2_entered": 11,
+    "act_2_boss_reached": 5,
+    "act_3_entered": 1,
+    "floors": [16, 16, 16, 16, 16, 25, 33, 31, 22, 33, 38, 33, 20, 16, 16, 33, 16, 13, 29, 19],
+    "run_files": [
+      "1786791681.run",
+      "1786791769.run",
+      "1786791862.run",
+      "1786791952.run",
+      "1786792035.run",
+      "1786792215.run",
+      "1786792402.run",
+      "1786792563.run",
+      "1786792692.run",
+      "1786792872.run",
+      "1786793123.run",
+      "1786793342.run",
+      "1786793468.run",
+      "1786793551.run",
+      "1786793604.run",
+      "1786793776.run",
+      "1786793852.run",
+      "1786793928.run",
+      "1786794070.run",
+      "1786794167.run"
+    ]
+  },
+  "runtime_integrity": {
+    "communication_mod_error_growth_bytes": 978,
+    "configuration_restored_to_parent": true,
+    "restored_config_sha256": "d4d1dd35fd53985796922e5915a8b4ab51373109d08addff2bdcdfebf01a00e4",
+    "processes_closed": true
+  },
+  "configuration_evidence": {
+    "launch_config_sha256": "3948699d76b88eb38cbf597022736201883456ae08722945206fcb7ac9ef129c",
+    "consumed_seed_pool_sha256": "a7401c7c20c36182c3e13f23557ba2642674e7035f010b0c9b63fa98031fad2c"
+  },
+  "decision": "approve_one_fresh_matched_zero_epsilon_live_gate_against_promoted_parent"
+}
