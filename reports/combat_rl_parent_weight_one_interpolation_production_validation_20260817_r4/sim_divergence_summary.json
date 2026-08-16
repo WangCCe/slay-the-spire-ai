@@ -1,0 +1,10 @@
+{
+  "trace": "D:/SteamLibrary/steamapps/common/SlayTheSpire/sim_divergence_trace_clean.jsonl",
+  "events_analyzed": 0,
+  "malformed_lines": 0,
+  "total_lines": 0,
+  "by_reason": {},
+  "by_action_card": {},
+  "by_floor": {},
+  "by_diff_key": {}
+}
