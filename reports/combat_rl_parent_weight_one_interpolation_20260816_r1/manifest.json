@@ -1,0 +1,50 @@
+{
+  "schema_version": 1,
+  "experiment_id": "combat-rl-parent-weight-one-interpolation-20260816-r1",
+  "source_commit": "f2f2886335143d0b54fa9a4cf5261fc6c534b02e",
+  "authority": "exploratory_model_construction_only",
+  "components": {
+    "parent": {
+      "path": "reports/combat_rl_compact_monster_slots_training_20260815_r1/rl_combat_model_ep40_steps18580.pth",
+      "sha256": "162c700d9b1ab7d5119f476b9b2551f4e909eb4d462cbee14b30c7b6a2764b05",
+      "coefficient": 0.8
+    },
+    "weight_one_candidate": {
+      "path": "reports/combat_rl_parent_policy_anchor_weight_one_training_20260816_r1/rl_combat_model_ep60_steps22590.pth",
+      "sha256": "b8916452702411dcea2bca7bbf996bc349a9060f162256af7d4d597cafce5986",
+      "coefficient": 0.2
+    }
+  },
+  "construction": {
+    "method": "linear_parameter_interpolation",
+    "alpha_from_parent_to_candidate": 0.2,
+    "online_state_only": true,
+    "training_state_inherited": false,
+    "checkpoint_schema_version": 2,
+    "checkpoint_kind": "weights"
+  },
+  "checkpoint": {
+    "path": "reports/combat_rl_parent_weight_one_interpolation_20260816_r1/rl_combat_model_parent_to_weight_one_alpha_0_20.pth",
+    "sha256": "7a27fe138ceaba927354da88d71b9186c6b918cb8d76c75c56aee8d74146faeb",
+    "size_bytes": 2272320,
+    "tensor_count": 15,
+    "all_tensors_finite": true,
+    "round_trip_exact": true,
+    "rl_agent_v2_cpu_load_passed": true
+  },
+  "replay_diagnosis": {
+    "panels": ["promoted_parent", "weight_0_5_successor", "weight_1_0_successor"],
+    "transitions_per_panel": 4096,
+    "minimum_parent_greedy_action_agreement": 0.933837890625,
+    "mean_parent_greedy_action_agreement": 0.9401041666666666,
+    "mean_normalized_smooth_l1": 0.962356530332703,
+    "worst_normalized_smooth_l1": 0.9696084084773298,
+    "all_panels_td_fit_better_than_parent": true
+  },
+  "selection": {
+    "grid": [0.0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0],
+    "exploratory_rule": "largest grid alpha with minimum parent agreement at least 0.93 and improved SmoothL1 on all three panels",
+    "selected_alpha": 0.2,
+    "no_promotion_authority": true
+  }
+}
