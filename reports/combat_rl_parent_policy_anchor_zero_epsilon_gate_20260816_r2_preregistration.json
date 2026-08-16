@@ -1,0 +1,46 @@
+{
+  "schema_version": 1,
+  "gate_id": "combat-rl-parent-policy-anchor-zero-epsilon-gate-20260816-r2",
+  "source_commit": "ec022d047d93481473d6623a59844bc1916f1604",
+  "candidate_checkpoint": {
+    "path": "reports/combat_rl_parent_policy_anchor_smoke_20260815_r1/rl_combat_model_ep60_steps22620.pth",
+    "sha256": "8a60f45d2c1e5e32b2c1c95f8799cae99144d8fd4a070386e32a9be1e5b12b7d"
+  },
+  "parent_checkpoint": {
+    "path": "reports/combat_rl_compact_monster_slots_training_20260815_r1/rl_combat_model_ep40_steps18580.pth",
+    "sha256": "162c700d9b1ab7d5119f476b9b2551f4e909eb4d462cbee14b30c7b6a2764b05"
+  },
+  "evaluation": {
+    "arm_order": ["candidate", "parent"],
+    "games_per_arm": 20,
+    "mode": "eval",
+    "epsilon": 0.0,
+    "elite_route": "conservative",
+    "ascension": 0,
+    "seed_pool": "reports/combat_rl_parent_policy_anchor_zero_epsilon_gate_20260816_r2_seed_pool.txt",
+    "seed_pool_sha256": "fc54a8b3266c3801f8ab873633568f96d853294e5a5b2c2d237735db58ac63b8",
+    "candidate_launch_config_sha256": "8db5d053d4510663c95f28939f4f5d7664138dbcdd90d83165ea704b9b5d551f",
+    "parent_launch_config_sha256": "372bf11b34dfa921e7a11e07bef8715c580a5cf73197923ba40fffc09fc33c7f",
+    "same_seed_order": true,
+    "fresh_against_existing_combat_seed_pool_artifacts": true,
+    "training_disabled": true,
+    "expert_mix_disabled": true,
+    "shared_long_combat_guard": true
+  },
+  "promotion_rule": {
+    "candidate_paired_floor_wins_must_exceed_parent": true,
+    "candidate_victories_must_be_at_least_parent": true,
+    "candidate_act_2_entries_must_be_at_least_parent": true,
+    "candidate_act_2_boss_reaches_must_be_at_least_parent": true,
+    "candidate_total_floors_must_be_at_least_parent": true,
+    "both_arms_must_complete_all_games": true,
+    "all_seed_pairs_must_match": true,
+    "all_conditions_required": true
+  },
+  "execution_constraints": {
+    "stop_after_started_arm_failure": true,
+    "no_seed_or_threshold_change_after_start": true,
+    "no_model_or_parameter_change_between_arms": true,
+    "no_automatic_promotion": true
+  }
+}
