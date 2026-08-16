@@ -1,0 +1,36 @@
+{
+  "schema_version": 1,
+  "experiment_id": "combat-rl-stronger-parent-policy-anchor-training-20260816-r1",
+  "source_commit": "020e5e777e7a1a8615fb987e0a0a1df2f64c9a23",
+  "parent_checkpoint": {
+    "path": "reports/combat_rl_compact_monster_slots_training_20260815_r1/rl_combat_model_ep40_steps18580.pth",
+    "sha256": "162c700d9b1ab7d5119f476b9b2551f4e909eb4d462cbee14b30c7b6a2764b05"
+  },
+  "training": {
+    "games": 20,
+    "seed_pool": "reports/combat_rl_parent_policy_anchor_zero_epsilon_gate_20260816_r4_seed_pool.txt",
+    "seed_pool_sha256": "af761a4619d341defab50b437d55de18ebfca360351a25de33ad7fd4fddc2709",
+    "seed_authority": "consumed_training_only",
+    "elite_route": "conservative",
+    "expert_mix_probability": 0.7,
+    "parent_policy_anchor_weight": 0.5,
+    "launch_config_sha256": "86b6a39bc90c22a388170e55ed7a7303e5e2d898655491b56f3e5ac68450b9db"
+  },
+  "decision_rule": {
+    "exact_game_count_required": 20,
+    "finite_checkpoint_required": true,
+    "frozen_anchor_must_equal_parent_online_policy": true,
+    "expert_or_transition_failures_must_equal": 0,
+    "successor_replay_smooth_l1_must_not_exceed_parent": true,
+    "minimum_parent_successor_greedy_agreement": 0.88,
+    "positive_finite_anchor_loss_required": true,
+    "production_configuration_must_be_restored": true,
+    "all_conditions_required_for_fresh_gate": true
+  },
+  "constraints": {
+    "no_training_outcome_promotion_authority": true,
+    "no_reuse_of_training_seeds_for_evaluation": true,
+    "no_automatic_promotion": true,
+    "stop_after_unrecoverable_runtime_failure": true
+  }
+}
