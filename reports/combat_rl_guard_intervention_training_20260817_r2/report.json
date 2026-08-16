@@ -1,0 +1,111 @@
+{
+  "schema_version": 1,
+  "experiment_id": "combat-rl-guard-intervention-training-20260817-r2",
+  "source_commit": "de563b670",
+  "started_at": "2026-08-17T01:47:56+08:00",
+  "finished_at": "2026-08-17T02:49:58+08:00",
+  "parent_policy": {
+    "path": "reports/combat_rl_parent_weight_one_interpolation_20260816_r1/rl_combat_model_parent_to_weight_one_alpha_0_20.pth",
+    "sha256": "7a27fe138ceaba927354da88d71b9186c6b918cb8d76c75c56aee8d74146faeb"
+  },
+  "continuation_checkpoint": {
+    "path": "reports/combat_rl_guard_intervention_training_20260817_r1/rl_combat_model_ep20_steps3971.pth",
+    "sha256": "6c62e5ad7dba22e6a64b8f35f89311b614b2512ad109469a8741a5392f99449e",
+    "episode": 20,
+    "total_steps": 3971,
+    "optimizer_step": 0,
+    "replay_transition_count": 3971
+  },
+  "output_checkpoint": {
+    "path": "reports/combat_rl_guard_intervention_training_20260817_r2/rl_combat_model_ep40_steps9269.pth",
+    "sha256": "092ce5f5a9a861085d0416f2e2879062118b107aa20ac6507bbba112cc779ae0",
+    "episode": 40,
+    "total_steps": 9269,
+    "epsilon": 0.911954,
+    "learning_starts": 4096,
+    "optimizer_step": 1294,
+    "replay_transition_count": 4096,
+    "replay_source_transition_count": 9269,
+    "replay_truncated": true,
+    "all_checkpoint_values_finite": true,
+    "executed_actions_all_valid": true
+  },
+  "anchor_evidence": {
+    "weight": 1.0,
+    "frozen_anchor_state_exactly_equals_parent": true,
+    "last_total_loss": 3.6945481300354004,
+    "last_td_loss": 3.384921073913574,
+    "last_anchor_loss": 0.3096269369125366,
+    "retained_logged_anchor_update_count": 35,
+    "retained_logged_anchor_loss_min": 0.218276,
+    "retained_logged_anchor_loss_mean": 0.313889171428571,
+    "retained_logged_anchor_loss_max": 0.413126
+  },
+  "training_delta": {
+    "accepted_transitions": 5298,
+    "optimizer_steps": 1294,
+    "whole_model_relative_l2": 0.028154421924521424
+  },
+  "comparison_on_successor_replay": {
+    "transition_count": 4096,
+    "parent_smooth_l1": 3.7778303623199463,
+    "successor_smooth_l1": 3.069603204727173,
+    "parent_absolute_td_p50": 1.8854948282241821,
+    "successor_absolute_td_p50": 1.6685466766357422,
+    "parent_absolute_td_p95": 11.40511417388916,
+    "successor_absolute_td_p95": 8.41332721710205,
+    "parent_q_margin_p50": 1.3782386779785156,
+    "successor_q_margin_p50": 3.7583513259887695,
+    "parent_q_margin_p05": 0.08711433410644531,
+    "successor_q_margin_p05": 0.2511558532714844,
+    "parent_successor_greedy_action_agreement": 0.88037109375,
+    "parent_executed_action_greedy_share": 0.24755859375,
+    "successor_executed_action_greedy_share": 0.226318359375
+  },
+  "retained_log_evidence": {
+    "coverage_started_at": "2026-08-17T02:10:03+08:00",
+    "coverage_ended_at": "2026-08-17T02:49:58+08:00",
+    "expert_actions_selected": 2090,
+    "raw_rl_end_turn": 690,
+    "energy_guard_triggers": 792,
+    "lethal_guard_triggers": 272,
+    "survival_guard_triggers": 94,
+    "invalid_rl_actions": 0,
+    "rl_action_failures": 0,
+    "expert_action_failures": 0,
+    "replay_rejected_transitions": 0,
+    "coverage_limitation": "The five-file rotating log overwrote the first approximately 22 minutes. Training used high epsilon and the intervention counts are not comparable to an epsilon-zero evaluation."
+  },
+  "outcomes": {
+    "authority": "training_context_only",
+    "games": 20,
+    "victories": 0,
+    "floor_total": 636,
+    "floor_mean": 31.8,
+    "act_2_entered": 15,
+    "act_2_boss_reached": 13,
+    "act_3_entered": 4,
+    "floors": [31, 33, 50, 16, 33, 33, 16, 33, 50, 33, 33, 16, 50, 28, 50, 33, 16, 16, 33, 33],
+    "sim_divergence_rows": 31
+  },
+  "runtime_integrity": {
+    "communication_mod_error_growth_bytes": 1924,
+    "communication_mod_growth_is_expected_wrapper_output": true,
+    "configuration_restored_to_production": true,
+    "restored_config_sha256": "7e923bba944c411512f5f8322a8494bc30f7edda47be0e3f404c5b25edde22b2",
+    "processes_closed": true
+  },
+  "decision_rule": {
+    "exact_additional_game_count_passed": true,
+    "finite_checkpoint_passed": true,
+    "positive_optimizer_progress_passed": true,
+    "candidate_differs_from_parent_passed": true,
+    "zero_observed_expert_or_transition_failures_passed": true,
+    "successor_replay_td_fit_passed": true,
+    "minimum_parent_agreement_passed": true,
+    "positive_finite_anchor_loss_passed": true,
+    "production_configuration_restored_passed": true,
+    "all_rules_passed": true
+  },
+  "decision": "authorize_fresh_matched_gate_without_automatic_promotion"
+}

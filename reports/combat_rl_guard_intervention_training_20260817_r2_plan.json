@@ -1,0 +1,45 @@
+{
+  "schema_version": 1,
+  "experiment_id": "combat-rl-guard-intervention-training-20260817-r2",
+  "source_commit": "de563b670",
+  "parent_policy": {
+    "path": "reports/combat_rl_parent_weight_one_interpolation_20260816_r1/rl_combat_model_parent_to_weight_one_alpha_0_20.pth",
+    "sha256": "7a27fe138ceaba927354da88d71b9186c6b918cb8d76c75c56aee8d74146faeb"
+  },
+  "continuation_checkpoint": {
+    "path": "reports/combat_rl_guard_intervention_training_20260817_r1/rl_combat_model_ep20_steps3971.pth",
+    "sha256": "6c62e5ad7dba22e6a64b8f35f89311b614b2512ad109469a8741a5392f99449e",
+    "episode": 20,
+    "total_steps": 3971,
+    "replay_transition_count": 3971,
+    "learning_starts": 4096,
+    "optimizer_step": 0
+  },
+  "training": {
+    "additional_games": 20,
+    "elite_route": "conservative",
+    "expert_mix_probability": 0.7,
+    "parent_policy_anchor_weight": 1.0,
+    "seed_authority": "training_outcomes_only_and_never_reused_for_evaluation",
+    "launch_config": "reports/combat_rl_guard_intervention_training_20260817_r2_launch_config.properties",
+    "launch_config_sha256": "b830b1f30e545f89ceb5a37028d097df7a8c3d0768c07b23be69eaf7ba0eeeeb"
+  },
+  "offline_decision_rule": {
+    "exact_additional_game_count_required": 20,
+    "finite_checkpoint_required": true,
+    "positive_optimizer_progress_required": true,
+    "candidate_must_differ_from_parent": true,
+    "expert_or_transition_failures_must_equal": 0,
+    "successor_replay_smooth_l1_must_not_exceed_parent": true,
+    "minimum_parent_successor_greedy_agreement": 0.88,
+    "positive_finite_anchor_loss_required": true,
+    "production_configuration_must_be_restored": true,
+    "all_conditions_required_for_fresh_matched_evaluation": true
+  },
+  "constraints": {
+    "no_training_outcome_promotion_authority": true,
+    "no_automatic_promotion": true,
+    "no_parameter_changes_after_launch": true,
+    "stop_after_unrecoverable_runtime_failure": true
+  }
+}

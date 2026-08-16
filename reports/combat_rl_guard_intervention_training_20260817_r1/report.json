@@ -1,0 +1,66 @@
+{
+  "schema_version": 1,
+  "experiment_id": "combat-rl-guard-intervention-training-20260817-r1",
+  "source_commit": "de563b670",
+  "started_at": "2026-08-17T00:54:57+08:00",
+  "finished_at": "2026-08-17T01:41:08+08:00",
+  "parent_checkpoint": {
+    "path": "reports/combat_rl_parent_weight_one_interpolation_20260816_r1/rl_combat_model_parent_to_weight_one_alpha_0_20.pth",
+    "sha256": "7a27fe138ceaba927354da88d71b9186c6b918cb8d76c75c56aee8d74146faeb"
+  },
+  "output_checkpoint": {
+    "path": "reports/combat_rl_guard_intervention_training_20260817_r1/rl_combat_model_ep20_steps3971.pth",
+    "sha256": "6c62e5ad7dba22e6a64b8f35f89311b614b2512ad109469a8741a5392f99449e",
+    "episode": 20,
+    "total_steps": 3971,
+    "epsilon": 1.0,
+    "learning_starts": 4096,
+    "optimizer_step": 0,
+    "replay_transition_count": 3971,
+    "replay_source_transition_count": 3971,
+    "all_checkpoint_values_finite": true,
+    "executed_actions_all_valid": true
+  },
+  "warmup_diagnosis": {
+    "gap_to_learning_starts": 125,
+    "online_state_exactly_equals_parent": true,
+    "whole_model_relative_l2": 0.0,
+    "frozen_anchor_state_exactly_equals_parent": true,
+    "last_total_loss": null,
+    "last_td_loss": null,
+    "last_anchor_loss": 0.0,
+    "classification": "replay_warmup_only_no_optimizer_update"
+  },
+  "retained_log_evidence": {
+    "coverage_started_at": "2026-08-17T01:08:30+08:00",
+    "coverage_ended_at": "2026-08-17T01:41:08+08:00",
+    "expert_actions_selected": 2646,
+    "raw_rl_end_turn": 594,
+    "energy_guard_triggers": 152,
+    "lethal_guard_triggers": 272,
+    "survival_guard_triggers": 65,
+    "invalid_rl_actions": 0,
+    "rl_action_failures": 0,
+    "coverage_limitation": "The five-file rotating log overwrote the first approximately 14 minutes. Training used epsilon 1.0 before any optimizer update, so intervention counts are collection diagnostics and are not comparable to the epsilon-zero production baseline."
+  },
+  "outcomes": {
+    "authority": "training_context_only",
+    "games": 20,
+    "victories": 0,
+    "floor_total": 503,
+    "floor_mean": 25.15,
+    "act_2_entered": 13,
+    "act_2_boss_reached": 7,
+    "act_3_entered": 1,
+    "floors": [16, 33, 19, 16, 16, 33, 33, 33, 16, 33, 16, 33, 46, 16, 25, 28, 25, 16, 25, 25],
+    "sim_divergence_rows": 13
+  },
+  "runtime_integrity": {
+    "communication_mod_error_growth_bytes": 1939,
+    "communication_mod_growth_is_expected_wrapper_output": true,
+    "configuration_restored_to_production": true,
+    "restored_config_sha256": "7e923bba944c411512f5f8322a8494bc30f7edda47be0e3f404c5b25edde22b2",
+    "processes_closed": true
+  },
+  "decision": "continue_from_warmup_checkpoint_without_candidate_evaluation"
+}
