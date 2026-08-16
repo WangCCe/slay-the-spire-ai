@@ -1,0 +1,41 @@
+{
+  "trace": "D:/SteamLibrary/steamapps/common/SlayTheSpire/sim_divergence_trace_clean.jsonl",
+  "events_analyzed": 6,
+  "malformed_lines": 0,
+  "total_lines": 6,
+  "transition_pairs": 3,
+  "by_reason": {
+    "monster_state_mismatch": 6
+  },
+  "by_action_card": {
+    "PlayCardAction | Headbutt": 3,
+    "CardSelectAction | -": 3
+  },
+  "by_floor": {
+    "14": 2,
+    "18": 2,
+    "28": 2
+  },
+  "by_diff_key": {
+    "monsters[0].hp": 2,
+    "monsters[1].block": 2,
+    "monsters[1].intent": 2
+  },
+  "paired_variants": [
+    {
+      "floor": 14,
+      "field": "monsters[1].block",
+      "mechanic": "Curl Up"
+    },
+    {
+      "floor": 18,
+      "field": "monsters[1].intent",
+      "mechanic": "Flight stun"
+    },
+    {
+      "floor": 28,
+      "field": "monsters[0].hp",
+      "mechanic": "Double Tap replay"
+    }
+  ]
+}

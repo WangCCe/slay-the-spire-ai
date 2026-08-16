@@ -2341,6 +2341,227 @@ def test_headbutt_malleable_block_settles_after_card_select(monkeypatch, tmp_pat
     assert not trace_path.exists()
 
 
+def test_headbutt_flight_stun_settles_after_card_select(monkeypatch, tmp_path):
+    trace_path = tmp_path / "sim_divergence.jsonl"
+    monkeypatch.setenv("STS_SIM_DIVERGENCE_TRACE_FILE", str(trace_path))
+    reset_pending_divergence()
+
+    headbutt = _card(name="Headbutt", card_id="Headbutt", damage=9, cost=1)
+    strike = _card(name="Strike", card_id="Strike_R", damage=6)
+    relics = [_relic("Paper Phrog", relic_id="Paper Frog")]
+    before = _game(
+        floor=18,
+        turn=9,
+        player=SimpleNamespace(
+            current_hp=12,
+            max_hp=85,
+            block=0,
+            energy=1,
+            powers=[Power("Strength", "Strength", 3)],
+        ),
+        hand=[headbutt, strike],
+        relics=relics,
+        monsters=[
+            _monster(
+                name="Byrd",
+                monster_id="Byrd",
+                hp=12,
+                damage=0,
+                intent=Intent.BUFF,
+                move_id=6,
+                powers=[
+                    Power("Vulnerable", "Vulnerable", 2),
+                    Power("Flight", "Flight", 1),
+                ],
+            )
+        ],
+    )
+    select_screen = _game(
+        floor=18,
+        turn=9,
+        player=SimpleNamespace(
+            current_hp=12,
+            max_hp=85,
+            block=0,
+            energy=0,
+            powers=[Power("Strength", "Strength", 3)],
+        ),
+        hand=[strike],
+        relics=relics,
+        monsters=[
+            _monster(
+                name="Byrd",
+                monster_id="Byrd",
+                hp=2,
+                damage=0,
+                intent=Intent.BUFF,
+                move_id=6,
+            )
+        ],
+    )
+    after_select = _game(
+        floor=18,
+        turn=9,
+        player=SimpleNamespace(
+            current_hp=12,
+            max_hp=85,
+            block=0,
+            energy=0,
+            powers=[Power("Strength", "Strength", 3)],
+        ),
+        hand=[strike],
+        relics=relics,
+        monsters=[
+            _monster(
+                name="Byrd",
+                monster_id="Byrd",
+                hp=2,
+                damage=0,
+                intent=Intent.STUN,
+                move_id=4,
+            )
+        ],
+    )
+
+    assert record_expected_action(PlayCardAction(card_index=0, target_index=0), before) is True
+    assert observe_next_state(select_screen) is False
+    assert record_expected_action(CardSelectAction([strike]), select_screen) is True
+    assert observe_next_state(after_select) is False
+    assert not trace_path.exists()
+
+
+def test_headbutt_curl_up_block_settles_after_card_select(monkeypatch, tmp_path):
+    trace_path = tmp_path / "sim_divergence.jsonl"
+    monkeypatch.setenv("STS_SIM_DIVERGENCE_TRACE_FILE", str(trace_path))
+    reset_pending_divergence()
+
+    headbutt = _card(name="Headbutt", card_id="Headbutt", damage=9, cost=1)
+    strike = _card(name="Strike", card_id="Strike_R", damage=6)
+    player = SimpleNamespace(
+        current_hp=40,
+        max_hp=80,
+        block=0,
+        energy=1,
+        powers=[Power("Weakened", "Weakened", 2)],
+    )
+    before = _game(
+        floor=14,
+        turn=3,
+        player=player,
+        hand=[headbutt, strike],
+        monsters=[
+            _monster(
+                name="Louse",
+                monster_id="FuzzyLouseDefensive",
+                hp=15,
+                damage=0,
+                powers=[Power("Curl Up", "Curl Up", 7)],
+            )
+        ],
+    )
+    select_screen = _game(
+        floor=14,
+        turn=3,
+        player=SimpleNamespace(
+            current_hp=40,
+            max_hp=80,
+            block=0,
+            energy=0,
+            powers=[Power("Weakened", "Weakened", 2)],
+        ),
+        hand=[strike],
+        monsters=[
+            _monster(
+                name="Louse",
+                monster_id="FuzzyLouseDefensive",
+                hp=9,
+                block=0,
+                damage=0,
+                powers=[Power("Curl Up", "Curl Up", 7)],
+            )
+        ],
+    )
+    after_select = _game(
+        floor=14,
+        turn=3,
+        player=SimpleNamespace(
+            current_hp=40,
+            max_hp=80,
+            block=0,
+            energy=0,
+            powers=[Power("Weakened", "Weakened", 2)],
+        ),
+        hand=[strike],
+        monsters=[
+            _monster(
+                name="Louse",
+                monster_id="FuzzyLouseDefensive",
+                hp=9,
+                block=7,
+                damage=0,
+                powers=[Power("Curl Up", "Curl Up", 7)],
+            )
+        ],
+    )
+
+    assert record_expected_action(PlayCardAction(card_index=0, target_index=0), before) is True
+    assert observe_next_state(select_screen) is False
+    assert record_expected_action(CardSelectAction([strike]), select_screen) is True
+    assert observe_next_state(after_select) is False
+    assert not trace_path.exists()
+
+
+def test_double_tap_headbutt_second_hit_settles_after_card_select(monkeypatch, tmp_path):
+    trace_path = tmp_path / "sim_divergence.jsonl"
+    monkeypatch.setenv("STS_SIM_DIVERGENCE_TRACE_FILE", str(trace_path))
+    reset_pending_divergence()
+
+    headbutt = _card(name="Headbutt", card_id="Headbutt", damage=9, cost=1)
+    strike = _card(name="Strike", card_id="Strike_R", damage=6)
+    before = _game(
+        floor=28,
+        turn=2,
+        player=SimpleNamespace(
+            current_hp=5,
+            max_hp=85,
+            block=3,
+            energy=1,
+            powers=[
+                Power("Strength", "Strength", 3),
+                Power("Double Tap", "Double Tap", 1),
+            ],
+        ),
+        hand=[headbutt, strike],
+        monsters=[_monster(name="Centurion", monster_id="Centurion", hp=28, damage=0)],
+    )
+    select_screen = _game(
+        floor=28,
+        turn=2,
+        player=SimpleNamespace(
+            current_hp=5,
+            max_hp=85,
+            block=3,
+            energy=0,
+            powers=[Power("Double Tap", "Double Tap", 0)],
+        ),
+        hand=[strike],
+        monsters=[_monster(name="Centurion", monster_id="Centurion", hp=16, damage=0)],
+    )
+    after_select = _game(
+        floor=28,
+        turn=2,
+        player=SimpleNamespace(current_hp=5, max_hp=85, block=3, energy=0, powers=[]),
+        hand=[strike],
+        monsters=[_monster(name="Centurion", monster_id="Centurion", hp=4, damage=0)],
+    )
+
+    assert record_expected_action(PlayCardAction(card_index=0, target_index=0), before) is True
+    assert observe_next_state(select_screen) is False
+    assert record_expected_action(CardSelectAction([strike]), select_screen) is True
+    assert observe_next_state(after_select) is False
+    assert not trace_path.exists()
+
+
 def test_headbutt_malleable_block_settles_after_card_select_with_implicit_target(
     monkeypatch,
     tmp_path,

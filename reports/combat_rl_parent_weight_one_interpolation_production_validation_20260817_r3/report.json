@@ -1,0 +1,61 @@
+{
+  "schema_version": 1,
+  "validation_id": "combat-rl-parent-weight-one-interpolation-production-validation-20260817-r3",
+  "source_commit": "003c41350",
+  "started_at": "2026-08-17T00:11:57+08:00",
+  "finished_at": "2026-08-17T00:21:42+08:00",
+  "checkpoint": {
+    "path": "reports/combat_rl_parent_weight_one_interpolation_20260816_r1/rl_combat_model_parent_to_weight_one_alpha_0_20.pth",
+    "sha256": "7a27fe138ceaba927354da88d71b9186c6b918cb8d76c75c56aee8d74146faeb"
+  },
+  "production_config": {
+    "source": "reports/combat_rl_parent_weight_one_interpolation_promotion_20260816.properties",
+    "source_sha256_at_validation": "7e923bba944c411512f5f8322a8494bc30f7edda47be0e3f404c5b25edde22b2",
+    "runtime_command_matched_source_at_validation": true
+  },
+  "outcomes": {
+    "games": 5,
+    "victories": 0,
+    "floor_total": 102,
+    "floor_mean": 20.4,
+    "act_1_boss_reached": 5,
+    "act_1_boss_defeated": 1,
+    "act_2_entered": 1,
+    "act_2_boss_reached": 1,
+    "act_3_entered": 1,
+    "floors": [38, 16, 16, 16, 16],
+    "first_ironclad_victory_achieved": false
+  },
+  "runtime_integrity": {
+    "games_completed": 5,
+    "post_start_exception_or_failure_count": 0,
+    "python_processes_closed_naturally": true,
+    "java_process_closed_naturally": true,
+    "promoted_configuration_retained": true
+  },
+  "trace_evidence": {
+    "trace_reset_enabled": true,
+    "decision_trace_pre_reset_size_bytes": 7104105,
+    "sim_divergence_trace_pre_reset_size_bytes": 15113,
+    "decision_trace_post_batch_size_bytes": 5935345,
+    "sim_divergence_trace_post_batch_size_bytes": 91286,
+    "sim_divergence_events": 6,
+    "sim_divergence_transition_pairs": 3,
+    "sim_divergence_malformed_lines": 0,
+    "sim_divergence_reason": "monster_state_mismatch",
+    "sim_divergence_action_pairs": "PlayCardAction | Headbutt -> CardSelectAction",
+    "sim_divergence_floors": [14, 18, 28],
+    "full_trace_files_archived_in_git": false
+  },
+  "mechanics_follow_up": {
+    "cause": "Headbutt discard selection temporarily defers reactive and replayed attack effects",
+    "observed_variants": [
+      "Byrd Flight stun intent",
+      "Curl Up block",
+      "Double Tap second-hit HP loss"
+    ],
+    "focused_tests": "13 passed, 263 deselected",
+    "status": "fixed_by_accompanying_source_change"
+  },
+  "decision": "production_baseline_retained_validate_headbutt_boundary_fix"
+}

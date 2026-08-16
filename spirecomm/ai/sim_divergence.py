@@ -1494,6 +1494,9 @@ def _headbutt_select_delayed_effects(snapshot: Dict[str, Any], card) -> Dict[str
     if _known_card_name(card, BASE_ATTACK_DAMAGE) != "Headbutt":
         return {}
     effects: Dict[str, Any] = {"headbutt_select": True}
+    attack_play_count = _attack_card_play_count(snapshot, card)
+    if attack_play_count > 1:
+        effects["attack_play_count"] = attack_play_count
     block = 0
     rage_block = _rage_attack_block(snapshot.get("player", {}))
     if rage_block > 0:
@@ -1551,7 +1554,7 @@ def _apply_pending_headbutt_select_effects(
         if not isinstance(index, int) or index < 0 or index >= len(monsters):
             continue
         for field, value in fields.items():
-            if field in {"block", "intent"}:
+            if field in {"hp", "block", "intent"}:
                 monsters[index][field] = value
 
 
@@ -1855,7 +1858,7 @@ def _headbutt_select_effects_to_apply(
                 ).get(field)
             continue
         monster_index, field = _parse_monster_diff_key(key)
-        if monster_index is None or field not in {"block", "intent"}:
+        if monster_index is None or field not in {"hp", "block", "intent"}:
             continue
         monsters = expected.get("monsters") or []
         if 0 <= monster_index < len(monsters):
@@ -1927,17 +1930,28 @@ def _headbutt_select_delayed_diff_key(pending: Dict[str, Any], key: str) -> bool
     if key == "player.energy":
         return "energy" in delayed_effects
     monster_index, field = _parse_monster_diff_key(key)
-    if monster_index is None or field not in {"block", "intent"}:
+    if monster_index is None or field not in {"hp", "block", "intent"}:
         return False
-    monsters = (pending.get("before") or {}).get("monsters") or []
+    before = pending.get("before") or {}
+    monsters = before.get("monsters") or []
     if monster_index < 0 or monster_index >= len(monsters):
         return False
+    action = pending.get("action") or {}
+    target_index = action.get("target_index")
+    if target_index is None:
+        target_index = _single_alive_monster_index(before)
+    if not isinstance(target_index, int) or target_index != monster_index:
+        return False
+    delayed_effects = action.get("delayed_headbutt_select_effects") or {}
+    if field == "hp":
+        return _to_int(delayed_effects.get("attack_play_count"), default=1) > 1
     if _is_guardian_monster(monsters[monster_index]):
         return True
-    return field == "block" and _action_triggers_malleable_block(
-        pending.get("action") or {},
-        pending,
-        monster_index,
+    if field == "intent":
+        return _snapshot_power_amount(monsters[monster_index], "Flight") > 0
+    return (
+        _snapshot_power_amount(monsters[monster_index], "Curl Up") > 0
+        or _action_triggers_malleable_block(action, pending, monster_index)
     )
 
 
