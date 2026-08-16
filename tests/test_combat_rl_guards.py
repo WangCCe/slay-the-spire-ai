@@ -5523,7 +5523,7 @@ def test_turn_40_bypasses_rl_for_remainder_of_pathological_combat():
 
     def fallback_decide(_game):
         calls["fallback"] += 1
-        return PlayCardAction(card_index=0, target_index=0)
+        return EndTurnAction()
 
     agent = _agent()
     agent.rl_agent = SimpleNamespace(get_next_action_in_game=rl_decide)
@@ -5542,7 +5542,45 @@ def test_turn_40_bypasses_rl_for_remainder_of_pathological_combat():
 
     assert isinstance(first, PlayCardAction)
     assert isinstance(second, PlayCardAction)
-    assert calls == {"rl": 0, "fallback": 2}
+    assert first.card_index == 0
+    assert first.target_index == 0
+    assert calls == {"rl": 0, "fallback": 0}
+
+
+def test_turn_40_uses_fallback_when_no_attack_is_playable():
+    defend = SimpleNamespace(
+        name="Defend",
+        card_id="Defend_R",
+        type=CardType.SKILL,
+        is_playable=True,
+        cost=1,
+        has_target=False,
+    )
+    fallback_action = PlayCardAction(card_index=0)
+    calls = {"rl": 0, "fallback": 0}
+
+    def rl_decide(_game):
+        calls["rl"] += 1
+        return EndTurnAction()
+
+    def fallback_decide(_game):
+        calls["fallback"] += 1
+        return fallback_action
+
+    agent = _agent()
+    agent.rl_agent = SimpleNamespace(get_next_action_in_game=rl_decide)
+    agent.fallback_agent = SimpleNamespace(get_next_action_in_game=fallback_decide)
+    agent.use_rl_for_combat = True
+    agent.rl_failure_count = 0
+    agent.max_rl_failures = 3
+    agent._fallback_turn_key = None
+    agent._reward_screen_key = None
+    agent._reward_screen_waited = False
+    agent.reward_screen_wait = 0
+    game = _game(turn=40, hand=[defend])
+
+    assert agent.get_next_action_in_game(game) is fallback_action
+    assert calls == {"rl": 0, "fallback": 1}
 
 
 def test_turn_39_keeps_rl_combat_decision_path():

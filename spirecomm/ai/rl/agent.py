@@ -1243,6 +1243,15 @@ class CombatRLAgent:
                 )
                 self._long_combat_fallback_floor = floor
             self._fallback_turn_key = None
+            progress_attack = self._get_long_combat_progress_attack(game)
+            if progress_attack is not None:
+                logger.info(
+                    "[LONG_COMBAT_GUARD] Playing available attack floor=%s turn=%s card_index=%s",
+                    floor,
+                    getattr(game, "turn", None),
+                    getattr(progress_attack, "card_index", None),
+                )
+                return self._with_combat_action_context(progress_attack, game)
             fallback_action = self.fallback_agent.get_next_action_in_game(game)
             wait_action = self._maybe_wait_for_empty_hand_refresh(
                 fallback_action,
@@ -2305,6 +2314,21 @@ class CombatRLAgent:
             self._long_combat_fallback_floor = None
             return False
         return True
+
+    def _get_long_combat_progress_attack(self, game: Game) -> Optional[Action]:
+        from spirecomm.communication.action import PlayCardAction
+
+        target_index = self._best_monster_index(game)
+        energy = self._player_energy(game)
+        for card_index, card in self._playable_cards(game, energy):
+            if not is_attack_card(card) or self._would_play_self_lethal_card(card, game):
+                continue
+            if card_requires_target(card):
+                if target_index is None:
+                    continue
+                return PlayCardAction(card_index=card_index, target_index=target_index)
+            return PlayCardAction(card_index=card_index)
+        return None
 
     def _should_use_fallback_turn_takeover(self, game: Game) -> bool:
         active_key = getattr(self, "_fallback_turn_key", None)
