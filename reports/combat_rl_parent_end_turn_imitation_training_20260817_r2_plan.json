@@ -1,0 +1,46 @@
+{
+  "schema_version": 1,
+  "experiment_id": "combat-rl-parent-end-turn-imitation-training-20260817-r2",
+  "source_commit": "6b2ed491b",
+  "initialization_checkpoint": {
+    "path": "reports/combat_rl_parent_replay_initialization_20260817_r1/rl_combat_model_parent_with_r2_replay.pth",
+    "sha256": "96d615008cd92a82917b9eb1735030fad780af9f0327cd90ecea9158bfa11864",
+    "online_target_and_anchor_equal_promoted_parent": true,
+    "replay_transition_count": 4096,
+    "replay_source_transition_count": 9269,
+    "optimizer_step": 0,
+    "episode": 0
+  },
+  "training": {
+    "additional_games": 5,
+    "elite_route": "conservative",
+    "expert_mix_probability": 0.7,
+    "parent_policy_anchor_weight": 1.0,
+    "positive_energy_action_imitation_weight": 0.0,
+    "positive_energy_parent_end_turn_imitation_weight": 0.2,
+    "seed_authority": "training_outcomes_only_and_never_reused_for_evaluation",
+    "launch_config": "reports/combat_rl_parent_end_turn_imitation_training_20260817_r2_launch_config.properties",
+    "launch_config_sha256": "740c961d641dfb22a8eb6beecdfa3260c9da2018f9f538aeb1ec6d630656c0ef"
+  },
+  "offline_decision_rule": {
+    "exact_additional_game_count_required": 5,
+    "finite_checkpoint_required": true,
+    "optimizer_step_must_exceed": 0,
+    "stored_parent_end_turn_imitation_weight_must_equal": 0.2,
+    "stored_global_imitation_weight_must_equal": 0.0,
+    "positive_finite_targeted_imitation_loss_and_eligible_count_required": true,
+    "frozen_anchor_must_exactly_equal_promoted_parent": true,
+    "expert_action_rl_action_and_replay_failures_must_equal": 0,
+    "on_final_replay_output_positive_energy_end_turn_share_must_be_below_parent": true,
+    "minimum_output_parent_greedy_agreement": 0.88,
+    "output_smooth_l1_must_not_exceed_parent_multiple": 1.1,
+    "production_configuration_must_be_restored": true,
+    "all_conditions_required_for_another_bounded_training_batch": true
+  },
+  "constraints": {
+    "no_training_outcome_promotion_authority": true,
+    "no_automatic_promotion": true,
+    "no_parameter_changes_after_launch": true,
+    "stop_after_unrecoverable_runtime_failure": true
+  }
+}
