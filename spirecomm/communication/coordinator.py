@@ -88,6 +88,8 @@ class Coordinator:
     STARTUP_CONSECUTIVE_TIMEOUT_LIMIT = 45
     IN_GAME_CONSECUTIVE_TIMEOUT_LIMIT = 10
     TRANSIENT_OUT_OF_GAME_UPDATE_LIMIT = 5
+    GAME_OVER_EXIT_WAIT_FRAMES = 100
+    GAME_OVER_EXIT_MAX_WAITS = 5
 
     def __init__(self, *, start_input_thread=True):
         self.input_queue = queue.Queue()
@@ -134,6 +136,8 @@ class Coordinator:
         self._map_choice_in_flight_fingerprint = None
         self._shop_exit_in_flight = False
         self._card_select_confirm_in_flight = False
+        self._game_over_exit_in_flight = False
+        self._game_over_exit_waits = 0
 
     def start_input_thread(self):
         if self._input_thread_started:
@@ -481,6 +485,43 @@ class Coordinator:
                 return game_state
         return None
 
+    def begin_game_over_exit(self):
+        if getattr(self, "_game_over_exit_in_flight", False):
+            return False
+        self._game_over_exit_in_flight = True
+        self._game_over_exit_waits = 0
+        return True
+
+    def next_game_over_exit_wait(self):
+        waits = getattr(self, "_game_over_exit_waits", 0) + 1
+        max_waits = getattr(
+            self,
+            "GAME_OVER_EXIT_MAX_WAITS",
+            Coordinator.GAME_OVER_EXIT_MAX_WAITS,
+        )
+        if waits > max_waits:
+            raise RuntimeError(
+                "GAME_OVER did not transition after "
+                f"{max_waits} bounded settle waits"
+            )
+        self._game_over_exit_waits = waits
+        return getattr(
+            self,
+            "GAME_OVER_EXIT_WAIT_FRAMES",
+            Coordinator.GAME_OVER_EXIT_WAIT_FRAMES,
+        )
+
+    def _reset_game_over_exit_if_transitioned(self):
+        if not getattr(self, "_game_over_exit_in_flight", False):
+            return
+        if self.in_game and (
+            getattr(self.last_game_state, "screen_type", None)
+            == ScreenType.GAME_OVER
+        ):
+            return
+        self._game_over_exit_in_flight = False
+        self._game_over_exit_waits = 0
+
     def _queue_state_change_callback_action(self, deferred=False):
         import logging
 
@@ -762,6 +803,7 @@ class Coordinator:
                     delattr(self, '_saving_game_over')
                     import logging
                     logging.info(f"[GAME_OVER] Saved state with HP: current={self.game_over_state.current_hp}/{self.game_over_state.max_hp}")
+            self._reset_game_over_exit_if_transitioned()
             import logging
             callback_error = self.last_error
             if self._is_transition_late_command_error(callback_error):

@@ -8,6 +8,7 @@ from spirecomm.communication.action import (
     ProceedAction,
     WaitAction,
 )
+from spirecomm.communication.coordinator import Coordinator
 from spirecomm.spire.screen import ScreenType
 
 
@@ -293,19 +294,27 @@ def test_proceed_action_queues_ready_wait_after_successful_proceed():
 def test_game_over_proceed_queues_wait_that_can_run_while_not_ready():
     sent_messages = []
     queued_actions = []
-    coordinator = SimpleNamespace(
-        last_game_state=SimpleNamespace(
-            available_commands=["proceed", "wait", "state"],
-            screen_type=ScreenType.GAME_OVER,
-        ),
-        send_message=sent_messages.append,
-        add_action_to_queue=queued_actions.append,
+    coordinator = Coordinator.__new__(Coordinator)
+    coordinator.last_game_state = SimpleNamespace(
+        available_commands=["proceed", "wait", "state"],
+        screen_type=ScreenType.GAME_OVER,
     )
+    coordinator.send_message = sent_messages.append
+    coordinator.add_action_to_queue = queued_actions.append
+    coordinator._game_over_exit_in_flight = False
+    coordinator._game_over_exit_waits = 0
 
     ProceedAction().execute(coordinator)
 
     assert sent_messages == ["proceed"]
     assert len(queued_actions) == 1
     assert isinstance(queued_actions[0], WaitAction)
-    assert queued_actions[0].timeout == 1
+    assert queued_actions[0].timeout == 100
     assert queued_actions[0].requires_game_ready is False
+
+    ProceedAction().execute(coordinator)
+
+    assert sent_messages == ["proceed"]
+    assert len(queued_actions) == 2
+    assert queued_actions[1].timeout == 100
+    assert coordinator._game_over_exit_waits == 2

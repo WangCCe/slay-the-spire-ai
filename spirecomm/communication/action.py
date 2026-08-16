@@ -20,18 +20,13 @@ def _has_potion_space(game_state):
     return True
 
 
-def _queue_ready_wait(
-    coordinator,
-    timeout=1,
-    wait_for_response=False,
-    requires_game_ready=True,
-):
+def _queue_ready_wait(coordinator, timeout=1, wait_for_response=False):
     add_action_to_queue = getattr(coordinator, "add_action_to_queue", None)
     if callable(add_action_to_queue):
         add_action_to_queue(
             WaitAction(
                 timeout=timeout,
-                requires_game_ready=requires_game_ready,
+                requires_game_ready=True,
                 wait_for_response=wait_for_response,
             )
         )
@@ -263,14 +258,32 @@ class ProceedAction(Action):
         if available_commands is not None:
             for command in ("proceed", "confirm"):
                 if command in available_commands:
-                    coordinator.send_message(command)
-                    _queue_ready_wait(
-                        coordinator,
-                        requires_game_ready=(
-                            getattr(game_state, "screen_type", None)
-                            != ScreenType.GAME_OVER
-                        ),
-                    )
+                    if getattr(game_state, "screen_type", None) == ScreenType.GAME_OVER:
+                        begin_exit = getattr(
+                            coordinator, "begin_game_over_exit", None
+                        )
+                        first_attempt = (
+                            begin_exit() if callable(begin_exit) else True
+                        )
+                        if first_attempt:
+                            coordinator.send_message(command)
+                        else:
+                            logging.info(
+                                "[GAME_OVER_EXIT] Proceed already sent; advancing transition"
+                            )
+                        next_wait = getattr(
+                            coordinator, "next_game_over_exit_wait", None
+                        )
+                        timeout = next_wait() if callable(next_wait) else 100
+                        coordinator.add_action_to_queue(
+                            WaitAction(
+                                timeout=timeout,
+                                requires_game_ready=False,
+                            )
+                        )
+                    else:
+                        coordinator.send_message(command)
+                        _queue_ready_wait(coordinator)
                     return
             logging.warning(
                 "ProceedAction is stale for current commands %s; requesting state",
