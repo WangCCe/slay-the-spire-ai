@@ -1,0 +1,49 @@
+{
+  "schema_version": 1,
+  "experiment_id": "combat-rl-parent-end-turn-imitation-training-20260817-r1",
+  "source_commit": "9c2ea87fc",
+  "promoted_parent": {
+    "path": "reports/combat_rl_parent_weight_one_interpolation_20260816_r1/rl_combat_model_parent_to_weight_one_alpha_0_20.pth",
+    "sha256": "7a27fe138ceaba927354da88d71b9186c6b918cb8d76c75c56aee8d74146faeb",
+    "checkpoint_kind": "weights"
+  },
+  "fixed_replay_ablation": {
+    "report": "reports/combat_rl_parent_end_turn_imitation_ablation_20260817_r3.json",
+    "selected_weight": 0.2,
+    "updates": 32,
+    "replicates": 3,
+    "all_selection_rules_passed": true
+  },
+  "training": {
+    "additional_games": 5,
+    "elite_route": "conservative",
+    "expert_mix_probability": 0.7,
+    "parent_policy_anchor_weight": 1.0,
+    "positive_energy_action_imitation_weight": 0.0,
+    "positive_energy_parent_end_turn_imitation_weight": 0.2,
+    "seed_authority": "training_outcomes_only_and_never_reused_for_evaluation",
+    "launch_config": "reports/combat_rl_parent_end_turn_imitation_training_20260817_r1_launch_config.properties",
+    "launch_config_sha256": "d522fc5e8ace5f526f9daf4bbe6b5c52835add01a833aa3a96552d725b5a94a9"
+  },
+  "offline_decision_rule": {
+    "exact_additional_game_count_required": 5,
+    "finite_checkpoint_required": true,
+    "positive_optimizer_progress_required": true,
+    "stored_parent_end_turn_imitation_weight_must_equal": 0.2,
+    "stored_global_imitation_weight_must_equal": 0.0,
+    "positive_finite_targeted_imitation_loss_and_eligible_count_required": true,
+    "frozen_anchor_must_exactly_equal_promoted_parent": true,
+    "expert_action_rl_action_and_replay_failures_must_equal": 0,
+    "on_final_replay_output_positive_energy_end_turn_share_must_be_below_parent": true,
+    "minimum_output_parent_greedy_agreement": 0.88,
+    "output_smooth_l1_must_not_exceed_parent_multiple": 1.1,
+    "production_configuration_must_be_restored": true,
+    "all_conditions_required_for_another_bounded_training_batch": true
+  },
+  "constraints": {
+    "no_training_outcome_promotion_authority": true,
+    "no_automatic_promotion": true,
+    "no_parameter_changes_after_launch": true,
+    "stop_after_unrecoverable_runtime_failure": true
+  }
+}
