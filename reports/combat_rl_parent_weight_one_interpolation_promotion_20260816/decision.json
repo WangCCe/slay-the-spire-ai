@@ -1,0 +1,47 @@
+{
+  "schema_version": 1,
+  "promotion_id": "combat-rl-parent-weight-one-interpolation-promotion-20260816",
+  "source_commit": "41f61e57530bdeadb1ed6fed675432077d743142",
+  "decision": "promote_alpha_0_20_interpolation",
+  "candidate_checkpoint": {
+    "path": "reports/combat_rl_parent_weight_one_interpolation_20260816_r1/rl_combat_model_parent_to_weight_one_alpha_0_20.pth",
+    "sha256": "7a27fe138ceaba927354da88d71b9186c6b918cb8d76c75c56aee8d74146faeb",
+    "checkpoint_kind": "weights"
+  },
+  "replaced_checkpoint": {
+    "path": "reports/combat_rl_compact_monster_slots_training_20260815_r1/rl_combat_model_ep40_steps18580.pth",
+    "sha256": "162c700d9b1ab7d5119f476b9b2551f4e909eb4d462cbee14b30c7b6a2764b05"
+  },
+  "qualification": {
+    "gate_report": "reports/combat_rl_parent_weight_one_interpolation_zero_epsilon_gate_20260816_r1/report.json",
+    "candidate_paired_wins": 5,
+    "parent_paired_wins": 2,
+    "ties": 13,
+    "candidate_floor_total": 492,
+    "parent_floor_total": 444,
+    "candidate_act_2_entries": 11,
+    "parent_act_2_entries": 9,
+    "candidate_act_2_boss_reaches": 7,
+    "parent_act_2_boss_reaches": 6,
+    "all_preregistered_conditions_passed": true
+  },
+  "production": {
+    "source_config": "reports/combat_rl_parent_weight_one_interpolation_promotion_20260816.properties",
+    "source_config_sha256": "7a2c7ed6316f1499b86f61801768022e5a52d587e181f3c394b1a032d7c40e5e",
+    "target_config": "C:/Users/20571/AppData/Local/ModTheSpire/CommunicationMod/config.properties",
+    "bounded_games_per_launch": 5,
+    "training": false,
+    "epsilon": 0.0,
+    "elite_route": "conservative"
+  },
+  "rollback": {
+    "source_config": "reports/combat_rl_compact_monster_slots_promotion_20260815.properties",
+    "source_config_sha256": "d4d1dd35fd53985796922e5915a8b4ab51373109d08addff2bdcdfebf01a00e4"
+  },
+  "limitations": {
+    "candidate_gate_victories": 0,
+    "parent_gate_victories": 0,
+    "first_ironclad_victory_achieved": false,
+    "formal_rl_training_authority": false
+  }
+}
