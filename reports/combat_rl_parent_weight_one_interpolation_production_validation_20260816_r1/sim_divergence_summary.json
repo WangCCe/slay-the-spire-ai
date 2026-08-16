@@ -1,0 +1,29 @@
+{
+  "trace": "D:/SteamLibrary/steamapps/common/SlayTheSpire/sim_divergence_trace_clean.jsonl",
+  "since_unix": 1786894020.0,
+  "events_analyzed": 7,
+  "malformed_lines": 0,
+  "total_lines": 22679,
+  "skipped_before_cutoff": 22672,
+  "by_reason": {
+    "monster_state_mismatch": 7
+  },
+  "by_action_card": {
+    "EndTurnAction | -": 4,
+    "PlayCardAction | Bash+": 1,
+    "PlayCardAction | Whirlwind+": 2
+  },
+  "by_floor": {
+    "29": 1,
+    "31": 1,
+    "33": 5
+  },
+  "by_diff_key": {
+    "monsters[0].gone": 3,
+    "monsters[0].hp": 4,
+    "monsters[1].hp": 3,
+    "monsters[2].hp": 2,
+    "monsters[3].gone": 1,
+    "monsters[4].hp": 1
+  }
+}
