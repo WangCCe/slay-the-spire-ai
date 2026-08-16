@@ -20,13 +20,18 @@ def _has_potion_space(game_state):
     return True
 
 
-def _queue_ready_wait(coordinator, timeout=1, wait_for_response=False):
+def _queue_ready_wait(
+    coordinator,
+    timeout=1,
+    wait_for_response=False,
+    requires_game_ready=True,
+):
     add_action_to_queue = getattr(coordinator, "add_action_to_queue", None)
     if callable(add_action_to_queue):
         add_action_to_queue(
             WaitAction(
                 timeout=timeout,
-                requires_game_ready=True,
+                requires_game_ready=requires_game_ready,
                 wait_for_response=wait_for_response,
             )
         )
@@ -259,7 +264,13 @@ class ProceedAction(Action):
             for command in ("proceed", "confirm"):
                 if command in available_commands:
                     coordinator.send_message(command)
-                    _queue_ready_wait(coordinator)
+                    _queue_ready_wait(
+                        coordinator,
+                        requires_game_ready=(
+                            getattr(game_state, "screen_type", None)
+                            != ScreenType.GAME_OVER
+                        ),
+                    )
                     return
             logging.warning(
                 "ProceedAction is stale for current commands %s; requesting state",

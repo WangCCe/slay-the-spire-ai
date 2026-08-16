@@ -288,3 +288,24 @@ def test_proceed_action_queues_ready_wait_after_successful_proceed():
     assert isinstance(queued_actions[0], WaitAction)
     assert queued_actions[0].timeout == 1
     assert queued_actions[0].requires_game_ready is True
+
+
+def test_game_over_proceed_queues_wait_that_can_run_while_not_ready():
+    sent_messages = []
+    queued_actions = []
+    coordinator = SimpleNamespace(
+        last_game_state=SimpleNamespace(
+            available_commands=["proceed", "wait", "state"],
+            screen_type=ScreenType.GAME_OVER,
+        ),
+        send_message=sent_messages.append,
+        add_action_to_queue=queued_actions.append,
+    )
+
+    ProceedAction().execute(coordinator)
+
+    assert sent_messages == ["proceed"]
+    assert len(queued_actions) == 1
+    assert isinstance(queued_actions[0], WaitAction)
+    assert queued_actions[0].timeout == 1
+    assert queued_actions[0].requires_game_ready is False
