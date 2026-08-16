@@ -864,6 +864,49 @@ def test_event_choose_can_execute_when_choice_command_is_available_but_ready_fal
     assert len(coordinator.action_queue) == 0
 
 
+def test_map_choose_can_execute_when_choice_command_is_available_but_ready_false():
+    coordinator = _coordinator_without_threads()
+    node = SimpleNamespace(x=3, y=1, symbol="?")
+    coordinator.game_is_ready = False
+    coordinator.last_game_state = SimpleNamespace(
+        screen_type=ScreenType.MAP,
+        available_commands=["choose", "state"],
+        screen=SimpleNamespace(
+            current_node=SimpleNamespace(x=0, y=0, symbol="M"),
+            next_nodes=[node],
+            boss_available=False,
+        ),
+    )
+    coordinator.action_queue.append(ChooseMapNodeAction(node))
+
+    coordinator.execute_next_action_if_ready()
+
+    assert coordinator.output_queue.get_nowait() == "choose 0"
+    assert len(coordinator.action_queue) == 0
+
+
+def test_map_choose_waits_when_choice_command_is_not_available_and_ready_false():
+    coordinator = _coordinator_without_threads()
+    node = SimpleNamespace(x=3, y=1, symbol="?")
+    coordinator.game_is_ready = False
+    coordinator.last_game_state = SimpleNamespace(
+        screen_type=ScreenType.MAP,
+        available_commands=["state"],
+        screen=SimpleNamespace(
+            current_node=SimpleNamespace(x=0, y=0, symbol="M"),
+            next_nodes=[node],
+            boss_available=False,
+        ),
+    )
+    action = ChooseMapNodeAction(node)
+    coordinator.action_queue.append(action)
+
+    coordinator.execute_next_action_if_ready()
+
+    assert list(coordinator.action_queue) == [action]
+    assert coordinator.output_queue.empty()
+
+
 def test_duplicate_map_frame_after_map_choice_does_not_call_route_callback_again():
     coordinator = _coordinator_without_threads()
     node = SimpleNamespace(x=3, y=1, symbol="?")

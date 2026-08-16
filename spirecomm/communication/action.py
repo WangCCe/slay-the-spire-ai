@@ -458,7 +458,7 @@ class ChooseAction(Action):
 
         game = getattr(coordinator, "last_game_state", None)
         if (
-            getattr(game, "screen_type", None) == ScreenType.EVENT
+            getattr(game, "screen_type", None) in (ScreenType.EVENT, ScreenType.MAP)
             and "choose" in (getattr(game, "available_commands", None) or [])
         ):
             return True
