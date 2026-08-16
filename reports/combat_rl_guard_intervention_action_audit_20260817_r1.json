@@ -1,0 +1,39 @@
+{
+  "schema_version": 1,
+  "source_commit": "09ad497e4",
+  "parent_checkpoint": {
+    "path": "reports/combat_rl_parent_weight_one_interpolation_20260816_r1/rl_combat_model_parent_to_weight_one_alpha_0_20.pth",
+    "sha256": "7a27fe138ceaba927354da88d71b9186c6b918cb8d76c75c56aee8d74146faeb"
+  },
+  "candidate_checkpoint": {
+    "path": "reports/combat_rl_guard_intervention_training_20260817_r2/rl_combat_model_ep40_steps9269.pth",
+    "sha256": "092ce5f5a9a861085d0416f2e2879062118b107aa20ac6507bbba112cc779ae0"
+  },
+  "replay": {
+    "transition_count": 4096,
+    "positive_energy_states": 3015,
+    "executed_end_turn": 854,
+    "executed_positive_energy_end_turn": 74,
+    "executed_positive_energy_non_end_turn": 2941
+  },
+  "greedy_actions": {
+    "parent_end_turn": 2660,
+    "parent_positive_energy_end_turn": 1832,
+    "candidate_end_turn": 3010,
+    "candidate_positive_energy_end_turn": 2152,
+    "parent_stored_action_agreement": 0.24755859375,
+    "candidate_stored_action_agreement": 0.226318359375
+  },
+  "parent_to_candidate_transitions": {
+    "same_action": 3606,
+    "parent_non_end_to_candidate_end": 376,
+    "parent_end_to_candidate_non_end": 26,
+    "shift_to_end_positive_energy": 331,
+    "shift_to_end_executed_non_end": 354,
+    "shift_to_end_positive_energy_executed_non_end": 331,
+    "candidate_end_advantage_on_shift_p50": 0.8367977142333984,
+    "candidate_end_advantage_on_shift_p95": 2.385152816772461
+  },
+  "finding": "replay_action_binding_is_valid_but_td_plus_parent_anchor_moves_greedy_policy_toward_end_turn",
+  "next_step": "fixed_replay_positive_energy_executed_action_imitation_ablation"
+}
