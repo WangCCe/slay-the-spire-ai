@@ -1829,7 +1829,12 @@ class FastCombatSimulator:
         unblocked_damage = max(0, state.total_damage_dealt - starting_total_damage)
         if unblocked_damage <= 0:
             return
-        state.player_hp = min(state.player_max_hp, state.player_hp + unblocked_damage)
+        heal_amount = (
+            _magic_flower_scaled_heal(unblocked_damage)
+            if state.has_magic_flower
+            else unblocked_damage
+        )
+        state.player_hp = min(state.player_max_hp, state.player_hp + heal_amount)
 
     def _apply_attack_resource_effects(
         self,

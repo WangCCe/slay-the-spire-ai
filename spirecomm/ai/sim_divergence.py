@@ -576,7 +576,10 @@ def _expected_after_action(action, game, before: Dict[str, Any]) -> Dict[str, An
                 if attack_effects_resolved and sharp_hide_damage > 0:
                     _damage_player(expected, sharp_hide_damage)
                 if attack_effects_resolved and _is_reaper(card) and damage_dealt > 0:
-                    _heal_player(expected, damage_dealt)
+                    _heal_player(
+                        expected,
+                        _magic_flower_scaled_heal(expected, damage_dealt),
+                    )
             self_damage_events = (
                 [] if _is_attack_card(card) else _card_play_hp_loss_events(card, before, card_index)
             )
@@ -4474,7 +4477,10 @@ def _apply_expected_top_draw_card_played_by_effect(
                     * max(1, attack_play_count)
                 )
         if _is_reaper(top_card) and damage_dealt > 0:
-            _heal_player(expected, damage_dealt)
+            _heal_player(
+                expected,
+                _magic_flower_scaled_heal(expected, damage_dealt),
+            )
         rage_block = _rage_attack_block(expected.get("player", {}))
         if rage_block > 0:
             _gain_player_block(expected, before, rage_block)

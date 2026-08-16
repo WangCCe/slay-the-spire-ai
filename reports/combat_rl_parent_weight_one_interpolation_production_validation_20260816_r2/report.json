@@ -1,0 +1,54 @@
+{
+  "schema_version": 1,
+  "validation_id": "combat-rl-parent-weight-one-interpolation-production-validation-20260816-r2",
+  "source_commit": "8a283a1fc",
+  "started_at": "2026-08-16T23:48:19+08:00",
+  "finished_at": "2026-08-16T23:58:43+08:00",
+  "checkpoint": {
+    "path": "reports/combat_rl_parent_weight_one_interpolation_20260816_r1/rl_combat_model_parent_to_weight_one_alpha_0_20.pth",
+    "sha256": "7a27fe138ceaba927354da88d71b9186c6b918cb8d76c75c56aee8d74146faeb"
+  },
+  "production_config": {
+    "source": "reports/combat_rl_parent_weight_one_interpolation_promotion_20260816.properties",
+    "source_sha256_at_validation": "7e923bba944c411512f5f8322a8494bc30f7edda47be0e3f404c5b25edde22b2",
+    "runtime_command_matched_source_at_validation": true
+  },
+  "outcomes": {
+    "games": 5,
+    "victories": 0,
+    "floor_total": 142,
+    "floor_mean": 28.4,
+    "act_2_entered": 4,
+    "act_2_boss_reached": 2,
+    "act_3_entered": 0,
+    "floors": [29, 33, 31, 33, 16],
+    "first_ironclad_victory_achieved": false
+  },
+  "runtime_integrity": {
+    "games_completed": 5,
+    "post_start_exception_or_failure_count": 0,
+    "python_processes_closed_naturally": true,
+    "java_process_closed_by_exact_pid": true,
+    "promoted_configuration_retained": true
+  },
+  "trace_evidence": {
+    "trace_reset_enabled": true,
+    "decision_trace_pre_reset_size_bytes": 2407726683,
+    "sim_divergence_trace_pre_reset_size_bytes": 155337644,
+    "decision_trace_post_batch_size_bytes": 7104105,
+    "sim_divergence_trace_post_batch_size_bytes": 15113,
+    "sim_divergence_events": 1,
+    "sim_divergence_malformed_lines": 0,
+    "sim_divergence_reason": "player_state_mismatch",
+    "sim_divergence_action": "PlayCardAction | Reaper",
+    "sim_divergence_floor": 18,
+    "full_trace_files_archived_in_git": false
+  },
+  "mechanics_follow_up": {
+    "cause": "Magic Flower healing multiplier omitted from Reaper simulation",
+    "expected_player_hp_before_fix": 84,
+    "actual_player_hp": 86,
+    "status": "fixed_by_accompanying_source_change"
+  },
+  "decision": "production_baseline_validated_keep_promoted"
+}

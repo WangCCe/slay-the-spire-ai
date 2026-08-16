@@ -1,0 +1,25 @@
+{
+  "trace": "D:/SteamLibrary/steamapps/common/SlayTheSpire/sim_divergence_trace_clean.jsonl",
+  "events_analyzed": 1,
+  "malformed_lines": 0,
+  "total_lines": 1,
+  "by_reason": {
+    "player_state_mismatch": 1
+  },
+  "by_action_card": {
+    "PlayCardAction | Reaper": 1
+  },
+  "by_floor": {
+    "18": 1
+  },
+  "by_diff_key": {
+    "player.current_hp": 1
+  },
+  "observed_transition": {
+    "player_hp_before": 80,
+    "player_hp_expected_before_fix": 84,
+    "player_hp_actual": 86,
+    "unblocked_damage": 4,
+    "relic": "Magic Flower"
+  }
+}

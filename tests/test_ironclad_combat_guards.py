@@ -8327,6 +8327,41 @@ def test_reaper_heals_for_unblocked_damage(monkeypatch):
     assert result.player_hp == 28
 
 
+def test_reaper_healing_is_scaled_by_magic_flower(monkeypatch):
+    loader = GameDataLoader(auto_load=False)
+    loader._cards = {
+        "reaper": {
+            "name": "Reaper",
+            "description": "Deal 4 damage to ALL enemies. Heal HP equal to unblocked damage. Exhaust.",
+        }
+    }
+    loader._wiki_data = {
+        "reaper": {
+            "name": "Reaper",
+            "text": "Deal [4|5] damage to ALL enemies. Heal HP equal to unblocked damage.\n#Exhaust.",
+        }
+    }
+    monkeypatch.setattr(simulation, "game_data_loader", loader)
+    reaper = _card("Reaper", "Reaper", cost=2, has_target=False)
+    context = _combat_context([reaper], energy=2, monsters=[_louse(current_hp=20)])
+    context.game.current_hp = 20
+    context.player_hp = 20
+    context.game.relics = [
+        SimpleNamespace(name="Magic Flower", relic_id="Magic Flower", counter=-1)
+    ]
+
+    result = FastCombatSimulator(SynergyCardEvaluator()).simulate_card_play(
+        SimulationState(context),
+        reaper,
+        target=None,
+        target_index=None,
+        context=context,
+    )
+
+    assert result.total_damage_dealt == 4
+    assert result.player_hp == 26
+
+
 def test_reaper_healing_caps_overkill_damage(monkeypatch):
     loader = GameDataLoader(auto_load=False)
     loader._cards = {
