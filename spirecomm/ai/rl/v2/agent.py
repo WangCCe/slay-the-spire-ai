@@ -93,6 +93,7 @@ class RLAgentV2:
         expert_mix_prob: Optional[float] = None,
         expert_warmup_steps: Optional[int] = None,
         parent_policy_anchor_weight: Optional[float] = None,
+        positive_energy_action_imitation_weight: Optional[float] = None,
     ):
         self.device = device
         self.training_mode = training
@@ -117,6 +118,26 @@ class RLAgentV2:
                 "with a parent checkpoint"
             )
         self.parent_policy_anchor_weight = float(parent_policy_anchor_weight)
+        if positive_energy_action_imitation_weight is None:
+            positive_energy_action_imitation_weight = float(
+                os.environ.get(
+                    "STS_RL_POSITIVE_ENERGY_ACTION_IMITATION_WEIGHT", "0"
+                )
+            )
+        if (
+            not math.isfinite(positive_energy_action_imitation_weight)
+            or positive_energy_action_imitation_weight < 0.0
+        ):
+            raise ValueError(
+                "positive energy action imitation weight must be finite and non-negative"
+            )
+        if positive_energy_action_imitation_weight > 0.0 and not training:
+            raise ValueError(
+                "positive energy action imitation weight requires RL v2 training"
+            )
+        self.positive_energy_action_imitation_weight = float(
+            positive_energy_action_imitation_weight
+        )
 
         self.id_mapper = id_mapper or load_default_id_mapper()
         self.state_encoder = StateEncoderV2(self.id_mapper)
@@ -145,6 +166,9 @@ class RLAgentV2:
                 device=device,
                 network_type=self.network_type,
                 parent_policy_anchor_weight=self.parent_policy_anchor_weight,
+                positive_energy_action_imitation_weight=(
+                    self.positive_energy_action_imitation_weight
+                ),
             )
             self.network = self.trainer.online_network
         else:
@@ -188,6 +212,10 @@ class RLAgentV2:
         logger.info(
             "RLAgentV2 parent policy anchor config: weight=%.6f",
             self.parent_policy_anchor_weight,
+        )
+        logger.info(
+            "RLAgentV2 positive-energy action imitation config: weight=%.6f",
+            self.positive_energy_action_imitation_weight,
         )
         if self.training_mode and self.expert_mix_enabled:
             try:
@@ -678,6 +706,17 @@ class RLAgentV2:
                     if checkpoint.get("parent_policy_anchor_state_dict") is not None
                     else "starting checkpoint online policy",
                 )
+            stored_imitation_weight = checkpoint.get(
+                "positive_energy_action_imitation_weight"
+            )
+            if stored_imitation_weight is not None and not math.isclose(
+                float(stored_imitation_weight),
+                self.trainer.positive_energy_action_imitation_weight,
+            ):
+                raise ValueError(
+                    "checkpoint positive energy action imitation weight does not "
+                    "match requested weight"
+                )
             logger.info("Loaded v2 trainer checkpoint from %s", model_path)
         else:
             self.network.load_state_dict(state_dict)
@@ -707,6 +746,22 @@ class RLAgentV2:
                     "epsilon": self.trainer.epsilon,
                     "learning_starts": self.trainer.learning_starts,
                     "total_steps": self.trainer.total_steps,
+                    "positive_energy_action_imitation_weight": (
+                        self.trainer.positive_energy_action_imitation_weight
+                    ),
+                    "training_metrics": {
+                        "last_total_loss": self.trainer.last_loss,
+                        "last_td_loss": self.trainer.last_td_loss,
+                        "last_parent_policy_anchor_loss": (
+                            self.trainer.last_parent_policy_anchor_loss
+                        ),
+                        "last_positive_energy_action_imitation_loss": (
+                            self.trainer.last_positive_energy_action_imitation_loss
+                        ),
+                        "last_positive_energy_action_imitation_count": (
+                            self.trainer.last_positive_energy_action_imitation_count
+                        ),
+                    },
                 }
             )
             if self.trainer.parent_policy_anchor_network is not None:
@@ -714,11 +769,6 @@ class RLAgentV2:
                     {
                         "parent_policy_anchor_weight": self.trainer.parent_policy_anchor_weight,
                         "parent_policy_anchor_state_dict": self.trainer.parent_policy_anchor_network.state_dict(),
-                        "training_metrics": {
-                            "last_total_loss": self.trainer.last_loss,
-                            "last_td_loss": self.trainer.last_td_loss,
-                            "last_parent_policy_anchor_loss": self.trainer.last_parent_policy_anchor_loss,
-                        },
                     }
                 )
 
@@ -787,6 +837,7 @@ def create_agent_v2(
     expert_mix_prob: Optional[float] = None,
     expert_warmup_steps: Optional[int] = None,
     parent_policy_anchor_weight: Optional[float] = None,
+    positive_energy_action_imitation_weight: Optional[float] = None,
 ) -> RLAgentV2:
     return RLAgentV2(
         model_path=model_path,
@@ -798,4 +849,7 @@ def create_agent_v2(
         expert_mix_prob=expert_mix_prob,
         expert_warmup_steps=expert_warmup_steps,
         parent_policy_anchor_weight=parent_policy_anchor_weight,
+        positive_energy_action_imitation_weight=(
+            positive_energy_action_imitation_weight
+        ),
     )

@@ -13,6 +13,8 @@ import torch.nn.functional as F
 
 from .network import create_dqn_v2
 from .replay_buffer import ReplayBufferV2
+from .action_space import END_TURN_ACTION
+from .state_encoder import StateEncoderV2
 
 logger = logging.getLogger(__name__)
 
@@ -44,6 +46,7 @@ class DQNTrainerV2:
         potion_embed_dim: int = 8,
         relic_embed_dim: int = 16,
         parent_policy_anchor_weight: float = 0.0,
+        positive_energy_action_imitation_weight: float = 0.0,
     ):
         self.continuous_dim = continuous_dim
         self.action_dim = action_dim
@@ -64,6 +67,16 @@ class DQNTrainerV2:
         if not np.isfinite(parent_policy_anchor_weight) or parent_policy_anchor_weight < 0:
             raise ValueError("parent_policy_anchor_weight must be finite and non-negative")
         self.parent_policy_anchor_weight = float(parent_policy_anchor_weight)
+        if (
+            not np.isfinite(positive_energy_action_imitation_weight)
+            or positive_energy_action_imitation_weight < 0
+        ):
+            raise ValueError(
+                "positive_energy_action_imitation_weight must be finite and non-negative"
+            )
+        self.positive_energy_action_imitation_weight = float(
+            positive_energy_action_imitation_weight
+        )
 
         self.online_network = create_dqn_v2(
             network_type=network_type,
@@ -119,6 +132,8 @@ class DQNTrainerV2:
         self.last_loss = None
         self.last_td_loss = None
         self.last_parent_policy_anchor_loss = 0.0
+        self.last_positive_energy_action_imitation_loss = 0.0
+        self.last_positive_energy_action_imitation_count = 0
 
     def set_parent_policy_anchor(self, state_dict: Mapping[str, torch.Tensor]) -> None:
         if self.parent_policy_anchor_weight <= 0.0:
@@ -296,10 +311,34 @@ class DQNTrainerV2:
                 action_masks,
             )
             anchor_loss = F.cross_entropy(current_q_values, anchor_actions)
-        loss = td_loss + self.parent_policy_anchor_weight * anchor_loss
+        positive_energy_action_imitation_loss = torch.zeros(
+            (), dtype=td_loss.dtype, device=self.device
+        )
+        positive_energy_action_imitation_count = 0
+        if self.positive_energy_action_imitation_weight > 0.0:
+            eligible = (
+                continuous[:, StateEncoderV2.ENERGY_RATIO_INDEX] > 0.0
+            ) & (actions != END_TURN_ACTION)
+            positive_energy_action_imitation_count = int(eligible.sum().item())
+            if positive_energy_action_imitation_count:
+                positive_energy_action_imitation_loss = F.cross_entropy(
+                    current_q_values[eligible], actions[eligible]
+                )
+        loss = (
+            td_loss
+            + self.parent_policy_anchor_weight * anchor_loss
+            + self.positive_energy_action_imitation_weight
+            * positive_energy_action_imitation_loss
+        )
         loss_value = float(loss.item())
         self.last_td_loss = float(td_loss.item())
         self.last_parent_policy_anchor_loss = float(anchor_loss.item())
+        self.last_positive_energy_action_imitation_loss = float(
+            positive_energy_action_imitation_loss.item()
+        )
+        self.last_positive_energy_action_imitation_count = (
+            positive_energy_action_imitation_count
+        )
         self.loss_history.append(loss_value)
         self.last_loss = loss_value
 
@@ -317,6 +356,19 @@ class DQNTrainerV2:
                 self.last_td_loss,
                 self.last_parent_policy_anchor_loss,
                 self.parent_policy_anchor_weight,
+            )
+
+        if (
+            self.positive_energy_action_imitation_weight > 0.0
+            and self.total_steps % 100 == 0
+        ):
+            logger.info(
+                "RL positive-energy action imitation update: total_steps=%s "
+                "loss=%.6f weight=%.6f eligible=%s",
+                self.total_steps,
+                self.last_positive_energy_action_imitation_loss,
+                self.positive_energy_action_imitation_weight,
+                self.last_positive_energy_action_imitation_count,
             )
 
         if self.total_steps % self.target_update_freq == 0:

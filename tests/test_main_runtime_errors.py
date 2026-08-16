@@ -553,6 +553,38 @@ def test_create_combat_rl_forwards_parent_policy_anchor_weight(monkeypatch):
     assert calls[0]["parent_policy_anchor_weight"] == pytest.approx(0.25)
 
 
+def test_create_combat_rl_forwards_positive_energy_action_imitation_weight(
+    monkeypatch,
+):
+    calls = []
+
+    class StubCombatRLAgent:
+        def __init__(self, **kwargs):
+            calls.append(kwargs)
+            self.rl_agent = SimpleNamespace(
+                state_encoder=SimpleNamespace(feature_dim=1),
+                action_encoder=SimpleNamespace(MAX_ACTIONS=1),
+            )
+
+    monkeypatch.setattr(main, "_load_rl_components", lambda: None)
+    monkeypatch.setattr(main, "RL_AVAILABLE", True)
+    monkeypatch.setattr(main, "RL_V2_AVAILABLE", True)
+    monkeypatch.setattr(main, "CombatRLAgent", StubCombatRLAgent)
+
+    main.create_agent(
+        agent_type="combat_rl",
+        player_class=main.PlayerClass.IRONCLAD,
+        training=True,
+        model_path="checkpoints/parent.pth",
+        rl_version="v2",
+        positive_energy_action_imitation_weight=0.25,
+    )
+
+    assert calls[0]["positive_energy_action_imitation_weight"] == pytest.approx(
+        0.25
+    )
+
+
 @pytest.mark.parametrize("elite_mode", ("conservative", "aggressive"))
 def test_full_rl_legacy_route_mode_keeps_learned_map_factory(
     monkeypatch,

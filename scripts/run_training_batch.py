@@ -86,6 +86,13 @@ def build_main_command(args):
     anchor_weight = getattr(args, "parent_policy_anchor_weight", None)
     if is_rl_agent and anchor_weight is not None and not eval_mode:
         cmd.extend(["--parent-policy-anchor-weight", str(anchor_weight)])
+    imitation_weight = getattr(
+        args, "positive_energy_action_imitation_weight", None
+    )
+    if is_rl_agent and imitation_weight is not None and not eval_mode:
+        cmd.extend(
+            ["--positive-energy-action-imitation-weight", str(imitation_weight)]
+        )
 
     return cmd
 
@@ -329,6 +336,9 @@ def parse_args():
     parser.add_argument("--expert-mix-prob", type=float, default=None)
     parser.add_argument("--expert-mix-warmup", type=int, default=None)
     parser.add_argument("--parent-policy-anchor-weight", type=float, default=None)
+    parser.add_argument(
+        "--positive-energy-action-imitation-weight", type=float, default=None
+    )
 
     parser.add_argument("--game-dir", default=DEFAULT_GAME_DIR)
     parser.add_argument("--character", default="IRONCLAD")

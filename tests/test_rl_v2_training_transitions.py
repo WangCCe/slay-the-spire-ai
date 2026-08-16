@@ -167,10 +167,16 @@ def test_nonterminal_observation_uses_next_state_and_counts_transition_without_l
     assert agent.episode_steps == 1
 
 
-def _real_trainer(*, learning_starts=4, parent_policy_anchor_weight=0.0):
+def _real_trainer(
+    *,
+    learning_starts=4,
+    parent_policy_anchor_weight=0.0,
+    positive_energy_action_imitation_weight=0.0,
+    action_dim=2,
+):
     return DQNTrainerV2(
         continuous_dim=2,
-        action_dim=2,
+        action_dim=action_dim,
         card_slots=1,
         potion_slots=1,
         relic_slots=1,
@@ -186,10 +192,13 @@ def _real_trainer(*, learning_starts=4, parent_policy_anchor_weight=0.0):
         target_update_freq=8,
         device="cpu",
         parent_policy_anchor_weight=parent_policy_anchor_weight,
+        positive_energy_action_imitation_weight=(
+            positive_energy_action_imitation_weight
+        ),
     )
 
 
-def _store_real_transition(trainer, *, continuous=None, done=False):
+def _store_real_transition(trainer, *, continuous=None, done=False, action=0):
     if continuous is None:
         continuous = np.zeros(2, dtype=np.float32)
     return trainer.store_transition(
@@ -197,15 +206,19 @@ def _store_real_transition(trainer, *, continuous=None, done=False):
         card_ids=np.zeros(1, dtype=np.int64),
         potion_ids=np.zeros(1, dtype=np.int64),
         relic_ids=np.zeros(1, dtype=np.int64),
-        action=0,
+        action=action,
         reward=-200.0 if done else 1.0,
         next_continuous=None if done else np.ones(2, dtype=np.float32),
         next_card_ids=None if done else np.zeros(1, dtype=np.int64),
         next_potion_ids=None if done else np.zeros(1, dtype=np.int64),
         next_relic_ids=None if done else np.zeros(1, dtype=np.int64),
         done=done,
-        action_mask=np.ones(2, dtype=bool),
-        next_action_mask=np.zeros(2, dtype=bool) if done else np.ones(2, dtype=bool),
+        action_mask=np.ones(trainer.action_dim, dtype=bool),
+        next_action_mask=(
+            np.zeros(trainer.action_dim, dtype=bool)
+            if done
+            else np.ones(trainer.action_dim, dtype=bool)
+        ),
     )
 
 
@@ -287,6 +300,49 @@ def test_parent_policy_anchor_adds_finite_masked_loss_without_training_anchor():
     )
 
 
+def test_positive_energy_action_imitation_adds_executed_action_loss():
+    trainer = _real_trainer(
+        action_dim=91,
+        positive_energy_action_imitation_weight=0.25,
+    )
+    for _ in range(4):
+        assert _store_real_transition(
+            trainer,
+            continuous=np.array([0.5, 0.6], dtype=np.float32),
+            action=0,
+        ) is True
+
+    loss = trainer.train_step()
+
+    assert math.isfinite(loss)
+    assert trainer.last_positive_energy_action_imitation_count == 4
+    assert trainer.last_positive_energy_action_imitation_loss > 0.0
+    assert loss == pytest.approx(
+        trainer.last_td_loss
+        + trainer.positive_energy_action_imitation_weight
+        * trainer.last_positive_energy_action_imitation_loss
+    )
+
+
+def test_positive_energy_action_imitation_ignores_zero_energy_states():
+    trainer = _real_trainer(
+        action_dim=91,
+        positive_energy_action_imitation_weight=0.25,
+    )
+    for _ in range(4):
+        assert _store_real_transition(
+            trainer,
+            continuous=np.array([0.5, 0.0], dtype=np.float32),
+            action=0,
+        ) is True
+
+    loss = trainer.train_step()
+
+    assert trainer.last_positive_energy_action_imitation_count == 0
+    assert trainer.last_positive_energy_action_imitation_loss == 0.0
+    assert loss == pytest.approx(trainer.last_td_loss)
+
+
 def test_parent_policy_anchor_label_respects_stored_action_mask():
     trainer = _real_trainer(parent_policy_anchor_weight=0.5)
     trainer.set_parent_policy_anchor(trainer.online_network.state_dict())
@@ -361,7 +417,12 @@ def test_replay_checkpoint_round_trip_keeps_bounded_chronological_tail():
     assert restored.position == 3
 
 
-def _checkpoint_agent(*, learning_starts=4, parent_policy_anchor_weight=0.0):
+def _checkpoint_agent(
+    *,
+    learning_starts=4,
+    parent_policy_anchor_weight=0.0,
+    positive_energy_action_imitation_weight=0.0,
+):
     agent = RLAgentV2.__new__(RLAgentV2)
     agent.device = "cpu"
     agent.training_mode = True
@@ -370,6 +431,9 @@ def _checkpoint_agent(*, learning_starts=4, parent_policy_anchor_weight=0.0):
     agent.trainer = _real_trainer(
         learning_starts=learning_starts,
         parent_policy_anchor_weight=parent_policy_anchor_weight,
+        positive_energy_action_imitation_weight=(
+            positive_energy_action_imitation_weight
+        ),
     )
     agent.network = agent.trainer.online_network
     agent.state_encoder = SimpleNamespace(
@@ -385,6 +449,30 @@ def _checkpoint_agent(*, learning_starts=4, parent_policy_anchor_weight=0.0):
         relic_vocab_size=3,
     )
     return agent
+
+
+def test_positive_energy_action_imitation_checkpoint_round_trip(tmp_path):
+    source = _checkpoint_agent(positive_energy_action_imitation_weight=0.25)
+    path = tmp_path / "imitation-resume.pth"
+    source.save_model(str(path))
+
+    stored = torch.load(path, map_location="cpu", weights_only=True)
+    assert stored["positive_energy_action_imitation_weight"] == pytest.approx(0.25)
+    assert (
+        stored["training_metrics"][
+            "last_positive_energy_action_imitation_count"
+        ]
+        == 0
+    )
+
+    restored = _checkpoint_agent(positive_energy_action_imitation_weight=0.25)
+    restored.load_model(str(path))
+    assert restored.trainer.positive_energy_action_imitation_weight == pytest.approx(
+        0.25
+    )
+
+    with pytest.raises(ValueError, match="does not match requested weight"):
+        _checkpoint_agent().load_model(str(path))
 
 
 def _optimizer_step(trainer):

@@ -20,6 +20,7 @@ if str(REPO_ROOT) not in sys.path:
 
 from combat_rl_dropout_update_ablation import _batch, _make_network  # noqa: E402
 from spirecomm.ai.rl.v2.action_space import END_TURN_ACTION  # noqa: E402
+from spirecomm.ai.rl.v2.state_encoder import StateEncoderV2  # noqa: E402
 
 
 def _sha256(path: Path) -> str:
@@ -49,7 +50,10 @@ def _evaluate(
     actions = replay["actions"][indices].long()
     dones = replay["dones"][indices].bool()
     rewards = replay["rewards"][indices].float()
-    positive_energy = replay["continuous"][indices, 1].float() > 0.0
+    positive_energy = (
+        replay["continuous"][indices, StateEncoderV2.ENERGY_RATIO_INDEX].float()
+        > 0.0
+    )
     eligible_imitation = positive_energy & (actions != END_TURN_ACTION)
 
     with torch.no_grad():
@@ -125,7 +129,12 @@ def _train_variant(
         rewards = replay["rewards"][indices].float()
         dones = replay["dones"][indices].bool()
         action_masks = replay["action_masks"][indices].bool()
-        positive_energy = replay["continuous"][indices, 1].float() > 0.0
+        positive_energy = (
+            replay["continuous"][
+                indices, StateEncoderV2.ENERGY_RATIO_INDEX
+            ].float()
+            > 0.0
+        )
         eligible = positive_energy & (actions != END_TURN_ACTION)
 
         online.train()
