@@ -1,0 +1,75 @@
+{
+  "schema_version": 1,
+  "gate_id": "combat-rl-parent-weight-one-interpolation-zero-epsilon-gate-20260816-r1",
+  "source_commit": "8fea9e893339b6bfd67e382f8367dc31d66981f2",
+  "preregistration_commit": "e62af2b8b",
+  "started_at": "2026-08-16T21:51:24+08:00",
+  "finished_at": "2026-08-16T23:17:30+08:00",
+  "candidate_checkpoint": {
+    "path": "reports/combat_rl_parent_weight_one_interpolation_20260816_r1/rl_combat_model_parent_to_weight_one_alpha_0_20.pth",
+    "sha256": "7a27fe138ceaba927354da88d71b9186c6b918cb8d76c75c56aee8d74146faeb",
+    "checkpoint_kind": "weights"
+  },
+  "parent_checkpoint": {
+    "path": "reports/combat_rl_compact_monster_slots_training_20260815_r1/rl_combat_model_ep40_steps18580.pth",
+    "sha256": "162c700d9b1ab7d5119f476b9b2551f4e909eb4d462cbee14b30c7b6a2764b05"
+  },
+  "evaluation": {
+    "seed_pool": "reports/combat_rl_parent_weight_one_interpolation_zero_epsilon_gate_20260816_r1_seed_pool.txt",
+    "seed_pool_sha256": "9a974ebbe12e802b95db380c0615da3ce93d30f04c45bc356552c128304f791d",
+    "games_per_arm": 20,
+    "epsilon": 0.0,
+    "elite_route": "conservative",
+    "same_seed_order": true,
+    "all_seed_pairs_match": true
+  },
+  "candidate": {
+    "games": 20,
+    "victories": 0,
+    "floor_total": 492,
+    "floor_mean": 24.6,
+    "floor_median": 21,
+    "act_2_entered": 11,
+    "act_2_boss_reached": 7,
+    "act_3_entered": 2,
+    "floors": [16, 20, 33, 33, 22, 16, 33, 37, 28, 33, 16, 16, 16, 12, 50, 16, 16, 16, 33, 30]
+  },
+  "parent": {
+    "games": 20,
+    "victories": 0,
+    "floor_total": 444,
+    "floor_mean": 22.2,
+    "floor_median": 16,
+    "act_2_entered": 9,
+    "act_2_boss_reached": 6,
+    "act_3_entered": 0,
+    "floors": [16, 22, 33, 33, 16, 16, 33, 16, 28, 33, 16, 33, 16, 12, 33, 16, 16, 16, 16, 24]
+  },
+  "paired": {
+    "candidate_wins": 5,
+    "ties": 13,
+    "parent_wins": 2,
+    "summed_floor_delta": 48,
+    "floor_deltas": [0, -2, 0, 0, 6, 0, 0, 21, 0, 0, 0, -17, 0, 0, 17, 0, 0, 0, 17, 6]
+  },
+  "runtime_integrity": {
+    "candidate_games_completed": 20,
+    "parent_games_completed": 20,
+    "candidate_post_start_error_growth_bytes": 0,
+    "parent_post_start_error_growth_bytes": 0,
+    "configuration_restored_to_existing_promoted_parent": true,
+    "restored_config_sha256": "d4d1dd35fd53985796922e5915a8b4ab51373109d08addff2bdcdfebf01a00e4",
+    "processes_closed": true
+  },
+  "promotion_rule": {
+    "candidate_paired_floor_wins_exceed_parent": true,
+    "candidate_victories_at_least_parent": true,
+    "candidate_act_2_entries_at_least_parent": true,
+    "candidate_act_2_boss_reaches_at_least_parent": true,
+    "candidate_total_floors_at_least_parent": true,
+    "both_arms_completed_all_games": true,
+    "all_seed_pairs_match": true,
+    "all_conditions_passed": true
+  },
+  "decision": "qualified_for_separate_promotion_decision"
+}
