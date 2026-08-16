@@ -1,0 +1,138 @@
+{
+  "schema_version": 1,
+  "experiment_id": "combat-rl-positive-energy-imitation-training-20260817-r1",
+  "source_commit": "6c5ceedf04c4fb2ced9b511f174f7af01623f027",
+  "preregistration_commit": "9fafc2d3b",
+  "started_at": "2026-08-17T04:38:53+08:00",
+  "finished_at": "2026-08-17T05:20:51+08:00",
+  "promoted_parent": {
+    "path": "reports/combat_rl_parent_weight_one_interpolation_20260816_r1/rl_combat_model_parent_to_weight_one_alpha_0_20.pth",
+    "sha256": "7a27fe138ceaba927354da88d71b9186c6b918cb8d76c75c56aee8d74146faeb"
+  },
+  "continuation_checkpoint": {
+    "path": "reports/combat_rl_guard_intervention_training_20260817_r2/rl_combat_model_ep40_steps9269.pth",
+    "sha256": "092ce5f5a9a861085d0416f2e2879062118b107aa20ac6507bbba112cc779ae0",
+    "episode": 40,
+    "total_steps": 9269,
+    "optimizer_step": 1294
+  },
+  "output_checkpoint": {
+    "path": "reports/combat_rl_positive_energy_imitation_training_20260817_r1/rl_combat_model_ep60_steps12830.pth",
+    "sha256": "2b24d2493d6da975336f3e1430fa26b3fef1648ea6b2b8e930450668b524383e",
+    "episode": 60,
+    "total_steps": 12830,
+    "epsilon": 0.878134,
+    "learning_starts": 4096,
+    "optimizer_step": 2184,
+    "replay_transition_count": 4096,
+    "replay_source_transition_count": 7657,
+    "replay_truncated": true,
+    "all_checkpoint_tensors_finite": true,
+    "executed_actions_all_valid": true
+  },
+  "objective_evidence": {
+    "parent_policy_anchor_weight": 1.0,
+    "positive_energy_action_imitation_weight": 0.25,
+    "frozen_anchor_state_exactly_equals_promoted_parent": true,
+    "last_total_loss": 4.4901909828186035,
+    "last_td_loss": 3.39178729057312,
+    "last_parent_policy_anchor_loss": 0.5244128108024597,
+    "last_positive_energy_action_imitation_loss": 2.2959632873535156,
+    "last_positive_energy_action_imitation_count": 93,
+    "logged_anchor_updates": 36,
+    "logged_imitation_updates": 36
+  },
+  "training_delta": {
+    "accepted_transitions": 3561,
+    "optimizer_steps": 890,
+    "whole_model_relative_l2_from_continuation": 0.019334111137588917,
+    "whole_model_relative_l2_from_promoted_parent": 0.03826534218724405
+  },
+  "comparison_on_output_replay": {
+    "transition_count": 4096,
+    "positive_energy_state_count": 3053,
+    "promoted_parent": {
+      "smooth_l1": 4.368164539337158,
+      "absolute_td_p50": 1.8046321868896484,
+      "absolute_td_p95": 11.771162986755371,
+      "executed_action_agreement": 0.270263671875,
+      "eligible_executed_action_agreement": 0.08383433520793915,
+      "positive_energy_end_turn_share": 0.6301997900009155
+    },
+    "continuation": {
+      "smooth_l1": 3.8311538696289062,
+      "absolute_td_p50": 1.9077534675598145,
+      "absolute_td_p95": 8.954883575439453,
+      "parent_greedy_action_agreement": 0.85986328125,
+      "executed_action_agreement": 0.241455078125,
+      "eligible_executed_action_agreement": 0.046760186553001404,
+      "positive_energy_end_turn_share": 0.7553226351737976
+    },
+    "output": {
+      "smooth_l1": 3.132779121398926,
+      "absolute_td_p50": 1.2477607727050781,
+      "absolute_td_p95": 7.310585975646973,
+      "parent_greedy_action_agreement": 0.9013671875,
+      "executed_action_agreement": 0.27734375,
+      "eligible_executed_action_agreement": 0.0955243855714798,
+      "positive_energy_end_turn_share": 0.6292171478271484
+    }
+  },
+  "training_context": {
+    "authority": "training_context_only",
+    "games": 20,
+    "victories": 0,
+    "floor_total": 470,
+    "floor_mean": 23.5,
+    "act_2_entered": 13,
+    "act_2_boss_reached": 6,
+    "act_3_entered": 0,
+    "playtime_seconds": 2395,
+    "floors": [20, 33, 33, 16, 16, 33, 27, 16, 16, 16, 33, 23, 20, 33, 33, 27, 21, 16, 7, 31]
+  },
+  "runtime_evidence": {
+    "complete_log_coverage": true,
+    "coverage_started_at": "2026-08-17T04:38:53+08:00",
+    "coverage_ended_at": "2026-08-17T05:20:51+08:00",
+    "expert_actions_selected": 2095,
+    "energy_guard_triggers": 151,
+    "lethal_guard_triggers": 166,
+    "survival_guard_triggers": 104,
+    "invalid_rl_actions": 0,
+    "rl_action_failures": 0,
+    "expert_action_failures": 0,
+    "replay_rejections": 0,
+    "tracebacks": 0,
+    "critical_errors": 0,
+    "sim_divergence_rows": 10,
+    "archive": {
+      "path": "reports/combat_rl_positive_energy_imitation_training_20260817_r1/runtime_evidence.zip",
+      "sha256": "1cb8be4a0a50ce5efe1dde18ecbbdcbce9090bbdf84134d586e5592e319fb31b",
+      "entry_count": 9,
+      "size_bytes": 5333070
+    }
+  },
+  "runtime_integrity": {
+    "communication_mod_error_growth_bytes": 351,
+    "communication_mod_growth_is_expected_wrapper_output": true,
+    "configuration_restored_to_production": true,
+    "restored_config_sha256": "7e923bba944c411512f5f8322a8494bc30f7edda47be0e3f404c5b25edde22b2",
+    "processes_closed": true
+  },
+  "decision_rule": {
+    "exact_additional_game_count_passed": true,
+    "finite_checkpoint_passed": true,
+    "optimizer_progress_passed": true,
+    "stored_imitation_weight_passed": true,
+    "positive_finite_imitation_loss_and_eligible_count_passed": true,
+    "frozen_anchor_matches_promoted_parent_passed": true,
+    "zero_action_and_replay_failures_passed": true,
+    "output_positive_energy_end_turn_below_continuation_passed": true,
+    "output_executed_action_agreement_above_continuation_passed": true,
+    "minimum_output_parent_agreement_passed": true,
+    "output_td_fit_guard_passed": true,
+    "production_configuration_restored_passed": true,
+    "all_rules_passed": true
+  },
+  "decision": "authorize_one_fresh_matched_zero_epsilon_gate_without_automatic_promotion"
+}
