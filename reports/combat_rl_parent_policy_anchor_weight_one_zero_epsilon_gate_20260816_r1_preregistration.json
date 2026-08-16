@@ -1,0 +1,55 @@
+{
+  "schema_version": 1,
+  "gate_id": "combat-rl-parent-policy-anchor-weight-one-zero-epsilon-gate-20260816-r1",
+  "source_commit": "7ca26042544903a59b3566133658249a406b1667",
+  "candidate_checkpoint": {
+    "path": "reports/combat_rl_parent_policy_anchor_weight_one_training_20260816_r1/rl_combat_model_ep60_steps22590.pth",
+    "sha256": "b8916452702411dcea2bca7bbf996bc349a9060f162256af7d4d597cafce5986"
+  },
+  "parent_checkpoint": {
+    "path": "reports/combat_rl_compact_monster_slots_training_20260815_r1/rl_combat_model_ep40_steps18580.pth",
+    "sha256": "162c700d9b1ab7d5119f476b9b2551f4e909eb4d462cbee14b30c7b6a2764b05"
+  },
+  "offline_gate": {
+    "report": "reports/combat_rl_parent_policy_anchor_weight_one_training_20260816_r1/report.json",
+    "all_preregistered_rules_passed": true,
+    "parent_successor_greedy_action_agreement": 0.88134765625,
+    "minimum_parent_successor_greedy_action_agreement": 0.88,
+    "successor_replay_smooth_l1": 3.4283652305603027,
+    "parent_replay_smooth_l1": 4.061614036560059,
+    "training_seed_outcomes_have_no_promotion_authority": true
+  },
+  "evaluation": {
+    "arm_order": ["candidate", "parent"],
+    "games_per_arm": 20,
+    "mode": "eval",
+    "epsilon": 0.0,
+    "elite_route": "conservative",
+    "ascension": 0,
+    "seed_pool": "reports/combat_rl_parent_policy_anchor_weight_one_zero_epsilon_gate_20260816_r1_seed_pool.txt",
+    "seed_pool_sha256": "25d9e1e007f2ae9cd2f1257cdb266663764381465cdd6dcbd1df70d5c8bbb83c",
+    "candidate_launch_config_sha256": "f5168d51070bf25951e5e7bd1d7e5a46b994bf9259c97b637211553b2a3955a2",
+    "parent_launch_config_sha256": "ea8ead34b1764ae095c80bb4bfe514e8ccd19294cc570daab291c7d9ceaaba82",
+    "same_seed_order": true,
+    "fresh_against_existing_combat_seed_pool_artifacts": true,
+    "training_disabled": true,
+    "expert_mix_disabled": true,
+    "shared_liveness_fixes": true
+  },
+  "promotion_rule": {
+    "candidate_paired_floor_wins_must_exceed_parent": true,
+    "candidate_victories_must_be_at_least_parent": true,
+    "candidate_act_2_entries_must_be_at_least_parent": true,
+    "candidate_act_2_boss_reaches_must_be_at_least_parent": true,
+    "candidate_total_floors_must_be_at_least_parent": true,
+    "both_arms_must_complete_all_games": true,
+    "all_seed_pairs_must_match": true,
+    "all_conditions_required": true
+  },
+  "execution_constraints": {
+    "stop_after_started_arm_failure": true,
+    "no_seed_or_threshold_change_after_start": true,
+    "no_model_or_parameter_change_between_arms": true,
+    "no_automatic_promotion": true
+  }
+}
