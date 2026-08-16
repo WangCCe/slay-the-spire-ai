@@ -1,0 +1,99 @@
+{
+  "schema_version": 1,
+  "gate_id": "combat-rl-guard-intervention-zero-epsilon-gate-20260817-r1",
+  "source_commit": "8fc875823",
+  "candidate_checkpoint": {
+    "path": "reports/combat_rl_guard_intervention_training_20260817_r2/rl_combat_model_ep40_steps9269.pth",
+    "sha256": "092ce5f5a9a861085d0416f2e2879062118b107aa20ac6507bbba112cc779ae0"
+  },
+  "parent_checkpoint": {
+    "path": "reports/combat_rl_parent_weight_one_interpolation_20260816_r1/rl_combat_model_parent_to_weight_one_alpha_0_20.pth",
+    "sha256": "7a27fe138ceaba927354da88d71b9186c6b918cb8d76c75c56aee8d74146faeb"
+  },
+  "seed_pool": {
+    "path": "reports/combat_rl_guard_intervention_zero_epsilon_gate_20260817_r1_seed_pool.txt",
+    "sha256": "7b41a37d10552812ed4bd41d5376a05ce8f48cb85616ae6232cb30fbb1751a26",
+    "count": 20,
+    "all_pairs_matched": true
+  },
+  "candidate": {
+    "started_at": "2026-08-17T02:58:30+08:00",
+    "finished_at": "2026-08-17T03:37:09+08:00",
+    "games": 20,
+    "victories": 0,
+    "floor_total": 418,
+    "floor_mean": 20.9,
+    "act_2_entered": 8,
+    "act_2_boss_reached": 4,
+    "act_3_entered": 0,
+    "floors": [33, 16, 16, 33, 28, 14, 16, 16, 33, 16, 33, 14, 16, 19, 16, 7, 31, 16, 29, 16],
+    "raw_rl_decisions": 1340,
+    "raw_rl_end_turn": 939,
+    "positive_energy_raw_rl_end_turn": 864,
+    "positive_energy_end_turn_share": 0.9201277955271565,
+    "energy_guard_actions": 4351,
+    "lethal_guard_actions": 172,
+    "survival_guard_actions": 106,
+    "invalid_or_failed_rl_actions": 0,
+    "sim_divergence_rows": 4,
+    "runtime_evidence_zip": {
+      "path": "reports/combat_rl_guard_intervention_zero_epsilon_gate_20260817_r1/candidate/runtime_evidence.zip",
+      "sha256": "cf4acdcd0a418e121263cd13328ec2c97e021f93c49520169dd41fbf56760d96",
+      "entry_count": 7
+    }
+  },
+  "parent": {
+    "started_at": "2026-08-17T03:39:22+08:00",
+    "finished_at": "2026-08-17T04:13:03+08:00",
+    "games": 20,
+    "victories": 0,
+    "floor_total": 378,
+    "floor_mean": 18.9,
+    "act_2_entered": 7,
+    "act_2_boss_reached": 1,
+    "act_3_entered": 0,
+    "floors": [27, 24, 16, 31, 33, 20, 10, 16, 16, 19, 16, 16, 16, 16, 16, 7, 31, 16, 16, 16],
+    "raw_rl_decisions": 1364,
+    "raw_rl_end_turn": 813,
+    "positive_energy_raw_rl_end_turn": 716,
+    "positive_energy_end_turn_share": 0.8806888068880688,
+    "energy_guard_actions": 3493,
+    "lethal_guard_actions": 190,
+    "survival_guard_actions": 128,
+    "invalid_or_failed_rl_actions": 0,
+    "sim_divergence_rows": 6,
+    "runtime_evidence_zip": {
+      "path": "reports/combat_rl_guard_intervention_zero_epsilon_gate_20260817_r1/parent/runtime_evidence.zip",
+      "sha256": "7ac136de43f8999bb75cb46e50c9376ae89097d39ac50d69b45f5a6243126aa0",
+      "entry_count": 6
+    }
+  },
+  "paired_outcomes": {
+    "candidate_floor_wins": 7,
+    "parent_floor_wins": 5,
+    "ties": 8,
+    "candidate_minus_parent_total_floors": 40,
+    "floor_deltas": [6, -8, 0, 2, -5, -6, 6, 0, 17, -3, 17, -2, 0, 3, 0, 0, 0, 0, 13, 0]
+  },
+  "runtime_integrity": {
+    "candidate_expected_wrapper_log_growth_bytes": 1454,
+    "candidate_error_growth_after_start_bytes": 0,
+    "parent_expected_wrapper_log_growth_bytes": 1474,
+    "parent_error_growth_after_start_bytes": 0,
+    "configuration_restored_to_production": true,
+    "restored_config_sha256": "7e923bba944c411512f5f8322a8494bc30f7edda47be0e3f404c5b25edde22b2",
+    "processes_closed": true
+  },
+  "promotion_rule": {
+    "candidate_paired_floor_wins_passed": true,
+    "candidate_victories_passed": true,
+    "candidate_act_2_entries_passed": true,
+    "candidate_act_2_boss_reaches_passed": true,
+    "candidate_total_floors_passed": true,
+    "candidate_positive_energy_end_turn_share_passed": false,
+    "both_arms_completed_passed": true,
+    "all_seed_pairs_matched_passed": true,
+    "all_conditions_passed": false
+  },
+  "decision": "retain_parent_guard_intervention_not_reduced"
+}
