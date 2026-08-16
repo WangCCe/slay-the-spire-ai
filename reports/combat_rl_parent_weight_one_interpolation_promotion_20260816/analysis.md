@@ -19,4 +19,6 @@ This is a separate decision from the fresh gate. The gate restored the previous 
 
 The production command remains evaluation-only with epsilon zero, conservative routing, and a five-game bound. No optimizer or replay state is loaded. The prior production configuration remains a fixed rollback artifact.
 
+Each launch now starts with fresh decision and simulator trace files, after required summaries have been preserved, and skips checkpoint backup, maintenance, and post-analysis work that is not needed for inference-only batches.
+
 Neither gate arm achieved a victory, so this promotion improves the combat baseline without satisfying the project-level first-victory objective.

@@ -10,8 +10,8 @@
   },
   "production_config": {
     "source": "reports/combat_rl_parent_weight_one_interpolation_promotion_20260816.properties",
-    "source_sha256": "7a2c7ed6316f1499b86f61801768022e5a52d587e181f3c394b1a032d7c40e5e",
-    "runtime_command_matches_source": true
+    "source_sha256_at_validation": "7a2c7ed6316f1499b86f61801768022e5a52d587e181f3c394b1a032d7c40e5e",
+    "runtime_command_matched_source_at_validation": true
   },
   "outcomes": {
     "games": 5,

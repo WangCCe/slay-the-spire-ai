@@ -199,6 +199,37 @@ def backup_log_file(args):
     return 0
 
 
+def truncate_trace_files(args, child_env):
+    """Start a bounded batch with fresh trace files when explicitly requested."""
+    if not args.truncate_traces_at_start:
+        return 0
+
+    trace_paths = (
+        ("decision", child_env.get("STS_DECISION_TRACE_FILE")),
+        ("sim divergence", child_env.get("STS_SIM_DIVERGENCE_TRACE_FILE")),
+    )
+    seen = set()
+    for label, raw_path in trace_paths:
+        if not raw_path:
+            continue
+        path = Path(raw_path)
+        resolved = path.resolve()
+        if resolved in seen:
+            continue
+        seen.add(resolved)
+        if not path.exists():
+            print(f"[training-batch] {label} trace reset: not found: {path}", file=sys.stderr)
+            continue
+        size = path.stat().st_size
+        print(
+            f"[training-batch] {label} trace reset: {path} ({size} bytes)",
+            file=sys.stderr,
+        )
+        if not args.dry_run:
+            path.write_text("", encoding="utf-8")
+    return 0
+
+
 def run_post_analysis(args):
     repo_root = Path(__file__).resolve().parents[1]
     analysis_script = repo_root / "analysis_scripts" / "analyze_training_plateau.py"
@@ -364,6 +395,14 @@ def parse_args():
         action="store_true",
         help="Clear the active log after copying it. Use only between batches.",
     )
+    parser.add_argument(
+        "--truncate-traces-at-start",
+        action="store_true",
+        help=(
+            "Discard existing enabled decision/sim trace contents before the batch. "
+            "Use only after preserving any required summaries."
+        ),
+    )
     parser.add_argument("--skip-maintenance", action="store_true")
     parser.add_argument(
         "--restart-guidance",
@@ -422,6 +461,7 @@ def main():
     print_restart_guidance(args)
 
     if args.dry_run:
+        truncate_trace_files(args, child_env)
         if not args.skip_checkpoint_backup:
             backup_latest_checkpoints(args)
         if not args.skip_log_backup:
@@ -436,6 +476,7 @@ def main():
         backup_latest_checkpoints(args)
     if not args.skip_log_backup:
         backup_log_file(args)
+    truncate_trace_files(args, child_env)
 
     result = run_main_command(main_command, child_env)
 

@@ -1,7 +1,13 @@
 import sys
+from types import SimpleNamespace
 
 from scripts import run_training_batch
-from scripts.run_training_batch import build_child_env, build_main_command, PHASES
+from scripts.run_training_batch import (
+    PHASES,
+    build_child_env,
+    build_main_command,
+    truncate_trace_files,
+)
 
 
 class Args:
@@ -187,3 +193,43 @@ def test_run_main_command_explicitly_inherits_stdio(monkeypatch):
     assert captured["kwargs"]["stdin"] is sys.stdin
     assert captured["kwargs"]["stdout"] is sys.stdout
     assert captured["kwargs"]["stderr"] is sys.stderr
+
+
+def test_truncate_trace_files_clears_enabled_trace_paths(tmp_path):
+    decision = tmp_path / "decision.jsonl"
+    divergence = tmp_path / "divergence.jsonl"
+    decision.write_text("decision\n", encoding="utf-8")
+    divergence.write_text("divergence\n", encoding="utf-8")
+    args = SimpleNamespace(truncate_traces_at_start=True, dry_run=False)
+
+    result = truncate_trace_files(
+        args,
+        {
+            "STS_DECISION_TRACE_FILE": str(decision),
+            "STS_SIM_DIVERGENCE_TRACE_FILE": str(divergence),
+        },
+    )
+
+    assert result == 0
+    assert decision.read_text(encoding="utf-8") == ""
+    assert divergence.read_text(encoding="utf-8") == ""
+
+
+def test_truncate_trace_files_dry_run_preserves_contents(tmp_path):
+    decision = tmp_path / "decision.jsonl"
+    decision.write_text("decision\n", encoding="utf-8")
+    args = SimpleNamespace(truncate_traces_at_start=True, dry_run=True)
+
+    truncate_trace_files(args, {"STS_DECISION_TRACE_FILE": str(decision)})
+
+    assert decision.read_text(encoding="utf-8") == "decision\n"
+
+
+def test_truncate_trace_files_is_noop_without_explicit_flag(tmp_path):
+    decision = tmp_path / "decision.jsonl"
+    decision.write_text("decision\n", encoding="utf-8")
+    args = SimpleNamespace(truncate_traces_at_start=False, dry_run=False)
+
+    truncate_trace_files(args, {"STS_DECISION_TRACE_FILE": str(decision)})
+
+    assert decision.read_text(encoding="utf-8") == "decision\n"

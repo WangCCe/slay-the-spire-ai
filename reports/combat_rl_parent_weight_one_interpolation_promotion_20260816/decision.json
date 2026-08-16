@@ -27,12 +27,16 @@
   },
   "production": {
     "source_config": "reports/combat_rl_parent_weight_one_interpolation_promotion_20260816.properties",
-    "source_config_sha256": "7a2c7ed6316f1499b86f61801768022e5a52d587e181f3c394b1a032d7c40e5e",
+    "source_config_sha256": "7e923bba944c411512f5f8322a8494bc30f7edda47be0e3f404c5b25edde22b2",
     "target_config": "C:/Users/20571/AppData/Local/ModTheSpire/CommunicationMod/config.properties",
     "bounded_games_per_launch": 5,
     "training": false,
     "epsilon": 0.0,
-    "elite_route": "conservative"
+    "elite_route": "conservative",
+    "truncate_traces_at_start": true,
+    "checkpoint_backup": false,
+    "maintenance": false,
+    "post_analysis": false
   },
   "rollback": {
     "source_config": "reports/combat_rl_compact_monster_slots_promotion_20260815.properties",
