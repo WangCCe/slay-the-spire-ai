@@ -871,6 +871,7 @@ def create_agent(
     expert_warmup_steps: Optional[int] = None,
     parent_policy_anchor_weight: Optional[float] = None,
     positive_energy_action_imitation_weight: Optional[float] = None,
+    positive_energy_parent_end_turn_imitation_weight: Optional[float] = None,
 ) -> RLAgent:
     """
     Create RL agent with specified configuration.
@@ -905,6 +906,9 @@ def create_agent(
             positive_energy_action_imitation_weight=(
                 positive_energy_action_imitation_weight
             ),
+            positive_energy_parent_end_turn_imitation_weight=(
+                positive_energy_parent_end_turn_imitation_weight
+            ),
         )
 
     if parent_policy_anchor_weight not in (None, 0, 0.0):
@@ -912,6 +916,10 @@ def create_agent(
     if positive_energy_action_imitation_weight not in (None, 0, 0.0):
         raise ValueError(
             "positive energy action imitation is only supported for RL v2"
+        )
+    if positive_energy_parent_end_turn_imitation_weight not in (None, 0, 0.0):
+        raise ValueError(
+            "positive energy parent-EndTurn imitation is only supported for RL v2"
         )
 
     return RLAgent(
@@ -1101,6 +1109,7 @@ class CombatRLAgent:
         expert_warmup_steps: Optional[int] = None,
         parent_policy_anchor_weight: Optional[float] = None,
         positive_energy_action_imitation_weight: Optional[float] = None,
+        positive_energy_parent_end_turn_imitation_weight: Optional[float] = None,
     ):
         """
         Initialize CombatRLAgent with RL and OptimizedAgent instances.
@@ -1161,6 +1170,9 @@ class CombatRLAgent:
                 positive_energy_action_imitation_weight=(
                     positive_energy_action_imitation_weight
                 ),
+                positive_energy_parent_end_turn_imitation_weight=(
+                    positive_energy_parent_end_turn_imitation_weight
+                ),
             )
         else:
             if parent_policy_anchor_weight not in (None, 0, 0.0):
@@ -1168,6 +1180,14 @@ class CombatRLAgent:
             if positive_energy_action_imitation_weight not in (None, 0, 0.0):
                 raise ValueError(
                     "positive energy action imitation is only supported for RL v2"
+                )
+            if positive_energy_parent_end_turn_imitation_weight not in (
+                None,
+                0,
+                0.0,
+            ):
+                raise ValueError(
+                    "positive energy parent-EndTurn imitation is only supported for RL v2"
                 )
             self.rl_agent = RLAgent(
                 model_path=model_path,

@@ -27,6 +27,7 @@ class Args:
     expert_mix_warmup = None
     parent_policy_anchor_weight = None
     positive_energy_action_imitation_weight = None
+    positive_energy_parent_end_turn_imitation_weight = None
     game_dir = r"D:\SteamLibrary\steamapps\common\SlayTheSpire"
     decision_trace_path = None
     skip_decision_trace = False
@@ -117,6 +118,27 @@ def test_eval_batch_does_not_forward_positive_energy_action_imitation_weight():
     cmd = build_main_command(args)
 
     assert "--positive-energy-action-imitation-weight" not in cmd
+
+
+def test_training_batch_forwards_parent_end_turn_imitation_weight():
+    args = Args()
+    args.positive_energy_parent_end_turn_imitation_weight = 0.2
+
+    cmd = build_main_command(args)
+
+    option = "--positive-energy-parent-end-turn-imitation-weight"
+    assert option in cmd
+    assert cmd[cmd.index(option) + 1] == "0.2"
+
+
+def test_eval_batch_does_not_forward_parent_end_turn_imitation_weight():
+    args = Args()
+    args.eval = True
+    args.positive_energy_parent_end_turn_imitation_weight = 0.2
+
+    cmd = build_main_command(args)
+
+    assert "--positive-energy-parent-end-turn-imitation-weight" not in cmd
 
 
 def test_optimized_exploration_batch_never_enables_training_or_rl_loading_flags():

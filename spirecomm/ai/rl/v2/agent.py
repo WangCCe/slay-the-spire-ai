@@ -94,6 +94,7 @@ class RLAgentV2:
         expert_warmup_steps: Optional[int] = None,
         parent_policy_anchor_weight: Optional[float] = None,
         positive_energy_action_imitation_weight: Optional[float] = None,
+        positive_energy_parent_end_turn_imitation_weight: Optional[float] = None,
     ):
         self.device = device
         self.training_mode = training
@@ -138,6 +139,39 @@ class RLAgentV2:
         self.positive_energy_action_imitation_weight = float(
             positive_energy_action_imitation_weight
         )
+        if positive_energy_parent_end_turn_imitation_weight is None:
+            positive_energy_parent_end_turn_imitation_weight = float(
+                os.environ.get(
+                    "STS_RL_POSITIVE_ENERGY_PARENT_END_TURN_IMITATION_WEIGHT", "0"
+                )
+            )
+        if (
+            not math.isfinite(positive_energy_parent_end_turn_imitation_weight)
+            or positive_energy_parent_end_turn_imitation_weight < 0.0
+        ):
+            raise ValueError(
+                "positive energy parent-EndTurn imitation weight must be "
+                "finite and non-negative"
+            )
+        if positive_energy_parent_end_turn_imitation_weight > 0.0 and not training:
+            raise ValueError(
+                "positive energy parent-EndTurn imitation weight requires RL v2 training"
+            )
+        if (
+            positive_energy_parent_end_turn_imitation_weight > 0.0
+            and self.parent_policy_anchor_weight <= 0.0
+        ):
+            raise ValueError(
+                "positive energy parent-EndTurn imitation requires a parent policy anchor"
+            )
+        if (
+            positive_energy_parent_end_turn_imitation_weight > 0.0
+            and self.positive_energy_action_imitation_weight > 0.0
+        ):
+            raise ValueError("positive-energy imitation objectives are mutually exclusive")
+        self.positive_energy_parent_end_turn_imitation_weight = float(
+            positive_energy_parent_end_turn_imitation_weight
+        )
 
         self.id_mapper = id_mapper or load_default_id_mapper()
         self.state_encoder = StateEncoderV2(self.id_mapper)
@@ -168,6 +202,9 @@ class RLAgentV2:
                 parent_policy_anchor_weight=self.parent_policy_anchor_weight,
                 positive_energy_action_imitation_weight=(
                     self.positive_energy_action_imitation_weight
+                ),
+                positive_energy_parent_end_turn_imitation_weight=(
+                    self.positive_energy_parent_end_turn_imitation_weight
                 ),
             )
             self.network = self.trainer.online_network
@@ -216,6 +253,10 @@ class RLAgentV2:
         logger.info(
             "RLAgentV2 positive-energy action imitation config: weight=%.6f",
             self.positive_energy_action_imitation_weight,
+        )
+        logger.info(
+            "RLAgentV2 positive-energy parent-EndTurn imitation config: weight=%.6f",
+            self.positive_energy_parent_end_turn_imitation_weight,
         )
         if self.training_mode and self.expert_mix_enabled:
             try:
@@ -717,6 +758,20 @@ class RLAgentV2:
                     "checkpoint positive energy action imitation weight does not "
                     "match requested weight"
                 )
+            stored_parent_end_turn_imitation_weight = checkpoint.get(
+                "positive_energy_parent_end_turn_imitation_weight"
+            )
+            if (
+                stored_parent_end_turn_imitation_weight is not None
+                and not math.isclose(
+                    float(stored_parent_end_turn_imitation_weight),
+                    self.trainer.positive_energy_parent_end_turn_imitation_weight,
+                )
+            ):
+                raise ValueError(
+                    "checkpoint positive energy parent-EndTurn imitation weight "
+                    "does not match requested weight"
+                )
             logger.info("Loaded v2 trainer checkpoint from %s", model_path)
         else:
             self.network.load_state_dict(state_dict)
@@ -749,6 +804,9 @@ class RLAgentV2:
                     "positive_energy_action_imitation_weight": (
                         self.trainer.positive_energy_action_imitation_weight
                     ),
+                    "positive_energy_parent_end_turn_imitation_weight": (
+                        self.trainer.positive_energy_parent_end_turn_imitation_weight
+                    ),
                     "training_metrics": {
                         "last_total_loss": self.trainer.last_loss,
                         "last_td_loss": self.trainer.last_td_loss,
@@ -760,6 +818,12 @@ class RLAgentV2:
                         ),
                         "last_positive_energy_action_imitation_count": (
                             self.trainer.last_positive_energy_action_imitation_count
+                        ),
+                        "last_positive_energy_parent_end_turn_imitation_loss": (
+                            self.trainer.last_positive_energy_parent_end_turn_imitation_loss
+                        ),
+                        "last_positive_energy_parent_end_turn_imitation_count": (
+                            self.trainer.last_positive_energy_parent_end_turn_imitation_count
                         ),
                     },
                 }
@@ -838,6 +902,7 @@ def create_agent_v2(
     expert_warmup_steps: Optional[int] = None,
     parent_policy_anchor_weight: Optional[float] = None,
     positive_energy_action_imitation_weight: Optional[float] = None,
+    positive_energy_parent_end_turn_imitation_weight: Optional[float] = None,
 ) -> RLAgentV2:
     return RLAgentV2(
         model_path=model_path,
@@ -851,5 +916,8 @@ def create_agent_v2(
         parent_policy_anchor_weight=parent_policy_anchor_weight,
         positive_energy_action_imitation_weight=(
             positive_energy_action_imitation_weight
+        ),
+        positive_energy_parent_end_turn_imitation_weight=(
+            positive_energy_parent_end_turn_imitation_weight
         ),
     )

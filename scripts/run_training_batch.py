@@ -93,6 +93,20 @@ def build_main_command(args):
         cmd.extend(
             ["--positive-energy-action-imitation-weight", str(imitation_weight)]
         )
+    parent_end_turn_imitation_weight = getattr(
+        args, "positive_energy_parent_end_turn_imitation_weight", None
+    )
+    if (
+        is_rl_agent
+        and parent_end_turn_imitation_weight is not None
+        and not eval_mode
+    ):
+        cmd.extend(
+            [
+                "--positive-energy-parent-end-turn-imitation-weight",
+                str(parent_end_turn_imitation_weight),
+            ]
+        )
 
     return cmd
 
@@ -338,6 +352,11 @@ def parse_args():
     parser.add_argument("--parent-policy-anchor-weight", type=float, default=None)
     parser.add_argument(
         "--positive-energy-action-imitation-weight", type=float, default=None
+    )
+    parser.add_argument(
+        "--positive-energy-parent-end-turn-imitation-weight",
+        type=float,
+        default=None,
     )
 
     parser.add_argument("--game-dir", default=DEFAULT_GAME_DIR)

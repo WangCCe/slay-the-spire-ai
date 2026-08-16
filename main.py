@@ -450,6 +450,7 @@ def create_agent(
     expert_warmup_steps=None,
     parent_policy_anchor_weight=None,
     positive_energy_action_imitation_weight=None,
+    positive_energy_parent_end_turn_imitation_weight=None,
 ):
     """
     Create an agent instance.
@@ -535,6 +536,9 @@ def create_agent(
                 positive_energy_action_imitation_weight=(
                     positive_energy_action_imitation_weight
                 ),
+                positive_energy_parent_end_turn_imitation_weight=(
+                    positive_energy_parent_end_turn_imitation_weight
+                ),
             )
             logging.info(f"Combat RL Agent created successfully")
             logging.info(f"  State dim: {agent.rl_agent.state_encoder.feature_dim}, Action dim: {agent.rl_agent.action_encoder.MAX_ACTIONS}")
@@ -595,6 +599,9 @@ def create_agent(
                 parent_policy_anchor_weight=parent_policy_anchor_weight,
                 positive_energy_action_imitation_weight=(
                     positive_energy_action_imitation_weight
+                ),
+                positive_energy_parent_end_turn_imitation_weight=(
+                    positive_energy_parent_end_turn_imitation_weight
                 ),
             )
             logging.info(f"RL Agent created successfully")
@@ -872,6 +879,7 @@ if __name__ == "__main__":
     expert_warmup_steps = None
     parent_policy_anchor_weight = None
     positive_energy_action_imitation_weight = None
+    positive_energy_parent_end_turn_imitation_weight = None
 
     parser = argparse.ArgumentParser(
         prog="python main.py",
@@ -979,6 +987,16 @@ if __name__ == "__main__":
         help=(
             "Executed-action imitation loss weight for positive-energy RL v2 "
             "training states"
+        ),
+    )
+    parser.add_argument(
+        "--positive-energy-parent-end-turn-imitation-weight",
+        type=float,
+        default=None,
+        metavar="W",
+        help=(
+            "Executed-action imitation loss weight for positive-energy RL v2 "
+            "states where the frozen parent selects EndTurn"
         ),
     )
     parser.add_argument(
@@ -1166,6 +1184,47 @@ if __name__ == "__main__":
                     "rl or combat_rl"
                 )
 
+    if args.positive_energy_parent_end_turn_imitation_weight is not None:
+        positive_energy_parent_end_turn_imitation_weight = (
+            args.positive_energy_parent_end_turn_imitation_weight
+        )
+        if (
+            not math.isfinite(positive_energy_parent_end_turn_imitation_weight)
+            or positive_energy_parent_end_turn_imitation_weight < 0.0
+        ):
+            parser.error(
+                "--positive-energy-parent-end-turn-imitation-weight must be "
+                "finite and non-negative"
+            )
+        if positive_energy_parent_end_turn_imitation_weight > 0.0:
+            if not training:
+                parser.error(
+                    "--positive-energy-parent-end-turn-imitation-weight requires "
+                    "--train"
+                )
+            effective_rl_version = str(
+                rl_version or os.environ.get("STS_RL_VERSION", "v1")
+            ).lower()
+            if effective_rl_version != "v2":
+                parser.error(
+                    "--positive-energy-parent-end-turn-imitation-weight requires "
+                    "--rl-version v2"
+                )
+            if agent_type not in {"rl", "combat_rl"}:
+                parser.error(
+                    "--positive-energy-parent-end-turn-imitation-weight requires "
+                    "--agent rl or combat_rl"
+                )
+            if not parent_policy_anchor_weight or parent_policy_anchor_weight <= 0.0:
+                parser.error(
+                    "--positive-energy-parent-end-turn-imitation-weight requires "
+                    "a positive --parent-policy-anchor-weight"
+                )
+            if positive_energy_action_imitation_weight:
+                parser.error(
+                    "positive-energy imitation objectives are mutually exclusive"
+                )
+
     if expert_mix_enabled and not training:
         logging.warning("Expert mix enabled but training is off; expert mix will be ignored.")
 
@@ -1335,6 +1394,9 @@ if __name__ == "__main__":
         parent_policy_anchor_weight=parent_policy_anchor_weight,
         positive_energy_action_imitation_weight=(
             positive_energy_action_imitation_weight
+        ),
+        positive_energy_parent_end_turn_imitation_weight=(
+            positive_energy_parent_end_turn_imitation_weight
         ),
     )
 

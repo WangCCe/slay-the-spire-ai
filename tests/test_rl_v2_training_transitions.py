@@ -6,6 +6,7 @@ import pytest
 import torch
 
 from spirecomm.ai.rl.agent import CombatRLAgent
+from spirecomm.ai.rl.v2.action_space import END_TURN_ACTION
 from spirecomm.ai.rl.v2.agent import PendingTransition, RLAgentV2
 from spirecomm.ai.rl.v2.replay_buffer import ReplayBufferV2
 from spirecomm.ai.rl.v2.trainer import DQNTrainerV2
@@ -172,6 +173,7 @@ def _real_trainer(
     learning_starts=4,
     parent_policy_anchor_weight=0.0,
     positive_energy_action_imitation_weight=0.0,
+    positive_energy_parent_end_turn_imitation_weight=0.0,
     action_dim=2,
 ):
     return DQNTrainerV2(
@@ -194,6 +196,9 @@ def _real_trainer(
         parent_policy_anchor_weight=parent_policy_anchor_weight,
         positive_energy_action_imitation_weight=(
             positive_energy_action_imitation_weight
+        ),
+        positive_energy_parent_end_turn_imitation_weight=(
+            positive_energy_parent_end_turn_imitation_weight
         ),
     )
 
@@ -343,6 +348,62 @@ def test_positive_energy_action_imitation_ignores_zero_energy_states():
     assert loss == pytest.approx(trainer.last_td_loss)
 
 
+def test_parent_end_turn_imitation_targets_only_parent_end_turn_states():
+    trainer = _real_trainer(
+        action_dim=91,
+        parent_policy_anchor_weight=1.0,
+        positive_energy_parent_end_turn_imitation_weight=0.2,
+    )
+    trainer.set_parent_policy_anchor(trainer.online_network.state_dict())
+    with torch.no_grad():
+        trainer.parent_policy_anchor_network.advantage_stream[-1].bias[
+            END_TURN_ACTION
+        ] = 100.0
+    for _ in range(4):
+        assert _store_real_transition(
+            trainer,
+            continuous=np.array([0.5, 0.6], dtype=np.float32),
+            action=0,
+        ) is True
+
+    loss = trainer.train_step()
+
+    assert trainer.last_positive_energy_parent_end_turn_imitation_count == 4
+    assert trainer.last_positive_energy_parent_end_turn_imitation_loss > 0.0
+    assert loss == pytest.approx(
+        trainer.last_td_loss
+        + trainer.parent_policy_anchor_weight
+        * trainer.last_parent_policy_anchor_loss
+        + trainer.positive_energy_parent_end_turn_imitation_weight
+        * trainer.last_positive_energy_parent_end_turn_imitation_loss
+    )
+
+
+def test_parent_end_turn_imitation_requires_anchor_and_excludes_other_parent_actions():
+    with pytest.raises(ValueError, match="requires a positive parent policy anchor"):
+        _real_trainer(positive_energy_parent_end_turn_imitation_weight=0.2)
+
+    trainer = _real_trainer(
+        action_dim=91,
+        parent_policy_anchor_weight=1.0,
+        positive_energy_parent_end_turn_imitation_weight=0.2,
+    )
+    trainer.set_parent_policy_anchor(trainer.online_network.state_dict())
+    with torch.no_grad():
+        trainer.parent_policy_anchor_network.advantage_stream[-1].bias[1] = 100.0
+    for _ in range(4):
+        assert _store_real_transition(
+            trainer,
+            continuous=np.array([0.5, 0.6], dtype=np.float32),
+            action=0,
+        ) is True
+
+    trainer.train_step()
+
+    assert trainer.last_positive_energy_parent_end_turn_imitation_count == 0
+    assert trainer.last_positive_energy_parent_end_turn_imitation_loss == 0.0
+
+
 def test_parent_policy_anchor_label_respects_stored_action_mask():
     trainer = _real_trainer(parent_policy_anchor_weight=0.5)
     trainer.set_parent_policy_anchor(trainer.online_network.state_dict())
@@ -422,6 +483,7 @@ def _checkpoint_agent(
     learning_starts=4,
     parent_policy_anchor_weight=0.0,
     positive_energy_action_imitation_weight=0.0,
+    positive_energy_parent_end_turn_imitation_weight=0.0,
 ):
     agent = RLAgentV2.__new__(RLAgentV2)
     agent.device = "cpu"
@@ -433,6 +495,9 @@ def _checkpoint_agent(
         parent_policy_anchor_weight=parent_policy_anchor_weight,
         positive_energy_action_imitation_weight=(
             positive_energy_action_imitation_weight
+        ),
+        positive_energy_parent_end_turn_imitation_weight=(
+            positive_energy_parent_end_turn_imitation_weight
         ),
     )
     agent.network = agent.trainer.online_network
@@ -473,6 +538,40 @@ def test_positive_energy_action_imitation_checkpoint_round_trip(tmp_path):
 
     with pytest.raises(ValueError, match="does not match requested weight"):
         _checkpoint_agent().load_model(str(path))
+
+
+def test_parent_end_turn_imitation_checkpoint_round_trip(tmp_path):
+    source = _checkpoint_agent(
+        parent_policy_anchor_weight=1.0,
+        positive_energy_parent_end_turn_imitation_weight=0.2,
+    )
+    source.trainer.set_parent_policy_anchor(source.trainer.online_network.state_dict())
+    path = tmp_path / "parent-end-turn-imitation-resume.pth"
+    source.save_model(str(path))
+
+    stored = torch.load(path, map_location="cpu", weights_only=True)
+    assert stored["positive_energy_parent_end_turn_imitation_weight"] == pytest.approx(
+        0.2
+    )
+    assert (
+        stored["training_metrics"][
+            "last_positive_energy_parent_end_turn_imitation_count"
+        ]
+        == 0
+    )
+
+    restored = _checkpoint_agent(
+        parent_policy_anchor_weight=1.0,
+        positive_energy_parent_end_turn_imitation_weight=0.2,
+    )
+    restored.load_model(str(path))
+    assert (
+        restored.trainer.positive_energy_parent_end_turn_imitation_weight
+        == pytest.approx(0.2)
+    )
+
+    with pytest.raises(ValueError, match="does not match requested weight"):
+        _checkpoint_agent(parent_policy_anchor_weight=1.0).load_model(str(path))
 
 
 def _optimizer_step(trainer):

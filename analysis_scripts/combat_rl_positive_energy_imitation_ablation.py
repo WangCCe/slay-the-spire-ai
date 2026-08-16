@@ -55,6 +55,9 @@ def _evaluate(
         > 0.0
     )
     eligible_imitation = positive_energy & (actions != END_TURN_ACTION)
+    correction_eligible = eligible_imitation & (
+        parent_actions == END_TURN_ACTION
+    )
 
     with torch.no_grad():
         q_values = online(*_batch(replay, indices))
@@ -82,6 +85,12 @@ def _evaluate(
             .float()
             .mean()
         ),
+        "correction_state_count": int(correction_eligible.sum()),
+        "correction_executed_action_agreement": float(
+            (greedy_actions[correction_eligible] == actions[correction_eligible])
+            .float()
+            .mean()
+        ),
         "positive_energy_state_count": int(positive_energy.sum()),
         "positive_energy_end_turn_count": int(
             ((greedy_actions == END_TURN_ACTION) & positive_energy).sum()
@@ -105,6 +114,7 @@ def _train_variant(
     replicate_seed: int,
     imitation_weight: float,
     learning_rate: float,
+    parent_end_turn_only: bool,
 ) -> dict:
     online = _make_network(metadata, parent["online_network_state_dict"])
     target = _make_network(
@@ -154,6 +164,8 @@ def _train_variant(
                 replay["relic_ids"][indices].long(),
                 action_masks,
             ).argmax(dim=1)
+        if parent_end_turn_only:
+            eligible &= anchor_actions == END_TURN_ACTION
 
         td_loss = F.smooth_l1_loss(current_q, targets)
         anchor_loss = F.cross_entropy(current_q_values, anchor_actions)
@@ -252,6 +264,7 @@ def run(args: argparse.Namespace) -> dict:
                     replicate_seed=replicate_seed,
                     imitation_weight=weight,
                     learning_rate=args.learning_rate,
+                    parent_end_turn_only=args.parent_end_turn_only,
                 )
             )
 
@@ -262,6 +275,7 @@ def run(args: argparse.Namespace) -> dict:
         "parent_action_agreement",
         "executed_action_agreement",
         "eligible_executed_action_agreement",
+        "correction_executed_action_agreement",
         "positive_energy_end_turn_share",
         "mean_total_loss",
         "mean_td_loss",
@@ -281,6 +295,11 @@ def run(args: argparse.Namespace) -> dict:
         }
 
     baseline = summaries[str(args.imitation_weights[0])]
+    imitation_agreement_metric = (
+        "correction_executed_action_agreement"
+        if args.parent_end_turn_only
+        else "executed_action_agreement"
+    )
     eligible_weights = []
     for weight in args.imitation_weights[1:]:
         summary = summaries[str(weight)]
@@ -288,8 +307,8 @@ def run(args: argparse.Namespace) -> dict:
             summary["parent_action_agreement"]["min"] >= 0.88
             and summary["positive_energy_end_turn_share"]["max"]
             < baseline["positive_energy_end_turn_share"]["min"]
-            and summary["executed_action_agreement"]["min"]
-            > baseline["executed_action_agreement"]["max"]
+            and summary[imitation_agreement_metric]["min"]
+            > baseline[imitation_agreement_metric]["max"]
             and summary["smooth_l1"]["max"]
             <= baseline["smooth_l1"]["max"] * 1.10
         ):
@@ -322,7 +341,13 @@ def run(args: argparse.Namespace) -> dict:
             "imitation_weights": args.imitation_weights,
             "learning_rate": args.learning_rate,
             "parent_anchor_weight": 1.0,
-            "eligible_states": "energy_ratio > 0 and executed action != EndTurn",
+            "eligible_states": (
+                "energy_ratio > 0 and executed action != EndTurn and "
+                "parent greedy action == EndTurn"
+                if args.parent_end_turn_only
+                else "energy_ratio > 0 and executed action != EndTurn"
+            ),
+            "parent_end_turn_only": args.parent_end_turn_only,
         },
         "parent_baseline": parent_baseline,
         "replicates": replicates,
@@ -346,6 +371,7 @@ def build_parser() -> argparse.ArgumentParser:
         "--imitation-weights", type=float, nargs="+", default=[0.0, 0.25, 0.5]
     )
     parser.add_argument("--learning-rate", type=float, default=1e-4)
+    parser.add_argument("--parent-end-turn-only", action="store_true")
     return parser
 
 
