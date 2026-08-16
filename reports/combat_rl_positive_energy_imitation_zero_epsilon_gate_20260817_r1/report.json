@@ -1,0 +1,101 @@
+{
+  "schema_version": 1,
+  "gate_id": "combat-rl-positive-energy-imitation-zero-epsilon-gate-20260817-r1",
+  "source_commit": "a135720d4",
+  "candidate_checkpoint": {
+    "path": "reports/combat_rl_positive_energy_imitation_training_20260817_r1/rl_combat_model_ep60_steps12830.pth",
+    "sha256": "2b24d2493d6da975336f3e1430fa26b3fef1648ea6b2b8e930450668b524383e"
+  },
+  "parent_checkpoint": {
+    "path": "reports/combat_rl_parent_weight_one_interpolation_20260816_r1/rl_combat_model_parent_to_weight_one_alpha_0_20.pth",
+    "sha256": "7a27fe138ceaba927354da88d71b9186c6b918cb8d76c75c56aee8d74146faeb"
+  },
+  "seed_pool": {
+    "path": "reports/combat_rl_positive_energy_imitation_zero_epsilon_gate_20260817_r1_seed_pool.txt",
+    "sha256": "905c96df32e21be8f17201e231078960dac9ae876b6d8410c1a6ada0bca1f3c8",
+    "count": 20,
+    "all_pairs_matched": true
+  },
+  "candidate": {
+    "started_at": "2026-08-17T05:33:35+08:00",
+    "finished_at": "2026-08-17T06:19:27+08:00",
+    "games": 20,
+    "victories": 0,
+    "floor_total": 497,
+    "floor_mean": 24.85,
+    "act_2_entered": 12,
+    "act_2_boss_reached": 7,
+    "act_3_entered": 1,
+    "floors": [16, 28, 16, 33, 33, 16, 23, 33, 33, 33, 16, 33, 16, 50, 16, 16, 16, 22, 19, 29],
+    "raw_rl_decisions": 1816,
+    "raw_rl_end_turn": 1150,
+    "positive_energy_raw_rl_end_turn": 1015,
+    "positive_energy_end_turn_share": 0.8826086956521739,
+    "energy_guard_actions": 4803,
+    "lethal_guard_actions": 238,
+    "survival_guard_actions": 123,
+    "invalid_or_failed_rl_actions": 0,
+    "tracebacks": 0,
+    "sim_divergence_rows": 50,
+    "runtime_evidence_zip": {
+      "path": "reports/combat_rl_positive_energy_imitation_zero_epsilon_gate_20260817_r1/candidate/runtime_evidence.zip",
+      "sha256": "c3ba503dca4a27ed2fdfdf5c6301d8531640ca8e689ca8795607a9c9600fef8d",
+      "entry_count": 8
+    }
+  },
+  "parent": {
+    "started_at": "2026-08-17T06:23:54+08:00",
+    "finished_at": "2026-08-17T07:15:19+08:00",
+    "games": 20,
+    "victories": 0,
+    "floor_total": 518,
+    "floor_mean": 25.9,
+    "act_2_entered": 15,
+    "act_2_boss_reached": 8,
+    "act_3_entered": 3,
+    "floors": [50, 20, 23, 16, 18, 41, 21, 33, 33, 33, 16, 33, 16, 38, 16, 16, 33, 22, 19, 21],
+    "raw_rl_decisions": 1996,
+    "raw_rl_end_turn": 1249,
+    "positive_energy_raw_rl_end_turn": 1127,
+    "positive_energy_end_turn_share": 0.9023218574859888,
+    "energy_guard_actions": 5458,
+    "lethal_guard_actions": 252,
+    "survival_guard_actions": 102,
+    "invalid_or_failed_rl_actions": 0,
+    "tracebacks": 0,
+    "sim_divergence_rows": 47,
+    "runtime_evidence_zip": {
+      "path": "reports/combat_rl_positive_energy_imitation_zero_epsilon_gate_20260817_r1/parent/runtime_evidence.zip",
+      "sha256": "ba55ab9a52bdf2ca78bea04f217f9c69d49b89c9f32aa56496c2784afd62174c",
+      "entry_count": 9
+    }
+  },
+  "paired_outcomes": {
+    "candidate_floor_wins": 6,
+    "parent_floor_wins": 4,
+    "ties": 10,
+    "candidate_minus_parent_total_floors": -21,
+    "floor_deltas": [-34, 8, -7, 17, 15, -25, 2, 0, 0, 0, 0, 0, 0, 12, 0, 0, -17, 0, 0, 8]
+  },
+  "runtime_integrity": {
+    "candidate_expected_wrapper_log_growth_bytes": 1469,
+    "candidate_error_growth_after_start_bytes": 0,
+    "parent_expected_wrapper_log_growth_bytes": 1482,
+    "parent_error_growth_after_start_bytes": 0,
+    "configuration_restored_to_production": true,
+    "restored_config_sha256": "7e923bba944c411512f5f8322a8494bc30f7edda47be0e3f404c5b25edde22b2",
+    "processes_closed": true
+  },
+  "promotion_rule": {
+    "candidate_paired_floor_wins_passed": true,
+    "candidate_victories_passed": true,
+    "candidate_act_2_entries_passed": false,
+    "candidate_act_2_boss_reaches_passed": false,
+    "candidate_total_floors_passed": false,
+    "candidate_positive_energy_end_turn_share_passed": true,
+    "both_arms_completed_passed": true,
+    "all_seed_pairs_matched_passed": true,
+    "all_conditions_passed": false
+  },
+  "decision": "retain_parent_outcome_regression_despite_guard_improvement"
+}
