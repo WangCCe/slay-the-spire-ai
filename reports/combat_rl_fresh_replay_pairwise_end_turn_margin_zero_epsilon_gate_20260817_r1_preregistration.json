@@ -1,0 +1,65 @@
+{
+  "schema_version": 1,
+  "gate_id": "combat-rl-fresh-replay-pairwise-end-turn-margin-zero-epsilon-gate-20260817-r1",
+  "source_commit": "4b8d7fc70",
+  "candidate_checkpoint": {
+    "path": "reports/combat_rl_fresh_replay_pairwise_end_turn_margin_ablation_20260817_r4/rl_combat_model_pairwise_margin_weight_0_05.pth",
+    "sha256": "a83c4bfef72a1db62515c04ba3b57d353c6e29265d9b12164d4fcad3cd4f607b",
+    "construction": "fresh_replay_pairwise_end_turn_margin_distillation",
+    "imitation_weight": 0.05,
+    "real_rl_agent_cpu_load_verified": true
+  },
+  "parent_checkpoint": {
+    "path": "reports/combat_rl_parent_weight_one_interpolation_20260816_r1/rl_combat_model_parent_to_weight_one_alpha_0_20.pth",
+    "sha256": "7a27fe138ceaba927354da88d71b9186c6b918cb8d76c75c56aee8d74146faeb"
+  },
+  "offline_gate": {
+    "report": "reports/combat_rl_fresh_replay_pairwise_end_turn_margin_ablation_20260817_r4/report.json",
+    "report_sha256": "bb228e980ff83f194b9eb3a3f5301253b647bb95698ebfb50a76f4793c9359e3",
+    "selected_weight": 0.05,
+    "held_out_parent_agreement_min": 0.888671875,
+    "held_out_executed_action_agreement_mean": 0.3990885416666667,
+    "held_out_intervention_executed_over_end_turn_share_mean": 0.0739986424644788,
+    "full_replay_parent_agreement": 0.9289419054985046,
+    "full_replay_positive_energy_end_turn_share": 0.6329625844955444,
+    "parent_full_replay_positive_energy_end_turn_share": 0.6966633200645447,
+    "offline_results_have_no_promotion_authority": true
+  },
+  "evaluation": {
+    "arm_order": ["candidate", "parent"],
+    "games_per_arm": 20,
+    "mode": "eval",
+    "epsilon": 0.0,
+    "elite_route": "conservative",
+    "ascension": 0,
+    "seed_pool": "reports/combat_rl_fresh_replay_pairwise_end_turn_margin_zero_epsilon_gate_20260817_r1_seed_pool.txt",
+    "seed_pool_sha256": "a3778259d8e1cb320b314da1936ad4c7a4a17eb97cf3142fcc874670edc44f1b",
+    "candidate_launch_config_sha256": "fbc2a9be3b84b4d6d4061c759b86324f12c0f2333b92f3563ff94c368e5873e6",
+    "parent_launch_config_sha256": "52c35d84c897c25de0b66a6f2e674e21d3d031e7bfe51ccd3f4342a3070d16e3",
+    "same_seed_order": true,
+    "fresh_against_existing_seed_pool_artifacts": true,
+    "training_disabled": true,
+    "expert_mix_disabled": true,
+    "aligned_positive_energy_end_turn_metric": "raw RL EndTurn decisions with energy > 0 divided by all raw RL decisions with energy > 0"
+  },
+  "promotion_rule": {
+    "candidate_paired_floor_wins_must_exceed_parent": true,
+    "candidate_victories_must_be_at_least_parent": true,
+    "candidate_act_2_entries_must_be_at_least_parent": true,
+    "candidate_act_2_boss_reaches_must_be_at_least_parent": true,
+    "candidate_act_3_entries_must_be_at_least_parent": true,
+    "candidate_total_floors_must_be_at_least_parent": true,
+    "candidate_aligned_positive_energy_end_turn_share_must_not_exceed_parent": true,
+    "both_arms_must_complete_all_games": true,
+    "all_seed_pairs_must_match": true,
+    "both_arms_must_have_no_runtime_failures": true,
+    "all_conditions_required": true
+  },
+  "execution_constraints": {
+    "stop_after_started_arm_failure": true,
+    "no_seed_or_threshold_change_after_start": true,
+    "no_model_or_parameter_change_between_arms": true,
+    "no_automatic_promotion": true,
+    "restore_production_configuration_between_arms_and_after_completion": true
+  }
+}
