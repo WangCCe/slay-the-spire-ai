@@ -1,0 +1,50 @@
+{
+  "schema_version": 1,
+  "collection_id": "combat-rl-parent-on-policy-replay-collection-20260817-r4",
+  "source_commit": "0b926d61dc4fa45adbbad1c879a47eaa00fca627",
+  "purpose": "Collect an untouched zero-epsilon parent replay cohort for frozen r7 candidate confirmation.",
+  "authority": "replay collection and frozen offline candidate confirmation only; no live evaluation or production checkpoint replacement",
+  "candidate_under_confirmation": {
+    "path": "reports/combat_rl_single_step_sgd_trust_region_20260817_r7/rl_combat_model_single_step_sgd_candidate.pth",
+    "sha256": "0e92acec8928e0b467f1440e2cbe0f15b6b940d095e29aae26e82b76ff5a7a46",
+    "must_not_be_loaded_during_collection": true
+  },
+  "initializer_checkpoint": {
+    "path": "reports/combat_rl_parent_on_policy_replay_collection_20260817_r4/rl_combat_model_parent_empty_replay_learning_starts_100000.pth",
+    "sha256": "3db0ff976d3b7999959ae5f132b8bd974aa7aeae381daabe14ede7181d65cbb9",
+    "epsilon": 0.0,
+    "learning_starts": 100000,
+    "replay_transition_count": 0,
+    "online_and_target_equal_parent": true,
+    "optimizer_state_is_empty": true
+  },
+  "collection": {
+    "games": 20,
+    "epsilon": 0.0,
+    "boss_min_epsilon": 0.0,
+    "elite_route": "conservative",
+    "ascension": 0,
+    "seed_pool": "reports/combat_rl_parent_on_policy_replay_collection_20260817_r4_seed_pool.txt",
+    "seed_pool_sha256": "954c92204240039ae17ccb928e233a12e9eb6f9c89364b351dda22912358dbca",
+    "seeds_are_unique_within_repo_seed_artifacts": true,
+    "launch_config": "reports/combat_rl_parent_on_policy_replay_collection_20260817_r4.properties",
+    "launch_config_sha256": "e445e86ee50dea6a74395420714b05ecdef6f22c481bef745ec09923a890f680",
+    "expert_mix_disabled": true
+  },
+  "required_checks": {
+    "complete_exactly_20_games": true,
+    "all_run_seeds_match_in_order": true,
+    "online_and_target_remain_equal_to_parent": true,
+    "optimizer_state_remains_empty": true,
+    "optimizer_step_remains_zero": true,
+    "no_training_losses_are_emitted": true,
+    "no_post_start_runtime_failures": true
+  },
+  "execution_policy": {
+    "pre_game_operational_restart_is_allowed": true,
+    "after_first_game_preserve_seed_order_and_parameters": true,
+    "do_not_substitute_a_different_cohort_after_observing_results": true,
+    "restore_production_configuration_after_completion": true
+  },
+  "next_step": "Evaluate the frozen r7 candidate and promoted parent on r4 using the existing one-step TD and policy-drift gate without fitting or tuning."
+}
