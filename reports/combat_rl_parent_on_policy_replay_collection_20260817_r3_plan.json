@@ -1,0 +1,45 @@
+{
+  "schema_version": 1,
+  "collection_id": "combat-rl-parent-on-policy-replay-collection-20260817-r3",
+  "source_commit": "70b035404256f11f18fc78aa0552f9535d2cf3d5",
+  "purpose": "Collect an unseen zero-epsilon parent replay cohort for outcome-constrained offline combat training validation.",
+  "authority": "replay collection and offline validation only; no policy promotion or production checkpoint replacement",
+  "initializer_checkpoint": {
+    "path": "reports/combat_rl_parent_on_policy_replay_collection_20260817_r3/rl_combat_model_parent_empty_replay_learning_starts_100000.pth",
+    "sha256": "4d5df00da75e205b02580bc150587e4f1e250832778d34d3f94a7f4ed24f256d",
+    "epsilon": 0.0,
+    "learning_starts": 100000,
+    "replay_transition_count": 0,
+    "online_and_target_equal_parent": true,
+    "optimizer_state_is_empty": true
+  },
+  "collection": {
+    "games": 20,
+    "epsilon": 0.0,
+    "boss_min_epsilon": 0.0,
+    "elite_route": "conservative",
+    "ascension": 0,
+    "seed_pool": "reports/combat_rl_parent_on_policy_replay_collection_20260817_r3_seed_pool.txt",
+    "seed_pool_sha256": "f4b6a241bf84f9eee68f7e01453b7f4e6cc13f6ed02fa385502d063a5c03b094",
+    "seeds_are_unique_within_repo_seed_artifacts": true,
+    "launch_config": "reports/combat_rl_parent_on_policy_replay_collection_20260817_r3.properties",
+    "launch_config_sha256": "89620bc084ca3cab5763d1ed4dfcd09d0f2d4c45fe26e563796755eb54879814",
+    "expert_mix_disabled": true
+  },
+  "required_checks": {
+    "complete_exactly_20_games": true,
+    "all_run_seeds_match_in_order": true,
+    "online_and_target_remain_equal_to_parent": true,
+    "optimizer_state_remains_empty": true,
+    "optimizer_step_remains_zero": true,
+    "no_training_losses_are_emitted": true,
+    "no_post_start_runtime_failures": true
+  },
+  "execution_policy": {
+    "pre_game_operational_restart_is_allowed": true,
+    "after_first_game_preserve_seed_order_and_parameters": true,
+    "do_not_substitute_a_different_cohort_after_observing_results": true,
+    "restore_production_configuration_after_completion": true
+  },
+  "next_step": "Fit bounded low-TD Q-anchored pairwise candidates on r1+r2 only, then use r3 as the unseen offline development cohort before considering a fresh live gate."
+}
