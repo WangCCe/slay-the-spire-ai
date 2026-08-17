@@ -1,0 +1,54 @@
+{
+  "schema_version": 1,
+  "source_commit": "df37d3c09",
+  "decision": "eligible_for_one_fresh_matched_zero_epsilon_gate",
+  "selected_weight": 0.05,
+  "candidate_checkpoint": {
+    "path": "reports/combat_rl_fresh_replay_pairwise_end_turn_margin_ablation_20260817_r4/rl_combat_model_pairwise_margin_weight_0_05.pth",
+    "sha256": "a83c4bfef72a1db62515c04ba3b57d353c6e29265d9b12164d4fcad3cd4f607b",
+    "size_bytes": 2272308,
+    "checkpoint_schema_version": 2,
+    "checkpoint_kind": "weights",
+    "real_rl_agent_cpu_load_verified": true
+  },
+  "held_out_replicate_gate": {
+    "replicate_count": 3,
+    "parent_agreement_min": 0.888671875,
+    "parent_agreement_mean": 0.9036458333333334,
+    "executed_action_agreement_min": 0.39453125,
+    "executed_action_agreement_mean": 0.3990885416666667,
+    "intervention_executed_over_end_turn_share_min": 0.06517311930656433,
+    "intervention_executed_over_end_turn_share_mean": 0.0739986424644788,
+    "positive_energy_end_turn_share_max": 0.5628140568733215,
+    "positive_energy_end_turn_share_mean": 0.5469011664390564,
+    "smooth_l1_max": 4.400722026824951,
+    "all_conditions_passed": true
+  },
+  "full_replay_candidate": {
+    "transition_count": 3856,
+    "parent_action_agreement": 0.9289419054985046,
+    "parent_disagreement_count": 274,
+    "executed_action_agreement": 0.36151450872421265,
+    "parent_executed_action_agreement": 0.3451763391494751,
+    "positive_energy_end_turn_share": 0.6329625844955444,
+    "parent_positive_energy_end_turn_share": 0.6966633200645447,
+    "intervention_state_count": 2002,
+    "intervention_parent_disagreement_count": 189,
+    "intervention_executed_action_match_count": 94,
+    "intervention_executed_over_end_turn_share": 0.05094905197620392,
+    "off_target_state_count": 1854,
+    "off_target_parent_disagreement_count": 85,
+    "off_target_parent_disagreement_share": 0.04584681615233421,
+    "smooth_l1": 4.153048038482666,
+    "parent_smooth_l1": 4.168867111206055,
+    "relative_l2_from_parent": 0.0018903184292580538
+  },
+  "controls": {
+    "targeted_cross_entropy_report": "reports/combat_rl_fresh_replay_targeted_imitation_ablation_20260817_r1.json",
+    "targeted_cross_entropy_eligible_weights": [],
+    "td_plus_action_cross_entropy_anchor_eligible_weights": [],
+    "zero_td_action_cross_entropy_anchor_eligible_weights": [],
+    "interpretation": "Pairwise margin became eligible only after replacing the non-zero-at-entry action cross-entropy anchor with legal-action Q-value regression."
+  },
+  "authority": "offline model fitting only; no promotion authority"
+}
