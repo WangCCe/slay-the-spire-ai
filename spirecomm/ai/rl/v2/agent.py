@@ -223,7 +223,12 @@ class RLAgentV2:
             )
             self.network.eval()
 
-        self.boss_min_epsilon = 0.3
+        boss_min_epsilon = float(
+            os.environ.get("STS_RL_BOSS_MIN_EPSILON", "0.3")
+        )
+        if not math.isfinite(boss_min_epsilon) or not 0.0 <= boss_min_epsilon <= 1.0:
+            raise ValueError("boss minimum epsilon must be finite and within [0, 1]")
+        self.boss_min_epsilon = boss_min_epsilon
         self.last_game: Optional[Game] = None
         self.pending_transition: Optional[PendingTransition] = None
 

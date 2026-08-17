@@ -1,6 +1,8 @@
 import sys
 from types import SimpleNamespace
 
+import pytest
+
 from scripts import run_training_batch
 from scripts.run_training_batch import (
     PHASES,
@@ -25,6 +27,7 @@ class Args:
     expert_mix = False
     expert_mix_prob = None
     expert_mix_warmup = None
+    boss_min_epsilon = None
     parent_policy_anchor_weight = None
     positive_energy_action_imitation_weight = None
     positive_energy_parent_end_turn_imitation_weight = None
@@ -165,6 +168,24 @@ def test_batch_child_env_enables_default_decision_trace(monkeypatch):
     env = build_child_env(args)
 
     assert env["STS_DECISION_TRACE_FILE"].endswith("ai_decision_trace.jsonl")
+
+
+def test_batch_child_env_forwards_explicit_boss_min_epsilon(monkeypatch):
+    monkeypatch.delenv("STS_RL_BOSS_MIN_EPSILON", raising=False)
+    args = Args()
+    args.boss_min_epsilon = 0.0
+
+    env = build_child_env(args)
+
+    assert env["STS_RL_BOSS_MIN_EPSILON"] == "0.0"
+
+
+def test_batch_child_env_rejects_invalid_boss_min_epsilon():
+    args = Args()
+    args.boss_min_epsilon = 1.1
+
+    with pytest.raises(ValueError, match="boss minimum epsilon"):
+        build_child_env(args)
 
 
 def test_batch_child_env_can_skip_decision_trace(monkeypatch):

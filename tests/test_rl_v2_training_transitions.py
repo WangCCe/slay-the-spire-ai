@@ -8,6 +8,7 @@ import torch
 from spirecomm.ai.rl.agent import CombatRLAgent
 from spirecomm.ai.rl.v2.action_space import END_TURN_ACTION
 from spirecomm.ai.rl.v2.agent import PendingTransition, RLAgentV2
+from spirecomm.ai.rl.v2.id_mapping import IdMapper
 from spirecomm.ai.rl.v2.replay_buffer import ReplayBufferV2
 from spirecomm.ai.rl.v2.trainer import DQNTrainerV2
 from spirecomm.communication.action import EndTurnAction
@@ -638,6 +639,31 @@ def test_positive_parent_policy_anchor_requires_parent_checkpoint():
             training=True,
             device="cpu",
             parent_policy_anchor_weight=0.25,
+        )
+
+
+def test_boss_min_epsilon_can_be_disabled_for_replay_collection(monkeypatch):
+    monkeypatch.setenv("STS_RL_BOSS_MIN_EPSILON", "0")
+
+    agent = RLAgentV2(
+        training=False,
+        device="cpu",
+        id_mapper=IdMapper(card_ids={}, potion_ids={}, relic_ids={}, card_tags={}),
+    )
+
+    assert agent.boss_min_epsilon == 0.0
+
+
+def test_boss_min_epsilon_rejects_invalid_environment(monkeypatch):
+    monkeypatch.setenv("STS_RL_BOSS_MIN_EPSILON", "nan")
+
+    with pytest.raises(ValueError, match="boss minimum epsilon"):
+        RLAgentV2(
+            training=False,
+            device="cpu",
+            id_mapper=IdMapper(
+                card_ids={}, potion_ids={}, relic_ids={}, card_tags={}
+            ),
         )
 
 

@@ -113,6 +113,11 @@ def build_main_command(args):
 
 def build_child_env(args):
     env = os.environ.copy()
+    boss_min_epsilon = getattr(args, "boss_min_epsilon", None)
+    if boss_min_epsilon is not None:
+        if not 0.0 <= boss_min_epsilon <= 1.0:
+            raise ValueError("boss minimum epsilon must be within [0, 1]")
+        env["STS_RL_BOSS_MIN_EPSILON"] = str(boss_min_epsilon)
     if getattr(args, "skip_decision_trace", False):
         env.pop("STS_DECISION_TRACE_FILE", None)
     else:
@@ -349,6 +354,12 @@ def parse_args():
     parser.add_argument("--expert-mix", action="store_true")
     parser.add_argument("--expert-mix-prob", type=float, default=None)
     parser.add_argument("--expert-mix-warmup", type=int, default=None)
+    parser.add_argument(
+        "--boss-min-epsilon",
+        type=float,
+        default=None,
+        help="Override the RL v2 boss exploration floor in the child process.",
+    )
     parser.add_argument("--parent-policy-anchor-weight", type=float, default=None)
     parser.add_argument(
         "--positive-energy-action-imitation-weight", type=float, default=None
