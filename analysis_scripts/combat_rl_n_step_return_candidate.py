@@ -187,6 +187,7 @@ def _fit_full_gradient(
     steps: int,
     learning_rate: float,
     td_weight: float,
+    optimizer_name: str = "adam",
 ) -> tuple[torch.nn.Module, dict]:
     if chunk_size <= 0:
         raise ValueError("Full-gradient chunk size must be positive")
@@ -200,7 +201,12 @@ def _fit_full_gradient(
     for parameter in anchor.parameters():
         parameter.requires_grad_(False)
 
-    optimizer = torch.optim.Adam(online.parameters(), lr=learning_rate)
+    if optimizer_name == "adam":
+        optimizer = torch.optim.Adam(online.parameters(), lr=learning_rate)
+    elif optimizer_name == "sgd":
+        optimizer = torch.optim.SGD(online.parameters(), lr=learning_rate)
+    else:
+        raise ValueError(f"Unsupported full-gradient optimizer: {optimizer_name}")
     train_count = int(replay["transition_count"])
     valid_action_count = int(
         replay["action_masks"][:train_count].bool().sum()
@@ -257,6 +263,7 @@ def _fit_full_gradient(
         "updates": steps,
         "transition_passes": steps,
         "dropout_enabled": False,
+        "optimizer": optimizer_name,
         "chunk_size": chunk_size,
         "steps": step_metrics,
         "mean_total_loss": sum(row["mean_total_loss"] for row in step_metrics)
@@ -288,6 +295,7 @@ def _fit_for_configuration(
             steps=args.full_gradient_steps,
             learning_rate=args.learning_rate,
             td_weight=args.td_weight,
+            optimizer_name=args.full_gradient_optimizer,
         )
 
     batches = _build_batches(
@@ -468,6 +476,7 @@ def run(args: argparse.Namespace) -> dict:
             "horizon": args.horizon,
             "gamma": args.gamma,
             "optimization_mode": args.optimization_mode,
+            "full_gradient_optimizer": args.full_gradient_optimizer,
             "full_coverage_epochs": args.full_coverage_epochs,
             "full_gradient_steps": args.full_gradient_steps,
             "updates_per_replicate": replicates[0]["training"]["updates"],
@@ -543,6 +552,7 @@ def run(args: argparse.Namespace) -> dict:
                     "horizon": args.horizon,
                     "gamma": args.gamma,
                     "optimization_mode": args.optimization_mode,
+                    "full_gradient_optimizer": args.full_gradient_optimizer,
                     "full_coverage_epochs": args.full_coverage_epochs,
                     "full_gradient_steps": args.full_gradient_steps,
                     "candidate_seed": args.candidate_seed,
@@ -594,6 +604,11 @@ def build_parser() -> argparse.ArgumentParser:
     )
     parser.add_argument("--full-coverage-epochs", type=int, default=1)
     parser.add_argument("--full-gradient-steps", type=int, default=1)
+    parser.add_argument(
+        "--full-gradient-optimizer",
+        choices=("adam", "sgd"),
+        default="adam",
+    )
     parser.add_argument("--batch-size", type=int, default=128)
     parser.add_argument("--replicate-seeds", type=int, nargs="+", default=[101, 202, 303])
     parser.add_argument("--candidate-seed", type=int, default=404)

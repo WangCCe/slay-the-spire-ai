@@ -123,3 +123,47 @@ def test_full_gradient_update_is_independent_of_memory_chunk_size():
             value, unchunked.state_dict()[name], rtol=1e-5, atol=1e-5
         )
         assert torch.equal(value, repeated.state_dict()[name])
+
+
+def test_full_gradient_sgd_uses_registered_optimizer():
+    metadata = {
+        "network_type": "standard",
+        "continuous_dim": 4,
+        "card_vocab": 3,
+        "potion_vocab": 3,
+        "relic_vocab": 3,
+        "action_dim": 2,
+        "card_slots": 1,
+        "potion_slots": 1,
+        "relic_slots": 1,
+    }
+    torch.manual_seed(11)
+    parent_network = create_dqn_v2(device="cpu", **metadata)
+    parent = {"online_network_state_dict": parent_network.state_dict()}
+    replay = {
+        "transition_count": 2,
+        "continuous": torch.zeros((2, 4)),
+        "card_ids": torch.zeros((2, 1), dtype=torch.long),
+        "potion_ids": torch.zeros((2, 1), dtype=torch.long),
+        "relic_ids": torch.zeros((2, 1), dtype=torch.long),
+        "action_masks": torch.ones((2, 2), dtype=torch.bool),
+        "actions": torch.tensor([0, 1]),
+    }
+
+    trained, metrics = _fit_full_gradient(
+        parent=parent,
+        metadata=metadata,
+        replay=replay,
+        targets=torch.tensor([1.0, -1.0]),
+        chunk_size=2,
+        steps=1,
+        learning_rate=8e-4,
+        td_weight=0.05,
+        optimizer_name="sgd",
+    )
+
+    assert metrics["optimizer"] == "sgd"
+    assert any(
+        not torch.equal(value, parent["online_network_state_dict"][name])
+        for name, value in trained.state_dict().items()
+    )

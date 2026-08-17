@@ -1,0 +1,43 @@
+{
+  "schema_version": 1,
+  "experiment_id": "combat-rl-single-step-sgd-trust-region-20260817-r7",
+  "purpose": "Follow the cross-cohort aligned first-order TD direction without Adam preconditioning or a multi-step optimizer path.",
+  "evidence_basis": {
+    "gradient_alignment_report": "reports/combat_rl_cohort_gradient_alignment_20260817_r1/report.json",
+    "all_row_pairwise_cosine_min": 0.993332967038877,
+    "parent_parameter_l2": 163.656077902287,
+    "gradient_clip": 10.0
+  },
+  "training_configuration": {
+    "target_horizon": 1,
+    "gamma": 0.99,
+    "optimization_mode": "full_dataset_gradient",
+    "optimizer": "sgd",
+    "full_gradient_steps": 1,
+    "memory_chunk_size": 128,
+    "dropout_enabled": false,
+    "learning_rate": 0.0008,
+    "td_weight": 0.05,
+    "parent_anchor_weight": 1.0,
+    "imitation_weight": 0.0,
+    "replicate_labels": [101, 202, 303]
+  },
+  "trust_region": {
+    "interpolation_alphas": [0.25, 0.5, 1.0],
+    "relative_l2_upper_bounds": [0.0000122207499143, 0.0000244414998286, 0.0000488829996572]
+  },
+  "eligibility": {
+    "all_deterministic_replicates_must_pass": true,
+    "development_one_step_smooth_l1_must_improve": true,
+    "parent_action_agreement_min": 0.98,
+    "off_target_parent_disagreement_max": 0.02
+  },
+  "constraints": {
+    "single_fixed_configuration": true,
+    "r3_is_consumed_development_data": true,
+    "no_parameter_changes_after_observing_r7": true,
+    "no_gameplay": true,
+    "no_production_checkpoint_change": true,
+    "selected_checkpoint_requires_new_r4_replay_confirmation": true
+  }
+}
