@@ -1,0 +1,74 @@
+{
+  "schema_version": 1,
+  "promotion_id": "combat-rl-second-single-step-sgd-promotion-20260818",
+  "source_commit": "b7a8cfe27",
+  "decision": "promote_second_single_step_sgd_candidate",
+  "candidate_checkpoint": {
+    "path": "reports/combat_rl_single_step_sgd_trust_region_20260817_r8/rl_combat_model_second_single_step_sgd_candidate.pth",
+    "sha256": "edf7d33124a3fbbc3abee6bae6c7b9654ea9a9191dcf151e5c0b000c71a4f454",
+    "checkpoint_kind": "weights",
+    "relative_l2_from_replaced_parent": 0.0000011688620826623298
+  },
+  "replaced_checkpoint": {
+    "path": "reports/combat_rl_single_step_sgd_trust_region_20260817_r7/rl_combat_model_single_step_sgd_candidate.pth",
+    "sha256": "0e92acec8928e0b467f1440e2cbe0f15b6b940d095e29aae26e82b76ff5a7a46"
+  },
+  "qualification": {
+    "fresh_replay_r5": {
+      "training_report": "reports/combat_rl_single_step_sgd_trust_region_20260817_r8/report.json",
+      "training_report_sha256": "56fb64cb980108582a5150630310cce6d70bb566b9225907fa56854cd25fc25b",
+      "parent_smooth_l1": 4.218846797943115,
+      "candidate_smooth_l1": 4.214702129364014,
+      "candidate_parent_action_agreement": 0.9988983869552612,
+      "all_conditions_passed": true
+    },
+    "fresh_replay_r6": {
+      "gate_report": "reports/combat_rl_parent_on_policy_replay_collection_20260817_r6/candidate_confirmation.json",
+      "gate_report_sha256": "2fddd2b3036d28690099bacbcb1fd66fc1a1658c5c6381f9ad14a3eca33d2ee2",
+      "parent_smooth_l1": 4.143240451812744,
+      "candidate_smooth_l1": 4.1388840675354,
+      "candidate_parent_action_agreement": 0.9997218251228333,
+      "all_conditions_passed": true
+    },
+    "matched_live_gate": {
+      "gate_report": "reports/combat_rl_second_single_step_sgd_zero_epsilon_gate_20260818_r1/report.json",
+      "gate_report_sha256": "8a1f7adbe8e6d4542e9ffd54df46176cf6ee714dde579de27e36e672147cbee8",
+      "candidate_paired_wins": 1,
+      "parent_paired_wins": 0,
+      "ties": 19,
+      "candidate_floor_total": 467,
+      "parent_floor_total": 466,
+      "candidate_act_2_entries": 11,
+      "parent_act_2_entries": 11,
+      "candidate_act_2_boss_reaches": 7,
+      "parent_act_2_boss_reaches": 7,
+      "all_preregistered_conditions_passed": true
+    }
+  },
+  "production": {
+    "source_config": "reports/combat_rl_second_single_step_sgd_promotion_20260818.properties",
+    "source_config_sha256": "f87804b2768b8ff53d0760fbfd267c5282afed21081ea888c336e0263041efcb",
+    "target_config": "C:/Users/20571/AppData/Local/ModTheSpire/CommunicationMod/config.properties",
+    "bounded_games_per_launch": 5,
+    "training": false,
+    "epsilon": 0.0,
+    "elite_route": "conservative",
+    "truncate_traces_at_start": true,
+    "checkpoint_backup": false,
+    "maintenance": false,
+    "post_analysis": false
+  },
+  "rollback": {
+    "source_config": "reports/combat_rl_single_step_sgd_promotion_20260817.properties",
+    "source_config_sha256": "a480cf80b550dae3dbe94b35f898a1dc8e95cab3174565421884fabb98d62c2b"
+  },
+  "limitations": {
+    "matched_live_pairs": 20,
+    "non_tied_live_pairs": 1,
+    "candidate_gate_victories": 0,
+    "parent_gate_victories": 0,
+    "large_live_effect_claimed": false,
+    "first_ironclad_victory_achieved": false
+  },
+  "next_step": "Collect one fresh on-policy replay cohort under the promoted candidate, reserve it as untouched validation, then fit a bounded multi-update successor from the accumulated consumed replay rather than adding another process-only review layer."
+}
