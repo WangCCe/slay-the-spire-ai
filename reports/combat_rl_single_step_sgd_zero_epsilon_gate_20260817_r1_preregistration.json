@@ -1,0 +1,61 @@
+{
+  "schema_version": 1,
+  "gate_id": "combat-rl-single-step-sgd-zero-epsilon-gate-20260817-r1",
+  "source_commit": "1d95ac712",
+  "candidate_checkpoint": {
+    "path": "reports/combat_rl_single_step_sgd_trust_region_20260817_r7/rl_combat_model_single_step_sgd_candidate.pth",
+    "sha256": "0e92acec8928e0b467f1440e2cbe0f15b6b940d095e29aae26e82b76ff5a7a46",
+    "construction": "one_full_dataset_sgd_step_then_parent_interpolation_alpha_0_25",
+    "relative_l2_from_parent": 0.0000014982921062948143
+  },
+  "parent_checkpoint": {
+    "path": "reports/combat_rl_parent_weight_one_interpolation_20260816_r1/rl_combat_model_parent_to_weight_one_alpha_0_20.pth",
+    "sha256": "7a27fe138ceaba927354da88d71b9186c6b918cb8d76c75c56aee8d74146faeb"
+  },
+  "fresh_replay_gate": {
+    "path": "reports/combat_rl_parent_on_policy_replay_collection_20260817_r4/candidate_confirmation.json",
+    "sha256": "d0842526ff4eb088847919b1119a750a1f54c952dee5e935bdfee4f80d02a3f2",
+    "decision": "eligible_for_bounded_live_gate",
+    "parent_smooth_l1": 3.609212875366211,
+    "candidate_smooth_l1": 3.6045937538146973,
+    "candidate_parent_action_agreement": 0.9991258978843689,
+    "offline_results_have_no_promotion_authority": true
+  },
+  "evaluation": {
+    "arm_order": ["candidate", "parent"],
+    "games_per_arm": 10,
+    "mode": "eval",
+    "epsilon": 0.0,
+    "elite_route": "conservative",
+    "ascension": 0,
+    "seed_pool": "reports/combat_rl_single_step_sgd_zero_epsilon_gate_20260817_r1_seed_pool.txt",
+    "seed_pool_sha256": "dfc778eabd851b7c229a30db1cb9cc9bf067c35eb69b2a0c4f39fb6862ecfb4c",
+    "candidate_launch_config_sha256": "a97e87a04136dc31a55a9ccb428de1cdf099ab6b3511754ce7c81b0e1ba77272",
+    "parent_launch_config_sha256": "38b480dcad1eb17b9c12ee9147b39fce652c84122b79fa5fcf3463c3622778ca",
+    "same_seed_order": true,
+    "fresh_against_existing_seed_pool_artifacts": true,
+    "training_disabled": true,
+    "expert_mix_disabled": true
+  },
+  "qualification_rule": {
+    "candidate_paired_floor_wins_must_be_at_least_parent": true,
+    "at_least_one_floor_pair_must_be_non_tied": true,
+    "candidate_victories_must_be_at_least_parent": true,
+    "candidate_act_2_entries_must_be_at_least_parent": true,
+    "candidate_act_2_boss_reaches_must_be_at_least_parent": true,
+    "candidate_act_3_entries_must_be_at_least_parent": true,
+    "candidate_total_floors_must_be_at_least_parent": true,
+    "both_arms_must_complete_all_games": true,
+    "all_seed_pairs_must_match": true,
+    "both_arms_must_have_no_runtime_failures": true,
+    "all_conditions_required": true,
+    "all_floor_pairs_tied_decision": "retain_parent_no_observable_live_benefit"
+  },
+  "execution_constraints": {
+    "stop_after_started_arm_failure": true,
+    "no_seed_or_threshold_change_after_start": true,
+    "no_model_or_parameter_change_between_arms": true,
+    "no_automatic_promotion": true,
+    "restore_production_configuration_between_arms_and_after_completion": true
+  }
+}
