@@ -1,0 +1,46 @@
+{
+  "schema_version": 1,
+  "experiment_id": "combat-rl-single-step-sgd-trust-region-20260817-r8",
+  "source_commit": "6c1e70bc7",
+  "purpose": "Apply one additional conservative TD step to the promoted parent using consumed r4 replay and validate once on untouched r5 replay.",
+  "inputs": {
+    "parent_checkpoint": "reports/combat_rl_single_step_sgd_trust_region_20260817_r7/rl_combat_model_single_step_sgd_candidate.pth",
+    "parent_checkpoint_sha256": "0e92acec8928e0b467f1440e2cbe0f15b6b940d095e29aae26e82b76ff5a7a46",
+    "training_replay": "reports/combat_rl_parent_on_policy_replay_collection_20260817_r4/rl_combat_model_ep20_steps4576_full_replay.pth",
+    "training_replay_sha256": "2c3ca6b5443b5f408d4b9b232d15459c3b235e4fb751162acce1c5ef31bb590a",
+    "validation_replay": "reports/combat_rl_parent_on_policy_replay_collection_20260817_r5/rl_combat_model_ep20_steps3631.pth",
+    "validation_replay_sha256": "e11f4e2b92fbed2e76e21d8325ab07757855f11f83f41310ae5a776add2e22ca"
+  },
+  "training_configuration": {
+    "target_horizon": 1,
+    "gamma": 0.99,
+    "optimization_mode": "full_dataset_gradient",
+    "optimizer": "sgd",
+    "full_gradient_steps": 1,
+    "memory_chunk_size": 128,
+    "dropout_enabled": false,
+    "learning_rate": 0.0008,
+    "td_weight": 0.05,
+    "parent_anchor_weight": 1.0,
+    "imitation_weight": 0.0,
+    "replicate_labels": [101, 202, 303],
+    "candidate_seed": 404
+  },
+  "selection": {
+    "interpolation_alphas": [0.25, 0.5, 1.0],
+    "choose_smallest_passing_alpha": true,
+    "validation_one_step_smooth_l1_must_improve": true,
+    "parent_action_agreement_min": 0.98,
+    "off_target_parent_disagreement_max": 0.02,
+    "all_deterministic_replicate_labels_must_pass": true
+  },
+  "constraints": {
+    "single_fixed_configuration": true,
+    "r4_is_consumed_training_data": true,
+    "r5_is_untouched_validation_data": true,
+    "no_parameter_changes_after_reading_r5_metrics": true,
+    "no_gameplay": true,
+    "no_automatic_promotion": true,
+    "passing_candidate_requires_a_separate_bounded_live_gate": true
+  }
+}
