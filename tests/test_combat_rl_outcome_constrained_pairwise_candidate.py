@@ -1,6 +1,7 @@
 from analysis_scripts.combat_rl_outcome_constrained_pairwise_candidate import (
     _eligibility,
     _interpolate_with_parent,
+    _td_only_eligibility,
 )
 import torch
 
@@ -87,3 +88,31 @@ def test_parent_interpolation_scales_parameter_delta():
             trained.state_dict()[name] - parent.state_dict()[name]
         )
         assert torch.equal(value, expected)
+
+
+def test_td_only_gate_does_not_require_behavioral_surrogate_change():
+    metrics = {
+        "smooth_l1": 3.9,
+        "parent_action_agreement": 0.99,
+        "off_target_parent_disagreement_share": 0.01,
+        "positive_energy_end_turn_share": 0.70,
+        "intervention_executed_over_end_turn_share": 0.0,
+    }
+
+    checks = _td_only_eligibility(metrics, _baseline())
+
+    assert checks["all_conditions_passed"] is True
+
+
+def test_td_only_gate_rejects_parent_drift():
+    metrics = {
+        "smooth_l1": 3.9,
+        "parent_action_agreement": 0.97,
+        "off_target_parent_disagreement_share": 0.03,
+    }
+
+    checks = _td_only_eligibility(metrics, _baseline())
+
+    assert checks["parent_action_agreement_at_least_0_98"] is False
+    assert checks["off_target_parent_disagreement_at_most_0_02"] is False
+    assert checks["all_conditions_passed"] is False

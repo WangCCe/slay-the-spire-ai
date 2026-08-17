@@ -33,6 +33,8 @@ from spirecomm.ai.rl.v2.state_encoder import StateEncoderV2
 PARENT_AGREEMENT_MIN = 0.95
 POSITIVE_ENERGY_END_TURN_REDUCTION_MIN = 0.01
 OFF_TARGET_DISAGREEMENT_MAX = 0.03
+TD_ONLY_PARENT_AGREEMENT_MIN = 0.98
+TD_ONLY_OFF_TARGET_DISAGREEMENT_MAX = 0.02
 
 
 def _sha256(path: Path) -> str:
@@ -140,6 +142,23 @@ def _eligibility(metrics: dict, baseline: dict) -> dict:
     return checks
 
 
+def _td_only_eligibility(metrics: dict, baseline: dict) -> dict:
+    checks = {
+        "unseen_smooth_l1_improved": metrics["smooth_l1"]
+        < baseline["smooth_l1"],
+        "parent_action_agreement_at_least_0_98": metrics[
+            "parent_action_agreement"
+        ]
+        >= TD_ONLY_PARENT_AGREEMENT_MIN,
+        "off_target_parent_disagreement_at_most_0_02": metrics[
+            "off_target_parent_disagreement_share"
+        ]
+        <= TD_ONLY_OFF_TARGET_DISAGREEMENT_MAX,
+    }
+    checks["all_conditions_passed"] = all(checks.values())
+    return checks
+
+
 def _load_replay(path: Path) -> tuple[dict, dict, dict]:
     checkpoint = torch.load(path, map_location="cpu", weights_only=True)
     replay = checkpoint["replay_buffer_state_dict"]
@@ -152,8 +171,12 @@ def _load_replay(path: Path) -> tuple[dict, dict, dict]:
 def run(args: argparse.Namespace) -> dict:
     if args.td_weight <= 0.0 or not math.isfinite(args.td_weight):
         raise ValueError("TD weight must be finite and positive")
-    if args.imitation_weight <= 0.0 or not math.isfinite(args.imitation_weight):
-        raise ValueError("Imitation weight must be finite and positive")
+    if args.imitation_weight < 0.0 or not math.isfinite(args.imitation_weight):
+        raise ValueError("Imitation weight must be finite and non-negative")
+    if args.td_only_gate and args.imitation_weight != 0.0:
+        raise ValueError("TD-only gate requires zero imitation weight")
+    if not args.td_only_gate and args.imitation_weight == 0.0:
+        raise ValueError("Pairwise gate requires positive imitation weight")
     if args.updates <= 0 or args.batch_size <= 0:
         raise ValueError("Updates and batch size must be positive")
 
@@ -194,6 +217,7 @@ def run(args: argparse.Namespace) -> dict:
         validation_replay,
         validation_parent_actions,
     )
+    eligibility_fn = _td_only_eligibility if args.td_only_gate else _eligibility
 
     train_eval_count = min(512, train_count)
     train_eval_indices = torch.arange(train_eval_count)
@@ -249,7 +273,7 @@ def run(args: argparse.Namespace) -> dict:
                 "mean_anchor_loss": train_metrics["mean_anchor_loss"],
                 "mean_imitation_loss": train_metrics["mean_imitation_loss"],
                 "validation": validation_metrics,
-                "eligibility": _eligibility(validation_metrics, baseline),
+                "eligibility": eligibility_fn(validation_metrics, baseline),
             }
         )
 
@@ -273,7 +297,7 @@ def run(args: argparse.Namespace) -> dict:
                         interpolated, parent["online_network_state_dict"]
                     ),
                     "validation": interpolated_metrics,
-                    "eligibility": _eligibility(interpolated_metrics, baseline),
+                    "eligibility": eligibility_fn(interpolated_metrics, baseline),
                 }
             replicates[-1]["interpolations"] = interpolation_results
 
@@ -332,15 +356,26 @@ def run(args: argparse.Namespace) -> dict:
             "pairwise_margin": args.pairwise_margin,
             "single_fixed_configuration": True,
             "interpolation_alphas": args.interpolation_alphas,
+            "td_only_gate": args.td_only_gate,
         },
-        "eligibility_thresholds": {
-            "unseen_smooth_l1_must_improve": True,
-            "parent_action_agreement_min": PARENT_AGREEMENT_MIN,
-            "positive_energy_end_turn_reduction_min": POSITIVE_ENERGY_END_TURN_REDUCTION_MIN,
-            "intervention_margin_must_improve": True,
-            "off_target_parent_disagreement_max": OFF_TARGET_DISAGREEMENT_MAX,
-            "all_replicates_must_pass": True,
-        },
+        "eligibility_thresholds": (
+            {
+                "unseen_smooth_l1_must_improve": True,
+                "parent_action_agreement_min": TD_ONLY_PARENT_AGREEMENT_MIN,
+                "off_target_parent_disagreement_max": TD_ONLY_OFF_TARGET_DISAGREEMENT_MAX,
+                "behavioral_surrogate_requirement": False,
+                "all_replicates_must_pass": True,
+            }
+            if args.td_only_gate
+            else {
+                "unseen_smooth_l1_must_improve": True,
+                "parent_action_agreement_min": PARENT_AGREEMENT_MIN,
+                "positive_energy_end_turn_reduction_min": POSITIVE_ENERGY_END_TURN_REDUCTION_MIN,
+                "intervention_margin_must_improve": True,
+                "off_target_parent_disagreement_max": OFF_TARGET_DISAGREEMENT_MAX,
+                "all_replicates_must_pass": True,
+            }
+        ),
         "unseen_parent_baseline": baseline,
         "replicates": replicates,
         "eligible_interpolation_alphas": eligible_interpolation_alphas,
@@ -387,7 +422,7 @@ def run(args: argparse.Namespace) -> dict:
             validation_replay,
             validation_parent_actions,
         )
-        candidate_eligibility = _eligibility(candidate_metrics, baseline)
+        candidate_eligibility = eligibility_fn(candidate_metrics, baseline)
         result["candidate_fit"] = {
             "seed": args.candidate_seed,
             "relative_l2_from_parent": _relative_l2(
@@ -427,6 +462,7 @@ def run(args: argparse.Namespace) -> dict:
                     "imitation_weight": args.imitation_weight,
                     "pairwise_margin": args.pairwise_margin,
                     "interpolation_alpha": selected_interpolation_alpha,
+                    "td_only_gate": args.td_only_gate,
                 },
             }
             _atomic_torch_save(payload, output_checkpoint)
@@ -473,6 +509,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--pairwise-margin", type=float, default=1.0)
     parser.add_argument("--interpolation-alphas", type=float, nargs="+", default=[])
     parser.add_argument("--requires-fresh-offline-confirmation", action="store_true")
+    parser.add_argument("--td-only-gate", action="store_true")
     return parser
 
 
