@@ -54,6 +54,26 @@ def _relative_l2(left: torch.nn.Module, right_state: dict) -> float:
     return math.sqrt(float(numerator / denominator))
 
 
+def _interpolate_with_parent(
+    metadata: dict,
+    trained: torch.nn.Module,
+    parent_state: dict,
+    alpha: float,
+) -> torch.nn.Module:
+    if not math.isfinite(alpha) or not 0.0 < alpha <= 1.0:
+        raise ValueError("Interpolation alpha must be within (0, 1]")
+    interpolated = {
+        name: parent_state[name].detach().cpu()
+        + alpha
+        * (
+            value.detach().cpu()
+            - parent_state[name].detach().cpu()
+        )
+        for name, value in trained.state_dict().items()
+    }
+    return _make_network(metadata, interpolated)
+
+
 def _evaluate_candidate(
     online: torch.nn.Module,
     target: torch.nn.Module,
@@ -233,9 +253,51 @@ def run(args: argparse.Namespace) -> dict:
             }
         )
 
-    all_replicates_passed = all(
-        row["eligibility"]["all_conditions_passed"] for row in replicates
+        if args.interpolation_alphas:
+            interpolation_results = {}
+            for alpha in args.interpolation_alphas:
+                interpolated = _interpolate_with_parent(
+                    train_metadata,
+                    network,
+                    parent["online_network_state_dict"],
+                    alpha,
+                )
+                interpolated_metrics = _evaluate_candidate(
+                    interpolated,
+                    parent_target,
+                    validation_replay,
+                    validation_parent_actions,
+                )
+                interpolation_results[str(alpha)] = {
+                    "relative_l2_from_parent": _relative_l2(
+                        interpolated, parent["online_network_state_dict"]
+                    ),
+                    "validation": interpolated_metrics,
+                    "eligibility": _eligibility(interpolated_metrics, baseline),
+                }
+            replicates[-1]["interpolations"] = interpolation_results
+
+    eligible_interpolation_alphas = [
+        alpha
+        for alpha in args.interpolation_alphas
+        if all(
+            row["interpolations"][str(alpha)]["eligibility"][
+                "all_conditions_passed"
+            ]
+            for row in replicates
+        )
+    ]
+    selected_interpolation_alpha = (
+        min(eligible_interpolation_alphas)
+        if eligible_interpolation_alphas
+        else None
     )
+    if args.interpolation_alphas:
+        all_replicates_passed = selected_interpolation_alpha is not None
+    else:
+        all_replicates_passed = all(
+            row["eligibility"]["all_conditions_passed"] for row in replicates
+        )
     result = {
         "schema_version": 1,
         "experiment_id": args.experiment_id,
@@ -269,6 +331,7 @@ def run(args: argparse.Namespace) -> dict:
             "imitation_weight": args.imitation_weight,
             "pairwise_margin": args.pairwise_margin,
             "single_fixed_configuration": True,
+            "interpolation_alphas": args.interpolation_alphas,
         },
         "eligibility_thresholds": {
             "unseen_smooth_l1_must_improve": True,
@@ -280,6 +343,8 @@ def run(args: argparse.Namespace) -> dict:
         },
         "unseen_parent_baseline": baseline,
         "replicates": replicates,
+        "eligible_interpolation_alphas": eligible_interpolation_alphas,
+        "selected_interpolation_alpha": selected_interpolation_alpha,
         "all_replicates_passed": all_replicates_passed,
         "authority": "offline model fitting only; no promotion authority",
     }
@@ -309,6 +374,13 @@ def run(args: argparse.Namespace) -> dict:
             td_weight=args.td_weight,
             anchor_objective="q_smooth_l1",
         )
+        if selected_interpolation_alpha is not None:
+            candidate = _interpolate_with_parent(
+                train_metadata,
+                candidate,
+                parent["online_network_state_dict"],
+                selected_interpolation_alpha,
+            )
         candidate_metrics = _evaluate_candidate(
             candidate,
             parent_target,
@@ -354,6 +426,7 @@ def run(args: argparse.Namespace) -> dict:
                     "td_weight": args.td_weight,
                     "imitation_weight": args.imitation_weight,
                     "pairwise_margin": args.pairwise_margin,
+                    "interpolation_alpha": selected_interpolation_alpha,
                 },
             }
             _atomic_torch_save(payload, output_checkpoint)
@@ -368,11 +441,12 @@ def run(args: argparse.Namespace) -> dict:
                 "size_bytes": output_checkpoint.stat().st_size,
             }
 
-    result["decision"] = (
-        "eligible_for_fresh_live_gate"
-        if "selected_checkpoint" in result
-        else "not_eligible_for_live_gate"
-    )
+    if "selected_checkpoint" not in result:
+        result["decision"] = "not_eligible_for_live_gate"
+    elif args.requires_fresh_offline_confirmation:
+        result["decision"] = "eligible_for_fresh_offline_confirmation_only"
+    else:
+        result["decision"] = "eligible_for_fresh_live_gate"
     args.output.parent.mkdir(parents=True, exist_ok=True)
     args.output.write_text(
         json.dumps(result, indent=2, sort_keys=True) + "\n", encoding="utf-8"
@@ -397,6 +471,8 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--td-weight", type=float, default=0.05)
     parser.add_argument("--imitation-weight", type=float, default=0.02)
     parser.add_argument("--pairwise-margin", type=float, default=1.0)
+    parser.add_argument("--interpolation-alphas", type=float, nargs="+", default=[])
+    parser.add_argument("--requires-fresh-offline-confirmation", action="store_true")
     return parser
 
 

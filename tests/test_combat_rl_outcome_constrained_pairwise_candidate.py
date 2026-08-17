@@ -1,6 +1,10 @@
 from analysis_scripts.combat_rl_outcome_constrained_pairwise_candidate import (
     _eligibility,
+    _interpolate_with_parent,
 )
+import torch
+
+from spirecomm.ai.rl.v2.network import create_dqn_v2
 
 
 def _baseline():
@@ -53,3 +57,33 @@ def test_eligibility_rejects_off_target_policy_drift():
 
     assert checks["off_target_parent_disagreement_at_most_0_03"] is False
     assert checks["all_conditions_passed"] is False
+
+
+def test_parent_interpolation_scales_parameter_delta():
+    metadata = {
+        "network_type": "standard",
+        "continuous_dim": 4,
+        "card_vocab": 3,
+        "potion_vocab": 3,
+        "relic_vocab": 3,
+        "action_dim": 2,
+        "card_slots": 1,
+        "potion_slots": 1,
+        "relic_slots": 1,
+    }
+    parent = create_dqn_v2(device="cpu", **metadata)
+    trained = create_dqn_v2(device="cpu", **metadata)
+    trained.load_state_dict(parent.state_dict())
+    with torch.no_grad():
+        for value in trained.parameters():
+            value.add_(2.0)
+
+    result = _interpolate_with_parent(
+        metadata, trained, parent.state_dict(), alpha=0.25
+    )
+
+    for name, value in result.state_dict().items():
+        expected = parent.state_dict()[name] + 0.25 * (
+            trained.state_dict()[name] - parent.state_dict()[name]
+        )
+        assert torch.equal(value, expected)
