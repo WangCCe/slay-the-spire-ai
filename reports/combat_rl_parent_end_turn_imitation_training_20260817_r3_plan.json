@@ -1,0 +1,67 @@
+{
+  "schema_version": 1,
+  "experiment_id": "combat-rl-parent-end-turn-imitation-training-20260817-r3",
+  "source_commit": "e9e433168",
+  "initialization_checkpoint": {
+    "path": "reports/combat_rl_parent_replay_initialization_20260817_r1/rl_combat_model_parent_with_r2_replay.pth",
+    "sha256": "96d615008cd92a82917b9eb1735030fad780af9f0327cd90ecea9158bfa11864",
+    "online_target_and_anchor_equal_promoted_parent": true,
+    "replay_transition_count": 4096,
+    "replay_source_transition_count": 9269,
+    "optimizer_step": 0,
+    "episode": 0
+  },
+  "offline_selection": {
+    "selected_weight": 0.325,
+    "updates_per_variant": 298,
+    "replicate_seeds": [101, 202, 303],
+    "coarse_sweep": {
+      "path": "reports/combat_rl_parent_end_turn_imitation_ablation_20260817_r4.json",
+      "sha256": "cbf697602e6f8bb83bcc6f3932c461a43964941383dc756267155cca4da69a0c"
+    },
+    "refinement_sweep": {
+      "path": "reports/combat_rl_parent_end_turn_imitation_ablation_20260817_r5.json",
+      "sha256": "a1c3e254b337bfa0614658fd363d976dc1f5761f730ac215a6e87d32f7e3a099"
+    },
+    "boundary_sweep": {
+      "path": "reports/combat_rl_parent_end_turn_imitation_ablation_20260817_r6.json",
+      "sha256": "18bd1583e3fd11bb5d302672220d6905386896037f870e3fdfEAB3CCEE49B503"
+    },
+    "minimum_parent_agreement": 0.8857421875,
+    "maximum_positive_energy_end_turn_share": 0.6602563858032227,
+    "parent_positive_energy_end_turn_share": 0.6666666865348816
+  },
+  "training": {
+    "additional_games": 5,
+    "elite_route": "conservative",
+    "expert_mix_probability": 0.7,
+    "parent_policy_anchor_weight": 1.0,
+    "positive_energy_action_imitation_weight": 0.0,
+    "positive_energy_parent_end_turn_imitation_weight": 0.325,
+    "seed_authority": "training_outcomes_only_and_never_reused_for_evaluation",
+    "launch_config": "reports/combat_rl_parent_end_turn_imitation_training_20260817_r3_launch_config.properties",
+    "launch_config_sha256": "0f8ac3bf4578c1408743efebd19ed5d6255a64746ee12fb5cf14570453679a17"
+  },
+  "offline_decision_rule": {
+    "exact_additional_game_count_required": 5,
+    "finite_checkpoint_required": true,
+    "optimizer_step_must_exceed": 0,
+    "stored_parent_end_turn_imitation_weight_must_equal": 0.325,
+    "stored_global_imitation_weight_must_equal": 0.0,
+    "positive_finite_targeted_imitation_loss_and_eligible_count_required": true,
+    "frozen_anchor_must_exactly_equal_promoted_parent": true,
+    "expert_action_rl_action_and_replay_failures_must_equal": 0,
+    "on_final_replay_output_positive_energy_end_turn_share_must_be_below_parent": true,
+    "minimum_output_parent_greedy_agreement": 0.88,
+    "output_smooth_l1_must_not_exceed_parent_multiple": 1.1,
+    "production_configuration_must_be_restored": true,
+    "all_conditions_required_for_any_successor_step": true
+  },
+  "constraints": {
+    "no_training_outcome_promotion_authority": true,
+    "no_automatic_promotion": true,
+    "no_parameter_changes_after_launch": true,
+    "stop_after_unrecoverable_runtime_failure": true,
+    "do_not_continue_from_weight_0_2_output": true
+  }
+}
