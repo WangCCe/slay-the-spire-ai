@@ -1,0 +1,60 @@
+{
+  "schema_version": 1,
+  "experiment_id": "combat-rl-multi-step-sgd-low-lr-20260818-r10",
+  "source_commit": "c9294000f",
+  "evidence_basis": {
+    "failed_r9_report": "reports/combat_rl_multi_step_sgd_trust_region_20260818_r9/report.json",
+    "failed_r9_report_sha256": "d298d146e2e6bc39589ff280441078f4580c893f4ca0fd5820d3daebdf5c6c6d",
+    "failure": "all alphas worsened r6 SmoothL1 after clipped multi-step oscillation",
+    "r7_loaded_by_r9": false
+  },
+  "inputs": {
+    "parent_checkpoint": "reports/combat_rl_single_step_sgd_trust_region_20260817_r8/rl_combat_model_second_single_step_sgd_candidate.pth",
+    "parent_checkpoint_sha256": "edf7d33124a3fbbc3abee6bae6c7b9654ea9a9191dcf151e5c0b000c71a4f454",
+    "training_replay": "reports/combat_rl_parent_on_policy_replay_collection_20260817_r5/rl_combat_model_ep20_steps3631.pth",
+    "training_replay_sha256": "e11f4e2b92fbed2e76e21d8325ab07757855f11f83f41310ae5a776add2e22ca",
+    "development_replay": "reports/combat_rl_parent_on_policy_replay_collection_20260817_r6/rl_combat_model_ep20_steps3595.pth",
+    "development_replay_sha256": "284fe2193e3682101cb9c4273d5d9e8a3aefb12f8d02175856cff63786544534",
+    "untouched_holdout_replay": "reports/combat_rl_parent_on_policy_replay_collection_20260818_r7/rl_combat_model_ep20_steps4194.pth",
+    "untouched_holdout_replay_sha256": "b47e7457bb5327d678f279d479a3d3191db8a2e4d5a311d7e4373a8aaff0545c"
+  },
+  "training_configuration": {
+    "target_horizon": 1,
+    "gamma": 0.99,
+    "optimization_mode": "full_dataset_gradient",
+    "optimizer": "sgd",
+    "full_gradient_steps": 8,
+    "memory_chunk_size": 128,
+    "dropout_enabled": false,
+    "learning_rate": 0.0002,
+    "td_weight": 0.05,
+    "parent_anchor_weight": 1.0,
+    "imitation_weight": 0.0,
+    "replicate_labels": [101, 202, 303],
+    "candidate_seed": 404
+  },
+  "development_selection": {
+    "interpolation_alphas": [0.5, 0.75, 1.0],
+    "choose_smallest_passing_alpha": true,
+    "smooth_l1_must_improve": true,
+    "parent_action_agreement_min": 0.98,
+    "off_target_parent_disagreement_max": 0.02,
+    "all_deterministic_replicate_labels_must_pass": true
+  },
+  "holdout_gate": {
+    "single_evaluation_only": true,
+    "smooth_l1_must_improve": true,
+    "parent_action_agreement_min": 0.98,
+    "off_target_parent_disagreement_max": 0.02,
+    "positive_energy_end_turn_count_must_not_increase": true,
+    "no_parameter_or_threshold_changes_after_reading_r7": true
+  },
+  "constraints": {
+    "only_training_change_from_r9_is_learning_rate": true,
+    "r7_must_not_be_loaded_until_candidate_is_frozen": true,
+    "r7_must_not_be_used_for_fitting_or_alpha_selection": true,
+    "no_gameplay_during_training_or_holdout": true,
+    "no_automatic_promotion": true,
+    "passing_holdout_requires_a_separate_matched_live_gate": true
+  }
+}
