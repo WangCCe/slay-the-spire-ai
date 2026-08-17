@@ -1,0 +1,55 @@
+{
+  "schema_version": 1,
+  "collection_id": "combat-rl-parent-on-policy-replay-collection-20260817-r6",
+  "source_commit": "ad2eecd53",
+  "purpose": "Collect a fresh promoted-parent replay cohort for one frozen r8 candidate confirmation.",
+  "authority": "zero-update replay collection and frozen offline confirmation only; no live evaluation or automatic promotion",
+  "frozen_candidate": {
+    "path": "reports/combat_rl_single_step_sgd_trust_region_20260817_r8/rl_combat_model_second_single_step_sgd_candidate.pth",
+    "sha256": "edf7d33124a3fbbc3abee6bae6c7b9654ea9a9191dcf151e5c0b000c71a4f454",
+    "must_not_be_loaded_during_collection": true
+  },
+  "initializer_checkpoint": {
+    "path": "reports/combat_rl_parent_on_policy_replay_collection_20260817_r5/rl_combat_model_parent_empty_replay_learning_starts_100000.pth",
+    "sha256": "8bfa3ba9e4833700d4f776c7a90ccfdf6ecdb101a3f8ae46a810ddc85d2962e5",
+    "reuse_reason": "immutable empty-replay initializer bound to the unchanged promoted parent",
+    "epsilon": 0.0,
+    "learning_starts": 100000,
+    "replay_transition_count": 0,
+    "online_and_target_equal_promoted_parent": true,
+    "optimizer_state_is_empty": true
+  },
+  "collection": {
+    "games": 20,
+    "epsilon": 0.0,
+    "boss_min_epsilon": 0.0,
+    "elite_route": "conservative",
+    "ascension": 0,
+    "seed_pool": "reports/combat_rl_parent_on_policy_replay_collection_20260817_r6_seed_pool.txt",
+    "seed_pool_sha256": "275b5b8496b93d5589070252d85a9b56f27ba9e25f36a7bf90840dba15b9ee5b",
+    "seeds_are_unique_within_repo_seed_artifacts": true,
+    "launch_config": "reports/combat_rl_parent_on_policy_replay_collection_20260817_r6.properties",
+    "launch_config_sha256": "beffe0d4e7a05f29c2c1718baadfcaf9d542183caf526c4a722388764604ec23",
+    "expert_mix_disabled": true
+  },
+  "required_checks": {
+    "complete_exactly_20_games": true,
+    "all_run_seeds_match_in_order": true,
+    "online_and_target_remain_equal_to_promoted_parent": true,
+    "optimizer_state_remains_empty": true,
+    "optimizer_step_remains_zero": true,
+    "no_training_losses_are_emitted": true,
+    "no_post_start_runtime_failures": true
+  },
+  "confirmation_rule": {
+    "candidate_one_step_smooth_l1_must_improve": true,
+    "candidate_parent_action_agreement_min": 0.98,
+    "candidate_off_target_parent_disagreement_max": 0.02,
+    "single_evaluation_only": true,
+    "no_tuning_against_r6": true
+  },
+  "execution_policy": {
+    "after_first_game_preserve_seed_order_and_parameters": true,
+    "restore_promoted_production_configuration_after_completion": true
+  }
+}
