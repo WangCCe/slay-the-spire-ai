@@ -1403,16 +1403,42 @@ The next authorized sequence is:
     primarily to training and result analysis, use focused tests for concrete
     blockers, and reserve full gates and independent review for shared-risk or
     qualification boundaries.
+62. Preserve the completed two-step conservative combat-RL progression and its
+    production milestone. The second single-step SGD candidate at SHA-256
+    `edf7d33124a3fbbc3abee6bae6c7b9654ea9a9191dcf151e5c0b000c71a4f454`
+    improved SmoothL1 on both fresh r5 and r6 parent-policy replay, retained at
+    least `99.8898%` parent action agreement, and passed its 20-pair live gate
+    with one candidate floor win, zero parent wins, 19 ties, and no progression
+    regression. It is now the promoted production baseline. Its subsequent r7
+    zero-update collection completed all 20 registered seeds, reached 497 total
+    floors, entered Act 3 twice, and produced one AI-marked A0 Ironclad victory
+    on floor 51. This is the first victory from a promoted production baseline
+    and the second known AI-marked Ironclad victory overall; the historical
+    first came from an unpromoted candidate. The original first-victory north
+    star is complete. The next combat objective is repeatable victory and Act 3
+    coverage rather than another isolated first win. The r7 terminal checkpoint
+    observed 4,194 source transitions but stored only the newest 4,096, so it is
+    a fixed one-use truncated-tail holdout, not a complete replay. Use consumed
+    r5 and r6 replay for one bounded multi-update successor, freeze it before
+    evaluating once on r7, and do not fit, select, reconstruct, or tune against
+    r7. Keep routine effort centered on model fitting, trajectory collection,
+    and result analysis; use focused tests only for concrete blockers and reserve
+    broad review for an actual promotion boundary.
 
 ## Work Lanes
 
-The active lane is exploratory card-acceptance training. First repair the
-legitimate zero-byte source-binding boundary with focused regressions, then run
-a short new-identity smoke that proves environment construction, episode
-throughput, optimizer progress, and checkpoint publication. If healthy, extend
-to a bounded multi-hour exploratory run before designing another qualification
-chain. This lane is simulator-only and does not authorize production loading,
-CommunicationMod, gameplay, policy promotion, or formal-RL claims.
+The active lane is bounded combat-RL policy improvement. Fit one materially
+larger but still conservative multi-update successor from consumed r5 and r6
+replay, freeze it before reading r7 candidate metrics, and use the fixed r7 tail
+once as untouched validation. A passing offline result may enter one separately
+matched live gate; production remains on r8 until that gate and a separate
+promotion decision pass. The near-term measure is repeatable Act 3 and victory
+coverage, not whether another one-off win can be found.
+
+The non-combat card-acceptance lane remains paused at its r6 zero-byte
+source-binding infrastructure failure. Resume it only as a separately
+prioritized exploratory training lane; do not let its former full review and
+qualification process displace the active combat fitting and evaluation loop.
 
 The offline production candidate-schema fix, anti-retry review, r2 successor,
 potion, relic, and card-cost identity repairs, post-repair Current baseline
