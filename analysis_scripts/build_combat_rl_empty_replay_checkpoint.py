@@ -70,6 +70,7 @@ def run(args: argparse.Namespace) -> dict:
     agent.trainer.replay_buffer.clear()
 
     output = args.output.resolve()
+    output.parent.mkdir(parents=True, exist_ok=True)
     base = output.with_name(f".{output.stem}.base.pth")
     try:
         agent.save_model(str(base), episode=0)
