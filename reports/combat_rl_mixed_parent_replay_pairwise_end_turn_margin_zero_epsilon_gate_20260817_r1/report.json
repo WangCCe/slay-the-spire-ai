@@ -1,0 +1,132 @@
+{
+  "schema_version": 1,
+  "gate_id": "combat-rl-mixed-parent-replay-pairwise-end-turn-margin-zero-epsilon-gate-20260817-r1",
+  "source_commit": "88ebe4d9b",
+  "preregistration_commit": "be2546c56",
+  "candidate_checkpoint": {
+    "path": "reports/combat_rl_mixed_parent_replay_pairwise_end_turn_margin_ablation_20260817_r1/rl_combat_model_mixed_pairwise_margin_refined_candidate.pth",
+    "sha256": "5f7afe856eaa69be3e62c9b45a2ab6bc5f321f54ccd58a1de1c0f1d28c95fe63",
+    "imitation_weight": 0.055
+  },
+  "parent_checkpoint": {
+    "path": "reports/combat_rl_parent_weight_one_interpolation_20260816_r1/rl_combat_model_parent_to_weight_one_alpha_0_20.pth",
+    "sha256": "7a27fe138ceaba927354da88d71b9186c6b918cb8d76c75c56aee8d74146faeb"
+  },
+  "seed_pool": {
+    "path": "reports/combat_rl_mixed_parent_replay_pairwise_end_turn_margin_zero_epsilon_gate_20260817_r1_seed_pool.txt",
+    "sha256": "4ab71aa6cc5b947aaf0907e4188993cac31fc4ab4a6dfaf837f1c387a8b1339d",
+    "count": 20,
+    "all_pairs_matched": true
+  },
+  "candidate": {
+    "started_at": "2026-08-17T17:13:51.973+08:00",
+    "finished_at": "2026-08-17T17:49:54.326+08:00",
+    "games": 20,
+    "victories": 0,
+    "floor_total": 427,
+    "floor_mean": 21.35,
+    "floor_median": 17.5,
+    "act_2_entered": 10,
+    "act_2_boss_reached": 2,
+    "act_3_entered": 0,
+    "playtime_seconds": 2068,
+    "floors": [16, 16, 21, 16, 25, 33, 29, 22, 31, 16, 16, 33, 16, 16, 16, 16, 16, 24, 19, 30],
+    "raw_rl_decisions": 1625,
+    "raw_rl_end_turn": 869,
+    "positive_energy_raw_rl_decisions": 1490,
+    "positive_energy_raw_rl_end_turn": 762,
+    "positive_energy_end_turn_share": 0.8768699654775605,
+    "aligned_positive_energy_end_turn_share": 0.5114093959731544,
+    "energy_guard_actions": 3586,
+    "lethal_guard_actions": 230,
+    "survival_guard_actions": 79,
+    "invalid_or_failed_rl_actions": 0,
+    "agent_fallbacks": 0,
+    "tracebacks": 0,
+    "critical_errors": 0,
+    "decision_trace_rows": 6448,
+    "sim_divergence_rows": 3,
+    "runtime_evidence_zip": {
+      "path": "reports/combat_rl_mixed_parent_replay_pairwise_end_turn_margin_zero_epsilon_gate_20260817_r1/candidate/runtime_evidence.zip",
+      "sha256": "5c1dce11b586c80067d72cba0a8801f19d4eb66e7c9f437c0a860321a515c439",
+      "entry_count": 9,
+      "size_bytes": 5447984
+    }
+  },
+  "parent": {
+    "started_at": "2026-08-17T17:52:24.663+08:00",
+    "finished_at": "2026-08-17T18:33:15.151+08:00",
+    "games": 20,
+    "victories": 0,
+    "floor_total": 483,
+    "floor_mean": 24.15,
+    "floor_median": 25.0,
+    "act_2_entered": 12,
+    "act_2_boss_reached": 5,
+    "act_3_entered": 0,
+    "playtime_seconds": 2359,
+    "floors": [25, 33, 21, 16, 25, 33, 16, 33, 33, 16, 16, 33, 16, 16, 30, 28, 16, 16, 31, 30],
+    "raw_rl_decisions": 1669,
+    "raw_rl_end_turn": 968,
+    "positive_energy_raw_rl_decisions": 1528,
+    "positive_energy_raw_rl_end_turn": 858,
+    "positive_energy_end_turn_share": 0.8863636363636364,
+    "aligned_positive_energy_end_turn_share": 0.5615183246073299,
+    "energy_guard_actions": 4075,
+    "lethal_guard_actions": 216,
+    "survival_guard_actions": 76,
+    "invalid_or_failed_rl_actions": 0,
+    "agent_fallbacks": 0,
+    "tracebacks": 0,
+    "critical_errors": 0,
+    "decision_trace_rows": 7096,
+    "sim_divergence_rows": 6,
+    "runtime_evidence_zip": {
+      "path": "reports/combat_rl_mixed_parent_replay_pairwise_end_turn_margin_zero_epsilon_gate_20260817_r1/parent/runtime_evidence.zip",
+      "sha256": "365ec68fe19b43032f80b775933d7f0ea1ff72f256a5f9d298522c5a70c7d460",
+      "entry_count": 9,
+      "size_bytes": 5267286
+    }
+  },
+  "paired_outcomes": {
+    "candidate_floor_wins": 2,
+    "parent_floor_wins": 7,
+    "ties": 11,
+    "candidate_minus_parent_total_floors": -56,
+    "floor_deltas": [-9, -17, 0, 0, 0, 0, 13, -11, -2, 0, 0, 0, 0, 0, -14, -12, 0, 8, -12, 0]
+  },
+  "runtime_integrity": {
+    "candidate_expected_wrapper_log_growth_bytes": 1531,
+    "candidate_error_growth_after_start_bytes": 0,
+    "parent_expected_wrapper_log_growth_bytes": 1500,
+    "parent_error_growth_after_start_bytes": 0,
+    "configuration_restored_to_production": true,
+    "restored_config_sha256": "7e923bba944c411512f5f8322a8494bc30f7edda47be0e3f404c5b25edde22b2",
+    "processes_closed": true,
+    "rotated_debug_logs_filtered_to_decision_trace_time_window": true
+  },
+  "live_metric_definitions": {
+    "positive_energy_end_turn_share": "positive-energy raw RL EndTurn decisions divided by all raw RL EndTurn decisions",
+    "aligned_positive_energy_end_turn_share": "positive-energy raw RL EndTurn decisions divided by all positive-energy raw RL decisions; this is the preregistered gate metric"
+  },
+  "promotion_rule": {
+    "candidate_paired_floor_wins_passed": false,
+    "candidate_victories_passed": true,
+    "candidate_act_2_entries_passed": false,
+    "candidate_act_2_boss_reaches_passed": false,
+    "candidate_act_3_entries_passed": true,
+    "candidate_total_floors_passed": false,
+    "candidate_aligned_positive_energy_end_turn_share_passed": true,
+    "both_arms_completed_passed": true,
+    "all_seed_pairs_matched_passed": true,
+    "both_arms_runtime_integrity_passed": true,
+    "all_conditions_passed": false,
+    "failed_conditions": [
+      "candidate_paired_floor_wins_must_exceed_parent",
+      "candidate_act_2_entries_must_be_at_least_parent",
+      "candidate_act_2_boss_reaches_must_be_at_least_parent",
+      "candidate_total_floors_must_be_at_least_parent"
+    ]
+  },
+  "decision": "retain_parent_mixed_replay_candidate_failed_paired_and_progression_gates"
+}
