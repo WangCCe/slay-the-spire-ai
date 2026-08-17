@@ -1,0 +1,39 @@
+{
+  "schema_version": 1,
+  "captured_at": "2026-08-17T13:18:54.7450112+08:00",
+  "source_commit": "c08d29d55",
+  "production_config_sha256": "7e923bba944c411512f5f8322a8494bc30f7edda47be0e3f404c5b25edde22b2",
+  "ai_games_marker_count": 16439,
+  "communication_mod_errors_bytes": 1294407,
+  "combat_checkpoints": [
+    {
+      "name": "rl_combat_model_ep1_steps9366.pth",
+      "length": 26583669,
+      "last_write_time": "2026-08-17T08:31:49.2711219+08:00"
+    },
+    {
+      "name": "rl_combat_model_ep2_steps9504.pth",
+      "length": 26583669,
+      "last_write_time": "2026-08-17T08:33:22.3126493+08:00"
+    },
+    {
+      "name": "rl_combat_model_ep3_steps9685.pth",
+      "length": 26583669,
+      "last_write_time": "2026-08-17T08:35:21.7292651+08:00"
+    },
+    {
+      "name": "rl_combat_model_ep4_steps9804.pth",
+      "length": 26583669,
+      "last_write_time": "2026-08-17T08:36:44.9932326+08:00"
+    },
+    {
+      "name": "rl_combat_model_ep5_steps9955.pth",
+      "length": 26583669,
+      "last_write_time": "2026-08-17T08:38:44.4110466+08:00"
+    }
+  ],
+  "process_scan": {
+    "project_python_count": 0,
+    "slay_the_spire_or_modthespire_count": 0
+  }
+}

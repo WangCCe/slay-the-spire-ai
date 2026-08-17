@@ -1,0 +1,123 @@
+{
+  "schema_version": 1,
+  "collection_id": "combat-rl-parent-on-policy-replay-collection-20260817-r1",
+  "source_commit": "c08d29d55",
+  "decision": "accept_replay_for_offline_training_design_only",
+  "execution": {
+    "started_at": "2026-08-17T13:20:07+08:00",
+    "stopped_at": "2026-08-17T14:01:42+08:00",
+    "requested_games": 20,
+    "completed_games": 19,
+    "termination": "protect_zero_update_boundary",
+    "termination_detail": "Episode 19 ended at 3,856 transitions, leaving only 240 before learning_starts=4,096. The largest observed complete episode added 419 transitions, so episode 20 was stopped before it could trigger an optimizer update.",
+    "seed_order_matched_registered_prefix": true,
+    "complete_run_marker_matches": 19,
+    "marker_minus_run_timestamp_seconds_min": 3,
+    "marker_minus_run_timestamp_seconds_max": 4
+  },
+  "inputs": {
+    "initializer_checkpoint_sha256": "41e5535becbc94cd61d57bfe8fc5c4f99e1871a5893928281a56948feb1a7478",
+    "parent_checkpoint_sha256": "7a27fe138ceaba927354da88d71b9186c6b918cb8d76c75c56aee8d74146faeb",
+    "seed_pool_sha256": "801ed091663303942e84327400b3a9056a2150c762f3ae658547a0075452e774",
+    "launch_config_sha256": "ad5391496ff94c661f80359bff73929254c0ed2d314bec9082a0f0f9140407e2",
+    "epsilon": 0.0,
+    "boss_min_epsilon": 0.0,
+    "expert_mix_enabled": false
+  },
+  "terminal_checkpoint": {
+    "path": "reports/combat_rl_parent_on_policy_replay_collection_20260817_r1/rl_combat_model_ep19_steps3856.pth",
+    "sha256": "db3c08ec4335ae2fca460a5c64fe911f699105c363634c8de9611b14e288c425",
+    "size_bytes": 19135434,
+    "episode": 19,
+    "total_steps": 3856,
+    "replay_transition_count": 3856,
+    "replay_source_transition_count": 3856,
+    "replay_truncated": false,
+    "learning_starts": 4096,
+    "epsilon": 0.0,
+    "online_equals_parent": true,
+    "target_equals_parent": true,
+    "online_equals_target": true,
+    "optimizer_state_count": 0,
+    "optimizer_step_max": 0,
+    "last_total_loss": null,
+    "last_td_loss": null,
+    "positive_energy_action_imitation_weight": 0.0,
+    "positive_energy_parent_end_turn_imitation_weight": 0.0,
+    "all_zero_update_checks_passed": true
+  },
+  "run_outcomes": {
+    "floors": [16, 33, 29, 33, 22, 22, 21, 33, 28, 21, 16, 25, 16, 33, 16, 50, 22, 24, 16],
+    "floor_total": 476,
+    "floor_mean": 25.05263157894737,
+    "floor_median": 22,
+    "floor_min": 16,
+    "floor_max": 50,
+    "act2_reached": 14,
+    "act2_boss_reached": 5,
+    "act3_reached": 1,
+    "wins": 0
+  },
+  "fresh_replay_policy_evidence": {
+    "executed_action_agreement": 0.3451763391494751,
+    "executed_action_disagreement_count": 2525,
+    "positive_energy_state_count": 2967,
+    "parent_positive_energy_end_turn_count": 2067,
+    "parent_positive_energy_end_turn_share": 0.6966633200645447,
+    "executed_positive_energy_end_turn_count": 79,
+    "executed_positive_energy_end_turn_share": 0.02662622183561325,
+    "positive_energy_parent_end_turn_intervention_count": 2002,
+    "parent_end_turn_executed_non_end_turn_count_all_energy": 2095,
+    "parent_non_end_turn_executed_end_turn_count_all_energy": 58,
+    "smooth_l1": 4.168867111206055,
+    "absolute_td_p50": 1.8420391082763672,
+    "absolute_td_p95": 11.224205017089844,
+    "executed_action_categories": {
+      "card": 2903,
+      "potion": 91,
+      "end_turn": 803,
+      "noncombat": 59
+    },
+    "parent_greedy_action_categories": {
+      "card": 787,
+      "potion": 170,
+      "end_turn": 2840,
+      "noncombat": 59
+    }
+  },
+  "previous_replay_comparison": {
+    "checkpoint": "reports/combat_rl_parent_replay_initialization_20260817_r2/rl_combat_model_parent_with_r2_replay_weight_0_325.pth",
+    "transition_count": 4096,
+    "source_transition_count": 9269,
+    "truncated": true,
+    "executed_action_agreement": 0.24755859375,
+    "parent_positive_energy_end_turn_share": 0.6076285243034363,
+    "executed_positive_energy_end_turn_share": 0.024543946608901024,
+    "positive_energy_parent_end_turn_intervention_count": 1768,
+    "interpretation": "Executed behavior remains low-EndTurn in both replays, while the parent network's raw EndTurn share changes materially across state cohorts. Training should target recorded interventions on the fresh replay rather than optimize a cohort-level EndTurn rate on the truncated historical replay."
+  },
+  "runtime_evidence": {
+    "archive": "reports/combat_rl_parent_on_policy_replay_collection_20260817_r1/runtime_evidence.zip",
+    "archive_sha256": "e30ada1e9d7422ee8a5d285c272127f89099306b67eab6bb15773ab677ce9240",
+    "archived_run_count": 19,
+    "communication_mod_errors_before_launch_bytes": 1294407,
+    "communication_mod_errors_after_startup_bytes": 1295872,
+    "communication_mod_errors_after_stop_bytes": 1295872,
+    "post_start_error_growth_bytes": 0,
+    "traceback_count": 0,
+    "critical_count": 0,
+    "invalid_action_count": 0,
+    "nonzero_rl_failure_count": 0,
+    "replay_failure_count": 0,
+    "training_loss_log_count": 0,
+    "expert_action_count": 0
+  },
+  "isolation": {
+    "production_config_restored": true,
+    "production_config_sha256": "7e923bba944c411512f5f8322a8494bc30f7edda47be0e3f404c5b25edde22b2",
+    "remaining_project_python_processes": 0,
+    "remaining_game_processes": 0,
+    "promotion_authority": false
+  },
+  "next_step": "Run bounded offline pairwise EndTurn-margin training on the immutable fresh replay, preserving a frozen parent anchor and evaluating held-out executed-action agreement, parent agreement, TD error, and intervention-margin coverage before any live candidate training."
+}
