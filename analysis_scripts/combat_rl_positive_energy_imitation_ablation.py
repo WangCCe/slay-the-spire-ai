@@ -54,6 +54,20 @@ def _pairwise_end_turn_margin_loss(
     return torch.relu(margin - action_margin[eligible]).mean()
 
 
+def _parent_anchor_loss(
+    current_q_values: torch.Tensor,
+    anchor_q_values: torch.Tensor,
+    action_masks: torch.Tensor,
+    objective: str,
+) -> torch.Tensor:
+    if objective == "q_smooth_l1":
+        return F.smooth_l1_loss(
+            current_q_values[action_masks],
+            anchor_q_values[action_masks],
+        )
+    return F.cross_entropy(current_q_values, anchor_q_values.argmax(dim=1))
+
+
 def _evaluate(
     online: torch.nn.Module,
     target: torch.nn.Module,
@@ -143,6 +157,7 @@ def _train_variant(
     imitation_objective: str,
     pairwise_margin: float,
     td_weight: float,
+    anchor_objective: str,
 ) -> dict:
     online = _make_network(metadata, parent["online_network_state_dict"])
     target = _make_network(
@@ -185,18 +200,24 @@ def _train_variant(
             next_q = target(*_batch(replay, indices, "next_"))[rows, next_actions]
             next_q = torch.where(dones, torch.zeros_like(next_q), next_q)
             targets = rewards + (~dones).float() * 0.99 * next_q
-            anchor_actions = anchor(
+            anchor_q_values = anchor(
                 replay["continuous"][indices].float(),
                 replay["card_ids"][indices].long(),
                 replay["potion_ids"][indices].long(),
                 replay["relic_ids"][indices].long(),
                 action_masks,
-            ).argmax(dim=1)
+            )
+            anchor_actions = anchor_q_values.argmax(dim=1)
         if parent_end_turn_only:
             eligible &= anchor_actions == END_TURN_ACTION
 
         td_loss = F.smooth_l1_loss(current_q, targets)
-        anchor_loss = F.cross_entropy(current_q_values, anchor_actions)
+        anchor_loss = _parent_anchor_loss(
+            current_q_values,
+            anchor_q_values,
+            action_masks,
+            anchor_objective,
+        )
         if imitation_objective == "pairwise_end_turn_margin":
             imitation_loss = _pairwise_end_turn_margin_loss(
                 current_q_values,
@@ -241,6 +262,7 @@ def _train_variant(
             "imitation_objective": imitation_objective,
             "pairwise_margin": pairwise_margin,
             "td_weight": td_weight,
+            "anchor_objective": anchor_objective,
             "updates": len(batches),
             "mean_total_loss": float(np.mean(losses)),
             "mean_td_loss": float(np.mean(td_losses)),
@@ -320,6 +342,7 @@ def run(args: argparse.Namespace) -> dict:
                     imitation_objective=args.imitation_objective,
                     pairwise_margin=args.pairwise_margin,
                     td_weight=args.td_weight,
+                    anchor_objective=args.anchor_objective,
                 )
             )
 
@@ -400,6 +423,7 @@ def run(args: argparse.Namespace) -> dict:
             "imitation_weights": args.imitation_weights,
             "learning_rate": args.learning_rate,
             "parent_anchor_weight": 1.0,
+            "parent_anchor_objective": args.anchor_objective,
             "td_weight": args.td_weight,
             "eligible_states": (
                 "energy_ratio > 0 and executed action != EndTurn and "
@@ -441,6 +465,11 @@ def build_parser() -> argparse.ArgumentParser:
     )
     parser.add_argument("--pairwise-margin", type=float, default=1.0)
     parser.add_argument("--td-weight", type=float, default=1.0)
+    parser.add_argument(
+        "--anchor-objective",
+        choices=("action_cross_entropy", "q_smooth_l1"),
+        default="action_cross_entropy",
+    )
     return parser
 
 
