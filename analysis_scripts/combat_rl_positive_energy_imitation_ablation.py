@@ -142,6 +142,7 @@ def _train_variant(
     parent_end_turn_only: bool,
     imitation_objective: str,
     pairwise_margin: float,
+    td_weight: float,
 ) -> dict:
     online = _make_network(metadata, parent["online_network_state_dict"])
     target = _make_network(
@@ -209,7 +210,11 @@ def _train_variant(
                 if bool(eligible.any())
                 else torch.zeros((), dtype=td_loss.dtype)
             )
-        loss = td_loss + anchor_loss + imitation_weight * imitation_loss
+        loss = (
+            td_weight * td_loss
+            + anchor_loss
+            + imitation_weight * imitation_loss
+        )
 
         optimizer.zero_grad()
         loss.backward()
@@ -235,6 +240,7 @@ def _train_variant(
             "imitation_weight": imitation_weight,
             "imitation_objective": imitation_objective,
             "pairwise_margin": pairwise_margin,
+            "td_weight": td_weight,
             "updates": len(batches),
             "mean_total_loss": float(np.mean(losses)),
             "mean_td_loss": float(np.mean(td_losses)),
@@ -248,6 +254,8 @@ def _train_variant(
 
 
 def run(args: argparse.Namespace) -> dict:
+    if not math.isfinite(args.td_weight) or args.td_weight < 0.0:
+        raise ValueError("TD weight must be finite and non-negative")
     if args.imitation_objective == "pairwise_end_turn_margin":
         if not args.parent_end_turn_only:
             raise ValueError(
@@ -311,6 +319,7 @@ def run(args: argparse.Namespace) -> dict:
                     parent_end_turn_only=args.parent_end_turn_only,
                     imitation_objective=args.imitation_objective,
                     pairwise_margin=args.pairwise_margin,
+                    td_weight=args.td_weight,
                 )
             )
 
@@ -391,6 +400,7 @@ def run(args: argparse.Namespace) -> dict:
             "imitation_weights": args.imitation_weights,
             "learning_rate": args.learning_rate,
             "parent_anchor_weight": 1.0,
+            "td_weight": args.td_weight,
             "eligible_states": (
                 "energy_ratio > 0 and executed action != EndTurn and "
                 "parent greedy action == EndTurn"
@@ -430,6 +440,7 @@ def build_parser() -> argparse.ArgumentParser:
         default="cross_entropy",
     )
     parser.add_argument("--pairwise-margin", type=float, default=1.0)
+    parser.add_argument("--td-weight", type=float, default=1.0)
     return parser
 
 
