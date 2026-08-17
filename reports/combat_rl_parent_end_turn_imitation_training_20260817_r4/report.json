@@ -1,0 +1,133 @@
+{
+  "schema_version": 1,
+  "experiment_id": "combat-rl-parent-end-turn-imitation-training-20260817-r4",
+  "source_commit": "8c9eda0e17c45741ac76e668b3c83d96300145d2",
+  "preregistration_commit": "00d6fc32ab9e5d7c9977c379fa1c1597e7eb6986",
+  "started_at": "2026-08-17T08:30:23+08:00",
+  "finished_at": "2026-08-17T08:38:44+08:00",
+  "promoted_parent": {
+    "path": "reports/combat_rl_parent_weight_one_interpolation_20260816_r1/rl_combat_model_parent_to_weight_one_alpha_0_20.pth",
+    "sha256": "7a27fe138ceaba927354da88d71b9186c6b918cb8d76c75c56aee8d74146faeb"
+  },
+  "initialization_checkpoint": {
+    "path": "reports/combat_rl_parent_replay_initialization_20260817_r2/rl_combat_model_parent_with_r2_replay_weight_0_325.pth",
+    "sha256": "2585ea72aad6b4528341c949143208fc7f6ce12d56442d1c4317fe5dbe5c47fd",
+    "episode": 0,
+    "total_steps": 9269,
+    "optimizer_step": 0,
+    "replay_transition_count": 4096,
+    "replay_source_transition_count": 9269
+  },
+  "output_checkpoint": {
+    "path": "reports/combat_rl_parent_end_turn_imitation_training_20260817_r4/rl_combat_model_ep5_steps9955.pth",
+    "sha256": "561b7879f92dd9caaaa4d88c898f2d33a3d25a45c685a5720f1872d6ffe7c946",
+    "size_bytes": 26583669,
+    "episode": 5,
+    "total_steps": 9955,
+    "epsilon": 0.905456,
+    "learning_starts": 4096,
+    "optimizer_step": 171,
+    "replay_transition_count": 4096,
+    "replay_source_transition_count": 4782,
+    "replay_truncated": true,
+    "all_checkpoint_tensors_finite": true,
+    "frozen_anchor_state_exactly_equals_promoted_parent": true,
+    "whole_model_relative_l2_from_promoted_parent": 0.006734678980530771
+  },
+  "objective_evidence": {
+    "parent_policy_anchor_weight": 1.0,
+    "positive_energy_action_imitation_weight": 0.0,
+    "positive_energy_parent_end_turn_imitation_weight": 0.325,
+    "last_total_loss": 3.5739545822143555,
+    "last_td_loss": 2.2200546264648438,
+    "last_parent_policy_anchor_loss": 0.6587219834327698,
+    "last_positive_energy_parent_end_turn_imitation_loss": 2.1390092372894287,
+    "last_positive_energy_parent_end_turn_imitation_count": 63
+  },
+  "comparison_on_output_replay": {
+    "transition_count": 4096,
+    "parent": {
+      "smooth_l1": 3.945786476135254,
+      "absolute_td_p50": 1.8070168495178223,
+      "absolute_td_p95": 11.463550567626953,
+      "parent_greedy_action_agreement": 1.0,
+      "executed_action_agreement": 0.261962890625,
+      "eligible_executed_action_agreement": 0.08929788321256638,
+      "correction_state_count": 1816,
+      "correction_executed_action_agreement": 0.0,
+      "positive_energy_state_count": 3008,
+      "positive_energy_end_turn_count": 1879,
+      "positive_energy_end_turn_share": 0.6246675252914429
+    },
+    "output": {
+      "smooth_l1": 2.9290947914123535,
+      "absolute_td_p50": 1.2726198434829712,
+      "absolute_td_p95": 8.680587768554688,
+      "parent_greedy_action_agreement": 0.89013671875,
+      "executed_action_agreement": 0.27734375,
+      "eligible_executed_action_agreement": 0.11281526833772659,
+      "correction_state_count": 1816,
+      "correction_executed_action_agreement": 0.03359030932188034,
+      "positive_energy_state_count": 3008,
+      "positive_energy_end_turn_count": 1755,
+      "positive_energy_end_turn_share": 0.5834441781044006
+    }
+  },
+  "training_context": {
+    "authority": "training_context_only",
+    "games": 5,
+    "victories": 0,
+    "floor_total": 103,
+    "floor_mean": 20.6,
+    "act_2_entered": 2,
+    "act_2_boss_reached": 1,
+    "act_3_entered": 0,
+    "playtime_seconds": 465,
+    "floors": [16, 16, 22, 16, 33]
+  },
+  "runtime_evidence": {
+    "complete_log_coverage": true,
+    "coverage_started_at": "2026-08-17T08:30:23+08:00",
+    "coverage_ended_at": "2026-08-17T08:38:44+08:00",
+    "expert_actions_selected": 398,
+    "energy_guard_triggers": 184,
+    "lethal_guard_triggers": 66,
+    "survival_guard_triggers": 21,
+    "invalid_rl_actions": 0,
+    "rl_action_failures": 0,
+    "expert_action_failures": 0,
+    "replay_rejections": 0,
+    "agent_fallbacks": 0,
+    "tracebacks": 0,
+    "critical_errors": 0,
+    "sim_divergence_rows": 0,
+    "archive": {
+      "path": "reports/combat_rl_parent_end_turn_imitation_training_20260817_r4/runtime_evidence.zip",
+      "sha256": "7049777787ac2eb28bd982a04348bb243c26beae6ab48623a8d6f7af101d476f",
+      "entry_count": 4,
+      "size_bytes": 1009035
+    }
+  },
+  "runtime_integrity": {
+    "communication_mod_error_growth_after_start_bytes": 272,
+    "communication_mod_growth_is_expected_wrapper_output": true,
+    "configuration_restored_to_production": true,
+    "restored_config_sha256": "7e923bba944c411512f5f8322a8494bc30f7edda47be0e3f404c5b25edde22b2",
+    "processes_closed": true
+  },
+  "decision_rule": {
+    "exact_additional_game_count_passed": true,
+    "finite_checkpoint_passed": true,
+    "optimizer_progress_passed": true,
+    "stored_objective_weights_passed": true,
+    "positive_finite_targeted_imitation_loss_and_eligible_count_passed": true,
+    "frozen_anchor_matches_promoted_parent_passed": true,
+    "zero_action_replay_and_fallback_failures_passed": true,
+    "output_positive_energy_end_turn_below_parent_passed": true,
+    "minimum_output_parent_agreement_passed": true,
+    "output_td_fit_guard_passed": true,
+    "production_configuration_restored_passed": true,
+    "all_rules_passed": true
+  },
+  "decision": "authorize_one_fresh_matched_zero_epsilon_gate_without_automatic_promotion"
+}
