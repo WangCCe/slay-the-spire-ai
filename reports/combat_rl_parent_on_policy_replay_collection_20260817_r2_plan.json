@@ -1,0 +1,56 @@
+{
+  "schema_version": 1,
+  "collection_id": "combat-rl-parent-on-policy-replay-collection-20260817-r2",
+  "source_commit": "94c337858",
+  "purpose": "Collect a second independent zero-epsilon replay cohort from the production parent for mixed-cohort pairwise-margin training.",
+  "authority": "replay collection and analysis only; no optimizer update, policy promotion, or production checkpoint replacement",
+  "initializer_checkpoint": {
+    "path": "reports/combat_rl_parent_on_policy_replay_collection_20260817_r2/rl_combat_model_parent_empty_replay_learning_starts_100000.pth",
+    "sha256": "7630729b7ea373ecefcdb6b5d918dbd89a64d41fd13b369378d47e2f1d6870b3",
+    "checkpoint_kind": "training",
+    "checkpoint_schema_version": 2,
+    "epsilon": 0.0,
+    "learning_starts": 100000,
+    "replay_transition_count": 0,
+    "total_steps": 0,
+    "online_and_target_equal_parent": true,
+    "optimizer_state_is_empty": true
+  },
+  "collection": {
+    "games": 20,
+    "mode": "training_for_replay_capture_only",
+    "epsilon": 0.0,
+    "boss_min_epsilon": 0.0,
+    "elite_route": "conservative",
+    "ascension": 0,
+    "seed_pool": "reports/combat_rl_parent_on_policy_replay_collection_20260817_r2_seed_pool.txt",
+    "seed_pool_sha256": "3e80ddb0fdbd05c4fdc2449806b3b898a159e6c7604528c9094aad224c46247b",
+    "seeds_are_unique_within_repo_seed_artifacts": true,
+    "launch_config": "reports/combat_rl_parent_on_policy_replay_collection_20260817_r2.properties",
+    "launch_config_sha256": "5bdc2fa5ea2dbecc81cc96b591493c50ded4c9288dab0937a9da5b08f6b3cf21",
+    "expert_mix_disabled": true
+  },
+  "terminal_checkpoint": {
+    "expected_source": "game checkpoints directory checkpoint emitted after game 20",
+    "required_replay_transition_count_min_inclusive": 1,
+    "required_replay_transition_count_max_inclusive": 4096,
+    "online_network_must_equal_parent": true,
+    "target_network_must_equal_parent": true,
+    "optimizer_state_must_be_empty": true,
+    "optimizer_step_must_equal": 0,
+    "epsilon_must_equal": 0.0,
+    "learning_starts_must_equal": 100000,
+    "no_update_or_loss_metrics_allowed": true
+  },
+  "constraints": {
+    "one_execution_only": true,
+    "stop_after_games": 20,
+    "no_retry_after_gameplay_starts": true,
+    "no_seed_or_hyperparameter_change": true,
+    "no_optimizer_updates": true,
+    "no_expert_mix": true,
+    "no_automatic_promotion": true,
+    "restore_production_configuration_after_completion": true
+  },
+  "next_step": "Combine the immutable r1 and r2 replay cohorts for mixed-cohort pairwise-margin offline training, then evaluate any eligible candidate on a newly registered seed pool."
+}
