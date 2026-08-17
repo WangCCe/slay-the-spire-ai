@@ -1,0 +1,50 @@
+{
+  "schema_version": 1,
+  "collection_id": "combat-rl-parent-on-policy-replay-collection-20260818-r8",
+  "source_commit": "be073b133",
+  "purpose": "Collect a fresh zero-epsilon promoted-r8 replay cohort to confirm a materially larger bounded combat-policy update.",
+  "authority": "zero-update replay collection and later frozen offline confirmation only; no optimizer update during collection and no automatic promotion",
+  "initializer_checkpoint": {
+    "path": "reports/combat_rl_parent_on_policy_replay_collection_20260818_r8/rl_combat_model_parent_empty_replay_learning_starts_100000.pth",
+    "sha256": "7649102f57b5562ce9d0c28e1055012c307828903078697e609185f954b3a799",
+    "manifest": "reports/combat_rl_parent_on_policy_replay_collection_20260818_r8/initialization_manifest.json",
+    "manifest_sha256": "f0818b3cac1acec40cb5bd1417b9e313c8e9e054656d6f0bd745cc81614361d8",
+    "epsilon": 0.0,
+    "learning_starts": 100000,
+    "replay_transition_count": 0,
+    "online_and_target_equal_promoted_parent": true,
+    "optimizer_state_is_empty": true
+  },
+  "promoted_parent": {
+    "path": "reports/combat_rl_single_step_sgd_trust_region_20260817_r8/rl_combat_model_second_single_step_sgd_candidate.pth",
+    "sha256": "edf7d33124a3fbbc3abee6bae6c7b9654ea9a9191dcf151e5c0b000c71a4f454"
+  },
+  "collection": {
+    "games": 20,
+    "epsilon": 0.0,
+    "boss_min_epsilon": 0.0,
+    "elite_route": "conservative",
+    "ascension": 0,
+    "seed_pool": "reports/combat_rl_parent_on_policy_replay_collection_20260818_r8_seed_pool.txt",
+    "seed_pool_sha256": "8ba5dc8e120d7276f10dd7d3d0565b38dbe5810798604b3eb225365c3f6bf297",
+    "seeds_are_unique_within_repo_seed_artifacts": true,
+    "launch_config": "reports/combat_rl_parent_on_policy_replay_collection_20260818_r8.properties",
+    "launch_config_sha256": "8a08e79163feabf8cf7e51ff834fad4e7fb1d460c53b2aca2efed9616e5a49e0",
+    "expert_mix_disabled": true
+  },
+  "required_checks": {
+    "complete_exactly_20_games": true,
+    "all_run_seeds_match_in_order": true,
+    "online_and_target_remain_equal_to_promoted_parent": true,
+    "optimizer_state_remains_empty": true,
+    "optimizer_step_remains_zero": true,
+    "no_training_losses_are_emitted": true,
+    "no_post_start_runtime_failures": true
+  },
+  "execution_policy": {
+    "after_first_game_preserve_seed_order_and_parameters": true,
+    "do_not_substitute_a_different_cohort_after_observing_results": true,
+    "restore_promoted_production_configuration_after_completion": true
+  },
+  "next_step": "Use consumed r7 replay for the next materially larger bounded fit, freeze the candidate before loading this r8 cohort, and use r8 exactly once for confirmation."
+}
