@@ -15,8 +15,10 @@ import torch.nn.functional as F
 
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
-if str(REPO_ROOT) not in sys.path:
-    sys.path.insert(0, str(REPO_ROOT))
+ANALYSIS_DIR = Path(__file__).resolve().parent
+for import_root in (REPO_ROOT, ANALYSIS_DIR):
+    if str(import_root) not in sys.path:
+        sys.path.insert(0, str(import_root))
 
 from combat_rl_dropout_update_ablation import _batch, _make_network  # noqa: E402
 from spirecomm.ai.rl.v2.action_space import END_TURN_ACTION  # noqa: E402
@@ -35,6 +37,21 @@ def _quantile(values: torch.Tensor, probability: float) -> float:
     finite = values.detach().float().reshape(-1)
     finite = finite[torch.isfinite(finite)]
     return float(torch.quantile(finite, probability)) if finite.numel() else math.nan
+
+
+def _pairwise_end_turn_margin_loss(
+    q_values: torch.Tensor,
+    actions: torch.Tensor,
+    eligible: torch.Tensor,
+    margin: float,
+) -> torch.Tensor:
+    if not bool(eligible.any()):
+        return torch.zeros((), dtype=q_values.dtype, device=q_values.device)
+    rows = torch.arange(q_values.shape[0], device=q_values.device)
+    action_margin = (
+        q_values[rows, actions] - q_values[:, END_TURN_ACTION]
+    )
+    return torch.relu(margin - action_margin[eligible]).mean()
 
 
 def _evaluate(
@@ -69,6 +86,9 @@ def _evaluate(
         selected_q = q_values[rows, actions]
         absolute_td = (targets - selected_q).abs()
         greedy_actions = q_values.argmax(dim=1)
+        intervention_margins = (
+            q_values[rows, actions] - q_values[:, END_TURN_ACTION]
+        )[correction_eligible]
 
     return {
         "smooth_l1": float(F.smooth_l1_loss(selected_q, targets)),
@@ -91,6 +111,11 @@ def _evaluate(
             .float()
             .mean()
         ),
+        "intervention_executed_over_end_turn_share": float(
+            (intervention_margins > 0.0).float().mean()
+        ),
+        "intervention_margin_p10": _quantile(intervention_margins, 0.10),
+        "intervention_margin_p50": _quantile(intervention_margins, 0.50),
         "positive_energy_state_count": int(positive_energy.sum()),
         "positive_energy_end_turn_count": int(
             ((greedy_actions == END_TURN_ACTION) & positive_energy).sum()
@@ -115,6 +140,8 @@ def _train_variant(
     imitation_weight: float,
     learning_rate: float,
     parent_end_turn_only: bool,
+    imitation_objective: str,
+    pairwise_margin: float,
 ) -> dict:
     online = _make_network(metadata, parent["online_network_state_dict"])
     target = _make_network(
@@ -169,11 +196,19 @@ def _train_variant(
 
         td_loss = F.smooth_l1_loss(current_q, targets)
         anchor_loss = F.cross_entropy(current_q_values, anchor_actions)
-        imitation_loss = (
-            F.cross_entropy(current_q_values[eligible], actions[eligible])
-            if bool(eligible.any())
-            else torch.zeros((), dtype=td_loss.dtype)
-        )
+        if imitation_objective == "pairwise_end_turn_margin":
+            imitation_loss = _pairwise_end_turn_margin_loss(
+                current_q_values,
+                actions,
+                eligible,
+                pairwise_margin,
+            )
+        else:
+            imitation_loss = (
+                F.cross_entropy(current_q_values[eligible], actions[eligible])
+                if bool(eligible.any())
+                else torch.zeros((), dtype=td_loss.dtype)
+            )
         loss = td_loss + anchor_loss + imitation_weight * imitation_loss
 
         optimizer.zero_grad()
@@ -198,6 +233,8 @@ def _train_variant(
         {
             "replicate_seed": replicate_seed,
             "imitation_weight": imitation_weight,
+            "imitation_objective": imitation_objective,
+            "pairwise_margin": pairwise_margin,
             "updates": len(batches),
             "mean_total_loss": float(np.mean(losses)),
             "mean_td_loss": float(np.mean(td_losses)),
@@ -211,6 +248,13 @@ def _train_variant(
 
 
 def run(args: argparse.Namespace) -> dict:
+    if args.imitation_objective == "pairwise_end_turn_margin":
+        if not args.parent_end_turn_only:
+            raise ValueError(
+                "Pairwise EndTurn margin requires --parent-end-turn-only"
+            )
+        if not math.isfinite(args.pairwise_margin) or args.pairwise_margin <= 0.0:
+            raise ValueError("Pairwise margin must be finite and positive")
     parent_path = args.parent_checkpoint.resolve()
     replay_path = args.replay_checkpoint.resolve()
     parent = torch.load(parent_path, map_location="cpu", weights_only=True)
@@ -265,6 +309,8 @@ def run(args: argparse.Namespace) -> dict:
                     imitation_weight=weight,
                     learning_rate=args.learning_rate,
                     parent_end_turn_only=args.parent_end_turn_only,
+                    imitation_objective=args.imitation_objective,
+                    pairwise_margin=args.pairwise_margin,
                 )
             )
 
@@ -276,6 +322,9 @@ def run(args: argparse.Namespace) -> dict:
         "executed_action_agreement",
         "eligible_executed_action_agreement",
         "correction_executed_action_agreement",
+        "intervention_executed_over_end_turn_share",
+        "intervention_margin_p10",
+        "intervention_margin_p50",
         "positive_energy_end_turn_share",
         "mean_total_loss",
         "mean_td_loss",
@@ -295,11 +344,12 @@ def run(args: argparse.Namespace) -> dict:
         }
 
     baseline = summaries[str(args.imitation_weights[0])]
-    imitation_agreement_metric = (
-        "correction_executed_action_agreement"
-        if args.parent_end_turn_only
-        else "executed_action_agreement"
-    )
+    if args.imitation_objective == "pairwise_end_turn_margin":
+        imitation_agreement_metric = "intervention_executed_over_end_turn_share"
+    elif args.parent_end_turn_only:
+        imitation_agreement_metric = "correction_executed_action_agreement"
+    else:
+        imitation_agreement_metric = "executed_action_agreement"
     eligible_weights = []
     for weight in args.imitation_weights[1:]:
         summary = summaries[str(weight)]
@@ -348,6 +398,8 @@ def run(args: argparse.Namespace) -> dict:
                 else "energy_ratio > 0 and executed action != EndTurn"
             ),
             "parent_end_turn_only": args.parent_end_turn_only,
+            "imitation_objective": args.imitation_objective,
+            "pairwise_margin": args.pairwise_margin,
         },
         "parent_baseline": parent_baseline,
         "replicates": replicates,
@@ -372,6 +424,12 @@ def build_parser() -> argparse.ArgumentParser:
     )
     parser.add_argument("--learning-rate", type=float, default=1e-4)
     parser.add_argument("--parent-end-turn-only", action="store_true")
+    parser.add_argument(
+        "--imitation-objective",
+        choices=("cross_entropy", "pairwise_end_turn_margin"),
+        default="cross_entropy",
+    )
+    parser.add_argument("--pairwise-margin", type=float, default=1.0)
     return parser
 
 
