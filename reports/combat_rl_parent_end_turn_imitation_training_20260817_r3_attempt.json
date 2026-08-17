@@ -1,0 +1,33 @@
+{
+  "schema_version": 1,
+  "experiment_id": "combat-rl-parent-end-turn-imitation-training-20260817-r3",
+  "preregistration_commit": "8c9eda0e1",
+  "started_at": "2026-08-17T08:19:46+08:00",
+  "stopped_at": "2026-08-17T08:25:00+08:00",
+  "status": "invalid_precondition_failure",
+  "failure": {
+    "type": "checkpoint_objective_weight_mismatch",
+    "message": "checkpoint positive energy parent-EndTurn imitation weight does not match requested weight",
+    "requested_weight": 0.325,
+    "stored_weight": 0.2,
+    "fallback_agent_started": true
+  },
+  "invalid_output": {
+    "completed_runs": [
+      {
+        "path": "D:/SteamLibrary/steamapps/common/SlayTheSpire/runs/IRONCLAD/1786926175.run",
+        "floor_reached": 33,
+        "victory": false,
+        "agent": "OptimizedAgent fallback"
+      }
+    ],
+    "new_training_checkpoints": 0,
+    "use_as_training_or_evaluation_evidence": false
+  },
+  "terminalization": {
+    "exact_training_and_game_processes_stopped": true,
+    "production_configuration_restored": true,
+    "restored_config_sha256": "7e923bba944c411512f5f8322a8494bc30f7edda47be0e3f404c5b25edde22b2"
+  },
+  "next_step": "rebuild_identical_replay_initialized_parent_with_stored_weight_0_325"
+}

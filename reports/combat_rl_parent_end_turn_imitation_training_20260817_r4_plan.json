@@ -1,0 +1,60 @@
+{
+  "schema_version": 1,
+  "experiment_id": "combat-rl-parent-end-turn-imitation-training-20260817-r4",
+  "source_commit": "8c9eda0e1",
+  "supersedes_invalid_attempt": "combat-rl-parent-end-turn-imitation-training-20260817-r3",
+  "initialization_checkpoint": {
+    "path": "reports/combat_rl_parent_replay_initialization_20260817_r2/rl_combat_model_parent_with_r2_replay_weight_0_325.pth",
+    "sha256": "2585ea72aad6b4528341c949143208fc7f6ce12d56442d1c4317fe5dbe5c47fd",
+    "manifest": "reports/combat_rl_parent_replay_initialization_20260817_r2/manifest.json",
+    "manifest_sha256": "a3974dec4161369d720a7a78639939d074cb614500b8d7c2bf15f8ad13100260",
+    "online_target_and_anchor_equal_promoted_parent": true,
+    "replay_exactly_equals_previous_initialization": true,
+    "replay_transition_count": 4096,
+    "replay_source_transition_count": 9269,
+    "optimizer_step": 0,
+    "episode": 0,
+    "stored_parent_end_turn_imitation_weight": 0.325,
+    "real_rl_agent_cpu_load_verified": true
+  },
+  "training": {
+    "additional_games": 5,
+    "elite_route": "conservative",
+    "expert_mix_probability": 0.7,
+    "parent_policy_anchor_weight": 1.0,
+    "positive_energy_action_imitation_weight": 0.0,
+    "positive_energy_parent_end_turn_imitation_weight": 0.325,
+    "seed_authority": "training_outcomes_only_and_never_reused_for_evaluation",
+    "launch_config": "reports/combat_rl_parent_end_turn_imitation_training_20260817_r4_launch_config.properties",
+    "launch_config_sha256": "ceedf10ea43b41ba765167045bcac8115827336f310db4b5c5b481a9494cfc2a"
+  },
+  "pre_start_validation": {
+    "checkpoint_load_must_succeed": true,
+    "requested_and_stored_objective_weights_must_match": true,
+    "combat_rl_agent_must_not_fall_back": true,
+    "failure_stops_attempt_before_accepting_any_run": true
+  },
+  "offline_decision_rule": {
+    "exact_additional_game_count_required": 5,
+    "finite_checkpoint_required": true,
+    "optimizer_step_must_exceed": 0,
+    "stored_parent_end_turn_imitation_weight_must_equal": 0.325,
+    "stored_global_imitation_weight_must_equal": 0.0,
+    "positive_finite_targeted_imitation_loss_and_eligible_count_required": true,
+    "frozen_anchor_must_exactly_equal_promoted_parent": true,
+    "expert_action_rl_action_and_replay_failures_must_equal": 0,
+    "on_final_replay_output_positive_energy_end_turn_share_must_be_below_parent": true,
+    "minimum_output_parent_greedy_agreement": 0.88,
+    "output_smooth_l1_must_not_exceed_parent_multiple": 1.1,
+    "production_configuration_must_be_restored": true,
+    "all_conditions_required_for_any_successor_step": true
+  },
+  "constraints": {
+    "no_training_outcome_promotion_authority": true,
+    "no_automatic_promotion": true,
+    "no_parameter_changes_after_launch": true,
+    "stop_after_unrecoverable_runtime_failure": true,
+    "do_not_continue_from_weight_0_2_output": true,
+    "exclude_r3_fallback_run_from_all_evidence": true
+  }
+}

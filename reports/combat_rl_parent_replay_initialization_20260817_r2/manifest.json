@@ -1,0 +1,24 @@
+{
+  "checkpoint": {
+    "checkpoint_kind": "training",
+    "episode": 0,
+    "learning_starts": 4096,
+    "online_target_and_anchor_equal_parent": true,
+    "optimizer_state_is_empty": true,
+    "path": "D:\\PycharmProjects\\slay-the-spire-ai\\reports\\combat_rl_parent_replay_initialization_20260817_r2\\rl_combat_model_parent_with_r2_replay_weight_0_325.pth",
+    "positive_energy_parent_end_turn_imitation_weight": 0.325,
+    "replay_source_transition_count": 9269,
+    "replay_transition_count": 4096,
+    "sha256": "2585ea72aad6b4528341c949143208fc7f6ce12d56442d1c4317fe5dbe5c47fd",
+    "size_bytes": 17772994,
+    "total_steps": 9269
+  },
+  "inputs": {
+    "parent_checkpoint": "D:\\PycharmProjects\\slay-the-spire-ai\\reports\\combat_rl_parent_weight_one_interpolation_20260816_r1\\rl_combat_model_parent_to_weight_one_alpha_0_20.pth",
+    "parent_checkpoint_sha256": "7a27fe138ceaba927354da88d71b9186c6b918cb8d76c75c56aee8d74146faeb",
+    "replay_checkpoint": "D:\\PycharmProjects\\slay-the-spire-ai\\reports\\combat_rl_guard_intervention_training_20260817_r2\\rl_combat_model_ep40_steps9269.pth",
+    "replay_checkpoint_sha256": "092ce5f5a9a861085d0416f2e2879062118b107aa20ac6507bbba112cc779ae0"
+  },
+  "schema_version": 1,
+  "source_commit": "8c9eda0e1"
+}
