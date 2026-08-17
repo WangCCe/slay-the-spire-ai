@@ -32,8 +32,10 @@
     "floors": [16, 7, 16, 33, 33, 16, 47, 25, 16, 19, 33, 16, 16, 33, 16, 28, 29, 16, 16, 46],
     "raw_rl_decisions": 1599,
     "raw_rl_end_turn": 938,
+    "positive_energy_raw_rl_decisions": 1477,
     "positive_energy_raw_rl_end_turn": 845,
     "positive_energy_end_turn_share": 0.9008528784648188,
+    "positive_energy_end_turn_among_positive_decisions_share": 0.5721056194989844,
     "energy_guard_actions": 4331,
     "lethal_guard_actions": 190,
     "survival_guard_actions": 101,
@@ -64,8 +66,10 @@
     "floors": [16, 33, 13, 33, 21, 16, 50, 16, 33, 19, 16, 16, 16, 16, 24, 22, 33, 16, 16, 46],
     "raw_rl_decisions": 1770,
     "raw_rl_end_turn": 961,
+    "positive_energy_raw_rl_decisions": 1591,
     "positive_energy_raw_rl_end_turn": 836,
     "positive_energy_end_turn_share": 0.8699271592091571,
+    "positive_energy_end_turn_among_positive_decisions_share": 0.5254556882463859,
     "energy_guard_actions": 4244,
     "lethal_guard_actions": 216,
     "survival_guard_actions": 143,
@@ -98,6 +102,10 @@
     "restored_config_sha256": "7e923bba944c411512f5f8322a8494bc30f7edda47be0e3f404c5b25edde22b2",
     "processes_closed": true,
     "rotated_debug_logs_filtered_to_decision_trace_time_window": true
+  },
+  "live_metric_definitions": {
+    "positive_energy_end_turn_share": "positive-energy raw RL EndTurn decisions divided by all raw RL EndTurn decisions; this is the preregistered historical live metric",
+    "positive_energy_end_turn_among_positive_decisions_share": "positive-energy raw RL EndTurn decisions divided by all positive-energy raw RL decisions; this aligns with the offline training metric denominator"
   },
   "promotion_rule": {
     "candidate_paired_floor_wins_passed": true,

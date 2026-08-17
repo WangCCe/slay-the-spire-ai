@@ -18,7 +18,8 @@ Across 20 fresh matched seeds:
 | Act 2 entered | 10 | 10 | pass |
 | Act 2 boss reached | 6 | 6 | pass |
 | Act 3 entered | 2 | 2 | context |
-| Positive-energy EndTurn share | 0.900853 | 0.869927 | fail |
+| Positive-energy share among EndTurn decisions | 0.900853 | 0.869927 | fail |
+| EndTurn share among positive-energy decisions | 0.572106 | 0.525456 | same direction |
 
 The candidate won six floor pairs, the parent won five, and nine tied. The
 candidate's total-floor delta was `+6`. Both arms completed all seeds in the
@@ -28,10 +29,13 @@ growth. Candidate runs reached floors 47 and 46, but neither arm won.
 ## Interpretation
 
 The interpolation recovered some aggregate floor performance, but the offline
-EndTurn reduction did not transfer to fresh live trajectories. The candidate
-ended positive-energy turns more often than the parent, not less. The small
-floor gain cannot override failure of the intervention's defining behavioral
-condition.
+EndTurn reduction did not transfer to fresh live trajectories. The historical
+live gate metric divides positive-energy EndTurns by all EndTurns, whereas the
+offline metric divides them by all positive-energy decisions. The candidate is
+worse under both definitions (`0.900853 > 0.869927` and
+`0.572106 > 0.525456`), so the denominator mismatch does not change this gate's
+decision. The small floor gain cannot override failure of the intervention's
+defining behavioral condition.
 
 Rotated debug logs retained older lines, so live action metrics were computed
 only from log rows inside each arm's clean decision-trace time window. Run
