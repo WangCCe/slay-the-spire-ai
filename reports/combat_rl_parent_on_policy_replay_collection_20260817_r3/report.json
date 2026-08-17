@@ -1,0 +1,120 @@
+{
+  "schema_version": 1,
+  "collection_id": "combat-rl-parent-on-policy-replay-collection-20260817-r3",
+  "source_commit": "6cd2a262e",
+  "decision": "accept_unseen_replay_for_outcome_constrained_offline_validation",
+  "execution": {
+    "started_at": "2026-08-17T18:51:53.836+08:00",
+    "finished_at": "2026-08-17T19:35:11.006+08:00",
+    "requested_games": 20,
+    "completed_games": 20,
+    "termination": "natural_max_games",
+    "seed_order_matched": true
+  },
+  "inputs": {
+    "initializer_checkpoint_sha256": "4d5df00da75e205b02580bc150587e4f1e250832778d34d3f94a7f4ed24f256d",
+    "parent_checkpoint_sha256": "7a27fe138ceaba927354da88d71b9186c6b918cb8d76c75c56aee8d74146faeb",
+    "seed_pool_sha256": "f4b6a241bf84f9eee68f7e01453b7f4e6cc13f6ed02fa385502d063a5c03b094",
+    "launch_config_sha256": "89620bc084ca3cab5763d1ed4dfcd09d0f2d4c45fe26e563796755eb54879814",
+    "epsilon": 0.0,
+    "boss_min_epsilon": 0.0,
+    "expert_mix_enabled": false
+  },
+  "terminal_checkpoint": {
+    "path": "reports/combat_rl_parent_on_policy_replay_collection_20260817_r3/rl_combat_model_ep20_steps4075.pth",
+    "sha256": "317fcc945a50c74a5b1575182e20bd2020ac0f100f65ca3a394b23423142edd7",
+    "size_bytes": 19963978,
+    "episode": 20,
+    "total_steps": 4075,
+    "replay_transition_count": 4075,
+    "replay_source_transition_count": 4075,
+    "replay_truncated": false,
+    "learning_starts": 100000,
+    "epsilon": 0.0,
+    "online_equals_parent": true,
+    "target_equals_parent": true,
+    "online_equals_target": true,
+    "optimizer_state_count": 0,
+    "optimizer_step_max": 0,
+    "last_total_loss": null,
+    "last_td_loss": null,
+    "positive_energy_action_imitation_weight": 0.0,
+    "positive_energy_parent_end_turn_imitation_weight": 0.0,
+    "all_zero_update_checks_passed": true
+  },
+  "run_outcomes": {
+    "floors": [33, 16, 33, 24, 25, 16, 20, 12, 30, 27, 33, 16, 33, 33, 21, 33, 7, 33, 21, 25],
+    "floor_total": 491,
+    "floor_mean": 24.55,
+    "floor_median": 25.0,
+    "floor_min": 7,
+    "floor_max": 33,
+    "act2_reached": 15,
+    "act2_boss_reached": 7,
+    "act3_reached": 0,
+    "wins": 0,
+    "playtime_seconds": 2499
+  },
+  "fresh_replay_policy_evidence": {
+    "executed_action_agreement": 0.3354601263999939,
+    "positive_energy_state_count": 3096,
+    "parent_positive_energy_end_turn_count": 2187,
+    "parent_positive_energy_end_turn_share": 0.7063953280448914,
+    "executed_positive_energy_end_turn_count": 64,
+    "executed_positive_energy_end_turn_share": 0.02067183516919613,
+    "positive_energy_parent_end_turn_intervention_count": 2134,
+    "parent_end_turn_executed_non_end_turn_count_all_energy": 2235,
+    "parent_non_end_turn_executed_end_turn_count_all_energy": 76,
+    "smooth_l1": 4.122797012329102,
+    "absolute_td_p50": 1.8293523788452148,
+    "absolute_td_p95": 10.994942665100098,
+    "executed_action_categories": {
+      "card": 3061,
+      "potion": 103,
+      "end_turn": 849,
+      "noncombat": 62
+    },
+    "parent_greedy_action_categories": {
+      "card": 778,
+      "potion": 227,
+      "end_turn": 3008,
+      "noncombat": 62
+    }
+  },
+  "cross_cohort_comparison": {
+    "transition_counts": [3856, 3255, 4075],
+    "parent_positive_energy_end_turn_shares": [0.6966633200645447, 0.703201949596405, 0.7063953280448914],
+    "executed_positive_energy_end_turn_shares": [0.02662622183561325, 0.023399014778325122, 0.02067183516919613],
+    "interpretation": "The raw-parent versus guarded-execution EndTurn mismatch reproduces on a third independently seeded cohort."
+  },
+  "runtime_evidence": {
+    "archive": "reports/combat_rl_parent_on_policy_replay_collection_20260817_r3/runtime_evidence.zip",
+    "archive_sha256": "07a51973ac07f00057101e85bdd811db8cc2bc28d0d6b207f2dcadee0618b2d2",
+    "archive_size_bytes": 5663264,
+    "archive_entry_count": 9,
+    "archived_run_count": 20,
+    "decision_trace_rows": 7541,
+    "sim_divergence_rows": 12,
+    "communication_mod_errors_before_launch_bytes": 1303390,
+    "communication_mod_errors_after_startup_bytes": 1304877,
+    "communication_mod_errors_after_stop_bytes": 1304877,
+    "expected_wrapper_growth_bytes": 1487,
+    "post_start_error_growth_bytes": 0,
+    "training_loss_log_count": 0,
+    "expert_action_count": 0,
+    "invalid_action_count": 0,
+    "nonzero_rl_failure_count": 0,
+    "replay_failure_count": 0,
+    "traceback_count": 0,
+    "critical_count": 0,
+    "rotated_debug_logs_filtered_to_decision_trace_time_window": true
+  },
+  "isolation": {
+    "production_config_restored": true,
+    "production_config_sha256": "7e923bba944c411512f5f8322a8494bc30f7edda47be0e3f404c5b25edde22b2",
+    "remaining_project_python_processes": 0,
+    "remaining_game_processes": 0,
+    "promotion_authority": false
+  },
+  "next_step": "Train bounded low-TD Q-anchored pairwise candidates on r1+r2 only and evaluate them on the unseen r3 replay before any new live gate."
+}
