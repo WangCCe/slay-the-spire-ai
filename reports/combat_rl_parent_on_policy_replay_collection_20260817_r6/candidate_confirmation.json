@@ -1,0 +1,101 @@
+{
+  "authority": "offline fresh-replay confirmation only; bounded live gate requires a separate matched registration",
+  "candidate": {
+    "absolute_td_p50": 1.7287325859069824,
+    "absolute_td_p95": 11.134295463562012,
+    "correction_executed_action_agreement": 0.0,
+    "correction_state_count": 1916,
+    "eligible_executed_action_agreement": 0.1640271544456482,
+    "executed_action_agreement": 0.3360222578048706,
+    "intervention_executed_over_end_turn_share": 0.0,
+    "intervention_margin_p10": -3.888227939605713,
+    "intervention_margin_p50": -2.078542947769165,
+    "off_target_parent_disagreement_count": 1,
+    "off_target_parent_disagreement_share": 0.0005955926026217639,
+    "off_target_state_count": 1679,
+    "one_step_smooth_l1": 4.1388840675354,
+    "parent_action_agreement": 0.9997218251228333,
+    "positive_energy_end_turn_count": 1975,
+    "positive_energy_end_turn_share": 0.7274401187896729,
+    "positive_energy_state_count": 2715,
+    "relative_l2_from_parent": 1.1688620826623298e-06,
+    "smooth_l1": 4.1388840675354
+  },
+  "decision": "eligible_for_bounded_live_gate",
+  "design": {
+    "checkpoint_writing": false,
+    "eligibility_thresholds": {
+      "off_target_parent_disagreement_max": 0.02,
+      "parent_action_agreement_min": 0.98,
+      "smooth_l1_must_improve": true
+    },
+    "gamma": 0.99,
+    "model_fitting": false,
+    "objective": "frozen_candidate_one_step_double_dqn_replay_gate"
+  },
+  "eligibility": {
+    "all_conditions_passed": true,
+    "off_target_parent_disagreement_at_most_0_02": true,
+    "parent_action_agreement_at_least_0_98": true,
+    "unseen_smooth_l1_improved": true
+  },
+  "gate_id": "combat-rl-second-single-step-sgd-fresh-replay-confirmation-20260818-r1",
+  "inputs": {
+    "candidate_checkpoint": {
+      "path": "D:\\PycharmProjects\\slay-the-spire-ai\\reports\\combat_rl_single_step_sgd_trust_region_20260817_r8\\rl_combat_model_second_single_step_sgd_candidate.pth",
+      "provenance": {
+        "batch_size": 128,
+        "candidate_seed": 404,
+        "construction": "conservative_n_step_return_interpolation",
+        "development_replay_checkpoint_sha256": "e11f4e2b92fbed2e76e21d8325ab07757855f11f83f41310ae5a776add2e22ca",
+        "experiment_id": "combat-rl-single-step-sgd-trust-region-20260817-r8",
+        "full_coverage_epochs": 1,
+        "full_gradient_optimizer": "sgd",
+        "full_gradient_steps": 1,
+        "gamma": 0.99,
+        "horizon": 1,
+        "interpolation_alpha": 0.25,
+        "learning_rate": 0.0008,
+        "optimization_mode": "full_dataset_gradient",
+        "parent_checkpoint_sha256": "0e92acec8928e0b467f1440e2cbe0f15b6b940d095e29aae26e82b76ff5a7a46",
+        "source_commit": "bab91dba7",
+        "td_weight": 0.05,
+        "train_replay_checkpoint_sha256": "2c3ca6b5443b5f408d4b9b232d15459c3b235e4fb751162acce1c5ef31bb590a"
+      },
+      "sha256": "edf7d33124a3fbbc3abee6bae6c7b9654ea9a9191dcf151e5c0b000c71a4f454"
+    },
+    "parent_checkpoint": {
+      "path": "D:\\PycharmProjects\\slay-the-spire-ai\\reports\\combat_rl_single_step_sgd_trust_region_20260817_r7\\rl_combat_model_single_step_sgd_candidate.pth",
+      "sha256": "0e92acec8928e0b467f1440e2cbe0f15b6b940d095e29aae26e82b76ff5a7a46"
+    },
+    "replay_checkpoint": {
+      "path": "D:\\PycharmProjects\\slay-the-spire-ai\\reports\\combat_rl_parent_on_policy_replay_collection_20260817_r6\\rl_combat_model_ep20_steps3595.pth",
+      "sha256": "284fe2193e3682101cb9c4273d5d9e8a3aefb12f8d02175856cff63786544534",
+      "source_transition_count": 3595,
+      "transition_count": 3595,
+      "truncated": false
+    }
+  },
+  "parent_baseline": {
+    "absolute_td_p50": 1.7328267097473145,
+    "absolute_td_p95": 11.13011646270752,
+    "correction_executed_action_agreement": 0.0,
+    "correction_state_count": 1916,
+    "eligible_executed_action_agreement": 0.1644042283296585,
+    "executed_action_agreement": 0.33630040287971497,
+    "intervention_executed_over_end_turn_share": 0.0,
+    "intervention_margin_p10": -3.88509464263916,
+    "intervention_margin_p50": -2.076840877532959,
+    "off_target_parent_disagreement_count": 0,
+    "off_target_parent_disagreement_share": 0.0,
+    "off_target_state_count": 1679,
+    "one_step_smooth_l1": 4.143240928649902,
+    "parent_action_agreement": 1.0,
+    "positive_energy_end_turn_count": 1975,
+    "positive_energy_end_turn_share": 0.7274401187896729,
+    "positive_energy_state_count": 2715,
+    "smooth_l1": 4.143240451812744
+  },
+  "schema_version": 1,
+  "source_commit": "60d3f5efa"
+}
