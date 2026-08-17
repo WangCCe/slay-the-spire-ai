@@ -177,6 +177,138 @@ def _fit(
     }
 
 
+def _fit_full_gradient(
+    *,
+    parent: dict,
+    metadata: dict,
+    replay: dict,
+    targets: torch.Tensor,
+    chunk_size: int,
+    steps: int,
+    learning_rate: float,
+    td_weight: float,
+) -> tuple[torch.nn.Module, dict]:
+    if chunk_size <= 0:
+        raise ValueError("Full-gradient chunk size must be positive")
+    if steps <= 0:
+        raise ValueError("Full-gradient steps must be positive")
+
+    online = _make_network(metadata, parent["online_network_state_dict"])
+    anchor = _make_network(metadata, parent["online_network_state_dict"])
+    online.eval()
+    anchor.eval()
+    for parameter in anchor.parameters():
+        parameter.requires_grad_(False)
+
+    optimizer = torch.optim.Adam(online.parameters(), lr=learning_rate)
+    train_count = int(replay["transition_count"])
+    valid_action_count = int(
+        replay["action_masks"][:train_count].bool().sum()
+    )
+    if valid_action_count <= 0:
+        raise ValueError("Training replay has no valid actions")
+
+    step_metrics = []
+    for _ in range(steps):
+        optimizer.zero_grad()
+        td_loss_sum = 0.0
+        anchor_loss_sum = 0.0
+        for start in range(0, train_count, chunk_size):
+            indices = torch.arange(start, min(start + chunk_size, train_count))
+            rows = torch.arange(indices.numel())
+            actions = replay["actions"][indices].long()
+            action_masks = replay["action_masks"][indices].bool()
+            q_values = online(*_batch(replay, indices))
+            selected_q = q_values[rows, actions]
+            with torch.no_grad():
+                anchor_q = anchor(*_batch(replay, indices))
+            td_sum = F.smooth_l1_loss(
+                selected_q, targets[indices], reduction="sum"
+            )
+            anchor_sum = F.smooth_l1_loss(
+                q_values[action_masks],
+                anchor_q[action_masks],
+                reduction="sum",
+            )
+            loss = (
+                td_weight * td_sum / train_count
+                + anchor_sum / valid_action_count
+            )
+            loss.backward()
+            td_loss_sum += float(td_sum)
+            anchor_loss_sum += float(anchor_sum)
+
+        gradient_norm = float(
+            torch.nn.utils.clip_grad_norm_(online.parameters(), max_norm=10.0)
+        )
+        optimizer.step()
+        mean_td_loss = td_loss_sum / train_count
+        mean_anchor_loss = anchor_loss_sum / valid_action_count
+        step_metrics.append(
+            {
+                "mean_td_loss": mean_td_loss,
+                "mean_anchor_loss": mean_anchor_loss,
+                "mean_total_loss": td_weight * mean_td_loss + mean_anchor_loss,
+                "gradient_norm": gradient_norm,
+            }
+        )
+
+    return online, {
+        "updates": steps,
+        "transition_passes": steps,
+        "dropout_enabled": False,
+        "chunk_size": chunk_size,
+        "steps": step_metrics,
+        "mean_total_loss": sum(row["mean_total_loss"] for row in step_metrics)
+        / steps,
+        "mean_td_loss": sum(row["mean_td_loss"] for row in step_metrics)
+        / steps,
+        "mean_anchor_loss": sum(row["mean_anchor_loss"] for row in step_metrics)
+        / steps,
+    }
+
+
+def _fit_for_configuration(
+    *,
+    args: argparse.Namespace,
+    parent: dict,
+    metadata: dict,
+    replay: dict,
+    targets: torch.Tensor,
+    train_count: int,
+    seed: int,
+) -> tuple[torch.nn.Module, dict]:
+    if args.optimization_mode == "full_dataset_gradient":
+        return _fit_full_gradient(
+            parent=parent,
+            metadata=metadata,
+            replay=replay,
+            targets=targets,
+            chunk_size=args.batch_size,
+            steps=args.full_gradient_steps,
+            learning_rate=args.learning_rate,
+            td_weight=args.td_weight,
+        )
+
+    batches = _build_batches(
+        train_count=train_count,
+        batch_size=args.batch_size,
+        updates=1,
+        seed=seed,
+        full_coverage_epochs=args.full_coverage_epochs,
+    )
+    return _fit(
+        parent=parent,
+        metadata=metadata,
+        replay=replay,
+        targets=targets,
+        batches=batches,
+        seed=seed,
+        learning_rate=args.learning_rate,
+        td_weight=args.td_weight,
+    )
+
+
 def _load(path: Path) -> tuple[dict, dict, dict]:
     checkpoint = torch.load(path, map_location="cpu", weights_only=True)
     replay = checkpoint["replay_buffer_state_dict"]
@@ -186,14 +318,19 @@ def _load(path: Path) -> tuple[dict, dict, dict]:
 
 
 def run(args: argparse.Namespace) -> dict:
-    if args.horizon <= 1:
-        raise ValueError("This experiment requires an n-step horizon above one")
+    if args.horizon <= 0:
+        raise ValueError("Return horizon must be positive")
     if not 0.0 <= args.gamma <= 1.0:
         raise ValueError("Gamma must be within [0, 1]")
     if args.td_weight <= 0.0 or not math.isfinite(args.td_weight):
         raise ValueError("TD weight must be finite and positive")
     if args.full_coverage_epochs <= 0:
         raise ValueError("At least one full-coverage epoch is required")
+    if args.optimization_mode == "full_dataset_gradient":
+        if args.full_gradient_steps <= 0:
+            raise ValueError("Full-gradient steps must be positive")
+        if args.batch_size <= 0:
+            raise ValueError("Full-gradient chunk size must be positive")
 
     parent_path = args.parent_checkpoint.resolve()
     train_path = args.train_replay_checkpoint.resolve()
@@ -254,22 +391,14 @@ def run(args: argparse.Namespace) -> dict:
 
     replicates = []
     for seed in args.replicate_seeds:
-        batches = _build_batches(
-            train_count=train_count,
-            batch_size=args.batch_size,
-            updates=1,
-            seed=seed,
-            full_coverage_epochs=args.full_coverage_epochs,
-        )
-        trained, losses = _fit(
+        trained, losses = _fit_for_configuration(
+            args=args,
             parent=parent,
             metadata=train_metadata,
             replay=train_replay,
             targets=train_targets,
-            batches=batches,
+            train_count=train_count,
             seed=seed,
-            learning_rate=args.learning_rate,
-            td_weight=args.td_weight,
         )
         interpolations = {}
         for alpha in args.interpolation_alphas:
@@ -338,7 +467,9 @@ def run(args: argparse.Namespace) -> dict:
         "design": {
             "horizon": args.horizon,
             "gamma": args.gamma,
+            "optimization_mode": args.optimization_mode,
             "full_coverage_epochs": args.full_coverage_epochs,
+            "full_gradient_steps": args.full_gradient_steps,
             "updates_per_replicate": replicates[0]["training"]["updates"],
             "batch_size": args.batch_size,
             "replicate_seeds": args.replicate_seeds,
@@ -358,22 +489,14 @@ def run(args: argparse.Namespace) -> dict:
     }
 
     if selected_alpha is not None:
-        batches = _build_batches(
-            train_count=train_count,
-            batch_size=args.batch_size,
-            updates=1,
-            seed=args.candidate_seed,
-            full_coverage_epochs=args.full_coverage_epochs,
-        )
-        trained, losses = _fit(
+        trained, losses = _fit_for_configuration(
+            args=args,
             parent=parent,
             metadata=train_metadata,
             replay=train_replay,
             targets=train_targets,
-            batches=batches,
+            train_count=train_count,
             seed=args.candidate_seed,
-            learning_rate=args.learning_rate,
-            td_weight=args.td_weight,
         )
         candidate = _interpolate_with_parent(
             train_metadata,
@@ -419,7 +542,9 @@ def run(args: argparse.Namespace) -> dict:
                     "development_replay_checkpoint_sha256": _sha256(validation_path),
                     "horizon": args.horizon,
                     "gamma": args.gamma,
+                    "optimization_mode": args.optimization_mode,
                     "full_coverage_epochs": args.full_coverage_epochs,
+                    "full_gradient_steps": args.full_gradient_steps,
                     "candidate_seed": args.candidate_seed,
                     "batch_size": args.batch_size,
                     "learning_rate": args.learning_rate,
@@ -462,7 +587,13 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--source-commit", required=True)
     parser.add_argument("--horizon", type=int, default=3)
     parser.add_argument("--gamma", type=float, default=0.99)
+    parser.add_argument(
+        "--optimization-mode",
+        choices=("sequential_minibatch", "full_dataset_gradient"),
+        default="sequential_minibatch",
+    )
     parser.add_argument("--full-coverage-epochs", type=int, default=1)
+    parser.add_argument("--full-gradient-steps", type=int, default=1)
     parser.add_argument("--batch-size", type=int, default=128)
     parser.add_argument("--replicate-seeds", type=int, nargs="+", default=[101, 202, 303])
     parser.add_argument("--candidate-seed", type=int, default=404)

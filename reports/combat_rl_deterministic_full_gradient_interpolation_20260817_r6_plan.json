@@ -1,0 +1,38 @@
+{
+  "schema_version": 1,
+  "experiment_id": "combat-rl-deterministic-full-gradient-interpolation-20260817-r6",
+  "purpose": "Test whether minibatch order and dropout caused the cross-cohort instability of conservative one-step TD updates.",
+  "target": {
+    "horizon": 1,
+    "gamma": 0.99,
+    "bootstrap_network": "frozen promoted parent"
+  },
+  "training_configuration": {
+    "optimization_mode": "full_dataset_gradient",
+    "full_gradient_steps": 4,
+    "memory_chunk_size": 128,
+    "dropout_enabled": false,
+    "learning_rate": 0.0001,
+    "td_weight": 0.05,
+    "parent_anchor_objective": "q_smooth_l1",
+    "parent_anchor_weight": 1.0,
+    "imitation_weight": 0.0,
+    "replicate_labels": [101, 202, 303]
+  },
+  "interpolation_alphas": [0.25, 0.5, 0.75, 1.0],
+  "eligibility": {
+    "all_deterministic_replicates_must_pass": true,
+    "development_one_step_smooth_l1_must_improve": true,
+    "parent_action_agreement_min": 0.98,
+    "off_target_parent_disagreement_max": 0.02
+  },
+  "constraints": {
+    "single_fixed_configuration": true,
+    "r3_is_consumed_development_data": true,
+    "no_parameter_changes_after_observing_r6": true,
+    "no_gameplay": true,
+    "no_production_checkpoint_change": true,
+    "selected_checkpoint_requires_new_r4_replay_confirmation": true,
+    "failure_retires_bootstrapped_td_on_current_replay": true
+  }
+}
