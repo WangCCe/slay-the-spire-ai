@@ -1,0 +1,113 @@
+{
+  "schema_version": 1,
+  "experiment_id": "combat-rl-mixed-parent-replay-pairwise-end-turn-margin-ablation-20260817-r1",
+  "source_commit": "5c8e095cf",
+  "decision": "eligible_for_one_fresh_matched_zero_epsilon_gate",
+  "mixed_replay": {
+    "path": "reports/combat_rl_mixed_parent_replay_pairwise_end_turn_margin_ablation_20260817_r1/rl_combat_model_parent_mixed_replay_7111.pth",
+    "sha256": "0f398ac73864a149c878245aa3b6fd0012007a42df15ec1d10b9873ef4b2de8a",
+    "size_bytes": 31446310,
+    "transition_count": 7111,
+    "train_count": 6087,
+    "holdout_count": 1024,
+    "holdout_count_per_cohort": 512,
+    "cohort_transition_counts": [3856, 3255],
+    "cohort_checkpoint_sha256s": [
+      "db3c08ec4335ae2fca460a5c64fe911f699105c363634c8de9611b14e288c425",
+      "310d3a25e5bfab016898f435be5bf4ba7a97cae11a4bf71eef26ec13407e2b61"
+    ],
+    "all_rows_preserved": true,
+    "replay_truncated": false
+  },
+  "training_design": {
+    "updates": 64,
+    "batch_size": 128,
+    "replicate_seeds": [101, 202, 303],
+    "learning_rate": 0.0001,
+    "td_weight": 0.0,
+    "parent_anchor_objective": "q_smooth_l1",
+    "parent_anchor_weight": 1.0,
+    "imitation_objective": "pairwise_end_turn_margin",
+    "pairwise_margin": 1.0,
+    "eligible_states": "energy_ratio > 0 and executed action != EndTurn and parent greedy action == EndTurn",
+    "coarse_weights": [0.0, 0.01, 0.02, 0.05, 0.1, 0.2, 0.4],
+    "coarse_eligible_weights": [],
+    "refinement_weights": [0.0, 0.055, 0.06, 0.065, 0.07, 0.075, 0.08],
+    "refinement_eligible_weights": [0.055, 0.06, 0.065],
+    "selected_weight": 0.055,
+    "no_further_same_holdout_tuning": true
+  },
+  "held_out_gate": {
+    "baseline_parent_action_agreement_min": 0.955078125,
+    "baseline_positive_energy_end_turn_share_min": 0.6542893648147583,
+    "baseline_intervention_executed_over_end_turn_share_max": 0.03396226465702057,
+    "baseline_smooth_l1_max": 4.579872131347656,
+    "selected_parent_action_agreement_min": 0.892578125,
+    "selected_positive_energy_end_turn_share_max": 0.6491677165031433,
+    "selected_intervention_executed_over_end_turn_share_min": 0.035849057137966156,
+    "selected_smooth_l1_max": 4.493551731109619,
+    "parent_action_agreement_min_0_88_passed": true,
+    "positive_energy_end_turn_cross_replicate_improvement_passed": true,
+    "intervention_margin_cross_replicate_improvement_passed": true,
+    "smooth_l1_within_10_percent_passed": true,
+    "all_conditions_passed": true
+  },
+  "selected_candidate": {
+    "path": "reports/combat_rl_mixed_parent_replay_pairwise_end_turn_margin_ablation_20260817_r1/rl_combat_model_mixed_pairwise_margin_refined_candidate.pth",
+    "sha256": "5f7afe856eaa69be3e62c9b45a2ab6bc5f321f54ccd58a1de1c0f1d28c95fe63",
+    "size_bytes": 2272728,
+    "checkpoint_schema_version": 2,
+    "checkpoint_kind": "weights",
+    "real_rl_agent_cpu_load_verified": true,
+    "full_mixed_replay": {
+      "parent_action_agreement": 0.8964983820915222,
+      "executed_action_agreement": 0.35564619302749634,
+      "intervention_executed_over_end_turn_share": 0.072633296251297,
+      "positive_energy_end_turn_share": 0.5976309180259705,
+      "smooth_l1": 4.321718215942383
+    }
+  },
+  "cross_cohort_evaluation": {
+    "r1": {
+      "transition_count": 3856,
+      "parent_positive_energy_end_turn_share": 0.6966633200645447,
+      "old_r1_candidate_positive_energy_end_turn_share": 0.6329625844955444,
+      "mixed_candidate_positive_energy_end_turn_share": 0.5989214777946472,
+      "mixed_candidate_parent_action_agreement": 0.8998962640762329,
+      "old_r1_candidate_executed_action_agreement": 0.36151450872421265,
+      "mixed_candidate_executed_action_agreement": 0.3718879520893097,
+      "old_r1_candidate_intervention_executed_over_end_turn_share": 0.05094905197620392,
+      "mixed_candidate_intervention_executed_over_end_turn_share": 0.07642357796430588,
+      "parent_smooth_l1": 4.168867111206055,
+      "mixed_candidate_smooth_l1": 4.194720268249512
+    },
+    "r2": {
+      "transition_count": 3255,
+      "parent_positive_energy_end_turn_share": 0.703201949596405,
+      "old_r1_candidate_positive_energy_end_turn_share": 0.6432676315307617,
+      "mixed_candidate_positive_energy_end_turn_share": 0.5960590839385986,
+      "mixed_candidate_parent_action_agreement": 0.8924731016159058,
+      "old_r1_candidate_executed_action_agreement": 0.3241167366504669,
+      "mixed_candidate_executed_action_agreement": 0.33640551567077637,
+      "old_r1_candidate_intervention_executed_over_end_turn_share": 0.037634409964084625,
+      "mixed_candidate_intervention_executed_over_end_turn_share": 0.06810035556554794,
+      "parent_smooth_l1": 4.444974899291992,
+      "mixed_candidate_smooth_l1": 4.472164630889893
+    },
+    "mixed_candidate_parent_agreement_at_least_0_88_on_each_cohort": true,
+    "mixed_candidate_improves_executed_agreement_over_old_candidate_on_each_cohort": true,
+    "mixed_candidate_improves_intervention_margin_over_old_candidate_on_each_cohort": true
+  },
+  "artifacts": {
+    "mixed_replay_manifest_sha256": "e168f99767cfa92b30ec4b60f1a07c2d909ed246808f4968fb3750c4a7029ff0",
+    "coarse_ablation_sha256": "3268c7cddfb07a2c9b8b12d4aab9d34d6f78edf9aa8f63bbe93f8377b3631a29",
+    "refinement_ablation_sha256": "c4bfcd22809bd772f8526118e2bd23a5282bd8a8eff9a2f3aa73d27fb899756c"
+  },
+  "authority": {
+    "offline_training_completed": true,
+    "live_gate_authorized": true,
+    "promotion_authority": false,
+    "production_checkpoint_unchanged": true
+  },
+  "next_step": "Run one fresh 20+20 matched zero-epsilon live gate against the promoted parent on a newly generated seed pool, with no automatic promotion."
+}

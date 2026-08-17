@@ -1,0 +1,43 @@
+{
+  "checkpoint": {
+    "holdout_count": 1024,
+    "holdout_count_per_cohort": 512,
+    "path": "D:\\PycharmProjects\\slay-the-spire-ai\\reports\\combat_rl_mixed_parent_replay_pairwise_end_turn_margin_ablation_20260817_r1\\rl_combat_model_parent_mixed_replay_7111.pth",
+    "sha256": "0f398ac73864a149c878245aa3b6fd0012007a42df15ec1d10b9873ef4b2de8a",
+    "size_bytes": 31446310,
+    "train_count": 6087,
+    "transition_count": 7111
+  },
+  "inputs": [
+    {
+      "path": "D:\\PycharmProjects\\slay-the-spire-ai\\reports\\combat_rl_parent_on_policy_replay_collection_20260817_r1\\rl_combat_model_ep19_steps3856.pth",
+      "sha256": "db3c08ec4335ae2fca460a5c64fe911f699105c363634c8de9611b14e288c425",
+      "transition_count": 3856
+    },
+    {
+      "path": "D:\\PycharmProjects\\slay-the-spire-ai\\reports\\combat_rl_parent_on_policy_replay_collection_20260817_r2\\rl_combat_model_ep20_steps3255.pth",
+      "sha256": "310d3a25e5bfab016898f435be5bf4ba7a97cae11a4bf71eef26ec13407e2b61",
+      "transition_count": 3255
+    }
+  ],
+  "ordering": {
+    "cohort_permutation_seeds": [
+      170817101,
+      170817102
+    ],
+    "holdout_shuffle_seed": 170817104,
+    "layout": "shuffled_train_rows_then_shuffled_stratified_holdout_rows",
+    "train_shuffle_seed": 170817103
+  },
+  "schema_version": 1,
+  "source_commit": "5c8e095cf",
+  "validation": {
+    "all_rows_preserved": true,
+    "epsilon": 0.0,
+    "learning_starts": 100000,
+    "metadata_equal": true,
+    "optimizer_state_empty": true,
+    "replay_not_truncated": true,
+    "tensor_shapes_compatible": true
+  }
+}
