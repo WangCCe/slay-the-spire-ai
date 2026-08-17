@@ -1,0 +1,68 @@
+{
+  "schema_version": 1,
+  "promotion_id": "combat-rl-single-step-sgd-promotion-20260817",
+  "source_commit": "2cc430f2e",
+  "decision": "promote_single_step_sgd_candidate",
+  "candidate_checkpoint": {
+    "path": "reports/combat_rl_single_step_sgd_trust_region_20260817_r7/rl_combat_model_single_step_sgd_candidate.pth",
+    "sha256": "0e92acec8928e0b467f1440e2cbe0f15b6b940d095e29aae26e82b76ff5a7a46",
+    "checkpoint_kind": "weights",
+    "relative_l2_from_replaced_parent": 0.0000014982921062948143
+  },
+  "replaced_checkpoint": {
+    "path": "reports/combat_rl_parent_weight_one_interpolation_20260816_r1/rl_combat_model_parent_to_weight_one_alpha_0_20.pth",
+    "sha256": "7a27fe138ceaba927354da88d71b9186c6b918cb8d76c75c56aee8d74146faeb"
+  },
+  "qualification": {
+    "development_r3": {
+      "parent_smooth_l1": 4.122797012329102,
+      "candidate_smooth_l1": 4.116971969604492
+    },
+    "untouched_r4": {
+      "gate_report": "reports/combat_rl_parent_on_policy_replay_collection_20260817_r4/candidate_confirmation.json",
+      "gate_report_sha256": "d0842526ff4eb088847919b1119a750a1f54c952dee5e935bdfee4f80d02a3f2",
+      "parent_smooth_l1": 3.609212875366211,
+      "candidate_smooth_l1": 3.6045937538146973,
+      "candidate_parent_action_agreement": 0.9991258978843689,
+      "all_conditions_passed": true
+    },
+    "matched_live_gate": {
+      "gate_report": "reports/combat_rl_single_step_sgd_zero_epsilon_gate_20260817_r1/report.json",
+      "gate_report_sha256": "e3c0ec1ec91677b92e61552aea772f8aed6c8ba0100cf0627598953ccd40bad0",
+      "candidate_paired_wins": 1,
+      "parent_paired_wins": 0,
+      "ties": 9,
+      "candidate_floor_total": 210,
+      "parent_floor_total": 204,
+      "candidate_act_2_entries": 5,
+      "parent_act_2_entries": 4,
+      "all_preregistered_conditions_passed": true
+    }
+  },
+  "production": {
+    "source_config": "reports/combat_rl_single_step_sgd_promotion_20260817.properties",
+    "source_config_sha256": "a480cf80b550dae3dbe94b35f898a1dc8e95cab3174565421884fabb98d62c2b",
+    "target_config": "C:/Users/20571/AppData/Local/ModTheSpire/CommunicationMod/config.properties",
+    "bounded_games_per_launch": 5,
+    "training": false,
+    "epsilon": 0.0,
+    "elite_route": "conservative",
+    "truncate_traces_at_start": true,
+    "checkpoint_backup": false,
+    "maintenance": false,
+    "post_analysis": false
+  },
+  "rollback": {
+    "source_config": "reports/combat_rl_parent_weight_one_interpolation_promotion_20260816.properties",
+    "source_config_sha256": "7e923bba944c411512f5f8322a8494bc30f7edda47be0e3f404c5b25edde22b2"
+  },
+  "limitations": {
+    "matched_live_pairs": 10,
+    "non_tied_live_pairs": 1,
+    "candidate_gate_victories": 0,
+    "parent_gate_victories": 0,
+    "large_live_effect_claimed": false,
+    "first_ironclad_victory_achieved": false
+  },
+  "next_step": "Collect a fresh on-policy replay cohort under the promoted candidate, then use the now-consumed r4 replay for the next conservative SGD update and reserve the new cohort as untouched validation."
+}
