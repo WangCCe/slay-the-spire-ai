@@ -1,0 +1,47 @@
+{
+  "schema_version": 1,
+  "diagnosis_id": "combat-rl-parent-end-turn-imitation-interpolation-endpoint-diagnosis-20260817-r1",
+  "source_commit": "cb1587733",
+  "purpose": "Distinguish interpolation behavior from fresh-cohort sensitivity by evaluating the direct targeted-imitation endpoint on the already observed interpolation-gate cohort.",
+  "authority": "diagnostic only; reused seeds and post-gate timing provide no promotion authority",
+  "endpoint_checkpoint": {
+    "path": "reports/combat_rl_parent_end_turn_imitation_training_20260817_r4/rl_combat_model_ep5_steps9955.pth",
+    "sha256": "561b7879f92dd9caaaa4d88c898f2d33a3d25a45c685a5720f1872d6ffe7c946"
+  },
+  "comparison_evidence": {
+    "direct_candidate_prior_fresh_gate": {
+      "path": "reports/combat_rl_parent_end_turn_imitation_zero_epsilon_gate_20260817_r1/report.json",
+      "sha256": "2e2a502724d4991873065bbc954978168964b9b545334c6d241bcf69ec9d1ace"
+    },
+    "alpha_0_9_and_parent_current_gate": {
+      "path": "reports/combat_rl_parent_end_turn_imitation_interpolation_zero_epsilon_gate_20260817_r1/report.json",
+      "sha256": "beadc9405639587b2e6493f960c6a483e0abdfd2bb69b4a790ee67d31109933e"
+    }
+  },
+  "evaluation": {
+    "games": 20,
+    "mode": "eval",
+    "epsilon": 0.0,
+    "elite_route": "conservative",
+    "ascension": 0,
+    "seed_pool": "reports/combat_rl_parent_end_turn_imitation_interpolation_zero_epsilon_gate_20260817_r1_seed_pool.txt",
+    "seed_pool_sha256": "fdde3e352887ca1d9f112fb6ce02554ed0b4db5edfd7b1fd6e3e67a0f4c09d9d",
+    "seed_pool_is_reused_and_already_observed": true,
+    "launch_config": "reports/combat_rl_parent_end_turn_imitation_interpolation_endpoint_diagnosis_20260817_r1.properties",
+    "launch_config_sha256": "520f8f319931cf520eff99c5a1b618182b68455a37df0bff5aac02bc7e5a9a36",
+    "training_disabled": true,
+    "expert_mix_disabled": true
+  },
+  "questions": {
+    "endpoint_improves_aligned_live_end_turn_metric_vs_same_cohort_parent": "If true, interpolation introduced the reversal; if false, the old replay objective is cohort-sensitive.",
+    "endpoint_improves_historical_live_end_turn_metric_vs_same_cohort_parent": "Context only; report separately because its denominator differs from the offline metric.",
+    "endpoint_floor_outcomes": "Context only and never promotion evidence."
+  },
+  "constraints": {
+    "one_arm_only": true,
+    "no_retraining": true,
+    "no_alpha_or_seed_change_after_start": true,
+    "no_automatic_promotion": true,
+    "restore_production_configuration_after_completion": true
+  }
+}
