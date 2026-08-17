@@ -1,0 +1,87 @@
+{
+  "schema_version": 1,
+  "experiment_id": "combat-rl-full-combat-return-sgd-20260818-r12",
+  "source_commit": "8d10e479a",
+  "decision": "freeze_alpha_0_5_for_fresh_replay_confirmation",
+  "objective": {
+    "name": "discounted_full_combat_return",
+    "implementation": "n_step_return_with_horizon_4096_stopped_by_done",
+    "gamma": 0.99,
+    "interpretation": "Propagate observed rewards to earlier actions within each recorded combat boundary."
+  },
+  "inputs": {
+    "parent_checkpoint": {
+      "path": "reports/combat_rl_single_step_sgd_trust_region_20260817_r8/rl_combat_model_second_single_step_sgd_candidate.pth",
+      "sha256": "edf7d33124a3fbbc3abee6bae6c7b9654ea9a9191dcf151e5c0b000c71a4f454"
+    },
+    "training_replay": {
+      "path": "reports/combat_rl_parent_on_policy_replay_collection_20260818_r7/rl_combat_model_ep20_steps4194.pth",
+      "sha256": "b47e7457bb5327d678f279d479a3d3191db8a2e4d5a311d7e4373a8aaff0545c",
+      "status": "consumed_training_evidence"
+    },
+    "development_replay_r6": {
+      "path": "reports/combat_rl_parent_on_policy_replay_collection_20260817_r6/rl_combat_model_ep20_steps3595.pth",
+      "sha256": "284fe2193e3682101cb9c4273d5d9e8a3aefb12f8d02175856cff63786544534",
+      "status": "reused_development_evidence"
+    },
+    "development_replay_r8": {
+      "path": "reports/combat_rl_parent_on_policy_replay_collection_20260818_r8/rl_combat_model_ep20_steps3318.pth",
+      "sha256": "64dbe36669f30c3856eced8792bcf08a0746a878e4aff2f3b76c1620f6fa686c",
+      "status": "consumed_r11_holdout_reused_as_r12_development_evidence"
+    }
+  },
+  "training_configuration": {
+    "optimization_mode": "full_dataset_gradient",
+    "optimizer": "sgd",
+    "full_gradient_steps": 8,
+    "memory_chunk_size": 128,
+    "learning_rate": 0.0002,
+    "td_weight": 0.2,
+    "parent_anchor_weight": 1.0,
+    "dropout_enabled": false,
+    "raw_update_relative_l2_from_parent": 0.000014833895967260804
+  },
+  "selection_rule": {
+    "choose_largest_alpha_satisfying_all_conditions_on_r6_and_r8": true,
+    "full_combat_return_smooth_l1_must_improve": true,
+    "one_step_smooth_l1_must_improve": true,
+    "parent_action_agreement_min": 0.99,
+    "off_target_parent_disagreement_max": 0.01,
+    "positive_energy_end_turn_count_increase_max": 1,
+    "selected_alpha": 0.5
+  },
+  "development_parent_baselines": {
+    "r6": {
+      "full_combat_return_smooth_l1": 46.55177688598633,
+      "one_step_smooth_l1": 4.143157482147217,
+      "positive_energy_end_turn_count": 1975
+    },
+    "r8": {
+      "full_combat_return_smooth_l1": 50.6911735534668,
+      "one_step_smooth_l1": 4.33578634262085,
+      "positive_energy_end_turn_count": 1643
+    }
+  },
+  "interpolation_sweep": {
+    "r6": [
+      {"alpha": 0.0625, "relative_l2": 0.0000009270996432956393, "full_return_smooth_l1": 46.547847747802734, "one_step_smooth_l1": 4.140405654907227, "parent_action_agreement": 0.9994436502456665, "off_target_parent_disagreement_share": 0.0011911852052435279, "positive_energy_end_turn_count": 1975},
+      {"alpha": 0.125, "relative_l2": 0.000001854242809120744, "full_return_smooth_l1": 46.54393005371094, "one_step_smooth_l1": 4.137670993804932, "parent_action_agreement": 0.9988873600959778, "off_target_parent_disagreement_share": 0.0023823704104870558, "positive_energy_end_turn_count": 1976},
+      {"alpha": 0.25, "relative_l2": 0.0000037084692178838884, "full_return_smooth_l1": 46.536075592041016, "one_step_smooth_l1": 4.132267951965332, "parent_action_agreement": 0.9980528354644775, "off_target_parent_disagreement_share": 0.0035735557321459055, "positive_energy_end_turn_count": 1976},
+      {"alpha": 0.5, "relative_l2": 0.0000074169949146879545, "full_return_smooth_l1": 46.52040100097656, "one_step_smooth_l1": 4.1217145919799805, "parent_action_agreement": 0.9958275556564331, "off_target_parent_disagreement_share": 0.0065515185706317425, "positive_energy_end_turn_count": 1975},
+      {"alpha": 1.0, "relative_l2": 0.000014833895967260804, "full_return_smooth_l1": 46.48911666870117, "one_step_smooth_l1": 4.101528167724609, "parent_action_agreement": 0.990820586681366, "off_target_parent_disagreement_share": 0.015485407784581184, "positive_energy_end_turn_count": 1974}
+    ],
+    "r8": [
+      {"alpha": 0.0625, "relative_l2": 0.0000009270996432956393, "full_return_smooth_l1": 50.68745422363281, "one_step_smooth_l1": 4.3332905769348145, "parent_action_agreement": 0.9996986389160156, "off_target_parent_disagreement_share": 0.0005824111867696047, "positive_energy_end_turn_count": 1643},
+      {"alpha": 0.125, "relative_l2": 0.000001854242809120744, "full_return_smooth_l1": 50.68373107910156, "one_step_smooth_l1": 4.330813884735107, "parent_action_agreement": 0.9996986389160156, "off_target_parent_disagreement_share": 0.0005824111867696047, "positive_energy_end_turn_count": 1643},
+      {"alpha": 0.25, "relative_l2": 0.0000037084692178838884, "full_return_smooth_l1": 50.676292419433594, "one_step_smooth_l1": 4.325915336608887, "parent_action_agreement": 0.9993972182273865, "off_target_parent_disagreement_share": 0.0011648223735392094, "positive_energy_end_turn_count": 1644},
+      {"alpha": 0.5, "relative_l2": 0.0000074169949146879545, "full_return_smooth_l1": 50.661434173583984, "one_step_smooth_l1": 4.316354274749756, "parent_action_agreement": 0.997890293598175, "off_target_parent_disagreement_share": 0.003494467120617628, "positive_energy_end_turn_count": 1644},
+      {"alpha": 1.0, "relative_l2": 0.000014833895967260804, "full_return_smooth_l1": 50.63178634643555, "one_step_smooth_l1": 4.298117637634277, "parent_action_agreement": 0.9933695197105408, "off_target_parent_disagreement_share": 0.012230634689331055, "positive_energy_end_turn_count": 1649}
+    ]
+  },
+  "selected_checkpoint": {
+    "path": "reports/combat_rl_full_combat_return_sgd_20260818_r12/rl_combat_model_full_combat_return_candidate.pth",
+    "sha256": "6f6fcf20aaae41f9e42d749042da73209943522e7e694f03341a2b2bb938d3f1",
+    "relative_l2_from_parent": 0.0000074169949146879545
+  },
+  "authority": "Frozen offline candidate only. A new production-policy replay is required before any live gate; no promotion authority."
+}
