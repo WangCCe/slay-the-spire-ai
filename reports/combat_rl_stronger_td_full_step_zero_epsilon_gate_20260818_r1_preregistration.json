@@ -1,0 +1,74 @@
+{
+  "schema_version": 1,
+  "gate_id": "combat-rl-stronger-td-full-step-zero-epsilon-gate-20260818-r1",
+  "source_commit": "5fe7e2dd9",
+  "candidate_checkpoint": {
+    "path": "reports/combat_rl_stronger_td_full_step_20260818_r11/rl_combat_model_stronger_td_full_step_candidate.pth",
+    "sha256": "a58a11ee1fafe53b4589465b8f85b3ddfde3c6ac9dd405f2b722ec49c3bc647b",
+    "construction": "eight_low_rate_full_dataset_sgd_steps_td_weight_0_2_full_step",
+    "relative_l2_from_parent": 0.00000974785442282769
+  },
+  "parent_checkpoint": {
+    "path": "reports/combat_rl_single_step_sgd_trust_region_20260817_r8/rl_combat_model_second_single_step_sgd_candidate.pth",
+    "sha256": "edf7d33124a3fbbc3abee6bae6c7b9654ea9a9191dcf151e5c0b000c71a4f454"
+  },
+  "offline_evidence": {
+    "development_report": {
+      "path": "reports/combat_rl_stronger_td_full_step_20260818_r11/report.json",
+      "sha256": "f62a8e4bcd1c38657fadee8f30a5737ea3f90821e21e6e2f848f49b59671cbe3",
+      "parent_smooth_l1": 4.143157482147217,
+      "candidate_smooth_l1": 4.1160149574279785,
+      "candidate_parent_action_agreement": 0.9938803911209106
+    },
+    "frozen_holdout": {
+      "path": "reports/combat_rl_stronger_td_full_step_20260818_r11/r8_holdout_confirmation.json",
+      "sha256": "f36962d512e45330c5607bf5f543ace74803a94fcf1b9e9fd07856385ebb937a",
+      "decision": "eligible_for_bounded_live_gate",
+      "parent_smooth_l1": 4.33578634262085,
+      "candidate_smooth_l1": 4.311038970947266,
+      "candidate_parent_action_agreement": 0.996684730052948,
+      "parent_positive_energy_end_turn_count": 1643,
+      "candidate_positive_energy_end_turn_count": 1638,
+      "holdout_consumed": true
+    },
+    "offline_results_have_no_promotion_authority": true
+  },
+  "evaluation": {
+    "arm_order": ["candidate", "parent"],
+    "games_per_arm": 20,
+    "mode": "eval",
+    "epsilon": 0.0,
+    "elite_route": "conservative",
+    "ascension": 0,
+    "seed_pool": "reports/combat_rl_stronger_td_full_step_zero_epsilon_gate_20260818_r1_seed_pool.txt",
+    "seed_pool_sha256": "5c1c38c223ae09934b2eba06649c66a1b4866650b2fd24cedc5f2dff4cdf4e83",
+    "candidate_launch_config_sha256": "c8288cf6e1cd067d792259361f23b4dd5a271ddb27c86776a2ba8de7d5b3e92b",
+    "parent_launch_config_sha256": "80ca199b52f6d4f44dbe34e544b11194aa10aed88a124009f4601e09be2aa21f",
+    "production_config_sha256": "f87804b2768b8ff53d0760fbfd267c5282afed21081ea888c336e0263041efcb",
+    "same_seed_order": true,
+    "fresh_against_existing_seed_pool_artifacts": true,
+    "training_disabled": true,
+    "expert_mix_disabled": true
+  },
+  "qualification_rule": {
+    "candidate_paired_floor_wins_must_exceed_parent": true,
+    "at_least_one_floor_pair_must_be_non_tied": true,
+    "candidate_victories_must_be_at_least_parent": true,
+    "candidate_act_2_entries_must_be_at_least_parent": true,
+    "candidate_act_2_boss_reaches_must_be_at_least_parent": true,
+    "candidate_act_3_entries_must_be_at_least_parent": true,
+    "candidate_total_floors_must_be_at_least_parent": true,
+    "both_arms_must_complete_all_games": true,
+    "all_seed_pairs_must_match": true,
+    "both_arms_must_have_no_runtime_failures": true,
+    "all_conditions_required": true,
+    "all_floor_pairs_tied_decision": "retain_promoted_r8_stronger_td_candidate_has_no_observable_live_benefit"
+  },
+  "execution_constraints": {
+    "stop_after_started_arm_failure": true,
+    "no_seed_or_threshold_change_after_start": true,
+    "no_model_or_parameter_change_between_arms": true,
+    "no_automatic_promotion": true,
+    "restore_production_configuration_between_arms_and_after_completion": true
+  }
+}
