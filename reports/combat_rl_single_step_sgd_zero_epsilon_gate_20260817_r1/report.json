@@ -1,0 +1,147 @@
+{
+  "schema_version": 1,
+  "gate_id": "combat-rl-single-step-sgd-zero-epsilon-gate-20260817-r1",
+  "source_commit": "1d95ac712",
+  "preregistration_commit": "6acd748e9",
+  "candidate_checkpoint": {
+    "path": "reports/combat_rl_single_step_sgd_trust_region_20260817_r7/rl_combat_model_single_step_sgd_candidate.pth",
+    "sha256": "0e92acec8928e0b467f1440e2cbe0f15b6b940d095e29aae26e82b76ff5a7a46",
+    "relative_l2_from_parent": 0.0000014982921062948143
+  },
+  "parent_checkpoint": {
+    "path": "reports/combat_rl_parent_weight_one_interpolation_20260816_r1/rl_combat_model_parent_to_weight_one_alpha_0_20.pth",
+    "sha256": "7a27fe138ceaba927354da88d71b9186c6b918cb8d76c75c56aee8d74146faeb"
+  },
+  "evaluation": {
+    "seed_pool": "reports/combat_rl_single_step_sgd_zero_epsilon_gate_20260817_r1_seed_pool.txt",
+    "seed_pool_sha256": "dfc778eabd851b7c229a30db1cb9cc9bf067c35eb69b2a0c4f39fb6862ecfb4c",
+    "games_per_arm": 10,
+    "epsilon": 0.0,
+    "elite_route": "conservative",
+    "same_seed_order": true,
+    "all_seed_pairs_match": true
+  },
+  "candidate": {
+    "started_at": "2026-08-17T21:58:48.949+08:00",
+    "finished_at": "2026-08-17T22:16:34.073+08:00",
+    "games": 10,
+    "victories": 0,
+    "floor_total": 210,
+    "floor_mean": 21.0,
+    "floor_median": 19.0,
+    "act_2_entered": 5,
+    "act_2_boss_reached": 2,
+    "act_3_entered": 0,
+    "playtime_seconds": 1017,
+    "floors": [23, 33, 16, 33, 13, 16, 16, 22, 16, 22],
+    "run_files": [
+      "1786975251.run",
+      "1786975366.run",
+      "1786975444.run",
+      "1786975630.run",
+      "1786975686.run",
+      "1786975769.run",
+      "1786975858.run",
+      "1786975975.run",
+      "1786976060.run",
+      "1786976192.run"
+    ],
+    "decision_trace_rows": 3093,
+    "sim_divergence_rows": 6,
+    "invalid_or_failed_rl_actions": 0,
+    "agent_fallbacks": 0,
+    "training_or_expert_actions": 0,
+    "tracebacks": 0,
+    "critical_errors": 0,
+    "runtime_evidence_zip": {
+      "path": "reports/combat_rl_single_step_sgd_zero_epsilon_gate_20260817_r1/candidate/runtime_evidence.zip",
+      "sha256": "8b7904073403af97fa6c7c9f14a049a7ba69a305467337d54c06a447332d7111",
+      "entry_count": 9,
+      "size_bytes": 5084725
+    }
+  },
+  "parent": {
+    "started_at": "2026-08-17T22:19:32.492+08:00",
+    "finished_at": "2026-08-17T22:36:35.982+08:00",
+    "games": 10,
+    "victories": 0,
+    "floor_total": 204,
+    "floor_mean": 20.4,
+    "floor_median": 16.0,
+    "act_2_entered": 4,
+    "act_2_boss_reached": 2,
+    "act_3_entered": 0,
+    "playtime_seconds": 975,
+    "floors": [23, 33, 16, 33, 13, 16, 16, 16, 16, 22],
+    "run_files": [
+      "1786976494.run",
+      "1786976609.run",
+      "1786976687.run",
+      "1786976873.run",
+      "1786976929.run",
+      "1786977013.run",
+      "1786977100.run",
+      "1786977177.run",
+      "1786977262.run",
+      "1786977394.run"
+    ],
+    "decision_trace_rows": 2981,
+    "sim_divergence_rows": 6,
+    "invalid_or_failed_rl_actions": 0,
+    "agent_fallbacks": 0,
+    "training_or_expert_actions": 0,
+    "tracebacks": 0,
+    "critical_errors": 0,
+    "runtime_evidence_zip": {
+      "path": "reports/combat_rl_single_step_sgd_zero_epsilon_gate_20260817_r1/parent/runtime_evidence.zip",
+      "sha256": "dd8c2e28f7f296d5bf10ec968eb2c1d21aef0817f3ae17d8d2d992f0a2836734",
+      "entry_count": 9,
+      "size_bytes": 5066574
+    }
+  },
+  "paired_outcomes": {
+    "candidate_floor_wins": 1,
+    "parent_floor_wins": 0,
+    "ties": 9,
+    "candidate_minus_parent_total_floors": 6,
+    "floor_deltas": [0, 0, 0, 0, 0, 0, 0, 6, 0, 0],
+    "divergent_pair": {
+      "seed_pool_index": 8,
+      "seed": "6AA76F8A05024",
+      "seed_played": "2822222222939975333",
+      "candidate_floor": 22,
+      "parent_floor": 16,
+      "candidate_killed_by": "Snake Plant",
+      "parent_killed_by": "The Guardian",
+      "same_noncombat_path_through_floor_16": true,
+      "candidate_hp_entering_guardian": 73,
+      "parent_hp_entering_guardian": 61,
+      "candidate_hp_after_guardian": 13
+    }
+  },
+  "runtime_integrity": {
+    "candidate_expected_wrapper_log_growth_bytes": 1463,
+    "candidate_error_growth_after_start_bytes": 0,
+    "parent_expected_wrapper_log_growth_bytes": 1471,
+    "parent_error_growth_after_start_bytes": 0,
+    "configuration_restored_to_production": true,
+    "restored_config_sha256": "7e923bba944c411512f5f8322a8494bc30f7edda47be0e3f404c5b25edde22b2",
+    "processes_closed": true
+  },
+  "qualification_rule": {
+    "candidate_paired_floor_wins_at_least_parent_passed": true,
+    "at_least_one_floor_pair_non_tied_passed": true,
+    "candidate_victories_at_least_parent_passed": true,
+    "candidate_act_2_entries_at_least_parent_passed": true,
+    "candidate_act_2_boss_reaches_at_least_parent_passed": true,
+    "candidate_act_3_entries_at_least_parent_passed": true,
+    "candidate_total_floors_at_least_parent_passed": true,
+    "both_arms_completed_all_games_passed": true,
+    "all_seed_pairs_match_passed": true,
+    "both_arms_runtime_integrity_passed": true,
+    "all_conditions_passed": true,
+    "failed_conditions": []
+  },
+  "decision": "qualified_for_separate_promotion_decision",
+  "next_step": "Record a separate promotion decision. Do not treat the 10-pair gate alone as evidence of a large effect; retain the offline r3 and untouched r4 improvements as supporting evidence."
+}
