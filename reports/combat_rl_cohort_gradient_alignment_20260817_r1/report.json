@@ -1,0 +1,247 @@
+{
+  "alignment": {
+    "all": {
+      "cohort_cosine_with_weighted_aggregate": {
+        "r1": 0.9985274257673465,
+        "r2": 0.9974691138555979,
+        "r3": 0.9983508953580985
+      },
+      "leave_one_out": {
+        "r1": {
+          "cosine": 0.9966045231320321,
+          "first_order_descent_on_held_out": true,
+          "training_cohorts": [
+            "r2",
+            "r3"
+          ]
+        },
+        "r2": {
+          "cosine": 0.9948409291193714,
+          "first_order_descent_on_held_out": true,
+          "training_cohorts": [
+            "r1",
+            "r3"
+          ]
+        },
+        "r3": {
+          "cosine": 0.9959839684033345,
+          "first_order_descent_on_held_out": true,
+          "training_cohorts": [
+            "r1",
+            "r2"
+          ]
+        }
+      },
+      "pairwise_cosine": {
+        "r1": {
+          "r1": 0.9999999999999697,
+          "r2": 0.9941824427238978,
+          "r3": 0.9956007773791892
+        },
+        "r2": {
+          "r1": 0.9941824427238978,
+          "r2": 0.9999999999999789,
+          "r3": 0.9933329670388765
+        },
+        "r3": {
+          "r1": 0.9956007773791892,
+          "r2": 0.9933329670388765,
+          "r3": 0.999999999999951
+        }
+      },
+      "weighted_aggregate_gradient_norm": 24.311059307344685
+    },
+    "nonterminal": {
+      "cohort_cosine_with_weighted_aggregate": {
+        "r1": 0.9982946323746399,
+        "r2": 0.997601404972947,
+        "r3": 0.9983317433608438
+      },
+      "leave_one_out": {
+        "r1": {
+          "cosine": 0.9960439506824265,
+          "first_order_descent_on_held_out": true,
+          "training_cohorts": [
+            "r2",
+            "r3"
+          ]
+        },
+        "r2": {
+          "cosine": 0.9951265442307806,
+          "first_order_descent_on_held_out": true,
+          "training_cohorts": [
+            "r1",
+            "r3"
+          ]
+        },
+        "r3": {
+          "cosine": 0.9959479117401814,
+          "first_order_descent_on_held_out": true,
+          "training_cohorts": [
+            "r1",
+            "r2"
+          ]
+        }
+      },
+      "pairwise_cosine": {
+        "r1": {
+          "r1": 0.9999999999999563,
+          "r2": 0.9939449945353019,
+          "r3": 0.9949923324688983
+        },
+        "r2": {
+          "r1": 0.9939449945353019,
+          "r2": 0.9999999999999405,
+          "r3": 0.9938187160142115
+        },
+        "r3": {
+          "r1": 0.9949923324688983,
+          "r2": 0.9938187160142115,
+          "r3": 0.999999999999978
+        }
+      },
+      "weighted_aggregate_gradient_norm": 23.369357684156096
+    },
+    "terminal": {
+      "cohort_cosine_with_weighted_aggregate": {
+        "r1": 0.9976327110481906,
+        "r2": 0.9944865590758674,
+        "r3": 0.9955934009308551
+      },
+      "leave_one_out": {
+        "r1": {
+          "cosine": 0.9947184021794594,
+          "first_order_descent_on_held_out": true,
+          "training_cohorts": [
+            "r2",
+            "r3"
+          ]
+        },
+        "r2": {
+          "cosine": 0.9879890308537917,
+          "first_order_descent_on_held_out": true,
+          "training_cohorts": [
+            "r1",
+            "r3"
+          ]
+        },
+        "r3": {
+          "cosine": 0.9896493219285616,
+          "first_order_descent_on_held_out": true,
+          "training_cohorts": [
+            "r1",
+            "r2"
+          ]
+        }
+      },
+      "pairwise_cosine": {
+        "r1": {
+          "r1": 0.9999999999999585,
+          "r2": 0.9893242652616329,
+          "r3": 0.9913553118508228
+        },
+        "r2": {
+          "r1": 0.9893242652616329,
+          "r2": 0.9999999999999613,
+          "r3": 0.9825578339468108
+        },
+        "r3": {
+          "r1": 0.9913553118508228,
+          "r2": 0.9825578339468108,
+          "r3": 0.999999999999976
+        }
+      },
+      "weighted_aggregate_gradient_norm": 53.636270733819245
+    }
+  },
+  "audit_id": "combat-rl-cohort-gradient-alignment-20260817-r1",
+  "authority": "read-only gradient diagnosis; no candidate or live authority",
+  "cohorts": {
+    "r1": {
+      "gradient_norm": {
+        "all": 24.112303699615044,
+        "nonterminal": 23.252835373063412,
+        "terminal": 53.355042969939696
+      },
+      "path": "D:\\PycharmProjects\\slay-the-spire-ai\\reports\\combat_rl_parent_on_policy_replay_collection_20260817_r1\\rl_combat_model_ep19_steps3856.pth",
+      "reward_max": 95.23332977294922,
+      "reward_mean": -2.9185006618499756,
+      "reward_min": -200.0,
+      "sha256": "db3c08ec4335ae2fca460a5c64fe911f699105c363634c8de9611b14e288c425",
+      "smooth_l1": {
+        "all": 4.168867309063796,
+        "nonterminal": 1.7929442693350632,
+        "terminal": 34.280742888754986
+      },
+      "stratum_row_count": {
+        "all": 3856,
+        "nonterminal": 3574,
+        "terminal": 282
+      },
+      "terminal_count": 282,
+      "transition_count": 3856
+    },
+    "r2": {
+      "gradient_norm": {
+        "all": 25.082012231843855,
+        "nonterminal": 24.188708125460938,
+        "terminal": 54.92458600087239
+      },
+      "path": "D:\\PycharmProjects\\slay-the-spire-ai\\reports\\combat_rl_parent_on_policy_replay_collection_20260817_r2\\rl_combat_model_ep20_steps3255.pth",
+      "reward_max": 93.63187408447266,
+      "reward_mean": -3.8033528327941895,
+      "reward_min": -200.0,
+      "sha256": "310d3a25e5bfab016898f435be5bf4ba7a97cae11a4bf71eef26ec13407e2b61",
+      "smooth_l1": {
+        "all": 4.444974978398617,
+        "nonterminal": 1.7104812407517538,
+        "terminal": 34.92233492723152
+      },
+      "stratum_row_count": {
+        "all": 3255,
+        "nonterminal": 2987,
+        "terminal": 268
+      },
+      "terminal_count": 268,
+      "transition_count": 3255
+    },
+    "r3": {
+      "gradient_norm": {
+        "all": 24.007212149542266,
+        "nonterminal": 22.953462318482824,
+        "terminal": 53.36913378866423
+      },
+      "path": "D:\\PycharmProjects\\slay-the-spire-ai\\reports\\combat_rl_parent_on_policy_replay_collection_20260817_r3\\rl_combat_model_ep20_steps4075.pth",
+      "reward_max": 97.53545379638672,
+      "reward_mean": -2.8757991790771484,
+      "reward_min": -200.0,
+      "sha256": "317fcc945a50c74a5b1575182e20bd2020ac0f100f65ca3a394b23423142edd7",
+      "smooth_l1": {
+        "all": 4.122797042753067,
+        "nonterminal": 1.7047196908751892,
+        "terminal": 34.88204267611006
+      },
+      "stratum_row_count": {
+        "all": 4075,
+        "nonterminal": 3778,
+        "terminal": 297
+      },
+      "terminal_count": 297,
+      "transition_count": 4075
+    }
+  },
+  "design": {
+    "chunk_size": 128,
+    "gamma": 0.99,
+    "model_fitting": false,
+    "network_mode": "eval",
+    "objective": "one_step_double_dqn_smooth_l1_at_promoted_parent",
+    "policy_evaluation": false
+  },
+  "parent_checkpoint": {
+    "path": "D:\\PycharmProjects\\slay-the-spire-ai\\reports\\combat_rl_parent_weight_one_interpolation_20260816_r1\\rl_combat_model_parent_to_weight_one_alpha_0_20.pth",
+    "sha256": "7a27fe138ceaba927354da88d71b9186c6b918cb8d76c75c56aee8d74146faeb"
+  },
+  "schema_version": 1,
+  "source_commit": "e5eeb7e73"
+}
