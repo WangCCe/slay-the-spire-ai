@@ -1,0 +1,50 @@
+{
+  "schema_version": 1,
+  "collection_id": "combat-rl-parent-on-policy-replay-collection-20260818-r7",
+  "source_commit": "a80331c55",
+  "purpose": "Collect an untouched zero-epsilon replay cohort under the promoted second single-step SGD policy for the next bounded multi-update successor.",
+  "authority": "zero-update replay collection and later frozen offline validation only; no optimizer update during collection and no automatic promotion",
+  "initializer_checkpoint": {
+    "path": "reports/combat_rl_parent_on_policy_replay_collection_20260818_r7/rl_combat_model_parent_empty_replay_learning_starts_100000.pth",
+    "sha256": "e3a13a7a219ae8a7bf57ce335a6d40eedf2e1f957cf35f2c66220c5f92f68b0d",
+    "manifest": "reports/combat_rl_parent_on_policy_replay_collection_20260818_r7/initialization_manifest.json",
+    "manifest_sha256": "c5f8581e58d65e2d6b1a45a8ca06b2662affdb9be41e4814cb688ff055055d2a",
+    "epsilon": 0.0,
+    "learning_starts": 100000,
+    "replay_transition_count": 0,
+    "online_and_target_equal_promoted_parent": true,
+    "optimizer_state_is_empty": true
+  },
+  "promoted_parent": {
+    "path": "reports/combat_rl_single_step_sgd_trust_region_20260817_r8/rl_combat_model_second_single_step_sgd_candidate.pth",
+    "sha256": "edf7d33124a3fbbc3abee6bae6c7b9654ea9a9191dcf151e5c0b000c71a4f454"
+  },
+  "collection": {
+    "games": 20,
+    "epsilon": 0.0,
+    "boss_min_epsilon": 0.0,
+    "elite_route": "conservative",
+    "ascension": 0,
+    "seed_pool": "reports/combat_rl_parent_on_policy_replay_collection_20260818_r7_seed_pool.txt",
+    "seed_pool_sha256": "e65d0472a4b78c94aa0c8b23532b8ffa6419a0c08e484ef4dcc537e396d35d1c",
+    "seeds_are_unique_within_repo_seed_artifacts": true,
+    "launch_config": "reports/combat_rl_parent_on_policy_replay_collection_20260818_r7.properties",
+    "launch_config_sha256": "15ee9a53bb493076d5f955e5af7c12e571fd771cbc6b79f6815b2f757721c19b",
+    "expert_mix_disabled": true
+  },
+  "required_checks": {
+    "complete_exactly_20_games": true,
+    "all_run_seeds_match_in_order": true,
+    "online_and_target_remain_equal_to_promoted_parent": true,
+    "optimizer_state_remains_empty": true,
+    "optimizer_step_remains_zero": true,
+    "no_training_losses_are_emitted": true,
+    "no_post_start_runtime_failures": true
+  },
+  "execution_policy": {
+    "after_first_game_preserve_seed_order_and_parameters": true,
+    "do_not_substitute_a_different_cohort_after_observing_results": true,
+    "restore_promoted_production_configuration_after_completion": true
+  },
+  "next_step": "After collection, freeze one bounded multi-update candidate using only consumed replay cohorts, then evaluate it once on this complete r7 replay without fitting or tuning against r7."
+}
