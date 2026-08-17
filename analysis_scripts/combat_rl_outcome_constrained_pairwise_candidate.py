@@ -168,6 +168,32 @@ def _load_replay(path: Path) -> tuple[dict, dict, dict]:
     return checkpoint, replay, metadata
 
 
+def _build_batches(
+    *,
+    train_count: int,
+    batch_size: int,
+    updates: int,
+    seed: int,
+    full_coverage_epochs: int,
+) -> list[torch.Tensor]:
+    rng = np.random.default_rng(seed)
+    if full_coverage_epochs > 0:
+        batches = []
+        for _ in range(full_coverage_epochs):
+            permutation = rng.permutation(train_count)
+            batches.extend(
+                torch.from_numpy(permutation[start : start + batch_size]).long()
+                for start in range(0, train_count, batch_size)
+            )
+        return batches
+    return [
+        torch.from_numpy(
+            rng.choice(train_count, size=batch_size, replace=False)
+        ).long()
+        for _ in range(updates)
+    ]
+
+
 def run(args: argparse.Namespace) -> dict:
     if args.td_weight <= 0.0 or not math.isfinite(args.td_weight):
         raise ValueError("TD weight must be finite and positive")
@@ -179,6 +205,8 @@ def run(args: argparse.Namespace) -> dict:
         raise ValueError("Pairwise gate requires positive imitation weight")
     if args.updates <= 0 or args.batch_size <= 0:
         raise ValueError("Updates and batch size must be positive")
+    if args.full_coverage_epochs < 0:
+        raise ValueError("Full-coverage epochs must be non-negative")
 
     parent_path = args.parent_checkpoint.resolve()
     train_path = args.train_replay_checkpoint.resolve()
@@ -232,13 +260,13 @@ def run(args: argparse.Namespace) -> dict:
 
     replicates = []
     for replicate_seed in args.replicate_seeds:
-        rng = np.random.default_rng(replicate_seed)
-        batches = [
-            torch.from_numpy(
-                rng.choice(train_count, size=args.batch_size, replace=False)
-            ).long()
-            for _ in range(args.updates)
-        ]
+        batches = _build_batches(
+            train_count=train_count,
+            batch_size=args.batch_size,
+            updates=args.updates,
+            seed=replicate_seed,
+            full_coverage_epochs=args.full_coverage_epochs,
+        )
         train_metrics, network = _train_variant(
             parent=parent,
             replay=train_replay,
@@ -344,6 +372,15 @@ def run(args: argparse.Namespace) -> dict:
         },
         "design": {
             "updates": args.updates,
+            "actual_updates": len(
+                _build_batches(
+                    train_count=train_count,
+                    batch_size=args.batch_size,
+                    updates=args.updates,
+                    seed=args.replicate_seeds[0],
+                    full_coverage_epochs=args.full_coverage_epochs,
+                )
+            ),
             "batch_size": args.batch_size,
             "replicate_seeds": args.replicate_seeds,
             "candidate_seed": args.candidate_seed,
@@ -357,6 +394,7 @@ def run(args: argparse.Namespace) -> dict:
             "single_fixed_configuration": True,
             "interpolation_alphas": args.interpolation_alphas,
             "td_only_gate": args.td_only_gate,
+            "full_coverage_epochs": args.full_coverage_epochs,
         },
         "eligibility_thresholds": (
             {
@@ -385,13 +423,13 @@ def run(args: argparse.Namespace) -> dict:
     }
 
     if all_replicates_passed:
-        rng = np.random.default_rng(args.candidate_seed)
-        batches = [
-            torch.from_numpy(
-                rng.choice(train_count, size=args.batch_size, replace=False)
-            ).long()
-            for _ in range(args.updates)
-        ]
+        batches = _build_batches(
+            train_count=train_count,
+            batch_size=args.batch_size,
+            updates=args.updates,
+            seed=args.candidate_seed,
+            full_coverage_epochs=args.full_coverage_epochs,
+        )
         train_metrics, candidate = _train_variant(
             parent=parent,
             replay=train_replay,
@@ -456,6 +494,7 @@ def run(args: argparse.Namespace) -> dict:
                     "validation_replay_checkpoint_sha256": _sha256(validation_path),
                     "candidate_seed": args.candidate_seed,
                     "updates": args.updates,
+                    "actual_updates": len(batches),
                     "batch_size": args.batch_size,
                     "learning_rate": args.learning_rate,
                     "td_weight": args.td_weight,
@@ -463,6 +502,7 @@ def run(args: argparse.Namespace) -> dict:
                     "pairwise_margin": args.pairwise_margin,
                     "interpolation_alpha": selected_interpolation_alpha,
                     "td_only_gate": args.td_only_gate,
+                    "full_coverage_epochs": args.full_coverage_epochs,
                 },
             }
             _atomic_torch_save(payload, output_checkpoint)
@@ -510,6 +550,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--interpolation-alphas", type=float, nargs="+", default=[])
     parser.add_argument("--requires-fresh-offline-confirmation", action="store_true")
     parser.add_argument("--td-only-gate", action="store_true")
+    parser.add_argument("--full-coverage-epochs", type=int, default=0)
     return parser
 
 

@@ -1,0 +1,34 @@
+{
+  "schema_version": 1,
+  "experiment_id": "combat-rl-conservative-td-full-coverage-interpolation-20260817-r4",
+  "predecessor": "reports/combat_rl_conservative_td_parent_interpolation_20260817_r3/report.json",
+  "purpose": "Test whether complete replay coverage stabilizes conservative TD generalization across batch schedules.",
+  "training_configuration": {
+    "full_coverage_epochs": 1,
+    "expected_updates": 56,
+    "batch_size": 128,
+    "replicate_seeds": [101, 202, 303],
+    "candidate_seed": 404,
+    "learning_rate": 0.0001,
+    "td_weight": 0.05,
+    "parent_anchor_objective": "q_smooth_l1",
+    "parent_anchor_weight": 1.0,
+    "imitation_weight": 0.0
+  },
+  "interpolation_alphas": [0.25, 0.5, 0.75],
+  "eligibility": {
+    "all_replicates_and_final_candidate_must_pass": true,
+    "development_smooth_l1_must_improve": true,
+    "parent_action_agreement_min": 0.98,
+    "off_target_parent_disagreement_max": 0.02,
+    "behavioral_surrogate_requirement": false
+  },
+  "selection_rule": "Select the smallest alpha that passes every eligibility condition on all three full-coverage schedules.",
+  "constraints": {
+    "r3_is_consumed_development_data": true,
+    "no_gameplay": true,
+    "no_production_checkpoint_change": true,
+    "selected_checkpoint_requires_new_r4_replay_confirmation": true,
+    "no_live_gate_authority": true
+  }
+}

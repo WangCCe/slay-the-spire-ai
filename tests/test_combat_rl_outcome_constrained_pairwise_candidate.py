@@ -1,4 +1,5 @@
 from analysis_scripts.combat_rl_outcome_constrained_pairwise_candidate import (
+    _build_batches,
     _eligibility,
     _interpolate_with_parent,
     _td_only_eligibility,
@@ -116,3 +117,37 @@ def test_td_only_gate_rejects_parent_drift():
     assert checks["parent_action_agreement_at_least_0_98"] is False
     assert checks["off_target_parent_disagreement_at_most_0_02"] is False
     assert checks["all_conditions_passed"] is False
+
+
+def test_full_coverage_batches_visit_every_row_once_per_epoch():
+    batches = _build_batches(
+        train_count=10,
+        batch_size=4,
+        updates=99,
+        seed=101,
+        full_coverage_epochs=1,
+    )
+
+    visited = torch.cat(batches)
+
+    assert [len(batch) for batch in batches] == [4, 4, 2]
+    assert sorted(visited.tolist()) == list(range(10))
+
+
+def test_random_batches_remain_deterministic_without_full_coverage():
+    left = _build_batches(
+        train_count=20,
+        batch_size=5,
+        updates=3,
+        seed=202,
+        full_coverage_epochs=0,
+    )
+    right = _build_batches(
+        train_count=20,
+        batch_size=5,
+        updates=3,
+        seed=202,
+        full_coverage_epochs=0,
+    )
+
+    assert all(torch.equal(a, b) for a, b in zip(left, right))
