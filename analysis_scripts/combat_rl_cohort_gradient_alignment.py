@@ -111,6 +111,10 @@ def _pairwise_cosines(gradients: dict[str, torch.Tensor]) -> dict:
     }
 
 
+def _matching_indices(mask: torch.Tensor) -> torch.Tensor:
+    return torch.nonzero(mask, as_tuple=False).flatten()
+
+
 def run(args: argparse.Namespace) -> dict:
     if len(args.cohort) < 2:
         raise ValueError("At least two cohorts are required")
@@ -157,8 +161,8 @@ def run(args: argparse.Namespace) -> dict:
         )
         strata = {
             "all": torch.arange(count),
-            "terminal": torch.flatnonzero(dones),
-            "nonterminal": torch.flatnonzero(~dones),
+            "terminal": _matching_indices(dones),
+            "nonterminal": _matching_indices(~dones),
         }
         losses = {}
         gradient_norms = {}

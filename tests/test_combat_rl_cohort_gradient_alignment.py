@@ -6,6 +6,7 @@ import torch
 
 from analysis_scripts.combat_rl_cohort_gradient_alignment import (
     _cosine_similarity,
+    _matching_indices,
     _parse_cohort,
     _weighted_mean_gradient,
 )
@@ -34,3 +35,10 @@ def test_parse_cohort_requires_name_and_path():
     assert _parse_cohort("r1=replay.pth") == ("r1", Path("replay.pth"))
     with pytest.raises(argparse.ArgumentTypeError):
         _parse_cohort("replay.pth")
+
+
+def test_matching_indices_returns_flat_row_indices():
+    assert _matching_indices(torch.tensor([False, True, False, True])).tolist() == [
+        1,
+        3,
+    ]
