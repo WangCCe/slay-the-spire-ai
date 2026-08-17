@@ -1,0 +1,90 @@
+{
+  "schema_version": 1,
+  "collection_id": "combat-rl-parent-on-policy-replay-collection-20260817-r5",
+  "source_commits": {
+    "promotion": "97a42bc9a",
+    "registration": "aeee37272"
+  },
+  "decision": "accept_complete_fresh_replay_for_next_candidate_validation",
+  "execution": {
+    "started_at": "2026-08-17T22:49:51.380+08:00",
+    "finished_at": "2026-08-17T23:29:18.176+08:00",
+    "requested_games": 20,
+    "completed_games": 20,
+    "termination": "natural_max_games",
+    "seed_pool_index_sequence": [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20],
+    "seed_order_matched": true
+  },
+  "inputs": {
+    "initializer_checkpoint_sha256": "8bfa3ba9e4833700d4f776c7a90ccfdf6ecdb101a3f8ae46a810ddc85d2962e5",
+    "promoted_parent_checkpoint_sha256": "0e92acec8928e0b467f1440e2cbe0f15b6b940d095e29aae26e82b76ff5a7a46",
+    "seed_pool_sha256": "243f1a584c729d40d776b2d94a525bc28250fd375fe5b9721bfdd087a3c0570d",
+    "launch_config_sha256": "a9c39dfbaab5fb81076484b0e200c62942dbe11c3f67c9e261d178efce116138",
+    "epsilon": 0.0,
+    "boss_min_epsilon": 0.0,
+    "expert_mix_enabled": false
+  },
+  "terminal_checkpoint": {
+    "path": "reports/combat_rl_parent_on_policy_replay_collection_20260817_r5/rl_combat_model_ep20_steps3631.pth",
+    "sha256": "e11f4e2b92fbed2e76e21d8325ab07757855f11f83f41310ae5a776add2e22ca",
+    "size_bytes": 18284362,
+    "episode": 20,
+    "total_steps": 3631,
+    "replay_transition_count": 3631,
+    "replay_source_transition_count": 3631,
+    "replay_truncated": false,
+    "learning_starts": 100000,
+    "epsilon": 0.0,
+    "online_equals_promoted_parent": true,
+    "target_equals_promoted_parent": true,
+    "online_equals_target": true,
+    "optimizer_state_count": 0,
+    "optimizer_step_max": 0,
+    "last_total_loss": null,
+    "last_td_loss": null,
+    "all_zero_update_checks_passed": true
+  },
+  "run_outcomes": {
+    "floors": [31, 30, 16, 27, 16, 16, 33, 33, 27, 21, 16, 24, 16, 12, 30, 16, 33, 16, 33, 16],
+    "floor_total": 462,
+    "floor_mean": 23.1,
+    "floor_median": 22.5,
+    "floor_min": 12,
+    "floor_max": 33,
+    "act_2_reached": 11,
+    "act_2_boss_reached": 4,
+    "act_3_reached": 0,
+    "wins": 0,
+    "playtime_seconds": 2270
+  },
+  "runtime_evidence": {
+    "archive": "reports/combat_rl_parent_on_policy_replay_collection_20260817_r5/runtime_evidence.zip",
+    "archive_sha256": "41e069058a9133c4ff35b00d8b237659f26923fafe370f556566184321395217",
+    "archive_size_bytes": 5209386,
+    "archive_entry_count": 9,
+    "archived_run_count": 20,
+    "decision_trace_rows": 6915,
+    "sim_divergence_rows": 19,
+    "communication_mod_errors_before_launch_bytes": 1309299,
+    "communication_mod_errors_after_startup_bytes": 1310786,
+    "communication_mod_errors_after_stop_bytes": 1310786,
+    "expected_wrapper_growth_bytes": 1487,
+    "post_start_error_growth_bytes": 0,
+    "training_loss_log_count": 0,
+    "expert_action_count": 0,
+    "invalid_action_count": 0,
+    "nonzero_rl_failure_count": 0,
+    "replay_failure_count": 0,
+    "agent_fallback_count": 0,
+    "traceback_count": 0,
+    "critical_count": 0
+  },
+  "isolation": {
+    "production_config_restored": true,
+    "production_config_sha256": "a480cf80b550dae3dbe94b35f898a1dc8e95cab3174565421884fabb98d62c2b",
+    "remaining_project_python_processes": 0,
+    "remaining_game_processes": 0,
+    "promotion_authority": false
+  },
+  "next_step": "Freeze the next conservative SGD candidate using only previously consumed replay data, then evaluate it once on this complete r5 replay without fitting or tuning against r5."
+}
