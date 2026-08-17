@@ -1,0 +1,29 @@
+{
+  "output_checkpoint": {
+    "path": "D:\\PycharmProjects\\slay-the-spire-ai\\reports\\combat_rl_parent_on_policy_replay_collection_20260817_r4\\rl_combat_model_ep20_steps4576_full_replay.pth",
+    "sha256": "2c3ca6b5443b5f408d4b9b232d15459c3b235e4fb751162acce1c5ef31bb590a",
+    "size_bytes": 21860333
+  },
+  "prefix_checkpoint": {
+    "path": "D:\\PycharmProjects\\slay-the-spire-ai\\reports\\combat_rl_parent_on_policy_replay_collection_20260817_r4\\rl_combat_model_ep16_steps4000.pth",
+    "sha256": "9f3a9fa300a832416dde1b1236bf7d51fc80eab4b6c9019c7ce9ea0e265cf5f4",
+    "size_bytes": 19680202
+  },
+  "reconstruction": {
+    "all_tensor_overlaps_equal": true,
+    "appended_transition_count": 576,
+    "overlap_transition_count": 3520,
+    "prefix_end": 4000,
+    "prefix_start": 0,
+    "reconstructed_transition_count": 4576,
+    "suffix_end": 4576,
+    "suffix_start": 480
+  },
+  "schema_version": 1,
+  "source_commit": "700fbe32e",
+  "suffix_checkpoint": {
+    "path": "D:\\PycharmProjects\\slay-the-spire-ai\\reports\\combat_rl_parent_on_policy_replay_collection_20260817_r4\\rl_combat_model_ep20_steps4576.pth",
+    "sha256": "3c954cee757dbbe9b1bb9f796f83e093bdee9b69795adaf8755158d5f68318e1",
+    "size_bytes": 20043466
+  }
+}
