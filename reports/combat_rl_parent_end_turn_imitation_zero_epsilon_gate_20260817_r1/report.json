@@ -1,0 +1,111 @@
+{
+  "schema_version": 1,
+  "gate_id": "combat-rl-parent-end-turn-imitation-zero-epsilon-gate-20260817-r1",
+  "source_commit": "141e0f8c6",
+  "preregistration_commit": "8d1f5462a",
+  "candidate_checkpoint": {
+    "path": "reports/combat_rl_parent_end_turn_imitation_training_20260817_r4/rl_combat_model_ep5_steps9955.pth",
+    "sha256": "561b7879f92dd9caaaa4d88c898f2d33a3d25a45c685a5720f1872d6ffe7c946"
+  },
+  "parent_checkpoint": {
+    "path": "reports/combat_rl_parent_weight_one_interpolation_20260816_r1/rl_combat_model_parent_to_weight_one_alpha_0_20.pth",
+    "sha256": "7a27fe138ceaba927354da88d71b9186c6b918cb8d76c75c56aee8d74146faeb"
+  },
+  "seed_pool": {
+    "path": "reports/combat_rl_parent_end_turn_imitation_zero_epsilon_gate_20260817_r1_seed_pool.txt",
+    "sha256": "a0620b4fb1d44e71f89a2bec5d40416cdb9a2cf2386be0cccb87b23af1ba22e3",
+    "count": 20,
+    "all_pairs_matched": true
+  },
+  "candidate": {
+    "started_at": "2026-08-17T08:47:17+08:00",
+    "finished_at": "2026-08-17T09:28:33+08:00",
+    "games": 20,
+    "victories": 1,
+    "victory_run": "reports/combat_rl_parent_end_turn_imitation_zero_epsilon_gate_20260817_r1/candidate/runs/1786927917.run",
+    "floor_total": 476,
+    "floor_mean": 23.8,
+    "act_2_entered": 11,
+    "act_2_boss_reached": 7,
+    "act_3_entered": 1,
+    "playtime_seconds": 2369,
+    "floors": [51, 8, 16, 24, 33, 33, 16, 16, 33, 23, 33, 16, 16, 16, 33, 22, 33, 25, 16, 13],
+    "raw_rl_decisions": 1735,
+    "raw_rl_end_turn": 1007,
+    "positive_energy_raw_rl_end_turn": 891,
+    "positive_energy_end_turn_share": 0.8848063555114201,
+    "energy_guard_actions": 4291,
+    "lethal_guard_actions": 254,
+    "survival_guard_actions": 74,
+    "invalid_or_failed_rl_actions": 0,
+    "agent_fallbacks": 0,
+    "tracebacks": 0,
+    "critical_errors": 0,
+    "sim_divergence_rows": 14,
+    "runtime_evidence_zip": {
+      "path": "reports/combat_rl_parent_end_turn_imitation_zero_epsilon_gate_20260817_r1/candidate/runtime_evidence.zip",
+      "sha256": "08c646c258bcae45eec4044a6c82db06dcc7b4d18331caf987b8b34e0fe6b654",
+      "entry_count": 8,
+      "size_bytes": 4658238
+    }
+  },
+  "parent": {
+    "started_at": "2026-08-17T09:33:32+08:00",
+    "finished_at": "2026-08-17T10:16:08+08:00",
+    "games": 20,
+    "victories": 0,
+    "floor_total": 488,
+    "floor_mean": 24.4,
+    "act_2_entered": 12,
+    "act_2_boss_reached": 6,
+    "act_3_entered": 1,
+    "playtime_seconds": 2454,
+    "floors": [50, 16, 16, 24, 16, 33, 16, 21, 33, 23, 33, 16, 16, 31, 21, 33, 33, 28, 16, 13],
+    "raw_rl_decisions": 1785,
+    "raw_rl_end_turn": 1067,
+    "positive_energy_raw_rl_end_turn": 954,
+    "positive_energy_end_turn_share": 0.8940955951265229,
+    "energy_guard_actions": 4517,
+    "lethal_guard_actions": 246,
+    "survival_guard_actions": 129,
+    "invalid_or_failed_rl_actions": 0,
+    "agent_fallbacks": 0,
+    "tracebacks": 0,
+    "critical_errors": 0,
+    "sim_divergence_rows": 20,
+    "runtime_evidence_zip": {
+      "path": "reports/combat_rl_parent_end_turn_imitation_zero_epsilon_gate_20260817_r1/parent/runtime_evidence.zip",
+      "sha256": "f0b759553e4a71e231ef18107b85ee8d1514def2c14b8cefcd2994e45a6f1801",
+      "entry_count": 8,
+      "size_bytes": 4827612
+    }
+  },
+  "paired_outcomes": {
+    "candidate_floor_wins": 3,
+    "parent_floor_wins": 5,
+    "ties": 12,
+    "candidate_minus_parent_total_floors": -12,
+    "floor_deltas": [1, -8, 0, 0, 17, 0, 0, -5, 0, 0, 0, 0, 0, -15, 12, -11, 0, -3, 0, 0]
+  },
+  "runtime_integrity": {
+    "candidate_expected_wrapper_log_growth_bytes": 1461,
+    "candidate_error_growth_after_start_bytes": 0,
+    "parent_expected_wrapper_log_growth_bytes": 1482,
+    "parent_error_growth_after_start_bytes": 0,
+    "configuration_restored_to_production": true,
+    "restored_config_sha256": "7e923bba944c411512f5f8322a8494bc30f7edda47be0e3f404c5b25edde22b2",
+    "processes_closed": true
+  },
+  "promotion_rule": {
+    "candidate_paired_floor_wins_passed": false,
+    "candidate_victories_passed": true,
+    "candidate_act_2_entries_passed": false,
+    "candidate_act_2_boss_reaches_passed": true,
+    "candidate_total_floors_passed": false,
+    "candidate_positive_energy_end_turn_share_passed": true,
+    "both_arms_completed_passed": true,
+    "all_seed_pairs_matched_passed": true,
+    "all_conditions_passed": false
+  },
+  "decision": "retain_parent_despite_first_candidate_victory_and_end_turn_improvement"
+}
