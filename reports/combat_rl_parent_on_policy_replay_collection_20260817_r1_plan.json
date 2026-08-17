@@ -1,0 +1,56 @@
+{
+  "schema_version": 1,
+  "collection_id": "combat-rl-parent-on-policy-replay-collection-20260817-r1",
+  "source_commit": "2a8a13f9b",
+  "purpose": "Collect a fresh zero-epsilon replay from the production parent policy without performing optimizer updates, so the next combat-RL objective can be designed from on-policy evidence instead of the stale replay.",
+  "authority": "replay collection and analysis only; no training update, policy promotion, or production checkpoint replacement",
+  "initializer_checkpoint": {
+    "path": "reports/combat_rl_parent_on_policy_replay_collection_20260817_r1/rl_combat_model_parent_empty_replay.pth",
+    "sha256": "41e5535becbc94cd61d57bfe8fc5c4f99e1871a5893928281a56948feb1a7478",
+    "checkpoint_kind": "training",
+    "checkpoint_schema_version": 2,
+    "epsilon": 0.0,
+    "learning_starts": 4096,
+    "replay_transition_count": 0,
+    "total_steps": 0,
+    "online_and_target_equal_parent": true,
+    "optimizer_state_is_empty": true
+  },
+  "collection": {
+    "games": 20,
+    "mode": "training_for_replay_capture_only",
+    "epsilon": 0.0,
+    "boss_min_epsilon": 0.0,
+    "elite_route": "conservative",
+    "ascension": 0,
+    "seed_pool": "reports/combat_rl_parent_on_policy_replay_collection_20260817_r1_seed_pool.txt",
+    "seed_pool_sha256": "801ed091663303942e84327400b3a9056a2150c762f3ae658547a0075452e774",
+    "seeds_are_unique_within_repo_seed_pools": true,
+    "launch_config": "reports/combat_rl_parent_on_policy_replay_collection_20260817_r1.properties",
+    "launch_config_sha256": "ad5391496ff94c661f80359bff73929254c0ed2d314bec9082a0f0f9140407e2",
+    "expert_mix_disabled": true
+  },
+  "terminal_checkpoint": {
+    "expected_source": "game checkpoints directory checkpoint emitted after game 20",
+    "required_replay_transition_count_min_inclusive": 1,
+    "required_replay_transition_count_max_inclusive": 4095,
+    "online_network_must_equal_parent": true,
+    "target_network_must_equal_parent": true,
+    "optimizer_state_must_be_empty": true,
+    "optimizer_step_must_equal": 0,
+    "epsilon_must_equal": 0.0,
+    "learning_starts_must_equal": 4096,
+    "no_update_or_loss_metrics_allowed": true
+  },
+  "constraints": {
+    "one_execution_only": true,
+    "stop_after_games": 20,
+    "stop_if_replay_would_reach_learning_starts": true,
+    "no_retry_after_gameplay_starts": true,
+    "no_seed_or_hyperparameter_change": true,
+    "no_optimizer_updates": true,
+    "no_expert_mix": true,
+    "no_automatic_promotion": true,
+    "restore_production_configuration_after_completion": true
+  }
+}
