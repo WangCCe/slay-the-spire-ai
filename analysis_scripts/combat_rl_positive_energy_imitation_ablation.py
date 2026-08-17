@@ -6,6 +6,7 @@ import argparse
 import hashlib
 import json
 import math
+import os
 import sys
 from pathlib import Path
 
@@ -31,6 +32,23 @@ def _sha256(path: Path) -> str:
         for chunk in iter(lambda: handle.read(1024 * 1024), b""):
             digest.update(chunk)
     return digest.hexdigest()
+
+
+def _atomic_torch_save(payload: dict, output: Path) -> None:
+    output.parent.mkdir(parents=True, exist_ok=True)
+    temporary = output.with_name(f".{output.name}.tmp")
+    try:
+        torch.save(payload, temporary)
+        os.replace(temporary, output)
+    finally:
+        if temporary.exists():
+            temporary.unlink()
+
+
+def _state_dict_equal(left: dict, right: dict) -> bool:
+    return list(left) == list(right) and all(
+        torch.equal(left[name], right[name]) for name in left
+    )
 
 
 def _quantile(values: torch.Tensor, probability: float) -> float:
@@ -272,7 +290,7 @@ def _train_variant(
             "train_count": train_count,
         }
     )
-    return result
+    return result, online
 
 
 def run(args: argparse.Namespace) -> dict:
@@ -326,25 +344,24 @@ def run(args: argparse.Namespace) -> dict:
             for _ in range(args.updates)
         ]
         for weight in args.imitation_weights:
-            replicates.append(
-                _train_variant(
-                    parent=parent,
-                    replay=replay,
-                    metadata=metadata,
-                    train_count=train_count,
-                    holdout_indices=holdout_indices,
-                    holdout_parent_actions=holdout_parent_actions,
-                    batches=batches,
-                    replicate_seed=replicate_seed,
-                    imitation_weight=weight,
-                    learning_rate=args.learning_rate,
-                    parent_end_turn_only=args.parent_end_turn_only,
-                    imitation_objective=args.imitation_objective,
-                    pairwise_margin=args.pairwise_margin,
-                    td_weight=args.td_weight,
-                    anchor_objective=args.anchor_objective,
-                )
+            replicate, _ = _train_variant(
+                parent=parent,
+                replay=replay,
+                metadata=metadata,
+                train_count=train_count,
+                holdout_indices=holdout_indices,
+                holdout_parent_actions=holdout_parent_actions,
+                batches=batches,
+                replicate_seed=replicate_seed,
+                imitation_weight=weight,
+                learning_rate=args.learning_rate,
+                parent_end_turn_only=args.parent_end_turn_only,
+                imitation_objective=args.imitation_objective,
+                pairwise_margin=args.pairwise_margin,
+                td_weight=args.td_weight,
+                anchor_objective=args.anchor_objective,
             )
+            replicates.append(replicate)
 
     metric_names = (
         "smooth_l1",
@@ -396,7 +413,7 @@ def run(args: argparse.Namespace) -> dict:
         ):
             eligible_weights.append(weight)
 
-    return {
+    result = {
         "schema_version": 1,
         "source_commit": args.source_commit,
         "analysis_script": {
@@ -442,12 +459,101 @@ def run(args: argparse.Namespace) -> dict:
         "selected_weight": min(eligible_weights) if eligible_weights else None,
     }
 
+    selected_weight = result["selected_weight"]
+    if selected_weight is not None and args.output_checkpoint is not None:
+        all_indices = torch.arange(transition_count)
+        with torch.no_grad():
+            all_parent_actions = parent_network(
+                *_batch(replay, all_indices)
+            ).argmax(dim=1)
+        rng = np.random.default_rng(args.candidate_seed)
+        candidate_batches = [
+            torch.from_numpy(
+                rng.choice(
+                    transition_count,
+                    size=args.batch_size,
+                    replace=False,
+                )
+            ).long()
+            for _ in range(args.updates)
+        ]
+        candidate_fit, candidate_network = _train_variant(
+            parent=parent,
+            replay=replay,
+            metadata=metadata,
+            train_count=transition_count,
+            holdout_indices=all_indices,
+            holdout_parent_actions=all_parent_actions,
+            batches=candidate_batches,
+            replicate_seed=args.candidate_seed,
+            imitation_weight=selected_weight,
+            learning_rate=args.learning_rate,
+            parent_end_turn_only=args.parent_end_turn_only,
+            imitation_objective=args.imitation_objective,
+            pairwise_margin=args.pairwise_margin,
+            td_weight=args.td_weight,
+            anchor_objective=args.anchor_objective,
+        )
+        candidate_state = {
+            name: value.detach().cpu()
+            for name, value in candidate_network.state_dict().items()
+        }
+        payload = {
+            "checkpoint_schema_version": 2,
+            "checkpoint_kind": "weights",
+            "metadata": metadata,
+            "rl_space_version": metadata["rl_space_version"],
+            "online_network_state_dict": candidate_state,
+            "episode": 0,
+            "provenance": {
+                "construction": "fresh_replay_pairwise_end_turn_margin_distillation",
+                "source_commit": args.source_commit,
+                "parent_checkpoint_sha256": result["inputs"][
+                    "parent_checkpoint"
+                ]["sha256"],
+                "replay_checkpoint_sha256": result["inputs"][
+                    "replay_checkpoint"
+                ]["sha256"],
+                "candidate_seed": args.candidate_seed,
+                "updates": args.updates,
+                "batch_size": args.batch_size,
+                "learning_rate": args.learning_rate,
+                "imitation_weight": selected_weight,
+                "imitation_objective": args.imitation_objective,
+                "pairwise_margin": args.pairwise_margin,
+                "td_weight": args.td_weight,
+                "anchor_objective": args.anchor_objective,
+            },
+        }
+        output_checkpoint = args.output_checkpoint.resolve()
+        _atomic_torch_save(payload, output_checkpoint)
+        loaded = torch.load(
+            output_checkpoint,
+            map_location="cpu",
+            weights_only=True,
+        )
+        if not _state_dict_equal(
+            loaded["online_network_state_dict"], candidate_state
+        ):
+            raise ValueError("Written imitation checkpoint did not round-trip")
+        result["candidate_fit"] = candidate_fit
+        result["selected_checkpoint"] = {
+            "path": str(output_checkpoint),
+            "sha256": _sha256(output_checkpoint),
+            "size_bytes": output_checkpoint.stat().st_size,
+            "checkpoint_schema_version": 2,
+            "checkpoint_kind": "weights",
+        }
+
+    return result
+
 
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--parent-checkpoint", type=Path, required=True)
     parser.add_argument("--replay-checkpoint", type=Path, required=True)
     parser.add_argument("--output", type=Path, required=True)
+    parser.add_argument("--output-checkpoint", type=Path)
     parser.add_argument("--source-commit", required=True)
     parser.add_argument("--updates", type=int, default=64)
     parser.add_argument("--batch-size", type=int, default=128)
@@ -465,6 +571,7 @@ def build_parser() -> argparse.ArgumentParser:
     )
     parser.add_argument("--pairwise-margin", type=float, default=1.0)
     parser.add_argument("--td-weight", type=float, default=1.0)
+    parser.add_argument("--candidate-seed", type=int, default=404)
     parser.add_argument(
         "--anchor-objective",
         choices=("action_cross_entropy", "q_smooth_l1"),
@@ -486,6 +593,7 @@ def main() -> int:
                 "output": str(args.output.resolve()),
                 "eligible_weights": result["eligible_weights"],
                 "selected_weight": result["selected_weight"],
+                "selected_checkpoint": result.get("selected_checkpoint"),
                 "summaries": result["summaries"],
             },
             indent=2,
