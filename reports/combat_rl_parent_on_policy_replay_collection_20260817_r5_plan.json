@@ -1,0 +1,49 @@
+{
+  "schema_version": 1,
+  "collection_id": "combat-rl-parent-on-policy-replay-collection-20260817-r5",
+  "source_commit": "97a42bc9a",
+  "purpose": "Collect an untouched zero-epsilon replay cohort under the promoted single-step SGD policy for the next conservative training iteration.",
+  "authority": "replay collection and subsequent frozen offline validation only; no optimizer update during collection and no automatic promotion",
+  "initializer_checkpoint": {
+    "path": "reports/combat_rl_parent_on_policy_replay_collection_20260817_r5/rl_combat_model_parent_empty_replay_learning_starts_100000.pth",
+    "sha256": "8bfa3ba9e4833700d4f776c7a90ccfdf6ecdb101a3f8ae46a810ddc85d2962e5",
+    "epsilon": 0.0,
+    "learning_starts": 100000,
+    "replay_transition_count": 0,
+    "online_and_target_equal_promoted_parent": true,
+    "optimizer_state_is_empty": true
+  },
+  "promoted_parent": {
+    "path": "reports/combat_rl_single_step_sgd_trust_region_20260817_r7/rl_combat_model_single_step_sgd_candidate.pth",
+    "sha256": "0e92acec8928e0b467f1440e2cbe0f15b6b940d095e29aae26e82b76ff5a7a46"
+  },
+  "collection": {
+    "games": 20,
+    "epsilon": 0.0,
+    "boss_min_epsilon": 0.0,
+    "elite_route": "conservative",
+    "ascension": 0,
+    "seed_pool": "reports/combat_rl_parent_on_policy_replay_collection_20260817_r5_seed_pool.txt",
+    "seed_pool_sha256": "243f1a584c729d40d776b2d94a525bc28250fd375fe5b9721bfdd087a3c0570d",
+    "seeds_are_unique_within_repo_seed_artifacts": true,
+    "launch_config": "reports/combat_rl_parent_on_policy_replay_collection_20260817_r5.properties",
+    "launch_config_sha256": "a9c39dfbaab5fb81076484b0e200c62942dbe11c3f67c9e261d178efce116138",
+    "expert_mix_disabled": true
+  },
+  "required_checks": {
+    "complete_exactly_20_games": true,
+    "all_run_seeds_match_in_order": true,
+    "online_and_target_remain_equal_to_promoted_parent": true,
+    "optimizer_state_remains_empty": true,
+    "optimizer_step_remains_zero": true,
+    "no_training_losses_are_emitted": true,
+    "no_post_start_runtime_failures": true
+  },
+  "execution_policy": {
+    "pre_game_operational_restart_is_allowed": true,
+    "after_first_game_preserve_seed_order_and_parameters": true,
+    "do_not_substitute_a_different_cohort_after_observing_results": true,
+    "restore_promoted_production_configuration_after_completion": true
+  },
+  "next_step": "After collection, train the next bounded SGD candidate without reading r5 outcomes, then use the complete reconstructed r5 replay once as untouched validation."
+}
