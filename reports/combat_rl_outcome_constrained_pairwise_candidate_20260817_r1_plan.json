@@ -1,0 +1,38 @@
+{
+  "schema_version": 1,
+  "experiment_id": "combat-rl-outcome-constrained-pairwise-candidate-20260817-r1",
+  "purpose": "Test one fixed low-TD pairwise candidate against an unseen parent replay cohort.",
+  "parent_checkpoint": "reports/combat_rl_parent_weight_one_interpolation_20260816_r1/rl_combat_model_parent_to_weight_one_alpha_0_20.pth",
+  "parent_checkpoint_sha256": "7a27fe138ceaba927354da88d71b9186c6b918cb8d76c75c56aee8d74146faeb",
+  "fit_replay": "reports/combat_rl_mixed_parent_replay_pairwise_end_turn_margin_ablation_20260817_r1/rl_combat_model_parent_mixed_replay_7111.pth",
+  "fit_replay_sha256": "0f398ac73864a149c878245aa3b6fd0012007a42df15ec1d10b9873ef4b2de8a",
+  "unseen_validation_replay": "reports/combat_rl_parent_on_policy_replay_collection_20260817_r3/rl_combat_model_ep20_steps4075.pth",
+  "unseen_validation_replay_sha256": "317fcc945a50c74a5b1575182e20bd2020ac0f100f65ca3a394b23423142edd7",
+  "fixed_configuration": {
+    "updates": 64,
+    "batch_size": 128,
+    "replicate_seeds": [101, 202, 303],
+    "candidate_seed": 404,
+    "learning_rate": 0.0001,
+    "td_weight": 0.05,
+    "parent_anchor_objective": "q_smooth_l1",
+    "parent_anchor_weight": 1.0,
+    "imitation_objective": "pairwise_end_turn_margin",
+    "imitation_weight": 0.02,
+    "pairwise_margin": 1.0
+  },
+  "eligibility": {
+    "all_replicates_and_final_candidate_must_pass": true,
+    "unseen_smooth_l1_must_improve": true,
+    "parent_action_agreement_min": 0.95,
+    "positive_energy_end_turn_reduction_min": 0.01,
+    "intervention_margin_must_improve": true,
+    "off_target_parent_disagreement_max": 0.03
+  },
+  "constraints": {
+    "single_configuration_no_grid_search": true,
+    "no_gameplay": true,
+    "no_production_checkpoint_change": true,
+    "no_automatic_live_authority": true
+  }
+}
