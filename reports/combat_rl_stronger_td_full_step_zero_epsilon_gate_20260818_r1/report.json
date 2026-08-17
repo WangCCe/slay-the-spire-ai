@@ -1,0 +1,181 @@
+{
+  "schema_version": 1,
+  "gate_id": "combat-rl-stronger-td-full-step-zero-epsilon-gate-20260818-r1",
+  "source_commit": "0044fb30f",
+  "decision": "retain_parent_live_regression",
+  "qualification_passed": false,
+  "inputs": {
+    "preregistration": {
+      "path": "reports/combat_rl_stronger_td_full_step_zero_epsilon_gate_20260818_r1_preregistration.json",
+      "sha256": "c210a6c8fc6a74339bbff20d41e1de6873ad17689043e03b84d86ac664c7cd01"
+    },
+    "seed_pool": {
+      "path": "reports/combat_rl_stronger_td_full_step_zero_epsilon_gate_20260818_r1_seed_pool.txt",
+      "sha256": "5c1c38c223ae09934b2eba06649c66a1b4866650b2fd24cedc5f2dff4cdf4e83"
+    },
+    "candidate_checkpoint": {
+      "path": "reports/combat_rl_stronger_td_full_step_20260818_r11/rl_combat_model_stronger_td_full_step_candidate.pth",
+      "sha256": "a58a11ee1fafe53b4589465b8f85b3ddfde3c6ac9dd405f2b722ec49c3bc647b"
+    },
+    "parent_checkpoint": {
+      "path": "reports/combat_rl_single_step_sgd_trust_region_20260817_r8/rl_combat_model_second_single_step_sgd_candidate.pth",
+      "sha256": "edf7d33124a3fbbc3abee6bae6c7b9654ea9a9191dcf151e5c0b000c71a4f454"
+    }
+  },
+  "candidate": {
+    "started_at": "2026-08-18T05:49:45.0988695+08:00",
+    "finished_at": "2026-08-18T06:30:11.1882614+08:00",
+    "games": 20,
+    "victories": 0,
+    "floor_total": 442,
+    "floor_mean": 22.1,
+    "floor_median": 20.5,
+    "act_2_entered": 11,
+    "act_2_boss_reached": 4,
+    "act_3_entered": 0,
+    "playtime_seconds": 2247,
+    "floors": [16, 16, 16, 30, 23, 22, 16, 22, 23, 16, 33, 16, 27, 16, 33, 16, 33, 19, 16, 33],
+    "run_files": [
+      "1787003575.run",
+      "1787003692.run",
+      "1787003756.run",
+      "1787003896.run",
+      "1787004025.run",
+      "1787004137.run",
+      "1787004223.run",
+      "1787004367.run",
+      "1787004505.run",
+      "1787004572.run",
+      "1787004757.run",
+      "1787004834.run",
+      "1787004956.run",
+      "1787005036.run",
+      "1787005210.run",
+      "1787005298.run",
+      "1787005478.run",
+      "1787005569.run",
+      "1787005639.run",
+      "1787005769.run"
+    ],
+    "decision_trace_rows": 6685,
+    "decision_trace_sources": {"combat_rl": 6685},
+    "sim_divergence_rows": 28,
+    "communication_mod_error_growth_bytes": 1469,
+    "new_tracebacks": 0,
+    "new_critical_errors": 0,
+    "new_exceptions": 0,
+    "invalid_or_failed_rl_actions": 0,
+    "agent_fallbacks": 0,
+    "training_or_expert_actions": 0,
+    "runtime_evidence_zip": {
+      "path": "reports/combat_rl_stronger_td_full_step_zero_epsilon_gate_20260818_r1/candidate/runtime_evidence.zip",
+      "sha256": "e1da0588246c53dbe240b0797ac1bdf83976f4dd54946959a1994aad078041a2",
+      "entry_count": 9,
+      "size_bytes": 5187322
+    }
+  },
+  "parent": {
+    "started_at": "2026-08-18T06:30:50.9047229+08:00",
+    "finished_at": "2026-08-18T07:12:13.1110898+08:00",
+    "games": 20,
+    "victories": 0,
+    "floor_total": 448,
+    "floor_mean": 22.4,
+    "floor_median": 22.0,
+    "act_2_entered": 12,
+    "act_2_boss_reached": 4,
+    "act_3_entered": 0,
+    "playtime_seconds": 2319,
+    "floors": [16, 16, 16, 30, 23, 22, 16, 22, 23, 16, 33, 22, 27, 16, 33, 16, 33, 19, 16, 33],
+    "run_files": [
+      "1787006057.run",
+      "1787006160.run",
+      "1787006224.run",
+      "1787006367.run",
+      "1787006496.run",
+      "1787006611.run",
+      "1787006698.run",
+      "1787006847.run",
+      "1787006987.run",
+      "1787007054.run",
+      "1787007241.run",
+      "1787007365.run",
+      "1787007472.run",
+      "1787007552.run",
+      "1787007728.run",
+      "1787007819.run",
+      "1787008004.run",
+      "1787008096.run",
+      "1787008168.run",
+      "1787008302.run"
+    ],
+    "decision_trace_rows": 6777,
+    "decision_trace_sources": {"combat_rl": 6777},
+    "sim_divergence_rows": 26,
+    "communication_mod_error_growth_bytes": 1476,
+    "new_tracebacks": 0,
+    "new_critical_errors": 0,
+    "new_exceptions": 0,
+    "invalid_or_failed_rl_actions": 0,
+    "agent_fallbacks": 0,
+    "training_or_expert_actions": 0,
+    "runtime_evidence_zip": {
+      "path": "reports/combat_rl_stronger_td_full_step_zero_epsilon_gate_20260818_r1/parent/runtime_evidence.zip",
+      "sha256": "b60b44bfdc88c956d0a33026f93bce18ff487ccdeacf204dad1bdf43cbe6bf44",
+      "entry_count": 9,
+      "size_bytes": 5222228
+    }
+  },
+  "paired": {
+    "candidate_floor_wins": 0,
+    "parent_floor_wins": 1,
+    "ties": 19,
+    "floor_delta_total": -6,
+    "all_seed_pairs_match": true,
+    "all_noncombat_paths_match": false,
+    "all_killed_by_values_match": false,
+    "divergent_pairs": [
+      {
+        "pair_index_one_based": 12,
+        "seed_pool_text": "DCC3CE07FAEE4",
+        "seed_played": "8228335284597443162",
+        "candidate_run": "1787004834.run",
+        "parent_run": "1787007365.run",
+        "candidate_floor": 16,
+        "parent_floor": 22,
+        "candidate_killed_by": "Slime Boss",
+        "parent_killed_by": "Sentry and Sphere",
+        "trace_evidence": {
+          "first_action_divergence_turn": 4,
+          "candidate_action": "Strike target 0 (Spike Slime (L))",
+          "parent_action": "Strike target 2 (Acid Slime (L))",
+          "first_state_divergence_turn": 6,
+          "candidate_monsters_at_turn_6_start": ["Spike Slime (M)", "Spike Slime (L)", "Spike Slime (M)", "Slime Boss", "Acid Slime (L)"],
+          "parent_monsters_at_turn_6_start": ["Spike Slime (L)", "Slime Boss", "Acid Slime (L)"],
+          "candidate_follow_up": "Ghostly Armor+, Heavy Blade targeting Acid Slime (L), End Turn with 13 block",
+          "parent_follow_up": "Ghostly Armor+, Strike targeting Acid Slime (L), Defend, End Turn with 18 block"
+        }
+      }
+    ]
+  },
+  "qualification_conditions": {
+    "candidate_paired_floor_wins_exceed_parent": false,
+    "at_least_one_floor_pair_non_tied": true,
+    "candidate_victories_at_least_parent": true,
+    "candidate_act_2_entries_at_least_parent": false,
+    "candidate_act_2_boss_reaches_at_least_parent": true,
+    "candidate_act_3_entries_at_least_parent": true,
+    "candidate_total_floors_at_least_parent": false,
+    "both_arms_completed_all_games": true,
+    "all_seed_pairs_match": true,
+    "both_arms_have_no_runtime_failures": true,
+    "all_conditions_passed": false
+  },
+  "production_state": {
+    "restored": true,
+    "configuration": "reports/combat_rl_second_single_step_sgd_promotion_20260818.properties",
+    "configuration_sha256": "f87804b2768b8ff53d0760fbfd267c5282afed21081ea888c336e0263041efcb",
+    "active_checkpoint_sha256": "edf7d33124a3fbbc3abee6bae6c7b9654ea9a9191dcf151e5c0b000c71a4f454",
+    "candidate_promoted": false
+  }
+}

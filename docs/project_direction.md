@@ -1,6 +1,6 @@
 # Project Direction
 
-Last updated: 2026-08-12
+Last updated: 2026-08-18
 
 ## Current Phase
 
@@ -1424,16 +1424,32 @@ The next authorized sequence is:
     r7. Keep routine effort centered on model fitting, trajectory collection,
     and result analysis; use focused tests only for concrete blockers and reserve
     broad review for an actual promotion boundary.
+63. Preserve the completed r10 and r11 successor results as complementary
+    negative evidence. The low-rate r10 candidate improved frozen replay loss
+    but all 20 live floor pairs tied, proving its update was too small to create
+    observable value. The stronger-TD r11 candidate also improved development
+    and fresh-holdout SmoothL1 with `99.6685%` parent action agreement, but its
+    matched live gate lost the sole non-tied pair: zero candidate wins, one
+    parent win, 19 ties, and a `-6` summed floor delta. In that pair, the first
+    trace-visible action difference was a turn-4 Slime Boss target choice; the
+    candidate then entered a worse multi-enemy split state and died on floor
+    16, while the parent cleared the boss and reached floor 22. Reject both
+    candidates and retain the promoted r8 checkpoint. Do not answer this result
+    by further increasing one-step TD weight. The next candidate must use a
+    sequence- or outcome-aware objective and demonstrate a general supported-
+    trajectory benefit before consuming another fresh live holdout.
 
 ## Work Lanes
 
-The active lane is bounded combat-RL policy improvement. Fit one materially
-larger but still conservative multi-update successor from consumed r5 and r6
-replay, freeze it before reading r7 candidate metrics, and use the fixed r7 tail
-once as untouched validation. A passing offline result may enter one separately
-matched live gate; production remains on r8 until that gate and a separate
-promotion decision pass. The near-term measure is repeatable Act 3 and victory
-coverage, not whether another one-off win can be found.
+The active lane is bounded combat-RL policy improvement. Investigate one
+sequence- or outcome-aware successor using only consumed development evidence,
+including the r11 Slime Boss divergence as a diagnostic rather than a one-seed
+training target. Freeze the objective and candidate before collecting a new
+production-policy replay holdout. Only an offline result that improves the
+general supported-trajectory metric while preserving action and safety guards
+may enter one separately registered matched live gate. Production remains on
+r8. The near-term measure is repeatable Act 3 and victory coverage, not whether
+another one-off win can be found.
 
 The non-combat card-acceptance lane remains paused at its r6 zero-byte
 source-binding infrastructure failure. Resume it only as a separately
