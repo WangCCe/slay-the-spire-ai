@@ -1,0 +1,66 @@
+{
+  "schema_version": 1,
+  "experiment_id": "combat-rl-stronger-td-full-step-20260818-r11",
+  "source_commit": "cda1808bb",
+  "purpose": "Fit a materially larger bounded combat successor after r10 produced twenty live ties.",
+  "evidence_basis": {
+    "r10_live_gate": "reports/combat_rl_multi_step_sgd_low_lr_zero_epsilon_gate_20260818_r1/report.json",
+    "r10_live_gate_sha256": "0ad2c3c7f84c0e72b8394f715efdc6a871ae1a702f6b36cb9a42ceedb7b25a00",
+    "r10_result": "twenty matched floor ties with no observable live benefit",
+    "design_change": "increase TD-to-anchor ratio fourfold and remove conservative interpolation shrinkage"
+  },
+  "inputs": {
+    "parent_checkpoint": "reports/combat_rl_single_step_sgd_trust_region_20260817_r8/rl_combat_model_second_single_step_sgd_candidate.pth",
+    "parent_checkpoint_sha256": "edf7d33124a3fbbc3abee6bae6c7b9654ea9a9191dcf151e5c0b000c71a4f454",
+    "training_replay": "reports/combat_rl_parent_on_policy_replay_collection_20260818_r7/rl_combat_model_ep20_steps4194.pth",
+    "training_replay_sha256": "b47e7457bb5327d678f279d479a3d3191db8a2e4d5a311d7e4373a8aaff0545c",
+    "development_replay": "reports/combat_rl_parent_on_policy_replay_collection_20260817_r6/rl_combat_model_ep20_steps3595.pth",
+    "development_replay_sha256": "284fe2193e3682101cb9c4273d5d9e8a3aefb12f8d02175856cff63786544534",
+    "untouched_holdout_replay": "reports/combat_rl_parent_on_policy_replay_collection_20260818_r8/rl_combat_model_ep20_steps3318.pth",
+    "untouched_holdout_replay_sha256": "64dbe36669f30c3856eced8792bcf08a0746a878e4aff2f3b76c1620f6fa686c"
+  },
+  "training_configuration": {
+    "target_horizon": 1,
+    "gamma": 0.99,
+    "optimization_mode": "full_dataset_gradient",
+    "optimizer": "sgd",
+    "full_gradient_steps": 8,
+    "memory_chunk_size": 128,
+    "dropout_enabled": false,
+    "learning_rate": 0.0002,
+    "td_weight": 0.2,
+    "parent_anchor_weight": 1.0,
+    "imitation_weight": 0.0,
+    "replicate_labels": [101, 202, 303],
+    "candidate_seed": 404,
+    "fixed_interpolation_alpha": 1.0
+  },
+  "development_gate": {
+    "no_alpha_selection": true,
+    "smooth_l1_must_improve": true,
+    "parent_action_agreement_min": 0.98,
+    "off_target_parent_disagreement_max": 0.02,
+    "positive_energy_end_turn_count_must_not_increase": true,
+    "relative_l2_from_parent_min": 0.000005,
+    "relative_l2_from_parent_max": 0.0005,
+    "all_deterministic_replicate_labels_must_pass": true
+  },
+  "holdout_gate": {
+    "single_evaluation_only": true,
+    "smooth_l1_must_improve": true,
+    "parent_action_agreement_min": 0.98,
+    "off_target_parent_disagreement_max": 0.02,
+    "positive_energy_end_turn_count_must_not_increase": true,
+    "no_parameter_or_threshold_changes_after_reading_r8": true
+  },
+  "constraints": {
+    "single_fixed_training_configuration": true,
+    "r7_is_consumed_training_data": true,
+    "r6_is_reused_development_data": true,
+    "r8_must_not_be_loaded_until_candidate_is_frozen": true,
+    "r8_must_not_be_used_for_fitting_or_selection": true,
+    "no_gameplay_during_training_or_holdout": true,
+    "no_automatic_promotion": true,
+    "passing_holdout_requires_a_separate_matched_live_gate": true
+  }
+}
