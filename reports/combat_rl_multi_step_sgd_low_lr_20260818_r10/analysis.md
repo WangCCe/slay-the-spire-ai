@@ -23,6 +23,23 @@ anchor loss `0.000108`, unlike the clipped oscillation in r9.
 The selected movement is only about 17% larger than the previous r8 update,
 despite eight optimizer steps. This establishes that lower learning rate fixes
 stability but the current parent-anchor plus smallest-passing-alpha design still
-produces a very small policy step. The r7 result should decide only whether this
-frozen candidate can enter a matched live gate; it should not be used to change
-the candidate or thresholds.
+produces a very small policy step.
+
+## Frozen r7 holdout
+
+The one-use r7 replay-tail confirmation passed without fitting or checkpoint
+writing. The replay contains the newest 4,096 of 4,194 source transitions, so
+this is a truncated-tail holdout rather than complete-cohort evidence.
+
+| Metric | Parent | Candidate |
+| --- | ---: | ---: |
+| r7 SmoothL1 | 3.885212 | 3.882030 |
+| Parent action agreement | 100% | 99.9268% |
+| Off-target disagreement | 0% | 0.0962% (2 states) |
+| Positive-energy end turns | 2,063 | 2,062 |
+
+The preregistered report conditions passed, and the additional directional
+guard also passed because positive-energy end turns did not increase. The
+frozen r10 candidate is eligible for a separate bounded matched-seed live gate.
+The r7 holdout is now consumed and must not be reused for candidate selection,
+threshold changes, or further tuning.
