@@ -1,0 +1,94 @@
+{
+  "schema_version": 1,
+  "diagnosis_id": "combat-rl-parent-end-turn-imitation-interpolation-endpoint-diagnosis-20260817-r1",
+  "source_commit": "cb1587733",
+  "plan_commit": "e45e47207",
+  "authority": "diagnostic only; reused seeds and post-gate timing provide no promotion authority",
+  "endpoint_checkpoint": {
+    "path": "reports/combat_rl_parent_end_turn_imitation_training_20260817_r4/rl_combat_model_ep5_steps9955.pth",
+    "sha256": "561b7879f92dd9caaaa4d88c898f2d33a3d25a45c685a5720f1872d6ffe7c946"
+  },
+  "seed_pool": {
+    "path": "reports/combat_rl_parent_end_turn_imitation_interpolation_zero_epsilon_gate_20260817_r1_seed_pool.txt",
+    "sha256": "fdde3e352887ca1d9f112fb6ce02554ed0b4db5edfd7b1fd6e3e67a0f4c09d9d",
+    "count": 20,
+    "reused_after_parent_and_alpha_0_9_observation": true,
+    "all_endpoint_rows_match_existing_cohort_order": true
+  },
+  "endpoint": {
+    "started_at": "2026-08-17T12:19:18.737+08:00",
+    "finished_at": "2026-08-17T12:57:57.782+08:00",
+    "games": 20,
+    "victories": 0,
+    "floor_total": 455,
+    "floor_mean": 22.75,
+    "act_2_entered": 10,
+    "act_2_boss_reached": 6,
+    "act_3_entered": 0,
+    "playtime_seconds": 2225,
+    "floors": [16, 7, 16, 33, 33, 16, 33, 25, 16, 24, 33, 16, 16, 33, 16, 28, 29, 16, 16, 33],
+    "raw_rl_decisions": 1525,
+    "raw_rl_end_turn": 897,
+    "positive_energy_raw_rl_decisions": 1406,
+    "positive_energy_raw_rl_end_turn": 810,
+    "positive_energy_end_turn_share": 0.903010033444816,
+    "positive_energy_end_turn_among_positive_decisions_share": 0.5761024182076814,
+    "energy_guard_actions": 4109,
+    "lethal_guard_actions": 196,
+    "survival_guard_actions": 72,
+    "invalid_or_failed_rl_actions": 0,
+    "agent_fallbacks": 0,
+    "tracebacks": 0,
+    "critical_errors": 0,
+    "decision_trace_rows": 6767,
+    "sim_divergence_rows": 9,
+    "runtime_evidence_zip": {
+      "path": "reports/combat_rl_parent_end_turn_imitation_interpolation_endpoint_diagnosis_20260817_r1/endpoint/runtime_evidence.zip",
+      "sha256": "92a9e739a6cd3b3328100c5fa7301c51c129b0e53134623449afabd29d708d8d",
+      "entry_count": 9,
+      "size_bytes": 5207142
+    }
+  },
+  "same_cohort_comparison": {
+    "endpoint": {
+      "floor_total": 455,
+      "act_3_entered": 0,
+      "positive_energy_end_turn_share": 0.903010033444816,
+      "positive_energy_end_turn_among_positive_decisions_share": 0.5761024182076814
+    },
+    "alpha_0_9": {
+      "floor_total": 477,
+      "act_3_entered": 2,
+      "positive_energy_end_turn_share": 0.9008528784648188,
+      "positive_energy_end_turn_among_positive_decisions_share": 0.5721056194989844
+    },
+    "parent": {
+      "floor_total": 471,
+      "act_3_entered": 2,
+      "positive_energy_end_turn_share": 0.8699271592091571,
+      "positive_energy_end_turn_among_positive_decisions_share": 0.5254556882463859
+    },
+    "endpoint_minus_alpha_floor_deltas": [0, 0, 0, 0, 0, 0, -14, 0, 0, 5, 0, 0, 0, 0, 0, 0, 0, 0, 0, -13],
+    "endpoint_minus_alpha_total_floors": -22,
+    "endpoint_improves_aligned_live_end_turn_metric_vs_parent": false,
+    "endpoint_improves_historical_live_end_turn_metric_vs_parent": false,
+    "interpolation_introduced_live_metric_reversal": false
+  },
+  "cross_cohort_context": {
+    "prior_fresh_direct_candidate_aligned_share": 0.5657142857142857,
+    "prior_fresh_parent_aligned_share": 0.587076923076923,
+    "current_reused_direct_candidate_aligned_share": 0.5761024182076814,
+    "current_parent_aligned_share": 0.5254556882463859,
+    "interpretation": "the old replay-target effect changes direction across fresh cohorts"
+  },
+  "runtime_integrity": {
+    "expected_wrapper_log_growth_bytes": 1481,
+    "error_growth_after_start_bytes": 0,
+    "configuration_restored_to_production": true,
+    "restored_config_sha256": "7e923bba944c411512f5f8322a8494bc30f7edda47be0e3f404c5b25edde22b2",
+    "processes_closed": true,
+    "rotated_debug_logs_filtered_to_decision_trace_time_window": true
+  },
+  "decision": "stop_old_replay_targeted_imitation_and_interpolation_due_to_cross_cohort_behavior_instability",
+  "next_step": "collect immutable zero-epsilon on-policy parent replay without updates before designing another targeted training objective"
+}
