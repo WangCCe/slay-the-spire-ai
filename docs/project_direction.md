@@ -1453,20 +1453,30 @@ The next authorized sequence is:
     parent non-End-over-End preservation term into the training objective and
     pass the same cross-cohort loss and behavior guards before another fresh
     replay is collected.
+65. Preserve r13 as the first full-return candidate to close r12's End Turn
+    boundary on all consumed development evidence. It adds a direct loss that
+    preserves the promoted parent's positive-energy non-End-over-End margin,
+    fits on r7, and validates on r6, r8, and consumed r9. The fixed weight sweep
+    selected the smallest passing positive weight, `0.25`; weight zero exactly
+    reproduced r12's r9 failure, while every positive weight passed all three
+    replays. The selected candidate improves full-return and one-step loss on
+    every replay, retains at least `99.3880%` parent action agreement, keeps
+    off-target disagreement at or below `0.5424%`, and reduces positive-energy
+    End Turn count on each replay. It is frozen at SHA-256
+    `b05bbb904bee075628691565de98fbdc119bbae0fc2cc2e41e55acd5084bafe7`
+    for one untouched production-policy replay confirmation only. It has no
+    live-evaluation or promotion authority.
 
 ## Work Lanes
 
-The active lane is bounded combat-RL policy improvement. R12 established that
-full-combat-return fitting can improve sequence and one-step replay losses, but
-also exposed a narrow positive-energy End Turn boundary regression on fresh r9
-evidence. The immediate successor should combine that return objective with a
-direct parent non-End-over-End preservation constraint, fit on consumed r7,
-and validate across consumed r6, r8, and r9. Freeze the objective and candidate
-before collecting another production-policy replay holdout. Only an offline
-result that improves the general supported-trajectory metric while preserving
-action and safety guards may enter one separately registered matched live gate.
-Production remains on r8. The near-term measure is repeatable Act 3 and victory
-coverage, not whether another one-off win can be found.
+The active lane is bounded combat-RL policy improvement. R13 now combines the
+full-combat-return objective with a direct parent non-End-over-End preservation
+constraint and passes the fixed loss and behavior guards on consumed r6, r8,
+and r9. The immediate next step is one untouched 20-game, zero-update replay
+under production r8, followed by a single frozen-candidate confirmation. Only
+a passing confirmation may authorize a separately registered matched live
+gate. Production remains on r8. The near-term measure is repeatable Act 3 and
+victory coverage, not whether another one-off win can be found.
 
 The non-combat card-acceptance lane remains paused at its r6 zero-byte
 source-binding infrastructure failure. Resume it only as a separately
