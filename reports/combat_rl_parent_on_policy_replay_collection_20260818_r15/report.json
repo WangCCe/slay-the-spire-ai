@@ -1,0 +1,118 @@
+{
+  "schema_version": 1,
+  "collection_id": "combat-rl-parent-on-policy-replay-collection-20260818-r15",
+  "decision": "accept_complete_fresh_collection_and_consumed_replay",
+  "source_commits": {
+    "candidate": "845abb865060649ce4b2fba5935e7cd1c76f1900",
+    "registration": "03896ca95820b5d0ecfe90792af286289c2f9dbf"
+  },
+  "execution": {
+    "started_at": "2026-08-18T23:02:46+08:00",
+    "finished_at": "2026-08-18T23:45:58+08:00",
+    "requested_games": 20,
+    "completed_games": 20,
+    "termination": "natural_max_games",
+    "native_recovery_used": false,
+    "seed_order_matched": true,
+    "seed_pool_index_sequence": [
+      1, 2, 3, 4, 5, 6, 7, 8, 9, 10,
+      11, 12, 13, 14, 15, 16, 17, 18, 19, 20
+    ]
+  },
+  "inputs": {
+    "epsilon": 0.0,
+    "boss_min_epsilon": 0.0,
+    "expert_mix_enabled": false,
+    "candidate_loaded_during_collection": false,
+    "initializer_checkpoint_sha256": "c6e56fa1edea80e766d853df8b4dd1f8fd2336f69e5b954cffb5df8421f9bd10",
+    "initializer_manifest_sha256": "5238aadb926256e8b6e070e65410e3570a8934a920c1c0491e5c2585032628d1",
+    "promoted_parent_checkpoint_sha256": "75120e9e8f76393d4d82c16de5c3ea6384d2f7ef26bd530a6b552ed9791e38f5",
+    "frozen_candidate_checkpoint_sha256": "ca40182ca9f8da185c4d722380e451433294d3f6f14b8b2d5840258431dc31a2",
+    "seed_pool_sha256": "0cd7899bda31285cc601000f3695461a6f22d89f69164a72e0459ab04a0c31bc",
+    "launch_config_sha256": "1ba4d8ee3e125697a8bec51014193f865b2d5ff2e732f48f7c862b9efb0036a5",
+    "plan_sha256": "610ff508bab4ea0d6fa064b78e7c1d01914492b53c014fdce959a3d225bb056d"
+  },
+  "run_files": [
+    "1787065495.run", "1787065600.run", "1787065744.run", "1787065834.run",
+    "1787065879.run", "1787065997.run", "1787066172.run", "1787066272.run",
+    "1787066341.run", "1787066507.run", "1787066702.run", "1787066780.run",
+    "1787066891.run", "1787067053.run", "1787067264.run", "1787067420.run",
+    "1787067483.run", "1787067563.run", "1787067766.run", "1787067955.run"
+  ],
+  "run_outcomes": {
+    "floors": [
+      24, 22, 33, 16, 8, 22, 28, 16, 16, 33,
+      25, 16, 16, 33, 33, 22, 7, 13, 30, 33
+    ],
+    "floor_total": 446,
+    "floor_mean": 22.3,
+    "floor_median": 22.0,
+    "floor_min": 7,
+    "floor_max": 33,
+    "act_2_reached": 12,
+    "act_2_boss_reached": 5,
+    "act_3_reached": 0,
+    "wins": 0,
+    "playtime_seconds": 2469
+  },
+  "terminal_checkpoint": {
+    "path": "reports/combat_rl_parent_on_policy_replay_collection_20260818_r15/rl_combat_model_ep20_steps3920.pth",
+    "sha256": "67c3a49fbb2094d20793214c0a4a294684054eb6f4a24ac59573fab29c39a2dd",
+    "size_bytes": 19377610,
+    "episode": 20,
+    "total_steps": 3920,
+    "epsilon": 0.0,
+    "learning_starts": 100000,
+    "replay_transition_count": 3920,
+    "replay_source_transition_count": 3920,
+    "replay_omitted_transition_count": 0,
+    "replay_truncated": false,
+    "stored_transition_share": 1.0,
+    "terminal_boundary_count": 286,
+    "online_equals_promoted_parent": true,
+    "target_equals_promoted_parent": true,
+    "online_equals_target": true,
+    "optimizer_state_count": 0,
+    "optimizer_step": 0,
+    "last_total_loss": null,
+    "last_td_loss": null,
+    "all_zero_update_checks_passed": true
+  },
+  "runtime_evidence": {
+    "archive": "reports/combat_rl_parent_on_policy_replay_collection_20260818_r15/runtime_evidence.zip",
+    "archive_sha256": "fa485e2a778a57be09178bc6ef91bdda647b4f5c63c6cc7570040b55fd04d1ee",
+    "archive_size_bytes": 4470278,
+    "archive_entry_count": 8,
+    "archived_run_count": 20,
+    "decision_trace_rows": 7091,
+    "decision_trace_sources": {
+      "combat_rl": 7091
+    },
+    "decision_trace_parse_error_count": 0,
+    "sim_divergence_rows": 13,
+    "sim_divergence_parse_error_count": 0,
+    "python_traceback_count": 0,
+    "critical_log_count": 0,
+    "rl_action_failure_count": 0,
+    "communication_mod_current_section_lines": 10,
+    "communication_mod_current_section_error_count": 0
+  },
+  "holdout_scope": {
+    "complete_twenty_game_collection": true,
+    "maximum_replay_horizon": 4096,
+    "available_replay_transitions": 3920,
+    "candidate_must_not_fit_or_select_against_r15": true,
+    "fresh_confirmation": "reports/combat_rl_promoted_r16_successor_20260818_r19/r15_fresh_confirmation.json",
+    "fresh_confirmation_sha256": "67a00604b64593c9d8d0764adca6f88a59565795b21141f4815fef5c01c721d3",
+    "holdout_consumed": true,
+    "eligible_for_bounded_matched_live_gate": true
+  },
+  "isolation": {
+    "production_config_restored": true,
+    "production_config_sha256": "25b8ac697923c86b5baf8aece43d8723adcc1a8d1f8f4fa0bfa6b8ef3f3713c3",
+    "remaining_game_processes": 0,
+    "remaining_project_python_processes": 0,
+    "promotion_authority": false
+  },
+  "next_step": "Register one bounded 20-pair matched live gate for frozen r19 against production r16 on a new shared seed pool, then reassess simulator and offline candidate generation before any r20."
+}

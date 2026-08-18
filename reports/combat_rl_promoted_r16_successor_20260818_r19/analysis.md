@@ -30,8 +30,17 @@ at most `1%` off-target disagreement, and the positive-energy End Turn guard.
 The frozen checkpoint SHA-256 is
 `ca40182ca9f8da185c4d722380e451433294d3f6f14b8b2d5840258431dc31a2`.
 
+## Fresh confirmation
+
+Production r16 completed the registered r15 cohort naturally with 3,920
+complete, untruncated transitions. Frozen r19 improved full-return SmoothL1
+from `42.1685371` to `42.1447563` and one-step SmoothL1 from `4.0497952` to
+`4.0337324`, retained `99.5153%` parent agreement, limited off-target
+disagreement to `0.3619%`, and reduced positive-energy End Turns from 2,043 to
+2,031.
+
 ## Next step
 
-Register one new 20-game production-r16 replay as the single fresh r19
-confirmation. Do not fit, tune, or select against that replay before r19 is
-evaluated on it.
+Register one new 20-pair matched live gate comparing frozen r19 with production
+r16. The fresh replay grants no automatic promotion authority. After that gate,
+reassess simulator and offline candidate generation before starting any r20.

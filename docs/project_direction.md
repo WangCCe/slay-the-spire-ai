@@ -1621,6 +1621,14 @@ The next authorized sequence is:
     while retaining at least `99.3509%` parent agreement, at most `0.6686%`
     off-target disagreement, and fewer positive-energy End Turns on every
     replay. Do not fit or tune against the next fresh promoted-r16 replay.
+83. Accept r15 as the single fresh replay confirmation for frozen r19.
+    Production r16 completed all 20 registered seeds naturally with 3,920
+    complete, untruncated transitions. Frozen r19 improved full-return SmoothL1
+    from `42.1685` to `42.1448` and one-step SmoothL1 from `4.04980` to
+    `4.03373`, retained `99.5153%` parent agreement, limited off-target
+    disagreement to `0.3619%`, and reduced positive-energy End Turns from 2,043
+    to 2,031. It is eligible for one separately registered 20-pair matched live
+    gate against r16, not automatic promotion. Do not rerun or tune against r15.
 
 ## Work Lanes
 
@@ -1637,12 +1645,14 @@ but its matched live gate against r16 failed: paired wins tied, while r17
 trailed total floors, Act 2 entries, and Act 2 boss reaches. R18 passed its
 bounded fit on consumed r13 and single fresh r14 confirmation, but its matched
 live gate also failed: it lost the only non-tied pair, trailed total floors and
-Act 2 boss reaches, and produced no victory. R19 now passes the bounded fit on
-consumed r14 with r6/r8/r9/r10/r11/r12/r13 as development guards. It is frozen
-before the next fresh replay and has authority only for one separately
-registered replay confirmation. R16 remains production. The near-term measure
-remains repeatable Act 3 and victory coverage, not whether another one-off
-favorable pair can be found.
+Act 2 boss reaches, and produced no victory. R19 passes the bounded fit on
+consumed r14 with r6/r8/r9/r10/r11/r12/r13 as development guards and its single
+fresh r15 confirmation. It is eligible only for one separately registered
+20-pair matched live gate. R16 remains production. After r19 closes, do not
+mechanically repeat the same fit for r20; first reassess LightSTS and offline
+replay candidate generation against simulator-divergence evidence. The
+near-term measure remains repeatable Act 3 and victory coverage, not whether
+another one-off favorable pair can be found.
 
 The non-combat card-acceptance lane remains paused at its r6 zero-byte
 source-binding infrastructure failure. Resume it only as a separately
