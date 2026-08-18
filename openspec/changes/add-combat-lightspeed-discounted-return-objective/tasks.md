@@ -12,6 +12,6 @@
 
 ## 3. Fresh Experiment
 
-- [ ] 3.1 Register fresh matched one-step and discounted-return arms on identical complete trajectories
+- [x] 3.1 Register fresh matched one-step and discounted-return arms on identical complete trajectories
 - [ ] 3.2 Run each arm once, apply aggregate and battle-index guardrails, and record the retained parent decision
 - [ ] 3.3 Sync the main spec, archive the completed change, commit the evidence, and push master

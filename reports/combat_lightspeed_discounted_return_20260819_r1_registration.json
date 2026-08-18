@@ -1,0 +1,127 @@
+{
+  "schema_version": "combat-lightspeed-discounted-return-registration-v1",
+  "experiment_id": "combat-lightspeed-discounted-return-20260819-r1",
+  "registered_source_commit": "095e6561e87fe2f0498aa3293978d787aa12de24",
+  "experiment_question": "Does complete-trajectory discounted-return training improve fresh simulator policy quality relative to both r4 and a matched complete-trajectory one-step TD arm?",
+  "source_binding": {
+    "training_runner_sha256": "2b544811dbfedea4c4aebecbf1b1237151add6c71de85c4479847b9405ae30e4",
+    "bridge_source_sha256": "ced080a47b3b9b25206eac7b8b5ee3752af348d4df8a5d9750e386157812bf90",
+    "native_module_sha256": "195678b7fc6bf69815f3d2971404afb8ce72fb666700edf4203383429caf1009"
+  },
+  "parent": {
+    "label": "r4_first_combat",
+    "path": "reports/combat_lightspeed_training_smoke_20260819_r4_card_select_replication/simulator_only_candidate.pth",
+    "sha256": "0c3e94393089c2153980fd9df8c904d11efa8cd1e62a1899b8211144d0fe39ff",
+    "parameter_sha256": "1ecca8b19803d56f8bbed1b9ddbc1c8f26638f80bb0ccb50f21ece65e3dfc2f9"
+  },
+  "motivation_evidence": {
+    "optimizer_target_network_frozen": true,
+    "existing_target_mode": "one-step-td",
+    "existing_gamma": 0.99,
+    "prior_initialized_training_profile_count": 3388,
+    "prior_decision_bound_profile_count": 2,
+    "prior_evaluation_truncation_count_per_policy": 0
+  },
+  "cohorts": {
+    "training_seeds": "114000..115023",
+    "training_seed_count": 1024,
+    "evaluation_seeds": "116000..116255",
+    "evaluation_seed_count": 256,
+    "battle_indices": [0, 3, 6, 9],
+    "training_profile_count_per_arm": 4096,
+    "evaluation_profile_count_per_arm": 1024,
+    "all_prior_lightspeed_seed_overlap": false
+  },
+  "shared_recipe": {
+    "ascension": 0,
+    "max_decisions_per_profile": 100,
+    "max_actions_per_turn": 8,
+    "behavior_seed": 2026081940,
+    "network_seed": 2026081941,
+    "batch_size": 128,
+    "optimizer_steps": 256,
+    "parent_policy_anchor_weight": 1.0,
+    "balance_replay_by_battle_index": true,
+    "replay_balance_seed": 2026081942,
+    "complete_trajectories_only": true,
+    "replay_return_discount": 0.99,
+    "encounter_identity_buckets": 0,
+    "device": "cpu",
+    "production_checkpoint_access": false
+  },
+  "arms": {
+    "one_step_control": {
+      "replay_target_mode": "one-step-td",
+      "output_dir": "reports/combat_lightspeed_discounted_return_20260819_r1_one_step_control"
+    },
+    "discounted_return_candidate": {
+      "replay_target_mode": "discounted-episode-return",
+      "output_dir": "reports/combat_lightspeed_discounted_return_20260819_r1_return_candidate"
+    }
+  },
+  "technical_success_criteria": {
+    "both_verdicts": "technical_smoke_ready",
+    "finite_optimizer_updates_per_arm": 256,
+    "source_parent_parameter_sha256_matches_registration": true,
+    "source_transition_identity_sha256_identical_between_arms": true,
+    "source_replay_metrics_identical_between_arms": true,
+    "parent_control_evaluation_rows_identical_between_arms": true,
+    "complete_profile_counts_identical_between_arms": true,
+    "incomplete_profile_reason_counts_identical_between_arms": true,
+    "excluded_incomplete_profile_count_lte": 8,
+    "excluded_incomplete_transition_count_lte": 800,
+    "allowed_incomplete_profile_reasons": ["decision_bound"],
+    "unsupported_reason_counts_empty": true,
+    "unexpected_initialization_failure_count": 0,
+    "source_replay_transition_count_gte": 60000,
+    "all_four_source_transition_strata_gte": 12000,
+    "all_four_prepared_transition_strata_equal": true,
+    "prepared_transition_count_lte_replay_capacity_100000": true,
+    "one_step_target_identity_equals_source_identity": true,
+    "return_target_identity_differs_from_source_identity": true,
+    "return_terminal_target_count_equals_target_transition_count": true,
+    "return_target_rewards_finite": true,
+    "held_out_truncation_count_per_policy_per_arm": 0
+  },
+  "return_vs_parent_uplift_criteria": {
+    "aggregate": [
+      "mean_reward_delta_gt_0",
+      "mean_player_hp_delta_gte_0",
+      "candidate_only_victories_gte_parent_only_victories"
+    ],
+    "early_combat": [
+      "battle_index_0_mean_player_hp_delta_gte_0",
+      "battle_index_0_candidate_only_victories_gte_parent_only_victories"
+    ],
+    "late_combat": [
+      "battle_index_9_reachable_profile_count_gte_100",
+      "battle_index_9_mean_reward_delta_gte_0",
+      "battle_index_9_mean_player_hp_delta_gte_0",
+      "battle_index_9_candidate_only_victories_gte_parent_only_victories"
+    ],
+    "material_index_regression": "no_battle_index_mean_reward_delta_lt_-1.0"
+  },
+  "return_vs_one_step_criteria": {
+    "aggregate_mean_reward_delta_gt_0": true,
+    "aggregate_mean_player_hp_delta_gte_0": true,
+    "aggregate_return_only_victories_gte_one_step_only_victories": true,
+    "battle_index_0_mean_player_hp_delta_gte_0": true,
+    "battle_index_0_return_only_victories_gte_one_step_only_victories": true,
+    "battle_index_9_mean_reward_delta_gt_0": true,
+    "battle_index_9_mean_player_hp_delta_gte_0": true,
+    "battle_index_9_return_only_victories_gte_one_step_only_victories": true,
+    "no_battle_index_mean_reward_delta_lt_-1.0": true
+  },
+  "decision_rule": {
+    "fresh_frozen_confirmation_eligible": "all technical, return-vs-parent, and return-vs-one-step criteria pass",
+    "retain_parent": "any technical blocker or any return-vs-parent or return-vs-one-step criterion failure",
+    "live_transfer_authorized": false
+  },
+  "stop_rules": [
+    "Execute each registered arm at most once and do not alter or retry either cohort after outcome access.",
+    "Do not tune discount, trajectory filtering, optimizer steps, balancing, anchor weight, architecture, reward definition, or thresholds.",
+    "Do not start Slay the Spire or CommunicationMod.",
+    "Do not access or modify a production checkpoint.",
+    "A passing result authorizes one fresh frozen simulator confirmation only, not live transfer, qualification, or promotion."
+  ]
+}
