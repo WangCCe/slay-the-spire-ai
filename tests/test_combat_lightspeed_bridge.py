@@ -218,6 +218,7 @@ def _mapper():
     return IdMapper(
         card_ids={"Strike": 4},
         potion_ids={
+            "Blessing of the Forge": 6,
             "Fire Potion": 3,
             "Essence of Steel": 4,
             "Gambler's Brew": 5,
@@ -302,7 +303,14 @@ def test_rl_v2_bridge_normalizes_audited_native_identity_aliases():
             "name": "Gamblers Brew",
             "requires_target": False,
             "slot": 0,
-        }
+        },
+        {
+            "empty": False,
+            "id": "BlessingOfTheForge",
+            "name": "Blessing Of The Forge",
+            "requires_target": False,
+            "slot": 1,
+        },
     ]
     snapshot["state"]["relics"] = [
         {"id": "Cables", "name": "Goldplated Cables", "slot": 0}
@@ -311,6 +319,7 @@ def test_rl_v2_bridge_normalizes_audited_native_identity_aliases():
     mapped = encode_rl_v2(snapshot, _actions(), id_mapper=_mapper())
 
     assert mapped.state.potion_ids[0] == 5
+    assert mapped.state.potion_ids[1] == 6
     assert mapped.state.relic_ids[0] == 4
 
 

@@ -41,6 +41,7 @@ MAX_CARD_SELECT_SETTLEMENTS = 8
 MAX_BATTLE_INDEX = 63
 
 POTION_ID_ALIASES = {
+    "BlessingOfTheForge": "Blessing of the Forge",
     "ElixirPotion": "Elixir",
     "FairyPotion": "Fairy in a Bottle",
     "GamblersBrew": "Gambler's Brew",
