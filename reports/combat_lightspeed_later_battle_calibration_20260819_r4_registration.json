@@ -1,0 +1,58 @@
+{
+  "schema_version": "combat-lightspeed-later-battle-calibration-registration-v1",
+  "audit_id": "combat-lightspeed-later-battle-calibration-20260819-r4",
+  "predecessors": [
+    {
+      "audit_id": "combat-lightspeed-later-battle-calibration-20260819-r1",
+      "blocker": "unknown_relic_identity: Philosophers Stone"
+    },
+    {
+      "audit_id": "combat-lightspeed-later-battle-calibration-20260819-r2",
+      "blocker": "unknown_potion_identity: Essence Of Steel"
+    },
+    {
+      "audit_id": "combat-lightspeed-later-battle-calibration-20260819-r3",
+      "blocker": "expired player status bit raised IndexError: map::at during snapshot serialization"
+    }
+  ],
+  "resolution": "Read player status values from safe public fields or a non-throwing statusMap lookup, and preserve native record failures as profile-level calibration evidence.",
+  "source_commit": "e580bb4ca64eb66aa09d8116c55f31f6e16beae1",
+  "source": {
+    "adapter_source_sha256": "d60490a897c118ceab7037048b54a20751035aa0bef2a442542e3dfd243b842e",
+    "module_path": "D:/PycharmProjects/slay-the-spire-ai/.sts_lightspeed_combat_later_battle_20260819_r2_build/sts_lightspeed_combat_adapter.cp310-win_amd64.pyd",
+    "module_sha256": "68dabf4196982131515f1ba7a3017360477b29de574f0f6e57e20f9b30a36f84",
+    "simulator_commit": "7476a81954020087da31d41d16fddf475746ec2d",
+    "simulator_source_sha256": "a3f98721ec37373b1b00aef660832a3307f0186ba0614d07a3b1e7de8ab2e46a",
+    "baseline_policy": "native_simple_agent_v1"
+  },
+  "cohort": {
+    "seeds": "83000..83015",
+    "battle_indices": "0..12",
+    "ascension": 0,
+    "registered_profile_count": 208,
+    "max_decisions_per_profile": 200,
+    "max_actions_per_turn": 8
+  },
+  "execution": {
+    "interpreter": "D:/anaconda/envs/stsai/python.exe",
+    "isolated_mode": true,
+    "script": "analysis_scripts/combat_lightspeed_calibration.py",
+    "output_dir": "reports/combat_lightspeed_later_battle_calibration_20260819_r4",
+    "wall_time_limit_seconds": 3600,
+    "optimizer_updates": 0,
+    "gameplay": false,
+    "communication_mod": false
+  },
+  "coverage_gate": {
+    "required_verdict": "later_battle_surface_ready_for_training",
+    "required_positive_battle_profile_count_minimum": 1,
+    "required_distinct_encounters_minimum": 2,
+    "required_maximum_floor_minimum": 2,
+    "require_source_hash_match": true,
+    "require_reset_determinism_for_every_initialized_profile": true,
+    "require_zero_mapping_errors": true,
+    "require_zero_integrity_blockers": true,
+    "initialization_failures_are_reported_coverage_not_integrity_failures": true
+  },
+  "next_step": "Select a reachable stratified profile cohort from this report and register one simulator-only training replication only if every coverage gate passes."
+}
