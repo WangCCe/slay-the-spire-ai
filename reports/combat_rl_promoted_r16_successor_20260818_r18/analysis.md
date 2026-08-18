@@ -38,7 +38,17 @@ from `49.9499817` to `49.9241028` and one-step SmoothL1 from `4.1513276` to
 disagreement to `0.3850%`, and reduced positive-energy End Turns from 1,988 to
 1,977.
 
+## Live gate
+
+The registered 20-pair matched live gate rejected r18. Candidate and parent
+floors were identical on 19 pairs; on the remaining pair r18 reached floor 27
+and r16 reached floor 33. R18 therefore lost paired wins 0 to 1, trailed total
+floors 516 to 522, and reached the Act 2 boss six times versus seven. Both arms
+entered Act 2 13 times and Act 3 once, neither won, and both completed without
+runtime failure.
+
 ## Next step
 
-Register one new 20-pair matched live gate comparing frozen r18 with production
-r16. The fresh replay grants no automatic promotion authority.
+Retain production r16. Do not rerun or tune r18 against the consumed live
+cohort. R14 may be used only as fitting or development evidence for a new
+frozen successor with a separately registered fresh confirmation.

@@ -1606,6 +1606,14 @@ The next authorized sequence is:
     disagreement to `0.3850%`, and reduced positive-energy End Turns from 1,988
     to 1,977. It is eligible for one separately registered 20-pair matched live
     gate against r16, not automatic promotion. Do not rerun or tune against r14.
+81. Reject frozen r18 after its registered matched live gate and retain r16 as
+    production. R18 won no floor pair, r16 won one, and 19 pairs tied; total
+    floors were 516 versus 522. Both arms entered Act 2 13 times and Act 3 once,
+    while r18 trailed Act 2 boss reaches six to seven. Neither arm won. Both
+    completed naturally with matching seed order and no runtime failures. Do
+    not rerun, promote, or tune thresholds against this cohort. R14 is now
+    consumed and may be used only as fitting or development evidence in a new
+    frozen successor experiment.
 
 ## Work Lanes
 
@@ -1619,13 +1627,13 @@ and a 20-pair matched live gate by one floor pair with no losses. It is now the
 bounded production baseline, with r15 retained as exact rollback. R17 then
 passed the consumed cross-replay guards and its single fresh r13 confirmation,
 but its matched live gate against r16 failed: paired wins tied, while r17
-trailed total floors, Act 2 entries, and Act 2 boss reaches. R16 remains
-production. R18 passes the bounded fit on consumed r13 with r6/r8/r9/r10/r11/
-r12 as development guards and its single fresh r14 confirmation. The next
-authorized step is one separately registered 20-pair matched live gate against
-production r16; r18 still has no promotion authority. The near-term measure
-remains repeatable Act 3 and victory coverage, not whether another one-off
-favorable pair can be found.
+trailed total floors, Act 2 entries, and Act 2 boss reaches. R18 passed its
+bounded fit on consumed r13 and single fresh r14 confirmation, but its matched
+live gate also failed: it lost the only non-tied pair, trailed total floors and
+Act 2 boss reaches, and produced no victory. R16 remains production. A new
+bounded successor may consume r14 for fitting, but it must freeze before a new
+fresh replay is collected. The near-term measure remains repeatable Act 3 and
+victory coverage, not whether another one-off favorable pair can be found.
 
 The non-combat card-acceptance lane remains paused at its r6 zero-byte
 source-binding infrastructure failure. Resume it only as a separately

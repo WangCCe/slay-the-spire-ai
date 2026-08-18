@@ -1,0 +1,167 @@
+{
+  "schema_version": 1,
+  "gate_id": "combat-rl-promoted-r16-successor-r18-zero-epsilon-gate-20260818-r1",
+  "source_commit": "9fc1a8dd120755c04205b6292ba50ccf9b0e4b8a",
+  "decision": "candidate_rejected_retain_production_parent",
+  "qualification_passed": false,
+  "inputs": {
+    "preregistration": {
+      "path": "reports/combat_rl_promoted_r16_successor_r18_zero_epsilon_gate_20260818_r1_preregistration.json",
+      "sha256": "70598996f9e90f49f4118039310495d3910afa20afea3840d7193bf3eb235292"
+    },
+    "seed_pool": {
+      "path": "reports/combat_rl_promoted_r16_successor_r18_zero_epsilon_gate_20260818_r1_seed_pool.txt",
+      "sha256": "15b4519c29e22d342ed203023c57f11fa192c08b826dab6c2ccca7edeb4ea01b"
+    },
+    "candidate_checkpoint": {
+      "path": "reports/combat_rl_promoted_r16_successor_20260818_r18/rl_combat_model_promoted_r16_successor_candidate.pth",
+      "sha256": "0e2bd207f96a7640f2c379d5934d7ef46ef952f9aecc533a36015d035f2b8b06"
+    },
+    "parent_checkpoint": {
+      "path": "reports/combat_rl_promoted_r15_successor_20260818_r16/rl_combat_model_promoted_r15_successor_candidate.pth",
+      "sha256": "75120e9e8f76393d4d82c16de5c3ea6384d2f7ef26bd530a6b552ed9791e38f5"
+    }
+  },
+  "candidate": {
+    "started_at": "2026-08-18T20:58:43+08:00",
+    "finished_at": "2026-08-18T21:46:19+08:00",
+    "games": 20,
+    "victories": 0,
+    "floor_total": 516,
+    "floor_mean": 25.8,
+    "floor_median": 26.0,
+    "act_2_entered": 13,
+    "act_2_boss_reached": 6,
+    "act_3_entered": 1,
+    "playtime_seconds": 2744,
+    "floors": [
+      33, 50, 28, 16, 16, 16, 16, 33, 33, 25,
+      25, 31, 16, 16, 33, 16, 23, 27, 33, 30
+    ],
+    "run_files": [
+      "1787058112.run", "1787058465.run", "1787058599.run", "1787058694.run",
+      "1787058774.run", "1787058855.run", "1787058927.run", "1787059131.run",
+      "1787059312.run", "1787059433.run", "1787059575.run", "1787059723.run",
+      "1787059803.run", "1787059945.run", "1787060154.run", "1787060225.run",
+      "1787060345.run", "1787060488.run", "1787060625.run", "1787060779.run"
+    ],
+    "decision_trace_rows": 8187,
+    "decision_trace_sources": {
+      "combat_rl": 8187
+    },
+    "decision_trace_parse_errors": 0,
+    "sim_divergence_rows": 11,
+    "sim_divergence_parse_errors": 0,
+    "new_tracebacks": 0,
+    "new_critical_errors": 0,
+    "rl_action_failures": 0,
+    "agent_fallbacks": 0,
+    "training_or_expert_actions": 0,
+    "communication_mod_current_section_lines": 10,
+    "communication_mod_current_section_errors": 0,
+    "runtime_evidence_zip": {
+      "path": "reports/combat_rl_promoted_r16_successor_r18_zero_epsilon_gate_20260818_r1/candidate/runtime_evidence.zip",
+      "sha256": "07fb9e9edc8c8b74c7be3450bd8b9ada1e2ffd5361d6427454f40afa20e58f9d",
+      "entry_count": 8,
+      "size_bytes": 4305185
+    }
+  },
+  "parent": {
+    "started_at": "2026-08-18T21:50:09+08:00",
+    "finished_at": "2026-08-18T22:38:14+08:00",
+    "games": 20,
+    "victories": 0,
+    "floor_total": 522,
+    "floor_mean": 26.1,
+    "floor_median": 26.5,
+    "act_2_entered": 13,
+    "act_2_boss_reached": 7,
+    "act_3_entered": 1,
+    "playtime_seconds": 2771,
+    "floors": [
+      33, 50, 28, 16, 16, 16, 16, 33, 33, 25,
+      25, 31, 16, 16, 33, 16, 23, 33, 33, 30
+    ],
+    "run_files": [
+      "1787061199.run", "1787061555.run", "1787061690.run", "1787061789.run",
+      "1787061870.run", "1787061955.run", "1787062027.run", "1787062220.run",
+      "1787062401.run", "1787062521.run", "1787062663.run", "1787062811.run",
+      "1787062890.run", "1787063032.run", "1787063234.run", "1787063302.run",
+      "1787063420.run", "1787063602.run", "1787063739.run", "1787063894.run"
+    ],
+    "decision_trace_rows": 8290,
+    "decision_trace_sources": {
+      "combat_rl": 8290
+    },
+    "decision_trace_parse_errors": 0,
+    "sim_divergence_rows": 12,
+    "sim_divergence_parse_errors": 0,
+    "new_tracebacks": 0,
+    "new_critical_errors": 0,
+    "rl_action_failures": 0,
+    "agent_fallbacks": 0,
+    "training_or_expert_actions": 0,
+    "communication_mod_current_section_lines": 10,
+    "communication_mod_current_section_errors": 0,
+    "runtime_evidence_zip": {
+      "path": "reports/combat_rl_promoted_r16_successor_r18_zero_epsilon_gate_20260818_r1/parent/runtime_evidence.zip",
+      "sha256": "0f54fc72912b23222ba44efcf3720c7ebcd3afa2b4489caa0336fc0dfa827916",
+      "entry_count": 8,
+      "size_bytes": 4392964
+    }
+  },
+  "paired": {
+    "candidate_floor_wins": 0,
+    "parent_floor_wins": 1,
+    "ties": 19,
+    "floor_delta_total": -6,
+    "all_seed_pairs_match": true,
+    "all_path_prefixes_match_until_shorter_run_end": false,
+    "exact_path_matches": 19,
+    "divergent_pairs": [
+      {
+        "pair_index_one_based": 18,
+        "seed_pool_text": "5F05M6RDNYUN6",
+        "seed_played": "-101960118829254780",
+        "candidate_run": "1787060488.run",
+        "parent_run": "1787063602.run",
+        "candidate_floor": 27,
+        "parent_floor": 33,
+        "candidate_killed_by": "Shelled Parasite and Fungi",
+        "parent_killed_by": "Collector",
+        "common_path_prefix_entries": 23,
+        "candidate_path_entries": 26,
+        "parent_path_entries": 32,
+        "candidate_hexaghost_turns": 6,
+        "candidate_hexaghost_damage_taken": 34,
+        "parent_hexaghost_turns": 9,
+        "parent_hexaghost_damage_taken": 61,
+        "candidate_cultist_and_chosen_turns": 9,
+        "candidate_cultist_and_chosen_damage_taken": 51,
+        "parent_cultist_and_chosen_turns": 6,
+        "parent_cultist_and_chosen_damage_taken": 24
+      }
+    ]
+  },
+  "qualification_conditions": {
+    "candidate_paired_floor_wins_exceed_parent": false,
+    "at_least_one_floor_pair_non_tied": true,
+    "candidate_victories_at_least_parent": true,
+    "candidate_act_2_entries_at_least_parent": true,
+    "candidate_act_2_boss_reaches_at_least_parent": false,
+    "candidate_act_3_entries_at_least_parent": true,
+    "candidate_total_floors_at_least_parent": false,
+    "both_arms_completed_all_games": true,
+    "all_seed_pairs_match": true,
+    "both_arms_have_no_runtime_failures": true,
+    "all_conditions_passed": false
+  },
+  "production_state": {
+    "restored": true,
+    "configuration": "reports/combat_rl_promoted_r15_successor_promotion_20260818.properties",
+    "configuration_sha256": "25b8ac697923c86b5baf8aece43d8723adcc1a8d1f8f4fa0bfa6b8ef3f3713c3",
+    "active_checkpoint_sha256": "75120e9e8f76393d4d82c16de5c3ea6384d2f7ef26bd530a6b552ed9791e38f5",
+    "candidate_promoted": false
+  },
+  "next_step": "Retain production r16 and reject r18 without rerunning this cohort. A later successor may use consumed r14 for fitting only under a new frozen selection and fresh evaluation registration."
+}
