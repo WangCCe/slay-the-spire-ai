@@ -1,0 +1,77 @@
+{
+  "schema_version": "combat-lightspeed-frozen-candidate-comparison-registration-v1",
+  "audit_id": "combat-lightspeed-frozen-candidate-comparison-20260819-r1",
+  "source_commit": "b9e76e3aad14383ad7caaa7d8989a56b2260b994",
+  "source_binding": {
+    "comparison_runner_sha256": "324931c07caf6f8bf359ba78d2b9ecdd567beea383ab33e587d317bea9cb0e84",
+    "training_runner_sha256": "582af97d3c694d7476ea374a2768f4d75d5c53ca2ce53b3805f24a4d59beb8a2",
+    "bridge_source_sha256": "ced080a47b3b9b25206eac7b8b5ee3752af348d4df8a5d9750e386157812bf90",
+    "native_adapter_source_sha256": "2131a6b9b579942aa029be4cbc1960143722b53cfa4b91ec5921dd56c96f4d25",
+    "native_module_path": "D:/PycharmProjects/slay-the-spire-ai/.sts_lightspeed_combat_later_battle_20260819_r3_build/sts_lightspeed_combat_adapter.cp310-win_amd64.pyd",
+    "native_module_sha256": "195678b7fc6bf69815f3d2971404afb8ce72fb666700edf4203383429caf1009",
+    "simulator_commit": "7476a81954020087da31d41d16fddf475746ec2d",
+    "simulator_source_sha256": "a3f98721ec37373b1b00aef660832a3307f0186ba0614d07a3b1e7de8ab2e46a",
+    "items_json_path": "D:/SteamLibrary/steamapps/common/SlayTheSpire/export/items.json",
+    "items_json_sha256": "e23784ea8ed3092e3bfa9918240e162a9cbcb837badfb53c612eb0d83cc811dc"
+  },
+  "candidates": [
+    {
+      "label": "r4_first_combat",
+      "path": "D:/PycharmProjects/slay-the-spire-ai/reports/combat_lightspeed_training_smoke_20260819_r4_card_select_replication/simulator_only_candidate.pth",
+      "sha256": "0c3e94393089c2153980fd9df8c904d11efa8cd1e62a1899b8211144d0fe39ff"
+    },
+    {
+      "label": "r5_later_battle",
+      "path": "D:/PycharmProjects/slay-the-spire-ai/reports/combat_lightspeed_training_smoke_20260819_r5_later_battle/simulator_only_candidate.pth",
+      "sha256": "3ce44d8c11bffbfc8e281edbcd58d0f54cbff5eecfed806e6aa86b00c3deffe0"
+    },
+    {
+      "label": "r6_later_battle",
+      "path": "D:/PycharmProjects/slay-the-spire-ai/reports/combat_lightspeed_training_smoke_20260819_r6_later_battle_replication/simulator_only_candidate.pth",
+      "sha256": "ce015a326fad8a6d13bb6f36207dc79058d16f241b080e0543e7db940bd05b78"
+    }
+  ],
+  "cohort": {
+    "seeds": "94000..94063",
+    "seed_count": 64,
+    "battle_indices": [0, 3, 6, 9],
+    "profile_count": 256,
+    "candidate_episode_count_maximum": 768,
+    "ascension": 0,
+    "max_decisions_per_profile": 100,
+    "max_actions_per_turn": 8,
+    "prior_calibration_or_training_seed_overlap": false
+  },
+  "execution": {
+    "interpreter": "D:/anaconda/envs/stsai/python.exe",
+    "isolated_mode": true,
+    "device": "cpu",
+    "optimizer_updates": 0,
+    "output_dir": "reports/combat_lightspeed_frozen_candidate_comparison_20260819_r1",
+    "gameplay": false,
+    "communication_mod": false,
+    "production_checkpoint_access": false
+  },
+  "success_criteria": {
+    "verdict": "comparison_ready",
+    "candidate_count": 3,
+    "unexpected_initialization_failure_count": 0,
+    "unsupported_state_count": 0,
+    "decision_bound_truncation_count": 0,
+    "matched_reachability": true,
+    "reachable_profile_count_gt": 0,
+    "ranking_metric": "mean_reward",
+    "guardrails": [
+      "player_victory_count",
+      "mean_player_hp"
+    ]
+  },
+  "stop_rules": [
+    "Execute this registered comparison at most once.",
+    "Do not train, tune, ensemble, or change candidate weights.",
+    "Do not change candidates, source bindings, seeds, indices, or bounds after outcome access.",
+    "Do not start Slay the Spire or CommunicationMod.",
+    "Do not load a production-compatible checkpoint.",
+    "A ready result does not authorize live transfer, qualification, or promotion."
+  ]
+}
