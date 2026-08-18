@@ -506,7 +506,10 @@ def encode_rl_v2(
         slot = _integer(relic.get("slot"), f"relics[{index}].slot")
         if slot != index:
             raise CombatBridgeError("noncontiguous_relic_slot", slot)
-        relic_ids[slot] = _strict_relic_id(id_mapper, relic.get("name"))
+        relic_ids[slot] = _strict_relic_id(
+            id_mapper,
+            relic.get("id") or relic.get("name"),
+        )
 
     action_mask = np.zeros(ACTION_DIM, dtype=bool)
     for action in actions:

@@ -218,7 +218,7 @@ def _mapper():
     return IdMapper(
         card_ids={"Strike": 4},
         potion_ids={"Fire Potion": 3},
-        relic_ids={"Burning Blood": 2},
+        relic_ids={"Burning Blood": 2, "Philosopher's Stone": 3},
         card_tags={"Strike": []},
     )
 
@@ -245,6 +245,23 @@ def test_rl_v2_bridge_rejects_unknown_required_identity():
 
     with pytest.raises(CombatBridgeError, match="unknown_card_identity"):
         encode_rl_v2(_snapshot(card_name="Unknown Strike"), _actions(), id_mapper=_mapper())
+
+
+def test_rl_v2_bridge_uses_canonical_relic_id_not_display_name():
+    from analysis_scripts.combat_lightspeed_bridge import encode_rl_v2
+
+    snapshot = _snapshot()
+    snapshot["state"]["relics"] = [
+        {
+            "id": "Philosopher's Stone",
+            "name": "Philosophers Stone",
+            "slot": 0,
+        }
+    ]
+
+    mapped = encode_rl_v2(snapshot, _actions(), id_mapper=_mapper())
+
+    assert mapped.state.relic_ids[0] == 3
 
 
 def test_rl_v2_bridge_rejects_inconsistent_card_select_settlement_evidence():
