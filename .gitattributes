@@ -353,3 +353,10 @@ reports/combat_lightspeed_checkpoint_interpolation_*/** text eol=lf
 reports/combat_lightspeed_checkpoint_interpolation_*/*.pth -text
 reports/combat_lightspeed_conservative_step_screen_* text eol=lf
 reports/combat_lightspeed_conservative_step_screen_*/** text eol=lf
+
+# Preserve parent-policy-constrained combat LightSTS evidence bytes.
+openspec/changes/add-combat-lightspeed-parent-policy-constraint/** text eol=lf
+openspec/changes/archive/*-add-combat-lightspeed-parent-policy-constraint/** text eol=lf
+reports/combat_lightspeed_parent_policy_constraint_* text eol=lf
+reports/combat_lightspeed_parent_policy_constraint_*/** text eol=lf
+reports/combat_lightspeed_parent_policy_constraint_*/*.pth -text

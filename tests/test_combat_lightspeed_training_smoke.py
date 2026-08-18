@@ -1,4 +1,5 @@
 import copy
+import math
 import os
 from pathlib import Path
 import random
@@ -109,6 +110,16 @@ def test_training_profiles_are_deterministic_seed_index_product():
         (11, 0),
         (11, 3),
     )
+
+
+def test_parent_policy_constraint_weight_must_be_finite_and_non_negative():
+    for value in (-0.1, float("nan"), float("inf")):
+        with pytest.raises(ValueError, match="parent policy anchor weight"):
+            SmokeConfig(
+                train_seeds=(10,),
+                evaluation_seeds=(20,),
+                parent_policy_anchor_weight=value,
+            ).validate()
 
 
 def test_expected_later_battle_unreachable_profiles_are_not_integrity_failures():
@@ -285,6 +296,95 @@ def test_simulator_checkpoint_warm_starts_online_target_and_control(tmp_path):
     assert parameter_sha256(trainer.target_network.state_dict()) == parameter_sha256(
         parent_state
     )
+    assert trainer.parent_policy_anchor_network is None
+
+
+def test_positive_parent_policy_constraint_freezes_loaded_parent(tmp_path):
+    parent = create_fresh_trainer(_mapper(), seed=42, batch_size=2, learning_starts=2)
+    parent_state = copy.deepcopy(parent.online_network.state_dict())
+    path = tmp_path / "parent.pth"
+    _write_simulator_checkpoint(path, parent_state)
+    binding = load_initial_checkpoint(path, expected_sha256=None)
+    trainer = create_fresh_trainer(
+        _mapper(),
+        seed=100,
+        batch_size=2,
+        learning_starts=2,
+        parent_policy_anchor_weight=1.0,
+    )
+
+    control, record = initialize_trainer(trainer, binding)
+
+    assert record["parent_policy_anchor_weight"] == pytest.approx(1.0)
+    assert parameter_sha256(control) == parameter_sha256(parent_state)
+    assert parameter_sha256(
+        trainer.parent_policy_anchor_network.state_dict()
+    ) == parameter_sha256(parent_state)
+    assert all(
+        not parameter.requires_grad
+        for parameter in trainer.parent_policy_anchor_network.parameters()
+    )
+
+
+def test_positive_parent_policy_constraint_requires_warm_start():
+    trainer = create_fresh_trainer(
+        _mapper(),
+        seed=44,
+        batch_size=2,
+        learning_starts=2,
+        parent_policy_anchor_weight=1.0,
+    )
+
+    with pytest.raises(ValueError, match="requires a warm-start checkpoint"):
+        initialize_trainer(trainer, None)
+
+
+def test_parent_policy_constraint_produces_finite_separate_loss(tmp_path):
+    parent = create_fresh_trainer(_mapper(), seed=46, batch_size=2, learning_starts=2)
+    path = tmp_path / "parent.pth"
+    _write_simulator_checkpoint(path, parent.online_network.state_dict())
+    trainer = create_fresh_trainer(
+        _mapper(),
+        seed=101,
+        batch_size=2,
+        learning_starts=2,
+        parent_policy_anchor_weight=1.0,
+    )
+    initialize_trainer(
+        trainer,
+        load_initial_checkpoint(path, expected_sha256=None),
+    )
+    state = np.zeros(328, dtype=np.float32)
+    card_ids = np.zeros(10, dtype=np.int64)
+    potion_ids = np.zeros(5, dtype=np.int64)
+    relic_ids = np.zeros(40, dtype=np.int64)
+    mask = np.zeros(133, dtype=bool)
+    mask[[1, 90]] = True
+    for action, reward in ((1, 1.0), (90, -0.05)):
+        assert trainer.store_transition(
+            state,
+            card_ids,
+            potion_ids,
+            relic_ids,
+            action,
+            reward,
+            state,
+            card_ids,
+            potion_ids,
+            relic_ids,
+            False,
+            action_mask=mask,
+            next_action_mask=mask,
+        )
+
+    loss = trainer.train_step()
+
+    assert math.isfinite(loss)
+    assert trainer.last_td_loss > 0.0
+    assert trainer.last_parent_policy_anchor_loss > 0.0
+    assert loss == pytest.approx(
+        trainer.last_td_loss + trainer.last_parent_policy_anchor_loss
+    )
 
 
 @pytest.mark.parametrize(
@@ -340,6 +440,7 @@ def test_published_candidate_is_structurally_simulator_only(tmp_path):
         "training": {
             "initial_parameter_sha256": "e" * 64,
             "candidate_parameter_sha256": "f" * 64,
+            "parent_policy_anchor_weight": 1.0,
         },
         "initialization": {
             "mode": "warm_start",
@@ -369,6 +470,10 @@ def test_published_candidate_is_structurally_simulator_only(tmp_path):
     assert (
         checkpoint["metadata"]["source_binding"]["initial_checkpoint_sha256"]
         == "1" * 64
+    )
+    assert (
+        checkpoint["metadata"]["source_binding"]["parent_policy_anchor_weight"]
+        == pytest.approx(1.0)
     )
 
 

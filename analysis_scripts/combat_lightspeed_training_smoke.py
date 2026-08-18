@@ -47,7 +47,7 @@ from spirecomm.ai.rl.v2.id_mapping import IdMapper, build_id_mapper  # noqa: E40
 from spirecomm.ai.rl.v2.trainer import DQNTrainerV2  # noqa: E402
 
 
-REPORT_SCHEMA_VERSION = "combat-lightspeed-training-smoke-v4"
+REPORT_SCHEMA_VERSION = "combat-lightspeed-training-smoke-v5"
 CHECKPOINT_KIND = "simulator_training_smoke"
 REPORT_AUTHORITY = {
     "gameplay": False,
@@ -81,6 +81,7 @@ class SmokeConfig:
     network_seed: int = 2026081902
     batch_size: int = 128
     optimizer_steps: int = 64
+    parent_policy_anchor_weight: float = 0.0
 
     def validate(self) -> None:
         if not self.train_seeds or not self.evaluation_seeds:
@@ -105,6 +106,13 @@ class SmokeConfig:
             raise ValueError("decision and per-turn action bounds must be positive")
         if self.batch_size <= 1 or self.optimizer_steps <= 0:
             raise ValueError("batch size and optimizer steps must be positive")
+        if (
+            not math.isfinite(self.parent_policy_anchor_weight)
+            or self.parent_policy_anchor_weight < 0.0
+        ):
+            raise ValueError(
+                "parent policy anchor weight must be finite and non-negative"
+            )
 
     def profiles(self, seeds: Sequence[int]) -> tuple[tuple[int, int], ...]:
         return tuple(
@@ -247,6 +255,7 @@ def create_fresh_trainer(
     batch_size: int,
     learning_starts: int,
     buffer_size: int = 100_000,
+    parent_policy_anchor_weight: float = 0.0,
 ) -> DQNTrainerV2:
     random.seed(seed)
     np.random.seed(seed % (2**32))
@@ -269,6 +278,7 @@ def create_fresh_trainer(
         epsilon_end=0.0,
         device="cpu",
         network_type="dueling",
+        parent_policy_anchor_weight=parent_policy_anchor_weight,
     )
     return trainer
 
@@ -345,10 +355,15 @@ def initialize_trainer(
     initial_checkpoint: Mapping[str, Any] | None,
 ) -> tuple[dict[str, torch.Tensor], dict[str, Any]]:
     if initial_checkpoint is None:
+        if trainer.parent_policy_anchor_weight > 0.0:
+            raise ValueError(
+                "positive parent policy anchor weight requires a warm-start checkpoint"
+            )
         state = copy.deepcopy(trainer.online_network.state_dict())
         return state, {
             "mode": "fresh",
             "parameter_sha256": parameter_sha256(state),
+            "parent_policy_anchor_weight": 0.0,
         }
 
     state = initial_checkpoint.get("state_dict")
@@ -370,6 +385,12 @@ def initialize_trainer(
     loaded_sha256 = parameter_sha256(control)
     if loaded_sha256 != record.get("parameter_sha256"):
         raise ValueError("initial checkpoint parameter hash changed during load")
+    record["parent_policy_anchor_weight"] = trainer.parent_policy_anchor_weight
+    if trainer.parent_policy_anchor_weight > 0.0:
+        trainer.set_parent_policy_anchor(control)
+        record["parent_policy_anchor_parameter_sha256"] = parameter_sha256(
+            trainer.parent_policy_anchor_network.state_dict()
+        )
     return control, record
 
 
@@ -579,17 +600,41 @@ def insert_transitions(trainer: DQNTrainerV2, transitions: Sequence[ReplayTransi
     return accepted
 
 
-def run_optimizer(trainer: DQNTrainerV2, steps: int) -> list[float]:
+def run_optimizer(trainer: DQNTrainerV2, steps: int) -> dict[str, list[float]]:
     if len(trainer.replay_buffer) < trainer.learning_starts:
         raise RuntimeError("replay does not satisfy learning_starts")
     trainer.target_update_freq = trainer.total_steps + 1
-    losses: list[float] = []
+    losses: dict[str, list[float]] = {
+        "total": [],
+        "td": [],
+        "parent_policy_anchor": [],
+    }
     for _ in range(steps):
         loss = trainer.train_step()
         if loss is None or not math.isfinite(loss):
             raise RuntimeError(f"optimizer returned invalid loss: {loss}")
-        losses.append(float(loss))
+        values = {
+            "total": float(loss),
+            "td": float(trainer.last_td_loss),
+            "parent_policy_anchor": float(trainer.last_parent_policy_anchor_loss),
+        }
+        if not all(math.isfinite(value) for value in values.values()):
+            raise RuntimeError(f"optimizer returned invalid objective metrics: {values}")
+        for name, value in values.items():
+            losses[name].append(value)
     return losses
+
+
+def summarize_losses(values: Sequence[float]) -> dict[str, float]:
+    if not values:
+        raise ValueError("cannot summarize empty loss values")
+    return {
+        "first": float(values[0]),
+        "last": float(values[-1]),
+        "mean": float(np.mean(values)),
+        "minimum": float(np.min(values)),
+        "maximum": float(np.max(values)),
+    }
 
 
 def _policy_action(
@@ -858,6 +903,13 @@ def _publish(
             source_binding["initial_checkpoint_parameter_sha256"] = report[
                 "initialization"
             ]["parameter_sha256"]
+        source_binding["parent_policy_anchor_weight"] = report["training"][
+            "parent_policy_anchor_weight"
+        ]
+        if report["initialization"].get("parent_policy_anchor_parameter_sha256"):
+            source_binding["parent_policy_anchor_parameter_sha256"] = report[
+                "initialization"
+            ]["parent_policy_anchor_parameter_sha256"]
         checkpoint = {
             "checkpoint_schema_version": 0,
             "checkpoint_kind": CHECKPOINT_KIND,
@@ -909,7 +961,7 @@ def _publish(
             "size_bytes": candidate_path.stat().st_size,
         }
     manifest = {
-        "schema_version": "combat-lightspeed-training-smoke-manifest-v4",
+        "schema_version": "combat-lightspeed-training-smoke-manifest-v5",
         "artifacts": manifest_entries,
     }
     artifacts["manifest.json"] = canonical_json_bytes(manifest) + b"\n"
@@ -933,6 +985,7 @@ def run_smoke(
         seed=config.network_seed,
         batch_size=config.batch_size,
         learning_starts=config.batch_size,
+        parent_policy_anchor_weight=config.parent_policy_anchor_weight,
     )
     initial, initialization = initialize_trainer(trainer, initial_checkpoint)
     initial_sha256 = parameter_sha256(initial)
@@ -944,7 +997,8 @@ def run_smoke(
     accepted = insert_transitions(trainer, transitions)
     if accepted != len(transitions):
         raise RuntimeError(f"replay rejected transitions: {accepted}/{len(transitions)}")
-    losses = run_optimizer(trainer, config.optimizer_steps)
+    objective_losses = run_optimizer(trainer, config.optimizer_steps)
+    losses = objective_losses["total"]
     candidate = copy.deepcopy(trainer.online_network.state_dict())
     candidate_sha256 = parameter_sha256(candidate)
     delta = parameter_delta(initial, candidate)
@@ -972,6 +1026,10 @@ def run_smoke(
         blockers.append("no_replay_transitions")
     if len(losses) != config.optimizer_steps or not all(math.isfinite(value) for value in losses):
         blockers.append("optimizer_incomplete")
+    if config.parent_policy_anchor_weight > 0.0 and not any(
+        value > 0.0 for value in objective_losses["parent_policy_anchor"]
+    ):
+        blockers.append("parent_policy_anchor_loss_missing")
     if delta["l2"] <= 0.0 or initial_sha256 == candidate_sha256:
         blockers.append("parameters_unchanged")
     if unexpected_initialization_failures(
@@ -1025,11 +1083,16 @@ def run_smoke(
             "parameter_delta": delta,
             "replay_transition_count": accepted,
             "optimizer_update_count": len(losses),
+            "parent_policy_anchor_weight": config.parent_policy_anchor_weight,
             "loss_first": losses[0],
             "loss_last": losses[-1],
             "loss_mean": float(np.mean(losses)),
             "loss_minimum": float(np.min(losses)),
             "loss_maximum": float(np.max(losses)),
+            "objective_losses": {
+                name: summarize_losses(values)
+                for name, values in objective_losses.items()
+            },
         },
         "evaluation": {
             "control": control_evaluation,
@@ -1082,6 +1145,7 @@ def _parse_args() -> argparse.Namespace:
     parser.add_argument("--optimizer-steps", default=64, type=int)
     parser.add_argument("--initial-checkpoint", type=Path)
     parser.add_argument("--initial-checkpoint-sha256")
+    parser.add_argument("--parent-policy-anchor-weight", default=0.0, type=float)
     return parser.parse_args()
 
 
@@ -1102,6 +1166,7 @@ def main() -> int:
         network_seed=args.network_seed,
         batch_size=args.batch_size,
         optimizer_steps=args.optimizer_steps,
+        parent_policy_anchor_weight=args.parent_policy_anchor_weight,
     )
     native_module = load_native_module(args.module, dll_directories=args.dll_dir)
     provenance = collect_provenance(
