@@ -10,7 +10,7 @@ import math
 import random
 import sys
 from collections import Counter
-from dataclasses import asdict, dataclass
+from dataclasses import asdict, dataclass, replace
 from pathlib import Path
 from types import ModuleType
 from typing import Any, Mapping, Sequence
@@ -49,8 +49,10 @@ from spirecomm.ai.rl.v2.trainer import DQNTrainerV2  # noqa: E402
 from spirecomm.ai.rl.v2.types import EncodedStateV2  # noqa: E402
 
 
-REPORT_SCHEMA_VERSION = "combat-lightspeed-training-smoke-v8"
+REPORT_SCHEMA_VERSION = "combat-lightspeed-training-smoke-v9"
 CHECKPOINT_KIND = "simulator_training_smoke"
+ONE_STEP_TD_TARGET = "one-step-td"
+DISCOUNTED_EPISODE_RETURN_TARGET = "discounted-episode-return"
 ENCOUNTER_HASH_ALGORITHM = "sha256-first-8-bytes-modulo"
 ENCOUNTER_ENUM_ENCODING = "monster-encounter-enum-v1"
 MAX_ENCOUNTER_IDENTITY_BUCKETS = 1024
@@ -160,6 +162,9 @@ class SmokeConfig:
     replay_balance_seed: int = 2026081903
     encounter_identity_buckets: int = 0
     encounter_identity_encoding: str = ENCOUNTER_HASH_ALGORITHM
+    replay_target_mode: str = ONE_STEP_TD_TARGET
+    replay_return_discount: float = 0.99
+    complete_trajectories_only: bool = False
 
     def validate(self) -> None:
         if not self.train_seeds or not self.evaluation_seeds:
@@ -210,6 +215,22 @@ class SmokeConfig:
             and self.encounter_identity_buckets != 64
         ):
             raise ValueError("enum-v1 encounter identity requires exactly 64 buckets")
+        if self.replay_target_mode not in {
+            ONE_STEP_TD_TARGET,
+            DISCOUNTED_EPISODE_RETURN_TARGET,
+        }:
+            raise ValueError("unknown replay target mode")
+        if not math.isfinite(self.replay_return_discount) or not (
+            0.0 < self.replay_return_discount <= 1.0
+        ):
+            raise ValueError("replay return discount must be finite and in (0, 1]")
+        if (
+            self.replay_target_mode == DISCOUNTED_EPISODE_RETURN_TARGET
+            and not self.complete_trajectories_only
+        ):
+            raise ValueError(
+                "discounted episode returns require complete trajectories only"
+            )
 
     def profiles(self, seeds: Sequence[int]) -> tuple[tuple[int, int], ...]:
         return tuple(
@@ -235,6 +256,8 @@ class ReplayTransition:
     done: bool
     action_mask: np.ndarray
     next_action_mask: np.ndarray
+    seed: int = 0
+    decision_index: int = 0
 
 
 def initialization_failure_reason(value: object) -> str:
@@ -777,6 +800,8 @@ def _terminal_next_state(
 def _transition(
     current: MappedCombatState,
     *,
+    seed: int,
+    decision_index: int,
     action_index: int,
     reward: float,
     successor: MappedCombatState | None,
@@ -808,7 +833,140 @@ def _transition(
         done=done,
         action_mask=current.action_mask.copy(),
         next_action_mask=next_mask,
+        seed=seed,
+        decision_index=decision_index,
     )
+
+
+def select_profile_transitions(
+    transitions: Sequence[ReplayTransition],
+    *,
+    completed: bool,
+    incomplete_reason: str,
+    complete_trajectories_only: bool,
+) -> tuple[list[ReplayTransition], dict[str, Any]]:
+    rows = list(transitions)
+    if completed:
+        return rows, {
+            "completed": True,
+            "excluded": False,
+            "incomplete_reason": "",
+            "transition_count": len(rows),
+        }
+    if not incomplete_reason:
+        raise ValueError("incomplete trajectory requires a reason")
+    excluded = bool(complete_trajectories_only)
+    return ([] if excluded else rows), {
+        "completed": False,
+        "excluded": excluded,
+        "incomplete_reason": incomplete_reason,
+        "transition_count": len(rows),
+    }
+
+
+def _reward_summary(values: Sequence[float]) -> dict[str, float | int]:
+    array = np.asarray(values, dtype=np.float64)
+    return {
+        "count": len(values),
+        "mean": float(array.mean()) if len(array) else 0.0,
+        "minimum": float(array.min()) if len(array) else 0.0,
+        "maximum": float(array.max()) if len(array) else 0.0,
+        "sum": float(array.sum()) if len(array) else 0.0,
+    }
+
+
+def transition_identity_sha256(
+    transitions: Sequence[ReplayTransition],
+) -> str:
+    digest = hashlib.sha256()
+    for row in transitions:
+        digest.update(
+            canonical_json_bytes(
+                {
+                    "action": row.action,
+                    "battle_index": row.battle_index,
+                    "decision_index": row.decision_index,
+                    "done": row.done,
+                    "reward": row.reward,
+                    "seed": row.seed,
+                }
+            )
+        )
+        for name, value in (
+            ("continuous", row.continuous),
+            ("card_ids", row.card_ids),
+            ("potion_ids", row.potion_ids),
+            ("relic_ids", row.relic_ids),
+            ("next_continuous", row.next_continuous),
+            ("next_card_ids", row.next_card_ids),
+            ("next_potion_ids", row.next_potion_ids),
+            ("next_relic_ids", row.next_relic_ids),
+            ("action_mask", row.action_mask),
+            ("next_action_mask", row.next_action_mask),
+        ):
+            array = np.ascontiguousarray(value)
+            digest.update(
+                canonical_json_bytes(
+                    {"dtype": array.dtype.str, "name": name, "shape": array.shape}
+                )
+            )
+            digest.update(array.tobytes())
+    return digest.hexdigest()
+
+
+def prepare_replay_targets(
+    transitions: Sequence[ReplayTransition],
+    *,
+    mode: str,
+    discount: float,
+) -> tuple[list[ReplayTransition], dict[str, Any]]:
+    if mode not in {ONE_STEP_TD_TARGET, DISCOUNTED_EPISODE_RETURN_TARGET}:
+        raise ValueError("unknown replay target mode")
+    if not math.isfinite(discount) or not 0.0 < discount <= 1.0:
+        raise ValueError("replay return discount must be finite and in (0, 1]")
+    source = list(transitions)
+    source_identity = transition_identity_sha256(source)
+    if mode == ONE_STEP_TD_TARGET:
+        return source, {
+            "mode": mode,
+            "discount": None,
+            "source_transition_identity_sha256": source_identity,
+            "target_transition_identity_sha256": source_identity,
+            "source_reward": _reward_summary([row.reward for row in source]),
+            "target_reward": _reward_summary([row.reward for row in source]),
+            "terminal_target_count": sum(row.done for row in source),
+        }
+
+    groups: dict[tuple[int, int], list[ReplayTransition]] = {}
+    for row in source:
+        groups.setdefault((row.seed, row.battle_index), []).append(row)
+    transformed: dict[tuple[int, int, int], ReplayTransition] = {}
+    for profile, rows in groups.items():
+        ordered = sorted(rows, key=lambda row: row.decision_index)
+        if [row.decision_index for row in ordered] != list(range(len(ordered))):
+            raise ValueError(f"trajectory decision identity is not contiguous: {profile}")
+        if not ordered or not ordered[-1].done or any(row.done for row in ordered[:-1]):
+            raise ValueError(f"discounted return requires a complete trajectory: {profile}")
+        running_return = 0.0
+        for row in reversed(ordered):
+            running_return = float(row.reward + discount * running_return)
+            if not math.isfinite(running_return):
+                raise ValueError(f"discounted return is not finite: {profile}")
+            key = (row.seed, row.battle_index, row.decision_index)
+            transformed[key] = replace(row, reward=running_return, done=True)
+    result = [
+        transformed[(row.seed, row.battle_index, row.decision_index)]
+        for row in source
+    ]
+    return result, {
+        "mode": mode,
+        "discount": float(discount),
+        "source_transition_identity_sha256": source_identity,
+        "target_transition_identity_sha256": transition_identity_sha256(result),
+        "source_reward": _reward_summary([row.reward for row in source]),
+        "target_reward": _reward_summary([row.reward for row in result]),
+        "terminal_target_count": len(result),
+    }
 
 
 def collect_transitions(
@@ -833,6 +991,12 @@ def collect_transitions(
     progression_encounters = Counter()
     initialized_profiles = 0
     encounter_assignments: dict[str, int] = {}
+    complete_profiles = 0
+    incomplete_profiles = 0
+    retained_incomplete_profiles = 0
+    excluded_incomplete_profiles = 0
+    excluded_incomplete_transitions = 0
+    incomplete_profile_reasons = Counter()
 
     for seed, battle_index in config.profiles(config.train_seeds):
         try:
@@ -852,14 +1016,26 @@ def collect_transitions(
         initialized_profiles += 1
         rng = random.Random(config.behavior_seed ^ seed ^ (battle_index << 32))
         actions_since_end_turn = 0
-        for _ in range(config.max_decisions_per_seed):
+        profile_transitions: list[ReplayTransition] = []
+        profile_actions = Counter()
+        profile_encounters = Counter()
+        profile_rewards: list[float] = []
+        profile_settlement_actions = 0
+        profile_settlement_tasks = Counter()
+        profile_settlement_transitions = 0
+        profile_encounter_assignments: dict[str, int] = {}
+        completed = False
+        incomplete_reason = ""
+        for decision_index in range(config.max_decisions_per_seed):
             status = environment.status()
             disposition, reason = successor_disposition(status)
             if disposition == "terminal":
                 outcomes[reason] += 1
+                completed = True
                 break
             if disposition == "exclude":
                 unsupported[reason] += 1
+                incomplete_reason = reason
                 break
 
             mapped = environment.mapped_state(id_mapper=id_mapper)
@@ -870,7 +1046,7 @@ def collect_transitions(
                 else str(_state(before).get("encounter") or "unknown")
             )
             if config.encounter_identity_buckets:
-                encounter_assignments[encounter] = encounter_identity_bucket(
+                profile_encounter_assignments[encounter] = encounter_identity_bucket(
                     encounter,
                     config.encounter_identity_buckets,
                     encoding=config.encounter_identity_encoding,
@@ -881,7 +1057,7 @@ def collect_transitions(
                 bucket_count=config.encounter_identity_buckets,
                 encoding=config.encounter_identity_encoding,
             )
-            encounters[encounter] += 1
+            profile_encounters[encounter] += 1
             selected = select_behavior_action(
                 environment.legal_actions(),
                 rng=rng,
@@ -899,9 +1075,9 @@ def collect_transitions(
                 after.get("card_select_settlement")
             )
             if settlement["count"]:
-                settlement_transitions += 1
-                settlement_actions += int(settlement["count"])
-                settlement_tasks.update(settlement["tasks"])
+                profile_settlement_transitions += 1
+                profile_settlement_actions += int(settlement["count"])
+                profile_settlement_tasks.update(settlement["tasks"])
             successor_status = successor_environment.status()
             successor_kind, successor_reason = successor_disposition(successor_status)
             reward_record = calculate_native_reward(
@@ -912,6 +1088,7 @@ def collect_transitions(
             )
             if successor_kind == "exclude":
                 unsupported[successor_reason] += 1
+                incomplete_reason = successor_reason
                 break
             successor_mapped = (
                 None
@@ -923,9 +1100,11 @@ def collect_transitions(
                     encoding=config.encounter_identity_encoding,
                 )
             )
-            transitions.append(
+            profile_transitions.append(
                 _transition(
                     current,
+                    seed=seed,
+                    decision_index=decision_index,
                     action_index=action_index,
                     reward=float(reward_record["total"]),
                     successor=successor_mapped,
@@ -933,18 +1112,45 @@ def collect_transitions(
                     battle_index=battle_index,
                 )
             )
-            rewards.append(float(reward_record["total"]))
+            profile_rewards.append(float(reward_record["total"]))
             family = str(selected["kind"])
-            actions[family] += 1
+            profile_actions[family] += 1
             environment = successor_environment
             actions_since_end_turn = 0 if family == "end_turn" else actions_since_end_turn + 1
             if successor_kind == "terminal":
                 outcomes[successor_reason] += 1
+                completed = True
                 break
         else:
             truncated += 1
+            incomplete_reason = "decision_bound"
 
-    reward_array = np.asarray(rewards, dtype=np.float64)
+        selected_transitions, profile_evidence = select_profile_transitions(
+            profile_transitions,
+            completed=completed,
+            incomplete_reason=incomplete_reason,
+            complete_trajectories_only=config.complete_trajectories_only,
+        )
+        if completed:
+            complete_profiles += 1
+        else:
+            incomplete_profiles += 1
+            incomplete_profile_reasons[incomplete_reason] += 1
+            if profile_evidence["excluded"]:
+                excluded_incomplete_profiles += 1
+                excluded_incomplete_transitions += len(profile_transitions)
+            else:
+                retained_incomplete_profiles += 1
+        if selected_transitions:
+            transitions.extend(selected_transitions)
+            actions.update(profile_actions)
+            encounters.update(profile_encounters)
+            rewards.extend(profile_rewards)
+            settlement_actions += profile_settlement_actions
+            settlement_tasks.update(profile_settlement_tasks)
+            settlement_transitions += profile_settlement_transitions
+            encounter_assignments.update(profile_encounter_assignments)
+
     return transitions, {
         "accepted_transition_count": len(transitions),
         "transition_battle_index_counts": dict(
@@ -954,13 +1160,7 @@ def collect_transitions(
         "decision_bound_seed_count": truncated,
         "encounter_state_counts": dict(sorted(encounters.items())),
         "outcome_counts": dict(sorted(outcomes.items())),
-        "reward": {
-            "count": len(rewards),
-            "mean": float(reward_array.mean()) if len(reward_array) else 0.0,
-            "minimum": float(reward_array.min()) if len(reward_array) else 0.0,
-            "maximum": float(reward_array.max()) if len(reward_array) else 0.0,
-            "sum": float(reward_array.sum()) if len(reward_array) else 0.0,
-        },
+        "reward": _reward_summary(rewards),
         "card_select_settlement": {
             "action_count": settlement_actions,
             "task_counts": dict(sorted(settlement_tasks.items())),
@@ -969,6 +1169,20 @@ def collect_transitions(
         "initialization_failure_counts": dict(sorted(initialization_failures.items())),
         "profile_count_initialized": initialized_profiles,
         "profile_count_registered": len(config.profiles(config.train_seeds)),
+        "trajectory_eligibility": {
+            "complete_trajectories_only": config.complete_trajectories_only,
+            "complete_profile_count": complete_profiles,
+            "incomplete_profile_count": incomplete_profiles,
+            "retained_incomplete_profile_count": retained_incomplete_profiles,
+            "excluded_incomplete_profile_count": excluded_incomplete_profiles,
+            "excluded_incomplete_transition_count": excluded_incomplete_transitions,
+            "incomplete_profile_reason_counts": dict(
+                sorted(incomplete_profile_reasons.items())
+            ),
+            "source_transition_identity_sha256": transition_identity_sha256(
+                transitions
+            ),
+        },
         "progression_coverage": {
             "act_counts": dict(sorted(progression_acts.items())),
             "battle_index_counts": dict(sorted(progression_battle_indices.items())),
@@ -1417,6 +1631,8 @@ def _publish(
         source_binding["parent_policy_anchor_weight"] = report["training"][
             "parent_policy_anchor_weight"
         ]
+        if report["training"].get("replay_target"):
+            source_binding["replay_target"] = report["training"]["replay_target"]
         if report["initialization"].get("parent_policy_anchor_parameter_sha256"):
             source_binding["parent_policy_anchor_parameter_sha256"] = report[
                 "initialization"
@@ -1472,7 +1688,7 @@ def _publish(
             "size_bytes": candidate_path.stat().st_size,
         }
     manifest = {
-        "schema_version": "combat-lightspeed-training-smoke-manifest-v8",
+        "schema_version": "combat-lightspeed-training-smoke-manifest-v9",
         "artifacts": manifest_entries,
     }
     artifacts["manifest.json"] = canonical_json_bytes(manifest) + b"\n"
@@ -1511,8 +1727,13 @@ def run_smoke(
         id_mapper=id_mapper,
         config=config,
     )
-    prepared_transitions, replay_preparation = prepare_replay_transitions(
+    target_transitions, replay_target = prepare_replay_targets(
         transitions,
+        mode=config.replay_target_mode,
+        discount=config.replay_return_discount,
+    )
+    prepared_transitions, replay_preparation = prepare_replay_transitions(
+        target_transitions,
         battle_indices=config.battle_indices,
         stratify=config.balance_replay_by_battle_index,
         seed=config.replay_balance_seed,
@@ -1630,6 +1851,8 @@ def run_smoke(
             "parameter_delta": delta,
             "replay_transition_count": accepted,
             "source_replay_transition_count": len(transitions),
+            "target_replay_transition_count": len(target_transitions),
+            "replay_target": replay_target,
             "replay_preparation": replay_preparation,
             "optimizer_update_count": len(losses),
             "parent_policy_anchor_weight": config.parent_policy_anchor_weight,
@@ -1703,6 +1926,13 @@ def _parse_args() -> argparse.Namespace:
         default=ENCOUNTER_HASH_ALGORITHM,
         choices=(ENCOUNTER_HASH_ALGORITHM, ENCOUNTER_ENUM_ENCODING),
     )
+    parser.add_argument(
+        "--replay-target-mode",
+        default=ONE_STEP_TD_TARGET,
+        choices=(ONE_STEP_TD_TARGET, DISCOUNTED_EPISODE_RETURN_TARGET),
+    )
+    parser.add_argument("--replay-return-discount", default=0.99, type=float)
+    parser.add_argument("--complete-trajectories-only", action="store_true")
     return parser.parse_args()
 
 
@@ -1728,6 +1958,9 @@ def main() -> int:
         replay_balance_seed=args.replay_balance_seed,
         encounter_identity_buckets=args.encounter_identity_buckets,
         encounter_identity_encoding=args.encounter_identity_encoding,
+        replay_target_mode=args.replay_target_mode,
+        replay_return_discount=args.replay_return_discount,
+        complete_trajectories_only=args.complete_trajectories_only,
     )
     native_module = load_native_module(args.module, dll_directories=args.dll_dir)
     provenance = collect_provenance(

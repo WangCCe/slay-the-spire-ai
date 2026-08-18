@@ -11,10 +11,12 @@ import torch
 import pytest
 
 from analysis_scripts.combat_lightspeed_training_smoke import (
+    DISCOUNTED_EPISODE_RETURN_TARGET,
     ENCOUNTER_ENUM_ENCODING,
     ENCOUNTER_ENUM_V1,
     ENCOUNTER_ENUM_V1_SHA256,
     ENCOUNTER_HASH_ALGORITHM,
+    ONE_STEP_TD_TARGET,
     REPORT_AUTHORITY,
     ReplayTransition,
     SmokeConfig,
@@ -30,8 +32,10 @@ from analysis_scripts.combat_lightspeed_training_smoke import (
     parameter_delta,
     parameter_sha256,
     paired_evaluation,
+    prepare_replay_targets,
     prepare_replay_transitions,
     select_behavior_action,
+    select_profile_transitions,
     successor_disposition,
     unexpected_initialization_failures,
     run_smoke,
@@ -159,6 +163,25 @@ def test_parent_policy_constraint_weight_must_be_finite_and_non_negative():
             encounter_identity_buckets=32,
             encounter_identity_encoding=ENCOUNTER_ENUM_ENCODING,
         ).validate()
+    with pytest.raises(ValueError, match="unknown replay target mode"):
+        SmokeConfig(
+            train_seeds=(10,),
+            evaluation_seeds=(20,),
+            replay_target_mode="unknown",
+        ).validate()
+    for value in (0.0, -0.1, 1.1, float("nan"), float("inf")):
+        with pytest.raises(ValueError, match="replay return discount"):
+            SmokeConfig(
+                train_seeds=(10,),
+                evaluation_seeds=(20,),
+                replay_return_discount=value,
+            ).validate()
+    with pytest.raises(ValueError, match="require complete trajectories"):
+        SmokeConfig(
+            train_seeds=(10,),
+            evaluation_seeds=(20,),
+            replay_target_mode=DISCOUNTED_EPISODE_RETURN_TARGET,
+        ).validate()
 
 
 def test_encounter_identity_is_deterministic_opt_in_and_one_hot():
@@ -237,7 +260,15 @@ def test_collision_free_encounter_vocabulary_rejects_unknown_identity():
         )
 
 
-def _stratum_transition(battle_index, action):
+def _stratum_transition(
+    battle_index,
+    action,
+    *,
+    seed=0,
+    decision_index=0,
+    reward=0.0,
+    done=False,
+):
     return ReplayTransition(
         battle_index=battle_index,
         continuous=np.zeros(328, dtype=np.float32),
@@ -245,15 +276,135 @@ def _stratum_transition(battle_index, action):
         potion_ids=np.zeros(5, dtype=np.int64),
         relic_ids=np.zeros(40, dtype=np.int64),
         action=action,
-        reward=0.0,
+        reward=reward,
         next_continuous=np.zeros(328, dtype=np.float32),
         next_card_ids=np.zeros(10, dtype=np.int64),
         next_potion_ids=np.zeros(5, dtype=np.int64),
         next_relic_ids=np.zeros(40, dtype=np.int64),
-        done=False,
+        done=done,
         action_mask=np.ones(133, dtype=bool),
         next_action_mask=np.ones(133, dtype=bool),
+        seed=seed,
+        decision_index=decision_index,
     )
+
+
+def test_profile_selection_excludes_entire_incomplete_prefix_when_required():
+    rows = [
+        _stratum_transition(9, 1, seed=17, decision_index=0),
+        _stratum_transition(9, 2, seed=17, decision_index=1),
+    ]
+
+    retained, retained_evidence = select_profile_transitions(
+        rows,
+        completed=False,
+        incomplete_reason="decision_bound",
+        complete_trajectories_only=False,
+    )
+    excluded, excluded_evidence = select_profile_transitions(
+        rows,
+        completed=False,
+        incomplete_reason="decision_bound",
+        complete_trajectories_only=True,
+    )
+
+    assert [id(row) for row in retained] == [id(row) for row in rows]
+    assert retained_evidence["excluded"] is False
+    assert excluded == []
+    assert excluded_evidence == {
+        "completed": False,
+        "excluded": True,
+        "incomplete_reason": "decision_bound",
+        "transition_count": 2,
+    }
+
+
+def test_one_step_target_preserves_rows_rewards_and_terminal_flags():
+    rows = [
+        _stratum_transition(0, 1, seed=21, decision_index=0, reward=1.0),
+        _stratum_transition(
+            0,
+            2,
+            seed=21,
+            decision_index=1,
+            reward=3.0,
+            done=True,
+        ),
+    ]
+
+    prepared, metrics = prepare_replay_targets(
+        rows,
+        mode=ONE_STEP_TD_TARGET,
+        discount=0.99,
+    )
+
+    assert [id(row) for row in prepared] == [id(row) for row in rows]
+    assert [row.reward for row in prepared] == [1.0, 3.0]
+    assert [row.done for row in prepared] == [False, True]
+    assert metrics["discount"] is None
+    assert metrics["source_transition_identity_sha256"] == metrics[
+        "target_transition_identity_sha256"
+    ]
+
+
+def test_discounted_episode_return_is_backward_complete_and_non_bootstrapping():
+    rows = [
+        _stratum_transition(6, 1, seed=31, decision_index=0, reward=1.0),
+        _stratum_transition(6, 2, seed=31, decision_index=1, reward=2.0),
+        _stratum_transition(
+            6,
+            3,
+            seed=31,
+            decision_index=2,
+            reward=3.0,
+            done=True,
+        ),
+    ]
+
+    prepared, metrics = prepare_replay_targets(
+        rows,
+        mode=DISCOUNTED_EPISODE_RETURN_TARGET,
+        discount=0.5,
+    )
+    _one_step, one_step_metrics = prepare_replay_targets(
+        rows,
+        mode=ONE_STEP_TD_TARGET,
+        discount=0.5,
+    )
+
+    assert [row.reward for row in prepared] == pytest.approx([2.75, 3.5, 3.0])
+    assert all(row.done for row in prepared)
+    assert metrics["source_transition_identity_sha256"] != metrics[
+        "target_transition_identity_sha256"
+    ]
+    assert metrics["source_transition_identity_sha256"] == one_step_metrics[
+        "source_transition_identity_sha256"
+    ]
+    assert metrics["terminal_target_count"] == 3
+    assert metrics["source_reward"]["sum"] == pytest.approx(6.0)
+    assert metrics["target_reward"]["sum"] == pytest.approx(9.25)
+
+
+def test_discounted_episode_return_rejects_incomplete_or_noncontiguous_profile():
+    incomplete = [
+        _stratum_transition(3, 1, seed=41, decision_index=0, reward=1.0),
+    ]
+    noncontiguous = [
+        _stratum_transition(3, 1, seed=42, decision_index=1, reward=1.0, done=True),
+    ]
+
+    with pytest.raises(ValueError, match="requires a complete trajectory"):
+        prepare_replay_targets(
+            incomplete,
+            mode=DISCOUNTED_EPISODE_RETURN_TARGET,
+            discount=0.99,
+        )
+    with pytest.raises(ValueError, match="identity is not contiguous"):
+        prepare_replay_targets(
+            noncontiguous,
+            mode=DISCOUNTED_EPISODE_RETURN_TARGET,
+            discount=0.99,
+        )
 
 
 def test_default_replay_preparation_preserves_rows_and_counts():
@@ -798,6 +949,50 @@ def test_opt_in_tiny_native_training_smoke():
     assert report["evaluation"]["candidate"]["aggregate"]["seed_count"] == 2
     assert "card_select_settlement_action_count" in report["evaluation"]["control"]["aggregate"]
     assert "card_select_settlement_action_count" in report["evaluation"]["candidate"]["aggregate"]
+
+
+def test_opt_in_native_discounted_return_training_smoke():
+    module_path = os.environ.get("STS_LIGHTSPEED_COMBAT_ADAPTER_MODULE")
+    items_json = os.environ.get("STS_ITEMS_JSON")
+    if not module_path or not items_json:
+        pytest.skip("native combat adapter paths are not configured")
+    dll_directory = os.environ.get("STS_LIGHTSPEED_MINGW_BIN")
+    module = load_native_module(
+        module_path,
+        dll_directories=(() if not dll_directory else (dll_directory,)),
+    )
+    report, _candidate = run_smoke(
+        module,
+        id_mapper=build_id_mapper(items_json),
+        config=SmokeConfig(
+            train_seeds=(0, 1),
+            evaluation_seeds=(10000, 10001),
+            max_decisions_per_seed=100,
+            batch_size=2,
+            optimizer_steps=1,
+            replay_target_mode=DISCOUNTED_EPISODE_RETURN_TARGET,
+            complete_trajectories_only=True,
+        ),
+        provenance={"training_runner_sha256": "b" * 64},
+    )
+
+    eligibility = report["corpus"]["trajectory_eligibility"]
+    target = report["training"]["replay_target"]
+    assert report["verdict"] == "technical_smoke_ready"
+    assert eligibility["complete_profile_count"] == 2
+    assert eligibility["incomplete_profile_count"] == 0
+    assert eligibility["excluded_incomplete_profile_count"] == 0
+    assert report["training"]["source_replay_transition_count"] == report[
+        "training"
+    ]["target_replay_transition_count"]
+    assert target["mode"] == DISCOUNTED_EPISODE_RETURN_TARGET
+    assert target["discount"] == pytest.approx(0.99)
+    assert target["source_transition_identity_sha256"] == eligibility[
+        "source_transition_identity_sha256"
+    ]
+    assert target["terminal_target_count"] == report["training"][
+        "target_replay_transition_count"
+    ]
 
 
 def test_opt_in_native_encounter_identity_training_smoke():
