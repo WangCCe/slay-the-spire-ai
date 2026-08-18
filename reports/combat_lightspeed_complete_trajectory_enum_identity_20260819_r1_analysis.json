@@ -1,0 +1,54 @@
+{
+  "schema_version": "combat-lightspeed-complete-trajectory-enum-identity-analysis-v1",
+  "experiment_id": "combat-lightspeed-complete-trajectory-enum-identity-20260819-r1",
+  "registration": "reports/combat_lightspeed_complete_trajectory_enum_identity_20260819_r1_registration.json",
+  "artifacts": {
+    "report": "reports/combat_lightspeed_complete_trajectory_enum_identity_20260819_r1/report.json",
+    "report_sha256": "0c7c228a1467e843ace63e1198c639d8c79e020081fc56e7aec6fcce4fb2717a",
+    "checkpoint_sha256": "6d360ab06494243f4c401b5abef3cf3751dfb7b4163ca68a4bb439b6ee26cb5c"
+  },
+  "technical": {
+    "all_registered_criteria_pass": true,
+    "verdict": "technical_smoke_ready",
+    "optimizer_updates": 256,
+    "source_replay_transition_count": 66793,
+    "prepared_replay_transition_count": 81872,
+    "complete_profile_count": 3404,
+    "incomplete_profile_count": 0,
+    "excluded_incomplete_profile_count": 0,
+    "excluded_incomplete_transition_count": 0,
+    "unsupported_reason_counts": {},
+    "source_transition_identity_sha256": "111696ce01ae9a1a218376875995565da99d85be7522ba617e88ef927f102108",
+    "migration_action_mismatch_count": 0,
+    "migration_max_abs_q_delta": 3.5762786865234375e-07,
+    "migration_inserted_column_max_abs": 0.0,
+    "evaluation_truncated_count_per_policy": 0
+  },
+  "candidate_vs_parent": {
+    "aggregate": {
+      "profile_count": 841,
+      "mean_reward_delta": 0.5584222286506809,
+      "mean_player_hp_delta": 0.29607609988109396,
+      "candidate_only_victories": 14,
+      "parent_only_victories": 6
+    },
+    "by_battle_index": {
+      "0": {"profile_count": 256, "mean_reward_delta": -0.007617187499999928, "mean_player_hp_delta": -0.0078125, "candidate_only_victories": 0, "parent_only_victories": 0},
+      "3": {"profile_count": 246, "mean_reward_delta": 0.4140890522788876, "mean_player_hp_delta": 0.2682926829268293, "candidate_only_victories": 2, "parent_only_victories": 1},
+      "6": {"profile_count": 200, "mean_reward_delta": 0.9329349914181196, "mean_player_hp_delta": 0.555, "candidate_only_victories": 7, "parent_only_victories": 3},
+      "9": {"profile_count": 139, "mean_reward_delta": 1.3174833751869954, "mean_player_hp_delta": 0.5323741007194245, "candidate_only_victories": 5, "parent_only_victories": 2}
+    },
+    "all_registered_criteria_pass": false,
+    "failed_criteria": [
+      "battle_index_0_mean_reward_delta_gte_0",
+      "battle_index_0_mean_player_hp_delta_gte_0"
+    ]
+  },
+  "decision": {
+    "value": "retain_r4",
+    "fresh_frozen_confirmation_authorized": false,
+    "reason": "The clean replication passed every technical, aggregate, battle-index-6, and battle-index-9 criterion, but the preregistered zero-regression battle-index-0 reward and HP criteria failed by small negative deltas. Those thresholds cannot be relaxed after outcome access.",
+    "repeat_enum_training_authorized": false,
+    "live_transfer_authorized": false
+  }
+}
