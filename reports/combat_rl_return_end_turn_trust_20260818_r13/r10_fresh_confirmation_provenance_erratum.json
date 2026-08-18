@@ -1,0 +1,12 @@
+{
+  "schema_version": 1,
+  "raw_confirmation": "reports/combat_rl_return_end_turn_trust_20260818_r13/r10_fresh_confirmation.json",
+  "raw_confirmation_sha256": "f63c27dd79e59f18b0a1e2460b423afda484493dbc247f35cb4b9f19ed70bf1b",
+  "supplied_source_commit": "38b80ac9f68d2a2dd63b6e135217f2fc60c354c4",
+  "registered_commit_prefix": "38b80ac9f",
+  "resolved_registered_commit": "38b80ac9f06ee95be18556c77c2aeee998dd807b",
+  "error_scope": "descriptive source_commit argument only",
+  "model_replay_metrics_or_thresholds_affected": false,
+  "raw_confirmation_modified": false,
+  "evaluation_rerun": false
+}

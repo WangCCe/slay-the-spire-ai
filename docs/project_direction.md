@@ -1466,17 +1466,32 @@ The next authorized sequence is:
     `b05bbb904bee075628691565de98fbdc119bbae0fc2cc2e41e55acd5084bafe7`
     for one untouched production-policy replay confirmation only. It has no
     live-evaluation or promotion authority.
+66. Preserve r10 as the consumed fresh confirmation cohort for r13. Its first
+    launch completed no game and published no checkpoint before Windows logged
+    a native `python.exe` crash in `nvcuda64.dll` (`0xc0000409`). A minimal CUDA
+    health check passed, after which one exact recovery with the same committed
+    config, parent checkpoint, and seed order completed all 20 games. The
+    terminal replay contains all 3,081 transitions, has no optimizer state or
+    loss, and keeps online and target weights exactly equal to production r8.
+    Frozen r13 then passed its single confirmation: full-return loss
+    `54.72178 -> 54.70110`, one-step loss `4.43178 -> 4.41149`, parent agreement
+    `99.6430%`, off-target disagreement `0.5305%`, and positive-energy End Turn
+    `1624 -> 1621`. The raw confirmation has a descriptive full-SHA typo after
+    the correct `38b80ac9f` prefix; preserve it unchanged with the published
+    erratum and do not rerun. R13 is eligible for one separately registered
+    matched live gate, not automatic promotion.
 
 ## Work Lanes
 
-The active lane is bounded combat-RL policy improvement. R13 now combines the
-full-combat-return objective with a direct parent non-End-over-End preservation
-constraint and passes the fixed loss and behavior guards on consumed r6, r8,
-and r9. The immediate next step is one untouched 20-game, zero-update replay
-under production r8, followed by a single frozen-candidate confirmation. Only
-a passing confirmation may authorize a separately registered matched live
-gate. Production remains on r8. The near-term measure is repeatable Act 3 and
-victory coverage, not whether another one-off win can be found.
+The active lane is bounded combat-RL policy improvement. R13 combines the full-
+combat-return objective with a direct parent non-End-over-End preservation
+constraint, passes consumed development replays r6/r8/r9, and now passes its
+single fresh r10 confirmation. The immediate next step is one separately
+registered 20-pair live gate against production r8 on a new shared seed pool.
+Keep model bytes, route policy, epsilon, and thresholds fixed. Production
+remains on r8 until paired outcome and runtime evidence support promotion. The
+near-term measure is repeatable Act 3 and victory coverage, not whether another
+one-off win can be found.
 
 The non-combat card-acceptance lane remains paused at its r6 zero-byte
 source-binding infrastructure failure. Resume it only as a separately

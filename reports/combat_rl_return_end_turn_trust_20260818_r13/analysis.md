@@ -2,9 +2,9 @@
 
 ## Decision
 
-Freeze preservation weight `0.25` for one fresh production-policy replay
-confirmation. The candidate is offline-only and has no live-evaluation or
-promotion authority.
+The frozen preservation-weight `0.25` candidate passed one fresh production-
+policy replay confirmation and is eligible for one separately registered
+bounded live gate. It is not promoted and production remains on r8.
 
 The candidate was fitted on consumed r7 replay with the r12 full-combat-return
 objective, eight full-dataset SGD steps, learning rate `0.0002`, TD weight
@@ -37,9 +37,23 @@ The frozen checkpoint is
 `rl_combat_model_return_end_turn_trust_candidate.pth`, SHA-256
 `b05bbb904bee075628691565de98fbdc119bbae0fc2cc2e41e55acd5084bafe7`.
 
+## Fresh r10 confirmation
+
+R10 contributed 3,081 complete, zero-update production-r8 transitions. The
+candidate improved full-combat-return SmoothL1 from `54.7217827` to
+`54.7010956` and one-step SmoothL1 from `4.4317813` to `4.4114928`. Parent
+action agreement was `99.6430%`, off-target disagreement was `0.5305%`, and
+positive-energy End Turn count fell from 1,624 to 1,621. Every registered
+condition passed.
+
+The raw confirmation is preserved unchanged. Its descriptive `source_commit`
+argument used the correct registered prefix but an incorrect expanded suffix;
+`r10_fresh_confirmation_provenance_erratum.json` binds the actual full commit.
+No metric, checkpoint, replay, threshold, or evaluation execution is affected.
+
 ## Next step
 
-Collect one new 20-game, zero-epsilon, zero-update replay under the promoted r8
-parent. Evaluate this frozen candidate exactly once on that replay with the
-same loss and behavior guards. Do not change its weight, interpolation,
-thresholds, or training data after reading the fresh result.
+Register one 20-pair, zero-epsilon live gate against production r8 using a new
+shared seed pool. Keep the candidate, parent, route policy, and thresholds
+fixed. Promotion requires a non-regressive paired outcome and clean runtime
+evidence; passing replay metrics alone is insufficient.
