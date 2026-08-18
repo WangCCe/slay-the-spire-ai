@@ -2,10 +2,12 @@
 
 ## Current Verdict
 
-The bounded simulator-only training pipeline has passed both its technical
-smoke and one larger pre-registered LightSTS experiment. It is ready for an
-independent simulator replication, but not for live transfer, qualification,
-or promotion because the observed encounter surface remains narrow.
+The bounded simulator-only training pipeline has passed its technical smoke and
+one larger pre-registered LightSTS experiment. An independent replication kept
+the mean reward and HP deltas positive, but failed the victory and unsupported
+guardrails only at the known `CARD_SELECT` boundary. Further same-surface
+training is paused until that bridge gap is closed. Nothing here authorizes
+live transfer, qualification, or promotion.
 
 ## Initial Smoke (r1)
 
@@ -51,13 +53,32 @@ guardrails passed. The registration is
 the source-bound artifacts are in
 `reports/combat_lightspeed_training_smoke_20260819_r2_large/`.
 
+## Independent Replication (r3)
+
+The same-budget r3 replication changed the behavior seed, network
+initialization, training cohort, and held-out cohort without tuning. It
+produced:
+
+- 15,443 accepted replay transitions and 256 finite updates.
+- Parameter L2 delta `1.0772166200996063`.
+- Mean player HP delta `+0.76171875`.
+- Mean reward delta `+0.22277979103915674`.
+- Candidate versus control victories `254` versus `256`.
+- Unsupported boundaries `2` versus `0`, with zero decision-bound truncations.
+
+The reward primary and HP guardrail passed, while victory and unsupported-state
+guardrails failed. Both failures were the same two candidate trajectories,
+seeds `50252` and `50254`, which reached `CARD_SELECT` at 74 and 80 HP while the
+control trajectories completed as victories. These exclusions contributed
+reward deltas `-30.15` and `-21.375`; they are bridge-coverage blockers rather
+than evidence that another same-surface optimizer run is useful.
+
 ## Next Gate
 
-Run one independent same-budget replication with a new behavior seed, network
-initialization, training cohort, and evaluation cohort. Do not tune from the r2
-rows. A successful replication confirms repeatable learning only on the current
-four-encounter surface; broader elite, boss, deck, relic, and HP coverage is a
-separate prerequisite for transfer.
+Add deterministic `CARD_SELECT` observation and action support to the combat
+LightSTS bridge, with clone-isolation and successor regressions. Only then run a
+new-cohort replication. Broader elite, boss, deck, relic, and HP coverage remains
+a separate prerequisite for transfer even if that replication passes.
 
 No simulator result can enter live qualification until matched real-game
 divergence evidence covers action legality, successor state, reward-relevant
