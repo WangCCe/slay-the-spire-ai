@@ -1,0 +1,48 @@
+{
+  "schema_version": "combat-lightspeed-later-battle-calibration-registration-v1",
+  "audit_id": "combat-lightspeed-later-battle-calibration-20260819-r2",
+  "predecessor": {
+    "audit_id": "combat-lightspeed-later-battle-calibration-20260819-r1",
+    "blocker": "unknown_relic_identity: Philosophers Stone",
+    "resolution": "Map relics through the native canonical id field; regression passed."
+  },
+  "source_commit": "5d8f39a97667b7552a22f9ef4ecf464f52469074",
+  "source": {
+    "adapter_source_sha256": "53bc1684f7eec79acd613901c6088783f5f90f390d6990ef6d8dacc651c488f4",
+    "module_path": "D:/PycharmProjects/slay-the-spire-ai/.sts_lightspeed_combat_later_battle_20260819_r1_build/sts_lightspeed_combat_adapter.cp310-win_amd64.pyd",
+    "module_sha256": "fc1132c78a6a324fb9acd4affcb7ea13affa58eaf5df677064de81b23f3864a2",
+    "simulator_commit": "7476a81954020087da31d41d16fddf475746ec2d",
+    "simulator_source_sha256": "a3f98721ec37373b1b00aef660832a3307f0186ba0614d07a3b1e7de8ab2e46a",
+    "baseline_policy": "native_simple_agent_v1"
+  },
+  "cohort": {
+    "seeds": "81000..81015",
+    "battle_indices": "0..12",
+    "ascension": 0,
+    "registered_profile_count": 208,
+    "max_decisions_per_profile": 200,
+    "max_actions_per_turn": 8
+  },
+  "execution": {
+    "interpreter": "D:/anaconda/envs/stsai/python.exe",
+    "isolated_mode": true,
+    "script": "analysis_scripts/combat_lightspeed_calibration.py",
+    "output_dir": "reports/combat_lightspeed_later_battle_calibration_20260819_r2",
+    "wall_time_limit_seconds": 3600,
+    "optimizer_updates": 0,
+    "gameplay": false,
+    "communication_mod": false
+  },
+  "coverage_gate": {
+    "required_verdict": "later_battle_surface_ready_for_training",
+    "required_positive_battle_profile_count_minimum": 1,
+    "required_distinct_encounters_minimum": 2,
+    "required_maximum_floor_minimum": 2,
+    "require_source_hash_match": true,
+    "require_reset_determinism_for_every_initialized_profile": true,
+    "require_zero_mapping_errors": true,
+    "require_zero_integrity_blockers": true,
+    "initialization_failures_are_reported_coverage_not_integrity_failures": true
+  },
+  "next_step": "Select a reachable stratified profile cohort from this report and register one simulator-only training replication only if every coverage gate passes."
+}
