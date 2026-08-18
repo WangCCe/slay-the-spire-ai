@@ -1,0 +1,98 @@
+{
+  "schema_version": "combat-lightspeed-large-diversity-stratified-replay-registration-v1",
+  "experiment_id": "combat-lightspeed-large-diversity-stratified-replay-20260819-r1",
+  "registered_source_commit": "8b16f9e3d91b562287bc8273fc8e3845ffd32dc6",
+  "experiment_question": "Does fourfold unique train and held-out seed diversity stabilize late-battle results under the fixed stratified replay recipe?",
+  "source_binding": {
+    "training_runner_sha256": "232d1d91b7dbc986be0b66889840e6aed966b8270d86fc3ab78991a5ab21cbbf",
+    "bridge_source_sha256": "ced080a47b3b9b25206eac7b8b5ee3752af348d4df8a5d9750e386157812bf90",
+    "native_module_sha256": "195678b7fc6bf69815f3d2971404afb8ce72fb666700edf4203383429caf1009"
+  },
+  "parent": {
+    "label": "r4_first_combat",
+    "path": "reports/combat_lightspeed_training_smoke_20260819_r4_card_select_replication/simulator_only_candidate.pth",
+    "sha256": "0c3e94393089c2153980fd9df8c904d11efa8cd1e62a1899b8211144d0fe39ff",
+    "parameter_sha256": "1ecca8b19803d56f8bbed1b9ddbc1c8f26638f80bb0ccb50f21ece65e3dfc2f9"
+  },
+  "predecessor_evidence": {
+    "r1_index_9_reachable_profiles": 36,
+    "r1_index_9_reward_delta": -0.3010933322458837,
+    "r2_index_9_reachable_profiles": 29,
+    "r2_index_9_reward_delta": -3.127256883728521,
+    "pooled_index_9_reachable_profiles": 65,
+    "pooled_index_9_reward_delta": -1.5619970705996757,
+    "scale_change_is_not_same_cohort_replication": true
+  },
+  "cohorts": {
+    "training_seeds": "105000..106023",
+    "training_seed_count": 1024,
+    "evaluation_seeds": "107000..107255",
+    "evaluation_seed_count": 256,
+    "battle_indices": [0, 3, 6, 9],
+    "training_profile_count": 4096,
+    "evaluation_profile_count": 1024,
+    "all_prior_lightspeed_seed_overlap": false
+  },
+  "controlled_recipe": {
+    "ascension": 0,
+    "max_decisions_per_profile": 100,
+    "max_actions_per_turn": 8,
+    "behavior_seed": 2026081924,
+    "network_seed": 2026081923,
+    "batch_size": 128,
+    "optimizer_steps": 256,
+    "parent_policy_anchor_weight": 1.0,
+    "balance_replay_by_battle_index": true,
+    "replay_balance_seed": 2026081925,
+    "balance_method": "retain_all_then_deterministically_oversample_to_largest_source_transition_stratum",
+    "differences_from_small_runs": [
+      "training_seed_count_1024_instead_of_256",
+      "evaluation_seed_count_256_instead_of_64"
+    ],
+    "device": "cpu",
+    "production_checkpoint_access": false
+  },
+  "technical_success_criteria": {
+    "verdict": "technical_smoke_ready",
+    "finite_optimizer_updates": 256,
+    "initial_and_anchor_parameter_sha256_match_parent": true,
+    "finite_positive_parent_policy_anchor_loss": true,
+    "all_four_source_transition_strata_nonempty": true,
+    "all_four_prepared_transition_strata_equal": true,
+    "prepared_transition_count_lte_replay_capacity_100000": true,
+    "source_transitions_retained": true,
+    "training_decision_bound_truncations": 0,
+    "unexpected_initialization_failure_count": 0
+  },
+  "simulator_uplift_criteria": {
+    "aggregate": [
+      "mean_reward_delta_vs_parent_gt_0",
+      "mean_player_hp_delta_vs_parent_gte_0",
+      "candidate_only_victories_gte_parent_only_victories"
+    ],
+    "early_combat": [
+      "battle_index_0_mean_player_hp_delta_gte_0",
+      "battle_index_0_candidate_only_victories_gte_parent_only_victories"
+    ],
+    "late_combat": [
+      "battle_index_9_reachable_profile_count_gte_100",
+      "battle_index_9_mean_reward_delta_gte_0",
+      "battle_index_9_mean_player_hp_delta_gte_0",
+      "battle_index_9_candidate_only_victories_gte_parent_only_victories"
+    ],
+    "material_index_regression": "no_battle_index_mean_reward_delta_lt_-1.0"
+  },
+  "decision_rule": {
+    "fresh_frozen_confirmation_eligible": "all technical and simulator uplift criteria pass",
+    "retain_parent": "any technical blocker, aggregate guardrail failure, late-combat failure, or material index regression",
+    "live_transfer_authorized": false
+  },
+  "stop_rules": [
+    "Execute once and do not alter or retry this cohort after outcome access.",
+    "Do not change optimizer steps, balancing, anchor weight, or model architecture.",
+    "Do not start Slay the Spire or CommunicationMod.",
+    "Do not access or modify a production checkpoint.",
+    "A passing result authorizes one fresh frozen simulator confirmation only, not live transfer, qualification, or promotion."
+  ],
+  "output_dir": "reports/combat_lightspeed_large_diversity_stratified_replay_20260819_r1"
+}
