@@ -1530,6 +1530,13 @@ The next authorized sequence is:
     the first work on a bounded successor fit using consumed r11 and older
     consumed replay; collect a new promoted-r15 holdout only after that successor
     passes the fixed cross-replay guards.
+72. Freeze r16 as the first promoted-r15 successor for one fresh replay only.
+    It used eight full-gradient SGD updates on consumed r11, selected trust
+    weight `0.25` at interpolation `alpha=0.5`, and moved `6.9547e-6` relative
+    L2 from r15. It improved both registered losses on r6/r8/r9/r10 while
+    retaining at least `99.2465%` parent agreement, at most `0.9270%`
+    off-target disagreement, and fewer positive-energy End Turns on every
+    replay. Do not fit or tune against the next fresh promoted-r15 replay.
 
 ## Work Lanes
 
@@ -1538,9 +1545,9 @@ safe but tied production on all 20 live pairs; r14's full step was too broad;
 r15's three-quarter step passed consumed r6/r8/r9/r10, its single fresh r11
 confirmation, and a 20-pair live gate by one floor pair with no losses. It is
 now the bounded production baseline, with r8 retained as rollback. The immediate
-next step is one bounded successor fit on consumed evidence before another
-fresh replay is collected. The near-term measure is repeatable Act 3 and victory
-coverage, not whether another one-off win can be found.
+next step is one new 20-game zero-update replay under promoted r15 and exactly
+one frozen r16 confirmation. The near-term measure is repeatable Act 3 and
+victory coverage, not whether another one-off win can be found.
 
 The non-combat card-acceptance lane remains paused at its r6 zero-byte
 source-binding infrastructure failure. Resume it only as a separately

@@ -1,0 +1,13 @@
+{
+  "schema_version": 1,
+  "kind": "source_commit_metadata_erratum",
+  "selection": "reports/combat_rl_promoted_r15_successor_20260818_r16/selection.json",
+  "selection_sha256": "a2e9dfb8f5687a8e3d9ac98d1b1674b62ad5ad77207e8bfbcba08553f354b1a0",
+  "affected_field": "source_commit",
+  "supplied_source_commit": "a7fddfb1a1fd84c106a21364410b85b3cf3a597a",
+  "actual_promotion_commit": "a7fddfb1afd4e9a056f20a52b3168b29b9493322",
+  "correct_short_prefix_was_supplied": true,
+  "training_rerun": false,
+  "checkpoint_unchanged": true,
+  "explanation": "The manually expanded suffix in the metadata-only source_commit argument was incorrect. Parent, replay, optimizer settings, selection thresholds, output bytes, and checkpoint bytes are unchanged."
+}
