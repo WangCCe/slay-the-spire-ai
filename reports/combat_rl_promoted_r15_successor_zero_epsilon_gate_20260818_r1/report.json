@@ -1,0 +1,160 @@
+{
+  "schema_version": 1,
+  "gate_id": "combat-rl-promoted-r15-successor-zero-epsilon-gate-20260818-r1",
+  "source_commit": "c97850854db2ae30777708f0773f3dc985b71e1f",
+  "decision": "candidate_qualified_for_separate_promotion",
+  "qualification_passed": true,
+  "inputs": {
+    "preregistration": {
+      "path": "reports/combat_rl_promoted_r15_successor_zero_epsilon_gate_20260818_r1_preregistration.json",
+      "sha256": "083b87a1a710999c865743eed96e292ba9fb89090cb8b448dc764d8bcb4c587f"
+    },
+    "seed_pool": {
+      "path": "reports/combat_rl_promoted_r15_successor_zero_epsilon_gate_20260818_r1_seed_pool.txt",
+      "sha256": "0425b79c62d5101812531044390354a2aedf90a25ce74a0780ef87dc028d7c71"
+    },
+    "candidate_checkpoint": {
+      "path": "reports/combat_rl_promoted_r15_successor_20260818_r16/rl_combat_model_promoted_r15_successor_candidate.pth",
+      "sha256": "75120e9e8f76393d4d82c16de5c3ea6384d2f7ef26bd530a6b552ed9791e38f5"
+    },
+    "parent_checkpoint": {
+      "path": "reports/combat_rl_return_end_turn_trust_three_quarter_step_20260818_r15/rl_combat_model_return_end_turn_trust_three_quarter_step_candidate.pth",
+      "sha256": "fcef143b8387fcee27e5f29cd53283e509cc5fbd3eec5c6b77cdebbdf4645b73"
+    }
+  },
+  "candidate": {
+    "started_at": "2026-08-18T15:13:18.781+08:00",
+    "finished_at": "2026-08-18T15:58:29.227+08:00",
+    "games": 20,
+    "victories": 0,
+    "floor_total": 493,
+    "floor_mean": 24.65,
+    "floor_median": 26.0,
+    "act_2_entered": 13,
+    "act_2_boss_reached": 7,
+    "act_3_entered": 0,
+    "playtime_seconds": 2595,
+    "floors": [
+      33, 33, 33, 16, 21, 31, 33, 10, 16, 30,
+      16, 33, 33, 16, 22, 23, 29, 16, 33, 16
+    ],
+    "run_files": [
+      "1787037365.run", "1787037517.run", "1787037679.run", "1787037788.run",
+      "1787037868.run", "1787038050.run", "1787038235.run", "1787038288.run",
+      "1787038355.run", "1787038500.run", "1787038586.run", "1787038859.run",
+      "1787039003.run", "1787039102.run", "1787039221.run", "1787039356.run",
+      "1787039528.run", "1787039628.run", "1787039815.run", "1787039905.run"
+    ],
+    "decision_trace_rows": 7846,
+    "decision_trace_sources": {
+      "combat_rl": 7846
+    },
+    "decision_trace_parse_errors": 0,
+    "sim_divergence_rows": 13,
+    "sim_divergence_parse_errors": 0,
+    "communication_mod_error_growth_bytes": 1472,
+    "new_tracebacks": 0,
+    "new_critical_errors": 0,
+    "rl_action_failures": 0,
+    "agent_fallbacks": 0,
+    "training_or_expert_actions": 0,
+    "runtime_evidence_zip": {
+      "path": "reports/combat_rl_promoted_r15_successor_zero_epsilon_gate_20260818_r1/candidate/runtime_evidence.zip",
+      "sha256": "a4a955c50c6f3a4b931079846f398cd8b9a20d2b1f3e822d45378b38b762e593",
+      "entry_count": 9,
+      "size_bytes": 5430284
+    }
+  },
+  "parent": {
+    "started_at": "2026-08-18T16:00:53.347+08:00",
+    "finished_at": "2026-08-18T16:44:17.033+08:00",
+    "games": 20,
+    "victories": 0,
+    "floor_total": 476,
+    "floor_mean": 23.8,
+    "floor_median": 22.5,
+    "act_2_entered": 12,
+    "act_2_boss_reached": 6,
+    "act_3_entered": 0,
+    "playtime_seconds": 2490,
+    "floors": [
+      33, 33, 33, 16, 21, 31, 33, 10, 16, 30,
+      16, 33, 33, 16, 22, 23, 29, 16, 16, 16
+    ],
+    "run_files": [
+      "1787040215.run", "1787040367.run", "1787040528.run", "1787040636.run",
+      "1787040715.run", "1787040895.run", "1787041080.run", "1787041133.run",
+      "1787041202.run", "1787041350.run", "1787041436.run", "1787041708.run",
+      "1787041855.run", "1787041952.run", "1787042071.run", "1787042205.run",
+      "1787042378.run", "1787042476.run", "1787042562.run", "1787042653.run"
+    ],
+    "decision_trace_rows": 7573,
+    "decision_trace_sources": {
+      "combat_rl": 7573
+    },
+    "decision_trace_parse_errors": 0,
+    "sim_divergence_rows": 14,
+    "sim_divergence_parse_errors": 0,
+    "communication_mod_error_growth_bytes": 1508,
+    "new_tracebacks": 0,
+    "new_critical_errors": 0,
+    "rl_action_failures": 0,
+    "agent_fallbacks": 0,
+    "training_or_expert_actions": 0,
+    "runtime_evidence_zip": {
+      "path": "reports/combat_rl_promoted_r15_successor_zero_epsilon_gate_20260818_r1/parent/runtime_evidence.zip",
+      "sha256": "0a75d0534970d3c1edae3902812a8be134b857196555a51e8d6b6129fcba08e1",
+      "entry_count": 9,
+      "size_bytes": 5187446
+    }
+  },
+  "paired": {
+    "candidate_floor_wins": 1,
+    "parent_floor_wins": 0,
+    "ties": 19,
+    "floor_delta_total": 17,
+    "all_seed_pairs_match": true,
+    "all_path_prefixes_match_until_shorter_run_end": true,
+    "exact_path_matches": 19,
+    "divergent_pairs": [
+      {
+        "pair_index_one_based": 19,
+        "seed_pool_text": "88D210A767F81",
+        "seed_played": "-9051309806473533826",
+        "candidate_run": "1787039815.run",
+        "parent_run": "1787042562.run",
+        "candidate_floor": 33,
+        "parent_floor": 16,
+        "candidate_killed_by": "Champ",
+        "parent_killed_by": "Slime Boss",
+        "common_path_prefix_through_floor_16": true,
+        "identical_pre_boss_damage_history": true,
+        "candidate_slime_boss_turns": 15,
+        "candidate_hp_after_slime_boss": 22,
+        "parent_slime_boss_turns": 12,
+        "parent_hp_after_slime_boss": 0
+      }
+    ]
+  },
+  "qualification_conditions": {
+    "candidate_paired_floor_wins_exceed_parent": true,
+    "at_least_one_floor_pair_non_tied": true,
+    "candidate_victories_at_least_parent": true,
+    "candidate_act_2_entries_at_least_parent": true,
+    "candidate_act_2_boss_reaches_at_least_parent": true,
+    "candidate_act_3_entries_at_least_parent": true,
+    "candidate_total_floors_at_least_parent": true,
+    "both_arms_completed_all_games": true,
+    "all_seed_pairs_match": true,
+    "both_arms_have_no_runtime_failures": true,
+    "all_conditions_passed": true
+  },
+  "production_state": {
+    "restored": true,
+    "configuration": "reports/combat_rl_return_end_turn_trust_three_quarter_step_promotion_20260818.properties",
+    "configuration_sha256": "47f2024d9ad8f0fc6b2b93edb428567df1da9a2e87e803dda4097d76209d202f",
+    "active_checkpoint_sha256": "fcef143b8387fcee27e5f29cd53283e509cc5fbd3eec5c6b77cdebbdf4645b73",
+    "candidate_promoted": false
+  },
+  "next_step": "Create a separate conservative promotion decision and bounded production configuration for r16; retain r15 as exact rollback and do not describe the single favorable pair as a large live effect."
+}

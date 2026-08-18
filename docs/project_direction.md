@@ -1546,6 +1546,16 @@ The next authorized sequence is:
     to 1,804. It is eligible for one separately registered 20-pair matched live
     gate against production r15, not automatic promotion. Do not rerun or tune
     against r12.
+74. Accept the r16 matched live gate as passed while keeping promotion a
+    separate decision. On 20 new shared seeds, r16 beat production r15 on one
+    floor pair, lost none, and tied 19; total floors were 493 versus 476. R16
+    also entered Act 2 13 times versus 12 and reached the Act 2 boss seven
+    times versus six, while neither arm entered Act 3 or won a run. The sole
+    divergence followed the same path and non-combat choices through floor 16:
+    r15 died to Slime Boss while r16 cleared it with 22 HP and reached floor 33.
+    Both arms completed naturally without runtime failures. This supports only
+    a conservative baseline replacement, not a large live-effect or win-rate
+    claim.
 
 ## Work Lanes
 
@@ -1554,11 +1564,11 @@ safe but tied production on all 20 live pairs; r14's full step was too broad;
 r15's three-quarter step passed consumed r6/r8/r9/r10, its single fresh r11
 confirmation, and a 20-pair live gate by one floor pair with no losses. It is
 now the bounded production baseline, with r8 retained as rollback. R16 passed
-the consumed cross-replay guards and its single fresh r12 confirmation. The
-immediate next step is one newly registered 20-pair, zero-epsilon matched live
-gate comparing frozen r16 with production r15. The near-term measure is
-repeatable Act 3 and victory coverage, not whether another one-off win can be
-found.
+the consumed cross-replay guards, its single fresh r12 confirmation, and a
+20-pair matched live gate by one floor pair with no losses. The immediate next
+step is a separate conservative promotion decision that retains r15 as exact
+rollback. The near-term measure remains repeatable Act 3 and victory coverage,
+not whether another one-off favorable pair can be found.
 
 The non-combat card-acceptance lane remains paused at its r6 zero-byte
 source-binding infrastructure failure. Resume it only as a separately
