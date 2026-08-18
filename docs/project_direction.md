@@ -1513,16 +1513,26 @@ The next authorized sequence is:
     for one separately registered 20-pair matched live gate, not promotion.
     Preserve the raw confirmation and its provenance erratum; do not rerun or
     tune against r11.
+70. Accept the r15 matched live gate as passed while keeping promotion a
+    separate decision. On 20 new shared seeds, r15 beat production r8 on one
+    floor pair, lost none, and tied 19; total floors were 478 versus 475. R15
+    also entered Act 2 11 times versus 10, while both arms reached the Act 2
+    boss seven times, entered Act 3 once, and won no runs. The sole divergence
+    followed an identical path through floor 16: r8 died to The Guardian while
+    r15 cleared it and reached floor 19. Both arms completed naturally without
+    runtime failures. This supports only a conservative baseline replacement,
+    not a large live-effect or win-rate claim.
 
 ## Work Lanes
 
 The active lane is bounded combat-RL policy improvement. R13's half step was
 safe but tied production on all 20 live pairs; r14's full step was too broad;
-r15's three-quarter step passed consumed r6/r8/r9/r10 and its single fresh r11
-confirmation. The immediate next step is one new 20-pair, zero-epsilon matched
-live gate against production r8. Production remains on r8 until that gate
-passes. The near-term measure is repeatable Act 3 and victory coverage, not
-whether another one-off win can be found.
+r15's three-quarter step passed consumed r6/r8/r9/r10, its single fresh r11
+confirmation, and a 20-pair live gate by one floor pair with no losses. The
+immediate next step is a separate conservative promotion decision and bounded
+production configuration, retaining r8 as rollback. The near-term measure is
+repeatable Act 3 and victory coverage, not whether another one-off win can be
+found.
 
 The non-combat card-acceptance lane remains paused at its r6 zero-byte
 source-binding infrastructure failure. Resume it only as a separately

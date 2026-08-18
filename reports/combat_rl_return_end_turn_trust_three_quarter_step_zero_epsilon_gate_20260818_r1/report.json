@@ -1,0 +1,151 @@
+{
+  "schema_version": 1,
+  "gate_id": "combat-rl-return-end-turn-trust-three-quarter-step-zero-epsilon-gate-20260818-r1",
+  "source_commit": "a7e02dca716b2665b03bbbcf9089371300a74d6e",
+  "decision": "candidate_qualified_for_separate_promotion",
+  "qualification_passed": true,
+  "inputs": {
+    "preregistration": {
+      "path": "reports/combat_rl_return_end_turn_trust_three_quarter_step_zero_epsilon_gate_20260818_r1_preregistration.json",
+      "sha256": "cfa1554c0b807c2705dc33505adc9806bfd9c1ed4a4772f46804b80af02ea400"
+    },
+    "seed_pool": {
+      "path": "reports/combat_rl_return_end_turn_trust_three_quarter_step_zero_epsilon_gate_20260818_r1_seed_pool.txt",
+      "sha256": "e070953cc72c2102436b51691296a936815a33f76a7079d7a76d6753b4989489"
+    },
+    "candidate_checkpoint": {
+      "path": "reports/combat_rl_return_end_turn_trust_three_quarter_step_20260818_r15/rl_combat_model_return_end_turn_trust_three_quarter_step_candidate.pth",
+      "sha256": "fcef143b8387fcee27e5f29cd53283e509cc5fbd3eec5c6b77cdebbdf4645b73"
+    },
+    "parent_checkpoint": {
+      "path": "reports/combat_rl_single_step_sgd_trust_region_20260817_r8/rl_combat_model_second_single_step_sgd_candidate.pth",
+      "sha256": "edf7d33124a3fbbc3abee6bae6c7b9654ea9a9191dcf151e5c0b000c71a4f454"
+    }
+  },
+  "candidate": {
+    "started_at": "2026-08-18T12:29:58.456+08:00",
+    "finished_at": "2026-08-18T13:11:22.010+08:00",
+    "games": 20,
+    "victories": 0,
+    "floor_total": 478,
+    "floor_mean": 23.9,
+    "floor_median": 19.5,
+    "act_2_entered": 11,
+    "act_2_boss_reached": 7,
+    "act_3_entered": 1,
+    "playtime_seconds": 2371,
+    "floors": [
+      16, 16, 33, 50, 19, 33, 16, 28, 8, 33,
+      33, 16, 33, 20, 33, 16, 16, 16, 27, 16
+    ],
+    "run_files": [
+      "1787027491.run", "1787027536.run", "1787027704.run", "1787027932.run",
+      "1787028083.run", "1787028285.run", "1787028369.run", "1787028524.run",
+      "1787028571.run", "1787028710.run", "1787028889.run", "1787028959.run",
+      "1787029116.run", "1787029238.run", "1787029417.run", "1787029508.run",
+      "1787029581.run", "1787029647.run", "1787029794.run", "1787029878.run"
+    ],
+    "decision_trace_rows": 7291,
+    "decision_trace_sources": {
+      "combat_rl": 7291
+    },
+    "sim_divergence_rows": 18,
+    "communication_mod_error_growth_bytes": 1526,
+    "new_tracebacks": 0,
+    "new_critical_errors": 0,
+    "rl_action_failures": 0,
+    "agent_fallbacks": 0,
+    "training_or_expert_actions": 0,
+    "runtime_evidence_zip": {
+      "path": "reports/combat_rl_return_end_turn_trust_three_quarter_step_zero_epsilon_gate_20260818_r1/candidate/runtime_evidence.zip",
+      "sha256": "c7ed06983981bcaec5094e3c38ccf7c9a2e0a19c0e5cd51003166d57784b6e00",
+      "entry_count": 8,
+      "size_bytes": 4662681
+    }
+  },
+  "parent": {
+    "started_at": "2026-08-18T13:14:02.992+08:00",
+    "finished_at": "2026-08-18T13:55:00.687+08:00",
+    "games": 20,
+    "victories": 0,
+    "floor_total": 475,
+    "floor_mean": 23.75,
+    "floor_median": 18.0,
+    "act_2_entered": 10,
+    "act_2_boss_reached": 7,
+    "act_3_entered": 1,
+    "playtime_seconds": 2347,
+    "floors": [
+      16, 16, 33, 50, 16, 33, 16, 28, 8, 33,
+      33, 16, 33, 20, 33, 16, 16, 16, 27, 16
+    ],
+    "run_files": [
+      "1787030133.run", "1787030178.run", "1787030347.run", "1787030572.run",
+      "1787030688.run", "1787030891.run", "1787030974.run", "1787031130.run",
+      "1787031176.run", "1787031318.run", "1787031498.run", "1787031568.run",
+      "1787031729.run", "1787031859.run", "1787032036.run", "1787032127.run",
+      "1787032203.run", "1787032269.run", "1787032411.run", "1787032497.run"
+    ],
+    "decision_trace_rows": 7222,
+    "decision_trace_sources": {
+      "combat_rl": 7222
+    },
+    "sim_divergence_rows": 18,
+    "communication_mod_error_growth_bytes": 1495,
+    "new_tracebacks": 0,
+    "new_critical_errors": 0,
+    "rl_action_failures": 0,
+    "agent_fallbacks": 0,
+    "training_or_expert_actions": 0,
+    "runtime_evidence_zip": {
+      "path": "reports/combat_rl_return_end_turn_trust_three_quarter_step_zero_epsilon_gate_20260818_r1/parent/runtime_evidence.zip",
+      "sha256": "378d83c0a5a5204db35389457bd177d765a47c4354a3de16ad199c861ba89ae4",
+      "entry_count": 8,
+      "size_bytes": 4656332
+    }
+  },
+  "paired": {
+    "candidate_floor_wins": 1,
+    "parent_floor_wins": 0,
+    "ties": 19,
+    "floor_delta_total": 3,
+    "all_seed_pairs_match": true,
+    "all_path_prefixes_match_until_shorter_run_end": true,
+    "exact_path_matches": 19,
+    "divergent_pairs": [
+      {
+        "pair_index_one_based": 5,
+        "seed_pool_text": "13063F556CF16",
+        "seed_played": "3669348604186911666",
+        "candidate_run": "1787028083.run",
+        "parent_run": "1787030688.run",
+        "candidate_floor": 19,
+        "parent_floor": 16,
+        "candidate_killed_by": "Masked Bandits",
+        "parent_killed_by": "The Guardian",
+        "common_path_prefix_through_floor_16": true
+      }
+    ]
+  },
+  "qualification_conditions": {
+    "candidate_paired_floor_wins_exceed_parent": true,
+    "at_least_one_floor_pair_non_tied": true,
+    "candidate_victories_at_least_parent": true,
+    "candidate_act_2_entries_at_least_parent": true,
+    "candidate_act_2_boss_reaches_at_least_parent": true,
+    "candidate_act_3_entries_at_least_parent": true,
+    "candidate_total_floors_at_least_parent": true,
+    "both_arms_completed_all_games": true,
+    "all_seed_pairs_match": true,
+    "both_arms_have_no_runtime_failures": true,
+    "all_conditions_passed": true
+  },
+  "production_state": {
+    "restored": true,
+    "configuration": "reports/combat_rl_second_single_step_sgd_promotion_20260818.properties",
+    "configuration_sha256": "f87804b2768b8ff53d0760fbfd267c5282afed21081ea888c336e0263041efcb",
+    "active_checkpoint_sha256": "edf7d33124a3fbbc3abee6bae6c7b9654ea9a9191dcf151e5c0b000c71a4f454",
+    "candidate_promoted": false
+  },
+  "next_step": "Create a separate conservative promotion decision and bounded production configuration for r15; do not describe the single favorable pair as a large live effect."
+}
