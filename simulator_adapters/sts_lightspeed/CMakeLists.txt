@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.19)
 
-project(sts_lightspeed_noncombat_adapter LANGUAGES CXX)
+project(sts_lightspeed_adapters LANGUAGES CXX)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -32,7 +32,15 @@ pybind11_add_module(sts_lightspeed_noncombat_adapter
     noncombat_adapter.cpp
     ${STS_LIGHTSPEED_SOURCES})
 
+pybind11_add_module(sts_lightspeed_combat_adapter
+    combat_adapter.cpp
+    ${STS_LIGHTSPEED_SOURCES})
+
 target_include_directories(sts_lightspeed_noncombat_adapter PRIVATE
+    "${STS_LIGHTSPEED_ROOT_ABS}/include"
+    "${STS_LIGHTSPEED_ROOT_ABS}/json/single_include")
+
+target_include_directories(sts_lightspeed_combat_adapter PRIVATE
     "${STS_LIGHTSPEED_ROOT_ABS}/include"
     "${STS_LIGHTSPEED_ROOT_ABS}/json/single_include")
 
@@ -42,4 +50,15 @@ if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
     target_compile_options(sts_lightspeed_noncombat_adapter PRIVATE
         -include algorithm
         -Wno-shift-count-overflow)
+    target_compile_options(sts_lightspeed_combat_adapter PRIVATE
+        -include algorithm
+        -Wno-shift-count-overflow)
+    target_link_options(sts_lightspeed_combat_adapter PRIVATE
+        -static-libgcc)
+    target_link_libraries(sts_lightspeed_combat_adapter PRIVATE
+        "-Wl,-Bstatic"
+        stdc++
+        winpthread
+        "-Wl,-Bdynamic"
+        ucrtbase)
 endif()
