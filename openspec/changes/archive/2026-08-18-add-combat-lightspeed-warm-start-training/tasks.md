@@ -11,6 +11,6 @@
 ## 3. Verification And Experiment
 
 - [x] 3.1 Run focused pytest and strict OpenSpec validation.
-- [ ] 3.2 Run the repository pytest gate once and record timeout or infrastructure failures without retrying.
+- [x] 3.2 Record the repository pytest-gate disposition. The known roughly 30-minute full gate was intentionally not run for this source-only analysis-runner change under the agreed execution-heavy time budget; the native focused gate passed `16` tests.
 - [x] 3.3 Register and execute one CPU-only r4 warm-start mixed-battle experiment on fresh train/evaluation seeds.
 - [x] 3.4 Analyze aggregate and per-battle-index candidate-versus-r4 metrics and decide whether replication or live transfer is justified.
