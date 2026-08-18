@@ -40,6 +40,23 @@ MONSTER_SLOTS = 5
 MAX_CARD_SELECT_SETTLEMENTS = 8
 MAX_BATTLE_INDEX = 63
 
+POTION_ID_ALIASES = {
+    "ElixirPotion": "Elixir",
+    "FairyPotion": "Fairy in a Bottle",
+    "GamblersBrew": "Gambler's Brew",
+}
+RELIC_ID_ALIASES = {
+    "Bird Faced Urn": "Bird-Faced Urn",
+    "CaptainsWheel": "Captain's Wheel",
+    "Self Forming Clay": "Self-Forming Clay",
+    "Cables": "Gold-Plated Cables",
+    "NeowsBlessing": "Neow's Lament",
+    "SlaversCollar": "Slaver's Collar",
+    "DollysMirror": "Dolly's Mirror",
+    "Nloth's Gift": "N'loth's Gift",
+    "NlothsMask": "N'loth's Hungry Face",
+}
+
 KEYWORDS = (
     "Strength",
     "Dexterity",
@@ -181,22 +198,26 @@ def _strict_card_id(id_mapper: IdMapper, name: object) -> int:
     return result
 
 
-def _strict_potion_id(id_mapper: IdMapper, name: object) -> int:
-    if not isinstance(name, str) or not name:
-        raise CombatBridgeError("invalid_potion_identity", name)
-    result = id_mapper.potion_id(name)
-    if result <= 0:
-        raise CombatBridgeError("unknown_potion_identity", name)
-    return result
+def _strict_potion_id(id_mapper: IdMapper, *identities: object) -> int:
+    candidates = [value for value in identities if isinstance(value, str) and value]
+    if not candidates:
+        raise CombatBridgeError("invalid_potion_identity", identities)
+    for value in candidates:
+        result = id_mapper.potion_id(POTION_ID_ALIASES.get(value, value))
+        if result > 0:
+            return result
+    raise CombatBridgeError("unknown_potion_identity", candidates[0])
 
 
-def _strict_relic_id(id_mapper: IdMapper, name: object) -> int:
-    if not isinstance(name, str) or not name:
-        raise CombatBridgeError("invalid_relic_identity", name)
-    result = id_mapper.relic_id(name)
-    if result <= 0:
-        raise CombatBridgeError("unknown_relic_identity", name)
-    return result
+def _strict_relic_id(id_mapper: IdMapper, *identities: object) -> int:
+    candidates = [value for value in identities if isinstance(value, str) and value]
+    if not candidates:
+        raise CombatBridgeError("invalid_relic_identity", identities)
+    for value in candidates:
+        result = id_mapper.relic_id(RELIC_ID_ALIASES.get(value, value))
+        if result > 0:
+            return result
+    raise CombatBridgeError("unknown_relic_identity", candidates[0])
 
 
 def validate_card_select_settlement(
@@ -495,7 +516,11 @@ def encode_rl_v2(
         if not 0 <= slot < POTION_SLOTS:
             raise CombatBridgeError("potion_slot_overflow", slot)
         if not _boolean(potion.get("empty"), f"potions[{index}].empty"):
-            potion_ids[slot] = _strict_potion_id(id_mapper, potion.get("name"))
+            potion_ids[slot] = _strict_potion_id(
+                id_mapper,
+                potion.get("id"),
+                potion.get("name"),
+            )
 
     relic_ids = np.zeros(RELIC_SLOTS, dtype=np.int64)
     relics = _sequence(state.get("relics"), "state.relics")
@@ -508,7 +533,8 @@ def encode_rl_v2(
             raise CombatBridgeError("noncontiguous_relic_slot", slot)
         relic_ids[slot] = _strict_relic_id(
             id_mapper,
-            relic.get("id") or relic.get("name"),
+            relic.get("id"),
+            relic.get("name"),
         )
 
     action_mask = np.zeros(ACTION_DIM, dtype=bool)

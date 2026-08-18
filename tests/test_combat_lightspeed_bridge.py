@@ -217,8 +217,16 @@ def _actions():
 def _mapper():
     return IdMapper(
         card_ids={"Strike": 4},
-        potion_ids={"Fire Potion": 3},
-        relic_ids={"Burning Blood": 2, "Philosopher's Stone": 3},
+        potion_ids={
+            "Fire Potion": 3,
+            "Essence of Steel": 4,
+            "Gambler's Brew": 5,
+        },
+        relic_ids={
+            "Burning Blood": 2,
+            "Philosopher's Stone": 3,
+            "Gold-Plated Cables": 4,
+        },
         card_tags={"Strike": []},
     )
 
@@ -262,6 +270,48 @@ def test_rl_v2_bridge_uses_canonical_relic_id_not_display_name():
     mapped = encode_rl_v2(snapshot, _actions(), id_mapper=_mapper())
 
     assert mapped.state.relic_ids[0] == 3
+
+
+def test_rl_v2_bridge_uses_canonical_potion_id_not_display_name():
+    from analysis_scripts.combat_lightspeed_bridge import encode_rl_v2
+
+    snapshot = _snapshot()
+    snapshot["state"]["potions"] = [
+        {
+            "empty": False,
+            "id": "Essence of Steel",
+            "name": "Essence Of Steel",
+            "requires_target": False,
+            "slot": 0,
+        }
+    ]
+
+    mapped = encode_rl_v2(snapshot, _actions(), id_mapper=_mapper())
+
+    assert mapped.state.potion_ids[0] == 4
+
+
+def test_rl_v2_bridge_normalizes_audited_native_identity_aliases():
+    from analysis_scripts.combat_lightspeed_bridge import encode_rl_v2
+
+    snapshot = _snapshot()
+    snapshot["state"]["potions"] = [
+        {
+            "empty": False,
+            "id": "GamblersBrew",
+            "name": "Gamblers Brew",
+            "requires_target": False,
+            "slot": 0,
+        }
+    ]
+    snapshot["state"]["relics"] = [
+        {"id": "Cables", "name": "Goldplated Cables", "slot": 0}
+    ]
+
+    mapped = encode_rl_v2(snapshot, _actions(), id_mapper=_mapper())
+
+    assert mapped.state.potion_ids[0] == 5
+    assert mapped.state.relic_ids[0] == 4
 
 
 def test_rl_v2_bridge_rejects_inconsistent_card_select_settlement_evidence():
