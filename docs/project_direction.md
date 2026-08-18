@@ -1598,6 +1598,14 @@ The next authorized sequence is:
     while retaining at least `99.2920%` parent agreement, at most `0.8680%`
     off-target disagreement, and fewer positive-energy End Turns on every
     replay. Do not fit or tune against the next fresh promoted-r16 replay.
+80. Accept r14 as the single fresh replay confirmation for frozen r18.
+    Production r16 completed all 20 registered seeds naturally with 3,765
+    complete, untruncated transitions. Frozen r18 improved full-return SmoothL1
+    from `49.9500` to `49.9241` and one-step SmoothL1 from `4.15133` to
+    `4.13132`, retained `99.5219%` parent agreement, limited off-target
+    disagreement to `0.3850%`, and reduced positive-energy End Turns from 1,988
+    to 1,977. It is eligible for one separately registered 20-pair matched live
+    gate against r16, not automatic promotion. Do not rerun or tune against r14.
 
 ## Work Lanes
 
@@ -1612,11 +1620,12 @@ bounded production baseline, with r15 retained as exact rollback. R17 then
 passed the consumed cross-replay guards and its single fresh r13 confirmation,
 but its matched live gate against r16 failed: paired wins tied, while r17
 trailed total floors, Act 2 entries, and Act 2 boss reaches. R16 remains
-production. R18 now passes the bounded fit on consumed r13 with r6/r8/r9/r10/
-r11/r12 as development guards. The next authorized step is one new promoted-r16
-fresh replay confirmation for frozen r18; it has no live or promotion authority.
-The near-term measure remains repeatable Act 3 and victory coverage, not whether
-another one-off favorable pair can be found.
+production. R18 passes the bounded fit on consumed r13 with r6/r8/r9/r10/r11/
+r12 as development guards and its single fresh r14 confirmation. The next
+authorized step is one separately registered 20-pair matched live gate against
+production r16; r18 still has no promotion authority. The near-term measure
+remains repeatable Act 3 and victory coverage, not whether another one-off
+favorable pair can be found.
 
 The non-combat card-acceptance lane remains paused at its r6 zero-byte
 source-binding infrastructure failure. Resume it only as a separately
