@@ -28,11 +28,12 @@ from analysis_scripts.combat_lightspeed_bridge import (
     collect_provenance,
     load_native_module,
     sha256_bytes,
+    validate_card_select_settlement,
 )
 from spirecomm.ai.rl.v2.id_mapping import IdMapper, build_id_mapper
 
 
-REPORT_SCHEMA_VERSION = "combat-lightspeed-bridge-calibration-v1"
+REPORT_SCHEMA_VERSION = "combat-lightspeed-bridge-calibration-v2"
 REPORT_AUTHORITY = {
     "evaluation": False,
     "formal_rl": False,
@@ -131,6 +132,9 @@ def run_calibration(
     clone_isolation_checks = 0
     successor_determinism_checks = 0
     executed_action_count = 0
+    settlement_action_count = 0
+    settlement_task_counts: Counter[str] = Counter()
+    settlement_transition_count = 0
     decision_bound_count = 0
     stop_cohort = False
 
@@ -235,6 +239,14 @@ def run_calibration(
                 break
             successor_determinism_checks += 1
 
+            settlement = validate_card_select_settlement(
+                left.snapshot().get("card_select_settlement")
+            )
+            if settlement["count"]:
+                settlement_transition_count += 1
+                settlement_action_count += int(settlement["count"])
+                settlement_task_counts.update(settlement["tasks"])
+
             family = str(selected.get("kind") or "unknown")
             executed_action_families[family] += 1
             executed_action_count += 1
@@ -278,6 +290,9 @@ def run_calibration(
         "provenance": dict(provenance),
         "metrics": {
             "available_action_family_state_counts": dict(sorted(available_action_families.items())),
+            "card_select_settlement_action_count": settlement_action_count,
+            "card_select_settlement_task_counts": dict(sorted(settlement_task_counts.items())),
+            "card_select_settlement_transition_count": settlement_transition_count,
             "clone_isolation_checks": clone_isolation_checks,
             "decision_bound_seed_count": decision_bound_count,
             "executed_action_count": executed_action_count,
@@ -356,7 +371,7 @@ def _publish(output_dir: Path, report: Mapping[str, Any]) -> dict[str, Any]:
     report_bytes = canonical_json_bytes(report) + b"\n"
     summary_bytes = _render_summary(report).encode("utf-8")
     manifest = {
-        "schema_version": "combat-lightspeed-bridge-calibration-manifest-v1",
+        "schema_version": "combat-lightspeed-bridge-calibration-manifest-v2",
         "artifacts": {
             "report.json": {
                 "sha256": sha256_bytes(report_bytes),

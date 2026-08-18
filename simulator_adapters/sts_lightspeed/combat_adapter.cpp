@@ -1,4 +1,5 @@
 #include <algorithm>
+#include <array>
 #include <cstdint>
 #include <memory>
 #include <stdexcept>
@@ -29,13 +30,54 @@ using json = nlohmann::json;
 
 namespace {
 
-constexpr const char *ADAPTER_API_VERSION = "sts-lightspeed-combat-adapter-v1";
-constexpr const char *STATE_SCHEMA_VERSION = "sts-lightspeed-combat-state-v1";
+constexpr const char *ADAPTER_API_VERSION = "sts-lightspeed-combat-adapter-v2";
+constexpr const char *STATE_SCHEMA_VERSION = "sts-lightspeed-combat-state-v2";
 constexpr const char *SOURCE_TYPE = "sts_lightspeed_combat_simulation";
 constexpr int RL_ACTION_DIM = 133;
 constexpr int RL_TARGET_SLOTS = 6;
 constexpr int RL_POTION_OFFSET = 60;
 constexpr int RL_END_TURN_ACTION = 90;
+constexpr int MAX_CARD_SELECT_SETTLEMENTS = 8;
+
+constexpr std::array<sts::CardSelectTask, 14> SUPPORTED_CARD_SELECT_TASKS = {
+    sts::CardSelectTask::ARMAMENTS,
+    sts::CardSelectTask::CODEX,
+    sts::CardSelectTask::DISCOVERY,
+    sts::CardSelectTask::DUAL_WIELD,
+    sts::CardSelectTask::EXHAUST_ONE,
+    sts::CardSelectTask::EXHAUST_MANY,
+    sts::CardSelectTask::EXHUME,
+    sts::CardSelectTask::FORETHOUGHT,
+    sts::CardSelectTask::GAMBLE,
+    sts::CardSelectTask::HEADBUTT,
+    sts::CardSelectTask::LIQUID_MEMORIES_POTION,
+    sts::CardSelectTask::SECRET_TECHNIQUE,
+    sts::CardSelectTask::SECRET_WEAPON,
+    sts::CardSelectTask::WARCRY,
+};
+
+std::string cardSelectTaskName(sts::CardSelectTask task) {
+    const auto index = static_cast<std::size_t>(task);
+    const auto count = sizeof(sts::cardSelectTaskStrings) /
+                       sizeof(sts::cardSelectTaskStrings[0]);
+    return index < count ? sts::cardSelectTaskStrings[index] :
+                           "NATIVE_CARD_SELECT_TASK_" + std::to_string(index);
+}
+
+bool isSupportedCardSelectTask(sts::CardSelectTask task) {
+    return std::find(
+        SUPPORTED_CARD_SELECT_TASKS.begin(),
+        SUPPORTED_CARD_SELECT_TASKS.end(),
+        task) != SUPPORTED_CARD_SELECT_TASKS.end();
+}
+
+json supportedCardSelectTasksJson() {
+    json result = json::array();
+    for (const auto task : SUPPORTED_CARD_SELECT_TASKS) {
+        result.push_back(cardSelectTaskName(task));
+    }
+    return result;
+}
 
 const char *battleOutcomeName(sts::Outcome outcome) {
     switch (outcome) {
@@ -158,7 +200,10 @@ public:
 
     CombatEnvironment(const CombatEnvironment &other)
         : gc_(other.gc_), battle_(other.battle_), baselineAgent_(other.baselineAgent_),
-          decisionCount_(other.decisionCount_) {
+          decisionCount_(other.decisionCount_),
+          lastCardSelectSettlementCount_(other.lastCardSelectSettlementCount_),
+          lastCardSelectTasks_(other.lastCardSelectTasks_),
+          cardSelectSettlementFailureReason_(other.cardSelectSettlementFailureReason_) {
         if (other.gc_.map) {
             gc_.map = std::make_shared<sts::Map>(*other.gc_.map);
         }
@@ -181,11 +226,22 @@ public:
         if (terminal() || supported()) {
             return "";
         }
+        if (!cardSelectSettlementFailureReason_.empty()) {
+            return cardSelectSettlementFailureReason_;
+        }
         return "unsupported_input_state:" + inputStateName(battle_.inputState);
+    }
+
+    json cardSelectSettlementJson() const {
+        return {
+            {"count", lastCardSelectSettlementCount_},
+            {"tasks", lastCardSelectTasks_},
+        };
     }
 
     std::string statusJson() const {
         return json({
+            {"card_select_settlement", cardSelectSettlementJson()},
             {"decision_count", decisionCount_},
             {"input_state", inputStateName(battle_.inputState)},
             {"outcome", battleOutcomeName(battle_.outcome)},
@@ -287,6 +343,7 @@ public:
 
         return json({
             {"adapter_api_version", ADAPTER_API_VERSION},
+            {"card_select_settlement", cardSelectSettlementJson()},
             {"rl_action_dim", RL_ACTION_DIM},
             {"schema_version", STATE_SCHEMA_VERSION},
             {"source_type", SOURCE_TYPE},
@@ -318,12 +375,16 @@ public:
         if (it == candidates.end()) {
             throw std::invalid_argument("action is not legal in the current combat state: " + actionId);
         }
+        lastCardSelectSettlementCount_ = 0;
+        lastCardSelectTasks_.clear();
+        cardSelectSettlementFailureReason_.clear();
         const sts::search::Action action(it->bits);
         if (!action.isValidAction(battle_)) {
             throw std::runtime_error("enumerated combat action failed native legality check");
         }
         action.execute(battle_);
         ++decisionCount_;
+        settleCardSelect();
     }
 
 private:
@@ -331,10 +392,47 @@ private:
     sts::BattleContext battle_;
     sts::search::SimpleAgent baselineAgent_;
     int decisionCount_ = 0;
+    int lastCardSelectSettlementCount_ = 0;
+    std::vector<std::string> lastCardSelectTasks_;
+    std::string cardSelectSettlementFailureReason_;
 
     void configureAgent() {
         baselineAgent_.print = false;
         baselineAgent_.curGameContext = &gc_;
+    }
+
+    void settleCardSelect() {
+        while (!terminal() && battle_.inputState == sts::InputState::CARD_SELECT) {
+            const auto task = battle_.cardSelectInfo.cardSelectTask;
+            const auto taskName = cardSelectTaskName(task);
+            if (lastCardSelectSettlementCount_ >= MAX_CARD_SELECT_SETTLEMENTS) {
+                cardSelectSettlementFailureReason_ = "card_select_settlement_bound:" + taskName;
+                return;
+            }
+            if (!isSupportedCardSelectTask(task)) {
+                cardSelectSettlementFailureReason_ = "unsupported_card_select_task:" + taskName;
+                return;
+            }
+            const auto actions = sts::search::Action::enumerateCardSelectActions(battle_);
+            if (actions.empty()) {
+                cardSelectSettlementFailureReason_ =
+                    "card_select_no_enumerable_action:" + taskName;
+                return;
+            }
+            const auto historySize = baselineAgent_.actionHistory.size();
+            try {
+                baselineAgent_.stepBattleCardSelect(battle_);
+            } catch (const std::exception &) {
+                cardSelectSettlementFailureReason_ = "card_select_settlement_error:" + taskName;
+                return;
+            }
+            if (baselineAgent_.actionHistory.size() <= historySize) {
+                cardSelectSettlementFailureReason_ = "card_select_settlement_no_progress:" + taskName;
+                return;
+            }
+            lastCardSelectTasks_.push_back(taskName);
+            ++lastCardSelectSettlementCount_;
+        }
     }
 
     void advanceToFirstBattle() {
@@ -467,6 +565,8 @@ private:
 std::string buildInfoJson() {
     return json({
         {"adapter_api_version", ADAPTER_API_VERSION},
+        {"card_select_settlement_max", MAX_CARD_SELECT_SETTLEMENTS},
+        {"card_select_settlement_policy", "native_simple_agent_v1"},
         {"compiler", __VERSION__},
         {"cpp_standard", __cplusplus},
         {"pybind11_version", STS_COMBAT_ADAPTER_STRINGIFY(PYBIND11_VERSION_MAJOR) "."
@@ -474,6 +574,7 @@ std::string buildInfoJson() {
             STS_COMBAT_ADAPTER_STRINGIFY(PYBIND11_VERSION_PATCH)},
         {"rl_action_dim", RL_ACTION_DIM},
         {"state_schema_version", STATE_SCHEMA_VERSION},
+        {"supported_card_select_tasks", supportedCardSelectTasksJson()},
     }).dump();
 }
 

@@ -314,3 +314,14 @@ openspec/specs/combat-lightspeed-training-smoke/** text eol=lf
 reports/combat_lightspeed_training_smoke_* text eol=lf
 reports/combat_lightspeed_training_smoke_*/** text eol=lf
 reports/combat_lightspeed_training_smoke_*/*.pth -text
+
+# Preserve combat LightSTS bridge settlement source and evidence bytes.
+analysis_scripts/combat_lightspeed_bridge.py text eol=lf
+analysis_scripts/combat_lightspeed_calibration.py text eol=lf
+simulator_adapters/sts_lightspeed/combat_adapter.cpp text eol=lf
+tests/test_combat_lightspeed_bridge.py text eol=lf
+tests/test_combat_lightspeed_calibration.py text eol=lf
+openspec/changes/add-combat-lightspeed-card-select-settlement/** text eol=lf
+openspec/changes/archive/*-add-combat-lightspeed-card-select-settlement/** text eol=lf
+reports/combat_lightspeed_card_select_* text eol=lf
+reports/combat_lightspeed_card_select_*/** text eol=lf

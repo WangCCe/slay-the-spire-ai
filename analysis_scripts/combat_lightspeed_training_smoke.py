@@ -36,13 +36,14 @@ from analysis_scripts.combat_lightspeed_bridge import (  # noqa: E402
     load_native_module,
     sha256_bytes,
     sha256_file,
+    validate_card_select_settlement,
 )
 from spirecomm.ai.rl.checkpoint_io import save_torch_checkpoint  # noqa: E402
 from spirecomm.ai.rl.v2.id_mapping import IdMapper, build_id_mapper  # noqa: E402
 from spirecomm.ai.rl.v2.trainer import DQNTrainerV2  # noqa: E402
 
 
-REPORT_SCHEMA_VERSION = "combat-lightspeed-training-smoke-v1"
+REPORT_SCHEMA_VERSION = "combat-lightspeed-training-smoke-v2"
 CHECKPOINT_KIND = "simulator_training_smoke"
 REPORT_AUTHORITY = {
     "gameplay": False,
@@ -313,6 +314,9 @@ def collect_transitions(
     unsupported = Counter()
     encounters = Counter()
     rewards: list[float] = []
+    settlement_actions = 0
+    settlement_tasks = Counter()
+    settlement_transitions = 0
     truncated = 0
 
     for seed in config.train_seeds:
@@ -345,6 +349,13 @@ def collect_transitions(
             successor_environment = environment.clone()
             successor_environment.step(str(selected["action_id"]))
             after = successor_environment.snapshot()
+            settlement = validate_card_select_settlement(
+                after.get("card_select_settlement")
+            )
+            if settlement["count"]:
+                settlement_transitions += 1
+                settlement_actions += int(settlement["count"])
+                settlement_tasks.update(settlement["tasks"])
             successor_status = successor_environment.status()
             successor_kind, successor_reason = successor_disposition(successor_status)
             reward_record = calculate_native_reward(
@@ -394,6 +405,11 @@ def collect_transitions(
             "minimum": float(reward_array.min()) if len(reward_array) else 0.0,
             "maximum": float(reward_array.max()) if len(reward_array) else 0.0,
             "sum": float(reward_array.sum()) if len(reward_array) else 0.0,
+        },
+        "card_select_settlement": {
+            "action_count": settlement_actions,
+            "task_counts": dict(sorted(settlement_tasks.items())),
+            "transition_count": settlement_transitions,
         },
         "seed_count": len(config.train_seeds),
         "unsupported_reason_counts": dict(sorted(unsupported.items())),
@@ -476,6 +492,8 @@ def evaluate_policy(
             unsupported_reason = ""
             outcome = "undecided"
             truncated = False
+            settlement_actions = 0
+            settlement_tasks = Counter()
             for _ in range(config.max_decisions_per_seed):
                 status = environment.status()
                 disposition, reason = successor_disposition(status)
@@ -498,6 +516,11 @@ def evaluate_policy(
                 environment.step(str(selected["action_id"]))
                 status = environment.status()
                 after = environment.snapshot()
+                settlement = validate_card_select_settlement(
+                    after.get("card_select_settlement")
+                )
+                settlement_actions += int(settlement["count"])
+                settlement_tasks.update(settlement["tasks"])
                 total_reward += calculate_native_reward(
                     before,
                     after,
@@ -520,6 +543,10 @@ def evaluate_policy(
                     "reward": float(total_reward),
                     "unsupported_reason": unsupported_reason,
                     "truncated": truncated,
+                    "card_select_settlement_count": settlement_actions,
+                    "card_select_settlement_task_counts": dict(
+                        sorted(settlement_tasks.items())
+                    ),
                 }
             )
     finally:
@@ -528,6 +555,9 @@ def evaluate_policy(
     rewards = np.asarray([row["reward"] for row in rows], dtype=np.float64)
     hp = np.asarray([row["player_hp"] for row in rows], dtype=np.float64)
     decisions = np.asarray([row["decisions"] for row in rows], dtype=np.float64)
+    settlement_tasks = Counter()
+    for row in rows:
+        settlement_tasks.update(row["card_select_settlement_task_counts"])
     return {
         "rows": rows,
         "aggregate": {
@@ -539,6 +569,13 @@ def evaluate_policy(
             "seed_count": len(rows),
             "truncated_count": sum(bool(row["truncated"]) for row in rows),
             "unsupported_count": sum(bool(row["unsupported_reason"]) for row in rows),
+            "card_select_settlement_action_count": sum(
+                int(row["card_select_settlement_count"]) for row in rows
+            ),
+            "card_select_settlement_seed_count": sum(
+                int(row["card_select_settlement_count"]) > 0 for row in rows
+            ),
+            "card_select_settlement_task_counts": dict(sorted(settlement_tasks.items())),
         },
     }
 
@@ -650,7 +687,7 @@ def _publish(
             "size_bytes": candidate_path.stat().st_size,
         }
     manifest = {
-        "schema_version": "combat-lightspeed-training-smoke-manifest-v1",
+        "schema_version": "combat-lightspeed-training-smoke-manifest-v2",
         "artifacts": manifest_entries,
     }
     artifacts["manifest.json"] = canonical_json_bytes(manifest) + b"\n"

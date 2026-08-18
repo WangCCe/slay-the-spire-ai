@@ -23,8 +23,8 @@ from spirecomm.ai.rl.v2.id_mapping import IdMapper
 from spirecomm.ai.rl.v2.types import EncodedStateV2
 
 
-ADAPTER_API_VERSION = "sts-lightspeed-combat-adapter-v1"
-STATE_SCHEMA_VERSION = "sts-lightspeed-combat-state-v1"
+ADAPTER_API_VERSION = "sts-lightspeed-combat-adapter-v2"
+STATE_SCHEMA_VERSION = "sts-lightspeed-combat-state-v2"
 SOURCE_TYPE = "sts_lightspeed_combat_simulation"
 MODULE_NAME = "sts_lightspeed_combat_adapter"
 ACTION_DIM = 133
@@ -36,6 +36,7 @@ CARD_SLOTS = 10
 POTION_SLOTS = 5
 RELIC_SLOTS = 40
 MONSTER_SLOTS = 5
+MAX_CARD_SELECT_SETTLEMENTS = 8
 
 KEYWORDS = (
     "Strength",
@@ -196,6 +197,30 @@ def _strict_relic_id(id_mapper: IdMapper, name: object) -> int:
     return result
 
 
+def validate_card_select_settlement(
+    value: object,
+    *,
+    label: str = "card_select_settlement",
+) -> dict[str, Any]:
+    settlement = _mapping(value, label)
+    count = _integer(settlement.get("count"), f"{label}.count")
+    if not 0 <= count <= MAX_CARD_SELECT_SETTLEMENTS:
+        raise CombatBridgeError("invalid_card_select_settlement_count", count)
+    tasks = _sequence(settlement.get("tasks"), f"{label}.tasks")
+    if len(tasks) != count:
+        raise CombatBridgeError(
+            "card_select_settlement_count_mismatch",
+            {"count": count, "task_count": len(tasks)},
+        )
+    for index, task in enumerate(tasks):
+        if not isinstance(task, str) or not task:
+            raise CombatBridgeError(
+                "invalid_card_select_settlement_task",
+                {"index": index, "task": task},
+            )
+    return {"count": count, "tasks": list(tasks)}
+
+
 def validate_snapshot(value: object) -> dict[str, Any]:
     snapshot = _mapping(value, "snapshot")
     expected = {
@@ -207,6 +232,7 @@ def validate_snapshot(value: object) -> dict[str, Any]:
     for key, wanted in expected.items():
         if snapshot.get(key) != wanted:
             raise CombatBridgeError("snapshot_identity_mismatch", {"field": key, "actual": snapshot.get(key)})
+    validate_card_select_settlement(snapshot.get("card_select_settlement"))
     if not _boolean(snapshot.get("supported"), "snapshot.supported"):
         raise CombatBridgeError("unsupported_native_state", snapshot.get("unsupported_reason"))
     if _boolean(snapshot.get("terminal"), "snapshot.terminal"):
@@ -458,7 +484,12 @@ class NativeCombatEnvironment:
         ]
 
     def status(self) -> dict[str, Any]:
-        return _mapping(json.loads(self.native.status_json()), "native status")
+        status = _mapping(json.loads(self.native.status_json()), "native status")
+        validate_card_select_settlement(
+            status.get("card_select_settlement"),
+            label="native status.card_select_settlement",
+        )
+        return status
 
     def mapped_state(self, *, id_mapper: IdMapper) -> MappedCombatState:
         status = self.status()

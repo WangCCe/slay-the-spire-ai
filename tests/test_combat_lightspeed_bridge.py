@@ -35,9 +35,13 @@ def test_combat_adapter_is_a_separate_offline_native_target():
 def test_combat_adapter_declares_the_offline_environment_contract():
     source = COMBAT_SOURCE.read_text(encoding="utf-8")
 
-    assert '"sts-lightspeed-combat-adapter-v1"' in source
-    assert '"sts-lightspeed-combat-state-v1"' in source
+    assert '"sts-lightspeed-combat-adapter-v2"' in source
+    assert '"sts-lightspeed-combat-state-v2"' in source
     assert '"sts_lightspeed_combat_simulation"' in source
+    assert "MAX_CARD_SELECT_SETTLEMENTS" in source
+    assert "enumerateCardSelectActions" in source
+    assert "stepBattleCardSelect" in source
+    assert '"card_select_settlement"' in source
     assert 'module.doc() = "Offline-only combat adapter POC for sts_lightspeed"' in source
     assert 'PYBIND11_MODULE(sts_lightspeed_combat_adapter, module)' in source
     for binding in (
@@ -84,9 +88,10 @@ def _snapshot(*, card_name="Strike"):
         "Weak": 0,
     }
     return {
-        "adapter_api_version": "sts-lightspeed-combat-adapter-v1",
+        "adapter_api_version": "sts-lightspeed-combat-adapter-v2",
+        "card_select_settlement": {"count": 0, "tasks": []},
         "rl_action_dim": 133,
-        "schema_version": "sts-lightspeed-combat-state-v1",
+        "schema_version": "sts-lightspeed-combat-state-v2",
         "source_type": "sts_lightspeed_combat_simulation",
         "supported": True,
         "terminal": False,
@@ -219,6 +224,15 @@ def test_rl_v2_bridge_rejects_unknown_required_identity():
         encode_rl_v2(_snapshot(card_name="Unknown Strike"), _actions(), id_mapper=_mapper())
 
 
+def test_rl_v2_bridge_rejects_inconsistent_card_select_settlement_evidence():
+    from analysis_scripts.combat_lightspeed_bridge import CombatBridgeError, encode_rl_v2
+
+    snapshot = _snapshot()
+    snapshot["card_select_settlement"] = {"count": 1, "tasks": []}
+    with pytest.raises(CombatBridgeError, match="card_select_settlement_count_mismatch"):
+        encode_rl_v2(snapshot, _actions(), id_mapper=_mapper())
+
+
 def test_native_wrapper_rejects_explicit_unsupported_status():
     from analysis_scripts.combat_lightspeed_bridge import (
         CombatBridgeError,
@@ -230,6 +244,7 @@ def test_native_wrapper_rejects_explicit_unsupported_status():
         def status_json():
             return json.dumps(
                 {
+                    "card_select_settlement": {"count": 0, "tasks": []},
                     "input_state": "CARD_SELECT",
                     "supported": False,
                     "unsupported_reason": "card_select",
@@ -263,6 +278,11 @@ def test_opt_in_native_environment_mapping_clone_and_provenance():
         values["STS_LIGHTSPEED_COMBAT_ADAPTER_MODULE"],
         dll_directories=(() if not dll_directory else (dll_directory,)),
     )
+    build_info = json.loads(module.build_info_json())
+    assert build_info["card_select_settlement_max"] == 8
+    assert build_info["card_select_settlement_policy"] == "native_simple_agent_v1"
+    assert "HEADBUTT" in build_info["supported_card_select_tasks"]
+    assert "HOLOGRAM" not in build_info["supported_card_select_tasks"]
     id_mapper = build_id_mapper(values["STS_ITEMS_JSON"])
 
     environment = NativeCombatEnvironment.reset(module, seed=0, ascension=0)

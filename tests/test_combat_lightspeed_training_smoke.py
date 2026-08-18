@@ -21,7 +21,11 @@ from analysis_scripts.combat_lightspeed_training_smoke import (
     successor_disposition,
     run_smoke,
 )
-from analysis_scripts.combat_lightspeed_bridge import load_native_module
+from analysis_scripts.combat_lightspeed_bridge import (
+    NativeCombatEnvironment,
+    canonical_json_bytes,
+    load_native_module,
+)
 from spirecomm.ai.rl.checkpoint_io import load_torch_checkpoint
 from spirecomm.ai.rl.v2.id_mapping import IdMapper, build_id_mapper
 
@@ -228,8 +232,95 @@ def test_opt_in_tiny_native_training_smoke():
     assert report["training"]["replay_transition_count"] >= 2
     assert report["training"]["optimizer_update_count"] == 1
     assert report["training"]["parameter_delta"]["l2"] > 0.0
+    assert "card_select_settlement" in report["corpus"]
     assert report["evaluation"]["control"]["aggregate"]["seed_count"] == 2
     assert report["evaluation"]["candidate"]["aggregate"]["seed_count"] == 2
+    assert "card_select_settlement_action_count" in report["evaluation"]["control"]["aggregate"]
+    assert "card_select_settlement_action_count" in report["evaluation"]["candidate"]["aggregate"]
+
+
+def test_r3_card_select_blockers_settle_deterministically_across_clones():
+    module_path = os.environ.get("STS_LIGHTSPEED_COMBAT_ADAPTER_MODULE")
+    items_json = os.environ.get("STS_ITEMS_JSON")
+    if not module_path or not items_json:
+        pytest.skip("native combat adapter paths are not configured")
+    dll_directory = os.environ.get("STS_LIGHTSPEED_MINGW_BIN")
+    module = load_native_module(
+        module_path,
+        dll_directories=(() if not dll_directory else (dll_directory,)),
+    )
+    id_mapper = build_id_mapper(items_json)
+    trainer = create_fresh_trainer(
+        id_mapper,
+        seed=2026081905,
+        batch_size=2,
+        learning_starts=2,
+    )
+    checkpoint = load_torch_checkpoint(
+        REPO_ROOT
+        / "reports"
+        / "combat_lightspeed_training_smoke_20260819_r3_replication"
+        / "simulator_only_candidate.pth",
+        map_location="cpu",
+    )
+    trainer.online_network.load_state_dict(checkpoint["online_network_state_dict"])
+    trainer.online_network.eval()
+
+    for seed in (50252, 50254):
+        environment = NativeCombatEnvironment.reset(module, seed=seed, ascension=0)
+        actions_since_end_turn = 0
+        settlement_seen = False
+        for _ in range(80):
+            status = environment.status()
+            if status["terminal"]:
+                break
+            assert status["supported"], status
+            mapped = environment.mapped_state(id_mapper=id_mapper)
+            legal = environment.legal_actions()
+            if actions_since_end_turn >= 8:
+                selected = next(action for action in legal if action["kind"] == "end_turn")
+            else:
+                action_index = trainer.select_action(
+                    mapped.state.continuous,
+                    mapped.state.card_ids,
+                    mapped.state.potion_ids,
+                    mapped.state.relic_ids,
+                    mapped.action_mask,
+                    training=False,
+                )
+                selected = next(
+                    action for action in legal if action["rl_action_index"] == action_index
+                )
+
+            original = canonical_json_bytes(environment.snapshot())
+            left = environment.clone()
+            right = environment.clone()
+            left.step(selected["action_id"])
+            right.step(selected["action_id"])
+            assert canonical_json_bytes(environment.snapshot()) == original
+            assert canonical_json_bytes(left.snapshot()) == canonical_json_bytes(right.snapshot())
+            assert canonical_json_bytes(left.status()) == canonical_json_bytes(right.status())
+            assert canonical_json_bytes(left.legal_actions()) == canonical_json_bytes(
+                right.legal_actions()
+            )
+
+            settlement = left.snapshot()["card_select_settlement"]
+            assert settlement["count"] == len(settlement["tasks"])
+            if settlement["count"]:
+                settlement_seen = True
+                assert all(isinstance(task, str) and task for task in settlement["tasks"])
+                assert left.status()["supported"] or left.status()["terminal"]
+
+            environment = left
+            actions_since_end_turn = (
+                0 if selected["kind"] == "end_turn" else actions_since_end_turn + 1
+            )
+        else:
+            pytest.fail(f"seed {seed} exceeded the decision bound")
+
+        assert settlement_seen, seed
+        assert environment.status()["terminal"] is True
+        assert environment.status()["outcome"] == "player_victory"
 
 
 def test_production_agent_import_does_not_load_training_smoke():
