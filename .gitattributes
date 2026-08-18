@@ -375,6 +375,7 @@ reports/combat_lightspeed_large_diversity_stratified_replay_*/*.pth -text
 
 # Preserve encounter-aware combat LightSTS source and evidence bytes.
 openspec/changes/add-combat-lightspeed-encounter-identity/** text eol=lf
+openspec/changes/archive/*-add-combat-lightspeed-encounter-identity/** text eol=lf
 reports/combat_lightspeed_encounter_identity_* text eol=lf
 reports/combat_lightspeed_encounter_identity_*/** text eol=lf
 reports/combat_lightspeed_encounter_identity_*/*.pth -text
