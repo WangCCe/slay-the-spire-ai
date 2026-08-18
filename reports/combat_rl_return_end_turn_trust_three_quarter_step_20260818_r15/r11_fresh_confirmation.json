@@ -1,0 +1,110 @@
+{
+  "authority": "offline fresh-replay confirmation only; bounded live gate requires a separate matched registration",
+  "candidate": {
+    "absolute_td_p50": 11.63779067993164,
+    "absolute_td_p95": 195.98306274414062,
+    "correction_executed_action_agreement": 0.002589331939816475,
+    "correction_state_count": 1931,
+    "eligible_executed_action_agreement": 0.21587511897087097,
+    "executed_action_agreement": 0.3740234375,
+    "intervention_executed_over_end_turn_share": 0.002589331939816475,
+    "intervention_margin_p10": -4.007122993469238,
+    "intervention_margin_p50": -2.0978574752807617,
+    "off_target_parent_disagreement_count": 18,
+    "off_target_parent_disagreement_share": 0.008314087986946106,
+    "off_target_state_count": 2165,
+    "one_step_smooth_l1": 3.8783905506134033,
+    "parent_action_agreement": 0.9921875,
+    "positive_energy_end_turn_count": 2004,
+    "positive_energy_end_turn_share": 0.6445802450180054,
+    "positive_energy_state_count": 3109,
+    "relative_l2_from_parent": 1.1741702226407201e-05,
+    "smooth_l1": 43.21728515625
+  },
+  "decision": "eligible_for_bounded_live_gate",
+  "design": {
+    "checkpoint_writing": false,
+    "eligibility_thresholds": {
+      "off_target_parent_disagreement_max": 0.01,
+      "one_step_smooth_l1_must_improve": true,
+      "parent_action_agreement_min": 0.99,
+      "positive_energy_end_turn_count_increase_max": 1,
+      "smooth_l1_must_improve": true
+    },
+    "gamma": 0.99,
+    "horizon": 4096,
+    "model_fitting": false,
+    "objective": "frozen_candidate_n_step_replay_gate"
+  },
+  "eligibility": {
+    "all_conditions_passed": true,
+    "off_target_parent_disagreement_passed": true,
+    "one_step_smooth_l1_improved": true,
+    "parent_action_agreement_passed": true,
+    "positive_energy_end_turn_count_passed": true,
+    "smooth_l1_improved": true
+  },
+  "gate_id": "combat-rl-return-end-turn-trust-three-quarter-step-r11-fresh-confirmation-20260818-r1",
+  "inputs": {
+    "candidate_checkpoint": {
+      "path": "D:\\PycharmProjects\\slay-the-spire-ai\\reports\\combat_rl_return_end_turn_trust_three_quarter_step_20260818_r15\\rl_combat_model_return_end_turn_trust_three_quarter_step_candidate.pth",
+      "provenance": {
+        "batch_size": 512,
+        "construction": "full_combat_return_end_turn_trust_interpolation",
+        "development_replay_checkpoint_sha256": [
+          "284fe2193e3682101cb9c4273d5d9e8a3aefb12f8d02175856cff63786544534",
+          "64dbe36669f30c3856eced8792bcf08a0746a878e4aff2f3b76c1620f6fa686c",
+          "e90925a2d2143665cc392850de828e740702556a689e1c6de74cd1474d1348fc",
+          "827e6d2e25b0768750a5989df18ae6fc172df844399a39406848e1724a258a51"
+        ],
+        "end_turn_preservation_margin_floor": 0.0,
+        "end_turn_preservation_weight": 0.25,
+        "experiment_id": "combat-rl-return-end-turn-trust-three-quarter-step-20260818-r15",
+        "full_gradient_steps": 8,
+        "gamma": 0.99,
+        "horizon": 4096,
+        "interpolation_alpha": 0.75,
+        "learning_rate": 0.0002,
+        "optimizer": "sgd",
+        "parent_checkpoint_sha256": "edf7d33124a3fbbc3abee6bae6c7b9654ea9a9191dcf151e5c0b000c71a4f454",
+        "source_commit": "ad9bc3cf9939772103614e0de2406c4cc819fb4a",
+        "td_weight": 0.2,
+        "train_replay_checkpoint_sha256": "b47e7457bb5327d678f279d479a3d3191db8a2e4d5a311d7e4373a8aaff0545c"
+      },
+      "sha256": "fcef143b8387fcee27e5f29cd53283e509cc5fbd3eec5c6b77cdebbdf4645b73"
+    },
+    "parent_checkpoint": {
+      "path": "D:\\PycharmProjects\\slay-the-spire-ai\\reports\\combat_rl_single_step_sgd_trust_region_20260817_r8\\rl_combat_model_second_single_step_sgd_candidate.pth",
+      "sha256": "edf7d33124a3fbbc3abee6bae6c7b9654ea9a9191dcf151e5c0b000c71a4f454"
+    },
+    "replay_checkpoint": {
+      "path": "D:\\PycharmProjects\\slay-the-spire-ai\\reports\\combat_rl_parent_on_policy_replay_collection_20260818_r11\\rl_combat_model_ep20_steps4154.pth",
+      "sha256": "336192855960ac8379bb6061f798f5c759d6d2d31944048092c6661c27ec5db3",
+      "source_transition_count": 4154,
+      "transition_count": 4096,
+      "truncated": true
+    }
+  },
+  "parent_baseline": {
+    "absolute_td_p50": 11.71689224243164,
+    "absolute_td_p95": 195.90475463867188,
+    "correction_executed_action_agreement": 0.0,
+    "correction_state_count": 1931,
+    "eligible_executed_action_agreement": 0.21321819722652435,
+    "executed_action_agreement": 0.371826171875,
+    "intervention_executed_over_end_turn_share": 0.0,
+    "intervention_margin_p10": -4.019165992736816,
+    "intervention_margin_p50": -2.1236572265625,
+    "off_target_parent_disagreement_count": 0,
+    "off_target_parent_disagreement_share": 0.0,
+    "off_target_state_count": 2165,
+    "one_step_smooth_l1": 3.9035542011260986,
+    "parent_action_agreement": 1.0,
+    "positive_energy_end_turn_count": 2018,
+    "positive_energy_end_turn_share": 0.6490833163261414,
+    "positive_energy_state_count": 3109,
+    "smooth_l1": 43.25840759277344
+  },
+  "schema_version": 1,
+  "source_commit": "5763ef84d4355f8612201014294dd56378d42848"
+}

@@ -1,0 +1,13 @@
+{
+  "schema_version": 1,
+  "kind": "source_commit_metadata_erratum",
+  "confirmation": "reports/combat_rl_return_end_turn_trust_three_quarter_step_20260818_r15/r11_fresh_confirmation.json",
+  "confirmation_sha256": "faf3d5a0e96552a463fd57b9ff48d36fd5f51430001769b53fea893afa6435b9",
+  "affected_field": "source_commit",
+  "supplied_source_commit": "5763ef84d4355f8612201014294dd56378d42848",
+  "actual_registration_commit": "5763ef84d27f5c25f3beed501230d7b75c8522ad",
+  "correct_short_prefix_was_supplied": true,
+  "evaluation_rerun": false,
+  "results_unchanged": true,
+  "explanation": "The manually expanded suffix in the metadata-only source_commit argument was incorrect. The frozen parent, candidate, replay, thresholds, output bytes, and evaluation result are unchanged; the one allowed evaluation was not rerun."
+}

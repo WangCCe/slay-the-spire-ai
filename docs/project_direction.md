@@ -1503,16 +1503,26 @@ The next authorized sequence is:
     256 `fcef143b8387fcee27e5f29cd53283e509cc5fbd3eec5c6b77cdebbdf4645b73`
     for one fresh production-r8 replay confirmation only. It has no live or
     promotion authority.
+69. Accept r11 as the fresh replay confirmation for frozen r15. Production r8
+    completed all 20 registered seeds naturally with 4,154 source transitions;
+    the fixed replay capacity retained the latest 4,096, matching the registered
+    horizon. Frozen r15 improved full-return SmoothL1 from `43.2584` to
+    `43.2173` and one-step SmoothL1 from `3.90355` to `3.87839`, retained
+    `99.2188%` parent agreement, limited off-target disagreement to `0.8314%`,
+    and reduced positive-energy End Turns from 2,018 to 2,004. It is eligible
+    for one separately registered 20-pair matched live gate, not promotion.
+    Preserve the raw confirmation and its provenance erratum; do not rerun or
+    tune against r11.
 
 ## Work Lanes
 
 The active lane is bounded combat-RL policy improvement. R13's half step was
 safe but tied production on all 20 live pairs; r14's full step was too broad;
-r15's three-quarter step now passes all fixed loss and behavior guards on
-consumed r6/r8/r9/r10. The immediate next step is one fresh 20-game,
-zero-update replay under production r8 and a single frozen r15 confirmation.
-Production remains on r8. The near-term measure is repeatable Act 3 and victory
-coverage, not whether another one-off win can be found.
+r15's three-quarter step passed consumed r6/r8/r9/r10 and its single fresh r11
+confirmation. The immediate next step is one new 20-pair, zero-epsilon matched
+live gate against production r8. Production remains on r8 until that gate
+passes. The near-term measure is repeatable Act 3 and victory coverage, not
+whether another one-off win can be found.
 
 The non-combat card-acceptance lane remains paused at its r6 zero-byte
 source-binding infrastructure failure. Resume it only as a separately
