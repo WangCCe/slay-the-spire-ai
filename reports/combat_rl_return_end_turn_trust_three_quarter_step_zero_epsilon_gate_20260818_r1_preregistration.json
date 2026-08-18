@@ -1,0 +1,82 @@
+{
+  "schema_version": 1,
+  "gate_id": "combat-rl-return-end-turn-trust-three-quarter-step-zero-epsilon-gate-20260818-r1",
+  "source_commit": "62a951764d143adc2a07d8345ec25ba81dbac5c2",
+  "candidate_checkpoint": {
+    "path": "reports/combat_rl_return_end_turn_trust_three_quarter_step_20260818_r15/rl_combat_model_return_end_turn_trust_three_quarter_step_candidate.pth",
+    "sha256": "fcef143b8387fcee27e5f29cd53283e509cc5fbd3eec5c6b77cdebbdf4645b73",
+    "construction": "full_combat_return_with_parent_non_end_margin_preservation_weight_0_25_alpha_0_75",
+    "relative_l2_from_parent": 0.000011741702226407201
+  },
+  "parent_checkpoint": {
+    "path": "reports/combat_rl_single_step_sgd_trust_region_20260817_r8/rl_combat_model_second_single_step_sgd_candidate.pth",
+    "sha256": "edf7d33124a3fbbc3abee6bae6c7b9654ea9a9191dcf151e5c0b000c71a4f454"
+  },
+  "offline_evidence": {
+    "development_selection": {
+      "path": "reports/combat_rl_return_end_turn_trust_three_quarter_step_20260818_r15/selection.json",
+      "sha256": "0cf365473e9f95e678ba2cbb4a2a832828b46e2d4457d15df32e43b81da7fe41",
+      "development_replays": ["r6", "r8", "r9", "r10"],
+      "all_development_replays_passed": true
+    },
+    "fresh_confirmation": {
+      "path": "reports/combat_rl_return_end_turn_trust_three_quarter_step_20260818_r15/r11_fresh_confirmation.json",
+      "sha256": "faf3d5a0e96552a463fd57b9ff48d36fd5f51430001769b53fea893afa6435b9",
+      "provenance_erratum": "reports/combat_rl_return_end_turn_trust_three_quarter_step_20260818_r15/r11_fresh_confirmation_provenance_erratum.json",
+      "provenance_erratum_sha256": "d5cda5a9d8cbc76d74c50059f6db4e5e107fab0f277d7d1149085c890a669a86",
+      "decision": "eligible_for_bounded_live_gate",
+      "parent_full_return_smooth_l1": 43.25840759277344,
+      "candidate_full_return_smooth_l1": 43.21728515625,
+      "parent_one_step_smooth_l1": 3.9035542011260986,
+      "candidate_one_step_smooth_l1": 3.8783905506134033,
+      "candidate_parent_action_agreement": 0.9921875,
+      "candidate_off_target_disagreement": 0.008314087986946106,
+      "parent_positive_energy_end_turn_count": 2018,
+      "candidate_positive_energy_end_turn_count": 2004,
+      "holdout_consumed": true
+    },
+    "offline_results_have_no_promotion_authority": true
+  },
+  "evaluation": {
+    "arm_order": ["candidate", "parent"],
+    "games_per_arm": 20,
+    "mode": "eval",
+    "epsilon": 0.0,
+    "elite_route": "conservative",
+    "ascension": 0,
+    "seed_pool": "reports/combat_rl_return_end_turn_trust_three_quarter_step_zero_epsilon_gate_20260818_r1_seed_pool.txt",
+    "seed_pool_sha256": "e070953cc72c2102436b51691296a936815a33f76a7079d7a76d6753b4989489",
+    "candidate_launch_config_sha256": "12ceef01af2138f970fab5809170a9ded47c5b2da3d9d85811f95a0e66c27e38",
+    "parent_launch_config_sha256": "c5a6c8580b1c2f104905d1620988515852a001f4e9acffb1e4475d9f2c5f8e5a",
+    "production_config_sha256": "f87804b2768b8ff53d0760fbfd267c5282afed21081ea888c336e0263041efcb",
+    "same_seed_order": true,
+    "fresh_against_existing_seed_pool_artifacts": true,
+    "training_disabled": true,
+    "expert_mix_disabled": true
+  },
+  "qualification_rule": {
+    "candidate_paired_floor_wins_must_exceed_parent": true,
+    "at_least_one_floor_pair_must_be_non_tied": true,
+    "candidate_victories_must_be_at_least_parent": true,
+    "candidate_act_2_entries_must_be_at_least_parent": true,
+    "candidate_act_2_boss_reaches_must_be_at_least_parent": true,
+    "candidate_act_3_entries_must_be_at_least_parent": true,
+    "candidate_total_floors_must_be_at_least_parent": true,
+    "both_arms_must_complete_all_games": true,
+    "all_seed_pairs_must_match": true,
+    "both_arms_must_have_no_policy_runtime_failures": true,
+    "all_conditions_required": true,
+    "all_floor_pairs_tied_decision": "retain_promoted_r8_r15_has_no_observable_live_benefit"
+  },
+  "execution_constraints": {
+    "stop_after_started_arm_policy_or_gameplay_failure": true,
+    "native_crash_before_first_completed_game_allows_one_exact_same_arm_recovery": true,
+    "native_recovery_requires_same_config_checkpoint_seed_order_and_fresh_run": true,
+    "native_recovery_requires_a_passing_minimal_cuda_health_check": true,
+    "no_second_native_recovery_per_arm": true,
+    "no_seed_or_threshold_change_after_start": true,
+    "no_model_or_parameter_change_between_arms": true,
+    "no_automatic_promotion": true,
+    "restore_production_configuration_between_arms_and_after_completion": true
+  }
+}
