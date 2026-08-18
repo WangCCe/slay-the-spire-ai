@@ -43,5 +43,7 @@ evaluation was not rerun.
 
 ## Next step
 
-Register one new 20-pair matched live gate comparing frozen r17 with production
-r16. The fresh replay grants no automatic promotion authority.
+The separately registered matched live gate failed: r17 and production r16 each
+won one floor pair, 18 pairs tied, and r17 trailed by nine total floors while
+also trailing Act 2 entries and Act 2 boss reaches. Retain production r16. Do
+not promote or rerun r17.

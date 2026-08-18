@@ -1582,6 +1582,15 @@ The next authorized sequence is:
     20-pair matched live gate against r16, not automatic promotion. Preserve the
     raw confirmation and its source-commit erratum; do not rerun or tune against
     r13.
+78. Reject frozen r17 after its registered matched live gate and retain r16 as
+    production. Candidate and parent each won one floor pair and tied 18;
+    candidate total floors were 483 versus 492. R17 produced the only Act 3
+    entry but trailed Act 2 entries 11 to 12 and Act 2 boss reaches seven to
+    eight, so four fixed qualification conditions failed. Both arms completed
+    naturally with matching seed order and no runtime failures. Do not rerun,
+    promote, or tune thresholds against this cohort. R13 is now consumed and
+    may be used only as fitting or development evidence in a new frozen
+    successor experiment.
 
 ## Work Lanes
 
@@ -1592,12 +1601,15 @@ confirmation, and a 20-pair live gate by one floor pair with no losses. It is
 the replaced bounded baseline, while r8 remains a historical rollback artifact.
 R16 passed the consumed cross-replay guards, its single fresh r12 confirmation,
 and a 20-pair matched live gate by one floor pair with no losses. It is now the
-bounded production baseline, with r15 retained as exact rollback. The immediate
-next step is one preregistered 20-pair matched live gate for frozen r17 against
-production r16. R17 passed consumed r6/r8/r9/r10/r11 and its single fresh r13
-confirmation; it has no promotion authority yet. The near-term measure remains
-repeatable Act 3 and victory coverage, not whether another one-off favorable
-pair can be found.
+bounded production baseline, with r15 retained as exact rollback. R17 then
+passed the consumed cross-replay guards and its single fresh r13 confirmation,
+but its matched live gate against r16 failed: paired wins tied, while r17
+trailed total floors, Act 2 entries, and Act 2 boss reaches. R16 remains
+production. The next authorized learning step is a new bounded successor fit
+using consumed r13 with prior consumed replays as development guards; do not
+collect another fresh cohort until a candidate passes those offline guards.
+The near-term measure remains repeatable Act 3 and victory coverage, not whether
+another one-off favorable pair can be found.
 
 The non-combat card-acceptance lane remains paused at its r6 zero-byte
 source-binding infrastructure failure. Resume it only as a separately
