@@ -1,0 +1,48 @@
+{
+  "schema_version": "combat-lightspeed-later-battle-calibration-registration-v1",
+  "audit_id": "combat-lightspeed-later-battle-calibration-20260819-r5",
+  "predecessor": {
+    "audit_id": "combat-lightspeed-later-battle-calibration-20260819-r4",
+    "blocker": "unknown_potion_identity: BlessingOfTheForge"
+  },
+  "resolution": "Normalize the native BlessingOfTheForge id to the exported Blessing of the Forge potion name.",
+  "source_commit": "ed6da91f9a411b99bd1685d3db6be9f37f063d89",
+  "source": {
+    "adapter_source_sha256": "4018275ac4922c047346c374393c40cebf9bb83472ebfd7f1c5b97a7d6f9305d",
+    "module_path": "D:/PycharmProjects/slay-the-spire-ai/.sts_lightspeed_combat_later_battle_20260819_r2_build/sts_lightspeed_combat_adapter.cp310-win_amd64.pyd",
+    "module_sha256": "68dabf4196982131515f1ba7a3017360477b29de574f0f6e57e20f9b30a36f84",
+    "simulator_commit": "7476a81954020087da31d41d16fddf475746ec2d",
+    "simulator_source_sha256": "a3f98721ec37373b1b00aef660832a3307f0186ba0614d07a3b1e7de8ab2e46a",
+    "baseline_policy": "native_simple_agent_v1"
+  },
+  "cohort": {
+    "seeds": "84000..84015",
+    "battle_indices": "0..12",
+    "ascension": 0,
+    "registered_profile_count": 208,
+    "max_decisions_per_profile": 200,
+    "max_actions_per_turn": 8
+  },
+  "execution": {
+    "interpreter": "D:/anaconda/envs/stsai/python.exe",
+    "isolated_mode": true,
+    "script": "analysis_scripts/combat_lightspeed_calibration.py",
+    "output_dir": "reports/combat_lightspeed_later_battle_calibration_20260819_r5",
+    "wall_time_limit_seconds": 3600,
+    "optimizer_updates": 0,
+    "gameplay": false,
+    "communication_mod": false
+  },
+  "coverage_gate": {
+    "required_verdict": "later_battle_surface_ready_for_training",
+    "required_positive_battle_profile_count_minimum": 1,
+    "required_distinct_encounters_minimum": 2,
+    "required_maximum_floor_minimum": 2,
+    "require_source_hash_match": true,
+    "require_reset_determinism_for_every_initialized_profile": true,
+    "require_zero_mapping_errors": true,
+    "require_zero_integrity_blockers": true,
+    "initialization_failures_are_reported_coverage_not_integrity_failures": true
+  },
+  "next_step": "Select a reachable stratified profile cohort and run one simulator-only training replication if every coverage gate passes."
+}
