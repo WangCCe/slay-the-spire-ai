@@ -1,10 +1,13 @@
 # Combat LightSTS Training Smoke
 
-## Verdict
+## Current Verdict
 
-The bounded simulator-only training pipeline is technically ready for a larger
-pre-registered LightSTS experiment. It is not ready for live transfer,
-qualification, or promotion.
+The bounded simulator-only training pipeline has passed both its technical
+smoke and one larger pre-registered LightSTS experiment. It is ready for an
+independent simulator replication, but not for live transfer, qualification,
+or promotion because the observed encounter surface remains narrow.
+
+## Initial Smoke (r1)
 
 The fixed smoke produced:
 
@@ -29,12 +32,32 @@ Artifacts and hashes are in
 schema `0`, kind `simulator_training_smoke`, and explicitly
 `production_compatible=false`.
 
+## Larger Registered Experiment (r2)
+
+The frozen r2 registration used 1,024 new training seeds, 256 disjoint held-out
+seeds, and 256 CPU optimizer updates. It produced:
+
+- 15,031 accepted replay transitions and 256 finite updates.
+- Parameter L2 delta `1.2225020697624087`.
+- Candidate versus control victories `253` versus `240`.
+- Mean player HP delta `+12.6640625`.
+- Mean reward delta `+9.679571018448796`.
+- Candidate-only versus control-only victories `14` versus `1`.
+- Unsupported boundaries `3` versus `7`, with zero decision-bound truncations.
+
+The primary reward criterion and all three victory, HP, and unsupported-state
+guardrails passed. The registration is
+`reports/combat_lightspeed_training_smoke_20260819_r2_large_registration.json`;
+the source-bound artifacts are in
+`reports/combat_lightspeed_training_smoke_20260819_r2_large/`.
+
 ## Next Gate
 
-A larger simulator experiment is justified, but it must remain isolated and
-pre-register its train/evaluation cohorts, optimizer budget, and success
-metrics. That experiment should test whether the held-out advantage survives a
-larger seed set and more optimizer updates.
+Run one independent same-budget replication with a new behavior seed, network
+initialization, training cohort, and evaluation cohort. Do not tune from the r2
+rows. A successful replication confirms repeatable learning only on the current
+four-encounter surface; broader elite, boss, deck, relic, and HP coverage is a
+separate prerequisite for transfer.
 
 No simulator result can enter live qualification until matched real-game
 divergence evidence covers action legality, successor state, reward-relevant
