@@ -351,3 +351,5 @@ openspec/specs/combat-lightspeed-checkpoint-interpolation/** text eol=lf
 reports/combat_lightspeed_checkpoint_interpolation_* text eol=lf
 reports/combat_lightspeed_checkpoint_interpolation_*/** text eol=lf
 reports/combat_lightspeed_checkpoint_interpolation_*/*.pth -text
+reports/combat_lightspeed_conservative_step_screen_* text eol=lf
+reports/combat_lightspeed_conservative_step_screen_*/** text eol=lf
