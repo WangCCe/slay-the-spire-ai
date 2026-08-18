@@ -58,6 +58,12 @@ REPORT_AUTHORITY = {
     "simulator_fitting": True,
     "transfer": False,
 }
+EXPECTED_UNREACHABLE_PROFILE_REASONS = frozenset(
+    {
+        "baseline_loss_before_requested_battle",
+        "baseline_run_terminated_before_battle",
+    }
+)
 
 
 @dataclass(frozen=True)
@@ -120,6 +126,23 @@ class ReplayTransition:
     done: bool
     action_mask: np.ndarray
     next_action_mask: np.ndarray
+
+
+def initialization_failure_reason(value: object) -> str:
+    text = str(value)
+    if text.startswith("initialization_failure:"):
+        text = text.split(":", 1)[1]
+    return text.split(":", 1)[0] or type(value).__name__
+
+
+def unexpected_initialization_failures(
+    counts: Mapping[str, int],
+) -> dict[str, int]:
+    return {
+        reason: int(count)
+        for reason, count in counts.items()
+        if reason not in EXPECTED_UNREACHABLE_PROFILE_REASONS and int(count) > 0
+    }
 
 
 def select_behavior_action(
@@ -348,7 +371,7 @@ def collect_transitions(
                 battle_index,
             )
         except Exception as exc:
-            initialization_failures[str(exc).split(":", 1)[0] or type(exc).__name__] += 1
+            initialization_failures[initialization_failure_reason(exc)] += 1
             continue
         progression = dict(environment.snapshot().get("progression") or {})
         progression_battle_indices[int(progression["reached_battle_index"])] += 1
@@ -543,6 +566,7 @@ def evaluate_policy(
                         "player_hp": 0,
                         "decisions": 0,
                         "reward": 0.0,
+                        "initialization_failure_reason": initialization_failure_reason(exc),
                         "unsupported_reason": f"initialization_failure:{exc}",
                         "truncated": False,
                         "card_select_settlement_count": 0,
@@ -635,8 +659,21 @@ def evaluate_policy(
             "player_victory_count": sum(row["outcome"] == "player_victory" for row in rows),
             "seed_count": len(rows),
             "profile_count": len(rows),
+            "profile_count_initialized": sum(
+                row["outcome"] != "initialization_failure" for row in rows
+            ),
+            "profile_count_unreachable": sum(
+                row["outcome"] == "initialization_failure"
+                and row.get("initialization_failure_reason")
+                in EXPECTED_UNREACHABLE_PROFILE_REASONS
+                for row in rows
+            ),
             "truncated_count": sum(bool(row["truncated"]) for row in rows),
-            "unsupported_count": sum(bool(row["unsupported_reason"]) for row in rows),
+            "unsupported_count": sum(
+                bool(row["unsupported_reason"])
+                and row["outcome"] != "initialization_failure"
+                for row in rows
+            ),
             "card_select_settlement_action_count": sum(
                 int(row["card_select_settlement_count"]) for row in rows
             ),
@@ -660,9 +697,27 @@ def paired_evaluation(control: Mapping[str, Any], candidate: Mapping[str, Any]) 
     if set(control_rows) != set(candidate_rows):
         raise RuntimeError("paired evaluation seed mismatch")
     rows = []
+    excluded_initialization_failures = Counter()
     for seed, battle_index in sorted(control_rows):
         left = control_rows[(seed, battle_index)]
         right = candidate_rows[(seed, battle_index)]
+        left_initialization_failure = left["outcome"] == "initialization_failure"
+        right_initialization_failure = right["outcome"] == "initialization_failure"
+        if left_initialization_failure or right_initialization_failure:
+            if left_initialization_failure != right_initialization_failure:
+                raise RuntimeError("paired evaluation initialization mismatch")
+            left_reason = initialization_failure_reason(
+                left.get("initialization_failure_reason")
+                or left.get("unsupported_reason")
+            )
+            right_reason = initialization_failure_reason(
+                right.get("initialization_failure_reason")
+                or right.get("unsupported_reason")
+            )
+            if left_reason != right_reason:
+                raise RuntimeError("paired evaluation initialization reason mismatch")
+            excluded_initialization_failures[left_reason] += 1
+            continue
         rows.append(
             {
                 "seed": seed,
@@ -674,11 +729,20 @@ def paired_evaluation(control: Mapping[str, Any], candidate: Mapping[str, Any]) 
                 "decision_delta": right["decisions"] - left["decisions"],
             }
         )
+    player_hp_deltas = [row["player_hp_delta"] for row in rows]
+    reward_deltas = [row["reward_delta"] for row in rows]
     return {
         "rows": rows,
         "aggregate": {
-            "mean_player_hp_delta": float(np.mean([row["player_hp_delta"] for row in rows])),
-            "mean_reward_delta": float(np.mean([row["reward_delta"] for row in rows])),
+            "profile_count": len(rows),
+            "excluded_initialization_profile_count": sum(
+                excluded_initialization_failures.values()
+            ),
+            "excluded_initialization_failure_counts": dict(
+                sorted(excluded_initialization_failures.items())
+            ),
+            "mean_player_hp_delta": float(np.mean(player_hp_deltas)) if rows else 0.0,
+            "mean_reward_delta": float(np.mean(reward_deltas)) if rows else 0.0,
             "candidate_only_victories": sum(
                 row["candidate_outcome"] == "player_victory"
                 and row["control_outcome"] != "player_victory"
@@ -826,7 +890,9 @@ def run_smoke(
         blockers.append("optimizer_incomplete")
     if delta["l2"] <= 0.0 or initial_sha256 == candidate_sha256:
         blockers.append("parameters_unchanged")
-    if corpus_metrics["initialization_failure_counts"]:
+    if unexpected_initialization_failures(
+        corpus_metrics["initialization_failure_counts"]
+    ):
         blockers.append("training_profile_initialization_failure")
     if (
         control_evaluation["aggregate"]["profile_count"]
@@ -837,10 +903,16 @@ def run_smoke(
         blockers.append("held_out_evaluation_incomplete")
     if any(
         row["outcome"] == "initialization_failure"
+        and initialization_failure_reason(
+            row.get("initialization_failure_reason") or row.get("unsupported_reason")
+        )
+        not in EXPECTED_UNREACHABLE_PROFILE_REASONS
         for evaluation in (control_evaluation, candidate_evaluation)
         for row in evaluation["rows"]
     ):
         blockers.append("evaluation_profile_initialization_failure")
+    if paired["aggregate"]["profile_count"] == 0:
+        blockers.append("held_out_evaluation_empty")
     report = {
         "schema_version": REPORT_SCHEMA_VERSION,
         "source_type": SOURCE_TYPE,

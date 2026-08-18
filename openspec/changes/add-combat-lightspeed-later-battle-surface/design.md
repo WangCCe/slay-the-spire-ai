@@ -40,6 +40,8 @@ Negative battle indices and indices above a conservative fixed maximum are rejec
 
 Calibration accepts registered `(seed, battle_index)` profiles and aggregates reached encounters, acts, floors, deck sizes, relic counts, HP, initialization failures, and ordinary bridge determinism evidence. The first expanded training run is allowed only if the report contains later floors and more encounter/progression diversity than the existing first-combat cohort.
 
+The expanded training runner keeps classified baseline losses and run termination as profile-coverage evidence. It does not turn them into replay rows or zero-valued policy outcomes. Held-out control and candidate evaluations must agree on each unreachable profile and exclude those profiles from uplift aggregates; any other initialization error remains an integrity blocker.
+
 ### Preserve immutable native artifacts
 
 The adapter and state schema advance to v3 and are built into a new run-scoped directory. Historical v1/v2 modules and reports remain unchanged, and rollback selects the v2 module.
@@ -47,7 +49,7 @@ The adapter and state schema advance to v3 and are built into a new run-scoped d
 ## Risks / Trade-offs
 
 - [Native baseline choices bias target-state distribution] -> Treat the surface as candidate-generation evidence, report its policy identity, and retain real-game replay/live gates for promotion.
-- [Later requested battles are unreachable after a baseline loss] -> Record classified initialization failures and use coverage-aware profile selection instead of silently resampling.
+- [Later requested battles are unreachable after a baseline loss] -> Record classified initialization failures, exclude matching natural unreachability from paired policy metrics, and never silently resample.
 - [Baseline-forward initialization is slower] -> Characterize cost and use a small stratified index set before increasing episode counts.
 - [LightSTS progression contains simulator divergence] -> Bind source bytes and make no mechanics-equivalence or production-policy claim.
 - [Long prior combats can hang] -> Use explicit action bounds and fail the profile without retry or fallback.

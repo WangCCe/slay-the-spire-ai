@@ -16,7 +16,7 @@
 
 ## 4. Coverage And Training
 
-- [ ] 4.1 Register and run one bounded later-battle coverage calibration with no optimizer updates.
+- [x] 4.1 Register and run one bounded later-battle coverage calibration with no optimizer updates.
 - [ ] 4.2 If the preregistered coverage gate passes, register and run one stratified simulator-only training replication; otherwise stop with the calibration evidence.
 
 ## 5. Closeout

@@ -19,6 +19,7 @@ None.
 ### Modified Capabilities
 
 - `combat-lightspeed-bridge`: Extend deterministic reset and calibration from the first combat to registered later-battle profiles while preserving production isolation.
+- `combat-lightspeed-training-smoke`: Train and evaluate over stratified battle-index profiles while treating deterministic baseline losses as reported coverage gaps rather than policy outcomes.
 
 ## Impact
 

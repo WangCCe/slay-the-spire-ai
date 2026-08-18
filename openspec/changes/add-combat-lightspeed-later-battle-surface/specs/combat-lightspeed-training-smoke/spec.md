@@ -1,0 +1,43 @@
+## MODIFIED Requirements
+
+### Requirement: Source-only transition generation
+The system SHALL generate bounded RL v2 combat transitions from fixed LightSTS `(seed, battle_index)` profiles using a deterministic network-independent behavior policy and explicit native reward definition.
+
+#### Scenario: Supported successor
+- **WHEN** a legal simulator action moves between two supported states
+- **THEN** the runner stores the current observation, action, reward, next observation, terminal flag, and both legal-action masks in the existing replay contract
+
+#### Scenario: Terminal successor
+- **WHEN** a legal action ends the simulator combat
+- **THEN** the runner stores a terminal transition with a classified outcome and no fabricated next-state features
+
+#### Scenario: Unsupported successor
+- **WHEN** a legal action reaches an unsupported native state
+- **THEN** the runner excludes the pending transition, records the unsupported reason, and does not label the boundary terminal
+
+#### Scenario: Naturally unreachable profile
+- **WHEN** the declared native baseline loses or the run terminates before a requested positive battle index
+- **THEN** the runner records a classified profile-coverage failure and does not create replay transitions or substitute another seed or battle
+
+#### Scenario: Initialization integrity failure
+- **WHEN** profile initialization fails for any reason other than classified baseline loss or run termination
+- **THEN** the training smoke retains the evidence and reports a technical blocker
+
+### Requirement: Paired held-out simulator evaluation
+The system SHALL evaluate the same deterministic network initialization before and after fitting on fixed `(seed, battle_index)` profiles disjoint from training.
+
+#### Scenario: Evaluation completion
+- **WHEN** both policies run on every reachable held-out profile within the decision bound
+- **THEN** the report includes paired outcomes, player HP, decision counts, unsupported reasons, progression identities, and aggregate deltas
+
+#### Scenario: Matching unreachable profile
+- **WHEN** the baseline cannot reach a held-out profile identically for control and candidate evaluation
+- **THEN** the report counts the classified profile-coverage failure and excludes that profile from paired policy metrics
+
+#### Scenario: Initialization mismatch
+- **WHEN** control and candidate differ on profile reachability or the classified failure reason
+- **THEN** paired evaluation fails instead of attributing the difference to policy quality
+
+#### Scenario: No uplift
+- **WHEN** the fitted policy does not improve the held-out simulator metrics
+- **THEN** the technical smoke may still complete, but the report SHALL not claim policy improvement or authorize a larger run without a separate decision

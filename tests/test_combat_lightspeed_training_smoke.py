@@ -17,8 +17,10 @@ from analysis_scripts.combat_lightspeed_training_smoke import (
     create_fresh_trainer,
     parameter_delta,
     parameter_sha256,
+    paired_evaluation,
     select_behavior_action,
     successor_disposition,
+    unexpected_initialization_failures,
     run_smoke,
 )
 from analysis_scripts.combat_lightspeed_bridge import (
@@ -98,7 +100,6 @@ def test_training_profiles_are_deterministic_seed_index_product():
         evaluation_seeds=(20,),
         battle_indices=(0, 3),
     )
-
     config.validate()
     assert config.profiles(config.train_seeds) == (
         (10, 0),
@@ -106,6 +107,69 @@ def test_training_profiles_are_deterministic_seed_index_product():
         (11, 0),
         (11, 3),
     )
+
+
+def test_expected_later_battle_unreachable_profiles_are_not_integrity_failures():
+    assert unexpected_initialization_failures(
+        {
+            "baseline_loss_before_requested_battle": 3,
+            "baseline_run_terminated_before_battle": 1,
+        }
+    ) == {}
+    assert unexpected_initialization_failures(
+        {
+            "baseline_loss_before_requested_battle": 3,
+            "baseline_prior_battle_no_progress": 1,
+        }
+    ) == {"baseline_prior_battle_no_progress": 1}
+
+
+def test_paired_evaluation_excludes_matching_unreachable_profiles():
+    unreachable = {
+        "seed": 10,
+        "battle_index": 9,
+        "outcome": "initialization_failure",
+        "initialization_failure_reason": "baseline_loss_before_requested_battle",
+        "player_hp": 0,
+        "reward": 0.0,
+        "decisions": 0,
+    }
+    control = {
+        "rows": [
+            unreachable,
+            {
+                "seed": 11,
+                "battle_index": 9,
+                "outcome": "player_loss",
+                "player_hp": 0,
+                "reward": 5.0,
+                "decisions": 7,
+            },
+        ]
+    }
+    candidate = {
+        "rows": [
+            dict(unreachable),
+            {
+                "seed": 11,
+                "battle_index": 9,
+                "outcome": "player_victory",
+                "player_hp": 12,
+                "reward": 15.0,
+                "decisions": 6,
+            },
+        ]
+    }
+
+    paired = paired_evaluation(control, candidate)
+
+    assert paired["aggregate"]["profile_count"] == 1
+    assert paired["aggregate"]["excluded_initialization_profile_count"] == 1
+    assert paired["aggregate"]["excluded_initialization_failure_counts"] == {
+        "baseline_loss_before_requested_battle": 1
+    }
+    assert paired["aggregate"]["mean_player_hp_delta"] == 12.0
+    assert paired["aggregate"]["mean_reward_delta"] == 10.0
 
 
 def test_native_reward_uses_explicit_production_compatible_subset():
