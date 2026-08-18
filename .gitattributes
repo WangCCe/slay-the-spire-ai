@@ -379,3 +379,10 @@ openspec/changes/archive/*-add-combat-lightspeed-encounter-identity/** text eol=
 reports/combat_lightspeed_encounter_identity_* text eol=lf
 reports/combat_lightspeed_encounter_identity_*/** text eol=lf
 reports/combat_lightspeed_encounter_identity_*/*.pth -text
+
+# Preserve collision-free encounter LightSTS source and evidence bytes.
+openspec/changes/add-combat-lightspeed-collision-free-encounter-identity/** text eol=lf
+openspec/changes/archive/*-add-combat-lightspeed-collision-free-encounter-identity/** text eol=lf
+reports/combat_lightspeed_collision_free_encounter_identity_* text eol=lf
+reports/combat_lightspeed_collision_free_encounter_identity_*/** text eol=lf
+reports/combat_lightspeed_collision_free_encounter_identity_*/*.pth -text

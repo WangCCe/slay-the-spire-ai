@@ -11,6 +11,9 @@ import torch
 import pytest
 
 from analysis_scripts.combat_lightspeed_training_smoke import (
+    ENCOUNTER_ENUM_ENCODING,
+    ENCOUNTER_ENUM_V1,
+    ENCOUNTER_ENUM_V1_SHA256,
     ENCOUNTER_HASH_ALGORITHM,
     REPORT_AUTHORITY,
     ReplayTransition,
@@ -143,6 +146,20 @@ def test_parent_policy_constraint_weight_must_be_finite_and_non_negative():
                 encounter_identity_buckets=value,
             ).validate()
 
+    with pytest.raises(ValueError, match="unknown encounter identity encoding"):
+        SmokeConfig(
+            train_seeds=(10,),
+            evaluation_seeds=(20,),
+            encounter_identity_encoding="unknown",
+        ).validate()
+    with pytest.raises(ValueError, match="requires exactly 64 buckets"):
+        SmokeConfig(
+            train_seeds=(10,),
+            evaluation_seeds=(20,),
+            encounter_identity_buckets=32,
+            encounter_identity_encoding=ENCOUNTER_ENUM_ENCODING,
+        ).validate()
+
 
 def test_encounter_identity_is_deterministic_opt_in_and_one_hot():
     continuous = np.linspace(0.0, 1.0, 328, dtype=np.float32)
@@ -177,6 +194,47 @@ def test_encounter_identity_rejects_missing_snapshot_metadata():
         encounter_from_snapshot({"state": {}})
     with pytest.raises(ValueError, match="non-empty string"):
         encounter_identity_bucket("", 64)
+
+
+def test_collision_free_encounter_vocabulary_matches_lightspeed_enum_contract():
+    assert len(ENCOUNTER_ENUM_V1) == 63
+    assert len(set(ENCOUNTER_ENUM_V1)) == 63
+    assert len(ENCOUNTER_ENUM_V1_SHA256) == 64
+    assert encounter_identity_bucket(
+        "CULTIST",
+        64,
+        encoding=ENCOUNTER_ENUM_ENCODING,
+    ) == 1
+    assert encounter_identity_bucket(
+        "THREE_SENTRIES",
+        64,
+        encoding=ENCOUNTER_ENUM_ENCODING,
+    ) == 17
+    assert encounter_identity_bucket(
+        "MYSTERIOUS_SPHERE_EVENT",
+        64,
+        encoding=ENCOUNTER_ENUM_ENCODING,
+    ) == 63
+    assignments = {
+        encounter_identity_bucket(name, 64, encoding=ENCOUNTER_ENUM_ENCODING)
+        for name in ENCOUNTER_ENUM_V1
+    }
+    assert assignments == set(range(1, 64))
+
+
+def test_collision_free_encounter_vocabulary_rejects_unknown_identity():
+    with pytest.raises(ValueError, match="unknown enum-v1 encounter identity"):
+        encounter_identity_bucket(
+            "NOT_A_LIGHTSPEED_ENCOUNTER",
+            64,
+            encoding=ENCOUNTER_ENUM_ENCODING,
+        )
+    with pytest.raises(ValueError, match="requires exactly 64 buckets"):
+        encounter_identity_bucket(
+            "CULTIST",
+            32,
+            encoding=ENCOUNTER_ENUM_ENCODING,
+        )
 
 
 def _stratum_transition(battle_index, action):
@@ -770,6 +828,7 @@ def test_opt_in_native_encounter_identity_training_smoke():
             optimizer_steps=1,
             parent_policy_anchor_weight=1.0,
             encounter_identity_buckets=64,
+            encounter_identity_encoding=ENCOUNTER_ENUM_ENCODING,
         ),
         provenance={"training_runner_sha256": "b" * 64},
         initial_checkpoint={
@@ -790,8 +849,15 @@ def test_opt_in_native_encounter_identity_training_smoke():
     assert report["verdict"] == "technical_smoke_ready"
     assert report["observation_extension"]["encounter_identity"]["continuous_dim"] == 392
     assert identity["bucket_count"] == 64
+    assert identity["encoding"] == ENCOUNTER_ENUM_ENCODING
     assert identity["assignments"]
     assert identity["occupied_bucket_count"] >= 1
+    assert identity["vocabulary_sha256"] == ENCOUNTER_ENUM_V1_SHA256
+    assert report["observation_extension"]["encounter_identity"][
+        "vocabulary_sha256"
+    ] == ENCOUNTER_ENUM_V1_SHA256
+    assert migration["encoding"] == ENCOUNTER_ENUM_ENCODING
+    assert migration["vocabulary_sha256"] == ENCOUNTER_ENUM_V1_SHA256
     assert migration["equivalence"]["passed"] is True
     assert report["training"]["optimizer_update_count"] == 1
 

@@ -49,10 +49,80 @@ from spirecomm.ai.rl.v2.trainer import DQNTrainerV2  # noqa: E402
 from spirecomm.ai.rl.v2.types import EncodedStateV2  # noqa: E402
 
 
-REPORT_SCHEMA_VERSION = "combat-lightspeed-training-smoke-v7"
+REPORT_SCHEMA_VERSION = "combat-lightspeed-training-smoke-v8"
 CHECKPOINT_KIND = "simulator_training_smoke"
 ENCOUNTER_HASH_ALGORITHM = "sha256-first-8-bytes-modulo"
+ENCOUNTER_ENUM_ENCODING = "monster-encounter-enum-v1"
 MAX_ENCOUNTER_IDENTITY_BUCKETS = 1024
+ENCOUNTER_ENUM_V1 = (
+    "CULTIST",
+    "JAW_WORM",
+    "TWO_LOUSE",
+    "SMALL_SLIMES",
+    "BLUE_SLAVER",
+    "GREMLIN_GANG",
+    "LOOTER",
+    "LARGE_SLIME",
+    "LOTS_OF_SLIMES",
+    "EXORDIUM_THUGS",
+    "EXORDIUM_WILDLIFE",
+    "RED_SLAVER",
+    "THREE_LOUSE",
+    "TWO_FUNGI_BEASTS",
+    "GREMLIN_NOB",
+    "LAGAVULIN",
+    "THREE_SENTRIES",
+    "SLIME_BOSS",
+    "THE_GUARDIAN",
+    "HEXAGHOST",
+    "SPHERIC_GUARDIAN",
+    "CHOSEN",
+    "SHELL_PARASITE",
+    "THREE_BYRDS",
+    "TWO_THIEVES",
+    "CHOSEN_AND_BYRDS",
+    "SENTRY_AND_SPHERE",
+    "SNAKE_PLANT",
+    "SNECKO",
+    "CENTURION_AND_HEALER",
+    "CULTIST_AND_CHOSEN",
+    "THREE_CULTIST",
+    "SHELLED_PARASITE_AND_FUNGI",
+    "GREMLIN_LEADER",
+    "SLAVERS",
+    "BOOK_OF_STABBING",
+    "AUTOMATON",
+    "COLLECTOR",
+    "CHAMP",
+    "THREE_DARKLINGS",
+    "ORB_WALKER",
+    "THREE_SHAPES",
+    "SPIRE_GROWTH",
+    "TRANSIENT",
+    "FOUR_SHAPES",
+    "MAW",
+    "SPHERE_AND_TWO_SHAPES",
+    "JAW_WORM_HORDE",
+    "WRITHING_MASS",
+    "GIANT_HEAD",
+    "NEMESIS",
+    "REPTOMANCER",
+    "AWAKENED_ONE",
+    "TIME_EATER",
+    "DONU_AND_DECA",
+    "SHIELD_AND_SPEAR",
+    "THE_HEART",
+    "LAGAVULIN_EVENT",
+    "COLOSSEUM_EVENT_SLAVERS",
+    "COLOSSEUM_EVENT_NOBS",
+    "MASKED_BANDITS_EVENT",
+    "MUSHROOMS_EVENT",
+    "MYSTERIOUS_SPHERE_EVENT",
+)
+ENCOUNTER_ENUM_V1_IDS = {
+    encounter: index + 1 for index, encounter in enumerate(ENCOUNTER_ENUM_V1)
+}
+ENCOUNTER_ENUM_V1_SHA256 = sha256_bytes(canonical_json_bytes(ENCOUNTER_ENUM_V1))
 REPORT_AUTHORITY = {
     "gameplay": False,
     "larger_simulator_experiment": False,
@@ -89,6 +159,7 @@ class SmokeConfig:
     balance_replay_by_battle_index: bool = False
     replay_balance_seed: int = 2026081903
     encounter_identity_buckets: int = 0
+    encounter_identity_encoding: str = ENCOUNTER_HASH_ALGORITHM
 
     def validate(self) -> None:
         if not self.train_seeds or not self.evaluation_seeds:
@@ -129,6 +200,16 @@ class SmokeConfig:
                 "encounter identity buckets must be zero or in "
                 f"2..{MAX_ENCOUNTER_IDENTITY_BUCKETS}"
             )
+        if self.encounter_identity_encoding not in {
+            ENCOUNTER_HASH_ALGORITHM,
+            ENCOUNTER_ENUM_ENCODING,
+        }:
+            raise ValueError("unknown encounter identity encoding")
+        if (
+            self.encounter_identity_encoding == ENCOUNTER_ENUM_ENCODING
+            and self.encounter_identity_buckets != 64
+        ):
+            raise ValueError("enum-v1 encounter identity requires exactly 64 buckets")
 
     def profiles(self, seeds: Sequence[int]) -> tuple[tuple[int, int], ...]:
         return tuple(
@@ -173,11 +254,25 @@ def unexpected_initialization_failures(
     }
 
 
-def encounter_identity_bucket(encounter: object, bucket_count: int) -> int:
+def encounter_identity_bucket(
+    encounter: object,
+    bucket_count: int,
+    *,
+    encoding: str = ENCOUNTER_HASH_ALGORITHM,
+) -> int:
     if not 2 <= bucket_count <= MAX_ENCOUNTER_IDENTITY_BUCKETS:
         raise ValueError("encounter identity bucket count is not enabled")
     if not isinstance(encounter, str) or not encounter:
         raise ValueError("encounter identity must be a non-empty string")
+    if encoding == ENCOUNTER_ENUM_ENCODING:
+        if bucket_count != 64:
+            raise ValueError("enum-v1 encounter identity requires exactly 64 buckets")
+        try:
+            return ENCOUNTER_ENUM_V1_IDS[encounter]
+        except KeyError as exc:
+            raise ValueError(f"unknown enum-v1 encounter identity: {encounter}") from exc
+    if encoding != ENCOUNTER_HASH_ALGORITHM:
+        raise ValueError("unknown encounter identity encoding")
     digest = hashlib.sha256(encounter.encode("utf-8")).digest()
     return int.from_bytes(digest[:8], "big") % bucket_count
 
@@ -187,13 +282,18 @@ def append_encounter_identity(
     *,
     encounter: object,
     bucket_count: int,
+    encoding: str = ENCOUNTER_HASH_ALGORITHM,
 ) -> np.ndarray:
     values = np.asarray(continuous, dtype=np.float32)
     if values.shape != (CONTINUOUS_DIM,):
         raise ValueError(f"legacy continuous observation has invalid shape: {values.shape}")
     if bucket_count == 0:
         return values.copy()
-    bucket = encounter_identity_bucket(encounter, bucket_count)
+    bucket = encounter_identity_bucket(
+        encounter,
+        bucket_count,
+        encoding=encoding,
+    )
     result = np.zeros(CONTINUOUS_DIM + bucket_count, dtype=np.float32)
     result[:CONTINUOUS_DIM] = values
     result[CONTINUOUS_DIM + bucket] = 1.0
@@ -212,6 +312,7 @@ def augment_mapped_state(
     snapshot: Mapping[str, Any],
     *,
     bucket_count: int,
+    encoding: str = ENCOUNTER_HASH_ALGORITHM,
 ) -> MappedCombatState:
     if bucket_count == 0:
         return mapped
@@ -222,6 +323,7 @@ def augment_mapped_state(
                 mapped.state.continuous,
                 encounter=encounter,
                 bucket_count=bucket_count,
+                encoding=encoding,
             ),
             card_ids=mapped.state.card_ids.copy(),
             potion_ids=mapped.state.potion_ids.copy(),
@@ -574,6 +676,7 @@ def initialize_trainer(
     initial_checkpoint: Mapping[str, Any] | None,
     *,
     encounter_identity_buckets: int = 0,
+    encounter_identity_encoding: str = ENCOUNTER_HASH_ALGORITHM,
 ) -> tuple[dict[str, torch.Tensor], dict[str, Any]]:
     if initial_checkpoint is None:
         if encounter_identity_buckets:
@@ -632,10 +735,20 @@ def initialize_trainer(
         ]
         record["encounter_identity_migration"] = {
             "bucket_count": encounter_identity_buckets,
-            "hash_algorithm": ENCOUNTER_HASH_ALGORITHM,
+            "encoding": encounter_identity_encoding,
+            "hash_algorithm": (
+                ENCOUNTER_HASH_ALGORITHM
+                if encounter_identity_encoding == ENCOUNTER_HASH_ALGORITHM
+                else None
+            ),
             "inserted_column_max_abs": float(torch.max(torch.abs(encounter_columns)).item()),
             "migrated_parameter_sha256": loaded_sha256,
             "source_parameter_sha256": record["source_parameter_sha256"],
+            "vocabulary_sha256": (
+                ENCOUNTER_ENUM_V1_SHA256
+                if encounter_identity_encoding == ENCOUNTER_ENUM_ENCODING
+                else None
+            ),
             "equivalence": equivalence,
         }
     elif loaded_sha256 != record.get("parameter_sha256"):
@@ -760,11 +873,13 @@ def collect_transitions(
                 encounter_assignments[encounter] = encounter_identity_bucket(
                     encounter,
                     config.encounter_identity_buckets,
+                    encoding=config.encounter_identity_encoding,
                 )
             current = augment_mapped_state(
                 mapped,
                 before,
                 bucket_count=config.encounter_identity_buckets,
+                encoding=config.encounter_identity_encoding,
             )
             encounters[encounter] += 1
             selected = select_behavior_action(
@@ -805,6 +920,7 @@ def collect_transitions(
                     successor_environment.mapped_state(id_mapper=id_mapper),
                     after,
                     bucket_count=config.encounter_identity_buckets,
+                    encoding=config.encounter_identity_encoding,
                 )
             )
             transitions.append(
@@ -862,11 +978,24 @@ def collect_transitions(
         "unsupported_reason_counts": dict(sorted(unsupported.items())),
         "encounter_identity": {
             "bucket_count": config.encounter_identity_buckets,
+            "encoding": (
+                config.encounter_identity_encoding
+                if config.encounter_identity_buckets
+                else None
+            ),
             "hash_algorithm": (
-                ENCOUNTER_HASH_ALGORITHM if config.encounter_identity_buckets else None
+                ENCOUNTER_HASH_ALGORITHM
+                if config.encounter_identity_buckets
+                and config.encounter_identity_encoding == ENCOUNTER_HASH_ALGORITHM
+                else None
             ),
             "assignments": dict(sorted(encounter_assignments.items())),
             "occupied_bucket_count": len(set(encounter_assignments.values())),
+            "vocabulary_sha256": (
+                ENCOUNTER_ENUM_V1_SHA256
+                if config.encounter_identity_encoding == ENCOUNTER_ENUM_ENCODING
+                else None
+            ),
         },
     }
 
@@ -1081,6 +1210,7 @@ def evaluate_policy(
                     mapped,
                     before,
                     bucket_count=config.encounter_identity_buckets,
+                    encoding=config.encounter_identity_encoding,
                 )
                 legal = environment.legal_actions()
                 selected = _policy_action(
@@ -1342,7 +1472,7 @@ def _publish(
             "size_bytes": candidate_path.stat().st_size,
         }
     manifest = {
-        "schema_version": "combat-lightspeed-training-smoke-manifest-v7",
+        "schema_version": "combat-lightspeed-training-smoke-manifest-v8",
         "artifacts": manifest_entries,
     }
     artifacts["manifest.json"] = canonical_json_bytes(manifest) + b"\n"
@@ -1373,6 +1503,7 @@ def run_smoke(
         trainer,
         initial_checkpoint,
         encounter_identity_buckets=config.encounter_identity_buckets,
+        encounter_identity_encoding=config.encounter_identity_encoding,
     )
     initial_sha256 = parameter_sha256(initial)
     transitions, corpus_metrics = collect_transitions(
@@ -1474,9 +1605,20 @@ def run_smoke(
             "encounter_identity": {
                 "bucket_count": config.encounter_identity_buckets,
                 "continuous_dim": CONTINUOUS_DIM + config.encounter_identity_buckets,
+                "encoding": (
+                    config.encounter_identity_encoding
+                    if config.encounter_identity_buckets
+                    else None
+                ),
                 "hash_algorithm": (
                     ENCOUNTER_HASH_ALGORITHM
                     if config.encounter_identity_buckets
+                    and config.encounter_identity_encoding == ENCOUNTER_HASH_ALGORITHM
+                    else None
+                ),
+                "vocabulary_sha256": (
+                    ENCOUNTER_ENUM_V1_SHA256
+                    if config.encounter_identity_encoding == ENCOUNTER_ENUM_ENCODING
                     else None
                 ),
             }
@@ -1556,6 +1698,11 @@ def _parse_args() -> argparse.Namespace:
     parser.add_argument("--balance-replay-by-battle-index", action="store_true")
     parser.add_argument("--replay-balance-seed", default=2026081903, type=int)
     parser.add_argument("--encounter-identity-buckets", default=0, type=int)
+    parser.add_argument(
+        "--encounter-identity-encoding",
+        default=ENCOUNTER_HASH_ALGORITHM,
+        choices=(ENCOUNTER_HASH_ALGORITHM, ENCOUNTER_ENUM_ENCODING),
+    )
     return parser.parse_args()
 
 
@@ -1580,6 +1727,7 @@ def main() -> int:
         balance_replay_by_battle_index=args.balance_replay_by_battle_index,
         replay_balance_seed=args.replay_balance_seed,
         encounter_identity_buckets=args.encounter_identity_buckets,
+        encounter_identity_encoding=args.encounter_identity_encoding,
     )
     native_module = load_native_module(args.module, dll_directories=args.dll_dir)
     provenance = collect_provenance(
