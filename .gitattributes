@@ -323,5 +323,6 @@ tests/test_combat_lightspeed_bridge.py text eol=lf
 tests/test_combat_lightspeed_calibration.py text eol=lf
 openspec/changes/add-combat-lightspeed-card-select-settlement/** text eol=lf
 openspec/changes/archive/*-add-combat-lightspeed-card-select-settlement/** text eol=lf
+openspec/specs/combat-lightspeed-bridge/** text eol=lf
 reports/combat_lightspeed_card_select_* text eol=lf
 reports/combat_lightspeed_card_select_*/** text eol=lf

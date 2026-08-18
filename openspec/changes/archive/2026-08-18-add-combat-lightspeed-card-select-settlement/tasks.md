@@ -21,4 +21,4 @@
 
 ## 5. Closeout
 
-- [ ] 5.1 Review the scoped diff, commit and push `master`, sync the bridge delta spec, and archive the completed change.
+- [x] 5.1 Review the scoped diff, commit and push `master`, sync the bridge delta spec, and archive the completed change.
