@@ -1537,6 +1537,15 @@ The next authorized sequence is:
     retaining at least `99.2465%` parent agreement, at most `0.9270%`
     off-target disagreement, and fewer positive-energy End Turns on every
     replay. Do not fit or tune against the next fresh promoted-r15 replay.
+73. Accept r12 as the single fresh replay confirmation for frozen r16.
+    Production r15 completed all 20 registered seeds naturally with 3,688
+    complete, untruncated transitions. Frozen r16 improved full-return SmoothL1
+    from `44.3240` to `44.2993` and one-step SmoothL1 from `4.17212` to
+    `4.15476`, retained `99.4035%` parent agreement, limited off-target
+    disagreement to `0.5747%`, and reduced positive-energy End Turns from 1,815
+    to 1,804. It is eligible for one separately registered 20-pair matched live
+    gate against production r15, not automatic promotion. Do not rerun or tune
+    against r12.
 
 ## Work Lanes
 
@@ -1544,10 +1553,12 @@ The active lane is bounded combat-RL policy improvement. R13's half step was
 safe but tied production on all 20 live pairs; r14's full step was too broad;
 r15's three-quarter step passed consumed r6/r8/r9/r10, its single fresh r11
 confirmation, and a 20-pair live gate by one floor pair with no losses. It is
-now the bounded production baseline, with r8 retained as rollback. The immediate
-next step is one new 20-game zero-update replay under promoted r15 and exactly
-one frozen r16 confirmation. The near-term measure is repeatable Act 3 and
-victory coverage, not whether another one-off win can be found.
+now the bounded production baseline, with r8 retained as rollback. R16 passed
+the consumed cross-replay guards and its single fresh r12 confirmation. The
+immediate next step is one newly registered 20-pair, zero-epsilon matched live
+gate comparing frozen r16 with production r15. The near-term measure is
+repeatable Act 3 and victory coverage, not whether another one-off win can be
+found.
 
 The non-combat card-acceptance lane remains paused at its r6 zero-byte
 source-binding infrastructure failure. Resume it only as a separately
