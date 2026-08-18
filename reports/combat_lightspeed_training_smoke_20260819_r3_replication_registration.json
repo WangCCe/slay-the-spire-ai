@@ -1,0 +1,54 @@
+{
+  "schema_version": "combat-lightspeed-training-experiment-registration-v1",
+  "experiment_id": "combat-lightspeed-training-smoke-20260819-r3-replication",
+  "registered_source_commit": "a09a19838b2db626f0b495f314903964194cd79d",
+  "replicates_experiment": "combat-lightspeed-training-smoke-20260819-r2-large",
+  "simulator_repo_commit": "7476a81954020087da31d41d16fddf475746ec2d",
+  "source_binding": {
+    "training_runner_sha256": "58a2a78f0e2e5f3a5b82bc684c39dabf36428909972bfe8473dc778661998f98",
+    "bridge_source_sha256": "e367197a7481a375f592765151efc8c09a7562a6f7dea5476f668df88bc4640e",
+    "native_module_sha256": "4de4968a825a42538445614d3ee6647a2255f64a085017da280f8bc03650b59d"
+  },
+  "cohorts": {
+    "training_seeds": "40000..41023",
+    "training_seed_count": 1024,
+    "evaluation_seeds": "50000..50255",
+    "evaluation_seed_count": 256,
+    "prior_experiment_seed_overlap": false
+  },
+  "training": {
+    "ascension": 0,
+    "max_decisions_per_seed": 80,
+    "max_actions_per_turn": 8,
+    "behavior_seed": 2026081906,
+    "network_seed": 2026081905,
+    "batch_size": 128,
+    "optimizer_steps": 256,
+    "device": "cpu",
+    "initialization": "fresh",
+    "production_checkpoint_access": false
+  },
+  "technical_success_criteria": {
+    "verdict": "technical_smoke_ready",
+    "finite_optimizer_updates": 256,
+    "parameter_l2_delta_gt": 0.0,
+    "training_decision_bound_truncations": 0,
+    "paired_evaluation_seed_count": 256
+  },
+  "simulator_uplift_criteria": {
+    "primary": "candidate_mean_reward_gt_control",
+    "guardrails": [
+      "candidate_victories_gte_control",
+      "candidate_mean_player_hp_gte_control",
+      "candidate_unsupported_count_lte_control"
+    ]
+  },
+  "stop_rules": [
+    "Do not retry or change these cohorts after outcome access.",
+    "Do not start Slay the Spire or CommunicationMod.",
+    "Do not load or modify a production checkpoint.",
+    "Do not run another same-surface replication after this result.",
+    "A passing result authorizes encounter-surface expansion only, not live transfer, qualification, or promotion."
+  ],
+  "output_dir": "reports/combat_lightspeed_training_smoke_20260819_r3_replication"
+}
