@@ -549,6 +549,36 @@ def test_native_snapshot_tolerates_expired_player_status_map_entry():
     assert snapshot["state"]["turn"] == 1
 
 
+@pytest.mark.parametrize("battle_index", (6, 9))
+def test_native_reset_settles_supported_initial_card_select(battle_index):
+    from analysis_scripts.combat_lightspeed_bridge import (
+        NativeCombatEnvironment,
+        load_native_module,
+    )
+
+    module_path = os.environ.get("STS_LIGHTSPEED_COMBAT_ADAPTER_MODULE")
+    if not module_path:
+        pytest.skip("native combat adapter path is not configured")
+    dll_directory = os.environ.get("STS_LIGHTSPEED_MINGW_BIN")
+    module = load_native_module(
+        module_path,
+        dll_directories=(() if not dll_directory else (dll_directory,)),
+    )
+
+    environment = NativeCombatEnvironment.reset(
+        module,
+        seed=90048,
+        ascension=0,
+        battle_index=battle_index,
+    )
+
+    status = environment.status()
+    assert status["supported"] is True
+    assert status["input_state"] == "PLAYER_NORMAL"
+    assert status["progression"]["reached_battle_index"] == battle_index
+    assert status["card_select_settlement"] == {"count": 0, "tasks": []}
+
+
 def test_production_agent_import_does_not_load_combat_bridge():
     code = (
         "import sys;"

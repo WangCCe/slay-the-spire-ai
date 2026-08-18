@@ -553,6 +553,16 @@ private:
             if (battleIndex == requestedBattleIndex_) {
                 reachedBattleIndex_ = battleIndex;
                 if (battle_.outcome == sts::Outcome::UNDECIDED &&
+                    battle_.inputState == sts::InputState::CARD_SELECT) {
+                    settleCardSelect();
+                    if (!cardSelectSettlementFailureReason_.empty()) {
+                        throw std::runtime_error(
+                            "requested_battle_" + cardSelectSettlementFailureReason_);
+                    }
+                    lastCardSelectSettlementCount_ = 0;
+                    lastCardSelectTasks_.clear();
+                }
+                if (battle_.outcome == sts::Outcome::UNDECIDED &&
                     battle_.inputState != sts::InputState::PLAYER_NORMAL) {
                     throw std::runtime_error(
                         "requested_battle_not_player_normal:" +
