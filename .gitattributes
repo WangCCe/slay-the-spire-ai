@@ -367,3 +367,8 @@ openspec/changes/archive/*-add-combat-lightspeed-stratified-replay/** text eol=l
 reports/combat_lightspeed_stratified_replay_* text eol=lf
 reports/combat_lightspeed_stratified_replay_*/** text eol=lf
 reports/combat_lightspeed_stratified_replay_*/*.pth -text
+
+# Preserve large-diversity combat LightSTS evidence bytes.
+reports/combat_lightspeed_large_diversity_stratified_replay_* text eol=lf
+reports/combat_lightspeed_large_diversity_stratified_replay_*/** text eol=lf
+reports/combat_lightspeed_large_diversity_stratified_replay_*/*.pth -text
