@@ -303,3 +303,14 @@ reports/combat_rl_zero_epsilon_evaluation_*/** text eol=lf
 reports/combat_rl_zero_epsilon_entry_control_* text eol=lf
 reports/combat_rl_zero_epsilon_entry_control_*/** text eol=lf
 reports/combat_rl_zero_epsilon_entry_control_*/*.run -text
+
+# Preserve combat LightSTS training source and evidence bytes.
+analysis_scripts/combat_lightspeed_training_smoke.py text eol=lf
+tests/test_combat_lightspeed_training_smoke.py text eol=lf
+docs/combat_lightspeed_training_smoke.md text eol=lf
+openspec/changes/add-combat-lightspeed-training-smoke/** text eol=lf
+openspec/changes/archive/*-add-combat-lightspeed-training-smoke/** text eol=lf
+openspec/specs/combat-lightspeed-training-smoke/** text eol=lf
+reports/combat_lightspeed_training_smoke_* text eol=lf
+reports/combat_lightspeed_training_smoke_*/** text eol=lf
+reports/combat_lightspeed_training_smoke_*/*.pth -text
