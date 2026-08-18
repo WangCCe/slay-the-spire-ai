@@ -222,6 +222,10 @@ def _mapper():
             "Fire Potion": 3,
             "Essence of Steel": 4,
             "Gambler's Brew": 5,
+            "Ghost in a Jar": 7,
+            "Heart of Iron": 8,
+            "Elixir": 9,
+            "Fairy in a Bottle": 10,
         },
         relic_ids={
             "Burning Blood": 2,
@@ -311,6 +315,27 @@ def test_rl_v2_bridge_normalizes_audited_native_identity_aliases():
             "requires_target": False,
             "slot": 1,
         },
+        {
+            "empty": False,
+            "id": "EssenceOfSteel",
+            "name": "Essence Of Steel",
+            "requires_target": False,
+            "slot": 2,
+        },
+        {
+            "empty": False,
+            "id": "GhostInAJar",
+            "name": "Ghost In A Jar",
+            "requires_target": False,
+            "slot": 3,
+        },
+        {
+            "empty": False,
+            "id": "HeartOfIron",
+            "name": "Heart Of Iron",
+            "requires_target": False,
+            "slot": 4,
+        },
     ]
     snapshot["state"]["relics"] = [
         {"id": "Cables", "name": "Goldplated Cables", "slot": 0}
@@ -320,7 +345,45 @@ def test_rl_v2_bridge_normalizes_audited_native_identity_aliases():
 
     assert mapped.state.potion_ids[0] == 5
     assert mapped.state.potion_ids[1] == 6
+    assert mapped.state.potion_ids[2] == 4
+    assert mapped.state.potion_ids[3] == 7
+    assert mapped.state.potion_ids[4] == 8
     assert mapped.state.relic_ids[0] == 4
+
+
+@pytest.mark.parametrize(
+    ("native_id", "native_name", "expected_id"),
+    (
+        ("BlessingOfTheForge", "Blessing Of The Forge", 6),
+        ("ElixirPotion", "Elixir Potion", 9),
+        ("EssenceOfSteel", "Essence Of Steel", 4),
+        ("FairyPotion", "Fairy Potion", 10),
+        ("GamblersBrew", "Gamblers Brew", 5),
+        ("GhostInAJar", "Ghost In A Jar", 7),
+        ("HeartOfIron", "Heart Of Iron", 8),
+    ),
+)
+def test_rl_v2_bridge_normalizes_every_audited_native_potion_alias(
+    native_id,
+    native_name,
+    expected_id,
+):
+    from analysis_scripts.combat_lightspeed_bridge import encode_rl_v2
+
+    snapshot = _snapshot()
+    snapshot["state"]["potions"] = [
+        {
+            "empty": False,
+            "id": native_id,
+            "name": native_name,
+            "requires_target": False,
+            "slot": 0,
+        }
+    ]
+
+    mapped = encode_rl_v2(snapshot, _actions(), id_mapper=_mapper())
+
+    assert mapped.state.potion_ids[0] == expected_id
 
 
 def test_rl_v2_bridge_rejects_inconsistent_card_select_settlement_evidence():

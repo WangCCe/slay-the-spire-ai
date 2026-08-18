@@ -43,8 +43,11 @@ MAX_BATTLE_INDEX = 63
 POTION_ID_ALIASES = {
     "BlessingOfTheForge": "Blessing of the Forge",
     "ElixirPotion": "Elixir",
+    "EssenceOfSteel": "Essence of Steel",
     "FairyPotion": "Fairy in a Bottle",
     "GamblersBrew": "Gambler's Brew",
+    "GhostInAJar": "Ghost in a Jar",
+    "HeartOfIron": "Heart of Iron",
 }
 RELIC_ID_ALIASES = {
     "Bird Faced Urn": "Bird-Faced Urn",
