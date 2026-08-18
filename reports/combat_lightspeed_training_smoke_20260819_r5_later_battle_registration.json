@@ -1,0 +1,70 @@
+{
+  "schema_version": "combat-lightspeed-training-experiment-registration-v3",
+  "experiment_id": "combat-lightspeed-training-smoke-20260819-r5-later-battle",
+  "registered_source_commit": "4390cf3989fcc7d10e99d47166603caabaece226",
+  "change_under_test": "add-combat-lightspeed-later-battle-surface",
+  "coverage_gate": {
+    "audit_id": "combat-lightspeed-later-battle-calibration-20260819-r6",
+    "verdict": "later_battle_surface_ready_for_training",
+    "manifest_sha256": "ed89042c5f73fb0dba7f15a9dec3024c98d92d3fbf350761488caaaa7de8978c",
+    "initialized_profile_count": 153,
+    "registered_profile_count": 208,
+    "supported_state_count": 2997,
+    "battle_indices_reached": "0..12",
+    "act_range": "1..2",
+    "floor_range": "1..33"
+  },
+  "simulator_repo_commit": "7476a81954020087da31d41d16fddf475746ec2d",
+  "source_binding": {
+    "training_runner_sha256": "582af97d3c694d7476ea374a2768f4d75d5c53ca2ce53b3805f24a4d59beb8a2",
+    "bridge_source_sha256": "ced080a47b3b9b25206eac7b8b5ee3752af348d4df8a5d9750e386157812bf90",
+    "native_adapter_source_sha256": "6db4c124956eddae9352aa51f7450631b5202557668965c5f17f030c29bf7f4c",
+    "native_module_sha256": "68dabf4196982131515f1ba7a3017360477b29de574f0f6e57e20f9b30a36f84"
+  },
+  "cohorts": {
+    "training_seeds": "90000..90255",
+    "training_seed_count": 256,
+    "evaluation_seeds": "91000..91063",
+    "evaluation_seed_count": 64,
+    "battle_indices": [0, 3, 6, 9],
+    "training_profile_count": 1024,
+    "evaluation_profile_count": 256,
+    "prior_experiment_seed_overlap": false
+  },
+  "training": {
+    "ascension": 0,
+    "max_decisions_per_profile": 100,
+    "max_actions_per_turn": 8,
+    "behavior_seed": 2026081910,
+    "network_seed": 2026081909,
+    "batch_size": 128,
+    "optimizer_steps": 256,
+    "device": "cpu",
+    "initialization": "fresh",
+    "production_checkpoint_access": false
+  },
+  "technical_success_criteria": {
+    "verdict": "technical_smoke_ready",
+    "finite_optimizer_updates": 256,
+    "parameter_l2_delta_gt": 0.0,
+    "training_decision_bound_truncations": 0,
+    "paired_reachable_profile_count_gt": 0,
+    "unexpected_initialization_failure_count": 0,
+    "matching_unreachable_profiles_are_coverage_only": true
+  },
+  "simulator_uplift_criteria": {
+    "primary": "candidate_mean_reward_gt_control_on_reachable_profiles",
+    "guardrails": [
+      "candidate_victories_gte_control",
+      "candidate_mean_player_hp_gte_control"
+    ]
+  },
+  "stop_rules": [
+    "Do not retry or change these cohorts after outcome access.",
+    "Do not start Slay the Spire or CommunicationMod.",
+    "Do not load or modify a production checkpoint.",
+    "Do not treat naturally unreachable later-battle profiles as zero-valued policy outcomes.",
+    "A passing result remains simulator-only and does not authorize live transfer, qualification, or promotion."
+  ],
+  "output_dir": "reports/combat_lightspeed_training_smoke_20260819_r5_later_battle"
+}
