@@ -1,0 +1,78 @@
+{
+  "schema_version": 1,
+  "collection_id": "combat-rl-parent-on-policy-replay-collection-20260818-r13",
+  "source_commit": "a6408b58eb8b1f2853408238e5423e388c6a2a6d",
+  "purpose": "Collect a fresh promoted-r16 replay cohort for one frozen r17 successor confirmation.",
+  "authority": "Zero-update replay collection and one frozen offline confirmation only; no candidate inference during collection, live comparison, or automatic promotion.",
+  "initializer_checkpoint": {
+    "path": "reports/combat_rl_parent_on_policy_replay_collection_20260818_r13/rl_combat_model_promoted_r16_empty_replay_learning_starts_100000.pth",
+    "sha256": "2e99b2640a860051d4734a4db41c9739060e63b0e360b2d667eef10149480c30",
+    "epsilon": 0.0,
+    "learning_starts": 100000,
+    "replay_transition_count": 0,
+    "online_and_target_equal_promoted_parent": true,
+    "optimizer_state_is_empty": true,
+    "created_for_this_collection": true,
+    "manifest": "reports/combat_rl_parent_on_policy_replay_collection_20260818_r13/initialization_manifest.json",
+    "manifest_sha256": "6f12559c7722f54719ec9569653d10b6217951dae4b887fb88b6578f868c891e"
+  },
+  "promoted_parent": {
+    "path": "reports/combat_rl_promoted_r15_successor_20260818_r16/rl_combat_model_promoted_r15_successor_candidate.pth",
+    "sha256": "75120e9e8f76393d4d82c16de5c3ea6384d2f7ef26bd530a6b552ed9791e38f5"
+  },
+  "frozen_candidate": {
+    "path": "reports/combat_rl_promoted_r16_successor_20260818_r17/rl_combat_model_promoted_r16_successor_candidate.pth",
+    "sha256": "bb863ec1e6e2f87df8b12649d6bec353bd09b5ff44646e1a0ee600ccc8a2a382",
+    "development_selection": "reports/combat_rl_promoted_r16_successor_20260818_r17/selection.json",
+    "development_selection_sha256": "0f647ebd9e31645360579c1ce1bd14cbbcb2ec965ce66cc9c2f267818fc0e2a0",
+    "must_not_be_loaded_during_collection": true
+  },
+  "collection": {
+    "games": 20,
+    "epsilon": 0.0,
+    "boss_min_epsilon": 0.0,
+    "elite_route": "conservative",
+    "ascension": 0,
+    "seed_pool": "reports/combat_rl_parent_on_policy_replay_collection_20260818_r13_seed_pool.txt",
+    "seed_pool_sha256": "d6c857b579cd48ef5de6e7223ede3fbd59dd3f624fce942bf4e80d4db29aebbd",
+    "seeds_are_unique_within_repo_seed_pool_artifacts": true,
+    "launch_config": "reports/combat_rl_parent_on_policy_replay_collection_20260818_r13.properties",
+    "launch_config_sha256": "8c6570aa65a5799ddbc96ab246c65ef7f69bc44defbc1a7dff6bfffa327b512e",
+    "training_updates_disabled_by_learning_starts": true,
+    "expert_mix_disabled": true
+  },
+  "fresh_confirmation_rule": {
+    "single_evaluation_only": true,
+    "objective_horizon": 4096,
+    "gamma": 0.99,
+    "full_combat_return_smooth_l1_must_improve": true,
+    "one_step_smooth_l1_must_improve": true,
+    "parent_action_agreement_min": 0.99,
+    "off_target_parent_disagreement_max": 0.01,
+    "positive_energy_end_turn_count_increase_max": 1,
+    "candidate_relative_l2_must_equal_frozen_value": 0.000007535046662513834,
+    "no_parameter_or_threshold_changes_after_collection_start": true
+  },
+  "required_collection_checks": {
+    "complete_exactly_20_games": true,
+    "all_run_seeds_match_in_order": true,
+    "online_and_target_remain_equal_to_promoted_parent": true,
+    "optimizer_state_remains_empty": true,
+    "optimizer_step_remains_zero": true,
+    "no_training_losses_are_emitted": true,
+    "no_post_start_runtime_failures": true
+  },
+  "native_recovery": {
+    "maximum_exact_recoveries_per_arm": 1,
+    "only_before_first_completed_game": true,
+    "requires_minimal_cuda_health_check": true,
+    "same_committed_config_seed_pool_initializer_and_parameters": true,
+    "no_recovery_after_first_completed_game": true
+  },
+  "execution_policy": {
+    "after_first_game_preserve_seed_order_and_parameters": true,
+    "do_not_substitute_a_different_cohort_after_observing_results": true,
+    "restore_promoted_production_configuration_after_completion": true
+  },
+  "next_step": "Collect once, freeze the replay evidence, then evaluate r17 exactly once before considering any matched live gate."
+}
