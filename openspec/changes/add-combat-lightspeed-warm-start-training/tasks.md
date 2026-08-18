@@ -12,5 +12,5 @@
 
 - [x] 3.1 Run focused pytest and strict OpenSpec validation.
 - [ ] 3.2 Run the repository pytest gate once and record timeout or infrastructure failures without retrying.
-- [ ] 3.3 Register and execute one CPU-only r4 warm-start mixed-battle experiment on fresh train/evaluation seeds.
-- [ ] 3.4 Analyze aggregate and per-battle-index candidate-versus-r4 metrics and decide whether replication or live transfer is justified.
+- [x] 3.3 Register and execute one CPU-only r4 warm-start mixed-battle experiment on fresh train/evaluation seeds.
+- [x] 3.4 Analyze aggregate and per-battle-index candidate-versus-r4 metrics and decide whether replication or live transfer is justified.
