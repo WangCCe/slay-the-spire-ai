@@ -1556,6 +1556,14 @@ The next authorized sequence is:
     Both arms completed naturally without runtime failures. This supports only
     a conservative baseline replacement, not a large live-effect or win-rate
     claim.
+75. Promote frozen r16 as the bounded production combat baseline. The production
+    command remains evaluation-only, epsilon zero, conservative routing, and
+    capped at five games per launch. Keep the prior r15 production config as the
+    exact rollback artifact. The evidence supports a low-risk replacement only:
+    19 of 20 live pairs tied and neither arm won. For the next iteration, spend
+    the first work on a bounded successor fit using consumed r12 and older
+    consumed replay; collect a new promoted-r16 holdout only after that successor
+    passes the fixed cross-replay guards.
 
 ## Work Lanes
 
@@ -1563,12 +1571,13 @@ The active lane is bounded combat-RL policy improvement. R13's half step was
 safe but tied production on all 20 live pairs; r14's full step was too broad;
 r15's three-quarter step passed consumed r6/r8/r9/r10, its single fresh r11
 confirmation, and a 20-pair live gate by one floor pair with no losses. It is
-now the bounded production baseline, with r8 retained as rollback. R16 passed
-the consumed cross-replay guards, its single fresh r12 confirmation, and a
-20-pair matched live gate by one floor pair with no losses. The immediate next
-step is a separate conservative promotion decision that retains r15 as exact
-rollback. The near-term measure remains repeatable Act 3 and victory coverage,
-not whether another one-off favorable pair can be found.
+the replaced bounded baseline, while r8 remains a historical rollback artifact.
+R16 passed the consumed cross-replay guards, its single fresh r12 confirmation,
+and a 20-pair matched live gate by one floor pair with no losses. It is now the
+bounded production baseline, with r15 retained as exact rollback. The immediate
+next step is one bounded successor fit on consumed evidence before another
+fresh replay is collected. The near-term measure remains repeatable Act 3 and
+victory coverage, not whether another one-off favorable pair can be found.
 
 The non-combat card-acceptance lane remains paused at its r6 zero-byte
 source-binding infrastructure failure. Resume it only as a separately

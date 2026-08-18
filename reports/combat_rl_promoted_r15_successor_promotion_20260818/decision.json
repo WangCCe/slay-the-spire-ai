@@ -1,0 +1,79 @@
+{
+  "schema_version": 1,
+  "promotion_id": "combat-rl-promoted-r15-successor-promotion-20260818",
+  "source_commit": "b3f2a8c98f1736a732e3663d6a7e30b4f2bf228b",
+  "decision": "promote_r16_promoted_r15_successor",
+  "candidate_checkpoint": {
+    "path": "reports/combat_rl_promoted_r15_successor_20260818_r16/rl_combat_model_promoted_r15_successor_candidate.pth",
+    "sha256": "75120e9e8f76393d4d82c16de5c3ea6384d2f7ef26bd530a6b552ed9791e38f5",
+    "checkpoint_kind": "weights",
+    "relative_l2_from_replaced_parent": 0.00000695465629408414
+  },
+  "replaced_checkpoint": {
+    "path": "reports/combat_rl_return_end_turn_trust_three_quarter_step_20260818_r15/rl_combat_model_return_end_turn_trust_three_quarter_step_candidate.pth",
+    "sha256": "fcef143b8387fcee27e5f29cd53283e509cc5fbd3eec5c6b77cdebbdf4645b73"
+  },
+  "qualification": {
+    "cross_replay_development": {
+      "selection": "reports/combat_rl_promoted_r15_successor_20260818_r16/selection.json",
+      "selection_sha256": "a2e9dfb8f5687a8e3d9ac98d1b1674b62ad5ad77207e8bfbcba08553f354b1a0",
+      "replays": ["r6", "r8", "r9", "r10"],
+      "all_conditions_passed": true
+    },
+    "fresh_replay_r12": {
+      "gate_report": "reports/combat_rl_promoted_r15_successor_20260818_r16/r12_fresh_confirmation.json",
+      "gate_report_sha256": "a3af286a7694b2fcbcdcc23257932b7b192829e4bab43bc4b426f21c59cfe992",
+      "parent_full_return_smooth_l1": 44.32402801513672,
+      "candidate_full_return_smooth_l1": 44.29925537109375,
+      "parent_one_step_smooth_l1": 4.172117710113525,
+      "candidate_one_step_smooth_l1": 4.154759407043457,
+      "candidate_parent_action_agreement": 0.9940347075462341,
+      "candidate_off_target_disagreement": 0.005747126415371895,
+      "parent_positive_energy_end_turn_count": 1815,
+      "candidate_positive_energy_end_turn_count": 1804,
+      "all_conditions_passed": true
+    },
+    "matched_live_gate": {
+      "gate_report": "reports/combat_rl_promoted_r15_successor_zero_epsilon_gate_20260818_r1/report.json",
+      "gate_report_sha256": "d876b6b0ccef362352bca3ea19903025138deccdeb1183bae23a6f8a1a3b60a6",
+      "candidate_paired_wins": 1,
+      "parent_paired_wins": 0,
+      "ties": 19,
+      "candidate_floor_total": 493,
+      "parent_floor_total": 476,
+      "candidate_act_2_entries": 13,
+      "parent_act_2_entries": 12,
+      "candidate_act_2_boss_reaches": 7,
+      "parent_act_2_boss_reaches": 6,
+      "candidate_act_3_entries": 0,
+      "parent_act_3_entries": 0,
+      "all_preregistered_conditions_passed": true
+    }
+  },
+  "production": {
+    "source_config": "reports/combat_rl_promoted_r15_successor_promotion_20260818.properties",
+    "source_config_sha256": "25b8ac697923c86b5baf8aece43d8723adcc1a8d1f8f4fa0bfa6b8ef3f3713c3",
+    "target_config": "C:/Users/20571/AppData/Local/ModTheSpire/CommunicationMod/config.properties",
+    "bounded_games_per_launch": 5,
+    "training": false,
+    "epsilon": 0.0,
+    "elite_route": "conservative",
+    "truncate_traces_at_start": true,
+    "checkpoint_backup": false,
+    "maintenance": false,
+    "post_analysis": false
+  },
+  "rollback": {
+    "source_config": "reports/combat_rl_return_end_turn_trust_three_quarter_step_promotion_20260818.properties",
+    "source_config_sha256": "47f2024d9ad8f0fc6b2b93edb428567df1da9a2e87e803dda4097d76209d202f"
+  },
+  "limitations": {
+    "matched_live_pairs": 20,
+    "non_tied_live_pairs": 1,
+    "candidate_gate_victories": 0,
+    "parent_gate_victories": 0,
+    "large_live_effect_claimed": false,
+    "first_ironclad_victory_achieved": false
+  },
+  "next_step": "Fit one bounded successor from consumed r12 and older consumed replay, then collect a new promoted-r16 replay only if the successor passes all fixed cross-replay guards."
+}
