@@ -1522,17 +1522,25 @@ The next authorized sequence is:
     r15 cleared it and reached floor 19. Both arms completed naturally without
     runtime failures. This supports only a conservative baseline replacement,
     not a large live-effect or win-rate claim.
+71. Promote frozen r15 as the bounded production combat baseline. The production
+    command remains evaluation-only, epsilon zero, conservative routing, and
+    capped at five games per launch. Keep the prior r8 production config as the
+    exact rollback artifact. The evidence supports a low-risk replacement only:
+    19 of 20 live pairs tied and neither arm won. For the next iteration, spend
+    the first work on a bounded successor fit using consumed r11 and older
+    consumed replay; collect a new promoted-r15 holdout only after that successor
+    passes the fixed cross-replay guards.
 
 ## Work Lanes
 
 The active lane is bounded combat-RL policy improvement. R13's half step was
 safe but tied production on all 20 live pairs; r14's full step was too broad;
 r15's three-quarter step passed consumed r6/r8/r9/r10, its single fresh r11
-confirmation, and a 20-pair live gate by one floor pair with no losses. The
-immediate next step is a separate conservative promotion decision and bounded
-production configuration, retaining r8 as rollback. The near-term measure is
-repeatable Act 3 and victory coverage, not whether another one-off win can be
-found.
+confirmation, and a 20-pair live gate by one floor pair with no losses. It is
+now the bounded production baseline, with r8 retained as rollback. The immediate
+next step is one bounded successor fit on consumed evidence before another
+fresh replay is collected. The near-term measure is repeatable Act 3 and victory
+coverage, not whether another one-off win can be found.
 
 The non-combat card-acceptance lane remains paused at its r6 zero-byte
 source-binding infrastructure failure. Resume it only as a separately

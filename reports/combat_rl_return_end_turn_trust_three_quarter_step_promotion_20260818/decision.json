@@ -1,0 +1,79 @@
+{
+  "schema_version": 1,
+  "promotion_id": "combat-rl-return-end-turn-trust-three-quarter-step-promotion-20260818",
+  "source_commit": "c3a16ded8fbf100a4a44c9a77ed49e6e84a04e7e",
+  "decision": "promote_three_quarter_step_end_turn_trust_candidate",
+  "candidate_checkpoint": {
+    "path": "reports/combat_rl_return_end_turn_trust_three_quarter_step_20260818_r15/rl_combat_model_return_end_turn_trust_three_quarter_step_candidate.pth",
+    "sha256": "fcef143b8387fcee27e5f29cd53283e509cc5fbd3eec5c6b77cdebbdf4645b73",
+    "checkpoint_kind": "weights",
+    "relative_l2_from_replaced_parent": 0.000011741702226407201
+  },
+  "replaced_checkpoint": {
+    "path": "reports/combat_rl_single_step_sgd_trust_region_20260817_r8/rl_combat_model_second_single_step_sgd_candidate.pth",
+    "sha256": "edf7d33124a3fbbc3abee6bae6c7b9654ea9a9191dcf151e5c0b000c71a4f454"
+  },
+  "qualification": {
+    "cross_replay_development": {
+      "selection": "reports/combat_rl_return_end_turn_trust_three_quarter_step_20260818_r15/selection.json",
+      "selection_sha256": "0cf365473e9f95e678ba2cbb4a2a832828b46e2d4457d15df32e43b81da7fe41",
+      "replays": ["r6", "r8", "r9", "r10"],
+      "all_conditions_passed": true
+    },
+    "fresh_replay_r11": {
+      "gate_report": "reports/combat_rl_return_end_turn_trust_three_quarter_step_20260818_r15/r11_fresh_confirmation.json",
+      "gate_report_sha256": "faf3d5a0e96552a463fd57b9ff48d36fd5f51430001769b53fea893afa6435b9",
+      "parent_full_return_smooth_l1": 43.25840759277344,
+      "candidate_full_return_smooth_l1": 43.21728515625,
+      "parent_one_step_smooth_l1": 3.9035542011260986,
+      "candidate_one_step_smooth_l1": 3.8783905506134033,
+      "candidate_parent_action_agreement": 0.9921875,
+      "candidate_off_target_disagreement": 0.008314087986946106,
+      "parent_positive_energy_end_turn_count": 2018,
+      "candidate_positive_energy_end_turn_count": 2004,
+      "all_conditions_passed": true
+    },
+    "matched_live_gate": {
+      "gate_report": "reports/combat_rl_return_end_turn_trust_three_quarter_step_zero_epsilon_gate_20260818_r1/report.json",
+      "gate_report_sha256": "81aa7ff539a70dd5b12a22a07a2d94f4420fb34599c10e0072895a06288e3402",
+      "candidate_paired_wins": 1,
+      "parent_paired_wins": 0,
+      "ties": 19,
+      "candidate_floor_total": 478,
+      "parent_floor_total": 475,
+      "candidate_act_2_entries": 11,
+      "parent_act_2_entries": 10,
+      "candidate_act_2_boss_reaches": 7,
+      "parent_act_2_boss_reaches": 7,
+      "candidate_act_3_entries": 1,
+      "parent_act_3_entries": 1,
+      "all_preregistered_conditions_passed": true
+    }
+  },
+  "production": {
+    "source_config": "reports/combat_rl_return_end_turn_trust_three_quarter_step_promotion_20260818.properties",
+    "source_config_sha256": "47f2024d9ad8f0fc6b2b93edb428567df1da9a2e87e803dda4097d76209d202f",
+    "target_config": "C:/Users/20571/AppData/Local/ModTheSpire/CommunicationMod/config.properties",
+    "bounded_games_per_launch": 5,
+    "training": false,
+    "epsilon": 0.0,
+    "elite_route": "conservative",
+    "truncate_traces_at_start": true,
+    "checkpoint_backup": false,
+    "maintenance": false,
+    "post_analysis": false
+  },
+  "rollback": {
+    "source_config": "reports/combat_rl_second_single_step_sgd_promotion_20260818.properties",
+    "source_config_sha256": "f87804b2768b8ff53d0760fbfd267c5282afed21081ea888c336e0263041efcb"
+  },
+  "limitations": {
+    "matched_live_pairs": 20,
+    "non_tied_live_pairs": 1,
+    "candidate_gate_victories": 0,
+    "parent_gate_victories": 0,
+    "large_live_effect_claimed": false,
+    "first_ironclad_victory_achieved": false
+  },
+  "next_step": "Fit one bounded successor from consumed r11 and older consumed replay, then collect a new promoted-r15 replay only if the successor passes all fixed cross-replay guards."
+}
