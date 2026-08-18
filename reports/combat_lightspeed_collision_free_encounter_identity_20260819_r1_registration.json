@@ -1,0 +1,115 @@
+{
+  "schema_version": "combat-lightspeed-collision-free-encounter-identity-registration-v1",
+  "experiment_id": "combat-lightspeed-collision-free-encounter-identity-20260819-r1",
+  "registered_source_commit": "06da4d1d23b901803086b86acc02da917a16ef35",
+  "experiment_question": "Does collision-free enum-v1 encounter identity improve late-battle policy quality relative to both r4 and a matched hash-encoding arm?",
+  "source_binding": {
+    "training_runner_sha256": "faa9bd7f41f76cec2b79bb157138a992c092f51c34f35871f69d727a8753e4c8",
+    "bridge_source_sha256": "ced080a47b3b9b25206eac7b8b5ee3752af348d4df8a5d9750e386157812bf90",
+    "native_module_sha256": "195678b7fc6bf69815f3d2971404afb8ce72fb666700edf4203383429caf1009",
+    "enum_v1_vocabulary_sha256": "03de0935cfdabf10d0a1ba800c9afe561d453c40c10b3c6b5ee47f7b14763638"
+  },
+  "parent": {
+    "label": "r4_first_combat",
+    "path": "reports/combat_lightspeed_training_smoke_20260819_r4_card_select_replication/simulator_only_candidate.pth",
+    "sha256": "0c3e94393089c2153980fd9df8c904d11efa8cd1e62a1899b8211144d0fe39ff",
+    "parameter_sha256": "1ecca8b19803d56f8bbed1b9ddbc1c8f26638f80bb0ccb50f21ece65e3dfc2f9"
+  },
+  "predecessor_evidence": {
+    "hash_index_9_reachable_profiles": 140,
+    "hash_index_9_reward_delta": -0.0576711181032643,
+    "hash_index_9_player_hp_delta": 0.17857142857142858,
+    "hash_index_9_candidate_only_victories": 5,
+    "hash_index_9_parent_only_victories": 6,
+    "observed_encounter_count": 42,
+    "occupied_hash_bucket_count": 31,
+    "largest_collision_bucket_size": 5
+  },
+  "cohorts": {
+    "training_seeds": "111000..112023",
+    "training_seed_count": 1024,
+    "evaluation_seeds": "113000..113255",
+    "evaluation_seed_count": 256,
+    "battle_indices": [0, 3, 6, 9],
+    "training_profile_count_per_arm": 4096,
+    "evaluation_profile_count_per_arm": 1024,
+    "all_prior_lightspeed_seed_overlap": false
+  },
+  "shared_recipe": {
+    "ascension": 0,
+    "max_decisions_per_profile": 100,
+    "max_actions_per_turn": 8,
+    "behavior_seed": 2026081930,
+    "network_seed": 2026081931,
+    "batch_size": 128,
+    "optimizer_steps": 256,
+    "parent_policy_anchor_weight": 1.0,
+    "balance_replay_by_battle_index": true,
+    "replay_balance_seed": 2026081932,
+    "encounter_identity_buckets": 64,
+    "device": "cpu",
+    "production_checkpoint_access": false
+  },
+  "arms": {
+    "hash_control": {
+      "encounter_identity_encoding": "sha256-first-8-bytes-modulo",
+      "output_dir": "reports/combat_lightspeed_collision_free_encounter_identity_20260819_r1_hash_control"
+    },
+    "enum_v1_candidate": {
+      "encounter_identity_encoding": "monster-encounter-enum-v1",
+      "output_dir": "reports/combat_lightspeed_collision_free_encounter_identity_20260819_r1_enum_candidate"
+    }
+  },
+  "technical_success_criteria": {
+    "both_verdicts": "technical_smoke_ready",
+    "finite_optimizer_updates_per_arm": 256,
+    "source_parent_parameter_sha256_matches_registration": true,
+    "migrated_parent_new_column_max_abs": 0.0,
+    "migration_q_max_abs_delta_lte": 0.000001,
+    "migration_action_mismatch_count": 0,
+    "enum_v1_assignments_are_unique": true,
+    "enum_v1_vocabulary_sha256_matches_registration": true,
+    "source_replay_metrics_identical_between_arms": true,
+    "parent_control_evaluation_rows_identical_between_arms": true,
+    "all_four_prepared_transition_strata_equal": true,
+    "prepared_transition_count_lte_replay_capacity_100000": true,
+    "training_decision_bound_truncations": 0,
+    "unexpected_initialization_failure_count": 0
+  },
+  "enum_vs_parent_uplift_criteria": {
+    "aggregate": [
+      "mean_reward_delta_gt_0",
+      "mean_player_hp_delta_gte_0",
+      "candidate_only_victories_gte_parent_only_victories"
+    ],
+    "early_combat": [
+      "battle_index_0_mean_player_hp_delta_gte_0",
+      "battle_index_0_candidate_only_victories_gte_parent_only_victories"
+    ],
+    "late_combat": [
+      "battle_index_9_reachable_profile_count_gte_100",
+      "battle_index_9_mean_reward_delta_gte_0",
+      "battle_index_9_mean_player_hp_delta_gte_0",
+      "battle_index_9_candidate_only_victories_gte_parent_only_victories"
+    ],
+    "material_index_regression": "no_battle_index_mean_reward_delta_lt_-1.0"
+  },
+  "enum_vs_hash_criteria": {
+    "aggregate_mean_reward_delta_gte_0": true,
+    "battle_index_9_mean_reward_delta_gt_0": true,
+    "battle_index_9_mean_player_hp_delta_gte_0": true,
+    "battle_index_9_enum_only_victories_gte_hash_only_victories": true
+  },
+  "decision_rule": {
+    "fresh_frozen_confirmation_eligible": "all technical, enum-vs-parent, and enum-vs-hash criteria pass",
+    "retain_parent": "any technical blocker or any enum-vs-parent or enum-vs-hash criterion failure",
+    "live_transfer_authorized": false
+  },
+  "stop_rules": [
+    "Execute each registered arm at most once and do not alter or retry either cohort after outcome access.",
+    "Do not tune vocabulary, encoding, optimizer steps, balancing, anchor weight, architecture, or thresholds.",
+    "Do not start Slay the Spire or CommunicationMod.",
+    "Do not access or modify a production checkpoint.",
+    "A passing result authorizes one fresh frozen simulator confirmation only, not live transfer, qualification, or promotion."
+  ]
+}
