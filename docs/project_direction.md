@@ -1629,6 +1629,15 @@ The next authorized sequence is:
     disagreement to `0.3619%`, and reduced positive-energy End Turns from 2,043
     to 2,031. It is eligible for one separately registered 20-pair matched live
     gate against r16, not automatic promotion. Do not rerun or tune against r15.
+84. Close the first r19 matched live cohort without qualification after an
+    external game shutdown. R19 completed 15 candidate games on the registered
+    seed prefix, including one Act 3 entry, before an operator-reported Steam
+    interaction closed the game during candidate game 16. The log recorded a
+    broken stdin pipe and EOFError; no RL action failure preceded the shutdown.
+    Because completed games already existed, the registration forbids recovery,
+    and the parent arm was not started. This is neither candidate rejection nor
+    promotion. Retain r16, do not rerun this cohort, and reassess simulator and
+    offline candidate generation before deciding on any separate r19 gate.
 
 ## Work Lanes
 
@@ -1647,11 +1656,13 @@ bounded fit on consumed r13 and single fresh r14 confirmation, but its matched
 live gate also failed: it lost the only non-tied pair, trailed total floors and
 Act 2 boss reaches, and produced no victory. R19 passes the bounded fit on
 consumed r14 with r6/r8/r9/r10/r11/r12/r13 as development guards and its single
-fresh r15 confirmation. It is eligible only for one separately registered
-20-pair matched live gate. R16 remains production. After r19 closes, do not
-mechanically repeat the same fit for r20; first reassess LightSTS and offline
-replay candidate generation against simulator-divergence evidence. The
-near-term measure remains repeatable Act 3 and victory coverage, not whether
+fresh r15 confirmation. Its first matched live cohort was externally interrupted
+after 15 candidate games, so no parent arm or qualification result exists. R19
+remains frozen and live-unqualified; r16 remains production. Do not mechanically
+repeat the same fit for r20. First reassess LightSTS and offline replay candidate
+generation against simulator-divergence evidence, then decide whether a new r19
+gate has enough expected information gain to justify another real-game cohort.
+The near-term measure remains repeatable Act 3 and victory coverage, not whether
 another one-off favorable pair can be found.
 
 The non-combat card-acceptance lane remains paused at its r6 zero-byte

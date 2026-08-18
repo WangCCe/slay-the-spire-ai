@@ -41,6 +41,8 @@ disagreement to `0.3619%`, and reduced positive-energy End Turns from 2,043 to
 
 ## Next step
 
-Register one new 20-pair matched live gate comparing frozen r19 with production
-r16. The fresh replay grants no automatic promotion authority. After that gate,
-reassess simulator and offline candidate generation before starting any r20.
+The registered matched live cohort was externally interrupted during candidate
+game 16 after 15 completed games; the parent arm was not started. The cohort is
+closed without qualification, rejection, or promotion. Retain r16 and reassess
+simulator and offline candidate generation before deciding whether a separate
+new r19 gate is worth the real-game cost. Do not start r20 mechanically.

@@ -1,0 +1,104 @@
+{
+  "schema_version": 1,
+  "gate_id": "combat-rl-promoted-r16-successor-r19-zero-epsilon-gate-20260819-r1",
+  "source_commit": "e52d452cd036114c31612c285a418b4e42fabb87",
+  "decision": "gate_aborted_external_game_shutdown_no_qualification",
+  "qualification_evaluated": false,
+  "qualification_passed": null,
+  "candidate_rejected": false,
+  "inputs": {
+    "preregistration": {
+      "path": "reports/combat_rl_promoted_r16_successor_r19_zero_epsilon_gate_20260819_r1_preregistration.json",
+      "sha256": "882577799449302550c4b99fc6fee4cdd6b6badfa1a55afe3faf51532468afc3"
+    },
+    "seed_pool": {
+      "path": "reports/combat_rl_promoted_r16_successor_r19_zero_epsilon_gate_20260819_r1_seed_pool.txt",
+      "sha256": "f34106b8855e8ca12f47775ce12a2f564c437f9e79c808bef157d64d8d833841"
+    },
+    "candidate_checkpoint": {
+      "path": "reports/combat_rl_promoted_r16_successor_20260818_r19/rl_combat_model_promoted_r16_successor_candidate.pth",
+      "sha256": "ca40182ca9f8da185c4d722380e451433294d3f6f14b8b2d5840258431dc31a2"
+    },
+    "parent_checkpoint": {
+      "path": "reports/combat_rl_promoted_r15_successor_20260818_r16/rl_combat_model_promoted_r15_successor_candidate.pth",
+      "sha256": "75120e9e8f76393d4d82c16de5c3ea6384d2f7ef26bd530a6b552ed9791e38f5"
+    }
+  },
+  "execution": {
+    "arm_order": ["candidate", "parent"],
+    "candidate_started_at": "2026-08-19T00:06:13+08:00",
+    "candidate_failed_at": "2026-08-19T00:40:29+08:00",
+    "candidate_requested_games": 20,
+    "candidate_completed_games": 15,
+    "interrupted_game_one_based": 16,
+    "parent_started": false,
+    "termination": "external_game_shutdown_after_completed_game_boundary",
+    "operator_reported_steam_interaction": true,
+    "native_recovery_used": false,
+    "recovery_forbidden_after_first_completed_game": true,
+    "same_cohort_retry_forbidden": true
+  },
+  "candidate_partial": {
+    "games": 15,
+    "victories": 0,
+    "floor_total": 305,
+    "floor_mean": 20.333333333333332,
+    "floor_median": 16.0,
+    "act_2_entered": 4,
+    "act_2_boss_reached": 2,
+    "act_3_entered": 1,
+    "playtime_seconds": 1841,
+    "floors": [
+      16, 16, 16, 33, 18, 28, 16, 16, 16, 16, 50, 16, 16, 16, 16
+    ],
+    "run_files": [
+      "1787069293.run", "1787069372.run", "1787069495.run", "1787069666.run",
+      "1787069790.run", "1787069980.run", "1787070078.run", "1787070189.run",
+      "1787070318.run", "1787070424.run", "1787070772.run", "1787070841.run",
+      "1787070945.run", "1787071018.run", "1787071132.run"
+    ],
+    "completed_run_seed_prefix_matched": true,
+    "decision_trace_rows": 4904,
+    "decision_trace_sources": {
+      "combat_rl": 4904
+    },
+    "decision_trace_parse_errors": 0,
+    "sim_divergence_rows": 2,
+    "sim_divergence_parse_errors": 0,
+    "python_tracebacks": 1,
+    "critical_log_lines": 16,
+    "stdin_pipe_broken_events": 1,
+    "game_16_crash_events": 1,
+    "rl_action_failures": 0,
+    "communication_mod_current_section_errors": 2,
+    "runtime_evidence_zip": {
+      "path": "reports/combat_rl_promoted_r16_successor_r19_zero_epsilon_gate_20260819_r1/candidate/runtime_evidence.zip",
+      "sha256": "36ed3d6277f50d0eb0035261d494e4677c9f5c1101eb1bded4c5e53b920c56a2",
+      "entry_count": 8,
+      "size_bytes": 4669587
+    }
+  },
+  "failure_evidence": {
+    "last_stable_screen": "MAP",
+    "last_stable_floor": 5,
+    "log_marker": "STDIN PIPE BROKEN: Communication Mod or Slay the Spire crashed",
+    "terminal_error": "EOFError: Communication Mod connection lost (game crashed)",
+    "classification": "external_operator_interference",
+    "policy_runtime_failure_observed_before_shutdown": false
+  },
+  "qualification_conditions": {
+    "paired_results_available": false,
+    "candidate_completed_all_games": false,
+    "parent_completed_all_games": false,
+    "all_seed_pairs_match": null,
+    "all_conditions_evaluated": false
+  },
+  "production_state": {
+    "restored": true,
+    "configuration": "reports/combat_rl_promoted_r15_successor_promotion_20260818.properties",
+    "configuration_sha256": "25b8ac697923c86b5baf8aece43d8723adcc1a8d1f8f4fa0bfa6b8ef3f3713c3",
+    "active_checkpoint_sha256": "75120e9e8f76393d4d82c16de5c3ea6384d2f7ef26bd530a6b552ed9791e38f5",
+    "candidate_promoted": false
+  },
+  "next_step": "Close this cohort without candidate judgment or retry. Retain production r16 and reassess LightSTS plus offline replay candidate generation before deciding whether a separately registered new r19 gate is worth the real-game cost."
+}
