@@ -1,0 +1,62 @@
+{
+  "schema_version": "combat-lightspeed-training-experiment-registration-v2",
+  "experiment_id": "combat-lightspeed-training-smoke-20260819-r4-card-select-replication",
+  "registered_source_commit": "e1f5a1880d2d98b862fa74b8364c8a442bca4ff6",
+  "replicates_experiment": "combat-lightspeed-training-smoke-20260819-r3-replication",
+  "change_under_test": "add-combat-lightspeed-card-select-settlement",
+  "simulator_repo_commit": "7476a81954020087da31d41d16fddf475746ec2d",
+  "source_binding": {
+    "training_runner_sha256": "6788f64342e4b446f679e4ac9e82cb8e7f5a9ee58a3069db8bd09682ce091f5a",
+    "bridge_source_sha256": "a3636d3ee2959eb53d12461a788ec72448191a2fb3b07c9f3c6ab0dd9c8c7d4d",
+    "native_adapter_source_sha256": "b48e8c39156fde43fc9bfba40385749f53c4ac8613eadb7ba285991c399bdcbb",
+    "native_module_sha256": "4c5fdee7e276e0cb642a0ff1cd9151d4dca1736efb39352a7b243294719ec38b"
+  },
+  "cohorts": {
+    "training_seeds": "60000..61023",
+    "training_seed_count": 1024,
+    "evaluation_seeds": "70000..70255",
+    "evaluation_seed_count": 256,
+    "prior_experiment_seed_overlap": false
+  },
+  "training": {
+    "ascension": 0,
+    "max_decisions_per_seed": 80,
+    "max_actions_per_turn": 8,
+    "behavior_seed": 2026081908,
+    "network_seed": 2026081907,
+    "batch_size": 128,
+    "optimizer_steps": 256,
+    "device": "cpu",
+    "initialization": "fresh",
+    "production_checkpoint_access": false
+  },
+  "technical_success_criteria": {
+    "verdict": "technical_smoke_ready",
+    "finite_optimizer_updates": 256,
+    "parameter_l2_delta_gt": 0.0,
+    "training_decision_bound_truncations": 0,
+    "paired_evaluation_seed_count": 256
+  },
+  "settlement_success_criteria": {
+    "training_settlement_action_count_gt": 0,
+    "combined_evaluation_settlement_action_count_gt": 0,
+    "training_card_select_unsupported_count": 0,
+    "control_unsupported_count": 0,
+    "candidate_unsupported_count": 0
+  },
+  "simulator_uplift_criteria": {
+    "primary": "candidate_mean_reward_gt_control",
+    "guardrails": [
+      "candidate_victories_gte_control",
+      "candidate_mean_player_hp_gte_control"
+    ]
+  },
+  "stop_rules": [
+    "Do not retry or change these cohorts after outcome access.",
+    "Do not start Slay the Spire or CommunicationMod.",
+    "Do not load or modify a production checkpoint.",
+    "Do not expand the card-select allowlist from this outcome.",
+    "A passing result authorizes encounter-surface expansion only, not live transfer, qualification, or promotion."
+  ],
+  "output_dir": "reports/combat_lightspeed_training_smoke_20260819_r4_card_select_replication"
+}
