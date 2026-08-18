@@ -12,6 +12,7 @@ import pytest
 
 from analysis_scripts.combat_lightspeed_training_smoke import (
     REPORT_AUTHORITY,
+    ReplayTransition,
     SmokeConfig,
     _publish,
     calculate_native_reward,
@@ -21,6 +22,7 @@ from analysis_scripts.combat_lightspeed_training_smoke import (
     parameter_delta,
     parameter_sha256,
     paired_evaluation,
+    prepare_replay_transitions,
     select_behavior_action,
     successor_disposition,
     unexpected_initialization_failures,
@@ -120,6 +122,96 @@ def test_parent_policy_constraint_weight_must_be_finite_and_non_negative():
                 evaluation_seeds=(20,),
                 parent_policy_anchor_weight=value,
             ).validate()
+
+    with pytest.raises(ValueError, match="replay balance seed"):
+        SmokeConfig(
+            train_seeds=(10,),
+            evaluation_seeds=(20,),
+            replay_balance_seed=-1,
+        ).validate()
+
+
+def _stratum_transition(battle_index, action):
+    return ReplayTransition(
+        battle_index=battle_index,
+        continuous=np.zeros(328, dtype=np.float32),
+        card_ids=np.zeros(10, dtype=np.int64),
+        potion_ids=np.zeros(5, dtype=np.int64),
+        relic_ids=np.zeros(40, dtype=np.int64),
+        action=action,
+        reward=0.0,
+        next_continuous=np.zeros(328, dtype=np.float32),
+        next_card_ids=np.zeros(10, dtype=np.int64),
+        next_potion_ids=np.zeros(5, dtype=np.int64),
+        next_relic_ids=np.zeros(40, dtype=np.int64),
+        done=False,
+        action_mask=np.ones(133, dtype=bool),
+        next_action_mask=np.ones(133, dtype=bool),
+    )
+
+
+def test_default_replay_preparation_preserves_rows_and_counts():
+    transitions = [
+        _stratum_transition(0, 1),
+        _stratum_transition(0, 2),
+        _stratum_transition(3, 3),
+    ]
+
+    prepared, metrics = prepare_replay_transitions(
+        transitions,
+        battle_indices=(0, 3),
+        stratify=False,
+        seed=71,
+    )
+
+    assert [id(row) for row in prepared] == [id(row) for row in transitions]
+    assert metrics["mode"] == "none"
+    assert metrics["source_counts"] == {"0": 2, "3": 1}
+    assert metrics["prepared_counts"] == {"0": 2, "3": 1}
+    assert metrics["duplicate_counts"] == {"0": 0, "3": 0}
+
+
+def test_stratified_replay_is_deterministic_balanced_and_retains_sources():
+    transitions = [
+        _stratum_transition(0, 1),
+        _stratum_transition(0, 2),
+        _stratum_transition(0, 3),
+        _stratum_transition(3, 4),
+        _stratum_transition(6, 5),
+        _stratum_transition(6, 6),
+    ]
+
+    left, metrics = prepare_replay_transitions(
+        transitions,
+        battle_indices=(0, 3, 6),
+        stratify=True,
+        seed=73,
+    )
+    right, right_metrics = prepare_replay_transitions(
+        transitions,
+        battle_indices=(0, 3, 6),
+        stratify=True,
+        seed=73,
+    )
+
+    assert [row.action for row in left] == [row.action for row in right]
+    assert metrics == right_metrics
+    assert metrics["mode"] == "battle_index_oversample"
+    assert metrics["target_count_per_stratum"] == 3
+    assert metrics["prepared_counts"] == {"0": 3, "3": 3, "6": 3}
+    assert metrics["duplicate_counts"] == {"0": 0, "3": 2, "6": 1}
+    assert all(any(row is prepared for prepared in left) for row in transitions)
+    assert [row.battle_index for row in left] == [0, 3, 6] * 3
+
+
+def test_stratified_replay_rejects_missing_configured_stratum():
+    with pytest.raises(ValueError, match="missing battle-index stratum: 9"):
+        prepare_replay_transitions(
+            [_stratum_transition(0, 1)],
+            battle_indices=(0, 9),
+            stratify=True,
+            seed=79,
+        )
 
 
 def test_expected_later_battle_unreachable_profiles_are_not_integrity_failures():

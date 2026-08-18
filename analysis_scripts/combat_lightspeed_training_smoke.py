@@ -47,7 +47,7 @@ from spirecomm.ai.rl.v2.id_mapping import IdMapper, build_id_mapper  # noqa: E40
 from spirecomm.ai.rl.v2.trainer import DQNTrainerV2  # noqa: E402
 
 
-REPORT_SCHEMA_VERSION = "combat-lightspeed-training-smoke-v5"
+REPORT_SCHEMA_VERSION = "combat-lightspeed-training-smoke-v6"
 CHECKPOINT_KIND = "simulator_training_smoke"
 REPORT_AUTHORITY = {
     "gameplay": False,
@@ -82,6 +82,8 @@ class SmokeConfig:
     batch_size: int = 128
     optimizer_steps: int = 64
     parent_policy_anchor_weight: float = 0.0
+    balance_replay_by_battle_index: bool = False
+    replay_balance_seed: int = 2026081903
 
     def validate(self) -> None:
         if not self.train_seeds or not self.evaluation_seeds:
@@ -113,6 +115,8 @@ class SmokeConfig:
             raise ValueError(
                 "parent policy anchor weight must be finite and non-negative"
             )
+        if self.replay_balance_seed < 0:
+            raise ValueError("replay balance seed must be non-negative")
 
     def profiles(self, seeds: Sequence[int]) -> tuple[tuple[int, int], ...]:
         return tuple(
@@ -124,6 +128,7 @@ class SmokeConfig:
 
 @dataclass(frozen=True)
 class ReplayTransition:
+    battle_index: int
     continuous: np.ndarray
     card_ids: np.ndarray
     potion_ids: np.ndarray
@@ -411,6 +416,7 @@ def _transition(
     reward: float,
     successor: MappedCombatState | None,
     done: bool,
+    battle_index: int,
 ) -> ReplayTransition:
     if successor is None:
         next_continuous, next_cards, next_potions, next_relics, next_mask = _terminal_next_state()
@@ -421,6 +427,7 @@ def _transition(
         next_relics = successor.state.relic_ids.copy()
         next_mask = successor.action_mask.copy()
     return ReplayTransition(
+        battle_index=battle_index,
         continuous=current.state.continuous.copy(),
         card_ids=current.state.card_ids.copy(),
         potion_ids=current.state.potion_ids.copy(),
@@ -533,6 +540,7 @@ def collect_transitions(
                     reward=float(reward_record["total"]),
                     successor=successor_mapped,
                     done=successor_kind == "terminal",
+                    battle_index=battle_index,
                 )
             )
             rewards.append(float(reward_record["total"]))
@@ -549,6 +557,9 @@ def collect_transitions(
     reward_array = np.asarray(rewards, dtype=np.float64)
     return transitions, {
         "accepted_transition_count": len(transitions),
+        "transition_battle_index_counts": dict(
+            sorted(Counter(row.battle_index for row in transitions).items())
+        ),
         "action_family_counts": dict(sorted(actions.items())),
         "decision_bound_seed_count": truncated,
         "encounter_state_counts": dict(sorted(encounters.items())),
@@ -575,6 +586,75 @@ def collect_transitions(
         },
         "seed_count": len(config.train_seeds),
         "unsupported_reason_counts": dict(sorted(unsupported.items())),
+    }
+
+
+def prepare_replay_transitions(
+    transitions: Sequence[ReplayTransition],
+    *,
+    battle_indices: Sequence[int],
+    stratify: bool,
+    seed: int,
+) -> tuple[list[ReplayTransition], dict[str, Any]]:
+    if seed < 0:
+        raise ValueError("replay balance seed must be non-negative")
+    indices = tuple(sorted(int(value) for value in battle_indices))
+    groups = {value: [] for value in indices}
+    for transition in transitions:
+        if transition.battle_index not in groups:
+            raise ValueError(
+                f"transition has unconfigured battle-index stratum: "
+                f"{transition.battle_index}"
+            )
+        groups[transition.battle_index].append(transition)
+    source_counts = {str(index): len(groups[index]) for index in indices}
+
+    if not stratify:
+        return list(transitions), {
+            "mode": "none",
+            "seed": seed,
+            "source_counts": source_counts,
+            "prepared_counts": dict(source_counts),
+            "duplicate_counts": {str(index): 0 for index in indices},
+            "target_count_per_stratum": None,
+            "source_transition_count": len(transitions),
+            "prepared_transition_count": len(transitions),
+        }
+
+    missing = next((index for index in indices if not groups[index]), None)
+    if missing is not None:
+        raise ValueError(f"missing battle-index stratum: {missing}")
+    target_count = max(len(rows) for rows in groups.values())
+    prepared_groups: dict[int, list[ReplayTransition]] = {}
+    for index in indices:
+        source = groups[index]
+        prepared = list(source)
+        rng = random.Random(seed ^ (index << 32))
+        while len(prepared) < target_count:
+            repeated = list(source)
+            rng.shuffle(repeated)
+            prepared.extend(repeated[: target_count - len(prepared)])
+        prepared_groups[index] = prepared
+    prepared_rows = [
+        prepared_groups[index][position]
+        for position in range(target_count)
+        for index in indices
+    ]
+    prepared_counts = {
+        str(index): len(prepared_groups[index]) for index in indices
+    }
+    return prepared_rows, {
+        "mode": "battle_index_oversample",
+        "seed": seed,
+        "source_counts": source_counts,
+        "prepared_counts": prepared_counts,
+        "duplicate_counts": {
+            str(index): len(prepared_groups[index]) - len(groups[index])
+            for index in indices
+        },
+        "target_count_per_stratum": target_count,
+        "source_transition_count": len(transitions),
+        "prepared_transition_count": len(prepared_rows),
     }
 
 
@@ -961,7 +1041,7 @@ def _publish(
             "size_bytes": candidate_path.stat().st_size,
         }
     manifest = {
-        "schema_version": "combat-lightspeed-training-smoke-manifest-v5",
+        "schema_version": "combat-lightspeed-training-smoke-manifest-v6",
         "artifacts": manifest_entries,
     }
     artifacts["manifest.json"] = canonical_json_bytes(manifest) + b"\n"
@@ -994,9 +1074,17 @@ def run_smoke(
         id_mapper=id_mapper,
         config=config,
     )
-    accepted = insert_transitions(trainer, transitions)
-    if accepted != len(transitions):
-        raise RuntimeError(f"replay rejected transitions: {accepted}/{len(transitions)}")
+    prepared_transitions, replay_preparation = prepare_replay_transitions(
+        transitions,
+        battle_indices=config.battle_indices,
+        stratify=config.balance_replay_by_battle_index,
+        seed=config.replay_balance_seed,
+    )
+    accepted = insert_transitions(trainer, prepared_transitions)
+    if accepted != len(prepared_transitions):
+        raise RuntimeError(
+            f"replay rejected transitions: {accepted}/{len(prepared_transitions)}"
+        )
     objective_losses = run_optimizer(trainer, config.optimizer_steps)
     losses = objective_losses["total"]
     candidate = copy.deepcopy(trainer.online_network.state_dict())
@@ -1082,6 +1170,8 @@ def run_smoke(
             "candidate_parameter_sha256": candidate_sha256,
             "parameter_delta": delta,
             "replay_transition_count": accepted,
+            "source_replay_transition_count": len(transitions),
+            "replay_preparation": replay_preparation,
             "optimizer_update_count": len(losses),
             "parent_policy_anchor_weight": config.parent_policy_anchor_weight,
             "loss_first": losses[0],
@@ -1146,6 +1236,8 @@ def _parse_args() -> argparse.Namespace:
     parser.add_argument("--initial-checkpoint", type=Path)
     parser.add_argument("--initial-checkpoint-sha256")
     parser.add_argument("--parent-policy-anchor-weight", default=0.0, type=float)
+    parser.add_argument("--balance-replay-by-battle-index", action="store_true")
+    parser.add_argument("--replay-balance-seed", default=2026081903, type=int)
     return parser.parse_args()
 
 
@@ -1167,6 +1259,8 @@ def main() -> int:
         batch_size=args.batch_size,
         optimizer_steps=args.optimizer_steps,
         parent_policy_anchor_weight=args.parent_policy_anchor_weight,
+        balance_replay_by_battle_index=args.balance_replay_by_battle_index,
+        replay_balance_seed=args.replay_balance_seed,
     )
     native_module = load_native_module(args.module, dll_directories=args.dll_dir)
     provenance = collect_provenance(

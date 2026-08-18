@@ -360,3 +360,10 @@ openspec/changes/archive/*-add-combat-lightspeed-parent-policy-constraint/** tex
 reports/combat_lightspeed_parent_policy_constraint_* text eol=lf
 reports/combat_lightspeed_parent_policy_constraint_*/** text eol=lf
 reports/combat_lightspeed_parent_policy_constraint_*/*.pth -text
+
+# Preserve battle-index-stratified combat LightSTS evidence bytes.
+openspec/changes/add-combat-lightspeed-stratified-replay/** text eol=lf
+openspec/changes/archive/*-add-combat-lightspeed-stratified-replay/** text eol=lf
+reports/combat_lightspeed_stratified_replay_* text eol=lf
+reports/combat_lightspeed_stratified_replay_*/** text eol=lf
+reports/combat_lightspeed_stratified_replay_*/*.pth -text
