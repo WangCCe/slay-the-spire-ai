@@ -196,8 +196,21 @@ def run_calibration(
             }
             profile_results.append(profile_row)
             continue
-        if canonical_json_bytes(_environment_record(environment)) != canonical_json_bytes(
-            _environment_record(repeated)
+        try:
+            environment_record = _environment_record(environment)
+            repeated_record = _environment_record(repeated)
+            progression = dict(environment.snapshot().get("progression") or {})
+        except Exception as exc:
+            _record_failure(
+                blockers,
+                profile_row,
+                "native_initial_record_failure",
+                exc,
+            )
+            profile_results.append(profile_row)
+            break
+        if canonical_json_bytes(environment_record) != canonical_json_bytes(
+            repeated_record
         ):
             _record_failure(
                 blockers,
@@ -208,7 +221,6 @@ def run_calibration(
             profile_results.append(profile_row)
             break
         reset_determinism_checks += 1
-        progression = dict(environment.snapshot().get("progression") or {})
         profile_row["progression"] = progression
         reached_battle_indices[int(progression["reached_battle_index"])] += 1
         reached_acts[int(progression["act"])] += 1
@@ -275,7 +287,12 @@ def run_calibration(
                 stop_cohort = True
                 break
 
-            original = canonical_json_bytes(_environment_record(environment))
+            try:
+                original = canonical_json_bytes(_environment_record(environment))
+            except Exception as exc:
+                _record_failure(blockers, profile_row, "native_record_failure", exc)
+                stop_cohort = True
+                break
             left = environment.clone()
             right = environment.clone()
             try:
@@ -285,7 +302,15 @@ def run_calibration(
                 _record_failure(blockers, profile_row, "native_step_failure", exc)
                 stop_cohort = True
                 break
-            if canonical_json_bytes(_environment_record(environment)) != original:
+            try:
+                source_record = canonical_json_bytes(_environment_record(environment))
+                left_record = canonical_json_bytes(_environment_record(left))
+                right_record = canonical_json_bytes(_environment_record(right))
+            except Exception as exc:
+                _record_failure(blockers, profile_row, "native_successor_record_failure", exc)
+                stop_cohort = True
+                break
+            if source_record != original:
                 _record_failure(
                     blockers,
                     profile_row,
@@ -295,9 +320,7 @@ def run_calibration(
                 stop_cohort = True
                 break
             clone_isolation_checks += 1
-            if canonical_json_bytes(_environment_record(left)) != canonical_json_bytes(
-                _environment_record(right)
-            ):
+            if left_record != right_record:
                 _record_failure(
                     blockers,
                     profile_row,

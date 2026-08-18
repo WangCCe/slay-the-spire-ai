@@ -119,7 +119,18 @@ std::string encounterName(sts::MonsterEncounter encounter) {
 }
 
 int playerPower(const sts::Player &player, PlayerStatus status) {
-    return player.getStatusRuntime(status);
+    switch (status) {
+        case PS::ARTIFACT:
+            return player.artifact;
+        case PS::DEXTERITY:
+            return player.dexterity;
+        case PS::STRENGTH:
+            return player.strength;
+        default: {
+            const auto it = player.statusMap.find(status);
+            return it == player.statusMap.end() ? 0 : it->second;
+        }
+    }
 }
 
 json playerPowers(const sts::Player &player) {

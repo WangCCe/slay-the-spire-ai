@@ -440,6 +440,43 @@ def test_opt_in_native_environment_mapping_clone_and_provenance():
         NativeCombatEnvironment.reset(module, seed=0, ascension=0, battle_index=64)
 
 
+def test_native_snapshot_tolerates_expired_player_status_map_entry():
+    from analysis_scripts.combat_lightspeed_bridge import (
+        NativeCombatEnvironment,
+        load_native_module,
+    )
+
+    module_path = os.environ.get("STS_LIGHTSPEED_COMBAT_ADAPTER_MODULE")
+    if not module_path:
+        pytest.skip("native combat adapter path is not configured")
+    dll_directory = os.environ.get("STS_LIGHTSPEED_MINGW_BIN")
+    module = load_native_module(
+        module_path,
+        dll_directories=(() if not dll_directory else (dll_directory,)),
+    )
+    environment = NativeCombatEnvironment.reset(
+        module,
+        seed=82001,
+        ascension=0,
+        battle_index=9,
+    )
+    for action_id in (
+        "play_card:0:1",
+        "play_card:0:1",
+        "play_card:0:0",
+        "use_potion:0:0",
+        "play_card:4:1",
+        "use_potion:1:0",
+        "end_turn",
+    ):
+        environment.step(action_id)
+
+    snapshot = environment.snapshot()
+
+    assert snapshot["state"]["input_state"] == "PLAYER_NORMAL"
+    assert snapshot["state"]["turn"] == 1
+
+
 def test_production_agent_import_does_not_load_combat_bridge():
     code = (
         "import sys;"
