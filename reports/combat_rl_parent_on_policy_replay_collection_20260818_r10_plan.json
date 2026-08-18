@@ -1,0 +1,69 @@
+{
+  "schema_version": 1,
+  "collection_id": "combat-rl-parent-on-policy-replay-collection-20260818-r10",
+  "source_commit": "f6d21b2f6181088a21cd3beb58dc6db9d0be2931",
+  "purpose": "Collect a fresh promoted-r8 replay cohort for one frozen r13 End Turn trust confirmation.",
+  "authority": "Zero-update replay collection and one frozen offline confirmation only; no candidate inference during collection, live comparison, or automatic promotion.",
+  "initializer_checkpoint": {
+    "path": "reports/combat_rl_parent_on_policy_replay_collection_20260818_r8/rl_combat_model_parent_empty_replay_learning_starts_100000.pth",
+    "sha256": "7649102f57b5562ce9d0c28e1055012c307828903078697e609185f954b3a799",
+    "epsilon": 0.0,
+    "learning_starts": 100000,
+    "replay_transition_count": 0,
+    "online_and_target_equal_promoted_parent": true,
+    "optimizer_state_is_empty": true,
+    "reused_as_immutable_input": true
+  },
+  "promoted_parent": {
+    "path": "reports/combat_rl_single_step_sgd_trust_region_20260817_r8/rl_combat_model_second_single_step_sgd_candidate.pth",
+    "sha256": "edf7d33124a3fbbc3abee6bae6c7b9654ea9a9191dcf151e5c0b000c71a4f454"
+  },
+  "frozen_candidate": {
+    "path": "reports/combat_rl_return_end_turn_trust_20260818_r13/rl_combat_model_return_end_turn_trust_candidate.pth",
+    "sha256": "b05bbb904bee075628691565de98fbdc119bbae0fc2cc2e41e55acd5084bafe7",
+    "development_selection": "reports/combat_rl_return_end_turn_trust_20260818_r13/selection.json",
+    "development_selection_sha256": "f7a74a080f2701ec8f992e485d5f3c07c4a589be6f15957612b98156719bcc30",
+    "must_not_be_loaded_during_collection": true
+  },
+  "collection": {
+    "games": 20,
+    "epsilon": 0.0,
+    "boss_min_epsilon": 0.0,
+    "elite_route": "conservative",
+    "ascension": 0,
+    "seed_pool": "reports/combat_rl_parent_on_policy_replay_collection_20260818_r10_seed_pool.txt",
+    "seed_pool_sha256": "d214ca125182dd0c191547b8f1dbd98d7f9affb589cd17f8ae95f99cb4c5df25",
+    "seeds_are_unique_within_repo_seed_pool_artifacts": true,
+    "launch_config": "reports/combat_rl_parent_on_policy_replay_collection_20260818_r10.properties",
+    "launch_config_sha256": "5a871e94d59934aaf0d2cdf7ad2c97fc6fafea5c46d91cdee4e4137862594ae9",
+    "training_updates_disabled_by_learning_starts": true,
+    "expert_mix_disabled": true
+  },
+  "fresh_confirmation_rule": {
+    "single_evaluation_only": true,
+    "objective_horizon": 4096,
+    "gamma": 0.99,
+    "full_combat_return_smooth_l1_must_improve": true,
+    "one_step_smooth_l1_must_improve": true,
+    "parent_action_agreement_min": 0.99,
+    "off_target_parent_disagreement_max": 0.01,
+    "positive_energy_end_turn_count_increase_max": 1,
+    "candidate_relative_l2_must_equal_frozen_value": 0.00000782774006797261,
+    "no_parameter_or_threshold_changes_after_collection_start": true
+  },
+  "required_collection_checks": {
+    "complete_exactly_20_games": true,
+    "all_run_seeds_match_in_order": true,
+    "online_and_target_remain_equal_to_promoted_parent": true,
+    "optimizer_state_remains_empty": true,
+    "optimizer_step_remains_zero": true,
+    "no_training_losses_are_emitted": true,
+    "no_post_start_runtime_failures": true
+  },
+  "execution_policy": {
+    "after_first_game_preserve_seed_order_and_parameters": true,
+    "do_not_substitute_a_different_cohort_after_observing_results": true,
+    "restore_promoted_production_configuration_after_completion": true
+  },
+  "next_step": "Collect once, freeze the replay evidence, then evaluate r13 exactly once before considering any matched live gate."
+}
