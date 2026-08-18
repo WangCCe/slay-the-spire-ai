@@ -1,0 +1,72 @@
+{
+  "schema_version": 1,
+  "gate_id": "combat-rl-return-end-turn-trust-zero-epsilon-gate-20260818-r1",
+  "source_commit": "48badd3a831db70aae6b9e588eee014b4c2db0c9",
+  "decision": "retain_promoted_r8_r13_has_no_observable_live_benefit",
+  "inputs": {
+    "preregistration": "reports/combat_rl_return_end_turn_trust_zero_epsilon_gate_20260818_r1_preregistration.json",
+    "preregistration_sha256": "7ae41d3b5c869774841db216463426addb45fb1c04d6cb2ae0008b6f935cb788",
+    "candidate_arm_report": "reports/combat_rl_return_end_turn_trust_zero_epsilon_gate_20260818_r1/candidate/report.json",
+    "candidate_arm_report_sha256": "8d322a6cdbacab7a105f0eac2cc90a3f31ca12a8665b20cab8dddced1970b04e",
+    "parent_arm_report": "reports/combat_rl_return_end_turn_trust_zero_epsilon_gate_20260818_r1/parent/report.json",
+    "parent_arm_report_sha256": "7b29d9c1177ec9c56cd1d719df35a9f3c783d7a07f0098c30e0575bdf60be2ad"
+  },
+  "execution": {
+    "arm_order": ["candidate", "parent"],
+    "games_per_arm": 20,
+    "candidate_completed_games": 20,
+    "parent_completed_games": 20,
+    "all_seed_pairs_matched": true,
+    "native_recovery_used": false,
+    "candidate_runtime_clean": true,
+    "parent_runtime_clean": true
+  },
+  "paired_outcomes": {
+    "candidate_floors": [22, 16, 10, 33, 28, 30, 16, 33, 16, 16, 16, 16, 33, 30, 16, 16, 14, 33, 21, 24],
+    "parent_floors": [22, 16, 10, 33, 28, 30, 16, 33, 16, 16, 16, 16, 33, 30, 16, 16, 14, 33, 21, 24],
+    "floor_deltas": [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+    "candidate_paired_floor_wins": 0,
+    "parent_paired_floor_wins": 0,
+    "tied_floor_pairs": 20,
+    "candidate_total_floors": 439,
+    "parent_total_floors": 439,
+    "candidate_victories": 0,
+    "parent_victories": 0,
+    "candidate_act_2_entries": 10,
+    "parent_act_2_entries": 10,
+    "candidate_act_2_boss_reaches": 4,
+    "parent_act_2_boss_reaches": 4,
+    "candidate_act_3_entries": 0,
+    "parent_act_3_entries": 0
+  },
+  "qualification": {
+    "candidate_paired_floor_wins_exceed_parent": false,
+    "at_least_one_floor_pair_non_tied": false,
+    "candidate_victories_at_least_parent": true,
+    "candidate_act_2_entries_at_least_parent": true,
+    "candidate_act_2_boss_reaches_at_least_parent": true,
+    "candidate_act_3_entries_at_least_parent": true,
+    "candidate_total_floors_at_least_parent": true,
+    "both_arms_completed_all_games": true,
+    "all_seed_pairs_matched": true,
+    "both_arms_runtime_clean": true,
+    "all_conditions_passed": false
+  },
+  "runtime_evidence": {
+    "candidate_decision_trace_rows": 6438,
+    "parent_decision_trace_rows": 6440,
+    "candidate_sim_divergence_rows": 21,
+    "parent_sim_divergence_rows": 21,
+    "candidate_tracebacks_criticals_or_nonzero_rl_failures": 0,
+    "parent_tracebacks_criticals_or_nonzero_rl_failures": 0
+  },
+  "isolation": {
+    "production_checkpoint_unchanged": true,
+    "production_config_restored": true,
+    "production_config_sha256": "f87804b2768b8ff53d0760fbfd267c5282afed21081ea888c336e0263041efcb",
+    "remaining_project_python_processes": 0,
+    "remaining_game_processes": 0,
+    "candidate_promoted": false
+  },
+  "next_step": "Keep the End Turn trust constraint, increase effective full-return step size using consumed replay only, and require all four replay cohorts to pass before another fresh holdout."
+}

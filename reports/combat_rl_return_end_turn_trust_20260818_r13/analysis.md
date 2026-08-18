@@ -2,9 +2,9 @@
 
 ## Decision
 
-The frozen preservation-weight `0.25` candidate passed one fresh production-
-policy replay confirmation and is eligible for one separately registered
-bounded live gate. It is not promoted and production remains on r8.
+Retain r13 as a behavior-safe offline negative, but do not promote it. It passed
+fresh replay confirmation and then tied production r8 on all 20 matched live
+floor outcomes. Production remains on r8.
 
 The candidate was fitted on consumed r7 replay with the r12 full-combat-return
 objective, eight full-dataset SGD steps, learning rate `0.0002`, TD weight
@@ -51,9 +51,16 @@ argument used the correct registered prefix but an incorrect expanded suffix;
 `r10_fresh_confirmation_provenance_erratum.json` binds the actual full commit.
 No metric, checkpoint, replay, threshold, or evaluation execution is affected.
 
+## Matched live gate
+
+Candidate and parent produced the same 20-floor vector, 439 total floors, ten
+Act 2 entries, four Act 2 boss reaches, zero Act 3 entries, and zero victories.
+All 20 floor pairs tied and both runtime bundles were clean. The preregistered
+non-tie requirement failed, so r13 has no observable live benefit.
+
 ## Next step
 
-Register one 20-pair, zero-epsilon live gate against production r8 using a new
-shared seed pool. Keep the candidate, parent, route policy, and thresholds
-fixed. Promotion requires a non-regressive paired outcome and clean runtime
-evidence; passing replay metrics alone is insufficient.
+Do not repeat this cohort. Keep the End Turn trust term and test a larger
+effective full-return step using consumed replay only. Require r6, r8, r9, and
+r10 to pass the same loss and behavior guards before collecting another fresh
+holdout.

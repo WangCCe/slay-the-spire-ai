@@ -1480,18 +1480,28 @@ The next authorized sequence is:
     the correct `38b80ac9f` prefix; preserve it unchanged with the published
     erratum and do not rerun. R13 is eligible for one separately registered
     matched live gate, not automatic promotion.
+67. Preserve the r13 matched live gate as a clean all-tie negative. Candidate
+    and production r8 completed all 20 shared seeds without native recovery or
+    policy runtime failure and produced the identical floor vector, 439 total
+    floors, ten Act 2 entries, four Act 2 boss reaches, zero Act 3 entries, and
+    zero victories. Candidate paired wins and parent paired wins were both zero;
+    all 20 pairs tied. The preregistered non-tie requirement therefore failed
+    and r13 is not promoted. This shows the `alpha=0.5` trust-constrained return
+    update is behaviorally safe but too small to create observable live value.
+    Do not rerun or tune against this cohort. Keep the direct End Turn trust
+    constraint and use consumed replay to investigate a larger effective step,
+    with r6/r8/r9/r10 all required to pass before another fresh holdout.
 
 ## Work Lanes
 
-The active lane is bounded combat-RL policy improvement. R13 combines the full-
-combat-return objective with a direct parent non-End-over-End preservation
-constraint, passes consumed development replays r6/r8/r9, and now passes its
-single fresh r10 confirmation. The immediate next step is one separately
-registered 20-pair live gate against production r8 on a new shared seed pool.
-Keep model bytes, route policy, epsilon, and thresholds fixed. Production
-remains on r8 until paired outcome and runtime evidence support promotion. The
-near-term measure is repeatable Act 3 and victory coverage, not whether another
-one-off win can be found.
+The active lane is bounded combat-RL policy improvement. R13 proved that the
+full-combat-return objective can be made behaviorally safe with a direct parent
+non-End-over-End constraint, but its 20-pair live gate tied production r8 on
+every floor outcome. The immediate next step is consumed-replay fitting of a
+larger effective full-return step under the same trust constraint, validated on
+r6/r8/r9/r10 before any new fresh replay. Production remains on r8. The near-
+term measure is repeatable Act 3 and victory coverage, not whether another one-
+off win can be found.
 
 The non-combat card-acceptance lane remains paused at its r6 zero-byte
 source-binding infrastructure failure. Resume it only as a separately

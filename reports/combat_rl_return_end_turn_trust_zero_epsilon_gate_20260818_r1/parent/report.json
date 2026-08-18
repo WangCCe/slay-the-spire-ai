@@ -1,0 +1,88 @@
+{
+  "arm": "parent",
+  "checkpoint": {
+    "path": "reports/combat_rl_single_step_sgd_trust_region_20260817_r8/rl_combat_model_second_single_step_sgd_candidate.pth",
+    "sha256": "edf7d33124a3fbbc3abee6bae6c7b9654ea9a9191dcf151e5c0b000c71a4f454"
+  },
+  "decision": "arm_complete",
+  "execution": {
+    "completed_games": 20,
+    "cutoff_unix_time": 1787020278,
+    "native_recovery_used": false,
+    "seed_order_matched": true,
+    "termination": "natural_max_games"
+  },
+  "gate_id": "combat-rl-return-end-turn-trust-zero-epsilon-gate-20260818-r1",
+  "run_files": [
+    "1787020475.run",
+    "1787020567.run",
+    "1787020608.run",
+    "1787020747.run",
+    "1787020899.run",
+    "1787021037.run",
+    "1787021107.run",
+    "1787021279.run",
+    "1787021375.run",
+    "1787021474.run",
+    "1787021544.run",
+    "1787021586.run",
+    "1787021811.run",
+    "1787021917.run",
+    "1787022012.run",
+    "1787022100.run",
+    "1787022160.run",
+    "1787022353.run",
+    "1787022479.run",
+    "1787022588.run"
+  ],
+  "run_outcomes": {
+    "act_2_boss_reached": 4,
+    "act_2_reached": 10,
+    "act_3_reached": 0,
+    "floor_max": 33,
+    "floor_mean": 21.95,
+    "floor_median": 18.5,
+    "floor_min": 10,
+    "floor_total": 439,
+    "floors": [
+      22,
+      16,
+      10,
+      33,
+      28,
+      30,
+      16,
+      33,
+      16,
+      16,
+      16,
+      16,
+      33,
+      30,
+      16,
+      16,
+      14,
+      33,
+      21,
+      24
+    ],
+    "playtime_seconds": 2142,
+    "wins": 0
+  },
+  "runtime_evidence": {
+    "archive": "reports/combat_rl_return_end_turn_trust_zero_epsilon_gate_20260818_r1/parent/runtime_evidence.zip",
+    "archive_entry_count": 8,
+    "archive_sha256": "7c056c569b075f08a71023470e63a2ae7bd933895e32e2e6079683b99c542606",
+    "archive_size_bytes": 4268449,
+    "critical_count": 0,
+    "debug_log_count": 5,
+    "decision_trace_rows": 6440,
+    "decision_trace_sources": {
+      "combat_rl": 6440
+    },
+    "nonzero_rl_failure_count": 0,
+    "sim_divergence_rows": 21,
+    "traceback_count": 0
+  },
+  "schema_version": 1
+}
