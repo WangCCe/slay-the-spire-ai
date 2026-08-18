@@ -1491,17 +1491,28 @@ The next authorized sequence is:
     Do not rerun or tune against this cohort. Keep the direct End Turn trust
     constraint and use consumed replay to investigate a larger effective step,
     with r6/r8/r9/r10 all required to pass before another fresh holdout.
+68. Preserve r14 and r15 as the bounded step-size follow-up. The full-step r14
+    update improved full-return and one-step losses everywhere and its trust
+    term removed new positive-energy End Turns, but no weight passed all four
+    replay guards because parent agreement and off-target disagreement crossed
+    their fixed boundaries. Do not admit it by adding more trust weight or
+    weakening thresholds. The intermediate `alpha=0.75` r15 candidate selected
+    trust weight `0.25` and passed r6/r8/r9/r10: at least `99.2389%` parent
+    agreement, at most `0.7396%` off-target disagreement, lower positive-energy
+    End Turn count on every replay, and improvement in both losses. Freeze SHA-
+    256 `fcef143b8387fcee27e5f29cd53283e509cc5fbd3eec5c6b77cdebbdf4645b73`
+    for one fresh production-r8 replay confirmation only. It has no live or
+    promotion authority.
 
 ## Work Lanes
 
-The active lane is bounded combat-RL policy improvement. R13 proved that the
-full-combat-return objective can be made behaviorally safe with a direct parent
-non-End-over-End constraint, but its 20-pair live gate tied production r8 on
-every floor outcome. The immediate next step is consumed-replay fitting of a
-larger effective full-return step under the same trust constraint, validated on
-r6/r8/r9/r10 before any new fresh replay. Production remains on r8. The near-
-term measure is repeatable Act 3 and victory coverage, not whether another one-
-off win can be found.
+The active lane is bounded combat-RL policy improvement. R13's half step was
+safe but tied production on all 20 live pairs; r14's full step was too broad;
+r15's three-quarter step now passes all fixed loss and behavior guards on
+consumed r6/r8/r9/r10. The immediate next step is one fresh 20-game,
+zero-update replay under production r8 and a single frozen r15 confirmation.
+Production remains on r8. The near-term measure is repeatable Act 3 and victory
+coverage, not whether another one-off win can be found.
 
 The non-combat card-acceptance lane remains paused at its r6 zero-byte
 source-binding infrastructure failure. Resume it only as a separately
