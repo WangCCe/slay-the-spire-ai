@@ -16,4 +16,4 @@
 
 ## 4. Closeout
 
-- [ ] 4.1 Commit and push the implementation and report, sync the new capability spec, and archive the completed change.
+- [x] 4.1 Commit and push the implementation and report, sync the new capability spec, and archive the completed change.
