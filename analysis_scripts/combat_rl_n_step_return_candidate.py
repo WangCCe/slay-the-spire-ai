@@ -32,6 +32,8 @@ from combat_rl_positive_energy_imitation_ablation import (  # noqa: E402
     _parent_anchor_loss,
     _state_dict_equal,
 )
+from spirecomm.ai.rl.v2.action_space import END_TURN_ACTION  # noqa: E402
+from spirecomm.ai.rl.v2.state_encoder import StateEncoderV2  # noqa: E402
 
 
 def _sha256(path: Path) -> str:
@@ -127,6 +129,53 @@ def _evaluate_n_step(
     return metrics
 
 
+def _positive_energy_non_end_preservation_loss(
+    current_q_values: torch.Tensor,
+    anchor_q_values: torch.Tensor,
+    action_masks: torch.Tensor,
+    continuous: torch.Tensor,
+    *,
+    margin_floor: float,
+) -> tuple[torch.Tensor, int, int]:
+    """Penalize erosion of the parent's non-End-over-End margin."""
+    if not math.isfinite(margin_floor) or margin_floor < 0.0:
+        raise ValueError("End Turn preservation margin floor must be non-negative")
+    if current_q_values.shape != anchor_q_values.shape:
+        raise ValueError("Current and anchor Q-value shapes differ")
+    if action_masks.shape != current_q_values.shape:
+        raise ValueError("Action-mask and Q-value shapes differ")
+    if current_q_values.shape[1] <= END_TURN_ACTION:
+        raise ValueError("Action space does not contain End Turn")
+
+    rows = torch.arange(current_q_values.shape[0], device=current_q_values.device)
+    parent_actions = anchor_q_values.argmax(dim=1)
+    positive_energy = continuous[
+        :, StateEncoderV2.ENERGY_RATIO_INDEX
+    ].gt(0.0)
+    eligible = (
+        positive_energy
+        & parent_actions.ne(END_TURN_ACTION)
+        & action_masks[:, END_TURN_ACTION]
+    )
+    if not bool(eligible.any()):
+        zero = torch.zeros(
+            (), dtype=current_q_values.dtype, device=current_q_values.device
+        )
+        return zero, 0, 0
+
+    parent_margin = (
+        anchor_q_values[rows, parent_actions]
+        - anchor_q_values[:, END_TURN_ACTION]
+    )
+    required_margin = parent_margin.clamp_min(margin_floor)
+    current_margin = (
+        current_q_values[rows, parent_actions]
+        - current_q_values[:, END_TURN_ACTION]
+    )
+    violations = torch.relu(required_margin[eligible] - current_margin[eligible])
+    return violations.sum(), int(eligible.sum()), int(violations.gt(0.0).sum())
+
+
 def _fit(
     *,
     parent: dict,
@@ -188,11 +237,18 @@ def _fit_full_gradient(
     learning_rate: float,
     td_weight: float,
     optimizer_name: str = "adam",
+    end_turn_preservation_weight: float = 0.0,
+    end_turn_preservation_margin_floor: float = 0.0,
 ) -> tuple[torch.nn.Module, dict]:
     if chunk_size <= 0:
         raise ValueError("Full-gradient chunk size must be positive")
     if steps <= 0:
         raise ValueError("Full-gradient steps must be positive")
+    if (
+        not math.isfinite(end_turn_preservation_weight)
+        or end_turn_preservation_weight < 0.0
+    ):
+        raise ValueError("End Turn preservation weight must be non-negative")
 
     online = _make_network(metadata, parent["online_network_state_dict"])
     anchor = _make_network(metadata, parent["online_network_state_dict"])
@@ -219,6 +275,9 @@ def _fit_full_gradient(
         optimizer.zero_grad()
         td_loss_sum = 0.0
         anchor_loss_sum = 0.0
+        preservation_loss_sum = 0.0
+        preservation_eligible_count = 0
+        preservation_violation_count = 0
         for start in range(0, train_count, chunk_size):
             indices = torch.arange(start, min(start + chunk_size, train_count))
             rows = torch.arange(indices.numel())
@@ -236,13 +295,35 @@ def _fit_full_gradient(
                 anchor_q[action_masks],
                 reduction="sum",
             )
+            if end_turn_preservation_weight > 0.0:
+                preservation_sum, eligible_count, violation_count = (
+                    _positive_energy_non_end_preservation_loss(
+                        q_values,
+                        anchor_q,
+                        action_masks,
+                        replay["continuous"][indices].float(),
+                        margin_floor=end_turn_preservation_margin_floor,
+                    )
+                )
+            else:
+                preservation_sum = torch.zeros(
+                    (), dtype=q_values.dtype, device=q_values.device
+                )
+                eligible_count = 0
+                violation_count = 0
             loss = (
                 td_weight * td_sum / train_count
                 + anchor_sum / valid_action_count
+                + end_turn_preservation_weight
+                * preservation_sum
+                / train_count
             )
             loss.backward()
             td_loss_sum += float(td_sum)
             anchor_loss_sum += float(anchor_sum)
+            preservation_loss_sum += float(preservation_sum)
+            preservation_eligible_count += eligible_count
+            preservation_violation_count += violation_count
 
         gradient_norm = float(
             torch.nn.utils.clip_grad_norm_(online.parameters(), max_norm=10.0)
@@ -250,11 +331,23 @@ def _fit_full_gradient(
         optimizer.step()
         mean_td_loss = td_loss_sum / train_count
         mean_anchor_loss = anchor_loss_sum / valid_action_count
+        mean_preservation_loss = preservation_loss_sum / train_count
         step_metrics.append(
             {
                 "mean_td_loss": mean_td_loss,
                 "mean_anchor_loss": mean_anchor_loss,
-                "mean_total_loss": td_weight * mean_td_loss + mean_anchor_loss,
+                "mean_end_turn_preservation_loss": mean_preservation_loss,
+                "end_turn_preservation_eligible_count": (
+                    preservation_eligible_count
+                ),
+                "end_turn_preservation_violation_count": (
+                    preservation_violation_count
+                ),
+                "mean_total_loss": (
+                    td_weight * mean_td_loss
+                    + mean_anchor_loss
+                    + end_turn_preservation_weight * mean_preservation_loss
+                ),
                 "gradient_norm": gradient_norm,
             }
         )
@@ -272,6 +365,14 @@ def _fit_full_gradient(
         / steps,
         "mean_anchor_loss": sum(row["mean_anchor_loss"] for row in step_metrics)
         / steps,
+        "mean_end_turn_preservation_loss": sum(
+            row["mean_end_turn_preservation_loss"] for row in step_metrics
+        )
+        / steps,
+        "end_turn_preservation_weight": end_turn_preservation_weight,
+        "end_turn_preservation_margin_floor": (
+            end_turn_preservation_margin_floor
+        ),
     }
 
 
@@ -296,6 +397,10 @@ def _fit_for_configuration(
             learning_rate=args.learning_rate,
             td_weight=args.td_weight,
             optimizer_name=args.full_gradient_optimizer,
+            end_turn_preservation_weight=args.end_turn_preservation_weight,
+            end_turn_preservation_margin_floor=(
+                args.end_turn_preservation_margin_floor
+            ),
         )
 
     batches = _build_batches(
@@ -487,6 +592,10 @@ def run(args: argparse.Namespace) -> dict:
             "td_weight": args.td_weight,
             "parent_anchor_objective": "q_smooth_l1",
             "parent_anchor_weight": 1.0,
+            "end_turn_preservation_weight": args.end_turn_preservation_weight,
+            "end_turn_preservation_margin_floor": (
+                args.end_turn_preservation_margin_floor
+            ),
             "imitation_weight": 0.0,
             "interpolation_alphas": args.interpolation_alphas,
         },
@@ -559,6 +668,12 @@ def run(args: argparse.Namespace) -> dict:
                     "batch_size": args.batch_size,
                     "learning_rate": args.learning_rate,
                     "td_weight": args.td_weight,
+                    "end_turn_preservation_weight": (
+                        args.end_turn_preservation_weight
+                    ),
+                    "end_turn_preservation_margin_floor": (
+                        args.end_turn_preservation_margin_floor
+                    ),
                     "interpolation_alpha": selected_alpha,
                 },
             }
@@ -614,6 +729,12 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--candidate-seed", type=int, default=404)
     parser.add_argument("--learning-rate", type=float, default=1e-4)
     parser.add_argument("--td-weight", type=float, default=0.05)
+    parser.add_argument(
+        "--end-turn-preservation-weight", type=float, default=0.0
+    )
+    parser.add_argument(
+        "--end-turn-preservation-margin-floor", type=float, default=0.0
+    )
     parser.add_argument("--interpolation-alphas", type=float, nargs="+", default=[0.25, 0.5, 0.75])
     return parser
 

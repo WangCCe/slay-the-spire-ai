@@ -4,7 +4,9 @@ import torch
 from analysis_scripts.combat_rl_n_step_return_candidate import (
     _fit_full_gradient,
     _n_step_targets_from_bootstrap,
+    _positive_energy_non_end_preservation_loss,
 )
+from spirecomm.ai.rl.v2.action_space import END_TURN_ACTION
 from spirecomm.ai.rl.v2.network import create_dqn_v2
 
 
@@ -167,3 +169,39 @@ def test_full_gradient_sgd_uses_registered_optimizer():
         not torch.equal(value, parent["online_network_state_dict"][name])
         for name, value in trained.state_dict().items()
     )
+
+
+def test_positive_energy_non_end_preservation_loss_targets_margin_erosion():
+    action_dim = END_TURN_ACTION + 1
+    anchor = torch.zeros((3, action_dim))
+    anchor[0, 3] = 2.0
+    anchor[1, 4] = 2.0
+    anchor[2, END_TURN_ACTION] = 2.0
+    current = anchor.clone().requires_grad_(True)
+    current.data[0, 3] = 0.5
+    current.data[0, END_TURN_ACTION] = 1.0
+    masks = torch.ones((3, action_dim), dtype=torch.bool)
+    continuous = torch.tensor(
+        [
+            [0.0, 0.6],
+            [0.0, 0.0],
+            [0.0, 0.6],
+        ]
+    )
+
+    loss, eligible_count, violation_count = (
+        _positive_energy_non_end_preservation_loss(
+            current,
+            anchor,
+            masks,
+            continuous,
+            margin_floor=0.0,
+        )
+    )
+
+    assert loss.item() == pytest.approx(2.5)
+    assert eligible_count == 1
+    assert violation_count == 1
+    loss.backward()
+    assert current.grad[0, 3].item() == pytest.approx(-1.0)
+    assert current.grad[0, END_TURN_ACTION].item() == pytest.approx(1.0)
