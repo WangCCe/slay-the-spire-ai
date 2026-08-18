@@ -24,8 +24,9 @@ from combat_rl_n_step_return_candidate import (  # noqa: E402
     _sha256,
 )
 from combat_rl_outcome_constrained_pairwise_candidate import (  # noqa: E402
+    TD_ONLY_OFF_TARGET_DISAGREEMENT_MAX,
+    TD_ONLY_PARENT_AGREEMENT_MIN,
     _relative_l2,
-    _td_only_eligibility,
 )
 
 
@@ -37,7 +38,54 @@ def _decision(eligibility: dict) -> str:
     )
 
 
+def _eligibility(
+    metrics: dict,
+    baseline: dict,
+    *,
+    parent_action_agreement_min: float,
+    off_target_parent_disagreement_max: float,
+    positive_energy_end_turn_count_increase_max: int | None,
+    require_one_step_smooth_l1_improvement: bool,
+) -> dict:
+    checks = {
+        "smooth_l1_improved": metrics["smooth_l1"] < baseline["smooth_l1"],
+        "parent_action_agreement_passed": metrics["parent_action_agreement"]
+        >= parent_action_agreement_min,
+        "off_target_parent_disagreement_passed": metrics[
+            "off_target_parent_disagreement_share"
+        ]
+        <= off_target_parent_disagreement_max,
+    }
+    if require_one_step_smooth_l1_improvement:
+        checks["one_step_smooth_l1_improved"] = metrics[
+            "one_step_smooth_l1"
+        ] < baseline["one_step_smooth_l1"]
+    if positive_energy_end_turn_count_increase_max is not None:
+        checks["positive_energy_end_turn_count_passed"] = metrics[
+            "positive_energy_end_turn_count"
+        ] <= (
+            baseline["positive_energy_end_turn_count"]
+            + positive_energy_end_turn_count_increase_max
+        )
+    checks["all_conditions_passed"] = all(checks.values())
+    return checks
+
+
 def run(args: argparse.Namespace) -> dict:
+    if args.horizon <= 0:
+        raise ValueError("Return horizon must be positive")
+    if not 0.0 <= args.gamma <= 1.0:
+        raise ValueError("Gamma must be within [0, 1]")
+    if not 0.0 <= args.parent_action_agreement_min <= 1.0:
+        raise ValueError("Parent action agreement threshold must be within [0, 1]")
+    if not 0.0 <= args.off_target_parent_disagreement_max <= 1.0:
+        raise ValueError("Off-target disagreement threshold must be within [0, 1]")
+    if (
+        args.positive_energy_end_turn_count_increase_max is not None
+        and args.positive_energy_end_turn_count_increase_max < 0
+    ):
+        raise ValueError("Positive-energy End Turn increase must be non-negative")
+
     parent_path = args.parent_checkpoint.resolve()
     candidate_path = args.candidate_checkpoint.resolve()
     replay_path = args.replay_checkpoint.resolve()
@@ -55,6 +103,10 @@ def run(args: argparse.Namespace) -> dict:
     provenance = candidate.get("provenance", {})
     if provenance.get("parent_checkpoint_sha256") != parent_hash:
         raise ValueError("Candidate provenance does not bind the parent checkpoint")
+    if int(provenance.get("horizon", 1)) != args.horizon:
+        raise ValueError("Candidate provenance does not bind the requested horizon")
+    if abs(float(provenance.get("gamma", args.gamma)) - args.gamma) > 1e-12:
+        raise ValueError("Candidate provenance does not bind the requested gamma")
 
     parent_state = parent["online_network_state_dict"]
     parent_target_state = parent.get("target_network_state_dict", parent_state)
@@ -68,7 +120,7 @@ def run(args: argparse.Namespace) -> dict:
         parent_online,
         parent_target,
         replay,
-        horizon=1,
+        horizon=args.horizon,
         gamma=args.gamma,
     )
     with torch.no_grad():
@@ -87,7 +139,20 @@ def run(args: argparse.Namespace) -> dict:
         parent_actions,
         targets,
     )
-    eligibility = _td_only_eligibility(candidate_metrics, baseline)
+    eligibility = _eligibility(
+        candidate_metrics,
+        baseline,
+        parent_action_agreement_min=args.parent_action_agreement_min,
+        off_target_parent_disagreement_max=(
+            args.off_target_parent_disagreement_max
+        ),
+        positive_energy_end_turn_count_increase_max=(
+            args.positive_energy_end_turn_count_increase_max
+        ),
+        require_one_step_smooth_l1_improvement=(
+            args.require_one_step_smooth_l1_improvement
+        ),
+    )
     result = {
         "schema_version": 1,
         "gate_id": args.gate_id,
@@ -113,14 +178,23 @@ def run(args: argparse.Namespace) -> dict:
             },
         },
         "design": {
-            "objective": "frozen_candidate_one_step_double_dqn_replay_gate",
+            "objective": "frozen_candidate_n_step_replay_gate",
+            "horizon": args.horizon,
             "gamma": args.gamma,
             "model_fitting": False,
             "checkpoint_writing": False,
             "eligibility_thresholds": {
                 "smooth_l1_must_improve": True,
-                "parent_action_agreement_min": 0.98,
-                "off_target_parent_disagreement_max": 0.02,
+                "one_step_smooth_l1_must_improve": (
+                    args.require_one_step_smooth_l1_improvement
+                ),
+                "parent_action_agreement_min": args.parent_action_agreement_min,
+                "off_target_parent_disagreement_max": (
+                    args.off_target_parent_disagreement_max
+                ),
+                "positive_energy_end_turn_count_increase_max": (
+                    args.positive_energy_end_turn_count_increase_max
+                ),
             },
         },
         "parent_baseline": baseline,
@@ -149,7 +223,27 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--output", type=Path, required=True)
     parser.add_argument("--gate-id", required=True)
     parser.add_argument("--source-commit", required=True)
+    parser.add_argument("--horizon", type=int, default=1)
     parser.add_argument("--gamma", type=float, default=0.99)
+    parser.add_argument(
+        "--parent-action-agreement-min",
+        type=float,
+        default=TD_ONLY_PARENT_AGREEMENT_MIN,
+    )
+    parser.add_argument(
+        "--off-target-parent-disagreement-max",
+        type=float,
+        default=TD_ONLY_OFF_TARGET_DISAGREEMENT_MAX,
+    )
+    parser.add_argument(
+        "--positive-energy-end-turn-count-increase-max",
+        type=int,
+        default=None,
+    )
+    parser.add_argument(
+        "--require-one-step-smooth-l1-improvement",
+        action="store_true",
+    )
     return parser
 
 
