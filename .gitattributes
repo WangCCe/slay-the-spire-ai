@@ -332,3 +332,12 @@ openspec/changes/add-combat-lightspeed-later-battle-surface/** text eol=lf
 openspec/changes/archive/*-add-combat-lightspeed-later-battle-surface/** text eol=lf
 reports/combat_lightspeed_later_battle_* text eol=lf
 reports/combat_lightspeed_later_battle_*/** text eol=lf
+
+# Preserve frozen combat LightSTS comparison source and evidence bytes.
+analysis_scripts/combat_lightspeed_frozen_candidate_comparison.py text eol=lf
+tests/test_combat_lightspeed_frozen_candidate_comparison.py text eol=lf
+openspec/changes/add-combat-lightspeed-frozen-candidate-comparison/** text eol=lf
+openspec/changes/archive/*-add-combat-lightspeed-frozen-candidate-comparison/** text eol=lf
+openspec/specs/combat-lightspeed-frozen-candidate-comparison/** text eol=lf
+reports/combat_lightspeed_frozen_candidate_comparison_* text eol=lf
+reports/combat_lightspeed_frozen_candidate_comparison_*/** text eol=lf
