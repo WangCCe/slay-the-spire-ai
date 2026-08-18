@@ -1,0 +1,79 @@
+{
+  "schema_version": "combat-lightspeed-discounted-return-analysis-v1",
+  "experiment_id": "combat-lightspeed-discounted-return-20260819-r1",
+  "registration": "reports/combat_lightspeed_discounted_return_20260819_r1_registration.json",
+  "arms": {
+    "one_step_control": {
+      "report": "reports/combat_lightspeed_discounted_return_20260819_r1_one_step_control/report.json",
+      "report_sha256": "fa6e815f4a884050cf2709fe195c9e9cb7782617fac0ef2e2a61b75c8083aa8f",
+      "checkpoint_sha256": "e2f6ba8f00256554566a1a98be366bccaf04f02aa489a46573511e4bb4ce0db8"
+    },
+    "discounted_return_candidate": {
+      "report": "reports/combat_lightspeed_discounted_return_20260819_r1_return_candidate/report.json",
+      "report_sha256": "9236d1b8b2416a3ed85805352b44432bf0784d170aa6d85d25631f7cfa37d658",
+      "checkpoint_sha256": "64e36c41fea08de8288580d758bd79fe462f752409183da4ed8d6ba3c2a48a68"
+    }
+  },
+  "technical": {
+    "all_registered_criteria_pass": true,
+    "verdicts": "technical_smoke_ready",
+    "optimizer_updates_per_arm": 256,
+    "source_transition_identity_sha256": "e4291b1715d4fce60c21cb0e1837cfc36d638a57193cf27f05855ead6e487338",
+    "source_replay_transition_count_per_arm": 67380,
+    "prepared_replay_transition_count_per_arm": 83148,
+    "source_replay_metrics_identical": true,
+    "parent_control_rows_identical": true,
+    "complete_profile_count_per_arm": 3415,
+    "excluded_incomplete_profile_count_per_arm": 2,
+    "excluded_incomplete_transition_count_per_arm": 200,
+    "incomplete_profile_reason_counts_per_arm": {"decision_bound": 2},
+    "unsupported_reason_counts_per_arm": {},
+    "evaluation_truncated_count_per_policy_per_arm": 0,
+    "return_target_reward": {
+      "count": 67380,
+      "minimum": -47.05720068386661,
+      "maximum": 83.40835209575499,
+      "mean": 18.766144794195945,
+      "sum": 1264462.8362329227
+    },
+    "return_terminal_target_count": 67380
+  },
+  "one_step_vs_parent": {
+    "aggregate": {"profile_count": 857, "mean_reward_delta": 0.6069205159085911, "mean_player_hp_delta": 0.808634772462077, "candidate_only_victories": 16, "parent_only_victories": 13},
+    "by_battle_index": {
+      "0": {"profile_count": 256, "mean_reward_delta": 0.12744140625000006, "mean_player_hp_delta": 0.1953125, "candidate_only_victories": 0, "parent_only_victories": 0},
+      "3": {"profile_count": 246, "mean_reward_delta": 1.2974647053557824, "mean_player_hp_delta": 1.386178861788618, "candidate_only_victories": 3, "parent_only_victories": 1},
+      "6": {"profile_count": 207, "mean_reward_delta": -0.13383772220658705, "mean_player_hp_delta": 0.32367149758454106, "candidate_only_victories": 7, "parent_only_victories": 8},
+      "9": {"profile_count": 148, "mean_reward_delta": 1.3245538723844852, "mean_player_hp_delta": 1.587837837837838, "candidate_only_victories": 6, "parent_only_victories": 4}
+    },
+    "promotion_authorized": false,
+    "reason": "This arm was registered only as the matched target-mode control and had an index-6 reward and victory regression."
+  },
+  "discounted_return_vs_parent": {
+    "aggregate": {"profile_count": 857, "mean_reward_delta": 0.04509722583443499, "mean_player_hp_delta": 0.024504084014002333, "candidate_only_victories": 11, "parent_only_victories": 11},
+    "by_battle_index": {
+      "0": {"profile_count": 256, "mean_reward_delta": -0.31582031250000014, "mean_player_hp_delta": -0.50390625, "candidate_only_victories": 0, "parent_only_victories": 0},
+      "3": {"profile_count": 246, "mean_reward_delta": 1.120774103025006, "mean_player_hp_delta": 1.0447154471544715, "candidate_only_victories": 3, "parent_only_victories": 1},
+      "6": {"profile_count": 207, "mean_reward_delta": -1.1131874536589441, "mean_player_hp_delta": -0.7391304347826086, "candidate_only_victories": 3, "parent_only_victories": 6},
+      "9": {"profile_count": 148, "mean_reward_delta": 0.5014709196173026, "mean_player_hp_delta": 0.3108108108108108, "candidate_only_victories": 5, "parent_only_victories": 4}
+    },
+    "all_registered_criteria_pass": false,
+    "failed_criteria": ["battle_index_0_mean_player_hp_delta_gte_0", "no_battle_index_mean_reward_delta_lt_-1.0"]
+  },
+  "discounted_return_vs_one_step": {
+    "aggregate": {"profile_count": 1024, "mean_reward_delta": -0.47019781210307826, "mean_player_hp_delta": -0.65625, "return_only_victories": 7, "one_step_only_victories": 10},
+    "by_battle_index": {
+      "0": {"mean_reward_delta": -0.4432617187500002, "mean_player_hp_delta": -0.69921875, "return_only_victories": 0, "one_step_only_victories": 0},
+      "3": {"mean_reward_delta": -0.16978862567722997, "mean_player_hp_delta": -0.328125, "return_only_victories": 1, "one_step_only_victories": 1},
+      "6": {"mean_reward_delta": -0.791896071916554, "mean_player_hp_delta": -0.859375, "return_only_victories": 3, "one_step_only_victories": 5},
+      "9": {"mean_reward_delta": -0.4758448320685273, "mean_player_hp_delta": -0.73828125, "return_only_victories": 3, "one_step_only_victories": 4}
+    },
+    "all_registered_criteria_pass": false
+  },
+  "decision": {
+    "value": "retain_r4",
+    "fresh_frozen_confirmation_authorized": false,
+    "reason": "The discounted-return arm passed every technical criterion but failed both policy gates, including a material battle-index-6 regression and negative reward and HP deltas against one-step TD at every evaluated battle index.",
+    "live_transfer_authorized": false
+  }
+}
