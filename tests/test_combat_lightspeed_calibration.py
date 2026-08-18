@@ -3,6 +3,7 @@ import subprocess
 import sys
 
 from analysis_scripts.combat_lightspeed_calibration import (
+    CalibrationConfig,
     REPORT_AUTHORITY,
     select_deterministic_action,
 )
@@ -52,6 +53,19 @@ def test_calibration_report_grants_no_runtime_or_policy_authority():
 
     assert set(REPORT_AUTHORITY) == expected
     assert not any(REPORT_AUTHORITY.values())
+
+
+def test_calibration_profiles_are_deterministic_seed_index_product():
+    config = CalibrationConfig(seeds=(7, 9), battle_indices=(0, 2, 4))
+
+    assert config.profiles() == (
+        (7, 0),
+        (7, 2),
+        (7, 4),
+        (9, 0),
+        (9, 2),
+        (9, 4),
+    )
 
 
 def test_calibration_script_supports_direct_execution():

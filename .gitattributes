@@ -326,3 +326,9 @@ openspec/changes/archive/*-add-combat-lightspeed-card-select-settlement/** text 
 openspec/specs/combat-lightspeed-bridge/** text eol=lf
 reports/combat_lightspeed_card_select_* text eol=lf
 reports/combat_lightspeed_card_select_*/** text eol=lf
+
+# Preserve later-battle combat bridge plans and calibration evidence bytes.
+openspec/changes/add-combat-lightspeed-later-battle-surface/** text eol=lf
+openspec/changes/archive/*-add-combat-lightspeed-later-battle-surface/** text eol=lf
+reports/combat_lightspeed_later_battle_* text eol=lf
+reports/combat_lightspeed_later_battle_*/** text eol=lf

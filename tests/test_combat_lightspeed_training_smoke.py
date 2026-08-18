@@ -92,6 +92,22 @@ def test_behavior_action_is_seeded_and_forces_end_turn_at_bound():
     assert bounded["kind"] == "end_turn"
 
 
+def test_training_profiles_are_deterministic_seed_index_product():
+    config = SmokeConfig(
+        train_seeds=(10, 11),
+        evaluation_seeds=(20,),
+        battle_indices=(0, 3),
+    )
+
+    config.validate()
+    assert config.profiles(config.train_seeds) == (
+        (10, 0),
+        (10, 3),
+        (11, 0),
+        (11, 3),
+    )
+
+
 def test_native_reward_uses_explicit_production_compatible_subset():
     reward = calculate_native_reward(
         _snapshot(),

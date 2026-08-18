@@ -30,14 +30,18 @@ using json = nlohmann::json;
 
 namespace {
 
-constexpr const char *ADAPTER_API_VERSION = "sts-lightspeed-combat-adapter-v2";
-constexpr const char *STATE_SCHEMA_VERSION = "sts-lightspeed-combat-state-v2";
+constexpr const char *ADAPTER_API_VERSION = "sts-lightspeed-combat-adapter-v3";
+constexpr const char *STATE_SCHEMA_VERSION = "sts-lightspeed-combat-state-v3";
 constexpr const char *SOURCE_TYPE = "sts_lightspeed_combat_simulation";
+constexpr const char *BASELINE_POLICY = "native_simple_agent_v1";
 constexpr int RL_ACTION_DIM = 133;
 constexpr int RL_TARGET_SLOTS = 6;
 constexpr int RL_POTION_OFFSET = 60;
 constexpr int RL_END_TURN_ACTION = 90;
 constexpr int MAX_CARD_SELECT_SETTLEMENTS = 8;
+constexpr int MAX_BATTLE_INDEX = 63;
+constexpr int MAX_OUT_OF_COMBAT_ACTIONS = 10000;
+constexpr int MAX_PRIOR_BATTLE_ACTIONS = 5000;
 
 constexpr std::array<sts::CardSelectTask, 14> SUPPORTED_CARD_SELECT_TASKS = {
     sts::CardSelectTask::ARMAMENTS,
@@ -188,14 +192,20 @@ struct Candidate {
 
 class CombatEnvironment {
 public:
-    CombatEnvironment(std::uint64_t seed, int ascension)
-        : gc_(sts::CharacterClass::IRONCLAD, seed, ascension) {
+    CombatEnvironment(std::uint64_t seed, int ascension, int battleIndex)
+        : gc_(sts::CharacterClass::IRONCLAD, seed, ascension),
+          requestedBattleIndex_(battleIndex) {
         if (ascension < 0 || ascension > 20) {
             throw std::invalid_argument("ascension must be in range 0..20");
         }
+        if (battleIndex < 0 || battleIndex > MAX_BATTLE_INDEX) {
+            throw std::invalid_argument(
+                "battle_index must be in range 0.." +
+                std::to_string(MAX_BATTLE_INDEX));
+        }
         gc_.info.encounter = sts::MonsterEncounter::INVALID;
         configureAgent();
-        advanceToFirstBattle();
+        advanceToBattle();
     }
 
     CombatEnvironment(const CombatEnvironment &other)
@@ -203,7 +213,9 @@ public:
           decisionCount_(other.decisionCount_),
           lastCardSelectSettlementCount_(other.lastCardSelectSettlementCount_),
           lastCardSelectTasks_(other.lastCardSelectTasks_),
-          cardSelectSettlementFailureReason_(other.cardSelectSettlementFailureReason_) {
+          cardSelectSettlementFailureReason_(other.cardSelectSettlementFailureReason_),
+          requestedBattleIndex_(other.requestedBattleIndex_),
+          reachedBattleIndex_(other.reachedBattleIndex_) {
         if (other.gc_.map) {
             gc_.map = std::make_shared<sts::Map>(*other.gc_.map);
         }
@@ -239,12 +251,28 @@ public:
         };
     }
 
+    json progressionJson() const {
+        return {
+            {"act", gc_.act},
+            {"baseline_policy", BASELINE_POLICY},
+            {"deck_size", gc_.deck.size()},
+            {"encounter", encounterName(battle_.encounter)},
+            {"floor", battle_.floorNum},
+            {"player_current_hp", battle_.player.curHp},
+            {"player_max_hp", battle_.player.maxHp},
+            {"reached_battle_index", reachedBattleIndex_},
+            {"relic_count", gc_.relics.relics.size()},
+            {"requested_battle_index", requestedBattleIndex_},
+        };
+    }
+
     std::string statusJson() const {
         return json({
             {"card_select_settlement", cardSelectSettlementJson()},
             {"decision_count", decisionCount_},
             {"input_state", inputStateName(battle_.inputState)},
             {"outcome", battleOutcomeName(battle_.outcome)},
+            {"progression", progressionJson()},
             {"supported", supported()},
             {"terminal", terminal()},
             {"unsupported_reason", unsupportedReason()},
@@ -253,13 +281,17 @@ public:
 
     std::string snapshotJson() const {
         json state = {
+            {"act", gc_.act},
             {"ascension", battle_.ascension},
+            {"battle_index", reachedBattleIndex_},
             {"decision_count", decisionCount_},
+            {"deck_size", gc_.deck.size()},
             {"encounter", encounterName(battle_.encounter)},
             {"floor", battle_.floorNum},
             {"input_state", inputStateName(battle_.inputState)},
             {"outcome", battleOutcomeName(battle_.outcome)},
             {"seed", std::to_string(battle_.seed)},
+            {"relic_count", gc_.relics.relics.size()},
             {"turn", battle_.turn},
         };
 
@@ -344,6 +376,7 @@ public:
         return json({
             {"adapter_api_version", ADAPTER_API_VERSION},
             {"card_select_settlement", cardSelectSettlementJson()},
+            {"progression", progressionJson()},
             {"rl_action_dim", RL_ACTION_DIM},
             {"schema_version", STATE_SCHEMA_VERSION},
             {"source_type", SOURCE_TYPE},
@@ -395,6 +428,8 @@ private:
     int lastCardSelectSettlementCount_ = 0;
     std::vector<std::string> lastCardSelectTasks_;
     std::string cardSelectSettlementFailureReason_;
+    int requestedBattleIndex_ = 0;
+    int reachedBattleIndex_ = -1;
 
     void configureAgent() {
         baselineAgent_.print = false;
@@ -435,26 +470,89 @@ private:
         }
     }
 
-    void advanceToFirstBattle() {
-        constexpr int MAX_STEPS = 1000;
-        int steps = 0;
+    void advanceOutOfCombatToBattle(int battleIndex, int &actionCount) {
         while (gc_.outcome == sts::GameOutcome::UNDECIDED &&
                gc_.screenState != sts::ScreenState::BATTLE) {
-            if (++steps > MAX_STEPS) {
-                throw std::runtime_error("native baseline exceeded first-combat step bound");
+            if (++actionCount > MAX_OUT_OF_COMBAT_ACTIONS) {
+                throw std::runtime_error(
+                    "baseline_out_of_combat_action_bound_before_battle:" +
+                    std::to_string(battleIndex));
             }
+            const auto historySize = baselineAgent_.actionHistory.size();
             baselineAgent_.stepOutOfCombat(gc_);
+            if (baselineAgent_.actionHistory.size() <= historySize) {
+                throw std::runtime_error(
+                    "baseline_out_of_combat_no_progress_before_battle:" +
+                    std::to_string(battleIndex));
+            }
         }
         if (gc_.screenState != sts::ScreenState::BATTLE) {
-            throw std::runtime_error("native run terminated before the first combat");
-        }
-        battle_.init(gc_);
-        if (battle_.outcome == sts::Outcome::UNDECIDED &&
-            battle_.inputState != sts::InputState::PLAYER_NORMAL) {
             throw std::runtime_error(
-                "first combat did not reach player-normal input: " +
-                inputStateName(battle_.inputState));
+                "baseline_run_terminated_before_battle:" +
+                std::to_string(battleIndex));
         }
+    }
+
+    void playPriorBattle(int battleIndex) {
+        bool usedPotions = !sts::isBossEncounter(battle_.encounter);
+        int actionCount = 0;
+        while (battle_.outcome == sts::Outcome::UNDECIDED) {
+            if (++actionCount > MAX_PRIOR_BATTLE_ACTIONS) {
+                throw std::runtime_error(
+                    "baseline_prior_battle_action_bound:" +
+                    std::to_string(battleIndex));
+            }
+            const auto historySize = baselineAgent_.actionHistory.size();
+            bool actionExpected = true;
+            if (battle_.inputState == sts::InputState::CARD_SELECT) {
+                baselineAgent_.stepBattleCardSelect(battle_);
+            } else if (battle_.inputState == sts::InputState::PLAYER_NORMAL) {
+                if (usedPotions) {
+                    baselineAgent_.stepBattleCardPlay(battle_);
+                } else {
+                    usedPotions = baselineAgent_.playPotion(battle_);
+                    actionExpected = !usedPotions;
+                }
+            } else {
+                throw std::runtime_error(
+                    "baseline_prior_battle_unsupported_input:" +
+                    std::to_string(battleIndex) + ":" +
+                    inputStateName(battle_.inputState));
+            }
+            if (actionExpected && baselineAgent_.actionHistory.size() <= historySize) {
+                throw std::runtime_error(
+                    "baseline_prior_battle_no_progress:" +
+                    std::to_string(battleIndex));
+            }
+        }
+        battle_.exitBattle(gc_);
+        if (battle_.outcome != sts::Outcome::PLAYER_VICTORY) {
+            throw std::runtime_error(
+                "baseline_loss_before_requested_battle:" +
+                std::to_string(requestedBattleIndex_));
+        }
+    }
+
+    void advanceToBattle() {
+        int outOfCombatActionCount = 0;
+        for (int battleIndex = 0; battleIndex <= requestedBattleIndex_; ++battleIndex) {
+            advanceOutOfCombatToBattle(battleIndex, outOfCombatActionCount);
+            battle_ = sts::BattleContext();
+            battle_.init(gc_);
+            if (battleIndex == requestedBattleIndex_) {
+                reachedBattleIndex_ = battleIndex;
+                if (battle_.outcome == sts::Outcome::UNDECIDED &&
+                    battle_.inputState != sts::InputState::PLAYER_NORMAL) {
+                    throw std::runtime_error(
+                        "requested_battle_not_player_normal:" +
+                        std::to_string(battleIndex) + ":" +
+                        inputStateName(battle_.inputState));
+                }
+                return;
+            }
+            playPriorBattle(battleIndex);
+        }
+        throw std::runtime_error("requested_battle_not_reached");
     }
 
     std::vector<std::pair<int, int>> targetSlots() const {
@@ -565,8 +663,10 @@ private:
 std::string buildInfoJson() {
     return json({
         {"adapter_api_version", ADAPTER_API_VERSION},
+        {"baseline_policy", BASELINE_POLICY},
+        {"battle_index_max", MAX_BATTLE_INDEX},
         {"card_select_settlement_max", MAX_CARD_SELECT_SETTLEMENTS},
-        {"card_select_settlement_policy", "native_simple_agent_v1"},
+        {"card_select_settlement_policy", BASELINE_POLICY},
         {"compiler", __VERSION__},
         {"cpp_standard", __cplusplus},
         {"pybind11_version", STS_COMBAT_ADAPTER_STRINGIFY(PYBIND11_VERSION_MAJOR) "."
@@ -574,6 +674,8 @@ std::string buildInfoJson() {
             STS_COMBAT_ADAPTER_STRINGIFY(PYBIND11_VERSION_PATCH)},
         {"rl_action_dim", RL_ACTION_DIM},
         {"state_schema_version", STATE_SCHEMA_VERSION},
+        {"prior_battle_action_max", MAX_PRIOR_BATTLE_ACTIONS},
+        {"out_of_combat_action_max", MAX_OUT_OF_COMBAT_ACTIONS},
         {"supported_card_select_tasks", supportedCardSelectTasksJson()},
     }).dump();
 }
@@ -586,7 +688,8 @@ PYBIND11_MODULE(sts_lightspeed_combat_adapter, module) {
     module.def("build_info_json", &buildInfoJson);
 
     py::class_<CombatEnvironment>(module, "Environment")
-        .def(py::init<std::uint64_t, int>(), py::arg("seed"), py::arg("ascension") = 0)
+        .def(py::init<std::uint64_t, int, int>(), py::arg("seed"),
+             py::arg("ascension") = 0, py::arg("battle_index") = 0)
         .def("clone", &CombatEnvironment::clone)
         .def("legal_actions_json", &CombatEnvironment::legalActionsJson)
         .def("snapshot_json", &CombatEnvironment::snapshotJson)

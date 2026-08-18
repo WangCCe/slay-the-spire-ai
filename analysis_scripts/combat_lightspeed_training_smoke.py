@@ -26,6 +26,7 @@ from analysis_scripts.combat_lightspeed_bridge import (  # noqa: E402
     ACTION_DIM,
     CARD_SLOTS,
     CONTINUOUS_DIM,
+    MAX_BATTLE_INDEX,
     POTION_SLOTS,
     RELIC_SLOTS,
     SOURCE_TYPE,
@@ -43,7 +44,7 @@ from spirecomm.ai.rl.v2.id_mapping import IdMapper, build_id_mapper  # noqa: E40
 from spirecomm.ai.rl.v2.trainer import DQNTrainerV2  # noqa: E402
 
 
-REPORT_SCHEMA_VERSION = "combat-lightspeed-training-smoke-v2"
+REPORT_SCHEMA_VERSION = "combat-lightspeed-training-smoke-v3"
 CHECKPOINT_KIND = "simulator_training_smoke"
 REPORT_AUTHORITY = {
     "gameplay": False,
@@ -63,6 +64,7 @@ REPORT_AUTHORITY = {
 class SmokeConfig:
     train_seeds: tuple[int, ...]
     evaluation_seeds: tuple[int, ...]
+    battle_indices: tuple[int, ...] = (0,)
     ascension: int = 0
     max_decisions_per_seed: int = 80
     max_actions_per_turn: int = 8
@@ -82,12 +84,25 @@ class SmokeConfig:
             raise ValueError("training and evaluation seeds must be disjoint")
         if any(seed < 0 for seed in (*self.train_seeds, *self.evaluation_seeds)):
             raise ValueError("seeds must be non-negative")
+        if not self.battle_indices:
+            raise ValueError("at least one battle index is required")
+        if len(set(self.battle_indices)) != len(self.battle_indices):
+            raise ValueError("battle indices must be unique")
+        if any(not 0 <= value <= MAX_BATTLE_INDEX for value in self.battle_indices):
+            raise ValueError(f"battle indices must be in 0..{MAX_BATTLE_INDEX}")
         if not 0 <= self.ascension <= 20:
             raise ValueError("ascension must be in 0..20")
         if self.max_decisions_per_seed <= 0 or self.max_actions_per_turn <= 0:
             raise ValueError("decision and per-turn action bounds must be positive")
         if self.batch_size <= 1 or self.optimizer_steps <= 0:
             raise ValueError("batch size and optimizer steps must be positive")
+
+    def profiles(self, seeds: Sequence[int]) -> tuple[tuple[int, int], ...]:
+        return tuple(
+            (seed, battle_index)
+            for seed in seeds
+            for battle_index in self.battle_indices
+        )
 
 
 @dataclass(frozen=True)
@@ -318,10 +333,29 @@ def collect_transitions(
     settlement_tasks = Counter()
     settlement_transitions = 0
     truncated = 0
+    initialization_failures = Counter()
+    progression_battle_indices = Counter()
+    progression_acts = Counter()
+    progression_encounters = Counter()
+    initialized_profiles = 0
 
-    for seed in config.train_seeds:
-        environment = NativeCombatEnvironment.reset(native_module, seed, config.ascension)
-        rng = random.Random(config.behavior_seed ^ seed)
+    for seed, battle_index in config.profiles(config.train_seeds):
+        try:
+            environment = NativeCombatEnvironment.reset(
+                native_module,
+                seed,
+                config.ascension,
+                battle_index,
+            )
+        except Exception as exc:
+            initialization_failures[str(exc).split(":", 1)[0] or type(exc).__name__] += 1
+            continue
+        progression = dict(environment.snapshot().get("progression") or {})
+        progression_battle_indices[int(progression["reached_battle_index"])] += 1
+        progression_acts[int(progression["act"])] += 1
+        progression_encounters[str(progression["encounter"])] += 1
+        initialized_profiles += 1
+        rng = random.Random(config.behavior_seed ^ seed ^ (battle_index << 32))
         actions_since_end_turn = 0
         for _ in range(config.max_decisions_per_seed):
             status = environment.status()
@@ -411,6 +445,14 @@ def collect_transitions(
             "task_counts": dict(sorted(settlement_tasks.items())),
             "transition_count": settlement_transitions,
         },
+        "initialization_failure_counts": dict(sorted(initialization_failures.items())),
+        "profile_count_initialized": initialized_profiles,
+        "profile_count_registered": len(config.profiles(config.train_seeds)),
+        "progression_coverage": {
+            "act_counts": dict(sorted(progression_acts.items())),
+            "battle_index_counts": dict(sorted(progression_battle_indices.items())),
+            "encounter_counts": dict(sorted(progression_encounters.items())),
+        },
         "seed_count": len(config.train_seeds),
         "unsupported_reason_counts": dict(sorted(unsupported.items())),
     }
@@ -484,8 +526,31 @@ def evaluate_policy(
     was_training = trainer.online_network.training
     trainer.online_network.eval()
     try:
-        for seed in seeds:
-            environment = NativeCombatEnvironment.reset(native_module, seed, config.ascension)
+        for seed, battle_index in config.profiles(seeds):
+            try:
+                environment = NativeCombatEnvironment.reset(
+                    native_module,
+                    seed,
+                    config.ascension,
+                    battle_index,
+                )
+            except Exception as exc:
+                rows.append(
+                    {
+                        "seed": int(seed),
+                        "battle_index": int(battle_index),
+                        "outcome": "initialization_failure",
+                        "player_hp": 0,
+                        "decisions": 0,
+                        "reward": 0.0,
+                        "unsupported_reason": f"initialization_failure:{exc}",
+                        "truncated": False,
+                        "card_select_settlement_count": 0,
+                        "card_select_settlement_task_counts": {},
+                    }
+                )
+                continue
+            progression = dict(environment.snapshot().get("progression") or {})
             actions_since_end_turn = 0
             total_reward = 0.0
             decisions = 0
@@ -537,6 +602,8 @@ def evaluate_policy(
             rows.append(
                 {
                     "seed": int(seed),
+                    "battle_index": int(battle_index),
+                    "progression": progression,
                     "outcome": outcome,
                     "player_hp": int(dict(final_state.get("player") or {}).get("current_hp", 0)),
                     "decisions": decisions,
@@ -567,6 +634,7 @@ def evaluate_policy(
             "player_loss_count": sum(row["outcome"] == "player_loss" for row in rows),
             "player_victory_count": sum(row["outcome"] == "player_victory" for row in rows),
             "seed_count": len(rows),
+            "profile_count": len(rows),
             "truncated_count": sum(bool(row["truncated"]) for row in rows),
             "unsupported_count": sum(bool(row["unsupported_reason"]) for row in rows),
             "card_select_settlement_action_count": sum(
@@ -581,17 +649,24 @@ def evaluate_policy(
 
 
 def paired_evaluation(control: Mapping[str, Any], candidate: Mapping[str, Any]) -> dict[str, Any]:
-    control_rows = {int(row["seed"]): row for row in control["rows"]}
-    candidate_rows = {int(row["seed"]): row for row in candidate["rows"]}
+    control_rows = {
+        (int(row["seed"]), int(row.get("battle_index", 0))): row
+        for row in control["rows"]
+    }
+    candidate_rows = {
+        (int(row["seed"]), int(row.get("battle_index", 0))): row
+        for row in candidate["rows"]
+    }
     if set(control_rows) != set(candidate_rows):
         raise RuntimeError("paired evaluation seed mismatch")
     rows = []
-    for seed in sorted(control_rows):
-        left = control_rows[seed]
-        right = candidate_rows[seed]
+    for seed, battle_index in sorted(control_rows):
+        left = control_rows[(seed, battle_index)]
+        right = candidate_rows[(seed, battle_index)]
         rows.append(
             {
                 "seed": seed,
+                "battle_index": battle_index,
                 "control_outcome": left["outcome"],
                 "candidate_outcome": right["outcome"],
                 "player_hp_delta": right["player_hp"] - left["player_hp"],
@@ -687,7 +762,7 @@ def _publish(
             "size_bytes": candidate_path.stat().st_size,
         }
     manifest = {
-        "schema_version": "combat-lightspeed-training-smoke-manifest-v2",
+        "schema_version": "combat-lightspeed-training-smoke-manifest-v3",
         "artifacts": manifest_entries,
     }
     artifacts["manifest.json"] = canonical_json_bytes(manifest) + b"\n"
@@ -751,11 +826,21 @@ def run_smoke(
         blockers.append("optimizer_incomplete")
     if delta["l2"] <= 0.0 or initial_sha256 == candidate_sha256:
         blockers.append("parameters_unchanged")
+    if corpus_metrics["initialization_failure_counts"]:
+        blockers.append("training_profile_initialization_failure")
     if (
-        control_evaluation["aggregate"]["seed_count"] != len(config.evaluation_seeds)
-        or candidate_evaluation["aggregate"]["seed_count"] != len(config.evaluation_seeds)
+        control_evaluation["aggregate"]["profile_count"]
+        != len(config.profiles(config.evaluation_seeds))
+        or candidate_evaluation["aggregate"]["profile_count"]
+        != len(config.profiles(config.evaluation_seeds))
     ):
         blockers.append("held_out_evaluation_incomplete")
+    if any(
+        row["outcome"] == "initialization_failure"
+        for evaluation in (control_evaluation, candidate_evaluation)
+        for row in evaluation["rows"]
+    ):
+        blockers.append("evaluation_profile_initialization_failure")
     report = {
         "schema_version": REPORT_SCHEMA_VERSION,
         "source_type": SOURCE_TYPE,
@@ -830,6 +915,7 @@ def _parse_args() -> argparse.Namespace:
     parser.add_argument("--output-dir", required=True, type=Path)
     parser.add_argument("--train-seeds", default="0..255", type=_parse_seeds)
     parser.add_argument("--evaluation-seeds", default="10000..10063", type=_parse_seeds)
+    parser.add_argument("--battle-indices", default="0", type=_parse_seeds)
     parser.add_argument("--ascension", default=0, type=int)
     parser.add_argument("--max-decisions-per-seed", default=80, type=int)
     parser.add_argument("--max-actions-per-turn", default=8, type=int)
@@ -845,6 +931,7 @@ def main() -> int:
     config = SmokeConfig(
         train_seeds=args.train_seeds,
         evaluation_seeds=args.evaluation_seeds,
+        battle_indices=args.battle_indices,
         ascension=args.ascension,
         max_decisions_per_seed=args.max_decisions_per_seed,
         max_actions_per_turn=args.max_actions_per_turn,

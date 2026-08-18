@@ -23,9 +23,10 @@ from spirecomm.ai.rl.v2.id_mapping import IdMapper
 from spirecomm.ai.rl.v2.types import EncodedStateV2
 
 
-ADAPTER_API_VERSION = "sts-lightspeed-combat-adapter-v2"
-STATE_SCHEMA_VERSION = "sts-lightspeed-combat-state-v2"
+ADAPTER_API_VERSION = "sts-lightspeed-combat-adapter-v3"
+STATE_SCHEMA_VERSION = "sts-lightspeed-combat-state-v3"
 SOURCE_TYPE = "sts_lightspeed_combat_simulation"
+BASELINE_POLICY = "native_simple_agent_v1"
 MODULE_NAME = "sts_lightspeed_combat_adapter"
 ACTION_DIM = 133
 TARGET_SLOTS = 6
@@ -37,6 +38,7 @@ POTION_SLOTS = 5
 RELIC_SLOTS = 40
 MONSTER_SLOTS = 5
 MAX_CARD_SELECT_SETTLEMENTS = 8
+MAX_BATTLE_INDEX = 63
 
 KEYWORDS = (
     "Strength",
@@ -221,6 +223,90 @@ def validate_card_select_settlement(
     return {"count": count, "tasks": list(tasks)}
 
 
+def validate_progression(
+    value: object,
+    *,
+    state: Mapping[str, Any] | None = None,
+    label: str = "progression",
+) -> dict[str, Any]:
+    progression = _mapping(value, label)
+    if progression.get("baseline_policy") != BASELINE_POLICY:
+        raise CombatBridgeError(
+            "progression_baseline_policy_mismatch",
+            progression.get("baseline_policy"),
+        )
+    requested = _integer(
+        progression.get("requested_battle_index"),
+        f"{label}.requested_battle_index",
+    )
+    reached = _integer(
+        progression.get("reached_battle_index"),
+        f"{label}.reached_battle_index",
+    )
+    if requested != reached:
+        raise CombatBridgeError(
+            "progression_battle_index_mismatch",
+            {"requested": requested, "reached": reached},
+        )
+    if not 0 <= requested <= MAX_BATTLE_INDEX:
+        raise CombatBridgeError("invalid_progression_battle_index", requested)
+    result = {
+        "act": _integer(progression.get("act"), f"{label}.act"),
+        "baseline_policy": BASELINE_POLICY,
+        "deck_size": _integer(progression.get("deck_size"), f"{label}.deck_size"),
+        "encounter": progression.get("encounter"),
+        "floor": _integer(progression.get("floor"), f"{label}.floor"),
+        "player_current_hp": _integer(
+            progression.get("player_current_hp"), f"{label}.player_current_hp"
+        ),
+        "player_max_hp": _integer(
+            progression.get("player_max_hp"), f"{label}.player_max_hp"
+        ),
+        "reached_battle_index": reached,
+        "relic_count": _integer(
+            progression.get("relic_count"), f"{label}.relic_count"
+        ),
+        "requested_battle_index": requested,
+    }
+    if (
+        not 1 <= result["act"] <= 4
+        or result["deck_size"] <= 0
+        or not isinstance(result["encounter"], str)
+        or not result["encounter"]
+        or result["floor"] <= 0
+        or result["player_max_hp"] <= 0
+        or result["relic_count"] < 0
+    ):
+        raise CombatBridgeError("invalid_progression_metadata", result)
+    if state is not None:
+        player = _mapping(state.get("player"), "snapshot.state.player")
+        expected = {
+            "act": _integer(state.get("act"), "snapshot.state.act"),
+            "deck_size": _integer(state.get("deck_size"), "snapshot.state.deck_size"),
+            "encounter": state.get("encounter"),
+            "floor": _integer(state.get("floor"), "snapshot.state.floor"),
+            "player_current_hp": _integer(
+                player.get("current_hp"), "snapshot.state.player.current_hp"
+            ),
+            "player_max_hp": _integer(
+                player.get("max_hp"), "snapshot.state.player.max_hp"
+            ),
+            "reached_battle_index": _integer(
+                state.get("battle_index"), "snapshot.state.battle_index"
+            ),
+            "relic_count": _integer(
+                state.get("relic_count"), "snapshot.state.relic_count"
+            ),
+        }
+        actual = {key: result[key] for key in expected}
+        if actual != expected:
+            raise CombatBridgeError(
+                "progression_state_mismatch",
+                {"progression": actual, "state": expected},
+            )
+    return result
+
+
 def validate_snapshot(value: object) -> dict[str, Any]:
     snapshot = _mapping(value, "snapshot")
     expected = {
@@ -238,6 +324,7 @@ def validate_snapshot(value: object) -> dict[str, Any]:
     if _boolean(snapshot.get("terminal"), "snapshot.terminal"):
         raise CombatBridgeError("terminal_native_state")
     state = _mapping(snapshot.get("state"), "snapshot.state")
+    validate_progression(snapshot.get("progression"), state=state)
     if state.get("input_state") != "PLAYER_NORMAL":
         raise CombatBridgeError("unsupported_input_state", state.get("input_state"))
     return snapshot
@@ -468,8 +555,14 @@ class NativeCombatEnvironment:
         self.native = native
 
     @classmethod
-    def reset(cls, module: ModuleType, seed: int, ascension: int = 0) -> "NativeCombatEnvironment":
-        return cls(module.Environment(seed, ascension))
+    def reset(
+        cls,
+        module: ModuleType,
+        seed: int,
+        ascension: int = 0,
+        battle_index: int = 0,
+    ) -> "NativeCombatEnvironment":
+        return cls(module.Environment(seed, ascension, battle_index))
 
     def clone(self) -> "NativeCombatEnvironment":
         return type(self)(self.native.clone())
@@ -488,6 +581,10 @@ class NativeCombatEnvironment:
         validate_card_select_settlement(
             status.get("card_select_settlement"),
             label="native status.card_select_settlement",
+        )
+        validate_progression(
+            status.get("progression"),
+            label="native status.progression",
         )
         return status
 

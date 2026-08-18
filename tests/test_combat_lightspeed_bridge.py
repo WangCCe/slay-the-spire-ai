@@ -35,9 +35,16 @@ def test_combat_adapter_is_a_separate_offline_native_target():
 def test_combat_adapter_declares_the_offline_environment_contract():
     source = COMBAT_SOURCE.read_text(encoding="utf-8")
 
-    assert '"sts-lightspeed-combat-adapter-v2"' in source
-    assert '"sts-lightspeed-combat-state-v2"' in source
+    assert '"sts-lightspeed-combat-adapter-v3"' in source
+    assert '"sts-lightspeed-combat-state-v3"' in source
     assert '"sts_lightspeed_combat_simulation"' in source
+    assert "MAX_BATTLE_INDEX" in source
+    assert "MAX_OUT_OF_COMBAT_ACTIONS" in source
+    assert "MAX_PRIOR_BATTLE_ACTIONS" in source
+    assert "advanceToBattle" in source
+    assert "playPriorBattle" in source
+    assert '"progression"' in source
+    assert 'py::init<std::uint64_t, int, int>()' in source
     assert "MAX_CARD_SELECT_SETTLEMENTS" in source
     assert "enumerateCardSelectActions" in source
     assert "stepBattleCardSelect" in source
@@ -88,22 +95,38 @@ def _snapshot(*, card_name="Strike"):
         "Weak": 0,
     }
     return {
-        "adapter_api_version": "sts-lightspeed-combat-adapter-v2",
+        "adapter_api_version": "sts-lightspeed-combat-adapter-v3",
         "card_select_settlement": {"count": 0, "tasks": []},
+        "progression": {
+            "act": 1,
+            "baseline_policy": "native_simple_agent_v1",
+            "deck_size": 10,
+            "encounter": "JAW_WORM",
+            "floor": 1,
+            "player_current_hp": 70,
+            "player_max_hp": 80,
+            "reached_battle_index": 0,
+            "relic_count": 1,
+            "requested_battle_index": 0,
+        },
         "rl_action_dim": 133,
-        "schema_version": "sts-lightspeed-combat-state-v2",
+        "schema_version": "sts-lightspeed-combat-state-v3",
         "source_type": "sts_lightspeed_combat_simulation",
         "supported": True,
         "terminal": False,
         "unsupported_reason": "",
         "state": {
+            "act": 1,
             "ascension": 0,
+            "battle_index": 0,
             "decision_count": 0,
+            "deck_size": 10,
             "encounter": "JAW_WORM",
             "floor": 1,
             "input_state": "PLAYER_NORMAL",
             "outcome": "undecided",
             "seed": "7",
+            "relic_count": 1,
             "turn": 1,
             "player": {
                 "block": 5,
@@ -233,6 +256,15 @@ def test_rl_v2_bridge_rejects_inconsistent_card_select_settlement_evidence():
         encode_rl_v2(snapshot, _actions(), id_mapper=_mapper())
 
 
+def test_rl_v2_bridge_rejects_inconsistent_progression_evidence():
+    from analysis_scripts.combat_lightspeed_bridge import CombatBridgeError, encode_rl_v2
+
+    snapshot = _snapshot()
+    snapshot["progression"]["reached_battle_index"] = 1
+    with pytest.raises(CombatBridgeError, match="progression_battle_index_mismatch"):
+        encode_rl_v2(snapshot, _actions(), id_mapper=_mapper())
+
+
 def test_native_wrapper_rejects_explicit_unsupported_status():
     from analysis_scripts.combat_lightspeed_bridge import (
         CombatBridgeError,
@@ -246,6 +278,7 @@ def test_native_wrapper_rejects_explicit_unsupported_status():
                 {
                     "card_select_settlement": {"count": 0, "tasks": []},
                     "input_state": "CARD_SELECT",
+                    "progression": _snapshot()["progression"],
                     "supported": False,
                     "unsupported_reason": "card_select",
                 }
@@ -285,10 +318,28 @@ def test_opt_in_native_environment_mapping_clone_and_provenance():
     assert "HOLOGRAM" not in build_info["supported_card_select_tasks"]
     id_mapper = build_id_mapper(values["STS_ITEMS_JSON"])
 
-    environment = NativeCombatEnvironment.reset(module, seed=0, ascension=0)
-    repeated = NativeCombatEnvironment.reset(module, seed=0, ascension=0)
+    default_first = NativeCombatEnvironment.reset(module, seed=0, ascension=0)
+    explicit_first = NativeCombatEnvironment.reset(
+        module, seed=0, ascension=0, battle_index=0
+    )
+    assert canonical_json_bytes(default_first.snapshot()) == canonical_json_bytes(
+        explicit_first.snapshot()
+    )
+
+    environment = NativeCombatEnvironment.reset(
+        module, seed=0, ascension=0, battle_index=1
+    )
+    repeated = NativeCombatEnvironment.reset(
+        module, seed=0, ascension=0, battle_index=1
+    )
     assert canonical_json_bytes(environment.snapshot()) == canonical_json_bytes(repeated.snapshot())
     assert canonical_json_bytes(environment.legal_actions()) == canonical_json_bytes(repeated.legal_actions())
+    progression = environment.snapshot()["progression"]
+    assert progression["requested_battle_index"] == 1
+    assert progression["reached_battle_index"] == 1
+    assert progression["floor"] > 1
+    assert progression["deck_size"] >= 10
+    assert progression["relic_count"] >= 1
 
     mapped = environment.mapped_state(id_mapper=id_mapper)
     assert mapped.state.continuous.shape == (328,)
@@ -317,6 +368,9 @@ def test_opt_in_native_environment_mapping_clone_and_provenance():
     assert len(provenance["adapter_source_sha256"]) == 64
     assert len(provenance["module_sha256"]) == 64
     assert len(provenance["simulator_source_sha256"]) == 64
+
+    with pytest.raises(ValueError, match="battle_index must be in range"):
+        NativeCombatEnvironment.reset(module, seed=0, ascension=0, battle_index=64)
 
 
 def test_production_agent_import_does_not_load_combat_bridge():
