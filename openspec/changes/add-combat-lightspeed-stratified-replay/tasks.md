@@ -13,3 +13,4 @@
 - [x] 3.1 Run focused native tests and strict OpenSpec validation; record the full-suite disposition. The combined native LightSTS gate passed `40` tests; the known roughly 30-minute full suite was intentionally omitted for this simulator-only runner change.
 - [x] 3.2 Register and run one r4 anchored stratified-replay experiment on new seeds.
 - [x] 3.3 Apply aggregate and per-index guardrails and decide whether one fresh simulator replication is justified. All criteria passed, authorizing exactly one unchanged replication.
+- [x] 3.4 Execute the one authorized fresh replication and decide method reproducibility. Aggregate metrics passed, but index 9 materially regressed, so the method did not replicate and no candidate advances.
