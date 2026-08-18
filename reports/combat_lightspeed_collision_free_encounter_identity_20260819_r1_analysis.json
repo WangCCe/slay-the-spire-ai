@@ -1,0 +1,75 @@
+{
+  "schema_version": "combat-lightspeed-collision-free-encounter-identity-analysis-v1",
+  "experiment_id": "combat-lightspeed-collision-free-encounter-identity-20260819-r1",
+  "registration": "reports/combat_lightspeed_collision_free_encounter_identity_20260819_r1_registration.json",
+  "arms": {
+    "hash_control": {
+      "report": "reports/combat_lightspeed_collision_free_encounter_identity_20260819_r1_hash_control/report.json",
+      "report_sha256": "ec562dcf916042b1aff7a72bd754b9ce34d94af19553046395600d24e2fb9953",
+      "checkpoint_sha256": "939a2e63116e11cf8a5310fc8547eaed858e3c30cdb967b246ff4a631d019e62"
+    },
+    "enum_v1_candidate": {
+      "report": "reports/combat_lightspeed_collision_free_encounter_identity_20260819_r1_enum_candidate/report.json",
+      "report_sha256": "1303164e53ac5fb5525a985aef9d435a1fb61dec9fa19e78ac9ae31771a6697c",
+      "checkpoint_sha256": "46311f4f7d77dbcc6a598f8a6c7394f410257e96fe694933b78044be92bd88e5"
+    }
+  },
+  "technical": {
+    "verdicts": "technical_smoke_ready",
+    "optimizer_updates_per_arm": 256,
+    "source_replay_transition_count_per_arm": 66463,
+    "prepared_replay_transition_count_per_arm": 78812,
+    "source_replay_metrics_identical": true,
+    "parent_control_rows_identical": true,
+    "enum_assignments_unique": true,
+    "enum_vocabulary_sha256_matches_registration": true,
+    "migration_action_mismatch_count_per_arm": 0,
+    "migration_max_abs_q_delta_per_arm": 3.5762786865234375e-07,
+    "migration_inserted_column_max_abs_per_arm": 0.0,
+    "training_decision_bound_count_per_arm": 2,
+    "evaluation_truncated_count_per_policy_per_arm": 0,
+    "all_registered_technical_criteria_pass": false,
+    "failed_registered_technical_criteria": [
+      "training_decision_bound_truncations"
+    ]
+  },
+  "enum_v1_vs_parent": {
+    "aggregate": {
+      "profile_count": 842,
+      "mean_reward_delta": 1.4486493890065937,
+      "mean_player_hp_delta": 1.1365795724465557,
+      "candidate_only_victories": 19,
+      "parent_only_victories": 6
+    },
+    "by_battle_index": {
+      "0": {"profile_count": 256, "mean_reward_delta": 0.07705078124999991, "mean_player_hp_delta": 0.12890625, "candidate_only_victories": 0, "parent_only_victories": 0},
+      "3": {"profile_count": 249, "mean_reward_delta": 0.7562087490739088, "mean_player_hp_delta": 0.5301204819277109, "candidate_only_victories": 4, "parent_only_victories": 2},
+      "6": {"profile_count": 194, "mean_reward_delta": 2.2437479290493254, "mean_player_hp_delta": 1.958762886597938, "candidate_only_victories": 9, "parent_only_victories": 3},
+      "9": {"profile_count": 143, "mean_reward_delta": 4.031151809710345, "mean_player_hp_delta": 2.8811188811188813, "candidate_only_victories": 6, "parent_only_victories": 1}
+    },
+    "all_registered_policy_criteria_pass": true
+  },
+  "enum_v1_vs_hash": {
+    "aggregate": {
+      "profile_count": 1024,
+      "mean_reward_delta": 0.1510738382662385,
+      "mean_player_hp_delta": -0.013671875,
+      "enum_only_victories": 5,
+      "hash_only_victories": 1
+    },
+    "battle_index_9": {
+      "profile_count": 256,
+      "mean_reward_delta": 0.4659254267000117,
+      "mean_player_hp_delta": 0.09375,
+      "enum_only_victories": 2,
+      "hash_only_victories": 0
+    },
+    "all_registered_head_to_head_criteria_pass": true
+  },
+  "decision": {
+    "value": "retain_r4",
+    "fresh_frozen_confirmation_authorized": false,
+    "reason": "Both policy-quality gates passed, but each arm contained two training profiles that reached the registered 100-decision bound. The preregistered zero-truncation technical criterion therefore failed and cannot be relaxed after outcome access.",
+    "live_transfer_authorized": false
+  }
+}

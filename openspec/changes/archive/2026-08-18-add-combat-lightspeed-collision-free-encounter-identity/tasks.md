@@ -11,5 +11,5 @@
 
 ## 3. Experiment
 
-- [ ] 3.1 Register and run one fresh same-budget collision-free experiment
-- [ ] 3.2 Record the guardrail decision, archive the change, and retain r4 unless every criterion passes
+- [x] 3.1 Register and run one fresh same-budget collision-free experiment
+- [x] 3.2 Record the guardrail decision, archive the change, and retain r4 unless every criterion passes
