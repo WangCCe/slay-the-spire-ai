@@ -12,6 +12,6 @@
 
 ## 3. Bounded Experiment
 
-- [ ] 3.1 Pre-register one fresh encounter-aware training and held-out cohort with fixed recipe and stop rules
+- [x] 3.1 Pre-register one fresh encounter-aware training and held-out cohort with fixed recipe and stop rules
 - [ ] 3.2 Run the single CPU experiment and evaluate aggregate, index 0, and index 9 guardrails
 - [ ] 3.3 Record the retain/confirm decision; do not start gameplay or transfer a failing candidate
