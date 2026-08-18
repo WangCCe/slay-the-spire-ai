@@ -15,6 +15,8 @@ from analysis_scripts.combat_lightspeed_training_smoke import (
     _publish,
     calculate_native_reward,
     create_fresh_trainer,
+    initialize_trainer,
+    load_initial_checkpoint,
     parameter_delta,
     parameter_sha256,
     paired_evaluation,
@@ -28,7 +30,7 @@ from analysis_scripts.combat_lightspeed_bridge import (
     canonical_json_bytes,
     load_native_module,
 )
-from spirecomm.ai.rl.checkpoint_io import load_torch_checkpoint
+from spirecomm.ai.rl.checkpoint_io import load_torch_checkpoint, save_torch_checkpoint
 from spirecomm.ai.rl.v2.id_mapping import IdMapper, build_id_mapper
 
 
@@ -244,6 +246,81 @@ def test_fresh_cpu_trainer_updates_parameters_without_production_checkpoint():
     )
 
 
+def _write_simulator_checkpoint(path, state_dict, **overrides):
+    checkpoint = {
+        "checkpoint_schema_version": 0,
+        "checkpoint_kind": "simulator_training_smoke",
+        "source_type": "sts_lightspeed_native_combat",
+        "production_compatible": False,
+        "online_network_state_dict": state_dict,
+        "metadata": {
+            "source_binding": {
+                "candidate_parameter_sha256": parameter_sha256(state_dict)
+            }
+        },
+    }
+    checkpoint.update(overrides)
+    save_torch_checkpoint(checkpoint, str(path))
+
+
+def test_simulator_checkpoint_warm_starts_online_target_and_control(tmp_path):
+    parent = create_fresh_trainer(_mapper(), seed=41, batch_size=2, learning_starts=2)
+    with torch.no_grad():
+        for parameter in parent.online_network.parameters():
+            parameter.add_(0.125)
+    parent_state = copy.deepcopy(parent.online_network.state_dict())
+    path = tmp_path / "parent.pth"
+    _write_simulator_checkpoint(path, parent_state)
+
+    binding = load_initial_checkpoint(path, expected_sha256=None)
+    trainer = create_fresh_trainer(_mapper(), seed=99, batch_size=2, learning_starts=2)
+    control, record = initialize_trainer(trainer, binding)
+
+    assert record["mode"] == "warm_start"
+    assert record["parameter_sha256"] == parameter_sha256(parent_state)
+    assert parameter_sha256(control) == parameter_sha256(parent_state)
+    assert parameter_sha256(trainer.online_network.state_dict()) == parameter_sha256(
+        parent_state
+    )
+    assert parameter_sha256(trainer.target_network.state_dict()) == parameter_sha256(
+        parent_state
+    )
+
+
+@pytest.mark.parametrize(
+    ("overrides", "message"),
+    [
+        ({"checkpoint_kind": "production_rl_v2"}, "kind"),
+        ({"production_compatible": True}, "production-compatible"),
+        ({"online_network_state_dict": None}, "online state"),
+    ],
+)
+def test_warm_start_rejects_non_simulator_checkpoint_before_training(
+    tmp_path, overrides, message
+):
+    trainer = create_fresh_trainer(_mapper(), seed=43, batch_size=2, learning_starts=2)
+    path = tmp_path / "invalid.pth"
+    _write_simulator_checkpoint(path, trainer.online_network.state_dict(), **overrides)
+
+    with pytest.raises(ValueError, match=message):
+        load_initial_checkpoint(path, expected_sha256=None)
+
+
+def test_warm_start_rejects_hash_and_network_structure_mismatch(tmp_path):
+    parent = create_fresh_trainer(_mapper(), seed=47, batch_size=2, learning_starts=2)
+    path = tmp_path / "parent.pth"
+    _write_simulator_checkpoint(path, parent.online_network.state_dict())
+
+    with pytest.raises(ValueError, match="hash mismatch"):
+        load_initial_checkpoint(path, expected_sha256="0" * 64)
+
+    binding = load_initial_checkpoint(path, expected_sha256=None)
+    binding["state_dict"] = {"wrong": torch.zeros(1)}
+    target = create_fresh_trainer(_mapper(), seed=49, batch_size=2, learning_starts=2)
+    with pytest.raises(ValueError, match="network incompatible"):
+        initialize_trainer(target, binding)
+
+
 def test_published_candidate_is_structurally_simulator_only(tmp_path):
     trainer = create_fresh_trainer(
         _mapper(),
@@ -263,6 +340,11 @@ def test_published_candidate_is_structurally_simulator_only(tmp_path):
         "training": {
             "initial_parameter_sha256": "e" * 64,
             "candidate_parameter_sha256": "f" * 64,
+        },
+        "initialization": {
+            "mode": "warm_start",
+            "checkpoint_sha256": "1" * 64,
+            "parameter_sha256": "e" * 64,
         },
         "evaluation": {"paired": {"aggregate": {}}},
     }
@@ -284,6 +366,10 @@ def test_published_candidate_is_structurally_simulator_only(tmp_path):
     assert checkpoint["metadata"]["authority"]["promotion"] is False
     assert checkpoint["metadata"]["source_binding"]["module_sha256"] == "b" * 64
     assert checkpoint["metadata"]["source_binding"]["candidate_parameter_sha256"] == "f" * 64
+    assert (
+        checkpoint["metadata"]["source_binding"]["initial_checkpoint_sha256"]
+        == "1" * 64
+    )
 
 
 def test_opt_in_tiny_native_training_smoke():

@@ -39,12 +39,15 @@ from analysis_scripts.combat_lightspeed_bridge import (  # noqa: E402
     sha256_file,
     validate_card_select_settlement,
 )
-from spirecomm.ai.rl.checkpoint_io import save_torch_checkpoint  # noqa: E402
+from spirecomm.ai.rl.checkpoint_io import (  # noqa: E402
+    load_torch_checkpoint,
+    save_torch_checkpoint,
+)
 from spirecomm.ai.rl.v2.id_mapping import IdMapper, build_id_mapper  # noqa: E402
 from spirecomm.ai.rl.v2.trainer import DQNTrainerV2  # noqa: E402
 
 
-REPORT_SCHEMA_VERSION = "combat-lightspeed-training-smoke-v3"
+REPORT_SCHEMA_VERSION = "combat-lightspeed-training-smoke-v4"
 CHECKPOINT_KIND = "simulator_training_smoke"
 REPORT_AUTHORITY = {
     "gameplay": False,
@@ -295,6 +298,79 @@ def parameter_delta(
         if difference.numel():
             maximum = max(maximum, float(torch.max(torch.abs(difference)).item()))
     return {"l2": math.sqrt(squared), "max_abs": maximum}
+
+
+def load_initial_checkpoint(
+    path: Path,
+    *,
+    expected_sha256: str | None,
+) -> dict[str, Any]:
+    resolved = path.resolve()
+    if not resolved.is_file():
+        raise ValueError(f"initial checkpoint does not exist: {resolved}")
+    actual_sha256 = sha256_file(resolved)
+    if expected_sha256 is not None and actual_sha256 != expected_sha256.lower():
+        raise ValueError(
+            "initial checkpoint hash mismatch: "
+            f"expected {expected_sha256.lower()}, got {actual_sha256}"
+        )
+    checkpoint = load_torch_checkpoint(str(resolved), map_location="cpu")
+    if not isinstance(checkpoint, Mapping):
+        raise ValueError("initial checkpoint root must be a mapping")
+    if checkpoint.get("checkpoint_kind") != CHECKPOINT_KIND:
+        raise ValueError("initial checkpoint kind must be simulator_training_smoke")
+    if checkpoint.get("production_compatible") is not False:
+        raise ValueError("initial checkpoint must not be production-compatible")
+    state_dict = checkpoint.get("online_network_state_dict")
+    if not isinstance(state_dict, Mapping) or not state_dict:
+        raise ValueError("initial checkpoint online state is missing or empty")
+    state = dict(state_dict)
+    if any(not isinstance(value, torch.Tensor) for value in state.values()):
+        raise ValueError("initial checkpoint online state contains non-tensor values")
+    return {
+        "path": str(resolved),
+        "checkpoint_sha256": actual_sha256,
+        "size_bytes": resolved.stat().st_size,
+        "checkpoint_schema_version": checkpoint.get("checkpoint_schema_version"),
+        "checkpoint_kind": CHECKPOINT_KIND,
+        "source_type": checkpoint.get("source_type"),
+        "production_compatible": False,
+        "parameter_sha256": parameter_sha256(state),
+        "state_dict": state,
+    }
+
+
+def initialize_trainer(
+    trainer: DQNTrainerV2,
+    initial_checkpoint: Mapping[str, Any] | None,
+) -> tuple[dict[str, torch.Tensor], dict[str, Any]]:
+    if initial_checkpoint is None:
+        state = copy.deepcopy(trainer.online_network.state_dict())
+        return state, {
+            "mode": "fresh",
+            "parameter_sha256": parameter_sha256(state),
+        }
+
+    state = initial_checkpoint.get("state_dict")
+    if not isinstance(state, Mapping):
+        raise ValueError("initial checkpoint state_dict is missing")
+    try:
+        trainer.online_network.load_state_dict(state, strict=True)
+        trainer.target_network.load_state_dict(state, strict=True)
+    except (KeyError, RuntimeError, TypeError, ValueError) as exc:
+        raise ValueError(f"initial checkpoint network incompatible: {exc}") from exc
+    trainer.target_network.eval()
+    control = copy.deepcopy(trainer.online_network.state_dict())
+    record = {
+        key: value
+        for key, value in initial_checkpoint.items()
+        if key != "state_dict"
+    }
+    record["mode"] = "warm_start"
+    loaded_sha256 = parameter_sha256(control)
+    if loaded_sha256 != record.get("parameter_sha256"):
+        raise ValueError("initial checkpoint parameter hash changed during load")
+    return control, record
 
 
 def _terminal_next_state() -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
@@ -775,6 +851,13 @@ def _publish(
             "initial_parameter_sha256": report["training"]["initial_parameter_sha256"],
             "candidate_parameter_sha256": report["training"]["candidate_parameter_sha256"],
         }
+        if report["initialization"]["mode"] == "warm_start":
+            source_binding["initial_checkpoint_sha256"] = report["initialization"][
+                "checkpoint_sha256"
+            ]
+            source_binding["initial_checkpoint_parameter_sha256"] = report[
+                "initialization"
+            ]["parameter_sha256"]
         checkpoint = {
             "checkpoint_schema_version": 0,
             "checkpoint_kind": CHECKPOINT_KIND,
@@ -826,7 +909,7 @@ def _publish(
             "size_bytes": candidate_path.stat().st_size,
         }
     manifest = {
-        "schema_version": "combat-lightspeed-training-smoke-manifest-v3",
+        "schema_version": "combat-lightspeed-training-smoke-manifest-v4",
         "artifacts": manifest_entries,
     }
     artifacts["manifest.json"] = canonical_json_bytes(manifest) + b"\n"
@@ -842,6 +925,7 @@ def run_smoke(
     id_mapper: IdMapper,
     config: SmokeConfig,
     provenance: Mapping[str, Any],
+    initial_checkpoint: Mapping[str, Any] | None = None,
 ) -> tuple[dict[str, Any], dict[str, torch.Tensor]]:
     config.validate()
     trainer = create_fresh_trainer(
@@ -850,7 +934,7 @@ def run_smoke(
         batch_size=config.batch_size,
         learning_starts=config.batch_size,
     )
-    initial = copy.deepcopy(trainer.online_network.state_dict())
+    initial, initialization = initialize_trainer(trainer, initial_checkpoint)
     initial_sha256 = parameter_sha256(initial)
     transitions, corpus_metrics = collect_transitions(
         native_module,
@@ -919,6 +1003,7 @@ def run_smoke(
         "authority": dict(REPORT_AUTHORITY),
         "config": asdict(config),
         "provenance": dict(provenance),
+        "initialization": initialization,
         "reward_definition": {
             "damage_scale": 0.05,
             "kill_reward": 10.0,
@@ -995,11 +1080,17 @@ def _parse_args() -> argparse.Namespace:
     parser.add_argument("--network-seed", default=2026081902, type=int)
     parser.add_argument("--batch-size", default=128, type=int)
     parser.add_argument("--optimizer-steps", default=64, type=int)
+    parser.add_argument("--initial-checkpoint", type=Path)
+    parser.add_argument("--initial-checkpoint-sha256")
     return parser.parse_args()
 
 
 def main() -> int:
     args = _parse_args()
+    if bool(args.initial_checkpoint) != bool(args.initial_checkpoint_sha256):
+        raise ValueError(
+            "--initial-checkpoint and --initial-checkpoint-sha256 must be supplied together"
+        )
     config = SmokeConfig(
         train_seeds=args.train_seeds,
         evaluation_seeds=args.evaluation_seeds,
@@ -1020,11 +1111,18 @@ def main() -> int:
         native_module=native_module,
     )
     provenance["training_runner_sha256"] = sha256_file(Path(__file__))
+    initial_checkpoint = None
+    if args.initial_checkpoint is not None:
+        initial_checkpoint = load_initial_checkpoint(
+            args.initial_checkpoint,
+            expected_sha256=args.initial_checkpoint_sha256,
+        )
     report, candidate = run_smoke(
         native_module,
         id_mapper=build_id_mapper(args.items_json),
         config=config,
         provenance=provenance,
+        initial_checkpoint=initial_checkpoint,
     )
     _publish(args.output_dir.resolve(), report=report, candidate_state=candidate)
     print(json.dumps({"output_dir": str(args.output_dir.resolve()), "verdict": report["verdict"]}))
