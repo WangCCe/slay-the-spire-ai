@@ -1564,6 +1564,13 @@ The next authorized sequence is:
     the first work on a bounded successor fit using consumed r12 and older
     consumed replay; collect a new promoted-r16 holdout only after that successor
     passes the fixed cross-replay guards.
+76. Freeze r17 as the first promoted-r16 successor for one fresh replay only.
+    It used eight full-gradient SGD updates on consumed r12, selected trust
+    weight `0.25` at interpolation `alpha=0.5`, and moved `7.5350e-6` relative
+    L2 from r16. It improved both registered losses on r6/r8/r9/r10/r11 while
+    retaining at least `99.2210%` parent agreement, at most `0.8281%`
+    off-target disagreement, and fewer positive-energy End Turns on every
+    replay. Do not fit or tune against the next fresh promoted-r16 replay.
 
 ## Work Lanes
 
