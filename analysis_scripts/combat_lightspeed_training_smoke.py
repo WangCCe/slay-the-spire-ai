@@ -44,11 +44,15 @@ from spirecomm.ai.rl.checkpoint_io import (  # noqa: E402
     save_torch_checkpoint,
 )
 from spirecomm.ai.rl.v2.id_mapping import IdMapper, build_id_mapper  # noqa: E402
+from spirecomm.ai.rl.v2.network import create_dqn_v2  # noqa: E402
 from spirecomm.ai.rl.v2.trainer import DQNTrainerV2  # noqa: E402
+from spirecomm.ai.rl.v2.types import EncodedStateV2  # noqa: E402
 
 
-REPORT_SCHEMA_VERSION = "combat-lightspeed-training-smoke-v6"
+REPORT_SCHEMA_VERSION = "combat-lightspeed-training-smoke-v7"
 CHECKPOINT_KIND = "simulator_training_smoke"
+ENCOUNTER_HASH_ALGORITHM = "sha256-first-8-bytes-modulo"
+MAX_ENCOUNTER_IDENTITY_BUCKETS = 1024
 REPORT_AUTHORITY = {
     "gameplay": False,
     "larger_simulator_experiment": False,
@@ -84,6 +88,7 @@ class SmokeConfig:
     parent_policy_anchor_weight: float = 0.0
     balance_replay_by_battle_index: bool = False
     replay_balance_seed: int = 2026081903
+    encounter_identity_buckets: int = 0
 
     def validate(self) -> None:
         if not self.train_seeds or not self.evaluation_seeds:
@@ -117,6 +122,13 @@ class SmokeConfig:
             )
         if self.replay_balance_seed < 0:
             raise ValueError("replay balance seed must be non-negative")
+        if self.encounter_identity_buckets != 0 and not (
+            2 <= self.encounter_identity_buckets <= MAX_ENCOUNTER_IDENTITY_BUCKETS
+        ):
+            raise ValueError(
+                "encounter identity buckets must be zero or in "
+                f"2..{MAX_ENCOUNTER_IDENTITY_BUCKETS}"
+            )
 
     def profiles(self, seeds: Sequence[int]) -> tuple[tuple[int, int], ...]:
         return tuple(
@@ -159,6 +171,64 @@ def unexpected_initialization_failures(
         for reason, count in counts.items()
         if reason not in EXPECTED_UNREACHABLE_PROFILE_REASONS and int(count) > 0
     }
+
+
+def encounter_identity_bucket(encounter: object, bucket_count: int) -> int:
+    if not 2 <= bucket_count <= MAX_ENCOUNTER_IDENTITY_BUCKETS:
+        raise ValueError("encounter identity bucket count is not enabled")
+    if not isinstance(encounter, str) or not encounter:
+        raise ValueError("encounter identity must be a non-empty string")
+    digest = hashlib.sha256(encounter.encode("utf-8")).digest()
+    return int.from_bytes(digest[:8], "big") % bucket_count
+
+
+def append_encounter_identity(
+    continuous: np.ndarray,
+    *,
+    encounter: object,
+    bucket_count: int,
+) -> np.ndarray:
+    values = np.asarray(continuous, dtype=np.float32)
+    if values.shape != (CONTINUOUS_DIM,):
+        raise ValueError(f"legacy continuous observation has invalid shape: {values.shape}")
+    if bucket_count == 0:
+        return values.copy()
+    bucket = encounter_identity_bucket(encounter, bucket_count)
+    result = np.zeros(CONTINUOUS_DIM + bucket_count, dtype=np.float32)
+    result[:CONTINUOUS_DIM] = values
+    result[CONTINUOUS_DIM + bucket] = 1.0
+    return result
+
+
+def encounter_from_snapshot(snapshot: Mapping[str, Any]) -> str:
+    encounter = _state(snapshot).get("encounter")
+    if not isinstance(encounter, str) or not encounter:
+        raise ValueError("native snapshot omits encounter identity")
+    return encounter
+
+
+def augment_mapped_state(
+    mapped: MappedCombatState,
+    snapshot: Mapping[str, Any],
+    *,
+    bucket_count: int,
+) -> MappedCombatState:
+    if bucket_count == 0:
+        return mapped
+    encounter = encounter_from_snapshot(snapshot)
+    return MappedCombatState(
+        state=EncodedStateV2(
+            continuous=append_encounter_identity(
+                mapped.state.continuous,
+                encounter=encounter,
+                bucket_count=bucket_count,
+            ),
+            card_ids=mapped.state.card_ids.copy(),
+            potion_ids=mapped.state.potion_ids.copy(),
+            relic_ids=mapped.state.relic_ids.copy(),
+        ),
+        action_mask=mapped.action_mask.copy(),
+    )
 
 
 def select_behavior_action(
@@ -261,12 +331,13 @@ def create_fresh_trainer(
     learning_starts: int,
     buffer_size: int = 100_000,
     parent_policy_anchor_weight: float = 0.0,
+    continuous_dim: int = CONTINUOUS_DIM,
 ) -> DQNTrainerV2:
     random.seed(seed)
     np.random.seed(seed % (2**32))
     torch.manual_seed(seed)
     trainer = DQNTrainerV2(
-        continuous_dim=CONTINUOUS_DIM,
+        continuous_dim=continuous_dim,
         action_dim=ACTION_DIM,
         card_slots=CARD_SLOTS,
         potion_slots=POTION_SLOTS,
@@ -286,6 +357,149 @@ def create_fresh_trainer(
         parent_policy_anchor_weight=parent_policy_anchor_weight,
     )
     return trainer
+
+
+def migrate_parent_for_encounter_identity(
+    source: Mapping[str, torch.Tensor],
+    target: Mapping[str, torch.Tensor],
+    *,
+    bucket_count: int,
+) -> dict[str, torch.Tensor]:
+    if not 2 <= bucket_count <= MAX_ENCOUNTER_IDENTITY_BUCKETS:
+        raise ValueError("encounter identity bucket count is not enabled")
+    first_weight = "hidden_layers.0.weight"
+    if set(source) != set(target) or first_weight not in source:
+        raise ValueError("encounter parent network keys are incompatible")
+    migrated: dict[str, torch.Tensor] = {}
+    for name in sorted(target):
+        source_tensor = source[name]
+        target_tensor = target[name]
+        if name != first_weight:
+            if source_tensor.shape != target_tensor.shape:
+                raise ValueError(
+                    f"encounter parent tensor shape mismatch for {name}: "
+                    f"{tuple(source_tensor.shape)} != {tuple(target_tensor.shape)}"
+                )
+            migrated[name] = source_tensor.detach().cpu().clone()
+            continue
+        if (
+            source_tensor.ndim != 2
+            or target_tensor.ndim != 2
+            or source_tensor.shape[0] != target_tensor.shape[0]
+            or source_tensor.shape[1] < CONTINUOUS_DIM
+            or target_tensor.shape[1] != source_tensor.shape[1] + bucket_count
+        ):
+            raise ValueError(
+                "encounter parent first-layer shape is incompatible: "
+                f"{tuple(source_tensor.shape)} -> {tuple(target_tensor.shape)}"
+            )
+        expanded = torch.zeros_like(target_tensor, device="cpu")
+        source_cpu = source_tensor.detach().cpu()
+        expanded[:, :CONTINUOUS_DIM] = source_cpu[:, :CONTINUOUS_DIM]
+        expanded[:, CONTINUOUS_DIM + bucket_count :] = source_cpu[:, CONTINUOUS_DIM:]
+        migrated[name] = expanded
+    return migrated
+
+
+def prove_encounter_parent_equivalence(
+    trainer: DQNTrainerV2,
+    source: Mapping[str, torch.Tensor],
+    *,
+    bucket_count: int,
+    probe_count: int = 16,
+    tolerance: float = 1e-6,
+) -> dict[str, Any]:
+    network = trainer.online_network
+    was_training = network.training
+    torch_rng_state = torch.random.get_rng_state()
+    try:
+        legacy = create_dqn_v2(
+            network_type=trainer.network_type,
+            continuous_dim=CONTINUOUS_DIM,
+            action_dim=trainer.action_dim,
+            card_vocab=network.card_embedding.num_embeddings,
+            potion_vocab=network.potion_embedding.num_embeddings,
+            relic_vocab=network.relic_embedding.num_embeddings,
+            device="cpu",
+            card_embed_dim=network.card_embedding.embedding_dim,
+            potion_embed_dim=network.potion_embedding.embedding_dim,
+            relic_embed_dim=network.relic_embedding.embedding_dim,
+            card_slots=trainer.card_slots,
+            potion_slots=trainer.potion_slots,
+            relic_slots=trainer.relic_slots,
+        )
+        legacy.load_state_dict(source, strict=True)
+        legacy.eval()
+        network.eval()
+
+        rng = np.random.default_rng(2026081926)
+        continuous = rng.random((probe_count, CONTINUOUS_DIM), dtype=np.float32)
+        encounter_features = np.zeros((probe_count, bucket_count), dtype=np.float32)
+        encounter_features[
+            np.arange(probe_count), np.arange(probe_count) % bucket_count
+        ] = 1.0
+        augmented = np.concatenate((continuous, encounter_features), axis=1)
+        card_ids = rng.integers(
+            0,
+            network.card_embedding.num_embeddings,
+            size=(probe_count, trainer.card_slots),
+            dtype=np.int64,
+        )
+        potion_ids = rng.integers(
+            0,
+            network.potion_embedding.num_embeddings,
+            size=(probe_count, trainer.potion_slots),
+            dtype=np.int64,
+        )
+        relic_ids = rng.integers(
+            0,
+            network.relic_embedding.num_embeddings,
+            size=(probe_count, trainer.relic_slots),
+            dtype=np.int64,
+        )
+        action_mask = np.fromfunction(
+            lambda row, action: (row + action) % 3 != 0,
+            (probe_count, trainer.action_dim),
+            dtype=int,
+        ).astype(bool)
+        action_mask[:, 0] = True
+
+        def tensor(value: np.ndarray) -> torch.Tensor:
+            return torch.from_numpy(value)
+
+        with torch.no_grad():
+            legacy_q = legacy(
+                tensor(continuous).float(),
+                tensor(card_ids).long(),
+                tensor(potion_ids).long(),
+                tensor(relic_ids).long(),
+                tensor(action_mask),
+            )
+            migrated_q = network(
+                tensor(augmented).float(),
+                tensor(card_ids).long(),
+                tensor(potion_ids).long(),
+                tensor(relic_ids).long(),
+                tensor(action_mask),
+            )
+        valid = tensor(action_mask)
+        max_abs_q_delta = float(
+            torch.max(torch.abs(legacy_q[valid] - migrated_q[valid])).item()
+        )
+        action_mismatch_count = int(
+            (legacy_q.argmax(dim=1) != migrated_q.argmax(dim=1)).sum().item()
+        )
+    finally:
+        torch.random.set_rng_state(torch_rng_state)
+        network.train(was_training)
+    passed = max_abs_q_delta <= tolerance and action_mismatch_count == 0
+    return {
+        "action_mismatch_count": action_mismatch_count,
+        "max_abs_q_delta": max_abs_q_delta,
+        "passed": passed,
+        "probe_count": probe_count,
+        "tolerance": tolerance,
+    }
 
 
 def parameter_sha256(state_dict: Mapping[str, torch.Tensor]) -> str:
@@ -358,8 +572,14 @@ def load_initial_checkpoint(
 def initialize_trainer(
     trainer: DQNTrainerV2,
     initial_checkpoint: Mapping[str, Any] | None,
+    *,
+    encounter_identity_buckets: int = 0,
 ) -> tuple[dict[str, torch.Tensor], dict[str, Any]]:
     if initial_checkpoint is None:
+        if encounter_identity_buckets:
+            raise ValueError(
+                "encounter identity requires a warm-start simulator checkpoint"
+            )
         if trainer.parent_policy_anchor_weight > 0.0:
             raise ValueError(
                 "positive parent policy anchor weight requires a warm-start checkpoint"
@@ -374,6 +594,13 @@ def initialize_trainer(
     state = initial_checkpoint.get("state_dict")
     if not isinstance(state, Mapping):
         raise ValueError("initial checkpoint state_dict is missing")
+    source_state = dict(state)
+    if encounter_identity_buckets:
+        state = migrate_parent_for_encounter_identity(
+            source_state,
+            trainer.online_network.state_dict(),
+            bucket_count=encounter_identity_buckets,
+        )
     try:
         trainer.online_network.load_state_dict(state, strict=True)
         trainer.target_network.load_state_dict(state, strict=True)
@@ -388,7 +615,30 @@ def initialize_trainer(
     }
     record["mode"] = "warm_start"
     loaded_sha256 = parameter_sha256(control)
-    if loaded_sha256 != record.get("parameter_sha256"):
+    if encounter_identity_buckets:
+        record["mode"] = "warm_start_encounter_expansion"
+        record["source_parameter_sha256"] = record.get("parameter_sha256")
+        record["parameter_sha256"] = loaded_sha256
+        equivalence = prove_encounter_parent_equivalence(
+            trainer,
+            source_state,
+            bucket_count=encounter_identity_buckets,
+        )
+        if not equivalence["passed"]:
+            raise ValueError(f"encounter parent equivalence failed: {equivalence}")
+        first_weight = "hidden_layers.0.weight"
+        encounter_columns = control[first_weight][
+            :, CONTINUOUS_DIM : CONTINUOUS_DIM + encounter_identity_buckets
+        ]
+        record["encounter_identity_migration"] = {
+            "bucket_count": encounter_identity_buckets,
+            "hash_algorithm": ENCOUNTER_HASH_ALGORITHM,
+            "inserted_column_max_abs": float(torch.max(torch.abs(encounter_columns)).item()),
+            "migrated_parameter_sha256": loaded_sha256,
+            "source_parameter_sha256": record["source_parameter_sha256"],
+            "equivalence": equivalence,
+        }
+    elif loaded_sha256 != record.get("parameter_sha256"):
         raise ValueError("initial checkpoint parameter hash changed during load")
     record["parent_policy_anchor_weight"] = trainer.parent_policy_anchor_weight
     if trainer.parent_policy_anchor_weight > 0.0:
@@ -399,9 +649,11 @@ def initialize_trainer(
     return control, record
 
 
-def _terminal_next_state() -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
+def _terminal_next_state(
+    continuous_dim: int = CONTINUOUS_DIM,
+) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
     return (
-        np.zeros(CONTINUOUS_DIM, dtype=np.float32),
+        np.zeros(continuous_dim, dtype=np.float32),
         np.zeros(CARD_SLOTS, dtype=np.int64),
         np.zeros(POTION_SLOTS, dtype=np.int64),
         np.zeros(RELIC_SLOTS, dtype=np.int64),
@@ -419,7 +671,9 @@ def _transition(
     battle_index: int,
 ) -> ReplayTransition:
     if successor is None:
-        next_continuous, next_cards, next_potions, next_relics, next_mask = _terminal_next_state()
+        next_continuous, next_cards, next_potions, next_relics, next_mask = _terminal_next_state(
+            current.state.continuous.size
+        )
     else:
         next_continuous = successor.state.continuous.copy()
         next_cards = successor.state.card_ids.copy()
@@ -465,6 +719,7 @@ def collect_transitions(
     progression_acts = Counter()
     progression_encounters = Counter()
     initialized_profiles = 0
+    encounter_assignments: dict[str, int] = {}
 
     for seed, battle_index in config.profiles(config.train_seeds):
         try:
@@ -494,9 +749,24 @@ def collect_transitions(
                 unsupported[reason] += 1
                 break
 
-            current = environment.mapped_state(id_mapper=id_mapper)
+            mapped = environment.mapped_state(id_mapper=id_mapper)
             before = environment.snapshot()
-            encounters[str(_state(before).get("encounter") or "unknown")] += 1
+            encounter = (
+                encounter_from_snapshot(before)
+                if config.encounter_identity_buckets
+                else str(_state(before).get("encounter") or "unknown")
+            )
+            if config.encounter_identity_buckets:
+                encounter_assignments[encounter] = encounter_identity_bucket(
+                    encounter,
+                    config.encounter_identity_buckets,
+                )
+            current = augment_mapped_state(
+                mapped,
+                before,
+                bucket_count=config.encounter_identity_buckets,
+            )
+            encounters[encounter] += 1
             selected = select_behavior_action(
                 environment.legal_actions(),
                 rng=rng,
@@ -531,7 +801,11 @@ def collect_transitions(
             successor_mapped = (
                 None
                 if successor_kind == "terminal"
-                else successor_environment.mapped_state(id_mapper=id_mapper)
+                else augment_mapped_state(
+                    successor_environment.mapped_state(id_mapper=id_mapper),
+                    after,
+                    bucket_count=config.encounter_identity_buckets,
+                )
             )
             transitions.append(
                 _transition(
@@ -586,6 +860,14 @@ def collect_transitions(
         },
         "seed_count": len(config.train_seeds),
         "unsupported_reason_counts": dict(sorted(unsupported.items())),
+        "encounter_identity": {
+            "bucket_count": config.encounter_identity_buckets,
+            "hash_algorithm": (
+                ENCOUNTER_HASH_ALGORITHM if config.encounter_identity_buckets else None
+            ),
+            "assignments": dict(sorted(encounter_assignments.items())),
+            "occupied_bucket_count": len(set(encounter_assignments.values())),
+        },
     }
 
 
@@ -794,6 +1076,12 @@ def evaluate_policy(
                     unsupported_reason = reason
                     break
                 mapped = environment.mapped_state(id_mapper=id_mapper)
+                before = environment.snapshot()
+                mapped = augment_mapped_state(
+                    mapped,
+                    before,
+                    bucket_count=config.encounter_identity_buckets,
+                )
                 legal = environment.legal_actions()
                 selected = _policy_action(
                     trainer,
@@ -802,7 +1090,6 @@ def evaluate_policy(
                     actions_since_end_turn=actions_since_end_turn,
                     max_actions_per_turn=config.max_actions_per_turn,
                 )
-                before = environment.snapshot()
                 environment.step(str(selected["action_id"]))
                 status = environment.status()
                 after = environment.snapshot()
@@ -976,13 +1263,27 @@ def _publish(
             "initial_parameter_sha256": report["training"]["initial_parameter_sha256"],
             "candidate_parameter_sha256": report["training"]["candidate_parameter_sha256"],
         }
-        if report["initialization"]["mode"] == "warm_start":
+        if report["initialization"].get("checkpoint_sha256"):
             source_binding["initial_checkpoint_sha256"] = report["initialization"][
                 "checkpoint_sha256"
             ]
             source_binding["initial_checkpoint_parameter_sha256"] = report[
                 "initialization"
-            ]["parameter_sha256"]
+            ].get(
+                "source_parameter_sha256",
+                report["initialization"]["parameter_sha256"],
+            )
+            source_binding["initial_parameter_sha256"] = report["initialization"][
+                "parameter_sha256"
+            ]
+        if report["initialization"].get("source_parameter_sha256"):
+            source_binding["source_checkpoint_parameter_sha256"] = report[
+                "initialization"
+            ]["source_parameter_sha256"]
+        if report["initialization"].get("encounter_identity_migration"):
+            source_binding["encounter_identity_migration"] = report[
+                "initialization"
+            ]["encounter_identity_migration"]
         source_binding["parent_policy_anchor_weight"] = report["training"][
             "parent_policy_anchor_weight"
         ]
@@ -1041,7 +1342,7 @@ def _publish(
             "size_bytes": candidate_path.stat().st_size,
         }
     manifest = {
-        "schema_version": "combat-lightspeed-training-smoke-manifest-v6",
+        "schema_version": "combat-lightspeed-training-smoke-manifest-v7",
         "artifacts": manifest_entries,
     }
     artifacts["manifest.json"] = canonical_json_bytes(manifest) + b"\n"
@@ -1066,8 +1367,13 @@ def run_smoke(
         batch_size=config.batch_size,
         learning_starts=config.batch_size,
         parent_policy_anchor_weight=config.parent_policy_anchor_weight,
+        continuous_dim=CONTINUOUS_DIM + config.encounter_identity_buckets,
     )
-    initial, initialization = initialize_trainer(trainer, initial_checkpoint)
+    initial, initialization = initialize_trainer(
+        trainer,
+        initial_checkpoint,
+        encounter_identity_buckets=config.encounter_identity_buckets,
+    )
     initial_sha256 = parameter_sha256(initial)
     transitions, corpus_metrics = collect_transitions(
         native_module,
@@ -1164,6 +1470,17 @@ def run_smoke(
                 "run_terminal",
             ],
         },
+        "observation_extension": {
+            "encounter_identity": {
+                "bucket_count": config.encounter_identity_buckets,
+                "continuous_dim": CONTINUOUS_DIM + config.encounter_identity_buckets,
+                "hash_algorithm": (
+                    ENCOUNTER_HASH_ALGORITHM
+                    if config.encounter_identity_buckets
+                    else None
+                ),
+            }
+        },
         "corpus": corpus_metrics,
         "training": {
             "initial_parameter_sha256": initial_sha256,
@@ -1238,6 +1555,7 @@ def _parse_args() -> argparse.Namespace:
     parser.add_argument("--parent-policy-anchor-weight", default=0.0, type=float)
     parser.add_argument("--balance-replay-by-battle-index", action="store_true")
     parser.add_argument("--replay-balance-seed", default=2026081903, type=int)
+    parser.add_argument("--encounter-identity-buckets", default=0, type=int)
     return parser.parse_args()
 
 
@@ -1261,6 +1579,7 @@ def main() -> int:
         parent_policy_anchor_weight=args.parent_policy_anchor_weight,
         balance_replay_by_battle_index=args.balance_replay_by_battle_index,
         replay_balance_seed=args.replay_balance_seed,
+        encounter_identity_buckets=args.encounter_identity_buckets,
     )
     native_module = load_native_module(args.module, dll_directories=args.dll_dir)
     provenance = collect_provenance(

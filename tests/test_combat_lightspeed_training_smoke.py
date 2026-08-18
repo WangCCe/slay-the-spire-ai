@@ -11,14 +11,19 @@ import torch
 import pytest
 
 from analysis_scripts.combat_lightspeed_training_smoke import (
+    ENCOUNTER_HASH_ALGORITHM,
     REPORT_AUTHORITY,
     ReplayTransition,
     SmokeConfig,
     _publish,
+    append_encounter_identity,
     calculate_native_reward,
     create_fresh_trainer,
+    encounter_from_snapshot,
+    encounter_identity_bucket,
     initialize_trainer,
     load_initial_checkpoint,
+    migrate_parent_for_encounter_identity,
     parameter_delta,
     parameter_sha256,
     paired_evaluation,
@@ -129,6 +134,49 @@ def test_parent_policy_constraint_weight_must_be_finite_and_non_negative():
             evaluation_seeds=(20,),
             replay_balance_seed=-1,
         ).validate()
+
+    for value in (-1, 1, 1025):
+        with pytest.raises(ValueError, match="encounter identity buckets"):
+            SmokeConfig(
+                train_seeds=(10,),
+                evaluation_seeds=(20,),
+                encounter_identity_buckets=value,
+            ).validate()
+
+
+def test_encounter_identity_is_deterministic_opt_in_and_one_hot():
+    continuous = np.linspace(0.0, 1.0, 328, dtype=np.float32)
+
+    unchanged = append_encounter_identity(
+        continuous,
+        encounter=None,
+        bucket_count=0,
+    )
+    left = append_encounter_identity(
+        continuous,
+        encounter="THREE_SENTRIES",
+        bucket_count=64,
+    )
+    right = append_encounter_identity(
+        continuous,
+        encounter="THREE_SENTRIES",
+        bucket_count=64,
+    )
+
+    assert np.array_equal(unchanged, continuous)
+    assert unchanged is not continuous
+    assert left.shape == (392,)
+    assert np.array_equal(left, right)
+    assert np.array_equal(left[:328], continuous)
+    assert left[328:].sum() == pytest.approx(1.0)
+    assert left[328 + encounter_identity_bucket("THREE_SENTRIES", 64)] == 1.0
+
+
+def test_encounter_identity_rejects_missing_snapshot_metadata():
+    with pytest.raises(ValueError, match="omits encounter identity"):
+        encounter_from_snapshot({"state": {}})
+    with pytest.raises(ValueError, match="non-empty string"):
+        encounter_identity_bucket("", 64)
 
 
 def _stratum_transition(battle_index, action):
@@ -391,6 +439,77 @@ def test_simulator_checkpoint_warm_starts_online_target_and_control(tmp_path):
     assert trainer.parent_policy_anchor_network is None
 
 
+def test_encounter_parent_migration_inserts_zero_columns_and_preserves_policy(tmp_path):
+    parent = create_fresh_trainer(_mapper(), seed=141, batch_size=2, learning_starts=2)
+    parent_state = copy.deepcopy(parent.online_network.state_dict())
+    path = tmp_path / "parent.pth"
+    _write_simulator_checkpoint(path, parent_state)
+    target = create_fresh_trainer(
+        _mapper(),
+        seed=142,
+        batch_size=2,
+        learning_starts=2,
+        continuous_dim=392,
+        parent_policy_anchor_weight=1.0,
+    )
+
+    migrated = migrate_parent_for_encounter_identity(
+        parent_state,
+        target.online_network.state_dict(),
+        bucket_count=64,
+    )
+    first_weight = migrated["hidden_layers.0.weight"]
+    assert torch.count_nonzero(first_weight[:, 328:392]).item() == 0
+    assert torch.equal(
+        first_weight[:, :328],
+        parent_state["hidden_layers.0.weight"][:, :328],
+    )
+    assert torch.equal(
+        first_weight[:, 392:],
+        parent_state["hidden_layers.0.weight"][:, 328:],
+    )
+
+    control, record = initialize_trainer(
+        target,
+        load_initial_checkpoint(path, expected_sha256=None),
+        encounter_identity_buckets=64,
+    )
+
+    migration = record["encounter_identity_migration"]
+    assert record["mode"] == "warm_start_encounter_expansion"
+    assert migration["hash_algorithm"] == ENCOUNTER_HASH_ALGORITHM
+    assert migration["inserted_column_max_abs"] == 0.0
+    assert migration["equivalence"]["passed"] is True
+    assert migration["equivalence"]["action_mismatch_count"] == 0
+    assert migration["equivalence"]["max_abs_q_delta"] <= 1e-6
+    assert parameter_sha256(control) == record["parameter_sha256"]
+    assert record["source_parameter_sha256"] == parameter_sha256(parent_state)
+    assert parameter_sha256(
+        target.parent_policy_anchor_network.state_dict()
+    ) == record["parameter_sha256"]
+
+
+def test_encounter_identity_requires_compatible_warm_start(tmp_path):
+    target = create_fresh_trainer(
+        _mapper(),
+        seed=143,
+        batch_size=2,
+        learning_starts=2,
+        continuous_dim=392,
+    )
+    with pytest.raises(ValueError, match="requires a warm-start"):
+        initialize_trainer(target, None, encounter_identity_buckets=64)
+
+    path = tmp_path / "invalid-parent.pth"
+    _write_simulator_checkpoint(path, {"wrong": torch.zeros(1)})
+    with pytest.raises(ValueError, match="keys are incompatible"):
+        initialize_trainer(
+            target,
+            load_initial_checkpoint(path, expected_sha256=None),
+            encounter_identity_buckets=64,
+        )
+
+
 def test_positive_parent_policy_constraint_freezes_loaded_parent(tmp_path):
     parent = create_fresh_trainer(_mapper(), seed=42, batch_size=2, learning_starts=2)
     parent_state = copy.deepcopy(parent.online_network.state_dict())
@@ -535,9 +654,14 @@ def test_published_candidate_is_structurally_simulator_only(tmp_path):
             "parent_policy_anchor_weight": 1.0,
         },
         "initialization": {
-            "mode": "warm_start",
+            "mode": "warm_start_encounter_expansion",
             "checkpoint_sha256": "1" * 64,
             "parameter_sha256": "e" * 64,
+            "source_parameter_sha256": "9" * 64,
+            "encounter_identity_migration": {
+                "bucket_count": 64,
+                "hash_algorithm": ENCOUNTER_HASH_ALGORITHM,
+            },
         },
         "evaluation": {"paired": {"aggregate": {}}},
     }
@@ -562,6 +686,22 @@ def test_published_candidate_is_structurally_simulator_only(tmp_path):
     assert (
         checkpoint["metadata"]["source_binding"]["initial_checkpoint_sha256"]
         == "1" * 64
+    )
+    assert (
+        checkpoint["metadata"]["source_binding"][
+            "initial_checkpoint_parameter_sha256"
+        ]
+        == "9" * 64
+    )
+    assert (
+        checkpoint["metadata"]["source_binding"]["initial_parameter_sha256"]
+        == "e" * 64
+    )
+    assert (
+        checkpoint["metadata"]["source_binding"]["encounter_identity_migration"][
+            "bucket_count"
+        ]
+        == 64
     )
     assert (
         checkpoint["metadata"]["source_binding"]["parent_policy_anchor_weight"]
@@ -600,6 +740,60 @@ def test_opt_in_tiny_native_training_smoke():
     assert report["evaluation"]["candidate"]["aggregate"]["seed_count"] == 2
     assert "card_select_settlement_action_count" in report["evaluation"]["control"]["aggregate"]
     assert "card_select_settlement_action_count" in report["evaluation"]["candidate"]["aggregate"]
+
+
+def test_opt_in_native_encounter_identity_training_smoke():
+    module_path = os.environ.get("STS_LIGHTSPEED_COMBAT_ADAPTER_MODULE")
+    items_json = os.environ.get("STS_ITEMS_JSON")
+    if not module_path or not items_json:
+        pytest.skip("native combat adapter paths are not configured")
+    dll_directory = os.environ.get("STS_LIGHTSPEED_MINGW_BIN")
+    module = load_native_module(
+        module_path,
+        dll_directories=(() if not dll_directory else (dll_directory,)),
+    )
+    mapper = build_id_mapper(items_json)
+    parent = create_fresh_trainer(
+        mapper,
+        seed=151,
+        batch_size=2,
+        learning_starts=2,
+    )
+    parent_state = copy.deepcopy(parent.online_network.state_dict())
+    report, _candidate = run_smoke(
+        module,
+        id_mapper=mapper,
+        config=SmokeConfig(
+            train_seeds=(2, 3),
+            evaluation_seeds=(10002, 10003),
+            batch_size=2,
+            optimizer_steps=1,
+            parent_policy_anchor_weight=1.0,
+            encounter_identity_buckets=64,
+        ),
+        provenance={"training_runner_sha256": "b" * 64},
+        initial_checkpoint={
+            "checkpoint_sha256": "a" * 64,
+            "checkpoint_kind": "simulator_training_smoke",
+            "checkpoint_schema_version": 0,
+            "parameter_sha256": parameter_sha256(parent_state),
+            "path": "memory-parent.pth",
+            "production_compatible": False,
+            "size_bytes": 0,
+            "source_type": "sts_lightspeed_native_combat",
+            "state_dict": parent_state,
+        },
+    )
+
+    identity = report["corpus"]["encounter_identity"]
+    migration = report["initialization"]["encounter_identity_migration"]
+    assert report["verdict"] == "technical_smoke_ready"
+    assert report["observation_extension"]["encounter_identity"]["continuous_dim"] == 392
+    assert identity["bucket_count"] == 64
+    assert identity["assignments"]
+    assert identity["occupied_bucket_count"] >= 1
+    assert migration["equivalence"]["passed"] is True
+    assert report["training"]["optimizer_update_count"] == 1
 
 
 def test_r3_card_select_blockers_settle_deterministically_across_clones():
