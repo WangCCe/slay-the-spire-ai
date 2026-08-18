@@ -1,0 +1,117 @@
+{
+  "schema_version": "combat-lightspeed-complete-trajectory-enum-identity-registration-v1",
+  "experiment_id": "combat-lightspeed-complete-trajectory-enum-identity-20260819-r1",
+  "registered_source_commit": "860e3427390ec310c8015a23ba280dc1159e6f01",
+  "experiment_question": "Does collision-free enum-v1 encounter identity replicate its prior policy uplift when trained only on supported complete trajectories?",
+  "source_binding": {
+    "training_runner_sha256": "2b544811dbfedea4c4aebecbf1b1237151add6c71de85c4479847b9405ae30e4",
+    "bridge_source_sha256": "ced080a47b3b9b25206eac7b8b5ee3752af348d4df8a5d9750e386157812bf90",
+    "native_module_sha256": "195678b7fc6bf69815f3d2971404afb8ce72fb666700edf4203383429caf1009",
+    "enum_v1_vocabulary_sha256": "03de0935cfdabf10d0a1ba800c9afe561d453c40c10b3c6b5ee47f7b14763638"
+  },
+  "parent": {
+    "label": "r4_first_combat",
+    "path": "reports/combat_lightspeed_training_smoke_20260819_r4_card_select_replication/simulator_only_candidate.pth",
+    "sha256": "0c3e94393089c2153980fd9df8c904d11efa8cd1e62a1899b8211144d0fe39ff",
+    "parameter_sha256": "1ecca8b19803d56f8bbed1b9ddbc1c8f26638f80bb0ccb50f21ece65e3dfc2f9"
+  },
+  "predecessor_evidence": {
+    "prior_enum_policy_criteria_passed": true,
+    "prior_enum_technical_criteria_passed": false,
+    "prior_training_decision_bound_profile_count": 2,
+    "prior_enum_vs_parent_aggregate_reward_delta": 1.4486493890065937,
+    "prior_enum_vs_parent_aggregate_player_hp_delta": 1.1365795724465557,
+    "prior_enum_vs_parent_candidate_only_victories": 19,
+    "prior_enum_vs_parent_parent_only_victories": 6,
+    "prior_enum_vs_parent_battle_index_9_reward_delta": 4.031151809710345,
+    "prior_enum_vs_parent_battle_index_9_player_hp_delta": 2.8811188811188813
+  },
+  "cohort": {
+    "training_seeds": "117000..118023",
+    "training_seed_count": 1024,
+    "evaluation_seeds": "119000..119255",
+    "evaluation_seed_count": 256,
+    "battle_indices": [0, 3, 6, 9],
+    "training_profile_count": 4096,
+    "evaluation_profile_count": 1024,
+    "all_prior_lightspeed_seed_overlap": false
+  },
+  "recipe": {
+    "ascension": 0,
+    "max_decisions_per_profile": 100,
+    "max_actions_per_turn": 8,
+    "behavior_seed": 2026081950,
+    "network_seed": 2026081951,
+    "batch_size": 128,
+    "optimizer_steps": 256,
+    "parent_policy_anchor_weight": 1.0,
+    "balance_replay_by_battle_index": true,
+    "replay_balance_seed": 2026081952,
+    "complete_trajectories_only": true,
+    "replay_target_mode": "one-step-td",
+    "replay_return_discount": 0.99,
+    "encounter_identity_buckets": 64,
+    "encounter_identity_encoding": "monster-encounter-enum-v1",
+    "device": "cpu",
+    "production_checkpoint_access": false
+  },
+  "output_dir": "reports/combat_lightspeed_complete_trajectory_enum_identity_20260819_r1",
+  "technical_success_criteria": {
+    "verdict": "technical_smoke_ready",
+    "finite_optimizer_updates": 256,
+    "source_parent_parameter_sha256_matches_registration": true,
+    "migrated_parent_new_column_max_abs": 0.0,
+    "migration_q_max_abs_delta_lte": 0.000001,
+    "migration_action_mismatch_count": 0,
+    "enum_v1_assignments_are_unique": true,
+    "enum_v1_vocabulary_sha256_matches_registration": true,
+    "complete_trajectories_only": true,
+    "excluded_incomplete_profile_count_lte": 8,
+    "excluded_incomplete_transition_count_lte": 800,
+    "allowed_incomplete_profile_reasons": ["decision_bound"],
+    "unsupported_reason_counts_empty": true,
+    "unexpected_initialization_failure_count": 0,
+    "source_replay_transition_count_gte": 60000,
+    "all_four_source_transition_strata_gte": 12000,
+    "all_four_prepared_transition_strata_equal": true,
+    "prepared_transition_count_lte_replay_capacity_100000": true,
+    "one_step_target_identity_equals_source_identity": true,
+    "held_out_truncation_count_per_policy": 0
+  },
+  "policy_uplift_criteria": {
+    "aggregate": [
+      "mean_reward_delta_gt_0",
+      "mean_player_hp_delta_gte_0",
+      "candidate_only_victories_gte_parent_only_victories"
+    ],
+    "battle_index_0": [
+      "mean_reward_delta_gte_0",
+      "mean_player_hp_delta_gte_0",
+      "candidate_only_victories_gte_parent_only_victories"
+    ],
+    "battle_index_6": [
+      "mean_reward_delta_gte_0",
+      "mean_player_hp_delta_gte_0",
+      "candidate_only_victories_gte_parent_only_victories"
+    ],
+    "battle_index_9": [
+      "reachable_profile_count_gte_100",
+      "mean_reward_delta_gt_0",
+      "mean_player_hp_delta_gte_0",
+      "candidate_only_victories_gte_parent_only_victories"
+    ],
+    "material_index_regression": "no_battle_index_mean_reward_delta_lt_-1.0"
+  },
+  "decision_rule": {
+    "fresh_frozen_confirmation_eligible": "all technical and policy uplift criteria pass",
+    "retain_parent": "any technical blocker or policy uplift criterion failure",
+    "live_transfer_authorized": false
+  },
+  "stop_rules": [
+    "Execute the registered cohort at most once and do not alter or retry it after outcome access.",
+    "Do not tune filtering, encoding, optimizer steps, balancing, anchor weight, architecture, reward definition, or thresholds.",
+    "Do not start Slay the Spire or CommunicationMod.",
+    "Do not access or modify a production checkpoint.",
+    "A passing result authorizes one fresh frozen simulator confirmation only, not live transfer, qualification, or promotion."
+  ]
+}
