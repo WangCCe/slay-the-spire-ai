@@ -1,0 +1,13 @@
+{
+  "schema_version": 1,
+  "kind": "source_commit_metadata_erratum",
+  "confirmation": "reports/combat_rl_promoted_r16_successor_20260818_r17/r13_fresh_confirmation.json",
+  "confirmation_sha256": "654db02135dd7b04840ce46f8a51896765c9bcfe7e4456f18aa994158c5be308",
+  "affected_field": "source_commit",
+  "supplied_source_commit": "70836c62c9f9cde80c5a52318abec374628d21d1",
+  "actual_registration_commit": "70836c62cd2a907839d91e80f3f873222c1a6baf",
+  "correct_short_prefix_was_supplied": true,
+  "evaluation_rerun": false,
+  "results_unchanged": true,
+  "explanation": "The manually expanded suffix in the metadata-only source_commit argument was incorrect. The frozen parent, candidate, replay, thresholds, output bytes, and evaluation result are unchanged; the one allowed evaluation was not rerun."
+}

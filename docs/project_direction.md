@@ -1571,6 +1571,17 @@ The next authorized sequence is:
     retaining at least `99.2210%` parent agreement, at most `0.8281%`
     off-target disagreement, and fewer positive-energy End Turns on every
     replay. Do not fit or tune against the next fresh promoted-r16 replay.
+77. Accept r13 as the single fresh replay confirmation for frozen r17.
+    Production r16 completed all 20 registered seeds naturally and generated
+    4,137 source transitions; the fixed checkpoint limit stored 4,096 and
+    marked the replay truncated. On those stored transitions, frozen r17
+    improved full-return SmoothL1 from `40.4774` to `40.4489` and one-step
+    SmoothL1 from `4.01494` to `3.99859`, retained `99.3164%` parent agreement,
+    limited off-target disagreement to `0.7163%`, and reduced positive-energy
+    End Turns from 2,047 to 2,034. It is eligible for one separately registered
+    20-pair matched live gate against r16, not automatic promotion. Preserve the
+    raw confirmation and its source-commit erratum; do not rerun or tune against
+    r13.
 
 ## Work Lanes
 
@@ -1582,9 +1593,11 @@ the replaced bounded baseline, while r8 remains a historical rollback artifact.
 R16 passed the consumed cross-replay guards, its single fresh r12 confirmation,
 and a 20-pair matched live gate by one floor pair with no losses. It is now the
 bounded production baseline, with r15 retained as exact rollback. The immediate
-next step is one bounded successor fit on consumed evidence before another
-fresh replay is collected. The near-term measure remains repeatable Act 3 and
-victory coverage, not whether another one-off favorable pair can be found.
+next step is one preregistered 20-pair matched live gate for frozen r17 against
+production r16. R17 passed consumed r6/r8/r9/r10/r11 and its single fresh r13
+confirmation; it has no promotion authority yet. The near-term measure remains
+repeatable Act 3 and victory coverage, not whether another one-off favorable
+pair can be found.
 
 The non-combat card-acceptance lane remains paused at its r6 zero-byte
 source-binding infrastructure failure. Resume it only as a separately

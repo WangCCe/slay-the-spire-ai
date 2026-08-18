@@ -28,8 +28,20 @@ at most `1%` off-target disagreement, and the positive-energy End Turn guard.
 The frozen checkpoint SHA-256 is
 `bb863ec1e6e2f87df8b12649d6bec353bd09b5ff44646e1a0ee600ccc8a2a382`.
 
+## Fresh confirmation
+
+Production r16 completed the registered r13 cohort naturally. Its terminal
+checkpoint stored 4,096 of 4,137 source transitions under the fixed replay
+serialization limit. Frozen r17 improved full-return SmoothL1 from `40.4774399`
+to `40.4488678` and one-step SmoothL1 from `4.0149384` to `3.9985926`, retained
+`99.3164%` parent agreement, limited off-target disagreement to `0.7163%`, and
+reduced positive-energy End Turns from 2,047 to 2,034.
+
+The raw confirmation has a metadata-only source-commit suffix error. Its
+adjacent erratum binds the actual registration commit; the one allowed
+evaluation was not rerun.
+
 ## Next step
 
-Collect one new 20-game zero-update replay under promoted r16 and evaluate this
-frozen r17 candidate exactly once. Do not fit, select, or change thresholds
-against that fresh cohort.
+Register one new 20-pair matched live gate comparing frozen r17 with production
+r16. The fresh replay grants no automatic promotion authority.
