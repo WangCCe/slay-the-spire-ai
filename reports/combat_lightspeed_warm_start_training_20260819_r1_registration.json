@@ -1,0 +1,79 @@
+{
+  "schema_version": "combat-lightspeed-warm-start-training-registration-v1",
+  "experiment_id": "combat-lightspeed-warm-start-training-20260819-r1",
+  "registered_source_commit": "c6aaeb02edd68b993984e6f3b06d3e903ca1e147",
+  "change_under_test": "add-combat-lightspeed-warm-start-training",
+  "source_binding": {
+    "training_runner_sha256": "2fb816ca02417555e7039509ea514caee7741824d1cae8444a85d860db461935",
+    "bridge_source_sha256": "ced080a47b3b9b25206eac7b8b5ee3752af348d4df8a5d9750e386157812bf90",
+    "native_module_sha256": "195678b7fc6bf69815f3d2971404afb8ce72fb666700edf4203383429caf1009"
+  },
+  "parent": {
+    "label": "r4_first_combat",
+    "path": "reports/combat_lightspeed_training_smoke_20260819_r4_card_select_replication/simulator_only_candidate.pth",
+    "sha256": "0c3e94393089c2153980fd9df8c904d11efa8cd1e62a1899b8211144d0fe39ff",
+    "checkpoint_kind": "simulator_training_smoke",
+    "production_compatible": false,
+    "frozen_comparison_rank": 2,
+    "frozen_comparison_mean_reward": 26.090241457362552,
+    "frozen_comparison_mean_player_hp": 48.7219730941704,
+    "frozen_comparison_victories": 202
+  },
+  "cohorts": {
+    "training_seeds": "95000..95255",
+    "training_seed_count": 256,
+    "evaluation_seeds": "96000..96063",
+    "evaluation_seed_count": 64,
+    "battle_indices": [0, 3, 6, 9],
+    "training_profile_count": 1024,
+    "evaluation_profile_count": 256,
+    "prior_lightspeed_experiment_seed_overlap": false
+  },
+  "training": {
+    "ascension": 0,
+    "max_decisions_per_profile": 100,
+    "max_actions_per_turn": 8,
+    "behavior_seed": 2026081914,
+    "network_seed": 2026081913,
+    "batch_size": 128,
+    "optimizer_steps": 256,
+    "device": "cpu",
+    "initialization": "warm_start_from_bound_simulator_checkpoint",
+    "scalar_parent_policy_anchor_weight": 0.0,
+    "production_checkpoint_access": false
+  },
+  "technical_success_criteria": {
+    "verdict": "technical_smoke_ready",
+    "finite_optimizer_updates": 256,
+    "initial_parameter_sha256_matches_parent": true,
+    "parameter_l2_delta_gt": 0.0,
+    "training_decision_bound_truncations": 0,
+    "paired_reachable_profile_count_gt": 0,
+    "unexpected_initialization_failure_count": 0
+  },
+  "simulator_uplift_criteria": {
+    "primary": "candidate_mean_reward_gt_parent_on_reachable_profiles",
+    "aggregate_guardrails": [
+      "candidate_victories_gte_parent",
+      "candidate_mean_player_hp_gte_parent"
+    ],
+    "early_combat_guardrails": [
+      "battle_index_0_candidate_victories_gte_parent",
+      "battle_index_0_mean_player_hp_delta_gte_0"
+    ],
+    "material_index_regression": "any_battle_index_mean_reward_delta_lt_-1.0"
+  },
+  "decision_rule": {
+    "replication_eligible": "all technical and simulator uplift criteria pass with no material index regression",
+    "retain_parent": "any technical blocker, aggregate guardrail failure, or material index regression",
+    "live_transfer_authorized": false
+  },
+  "stop_rules": [
+    "Do not retry or alter this cohort after outcome access.",
+    "Do not start Slay the Spire or CommunicationMod.",
+    "Do not load or modify a production checkpoint.",
+    "Do not add scalar anchor weight or tune the optimizer from this outcome.",
+    "A passing result authorizes at most one fresh simulator replication, not live transfer, qualification, or promotion."
+  ],
+  "output_dir": "reports/combat_lightspeed_warm_start_training_20260819_r1"
+}
