@@ -16,8 +16,8 @@
 
 ## 4. Fresh Replication
 
-- [ ] 4.1 Freeze one new training/evaluation cohort and unchanged optimizer budget before outcome access, then run at most once without tuning or retry.
-- [ ] 4.2 Publish source-bound artifacts and decide the reward, HP, victory, unsupported-state, and settlement-coverage gates.
+- [x] 4.1 Freeze one new training/evaluation cohort and unchanged optimizer budget before outcome access, then run at most once without tuning or retry.
+- [x] 4.2 Publish source-bound artifacts and decide the reward, HP, victory, unsupported-state, and settlement-coverage gates.
 
 ## 5. Closeout
 

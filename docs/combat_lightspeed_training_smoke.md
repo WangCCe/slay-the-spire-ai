@@ -2,12 +2,12 @@
 
 ## Current Verdict
 
-The bounded simulator-only training pipeline has passed its technical smoke and
-one larger pre-registered LightSTS experiment. An independent replication kept
-the mean reward and HP deltas positive, but failed the victory and unsupported
-guardrails only at the known `CARD_SELECT` boundary. Further same-surface
-training is paused until that bridge gap is closed. Nothing here authorizes
-live transfer, qualification, or promotion.
+The bounded simulator-only training pipeline has passed its technical smoke,
+one larger experiment, and a post-settlement replication. The v2 bridge closed
+the known `CARD_SELECT` censorship boundary, and r4 passed every registered
+technical, settlement, unsupported-state, reward, HP, and victory gate. The
+current narrow encounter surface is ready for coverage expansion, not live
+transfer, qualification, or promotion.
 
 ## Initial Smoke (r1)
 
@@ -73,12 +73,34 @@ control trajectories completed as victories. These exclusions contributed
 reward deltas `-30.15` and `-21.375`; they are bridge-coverage blockers rather
 than evidence that another same-surface optimizer run is useful.
 
+## Post-Settlement Replication (r4)
+
+The v2 adapter settled enumerable card-selection tasks through a bounded native
+auxiliary policy while preserving the 133-action RL v2 contract. A 256-seed
+calibration completed 3,953 deterministic clone/successor checks, settled
+`ARMAMENTS`, `DISCOVERY`, and `WARCRY`, and reported zero unsupported states.
+
+The fixed r4 training replication then produced:
+
+- 15,473 accepted replay transitions and 256 finite updates.
+- 48 training settlement actions across seven task identities.
+- Zero training, control, or candidate unsupported states and zero truncations.
+- Candidate versus control victories `256` versus `229`.
+- Candidate-only versus control-only victories `27` versus `0`.
+- Mean player HP delta `+22.546875`.
+- Mean reward delta `+17.5541015625`.
+- Candidate/control held-out settlement actions `2` versus `21`.
+
+All registered r4 criteria passed. The source-bound report and simulator-only
+checkpoint are in
+`reports/combat_lightspeed_training_smoke_20260819_r4_card_select_replication/`.
+
 ## Next Gate
 
-Add deterministic `CARD_SELECT` observation and action support to the combat
-LightSTS bridge, with clone-isolation and successor regressions. Only then run a
-new-cohort replication. Broader elite, boss, deck, relic, and HP coverage remains
-a separate prerequisite for transfer even if that replication passes.
+Expand the simulator reset/evaluation surface beyond the four observed basic
+Act 1 encounters to representative elite, boss, deck, relic, and HP states.
+Keep the current r4 candidate simulator-only; do not spend more compute on the
+same first-combat distribution.
 
 No simulator result can enter live qualification until matched real-game
 divergence evidence covers action legality, successor state, reward-relevant
