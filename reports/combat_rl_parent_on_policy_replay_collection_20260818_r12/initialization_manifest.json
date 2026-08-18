@@ -1,0 +1,32 @@
+{
+  "checkpoint": {
+    "checkpoint_kind": "training",
+    "checkpoint_schema_version": 2,
+    "epsilon": 0.0,
+    "learning_starts": 100000,
+    "path": "D:\\PycharmProjects\\slay-the-spire-ai\\reports\\combat_rl_parent_on_policy_replay_collection_20260818_r12\\rl_combat_model_promoted_r15_empty_replay_learning_starts_100000.pth",
+    "replay_transition_count": 0,
+    "sha256": "6dd2bba4fa4ad6bde32d6312d6e027585c79ac6c50de39ef4eb8e0c93641bbe9",
+    "size_bytes": 4550775,
+    "total_steps": 0
+  },
+  "inputs": {
+    "construction": "parent_weights_with_empty_replay_for_collection",
+    "items_json": "D:\\SteamLibrary\\steamapps\\common\\SlayTheSpire\\export\\items.json",
+    "items_json_sha256": "e23784ea8ed3092e3bfa9918240e162a9cbcb837badfb53c612eb0d83cc811dc",
+    "parent_checkpoint": "D:\\PycharmProjects\\slay-the-spire-ai\\reports\\combat_rl_return_end_turn_trust_three_quarter_step_20260818_r15\\rl_combat_model_return_end_turn_trust_three_quarter_step_candidate.pth",
+    "parent_checkpoint_sha256": "fcef143b8387fcee27e5f29cd53283e509cc5fbd3eec5c6b77cdebbdf4645b73",
+    "source_commit": "3fa2f9024cf7de15b0a7569584459941a693cf83"
+  },
+  "schema_version": 1,
+  "source_commit": "3fa2f9024cf7de15b0a7569584459941a693cf83",
+  "validation": {
+    "epsilon_matches": true,
+    "learning_starts_matches": true,
+    "online_equals_parent": true,
+    "optimizer_state_is_empty": true,
+    "replay_is_empty": true,
+    "target_equals_parent": true,
+    "total_steps_is_zero": true
+  }
+}
