@@ -11,5 +11,5 @@
 ## 3. Training Evidence
 
 - [x] 3.1 Run focused native tests and strict OpenSpec validation; record the full-suite disposition. The combined native training/interpolation/comparator gate passed `37` tests; the known roughly 30-minute full suite was intentionally omitted for this source-only runner extension.
-- [ ] 3.2 Register and run one fixed-weight r4 anchored mixed-battle training experiment on new seeds.
-- [ ] 3.3 Apply aggregate and per-index guardrails and decide whether one fresh simulator replication is justified.
+- [x] 3.2 Register and run one fixed-weight r4 anchored mixed-battle training experiment on new seeds.
+- [x] 3.3 Apply aggregate and per-index guardrails and decide whether one fresh simulator replication is justified. Aggregate HP and index 9 failed, so no replication is authorized.
