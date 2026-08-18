@@ -1591,6 +1591,13 @@ The next authorized sequence is:
     promote, or tune thresholds against this cohort. R13 is now consumed and
     may be used only as fitting or development evidence in a new frozen
     successor experiment.
+79. Freeze r18 as the second promoted-r16 successor for one fresh replay only.
+    It used eight full-gradient SGD updates on consumed r13, selected trust
+    weight `0.25` at interpolation `alpha=0.5`, and moved `7.6057e-6` relative
+    L2 from r16. It improved both registered losses on r6/r8/r9/r10/r11/r12
+    while retaining at least `99.2920%` parent agreement, at most `0.8680%`
+    off-target disagreement, and fewer positive-energy End Turns on every
+    replay. Do not fit or tune against the next fresh promoted-r16 replay.
 
 ## Work Lanes
 
@@ -1605,9 +1612,9 @@ bounded production baseline, with r15 retained as exact rollback. R17 then
 passed the consumed cross-replay guards and its single fresh r13 confirmation,
 but its matched live gate against r16 failed: paired wins tied, while r17
 trailed total floors, Act 2 entries, and Act 2 boss reaches. R16 remains
-production. The next authorized learning step is a new bounded successor fit
-using consumed r13 with prior consumed replays as development guards; do not
-collect another fresh cohort until a candidate passes those offline guards.
+production. R18 now passes the bounded fit on consumed r13 with r6/r8/r9/r10/
+r11/r12 as development guards. The next authorized step is one new promoted-r16
+fresh replay confirmation for frozen r18; it has no live or promotion authority.
 The near-term measure remains repeatable Act 3 and victory coverage, not whether
 another one-off favorable pair can be found.
 
