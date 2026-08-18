@@ -1438,18 +1438,35 @@ The next authorized sequence is:
     by further increasing one-step TD weight. The next candidate must use a
     sequence- or outcome-aware objective and demonstrate a general supported-
     trajectory benefit before consuming another fresh live holdout.
+64. Preserve r12 as a sequence-aware offline negative. Its full-combat-return
+    candidate improved both full-return and one-step SmoothL1 on development
+    replays r6 and r8, then repeated both loss improvements on the untouched r9
+    production replay with `99.3748%` parent agreement. It still failed the
+    registered behavioral guards: off-target disagreement was `1.0848%` versus
+    a `1%` ceiling, and positive-energy End Turn count rose by eight versus an
+    allowed increase of one. A read-only diff found 23 changed greedy actions,
+    including nine new positive-energy End Turns and one change away from a
+    parent positive-energy End Turn. Reject r12 without a live gate and retain
+    r8 in production. R9 is consumed; do not retry it, shrink interpolation, or
+    tune thresholds after observing it. The next training candidate may use r7
+    for fitting and r6/r8/r9 as development evidence, but must put a direct
+    parent non-End-over-End preservation term into the training objective and
+    pass the same cross-cohort loss and behavior guards before another fresh
+    replay is collected.
 
 ## Work Lanes
 
-The active lane is bounded combat-RL policy improvement. Investigate one
-sequence- or outcome-aware successor using only consumed development evidence,
-including the r11 Slime Boss divergence as a diagnostic rather than a one-seed
-training target. Freeze the objective and candidate before collecting a new
-production-policy replay holdout. Only an offline result that improves the
-general supported-trajectory metric while preserving action and safety guards
-may enter one separately registered matched live gate. Production remains on
-r8. The near-term measure is repeatable Act 3 and victory coverage, not whether
-another one-off win can be found.
+The active lane is bounded combat-RL policy improvement. R12 established that
+full-combat-return fitting can improve sequence and one-step replay losses, but
+also exposed a narrow positive-energy End Turn boundary regression on fresh r9
+evidence. The immediate successor should combine that return objective with a
+direct parent non-End-over-End preservation constraint, fit on consumed r7,
+and validate across consumed r6, r8, and r9. Freeze the objective and candidate
+before collecting another production-policy replay holdout. Only an offline
+result that improves the general supported-trajectory metric while preserving
+action and safety guards may enter one separately registered matched live gate.
+Production remains on r8. The near-term measure is repeatable Act 3 and victory
+coverage, not whether another one-off win can be found.
 
 The non-combat card-acceptance lane remains paused at its r6 zero-byte
 source-binding infrastructure failure. Resume it only as a separately

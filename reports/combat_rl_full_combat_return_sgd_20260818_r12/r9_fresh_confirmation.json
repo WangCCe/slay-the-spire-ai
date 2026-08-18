@@ -1,0 +1,106 @@
+{
+  "authority": "offline fresh-replay confirmation only; bounded live gate requires a separate matched registration",
+  "candidate": {
+    "absolute_td_p50": 13.117197036743164,
+    "absolute_td_p95": 195.96815490722656,
+    "correction_executed_action_agreement": 0.0,
+    "correction_state_count": 1651,
+    "eligible_executed_action_agreement": 0.17724770307540894,
+    "executed_action_agreement": 0.32536014914512634,
+    "intervention_executed_over_end_turn_share": 0.0,
+    "intervention_margin_p10": -3.8707990646362305,
+    "intervention_margin_p50": -2.1694884300231934,
+    "off_target_parent_disagreement_count": 22,
+    "off_target_parent_disagreement_share": 0.010848126374185085,
+    "off_target_state_count": 2028,
+    "one_step_smooth_l1": 4.220019340515137,
+    "parent_action_agreement": 0.9937483072280884,
+    "positive_energy_end_turn_count": 1707,
+    "positive_energy_end_turn_share": 0.6133668422698975,
+    "positive_energy_state_count": 2783,
+    "relative_l2_from_parent": 7.4169949146879545e-06,
+    "smooth_l1": 48.75077819824219
+  },
+  "decision": "not_eligible_for_live_gate",
+  "design": {
+    "checkpoint_writing": false,
+    "eligibility_thresholds": {
+      "off_target_parent_disagreement_max": 0.01,
+      "one_step_smooth_l1_must_improve": true,
+      "parent_action_agreement_min": 0.99,
+      "positive_energy_end_turn_count_increase_max": 1,
+      "smooth_l1_must_improve": true
+    },
+    "gamma": 0.99,
+    "horizon": 4096,
+    "model_fitting": false,
+    "objective": "frozen_candidate_n_step_replay_gate"
+  },
+  "eligibility": {
+    "all_conditions_passed": false,
+    "off_target_parent_disagreement_passed": false,
+    "one_step_smooth_l1_improved": true,
+    "parent_action_agreement_passed": true,
+    "positive_energy_end_turn_count_passed": false,
+    "smooth_l1_improved": true
+  },
+  "gate_id": "combat-rl-full-combat-return-r9-fresh-confirmation-20260818-r1",
+  "inputs": {
+    "candidate_checkpoint": {
+      "path": "D:\\PycharmProjects\\slay-the-spire-ai\\reports\\combat_rl_full_combat_return_sgd_20260818_r12\\rl_combat_model_full_combat_return_candidate.pth",
+      "provenance": {
+        "batch_size": 128,
+        "candidate_seed": 404,
+        "construction": "conservative_n_step_return_interpolation",
+        "development_replay_checkpoint_sha256": "64dbe36669f30c3856eced8792bcf08a0746a878e4aff2f3b76c1620f6fa686c",
+        "experiment_id": "combat-rl-full-combat-return-sgd-20260818-r12",
+        "full_coverage_epochs": 1,
+        "full_gradient_optimizer": "sgd",
+        "full_gradient_steps": 8,
+        "gamma": 0.99,
+        "horizon": 4096,
+        "interpolation_alpha": 0.5,
+        "learning_rate": 0.0002,
+        "optimization_mode": "full_dataset_gradient",
+        "parent_checkpoint_sha256": "edf7d33124a3fbbc3abee6bae6c7b9654ea9a9191dcf151e5c0b000c71a4f454",
+        "source_commit": "8d10e479a",
+        "td_weight": 0.2,
+        "train_replay_checkpoint_sha256": "b47e7457bb5327d678f279d479a3d3191db8a2e4d5a311d7e4373a8aaff0545c"
+      },
+      "sha256": "6f6fcf20aaae41f9e42d749042da73209943522e7e694f03341a2b2bb938d3f1"
+    },
+    "parent_checkpoint": {
+      "path": "D:\\PycharmProjects\\slay-the-spire-ai\\reports\\combat_rl_single_step_sgd_trust_region_20260817_r8\\rl_combat_model_second_single_step_sgd_candidate.pth",
+      "sha256": "edf7d33124a3fbbc3abee6bae6c7b9654ea9a9191dcf151e5c0b000c71a4f454"
+    },
+    "replay_checkpoint": {
+      "path": "D:\\PycharmProjects\\slay-the-spire-ai\\reports\\combat_rl_parent_on_policy_replay_collection_20260818_r9\\rl_combat_model_ep20_steps3679.pth",
+      "sha256": "e90925a2d2143665cc392850de828e740702556a689e1c6de74cd1474d1348fc",
+      "source_transition_count": 3679,
+      "transition_count": 3679,
+      "truncated": false
+    }
+  },
+  "parent_baseline": {
+    "absolute_td_p50": 13.15860366821289,
+    "absolute_td_p95": 195.9279022216797,
+    "correction_executed_action_agreement": 0.0,
+    "correction_state_count": 1651,
+    "eligible_executed_action_agreement": 0.17761467397212982,
+    "executed_action_agreement": 0.32508835196495056,
+    "intervention_executed_over_end_turn_share": 0.0,
+    "intervention_margin_p10": -3.862682342529297,
+    "intervention_margin_p50": -2.1669416427612305,
+    "off_target_parent_disagreement_count": 0,
+    "off_target_parent_disagreement_share": 0.0,
+    "off_target_state_count": 2028,
+    "one_step_smooth_l1": 4.241528511047363,
+    "parent_action_agreement": 1.0,
+    "positive_energy_end_turn_count": 1699,
+    "positive_energy_end_turn_share": 0.6104922890663147,
+    "positive_energy_state_count": 2783,
+    "smooth_l1": 48.78064727783203
+  },
+  "schema_version": 1,
+  "source_commit": "b2c3ddf1d"
+}
