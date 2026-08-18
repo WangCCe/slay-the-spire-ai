@@ -341,3 +341,13 @@ openspec/changes/archive/*-add-combat-lightspeed-frozen-candidate-comparison/** 
 openspec/specs/combat-lightspeed-frozen-candidate-comparison/** text eol=lf
 reports/combat_lightspeed_frozen_candidate_comparison_* text eol=lf
 reports/combat_lightspeed_frozen_candidate_comparison_*/** text eol=lf
+
+# Preserve conservative combat LightSTS interpolation source and evidence bytes.
+analysis_scripts/combat_lightspeed_checkpoint_interpolation.py text eol=lf
+tests/test_combat_lightspeed_checkpoint_interpolation.py text eol=lf
+openspec/changes/add-combat-lightspeed-conservative-step-screen/** text eol=lf
+openspec/changes/archive/*-add-combat-lightspeed-conservative-step-screen/** text eol=lf
+openspec/specs/combat-lightspeed-checkpoint-interpolation/** text eol=lf
+reports/combat_lightspeed_checkpoint_interpolation_* text eol=lf
+reports/combat_lightspeed_checkpoint_interpolation_*/** text eol=lf
+reports/combat_lightspeed_checkpoint_interpolation_*/*.pth -text
