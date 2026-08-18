@@ -1614,6 +1614,13 @@ The next authorized sequence is:
     not rerun, promote, or tune thresholds against this cohort. R14 is now
     consumed and may be used only as fitting or development evidence in a new
     frozen successor experiment.
+82. Freeze r19 as the third promoted-r16 successor for one fresh replay only.
+    It used eight full-gradient SGD updates on consumed r14, selected trust
+    weight `0.25` at interpolation `alpha=0.5`, and moved `6.8058e-6` relative
+    L2 from r16. It improved both registered losses on r6/r8/r9/r10/r11/r12/r13
+    while retaining at least `99.3509%` parent agreement, at most `0.6686%`
+    off-target disagreement, and fewer positive-energy End Turns on every
+    replay. Do not fit or tune against the next fresh promoted-r16 replay.
 
 ## Work Lanes
 
@@ -1630,10 +1637,12 @@ but its matched live gate against r16 failed: paired wins tied, while r17
 trailed total floors, Act 2 entries, and Act 2 boss reaches. R18 passed its
 bounded fit on consumed r13 and single fresh r14 confirmation, but its matched
 live gate also failed: it lost the only non-tied pair, trailed total floors and
-Act 2 boss reaches, and produced no victory. R16 remains production. A new
-bounded successor may consume r14 for fitting, but it must freeze before a new
-fresh replay is collected. The near-term measure remains repeatable Act 3 and
-victory coverage, not whether another one-off favorable pair can be found.
+Act 2 boss reaches, and produced no victory. R19 now passes the bounded fit on
+consumed r14 with r6/r8/r9/r10/r11/r12/r13 as development guards. It is frozen
+before the next fresh replay and has authority only for one separately
+registered replay confirmation. R16 remains production. The near-term measure
+remains repeatable Act 3 and victory coverage, not whether another one-off
+favorable pair can be found.
 
 The non-combat card-acceptance lane remains paused at its r6 zero-byte
 source-binding infrastructure failure. Resume it only as a separately
