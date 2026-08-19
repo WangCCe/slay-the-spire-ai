@@ -1,0 +1,66 @@
+{
+  "schema_version": "combat-lightspeed-deployment-consistent-anchor-ablation-analysis-v1",
+  "verdict": "no_anchor_rejected_retain_r16",
+  "integrity": {
+    "training_verdict": "technical_smoke_ready",
+    "comparison_verdict": "comparison_ready",
+    "comparison_blockers": [],
+    "training_report_sha256": "057e215575174711ebcc872aff8e512a4604eb88f2bd790936b1c940142e9966",
+    "comparison_report_sha256": "26b733913684c616b12071bfe8f09bb0930ca791b47f333827ab9771ae2348c2",
+    "generated_manifests_verified": true,
+    "comparison_retried": false
+  },
+  "training": {
+    "source_replay_transition_count": 53088,
+    "balanced_replay_transition_count": 73052,
+    "optimizer_update_count": 256,
+    "candidate_parameter_sha256": "409167ad1597eaef684578faa2cdc9cf547dccd87cda8ff3feb61bd2fb960037",
+    "candidate_checkpoint_sha256": "d4a73565bd46dfe1b3f2e45d224fc8c0bb203c90334eaac86dd267e372f11cc0",
+    "parameter_l2_delta": 1.08962174530952,
+    "td_loss_mean": 2.53564436594024,
+    "parent_policy_anchor_weight": 0.0,
+    "parent_branch_count": 47614,
+    "exploration_branch_count": 5394,
+    "guard_proxy_replacement_count": 22121
+  },
+  "fresh_parent_gate": {
+    "matched_terminal_profile_count": 875,
+    "mean_reward_delta": -0.619922471981077,
+    "mean_player_hp_delta": -0.254857142857143,
+    "candidate_only_victories": 20,
+    "parent_only_victories": 28,
+    "battle_mean_reward_delta": {
+      "0": -0.148047,
+      "3": -0.807439,
+      "6": 0.334353,
+      "9": -2.383837
+    },
+    "passed": false
+  },
+  "anchor_diagnostic": {
+    "authority": "source_only_simulator_diagnostic",
+    "matched_terminal_profile_count": 875,
+    "anchored_minus_r16_mean_reward": 0.171885,
+    "anchored_minus_r16_mean_player_hp": -0.352,
+    "anchored_only_vs_r16_only_victories": "11:9",
+    "no_anchor_minus_anchored_mean_reward": -0.791807,
+    "no_anchor_minus_anchored_mean_player_hp": 0.097143,
+    "no_anchor_only_vs_anchored_only_victories": "20:30",
+    "ordered_by_mean_reward": [
+      "deployment_consistent_one_step_anchored",
+      "production_r16_shadow",
+      "deployment_consistent_one_step_no_anchor"
+    ],
+    "winner": null,
+    "interpretation": "The raw-parent anchor materially preserves reward and victories, but the anchored candidate still violates the HP guardrail against r16."
+  },
+  "decision": {
+    "production_checkpoint": "retain_r16",
+    "larger_confirmation": false,
+    "packaging": false,
+    "gameplay": false,
+    "same_cohort_tuning": false,
+    "stop_current_replay_recipe_family": true,
+    "next_step": "Diagnose action-level policy drift and conservative-objective coverage before registering a structurally different training recipe."
+  }
+}
