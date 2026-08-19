@@ -1,0 +1,85 @@
+{
+  "schema_version": 1,
+  "gate_id": "combat-lightspeed-guarded-control-live-gate-20260819-r1",
+  "source_commit": "33b61d09b2b0febd7966e3c87d287f98fc155966",
+  "candidate_checkpoint": {
+    "path": "reports/combat_lightspeed_production_r16_guarded_control_packaging_20260819_r1/rl_combat_model_lightspeed_candidate.pth",
+    "sha256": "4e10bc23be5e76ef0becd039e4bb3824f29dae941a4a9e6f49b5ba2db39c7931",
+    "parameter_sha256": "0894157bd5be6685f3db21b73383373521806a7ca733da16e437220d92aa36d8"
+  },
+  "parent_checkpoint": {
+    "path": "reports/combat_rl_promoted_r15_successor_20260818_r16/rl_combat_model_promoted_r15_successor_candidate.pth",
+    "sha256": "75120e9e8f76393d4d82c16de5c3ea6384d2f7ef26bd530a6b552ed9791e38f5",
+    "parameter_sha256": "cfe8204d06db6b43b063df98e1b713d4a40a0894a1a9330c3db87c739da88d48"
+  },
+  "simulator_evidence": {
+    "packaging_report": {
+      "path": "reports/combat_lightspeed_production_r16_guarded_control_packaging_20260819_r1/report.json",
+      "sha256": "447858e3b1bfdec1781835c8f986ec6ed55bb9d2370824979a6036eb3764fc70"
+    },
+    "packaging_manifest": {
+      "path": "reports/combat_lightspeed_production_r16_guarded_control_packaging_20260819_r1/manifest.json",
+      "sha256": "5c2236d1c6d8b20227ee13254b9bf684990ca8f6d2fa6c0cea563c5b4df465e4"
+    },
+    "fresh_confirmation": {
+      "path": "reports/combat_lightspeed_production_r16_guarded_control_fresh_confirmation_20260819_r1/report.json",
+      "sha256": "a4c9ac318b7d6b9c061912031dd2a3740816d8bffc32a6bb8fd3bf40eab5b4c1",
+      "terminal_pairs": 1683,
+      "candidate_reward_delta": 2.127219,
+      "candidate_hp_delta": 1.780154,
+      "candidate_only_wins": 118,
+      "parent_only_wins": 71
+    }
+  },
+  "evaluation": {
+    "arm_order": ["candidate", "parent"],
+    "games_per_arm": 10,
+    "mode": "eval",
+    "epsilon": 0.0,
+    "elite_route": "conservative",
+    "ascension": 0,
+    "seed_pool": {
+      "path": "reports/combat_lightspeed_guarded_control_live_gate_20260819_r1_seed_pool.txt",
+      "sha256": "ca524d6afd545be056d2cd5607151b914904283efb877e0e6d19d17d3d7d1723",
+      "fresh_against_repo_seed_artifacts": true
+    },
+    "candidate_launch_config": {
+      "path": "reports/combat_lightspeed_guarded_control_live_gate_20260819_r1_candidate.properties",
+      "sha256": "3b77e076cac56b28f6b5344283489140a1b13863805e234e4c1db4167a0be894"
+    },
+    "parent_launch_config": {
+      "path": "reports/combat_lightspeed_guarded_control_live_gate_20260819_r1_parent.properties",
+      "sha256": "106cd5a5a4ab652da9071e8d0a4a9460a686f78a3f8a1c43592a174c1d3b6759"
+    },
+    "production_restore_config": {
+      "path": "reports/combat_lightspeed_guarded_control_live_gate_20260819_r1_production_restore.properties",
+      "sha256": "0991895790bc73d3d21a05731bf402228cf0c510a4217aa841ced026016760e7"
+    },
+    "same_seed_order": true,
+    "training_disabled": true,
+    "expert_mix_disabled": true
+  },
+  "qualification_rule": {
+    "both_arms_must_complete_all_games": true,
+    "all_seed_pairs_must_match": true,
+    "both_arms_must_have_no_policy_runtime_failures": true,
+    "candidate_total_floors_must_exceed_parent": true,
+    "candidate_victories_must_be_at_least_parent": true,
+    "candidate_act_2_boss_reaches_must_be_at_least_parent": true,
+    "candidate_act_3_entries_must_be_at_least_parent": true,
+    "all_conditions_required": true,
+    "passing_decision": "eligible_for_explicit_production_promotion_review",
+    "failing_decision": "retain_production_r16",
+    "all_outcomes_tied_decision": "retain_production_r16_no_observable_live_benefit"
+  },
+  "execution_constraints": {
+    "external_game_or_machine_shutdown_may_resume": true,
+    "resume_must_use_same_checkpoint_and_policy_arguments": true,
+    "resume_seed_pool_must_be_the_unconsumed_registered_suffix": true,
+    "completed_seed_runs_must_not_be_repeated": true,
+    "policy_or_game_logic_failure_stops_the_gate": true,
+    "no_seed_model_or_threshold_change_after_start": true,
+    "no_automatic_promotion": true,
+    "restore_exact_production_configuration_between_arms_and_after_completion": true
+  }
+}
