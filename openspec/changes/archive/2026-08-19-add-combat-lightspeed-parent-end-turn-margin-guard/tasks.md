@@ -17,4 +17,4 @@ Verification: affected files passed `69 passed, 5 skipped`. The one bounded comm
 
 - [x] 3.1 Preregister one fresh-seed production-r16 simulator-shadow successor with fixed guard weight, cap, gates, and rollback boundary
 - [x] 3.2 Execute the registration once without game or CommunicationMod access and publish immutable technical and matched-outcome evidence
-- [ ] 3.3 Decide go/no-go from the registered gates, retain production r16 on any miss, and sync/archive the completed change
+- [x] 3.3 Decide go/no-go from the registered gates, retain production r16 on any miss, and sync/archive the completed change
