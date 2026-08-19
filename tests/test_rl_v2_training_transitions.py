@@ -10,13 +10,82 @@ from spirecomm.ai.rl.v2.action_space import END_TURN_ACTION
 from spirecomm.ai.rl.v2.agent import PendingTransition, RLAgentV2
 from spirecomm.ai.rl.v2.id_mapping import IdMapper
 from spirecomm.ai.rl.v2.replay_buffer import ReplayBufferV2
-from spirecomm.ai.rl.v2.trainer import DQNTrainerV2
+from spirecomm.ai.rl.v2.trainer import (
+    DQNTrainerV2,
+    parent_end_turn_margin_guard_loss,
+)
 from spirecomm.communication.action import EndTurnAction
 
 
 class _Action:
     def __init__(self, index):
         self.index = index
+
+
+def _margin_guard_q_rows(rows):
+    values = torch.zeros((len(rows), END_TURN_ACTION + 2), dtype=torch.float32)
+    masks = torch.zeros_like(values, dtype=torch.bool)
+    for row_index, (end_q, selected_action, selected_q, end_legal) in enumerate(rows):
+        values[row_index, END_TURN_ACTION] = end_q
+        values[row_index, selected_action] = selected_q
+        masks[row_index, selected_action] = True
+        masks[row_index, END_TURN_ACTION] = end_legal
+    return values, masks
+
+
+def test_parent_end_turn_margin_guard_clips_and_filters_rows():
+    parent_q, masks = _margin_guard_q_rows(
+        (
+            (0.0, 1, 0.5, True),
+            (0.5, 1, 0.2, True),
+            (0.0, 1, 0.5, False),
+        )
+    )
+    candidate_q, _ = _margin_guard_q_rows(
+        (
+            (0.10, 1, 0.05, True),
+            (0.50, 1, 0.20, True),
+            (0.00, 1, 0.50, False),
+        )
+    )
+    candidate_q.requires_grad_(True)
+
+    loss, eligible_count, ranking_violation_count = (
+        parent_end_turn_margin_guard_loss(
+            candidate_q,
+            parent_q,
+            masks,
+            margin_cap=0.1,
+        )
+    )
+
+    assert eligible_count == 1
+    assert ranking_violation_count == 1
+    assert loss.item() == pytest.approx(0.15)
+    loss.backward()
+    assert candidate_q.grad[0, 1].item() < 0.0
+    assert candidate_q.grad[0, END_TURN_ACTION].item() > 0.0
+    assert torch.count_nonzero(candidate_q.grad[1:]).item() == 0
+
+
+def test_parent_end_turn_margin_guard_zero_eligible_is_differentiable():
+    parent_q, masks = _margin_guard_q_rows(((0.5, 1, 0.2, True),))
+    candidate_q = parent_q.clone().requires_grad_(True)
+
+    loss, eligible_count, ranking_violation_count = (
+        parent_end_turn_margin_guard_loss(
+            candidate_q,
+            parent_q,
+            masks,
+            margin_cap=0.1,
+        )
+    )
+
+    assert eligible_count == 0
+    assert ranking_violation_count == 0
+    assert loss.item() == 0.0
+    loss.backward()
+    assert torch.count_nonzero(candidate_q.grad).item() == 0
 
 
 class _ActionEncoder:

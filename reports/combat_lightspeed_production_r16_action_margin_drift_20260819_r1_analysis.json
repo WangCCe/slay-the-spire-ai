@@ -86,6 +86,6 @@
     "gameplay_authorized": false,
     "interpretation": "The harmful update direction changes actions monotonically with interpolation alpha. The earliest flips are concentrated in low-parent-margin states and in states where the parent selects a playable card; most of those flips replace the parent action with end turn. Alpha 0.05 disagreement is nearly uniform across registered battle indices, so the evidence supports an action-family ranking guard rather than a battle-specific patch."
   },
-  "next_step": "Add a preregistered frozen-parent loss that preserves the clipped positive margin between the parent's selected non-end-turn action and end turn on legal complete transitions. Keep the existing TD and Q-anchor objectives, default the new loss off for compatibility, and evaluate one bounded fresh-seed successor before considering production packaging or gameplay.",
+  "next_step": "Add a preregistered frozen-parent loss that preserves the clipped positive margin between the parent's selected non-end-turn action and end turn on legal complete transitions. Keep the existing TD and masked parent-policy anchor objectives, default the new loss off for compatibility, and evaluate one bounded fresh-seed successor before considering production packaging or gameplay.",
   "interpretation_authority": "Descriptive simulator-state action and Q-margin drift only; no causal, policy-quality, production-promotion, or gameplay claim."
 }

@@ -19,6 +19,61 @@ from .state_encoder import StateEncoderV2
 logger = logging.getLogger(__name__)
 
 
+def parent_end_turn_margin_guard_loss(
+    current_q_values: torch.Tensor,
+    parent_q_values: torch.Tensor,
+    action_masks: torch.Tensor,
+    *,
+    margin_cap: float,
+) -> tuple[torch.Tensor, int, int]:
+    if current_q_values.shape != parent_q_values.shape:
+        raise ValueError("candidate and parent Q shapes must match")
+    if current_q_values.shape != action_masks.shape or current_q_values.ndim != 2:
+        raise ValueError("Q values and action masks must be matching matrices")
+    if current_q_values.shape[1] <= END_TURN_ACTION:
+        raise ValueError("Q values do not include end-turn action")
+    if not np.isfinite(margin_cap) or margin_cap <= 0.0:
+        raise ValueError("parent end-turn margin guard cap must be finite and positive")
+
+    masks = action_masks.bool()
+    if not bool(masks.any(dim=1).all()):
+        raise ValueError("parent end-turn margin guard requires a valid action per row")
+    masked_parent_q = parent_q_values.masked_fill(~masks, float("-inf"))
+    parent_actions = masked_parent_q.argmax(dim=1)
+    row_indices = torch.arange(current_q_values.shape[0], device=current_q_values.device)
+    parent_selected_q = masked_parent_q[row_indices, parent_actions]
+    parent_end_turn_q = masked_parent_q[:, END_TURN_ACTION]
+    parent_margins = parent_selected_q - parent_end_turn_q
+    eligible = (
+        masks[:, END_TURN_ACTION]
+        & (parent_actions != END_TURN_ACTION)
+        & torch.isfinite(parent_margins)
+        & (parent_margins > 0.0)
+    )
+    eligible_count = int(eligible.sum().item())
+    if not eligible_count:
+        finite_q = torch.where(
+            torch.isfinite(current_q_values),
+            current_q_values,
+            torch.zeros_like(current_q_values),
+        )
+        return finite_q.sum() * 0.0, 0, 0
+
+    eligible_rows = row_indices[eligible]
+    eligible_parent_actions = parent_actions[eligible]
+    candidate_selected_q = current_q_values[
+        eligible_rows, eligible_parent_actions
+    ]
+    candidate_end_turn_q = current_q_values[eligible, END_TURN_ACTION]
+    candidate_margins = candidate_selected_q - candidate_end_turn_q
+    if not bool(torch.isfinite(candidate_margins).all()):
+        raise ValueError("eligible candidate end-turn margins must be finite")
+    required_margins = parent_margins[eligible].clamp(max=float(margin_cap))
+    ranking_violation_count = int((candidate_margins < 0.0).sum().item())
+    loss = F.relu(required_margins - candidate_margins).mean()
+    return loss, eligible_count, ranking_violation_count
+
+
 class DQNTrainerV2:
     def __init__(
         self,
@@ -46,6 +101,8 @@ class DQNTrainerV2:
         potion_embed_dim: int = 8,
         relic_embed_dim: int = 16,
         parent_policy_anchor_weight: float = 0.0,
+        parent_end_turn_margin_guard_weight: float = 0.0,
+        parent_end_turn_margin_guard_cap: float = 0.1,
         positive_energy_action_imitation_weight: float = 0.0,
         positive_energy_parent_end_turn_imitation_weight: float = 0.0,
     ):
@@ -68,6 +125,33 @@ class DQNTrainerV2:
         if not np.isfinite(parent_policy_anchor_weight) or parent_policy_anchor_weight < 0:
             raise ValueError("parent_policy_anchor_weight must be finite and non-negative")
         self.parent_policy_anchor_weight = float(parent_policy_anchor_weight)
+        if (
+            not np.isfinite(parent_end_turn_margin_guard_weight)
+            or parent_end_turn_margin_guard_weight < 0.0
+        ):
+            raise ValueError(
+                "parent end-turn margin guard weight must be finite and non-negative"
+            )
+        if (
+            not np.isfinite(parent_end_turn_margin_guard_cap)
+            or parent_end_turn_margin_guard_cap < 0.0
+        ):
+            raise ValueError(
+                "parent end-turn margin guard cap must be finite and non-negative"
+            )
+        if (
+            parent_end_turn_margin_guard_weight > 0.0
+            and parent_end_turn_margin_guard_cap <= 0.0
+        ):
+            raise ValueError(
+                "positive parent end-turn margin guard weight requires a positive cap"
+            )
+        self.parent_end_turn_margin_guard_weight = float(
+            parent_end_turn_margin_guard_weight
+        )
+        self.parent_end_turn_margin_guard_cap = float(
+            parent_end_turn_margin_guard_cap
+        )
         if (
             not np.isfinite(positive_energy_action_imitation_weight)
             or positive_energy_action_imitation_weight < 0
@@ -156,14 +240,20 @@ class DQNTrainerV2:
         self.last_loss = None
         self.last_td_loss = None
         self.last_parent_policy_anchor_loss = 0.0
+        self.last_parent_end_turn_margin_guard_loss = 0.0
+        self.last_parent_end_turn_margin_guard_eligible_count = 0
+        self.last_parent_end_turn_margin_guard_ranking_violation_count = 0
         self.last_positive_energy_action_imitation_loss = 0.0
         self.last_positive_energy_action_imitation_count = 0
         self.last_positive_energy_parent_end_turn_imitation_loss = 0.0
         self.last_positive_energy_parent_end_turn_imitation_count = 0
 
     def set_parent_policy_anchor(self, state_dict: Mapping[str, torch.Tensor]) -> None:
-        if self.parent_policy_anchor_weight <= 0.0:
-            raise ValueError("parent policy anchor weight must be positive")
+        if (
+            self.parent_policy_anchor_weight <= 0.0
+            and self.parent_end_turn_margin_guard_weight <= 0.0
+        ):
+            raise ValueError("a frozen-parent objective weight must be positive")
         anchor = copy.deepcopy(self.online_network)
         anchor.load_state_dict(state_dict)
         anchor.eval()
@@ -179,6 +269,23 @@ class DQNTrainerV2:
         relic_ids: torch.Tensor,
         action_masks: torch.Tensor,
     ) -> torch.Tensor:
+        _anchor_q, anchor_actions = self.get_parent_policy_anchor_q_and_actions(
+            continuous,
+            card_ids,
+            potion_ids,
+            relic_ids,
+            action_masks,
+        )
+        return anchor_actions
+
+    def get_parent_policy_anchor_q_and_actions(
+        self,
+        continuous: torch.Tensor,
+        card_ids: torch.Tensor,
+        potion_ids: torch.Tensor,
+        relic_ids: torch.Tensor,
+        action_masks: torch.Tensor,
+    ) -> tuple[torch.Tensor, torch.Tensor]:
         if self.parent_policy_anchor_network is None:
             raise RuntimeError("parent policy anchor network is not initialized")
         if not bool(action_masks.any(dim=1).all()):
@@ -191,7 +298,7 @@ class DQNTrainerV2:
                 relic_ids=relic_ids,
                 action_mask=action_masks,
             )
-            return anchor_q.argmax(dim=1)
+            return anchor_q, anchor_q.argmax(dim=1)
 
     def select_action(
         self,
@@ -328,16 +435,39 @@ class DQNTrainerV2:
 
         td_loss = F.smooth_l1_loss(current_q, target_q)
         anchor_loss = torch.zeros((), dtype=td_loss.dtype, device=self.device)
+        anchor_q = None
         anchor_actions = None
-        if self.parent_policy_anchor_weight > 0.0:
-            anchor_actions = self.get_parent_policy_anchor_actions(
+        if (
+            self.parent_policy_anchor_weight > 0.0
+            or self.parent_end_turn_margin_guard_weight > 0.0
+        ):
+            anchor_q, anchor_actions = self.get_parent_policy_anchor_q_and_actions(
                 continuous,
                 card_ids,
                 potion_ids,
                 relic_ids,
                 action_masks,
             )
+        if self.parent_policy_anchor_weight > 0.0:
             anchor_loss = F.cross_entropy(current_q_values, anchor_actions)
+        parent_end_turn_margin_guard_loss_value = torch.zeros(
+            (), dtype=td_loss.dtype, device=self.device
+        )
+        parent_end_turn_margin_guard_eligible_count = 0
+        parent_end_turn_margin_guard_ranking_violation_count = 0
+        if self.parent_end_turn_margin_guard_weight > 0.0:
+            if anchor_q is None:
+                raise RuntimeError("parent end-turn margin guard requires parent Q values")
+            (
+                parent_end_turn_margin_guard_loss_value,
+                parent_end_turn_margin_guard_eligible_count,
+                parent_end_turn_margin_guard_ranking_violation_count,
+            ) = parent_end_turn_margin_guard_loss(
+                current_q_values,
+                anchor_q,
+                action_masks,
+                margin_cap=self.parent_end_turn_margin_guard_cap,
+            )
         positive_energy_action_imitation_loss = torch.zeros(
             (), dtype=td_loss.dtype, device=self.device
         )
@@ -373,6 +503,8 @@ class DQNTrainerV2:
         loss = (
             td_loss
             + self.parent_policy_anchor_weight * anchor_loss
+            + self.parent_end_turn_margin_guard_weight
+            * parent_end_turn_margin_guard_loss_value
             + self.positive_energy_action_imitation_weight
             * positive_energy_action_imitation_loss
             + self.positive_energy_parent_end_turn_imitation_weight
@@ -381,6 +513,15 @@ class DQNTrainerV2:
         loss_value = float(loss.item())
         self.last_td_loss = float(td_loss.item())
         self.last_parent_policy_anchor_loss = float(anchor_loss.item())
+        self.last_parent_end_turn_margin_guard_loss = float(
+            parent_end_turn_margin_guard_loss_value.item()
+        )
+        self.last_parent_end_turn_margin_guard_eligible_count = (
+            parent_end_turn_margin_guard_eligible_count
+        )
+        self.last_parent_end_turn_margin_guard_ranking_violation_count = (
+            parent_end_turn_margin_guard_ranking_violation_count
+        )
         self.last_positive_energy_action_imitation_loss = float(
             positive_energy_action_imitation_loss.item()
         )
@@ -410,6 +551,21 @@ class DQNTrainerV2:
                 self.last_td_loss,
                 self.last_parent_policy_anchor_loss,
                 self.parent_policy_anchor_weight,
+            )
+
+        if (
+            self.parent_end_turn_margin_guard_weight > 0.0
+            and self.total_steps % 100 == 0
+        ):
+            logger.info(
+                "RL parent end-turn margin guard update: total_steps=%s "
+                "loss=%.6f weight=%.6f cap=%.6f eligible=%s violations=%s",
+                self.total_steps,
+                self.last_parent_end_turn_margin_guard_loss,
+                self.parent_end_turn_margin_guard_weight,
+                self.parent_end_turn_margin_guard_cap,
+                self.last_parent_end_turn_margin_guard_eligible_count,
+                self.last_parent_end_turn_margin_guard_ranking_violation_count,
             )
 
         if (

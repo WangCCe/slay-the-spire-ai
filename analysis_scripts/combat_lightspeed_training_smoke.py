@@ -159,6 +159,8 @@ class SmokeConfig:
     batch_size: int = 128
     optimizer_steps: int = 64
     parent_policy_anchor_weight: float = 0.0
+    parent_end_turn_margin_guard_weight: float = 0.0
+    parent_end_turn_margin_guard_cap: float = 0.1
     balance_replay_by_battle_index: bool = False
     replay_balance_seed: int = 2026081903
     encounter_identity_buckets: int = 0
@@ -197,6 +199,27 @@ class SmokeConfig:
         ):
             raise ValueError(
                 "parent policy anchor weight must be finite and non-negative"
+            )
+        if (
+            not math.isfinite(self.parent_end_turn_margin_guard_weight)
+            or self.parent_end_turn_margin_guard_weight < 0.0
+        ):
+            raise ValueError(
+                "parent end-turn margin guard weight must be finite and non-negative"
+            )
+        if (
+            not math.isfinite(self.parent_end_turn_margin_guard_cap)
+            or self.parent_end_turn_margin_guard_cap < 0.0
+        ):
+            raise ValueError(
+                "parent end-turn margin guard cap must be finite and non-negative"
+            )
+        if (
+            self.parent_end_turn_margin_guard_weight > 0.0
+            and self.parent_end_turn_margin_guard_cap <= 0.0
+        ):
+            raise ValueError(
+                "positive end-turn margin guard weight requires a positive cap"
             )
         if self.replay_balance_seed < 0:
             raise ValueError("replay balance seed must be non-negative")
@@ -466,6 +489,8 @@ def create_fresh_trainer(
     learning_starts: int,
     buffer_size: int = 100_000,
     parent_policy_anchor_weight: float = 0.0,
+    parent_end_turn_margin_guard_weight: float = 0.0,
+    parent_end_turn_margin_guard_cap: float = 0.1,
     continuous_dim: int = CONTINUOUS_DIM,
 ) -> DQNTrainerV2:
     random.seed(seed)
@@ -490,6 +515,8 @@ def create_fresh_trainer(
         device="cpu",
         network_type="dueling",
         parent_policy_anchor_weight=parent_policy_anchor_weight,
+        parent_end_turn_margin_guard_weight=parent_end_turn_margin_guard_weight,
+        parent_end_turn_margin_guard_cap=parent_end_turn_margin_guard_cap,
     )
     return trainer
 
@@ -716,15 +743,20 @@ def initialize_trainer(
             raise ValueError(
                 "encounter identity requires a warm-start simulator checkpoint"
             )
-        if trainer.parent_policy_anchor_weight > 0.0:
+        if (
+            trainer.parent_policy_anchor_weight > 0.0
+            or trainer.parent_end_turn_margin_guard_weight > 0.0
+        ):
             raise ValueError(
-                "positive parent policy anchor weight requires a warm-start checkpoint"
+                "positive frozen-parent objective requires a warm-start checkpoint"
             )
         state = copy.deepcopy(trainer.online_network.state_dict())
         return state, {
             "mode": "fresh",
             "parameter_sha256": parameter_sha256(state),
             "parent_policy_anchor_weight": 0.0,
+            "parent_end_turn_margin_guard_weight": 0.0,
+            "parent_end_turn_margin_guard_cap": trainer.parent_end_turn_margin_guard_cap,
         }
 
     state = initial_checkpoint.get("state_dict")
@@ -787,7 +819,16 @@ def initialize_trainer(
     elif loaded_sha256 != record.get("parameter_sha256"):
         raise ValueError("initial checkpoint parameter hash changed during load")
     record["parent_policy_anchor_weight"] = trainer.parent_policy_anchor_weight
-    if trainer.parent_policy_anchor_weight > 0.0:
+    record["parent_end_turn_margin_guard_weight"] = (
+        trainer.parent_end_turn_margin_guard_weight
+    )
+    record["parent_end_turn_margin_guard_cap"] = (
+        trainer.parent_end_turn_margin_guard_cap
+    )
+    if (
+        trainer.parent_policy_anchor_weight > 0.0
+        or trainer.parent_end_turn_margin_guard_weight > 0.0
+    ):
         trainer.set_parent_policy_anchor(control)
         record["parent_policy_anchor_parameter_sha256"] = parameter_sha256(
             trainer.parent_policy_anchor_network.state_dict()
@@ -1462,6 +1503,9 @@ def run_optimizer(trainer: DQNTrainerV2, steps: int) -> dict[str, list[float]]:
         "total": [],
         "td": [],
         "parent_policy_anchor": [],
+        "parent_end_turn_margin_guard": [],
+        "parent_end_turn_margin_guard_eligible_count": [],
+        "parent_end_turn_margin_guard_ranking_violation_count": [],
     }
     for _ in range(steps):
         loss = trainer.train_step()
@@ -1471,6 +1515,15 @@ def run_optimizer(trainer: DQNTrainerV2, steps: int) -> dict[str, list[float]]:
             "total": float(loss),
             "td": float(trainer.last_td_loss),
             "parent_policy_anchor": float(trainer.last_parent_policy_anchor_loss),
+            "parent_end_turn_margin_guard": float(
+                trainer.last_parent_end_turn_margin_guard_loss
+            ),
+            "parent_end_turn_margin_guard_eligible_count": float(
+                trainer.last_parent_end_turn_margin_guard_eligible_count
+            ),
+            "parent_end_turn_margin_guard_ranking_violation_count": float(
+                trainer.last_parent_end_turn_margin_guard_ranking_violation_count
+            ),
         }
         if not all(math.isfinite(value) for value in values.values()):
             raise RuntimeError(f"optimizer returned invalid objective metrics: {values}")
@@ -1780,6 +1833,12 @@ def _publish(
         source_binding["parent_policy_anchor_weight"] = report["training"][
             "parent_policy_anchor_weight"
         ]
+        source_binding["parent_end_turn_margin_guard_weight"] = report["training"].get(
+            "parent_end_turn_margin_guard_weight", 0.0
+        )
+        source_binding["parent_end_turn_margin_guard_cap"] = report["training"].get(
+            "parent_end_turn_margin_guard_cap", 0.1
+        )
         if report["training"].get("replay_target"):
             source_binding["replay_target"] = report["training"]["replay_target"]
         if report["initialization"].get("parent_policy_anchor_parameter_sha256"):
@@ -1862,6 +1921,10 @@ def run_smoke(
         batch_size=config.batch_size,
         learning_starts=config.batch_size,
         parent_policy_anchor_weight=config.parent_policy_anchor_weight,
+        parent_end_turn_margin_guard_weight=(
+            config.parent_end_turn_margin_guard_weight
+        ),
+        parent_end_turn_margin_guard_cap=config.parent_end_turn_margin_guard_cap,
         continuous_dim=CONTINUOUS_DIM + config.encounter_identity_buckets,
     )
     initial, initialization = initialize_trainer(
@@ -1942,6 +2005,13 @@ def run_smoke(
         value > 0.0 for value in objective_losses["parent_policy_anchor"]
     ):
         blockers.append("parent_policy_anchor_loss_missing")
+    if config.parent_end_turn_margin_guard_weight > 0.0 and not any(
+        value > 0.0
+        for value in objective_losses[
+            "parent_end_turn_margin_guard_eligible_count"
+        ]
+    ):
+        blockers.append("parent_end_turn_margin_guard_eligibility_missing")
     if delta["l2"] <= 0.0 or initial_sha256 == candidate_sha256:
         blockers.append("parameters_unchanged")
     if unexpected_initialization_failures(
@@ -2022,6 +2092,12 @@ def run_smoke(
             "replay_preparation": replay_preparation,
             "optimizer_update_count": len(losses),
             "parent_policy_anchor_weight": config.parent_policy_anchor_weight,
+            "parent_end_turn_margin_guard_weight": (
+                config.parent_end_turn_margin_guard_weight
+            ),
+            "parent_end_turn_margin_guard_cap": (
+                config.parent_end_turn_margin_guard_cap
+            ),
             "loss_first": losses[0],
             "loss_last": losses[-1],
             "loss_mean": float(np.mean(losses)),
@@ -2084,6 +2160,12 @@ def _parse_args() -> argparse.Namespace:
     parser.add_argument("--initial-checkpoint", type=Path)
     parser.add_argument("--initial-checkpoint-sha256")
     parser.add_argument("--parent-policy-anchor-weight", default=0.0, type=float)
+    parser.add_argument(
+        "--parent-end-turn-margin-guard-weight", default=0.0, type=float
+    )
+    parser.add_argument(
+        "--parent-end-turn-margin-guard-cap", default=0.1, type=float
+    )
     parser.add_argument("--balance-replay-by-battle-index", action="store_true")
     parser.add_argument("--replay-balance-seed", default=2026081903, type=int)
     parser.add_argument("--encounter-identity-buckets", default=0, type=int)
@@ -2125,6 +2207,10 @@ def main() -> int:
         batch_size=args.batch_size,
         optimizer_steps=args.optimizer_steps,
         parent_policy_anchor_weight=args.parent_policy_anchor_weight,
+        parent_end_turn_margin_guard_weight=(
+            args.parent_end_turn_margin_guard_weight
+        ),
+        parent_end_turn_margin_guard_cap=args.parent_end_turn_margin_guard_cap,
         balance_replay_by_battle_index=args.balance_replay_by_battle_index,
         replay_balance_seed=args.replay_balance_seed,
         encounter_identity_buckets=args.encounter_identity_buckets,

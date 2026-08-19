@@ -21,7 +21,7 @@ Replace the current one-step recipe with a frozen-parent end-turn margin guard b
 | alpha 0.20 | 726 / 16,527 (4.39%) | 651 / 4,618 (14.10%) | 434 | 0.0781 |
 | full candidate | 1,852 / 16,527 (11.21%) | 1,614 / 4,618 (34.95%) | 1,027 | 0.1883 |
 
-The parent margin across all multi-legal-action transitions has mean `1.056`, median `0.737`, and p10 `0.105`. At alpha `0.05`, flipped states have mean margin only `0.0227` and median `0.0204`. The earliest policy changes therefore occur at fragile ranking boundaries even though the existing Q-value MSE anchor is active.
+The parent margin across all multi-legal-action transitions has mean `1.056`, median `0.737`, and p10 `0.105`. At alpha `0.05`, flipped states have mean margin only `0.0227` and median `0.0204`. The earliest policy changes therefore occur at fragile ranking boundaries even though the existing masked parent-policy cross-entropy anchor is active.
 
 Alpha `0.05` action-flip rates are `1.41%`, `1.41%`, `1.37%`, and `1.34%` at battles `0`, `3`, `6`, and `9`. The failure is not localized to one registered battle stratum. It is concentrated by action family: parent play-card states flip `4.48%`, compared with `0.02%` for parent end-turn states.
 

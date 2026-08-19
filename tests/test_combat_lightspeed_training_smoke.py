@@ -37,6 +37,7 @@ from analysis_scripts.combat_lightspeed_training_smoke import (
     paired_evaluation,
     prepare_replay_targets,
     prepare_replay_transitions,
+    run_optimizer,
     select_behavior_action,
     select_profile_transitions,
     successor_disposition,
@@ -49,6 +50,7 @@ from analysis_scripts.combat_lightspeed_bridge import (
     load_native_module,
 )
 from spirecomm.ai.rl.checkpoint_io import load_torch_checkpoint, save_torch_checkpoint
+from spirecomm.ai.rl.v2.action_space import END_TURN_ACTION
 from spirecomm.ai.rl.v2.id_mapping import IdMapper, build_id_mapper
 
 
@@ -143,6 +145,30 @@ def test_parent_policy_constraint_weight_must_be_finite_and_non_negative():
             train_seeds=(10,),
             evaluation_seeds=(20,),
             replay_balance_seed=-1,
+        ).validate()
+
+    for value in (-0.1, float("nan"), float("inf")):
+        with pytest.raises(ValueError, match="end-turn margin guard weight"):
+            SmokeConfig(
+                train_seeds=(10,),
+                evaluation_seeds=(20,),
+                parent_end_turn_margin_guard_weight=value,
+            ).validate()
+
+    for value in (-0.1, float("nan"), float("inf")):
+        with pytest.raises(ValueError, match="end-turn margin guard cap"):
+            SmokeConfig(
+                train_seeds=(10,),
+                evaluation_seeds=(20,),
+                parent_end_turn_margin_guard_cap=value,
+            ).validate()
+
+    with pytest.raises(ValueError, match="positive cap"):
+        SmokeConfig(
+            train_seeds=(10,),
+            evaluation_seeds=(20,),
+            parent_end_turn_margin_guard_weight=1.0,
+            parent_end_turn_margin_guard_cap=0.0,
         ).validate()
 
     for value in (-1, 1, 1025):
@@ -781,6 +807,8 @@ def test_simulator_checkpoint_warm_starts_online_target_and_control(tmp_path):
         parent_state
     )
     assert trainer.parent_policy_anchor_network is None
+    assert trainer.parent_end_turn_margin_guard_weight == 0.0
+    assert trainer.parent_end_turn_margin_guard_cap == pytest.approx(0.1)
 
 
 def test_encounter_parent_migration_inserts_zero_columns_and_preserves_policy(tmp_path):
@@ -894,6 +922,44 @@ def test_positive_parent_policy_constraint_requires_warm_start():
         initialize_trainer(trainer, None)
 
 
+def test_positive_parent_end_turn_margin_guard_requires_and_freezes_warm_start(tmp_path):
+    without_parent = create_fresh_trainer(
+        _mapper(),
+        seed=144,
+        batch_size=2,
+        learning_starts=2,
+        parent_end_turn_margin_guard_weight=1.0,
+        parent_end_turn_margin_guard_cap=0.1,
+    )
+    with pytest.raises(ValueError, match="requires a warm-start checkpoint"):
+        initialize_trainer(without_parent, None)
+
+    parent = create_fresh_trainer(_mapper(), seed=145, batch_size=2, learning_starts=2)
+    path = tmp_path / "parent-margin-guard.pth"
+    _write_simulator_checkpoint(path, parent.online_network.state_dict())
+    guarded = create_fresh_trainer(
+        _mapper(),
+        seed=146,
+        batch_size=2,
+        learning_starts=2,
+        parent_end_turn_margin_guard_weight=1.0,
+        parent_end_turn_margin_guard_cap=0.1,
+    )
+
+    _control, record = initialize_trainer(
+        guarded,
+        load_initial_checkpoint(path, expected_sha256=None),
+    )
+
+    assert record["parent_end_turn_margin_guard_weight"] == pytest.approx(1.0)
+    assert record["parent_end_turn_margin_guard_cap"] == pytest.approx(0.1)
+    assert guarded.parent_policy_anchor_network is not None
+    assert all(
+        not parameter.requires_grad
+        for parameter in guarded.parent_policy_anchor_network.parameters()
+    )
+
+
 def test_parent_policy_constraint_produces_finite_separate_loss(tmp_path):
     parent = create_fresh_trainer(_mapper(), seed=46, batch_size=2, learning_starts=2)
     path = tmp_path / "parent.pth"
@@ -939,6 +1005,75 @@ def test_parent_policy_constraint_produces_finite_separate_loss(tmp_path):
     assert trainer.last_parent_policy_anchor_loss > 0.0
     assert loss == pytest.approx(
         trainer.last_td_loss + trainer.last_parent_policy_anchor_loss
+    )
+
+
+def test_parent_end_turn_margin_guard_produces_separate_metrics(tmp_path):
+    parent = create_fresh_trainer(_mapper(), seed=147, batch_size=2, learning_starts=2)
+    with torch.no_grad():
+        for parameter in parent.online_network.parameters():
+            parameter.zero_()
+        parent.online_network.advantage_stream[2].bias[1] = 0.5
+    path = tmp_path / "controlled-margin-parent.pth"
+    _write_simulator_checkpoint(path, parent.online_network.state_dict())
+    trainer = create_fresh_trainer(
+        _mapper(),
+        seed=148,
+        batch_size=2,
+        learning_starts=2,
+        parent_policy_anchor_weight=1.0,
+        parent_end_turn_margin_guard_weight=1.0,
+        parent_end_turn_margin_guard_cap=0.1,
+    )
+    initialize_trainer(
+        trainer,
+        load_initial_checkpoint(path, expected_sha256=None),
+    )
+    with torch.no_grad():
+        trainer.online_network.advantage_stream[2].bias[1] = 0.0
+        trainer.online_network.advantage_stream[2].bias[END_TURN_ACTION] = 0.2
+
+    state = np.zeros(328, dtype=np.float32)
+    card_ids = np.zeros(10, dtype=np.int64)
+    potion_ids = np.zeros(5, dtype=np.int64)
+    relic_ids = np.zeros(40, dtype=np.int64)
+    mask = np.zeros(133, dtype=bool)
+    mask[[1, END_TURN_ACTION]] = True
+    for _ in range(2):
+        assert trainer.store_transition(
+            state,
+            card_ids,
+            potion_ids,
+            relic_ids,
+            1,
+            1.0,
+            state,
+            card_ids,
+            potion_ids,
+            relic_ids,
+            False,
+            action_mask=mask,
+            next_action_mask=mask,
+        )
+
+    objective_metrics = run_optimizer(trainer, 1)
+    loss = objective_metrics["total"][0]
+
+    assert math.isfinite(loss)
+    assert trainer.last_parent_end_turn_margin_guard_loss == pytest.approx(0.3)
+    assert trainer.last_parent_end_turn_margin_guard_eligible_count == 2
+    assert trainer.last_parent_end_turn_margin_guard_ranking_violation_count == 2
+    assert objective_metrics["parent_end_turn_margin_guard"] == pytest.approx([0.3])
+    assert objective_metrics[
+        "parent_end_turn_margin_guard_eligible_count"
+    ] == pytest.approx([2.0])
+    assert objective_metrics[
+        "parent_end_turn_margin_guard_ranking_violation_count"
+    ] == pytest.approx([2.0])
+    assert loss == pytest.approx(
+        trainer.last_td_loss
+        + trainer.last_parent_policy_anchor_loss
+        + trainer.last_parent_end_turn_margin_guard_loss
     )
 
 
@@ -996,6 +1131,8 @@ def test_published_candidate_is_structurally_simulator_only(tmp_path):
             "initial_parameter_sha256": "e" * 64,
             "candidate_parameter_sha256": "f" * 64,
             "parent_policy_anchor_weight": 1.0,
+            "parent_end_turn_margin_guard_weight": 1.0,
+            "parent_end_turn_margin_guard_cap": 0.1,
             "replay_target": {
                 "mode": FROZEN_PARENT_N_STEP_TARGET,
                 "horizon": 3,
@@ -1008,6 +1145,7 @@ def test_published_candidate_is_structurally_simulator_only(tmp_path):
             "checkpoint_sha256": "1" * 64,
             "parameter_sha256": "e" * 64,
             "source_parameter_sha256": "9" * 64,
+            "parent_policy_anchor_parameter_sha256": "e" * 64,
             "encounter_identity_migration": {
                 "bucket_count": 64,
                 "hash_algorithm": ENCOUNTER_HASH_ALGORITHM,
@@ -1056,6 +1194,18 @@ def test_published_candidate_is_structurally_simulator_only(tmp_path):
     assert (
         checkpoint["metadata"]["source_binding"]["parent_policy_anchor_weight"]
         == pytest.approx(1.0)
+    )
+    assert (
+        checkpoint["metadata"]["source_binding"][
+            "parent_end_turn_margin_guard_weight"
+        ]
+        == pytest.approx(1.0)
+    )
+    assert (
+        checkpoint["metadata"]["source_binding"][
+            "parent_end_turn_margin_guard_cap"
+        ]
+        == pytest.approx(0.1)
     )
     assert checkpoint["metadata"]["source_binding"]["replay_target"] == report[
         "training"
