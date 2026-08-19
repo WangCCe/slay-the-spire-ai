@@ -1,0 +1,63 @@
+{
+  "schema_version": "combat-lightspeed-deployment-consistent-target-three-way-registration-v1",
+  "audit_id": "combat-lightspeed-deployment-consistent-target-three-way-20260819-r1",
+  "registered_source_commit": "e9b8f684b281bbd093b51a17b1818445044e0448",
+  "question": "On the one-step experiment's fresh cohort, which target recipe ranks better when deployment-consistent behavior and the evaluation proxy are held fixed?",
+  "source_binding": {
+    "one_step_report_path": "reports/combat_lightspeed_deployment_consistent_one_step_20260819_r1/report.json",
+    "one_step_report_sha256": "677cc897c7ae5965158ad3344e6368481df7b7d63e1f506453eb4d3af40c7009",
+    "comparison_runner_sha256": "a91377643153651fc54430606c545f8198001d5bba362171fd33ca301d887ebd",
+    "training_runner_sha256": "a2df71c41104114aee6345a10730d2a9f9bc08e9d28949c3eb636ac24fb30c4c",
+    "native_module_path": "D:/PycharmProjects/slay-the-spire-ai/.sts_lightspeed_combat_later_battle_20260819_r3_build/sts_lightspeed_combat_adapter.cp310-win_amd64.pyd",
+    "native_module_sha256": "195678b7fc6bf69815f3d2971404afb8ce72fb666700edf4203383429caf1009",
+    "simulator_repo": "D:/CLionProjects/sts_lightspeed",
+    "simulator_commit": "7476a81954020087da31d41d16fddf475746ec2d",
+    "items_json_sha256": "e23784ea8ed3092e3bfa9918240e162a9cbcb837badfb53c612eb0d83cc811dc"
+  },
+  "candidates": [
+    {
+      "label": "production_r16_shadow",
+      "path": "D:/PycharmProjects/slay-the-spire-ai/reports/combat_lightspeed_production_r16_shadow_20260819_r1/simulator_only_production_shadow.pth",
+      "sha256": "ce2ae34f82b3f457fb35e87d429c397204c42d0f742d3ac8952d91b69119b83b"
+    },
+    {
+      "label": "deployment_consistent_full_return",
+      "path": "D:/PycharmProjects/slay-the-spire-ai/reports/combat_lightspeed_deployment_consistent_behavior_20260819_r2/simulator_only_candidate.pth",
+      "sha256": "20aa42448e4368b0ccbba8fcb270f53fcc39649df0138a80efbfed7fccc51d8d"
+    },
+    {
+      "label": "deployment_consistent_one_step",
+      "path": "D:/PycharmProjects/slay-the-spire-ai/reports/combat_lightspeed_deployment_consistent_one_step_20260819_r1/simulator_only_candidate.pth",
+      "sha256": "90b698fd63814d46bd14638a5e36142698a689784dde47be18b52aba101d62c9"
+    }
+  ],
+  "cohort": {
+    "seeds": "154000..154255",
+    "seed_count": 256,
+    "battle_indices": [0, 3, 6, 9],
+    "profile_count_per_candidate": 1024,
+    "ascension": 0,
+    "max_decisions_per_profile": 100,
+    "max_actions_per_turn": 8
+  },
+  "intervention": {
+    "deployment_guard_proxy": "greedy-native-reward-on-wasteful-end-turn-v1",
+    "applied_symmetrically": true
+  },
+  "technical_success_criteria": {
+    "verdict": "comparison_ready",
+    "candidate_count": 3,
+    "checkpoint_hashes_match": true,
+    "unexpected_initialization_failure_count": 0,
+    "unsupported_state_count_per_candidate": 0,
+    "matched_reachability": true,
+    "terminal_pair_count_gte_per_pair": 800
+  },
+  "decision": {
+    "one_step_candidate": "Reject because its parent gate already failed; compare with full return only to isolate target direction.",
+    "production_checkpoint": "retain_r16",
+    "packaging_or_gameplay": false,
+    "no_same_cohort_tuning": true,
+    "stop_recipe_family_after_comparison": true
+  }
+}
