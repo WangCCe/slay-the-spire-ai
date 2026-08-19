@@ -7,7 +7,7 @@ import json
 import logging
 import os
 import re
-from typing import Dict, Iterable, List, Optional
+from typing import Any, Dict, Iterable, List, Mapping, Optional
 
 from spirecomm.ai.heuristics.card_names import canonical_card_name
 
@@ -83,22 +83,8 @@ class IdMapper:
         return max(self.relic_ids.values(), default=0) + 1
 
 
-def build_id_mapper(items_json_path: Optional[str]) -> IdMapper:
-    if not items_json_path:
-        logger.warning("No items.json path provided; using empty ID mappings.")
-        return IdMapper(card_ids={}, potion_ids={}, relic_ids={}, card_tags={})
-
-    if not os.path.exists(items_json_path):
-        logger.warning("items.json not found at %s; using empty ID mappings.", items_json_path)
-        return IdMapper(card_ids={}, potion_ids={}, relic_ids={}, card_tags={})
-
-    try:
-        with open(items_json_path, "r", encoding="utf-8") as handle:
-            payload = json.load(handle)
-    except Exception as exc:
-        logger.warning("Failed to read items.json from %s: %s", items_json_path, exc)
-        return IdMapper(card_ids={}, potion_ids={}, relic_ids={}, card_tags={})
-
+def build_id_mapper_from_payload(payload: Mapping[str, Any]) -> IdMapper:
+    """Build the stable mapper from an already-bound items payload."""
     cards_payload = payload.get("cards", [])
     card_values = _extract_ids(cards_payload, ["id", "name"])
     potion_values = _extract_ids(payload.get("potions", []), ["id", "name"])
@@ -116,6 +102,24 @@ def build_id_mapper(items_json_path: Optional[str]) -> IdMapper:
         relic_ids=relic_ids,
         card_tags=card_tags,
     )
+
+
+def build_id_mapper(items_json_path: Optional[str]) -> IdMapper:
+    if not items_json_path:
+        logger.warning("No items.json path provided; using empty ID mappings.")
+        return IdMapper(card_ids={}, potion_ids={}, relic_ids={}, card_tags={})
+
+    if not os.path.exists(items_json_path):
+        logger.warning("items.json not found at %s; using empty ID mappings.", items_json_path)
+        return IdMapper(card_ids={}, potion_ids={}, relic_ids={}, card_tags={})
+
+    try:
+        with open(items_json_path, "r", encoding="utf-8") as handle:
+            payload = json.load(handle)
+    except Exception as exc:
+        logger.warning("Failed to read items.json from %s: %s", items_json_path, exc)
+        return IdMapper(card_ids={}, potion_ids={}, relic_ids={}, card_tags={})
+    return build_id_mapper_from_payload(payload)
 
 
 def default_items_json_path() -> Optional[str]:
