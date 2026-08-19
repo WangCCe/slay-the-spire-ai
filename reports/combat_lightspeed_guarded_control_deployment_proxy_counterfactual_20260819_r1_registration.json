@@ -1,0 +1,85 @@
+{
+  "schema_version": "combat-lightspeed-guarded-control-deployment-proxy-counterfactual-registration-v1",
+  "audit_id": "combat-lightspeed-guarded-control-deployment-proxy-counterfactual-20260819-r1",
+  "registered_source_commit": "c55368f6c9bfcf74f653a15384e4cc2434cfc863",
+  "question": "Does the guarded-control candidate retain its previously reported LightSTS advantage when the same deterministic wasteful-end-turn proxy is applied to both frozen policies?",
+  "evidence_scope": {
+    "kind": "posthoc_transfer_diagnostic",
+    "fresh_confirmation": false,
+    "qualification": false,
+    "promotion": false,
+    "reason": "The seed cohort was already used by the unguarded fresh comparison; reuse is intentional to isolate the evaluation transform."
+  },
+  "source_binding": {
+    "comparison_runner_sha256": "a91377643153651fc54430606c545f8198001d5bba362171fd33ca301d887ebd",
+    "training_runner_sha256": "9099570edd5b50c366571bf564f2a57245215fb018a23ed929aef90591357247",
+    "native_module_path": "D:/PycharmProjects/slay-the-spire-ai/.sts_lightspeed_combat_later_battle_20260819_r3_build/sts_lightspeed_combat_adapter.cp310-win_amd64.pyd",
+    "native_module_sha256": "195678b7fc6bf69815f3d2971404afb8ce72fb666700edf4203383429caf1009",
+    "simulator_repo": "D:/CLionProjects/sts_lightspeed",
+    "simulator_commit": "7476a81954020087da31d41d16fddf475746ec2d",
+    "items_json_path": "D:/SteamLibrary/steamapps/common/SlayTheSpire/export/items.json",
+    "items_json_sha256": "e23784ea8ed3092e3bfa9918240e162a9cbcb837badfb53c612eb0d83cc811dc"
+  },
+  "candidates": [
+    {
+      "label": "production_r16_shadow",
+      "path": "D:/PycharmProjects/slay-the-spire-ai/reports/combat_lightspeed_production_r16_shadow_20260819_r1/simulator_only_production_shadow.pth",
+      "sha256": "ce2ae34f82b3f457fb35e87d429c397204c42d0f742d3ac8952d91b69119b83b",
+      "parameter_sha256": "cfe8204d06db6b43b063df98e1b713d4a40a0894a1a9330c3db87c739da88d48"
+    },
+    {
+      "label": "guarded_control_candidate",
+      "path": "D:/PycharmProjects/slay-the-spire-ai/reports/combat_lightspeed_production_r16_guarded_encounter_ablation_20260819_r1_control/simulator_only_candidate.pth",
+      "sha256": "d90ad33d11a95574e4a019d0cc663d9438b30c45743cfca0da8a2a19eefbaa03",
+      "parameter_sha256": "0894157bd5be6685f3db21b73383373521806a7ca733da16e437220d92aa36d8"
+    }
+  ],
+  "cohort": {
+    "seeds": "137000..137511",
+    "seed_count": 512,
+    "battle_indices": [0, 3, 6, 9],
+    "profile_count_per_candidate": 2048,
+    "ascension": 0,
+    "max_decisions_per_profile": 100,
+    "max_actions_per_turn": 8
+  },
+  "intervention": {
+    "deployment_guard_proxy": "greedy-native-reward-on-wasteful-end-turn-v1",
+    "applied_symmetrically": true,
+    "training": false,
+    "checkpoint_mutation": false
+  },
+  "execution": {
+    "interpreter": "D:/anaconda/envs/stsai/python.exe",
+    "isolated_mode": true,
+    "device": "cpu",
+    "output_dir": "reports/combat_lightspeed_guarded_control_deployment_proxy_counterfactual_20260819_r1",
+    "gameplay": false,
+    "communication_mod": false
+  },
+  "technical_success_criteria": {
+    "verdict": "comparison_ready",
+    "candidate_count": 2,
+    "checkpoint_hashes_match": true,
+    "unexpected_initialization_failure_count": 0,
+    "unsupported_state_count_per_candidate": 0,
+    "matched_reachability": true,
+    "terminal_pair_count_gte": 1600,
+    "guard_proxy_replacement_count_gt_per_candidate": 0
+  },
+  "interpretation": {
+    "transfer_gap_supported": "The candidate aggregate reward or HP advantage disappears or reverses, or candidate card-play drift remains materially worse despite symmetric intervention.",
+    "bare_policy_uplift_survives": "The candidate remains better on reward, HP, and victories after symmetric intervention.",
+    "next_step_if_transfer_gap_supported": "Do not run another live gate from this candidate family; design a parent card-to-card ranking constraint before more training.",
+    "next_step_if_uplift_survives": "Audit the fidelity of the proxy against production fallback before any further live gate."
+  },
+  "authority": {
+    "training": false,
+    "gameplay": false,
+    "communication_mod": false,
+    "mechanics_equivalence": false,
+    "live_policy_quality": false,
+    "qualification": false,
+    "promotion": false
+  }
+}
