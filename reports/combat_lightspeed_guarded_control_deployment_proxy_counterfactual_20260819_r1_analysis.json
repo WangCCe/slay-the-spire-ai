@@ -1,0 +1,62 @@
+{
+  "schema_version": "combat-lightspeed-guarded-control-deployment-proxy-counterfactual-analysis-v1",
+  "audit_id": "combat-lightspeed-guarded-control-deployment-proxy-counterfactual-20260819-r1",
+  "verdict": "transfer_gap_supported_retain_production_r16",
+  "integrity": {
+    "comparison_verdict": "comparison_ready",
+    "blockers": [],
+    "matched_terminal_pair_count": 1685,
+    "unexpected_initialization_failure_count": 0,
+    "unsupported_state_count_per_candidate": 0,
+    "generated_manifest_entries_verified": true,
+    "unguarded_report_sha256": "a4c9ac318b7d6b9c061912031dd2a3740816d8bffc32a6bb8fd3bf40eab5b4c1",
+    "guarded_report_sha256": "77bb9d34abafa93e9787b5afca92fcc78c05451e5aa671533e3b0e1be7170968"
+  },
+  "guard_interventions": {
+    "production_r16_shadow": {
+      "raw_policy_end_turn_count": 16818,
+      "eligible_count": 11451,
+      "replacement_count": 11451,
+      "no_supported_replacement_count": 0
+    },
+    "guarded_control_candidate": {
+      "raw_policy_end_turn_count": 16196,
+      "eligible_count": 10849,
+      "replacement_count": 10849,
+      "no_supported_replacement_count": 0
+    }
+  },
+  "paired_delta_candidate_minus_parent": {
+    "unguarded": {
+      "mean_reward": 2.1272190034271987,
+      "mean_player_hp": 1.780154486036839,
+      "candidate_only_victories": 118,
+      "parent_only_victories": 71
+    },
+    "guarded": {
+      "mean_reward": -0.009720247943962961,
+      "mean_player_hp": -0.07774480712166172,
+      "candidate_only_victories": 19,
+      "parent_only_victories": 17
+    }
+  },
+  "guarded_battle_index_reward_delta": {
+    "0": -0.11093750000000002,
+    "3": -0.15248660560344332,
+    "6": -0.20026899247981908,
+    "9": 0.6719347721722752
+  },
+  "interpretation": [
+    "The large bare-policy simulator uplift does not survive a symmetric wasteful-end-turn recovery proxy.",
+    "The proxy improves both frozen policies dramatically, demonstrating that raw EndTurn outcomes dominated the prior comparison.",
+    "The remaining guarded result is effectively neutral and slightly worse on aggregate reward and player HP, consistent with the failed 10-pair live floor gate.",
+    "Independent source and trace audit found no action-index or packaging mismatch; the remaining high-confidence training defect is failure to preserve parent card-to-card ranking when both actions are non-EndTurn.",
+    "The proxy is not an exact CombatRLAgent fallback implementation and grants no mechanics-equivalence or promotion authority."
+  ],
+  "decision": {
+    "production_checkpoint": "retain_r16",
+    "additional_live_gate_for_this_candidate_family": false,
+    "candidate_promotion": false,
+    "next_training_direction": "Add and test a frozen-parent card-to-card ranking constraint before producing another candidate. Require guard-aware simulator evidence before future packaging or live evaluation."
+  }
+}
