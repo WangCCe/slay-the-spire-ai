@@ -22,7 +22,7 @@ The current collector samples legal non-EndTurn actions uniformly and trains one
 
 ### Registered behavior modes
 
-Keep `uniform-non-end-turn-v1` as the default. Add `frozen-parent-guarded-epsilon-v1`, which requires a warm-start parent and `greedy-native-reward-on-wasteful-end-turn-v1` proxy. At each decision below the action-per-turn cap, one deterministic RNG draw selects exploration with probability epsilon; exploration uses the existing legal non-EndTurn selector, while the parent branch selects the frozen network action and applies the proxy. The action-per-turn safety bound always forces EndTurn without proxy replacement.
+Keep `uniform-non-end-turn-v1` as the default. Add `frozen-parent-guarded-epsilon-v1`, which requires a warm-start parent and `greedy-native-reward-on-wasteful-end-turn-v1` proxy. At each decision below the action-per-turn cap, one deterministic RNG draw selects exploration with probability epsilon; exploration uses the existing selector and therefore falls back to EndTurn only when no legal non-EndTurn action exists, while the parent branch selects the frozen network action and applies the proxy. The action-per-turn safety bound always forces EndTurn without proxy replacement.
 
 ### Store executed actions
 

@@ -1,0 +1,11 @@
+{
+  "schema_version": "combat-lightspeed-deployment-consistent-behavior-abort-v1",
+  "experiment_id": "combat-lightspeed-deployment-consistent-behavior-20260819-r1",
+  "registered_source_commit": "848b90ba7daf752910de1828c2c4ecf5aa8e8cd2",
+  "status": "aborted_before_publication",
+  "output_directory_created": false,
+  "result_authority": false,
+  "reason": "Post-start read-only review found that EndTurn-only states below the action cap skipped the registered epsilon RNG draw and diverged from evaluation branch semantics.",
+  "retry": false,
+  "next_step": "Fix and regress the protocol deviation, then register a new experiment with unused train and evaluation seeds."
+}

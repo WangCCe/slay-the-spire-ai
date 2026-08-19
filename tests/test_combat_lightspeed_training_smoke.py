@@ -6,7 +6,7 @@ from pathlib import Path
 import random
 import subprocess
 import sys
-from types import SimpleNamespace
+from types import ModuleType, SimpleNamespace
 
 import numpy as np
 import torch
@@ -32,6 +32,7 @@ from analysis_scripts.combat_lightspeed_training_smoke import (
     apply_deployment_guard_proxy,
     append_encounter_identity,
     calculate_native_reward,
+    collect_transitions,
     create_fresh_trainer,
     encounter_from_snapshot,
     encounter_identity_bucket,
@@ -195,6 +196,41 @@ def test_collection_behavior_defaults_to_existing_uniform_selector():
     assert sum(telemetry.values()) == 1
 
 
+def test_default_collection_wrapper_preserves_multistep_rng_sequence():
+    config = SmokeConfig(
+        train_seeds=(10,),
+        evaluation_seeds=(20,),
+        max_actions_per_turn=3,
+    )
+    legacy_rng = random.Random(29)
+    wrapper_rng = random.Random(29)
+    legacy_actions = []
+    wrapper_actions = []
+    for actions_since_end_turn in (0, 1, 2, 3, 0, 2):
+        legacy_actions.append(
+            select_behavior_action(
+                _actions(),
+                rng=legacy_rng,
+                actions_since_end_turn=actions_since_end_turn,
+                max_actions_per_turn=config.max_actions_per_turn,
+            )["action_id"]
+        )
+        selected, _telemetry = select_collection_behavior_action(
+            _GuardEnvironment(_snapshot(), {}),
+            behavior_trainer=None,
+            mapped=_mapped_state(),
+            legal_actions=_actions(),
+            before_snapshot=_snapshot(),
+            rng=wrapper_rng,
+            actions_since_end_turn=actions_since_end_turn,
+            config=config,
+        )
+        wrapper_actions.append(selected["action_id"])
+
+    assert wrapper_actions == legacy_actions
+    assert wrapper_rng.getstate() == legacy_rng.getstate()
+
+
 def test_guarded_parent_collection_stores_post_proxy_action():
     before = _snapshot(monster_hp=10, energy=2)
     successors = {
@@ -290,6 +326,50 @@ def test_guarded_collection_forces_end_turn_at_bound_without_proxy():
     assert telemetry["guard_proxy_replacement_count"] == 0
 
 
+@pytest.mark.parametrize(
+    ("epsilon", "expected_branch", "expected_trainer_calls"),
+    (
+        (0.0, "parent_branch_count", 1),
+        (1.0, "exploration_branch_count", 0),
+    ),
+)
+def test_guarded_end_turn_only_state_consumes_draw_below_cap(
+    epsilon,
+    expected_branch,
+    expected_trainer_calls,
+):
+    trainer = _FixedActionTrainer(90)
+    config = SmokeConfig(
+        train_seeds=(10,),
+        evaluation_seeds=(20,),
+        max_actions_per_turn=3,
+        behavior_policy=FROZEN_PARENT_GUARDED_EPSILON_BEHAVIOR,
+        behavior_epsilon=epsilon,
+        deployment_guard_proxy=GREEDY_NATIVE_REWARD_DEPLOYMENT_GUARD_PROXY,
+    )
+    rng = random.Random(31)
+    expected_rng = random.Random(31)
+    expected_rng.random()
+
+    selected, telemetry = select_collection_behavior_action(
+        _GuardEnvironment(_snapshot(), {}),
+        behavior_trainer=trainer,
+        mapped=_mapped_state(),
+        legal_actions=(_actions()[-1],),
+        before_snapshot=_snapshot(),
+        rng=rng,
+        actions_since_end_turn=0,
+        config=config,
+    )
+
+    assert selected["kind"] == "end_turn"
+    assert trainer.calls == expected_trainer_calls
+    assert telemetry[expected_branch] == 1
+    assert telemetry["forced_end_turn_branch_count"] == 0
+    assert telemetry["forced_end_turn_count"] == 0
+    assert rng.getstate() == expected_rng.getstate()
+
+
 def test_guarded_collection_behavior_validates_mode_epsilon_and_prerequisites():
     base = SmokeConfig(train_seeds=(10,), evaluation_seeds=(20,))
     with pytest.raises(ValueError, match="unknown collection behavior policy"):
@@ -319,6 +399,48 @@ def test_guarded_collection_behavior_validates_mode_epsilon_and_prerequisites():
         guarded,
         has_initial_checkpoint=True,
     )
+
+
+def test_guarded_collector_rechecks_proxy_and_registered_parent_before_reset():
+    guarded = SmokeConfig(
+        train_seeds=(10,),
+        evaluation_seeds=(20,),
+        behavior_policy=FROZEN_PARENT_GUARDED_EPSILON_BEHAVIOR,
+        behavior_epsilon=0.1,
+        deployment_guard_proxy=GREEDY_NATIVE_REWARD_DEPLOYMENT_GUARD_PROXY,
+    )
+    trainer = create_fresh_trainer(
+        _mapper(),
+        seed=37,
+        batch_size=2,
+        learning_starts=2,
+    )
+
+    with pytest.raises(ValueError, match="registered deployment guard proxy"):
+        collect_transitions(
+            ModuleType("unused"),
+            id_mapper=_mapper(),
+            config=replace(guarded, deployment_guard_proxy=NO_DEPLOYMENT_GUARD_PROXY),
+            behavior_trainer=trainer,
+            expected_behavior_parent_sha256=parameter_sha256(
+                trainer.online_network.state_dict()
+            ),
+        )
+    with pytest.raises(ValueError, match="expected parent hash"):
+        collect_transitions(
+            ModuleType("unused"),
+            id_mapper=_mapper(),
+            config=guarded,
+            behavior_trainer=trainer,
+        )
+    with pytest.raises(ValueError, match="does not match registration"):
+        collect_transitions(
+            ModuleType("unused"),
+            id_mapper=_mapper(),
+            config=guarded,
+            behavior_trainer=trainer,
+            expected_behavior_parent_sha256="0" * 64,
+        )
 
 
 def test_training_profiles_are_deterministic_seed_index_product():

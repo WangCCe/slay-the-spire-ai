@@ -9,7 +9,7 @@ The LightSTS trainer SHALL preserve uniform non-EndTurn collection by default an
 
 #### Scenario: Exploration branch
 - **WHEN** the deterministic RNG draw is below the registered epsilon
-- **THEN** collection executes one legal non-EndTurn exploration action using the existing seeded selector
+- **THEN** collection uses the existing seeded selector, executing a legal non-EndTurn action when one exists and otherwise EndTurn
 
 #### Scenario: Forced turn bound
 - **WHEN** the action-per-turn bound is reached

@@ -667,9 +667,7 @@ def select_collection_behavior_action(
     non_end_turn = [
         action for action in available if action.get("kind") != "end_turn"
     ]
-    forced_end_turn = (
-        actions_since_end_turn >= config.max_actions_per_turn or not non_end_turn
-    )
+    cap_reached = actions_since_end_turn >= config.max_actions_per_turn
 
     if config.behavior_policy == UNIFORM_NON_END_TURN_BEHAVIOR:
         selected = select_behavior_action(
@@ -680,11 +678,11 @@ def select_collection_behavior_action(
         )
         branch = (
             "forced_end_turn_branch_count"
-            if forced_end_turn
+            if cap_reached or not non_end_turn
             else "uniform_branch_count"
         )
         telemetry[branch] = 1
-        if forced_end_turn:
+        if cap_reached or not non_end_turn:
             telemetry["forced_end_turn_count"] = 1
         return selected, telemetry
 
@@ -692,7 +690,7 @@ def select_collection_behavior_action(
         raise ValueError(f"unknown collection behavior policy: {config.behavior_policy}")
     if behavior_trainer is None:
         raise ValueError("frozen-parent guarded behavior requires a behavior trainer")
-    if forced_end_turn:
+    if cap_reached:
         selected, guard_telemetry = apply_deployment_guard_proxy(
             environment,
             end_turn,
@@ -1473,6 +1471,7 @@ def collect_transitions(
     id_mapper: IdMapper,
     config: SmokeConfig,
     behavior_trainer: DQNTrainerV2 | None = None,
+    expected_behavior_parent_sha256: str | None = None,
 ) -> tuple[list[ReplayTransition], dict[str, Any]]:
     transitions: list[ReplayTransition] = []
     actions = Counter()
@@ -1499,11 +1498,21 @@ def collect_transitions(
     behavior_telemetry = Counter()
     behavior_parent_sha256 = None
     if config.behavior_policy == FROZEN_PARENT_GUARDED_EPSILON_BEHAVIOR:
+        if config.deployment_guard_proxy != GREEDY_NATIVE_REWARD_DEPLOYMENT_GUARD_PROXY:
+            raise ValueError(
+                "frozen-parent guarded behavior requires the registered deployment guard proxy"
+            )
         if behavior_trainer is None:
             raise ValueError("frozen-parent guarded behavior requires a behavior trainer")
+        if expected_behavior_parent_sha256 is None:
+            raise ValueError(
+                "frozen-parent guarded behavior requires an expected parent hash"
+            )
         behavior_parent_sha256 = parameter_sha256(
             behavior_trainer.online_network.state_dict()
         )
+        if behavior_parent_sha256 != expected_behavior_parent_sha256:
+            raise ValueError("frozen behavior parent hash does not match registration")
 
     for seed, battle_index in config.profiles(config.train_seeds):
         try:
@@ -2405,6 +2414,7 @@ def run_smoke(
             id_mapper=id_mapper,
             config=config,
             behavior_trainer=trainer,
+            expected_behavior_parent_sha256=initial_sha256,
         )
     finally:
         trainer.online_network.train(was_training)
