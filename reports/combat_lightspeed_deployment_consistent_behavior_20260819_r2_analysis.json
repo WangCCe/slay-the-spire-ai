@@ -1,0 +1,71 @@
+{
+  "schema_version": "combat-lightspeed-deployment-consistent-behavior-analysis-v1",
+  "verdict": "recipe_rejected_retain_r16",
+  "integrity": {
+    "training_verdict": "technical_smoke_ready",
+    "comparison_verdict": "comparison_ready",
+    "training_report_sha256": "e7996bf27cea0a6235f6bc0c4dcc5458326b13ff511b3dacbf2d5f4c6bf53431",
+    "comparison_report_sha256": "72827ddc49188f0fb251cb673260881d3fff34c8abe6c5322902edc5a129f3b5",
+    "generated_manifests_verified": true,
+    "training_blockers": [],
+    "comparison_blockers": []
+  },
+  "training": {
+    "source_replay_transition_count": 50459,
+    "balanced_replay_transition_count": 65488,
+    "optimizer_update_count": 256,
+    "candidate_parameter_sha256": "63a84ae628e5affcaa75454b1ae50c7bebae4bc54bc04b2ec140fe1157ee6118",
+    "candidate_checkpoint_sha256": "20aa42448e4368b0ccbba8fcb270f53fcc39649df0138a80efbfed7fccc51d8d",
+    "parameter_l2_delta": 1.78248812528665,
+    "behavior": {
+      "mode": "frozen-parent-guarded-epsilon-v1",
+      "epsilon": 0.1,
+      "parent_branch_count": 45380,
+      "exploration_branch_count": 5003,
+      "forced_end_turn_branch_count": 76,
+      "guard_proxy_replacement_count": 20766
+    },
+    "target": {
+      "mode": "discounted-episode-return",
+      "discount": 0.99,
+      "source_reward_mean": 1.71522528824594,
+      "target_reward_mean": 20.1483793256877,
+      "td_loss_mean": 9.84931929968297,
+      "parent_anchor_loss_mean": 0.498938469681889
+    }
+  },
+  "fresh_parent_gate": {
+    "mean_reward_delta": -0.289213102218505,
+    "mean_player_hp_delta": -0.0597189695550351,
+    "candidate_only_victories": 14,
+    "parent_only_victories": 17,
+    "battle_mean_reward_delta": {
+      "0": 0.15,
+      "3": -0.57,
+      "6": 0.12,
+      "9": -1.14
+    },
+    "passed": false
+  },
+  "fresh_ranking": [
+    {"label": "card_ranking_guard_candidate", "mean_reward": 26.021248, "mean_player_hp": 48.324356, "victories": 777},
+    {"label": "prior_guarded_control", "mean_reward": 25.936697, "mean_player_hp": 48.227166, "victories": 778},
+    {"label": "top_action_margin_guard_candidate", "mean_reward": 25.929547, "mean_player_hp": 48.072600, "victories": 776},
+    {"label": "production_r16_shadow", "mean_reward": 25.650032, "mean_player_hp": 47.985948, "victories": 773},
+    {"label": "deployment_consistent_candidate", "mean_reward": 25.360818, "mean_player_hp": 47.926230, "victories": 770}
+  ],
+  "deployment_consistent_pairwise": {
+    "vs_card_ranking_guard": {"mean_reward_delta": -0.660429, "mean_player_hp_delta": -0.398126, "candidate_only_victories": 10, "control_only_victories": 17},
+    "vs_prior_guarded_control": {"mean_reward_delta": -0.575878, "mean_player_hp_delta": -0.300937, "candidate_only_victories": 12, "control_only_victories": 20},
+    "vs_production_r16": {"mean_reward_delta": -0.289213, "mean_player_hp_delta": -0.059719, "candidate_only_victories": 14, "control_only_victories": 17},
+    "vs_top_action_margin_guard": {"mean_reward_delta": -0.568728, "mean_player_hp_delta": -0.146370, "candidate_only_victories": 11, "control_only_victories": 17}
+  },
+  "decision": {
+    "production_checkpoint": "retain_r16",
+    "larger_confirmation": false,
+    "packaging": false,
+    "gameplay": false,
+    "same_cohort_tuning": false,
+    "next_direction": "Keep deployment-consistent behavior, but test a separately registered lower-variance frozen-parent 3-step target on unused cohorts instead of full episode returns."
+  }
+}

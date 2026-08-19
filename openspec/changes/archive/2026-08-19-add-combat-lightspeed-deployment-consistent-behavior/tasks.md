@@ -11,4 +11,4 @@
 ## 3. Fresh Experiment
 
 - [x] 3.1 Register and run one fresh guarded-parent behavior plus discounted-return training experiment.
-- [ ] 3.2 Compare the frozen candidate against r16 and prior guarded candidates, publish the decision, and do not start gameplay.
+- [x] 3.2 Compare the frozen candidate against r16 and prior guarded candidates, publish the decision, and do not start gameplay.
