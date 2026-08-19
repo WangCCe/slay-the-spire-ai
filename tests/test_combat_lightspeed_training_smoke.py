@@ -6,6 +6,7 @@ from pathlib import Path
 import random
 import subprocess
 import sys
+from types import SimpleNamespace
 
 import numpy as np
 import torch
@@ -18,11 +19,13 @@ from analysis_scripts.combat_lightspeed_training_smoke import (
     ENCOUNTER_ENUM_V1_SHA256,
     ENCOUNTER_HASH_ALGORITHM,
     ENCOUNTER_PARENT_EQUIVALENCE_TOLERANCE,
+    FROZEN_PARENT_GUARDED_EPSILON_BEHAVIOR,
     FROZEN_PARENT_N_STEP_TARGET,
     GREEDY_NATIVE_REWARD_DEPLOYMENT_GUARD_PROXY,
     NO_DEPLOYMENT_GUARD_PROXY,
     ONE_STEP_TD_TARGET,
     REPORT_AUTHORITY,
+    UNIFORM_NON_END_TURN_BEHAVIOR,
     ReplayTransition,
     SmokeConfig,
     _publish,
@@ -44,9 +47,11 @@ from analysis_scripts.combat_lightspeed_training_smoke import (
     prepare_replay_transitions,
     run_optimizer,
     select_behavior_action,
+    select_collection_behavior_action,
     select_profile_transitions,
     successor_disposition,
     unexpected_initialization_failures,
+    validate_collection_behavior_prerequisites,
     run_smoke,
 )
 from analysis_scripts.combat_lightspeed_bridge import (
@@ -108,6 +113,28 @@ class _GuardEnvironment:
         return copy.deepcopy(self.successors[self.selected_action_id]["snapshot"])
 
 
+class _FixedActionTrainer:
+    def __init__(self, action_index):
+        self.action_index = action_index
+        self.calls = 0
+
+    def select_action(self, *_args, **_kwargs):
+        self.calls += 1
+        return self.action_index
+
+
+def _mapped_state():
+    return SimpleNamespace(
+        state=SimpleNamespace(
+            continuous=np.zeros(1, dtype=np.float32),
+            card_ids=np.zeros(1, dtype=np.int64),
+            potion_ids=np.zeros(1, dtype=np.int64),
+            relic_ids=np.zeros(1, dtype=np.int64),
+        ),
+        action_mask=np.ones(133, dtype=bool),
+    )
+
+
 def _mapper():
     return IdMapper(
         card_ids={"Strike": 1},
@@ -140,6 +167,158 @@ def test_behavior_action_is_seeded_and_forces_end_turn_at_bound():
     assert left == right
     assert left["kind"] == "play_card"
     assert bounded["kind"] == "end_turn"
+
+
+def test_collection_behavior_defaults_to_existing_uniform_selector():
+    config = SmokeConfig(train_seeds=(10,), evaluation_seeds=(20,))
+    direct = select_behavior_action(
+        _actions(),
+        rng=random.Random(17),
+        actions_since_end_turn=0,
+        max_actions_per_turn=config.max_actions_per_turn,
+    )
+
+    selected, telemetry = select_collection_behavior_action(
+        _GuardEnvironment(_snapshot(), {}),
+        behavior_trainer=None,
+        mapped=_mapped_state(),
+        legal_actions=_actions(),
+        before_snapshot=_snapshot(),
+        rng=random.Random(17),
+        actions_since_end_turn=0,
+        config=config,
+    )
+
+    assert config.behavior_policy == UNIFORM_NON_END_TURN_BEHAVIOR
+    assert selected == direct
+    assert telemetry["uniform_branch_count"] == 1
+    assert sum(telemetry.values()) == 1
+
+
+def test_guarded_parent_collection_stores_post_proxy_action():
+    before = _snapshot(monster_hp=10, energy=2)
+    successors = {
+        "play_card:0:1": {
+            "status": {"terminal": False, "supported": True},
+            "snapshot": _snapshot(monster_hp=4, energy=1),
+        },
+        "play_card:1:1": {
+            "status": {"terminal": False, "supported": True},
+            "snapshot": _snapshot(monster_hp=0, energy=1),
+        },
+    }
+    trainer = _FixedActionTrainer(90)
+    config = SmokeConfig(
+        train_seeds=(10,),
+        evaluation_seeds=(20,),
+        behavior_policy=FROZEN_PARENT_GUARDED_EPSILON_BEHAVIOR,
+        behavior_epsilon=0.0,
+        deployment_guard_proxy=GREEDY_NATIVE_REWARD_DEPLOYMENT_GUARD_PROXY,
+    )
+
+    selected, telemetry = select_collection_behavior_action(
+        _GuardEnvironment(before, successors),
+        behavior_trainer=trainer,
+        mapped=_mapped_state(),
+        legal_actions=_actions(),
+        before_snapshot=before,
+        rng=random.Random(17),
+        actions_since_end_turn=0,
+        config=config,
+    )
+
+    assert trainer.calls == 1
+    assert selected["action_id"] == "play_card:1:1"
+    assert telemetry["parent_branch_count"] == 1
+    assert telemetry["raw_policy_end_turn_count"] == 1
+    assert telemetry["guard_proxy_replacement_count"] == 1
+
+
+def test_guarded_collection_exploration_uses_existing_non_end_turn_selector():
+    trainer = _FixedActionTrainer(90)
+    config = SmokeConfig(
+        train_seeds=(10,),
+        evaluation_seeds=(20,),
+        behavior_policy=FROZEN_PARENT_GUARDED_EPSILON_BEHAVIOR,
+        behavior_epsilon=1.0,
+        deployment_guard_proxy=GREEDY_NATIVE_REWARD_DEPLOYMENT_GUARD_PROXY,
+    )
+
+    selected, telemetry = select_collection_behavior_action(
+        _GuardEnvironment(_snapshot(), {}),
+        behavior_trainer=trainer,
+        mapped=_mapped_state(),
+        legal_actions=_actions(),
+        before_snapshot=_snapshot(),
+        rng=random.Random(17),
+        actions_since_end_turn=0,
+        config=config,
+    )
+
+    assert trainer.calls == 0
+    assert selected["kind"] == "play_card"
+    assert telemetry["exploration_branch_count"] == 1
+    assert telemetry["guard_proxy_replacement_count"] == 0
+
+
+def test_guarded_collection_forces_end_turn_at_bound_without_proxy():
+    trainer = _FixedActionTrainer(1)
+    config = SmokeConfig(
+        train_seeds=(10,),
+        evaluation_seeds=(20,),
+        max_actions_per_turn=3,
+        behavior_policy=FROZEN_PARENT_GUARDED_EPSILON_BEHAVIOR,
+        behavior_epsilon=0.0,
+        deployment_guard_proxy=GREEDY_NATIVE_REWARD_DEPLOYMENT_GUARD_PROXY,
+    )
+
+    selected, telemetry = select_collection_behavior_action(
+        _GuardEnvironment(_snapshot(), {}),
+        behavior_trainer=trainer,
+        mapped=_mapped_state(),
+        legal_actions=_actions(),
+        before_snapshot=_snapshot(),
+        rng=random.Random(17),
+        actions_since_end_turn=3,
+        config=config,
+    )
+
+    assert trainer.calls == 0
+    assert selected["kind"] == "end_turn"
+    assert telemetry["forced_end_turn_branch_count"] == 1
+    assert telemetry["forced_end_turn_count"] == 1
+    assert telemetry["guard_proxy_replacement_count"] == 0
+
+
+def test_guarded_collection_behavior_validates_mode_epsilon_and_prerequisites():
+    base = SmokeConfig(train_seeds=(10,), evaluation_seeds=(20,))
+    with pytest.raises(ValueError, match="unknown collection behavior policy"):
+        replace(base, behavior_policy="unknown").validate()
+    for value in (-0.1, 1.1, float("nan"), float("inf")):
+        with pytest.raises(ValueError, match="behavior epsilon"):
+            replace(base, behavior_epsilon=value).validate()
+
+    guarded = replace(
+        base,
+        behavior_policy=FROZEN_PARENT_GUARDED_EPSILON_BEHAVIOR,
+        behavior_epsilon=0.1,
+        deployment_guard_proxy=GREEDY_NATIVE_REWARD_DEPLOYMENT_GUARD_PROXY,
+    )
+    guarded.validate()
+    with pytest.raises(ValueError, match="warm-start checkpoint"):
+        validate_collection_behavior_prerequisites(
+            guarded,
+            has_initial_checkpoint=False,
+        )
+    with pytest.raises(ValueError, match="registered deployment guard proxy"):
+        validate_collection_behavior_prerequisites(
+            replace(guarded, deployment_guard_proxy=NO_DEPLOYMENT_GUARD_PROXY),
+            has_initial_checkpoint=True,
+        )
+    validate_collection_behavior_prerequisites(
+        guarded,
+        has_initial_checkpoint=True,
+    )
 
 
 def test_training_profiles_are_deterministic_seed_index_product():
@@ -1663,6 +1842,15 @@ def test_published_candidate_is_structurally_simulator_only(tmp_path):
                 "bootstrap_parameter_sha256": "e" * 64,
             },
         },
+        "corpus": {
+            "behavior": {
+                "mode": FROZEN_PARENT_GUARDED_EPSILON_BEHAVIOR,
+                "epsilon": 0.1,
+                "parent_parameter_sha256": "e" * 64,
+                "parent_branch_count": 9,
+                "exploration_branch_count": 1,
+            }
+        },
         "initialization": {
             "mode": "warm_start_encounter_expansion",
             "checkpoint_sha256": "1" * 64,
@@ -1733,6 +1921,9 @@ def test_published_candidate_is_structurally_simulator_only(tmp_path):
     assert checkpoint["metadata"]["source_binding"]["replay_target"] == report[
         "training"
     ]["replay_target"]
+    assert checkpoint["metadata"]["source_binding"]["collection_behavior"] == report[
+        "corpus"
+    ]["behavior"]
 
 
 def test_opt_in_tiny_native_training_smoke():

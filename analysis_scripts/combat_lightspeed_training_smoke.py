@@ -49,7 +49,7 @@ from spirecomm.ai.rl.v2.trainer import DQNTrainerV2  # noqa: E402
 from spirecomm.ai.rl.v2.types import EncodedStateV2  # noqa: E402
 
 
-REPORT_SCHEMA_VERSION = "combat-lightspeed-training-smoke-v14"
+REPORT_SCHEMA_VERSION = "combat-lightspeed-training-smoke-v15"
 CHECKPOINT_KIND = "simulator_training_smoke"
 ONE_STEP_TD_TARGET = "one-step-td"
 DISCOUNTED_EPISODE_RETURN_TARGET = "discounted-episode-return"
@@ -62,12 +62,21 @@ NO_DEPLOYMENT_GUARD_PROXY = "none"
 GREEDY_NATIVE_REWARD_DEPLOYMENT_GUARD_PROXY = (
     "greedy-native-reward-on-wasteful-end-turn-v1"
 )
+UNIFORM_NON_END_TURN_BEHAVIOR = "uniform-non-end-turn-v1"
+FROZEN_PARENT_GUARDED_EPSILON_BEHAVIOR = "frozen-parent-guarded-epsilon-v1"
 DEPLOYMENT_GUARD_TELEMETRY_FIELDS = (
     "raw_policy_end_turn_count",
     "forced_end_turn_count",
     "guard_proxy_eligible_count",
     "guard_proxy_replacement_count",
     "guard_proxy_no_supported_replacement_count",
+)
+COLLECTION_BEHAVIOR_TELEMETRY_FIELDS = (
+    "uniform_branch_count",
+    "parent_branch_count",
+    "exploration_branch_count",
+    "forced_end_turn_branch_count",
+    *DEPLOYMENT_GUARD_TELEMETRY_FIELDS,
 )
 ENCOUNTER_ENUM_V1 = (
     "CULTIST",
@@ -168,6 +177,8 @@ class SmokeConfig:
     max_decisions_per_seed: int = 80
     max_actions_per_turn: int = 8
     behavior_seed: int = 2026081901
+    behavior_policy: str = UNIFORM_NON_END_TURN_BEHAVIOR
+    behavior_epsilon: float = 0.0
     network_seed: int = 2026081902
     batch_size: int = 128
     optimizer_steps: int = 64
@@ -211,6 +222,15 @@ class SmokeConfig:
             raise ValueError("decision and per-turn action bounds must be positive")
         if self.batch_size <= 1 or self.optimizer_steps <= 0:
             raise ValueError("batch size and optimizer steps must be positive")
+        if self.behavior_policy not in {
+            UNIFORM_NON_END_TURN_BEHAVIOR,
+            FROZEN_PARENT_GUARDED_EPSILON_BEHAVIOR,
+        }:
+            raise ValueError("unknown collection behavior policy")
+        if not math.isfinite(self.behavior_epsilon) or not (
+            0.0 <= self.behavior_epsilon <= 1.0
+        ):
+            raise ValueError("behavior epsilon must be finite and in [0, 1]")
         if (
             not math.isfinite(self.parent_policy_anchor_weight)
             or self.parent_policy_anchor_weight < 0.0
@@ -601,6 +621,115 @@ def apply_deployment_guard_proxy(
 
     selected = max(supported, key=lambda item: (item[0], item[1]))[2]
     telemetry["guard_proxy_replacement_count"] = 1
+    return selected, telemetry
+
+
+def validate_collection_behavior_prerequisites(
+    config: SmokeConfig,
+    *,
+    has_initial_checkpoint: bool,
+) -> None:
+    if config.behavior_policy != FROZEN_PARENT_GUARDED_EPSILON_BEHAVIOR:
+        return
+    if not has_initial_checkpoint:
+        raise ValueError(
+            "frozen-parent guarded behavior requires a warm-start checkpoint"
+        )
+    if config.deployment_guard_proxy != GREEDY_NATIVE_REWARD_DEPLOYMENT_GUARD_PROXY:
+        raise ValueError(
+            "frozen-parent guarded behavior requires the registered deployment guard proxy"
+        )
+
+
+def select_collection_behavior_action(
+    environment: NativeCombatEnvironment,
+    *,
+    behavior_trainer: DQNTrainerV2 | None,
+    mapped: MappedCombatState,
+    legal_actions: Sequence[Mapping[str, Any]],
+    before_snapshot: Mapping[str, Any],
+    rng: random.Random,
+    actions_since_end_turn: int,
+    config: SmokeConfig,
+) -> tuple[dict[str, Any], dict[str, int]]:
+    telemetry = {field: 0 for field in COLLECTION_BEHAVIOR_TELEMETRY_FIELDS}
+    available = [
+        dict(action) for action in legal_actions if action.get("available", True)
+    ]
+    if not available:
+        raise ValueError("no legal simulator actions")
+    end_turn = next(
+        (action for action in available if action.get("kind") == "end_turn"),
+        None,
+    )
+    if end_turn is None:
+        raise ValueError("legal simulator actions omit End Turn")
+    non_end_turn = [
+        action for action in available if action.get("kind") != "end_turn"
+    ]
+    forced_end_turn = (
+        actions_since_end_turn >= config.max_actions_per_turn or not non_end_turn
+    )
+
+    if config.behavior_policy == UNIFORM_NON_END_TURN_BEHAVIOR:
+        selected = select_behavior_action(
+            legal_actions,
+            rng=rng,
+            actions_since_end_turn=actions_since_end_turn,
+            max_actions_per_turn=config.max_actions_per_turn,
+        )
+        branch = (
+            "forced_end_turn_branch_count"
+            if forced_end_turn
+            else "uniform_branch_count"
+        )
+        telemetry[branch] = 1
+        if forced_end_turn:
+            telemetry["forced_end_turn_count"] = 1
+        return selected, telemetry
+
+    if config.behavior_policy != FROZEN_PARENT_GUARDED_EPSILON_BEHAVIOR:
+        raise ValueError(f"unknown collection behavior policy: {config.behavior_policy}")
+    if behavior_trainer is None:
+        raise ValueError("frozen-parent guarded behavior requires a behavior trainer")
+    if forced_end_turn:
+        selected, guard_telemetry = apply_deployment_guard_proxy(
+            environment,
+            end_turn,
+            legal_actions,
+            before_snapshot,
+            mode=config.deployment_guard_proxy,
+            policy_selected=False,
+        )
+        telemetry["forced_end_turn_branch_count"] = 1
+    elif rng.random() < config.behavior_epsilon:
+        selected = select_behavior_action(
+            legal_actions,
+            rng=rng,
+            actions_since_end_turn=actions_since_end_turn,
+            max_actions_per_turn=config.max_actions_per_turn,
+        )
+        guard_telemetry = {field: 0 for field in DEPLOYMENT_GUARD_TELEMETRY_FIELDS}
+        telemetry["exploration_branch_count"] = 1
+    else:
+        raw_action = _policy_action(
+            behavior_trainer,
+            mapped,
+            legal_actions,
+            actions_since_end_turn=actions_since_end_turn,
+            max_actions_per_turn=config.max_actions_per_turn,
+        )
+        selected, guard_telemetry = apply_deployment_guard_proxy(
+            environment,
+            raw_action,
+            legal_actions,
+            before_snapshot,
+            mode=config.deployment_guard_proxy,
+            policy_selected=True,
+        )
+        telemetry["parent_branch_count"] = 1
+    for field in DEPLOYMENT_GUARD_TELEMETRY_FIELDS:
+        telemetry[field] = int(guard_telemetry[field])
     return selected, telemetry
 
 
@@ -1343,6 +1472,7 @@ def collect_transitions(
     *,
     id_mapper: IdMapper,
     config: SmokeConfig,
+    behavior_trainer: DQNTrainerV2 | None = None,
 ) -> tuple[list[ReplayTransition], dict[str, Any]]:
     transitions: list[ReplayTransition] = []
     actions = Counter()
@@ -1366,6 +1496,14 @@ def collect_transitions(
     excluded_incomplete_profiles = 0
     excluded_incomplete_transitions = 0
     incomplete_profile_reasons = Counter()
+    behavior_telemetry = Counter()
+    behavior_parent_sha256 = None
+    if config.behavior_policy == FROZEN_PARENT_GUARDED_EPSILON_BEHAVIOR:
+        if behavior_trainer is None:
+            raise ValueError("frozen-parent guarded behavior requires a behavior trainer")
+        behavior_parent_sha256 = parameter_sha256(
+            behavior_trainer.online_network.state_dict()
+        )
 
     for seed, battle_index in config.profiles(config.train_seeds):
         try:
@@ -1393,6 +1531,7 @@ def collect_transitions(
         profile_settlement_tasks = Counter()
         profile_settlement_transitions = 0
         profile_encounter_assignments: dict[str, int] = {}
+        profile_behavior_telemetry = Counter()
         completed = False
         incomplete_reason = ""
         for decision_index in range(config.max_decisions_per_seed):
@@ -1427,11 +1566,16 @@ def collect_transitions(
                 encoding=config.encounter_identity_encoding,
             )
             profile_encounters[encounter] += 1
-            selected = select_behavior_action(
-                environment.legal_actions(),
+            legal_actions = environment.legal_actions()
+            selected, step_behavior_telemetry = select_collection_behavior_action(
+                environment,
+                behavior_trainer=behavior_trainer,
+                mapped=current,
+                legal_actions=legal_actions,
+                before_snapshot=before,
                 rng=rng,
                 actions_since_end_turn=actions_since_end_turn,
-                max_actions_per_turn=config.max_actions_per_turn,
+                config=config,
             )
             action_index = int(selected["rl_action_index"])
             if not bool(current.action_mask[action_index]):
@@ -1482,6 +1626,7 @@ def collect_transitions(
                 )
             )
             profile_rewards.append(float(reward_record["total"]))
+            profile_behavior_telemetry.update(step_behavior_telemetry)
             family = str(selected["kind"])
             profile_actions[family] += 1
             environment = successor_environment
@@ -1519,6 +1664,27 @@ def collect_transitions(
             settlement_tasks.update(profile_settlement_tasks)
             settlement_transitions += profile_settlement_transitions
             encounter_assignments.update(profile_encounter_assignments)
+            behavior_telemetry.update(profile_behavior_telemetry)
+
+    if behavior_parent_sha256 is not None:
+        current_parent_sha256 = parameter_sha256(
+            behavior_trainer.online_network.state_dict()
+        )
+        if current_parent_sha256 != behavior_parent_sha256:
+            raise RuntimeError("frozen behavior parent changed during collection")
+    behavior_branch_count = sum(
+        behavior_telemetry[field]
+        for field in (
+            "uniform_branch_count",
+            "parent_branch_count",
+            "exploration_branch_count",
+            "forced_end_turn_branch_count",
+        )
+    )
+    if behavior_branch_count != len(transitions):
+        raise RuntimeError(
+            "collection behavior branch evidence does not match retained replay"
+        )
 
     return transitions, {
         "accepted_transition_count": len(transitions),
@@ -1559,6 +1725,15 @@ def collect_transitions(
         },
         "seed_count": len(config.train_seeds),
         "unsupported_reason_counts": dict(sorted(unsupported.items())),
+        "behavior": {
+            "mode": config.behavior_policy,
+            "epsilon": float(config.behavior_epsilon),
+            "parent_parameter_sha256": behavior_parent_sha256,
+            **{
+                field: int(behavior_telemetry[field])
+                for field in COLLECTION_BEHAVIOR_TELEMETRY_FIELDS
+            },
+        },
         "encounter_identity": {
             "bucket_count": config.encounter_identity_buckets,
             "encoding": (
@@ -2107,6 +2282,8 @@ def _publish(
         ].get("parent_top_action_margin_guard_cap", 0.1)
         if report["training"].get("replay_target"):
             source_binding["replay_target"] = report["training"]["replay_target"]
+        if report.get("corpus", {}).get("behavior"):
+            source_binding["collection_behavior"] = report["corpus"]["behavior"]
         if report["initialization"].get("parent_policy_anchor_parameter_sha256"):
             source_binding["parent_policy_anchor_parameter_sha256"] = report[
                 "initialization"
@@ -2162,7 +2339,7 @@ def _publish(
             "size_bytes": candidate_path.stat().st_size,
         }
     manifest = {
-        "schema_version": "combat-lightspeed-training-smoke-manifest-v13",
+        "schema_version": "combat-lightspeed-training-smoke-manifest-v14",
         "artifacts": manifest_entries,
     }
     artifacts["manifest.json"] = canonical_json_bytes(manifest) + b"\n"
@@ -2181,6 +2358,10 @@ def run_smoke(
     initial_checkpoint: Mapping[str, Any] | None = None,
 ) -> tuple[dict[str, Any], dict[str, torch.Tensor]]:
     config.validate()
+    validate_collection_behavior_prerequisites(
+        config,
+        has_initial_checkpoint=initial_checkpoint is not None,
+    )
     trainer = create_fresh_trainer(
         id_mapper,
         seed=config.network_seed,
@@ -2215,11 +2396,23 @@ def run_smoke(
         and initial_checkpoint is None
     ):
         raise ValueError("frozen-parent n-step targets require a warm-start checkpoint")
-    transitions, corpus_metrics = collect_transitions(
-        native_module,
-        id_mapper=id_mapper,
-        config=config,
-    )
+    was_training = trainer.online_network.training
+    if config.behavior_policy == FROZEN_PARENT_GUARDED_EPSILON_BEHAVIOR:
+        trainer.online_network.eval()
+    try:
+        transitions, corpus_metrics = collect_transitions(
+            native_module,
+            id_mapper=id_mapper,
+            config=config,
+            behavior_trainer=trainer,
+        )
+    finally:
+        trainer.online_network.train(was_training)
+    if (
+        config.behavior_policy == FROZEN_PARENT_GUARDED_EPSILON_BEHAVIOR
+        and corpus_metrics["behavior"]["parent_parameter_sha256"] != initial_sha256
+    ):
+        raise RuntimeError("collection behavior parent does not match warm start")
     bootstrap_values = None
     bootstrap_parameter_sha256 = None
     if config.replay_target_mode == FROZEN_PARENT_N_STEP_TARGET:
@@ -2456,6 +2649,15 @@ def _parse_args() -> argparse.Namespace:
     parser.add_argument("--max-decisions-per-seed", default=80, type=int)
     parser.add_argument("--max-actions-per-turn", default=8, type=int)
     parser.add_argument("--behavior-seed", default=2026081901, type=int)
+    parser.add_argument(
+        "--behavior-policy",
+        default=UNIFORM_NON_END_TURN_BEHAVIOR,
+        choices=(
+            UNIFORM_NON_END_TURN_BEHAVIOR,
+            FROZEN_PARENT_GUARDED_EPSILON_BEHAVIOR,
+        ),
+    )
+    parser.add_argument("--behavior-epsilon", default=0.0, type=float)
     parser.add_argument("--network-seed", default=2026081902, type=int)
     parser.add_argument("--batch-size", default=128, type=int)
     parser.add_argument("--optimizer-steps", default=64, type=int)
@@ -2525,6 +2727,8 @@ def main() -> int:
         max_decisions_per_seed=args.max_decisions_per_seed,
         max_actions_per_turn=args.max_actions_per_turn,
         behavior_seed=args.behavior_seed,
+        behavior_policy=args.behavior_policy,
+        behavior_epsilon=args.behavior_epsilon,
         network_seed=args.network_seed,
         batch_size=args.batch_size,
         optimizer_steps=args.optimizer_steps,
