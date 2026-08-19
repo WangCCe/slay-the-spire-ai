@@ -1,0 +1,27 @@
+{
+  "schema_version": "combat-lightspeed-action-margin-drift-runtime-failure-v1",
+  "audit_id": "combat-lightspeed-production-r16-guarded-action-margin-drift-20260819-r1",
+  "registration_sha256": "1a2186999f9d2e21ec968e0eabce635bda67a34df93f00c292ef3a704db3405c",
+  "registered_source_commit": "e48ba68989ad1259614932bd2fce5d3240f3e93a",
+  "stage": "fresh_transition_collection",
+  "error": {
+    "type": "CombatBridgeError",
+    "reason": "unknown_relic_identity",
+    "detail": "Sling"
+  },
+  "state_access_started": true,
+  "candidate_q_inference_started": false,
+  "output_directory_published": false,
+  "cohort": {
+    "seeds": "132000..132255",
+    "battle_indices": [0, 3, 6, 9],
+    "disposition": "consumed_do_not_reuse"
+  },
+  "retry_same_registration": false,
+  "repair": {
+    "scope": "Map the audited native relic identity Sling to canonical items identity Sling of Courage while preserving unknown-relic fail-closed behavior.",
+    "bridge_source_sha256_after_repair": "610f0d52e1c638e8f734343a13344b1e8e8f93bae9713ac06b792dbedfc4fdad",
+    "focused_test_result": "20 passed, 4 skipped"
+  },
+  "next_step": "Commit the bridge alias and register a new audit with a fresh cohort and updated bridge source binding."
+}

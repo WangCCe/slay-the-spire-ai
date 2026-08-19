@@ -56,6 +56,7 @@ RELIC_ID_ALIASES = {
     "Cables": "Gold-Plated Cables",
     "NeowsBlessing": "Neow's Lament",
     "SlaversCollar": "Slaver's Collar",
+    "Sling": "Sling of Courage",
     "DollysMirror": "Dolly's Mirror",
     "Nloth's Gift": "N'loth's Gift",
     "NlothsMask": "N'loth's Hungry Face",

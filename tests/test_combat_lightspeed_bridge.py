@@ -231,6 +231,7 @@ def _mapper():
             "Burning Blood": 2,
             "Philosopher's Stone": 3,
             "Gold-Plated Cables": 4,
+            "Sling of Courage": 5,
         },
         card_tags={"Strike": []},
     )
@@ -349,6 +350,19 @@ def test_rl_v2_bridge_normalizes_audited_native_identity_aliases():
     assert mapped.state.potion_ids[3] == 7
     assert mapped.state.potion_ids[4] == 8
     assert mapped.state.relic_ids[0] == 4
+
+
+def test_rl_v2_bridge_normalizes_native_sling_relic_alias():
+    from analysis_scripts.combat_lightspeed_bridge import encode_rl_v2
+
+    snapshot = _snapshot()
+    snapshot["state"]["relics"] = [
+        {"id": "Sling", "name": "Sling", "slot": 0}
+    ]
+
+    mapped = encode_rl_v2(snapshot, _actions(), id_mapper=_mapper())
+
+    assert mapped.state.relic_ids[0] == 5
 
 
 @pytest.mark.parametrize(
