@@ -1,0 +1,90 @@
+{
+  "schema_version": "combat-lightspeed-production-successor-low-alpha-analysis-v1",
+  "experiment_id": "combat-lightspeed-production-r16-successor-low-alpha-20260819-r2",
+  "bindings": {
+    "registration_sha256": "ff7f5719680a65b7b58eb1f4cef693a3ec9f642ca29c77659dee79d3169eba2a",
+    "comparison_report_sha256": "36e133a63bff9d20f5acbd1f44c895f795d51658bb0db0ec890916ae209ac032",
+    "parent_sha256": "ce2ae34f82b3f457fb35e87d429c397204c42d0f742d3ac8952d91b69119b83b",
+    "alpha_0p05_sha256": "20ad023fbf9c0a2b83e4ccfd612b2f79a194f7f642135da2a4993af34e920f0f",
+    "alpha_0p1_sha256": "7614c928f70fd9767b16822db81fbafe7e3a71cc493ce00c157867355872dcbc",
+    "alpha_0p2_sha256": "a0b08e438e888548d783cd47a5a461f1d6281f008e042cb7120df0586986c639"
+  },
+  "technical": {
+    "verdict": "comparison_ready",
+    "blockers": [],
+    "registered_profiles_per_candidate": 1024,
+    "matched_reachable_profiles": 832,
+    "unreachable_profiles_per_candidate": 192,
+    "allowed_unreachable_reason": "baseline_loss_before_requested_battle",
+    "truncated_count_per_candidate": 0,
+    "unsupported_count_per_candidate": 0,
+    "all_registered_technical_criteria_pass": true
+  },
+  "ranking": {
+    "ordered_labels": ["parent", "alpha_0p05", "alpha_0p1", "alpha_0p2"],
+    "reward_leader": "parent",
+    "winner": "parent",
+    "guardrail_conflicts": []
+  },
+  "parent_metrics": {
+    "mean_reward": -19.83274016680497,
+    "mean_player_hp": 10.931490384615385,
+    "player_victory_count": 301
+  },
+  "alpha_results": {
+    "alpha_0p05": {
+      "mean_reward": -21.066363420719856,
+      "mean_player_hp": 10.38701923076923,
+      "player_victory_count": 281,
+      "matched_mean_reward_delta": -1.2336232539148797,
+      "matched_mean_player_hp_delta": -0.5444711538461539,
+      "candidate_only_victories": 3,
+      "parent_only_victories": 23,
+      "battle_0_mean_reward_delta": -1.5904296875,
+      "battle_0_mean_player_hp_delta": -0.7890625,
+      "battle_6_9_mean_reward_delta": -0.740152755533775,
+      "battle_6_9_mean_player_hp_delta": -0.20606060606060606,
+      "minimum_battle_mean_reward_delta": -1.5904296875,
+      "eligible": false
+    },
+    "alpha_0p1": {
+      "mean_reward": -22.39730823445166,
+      "mean_player_hp": 9.561298076923077,
+      "player_victory_count": 260,
+      "matched_mean_reward_delta": -2.5645680676466873,
+      "matched_mean_player_hp_delta": -1.3701923076923077,
+      "candidate_only_victories": 7,
+      "parent_only_victories": 48,
+      "battle_0_mean_reward_delta": -4.43056640625,
+      "battle_0_mean_player_hp_delta": -2.24609375,
+      "battle_6_9_mean_reward_delta": -1.2408305471451693,
+      "battle_6_9_mean_player_hp_delta": -0.5333333333333333,
+      "minimum_battle_mean_reward_delta": -4.43056640625,
+      "eligible": false
+    },
+    "alpha_0p2": {
+      "mean_reward": -23.89663864515974,
+      "mean_player_hp": 8.40264423076923,
+      "player_victory_count": 240,
+      "matched_mean_reward_delta": -4.063898478354764,
+      "matched_mean_player_hp_delta": -2.5288461538461537,
+      "candidate_only_victories": 11,
+      "parent_only_victories": 72,
+      "battle_0_mean_reward_delta": -6.66875,
+      "battle_0_mean_player_hp_delta": -3.859375,
+      "battle_6_9_mean_reward_delta": -1.7133281942609266,
+      "battle_6_9_mean_player_hp_delta": -1.2545454545454546,
+      "minimum_battle_mean_reward_delta": -6.66875,
+      "eligible": false
+    }
+  },
+  "decision": {
+    "verdict": "no_eligible_alpha_stop_one_step_recipe",
+    "selected_alpha": null,
+    "fresh_lightspeed_confirmation_authorized": false,
+    "production_packaging_authorized": false,
+    "gameplay_authorized": false,
+    "interpretation": "Performance degrades monotonically from alpha 0.05 through 0.20, so the registered parent-to-candidate direction is locally harmful rather than merely oversized."
+  },
+  "next_step": "Audit frozen parent-versus-candidate action and Q-margin drift on fresh simulator states before defining a different conservative training objective. Do not run another one-step update or add a smaller alpha."
+}
