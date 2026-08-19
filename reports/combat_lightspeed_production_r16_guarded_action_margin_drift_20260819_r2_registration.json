@@ -1,0 +1,85 @@
+{
+  "schema_version": "combat-lightspeed-action-margin-drift-registration-v1",
+  "audit_id": "combat-lightspeed-production-r16-guarded-action-margin-drift-20260819-r2",
+  "registered_source_commit": "b03a13b26ed2c7a2a4e7fc2b9bf3bb1b7bb1b668",
+  "predecessor_failure": {
+    "registration_sha256": "1a2186999f9d2e21ec968e0eabce635bda67a34df93f00c292ef3a704db3405c",
+    "reason": "unknown_relic_identity:Sling",
+    "consumed_seeds": "132000..132255",
+    "repair_commit": "b03a13b26ed2c7a2a4e7fc2b9bf3bb1b7bb1b668"
+  },
+  "audit_question": "Which battle strata, parent action families, and Q-margin regimes account for the guarded successor's residual battle-9 regression after aggregate performance moved near parity with production r16?",
+  "source_binding": {
+    "audit_script_sha256": "a8d3409a8c686fee12da503e32ab5d0950455ae2f786b60c9e403efb287e89bb",
+    "bridge_source_sha256": "610f0d52e1c638e8f734343a13344b1e8e8f93bae9713ac06b792dbedfc4fdad",
+    "native_adapter_source_sha256": "5b91de6be49370fbc0c123f9a64879a68bd6d6d64b46017468d1b59d6dbb86df",
+    "native_module_path": "D:/PycharmProjects/slay-the-spire-ai/.sts_lightspeed_combat_later_battle_20260819_r3_build/sts_lightspeed_combat_adapter.cp310-win_amd64.pyd",
+    "native_module_sha256": "195678b7fc6bf69815f3d2971404afb8ce72fb666700edf4203383429caf1009",
+    "simulator_repo": "D:/CLionProjects/sts_lightspeed",
+    "simulator_commit": "7476a81954020087da31d41d16fddf475746ec2d",
+    "simulator_dirty": true,
+    "simulator_source_sha256": "a3f98721ec37373b1b00aef660832a3307f0186ba0614d07a3b1e7de8ab2e46a",
+    "items_json_path": "D:/SteamLibrary/steamapps/common/SlayTheSpire/export/items.json",
+    "items_json_sha256": "e23784ea8ed3092e3bfa9918240e162a9cbcb837badfb53c612eb0d83cc811dc"
+  },
+  "candidates": [
+    {
+      "label": "parent",
+      "path": "reports/combat_lightspeed_production_r16_shadow_20260819_r1/simulator_only_production_shadow.pth",
+      "sha256": "ce2ae34f82b3f457fb35e87d429c397204c42d0f742d3ac8952d91b69119b83b"
+    },
+    {
+      "label": "guarded_candidate",
+      "path": "reports/combat_lightspeed_production_r16_successor_margin_guard_20260819_r1/simulator_only_candidate.pth",
+      "sha256": "dc1c8efab54502851f91513cbf8b481bd337b7a7c3a3bb62416b71743f19c0bd"
+    }
+  ],
+  "fresh_state_corpus": {
+    "seeds": "133000..133255",
+    "seed_count": 256,
+    "battle_indices": [0, 3, 6, 9],
+    "registered_profile_count": 1024,
+    "ascension": 0,
+    "max_decisions_per_profile": 100,
+    "max_actions_per_turn": 8,
+    "behavior_seed": 2026081994,
+    "complete_trajectories_only": true,
+    "prior_registered_lightspeed_seed_overlap": false
+  },
+  "runtime": {
+    "device": "cpu",
+    "inference_batch_size": 512,
+    "output_dir": "reports/combat_lightspeed_production_r16_guarded_action_margin_drift_20260819_r2",
+    "training": false,
+    "optimizer_updates": 0,
+    "production_checkpoint_access": false
+  },
+  "technical_success_criteria": {
+    "verdict": "action_margin_drift_ready",
+    "accepted_transition_count_gte": 12000,
+    "all_four_transition_strata_gte": 2000,
+    "unexpected_initialization_failure_counts_empty": true,
+    "unsupported_reason_counts_empty": true,
+    "all_valid_action_q_values_finite": true,
+    "all_registered_candidates_reported": true
+  },
+  "registered_outputs": [
+    "guarded-candidate action disagreement count and rate",
+    "disagreement rate by battle index and parent action family",
+    "parent and candidate selected action-family counts",
+    "action-family flip matrix",
+    "parent Q-margin summaries for agreeing and disagreeing states",
+    "parent-selected Q delta and candidate advantage on flipped states"
+  ],
+  "interpretation_rules": {
+    "battle_9_concentration": "Compare battle 9 disagreement against battles 0, 3, and 6 without attributing matched outcome causality.",
+    "end_turn_residual": "Measure parent non-end-turn to candidate end-turn flips separately from same-family action changes.",
+    "objective_followup": "Define another objective only if one repeated action-family boundary is materially concentrated; otherwise stop objective patching and revisit targets or state representation."
+  },
+  "stop_rules": [
+    "Run r2 once and do not reuse its cohort for a tuned rerun.",
+    "Do not change candidates, behavior seed, state cohort, bounds, or output definitions after state access.",
+    "Do not train, fit, update, interpolate, package, promote, or start Slay the Spire or CommunicationMod.",
+    "The audit grants no policy-quality or production authority."
+  ]
+}
