@@ -1,0 +1,93 @@
+{
+  "schema_version": "combat-lightspeed-action-margin-drift-registration-v1",
+  "audit_id": "combat-lightspeed-production-r16-action-margin-drift-20260819-r1",
+  "registered_source_commit": "a7377db187db9671c6c263b2b391e8c01484db34",
+  "audit_question": "Which battle strata, parent action families, and parent Q-margin regimes cause the locally harmful production-r16 one-step direction to change greedy actions?",
+  "source_binding": {
+    "audit_script_sha256": "a8d3409a8c686fee12da503e32ab5d0950455ae2f786b60c9e403efb287e89bb",
+    "bridge_source_sha256": "ced080a47b3b9b25206eac7b8b5ee3752af348d4df8a5d9750e386157812bf90",
+    "native_adapter_source_sha256": "5b91de6be49370fbc0c123f9a64879a68bd6d6d64b46017468d1b59d6dbb86df",
+    "native_module_path": "D:/PycharmProjects/slay-the-spire-ai/.sts_lightspeed_combat_later_battle_20260819_r3_build/sts_lightspeed_combat_adapter.cp310-win_amd64.pyd",
+    "native_module_sha256": "195678b7fc6bf69815f3d2971404afb8ce72fb666700edf4203383429caf1009",
+    "simulator_commit": "7476a81954020087da31d41d16fddf475746ec2d",
+    "simulator_dirty": true,
+    "simulator_source_sha256": "a3f98721ec37373b1b00aef660832a3307f0186ba0614d07a3b1e7de8ab2e46a",
+    "items_json_path": "D:/SteamLibrary/steamapps/common/SlayTheSpire/export/items.json",
+    "items_json_sha256": "e23784ea8ed3092e3bfa9918240e162a9cbcb837badfb53c612eb0d83cc811dc"
+  },
+  "candidates": [
+    {
+      "label": "parent",
+      "path": "reports/combat_lightspeed_production_r16_shadow_20260819_r1/simulator_only_production_shadow.pth",
+      "sha256": "ce2ae34f82b3f457fb35e87d429c397204c42d0f742d3ac8952d91b69119b83b"
+    },
+    {
+      "label": "alpha_0p05",
+      "path": "reports/combat_lightspeed_production_r16_successor_20260819_r1_low_alpha_interpolations/simulator_only_candidate_alpha_0p05.pth",
+      "sha256": "20ad023fbf9c0a2b83e4ccfd612b2f79a194f7f642135da2a4993af34e920f0f"
+    },
+    {
+      "label": "alpha_0p1",
+      "path": "reports/combat_lightspeed_production_r16_successor_20260819_r1_low_alpha_interpolations/simulator_only_candidate_alpha_0p1.pth",
+      "sha256": "7614c928f70fd9767b16822db81fbafe7e3a71cc493ce00c157867355872dcbc"
+    },
+    {
+      "label": "alpha_0p2",
+      "path": "reports/combat_lightspeed_production_r16_successor_20260819_r1_low_alpha_interpolations/simulator_only_candidate_alpha_0p2.pth",
+      "sha256": "a0b08e438e888548d783cd47a5a461f1d6281f008e042cb7120df0586986c639"
+    },
+    {
+      "label": "full_candidate",
+      "path": "reports/combat_lightspeed_production_r16_successor_20260819_r1/simulator_only_candidate.pth",
+      "sha256": "837ab1e951de37bfaf0437a23a16479477d1862b9c3936e0a54fd639b48ececa"
+    }
+  ],
+  "fresh_state_corpus": {
+    "seeds": "128000..128255",
+    "seed_count": 256,
+    "battle_indices": [0, 3, 6, 9],
+    "registered_profile_count": 1024,
+    "ascension": 0,
+    "max_decisions_per_profile": 100,
+    "max_actions_per_turn": 8,
+    "behavior_seed": 2026081980,
+    "complete_trajectories_only": true,
+    "prior_registered_lightspeed_seed_overlap": false
+  },
+  "runtime": {
+    "device": "cpu",
+    "inference_batch_size": 512,
+    "output_dir": "reports/combat_lightspeed_production_r16_action_margin_drift_20260819_r1",
+    "training": false,
+    "optimizer_updates": 0,
+    "production_checkpoint_access": false
+  },
+  "technical_success_criteria": {
+    "verdict": "action_margin_drift_ready",
+    "accepted_transition_count_gte": 12000,
+    "all_four_transition_strata_gte": 2000,
+    "unexpected_initialization_failure_counts_empty": true,
+    "unsupported_reason_counts_empty": true,
+    "all_valid_action_q_values_finite": true,
+    "all_registered_candidates_reported": true
+  },
+  "registered_outputs": [
+    "action disagreement count and rate per candidate",
+    "disagreement rate by battle index and parent action family",
+    "parent and candidate selected action-family counts",
+    "action-family flip matrix",
+    "parent Q-margin summaries for agreeing and disagreeing states",
+    "parent-selected Q delta and candidate advantage on flipped states"
+  ],
+  "interpretation_rules": {
+    "monotonic_sensitivity": "Check whether disagreement rate grows monotonically from alpha 0.05 through the full candidate.",
+    "low_margin_concentration": "Compare parent-margin distributions on agreeing and disagreeing states; do not infer causality.",
+    "objective_followup": "Use the dominant battle/family flips only to design a separate conservative-objective proposal; this audit cannot select or authorize training."
+  },
+  "stop_rules": [
+    "Run the fresh-state audit once and do not reuse its cohort for a tuned rerun.",
+    "Do not change candidates, behavior seed, state cohort, bounds, or output definitions after state access.",
+    "Do not train, fit, update, interpolate, package, promote, or start Slay the Spire or CommunicationMod.",
+    "The audit grants no policy-quality or production authority."
+  ]
+}
