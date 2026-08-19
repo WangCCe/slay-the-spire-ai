@@ -29,8 +29,11 @@ from analysis_scripts.combat_lightspeed_bridge import (  # noqa: E402
     sha256_file,
 )
 from analysis_scripts.combat_lightspeed_training_smoke import (  # noqa: E402
+    DEPLOYMENT_GUARD_TELEMETRY_FIELDS,
     ENCOUNTER_HASH_ALGORITHM,
     EXPECTED_UNREACHABLE_PROFILE_REASONS,
+    GREEDY_NATIVE_REWARD_DEPLOYMENT_GUARD_PROXY,
+    NO_DEPLOYMENT_GUARD_PROXY,
     create_fresh_trainer,
     evaluate_policy,
     initialization_failure_reason,
@@ -40,7 +43,7 @@ from spirecomm.ai.rl.checkpoint_io import load_torch_checkpoint  # noqa: E402
 from spirecomm.ai.rl.v2.id_mapping import IdMapper, build_id_mapper  # noqa: E402
 
 
-REPORT_SCHEMA_VERSION = "combat-lightspeed-frozen-candidate-comparison-v1"
+REPORT_SCHEMA_VERSION = "combat-lightspeed-frozen-candidate-comparison-v2"
 CHECKPOINT_KIND = "simulator_training_smoke"
 REPORT_AUTHORITY = {
     "communication_mod": False,
@@ -99,6 +102,7 @@ class ComparisonConfig:
     max_actions_per_turn: int = 8
     encounter_identity_buckets: int = 0
     encounter_identity_encoding: str = ENCOUNTER_HASH_ALGORITHM
+    deployment_guard_proxy: str = NO_DEPLOYMENT_GUARD_PROXY
 
     def validate(self) -> None:
         if not self.seeds or len(set(self.seeds)) != len(self.seeds):
@@ -119,6 +123,11 @@ class ComparisonConfig:
             raise ComparisonBlocked("comparison_encounter_identity_not_supported")
         if self.encounter_identity_encoding != ENCOUNTER_HASH_ALGORITHM:
             raise ComparisonBlocked("comparison_encounter_identity_encoding_invalid")
+        if self.deployment_guard_proxy not in {
+            NO_DEPLOYMENT_GUARD_PROXY,
+            GREEDY_NATIVE_REWARD_DEPLOYMENT_GUARD_PROXY,
+        }:
+            raise ComparisonBlocked("comparison_deployment_guard_proxy_invalid")
 
     def profiles(self, seeds: Sequence[int]) -> tuple[tuple[int, int], ...]:
         return tuple(
@@ -136,6 +145,7 @@ class ComparisonConfig:
             "max_actions_per_turn": self.max_actions_per_turn,
             "encounter_identity_buckets": self.encounter_identity_buckets,
             "encounter_identity_encoding": self.encounter_identity_encoding,
+            "deployment_guard_proxy": self.deployment_guard_proxy,
             "profile_count": len(self.profiles(self.seeds)),
         }
 
@@ -287,6 +297,10 @@ def _summarize_rows(
         "card_select_settlement_action_count": sum(
             int(row.get("card_select_settlement_count", 0)) for row in reachable
         ),
+        **{
+            field: sum(int(row.get(field, 0)) for row in reachable)
+            for field in DEPLOYMENT_GUARD_TELEMETRY_FIELDS
+        },
         "encounter_counts": dict(sorted(encounters.items())),
     }
     if include_battle_indices:
@@ -301,7 +315,12 @@ def _summarize_rows(
 
 
 def summarize_evaluation(evaluation: Mapping[str, Any]) -> dict[str, Any]:
-    return _summarize_rows(list(evaluation["rows"]), include_battle_indices=True)
+    return {
+        "deployment_guard_proxy": evaluation.get(
+            "deployment_guard_proxy", NO_DEPLOYMENT_GUARD_PROXY
+        ),
+        **_summarize_rows(list(evaluation["rows"]), include_battle_indices=True),
+    }
 
 
 def _summarize_pair_rows(rows: Sequence[Mapping[str, Any]]) -> dict[str, Any]:
@@ -504,7 +523,7 @@ def _publish(output_dir: Path, report: Mapping[str, Any]) -> dict[str, Any]:
     report_bytes = canonical_json_bytes(report) + b"\n"
     summary_bytes = _render_summary(report).encode("utf-8")
     manifest = {
-        "schema_version": "combat-lightspeed-frozen-candidate-comparison-manifest-v1",
+        "schema_version": "combat-lightspeed-frozen-candidate-comparison-manifest-v2",
         "artifacts": {
             "report.json": {
                 "sha256": sha256_bytes(report_bytes),
@@ -563,6 +582,14 @@ def _parse_args() -> argparse.Namespace:
     parser.add_argument("--ascension", default=0, type=int)
     parser.add_argument("--max-decisions-per-seed", default=100, type=int)
     parser.add_argument("--max-actions-per-turn", default=8, type=int)
+    parser.add_argument(
+        "--deployment-guard-proxy",
+        default=NO_DEPLOYMENT_GUARD_PROXY,
+        choices=(
+            NO_DEPLOYMENT_GUARD_PROXY,
+            GREEDY_NATIVE_REWARD_DEPLOYMENT_GUARD_PROXY,
+        ),
+    )
     return parser.parse_args()
 
 
@@ -578,6 +605,7 @@ def main() -> int:
         ascension=args.ascension,
         max_decisions_per_seed=args.max_decisions_per_seed,
         max_actions_per_turn=args.max_actions_per_turn,
+        deployment_guard_proxy=args.deployment_guard_proxy,
     )
     try:
         candidates = tuple(load_candidate(binding) for binding in bindings)

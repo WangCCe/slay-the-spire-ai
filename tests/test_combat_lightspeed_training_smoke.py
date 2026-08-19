@@ -19,11 +19,14 @@ from analysis_scripts.combat_lightspeed_training_smoke import (
     ENCOUNTER_HASH_ALGORITHM,
     ENCOUNTER_PARENT_EQUIVALENCE_TOLERANCE,
     FROZEN_PARENT_N_STEP_TARGET,
+    GREEDY_NATIVE_REWARD_DEPLOYMENT_GUARD_PROXY,
+    NO_DEPLOYMENT_GUARD_PROXY,
     ONE_STEP_TD_TARGET,
     REPORT_AUTHORITY,
     ReplayTransition,
     SmokeConfig,
     _publish,
+    apply_deployment_guard_proxy,
     append_encounter_identity,
     calculate_native_reward,
     create_fresh_trainer,
@@ -67,11 +70,11 @@ def _actions():
     ]
 
 
-def _snapshot(*, monster_hp=10, player_hp=80, turn=1, targetable=True):
+def _snapshot(*, monster_hp=10, player_hp=80, energy=3, turn=1, targetable=True):
     return {
         "state": {
             "turn": turn,
-            "player": {"current_hp": player_hp, "max_hp": 80},
+            "player": {"current_hp": player_hp, "max_hp": 80, "energy": energy},
             "monsters": [
                 {
                     "native_slot": 0,
@@ -82,6 +85,27 @@ def _snapshot(*, monster_hp=10, player_hp=80, turn=1, targetable=True):
             ],
         }
     }
+
+
+class _GuardEnvironment:
+    def __init__(self, before, successors, selected_action_id=None):
+        self.before = copy.deepcopy(before)
+        self.successors = copy.deepcopy(successors)
+        self.selected_action_id = selected_action_id
+
+    def clone(self):
+        return type(self)(self.before, self.successors, self.selected_action_id)
+
+    def step(self, action_id):
+        self.selected_action_id = action_id
+
+    def status(self):
+        return copy.deepcopy(self.successors[self.selected_action_id]["status"])
+
+    def snapshot(self):
+        if self.selected_action_id is None:
+            return copy.deepcopy(self.before)
+        return copy.deepcopy(self.successors[self.selected_action_id]["snapshot"])
 
 
 def _mapper():
@@ -131,6 +155,129 @@ def test_training_profiles_are_deterministic_seed_index_product():
         (11, 0),
         (11, 3),
     )
+
+
+def test_deployment_guard_proxy_defaults_to_raw_action_and_validates_mode():
+    config = SmokeConfig(train_seeds=(10,), evaluation_seeds=(20,))
+    config.validate()
+    assert config.deployment_guard_proxy == NO_DEPLOYMENT_GUARD_PROXY
+
+    with pytest.raises(ValueError, match="unknown deployment guard proxy"):
+        replace(config, deployment_guard_proxy="unknown").validate()
+
+    raw = _actions()[-1]
+    environment = _GuardEnvironment(_snapshot(), {})
+    selected, telemetry = apply_deployment_guard_proxy(
+        environment,
+        raw,
+        _actions(),
+        _snapshot(),
+        mode=NO_DEPLOYMENT_GUARD_PROXY,
+    )
+
+    assert selected == raw
+    assert telemetry == {
+        "raw_policy_end_turn_count": 1,
+        "forced_end_turn_count": 0,
+        "guard_proxy_eligible_count": 0,
+        "guard_proxy_replacement_count": 0,
+        "guard_proxy_no_supported_replacement_count": 0,
+    }
+
+
+def test_deployment_guard_proxy_replaces_eligible_end_turn_deterministically():
+    before = _snapshot(monster_hp=10, energy=2)
+    successors = {
+        "play_card:0:1": {
+            "status": {"terminal": False, "supported": True},
+            "snapshot": _snapshot(monster_hp=4, energy=1),
+        },
+        "play_card:1:1": {
+            "status": {"terminal": False, "supported": True},
+            "snapshot": _snapshot(monster_hp=0, energy=1),
+        },
+    }
+    environment = _GuardEnvironment(before, successors)
+
+    selected, telemetry = apply_deployment_guard_proxy(
+        environment,
+        _actions()[-1],
+        _actions(),
+        before,
+        mode=GREEDY_NATIVE_REWARD_DEPLOYMENT_GUARD_PROXY,
+    )
+
+    assert selected["action_id"] == "play_card:1:1"
+    assert telemetry["raw_policy_end_turn_count"] == 1
+    assert telemetry["guard_proxy_eligible_count"] == 1
+    assert telemetry["guard_proxy_replacement_count"] == 1
+    assert telemetry["guard_proxy_no_supported_replacement_count"] == 0
+
+    tied = copy.deepcopy(successors)
+    tied["play_card:1:1"] = copy.deepcopy(tied["play_card:0:1"])
+    selected, _telemetry = apply_deployment_guard_proxy(
+        _GuardEnvironment(before, tied),
+        _actions()[-1],
+        _actions(),
+        before,
+        mode=GREEDY_NATIVE_REWARD_DEPLOYMENT_GUARD_PROXY,
+    )
+    assert selected["action_id"] == "play_card:0:1"
+
+
+@pytest.mark.parametrize(
+    ("before", "actions", "policy_selected"),
+    (
+        (_snapshot(energy=0), _actions(), True),
+        (_snapshot(energy=2), (_actions()[-1],), True),
+        (_snapshot(energy=2), _actions(), False),
+    ),
+)
+def test_deployment_guard_proxy_preserves_ineligible_end_turn(
+    before, actions, policy_selected
+):
+    selected, telemetry = apply_deployment_guard_proxy(
+        _GuardEnvironment(before, {}),
+        _actions()[-1],
+        actions,
+        before,
+        mode=GREEDY_NATIVE_REWARD_DEPLOYMENT_GUARD_PROXY,
+        policy_selected=policy_selected,
+    )
+
+    assert selected["kind"] == "end_turn"
+    assert telemetry["guard_proxy_eligible_count"] == 0
+    assert telemetry["guard_proxy_replacement_count"] == 0
+    assert telemetry["forced_end_turn_count"] == int(not policy_selected)
+
+
+def test_deployment_guard_proxy_retains_end_turn_without_supported_card_successor():
+    before = _snapshot(energy=2)
+    successors = {
+        action["action_id"]: {
+            "status": {
+                "terminal": False,
+                "supported": False,
+                "unsupported_reason": "unsupported_card",
+            },
+            "snapshot": before,
+        }
+        for action in _actions()
+        if action["kind"] == "play_card"
+    }
+
+    selected, telemetry = apply_deployment_guard_proxy(
+        _GuardEnvironment(before, successors),
+        _actions()[-1],
+        _actions(),
+        before,
+        mode=GREEDY_NATIVE_REWARD_DEPLOYMENT_GUARD_PROXY,
+    )
+
+    assert selected["kind"] == "end_turn"
+    assert telemetry["guard_proxy_eligible_count"] == 1
+    assert telemetry["guard_proxy_replacement_count"] == 0
+    assert telemetry["guard_proxy_no_supported_replacement_count"] == 1
 
 
 def test_parent_policy_constraint_weight_must_be_finite_and_non_negative():

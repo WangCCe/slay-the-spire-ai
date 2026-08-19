@@ -17,7 +17,11 @@ from analysis_scripts.combat_lightspeed_frozen_candidate_comparison import (
     validate_candidate_structures,
     validate_matched_initialization,
 )
-from analysis_scripts.combat_lightspeed_training_smoke import create_fresh_trainer
+from analysis_scripts.combat_lightspeed_training_smoke import (
+    GREEDY_NATIVE_REWARD_DEPLOYMENT_GUARD_PROXY,
+    NO_DEPLOYMENT_GUARD_PROXY,
+    create_fresh_trainer,
+)
 from analysis_scripts.combat_lightspeed_bridge import sha256_file
 from spirecomm.ai.rl.checkpoint_io import save_torch_checkpoint
 from spirecomm.ai.rl.v2.id_mapping import IdMapper
@@ -33,6 +37,22 @@ def test_comparison_config_satisfies_shared_evaluation_contract():
     assert config.encounter_identity_buckets == 0
     assert config.encounter_identity_encoding == "sha256-first-8-bytes-modulo"
     assert config.record()["encounter_identity_buckets"] == 0
+    assert config.deployment_guard_proxy == NO_DEPLOYMENT_GUARD_PROXY
+    assert config.record()["deployment_guard_proxy"] == NO_DEPLOYMENT_GUARD_PROXY
+
+    guarded = ComparisonConfig(
+        seeds=(1,),
+        battle_indices=(0,),
+        deployment_guard_proxy=GREEDY_NATIVE_REWARD_DEPLOYMENT_GUARD_PROXY,
+    )
+    guarded.validate()
+
+    with pytest.raises(
+        ComparisonBlocked, match="comparison_deployment_guard_proxy_invalid"
+    ):
+        ComparisonConfig(
+            seeds=(1,), battle_indices=(0,), deployment_guard_proxy="unknown"
+        ).validate()
 
 
 def _mapper():

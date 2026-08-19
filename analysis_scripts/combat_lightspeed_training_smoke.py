@@ -49,7 +49,7 @@ from spirecomm.ai.rl.v2.trainer import DQNTrainerV2  # noqa: E402
 from spirecomm.ai.rl.v2.types import EncodedStateV2  # noqa: E402
 
 
-REPORT_SCHEMA_VERSION = "combat-lightspeed-training-smoke-v11"
+REPORT_SCHEMA_VERSION = "combat-lightspeed-training-smoke-v12"
 CHECKPOINT_KIND = "simulator_training_smoke"
 ONE_STEP_TD_TARGET = "one-step-td"
 DISCOUNTED_EPISODE_RETURN_TARGET = "discounted-episode-return"
@@ -58,6 +58,17 @@ ENCOUNTER_HASH_ALGORITHM = "sha256-first-8-bytes-modulo"
 ENCOUNTER_ENUM_ENCODING = "monster-encounter-enum-v1"
 MAX_ENCOUNTER_IDENTITY_BUCKETS = 1024
 ENCOUNTER_PARENT_EQUIVALENCE_TOLERANCE = 1e-5
+NO_DEPLOYMENT_GUARD_PROXY = "none"
+GREEDY_NATIVE_REWARD_DEPLOYMENT_GUARD_PROXY = (
+    "greedy-native-reward-on-wasteful-end-turn-v1"
+)
+DEPLOYMENT_GUARD_TELEMETRY_FIELDS = (
+    "raw_policy_end_turn_count",
+    "forced_end_turn_count",
+    "guard_proxy_eligible_count",
+    "guard_proxy_replacement_count",
+    "guard_proxy_no_supported_replacement_count",
+)
 ENCOUNTER_ENUM_V1 = (
     "CULTIST",
     "JAW_WORM",
@@ -171,6 +182,7 @@ class SmokeConfig:
     replay_return_discount: float = 0.99
     replay_return_horizon: int = 3
     complete_trajectories_only: bool = False
+    deployment_guard_proxy: str = NO_DEPLOYMENT_GUARD_PROXY
 
     def validate(self) -> None:
         if not self.train_seeds or not self.evaluation_seeds:
@@ -258,6 +270,11 @@ class SmokeConfig:
             or self.replay_return_horizon <= 0
         ):
             raise ValueError("replay return horizon must be a positive integer")
+        if self.deployment_guard_proxy not in {
+            NO_DEPLOYMENT_GUARD_PROXY,
+            GREEDY_NATIVE_REWARD_DEPLOYMENT_GUARD_PROXY,
+        }:
+            raise ValueError("unknown deployment guard proxy")
         if (
             self.replay_target_mode
             in {DISCOUNTED_EPISODE_RETURN_TARGET, FROZEN_PARENT_N_STEP_TARGET}
@@ -472,6 +489,73 @@ def calculate_native_reward(
         "action_kind": action_kind,
         "total": float(total),
     }
+
+
+def apply_deployment_guard_proxy(
+    environment: NativeCombatEnvironment,
+    raw_action: Mapping[str, Any],
+    legal_actions: Sequence[Mapping[str, Any]],
+    before_snapshot: Mapping[str, Any],
+    *,
+    mode: str,
+    policy_selected: bool = True,
+) -> tuple[dict[str, Any], dict[str, int]]:
+    selected = dict(raw_action)
+    raw_policy_end_turn = bool(
+        policy_selected and selected.get("kind") == "end_turn"
+    )
+    telemetry = {
+        "raw_policy_end_turn_count": int(raw_policy_end_turn),
+        "forced_end_turn_count": int(
+            not policy_selected and selected.get("kind") == "end_turn"
+        ),
+        "guard_proxy_eligible_count": 0,
+        "guard_proxy_replacement_count": 0,
+        "guard_proxy_no_supported_replacement_count": 0,
+    }
+    if mode == NO_DEPLOYMENT_GUARD_PROXY or not raw_policy_end_turn:
+        return selected, telemetry
+    if mode != GREEDY_NATIVE_REWARD_DEPLOYMENT_GUARD_PROXY:
+        raise ValueError(f"unknown deployment guard proxy: {mode}")
+
+    player = dict(_state(before_snapshot).get("player") or {})
+    card_actions = [
+        dict(action)
+        for action in legal_actions
+        if action.get("available", True) and action.get("kind") == "play_card"
+    ]
+    if int(player.get("energy", 0)) <= 0 or not card_actions:
+        return selected, telemetry
+
+    telemetry["guard_proxy_eligible_count"] = 1
+    supported: list[tuple[float, int, dict[str, Any]]] = []
+    for action in card_actions:
+        clone = environment.clone()
+        clone.step(str(action["action_id"]))
+        status = clone.status()
+        disposition, _reason = successor_disposition(status)
+        if disposition == "exclude":
+            continue
+        reward = calculate_native_reward(
+            before_snapshot,
+            clone.snapshot(),
+            action_kind=str(action["kind"]),
+            outcome=str(status.get("outcome") or "undecided"),
+        )
+        supported.append(
+            (
+                float(reward["total"]),
+                -int(action["rl_action_index"]),
+                action,
+            )
+        )
+    if not supported:
+        telemetry["guard_proxy_no_supported_replacement_count"] = 1
+        return selected, telemetry
+
+    selected = max(supported, key=lambda item: (item[0], item[1]))[2]
+    telemetry["guard_proxy_replacement_count"] = 1
+    return selected, telemetry
 
 
 def successor_disposition(status: Mapping[str, Any]) -> tuple[str, str]:
@@ -1618,6 +1702,10 @@ def evaluate_policy(
                         "truncated": False,
                         "card_select_settlement_count": 0,
                         "card_select_settlement_task_counts": {},
+                        **{
+                            field: 0
+                            for field in DEPLOYMENT_GUARD_TELEMETRY_FIELDS
+                        },
                     }
                 )
                 continue
@@ -1630,6 +1718,7 @@ def evaluate_policy(
             truncated = False
             settlement_actions = 0
             settlement_tasks = Counter()
+            guard_proxy_telemetry = Counter()
             for _ in range(config.max_decisions_per_seed):
                 status = environment.status()
                 disposition, reason = successor_disposition(status)
@@ -1648,13 +1737,23 @@ def evaluate_policy(
                     encoding=config.encounter_identity_encoding,
                 )
                 legal = environment.legal_actions()
-                selected = _policy_action(
+                policy_selected = actions_since_end_turn < config.max_actions_per_turn
+                raw_action = _policy_action(
                     trainer,
                     mapped,
                     legal,
                     actions_since_end_turn=actions_since_end_turn,
                     max_actions_per_turn=config.max_actions_per_turn,
                 )
+                selected, guard_step_telemetry = apply_deployment_guard_proxy(
+                    environment,
+                    raw_action,
+                    legal,
+                    before,
+                    mode=config.deployment_guard_proxy,
+                    policy_selected=policy_selected,
+                )
+                guard_proxy_telemetry.update(guard_step_telemetry)
                 environment.step(str(selected["action_id"]))
                 status = environment.status()
                 after = environment.snapshot()
@@ -1691,6 +1790,10 @@ def evaluate_policy(
                     "card_select_settlement_task_counts": dict(
                         sorted(settlement_tasks.items())
                     ),
+                    **{
+                        field: int(guard_proxy_telemetry[field])
+                        for field in DEPLOYMENT_GUARD_TELEMETRY_FIELDS
+                    },
                 }
             )
     finally:
@@ -1703,8 +1806,10 @@ def evaluate_policy(
     for row in rows:
         settlement_tasks.update(row["card_select_settlement_task_counts"])
     return {
+        "deployment_guard_proxy": config.deployment_guard_proxy,
         "rows": rows,
         "aggregate": {
+            "deployment_guard_proxy": config.deployment_guard_proxy,
             "mean_decisions": float(decisions.mean()),
             "mean_player_hp": float(hp.mean()),
             "mean_reward": float(rewards.mean()),
@@ -1734,6 +1839,10 @@ def evaluate_policy(
                 int(row["card_select_settlement_count"]) > 0 for row in rows
             ),
             "card_select_settlement_task_counts": dict(sorted(settlement_tasks.items())),
+            **{
+                field: sum(int(row[field]) for row in rows)
+                for field in DEPLOYMENT_GUARD_TELEMETRY_FIELDS
+            },
         },
     }
 
@@ -1941,7 +2050,7 @@ def _publish(
             "size_bytes": candidate_path.stat().st_size,
         }
     manifest = {
-        "schema_version": "combat-lightspeed-training-smoke-manifest-v10",
+        "schema_version": "combat-lightspeed-training-smoke-manifest-v11",
         "artifacts": manifest_entries,
     }
     artifacts["manifest.json"] = canonical_json_bytes(manifest) + b"\n"
@@ -2231,6 +2340,14 @@ def _parse_args() -> argparse.Namespace:
     parser.add_argument("--replay-return-discount", default=0.99, type=float)
     parser.add_argument("--replay-return-horizon", default=3, type=int)
     parser.add_argument("--complete-trajectories-only", action="store_true")
+    parser.add_argument(
+        "--deployment-guard-proxy",
+        default=NO_DEPLOYMENT_GUARD_PROXY,
+        choices=(
+            NO_DEPLOYMENT_GUARD_PROXY,
+            GREEDY_NATIVE_REWARD_DEPLOYMENT_GUARD_PROXY,
+        ),
+    )
     return parser.parse_args()
 
 
@@ -2264,6 +2381,7 @@ def main() -> int:
         replay_return_discount=args.replay_return_discount,
         replay_return_horizon=args.replay_return_horizon,
         complete_trajectories_only=args.complete_trajectories_only,
+        deployment_guard_proxy=args.deployment_guard_proxy,
     )
     native_module = load_native_module(args.module, dll_directories=args.dll_dir)
     provenance = collect_provenance(
