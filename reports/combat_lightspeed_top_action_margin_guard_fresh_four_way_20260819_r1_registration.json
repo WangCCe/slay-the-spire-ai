@@ -1,0 +1,65 @@
+{
+  "schema_version": "combat-lightspeed-top-action-margin-guard-fresh-four-way-registration-v1",
+  "audit_id": "combat-lightspeed-top-action-margin-guard-fresh-four-way-20260819-r1",
+  "registered_source_commit": "1a31a6241bb171347153690ae93857af4b712b3f",
+  "question": "On the unused 140000..140255 evaluation cohort, how do production r16, the prior guarded control, card-only guard, and fresh top-action guard rank under the same deployment proxy?",
+  "source_binding": {
+    "comparison_runner_sha256": "a91377643153651fc54430606c545f8198001d5bba362171fd33ca301d887ebd",
+    "training_runner_sha256": "7ea48bfd9ee00c692b244ce9eb099cfb92c5f38734af7a3a3a1ee5031c0ec8d5",
+    "native_module_path": "D:/PycharmProjects/slay-the-spire-ai/.sts_lightspeed_combat_later_battle_20260819_r3_build/sts_lightspeed_combat_adapter.cp310-win_amd64.pyd",
+    "native_module_sha256": "195678b7fc6bf69815f3d2971404afb8ce72fb666700edf4203383429caf1009",
+    "simulator_repo": "D:/CLionProjects/sts_lightspeed",
+    "simulator_commit": "7476a81954020087da31d41d16fddf475746ec2d",
+    "items_json_sha256": "e23784ea8ed3092e3bfa9918240e162a9cbcb837badfb53c612eb0d83cc811dc"
+  },
+  "candidates": [
+    {
+      "label": "production_r16_shadow",
+      "path": "D:/PycharmProjects/slay-the-spire-ai/reports/combat_lightspeed_production_r16_shadow_20260819_r1/simulator_only_production_shadow.pth",
+      "sha256": "ce2ae34f82b3f457fb35e87d429c397204c42d0f742d3ac8952d91b69119b83b"
+    },
+    {
+      "label": "prior_guarded_control",
+      "path": "D:/PycharmProjects/slay-the-spire-ai/reports/combat_lightspeed_production_r16_guarded_encounter_ablation_20260819_r1_control/simulator_only_candidate.pth",
+      "sha256": "d90ad33d11a95574e4a019d0cc663d9438b30c45743cfca0da8a2a19eefbaa03"
+    },
+    {
+      "label": "card_ranking_guard_candidate",
+      "path": "D:/PycharmProjects/slay-the-spire-ai/reports/combat_lightspeed_production_r16_card_ranking_guard_ablation_20260819_r1/simulator_only_candidate.pth",
+      "sha256": "128993960bad2fafea6c05d43b01a1a8634dee56f80eb7ce576eacef58751b74"
+    },
+    {
+      "label": "top_action_margin_guard_candidate",
+      "path": "D:/PycharmProjects/slay-the-spire-ai/reports/combat_lightspeed_production_r16_top_action_margin_guard_fresh_20260819_r1/simulator_only_candidate.pth",
+      "sha256": "7860cf1a8095a857b3533ed72d73cf50da3f1e86c12e937d54089c88096728fb"
+    }
+  ],
+  "cohort": {
+    "seeds": "140000..140255",
+    "seed_count": 256,
+    "battle_indices": [0, 3, 6, 9],
+    "profile_count_per_candidate": 1024,
+    "ascension": 0,
+    "max_decisions_per_profile": 100,
+    "max_actions_per_turn": 8
+  },
+  "intervention": {
+    "deployment_guard_proxy": "greedy-native-reward-on-wasteful-end-turn-v1",
+    "applied_symmetrically": true
+  },
+  "technical_success_criteria": {
+    "verdict": "comparison_ready",
+    "candidate_count": 4,
+    "checkpoint_hashes_match": true,
+    "unexpected_initialization_failure_count": 0,
+    "unsupported_state_count_per_candidate": 0,
+    "matched_reachability": true,
+    "terminal_pair_count_gte_per_pair": 800
+  },
+  "decision": {
+    "top_action_candidate": "Reject if it remains below r16 on reward or victory guardrails.",
+    "prior_candidates": "Treat fresh ranking as architecture evidence only; no candidate is promotable without its own registered gate.",
+    "packaging_or_gameplay": false,
+    "no_same_cohort_tuning": true
+  }
+}
