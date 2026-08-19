@@ -1,0 +1,129 @@
+{
+  "schema_version": "combat-lightspeed-parent-end-turn-margin-guard-analysis-v1",
+  "experiment_id": "combat-lightspeed-production-r16-successor-margin-guard-20260819-r1",
+  "bindings": {
+    "registration_sha256": "e4cb38f6d1255313f7aa9e5fd911f35cf8ded0eb9991edf790d93b5d364137af",
+    "manifest_sha256": "ec0a3cea38e10e5b1c85ef67bd2ad1df53bcf9da46ab6e4ade201bcf51501cad",
+    "report_sha256": "cf3d8509793d29d4e3a7804f6266ccbd5566739d59d87a53c2a0f9ce4ed97e8d",
+    "summary_sha256": "66cb6e102e805ec08ef37c6d7f5087ea45782e2c6b12a93a87a1cabe4536059d",
+    "candidate_checkpoint_sha256": "dc1c8efab54502851f91513cbf8b481bd337b7a7c3a3bb62416b71743f19c0bd",
+    "initial_parameter_sha256": "cfe8204d06db6b43b063df98e1b713d4a40a0894a1a9330c3db87c739da88d48",
+    "candidate_parameter_sha256": "01e8d780229925df5b633605b8baa68d5b546a3e2109af5f66096fb0fb604b96"
+  },
+  "runner_result": {
+    "verdict": "technical_smoke_ready",
+    "blockers": [],
+    "optimizer_update_count": 256,
+    "source_replay_transition_count": 67340,
+    "prepared_replay_transition_count": 84148,
+    "source_transition_counts": {
+      "0": 15228,
+      "3": 17951,
+      "6": 21037,
+      "9": 13124
+    },
+    "prepared_transition_count_per_stratum": 21037,
+    "excluded_incomplete_profile_count": 1,
+    "excluded_incomplete_transition_count": 100,
+    "incomplete_reason_counts": {"decision_bound": 1},
+    "unexpected_initialization_failure_count": 0,
+    "unsupported_reason_counts": {},
+    "parameter_delta_l2": 1.1081240178809704,
+    "parameter_delta_max_abs": 0.016168266534805298
+  },
+  "guard_objective": {
+    "weight": 1.0,
+    "margin_cap": 0.1,
+    "loss_first": 0.07579844444990158,
+    "loss_last": 0.025552799925208092,
+    "loss_mean": 0.048087998755363515,
+    "loss_maximum": 0.2488587349653244,
+    "eligible_count_total": 10538,
+    "eligible_count_per_update_mean": 41.1640625,
+    "eligible_count_per_update_minimum": 22,
+    "ranking_violation_count_total": 988,
+    "ranking_violation_count_per_update_mean": 3.859375
+  },
+  "registered_technical_gate": {
+    "passed": false,
+    "failed_criteria": [
+      "held_out_truncation_count_per_policy_eq_0"
+    ],
+    "control_truncated_count": 1,
+    "candidate_truncated_count": 1,
+    "control_undecided_profile": {"seed": 131162, "battle_index": 9},
+    "candidate_undecided_profile": {"seed": 131040, "battle_index": 9},
+    "all_other_registered_technical_criteria_pass": true
+  },
+  "matched_outcomes": {
+    "profile_count": 851,
+    "mean_reward_delta": 0.05457121061463896,
+    "mean_player_hp_delta": 0.11163337250293771,
+    "candidate_only_victories": 43,
+    "parent_only_victories": 44,
+    "parent_victory_count": 300,
+    "candidate_victory_count": 299,
+    "by_battle_index": {
+      "0": {
+        "profile_count": 256,
+        "mean_reward_delta": 0.5458007812499996,
+        "mean_player_hp_delta": 1.44921875,
+        "candidate_only_victories": 19,
+        "parent_only_victories": 22
+      },
+      "3": {
+        "profile_count": 250,
+        "mean_reward_delta": 0.4323663359319626,
+        "mean_player_hp_delta": -0.012,
+        "candidate_only_victories": 12,
+        "parent_only_victories": 8
+      },
+      "6": {
+        "profile_count": 206,
+        "mean_reward_delta": 0.03978506153431183,
+        "mean_player_hp_delta": -0.4029126213592233,
+        "candidate_only_victories": 6,
+        "parent_only_victories": 6
+      },
+      "9": {
+        "profile_count": 139,
+        "mean_reward_delta": -1.5077137152949707,
+        "mean_player_hp_delta": -1.3669064748201438,
+        "candidate_only_victories": 6,
+        "parent_only_victories": 8
+      }
+    },
+    "battle_6_9_combined_mean_reward_delta": -0.583699952898357,
+    "battle_6_9_combined_mean_player_hp_delta": -0.791304347826087,
+    "minimum_battle_mean_reward_delta": -1.5077137152949707
+  },
+  "registered_outcome_gate": {
+    "passed": false,
+    "criteria": {
+      "matched_aggregate_mean_reward_delta_vs_parent_gt_0": true,
+      "matched_aggregate_mean_player_hp_delta_vs_parent_gte_0": true,
+      "candidate_only_victories_gte_parent_only_victories": false,
+      "battle_index_0_mean_reward_delta_vs_parent_gte_0": true,
+      "battle_index_0_mean_player_hp_delta_vs_parent_gte_0": true,
+      "battle_indices_6_and_9_combined_mean_reward_delta_vs_parent_gt_0": false,
+      "no_battle_index_mean_reward_delta_vs_parent_lt_-1.0": false
+    }
+  },
+  "unguarded_reference_comparison": {
+    "guarded_minus_unguarded_mean_reward_delta": 8.769249899001487,
+    "guarded_minus_unguarded_mean_player_hp_delta": 5.102416782641187,
+    "unguarded_victory_exchange_gap": -125,
+    "guarded_victory_exchange_gap": -1,
+    "interpretation": "The guard materially corrected the harmful unguarded direction but did not produce an eligible parent-relative successor."
+  },
+  "decision": {
+    "verdict": "no_go_technical_and_outcome_gates",
+    "retain_parent": "production_r16",
+    "retry_same_cohort": false,
+    "fresh_confirmation_authorized": false,
+    "production_packaging_authorized": false,
+    "gameplay_authorized": false,
+    "next_step": "Run a fresh read-only guarded-candidate action and Q-margin drift audit stratified by battle index, with special attention to battle 9, before defining any different training objective."
+  },
+  "interpretation_authority": "Bounded matched LightSTS evidence only; no causal simulator-to-game, production qualification, promotion, or live policy-quality authority."
+}
