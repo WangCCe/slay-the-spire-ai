@@ -49,10 +49,11 @@ from spirecomm.ai.rl.v2.trainer import DQNTrainerV2  # noqa: E402
 from spirecomm.ai.rl.v2.types import EncodedStateV2  # noqa: E402
 
 
-REPORT_SCHEMA_VERSION = "combat-lightspeed-training-smoke-v9"
+REPORT_SCHEMA_VERSION = "combat-lightspeed-training-smoke-v10"
 CHECKPOINT_KIND = "simulator_training_smoke"
 ONE_STEP_TD_TARGET = "one-step-td"
 DISCOUNTED_EPISODE_RETURN_TARGET = "discounted-episode-return"
+FROZEN_PARENT_N_STEP_TARGET = "frozen-parent-n-step-return"
 ENCOUNTER_HASH_ALGORITHM = "sha256-first-8-bytes-modulo"
 ENCOUNTER_ENUM_ENCODING = "monster-encounter-enum-v1"
 MAX_ENCOUNTER_IDENTITY_BUCKETS = 1024
@@ -164,6 +165,7 @@ class SmokeConfig:
     encounter_identity_encoding: str = ENCOUNTER_HASH_ALGORITHM
     replay_target_mode: str = ONE_STEP_TD_TARGET
     replay_return_discount: float = 0.99
+    replay_return_horizon: int = 3
     complete_trajectories_only: bool = False
 
     def validate(self) -> None:
@@ -218,6 +220,7 @@ class SmokeConfig:
         if self.replay_target_mode not in {
             ONE_STEP_TD_TARGET,
             DISCOUNTED_EPISODE_RETURN_TARGET,
+            FROZEN_PARENT_N_STEP_TARGET,
         }:
             raise ValueError("unknown replay target mode")
         if not math.isfinite(self.replay_return_discount) or not (
@@ -225,11 +228,18 @@ class SmokeConfig:
         ):
             raise ValueError("replay return discount must be finite and in (0, 1]")
         if (
-            self.replay_target_mode == DISCOUNTED_EPISODE_RETURN_TARGET
+            not isinstance(self.replay_return_horizon, int)
+            or isinstance(self.replay_return_horizon, bool)
+            or self.replay_return_horizon <= 0
+        ):
+            raise ValueError("replay return horizon must be a positive integer")
+        if (
+            self.replay_target_mode
+            in {DISCOUNTED_EPISODE_RETURN_TARGET, FROZEN_PARENT_N_STEP_TARGET}
             and not self.complete_trajectories_only
         ):
             raise ValueError(
-                "discounted episode returns require complete trajectories only"
+                "discounted and n-step returns require complete trajectories only"
             )
 
     def profiles(self, seeds: Sequence[int]) -> tuple[tuple[int, int], ...]:
@@ -914,13 +924,88 @@ def transition_identity_sha256(
     return digest.hexdigest()
 
 
+def frozen_parent_bootstrap_values(
+    network: torch.nn.Module,
+    transitions: Sequence[ReplayTransition],
+    *,
+    batch_size: int = 1024,
+) -> tuple[list[float], str]:
+    if batch_size <= 0:
+        raise ValueError("bootstrap batch size must be positive")
+    source = list(transitions)
+    values = [0.0] * len(source)
+    nonterminal_indices = [index for index, row in enumerate(source) if not row.done]
+    for index in nonterminal_indices:
+        if not bool(np.asarray(source[index].next_action_mask, dtype=bool).any()):
+            raise ValueError(
+                "frozen parent bootstrap requires at least one legal next action: "
+                f"{(source[index].seed, source[index].battle_index, source[index].decision_index)}"
+            )
+
+    try:
+        device = next(network.parameters()).device
+    except StopIteration as exc:
+        raise ValueError("frozen parent bootstrap network has no parameters") from exc
+    was_training = network.training
+    network.eval()
+    try:
+        with torch.no_grad():
+            for start in range(0, len(nonterminal_indices), batch_size):
+                indices = nonterminal_indices[start : start + batch_size]
+                rows = [source[index] for index in indices]
+                if not rows:
+                    continue
+                q_values = network(
+                    continuous=torch.from_numpy(
+                        np.stack([row.next_continuous for row in rows])
+                    )
+                    .float()
+                    .to(device),
+                    card_ids=torch.from_numpy(
+                        np.stack([row.next_card_ids for row in rows])
+                    )
+                    .long()
+                    .to(device),
+                    potion_ids=torch.from_numpy(
+                        np.stack([row.next_potion_ids for row in rows])
+                    )
+                    .long()
+                    .to(device),
+                    relic_ids=torch.from_numpy(
+                        np.stack([row.next_relic_ids for row in rows])
+                    )
+                    .long()
+                    .to(device),
+                    action_mask=torch.from_numpy(
+                        np.stack([row.next_action_mask for row in rows])
+                    )
+                    .bool()
+                    .to(device),
+                )
+                maxima = q_values.max(dim=1).values.detach().cpu()
+                if not bool(torch.isfinite(maxima).all()):
+                    raise ValueError("frozen parent bootstrap value is not finite")
+                for index, value in zip(indices, maxima.tolist()):
+                    values[index] = float(value)
+    finally:
+        network.train(was_training)
+    return values, parameter_sha256(network.state_dict())
+
+
 def prepare_replay_targets(
     transitions: Sequence[ReplayTransition],
     *,
     mode: str,
     discount: float,
+    horizon: int | None = None,
+    bootstrap_values: Sequence[float] | None = None,
+    bootstrap_parameter_sha256: str | None = None,
 ) -> tuple[list[ReplayTransition], dict[str, Any]]:
-    if mode not in {ONE_STEP_TD_TARGET, DISCOUNTED_EPISODE_RETURN_TARGET}:
+    if mode not in {
+        ONE_STEP_TD_TARGET,
+        DISCOUNTED_EPISODE_RETURN_TARGET,
+        FROZEN_PARENT_N_STEP_TARGET,
+    }:
         raise ValueError("unknown replay target mode")
     if not math.isfinite(discount) or not 0.0 < discount <= 1.0:
         raise ValueError("replay return discount must be finite and in (0, 1]")
@@ -930,6 +1015,10 @@ def prepare_replay_targets(
         return source, {
             "mode": mode,
             "discount": None,
+            "horizon": None,
+            "bootstrap_parameter_sha256": None,
+            "bootstrap_target_count": 0,
+            "bootstrap_value": _reward_summary([]),
             "source_transition_identity_sha256": source_identity,
             "target_transition_identity_sha256": source_identity,
             "source_reward": _reward_summary([row.reward for row in source]),
@@ -937,23 +1026,77 @@ def prepare_replay_targets(
             "terminal_target_count": sum(row.done for row in source),
         }
 
+    is_n_step = mode == FROZEN_PARENT_N_STEP_TARGET
+    if is_n_step:
+        if not isinstance(horizon, int) or isinstance(horizon, bool) or horizon <= 0:
+            raise ValueError("n-step replay return horizon must be a positive integer")
+        if bootstrap_values is None or len(bootstrap_values) != len(source):
+            raise ValueError("n-step replay returns require one bootstrap value per source row")
+        if (
+            not isinstance(bootstrap_parameter_sha256, str)
+            or len(bootstrap_parameter_sha256) != 64
+            or bootstrap_parameter_sha256.lower() != bootstrap_parameter_sha256
+            or any(character not in "0123456789abcdef" for character in bootstrap_parameter_sha256)
+        ):
+            raise ValueError("n-step replay returns require a lowercase parent parameter SHA-256")
+        bootstrap = [float(value) for value in bootstrap_values]
+        if not all(math.isfinite(value) for value in bootstrap):
+            raise ValueError("n-step replay bootstrap values must be finite")
+    else:
+        bootstrap = []
+
     groups: dict[tuple[int, int], list[ReplayTransition]] = {}
-    for row in source:
+    source_indices: dict[tuple[int, int, int], int] = {}
+    for index, row in enumerate(source):
+        key = (row.seed, row.battle_index, row.decision_index)
+        if key in source_indices:
+            raise ValueError(f"duplicate trajectory decision identity: {key}")
+        source_indices[key] = index
         groups.setdefault((row.seed, row.battle_index), []).append(row)
     transformed: dict[tuple[int, int, int], ReplayTransition] = {}
+    used_bootstrap_values: list[float] = []
     for profile, rows in groups.items():
         ordered = sorted(rows, key=lambda row: row.decision_index)
         if [row.decision_index for row in ordered] != list(range(len(ordered))):
             raise ValueError(f"trajectory decision identity is not contiguous: {profile}")
         if not ordered or not ordered[-1].done or any(row.done for row in ordered[:-1]):
-            raise ValueError(f"discounted return requires a complete trajectory: {profile}")
-        running_return = 0.0
-        for row in reversed(ordered):
-            running_return = float(row.reward + discount * running_return)
-            if not math.isfinite(running_return):
-                raise ValueError(f"discounted return is not finite: {profile}")
-            key = (row.seed, row.battle_index, row.decision_index)
-            transformed[key] = replace(row, reward=running_return, done=True)
+            label = "n-step return" if is_n_step else "discounted return"
+            raise ValueError(f"{label} requires a complete trajectory: {profile}")
+        if is_n_step:
+            assert horizon is not None
+            for start, row in enumerate(ordered):
+                target = 0.0
+                terminated = False
+                for offset in range(horizon):
+                    current = ordered[start + offset]
+                    target += (discount**offset) * current.reward
+                    if current.done:
+                        terminated = True
+                        break
+                if not terminated:
+                    bootstrap_row = ordered[start + horizon - 1]
+                    bootstrap_index = source_indices[
+                        (
+                            bootstrap_row.seed,
+                            bootstrap_row.battle_index,
+                            bootstrap_row.decision_index,
+                        )
+                    ]
+                    bootstrap_value = bootstrap[bootstrap_index]
+                    target += (discount**horizon) * bootstrap_value
+                    used_bootstrap_values.append(bootstrap_value)
+                if not math.isfinite(target):
+                    raise ValueError(f"n-step return is not finite: {profile}")
+                key = (row.seed, row.battle_index, row.decision_index)
+                transformed[key] = replace(row, reward=float(target), done=True)
+        else:
+            running_return = 0.0
+            for row in reversed(ordered):
+                running_return = float(row.reward + discount * running_return)
+                if not math.isfinite(running_return):
+                    raise ValueError(f"discounted return is not finite: {profile}")
+                key = (row.seed, row.battle_index, row.decision_index)
+                transformed[key] = replace(row, reward=running_return, done=True)
     result = [
         transformed[(row.seed, row.battle_index, row.decision_index)]
         for row in source
@@ -961,6 +1104,12 @@ def prepare_replay_targets(
     return result, {
         "mode": mode,
         "discount": float(discount),
+        "horizon": horizon if is_n_step else None,
+        "bootstrap_parameter_sha256": (
+            bootstrap_parameter_sha256 if is_n_step else None
+        ),
+        "bootstrap_target_count": len(used_bootstrap_values),
+        "bootstrap_value": _reward_summary(used_bootstrap_values),
         "source_transition_identity_sha256": source_identity,
         "target_transition_identity_sha256": transition_identity_sha256(result),
         "source_reward": _reward_summary([row.reward for row in source]),
@@ -1688,7 +1837,7 @@ def _publish(
             "size_bytes": candidate_path.stat().st_size,
         }
     manifest = {
-        "schema_version": "combat-lightspeed-training-smoke-manifest-v9",
+        "schema_version": "combat-lightspeed-training-smoke-manifest-v10",
         "artifacts": manifest_entries,
     }
     artifacts["manifest.json"] = canonical_json_bytes(manifest) + b"\n"
@@ -1722,15 +1871,32 @@ def run_smoke(
         encounter_identity_encoding=config.encounter_identity_encoding,
     )
     initial_sha256 = parameter_sha256(initial)
+    if (
+        config.replay_target_mode == FROZEN_PARENT_N_STEP_TARGET
+        and initial_checkpoint is None
+    ):
+        raise ValueError("frozen-parent n-step targets require a warm-start checkpoint")
     transitions, corpus_metrics = collect_transitions(
         native_module,
         id_mapper=id_mapper,
         config=config,
     )
+    bootstrap_values = None
+    bootstrap_parameter_sha256 = None
+    if config.replay_target_mode == FROZEN_PARENT_N_STEP_TARGET:
+        bootstrap_values, bootstrap_parameter_sha256 = frozen_parent_bootstrap_values(
+            trainer.target_network,
+            transitions,
+        )
+        if bootstrap_parameter_sha256 != initial_sha256:
+            raise RuntimeError("frozen parent parameter identity changed before target preparation")
     target_transitions, replay_target = prepare_replay_targets(
         transitions,
         mode=config.replay_target_mode,
         discount=config.replay_return_discount,
+        horizon=config.replay_return_horizon,
+        bootstrap_values=bootstrap_values,
+        bootstrap_parameter_sha256=bootstrap_parameter_sha256,
     )
     prepared_transitions, replay_preparation = prepare_replay_transitions(
         target_transitions,
@@ -1929,9 +2095,14 @@ def _parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--replay-target-mode",
         default=ONE_STEP_TD_TARGET,
-        choices=(ONE_STEP_TD_TARGET, DISCOUNTED_EPISODE_RETURN_TARGET),
+        choices=(
+            ONE_STEP_TD_TARGET,
+            DISCOUNTED_EPISODE_RETURN_TARGET,
+            FROZEN_PARENT_N_STEP_TARGET,
+        ),
     )
     parser.add_argument("--replay-return-discount", default=0.99, type=float)
+    parser.add_argument("--replay-return-horizon", default=3, type=int)
     parser.add_argument("--complete-trajectories-only", action="store_true")
     return parser.parse_args()
 
@@ -1960,6 +2131,7 @@ def main() -> int:
         encounter_identity_encoding=args.encounter_identity_encoding,
         replay_target_mode=args.replay_target_mode,
         replay_return_discount=args.replay_return_discount,
+        replay_return_horizon=args.replay_return_horizon,
         complete_trajectories_only=args.complete_trajectories_only,
     )
     native_module = load_native_module(args.module, dll_directories=args.dll_dir)

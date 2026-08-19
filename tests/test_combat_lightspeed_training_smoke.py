@@ -1,4 +1,5 @@
 import copy
+from dataclasses import replace
 import math
 import os
 from pathlib import Path
@@ -16,6 +17,7 @@ from analysis_scripts.combat_lightspeed_training_smoke import (
     ENCOUNTER_ENUM_V1,
     ENCOUNTER_ENUM_V1_SHA256,
     ENCOUNTER_HASH_ALGORITHM,
+    FROZEN_PARENT_N_STEP_TARGET,
     ONE_STEP_TD_TARGET,
     REPORT_AUTHORITY,
     ReplayTransition,
@@ -26,6 +28,7 @@ from analysis_scripts.combat_lightspeed_training_smoke import (
     create_fresh_trainer,
     encounter_from_snapshot,
     encounter_identity_bucket,
+    frozen_parent_bootstrap_values,
     initialize_trainer,
     load_initial_checkpoint,
     migrate_parent_for_encounter_identity,
@@ -182,6 +185,19 @@ def test_parent_policy_constraint_weight_must_be_finite_and_non_negative():
             evaluation_seeds=(20,),
             replay_target_mode=DISCOUNTED_EPISODE_RETURN_TARGET,
         ).validate()
+    with pytest.raises(ValueError, match="require complete trajectories"):
+        SmokeConfig(
+            train_seeds=(10,),
+            evaluation_seeds=(20,),
+            replay_target_mode=FROZEN_PARENT_N_STEP_TARGET,
+        ).validate()
+    for value in (0, -1, 1.5, True):
+        with pytest.raises(ValueError, match="replay return horizon"):
+            SmokeConfig(
+                train_seeds=(10,),
+                evaluation_seeds=(20,),
+                replay_return_horizon=value,
+            ).validate()
 
 
 def test_encounter_identity_is_deterministic_opt_in_and_one_hot():
@@ -383,6 +399,125 @@ def test_discounted_episode_return_is_backward_complete_and_non_bootstrapping():
     assert metrics["terminal_target_count"] == 3
     assert metrics["source_reward"]["sum"] == pytest.approx(6.0)
     assert metrics["target_reward"]["sum"] == pytest.approx(9.25)
+
+
+def test_frozen_parent_n_step_target_bootstraps_exact_horizon_and_stops_at_terminal():
+    rows = [
+        _stratum_transition(6, 1, seed=32, decision_index=0, reward=1.0),
+        _stratum_transition(6, 2, seed=32, decision_index=1, reward=2.0),
+        _stratum_transition(6, 3, seed=32, decision_index=2, reward=3.0),
+        _stratum_transition(
+            6,
+            4,
+            seed=32,
+            decision_index=3,
+            reward=4.0,
+            done=True,
+        ),
+    ]
+
+    prepared, metrics = prepare_replay_targets(
+        rows,
+        mode=FROZEN_PARENT_N_STEP_TARGET,
+        discount=0.5,
+        horizon=2,
+        bootstrap_values=(10.0, 20.0, 30.0, 0.0),
+        bootstrap_parameter_sha256="a" * 64,
+    )
+
+    assert [row.reward for row in prepared] == pytest.approx([7.0, 11.0, 5.0, 4.0])
+    assert all(row.done for row in prepared)
+    assert metrics["horizon"] == 2
+    assert metrics["bootstrap_parameter_sha256"] == "a" * 64
+    assert metrics["bootstrap_target_count"] == 2
+    assert metrics["bootstrap_value"]["sum"] == pytest.approx(50.0)
+    assert metrics["source_transition_identity_sha256"] != metrics[
+        "target_transition_identity_sha256"
+    ]
+
+
+def test_frozen_parent_n_step_target_rejects_missing_or_invalid_bootstrap_evidence():
+    rows = [
+        _stratum_transition(3, 1, seed=33, decision_index=0, reward=1.0),
+        _stratum_transition(
+            3,
+            2,
+            seed=33,
+            decision_index=1,
+            reward=2.0,
+            done=True,
+        ),
+    ]
+
+    with pytest.raises(ValueError, match="positive integer"):
+        prepare_replay_targets(
+            rows,
+            mode=FROZEN_PARENT_N_STEP_TARGET,
+            discount=0.99,
+            horizon=0,
+        )
+    with pytest.raises(ValueError, match="one bootstrap value per source row"):
+        prepare_replay_targets(
+            rows,
+            mode=FROZEN_PARENT_N_STEP_TARGET,
+            discount=0.99,
+            horizon=2,
+        )
+    with pytest.raises(ValueError, match="lowercase parent parameter SHA-256"):
+        prepare_replay_targets(
+            rows,
+            mode=FROZEN_PARENT_N_STEP_TARGET,
+            discount=0.99,
+            horizon=2,
+            bootstrap_values=(1.0, 0.0),
+            bootstrap_parameter_sha256="A" * 64,
+        )
+    with pytest.raises(ValueError, match="must be finite"):
+        prepare_replay_targets(
+            rows,
+            mode=FROZEN_PARENT_N_STEP_TARGET,
+            discount=0.99,
+            horizon=2,
+            bootstrap_values=(float("nan"), 0.0),
+            bootstrap_parameter_sha256="a" * 64,
+        )
+
+
+def test_frozen_parent_bootstrap_values_are_masked_finite_and_restore_mode():
+    trainer = create_fresh_trainer(
+        _mapper(),
+        seed=203,
+        batch_size=2,
+        learning_starts=2,
+    )
+    network = trainer.target_network
+    nonterminal = _stratum_transition(0, 1, seed=34, decision_index=0)
+    terminal = _stratum_transition(0, 2, seed=34, decision_index=1, done=True)
+    nonterminal.next_action_mask[5:] = False
+
+    network.eval()
+    with torch.no_grad():
+        expected = network(
+            torch.from_numpy(nonterminal.next_continuous).float(),
+            torch.from_numpy(nonterminal.next_card_ids).long(),
+            torch.from_numpy(nonterminal.next_potion_ids).long(),
+            torch.from_numpy(nonterminal.next_relic_ids).long(),
+            torch.from_numpy(nonterminal.next_action_mask),
+        ).max().item()
+    network.train()
+    values, parent_sha256 = frozen_parent_bootstrap_values(
+        network,
+        (nonterminal, terminal),
+        batch_size=1,
+    )
+
+    assert values == pytest.approx([expected, 0.0])
+    assert parent_sha256 == parameter_sha256(network.state_dict())
+    assert network.training is True
+
+    invalid = replace(nonterminal, next_action_mask=np.zeros(133, dtype=bool))
+    with pytest.raises(ValueError, match="at least one legal next action"):
+        frozen_parent_bootstrap_values(network, (invalid,))
 
 
 def test_discounted_episode_return_rejects_incomplete_or_noncontiguous_profile():
@@ -861,6 +996,12 @@ def test_published_candidate_is_structurally_simulator_only(tmp_path):
             "initial_parameter_sha256": "e" * 64,
             "candidate_parameter_sha256": "f" * 64,
             "parent_policy_anchor_weight": 1.0,
+            "replay_target": {
+                "mode": FROZEN_PARENT_N_STEP_TARGET,
+                "horizon": 3,
+                "discount": 0.99,
+                "bootstrap_parameter_sha256": "e" * 64,
+            },
         },
         "initialization": {
             "mode": "warm_start_encounter_expansion",
@@ -916,6 +1057,9 @@ def test_published_candidate_is_structurally_simulator_only(tmp_path):
         checkpoint["metadata"]["source_binding"]["parent_policy_anchor_weight"]
         == pytest.approx(1.0)
     )
+    assert checkpoint["metadata"]["source_binding"]["replay_target"] == report[
+        "training"
+    ]["replay_target"]
 
 
 def test_opt_in_tiny_native_training_smoke():
@@ -990,6 +1134,63 @@ def test_opt_in_native_discounted_return_training_smoke():
     assert target["source_transition_identity_sha256"] == eligibility[
         "source_transition_identity_sha256"
     ]
+    assert target["terminal_target_count"] == report["training"][
+        "target_replay_transition_count"
+    ]
+
+
+def test_opt_in_native_frozen_parent_n_step_training_smoke():
+    module_path = os.environ.get("STS_LIGHTSPEED_COMBAT_ADAPTER_MODULE")
+    items_json = os.environ.get("STS_ITEMS_JSON")
+    if not module_path or not items_json:
+        pytest.skip("native combat adapter paths are not configured")
+    dll_directory = os.environ.get("STS_LIGHTSPEED_MINGW_BIN")
+    module = load_native_module(
+        module_path,
+        dll_directories=(() if not dll_directory else (dll_directory,)),
+    )
+    mapper = build_id_mapper(items_json)
+    parent = create_fresh_trainer(
+        mapper,
+        seed=152,
+        batch_size=2,
+        learning_starts=2,
+    )
+    parent_state = copy.deepcopy(parent.online_network.state_dict())
+    parent_sha256 = parameter_sha256(parent_state)
+    report, _candidate = run_smoke(
+        module,
+        id_mapper=mapper,
+        config=SmokeConfig(
+            train_seeds=(4, 5),
+            evaluation_seeds=(10004, 10005),
+            max_decisions_per_seed=100,
+            batch_size=2,
+            optimizer_steps=1,
+            replay_target_mode=FROZEN_PARENT_N_STEP_TARGET,
+            replay_return_horizon=3,
+            complete_trajectories_only=True,
+        ),
+        provenance={"training_runner_sha256": "b" * 64},
+        initial_checkpoint={
+            "checkpoint_sha256": "a" * 64,
+            "checkpoint_kind": "simulator_training_smoke",
+            "checkpoint_schema_version": 0,
+            "parameter_sha256": parent_sha256,
+            "path": "memory-parent.pth",
+            "production_compatible": False,
+            "size_bytes": 0,
+            "source_type": "sts_lightspeed_native_combat",
+            "state_dict": parent_state,
+        },
+    )
+
+    target = report["training"]["replay_target"]
+    assert report["verdict"] == "technical_smoke_ready"
+    assert target["mode"] == FROZEN_PARENT_N_STEP_TARGET
+    assert target["horizon"] == 3
+    assert target["bootstrap_parameter_sha256"] == parent_sha256
+    assert target["bootstrap_target_count"] > 0
     assert target["terminal_target_count"] == report["training"][
         "target_replay_transition_count"
     ]
