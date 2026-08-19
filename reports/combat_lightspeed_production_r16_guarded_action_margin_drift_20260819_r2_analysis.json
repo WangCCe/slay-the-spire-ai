@@ -1,0 +1,79 @@
+{
+  "schema_version": "combat-lightspeed-guarded-action-margin-drift-analysis-v1",
+  "audit_id": "combat-lightspeed-production-r16-guarded-action-margin-drift-20260819-r2",
+  "bindings": {
+    "registration_sha256": "97c6789b3648aca8ecaef660f653056cdf38605d98f984ee4ebf96549bfa1caf",
+    "manifest_sha256": "30f0bca808f520c2274e7aba8d5e40d774b1dbe5a036daecb5508ecd110c3e52",
+    "report_sha256": "57b207152a8fe509fcaba52062881e42183a98838359bfb87c89a4de428900b9",
+    "summary_sha256": "5542d343a8e090852923799974288fe9bb44a859077c872506dad66a252475d9",
+    "transition_identity_sha256": "3cf40d1cd152f1517e7381f1af2619202ed5b3f42d61681f135a781c6400b742"
+  },
+  "technical": {
+    "verdict": "action_margin_drift_ready",
+    "blockers": [],
+    "registered_profiles": 1024,
+    "initialized_complete_profiles": 846,
+    "accepted_transition_count": 16315,
+    "transition_counts": {
+      "0": 3772,
+      "3": 4421,
+      "6": 4909,
+      "9": 3213
+    },
+    "initialization_failure_counts": {
+      "baseline_loss_before_requested_battle": 178
+    },
+    "unsupported_reason_counts": {},
+    "all_registered_technical_criteria_pass": true
+  },
+  "guarded_candidate_drift": {
+    "action_disagreement_count": 1224,
+    "action_disagreement_rate": 0.0750229849831443,
+    "by_battle_index": {
+      "0": {"count": 178, "rate": 0.047189819724284196},
+      "3": {"count": 310, "rate": 0.07011988237955213},
+      "6": {"count": 436, "rate": 0.088816459564066},
+      "9": {"count": 300, "rate": 0.09337068160597572}
+    },
+    "battle_9_to_battle_0_rate_ratio": 1.978619163021014,
+    "by_parent_action_family": {
+      "end_turn": {"transitions": 11105, "count": 493, "rate": 0.04439441692931112},
+      "play_card": {"transitions": 4476, "count": 673, "rate": 0.1503574620196604},
+      "use_potion": {"transitions": 734, "count": 58, "rate": 0.07901907356948229}
+    },
+    "dominant_flips": {
+      "play_card_to_play_card": 497,
+      "end_turn_to_play_card": 424,
+      "play_card_to_end_turn": 145,
+      "end_turn_to_use_potion": 69,
+      "play_card_to_use_potion": 31,
+      "use_potion_to_play_card": 22,
+      "use_potion_to_end_turn": 19,
+      "use_potion_to_use_potion": 17
+    },
+    "flip_groups": {
+      "non_end_turn_to_end_turn": {"count": 164, "share": 0.13398692810457516},
+      "end_turn_to_non_end_turn": {"count": 493, "share": 0.4027777777777778},
+      "same_family": {"count": 514, "share": 0.4199346405228758}
+    },
+    "parent_margin_when_disagreeing": {
+      "mean": 0.14507557743904637,
+      "median": 0.10629129409790039,
+      "p10": 0.015196609497070314,
+      "p90": 0.3201740264892578
+    }
+  },
+  "decision": {
+    "verdict": "stop_end_turn_objective_patching",
+    "interpretation": "The guard removed non-end-turn to end-turn displacement as the dominant drift mode. Residual disagreement grows with battle index, but is dominated by same-family card changes and end-turn to action changes rather than the protected boundary. A second asymmetric end-turn loss is not supported by this evidence.",
+    "training_authorized": false,
+    "production_packaging_authorized": false,
+    "gameplay_authorized": false,
+    "next_step": "Review existing encounter-identity and target-mode evidence, then choose between a battle/encounter-conditioned representation experiment and a different return target. Do not tune the completed guard weight or cap."
+  },
+  "limitations": [
+    "The report gives flip matrices and battle rates separately, not a battle-by-flip-family cross-tabulation.",
+    "The audit is descriptive on fresh simulator states and does not attribute battle-9 matched-outcome causality."
+  ],
+  "interpretation_authority": "Source-only LightSTS action and Q-margin diagnosis; no policy-quality, transfer, qualification, promotion, or gameplay authority."
+}
