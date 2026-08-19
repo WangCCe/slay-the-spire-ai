@@ -1,0 +1,87 @@
+{
+  "schema_version": "combat-lightspeed-production-successor-low-alpha-registration-v2",
+  "experiment_id": "combat-lightspeed-production-r16-successor-low-alpha-20260819-r2",
+  "registered_source_commit": "dd4308558526b00e52c8280c7ea01c1bd60a7c31",
+  "experiment_question": "Is the production-r16 one-step LightSTS parameter direction already harmful at alpha 0.05, 0.10, or 0.20 on a fresh matched cohort?",
+  "predecessor": {
+    "r1_registration_sha256": "2258cda43da22ac9a02d3526b762d58b960f1b5538a4aebdbb646b804f27287f",
+    "r1_comparison_report_sha256": "c3b2f0779bc8e26b6d982889ee775d42f0468ab532924f724d8f599930b8b0cd",
+    "r1_verdict": "comparison_not_ready",
+    "r1_failure": "ComparisonConfig missing encounter_identity_buckets",
+    "r1_cohort_disposition": "conservatively_consumed",
+    "r1_seed_reuse": false,
+    "repair_commit": "dd4308558526b00e52c8280c7ea01c1bd60a7c31",
+    "repair_focused_tests": "8 passed"
+  },
+  "source_binding": {
+    "comparison_script_sha256": "4d53eaabd66f9f4c510003085a004a1af93424d7ee652884e7513d6a1e6a30c3",
+    "bridge_source_sha256": "ced080a47b3b9b25206eac7b8b5ee3752af348d4df8a5d9750e386157812bf90",
+    "native_adapter_source_sha256": "5b91de6be49370fbc0c123f9a64879a68bd6d6d64b46017468d1b59d6dbb86df",
+    "native_module_path": "D:/PycharmProjects/slay-the-spire-ai/.sts_lightspeed_combat_later_battle_20260819_r3_build/sts_lightspeed_combat_adapter.cp310-win_amd64.pyd",
+    "native_module_sha256": "195678b7fc6bf69815f3d2971404afb8ce72fb666700edf4203383429caf1009",
+    "simulator_commit": "7476a81954020087da31d41d16fddf475746ec2d",
+    "simulator_dirty": true,
+    "simulator_source_sha256": "a3f98721ec37373b1b00aef660832a3307f0186ba0614d07a3b1e7de8ab2e46a",
+    "items_json_path": "D:/SteamLibrary/steamapps/common/SlayTheSpire/export/items.json",
+    "items_json_sha256": "e23784ea8ed3092e3bfa9918240e162a9cbcb837badfb53c612eb0d83cc811dc"
+  },
+  "candidates": [
+    {
+      "label": "parent",
+      "path": "reports/combat_lightspeed_production_r16_shadow_20260819_r1/simulator_only_production_shadow.pth",
+      "sha256": "ce2ae34f82b3f457fb35e87d429c397204c42d0f742d3ac8952d91b69119b83b"
+    },
+    {
+      "label": "alpha_0p05",
+      "path": "reports/combat_lightspeed_production_r16_successor_20260819_r1_low_alpha_interpolations/simulator_only_candidate_alpha_0p05.pth",
+      "sha256": "20ad023fbf9c0a2b83e4ccfd612b2f79a194f7f642135da2a4993af34e920f0f"
+    },
+    {
+      "label": "alpha_0p1",
+      "path": "reports/combat_lightspeed_production_r16_successor_20260819_r1_low_alpha_interpolations/simulator_only_candidate_alpha_0p1.pth",
+      "sha256": "7614c928f70fd9767b16822db81fbafe7e3a71cc493ce00c157867355872dcbc"
+    },
+    {
+      "label": "alpha_0p2",
+      "path": "reports/combat_lightspeed_production_r16_successor_20260819_r1_low_alpha_interpolations/simulator_only_candidate_alpha_0p2.pth",
+      "sha256": "a0b08e438e888548d783cd47a5a461f1d6281f008e042cb7120df0586986c639"
+    }
+  ],
+  "comparison": {
+    "seeds": "127000..127255",
+    "seed_count": 256,
+    "battle_indices": [0, 3, 6, 9],
+    "profile_count_per_candidate": 1024,
+    "ascension": 0,
+    "max_decisions_per_profile": 100,
+    "max_actions_per_turn": 8,
+    "output_dir": "reports/combat_lightspeed_production_r16_successor_20260819_r1_low_alpha_comparison_r2",
+    "prior_registered_lightspeed_seed_overlap": false
+  },
+  "technical_success_criteria": {
+    "verdict": "comparison_ready",
+    "same_matched_reachable_profiles_for_every_candidate": true,
+    "truncated_count_per_candidate": 0,
+    "unsupported_count_per_candidate": 0,
+    "only_allowed_unreachable_reason": "baseline_loss_before_requested_battle"
+  },
+  "alpha_eligibility_rule": [
+    "all_technical_success_criteria_pass",
+    "matched_aggregate_mean_reward_delta_vs_parent_gt_0",
+    "matched_aggregate_mean_player_hp_delta_vs_parent_gte_0",
+    "alpha_only_victories_gte_parent_only_victories",
+    "battle_index_0_mean_reward_delta_vs_parent_gte_0",
+    "battle_index_0_mean_player_hp_delta_vs_parent_gte_0",
+    "battle_indices_6_and_9_combined_mean_reward_delta_vs_parent_gt_0",
+    "no_battle_index_mean_reward_delta_vs_parent_lt_-1.0"
+  ],
+  "selection_rule": "Among eligible alphas choose the highest aggregate mean reward delta; tie-break by mean player HP delta, then smaller alpha.",
+  "no_eligible_alpha_decision": "Conclude the frozen one-step direction is not locally useful at alpha 0.05 through 0.20 and stop this recipe before new training or a production gate.",
+  "next_gate_if_eligible": "Separate fresh LightSTS confirmation on new seeds; no production packaging or gameplay is authorized.",
+  "stop_rules": [
+    "Run the repaired comparison once on 127000..127255; do not reuse the r1 cohort.",
+    "Do not change candidates, alpha, thresholds, reward, native module, or seeds after outcome access.",
+    "Do not start Slay the Spire or CommunicationMod.",
+    "No result directly authorizes production packaging, promotion, or gameplay."
+  ]
+}
