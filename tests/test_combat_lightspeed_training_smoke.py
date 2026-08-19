@@ -320,6 +320,30 @@ def test_parent_policy_constraint_weight_must_be_finite_and_non_negative():
             parent_end_turn_margin_guard_cap=0.0,
         ).validate()
 
+    for value in (-0.1, float("nan"), float("inf")):
+        with pytest.raises(ValueError, match="card-ranking guard weight"):
+            SmokeConfig(
+                train_seeds=(10,),
+                evaluation_seeds=(20,),
+                parent_card_ranking_guard_weight=value,
+            ).validate()
+
+    for value in (-0.1, float("nan"), float("inf")):
+        with pytest.raises(ValueError, match="card-ranking guard cap"):
+            SmokeConfig(
+                train_seeds=(10,),
+                evaluation_seeds=(20,),
+                parent_card_ranking_guard_cap=value,
+            ).validate()
+
+    with pytest.raises(ValueError, match="positive cap"):
+        SmokeConfig(
+            train_seeds=(10,),
+            evaluation_seeds=(20,),
+            parent_card_ranking_guard_weight=1.0,
+            parent_card_ranking_guard_cap=0.0,
+        ).validate()
+
     for value in (-1, 1, 1025):
         with pytest.raises(ValueError, match="encounter identity buckets"):
             SmokeConfig(
@@ -1044,6 +1068,8 @@ def test_simulator_checkpoint_warm_starts_online_target_and_control(tmp_path):
     assert trainer.parent_policy_anchor_network is None
     assert trainer.parent_end_turn_margin_guard_weight == 0.0
     assert trainer.parent_end_turn_margin_guard_cap == pytest.approx(0.1)
+    assert trainer.parent_card_ranking_guard_weight == 0.0
+    assert trainer.parent_card_ranking_guard_cap == pytest.approx(0.1)
 
 
 def test_encounter_parent_migration_inserts_zero_columns_and_preserves_policy(tmp_path):
@@ -1219,6 +1245,44 @@ def test_positive_parent_end_turn_margin_guard_requires_and_freezes_warm_start(t
     )
 
 
+def test_positive_parent_card_ranking_guard_requires_and_freezes_warm_start(tmp_path):
+    without_parent = create_fresh_trainer(
+        _mapper(),
+        seed=149,
+        batch_size=2,
+        learning_starts=2,
+        parent_card_ranking_guard_weight=1.0,
+        parent_card_ranking_guard_cap=0.1,
+    )
+    with pytest.raises(ValueError, match="requires a warm-start checkpoint"):
+        initialize_trainer(without_parent, None)
+
+    parent = create_fresh_trainer(_mapper(), seed=150, batch_size=2, learning_starts=2)
+    path = tmp_path / "parent-card-ranking-guard.pth"
+    _write_simulator_checkpoint(path, parent.online_network.state_dict())
+    guarded = create_fresh_trainer(
+        _mapper(),
+        seed=151,
+        batch_size=2,
+        learning_starts=2,
+        parent_card_ranking_guard_weight=1.0,
+        parent_card_ranking_guard_cap=0.1,
+    )
+
+    _control, record = initialize_trainer(
+        guarded,
+        load_initial_checkpoint(path, expected_sha256=None),
+    )
+
+    assert record["parent_card_ranking_guard_weight"] == pytest.approx(1.0)
+    assert record["parent_card_ranking_guard_cap"] == pytest.approx(0.1)
+    assert guarded.parent_policy_anchor_network is not None
+    assert all(
+        not parameter.requires_grad
+        for parameter in guarded.parent_policy_anchor_network.parameters()
+    )
+
+
 def test_parent_policy_constraint_produces_finite_separate_loss(tmp_path):
     parent = create_fresh_trainer(_mapper(), seed=46, batch_size=2, learning_starts=2)
     path = tmp_path / "parent.pth"
@@ -1333,6 +1397,76 @@ def test_parent_end_turn_margin_guard_produces_separate_metrics(tmp_path):
         trainer.last_td_loss
         + trainer.last_parent_policy_anchor_loss
         + trainer.last_parent_end_turn_margin_guard_loss
+    )
+
+
+def test_parent_card_ranking_guard_produces_separate_metrics(tmp_path):
+    parent = create_fresh_trainer(_mapper(), seed=152, batch_size=2, learning_starts=2)
+    with torch.no_grad():
+        for parameter in parent.online_network.parameters():
+            parameter.zero_()
+        parent.online_network.advantage_stream[2].bias[1] = 0.5
+        parent.online_network.advantage_stream[2].bias[7] = 0.3
+    path = tmp_path / "controlled-card-ranking-parent.pth"
+    _write_simulator_checkpoint(path, parent.online_network.state_dict())
+    trainer = create_fresh_trainer(
+        _mapper(),
+        seed=153,
+        batch_size=2,
+        learning_starts=2,
+        parent_policy_anchor_weight=1.0,
+        parent_card_ranking_guard_weight=1.0,
+        parent_card_ranking_guard_cap=0.1,
+    )
+    initialize_trainer(
+        trainer,
+        load_initial_checkpoint(path, expected_sha256=None),
+    )
+    with torch.no_grad():
+        trainer.online_network.advantage_stream[2].bias[1] = 0.0
+        trainer.online_network.advantage_stream[2].bias[7] = 0.2
+
+    state = np.zeros(328, dtype=np.float32)
+    card_ids = np.zeros(10, dtype=np.int64)
+    potion_ids = np.zeros(5, dtype=np.int64)
+    relic_ids = np.zeros(40, dtype=np.int64)
+    mask = np.zeros(133, dtype=bool)
+    mask[[1, 7, END_TURN_ACTION]] = True
+    for _ in range(2):
+        assert trainer.store_transition(
+            state,
+            card_ids,
+            potion_ids,
+            relic_ids,
+            1,
+            1.0,
+            state,
+            card_ids,
+            potion_ids,
+            relic_ids,
+            False,
+            action_mask=mask,
+            next_action_mask=mask,
+        )
+
+    objective_metrics = run_optimizer(trainer, 1)
+    loss = objective_metrics["total"][0]
+
+    assert math.isfinite(loss)
+    assert trainer.last_parent_card_ranking_guard_loss == pytest.approx(0.3)
+    assert trainer.last_parent_card_ranking_guard_eligible_count == 2
+    assert trainer.last_parent_card_ranking_guard_ranking_violation_count == 2
+    assert objective_metrics["parent_card_ranking_guard"] == pytest.approx([0.3])
+    assert objective_metrics[
+        "parent_card_ranking_guard_eligible_count"
+    ] == pytest.approx([2.0])
+    assert objective_metrics[
+        "parent_card_ranking_guard_ranking_violation_count"
+    ] == pytest.approx([2.0])
+    assert loss == pytest.approx(
+        trainer.last_td_loss
+        + trainer.last_parent_policy_anchor_loss
+        + trainer.last_parent_card_ranking_guard_loss
     )
 
 

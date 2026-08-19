@@ -49,7 +49,7 @@ from spirecomm.ai.rl.v2.trainer import DQNTrainerV2  # noqa: E402
 from spirecomm.ai.rl.v2.types import EncodedStateV2  # noqa: E402
 
 
-REPORT_SCHEMA_VERSION = "combat-lightspeed-training-smoke-v12"
+REPORT_SCHEMA_VERSION = "combat-lightspeed-training-smoke-v13"
 CHECKPOINT_KIND = "simulator_training_smoke"
 ONE_STEP_TD_TARGET = "one-step-td"
 DISCOUNTED_EPISODE_RETURN_TARGET = "discounted-episode-return"
@@ -174,6 +174,8 @@ class SmokeConfig:
     parent_policy_anchor_weight: float = 0.0
     parent_end_turn_margin_guard_weight: float = 0.0
     parent_end_turn_margin_guard_cap: float = 0.1
+    parent_card_ranking_guard_weight: float = 0.0
+    parent_card_ranking_guard_cap: float = 0.1
     balance_replay_by_battle_index: bool = False
     replay_balance_seed: int = 2026081903
     encounter_identity_buckets: int = 0
@@ -234,6 +236,27 @@ class SmokeConfig:
         ):
             raise ValueError(
                 "positive end-turn margin guard weight requires a positive cap"
+            )
+        if (
+            not math.isfinite(self.parent_card_ranking_guard_weight)
+            or self.parent_card_ranking_guard_weight < 0.0
+        ):
+            raise ValueError(
+                "parent card-ranking guard weight must be finite and non-negative"
+            )
+        if (
+            not math.isfinite(self.parent_card_ranking_guard_cap)
+            or self.parent_card_ranking_guard_cap < 0.0
+        ):
+            raise ValueError(
+                "parent card-ranking guard cap must be finite and non-negative"
+            )
+        if (
+            self.parent_card_ranking_guard_weight > 0.0
+            and self.parent_card_ranking_guard_cap <= 0.0
+        ):
+            raise ValueError(
+                "positive card-ranking guard weight requires a positive cap"
             )
         if self.replay_balance_seed < 0:
             raise ValueError("replay balance seed must be non-negative")
@@ -577,6 +600,8 @@ def create_fresh_trainer(
     parent_policy_anchor_weight: float = 0.0,
     parent_end_turn_margin_guard_weight: float = 0.0,
     parent_end_turn_margin_guard_cap: float = 0.1,
+    parent_card_ranking_guard_weight: float = 0.0,
+    parent_card_ranking_guard_cap: float = 0.1,
     continuous_dim: int = CONTINUOUS_DIM,
 ) -> DQNTrainerV2:
     random.seed(seed)
@@ -603,6 +628,8 @@ def create_fresh_trainer(
         parent_policy_anchor_weight=parent_policy_anchor_weight,
         parent_end_turn_margin_guard_weight=parent_end_turn_margin_guard_weight,
         parent_end_turn_margin_guard_cap=parent_end_turn_margin_guard_cap,
+        parent_card_ranking_guard_weight=parent_card_ranking_guard_weight,
+        parent_card_ranking_guard_cap=parent_card_ranking_guard_cap,
     )
     return trainer
 
@@ -849,6 +876,7 @@ def initialize_trainer(
         if (
             trainer.parent_policy_anchor_weight > 0.0
             or trainer.parent_end_turn_margin_guard_weight > 0.0
+            or trainer.parent_card_ranking_guard_weight > 0.0
         ):
             raise ValueError(
                 "positive frozen-parent objective requires a warm-start checkpoint"
@@ -860,6 +888,8 @@ def initialize_trainer(
             "parent_policy_anchor_weight": 0.0,
             "parent_end_turn_margin_guard_weight": 0.0,
             "parent_end_turn_margin_guard_cap": trainer.parent_end_turn_margin_guard_cap,
+            "parent_card_ranking_guard_weight": 0.0,
+            "parent_card_ranking_guard_cap": trainer.parent_card_ranking_guard_cap,
         }
 
     state = initial_checkpoint.get("state_dict")
@@ -928,9 +958,14 @@ def initialize_trainer(
     record["parent_end_turn_margin_guard_cap"] = (
         trainer.parent_end_turn_margin_guard_cap
     )
+    record["parent_card_ranking_guard_weight"] = (
+        trainer.parent_card_ranking_guard_weight
+    )
+    record["parent_card_ranking_guard_cap"] = trainer.parent_card_ranking_guard_cap
     if (
         trainer.parent_policy_anchor_weight > 0.0
         or trainer.parent_end_turn_margin_guard_weight > 0.0
+        or trainer.parent_card_ranking_guard_weight > 0.0
     ):
         trainer.set_parent_policy_anchor(control)
         record["parent_policy_anchor_parameter_sha256"] = parameter_sha256(
@@ -1609,6 +1644,9 @@ def run_optimizer(trainer: DQNTrainerV2, steps: int) -> dict[str, list[float]]:
         "parent_end_turn_margin_guard": [],
         "parent_end_turn_margin_guard_eligible_count": [],
         "parent_end_turn_margin_guard_ranking_violation_count": [],
+        "parent_card_ranking_guard": [],
+        "parent_card_ranking_guard_eligible_count": [],
+        "parent_card_ranking_guard_ranking_violation_count": [],
     }
     for _ in range(steps):
         loss = trainer.train_step()
@@ -1626,6 +1664,15 @@ def run_optimizer(trainer: DQNTrainerV2, steps: int) -> dict[str, list[float]]:
             ),
             "parent_end_turn_margin_guard_ranking_violation_count": float(
                 trainer.last_parent_end_turn_margin_guard_ranking_violation_count
+            ),
+            "parent_card_ranking_guard": float(
+                trainer.last_parent_card_ranking_guard_loss
+            ),
+            "parent_card_ranking_guard_eligible_count": float(
+                trainer.last_parent_card_ranking_guard_eligible_count
+            ),
+            "parent_card_ranking_guard_ranking_violation_count": float(
+                trainer.last_parent_card_ranking_guard_ranking_violation_count
             ),
         }
         if not all(math.isfinite(value) for value in values.values()):
@@ -1993,6 +2040,12 @@ def _publish(
         source_binding["parent_end_turn_margin_guard_cap"] = report["training"].get(
             "parent_end_turn_margin_guard_cap", 0.1
         )
+        source_binding["parent_card_ranking_guard_weight"] = report[
+            "training"
+        ].get("parent_card_ranking_guard_weight", 0.0)
+        source_binding["parent_card_ranking_guard_cap"] = report["training"].get(
+            "parent_card_ranking_guard_cap", 0.1
+        )
         if report["training"].get("replay_target"):
             source_binding["replay_target"] = report["training"]["replay_target"]
         if report["initialization"].get("parent_policy_anchor_parameter_sha256"):
@@ -2050,7 +2103,7 @@ def _publish(
             "size_bytes": candidate_path.stat().st_size,
         }
     manifest = {
-        "schema_version": "combat-lightspeed-training-smoke-manifest-v11",
+        "schema_version": "combat-lightspeed-training-smoke-manifest-v12",
         "artifacts": manifest_entries,
     }
     artifacts["manifest.json"] = canonical_json_bytes(manifest) + b"\n"
@@ -2079,6 +2132,10 @@ def run_smoke(
             config.parent_end_turn_margin_guard_weight
         ),
         parent_end_turn_margin_guard_cap=config.parent_end_turn_margin_guard_cap,
+        parent_card_ranking_guard_weight=(
+            config.parent_card_ranking_guard_weight
+        ),
+        parent_card_ranking_guard_cap=config.parent_card_ranking_guard_cap,
         continuous_dim=CONTINUOUS_DIM + config.encounter_identity_buckets,
     )
     initial, initialization = initialize_trainer(
@@ -2166,6 +2223,13 @@ def run_smoke(
         ]
     ):
         blockers.append("parent_end_turn_margin_guard_eligibility_missing")
+    if config.parent_card_ranking_guard_weight > 0.0 and not any(
+        value > 0.0
+        for value in objective_losses[
+            "parent_card_ranking_guard_eligible_count"
+        ]
+    ):
+        blockers.append("parent_card_ranking_guard_eligibility_missing")
     if delta["l2"] <= 0.0 or initial_sha256 == candidate_sha256:
         blockers.append("parameters_unchanged")
     if unexpected_initialization_failures(
@@ -2252,6 +2316,12 @@ def run_smoke(
             "parent_end_turn_margin_guard_cap": (
                 config.parent_end_turn_margin_guard_cap
             ),
+            "parent_card_ranking_guard_weight": (
+                config.parent_card_ranking_guard_weight
+            ),
+            "parent_card_ranking_guard_cap": (
+                config.parent_card_ranking_guard_cap
+            ),
             "loss_first": losses[0],
             "loss_last": losses[-1],
             "loss_mean": float(np.mean(losses)),
@@ -2320,6 +2390,12 @@ def _parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--parent-end-turn-margin-guard-cap", default=0.1, type=float
     )
+    parser.add_argument(
+        "--parent-card-ranking-guard-weight", default=0.0, type=float
+    )
+    parser.add_argument(
+        "--parent-card-ranking-guard-cap", default=0.1, type=float
+    )
     parser.add_argument("--balance-replay-by-battle-index", action="store_true")
     parser.add_argument("--replay-balance-seed", default=2026081903, type=int)
     parser.add_argument("--encounter-identity-buckets", default=0, type=int)
@@ -2373,6 +2449,10 @@ def main() -> int:
             args.parent_end_turn_margin_guard_weight
         ),
         parent_end_turn_margin_guard_cap=args.parent_end_turn_margin_guard_cap,
+        parent_card_ranking_guard_weight=(
+            args.parent_card_ranking_guard_weight
+        ),
+        parent_card_ranking_guard_cap=args.parent_card_ranking_guard_cap,
         balance_replay_by_battle_index=args.balance_replay_by_battle_index,
         replay_balance_seed=args.replay_balance_seed,
         encounter_identity_buckets=args.encounter_identity_buckets,
