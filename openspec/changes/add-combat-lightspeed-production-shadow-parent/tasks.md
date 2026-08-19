@@ -11,4 +11,4 @@
 ## 3. Evidence And Verification
 
 - [x] 3.1 Run the focused converter tests and strict OpenSpec validation without rerunning the unrelated full suite or launching gameplay.
-- [ ] 3.2 Convert the exact production r16 checkpoint, validate the published artifact hashes, and record the immutable source/shadow binding.
+- [x] 3.2 Convert the exact production r16 checkpoint, validate the published artifact hashes, and record the immutable source/shadow binding.
