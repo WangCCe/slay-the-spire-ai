@@ -1,0 +1,132 @@
+{
+  "schema_version": "combat-lightspeed-production-r16-guarded-encounter-ablation-registration-v1",
+  "experiment_id": "combat-lightspeed-production-r16-guarded-encounter-ablation-20260819-r1",
+  "registered_source_commit": "5b1bb8d9291b2e28d2fcdd85e1e6669cb2a90f17",
+  "experiment_question": "Does collision-free enum-v1 encounter identity materially improve the same margin-guarded one-step successor from production r16, especially in battles 6 and 9?",
+  "source_binding": {
+    "training_runner_sha256": "8e99cc11729f1b4dea32ac2c5efa654bcac4e3d86eb6e5d959e140039da2fe79",
+    "bridge_source_sha256": "610f0d52e1c638e8f734343a13344b1e8e8f93bae9713ac06b792dbedfc4fdad",
+    "native_module_path": "D:/PycharmProjects/slay-the-spire-ai/.sts_lightspeed_combat_later_battle_20260819_r3_build/sts_lightspeed_combat_adapter.cp310-win_amd64.pyd",
+    "native_module_sha256": "195678b7fc6bf69815f3d2971404afb8ce72fb666700edf4203383429caf1009",
+    "simulator_repo": "D:/CLionProjects/sts_lightspeed",
+    "simulator_commit": "7476a81954020087da31d41d16fddf475746ec2d",
+    "simulator_dirty": true,
+    "items_json_path": "D:/SteamLibrary/steamapps/common/SlayTheSpire/export/items.json",
+    "items_json_sha256": "e23784ea8ed3092e3bfa9918240e162a9cbcb837badfb53c612eb0d83cc811dc",
+    "enum_v1_vocabulary_sha256": "03de0935cfdabf10d0a1ba800c9afe561d453c40c10b3c6b5ee47f7b14763638"
+  },
+  "parent": {
+    "label": "production_r16_shadow",
+    "shadow_path": "reports/combat_lightspeed_production_r16_shadow_20260819_r1/simulator_only_production_shadow.pth",
+    "shadow_sha256": "ce2ae34f82b3f457fb35e87d429c397204c42d0f742d3ac8952d91b69119b83b",
+    "parameter_sha256": "cfe8204d06db6b43b063df98e1b713d4a40a0894a1a9330c3db87c739da88d48",
+    "enum_migrated_parameter_sha256": "f06f85d39e6c634c0b69761a9dff2fcfa0372d6f34813834d984c02e986a43ae",
+    "production_compatible": false
+  },
+  "predecessor_evidence": {
+    "guarded_successor_aggregate_reward_delta": 0.026643739712210228,
+    "guarded_successor_aggregate_player_hp_delta": 0.13074204946996468,
+    "guarded_successor_candidate_only_victories": 42,
+    "guarded_successor_parent_only_victories": 44,
+    "guarded_successor_battle_6_9_reward_delta": -0.656548247718147,
+    "guarded_successor_battle_9_reward_delta": -1.7035895740393592,
+    "guarded_successor_disagreement_rate": 0.07502,
+    "guarded_successor_non_end_turn_to_end_turn_share_of_disagreements": 0.134,
+    "r4_enum_identity_late_battle_signal": "positive in two prior simulator cohorts but not tested from production r16"
+  },
+  "cohorts": {
+    "training_seeds": "134000..135023",
+    "training_seed_count": 1024,
+    "evaluation_seeds": "136000..136255",
+    "evaluation_seed_count": 256,
+    "battle_indices": [0, 3, 6, 9],
+    "training_profile_count_per_arm": 4096,
+    "evaluation_profile_count_per_policy_per_arm": 1024,
+    "prior_registered_lightspeed_seed_overlap": false
+  },
+  "shared_recipe": {
+    "ascension": 0,
+    "max_decisions_per_profile": 100,
+    "max_actions_per_turn": 8,
+    "behavior_seed": 2026081997,
+    "network_seed": 2026081998,
+    "batch_size": 128,
+    "optimizer_steps": 256,
+    "parent_policy_anchor_weight": 1.0,
+    "parent_end_turn_margin_guard_weight": 1.0,
+    "parent_end_turn_margin_guard_cap": 0.1,
+    "balance_replay_by_battle_index": true,
+    "replay_balance_seed": 2026081999,
+    "complete_trajectories_only": true,
+    "replay_target_mode": "one-step-td",
+    "replay_return_discount": 0.99,
+    "replay_return_horizon": 3,
+    "device": "cpu",
+    "production_checkpoint_access": false
+  },
+  "arms": {
+    "guarded_control": {
+      "encounter_identity_buckets": 0,
+      "encounter_identity_encoding": "sha256-first-8-bytes-modulo",
+      "output_dir": "reports/combat_lightspeed_production_r16_guarded_encounter_ablation_20260819_r1_control"
+    },
+    "enum_v1_candidate": {
+      "encounter_identity_buckets": 64,
+      "encounter_identity_encoding": "monster-encounter-enum-v1",
+      "output_dir": "reports/combat_lightspeed_production_r16_guarded_encounter_ablation_20260819_r1_enum"
+    }
+  },
+  "technical_success_criteria": {
+    "both_verdicts": "technical_smoke_ready",
+    "finite_optimizer_updates_per_arm": 256,
+    "control_initial_parameter_sha256_matches_parent": true,
+    "enum_initial_parameter_sha256_matches_registered_migration": true,
+    "enum_migrated_parent_new_column_max_abs": 0.0,
+    "enum_migration_q_max_abs_delta_lte": 0.00001,
+    "enum_migration_action_mismatch_count": 0,
+    "enum_v1_assignments_are_unique": true,
+    "enum_v1_vocabulary_sha256_matches_registration": true,
+    "source_replay_counts_identical_between_arms": true,
+    "parent_control_evaluation_rows_identical_between_arms": true,
+    "all_four_prepared_transition_strata_equal_per_arm": true,
+    "prepared_transition_count_lte_replay_capacity_100000_per_arm": true,
+    "allowed_incomplete_profile_reasons": ["decision_bound"],
+    "excluded_incomplete_profile_count_lte_per_arm": 8,
+    "excluded_incomplete_transition_count_lte_per_arm": 800,
+    "unexpected_initialization_failure_count_per_arm": 0,
+    "unsupported_reason_counts_empty_per_arm": true,
+    "excluded_nonterminal_evaluation_profile_count_lte_per_comparison": 4,
+    "terminal_evaluation_profile_count_gte_per_parent_comparison": 800,
+    "terminal_battle_9_profile_count_gte_per_parent_comparison": 100
+  },
+  "enum_vs_control_criteria": {
+    "aggregate_mean_reward_delta_gt": 0.0,
+    "aggregate_mean_player_hp_delta_gte": 0.0,
+    "enum_only_victories_gte_control_only_victories": true,
+    "battle_indices_6_and_9_combined_mean_reward_delta_gt": 0.0,
+    "battle_index_0_mean_reward_delta_gte": -0.25,
+    "battle_index_0_mean_player_hp_delta_gte": -0.25,
+    "no_battle_index_mean_reward_delta_lt": -1.0
+  },
+  "enum_vs_parent_criteria": {
+    "aggregate_mean_reward_delta_gt": 0.0,
+    "aggregate_mean_player_hp_delta_gte": 0.0,
+    "candidate_only_victories_gte_parent_only_victories": true,
+    "battle_indices_6_and_9_combined_mean_reward_delta_gt": 0.0,
+    "battle_index_0_mean_reward_delta_gte": -0.25,
+    "battle_index_0_mean_player_hp_delta_gte": -0.25,
+    "no_battle_index_mean_reward_delta_lt": -1.0
+  },
+  "decision_rule": {
+    "fresh_frozen_confirmation_eligible": "all technical, enum-vs-control, and enum-vs-parent criteria pass",
+    "retain_parent": "any technical blocker or any enum-vs-parent or enum-vs-control criterion failure",
+    "live_transfer_authorized": false
+  },
+  "stop_rules": [
+    "Execute each registered arm at most once; do not retry or alter this cohort after outcome access.",
+    "Do not tune the encoding, objective, guard, recipe, seeds, or thresholds after outcome access.",
+    "Do not start Slay the Spire or CommunicationMod.",
+    "Load only the simulator shadow; do not load or modify the production-compatible r16 checkpoint.",
+    "A passing result authorizes one fresh frozen LightSTS confirmation, not production packaging or gameplay."
+  ]
+}
