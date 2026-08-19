@@ -7309,6 +7309,113 @@ def test_ethereal_attack_guard_prioritizes_carnage_before_low_value_card():
     assert agent._fallback_turn_key == (16, 2)
 
 
+def test_boss_apparition_guard_prioritizes_expiring_intangible_before_rl_attack():
+    strike = SimpleNamespace(
+        name="Strike",
+        card_id="Strike_R",
+        type=CardType.ATTACK,
+        is_playable=True,
+        cost=1,
+        has_target=True,
+    )
+    apparition = SimpleNamespace(
+        name="Apparition",
+        card_id="Ghostly",
+        type=CardType.SKILL,
+        is_playable=True,
+        cost=1,
+        has_target=False,
+    )
+    game = _game(
+        floor=33,
+        turn=2,
+        player=SimpleNamespace(energy=4),
+        room_type="MonsterRoomBoss",
+        hand=[strike, apparition],
+        monsters=[
+            _monster(
+                hp=300,
+                damage=8,
+                index=0,
+                name="Bronze Automaton",
+                monster_id="BronzeAutomaton",
+            )
+        ],
+    )
+
+    agent = _agent()
+    agent.rl_agent = SimpleNamespace(
+        get_next_action_in_game=lambda _game: PlayCardAction(card_index=0, target_index=0)
+    )
+    agent.use_rl_for_combat = True
+    agent.rl_failure_count = 0
+    agent.max_rl_failures = 3
+    agent._fallback_turn_key = None
+    agent._reward_screen_key = None
+    agent._reward_screen_waited = False
+    agent.reward_screen_wait = 0
+
+    action = agent.get_next_action_in_game(game)
+
+    assert isinstance(action, PlayCardAction)
+    assert action.card_index == 1
+    assert action.target_index is None
+    assert agent._fallback_turn_key == (33, 2)
+
+
+def test_boss_apparition_guard_continues_during_fallback_takeover():
+    defend = SimpleNamespace(
+        name="Defend",
+        card_id="Defend_R",
+        type=CardType.SKILL,
+        is_playable=True,
+        cost=1,
+        has_target=False,
+    )
+    apparition = SimpleNamespace(
+        name="Apparition",
+        card_id="Ghostly",
+        type=CardType.SKILL,
+        is_playable=True,
+        cost=1,
+        has_target=False,
+    )
+    game = _game(
+        floor=33,
+        turn=2,
+        player=SimpleNamespace(energy=3),
+        room_type="MonsterRoomBoss",
+        hand=[defend, apparition],
+        monsters=[
+            _monster(
+                hp=300,
+                damage=8,
+                index=0,
+                name="Bronze Automaton",
+                monster_id="BronzeAutomaton",
+            )
+        ],
+    )
+
+    agent = _agent()
+    agent.fallback_agent = SimpleNamespace(
+        get_next_action_in_game=lambda _game: PlayCardAction(card_index=0)
+    )
+    agent.use_rl_for_combat = True
+    agent.rl_failure_count = 0
+    agent.max_rl_failures = 3
+    agent._fallback_turn_key = (33, 2)
+    agent._reward_screen_key = None
+    agent._reward_screen_waited = False
+    agent.reward_screen_wait = 0
+
+    action = agent.get_next_action_in_game(game)
+
+    assert isinstance(action, PlayCardAction)
+    assert action.card_index == 1
+    assert action.target_index is None
+
+
 def test_havoc_guard_replaces_rl_havoc_with_safer_card():
     havoc = SimpleNamespace(
         name="Havoc",

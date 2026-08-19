@@ -1045,6 +1045,7 @@ class CombatRLAgent:
         }
     )
     URGENT_ETHEREAL_ATTACKS = frozenset({"carnage"})
+    URGENT_BOSS_ETHEREAL_DEFENSE = frozenset({"apparition", "ghostly"})
     LOW_VALUE_BEFORE_URGENT_ETHEREAL = frozenset(
         {
             "strike",
@@ -1389,6 +1390,17 @@ class CombatRLAgent:
                 )
                 return finalize(replacement)
 
+            if self._is_urgent_boss_ethereal_defense_action(fallback_action, game):
+                return finalize(fallback_action, accepted_plan_action=True)
+
+            replacement = self._get_urgent_boss_ethereal_defense_replacement(game)
+            if replacement is not None:
+                logger.info(
+                    "[BOSS_APPARITION_GUARD] Continuing takeover with %s",
+                    self._describe_combat_action(replacement, game),
+                )
+                return finalize(replacement)
+
             replacement = self._get_survival_block_replacement(game)
             if replacement is not None:
                 logger.info(
@@ -1601,6 +1613,19 @@ class CombatRLAgent:
                     self._fallback_turn_key = self._combat_turn_key(game)
                     logger.info(
                         "[LETHAL_GUARD] Replacing RL action with %s on floor=%s turn=%s",
+                        self._describe_combat_action(replacement, game),
+                        getattr(game, "floor", None),
+                        getattr(game, "turn", None),
+                    )
+                    return self._with_combat_action_context(replacement, game)
+                elif self._is_urgent_boss_ethereal_defense_action(action, game):
+                    self.rl_failure_count = 0
+                    return self._with_combat_action_context(action, game)
+                elif (replacement := self._get_urgent_boss_ethereal_defense_replacement(game)) is not None:
+                    self.rl_failure_count = 0
+                    self._fallback_turn_key = self._combat_turn_key(game)
+                    logger.info(
+                        "[BOSS_APPARITION_GUARD] Replacing RL action with %s on floor=%s turn=%s",
                         self._describe_combat_action(replacement, game),
                         getattr(game, "floor", None),
                         getattr(game, "turn", None),
@@ -4599,6 +4624,40 @@ class CombatRLAgent:
         return self._card_matches_normalized_names(
             self._card_for_action(action, game),
             self.URGENT_ETHEREAL_ATTACKS,
+        )
+
+    def _get_urgent_boss_ethereal_defense_replacement(
+        self,
+        game: Game,
+    ) -> Optional[Action]:
+        from spirecomm.communication.action import PlayCardAction
+
+        if not self._is_boss_combat(game):
+            return None
+
+        energy = self._player_energy(game)
+        for card_index, card in self._playable_cards(game, energy):
+            if self._card_matches_normalized_names(
+                card,
+                self.URGENT_BOSS_ETHEREAL_DEFENSE,
+            ):
+                return PlayCardAction(card_index=card_index)
+        return None
+
+    def _is_urgent_boss_ethereal_defense_action(
+        self,
+        action: Action,
+        game: Game,
+    ) -> bool:
+        from spirecomm.communication.action import PlayCardAction
+
+        return (
+            isinstance(action, PlayCardAction)
+            and self._is_boss_combat(game)
+            and self._card_matches_normalized_names(
+                self._card_for_action(action, game),
+                self.URGENT_BOSS_ETHEREAL_DEFENSE,
+            )
         )
 
     def _should_override_unproductive_double_tap(self, action: Action, game: Game) -> bool:
