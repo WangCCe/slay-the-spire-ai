@@ -4637,10 +4637,7 @@ class CombatRLAgent:
 
         energy = self._player_energy(game)
         for card_index, card in self._playable_cards(game, energy):
-            if self._card_matches_normalized_names(
-                card,
-                self.URGENT_BOSS_ETHEREAL_DEFENSE,
-            ):
+            if self._is_urgent_boss_ethereal_defense_card(card):
                 return PlayCardAction(card_index=card_index)
         return None
 
@@ -4654,10 +4651,19 @@ class CombatRLAgent:
         return (
             isinstance(action, PlayCardAction)
             and self._is_boss_combat(game)
-            and self._card_matches_normalized_names(
-                self._card_for_action(action, game),
-                self.URGENT_BOSS_ETHEREAL_DEFENSE,
+            and self._is_urgent_boss_ethereal_defense_card(
+                self._card_for_action(action, game)
             )
+        )
+
+    @classmethod
+    def _is_urgent_boss_ethereal_defense_card(cls, card) -> bool:
+        if card is None:
+            return False
+        return any(
+            cls._normalize_identifier(value) in cls.URGENT_BOSS_ETHEREAL_DEFENSE
+            for value in (getattr(card, "name", None), getattr(card, "card_id", None))
+            if value
         )
 
     def _should_override_unproductive_double_tap(self, action: Action, game: Game) -> bool:

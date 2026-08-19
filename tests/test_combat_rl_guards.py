@@ -7416,6 +7416,35 @@ def test_boss_apparition_guard_continues_during_fallback_takeover():
     assert action.target_index is None
 
 
+def test_boss_apparition_guard_does_not_match_ghostly_armor():
+    ghostly_armor = SimpleNamespace(
+        name="Ghostly Armor",
+        card_id="Ghostly Armor",
+        type=CardType.SKILL,
+        is_playable=True,
+        cost=1,
+        has_target=False,
+    )
+    game = _game(
+        floor=33,
+        turn=2,
+        player=SimpleNamespace(energy=4),
+        room_type="MonsterRoomBoss",
+        hand=[ghostly_armor],
+        monsters=[
+            _monster(
+                hp=300,
+                damage=0,
+                index=0,
+                name="Bronze Automaton",
+                monster_id="BronzeAutomaton",
+            )
+        ],
+    )
+
+    assert _agent()._get_urgent_boss_ethereal_defense_replacement(game) is None
+
+
 def test_havoc_guard_replaces_rl_havoc_with_safer_card():
     havoc = SimpleNamespace(
         name="Havoc",
