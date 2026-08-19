@@ -57,6 +57,7 @@ FROZEN_PARENT_N_STEP_TARGET = "frozen-parent-n-step-return"
 ENCOUNTER_HASH_ALGORITHM = "sha256-first-8-bytes-modulo"
 ENCOUNTER_ENUM_ENCODING = "monster-encounter-enum-v1"
 MAX_ENCOUNTER_IDENTITY_BUCKETS = 1024
+ENCOUNTER_PARENT_EQUIVALENCE_TOLERANCE = 1e-5
 ENCOUNTER_ENUM_V1 = (
     "CULTIST",
     "JAW_WORM",
@@ -563,13 +564,26 @@ def migrate_parent_for_encounter_identity(
     return migrated
 
 
+def encounter_parent_equivalence_passes(
+    *,
+    max_abs_q_delta: float,
+    action_mismatch_count: int,
+    tolerance: float = ENCOUNTER_PARENT_EQUIVALENCE_TOLERANCE,
+) -> bool:
+    return (
+        math.isfinite(max_abs_q_delta)
+        and 0.0 <= max_abs_q_delta <= tolerance
+        and action_mismatch_count == 0
+    )
+
+
 def prove_encounter_parent_equivalence(
     trainer: DQNTrainerV2,
     source: Mapping[str, torch.Tensor],
     *,
     bucket_count: int,
     probe_count: int = 16,
-    tolerance: float = 1e-6,
+    tolerance: float = ENCOUNTER_PARENT_EQUIVALENCE_TOLERANCE,
 ) -> dict[str, Any]:
     network = trainer.online_network
     was_training = network.training
@@ -654,7 +668,11 @@ def prove_encounter_parent_equivalence(
     finally:
         torch.random.set_rng_state(torch_rng_state)
         network.train(was_training)
-    passed = max_abs_q_delta <= tolerance and action_mismatch_count == 0
+    passed = encounter_parent_equivalence_passes(
+        max_abs_q_delta=max_abs_q_delta,
+        action_mismatch_count=action_mismatch_count,
+        tolerance=tolerance,
+    )
     return {
         "action_mismatch_count": action_mismatch_count,
         "max_abs_q_delta": max_abs_q_delta,

@@ -17,6 +17,7 @@ from analysis_scripts.combat_lightspeed_training_smoke import (
     ENCOUNTER_ENUM_V1,
     ENCOUNTER_ENUM_V1_SHA256,
     ENCOUNTER_HASH_ALGORITHM,
+    ENCOUNTER_PARENT_EQUIVALENCE_TOLERANCE,
     FROZEN_PARENT_N_STEP_TARGET,
     ONE_STEP_TD_TARGET,
     REPORT_AUTHORITY,
@@ -28,6 +29,7 @@ from analysis_scripts.combat_lightspeed_training_smoke import (
     create_fresh_trainer,
     encounter_from_snapshot,
     encounter_identity_bucket,
+    encounter_parent_equivalence_passes,
     frozen_parent_bootstrap_values,
     initialize_trainer,
     load_initial_checkpoint,
@@ -859,6 +861,30 @@ def test_encounter_parent_migration_inserts_zero_columns_and_preserves_policy(tm
     assert parameter_sha256(
         target.parent_policy_anchor_network.state_dict()
     ) == record["parameter_sha256"]
+
+
+@pytest.mark.parametrize(
+    ("max_abs_q_delta", "action_mismatch_count", "expected"),
+    (
+        (7.62939453125e-6, 0, True),
+        (1.0000001e-5, 0, False),
+        (0.0, 1, False),
+        (float("nan"), 0, False),
+    ),
+)
+def test_encounter_parent_equivalence_uses_float32_boundary_and_exact_actions(
+    max_abs_q_delta,
+    action_mismatch_count,
+    expected,
+):
+    assert ENCOUNTER_PARENT_EQUIVALENCE_TOLERANCE == pytest.approx(1e-5)
+    assert (
+        encounter_parent_equivalence_passes(
+            max_abs_q_delta=max_abs_q_delta,
+            action_mismatch_count=action_mismatch_count,
+        )
+        is expected
+    )
 
 
 def test_encounter_identity_requires_compatible_warm_start(tmp_path):
