@@ -1,0 +1,57 @@
+{
+  "schema_version": "combat-lightspeed-deployment-consistent-target-ablation-analysis-v1",
+  "verdict": "one_step_rejected_retain_r16",
+  "integrity": {
+    "training_verdict": "technical_smoke_ready",
+    "comparison_verdict": "comparison_not_ready",
+    "comparison_blockers": ["decision_bound_truncation:production_r16_shadow"],
+    "training_report_sha256": "677cc897c7ae5965158ad3344e6368481df7b7d63e1f506453eb4d3af40c7009",
+    "comparison_report_sha256": "2dbf92af6ff2c6b4cef1a07981be4303a13aa4817523ac1baf3bca805378aa8e",
+    "generated_manifests_verified": true,
+    "comparison_retried": false
+  },
+  "training": {
+    "source_replay_transition_count": 51802,
+    "balanced_replay_transition_count": 69948,
+    "optimizer_update_count": 256,
+    "candidate_parameter_sha256": "78dc8c8e4b3d5a838af0f37a32ebf6fd070d4f471dd03809ef3f366792091507",
+    "candidate_checkpoint_sha256": "90b698fd63814d46bd14638a5e36142698a689784dde47be18b52aba101d62c9",
+    "parameter_l2_delta": 1.13542744757787,
+    "td_loss_mean": 2.54123500734568,
+    "parent_anchor_loss_mean": 0.489533210056834,
+    "parent_branch_count": 46603,
+    "exploration_branch_count": 5127,
+    "guard_proxy_replacement_count": 21383
+  },
+  "fresh_parent_gate": {
+    "matched_terminal_profile_count": 877,
+    "mean_reward_delta": -0.216595476394511,
+    "mean_player_hp_delta": -0.488027366020524,
+    "candidate_only_victories": 10,
+    "parent_only_victories": 13,
+    "battle_mean_reward_delta": {
+      "0": 0.143164,
+      "3": -0.489588,
+      "6": -0.430693,
+      "9": -0.070972
+    },
+    "passed": false
+  },
+  "target_diagnostic": {
+    "authority": "diagnostic_only_due_to_comparison_blocker",
+    "matched_terminal_profile_count": 878,
+    "one_step_minus_full_return_mean_reward": 0.263822,
+    "one_step_minus_full_return_mean_player_hp": 0.023918,
+    "one_step_only_vs_full_return_only_victories": "14:12",
+    "interpretation": "One-step is lower variance and ranks above full return, but neither target recipe improves on r16."
+  },
+  "decision": {
+    "production_checkpoint": "retain_r16",
+    "larger_confirmation": false,
+    "packaging": false,
+    "gameplay": false,
+    "same_cohort_tuning": false,
+    "stop_target_recipe_family": true,
+    "next_hypothesis": "The raw-parent cross-entropy anchor conflicts with post-proxy executed actions on guard replacement rows; isolate the anchor conflict on unused cohorts before adding another return target."
+  }
+}
