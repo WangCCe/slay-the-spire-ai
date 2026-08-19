@@ -135,6 +135,62 @@ def parent_card_ranking_guard_loss(
     return loss, eligible_count, ranking_violation_count
 
 
+def parent_top_action_margin_guard_loss(
+    current_q_values: torch.Tensor,
+    parent_q_values: torch.Tensor,
+    action_masks: torch.Tensor,
+    *,
+    margin_cap: float,
+) -> tuple[torch.Tensor, int, int]:
+    if current_q_values.shape != parent_q_values.shape:
+        raise ValueError("candidate and parent Q shapes must match")
+    if current_q_values.shape != action_masks.shape or current_q_values.ndim != 2:
+        raise ValueError("Q values and action masks must be matching matrices")
+    if current_q_values.shape[1] < 2:
+        raise ValueError("top-action margin guard requires at least two actions")
+    if not np.isfinite(margin_cap) or margin_cap <= 0.0:
+        raise ValueError("parent top-action margin guard cap must be finite and positive")
+
+    masks = action_masks.bool()
+    masked_parent_q = parent_q_values.masked_fill(~masks, float("-inf"))
+    parent_top_two = torch.topk(masked_parent_q, k=2, dim=1)
+    parent_best_actions = parent_top_two.indices[:, 0]
+    parent_margins = parent_top_two.values[:, 0] - parent_top_two.values[:, 1]
+    eligible = (
+        (masks.sum(dim=1) >= 2)
+        & torch.isfinite(parent_margins)
+        & (parent_margins > 0.0)
+    )
+    eligible_count = int(eligible.sum().item())
+    if not eligible_count:
+        finite_q = torch.where(
+            torch.isfinite(current_q_values),
+            current_q_values,
+            torch.zeros_like(current_q_values),
+        )
+        return finite_q.sum() * 0.0, 0, 0
+
+    candidate_q = current_q_values.masked_fill(~masks, float("-inf"))
+    candidate_parent_best_q = candidate_q.gather(
+        1, parent_best_actions.unsqueeze(1)
+    ).squeeze(1)
+    candidate_alternative_q = candidate_q.clone()
+    candidate_alternative_q.scatter_(
+        1,
+        parent_best_actions.unsqueeze(1),
+        float("-inf"),
+    )
+    candidate_margins = (
+        candidate_parent_best_q - candidate_alternative_q.max(dim=1).values
+    )[eligible]
+    if not bool(torch.isfinite(candidate_margins).all()):
+        raise ValueError("eligible candidate top-action margins must be finite")
+    required_margins = parent_margins[eligible].clamp(max=float(margin_cap))
+    ranking_violation_count = int((candidate_margins < 0.0).sum().item())
+    loss = F.relu(required_margins - candidate_margins).mean()
+    return loss, eligible_count, ranking_violation_count
+
+
 class DQNTrainerV2:
     def __init__(
         self,
@@ -168,6 +224,8 @@ class DQNTrainerV2:
         positive_energy_parent_end_turn_imitation_weight: float = 0.0,
         parent_card_ranking_guard_weight: float = 0.0,
         parent_card_ranking_guard_cap: float = 0.1,
+        parent_top_action_margin_guard_weight: float = 0.0,
+        parent_top_action_margin_guard_cap: float = 0.1,
     ):
         self.continuous_dim = continuous_dim
         self.action_dim = action_dim
@@ -240,6 +298,33 @@ class DQNTrainerV2:
             parent_card_ranking_guard_weight
         )
         self.parent_card_ranking_guard_cap = float(parent_card_ranking_guard_cap)
+        if (
+            not np.isfinite(parent_top_action_margin_guard_weight)
+            or parent_top_action_margin_guard_weight < 0.0
+        ):
+            raise ValueError(
+                "parent top-action margin guard weight must be finite and non-negative"
+            )
+        if (
+            not np.isfinite(parent_top_action_margin_guard_cap)
+            or parent_top_action_margin_guard_cap < 0.0
+        ):
+            raise ValueError(
+                "parent top-action margin guard cap must be finite and non-negative"
+            )
+        if (
+            parent_top_action_margin_guard_weight > 0.0
+            and parent_top_action_margin_guard_cap <= 0.0
+        ):
+            raise ValueError(
+                "positive parent top-action margin guard weight requires a positive cap"
+            )
+        self.parent_top_action_margin_guard_weight = float(
+            parent_top_action_margin_guard_weight
+        )
+        self.parent_top_action_margin_guard_cap = float(
+            parent_top_action_margin_guard_cap
+        )
         if (
             not np.isfinite(positive_energy_action_imitation_weight)
             or positive_energy_action_imitation_weight < 0
@@ -334,6 +419,9 @@ class DQNTrainerV2:
         self.last_parent_card_ranking_guard_loss = 0.0
         self.last_parent_card_ranking_guard_eligible_count = 0
         self.last_parent_card_ranking_guard_ranking_violation_count = 0
+        self.last_parent_top_action_margin_guard_loss = 0.0
+        self.last_parent_top_action_margin_guard_eligible_count = 0
+        self.last_parent_top_action_margin_guard_ranking_violation_count = 0
         self.last_positive_energy_action_imitation_loss = 0.0
         self.last_positive_energy_action_imitation_count = 0
         self.last_positive_energy_parent_end_turn_imitation_loss = 0.0
@@ -344,6 +432,7 @@ class DQNTrainerV2:
             self.parent_policy_anchor_weight <= 0.0
             and self.parent_end_turn_margin_guard_weight <= 0.0
             and self.parent_card_ranking_guard_weight <= 0.0
+            and self.parent_top_action_margin_guard_weight <= 0.0
         ):
             raise ValueError("a frozen-parent objective weight must be positive")
         anchor = copy.deepcopy(self.online_network)
@@ -533,6 +622,7 @@ class DQNTrainerV2:
             self.parent_policy_anchor_weight > 0.0
             or self.parent_end_turn_margin_guard_weight > 0.0
             or self.parent_card_ranking_guard_weight > 0.0
+            or self.parent_top_action_margin_guard_weight > 0.0
         ):
             anchor_q, anchor_actions = self.get_parent_policy_anchor_q_and_actions(
                 continuous,
@@ -579,6 +669,24 @@ class DQNTrainerV2:
                 action_masks,
                 margin_cap=self.parent_card_ranking_guard_cap,
             )
+        parent_top_action_margin_guard_loss_value = torch.zeros(
+            (), dtype=td_loss.dtype, device=self.device
+        )
+        parent_top_action_margin_guard_eligible_count = 0
+        parent_top_action_margin_guard_ranking_violation_count = 0
+        if self.parent_top_action_margin_guard_weight > 0.0:
+            if anchor_q is None:
+                raise RuntimeError("parent top-action margin guard requires parent Q values")
+            (
+                parent_top_action_margin_guard_loss_value,
+                parent_top_action_margin_guard_eligible_count,
+                parent_top_action_margin_guard_ranking_violation_count,
+            ) = parent_top_action_margin_guard_loss(
+                current_q_values,
+                anchor_q,
+                action_masks,
+                margin_cap=self.parent_top_action_margin_guard_cap,
+            )
         positive_energy_action_imitation_loss = torch.zeros(
             (), dtype=td_loss.dtype, device=self.device
         )
@@ -618,6 +726,8 @@ class DQNTrainerV2:
             * parent_end_turn_margin_guard_loss_value
             + self.parent_card_ranking_guard_weight
             * parent_card_ranking_guard_loss_value
+            + self.parent_top_action_margin_guard_weight
+            * parent_top_action_margin_guard_loss_value
             + self.positive_energy_action_imitation_weight
             * positive_energy_action_imitation_loss
             + self.positive_energy_parent_end_turn_imitation_weight
@@ -643,6 +753,15 @@ class DQNTrainerV2:
         )
         self.last_parent_card_ranking_guard_ranking_violation_count = (
             parent_card_ranking_guard_ranking_violation_count
+        )
+        self.last_parent_top_action_margin_guard_loss = float(
+            parent_top_action_margin_guard_loss_value.item()
+        )
+        self.last_parent_top_action_margin_guard_eligible_count = (
+            parent_top_action_margin_guard_eligible_count
+        )
+        self.last_parent_top_action_margin_guard_ranking_violation_count = (
+            parent_top_action_margin_guard_ranking_violation_count
         )
         self.last_positive_energy_action_imitation_loss = float(
             positive_energy_action_imitation_loss.item()
@@ -703,6 +822,21 @@ class DQNTrainerV2:
                 self.parent_card_ranking_guard_cap,
                 self.last_parent_card_ranking_guard_eligible_count,
                 self.last_parent_card_ranking_guard_ranking_violation_count,
+            )
+
+        if (
+            self.parent_top_action_margin_guard_weight > 0.0
+            and self.total_steps % 100 == 0
+        ):
+            logger.info(
+                "RL parent top-action margin guard update: total_steps=%s "
+                "loss=%.6f weight=%.6f cap=%.6f eligible=%s violations=%s",
+                self.total_steps,
+                self.last_parent_top_action_margin_guard_loss,
+                self.parent_top_action_margin_guard_weight,
+                self.parent_top_action_margin_guard_cap,
+                self.last_parent_top_action_margin_guard_eligible_count,
+                self.last_parent_top_action_margin_guard_ranking_violation_count,
             )
 
         if (

@@ -14,6 +14,7 @@ from spirecomm.ai.rl.v2.trainer import (
     DQNTrainerV2,
     parent_card_ranking_guard_loss,
     parent_end_turn_margin_guard_loss,
+    parent_top_action_margin_guard_loss,
 )
 from spirecomm.communication.action import EndTurnAction
 
@@ -139,6 +140,68 @@ def test_parent_card_ranking_guard_zero_eligible_is_differentiable():
         parent_q,
         masks,
         margin_cap=0.1,
+    )
+
+    assert eligible_count == 0
+    assert ranking_violation_count == 0
+    assert loss.item() == 0.0
+    loss.backward()
+    assert torch.count_nonzero(candidate_q.grad).item() == 0
+
+
+def test_parent_top_action_margin_guard_protects_parent_end_turn_and_filters_rows():
+    parent_q = torch.zeros((3, END_TURN_ACTION + 2), dtype=torch.float32)
+    candidate_q = torch.zeros_like(parent_q)
+    masks = torch.zeros_like(parent_q, dtype=torch.bool)
+
+    masks[0, [1, END_TURN_ACTION]] = True
+    parent_q[0, END_TURN_ACTION] = 0.5
+    parent_q[0, 1] = 0.3
+    candidate_q[0, END_TURN_ACTION] = 0.0
+    candidate_q[0, 1] = 0.2
+
+    masks[1, 2] = True
+    parent_q[1, 2] = 0.5
+    candidate_q[1, 2] = 0.5
+
+    masks[2, [3, 9]] = True
+    parent_q[2, 3] = 0.4
+    parent_q[2, 9] = 0.4
+    candidate_q[2, 3] = 0.4
+    candidate_q[2, 9] = 0.4
+    candidate_q.requires_grad_(True)
+
+    loss, eligible_count, ranking_violation_count = (
+        parent_top_action_margin_guard_loss(
+            candidate_q,
+            parent_q,
+            masks,
+            margin_cap=0.1,
+        )
+    )
+
+    assert eligible_count == 1
+    assert ranking_violation_count == 1
+    assert loss.item() == pytest.approx(0.3)
+    loss.backward()
+    assert candidate_q.grad[0, END_TURN_ACTION].item() < 0.0
+    assert candidate_q.grad[0, 1].item() > 0.0
+    assert torch.count_nonzero(candidate_q.grad[1:]).item() == 0
+
+
+def test_parent_top_action_margin_guard_zero_eligible_is_differentiable():
+    parent_q = torch.zeros((1, END_TURN_ACTION + 2), dtype=torch.float32)
+    masks = torch.zeros_like(parent_q, dtype=torch.bool)
+    masks[0, 1] = True
+    candidate_q = parent_q.clone().requires_grad_(True)
+
+    loss, eligible_count, ranking_violation_count = (
+        parent_top_action_margin_guard_loss(
+            candidate_q,
+            parent_q,
+            masks,
+            margin_cap=0.1,
+        )
     )
 
     assert eligible_count == 0
