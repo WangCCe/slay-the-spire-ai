@@ -1,0 +1,125 @@
+{
+  "schema_version": "combat-lightspeed-production-r16-guarded-encounter-ablation-analysis-v1",
+  "experiment_id": "combat-lightspeed-production-r16-guarded-encounter-ablation-20260819-r1",
+  "registration": {
+    "path": "reports/combat_lightspeed_production_r16_guarded_encounter_ablation_20260819_r1_registration.json",
+    "sha256": "a4007b5d33566cd8f58309e858c5e014443cc39f3a6e7e6e7e4f1bb468047a39"
+  },
+  "artifacts": {
+    "guarded_control": {
+      "report_sha256": "341debdd8a6bd9d014be3916474c2cf369908f0b7cd57faf16b16fbe351288b8",
+      "manifest_sha256": "e918e3047c55fd9c87c4147d30d9fe41329774b60e69df3288a0a27bce340cdc",
+      "checkpoint_sha256": "d90ad33d11a95574e4a019d0cc663d9438b30c45743cfca0da8a2a19eefbaa03",
+      "candidate_parameter_sha256": "0894157bd5be6685f3db21b73383373521806a7ca733da16e437220d92aa36d8"
+    },
+    "enum_v1_candidate": {
+      "report_sha256": "39163651543b82bf424689a9fbc6a5dee8bff5ec45d515e58d18790e7defc8fa",
+      "manifest_sha256": "8d368047be00ae6abecfe84c9108906c96ea7fa09c19035f11b6030299844d9a",
+      "checkpoint_sha256": "41ba718ad4b4b11f9c64b8e374e528c3f131a86521073530dcc2e1cef6267f24",
+      "candidate_parameter_sha256": "45207fb9bcd1daddd1f64bd595b002b7d15b7b3b9a5cdf8868f5b10707db272e"
+    }
+  },
+  "technical": {
+    "all_registered_criteria_pass": true,
+    "verdict_per_arm": "technical_smoke_ready",
+    "optimizer_updates_per_arm": 256,
+    "source_replay_transition_count_per_arm": 65986,
+    "prepared_replay_transition_count_per_arm": 78500,
+    "source_transition_counts": {"0": 15414, "3": 17973, "6": 19625, "9": 12974},
+    "prepared_transition_count_per_stratum": 19625,
+    "source_and_prepared_counts_identical_between_arms": true,
+    "parent_control_evaluation_rows_identical_between_arms": true,
+    "excluded_incomplete_profile_count_per_arm": 2,
+    "excluded_incomplete_transition_count_per_arm": 200,
+    "incomplete_reason_counts_per_arm": {"decision_bound": 2},
+    "unexpected_initialization_failure_count_per_arm": 0,
+    "unsupported_reason_counts_empty_per_arm": true,
+    "excluded_nonterminal_evaluation_profile_count_per_comparison": 0,
+    "terminal_evaluation_profile_count_per_comparison": 856,
+    "terminal_battle_9_profile_count_per_comparison": 146,
+    "enum_migration": {
+      "initial_parameter_sha256": "f06f85d39e6c634c0b69761a9dff2fcfa0372d6f34813834d984c02e986a43ae",
+      "inserted_column_max_abs": 0.0,
+      "action_mismatch_count": 0,
+      "max_abs_q_delta": 0.00000762939453125,
+      "tolerance": 0.00001,
+      "vocabulary_sha256": "03de0935cfdabf10d0a1ba800c9afe561d453c40c10b3c6b5ee47f7b14763638"
+    }
+  },
+  "guarded_control_vs_parent": {
+    "aggregate": {
+      "profile_count": 856,
+      "mean_reward_delta": 2.127739270570296,
+      "mean_player_hp_delta": 1.8376168224299065,
+      "candidate_only_victories": 65,
+      "parent_only_victories": 44
+    },
+    "by_battle_index": {
+      "0": {"profile_count": 256, "mean_reward_delta": 4.407714843750001, "mean_player_hp_delta": 3.83203125, "candidate_only_victories": 32, "parent_only_victories": 16},
+      "3": {"profile_count": 249, "mean_reward_delta": 1.8502714850927173, "mean_player_hp_delta": 1.5742971887550201, "candidate_only_victories": 18, "parent_only_victories": 12},
+      "6": {"profile_count": 205, "mean_reward_delta": -1.0341837110214804, "mean_player_hp_delta": -0.2926829268292683, "candidate_only_victories": 5, "parent_only_victories": 11},
+      "9": {"profile_count": 146, "mean_reward_delta": 3.0428758669828095, "mean_player_hp_delta": 1.7808219178082192, "candidate_only_victories": 10, "parent_only_victories": 5}
+    },
+    "battle_6_9_combined": {"profile_count": 351, "mean_reward_delta": 0.6616872245586518, "mean_player_hp_delta": 0.5698005698005698},
+    "diagnostic_interpretation": "Strong fresh aggregate signal, but battle 6 misses the registered minus-one reward floor by 0.0342; this arm was the ablation control and has no promotion authority."
+  },
+  "enum_v1_vs_control": {
+    "aggregate": {
+      "profile_count": 856,
+      "mean_reward_delta": -2.592574800974657,
+      "mean_player_hp_delta": -1.8714953271028036,
+      "enum_only_victories": 19,
+      "control_only_victories": 48
+    },
+    "by_battle_index": {
+      "0": {"profile_count": 256, "mean_reward_delta": -2.475195312499999, "mean_player_hp_delta": -2.3203125, "enum_only_victories": 10, "control_only_victories": 18},
+      "3": {"profile_count": 249, "mean_reward_delta": -2.9309807180038603, "mean_player_hp_delta": -2.076305220883534, "enum_only_victories": 5, "control_only_victories": 16},
+      "6": {"profile_count": 205, "mean_reward_delta": -1.683910810047029, "mean_player_hp_delta": -1.0195121951219512, "enum_only_victories": 3, "control_only_victories": 7},
+      "9": {"profile_count": 146, "mean_reward_delta": -3.4971103752856454, "mean_player_hp_delta": -1.9315068493150684, "enum_only_victories": 1, "control_only_victories": 7}
+    },
+    "battle_6_9_combined": {"profile_count": 351, "mean_reward_delta": -2.43811917621466, "mean_player_hp_delta": -1.398860398860399},
+    "registered_gate_passed": false,
+    "failed_criteria": [
+      "aggregate_mean_reward_delta_gt_0",
+      "aggregate_mean_player_hp_delta_gte_0",
+      "enum_only_victories_gte_control_only_victories",
+      "battle_indices_6_and_9_combined_mean_reward_delta_gt_0",
+      "battle_index_0_mean_reward_delta_gte_-0.25",
+      "battle_index_0_mean_player_hp_delta_gte_-0.25",
+      "no_battle_index_mean_reward_delta_lt_-1.0"
+    ]
+  },
+  "enum_v1_vs_parent": {
+    "aggregate": {
+      "profile_count": 856,
+      "mean_reward_delta": -0.4648355304043617,
+      "mean_player_hp_delta": -0.03387850467289719,
+      "candidate_only_victories": 50,
+      "parent_only_victories": 58
+    },
+    "by_battle_index": {
+      "0": {"profile_count": 256, "mean_reward_delta": 1.93251953125, "mean_player_hp_delta": 1.51171875, "candidate_only_victories": 26, "parent_only_victories": 18},
+      "3": {"profile_count": 249, "mean_reward_delta": -1.0807092329111438, "mean_player_hp_delta": -0.5020080321285141, "candidate_only_victories": 13, "parent_only_victories": 18},
+      "6": {"profile_count": 205, "mean_reward_delta": -2.7180945210685086, "mean_player_hp_delta": -1.3121951219512196, "candidate_only_victories": 4, "parent_only_victories": 14},
+      "9": {"profile_count": 146, "mean_reward_delta": -0.45423450830283646, "mean_player_hp_delta": -0.1506849315068493, "candidate_only_victories": 7, "parent_only_victories": 8}
+    },
+    "battle_6_9_combined": {"profile_count": 351, "mean_reward_delta": -1.7764319516560068, "mean_player_hp_delta": -0.8290598290598291},
+    "registered_gate_passed": false,
+    "failed_criteria": [
+      "aggregate_mean_reward_delta_gt_0",
+      "aggregate_mean_player_hp_delta_gte_0",
+      "candidate_only_victories_gte_parent_only_victories",
+      "battle_indices_6_and_9_combined_mean_reward_delta_gt_0",
+      "no_battle_index_mean_reward_delta_lt_-1.0"
+    ]
+  },
+  "decision": {
+    "registered_ablation_verdict": "no_go_enum_v1",
+    "retain_parent": "production_r16",
+    "enum_fresh_confirmation_authorized": false,
+    "enum_packaging_or_gameplay_authorized": false,
+    "guarded_control_status": "promising_unconfirmed_ablation_control",
+    "next_step": "Register one fresh frozen LightSTS confirmation of the guarded-control checkpoint against production r16; do not retrain it and do not start gameplay."
+  },
+  "interpretation_authority": "Bounded matched LightSTS evidence only; no production qualification, promotion, causal simulator-to-game, or gameplay authority."
+}
