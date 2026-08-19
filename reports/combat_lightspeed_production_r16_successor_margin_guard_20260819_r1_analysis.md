@@ -19,19 +19,19 @@ The experiment nevertheless fails its stricter preregistered technical gate: con
 
 ## Matched result
 
-Across `851` initialized paired profiles, aggregate reward delta is `+0.055`, HP delta is `+0.112`, and victory exchange is `43` candidate-only versus `44` parent-only.
+The original runner aggregate included two pairs where one policy was `undecided`. Terminal-only recomputation excludes those rows. Across `849` terminal paired profiles, aggregate reward delta is `+0.027`, HP delta is `+0.131`, and victory exchange is `42` candidate-only versus `44` parent-only.
 
 | Battle | Profiles | Reward delta | HP delta | Candidate-only wins | Parent-only wins |
 |---:|---:|---:|---:|---:|---:|
 | 0 | 256 | +0.546 | +1.449 | 19 | 22 |
 | 3 | 250 | +0.432 | -0.012 | 12 | 8 |
 | 6 | 206 | +0.040 | -0.403 | 6 | 6 |
-| 9 | 139 | -1.508 | -1.367 | 6 | 8 |
+| 9 | 137 | -1.704 | -1.270 | 5 | 8 |
 
-Battles `6+9` combined reward delta is `-0.584`. Therefore three outcome conditions fail: victory exchange, positive late-battle reward, and the `-1.0` worst-battle floor.
+Battles `6+9` combined reward delta is `-0.657`. Therefore three outcome conditions fail: victory exchange, positive late-battle reward, and the `-1.0` worst-battle floor.
 
 ## Interpretation
 
-The guard is directionally useful. Relative to the unguarded r1 successor, matched reward delta improves by `8.769`, HP delta by `5.102`, and the victory-exchange gap narrows from `-125` to `-1`. It converts a strongly harmful update into an aggregate near tie, but the residual harm is concentrated at battle 9 and remains outside the registered gate.
+The guard is directionally useful. Relative to the unguarded r1 successor, matched reward delta improves by `8.741`, HP delta by `5.122`, and the victory-exchange gap narrows from `-125` to `-2`. It converts a strongly harmful update into an aggregate near tie, but the residual harm is concentrated at battle 9 and remains outside the registered gate.
 
 The next useful step is a fresh, read-only action/Q-margin drift audit of this guarded candidate, stratified by battle index. That audit should identify whether battle-9 harm still comes from non-end-turn actions being displaced or from a different action-family/card-ranking change before any new objective is registered.

@@ -49,7 +49,7 @@ from spirecomm.ai.rl.v2.trainer import DQNTrainerV2  # noqa: E402
 from spirecomm.ai.rl.v2.types import EncodedStateV2  # noqa: E402
 
 
-REPORT_SCHEMA_VERSION = "combat-lightspeed-training-smoke-v10"
+REPORT_SCHEMA_VERSION = "combat-lightspeed-training-smoke-v11"
 CHECKPOINT_KIND = "simulator_training_smoke"
 ONE_STEP_TD_TARGET = "one-step-td"
 DISCOUNTED_EPISODE_RETURN_TARGET = "discounted-episode-return"
@@ -145,6 +145,7 @@ EXPECTED_UNREACHABLE_PROFILE_REASONS = frozenset(
         "baseline_run_terminated_before_battle",
     }
 )
+TERMINAL_POLICY_OUTCOMES = frozenset({"player_loss", "player_victory"})
 
 
 @dataclass(frozen=True)
@@ -1750,6 +1751,8 @@ def paired_evaluation(control: Mapping[str, Any], candidate: Mapping[str, Any]) 
         raise RuntimeError("paired evaluation seed mismatch")
     rows = []
     excluded_initialization_failures = Counter()
+    excluded_nonterminal_outcomes = Counter()
+    excluded_nonterminal_rows = []
     for seed, battle_index in sorted(control_rows):
         left = control_rows[(seed, battle_index)]
         right = candidate_rows[(seed, battle_index)]
@@ -1770,6 +1773,23 @@ def paired_evaluation(control: Mapping[str, Any], candidate: Mapping[str, Any]) 
                 raise RuntimeError("paired evaluation initialization reason mismatch")
             excluded_initialization_failures[left_reason] += 1
             continue
+        if (
+            left["outcome"] not in TERMINAL_POLICY_OUTCOMES
+            or right["outcome"] not in TERMINAL_POLICY_OUTCOMES
+        ):
+            outcome_pair = (
+                f"control={left['outcome']},candidate={right['outcome']}"
+            )
+            excluded_nonterminal_outcomes[outcome_pair] += 1
+            excluded_nonterminal_rows.append(
+                {
+                    "seed": seed,
+                    "battle_index": battle_index,
+                    "control_outcome": left["outcome"],
+                    "candidate_outcome": right["outcome"],
+                }
+            )
+            continue
         rows.append(
             {
                 "seed": seed,
@@ -1785,6 +1805,7 @@ def paired_evaluation(control: Mapping[str, Any], candidate: Mapping[str, Any]) 
     reward_deltas = [row["reward_delta"] for row in rows]
     return {
         "rows": rows,
+        "excluded_nonterminal_rows": excluded_nonterminal_rows,
         "aggregate": {
             "profile_count": len(rows),
             "excluded_initialization_profile_count": sum(
@@ -1792,6 +1813,12 @@ def paired_evaluation(control: Mapping[str, Any], candidate: Mapping[str, Any]) 
             ),
             "excluded_initialization_failure_counts": dict(
                 sorted(excluded_initialization_failures.items())
+            ),
+            "excluded_nonterminal_profile_count": len(
+                excluded_nonterminal_rows
+            ),
+            "excluded_nonterminal_outcome_pair_counts": dict(
+                sorted(excluded_nonterminal_outcomes.items())
             ),
             "mean_player_hp_delta": float(np.mean(player_hp_deltas)) if rows else 0.0,
             "mean_reward_delta": float(np.mean(reward_deltas)) if rows else 0.0,

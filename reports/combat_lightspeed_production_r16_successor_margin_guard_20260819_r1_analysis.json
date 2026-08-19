@@ -1,5 +1,5 @@
 {
-  "schema_version": "combat-lightspeed-parent-end-turn-margin-guard-analysis-v1",
+  "schema_version": "combat-lightspeed-parent-end-turn-margin-guard-analysis-v2",
   "experiment_id": "combat-lightspeed-production-r16-successor-margin-guard-20260819-r1",
   "bindings": {
     "registration_sha256": "e4cb38f6d1255313f7aa9e5fd911f35cf8ded0eb9991edf790d93b5d364137af",
@@ -55,14 +55,24 @@
     "candidate_undecided_profile": {"seed": 131040, "battle_index": 9},
     "all_other_registered_technical_criteria_pass": true
   },
-  "matched_outcomes": {
+  "raw_runner_matched_outcomes": {
     "profile_count": 851,
     "mean_reward_delta": 0.05457121061463896,
     "mean_player_hp_delta": 0.11163337250293771,
     "candidate_only_victories": 43,
     "parent_only_victories": 44,
+    "nonterminal_pairs_included": 2,
+    "disposition": "superseded_by_terminal_only_recomputation"
+  },
+  "matched_outcomes": {
+    "profile_count": 849,
+    "excluded_nonterminal_profile_count": 2,
+    "mean_reward_delta": 0.026643739712210228,
+    "mean_player_hp_delta": 0.13074204946996468,
+    "candidate_only_victories": 42,
+    "parent_only_victories": 44,
     "parent_victory_count": 300,
-    "candidate_victory_count": 299,
+    "candidate_victory_count": 298,
     "by_battle_index": {
       "0": {
         "profile_count": 256,
@@ -86,16 +96,16 @@
         "parent_only_victories": 6
       },
       "9": {
-        "profile_count": 139,
-        "mean_reward_delta": -1.5077137152949707,
-        "mean_player_hp_delta": -1.3669064748201438,
-        "candidate_only_victories": 6,
+        "profile_count": 137,
+        "mean_reward_delta": -1.7035895740393592,
+        "mean_player_hp_delta": -1.27007299270073,
+        "candidate_only_victories": 5,
         "parent_only_victories": 8
       }
     },
-    "battle_6_9_combined_mean_reward_delta": -0.583699952898357,
-    "battle_6_9_combined_mean_player_hp_delta": -0.791304347826087,
-    "minimum_battle_mean_reward_delta": -1.5077137152949707
+    "battle_6_9_combined_mean_reward_delta": -0.656548247718147,
+    "battle_6_9_combined_mean_player_hp_delta": -0.749271137026239,
+    "minimum_battle_mean_reward_delta": -1.7035895740393592
   },
   "registered_outcome_gate": {
     "passed": false,
@@ -110,10 +120,10 @@
     }
   },
   "unguarded_reference_comparison": {
-    "guarded_minus_unguarded_mean_reward_delta": 8.769249899001487,
-    "guarded_minus_unguarded_mean_player_hp_delta": 5.102416782641187,
+    "guarded_minus_unguarded_mean_reward_delta": 8.741322428099057,
+    "guarded_minus_unguarded_mean_player_hp_delta": 5.121525459608214,
     "unguarded_victory_exchange_gap": -125,
-    "guarded_victory_exchange_gap": -1,
+    "guarded_victory_exchange_gap": -2,
     "interpretation": "The guard materially corrected the harmful unguarded direction but did not produce an eligible parent-relative successor."
   },
   "decision": {

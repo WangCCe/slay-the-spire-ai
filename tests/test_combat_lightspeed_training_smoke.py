@@ -697,6 +697,92 @@ def test_paired_evaluation_excludes_matching_unreachable_profiles():
     assert paired["aggregate"]["mean_reward_delta"] == 10.0
 
 
+def test_paired_evaluation_excludes_nonterminal_outcome_pairs():
+    control = {
+        "rows": [
+            {
+                "seed": 20,
+                "battle_index": 9,
+                "outcome": "undecided",
+                "player_hp": 20,
+                "reward": 9.0,
+                "decisions": 100,
+            },
+            {
+                "seed": 21,
+                "battle_index": 9,
+                "outcome": "player_victory",
+                "player_hp": 10,
+                "reward": 20.0,
+                "decisions": 30,
+            },
+            {
+                "seed": 22,
+                "battle_index": 9,
+                "outcome": "player_loss",
+                "player_hp": 0,
+                "reward": -5.0,
+                "decisions": 12,
+            },
+        ]
+    }
+    candidate = {
+        "rows": [
+            {
+                "seed": 20,
+                "battle_index": 9,
+                "outcome": "player_loss",
+                "player_hp": 0,
+                "reward": -4.0,
+                "decisions": 15,
+            },
+            {
+                "seed": 21,
+                "battle_index": 9,
+                "outcome": "undecided",
+                "player_hp": 30,
+                "reward": 15.0,
+                "decisions": 100,
+            },
+            {
+                "seed": 22,
+                "battle_index": 9,
+                "outcome": "player_victory",
+                "player_hp": 8,
+                "reward": 7.0,
+                "decisions": 9,
+            },
+        ]
+    }
+
+    paired = paired_evaluation(control, candidate)
+
+    assert paired["aggregate"]["profile_count"] == 1
+    assert paired["aggregate"]["excluded_nonterminal_profile_count"] == 2
+    assert paired["aggregate"]["excluded_nonterminal_outcome_pair_counts"] == {
+        "control=player_victory,candidate=undecided": 1,
+        "control=undecided,candidate=player_loss": 1,
+    }
+    assert paired["excluded_nonterminal_rows"] == [
+        {
+            "seed": 20,
+            "battle_index": 9,
+            "control_outcome": "undecided",
+            "candidate_outcome": "player_loss",
+        },
+        {
+            "seed": 21,
+            "battle_index": 9,
+            "control_outcome": "player_victory",
+            "candidate_outcome": "undecided",
+        },
+    ]
+    assert paired["aggregate"]["mean_player_hp_delta"] == 8.0
+    assert paired["aggregate"]["mean_reward_delta"] == 12.0
+    assert paired["aggregate"]["candidate_only_victories"] == 1
+    assert paired["aggregate"]["control_only_victories"] == 0
+
+
 def test_native_reward_uses_explicit_production_compatible_subset():
     reward = calculate_native_reward(
         _snapshot(),
