@@ -11,5 +11,5 @@
 ## 3. Verification And Experiment
 
 - [x] 3.1 Run focused trainer and LightSTS smoke tests plus strict OpenSpec validation; rely on the same-day full-suite baseline unless focused failures indicate broader impact.
-- [ ] 3.2 Register and run one same-cohort card-ranking objective ablation with guard-aware evaluation and immutable production r16 shadow parent.
-- [ ] 3.3 Compare the frozen candidate against production r16 shadow and the prior guarded control, publish the go/no-go conclusion, and do not start gameplay.
+- [x] 3.2 Register and run one same-cohort card-ranking objective ablation with guard-aware evaluation and immutable production r16 shadow parent.
+- [x] 3.3 Compare the frozen candidate against production r16 shadow and the prior guarded control, publish the go/no-go conclusion, and do not start gameplay.

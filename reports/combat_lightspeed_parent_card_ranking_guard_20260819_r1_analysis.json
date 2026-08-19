@@ -1,0 +1,61 @@
+{
+  "schema_version": "combat-lightspeed-parent-card-ranking-guard-analysis-v1",
+  "verdict": "objective_direction_positive_but_gate_failed_retain_r16",
+  "integrity": {
+    "training_verdict": "technical_smoke_ready",
+    "comparison_verdict": "comparison_ready",
+    "training_blockers": [],
+    "comparison_blockers": [],
+    "training_report_sha256": "73f684c1d7a525c896b1ee68305e86eb626e903a38cf04d4a9c49ac56cbea3a4",
+    "comparison_report_sha256": "2665c4d0c65470df68f0354ec402e818d4240563eb600e779172968f0d2cef39",
+    "generated_manifests_verified": true
+  },
+  "training": {
+    "replay_transition_count": 78500,
+    "optimizer_update_count": 256,
+    "initial_parameter_sha256": "cfe8204d06db6b43b063df98e1b713d4a40a0894a1a9330c3db87c739da88d48",
+    "candidate_parameter_sha256": "ad241aa1093207f207c374d5b436b0a0839c20c934f80a338fb2a5ab11dcab33",
+    "candidate_checkpoint_sha256": "128993960bad2fafea6c05d43b01a1a8634dee56f80eb7ce576eacef58751b74",
+    "parameter_l2_delta": 1.0917428506230709,
+    "card_ranking_guard_eligible_count_mean": 90.80078125,
+    "card_ranking_guard_loss_first": 0.026117442175745964,
+    "card_ranking_guard_loss_last": 0.05397714301943779,
+    "card_ranking_violation_count_first": 9,
+    "card_ranking_violation_count_last": 19
+  },
+  "card_guard_candidate_minus_production_r16": {
+    "mean_reward_delta": 0.21331573701034706,
+    "mean_player_hp_delta": 0.3189252336448598,
+    "candidate_only_victories": 8,
+    "control_only_victories": 9,
+    "gate_passed": false,
+    "failed_criteria": [
+      "mean_reward_delta_gt_0.25",
+      "candidate_only_victories_gte_control_only_victories"
+    ]
+  },
+  "card_guard_candidate_minus_prior_guarded_control": {
+    "mean_reward_delta": 0.15169294882259,
+    "mean_player_hp_delta": 0.3130841121495327,
+    "candidate_only_victories": 8,
+    "control_only_victories": 10,
+    "gate_passed": false,
+    "failed_criteria": [
+      "candidate_only_victories_gte_control_only_victories"
+    ]
+  },
+  "interpretation": [
+    "The card-ranking objective moved aggregate reward and HP in the intended direction against both controls.",
+    "The effect was not material under the preregistered parent threshold and did not preserve victory outcomes.",
+    "Rising in-batch ranking violations show that a clipped card-only margin does not reliably dominate the competing TD and anchor objectives.",
+    "The deployment evidence indicates that preserving frozen-parent raw EndTurn can be desirable because the production guard then supplies a strong fallback; a card-only constraint does not protect that boundary."
+  ],
+  "decision": {
+    "production_checkpoint": "retain_r16",
+    "fresh_confirmation": false,
+    "packaging": false,
+    "gameplay": false,
+    "tune_same_cohort": false,
+    "next_direction": "Replace the narrow card-only constraint with a bounded frozen-parent top-legal-action margin guard that also preserves parent EndTurn when it is the raw top action, then test on a newly registered cohort."
+  }
+}
