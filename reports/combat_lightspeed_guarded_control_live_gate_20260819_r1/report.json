@@ -1,0 +1,115 @@
+{
+  "schema_version": 1,
+  "gate_id": "combat-lightspeed-guarded-control-live-gate-20260819-r1",
+  "source_commit": "b9d680cc1739abe0e571eb0f73396f753160ff03",
+  "decision": "retain_production_r16_live_gate_failed",
+  "qualification_evaluated": true,
+  "qualification_passed": false,
+  "candidate_promoted": false,
+  "inputs": {
+    "preregistration": {
+      "path": "reports/combat_lightspeed_guarded_control_live_gate_20260819_r1_preregistration.json",
+      "sha256": "1b3f70e36e4d154d677fbc7732008dd95f3049e71b0f6bfcc24ab8b616be67c7"
+    },
+    "seed_pool": {
+      "path": "reports/combat_lightspeed_guarded_control_live_gate_20260819_r1_seed_pool.txt",
+      "sha256": "ca524d6afd545be056d2cd5607151b914904283efb877e0e6d19d17d3d7d1723"
+    },
+    "candidate_checkpoint": {
+      "path": "reports/combat_lightspeed_production_r16_guarded_control_packaging_20260819_r1/rl_combat_model_lightspeed_candidate.pth",
+      "sha256": "4e10bc23be5e76ef0becd039e4bb3824f29dae941a4a9e6f49b5ba2db39c7931"
+    },
+    "parent_checkpoint": {
+      "path": "reports/combat_rl_promoted_r15_successor_20260818_r16/rl_combat_model_promoted_r15_successor_candidate.pth",
+      "sha256": "75120e9e8f76393d4d82c16de5c3ea6384d2f7ef26bd530a6b552ed9791e38f5"
+    }
+  },
+  "execution": {
+    "arm_order": ["candidate", "parent"],
+    "games_per_arm": 10,
+    "candidate_started_at": "2026-08-19T14:08:50+08:00",
+    "candidate_completed_at": "2026-08-19T14:26:54+08:00",
+    "parent_started_at": "2026-08-19T14:31:28+08:00",
+    "parent_completed_at": "2026-08-19T14:50:02+08:00",
+    "external_resume_count": 0,
+    "training_enabled": false,
+    "epsilon": 0.0,
+    "all_seed_pairs_match": true,
+    "communication_mod_timestamp_normalized_configs": true,
+    "registered_commands_preserved": true
+  },
+  "arms": {
+    "candidate": {
+      "games": 10,
+      "floors": [20, 16, 28, 16, 16, 25, 16, 25, 16, 33],
+      "floor_total": 211,
+      "floor_mean": 21.1,
+      "floor_median": 18.0,
+      "victories": 0,
+      "act_2_entries": 5,
+      "act_2_boss_reaches": 1,
+      "act_3_entries": 0,
+      "playtime_seconds": 1020,
+      "decision_trace_rows": 3263,
+      "decision_trace_parse_errors": 0,
+      "sim_divergence_trace_rows": 10,
+      "sim_divergence_trace_parse_errors": 0,
+      "policy_runtime_failures": 0,
+      "crash_markers": 0,
+      "run_manifest_sha256": "d1c867ebd01fce86a77e9a50d2d18162cb00a456e9cedc7f4ef9c4a534c6ada4",
+      "runtime_evidence": {
+        "path": "reports/combat_lightspeed_guarded_control_live_gate_20260819_r1/candidate/runtime_evidence.zip",
+        "sha256": "c7f1fd9d2c6a74aaca3063c9fcc2a6395faad44dffe169c50e56c009bb9890af"
+      }
+    },
+    "parent": {
+      "games": 10,
+      "floors": [20, 16, 28, 28, 16, 25, 16, 30, 16, 21],
+      "floor_total": 216,
+      "floor_mean": 21.6,
+      "floor_median": 20.5,
+      "victories": 0,
+      "act_2_entries": 6,
+      "act_2_boss_reaches": 0,
+      "act_3_entries": 0,
+      "playtime_seconds": 1053,
+      "decision_trace_rows": 3296,
+      "decision_trace_parse_errors": 0,
+      "sim_divergence_trace_rows": 8,
+      "sim_divergence_trace_parse_errors": 0,
+      "policy_runtime_failures": 0,
+      "crash_markers": 0,
+      "run_manifest_sha256": "37f071cd1e13093944b2c66d54280f3bd8494ffc06e2d35f0e48165b4d4f8bb2",
+      "runtime_evidence": {
+        "path": "reports/combat_lightspeed_guarded_control_live_gate_20260819_r1/parent/runtime_evidence.zip",
+        "sha256": "d2f7de9ccb98272406fc816cf3f25b2ceee91506403ab1e16f3c4a0f5171cf8c"
+      }
+    }
+  },
+  "paired": {
+    "floor_deltas_candidate_minus_parent": [0, 0, 0, -12, 0, 0, 0, -5, 0, 12],
+    "floor_delta_total": -5,
+    "candidate_floor_wins": 1,
+    "parent_floor_wins": 2,
+    "floor_ties": 7,
+    "candidate_victory_only": 0,
+    "parent_victory_only": 0
+  },
+  "qualification_conditions": {
+    "both_arms_completed_all_games": true,
+    "all_seed_pairs_match": true,
+    "both_arms_have_no_policy_runtime_failures": true,
+    "candidate_total_floors_exceeds_parent": false,
+    "candidate_victories_at_least_parent": true,
+    "candidate_act_2_boss_reaches_at_least_parent": true,
+    "candidate_act_3_entries_at_least_parent": true,
+    "all_conditions_passed": false
+  },
+  "production_state": {
+    "configuration_restored": true,
+    "configuration_sha256": "0991895790bc73d3d21a05731bf402228cf0c510a4217aa841ced026016760e7",
+    "active_checkpoint_sha256": "75120e9e8f76393d4d82c16de5c3ea6384d2f7ef26bd530a6b552ed9791e38f5",
+    "candidate_promoted": false
+  },
+  "next_step": "Do not extend this live cohort or promote the candidate. Compare the three outcome-divergent seed traces to identify the simulator-to-live transfer gap, then require a materially different simulator candidate before another live gate."
+}
