@@ -29,6 +29,7 @@ from analysis_scripts.combat_lightspeed_bridge import (  # noqa: E402
     sha256_file,
 )
 from analysis_scripts.combat_lightspeed_training_smoke import (  # noqa: E402
+    ENCOUNTER_HASH_ALGORITHM,
     EXPECTED_UNREACHABLE_PROFILE_REASONS,
     create_fresh_trainer,
     evaluate_policy,
@@ -96,6 +97,8 @@ class ComparisonConfig:
     ascension: int = 0
     max_decisions_per_seed: int = 100
     max_actions_per_turn: int = 8
+    encounter_identity_buckets: int = 0
+    encounter_identity_encoding: str = ENCOUNTER_HASH_ALGORITHM
 
     def validate(self) -> None:
         if not self.seeds or len(set(self.seeds)) != len(self.seeds):
@@ -112,6 +115,10 @@ class ComparisonConfig:
             raise ComparisonBlocked("comparison_ascension_out_of_range")
         if self.max_decisions_per_seed <= 0 or self.max_actions_per_turn <= 0:
             raise ComparisonBlocked("comparison_bounds_invalid")
+        if self.encounter_identity_buckets != 0:
+            raise ComparisonBlocked("comparison_encounter_identity_not_supported")
+        if self.encounter_identity_encoding != ENCOUNTER_HASH_ALGORITHM:
+            raise ComparisonBlocked("comparison_encounter_identity_encoding_invalid")
 
     def profiles(self, seeds: Sequence[int]) -> tuple[tuple[int, int], ...]:
         return tuple(
@@ -127,6 +134,8 @@ class ComparisonConfig:
             "ascension": self.ascension,
             "max_decisions_per_seed": self.max_decisions_per_seed,
             "max_actions_per_turn": self.max_actions_per_turn,
+            "encounter_identity_buckets": self.encounter_identity_buckets,
+            "encounter_identity_encoding": self.encounter_identity_encoding,
             "profile_count": len(self.profiles(self.seeds)),
         }
 

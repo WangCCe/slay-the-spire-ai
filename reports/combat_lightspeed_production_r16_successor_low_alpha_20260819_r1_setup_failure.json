@@ -1,0 +1,34 @@
+{
+  "schema_version": "combat-lightspeed-production-successor-low-alpha-setup-failure-v1",
+  "experiment_id": "combat-lightspeed-production-r16-successor-low-alpha-20260819-r1",
+  "bindings": {
+    "registration_sha256": "2258cda43da22ac9a02d3526b762d58b960f1b5538a4aebdbb646b804f27287f",
+    "interpolation_report_sha256": "685a6b9f65f393f423a345cf4ac116836042dbf368f16c0207f685619cb85088",
+    "comparison_report_sha256": "c3b2f0779bc8e26b6d982889ee775d42f0468ab532924f724d8f599930b8b0cd"
+  },
+  "interpolation_verdict": "interpolations_ready",
+  "comparison_verdict": "comparison_not_ready",
+  "failure": {
+    "type": "AttributeError",
+    "detail": "'ComparisonConfig' object has no attribute 'encounter_identity_buckets'",
+    "blocker": "comparison_setup_failure",
+    "metrics_published": false,
+    "pairwise_rows_published": false,
+    "ranking_published": false
+  },
+  "root_cause": "The shared evaluate_policy contract gained encounter-identity configuration fields, but the frozen comparator's compatible config object was not updated.",
+  "seed_access_assessment": {
+    "registered_cohort": "126000..126255",
+    "confirmed_outcome_rows": 0,
+    "possible_initial_state_access": true,
+    "reason": "The missing attribute is read after environment reset and state mapping inside the first evaluation loop.",
+    "cohort_disposition": "conservatively_consumed",
+    "reuse_authorized": false
+  },
+  "repair": {
+    "scope": "Add fixed disabled encounter-identity fields to ComparisonConfig and cover the shared evaluation contract with a focused regression.",
+    "focused_tests": "8 passed",
+    "training_or_threshold_change": false
+  },
+  "next_step": "Register an r2 comparison using the already frozen interpolation checkpoints and fresh seeds 127000..127255."
+}

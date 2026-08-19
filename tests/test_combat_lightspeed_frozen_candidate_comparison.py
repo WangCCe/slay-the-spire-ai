@@ -8,6 +8,7 @@ import pytest
 from analysis_scripts.combat_lightspeed_frozen_candidate_comparison import (
     CandidateBinding,
     ComparisonBlocked,
+    ComparisonConfig,
     _publish,
     load_candidate,
     rank_candidates,
@@ -23,6 +24,15 @@ from spirecomm.ai.rl.v2.id_mapping import IdMapper
 
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
+
+
+def test_comparison_config_satisfies_shared_evaluation_contract():
+    config = ComparisonConfig(seeds=(1,), battle_indices=(0,))
+
+    config.validate()
+    assert config.encounter_identity_buckets == 0
+    assert config.encounter_identity_encoding == "sha256-first-8-bytes-modulo"
+    assert config.record()["encounter_identity_buckets"] == 0
 
 
 def _mapper():
