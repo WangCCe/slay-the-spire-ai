@@ -1,0 +1,71 @@
+{
+  "schema_version": "combat-lightspeed-top-action-margin-guard-fresh-analysis-v1",
+  "verdict": "objective_family_rejected_retain_r16",
+  "integrity": {
+    "training_verdict": "technical_smoke_ready",
+    "comparison_verdict": "comparison_ready",
+    "training_blockers": [],
+    "comparison_blockers": [],
+    "training_report_sha256": "e17dfe436f92d8b691a28953ceee56057c089d7ccb8f832aaafd0cecda833033",
+    "comparison_report_sha256": "1c20b58ea5ef90d8ed1b7bc771abda146dc5b9064caee52f598d29e7e7d79335",
+    "generated_manifests_verified": true
+  },
+  "training": {
+    "replay_transition_count": 83464,
+    "optimizer_update_count": 256,
+    "candidate_parameter_sha256": "c31929af21339e01978f7ced6d6062291e3fdafe243e24ad5cd2b628c2d9e88d",
+    "candidate_checkpoint_sha256": "7860cf1a8095a857b3533ed72d73cf50da3f1e86c12e937d54089c88096728fb",
+    "parameter_l2_delta": 1.0916348606947972,
+    "top_action_guard_eligible_count_mean": 102.40234375,
+    "top_action_guard_loss_first": 0.06012069433927536,
+    "top_action_guard_loss_last": 0.07683663815259933,
+    "top_action_ranking_violation_count_first": 12,
+    "top_action_ranking_violation_count_last": 18
+  },
+  "fresh_parent_pairs": {
+    "prior_guarded_control": {
+      "mean_reward_delta": -0.4332031419573479,
+      "mean_player_hp_delta": 0.023894862604540025,
+      "candidate_only_victories": 5,
+      "parent_only_victories": 14
+    },
+    "card_ranking_guard_candidate": {
+      "mean_reward_delta": -0.2476183257017943,
+      "mean_player_hp_delta": 0.3094384707287933,
+      "candidate_only_victories": 7,
+      "parent_only_victories": 13
+    },
+    "top_action_margin_guard_candidate": {
+      "mean_reward_delta": -0.4073189417911667,
+      "mean_player_hp_delta": -0.06212664277180406,
+      "candidate_only_victories": 5,
+      "parent_only_victories": 12
+    }
+  },
+  "ranking": {
+    "reward_order": [
+      "production_r16_shadow",
+      "card_ranking_guard_candidate",
+      "top_action_margin_guard_candidate",
+      "prior_guarded_control"
+    ],
+    "winner": null,
+    "production_r16_reward_leader": true,
+    "production_r16_victory_leader": true
+  },
+  "interpretation": [
+    "Neither the card-only nor top-action margin objective transfers into fresh guard-aware reward and victory improvement.",
+    "The stronger top-action guard protects parent raw decisions but still accumulates more ranking violations over optimization and worsens outcomes.",
+    "Adding more anchor or margin penalties is not a justified next step on this replay recipe.",
+    "The remaining mismatch is upstream: uniform non-EndTurn behavior data and one-step TD optimize a bare policy, while deployment executes a composite guarded policy."
+  ],
+  "decision": {
+    "production_checkpoint": "retain_r16",
+    "larger_confirmation": false,
+    "packaging": false,
+    "gameplay": false,
+    "same_cohort_tuning": false,
+    "objective_family": "stop_parent_margin_guard_variants",
+    "next_direction": "Redesign LightSTS collection and targets around the executed guard-aware behavior policy or another deployment-consistent multi-step objective before training another candidate."
+  }
+}

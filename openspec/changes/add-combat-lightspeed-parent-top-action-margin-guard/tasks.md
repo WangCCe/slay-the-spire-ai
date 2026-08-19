@@ -10,5 +10,5 @@
 
 ## 3. Fresh Experiment
 
-- [ ] 3.1 Register and execute one fresh-cohort top-action guard training run with guard-aware evaluation.
-- [ ] 3.2 Compare the frozen candidate against production r16 and prior guarded candidates, publish the gate decision, and do not start gameplay.
+- [x] 3.1 Register and execute one fresh-cohort top-action guard training run with guard-aware evaluation.
+- [x] 3.2 Compare the frozen candidate against production r16 and prior guarded candidates, publish the gate decision, and do not start gameplay.
