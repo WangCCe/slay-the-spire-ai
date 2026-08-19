@@ -1,0 +1,89 @@
+{
+  "schema_version": "combat-lightspeed-production-r16-top-action-margin-guard-fresh-registration-v1",
+  "experiment_id": "combat-lightspeed-production-r16-top-action-margin-guard-fresh-20260819-r1",
+  "registered_source_commit": "1a31a6241bb171347153690ae93857af4b712b3f",
+  "question": "On unused train and evaluation seeds, does preserving the frozen parent's clipped raw top-action margin produce material guard-aware improvement over production r16 and prior guarded candidates?",
+  "source_binding": {
+    "training_runner_sha256": "7ea48bfd9ee00c692b244ce9eb099cfb92c5f38734af7a3a3a1ee5031c0ec8d5",
+    "trainer_sha256": "73351c5d9633afaf42db50cf5b263100785cc6b03547df7fe66c93bdb67daa20",
+    "bridge_source_sha256": "610f0d52e1c638e8f734343a13344b1e8e8f93bae9713ac06b792dbedfc4fdad",
+    "native_module_path": "D:/PycharmProjects/slay-the-spire-ai/.sts_lightspeed_combat_later_battle_20260819_r3_build/sts_lightspeed_combat_adapter.cp310-win_amd64.pyd",
+    "native_module_sha256": "195678b7fc6bf69815f3d2971404afb8ce72fb666700edf4203383429caf1009",
+    "simulator_repo": "D:/CLionProjects/sts_lightspeed",
+    "simulator_commit": "7476a81954020087da31d41d16fddf475746ec2d",
+    "items_json_path": "D:/SteamLibrary/steamapps/common/SlayTheSpire/export/items.json",
+    "items_json_sha256": "e23784ea8ed3092e3bfa9918240e162a9cbcb837badfb53c612eb0d83cc811dc"
+  },
+  "parent": {
+    "path": "D:/PycharmProjects/slay-the-spire-ai/reports/combat_lightspeed_production_r16_shadow_20260819_r1/simulator_only_production_shadow.pth",
+    "sha256": "ce2ae34f82b3f457fb35e87d429c397204c42d0f742d3ac8952d91b69119b83b",
+    "parameter_sha256": "cfe8204d06db6b43b063df98e1b713d4a40a0894a1a9330c3db87c739da88d48"
+  },
+  "cohorts": {
+    "training_seeds": "138000..139023",
+    "training_seed_count": 1024,
+    "evaluation_seeds": "140000..140255",
+    "evaluation_seed_count": 256,
+    "battle_indices": [0, 3, 6, 9],
+    "training_profile_count": 4096,
+    "evaluation_profile_count_per_policy": 1024,
+    "prior_registration_overlap": false
+  },
+  "recipe": {
+    "ascension": 0,
+    "max_decisions_per_profile": 100,
+    "max_actions_per_turn": 8,
+    "behavior_seed": 2026082011,
+    "network_seed": 2026082012,
+    "batch_size": 128,
+    "optimizer_steps": 256,
+    "parent_policy_anchor_weight": 1.0,
+    "parent_end_turn_margin_guard_weight": 1.0,
+    "parent_end_turn_margin_guard_cap": 0.1,
+    "parent_card_ranking_guard_weight": 0.0,
+    "parent_card_ranking_guard_cap": 0.1,
+    "parent_top_action_margin_guard_weight": 1.0,
+    "parent_top_action_margin_guard_cap": 0.1,
+    "balance_replay_by_battle_index": true,
+    "replay_balance_seed": 2026082013,
+    "complete_trajectories_only": true,
+    "replay_target_mode": "one-step-td",
+    "replay_return_discount": 0.99,
+    "replay_return_horizon": 3,
+    "deployment_guard_proxy": "greedy-native-reward-on-wasteful-end-turn-v1",
+    "device": "cpu"
+  },
+  "execution": {
+    "interpreter": "D:/anaconda/envs/stsai/python.exe",
+    "isolated_mode": true,
+    "output_dir": "reports/combat_lightspeed_production_r16_top_action_margin_guard_fresh_20260819_r1",
+    "training": true,
+    "gameplay": false,
+    "communication_mod": false,
+    "production_checkpoint_access": false
+  },
+  "technical_success_criteria": {
+    "verdict": "technical_smoke_ready",
+    "optimizer_update_count": 256,
+    "finite_top_action_guard_losses": true,
+    "top_action_guard_eligible_count_gt": 0,
+    "candidate_parameter_differs_from_parent": true,
+    "unexpected_initialization_failure_count": 0,
+    "unsupported_reason_counts_empty": true,
+    "terminal_evaluation_profile_count_gte": 800
+  },
+  "fresh_parent_outcome_gate": {
+    "mean_reward_delta_gt": 0.25,
+    "mean_player_hp_delta_gte": 0.25,
+    "candidate_only_victories_gte_parent_only_victories": true,
+    "battle_indices_6_and_9_combined_mean_reward_delta_gt": 0.0,
+    "battle_index_0_mean_reward_delta_gte": -0.25,
+    "no_battle_index_mean_reward_delta_lt": -0.5
+  },
+  "decision": {
+    "frozen_multi_candidate_comparison": "Run after technical success on the same fresh evaluation cohort, binding the new candidate hash.",
+    "larger_confirmation": "Authorize only if the parent gate and every prior-candidate pairwise guardrail pass.",
+    "packaging_or_gameplay": false,
+    "failure": "Retain r16 and do not tune this objective on the observed cohort."
+  }
+}
