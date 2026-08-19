@@ -1,0 +1,85 @@
+{
+  "schema_version": "combat-lightspeed-production-r16-guarded-control-fresh-confirmation-analysis-v1",
+  "audit_id": "combat-lightspeed-production-r16-guarded-control-fresh-confirmation-20260819-r1",
+  "registration": {
+    "path": "reports/combat_lightspeed_production_r16_guarded_control_fresh_confirmation_20260819_r1_registration.json",
+    "sha256": "acaf743704470a8e36b18477c3c12df3136da305d535b95413925cd6fea23d06"
+  },
+  "artifacts": {
+    "report_sha256": "a4c9ac318b7d6b9c061912031dd2a3740816d8bffc32a6bb8fd3bf40eab5b4c1",
+    "manifest_sha256": "c115c00b4b6a4dab819625119e899c76b1e3e8adbbef2b64542462c40efa8105",
+    "summary_sha256": "4bea71f69c606c057fc85915049407dcaf14eda14fc3ebcf969df0fdfc20bfc5"
+  },
+  "runner_result": {
+    "verdict": "comparison_not_ready",
+    "blockers": [
+      "decision_bound_truncation:guarded_control_candidate",
+      "decision_bound_truncation:production_r16_shadow"
+    ],
+    "truncated_profile_count_per_candidate": 1,
+    "unsupported_state_count_per_candidate": 0,
+    "matched_reachability": true
+  },
+  "registration_consistency_finding": {
+    "value": "contradictory_technical_criteria",
+    "details": "The registration requires the runner verdict comparison_ready while separately allowing up to four decision-bound truncations per candidate. The runner hard-codes any truncation as comparison_not_ready, so both conditions cannot hold when the explicitly allowed count is nonzero.",
+    "post_outcome_registration_change": false,
+    "same_cohort_retry": false
+  },
+  "underlying_technical_criteria": {
+    "all_non_verdict_criteria_pass": true,
+    "candidate_count": 2,
+    "candidate_hashes_match_registration": true,
+    "unexpected_initialization_failure_count": 0,
+    "unsupported_state_count_per_candidate": 0,
+    "decision_bound_truncation_count_per_candidate": 1,
+    "decision_bound_truncation_count_lte_registered_limit": true,
+    "matched_reachability": true,
+    "excluded_nonterminal_pair_count": 2,
+    "excluded_nonterminal_pair_count_lte_registered_limit": true,
+    "terminal_pair_count": 1683,
+    "terminal_pair_count_gte_registered_minimum": true,
+    "terminal_battle_9_pair_count": 289,
+    "terminal_battle_9_pair_count_gte_registered_minimum": true
+  },
+  "candidate_vs_parent": {
+    "aggregate": {
+      "profile_count": 1683,
+      "mean_reward_delta": 2.1272190034271987,
+      "mean_player_hp_delta": 1.780154486036839,
+      "candidate_only_victories": 118,
+      "parent_only_victories": 71
+    },
+    "by_battle_index": {
+      "0": {"profile_count": 512, "mean_reward_delta": 4.740869140625, "mean_player_hp_delta": 4.052734375, "candidate_only_victories": 65, "parent_only_victories": 29},
+      "3": {"profile_count": 486, "mean_reward_delta": 0.9022872448104442, "mean_player_hp_delta": 0.8641975308641975, "candidate_only_victories": 27, "parent_only_victories": 22},
+      "6": {"profile_count": 396, "mean_reward_delta": 1.007545932666954, "mean_player_hp_delta": 0.6691919191919192, "candidate_only_victories": 17, "parent_only_victories": 10},
+      "9": {"profile_count": 289, "mean_reward_delta": 1.0909508389411253, "mean_player_hp_delta": 0.8166089965397924, "candidate_only_victories": 9, "parent_only_victories": 10}
+    },
+    "battle_6_9_combined": {
+      "profile_count": 685,
+      "mean_reward_delta": 1.0427342799855461,
+      "mean_player_hp_delta": 0.7313868613138687
+    },
+    "all_registered_confirmation_criteria_pass": true
+  },
+  "replication": {
+    "development_mean_reward_delta": 2.127739270570296,
+    "fresh_mean_reward_delta": 2.1272190034271987,
+    "development_mean_player_hp_delta": 1.8376168224299065,
+    "fresh_mean_player_hp_delta": 1.780154486036839,
+    "development_candidate_only_to_parent_only_victories": "65:44",
+    "fresh_candidate_only_to_parent_only_victories": "118:71",
+    "interpretation": "The aggregate reward and HP advantage replicated on a disjoint cohort twice the size, and every fresh battle-index reward delta is positive."
+  },
+  "decision": {
+    "strict_registered_gate": "no_go_due_comparison_ready_verdict_failure",
+    "substantive_simulator_evidence": "sufficient_for_separate_packaging_review",
+    "retain_current_production_policy": "production_r16",
+    "repeat_simulator_confirmation": false,
+    "production_packaging_authorized": false,
+    "gameplay_authorized": false,
+    "next_step": "Perform a bounded source and checkpoint compatibility review, then register a deterministic production-compatible packaging step if equivalence can be proven."
+  },
+  "interpretation_authority": "Fresh matched LightSTS confirmation only; no production packaging, simulator-to-game equivalence, promotion, or gameplay authority."
+}
