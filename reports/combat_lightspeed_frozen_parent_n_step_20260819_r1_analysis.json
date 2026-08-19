@@ -1,0 +1,130 @@
+{
+  "schema_version": "combat-lightspeed-frozen-parent-n-step-analysis-v1",
+  "experiment_id": "combat-lightspeed-frozen-parent-n-step-20260819-r1",
+  "registration": "reports/combat_lightspeed_frozen_parent_n_step_20260819_r1_registration.json",
+  "registered_source_commit": "337c2efac3a7df9b9b4432f20be2da18409c82e3",
+  "technical_verdict": "ready",
+  "policy_verdict": "retain_r4_no_n_step_arm_eligible",
+  "authority": {
+    "fresh_simulator_confirmation": false,
+    "gameplay": false,
+    "live_transfer": false,
+    "production_checkpoint": false,
+    "promotion": false,
+    "qualification": false,
+    "simulator_analysis": true
+  },
+  "verification": {
+    "openspec_strict_validation": "passed",
+    "focused_pytest": "34 passed, 5 skipped in 13.07s",
+    "native_focused_pytest": "39 passed in 16.87s",
+    "full_pytest": "6349 passed, 28 skipped, 230 failed in 2692.41s",
+    "full_pytest_interpretation": "The full-suite failures were outside the changed LightSTS runner and test module, concentrated in stale noncombat evidence bindings, Windows qualification fixtures, and an existing Reaper fixture. The suite was not rerun."
+  },
+  "technical_checks": {
+    "all_arm_verdicts_ready": true,
+    "all_manifests_valid": true,
+    "bootstrap_parent_matches_registered_r4": true,
+    "complete_trajectory_metrics_equal": true,
+    "control_evaluation_rows_equal": true,
+    "source_counts_equal": true,
+    "source_transition_identities_equal": true,
+    "source_transition_count": 66610,
+    "prepared_transition_count": 80448,
+    "complete_profile_count": 3392,
+    "excluded_incomplete_profile_count": 2,
+    "unsupported_reason_counts": {},
+    "optimizer_updates_per_arm": 256
+  },
+  "arms": {
+    "one_step": {
+      "output_dir": "reports/combat_lightspeed_frozen_parent_n_step_20260819_r1_one_step_control",
+      "candidate_sha256": "3efd67124931f3617d6e59e5cacac99e23479e5a3bcb2631b4c247aef16b4776",
+      "candidate_parameter_sha256": "8707023f3b6903629e18701aab1cbb7506fe618b1f3e70de88838c3e5fd1782c",
+      "bootstrap_target_count": 0,
+      "target_reward_mean": 1.162808836911239,
+      "versus_parent": {
+        "mean_reward_delta": 0.45643387284533893,
+        "mean_player_hp_delta": 0.6603325415676959,
+        "candidate_only_victories": 11,
+        "parent_only_victories": 8
+      }
+    },
+    "n3": {
+      "output_dir": "reports/combat_lightspeed_frozen_parent_n_step_20260819_r1_n3",
+      "candidate_sha256": "9b62c2a79ca9925cdec594487e59c2519de43b85ff9e25ac60e8ef68b1bb54a9",
+      "candidate_parameter_sha256": "f819cf2e1e7edccc3becac3ce02e9a3b37aabbfabcd04dfff4c623a47400c057",
+      "bootstrap_target_count": 56438,
+      "target_reward_mean": 3.4383179659762804,
+      "versus_parent": {
+        "mean_reward_delta": 0.6132115491015752,
+        "mean_player_hp_delta": 0.9168646080760094,
+        "candidate_only_victories": 12,
+        "parent_only_victories": 11
+      },
+      "versus_one_step": {
+        "mean_reward_delta": 0.1567776762562361,
+        "mean_player_hp_delta": 0.25653206650831356,
+        "n_step_only_victories": 6,
+        "one_step_only_victories": 8,
+        "battle_index_0_mean_reward_delta": -0.08193359374999985,
+        "battle_index_0_mean_player_hp_delta": -0.12890625,
+        "battle_indices_6_and_9_combined_mean_reward_delta": -0.04168057720776734,
+        "battle_index_9_mean_reward_delta": -0.9599543062998689
+      },
+      "eligibility": {
+        "passed": false,
+        "failed_conditions": [
+          "direct_matched_n_step_only_victories_gte_one_step_only_victories",
+          "battle_index_0_mean_reward_delta_vs_one_step_gte_0",
+          "battle_index_0_mean_player_hp_delta_vs_one_step_gte_0",
+          "battle_indices_6_and_9_combined_mean_reward_delta_vs_one_step_gt_0"
+        ]
+      }
+    },
+    "n5": {
+      "output_dir": "reports/combat_lightspeed_frozen_parent_n_step_20260819_r1_n5",
+      "candidate_sha256": "d972610791b44d031dfbc4e8434406a637cf9af5dccb664038b0d5a16326e822",
+      "candidate_parameter_sha256": "7870e2690b43419a5b0b591ab30275a18f6a52ab4d59f49d3d6f2b478bc6cadb",
+      "bootstrap_target_count": 49676,
+      "target_reward_mean": 5.5978378366714185,
+      "versus_parent": {
+        "mean_reward_delta": 0.2718598426558547,
+        "mean_player_hp_delta": 0.5368171021377672,
+        "candidate_only_victories": 11,
+        "parent_only_victories": 14
+      },
+      "versus_one_step": {
+        "mean_reward_delta": -0.1845740301894844,
+        "mean_player_hp_delta": -0.12351543942992874,
+        "n_step_only_victories": 3,
+        "one_step_only_victories": 9,
+        "battle_index_0_mean_reward_delta": -0.031347656250000036,
+        "battle_index_0_mean_player_hp_delta": -0.05078125,
+        "battle_indices_6_and_9_combined_mean_reward_delta": -0.629267658181824,
+        "battle_index_9_mean_reward_delta": -0.9730481814595766
+      },
+      "eligibility": {
+        "passed": false,
+        "failed_conditions": [
+          "direct_matched_aggregate_mean_reward_delta_vs_one_step_gt_0",
+          "direct_matched_aggregate_mean_player_hp_delta_vs_one_step_gte_0",
+          "direct_matched_n_step_only_victories_gte_one_step_only_victories",
+          "battle_index_0_mean_reward_delta_vs_one_step_gte_0",
+          "battle_index_0_mean_player_hp_delta_vs_one_step_gte_0",
+          "battle_indices_6_and_9_combined_mean_reward_delta_vs_one_step_gt_0"
+        ]
+      }
+    }
+  },
+  "decision": {
+    "selected_arm": null,
+    "retained_policy": "r4_first_combat",
+    "reason": "Neither bounded n-step arm satisfied every preregistered direct matched eligibility condition.",
+    "do_not_do_next": [
+      "Do not tune another n-step horizon on this held-out cohort.",
+      "Do not start a live gate for either n-step candidate.",
+      "Do not modify or promote the production r16 checkpoint from this experiment."
+    ]
+  }
+}

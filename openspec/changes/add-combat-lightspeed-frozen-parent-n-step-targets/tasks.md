@@ -14,5 +14,5 @@
 
 - [x] 3.1 Validate the OpenSpec change and run the focused combat LightSTS training tests.
 - [x] 3.2 Run the full pytest suite once at the implementation gate and record any infrastructure-only failures separately. (`6349 passed, 28 skipped, 230 failed`; failures were outside the changed LightSTS runner/test module and concentrated in stale evidence bindings, Windows qualification fixtures, and an existing Reaper fixture.)
-- [ ] 3.3 Register and run fresh matched one-step, 3-step, and 5-step LightSTS training arms from the same parent and profiles.
-- [ ] 3.4 Publish the held-out comparison and a simulator-only go/no-go conclusion without changing production gameplay or starting the game.
+- [x] 3.3 Register and run fresh matched one-step, 3-step, and 5-step LightSTS training arms from the same parent and profiles.
+- [x] 3.4 Publish the held-out comparison and a simulator-only go/no-go conclusion without changing production gameplay or starting the game.
