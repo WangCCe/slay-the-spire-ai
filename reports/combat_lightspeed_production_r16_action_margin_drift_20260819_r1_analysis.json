@@ -1,0 +1,91 @@
+{
+  "schema_version": "combat-lightspeed-production-action-margin-drift-analysis-v1",
+  "audit_id": "combat-lightspeed-production-r16-action-margin-drift-20260819-r1",
+  "bindings": {
+    "registration_sha256": "f41478bc936186e2b35ced61efc46151f782c05625386b3ce39e2e13e7e95bd5",
+    "manifest_sha256": "0f8033c8803bc2d080e6aff95cb8069867656f5fe07ff2a7eae7f0532db91245",
+    "report_sha256": "8e5673c7bc71ead95a4ec8ad4190b997bc650dc2b05eea2e34a55ce666f01321",
+    "summary_sha256": "5a510785c589f18c993bd97374defc9b26ae0e13bd5cd2a33d4efcf53b50752e",
+    "transition_identity_sha256": "75f36e808ecb1b306c67038c4954facb6d87606aba1e527ae8acbb5df7284eaf",
+    "parent_parameter_sha256": "cfe8204d06db6b43b063df98e1b713d4a40a0894a1a9330c3db87c739da88d48",
+    "full_candidate_parameter_sha256": "82e3204f6b8939f808b8d8518909f0182fd7729e22e0587f3420acd041eb82f6"
+  },
+  "technical": {
+    "verdict": "action_margin_drift_ready",
+    "blockers": [],
+    "registered_profiles": 1024,
+    "initialized_complete_profiles": 851,
+    "accepted_transition_count": 16527,
+    "initialization_failures": {
+      "baseline_loss_before_requested_battle": 170,
+      "baseline_run_terminated_before_battle": 3
+    },
+    "unsupported_reason_counts": {},
+    "all_registered_technical_criteria_pass": true
+  },
+  "parent_policy": {
+    "selected_action_family_counts": {
+      "end_turn": 11151,
+      "play_card": 4618,
+      "use_potion": 758
+    },
+    "multi_legal_action_transition_count": 13164,
+    "parent_margin": {
+      "mean": 1.0559696419120959,
+      "median": 0.736818790435791,
+      "p10": 0.10481152534484865,
+      "p25": 0.2861025333404541
+    }
+  },
+  "candidate_drift": {
+    "alpha_0p05": {
+      "action_disagreement_count": 229,
+      "action_disagreement_rate": 0.013856114237308646,
+      "parent_play_card_disagreement_count": 207,
+      "parent_play_card_disagreement_rate": 0.0448245993936769,
+      "play_card_to_end_turn_count": 134,
+      "use_potion_to_end_turn_count": 12,
+      "parent_margin_when_disagreeing_mean": 0.02266984110836379,
+      "parent_margin_when_disagreeing_median": 0.020383834838867188,
+      "battle_disagreement_rates": {
+        "0": 0.0141145139813582,
+        "3": 0.0141031291317761,
+        "6": 0.0137067938021454,
+        "9": 0.0134375
+      }
+    },
+    "alpha_0p1": {
+      "action_disagreement_count": 413,
+      "action_disagreement_rate": 0.024989411266412537,
+      "parent_play_card_disagreement_count": 373,
+      "parent_play_card_disagreement_rate": 0.0807708964919879,
+      "play_card_to_end_turn_count": 246
+    },
+    "alpha_0p2": {
+      "action_disagreement_count": 726,
+      "action_disagreement_rate": 0.043928117625703395,
+      "parent_play_card_disagreement_count": 651,
+      "parent_play_card_disagreement_rate": 0.140970116933738,
+      "play_card_to_end_turn_count": 434
+    },
+    "full_candidate": {
+      "action_disagreement_count": 1852,
+      "action_disagreement_rate": 0.11205905487989351,
+      "parent_play_card_disagreement_count": 1614,
+      "parent_play_card_disagreement_rate": 0.349501948895626,
+      "play_card_to_end_turn_count": 1027,
+      "use_potion_to_end_turn_count": 139,
+      "parent_margin_when_disagreeing_mean": 0.18828664137529247,
+      "parent_margin_when_disagreeing_median": 0.14942026138305664
+    }
+  },
+  "decision": {
+    "verdict": "define_parent_end_turn_margin_guard",
+    "training_authorized_by_this_analysis": false,
+    "production_packaging_authorized": false,
+    "gameplay_authorized": false,
+    "interpretation": "The harmful update direction changes actions monotonically with interpolation alpha. The earliest flips are concentrated in low-parent-margin states and in states where the parent selects a playable card; most of those flips replace the parent action with end turn. Alpha 0.05 disagreement is nearly uniform across registered battle indices, so the evidence supports an action-family ranking guard rather than a battle-specific patch."
+  },
+  "next_step": "Add a preregistered frozen-parent loss that preserves the clipped positive margin between the parent's selected non-end-turn action and end turn on legal complete transitions. Keep the existing TD and Q-anchor objectives, default the new loss off for compatibility, and evaluate one bounded fresh-seed successor before considering production packaging or gameplay.",
+  "interpretation_authority": "Descriptive simulator-state action and Q-margin drift only; no causal, policy-quality, production-promotion, or gameplay claim."
+}
