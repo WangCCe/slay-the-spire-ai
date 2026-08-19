@@ -1,0 +1,114 @@
+{
+  "schema_version": "combat-lightspeed-production-shadow-successor-analysis-v1",
+  "experiment_id": "combat-lightspeed-production-r16-successor-20260819-r1",
+  "bindings": {
+    "registration_sha256": "16097445565e0692958bff0a3ba0f8902d9c0a79ecfdb0d7a275dfbfc24d5537",
+    "report_sha256": "7f51da41ffde77dfe3311c97cdf501111e2ccc253c1af0f30cc197a470fd8386",
+    "parent_shadow_sha256": "ce2ae34f82b3f457fb35e87d429c397204c42d0f742d3ac8952d91b69119b83b",
+    "parent_parameter_sha256": "cfe8204d06db6b43b063df98e1b713d4a40a0894a1a9330c3db87c739da88d48",
+    "candidate_checkpoint_sha256": "837ab1e951de37bfaf0437a23a16479477d1862b9c3936e0a54fd639b48ececa",
+    "candidate_parameter_sha256": "82e3204f6b8939f808b8d8518909f0182fd7729e22e0587f3420acd041eb82f6"
+  },
+  "technical": {
+    "runner_verdict": "technical_smoke_ready",
+    "blockers": [],
+    "optimizer_update_count": 256,
+    "source_replay_transition_count": 65463,
+    "prepared_replay_transition_count": 75700,
+    "source_transition_counts_by_battle_index": {
+      "0": 15531,
+      "3": 18250,
+      "6": 18925,
+      "9": 12757
+    },
+    "prepared_transition_count_per_battle_index": 18925,
+    "complete_profile_count": 3333,
+    "excluded_incomplete_profile_count": 1,
+    "excluded_incomplete_transition_count": 100,
+    "incomplete_profile_reason_counts": {
+      "decision_bound": 1
+    },
+    "unexpected_initialization_failure_counts": {},
+    "expected_unreachable_reason": "baseline_loss_before_requested_battle",
+    "held_out_unreachable_profile_count": 156,
+    "control_truncated_count": 0,
+    "candidate_truncated_count": 0,
+    "unsupported_reason_counts": {},
+    "parameter_delta": {
+      "l2": 1.1477637633472142,
+      "max_abs": 0.018426693975925446
+    },
+    "losses": {
+      "total_mean": 2.716560230590403,
+      "td_mean": 2.259420223068446,
+      "parent_policy_anchor_mean": 0.4571400072891265
+    },
+    "all_registered_technical_criteria_pass": true
+  },
+  "matched_evaluation": {
+    "profile_count": 868,
+    "mean_reward_delta": -8.714678688386847,
+    "mean_player_hp_delta": -4.990783410138249,
+    "candidate_only_victories": 11,
+    "parent_only_victories": 136,
+    "control_victories": 350,
+    "candidate_victories": 225,
+    "victory_rate_delta_percentage_points": -14.400921658986176,
+    "by_battle_index": {
+      "0": {
+        "profile_count": 256,
+        "mean_reward_delta": -13.511090455572294,
+        "mean_player_hp_delta": -8.0625,
+        "candidate_only_victories": 4,
+        "parent_only_victories": 73
+      },
+      "3": {
+        "profile_count": 248,
+        "mean_reward_delta": -8.12102825719107,
+        "mean_player_hp_delta": -4.334677419354839,
+        "candidate_only_victories": 3,
+        "parent_only_victories": 37
+      },
+      "6": {
+        "profile_count": 210,
+        "mean_reward_delta": -4.481635022486044,
+        "mean_player_hp_delta": -2.9523809523809526,
+        "candidate_only_victories": 3,
+        "parent_only_victories": 10
+      },
+      "9": {
+        "profile_count": 154,
+        "mean_reward_delta": -7.469763521998842,
+        "mean_player_hp_delta": -3.720779220779221,
+        "candidate_only_victories": 1,
+        "parent_only_victories": 16
+      }
+    },
+    "battle_indices_6_and_9": {
+      "profile_count": 364,
+      "mean_reward_delta": -5.745843233818382,
+      "mean_player_hp_delta": -3.2774725274725274,
+      "candidate_only_victories": 4,
+      "parent_only_victories": 26
+    }
+  },
+  "eligibility": {
+    "all_technical_success_criteria_pass": true,
+    "matched_aggregate_mean_reward_delta_vs_parent_gt_0": false,
+    "matched_aggregate_mean_player_hp_delta_vs_parent_gte_0": false,
+    "candidate_only_victories_gte_parent_only_victories": false,
+    "battle_index_0_mean_reward_delta_vs_parent_gte_0": false,
+    "battle_index_0_mean_player_hp_delta_vs_parent_gte_0": false,
+    "battle_indices_6_and_9_combined_mean_reward_delta_vs_parent_gt_0": false,
+    "no_battle_index_mean_reward_delta_vs_parent_lt_minus_1": false,
+    "candidate_eligible": false
+  },
+  "decision": {
+    "verdict": "retain_production_r16",
+    "production_packaging_authorized": false,
+    "fresh_real_replay_confirmation_authorized": false,
+    "matched_live_gate_authorized": false,
+    "reason": "The bounded one-step LightSTS update is materially worse than the exact production r16 parent on every registered held-out performance condition."
+  },
+  "next_step": "Use the frozen parent-to-candidate parameter direction for a separately registered low-alpha simulator interpolation diagnostic; do not rerun, tune, package, or live-test this candidate."
+}
