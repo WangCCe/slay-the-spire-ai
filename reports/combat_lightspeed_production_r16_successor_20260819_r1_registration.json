@@ -1,0 +1,93 @@
+{
+  "schema_version": "combat-lightspeed-production-shadow-successor-registration-v1",
+  "experiment_id": "combat-lightspeed-production-r16-successor-20260819-r1",
+  "registered_source_commit": "22fe68410ffdf73b6534a248158d4498cfc9568c",
+  "experiment_question": "Does one bounded one-step LightSTS update from the exact production r16 simulator shadow improve fresh held-out combat outcomes over the unchanged production parent without aggregate, early-combat, or late-combat regression?",
+  "source_binding": {
+    "training_runner_sha256": "1e00ac42e0769d283bfea40858c2979b3fdf19db9a0eef16bdf68229ccac55b4",
+    "bridge_source_sha256": "ced080a47b3b9b25206eac7b8b5ee3752af348d4df8a5d9750e386157812bf90",
+    "native_adapter_source_sha256": "5b91de6be49370fbc0c123f9a64879a68bd6d6d64b46017468d1b59d6dbb86df",
+    "native_module_path": "D:/PycharmProjects/slay-the-spire-ai/.sts_lightspeed_combat_later_battle_20260819_r3_build/sts_lightspeed_combat_adapter.cp310-win_amd64.pyd",
+    "native_module_sha256": "195678b7fc6bf69815f3d2971404afb8ce72fb666700edf4203383429caf1009",
+    "simulator_commit": "7476a81954020087da31d41d16fddf475746ec2d",
+    "simulator_dirty": true,
+    "simulator_source_sha256": "a3f98721ec37373b1b00aef660832a3307f0186ba0614d07a3b1e7de8ab2e46a",
+    "items_json_path": "D:/SteamLibrary/steamapps/common/SlayTheSpire/export/items.json",
+    "items_json_sha256": "e23784ea8ed3092e3bfa9918240e162a9cbcb837badfb53c612eb0d83cc811dc"
+  },
+  "parent": {
+    "label": "production_r16_shadow",
+    "production_source_path": "reports/combat_rl_promoted_r15_successor_20260818_r16/rl_combat_model_promoted_r15_successor_candidate.pth",
+    "production_source_sha256": "75120e9e8f76393d4d82c16de5c3ea6384d2f7ef26bd530a6b552ed9791e38f5",
+    "shadow_path": "reports/combat_lightspeed_production_r16_shadow_20260819_r1/simulator_only_production_shadow.pth",
+    "shadow_sha256": "ce2ae34f82b3f457fb35e87d429c397204c42d0f742d3ac8952d91b69119b83b",
+    "parameter_sha256": "cfe8204d06db6b43b063df98e1b713d4a40a0894a1a9330c3db87c739da88d48",
+    "production_compatible": false,
+    "shadow_equivalence_max_abs_q_delta": 0.0,
+    "shadow_equivalence_action_mismatch_count": 0
+  },
+  "cohorts": {
+    "training_seeds": "123000..124023",
+    "training_seed_count": 1024,
+    "evaluation_seeds": "125000..125255",
+    "evaluation_seed_count": 256,
+    "battle_indices": [0, 3, 6, 9],
+    "training_profile_count": 4096,
+    "evaluation_profile_count_per_policy": 1024,
+    "prior_registered_lightspeed_seed_overlap": false
+  },
+  "recipe": {
+    "ascension": 0,
+    "max_decisions_per_profile": 100,
+    "max_actions_per_turn": 8,
+    "behavior_seed": 2026081970,
+    "network_seed": 2026081971,
+    "batch_size": 128,
+    "optimizer_steps": 256,
+    "parent_policy_anchor_weight": 1.0,
+    "balance_replay_by_battle_index": true,
+    "replay_balance_seed": 2026081972,
+    "complete_trajectories_only": true,
+    "replay_target_mode": "one-step-td",
+    "replay_return_discount": 0.99,
+    "replay_return_horizon": 3,
+    "encounter_identity_buckets": 0,
+    "device": "cpu",
+    "output_dir": "reports/combat_lightspeed_production_r16_successor_20260819_r1",
+    "production_checkpoint_access": false
+  },
+  "technical_success_criteria": {
+    "verdict": "technical_smoke_ready",
+    "finite_optimizer_updates": 256,
+    "initial_parameter_sha256_matches_registered_parent": true,
+    "source_replay_transition_count_gte": 60000,
+    "all_four_source_transition_strata_gte": 12000,
+    "all_four_prepared_transition_strata_equal": true,
+    "prepared_transition_count_lte_replay_capacity_100000": true,
+    "allowed_incomplete_profile_reasons": ["decision_bound"],
+    "excluded_incomplete_profile_count_lte": 8,
+    "excluded_incomplete_transition_count_lte": 800,
+    "unexpected_initialization_failure_count": 0,
+    "unsupported_reason_counts_empty": true,
+    "held_out_truncation_count_per_policy": 0
+  },
+  "candidate_eligibility_rule": [
+    "all_technical_success_criteria_pass",
+    "matched_aggregate_mean_reward_delta_vs_parent_gt_0",
+    "matched_aggregate_mean_player_hp_delta_vs_parent_gte_0",
+    "candidate_only_victories_gte_parent_only_victories",
+    "battle_index_0_mean_reward_delta_vs_parent_gte_0",
+    "battle_index_0_mean_player_hp_delta_vs_parent_gte_0",
+    "battle_indices_6_and_9_combined_mean_reward_delta_vs_parent_gt_0",
+    "no_battle_index_mean_reward_delta_vs_parent_lt_-1.0"
+  ],
+  "next_gate_if_eligible": "separate production packaging plus fresh real-replay confirmation before any matched live gate",
+  "retain_parent": "retain production r16 if any technical or candidate eligibility condition fails",
+  "stop_rules": [
+    "Execute the registered experiment at most once and do not retry or alter the cohort after outcome access.",
+    "Do not tune the recipe, architecture, reward, seeds, thresholds, or parent after outcome access.",
+    "Do not start Slay the Spire or CommunicationMod.",
+    "Load only the simulator-only shadow; do not load or modify the production-compatible r16 checkpoint.",
+    "The simulator result cannot directly authorize production packaging, promotion, or gameplay."
+  ]
+}
