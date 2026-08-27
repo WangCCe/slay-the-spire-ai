@@ -1,6 +1,12 @@
+from pathlib import Path
+
+import pytest
+import torch
+
 from analysis_scripts.combat_rl_frozen_candidate_replay_gate import (
     _decision,
     _eligibility,
+    _validate_parent_provenance,
 )
 
 
@@ -75,3 +81,49 @@ def test_frozen_candidate_gate_rejects_each_sequence_guard_failure():
             require_one_step_smooth_l1_improvement=True,
         )
         assert eligibility["all_conditions_passed"] is False
+
+
+def _checkpoint(value: float) -> dict:
+    state = {"weight": torch.tensor([value])}
+    return {
+        "metadata": {"state": "test"},
+        "online_network_state_dict": state,
+        "target_network_state_dict": state,
+    }
+
+
+def test_parent_provenance_accepts_bound_weight_equivalent_training_checkpoint(
+    tmp_path: Path,
+):
+    parent = _checkpoint(1.0)
+    equivalence_path = tmp_path / "training.pth"
+    torch.save(_checkpoint(1.0), equivalence_path)
+    import analysis_scripts.combat_rl_frozen_candidate_replay_gate as gate
+
+    equivalence_hash = gate._sha256(equivalence_path)
+    proof = _validate_parent_provenance(
+        {"training_checkpoint_sha256": equivalence_hash},
+        parent,
+        parent_hash="a" * 64,
+        equivalence_checkpoint_path=equivalence_path,
+    )
+
+    assert proof["kind"] == "training_checkpoint_weight_equivalence"
+    assert proof["equivalence_checkpoint"]["sha256"] == equivalence_hash
+
+
+def test_parent_provenance_rejects_non_equivalent_bound_training_checkpoint(
+    tmp_path: Path,
+):
+    equivalence_path = tmp_path / "training.pth"
+    torch.save(_checkpoint(2.0), equivalence_path)
+    import analysis_scripts.combat_rl_frozen_candidate_replay_gate as gate
+
+    equivalence_hash = gate._sha256(equivalence_path)
+    with pytest.raises(ValueError, match="online network differs"):
+        _validate_parent_provenance(
+            {"training_checkpoint_sha256": equivalence_hash},
+            _checkpoint(1.0),
+            parent_hash="a" * 64,
+            equivalence_checkpoint_path=equivalence_path,
+        )

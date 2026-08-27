@@ -38,6 +38,59 @@ def _decision(eligibility: dict) -> str:
     )
 
 
+def _state_dicts_equal(left: dict, right: dict) -> bool:
+    return set(left) == set(right) and all(
+        torch.equal(left[name], right[name]) for name in left
+    )
+
+
+def _validate_parent_provenance(
+    provenance: dict,
+    parent: dict,
+    *,
+    parent_hash: str,
+    equivalence_checkpoint_path: Path | None,
+) -> dict:
+    if provenance.get("parent_checkpoint_sha256") == parent_hash:
+        return {
+            "kind": "direct_parent_checkpoint_binding",
+            "parent_checkpoint_sha256": parent_hash,
+        }
+    if equivalence_checkpoint_path is None:
+        raise ValueError("Candidate provenance does not bind the parent checkpoint")
+
+    equivalence_path = equivalence_checkpoint_path.resolve()
+    equivalence_hash = _sha256(equivalence_path)
+    if provenance.get("training_checkpoint_sha256") != equivalence_hash:
+        raise ValueError(
+            "Candidate provenance does not bind the parent-equivalence checkpoint"
+        )
+    equivalence = torch.load(
+        equivalence_path, map_location="cpu", weights_only=True
+    )
+    if equivalence.get("metadata") != parent.get("metadata"):
+        raise ValueError("Parent-equivalence checkpoint metadata differs from parent")
+
+    parent_online = parent["online_network_state_dict"]
+    parent_target = parent.get("target_network_state_dict", parent_online)
+    equivalence_online = equivalence["online_network_state_dict"]
+    equivalence_target = equivalence.get(
+        "target_network_state_dict", equivalence_online
+    )
+    if not _state_dicts_equal(equivalence_online, parent_online):
+        raise ValueError("Parent-equivalence online network differs from parent")
+    if not _state_dicts_equal(equivalence_target, parent_target):
+        raise ValueError("Parent-equivalence target network differs from parent")
+    return {
+        "kind": "training_checkpoint_weight_equivalence",
+        "parent_checkpoint_sha256": parent_hash,
+        "equivalence_checkpoint": {
+            "path": str(equivalence_path),
+            "sha256": equivalence_hash,
+        },
+    }
+
+
 def _eligibility(
     metrics: dict,
     baseline: dict,
@@ -101,8 +154,12 @@ def run(args: argparse.Namespace) -> dict:
 
     parent_hash = _sha256(parent_path)
     provenance = candidate.get("provenance", {})
-    if provenance.get("parent_checkpoint_sha256") != parent_hash:
-        raise ValueError("Candidate provenance does not bind the parent checkpoint")
+    parent_provenance = _validate_parent_provenance(
+        provenance,
+        parent,
+        parent_hash=parent_hash,
+        equivalence_checkpoint_path=args.candidate_parent_equivalence_checkpoint,
+    )
     if int(provenance.get("horizon", 1)) != args.horizon:
         raise ValueError("Candidate provenance does not bind the requested horizon")
     if abs(float(provenance.get("gamma", args.gamma)) - args.gamma) > 1e-12:
@@ -162,6 +219,7 @@ def run(args: argparse.Namespace) -> dict:
                 "path": str(parent_path),
                 "sha256": parent_hash,
             },
+            "parent_provenance": parent_provenance,
             "candidate_checkpoint": {
                 "path": str(candidate_path),
                 "sha256": _sha256(candidate_path),
@@ -219,6 +277,11 @@ def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--parent-checkpoint", type=Path, required=True)
     parser.add_argument("--candidate-checkpoint", type=Path, required=True)
+    parser.add_argument(
+        "--candidate-parent-equivalence-checkpoint",
+        type=Path,
+        default=None,
+    )
     parser.add_argument("--replay-checkpoint", type=Path, required=True)
     parser.add_argument("--output", type=Path, required=True)
     parser.add_argument("--gate-id", required=True)
