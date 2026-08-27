@@ -454,6 +454,108 @@ def _real_trainer(
     )
 
 
+def _selection_inputs(trainer):
+    return {
+        "continuous": np.zeros(2, dtype=np.float32),
+        "card_ids": np.zeros(1, dtype=np.int64),
+        "potion_ids": np.zeros(1, dtype=np.int64),
+        "relic_ids": np.zeros(1, dtype=np.int64),
+        "action_mask": np.ones(trainer.action_dim, dtype=bool),
+        "training": True,
+        "epsilon_override": 0.0,
+    }
+
+
+@pytest.mark.parametrize("initial_training", [True, False])
+def test_greedy_action_selection_uses_eval_mode_and_restores_prior_mode(
+    monkeypatch,
+    initial_training,
+):
+    trainer = _real_trainer(action_dim=3)
+    trainer.online_network.train(initial_training)
+    observed_modes = []
+
+    def get_best_action(**kwargs):
+        observed_modes.append(trainer.online_network.training)
+        assert kwargs["action_mask"].tolist() == [[True, True, True]]
+        return torch.tensor([1])
+
+    monkeypatch.setattr(trainer.online_network, "get_best_action", get_best_action)
+
+    assert trainer.select_action(**_selection_inputs(trainer)) == 1
+    assert observed_modes == [False]
+    assert trainer.online_network.training is initial_training
+
+
+@pytest.mark.parametrize("initial_training", [True, False])
+def test_greedy_action_selection_restores_prior_mode_after_failure(
+    monkeypatch,
+    initial_training,
+):
+    trainer = _real_trainer(action_dim=3)
+    trainer.online_network.train(initial_training)
+    observed_modes = []
+
+    def fail_selection(**_kwargs):
+        observed_modes.append(trainer.online_network.training)
+        raise RuntimeError("selection failed")
+
+    monkeypatch.setattr(trainer.online_network, "get_best_action", fail_selection)
+
+    with pytest.raises(RuntimeError, match="selection failed"):
+        trainer.select_action(**_selection_inputs(trainer))
+
+    assert observed_modes == [False]
+    assert trainer.online_network.training is initial_training
+
+
+def test_zero_epsilon_greedy_selection_is_deterministic_with_dropout():
+    trainer = _real_trainer(action_dim=8)
+    trainer.online_network.train()
+    assert any(
+        isinstance(module, torch.nn.Dropout)
+        for module in trainer.online_network.modules()
+    )
+    online_before = {
+        key: value.detach().clone()
+        for key, value in trainer.online_network.state_dict().items()
+    }
+
+    actions = []
+    for seed in range(20):
+        torch.manual_seed(seed)
+        actions.append(trainer.select_action(**_selection_inputs(trainer)))
+
+    assert len(set(actions)) == 1
+    assert trainer.online_network.training is True
+    assert trainer.target_network.training is False
+    assert all(
+        torch.equal(trainer.online_network.state_dict()[key], value)
+        for key, value in online_before.items()
+    )
+
+
+def test_epsilon_exploration_preserves_network_mode_without_forward(
+    monkeypatch,
+):
+    trainer = _real_trainer(action_dim=3)
+    trainer.online_network.train()
+    inputs = _selection_inputs(trainer)
+    inputs["action_mask"] = np.array([False, True, True], dtype=bool)
+    inputs["epsilon_override"] = 1.0
+
+    monkeypatch.setattr(np.random, "random", lambda: 0.0)
+    monkeypatch.setattr(np.random, "choice", lambda values: values[-1])
+
+    def unexpected_forward(**_kwargs):
+        raise AssertionError("epsilon branch must not evaluate the online network")
+
+    monkeypatch.setattr(trainer.online_network, "get_best_action", unexpected_forward)
+
+    assert trainer.select_action(**inputs) == 2
+    assert trainer.online_network.training is True
+
+
 def _store_real_transition(
     trainer,
     *,

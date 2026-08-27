@@ -505,15 +505,20 @@ class DQNTrainerV2:
         relic_tensor = torch.from_numpy(relic_ids).long().unsqueeze(0).to(self.device)
         mask_tensor = torch.from_numpy(action_mask).unsqueeze(0).to(self.device)
 
-        with torch.no_grad():
-            action = self.online_network.get_best_action(
-                continuous=continuous_tensor,
-                card_ids=card_tensor,
-                potion_ids=potion_tensor,
-                relic_ids=relic_tensor,
-                action_mask=mask_tensor,
-            )
-            return int(action.item())
+        previous_training_mode = self.online_network.training
+        try:
+            self.online_network.eval()
+            with torch.no_grad():
+                action = self.online_network.get_best_action(
+                    continuous=continuous_tensor,
+                    card_ids=card_tensor,
+                    potion_ids=potion_tensor,
+                    relic_ids=relic_tensor,
+                    action_mask=mask_tensor,
+                )
+                return int(action.item())
+        finally:
+            self.online_network.train(previous_training_mode)
 
     def store_transition(
         self,
