@@ -1,0 +1,150 @@
+{
+  "schema_version": "combat-lightspeed-proxy-aware-anchor-analysis-v1",
+  "experiment_id": "combat-lightspeed-proxy-aware-anchor-20260827-r1",
+  "registered_source_commit": "0a3d5a07c412c7db96e10132f16e1b704e23a9b5",
+  "registration_commit": "9545cd324d6355b9468348d20802a0d9073b5195",
+  "verdict": "negative_reject_proxy_aware_anchor_retain_raw_parent",
+  "integrity": {
+    "registration_sha256": "de14a91967498e110a39f644ac8b7dc6927c8aede5e643430e8db79494cb8ed6",
+    "control_report_sha256": "b4a0bef31034cdf14dbef1f3f0056c78bb67485abce5b392c4314d815dff6ad5",
+    "candidate_report_sha256": "2fbb2f5b4c944d7c7f2b283845fcc9362a8d403945772c06b7908c7e9c31aee8",
+    "control_manifest_valid": true,
+    "candidate_manifest_valid": true
+  },
+  "technical": {
+    "passed": true,
+    "control_verdict": "technical_smoke_ready",
+    "candidate_verdict": "technical_smoke_ready",
+    "source_transition_identity_sha256": "9dde22861a29c2bdccdd4389080e6feec88834b400757797e177ea2ffda54ff8",
+    "source_transition_count_per_arm": 49984,
+    "prepared_transition_count_per_arm": 66152,
+    "optimizer_update_count_per_arm": 256,
+    "guard_replacement_count_per_arm": 20888,
+    "control_sampled_override_count": {
+      "first": 0.0,
+      "last": 0.0,
+      "mean": 0.0,
+      "minimum": 0.0,
+      "maximum": 0.0
+    },
+    "candidate_sampled_override_count": {
+      "first": 54.0,
+      "last": 56.0,
+      "mean": 53.34375,
+      "minimum": 39.0,
+      "maximum": 70.0,
+      "sum_over_updates": 13656
+    },
+    "parent_evaluation_rows_match": true,
+    "replay_preparation_matches": true,
+    "replay_target_matches": true,
+    "unexpected_initialization_failure_count": 0,
+    "unsupported_reason_counts_empty": true,
+    "terminal_paired_profile_count_per_arm": 832,
+    "control_blockers": [],
+    "candidate_blockers": []
+  },
+  "training": {
+    "control": {
+      "candidate_file_sha256": "a2bcc9e9425f9400269a1d39b4a12d550c0c808dadba9f7fe3ab3d1480f6e340",
+      "candidate_parameter_sha256": "706a51db730cfcf7d9da88f2207cff7fb2ef8a718806fdee630334d8f329ed05",
+      "parameter_delta_l2": 1.14308733101685,
+      "mean_td_loss": 2.57271456485614,
+      "mean_parent_anchor_loss": 0.489780608913861
+    },
+    "candidate": {
+      "candidate_file_sha256": "ec295a7f3a758eeedec046ac8b149796af2c2695227aa3e657ac94354cf7a013",
+      "candidate_parameter_sha256": "ac7484e8d80cdb32a744df4d45ed99e8ef8c64638433d76382becb9c5b477490",
+      "parameter_delta_l2": 1.23330064336345,
+      "mean_td_loss": 2.57202567253262,
+      "mean_parent_anchor_loss": 0.974470569984987
+    }
+  },
+  "policy": {
+    "candidate_minus_control": {
+      "aggregate": {
+        "profile_count": 832,
+        "mean_reward_delta": -0.6852770559361597,
+        "mean_player_hp_delta": -0.6081730769230769,
+        "candidate_only_victories": 12,
+        "control_only_victories": 20
+      },
+      "battle_indices_6_and_9_combined_mean_reward_delta": -0.8474317584883291,
+      "by_battle_index": {
+        "0": {
+          "profile_count": 256,
+          "mean_reward_delta": -0.7643554687500003,
+          "mean_player_hp_delta": -1.19921875,
+          "candidate_only_victories": 0,
+          "control_only_victories": 0
+        },
+        "3": {
+          "profile_count": 246,
+          "mean_reward_delta": -0.3854594725111228,
+          "mean_player_hp_delta": -0.8699186991869918,
+          "candidate_only_victories": 3,
+          "control_only_victories": 2
+        },
+        "6": {
+          "profile_count": 195,
+          "mean_reward_delta": -2.1586065906839647,
+          "mean_player_hp_delta": -0.517948717948718,
+          "candidate_only_victories": 4,
+          "control_only_victories": 13
+        },
+        "9": {
+          "profile_count": 135,
+          "mean_reward_delta": 1.0464874435720328,
+          "mean_player_hp_delta": 0.8592592592592593,
+          "candidate_only_victories": 5,
+          "control_only_victories": 5
+        }
+      },
+      "criteria": {
+        "mean_reward_delta_gt_0_2": false,
+        "mean_player_hp_delta_gte_0": false,
+        "candidate_only_victories_gte_control_only_victories": false,
+        "battle_indices_6_and_9_combined_mean_reward_delta_gt_0": false,
+        "battle_index_0_mean_reward_delta_gte_minus_0_25": false,
+        "no_battle_index_mean_reward_delta_lt_minus_0_5": false
+      }
+    },
+    "candidate_minus_parent": {
+      "aggregate": {
+        "profile_count": 832,
+        "mean_reward_delta": -1.270727445513909,
+        "mean_player_hp_delta": -1.125,
+        "candidate_only_victories": 11,
+        "parent_only_victories": 27
+      },
+      "battle_indices_6_and_9_combined_mean_reward_delta": -2.2312351142399276,
+      "criteria": {
+        "mean_reward_delta_gt_0_25": false,
+        "mean_player_hp_delta_gte_0": false,
+        "candidate_only_victories_gte_parent_only_victories": false,
+        "battle_indices_6_and_9_combined_mean_reward_delta_gt_0": false,
+        "battle_index_0_mean_reward_delta_gte_minus_0_25": false,
+        "no_battle_index_mean_reward_delta_lt_minus_0_5": false
+      }
+    },
+    "control_minus_parent": {
+      "aggregate": {
+        "profile_count": 832,
+        "mean_reward_delta": -0.5854503895777493,
+        "mean_player_hp_delta": -0.5168269230769231,
+        "candidate_only_victories": 11,
+        "parent_only_victories": 19
+      }
+    }
+  },
+  "decision": {
+    "retain_parent_anchor_label_mode": "frozen-parent-greedy-v1",
+    "combine_proxy_aware_anchor_with_encounter_identity": false,
+    "same_cohort_tuning": false,
+    "retry": false,
+    "gameplay_authorized": false,
+    "packaging_authorized": false,
+    "promotion_authorized": false,
+    "next_step": "Return to representation or data-quality hypotheses; do not continue the executed-action anchor objective under the current recipe."
+  }
+}
