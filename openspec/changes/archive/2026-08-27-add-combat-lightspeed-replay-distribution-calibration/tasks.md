@@ -33,5 +33,5 @@
 
 ## 5. Closeout
 
-- [ ] 5.1 Sync the new capability spec, archive the completed change, and run final strict OpenSpec validation.
+- [x] 5.1 Sync the new capability spec, archive the completed change, and run final strict OpenSpec validation.
 - [x] 5.2 Select the next evidence step from the report without treating descriptive similarity as mechanics equivalence or policy qualification.
