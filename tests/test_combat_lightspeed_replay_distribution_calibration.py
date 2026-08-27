@@ -9,6 +9,7 @@ import pytest
 import torch
 
 from analysis_scripts.combat_lightspeed_replay_distribution_calibration import (
+    FrozenBehaviorPolicy,
     REPORT_AUTHORITY,
     RealReplayBinding,
     TransitionBatch,
@@ -314,6 +315,40 @@ def test_collection_config_is_frozen_parent_zero_epsilon_and_no_fit_contract():
     assert config.deployment_guard_proxy == GREEDY_NATIVE_REWARD_DEPLOYMENT_GUARD_PROXY
     assert config.train_seeds == (180000, 180001)
     assert config.battle_indices == (0, 3, 6)
+
+
+def test_frozen_behavior_policy_implements_deterministic_collection_interface():
+    class FixedNetwork(torch.nn.Module):
+        def __init__(self):
+            super().__init__()
+            self.marker = torch.nn.Parameter(torch.zeros(()))
+
+        def get_best_action(self, **inputs):
+            assert inputs["continuous"].shape == (1, StateEncoderV2.CONTINUOUS_DIM)
+            assert inputs["action_mask"].shape == (1, ACTION_DIM)
+            return torch.tensor([90], device=self.marker.device)
+
+    policy = FrozenBehaviorPolicy(FixedNetwork())
+    state = _replay_state()
+
+    action = policy.select_action(
+        state["continuous"][0].numpy(),
+        state["card_ids"][0].numpy(),
+        state["potion_ids"][0].numpy(),
+        state["relic_ids"][0].numpy(),
+        state["action_masks"][0].numpy(),
+        training=False,
+    )
+
+    assert action == 90
+    with pytest.raises(ValueError, match="only supports inference"):
+        policy.select_action(
+            state["continuous"][0].numpy(),
+            state["card_ids"][0].numpy(),
+            state["potion_ids"][0].numpy(),
+            state["relic_ids"][0].numpy(),
+            state["action_masks"][0].numpy(),
+        )
 
 
 def test_report_is_deterministic_and_grants_no_downstream_authority():

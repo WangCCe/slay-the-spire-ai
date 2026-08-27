@@ -162,6 +162,40 @@ class TransitionBatch:
 class FrozenBehaviorPolicy:
     online_network: torch.nn.Module
 
+    def select_action(
+        self,
+        continuous: np.ndarray,
+        card_ids: np.ndarray,
+        potion_ids: np.ndarray,
+        relic_ids: np.ndarray,
+        action_mask: np.ndarray,
+        training: bool = True,
+        epsilon_override: float | None = None,
+    ) -> int:
+        if training:
+            raise ValueError("frozen behavior policy only supports inference")
+        if epsilon_override not in {None, 0.0}:
+            raise ValueError("frozen behavior policy does not support exploration")
+        try:
+            device = next(self.online_network.parameters()).device
+        except StopIteration:
+            device = torch.device("cpu")
+        with torch.no_grad():
+            action = self.online_network.get_best_action(
+                continuous=torch.from_numpy(continuous)
+                .float()
+                .unsqueeze(0)
+                .to(device),
+                card_ids=torch.from_numpy(card_ids).long().unsqueeze(0).to(device),
+                potion_ids=torch.from_numpy(potion_ids)
+                .long()
+                .unsqueeze(0)
+                .to(device),
+                relic_ids=torch.from_numpy(relic_ids).long().unsqueeze(0).to(device),
+                action_mask=torch.from_numpy(action_mask).unsqueeze(0).to(device),
+            )
+        return int(action.item())
+
 
 def _normalized_sha256(value: str, *, label: str) -> str:
     text = str(value).lower()

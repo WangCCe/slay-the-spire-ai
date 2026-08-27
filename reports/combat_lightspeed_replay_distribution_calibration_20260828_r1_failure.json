@@ -1,0 +1,36 @@
+{
+  "schema_version": "combat-lightspeed-replay-distribution-calibration-failure-v1",
+  "experiment_id": "combat-lightspeed-replay-distribution-calibration-20260828-r1",
+  "registration_commit": "57abab1bb1e49816fb17662e33572ffdd2c40744",
+  "attempt_count": 1,
+  "exit_code": 1,
+  "failure_class": "frozen_behavior_policy_interface_missing",
+  "exception_type": "AttributeError",
+  "exception_message": "'FrozenBehaviorPolicy' object has no attribute 'select_action'",
+  "failure_site": "analysis_scripts/combat_lightspeed_training_smoke.py:_policy_action",
+  "output_dir_exists": false,
+  "staging_dir_exists": false,
+  "canonical_output_published": false,
+  "operations": {
+    "communication_mod": false,
+    "gameplay": false,
+    "model_fitting": false,
+    "native_loading": true,
+    "optimizer_updates": 0,
+    "real_checkpoint_loading": true,
+    "simulator_environment_construction": true,
+    "training": false
+  },
+  "cohort_disposition": {
+    "registered_seeds": "180000..180127",
+    "exact_accessed_suffix_unknown": true,
+    "conservative_reservation": "reserve_entire_registered_range",
+    "reuse_allowed": false
+  },
+  "decision": {
+    "r1_retry": false,
+    "r1_resume": false,
+    "repair": "Add only the deterministic select_action interface required by collect_transitions and a focused regression.",
+    "replacement": "A separately committed r2 registration may use a fresh disjoint seed range after the repair is verified and pushed."
+  }
+}
