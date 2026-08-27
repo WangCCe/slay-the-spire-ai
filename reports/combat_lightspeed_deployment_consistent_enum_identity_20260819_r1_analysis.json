@@ -1,0 +1,92 @@
+{
+  "schema_version": "combat-lightspeed-deployment-consistent-enum-identity-analysis-v1",
+  "verdict": "positive_direction_ineligible_retain_r16",
+  "integrity": {
+    "registration_sha256": "350c2e77bc9777d74987cb0ef5aed32cea03c34ea1eb10776ee385b978aff6be",
+    "control_report_sha256": "b1c758c8551f58c410a7a7d27bf998822865b316d10670248e540b82bd61e912",
+    "control_manifest_sha256": "11f6be88c80b9fcab96c5dd4c4ae2bcd4f307c62078179bb303a067b5a62b16b",
+    "enum_report_sha256": "c325291ed9b3153027abfccee65c467d187990ed9eac47c70176ecfed57f9c51",
+    "enum_manifest_sha256": "858bf352ce84f65953674df5da61aa0bb34846447fdb3e579361ceaaf211cd76",
+    "generated_manifests_verified": true,
+    "same_cohort_tuning": false,
+    "retry_after_outcome_access": false
+  },
+  "technical": {
+    "control_runner_verdict": "technical_smoke_ready",
+    "enum_runner_verdict": "technical_smoke_ready",
+    "source_replay_transition_count_per_arm": 50043,
+    "prepared_replay_transition_count_per_arm": 66740,
+    "optimizer_update_count_per_arm": 256,
+    "behavior_telemetry_equal_except_migrated_parent_hash": true,
+    "corpus_reward_metrics_equal": true,
+    "parent_evaluation_rows_equal": true,
+    "control_source_transition_identity_sha256": "24d22bb69641b17e1f18abdc4e49be41ea6cc9ea14cb516eca692e60a5cd2159",
+    "enum_source_transition_identity_sha256": "f83c869897344fdc5f5a0fb069d21870ff2bb4cf9d54d0c8cb80298ba59e47c6",
+    "source_transition_identity_matches_between_arms": false,
+    "source_transition_identity_interpretation": "The runner hashes encoded observations, so adding encounter columns changes the identity even when collection counts, behavior telemetry, rewards, and parent evaluation rows match. The preregistered equality criterion nevertheless failed and is not relaxed post hoc.",
+    "enum_migration_action_mismatch_count": 0,
+    "enum_migration_max_abs_q_delta": 0.00000762939453125,
+    "registered_enum_migration_max_abs_q_delta_lte": 0.000001,
+    "enum_migration_q_delta_criterion_passed": false,
+    "enum_inserted_column_max_abs": 0.0,
+    "enum_v1_vocabulary_sha256": "03de0935cfdabf10d0a1ba800c9afe561d453c40c10b3c6b5ee47f7b14763638",
+    "all_registered_technical_criteria_passed": false,
+    "failed_registered_technical_criteria": [
+      "source_transition_identity_matches_between_arms",
+      "enum_migration_max_abs_q_delta_lte_0.000001"
+    ]
+  },
+  "candidates": {
+    "control": {
+      "checkpoint_sha256": "e39683e9984801404dffea250784fe5aa215c7391e7d5d5221ab95579c896fc5",
+      "parameter_sha256": "5050e058e905ab4abbfc509d270bc2c5befa0100ad66166108c79deecf6ac8fd",
+      "parameter_l2_delta": 1.18862657182728
+    },
+    "enum_v1": {
+      "checkpoint_sha256": "520265252986677c516896462c11140f4d8c65a4dc083e3cbb07d2158b0479f2",
+      "parameter_sha256": "c8dd3ef5d73257572252462f0e71c373250ad0a3c046c94212736b2bcc0d28a8",
+      "parameter_l2_delta": 1.24636695778347
+    }
+  },
+  "enum_minus_control": {
+    "matched_terminal_profile_count": 843,
+    "mean_reward_delta": 0.407503747602858,
+    "mean_player_hp_delta": 0.276393831553974,
+    "enum_only_victories": 5,
+    "control_only_victories": 3,
+    "battle_indices": {
+      "0": {"profile_count": 256, "mean_reward_delta": 0.014844, "mean_player_hp_delta": 0.023438, "enum_only_victories": 0, "control_only_victories": 0},
+      "3": {"profile_count": 248, "mean_reward_delta": 0.155712, "mean_player_hp_delta": 0.169355, "enum_only_victories": 0, "control_only_victories": 0},
+      "6": {"profile_count": 197, "mean_reward_delta": 0.710374, "mean_player_hp_delta": 0.101523, "enum_only_victories": 4, "control_only_victories": 2},
+      "9": {"profile_count": 142, "mean_reward_delta": 1.134967, "mean_player_hp_delta": 1.161972, "enum_only_victories": 1, "control_only_victories": 1}
+    },
+    "all_registered_policy_criteria_passed": true
+  },
+  "enum_minus_parent": {
+    "matched_terminal_profile_count": 843,
+    "mean_reward_delta": 0.279093973813154,
+    "mean_player_hp_delta": 0.214709371293001,
+    "enum_only_victories": 11,
+    "parent_only_victories": 12,
+    "battle_indices": {
+      "0": {"profile_count": 256, "mean_reward_delta": 0.118164, "mean_player_hp_delta": 0.1875, "enum_only_victories": 0, "parent_only_victories": 0},
+      "3": {"profile_count": 248, "mean_reward_delta": 0.021607, "mean_player_hp_delta": -0.004032, "enum_only_victories": 2, "parent_only_victories": 3},
+      "6": {"profile_count": 197, "mean_reward_delta": 0.668847, "mean_player_hp_delta": 0.522843, "enum_only_victories": 6, "parent_only_victories": 5},
+      "9": {"profile_count": 142, "mean_reward_delta": 0.478203, "mean_player_hp_delta": 0.21831, "enum_only_victories": 3, "parent_only_victories": 4}
+    },
+    "all_registered_policy_criteria_passed": false,
+    "failed_registered_policy_criteria": [
+      "candidate_only_victories_gte_parent_only_victories"
+    ]
+  },
+  "decision": {
+    "production_checkpoint": "retain_r16",
+    "fresh_frozen_confirmation": false,
+    "packaging": false,
+    "gameplay": false,
+    "same_cohort_tuning": false,
+    "repeat_current_recipe": false,
+    "interpretation": "Collision-free encounter identity is a positive representation direction, especially at battle indices 6 and 9, but this execution is ineligible under its immutable technical and parent-victory gates.",
+    "next_step": "Define a new structural change that preserves exact parent computation and records guard-replacement provenance before combining representation learning with a proxy-aware conservative objective."
+  }
+}
