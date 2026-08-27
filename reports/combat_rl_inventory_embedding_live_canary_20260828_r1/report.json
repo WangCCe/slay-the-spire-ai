@@ -1,0 +1,142 @@
+{
+  "schema_version": 1,
+  "gate_id": "combat-rl-inventory-embedding-live-canary-20260828-r1",
+  "source_commit": "424bea6c136005839a8d312e18c9047cbad34ff5",
+  "decision": "retain_production_r16_no_observable_live_benefit_stop_inventory_candidate_line",
+  "qualification_evaluated": true,
+  "qualification_passed": false,
+  "candidate_promoted": false,
+  "inputs": {
+    "preregistration": {
+      "path": "reports/combat_rl_inventory_embedding_live_canary_20260828_r1_preregistration.json",
+      "sha256": "ca0051589c59cdbf3d6bfeb07b1151e2fecb3385438091f1ec19d85eea5d784d"
+    },
+    "seed_pool": {
+      "path": "reports/combat_rl_inventory_embedding_live_canary_20260828_r1_seed_pool.txt",
+      "sha256": "cdfbaef9b3d4f213148f693d0193bd9285b6495c6f12869b47fea7f691d79c3d"
+    },
+    "candidate_checkpoint": {
+      "path": "reports/combat_rl_inventory_embedding_successor_20260828_r1/development_candidate.pth",
+      "sha256": "a1e631d5379adab9f55fe0ace993c49bba6576188e09cec4722f252971cbbb19"
+    },
+    "parent_checkpoint": {
+      "path": "reports/combat_rl_promoted_r15_successor_20260818_r16/rl_combat_model_promoted_r15_successor_candidate.pth",
+      "sha256": "75120e9e8f76393d4d82c16de5c3ea6384d2f7ef26bd530a6b552ed9791e38f5"
+    },
+    "fresh_replay_gate": {
+      "path": "reports/combat_rl_inventory_embedding_holdout_20260828_r1/frozen_candidate_replay_gate.json",
+      "sha256": "1d76116545eefd9f0e09ef3c8677fbb8935845f6d5ac2221d184e5204695ef99"
+    }
+  },
+  "execution": {
+    "arm_order": ["candidate", "parent"],
+    "games_per_arm": 10,
+    "candidate_started_at": "2026-08-28T05:34:54+08:00",
+    "candidate_completed_at": "2026-08-28T05:55:13+08:00",
+    "parent_started_at": "2026-08-28T05:57:38+08:00",
+    "parent_completed_at": "2026-08-28T06:17:55+08:00",
+    "training_enabled": false,
+    "epsilon": 0.0,
+    "all_seed_pairs_match": true,
+    "registered_commands_preserved": true,
+    "cohort_extended": false
+  },
+  "arms": {
+    "candidate": {
+      "games": 10,
+      "floors": [33, 16, 16, 30, 16, 33, 31, 27, 16, 16],
+      "floor_total": 234,
+      "floor_mean": 23.4,
+      "floor_median": 21.5,
+      "victories": 0,
+      "act_2_entries": 5,
+      "act_2_boss_reaches": 2,
+      "act_3_entries": 0,
+      "playtime_seconds": 1153,
+      "decision_trace_rows": 3492,
+      "decision_trace_parse_errors": 0,
+      "sim_divergence_trace_rows": 6,
+      "sim_divergence_trace_parse_errors": 0,
+      "policy_runtime_failures": 0,
+      "traceback_count": 0,
+      "crash_markers": 0,
+      "run_manifest_sha256": "9dccf0e35d50b42beecda10e9b50fbc6833132fd6817193f71dc7819c8881956",
+      "run_marker_sha256": "e9fbd506ad743fe95bc33c7ca13d5599812f69fbee11a24f9a7ca1981cf821cd",
+      "runtime_evidence": {
+        "path": "reports/combat_rl_inventory_embedding_live_canary_20260828_r1/candidate/runtime_evidence.zip",
+        "sha256": "565f9caf859654c418bef671830626addfa3af7f773d39dec0d03c4c897f5041",
+        "size_bytes": 2357934
+      },
+      "actual_config_sha256": "897ce58d07df7af5514870854b3a5cb8311bf964c736403fb3ac918314a2ba10"
+    },
+    "parent": {
+      "games": 10,
+      "floors": [33, 16, 16, 30, 16, 33, 31, 27, 16, 16],
+      "floor_total": 234,
+      "floor_mean": 23.4,
+      "floor_median": 21.5,
+      "victories": 0,
+      "act_2_entries": 5,
+      "act_2_boss_reaches": 2,
+      "act_3_entries": 0,
+      "playtime_seconds": 1150,
+      "decision_trace_rows": 3490,
+      "decision_trace_parse_errors": 0,
+      "sim_divergence_trace_rows": 6,
+      "sim_divergence_trace_parse_errors": 0,
+      "policy_runtime_failures": 0,
+      "traceback_count": 0,
+      "crash_markers": 0,
+      "run_manifest_sha256": "03e2d0d08a433173dfab127e3c76ea3280b7cb21d56bdad222c02b479f787400",
+      "run_marker_sha256": "a7cf66958ca94672b2927823c3ce63ad608c58243803f58b2c7d8107f6d9f471",
+      "runtime_evidence": {
+        "path": "reports/combat_rl_inventory_embedding_live_canary_20260828_r1/parent/runtime_evidence.zip",
+        "sha256": "107908d75c181cfbe37dc423d3a96defcdd68497fd4a70aa5190ea1de968e3e7",
+        "size_bytes": 2365888
+      },
+      "actual_config_sha256": "8838fbb7f340873c1e83f6bdd6ba2bce62ac35add4aab25bbf7a7708ff4b8949"
+    }
+  },
+  "paired": {
+    "floor_deltas_candidate_minus_parent": [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+    "floor_delta_total": 0,
+    "candidate_floor_wins": 0,
+    "parent_floor_wins": 0,
+    "floor_ties": 10,
+    "candidate_victory_only": 0,
+    "parent_victory_only": 0,
+    "killed_by_exact_pair_count": 10
+  },
+  "raw_policy_trace": {
+    "comparison": "per-seed ordered CombatRLAgent RL-returned log strings",
+    "candidate_action_count": 732,
+    "parent_action_count": 733,
+    "exact_seed_count": 5,
+    "divergent_seed_count": 5,
+    "divergent_seeds": [
+      "DB4B1E55CDB02",
+      "A205DB5D43F62",
+      "E502A513C4DE9",
+      "A5ECC29C8587B",
+      "B6CCD2000B0C1"
+    ],
+    "interpretation": "The candidate was behaviorally active, but raw action differences produced no run-outcome difference in this canary."
+  },
+  "qualification_conditions": {
+    "both_arms_completed_all_games": true,
+    "all_seed_pairs_match": true,
+    "both_arms_have_no_policy_runtime_failures": true,
+    "candidate_total_floors_exceeds_parent": false,
+    "candidate_victories_at_least_parent": true,
+    "candidate_act_2_boss_reaches_at_least_parent": true,
+    "candidate_act_3_entries_at_least_parent": true,
+    "all_conditions_passed": false
+  },
+  "production_state": {
+    "configuration_restored": true,
+    "configuration_sha256": "0991895790bc73d3d21a05731bf402228cf0c510a4217aa841ced026016760e7",
+    "active_checkpoint_sha256": "75120e9e8f76393d4d82c16de5c3ea6384d2f7ef26bd530a6b552ed9791e38f5",
+    "candidate_promoted": false
+  },
+  "next_step": "Do not extend this canary or create another inventory-only near-neighbor. Archive the completed inventory-embedding change, then use the paired raw-action divergences and retained replay to design a materially different training candidate before spending more live games."
+}
