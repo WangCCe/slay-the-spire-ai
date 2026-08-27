@@ -28,7 +28,7 @@
 ### 4A. Registered POC recovery
 
 - [x] 4A.1 Record the r1 interface failure and add a focused regression plus the minimum deterministic frozen-policy compatibility repair.
-- [ ] 4A.2 Run focused verification, commit and push the repair, and register one fresh r2 cohort that conservatively excludes all r1 seeds.
+- [x] 4A.2 Run focused verification, commit and push the repair, and register one fresh r2 cohort that conservatively excludes all r1 seeds.
 - [ ] 4A.3 Execute r2 once and use its report to complete task 4.3; do not retry either registration or reuse either cohort.
 
 ## 5. Closeout
