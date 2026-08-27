@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import argparse
 import copy
+import hashlib
 import sys
 import threading
 from collections.abc import Mapping, Sequence
@@ -19,7 +20,6 @@ if str(_REPO_ROOT) not in sys.path:
 
 import analysis_scripts.noncombat_current_baseline_evidence_study as predecessor
 import analysis_scripts.noncombat_reachable_event_native_compatibility as compatibility
-from analysis_scripts.noncombat_current_policy_simulator_bridge import hash_bound_files
 from analysis_scripts.noncombat_simulator_adapter import (
     canonical_json_bytes,
     sha256_bytes,
@@ -336,6 +336,26 @@ def classify_final_replication_eligibility(
     return "baseline_lane_terminal"
 
 
+def hash_bound_files_at_commit(
+    repo_root: Path, commit: str, source_files: Sequence[str]
+) -> str:
+    digest = hashlib.sha256()
+    for relative in source_files:
+        relative_path = Path(relative)
+        if relative_path.is_absolute() or ".." in relative_path.parts:
+            raise ReplicationBlocked("predecessor_source_path_invalid", relative)
+        canonical_relative = relative_path.as_posix()
+        data = predecessor._git_bytes(
+            repo_root, "show", f"{commit}:{canonical_relative}"
+        )
+        relative_bytes = canonical_relative.encode("utf-8")
+        digest.update(len(relative_bytes).to_bytes(4, "big"))
+        digest.update(relative_bytes)
+        digest.update(len(data).to_bytes(8, "big"))
+        digest.update(data)
+    return digest.hexdigest()
+
+
 def validate_lineage_evidence(repo_root: Path | str = _REPO_ROOT) -> dict[str, Any]:
     root = Path(repo_root).resolve()
     baseline = load_preimplementation(root / PREIMPLEMENTATION_PATH)
@@ -362,7 +382,10 @@ def validate_lineage_evidence(repo_root: Path | str = _REPO_ROOT) -> dict[str, A
             )
 
     source = baseline["source_identity"]
-    if hash_bound_files(root, source["files"]) != source["sha256"]:
+    if (
+        hash_bound_files_at_commit(root, planning["commit"], source["files"])
+        != source["sha256"]
+    ):
         raise ReplicationBlocked("predecessor_source_identity_mismatch")
 
     journal = predecessor._load_json(

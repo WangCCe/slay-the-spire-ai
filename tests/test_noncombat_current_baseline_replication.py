@@ -364,7 +364,11 @@ def test_only_exact_historical_incomplete_injury_result_permits_final_proposal()
 
 
 def test_predecessor_policy_source_drift_blocks_lineage(monkeypatch):
-    monkeypatch.setattr(replication, "hash_bound_files", lambda *_args: "0" * 64)
+    monkeypatch.setattr(
+        replication,
+        "hash_bound_files_at_commit",
+        lambda *_args: "0" * 64,
+    )
 
     with pytest.raises(replication.ReplicationBlocked) as exc_info:
         replication.validate_lineage_evidence()

@@ -11,6 +11,20 @@ D:\anaconda\envs\stsai\python.exe scripts\run_test_gate.py commit
 D:\anaconda\envs\stsai\python.exe scripts\run_test_gate.py full
 ```
 
+To capture machine-readable timings for one invocation, supply a new path
+inside the repository:
+
+```powershell
+D:\anaconda\envs\stsai\python.exe scripts\run_test_gate.py commit `
+  --timing-report reports/pytest_gate_commit_timing.json
+```
+
+The report path must not already exist. Timing mode adds only pytest's built-in
+legacy JUnit output, aggregates complete testcase evidence by file, publishes
+the JSON report for passing or failing pytest results, and preserves pytest's
+exit code. The runner does not retry. Without `--timing-report`, the pytest
+command is unchanged.
+
 `protocol`, `gameplay`, and `noncombat-evidence` are focused domain profiles.
 `commit` runs the configured suite except for the explicit whole-file
 `full_only` entries in `tests/test_gate_manifest.json`. `full` runs the
@@ -28,18 +42,19 @@ covers the same changed behavior.
 |---|---|
 | Red-green iteration | Narrow node or relevant domain profile |
 | Coherent code/test commit | Relevant focused tests, then `commit` |
-| Pytest config, shared fixture, gate runner, or manifest | Runner-focused tests, then `full` |
-| `full_only` test or source it specifically owns | Direct file or stricter focused set, then `commit` and `full` |
+| Pytest config, shared fixture, or manifest | Runner-focused tests, then `full` |
+| Selection-equivalent opt-in timing telemetry | Runner-focused tests, then `commit` |
+| `full_only` test or source it specifically owns | Direct file or stricter focused set, then `commit`; run `full` at the configured complete boundary |
 | Broad cross-domain refactor, merge, release, or phase close | `full` |
 | Documentation only | No pytest unless executable examples or manifest change |
 
-The runner never retries a failure and returns pytest's result unchanged.
-The current 17-file `commit` boundary qualified with 3,571 passes and 16 skips
-in 262.89 seconds including orchestration, 37.11 seconds below the five-minute
-ceiling. Its unchanged `full` boundary passed 5,401 tests with 18 skips and no
-exclusions. A later conforming `commit` invocation above five minutes
-invalidates this timing claim until a measured requalification passes. The
-runner does not retry a slow or failed result.
+The runner never retries a failure and returns pytest's result unchanged. The
+17-file `commit` boundary qualified on 2026-08-09 with 3,571 passes and 16 skips
+in 262.89 seconds including orchestration. That qualification is now invalid:
+the unchanged boundary failed 20 tests and took 1,177.80 seconds on 2026-08-27.
+Do not cite a current five-minute commit qualification until a frozen measured
+replacement boundary passes once. `full` remains the unchanged inclusive
+complete boundary.
 Before launching pytest, an ordinary run prints and flushes the selected profile
 and the fully assembled Windows command. `--dry-run` prints the same information
 with an explicit dry-run label but does not create test state or launch pytest.

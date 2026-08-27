@@ -140,6 +140,10 @@ def _write_manifest(repo_root: Path, manifest: object) -> Path:
     return path
 
 
+def _junit_path(command: list[str]) -> Path:
+    return Path(command[command.index("--junitxml") + 1])
+
+
 def test_load_manifest_returns_typed_validated_contract(temporary_repo: Path) -> None:
     manifest = load_manifest(_write_manifest(temporary_repo, VALID_MANIFEST), temporary_repo)
 
@@ -610,3 +614,209 @@ def test_main_returns_configuration_error_code(
     assert test_gate_runner.main(["--list"]) == 2
 
     assert "test gate configuration error:" in capsys.readouterr().err
+
+
+@pytest.mark.parametrize("unsafe_kind", ("existing", "escaping"))
+def test_timing_report_rejects_unsafe_path_without_running_pytest(
+    temporary_repo: Path, unsafe_kind: str, tmp_path: Path
+) -> None:
+    manifest_path = _write_manifest(temporary_repo, VALID_MANIFEST)
+    timing_report = (
+        temporary_repo / "reports" / "timing.json"
+        if unsafe_kind == "existing"
+        else tmp_path.parent / "outside-timing.json"
+    )
+    if unsafe_kind == "existing":
+        timing_report.parent.mkdir()
+        timing_report.write_text("existing", encoding="utf-8")
+
+    def executor(*args: object, **kwargs: object) -> subprocess.CompletedProcess[str]:
+        pytest.fail("unsafe timing paths must not run pytest")
+
+    assert test_gate_runner.run_profile(
+        "commit",
+        manifest_path,
+        temporary_repo,
+        timing_report=timing_report,
+        executor=executor,
+    ) == 2
+
+
+def test_timing_command_preserves_profile_selection_and_default_argv(
+    temporary_repo: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    manifest_path = _write_manifest(temporary_repo, VALID_MANIFEST)
+    monkeypatch.setattr(
+        test_gate_runner,
+        "uuid4",
+        lambda: SimpleNamespace(hex="timingselectiontoken"),
+    )
+    observed: list[list[str]] = []
+
+    def executor(
+        command: list[str], **kwargs: object
+    ) -> subprocess.CompletedProcess[str]:
+        observed.append(command)
+        _junit_path(command).write_text(
+            '<testsuites><testsuite tests="1"><testcase '
+            'classname="tests.test_fast" file="tests/test_fast.py" '
+            'name="test_fast" time="0.125" /></testsuite></testsuites>',
+            encoding="utf-8",
+        )
+        return subprocess.CompletedProcess(command, 0)
+
+    report_path = temporary_repo / "reports" / "timing.json"
+    assert test_gate_runner.run_profile(
+        "commit",
+        manifest_path,
+        temporary_repo,
+        timing_report=report_path,
+        executor=executor,
+        clock=iter((1.0, 1.5)).__next__,
+    ) == 0
+
+    default_command = test_gate_runner.build_pytest_command(
+        "commit",
+        load_manifest(manifest_path, temporary_repo),
+        temporary_repo,
+        temporary_repo / ".pytest_gates" / "commit-timingselectiontoken",
+    )
+    timed_command = observed[0]
+    junit_index = timed_command.index("--junitxml")
+    assert timed_command[:junit_index] == default_command
+    assert timed_command[junit_index + 2 :] == ["-o", "junit_family=legacy"]
+
+
+def test_timing_report_aggregates_deterministically_and_preserves_failure(
+    temporary_repo: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    manifest_path = _write_manifest(temporary_repo, VALID_MANIFEST)
+    monkeypatch.setattr(
+        test_gate_runner,
+        "uuid4",
+        lambda: SimpleNamespace(hex="timingaggregationtoken"),
+    )
+    execution_count = 0
+
+    def executor(
+        command: list[str], **kwargs: object
+    ) -> subprocess.CompletedProcess[str]:
+        nonlocal execution_count
+        execution_count += 1
+        _junit_path(command).write_text(
+            """<testsuites><testsuite tests="4" failures="1" errors="1" skipped="1">
+            <testcase classname="tests.test_fast" file="tests/test_fast.py" name="test_pass" time="0.2" />
+            <testcase classname="tests.test_fast" file="tests\\test_fast.py" name="test_fail" time="0.4"><failure /></testcase>
+            <testcase classname="tests.test_slow" file="tests/test_slow.py" name="test_skip" time="0.1"><skipped /></testcase>
+            <testcase classname="tests.test_slow" file="tests/test_slow.py" name="test_error" time="0.5"><error /></testcase>
+            </testsuite></testsuites>""",
+            encoding="utf-8",
+        )
+        return subprocess.CompletedProcess(command, 7)
+
+    report_path = temporary_repo / "reports" / "timing.json"
+    assert test_gate_runner.run_profile(
+        "commit",
+        manifest_path,
+        temporary_repo,
+        timing_report=report_path,
+        executor=executor,
+        clock=iter((10.0, 12.5)).__next__,
+    ) == 7
+    assert execution_count == 1
+
+    report = json.loads(report_path.read_text(encoding="utf-8"))
+    assert report == {
+        "outcome_counts": {"error": 1, "failed": 1, "passed": 1, "skipped": 1},
+        "per_file": [
+            {
+                "duration_seconds": 0.6,
+                "file": "tests/test_fast.py",
+                "outcome_counts": {
+                    "error": 0,
+                    "failed": 1,
+                    "passed": 1,
+                    "skipped": 0,
+                },
+                "test_count": 2,
+            },
+            {
+                "duration_seconds": 0.6,
+                "file": "tests/test_slow.py",
+                "outcome_counts": {
+                    "error": 1,
+                    "failed": 0,
+                    "passed": 0,
+                    "skipped": 1,
+                },
+                "test_count": 2,
+            },
+        ],
+        "profile": "commit",
+        "pytest_exit_code": 7,
+        "runner_elapsed_seconds": 2.5,
+        "schema_version": 1,
+        "slow_tests": [
+            {
+                "classname": "tests.test_slow",
+                "duration_seconds": 0.5,
+                "file": "tests/test_slow.py",
+                "name": "test_error",
+                "outcome": "error",
+            },
+            {
+                "classname": "tests.test_fast",
+                "duration_seconds": 0.4,
+                "file": "tests/test_fast.py",
+                "name": "test_fail",
+                "outcome": "failed",
+            },
+            {
+                "classname": "tests.test_fast",
+                "duration_seconds": 0.2,
+                "file": "tests/test_fast.py",
+                "name": "test_pass",
+                "outcome": "passed",
+            },
+            {
+                "classname": "tests.test_slow",
+                "duration_seconds": 0.1,
+                "file": "tests/test_slow.py",
+                "name": "test_skip",
+                "outcome": "skipped",
+            },
+        ],
+        "test_count": 4,
+    }
+
+
+def test_timing_report_fails_closed_on_unattributed_testcase(
+    temporary_repo: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    manifest_path = _write_manifest(temporary_repo, VALID_MANIFEST)
+    monkeypatch.setattr(
+        test_gate_runner,
+        "uuid4",
+        lambda: SimpleNamespace(hex="timingincompletetoken"),
+    )
+
+    def executor(
+        command: list[str], **kwargs: object
+    ) -> subprocess.CompletedProcess[str]:
+        _junit_path(command).write_text(
+            '<testsuites><testsuite tests="1"><testcase '
+            'classname="tests.test_fast" name="test_fast" time="0.1" '
+            '/></testsuite></testsuites>',
+            encoding="utf-8",
+        )
+        return subprocess.CompletedProcess(command, 0)
+
+    report_path = temporary_repo / "reports" / "timing.json"
+    assert test_gate_runner.run_profile(
+        "commit",
+        manifest_path,
+        temporary_repo,
+        timing_report=report_path,
+        executor=executor,
+    ) == 2
+    assert not report_path.exists()

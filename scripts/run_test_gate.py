@@ -3,9 +3,11 @@ from __future__ import annotations
 import argparse
 import configparser
 import json
+import math
 import subprocess
 import sys
 import time
+import xml.etree.ElementTree as ET
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Callable, Sequence
@@ -22,6 +24,8 @@ _REQUIRED_PROFILES = (
 _DOMAIN_PROFILES = ("protocol", "gameplay", "noncombat-evidence")
 _DEFAULT_REPO_ROOT = Path(__file__).resolve().parents[1]
 _DEFAULT_MANIFEST_PATH = _DEFAULT_REPO_ROOT / "tests" / "test_gate_manifest.json"
+_TIMING_REPORT_SCHEMA_VERSION = 1
+_TIMING_SLOW_TEST_LIMIT = 100
 
 
 class ManifestError(ValueError):
@@ -286,11 +290,195 @@ def _configuration_error(error: ManifestError) -> int:
     return 2
 
 
+def _resolve_timing_report_path(value: Path, repo_root: Path) -> Path:
+    resolved_root = repo_root.resolve()
+    candidate = value if value.is_absolute() else resolved_root / value
+    resolved = candidate.resolve()
+    if not resolved.is_relative_to(resolved_root):
+        raise ManifestError(f"timing report escapes repository: {value}")
+    if resolved.exists():
+        raise ManifestError(f"timing report already exists: {resolved}")
+    return resolved
+
+
+def _timing_junit_path(basetemp: Path) -> Path:
+    return basetemp.parent / f"{basetemp.name}.junit.xml"
+
+
+def _with_timing_options(command: list[str], junit_path: Path) -> list[str]:
+    return [
+        *command,
+        "--junitxml",
+        str(junit_path),
+        "-o",
+        "junit_family=legacy",
+    ]
+
+
+def _xml_local_name(tag: str) -> str:
+    return tag.rsplit("}", 1)[-1]
+
+
+def _declared_test_count(root: ET.Element) -> int:
+    root_name = _xml_local_name(root.tag)
+    suites = (
+        [root]
+        if root_name == "testsuite"
+        else [
+            child
+            for child in root
+            if _xml_local_name(child.tag) == "testsuite"
+        ]
+        if root_name == "testsuites"
+        else []
+    )
+    if not suites:
+        raise ManifestError("timing JUnit has no test suite")
+    try:
+        counts = [int(suite.attrib["tests"]) for suite in suites]
+    except (KeyError, TypeError, ValueError) as error:
+        raise ManifestError("timing JUnit test count is invalid") from error
+    if any(count < 0 for count in counts):
+        raise ManifestError("timing JUnit test count is invalid")
+    return sum(counts)
+
+
+def _testcase_outcome(testcase: ET.Element) -> str:
+    child_names = {_xml_local_name(child.tag) for child in testcase}
+    if "error" in child_names:
+        return "error"
+    if "failure" in child_names:
+        return "failed"
+    if "skipped" in child_names:
+        return "skipped"
+    return "passed"
+
+
+def _normalized_test_file(raw_file: object, repo_root: Path) -> str:
+    if not isinstance(raw_file, str) or not raw_file.strip():
+        raise ManifestError("timing JUnit testcase file is missing")
+    normalized_input = raw_file.replace("\\", "/")
+    relative = Path(normalized_input)
+    resolved_root = repo_root.resolve()
+    resolved = (resolved_root / relative).resolve()
+    if relative.is_absolute() or not resolved.is_relative_to(resolved_root):
+        raise ManifestError(f"timing JUnit testcase escapes repository: {raw_file}")
+    if not resolved.is_file():
+        raise ManifestError(f"timing JUnit testcase file does not exist: {raw_file}")
+    return resolved.relative_to(resolved_root).as_posix()
+
+
+def _parse_test_duration(raw_duration: object) -> float:
+    try:
+        duration = float(raw_duration)
+    except (TypeError, ValueError) as error:
+        raise ManifestError("timing JUnit testcase duration is invalid") from error
+    if not math.isfinite(duration) or duration < 0:
+        raise ManifestError("timing JUnit testcase duration is invalid")
+    return round(duration, 6)
+
+
+def _build_timing_report(
+    *,
+    junit_path: Path,
+    profile_name: str,
+    pytest_exit_code: int,
+    elapsed_seconds: float,
+    repo_root: Path,
+) -> dict[str, Any]:
+    try:
+        root = ET.parse(junit_path).getroot()
+    except (OSError, ET.ParseError) as error:
+        raise ManifestError(f"unable to read timing JUnit: {junit_path}") from error
+
+    testcases = [
+        element
+        for element in root.iter()
+        if _xml_local_name(element.tag) == "testcase"
+    ]
+    declared_count = _declared_test_count(root)
+    if declared_count != len(testcases):
+        raise ManifestError(
+            "timing JUnit testcase count mismatch: "
+            f"declared {declared_count}, observed {len(testcases)}"
+        )
+
+    outcome_counts = {name: 0 for name in ("error", "failed", "passed", "skipped")}
+    file_rows: dict[str, dict[str, Any]] = {}
+    test_rows = []
+    for testcase in testcases:
+        file_name = _normalized_test_file(testcase.attrib.get("file"), repo_root)
+        name = testcase.attrib.get("name")
+        classname = testcase.attrib.get("classname")
+        if not isinstance(name, str) or not name or not isinstance(classname, str):
+            raise ManifestError("timing JUnit testcase identity is incomplete")
+        duration = _parse_test_duration(testcase.attrib.get("time"))
+        outcome = _testcase_outcome(testcase)
+        outcome_counts[outcome] += 1
+        test_rows.append(
+            {
+                "classname": classname,
+                "duration_seconds": duration,
+                "file": file_name,
+                "name": name,
+                "outcome": outcome,
+            }
+        )
+        file_row = file_rows.setdefault(
+            file_name,
+            {
+                "duration_seconds": 0.0,
+                "file": file_name,
+                "outcome_counts": {
+                    key: 0 for key in ("error", "failed", "passed", "skipped")
+                },
+                "test_count": 0,
+            },
+        )
+        file_row["duration_seconds"] += duration
+        file_row["outcome_counts"][outcome] += 1
+        file_row["test_count"] += 1
+
+    per_file = list(file_rows.values())
+    for file_row in per_file:
+        file_row["duration_seconds"] = round(file_row["duration_seconds"], 6)
+    per_file.sort(key=lambda row: (-row["duration_seconds"], row["file"]))
+    test_rows.sort(
+        key=lambda row: (
+            -row["duration_seconds"],
+            row["file"],
+            row["classname"],
+            row["name"],
+        )
+    )
+    return {
+        "outcome_counts": outcome_counts,
+        "per_file": per_file,
+        "profile": profile_name,
+        "pytest_exit_code": pytest_exit_code,
+        "runner_elapsed_seconds": round(elapsed_seconds, 6),
+        "schema_version": _TIMING_REPORT_SCHEMA_VERSION,
+        "slow_tests": test_rows[:_TIMING_SLOW_TEST_LIMIT],
+        "test_count": len(test_rows),
+    }
+
+
+def _publish_timing_report(path: Path, report: dict[str, Any]) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    payload = json.dumps(report, indent=2, sort_keys=True) + "\n"
+    try:
+        with path.open("x", encoding="utf-8", newline="\n") as stream:
+            stream.write(payload)
+    except OSError as error:
+        raise ManifestError(f"unable to publish timing report: {path}") from error
+
+
 def run_profile(
     profile_name: str,
     manifest_path: Path,
     repo_root: Path,
     dry_run: bool = False,
+    timing_report: Path | None = None,
     executor: Callable[..., subprocess.CompletedProcess[Any]] = subprocess.run,
     clock: Callable[[], float] = time.perf_counter,
 ) -> int:
@@ -299,8 +487,21 @@ def run_profile(
     except ManifestError as error:
         return _configuration_error(error)
 
+    try:
+        resolved_timing_report = (
+            _resolve_timing_report_path(timing_report, repo_root)
+            if timing_report is not None
+            else None
+        )
+    except ManifestError as error:
+        return _configuration_error(error)
+
     basetemp = _unique_basetemp_path(profile_name, repo_root)
     command = build_pytest_command(profile_name, manifest, repo_root, basetemp)
+    junit_path = None
+    if resolved_timing_report is not None:
+        junit_path = _timing_junit_path(basetemp)
+        command = _with_timing_options(command, junit_path)
     mode = "dry-run" if dry_run else "run"
     print(f"test gate {mode} profile: {profile_name}", flush=True)
     print(f"pytest command: {subprocess.list2cmdline(command)}", flush=True)
@@ -312,6 +513,20 @@ def run_profile(
     result = executor(command, cwd=repo_root, check=False)
     elapsed = clock() - started_at
     print(f"test gate {profile_name}: {elapsed:.2f}s (exit code {result.returncode})")
+    if resolved_timing_report is not None and junit_path is not None:
+        try:
+            timing_payload = _build_timing_report(
+                junit_path=junit_path,
+                profile_name=profile_name,
+                pytest_exit_code=result.returncode,
+                elapsed_seconds=elapsed,
+                repo_root=repo_root,
+            )
+            _publish_timing_report(resolved_timing_report, timing_payload)
+        except ManifestError as error:
+            _configuration_error(error)
+            return result.returncode if result.returncode != 0 else 2
+        print(f"timing report: {resolved_timing_report}")
     return result.returncode
 
 
@@ -321,6 +536,11 @@ def main(argv: Sequence[str] | None = None) -> int:
     parser.add_argument("--list", action="store_true", help="list available profiles")
     parser.add_argument(
         "--dry-run", action="store_true", help="print the pytest command without running it"
+    )
+    parser.add_argument(
+        "--timing-report",
+        type=Path,
+        help="write deterministic JUnit-derived timing evidence to a new repo path",
     )
     arguments = parser.parse_args(argv)
 
@@ -338,6 +558,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         _DEFAULT_MANIFEST_PATH,
         _DEFAULT_REPO_ROOT,
         dry_run=arguments.dry_run,
+        timing_report=arguments.timing_report,
     )
 
 

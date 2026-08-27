@@ -2264,6 +2264,7 @@ def test_fast_simulator_reaper_healing_uses_counted_upgrade_suffix(monkeypatch):
         player_strength=0,
         player_hp=40,
         player_max_hp=80,
+        has_magic_flower=False,
         total_damage_dealt=0,
         monsters_killed=0,
         damage_instances=0,

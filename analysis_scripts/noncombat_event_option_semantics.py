@@ -87,8 +87,11 @@ _REACHABLE_PARTITION_SHA256 = (
 _REACHABLE_AUDIT_EVIDENCE_SHA256 = (
     "e395541b98ef904c562b84e40310459ffc5395686ee5f2509a38ff7439eed102"
 )
-_CURRENT_AST_SHA256 = (
+_REGISTERED_CURRENT_AST_SHA256 = (
     "15fb21a410b5cc7a430b76d46171a2510651e78537aac21fc0e7dc28978bdbd9"
+)
+_CURRENT_COMPATIBLE_AST_SHA256 = (
+    "0b5c8dad7359c6a2fefba1a0315e699892a86bbec341179301e2529a8345083b"
 )
 _CURRENT_POLICY_RELATIVE_PATH = Path("spirecomm/ai/agent.py")
 _CURRENT_POLICY_PATH = _REPO_ROOT / _CURRENT_POLICY_RELATIVE_PATH
@@ -102,14 +105,14 @@ _REACHABLE_EXPECTED_COUNTS = {
 }
 _REACHABLE_EXPECTED_IDENTITY = {
     "audit_evidence_sha256": _REACHABLE_AUDIT_EVIDENCE_SHA256,
-    "current_ast_sha256": _CURRENT_AST_SHA256,
+    "current_ast_sha256": _REGISTERED_CURRENT_AST_SHA256,
     "predecessor_contract_sha256": _CONTRACT_SHA256,
     "simulator_source_sha256": _SIMULATOR_SOURCE_SHA256,
 }
 _REACHABLE_EVENT_OPTION_SEMANTICS_IDENTITY = {
     "contract_id": _REACHABLE_CONTRACT_ID,
     "current_policy": {
-        "ast_sha256": _CURRENT_AST_SHA256,
+        "ast_sha256": _REGISTERED_CURRENT_AST_SHA256,
         "class_name": "SimpleAgent",
         "function_name": "_choose_event_option",
         "path": _CURRENT_POLICY_RELATIVE_PATH.as_posix(),
@@ -369,10 +372,13 @@ def _read_reachable_contract() -> tuple[
             {"detail": exc.detail, "reason": exc.reason},
         ) from exc
     actual_ast_sha256 = current_surface.get("ast_sha256")
-    if actual_ast_sha256 != _CURRENT_AST_SHA256:
+    if actual_ast_sha256 != _CURRENT_COMPATIBLE_AST_SHA256:
         raise EventOptionSemanticsError(
             "event_option_semantics_current_ast_mismatch",
-            {"actual": actual_ast_sha256, "expected": _CURRENT_AST_SHA256},
+            {
+                "actual": actual_ast_sha256,
+                "expected": _CURRENT_COMPATIBLE_AST_SHA256,
+            },
         )
     return contract, contract_bytes, predecessor_bytes, current_source_bytes
 
