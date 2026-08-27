@@ -1,0 +1,94 @@
+{
+  "schema_version": 1,
+  "gate_id": "combat-rl-inventory-embedding-live-canary-20260828-r1",
+  "source_commit": "2b3d2fbf5535358a0f4d3bd9820481bb6c9a0dfc",
+  "purpose": "Run one small matched live canary for the frozen inventory-embedding candidate after independent fresh-replay confirmation.",
+  "candidate_checkpoint": {
+    "path": "reports/combat_rl_inventory_embedding_successor_20260828_r1/development_candidate.pth",
+    "sha256": "a1e631d5379adab9f55fe0ace993c49bba6576188e09cec4722f252971cbbb19",
+    "parameter_sha256": "66cc3d6b042008c1aa45553fbc8db451c7f8f4df438762ac3487cf9b005c2a21"
+  },
+  "parent_checkpoint": {
+    "path": "reports/combat_rl_promoted_r15_successor_20260818_r16/rl_combat_model_promoted_r15_successor_candidate.pth",
+    "sha256": "75120e9e8f76393d4d82c16de5c3ea6384d2f7ef26bd530a6b552ed9791e38f5",
+    "parameter_sha256": "cfe8204d06db6b43b063df98e1b713d4a40a0894a1a9330c3db87c739da88d48"
+  },
+  "evidence": {
+    "development_report": {
+      "path": "reports/combat_rl_inventory_embedding_successor_20260828_r1/report.json",
+      "sha256": "caa2ef73b44f6c4d3f8dad496ecb4441f7f1343eb48f31b77e47b9660abf9e5a",
+      "decision": "eligible_for_separate_fresh_holdout_only"
+    },
+    "fresh_holdout_report": {
+      "path": "reports/combat_rl_inventory_embedding_holdout_20260828_r1/report.json",
+      "sha256": "e413a6701bedf2fef78c3767c1edcd853dd8abecef7f717824669c67fe182cd9",
+      "verdict": "eligible_for_separately_registered_bounded_matched_live_gate"
+    },
+    "frozen_replay_gate": {
+      "path": "reports/combat_rl_inventory_embedding_holdout_20260828_r1/frozen_candidate_replay_gate.json",
+      "sha256": "1d76116545eefd9f0e09ef3c8677fbb8935845f6d5ac2221d184e5204695ef99",
+      "decision": "eligible_for_bounded_live_gate"
+    }
+  },
+  "evaluation": {
+    "arm_order": ["candidate", "parent"],
+    "games_per_arm": 10,
+    "mode": "eval",
+    "epsilon": 0.0,
+    "elite_route": "conservative",
+    "ascension": 0,
+    "training_enabled": false,
+    "seed_pool": {
+      "path": "reports/combat_rl_inventory_embedding_live_canary_20260828_r1_seed_pool.txt",
+      "sha256": "cdfbaef9b3d4f213148f693d0193bd9285b6495c6f12869b47fea7f691d79c3d",
+      "seed_count": 10,
+      "seed_generation": "sha256(gate_id:index) first 13 uppercase hex characters",
+      "excluded_existing_seed_pool_artifacts": 54,
+      "excluded_unique_existing_seed_strings": 550,
+      "fresh_against_scanned_repo_seed_pool_artifacts": true
+    },
+    "candidate_launch_config": {
+      "path": "reports/combat_rl_inventory_embedding_live_canary_20260828_r1_candidate.properties",
+      "sha256": "897ce58d07df7af5514870854b3a5cb8311bf964c736403fb3ac918314a2ba10"
+    },
+    "parent_launch_config": {
+      "path": "reports/combat_rl_inventory_embedding_live_canary_20260828_r1_parent.properties",
+      "sha256": "8838fbb7f340873c1e83f6bdd6ba2bce62ac35add4aab25bbf7a7708ff4b8949"
+    },
+    "production_restore_config": {
+      "path": "reports/combat_lightspeed_guarded_control_live_gate_20260819_r1_production_restore.properties",
+      "sha256": "0991895790bc73d3d21a05731bf402228cf0c510a4217aa841ced026016760e7"
+    }
+  },
+  "qualification_rule": {
+    "both_arms_must_complete_all_games": true,
+    "all_seed_pairs_must_match": true,
+    "both_arms_must_have_no_policy_runtime_failures": true,
+    "candidate_total_floors_must_exceed_parent": true,
+    "candidate_victories_must_be_at_least_parent": true,
+    "candidate_act_2_boss_reaches_must_be_at_least_parent": true,
+    "candidate_act_3_entries_must_be_at_least_parent": true,
+    "all_conditions_required": true,
+    "passing_decision": "eligible_for_independent_larger_live_confirmation",
+    "failing_decision": "retain_production_r16_and_stop_inventory_candidate_line",
+    "all_outcomes_tied_decision": "retain_production_r16_no_observable_live_benefit"
+  },
+  "execution_constraints": {
+    "candidate_arm_runs_first": true,
+    "external_game_or_machine_shutdown_may_resume": true,
+    "resume_must_use_same_checkpoint_and_policy_arguments": true,
+    "resume_seed_pool_must_be_the_unconsumed_registered_suffix": true,
+    "completed_seed_runs_must_not_be_repeated": true,
+    "policy_or_game_logic_failure_stops_the_gate": true,
+    "no_seed_model_or_threshold_change_after_start": true,
+    "no_automatic_promotion": true,
+    "restore_exact_production_configuration_between_arms_and_after_completion": true
+  },
+  "authority": {
+    "candidate_gameplay_loading": true,
+    "parent_gameplay_loading": true,
+    "training": false,
+    "automatic_promotion": false,
+    "production_checkpoint_replacement": false
+  }
+}
