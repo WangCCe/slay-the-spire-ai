@@ -1,0 +1,52 @@
+{
+  "schema_version": 1,
+  "sanitization_id": "combat-rl-inventory-fixed-replay-collection-20260828-r2-floor-boundary-sanitization",
+  "source_commit": "2b0e459b76bf85dda207cd5cc56a5efaa69e1182",
+  "source_checkpoint": {
+    "path": "reports/combat_rl_inventory_fixed_replay_collection_20260828_r2/rl_combat_model_ep20_steps3634.pth",
+    "sha256": "c0632fdf79bae77c499ab2cab64e4c3a6deb6fb87f47c95959a004b998b02fe1",
+    "size_bytes": 18299554,
+    "transition_count": 3634,
+    "total_steps": 3634
+  },
+  "detected_boundary": {
+    "source_transition_index": 2528,
+    "action_id": 90,
+    "action_type": "EndTurnAction",
+    "current_floor": 21,
+    "following_floor": 22,
+    "stored_done": false,
+    "stored_next_potion_ids": [0, 0, 20, 0, 0],
+    "following_potion_ids": [33, 0, 20, 0, 0],
+    "interpretation": "A pending final combat action crossed into a later floor without terminalization, so its stored successor cannot be used for cross-combat bootstrap."
+  },
+  "transformation": {
+    "operation": "remove_exact_replay_transition",
+    "removed_source_indices": [2528],
+    "implementation": "ReplayBufferV2.load_state_dict followed by exact chronological removal and ReplayBufferV2.state_dict",
+    "source_checkpoint_mutated": false
+  },
+  "output_checkpoint": {
+    "path": "reports/combat_rl_inventory_fixed_replay_collection_20260828_r2/rl_combat_model_ep20_steps3633_sanitized.pth",
+    "sha256": "6a299548db00f177430672fe581c0c1c8990d418c81c5f708036000ad3ee280e",
+    "size_bytes": 18296066,
+    "transition_count": 3633,
+    "total_steps": 3633,
+    "episode": 20,
+    "optimizer_state_count": 0
+  },
+  "validation": {
+    "all_replay_tensors_equal_source_with_exact_index_removed": true,
+    "all_non_replay_fields_except_total_steps_unchanged": true,
+    "online_network_unchanged": true,
+    "target_network_unchanged": true,
+    "optimizer_state_unchanged": true
+  },
+  "authority": {
+    "eligible_for_candidate_training": true,
+    "holdout": false,
+    "candidate_selection": false,
+    "evaluation": false,
+    "promotion": false
+  }
+}

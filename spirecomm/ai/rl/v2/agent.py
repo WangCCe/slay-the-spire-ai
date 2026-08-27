@@ -418,7 +418,14 @@ class RLAgentV2:
             debug_info=reward_info,
             action_context=action_context,
         )
-        done = bool(terminal or self._is_terminal(game))
+        crossed_floor_boundary = self._crossed_floor_boundary(pending.game, game)
+        done = bool(terminal or self._is_terminal(game) or crossed_floor_boundary)
+        if crossed_floor_boundary and not terminal and not self._is_terminal(game):
+            logger.info(
+                "RLAgentV2 terminalized pending transition across floor boundary: %s -> %s",
+                getattr(pending.game, "floor", None),
+                getattr(game, "floor", None),
+            )
 
         if done:
             next_continuous = None
@@ -631,6 +638,17 @@ class RLAgentV2:
         if player is not None and current_hp <= 0:
             return True
         return False
+
+    @staticmethod
+    def _crossed_floor_boundary(previous_game: Game, current_game: Game) -> bool:
+        previous_floor = getattr(previous_game, "floor", None)
+        current_floor = getattr(current_game, "floor", None)
+        if previous_floor is None or current_floor is None:
+            return False
+        try:
+            return int(previous_floor) != int(current_floor)
+        except (TypeError, ValueError, OverflowError):
+            return False
 
     @staticmethod
     def _safe_int(value, default: int = 0) -> int:

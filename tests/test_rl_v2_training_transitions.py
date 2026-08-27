@@ -264,7 +264,7 @@ def _encoded(value):
     )
 
 
-def _game(value, *, in_combat=True, reward=0.0):
+def _game(value, *, floor=1, in_combat=True, reward=0.0):
     mask = np.zeros(_ActionEncoder.MAX_ACTIONS, dtype=bool)
     mask[1:] = True
     return SimpleNamespace(
@@ -274,6 +274,7 @@ def _game(value, *, in_combat=True, reward=0.0):
         hand=[],
         action_mask=mask,
         encoded=_encoded(value),
+        floor=floor,
         reward=reward,
     )
 
@@ -341,6 +342,24 @@ def test_terminal_observation_flushes_last_action_without_bootstrap():
     assert transition["reward"] == -200.0
     assert transition["done"] is True
     assert transition["next_continuous"] is None
+    assert transition["next_action_mask"].tolist() == [False] * 8
+
+
+def test_floor_change_flushes_pending_action_without_cross_combat_bootstrap():
+    previous = _game(1, floor=21)
+    current = _game(2, floor=22, reward=4.0)
+    trainer = _Trainer(loss=None)
+    agent = _agent(trainer)
+    agent.pending_transition = _pending(previous, action_index=4)
+
+    assert agent.observe_next_state(current) is None
+
+    transition = trainer.transitions[0]
+    assert transition["done"] is True
+    assert transition["next_continuous"] is None
+    assert transition["next_card_ids"] is None
+    assert transition["next_potion_ids"] is None
+    assert transition["next_relic_ids"] is None
     assert transition["next_action_mask"].tolist() == [False] * 8
 
 

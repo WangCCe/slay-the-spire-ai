@@ -1,0 +1,126 @@
+{
+  "schema_version": 1,
+  "collection_id": "combat-rl-inventory-fixed-replay-collection-20260828-r2",
+  "source_commit": "2b0e459b76bf85dda207cd5cc56a5efaa69e1182",
+  "verdict": "training_corpus_ready_after_exact_boundary_sanitization",
+  "timing": {
+    "started_at": "2026-08-28T03:13:27+08:00",
+    "completed_at": "2026-08-28T03:51:39+08:00",
+    "elapsed_seconds": 2292
+  },
+  "registration": {
+    "plan": "reports/combat_rl_inventory_fixed_replay_collection_20260828_r2_plan.json",
+    "launch_config": "reports/combat_rl_inventory_fixed_replay_collection_20260828_r2.properties",
+    "launch_config_sha256": "24aaac0e940708a696eab4cbbf3885d0c1390ed23658c9df754939dedfb9e3e8",
+    "preflight_config": "reports/combat_rl_inventory_fixed_replay_collection_20260828_r2/preflight_no_autostart.properties",
+    "preflight_config_sha256": "a0b4e30e0cdd175ee0281cbb1861ebb218bcdf6690b4c143894f298cd3859eb4",
+    "seed_pool": "reports/combat_rl_inventory_fixed_replay_collection_20260828_r2_seed_pool.txt",
+    "seed_pool_sha256": "0c1d688ab71aab15c788fe696aa4dde8651d48600540006aa0caf03c7bc1cf3e"
+  },
+  "collection_integrity": {
+    "game_count": 20,
+    "seed_count": 20,
+    "seed_order_exact": true,
+    "unique_run_seeds": 20,
+    "all_runs_record_chose_seed": true,
+    "first_accepted_seed": "EB4090D386464",
+    "first_accepted_state_floor": 0,
+    "run_set_sha256": "50e7d159e048567bc726213ef24f5f42f2ce56621302209dfb995dbf3a343c35",
+    "run_total_size_bytes": 88778,
+    "max_games_exit_observed": true,
+    "started_game_21": false,
+    "runtime_traceback_count": 0,
+    "rl_action_failure_count": 0,
+    "communication_mod_error_suffix_contains_only_startup_messages": true,
+    "pre_collection_config_restored": true,
+    "restored_config_sha256": "0991895790bc73d3d21a05731bf402228cf0c510a4217aa841ced026016760e7"
+  },
+  "outcomes": {
+    "victories": 0,
+    "mean_floor": 22.4,
+    "median_floor": 23.0,
+    "minimum_floor": 6,
+    "maximum_floor": 33,
+    "floor_reached": [33, 20, 33, 25, 28, 6, 24, 24, 16, 16, 33, 28, 22, 16, 33, 16, 16, 16, 27, 16]
+  },
+  "raw_checkpoint": {
+    "path": "reports/combat_rl_inventory_fixed_replay_collection_20260828_r2/rl_combat_model_ep20_steps3634.pth",
+    "sha256": "c0632fdf79bae77c499ab2cab64e4c3a6deb6fb87f47c95959a004b998b02fe1",
+    "size_bytes": 18299554,
+    "episode": 20,
+    "transition_count": 3634,
+    "source_transition_count": 3634,
+    "total_steps": 3634,
+    "replay_truncated": false,
+    "epsilon": 0.0,
+    "learning_starts": 100000,
+    "optimizer_state_count": 0,
+    "online_equals_r16": true,
+    "target_equals_r16": true,
+    "online_equals_target": true
+  },
+  "inventory_identity_validation": {
+    "runtime_evidence": "reports/combat_rl_inventory_fixed_replay_collection_20260828_r2/runtime_evidence.zip",
+    "runtime_evidence_sha256": "1c76613af9dfd4b72d978a91a8519220113501ba91c75fad4360e3bec8744921",
+    "runtime_evidence_size_bytes": 734467,
+    "joined_transition_count": 3634,
+    "potion_mismatched_transition_count": 0,
+    "potion_unresolved_occupied_occurrences": 0,
+    "potion_display_name_fallback_occurrences": 1209,
+    "relic_mismatched_transition_count": 0,
+    "relic_unresolved_occupied_occurrences": 0,
+    "relic_display_name_fallback_occurrences": 1891
+  },
+  "boundary_validation": {
+    "cross_floor_nonterminal_count": 1,
+    "source_transition_indices": [2528],
+    "source_floor": 21,
+    "following_floor": 22,
+    "source_action_type": "EndTurnAction",
+    "stored_next_potion_ids": [0, 0, 20, 0, 0],
+    "following_potion_ids": [33, 0, 20, 0, 0],
+    "raw_checkpoint_direct_training_eligible": false,
+    "disposition": "Exclude the exact boundary transition from the training copy and retain the raw checkpoint unchanged."
+  },
+  "sanitized_training_checkpoint": {
+    "path": "reports/combat_rl_inventory_fixed_replay_collection_20260828_r2/rl_combat_model_ep20_steps3633_sanitized.pth",
+    "sha256": "6a299548db00f177430672fe581c0c1c8990d418c81c5f708036000ad3ee280e",
+    "size_bytes": 18296066,
+    "transition_count": 3633,
+    "total_steps": 3633,
+    "optimizer_state_count": 0,
+    "online_unchanged": true,
+    "target_unchanged": true,
+    "optimizer_unchanged": true,
+    "all_replay_tensors_equal_source_with_exact_index_removed": true,
+    "manifest": "reports/combat_rl_inventory_fixed_replay_collection_20260828_r2/sanitization_manifest.json",
+    "manifest_sha256": "d58342c3e956158533dd601b88c583519225ec3fa0b48f9331a37a34f9a6c50f"
+  },
+  "external_runtime_archive": {
+    "path": "D:/SteamLibrary/steamapps/common/SlayTheSpire/logs_archive/combat_rl_inventory_fixed_replay_collection_20260828_r2",
+    "ai_debug_segment_sha256": [
+      "e5f8f939c34c1d58e99169d0b76133920d9d5d319e5d5a09ce7c486f44cf344b",
+      "6128746ca5c7f6883a958b734758358318fb80a66365ee470703cc33b78575e0",
+      "bbeb8afc02e63f7eddb40501c980366bfe412ea7b2edc8e73675c3dc3a07ad48",
+      "d4a090f5e1c93df192a0d76d009fde009f216c1b736d4434da67571277a6c81f",
+      "d4b5052e1e4b2aa3d0fb38f4364fc776d1a59a07d81177e19d0757465d8a6de6"
+    ],
+    "decision_trace_sha256": "b9743474af1712b6f89df56367de9292ec5ea9923c523558b4e43186b029c34a",
+    "sim_divergence_trace_sha256": "f2b2e4b6d4d2111ee1daf59a65126ab401520fd23089e9cdccf56a9a7ec44e49",
+    "communication_mod_errors_sha256": "ee5816666ecc5bb94916380083ea04518cfa55e031bd6aac40370b3aabe71814"
+  },
+  "authority": {
+    "sanitized_checkpoint_eligible_for_candidate_training": true,
+    "raw_checkpoint_eligible_for_candidate_training": false,
+    "holdout": false,
+    "candidate_selection": false,
+    "evaluation": false,
+    "promotion": false
+  },
+  "limitations": [
+    "This is a training-only corpus and cannot serve as fresh confirmation or promotion evidence.",
+    "The zero-victory outcome is descriptive and was not a registered policy-quality gate.",
+    "A separate fresh holdout must be collected after a candidate is frozen."
+  ],
+  "next_step": "Train one materially distinct inventory-aware candidate from the sanitized checkpoint, then reserve a separate fresh holdout for confirmation."
+}
