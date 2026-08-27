@@ -1,0 +1,70 @@
+{
+  "schema_version": 1,
+  "holdout_id": "combat-rl-inventory-embedding-holdout-20260828-r1",
+  "source_commit": "e13b4caa9655ccc5abf75d8afc6234638ce1f102",
+  "purpose": "Collect one disjoint production-r16 zero-update replay holdout for the frozen inventory-embedding candidate.",
+  "authority": "Replay collection and one frozen-candidate offline evaluation only. The candidate is not loaded during collection and receives no gameplay or promotion authority.",
+  "parent_policy": {
+    "label": "production_r16",
+    "checkpoint": "reports/combat_rl_promoted_r15_successor_20260818_r16/rl_combat_model_promoted_r15_successor_candidate.pth",
+    "sha256": "75120e9e8f76393d4d82c16de5c3ea6384d2f7ef26bd530a6b552ed9791e38f5"
+  },
+  "collection_initializer": {
+    "path": "reports/combat_rl_inventory_fixed_replay_collection_20260828_r1/rl_combat_model_r16_empty_replay_learning_starts_100000.pth",
+    "sha256": "fd97dd0f86a5145ed79bb6da1932a27ddb21dd9d565cedca5bf24ab8adb93c27",
+    "epsilon": 0.0,
+    "learning_starts": 100000,
+    "replay_transition_count": 0,
+    "optimizer_state_is_empty": true
+  },
+  "frozen_candidate": {
+    "path": "reports/combat_rl_inventory_embedding_successor_20260828_r1/development_candidate.pth",
+    "sha256": "a1e631d5379adab9f55fe0ace993c49bba6576188e09cec4722f252971cbbb19",
+    "construction": "inventory_embedding_only_one_step_successor",
+    "loaded_during_collection": false
+  },
+  "collection": {
+    "games": 20,
+    "epsilon": 0.0,
+    "boss_min_epsilon": 0.0,
+    "elite_route": "conservative",
+    "ascension": 0,
+    "seed_pool": "reports/combat_rl_inventory_embedding_holdout_20260828_r1_seed_pool.txt",
+    "seed_pool_sha256": "58b5d6db3696c23f55a86c8116e8008c6e9acb8d84bc4329594c714ba2657f8d",
+    "seed_count": 20,
+    "seed_generation": "sha256(holdout_id:index) first 13 uppercase hex characters",
+    "seed_pool_excludes_all_960_preexisting_registered_pool_seeds": true,
+    "launch_config": "reports/combat_rl_inventory_embedding_holdout_20260828_r1.properties",
+    "launch_config_sha256": "f5bb2684a828e9e5588566163c34c33ece8ab10028f00484f5098543635842d1",
+    "decision_trace": "D:/SteamLibrary/steamapps/common/SlayTheSpire/ai_decision_trace_clean.jsonl",
+    "sim_divergence_trace": "D:/SteamLibrary/steamapps/common/SlayTheSpire/sim_divergence_trace_clean.jsonl"
+  },
+  "preflight": {
+    "no_top_level_ironclad_autosave": true,
+    "no_active_game_or_project_python_process": true,
+    "first_accepted_state_must_use_seed_pool_index_1": "3A6CEC81A61AC",
+    "first_accepted_state_must_be_new_run_floor_at_most_1": true,
+    "on_mismatch": "Stop immediately, quarantine the attempt, and do not count or resume it."
+  },
+  "holdout_contract": {
+    "training": false,
+    "candidate_selection": false,
+    "threshold_changes": false,
+    "single_frozen_candidate_evaluation": true,
+    "matched_live_gate_requires_separate_decision": true,
+    "promotion": false
+  },
+  "required_checks": {
+    "complete_exactly_20_games": true,
+    "all_run_seeds_match_in_order": true,
+    "online_and_target_remain_equal_to_r16": true,
+    "optimizer_state_remains_empty": true,
+    "optimizer_step_remains_zero": true,
+    "inventory_trace_replay_join_has_zero_occupied_alias_undercount": true,
+    "no_cross_floor_nonterminal_successor": true,
+    "no_runtime_traceback_or_rl_action_failure": true,
+    "restore_pre_collection_communication_mod_config": true
+  },
+  "decision_rule": "Evaluate the exact frozen candidate once on the complete holdout. Require lower one-step loss, at least 98 percent parent action agreement, at most 2 percent off-target disagreement, and no positive-energy End Turn increase before considering a separate matched live gate.",
+  "next_step": "Commit this registration, collect the holdout under production r16, validate it, and run the frozen offline gate exactly once."
+}
