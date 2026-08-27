@@ -49,11 +49,15 @@ from spirecomm.ai.rl.v2.trainer import DQNTrainerV2  # noqa: E402
 from spirecomm.ai.rl.v2.types import EncodedStateV2  # noqa: E402
 
 
-REPORT_SCHEMA_VERSION = "combat-lightspeed-training-smoke-v16"
+REPORT_SCHEMA_VERSION = "combat-lightspeed-training-smoke-v17"
 CHECKPOINT_KIND = "simulator_training_smoke"
 ONE_STEP_TD_TARGET = "one-step-td"
 DISCOUNTED_EPISODE_RETURN_TARGET = "discounted-episode-return"
 FROZEN_PARENT_N_STEP_TARGET = "frozen-parent-n-step-return"
+FROZEN_PARENT_RAW_GREEDY_BOOTSTRAP = "frozen-parent-raw-greedy-v1"
+FROZEN_PARENT_DEPLOYMENT_GUARD_BOOTSTRAP = (
+    "frozen-parent-deployment-guard-v1"
+)
 ENCOUNTER_HASH_ALGORITHM = "sha256-first-8-bytes-modulo"
 ENCOUNTER_ENUM_ENCODING = "monster-encounter-enum-v1"
 MAX_ENCOUNTER_IDENTITY_BUCKETS = 1024
@@ -68,6 +72,8 @@ FROZEN_PARENT_GREEDY_ANCHOR_LABEL = "frozen-parent-greedy-v1"
 GUARD_REPLACEMENT_EXECUTED_ACTION_ANCHOR_LABEL = (
     "guard-replacement-executed-action-v1"
 )
+TARGET_POLICY_ACTION_INDEX_KEY = "_target_policy_action_index"
+TARGET_POLICY_GUARD_REPLACED_KEY = "_target_policy_guard_replaced"
 DEPLOYMENT_GUARD_TELEMETRY_FIELDS = (
     "raw_policy_end_turn_count",
     "forced_end_turn_count",
@@ -199,6 +205,7 @@ class SmokeConfig:
     encounter_identity_buckets: int = 0
     encounter_identity_encoding: str = ENCOUNTER_HASH_ALGORITHM
     replay_target_mode: str = ONE_STEP_TD_TARGET
+    frozen_parent_bootstrap_policy: str = FROZEN_PARENT_RAW_GREEDY_BOOTSTRAP
     replay_return_discount: float = 0.99
     replay_return_horizon: int = 3
     complete_trajectories_only: bool = False
@@ -336,6 +343,30 @@ class SmokeConfig:
             FROZEN_PARENT_N_STEP_TARGET,
         }:
             raise ValueError("unknown replay target mode")
+        if self.frozen_parent_bootstrap_policy not in {
+            FROZEN_PARENT_RAW_GREEDY_BOOTSTRAP,
+            FROZEN_PARENT_DEPLOYMENT_GUARD_BOOTSTRAP,
+        }:
+            raise ValueError("unknown frozen-parent bootstrap policy")
+        if (
+            self.frozen_parent_bootstrap_policy
+            == FROZEN_PARENT_DEPLOYMENT_GUARD_BOOTSTRAP
+        ):
+            if self.replay_target_mode != FROZEN_PARENT_N_STEP_TARGET:
+                raise ValueError(
+                    "guard-aware bootstrap requires frozen-parent n-step targeting"
+                )
+            if self.behavior_policy != FROZEN_PARENT_GUARDED_EPSILON_BEHAVIOR:
+                raise ValueError(
+                    "guard-aware bootstrap requires guarded-parent behavior"
+                )
+            if (
+                self.deployment_guard_proxy
+                != GREEDY_NATIVE_REWARD_DEPLOYMENT_GUARD_PROXY
+            ):
+                raise ValueError(
+                    "guard-aware bootstrap requires the registered deployment guard proxy"
+                )
         if not math.isfinite(self.replay_return_discount) or not (
             0.0 < self.replay_return_discount <= 1.0
         ):
@@ -387,6 +418,8 @@ class ReplayTransition:
     seed: int = 0
     decision_index: int = 0
     guard_proxy_replaced: bool = False
+    target_policy_action: int = -1
+    target_policy_guard_replaced: bool = False
 
 
 def initialization_failure_reason(value: object) -> str:
@@ -713,6 +746,10 @@ def select_collection_behavior_action(
         raise ValueError(f"unknown collection behavior policy: {config.behavior_policy}")
     if behavior_trainer is None:
         raise ValueError("frozen-parent guarded behavior requires a behavior trainer")
+    guard_aware_bootstrap = (
+        config.frozen_parent_bootstrap_policy
+        == FROZEN_PARENT_DEPLOYMENT_GUARD_BOOTSTRAP
+    )
     if cap_reached:
         selected, guard_telemetry = apply_deployment_guard_proxy(
             environment,
@@ -723,32 +760,72 @@ def select_collection_behavior_action(
             policy_selected=False,
         )
         telemetry["forced_end_turn_branch_count"] = 1
-    elif rng.random() < config.behavior_epsilon:
-        selected = select_behavior_action(
-            legal_actions,
-            rng=rng,
-            actions_since_end_turn=actions_since_end_turn,
-            max_actions_per_turn=config.max_actions_per_turn,
-        )
-        guard_telemetry = {field: 0 for field in DEPLOYMENT_GUARD_TELEMETRY_FIELDS}
-        telemetry["exploration_branch_count"] = 1
+        if guard_aware_bootstrap:
+            selected[TARGET_POLICY_ACTION_INDEX_KEY] = int(
+                selected["rl_action_index"]
+            )
+            selected[TARGET_POLICY_GUARD_REPLACED_KEY] = False
     else:
-        raw_action = _policy_action(
-            behavior_trainer,
-            mapped,
-            legal_actions,
-            actions_since_end_turn=actions_since_end_turn,
-            max_actions_per_turn=config.max_actions_per_turn,
-        )
-        selected, guard_telemetry = apply_deployment_guard_proxy(
-            environment,
-            raw_action,
-            legal_actions,
-            before_snapshot,
-            mode=config.deployment_guard_proxy,
-            policy_selected=True,
-        )
-        telemetry["parent_branch_count"] = 1
+        target_action = None
+        target_guard_telemetry = None
+        if guard_aware_bootstrap:
+            raw_target_action = _policy_action(
+                behavior_trainer,
+                mapped,
+                legal_actions,
+                actions_since_end_turn=actions_since_end_turn,
+                max_actions_per_turn=config.max_actions_per_turn,
+            )
+            target_action, target_guard_telemetry = apply_deployment_guard_proxy(
+                environment,
+                raw_target_action,
+                legal_actions,
+                before_snapshot,
+                mode=config.deployment_guard_proxy,
+                policy_selected=True,
+            )
+        if rng.random() < config.behavior_epsilon:
+            selected = select_behavior_action(
+                legal_actions,
+                rng=rng,
+                actions_since_end_turn=actions_since_end_turn,
+                max_actions_per_turn=config.max_actions_per_turn,
+            )
+            guard_telemetry = {
+                field: 0 for field in DEPLOYMENT_GUARD_TELEMETRY_FIELDS
+            }
+            telemetry["exploration_branch_count"] = 1
+        else:
+            if target_action is None:
+                raw_action = _policy_action(
+                    behavior_trainer,
+                    mapped,
+                    legal_actions,
+                    actions_since_end_turn=actions_since_end_turn,
+                    max_actions_per_turn=config.max_actions_per_turn,
+                )
+                selected, guard_telemetry = apply_deployment_guard_proxy(
+                    environment,
+                    raw_action,
+                    legal_actions,
+                    before_snapshot,
+                    mode=config.deployment_guard_proxy,
+                    policy_selected=True,
+                )
+            else:
+                selected = dict(target_action)
+                assert target_guard_telemetry is not None
+                guard_telemetry = dict(target_guard_telemetry)
+            telemetry["parent_branch_count"] = 1
+        if guard_aware_bootstrap:
+            assert target_action is not None
+            assert target_guard_telemetry is not None
+            selected[TARGET_POLICY_ACTION_INDEX_KEY] = int(
+                target_action["rl_action_index"]
+            )
+            selected[TARGET_POLICY_GUARD_REPLACED_KEY] = bool(
+                target_guard_telemetry["guard_proxy_replacement_count"]
+            )
     for field in DEPLOYMENT_GUARD_TELEMETRY_FIELDS:
         telemetry[field] = int(guard_telemetry[field])
     return selected, telemetry
@@ -1188,6 +1265,8 @@ def _transition(
     done: bool,
     battle_index: int,
     guard_proxy_replaced: bool = False,
+    target_policy_action: int = -1,
+    target_policy_guard_replaced: bool = False,
 ) -> ReplayTransition:
     if successor is None:
         next_continuous, next_cards, next_potions, next_relics, next_mask = _terminal_next_state(
@@ -1217,6 +1296,8 @@ def _transition(
         seed=seed,
         decision_index=decision_index,
         guard_proxy_replaced=guard_proxy_replaced,
+        target_policy_action=target_policy_action,
+        target_policy_guard_replaced=target_policy_guard_replaced,
     )
 
 
@@ -1297,14 +1378,86 @@ def transition_identity_sha256(
     return digest.hexdigest()
 
 
+def target_policy_action_identity_sha256(
+    transitions: Sequence[ReplayTransition],
+) -> str:
+    return sha256_bytes(
+        canonical_json_bytes(
+            [
+                {
+                    "action": int(row.target_policy_action),
+                    "battle_index": int(row.battle_index),
+                    "decision_index": int(row.decision_index),
+                    "guard_proxy_replaced": bool(
+                        row.target_policy_guard_replaced
+                    ),
+                    "seed": int(row.seed),
+                }
+                for row in transitions
+            ]
+        )
+    )
+
+
+def _aligned_guarded_bootstrap_actions(
+    transitions: Sequence[ReplayTransition],
+) -> tuple[dict[int, int], int]:
+    source = list(transitions)
+    by_identity: dict[tuple[int, int, int], int] = {}
+    for index, row in enumerate(source):
+        identity = (row.seed, row.battle_index, row.decision_index)
+        if identity in by_identity:
+            raise ValueError(f"duplicate trajectory decision identity: {identity}")
+        by_identity[identity] = index
+
+    actions: dict[int, int] = {}
+    guard_replacements = 0
+    for index, row in enumerate(source):
+        if row.done:
+            continue
+        successor_identity = (
+            row.seed,
+            row.battle_index,
+            row.decision_index + 1,
+        )
+        successor_index = by_identity.get(successor_identity)
+        if successor_index is None:
+            raise ValueError(
+                "missing aligned successor for guard-aware bootstrap: "
+                f"{successor_identity}"
+            )
+        successor = source[successor_index]
+        action = successor.target_policy_action
+        if not isinstance(action, int) or isinstance(action, bool) or not 0 <= action < ACTION_DIM:
+            raise ValueError(
+                "guard-aware bootstrap action is outside action range: "
+                f"{successor_identity}={action}"
+            )
+        next_mask = np.asarray(row.next_action_mask, dtype=bool)
+        if next_mask.shape != (ACTION_DIM,) or not bool(next_mask[action]):
+            raise ValueError(
+                "guard-aware bootstrap action is illegal under the stored next-action mask: "
+                f"{successor_identity}={action}"
+            )
+        actions[index] = action
+        guard_replacements += int(successor.target_policy_guard_replaced)
+    return actions, guard_replacements
+
+
 def frozen_parent_bootstrap_values(
     network: torch.nn.Module,
     transitions: Sequence[ReplayTransition],
     *,
     batch_size: int = 1024,
-) -> tuple[list[float], str]:
+    policy_mode: str = FROZEN_PARENT_RAW_GREEDY_BOOTSTRAP,
+) -> tuple[list[float], str, dict[str, Any]]:
     if batch_size <= 0:
         raise ValueError("bootstrap batch size must be positive")
+    if policy_mode not in {
+        FROZEN_PARENT_RAW_GREEDY_BOOTSTRAP,
+        FROZEN_PARENT_DEPLOYMENT_GUARD_BOOTSTRAP,
+    }:
+        raise ValueError("unknown frozen-parent bootstrap policy")
     source = list(transitions)
     values = [0.0] * len(source)
     nonterminal_indices = [index for index, row in enumerate(source) if not row.done]
@@ -1314,12 +1467,19 @@ def frozen_parent_bootstrap_values(
                 "frozen parent bootstrap requires at least one legal next action: "
                 f"{(source[index].seed, source[index].battle_index, source[index].decision_index)}"
             )
+    guarded_actions: dict[int, int] = {}
+    bootstrap_guard_replacements = 0
+    if policy_mode == FROZEN_PARENT_DEPLOYMENT_GUARD_BOOTSTRAP:
+        guarded_actions, bootstrap_guard_replacements = (
+            _aligned_guarded_bootstrap_actions(source)
+        )
 
     try:
         device = next(network.parameters()).device
     except StopIteration as exc:
         raise ValueError("frozen parent bootstrap network has no parameters") from exc
     was_training = network.training
+    raw_max_q_gaps: list[float] = []
     network.eval()
     try:
         with torch.no_grad():
@@ -1355,14 +1515,55 @@ def frozen_parent_bootstrap_values(
                     .bool()
                     .to(device),
                 )
-                maxima = q_values.max(dim=1).values.detach().cpu()
+                maxima = q_values.max(dim=1).values
                 if not bool(torch.isfinite(maxima).all()):
                     raise ValueError("frozen parent bootstrap value is not finite")
-                for index, value in zip(indices, maxima.tolist()):
+                if policy_mode == FROZEN_PARENT_DEPLOYMENT_GUARD_BOOTSTRAP:
+                    action_tensor = torch.tensor(
+                        [guarded_actions[index] for index in indices],
+                        dtype=torch.long,
+                        device=device,
+                    ).unsqueeze(1)
+                    selected = q_values.gather(1, action_tensor).squeeze(1)
+                else:
+                    selected = maxima
+                if not bool(torch.isfinite(selected).all()):
+                    raise ValueError("frozen parent bootstrap value is not finite")
+                maxima_cpu = maxima.detach().cpu()
+                selected_cpu = selected.detach().cpu()
+                if policy_mode == FROZEN_PARENT_DEPLOYMENT_GUARD_BOOTSTRAP:
+                    raw_max_q_gaps.extend(
+                        float(maximum - selected_value)
+                        for maximum, selected_value in zip(
+                            maxima_cpu.tolist(), selected_cpu.tolist()
+                        )
+                    )
+                for index, value in zip(indices, selected_cpu.tolist()):
                     values[index] = float(value)
     finally:
         network.train(was_training)
-    return values, parameter_sha256(network.state_dict())
+    if policy_mode == FROZEN_PARENT_DEPLOYMENT_GUARD_BOOTSTRAP:
+        if any(
+            gap < -1e-6 or not math.isfinite(gap)
+            for gap in raw_max_q_gaps
+        ):
+            raise ValueError("guard-aware bootstrap raw-max Q gap is invalid")
+    evidence = {
+        "policy_mode": policy_mode,
+        "bootstrap_action_count": (
+            len(nonterminal_indices)
+            if policy_mode == FROZEN_PARENT_DEPLOYMENT_GUARD_BOOTSTRAP
+            else 0
+        ),
+        "bootstrap_guard_replacement_count": bootstrap_guard_replacements,
+        "target_policy_action_identity_sha256": (
+            target_policy_action_identity_sha256(source)
+            if policy_mode == FROZEN_PARENT_DEPLOYMENT_GUARD_BOOTSTRAP
+            else None
+        ),
+        "raw_max_q_gap": _reward_summary(raw_max_q_gaps),
+    }
+    return values, parameter_sha256(network.state_dict()), evidence
 
 
 def prepare_replay_targets(
@@ -1373,6 +1574,7 @@ def prepare_replay_targets(
     horizon: int | None = None,
     bootstrap_values: Sequence[float] | None = None,
     bootstrap_parameter_sha256: str | None = None,
+    bootstrap_evidence: Mapping[str, Any] | None = None,
 ) -> tuple[list[ReplayTransition], dict[str, Any]]:
     if mode not in {
         ONE_STEP_TD_TARGET,
@@ -1389,9 +1591,14 @@ def prepare_replay_targets(
             "mode": mode,
             "discount": None,
             "horizon": None,
+            "bootstrap_policy_mode": None,
             "bootstrap_parameter_sha256": None,
             "bootstrap_target_count": 0,
             "bootstrap_value": _reward_summary([]),
+            "bootstrap_action_count": 0,
+            "bootstrap_guard_replacement_count": 0,
+            "target_policy_action_identity_sha256": None,
+            "raw_max_q_gap": _reward_summary([]),
             "source_transition_identity_sha256": source_identity,
             "target_transition_identity_sha256": source_identity,
             "source_reward": _reward_summary([row.reward for row in source]),
@@ -1415,8 +1622,25 @@ def prepare_replay_targets(
         bootstrap = [float(value) for value in bootstrap_values]
         if not all(math.isfinite(value) for value in bootstrap):
             raise ValueError("n-step replay bootstrap values must be finite")
+        bootstrap_metadata = dict(
+            bootstrap_evidence
+            or {
+                "policy_mode": FROZEN_PARENT_RAW_GREEDY_BOOTSTRAP,
+                "bootstrap_action_count": 0,
+                "bootstrap_guard_replacement_count": 0,
+                "target_policy_action_identity_sha256": None,
+                "raw_max_q_gap": _reward_summary([]),
+            }
+        )
     else:
         bootstrap = []
+        bootstrap_metadata = {
+            "policy_mode": None,
+            "bootstrap_action_count": 0,
+            "bootstrap_guard_replacement_count": 0,
+            "target_policy_action_identity_sha256": None,
+            "raw_max_q_gap": _reward_summary([]),
+        }
 
     groups: dict[tuple[int, int], list[ReplayTransition]] = {}
     source_indices: dict[tuple[int, int, int], int] = {}
@@ -1478,11 +1702,22 @@ def prepare_replay_targets(
         "mode": mode,
         "discount": float(discount),
         "horizon": horizon if is_n_step else None,
+        "bootstrap_policy_mode": bootstrap_metadata["policy_mode"],
         "bootstrap_parameter_sha256": (
             bootstrap_parameter_sha256 if is_n_step else None
         ),
         "bootstrap_target_count": len(used_bootstrap_values),
         "bootstrap_value": _reward_summary(used_bootstrap_values),
+        "bootstrap_action_count": int(
+            bootstrap_metadata["bootstrap_action_count"]
+        ),
+        "bootstrap_guard_replacement_count": int(
+            bootstrap_metadata["bootstrap_guard_replacement_count"]
+        ),
+        "target_policy_action_identity_sha256": bootstrap_metadata[
+            "target_policy_action_identity_sha256"
+        ],
+        "raw_max_q_gap": bootstrap_metadata["raw_max_q_gap"],
         "source_transition_identity_sha256": source_identity,
         "target_transition_identity_sha256": transition_identity_sha256(result),
         "source_reward": _reward_summary([row.reward for row in source]),
@@ -1663,6 +1898,12 @@ def collect_transitions(
                             "guard_proxy_replacement_count"
                         ]
                     ),
+                    target_policy_action=int(
+                        selected.get(TARGET_POLICY_ACTION_INDEX_KEY, -1)
+                    ),
+                    target_policy_guard_replaced=bool(
+                        selected.get(TARGET_POLICY_GUARD_REPLACED_KEY, False)
+                    ),
                 )
             )
             profile_rewards.append(float(reward_record["total"]))
@@ -1725,6 +1966,19 @@ def collect_transitions(
         raise RuntimeError(
             "collection behavior branch evidence does not match retained replay"
         )
+    target_policy_rows = [
+        row for row in transitions if row.target_policy_action >= 0
+    ]
+    guard_aware_bootstrap = (
+        config.frozen_parent_bootstrap_policy
+        == FROZEN_PARENT_DEPLOYMENT_GUARD_BOOTSTRAP
+    )
+    if guard_aware_bootstrap and len(target_policy_rows) != len(transitions):
+        raise RuntimeError(
+            "guard-aware target-policy provenance does not match retained replay"
+        )
+    if not guard_aware_bootstrap and target_policy_rows:
+        raise RuntimeError("default collection unexpectedly retained target-policy actions")
 
     return transitions, {
         "accepted_transition_count": len(transitions),
@@ -1774,6 +2028,25 @@ def collect_transitions(
                 field: int(behavior_telemetry[field])
                 for field in COLLECTION_BEHAVIOR_TELEMETRY_FIELDS
             },
+        },
+        "target_policy": {
+            "bootstrap_policy_mode": config.frozen_parent_bootstrap_policy,
+            "action_count": len(target_policy_rows),
+            "action_counts": dict(
+                sorted(
+                    Counter(
+                        row.target_policy_action for row in target_policy_rows
+                    ).items()
+                )
+            ),
+            "guard_replacement_count": sum(
+                row.target_policy_guard_replaced for row in target_policy_rows
+            ),
+            "action_identity_sha256": (
+                target_policy_action_identity_sha256(transitions)
+                if guard_aware_bootstrap
+                else None
+            ),
         },
         "encounter_identity": {
             "bucket_count": config.encounter_identity_buckets,
@@ -2350,6 +2623,8 @@ def _publish(
             source_binding["replay_target"] = report["training"]["replay_target"]
         if report.get("corpus", {}).get("behavior"):
             source_binding["collection_behavior"] = report["corpus"]["behavior"]
+        if report.get("corpus", {}).get("target_policy"):
+            source_binding["target_policy"] = report["corpus"]["target_policy"]
         if report["initialization"].get("parent_policy_anchor_parameter_sha256"):
             source_binding["parent_policy_anchor_parameter_sha256"] = report[
                 "initialization"
@@ -2405,7 +2680,7 @@ def _publish(
             "size_bytes": candidate_path.stat().st_size,
         }
     manifest = {
-        "schema_version": "combat-lightspeed-training-smoke-manifest-v15",
+        "schema_version": "combat-lightspeed-training-smoke-manifest-v16",
         "artifacts": manifest_entries,
     }
     artifacts["manifest.json"] = canonical_json_bytes(manifest) + b"\n"
@@ -2482,13 +2757,28 @@ def run_smoke(
         raise RuntimeError("collection behavior parent does not match warm start")
     bootstrap_values = None
     bootstrap_parameter_sha256 = None
+    bootstrap_evidence = None
     if config.replay_target_mode == FROZEN_PARENT_N_STEP_TARGET:
-        bootstrap_values, bootstrap_parameter_sha256 = frozen_parent_bootstrap_values(
+        (
+            bootstrap_values,
+            bootstrap_parameter_sha256,
+            bootstrap_evidence,
+        ) = frozen_parent_bootstrap_values(
             trainer.target_network,
             transitions,
+            policy_mode=config.frozen_parent_bootstrap_policy,
         )
         if bootstrap_parameter_sha256 != initial_sha256:
             raise RuntimeError("frozen parent parameter identity changed before target preparation")
+        if (
+            config.frozen_parent_bootstrap_policy
+            == FROZEN_PARENT_DEPLOYMENT_GUARD_BOOTSTRAP
+            and bootstrap_evidence["target_policy_action_identity_sha256"]
+            != corpus_metrics["target_policy"]["action_identity_sha256"]
+        ):
+            raise RuntimeError(
+                "guard-aware bootstrap action identity changed after collection"
+            )
     target_transitions, replay_target = prepare_replay_targets(
         transitions,
         mode=config.replay_target_mode,
@@ -2496,6 +2786,7 @@ def run_smoke(
         horizon=config.replay_return_horizon,
         bootstrap_values=bootstrap_values,
         bootstrap_parameter_sha256=bootstrap_parameter_sha256,
+        bootstrap_evidence=bootstrap_evidence,
     )
     prepared_transitions, replay_preparation = prepare_replay_transitions(
         target_transitions,
@@ -2793,6 +3084,14 @@ def _parse_args() -> argparse.Namespace:
             FROZEN_PARENT_N_STEP_TARGET,
         ),
     )
+    parser.add_argument(
+        "--frozen-parent-bootstrap-policy",
+        default=FROZEN_PARENT_RAW_GREEDY_BOOTSTRAP,
+        choices=(
+            FROZEN_PARENT_RAW_GREEDY_BOOTSTRAP,
+            FROZEN_PARENT_DEPLOYMENT_GUARD_BOOTSTRAP,
+        ),
+    )
     parser.add_argument("--replay-return-discount", default=0.99, type=float)
     parser.add_argument("--replay-return-horizon", default=3, type=int)
     parser.add_argument("--complete-trajectories-only", action="store_true")
@@ -2847,6 +3146,9 @@ def main() -> int:
         encounter_identity_buckets=args.encounter_identity_buckets,
         encounter_identity_encoding=args.encounter_identity_encoding,
         replay_target_mode=args.replay_target_mode,
+        frozen_parent_bootstrap_policy=(
+            args.frozen_parent_bootstrap_policy
+        ),
         replay_return_discount=args.replay_return_discount,
         replay_return_horizon=args.replay_return_horizon,
         complete_trajectories_only=args.complete_trajectories_only,

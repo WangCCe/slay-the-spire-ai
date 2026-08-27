@@ -20,8 +20,10 @@ from analysis_scripts.combat_lightspeed_training_smoke import (
     ENCOUNTER_HASH_ALGORITHM,
     ENCOUNTER_PARENT_EQUIVALENCE_TOLERANCE,
     FROZEN_PARENT_GUARDED_EPSILON_BEHAVIOR,
+    FROZEN_PARENT_DEPLOYMENT_GUARD_BOOTSTRAP,
     FROZEN_PARENT_GREEDY_ANCHOR_LABEL,
     FROZEN_PARENT_N_STEP_TARGET,
+    FROZEN_PARENT_RAW_GREEDY_BOOTSTRAP,
     GREEDY_NATIVE_REWARD_DEPLOYMENT_GUARD_PROXY,
     GUARD_REPLACEMENT_EXECUTED_ACTION_ANCHOR_LABEL,
     NO_DEPLOYMENT_GUARD_PROXY,
@@ -55,6 +57,7 @@ from analysis_scripts.combat_lightspeed_training_smoke import (
     select_collection_behavior_action,
     select_profile_transitions,
     successor_disposition,
+    target_policy_action_identity_sha256,
     unexpected_initialization_failures,
     validate_collection_behavior_prerequisites,
     run_smoke,
@@ -301,6 +304,113 @@ def test_guarded_collection_exploration_uses_existing_non_end_turn_selector():
     assert telemetry["guard_proxy_replacement_count"] == 0
 
 
+def test_guard_aware_bootstrap_records_parent_target_without_changing_exploration():
+    before = _snapshot(monster_hp=10, energy=2)
+    successors = {
+        "play_card:0:1": {
+            "status": {"terminal": False, "supported": True},
+            "snapshot": _snapshot(monster_hp=4, energy=1),
+        },
+        "play_card:1:1": {
+            "status": {"terminal": False, "supported": True},
+            "snapshot": _snapshot(monster_hp=0, energy=1),
+        },
+    }
+    trainer = _FixedActionTrainer(90)
+    config = SmokeConfig(
+        train_seeds=(10,),
+        evaluation_seeds=(20,),
+        behavior_policy=FROZEN_PARENT_GUARDED_EPSILON_BEHAVIOR,
+        behavior_epsilon=1.0,
+        replay_target_mode=FROZEN_PARENT_N_STEP_TARGET,
+        complete_trajectories_only=True,
+        frozen_parent_bootstrap_policy=FROZEN_PARENT_DEPLOYMENT_GUARD_BOOTSTRAP,
+        deployment_guard_proxy=GREEDY_NATIVE_REWARD_DEPLOYMENT_GUARD_PROXY,
+    )
+    expected_rng = random.Random(17)
+    expected_rng.random()
+    expected_exploration = select_behavior_action(
+        _actions(),
+        rng=expected_rng,
+        actions_since_end_turn=0,
+        max_actions_per_turn=config.max_actions_per_turn,
+    )
+
+    selected, telemetry = select_collection_behavior_action(
+        _GuardEnvironment(before, successors),
+        behavior_trainer=trainer,
+        mapped=_mapped_state(),
+        legal_actions=_actions(),
+        before_snapshot=before,
+        rng=random.Random(17),
+        actions_since_end_turn=0,
+        config=config,
+    )
+
+    assert trainer.calls == 1
+    assert selected["action_id"] == expected_exploration["action_id"]
+    assert selected["_target_policy_action_index"] == 7
+    assert selected["_target_policy_guard_replaced"] is True
+    assert telemetry["exploration_branch_count"] == 1
+    assert telemetry["guard_proxy_replacement_count"] == 0
+
+
+def test_guard_aware_bootstrap_parent_and_forced_branches_record_target_action():
+    before = _snapshot(monster_hp=10, energy=2)
+    successors = {
+        "play_card:0:1": {
+            "status": {"terminal": False, "supported": True},
+            "snapshot": _snapshot(monster_hp=4, energy=1),
+        },
+        "play_card:1:1": {
+            "status": {"terminal": False, "supported": True},
+            "snapshot": _snapshot(monster_hp=0, energy=1),
+        },
+    }
+    trainer = _FixedActionTrainer(90)
+    config = SmokeConfig(
+        train_seeds=(10,),
+        evaluation_seeds=(20,),
+        max_actions_per_turn=3,
+        behavior_policy=FROZEN_PARENT_GUARDED_EPSILON_BEHAVIOR,
+        behavior_epsilon=0.0,
+        replay_target_mode=FROZEN_PARENT_N_STEP_TARGET,
+        complete_trajectories_only=True,
+        frozen_parent_bootstrap_policy=FROZEN_PARENT_DEPLOYMENT_GUARD_BOOTSTRAP,
+        deployment_guard_proxy=GREEDY_NATIVE_REWARD_DEPLOYMENT_GUARD_PROXY,
+    )
+
+    parent_selected, parent_telemetry = select_collection_behavior_action(
+        _GuardEnvironment(before, successors),
+        behavior_trainer=trainer,
+        mapped=_mapped_state(),
+        legal_actions=_actions(),
+        before_snapshot=before,
+        rng=random.Random(17),
+        actions_since_end_turn=0,
+        config=config,
+    )
+    forced_selected, forced_telemetry = select_collection_behavior_action(
+        _GuardEnvironment(before, successors),
+        behavior_trainer=trainer,
+        mapped=_mapped_state(),
+        legal_actions=_actions(),
+        before_snapshot=before,
+        rng=random.Random(17),
+        actions_since_end_turn=3,
+        config=config,
+    )
+
+    assert parent_selected["rl_action_index"] == 7
+    assert parent_selected["_target_policy_action_index"] == 7
+    assert parent_selected["_target_policy_guard_replaced"] is True
+    assert parent_telemetry["guard_proxy_replacement_count"] == 1
+    assert forced_selected["kind"] == "end_turn"
+    assert forced_selected["_target_policy_action_index"] == 90
+    assert forced_selected["_target_policy_guard_replaced"] is False
+    assert forced_telemetry["forced_end_turn_branch_count"] == 1
+
+
 def test_guarded_collection_forces_end_turn_at_bound_without_proxy():
     trainer = _FixedActionTrainer(1)
     config = SmokeConfig(
@@ -401,6 +511,37 @@ def test_guarded_collection_behavior_validates_mode_epsilon_and_prerequisites():
         )
     validate_collection_behavior_prerequisites(
         guarded,
+        has_initial_checkpoint=True,
+    )
+
+
+def test_guard_aware_bootstrap_requires_n_step_guarded_complete_warm_start():
+    base = SmokeConfig(train_seeds=(10,), evaluation_seeds=(20,))
+    assert base.frozen_parent_bootstrap_policy == FROZEN_PARENT_RAW_GREEDY_BOOTSTRAP
+    with pytest.raises(ValueError, match="unknown frozen-parent bootstrap policy"):
+        replace(base, frozen_parent_bootstrap_policy="unknown").validate()
+    with pytest.raises(ValueError, match="requires frozen-parent n-step"):
+        replace(
+            base,
+            frozen_parent_bootstrap_policy=FROZEN_PARENT_DEPLOYMENT_GUARD_BOOTSTRAP,
+        ).validate()
+
+    guard_aware = replace(
+        base,
+        behavior_policy=FROZEN_PARENT_GUARDED_EPSILON_BEHAVIOR,
+        replay_target_mode=FROZEN_PARENT_N_STEP_TARGET,
+        complete_trajectories_only=True,
+        frozen_parent_bootstrap_policy=FROZEN_PARENT_DEPLOYMENT_GUARD_BOOTSTRAP,
+        deployment_guard_proxy=GREEDY_NATIVE_REWARD_DEPLOYMENT_GUARD_PROXY,
+    )
+    guard_aware.validate()
+    with pytest.raises(ValueError, match="warm-start checkpoint"):
+        validate_collection_behavior_prerequisites(
+            guard_aware,
+            has_initial_checkpoint=False,
+        )
+    validate_collection_behavior_prerequisites(
+        guard_aware,
         has_initial_checkpoint=True,
     )
 
@@ -844,6 +985,8 @@ def _stratum_transition(
     reward=0.0,
     done=False,
     guard_proxy_replaced=False,
+    target_policy_action=-1,
+    target_policy_guard_replaced=False,
 ):
     return ReplayTransition(
         battle_index=battle_index,
@@ -863,6 +1006,8 @@ def _stratum_transition(
         seed=seed,
         decision_index=decision_index,
         guard_proxy_replaced=guard_proxy_replaced,
+        target_policy_action=target_policy_action,
+        target_policy_guard_replaced=target_policy_guard_replaced,
     )
 
 
@@ -875,11 +1020,15 @@ def test_guard_replacement_provenance_survives_targets_balancing_and_replay():
         reward=1.0,
         done=True,
         guard_proxy_replaced=True,
+        target_policy_action=7,
+        target_policy_guard_replaced=True,
     )
     ordinary = replace(
         replacement,
         battle_index=3,
         guard_proxy_replaced=False,
+        target_policy_action=9,
+        target_policy_guard_replaced=False,
     )
     targeted, _target_evidence = prepare_replay_targets(
         (replacement, ordinary),
@@ -901,6 +1050,10 @@ def test_guard_replacement_provenance_survives_targets_balancing_and_replay():
 
     assert [row.guard_proxy_replaced for row in targeted] == [True, False]
     assert [row.guard_proxy_replaced for row in prepared] == [True, False]
+    assert [row.target_policy_action for row in targeted] == [7, 9]
+    assert [row.target_policy_action for row in prepared] == [7, 9]
+    assert [row.target_policy_guard_replaced for row in targeted] == [True, False]
+    assert [row.target_policy_guard_replaced for row in prepared] == [True, False]
     assert insert_transitions(
         trainer,
         prepared,
@@ -1104,6 +1257,27 @@ def test_frozen_parent_n_step_target_rejects_missing_or_invalid_bootstrap_eviden
         )
 
 
+class _FixedBootstrapNetwork(torch.nn.Module):
+    def __init__(self, values):
+        super().__init__()
+        self.marker = torch.nn.Parameter(torch.zeros(()))
+        self.register_buffer("values", torch.as_tensor(values, dtype=torch.float32))
+
+    def forward(
+        self,
+        continuous,
+        card_ids,
+        potion_ids,
+        relic_ids,
+        action_mask,
+    ):
+        del card_ids, potion_ids, relic_ids
+        batch_size = 1 if continuous.ndim == 1 else continuous.shape[0]
+        values = self.values.unsqueeze(0).expand(batch_size, -1).clone()
+        mask = action_mask.unsqueeze(0) if action_mask.ndim == 1 else action_mask
+        return values.masked_fill(~mask.bool(), float("-inf"))
+
+
 def test_frozen_parent_bootstrap_values_are_masked_finite_and_restore_mode():
     trainer = create_fresh_trainer(
         _mapper(),
@@ -1126,7 +1300,7 @@ def test_frozen_parent_bootstrap_values_are_masked_finite_and_restore_mode():
             torch.from_numpy(nonterminal.next_action_mask),
         ).max().item()
     network.train()
-    values, parent_sha256 = frozen_parent_bootstrap_values(
+    values, parent_sha256, evidence = frozen_parent_bootstrap_values(
         network,
         (nonterminal, terminal),
         batch_size=1,
@@ -1134,11 +1308,155 @@ def test_frozen_parent_bootstrap_values_are_masked_finite_and_restore_mode():
 
     assert values == pytest.approx([expected, 0.0])
     assert parent_sha256 == parameter_sha256(network.state_dict())
+    assert evidence["policy_mode"] == FROZEN_PARENT_RAW_GREEDY_BOOTSTRAP
+    assert evidence["target_policy_action_identity_sha256"] is None
     assert network.training is True
 
     invalid = replace(nonterminal, next_action_mask=np.zeros(133, dtype=bool))
     with pytest.raises(ValueError, match="at least one legal next action"):
         frozen_parent_bootstrap_values(network, (invalid,))
+
+
+def test_guard_aware_bootstrap_gathers_aligned_next_action_and_reports_gap():
+    q_values = np.zeros(133, dtype=np.float32)
+    q_values[1] = 4.0
+    q_values[7] = 3.0
+    q_values[90] = 20.0
+    network = _FixedBootstrapNetwork(q_values)
+    first = _stratum_transition(0, 1, seed=35, decision_index=0)
+    terminal = _stratum_transition(
+        0,
+        7,
+        seed=35,
+        decision_index=1,
+        done=True,
+        target_policy_action=7,
+        target_policy_guard_replaced=True,
+    )
+
+    raw_values, _raw_parent, raw_evidence = frozen_parent_bootstrap_values(
+        network,
+        (first, terminal),
+        policy_mode=FROZEN_PARENT_RAW_GREEDY_BOOTSTRAP,
+    )
+    guarded_values, guarded_parent, guarded_evidence = frozen_parent_bootstrap_values(
+        network,
+        (first, terminal),
+        policy_mode=FROZEN_PARENT_DEPLOYMENT_GUARD_BOOTSTRAP,
+    )
+
+    assert raw_values == pytest.approx([20.0, 0.0])
+    assert raw_evidence["target_policy_action_identity_sha256"] is None
+    assert guarded_values == pytest.approx([3.0, 0.0])
+    assert guarded_parent == parameter_sha256(network.state_dict())
+    assert guarded_evidence["bootstrap_action_count"] == 1
+    assert guarded_evidence["bootstrap_guard_replacement_count"] == 1
+    assert guarded_evidence["raw_max_q_gap"]["mean"] == pytest.approx(17.0)
+    assert guarded_evidence["target_policy_action_identity_sha256"] == (
+        target_policy_action_identity_sha256((first, terminal))
+    )
+    prepared, target_evidence = prepare_replay_targets(
+        (first, terminal),
+        mode=FROZEN_PARENT_N_STEP_TARGET,
+        discount=0.99,
+        horizon=1,
+        bootstrap_values=guarded_values,
+        bootstrap_parameter_sha256=guarded_parent,
+        bootstrap_evidence=guarded_evidence,
+    )
+    assert prepared[0].reward == pytest.approx(2.97)
+    assert target_evidence["bootstrap_policy_mode"] == (
+        FROZEN_PARENT_DEPLOYMENT_GUARD_BOOTSTRAP
+    )
+    assert target_evidence["bootstrap_action_count"] == 1
+    assert target_evidence["bootstrap_guard_replacement_count"] == 1
+    assert target_evidence["raw_max_q_gap"]["mean"] == pytest.approx(17.0)
+
+
+@pytest.mark.parametrize(
+    ("rows", "message"),
+    [
+        (
+            (_stratum_transition(0, 1, seed=36, decision_index=0),),
+            "missing aligned successor",
+        ),
+        (
+            (
+                _stratum_transition(0, 1, seed=37, decision_index=0),
+                _stratum_transition(
+                    0,
+                    7,
+                    seed=37,
+                    decision_index=1,
+                    done=True,
+                    target_policy_action=7,
+                ),
+                _stratum_transition(
+                    0,
+                    7,
+                    seed=37,
+                    decision_index=1,
+                    done=True,
+                    target_policy_action=7,
+                ),
+            ),
+            "duplicate trajectory decision identity",
+        ),
+        (
+            (
+                _stratum_transition(0, 1, seed=38, decision_index=0),
+                _stratum_transition(
+                    0,
+                    7,
+                    seed=38,
+                    decision_index=1,
+                    done=True,
+                    target_policy_action=133,
+                ),
+            ),
+            "outside action range",
+        ),
+    ],
+)
+def test_guard_aware_bootstrap_rejects_invalid_successor_action(rows, message):
+    network = _FixedBootstrapNetwork(np.zeros(133, dtype=np.float32))
+
+    with pytest.raises(ValueError, match=message):
+        frozen_parent_bootstrap_values(
+            network,
+            rows,
+            policy_mode=FROZEN_PARENT_DEPLOYMENT_GUARD_BOOTSTRAP,
+        )
+
+
+def test_guard_aware_bootstrap_rejects_masked_or_nonfinite_gathered_action():
+    first = _stratum_transition(0, 1, seed=39, decision_index=0)
+    first.next_action_mask[7] = False
+    terminal = _stratum_transition(
+        0,
+        7,
+        seed=39,
+        decision_index=1,
+        done=True,
+        target_policy_action=7,
+    )
+    network = _FixedBootstrapNetwork(np.zeros(133, dtype=np.float32))
+    with pytest.raises(ValueError, match="illegal under the stored next-action mask"):
+        frozen_parent_bootstrap_values(
+            network,
+            (first, terminal),
+            policy_mode=FROZEN_PARENT_DEPLOYMENT_GUARD_BOOTSTRAP,
+        )
+
+    first.next_action_mask[7] = True
+    values = np.zeros(133, dtype=np.float32)
+    values[7] = np.nan
+    with pytest.raises(ValueError, match="bootstrap value is not finite"):
+        frozen_parent_bootstrap_values(
+            _FixedBootstrapNetwork(values),
+            (first, terminal),
+            policy_mode=FROZEN_PARENT_DEPLOYMENT_GUARD_BOOTSTRAP,
+        )
 
 
 def test_discounted_episode_return_rejects_incomplete_or_noncontiguous_profile():
@@ -2066,9 +2384,14 @@ def test_published_candidate_is_structurally_simulator_only(tmp_path):
             "parent_end_turn_margin_guard_cap": 0.1,
             "replay_target": {
                 "mode": FROZEN_PARENT_N_STEP_TARGET,
+                "bootstrap_policy_mode": FROZEN_PARENT_DEPLOYMENT_GUARD_BOOTSTRAP,
                 "horizon": 3,
                 "discount": 0.99,
                 "bootstrap_parameter_sha256": "e" * 64,
+                "target_policy_action_identity_sha256": "2" * 64,
+                "bootstrap_action_count": 10,
+                "bootstrap_guard_replacement_count": 4,
+                "raw_max_q_gap": {"count": 10, "mean": 0.5},
             },
         },
         "corpus": {
@@ -2078,7 +2401,13 @@ def test_published_candidate_is_structurally_simulator_only(tmp_path):
                 "parent_parameter_sha256": "e" * 64,
                 "parent_branch_count": 9,
                 "exploration_branch_count": 1,
-            }
+            },
+            "target_policy": {
+                "bootstrap_policy_mode": FROZEN_PARENT_DEPLOYMENT_GUARD_BOOTSTRAP,
+                "action_count": 10,
+                "guard_replacement_count": 4,
+                "action_identity_sha256": "2" * 64,
+            },
         },
         "initialization": {
             "mode": "warm_start_encounter_expansion",
@@ -2157,6 +2486,9 @@ def test_published_candidate_is_structurally_simulator_only(tmp_path):
     assert checkpoint["metadata"]["source_binding"]["collection_behavior"] == report[
         "corpus"
     ]["behavior"]
+    assert checkpoint["metadata"]["source_binding"]["target_policy"] == report[
+        "corpus"
+    ]["target_policy"]
 
 
 def test_opt_in_tiny_native_training_smoke():
