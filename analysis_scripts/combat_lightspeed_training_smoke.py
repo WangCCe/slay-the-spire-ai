@@ -49,7 +49,7 @@ from spirecomm.ai.rl.v2.trainer import DQNTrainerV2  # noqa: E402
 from spirecomm.ai.rl.v2.types import EncodedStateV2  # noqa: E402
 
 
-REPORT_SCHEMA_VERSION = "combat-lightspeed-training-smoke-v15"
+REPORT_SCHEMA_VERSION = "combat-lightspeed-training-smoke-v16"
 CHECKPOINT_KIND = "simulator_training_smoke"
 ONE_STEP_TD_TARGET = "one-step-td"
 DISCOUNTED_EPISODE_RETURN_TARGET = "discounted-episode-return"
@@ -64,6 +64,10 @@ GREEDY_NATIVE_REWARD_DEPLOYMENT_GUARD_PROXY = (
 )
 UNIFORM_NON_END_TURN_BEHAVIOR = "uniform-non-end-turn-v1"
 FROZEN_PARENT_GUARDED_EPSILON_BEHAVIOR = "frozen-parent-guarded-epsilon-v1"
+FROZEN_PARENT_GREEDY_ANCHOR_LABEL = "frozen-parent-greedy-v1"
+GUARD_REPLACEMENT_EXECUTED_ACTION_ANCHOR_LABEL = (
+    "guard-replacement-executed-action-v1"
+)
 DEPLOYMENT_GUARD_TELEMETRY_FIELDS = (
     "raw_policy_end_turn_count",
     "forced_end_turn_count",
@@ -183,6 +187,7 @@ class SmokeConfig:
     batch_size: int = 128
     optimizer_steps: int = 64
     parent_policy_anchor_weight: float = 0.0
+    parent_anchor_label_mode: str = FROZEN_PARENT_GREEDY_ANCHOR_LABEL
     parent_end_turn_margin_guard_weight: float = 0.0
     parent_end_turn_margin_guard_cap: float = 0.1
     parent_card_ranking_guard_weight: float = 0.0
@@ -238,6 +243,11 @@ class SmokeConfig:
             raise ValueError(
                 "parent policy anchor weight must be finite and non-negative"
             )
+        if self.parent_anchor_label_mode not in {
+            FROZEN_PARENT_GREEDY_ANCHOR_LABEL,
+            GUARD_REPLACEMENT_EXECUTED_ACTION_ANCHOR_LABEL,
+        }:
+            raise ValueError("unknown parent anchor label mode")
         if (
             not math.isfinite(self.parent_end_turn_margin_guard_weight)
             or self.parent_end_turn_margin_guard_weight < 0.0
@@ -376,6 +386,7 @@ class ReplayTransition:
     next_action_mask: np.ndarray
     seed: int = 0
     decision_index: int = 0
+    guard_proxy_replaced: bool = False
 
 
 def initialization_failure_reason(value: object) -> str:
@@ -629,6 +640,18 @@ def validate_collection_behavior_prerequisites(
     *,
     has_initial_checkpoint: bool,
 ) -> None:
+    if (
+        config.parent_anchor_label_mode
+        == GUARD_REPLACEMENT_EXECUTED_ACTION_ANCHOR_LABEL
+    ):
+        if config.behavior_policy != FROZEN_PARENT_GUARDED_EPSILON_BEHAVIOR:
+            raise ValueError(
+                "proxy-aware parent anchor labels require guarded-parent behavior"
+            )
+        if config.parent_policy_anchor_weight <= 0.0:
+            raise ValueError(
+                "proxy-aware parent anchor labels require a positive parent policy anchor"
+            )
     if config.behavior_policy != FROZEN_PARENT_GUARDED_EPSILON_BEHAVIOR:
         return
     if not has_initial_checkpoint:
@@ -1164,6 +1187,7 @@ def _transition(
     successor: MappedCombatState | None,
     done: bool,
     battle_index: int,
+    guard_proxy_replaced: bool = False,
 ) -> ReplayTransition:
     if successor is None:
         next_continuous, next_cards, next_potions, next_relics, next_mask = _terminal_next_state(
@@ -1192,6 +1216,7 @@ def _transition(
         next_action_mask=next_mask,
         seed=seed,
         decision_index=decision_index,
+        guard_proxy_replaced=guard_proxy_replaced,
     )
 
 
@@ -1246,6 +1271,7 @@ def transition_identity_sha256(
                     "done": row.done,
                     "reward": row.reward,
                     "seed": row.seed,
+                    "guard_proxy_replaced": row.guard_proxy_replaced,
                 }
             )
         )
@@ -1632,6 +1658,11 @@ def collect_transitions(
                     successor=successor_mapped,
                     done=successor_kind == "terminal",
                     battle_index=battle_index,
+                    guard_proxy_replaced=bool(
+                        step_behavior_telemetry[
+                            "guard_proxy_replacement_count"
+                        ]
+                    ),
                 )
             )
             profile_rewards.append(float(reward_record["total"]))
@@ -1737,6 +1768,7 @@ def collect_transitions(
         "behavior": {
             "mode": config.behavior_policy,
             "epsilon": float(config.behavior_epsilon),
+            "parent_anchor_label_mode": config.parent_anchor_label_mode,
             "parent_parameter_sha256": behavior_parent_sha256,
             **{
                 field: int(behavior_telemetry[field])
@@ -1836,7 +1868,17 @@ def prepare_replay_transitions(
     }
 
 
-def insert_transitions(trainer: DQNTrainerV2, transitions: Sequence[ReplayTransition]) -> int:
+def insert_transitions(
+    trainer: DQNTrainerV2,
+    transitions: Sequence[ReplayTransition],
+    *,
+    parent_anchor_label_mode: str = FROZEN_PARENT_GREEDY_ANCHOR_LABEL,
+) -> int:
+    if parent_anchor_label_mode not in {
+        FROZEN_PARENT_GREEDY_ANCHOR_LABEL,
+        GUARD_REPLACEMENT_EXECUTED_ACTION_ANCHOR_LABEL,
+    }:
+        raise ValueError("unknown parent anchor label mode")
     accepted = 0
     for row in transitions:
         if trainer.store_transition(
@@ -1853,6 +1895,11 @@ def insert_transitions(trainer: DQNTrainerV2, transitions: Sequence[ReplayTransi
             row.done,
             action_mask=row.action_mask,
             next_action_mask=row.next_action_mask,
+            anchor_to_executed_action=(
+                parent_anchor_label_mode
+                == GUARD_REPLACEMENT_EXECUTED_ACTION_ANCHOR_LABEL
+                and row.guard_proxy_replaced
+            ),
         ):
             accepted += 1
     return accepted
@@ -1866,6 +1913,7 @@ def run_optimizer(trainer: DQNTrainerV2, steps: int) -> dict[str, list[float]]:
         "total": [],
         "td": [],
         "parent_policy_anchor": [],
+        "parent_policy_anchor_override_count": [],
         "parent_end_turn_margin_guard": [],
         "parent_end_turn_margin_guard_eligible_count": [],
         "parent_end_turn_margin_guard_ranking_violation_count": [],
@@ -1884,6 +1932,9 @@ def run_optimizer(trainer: DQNTrainerV2, steps: int) -> dict[str, list[float]]:
             "total": float(loss),
             "td": float(trainer.last_td_loss),
             "parent_policy_anchor": float(trainer.last_parent_policy_anchor_loss),
+            "parent_policy_anchor_override_count": float(
+                trainer.last_parent_policy_anchor_override_count
+            ),
             "parent_end_turn_margin_guard": float(
                 trainer.last_parent_end_turn_margin_guard_loss
             ),
@@ -2271,6 +2322,12 @@ def _publish(
         source_binding["parent_policy_anchor_weight"] = report["training"][
             "parent_policy_anchor_weight"
         ]
+        source_binding["parent_anchor_label_mode"] = report["training"][
+            "parent_anchor_label_mode"
+        ]
+        source_binding["parent_policy_anchor_override_count"] = report[
+            "training"
+        ]["parent_policy_anchor_override_count"]
         source_binding["parent_end_turn_margin_guard_weight"] = report["training"].get(
             "parent_end_turn_margin_guard_weight", 0.0
         )
@@ -2348,7 +2405,7 @@ def _publish(
             "size_bytes": candidate_path.stat().st_size,
         }
     manifest = {
-        "schema_version": "combat-lightspeed-training-smoke-manifest-v14",
+        "schema_version": "combat-lightspeed-training-smoke-manifest-v15",
         "artifacts": manifest_entries,
     }
     artifacts["manifest.json"] = canonical_json_bytes(manifest) + b"\n"
@@ -2446,7 +2503,11 @@ def run_smoke(
         stratify=config.balance_replay_by_battle_index,
         seed=config.replay_balance_seed,
     )
-    accepted = insert_transitions(trainer, prepared_transitions)
+    accepted = insert_transitions(
+        trainer,
+        prepared_transitions,
+        parent_anchor_label_mode=config.parent_anchor_label_mode,
+    )
     if accepted != len(prepared_transitions):
         raise RuntimeError(
             f"replay rejected transitions: {accepted}/{len(prepared_transitions)}"
@@ -2484,6 +2545,17 @@ def run_smoke(
         value > 0.0 for value in objective_losses["parent_policy_anchor"]
     ):
         blockers.append("parent_policy_anchor_loss_missing")
+    if (
+        config.parent_anchor_label_mode
+        == GUARD_REPLACEMENT_EXECUTED_ACTION_ANCHOR_LABEL
+        and not any(
+            value > 0.0
+            for value in objective_losses[
+                "parent_policy_anchor_override_count"
+            ]
+        )
+    ):
+        blockers.append("parent_policy_anchor_override_missing")
     if config.parent_end_turn_margin_guard_weight > 0.0 and not any(
         value > 0.0
         for value in objective_losses[
@@ -2585,6 +2657,10 @@ def run_smoke(
             "replay_preparation": replay_preparation,
             "optimizer_update_count": len(losses),
             "parent_policy_anchor_weight": config.parent_policy_anchor_weight,
+            "parent_anchor_label_mode": config.parent_anchor_label_mode,
+            "parent_policy_anchor_override_count": summarize_losses(
+                objective_losses["parent_policy_anchor_override_count"]
+            ),
             "parent_end_turn_margin_guard_weight": (
                 config.parent_end_turn_margin_guard_weight
             ),
@@ -2675,6 +2751,14 @@ def _parse_args() -> argparse.Namespace:
     parser.add_argument("--initial-checkpoint-sha256")
     parser.add_argument("--parent-policy-anchor-weight", default=0.0, type=float)
     parser.add_argument(
+        "--parent-anchor-label-mode",
+        default=FROZEN_PARENT_GREEDY_ANCHOR_LABEL,
+        choices=(
+            FROZEN_PARENT_GREEDY_ANCHOR_LABEL,
+            GUARD_REPLACEMENT_EXECUTED_ACTION_ANCHOR_LABEL,
+        ),
+    )
+    parser.add_argument(
         "--parent-end-turn-margin-guard-weight", default=0.0, type=float
     )
     parser.add_argument(
@@ -2743,6 +2827,7 @@ def main() -> int:
         batch_size=args.batch_size,
         optimizer_steps=args.optimizer_steps,
         parent_policy_anchor_weight=args.parent_policy_anchor_weight,
+        parent_anchor_label_mode=args.parent_anchor_label_mode,
         parent_end_turn_margin_guard_weight=(
             args.parent_end_turn_margin_guard_weight
         ),

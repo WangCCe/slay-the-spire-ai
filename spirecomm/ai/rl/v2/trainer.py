@@ -413,6 +413,7 @@ class DQNTrainerV2:
         self.last_loss = None
         self.last_td_loss = None
         self.last_parent_policy_anchor_loss = 0.0
+        self.last_parent_policy_anchor_override_count = 0
         self.last_parent_end_turn_margin_guard_loss = 0.0
         self.last_parent_end_turn_margin_guard_eligible_count = 0
         self.last_parent_end_turn_margin_guard_ranking_violation_count = 0
@@ -529,6 +530,7 @@ class DQNTrainerV2:
         done: bool,
         action_mask: np.ndarray = None,
         next_action_mask: np.ndarray = None,
+        anchor_to_executed_action: bool = False,
     ) -> bool:
         accepted = self.replay_buffer.add(
             continuous,
@@ -544,6 +546,7 @@ class DQNTrainerV2:
             done,
             action_mask=action_mask,
             next_action_mask=next_action_mask,
+            anchor_to_executed_action=anchor_to_executed_action,
         )
         if accepted:
             self.total_steps += 1
@@ -569,6 +572,7 @@ class DQNTrainerV2:
             dones,
             action_masks,
             next_action_masks,
+            anchor_to_executed_action,
         ) = self.replay_buffer.sample(self.batch_size)
 
         continuous = torch.from_numpy(continuous).float().to(self.device)
@@ -584,6 +588,28 @@ class DQNTrainerV2:
         dones = torch.from_numpy(dones).float().to(self.device)
         action_masks = torch.from_numpy(action_masks).to(self.device)
         next_action_masks = torch.from_numpy(next_action_masks).to(self.device)
+        anchor_to_executed_action = torch.from_numpy(
+            anchor_to_executed_action
+        ).bool().to(self.device)
+
+        self.last_parent_policy_anchor_override_count = 0
+        if self.parent_policy_anchor_weight > 0.0 and bool(
+            anchor_to_executed_action.any()
+        ):
+            override_actions_in_range = (
+                (actions >= 0) & (actions < self.action_dim)
+            )
+            if not bool(override_actions_in_range[anchor_to_executed_action].all()):
+                raise ValueError(
+                    "executed-action anchor override is invalid under the stored action mask"
+                )
+            override_actions_valid = action_masks.gather(
+                1, actions.unsqueeze(1)
+            ).squeeze(1)
+            if not bool(override_actions_valid[anchor_to_executed_action].all()):
+                raise ValueError(
+                    "executed-action anchor override is invalid under the stored action mask"
+                )
 
         current_q_values = self.online_network(
             continuous=continuous,
@@ -632,7 +658,15 @@ class DQNTrainerV2:
                 action_masks,
             )
         if self.parent_policy_anchor_weight > 0.0:
-            anchor_loss = F.cross_entropy(current_q_values, anchor_actions)
+            anchor_targets = torch.where(
+                anchor_to_executed_action,
+                actions,
+                anchor_actions,
+            )
+            self.last_parent_policy_anchor_override_count = int(
+                anchor_to_executed_action.sum().item()
+            )
+            anchor_loss = F.cross_entropy(current_q_values, anchor_targets)
         parent_end_turn_margin_guard_loss_value = torch.zeros(
             (), dtype=td_loss.dtype, device=self.device
         )
@@ -786,12 +820,13 @@ class DQNTrainerV2:
         if self.parent_policy_anchor_weight > 0.0 and self.total_steps % 100 == 0:
             logger.info(
                 "RL parent policy anchor update: total_steps=%s total_loss=%.6f "
-                "td_loss=%.6f anchor_loss=%.6f weight=%.6f",
+                "td_loss=%.6f anchor_loss=%.6f weight=%.6f overrides=%s",
                 self.total_steps,
                 loss_value,
                 self.last_td_loss,
                 self.last_parent_policy_anchor_loss,
                 self.parent_policy_anchor_weight,
+                self.last_parent_policy_anchor_override_count,
             )
 
         if (

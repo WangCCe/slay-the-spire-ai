@@ -396,9 +396,19 @@ def _real_trainer(
     )
 
 
-def _store_real_transition(trainer, *, continuous=None, done=False, action=0):
+def _store_real_transition(
+    trainer,
+    *,
+    continuous=None,
+    done=False,
+    action=0,
+    action_mask=None,
+    anchor_to_executed_action=False,
+):
     if continuous is None:
         continuous = np.zeros(2, dtype=np.float32)
+    if action_mask is None:
+        action_mask = np.ones(trainer.action_dim, dtype=bool)
     return trainer.store_transition(
         continuous=continuous,
         card_ids=np.zeros(1, dtype=np.int64),
@@ -411,12 +421,13 @@ def _store_real_transition(trainer, *, continuous=None, done=False, action=0):
         next_potion_ids=None if done else np.zeros(1, dtype=np.int64),
         next_relic_ids=None if done else np.zeros(1, dtype=np.int64),
         done=done,
-        action_mask=np.ones(trainer.action_dim, dtype=bool),
+        action_mask=action_mask,
         next_action_mask=(
             np.zeros(trainer.action_dim, dtype=bool)
             if done
             else np.ones(trainer.action_dim, dtype=bool)
         ),
+        anchor_to_executed_action=anchor_to_executed_action,
     )
 
 
@@ -464,6 +475,7 @@ def test_zero_parent_policy_anchor_preserves_td_only_training():
 
     assert trainer.parent_policy_anchor_network is None
     assert trainer.last_parent_policy_anchor_loss == 0.0
+    assert trainer.last_parent_policy_anchor_override_count == 0
     assert loss == pytest.approx(trainer.last_td_loss)
 
 
@@ -496,6 +508,56 @@ def test_parent_policy_anchor_adds_finite_masked_loss_without_training_anchor():
         parameter.grad is None
         for parameter in trainer.parent_policy_anchor_network.parameters()
     )
+
+
+def test_parent_policy_anchor_uses_mixed_executed_and_parent_targets():
+    trainer = _real_trainer(parent_policy_anchor_weight=1.0)
+    trainer.set_parent_policy_anchor(trainer.online_network.state_dict())
+    with torch.no_grad():
+        trainer.parent_policy_anchor_network.advantage_stream[-1].bias[1] = 100.0
+    anchor_before = {
+        key: value.detach().clone()
+        for key, value in trainer.parent_policy_anchor_network.state_dict().items()
+    }
+    for override in (True, True, False, False):
+        assert _store_real_transition(
+            trainer,
+            action=0,
+            anchor_to_executed_action=override,
+        ) is True
+
+    loss = trainer.train_step()
+
+    assert math.isfinite(loss)
+    assert trainer.last_parent_policy_anchor_override_count == 2
+    assert trainer.last_parent_policy_anchor_loss > 0.0
+    assert all(
+        torch.equal(
+            trainer.parent_policy_anchor_network.state_dict()[key], value
+        )
+        for key, value in anchor_before.items()
+    )
+    assert all(
+        parameter.grad is None
+        for parameter in trainer.parent_policy_anchor_network.parameters()
+    )
+
+
+def test_parent_policy_anchor_rejects_invalid_executed_action_override_before_update():
+    trainer = _real_trainer(parent_policy_anchor_weight=1.0)
+    trainer.set_parent_policy_anchor(trainer.online_network.state_dict())
+    for _ in range(4):
+        assert _store_real_transition(
+            trainer,
+            action=1,
+            action_mask=np.array([True, False], dtype=bool),
+            anchor_to_executed_action=True,
+        ) is True
+
+    with pytest.raises(ValueError, match="executed-action anchor override is invalid"):
+        trainer.train_step()
+
+    assert len(trainer.optimizer.state) == 0
 
 
 def test_positive_energy_action_imitation_adds_executed_action_loss():
@@ -649,6 +711,7 @@ def test_replay_checkpoint_round_trip_keeps_bounded_chronological_tail():
             next_action_mask=np.zeros(2, dtype=bool)
             if done
             else np.ones(2, dtype=bool),
+            anchor_to_executed_action=bool(value % 2),
         )
 
     state = replay.state_dict(max_transitions=3)
@@ -663,12 +726,58 @@ def test_replay_checkpoint_round_trip_keeps_bounded_chronological_tail():
     restored.load_state_dict(state)
 
     assert len(restored) == 3
+    assert state["schema_version"] == 2
     assert state["source_transition_count"] == 5
     assert state["truncated"] is True
+    assert state["anchor_to_executed_action"].tolist() == [True, False, True]
     assert [transition[5] for transition in restored.buffer] == [5.0, 6.0, 7.0]
+    assert [transition[13] for transition in restored.buffer] == [True, False, True]
     assert restored.buffer[-1][10] is True
     assert restored.buffer[-1][6] is None
     assert restored.position == 3
+
+
+def test_replay_default_override_is_false_and_version1_loads_all_false():
+    replay = ReplayBufferV2(
+        buffer_size=2,
+        continuous_dim=2,
+        action_dim=2,
+        card_slots=1,
+        potion_slots=1,
+        relic_slots=1,
+    )
+    assert replay.add(
+        continuous=np.zeros(2, dtype=np.float32),
+        card_ids=np.zeros(1, dtype=np.int64),
+        potion_ids=np.zeros(1, dtype=np.int64),
+        relic_ids=np.zeros(1, dtype=np.int64),
+        action=0,
+        reward=1.0,
+        next_continuous=np.ones(2, dtype=np.float32),
+        next_card_ids=np.zeros(1, dtype=np.int64),
+        next_potion_ids=np.zeros(1, dtype=np.int64),
+        next_relic_ids=np.zeros(1, dtype=np.int64),
+        done=False,
+        action_mask=np.ones(2, dtype=bool),
+        next_action_mask=np.ones(2, dtype=bool),
+    )
+    assert replay.buffer[0][13] is False
+
+    legacy_state = replay.state_dict()
+    legacy_state["schema_version"] = 1
+    legacy_state.pop("anchor_to_executed_action")
+    restored = ReplayBufferV2(
+        buffer_size=2,
+        continuous_dim=2,
+        action_dim=2,
+        card_slots=1,
+        potion_slots=1,
+        relic_slots=1,
+    )
+    restored.load_state_dict(legacy_state)
+
+    assert restored.buffer[0][13] is False
+    assert restored.sample(1)[13].tolist() == [False]
 
 
 def _checkpoint_agent(

@@ -20,8 +20,10 @@ from analysis_scripts.combat_lightspeed_training_smoke import (
     ENCOUNTER_HASH_ALGORITHM,
     ENCOUNTER_PARENT_EQUIVALENCE_TOLERANCE,
     FROZEN_PARENT_GUARDED_EPSILON_BEHAVIOR,
+    FROZEN_PARENT_GREEDY_ANCHOR_LABEL,
     FROZEN_PARENT_N_STEP_TARGET,
     GREEDY_NATIVE_REWARD_DEPLOYMENT_GUARD_PROXY,
+    GUARD_REPLACEMENT_EXECUTED_ACTION_ANCHOR_LABEL,
     NO_DEPLOYMENT_GUARD_PROXY,
     ONE_STEP_TD_TARGET,
     REPORT_AUTHORITY,
@@ -29,6 +31,7 @@ from analysis_scripts.combat_lightspeed_training_smoke import (
     ReplayTransition,
     SmokeConfig,
     _publish,
+    _transition,
     apply_deployment_guard_proxy,
     append_encounter_identity,
     calculate_native_reward,
@@ -39,6 +42,7 @@ from analysis_scripts.combat_lightspeed_training_smoke import (
     encounter_parent_equivalence_passes,
     frozen_parent_bootstrap_values,
     initialize_trainer,
+    insert_transitions,
     load_initial_checkpoint,
     migrate_parent_for_encounter_identity,
     parameter_delta,
@@ -397,6 +401,37 @@ def test_guarded_collection_behavior_validates_mode_epsilon_and_prerequisites():
         )
     validate_collection_behavior_prerequisites(
         guarded,
+        has_initial_checkpoint=True,
+    )
+
+
+def test_proxy_aware_anchor_mode_requires_guarded_anchored_warm_start():
+    base = SmokeConfig(train_seeds=(10,), evaluation_seeds=(20,))
+    assert base.parent_anchor_label_mode == FROZEN_PARENT_GREEDY_ANCHOR_LABEL
+    with pytest.raises(ValueError, match="unknown parent anchor label mode"):
+        replace(base, parent_anchor_label_mode="unknown").validate()
+
+    proxy_aware = replace(
+        base,
+        parent_anchor_label_mode=GUARD_REPLACEMENT_EXECUTED_ACTION_ANCHOR_LABEL,
+    )
+    with pytest.raises(ValueError, match="guarded-parent behavior"):
+        validate_collection_behavior_prerequisites(
+            proxy_aware,
+            has_initial_checkpoint=True,
+        )
+    guarded = replace(
+        proxy_aware,
+        behavior_policy=FROZEN_PARENT_GUARDED_EPSILON_BEHAVIOR,
+        deployment_guard_proxy=GREEDY_NATIVE_REWARD_DEPLOYMENT_GUARD_PROXY,
+    )
+    with pytest.raises(ValueError, match="positive parent policy anchor"):
+        validate_collection_behavior_prerequisites(
+            guarded,
+            has_initial_checkpoint=True,
+        )
+    validate_collection_behavior_prerequisites(
+        replace(guarded, parent_policy_anchor_weight=1.0),
         has_initial_checkpoint=True,
     )
 
@@ -808,6 +843,7 @@ def _stratum_transition(
     decision_index=0,
     reward=0.0,
     done=False,
+    guard_proxy_replaced=False,
 ):
     return ReplayTransition(
         battle_index=battle_index,
@@ -826,7 +862,68 @@ def _stratum_transition(
         next_action_mask=np.ones(133, dtype=bool),
         seed=seed,
         decision_index=decision_index,
+        guard_proxy_replaced=guard_proxy_replaced,
     )
+
+
+def test_guard_replacement_provenance_survives_targets_balancing_and_replay():
+    replacement = _stratum_transition(
+        0,
+        1,
+        seed=31,
+        decision_index=0,
+        reward=1.0,
+        done=True,
+        guard_proxy_replaced=True,
+    )
+    ordinary = replace(
+        replacement,
+        battle_index=3,
+        guard_proxy_replaced=False,
+    )
+    targeted, _target_evidence = prepare_replay_targets(
+        (replacement, ordinary),
+        mode=DISCOUNTED_EPISODE_RETURN_TARGET,
+        discount=0.99,
+    )
+    prepared, _balance_evidence = prepare_replay_transitions(
+        targeted,
+        battle_indices=(0, 3),
+        stratify=True,
+        seed=41,
+    )
+    trainer = create_fresh_trainer(
+        _mapper(),
+        seed=42,
+        batch_size=2,
+        learning_starts=2,
+    )
+
+    assert [row.guard_proxy_replaced for row in targeted] == [True, False]
+    assert [row.guard_proxy_replaced for row in prepared] == [True, False]
+    assert insert_transitions(
+        trainer,
+        prepared,
+        parent_anchor_label_mode=GUARD_REPLACEMENT_EXECUTED_ACTION_ANCHOR_LABEL,
+    ) == 2
+    assert [row[13] for row in trainer.replay_buffer.buffer] == [True, False]
+
+
+def test_raw_parent_anchor_mode_ignores_guard_replacement_provenance():
+    row = _stratum_transition(0, 1, guard_proxy_replaced=True)
+    trainer = create_fresh_trainer(
+        _mapper(),
+        seed=43,
+        batch_size=2,
+        learning_starts=2,
+    )
+
+    assert insert_transitions(
+        trainer,
+        (row,),
+        parent_anchor_label_mode=FROZEN_PARENT_GREEDY_ANCHOR_LABEL,
+    ) == 1
+    assert trainer.replay_buffer.buffer[0][13] is False
 
 
 def test_profile_selection_excludes_entire_incomplete_prefix_when_required():
@@ -1955,6 +2052,16 @@ def test_published_candidate_is_structurally_simulator_only(tmp_path):
             "initial_parameter_sha256": "e" * 64,
             "candidate_parameter_sha256": "f" * 64,
             "parent_policy_anchor_weight": 1.0,
+            "parent_anchor_label_mode": (
+                GUARD_REPLACEMENT_EXECUTED_ACTION_ANCHOR_LABEL
+            ),
+            "parent_policy_anchor_override_count": {
+                "first": 2.0,
+                "last": 1.0,
+                "mean": 1.5,
+                "minimum": 1.0,
+                "maximum": 2.0,
+            },
             "parent_end_turn_margin_guard_weight": 1.0,
             "parent_end_turn_margin_guard_cap": 0.1,
             "replay_target": {
@@ -2027,6 +2134,10 @@ def test_published_candidate_is_structurally_simulator_only(tmp_path):
     assert (
         checkpoint["metadata"]["source_binding"]["parent_policy_anchor_weight"]
         == pytest.approx(1.0)
+    )
+    assert (
+        checkpoint["metadata"]["source_binding"]["parent_anchor_label_mode"]
+        == GUARD_REPLACEMENT_EXECUTED_ACTION_ANCHOR_LABEL
     )
     assert (
         checkpoint["metadata"]["source_binding"][

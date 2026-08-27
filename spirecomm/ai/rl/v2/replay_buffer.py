@@ -42,6 +42,7 @@ class ReplayBufferV2:
         done: bool,
         action_mask: np.ndarray = None,
         next_action_mask: np.ndarray = None,
+        anchor_to_executed_action: bool = False,
     ) -> bool:
         if continuous is not None and len(continuous) != self.continuous_dim:
             return False
@@ -72,6 +73,7 @@ class ReplayBufferV2:
             done,
             action_mask,
             next_action_mask,
+            bool(anchor_to_executed_action),
         )
 
         if len(self.buffer) < self.buffer_size:
@@ -109,7 +111,7 @@ class ReplayBufferV2:
             )
 
         return {
-            "schema_version": 1,
+            "schema_version": 2,
             "buffer_size": self.buffer_size,
             "continuous_dim": self.continuous_dim,
             "action_dim": self.action_dim,
@@ -158,12 +160,16 @@ class ReplayBufferV2:
             "next_action_masks": torch.from_numpy(
                 stacked(12, (self.action_dim,), np.bool_, np.ones(self.action_dim, dtype=bool))
             ),
+            "anchor_to_executed_action": torch.tensor(
+                [transition[13] for transition in transitions], dtype=torch.bool
+            ),
         }
 
     def load_state_dict(self, state: dict) -> None:
         """Replace replay contents from a validated chronological snapshot."""
-        if not isinstance(state, dict) or state.get("schema_version") != 1:
+        if not isinstance(state, dict) or state.get("schema_version") not in {1, 2}:
             raise ValueError("Unsupported replay checkpoint schema")
+        schema_version = int(state["schema_version"])
 
         expected_metadata = {
             "continuous_dim": self.continuous_dim,
@@ -199,6 +205,11 @@ class ReplayBufferV2:
             "action_masks": ((count, self.action_dim), torch.bool),
             "next_action_masks": ((count, self.action_dim), torch.bool),
         }
+        if schema_version >= 2:
+            shapes_and_dtypes["anchor_to_executed_action"] = (
+                (count,),
+                torch.bool,
+            )
         arrays = {}
         for key, (expected_shape, expected_dtype) in shapes_and_dtypes.items():
             value = state.get(key)
@@ -245,6 +256,9 @@ class ReplayBufferV2:
                     done,
                     arrays["action_masks"][index].astype(bool, copy=True),
                     arrays["next_action_masks"][index].astype(bool, copy=True),
+                    bool(arrays["anchor_to_executed_action"][index])
+                    if schema_version >= 2
+                    else False,
                 )
             )
 
@@ -296,6 +310,10 @@ class ReplayBufferV2:
             [t[12] if t[12] is not None else np.ones(self.action_dim, dtype=bool) for t in transitions],
             dtype=bool,
         )
+        anchor_to_executed_action = np.array(
+            [t[13] for t in transitions],
+            dtype=bool,
+        )
 
         return (
             continuous,
@@ -311,6 +329,7 @@ class ReplayBufferV2:
             dones,
             action_masks,
             next_action_masks,
+            anchor_to_executed_action,
         )
 
     def is_ready(self, batch_size: int) -> bool:
