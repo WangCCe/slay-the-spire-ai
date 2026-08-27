@@ -1,0 +1,112 @@
+{
+  "schema_version": "combat-lightspeed-guarded-one-step-optimizer-dose-registration-v1",
+  "experiment_id": "combat-lightspeed-guarded-one-step-optimizer-dose-20260827-r1",
+  "registered_source_commit": "275a6a4fea167c913ddf7b2ee8bfd386242d982b",
+  "question": "With production-r16 initialization, guarded-parent behavior, raw frozen-parent anchoring, and one-step TD fixed, does reducing the optimizer budget from 256 updates prevent the recurrent held-out policy degradation?",
+  "rationale": "All prior registered combat LightSTS fits used 256 optimizer updates. Recent fits lower optimization losses and move roughly 1.1 to 1.25 L2 units from the parent while usually degrading held-out outcomes. Anchor-label and encounter-identity variants did not produce an eligible successor, so optimizer dose is the smallest untested interaction with direct evidence and requires no new implementation capability.",
+  "authority": {
+    "simulator_fitting": true,
+    "simulator_evaluation": true,
+    "gameplay": false,
+    "communication_mod": false,
+    "packaging": false,
+    "promotion": false
+  },
+  "source_binding": {
+    "training_runner_sha256": "fca4c338113a5605d0cc5306ac94e8bbc966bb8ae19ebad9227b5bcff1410d7b",
+    "trainer_sha256": "17a93bec868513185b98b205dad5ccf8fa3fcd431f0c1be3065f652cb57822ab",
+    "replay_buffer_sha256": "b90388071a378991136ad06cb3823321464ac45d4457c99d41f1026f5f883298",
+    "bridge_source_sha256": "610f0d52e1c638e8f734343a13344b1e8e8f93bae9713ac06b792dbedfc4fdad",
+    "native_module_path": "D:/PycharmProjects/slay-the-spire-ai/.sts_lightspeed_combat_later_battle_20260819_r3_build/sts_lightspeed_combat_adapter.cp310-win_amd64.pyd",
+    "native_module_sha256": "195678b7fc6bf69815f3d2971404afb8ce72fb666700edf4203383429caf1009",
+    "simulator_repo": "D:/CLionProjects/sts_lightspeed",
+    "simulator_commit": "7476a81954020087da31d41d16fddf475746ec2d",
+    "items_json_path": "D:/SteamLibrary/steamapps/common/SlayTheSpire/export/items.json",
+    "items_json_sha256": "e23784ea8ed3092e3bfa9918240e162a9cbcb837badfb53c612eb0d83cc811dc"
+  },
+  "parent": {
+    "label": "production_r16_shadow",
+    "path": "D:/PycharmProjects/slay-the-spire-ai/reports/combat_lightspeed_production_r16_shadow_20260819_r1/simulator_only_production_shadow.pth",
+    "sha256": "ce2ae34f82b3f457fb35e87d429c397204c42d0f742d3ac8952d91b69119b83b",
+    "parameter_sha256": "cfe8204d06db6b43b063df98e1b713d4a40a0894a1a9330c3db87c739da88d48"
+  },
+  "arms": {
+    "steps_64": {
+      "optimizer_steps": 64,
+      "output_dir": "reports/combat_lightspeed_guarded_one_step_optimizer_dose_20260827_r1_steps64"
+    },
+    "steps_128": {
+      "optimizer_steps": 128,
+      "output_dir": "reports/combat_lightspeed_guarded_one_step_optimizer_dose_20260827_r1_steps128"
+    },
+    "steps_256": {
+      "optimizer_steps": 256,
+      "output_dir": "reports/combat_lightspeed_guarded_one_step_optimizer_dose_20260827_r1_steps256"
+    }
+  },
+  "cohorts": {
+    "training_seeds": "172000..173023",
+    "training_seed_count": 1024,
+    "evaluation_seeds": "174000..174255",
+    "evaluation_seed_count": 256,
+    "battle_indices": [0, 3, 6, 9],
+    "training_profile_count_per_arm": 4096,
+    "evaluation_profile_count_per_policy_per_arm": 1024,
+    "prior_registration_overlap": false
+  },
+  "shared_recipe": {
+    "ascension": 0,
+    "max_decisions_per_profile": 100,
+    "max_actions_per_turn": 8,
+    "behavior_seed": 2026082721,
+    "behavior_policy": "frozen-parent-guarded-epsilon-v1",
+    "behavior_epsilon": 0.1,
+    "network_seed": 2026082722,
+    "batch_size": 128,
+    "parent_policy_anchor_weight": 1.0,
+    "parent_anchor_label_mode": "frozen-parent-greedy-v1",
+    "parent_end_turn_margin_guard_weight": 0.0,
+    "parent_card_ranking_guard_weight": 0.0,
+    "parent_top_action_margin_guard_weight": 0.0,
+    "balance_replay_by_battle_index": true,
+    "replay_balance_seed": 2026082723,
+    "encounter_identity_buckets": 0,
+    "encounter_identity_encoding": "sha256-first-8-bytes-modulo",
+    "complete_trajectories_only": true,
+    "replay_target_mode": "one-step-td",
+    "deployment_guard_proxy": "greedy-native-reward-on-wasteful-end-turn-v1",
+    "device": "cpu"
+  },
+  "technical_success_criteria": {
+    "verdict_per_arm": "technical_smoke_ready",
+    "optimizer_update_count_matches_arm": true,
+    "candidate_parameters_differ_from_parent": true,
+    "behavior_parent_parameter_matches_registered_arm_parent": true,
+    "source_transition_identity_matches_between_arms": true,
+    "behavior_telemetry_matches_between_arms": true,
+    "prepared_replay_counts_match_between_arms": true,
+    "parent_evaluation_rows_match_between_arms": true,
+    "unexpected_initialization_failure_count": 0,
+    "unsupported_reason_counts_empty": true,
+    "terminal_evaluation_profile_count_gte": 800
+  },
+  "policy_success_criteria_per_arm_vs_parent": {
+    "mean_reward_delta_gt": 0.25,
+    "mean_player_hp_delta_gte": 0.0,
+    "candidate_only_victories_gte_parent_only_victories": true,
+    "battle_indices_6_and_9_combined_mean_reward_delta_gt": 0.0,
+    "battle_index_0_mean_reward_delta_gte": -0.25,
+    "no_battle_index_mean_reward_delta_lt": -0.5
+  },
+  "selection_rule": {
+    "eligible_arms": "Arms passing every technical and policy success criterion.",
+    "best_arm": "Among eligible arms, choose the lowest optimizer_steps whose aggregate mean reward delta is within 0.05 of the best eligible aggregate mean reward delta.",
+    "multiple_comparison_boundary": "A selected arm authorizes only one separately preregistered fresh simulator confirmation; it does not authorize gameplay, packaging, or promotion."
+  },
+  "decision": {
+    "eligible_arm_selected": "Register one fresh confirmation of the selected optimizer dose with new train and evaluation cohorts.",
+    "no_eligible_arm": "Retain r16 and stop fitting the current guarded one-step recipe; next work must investigate upstream replay behavior or target design before another fit.",
+    "same_cohort_tuning": false,
+    "retry": false
+  }
+}
