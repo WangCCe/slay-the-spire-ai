@@ -1,0 +1,159 @@
+{
+  "schema_version": 1,
+  "collection_id": "combat-rl-executed-action-provenance-replay-20260828-r1",
+  "implementation_source_commit": "9675fd11efa583bce6c60352e98d8890983563d4",
+  "registration_commit": "e78203c50",
+  "verdict": "provenance_collection_complete_training_no_go_until_eval_mode_parity",
+  "timing": {
+    "started_at": "2026-08-28T06:54:24.384+08:00",
+    "completed_at": "2026-08-28T07:10:48.551+08:00",
+    "elapsed_seconds": 984.167
+  },
+  "registration": {
+    "plan": "reports/combat_rl_executed_action_provenance_replay_20260828_r1_plan.json",
+    "launch_config": "reports/combat_rl_executed_action_provenance_replay_20260828_r1.properties",
+    "launch_config_sha256": "d1e34098e42c7273f9138c4421ae107ca76e34ce24b2dcf1929fa0645a7cfcfe",
+    "seed_pool": "reports/combat_rl_executed_action_provenance_replay_20260828_r1_seed_pool.txt",
+    "seed_pool_sha256": "e9fa107501e04b2520cbecafc6a9ed2dc7d87fb8a7c1cd84b167de523597f383"
+  },
+  "collection_integrity": {
+    "game_count": 10,
+    "seed_count": 10,
+    "seed_order_exact": true,
+    "all_runs_record_chose_seed": true,
+    "run_set_sha256": "19f89ec699005ad485f768d652b2e20093ebbf03e1d6de293d57c88e1aa8ae2d",
+    "run_total_size_bytes": 38506,
+    "max_games_exit_observed": true,
+    "started_game_11": false,
+    "runtime_traceback_count": 0,
+    "rl_action_failure_count": 0,
+    "communication_mod_error_suffix_contains_only_startup_messages": true,
+    "pre_collection_config_restored": true,
+    "restored_config_sha256": "0991895790bc73d3d21a05731bf402228cf0c510a4217aa841ced026016760e7",
+    "project_python_processes_after_collection": 0
+  },
+  "seeds": [
+    "2C1D0B6FD0FE3",
+    "AEF4EBF3AFD79",
+    "A2E6CCA3EE564",
+    "36FD4137ADD6C",
+    "45970CAC6E3AD",
+    "2216AF8F8C08B",
+    "237FCD25DAF16",
+    "25874F10F89B8",
+    "BCE17BB0C23EE",
+    "DFFF3AD13C914"
+  ],
+  "outcomes": {
+    "victories": 0,
+    "mean_floor": 19.3,
+    "median_floor": 16.0,
+    "minimum_floor": 16,
+    "maximum_floor": 33,
+    "floor_reached": [16, 23, 16, 16, 20, 16, 16, 16, 33, 21],
+    "killed_by": [
+      "Hexaghost",
+      "Gremlin Leader",
+      "The Guardian",
+      "The Guardian",
+      "3 Byrds",
+      "Slime Boss",
+      "Slime Boss",
+      "Hexaghost",
+      "Champ",
+      "Cultist and Chosen"
+    ]
+  },
+  "checkpoint": {
+    "path": "reports/combat_rl_executed_action_provenance_replay_20260828_r1/rl_combat_model_ep10_steps1451.pth",
+    "sha256": "a645c0fe613ad7a362ddbc26bf125d0acbb248d52ff28bed1f83c79f9671882c",
+    "size_bytes": 10039138,
+    "episode": 10,
+    "transition_count": 1451,
+    "source_transition_count": 1451,
+    "total_steps": 1451,
+    "replay_truncated": false,
+    "epsilon": 0.0,
+    "learning_starts": 100000,
+    "optimizer_state_count": 0,
+    "last_total_loss": null,
+    "online_equals_r16": true,
+    "target_equals_r16": true,
+    "online_equals_target": true
+  },
+  "trace_binding": {
+    "runtime_evidence": "reports/combat_rl_executed_action_provenance_replay_20260828_r1/runtime_evidence.zip",
+    "runtime_evidence_sha256": "69979a36c2386c17cb84b3910ed3e317b2fb058a8b324aad10490ee909f70f17",
+    "runtime_evidence_size_bytes": 1794239,
+    "decision_trace_row_count": 2788,
+    "combat_trace_row_count": 1481,
+    "excluded_combat_proceed_action_count": 30,
+    "replay_eligible_combat_trace_row_count": 1451,
+    "replay_transition_count_matches_eligible_trace": true,
+    "cross_floor_nonterminal_count": 0
+  },
+  "executed_action_provenance": {
+    "stored_override_true_count": 1212,
+    "stored_override_false_count": 239,
+    "stored_override_share": 0.835286021232605,
+    "stored_legal_action_count": 1451,
+    "stored_illegal_action_count": 0,
+    "runtime_rl_proposal_count": 624,
+    "runtime_no_proposal_takeover_count": 827,
+    "inferred_changed_same_state_proposal_count": 385,
+    "inferred_direct_unchanged_proposal_count": 239,
+    "override_reconciliation": "1212 = (1451 - 624) no-proposal takeover rows + 385 changed same-state proposal rows",
+    "direct_reconciliation": "239 = 624 RL proposal rows - 385 changed same-state proposal rows",
+    "runtime_replacing_log_count": 491,
+    "runtime_continuing_fallback_takeover_log_count": 778,
+    "runtime_repaired_fallback_action_log_count": 197,
+    "replacement_log_counts": {
+      "ENERGY_GUARD": 412,
+      "LETHAL_GUARD": 38,
+      "ACT1_BOSS_PRESSURE_GUARD": 9,
+      "SURVIVAL_GUARD": 9,
+      "POTION_SAVE_GUARD": 13,
+      "GUARDIAN_SHARP_HIDE_GUARD": 2,
+      "GUARDIAN_PRESSURE_GUARD": 3,
+      "SLIME_VULN_GUARD": 1,
+      "SLIME_SPLIT_PRESSURE_GUARD": 1,
+      "HAVOC_GUARD": 2,
+      "SECOND_WIND_GUARD": 1
+    },
+    "note": "Replacement logs include modifications made within an already active takeover, so their count is supporting telemetry rather than a one-to-one count of proposal overrides."
+  },
+  "deployment_parity_audit": {
+    "frozen_r16_eval_greedy_agreement_count": 490,
+    "frozen_r16_eval_greedy_agreement_share": 0.3376981317996979,
+    "direct_unmarked_count": 239,
+    "direct_unmarked_eval_greedy_agreement_count": 195,
+    "direct_unmarked_eval_greedy_disagreement_count": 44,
+    "direct_unmarked_eval_greedy_agreement_share": 0.8158995815899581,
+    "override_count": 1212,
+    "override_eval_greedy_agreement_count": 295,
+    "override_eval_greedy_disagreement_count": 917,
+    "finding": "The --train collection path leaves the online dueling network in train mode while selecting actions, so its Dropout layer remains active even with epsilon=0. Production --eval explicitly uses eval mode. The 44 direct-action disagreements therefore block treating this cohort as deployment-consistent training input."
+  },
+  "decision": {
+    "provenance_collection_requirement_satisfied": true,
+    "provenance_implementation_ready": true,
+    "current_replay_approved_for_candidate_training": false,
+    "training_go": false,
+    "reason": "Executed-action provenance is complete and legal, but zero-update training-mode collection is not policy-equivalent to production eval-mode r16 because action-selection Dropout remains active.",
+    "next_step": "Create a separate change that evaluates the online network only while selecting behavior actions, preserves train mode for optimizer updates, then recollect one bounded fresh provenance cohort before provenance-aware training."
+  },
+  "authority": {
+    "collection_validation": true,
+    "provenance_schema_validation": true,
+    "candidate_training": false,
+    "candidate_selection": false,
+    "evaluation": false,
+    "promotion": false,
+    "policy_quality": false
+  },
+  "limitations": [
+    "The run outcomes are descriptive and were not registered as a policy-quality gate.",
+    "The boolean provenance does not identify a guard name per replay row; retained runtime logs provide aggregate guard and takeover support.",
+    "This cohort must not be reused as fresh confirmation or promotion evidence."
+  ]
+}
