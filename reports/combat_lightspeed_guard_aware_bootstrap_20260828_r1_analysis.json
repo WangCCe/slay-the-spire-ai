@@ -1,0 +1,155 @@
+{
+  "schema_version": "combat-lightspeed-guard-aware-bootstrap-analysis-v1",
+  "experiment_id": "combat-lightspeed-guard-aware-bootstrap-20260828-r1",
+  "registration_commit": "e8a6f3058",
+  "verdict": "reject_guard_aware_bootstrap_current_guarded_three_step_recipe",
+  "technical_result": {
+    "all_registered_technical_criteria_passed": true,
+    "arm_verdicts": {
+      "raw_greedy_control": "technical_smoke_ready",
+      "deployment_guard_candidate": "technical_smoke_ready"
+    },
+    "manifest_artifact_count": 6,
+    "manifest_hash_and_size_match_count": 6,
+    "optimizer_updates_per_arm": 256,
+    "source_replay_transition_count_per_arm": 51536,
+    "prepared_replay_transition_count_per_arm": 67020,
+    "terminal_matched_evaluation_profile_count_per_arm": 853,
+    "source_transition_identity_sha256": "df66e7ee8720e499c0867ff1c724fb76dc83699d8d26e256e9467ffbd535e732",
+    "source_transition_identity_matches_between_arms": true,
+    "behavior_telemetry_matches_between_arms": true,
+    "replay_preparation_matches_between_arms": true,
+    "parent_evaluation_rows_match_between_arms": true,
+    "unsupported_reason_counts_empty": true,
+    "expected_collection_initialization_failure_counts_per_arm": {
+      "baseline_loss_before_requested_battle": 698,
+      "baseline_run_terminated_before_battle": 1
+    },
+    "unexpected_initialization_failure_count": 0,
+    "bootstrap_parent_parameter_sha256": "cfe8204d06db6b43b063df98e1b713d4a40a0894a1a9330c3db87c739da88d48"
+  },
+  "guard_aware_target_evidence": {
+    "target_policy_action_count": 51536,
+    "target_policy_guard_replacement_count": 23680,
+    "target_policy_action_identity_sha256": "1c333ab804247cbf5a2049f1c0b1efd54ecc5c711f48f1eab05e3d9af5b205dc",
+    "bootstrap_action_count": 48139,
+    "bootstrap_guard_replacement_count": 22175,
+    "bootstrap_parameter_sha256": "cfe8204d06db6b43b063df98e1b713d4a40a0894a1a9330c3db87c739da88d48",
+    "raw_max_q_gap": {
+      "count": 48139,
+      "minimum": 0.0,
+      "mean": 0.8598634887141322,
+      "maximum": 6.63020133972168
+    },
+    "raw_control_bootstrap_value_mean": 9.808554474496594,
+    "guard_candidate_bootstrap_value_mean": 9.013849149927353,
+    "raw_control_target_reward_mean": 12.375971505190856,
+    "guard_candidate_target_reward_mean": 11.757156938896424
+  },
+  "policy_results": {
+    "raw_greedy_control_vs_production_r16": {
+      "profile_count": 853,
+      "mean_reward_delta": 0.14951074592549962,
+      "mean_player_hp_delta": -0.10082063305978899,
+      "candidate_only_victories": 14,
+      "comparator_only_victories": 9
+    },
+    "guard_candidate_vs_raw_greedy_control": {
+      "profile_count": 853,
+      "mean_reward_delta": -0.4221827920531221,
+      "mean_player_hp_delta": -0.15943728018757328,
+      "candidate_only_victories": 2,
+      "comparator_only_victories": 9,
+      "battle_6_and_9_mean_reward_delta": -0.8941297220941046,
+      "by_battle_index": {
+        "0": {
+          "profile_count": 256,
+          "mean_reward_delta": -0.012011718750000025,
+          "mean_player_hp_delta": -0.01953125
+        },
+        "3": {
+          "profile_count": 243,
+          "mean_reward_delta": -0.16676954732510293,
+          "mean_player_hp_delta": -0.19753086419753085
+        },
+        "6": {
+          "profile_count": 203,
+          "mean_reward_delta": -0.8339152902540324,
+          "mean_player_hp_delta": -0.3694581280788177
+        },
+        "9": {
+          "profile_count": 151,
+          "mean_reward_delta": -0.9750802496671822,
+          "mean_player_hp_delta": -0.052980132450331126
+        }
+      }
+    },
+    "guard_candidate_vs_production_r16": {
+      "profile_count": 853,
+      "mean_reward_delta": -0.27267204612762236,
+      "mean_player_hp_delta": -0.26025791324736225,
+      "candidate_only_victories": 8,
+      "comparator_only_victories": 10,
+      "battle_6_and_9_mean_reward_delta": -0.6008652369672759,
+      "by_battle_index": {
+        "0": {
+          "profile_count": 256,
+          "mean_reward_delta": 0.10371093750000009,
+          "mean_player_hp_delta": 0.1640625
+        },
+        "3": {
+          "profile_count": 243,
+          "mean_reward_delta": -0.19108214592776243,
+          "mean_player_hp_delta": -0.48148148148148145
+        },
+        "6": {
+          "profile_count": 203,
+          "mean_reward_delta": -0.519861503856398,
+          "mean_player_hp_delta": -0.4433497536945813
+        },
+        "9": {
+          "profile_count": 151,
+          "mean_reward_delta": -0.70976429538786,
+          "mean_player_hp_delta": -0.37748344370860926
+        }
+      }
+    }
+  },
+  "criteria": {
+    "guard_candidate_vs_raw_greedy_control": {
+      "mean_reward_delta_gt_0_25": false,
+      "mean_player_hp_delta_gte_0": false,
+      "candidate_only_victories_gte_comparator_only": false,
+      "battle_6_and_9_mean_reward_delta_gt_0": false,
+      "battle_0_mean_reward_delta_gte_negative_0_25": true,
+      "no_battle_index_mean_reward_delta_lt_negative_0_5": false
+    },
+    "guard_candidate_vs_production_r16": {
+      "mean_reward_delta_gt_0_25": false,
+      "mean_player_hp_delta_gte_0": false,
+      "candidate_only_victories_gte_comparator_only": false,
+      "battle_6_and_9_mean_reward_delta_gt_0": false,
+      "battle_0_mean_reward_delta_gte_negative_0_25": true,
+      "no_battle_index_mean_reward_delta_lt_negative_0_5": false
+    }
+  },
+  "pairing_method": {
+    "identity": [
+      "seed",
+      "battle_index"
+    ],
+    "included_outcomes": [
+      "player_victory",
+      "player_loss"
+    ],
+    "initialization_failures_excluded": true,
+    "nonterminal_outcomes_excluded": true
+  },
+  "decision": {
+    "retain_policy": "production_r16",
+    "larger_fresh_simulator_confirmation_authorized": false,
+    "gameplay_authorized_by_this_result": false,
+    "retry_or_same_cohort_tuning": false,
+    "next_investigation": "Return to data or representation work, or separately register a real-game divergence calibration study. Do not extend the same guarded three-step target recipe."
+  }
+}
