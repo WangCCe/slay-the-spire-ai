@@ -23,15 +23,15 @@
 
 - [x] 4.1 Bind complete real r14/r15 replay checkpoints, immutable r16 shadow and native module identities, fresh simulator seeds, battle indices, limits, commands, and stop rules in a committed registration.
 - [x] 4.2 Execute r1 once without gameplay, CommunicationMod, training, optimizer updates, retry, resume, or cohort tuning; close it as a technical failure without retry.
-- [ ] 4.3 Verify report and manifest integrity, publish the ranked mismatch interpretation and attribution limits, and commit and push the evidence.
+- [x] 4.3 Verify report and manifest integrity, publish the ranked mismatch interpretation and attribution limits, and commit and push the evidence.
 
 ### 4A. Registered POC recovery
 
 - [x] 4A.1 Record the r1 interface failure and add a focused regression plus the minimum deterministic frozen-policy compatibility repair.
 - [x] 4A.2 Run focused verification, commit and push the repair, and register one fresh r2 cohort that conservatively excludes all r1 seeds.
-- [ ] 4A.3 Execute r2 once and use its report to complete task 4.3; do not retry either registration or reuse either cohort.
+- [x] 4A.3 Execute r2 once and use its report to complete task 4.3; do not retry either registration or reuse either cohort.
 
 ## 5. Closeout
 
 - [ ] 5.1 Sync the new capability spec, archive the completed change, and run final strict OpenSpec validation.
-- [ ] 5.2 Select the next evidence step from the report without treating descriptive similarity as mechanics equivalence or policy qualification.
+- [x] 5.2 Select the next evidence step from the report without treating descriptive similarity as mechanics equivalence or policy qualification.

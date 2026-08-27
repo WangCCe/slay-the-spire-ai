@@ -1,0 +1,141 @@
+{
+  "schema_version": "combat-lightspeed-replay-distribution-calibration-analysis-v1",
+  "experiment_id": "combat-lightspeed-replay-distribution-calibration-20260828-r2",
+  "execution_commit": "0e4c0e708c81e9ba740ef6b2b48b66affafa98bf",
+  "verdict": "replay_distribution_calibration_ready",
+  "integrity": {
+    "manifest_checks_passed": true,
+    "report": {
+      "path": "reports/combat_lightspeed_replay_distribution_calibration_20260828_r2/report.json",
+      "size_bytes": 83808,
+      "sha256": "9b95a82d9a8ad92b36c29c6685ac874250c71491172a4bb6423788a17c6fd967"
+    },
+    "summary": {
+      "path": "reports/combat_lightspeed_replay_distribution_calibration_20260828_r2/summary.md",
+      "size_bytes": 1435,
+      "sha256": "6427e2305b4c519cd98b727be33a1e1829848e84e7dbb7baaca7a655a38478fb"
+    },
+    "manifest": {
+      "path": "reports/combat_lightspeed_replay_distribution_calibration_20260828_r2/manifest.json",
+      "size_bytes": 317,
+      "sha256": "90e21b768eeb6976f8a5b4b90f8e5f2bb077f53203b1272fbabfb957bf7a5468"
+    }
+  },
+  "operations": {
+    "real_checkpoint_loading": true,
+    "native_loading": true,
+    "simulator_collection": true,
+    "optimizer_constructed": false,
+    "optimizer_updates": 0,
+    "training": false,
+    "gameplay": false,
+    "communication_mod": false
+  },
+  "coverage": {
+    "real_transition_count": 7685,
+    "real_run_count": 40,
+    "real_run_wins": 0,
+    "simulator_transition_count": 19512,
+    "simulator_profile_count_registered": 1664,
+    "simulator_profile_count_initialized": 1256,
+    "simulator_profile_victories": 1102,
+    "simulator_profile_losses": 154,
+    "simulator_initialization_failures": 408,
+    "common_floor_strata": [
+      "floor_00_05",
+      "floor_06_10",
+      "floor_11_17",
+      "floor_18_22",
+      "floor_23_27",
+      "floor_28_34"
+    ],
+    "act_3_common_support": false
+  },
+  "ranked_interpretation": {
+    "primary_signal": "progression_inventory_and_survival_distribution_mismatch",
+    "potion_occupancy": [
+      {
+        "stratum": "floor_11_17",
+        "real_mean": 0.1521058127392969,
+        "simulator_mean": 1.0375335120643432,
+        "absolute_smd": 1.251922828192691
+      },
+      {
+        "stratum": "floor_06_10",
+        "real_mean": 0.2222222222222222,
+        "simulator_mean": 0.7893452623017487,
+        "absolute_smd": 0.8791564813873134
+      },
+      {
+        "stratum": "floor_28_34",
+        "real_mean": 0.03259604190919674,
+        "simulator_mean": 0.5287994448299792,
+        "absolute_smd": 0.8568543353617781
+      }
+    ],
+    "relic_occupancy": [
+      {
+        "stratum": "floor_18_22",
+        "real_mean": 3.7637517630465442,
+        "simulator_mean": 4.554488718194911,
+        "absolute_smd": 0.7579447443220214
+      },
+      {
+        "stratum": "floor_28_34",
+        "real_mean": 6.266589057043073,
+        "simulator_mean": 7.374739764052741,
+        "absolute_smd": 0.7038942389721965
+      },
+      {
+        "stratum": "floor_11_17",
+        "real_mean": 2.574660633484163,
+        "simulator_mean": 3.178993849550544,
+        "absolute_smd": 0.6856480071447902
+      }
+    ],
+    "reward_simulator_minus_real_mean": {
+      "floor_00_05": 1.2232985493777004,
+      "floor_06_10": 2.9739467397599277,
+      "floor_11_17": 4.530784657770722,
+      "floor_18_22": 4.850135158707573,
+      "floor_23_27": 6.0133662234424365,
+      "floor_28_34": 10.658697860815659
+    },
+    "action_family_total_variation_range": {
+      "minimum": 0.015590689503732987,
+      "maximum": 0.06001523647641539
+    },
+    "non_inventory_numeric_context": {
+      "maximum_player_hp_absolute_smd": 0.339972329649651,
+      "maximum_block_absolute_smd": 0.33516717033779925,
+      "maximum_legal_action_count_absolute_smd": 0.19879267222833266
+    }
+  },
+  "attribution_limits": [
+    "The 40 real runs and 1256 initialized simulator profiles are not matched by seed, encounter, deck, trajectory boundary, or survival condition.",
+    "All 40 real runs lost while 1102 of 1256 initialized simulator profiles won, so reward and terminal differences combine policy, progression, encounter, survivorship, and mechanics effects.",
+    "Discrete support overlap is biased downward by unequal run counts and reachable-item coverage; it is a prioritization signal, not a calibrated frequency distance.",
+    "Floor stratification does not control encounter identity, deck composition, potion consumption policy, relic acquisition policy, or run-level serial correlation.",
+    "Act 3 has insufficient common support.",
+    "Low action-family distance does not establish action-level or mechanics equivalence."
+  ],
+  "decision": {
+    "production_policy": "retain_r16",
+    "start_training_from_this_report": false,
+    "start_gameplay_from_this_report": false,
+    "next_evidence_step": "read_only_real_trace_context_attribution",
+    "next_evidence_scope": "Use the existing r14/r15 runtime_evidence.zip decision traces and run records to summarize combat rows by floor, encounter, potion occupancy, relic occupancy, deck size, action family, and terminal context. Test whether the large inventory and reward signals persist after narrower context grouping before changing LightSTS progression generation or starting another fit.",
+    "forbidden_inference": "Do not treat descriptive similarity or mismatch as mechanics equivalence, policy quality, qualification, or promotion evidence."
+  },
+  "authority": {
+    "evaluation": false,
+    "formal_rl": false,
+    "gameplay": false,
+    "mechanics_equivalence": false,
+    "ope": false,
+    "policy_quality": false,
+    "promotion": false,
+    "qualification": false,
+    "training": false
+  }
+}
