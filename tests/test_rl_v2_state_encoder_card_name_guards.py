@@ -220,6 +220,95 @@ def test_rl_v2_potion_ids_use_get_real_potions_without_raw_potions():
     assert ids[0] == 17
 
 
+def test_rl_v2_potion_ids_fall_back_from_internal_id_to_display_name():
+    mapper = IdMapper(
+        card_ids={},
+        potion_ids={"Fairy in a Bottle": 20},
+        relic_ids={},
+        card_tags={},
+    )
+    encoder = StateEncoderV2(mapper)
+    game = SimpleNamespace(
+        potions=[SimpleNamespace(potion_id="FairyPotion", name="Fairy in a Bottle")]
+    )
+
+    ids = encoder._encode_potion_ids(game)
+
+    assert ids[0] == 20
+
+
+def test_rl_v2_relic_ids_fall_back_from_internal_id_to_display_name():
+    mapper = IdMapper(
+        card_ids={},
+        potion_ids={},
+        relic_ids={"Self-Forming Clay": 134},
+        card_tags={},
+    )
+    encoder = StateEncoderV2(mapper)
+    game = SimpleNamespace(
+        relics=[SimpleNamespace(relic_id="Self Forming Clay", name="Self-Forming Clay")]
+    )
+
+    ids = encoder._encode_relic_ids(game)
+
+    assert ids[0] == 134
+
+
+def test_rl_v2_inventory_ids_preserve_known_preferred_identity():
+    mapper = IdMapper(
+        card_ids={},
+        potion_ids={"InternalPotion": 7, "Display Potion": 8},
+        relic_ids={"InternalRelic": 9, "Display Relic": 10},
+        card_tags={},
+    )
+    encoder = StateEncoderV2(mapper)
+
+    potion_ids = encoder._encode_potion_ids(
+        SimpleNamespace(
+            potions=[SimpleNamespace(potion_id="InternalPotion", name="Display Potion")]
+        )
+    )
+    relic_ids = encoder._encode_relic_ids(
+        SimpleNamespace(
+            relics=[SimpleNamespace(relic_id="InternalRelic", name="Display Relic")]
+        )
+    )
+
+    assert potion_ids[0] == 7
+    assert relic_ids[0] == 9
+
+
+def test_rl_v2_inventory_ids_keep_empty_and_unresolved_objects_zero():
+    mapper = IdMapper(
+        card_ids={},
+        potion_ids={"Known Potion": 5},
+        relic_ids={"Known Relic": 6},
+        card_tags={},
+    )
+    encoder = StateEncoderV2(mapper)
+
+    potion_ids = encoder._encode_potion_ids(
+        SimpleNamespace(
+            potions=[
+                SimpleNamespace(potion_id="Potion Slot", name="Potion Slot"),
+                SimpleNamespace(potion_id="UnknownPotion", name="Unknown Potion"),
+            ]
+        )
+    )
+    relic_ids = encoder._encode_relic_ids(
+        SimpleNamespace(
+            relics=[SimpleNamespace(relic_id="UnknownRelic", name="Unknown Relic")]
+        )
+    )
+
+    assert potion_ids[:2] == [0, 0]
+    assert relic_ids[0] == 0
+    assert len(potion_ids) == StateEncoderV2.POTION_SLOTS
+    assert len(relic_ids) == StateEncoderV2.RELIC_SLOTS
+    assert mapper.potion_vocab_size == 6
+    assert mapper.relic_vocab_size == 7
+
+
 def test_rl_v2_card_features_treat_missing_cost_as_zero():
     encoder = StateEncoderV2(_mapper())
     card = _card("Cleave")

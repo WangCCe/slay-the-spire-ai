@@ -297,6 +297,8 @@ class StateEncoderV2:
                 ids[idx] = 0
             else:
                 ids[idx] = self.id_mapper.potion_id(potion_key)
+                if ids[idx] == 0:
+                    ids[idx] = self.id_mapper.potion_id(getattr(potion, "name", None))
         return ids
 
     def _encode_relic_ids(self, game: Game) -> List[int]:
@@ -305,6 +307,8 @@ class StateEncoderV2:
         for idx in range(min(len(relics), self.RELIC_SLOTS)):
             relic = relics[idx]
             ids[idx] = self.id_mapper.relic_id(relic_id(relic))
+            if ids[idx] == 0:
+                ids[idx] = self.id_mapper.relic_id(getattr(relic, "name", None))
         return ids
 
     def _encode_card_tags(self, card: Card) -> List[float]:
