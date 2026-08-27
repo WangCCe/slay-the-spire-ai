@@ -1,0 +1,144 @@
+{
+  "schema_version": "combat-lightspeed-deployment-consistent-enum-identity-analysis-v2",
+  "experiment_id": "combat-lightspeed-deployment-consistent-enum-identity-20260827-r2",
+  "registered_source_commit": "b08806287e971c89992449fccf55c1108ff7ba0c",
+  "registration_commit": "8e5b76581e7176db82b32d942b851d9716b848e1",
+  "verdict": "technical_pass_policy_fail_reject_enum_identity_retain_r16",
+  "integrity": {
+    "registration_sha256": "383d337852442cf44fc42716f5e9a83f2a66739323ae2f6ef6e9846a646c6997",
+    "control_report_sha256": "abc4ff38dad052e6693c46fffce10c78da941399d5a92a523b8d3c9e2a779de9",
+    "enum_report_sha256": "4b7ab0b580f00a46333d43c04dedb0598b9c7b1661c86815b1f50874fe15b1b4",
+    "control_manifest_valid": true,
+    "enum_manifest_valid": true
+  },
+  "technical": {
+    "passed": true,
+    "control_verdict": "technical_smoke_ready",
+    "enum_verdict": "technical_smoke_ready",
+    "source_transition_count_per_arm": 51485,
+    "prepared_transition_count_per_arm": 67172,
+    "optimizer_update_count_per_arm": 256,
+    "guard_replacement_count_per_arm": 21452,
+    "control_encoded_source_transition_identity_sha256": "cd16cc0b9f6a1354ebbbaff4464b7b50e072bb5df48434920263e1368a3b5095",
+    "enum_encoded_source_transition_identity_sha256": "066243269f88d8d77f3f1fe59130b2010b13b6805198c1c3dc2a0d616d4ecd4c",
+    "encoded_source_transition_identity_expected_to_differ": true,
+    "source_scalar_reward_actions_outcomes_match": true,
+    "behavior_telemetry_matches_except_migrated_parent_hash": true,
+    "replay_preparation_matches": true,
+    "parent_evaluation_rows_match": true,
+    "enum_migration_action_mismatch_count": 0,
+    "enum_migration_max_abs_q_delta": 0.00000762939453125,
+    "registered_migration_max_abs_q_delta_lte": 0.00001,
+    "enum_inserted_column_max_abs": 0.0,
+    "enum_v1_vocabulary_sha256": "03de0935cfdabf10d0a1ba800c9afe561d453c40c10b3c6b5ee47f7b14763638",
+    "unexpected_initialization_failure_count": 0,
+    "unsupported_reason_counts_empty": true,
+    "terminal_paired_profile_count_per_arm": 835,
+    "control_blockers": [],
+    "enum_blockers": []
+  },
+  "candidates": {
+    "control": {
+      "checkpoint_sha256": "0956335206909e7c6ca004cba1fb045b160cfa0a78e9b75e1d7b8c58b7f1fa16",
+      "parameter_sha256": "fdeebf7f61d295c825612eed9b9d30b39c5777bd36156417cc503af7477340f2",
+      "parameter_l2_delta": 1.10145184996814
+    },
+    "enum_v1": {
+      "checkpoint_sha256": "9257df79dc0a2fb5d998dfde667505c9307a86125b776d78934c331b6c21c5a4",
+      "parameter_sha256": "61daf75a7e74a132a6964260844a6ef5dca5290b7fde8e3432e0d92ff9b233fd",
+      "parameter_l2_delta": 1.16379025201137
+    }
+  },
+  "policy": {
+    "enum_minus_control": {
+      "aggregate": {
+        "profile_count": 835,
+        "mean_reward_delta": 0.1015823755439665,
+        "mean_player_hp_delta": 0.18682634730538922,
+        "enum_only_victories": 5,
+        "control_only_victories": 5
+      },
+      "battle_indices_6_and_9_combined_mean_reward_delta": 0.24818703777541135,
+      "by_battle_index": {
+        "0": {
+          "profile_count": 256,
+          "mean_reward_delta": 0.03984375000000007,
+          "mean_player_hp_delta": 0.0625,
+          "enum_only_victories": 0,
+          "control_only_victories": 0
+        },
+        "3": {
+          "profile_count": 246,
+          "mean_reward_delta": -0.032621951219512196,
+          "mean_player_hp_delta": 0.032520325203252036,
+          "enum_only_victories": 0,
+          "control_only_victories": 0
+        },
+        "6": {
+          "profile_count": 198,
+          "mean_reward_delta": -0.27249830966869537,
+          "mean_player_hp_delta": 0.22727272727272727,
+          "enum_only_victories": 2,
+          "control_only_victories": 5
+        },
+        "9": {
+          "profile_count": 135,
+          "mean_reward_delta": 1.0118588806934345,
+          "mean_player_hp_delta": 0.6444444444444445,
+          "enum_only_victories": 3,
+          "control_only_victories": 0
+        }
+      },
+      "criteria": {
+        "mean_reward_delta_gt_0_25": false,
+        "mean_player_hp_delta_gte_0": true,
+        "enum_only_victories_gte_control_only_victories": true,
+        "battle_indices_6_and_9_combined_mean_reward_delta_gt_0": true,
+        "battle_index_0_mean_reward_delta_gte_minus_0_25": true,
+        "no_battle_index_mean_reward_delta_lt_minus_0_5": true
+      },
+      "all_registered_policy_criteria_passed": false,
+      "failed_registered_policy_criteria": [
+        "mean_reward_delta_gt_0.25"
+      ]
+    },
+    "enum_minus_parent": {
+      "aggregate": {
+        "profile_count": 835,
+        "mean_reward_delta": -0.23964595974453082,
+        "mean_player_hp_delta": -0.17485029940119762,
+        "enum_only_victories": 10,
+        "parent_only_victories": 15
+      },
+      "battle_indices_6_and_9_combined_mean_reward_delta": -0.400722421561327,
+      "criteria": {
+        "mean_reward_delta_gt_0_25": false,
+        "mean_player_hp_delta_gte_0": false,
+        "enum_only_victories_gte_parent_only_victories": false,
+        "battle_indices_6_and_9_combined_mean_reward_delta_gt_0": false,
+        "battle_index_0_mean_reward_delta_gte_minus_0_25": true,
+        "no_battle_index_mean_reward_delta_lt_minus_0_5": false
+      },
+      "all_registered_policy_criteria_passed": false
+    },
+    "control_minus_parent": {
+      "aggregate": {
+        "profile_count": 835,
+        "mean_reward_delta": -0.34122833528849733,
+        "mean_player_hp_delta": -0.36167664670658684,
+        "candidate_only_victories": 11,
+        "parent_only_victories": 16
+      }
+    }
+  },
+  "decision": {
+    "production_checkpoint": "retain_r16",
+    "larger_enum_confirmation": false,
+    "same_cohort_tuning": false,
+    "retry": false,
+    "gameplay_authorized": false,
+    "packaging_authorized": false,
+    "promotion_authorized": false,
+    "next_step": "Stop extending the current guarded one-step recipe with isolated anchor or encounter-identity changes; inspect replay target and objective/data-quality interactions before another fit."
+  }
+}
