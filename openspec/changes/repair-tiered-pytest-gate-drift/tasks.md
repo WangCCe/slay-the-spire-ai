@@ -14,14 +14,14 @@
 ## 3. Frozen Boundary
 
 - [x] 3.1 Run focused runner and three repaired-cluster tests with isolated Windows basetemps; stop if any correctness failure remains.
-- [ ] 3.2 Run exactly one post-repair `commit` profiling invocation with machine-readable timing evidence and no retry, preserving any failure or slow result.
-- [ ] 3.3 Aggregate whole-file timings, select only material measured candidates with explicit source ownership and rationales, and freeze the exact replacement `full_only` set before qualification.
-- [ ] 3.4 Add manifest and command-construction regressions for the frozen set, update the profiling report, and prove the inclusive `full` profile command remains unchanged.
+- [x] 3.2 Run exactly one post-repair `commit` profiling invocation with machine-readable timing evidence and no retry, preserving any failure or slow result.
+- [x] 3.3 Aggregate whole-file timings, select only material measured candidates with explicit source ownership and rationales, and freeze the exact replacement `full_only` set before qualification.
+- [x] 3.4 Add manifest and command-construction regressions for the frozen set, update the profiling report, and prove the inclusive `full` profile command remains unchanged.
 
 ## 4. One-Shot Qualification
 
-- [ ] 4.1 Run Python compilation, runner-focused tests, repaired-cluster tests, strict OpenSpec validation, and scoped diff review.
+- [x] 4.1 Run Python compilation, runner-focused tests, repaired-cluster tests, strict OpenSpec validation, and scoped diff review.
 - [ ] 4.2 Run the frozen `commit` profile exactly once on `D:\anaconda\envs\stsai\python.exe`; do not retry, tune exclusions, or reinterpret a failed or over-300-second result.
 - [ ] 4.3 Record final counts, pytest and runner durations, exact boundary, result, and authority; qualify correctness and timing only if the one-shot gate passes within 300 seconds.
-- [ ] 4.4 Do not rerun raw full pytest solely for selection-equivalent telemetry; retain the 2026-08-27 full result as the complete-boundary baseline and verify the generated full command has no exclusions.
+- [x] 4.4 Do not rerun raw full pytest solely for selection-equivalent telemetry; retain the 2026-08-27 full result as the complete-boundary baseline and verify the generated full command has no exclusions.
 - [ ] 4.5 Do not start Slay the Spire, CommunicationMod, native modules, simulator fitting, or RL training; sync and archive only after all reachable tasks and evidence are complete.

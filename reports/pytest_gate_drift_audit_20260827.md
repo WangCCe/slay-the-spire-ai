@@ -54,6 +54,45 @@ The commit invocation's slowest observed test calls included:
 
 The top-50 text summary is insufficient to derive complete whole-file totals. A post-repair machine-readable profiling run is required before changing the manifest.
 
+## Post-Repair Profiling And Frozen Boundary
+
+The one permitted post-repair `commit` profiling invocation used the unchanged 17-file boundary and completed without retry:
+
+- Result: `4,825 passed, 26 skipped` from 4,851 attributed testcases.
+- Pytest time: 1,156.19 seconds.
+- Runner time: 1,159.269308 seconds.
+- JUnit whole-file sum: 1,141.726 seconds across 203 files.
+- Machine-readable evidence: `reports/pytest_gate_commit_profile_20260828.json`.
+
+The replacement candidate rule is frozen at every newly measured file with at least 10 seconds of whole-file testcase time. The exact 20 additions are:
+
+| Seconds | Tests | File |
+|---:|---:|---|
+| 143.227 | 26 | `tests/test_noncombat_card_only_native_baseline_rl_pilot.py` |
+| 117.800 | 70 | `tests/test_noncombat_card_acceptance_empirical_successor_runtime.py` |
+| 87.089 | 83 | `tests/test_noncombat_card_acceptance_empirical_successor_seed_inventory.py` |
+| 83.010 | 5 | `tests/test_noncombat_card_only_behavior_sensitivity_training.py` |
+| 69.575 | 7 | `tests/test_noncombat_large_corpus_state_conditioned_card_ranking.py` |
+| 60.528 | 68 | `tests/test_noncombat_card_acceptance_empirical_successor_training_runner_verifier.py` |
+| 57.955 | 7 | `tests/test_noncombat_family_preserving_conditional_card_ranking.py` |
+| 53.333 | 5 | `tests/test_noncombat_card_only_baseline_clipping_ablation.py` |
+| 53.070 | 71 | `tests/test_noncombat_card_acceptance_empirical_successor_verifier.py` |
+| 29.781 | 143 | `tests/test_noncombat_card_acceptance_empirical_successor_control.py` |
+| 25.200 | 13 | `tests/test_noncombat_card_counterfactual_ranking_training.py` |
+| 23.364 | 2 | `tests/test_noncombat_card_scorer_optimizer_replay_ablation.py` |
+| 22.085 | 11 | `tests/test_noncombat_ope_estimate_verifier.py` |
+| 18.891 | 160 | `tests/test_noncombat_card_acceptance_empirical_successor_training_runner.py` |
+| 15.700 | 35 | `tests/test_noncombat_hierarchical_simulator_learning_runtime.py` |
+| 14.719 | 37 | `tests/test_noncombat_outcome_evidence_expansion.py` |
+| 13.597 | 28 | `tests/test_audit_hierarchical_card_reward_credit_assignment.py` |
+| 11.643 | 33 | `tests/test_noncombat_current_baseline_replication.py` |
+| 11.512 | 31 | `tests/test_noncombat_cross_fitted_hierarchical_learning_seed_inventory.py` |
+| 11.143 | 3 | `tests/test_noncombat_expanded_shop_ensemble_retraining.py` |
+
+The additions total 923.222 measured seconds. Subtracting that observed work from the profiling runner time predicts 236.047 seconds for the frozen 37-file `commit` boundary, leaving about 64 seconds below the fixed ceiling. Each manifest rationale names the directly owned runner, verifier, fitting, subprocess, or publication lifecycle. These files remain included in `full` and require direct owner validation when their owned source changes.
+
+Runner-focused validation passed `44 passed in 1.39s`. The generated frozen `commit` command contains exactly 37 ignores; the generated inclusive `full` command contains none. This set is frozen before final qualification and will not be changed in response to that result.
+
 ## Boundaries
 
 - Fixed success metric: one final frozen `commit` invocation exits zero and completes in at most 300 seconds including orchestration.

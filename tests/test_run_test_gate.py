@@ -63,6 +63,54 @@ EXPECTED_REPOSITORY_FULL_ONLY = {
         "card acceptance source-only import isolation and deterministic "
         "publication coverage measured at 7.39s for 46 tests"
     ),
+    "tests/test_audit_hierarchical_card_reward_credit_assignment.py": (
+        "owns hierarchical card-reward credit audit publication and Git binding; "
+        "measured 13.597s for 28 tests on 2026-08-28"
+    ),
+    "tests/test_noncombat_card_acceptance_empirical_successor_control.py": (
+        "owns empirical-successor control isolation and publication lifecycle; "
+        "measured 29.781s for 143 tests on 2026-08-28"
+    ),
+    "tests/test_noncombat_card_acceptance_empirical_successor_runtime.py": (
+        "owns empirical-successor runtime fitting and checkpoint lifecycle; "
+        "measured 117.800s for 70 tests on 2026-08-28"
+    ),
+    "tests/test_noncombat_card_acceptance_empirical_successor_seed_inventory.py": (
+        "owns empirical-successor seed inventory subprocess and source binding; "
+        "measured 87.089s for 83 tests on 2026-08-28"
+    ),
+    "tests/test_noncombat_card_acceptance_empirical_successor_training_runner.py": (
+        "owns empirical-successor training runner isolation and execution lifecycle; "
+        "measured 18.891s for 160 tests on 2026-08-28"
+    ),
+    "tests/test_noncombat_card_acceptance_empirical_successor_training_runner_verifier.py": (
+        "owns training-runner verifier replay and immutable-bundle checks; "
+        "measured 60.528s for 68 tests on 2026-08-28"
+    ),
+    "tests/test_noncombat_card_acceptance_empirical_successor_verifier.py": (
+        "owns empirical-successor verifier replay and terminal publication; "
+        "measured 53.070s for 71 tests on 2026-08-28"
+    ),
+    "tests/test_noncombat_card_counterfactual_ranking_training.py": (
+        "owns card counterfactual ranking fitting and checkpoint behavior; "
+        "measured 25.200s for 13 tests on 2026-08-28"
+    ),
+    "tests/test_noncombat_card_only_baseline_clipping_ablation.py": (
+        "owns baseline-clipping ablation fitting and restoration lifecycle; "
+        "measured 53.333s for 5 tests on 2026-08-28"
+    ),
+    "tests/test_noncombat_card_only_behavior_sensitivity_training.py": (
+        "owns card-only behavior-sensitivity fitting and checkpoint lifecycle; "
+        "measured 83.010s for 5 tests on 2026-08-28"
+    ),
+    "tests/test_noncombat_card_only_native_baseline_rl_pilot.py": (
+        "owns native-baseline pilot fitting and checkpoint lifecycle; measured "
+        "143.227s for 26 tests on 2026-08-28"
+    ),
+    "tests/test_noncombat_card_scorer_optimizer_replay_ablation.py": (
+        "owns scorer-optimizer replay ablation fitting and restoration; measured "
+        "23.364s for 2 tests on 2026-08-28"
+    ),
     "tests/test_noncombat_cross_fitted_empirical_successor_readiness.py": (
         "readiness source binding, subprocess rehearsal, and Git replay in the "
         "320.32s measured lifecycle group"
@@ -75,6 +123,10 @@ EXPECTED_REPOSITORY_FULL_ONLY = {
         "Torch rollout, update, checkpoint, and deadline coverage measured at "
         "16.14s for 24 tests after the deadline repair"
     ),
+    "tests/test_noncombat_cross_fitted_hierarchical_learning_seed_inventory.py": (
+        "owns cross-fitted seed inventory generation and readiness binding; "
+        "measured 11.512s for 31 tests on 2026-08-28"
+    ),
     "tests/test_noncombat_cross_fitted_hierarchical_learning_verifier.py": (
         "independent terminal and immutable bundle replay measured at about "
         "422.8s after subtracting the 1.01s paired audit file"
@@ -83,9 +135,21 @@ EXPECTED_REPOSITORY_FULL_ONLY = {
         "historical seed and Git replay with a measured 138.28s overlap "
         "rejection node"
     ),
+    "tests/test_noncombat_current_baseline_replication.py": (
+        "owns final baseline replication history replay and publication lifecycle; "
+        "measured 11.643s for 33 tests on 2026-08-28"
+    ),
     "tests/test_noncombat_current_policy_simulator_bridge.py": (
         "source-only bridge lifecycle and subprocess coverage in the 320.32s "
         "measured lifecycle group"
+    ),
+    "tests/test_noncombat_expanded_shop_ensemble_retraining.py": (
+        "owns expanded shop-ensemble retraining and delegated ranker checks; "
+        "measured 11.143s for 3 tests on 2026-08-28"
+    ),
+    "tests/test_noncombat_family_preserving_conditional_card_ranking.py": (
+        "owns family-preserving conditional ranker fitting and checkpoint lifecycle; "
+        "measured 57.955s for 7 tests on 2026-08-28"
     ),
     "tests/test_noncombat_hierarchical_advantage_attribution.py": (
         "fresh-process rendering and import-isolation coverage with a measured "
@@ -98,6 +162,22 @@ EXPECTED_REPOSITORY_FULL_ONLY = {
     "tests/test_noncombat_hierarchical_simulator_learning_experiment.py": (
         "hierarchical source-only lifecycle and historical Git replay in the "
         "320.32s measured lifecycle group"
+    ),
+    "tests/test_noncombat_hierarchical_simulator_learning_runtime.py": (
+        "owns hierarchical runtime rollout, update, and verification lifecycle; "
+        "measured 15.700s for 35 tests on 2026-08-28"
+    ),
+    "tests/test_noncombat_large_corpus_state_conditioned_card_ranking.py": (
+        "owns large-corpus state-conditioned ranker fitting and checkpoints; "
+        "measured 69.575s for 7 tests on 2026-08-28"
+    ),
+    "tests/test_noncombat_ope_estimate_verifier.py": (
+        "owns OPE estimate bundle replay and independent verification; measured "
+        "22.085s for 11 tests on 2026-08-28"
+    ),
+    "tests/test_noncombat_outcome_evidence_expansion.py": (
+        "owns outcome-evidence expansion subprocess, publication, and Git replay; "
+        "measured 14.719s for 37 tests on 2026-08-28"
     ),
     "tests/test_noncombat_outcome_evidence_runner.py": (
         "subprocess, crash-recovery, and temporary Git replay matrix"
