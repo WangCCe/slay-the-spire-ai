@@ -21,7 +21,7 @@
 ## 4. One-Shot Qualification
 
 - [x] 4.1 Run Python compilation, runner-focused tests, repaired-cluster tests, strict OpenSpec validation, and scoped diff review.
-- [ ] 4.2 Run the frozen `commit` profile exactly once on `D:\anaconda\envs\stsai\python.exe`; do not retry, tune exclusions, or reinterpret a failed or over-300-second result.
-- [ ] 4.3 Record final counts, pytest and runner durations, exact boundary, result, and authority; qualify correctness and timing only if the one-shot gate passes within 300 seconds.
+- [x] 4.2 Run the frozen `commit` profile exactly once on `D:\anaconda\envs\stsai\python.exe`; do not retry, tune exclusions, or reinterpret a failed or over-300-second result.
+- [x] 4.3 Record final counts, pytest and runner durations, exact boundary, result, and authority; qualify correctness and timing only if the one-shot gate passes within 300 seconds.
 - [x] 4.4 Do not rerun raw full pytest solely for selection-equivalent telemetry; retain the 2026-08-27 full result as the complete-boundary baseline and verify the generated full command has no exclusions.
-- [ ] 4.5 Do not start Slay the Spire, CommunicationMod, native modules, simulator fitting, or RL training; sync and archive only after all reachable tasks and evidence are complete.
+- [x] 4.5 Do not start Slay the Spire, CommunicationMod, native modules, simulator fitting, or RL training; sync and archive only after all reachable tasks and evidence are complete.

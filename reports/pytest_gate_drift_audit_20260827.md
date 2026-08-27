@@ -93,6 +93,19 @@ The additions total 923.222 measured seconds. Subtracting that observed work fro
 
 Runner-focused validation passed `44 passed in 1.39s`. The generated frozen `commit` command contains exactly 37 ignores; the generated inclusive `full` command contains none. This set is frozen before final qualification and will not be changed in response to that result.
 
+## Final Qualification
+
+The frozen boundary was committed and pushed as `8d25635e4ab040eac728310e2fe1df96ca230b6e` before qualification. Its one permitted final `commit` invocation completed without retry or boundary changes:
+
+- Result: `3,987 passed, 26 skipped`, zero failures and zero errors.
+- Attributed testcases: 4,013 across 183 files.
+- Pytest time: 226.45 seconds.
+- Runner time: 229.334943 seconds.
+- Fixed ceiling margin: 70.665057 seconds.
+- Machine-readable evidence: `reports/pytest_gate_commit_qualification_20260828.json`.
+
+The 37-file `commit` boundary is qualified for routine focused-plus-commit validation. The 2026-08-27 raw-full result remains the current complete-boundary baseline; raw full was not rerun solely for selection-equivalent telemetry, and generated `full` still contains zero exclusions.
+
 ## Boundaries
 
 - Fixed success metric: one final frozen `commit` invocation exits zero and completes in at most 300 seconds including orchestration.

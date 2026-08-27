@@ -49,12 +49,12 @@ covers the same changed behavior.
 | Documentation only | No pytest unless executable examples or manifest change |
 
 The runner never retries a failure and returns pytest's result unchanged. The
-17-file `commit` boundary qualified on 2026-08-09 with 3,571 passes and 16 skips
-in 262.89 seconds including orchestration. That qualification is now invalid:
-the unchanged boundary failed 20 tests and took 1,177.80 seconds on 2026-08-27.
-Do not cite a current five-minute commit qualification until a frozen measured
-replacement boundary passes once. `full` remains the unchanged inclusive
-complete boundary.
+measured 37-file `commit` boundary qualified on 2026-08-28 with 3,987 passes
+and 26 skips in 229.33 seconds including orchestration, 70.67 seconds below the
+five-minute ceiling. It replaced the invalidated 17-file boundary, which took
+1,177.80 seconds and failed 20 tests on 2026-08-27. `full` remains the unchanged
+inclusive complete boundary; the commit qualification is not evidence that the
+latest raw-full baseline passed.
 Before launching pytest, an ordinary run prints and flushes the selected profile
 and the fully assembled Windows command. `--dry-run` prints the same information
 with an explicit dry-run label but does not create test state or launch pytest.
