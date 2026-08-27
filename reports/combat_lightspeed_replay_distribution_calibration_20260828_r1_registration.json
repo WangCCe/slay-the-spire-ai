@@ -1,0 +1,157 @@
+{
+  "schema_version": "combat-lightspeed-replay-distribution-calibration-registration-v1",
+  "experiment_id": "combat-lightspeed-replay-distribution-calibration-20260828-r1",
+  "registered_source_commit": "202932e09d4881c525673e0aff82f3cb89aded5d",
+  "question": "Within fixed floor strata, where does a fresh zero-epsilon frozen-production-r16 LightSTS replay distribution differ most from the complete zero-update production-r16 real replay retained by r14 and r15?",
+  "rationale": "The fresh guard-aware three-step bootstrap candidate materially changed target actions but degraded later-battle outcomes. Before another simulator fit, this POC uses the repository's exact RL-v2 tensors to rank descriptive simulator-versus-real state, action, reward, terminal, and support mismatches without treating marginal similarity as mechanics equivalence.",
+  "authority": {
+    "native_loading": true,
+    "simulator_collection": true,
+    "communication_mod": false,
+    "evaluation": false,
+    "formal_rl": false,
+    "gameplay": false,
+    "mechanics_equivalence": false,
+    "model_fitting": false,
+    "ope": false,
+    "policy_quality": false,
+    "promotion": false,
+    "qualification": false,
+    "training": false
+  },
+  "source_binding": {
+    "runner_path": "analysis_scripts/combat_lightspeed_replay_distribution_calibration.py",
+    "runner_size_bytes": 40150,
+    "runner_sha256": "6a937548ee9a11051c9333751918aa5013f16c2fb4fabf24d6d68ca322f9690b",
+    "adapter_source_sha256": "e0d277e622e12a420ff5955dff55bea6ca5d1e15213cd8e6e5c354e017c46190",
+    "native_module_path": "D:/PycharmProjects/slay-the-spire-ai/.sts_lightspeed_combat_later_battle_20260819_r3_build/sts_lightspeed_combat_adapter.cp310-win_amd64.pyd",
+    "native_module_size_bytes": 5209600,
+    "native_module_sha256": "195678b7fc6bf69815f3d2971404afb8ce72fb666700edf4203383429caf1009",
+    "simulator_repo": "D:/CLionProjects/sts_lightspeed",
+    "simulator_commit": "7476a81954020087da31d41d16fddf475746ec2d",
+    "simulator_dirty": true,
+    "simulator_source_file_count": 79,
+    "simulator_source_sha256": "a3f98721ec37373b1b00aef660832a3307f0186ba0614d07a3b1e7de8ab2e46a",
+    "simulator_submodules": {
+      "json": "55f93686c01528224f448c19128836e7df245f72",
+      "pybind11": "8f68ecd32c8e18d3b064dbf0ea5fc31a6cb37e9a"
+    },
+    "items_json_path": "D:/SteamLibrary/steamapps/common/SlayTheSpire/export/items.json",
+    "items_json_size_bytes": 240371,
+    "items_json_sha256": "e23784ea8ed3092e3bfa9918240e162a9cbcb837badfb53c612eb0d83cc811dc"
+  },
+  "real_replay": {
+    "schema_versions": [
+      1
+    ],
+    "complete": true,
+    "total_transition_count": 7685,
+    "bindings": [
+      {
+        "label": "r14",
+        "path": "D:/PycharmProjects/slay-the-spire-ai/reports/combat_rl_parent_on_policy_replay_collection_20260818_r14/rl_combat_model_ep20_steps3765.pth",
+        "size_bytes": 18791178,
+        "sha256": "eed11099d1b8d35baa8ce0ccbf87efb6fb4a864e6fe6246837b0cac91c505014",
+        "transition_count": 3765
+      },
+      {
+        "label": "r15",
+        "path": "D:/PycharmProjects/slay-the-spire-ai/reports/combat_rl_parent_on_policy_replay_collection_20260818_r15/rl_combat_model_ep20_steps3920.pth",
+        "size_bytes": 19377610,
+        "sha256": "67c3a49fbb2094d20793214c0a4a294684054eb6f4a24ac59573fab29c39a2dd",
+        "transition_count": 3920
+      }
+    ]
+  },
+  "parent": {
+    "label": "production_r16_shadow",
+    "path": "D:/PycharmProjects/slay-the-spire-ai/reports/combat_lightspeed_production_r16_shadow_20260819_r1/simulator_only_production_shadow.pth",
+    "size_bytes": 2272720,
+    "sha256": "ce2ae34f82b3f457fb35e87d429c397204c42d0f742d3ac8952d91b69119b83b",
+    "parameter_sha256": "cfe8204d06db6b43b063df98e1b713d4a40a0894a1a9330c3db87c739da88d48"
+  },
+  "simulator_collection": {
+    "seeds": "180000..180127",
+    "seed_count": 128,
+    "battle_indices": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9,
+      10,
+      11,
+      12
+    ],
+    "profile_count": 1664,
+    "prior_tracked_combat_registration_overlap": false,
+    "ascension": 0,
+    "max_decisions_per_seed": 100,
+    "max_actions_per_turn": 8,
+    "behavior_policy": "frozen-parent-guarded-epsilon-v1",
+    "behavior_epsilon": 0.0,
+    "behavior_seed": 2026082804,
+    "network_seed": 2026082805,
+    "optimizer_constructed": false,
+    "optimizer_updates": 0,
+    "device": "cpu"
+  },
+  "comparison": {
+    "floor_strata": [
+      "0..5",
+      "6..10",
+      "11..17",
+      "18..22",
+      "23..27",
+      "28..34",
+      "35..39",
+      "40..44",
+      "45..50"
+    ],
+    "minimum_transition_count_per_source_per_stratum": 64,
+    "minimum_common_strata": 2,
+    "metrics": [
+      "semantic_numeric_mean_delta_and_absolute_smd",
+      "reward_and_terminal_mean_delta_and_absolute_smd",
+      "action_family_total_variation",
+      "action_card_potion_relic_support_overlap"
+    ],
+    "causal_or_mechanics_interpretation": false
+  },
+  "execution": {
+    "interpreter": "D:/anaconda/envs/stsai/python.exe",
+    "isolated_mode": true,
+    "working_directory": "D:/PycharmProjects/slay-the-spire-ai",
+    "output_dir": "reports/combat_lightspeed_replay_distribution_calibration_20260828_r1",
+    "max_wall_seconds": 7200,
+    "max_report_bytes": 4194304,
+    "attempts": 1,
+    "retry": false,
+    "resume": false,
+    "same_cohort_tuning": false,
+    "command": "D:/anaconda/envs/stsai/python.exe -I analysis_scripts/combat_lightspeed_replay_distribution_calibration.py --repo-root D:/PycharmProjects/slay-the-spire-ai --simulator-repo D:/CLionProjects/sts_lightspeed --module D:/PycharmProjects/slay-the-spire-ai/.sts_lightspeed_combat_later_battle_20260819_r3_build/sts_lightspeed_combat_adapter.cp310-win_amd64.pyd --expected-module-sha256 195678b7fc6bf69815f3d2971404afb8ce72fb666700edf4203383429caf1009 --items-json D:/SteamLibrary/steamapps/common/SlayTheSpire/export/items.json --expected-items-sha256 e23784ea8ed3092e3bfa9918240e162a9cbcb837badfb53c612eb0d83cc811dc --expected-runner-sha256 6a937548ee9a11051c9333751918aa5013f16c2fb4fabf24d6d68ca322f9690b --expected-adapter-source-sha256 e0d277e622e12a420ff5955dff55bea6ca5d1e15213cd8e6e5c354e017c46190 --expected-simulator-commit 7476a81954020087da31d41d16fddf475746ec2d --expected-simulator-source-sha256 a3f98721ec37373b1b00aef660832a3307f0186ba0614d07a3b1e7de8ab2e46a --parent-checkpoint D:/PycharmProjects/slay-the-spire-ai/reports/combat_lightspeed_production_r16_shadow_20260819_r1/simulator_only_production_shadow.pth --parent-checkpoint-sha256 ce2ae34f82b3f457fb35e87d429c397204c42d0f742d3ac8952d91b69119b83b --real-checkpoint r14=D:/PycharmProjects/slay-the-spire-ai/reports/combat_rl_parent_on_policy_replay_collection_20260818_r14/rl_combat_model_ep20_steps3765.pth --real-checkpoint r15=D:/PycharmProjects/slay-the-spire-ai/reports/combat_rl_parent_on_policy_replay_collection_20260818_r15/rl_combat_model_ep20_steps3920.pth --real-checkpoint-sha256 r14=eed11099d1b8d35baa8ce0ccbf87efb6fb4a864e6fe6246837b0cac91c505014 --real-checkpoint-sha256 r15=67c3a49fbb2094d20793214c0a4a294684054eb6f4a24ac59573fab29c39a2dd --output-dir D:/PycharmProjects/slay-the-spire-ai/reports/combat_lightspeed_replay_distribution_calibration_20260828_r1 --simulator-seeds 180000..180127 --battle-indices 0..12 --ascension 0 --max-decisions-per-seed 100 --max-actions-per-turn 8 --behavior-seed 2026082804 --network-seed 2026082805 --minimum-stratum-count 64 --max-report-bytes 4194304"
+  },
+  "technical_success_criteria": {
+    "verdict": "replay_distribution_calibration_ready",
+    "real_transition_count": 7685,
+    "simulator_transition_count_gt": 0,
+    "common_strata_gte": 2,
+    "optimizer_constructed": false,
+    "optimizer_updates": 0,
+    "parent_parameter_sha256_matches_registration": true,
+    "registered_identity_matches": true,
+    "report_is_deterministic_in_memory": true,
+    "manifest_artifact_hashes_match": true,
+    "all_downstream_authority_false": true
+  },
+  "decision": {
+    "technical_success": "Publish and rank descriptive mismatches. Select one separate next evidence step from the largest attributable signal; do not infer mechanics equivalence or policy quality and do not automatically start training or gameplay.",
+    "insufficient_common_support": "Close this cohort as technically incomplete without retry. Use the coverage report to design one separately registered fresh cohort if the missing strata are material.",
+    "execution_failure": "Stop after the single attempt. Do not retry, resume, replace the module, change paths, tune seeds, or alter thresholds under this registration."
+  }
+}

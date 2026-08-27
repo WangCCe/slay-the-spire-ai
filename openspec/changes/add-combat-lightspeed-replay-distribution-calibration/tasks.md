@@ -21,7 +21,7 @@
 
 ## 4. Registered POC
 
-- [ ] 4.1 Bind complete real r14/r15 replay checkpoints, immutable r16 shadow and native module identities, fresh simulator seeds, battle indices, limits, commands, and stop rules in a committed registration.
+- [x] 4.1 Bind complete real r14/r15 replay checkpoints, immutable r16 shadow and native module identities, fresh simulator seeds, battle indices, limits, commands, and stop rules in a committed registration.
 - [ ] 4.2 Execute the registered POC once without gameplay, CommunicationMod, training, optimizer updates, retry, resume, or cohort tuning.
 - [ ] 4.3 Verify report and manifest integrity, publish the ranked mismatch interpretation and attribution limits, and commit and push the evidence.
 
