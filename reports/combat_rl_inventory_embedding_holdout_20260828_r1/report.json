@@ -1,0 +1,134 @@
+{
+  "schema_version": 1,
+  "holdout_id": "combat-rl-inventory-embedding-holdout-20260828-r1",
+  "registration_source_commit": "e13b4caa9655ccc5abf75d8afc6234638ce1f102",
+  "collection_source_commit": "829f7be53264e453359f945edeed40d9969a8920",
+  "gate_source_commit": "d93676ef9e20cb6e3ccdf738f9cecbc20beac622",
+  "verdict": "eligible_for_separately_registered_bounded_matched_live_gate",
+  "timing": {
+    "started_at": "2026-08-28T04:38:53+08:00",
+    "completed_at": "2026-08-28T05:16:53+08:00",
+    "elapsed_seconds": 2280
+  },
+  "registration": {
+    "plan": "reports/combat_rl_inventory_embedding_holdout_20260828_r1_plan.json",
+    "launch_config": "reports/combat_rl_inventory_embedding_holdout_20260828_r1.properties",
+    "launch_config_sha256": "f5bb2684a828e9e5588566163c34c33ece8ab10028f00484f5098543635842d1",
+    "seed_pool": "reports/combat_rl_inventory_embedding_holdout_20260828_r1_seed_pool.txt",
+    "seed_pool_sha256": "58b5d6db3696c23f55a86c8116e8008c6e9acb8d84bc4329594c714ba2657f8d",
+    "parent_checkpoint_sha256": "75120e9e8f76393d4d82c16de5c3ea6384d2f7ef26bd530a6b552ed9791e38f5",
+    "candidate_checkpoint_sha256": "a1e631d5379adab9f55fe0ace993c49bba6576188e09cec4722f252971cbbb19"
+  },
+  "collection_integrity": {
+    "game_count": 20,
+    "seed_count": 20,
+    "seed_order_exact": true,
+    "unique_observed_seeds": 20,
+    "unique_run_seeds": 20,
+    "all_runs_record_chose_seed": true,
+    "first_accepted_seed": "3A6CEC81A61AC",
+    "first_accepted_state_floor": 0,
+    "run_set_sha256": "2b651aad9c3684bae2ec69683969172d6895d831ac92cb00294db36d56778952",
+    "run_set_hash_construction": "sha256(sorted filename UTF-8 + NUL + file bytes)",
+    "run_total_size_bytes": 86107,
+    "max_games_exit_observed": true,
+    "started_game_21": false,
+    "runtime_traceback_count": 0,
+    "rl_action_failure_count": 0,
+    "wrapper_and_python_exited_naturally": true,
+    "residual_game_process_stopped_after_collection": true,
+    "pre_collection_config_restored": true,
+    "restored_config_sha256": "0991895790bc73d3d21a05731bf402228cf0c510a4217aa841ced026016760e7",
+    "installed_config_sha256_before_restore": "77cf58e1975ccbce29df0ca108028fd446218426124dde1d8e220382af27622d"
+  },
+  "outcomes": {
+    "victories": 0,
+    "mean_floor": 21.45,
+    "median_floor": 16.0,
+    "minimum_floor": 11,
+    "maximum_floor": 41,
+    "floor_reached": [16, 33, 24, 16, 33, 13, 16, 16, 16, 16, 16, 11, 33, 29, 33, 16, 41, 16, 14, 21]
+  },
+  "replay_checkpoint": {
+    "path": "reports/combat_rl_inventory_embedding_holdout_20260828_r1/rl_combat_model_ep20_steps3433.pth",
+    "sha256": "c9109ee1e0c0b0323932e8af56c2ac684d9b043fa79f5a5092a3e096d5e5cd83",
+    "size_bytes": 17538978,
+    "episode": 20,
+    "transition_count": 3433,
+    "source_transition_count": 3433,
+    "total_steps": 3433,
+    "truncated": false,
+    "epsilon": 0.0,
+    "learning_starts": 100000,
+    "optimizer_state_count": 0,
+    "last_total_loss": null,
+    "online_equals_production_r16": true,
+    "target_equals_production_r16": true,
+    "online_equals_target": true
+  },
+  "inventory_identity_validation": {
+    "runtime_evidence": "reports/combat_rl_inventory_embedding_holdout_20260828_r1/runtime_evidence.zip",
+    "runtime_evidence_sha256": "b8bdc8eb95a46c3805f76e519f09f2e88bee16cd4d54f306bba6489adae3ec0c",
+    "runtime_evidence_size_bytes": 717243,
+    "joined_transition_count": 3433,
+    "potion_mismatched_transition_count": 0,
+    "potion_unresolved_occupied_occurrences": 0,
+    "potion_display_name_fallback_occurrences": 941,
+    "relic_mismatched_transition_count": 0,
+    "relic_unresolved_occupied_occurrences": 0,
+    "relic_display_name_fallback_occurrences": 1271
+  },
+  "boundary_validation": {
+    "stored_cross_floor_nonterminal_count": 0,
+    "adjacent_cross_floor_nonterminal_count": 0,
+    "terminal_transition_count": 269,
+    "holdout_direct_evaluation_eligible": true
+  },
+  "frozen_candidate_gate": {
+    "path": "reports/combat_rl_inventory_embedding_holdout_20260828_r1/frozen_candidate_replay_gate.json",
+    "sha256": "1d76116545eefd9f0e09ef3c8677fbb8935845f6d5ac2221d184e5204695ef99",
+    "size_bytes": 5259,
+    "execution_count": 1,
+    "model_fitting": false,
+    "threshold_changes": false,
+    "decision": "eligible_for_bounded_live_gate",
+    "parent_one_step_smooth_l1": 4.278683662414551,
+    "candidate_one_step_smooth_l1": 4.248425006866455,
+    "parent_action_agreement": 0.9941741824150085,
+    "off_target_parent_disagreement_count": 11,
+    "off_target_parent_disagreement_share": 0.0065050264820456505,
+    "parent_positive_energy_end_turn_count": 1791,
+    "candidate_positive_energy_end_turn_count": 1783,
+    "positive_energy_end_turn_count_delta": -8,
+    "relative_l2_from_parent": 0.009388903972828471,
+    "all_registered_conditions_passed": true,
+    "parent_provenance_kind": "training_checkpoint_weight_equivalence",
+    "source_commit_metadata_corrected_without_reexecution": true
+  },
+  "external_runtime_archive": {
+    "path": "D:/SteamLibrary/steamapps/common/SlayTheSpire/logs_archive/combat_rl_inventory_embedding_holdout_20260828_r1",
+    "ai_debug_segment_sha256": [
+      "528df254bdb471dd72ef19ffacba70b0f1fcb4569b615d71c1184bec18f21ee7",
+      "7c1287b4d7f1f6d20c677fc07313d0074d9673437d0c98f0bac6bf8ceb8c5569",
+      "6544c441407b2e50239923a9a6eba3c1f026048f19c6e0a2b025ba40a7926281",
+      "5370c8f08a678374050e389f14a9c450d7e80081ab665e5ddb1665a519e44962",
+      "0920bedc57c917a89565c6ed0e704a71f08472e998ada27a524e96ca50b2ad29"
+    ],
+    "decision_trace_sha256": "c846e35e3c209831f2c33a54c8fc356b1ece6a73eba79edf9375ad3c4b2010d8",
+    "sim_divergence_trace_sha256": "157665285955a4138c9f801217d1c895161adb3e3765fd438efce002aa66bdcf",
+    "communication_mod_errors_sha256": "1c8ccd6732a242ee31dd25e48aad0f0eda5b5966a0076bb28d7c060517f89676"
+  },
+  "authority": {
+    "holdout_complete": true,
+    "offline_candidate_confirmation": true,
+    "eligible_for_separately_registered_bounded_matched_live_gate": true,
+    "production_promotion": false,
+    "production_checkpoint_replacement": false
+  },
+  "limitations": [
+    "The zero-victory outcome is descriptive and was not a registered policy-quality comparison.",
+    "The holdout confirms replay-level behavior only; candidate and parent have not yet been compared on matched live seeds.",
+    "A separate bounded matched live registration is required before loading the candidate in gameplay."
+  ],
+  "next_step": "Register one bounded matched live parent-versus-candidate gate on fresh paired seeds, then stop if the candidate does not show a material live advantage."
+}
