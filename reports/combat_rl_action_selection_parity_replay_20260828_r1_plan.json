@@ -1,0 +1,59 @@
+{
+  "schema_version": 1,
+  "collection_id": "combat-rl-action-selection-parity-replay-20260828-r1",
+  "source_commit": "1c8498529ecf183e81afc5eb06ced3d42cdecd29",
+  "purpose": "Collect one bounded fresh zero-update replay proving that training-mode persistence now selects production-r16 behavior actions with eval-mode network semantics.",
+  "authority": "Replay collection and action-selection parity audit only. No optimizer update, candidate fitting, qualification, promotion, or production checkpoint replacement.",
+  "parent_policy": {
+    "label": "production_r16",
+    "checkpoint": "reports/combat_rl_promoted_r15_successor_20260818_r16/rl_combat_model_promoted_r15_successor_candidate.pth",
+    "sha256": "75120e9e8f76393d4d82c16de5c3ea6384d2f7ef26bd530a6b552ed9791e38f5"
+  },
+  "collection_initializer": {
+    "path": "reports/combat_rl_inventory_fixed_replay_collection_20260828_r1/rl_combat_model_r16_empty_replay_learning_starts_100000.pth",
+    "sha256": "fd97dd0f86a5145ed79bb6da1932a27ddb21dd9d565cedca5bf24ab8adb93c27",
+    "epsilon": 0.0,
+    "learning_starts": 100000,
+    "replay_transition_count": 0,
+    "optimizer_state_is_empty": true
+  },
+  "collection": {
+    "games": 10,
+    "epsilon": 0.0,
+    "boss_min_epsilon": 0.0,
+    "elite_route": "conservative",
+    "ascension": 0,
+    "seed_pool": "reports/combat_rl_action_selection_parity_replay_20260828_r1_seed_pool.txt",
+    "seed_pool_sha256": "1c0f02eecfe6faa670404d8450c9a987a0285d79383b3458e05e4d3a0438bc4d",
+    "seed_count": 10,
+    "seed_generation": "sha256(collection_id:index) first 13 uppercase hex characters",
+    "seed_pool_has_no_collision_with_570_preexisting_registered_seeds": true,
+    "launch_config": "reports/combat_rl_action_selection_parity_replay_20260828_r1.properties",
+    "launch_config_sha256": "8c3e6bc400a56e86e798dc507fb21d52c5b9fd66d8c91950ce0280906959f664",
+    "decision_trace": "D:/SteamLibrary/steamapps/common/SlayTheSpire/ai_decision_trace_clean.jsonl",
+    "sim_divergence_trace": "D:/SteamLibrary/steamapps/common/SlayTheSpire/sim_divergence_trace_clean.jsonl"
+  },
+  "preflight": {
+    "no_top_level_ironclad_autosave": true,
+    "no_active_game_or_project_python_process": true,
+    "first_accepted_state_must_use_seed_pool_index_1": "F023806FE8CE9",
+    "first_accepted_state_must_be_new_run_floor_at_most_1": true,
+    "on_mismatch": "Stop immediately, quarantine the attempt, and do not count or resume it."
+  },
+  "required_checks": {
+    "complete_exactly_10_games": true,
+    "all_run_seeds_match_in_order": true,
+    "online_and_target_remain_equal_to_r16": true,
+    "optimizer_state_remains_empty": true,
+    "optimizer_step_remains_zero": true,
+    "direct_unmarked_eval_parent_agreement_is_100_percent": true,
+    "executed_action_override_count_is_nonzero_and_less_than_transition_count": true,
+    "every_override_action_is_legal_under_stored_mask": true,
+    "override_count_reconciles_with_proposal_and_takeover_evidence": true,
+    "no_cross_floor_nonterminal_successor": true,
+    "no_runtime_traceback_or_rl_action_failure": true,
+    "restore_pre_collection_communication_mod_config": true
+  },
+  "decision_rule": "Approve this cohort for a separate provenance-aware training change only if all zero-update, trace, legality, provenance, and 100% direct-action eval-parent parity checks pass.",
+  "next_step": "Commit and push this registration, collect exactly ten zero-update games, restore configuration, and publish the parity decision before any training."
+}
