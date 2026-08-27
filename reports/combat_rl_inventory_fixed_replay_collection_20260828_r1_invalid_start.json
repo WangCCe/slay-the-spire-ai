@@ -1,0 +1,40 @@
+{
+  "schema_version": 1,
+  "collection_id": "combat-rl-inventory-fixed-replay-collection-20260828-r1",
+  "status": "invalid_quarantined",
+  "source_commit": "307bc9f8b4fe4b9110a06e5cef34c0ae9c64d64f",
+  "reason": "The game restored an existing Ironclad autosave after the fresh-run prelaunch check reported no autosave. CommunicationMod consumed seed-pool index 1 while the existing run remained active, so the completed episode did not use the registered seed.",
+  "observed_sequence": {
+    "startup_at": "2026-08-28T02:59:37+08:00",
+    "requested_seed_pool_index_1": "PGCRBQMNL6G8L",
+    "resumed_run_seed_display": "2M496GZ8VSRGS",
+    "resumed_run_seed_numeric": "8894280612130930687",
+    "resumed_run_timestamp": 1787857294,
+    "resumed_run_result": "floor_16_hexaghost_death",
+    "checkpoint_written": "rl_combat_model_ep1_steps121.pth",
+    "requested_seed_pool_index_2": "UN96MUK1HLLPL",
+    "seed_pool_index_2_status": "partially_played_before_process_stop"
+  },
+  "corpus_authority": {
+    "eligible_for_training": false,
+    "eligible_for_evaluation": false,
+    "eligible_for_candidate_selection": false,
+    "eligible_for_promotion": false,
+    "reusable_seeds": false
+  },
+  "quarantine": {
+    "archive_root": "D:/SteamLibrary/steamapps/common/SlayTheSpire/logs_archive/combat_rl_inventory_fixed_replay_collection_20260828_r1_invalid_start_20260828_025937",
+    "fresh_run_backup": "D:/SteamLibrary/steamapps/common/SlayTheSpire/saves/fresh_run_backups/20260828-030513",
+    "artifacts": {
+      "1787857294.run": "7dfb381912adeae561ed243ee4b4868329281306047d28ce62217da450aaec14",
+      "ai_debug.log": "bd89b6bd595177244a97a90feb06e948758574174c02079f8078259132d85455",
+      "ai_decision_trace_clean.jsonl": "fde05407d7ad856c16efde2243e447c480f50d4466fed69b808f946d8f15c735",
+      "communication_mod_errors.log": "5c5a1f26772ec7669cbcf525451898ac87fe79b1dfb7144406020a48de2aac92",
+      "IRONCLAD.autosave": "2238dacddaf809fb64ec1f1ae380ddf6d7f0b9ae7e20f0a2b2c882641edfc16a",
+      "IRONCLAD.autosave.backUp": "7f59344a801e0c9f91626679946eabef904dae23e6bdcdb3f2fdb38a65283b68",
+      "rl_combat_model_ep1_steps121.pth": "d0741a42af2a022c85db50b3d653029ff6cc47249c54ee600c73fda4967dfd1d",
+      "sim_divergence_trace_clean.jsonl": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    }
+  },
+  "resolution": "Do not resume r1. Register r2 with a fresh seed pool, reuse the immutable empty-replay initializer, and require an in-game seed/floor preflight before accepting transitions."
+}

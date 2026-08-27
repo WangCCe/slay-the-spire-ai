@@ -1,0 +1,61 @@
+{
+  "schema_version": 1,
+  "collection_id": "combat-rl-inventory-fixed-replay-collection-20260828-r2",
+  "source_commit": "307bc9f8b4fe4b9110a06e5cef34c0ae9c64d64f",
+  "supersedes_invalid_collection": "combat-rl-inventory-fixed-replay-collection-20260828-r1",
+  "purpose": "Collect a fresh real-game training replay corpus after repairing RL v2 potion and relic identity encoding.",
+  "authority": "Zero-update replay collection only. Training mode checkpoints the complete replay; learning_starts=100000 prevents optimizer updates.",
+  "parent_checkpoint": {
+    "path": "reports/combat_rl_promoted_r15_successor_20260818_r16/rl_combat_model_promoted_r15_successor_candidate.pth",
+    "sha256": "75120e9e8f76393d4d82c16de5c3ea6384d2f7ef26bd530a6b552ed9791e38f5"
+  },
+  "initializer_checkpoint": {
+    "path": "reports/combat_rl_inventory_fixed_replay_collection_20260828_r1/rl_combat_model_r16_empty_replay_learning_starts_100000.pth",
+    "sha256": "fd97dd0f86a5145ed79bb6da1932a27ddb21dd9d565cedca5bf24ab8adb93c27",
+    "manifest": "reports/combat_rl_inventory_fixed_replay_collection_20260828_r1/initialization_manifest.json",
+    "manifest_sha256": "9d1f3b96ed03d820a72435d9dab603018d623f12dc704f6c3d97c29df259840d",
+    "epsilon": 0.0,
+    "learning_starts": 100000,
+    "replay_transition_count": 0,
+    "optimizer_state_is_empty": true
+  },
+  "collection": {
+    "games": 20,
+    "epsilon": 0.0,
+    "boss_min_epsilon": 0.0,
+    "elite_route": "conservative",
+    "ascension": 0,
+    "seed_pool": "reports/combat_rl_inventory_fixed_replay_collection_20260828_r2_seed_pool.txt",
+    "seed_pool_sha256": "0c1d688ab71aab15c788fe696aa4dde8651d48600540006aa0caf03c7bc1cf3e",
+    "seed_count": 20,
+    "seed_pool_excludes_all_941_preexisting_unique_registered_pool_seeds": true,
+    "launch_config": "reports/combat_rl_inventory_fixed_replay_collection_20260828_r2.properties",
+    "launch_config_sha256": "24aaac0e940708a696eab4cbbf3885d0c1390ed23658c9df754939dedfb9e3e8",
+    "decision_trace": "D:/SteamLibrary/steamapps/common/SlayTheSpire/ai_decision_trace_clean.jsonl",
+    "sim_divergence_trace": "D:/SteamLibrary/steamapps/common/SlayTheSpire/sim_divergence_trace_clean.jsonl"
+  },
+  "preflight": {
+    "no_top_level_ironclad_autosave": true,
+    "no_active_game_or_project_python_process": true,
+    "first_accepted_state_must_use_seed_pool_index_1": "EB4090D386464",
+    "first_accepted_state_must_be_new_run_floor_at_most_1": true,
+    "on_mismatch": "Stop immediately, quarantine the attempt, and do not count or resume it."
+  },
+  "corpus_role": {
+    "eligible_for_candidate_training_after_validation": true,
+    "holdout": false,
+    "candidate_selection_or_promotion_authority": false,
+    "requires_separate_fresh_confirmation": true
+  },
+  "required_checks": {
+    "complete_exactly_20_games": true,
+    "all_run_seeds_match_in_order": true,
+    "online_and_target_remain_equal_to_r16": true,
+    "optimizer_state_remains_empty": true,
+    "optimizer_step_remains_zero": true,
+    "inventory_trace_replay_join_has_zero_occupied_alias_undercount": true,
+    "no_runtime_traceback_or_rl_action_failure": true,
+    "restore_pre_collection_communication_mod_config": true
+  },
+  "next_step": "Validate and freeze the new replay as training-only evidence, then train one materially distinct inventory-aware candidate before collecting a separate holdout."
+}
