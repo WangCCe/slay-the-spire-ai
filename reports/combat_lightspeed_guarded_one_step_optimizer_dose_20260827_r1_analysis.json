@@ -1,0 +1,159 @@
+{
+  "schema_version": "combat-lightspeed-guarded-one-step-optimizer-dose-analysis-v1",
+  "experiment_id": "combat-lightspeed-guarded-one-step-optimizer-dose-20260827-r1",
+  "registration_commit": "c2907b3539eefb95e3bb323d1282e99fb03237d1",
+  "execution_source_commit": "c2907b3539eefb95e3bb323d1282e99fb03237d1",
+  "technical_assessment": {
+    "passed": true,
+    "verdicts": {
+      "steps_64": "technical_smoke_ready",
+      "steps_128": "technical_smoke_ready",
+      "steps_256": "technical_smoke_ready"
+    },
+    "source_transition_identity_sha256": "ade366b171a58593640bb8c00895d906e793cf5c9cf443bf2cb6ce6fcfc2dc61",
+    "source_transition_count_per_arm": 51560,
+    "prepared_transition_count_per_arm": 70276,
+    "terminal_paired_profile_count_per_arm": 848,
+    "behavior_telemetry_matches": true,
+    "replay_preparation_matches": true,
+    "parent_evaluation_rows_match": true,
+    "registered_parent_parameter_sha256": "cfe8204d06db6b43b063df98e1b713d4a40a0894a1a9330c3db87c739da88d48",
+    "behavior_parent_parameter_matches": true,
+    "blocker_count_per_arm": 0,
+    "unsupported_reason_counts_empty": true,
+    "artifact_manifest_hashes_valid": true
+  },
+  "arms": {
+    "steps_64": {
+      "optimizer_update_count": 64,
+      "candidate_parameter_sha256": "0c05fda25e3111fe4222ddbf6b8bfbfa4c9bc5760d8839a1f10687975864979f",
+      "parameter_delta_l2": 0.5083208910317307,
+      "loss_first": 3.686126232147217,
+      "loss_last": 3.5554628372192383,
+      "candidate_minus_parent": {
+        "mean_reward_delta": -0.15282518730604044,
+        "mean_player_hp_delta": -0.5424528301886793,
+        "candidate_only_victories": 15,
+        "parent_only_victories": 21,
+        "battle_indices_6_and_9_mean_reward_delta": -0.242431401174032,
+        "by_battle_index": {
+          "0": {"profile_count": 256, "mean_reward_delta": 0.1833984375, "mean_player_hp_delta": 0.2890625},
+          "3": {"profile_count": 242, "mean_reward_delta": -0.378904001754592, "mean_player_hp_delta": -0.413223140495868},
+          "6": {"profile_count": 201, "mean_reward_delta": -0.0626307770131092, "mean_player_hp_delta": -0.552238805970149},
+          "9": {"profile_count": 149, "mean_reward_delta": -0.484981236451519, "mean_player_hp_delta": -2.16778523489933}
+        }
+      },
+      "policy_criteria": {
+        "mean_reward_delta_gt_0_25": false,
+        "mean_player_hp_delta_gte_0": false,
+        "candidate_only_victories_gte_parent_only_victories": false,
+        "battle_indices_6_and_9_mean_reward_delta_gt_0": false,
+        "battle_index_0_mean_reward_delta_gte_minus_0_25": true,
+        "no_battle_index_mean_reward_delta_lt_minus_0_5": true,
+        "eligible": false
+      },
+      "report_sha256": "f2eac44236611a659cfbc89ab26c0a2c463e6385deb7fed4bc6f1308efd63005",
+      "manifest_sha256": "78898f1780bdebec0cf32e147f0dfd9459bb8a8345786f8a8e815afa2b354279"
+    },
+    "steps_128": {
+      "optimizer_update_count": 128,
+      "candidate_parameter_sha256": "7e3301f97b5718f9d3871b0e0fd50a8b40f3105aa4f57f1e17edc883e36f618b",
+      "parameter_delta_l2": 0.779052508907885,
+      "loss_first": 3.686126232147217,
+      "loss_last": 2.7250063419342,
+      "candidate_minus_parent": {
+        "mean_reward_delta": -0.100691533732772,
+        "mean_player_hp_delta": -0.0766509433962264,
+        "candidate_only_victories": 9,
+        "parent_only_victories": 14,
+        "battle_indices_6_and_9_mean_reward_delta": -0.386935991645653,
+        "by_battle_index": {
+          "0": {"profile_count": 256, "mean_reward_delta": 0.124609375, "mean_player_hp_delta": 0.1953125},
+          "3": {"profile_count": 242, "mean_reward_delta": 0.0749635391346623, "mean_player_hp_delta": 0.128099173553719},
+          "6": {"profile_count": 201, "mean_reward_delta": -0.083078080340303, "mean_player_hp_delta": 0.27363184079602},
+          "9": {"profile_count": 149, "mean_reward_delta": -0.796838274681731, "mean_player_hp_delta": -1.3489932885906}
+        }
+      },
+      "policy_criteria": {
+        "mean_reward_delta_gt_0_25": false,
+        "mean_player_hp_delta_gte_0": false,
+        "candidate_only_victories_gte_parent_only_victories": false,
+        "battle_indices_6_and_9_mean_reward_delta_gt_0": false,
+        "battle_index_0_mean_reward_delta_gte_minus_0_25": true,
+        "no_battle_index_mean_reward_delta_lt_minus_0_5": false,
+        "eligible": false
+      },
+      "report_sha256": "9d26c83f1c664b3f1317d95a135c95250c8136bfbccc94d644bee92be0a88c11",
+      "manifest_sha256": "74c23b21535867f86270ae28d305a6a10d89b51070e0a67e64f8b43fc57ae7b7"
+    },
+    "steps_256": {
+      "optimizer_update_count": 256,
+      "candidate_parameter_sha256": "c3f68cd95a0e22ada1ebed24ee15f98d3c0431c676b36d6e7b1bd745b1f69a94",
+      "parameter_delta_l2": 1.20112004600702,
+      "loss_first": 3.686126232147217,
+      "loss_last": 3.00018763542175,
+      "candidate_minus_parent": {
+        "mean_reward_delta": 0.251289924974258,
+        "mean_player_hp_delta": -0.209905660377358,
+        "candidate_only_victories": 14,
+        "parent_only_victories": 13,
+        "battle_indices_6_and_9_mean_reward_delta": 0.546471368869628,
+        "by_battle_index": {
+          "0": {"profile_count": 256, "mean_reward_delta": 0.0251953125000001, "mean_player_hp_delta": 0.0390625},
+          "3": {"profile_count": 242, "mean_reward_delta": 0.0635490796438061, "mean_player_hp_delta": 0.0413223140495868},
+          "6": {"profile_count": 201, "mean_reward_delta": 0.901434642495682, "mean_player_hp_delta": 0.119402985074627},
+          "9": {"profile_count": 149, "mean_reward_delta": 0.0676282950519305, "mean_player_hp_delta": -1.48993288590604}
+        }
+      },
+      "policy_criteria": {
+        "mean_reward_delta_gt_0_25": true,
+        "mean_player_hp_delta_gte_0": false,
+        "candidate_only_victories_gte_parent_only_victories": true,
+        "battle_indices_6_and_9_mean_reward_delta_gt_0": true,
+        "battle_index_0_mean_reward_delta_gte_minus_0_25": true,
+        "no_battle_index_mean_reward_delta_lt_minus_0_5": true,
+        "eligible": false
+      },
+      "report_sha256": "d5ac9cd3e1bbf054f0203989e93ae5238a2aab346cb33db4e3be3b1af095ff4a",
+      "manifest_sha256": "b1d5b64475b792f35e4b02bcaf8ba2f649aaf95c6f4d683403598e6d822387e5"
+    }
+  },
+  "direct_dose_comparisons": {
+    "steps_128_minus_steps_64": {
+      "profile_count": 848,
+      "mean_reward_delta": 0.0521336535732687,
+      "mean_player_hp_delta": 0.465801886792453,
+      "higher_dose_only_victories": 13,
+      "lower_dose_only_victories": 12
+    },
+    "steps_256_minus_steps_64": {
+      "profile_count": 848,
+      "mean_reward_delta": 0.404115112280299,
+      "mean_player_hp_delta": 0.332547169811321,
+      "higher_dose_only_victories": 16,
+      "lower_dose_only_victories": 9
+    },
+    "steps_256_minus_steps_128": {
+      "profile_count": 848,
+      "mean_reward_delta": 0.35198145870703,
+      "mean_player_hp_delta": -0.133254716981132,
+      "higher_dose_only_victories": 11,
+      "lower_dose_only_victories": 5
+    }
+  },
+  "interpretation": [
+    "Reducing the update budget did reduce parameter distance from the parent, but it did not improve the preregistered held-out policy metrics.",
+    "The 256-update arm was better than both shorter-dose arms on matched reward and was the only arm to exceed the aggregate reward threshold.",
+    "The 256-update arm still failed the HP criterion, while the shorter arms failed multiple reward, HP, victory, and late-battle criteria.",
+    "The recurrent successor weakness is therefore not explained by 256-update overtraining alone."
+  ],
+  "verdict": "no_eligible_arm_stop_current_guarded_one_step_recipe",
+  "decision": {
+    "selected_arm": null,
+    "fresh_confirmation_authorized": false,
+    "same_cohort_retry_or_tuning": false,
+    "gameplay_authorized": false,
+    "packaging_or_promotion_authorized": false,
+    "next_step": "Retain production r16. Stop fitting the current guarded one-step recipe and investigate upstream replay behavior or target-design interactions before preregistering another fit."
+  }
+}
