@@ -14,6 +14,6 @@
 
 - [x] 3.1 Run focused RL v2 transition and combat-RL guard tests with an isolated Windows pytest temp scope.
 - [x] 3.2 Run the qualified `commit` test gate; use the configured inclusive `full` boundary only at phase close or document the governing full-baseline blocker per `docs/testing.md`.
-- [ ] 3.3 Commit and push the implementation before fresh gameplay evidence collection.
+- [x] 3.3 Commit and push the implementation before fresh gameplay evidence collection.
 - [ ] 3.4 Register and collect one bounded fresh zero-update production-r16 replay cohort, retaining `.run`, decision trace, guard logs, and checkpoint evidence without training.
 - [ ] 3.5 Publish a report reconciling nonzero legal override rows with direct, replacement, and takeover evidence, then make a separate training go/no-go decision.
