@@ -1,0 +1,69 @@
+{
+  "schema_version": 1,
+  "audit_id": "combat-rl-inventory-embedding-live-trace-audit-20260828-r1",
+  "analysis_base_commit": "88601c6fd",
+  "evidence": {
+    "live_canary_report": "reports/combat_rl_inventory_embedding_live_canary_20260828_r1/report.json",
+    "candidate_runtime_evidence": "reports/combat_rl_inventory_embedding_live_canary_20260828_r1/candidate/runtime_evidence.zip",
+    "parent_runtime_evidence": "reports/combat_rl_inventory_embedding_live_canary_20260828_r1/parent/runtime_evidence.zip",
+    "raw_divergent_seed_count": 5,
+    "raw_divergent_seeds": [
+      "DB4B1E55CDB02",
+      "A205DB5D43F62",
+      "E502A513C4DE9",
+      "A5ECC29C8587B",
+      "B6CCD2000B0C1"
+    ]
+  },
+  "method": {
+    "seed_assignment": "Assign decision-trace timestamps to the most recent Seed log marker within each arm.",
+    "state_identity": "Compare complete in-combat decision-trace snapshots excluding action, timestamp, source, decision_path, and available_commands.",
+    "effective_action": "Use ai_decision_trace_clean.jsonl and CALLBACK Got action as deployed actions; use RL returned only as pre-guard model output.",
+    "outcome_check": "Compare within-turn state progression and paired run-record fields."
+  },
+  "classification": {
+    "same_state_effective_action_divergence_seed_count": 3,
+    "environment_trajectory_drift_seed_count": 2,
+    "observed_local_outcome_improvement_seed_count": 0,
+    "observed_local_outcome_regression_seed_count": 0,
+    "observed_locally_neutral_seed_count": 3
+  },
+  "findings": [
+    {
+      "seed": "DB4B1E55CDB02",
+      "classification": "environment_trajectory_drift",
+      "evidence": "The deployed action sequence matches through Infernal Blade on floor 30 turn 3, after which the generated attack is Whirlwind for candidate and Cleave for parent. No shared state has a different deployed action.",
+      "run_record_effect": "current_hp_per_floor and damage_taken differ, but floor reached and killed_by remain tied.",
+      "causal_interpretation": "Not attributable to a same-state candidate policy choice from the retained trace."
+    },
+    {
+      "seed": "A205DB5D43F62",
+      "classification": "environment_trajectory_drift",
+      "evidence": "All per-floor/per-turn deployed action sequences match. A floor 25 turn 4 hand differs before the same Pommel Strike+ action, showing state drift without a preceding retained same-state action difference.",
+      "run_record_effect": "Only play_id and player_experience differ.",
+      "causal_interpretation": "Not attributable to a same-state candidate policy choice from the retained trace."
+    },
+    {
+      "seed": "E502A513C4DE9",
+      "classification": "same_state_effective_action_divergence_locally_neutral",
+      "evidence": "On floor 22 turn 4, candidate orders Wild Strike then two Heavy Blades; parent orders two Heavy Blades then Wild Strike. Both reach Snecko HP 38 with energy 1 and block 5 before ending the turn.",
+      "guard_note": "An earlier floor 3 raw parent Colorless Potion output is replaced by POTION_SAVE_GUARD with the same Strike emitted directly by candidate.",
+      "run_record_effect": "Only play_id and player_experience differ."
+    },
+    {
+      "seed": "A5ECC29C8587B",
+      "classification": "same_state_effective_action_divergence_locally_neutral",
+      "evidence": "On floor 5 turn 3, candidate plays Strike then Bash+; parent plays Bash+ then Strike. Both kill the 18 HP Cultist in the same turn.",
+      "run_record_effect": "Only play_id and player_experience differ."
+    },
+    {
+      "seed": "B6CCD2000B0C1",
+      "classification": "same_state_effective_action_divergence_locally_neutral_guard_mediated",
+      "evidence": "Candidate first targets the 7 HP Louse. Parent raw EndTurn is replaced by ENERGY_GUARD with a Strike targeting the 4 HP Louse. Both emit three Strikes and kill both Louses in the same turn.",
+      "run_record_effect": "Only play_id and player_experience differ."
+    }
+  ],
+  "decision": "stop_inventory_only_candidate_line",
+  "training_implication": "Do not treat these five raw divergences as superior-action labels. The three attributable deployed differences are locally outcome-neutral, while the other two are not same-state policy comparisons.",
+  "next_step": "Use retained replay to identify a materially different objective with repeated deployment-relevant errors, especially guard interventions or boss-preparation decisions, before registering another candidate or spending more live games."
+}
