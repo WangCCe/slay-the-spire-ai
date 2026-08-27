@@ -70,6 +70,7 @@ class PendingTransition:
     action_index: int
     action_mask: np.ndarray
     game: Game
+    anchor_to_executed_action: bool = False
 
 
 class RLAgentV2:
@@ -461,6 +462,7 @@ class RLAgentV2:
             done=done,
             action_mask=pending.action_mask,
             next_action_mask=next_action_mask,
+            anchor_to_executed_action=pending.anchor_to_executed_action,
         )
         self.pending_transition = None
         if accepted is False:
@@ -503,8 +505,13 @@ class RLAgentV2:
             return False
 
         if same_state_pending:
+            proposed_action_index = self.pending_transition.action_index
             self.pending_transition.action_index = action_index
             self.pending_transition.action_mask = action_mask
+            self.pending_transition.anchor_to_executed_action = bool(
+                self.pending_transition.anchor_to_executed_action
+                or action_index != proposed_action_index
+            )
             return True
 
         if self.pending_transition is not None:
@@ -520,6 +527,7 @@ class RLAgentV2:
             action_index=action_index,
             action_mask=action_mask,
             game=game,
+            anchor_to_executed_action=True,
         )
         return True
 

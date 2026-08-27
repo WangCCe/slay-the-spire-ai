@@ -312,6 +312,36 @@ def test_emitted_guard_replacement_overwrites_pending_action_label():
 
     assert agent.commit_executed_action(game, _Action(6)) is True
     assert agent.pending_transition.action_index == 6
+    assert agent.pending_transition.anchor_to_executed_action is True
+
+
+def test_unchanged_emitted_rl_action_keeps_parent_anchor_label():
+    game = _game(1)
+    trainer = _Trainer(loss=None)
+    agent = _agent(trainer)
+    agent.pending_transition = _pending(game, action_index=2)
+
+    assert agent.commit_executed_action(game, _Action(2)) is True
+    assert agent.pending_transition.action_index == 2
+    assert agent.pending_transition.anchor_to_executed_action is False
+
+    agent.observe_next_state(_game(2))
+
+    assert trainer.transitions[0]["anchor_to_executed_action"] is False
+
+
+def test_fallback_emission_without_rl_proposal_uses_executed_action_anchor():
+    game = _game(1)
+    trainer = _Trainer(loss=None)
+    agent = _agent(trainer)
+
+    assert agent.commit_executed_action(game, _Action(6)) is True
+    assert agent.pending_transition.action_index == 6
+    assert agent.pending_transition.anchor_to_executed_action is True
+
+    agent.observe_next_state(_game(2))
+
+    assert trainer.transitions[0]["anchor_to_executed_action"] is True
 
 
 def test_unencodable_same_state_emission_discards_proposed_transition():
@@ -320,6 +350,15 @@ def test_unencodable_same_state_emission_discards_proposed_transition():
     agent.pending_transition = _pending(game, action_index=2)
 
     assert agent.commit_executed_action(game, object()) is False
+    assert agent.pending_transition is None
+
+
+def test_illegal_emission_without_rl_proposal_does_not_create_transition():
+    game = _game(1)
+    agent = _agent()
+
+    assert game.action_mask[0] is np.False_
+    assert agent.commit_executed_action(game, _Action(0)) is False
     assert agent.pending_transition is None
 
 
