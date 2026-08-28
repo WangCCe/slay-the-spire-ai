@@ -44,6 +44,8 @@ from analysis_scripts.combat_rl_candidate_callability_successor import (  # noqa
     build_candidate_decision_spans,
 )
 from spirecomm.ai.rl.v2.id_mapping import build_id_mapper  # noqa: E402
+from spirecomm.ai.rl.v2.action_space import END_TURN_ACTION  # noqa: E402
+from spirecomm.ai.rl.v2.state_encoder import StateEncoderV2  # noqa: E402
 
 
 SCHEMA_VERSION = "combat-rl-lightspeed-guard-transfer-poc-v1"
@@ -55,6 +57,7 @@ FOLD_COUNT = 5
 HIDDEN_DIM = 64
 SIMULATOR_UPDATES = 128
 REAL_UPDATES = 128
+ACTION_UPDATES = 256
 BATCH_SIZE = 64
 LEARNING_RATE = 0.001
 DIRECT_OPEN_CAP = 0.10
@@ -193,6 +196,26 @@ class InterventionClassifier(nn.Module):
         return self.layers(features.float()).squeeze(1)
 
 
+class ActionCorrectionClassifier(nn.Module):
+    def __init__(self, input_dim: int, action_dim: int) -> None:
+        super().__init__()
+        self.layers = nn.Sequential(
+            nn.Linear(input_dim, HIDDEN_DIM),
+            nn.ReLU(),
+            nn.Linear(HIDDEN_DIM, action_dim),
+        )
+
+    def forward(
+        self, features: torch.Tensor, action_masks: torch.Tensor
+    ) -> torch.Tensor:
+        logits = self.layers(features.float())
+        if logits.shape != action_masks.shape:
+            raise ValueError("action correction mask shape differs")
+        if not bool(action_masks.bool().any(dim=1).all()):
+            raise ValueError("action correction requires a legal action")
+        return logits.masked_fill(~action_masks.bool(), float("-inf"))
+
+
 def fit_classifier(
     features: torch.Tensor,
     labels: torch.Tensor,
@@ -242,6 +265,121 @@ def classifier_scores(
     model.eval()
     with torch.no_grad():
         return torch.sigmoid(model(features)).cpu()
+
+
+def fit_action_classifier(
+    features: torch.Tensor,
+    action_masks: torch.Tensor,
+    executed_actions: torch.Tensor,
+    changed: torch.Tensor,
+    *,
+    seed: int,
+    updates: int = ACTION_UPDATES,
+) -> tuple[ActionCorrectionClassifier, list[float]]:
+    changed_indices = torch.where(changed.detach().cpu().bool())[0]
+    if changed_indices.numel() < 2:
+        raise ValueError("action correction requires changed rows")
+    rows = torch.arange(executed_actions.numel())
+    if not bool(action_masks[rows, executed_actions.long()].all()):
+        raise ValueError("action correction labels must be legal")
+    torch.manual_seed(seed)
+    model = ActionCorrectionClassifier(features.shape[1], action_masks.shape[1])
+    optimizer = torch.optim.Adam(model.parameters(), lr=LEARNING_RATE)
+    generator = torch.Generator().manual_seed(seed)
+    losses: list[float] = []
+    for _ in range(updates):
+        batch = changed_indices[
+            torch.randint(
+                changed_indices.numel(), (BATCH_SIZE,), generator=generator
+            )
+        ]
+        logits = model(features[batch], action_masks[batch])
+        loss = F.cross_entropy(logits, executed_actions[batch].long())
+        optimizer.zero_grad()
+        loss.backward()
+        optimizer.step()
+        losses.append(float(loss.detach().item()))
+    if not all(math.isfinite(value) for value in losses):
+        raise RuntimeError("action correction produced a non-finite loss")
+    return model, losses
+
+
+def gated_action_metrics(
+    *,
+    parent_actions: torch.Tensor,
+    correction_actions: torch.Tensor,
+    executed_actions: torch.Tensor,
+    changed: torch.Tensor,
+    gate_open: torch.Tensor,
+    continuous: torch.Tensor,
+) -> dict[str, Any]:
+    values = tuple(
+        tensor.detach().cpu().reshape(-1)
+        for tensor in (
+            parent_actions,
+            correction_actions,
+            executed_actions,
+            changed,
+            gate_open,
+        )
+    )
+    parent, correction, executed, changed, gate_open = values
+    if any(value.shape != parent.shape for value in values):
+        raise ValueError("gated action rows differ")
+    changed = changed.bool()
+    gate_open = gate_open.bool()
+    if not bool(changed.any()) or not bool((~changed).any()):
+        raise ValueError("gated action metrics require both provenance strata")
+    candidate = torch.where(gate_open, correction, parent)
+
+    def stratum(mask: torch.Tensor) -> dict[str, Any]:
+        return {
+            "row_count": int(mask.sum().item()),
+            "gate_open_share": float(gate_open[mask].float().mean().item()),
+            "parent_agreement": float(
+                parent[mask].eq(executed[mask]).float().mean().item()
+            ),
+            "correction_agreement": float(
+                correction[mask].eq(executed[mask]).float().mean().item()
+            ),
+            "candidate_agreement": float(
+                candidate[mask].eq(executed[mask]).float().mean().item()
+            ),
+        }
+
+    direct = stratum(~changed)
+    changed_rows = stratum(changed)
+    positive_energy = continuous.detach().cpu()[
+        :, StateEncoderV2.ENERGY_RATIO_INDEX
+    ].gt(0.0)
+    parent_positive_end_turn = int(
+        (positive_energy & parent.eq(END_TURN_ACTION)).sum().item()
+    )
+    candidate_positive_end_turn = int(
+        (positive_energy & candidate.eq(END_TURN_ACTION)).sum().item()
+    )
+    return {
+        "row_count": int(parent.numel()),
+        "gate_open_share": float(gate_open.float().mean().item()),
+        "parent_agreement": float(parent.eq(executed).float().mean().item()),
+        "correction_agreement": float(
+            correction.eq(executed).float().mean().item()
+        ),
+        "candidate_agreement": float(
+            candidate.eq(executed).float().mean().item()
+        ),
+        "action_disagreement_share": float(
+            candidate.ne(parent).float().mean().item()
+        ),
+        "direct": direct,
+        "changed": changed_rows,
+        "positive_energy_state_count": int(positive_energy.sum().item()),
+        "parent_positive_energy_end_turn_count": parent_positive_end_turn,
+        "candidate_positive_energy_end_turn_count": candidate_positive_end_turn,
+        "positive_energy_end_turn_count_delta": (
+            candidate_positive_end_turn - parent_positive_end_turn
+        ),
+    }
 
 
 def parent_feature_views(
@@ -396,6 +534,116 @@ def _independent_holdout_scores(
     return results, {
         "simulator_pretraining_loss": _summary(simulator_losses),
         "development_fitting_loss": losses,
+    }
+
+
+def _latent_gated_correction_holdout(
+    *,
+    development_features: torch.Tensor,
+    development_labels: torch.Tensor,
+    development_masks: torch.Tensor,
+    development_actions: torch.Tensor,
+    holdout_features: torch.Tensor,
+    holdout_labels: torch.Tensor,
+    holdout_masks: torch.Tensor,
+    holdout_actions: torch.Tensor,
+    holdout_continuous: torch.Tensor,
+    sim_features: torch.Tensor,
+    sim_labels: torch.Tensor,
+    sim_train_indices: torch.Tensor,
+) -> dict[str, Any]:
+    simulator_gate, simulator_gate_losses = fit_classifier(
+        sim_features,
+        sim_labels,
+        sim_train_indices,
+        seed=CLASSIFIER_SEED,
+        updates=SIMULATOR_UPDATES,
+    )
+    development_indices = torch.arange(development_labels.numel())
+    gate, development_gate_losses = fit_classifier(
+        development_features,
+        development_labels,
+        development_indices,
+        seed=CLASSIFIER_SEED + 700,
+        updates=REAL_UPDATES,
+        initial_state=simulator_gate.state_dict(),
+    )
+    development_gate_scores = classifier_scores(gate, development_features)
+    gate_threshold = threshold_at_direct_open_cap(
+        development_gate_scores, development_labels
+    )
+    holdout_gate_scores = classifier_scores(gate, holdout_features)
+    holdout_gate_open = holdout_gate_scores.ge(gate_threshold)
+
+    action_head, action_losses = fit_action_classifier(
+        development_features,
+        development_masks,
+        development_actions,
+        development_labels,
+        seed=CLASSIFIER_SEED + 701,
+    )
+    action_head.eval()
+    with torch.no_grad():
+        correction_actions = action_head(
+            holdout_features, holdout_masks
+        ).argmax(dim=1)
+    action_dim = holdout_masks.shape[1]
+    parent_q_start = holdout_features.shape[1] - 2 * action_dim
+    parent_q_end = holdout_features.shape[1] - action_dim
+    parent_q = holdout_features[:, parent_q_start:parent_q_end]
+    parent_actions = parent_q.masked_fill(
+        ~holdout_masks.bool(), float("-inf")
+    ).argmax(dim=1)
+    metrics = gated_action_metrics(
+        parent_actions=parent_actions,
+        correction_actions=correction_actions,
+        executed_actions=holdout_actions,
+        changed=holdout_labels,
+        gate_open=holdout_gate_open,
+        continuous=holdout_continuous,
+    )
+    changed_metrics = metrics["changed"]
+    direct_metrics = metrics["direct"]
+    criteria = {
+        "direct_gate_open_share_at_most_0_15": (
+            direct_metrics["gate_open_share"] <= 0.15
+        ),
+        "changed_gate_open_share_at_least_0_75": (
+            changed_metrics["gate_open_share"] >= 0.75
+        ),
+        "direct_candidate_agreement_at_least_0_85": (
+            direct_metrics["candidate_agreement"] >= 0.85
+        ),
+        "changed_correction_agreement_at_least_0_35": (
+            changed_metrics["correction_agreement"] >= 0.35
+        ),
+        "changed_candidate_agreement_at_least_0_25": (
+            changed_metrics["candidate_agreement"] >= 0.25
+        ),
+        "overall_candidate_agreement_improves_by_0_10": (
+            metrics["candidate_agreement"]
+            >= metrics["parent_agreement"] + 0.10
+        ),
+        "positive_energy_end_turn_does_not_increase": (
+            metrics["positive_energy_end_turn_count_delta"] <= 0
+        ),
+    }
+    criteria["all_conditions_passed"] = all(criteria.values())
+    return {
+        "verdict": (
+            "latent_gated_action_correction_supported"
+            if criteria["all_conditions_passed"]
+            else "latent_gated_action_correction_not_supported"
+        ),
+        "development_calibrated_gate_threshold": gate_threshold,
+        "metrics": metrics,
+        "criteria": criteria,
+        "fit": {
+            "simulator_gate_loss": _summary(simulator_gate_losses),
+            "development_gate_loss": _summary(development_gate_losses),
+            "development_action_loss": _summary(action_losses),
+            "action_updates": ACTION_UPDATES,
+        },
     }
 
 
@@ -581,12 +829,27 @@ def run(args: argparse.Namespace) -> dict[str, Any]:
     }
     independent_holdout = None
     independent_holdout_fit = None
+    latent_gated_correction = None
     if holdout_features is not None and holdout_labels is not None:
         independent_holdout, independent_holdout_fit = _independent_holdout_scores(
             development_features=real_features,
             development_labels=real_labels,
             holdout_features=holdout_features,
             holdout_labels=holdout_labels,
+            sim_features=sim_features,
+            sim_labels=sim_labels,
+            sim_train_indices=sim_train_indices,
+        )
+        latent_gated_correction = _latent_gated_correction_holdout(
+            development_features=real_features["parent_latent"],
+            development_labels=real_labels,
+            development_masks=real_spans["action_masks"].bool().cpu(),
+            development_actions=real_spans["actions"].long().cpu(),
+            holdout_features=holdout_features["parent_latent"],
+            holdout_labels=holdout_labels,
+            holdout_masks=holdout_spans["action_masks"].bool().cpu(),
+            holdout_actions=holdout_spans["actions"].long().cpu(),
+            holdout_continuous=holdout_spans["continuous"].float().cpu(),
             sim_features=sim_features,
             sim_labels=sim_labels,
             sim_train_indices=sim_train_indices,
@@ -632,6 +895,15 @@ def run(args: argparse.Namespace) -> dict[str, Any]:
         verdict = "parent_latent_helps_but_lightspeed_transfer_is_not_proven"
     else:
         verdict = "lightspeed_guard_transfer_not_supported"
+    if (
+        verdict == "lightspeed_guard_pretraining_confirmed_on_independent_replay"
+        and latent_gated_correction is not None
+    ):
+        verdict = (
+            "latent_gated_correction_supported_on_independent_replay"
+            if latent_gated_correction["criteria"]["all_conditions_passed"]
+            else "guard_transfer_confirmed_but_action_correction_not_supported"
+        )
     return {
         "schema_version": SCHEMA_VERSION,
         "verdict": verdict,
@@ -662,6 +934,7 @@ def run(args: argparse.Namespace) -> dict[str, Any]:
             "fold_count": FOLD_COUNT,
             "simulator_updates": SIMULATOR_UPDATES,
             "real_updates_per_fold": REAL_UPDATES,
+            "action_updates": ACTION_UPDATES,
             "batch_size": BATCH_SIZE,
             "learning_rate": LEARNING_RATE,
             "direct_open_calibration_cap": DIRECT_OPEN_CAP,
@@ -675,6 +948,7 @@ def run(args: argparse.Namespace) -> dict[str, Any]:
         "real_cross_fitted": real_results,
         "independent_holdout_binding": holdout_binding,
         "independent_holdout": independent_holdout,
+        "latent_gated_correction": latent_gated_correction,
         "deltas": {
             "parent_latent_minus_legacy_roc_auc": representation_auc_delta,
             "sim_pretrained_minus_latent_real_only_roc_auc": transfer_auc_delta,
@@ -707,9 +981,9 @@ def run(args: argparse.Namespace) -> dict[str, Any]:
             "collect_fresh_gameplay": False,
             "same_closed_cohort_promotion": False,
             "next_step": (
-                "Prototype a latent-gated correction head without promotion authority."
+                "Register a fresh replay confirmation before constructing a policy candidate."
                 if verdict
-                == "lightspeed_guard_pretraining_confirmed_on_independent_replay"
+                == "latent_gated_correction_supported_on_independent_replay"
                 else (
                     "Use a fresh real replay only to confirm the latent intervention gate."
                     if "parent_latent" in verdict
@@ -756,6 +1030,25 @@ def _summary_markdown(report: Mapping[str, Any]) -> str:
                 f"{metrics['direct_open_share']:.4f} | "
                 f"{metrics['changed_open_share']:.4f} | {precision_text} |"
             )
+    if report.get("latent_gated_correction"):
+        correction = report["latent_gated_correction"]
+        metrics = correction["metrics"]
+        rows.extend(
+            (
+                "",
+                "## Latent-gated action correction",
+                "",
+                f"- Verdict: `{correction['verdict']}`",
+                f"- Overall agreement: parent `{metrics['parent_agreement']:.4f}`, "
+                f"candidate `{metrics['candidate_agreement']:.4f}`",
+                f"- Direct agreement: `{metrics['direct']['candidate_agreement']:.4f}`",
+                f"- Changed agreement: `{metrics['changed']['candidate_agreement']:.4f}`",
+                f"- Changed raw correction agreement: "
+                f"`{metrics['changed']['correction_agreement']:.4f}`",
+                f"- Positive-energy end-turn delta: "
+                f"`{metrics['positive_energy_end_turn_count_delta']}`",
+            )
+        )
     rows.extend(
         (
             "",
