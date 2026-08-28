@@ -1,0 +1,92 @@
+{
+  "schema_version": 1,
+  "registration_id": "combat-rl-latent-gated-correction-confirmation-20260828-r1",
+  "source_commit": "6a8e2b384c7ad8686a0b2665bff474a48b8f6b64",
+  "question": "Does the fixed latent-gated correction recipe retain its direct fidelity and changed-action uplift on one fresh production-r16 replay corpus?",
+  "development_evidence": {
+    "report": "reports/combat_rl_lightspeed_guard_transfer_poc_20260828_r3/report.json",
+    "report_sha256": "7df712b165405e3888488b6b512fe3d1e874f22caebf949b33f90d6fac08763c",
+    "verdict": "latent_gated_correction_supported_on_independent_replay",
+    "direct_candidate_agreement": 0.9569892287254333,
+    "changed_candidate_agreement": 0.30941703915596,
+    "overall_parent_agreement": 0.2943038046360016,
+    "overall_candidate_agreement": 0.5,
+    "positive_energy_end_turn_count_delta": -321
+  },
+  "fixed_confirmation_recipe": {
+    "runner": "analysis_scripts/combat_rl_lightspeed_guard_transfer_poc.py",
+    "runner_sha256": "b40af828cd6806b3910d97ae5607ffd4bacf60d211a20a9733b4d7aa050f4d4b",
+    "development_replay": "reports/combat_rl_abstaining_residual_collection_20260828_r1/rl_combat_model_ep10_steps1916.pth",
+    "development_replay_sha256": "ba02c749e73caecae59469220abe30e40e826699e95ca910a8b18d7eaa1f5900",
+    "development_transition_count": 1916,
+    "simulator_seeds": "185000..185255",
+    "battle_indices": [0, 3, 6, 9],
+    "simulator_updates": 128,
+    "real_gate_updates": 128,
+    "action_updates": 256,
+    "batch_size": 64,
+    "learning_rate": 0.001,
+    "direct_open_calibration_cap": 0.1,
+    "classifier_seed": 2026082816,
+    "fresh_holdout_only": true,
+    "model_artifact_output": false
+  },
+  "production_parent": {
+    "label": "production_r16",
+    "path": "reports/combat_rl_promoted_r15_successor_20260818_r16/rl_combat_model_promoted_r15_successor_candidate.pth",
+    "sha256": "75120e9e8f76393d4d82c16de5c3ea6384d2f7ef26bd530a6b552ed9791e38f5"
+  },
+  "collection_initializer": {
+    "path": "reports/combat_rl_inventory_fixed_replay_collection_20260828_r1/rl_combat_model_r16_empty_replay_learning_starts_100000.pth",
+    "sha256": "fd97dd0f86a5145ed79bb6da1932a27ddb21dd9d565cedca5bf24ab8adb93c27",
+    "replay_transition_count": 0,
+    "epsilon": 0.0,
+    "learning_starts": 100000,
+    "optimizer_state_is_empty": true
+  },
+  "collection": {
+    "game_count": 10,
+    "epsilon": 0.0,
+    "boss_min_epsilon": 0.0,
+    "optimizer_updates": 0,
+    "phase": "conservative",
+    "ascension": 0,
+    "agent": "combat_rl",
+    "rl_version": "v2",
+    "seed_pool": "reports/combat_rl_latent_gated_correction_confirmation_20260828_r1_seed_pool.txt",
+    "seed_pool_sha256": "f73146246ec8cb7a54611ea483b77d7364914fef5dad15260e08a70bded2dd2c",
+    "launch_config": "reports/combat_rl_latent_gated_correction_confirmation_20260828_r1.properties",
+    "launch_config_sha256": "b2e27b2841a3f00d22ed8c1a1cdd5eeee6ab7aa8daff030a7f32dc3c1c9f2c7d",
+    "restore_config": "reports/combat_rl_abstaining_residual_collection_20260828_r1_restore.properties",
+    "restore_config_sha256": "0991895790bc73d3d21a05731bf402228cf0c510a4217aa841ced026016760e7",
+    "output_dir": "reports/combat_rl_latent_gated_correction_confirmation_20260828_r1"
+  },
+  "fresh_confirmation_gates": {
+    "complete_exactly_ten_games": true,
+    "run_seeds_match_registered_order": true,
+    "replay_schema_version_is_three": true,
+    "optimizer_state_remains_empty": true,
+    "online_and_target_remain_equal_to_production_r16": true,
+    "proposal_classes_reconcile_every_transition": true,
+    "direct_and_changed_proposal_counts_are_nonzero": true,
+    "direct_eval_parent_agreement_is_one": true,
+    "direct_gate_open_share_maximum": 0.15,
+    "changed_gate_open_share_minimum": 0.75,
+    "direct_candidate_agreement_minimum": 0.85,
+    "changed_correction_agreement_minimum": 0.35,
+    "changed_candidate_agreement_minimum": 0.25,
+    "overall_candidate_agreement_uplift_minimum": 0.1,
+    "positive_energy_end_turn_increase_maximum": 0
+  },
+  "authority": {
+    "fresh_replay_collection": true,
+    "fixed_cpu_confirmation": true,
+    "online_training": false,
+    "policy_candidate": false,
+    "gameplay_evaluation": false,
+    "qualification": false,
+    "promotion": false,
+    "same_corpus_tuning": false
+  },
+  "failure_policy": "Stop and report any collection or fixed-confirmation failure. Do not change seeds, thresholds, update counts, source, or cohort and do not retry automatically."
+}
