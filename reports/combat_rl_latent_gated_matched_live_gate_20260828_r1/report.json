@@ -1,0 +1,311 @@
+{
+  "schema_version": 1,
+  "gate_id": "combat-rl-latent-gated-matched-live-gate-20260828-r1",
+  "decision": "retain_production_r16_and_close_this_candidate_cohort",
+  "all_conditions_passed": false,
+  "source_commit": "6c541e4965d7c3fc79797938d6ee712ab9891a95",
+  "registration_commit": "083213018c3662f7a5ea26972082373d0dc7bf27",
+  "bindings": {
+    "candidate_artifact_sha256": "52fe999f209d6ee99c59aec4200f64b8efb7256f80b379c2d6f748a33e199ac1",
+    "production_parent_checkpoint_sha256": "75120e9e8f76393d4d82c16de5c3ea6384d2f7ef26bd530a6b552ed9791e38f5",
+    "parent_state_dict_sha256": "cfe8204d06db6b43b063df98e1b713d4a40a0894a1a9330c3db87c739da88d48",
+    "candidate_registration_sha256": "ad8f4312b3034067881ae4c9ba2fc466ef480afbc421dbff149eb72a857e45c2",
+    "seed_pool_sha256": "d6b72cb7a137ffcaa4fe335c469c04f6dacb40320b710d9be34b50ae8fdbe9f3"
+  },
+  "execution": {
+    "arm_order": [
+      "candidate",
+      "parent"
+    ],
+    "games_per_arm": 10,
+    "candidate_ai_marker_start": 17336,
+    "candidate_ai_marker_end": 17346,
+    "parent_ai_marker_start": 17346,
+    "parent_ai_marker_end": 17356,
+    "candidate_completed_games": 10,
+    "parent_completed_games": 10,
+    "same_seed_order": true,
+    "same_numeric_run_seeds": true,
+    "training_enabled": false,
+    "epsilon": 0.0,
+    "elite_route": "conservative",
+    "ascension": 0,
+    "production_config_restored_between_arms": true,
+    "production_config_restored_after_gate": true,
+    "production_config_sha256": "0991895790bc73d3d21a05731bf402228cf0c510a4217aa841ced026016760e7",
+    "candidate_active_config_semantically_matches_registered_launch": true,
+    "parent_active_config_semantically_matches_registered_launch": true,
+    "active_config_difference_scope": "CommunicationMod replaced only the first comment with its Java Properties timestamp."
+  },
+  "paired_runs": [
+    {
+      "pair": 1,
+      "seed": "FFF7FAD963EB3",
+      "numeric_seed": "-3161722874006776810",
+      "candidate_run": "1787914702.run",
+      "candidate_floor": 16,
+      "candidate_victory": false,
+      "candidate_killed_by": "The Guardian",
+      "parent_run": "1787915770.run",
+      "parent_floor": 16,
+      "parent_victory": false,
+      "parent_killed_by": "The Guardian",
+      "candidate_floor_delta": 0,
+      "winner": "tie"
+    },
+    {
+      "pair": 2,
+      "seed": "082337BF652F6",
+      "numeric_seed": "778154027626642981",
+      "candidate_run": "1787914799.run",
+      "candidate_floor": 16,
+      "candidate_victory": false,
+      "candidate_killed_by": "The Guardian",
+      "parent_run": "1787915840.run",
+      "parent_floor": 16,
+      "parent_victory": false,
+      "parent_killed_by": "The Guardian",
+      "candidate_floor_delta": 0,
+      "winner": "tie"
+    },
+    {
+      "pair": 3,
+      "seed": "EAE490C1DD9B1",
+      "numeric_seed": "-7026698320091009187",
+      "candidate_run": "1787914960.run",
+      "candidate_floor": 22,
+      "candidate_victory": false,
+      "candidate_killed_by": "Centurion and Healer",
+      "parent_run": "1787916089.run",
+      "parent_floor": 33,
+      "parent_victory": false,
+      "parent_killed_by": "Champ",
+      "candidate_floor_delta": -11,
+      "winner": "parent"
+    },
+    {
+      "pair": 4,
+      "seed": "2D01C38FD72FF",
+      "numeric_seed": "8013686108637904990",
+      "candidate_run": "1787915115.run",
+      "candidate_floor": 33,
+      "candidate_victory": false,
+      "candidate_killed_by": "Collector",
+      "parent_run": "1787916241.run",
+      "parent_floor": 33,
+      "parent_victory": false,
+      "parent_killed_by": "Collector",
+      "candidate_floor_delta": 0,
+      "winner": "tie"
+    },
+    {
+      "pair": 5,
+      "seed": "CF9587DD30C2E",
+      "numeric_seed": "5130634804194244677",
+      "candidate_run": "1787915182.run",
+      "candidate_floor": 16,
+      "candidate_victory": false,
+      "candidate_killed_by": "Slime Boss",
+      "parent_run": "1787916311.run",
+      "parent_floor": 16,
+      "parent_victory": false,
+      "parent_killed_by": "Slime Boss",
+      "candidate_floor_delta": 0,
+      "winner": "tie"
+    },
+    {
+      "pair": 6,
+      "seed": "2E4D88CB3BC3E",
+      "numeric_seed": "8122206564412150819",
+      "candidate_run": "1787915249.run",
+      "candidate_floor": 16,
+      "candidate_victory": false,
+      "candidate_killed_by": "The Guardian",
+      "parent_run": "1787916378.run",
+      "parent_floor": 16,
+      "parent_victory": false,
+      "parent_killed_by": "The Guardian",
+      "candidate_floor_delta": 0,
+      "winner": "tie"
+    },
+    {
+      "pair": 7,
+      "seed": "4A3904E19ED25",
+      "numeric_seed": "-3955385201784376616",
+      "candidate_run": "1787915300.run",
+      "candidate_floor": 11,
+      "candidate_victory": false,
+      "candidate_killed_by": "Lagavulin",
+      "parent_run": "1787916430.run",
+      "parent_floor": 11,
+      "parent_victory": false,
+      "parent_killed_by": "Lagavulin",
+      "candidate_floor_delta": 0,
+      "winner": "tie"
+    },
+    {
+      "pair": 8,
+      "seed": "A51595FC367F1",
+      "numeric_seed": "-2615364037656572506",
+      "candidate_run": "1787915333.run",
+      "candidate_floor": 11,
+      "candidate_victory": false,
+      "candidate_killed_by": "Gremlin Gang",
+      "parent_run": "1787916463.run",
+      "parent_floor": 11,
+      "parent_victory": false,
+      "parent_killed_by": "Gremlin Gang",
+      "candidate_floor_delta": 0,
+      "winner": "tie"
+    },
+    {
+      "pair": 9,
+      "seed": "EC0E64A30F720",
+      "numeric_seed": "-6871438013767312453",
+      "candidate_run": "1787915389.run",
+      "candidate_floor": 11,
+      "candidate_victory": false,
+      "candidate_killed_by": "Exordium Thugs",
+      "parent_run": "1787916540.run",
+      "parent_floor": 16,
+      "parent_victory": false,
+      "parent_killed_by": "The Guardian",
+      "candidate_floor_delta": -5,
+      "winner": "parent"
+    },
+    {
+      "pair": 10,
+      "seed": "443B05B500E77",
+      "numeric_seed": "-4534522455724831089",
+      "candidate_run": "1787915466.run",
+      "candidate_floor": 16,
+      "candidate_victory": false,
+      "candidate_killed_by": "Hexaghost",
+      "parent_run": "1787916611.run",
+      "parent_floor": 16,
+      "parent_victory": false,
+      "parent_killed_by": "Hexaghost",
+      "candidate_floor_delta": 0,
+      "winner": "tie"
+    }
+  ],
+  "outcomes": {
+    "candidate": {
+      "total_floors": 168,
+      "victories": 0,
+      "act_2_entries": 2,
+      "act_2_boss_reaches": 1,
+      "act_3_entries": 0
+    },
+    "parent": {
+      "total_floors": 184,
+      "victories": 0,
+      "act_2_entries": 2,
+      "act_2_boss_reaches": 2,
+      "act_3_entries": 0
+    },
+    "candidate_floor_wins": 0,
+    "parent_floor_wins": 2,
+    "floor_ties": 8,
+    "candidate_total_floor_delta": -16
+  },
+  "candidate_runtime": {
+    "event_count": 1114,
+    "decision_count": 1108,
+    "transient_discard_count": 6,
+    "error_event_count": 0,
+    "session_count": 1,
+    "gate_open_count": 733,
+    "candidate_takeover_count": 601,
+    "candidate_parent_disagreement_count": 601,
+    "selected_matches_final_count": 970,
+    "selected_matches_final_share": 0.8754512635379061,
+    "parent_parity_share": 1.0,
+    "candidate_legal_share": 1.0,
+    "executed_legal_share": 1.0,
+    "p50_adapter_latency_ms": 11.256899990257807,
+    "p95_adapter_latency_ms": 20.36378999036969,
+    "maximum_adapter_latency_ms": 101.58029999001883,
+    "maximum_decision_count": 5000,
+    "maximum_p95_latency_ms": 100.0,
+    "event_sequence_contiguous": true,
+    "decision_sequence_contiguous": true
+  },
+  "runtime_health": {
+    "candidate_ai_debug_error_matches": 0,
+    "parent_ai_debug_error_matches": 0,
+    "candidate_communication_log_baseline_bytes": 1383810,
+    "candidate_communication_log_final_bytes": 1385810,
+    "candidate_communication_delta_tracebacks": 0,
+    "candidate_communication_delta_exceptions": 0,
+    "parent_communication_log_baseline_bytes": 1385810,
+    "parent_communication_log_final_bytes": 1387814,
+    "parent_communication_delta_tracebacks": 0,
+    "parent_communication_delta_exceptions": 0,
+    "parent_ai_debug_rotated": true
+  },
+  "criteria": {
+    "both_arms_complete": true,
+    "all_seed_pairs_match": true,
+    "candidate_takeover_observed": true,
+    "candidate_parent_parity_holds": true,
+    "all_candidate_actions_legal": true,
+    "all_final_actions_legal": true,
+    "candidate_p95_latency_within_ceiling": true,
+    "zero_candidate_runtime_errors": true,
+    "zero_policy_runtime_failures": true,
+    "production_configuration_restored": true,
+    "candidate_paired_floor_wins_exceed_parent": false,
+    "at_least_one_floor_pair_non_tied": true,
+    "candidate_total_floors_non_worse": false,
+    "candidate_victories_non_worse": true,
+    "candidate_act_2_entries_non_worse": true,
+    "candidate_act_2_boss_reaches_non_worse": false,
+    "candidate_act_3_entries_non_worse": true
+  },
+  "failed_conditions": [
+    "candidate_paired_floor_wins_exceed_parent",
+    "candidate_total_floors_non_worse",
+    "candidate_act_2_boss_reaches_non_worse"
+  ],
+  "evidence": {
+    "candidate_runtime_archive": {
+      "path": "reports/combat_rl_latent_gated_matched_live_gate_20260828_r1/candidate/runtime_evidence.zip",
+      "sha256": "8987a449d0b6de98adcd8d7f40e87da7abe8e6658d196aaaa097f7a289ab8928"
+    },
+    "parent_runtime_archive": {
+      "path": "reports/combat_rl_latent_gated_matched_live_gate_20260828_r1/parent/runtime_evidence.zip",
+      "sha256": "b579776a07c86c54b2741346e4e61e0027fb2baca4a93c5a48e6e509cd44085d"
+    },
+    "candidate_trace": {
+      "path": "reports/combat_rl_latent_gated_matched_live_gate_20260828_r1/candidate/trace.jsonl",
+      "sha256": "fc89fe24e356ade37be1aa44317a4d09bff34319c8b9e8451ee18bae1c9addfa"
+    },
+    "candidate_ai_debug": {
+      "path": "reports/combat_rl_latent_gated_matched_live_gate_20260828_r1/candidate/ai_debug.log",
+      "sha256": "4ed45b738a7b7cbbe20322fde2173231a5d8dde12c71601e32ff0cb1c2c3254f"
+    },
+    "parent_ai_debug_rotated": {
+      "path": "reports/combat_rl_latent_gated_matched_live_gate_20260828_r1/parent/ai_debug.log.1",
+      "sha256": "4e0ea66d1478bfeaaabfd5b81a4405c707f4e5d2265d1c1934f7975d425b2a35"
+    },
+    "parent_ai_debug_active": {
+      "path": "reports/combat_rl_latent_gated_matched_live_gate_20260828_r1/parent/ai_debug.log",
+      "sha256": "39a4c947b3cad234981a4faaca46ba0d3e1ebd30bb258daaa1aaffb3f7a8f20"
+    }
+  },
+  "authority": {
+    "promotion": false,
+    "automatic_retry": false,
+    "same_cohort_tuning": false,
+    "training_claim": false,
+    "causal_policy_quality_claim": false,
+    "production_r16_retained": true
+  },
+  "limitations": [
+    "Ten matched pairs are a bounded deployment canary, not a win-rate estimate.",
+    "The runtime technical gate passed, but it does not override the preregistered live outcome failure.",
+    "Outer combat guards changed 138 of 1108 selected candidate proposals; final actions remained legal and are reported separately.",
+    "This cohort is closed to threshold tuning, candidate replacement, or retry."
+  ]
+}

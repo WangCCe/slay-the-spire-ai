@@ -13,11 +13,11 @@
 ## 3. Matched Gate Registration
 
 - [x] 3.1 Generate and freeze ten fresh seeds, a source-bound candidate registration, candidate/parent launch configs, production restore config, and fixed qualification rules.
-- [ ] 3.2 Validate hashes, clean tracked source state, absent output boundaries, active r16 identity, and candidate callability before starting gameplay.
+- [x] 3.2 Validate hashes, clean tracked source state, absent output boundaries, active r16 identity, and candidate callability before starting gameplay.
 
 ## 4. Live Execution And Decision
 
-- [ ] 4.1 Run the candidate arm for exactly ten completed games, preserve trace/log/run evidence, and restore production configuration.
-- [ ] 4.2 Run the production-r16 parent arm on the identical seed order, preserve evidence, and restore production configuration.
-- [ ] 4.3 Reconcile paired floors, progression, victories, seeds, candidate takeovers, legal final actions, logs, errors, and configuration restoration against every fixed gate.
-- [ ] 4.4 Publish the qualification/no-go decision without tuning or automatic promotion; sync and archive the completed change and commit/push tracked evidence.
+- [x] 4.1 Run the candidate arm for exactly ten completed games, preserve trace/log/run evidence, and restore production configuration.
+- [x] 4.2 Run the production-r16 parent arm on the identical seed order, preserve evidence, and restore production configuration.
+- [x] 4.3 Reconcile paired floors, progression, victories, seeds, candidate takeovers, legal final actions, logs, errors, and configuration restoration against every fixed gate.
+- [x] 4.4 Publish the qualification/no-go decision without tuning or automatic promotion; sync and archive the completed change and commit/push tracked evidence.
