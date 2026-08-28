@@ -1,5 +1,5 @@
 {
-  "attempt_receipt": "D:\\PycharmProjects\\slay-the-spire-ai\\reports\\combat_rl_abstaining_residual_successor_20260828_r1_attempts\\92f8e829498a8d2f88ed80a119ea0c2711c81903\\started.json",
+  "attempt_receipt": "D:\\PycharmProjects\\slay-the-spire-ai\\reports\\combat_rl_abstaining_residual_successor_20260828_r1_attempts\\03eada0032b1cf1b2f1788bbc27c1916813d8c3a\\started.json",
   "authority": {
     "cpu_development_fit": true,
     "fresh_holdout": false,
@@ -39,11 +39,11 @@
     "--output-dir",
     "D:\\PycharmProjects\\slay-the-spire-ai\\reports\\combat_rl_abstaining_residual_successor_20260828_r1",
     "--attempt-receipt",
-    "D:\\PycharmProjects\\slay-the-spire-ai\\reports\\combat_rl_abstaining_residual_successor_20260828_r1_attempts\\92f8e829498a8d2f88ed80a119ea0c2711c81903\\started.json",
+    "D:\\PycharmProjects\\slay-the-spire-ai\\reports\\combat_rl_abstaining_residual_successor_20260828_r1_attempts\\03eada0032b1cf1b2f1788bbc27c1916813d8c3a\\started.json",
     "--experiment-id",
     "combat-rl-abstaining-residual-successor-20260828-r1",
     "--source-commit",
-    "92f8e829498a8d2f88ed80a119ea0c2711c81903"
+    "03eada0032b1cf1b2f1788bbc27c1916813d8c3a"
   ],
   "experiment_id": "combat-rl-abstaining-residual-successor-20260828-r1",
   "failure_policy": "started_attempt_is_not_retried_or_tuned",
@@ -58,13 +58,13 @@
   },
   "runner": {
     "path": "D:\\PycharmProjects\\slay-the-spire-ai\\analysis_scripts\\combat_rl_abstaining_residual_successor.py",
-    "sha256": "74c92f895d62bc27344c7b59e17b347aae830d7b9d7bf170c14d8d1e49c7cf6d"
+    "sha256": "9b0d938257b48145a61aead56bab39d3ad1e44b2a71e85b81a6b2666f948381b"
   },
   "schema_version": 1,
-  "source_commit": "92f8e829498a8d2f88ed80a119ea0c2711c81903",
+  "source_commit": "03eada0032b1cf1b2f1788bbc27c1916813d8c3a",
   "source_files": {
     "analysis_scripts/combat_rl_abstaining_residual_head.py": "ba81fa236d7bba316525556a5e2c19d8dab04bf9db0e39cf4a744483bc45a2d9",
-    "analysis_scripts/combat_rl_abstaining_residual_successor.py": "74c92f895d62bc27344c7b59e17b347aae830d7b9d7bf170c14d8d1e49c7cf6d",
+    "analysis_scripts/combat_rl_abstaining_residual_successor.py": "9b0d938257b48145a61aead56bab39d3ad1e44b2a71e85b81a6b2666f948381b",
     "analysis_scripts/combat_rl_candidate_callability_successor.py": "f82eed7ddeed90975312f8224d683ca4127eca32d595cd59aed05edc4982acf0",
     "analysis_scripts/combat_rl_dropout_update_ablation.py": "1a211bcb3f8e3bd3d8b972704c424eb0a42ef8d1a38ce4b4ef5e314dbdf6f2ef",
     "analysis_scripts/combat_rl_inventory_embedding_successor.py": "1c1c57e2591c6d00e4b32e560eb55a33b8218c47339e8796666fa50c17cdf9b0",
