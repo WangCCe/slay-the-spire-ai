@@ -1,11 +1,11 @@
 ## 1. Action-Relative Model
 
-- [ ] 1.1 Add regressions and validation for expanding every supported non-guard branch into an exact action-relative example.
-- [ ] 1.2 Implement the frozen state-action scorer, constrained abstaining selection, parent-freeze checks, and exact development-artifact roundtrip.
+- [x] 1.1 Add regressions and validation for expanding every supported non-guard branch into an exact action-relative example.
+- [x] 1.2 Implement the frozen state-action scorer, constrained abstaining selection, parent-freeze checks, and exact development-artifact roundtrip.
 
 ## 2. Fixed Training
 
-- [ ] 2.1 Add a source-bound fixed-fit runner with held-out value, ranking, calibration, selection, support, latency, and offline-integrity reporting.
+- [x] 2.1 Add a source-bound fixed-fit runner with held-out value, ranking, calibration, selection, support, latency, and offline-integrity reporting.
 - [ ] 2.2 Commit and push one immutable training registration, execute the fixed CPU fit exactly once, and publish the bounded artifact and report without tuning or retry.
 
 ## 3. Fresh Policy Decision
