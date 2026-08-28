@@ -13,10 +13,10 @@
 ## 3. Training And Decision
 
 - [x] 3.1 Run focused tests and strict OpenSpec validation, then commit the complete source recipe
-- [ ] 3.2 Execute the 4,096-update item-semantic ablation once without native, LightSTS, CommunicationMod, or gameplay
-- [ ] 3.3 Publish the fixed development decision without retraining, threshold changes, seed changes, or sweep
+- [x] 3.2 Execute the 4,096-update item-semantic ablation once without native, LightSTS, CommunicationMod, or gameplay
+- [x] 3.3 Publish the fixed development decision without retraining, threshold changes, seed changes, or sweep
 
 ## 4. Verification And Closure
 
-- [ ] 4.1 Run exactly one timed commit gate for the completed source boundary
-- [ ] 4.2 Sync and archive the change, commit the evidence boundary, and push master
+- [x] 4.1 Run exactly one timed commit gate for the completed source boundary
+- [x] 4.2 Sync and archive the change, commit the evidence boundary, and push master
