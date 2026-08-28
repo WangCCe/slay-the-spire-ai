@@ -20,5 +20,5 @@
 
 - [x] 4.1 Run focused pytest with a scoped system-temp basetemp and run the isolated mechanism smoke twice
 - [x] 4.2 Run strict OpenSpec validation, diff checks, and the optimized commit gate at the completed capability boundary
-- [ ] 4.3 Commit and push the experiment implementation without production weights or raw replay artifacts
-- [ ] 4.4 On mechanism pass, prepare a separate immutable fresh-cohort registration before any live collection or policy-bearing fit
+- [x] 4.3 Commit and push the experiment implementation without production weights or raw replay artifacts
+- [x] 4.4 On mechanism pass, prepare a separate immutable fresh-cohort registration before any live collection or policy-bearing fit
