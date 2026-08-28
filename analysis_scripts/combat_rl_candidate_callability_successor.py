@@ -182,29 +182,24 @@ def _validate_row_identity(
         raise ValueError(f"inconsistent proposal identity at source row {index}")
 
 
-def _validate_successor_identity(
+def _successor_identity_matches(
     replay: dict[str, torch.Tensor],
     source_end: int,
     next_decision: int,
-) -> None:
+) -> bool:
     pairs = zip(_NEXT_STATE_FIELDS, _STATE_FIELDS)
     for next_field, state_field in pairs:
         if not torch.equal(
             replay[next_field][source_end],
             replay[state_field][next_decision],
         ):
-            raise ValueError(
-                "candidate decision successor identity mismatch: "
-                f"{source_end} -> {next_decision} ({state_field})"
-            )
-    if not torch.equal(
-        replay["next_action_masks"][source_end],
-        replay["action_masks"][next_decision],
-    ):
-        raise ValueError(
-            "candidate decision successor action mask mismatch: "
-            f"{source_end} -> {next_decision}"
+            return False
+    return bool(
+        torch.equal(
+            replay["next_action_masks"][source_end],
+            replay["action_masks"][next_decision],
         )
+    )
 
 
 def build_candidate_decision_spans(
@@ -229,12 +224,14 @@ def build_candidate_decision_spans(
 
     starts: list[int] = []
     ends: list[int] = []
+    next_decisions: list[int] = []
     group_indices: list[int] = []
     span_lengths: list[int] = []
     accumulated_rewards: list[float] = []
     bootstrap_discounts: list[float] = []
     uncontrolled_prefix_count = 0
     attached_no_proposal_count = 0
+    settled_bootstrap_boundary_count = 0
 
     proposals = source["proposed_action_indices"]
     rewards = source["rewards"]
@@ -269,11 +266,17 @@ def build_candidate_decision_spans(
             if next_decision is not None:
                 if terminal:
                     raise ValueError("terminal source row precedes a decision in one combat")
-                _validate_successor_identity(source, source_end, next_decision)
+                if not _successor_identity_matches(
+                    source, source_end, next_decision
+                ):
+                    settled_bootstrap_boundary_count += 1
             elif not terminal:
                 raise ValueError("combat decision span does not end at terminal")
             starts.append(decision_start)
             ends.append(source_end)
+            next_decisions.append(
+                next_decision if next_decision is not None else -1
+            )
             group_indices.append(group_index)
             span_lengths.append(span_length)
             accumulated_rewards.append(reward)
@@ -282,6 +285,7 @@ def build_candidate_decision_spans(
 
     start_indices = torch.tensor(starts, dtype=torch.int64)
     end_indices = torch.tensor(ends, dtype=torch.int64)
+    next_decision_indices = torch.tensor(next_decisions, dtype=torch.int64)
     if starts:
         spans = {
             field: source[field].index_select(0, start_indices)
@@ -293,12 +297,31 @@ def build_candidate_decision_spans(
                 "proposed_action_indices",
             )
         }
-        spans.update(
-            {
-                field: source[field].index_select(0, end_indices)
-                for field in (*_NEXT_STATE_FIELDS, "next_action_masks", "dones")
-            }
-        )
+        spans["dones"] = source["dones"].index_select(0, end_indices)
+        bootstrap_rows = torch.where(next_decision_indices.ge(0))[0]
+        for next_field, state_field in zip(_NEXT_STATE_FIELDS, _STATE_FIELDS):
+            values = source[next_field].index_select(0, end_indices).clone()
+            if bootstrap_rows.numel():
+                values.index_copy_(
+                    0,
+                    bootstrap_rows,
+                    source[state_field].index_select(
+                        0, next_decision_indices[bootstrap_rows]
+                    ),
+                )
+            spans[next_field] = values
+        next_masks = source["next_action_masks"].index_select(
+            0, end_indices
+        ).clone()
+        if bootstrap_rows.numel():
+            next_masks.index_copy_(
+                0,
+                bootstrap_rows,
+                source["action_masks"].index_select(
+                    0, next_decision_indices[bootstrap_rows]
+                ),
+            )
+        spans["next_action_masks"] = next_masks
     else:
         spans = {
             field: source[field][:0]
@@ -321,6 +344,7 @@ def build_candidate_decision_spans(
             ),
             "source_start_indices": start_indices,
             "source_end_indices": end_indices,
+            "next_decision_indices": next_decision_indices,
             "span_lengths": torch.tensor(span_lengths, dtype=torch.int64),
             "combat_group_indices": torch.tensor(group_indices, dtype=torch.int64),
         }
@@ -345,6 +369,7 @@ def build_candidate_decision_spans(
         "changed_decision_count": changed_count,
         "attached_no_proposal_count": attached_no_proposal_count,
         "uncontrolled_prefix_count": uncontrolled_prefix_count,
+        "settled_bootstrap_boundary_count": settled_bootstrap_boundary_count,
         "source_row_reconciliation_count": reconciliation_count,
         "minimum_span_length": min(span_lengths) if span_lengths else 0,
         "maximum_span_length": max(span_lengths) if span_lengths else 0,

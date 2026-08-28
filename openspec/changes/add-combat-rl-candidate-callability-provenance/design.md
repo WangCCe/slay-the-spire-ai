@@ -88,6 +88,13 @@ then occurs several source transitions later. The offline builder therefore:
 5. records source-span length and a per-row bootstrap multiplier
    `gamma ** span_length`.
 
+The next proposal-bearing row's current state and action mask are the
+nonterminal bootstrap tensors. CommunicationMod may persist an immediate
+post-action `next_*` snapshot before card effects, enemy turns, or draws
+settle; that snapshot can legitimately differ from the next candidate-decision
+state. The builder reports such settled boundaries but does not bootstrap from
+the pre-settlement snapshot.
+
 No-proposal prefixes before the first candidate decision remain diagnostic and
 are not attached to a later action. Unknown rows fail construction. The builder
 must reconcile every source row as proposal-bearing, attached takeover,

@@ -115,6 +115,26 @@ def test_takeover_rows_are_folded_into_preceding_decision_span():
     assert telemetry["changed_decision_count"] == 1
 
 
+def test_nonterminal_span_bootstraps_from_next_candidate_decision_state():
+    replay = _replay(
+        proposals=[0, -1, 1],
+        actions=[0, 2, 1],
+    )
+    replay["next_continuous"][1] = -99.0
+    replay["next_card_ids"][1] = -99
+    replay["next_potion_ids"][1] = -99
+    replay["next_relic_ids"][1] = -99
+    replay["next_action_masks"][1] = torch.tensor([True, False, False])
+
+    spans, _ = build_candidate_decision_spans(replay, gamma=0.9)
+
+    assert spans["next_continuous"][0].tolist() == [2.0]
+    assert spans["next_card_ids"][0].tolist() == [2]
+    assert spans["next_potion_ids"][0].tolist() == [12]
+    assert spans["next_relic_ids"][0].tolist() == [22]
+    assert spans["next_action_masks"][0].tolist() == [True, True, True]
+
+
 def test_terminal_takeover_span_accumulates_without_bootstrap():
     spans, telemetry = build_candidate_decision_spans(
         _replay(proposals=[0, -1], actions=[0, 2]),

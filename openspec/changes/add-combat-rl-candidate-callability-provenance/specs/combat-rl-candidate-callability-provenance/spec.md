@@ -45,6 +45,10 @@ The offline builder SHALL convert terminal-delimited source replay into candidat
 - **WHEN** a proposal-bearing row is followed by one or more no-proposal rows before the next proposal
 - **THEN** the builder emits one candidate-decision sample with accumulated discounted reward, source span length, and bootstrap multiplier `gamma ** span_length`
 
+#### Scenario: Immediate successor has not settled
+- **WHEN** the last source row's stored `next_*` snapshot differs from the next proposal-bearing row after game effects settle
+- **THEN** the nonterminal span bootstraps from the next proposal-bearing row's current state and action mask and reports the settled boundary
+
 #### Scenario: Takeover reaches terminal
 - **WHEN** no later proposal occurs before the source combat terminates
 - **THEN** the span includes all remaining takeover rewards and has no bootstrap value
