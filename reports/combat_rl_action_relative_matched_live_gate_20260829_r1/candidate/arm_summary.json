@@ -1,0 +1,90 @@
+{
+  "schema_version": 1,
+  "arm": "candidate",
+  "gate_id": "combat-rl-action-relative-matched-live-gate-20260829-r1",
+  "completion": {
+    "completed_games": 10,
+    "expected_games": 10,
+    "marker_count": 10,
+    "run_file_count": 10,
+    "session_count": 1
+  },
+  "outcomes": {
+    "floors": [
+      16,
+      33,
+      28,
+      16,
+      33,
+      16,
+      8,
+      20,
+      33,
+      16
+    ],
+    "total_floors": 219.0,
+    "victories": 0,
+    "act_2_entries": 5,
+    "act_2_boss_reaches": 3,
+    "act_3_entries": 0,
+    "killed_by": [
+      "The Guardian",
+      "Automaton",
+      "Snake Plant",
+      "The Guardian",
+      "Collector",
+      "Hexaghost",
+      "Gremlin Gang",
+      "Masked Bandits",
+      "Champ",
+      "Slime Boss"
+    ]
+  },
+  "candidate_trace": {
+    "event_count": 804,
+    "decision_count": 799,
+    "eligible_count": 415,
+    "intervention_intent_count": 106,
+    "takeover_count": 73,
+    "veto_counts": {
+      "candidate_abstained": 693,
+      "mandatory_guard:act1_boss_no_pressure": 3,
+      "mandatory_guard:single_card_lethal": 5,
+      "mandatory_guard:survival": 2,
+      "non_card_action": 23,
+      "candidate_applied": 73
+    },
+    "support_reason_counts": {
+      "guard_not_replaced": 49,
+      "parent_not_end_turn": 335,
+      "eligible": 415
+    },
+    "runtime_error_count": 0,
+    "candidate_illegal_count": 0,
+    "candidate_forbidden_count": 0,
+    "selected_final_mismatch_count": 0,
+    "final_action_illegal_count": 0,
+    "decision_sequence_valid": true,
+    "registration_sha256_values": [
+      "6f377a4aa50871ab9304d65fd349525ca3d6db530976f6b7fa76510a8ee8838c"
+    ],
+    "source_commit_values": [
+      "47863b735f5ea19028763f5e79e624b9bd0acec6"
+    ],
+    "latency_ms": {
+      "count": 415,
+      "median": 2.445499994792044,
+      "p95": 5.72049999027513,
+      "maximum": 65.51319998106919,
+      "registered_p95_ceiling": 20.0
+    }
+  },
+  "integrity": {
+    "no_runtime_errors": true,
+    "no_new_communication_failure_lines": true,
+    "candidate_config_semantically_equal_after_java_comment_rewrite": true,
+    "production_config_restored_exactly": true,
+    "all_registered_seeds_consumed_in_order": true
+  },
+  "decision": "candidate_arm_complete_ready_for_registered_parent_arm"
+}

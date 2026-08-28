@@ -1,0 +1,51 @@
+{
+  "schema_version": 1,
+  "arm": "parent",
+  "gate_id": "combat-rl-action-relative-matched-live-gate-20260829-r1",
+  "completion": {
+    "completed_games": 10,
+    "expected_games": 10,
+    "marker_count": 10,
+    "run_file_count": 10
+  },
+  "outcomes": {
+    "floors": [
+      16,
+      33,
+      28,
+      16,
+      33,
+      25,
+      8,
+      21,
+      33,
+      16
+    ],
+    "total_floors": 229.0,
+    "victories": 0,
+    "act_2_entries": 6,
+    "act_2_boss_reaches": 3,
+    "act_3_entries": 0,
+    "killed_by": [
+      "The Guardian",
+      "Automaton",
+      "Snake Plant",
+      "The Guardian",
+      "Collector",
+      "Chosen and Byrds",
+      "Gremlin Gang",
+      "3 Byrds",
+      "Champ",
+      "Slime Boss"
+    ]
+  },
+  "integrity": {
+    "no_new_communication_failure_lines": true,
+    "no_action_relative_candidate_log_events": true,
+    "candidate_trace_sha256_unchanged": true,
+    "parent_config_semantically_equal_after_java_comment_rewrite": true,
+    "production_config_restored_exactly": true,
+    "all_registered_seeds_consumed_in_order": true
+  },
+  "decision": "parent_arm_complete_ready_for_paired_reconciliation"
+}

@@ -28,7 +28,12 @@
 
 ## 5. Live Execution And Decision
 
-- [ ] 5.1 Run the candidate arm for exactly ten completed games, preserve trace/log/run evidence, and restore the exact production configuration.
-- [ ] 5.2 Run the production-r16 parent arm on the identical seed order, preserve evidence, and restore the exact production configuration.
-- [ ] 5.3 Reconcile paired floors, progression, victories, seeds, safe takeovers, vetoes, legal final actions, logs, errors, and restoration against every fixed condition.
-- [ ] 5.4 Publish the qualification/no-go decision without tuning or automatic promotion; sync and archive the completed change and commit/push compact evidence.
+- [x] 5.1 Run the candidate arm for exactly ten completed games, preserve trace/log/run evidence, and restore the exact production configuration.
+- [x] 5.2 Run the production-r16 parent arm on the identical seed order, preserve evidence, and restore the exact production configuration.
+- [x] 5.3 Reconcile paired floors, progression, victories, seeds, safe takeovers, vetoes, legal final actions, logs, errors, and restoration against every fixed condition.
+- [x] 5.4 Publish the qualification/no-go decision without tuning or automatic promotion; sync and archive the completed change and commit/push compact evidence.
+
+  The candidate completed both registered arms and every technical condition,
+  but lost two paired floor comparisons, reached 219 total floors versus the
+  parent's 229, and entered Act 2 five times versus six. Production r16 remains
+  authoritative; this cohort is closed without promotion, tuning, or retry.
