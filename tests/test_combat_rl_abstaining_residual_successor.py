@@ -30,6 +30,10 @@ from analysis_scripts.combat_rl_abstaining_residual_successor import (
     _validate_collection_report,
     _validate_registration,
     _validate_runner_binding,
+    _validate_parent_state_identity,
+)
+from analysis_scripts.combat_rl_inventory_embedding_successor import (
+    _state_dict_sha256 as _training_state_dict_sha256,
 )
 from spirecomm.ai.rl.v2.network import create_dqn_v2
 
@@ -284,6 +288,24 @@ def test_round_trip_failure_is_fatal_before_publication():
     _require_round_trip_exact(True)
     with pytest.raises(RuntimeError, match="serialization round trip differs"):
         _require_round_trip_exact(False)
+
+
+def test_collection_parent_identity_uses_training_checkpoint_hash_contract():
+    torch.manual_seed(29)
+    parent = create_dqn_v2(device="cpu", **METADATA).state_dict()
+    observed = _validate_parent_state_identity(
+        parent,
+        copy.deepcopy(parent),
+        expected_training_state_sha256=_training_state_dict_sha256(parent),
+    )
+    assert observed == _training_state_dict_sha256(parent)
+
+    with pytest.raises(ValueError, match="collection report parent state"):
+        _validate_parent_state_identity(
+            parent,
+            copy.deepcopy(parent),
+            expected_training_state_sha256="0" * 64,
+        )
 
 
 def test_residual_fit_updates_only_correction_with_balanced_batches():

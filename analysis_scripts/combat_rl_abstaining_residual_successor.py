@@ -48,6 +48,7 @@ from combat_rl_candidate_callability_successor import (  # noqa: E402
 from combat_rl_inventory_embedding_successor import (  # noqa: E402
     _atomic_torch_save,
     _sha256,
+    _state_dict_sha256 as _training_state_dict_sha256,
 )
 from combat_rl_provenance_aware_successor import _summary  # noqa: E402
 from spirecomm.ai.rl.v2.action_space import END_TURN_ACTION  # noqa: E402
@@ -772,6 +773,20 @@ def _require_round_trip_exact(exact: bool) -> None:
         raise RuntimeError("residual adapter serialization round trip differs")
 
 
+def _validate_parent_state_identity(
+    parent_state: Mapping[str, torch.Tensor],
+    target_state: Mapping[str, torch.Tensor],
+    *,
+    expected_training_state_sha256: str,
+) -> str:
+    if state_dict_sha256(parent_state) != state_dict_sha256(target_state):
+        raise ValueError("training checkpoint parent and target differ")
+    observed = _training_state_dict_sha256(parent_state)
+    if observed != expected_training_state_sha256:
+        raise ValueError("collection report parent state identity changed")
+    return observed
+
+
 def run(args: argparse.Namespace) -> dict[str, Any]:
     runner_path = Path(__file__).resolve()
     _fixed_input_arguments(args)
@@ -840,13 +855,13 @@ def run(args: argparse.Namespace) -> dict[str, Any]:
     )
     parent_state = checkpoint["online_network_state_dict"]
     target_state = checkpoint["target_network_state_dict"]
-    parent_hash = state_dict_sha256(parent_state)
-    if parent_hash != state_dict_sha256(target_state):
-        raise ValueError("training checkpoint parent and target differ")
-    if parent_hash != collection_report["checkpoint"][
-        "online_state_dict_sha256"
-    ]:
-        raise ValueError("collection report parent state identity changed")
+    parent_hash = _validate_parent_state_identity(
+        parent_state,
+        target_state,
+        expected_training_state_sha256=collection_report["checkpoint"][
+            "online_state_dict_sha256"
+        ],
+    )
     spans, span_telemetry = build_candidate_decision_spans(replay, gamma=GAMMA)
     split = _split_candidate_spans(
         spans,
