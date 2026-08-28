@@ -1,0 +1,3115 @@
+{
+  "outcome_counts": {
+    "error": 0,
+    "failed": 0,
+    "passed": 4377,
+    "skipped": 26
+  },
+  "per_file": [
+    {
+      "duration_seconds": 11.367,
+      "file": "tests/test_noncombat_ope_estimate_artifacts.py",
+      "outcome_counts": {
+        "error": 0,
+        "failed": 0,
+        "passed": 9,
+        "skipped": 0
+      },
+      "test_count": 9
+    },
+    {
+      "duration_seconds": 9.41,
+      "file": "tests/test_noncombat_cross_fitted_hierarchical_learning.py",
+      "outcome_counts": {
+        "error": 0,
+        "failed": 0,
+        "passed": 16,
+        "skipped": 0
+      },
+      "test_count": 16
+    },
+    {
+      "duration_seconds": 7.632,
+      "file": "tests/test_noncombat_reachable_event_option_semantics.py",
+      "outcome_counts": {
+        "error": 0,
+        "failed": 0,
+        "passed": 21,
+        "skipped": 0
+      },
+      "test_count": 21
+    },
+    {
+      "duration_seconds": 5.944,
+      "file": "tests/test_restart_sts_modded_script.py",
+      "outcome_counts": {
+        "error": 0,
+        "failed": 0,
+        "passed": 6,
+        "skipped": 0
+      },
+      "test_count": 6
+    },
+    {
+      "duration_seconds": 5.744,
+      "file": "tests/test_ironclad_combat_guards.py",
+      "outcome_counts": {
+        "error": 0,
+        "failed": 0,
+        "passed": 629,
+        "skipped": 0
+      },
+      "test_count": 629
+    },
+    {
+      "duration_seconds": 4.985,
+      "file": "tests/test_noncombat_outcome_evidence_pool.py",
+      "outcome_counts": {
+        "error": 0,
+        "failed": 0,
+        "passed": 13,
+        "skipped": 0
+      },
+      "test_count": 13
+    },
+    {
+      "duration_seconds": 4.914,
+      "file": "tests/test_recover_sts_menu_flow_script.py",
+      "outcome_counts": {
+        "error": 0,
+        "failed": 0,
+        "passed": 8,
+        "skipped": 0
+      },
+      "test_count": 8
+    },
+    {
+      "duration_seconds": 4.592,
+      "file": "tests/test_noncombat_event_ranker_paired_trajectory_shadow.py",
+      "outcome_counts": {
+        "error": 0,
+        "failed": 0,
+        "passed": 9,
+        "skipped": 0
+      },
+      "test_count": 9
+    },
+    {
+      "duration_seconds": 4.234,
+      "file": "tests/test_noncombat_outcome_evidence_finalizer.py",
+      "outcome_counts": {
+        "error": 0,
+        "failed": 0,
+        "passed": 14,
+        "skipped": 0
+      },
+      "test_count": 14
+    },
+    {
+      "duration_seconds": 4.137,
+      "file": "tests/test_combat_lightspeed_checkpoint_interpolation.py",
+      "outcome_counts": {
+        "error": 0,
+        "failed": 0,
+        "passed": 10,
+        "skipped": 0
+      },
+      "test_count": 10
+    },
+    {
+      "duration_seconds": 3.968,
+      "file": "tests/test_main_runtime_errors.py",
+      "outcome_counts": {
+        "error": 0,
+        "failed": 0,
+        "passed": 42,
+        "skipped": 0
+      },
+      "test_count": 42
+    },
+    {
+      "duration_seconds": 3.958,
+      "file": "tests/test_noncombat_outcome_evidence_gate.py",
+      "outcome_counts": {
+        "error": 0,
+        "failed": 0,
+        "passed": 14,
+        "skipped": 0
+      },
+      "test_count": 14
+    },
+    {
+      "duration_seconds": 3.664,
+      "file": "tests/test_capture_sts_screenshot_script.py",
+      "outcome_counts": {
+        "error": 0,
+        "failed": 0,
+        "passed": 5,
+        "skipped": 0
+      },
+      "test_count": 5
+    },
+    {
+      "duration_seconds": 3.358,
+      "file": "tests/test_noncombat_policy_learning.py",
+      "outcome_counts": {
+        "error": 0,
+        "failed": 0,
+        "passed": 70,
+        "skipped": 0
+      },
+      "test_count": 70
+    },
+    {
+      "duration_seconds": 3.278,
+      "file": "tests/test_combat_lightspeed_production_candidate.py",
+      "outcome_counts": {
+        "error": 0,
+        "failed": 0,
+        "passed": 16,
+        "skipped": 0
+      },
+      "test_count": 16
+    },
+    {
+      "duration_seconds": 3.244,
+      "file": "tests/test_noncombat_card_scorer_optimizer.py",
+      "outcome_counts": {
+        "error": 0,
+        "failed": 0,
+        "passed": 4,
+        "skipped": 0
+      },
+      "test_count": 4
+    },
+    {
+      "duration_seconds": 3.217,
+      "file": "tests/test_noncombat_state_action_teacher_sufficiency_audit.py",
+      "outcome_counts": {
+        "error": 0,
+        "failed": 0,
+        "passed": 16,
+        "skipped": 0
+      },
+      "test_count": 16
+    },
+    {
+      "duration_seconds": 3.088,
+      "file": "tests/test_noncombat_structured_baseline_ranker_poc.py",
+      "outcome_counts": {
+        "error": 0,
+        "failed": 0,
+        "passed": 12,
+        "skipped": 0
+      },
+      "test_count": 12
+    },
+    {
+      "duration_seconds": 3.03,
+      "file": "tests/test_sim_divergence.py",
+      "outcome_counts": {
+        "error": 0,
+        "failed": 0,
+        "passed": 276,
+        "skipped": 0
+      },
+      "test_count": 276
+    },
+    {
+      "duration_seconds": 2.909,
+      "file": "tests/test_noncombat_card_acceptance_empirical_successor_registration.py",
+      "outcome_counts": {
+        "error": 0,
+        "failed": 0,
+        "passed": 16,
+        "skipped": 0
+      },
+      "test_count": 16
+    },
+    {
+      "duration_seconds": 2.809,
+      "file": "tests/test_bottled_policy_oracle.py",
+      "outcome_counts": {
+        "error": 0,
+        "failed": 0,
+        "passed": 8,
+        "skipped": 0
+      },
+      "test_count": 8
+    },
+    {
+      "duration_seconds": 2.715,
+      "file": "tests/test_rl_v2_latent_gated_live_shadow.py",
+      "outcome_counts": {
+        "error": 0,
+        "failed": 0,
+        "passed": 21,
+        "skipped": 0
+      },
+      "test_count": 21
+    },
+    {
+      "duration_seconds": 2.662,
+      "file": "tests/test_noncombat_card_margin_controlled_training.py",
+      "outcome_counts": {
+        "error": 0,
+        "failed": 0,
+        "passed": 8,
+        "skipped": 0
+      },
+      "test_count": 8
+    },
+    {
+      "duration_seconds": 2.615,
+      "file": "tests/test_timing_planner_guards.py",
+      "outcome_counts": {
+        "error": 0,
+        "failed": 0,
+        "passed": 70,
+        "skipped": 0
+      },
+      "test_count": 70
+    },
+    {
+      "duration_seconds": 2.524,
+      "file": "tests/test_noncombat_simulator_policy_validity.py",
+      "outcome_counts": {
+        "error": 0,
+        "failed": 0,
+        "passed": 17,
+        "skipped": 0
+      },
+      "test_count": 17
+    },
+    {
+      "duration_seconds": 2.464,
+      "file": "tests/test_noncombat_card_uplift_fresh_simulator_evaluation.py",
+      "outcome_counts": {
+        "error": 0,
+        "failed": 0,
+        "passed": 11,
+        "skipped": 0
+      },
+      "test_count": 11
+    },
+    {
+      "duration_seconds": 2.421,
+      "file": "tests/test_noncombat_action_family_counterfactual_audit.py",
+      "outcome_counts": {
+        "error": 0,
+        "failed": 0,
+        "passed": 19,
+        "skipped": 5
+      },
+      "test_count": 24
+    },
+    {
+      "duration_seconds": 1.869,
+      "file": "tests/test_combat_lightspeed_training_smoke.py",
+      "outcome_counts": {
+        "error": 0,
+        "failed": 0,
+        "passed": 70,
+        "skipped": 5
+      },
+      "test_count": 75
+    },
+    {
+      "duration_seconds": 1.814,
+      "file": "tests/test_noncombat_shop_candidate_value_baseline.py",
+      "outcome_counts": {
+        "error": 0,
+        "failed": 0,
+        "passed": 5,
+        "skipped": 0
+      },
+      "test_count": 5
+    },
+    {
+      "duration_seconds": 1.665,
+      "file": "tests/test_ironclad_card_reward_guards.py",
+      "outcome_counts": {
+        "error": 0,
+        "failed": 0,
+        "passed": 103,
+        "skipped": 0
+      },
+      "test_count": 103
+    },
+    {
+      "duration_seconds": 1.543,
+      "file": "tests/test_noncombat_ope_artifact_verifier.py",
+      "outcome_counts": {
+        "error": 0,
+        "failed": 0,
+        "passed": 10,
+        "skipped": 0
+      },
+      "test_count": 10
+    },
+    {
+      "duration_seconds": 1.537,
+      "file": "tests/test_audit_card_acceptance_objective_interventions.py",
+      "outcome_counts": {
+        "error": 0,
+        "failed": 0,
+        "passed": 37,
+        "skipped": 0
+      },
+      "test_count": 37
+    },
+    {
+      "duration_seconds": 1.519,
+      "file": "tests/test_noncombat_ope_estimation.py",
+      "outcome_counts": {
+        "error": 0,
+        "failed": 0,
+        "passed": 6,
+        "skipped": 0
+      },
+      "test_count": 6
+    },
+    {
+      "duration_seconds": 1.463,
+      "file": "tests/test_noncombat_current_bridge_diagnostic_smoke.py",
+      "outcome_counts": {
+        "error": 0,
+        "failed": 0,
+        "passed": 55,
+        "skipped": 0
+      },
+      "test_count": 55
+    },
+    {
+      "duration_seconds": 1.448,
+      "file": "tests/test_noncombat_card_counterfactual_uplift_residual_crossfit.py",
+      "outcome_counts": {
+        "error": 0,
+        "failed": 0,
+        "passed": 8,
+        "skipped": 0
+      },
+      "test_count": 8
+    },
+    {
+      "duration_seconds": 1.415,
+      "file": "tests/test_combat_rl_abstaining_residual_head.py",
+      "outcome_counts": {
+        "error": 0,
+        "failed": 0,
+        "passed": 5,
+        "skipped": 0
+      },
+      "test_count": 5
+    },
+    {
+      "duration_seconds": 1.405,
+      "file": "tests/test_run_test_gate.py",
+      "outcome_counts": {
+        "error": 0,
+        "failed": 0,
+        "passed": 52,
+        "skipped": 0
+      },
+      "test_count": 52
+    },
+    {
+      "duration_seconds": 1.306,
+      "file": "tests/test_rl_v2_training_transitions.py",
+      "outcome_counts": {
+        "error": 0,
+        "failed": 0,
+        "passed": 56,
+        "skipped": 0
+      },
+      "test_count": 56
+    },
+    {
+      "duration_seconds": 1.207,
+      "file": "tests/test_noncombat_exploration_evidence.py",
+      "outcome_counts": {
+        "error": 0,
+        "failed": 0,
+        "passed": 49,
+        "skipped": 0
+      },
+      "test_count": 49
+    },
+    {
+      "duration_seconds": 1.168,
+      "file": "tests/test_map_routing_safety.py",
+      "outcome_counts": {
+        "error": 0,
+        "failed": 0,
+        "passed": 136,
+        "skipped": 0
+      },
+      "test_count": 136
+    },
+    {
+      "duration_seconds": 1.092,
+      "file": "tests/test_study_handshake.py",
+      "outcome_counts": {
+        "error": 0,
+        "failed": 0,
+        "passed": 25,
+        "skipped": 0
+      },
+      "test_count": 25
+    },
+    {
+      "duration_seconds": 1.04,
+      "file": "tests/test_combat_lightspeed_production_shadow.py",
+      "outcome_counts": {
+        "error": 0,
+        "failed": 0,
+        "passed": 8,
+        "skipped": 0
+      },
+      "test_count": 8
+    },
+    {
+      "duration_seconds": 1.035,
+      "file": "tests/test_offline_decision_comparator.py",
+      "outcome_counts": {
+        "error": 0,
+        "failed": 0,
+        "passed": 18,
+        "skipped": 0
+      },
+      "test_count": 18
+    },
+    {
+      "duration_seconds": 1.006,
+      "file": "tests/test_noncombat_shop_counterfactual_corpus_expansion.py",
+      "outcome_counts": {
+        "error": 0,
+        "failed": 0,
+        "passed": 4,
+        "skipped": 0
+      },
+      "test_count": 4
+    },
+    {
+      "duration_seconds": 0.977,
+      "file": "tests/test_noncombat_state_conditioned_collapse_audit.py",
+      "outcome_counts": {
+        "error": 0,
+        "failed": 0,
+        "passed": 23,
+        "skipped": 0
+      },
+      "test_count": 23
+    },
+    {
+      "duration_seconds": 0.961,
+      "file": "tests/test_noncombat_cross_fitted_hierarchical_learning_preservation.py",
+      "outcome_counts": {
+        "error": 0,
+        "failed": 0,
+        "passed": 2,
+        "skipped": 0
+      },
+      "test_count": 2
+    },
+    {
+      "duration_seconds": 0.95,
+      "file": "tests/test_noncombat_total_event_native_compatibility.py",
+      "outcome_counts": {
+        "error": 0,
+        "failed": 0,
+        "passed": 25,
+        "skipped": 0
+      },
+      "test_count": 25
+    },
+    {
+      "duration_seconds": 0.898,
+      "file": "tests/test_phase5_unit_tests.py",
+      "outcome_counts": {
+        "error": 0,
+        "failed": 0,
+        "passed": 9,
+        "skipped": 0
+      },
+      "test_count": 9
+    },
+    {
+      "duration_seconds": 0.875,
+      "file": "tests/test_action_relative_live_shadow.py",
+      "outcome_counts": {
+        "error": 0,
+        "failed": 0,
+        "passed": 17,
+        "skipped": 0
+      },
+      "test_count": 17
+    },
+    {
+      "duration_seconds": 0.809,
+      "file": "tests/test_noncombat_route_counterfactual_ranking.py",
+      "outcome_counts": {
+        "error": 0,
+        "failed": 0,
+        "passed": 11,
+        "skipped": 0
+      },
+      "test_count": 11
+    },
+    {
+      "duration_seconds": 0.783,
+      "file": "tests/test_noncombat_cross_validated_shop_ensemble.py",
+      "outcome_counts": {
+        "error": 0,
+        "failed": 0,
+        "passed": 8,
+        "skipped": 0
+      },
+      "test_count": 8
+    },
+    {
+      "duration_seconds": 0.775,
+      "file": "tests/test_noncombat_event_semantics_coverage_audit.py",
+      "outcome_counts": {
+        "error": 0,
+        "failed": 0,
+        "passed": 28,
+        "skipped": 0
+      },
+      "test_count": 28
+    },
+    {
+      "duration_seconds": 0.747,
+      "file": "tests/test_noncombat_study_feasibility.py",
+      "outcome_counts": {
+        "error": 0,
+        "failed": 0,
+        "passed": 14,
+        "skipped": 0
+      },
+      "test_count": 14
+    },
+    {
+      "duration_seconds": 0.729,
+      "file": "tests/test_noncombat_rl_decision_loop.py",
+      "outcome_counts": {
+        "error": 0,
+        "failed": 0,
+        "passed": 37,
+        "skipped": 0
+      },
+      "test_count": 37
+    },
+    {
+      "duration_seconds": 0.725,
+      "file": "tests/test_damage_fallback_guards.py",
+      "outcome_counts": {
+        "error": 0,
+        "failed": 0,
+        "passed": 201,
+        "skipped": 0
+      },
+      "test_count": 201
+    },
+    {
+      "duration_seconds": 0.704,
+      "file": "tests/test_rl_package_import_guards.py",
+      "outcome_counts": {
+        "error": 0,
+        "failed": 0,
+        "passed": 3,
+        "skipped": 0
+      },
+      "test_count": 3
+    },
+    {
+      "duration_seconds": 0.659,
+      "file": "tests/test_noncombat_ope_readiness.py",
+      "outcome_counts": {
+        "error": 0,
+        "failed": 0,
+        "passed": 35,
+        "skipped": 0
+      },
+      "test_count": 35
+    },
+    {
+      "duration_seconds": 0.635,
+      "file": "tests/test_action_relative_live_candidate.py",
+      "outcome_counts": {
+        "error": 0,
+        "failed": 0,
+        "passed": 25,
+        "skipped": 0
+      },
+      "test_count": 25
+    },
+    {
+      "duration_seconds": 0.624,
+      "file": "tests/test_intent_helper_usage.py",
+      "outcome_counts": {
+        "error": 0,
+        "failed": 0,
+        "passed": 2,
+        "skipped": 0
+      },
+      "test_count": 2
+    },
+    {
+      "duration_seconds": 0.609,
+      "file": "tests/test_noncombat_formal_reward_contract.py",
+      "outcome_counts": {
+        "error": 0,
+        "failed": 0,
+        "passed": 16,
+        "skipped": 0
+      },
+      "test_count": 16
+    },
+    {
+      "duration_seconds": 0.593,
+      "file": "tests/test_noncombat_simulator_training_smoke.py",
+      "outcome_counts": {
+        "error": 0,
+        "failed": 0,
+        "passed": 26,
+        "skipped": 1
+      },
+      "test_count": 27
+    },
+    {
+      "duration_seconds": 0.522,
+      "file": "tests/test_noncombat_baseline_floor_readiness.py",
+      "outcome_counts": {
+        "error": 0,
+        "failed": 0,
+        "passed": 10,
+        "skipped": 0
+      },
+      "test_count": 10
+    },
+    {
+      "duration_seconds": 0.518,
+      "file": "tests/test_noncombat_current_relative_shop_ranking.py",
+      "outcome_counts": {
+        "error": 0,
+        "failed": 0,
+        "passed": 4,
+        "skipped": 0
+      },
+      "test_count": 4
+    },
+    {
+      "duration_seconds": 0.518,
+      "file": "tests/test_noncombat_reachable_event_native_compatibility.py",
+      "outcome_counts": {
+        "error": 0,
+        "failed": 0,
+        "passed": 17,
+        "skipped": 0
+      },
+      "test_count": 17
+    },
+    {
+      "duration_seconds": 0.513,
+      "file": "tests/test_combat_lightspeed_calibration.py",
+      "outcome_counts": {
+        "error": 0,
+        "failed": 0,
+        "passed": 4,
+        "skipped": 0
+      },
+      "test_count": 4
+    },
+    {
+      "duration_seconds": 0.49,
+      "file": "tests/test_noncombat_event_option_ranker_shadow_evaluation.py",
+      "outcome_counts": {
+        "error": 0,
+        "failed": 0,
+        "passed": 4,
+        "skipped": 0
+      },
+      "test_count": 4
+    },
+    {
+      "duration_seconds": 0.474,
+      "file": "tests/test_noncombat_ope_calibration.py",
+      "outcome_counts": {
+        "error": 0,
+        "failed": 0,
+        "passed": 9,
+        "skipped": 0
+      },
+      "test_count": 9
+    },
+    {
+      "duration_seconds": 0.467,
+      "file": "tests/test_combat_rl_stratified_provenance_successor.py",
+      "outcome_counts": {
+        "error": 0,
+        "failed": 0,
+        "passed": 4,
+        "skipped": 0
+      },
+      "test_count": 4
+    },
+    {
+      "duration_seconds": 0.465,
+      "file": "tests/test_noncombat_formal_rl_readiness_audit.py",
+      "outcome_counts": {
+        "error": 0,
+        "failed": 0,
+        "passed": 9,
+        "skipped": 0
+      },
+      "test_count": 9
+    },
+    {
+      "duration_seconds": 0.46,
+      "file": "tests/test_adaptive_route_candidate_benchmark.py",
+      "outcome_counts": {
+        "error": 0,
+        "failed": 0,
+        "passed": 31,
+        "skipped": 0
+      },
+      "test_count": 31
+    },
+    {
+      "duration_seconds": 0.433,
+      "file": "tests/test_audit_cross_fitted_baseline_support.py",
+      "outcome_counts": {
+        "error": 0,
+        "failed": 0,
+        "passed": 34,
+        "skipped": 0
+      },
+      "test_count": 34
+    },
+    {
+      "duration_seconds": 0.423,
+      "file": "tests/test_combat_rl_action_relative_uncertainty_ensemble_fit.py",
+      "outcome_counts": {
+        "error": 0,
+        "failed": 0,
+        "passed": 13,
+        "skipped": 0
+      },
+      "test_count": 13
+    },
+    {
+      "duration_seconds": 0.384,
+      "file": "tests/test_rl_v2_latent_gated_live_candidate.py",
+      "outcome_counts": {
+        "error": 0,
+        "failed": 0,
+        "passed": 16,
+        "skipped": 0
+      },
+      "test_count": 16
+    },
+    {
+      "duration_seconds": 0.354,
+      "file": "tests/test_combat_rl_guards.py",
+      "outcome_counts": {
+        "error": 0,
+        "failed": 0,
+        "passed": 177,
+        "skipped": 0
+      },
+      "test_count": 177
+    },
+    {
+      "duration_seconds": 0.345,
+      "file": "tests/test_noncombat_exploration_runtime.py",
+      "outcome_counts": {
+        "error": 0,
+        "failed": 0,
+        "passed": 22,
+        "skipped": 0
+      },
+      "test_count": 22
+    },
+    {
+      "duration_seconds": 0.337,
+      "file": "tests/test_combat_rl_latent_gated_candidate_fit.py",
+      "outcome_counts": {
+        "error": 0,
+        "failed": 0,
+        "passed": 37,
+        "skipped": 0
+      },
+      "test_count": 37
+    },
+    {
+      "duration_seconds": 0.302,
+      "file": "tests/test_combat_lightspeed_replay_distribution_calibration.py",
+      "outcome_counts": {
+        "error": 0,
+        "failed": 0,
+        "passed": 37,
+        "skipped": 0
+      },
+      "test_count": 37
+    },
+    {
+      "duration_seconds": 0.298,
+      "file": "tests/test_action_relative_conformal_margin.py",
+      "outcome_counts": {
+        "error": 0,
+        "failed": 0,
+        "passed": 3,
+        "skipped": 0
+      },
+      "test_count": 3
+    },
+    {
+      "duration_seconds": 0.291,
+      "file": "tests/test_monster_database_guards.py",
+      "outcome_counts": {
+        "error": 0,
+        "failed": 0,
+        "passed": 51,
+        "skipped": 0
+      },
+      "test_count": 51
+    },
+    {
+      "duration_seconds": 0.29,
+      "file": "tests/test_live_batch_diagnostics.py",
+      "outcome_counts": {
+        "error": 0,
+        "failed": 0,
+        "passed": 5,
+        "skipped": 0
+      },
+      "test_count": 5
+    },
+    {
+      "duration_seconds": 0.284,
+      "file": "tests/test_noncombat_exploration_persistence.py",
+      "outcome_counts": {
+        "error": 0,
+        "failed": 0,
+        "passed": 18,
+        "skipped": 0
+      },
+      "test_count": 18
+    },
+    {
+      "duration_seconds": 0.28,
+      "file": "tests/test_combat_rl_lightspeed_guard_transfer_poc.py",
+      "outcome_counts": {
+        "error": 0,
+        "failed": 0,
+        "passed": 5,
+        "skipped": 0
+      },
+      "test_count": 5
+    },
+    {
+      "duration_seconds": 0.279,
+      "file": "tests/test_combat_rl_latent_gated_live_shadow_summary.py",
+      "outcome_counts": {
+        "error": 0,
+        "failed": 0,
+        "passed": 14,
+        "skipped": 0
+      },
+      "test_count": 14
+    },
+    {
+      "duration_seconds": 0.274,
+      "file": "tests/test_run_diagnostics.py",
+      "outcome_counts": {
+        "error": 0,
+        "failed": 0,
+        "passed": 6,
+        "skipped": 0
+      },
+      "test_count": 6
+    },
+    {
+      "duration_seconds": 0.262,
+      "file": "tests/test_combat_lightspeed_frozen_candidate_comparison.py",
+      "outcome_counts": {
+        "error": 0,
+        "failed": 0,
+        "passed": 7,
+        "skipped": 0
+      },
+      "test_count": 7
+    },
+    {
+      "duration_seconds": 0.248,
+      "file": "tests/test_public_sts_run_analysis.py",
+      "outcome_counts": {
+        "error": 0,
+        "failed": 0,
+        "passed": 3,
+        "skipped": 0
+      },
+      "test_count": 3
+    },
+    {
+      "duration_seconds": 0.235,
+      "file": "tests/test_noncombat_exploration.py",
+      "outcome_counts": {
+        "error": 0,
+        "failed": 0,
+        "passed": 26,
+        "skipped": 0
+      },
+      "test_count": 26
+    },
+    {
+      "duration_seconds": 0.23,
+      "file": "tests/test_noncombat_large_corpus_card_uplift_residual_audit_runner.py",
+      "outcome_counts": {
+        "error": 0,
+        "failed": 0,
+        "passed": 8,
+        "skipped": 0
+      },
+      "test_count": 8
+    },
+    {
+      "duration_seconds": 0.229,
+      "file": "tests/test_noncombat_card_counterfactual_corpus_expansion_runner.py",
+      "outcome_counts": {
+        "error": 0,
+        "failed": 0,
+        "passed": 13,
+        "skipped": 0
+      },
+      "test_count": 13
+    },
+    {
+      "duration_seconds": 0.223,
+      "file": "tests/test_summarize_sim_divergence_trace.py",
+      "outcome_counts": {
+        "error": 0,
+        "failed": 0,
+        "passed": 2,
+        "skipped": 0
+      },
+      "test_count": 2
+    },
+    {
+      "duration_seconds": 0.212,
+      "file": "tests/test_pre_request_qualification_vector_renderer.py",
+      "outcome_counts": {
+        "error": 0,
+        "failed": 0,
+        "passed": 1,
+        "skipped": 0
+      },
+      "test_count": 1
+    },
+    {
+      "duration_seconds": 0.211,
+      "file": "tests/test_noncombat_card_optimizer_replay.py",
+      "outcome_counts": {
+        "error": 0,
+        "failed": 0,
+        "passed": 4,
+        "skipped": 0
+      },
+      "test_count": 4
+    },
+    {
+      "duration_seconds": 0.184,
+      "file": "tests/test_noncombat_card_acceptance_objective.py",
+      "outcome_counts": {
+        "error": 0,
+        "failed": 0,
+        "passed": 21,
+        "skipped": 0
+      },
+      "test_count": 21
+    },
+    {
+      "duration_seconds": 0.18,
+      "file": "tests/test_action_relative_uncertainty_ensemble.py",
+      "outcome_counts": {
+        "error": 0,
+        "failed": 0,
+        "passed": 4,
+        "skipped": 0
+      },
+      "test_count": 4
+    },
+    {
+      "duration_seconds": 0.18,
+      "file": "tests/test_combat_rl_action_relative_advantage_residual_fit.py",
+      "outcome_counts": {
+        "error": 0,
+        "failed": 0,
+        "passed": 10,
+        "skipped": 0
+      },
+      "test_count": 10
+    },
+    {
+      "duration_seconds": 0.179,
+      "file": "tests/test_noncombat_large_corpus_card_uplift_residual.py",
+      "outcome_counts": {
+        "error": 0,
+        "failed": 0,
+        "passed": 10,
+        "skipped": 0
+      },
+      "test_count": 10
+    },
+    {
+      "duration_seconds": 0.177,
+      "file": "tests/test_validation_state.py",
+      "outcome_counts": {
+        "error": 0,
+        "failed": 0,
+        "passed": 2,
+        "skipped": 0
+      },
+      "test_count": 2
+    },
+    {
+      "duration_seconds": 0.171,
+      "file": "tests/test_card_uplift_shadow.py",
+      "outcome_counts": {
+        "error": 0,
+        "failed": 0,
+        "passed": 31,
+        "skipped": 0
+      },
+      "test_count": 31
+    },
+    {
+      "duration_seconds": 0.154,
+      "file": "tests/test_rl_v2_latent_gated_adapter.py",
+      "outcome_counts": {
+        "error": 0,
+        "failed": 0,
+        "passed": 14,
+        "skipped": 0
+      },
+      "test_count": 14
+    },
+    {
+      "duration_seconds": 0.151,
+      "file": "tests/test_combat_rl_inventory_embedding_successor.py",
+      "outcome_counts": {
+        "error": 0,
+        "failed": 0,
+        "passed": 5,
+        "skipped": 0
+      },
+      "test_count": 5
+    },
+    {
+      "duration_seconds": 0.144,
+      "file": "tests/test_combat_rl_abstaining_residual_successor.py",
+      "outcome_counts": {
+        "error": 0,
+        "failed": 0,
+        "passed": 8,
+        "skipped": 0
+      },
+      "test_count": 8
+    },
+    {
+      "duration_seconds": 0.141,
+      "file": "tests/test_action_relative_advantage_residual.py",
+      "outcome_counts": {
+        "error": 0,
+        "failed": 0,
+        "passed": 9,
+        "skipped": 0
+      },
+      "test_count": 9
+    },
+    {
+      "duration_seconds": 0.14,
+      "file": "tests/test_combat_rl_provenance_aware_successor.py",
+      "outcome_counts": {
+        "error": 0,
+        "failed": 0,
+        "passed": 4,
+        "skipped": 0
+      },
+      "test_count": 4
+    },
+    {
+      "duration_seconds": 0.138,
+      "file": "tests/test_noncombat_event_option_observation_contract.py",
+      "outcome_counts": {
+        "error": 0,
+        "failed": 0,
+        "passed": 20,
+        "skipped": 0
+      },
+      "test_count": 20
+    },
+    {
+      "duration_seconds": 0.136,
+      "file": "tests/test_combat_rl_n_step_return_candidate.py",
+      "outcome_counts": {
+        "error": 0,
+        "failed": 0,
+        "passed": 7,
+        "skipped": 0
+      },
+      "test_count": 7
+    },
+    {
+      "duration_seconds": 0.135,
+      "file": "tests/test_noncombat_card_only_native_baseline_rl_pilot_runner.py",
+      "outcome_counts": {
+        "error": 0,
+        "failed": 0,
+        "passed": 9,
+        "skipped": 0
+      },
+      "test_count": 9
+    },
+    {
+      "duration_seconds": 0.12,
+      "file": "tests/test_deck_analyzer.py",
+      "outcome_counts": {
+        "error": 0,
+        "failed": 0,
+        "passed": 18,
+        "skipped": 0
+      },
+      "test_count": 18
+    },
+    {
+      "duration_seconds": 0.12,
+      "file": "tests/test_noncombat_card_action_counterfactual_credit.py",
+      "outcome_counts": {
+        "error": 0,
+        "failed": 0,
+        "passed": 9,
+        "skipped": 0
+      },
+      "test_count": 9
+    },
+    {
+      "duration_seconds": 0.117,
+      "file": "tests/test_agent_basic_card_name_guards.py",
+      "outcome_counts": {
+        "error": 0,
+        "failed": 0,
+        "passed": 32,
+        "skipped": 0
+      },
+      "test_count": 32
+    },
+    {
+      "duration_seconds": 0.111,
+      "file": "tests/test_shop_screen_guards.py",
+      "outcome_counts": {
+        "error": 0,
+        "failed": 0,
+        "passed": 39,
+        "skipped": 0
+      },
+      "test_count": 39
+    },
+    {
+      "duration_seconds": 0.106,
+      "file": "tests/test_combat_rl_guard_advantage_residual_fit.py",
+      "outcome_counts": {
+        "error": 0,
+        "failed": 0,
+        "passed": 11,
+        "skipped": 0
+      },
+      "test_count": 11
+    },
+    {
+      "duration_seconds": 0.102,
+      "file": "tests/test_noncombat_card_counterfactual_ranking_training_runner.py",
+      "outcome_counts": {
+        "error": 0,
+        "failed": 0,
+        "passed": 9,
+        "skipped": 0
+      },
+      "test_count": 9
+    },
+    {
+      "duration_seconds": 0.101,
+      "file": "tests/test_rl_reward_card_name_guards.py",
+      "outcome_counts": {
+        "error": 0,
+        "failed": 0,
+        "passed": 17,
+        "skipped": 0
+      },
+      "test_count": 17
+    },
+    {
+      "duration_seconds": 0.099,
+      "file": "tests/test_noncombat_total_event_option_semantics.py",
+      "outcome_counts": {
+        "error": 0,
+        "failed": 0,
+        "passed": 16,
+        "skipped": 0
+      },
+      "test_count": 16
+    },
+    {
+      "duration_seconds": 0.088,
+      "file": "tests/test_combat_rl_action_relative_selective_classifier_fit.py",
+      "outcome_counts": {
+        "error": 0,
+        "failed": 0,
+        "passed": 4,
+        "skipped": 0
+      },
+      "test_count": 4
+    },
+    {
+      "duration_seconds": 0.085,
+      "file": "tests/test_noncombat_card_counterfactual_scorer_weight_runner.py",
+      "outcome_counts": {
+        "error": 0,
+        "failed": 0,
+        "passed": 4,
+        "skipped": 0
+      },
+      "test_count": 4
+    },
+    {
+      "duration_seconds": 0.084,
+      "file": "tests/test_card_evaluator_guards.py",
+      "outcome_counts": {
+        "error": 0,
+        "failed": 0,
+        "passed": 23,
+        "skipped": 0
+      },
+      "test_count": 23
+    },
+    {
+      "duration_seconds": 0.084,
+      "file": "tests/test_combat_rl_candidate_callability_successor.py",
+      "outcome_counts": {
+        "error": 0,
+        "failed": 0,
+        "passed": 14,
+        "skipped": 0
+      },
+      "test_count": 14
+    },
+    {
+      "duration_seconds": 0.084,
+      "file": "tests/test_combat_system.py",
+      "outcome_counts": {
+        "error": 0,
+        "failed": 0,
+        "passed": 5,
+        "skipped": 0
+      },
+      "test_count": 5
+    },
+    {
+      "duration_seconds": 0.084,
+      "file": "tests/test_noncombat_state_conditioned_policy_input.py",
+      "outcome_counts": {
+        "error": 0,
+        "failed": 0,
+        "passed": 20,
+        "skipped": 0
+      },
+      "test_count": 20
+    },
+    {
+      "duration_seconds": 0.083,
+      "file": "tests/test_noncombat_card_action_counterfactual_credit_runner.py",
+      "outcome_counts": {
+        "error": 0,
+        "failed": 0,
+        "passed": 9,
+        "skipped": 0
+      },
+      "test_count": 9
+    },
+    {
+      "duration_seconds": 0.083,
+      "file": "tests/test_noncombat_card_counterfactual_uplift_residual_audit_runner.py",
+      "outcome_counts": {
+        "error": 0,
+        "failed": 0,
+        "passed": 8,
+        "skipped": 0
+      },
+      "test_count": 8
+    },
+    {
+      "duration_seconds": 0.075,
+      "file": "test_wiki_parser.py",
+      "outcome_counts": {
+        "error": 0,
+        "failed": 0,
+        "passed": 1,
+        "skipped": 0
+      },
+      "test_count": 1
+    },
+    {
+      "duration_seconds": 0.073,
+      "file": "tests/test_action_relative_selective_classifier.py",
+      "outcome_counts": {
+        "error": 0,
+        "failed": 0,
+        "passed": 5,
+        "skipped": 0
+      },
+      "test_count": 5
+    },
+    {
+      "duration_seconds": 0.07,
+      "file": "tests/test_noncombat_action_family_distribution.py",
+      "outcome_counts": {
+        "error": 0,
+        "failed": 0,
+        "passed": 23,
+        "skipped": 0
+      },
+      "test_count": 23
+    },
+    {
+      "duration_seconds": 0.066,
+      "file": "tests/test_guard_advantage_residual.py",
+      "outcome_counts": {
+        "error": 0,
+        "failed": 0,
+        "passed": 4,
+        "skipped": 0
+      },
+      "test_count": 4
+    },
+    {
+      "duration_seconds": 0.063,
+      "file": "tests/test_agent_incoming_damage_guards.py",
+      "outcome_counts": {
+        "error": 0,
+        "failed": 0,
+        "passed": 33,
+        "skipped": 0
+      },
+      "test_count": 33
+    },
+    {
+      "duration_seconds": 0.06,
+      "file": "tests/test_training_plateau.py",
+      "outcome_counts": {
+        "error": 0,
+        "failed": 0,
+        "passed": 3,
+        "skipped": 0
+      },
+      "test_count": 3
+    },
+    {
+      "duration_seconds": 0.058,
+      "file": "tests/test_noncombat_state_conditioned_shop_ranking.py",
+      "outcome_counts": {
+        "error": 0,
+        "failed": 0,
+        "passed": 3,
+        "skipped": 0
+      },
+      "test_count": 3
+    },
+    {
+      "duration_seconds": 0.058,
+      "file": "tests/test_training_batch_runner.py",
+      "outcome_counts": {
+        "error": 0,
+        "failed": 0,
+        "passed": 22,
+        "skipped": 0
+      },
+      "test_count": 22
+    },
+    {
+      "duration_seconds": 0.056,
+      "file": "tests/test_combat_failures.py",
+      "outcome_counts": {
+        "error": 0,
+        "failed": 0,
+        "passed": 6,
+        "skipped": 0
+      },
+      "test_count": 6
+    },
+    {
+      "duration_seconds": 0.056,
+      "file": "tests/test_noncombat_reachable_event_surface_audit.py",
+      "outcome_counts": {
+        "error": 0,
+        "failed": 0,
+        "passed": 12,
+        "skipped": 0
+      },
+      "test_count": 12
+    },
+    {
+      "duration_seconds": 0.054,
+      "file": "tests/test_noncombat_simulator_fit.py",
+      "outcome_counts": {
+        "error": 0,
+        "failed": 0,
+        "passed": 7,
+        "skipped": 1
+      },
+      "test_count": 8
+    },
+    {
+      "duration_seconds": 0.052,
+      "file": "tests/test_combat_rl_action_relative_conformal_margin_fit.py",
+      "outcome_counts": {
+        "error": 0,
+        "failed": 0,
+        "passed": 18,
+        "skipped": 0
+      },
+      "test_count": 18
+    },
+    {
+      "duration_seconds": 0.052,
+      "file": "tests/test_combat_rl_inventory_identity_correction.py",
+      "outcome_counts": {
+        "error": 0,
+        "failed": 0,
+        "passed": 7,
+        "skipped": 0
+      },
+      "test_count": 7
+    },
+    {
+      "duration_seconds": 0.051,
+      "file": "tests/test_combat_rl_action_relative_selection_latency.py",
+      "outcome_counts": {
+        "error": 0,
+        "failed": 0,
+        "passed": 8,
+        "skipped": 0
+      },
+      "test_count": 8
+    },
+    {
+      "duration_seconds": 0.05,
+      "file": "tests/test_event_choice_guard.py",
+      "outcome_counts": {
+        "error": 0,
+        "failed": 0,
+        "passed": 50,
+        "skipped": 0
+      },
+      "test_count": 50
+    },
+    {
+      "duration_seconds": 0.049,
+      "file": "tests/test_noncombat_simulator_adapter.py",
+      "outcome_counts": {
+        "error": 0,
+        "failed": 0,
+        "passed": 12,
+        "skipped": 6
+      },
+      "test_count": 18
+    },
+    {
+      "duration_seconds": 0.048,
+      "file": "tests/test_noncombat_card_acceptance_policy.py",
+      "outcome_counts": {
+        "error": 0,
+        "failed": 0,
+        "passed": 19,
+        "skipped": 0
+      },
+      "test_count": 19
+    },
+    {
+      "duration_seconds": 0.045,
+      "file": "tests/test_deferred_state_callback.py",
+      "outcome_counts": {
+        "error": 0,
+        "failed": 0,
+        "passed": 28,
+        "skipped": 0
+      },
+      "test_count": 28
+    },
+    {
+      "duration_seconds": 0.044,
+      "file": "tests/test_noncombat_state_conditioned_ranker.py",
+      "outcome_counts": {
+        "error": 0,
+        "failed": 0,
+        "passed": 23,
+        "skipped": 0
+      },
+      "test_count": 23
+    },
+    {
+      "duration_seconds": 0.043,
+      "file": "tests/test_combat_rl_action_relative_advantage_residual_evaluation.py",
+      "outcome_counts": {
+        "error": 0,
+        "failed": 0,
+        "passed": 11,
+        "skipped": 0
+      },
+      "test_count": 11
+    },
+    {
+      "duration_seconds": 0.043,
+      "file": "tests/test_rl_v2_action_space.py",
+      "outcome_counts": {
+        "error": 0,
+        "failed": 0,
+        "passed": 43,
+        "skipped": 0
+      },
+      "test_count": 43
+    },
+    {
+      "duration_seconds": 0.042,
+      "file": "tests/test_decision_context_guards.py",
+      "outcome_counts": {
+        "error": 0,
+        "failed": 0,
+        "passed": 42,
+        "skipped": 0
+      },
+      "test_count": 42
+    },
+    {
+      "duration_seconds": 0.042,
+      "file": "tests/test_rl_state_encoder_card_name_guards.py",
+      "outcome_counts": {
+        "error": 0,
+        "failed": 0,
+        "passed": 42,
+        "skipped": 0
+      },
+      "test_count": 42
+    },
+    {
+      "duration_seconds": 0.037,
+      "file": "tests/test_noncombat_card_only_behavior_sensitivity_runner.py",
+      "outcome_counts": {
+        "error": 0,
+        "failed": 0,
+        "passed": 5,
+        "skipped": 0
+      },
+      "test_count": 5
+    },
+    {
+      "duration_seconds": 0.036,
+      "file": "tests/test_combat_lightspeed_bridge.py",
+      "outcome_counts": {
+        "error": 0,
+        "failed": 0,
+        "passed": 19,
+        "skipped": 4
+      },
+      "test_count": 23
+    },
+    {
+      "duration_seconds": 0.035,
+      "file": "tests/test_noncombat_shop_counterfactual_outcomes.py",
+      "outcome_counts": {
+        "error": 0,
+        "failed": 0,
+        "passed": 6,
+        "skipped": 0
+      },
+      "test_count": 6
+    },
+    {
+      "duration_seconds": 0.035,
+      "file": "tests/test_noncombat_shop_robust_initialization_evaluation.py",
+      "outcome_counts": {
+        "error": 0,
+        "failed": 0,
+        "passed": 4,
+        "skipped": 0
+      },
+      "test_count": 4
+    },
+    {
+      "duration_seconds": 0.033,
+      "file": "tests/test_noncombat_exploration_adapters.py",
+      "outcome_counts": {
+        "error": 0,
+        "failed": 0,
+        "passed": 19,
+        "skipped": 0
+      },
+      "test_count": 19
+    },
+    {
+      "duration_seconds": 0.032,
+      "file": "tests/test_x_card_calculation.py",
+      "outcome_counts": {
+        "error": 0,
+        "failed": 0,
+        "passed": 7,
+        "skipped": 0
+      },
+      "test_count": 7
+    },
+    {
+      "duration_seconds": 0.031,
+      "file": "tests/test_rl_action_encoder_guards.py",
+      "outcome_counts": {
+        "error": 0,
+        "failed": 0,
+        "passed": 30,
+        "skipped": 0
+      },
+      "test_count": 30
+    },
+    {
+      "duration_seconds": 0.03,
+      "file": "tests/test_noncombat_event_option_counterfactual_outcomes.py",
+      "outcome_counts": {
+        "error": 0,
+        "failed": 0,
+        "passed": 5,
+        "skipped": 0
+      },
+      "test_count": 5
+    },
+    {
+      "duration_seconds": 0.03,
+      "file": "tests/test_noncombat_event_option_counterfactual_ranking.py",
+      "outcome_counts": {
+        "error": 0,
+        "failed": 0,
+        "passed": 5,
+        "skipped": 0
+      },
+      "test_count": 5
+    },
+    {
+      "duration_seconds": 0.027,
+      "file": "tests/test_combat_rl_frozen_candidate_replay_gate.py",
+      "outcome_counts": {
+        "error": 0,
+        "failed": 0,
+        "passed": 5,
+        "skipped": 0
+      },
+      "test_count": 5
+    },
+    {
+      "duration_seconds": 0.027,
+      "file": "tests/test_noncombat_ope_bootstrap.py",
+      "outcome_counts": {
+        "error": 0,
+        "failed": 0,
+        "passed": 7,
+        "skipped": 0
+      },
+      "test_count": 7
+    },
+    {
+      "duration_seconds": 0.027,
+      "file": "tests/test_rl_v2_state_encoder_card_name_guards.py",
+      "outcome_counts": {
+        "error": 0,
+        "failed": 0,
+        "passed": 20,
+        "skipped": 0
+      },
+      "test_count": 20
+    },
+    {
+      "duration_seconds": 0.026,
+      "file": "tests/test_decision_trace.py",
+      "outcome_counts": {
+        "error": 0,
+        "failed": 0,
+        "passed": 9,
+        "skipped": 0
+      },
+      "test_count": 9
+    },
+    {
+      "duration_seconds": 0.026,
+      "file": "tests/test_turn_plan_signature_guards.py",
+      "outcome_counts": {
+        "error": 0,
+        "failed": 0,
+        "passed": 26,
+        "skipped": 0
+      },
+      "test_count": 26
+    },
+    {
+      "duration_seconds": 0.024,
+      "file": "tests/test_combat_state_guards.py",
+      "outcome_counts": {
+        "error": 0,
+        "failed": 0,
+        "passed": 24,
+        "skipped": 0
+      },
+      "test_count": 24
+    },
+    {
+      "duration_seconds": 0.024,
+      "file": "tests/test_ironclad_act1_strategy.py",
+      "outcome_counts": {
+        "error": 0,
+        "failed": 0,
+        "passed": 9,
+        "skipped": 0
+      },
+      "test_count": 9
+    },
+    {
+      "duration_seconds": 0.021,
+      "file": "tests/test_combat_rl_guard_advantage_residual_evaluation.py",
+      "outcome_counts": {
+        "error": 0,
+        "failed": 0,
+        "passed": 10,
+        "skipped": 0
+      },
+      "test_count": 10
+    },
+    {
+      "duration_seconds": 0.021,
+      "file": "tests/test_optimized_ai.py",
+      "outcome_counts": {
+        "error": 0,
+        "failed": 0,
+        "passed": 5,
+        "skipped": 0
+      },
+      "test_count": 5
+    },
+    {
+      "duration_seconds": 0.021,
+      "file": "tests/test_play_card_action_guards.py",
+      "outcome_counts": {
+        "error": 0,
+        "failed": 0,
+        "passed": 13,
+        "skipped": 0
+      },
+      "test_count": 13
+    },
+    {
+      "duration_seconds": 0.02,
+      "file": "test_timing_integration.py",
+      "outcome_counts": {
+        "error": 0,
+        "failed": 0,
+        "passed": 4,
+        "skipped": 0
+      },
+      "test_count": 4
+    },
+    {
+      "duration_seconds": 0.02,
+      "file": "tests/test_checkpoint_io_guards.py",
+      "outcome_counts": {
+        "error": 0,
+        "failed": 0,
+        "passed": 4,
+        "skipped": 0
+      },
+      "test_count": 4
+    },
+    {
+      "duration_seconds": 0.02,
+      "file": "tests/test_combat_rl_guard_residual_end_turn_safety_ablation.py",
+      "outcome_counts": {
+        "error": 0,
+        "failed": 0,
+        "passed": 9,
+        "skipped": 0
+      },
+      "test_count": 9
+    },
+    {
+      "duration_seconds": 0.02,
+      "file": "tests/test_relic_evaluator.py",
+      "outcome_counts": {
+        "error": 0,
+        "failed": 0,
+        "passed": 11,
+        "skipped": 0
+      },
+      "test_count": 11
+    },
+    {
+      "duration_seconds": 0.019,
+      "file": "tests/test_balance_strategy_guards.py",
+      "outcome_counts": {
+        "error": 0,
+        "failed": 0,
+        "passed": 12,
+        "skipped": 0
+      },
+      "test_count": 12
+    },
+    {
+      "duration_seconds": 0.019,
+      "file": "tests/test_combat_rl_outcome_constrained_pairwise_candidate.py",
+      "outcome_counts": {
+        "error": 0,
+        "failed": 0,
+        "passed": 8,
+        "skipped": 0
+      },
+      "test_count": 8
+    },
+    {
+      "duration_seconds": 0.016,
+      "file": "tests/test_noncombat_mismatch_stability.py",
+      "outcome_counts": {
+        "error": 0,
+        "failed": 0,
+        "passed": 3,
+        "skipped": 0
+      },
+      "test_count": 3
+    },
+    {
+      "duration_seconds": 0.016,
+      "file": "tests/test_noncombat_ope_influence.py",
+      "outcome_counts": {
+        "error": 0,
+        "failed": 0,
+        "passed": 4,
+        "skipped": 0
+      },
+      "test_count": 4
+    },
+    {
+      "duration_seconds": 0.016,
+      "file": "tests/test_priority_card_name_guards.py",
+      "outcome_counts": {
+        "error": 0,
+        "failed": 0,
+        "passed": 5,
+        "skipped": 0
+      },
+      "test_count": 5
+    },
+    {
+      "duration_seconds": 0.014,
+      "file": "tests/test_lethal_detection.py",
+      "outcome_counts": {
+        "error": 0,
+        "failed": 0,
+        "passed": 6,
+        "skipped": 0
+      },
+      "test_count": 6
+    },
+    {
+      "duration_seconds": 0.012,
+      "file": "tests/test_card_upgrade_guards.py",
+      "outcome_counts": {
+        "error": 0,
+        "failed": 0,
+        "passed": 12,
+        "skipped": 0
+      },
+      "test_count": 12
+    },
+    {
+      "duration_seconds": 0.012,
+      "file": "tests/test_heuristic_confidence_guards.py",
+      "outcome_counts": {
+        "error": 0,
+        "failed": 0,
+        "passed": 4,
+        "skipped": 0
+      },
+      "test_count": 4
+    },
+    {
+      "duration_seconds": 0.011,
+      "file": "tests/test_card_costs.py",
+      "outcome_counts": {
+        "error": 0,
+        "failed": 0,
+        "passed": 9,
+        "skipped": 0
+      },
+      "test_count": 9
+    },
+    {
+      "duration_seconds": 0.01,
+      "file": "tests/test_card_select_confirm_guard.py",
+      "outcome_counts": {
+        "error": 0,
+        "failed": 0,
+        "passed": 8,
+        "skipped": 0
+      },
+      "test_count": 8
+    },
+    {
+      "duration_seconds": 0.01,
+      "file": "tests/test_combat_rl_guard_aware_counterfactual_audit.py",
+      "outcome_counts": {
+        "error": 0,
+        "failed": 0,
+        "passed": 5,
+        "skipped": 0
+      },
+      "test_count": 5
+    },
+    {
+      "duration_seconds": 0.01,
+      "file": "tests/test_coordinator_startup_timeout.py",
+      "outcome_counts": {
+        "error": 0,
+        "failed": 0,
+        "passed": 6,
+        "skipped": 0
+      },
+      "test_count": 6
+    },
+    {
+      "duration_seconds": 0.01,
+      "file": "tests/test_potion_mechanics.py",
+      "outcome_counts": {
+        "error": 0,
+        "failed": 0,
+        "passed": 5,
+        "skipped": 0
+      },
+      "test_count": 5
+    },
+    {
+      "duration_seconds": 0.01,
+      "file": "tests/test_simulation_improvements.py",
+      "outcome_counts": {
+        "error": 0,
+        "failed": 0,
+        "passed": 6,
+        "skipped": 0
+      },
+      "test_count": 6
+    },
+    {
+      "duration_seconds": 0.009,
+      "file": "tests/test_card_type_guards.py",
+      "outcome_counts": {
+        "error": 0,
+        "failed": 0,
+        "passed": 9,
+        "skipped": 0
+      },
+      "test_count": 9
+    },
+    {
+      "duration_seconds": 0.009,
+      "file": "tests/test_rl_v2_state_encoder_guards.py",
+      "outcome_counts": {
+        "error": 0,
+        "failed": 0,
+        "passed": 4,
+        "skipped": 0
+      },
+      "test_count": 4
+    },
+    {
+      "duration_seconds": 0.009,
+      "file": "tests/test_spire_model_json_guards.py",
+      "outcome_counts": {
+        "error": 0,
+        "failed": 0,
+        "passed": 9,
+        "skipped": 0
+      },
+      "test_count": 9
+    },
+    {
+      "duration_seconds": 0.008,
+      "file": "tests/test_noncombat_card_only_baseline_clipping_ablation_runner.py",
+      "outcome_counts": {
+        "error": 0,
+        "failed": 0,
+        "passed": 7,
+        "skipped": 0
+      },
+      "test_count": 7
+    },
+    {
+      "duration_seconds": 0.008,
+      "file": "tests/test_startup.py",
+      "outcome_counts": {
+        "error": 0,
+        "failed": 0,
+        "passed": 2,
+        "skipped": 0
+      },
+      "test_count": 2
+    },
+    {
+      "duration_seconds": 0.007,
+      "file": "tests/test_card_hit_guards.py",
+      "outcome_counts": {
+        "error": 0,
+        "failed": 0,
+        "passed": 7,
+        "skipped": 0
+      },
+      "test_count": 7
+    },
+    {
+      "duration_seconds": 0.007,
+      "file": "tests/test_intent_utils.py",
+      "outcome_counts": {
+        "error": 0,
+        "failed": 0,
+        "passed": 7,
+        "skipped": 0
+      },
+      "test_count": 7
+    },
+    {
+      "duration_seconds": 0.007,
+      "file": "tests/test_monster_name_guards.py",
+      "outcome_counts": {
+        "error": 0,
+        "failed": 0,
+        "passed": 3,
+        "skipped": 0
+      },
+      "test_count": 3
+    },
+    {
+      "duration_seconds": 0.007,
+      "file": "tests/test_run_training_batch_env.py",
+      "outcome_counts": {
+        "error": 0,
+        "failed": 0,
+        "passed": 7,
+        "skipped": 0
+      },
+      "test_count": 7
+    },
+    {
+      "duration_seconds": 0.006,
+      "file": "tests/test_ironclad_archetype_guards.py",
+      "outcome_counts": {
+        "error": 0,
+        "failed": 0,
+        "passed": 3,
+        "skipped": 0
+      },
+      "test_count": 3
+    },
+    {
+      "duration_seconds": 0.006,
+      "file": "tests/test_tracker_guards.py",
+      "outcome_counts": {
+        "error": 0,
+        "failed": 0,
+        "passed": 6,
+        "skipped": 0
+      },
+      "test_count": 6
+    },
+    {
+      "duration_seconds": 0.005,
+      "file": "tests/test_combat_rl_action_relative_live_shadow_summary.py",
+      "outcome_counts": {
+        "error": 0,
+        "failed": 0,
+        "passed": 3,
+        "skipped": 0
+      },
+      "test_count": 3
+    },
+    {
+      "duration_seconds": 0.005,
+      "file": "tests/test_combat_rl_guard_advantage_corpus.py",
+      "outcome_counts": {
+        "error": 0,
+        "failed": 0,
+        "passed": 5,
+        "skipped": 0
+      },
+      "test_count": 5
+    },
+    {
+      "duration_seconds": 0.005,
+      "file": "tests/test_game_potion_space_guards.py",
+      "outcome_counts": {
+        "error": 0,
+        "failed": 0,
+        "passed": 5,
+        "skipped": 0
+      },
+      "test_count": 5
+    },
+    {
+      "duration_seconds": 0.005,
+      "file": "tests/test_reconstruct_combat_rl_replay_checkpoint.py",
+      "outcome_counts": {
+        "error": 0,
+        "failed": 0,
+        "passed": 2,
+        "skipped": 0
+      },
+      "test_count": 2
+    },
+    {
+      "duration_seconds": 0.005,
+      "file": "tests/test_rl_agent_context_guards.py",
+      "outcome_counts": {
+        "error": 0,
+        "failed": 0,
+        "passed": 5,
+        "skipped": 0
+      },
+      "test_count": 5
+    },
+    {
+      "duration_seconds": 0.005,
+      "file": "tests/test_tracking.py",
+      "outcome_counts": {
+        "error": 0,
+        "failed": 0,
+        "passed": 1,
+        "skipped": 0
+      },
+      "test_count": 1
+    },
+    {
+      "duration_seconds": 0.004,
+      "file": "tests/test_combat_lightspeed_action_margin_drift_audit.py",
+      "outcome_counts": {
+        "error": 0,
+        "failed": 0,
+        "passed": 2,
+        "skipped": 0
+      },
+      "test_count": 2
+    },
+    {
+      "duration_seconds": 0.004,
+      "file": "tests/test_combat_rl_cohort_gradient_alignment.py",
+      "outcome_counts": {
+        "error": 0,
+        "failed": 0,
+        "passed": 4,
+        "skipped": 0
+      },
+      "test_count": 4
+    },
+    {
+      "duration_seconds": 0.004,
+      "file": "tests/test_combat_rl_positive_energy_imitation_ablation.py",
+      "outcome_counts": {
+        "error": 0,
+        "failed": 0,
+        "passed": 4,
+        "skipped": 0
+      },
+      "test_count": 4
+    },
+    {
+      "duration_seconds": 0.004,
+      "file": "tests/test_combat_rl_provenance_balanced_objective_ablation.py",
+      "outcome_counts": {
+        "error": 0,
+        "failed": 0,
+        "passed": 4,
+        "skipped": 0
+      },
+      "test_count": 4
+    },
+    {
+      "duration_seconds": 0.004,
+      "file": "tests/test_noncombat_card_only_behavior_sensitivity_diagnostic.py",
+      "outcome_counts": {
+        "error": 0,
+        "failed": 0,
+        "passed": 4,
+        "skipped": 0
+      },
+      "test_count": 4
+    },
+    {
+      "duration_seconds": 0.004,
+      "file": "tests/test_noncombat_card_scorer_optimizer_replay_ablation_runner.py",
+      "outcome_counts": {
+        "error": 0,
+        "failed": 0,
+        "passed": 2,
+        "skipped": 0
+      },
+      "test_count": 2
+    },
+    {
+      "duration_seconds": 0.004,
+      "file": "tests/test_rest_guard.py",
+      "outcome_counts": {
+        "error": 0,
+        "failed": 0,
+        "passed": 4,
+        "skipped": 0
+      },
+      "test_count": 4
+    },
+    {
+      "duration_seconds": 0.004,
+      "file": "tests/test_rl_v2_agent_context_guards.py",
+      "outcome_counts": {
+        "error": 0,
+        "failed": 0,
+        "passed": 4,
+        "skipped": 0
+      },
+      "test_count": 4
+    },
+    {
+      "duration_seconds": 0.004,
+      "file": "tests/test_spire_numeric_guards.py",
+      "outcome_counts": {
+        "error": 0,
+        "failed": 0,
+        "passed": 4,
+        "skipped": 0
+      },
+      "test_count": 4
+    },
+    {
+      "duration_seconds": 0.003,
+      "file": "tests/test_card_name_guards.py",
+      "outcome_counts": {
+        "error": 0,
+        "failed": 0,
+        "passed": 3,
+        "skipped": 0
+      },
+      "test_count": 3
+    },
+    {
+      "duration_seconds": 0.003,
+      "file": "tests/test_combat_reward_action_guards.py",
+      "outcome_counts": {
+        "error": 0,
+        "failed": 0,
+        "passed": 2,
+        "skipped": 0
+      },
+      "test_count": 2
+    },
+    {
+      "duration_seconds": 0.003,
+      "file": "tests/test_noncombat_simulator_baseline_warm_start_native.py",
+      "outcome_counts": {
+        "error": 0,
+        "failed": 0,
+        "passed": 0,
+        "skipped": 3
+      },
+      "test_count": 3
+    },
+    {
+      "duration_seconds": 0.002,
+      "file": "tests/test_card_exhaust.py",
+      "outcome_counts": {
+        "error": 0,
+        "failed": 0,
+        "passed": 2,
+        "skipped": 0
+      },
+      "test_count": 2
+    },
+    {
+      "duration_seconds": 0.002,
+      "file": "tests/test_combat_rl_return_end_turn_trust_candidate.py",
+      "outcome_counts": {
+        "error": 0,
+        "failed": 0,
+        "passed": 2,
+        "skipped": 0
+      },
+      "test_count": 2
+    },
+    {
+      "duration_seconds": 0.002,
+      "file": "tests/test_spire_identifier_guards.py",
+      "outcome_counts": {
+        "error": 0,
+        "failed": 0,
+        "passed": 2,
+        "skipped": 0
+      },
+      "test_count": 2
+    },
+    {
+      "duration_seconds": 0.002,
+      "file": "tests/test_wsl_path_conversion.py",
+      "outcome_counts": {
+        "error": 0,
+        "failed": 0,
+        "passed": 1,
+        "skipped": 0
+      },
+      "test_count": 1
+    },
+    {
+      "duration_seconds": 0.001,
+      "file": "tests/test_noncombat_simulator_policy_validity_native.py",
+      "outcome_counts": {
+        "error": 0,
+        "failed": 0,
+        "passed": 0,
+        "skipped": 1
+      },
+      "test_count": 1
+    },
+    {
+      "duration_seconds": 0.001,
+      "file": "tests/test_potion_action_guards.py",
+      "outcome_counts": {
+        "error": 0,
+        "failed": 0,
+        "passed": 1,
+        "skipped": 0
+      },
+      "test_count": 1
+    },
+    {
+      "duration_seconds": 0.001,
+      "file": "tests/test_rl_state_encoder_guards.py",
+      "outcome_counts": {
+        "error": 0,
+        "failed": 0,
+        "passed": 1,
+        "skipped": 0
+      },
+      "test_count": 1
+    }
+  ],
+  "profile": "commit",
+  "pytest_exit_code": 0,
+  "runner_elapsed_seconds": 186.95615,
+  "schema_version": 1,
+  "slow_tests": [
+    {
+      "classname": "tests.test_noncombat_event_ranker_paired_trajectory_shadow",
+      "duration_seconds": 4.565,
+      "file": "tests/test_noncombat_event_ranker_paired_trajectory_shadow.py",
+      "name": "test_bound_training_support_restores_manifest_dataset",
+      "outcome": "passed"
+    },
+    {
+      "classname": "tests.test_noncombat_reachable_event_option_semantics",
+      "duration_seconds": 4.392,
+      "file": "tests/test_noncombat_reachable_event_option_semantics.py",
+      "name": "test_reachable_successor_preserves_all_static_explicit_rules",
+      "outcome": "passed"
+    },
+    {
+      "classname": "tests.test_combat_lightspeed_checkpoint_interpolation",
+      "duration_seconds": 4.033,
+      "file": "tests/test_combat_lightspeed_checkpoint_interpolation.py",
+      "name": "test_publication_is_bound_deterministic_and_comparator_compatible",
+      "outcome": "passed"
+    },
+    {
+      "classname": "tests.test_noncombat_ope_estimate_artifacts",
+      "duration_seconds": 3.118,
+      "file": "tests/test_noncombat_ope_estimate_artifacts.py",
+      "name": "test_estimate_writer_is_transactional_and_cli_uses_explicit_outputs",
+      "outcome": "passed"
+    },
+    {
+      "classname": "tests.test_noncombat_state_action_teacher_sufficiency_audit",
+      "duration_seconds": 2.87,
+      "file": "tests/test_noncombat_state_action_teacher_sufficiency_audit.py",
+      "name": "test_synthetic_performance_workload_has_exact_counts_and_no_corpus_identity",
+      "outcome": "passed"
+    },
+    {
+      "classname": "tests.test_noncombat_ope_estimate_artifacts",
+      "duration_seconds": 2.61,
+      "file": "tests/test_noncombat_ope_estimate_artifacts.py",
+      "name": "test_estimate_artifact_is_deterministic_hash_bound_and_gate_separated",
+      "outcome": "passed"
+    },
+    {
+      "classname": "tests.test_noncombat_card_acceptance_empirical_successor_registration",
+      "duration_seconds": 2.31,
+      "file": "tests/test_noncombat_card_acceptance_empirical_successor_registration.py",
+      "name": "test_driver_end_to_end_success_uses_real_composed_validators",
+      "outcome": "passed"
+    },
+    {
+      "classname": "tests.test_capture_sts_screenshot_script",
+      "duration_seconds": 2.093,
+      "file": "tests/test_capture_sts_screenshot_script.py",
+      "name": "test_capture_script_reports_missing_window",
+      "outcome": "passed"
+    },
+    {
+      "classname": "tests.test_noncombat_card_scorer_optimizer",
+      "duration_seconds": 2.038,
+      "file": "tests/test_noncombat_card_scorer_optimizer.py",
+      "name": "test_scorer_step_preserves_hidden_parameter_bytes",
+      "outcome": "passed"
+    },
+    {
+      "classname": "tests.test_noncombat_card_margin_controlled_training",
+      "duration_seconds": 1.829,
+      "file": "tests/test_noncombat_card_margin_controlled_training.py",
+      "name": "test_residual_bytes_exclude_frozen_base_model",
+      "outcome": "passed"
+    },
+    {
+      "classname": "tests.test_noncombat_ope_estimate_artifacts",
+      "duration_seconds": 1.825,
+      "file": "tests/test_noncombat_ope_estimate_artifacts.py",
+      "name": "test_estimate_renderers_are_byte_stable_and_make_no_downstream_claim",
+      "outcome": "passed"
+    },
+    {
+      "classname": "tests.test_noncombat_cross_fitted_hierarchical_learning",
+      "duration_seconds": 1.782,
+      "file": "tests/test_noncombat_cross_fitted_hierarchical_learning.py",
+      "name": "test_cross_fitted_ridge_uses_complete_disjoint_trajectory_folds",
+      "outcome": "passed"
+    },
+    {
+      "classname": "tests.test_noncombat_shop_candidate_value_baseline",
+      "duration_seconds": 1.758,
+      "file": "tests/test_noncombat_shop_candidate_value_baseline.py",
+      "name": "test_training_is_deterministic_and_learns_candidate_signal",
+      "outcome": "passed"
+    },
+    {
+      "classname": "tests.test_recover_sts_menu_flow_script",
+      "duration_seconds": 1.72,
+      "file": "tests/test_recover_sts_menu_flow_script.py",
+      "name": "test_recovery_script_reports_missing_window",
+      "outcome": "passed"
+    },
+    {
+      "classname": "tests.test_noncombat_cross_fitted_hierarchical_learning",
+      "duration_seconds": 1.664,
+      "file": "tests/test_noncombat_cross_fitted_hierarchical_learning.py",
+      "name": "test_preclip_prediction_replays_exact_math_fsum_and_float64_bytes",
+      "outcome": "passed"
+    },
+    {
+      "classname": "tests.test_recover_sts_menu_flow_script",
+      "duration_seconds": 1.625,
+      "file": "tests/test_recover_sts_menu_flow_script.py",
+      "name": "test_ui_recovery_wrapper_delegates_end_turn_action",
+      "outcome": "passed"
+    },
+    {
+      "classname": "tests.test_capture_sts_screenshot_script",
+      "duration_seconds": 1.565,
+      "file": "tests/test_capture_sts_screenshot_script.py",
+      "name": "test_capture_script_supports_all_screens_dry_run",
+      "outcome": "passed"
+    },
+    {
+      "classname": "tests.test_recover_sts_menu_flow_script",
+      "duration_seconds": 1.563,
+      "file": "tests/test_recover_sts_menu_flow_script.py",
+      "name": "test_recovery_script_end_turn_action_parses_before_window_lookup",
+      "outcome": "passed"
+    },
+    {
+      "classname": "tests.test_noncombat_card_uplift_fresh_simulator_evaluation",
+      "duration_seconds": 1.561,
+      "file": "tests/test_noncombat_card_uplift_fresh_simulator_evaluation.py",
+      "name": "test_paired_metrics_are_deterministic_and_pass_fixed_positive_case",
+      "outcome": "passed"
+    },
+    {
+      "classname": "tests.test_noncombat_simulator_policy_validity",
+      "duration_seconds": 1.48,
+      "file": "tests/test_noncombat_simulator_policy_validity.py",
+      "name": "test_published_policy_validity_result_is_frozen_reproducible_and_negative",
+      "outcome": "passed"
+    },
+    {
+      "classname": "tests.test_noncombat_structured_baseline_ranker_poc",
+      "duration_seconds": 1.427,
+      "file": "tests/test_noncombat_structured_baseline_ranker_poc.py",
+      "name": "test_train_input_excludes_other_cohorts_and_round_trips_gzip",
+      "outcome": "passed"
+    },
+    {
+      "classname": "tests.test_noncombat_cross_fitted_hierarchical_learning",
+      "duration_seconds": 1.398,
+      "file": "tests/test_noncombat_cross_fitted_hierarchical_learning.py",
+      "name": "test_held_out_prediction_retains_preclip_bytes_and_uses_fixed_bounds",
+      "outcome": "passed"
+    },
+    {
+      "classname": "tests.test_noncombat_cross_fitted_hierarchical_learning",
+      "duration_seconds": 1.365,
+      "file": "tests/test_noncombat_cross_fitted_hierarchical_learning.py",
+      "name": "test_ridge_coordinate_zero_is_the_unpenalized_intercept",
+      "outcome": "passed"
+    },
+    {
+      "classname": "tests.test_combat_rl_abstaining_residual_head",
+      "duration_seconds": 1.352,
+      "file": "tests/test_combat_rl_abstaining_residual_head.py",
+      "name": "test_synthetic_smoke_is_deterministic_and_closed_r1_is_rejected",
+      "outcome": "passed"
+    },
+    {
+      "classname": "tests.test_noncombat_cross_fitted_hierarchical_learning",
+      "duration_seconds": 1.34,
+      "file": "tests/test_noncombat_cross_fitted_hierarchical_learning.py",
+      "name": "test_ridge_rhs_uses_canonical_float64_multiply_add_order",
+      "outcome": "passed"
+    },
+    {
+      "classname": "tests.test_noncombat_card_counterfactual_uplift_residual_crossfit",
+      "duration_seconds": 1.338,
+      "file": "tests/test_noncombat_card_counterfactual_uplift_residual_crossfit.py",
+      "name": "test_base_scoring_keeps_entry_model_byte_identical",
+      "outcome": "passed"
+    },
+    {
+      "classname": "tests.test_noncombat_cross_fitted_hierarchical_learning",
+      "duration_seconds": 1.33,
+      "file": "tests/test_noncombat_cross_fitted_hierarchical_learning.py",
+      "name": "test_fold_assignment_uses_ascending_seed_position_not_input_or_identity_order",
+      "outcome": "passed"
+    },
+    {
+      "classname": "tests.test_restart_sts_modded_script",
+      "duration_seconds": 1.27,
+      "file": "tests/test_restart_sts_modded_script.py",
+      "name": "test_restart_script_dry_run_does_not_launch_or_stop_processes",
+      "outcome": "passed"
+    },
+    {
+      "classname": "tests.test_restart_sts_modded_script",
+      "duration_seconds": 1.251,
+      "file": "tests/test_restart_sts_modded_script.py",
+      "name": "test_restart_script_direct_launches_modthespire_without_launcher_by_default",
+      "outcome": "passed"
+    },
+    {
+      "classname": "tests.test_restart_sts_modded_script",
+      "duration_seconds": 1.195,
+      "file": "tests/test_restart_sts_modded_script.py",
+      "name": "test_restart_script_can_disable_superfastmode_for_diagnostics",
+      "outcome": "passed"
+    },
+    {
+      "classname": "tests.test_rl_v2_latent_gated_live_shadow",
+      "duration_seconds": 1.183,
+      "file": "tests/test_rl_v2_latent_gated_live_shadow.py",
+      "name": "test_source_binding_rejects_worktree_changes",
+      "outcome": "passed"
+    },
+    {
+      "classname": "tests.test_restart_sts_modded_script",
+      "duration_seconds": 1.134,
+      "file": "tests/test_restart_sts_modded_script.py",
+      "name": "test_restart_script_fresh_run_dry_run_reports_autosave_backup",
+      "outcome": "passed"
+    },
+    {
+      "classname": "tests.test_restart_sts_modded_script",
+      "duration_seconds": 1.092,
+      "file": "tests/test_restart_sts_modded_script.py",
+      "name": "test_restart_script_diagnostic_speed_alias_disables_superfastmode",
+      "outcome": "passed"
+    },
+    {
+      "classname": "tests.test_main_runtime_errors",
+      "duration_seconds": 1.075,
+      "file": "tests/test_main_runtime_errors.py",
+      "name": "test_entrypoint_rejects_qualification_token_before_exploration_dry_run",
+      "outcome": "passed"
+    },
+    {
+      "classname": "tests.test_noncombat_outcome_evidence_pool",
+      "duration_seconds": 0.987,
+      "file": "tests/test_noncombat_outcome_evidence_pool.py",
+      "name": "test_collect_registered_session_evidence_uses_global_registered_joins",
+      "outcome": "passed"
+    },
+    {
+      "classname": "tests.test_noncombat_shop_counterfactual_corpus_expansion",
+      "duration_seconds": 0.97,
+      "file": "tests/test_noncombat_shop_counterfactual_corpus_expansion.py",
+      "name": "test_artifacts_match_manifest",
+      "outcome": "passed"
+    },
+    {
+      "classname": "tests.test_noncombat_cross_fitted_hierarchical_learning_preservation",
+      "duration_seconds": 0.878,
+      "file": "tests/test_noncombat_cross_fitted_hierarchical_learning_preservation.py",
+      "name": "test_consumed_hierarchical_source_and_terminal_evidence_are_byte_preserved",
+      "outcome": "passed"
+    },
+    {
+      "classname": "tests.test_noncombat_card_uplift_fresh_simulator_evaluation",
+      "duration_seconds": 0.868,
+      "file": "tests/test_noncombat_card_uplift_fresh_simulator_evaluation.py",
+      "name": "test_execute_persists_model_before_factory_and_publishes_ready_result",
+      "outcome": "passed"
+    },
+    {
+      "classname": "tests.test_noncombat_ope_estimation",
+      "duration_seconds": 0.853,
+      "file": "tests/test_noncombat_ope_estimation.py",
+      "name": "test_loader_requires_verified_hash_bound_bundle",
+      "outcome": "passed"
+    },
+    {
+      "classname": "tests.test_rl_v2_latent_gated_live_shadow",
+      "duration_seconds": 0.842,
+      "file": "tests/test_rl_v2_latent_gated_live_shadow.py",
+      "name": "test_registration_must_match_committed_git_content",
+      "outcome": "passed"
+    },
+    {
+      "classname": "tests.test_noncombat_outcome_evidence_pool",
+      "duration_seconds": 0.84,
+      "file": "tests/test_noncombat_outcome_evidence_pool.py",
+      "name": "test_gate_metrics_are_derived_from_pool_and_deterministic_current",
+      "outcome": "passed"
+    },
+    {
+      "classname": "tests.test_noncombat_policy_learning",
+      "duration_seconds": 0.82,
+      "file": "tests/test_noncombat_policy_learning.py",
+      "name": "test_support_cli_is_torch_free_and_train_writes_only_supported_artifacts",
+      "outcome": "passed"
+    },
+    {
+      "classname": "tests.test_noncombat_card_margin_controlled_training",
+      "duration_seconds": 0.808,
+      "file": "tests/test_noncombat_card_margin_controlled_training.py",
+      "name": "test_bootstrap_owns_only_128_fresh_residual_parameters",
+      "outcome": "passed"
+    },
+    {
+      "classname": "tests.test_noncombat_policy_learning",
+      "duration_seconds": 0.807,
+      "file": "tests/test_noncombat_policy_learning.py",
+      "name": "test_training_is_bounded_deterministic_and_keeps_promotion_flags_false",
+      "outcome": "passed"
+    },
+    {
+      "classname": "tests.test_noncombat_route_counterfactual_ranking",
+      "duration_seconds": 0.788,
+      "file": "tests/test_noncombat_route_counterfactual_ranking.py",
+      "name": "test_train_and_evaluate_model_are_deterministic_on_learnable_rows",
+      "outcome": "passed"
+    },
+    {
+      "classname": "tests.test_bottled_policy_oracle",
+      "duration_seconds": 0.768,
+      "file": "tests/test_bottled_policy_oracle.py",
+      "name": "test_adapter_uses_checkout_requested_strike_card_reward_config",
+      "outcome": "passed"
+    },
+    {
+      "classname": "tests.test_main_runtime_errors",
+      "duration_seconds": 0.764,
+      "file": "tests/test_main_runtime_errors.py",
+      "name": "test_main_limits_isolated_bytecode_cache_suppression_to_qualification[True-True-nul\\\\sts-qualification-pycache]",
+      "outcome": "passed"
+    },
+    {
+      "classname": "tests.test_noncombat_ope_estimate_artifacts",
+      "duration_seconds": 0.719,
+      "file": "tests/test_noncombat_ope_estimate_artifacts.py",
+      "name": "test_invalid_estimator_input_preserves_prior_artifact_pair[blocked_overlap]",
+      "outcome": "passed"
+    },
+    {
+      "classname": "tests.test_noncombat_ope_estimate_artifacts",
+      "duration_seconds": 0.706,
+      "file": "tests/test_noncombat_ope_estimate_artifacts.py",
+      "name": "test_invalid_estimator_input_preserves_prior_artifact_pair[zero_denominator]",
+      "outcome": "passed"
+    },
+    {
+      "classname": "tests.test_noncombat_ope_estimate_artifacts",
+      "duration_seconds": 0.704,
+      "file": "tests/test_noncombat_ope_estimate_artifacts.py",
+      "name": "test_invalid_estimator_input_preserves_prior_artifact_pair[stale_calibration]",
+      "outcome": "passed"
+    },
+    {
+      "classname": "tests.test_noncombat_ope_estimate_artifacts",
+      "duration_seconds": 0.693,
+      "file": "tests/test_noncombat_ope_estimate_artifacts.py",
+      "name": "test_invalid_estimator_input_preserves_prior_artifact_pair[invalid_outcome]",
+      "outcome": "passed"
+    },
+    {
+      "classname": "tests.test_noncombat_ope_estimate_artifacts",
+      "duration_seconds": 0.667,
+      "file": "tests/test_noncombat_ope_estimate_artifacts.py",
+      "name": "test_invalid_estimator_input_preserves_prior_artifact_pair[duplicate_calibration_key]",
+      "outcome": "passed"
+    },
+    {
+      "classname": "tests.test_noncombat_ope_estimation",
+      "duration_seconds": 0.662,
+      "file": "tests/test_noncombat_ope_estimation.py",
+      "name": "test_loader_rejects_self_asserted_incomplete_calibration",
+      "outcome": "passed"
+    },
+    {
+      "classname": "tests.test_offline_decision_comparator",
+      "duration_seconds": 0.637,
+      "file": "tests/test_offline_decision_comparator.py",
+      "name": "test_direct_script_native_bottled_mode_writes_report",
+      "outcome": "passed"
+    },
+    {
+      "classname": "tests.test_intent_helper_usage",
+      "duration_seconds": 0.603,
+      "file": "tests/test_intent_helper_usage.py",
+      "name": "test_combat_damage_paths_use_shared_intent_helper",
+      "outcome": "passed"
+    },
+    {
+      "classname": "tests.test_noncombat_outcome_evidence_finalizer",
+      "duration_seconds": 0.587,
+      "file": "tests/test_noncombat_outcome_evidence_finalizer.py",
+      "name": "test_integrity_stop_finalizer_retains_claim_after_transaction_failure",
+      "outcome": "passed"
+    },
+    {
+      "classname": "tests.test_combat_lightspeed_production_candidate",
+      "duration_seconds": 0.579,
+      "file": "tests/test_combat_lightspeed_production_candidate.py",
+      "name": "test_bound_inputs_are_read_once",
+      "outcome": "passed"
+    },
+    {
+      "classname": "tests.test_noncombat_outcome_evidence_pool",
+      "duration_seconds": 0.574,
+      "file": "tests/test_noncombat_outcome_evidence_pool.py",
+      "name": "test_registered_pool_renderers_reject_tampered_content",
+      "outcome": "passed"
+    },
+    {
+      "classname": "tests.test_noncombat_cross_validated_shop_ensemble",
+      "duration_seconds": 0.564,
+      "file": "tests/test_noncombat_cross_validated_shop_ensemble.py",
+      "name": "test_trained_ensemble_round_trip_preserves_predictions",
+      "outcome": "passed"
+    },
+    {
+      "classname": "tests.test_noncombat_structured_baseline_ranker_poc",
+      "duration_seconds": 0.558,
+      "file": "tests/test_noncombat_structured_baseline_ranker_poc.py",
+      "name": "test_training_uses_only_multi_candidate_rows_and_is_deterministic",
+      "outcome": "passed"
+    },
+    {
+      "classname": "tests.test_noncombat_outcome_evidence_finalizer",
+      "duration_seconds": 0.556,
+      "file": "tests/test_noncombat_outcome_evidence_finalizer.py",
+      "name": "test_registered_finalizer_runs_frozen_production_pipeline_once",
+      "outcome": "passed"
+    },
+    {
+      "classname": "tests.test_noncombat_outcome_evidence_pool",
+      "duration_seconds": 0.528,
+      "file": "tests/test_noncombat_outcome_evidence_pool.py",
+      "name": "test_registered_pool_bytes_are_invariant_to_input_order",
+      "outcome": "passed"
+    },
+    {
+      "classname": "tests.test_noncombat_structured_baseline_ranker_poc",
+      "duration_seconds": 0.516,
+      "file": "tests/test_noncombat_structured_baseline_ranker_poc.py",
+      "name": "test_cross_validation_scores_each_seed_only_in_its_heldout_fold",
+      "outcome": "passed"
+    },
+    {
+      "classname": "tests.test_combat_lightspeed_calibration",
+      "duration_seconds": 0.51,
+      "file": "tests/test_combat_lightspeed_calibration.py",
+      "name": "test_calibration_script_supports_direct_execution",
+      "outcome": "passed"
+    },
+    {
+      "classname": "tests.test_noncombat_structured_baseline_ranker_poc",
+      "duration_seconds": 0.482,
+      "file": "tests/test_noncombat_structured_baseline_ranker_poc.py",
+      "name": "test_preserved_source_loader_accepts_matching_raw_and_gzip",
+      "outcome": "passed"
+    },
+    {
+      "classname": "tests.test_noncombat_action_family_counterfactual_audit",
+      "duration_seconds": 0.481,
+      "file": "tests/test_noncombat_action_family_counterfactual_audit.py",
+      "name": "test_publication_is_byte_identical_and_outside_source",
+      "outcome": "passed"
+    },
+    {
+      "classname": "tests.test_audit_card_acceptance_objective_interventions",
+      "duration_seconds": 0.475,
+      "file": "tests/test_audit_card_acceptance_objective_interventions.py",
+      "name": "test_report_construction_is_deterministic_across_isolated_processes",
+      "outcome": "passed"
+    },
+    {
+      "classname": "tests.test_combat_rl_stratified_provenance_successor",
+      "duration_seconds": 0.464,
+      "file": "tests/test_combat_rl_stratified_provenance_successor.py",
+      "name": "test_fixed_recipe_executes_exactly_64_optimizer_updates",
+      "outcome": "passed"
+    },
+    {
+      "classname": "tests.test_audit_card_acceptance_objective_interventions",
+      "duration_seconds": 0.463,
+      "file": "tests/test_audit_card_acceptance_objective_interventions.py",
+      "name": "test_publication_is_deterministic_across_isolated_processes",
+      "outcome": "passed"
+    },
+    {
+      "classname": "tests.test_noncombat_outcome_evidence_finalizer",
+      "duration_seconds": 0.447,
+      "file": "tests/test_noncombat_outcome_evidence_finalizer.py",
+      "name": "test_registered_finalizer_retains_claim_after_transaction_failure",
+      "outcome": "passed"
+    },
+    {
+      "classname": "tests.test_noncombat_event_option_ranker_shadow_evaluation",
+      "duration_seconds": 0.442,
+      "file": "tests/test_noncombat_event_option_ranker_shadow_evaluation.py",
+      "name": "test_loads_exact_manifest_bound_training_model",
+      "outcome": "passed"
+    },
+    {
+      "classname": "tests.test_noncombat_outcome_evidence_gate",
+      "duration_seconds": 0.442,
+      "file": "tests/test_noncombat_outcome_evidence_gate.py",
+      "name": "test_closeout_distinguishes_inconclusive_from_integrity_blocked",
+      "outcome": "passed"
+    },
+    {
+      "classname": "tests.test_combat_lightspeed_production_candidate",
+      "duration_seconds": 0.44,
+      "file": "tests/test_combat_lightspeed_production_candidate.py",
+      "name": "test_publication_preserves_candidate_and_loads_as_production_weights",
+      "outcome": "passed"
+    },
+    {
+      "classname": "tests.test_noncombat_outcome_evidence_finalizer",
+      "duration_seconds": 0.429,
+      "file": "tests/test_noncombat_outcome_evidence_finalizer.py",
+      "name": "test_registered_finalizer_never_substitutes_floor_for_supported_victory",
+      "outcome": "passed"
+    },
+    {
+      "classname": "tests.test_noncombat_card_scorer_optimizer",
+      "duration_seconds": 0.419,
+      "file": "tests/test_noncombat_card_scorer_optimizer.py",
+      "name": "test_scorer_optimizer_selects_exact_names_and_moments",
+      "outcome": "passed"
+    },
+    {
+      "classname": "tests.test_bottled_policy_oracle",
+      "duration_seconds": 0.415,
+      "file": "tests/test_bottled_policy_oracle.py",
+      "name": "test_adapter_exposes_falling_event_options_to_checkout_handler",
+      "outcome": "passed"
+    },
+    {
+      "classname": "tests.test_bottled_policy_oracle",
+      "duration_seconds": 0.414,
+      "file": "tests/test_bottled_policy_oracle.py",
+      "name": "test_adapter_uses_checkout_shop_handler_priorities",
+      "outcome": "passed"
+    },
+    {
+      "classname": "tests.test_bottled_policy_oracle",
+      "duration_seconds": 0.412,
+      "file": "tests/test_bottled_policy_oracle.py",
+      "name": "test_adapter_uses_checkout_event_handler_command",
+      "outcome": "passed"
+    },
+    {
+      "classname": "tests.test_noncombat_outcome_evidence_finalizer",
+      "duration_seconds": 0.411,
+      "file": "tests/test_noncombat_outcome_evidence_finalizer.py",
+      "name": "test_registered_finalizer_closes_out_when_estimator_input_is_not_ready",
+      "outcome": "passed"
+    },
+    {
+      "classname": "tests.test_noncombat_card_scorer_optimizer",
+      "duration_seconds": 0.399,
+      "file": "tests/test_noncombat_card_scorer_optimizer.py",
+      "name": "test_scorer_optimizer_rejects_full_parameter_order_drift",
+      "outcome": "passed"
+    },
+    {
+      "classname": "tests.test_phase5_unit_tests",
+      "duration_seconds": 0.392,
+      "file": "tests/test_phase5_unit_tests.py",
+      "name": "test_timeout_protection_logic",
+      "outcome": "passed"
+    },
+    {
+      "classname": "tests.test_noncombat_simulator_policy_validity",
+      "duration_seconds": 0.39,
+      "file": "tests/test_noncombat_simulator_policy_validity.py",
+      "name": "test_checked_in_policy_validity_registration_is_hash_closed_and_disjoint",
+      "outcome": "passed"
+    },
+    {
+      "classname": "tests.test_noncombat_card_scorer_optimizer",
+      "duration_seconds": 0.388,
+      "file": "tests/test_noncombat_card_scorer_optimizer.py",
+      "name": "test_scorer_optimizer_rejects_missing_source_moment",
+      "outcome": "passed"
+    },
+    {
+      "classname": "tests.test_combat_rl_action_relative_uncertainty_ensemble_fit",
+      "duration_seconds": 0.384,
+      "file": "tests/test_combat_rl_action_relative_uncertainty_ensemble_fit.py",
+      "name": "test_fit_is_deterministic_finite_and_freezes_shared_parent",
+      "outcome": "passed"
+    },
+    {
+      "classname": "tests.test_main_runtime_errors",
+      "duration_seconds": 0.381,
+      "file": "tests/test_main_runtime_errors.py",
+      "name": "test_entrypoint_rejects_full_rl_adaptive_before_pre_agent_startup",
+      "outcome": "passed"
+    },
+    {
+      "classname": "tests.test_bottled_policy_oracle",
+      "duration_seconds": 0.379,
+      "file": "tests/test_bottled_policy_oracle.py",
+      "name": "test_adapter_uses_checkout_route_config_when_scoring_paths",
+      "outcome": "passed"
+    },
+    {
+      "classname": "tests.test_main_runtime_errors",
+      "duration_seconds": 0.379,
+      "file": "tests/test_main_runtime_errors.py",
+      "name": "test_main_help_exposes_adaptive_elite_route_without_changing_default",
+      "outcome": "passed"
+    },
+    {
+      "classname": "tests.test_noncombat_current_bridge_diagnostic_smoke",
+      "duration_seconds": 0.379,
+      "file": "tests/test_noncombat_current_bridge_diagnostic_smoke.py",
+      "name": "test_committed_r2_preimplementation_is_canonical_and_exact",
+      "outcome": "passed"
+    },
+    {
+      "classname": "tests.test_noncombat_outcome_evidence_finalizer",
+      "duration_seconds": 0.367,
+      "file": "tests/test_noncombat_outcome_evidence_finalizer.py",
+      "name": "test_integrity_stop_finalizer_writes_only_a_blocked_closeout",
+      "outcome": "passed"
+    },
+    {
+      "classname": "tests.test_phase5_unit_tests",
+      "duration_seconds": 0.366,
+      "file": "tests/test_phase5_unit_tests.py",
+      "name": "test_configuration_constants",
+      "outcome": "passed"
+    },
+    {
+      "classname": "tests.test_bottled_policy_oracle",
+      "duration_seconds": 0.363,
+      "file": "tests/test_bottled_policy_oracle.py",
+      "name": "test_adapter_reports_combat_as_feasibility_only",
+      "outcome": "passed"
+    },
+    {
+      "classname": "tests.test_main_runtime_errors",
+      "duration_seconds": 0.361,
+      "file": "tests/test_main_runtime_errors.py",
+      "name": "test_main_supports_isolated_interpreter_startup",
+      "outcome": "passed"
+    },
+    {
+      "classname": "tests.test_adaptive_route_candidate_benchmark",
+      "duration_seconds": 0.358,
+      "file": "tests/test_adaptive_route_candidate_benchmark.py",
+      "name": "test_cli_qualification_rejects_malformed_full_height_fixture_before_timing",
+      "outcome": "passed"
+    },
+    {
+      "classname": "tests.test_main_runtime_errors",
+      "duration_seconds": 0.357,
+      "file": "tests/test_main_runtime_errors.py",
+      "name": "test_main_limits_isolated_bytecode_cache_suppression_to_qualification[False-False-None]",
+      "outcome": "passed"
+    },
+    {
+      "classname": "tests.test_noncombat_outcome_evidence_pool",
+      "duration_seconds": 0.351,
+      "file": "tests/test_noncombat_outcome_evidence_pool.py",
+      "name": "test_registered_pool_preserves_session_and_trajectory_exclusion_reasons",
+      "outcome": "passed"
+    },
+    {
+      "classname": "tests.test_noncombat_reachable_event_option_semantics",
+      "duration_seconds": 0.351,
+      "file": "tests/test_noncombat_reachable_event_option_semantics.py",
+      "name": "test_reachable_successor_preserves_all_cursed_tome_phases[0-indices0]",
+      "outcome": "passed"
+    },
+    {
+      "classname": "tests.test_noncombat_ope_readiness",
+      "duration_seconds": 0.343,
+      "file": "tests/test_noncombat_ope_readiness.py",
+      "name": "test_module_cli_exposes_real_subcommands",
+      "outcome": "passed"
+    },
+    {
+      "classname": "tests.test_noncombat_outcome_evidence_gate",
+      "duration_seconds": 0.342,
+      "file": "tests/test_noncombat_outcome_evidence_gate.py",
+      "name": "test_exact_gate_requires_50_aggregate_decisions_per_arm[baseline-shop]",
+      "outcome": "passed"
+    },
+    {
+      "classname": "tests.test_noncombat_outcome_evidence_gate",
+      "duration_seconds": 0.341,
+      "file": "tests/test_noncombat_outcome_evidence_gate.py",
+      "name": "test_exact_gate_requires_50_aggregate_decisions_per_arm[baseline-card_reward]",
+      "outcome": "passed"
+    },
+    {
+      "classname": "tests.test_noncombat_outcome_evidence_gate",
+      "duration_seconds": 0.337,
+      "file": "tests/test_noncombat_outcome_evidence_gate.py",
+      "name": "test_exact_gate_requires_50_aggregate_decisions_per_arm[alternative-shop]",
+      "outcome": "passed"
+    }
+  ],
+  "test_count": 4403
+}

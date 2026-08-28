@@ -13,11 +13,11 @@
 ## 3. Registered Training And Evaluation
 
 - [x] 3.1 Commit the audit, OpenSpec artifacts, source, tests, and one registration binding r16, corpus bytes, recipe, split, and output path
-- [ ] 3.2 Execute the registered 4,096-update CPU fit/calibration/holdout decision once and publish its artifact and report
-- [ ] 3.3 If offline conditions pass, implement, register, and execute one fresh matched LightSTS gate; otherwise record that native loading was not authorized
-- [ ] 3.4 Publish the decision without retry, retraining, seed replacement, threshold change, loss change, or sweep
+- [x] 3.2 Execute the registered 4,096-update CPU fit/calibration/holdout decision once and publish its artifact and report
+- [x] 3.3 If offline conditions pass, implement, register, and execute one fresh matched LightSTS gate; otherwise record that native loading was not authorized
+- [x] 3.4 Publish the decision without retry, retraining, seed replacement, threshold change, loss change, or sweep
 
 ## 4. Verification And Closure
 
-- [ ] 4.1 Run focused tests, strict OpenSpec validation, and exactly one timed commit gate for the complete source boundary
-- [ ] 4.2 Sync and archive the change, commit the coherent evidence boundary, and push master
+- [x] 4.1 Run focused tests, strict OpenSpec validation, and exactly one timed commit gate for the complete source boundary
+- [x] 4.2 Sync and archive the change, commit the coherent evidence boundary, and push master
