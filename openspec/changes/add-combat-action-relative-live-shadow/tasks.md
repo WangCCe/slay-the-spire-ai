@@ -1,12 +1,18 @@
 ## 1. Deferred Shadow Runtime
 
-- [ ] 1.1 Add regressions for exact registration binding, deferred guard eligibility, EndTurn masking, abstention, behavior neutrality, budget continuity, transient waits, and failure isolation.
-- [ ] 1.2 Implement the source-bound action-relative live shadow runtime and append-only structured telemetry.
+- [x] 1.1 Add regressions for exact registration binding, deferred guard eligibility, EndTurn masking, abstention, behavior neutrality, budget continuity, transient waits, and failure isolation.
+- [x] 1.2 Implement the source-bound action-relative live shadow runtime and append-only structured telemetry.
 
 ## 2. Integration And Readiness
 
-- [ ] 2.1 Add mutually exclusive RL-agent and launcher environment wiring without changing behavior when no registration is configured.
-- [ ] 2.2 Add a read-only summary with exact identity, continuity, support, neutrality, legality, safety, error, budget, and latency gates.
+- [x] 2.1 Add mutually exclusive RL-agent and launcher environment wiring without changing behavior when no registration is configured.
+- [x] 2.2 Add a read-only summary with exact identity, continuity, support, neutrality, legality, safety, error, budget, and latency gates.
+
+Focused and adjacent verification passed `100` tests in `16.31s` on the Windows
+production interpreter. Two earlier sandboxed invocations were infrastructure
+failures caused by Windows pytest basetemp ACL cleanup and are not test evidence.
+The one bounded commit gate passed `4,289` tests with `26` skipped and `21`
+deselected in `167.30s` total.
 
 ## 3. Bounded Live Evidence
 

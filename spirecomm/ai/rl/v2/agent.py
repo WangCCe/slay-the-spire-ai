@@ -291,15 +291,26 @@ class RLAgentV2:
 
         self.latent_gated_shadow = None
         self.latent_gated_candidate = None
+        self.action_relative_shadow = None
         shadow_registration = os.environ.get(
             "STS_COMBAT_RL_LATENT_SHADOW_REGISTRATION", ""
         ).strip()
         candidate_registration = os.environ.get(
             "STS_COMBAT_RL_LATENT_CANDIDATE_REGISTRATION", ""
         ).strip()
-        if shadow_registration and candidate_registration:
+        action_relative_registration = os.environ.get(
+            "STS_COMBAT_RL_ACTION_RELATIVE_SHADOW_REGISTRATION", ""
+        ).strip()
+        if sum(
+            bool(value)
+            for value in (
+                shadow_registration,
+                candidate_registration,
+                action_relative_registration,
+            )
+        ) > 1:
             raise ValueError(
-                "latent-gated shadow and candidate registrations are mutually exclusive"
+                "combat live shadow and candidate registrations are mutually exclusive"
             )
         if model_path:
             self.load_model(model_path)
@@ -328,6 +339,23 @@ class RLAgentV2:
             adapter_metadata = self._build_metadata().as_dict()
             adapter_metadata.pop("rl_space_version")
             self.latent_gated_candidate = initialize_latent_gated_live_candidate(
+                parent=self.network,
+                metadata=adapter_metadata,
+                model_path=model_path,
+                training=self.training_mode,
+                epsilon=self.epsilon,
+                expert_mix_enabled=self.expert_mix_enabled,
+                repo_root=Path(__file__).resolve().parents[4],
+                device=self.device,
+            )
+        if action_relative_registration:
+            from .action_relative_live_shadow import (
+                initialize_action_relative_live_shadow,
+            )
+
+            adapter_metadata = self._build_metadata().as_dict()
+            adapter_metadata.pop("rl_space_version")
+            self.action_relative_shadow = initialize_action_relative_live_shadow(
                 parent=self.network,
                 metadata=adapter_metadata,
                 model_path=model_path,
@@ -457,6 +485,27 @@ class RLAgentV2:
                         stage="proposal", error=shadow_error, game=game
                     )
 
+            action_relative_shadow = getattr(self, "action_relative_shadow", None)
+            if action_relative_shadow is not None and action_relative_shadow.enabled:
+                try:
+                    action_relative_shadow.observe_proposal(
+                        game=game,
+                        continuous=encoded.continuous,
+                        card_ids=encoded.card_ids,
+                        potion_ids=encoded.potion_ids,
+                        relic_ids=encoded.relic_ids,
+                        action_mask=action_mask,
+                        parent_action_index=parent_action_index,
+                    )
+                except Exception as shadow_error:
+                    logger.error(
+                        "RLAgentV2 action-relative shadow proposal failed: %s",
+                        shadow_error,
+                    )
+                    action_relative_shadow.record_runtime_error(
+                        stage="proposal", error=shadow_error, game=game
+                    )
+
             if self.training_mode and self.trainer is not None:
                 self._process_training_step(
                     game=game,
@@ -576,8 +625,22 @@ class RLAgentV2:
         """Bind replay attribution to the action emitted after outer safety guards."""
         candidate = getattr(self, "latent_gated_candidate", None)
         shadow = getattr(self, "latent_gated_shadow", None)
-        live_runtime = candidate if candidate is not None else shadow
-        runtime_label = "candidate" if candidate is not None else "shadow"
+        action_relative_shadow = getattr(self, "action_relative_shadow", None)
+        live_runtime = next(
+            (
+                runtime
+                for runtime in (candidate, shadow, action_relative_shadow)
+                if runtime is not None
+            ),
+            None,
+        )
+        runtime_label = (
+            "candidate"
+            if candidate is not None
+            else "shadow"
+            if shadow is not None
+            else "action-relative shadow"
+        )
         if live_runtime is not None and live_runtime.pending is not None:
             try:
                 if isinstance(action, WaitAction):
@@ -592,7 +655,7 @@ class RLAgentV2:
                     )
             except Exception as live_error:
                 logger.error(
-                    "RLAgentV2 latent-gated %s commit failed: %s",
+                    "RLAgentV2 combat %s commit failed: %s",
                     runtime_label,
                     live_error,
                 )
@@ -800,6 +863,7 @@ class RLAgentV2:
         for live_runtime in (
             getattr(self, "latent_gated_candidate", None),
             getattr(self, "latent_gated_shadow", None),
+            getattr(self, "action_relative_shadow", None),
         ):
             if live_runtime is not None:
                 live_runtime.discard_pending()

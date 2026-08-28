@@ -142,9 +142,19 @@ def build_child_env(args):
     combat_latent_candidate_registration = getattr(
         args, "combat_latent_candidate_registration", None
     )
-    if combat_latent_shadow_registration and combat_latent_candidate_registration:
+    combat_action_relative_shadow_registration = getattr(
+        args, "combat_action_relative_shadow_registration", None
+    )
+    if sum(
+        bool(value)
+        for value in (
+            combat_latent_shadow_registration,
+            combat_latent_candidate_registration,
+            combat_action_relative_shadow_registration,
+        )
+    ) > 1:
         raise ValueError(
-            "combat latent shadow and candidate registrations are mutually exclusive"
+            "combat shadow and candidate registrations are mutually exclusive"
         )
     if combat_latent_shadow_registration:
         env["STS_COMBAT_RL_LATENT_SHADOW_REGISTRATION"] = str(
@@ -158,6 +168,12 @@ def build_child_env(args):
         )
     else:
         env.pop("STS_COMBAT_RL_LATENT_CANDIDATE_REGISTRATION", None)
+    if combat_action_relative_shadow_registration:
+        env["STS_COMBAT_RL_ACTION_RELATIVE_SHADOW_REGISTRATION"] = str(
+            combat_action_relative_shadow_registration
+        )
+    else:
+        env.pop("STS_COMBAT_RL_ACTION_RELATIVE_SHADOW_REGISTRATION", None)
     card_shadow_config = getattr(args, "card_uplift_shadow_config", None)
     card_canary_config = getattr(args, "card_uplift_canary_config", None)
     card_evaluation_config = getattr(args, "card_uplift_evaluation_config", None)
@@ -451,6 +467,14 @@ def parse_args():
         help=(
             "Explicit registration passed as "
             "STS_COMBAT_RL_LATENT_CANDIDATE_REGISTRATION."
+        ),
+    )
+    parser.add_argument(
+        "--combat-action-relative-shadow-registration",
+        default=None,
+        help=(
+            "Explicit registration passed as "
+            "STS_COMBAT_RL_ACTION_RELATIVE_SHADOW_REGISTRATION."
         ),
     )
     parser.add_argument(
