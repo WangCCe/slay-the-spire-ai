@@ -52,7 +52,8 @@ default. Node exclusions are not skip markers and do not change test code.
 |---|---|
 | Red-green iteration | Narrow node or relevant domain profile |
 | Coherent code/test commit | Relevant focused tests, then `commit` |
-| Pytest config, shared fixture, runner selection, or manifest | Runner-focused tests, then `full` |
+| Pytest config, shared fixture, or complete-profile selection | Runner-focused tests, then `full` |
+| Commit-only runner/manifest selection with exact inclusive-full argv regression | Runner-focused tests, then `commit`; retain `full` for the configured complete boundary |
 | Selection-equivalent opt-in timing telemetry | Runner-focused tests, then `commit` |
 | Excluded test or source it specifically owns | Direct node/file or stricter focused set, then `commit`; run `full` at the configured complete boundary |
 | Broad cross-domain refactor, merge, release, or phase close | `full` |
@@ -66,14 +67,16 @@ five-minute ceiling. It replaced the invalidated 17-file boundary, which took
 inclusive complete boundary; the commit qualification is not evidence that the
 latest raw-full baseline passed.
 
-The later combat-RL test growth produced one conforming run at 318.74 seconds
-and invalidated that timing qualification. The 2026-08-28 r2 profiling run
-passed 4,195 tests with 26 skips in 274.77 runner seconds and measured 21
-fresh-process import-isolation nodes at 103.649 aggregate testcase seconds.
-Those exact nodes form the frozen schema-v2 `commit_deselect` candidate; the
-final requalification result is recorded with the change before this paragraph
-is updated to claim a new bounded boundary. Rollback removes those entries and
-restores manifest schema version 1; it does not alter test or production code.
+Later combat-RL test growth produced one conforming run at 318.74 seconds and
+invalidated that timing qualification. The 2026-08-28 r2 profiling run passed
+4,195 tests with 26 skips in 274.77 runner seconds and measured 21 fresh-process
+import-isolation nodes at 103.649 aggregate testcase seconds. The frozen
+schema-v2 boundary then qualified with 4,182 passes, 26 skips, and 21 deselected
+nodes in 171.75 runner seconds. Runner regressions and a repository-manifest
+dry-run proved `full` retains the ordinary inclusive argv; the known
+2,868.18-second failing raw-full baseline was not repeated solely for equivalent
+selection telemetry. Rollback removes the node entries and restores manifest
+schema version 1; it does not alter test or production code.
 Before launching pytest, an ordinary run prints and flushes the selected profile
 and the fully assembled Windows command. `--dry-run` prints the same information
 with an explicit dry-run label but does not create test state or launch pytest.

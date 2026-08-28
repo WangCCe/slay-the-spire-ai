@@ -40,6 +40,15 @@ training-smoke, and publication tests remain included even when individually
 slow. A stale deselection can only restore coverage and consume time; the
 recorded qualification and exact-manifest regression expose that drift.
 
+Runner regressions assert that `full` receives neither `--ignore` nor
+`--deselect`, and a repository-manifest dry-run records the same invariant.
+Because this change alters only commit selection, those checks plus the frozen
+commit qualification replace an otherwise redundant raw-full invocation. The
+latest raw-full boundary already took 2,868.18 seconds and reported 230 known
+failures; repeating it cannot add selection evidence when its argv is proven
+unchanged. Raw `full` remains required for phase close or any change that can
+alter its configured test universe.
+
 Whole-file `full_only` remains available for files whose complete lifecycle is
 materially expensive. Node-level deselection is used here because moving the
 affected files wholesale would remove hundreds of fast behavior regressions.
@@ -65,7 +74,8 @@ weaken the fresh-interpreter property these tests intentionally assert.
 1. Add RED parser and command-construction regressions for schema version 2.
 2. Add the frozen 21-node manifest list and update documentation.
 3. Run runner-focused tests and strict OpenSpec validation.
-4. Run one final frozen `commit` qualification, recording its exact result.
+4. Prove `full` argv equivalence, then run one final frozen `commit`
+   qualification and record its exact result.
 5. Roll back by removing `commit_deselect`, reverting schema version 1, and
    restoring the current runner behavior.
 

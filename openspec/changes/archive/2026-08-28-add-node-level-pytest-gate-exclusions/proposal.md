@@ -13,6 +13,9 @@ margin for useful iteration without justifying whole-file exclusions.
 - Freeze the initial entries from the 2026-08-28 timing report before final
   qualification; new tests remain included by default.
 - Keep direct focused pytest and the inclusive `full` profile unchanged.
+- Treat a commit-only selection change with regression-proven unchanged `full`
+  argv as focused-plus-commit validation; do not rerun a known failing raw full
+  boundary solely to prove argument equivalence.
 - Require one runner-focused validation and one frozen-boundary qualification
   at no more than 240 seconds including orchestration.
 - Do not add parallel pytest, caching, automatic timing-based mutation, skip

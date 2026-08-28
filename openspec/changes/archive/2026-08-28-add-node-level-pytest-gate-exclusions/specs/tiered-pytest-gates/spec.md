@@ -82,8 +82,12 @@ followed by `commit`; `full` SHALL be reserved for explicit complete boundaries
 rather than routine red-green iteration.
 
 #### Scenario: Shared test infrastructure changes
-- **WHEN** pytest configuration, shared fixtures, profile selection logic, the manifest, or an excluded test changes
+- **WHEN** pytest configuration, shared fixtures, complete-profile selection logic, or an excluded test changes in a way that can affect `full`
 - **THEN** the documented validation boundary requires direct focused coverage for affected tests and the `full` profile
+
+#### Scenario: Commit-only selection changes
+- **WHEN** the runner or manifest changes only `commit` exclusions and runner regressions plus a dry-run prove the `full` pytest arguments remain unchanged and inclusive
+- **THEN** runner-focused tests plus one frozen `commit` qualification are sufficient, and raw `full` remains reserved for the next configured complete boundary
 
 #### Scenario: Selection-equivalent timing telemetry changes
 - **WHEN** a gate-runner change affects only opt-in timing publication and regressions prove the selected pytest arguments remain equivalent

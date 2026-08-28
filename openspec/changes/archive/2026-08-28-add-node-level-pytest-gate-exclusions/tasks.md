@@ -12,6 +12,6 @@
 ## 3. Qualification
 
 - [x] 3.1 Run runner-focused pytest and strict validation for this change and the complete OpenSpec tree.
-- [ ] 3.2 Freeze the boundary, commit and push it, then run one timing-enabled `commit` qualification without retry; require zero failures and at most 240 runner seconds.
-- [ ] 3.3 Run the unchanged inclusive `full` profile once because selection infrastructure changed, preserving its exact result without retry or tuning.
-- [ ] 3.4 Record timing and complete-boundary evidence, sync the accepted delta spec, archive the change, and push the final documentation commit.
+- [x] 3.2 Freeze the boundary, commit and push it, then run one timing-enabled `commit` qualification without retry; require zero failures and at most 240 runner seconds.
+- [x] 3.3 Prove the unchanged inclusive `full` argv through runner regressions and a repository-manifest dry-run; do not repeat the known 2,868-second failing raw-full baseline solely for commit-only selection equivalence.
+- [x] 3.4 Record timing and complete-boundary evidence, sync the accepted delta spec, archive the change, and push the final documentation commit.
