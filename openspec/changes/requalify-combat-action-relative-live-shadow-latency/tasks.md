@@ -15,7 +15,10 @@ numeric runner and adjacent surfaces passed `55` focused tests in `9.60s`.
 
 ## 3. New Offline Preflight
 
-- [ ] 3.1 Commit and push one immutable r2 CPU preflight registration with unchanged parent, artifact, corpus, deterministic schedule, and speed limits.
+- [x] 3.1 Commit and push one immutable r2 CPU preflight registration with unchanged parent, artifact, corpus, deterministic schedule, and speed limits.
+
+Registration SHA-256:
+`a158868b984b36f8ce3115c62381c5b87a020a30aee72f32fb3afcc1b756f2f5`.
 - [ ] 3.2 Execute the r2 registration once and publish parity, latency, provenance, and terminal decision; do not change or retry the registration after execution.
 
 ## 4. Fresh Live Shadow
