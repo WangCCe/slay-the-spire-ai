@@ -1,0 +1,25 @@
+## 1. Device Evidence And Contract
+
+- [ ] 1.1 Publish the fixed dual-device POC with checkpoint/artifact/corpus identities, 32 warmups, 256 measurements, latency distributions, cross-device parity, and diagnostic-only authority.
+- [ ] 1.2 Add schema-v2 CPU registration tests plus schema-v1 compatibility and fail-closed unsupported-device regressions.
+
+## 2. CPU Shadow Isolation
+
+- [ ] 2.1 Add RED initialization regressions proving the CPU mirror is distinct, state-identical, CPU-resident, and leaves the production parent device, storage, state, and action path unchanged.
+- [ ] 2.2 Implement schema-v2 CPU mirror initialization and preserve schema-v1 inherited-device behavior.
+- [ ] 2.3 Include registration schema and inference device in readiness output without changing trace schema or readiness thresholds.
+
+## 3. Source Validation
+
+- [ ] 3.1 Run focused live-shadow, summary, agent, and batch-env tests, Python compilation, strict OpenSpec validation, and diff checks.
+- [ ] 3.2 Run one repository commit gate with a new `--timing-report`; use that single run for correctness and queued slow-gate attribution, then commit and push source.
+
+## 4. Fresh CPU Live Shadow
+
+- [ ] 4.1 Commit and push one source-bound schema-v2 CPU five-game registration with unchanged parent, artifact, 512-decision budget, 100-eligible floor, and 20ms p95 gate.
+- [ ] 4.2 Back up and temporarily update the production-r16 CommunicationMod command, run at most one five-game cohort, and restore the exact prior config after terminalization or failure.
+- [ ] 4.3 Publish trace, run, log, sim-divergence, config, and fixed readiness evidence; retain zero candidate action authority unless every registered condition passes.
+
+## 5. Closure
+
+- [ ] 5.1 Sync the CPU shadow isolation requirement if source and live evidence pass, archive the change, and commit only scoped source, registration, timing, and compact report artifacts.
