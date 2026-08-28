@@ -371,6 +371,7 @@ def _pending(game, action_index=2):
         action_index=action_index,
         action_mask=game.action_mask.copy(),
         game=game,
+        proposed_action_index=action_index,
     )
 
 
@@ -381,6 +382,7 @@ def test_emitted_guard_replacement_overwrites_pending_action_label():
 
     assert agent.commit_executed_action(game, _Action(6)) is True
     assert agent.pending_transition.action_index == 6
+    assert agent.pending_transition.proposed_action_index == 2
     assert agent.pending_transition.anchor_to_executed_action is True
 
 
@@ -392,11 +394,13 @@ def test_unchanged_emitted_rl_action_keeps_parent_anchor_label():
 
     assert agent.commit_executed_action(game, _Action(2)) is True
     assert agent.pending_transition.action_index == 2
+    assert agent.pending_transition.proposed_action_index == 2
     assert agent.pending_transition.anchor_to_executed_action is False
 
     agent.observe_next_state(_game(2))
 
     assert trainer.transitions[0]["anchor_to_executed_action"] is False
+    assert trainer.transitions[0]["proposed_action_index"] == 2
 
 
 def test_fallback_emission_without_rl_proposal_uses_executed_action_anchor():
@@ -406,11 +410,13 @@ def test_fallback_emission_without_rl_proposal_uses_executed_action_anchor():
 
     assert agent.commit_executed_action(game, _Action(6)) is True
     assert agent.pending_transition.action_index == 6
+    assert agent.pending_transition.proposed_action_index == -1
     assert agent.pending_transition.anchor_to_executed_action is True
 
     agent.observe_next_state(_game(2))
 
     assert trainer.transitions[0]["anchor_to_executed_action"] is True
+    assert trainer.transitions[0]["proposed_action_index"] == -1
 
 
 def test_unencodable_same_state_emission_discards_proposed_transition():
@@ -1006,6 +1012,13 @@ def test_replay_checkpoint_round_trip_keeps_bounded_chronological_tail():
             if done
             else np.ones(2, dtype=bool),
             anchor_to_executed_action=bool(value % 2),
+            proposed_action_index=(
+                -1
+                if value == 7
+                else (value + 1) % 2
+                if value % 2
+                else value % 2
+            ),
         )
 
     state = replay.state_dict(max_transitions=3)
@@ -1020,12 +1033,14 @@ def test_replay_checkpoint_round_trip_keeps_bounded_chronological_tail():
     restored.load_state_dict(state)
 
     assert len(restored) == 3
-    assert state["schema_version"] == 2
+    assert state["schema_version"] == 3
     assert state["source_transition_count"] == 5
     assert state["truncated"] is True
     assert state["anchor_to_executed_action"].tolist() == [True, False, True]
+    assert state["proposed_action_indices"].tolist() == [0, 0, -1]
     assert [transition[5] for transition in restored.buffer] == [5.0, 6.0, 7.0]
     assert [transition[13] for transition in restored.buffer] == [True, False, True]
+    assert [transition[14] for transition in restored.buffer] == [0, 0, -1]
     assert restored.buffer[-1][10] is True
     assert restored.buffer[-1][6] is None
     assert restored.position == 3
@@ -1056,10 +1071,12 @@ def test_replay_default_override_is_false_and_version1_loads_all_false():
         next_action_mask=np.ones(2, dtype=bool),
     )
     assert replay.buffer[0][13] is False
+    assert replay.buffer[0][14] == -2
 
     legacy_state = replay.state_dict()
     legacy_state["schema_version"] = 1
     legacy_state.pop("anchor_to_executed_action")
+    legacy_state.pop("proposed_action_indices")
     restored = ReplayBufferV2(
         buffer_size=2,
         continuous_dim=2,
@@ -1071,7 +1088,102 @@ def test_replay_default_override_is_false_and_version1_loads_all_false():
     restored.load_state_dict(legacy_state)
 
     assert restored.buffer[0][13] is False
+    assert restored.buffer[0][14] == -2
     assert restored.sample(1)[13].tolist() == [False]
+    assert len(restored.sample(1)) == 14
+    assert restored.sample(1, include_proposed_action=True)[14].tolist() == [-2]
+
+
+def test_replay_version2_load_preserves_override_with_unknown_proposal():
+    replay = ReplayBufferV2(
+        buffer_size=2,
+        continuous_dim=2,
+        action_dim=2,
+        card_slots=1,
+        potion_slots=1,
+        relic_slots=1,
+    )
+    assert replay.add(
+        continuous=np.zeros(2, dtype=np.float32),
+        card_ids=np.zeros(1, dtype=np.int64),
+        potion_ids=np.zeros(1, dtype=np.int64),
+        relic_ids=np.zeros(1, dtype=np.int64),
+        action=1,
+        reward=1.0,
+        next_continuous=np.ones(2, dtype=np.float32),
+        next_card_ids=np.zeros(1, dtype=np.int64),
+        next_potion_ids=np.zeros(1, dtype=np.int64),
+        next_relic_ids=np.zeros(1, dtype=np.int64),
+        done=False,
+        action_mask=np.ones(2, dtype=bool),
+        next_action_mask=np.ones(2, dtype=bool),
+        anchor_to_executed_action=True,
+    )
+    version2 = replay.state_dict()
+    version2["schema_version"] = 2
+    version2.pop("proposed_action_indices")
+
+    restored = ReplayBufferV2(
+        buffer_size=2,
+        continuous_dim=2,
+        action_dim=2,
+        card_slots=1,
+        potion_slots=1,
+        relic_slots=1,
+    )
+    restored.load_state_dict(version2)
+
+    assert restored.buffer[0][13] is True
+    assert restored.buffer[0][14] == -2
+
+
+def test_replay_rejects_inconsistent_known_proposal_identity():
+    replay = ReplayBufferV2(
+        buffer_size=2,
+        continuous_dim=2,
+        action_dim=2,
+        card_slots=1,
+        potion_slots=1,
+        relic_slots=1,
+    )
+    common = {
+        "continuous": np.zeros(2, dtype=np.float32),
+        "card_ids": np.zeros(1, dtype=np.int64),
+        "potion_ids": np.zeros(1, dtype=np.int64),
+        "relic_ids": np.zeros(1, dtype=np.int64),
+        "action": 0,
+        "reward": 1.0,
+        "next_continuous": np.ones(2, dtype=np.float32),
+        "next_card_ids": np.zeros(1, dtype=np.int64),
+        "next_potion_ids": np.zeros(1, dtype=np.int64),
+        "next_relic_ids": np.zeros(1, dtype=np.int64),
+        "done": False,
+        "action_mask": np.ones(2, dtype=bool),
+        "next_action_mask": np.ones(2, dtype=bool),
+    }
+    assert replay.add(
+        **common,
+        anchor_to_executed_action=False,
+        proposed_action_index=-1,
+    ) is False
+    assert replay.add(
+        **common,
+        anchor_to_executed_action=False,
+        proposed_action_index=0,
+    ) is True
+
+    inconsistent = replay.state_dict()
+    inconsistent["proposed_action_indices"][0] = 1
+    restored = ReplayBufferV2(
+        buffer_size=2,
+        continuous_dim=2,
+        action_dim=2,
+        card_slots=1,
+        potion_slots=1,
+        relic_slots=1,
+    )
+    with pytest.raises(ValueError, match="proposal identity"):
+        restored.load_state_dict(inconsistent)
 
 
 def _checkpoint_agent(

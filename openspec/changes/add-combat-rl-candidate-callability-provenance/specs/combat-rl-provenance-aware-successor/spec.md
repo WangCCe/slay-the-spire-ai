@@ -23,7 +23,7 @@ The system MUST freeze the optimizer recipe, SMDP span rule, terminal-combat spl
 - **THEN** the cohort remains diagnostic-only and no candidate is fitted
 
 ### Requirement: Deterministic bounded full-network fitting
-The system SHALL partition complete terminal-delimited combats with the registered split seed, construct candidate-decision SMDP spans without crossing partitions, and fit all online-network parameters with the registered CPU seed, learning rate, batch size, frozen target, frozen parent anchor, parent anchor weight, direct-only margin guard, variable bootstrap multipliers, and exact optimizer-update budget. No no-proposal or legacy-unknown row may be sampled as an independent candidate decision.
+The system SHALL partition complete terminal-delimited combats with the registered split seed, construct candidate-decision SMDP spans without crossing partitions, and fit all online-network parameters with the registered CPU seed, learning rate, batches containing exactly 64 direct and 64 changed-proposal spans sampled without replacement within each stratum, frozen target, frozen parent anchor, parent anchor weight, direct-only margin guard, variable bootstrap multipliers, and exact optimizer-update budget. No no-proposal or legacy-unknown row may be sampled as an independent candidate decision.
 
 #### Scenario: Registered recipe is executed twice on equivalent temporary inputs
 - **WHEN** the same checkpoint and registered configuration are supplied

@@ -8,6 +8,34 @@ import numpy as np
 import torch
 
 
+UNKNOWN_PROPOSED_ACTION = -2
+NO_PROPOSED_ACTION = -1
+
+
+def _proposal_identity_is_valid(
+    *,
+    action: int,
+    proposed_action_index: int,
+    anchor_to_executed_action: bool,
+    action_mask: np.ndarray,
+    action_dim: int,
+) -> bool:
+    if proposed_action_index == UNKNOWN_PROPOSED_ACTION:
+        return True
+    if action < 0 or action >= action_dim or action_mask is None:
+        return False
+    mask = np.asarray(action_mask, dtype=bool)
+    if mask.shape != (action_dim,) or not bool(mask[action]):
+        return False
+    if proposed_action_index == NO_PROPOSED_ACTION:
+        return bool(anchor_to_executed_action)
+    if proposed_action_index < 0 or proposed_action_index >= action_dim:
+        return False
+    if not bool(mask[proposed_action_index]):
+        return False
+    return bool(anchor_to_executed_action) == (proposed_action_index != action)
+
+
 class ReplayBufferV2:
     def __init__(
         self,
@@ -43,6 +71,7 @@ class ReplayBufferV2:
         action_mask: np.ndarray = None,
         next_action_mask: np.ndarray = None,
         anchor_to_executed_action: bool = False,
+        proposed_action_index: int = UNKNOWN_PROPOSED_ACTION,
     ) -> bool:
         if continuous is not None and len(continuous) != self.continuous_dim:
             return False
@@ -57,6 +86,15 @@ class ReplayBufferV2:
         if action_mask is not None and len(action_mask) != self.action_dim:
             return False
         if next_action_mask is not None and len(next_action_mask) != self.action_dim:
+            return False
+        proposed_action_index = int(proposed_action_index)
+        if not _proposal_identity_is_valid(
+            action=int(action),
+            proposed_action_index=proposed_action_index,
+            anchor_to_executed_action=bool(anchor_to_executed_action),
+            action_mask=action_mask,
+            action_dim=self.action_dim,
+        ):
             return False
 
         transition = (
@@ -74,6 +112,7 @@ class ReplayBufferV2:
             action_mask,
             next_action_mask,
             bool(anchor_to_executed_action),
+            proposed_action_index,
         )
 
         if len(self.buffer) < self.buffer_size:
@@ -111,7 +150,7 @@ class ReplayBufferV2:
             )
 
         return {
-            "schema_version": 2,
+            "schema_version": 3,
             "buffer_size": self.buffer_size,
             "continuous_dim": self.continuous_dim,
             "action_dim": self.action_dim,
@@ -163,11 +202,14 @@ class ReplayBufferV2:
             "anchor_to_executed_action": torch.tensor(
                 [transition[13] for transition in transitions], dtype=torch.bool
             ),
+            "proposed_action_indices": torch.tensor(
+                [transition[14] for transition in transitions], dtype=torch.int64
+            ),
         }
 
     def load_state_dict(self, state: dict) -> None:
         """Replace replay contents from a validated chronological snapshot."""
-        if not isinstance(state, dict) or state.get("schema_version") not in {1, 2}:
+        if not isinstance(state, dict) or state.get("schema_version") not in {1, 2, 3}:
             raise ValueError("Unsupported replay checkpoint schema")
         schema_version = int(state["schema_version"])
 
@@ -210,6 +252,11 @@ class ReplayBufferV2:
                 (count,),
                 torch.bool,
             )
+        if schema_version >= 3:
+            shapes_and_dtypes["proposed_action_indices"] = (
+                (count,),
+                torch.int64,
+            )
         arrays = {}
         for key, (expected_shape, expected_dtype) in shapes_and_dtypes.items():
             value = state.get(key)
@@ -233,6 +280,26 @@ class ReplayBufferV2:
             action = int(arrays["actions"][index])
             if action < 0 or action >= self.action_dim:
                 raise ValueError(f"Replay checkpoint action out of range: {action}")
+            anchor_to_executed_action = (
+                bool(arrays["anchor_to_executed_action"][index])
+                if schema_version >= 2
+                else False
+            )
+            proposed_action_index = (
+                int(arrays["proposed_action_indices"][index])
+                if schema_version >= 3
+                else UNKNOWN_PROPOSED_ACTION
+            )
+            if not _proposal_identity_is_valid(
+                action=action,
+                proposed_action_index=proposed_action_index,
+                anchor_to_executed_action=anchor_to_executed_action,
+                action_mask=arrays["action_masks"][index],
+                action_dim=self.action_dim,
+            ):
+                raise ValueError(
+                    f"Replay checkpoint proposal identity is inconsistent at row {index}"
+                )
             transitions.append(
                 (
                     arrays["continuous"][index].astype(np.float32, copy=True),
@@ -256,9 +323,8 @@ class ReplayBufferV2:
                     done,
                     arrays["action_masks"][index].astype(bool, copy=True),
                     arrays["next_action_masks"][index].astype(bool, copy=True),
-                    bool(arrays["anchor_to_executed_action"][index])
-                    if schema_version >= 2
-                    else False,
+                    anchor_to_executed_action,
+                    proposed_action_index,
                 )
             )
 
@@ -274,7 +340,12 @@ class ReplayBufferV2:
             return list(self.buffer)
         return list(self.buffer[self.position :] + self.buffer[: self.position])
 
-    def sample(self, batch_size: int) -> Tuple[np.ndarray, ...]:
+    def sample(
+        self,
+        batch_size: int,
+        *,
+        include_proposed_action: bool = False,
+    ) -> Tuple[np.ndarray, ...]:
         if len(self.buffer) < batch_size:
             raise ValueError("Not enough transitions in buffer.")
 
@@ -314,8 +385,12 @@ class ReplayBufferV2:
             [t[13] for t in transitions],
             dtype=bool,
         )
+        proposed_action_indices = np.array(
+            [t[14] for t in transitions],
+            dtype=np.int64,
+        )
 
-        return (
+        sample = (
             continuous,
             card_ids,
             potion_ids,
@@ -331,6 +406,9 @@ class ReplayBufferV2:
             next_action_masks,
             anchor_to_executed_action,
         )
+        if include_proposed_action:
+            return (*sample, proposed_action_indices)
+        return sample
 
     def is_ready(self, batch_size: int) -> bool:
         return len(self.buffer) >= batch_size

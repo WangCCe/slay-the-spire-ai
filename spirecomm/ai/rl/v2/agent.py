@@ -27,6 +27,7 @@ from .action_encoder import ActionEncoderV2
 from .action_space import ACTION_DIM, PLAY_CARD_COUNT
 from .id_mapping import IdMapper, load_default_id_mapper
 from .network import create_dqn_v2
+from .replay_buffer import NO_PROPOSED_ACTION, UNKNOWN_PROPOSED_ACTION
 from .state_encoder import StateEncoderV2
 from .trainer import DQNTrainerV2
 
@@ -71,6 +72,7 @@ class PendingTransition:
     action_mask: np.ndarray
     game: Game
     anchor_to_executed_action: bool = False
+    proposed_action_index: int = UNKNOWN_PROPOSED_ACTION
 
 
 class RLAgentV2:
@@ -395,6 +397,7 @@ class RLAgentV2:
             action_index=action_index,
             action_mask=action_mask,
             game=game,
+            proposed_action_index=action_index,
         )
 
     def observe_next_state(
@@ -463,6 +466,7 @@ class RLAgentV2:
             action_mask=pending.action_mask,
             next_action_mask=next_action_mask,
             anchor_to_executed_action=pending.anchor_to_executed_action,
+            proposed_action_index=pending.proposed_action_index,
         )
         self.pending_transition = None
         if accepted is False:
@@ -505,7 +509,10 @@ class RLAgentV2:
             return False
 
         if same_state_pending:
-            proposed_action_index = self.pending_transition.action_index
+            proposed_action_index = self.pending_transition.proposed_action_index
+            if proposed_action_index == UNKNOWN_PROPOSED_ACTION:
+                proposed_action_index = self.pending_transition.action_index
+                self.pending_transition.proposed_action_index = proposed_action_index
             self.pending_transition.action_index = action_index
             self.pending_transition.action_mask = action_mask
             self.pending_transition.anchor_to_executed_action = bool(
@@ -528,6 +535,7 @@ class RLAgentV2:
             action_mask=action_mask,
             game=game,
             anchor_to_executed_action=True,
+            proposed_action_index=NO_PROPOSED_ACTION,
         )
         return True
 

@@ -108,6 +108,8 @@ updates, epsilon zero, exact trace/provenance checks, and the following CPU fit:
 - split seed `2026082807`, training seed `2026082808`;
 - learning rate `1e-4`, batch size `128`, gamma `0.99`;
 - exactly `64` optimizer updates;
+- each optimizer batch contains exactly `64` direct and `64` changed-proposal
+  spans, sampled without replacement within each stratum;
 - parent anchor weight `1.0` with equal direct/changed aggregate anchor loss;
 - direct-only top-action margin guard weight `1.0`, cap `0.1`;
 - frozen production-r16 target and parent networks.

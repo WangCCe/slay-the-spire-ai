@@ -69,7 +69,7 @@ The registered production-r16 cohort MUST preserve zero optimizer updates, exact
 - **THEN** the cohort remains diagnostic-only and no candidate is fitted
 
 ### Requirement: Fixed callability-filtered development fit
-The registered runner SHALL execute exactly one 64-update CPU fit over candidate-decision spans using the frozen recipe, balanced direct/changed parent anchor, direct-only top-action margin guard, variable bootstrap multiplier, and terminal-combat split. No no-proposal or unknown row may be sampled as an independent candidate decision.
+The registered runner SHALL execute exactly one 64-update CPU fit over candidate-decision spans using the frozen recipe, batches containing exactly 64 direct and 64 changed-proposal spans sampled without replacement within each stratum, balanced direct/changed parent anchor, direct-only top-action margin guard, variable bootstrap multiplier, and terminal-combat split. No no-proposal or unknown row may be sampled as an independent candidate decision.
 
 #### Scenario: Registered fit completes
 - **WHEN** every immutable binding and pre-fit gate passes

@@ -1,19 +1,19 @@
 ## 1. Exact Proposal Provenance
 
-- [ ] 1.1 Add RED agent regressions for unchanged proposals, changed same-state proposals, no-proposal takeover, illegal emitted actions, and immutable proposed-action identity.
-- [ ] 1.2 Add RED replay regressions for schema-v3 round trip, known-row consistency, schema-v1/v2 legacy-unknown restoration, and unchanged default sampling.
-- [ ] 1.3 Implement pending-transition attribution and compatible replay persistence with exact proposal indices and sentinels.
+- [x] 1.1 Add RED agent regressions for unchanged proposals, changed same-state proposals, no-proposal takeover, illegal emitted actions, and immutable proposed-action identity.
+- [x] 1.2 Add RED replay regressions for schema-v3 round trip, known-row consistency, schema-v1/v2 legacy-unknown restoration, and unchanged default sampling.
+- [x] 1.3 Implement pending-transition attribution and compatible replay persistence with exact proposal indices and sentinels.
 
 ## 2. Candidate-Decision SMDP Builder
 
-- [ ] 2.1 Add RED coverage for direct adjacency, multi-row takeover spans, terminal spans, uncontrolled prefixes, terminal-combat partition isolation, unknown rejection, and source-row reconciliation.
-- [ ] 2.2 Implement deterministic candidate-decision span construction with accumulated discounted rewards, variable bootstrap multipliers, source identities, and telemetry.
+- [x] 2.1 Add RED coverage for direct adjacency, multi-row takeover spans, terminal spans, uncontrolled prefixes, terminal-combat partition isolation, unknown rejection, and source-row reconciliation.
+- [x] 2.2 Implement deterministic candidate-decision span construction with accumulated discounted rewards, variable bootstrap multipliers, source identities, and telemetry.
 
 ## 3. Fixed Development Runner
 
-- [ ] 3.1 Add RED coverage for immutable callability bindings, exact 64-update recipe, direct/changed-only batches, variable-discount TD, fixed gates, and no-authority reporting.
-- [ ] 3.2 Implement atomic callability-filtered fitting and reporting without changing production trainer defaults or checkpoint loading.
-- [ ] 3.3 Run focused tests, strict OpenSpec validation, and one optimized commit gate; commit and push the implementation boundary.
+- [x] 3.1 Add RED coverage for immutable callability bindings, exact 64-update recipe, direct/changed-only batches, variable-discount TD, fixed gates, and no-authority reporting.
+- [x] 3.2 Implement atomic callability-filtered fitting and reporting without changing production trainer defaults or checkpoint loading.
+- [x] 3.3 Run focused tests, strict OpenSpec validation, and one optimized commit gate; commit and push the implementation boundary.
 
 ## 4. Fresh Callability Collection
 

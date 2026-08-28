@@ -12,7 +12,7 @@ import torch
 import torch.nn.functional as F
 
 from .network import create_dqn_v2
-from .replay_buffer import ReplayBufferV2
+from .replay_buffer import ReplayBufferV2, UNKNOWN_PROPOSED_ACTION
 from .action_space import END_TURN_ACTION, PLAY_CARD_COUNT, PLAY_CARD_OFFSET
 from .state_encoder import StateEncoderV2
 
@@ -611,6 +611,7 @@ class DQNTrainerV2:
         action_mask: np.ndarray = None,
         next_action_mask: np.ndarray = None,
         anchor_to_executed_action: bool = False,
+        proposed_action_index: int = UNKNOWN_PROPOSED_ACTION,
     ) -> bool:
         accepted = self.replay_buffer.add(
             continuous,
@@ -627,6 +628,7 @@ class DQNTrainerV2:
             action_mask=action_mask,
             next_action_mask=next_action_mask,
             anchor_to_executed_action=anchor_to_executed_action,
+            proposed_action_index=proposed_action_index,
         )
         if accepted:
             self.total_steps += 1
