@@ -1,0 +1,51 @@
+{
+  "schema_version": 1,
+  "preflight_id": "combat-rl-action-relative-matched-live-gate-20260829-r1-preflight",
+  "checked_at": "2026-08-29T01:35:48.1111801+08:00",
+  "checkout_commit": "e6421e71d1e1e1cf4465c14d493e21e19f479962",
+  "registered_source_commit": "47863b735f5ea19028763f5e79e624b9bd0acec6",
+  "registration": {
+    "path": "reports/combat_rl_action_relative_matched_live_gate_20260829_r1_candidate_registration.json",
+    "sha256": "6f377a4aa50871ab9304d65fd349525ca3d6db530976f6b7fa76510a8ee8838c",
+    "committed": true,
+    "source_binding_valid": true,
+    "schema_valid": true
+  },
+  "identity_checks": {
+    "items_json_sha256": "e23784ea8ed3092e3bfa9918240e162a9cbcb837badfb53c612eb0d83cc811dc",
+    "train_corpus_sha256": "ca7851f6f30846e5670f828c083413c9d653629c16748feb27c7d09aeeae7144",
+    "evaluation_corpus_sha256": "219392d1e1d22d98bf1156c0d432275c73645658b331b4f0e85abc47b37c15c0",
+    "candidate_artifact_sha256": "21629b3716786c0959d5b7a0e6484314ee1cce9b57fdaa535fa48d5b73100346",
+    "production_parent_checkpoint_sha256": "75120e9e8f76393d4d82c16de5c3ea6384d2f7ef26bd530a6b552ed9791e38f5",
+    "loaded_parent_state_dict_sha256": "cfe8204d06db6b43b063df98e1b713d4a40a0894a1a9330c3db87c739da88d48",
+    "production_config_sha256": "0991895790bc73d3d21a05731bf402228cf0c510a4217aa841ced026016760e7"
+  },
+  "successful_callability_probe": {
+    "items_json_path": "D:/SteamLibrary/steamapps/common/SlayTheSpire/export/items.json",
+    "training": false,
+    "epsilon": 0.0,
+    "expert_mix_enabled": false,
+    "parent_device": "cuda:0",
+    "candidate_device": "cpu",
+    "candidate_enabled": true,
+    "initial_decision_count": 0,
+    "trace_exists_after_probe": false
+  },
+  "initial_incomplete_environment_probe": {
+    "outcome": "stopped_before_candidate_initialization",
+    "reason": "STS_ITEMS_JSON was not set, so the default ID mapper could not match the production checkpoint vocabularies",
+    "candidate_loaded": false,
+    "game_started": false,
+    "trace_written": false,
+    "cohort_consumed": false
+  },
+  "boundary_checks": {
+    "tracked_worktree_clean_before_report": true,
+    "candidate_output_directory_absent": true,
+    "game_or_batch_process_present": false,
+    "production_config_matches_restore": true,
+    "training_authorized": false,
+    "candidate_arm_authorized": true
+  },
+  "decision": "ready_to_run_registered_candidate_arm"
+}
