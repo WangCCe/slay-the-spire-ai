@@ -18,4 +18,4 @@
 - [x] 4.1 Run focused runtime/summarizer tests, adjacent RL v2 tests, and strict OpenSpec validation.
 - [x] 4.2 Run one optimized commit gate at the completed capability boundary and record its duration for the queued gate-performance work (4190 passed, 26 skipped; 318.74s total).
 - [x] 4.3 Commit a bounded production-r16 shadow registration, run a fresh live cohort, reconcile trace, `.run`, `ai_debug.log`, and `communication_mod_errors.log`, and publish a matched-gate go/no-go report.
-- [ ] 4.4 Sync and archive the completed OpenSpec change without granting candidate action authority.
+- [x] 4.4 Sync and archive the completed OpenSpec change without granting candidate action authority.
