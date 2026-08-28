@@ -23,7 +23,7 @@
 
 ## 4. Matched Gate Registration
 
-- [ ] 4.1 Freeze ten fresh Ironclad A0 seeds, a source-bound candidate registration, candidate/parent launch configs, production restore config, and fixed paired qualification rules.
+- [x] 4.1 Freeze ten fresh Ironclad A0 seeds, a source-bound candidate registration, candidate/parent launch configs, production restore config, and fixed paired qualification rules.
 - [ ] 4.2 Validate committed source and registration, artifact/corpus/checkpoint/state identities, clean tracked source, absent output boundaries, active r16 identity, and candidate callability before gameplay.
 
 ## 5. Live Execution And Decision
