@@ -8,11 +8,11 @@
 ## 2. Source Qualification
 
 - [x] 2.1 Run focused candidate, shadow, RL transition, wrapper, and gameplay-profile tests plus strict OpenSpec validation.
-- [ ] 2.2 Run the qualified commit gate once, record the unchanged raw-full baseline boundary, review the source diff, and commit/push the implementation.
+- [x] 2.2 Run the qualified commit gate once, record the unchanged raw-full baseline boundary, review the source diff, and commit/push the implementation.
 
 ## 3. Matched Gate Registration
 
-- [ ] 3.1 Generate and freeze ten fresh seeds, a source-bound candidate registration, candidate/parent launch configs, production restore config, and fixed qualification rules.
+- [x] 3.1 Generate and freeze ten fresh seeds, a source-bound candidate registration, candidate/parent launch configs, production restore config, and fixed qualification rules.
 - [ ] 3.2 Validate hashes, clean tracked source state, absent output boundaries, active r16 identity, and candidate callability before starting gameplay.
 
 ## 4. Live Execution And Decision

@@ -1,0 +1,127 @@
+{
+  "schema_version": 1,
+  "gate_id": "combat-rl-latent-gated-matched-live-gate-20260828-r1",
+  "source_commit": "6c541e4965d7c3fc79797938d6ee712ab9891a95",
+  "purpose": "Run one bounded matched live gate for the frozen latent-gated adapter after behavior-neutral shadow qualification.",
+  "candidate_artifact": {
+    "path": "reports/combat_rl_latent_gated_candidate_fit_20260828_r1/latent_gated_development_adapter.pth",
+    "sha256": "52fe999f209d6ee99c59aec4200f64b8efb7256f80b379c2d6f748a33e199ac1",
+    "parent_checkpoint_sha256": "ce2ae34f82b3f457fb35e87d429c397204c42d0f742d3ac8952d91b69119b83b",
+    "gate_threshold": 0.7304431200027466
+  },
+  "production_parent": {
+    "path": "reports/combat_rl_promoted_r15_successor_20260818_r16/rl_combat_model_promoted_r15_successor_candidate.pth",
+    "sha256": "75120e9e8f76393d4d82c16de5c3ea6384d2f7ef26bd530a6b552ed9791e38f5",
+    "parameter_sha256": "cfe8204d06db6b43b063df98e1b713d4a40a0894a1a9330c3db87c739da88d48"
+  },
+  "source_qualification": {
+    "focused_and_adjacent_tests": "158 passed",
+    "candidate_shadow_wrapper_recheck": "42 passed",
+    "gameplay_gate": "448 passed",
+    "commit_gate": "4201 passed, 26 skipped, 21 deselected",
+    "commit_gate_seconds": 171.04,
+    "raw_full_baseline_boundary": "The known raw-full suite remains a roughly 2868-second diagnostic surface with 230 known failures and was not rerun solely for this candidate runtime."
+  },
+  "evidence": {
+    "development_fit_report": {
+      "path": "reports/combat_rl_latent_gated_candidate_fit_20260828_r1/report.json",
+      "sha256": "48c065eeabf5e7e9d2aff05619c95ce57421b5040ed21bca050612fe08286024",
+      "decision": "eligible_for_separately_registered_gameplay"
+    },
+    "live_shadow_report": {
+      "path": "reports/combat_rl_latent_gated_live_shadow_20260828_r3/report.json",
+      "sha256": "1a59784e57be21daaf78dde91f9d85cc0da65764e80e6be1bcc18ced366d8ca1",
+      "decision": "eligible_for_separately_bounded_matched_gameplay_evaluation",
+      "decision_count": 300,
+      "parent_parity_share": 1.0,
+      "candidate_legal_share": 1.0,
+      "gate_open_share": 0.49,
+      "candidate_parent_disagreement_share": 0.45666666666666667,
+      "p95_adapter_latency_ms": 20.309524990443606,
+      "error_event_count": 0
+    },
+    "live_shadow_reconciliation": {
+      "path": "reports/combat_rl_latent_gated_live_shadow_20260828_r3/reconciliation.json",
+      "sha256": "2bc2d1be403a47696d79b734b8ec453a8908b49c2f8b7d4abebbb3b0dff0e587"
+    }
+  },
+  "evaluation": {
+    "arm_order": [
+      "candidate",
+      "parent"
+    ],
+    "games_per_arm": 10,
+    "mode": "eval",
+    "epsilon": 0.0,
+    "elite_route": "conservative",
+    "ascension": 0,
+    "training_enabled": false,
+    "expert_mix_enabled": false,
+    "seed_pool": {
+      "path": "reports/combat_rl_latent_gated_matched_live_gate_20260828_r1_seed_pool.txt",
+      "sha256": "d6b72cb7a137ffcaa4fe335c469c04f6dacb40320b710d9be34b50ae8fdbe9f3",
+      "seed_count": 10,
+      "seed_generation": "sha256(gate_id:index) first 13 uppercase hex characters",
+      "excluded_existing_seed_pool_artifacts": 61,
+      "excluded_unique_existing_seed_strings": 1051,
+      "fresh_against_scanned_repo_seed_pool_artifacts": true
+    },
+    "candidate_registration": {
+      "path": "reports/combat_rl_latent_gated_matched_live_gate_20260828_r1_candidate_registration.json",
+      "sha256": "ad8f4312b3034067881ae4c9ba2fc466ef480afbc421dbff149eb72a857e45c2",
+      "maximum_decision_count": 5000,
+      "minimum_decision_count": 300,
+      "maximum_p95_latency_ms": 100.0
+    },
+    "candidate_launch_config": {
+      "path": "reports/combat_rl_latent_gated_matched_live_gate_20260828_r1_candidate.properties",
+      "sha256": "7247e275ac406ea673bb845084bcf267efbef2fbba08239522dec3fb8abee249"
+    },
+    "parent_launch_config": {
+      "path": "reports/combat_rl_latent_gated_matched_live_gate_20260828_r1_parent.properties",
+      "sha256": "8db677620f0f0d98f77c534d76580683bf4d498babaa6d5a7cb60c8a6d454ce7"
+    },
+    "production_restore_config": {
+      "path": "reports/combat_lightspeed_guarded_control_live_gate_20260819_r1_production_restore.properties",
+      "sha256": "0991895790bc73d3d21a05731bf402228cf0c510a4217aa841ced026016760e7"
+    }
+  },
+  "qualification_rule": {
+    "candidate_paired_floor_wins_must_exceed_parent": true,
+    "at_least_one_floor_pair_must_be_non_tied": true,
+    "candidate_total_floors_must_be_at_least_parent": true,
+    "candidate_victories_must_be_at_least_parent": true,
+    "candidate_act_2_entries_must_be_at_least_parent": true,
+    "candidate_act_2_boss_reaches_must_be_at_least_parent": true,
+    "candidate_act_3_entries_must_be_at_least_parent": true,
+    "both_arms_must_complete_all_games": true,
+    "all_seed_pairs_must_match": true,
+    "candidate_takeover_must_be_observed": true,
+    "all_candidate_and_final_actions_must_be_legal": true,
+    "parent_parity_must_hold": true,
+    "candidate_p95_latency_must_not_exceed_registered_ceiling": true,
+    "both_arms_must_have_no_policy_runtime_failures": true,
+    "all_conditions_required": true,
+    "passing_decision": "eligible_for_separate_promotion_decision",
+    "failing_decision": "retain_production_r16_and_close_this_candidate_cohort",
+    "all_floor_pairs_tied_decision": "retain_production_r16_no_observable_live_benefit"
+  },
+  "execution_constraints": {
+    "candidate_arm_runs_first": true,
+    "native_crash_before_first_completed_game_allows_one_exact_same_arm_recovery": true,
+    "native_recovery_requires_same_config_checkpoint_adapter_seed_order_and_fresh_run": true,
+    "policy_runtime_or_game_logic_failure_stops_the_gate": true,
+    "no_seed_model_adapter_or_threshold_change_after_start": true,
+    "no_training_or_online_updates": true,
+    "no_automatic_promotion": true,
+    "restore_exact_production_configuration_between_arms_and_after_completion": true
+  },
+  "authority": {
+    "candidate_gameplay_loading": true,
+    "parent_gameplay_loading": true,
+    "game_start": true,
+    "training": false,
+    "automatic_promotion": false,
+    "production_checkpoint_replacement": false
+  }
+}
