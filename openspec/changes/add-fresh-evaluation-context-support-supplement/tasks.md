@@ -1,22 +1,22 @@
 ## 1. Contract And Regression Coverage
 
-- [ ] 1.1 Bind the fixed fresh evaluation cohort, prior balanced artifacts,
+- [x] 1.1 Bind the fixed fresh evaluation cohort, prior balanced artifacts,
   unchanged support gates, source snapshots, and descriptive-only authority.
-- [ ] 1.2 Add regressions for evaluation-only append, target-floor filtering,
+- [x] 1.2 Add regressions for evaluation-only append, target-floor filtering,
   seed isolation, byte-identical training preservation, and registration drift.
-- [ ] 1.3 Add regressions proving the runner reuses the unchanged exact-cell
+- [x] 1.3 Add regressions proving the runner reuses the unchanged exact-cell
   weighting and support-gate decision semantics.
 
 ## 2. Evaluation Supplement Runner
 
-- [ ] 2.1 Implement source-only registration validation and preflight without
+- [x] 2.1 Implement source-only registration validation and preflight without
   native module, model, gameplay, or CommunicationMod loading.
-- [ ] 2.2 Collect the one fixed native evaluation cohort, validate paired-return
+- [x] 2.2 Collect the one fixed native evaluation cohort, validate paired-return
   rows, and retain only floors 0 through 22.
-- [ ] 2.3 Preserve the prior training corpus byte-for-byte, append the validated
+- [x] 2.3 Preserve the prior training corpus byte-for-byte, append the validated
   evaluation supplement, and verify tensor, metadata, class, action, and seed
   alignment.
-- [ ] 2.4 Recompute deterministic context weights, apply every unchanged support
+- [x] 2.4 Recompute deterministic context weights, apply every unchanged support
   gate, and publish missing-cell and partition diagnostics atomically.
 
 ## 3. Verification And Evidence
