@@ -133,7 +133,13 @@ def _require_committed_registration(path: Path, repo_root: Path) -> None:
         raise ValueError("live shadow registration must match committed HEAD")
 
 
-def _require_source_binding(source_commit: str, repo_root: Path) -> None:
+def _require_source_binding(
+    source_commit: str,
+    repo_root: Path,
+    *,
+    source_bound_paths: Optional[tuple[str, ...]] = None,
+) -> None:
+    bound_paths = SOURCE_BOUND_PATHS if source_bound_paths is None else source_bound_paths
     common = {
         "cwd": str(repo_root),
         "stdout": subprocess.PIPE,
@@ -146,24 +152,25 @@ def _require_source_binding(source_commit: str, repo_root: Path) -> None:
     )
     if ancestor.returncode != 0:
         raise ValueError("live shadow source commit is not an ancestor of HEAD")
-    for relative in SOURCE_BOUND_PATHS:
+    for relative in bound_paths:
         present = subprocess.run(
             ["git", "cat-file", "-e", f"{source_commit}:{relative}"], **common
         )
         if present.returncode != 0:
             raise ValueError(f"live shadow source file is absent: {relative}")
     unchanged = subprocess.run(
-        ["git", "diff", "--quiet", source_commit, "--", *SOURCE_BOUND_PATHS],
+        ["git", "diff", "--quiet", source_commit, "--", *bound_paths],
         **common,
     )
     if unchanged.returncode != 0:
         raise ValueError("live shadow source files differ from the registered commit")
 
 
-def load_live_shadow_registration(
+def load_live_registration(
     registration_path: str | Path,
     *,
     repo_root: str | Path,
+    expected_mode: str,
     require_committed: bool = True,
 ) -> LiveShadowRegistration:
     root = Path(repo_root).resolve()
@@ -195,7 +202,7 @@ def load_live_shadow_registration(
     )
     if payload["schema_version"] != REGISTRATION_SCHEMA_VERSION:
         raise ValueError("live shadow registration schema differs")
-    if payload["mode"] != "shadow":
+    if payload["mode"] != expected_mode:
         raise ValueError("live shadow registration mode differs")
     experiment_id = payload["experiment_id"]
     if not isinstance(experiment_id, str) or not experiment_id.strip():
@@ -277,6 +284,20 @@ def load_live_shadow_registration(
         maximum_decision_count=maximum_decisions,
         minimum_decision_count=minimum_decisions,
         maximum_p95_latency_ms=float(latency_ceiling),
+    )
+
+
+def load_live_shadow_registration(
+    registration_path: str | Path,
+    *,
+    repo_root: str | Path,
+    require_committed: bool = True,
+) -> LiveShadowRegistration:
+    return load_live_registration(
+        registration_path,
+        repo_root=repo_root,
+        expected_mode="shadow",
+        require_committed=require_committed,
     )
 
 
@@ -536,6 +557,10 @@ class LatentGatedLiveShadow:
                 ),
             }
         )
+        if "selected_action_index" in event:
+            event["selected_matches_executed"] = (
+                executed == event["selected_action_index"]
+            )
         self.decision_count += 1
         self.session_decision_count += 1
         event["decision_sequence"] = self.session_decision_count

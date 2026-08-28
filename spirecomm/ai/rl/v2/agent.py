@@ -290,9 +290,20 @@ class RLAgentV2:
                 logger.warning("Expert mix init failed: %s", exc)
 
         self.latent_gated_shadow = None
+        self.latent_gated_candidate = None
+        shadow_registration = os.environ.get(
+            "STS_COMBAT_RL_LATENT_SHADOW_REGISTRATION", ""
+        ).strip()
+        candidate_registration = os.environ.get(
+            "STS_COMBAT_RL_LATENT_CANDIDATE_REGISTRATION", ""
+        ).strip()
+        if shadow_registration and candidate_registration:
+            raise ValueError(
+                "latent-gated shadow and candidate registrations are mutually exclusive"
+            )
         if model_path:
             self.load_model(model_path)
-        if os.environ.get("STS_COMBAT_RL_LATENT_SHADOW_REGISTRATION", "").strip():
+        if shadow_registration:
             from .latent_gated_live_shadow import (
                 initialize_latent_gated_live_shadow,
             )
@@ -300,6 +311,23 @@ class RLAgentV2:
             adapter_metadata = self._build_metadata().as_dict()
             adapter_metadata.pop("rl_space_version")
             self.latent_gated_shadow = initialize_latent_gated_live_shadow(
+                parent=self.network,
+                metadata=adapter_metadata,
+                model_path=model_path,
+                training=self.training_mode,
+                epsilon=self.epsilon,
+                expert_mix_enabled=self.expert_mix_enabled,
+                repo_root=Path(__file__).resolve().parents[4],
+                device=self.device,
+            )
+        if candidate_registration:
+            from .latent_gated_live_candidate import (
+                initialize_latent_gated_live_candidate,
+            )
+
+            adapter_metadata = self._build_metadata().as_dict()
+            adapter_metadata.pop("rl_space_version")
+            self.latent_gated_candidate = initialize_latent_gated_live_candidate(
                 parent=self.network,
                 metadata=adapter_metadata,
                 model_path=model_path,
@@ -383,6 +411,29 @@ class RLAgentV2:
                             ).item()
                         )
 
+            parent_action_index = action_index
+            candidate = getattr(self, "latent_gated_candidate", None)
+            if candidate is not None and candidate.enabled:
+                try:
+                    action_index = candidate.select_action(
+                        game=game,
+                        continuous=encoded.continuous,
+                        card_ids=encoded.card_ids,
+                        potion_ids=encoded.potion_ids,
+                        relic_ids=encoded.relic_ids,
+                        action_mask=action_mask,
+                        parent_action_index=parent_action_index,
+                    )
+                except Exception as candidate_error:
+                    logger.error(
+                        "RLAgentV2 latent-gated candidate proposal failed: %s",
+                        candidate_error,
+                    )
+                    candidate.record_runtime_error(
+                        stage="proposal", error=candidate_error, game=game
+                    )
+                    action_index = parent_action_index
+
             action = self.action_encoder.decode_action(action_index, game)
 
             shadow = getattr(self, "latent_gated_shadow", None)
@@ -395,7 +446,7 @@ class RLAgentV2:
                         potion_ids=encoded.potion_ids,
                         relic_ids=encoded.relic_ids,
                         action_mask=action_mask,
-                        parent_action_index=action_index,
+                        parent_action_index=parent_action_index,
                     )
                 except Exception as shadow_error:
                     logger.error(
@@ -523,26 +574,30 @@ class RLAgentV2:
 
     def commit_executed_action(self, game: Game, action) -> bool:
         """Bind replay attribution to the action emitted after outer safety guards."""
+        candidate = getattr(self, "latent_gated_candidate", None)
         shadow = getattr(self, "latent_gated_shadow", None)
-        if shadow is not None and shadow.pending is not None:
+        live_runtime = candidate if candidate is not None else shadow
+        runtime_label = "candidate" if candidate is not None else "shadow"
+        if live_runtime is not None and live_runtime.pending is not None:
             try:
                 if isinstance(action, WaitAction):
-                    shadow.discard_transient_action(reason="wait_action")
+                    live_runtime.discard_transient_action(reason="wait_action")
                 else:
-                    executed_shadow_index = self.action_encoder.encode_action(
+                    executed_live_index = self.action_encoder.encode_action(
                         action, game
                     )
-                    shadow.commit_executed_action(
+                    live_runtime.commit_executed_action(
                         game=game,
-                        executed_action_index=executed_shadow_index,
+                        executed_action_index=executed_live_index,
                     )
-            except Exception as shadow_error:
+            except Exception as live_error:
                 logger.error(
-                    "RLAgentV2 latent-gated shadow commit failed: %s",
-                    shadow_error,
+                    "RLAgentV2 latent-gated %s commit failed: %s",
+                    runtime_label,
+                    live_error,
                 )
-                shadow.record_runtime_error(
-                    stage="commit", error=shadow_error, game=game
+                live_runtime.record_runtime_error(
+                    stage="commit", error=live_error, game=game
                 )
         if not self.training_mode or self.trainer is None:
             return False
@@ -742,9 +797,12 @@ class RLAgentV2:
         self.episode_reward = 0.0
         self.episode_steps = 0
         self.reward_calculator.reset()
-        shadow = getattr(self, "latent_gated_shadow", None)
-        if shadow is not None:
-            shadow.discard_pending()
+        for live_runtime in (
+            getattr(self, "latent_gated_candidate", None),
+            getattr(self, "latent_gated_shadow", None),
+        ):
+            if live_runtime is not None:
+                live_runtime.discard_pending()
         if self.expert_agent is not None and hasattr(self.expert_agent, "game_tracker"):
             try:
                 from spirecomm.ai.tracker import GameTracker
