@@ -1,0 +1,55 @@
+{
+  "artifact_bindings": {
+    "evaluation_corpus_sha256": "219392d1e1d22d98bf1156c0d432275c73645658b331b4f0e85abc47b37c15c0",
+    "parent_checkpoint_sha256": "ce2ae34f82b3f457fb35e87d429c397204c42d0f742d3ac8952d91b69119b83b",
+    "train_corpus_sha256": "ca7851f6f30846e5670f828c083413c9d653629c16748feb27c7d09aeeae7144"
+  },
+  "authority": {
+    "candidate_action_authority": false,
+    "communication_mod": false,
+    "cpu_benchmark": true,
+    "gameplay": false,
+    "model_fitting": false,
+    "promotion": false,
+    "qualification": false,
+    "training": false
+  },
+  "experiment_id": "combat-rl-action-relative-selection-latency-20260828-r1",
+  "gates": {
+    "maximum_optimized_p95_ms": 15.0,
+    "minimum_p50_speedup": 2.0,
+    "prediction_atol": 1e-06,
+    "prediction_rtol": 1e-06
+  },
+  "inputs": {
+    "evaluation_corpus": {
+      "path": "D:/PycharmProjects/slay-the-spire-ai/reports/combat_rl_guard_advantage_corpus_20260828_r1/evaluation_corpus.pt",
+      "sha256": "219392d1e1d22d98bf1156c0d432275c73645658b331b4f0e85abc47b37c15c0"
+    },
+    "items_json": {
+      "path": "D:/SteamLibrary/steamapps/common/SlayTheSpire/export/items.json",
+      "sha256": "e23784ea8ed3092e3bfa9918240e162a9cbcb837badfb53c612eb0d83cc811dc"
+    },
+    "production_parent_checkpoint": {
+      "path": "D:/PycharmProjects/slay-the-spire-ai/reports/combat_rl_promoted_r15_successor_20260818_r16/rl_combat_model_promoted_r15_successor_candidate.pth",
+      "sha256": "75120e9e8f76393d4d82c16de5c3ea6384d2f7ef26bd530a6b552ed9791e38f5"
+    },
+    "residual_artifact": {
+      "path": "D:/PycharmProjects/slay-the-spire-ai/reports/combat_rl_action_relative_advantage_residual_fit_20260828_r1/action_relative_advantage_residual_development.pth",
+      "sha256": "21629b3716786c0959d5b7a0e6484314ee1cce9b57fdaa535fa48d5b73100346"
+    }
+  },
+  "output_dir": "D:/PycharmProjects/slay-the-spire-ai/reports/combat_rl_action_relative_selection_latency_20260828_r1",
+  "parent_state_dict_sha256": "cfe8204d06db6b43b063df98e1b713d4a40a0894a1a9330c3db87c739da88d48",
+  "recipe": {
+    "device": "cpu",
+    "forbidden_action_indices": [
+      90
+    ],
+    "measurement_calls": 256,
+    "row_selection_seed": 2026082825,
+    "warmup_calls": 32
+  },
+  "schema_version": 1,
+  "source_commit": "d074bb1707fcd0f6cde86b89e44a4fa2088e27b2"
+}
