@@ -1,0 +1,57 @@
+{
+  "authority": {
+    "communication_mod": false,
+    "cpu_model_fitting": true,
+    "gameplay": false,
+    "native_loading": false,
+    "production_checkpoint_loading": false,
+    "production_checkpoint_writing": false,
+    "promotion": false,
+    "qualification": false
+  },
+  "experiment_id": "combat-rl-guard-advantage-residual-fit-20260828-r1",
+  "inputs": {
+    "evaluation_corpus": {
+      "path": "D:\\PycharmProjects\\slay-the-spire-ai\\reports\\combat_rl_guard_advantage_corpus_20260828_r1\\evaluation_corpus.pt",
+      "sha256": "219392d1e1d22d98bf1156c0d432275c73645658b331b4f0e85abc47b37c15c0"
+    },
+    "items_json": {
+      "path": "D:\\SteamLibrary\\steamapps\\common\\SlayTheSpire\\export\\items.json",
+      "sha256": "e23784ea8ed3092e3bfa9918240e162a9cbcb837badfb53c612eb0d83cc811dc"
+    },
+    "parent_checkpoint": {
+      "path": "D:\\PycharmProjects\\slay-the-spire-ai\\reports\\combat_lightspeed_production_r16_shadow_20260819_r1\\simulator_only_production_shadow.pth",
+      "sha256": "ce2ae34f82b3f457fb35e87d429c397204c42d0f742d3ac8952d91b69119b83b"
+    },
+    "train_corpus": {
+      "path": "D:\\PycharmProjects\\slay-the-spire-ai\\reports\\combat_rl_guard_advantage_corpus_20260828_r1\\train_corpus.pt",
+      "sha256": "ca7851f6f30846e5670f828c083413c9d653629c16748feb27c7d09aeeae7144"
+    }
+  },
+  "output_dir": "D:\\PycharmProjects\\slay-the-spire-ai\\reports\\combat_rl_guard_advantage_residual_fit_20260828_r1",
+  "recipe": {
+    "architecture": "frozen_parent_post_guard_abstaining_residual",
+    "device": "cpu",
+    "gate_threshold": 0.5,
+    "hidden_dim": 64,
+    "learning_rate": 0.001,
+    "negative_rows_per_batch": 32,
+    "optimizer": "adam",
+    "positive_rows_per_batch": 32,
+    "training_seed": 2026082822,
+    "updates": 512
+  },
+  "runner": {
+    "path": "D:\\PycharmProjects\\slay-the-spire-ai\\analysis_scripts\\combat_rl_guard_advantage_residual_fit.py",
+    "sha256": "8175788bafc3d14e7858c8231bb46032be68d9ae1f1e8b7222198b01fe468c7f"
+  },
+  "schema_version": 1,
+  "source_commit": "850755cba4e1b308ef222652d2dec3c1a8809b82",
+  "source_files": {
+    "analysis_scripts/combat_lightspeed_training_smoke.py": "d8dbbb56b88a99ddfc50d7dcd09b9e35bed3fc3d7ab812b39bc2e19081ab0f05",
+    "analysis_scripts/combat_rl_guard_advantage_corpus.py": "bf8392f2dc61b02ecd5507e0fe589750a5a859cf2f5c5ccf24d9c15840ffb772",
+    "analysis_scripts/combat_rl_guard_advantage_residual_fit.py": "8175788bafc3d14e7858c8231bb46032be68d9ae1f1e8b7222198b01fe468c7f",
+    "spirecomm/ai/rl/v2/guard_advantage_residual.py": "55cc756b4d7c1a1eb444140b476ea34e68d5d886be786e8d411260569588ed18",
+    "spirecomm/ai/rl/v2/network.py": "6358a8ca1b068c65cb13a6100a79bdc9c116cb2c79eb24a74b658753cf24e280"
+  }
+}
