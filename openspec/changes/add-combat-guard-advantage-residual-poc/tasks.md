@@ -14,7 +14,7 @@
 
 - [x] 3.1 If the corpus passes, add a frozen-parent post-guard residual with guarded-action input, legal masking, hard abstention, and exact artifact round trip.
 - [x] 3.2 Fit exactly one registered CPU recipe and report train plus seed-disjoint classification metrics without threshold or optimizer tuning.
-- [ ] 3.3 Add a frozen residual policy path for LightSTS paired evaluation that records every intervention and preserves the guard action when abstaining.
+- [x] 3.3 Add a frozen residual policy path for LightSTS paired evaluation that records every intervention and preserves the guard action when abstaining.
 
 ## 4. Evaluation And Publication
 
