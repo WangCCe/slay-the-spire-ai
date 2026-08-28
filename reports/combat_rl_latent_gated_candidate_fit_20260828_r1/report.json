@@ -1,0 +1,505 @@
+{
+  "artifact": {
+    "path": "latent_gated_development_adapter.pth",
+    "production_compatible": false,
+    "sha256": "52fe999f209d6ee99c59aec4200f64b8efb7256f80b379c2d6f748a33e199ac1",
+    "size_bytes": 308012
+  },
+  "artifact_round_trip_exact": {
+    "development": true,
+    "fresh_confirmation_2159": true,
+    "independent_replay_1634": true
+  },
+  "authority": {
+    "communication_mod": false,
+    "development_candidate": true,
+    "gameplay": false,
+    "online_training": false,
+    "production_checkpoint_loading": false,
+    "promotion": false,
+    "qualification": false
+  },
+  "bindings": {
+    "development_replay": {
+      "path": "D:/PycharmProjects/slay-the-spire-ai/reports/combat_rl_abstaining_residual_collection_20260828_r1/rl_combat_model_ep10_steps1916.pth",
+      "sha256": "ba02c749e73caecae59469220abe30e40e826699e95ca910a8b18d7eaa1f5900",
+      "transition_count": 1916
+    },
+    "dll_directories": [],
+    "evaluation_replays": [
+      {
+        "id": "independent_replay_1634",
+        "path": "D:/PycharmProjects/slay-the-spire-ai/reports/combat_rl_candidate_callability_collection_20260828_r1/rl_combat_model_ep10_steps1634.pth",
+        "sha256": "9f4570eaa5c9fd5df770734a5cc038dd6ba87da7983838fed243f05ef19b1860",
+        "transition_count": 1634
+      },
+      {
+        "id": "fresh_confirmation_2159",
+        "path": "D:/PycharmProjects/slay-the-spire-ai/reports/combat_rl_latent_gated_correction_confirmation_20260828_r1/rl_combat_model_ep10_steps2159.pth",
+        "sha256": "0ba37f0aa793fb4b28cce9e892c9cbf2bfd25aa3826a23d5b3740af162618cc0",
+        "transition_count": 2159
+      }
+    ],
+    "items_json": {
+      "path": "D:/SteamLibrary/steamapps/common/SlayTheSpire/export/items.json",
+      "sha256": "e23784ea8ed3092e3bfa9918240e162a9cbcb837badfb53c612eb0d83cc811dc"
+    },
+    "native_module": {
+      "path": "D:/PycharmProjects/slay-the-spire-ai/.sts_lightspeed_combat_later_battle_20260819_r3_build/sts_lightspeed_combat_adapter.cp310-win_amd64.pyd",
+      "sha256": "195678b7fc6bf69815f3d2971404afb8ce72fb666700edf4203383429caf1009"
+    },
+    "parent_checkpoint": {
+      "path": "D:/PycharmProjects/slay-the-spire-ai/reports/combat_lightspeed_production_r16_shadow_20260819_r1/simulator_only_production_shadow.pth",
+      "sha256": "ce2ae34f82b3f457fb35e87d429c397204c42d0f742d3ac8952d91b69119b83b"
+    }
+  },
+  "decision": "eligible_for_separately_registered_gameplay_evaluation",
+  "development_replay": {
+    "provenance": {
+      "changed_same_state_proposal_count": 502,
+      "direct_unchanged_proposal_count": 350,
+      "legacy_unknown_count": 0,
+      "no_proposal_takeover_count": 1064
+    },
+    "span_telemetry": {
+      "attached_no_proposal_count": 1022,
+      "changed_decision_count": 502,
+      "combat_group_count": 143,
+      "decision_span_count": 852,
+      "direct_decision_count": 350,
+      "maximum_span_length": 7,
+      "mean_span_length": 2.199530516431925,
+      "minimum_span_length": 1,
+      "settled_bootstrap_boundary_count": 53,
+      "source_row_reconciliation_count": 1916,
+      "source_transition_count": 1916,
+      "uncontrolled_prefix_count": 42
+    }
+  },
+  "eligibility": {
+    "all_conditions_passed": true,
+    "decision": "eligible_for_separately_registered_gameplay_evaluation",
+    "evaluation_replay_count": 2,
+    "per_replay_passed": {
+      "fresh_confirmation_2159": true,
+      "independent_replay_1634": true
+    }
+  },
+  "evaluations": {
+    "fresh_confirmation_2159": {
+      "binding": {
+        "id": "fresh_confirmation_2159",
+        "path": "D:/PycharmProjects/slay-the-spire-ai/reports/combat_rl_latent_gated_correction_confirmation_20260828_r1/rl_combat_model_ep10_steps2159.pth",
+        "sha256": "0ba37f0aa793fb4b28cce9e892c9cbf2bfd25aa3826a23d5b3740af162618cc0",
+        "transition_count": 2159
+      },
+      "criteria": {
+        "all_conditions_passed": true,
+        "changed_candidate_agreement_at_least_floor": true,
+        "changed_correction_agreement_at_least_floor": true,
+        "changed_gate_open_share_at_least_floor": true,
+        "direct_candidate_agreement_at_least_floor": true,
+        "direct_gate_open_share_at_most_ceiling": true,
+        "overall_candidate_agreement_uplift_at_least_floor": true,
+        "positive_energy_end_turn_increase_at_most_ceiling": true
+      },
+      "metrics": {
+        "action_disagreement_share": 0.4498997926712036,
+        "candidate_agreement": 0.594188392162323,
+        "candidate_positive_energy_end_turn_count": 77,
+        "changed": {
+          "candidate_agreement": 0.30514705181121826,
+          "correction_agreement": 0.39889705181121826,
+          "gate_open_share": 0.7757353186607361,
+          "parent_agreement": 0.0,
+          "row_count": 544
+        },
+        "correction_agreement": 0.39178356528282166,
+        "direct": {
+          "candidate_agreement": 0.9405286312103271,
+          "correction_agreement": 0.38325992226600647,
+          "gate_open_share": 0.12555065751075745,
+          "parent_agreement": 1.0,
+          "row_count": 454
+        },
+        "gate_open_share": 0.4799599051475525,
+        "parent_agreement": 0.4549098312854767,
+        "parent_positive_energy_end_turn_count": 492,
+        "positive_energy_end_turn_count_delta": -415,
+        "positive_energy_state_count": 914,
+        "row_count": 998
+      },
+      "provenance": {
+        "changed_same_state_proposal_count": 544,
+        "direct_unchanged_proposal_count": 454,
+        "legacy_unknown_count": 0,
+        "no_proposal_takeover_count": 1161
+      },
+      "span_telemetry": {
+        "attached_no_proposal_count": 1114,
+        "changed_decision_count": 544,
+        "combat_group_count": 147,
+        "decision_span_count": 998,
+        "direct_decision_count": 454,
+        "maximum_span_length": 7,
+        "mean_span_length": 2.1162324649298596,
+        "minimum_span_length": 1,
+        "settled_bootstrap_boundary_count": 61,
+        "source_row_reconciliation_count": 2159,
+        "source_transition_count": 2159,
+        "uncontrolled_prefix_count": 47
+      }
+    },
+    "independent_replay_1634": {
+      "binding": {
+        "id": "independent_replay_1634",
+        "path": "D:/PycharmProjects/slay-the-spire-ai/reports/combat_rl_candidate_callability_collection_20260828_r1/rl_combat_model_ep10_steps1634.pth",
+        "sha256": "9f4570eaa5c9fd5df770734a5cc038dd6ba87da7983838fed243f05ef19b1860",
+        "transition_count": 1634
+      },
+      "criteria": {
+        "all_conditions_passed": true,
+        "changed_candidate_agreement_at_least_floor": true,
+        "changed_correction_agreement_at_least_floor": true,
+        "changed_gate_open_share_at_least_floor": true,
+        "direct_candidate_agreement_at_least_floor": true,
+        "direct_gate_open_share_at_most_ceiling": true,
+        "overall_candidate_agreement_uplift_at_least_floor": true,
+        "positive_energy_end_turn_increase_at_most_ceiling": true
+      },
+      "metrics": {
+        "action_disagreement_share": 0.5537974834442139,
+        "candidate_agreement": 0.5,
+        "candidate_positive_energy_end_turn_count": 51,
+        "changed": {
+          "candidate_agreement": 0.3094170391559601,
+          "correction_agreement": 0.40134528279304504,
+          "gate_open_share": 0.7668161392211914,
+          "parent_agreement": 0.0,
+          "row_count": 446
+        },
+        "correction_agreement": 0.4082278609275818,
+        "direct": {
+          "candidate_agreement": 0.9569892287254333,
+          "correction_agreement": 0.42473119497299194,
+          "gate_open_share": 0.11827956885099411,
+          "parent_agreement": 1.0,
+          "row_count": 186
+        },
+        "gate_open_share": 0.5759493708610535,
+        "parent_agreement": 0.2943038046360016,
+        "parent_positive_energy_end_turn_count": 372,
+        "positive_energy_end_turn_count_delta": -321,
+        "positive_energy_state_count": 586,
+        "row_count": 632
+      },
+      "provenance": {
+        "changed_same_state_proposal_count": 446,
+        "direct_unchanged_proposal_count": 186,
+        "legacy_unknown_count": 0,
+        "no_proposal_takeover_count": 1002
+      },
+      "span_telemetry": {
+        "attached_no_proposal_count": 958,
+        "changed_decision_count": 446,
+        "combat_group_count": 126,
+        "decision_span_count": 632,
+        "direct_decision_count": 186,
+        "maximum_span_length": 9,
+        "mean_span_length": 2.5158227848101267,
+        "minimum_span_length": 1,
+        "settled_bootstrap_boundary_count": 29,
+        "source_row_reconciliation_count": 1634,
+        "source_transition_count": 1634,
+        "uncontrolled_prefix_count": 44
+      }
+    }
+  },
+  "experiment_id": "combat-rl-latent-gated-candidate-fit-20260828-r1",
+  "fit": {
+    "action_update_count": 256,
+    "all_objectives_finite": true,
+    "calibrated_gate_threshold": 0.7304431200027466,
+    "correction_state_dict_sha256": "b96eb9f127f6153dae33aff0c276b7b1c132e32afdc3d0e492396b0401bdcb9d",
+    "development_action_loss": {
+      "count": 256,
+      "maximum": 3.326629638671875,
+      "mean": 1.2913432870991528,
+      "minimum": 0.9157388210296631
+    },
+    "development_changed_open_share": 0.7410358786582947,
+    "development_direct_open_share": 0.10000000149011612,
+    "development_gate_loss": {
+      "count": 128,
+      "maximum": 0.7272554039955139,
+      "mean": 0.4668625765480101,
+      "minimum": 0.31898048520088196
+    },
+    "development_gate_update_count": 128,
+    "gate_state_dict_sha256": "c2534925d6efef08399eced8db4f783bed90afdb06181a41fb0ecd7633a66c34",
+    "parent_state_dict_sha256_after": "cfe8204d06db6b43b063df98e1b713d4a40a0894a1a9330c3db87c739da88d48",
+    "parent_state_dict_sha256_before": "cfe8204d06db6b43b063df98e1b713d4a40a0894a1a9330c3db87c739da88d48",
+    "simulator_gate_loss": {
+      "count": 128,
+      "maximum": 0.7788316011428833,
+      "mean": 0.5296252574771643,
+      "minimum": 0.34188541769981384
+    },
+    "simulator_update_count": 128
+  },
+  "limitations": [
+    "The adapter artifact is development-only and not loadable as an RL v2 production checkpoint.",
+    "Evaluation replay success does not establish live gameplay improvement.",
+    "A separately registered gameplay evaluation is required before qualification.",
+    "Production r16 and combat agent routing remain unchanged."
+  ],
+  "parent": {
+    "adapter_state_dict_sha256": "cfe8204d06db6b43b063df98e1b713d4a40a0894a1a9330c3db87c739da88d48",
+    "initialization": {
+      "checkpoint_kind": "simulator_training_smoke",
+      "checkpoint_schema_version": 0,
+      "checkpoint_sha256": "ce2ae34f82b3f457fb35e87d429c397204c42d0f742d3ac8952d91b69119b83b",
+      "mode": "warm_start",
+      "parameter_sha256": "cfe8204d06db6b43b063df98e1b713d4a40a0894a1a9330c3db87c739da88d48",
+      "parent_card_ranking_guard_cap": 0.1,
+      "parent_card_ranking_guard_weight": 0.0,
+      "parent_end_turn_margin_guard_cap": 0.1,
+      "parent_end_turn_margin_guard_weight": 0.0,
+      "parent_policy_anchor_weight": 0.0,
+      "parent_top_action_margin_guard_cap": 0.1,
+      "parent_top_action_margin_guard_weight": 0.0,
+      "path": "D:\\PycharmProjects\\slay-the-spire-ai\\reports\\combat_lightspeed_production_r16_shadow_20260819_r1\\simulator_only_production_shadow.pth",
+      "production_compatible": false,
+      "size_bytes": 2272720,
+      "source_type": "combat_lightspeed_production_rl_v2_shadow"
+    },
+    "parameter_sha256": "cfe8204d06db6b43b063df98e1b713d4a40a0894a1a9330c3db87c739da88d48"
+  },
+  "recipe": {
+    "action_updates": 256,
+    "architecture": "frozen_parent_latent_gated_legal_action_correction",
+    "batch_size": 64,
+    "battle_indices": [
+      0,
+      3,
+      6,
+      9
+    ],
+    "classifier_seed": 2026082816,
+    "development_gate_updates": 128,
+    "device": "cpu",
+    "direct_open_calibration_cap": 0.1,
+    "hidden_dim": 64,
+    "learning_rate": 0.001,
+    "simulator_seed_first": 185000,
+    "simulator_seed_last": 185255,
+    "simulator_training_seed": 2026082814,
+    "simulator_updates": 128,
+    "simulator_validation_stride": 5
+  },
+  "registration": {
+    "path": "D:\\PycharmProjects\\slay-the-spire-ai\\reports\\combat_rl_latent_gated_candidate_fit_20260828_r1_registration.json",
+    "sha256": "54306995d2d52b4449a89e2c82798904192c8deb15b85092edb330c843107367"
+  },
+  "schema_version": 1,
+  "simulator": {
+    "row_count": 12762,
+    "telemetry": {
+      "accepted_transition_count": 12762,
+      "action_family_counts": {
+        "end_turn": 2753,
+        "play_card": 9268,
+        "use_potion": 741
+      },
+      "behavior": {
+        "epsilon": 0.1,
+        "exploration_branch_count": 1302,
+        "forced_end_turn_branch_count": 26,
+        "forced_end_turn_count": 26,
+        "guard_proxy_eligible_count": 5390,
+        "guard_proxy_no_supported_replacement_count": 0,
+        "guard_proxy_replacement_count": 5390,
+        "mode": "frozen-parent-guarded-epsilon-v1",
+        "parent_anchor_label_mode": "frozen-parent-greedy-v1",
+        "parent_branch_count": 11434,
+        "parent_parameter_sha256": "cfe8204d06db6b43b063df98e1b713d4a40a0894a1a9330c3db87c739da88d48",
+        "raw_policy_end_turn_count": 7912,
+        "uniform_branch_count": 0
+      },
+      "card_select_settlement": {
+        "action_count": 338,
+        "task_counts": {
+          "ARMAMENTS": 11,
+          "CODEX": 24,
+          "DISCOVERY": 100,
+          "EXHAUST_MANY": 23,
+          "EXHUME": 2,
+          "GAMBLE": 27,
+          "HEADBUTT": 126,
+          "LIQUID_MEMORIES_POTION": 10,
+          "WARCRY": 15
+        },
+        "transition_count": 338
+      },
+      "decision_bound_seed_count": 0,
+      "encounter_identity": {
+        "assignments": {},
+        "bucket_count": 0,
+        "encoding": null,
+        "hash_algorithm": null,
+        "occupied_bucket_count": 0,
+        "vocabulary_sha256": null
+      },
+      "encounter_state_counts": {
+        "BLUE_SLAVER": 251,
+        "BOOK_OF_STABBING": 162,
+        "CENTURION_AND_HEALER": 175,
+        "CHAMP": 34,
+        "CHOSEN": 240,
+        "CHOSEN_AND_BYRDS": 150,
+        "CULTIST": 660,
+        "CULTIST_AND_CHOSEN": 163,
+        "EXORDIUM_THUGS": 215,
+        "EXORDIUM_WILDLIFE": 434,
+        "GREMLIN_GANG": 208,
+        "GREMLIN_LEADER": 255,
+        "GREMLIN_NOB": 388,
+        "HEXAGHOST": 766,
+        "JAW_WORM": 686,
+        "LAGAVULIN": 429,
+        "LAGAVULIN_EVENT": 83,
+        "LARGE_SLIME": 234,
+        "LOOTER": 260,
+        "LOTS_OF_SLIMES": 178,
+        "MASKED_BANDITS_EVENT": 130,
+        "MUSHROOMS_EVENT": 44,
+        "RED_SLAVER": 149,
+        "SENTRY_AND_SPHERE": 156,
+        "SHELLED_PARASITE_AND_FUNGI": 170,
+        "SHELL_PARASITE": 365,
+        "SLAVERS": 157,
+        "SLIME_BOSS": 863,
+        "SMALL_SLIMES": 655,
+        "SNAKE_PLANT": 125,
+        "SNECKO": 89,
+        "SPHERIC_GUARDIAN": 355,
+        "THE_GUARDIAN": 721,
+        "THREE_BYRDS": 545,
+        "THREE_CULTIST": 97,
+        "THREE_LOUSE": 321,
+        "THREE_SENTRIES": 736,
+        "TWO_FUNGI_BEASTS": 294,
+        "TWO_LOUSE": 539,
+        "TWO_THIEVES": 280
+      },
+      "initialization_failure_counts": {
+        "baseline_loss_before_requested_battle": 168,
+        "baseline_run_terminated_before_battle": 2
+      },
+      "outcome_counts": {
+        "player_loss": 75,
+        "player_victory": 779
+      },
+      "profile_count_initialized": 854,
+      "profile_count_registered": 1024,
+      "progression_coverage": {
+        "act_counts": {
+          "1": 660,
+          "2": 194
+        },
+        "battle_index_counts": {
+          "0": 256,
+          "3": 248,
+          "6": 210,
+          "9": 140
+        },
+        "encounter_counts": {
+          "BLUE_SLAVER": 29,
+          "BOOK_OF_STABBING": 9,
+          "CENTURION_AND_HEALER": 8,
+          "CHAMP": 1,
+          "CHOSEN": 16,
+          "CHOSEN_AND_BYRDS": 7,
+          "CULTIST": 68,
+          "CULTIST_AND_CHOSEN": 7,
+          "EXORDIUM_THUGS": 16,
+          "EXORDIUM_WILDLIFE": 31,
+          "GREMLIN_GANG": 12,
+          "GREMLIN_LEADER": 9,
+          "GREMLIN_NOB": 27,
+          "HEXAGHOST": 25,
+          "JAW_WORM": 77,
+          "LAGAVULIN": 22,
+          "LAGAVULIN_EVENT": 5,
+          "LARGE_SLIME": 14,
+          "LOOTER": 33,
+          "LOTS_OF_SLIMES": 12,
+          "MASKED_BANDITS_EVENT": 7,
+          "MUSHROOMS_EVENT": 3,
+          "RED_SLAVER": 15,
+          "SENTRY_AND_SPHERE": 8,
+          "SHELLED_PARASITE_AND_FUNGI": 9,
+          "SHELL_PARASITE": 22,
+          "SLAVERS": 6,
+          "SLIME_BOSS": 25,
+          "SMALL_SLIMES": 65,
+          "SNAKE_PLANT": 9,
+          "SNECKO": 6,
+          "SPHERIC_GUARDIAN": 21,
+          "THE_GUARDIAN": 22,
+          "THREE_BYRDS": 25,
+          "THREE_CULTIST": 5,
+          "THREE_LOUSE": 31,
+          "THREE_SENTRIES": 29,
+          "TWO_FUNGI_BEASTS": 30,
+          "TWO_LOUSE": 69,
+          "TWO_THIEVES": 19
+        }
+      },
+      "reward": {
+        "count": 12762,
+        "maximum": 51.35,
+        "mean": 1.7215137494013064,
+        "minimum": -26.3,
+        "sum": 21969.958469859474
+      },
+      "seed_count": 256,
+      "target_policy": {
+        "action_count": 0,
+        "action_counts": {},
+        "action_identity_sha256": null,
+        "bootstrap_policy_mode": "frozen-parent-raw-greedy-v1",
+        "guard_replacement_count": 0
+      },
+      "trajectory_eligibility": {
+        "complete_profile_count": 854,
+        "complete_trajectories_only": true,
+        "excluded_incomplete_profile_count": 0,
+        "excluded_incomplete_transition_count": 0,
+        "incomplete_profile_count": 0,
+        "incomplete_profile_reason_counts": {},
+        "retained_incomplete_profile_count": 0,
+        "source_transition_identity_sha256": "9d47bb10033e3aec55a9bd6c7964f0d019f4b248f58e9cbb6e2f0acdf1c18b3b"
+      },
+      "transition_battle_index_counts": {
+        "0": 2344,
+        "3": 3429,
+        "6": 4270,
+        "9": 2719
+      },
+      "unsupported_reason_counts": {}
+    },
+    "training_row_count": 9794,
+    "validation_row_count": 2968
+  },
+  "source_commit": "6a3ede5690a0724291fc9b16fbdaf3745a9490fe",
+  "technical_gates": {
+    "changed_candidate_agreement_minimum": 0.25,
+    "changed_correction_agreement_minimum": 0.35,
+    "changed_gate_open_share_minimum": 0.75,
+    "direct_candidate_agreement_minimum": 0.85,
+    "direct_gate_open_share_maximum": 0.15,
+    "overall_candidate_agreement_uplift_minimum": 0.1,
+    "positive_energy_end_turn_increase_maximum": 0
+  }
+}
