@@ -6,9 +6,9 @@
 
 ## 2. Expanded Item-Semantic Fit
 
-- [ ] 2.1 Add RED tests for expanded fit/calibration seed isolation, fixed fresh gates, and no-game authority
-- [ ] 2.2 Implement one compact runner binding generated corpus hashes and reusing the tested item-semantic fit helpers
-- [ ] 2.3 Run focused tests and strict OpenSpec validation, then commit the source-bound training recipe
+- [x] 2.1 Add RED tests for expanded fit/calibration seed isolation, fixed fresh gates, and no-game authority
+- [x] 2.2 Implement one compact runner binding generated corpus hashes and reusing the tested item-semantic fit helpers
+- [x] 2.3 Run focused tests and strict OpenSpec validation, then commit the source-bound training recipe
 
 ## 3. Fresh Offline Decision
 
