@@ -1,0 +1,42 @@
+{
+  "artifact": {
+    "correction_state_dict_sha256": "e891eed9a57b55dd934dcbb9c5be9c763182e1ac68c8e6b3c694ff6e28afa697",
+    "path": "adapter.pt",
+    "production_compatible": false,
+    "sha256": "2f44e5eb09464f2300b1ecac3d5fea2d48fb80c46cc08ff5bdf334fa50ce1248"
+  },
+  "authority": {
+    "fresh_registration": true,
+    "gameplay": false,
+    "model_fitting": false,
+    "policy_quality": false,
+    "production_loading": false,
+    "promotion": false
+  },
+  "changed_count": 32,
+  "closed_r1_checkpoint_sha256": "9f4570eaa5c9fd5df770734a5cc038dd6ba87da7983838fed243f05ef19b1860",
+  "corrected_changed_count": 32,
+  "correction_state_dict_sha256": "e891eed9a57b55dd934dcbb9c5be9c763182e1ac68c8e6b3c694ff6e28afa697",
+  "decision": "mechanism_ready_for_fresh_registration",
+  "deterministic_repeat_exact": true,
+  "direct_action_drift_count": 0,
+  "direct_count": 32,
+  "final_loss": {
+    "action_loss": 0.039488304406404495,
+    "changed_count": 32,
+    "direct_count": 32,
+    "gate_loss": 9.354871872346848e-05,
+    "td_loss": 0.04835747554898262,
+    "total_loss": 0.05167122185230255
+  },
+  "gate_open_changed_count": 32,
+  "gate_open_direct_count": 0,
+  "maximum_abs_residual": 4.0,
+  "maximum_gate_probability": 0.9999856948852539,
+  "minimum_gate_probability": 4.5141441660234705e-06,
+  "parent_immutable": true,
+  "parent_state_dict_sha256": "d8ac66f330e81fe2cc6840e30deb1491a60c336d75d021d2f7b7845580a63280",
+  "row_count": 64,
+  "schema_version": 1,
+  "update_count": 160
+}
