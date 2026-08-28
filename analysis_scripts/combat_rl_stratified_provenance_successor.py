@@ -8,9 +8,15 @@ import math
 import os
 from pathlib import Path
 import shutil
+import sys
 from typing import Mapping
 
 import torch
+
+
+REPO_ROOT = Path(__file__).resolve().parents[1]
+if str(REPO_ROOT) not in sys.path:
+    sys.path.insert(0, str(REPO_ROOT))
 
 from analysis_scripts.combat_rl_provenance_aware_successor import (
     _atomic_torch_save,

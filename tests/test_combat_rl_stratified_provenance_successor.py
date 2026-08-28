@@ -1,6 +1,9 @@
 from __future__ import annotations
 
 import copy
+from pathlib import Path
+import subprocess
+import sys
 
 import torch
 
@@ -13,6 +16,9 @@ from analysis_scripts.combat_rl_stratified_provenance_successor import (
     _eligibility,
 )
 from spirecomm.ai.rl.v2.network import create_dqn_v2
+
+
+REPO_ROOT = Path(__file__).resolve().parents[1]
 
 
 def _checkpoint(count: int = 12) -> dict:
@@ -132,6 +138,28 @@ def test_fixed_recipe_executes_exactly_64_optimizer_updates():
     assert training["optimizer_update_count"] == 64
     assert training["all_objective_values_finite"] is True
     assert training["sampled_override_count"]["maximum"] > 0
+
+
+def test_isolated_direct_entrypoint_bootstraps_repo_root():
+    result = subprocess.run(
+        [
+            sys.executable,
+            "-I",
+            str(
+                REPO_ROOT
+                / "analysis_scripts"
+                / "combat_rl_stratified_provenance_successor.py"
+            ),
+            "--help",
+        ],
+        cwd=REPO_ROOT,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+
+    assert result.returncode == 0, result.stderr
+    assert "--training-checkpoint" in result.stdout
 
 
 def test_stratified_eligibility_passes_fixed_direct_and_override_gates():
