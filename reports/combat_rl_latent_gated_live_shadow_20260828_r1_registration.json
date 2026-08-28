@@ -1,0 +1,22 @@
+{
+  "candidate_artifact": {
+    "parent_checkpoint_sha256": "ce2ae34f82b3f457fb35e87d429c397204c42d0f742d3ac8952d91b69119b83b",
+    "path": "D:/PycharmProjects/slay-the-spire-ai/reports/combat_rl_latent_gated_candidate_fit_20260828_r1/latent_gated_development_adapter.pth",
+    "sha256": "52fe999f209d6ee99c59aec4200f64b8efb7256f80b379c2d6f748a33e199ac1"
+  },
+  "experiment_id": "combat-rl-latent-gated-live-shadow-20260828-r1",
+  "maximum_decision_count": 1000,
+  "mode": "shadow",
+  "parent_state_dict_sha256": "cfe8204d06db6b43b063df98e1b713d4a40a0894a1a9330c3db87c739da88d48",
+  "production_parent_checkpoint": {
+    "path": "D:/PycharmProjects/slay-the-spire-ai/reports/combat_rl_promoted_r15_successor_20260818_r16/rl_combat_model_promoted_r15_successor_candidate.pth",
+    "sha256": "75120e9e8f76393d4d82c16de5c3ea6384d2f7ef26bd530a6b552ed9791e38f5"
+  },
+  "readiness_gates": {
+    "maximum_p95_latency_ms": 100.0,
+    "minimum_decision_count": 300
+  },
+  "schema_version": 1,
+  "source_commit": "bbb24256893e0746412b9387ad193f60399ad4e7",
+  "trace_path": "D:/PycharmProjects/slay-the-spire-ai/reports/combat_rl_latent_gated_live_shadow_20260828_r1/trace.jsonl"
+}
