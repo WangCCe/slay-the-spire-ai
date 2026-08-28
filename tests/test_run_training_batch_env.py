@@ -6,6 +6,9 @@ from scripts.run_training_batch import build_child_env
 from spirecomm.ai.rl.v2.action_relative_live_shadow import (
     REGISTRATION_ENV as ACTION_RELATIVE_REGISTRATION_ENV,
 )
+from spirecomm.ai.rl.v2.action_relative_live_candidate import (
+    REGISTRATION_ENV as ACTION_RELATIVE_CANDIDATE_REGISTRATION_ENV,
+)
 from spirecomm.ai.rl.v2.latent_gated_live_candidate import (
     REGISTRATION_ENV as CANDIDATE_REGISTRATION_ENV,
 )
@@ -17,6 +20,7 @@ def _args(**overrides):
         "combat_latent_candidate_registration": None,
         "combat_latent_shadow_registration": None,
         "combat_action_relative_shadow_registration": None,
+        "combat_action_relative_candidate_registration": None,
         "game_dir": r"D:\SteamLibrary\steamapps\common\SlayTheSpire",
         "noncombat_exploration_config": None,
         "skip_decision_trace": True,
@@ -91,6 +95,24 @@ def test_child_env_forwards_and_clears_action_relative_shadow_registration(
     assert ACTION_RELATIVE_REGISTRATION_ENV not in cleared
 
 
+def test_child_env_forwards_and_clears_action_relative_candidate_registration(
+    monkeypatch,
+):
+    monkeypatch.setenv(
+        ACTION_RELATIVE_CANDIDATE_REGISTRATION_ENV,
+        r"D:\tmp\stale-action-relative-candidate.json",
+    )
+    registration = r"D:\tmp\action-relative-candidate-registration.json"
+
+    env = build_child_env(
+        _args(combat_action_relative_candidate_registration=registration)
+    )
+    assert env[ACTION_RELATIVE_CANDIDATE_REGISTRATION_ENV] == registration
+
+    cleared = build_child_env(_args())
+    assert ACTION_RELATIVE_CANDIDATE_REGISTRATION_ENV not in cleared
+
+
 def test_child_env_rejects_simultaneous_shadow_and_candidate_registrations():
     with pytest.raises(ValueError, match="mutually exclusive"):
         build_child_env(
@@ -105,5 +127,13 @@ def test_child_env_rejects_simultaneous_shadow_and_candidate_registrations():
             _args(
                 combat_latent_shadow_registration="shadow.json",
                 combat_action_relative_shadow_registration="action-relative.json",
+            )
+        )
+
+    with pytest.raises(ValueError, match="mutually exclusive"):
+        build_child_env(
+            _args(
+                combat_action_relative_shadow_registration="action-relative.json",
+                combat_action_relative_candidate_registration="candidate.json",
             )
         )

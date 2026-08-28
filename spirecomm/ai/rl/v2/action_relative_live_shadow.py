@@ -89,6 +89,8 @@ class _PendingDecision:
     potion_ids: np.ndarray
     relic_ids: np.ndarray
     action_mask: np.ndarray
+    prepared: bool = False
+    disable_after_commit: bool = False
 
 
 def _exact_keys(value: Any, expected: set[str], label: str) -> Mapping[str, Any]:
@@ -365,27 +367,37 @@ class ActionRelativeLiveShadow:
         )
         return True
 
-    def commit_executed_action(
-        self, *, game: Any, executed_action_index: Optional[int]
-    ) -> bool:
+    def prepare_guard_action(
+        self,
+        *,
+        game: Any,
+        guard_action_index: Optional[int],
+        candidate_has_authority: bool = False,
+    ) -> Optional[dict[str, Any]]:
         if self.pending is None:
-            return False
+            return None
         if self.pending.game_identity != id(game):
             self.record_runtime_error(
                 stage="commit",
                 error=RuntimeError("action-relative proposal game identity differs"),
                 game=game,
             )
-            return False
+            return None
         pending = self.pending
-        self.pending = None
+        if pending.prepared:
+            self.record_runtime_error(
+                stage="prepare_guard",
+                error=RuntimeError("action-relative guard action was prepared twice"),
+                game=game,
+            )
+            return None
         event = pending.event
-        executed = None if executed_action_index is None else int(executed_action_index)
-        encodable = executed is not None
+        guard = None if guard_action_index is None else int(guard_action_index)
+        encodable = guard is not None
         legal = bool(
             encodable
-            and 0 <= executed < pending.action_mask.size
-            and pending.action_mask[executed]
+            and 0 <= guard < pending.action_mask.size
+            and pending.action_mask[guard]
         )
         parent = int(event["parent_action_index"])
         if parent != END_TURN_ACTION_INDEX:
@@ -394,17 +406,16 @@ class ActionRelativeLiveShadow:
             reason = "executed_action_unencodable"
         elif not legal:
             reason = "executed_action_illegal"
-        elif executed == END_TURN_ACTION_INDEX:
+        elif guard == END_TURN_ACTION_INDEX:
             reason = "guard_not_replaced"
         else:
             reason = ""
         eligible = not reason
         event.update(
             {
-                "executed_action_index": executed,
-                "executed_action_encodable": encodable,
-                "executed_action_legal": legal,
-                "guard_action_index": executed if eligible else None,
+                "guard_action_index": guard if eligible else None,
+                "guard_action_encodable": encodable,
+                "guard_action_legal": legal,
                 "eligible": eligible,
                 "support_reason": reason,
                 "candidate_action_index": None,
@@ -412,7 +423,7 @@ class ActionRelativeLiveShadow:
                 "candidate_action_forbidden": None,
                 "candidate_would_intervene": False,
                 "candidate_matches_executed": None,
-                "candidate_has_authority": False,
+                "candidate_has_authority": bool(candidate_has_authority),
                 "predicted_advantage": None,
                 "advantage_threshold": float(
                     self.residual.config.advantage_threshold
@@ -427,7 +438,7 @@ class ActionRelativeLiveShadow:
         if eligible:
             try:
                 alternative_mask = pending.action_mask.copy()
-                alternative_mask[executed] = False
+                alternative_mask[guard] = False
                 alternative_mask[END_TURN_ACTION_INDEX] = False
                 started = time.perf_counter()
                 with torch.no_grad():
@@ -437,7 +448,7 @@ class ActionRelativeLiveShadow:
                         torch.as_tensor(pending.potion_ids, device=self.device).unsqueeze(0),
                         torch.as_tensor(pending.relic_ids, device=self.device).unsqueeze(0),
                         torch.as_tensor(pending.action_mask, device=self.device).unsqueeze(0),
-                        torch.tensor([executed], device=self.device),
+                        torch.tensor([guard], device=self.device),
                         torch.as_tensor(alternative_mask, device=self.device).unsqueeze(0),
                         forbidden_action_indices=frozenset({END_TURN_ACTION_INDEX}),
                     )
@@ -462,7 +473,7 @@ class ActionRelativeLiveShadow:
                         "candidate_action_forbidden": candidate_forbidden,
                         "candidate_would_intervene": gate_open,
                         "candidate_matches_executed": (
-                            candidate == executed if candidate is not None else None
+                            candidate == guard if candidate is not None else None
                         ),
                         "predicted_advantage": prediction_value,
                         "shadow_latency_ms": latency_ms,
@@ -476,6 +487,48 @@ class ActionRelativeLiveShadow:
                 event["runtime_error_type"] = type(exc).__name__
                 event["runtime_error_message"] = str(exc)
                 disable = True
+        pending.prepared = True
+        pending.disable_after_commit = disable
+        return event
+
+    def _commit_prepared_action(
+        self, *, game: Any, executed_action_index: Optional[int]
+    ) -> bool:
+        if self.pending is None or not self.pending.prepared:
+            return False
+        if self.pending.game_identity != id(game):
+            self.record_runtime_error(
+                stage="commit",
+                error=RuntimeError("action-relative proposal game identity differs"),
+                game=game,
+            )
+            return False
+        pending = self.pending
+        self.pending = None
+        event = pending.event
+        executed = None if executed_action_index is None else int(executed_action_index)
+        encodable = executed is not None
+        legal = bool(
+            encodable
+            and 0 <= executed < pending.action_mask.size
+            and pending.action_mask[executed]
+        )
+        event.update(
+            {
+                "executed_action_index": executed,
+                "executed_action_encodable": encodable,
+                "executed_action_legal": legal,
+                "candidate_matches_executed": (
+                    executed == event["candidate_action_index"]
+                    if event.get("candidate_action_index") is not None
+                    else None
+                ),
+            }
+        )
+        if "selected_action_index" in event:
+            event["selected_matches_executed"] = (
+                executed == event["selected_action_index"]
+            )
         self.decision_count += 1
         self.session_decision_count += 1
         event["decision_sequence"] = self.session_decision_count
@@ -484,9 +537,27 @@ class ActionRelativeLiveShadow:
         except Exception:
             self.enabled = False
             return False
-        if disable:
+        if pending.disable_after_commit:
             self.enabled = False
         return True
+
+    def commit_executed_action(
+        self, *, game: Any, executed_action_index: Optional[int]
+    ) -> bool:
+        if self.pending is None:
+            return False
+        if not self.pending.prepared:
+            event = self.prepare_guard_action(
+                game=game,
+                guard_action_index=executed_action_index,
+                candidate_has_authority=False,
+            )
+            if event is None:
+                return False
+        return self._commit_prepared_action(
+            game=game,
+            executed_action_index=executed_action_index,
+        )
 
     def discard_transient_action(self, *, reason: str) -> bool:
         if self.pending is None:

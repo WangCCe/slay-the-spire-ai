@@ -1978,10 +1978,175 @@ class CombatRLAgent:
         )
         return self._with_combat_action_context(committed, game)
 
+    def _apply_action_relative_candidate(
+        self, action: Optional[Action], game: Game
+    ) -> Optional[Action]:
+        from spirecomm.communication.action import EndTurnAction, WaitAction
+
+        if action is None or isinstance(action, (EndTurnAction, WaitAction)):
+            return action
+        rl_agent = getattr(self, "rl_agent", None)
+        propose = getattr(rl_agent, "propose_action_relative_candidate", None)
+        if not callable(propose):
+            return action
+        try:
+            candidate = propose(game, action)
+        except Exception as exc:
+            logger.error(
+                "[ACTION_RELATIVE_CANDIDATE] Late proposal failed: %s", exc
+            )
+            return action
+        if candidate is None:
+            return action
+        try:
+            veto_reason = self._action_relative_candidate_veto_reason(
+                candidate, game
+            )
+        except Exception as exc:
+            logger.error(
+                "[ACTION_RELATIVE_CANDIDATE] Safety veto failed: %s", exc
+            )
+            veto_reason = f"safety_veto_error:{type(exc).__name__}"
+        selected = action if veto_reason else candidate
+        resolve = getattr(rl_agent, "resolve_action_relative_candidate", None)
+        if not callable(resolve):
+            return action
+        try:
+            resolved = resolve(
+                game,
+                action,
+                selected,
+                veto_reason=veto_reason,
+            )
+        except Exception as exc:
+            logger.error(
+                "[ACTION_RELATIVE_CANDIDATE] Safety resolution failed: %s", exc
+            )
+            return action
+        if veto_reason:
+            logger.info(
+                "[ACTION_RELATIVE_CANDIDATE] Retaining guard action; veto=%s",
+                veto_reason,
+            )
+        else:
+            logger.info(
+                "[ACTION_RELATIVE_CANDIDATE] Applying late candidate %s over guard %s",
+                self._describe_combat_action(candidate, game),
+                self._describe_combat_action(action, game),
+            )
+        return resolved if resolved is not None else action
+
+    def _action_relative_candidate_veto_reason(
+        self, candidate: Action, game: Game
+    ) -> str:
+        from spirecomm.communication.action import PlayCardAction
+
+        if not isinstance(candidate, PlayCardAction):
+            return "non_card_action"
+        if not self._is_valid_combat_action(candidate, game):
+            return "invalid_or_unplayable"
+        if self._is_self_lethal_card_action(candidate, game):
+            return "self_lethal"
+        if self._is_pressure_unsafe_hp_loss_card_action(candidate, game):
+            return "pressure_unsafe_hp_loss"
+        card = self._card_for_action(candidate, game)
+        if self._would_low_hp_hp_loss_be_filler_without_pressure(card, game):
+            return "low_hp_hp_loss_filler"
+
+        mandatory_checks = (
+            (
+                "slime_split_aoe_survival",
+                lambda: self._get_slime_split_aoe_survival_replacement(game),
+            ),
+            (
+                "slime_split_weak_pressure",
+                lambda: self._get_slime_split_weak_pressure_replacement(game),
+            ),
+            (
+                "slime_split_survival_attack",
+                lambda: self._get_slime_split_survival_attack_replacement(
+                    candidate, game
+                ),
+            ),
+            (
+                "single_card_lethal",
+                lambda: self._get_single_card_lethal_attack_replacement(game),
+            ),
+            (
+                "urgent_boss_ethereal_defense",
+                lambda: self._get_urgent_boss_ethereal_defense_replacement(game),
+            ),
+            (
+                "survival",
+                lambda: self._get_survival_action_replacement(candidate, game),
+            ),
+            (
+                "act1_boss_pressure",
+                lambda: self._get_act1_boss_pressure_action_replacement(
+                    candidate, game
+                ),
+            ),
+            (
+                "gremlin_leader_minion",
+                lambda: self._get_gremlin_leader_minion_attack_replacement(
+                    candidate, game
+                ),
+            ),
+            (
+                "guardian_sharp_hide",
+                lambda: self._get_guardian_sharp_hide_action_replacement(
+                    candidate, game
+                ),
+            ),
+            (
+                "guardian_pressure",
+                lambda: self._get_guardian_pressure_action_replacement(
+                    candidate, game
+                ),
+            ),
+            (
+                "self_vulnerable_pressure",
+                lambda: self._get_self_vulnerable_pressure_action_replacement(
+                    candidate, game
+                ),
+            ),
+            (
+                "act1_boss_no_pressure",
+                lambda: self._get_act1_boss_no_pressure_attack_replacement(
+                    candidate, game
+                ),
+            ),
+            (
+                "empty_second_wind",
+                lambda: self._get_empty_second_wind_replacement(candidate, game),
+            ),
+        )
+        for reason, replacement in mandatory_checks:
+            if replacement() is not None:
+                return f"mandatory_guard:{reason}"
+
+        action_specific_checks = (
+            ("awakened_one_power", self._should_override_awakened_one_power),
+            ("hexaghost_setup", self._should_override_hexaghost_setup_action),
+            (
+                "slime_boss_vulnerable_setup",
+                self._should_override_slime_boss_vulnerable_setup_action,
+            ),
+            ("urgent_ethereal_attack", self._should_override_urgent_ethereal_attack),
+            ("unproductive_double_tap", self._should_override_unproductive_double_tap),
+            ("risky_havoc", self._should_override_risky_havoc),
+            ("low_value_status", self._should_override_low_value_status_card),
+        )
+        for reason, predicate in action_specific_checks:
+            if predicate(candidate, game):
+                return f"action_guard:{reason}"
+        return ""
+
     def _with_combat_action_context(self, action: Optional[Action], game: Game) -> Optional[Action]:
         from spirecomm.communication.action import EndTurnAction
         from spirecomm.ai.decision_trace import write_decision_trace_event
 
+        action = self._apply_action_relative_candidate(action, game)
         if isinstance(action, EndTurnAction):
             action.expected_floor = getattr(game, "floor", None)
             action.expected_turn = getattr(game, "turn", None)

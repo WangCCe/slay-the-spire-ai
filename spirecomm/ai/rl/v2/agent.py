@@ -292,6 +292,7 @@ class RLAgentV2:
         self.latent_gated_shadow = None
         self.latent_gated_candidate = None
         self.action_relative_shadow = None
+        self.action_relative_candidate = None
         shadow_registration = os.environ.get(
             "STS_COMBAT_RL_LATENT_SHADOW_REGISTRATION", ""
         ).strip()
@@ -301,12 +302,16 @@ class RLAgentV2:
         action_relative_registration = os.environ.get(
             "STS_COMBAT_RL_ACTION_RELATIVE_SHADOW_REGISTRATION", ""
         ).strip()
+        action_relative_candidate_registration = os.environ.get(
+            "STS_COMBAT_RL_ACTION_RELATIVE_CANDIDATE_REGISTRATION", ""
+        ).strip()
         if sum(
             bool(value)
             for value in (
                 shadow_registration,
                 candidate_registration,
                 action_relative_registration,
+                action_relative_candidate_registration,
             )
         ) > 1:
             raise ValueError(
@@ -356,6 +361,23 @@ class RLAgentV2:
             adapter_metadata = self._build_metadata().as_dict()
             adapter_metadata.pop("rl_space_version")
             self.action_relative_shadow = initialize_action_relative_live_shadow(
+                parent=self.network,
+                metadata=adapter_metadata,
+                model_path=model_path,
+                training=self.training_mode,
+                epsilon=self.epsilon,
+                expert_mix_enabled=self.expert_mix_enabled,
+                repo_root=Path(__file__).resolve().parents[4],
+                device=self.device,
+            )
+        if action_relative_candidate_registration:
+            from .action_relative_live_candidate import (
+                initialize_action_relative_live_candidate,
+            )
+
+            adapter_metadata = self._build_metadata().as_dict()
+            adapter_metadata.pop("rl_space_version")
+            self.action_relative_candidate = initialize_action_relative_live_candidate(
                 parent=self.network,
                 metadata=adapter_metadata,
                 model_path=model_path,
@@ -486,9 +508,17 @@ class RLAgentV2:
                     )
 
             action_relative_shadow = getattr(self, "action_relative_shadow", None)
-            if action_relative_shadow is not None and action_relative_shadow.enabled:
+            action_relative_candidate = getattr(
+                self, "action_relative_candidate", None
+            )
+            action_relative_runtime = (
+                action_relative_candidate
+                if action_relative_candidate is not None
+                else action_relative_shadow
+            )
+            if action_relative_runtime is not None and action_relative_runtime.enabled:
                 try:
-                    action_relative_shadow.observe_proposal(
+                    action_relative_runtime.observe_proposal(
                         game=game,
                         continuous=encoded.continuous,
                         card_ids=encoded.card_ids,
@@ -499,10 +529,10 @@ class RLAgentV2:
                     )
                 except Exception as shadow_error:
                     logger.error(
-                        "RLAgentV2 action-relative shadow proposal failed: %s",
+                        "RLAgentV2 action-relative live proposal failed: %s",
                         shadow_error,
                     )
-                    action_relative_shadow.record_runtime_error(
+                    action_relative_runtime.record_runtime_error(
                         stage="proposal", error=shadow_error, game=game
                     )
 
@@ -621,15 +651,79 @@ class RLAgentV2:
         self.episode_steps += 1
         return self.trainer.train_step()
 
+    def propose_action_relative_candidate(self, game: Game, guard_action):
+        candidate = getattr(self, "action_relative_candidate", None)
+        if candidate is None or not candidate.enabled or candidate.pending is None:
+            return None
+        try:
+            guard_index = self.action_encoder.encode_action(guard_action, game)
+            if guard_index is None:
+                raise ValueError("guard action is not encodable")
+            candidate_index = candidate.prepare_candidate_action(
+                game=game,
+                guard_action_index=guard_index,
+            )
+            if candidate_index is None:
+                return None
+            return self.action_encoder.decode_action(candidate_index, game)
+        except Exception as candidate_error:
+            logger.error(
+                "RLAgentV2 action-relative candidate preparation failed: %s",
+                candidate_error,
+            )
+            candidate.record_runtime_error(
+                stage="prepare_guard", error=candidate_error, game=game
+            )
+            return None
+
+    def resolve_action_relative_candidate(
+        self,
+        game: Game,
+        guard_action,
+        selected_action,
+        *,
+        veto_reason: str,
+    ):
+        candidate = getattr(self, "action_relative_candidate", None)
+        if candidate is None or candidate.pending is None:
+            return guard_action
+        try:
+            selected_index = self.action_encoder.encode_action(selected_action, game)
+            if selected_index is None:
+                raise ValueError("selected late action is not encodable")
+            if not candidate.resolve_safety_decision(
+                selected_action_index=selected_index,
+                veto_reason=veto_reason,
+            ):
+                return guard_action
+            return selected_action
+        except Exception as candidate_error:
+            logger.error(
+                "RLAgentV2 action-relative candidate safety resolution failed: %s",
+                candidate_error,
+            )
+            candidate.record_runtime_error(
+                stage="safety_veto", error=candidate_error, game=game
+            )
+            return guard_action
+
     def commit_executed_action(self, game: Game, action) -> bool:
         """Bind replay attribution to the action emitted after outer safety guards."""
         candidate = getattr(self, "latent_gated_candidate", None)
         shadow = getattr(self, "latent_gated_shadow", None)
         action_relative_shadow = getattr(self, "action_relative_shadow", None)
+        action_relative_candidate = getattr(
+            self, "action_relative_candidate", None
+        )
         live_runtime = next(
             (
                 runtime
-                for runtime in (candidate, shadow, action_relative_shadow)
+                for runtime in (
+                    candidate,
+                    shadow,
+                    action_relative_candidate,
+                    action_relative_shadow,
+                )
                 if runtime is not None
             ),
             None,
@@ -639,6 +733,8 @@ class RLAgentV2:
             if candidate is not None
             else "shadow"
             if shadow is not None
+            else "action-relative candidate"
+            if action_relative_candidate is not None
             else "action-relative shadow"
         )
         if live_runtime is not None and live_runtime.pending is not None:
@@ -863,6 +959,7 @@ class RLAgentV2:
         for live_runtime in (
             getattr(self, "latent_gated_candidate", None),
             getattr(self, "latent_gated_shadow", None),
+            getattr(self, "action_relative_candidate", None),
             getattr(self, "action_relative_shadow", None),
         ):
             if live_runtime is not None:
