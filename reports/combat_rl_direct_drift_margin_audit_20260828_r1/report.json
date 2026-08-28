@@ -1,0 +1,124 @@
+{
+  "schema_version": 1,
+  "audit_id": "combat-rl-direct-drift-margin-audit-20260828-r1",
+  "verdict": "shared_objective_cross_stratum_interference_supported",
+  "authority": {
+    "training": false,
+    "model_fitting": false,
+    "gameplay": false,
+    "fresh_holdout": false,
+    "promotion": false,
+    "objective_design_evidence": true
+  },
+  "method": {
+    "partition": "each experiment's immutable combat-group validation split",
+    "rows": "direct provenance rows only",
+    "parent": "frozen production-r16 eval-mode masked Q values",
+    "candidate": "frozen development candidate eval-mode masked Q values",
+    "margin": "parent top legal Q minus parent second legal Q",
+    "no_model_update": true
+  },
+  "sources": {
+    "r1_256_updates": {
+      "input": {
+        "path": "reports/combat_rl_action_selection_parity_replay_20260828_r1/rl_combat_model_ep10_steps2109.pth",
+        "sha256": "302a7350a7e216ea548025ac4cb588c1ea77872328ccef977f94feab65e03fb4",
+        "transition_count": 2109,
+        "override_share": 0.7790421843528748
+      },
+      "candidate": {
+        "path": "reports/combat_rl_provenance_aware_successor_20260828_r1/development_candidate.pth",
+        "sha256": "1c97d4680f7e1c125738655274d332066a1cd12c644cad1fb299bc4d73dc67f3",
+        "state_dict_sha256": "a7f8a505f9816f12b87d35528ff6383051b03f8c2cd3c369a5db6b0036d4ae09",
+        "optimizer_steps": 256
+      },
+      "direct_validation": {
+        "transition_count": 77,
+        "action_disagreement_count": 20,
+        "action_disagreement_share": 0.2597402597402597,
+        "family_flip_counts": {
+          "end_turn->play_card": 2,
+          "play_card->play_card": 13,
+          "use_potion->play_card": 5
+        },
+        "parent_margin_when_disagreeing": {
+          "minimum": 0.06013965606689453,
+          "median": 0.24813318252563477,
+          "mean": 0.3652431726455688,
+          "p90": 0.855067539215088,
+          "maximum": 0.9950647354125977
+        },
+        "changed_margin_threshold_share": {
+          "at_most_0.1": 0.25,
+          "at_most_0.25": 0.5,
+          "at_most_0.5": 0.75,
+          "at_most_1.0": 1.0
+        },
+        "parent_selected_q_delta": {
+          "median": -0.9057111740112305,
+          "mean": -1.0623983500839829
+        }
+      }
+    },
+    "r2_64_updates": {
+      "input": {
+        "path": "reports/combat_rl_stratified_provenance_replay_20260828_r1/rl_combat_model_ep10_steps2091.pth",
+        "sha256": "606727df27dd82ac825767097b71f07d6aa39ad37e0ea5d5d432e88c9288c28f",
+        "transition_count": 2091,
+        "override_share": 0.8120516508847442
+      },
+      "candidate": {
+        "path": "reports/combat_rl_stratified_provenance_successor_20260828_r1/development_candidate.pth",
+        "sha256": "8d82e0ee5486daeb963d524a6e34b599716b966976f1406e4220973760df6ccf",
+        "state_dict_sha256": "884b0a62146459aa450c1fa8d046da75ca75e9002129e7261b49d5609661d5fb",
+        "optimizer_steps": 64
+      },
+      "direct_validation": {
+        "transition_count": 106,
+        "action_disagreement_count": 38,
+        "action_disagreement_share": 0.3584905660377358,
+        "family_flip_counts": {
+          "end_turn->play_card": 4,
+          "play_card->play_card": 27,
+          "use_potion->play_card": 7
+        },
+        "parent_margin_when_disagreeing": {
+          "minimum": 0.023054122924804688,
+          "median": 0.2140827178955078,
+          "mean": 0.3834322690963745,
+          "p90": 1.0298007965087894,
+          "maximum": 1.8435173034667969
+        },
+        "changed_margin_threshold_share": {
+          "at_most_0.1": 0.21052631578947367,
+          "at_most_0.25": 0.5526315789473685,
+          "at_most_0.5": 0.7894736842105263,
+          "at_most_1.0": 0.868421052631579
+        },
+        "parent_selected_q_delta": {
+          "median": -0.6622533798217773,
+          "mean": -0.8310527958959903
+        }
+      }
+    }
+  },
+  "cross_source_findings": {
+    "direct_drift_repeats_across_update_budgets": true,
+    "all_cross_family_flips_target_play_card": true,
+    "drift_is_not_confined_to_low_parent_margin": true,
+    "global_anchor_loss_is_override_prevalence_weighted": true,
+    "supported_hypothesis": "Global provenance-aware cross entropy allows the roughly 80% override stratum to dominate shared parameter updates and suppress direct parent actions, including potion and high-margin actions.",
+    "causal_claim": false
+  },
+  "decision": {
+    "do_not_continue_lowering_optimizer_steps": true,
+    "do_not_reuse_failed_candidates_for_holdout": true,
+    "recommended_next_exploration": "Run a bounded offline-only preregistered ablation of provenance-balanced anchor loss and a direct-only parent top-action margin guard. Grant no candidate or holdout authority on the reused development corpus.",
+    "new_live_collection_required_before_final_candidate": true
+  },
+  "limitations": [
+    "R1 and R2 use different live replay cohorts, so their update budgets are not a causal paired comparison.",
+    "Action and Q-margin drift on development validation rows is objective-design evidence, not policy-quality evidence.",
+    "The shared-objective interference explanation is a supported hypothesis until a separately registered ablation isolates it."
+  ]
+}
