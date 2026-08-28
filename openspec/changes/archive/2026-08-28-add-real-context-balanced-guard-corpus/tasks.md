@@ -37,5 +37,5 @@
 - [x] 4.2 Run focused regression tests and exactly one timed commit gate for the
   completed source boundary; retain the timing report for the queued gate-speed
   work.
-- [ ] 4.3 Commit and push the cohesive change, sync the capability spec, and
+- [x] 4.3 Commit and push the cohesive change, sync the capability spec, and
   archive the OpenSpec change only after implementation and evidence agree.
