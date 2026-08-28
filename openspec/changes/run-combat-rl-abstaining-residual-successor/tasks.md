@@ -20,6 +20,6 @@
 
 ## 4. One-Shot Development Result
 
-- [ ] 4.1 Execute the registered CPU development fit at most once
-- [ ] 4.2 Publish the immutable result, integrity evidence, and technical gate decision
-- [ ] 4.3 On pass, prepare a separate fresh-holdout registration; on failure, close the cohort without retry or tuning
+- [x] 4.1 Execute the registered CPU development fit at most once
+- [x] 4.2 Publish the immutable result, integrity evidence, and technical gate decision
+- [x] 4.3 On pass, prepare a separate fresh-holdout registration; on failure, close the cohort without retry or tuning
