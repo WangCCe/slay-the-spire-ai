@@ -1,0 +1,158 @@
+{
+  "artifacts": {
+    "ai_debug_log": {
+      "path": "reports/combat_rl_latent_gated_live_shadow_20260828_r3/ai_debug.log",
+      "sha256": "84600c94427dd19e4cdf7b917d2d6256c66341e01ce7ada1b44402a89ee4d3f0",
+      "size_bytes": 7984215
+    },
+    "decision_trace": {
+      "path": "reports/combat_rl_latent_gated_live_shadow_20260828_r3/ai_decision_trace_clean.jsonl",
+      "sha256": "c2430873f66db12ad5f076120741c164e2aa52741a818a7e8241ec6386680e54",
+      "size_bytes": 4612682
+    },
+    "registration": {
+      "path": "reports/combat_rl_latent_gated_live_shadow_20260828_r3_registration.json",
+      "sha256": "47b4f206b7a953aede04cb820c2e905ff5abadb4e0b27115040d8225e84f7f10",
+      "size_bytes": 1171
+    },
+    "shadow_report": {
+      "path": "reports/combat_rl_latent_gated_live_shadow_20260828_r3/report.json",
+      "sha256": "1a59784e57be21daaf78dde91f9d85cc0da65764e80e6be1bcc18ced366d8ca1",
+      "size_bytes": 4624
+    },
+    "shadow_trace": {
+      "path": "reports/combat_rl_latent_gated_live_shadow_20260828_r3/trace.jsonl",
+      "sha256": "0387da8dd45acc3b59c8f5dbc3ef7db37de46ab98513b4ca00e2ff3970fc8730",
+      "size_bytes": 435440
+    },
+    "sim_divergence_trace": {
+      "path": "reports/combat_rl_latent_gated_live_shadow_20260828_r3/sim_divergence_trace_clean.jsonl",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "size_bytes": 0
+    }
+  },
+  "authority": {
+    "candidate_action_takeover": false,
+    "gameplay_quality_claim": false,
+    "matched_gameplay_evaluation": true,
+    "online_training": false,
+    "promotion": false
+  },
+  "communication_mod": {
+    "delta_bytes": 1879,
+    "exception_signature_count": 0,
+    "final_bytes": 1383810,
+    "initial_bytes": 1381931,
+    "traceback_count": 0
+  },
+  "configuration": {
+    "restored_exactly": true,
+    "restored_sha256": "0991895790bc73d3d21a05731bf402228cf0c510a4217aa841ced026016760e7"
+  },
+  "execution": {
+    "actual_games": 5,
+    "candidate_authority": "shadow_only",
+    "controller": "production_r16",
+    "end_local": "2026-08-28T17:47:24+08:00",
+    "epsilon": 0.0,
+    "final_ai_marker_count": 17336,
+    "initial_ai_marker_count": 17331,
+    "maximum_games": 5,
+    "source_commit": "6533bab6be388b6605b11721479a0a82f9749464",
+    "start_local": "2026-08-28T17:39:10+08:00",
+    "training": false
+  },
+  "latency_ms": {
+    "adapter_inference": {
+      "maximum": 113.40810000547208,
+      "p50": 11.365999991539866,
+      "p95": 20.309524990443606,
+      "registered_p95_ceiling": 100.0
+    },
+    "log_pairing": {
+      "callback_pair_count": 302,
+      "call_count": 302,
+      "replaced_unpaired_call_count": 0,
+      "returned_count": 302,
+      "trailing_unpaired_call": false
+    },
+    "model_and_shadow_to_rl_return": {
+      "maximum": 293.0,
+      "p50": 18.0,
+      "p95": 28.0
+    },
+    "proposal_to_final_callback": {
+      "maximum": 2799.0,
+      "p50": 42.5,
+      "p95": 922.1499999999999
+    },
+    "rl_return_to_final_callback": {
+      "maximum": 2785.0,
+      "p50": 18.0,
+      "p95": 907.5999999999997
+    }
+  },
+  "runs": [
+    {
+      "file": "1787910048.run",
+      "floor_reached": 19,
+      "killed_by": "3 Byrds",
+      "playtime": 82,
+      "seed": "3925430122107212291",
+      "sha256": "dbb220f5e61e11e6919146e7185160a877f22ee48dd5bfd74d22834b03dae257",
+      "victory": false
+    },
+    {
+      "file": "1787910109.run",
+      "floor_reached": 16,
+      "killed_by": "Hexaghost",
+      "playtime": 55,
+      "seed": "338439310951580085",
+      "sha256": "c8d74940b73c5d8205b60b981bf41f6eda6387a4b270f13512a7778996f43128",
+      "victory": false
+    },
+    {
+      "file": "1787910178.run",
+      "floor_reached": 16,
+      "killed_by": "The Guardian",
+      "playtime": 63,
+      "seed": "-3908871140053905577",
+      "sha256": "af2e367a659a7baa5e79214bf9010df9e448aaa24f05d5a1d44ef1e9025624db",
+      "victory": false
+    },
+    {
+      "file": "1787910369.run",
+      "floor_reached": 33,
+      "killed_by": "Champ",
+      "playtime": 185,
+      "seed": "3769532875093160257",
+      "sha256": "ba4e651f0693cadf9d6c76ed6e72064a458f53d69ffc623e1c4f3f611c2ff57b",
+      "victory": false
+    },
+    {
+      "file": "1787910440.run",
+      "floor_reached": 16,
+      "killed_by": "The Guardian",
+      "playtime": 65,
+      "seed": "-4371209596231661671",
+      "sha256": "cb4808c6c503118d797c7e1296ee8e5189729bc7cd4a6b8e0c5278b60d4fdd5a",
+      "victory": false
+    }
+  ],
+  "schema_version": 1,
+  "shadow": {
+    "candidate_legal_share": 1.0,
+    "candidate_matches_executed_share": 0.58,
+    "candidate_parent_disagreement_share": 0.45666666666666667,
+    "decision_count": 300,
+    "error_event_count": 0,
+    "event_count": 302,
+    "executed_legal_share": 1.0,
+    "gate_open_share": 0.49,
+    "parent_parity_share": 1.0,
+    "proposal_changed_share": 0.57,
+    "proposal_count": 302,
+    "transient_discard_count": 2
+  },
+  "verdict": "eligible_for_separately_bounded_matched_gameplay_evaluation"
+}

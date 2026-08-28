@@ -1,0 +1,111 @@
+{
+  "authority": {
+    "candidate_action_takeover": false,
+    "gameplay_quality_claim": false,
+    "matched_gameplay_evaluation": true,
+    "online_training": false,
+    "promotion": false
+  },
+  "bindings": {
+    "candidate_artifact_sha256": "52fe999f209d6ee99c59aec4200f64b8efb7256f80b379c2d6f748a33e199ac1",
+    "parent_state_dict_sha256": "cfe8204d06db6b43b063df98e1b713d4a40a0894a1a9330c3db87c739da88d48",
+    "production_parent_checkpoint_sha256": "75120e9e8f76393d4d82c16de5c3ea6384d2f7ef26bd530a6b552ed9791e38f5",
+    "source_commit": "6533bab6be388b6605b11721479a0a82f9749464"
+  },
+  "criteria": {
+    "all_candidate_actions_legal": true,
+    "all_conditions_passed": true,
+    "all_executed_actions_legal": true,
+    "all_parent_actions_match": true,
+    "event_schema_valid": true,
+    "identity_valid": true,
+    "minimum_decision_count_met": true,
+    "p95_latency_within_ceiling": true,
+    "sequence_contiguous": true,
+    "within_decision_budget": true,
+    "zero_error_events": true
+  },
+  "decision": "eligible_for_separately_bounded_matched_gameplay_evaluation",
+  "experiment_id": "combat-rl-latent-gated-live-shadow-20260828-r3",
+  "limitations": [
+    "Shadow telemetry measures runtime callability and guard-action agreement, not policy quality.",
+    "The latency gate covers adapter inference only; full CommunicationMod delay must be reconciled from live logs.",
+    "Transient WaitAction control commands are audited separately and do not consume the policy-decision budget.",
+    "A hard process stop between proposal and commit can omit one pending decision; run and log reconciliation remains mandatory.",
+    "A separately bounded matched gameplay evaluation is required before any promotion decision."
+  ],
+  "metrics": {
+    "candidate_legal_share": 1.0,
+    "candidate_matches_executed_share": 0.58,
+    "candidate_parent_disagreement_share": 0.45666666666666667,
+    "decision_count": 300,
+    "error_event_count": 0,
+    "event_count": 302,
+    "executed_legal_share": 1.0,
+    "gate_open_share": 0.49,
+    "maximum_shadow_latency_ms": 113.40810000547208,
+    "minimum_shadow_latency_ms": 6.1311000026762486,
+    "p50_shadow_latency_ms": 11.365999991539866,
+    "p95_shadow_latency_ms": 20.309524990443606,
+    "parent_parity_share": 1.0,
+    "proposal_changed_share": 0.57,
+    "proposal_count": 302,
+    "session_count": 1,
+    "transient_discard_count": 2
+  },
+  "registered_gates": {
+    "latency_scope": "adapter_inference_only",
+    "maximum_decision_count": 1000,
+    "maximum_p95_latency_ms": 100.0,
+    "minimum_decision_count": 300
+  },
+  "registration": {
+    "path": "D:\\PycharmProjects\\slay-the-spire-ai\\reports\\combat_rl_latent_gated_live_shadow_20260828_r3_registration.json",
+    "sha256": "47b4f206b7a953aede04cb820c2e905ff5abadb4e0b27115040d8225e84f7f10"
+  },
+  "schema_version": 1,
+  "segments": {
+    "act=1|room=EventRoom": {
+      "candidate_matches_executed_share": 1.0,
+      "candidate_parent_disagreement_share": 0.2,
+      "decision_count": 5,
+      "gate_open_share": 0.6,
+      "proposal_changed_share": 0.2
+    },
+    "act=1|room=MonsterRoom": {
+      "candidate_matches_executed_share": 0.5378151260504201,
+      "candidate_parent_disagreement_share": 0.5210084033613446,
+      "decision_count": 119,
+      "gate_open_share": 0.5630252100840336,
+      "proposal_changed_share": 0.6554621848739496
+    },
+    "act=1|room=MonsterRoomBoss": {
+      "candidate_matches_executed_share": 0.49382716049382713,
+      "candidate_parent_disagreement_share": 0.5679012345679012,
+      "decision_count": 81,
+      "gate_open_share": 0.6049382716049383,
+      "proposal_changed_share": 0.6666666666666666
+    },
+    "act=2|room=MonsterRoom": {
+      "candidate_matches_executed_share": 0.7105263157894737,
+      "candidate_parent_disagreement_share": 0.2631578947368421,
+      "decision_count": 76,
+      "gate_open_share": 0.2631578947368421,
+      "proposal_changed_share": 0.3815789473684211
+    },
+    "act=2|room=MonsterRoomBoss": {
+      "candidate_matches_executed_share": 0.5789473684210527,
+      "candidate_parent_disagreement_share": 0.42105263157894735,
+      "decision_count": 19,
+      "gate_open_share": 0.42105263157894735,
+      "proposal_changed_share": 0.47368421052631576
+    }
+  },
+  "trace": {
+    "event_schema_errors": [],
+    "identity_errors": [],
+    "parse_errors": [],
+    "path": "D:\\PycharmProjects\\slay-the-spire-ai\\reports\\combat_rl_latent_gated_live_shadow_20260828_r3\\trace.jsonl",
+    "sequence_errors": []
+  }
+}
