@@ -18,5 +18,5 @@
 
 ## 4. Verification And Closure
 
-- [ ] 4.1 Run exactly one timed commit gate for the completed source boundary
-- [ ] 4.2 Sync specs, archive the change, commit the coherent corpus/training evidence, and push master
+- [x] 4.1 Run exactly one timed commit gate for the completed source boundary
+- [x] 4.2 Sync specs, archive the change, commit the coherent corpus/training evidence, and push master
