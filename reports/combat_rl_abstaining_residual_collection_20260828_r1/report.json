@@ -1,0 +1,112 @@
+{
+  "authority": {
+    "collection_complete": true,
+    "cpu_development_fit": false,
+    "fresh_holdout": false,
+    "gameplay_evaluation": false,
+    "policy_quality": false,
+    "production_loading": false,
+    "promotion": false,
+    "runner_binding_supplement": true
+  },
+  "checkpoint": {
+    "direct_eval_parent_agreement": 1.0,
+    "episode": 10,
+    "learning_starts": 100000,
+    "online_state_dict_sha256": "23491db97fe31cf12052207ea321b4c2ac23a922f2a0916a3dc54d604ee3a720",
+    "online_target_equal": true,
+    "optimizer_state_count": 0,
+    "parent_state_matches_production_r16": true,
+    "path": "rl_combat_model_ep10_steps1916.pth",
+    "replay_schema_version": 3,
+    "sha256": "ba02c749e73caecae59469220abe30e40e826699e95ca910a8b18d7eaa1f5900",
+    "target_state_dict_sha256": "23491db97fe31cf12052207ea321b4c2ac23a922f2a0916a3dc54d604ee3a720",
+    "total_steps": 1916,
+    "transition_count": 1916
+  },
+  "decision": "collection_qualified_for_runner_binding_supplement",
+  "evidence": {
+    "checkpoint_audit_sha256": "7eb5e36b8dae0ec2736aa4152d0a91e1065bfbc51cbabd501b64110863465da8",
+    "inventory_audit_sha256": "74b9e4cfbe3a5b6d0858ade2d53a2be5a2365e0ef58cf103b6aa2a94e5eacb45",
+    "run_audit_sha256": "a0843609e832f79ef5fbfe89317c5012a2c752b209f87c913657bfb8265c2a57",
+    "runtime_audit_sha256": "49df3b3dff6eef32127a216c9fb4f6b90f23116285e12ff562d67c3f0c834a90",
+    "runtime_evidence_sha256": "1fc0939673c230eaec4470fabac51f285dcc48a2923819d4d6287bc285d5d325",
+    "runtime_evidence_size": 5911193,
+    "trace_audit_sha256": "eb04534261c4e02d2756238d513b48215bf3bfa0076137038a5cc21a757848a7"
+  },
+  "integrity": {
+    "active_config_restored": true,
+    "all_ascension_zero": true,
+    "all_chose_seed": true,
+    "all_registered_seeds_match": true,
+    "debug_error_severity_count": 0,
+    "error_suffix_exception_count": 0,
+    "error_suffix_rl_failure_count": 0,
+    "error_suffix_traceback_count": 0,
+    "ironclad_autosave_count": 0,
+    "max_games_exit_count": 1,
+    "new_ai_marker_count": 10,
+    "project_game_process_count": 0,
+    "restore_config_sha256": "0991895790bc73d3d21a05731bf402228cf0c510a4217aa841ced026016760e7",
+    "run_count": 10
+  },
+  "inventory": {
+    "card_inventory_mismatch_count": 0,
+    "card_oov": {
+      "Ghostly": 28
+    },
+    "items_sha256": "e23784ea8ed3092e3bfa9918240e162a9cbcb837badfb53c612eb0d83cc811dc",
+    "potion_inventory_mismatch_count": 0,
+    "potion_oov": {},
+    "relic_inventory_mismatch_count": 0,
+    "relic_oov": {}
+  },
+  "limitations": [
+    "This fresh cohort is development training input and cannot serve as its own holdout.",
+    "This registration and report do not authorize fitting; a source-bound runner supplement is still required.",
+    "No victory or policy-quality inference is made from the ten run outcomes.",
+    "Ghostly remains a known trace/replay OOV representation mapped consistently to zero."
+  ],
+  "registration": {
+    "id": "combat-rl-abstaining-residual-collection-20260828-r1",
+    "path": "reports/combat_rl_abstaining_residual_collection_20260828_r1_registration.json",
+    "sha256": "404061b8838dc90dd9215ecce1ccd9a3198acfb71d75674a784700f7d9744078",
+    "source_commit": "cbda408ccec6f9585cff4de93c5a5f316af48a75"
+  },
+  "runs": {
+    "floor_maximum": 50,
+    "floor_mean": 24.3,
+    "floor_minimum": 16,
+    "run_set_sha256": "ff26c4e17af4fa6ead4116d20615266a8e8e89038db89b26be0f41a1e5ded006",
+    "victory_count": 0
+  },
+  "schema_version": 1,
+  "source_provenance": {
+    "changed_same_state_proposal_count": 502,
+    "direct_unchanged_proposal_count": 350,
+    "legacy_unknown_count": 0,
+    "no_proposal_takeover_count": 1064
+  },
+  "spans": {
+    "attached_no_proposal_count": 1022,
+    "combat_group_count": 143,
+    "decision_span_count": 852,
+    "maximum_span_length": 7,
+    "mean_span_length": 2.199530516431925,
+    "settled_bootstrap_boundary_count": 53,
+    "source_row_reconciliation_count": 1916,
+    "uncontrolled_prefix_count": 42
+  },
+  "trace": {
+    "combat_trace_row_count": 1987,
+    "family_counts_match": true,
+    "joined_transition_count": 1916,
+    "replay_action_family_counts": {
+      "EndTurnAction": 398,
+      "PlayCardAction": 1448,
+      "PotionAction": 40,
+      "ProceedAction": 30
+    },
+    "trace_row_count": 3603
+  }
+}
