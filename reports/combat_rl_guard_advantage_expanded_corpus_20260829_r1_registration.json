@@ -1,0 +1,81 @@
+{
+  "schema_version": 1,
+  "experiment_id": "combat-rl-guard-advantage-expanded-corpus-20260829-r1",
+  "source_commit": "19690e9890dc4d0f85321d7ae2d81511d22c695b",
+  "runner": {
+    "path": "D:/PycharmProjects/slay-the-spire-ai/analysis_scripts/combat_rl_guard_advantage_corpus.py",
+    "sha256": "bf8392f2dc61b02ecd5507e0fe589750a5a859cf2f5c5ccf24d9c15840ffb772"
+  },
+  "native_module": {
+    "path": "D:/PycharmProjects/slay-the-spire-ai/.sts_lightspeed_combat_guard_advantage_20260828_r1_build/sts_lightspeed_combat_adapter.cp310-win_amd64.pyd",
+    "sha256": "195678b7fc6bf69815f3d2971404afb8ce72fb666700edf4203383429caf1009"
+  },
+  "simulator_repo": "D:/CLionProjects/sts_lightspeed",
+  "items_json": {
+    "path": "D:/SteamLibrary/steamapps/common/SlayTheSpire/export/items.json",
+    "sha256": "e23784ea8ed3092e3bfa9918240e162a9cbcb837badfb53c612eb0d83cc811dc"
+  },
+  "initial_checkpoint": {
+    "path": "D:/PycharmProjects/slay-the-spire-ai/reports/combat_lightspeed_production_r16_shadow_20260819_r1/simulator_only_production_shadow.pth",
+    "sha256": "ce2ae34f82b3f457fb35e87d429c397204c42d0f742d3ac8952d91b69119b83b",
+    "parameter_sha256": "cfe8204d06db6b43b063df98e1b713d4a40a0894a1a9330c3db87c739da88d48"
+  },
+  "output_dir": "D:/PycharmProjects/slay-the-spire-ai/reports/combat_rl_guard_advantage_expanded_corpus_20260829_r1",
+  "config": {
+    "train_seeds": "264000..265023",
+    "evaluation_seeds": "266000..266255",
+    "battle_indices": "0,3,6,9",
+    "max_states_per_profile": 2,
+    "max_source_decisions": 100,
+    "max_actions_per_turn": 8,
+    "max_canonical_actions": 8,
+    "continuation_decisions": 8,
+    "return_discount": 0.99,
+    "positive_advantage_margin": 0.5
+  },
+  "sufficiency_gate": {
+    "train_and_evaluation_require_both_classes": true,
+    "minimum_positive_training_states": 100,
+    "minimum_positive_training_target_identities": 3,
+    "decision_if_pass": "corpus_sufficient_for_expanded_item_semantic_fit",
+    "decision_if_fail": "corpus_insufficient_stop_before_fit"
+  },
+  "command": [
+    "D:/anaconda/envs/stsai/python.exe",
+    "-I",
+    "D:/PycharmProjects/slay-the-spire-ai/analysis_scripts/combat_rl_guard_advantage_corpus.py",
+    "--repo-root",
+    "D:/PycharmProjects/slay-the-spire-ai",
+    "--simulator-repo",
+    "D:/CLionProjects/sts_lightspeed",
+    "--module",
+    "D:/PycharmProjects/slay-the-spire-ai/.sts_lightspeed_combat_guard_advantage_20260828_r1_build/sts_lightspeed_combat_adapter.cp310-win_amd64.pyd",
+    "--items-json",
+    "D:/SteamLibrary/steamapps/common/SlayTheSpire/export/items.json",
+    "--initial-checkpoint",
+    "D:/PycharmProjects/slay-the-spire-ai/reports/combat_lightspeed_production_r16_shadow_20260819_r1/simulator_only_production_shadow.pth",
+    "--initial-checkpoint-sha256",
+    "ce2ae34f82b3f457fb35e87d429c397204c42d0f742d3ac8952d91b69119b83b",
+    "--output-dir",
+    "D:/PycharmProjects/slay-the-spire-ai/reports/combat_rl_guard_advantage_expanded_corpus_20260829_r1",
+    "--train-seeds",
+    "264000..265023",
+    "--evaluation-seeds",
+    "266000..266255",
+    "--battle-indices",
+    "0,3,6,9",
+    "--max-states-per-profile",
+    "2"
+  ],
+  "retry_policy": "An identical retry is allowed only after a pre-publication infrastructure failure leaves no output directory. Module, checkpoint, items, seeds, profiles, horizons, bounds, return recipe, and output path must remain unchanged.",
+  "authority": {
+    "cpu_corpus_generation": true,
+    "native_loading": true,
+    "model_fitting": false,
+    "gameplay": false,
+    "communication_mod": false,
+    "production_checkpoint_loading": false,
+    "qualification": false,
+    "promotion": false
+  }
+}

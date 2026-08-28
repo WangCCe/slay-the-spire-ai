@@ -1,7 +1,7 @@
 ## 1. Expanded Corpus Generation
 
-- [ ] 1.1 Add and validate one registration binding immutable native, runner, r16, items, seeds, bounds, output, sufficiency, and authority
-- [ ] 1.2 Commit the OpenSpec artifacts and corpus registration, then run source-only preflight
+- [x] 1.1 Add and validate one registration binding immutable native, runner, r16, items, seeds, bounds, output, sufficiency, and authority
+- [x] 1.2 Commit the OpenSpec artifacts and corpus registration, then run source-only preflight
 - [ ] 1.3 Execute the registered native corpus generation and verify partition alignment, sufficiency, provenance, and artifact hashes
 
 ## 2. Expanded Item-Semantic Fit
