@@ -14,5 +14,5 @@
 - [x] 3.1 Run focused RL v2 trainer/action-selection tests with an isolated Windows pytest temp scope.
 - [x] 3.2 Run the qualified `commit` test gate; reserve the raw inclusive `full` gate for phase close under the documented baseline policy.
 - [x] 3.3 Commit and push the implementation before fresh gameplay evidence collection.
-- [ ] 3.4 Register and collect one bounded fresh zero-update production-r16 provenance cohort on unused seeds.
-- [ ] 3.5 Publish a report requiring 100% direct unmarked eval-parent agreement, legal nonzero overrides, exact trace reconciliation, and zero optimizer updates before approving separate training.
+- [x] 3.4 Register and collect one bounded fresh zero-update production-r16 provenance cohort on unused seeds.
+- [x] 3.5 Publish a report requiring 100% direct unmarked eval-parent agreement, legal nonzero overrides, exact trace reconciliation, and zero optimizer updates before approving separate training.

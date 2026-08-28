@@ -1,0 +1,173 @@
+{
+  "schema_version": 1,
+  "collection_id": "combat-rl-action-selection-parity-replay-20260828-r1",
+  "implementation_source_commit": "1c8498529ecf183e81afc5eb06ced3d42cdecd29",
+  "registration_commit": "1555bb6c8dbb80608785c2f6dc9e39411495e4cf",
+  "verdict": "training_corpus_ready_for_provenance_aware_successor",
+  "timing": {
+    "started_at": "2026-08-28T07:44:36.957+08:00",
+    "completed_at": "2026-08-28T08:07:30.732+08:00",
+    "elapsed_seconds": 1373.775
+  },
+  "registration": {
+    "plan": "reports/combat_rl_action_selection_parity_replay_20260828_r1_plan.json",
+    "launch_config": "reports/combat_rl_action_selection_parity_replay_20260828_r1.properties",
+    "launch_config_sha256": "8c3e6bc400a56e86e798dc507fb21d52c5b9fd66d8c91950ce0280906959f664",
+    "seed_pool": "reports/combat_rl_action_selection_parity_replay_20260828_r1_seed_pool.txt",
+    "seed_pool_sha256": "1c0f02eecfe6faa670404d8450c9a987a0285d79383b3458e05e4d3a0438bc4d"
+  },
+  "collection_integrity": {
+    "game_count": 10,
+    "seed_count": 10,
+    "seed_order_exact": true,
+    "all_runs_record_chose_seed": true,
+    "first_accepted_seed": "F023806FE8CE9",
+    "first_accepted_state_floor": 0,
+    "run_set_sha256": "0c8df3b5d619ab81d807af695defa4fccc47d686cc747b08c82d758f345f6995",
+    "run_total_size_bytes": 48302,
+    "max_games_exit_observed": true,
+    "started_game_11": false,
+    "runtime_traceback_count": 0,
+    "rl_action_failure_count": 0,
+    "communication_mod_error_suffix_contains_only_startup_messages": true,
+    "pre_collection_config_restored": true,
+    "restored_config_sha256": "0991895790bc73d3d21a05731bf402228cf0c510a4217aa841ced026016760e7",
+    "project_python_or_game_processes_after_collection": 0
+  },
+  "seeds": [
+    "F023806FE8CE9",
+    "80326180D9D6A",
+    "CAE3FFDCE5A58",
+    "1911540C88E89",
+    "7287097AF64D0",
+    "FA85BE90ED71F",
+    "4066786EEC266",
+    "4A287C432FD52",
+    "8801D9C7A0916",
+    "9842C489572B2"
+  ],
+  "outcomes": {
+    "victories": 0,
+    "mean_floor": 25.5,
+    "median_floor": 26.5,
+    "minimum_floor": 14,
+    "maximum_floor": 37,
+    "floor_reached": [16, 25, 33, 24, 14, 16, 37, 28, 33, 29],
+    "killed_by": [
+      "Slime Boss",
+      "Gremlin Leader",
+      "Champ",
+      "Shelled Parasite and Fungi",
+      "Gremlin Gang",
+      "The Guardian",
+      "3 Darklings",
+      "Sentry and Sphere",
+      "Collector",
+      "Shelled Parasite and Fungi"
+    ]
+  },
+  "checkpoint": {
+    "path": "reports/combat_rl_action_selection_parity_replay_20260828_r1/rl_combat_model_ep10_steps2109.pth",
+    "sha256": "302a7350a7e216ea548025ac4cb588c1ea77872328ccef977f94feab65e03fb4",
+    "size_bytes": 12528994,
+    "episode": 10,
+    "transition_count": 2109,
+    "source_transition_count": 2109,
+    "total_steps": 2109,
+    "replay_truncated": false,
+    "epsilon": 0.0,
+    "learning_starts": 100000,
+    "optimizer_state_count": 0,
+    "last_total_loss": null,
+    "online_equals_r16": true,
+    "target_equals_r16": true,
+    "online_equals_target": true
+  },
+  "trace_binding": {
+    "runtime_evidence": "reports/combat_rl_action_selection_parity_replay_20260828_r1/runtime_evidence.zip",
+    "runtime_evidence_sha256": "a05f20b97f3e39a913aac9705582fb6ab14aad801023b9ff5a1844b353e5b891",
+    "runtime_evidence_size_bytes": 2343826,
+    "ai_debug_segments": ["ai_debug.log.2", "ai_debug.log.1", "ai_debug.log"],
+    "decision_trace_row_count": 3915,
+    "combat_trace_row_count": 2182,
+    "joinable_combat_trace_row_count": 2109,
+    "replay_transition_count_matches_joinable_trace": true,
+    "trace_replay_floor_mismatch_count": 0,
+    "trace_replay_action_family_mismatch_count": 0,
+    "cross_floor_nonterminal_count": 0
+  },
+  "inventory_identity_validation": {
+    "items_json": "D:/SteamLibrary/steamapps/common/SlayTheSpire/export/items.json",
+    "items_json_sha256": "e23784ea8ed3092e3bfa9918240e162a9cbcb837badfb53c612eb0d83cc811dc",
+    "joined_transition_count": 2109,
+    "potion_mismatched_transition_count": 0,
+    "potion_unresolved_occupied_occurrences": 0,
+    "potion_display_name_fallback_occurrences": 615,
+    "relic_mismatched_transition_count": 0,
+    "relic_unresolved_occupied_occurrences": 0,
+    "relic_display_name_fallback_occurrences": 853
+  },
+  "executed_action_provenance": {
+    "stored_override_true_count": 1643,
+    "stored_override_false_count": 466,
+    "stored_override_share": 0.7790421843528748,
+    "stored_legal_action_count": 2109,
+    "stored_illegal_action_count": 0,
+    "runtime_rl_proposal_count": 1009,
+    "runtime_no_proposal_takeover_count": 1100,
+    "inferred_changed_same_state_proposal_count": 543,
+    "inferred_direct_unchanged_proposal_count": 466,
+    "override_reconciliation": "1643 = (2109 - 1009) no-proposal takeover rows + 543 changed same-state proposal rows",
+    "direct_reconciliation": "466 = 1009 RL proposal rows - 543 changed same-state proposal rows",
+    "runtime_replacing_log_count": 634,
+    "runtime_continuing_fallback_takeover_log_count": 1046,
+    "runtime_repaired_fallback_action_log_count": 261,
+    "replacement_log_counts": {
+      "ENERGY_GUARD": 515,
+      "POTION_SAVE_GUARD": 17,
+      "LETHAL_GUARD": 55,
+      "ACT1_BOSS_PRESSURE_GUARD": 11,
+      "GUARDIAN_PRESSURE_GUARD": 3,
+      "ACT1_BOSS_NO_PRESSURE_GUARD": 3,
+      "GUARDIAN_SHARP_HIDE_GUARD": 2,
+      "SURVIVAL_GUARD": 22,
+      "STATUS_CARD_GUARD": 4,
+      "HAVOC_GUARD": 2
+    },
+    "note": "Replacement logs include changes made within an active takeover and therefore support, but do not enumerate one-to-one, the proposal override rows."
+  },
+  "deployment_parity": {
+    "frozen_r16_eval_greedy_agreement_count": 898,
+    "frozen_r16_eval_greedy_agreement_share": 0.42579421401023865,
+    "direct_unmarked_count": 466,
+    "direct_unmarked_eval_greedy_agreement_count": 466,
+    "direct_unmarked_eval_greedy_disagreement_count": 0,
+    "direct_unmarked_eval_greedy_agreement_share": 1.0,
+    "override_count": 1643,
+    "override_eval_greedy_agreement_count": 432,
+    "override_eval_greedy_disagreement_count": 1211,
+    "previous_cohort_direct_disagreement_count": 44,
+    "finding": "Temporary eval-mode action selection removed every direct-action disagreement while preserving nonzero legal outer-policy provenance and train mode outside the behavior forward pass."
+  },
+  "decision": {
+    "action_selection_parity_requirement_satisfied": true,
+    "current_replay_approved_for_candidate_training": true,
+    "training_go": true,
+    "reason": "The cohort is zero-update, trace-complete, inventory-clean, boundary-clean, and all 466 direct unmarked actions exactly match frozen production-r16 eval-mode greedy decisions.",
+    "next_step": "Create a separate provenance-aware training change using this checkpoint as training-only input, freeze one materially distinct candidate, and reserve unused fresh seeds for confirmation."
+  },
+  "authority": {
+    "training_input": true,
+    "training_performed": false,
+    "holdout": false,
+    "candidate_selection": false,
+    "evaluation": false,
+    "promotion": false,
+    "policy_quality": false
+  },
+  "limitations": [
+    "The zero-victory outcome is descriptive and was not registered as a policy-quality gate.",
+    "This cohort is training-only and cannot serve as fresh confirmation or promotion evidence.",
+    "A separate change must preregister objective weights, optimizer budget, candidate materiality, and fresh holdout criteria before fitting."
+  ]
+}
