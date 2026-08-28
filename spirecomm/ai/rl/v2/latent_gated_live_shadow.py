@@ -31,6 +31,7 @@ REGISTRATION_SCHEMA_VERSION = 1
 TRACE_SCHEMA_VERSION = 1
 SOURCE_BOUND_PATHS = (
     "analysis_scripts/combat_rl_latent_gated_live_shadow_summary.py",
+    "scripts/run_training_batch.py",
     "spirecomm/ai/rl/checkpoint_io.py",
     "spirecomm/ai/rl/v2/action_encoder.py",
     "spirecomm/ai/rl/v2/agent.py",

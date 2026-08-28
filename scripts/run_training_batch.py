@@ -136,6 +136,15 @@ def build_child_env(args):
     exploration_config = getattr(args, "noncombat_exploration_config", None)
     if exploration_config:
         env["STS_NONCOMBAT_EXPLORATION_CONFIG"] = str(exploration_config)
+    combat_latent_shadow_registration = getattr(
+        args, "combat_latent_shadow_registration", None
+    )
+    if combat_latent_shadow_registration:
+        env["STS_COMBAT_RL_LATENT_SHADOW_REGISTRATION"] = str(
+            combat_latent_shadow_registration
+        )
+    else:
+        env.pop("STS_COMBAT_RL_LATENT_SHADOW_REGISTRATION", None)
     card_shadow_config = getattr(args, "card_uplift_shadow_config", None)
     card_canary_config = getattr(args, "card_uplift_canary_config", None)
     card_evaluation_config = getattr(args, "card_uplift_evaluation_config", None)
@@ -414,6 +423,14 @@ def parse_args():
         "--noncombat-exploration-config",
         default=None,
         help="Explicit configuration passed as STS_NONCOMBAT_EXPLORATION_CONFIG.",
+    )
+    parser.add_argument(
+        "--combat-latent-shadow-registration",
+        default=None,
+        help=(
+            "Explicit registration passed as "
+            "STS_COMBAT_RL_LATENT_SHADOW_REGISTRATION."
+        ),
     )
     parser.add_argument(
         "--card-uplift-shadow-config",
