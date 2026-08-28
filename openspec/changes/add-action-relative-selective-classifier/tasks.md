@@ -12,7 +12,7 @@
 
 ## 3. Registered Training And Evaluation
 
-- [ ] 3.1 Commit the audit, OpenSpec artifacts, source, tests, and one registration binding r16, corpus bytes, recipe, split, and output path
+- [x] 3.1 Commit the audit, OpenSpec artifacts, source, tests, and one registration binding r16, corpus bytes, recipe, split, and output path
 - [ ] 3.2 Execute the registered 4,096-update CPU fit/calibration/holdout decision once and publish its artifact and report
 - [ ] 3.3 If offline conditions pass, implement, register, and execute one fresh matched LightSTS gate; otherwise record that native loading was not authorized
 - [ ] 3.4 Publish the decision without retry, retraining, seed replacement, threshold change, loss change, or sweep
