@@ -1,21 +1,21 @@
 ## 1. Regression Contract
 
-- [ ] 1.1 Add failing focused tests for immutable bindings, disjoint seeds,
+- [x] 1.1 Add failing focused tests for immutable bindings, disjoint seeds,
   target-floor filtering, aligned concatenation, and source-component metadata.
-- [ ] 1.2 Add failing focused tests for exact context cells, density-ratio
+- [x] 1.2 Add failing focused tests for exact context cells, density-ratio
   weights, zero-weight unmatched cells, ESS/SMD metrics, and support decisions.
-- [ ] 1.3 Add fail-closed tests for replay/corpus identity drift, malformed
+- [x] 1.3 Add fail-closed tests for replay/corpus identity drift, malformed
   tensors, illegal actions, non-finite values, partial outputs, and repeated
   output paths.
 
 ## 2. Balanced Corpus Runner
 
-- [ ] 2.1 Implement the source-only binding, validation, filtering,
+- [x] 2.1 Implement the source-only binding, validation, filtering,
   concatenation, weighting, support-gate, and canonical publication helpers.
-- [ ] 2.2 Implement the fixed native collection runner for seeds
+- [x] 2.2 Implement the fixed native collection runner for seeds
   `268000..269023`, `270000..270511`, battle indices `10..14`, and the existing
   paired-return recipe without optimizer updates.
-- [ ] 2.3 Publish compatible combined corpus tensors, separate context weights,
+- [x] 2.3 Publish compatible combined corpus tensors, separate context weights,
   support report and summary, source snapshots, and artifact hashes with no
   training or gameplay authority.
 
