@@ -8,7 +8,7 @@
 ## 2. Sufficiency Decision
 
 - [x] 2.1 Encode and test the fixed positive margin and corpus sufficiency gate.
-- [ ] 2.2 Stop with a no-go report if the corpus lacks both classes, 100 positive training states, or three positive target identities.
+- [x] 2.2 Stop with a no-go report if the corpus lacks both classes, 100 positive training states, or three positive target identities. The registered corpus passed every condition, so fitting may proceed.
 
 ## 3. Post-Guard Residual
 
