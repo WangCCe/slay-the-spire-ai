@@ -1,0 +1,153 @@
+{
+  "authority": {
+    "candidate_action_authority": false,
+    "gameplay_quality_claim": false,
+    "online_training": false,
+    "promotion": false,
+    "qualification": false
+  },
+  "batch": {
+    "ai_marker_count_after": 17366,
+    "ai_marker_count_before": 17361,
+    "completed_game_count": 5,
+    "maximum_game_count": 5,
+    "terminal_message": "Max games reached (5); exiting."
+  },
+  "bindings": {
+    "candidate_artifact_sha256": "21629b3716786c0959d5b7a0e6484314ee1cce9b57fdaa535fa48d5b73100346",
+    "inference_device": "cpu",
+    "parent_state_dict_sha256": "cfe8204d06db6b43b063df98e1b713d4a40a0894a1a9330c3db87c739da88d48",
+    "production_parent_checkpoint_sha256": "75120e9e8f76393d4d82c16de5c3ea6384d2f7ef26bd530a6b552ed9791e38f5",
+    "registration_schema_version": 2,
+    "registration_sha256": "b226bf564b20b2bbbd8ee26d1bd79d1b4d1ec7a2e3da99eb21f9096eee2a0538",
+    "source_commit": "91ac6aa3127f7a5355a9d1e0c3fb381a258bf30d"
+  },
+  "cleanup": {
+    "ai_python_remaining": false,
+    "config_after_sha256": "0991895790bc73d3d21a05731bf402228cf0c510a4217aa841ced026016760e7",
+    "config_before_sha256": "0991895790bc73d3d21a05731bf402228cf0c510a4217aa841ced026016760e7",
+    "config_restored_exactly": true,
+    "mod_the_spire_remaining": false
+  },
+  "decision_trace": {
+    "event_count": 2334,
+    "path": "ai_decision_trace_clean.jsonl",
+    "sha256": "029296d044d8eb2e5ef547139e02390a6ca77f148ce09991b480bd65ce133310"
+  },
+  "error_log": {
+    "after_has_before_as_exact_prefix": true,
+    "new_exception_or_traceback_count": 0,
+    "new_suffix_bytes": 1880,
+    "new_suffix_kind": "normal_training_batch_startup"
+  },
+  "experiment_id": "combat-rl-action-relative-live-shadow-20260829-r2",
+  "marker_to_run_mapping": [
+    {
+      "marker": 1787935247,
+      "run_file": "1787935243.run",
+      "timestamp_delta_seconds": 4
+    },
+    {
+      "marker": 1787935343,
+      "run_file": "1787935340.run",
+      "timestamp_delta_seconds": 3
+    },
+    {
+      "marker": 1787935487,
+      "run_file": "1787935484.run",
+      "timestamp_delta_seconds": 3
+    },
+    {
+      "marker": 1787935689,
+      "run_file": "1787935686.run",
+      "timestamp_delta_seconds": 3
+    },
+    {
+      "marker": 1787935895,
+      "run_file": "1787935892.run",
+      "timestamp_delta_seconds": 3
+    }
+  ],
+  "readiness": {
+    "decision": "ready_for_separately_registered_matched_live_evaluation",
+    "eligible_count": 241,
+    "intervention_intent_count": 66,
+    "latency_over_20ms_count": 5,
+    "latency_over_20ms_share": 0.020746887966805,
+    "maximum_latency_ms": 27.465699997264892,
+    "p50_latency_ms": 2.541399997426197,
+    "p95_latency_ms": 7.244000007631257,
+    "readiness_report_sha256": "402428a59cc340b4907b4027f08a8dc23f212b0a5c1e6991703c18928dd6b95b",
+    "runtime_error_count": 0
+  },
+  "run_records": [
+    {
+      "file": "1787935243.run",
+      "floor_reached": 33,
+      "killed_by": "Champ",
+      "playtime_seconds": 218,
+      "sha256": "db3da3a9c4792e21eb06c702545216b85836830e616b7eb3b6fdbeeb5b516353",
+      "victory": false
+    },
+    {
+      "file": "1787935340.run",
+      "floor_reached": 16,
+      "killed_by": "The Guardian",
+      "playtime_seconds": 92,
+      "sha256": "d11da0cf47e3175e5a2dbcb824c051532f501591bae454d983f51b0014a45450",
+      "victory": false
+    },
+    {
+      "file": "1787935484.run",
+      "floor_reached": 24,
+      "killed_by": "Book of Stabbing",
+      "playtime_seconds": 138,
+      "sha256": "6d3e86f9a0f51f35d5e9edf271c88d6ca3659c69749aeff5534af89f5d8d1352",
+      "victory": false
+    },
+    {
+      "file": "1787935686.run",
+      "floor_reached": 33,
+      "killed_by": "Champ",
+      "playtime_seconds": 196,
+      "sha256": "411e95ecbd107d79b4e0a27526f1e97e24f5ead4daee482bc125bf5141d0a725",
+      "victory": false
+    },
+    {
+      "file": "1787935892.run",
+      "floor_reached": 33,
+      "killed_by": "Champ",
+      "playtime_seconds": 201,
+      "sha256": "35584457e44d551eecb796c5198702ce673b9e15160f4eb9bb2e64b5b0077f6b",
+      "victory": false
+    }
+  ],
+  "schema_version": 2,
+  "shadow_trace": {
+    "decision_count": 512,
+    "event_count": 513,
+    "path": "trace.jsonl",
+    "sha256": "177da0e2f3f85ee4df6a53907b20c3f63bcc46cfa0a3e4a851c4ab0d5d119672",
+    "transient_discard_count": 1
+  },
+  "sim_divergence": {
+    "action_type_counts": {
+      "EndTurnAction": 1,
+      "PlayCardAction": 12
+    },
+    "card_counts": {
+      "<none>": 1,
+      "Anger+": 2,
+      "Apparition": 6,
+      "Fiend Fire": 1,
+      "Iron Wave": 2,
+      "Strike": 1
+    },
+    "event_count": 13,
+    "reason_counts": {
+      "monster_state_mismatch": 7,
+      "player_state_mismatch": 6
+    },
+    "sha256": "ea75d854362531bcf0324a63d7d1e2fb36181cac89a39c109f91b301db571f77"
+  }
+}

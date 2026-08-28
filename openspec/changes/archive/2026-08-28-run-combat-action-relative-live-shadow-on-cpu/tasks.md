@@ -27,9 +27,16 @@ Registration SHA-256:
 `b226bf564b20b2bbbd8ee26d1bd79d1b4d1ec7a2e3da99eb21f9096eee2a0538`.
 The real-artifact preflight kept the production parent on CUDA with unchanged
 state and created a state-identical CPU shadow without writing the trace.
-- [ ] 4.2 Back up and temporarily update the production-r16 CommunicationMod command, run at most one five-game cohort, and restore the exact prior config after terminalization or failure.
-- [ ] 4.3 Publish trace, run, log, sim-divergence, config, and fixed readiness evidence; retain zero candidate action authority unless every registered condition passes.
+- [x] 4.2 Back up and temporarily update the production-r16 CommunicationMod command, run at most one five-game cohort, and restore the exact prior config after terminalization or failure.
+- [x] 4.3 Publish trace, run, log, sim-divergence, config, and fixed readiness evidence; retain zero candidate action authority unless every registered condition passes.
+
+The five-game cohort completed exactly five terminal games, restored the
+production config byte-for-byte, and left no game or AI Python process. The CPU
+shadow recorded `512` decisions with `241` eligible guard replacements, `66`
+candidate intervention intents, zero runtime errors, and `7.244ms` p95 latency.
+Every registered readiness condition passed; the candidate remains actionless
+and is ready only for a separately registered matched live evaluation.
 
 ## 5. Closure
 
-- [ ] 5.1 Sync the CPU shadow isolation requirement if source and live evidence pass, archive the change, and commit only scoped source, registration, timing, and compact report artifacts.
+- [x] 5.1 Sync the CPU shadow isolation requirement if source and live evidence pass, archive the change, and commit only scoped source, registration, timing, and compact report artifacts.

@@ -1,0 +1,48 @@
+{
+  "all_readiness_conditions_passed": true,
+  "authority": {
+    "candidate_action_authority": false,
+    "gameplay_quality_claim": false,
+    "promotion": false,
+    "qualification": false
+  },
+  "candidate_matches_guard_count": 0,
+  "candidate_would_intervene_count": 66,
+  "decision": "ready_for_separately_registered_matched_live_evaluation",
+  "decision_count": 512,
+  "eligible_count": 241,
+  "error_event_count": 0,
+  "event_count": 513,
+  "experiment_id": "combat-rl-action-relative-live-shadow-20260829-r2",
+  "inference_device": "cpu",
+  "latency": {
+    "count": 241,
+    "maximum_ms": 27.465699997264892,
+    "mean_ms": 3.4744809129269587,
+    "p95_ms": 7.244000007631257
+  },
+  "readiness_conditions": {
+    "candidate_has_no_authority": true,
+    "decision_count_within_budget": true,
+    "decision_sequence_valid": true,
+    "derived_fields_valid": true,
+    "eligible_candidates_legal": true,
+    "eligible_guard_identity_valid": true,
+    "end_turn_constraint_satisfied": true,
+    "ineligible_decisions_not_inferred": true,
+    "latency_finite_and_within_ceiling": true,
+    "minimum_eligible_count_reached": true,
+    "runtime_error_count_zero": true,
+    "trace_identity_valid": true
+  },
+  "registration_schema_version": 2,
+  "registration_sha256": "b226bf564b20b2bbbd8ee26d1bd79d1b4d1ec7a2e3da99eb21f9096eee2a0538",
+  "runtime_error_count": 0,
+  "source_commit": "91ac6aa3127f7a5355a9d1e0c3fb381a258bf30d",
+  "support_reason_counts": {
+    "eligible": 241,
+    "guard_not_replaced": 38,
+    "parent_not_end_turn": 233
+  },
+  "trace_path": "D:\\PycharmProjects\\slay-the-spire-ai\\reports\\combat_rl_action_relative_live_shadow_20260829_r2\\trace.jsonl"
+}
