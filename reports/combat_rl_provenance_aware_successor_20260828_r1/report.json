@@ -1,0 +1,168 @@
+{
+  "authority": {
+    "fresh_holdout": false,
+    "gameplay": false,
+    "policy_quality": false,
+    "production_checkpoint_writing": false,
+    "promotion": false,
+    "qualification": false,
+    "training": true
+  },
+  "candidate": {
+    "development_only": true,
+    "path": "development_candidate.pth",
+    "production_compatible": true,
+    "round_trip_state_exact": true,
+    "sha256": "1c97d4680f7e1c125738655274d332066a1cd12c644cad1fb299bc4d73dc67f3",
+    "size_bytes": 2270761
+  },
+  "decision": "development_candidate_not_eligible_no_same_corpus_tuning",
+  "eligibility": {
+    "action_disagreement_at_least_material_floor": true,
+    "action_disagreement_at_most_drift_ceiling": false,
+    "all_conditions_passed": false,
+    "candidate_round_trip_exact": true,
+    "metrics_finite": true,
+    "objective_values_finite": true,
+    "optimizer_budget_exact": true,
+    "positive_energy_end_turn_increase_bounded": true,
+    "sampled_executed_action_overrides": true,
+    "validation_anchor_label_agreement_not_reduced": true,
+    "validation_one_step_td_improved": true
+  },
+  "experiment_id": "combat-rl-provenance-aware-successor-20260828-r1",
+  "input": {
+    "online_equals_target": true,
+    "optimizer_state_count": 0,
+    "path": "D:\\PycharmProjects\\slay-the-spire-ai\\reports\\combat_rl_action_selection_parity_replay_20260828_r1\\rl_combat_model_ep10_steps2109.pth",
+    "provenance": {
+      "direct_count": 466,
+      "override_count": 1643
+    },
+    "sha256": "302a7350a7e216ea548025ac4cb588c1ea77872328ccef977f94feab65e03fb4",
+    "transition_count": 2109
+  },
+  "limitations": [
+    "The validation partition comes from the training cohort and is not an independent policy-quality holdout.",
+    "No same-corpus recipe or threshold changes are permitted after publication.",
+    "Production r16 remains authoritative unless a separate fresh holdout and later gate pass."
+  ],
+  "next_step": "Retain r16 and stop this recipe line without same-corpus tuning.",
+  "parameter_movement": {
+    "candidate_state_dict_sha256": "a7f8a505f9816f12b87d35528ff6383051b03f8c2cd3c369a5db6b0036d4ae09",
+    "parent_state_dict_sha256": "23491db97fe31cf12052207ea321b4c2ac23a922f2a0916a3dc54d604ee3a720",
+    "whole_model_relative_l2": 0.010469612247832372
+  },
+  "recipe": {
+    "batch_size": 128,
+    "device": "cpu",
+    "gamma": 0.99,
+    "learning_rate": 0.0001,
+    "optimizer_steps": 256,
+    "parent_anchor": "frozen_input_r16",
+    "parent_policy_anchor_weight": 1.0,
+    "same_corpus_sweep": false,
+    "split_seed": 2026082803,
+    "target_network": "frozen_input_r16",
+    "training_seed": 2026082804,
+    "validation_fraction": 0.2
+  },
+  "schema_version": 1,
+  "source_commit": "17c297f8d40715c60447e82971329d7dea552cf4",
+  "split": {
+    "group_count": 157,
+    "train_group_count": 126,
+    "train_indices_sha256": "029fcfe44a80ca2d7e008f4164ef8be2fb2200b9aaae7838e3de2bae0b519638",
+    "train_transition_count": 1722,
+    "unit": "terminal_delimited_combat_group",
+    "validation_group_count": 31,
+    "validation_indices_sha256": "5b613789cd5f591be6929ef6d56a6a91a9314fd361afc9c93332bc44abb125ca",
+    "validation_transition_count": 387
+  },
+  "train_evaluation": {
+    "action_disagreement_count": 987,
+    "action_disagreement_share": 0.5731707215309143,
+    "candidate_anchor_label_agreement": 0.6480836272239685,
+    "candidate_positive_energy_end_turn_count": 49,
+    "candidate_smooth_l1": 3.321068286895752,
+    "parent_anchor_label_agreement": 0.4285714328289032,
+    "parent_positive_energy_end_turn_count": 797,
+    "parent_smooth_l1": 3.9981343746185303,
+    "positive_energy_end_turn_count_delta": -748,
+    "positive_energy_state_count": 1287,
+    "strata": {
+      "direct": {
+        "action_disagreement_share": 0.24164524674415588,
+        "candidate_anchor_label_agreement": 0.7583547830581665,
+        "parent_anchor_label_agreement": 1.0,
+        "transition_count": 389
+      },
+      "override": {
+        "action_disagreement_share": 0.6699174642562866,
+        "candidate_anchor_label_agreement": 0.6159039735794067,
+        "parent_anchor_label_agreement": 0.26181545853614807,
+        "transition_count": 1333
+      }
+    },
+    "transition_count": 1722
+  },
+  "training": {
+    "all_objective_values_finite": true,
+    "optimizer_update_count": 256,
+    "parent_policy_anchor_loss": {
+      "first": 1.643000602722168,
+      "last": 0.8938016295433044,
+      "maximum": 1.643000602722168,
+      "mean": 1.0377716531511396,
+      "minimum": 0.7655068635940552
+    },
+    "sampled_override_count": {
+      "first": 94.0,
+      "last": 99.0,
+      "maximum": 111.0,
+      "mean": 99.08203125,
+      "minimum": 84.0
+    },
+    "td_loss": {
+      "first": 4.078756332397461,
+      "last": 5.123368740081787,
+      "maximum": 7.183311462402344,
+      "mean": 3.1666560261510313,
+      "minimum": 1.2423269748687744
+    },
+    "total_loss": {
+      "first": 5.721756935119629,
+      "last": 6.017170429229736,
+      "maximum": 8.224031448364258,
+      "mean": 4.204427667893469,
+      "minimum": 2.289320945739746
+    }
+  },
+  "validation": {
+    "action_disagreement_count": 236,
+    "action_disagreement_share": 0.6098191142082214,
+    "candidate_anchor_label_agreement": 0.594315230846405,
+    "candidate_positive_energy_end_turn_count": 13,
+    "candidate_smooth_l1": 3.3168859481811523,
+    "parent_anchor_label_agreement": 0.4134366810321808,
+    "parent_positive_energy_end_turn_count": 206,
+    "parent_smooth_l1": 3.8008298873901367,
+    "positive_energy_end_turn_count_delta": -193,
+    "positive_energy_state_count": 295,
+    "strata": {
+      "direct": {
+        "action_disagreement_share": 0.25974026322364807,
+        "candidate_anchor_label_agreement": 0.7402597665786743,
+        "parent_anchor_label_agreement": 1.0,
+        "transition_count": 77
+      },
+      "override": {
+        "action_disagreement_share": 0.6967741847038269,
+        "candidate_anchor_label_agreement": 0.5580645203590393,
+        "parent_anchor_label_agreement": 0.26774194836616516,
+        "transition_count": 310
+      }
+    },
+    "transition_count": 387
+  }
+}

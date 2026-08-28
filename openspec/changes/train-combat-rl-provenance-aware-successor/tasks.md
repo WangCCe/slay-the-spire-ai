@@ -11,6 +11,6 @@
 
 ## 3. Bounded Training
 
-- [ ] 3.1 Execute the registered recipe exactly once against checkpoint SHA-256 `302a7350a7e216ea548025ac4cb588c1ea77872328ccef977f94feab65e03fb4`.
-- [ ] 3.2 Audit the immutable report and candidate hashes, record the gate decision, and forbid same-corpus recipe changes.
-- [ ] 3.3 Commit and push the cohesive change; register a separate fresh holdout only if every eligibility condition passes.
+- [x] 3.1 Execute the registered recipe exactly once against checkpoint SHA-256 `302a7350a7e216ea548025ac4cb588c1ea77872328ccef977f94feab65e03fb4`.
+- [x] 3.2 Audit the immutable report and candidate hashes, record the gate decision, and forbid same-corpus recipe changes.
+- [x] 3.3 Commit and push the cohesive change; register a separate fresh holdout only if every eligibility condition passes.
