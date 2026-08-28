@@ -1,13 +1,17 @@
 ## 1. Numeric Contract
 
-- [ ] 1.1 Publish the fixed 288-row post-failure numeric audit with exact input identities, schedule, margins, mismatch counts, diagnostic-only authority, and no live authorization.
-- [ ] 1.2 Add regressions proving `1e-5` float32 prediction tolerance, exact action/gate/telemetry equivalence, and fail-closed behavior outside either numerical or behavioral bounds.
+- [x] 1.1 Publish the fixed 288-row post-failure numeric audit with exact input identities, schedule, margins, mismatch counts, diagnostic-only authority, and no live authorization.
+- [x] 1.2 Add regressions proving `1e-5` float32 prediction tolerance, exact action/gate/telemetry equivalence, and fail-closed behavior outside either numerical or behavioral bounds.
 
 ## 2. State-Unique Selection
 
-- [ ] 2.1 Reapply one parent-latent computation per original state row and prove the runtime selection diff is byte-equivalent to the already-gated `d074bb170` implementation.
-- [ ] 2.2 Revise the CPU preflight to a new experiment identity and fixed `1e-5` tolerance while retaining 32 warmups, 256 measurements, 2x p50 speedup, 15ms p95, input bindings, and environment isolation.
-- [ ] 2.3 Run focused and adjacent tests, Python compilation, strict OpenSpec validation, and diff checks; reuse the `d074bb170` commit-gate result only if runtime bytes are equivalent, otherwise run one new commit gate, then commit and push source.
+- [x] 2.1 Reapply one parent-latent computation per original state row and prove the runtime selection diff is byte-equivalent to the already-gated `d074bb170` implementation.
+- [x] 2.2 Revise the CPU preflight to a new experiment identity and fixed `1e-5` tolerance while retaining 32 warmups, 256 measurements, 2x p50 speedup, 15ms p95, input bindings, and environment isolation.
+- [x] 2.3 Run focused and adjacent tests, Python compilation, strict OpenSpec validation, and diff checks; reuse the `d074bb170` commit-gate result only if runtime bytes are equivalent, otherwise run one new commit gate, then commit and push source.
+
+Runtime and runtime-test blobs exactly match `d074bb170`; its commit gate passed
+`4295` tests with `26` skipped and `21` deselected in `162.89s`. The revised
+numeric runner and adjacent surfaces passed `55` focused tests in `9.60s`.
 
 ## 3. New Offline Preflight
 

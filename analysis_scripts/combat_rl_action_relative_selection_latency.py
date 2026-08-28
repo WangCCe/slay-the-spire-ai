@@ -44,7 +44,7 @@ from spirecomm.ai.rl.v2.latent_gated_live_shadow import (  # noqa: E402
 
 
 SCHEMA_VERSION = 1
-EXPERIMENT_ID = "combat-rl-action-relative-selection-latency-20260828-r1"
+EXPERIMENT_ID = "combat-rl-action-relative-selection-latency-20260829-r2"
 EXPECTED_INTERPRETER = Path(r"D:\anaconda\envs\stsai\python.exe")
 SOURCE_BOUND_PATHS = (
     "analysis_scripts/combat_rl_action_relative_selection_latency.py",
@@ -67,8 +67,8 @@ FIXED_RECIPE = {
 FIXED_GATES = {
     "maximum_optimized_p95_ms": 15.0,
     "minimum_p50_speedup": 2.0,
-    "prediction_atol": 1e-6,
-    "prediction_rtol": 1e-6,
+    "prediction_atol": 1e-5,
+    "prediction_rtol": 1e-5,
 }
 FIXED_AUTHORITY = {
     "candidate_action_authority": False,

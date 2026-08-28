@@ -236,6 +236,21 @@ def test_selection_matches_repeated_state_reference(forbidden_action_indices):
         assert selection.telemetry[key] == reference[key]
 
 
+def test_selection_computes_parent_latent_for_original_rows_once(monkeypatch):
+    residual, inputs = _fixture()
+    original = residual._parent_latent
+    observed_batch_sizes = []
+
+    def recording_parent_latent(continuous, card_ids, potion_ids, relic_ids):
+        observed_batch_sizes.append(int(continuous.shape[0]))
+        return original(continuous, card_ids, potion_ids, relic_ids)
+
+    monkeypatch.setattr(residual, "_parent_latent", recording_parent_latent)
+    residual.select_actions(**inputs)
+
+    assert observed_batch_sizes == [2]
+
+
 def test_scorer_training_leaves_parent_frozen():
     residual, inputs = _fixture()
     parent_before = state_dict_sha256(residual.parent.state_dict())
