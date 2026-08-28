@@ -1,0 +1,191 @@
+{
+  "authority": {
+    "fresh_holdout": false,
+    "gameplay": false,
+    "policy_quality": false,
+    "production_checkpoint_writing": false,
+    "promotion": false,
+    "qualification": false,
+    "training": true
+  },
+  "candidate": {
+    "development_only": true,
+    "path": "development_candidate.pth",
+    "production_compatible": true,
+    "round_trip_state_exact": true,
+    "sha256": "8d82e0ee5486daeb963d524a6e34b599716b966976f1406e4220973760df6ccf",
+    "size_bytes": 2270761
+  },
+  "decision": "development_candidate_not_eligible_no_same_corpus_tuning",
+  "eligibility": {
+    "all_conditions_passed": false,
+    "candidate_round_trip_exact": true,
+    "direct_parent_disagreement_at_most_ceiling": false,
+    "metrics_finite": true,
+    "objective_values_finite": true,
+    "optimizer_budget_exact": true,
+    "overall_parent_disagreement_at_least_material_floor": true,
+    "override_executed_label_agreement_uplift_at_least_floor": true,
+    "positive_energy_end_turn_increase_bounded": true,
+    "sampled_executed_action_overrides": true,
+    "validation_one_step_td_improved": true,
+    "validation_provenance_strata_nonempty": true
+  },
+  "experiment_id": "combat-rl-stratified-provenance-successor-20260828-r1",
+  "fixed_gate": {
+    "maximum_direct_parent_disagreement": 0.1,
+    "maximum_positive_energy_end_turn_count_increase": 2,
+    "minimum_overall_parent_disagreement": 0.05,
+    "minimum_override_executed_label_agreement_uplift": 0.1
+  },
+  "input": {
+    "online_equals_production_r16": true,
+    "online_equals_target": true,
+    "online_state_dict_sha256": "23491db97fe31cf12052207ea321b4c2ac23a922f2a0916a3dc54d604ee3a720",
+    "optimizer_state_count": 0,
+    "path": "D:\\PycharmProjects\\slay-the-spire-ai\\reports\\combat_rl_stratified_provenance_replay_20260828_r1\\rl_combat_model_ep10_steps2091.pth",
+    "provenance": {
+      "direct_count": 391,
+      "override_count": 1700
+    },
+    "sha256": "606727df27dd82ac825767097b71f07d6aa39ad37e0ea5d5d432e88c9288c28f",
+    "target_state_dict_sha256": "23491db97fe31cf12052207ea321b4c2ac23a922f2a0916a3dc54d604ee3a720",
+    "transition_count": 2091
+  },
+  "limitations": [
+    "The validation partition comes from the training cohort and is not an independent policy-quality holdout.",
+    "No same-corpus recipe or threshold changes are permitted after publication.",
+    "Production r16 remains authoritative unless a separate fresh holdout and later gate pass."
+  ],
+  "next_step": "Retain r16 and stop this recipe line without same-corpus tuning.",
+  "parameter_movement": {
+    "candidate_state_dict_sha256": "884b0a62146459aa450c1fa8d046da75ca75e9002129e7261b49d5609661d5fb",
+    "parent_state_dict_sha256": "23491db97fe31cf12052207ea321b4c2ac23a922f2a0916a3dc54d604ee3a720",
+    "whole_model_relative_l2": 0.004717974585271879
+  },
+  "recipe": {
+    "batch_size": 128,
+    "device": "cpu",
+    "gamma": 0.99,
+    "learning_rate": 0.0001,
+    "optimizer_steps": 64,
+    "parent_anchor": "frozen_production_r16",
+    "parent_policy_anchor_weight": 1.0,
+    "same_corpus_sweep": false,
+    "split_seed": 2026082805,
+    "target_network": "frozen_production_r16",
+    "training_seed": 2026082806,
+    "validation_fraction": 0.2
+  },
+  "schema_version": 1,
+  "source_commit": "ef661a471924ad7e55ec5ed35cbfad48c7e62876",
+  "split": {
+    "group_count": 150,
+    "train_group_count": 120,
+    "train_indices_sha256": "b7af89ec47b6aefc4208cf23fb6afb032a54f195cd19e4369f73a9a3edbf1e20",
+    "train_provenance_counts": {
+      "direct": 285,
+      "override": 1348
+    },
+    "train_transition_count": 1633,
+    "unit": "terminal_delimited_combat_group",
+    "validation_group_count": 30,
+    "validation_indices_sha256": "0d52d70e245eaa1fb7d4317ebaad103bb30d3f338524e16f3954cc2fa858dd24",
+    "validation_provenance_counts": {
+      "direct": 106,
+      "override": 352
+    },
+    "validation_transition_count": 458
+  },
+  "stratified_gate_metrics": {
+    "direct_parent_disagreement": 0.35849055647850037,
+    "overall_parent_disagreement": 0.6288209557533264,
+    "override_executed_label_agreement_uplift": 0.28977271914482117
+  },
+  "train_evaluation": {
+    "action_disagreement_count": 1070,
+    "action_disagreement_share": 0.655235767364502,
+    "candidate_anchor_label_agreement": 0.6086956262588501,
+    "candidate_positive_energy_end_turn_count": 60,
+    "candidate_smooth_l1": 3.2263951301574707,
+    "parent_anchor_label_agreement": 0.35394978523254395,
+    "parent_positive_energy_end_turn_count": 776,
+    "parent_smooth_l1": 4.036303520202637,
+    "positive_energy_end_turn_count_delta": -716,
+    "positive_energy_state_count": 1248,
+    "strata": {
+      "direct": {
+        "action_disagreement_share": 0.2631579041481018,
+        "candidate_anchor_label_agreement": 0.7368420958518982,
+        "parent_anchor_label_agreement": 1.0,
+        "transition_count": 285
+      },
+      "override": {
+        "action_disagreement_share": 0.7381305694580078,
+        "candidate_anchor_label_agreement": 0.5816023945808411,
+        "parent_anchor_label_agreement": 0.2173590511083603,
+        "transition_count": 1348
+      }
+    },
+    "transition_count": 1633
+  },
+  "training": {
+    "all_objective_values_finite": true,
+    "optimizer_update_count": 64,
+    "parent_policy_anchor_loss": {
+      "first": 2.024850368499756,
+      "last": 1.1394267082214355,
+      "maximum": 2.024850368499756,
+      "mean": 1.1756292972713709,
+      "minimum": 0.8983986377716064
+    },
+    "sampled_override_count": {
+      "first": 107.0,
+      "last": 105.0,
+      "maximum": 114.0,
+      "mean": 105.390625,
+      "minimum": 95.0
+    },
+    "td_loss": {
+      "first": 3.6705620288848877,
+      "last": 2.288973808288574,
+      "maximum": 7.4594855308532715,
+      "mean": 3.5492559131234884,
+      "minimum": 1.566230058670044
+    },
+    "total_loss": {
+      "first": 5.695412635803223,
+      "last": 3.4284005165100098,
+      "maximum": 8.933015823364258,
+      "mean": 4.72488521412015,
+      "minimum": 2.6189560890197754
+    }
+  },
+  "validation": {
+    "action_disagreement_count": 288,
+    "action_disagreement_share": 0.6288209557533264,
+    "candidate_anchor_label_agreement": 0.5131004452705383,
+    "candidate_positive_energy_end_turn_count": 18,
+    "candidate_smooth_l1": 3.0775833129882812,
+    "parent_anchor_label_agreement": 0.3733624517917633,
+    "parent_positive_energy_end_turn_count": 199,
+    "parent_smooth_l1": 3.4114508628845215,
+    "positive_energy_end_turn_count_delta": -181,
+    "positive_energy_state_count": 357,
+    "strata": {
+      "direct": {
+        "action_disagreement_share": 0.35849055647850037,
+        "candidate_anchor_label_agreement": 0.6415094137191772,
+        "parent_anchor_label_agreement": 1.0,
+        "transition_count": 106
+      },
+      "override": {
+        "action_disagreement_share": 0.7102272510528564,
+        "candidate_anchor_label_agreement": 0.4744318127632141,
+        "parent_anchor_label_agreement": 0.18465909361839294,
+        "transition_count": 352
+      }
+    },
+    "transition_count": 458
+  }
+}
