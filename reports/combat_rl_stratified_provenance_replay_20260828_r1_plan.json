@@ -1,0 +1,86 @@
+{
+  "schema_version": 1,
+  "collection_id": "combat-rl-stratified-provenance-replay-20260828-r1",
+  "source_commit": "c324125bae6f39790e0199e18133968e9388e2d5",
+  "purpose": "Collect one fresh zero-update production-r16 replay after freezing a lower-budget provenance-stratified successor recipe.",
+  "authority": "Replay collection and training-input parity audit only. No optimizer update, candidate fitting, qualification, promotion, or production checkpoint replacement.",
+  "parent_policy": {
+    "label": "production_r16",
+    "checkpoint": "reports/combat_rl_promoted_r15_successor_20260818_r16/rl_combat_model_promoted_r15_successor_candidate.pth",
+    "sha256": "75120e9e8f76393d4d82c16de5c3ea6384d2f7ef26bd530a6b552ed9791e38f5"
+  },
+  "collection_initializer": {
+    "path": "reports/combat_rl_inventory_fixed_replay_collection_20260828_r1/rl_combat_model_r16_empty_replay_learning_starts_100000.pth",
+    "sha256": "fd97dd0f86a5145ed79bb6da1932a27ddb21dd9d565cedca5bf24ab8adb93c27",
+    "epsilon": 0.0,
+    "learning_starts": 100000,
+    "replay_transition_count": 0,
+    "optimizer_state_is_empty": true
+  },
+  "collection": {
+    "games": 10,
+    "epsilon": 0.0,
+    "boss_min_epsilon": 0.0,
+    "elite_route": "conservative",
+    "ascension": 0,
+    "seed_pool": "reports/combat_rl_stratified_provenance_replay_20260828_r1_seed_pool.txt",
+    "seed_pool_sha256": "18da77f81a0fdd8d71b637ab8aa34ea171ea05bb118b0e0590b7b062eb3a0a43",
+    "seed_count": 10,
+    "seed_generation": "sha256(collection_id:index) first 13 uppercase hex characters",
+    "seed_pool_has_no_collision_with_580_preexisting_registered_seeds": true,
+    "launch_config": "reports/combat_rl_stratified_provenance_replay_20260828_r1.properties",
+    "launch_config_sha256": "b16aadc149629e7f44e558991fd9003bf6536b35a78b326461f52a1717b3b52c",
+    "decision_trace": "D:/SteamLibrary/steamapps/common/SlayTheSpire/ai_decision_trace_clean.jsonl",
+    "sim_divergence_trace": "D:/SteamLibrary/steamapps/common/SlayTheSpire/sim_divergence_trace_clean.jsonl"
+  },
+  "frozen_successor_recipe": {
+    "training_input": "only this cohort after every parity check passes",
+    "validation_fraction": 0.2,
+    "split_unit": "terminal_delimited_combat_group",
+    "split_seed": 2026082805,
+    "training_seed": 2026082806,
+    "device": "cpu",
+    "learning_rate": 0.0001,
+    "batch_size": 128,
+    "parent_policy_anchor_weight": 1.0,
+    "optimizer_updates": 64,
+    "gamma": 0.99,
+    "target_network": "frozen_production_r16",
+    "parent_anchor": "frozen_production_r16",
+    "same_corpus_sweep": false
+  },
+  "frozen_development_gate": {
+    "validation_td_loss_strictly_improves": true,
+    "overall_parent_disagreement_minimum": 0.05,
+    "direct_parent_disagreement_maximum": 0.1,
+    "override_executed_label_agreement_absolute_uplift_minimum": 0.1,
+    "positive_energy_end_turn_count_increase_maximum": 2,
+    "both_validation_provenance_strata_nonempty": true,
+    "optimizer_budget_exact_and_objectives_finite": true,
+    "candidate_round_trip_exact": true
+  },
+  "preflight": {
+    "no_top_level_ironclad_autosave": true,
+    "no_active_game_or_project_python_process": true,
+    "first_accepted_state_must_use_seed_pool_index_1": "69DA34F5AAB26",
+    "first_accepted_state_must_be_new_run_floor_at_most_1": true,
+    "on_mismatch": "Stop immediately, quarantine the attempt, and do not count or resume it."
+  },
+  "required_collection_checks": {
+    "complete_exactly_10_games": true,
+    "all_run_seeds_match_in_order": true,
+    "online_and_target_remain_equal_to_r16": true,
+    "optimizer_state_remains_empty": true,
+    "optimizer_step_remains_zero": true,
+    "direct_unmarked_eval_parent_agreement_is_100_percent": true,
+    "executed_action_override_count_is_nonzero_and_less_than_transition_count": true,
+    "every_override_action_is_legal_under_stored_mask": true,
+    "override_count_reconciles_with_proposal_and_takeover_evidence": true,
+    "inventory_identity_is_trace_complete": true,
+    "no_cross_floor_nonterminal_successor": true,
+    "no_runtime_traceback_or_rl_action_failure": true,
+    "restore_pre_collection_communication_mod_config": true
+  },
+  "decision_rule": "Bind this replay for the frozen 64-update recipe only if every collection check passes; otherwise publish diagnostic evidence and stop before fitting.",
+  "next_step": "Commit and push this registration, collect exactly ten zero-update games, restore configuration, and publish the parity decision before fitting."
+}
