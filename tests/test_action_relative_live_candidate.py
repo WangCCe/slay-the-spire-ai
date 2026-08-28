@@ -31,6 +31,7 @@ from spirecomm.ai.rl.v2.agent import RLAgentV2
 from spirecomm.ai.rl.v2.latent_gated_adapter import state_dict_sha256
 from spirecomm.ai.rl.v2.network import create_dqn_v2
 from spirecomm.communication.action import EndTurnAction, PlayCardAction, WaitAction
+from spirecomm.spire.card import CardType
 
 
 METADATA = {
@@ -402,6 +403,34 @@ def test_outer_agent_safety_veto_retains_guard(monkeypatch):
     assert agent.rl_agent.resolutions == [(guard, "mandatory_survival_guard")]
 
 
+def test_outer_agent_passes_target_lethal_guard_to_safety_veto(monkeypatch):
+    guard = PlayCardAction(card_index=0, target_index=1)
+    candidate = PlayCardAction(card_index=1)
+    agent = CombatRLAgent.__new__(CombatRLAgent)
+    agent.rl_agent = _RecordingRLAgent(candidate)
+    observed_guards = []
+
+    def veto_reason(_candidate, _game, guard_action=None):
+        observed_guards.append(guard_action)
+        return (
+            "mandatory_guard:target_lethal"
+            if guard_action is guard
+            else ""
+        )
+
+    monkeypatch.setattr(
+        agent,
+        "_action_relative_candidate_veto_reason",
+        veto_reason,
+    )
+
+    assert agent._apply_action_relative_candidate(guard, _game()) is guard
+    assert observed_guards == [guard]
+    assert agent.rl_agent.resolutions == [
+        (guard, "mandatory_guard:target_lethal")
+    ]
+
+
 def test_outer_agent_skips_late_candidate_for_transient_or_end_turn():
     candidate = PlayCardAction(card_index=0, target_index=0)
     agent = CombatRLAgent.__new__(CombatRLAgent)
@@ -449,6 +478,119 @@ def test_fixed_safety_veto_preserves_mandatory_guard(monkeypatch):
     assert agent._action_relative_candidate_veto_reason(
         candidate, _game()
     ) == "mandatory_guard:slime_split_aoe_survival"
+
+
+def _target_lethal_game():
+    bash = SimpleNamespace(
+        name="Bash+",
+        card_id="Bash",
+        type=CardType.ATTACK,
+        is_playable=True,
+        cost=2,
+        cost_for_turn=2,
+        has_target=True,
+        damage=10,
+    )
+    defend = SimpleNamespace(
+        name="Defend",
+        card_id="Defend_R",
+        type=CardType.SKILL,
+        is_playable=True,
+        cost=1,
+        cost_for_turn=1,
+        has_target=False,
+        block=5,
+    )
+    strike = SimpleNamespace(
+        name="Strike",
+        card_id="Strike_R",
+        type=CardType.ATTACK,
+        is_playable=True,
+        cost=1,
+        cost_for_turn=1,
+        has_target=True,
+        damage=6,
+    )
+    monsters = [
+        SimpleNamespace(
+            name="Louse",
+            current_hp=13,
+            block=0,
+            is_gone=False,
+            half_dead=False,
+            monster_index=0,
+            powers=[],
+        ),
+        SimpleNamespace(
+            name="Louse",
+            current_hp=10,
+            block=0,
+            is_gone=False,
+            half_dead=False,
+            monster_index=1,
+            powers=[],
+        ),
+    ]
+    return SimpleNamespace(
+        floor=2,
+        turn=1,
+        act=1,
+        room_type="MonsterRoom",
+        screen_type=None,
+        in_combat=True,
+        play_available=True,
+        available_commands=["play", "end"],
+        player=SimpleNamespace(
+            energy=3,
+            current_hp=80,
+            max_hp=80,
+            block=0,
+            powers=[],
+        ),
+        hand=[bash, defend, strike],
+        monsters=monsters,
+        relics=[],
+    )
+
+
+def test_target_lethal_guard_vetoes_defensive_candidate_with_multiple_monsters():
+    agent = CombatRLAgent.__new__(CombatRLAgent)
+    game = _target_lethal_game()
+    guard = PlayCardAction(card_index=0, target_index=1)
+    candidate = PlayCardAction(card_index=1)
+
+    assert (
+        agent._target_lethal_guard_veto_reason(guard, candidate, game)
+        == "mandatory_guard:target_lethal"
+    )
+
+
+def test_target_lethal_guard_allows_lethal_or_nonlethal_controls():
+    agent = CombatRLAgent.__new__(CombatRLAgent)
+    game = _target_lethal_game()
+    lethal_guard = PlayCardAction(card_index=0, target_index=1)
+    game.monsters[0].current_hp = 6
+    lethal_candidate = PlayCardAction(card_index=2, target_index=0)
+    nonlethal_guard = PlayCardAction(card_index=2, target_index=0)
+    defensive_candidate = PlayCardAction(card_index=1)
+
+    assert (
+        agent._target_lethal_guard_veto_reason(
+            lethal_guard,
+            lethal_candidate,
+            game,
+        )
+        == ""
+    )
+    game.monsters[0].current_hp = 13
+    assert (
+        agent._target_lethal_guard_veto_reason(
+            nonlethal_guard,
+            defensive_candidate,
+            game,
+        )
+        == ""
+    )
 
 
 class _RecordingCandidateRuntime:

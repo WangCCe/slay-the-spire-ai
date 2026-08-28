@@ -2000,7 +2000,7 @@ class CombatRLAgent:
             return action
         try:
             veto_reason = self._action_relative_candidate_veto_reason(
-                candidate, game
+                candidate, game, action
             )
         except Exception as exc:
             logger.error(
@@ -2037,7 +2037,10 @@ class CombatRLAgent:
         return resolved if resolved is not None else action
 
     def _action_relative_candidate_veto_reason(
-        self, candidate: Action, game: Game
+        self,
+        candidate: Action,
+        game: Game,
+        guard_action: Optional[Action] = None,
     ) -> str:
         from spirecomm.communication.action import PlayCardAction
 
@@ -2052,6 +2055,13 @@ class CombatRLAgent:
         card = self._card_for_action(candidate, game)
         if self._would_low_hp_hp_loss_be_filler_without_pressure(card, game):
             return "low_hp_hp_loss_filler"
+        target_lethal_veto = self._target_lethal_guard_veto_reason(
+            guard_action,
+            candidate,
+            game,
+        )
+        if target_lethal_veto:
+            return target_lethal_veto
 
         mandatory_checks = (
             (
@@ -2141,6 +2151,62 @@ class CombatRLAgent:
             if predicate(candidate, game):
                 return f"action_guard:{reason}"
         return ""
+
+    def _target_lethal_guard_veto_reason(
+        self,
+        guard_action: Optional[Action],
+        candidate: Action,
+        game: Game,
+    ) -> str:
+        if not self._is_target_lethal_attack_action(guard_action, game):
+            return ""
+        if self._is_target_lethal_attack_action(candidate, game):
+            return ""
+        return "mandatory_guard:target_lethal"
+
+    def _is_target_lethal_attack_action(
+        self,
+        action: Optional[Action],
+        game: Game,
+    ) -> bool:
+        from spirecomm.communication.action import PlayCardAction
+
+        if not isinstance(action, PlayCardAction):
+            return False
+        if not self._is_valid_combat_action(action, game):
+            return False
+
+        card = self._card_for_action(action, game)
+        if not is_attack_card(card):
+            return False
+        if self._would_single_card_lethal_attack_self_kill(card, game):
+            return False
+
+        target_index = self._target_index_for_play_card_action(action, game)
+        if target_index is None:
+            return False
+        monsters = getattr(game, "monsters", []) or []
+        target = monsters[target_index]
+        effective_hp = (
+            self._safe_int(getattr(target, "current_hp", 0), default=0)
+            + self._safe_int(getattr(target, "block", 0), default=0)
+        )
+        if effective_hp <= 0:
+            return False
+
+        source_damage = self._survival_attack_damage_before_player_weak(
+            card,
+            game,
+        )
+        if source_damage <= 0:
+            return False
+        attack_damage = self._apply_survival_attack_target_modifiers(
+            source_damage,
+            game,
+            target,
+            hit_count=self._survival_attack_hit_count(card),
+        )
+        return attack_damage >= effective_hp
 
     def _with_combat_action_context(self, action: Optional[Action], game: Game) -> Optional[Action]:
         from spirecomm.communication.action import EndTurnAction
