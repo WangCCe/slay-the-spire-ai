@@ -1,0 +1,446 @@
+{
+  "artifact": {
+    "path": "expanded_item_semantic_selective_classifier.pth",
+    "production_compatible": false,
+    "sha256": "50ca65bac88d5e1ecc7089f0788c95797d824cc7355c3ef91b0efd62ea06deac",
+    "size_bytes": 419056
+  },
+  "artifact_roundtrip_exact": true,
+  "authority": {
+    "communication_mod": false,
+    "development_candidate": true,
+    "fresh_lightspeed_gate": false,
+    "gameplay": false,
+    "lightspeed": false,
+    "native_loading": false,
+    "production_checkpoint_loading": false,
+    "production_checkpoint_writing": false,
+    "promotion": false,
+    "qualification": false
+  },
+  "calibration": {
+    "beneficial_count": 1206,
+    "classifier_state_dict_sha256": "5430edd80926d99b88814f85d9c9e6b02193e5fbb86e0cc214c9160f4f6e9488",
+    "evidence_maximum": 14.603902816772461,
+    "evidence_minimum": -18.856327056884766,
+    "finite_sample_rank": 3574,
+    "negative_count": 3761,
+    "pair_count": 4967,
+    "quantile": 0.95,
+    "selection_threshold": 2.502495765686035
+  },
+  "calibration_partition": {
+    "alternative_count": 4967,
+    "classification": {
+      "accuracy": 0.4783571660518646,
+      "class_support": {
+        "beneficial": 1206,
+        "neutral": 2349,
+        "severe": 1412
+      },
+      "confusion_matrix_truth_rows": [
+        [
+          556,
+          540,
+          316
+        ],
+        [
+          539,
+          1424,
+          386
+        ],
+        [
+          365,
+          445,
+          396
+        ]
+      ],
+      "family": {
+        "card": {
+          "beneficial_count": 895,
+          "pair_count": 3921,
+          "predicted_beneficial_count": 829,
+          "predicted_beneficial_precision": 0.3449939787387848
+        },
+        "potion": {
+          "beneficial_count": 311,
+          "pair_count": 1046,
+          "predicted_beneficial_count": 269,
+          "predicted_beneficial_precision": 0.4089219272136688
+        }
+      }
+    },
+    "evidence": {
+      "maximum": 14.603902816772461,
+      "mean": -3.0552916526794434,
+      "minimum": -18.856327056884766
+    },
+    "excluded_unsupported_only_row_count": 0,
+    "latency": {
+      "mean_ms_per_state": 0.033222670026589185,
+      "total_ms": 52.757600002223626
+    },
+    "ranking": {
+      "best_allowed_action_accuracy": 0.495591938495636,
+      "mean_policy_regret": 3.525313377380371
+    },
+    "row_count": 1588,
+    "selection": {
+      "forbidden_action_selection_count": 0,
+      "illegal_action_count": 0,
+      "intervention_count": 203,
+      "intervention_precision": 0.37438422441482544,
+      "intervention_share": 0.12783375314861462,
+      "mean_intervention_true_advantage": 0.016204383224248886,
+      "mean_selected_true_advantage": 0.0020714658312499523,
+      "no_allowed_alternative_count": 0,
+      "selection_threshold": 2.502495765686035,
+      "severe_harm_count": 49
+    },
+    "source_row_count": 1588,
+    "supported_row_count": 1588
+  },
+  "corpus_report_conditions": {
+    "battle_indices": true,
+    "evaluation_rows": true,
+    "evaluation_seeds": true,
+    "kind": true,
+    "max_states_per_profile": true,
+    "no_game_authority": true,
+    "schema": true,
+    "sufficient": true,
+    "train_rows": true,
+    "train_seeds": true
+  },
+  "decision": "offline_failed_close_without_fresh_gate_or_sweep",
+  "evaluation": {
+    "alternative_count": 4990,
+    "classification": {
+      "accuracy": 0.5110220313072205,
+      "class_support": {
+        "beneficial": 1045,
+        "neutral": 2532,
+        "severe": 1413
+      },
+      "confusion_matrix_truth_rows": [
+        [
+          587,
+          534,
+          292
+        ],
+        [
+          537,
+          1609,
+          386
+        ],
+        [
+          340,
+          351,
+          354
+        ]
+      ],
+      "family": {
+        "card": {
+          "beneficial_count": 803,
+          "pair_count": 3914,
+          "predicted_beneficial_count": 770,
+          "predicted_beneficial_precision": 0.3623376488685608
+        },
+        "potion": {
+          "beneficial_count": 242,
+          "pair_count": 1076,
+          "predicted_beneficial_count": 262,
+          "predicted_beneficial_precision": 0.2862595319747925
+        }
+      }
+    },
+    "evidence": {
+      "maximum": 13.011507987976074,
+      "mean": -3.219832181930542,
+      "minimum": -18.434246063232422
+    },
+    "excluded_unsupported_only_row_count": 52,
+    "latency": {
+      "mean_ms_per_state": 0.03587577601257605,
+      "total_ms": 58.94389998866245
+    },
+    "ranking": {
+      "best_allowed_action_accuracy": 0.4871150255203247,
+      "mean_policy_regret": 2.9774632453918457
+    },
+    "row_count": 1643,
+    "selection": {
+      "forbidden_action_selection_count": 0,
+      "illegal_action_count": 0,
+      "intervention_count": 212,
+      "intervention_precision": 0.3396226465702057,
+      "intervention_share": 0.12903225806451613,
+      "mean_intervention_true_advantage": -0.42879003286361694,
+      "mean_selected_true_advantage": -0.055327754467725754,
+      "no_allowed_alternative_count": 52,
+      "selection_threshold": 2.502495765686035,
+      "severe_harm_count": 59
+    },
+    "source_row_count": 1643,
+    "supported_row_count": 1591
+  },
+  "evaluation_provenance": {
+    "loaded_after_fit_and_calibration": true,
+    "row_count": 1643,
+    "seed_count": 256,
+    "seed_disjoint": true,
+    "seed_first": 266000,
+    "seed_last": 266255,
+    "untouched_before_evaluation": true
+  },
+  "execution_commit": "3b408165716fd8d4bc6e029dbbfd63e1decc8bf3",
+  "experiment_id": "combat-rl-action-relative-expanded-item-semantic-fit-20260829-r1",
+  "fit": {
+    "all_objectives_finite": true,
+    "classification_loss": {
+      "first": 1.1043580770492554,
+      "last": 0.3805936276912689,
+      "maximum": 1.125822901725769,
+      "mean": 0.6023121609759983,
+      "minimum": 0.30716004967689514
+    },
+    "classifier_state_dict_sha256": "5430edd80926d99b88814f85d9c9e6b02193e5fbb86e0cc214c9160f4f6e9488",
+    "feature_sha256": "905d2ea2e7e66f0fedcd19c9f1f32ec46e51c14308e2eb134e65468e1cb82c43",
+    "loss": {
+      "first": 1.4496111869812012,
+      "last": 0.4040140211582184,
+      "maximum": 1.4649631977081299,
+      "mean": 0.6812262402672786,
+      "minimum": 0.32387131452560425
+    },
+    "parent_frozen": true,
+    "parent_state_dict_sha256_after": "cfe8204d06db6b43b063df98e1b713d4a40a0894a1a9330c3db87c739da88d48",
+    "parent_state_dict_sha256_before": "cfe8204d06db6b43b063df98e1b713d4a40a0894a1a9330c3db87c739da88d48",
+    "ranking_loss": {
+      "first": 0.6905063390731812,
+      "last": 0.04684079810976982,
+      "maximum": 0.6905063390731812,
+      "mean": 0.15782815954707985,
+      "minimum": 0.014758644625544548
+    },
+    "ranking_pairs_per_update": 128,
+    "ranking_support": 5754,
+    "samples_per_class_per_update": 128,
+    "sampling_plan_sha256": "e19dc19119b9bf182402f431c161225e10d7cc4f0469b209e5fe19e3c93b16b2",
+    "update_count": 4096
+  },
+  "fit_partition": {
+    "alternative_count": 14715,
+    "classification": {
+      "accuracy": 0.8646279573440552,
+      "class_support": {
+        "beneficial": 3469,
+        "neutral": 7223,
+        "severe": 4023
+      },
+      "confusion_matrix_truth_rows": [
+        [
+          3349,
+          553,
+          121
+        ],
+        [
+          748,
+          6327,
+          148
+        ],
+        [
+          228,
+          194,
+          3047
+        ]
+      ],
+      "family": {
+        "card": {
+          "beneficial_count": 2581,
+          "pair_count": 11466,
+          "predicted_beneficial_count": 2421,
+          "predicted_beneficial_precision": 0.912432849407196
+        },
+        "potion": {
+          "beneficial_count": 888,
+          "pair_count": 3249,
+          "predicted_beneficial_count": 895,
+          "predicted_beneficial_precision": 0.9363128542900085
+        }
+      }
+    },
+    "evidence": {
+      "maximum": 12.834562301635742,
+      "mean": -3.140968084335327,
+      "minimum": -20.752735137939453
+    },
+    "excluded_unsupported_only_row_count": 0,
+    "latency": {
+      "mean_ms_per_state": 0.03562667092640252,
+      "total_ms": 167.37410001223907
+    },
+    "ranking": {
+      "best_allowed_action_accuracy": 0.5987654328346252,
+      "mean_policy_regret": 1.8799034357070923
+    },
+    "row_count": 4698,
+    "selection": {
+      "forbidden_action_selection_count": 0,
+      "illegal_action_count": 0,
+      "intervention_count": 819,
+      "intervention_precision": 0.9951159954071045,
+      "intervention_share": 0.1743295019157088,
+      "mean_intervention_true_advantage": 6.90385627746582,
+      "mean_selected_true_advantage": 1.2035459280014038,
+      "no_allowed_alternative_count": 0,
+      "selection_threshold": 2.502495765686035,
+      "severe_harm_count": 0
+    },
+    "source_row_count": 4698,
+    "supported_row_count": 4698
+  },
+  "initialization": {
+    "checkpoint_kind": "simulator_training_smoke",
+    "checkpoint_schema_version": 0,
+    "checkpoint_sha256": "ce2ae34f82b3f457fb35e87d429c397204c42d0f742d3ac8952d91b69119b83b",
+    "mode": "warm_start",
+    "parameter_sha256": "cfe8204d06db6b43b063df98e1b713d4a40a0894a1a9330c3db87c739da88d48",
+    "parent_card_ranking_guard_cap": 0.1,
+    "parent_card_ranking_guard_weight": 0.0,
+    "parent_end_turn_margin_guard_cap": 0.1,
+    "parent_end_turn_margin_guard_weight": 0.0,
+    "parent_policy_anchor_weight": 0.0,
+    "parent_top_action_margin_guard_cap": 0.1,
+    "parent_top_action_margin_guard_weight": 0.0,
+    "path": "D:\\PycharmProjects\\slay-the-spire-ai\\reports\\combat_lightspeed_production_r16_shadow_20260819_r1\\simulator_only_production_shadow.pth",
+    "production_compatible": false,
+    "size_bytes": 2272720,
+    "source_type": "combat_lightspeed_production_rl_v2_shadow"
+  },
+  "inputs": {
+    "corpus_report": {
+      "path": "D:\\PycharmProjects\\slay-the-spire-ai\\reports\\combat_rl_guard_advantage_expanded_corpus_20260829_r1\\report.json",
+      "sha256": "5993832214c60dbfd275f7dc10109fb127454f8a989aedec20252693c4077325"
+    },
+    "evaluation_corpus": {
+      "path": "D:\\PycharmProjects\\slay-the-spire-ai\\reports\\combat_rl_guard_advantage_expanded_corpus_20260829_r1\\evaluation_corpus.pt",
+      "sha256": "028d51871b12fd509b87b6d45adb161b399a29c34782b30b28f66c0a97e48e58"
+    },
+    "items_json": {
+      "path": "D:\\SteamLibrary\\steamapps\\common\\SlayTheSpire\\export\\items.json",
+      "sha256": "e23784ea8ed3092e3bfa9918240e162a9cbcb837badfb53c612eb0d83cc811dc"
+    },
+    "parent_checkpoint": {
+      "path": "D:\\PycharmProjects\\slay-the-spire-ai\\reports\\combat_lightspeed_production_r16_shadow_20260819_r1\\simulator_only_production_shadow.pth",
+      "sha256": "ce2ae34f82b3f457fb35e87d429c397204c42d0f742d3ac8952d91b69119b83b"
+    },
+    "train_corpus": {
+      "path": "D:\\PycharmProjects\\slay-the-spire-ai\\reports\\combat_rl_guard_advantage_expanded_corpus_20260829_r1\\train_corpus.pt",
+      "sha256": "90f3e83763f2591065380e89b24ebbedc7bbc3ef529a749b0cbb54a2dab2fa1f"
+    }
+  },
+  "offline_gate": {
+    "all_conditions_passed": false,
+    "conditions": {
+      "forbidden_action_selection_count_zero": true,
+      "illegal_action_count_zero": true,
+      "maximum_mean_policy_regret_exclusive": true,
+      "maximum_severe_harm_count": false,
+      "minimum_intervention_count": true,
+      "minimum_intervention_precision": false,
+      "minimum_mean_selected_true_advantage_exclusive": false
+    },
+    "decision": "offline_failed_close_without_fresh_gate_or_sweep"
+  },
+  "offline_gates": {
+    "forbidden_action_selection_count_zero": true,
+    "illegal_action_count_zero": true,
+    "maximum_mean_policy_regret_exclusive": 3.1811342239379883,
+    "maximum_severe_harm_count": 0,
+    "minimum_intervention_count": 30,
+    "minimum_intervention_precision": 0.65,
+    "minimum_mean_selected_true_advantage_exclusive": 0.18881003558635712,
+    "severe_harm_floor": -0.5
+  },
+  "output_dir": "D:\\PycharmProjects\\slay-the-spire-ai\\reports\\combat_rl_action_relative_expanded_item_semantic_fit_20260829_r1",
+  "parameter_sweep": false,
+  "parent_parameter_sha256": "cfe8204d06db6b43b063df98e1b713d4a40a0894a1a9330c3db87c739da88d48",
+  "recipe": {
+    "architecture": "frozen_parent_action_relative_item_semantic_three_class_classifier",
+    "beneficial_lower_inclusive": 0.5,
+    "calibration_method": "finite_sample_higher_negative_class",
+    "calibration_quantile": 0.95,
+    "calibration_seed_first": 264768,
+    "calibration_seed_last": 265023,
+    "card_action_first": 0,
+    "card_action_last": 59,
+    "device": "cpu",
+    "fit_seed_first": 264000,
+    "fit_seed_last": 264767,
+    "forbidden_action_indices": [
+      90
+    ],
+    "fresh_evaluation_seed_first": 266000,
+    "fresh_evaluation_seed_last": 266255,
+    "hidden_dim": 128,
+    "include_item_semantics": true,
+    "learning_rate": 0.001,
+    "model_initialization_seed": 2026082920,
+    "optimizer": "adam",
+    "potion_action_first": 60,
+    "potion_action_last": 89,
+    "ranking_loss_weight": 0.5,
+    "ranking_pairs_per_update": 128,
+    "ranking_sampling_seed": 2026082922,
+    "samples_per_class_per_update": 128,
+    "sampling_seed": 2026082921,
+    "severe_upper_exclusive": -0.5,
+    "updates": 4096
+  },
+  "schema_version": 1,
+  "source_commit": "3b408165716fd8d4bc6e029dbbfd63e1decc8bf3",
+  "source_files": {
+    "analysis_scripts/combat_lightspeed_training_smoke.py": "d8dbbb56b88a99ddfc50d7dcd09b9e35bed3fc3d7ab812b39bc2e19081ab0f05",
+    "analysis_scripts/combat_rl_action_relative_expanded_item_semantic_fit.py": "1a12b5b61faccbee104dfc2193860976ba3cc0fd3bfe83a5b887e6b8e6e3f52a",
+    "analysis_scripts/combat_rl_action_relative_selective_classifier_fit.py": "40dfd771ef7921715551d9620c3094c55da00d23404c637c39f95de2fe219092",
+    "analysis_scripts/combat_rl_guard_advantage_residual_fit.py": "8175788bafc3d14e7858c8231bb46032be68d9ae1f1e8b7222198b01fe468c7f",
+    "spirecomm/ai/rl/v2/action_relative_advantage_residual.py": "a5a8fe939c4245f45d99de38aaa4cb394fcd2d8ffe02765ccc41a48ce9ae993a",
+    "spirecomm/ai/rl/v2/action_relative_selective_classifier.py": "64e8c930deb35627a2562b6e7524ca17b42d2c1f42a3e567d919ad84e597d2df",
+    "spirecomm/ai/rl/v2/action_space.py": "1827a6ee4a846a68ea959703b456f0f4efd0436f39616ac8ec41ec34d6cd1964",
+    "spirecomm/ai/rl/v2/network.py": "6358a8ca1b068c65cb13a6100a79bdc9c116cb2c79eb24a74b658753cf24e280",
+    "spirecomm/ai/rl/v2/state_encoder.py": "34b356753c379dfc834bf164b76375f19a188321fe7928f5fb38b620e4107ef4"
+  },
+  "split": {
+    "calibration": {
+      "class_support": {
+        "beneficial": 1206,
+        "neutral": 2349,
+        "severe": 1412
+      },
+      "excluded_unsupported_only_row_count": 49,
+      "pair_count": 4967,
+      "source_row_count": 1637,
+      "split_sha256": "794f143b6ef11dae9ab42c88316dc18756f8d855344fa3f6f67f6a6968e89d96",
+      "supported_row_count": 1588
+    },
+    "fit": {
+      "class_support": {
+        "beneficial": 3469,
+        "neutral": 7223,
+        "severe": 4023
+      },
+      "excluded_unsupported_only_row_count": 138,
+      "pair_count": 14715,
+      "source_row_count": 4836,
+      "split_sha256": "decc0c45ab24f5e542f8cc67e6f886bcc335338b9c1b2efe155db14e2512283b",
+      "supported_row_count": 4698
+    }
+  },
+  "train_coverage": {
+    "row_count": 6473,
+    "seed_count": 1024,
+    "seed_first": 264000,
+    "seed_last": 265023
+  }
+}

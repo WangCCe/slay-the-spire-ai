@@ -12,9 +12,9 @@
 
 ## 3. Fresh Offline Decision
 
-- [ ] 3.1 Execute the 4,096-update expanded item-semantic fit and untouched fresh evaluation once
-- [ ] 3.2 Publish the fixed offline decision without retraining, seed changes, threshold changes, tuning, or sweep
-- [ ] 3.3 If every offline gate passes, stop for a separately proposed fresh matched LightSTS policy gate; otherwise record that native policy evaluation and gameplay were not authorized
+- [x] 3.1 Execute the 4,096-update expanded item-semantic fit and untouched fresh evaluation once
+- [x] 3.2 Publish the fixed offline decision without retraining, seed changes, threshold changes, tuning, or sweep
+- [x] 3.3 If every offline gate passes, stop for a separately proposed fresh matched LightSTS policy gate; otherwise record that native policy evaluation and gameplay were not authorized
 
 ## 4. Verification And Closure
 
