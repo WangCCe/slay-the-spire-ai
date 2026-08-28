@@ -1,0 +1,449 @@
+{
+  "arms": [
+    {
+      "eligibility": {
+        "all_conditions_passed": false,
+        "candidate_round_trip_exact": true,
+        "direct_parent_disagreement_at_most_ceiling": false,
+        "every_training_batch_contains_both_provenance_strata": true,
+        "metrics_finite": true,
+        "objective_values_finite": true,
+        "optimizer_budget_exact": true,
+        "overall_parent_disagreement_at_least_material_floor": true,
+        "override_executed_label_agreement_uplift_at_least_floor": true,
+        "positive_energy_end_turn_increase_bounded": true,
+        "sampled_executed_action_overrides": true,
+        "validation_one_step_td_improved": true,
+        "validation_provenance_strata_nonempty": true
+      },
+      "exploratory_weights": {
+        "candidate_authority": false,
+        "objective_ablation_only": true,
+        "path": "balanced_anchor_exploratory_weights.pth",
+        "round_trip_state_exact": true,
+        "sha256": "449d44b358328fbaf2daf4a293749a860128b4a01295194be031937513a28e03",
+        "size_bytes": 2270825
+      },
+      "label": "balanced_anchor",
+      "parameter_movement": {
+        "exploratory_state_dict_sha256": "0866a9d9e542a86f0142819a533a6da5f1a12a6c750f558463db1d8d0d91fb00",
+        "parent_state_dict_sha256": "23491db97fe31cf12052207ea321b4c2ac23a922f2a0916a3dc54d604ee3a720",
+        "whole_model_relative_l2": 0.004572243465320234
+      },
+      "recipe": {
+        "direct_only_top_action_margin_guard": false,
+        "label": "balanced_anchor",
+        "provenance_balanced_anchor": true,
+        "top_action_margin_guard_cap": 0.1,
+        "top_action_margin_guard_weight": 0.0
+      },
+      "stratified_gate_metrics": {
+        "direct_parent_disagreement": 0.2641509473323822,
+        "overall_parent_disagreement": 0.5851528644561768,
+        "override_executed_label_agreement_uplift": 0.2926136255264282
+      },
+      "train_evaluation": {
+        "action_disagreement_count": 995,
+        "action_disagreement_share": 0.6093080043792725,
+        "candidate_anchor_label_agreement": 0.5958358645439148,
+        "candidate_positive_energy_end_turn_count": 86,
+        "candidate_smooth_l1": 3.3310351371765137,
+        "parent_anchor_label_agreement": 0.35394978523254395,
+        "parent_positive_energy_end_turn_count": 776,
+        "parent_smooth_l1": 4.036303520202637,
+        "positive_energy_end_turn_count_delta": -690,
+        "positive_energy_state_count": 1248,
+        "strata": {
+          "direct": {
+            "action_disagreement_share": 0.1473684161901474,
+            "candidate_anchor_label_agreement": 0.8526315689086914,
+            "parent_anchor_label_agreement": 1.0,
+            "transition_count": 285
+          },
+          "override": {
+            "action_disagreement_share": 0.7069733142852783,
+            "candidate_anchor_label_agreement": 0.5415430068969727,
+            "parent_anchor_label_agreement": 0.2173590511083603,
+            "transition_count": 1348
+          }
+        },
+        "transition_count": 1633
+      },
+      "training": {
+        "all_objective_values_finite": true,
+        "optimizer_update_count": 64,
+        "parent_policy_anchor_direct_count": {
+          "first": 21.0,
+          "last": 23.0,
+          "maximum": 33.0,
+          "mean": 22.609375,
+          "minimum": 14.0
+        },
+        "parent_policy_anchor_direct_loss": {
+          "first": 1.0207886695861816,
+          "last": 0.8293798565864563,
+          "maximum": 1.1851202249526978,
+          "mean": 0.7968256743624806,
+          "minimum": 0.40884798765182495
+        },
+        "parent_policy_anchor_loss": {
+          "first": 1.6213489770889282,
+          "last": 1.0455679893493652,
+          "maximum": 1.6213489770889282,
+          "mean": 1.061387488618493,
+          "minimum": 0.8489210605621338
+        },
+        "parent_policy_anchor_override_count": {
+          "first": 107.0,
+          "last": 105.0,
+          "maximum": 114.0,
+          "mean": 105.390625,
+          "minimum": 95.0
+        },
+        "parent_policy_anchor_override_loss": {
+          "first": 2.221909284591675,
+          "last": 1.2617560625076294,
+          "maximum": 2.221909284591675,
+          "mean": 1.3259492814540863,
+          "minimum": 0.9414414167404175
+        },
+        "parent_top_action_margin_guard_eligible_count": {
+          "first": 0.0,
+          "last": 0.0,
+          "maximum": 0.0,
+          "mean": 0.0,
+          "minimum": 0.0
+        },
+        "parent_top_action_margin_guard_loss": {
+          "first": 0.0,
+          "last": 0.0,
+          "maximum": 0.0,
+          "mean": 0.0,
+          "minimum": 0.0
+        },
+        "parent_top_action_margin_guard_ranking_violation_count": {
+          "first": 0.0,
+          "last": 0.0,
+          "maximum": 0.0,
+          "mean": 0.0,
+          "minimum": 0.0
+        },
+        "sampled_override_count": {
+          "first": 107.0,
+          "last": 105.0,
+          "maximum": 114.0,
+          "mean": 105.390625,
+          "minimum": 95.0
+        },
+        "td_loss": {
+          "first": 3.6705620288848877,
+          "last": 2.2292046546936035,
+          "maximum": 7.458298206329346,
+          "mean": 3.527633558958769,
+          "minimum": 1.6430069208145142
+        },
+        "total_loss": {
+          "first": 5.2919111251831055,
+          "last": 3.2747726440429688,
+          "maximum": 8.69277286529541,
+          "mean": 4.589021023362875,
+          "minimum": 2.698373794555664
+        }
+      },
+      "validation": {
+        "action_disagreement_count": 268,
+        "action_disagreement_share": 0.5851528644561768,
+        "candidate_anchor_label_agreement": 0.5371178984642029,
+        "candidate_positive_energy_end_turn_count": 24,
+        "candidate_smooth_l1": 3.1861283779144287,
+        "parent_anchor_label_agreement": 0.3733624517917633,
+        "parent_positive_energy_end_turn_count": 199,
+        "parent_smooth_l1": 3.4114508628845215,
+        "positive_energy_end_turn_count_delta": -175,
+        "positive_energy_state_count": 357,
+        "strata": {
+          "direct": {
+            "action_disagreement_share": 0.2641509473323822,
+            "candidate_anchor_label_agreement": 0.7358490824699402,
+            "parent_anchor_label_agreement": 1.0,
+            "transition_count": 106
+          },
+          "override": {
+            "action_disagreement_share": 0.6818181872367859,
+            "candidate_anchor_label_agreement": 0.47727271914482117,
+            "parent_anchor_label_agreement": 0.18465909361839294,
+            "transition_count": 352
+          }
+        },
+        "transition_count": 458
+      }
+    },
+    {
+      "eligibility": {
+        "all_conditions_passed": false,
+        "candidate_round_trip_exact": true,
+        "direct_parent_disagreement_at_most_ceiling": false,
+        "every_training_batch_contains_both_provenance_strata": true,
+        "metrics_finite": true,
+        "objective_values_finite": true,
+        "optimizer_budget_exact": true,
+        "overall_parent_disagreement_at_least_material_floor": true,
+        "override_executed_label_agreement_uplift_at_least_floor": true,
+        "positive_energy_end_turn_increase_bounded": true,
+        "sampled_executed_action_overrides": true,
+        "validation_one_step_td_improved": true,
+        "validation_provenance_strata_nonempty": true
+      },
+      "exploratory_weights": {
+        "candidate_authority": false,
+        "objective_ablation_only": true,
+        "path": "balanced_anchor_direct_margin_exploratory_weights.pth",
+        "round_trip_state_exact": true,
+        "sha256": "aa3707134b84ae8c3537fc39f7f1d5bc27dd088b0c70c746f676b50bfb296fd8",
+        "size_bytes": 2270825
+      },
+      "label": "balanced_anchor_direct_margin",
+      "parameter_movement": {
+        "exploratory_state_dict_sha256": "5613a540bba2e1a3c99585aac9f1ab4b86edbad7a9fc07619e286789ea8a49d7",
+        "parent_state_dict_sha256": "23491db97fe31cf12052207ea321b4c2ac23a922f2a0916a3dc54d604ee3a720",
+        "whole_model_relative_l2": 0.004544046964221718
+      },
+      "recipe": {
+        "direct_only_top_action_margin_guard": true,
+        "label": "balanced_anchor_direct_margin",
+        "provenance_balanced_anchor": true,
+        "top_action_margin_guard_cap": 0.1,
+        "top_action_margin_guard_weight": 1.0
+      },
+      "stratified_gate_metrics": {
+        "direct_parent_disagreement": 0.22641509771347046,
+        "overall_parent_disagreement": 0.5807860493659973,
+        "override_executed_label_agreement_uplift": 0.25852271914482117
+      },
+      "train_evaluation": {
+        "action_disagreement_count": 974,
+        "action_disagreement_share": 0.5964482426643372,
+        "candidate_anchor_label_agreement": 0.5823637247085571,
+        "candidate_positive_energy_end_turn_count": 93,
+        "candidate_smooth_l1": 3.505345582962036,
+        "parent_anchor_label_agreement": 0.35394978523254395,
+        "parent_positive_energy_end_turn_count": 776,
+        "parent_smooth_l1": 4.036303520202637,
+        "positive_energy_end_turn_count_delta": -683,
+        "positive_energy_state_count": 1248,
+        "strata": {
+          "direct": {
+            "action_disagreement_share": 0.1122807040810585,
+            "candidate_anchor_label_agreement": 0.8877192735671997,
+            "parent_anchor_label_agreement": 1.0,
+            "transition_count": 285
+          },
+          "override": {
+            "action_disagreement_share": 0.6988130807876587,
+            "candidate_anchor_label_agreement": 0.5178041458129883,
+            "parent_anchor_label_agreement": 0.2173590511083603,
+            "transition_count": 1348
+          }
+        },
+        "transition_count": 1633
+      },
+      "training": {
+        "all_objective_values_finite": true,
+        "optimizer_update_count": 64,
+        "parent_policy_anchor_direct_count": {
+          "first": 21.0,
+          "last": 23.0,
+          "maximum": 33.0,
+          "mean": 22.609375,
+          "minimum": 14.0
+        },
+        "parent_policy_anchor_direct_loss": {
+          "first": 1.0207886695861816,
+          "last": 0.7981739640235901,
+          "maximum": 1.106758952140808,
+          "mean": 0.7801514426246285,
+          "minimum": 0.41309452056884766
+        },
+        "parent_policy_anchor_loss": {
+          "first": 1.6213489770889282,
+          "last": 1.047476053237915,
+          "maximum": 1.6213489770889282,
+          "mean": 1.0907685486599803,
+          "minimum": 0.8838708400726318
+        },
+        "parent_policy_anchor_override_count": {
+          "first": 107.0,
+          "last": 105.0,
+          "maximum": 114.0,
+          "mean": 105.390625,
+          "minimum": 95.0
+        },
+        "parent_policy_anchor_override_loss": {
+          "first": 2.221909284591675,
+          "last": 1.2967780828475952,
+          "maximum": 2.221909284591675,
+          "mean": 1.4013856370002031,
+          "minimum": 1.011826992034912
+        },
+        "parent_top_action_margin_guard_eligible_count": {
+          "first": 19.0,
+          "last": 23.0,
+          "maximum": 32.0,
+          "mean": 20.1875,
+          "minimum": 13.0
+        },
+        "parent_top_action_margin_guard_loss": {
+          "first": 0.02183840237557888,
+          "last": 0.0719885379076004,
+          "maximum": 0.3835391104221344,
+          "mean": 0.09089648973531439,
+          "minimum": 0.0
+        },
+        "parent_top_action_margin_guard_ranking_violation_count": {
+          "first": 3.0,
+          "last": 3.0,
+          "maximum": 12.0,
+          "mean": 3.59375,
+          "minimum": 0.0
+        },
+        "sampled_override_count": {
+          "first": 107.0,
+          "last": 105.0,
+          "maximum": 114.0,
+          "mean": 105.390625,
+          "minimum": 95.0
+        },
+        "td_loss": {
+          "first": 3.6705620288848877,
+          "last": 2.290076971054077,
+          "maximum": 7.508756160736084,
+          "mean": 3.541871055960655,
+          "minimum": 1.6046547889709473
+        },
+        "total_loss": {
+          "first": 5.313749313354492,
+          "last": 3.409541606903076,
+          "maximum": 8.836647987365723,
+          "mean": 4.7235360853374,
+          "minimum": 2.815823793411255
+        }
+      },
+      "validation": {
+        "action_disagreement_count": 266,
+        "action_disagreement_share": 0.5807860493659973,
+        "candidate_anchor_label_agreement": 0.5196506381034851,
+        "candidate_positive_energy_end_turn_count": 26,
+        "candidate_smooth_l1": 3.3979716300964355,
+        "parent_anchor_label_agreement": 0.3733624517917633,
+        "parent_positive_energy_end_turn_count": 199,
+        "parent_smooth_l1": 3.4114508628845215,
+        "positive_energy_end_turn_count_delta": -173,
+        "positive_energy_state_count": 357,
+        "strata": {
+          "direct": {
+            "action_disagreement_share": 0.22641509771347046,
+            "candidate_anchor_label_agreement": 0.7735849022865295,
+            "parent_anchor_label_agreement": 1.0,
+            "transition_count": 106
+          },
+          "override": {
+            "action_disagreement_share": 0.6875,
+            "candidate_anchor_label_agreement": 0.4431818127632141,
+            "parent_anchor_label_agreement": 0.18465909361839294,
+            "transition_count": 352
+          }
+        },
+        "transition_count": 458
+      }
+    }
+  ],
+  "authority": {
+    "candidate": false,
+    "communication_mod": false,
+    "fresh_holdout": false,
+    "gameplay": false,
+    "model_fitting": true,
+    "objective_recipe_recommendation": false,
+    "policy_quality": false,
+    "production_checkpoint_writing": false,
+    "promotion": false,
+    "qualification": false,
+    "training": true
+  },
+  "bindings": {
+    "direct_margin_audit": {
+      "path": "D:\\PycharmProjects\\slay-the-spire-ai\\reports\\combat_rl_direct_drift_margin_audit_20260828_r1\\report.json",
+      "sha256": "208f5f0cf900e36636c2123f91700873716190407012c4770b6a14e7d7fbe88b"
+    },
+    "global_anchor_reference_report": {
+      "candidate_sha256": "8d82e0ee5486daeb963d524a6e34b599716b966976f1406e4220973760df6ccf",
+      "path": "D:\\PycharmProjects\\slay-the-spire-ai\\reports\\combat_rl_stratified_provenance_successor_20260828_r1\\report.json",
+      "reference_not_refitted": true,
+      "sha256": "b8679c2b95f82563439c3b5e0d3b2fac24ffda8fac06995c3f01765a4212fd9c"
+    },
+    "registration": {
+      "path": "D:\\PycharmProjects\\slay-the-spire-ai\\reports\\combat_rl_provenance_balanced_objective_ablation_20260828_r1_registration.json",
+      "sha256": "5c9a9ec70f7c4dcdcd8908cca2a092ffdc0329960ea9b65fcb978fd3512119f8"
+    },
+    "training_checkpoint": {
+      "parent_state_dict_sha256": "23491db97fe31cf12052207ea321b4c2ac23a922f2a0916a3dc54d604ee3a720",
+      "path": "D:\\PycharmProjects\\slay-the-spire-ai\\reports\\combat_rl_stratified_provenance_replay_20260828_r1\\rl_combat_model_ep10_steps2091.pth",
+      "provenance": {
+        "direct_count": 391,
+        "override_count": 1700
+      },
+      "sha256": "606727df27dd82ac825767097b71f07d6aa39ad37e0ea5d5d432e88c9288c28f",
+      "transition_count": 2091
+    }
+  },
+  "common_recipe": {
+    "batch_size": 128,
+    "device": "cpu",
+    "gamma": 0.99,
+    "learning_rate": 0.0001,
+    "optimizer_steps_per_arm": 64,
+    "parent_policy_anchor_weight": 1.0,
+    "same_corpus_purpose": "objective_design_only",
+    "split_seed": 2026082805,
+    "training_seed": 2026082806,
+    "validation_fraction": 0.2
+  },
+  "decision": "no_objective_recipe_recommended",
+  "experiment_id": "combat-rl-provenance-balanced-objective-ablation-20260828-r1",
+  "limitations": [
+    "The R2 validation split is reused for objective design and grants no candidate or downstream authority.",
+    "A recommended recipe must be frozen before collecting a new replay for any final candidate fit.",
+    "No additional arms, thresholds, seeds, or update budgets may be introduced under this registration."
+  ],
+  "reference_metrics": {
+    "direct_parent_disagreement": 0.35849055647850037,
+    "override_executed_label_agreement_uplift": 0.28977271914482117,
+    "validation_one_step_td_improved": true
+  },
+  "schema_version": 1,
+  "selection": {
+    "authority": "objective_design_only",
+    "next_step": "investigate_residual_or_separate_head",
+    "passing_arm_count": 0,
+    "recommended_recipe": null
+  },
+  "source_commit": "e9a0c38918b57788cde835977796ee741ccddf4c",
+  "split": {
+    "group_count": 150,
+    "train_group_count": 120,
+    "train_indices_sha256": "b7af89ec47b6aefc4208cf23fb6afb032a54f195cd19e4369f73a9a3edbf1e20",
+    "train_provenance_counts": {
+      "direct": 285,
+      "override": 1348
+    },
+    "train_transition_count": 1633,
+    "unit": "terminal_delimited_combat_group",
+    "validation_group_count": 30,
+    "validation_indices_sha256": "0d52d70e245eaa1fb7d4317ebaad103bb30d3f338524e16f3954cc2fa858dd24",
+    "validation_provenance_counts": {
+      "direct": 106,
+      "override": 352
+    },
+    "validation_transition_count": 458
+  }
+}
