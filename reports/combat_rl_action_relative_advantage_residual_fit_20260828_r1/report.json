@@ -1,0 +1,604 @@
+{
+  "artifact": {
+    "path": "action_relative_advantage_residual_development.pth",
+    "production_compatible": false,
+    "sha256": "21629b3716786c0959d5b7a0e6484314ee1cce9b57fdaa535fa48d5b73100346",
+    "size_bytes": 177544
+  },
+  "artifact_roundtrip_exact": true,
+  "authority": {
+    "communication_mod": false,
+    "development_candidate": true,
+    "gameplay": false,
+    "production_checkpoint_loading": false,
+    "production_checkpoint_writing": false,
+    "promotion": false,
+    "qualification": false
+  },
+  "corpus": {
+    "evaluation_alternatives": 3439,
+    "evaluation_rows": 839,
+    "seed_disjoint": true,
+    "train_alternatives": 6643,
+    "train_rows": 1633
+  },
+  "decision": "offline_integrity_passed_enter_fresh_gate",
+  "evaluation": {
+    "action_support": {
+      "0": {
+        "count": 325,
+        "mean_absolute_error": 5.050091743469238,
+        "mean_predicted_advantage": -0.22916032373905182,
+        "mean_true_advantage": -2.191051721572876
+      },
+      "1": {
+        "count": 135,
+        "mean_absolute_error": 4.018222332000732,
+        "mean_predicted_advantage": -0.38647693395614624,
+        "mean_true_advantage": -1.7629293203353882
+      },
+      "12": {
+        "count": 213,
+        "mean_absolute_error": 5.683378219604492,
+        "mean_predicted_advantage": -0.3280216157436371,
+        "mean_true_advantage": -1.1877022981643677
+      },
+      "13": {
+        "count": 143,
+        "mean_absolute_error": 4.853630542755127,
+        "mean_predicted_advantage": -0.22928832471370697,
+        "mean_true_advantage": -2.3299176692962646
+      },
+      "14": {
+        "count": 71,
+        "mean_absolute_error": 4.9928693771362305,
+        "mean_predicted_advantage": -0.3826059103012085,
+        "mean_true_advantage": -3.5175719261169434
+      },
+      "15": {
+        "count": 15,
+        "mean_absolute_error": 8.140993118286133,
+        "mean_predicted_advantage": 0.21527652442455292,
+        "mean_true_advantage": -2.6840875148773193
+      },
+      "18": {
+        "count": 184,
+        "mean_absolute_error": 5.457135200500488,
+        "mean_predicted_advantage": -0.1881103366613388,
+        "mean_true_advantage": -1.8966959714889526
+      },
+      "19": {
+        "count": 99,
+        "mean_absolute_error": 2.9288411140441895,
+        "mean_predicted_advantage": -0.023691928014159203,
+        "mean_true_advantage": -1.836591362953186
+      },
+      "2": {
+        "count": 83,
+        "mean_absolute_error": 4.143921852111816,
+        "mean_predicted_advantage": -0.3131490647792816,
+        "mean_true_advantage": -2.0781357288360596
+      },
+      "20": {
+        "count": 36,
+        "mean_absolute_error": 5.456740379333496,
+        "mean_predicted_advantage": -0.3327527642250061,
+        "mean_true_advantage": -4.523951053619385
+      },
+      "21": {
+        "count": 6,
+        "mean_absolute_error": 4.667605876922607,
+        "mean_predicted_advantage": -0.5168532729148865,
+        "mean_true_advantage": -2.7231204509735107
+      },
+      "24": {
+        "count": 80,
+        "mean_absolute_error": 5.974555969238281,
+        "mean_predicted_advantage": -0.3797997832298279,
+        "mean_true_advantage": -2.036238193511963
+      },
+      "25": {
+        "count": 40,
+        "mean_absolute_error": 5.9063191413879395,
+        "mean_predicted_advantage": -0.018187785521149635,
+        "mean_true_advantage": 0.3388446569442749
+      },
+      "26": {
+        "count": 8,
+        "mean_absolute_error": 9.972526550292969,
+        "mean_predicted_advantage": 0.4575017988681793,
+        "mean_true_advantage": -8.606422424316406
+      },
+      "27": {
+        "count": 1,
+        "mean_absolute_error": 35.05107879638672,
+        "mean_predicted_advantage": -0.2184908092021942,
+        "mean_true_advantage": -35.269569396972656
+      },
+      "3": {
+        "count": 9,
+        "mean_absolute_error": 6.077956199645996,
+        "mean_predicted_advantage": -1.3332868814468384,
+        "mean_true_advantage": -0.4371711015701294
+      },
+      "30": {
+        "count": 12,
+        "mean_absolute_error": 4.324059963226318,
+        "mean_predicted_advantage": -0.7206204533576965,
+        "mean_true_advantage": 1.4037545919418335
+      },
+      "31": {
+        "count": 4,
+        "mean_absolute_error": 11.59764575958252,
+        "mean_predicted_advantage": -4.042351245880127,
+        "mean_true_advantage": -7.920292854309082
+      },
+      "36": {
+        "count": 5,
+        "mean_absolute_error": 6.428458213806152,
+        "mean_predicted_advantage": -2.497509002685547,
+        "mean_true_advantage": 0.6589559316635132
+      },
+      "37": {
+        "count": 1,
+        "mean_absolute_error": 6.170131206512451,
+        "mean_predicted_advantage": -6.177631378173828,
+        "mean_true_advantage": -0.007499999832361937
+      },
+      "42": {
+        "count": 1,
+        "mean_absolute_error": 1.813948392868042,
+        "mean_predicted_advantage": -2.127448320388794,
+        "mean_true_advantage": -0.31349998712539673
+      },
+      "6": {
+        "count": 300,
+        "mean_absolute_error": 6.2051544189453125,
+        "mean_predicted_advantage": -0.14335674047470093,
+        "mean_true_advantage": -2.1693665981292725
+      },
+      "60": {
+        "count": 254,
+        "mean_absolute_error": 2.4120211601257324,
+        "mean_predicted_advantage": 0.11550986766815186,
+        "mean_true_advantage": 0.2212340235710144
+      },
+      "61": {
+        "count": 41,
+        "mean_absolute_error": 4.607508659362793,
+        "mean_predicted_advantage": 0.9703143239021301,
+        "mean_true_advantage": 4.7577080726623535
+      },
+      "62": {
+        "count": 5,
+        "mean_absolute_error": 1.3916984796524048,
+        "mean_predicted_advantage": 0.7446070313453674,
+        "mean_true_advantage": -0.03927497938275337
+      },
+      "66": {
+        "count": 217,
+        "mean_absolute_error": 3.919207811355591,
+        "mean_predicted_advantage": 0.1976926475763321,
+        "mean_true_advantage": 1.0022038221359253
+      },
+      "67": {
+        "count": 24,
+        "mean_absolute_error": 7.699899196624756,
+        "mean_predicted_advantage": 0.8055196404457092,
+        "mean_true_advantage": 5.237338542938232
+      },
+      "7": {
+        "count": 156,
+        "mean_absolute_error": 3.853191614151001,
+        "mean_predicted_advantage": -0.22653602063655853,
+        "mean_true_advantage": -2.728585958480835
+      },
+      "72": {
+        "count": 58,
+        "mean_absolute_error": 0.5302291512489319,
+        "mean_predicted_advantage": 0.14886273443698883,
+        "mean_true_advantage": -0.020246990025043488
+      },
+      "73": {
+        "count": 5,
+        "mean_absolute_error": 0.712754487991333,
+        "mean_predicted_advantage": 0.72028648853302,
+        "mean_true_advantage": 0.007532007992267609
+      },
+      "78": {
+        "count": 2,
+        "mean_absolute_error": 2.262084484100342,
+        "mean_predicted_advantage": -0.9156924486160278,
+        "mean_true_advantage": -1.9215317964553833
+      },
+      "8": {
+        "count": 61,
+        "mean_absolute_error": 4.24062442779541,
+        "mean_predicted_advantage": -0.3572791814804077,
+        "mean_true_advantage": -0.4179348647594452
+      },
+      "9": {
+        "count": 6,
+        "mean_absolute_error": 7.248591899871826,
+        "mean_predicted_advantage": -2.42464017868042,
+        "mean_true_advantage": -8.323524475097656
+      },
+      "90": {
+        "count": 839,
+        "mean_absolute_error": 7.798607349395752,
+        "mean_predicted_advantage": -3.4445078372955322,
+        "mean_true_advantage": -6.1051177978515625
+      }
+    },
+    "all_offline_integrity_conditions_passed": true,
+    "alternative_count": 3439,
+    "latency": {
+      "mean_ms_per_state": 0.022724076286313503,
+      "total_ms": 19.06550000421703
+    },
+    "offline_integrity_conditions": {
+      "forbidden_action_selection_count_zero": true,
+      "illegal_action_count_zero": true,
+      "intervention_count_positive": true,
+      "mean_selected_true_advantage_non_negative": true
+    },
+    "ranking": {
+      "best_allowed_action_accuracy": 0.5103785395622253,
+      "mean_policy_regret": 3.2472479343414307
+    },
+    "regression": {
+      "mean_absolute_error": 5.420199394226074,
+      "mean_error": 1.566489577293396,
+      "root_mean_squared_error": 10.428338050842285,
+      "threshold_sign_accuracy": 0.7650479674339294
+    },
+    "row_count": 839,
+    "selection": {
+      "forbidden_action_selection_count": 0,
+      "illegal_action_count": 0,
+      "intervention_count": 162,
+      "intervention_precision": 0.3827160596847534,
+      "intervention_share": 0.19308700834326578,
+      "mean_intervention_true_advantage": 0.6354472041130066,
+      "mean_selected_true_advantage": 0.12269661575555801,
+      "no_allowed_alternative_count": 20
+    }
+  },
+  "execution_commit": "b7f94b8bdd794dbc728787bc143cf71a5d93041f",
+  "experiment_id": "combat-rl-action-relative-advantage-residual-fit-20260828-r1",
+  "fit": {
+    "all_objectives_finite": true,
+    "alternative_count": 6643,
+    "batch_size": 256,
+    "loss": {
+      "count": 1024,
+      "final": 0.3082989752292633,
+      "maximum": 0.5423213243484497,
+      "mean": 0.36415283814130817,
+      "minimum": 0.23869140446186066
+    },
+    "parent_frozen": true,
+    "parent_state_dict_sha256_after": "cfe8204d06db6b43b063df98e1b713d4a40a0894a1a9330c3db87c739da88d48",
+    "parent_state_dict_sha256_before": "cfe8204d06db6b43b063df98e1b713d4a40a0894a1a9330c3db87c739da88d48",
+    "scorer_state_dict_sha256": "2b36f248df45777d3e85b5a0191e4ae2a6de1649ab53a42c945a0aebd8c0cbc8",
+    "update_count": 1024
+  },
+  "initialization": {
+    "checkpoint_kind": "simulator_training_smoke",
+    "checkpoint_schema_version": 0,
+    "checkpoint_sha256": "ce2ae34f82b3f457fb35e87d429c397204c42d0f742d3ac8952d91b69119b83b",
+    "mode": "warm_start",
+    "parameter_sha256": "cfe8204d06db6b43b063df98e1b713d4a40a0894a1a9330c3db87c739da88d48",
+    "parent_card_ranking_guard_cap": 0.1,
+    "parent_card_ranking_guard_weight": 0.0,
+    "parent_end_turn_margin_guard_cap": 0.1,
+    "parent_end_turn_margin_guard_weight": 0.0,
+    "parent_policy_anchor_weight": 0.0,
+    "parent_top_action_margin_guard_cap": 0.1,
+    "parent_top_action_margin_guard_weight": 0.0,
+    "path": "D:\\PycharmProjects\\slay-the-spire-ai\\reports\\combat_lightspeed_production_r16_shadow_20260819_r1\\simulator_only_production_shadow.pth",
+    "production_compatible": false,
+    "size_bytes": 2272720,
+    "source_type": "combat_lightspeed_production_rl_v2_shadow"
+  },
+  "inputs": {
+    "evaluation_corpus": {
+      "path": "D:\\PycharmProjects\\slay-the-spire-ai\\reports\\combat_rl_guard_advantage_corpus_20260828_r1\\evaluation_corpus.pt",
+      "sha256": "219392d1e1d22d98bf1156c0d432275c73645658b331b4f0e85abc47b37c15c0"
+    },
+    "items_json": {
+      "path": "D:\\SteamLibrary\\steamapps\\common\\SlayTheSpire\\export\\items.json",
+      "sha256": "e23784ea8ed3092e3bfa9918240e162a9cbcb837badfb53c612eb0d83cc811dc"
+    },
+    "parent_checkpoint": {
+      "path": "D:\\PycharmProjects\\slay-the-spire-ai\\reports\\combat_lightspeed_production_r16_shadow_20260819_r1\\simulator_only_production_shadow.pth",
+      "sha256": "ce2ae34f82b3f457fb35e87d429c397204c42d0f742d3ac8952d91b69119b83b"
+    },
+    "train_corpus": {
+      "path": "D:\\PycharmProjects\\slay-the-spire-ai\\reports\\combat_rl_guard_advantage_corpus_20260828_r1\\train_corpus.pt",
+      "sha256": "ca7851f6f30846e5670f828c083413c9d653629c16748feb27c7d09aeeae7144"
+    }
+  },
+  "output_dir": "D:\\PycharmProjects\\slay-the-spire-ai\\reports\\combat_rl_action_relative_advantage_residual_fit_20260828_r1",
+  "parent_parameter_sha256": "cfe8204d06db6b43b063df98e1b713d4a40a0894a1a9330c3db87c739da88d48",
+  "recipe": {
+    "advantage_threshold": 0.5,
+    "architecture": "frozen_parent_action_relative_advantage_residual",
+    "batch_size": 256,
+    "device": "cpu",
+    "forbidden_action_indices": [
+      90
+    ],
+    "hidden_dim": 64,
+    "learning_rate": 0.001,
+    "optimizer": "adam",
+    "smooth_l1_beta": 0.1,
+    "target_clip": 20.0,
+    "target_scale": 10.0,
+    "training_seed": 2026082823,
+    "updates": 1024
+  },
+  "registration_sha256": "70aa4c4ee2b52033367da1ef8d3cd17096ff089e45774bfa64a663aad0c33dad",
+  "schema_version": 1,
+  "source_commit": "1d83ba68595aba1999a68ecc6011bb03831fdda3",
+  "threshold_tuned": false,
+  "train": {
+    "action_support": {
+      "0": {
+        "count": 658,
+        "mean_absolute_error": 5.200344562530518,
+        "mean_predicted_advantage": -0.26726233959198,
+        "mean_true_advantage": -2.4296493530273438
+      },
+      "1": {
+        "count": 264,
+        "mean_absolute_error": 3.7612900733947754,
+        "mean_predicted_advantage": -0.3872949481010437,
+        "mean_true_advantage": -2.1195363998413086
+      },
+      "12": {
+        "count": 435,
+        "mean_absolute_error": 4.974482536315918,
+        "mean_predicted_advantage": -0.33786216378211975,
+        "mean_true_advantage": -2.3588883876800537
+      },
+      "13": {
+        "count": 256,
+        "mean_absolute_error": 3.442157030105591,
+        "mean_predicted_advantage": -0.272944837808609,
+        "mean_true_advantage": -1.4617830514907837
+      },
+      "14": {
+        "count": 107,
+        "mean_absolute_error": 5.7042317390441895,
+        "mean_predicted_advantage": -0.4764869809150696,
+        "mean_true_advantage": -2.7808566093444824
+      },
+      "15": {
+        "count": 17,
+        "mean_absolute_error": 5.905413627624512,
+        "mean_predicted_advantage": -0.37628620862960815,
+        "mean_true_advantage": 2.2107930183410645
+      },
+      "18": {
+        "count": 295,
+        "mean_absolute_error": 4.622631072998047,
+        "mean_predicted_advantage": -0.28857049345970154,
+        "mean_true_advantage": -0.3592638373374939
+      },
+      "19": {
+        "count": 217,
+        "mean_absolute_error": 3.471135377883911,
+        "mean_predicted_advantage": -0.02673661895096302,
+        "mean_true_advantage": -0.40576326847076416
+      },
+      "2": {
+        "count": 171,
+        "mean_absolute_error": 4.528728485107422,
+        "mean_predicted_advantage": -0.37401309609413147,
+        "mean_true_advantage": -0.5384536385536194
+      },
+      "20": {
+        "count": 89,
+        "mean_absolute_error": 4.9242753982543945,
+        "mean_predicted_advantage": -0.6504278779029846,
+        "mean_true_advantage": -2.1794188022613525
+      },
+      "21": {
+        "count": 15,
+        "mean_absolute_error": 5.750643253326416,
+        "mean_predicted_advantage": -0.13528485596179962,
+        "mean_true_advantage": -1.3105032444000244
+      },
+      "22": {
+        "count": 2,
+        "mean_absolute_error": 11.335598945617676,
+        "mean_predicted_advantage": -17.12879753112793,
+        "mean_true_advantage": -21.596302032470703
+      },
+      "24": {
+        "count": 139,
+        "mean_absolute_error": 4.73502779006958,
+        "mean_predicted_advantage": -0.3464800715446472,
+        "mean_true_advantage": -0.8140308856964111
+      },
+      "25": {
+        "count": 92,
+        "mean_absolute_error": 2.1735880374908447,
+        "mean_predicted_advantage": -0.12019607424736023,
+        "mean_true_advantage": 0.18264146149158478
+      },
+      "26": {
+        "count": 15,
+        "mean_absolute_error": 5.381415367126465,
+        "mean_predicted_advantage": 0.06501094251871109,
+        "mean_true_advantage": 3.995875120162964
+      },
+      "27": {
+        "count": 2,
+        "mean_absolute_error": 0.43569520115852356,
+        "mean_predicted_advantage": -0.33390533924102783,
+        "mean_true_advantage": -0.5927747488021851
+      },
+      "3": {
+        "count": 27,
+        "mean_absolute_error": 2.325117826461792,
+        "mean_predicted_advantage": -1.2259759902954102,
+        "mean_true_advantage": -2.7206192016601562
+      },
+      "30": {
+        "count": 11,
+        "mean_absolute_error": 2.401214361190796,
+        "mean_predicted_advantage": -0.7771522402763367,
+        "mean_true_advantage": -2.7410905361175537
+      },
+      "31": {
+        "count": 3,
+        "mean_absolute_error": 4.22852087020874,
+        "mean_predicted_advantage": -2.4709596633911133,
+        "mean_true_advantage": 0.02744070626795292
+      },
+      "32": {
+        "count": 1,
+        "mean_absolute_error": 0.8273525834083557,
+        "mean_predicted_advantage": 0.729352593421936,
+        "mean_true_advantage": -0.09799999743700027
+      },
+      "36": {
+        "count": 2,
+        "mean_absolute_error": 0.2602415382862091,
+        "mean_predicted_advantage": -0.3834104537963867,
+        "mean_true_advantage": -0.6436519622802734
+      },
+      "37": {
+        "count": 3,
+        "mean_absolute_error": 4.3133225440979,
+        "mean_predicted_advantage": -6.240314483642578,
+        "mean_true_advantage": -6.814111709594727
+      },
+      "4": {
+        "count": 2,
+        "mean_absolute_error": 4.519560813903809,
+        "mean_predicted_advantage": 2.1445016860961914,
+        "mean_true_advantage": 6.6640625
+      },
+      "42": {
+        "count": 2,
+        "mean_absolute_error": 0.5140177607536316,
+        "mean_predicted_advantage": -10.985417366027832,
+        "mean_true_advantage": -10.471399307250977
+      },
+      "50": {
+        "count": 1,
+        "mean_absolute_error": 6.620540618896484,
+        "mean_predicted_advantage": -21.14090919494629,
+        "mean_true_advantage": -27.761449813842773
+      },
+      "6": {
+        "count": 530,
+        "mean_absolute_error": 5.030129909515381,
+        "mean_predicted_advantage": -0.17002564668655396,
+        "mean_true_advantage": -2.0609068870544434
+      },
+      "60": {
+        "count": 481,
+        "mean_absolute_error": 2.3126628398895264,
+        "mean_predicted_advantage": 0.09818697720766068,
+        "mean_true_advantage": 0.5530393123626709
+      },
+      "61": {
+        "count": 43,
+        "mean_absolute_error": 5.549148082733154,
+        "mean_predicted_advantage": 1.0432133674621582,
+        "mean_true_advantage": 3.9242072105407715
+      },
+      "62": {
+        "count": 3,
+        "mean_absolute_error": 2.912656545639038,
+        "mean_predicted_advantage": 0.9015153050422668,
+        "mean_true_advantage": 3.2173306941986084
+      },
+      "66": {
+        "count": 435,
+        "mean_absolute_error": 3.3638086318969727,
+        "mean_predicted_advantage": 0.09149554371833801,
+        "mean_true_advantage": 0.3919682204723358
+      },
+      "67": {
+        "count": 40,
+        "mean_absolute_error": 4.422061920166016,
+        "mean_predicted_advantage": 0.6743857860565186,
+        "mean_true_advantage": 3.889694929122925
+      },
+      "7": {
+        "count": 313,
+        "mean_absolute_error": 2.9852454662323,
+        "mean_predicted_advantage": -0.3304474651813507,
+        "mean_true_advantage": -1.3103715181350708
+      },
+      "72": {
+        "count": 110,
+        "mean_absolute_error": 1.586290717124939,
+        "mean_predicted_advantage": 0.16424664855003357,
+        "mean_true_advantage": 0.9311102032661438
+      },
+      "73": {
+        "count": 11,
+        "mean_absolute_error": 4.121654987335205,
+        "mean_predicted_advantage": 0.7012608051300049,
+        "mean_true_advantage": 4.268869400024414
+      },
+      "8": {
+        "count": 190,
+        "mean_absolute_error": 4.2228102684021,
+        "mean_predicted_advantage": -0.4741993546485901,
+        "mean_true_advantage": -2.1610944271087646
+      },
+      "9": {
+        "count": 28,
+        "mean_absolute_error": 4.667943000793457,
+        "mean_predicted_advantage": -0.7827991843223572,
+        "mean_true_advantage": -1.4496241807937622
+      },
+      "90": {
+        "count": 1633,
+        "mean_absolute_error": 7.211593151092529,
+        "mean_predicted_advantage": -3.3761844635009766,
+        "mean_true_advantage": -6.358125686645508
+      }
+    },
+    "all_offline_integrity_conditions_passed": true,
+    "alternative_count": 6643,
+    "latency": {
+      "mean_ms_per_state": 0.02125364359207588,
+      "total_ms": 34.707199985859916
+    },
+    "offline_integrity_conditions": {
+      "forbidden_action_selection_count_zero": true,
+      "illegal_action_count_zero": true,
+      "intervention_count_positive": true,
+      "mean_selected_true_advantage_non_negative": true
+    },
+    "ranking": {
+      "best_allowed_action_accuracy": 0.5489949584007263,
+      "mean_policy_regret": 2.430595874786377
+    },
+    "regression": {
+      "mean_absolute_error": 4.848919868469238,
+      "mean_error": 1.4116994142532349,
+      "root_mean_squared_error": 9.79558277130127,
+      "threshold_sign_accuracy": 0.8124341368675232
+    },
+    "row_count": 1633,
+    "selection": {
+      "forbidden_action_selection_count": 0,
+      "illegal_action_count": 0,
+      "intervention_count": 292,
+      "intervention_precision": 0.5068492889404297,
+      "intervention_share": 0.17881200244947948,
+      "mean_intervention_true_advantage": 4.151317119598389,
+      "mean_selected_true_advantage": 0.742305338382721,
+      "no_allowed_alternative_count": 41
+    }
+  }
+}

@@ -6,7 +6,7 @@
 ## 2. Fixed Training
 
 - [x] 2.1 Add a source-bound fixed-fit runner with held-out value, ranking, calibration, selection, support, latency, and offline-integrity reporting.
-- [ ] 2.2 Commit and push one immutable training registration, execute the fixed CPU fit exactly once, and publish the bounded artifact and report without tuning or retry.
+- [x] 2.2 Commit and push one immutable training registration, execute the fixed CPU fit exactly once, and publish the bounded artifact and report without tuning or retry.
 
 ## 3. Fresh Policy Decision
 
