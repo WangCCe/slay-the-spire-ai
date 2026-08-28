@@ -5,9 +5,9 @@
 
 ## 2. Fresh Replay Collection
 
-- [ ] 2.1 Execute exactly ten registered r16 games, restore CommunicationMod configuration, and stop residual game processes.
-- [ ] 2.2 Publish the checkpoint, run records, runtime traces, and parity audit; block fitting unless every collection gate passes.
-- [ ] 2.3 Commit and push the immutable replay evidence and bound checkpoint hash.
+- [x] 2.1 Execute exactly ten registered r16 games, restore CommunicationMod configuration, and stop residual game processes.
+- [x] 2.2 Publish the checkpoint, run records, runtime traces, and parity audit; block fitting unless every collection gate passes.
+- [x] 2.3 Commit and push the immutable replay evidence and bound checkpoint hash.
 
 ## 3. Stratified Successor Runner
 
