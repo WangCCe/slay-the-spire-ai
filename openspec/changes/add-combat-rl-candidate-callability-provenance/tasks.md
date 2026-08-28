@@ -23,5 +23,5 @@
 
 ## 5. Bounded Callability-Filtered Fit
 
-- [ ] 5.1 If every pre-fit gate passes, execute the registered CPU fit once and independently audit updates, batches, spans, hashes, technical gates, and authority without changing the recipe.
+- [x] 5.1 If every pre-fit gate passes, execute the registered CPU fit once and independently audit updates, batches, spans, hashes, technical gates, and authority without changing the recipe.
 - [ ] 5.2 Commit and push the result, sync the delta specs, and archive the completed change. If a fixed gate fails, stop the corpus and record residual/separate-head as the next change.
