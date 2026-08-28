@@ -1,0 +1,97 @@
+{
+  "schema_version": 1,
+  "registration_id": "combat-rl-provenance-balanced-objective-ablation-20260828-r1",
+  "base_source_commit": "833d4fd17624d44a8b37d0be5afd24edf4fcf3ac",
+  "purpose": "Determine whether provenance-balanced anchor aggregation and direct-only parent margin protection remove repeated cross-stratum direct-policy drift before collecting another live replay.",
+  "evidence": {
+    "training_replay": {
+      "path": "reports/combat_rl_stratified_provenance_replay_20260828_r1/rl_combat_model_ep10_steps2091.pth",
+      "sha256": "606727df27dd82ac825767097b71f07d6aa39ad37e0ea5d5d432e88c9288c28f",
+      "transition_count": 2091,
+      "parent_state_dict_sha256": "23491db97fe31cf12052207ea321b4c2ac23a922f2a0916a3dc54d604ee3a720"
+    },
+    "global_anchor_reference_report": {
+      "path": "reports/combat_rl_stratified_provenance_successor_20260828_r1/report.json",
+      "sha256": "b8679c2b95f82563439c3b5e0d3b2fac24ffda8fac06995c3f01765a4212fd9c",
+      "candidate_sha256": "8d82e0ee5486daeb963d524a6e34b599716b966976f1406e4220973760df6ccf",
+      "decision": "development_candidate_not_eligible_no_same_corpus_tuning",
+      "direct_parent_disagreement": 0.35849055647850037,
+      "override_executed_label_agreement_uplift": 0.28977271914482117
+    },
+    "direct_margin_audit": {
+      "path": "reports/combat_rl_direct_drift_margin_audit_20260828_r1/report.json",
+      "sha256": "208f5f0cf900e36636c2123f91700873716190407012c4770b6a14e7d7fbe88b",
+      "verdict": "shared_objective_cross_stratum_interference_supported"
+    }
+  },
+  "common_recipe": {
+    "device": "cpu",
+    "validation_fraction": 0.2,
+    "split_unit": "terminal_delimited_combat_group",
+    "split_seed": 2026082805,
+    "training_seed": 2026082806,
+    "learning_rate": 0.0001,
+    "batch_size": 128,
+    "parent_policy_anchor_weight": 1.0,
+    "optimizer_updates": 64,
+    "gamma": 0.99,
+    "target_network": "frozen_production_r16",
+    "parent_anchor": "frozen_production_r16",
+    "same_corpus_purpose": "objective_design_only"
+  },
+  "arms": [
+    {
+      "label": "balanced_anchor",
+      "provenance_balanced_anchor": true,
+      "direct_only_top_action_margin_guard": false,
+      "top_action_margin_guard_weight": 0.0,
+      "top_action_margin_guard_cap": 0.1
+    },
+    {
+      "label": "balanced_anchor_direct_margin",
+      "provenance_balanced_anchor": true,
+      "direct_only_top_action_margin_guard": true,
+      "top_action_margin_guard_weight": 1.0,
+      "top_action_margin_guard_cap": 0.1
+    }
+  ],
+  "fixed_gate": {
+    "validation_td_loss_strictly_improves": true,
+    "overall_parent_disagreement_minimum": 0.05,
+    "direct_parent_disagreement_maximum": 0.1,
+    "override_executed_label_agreement_absolute_uplift_minimum": 0.1,
+    "positive_energy_end_turn_count_increase_maximum": 2,
+    "both_validation_provenance_strata_nonempty": true,
+    "every_training_batch_contains_both_provenance_strata": true,
+    "optimizer_budget_exact_and_objectives_finite": true,
+    "candidate_round_trip_exact": true
+  },
+  "selection_rule": [
+    "Discard every arm that fails any fixed gate.",
+    "Prefer lower direct parent disagreement.",
+    "Then prefer higher override executed-label agreement uplift.",
+    "On an exact tie prefer balanced_anchor as the simpler objective."
+  ],
+  "execution": {
+    "runner": "analysis_scripts/combat_rl_provenance_balanced_objective_ablation.py",
+    "output_dir": "reports/combat_rl_provenance_balanced_objective_ablation_20260828_r1",
+    "arm_count": 2,
+    "reference_is_not_refitted": true,
+    "atomic_publication": true,
+    "retry_boundary": "An infrastructure or entrypoint failure may rerun only the identical committed source, input hashes, arm matrix, seeds, and thresholds. Any recipe change requires a new registration."
+  },
+  "authority": {
+    "training": true,
+    "model_fitting": true,
+    "objective_recipe_recommendation": true,
+    "candidate": false,
+    "fresh_holdout": false,
+    "gameplay": false,
+    "communication_mod": false,
+    "qualification": false,
+    "promotion": false,
+    "policy_quality": false,
+    "production_checkpoint_writing": false
+  },
+  "decision_rule": "A passing arm may recommend one objective recipe for a newly collected replay. No artifact from this reused corpus may be treated as a final candidate or downstream evidence."
+}
