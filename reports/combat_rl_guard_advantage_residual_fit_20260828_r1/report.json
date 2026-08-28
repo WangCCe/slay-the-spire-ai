@@ -1,0 +1,156 @@
+{
+  "artifact": {
+    "path": "guard_advantage_residual_development.pth",
+    "production_compatible": false,
+    "sha256": "090cfec5e362bbb9b7ae6e663f09b02c77cd2e9986afc4ea30c4f9c652e20643",
+    "size_bytes": 308636
+  },
+  "artifact_round_trip_exact": true,
+  "authority": {
+    "communication_mod": false,
+    "development_candidate": true,
+    "gameplay": false,
+    "production_checkpoint_loading": false,
+    "production_checkpoint_writing": false,
+    "promotion": false,
+    "qualification": false
+  },
+  "classification": {
+    "evaluation": {
+      "confusion": {
+        "false_negative": 110,
+        "false_positive": 226,
+        "true_negative": 222,
+        "true_positive": 281
+      },
+      "gate_accuracy": 0.599523241954708,
+      "gate_balanced_accuracy": 0.6071028955060285,
+      "gate_f1": 0.6258351893095768,
+      "gate_open_share": 0.6042908430099487,
+      "gate_precision": 0.5542406311637081,
+      "gate_recall": 0.7186700767263428,
+      "gate_specificity": 0.4955357142857143,
+      "hard_policy_accuracy": 0.4135875999927521,
+      "illegal_action_count": 0,
+      "intervention_count": 507,
+      "negative_count": 448,
+      "positive_action_accuracy": 0.45524296164512634,
+      "positive_count": 391,
+      "row_count": 839,
+      "threshold": 0.5
+    },
+    "train": {
+      "confusion": {
+        "false_negative": 125,
+        "false_positive": 408,
+        "true_negative": 505,
+        "true_positive": 595
+      },
+      "gate_accuracy": 0.6736068585425597,
+      "gate_balanced_accuracy": 0.6897552330534258,
+      "gate_f1": 0.6906558328496808,
+      "gate_open_share": 0.6142069697380066,
+      "gate_precision": 0.5932203389830508,
+      "gate_recall": 0.8263888888888888,
+      "gate_specificity": 0.5531215772179627,
+      "hard_policy_accuracy": 0.5125535726547241,
+      "illegal_action_count": 0,
+      "intervention_count": 1003,
+      "negative_count": 913,
+      "positive_action_accuracy": 0.5638889074325562,
+      "positive_count": 720,
+      "row_count": 1633,
+      "threshold": 0.5
+    }
+  },
+  "corpus": {
+    "evaluation_rows": 839,
+    "seed_disjoint": true,
+    "train_rows": 1633
+  },
+  "execution_commit": "05f6ed66cf5452157a7b6ab304cea6e3585a5392",
+  "experiment_id": "combat-rl-guard-advantage-residual-fit-20260828-r1",
+  "fit": {
+    "action_loss": {
+      "count": 512,
+      "final": 0.7729548215866089,
+      "maximum": 1.631691813468933,
+      "mean": 1.1928364388877526,
+      "minimum": 0.7729548215866089
+    },
+    "action_state_dict_sha256": "fbbad7047a604c5e16be1b4a9d4824f4829e721c169467b7962e1199b394bbb8",
+    "all_objectives_finite": true,
+    "gate_loss": {
+      "count": 512,
+      "final": 0.610848605632782,
+      "maximum": 0.7481372356414795,
+      "mean": 0.6192473771516234,
+      "minimum": 0.4723566174507141
+    },
+    "gate_state_dict_sha256": "c6af9b0a1d5a92b26b52ceaa6df44fd51b9c93e81d0b73743e55004126edfa46",
+    "parent_state_dict_sha256_after": "cfe8204d06db6b43b063df98e1b713d4a40a0894a1a9330c3db87c739da88d48",
+    "parent_state_dict_sha256_before": "cfe8204d06db6b43b063df98e1b713d4a40a0894a1a9330c3db87c739da88d48",
+    "total_loss": {
+      "count": 512,
+      "final": 1.383803367614746,
+      "maximum": 2.2452473640441895,
+      "mean": 1.812083818251267,
+      "minimum": 1.34592866897583
+    },
+    "update_count": 512
+  },
+  "initialization": {
+    "checkpoint_kind": "simulator_training_smoke",
+    "checkpoint_schema_version": 0,
+    "checkpoint_sha256": "ce2ae34f82b3f457fb35e87d429c397204c42d0f742d3ac8952d91b69119b83b",
+    "mode": "warm_start",
+    "parameter_sha256": "cfe8204d06db6b43b063df98e1b713d4a40a0894a1a9330c3db87c739da88d48",
+    "parent_card_ranking_guard_cap": 0.1,
+    "parent_card_ranking_guard_weight": 0.0,
+    "parent_end_turn_margin_guard_cap": 0.1,
+    "parent_end_turn_margin_guard_weight": 0.0,
+    "parent_policy_anchor_weight": 0.0,
+    "parent_top_action_margin_guard_cap": 0.1,
+    "parent_top_action_margin_guard_weight": 0.0,
+    "path": "D:\\PycharmProjects\\slay-the-spire-ai\\reports\\combat_lightspeed_production_r16_shadow_20260819_r1\\simulator_only_production_shadow.pth",
+    "production_compatible": false,
+    "size_bytes": 2272720,
+    "source_type": "combat_lightspeed_production_rl_v2_shadow"
+  },
+  "inputs": {
+    "evaluation_corpus": {
+      "path": "D:\\PycharmProjects\\slay-the-spire-ai\\reports\\combat_rl_guard_advantage_corpus_20260828_r1\\evaluation_corpus.pt",
+      "sha256": "219392d1e1d22d98bf1156c0d432275c73645658b331b4f0e85abc47b37c15c0"
+    },
+    "items_json": {
+      "path": "D:\\SteamLibrary\\steamapps\\common\\SlayTheSpire\\export\\items.json",
+      "sha256": "e23784ea8ed3092e3bfa9918240e162a9cbcb837badfb53c612eb0d83cc811dc"
+    },
+    "parent_checkpoint": {
+      "path": "D:\\PycharmProjects\\slay-the-spire-ai\\reports\\combat_lightspeed_production_r16_shadow_20260819_r1\\simulator_only_production_shadow.pth",
+      "sha256": "ce2ae34f82b3f457fb35e87d429c397204c42d0f742d3ac8952d91b69119b83b"
+    },
+    "train_corpus": {
+      "path": "D:\\PycharmProjects\\slay-the-spire-ai\\reports\\combat_rl_guard_advantage_corpus_20260828_r1\\train_corpus.pt",
+      "sha256": "ca7851f6f30846e5670f828c083413c9d653629c16748feb27c7d09aeeae7144"
+    }
+  },
+  "output_dir": "D:\\PycharmProjects\\slay-the-spire-ai\\reports\\combat_rl_guard_advantage_residual_fit_20260828_r1",
+  "parent_parameter_sha256": "cfe8204d06db6b43b063df98e1b713d4a40a0894a1a9330c3db87c739da88d48",
+  "recipe": {
+    "architecture": "frozen_parent_post_guard_abstaining_residual",
+    "device": "cpu",
+    "gate_threshold": 0.5,
+    "hidden_dim": 64,
+    "learning_rate": 0.001,
+    "negative_rows_per_batch": 32,
+    "optimizer": "adam",
+    "positive_rows_per_batch": 32,
+    "training_seed": 2026082822,
+    "updates": 512
+  },
+  "registration_sha256": "5edccf831d7b55cf084c93b3de33c09b8cf77a15d56d3874017b5aa23d3dd104",
+  "schema_version": 1,
+  "source_commit": "850755cba4e1b308ef222652d2dec3c1a8809b82",
+  "threshold_tuned": false
+}
