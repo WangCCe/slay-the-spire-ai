@@ -246,7 +246,12 @@ def fit_selective_classifier(
         classifier = ActionRelativeSelectiveClassifier(
             parent,
             metadata,
-            ActionRelativeSelectiveConfig(hidden_dim=int(recipe["hidden_dim"])),
+            ActionRelativeSelectiveConfig(
+                hidden_dim=int(recipe["hidden_dim"]),
+                include_item_semantics=bool(
+                    recipe.get("include_item_semantics", False)
+                ),
+            ),
             selection_threshold=0.0,
         )
     labels = corpus["labels"].long().cpu()

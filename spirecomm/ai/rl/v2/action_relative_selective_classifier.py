@@ -13,6 +13,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
+from spirecomm.ai.rl.v2 import action_space
 from spirecomm.ai.rl.v2.action_relative_advantage_residual import (
     ActionRelativeAdvantageConfig,
     ActionRelativeAdvantageResidual,
@@ -23,6 +24,7 @@ from spirecomm.ai.rl.v2.action_relative_advantage_residual import (
     expand_action_relative_examples,
 )
 from spirecomm.ai.rl.v2.latent_gated_adapter import state_dict_sha256
+from spirecomm.ai.rl.v2.state_encoder import StateEncoderV2
 
 
 ARTIFACT_SCHEMA_VERSION = 1
@@ -41,12 +43,15 @@ LABEL_BOUNDARIES = {
 @dataclass(frozen=True)
 class ActionRelativeSelectiveConfig:
     hidden_dim: int = 128
+    include_item_semantics: bool = False
 
     def validate(self) -> None:
         if not isinstance(self.hidden_dim, int) or isinstance(self.hidden_dim, bool):
             raise ValueError("selective classifier hidden_dim must be an integer")
         if self.hidden_dim <= 0:
             raise ValueError("selective classifier hidden_dim must be positive")
+        if not isinstance(self.include_item_semantics, bool):
+            raise ValueError("selective classifier item semantics flag must be boolean")
 
 
 class ActionRelativeSelectiveSelection(NamedTuple):
@@ -316,12 +321,182 @@ class ActionRelativeSelectiveClassifier(ActionRelativeAdvantageResidual):
         del self.scorer
         self.config = config
         self.selection_threshold = float(selection_threshold)
+        self.base_feature_dim = self.feature_dim
+        self.item_semantic_dim = 0
+        if config.include_item_semantics:
+            hand_offset = (
+                StateEncoderV2.PLAYER_FEATURES
+                + StateEncoderV2.MONSTER_SLOTS * StateEncoderV2.MONSTER_FEATURES
+            )
+            hand_end = (
+                hand_offset
+                + StateEncoderV2.CARD_SLOTS * StateEncoderV2.HAND_FEATURES
+            )
+            if self.metadata["continuous_dim"] < hand_end:
+                raise ValueError("selective classifier lacks local card features")
+            if self.metadata["card_slots"] < StateEncoderV2.CARD_SLOTS:
+                raise ValueError("selective classifier card slots are incomplete")
+            if self.metadata["potion_slots"] < StateEncoderV2.POTION_SLOTS:
+                raise ValueError("selective classifier potion slots are incomplete")
+            card_dim = int(self.parent.card_embedding.embedding_dim)
+            potion_dim = int(self.parent.potion_embedding.embedding_dim)
+            self.item_semantic_dim = (
+                2 * card_dim
+                + 2 * potion_dim
+                + 2 * StateEncoderV2.HAND_FEATURES
+                + 4
+                + 2 * StateEncoderV2.CARD_SLOTS
+                + 2 * action_space.TARGET_SLOTS
+            )
+            self.feature_dim += self.item_semantic_dim
         device = next(self.parent.parameters()).device
         self.classifier = nn.Sequential(
             nn.Linear(self.feature_dim, config.hidden_dim),
             nn.ReLU(),
             nn.Linear(config.hidden_dim, 3),
         ).to(device)
+
+    def item_semantic_features(
+        self,
+        continuous: torch.Tensor,
+        card_ids: torch.Tensor,
+        potion_ids: torch.Tensor,
+        relic_ids: torch.Tensor,
+        action_masks: torch.Tensor,
+        guard_actions: torch.Tensor,
+        candidate_actions: torch.Tensor,
+    ) -> torch.Tensor:
+        if not self.config.include_item_semantics:
+            raise ValueError("selective classifier item semantics are disabled")
+        (
+            continuous,
+            card_ids,
+            potion_ids,
+            relic_ids,
+            action_masks,
+            guard_actions,
+        ) = self._validated_state_inputs(
+            continuous,
+            card_ids,
+            potion_ids,
+            relic_ids,
+            action_masks,
+            guard_actions,
+        )
+        del relic_ids
+        candidate_actions = candidate_actions.reshape(-1).long()
+        if candidate_actions.shape != guard_actions.shape:
+            raise ValueError("selective classifier candidate action shape differs")
+        if bool((candidate_actions < 0).any()) or bool(
+            (candidate_actions >= SUPPORTED_ACTION_STOP).any()
+        ):
+            raise ValueError("selective classifier candidate action is unsupported")
+        rows = torch.arange(candidate_actions.numel(), device=candidate_actions.device)
+        if not bool(action_masks[rows, candidate_actions].all()):
+            raise ValueError("selective classifier candidate action must be legal")
+        if bool(candidate_actions.eq(guard_actions).any()):
+            raise ValueError("selective classifier candidate action duplicates guard")
+
+        def decompose(actions: torch.Tensor) -> tuple[torch.Tensor, ...]:
+            is_card = actions.lt(action_space.USE_POTION_OFFSET)
+            is_potion = actions.ge(action_space.USE_POTION_OFFSET) & actions.lt(
+                action_space.END_TURN_ACTION
+            )
+            slots = torch.zeros_like(actions)
+            slots[is_card] = actions[is_card] // action_space.TARGET_SLOTS
+            slots[is_potion] = (
+                actions[is_potion] - action_space.USE_POTION_OFFSET
+            ) // action_space.TARGET_SLOTS
+            targets = torch.zeros_like(actions)
+            item_actions = is_card | is_potion
+            targets[item_actions] = actions[item_actions] % action_space.TARGET_SLOTS
+            return is_card, is_potion, item_actions, slots, targets
+
+        def item_features(actions: torch.Tensor) -> tuple[torch.Tensor, ...]:
+            is_card, is_potion, is_item, slots, targets = decompose(actions)
+            card_embedding = torch.zeros(
+                (actions.numel(), self.parent.card_embedding.embedding_dim),
+                dtype=continuous.dtype,
+                device=continuous.device,
+            )
+            potion_embedding = torch.zeros(
+                (actions.numel(), self.parent.potion_embedding.embedding_dim),
+                dtype=continuous.dtype,
+                device=continuous.device,
+            )
+            if bool(is_card.any()):
+                card_rows = rows[is_card]
+                card_embedding[is_card] = self.parent.card_embedding(
+                    card_ids[card_rows, slots[is_card]]
+                )
+            if bool(is_potion.any()):
+                potion_rows = rows[is_potion]
+                potion_embedding[is_potion] = self.parent.potion_embedding(
+                    potion_ids[potion_rows, slots[is_potion]]
+                )
+            hand_offset = (
+                StateEncoderV2.PLAYER_FEATURES
+                + StateEncoderV2.MONSTER_SLOTS * StateEncoderV2.MONSTER_FEATURES
+            )
+            hand_end = (
+                hand_offset
+                + StateEncoderV2.CARD_SLOTS * StateEncoderV2.HAND_FEATURES
+            )
+            hand = continuous[:, hand_offset:hand_end].reshape(
+                -1, StateEncoderV2.CARD_SLOTS, StateEncoderV2.HAND_FEATURES
+            )
+            local = torch.zeros(
+                (actions.numel(), StateEncoderV2.HAND_FEATURES),
+                dtype=continuous.dtype,
+                device=continuous.device,
+            )
+            if bool(is_card.any()):
+                card_rows = rows[is_card]
+                local[is_card] = hand[card_rows, slots[is_card]]
+            family = torch.stack((is_card.float(), is_potion.float()), dim=1)
+            slot_one_hot = torch.zeros(
+                (actions.numel(), StateEncoderV2.CARD_SLOTS),
+                dtype=continuous.dtype,
+                device=continuous.device,
+            )
+            target_one_hot = torch.zeros(
+                (actions.numel(), action_space.TARGET_SLOTS),
+                dtype=continuous.dtype,
+                device=continuous.device,
+            )
+            if bool(is_item.any()):
+                slot_one_hot[is_item] = F.one_hot(
+                    slots[is_item], num_classes=StateEncoderV2.CARD_SLOTS
+                ).float()
+                target_one_hot[is_item] = F.one_hot(
+                    targets[is_item], num_classes=action_space.TARGET_SLOTS
+                ).float()
+            return card_embedding, potion_embedding, local, family, slot_one_hot, target_one_hot
+
+        candidate = item_features(candidate_actions)
+        guard = item_features(guard_actions)
+        semantic = torch.cat(
+            (
+                candidate[0],
+                candidate[1],
+                guard[0],
+                guard[1],
+                candidate[2],
+                guard[2],
+                candidate[3],
+                guard[3],
+                candidate[4],
+                guard[4],
+                candidate[5],
+                guard[5],
+            ),
+            dim=1,
+        )
+        if semantic.shape[1] != self.item_semantic_dim:
+            raise RuntimeError("selective classifier item semantic shape differs")
+        if not bool(torch.isfinite(semantic).all()):
+            raise ValueError("selective classifier item semantics must be finite")
+        return semantic
 
     def _candidate_features(
         self,
@@ -362,7 +537,7 @@ class ActionRelativeSelectiveClassifier(ActionRelativeAdvantageResidual):
             raise ValueError("selective classifier candidate action duplicates guard")
         latent = self._parent_latent(continuous, card_ids, potion_ids, relic_ids)
         action_dim = self.metadata["action_dim"]
-        return torch.cat(
+        base = torch.cat(
             (
                 latent,
                 F.one_hot(guard_actions, num_classes=action_dim).float(),
@@ -371,6 +546,18 @@ class ActionRelativeSelectiveClassifier(ActionRelativeAdvantageResidual):
             ),
             dim=1,
         )
+        if not self.config.include_item_semantics:
+            return base
+        semantic = self.item_semantic_features(
+            continuous,
+            card_ids,
+            potion_ids,
+            relic_ids,
+            action_masks,
+            guard_actions,
+            candidate_actions,
+        )
+        return torch.cat((base, semantic), dim=1)
 
     def score_candidate_logits(self, *args: Any, **kwargs: Any) -> torch.Tensor:
         logits = self.classifier(self._candidate_features(*args, **kwargs))
