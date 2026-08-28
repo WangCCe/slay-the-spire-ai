@@ -1,0 +1,71 @@
+{
+  "game_started": false,
+  "head_commit": "1c8b691abd7290be7aa7c3c0c76fa868dda88929",
+  "inputs": {
+    "initial_checkpoint": {
+      "path": "D:\\PycharmProjects\\slay-the-spire-ai\\reports\\combat_lightspeed_production_r16_shadow_20260819_r1\\simulator_only_production_shadow.pth",
+      "sha256": "ce2ae34f82b3f457fb35e87d429c397204c42d0f742d3ac8952d91b69119b83b",
+      "size_bytes": 2272720
+    },
+    "items_json": {
+      "path": "D:\\SteamLibrary\\steamapps\\common\\SlayTheSpire\\export\\items.json",
+      "sha256": "e23784ea8ed3092e3bfa9918240e162a9cbcb837badfb53c612eb0d83cc811dc",
+      "size_bytes": 240371
+    },
+    "native_module": {
+      "path": "D:\\PycharmProjects\\slay-the-spire-ai\\.sts_lightspeed_combat_guard_advantage_20260828_r1_build\\sts_lightspeed_combat_adapter.cp310-win_amd64.pyd",
+      "sha256": "195678b7fc6bf69815f3d2971404afb8ce72fb666700edf4203383429caf1009",
+      "size_bytes": 5209600
+    },
+    "prior_context_weights": {
+      "path": "D:\\PycharmProjects\\slay-the-spire-ai\\reports\\combat_rl_real_context_balanced_corpus_20260829_r1\\context_weights.pt",
+      "sha256": "07b3d4ca49becf7c5fd19da9cb088908b354fceda8c5983e9cf455c8d923b148",
+      "size_bytes": 428808
+    },
+    "prior_evaluation_corpus": {
+      "path": "D:\\PycharmProjects\\slay-the-spire-ai\\reports\\combat_rl_real_context_balanced_corpus_20260829_r1\\evaluation_corpus.pt",
+      "sha256": "0b74fe10cd62d4bddc2beb6bd942d7fd5e5d1b82881a73cc7dcc3a6dba1b8b74",
+      "size_bytes": 6090366
+    },
+    "prior_manifest": {
+      "path": "D:\\PycharmProjects\\slay-the-spire-ai\\reports\\combat_rl_real_context_balanced_corpus_20260829_r1\\manifest.json",
+      "sha256": "01e32c38a8e7db394b2b7e2d76d360cb664631c4fe2f31c7b4277de95e2db31d",
+      "size_bytes": 3044
+    },
+    "prior_report": {
+      "path": "D:\\PycharmProjects\\slay-the-spire-ai\\reports\\combat_rl_real_context_balanced_corpus_20260829_r1\\report.json",
+      "sha256": "85b92efa27a4896d160184b2666331a8413b08b000ee2b71faed3a9aa162cd85",
+      "size_bytes": 51600
+    },
+    "prior_train_corpus": {
+      "path": "D:\\PycharmProjects\\slay-the-spire-ai\\reports\\combat_rl_real_context_balanced_corpus_20260829_r1\\train_corpus.pt",
+      "sha256": "af2c1d40f307eacee951333462ad5688e276f6006c8a6b0b5f5189b92845bbe2",
+      "size_bytes": 18339517
+    },
+    "real_r14_replay": {
+      "path": "D:\\PycharmProjects\\slay-the-spire-ai\\reports\\combat_rl_parent_on_policy_replay_collection_20260818_r14\\rl_combat_model_ep20_steps3765.pth",
+      "sha256": "eed11099d1b8d35baa8ce0ccbf87efb6fb4a864e6fe6246837b0cac91c505014",
+      "size_bytes": 18791178
+    },
+    "real_r15_replay": {
+      "path": "D:\\PycharmProjects\\slay-the-spire-ai\\reports\\combat_rl_parent_on_policy_replay_collection_20260818_r15\\rl_combat_model_ep20_steps3920.pth",
+      "sha256": "67c3a49fbb2094d20793214c0a4a294684054eb6f4a24ac59573fab29c39a2dd",
+      "size_bytes": 19377610
+    }
+  },
+  "model_fitted": false,
+  "model_loaded": false,
+  "native_loaded": false,
+  "output_absent": true,
+  "prior_publication": {
+    "artifact_hashes_match": true,
+    "decision": "corpus_support_insufficient_close_without_fit",
+    "experiment_id": "combat-rl-real-context-balanced-corpus-20260829-r1",
+    "gates_match": true,
+    "source_commit": "1dc383ace1ff651ccffe0c95731810a048085ef7"
+  },
+  "schema_version": "combat-rl-fresh-evaluation-context-support-preflight-v1",
+  "source_commit": "1c8b691abd7290be7aa7c3c0c76fa868dda88929",
+  "staging_absent": true,
+  "verdict": "source_only_preflight_passed"
+}
