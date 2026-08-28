@@ -1,0 +1,544 @@
+{
+  "authority": {
+    "development_classifier_fit": true,
+    "gameplay": false,
+    "policy_candidate": false,
+    "production_checkpoint_loading": false,
+    "promotion": false,
+    "qualification": false
+  },
+  "bindings": {
+    "holdout_real_checkpoint_sha256": "9f4570eaa5c9fd5df770734a5cc038dd6ba87da7983838fed243f05ef19b1860",
+    "items_json_sha256": "e23784ea8ed3092e3bfa9918240e162a9cbcb837badfb53c612eb0d83cc811dc",
+    "native_module": "D:\\PycharmProjects\\slay-the-spire-ai\\.sts_lightspeed_combat_later_battle_20260819_r3_build\\sts_lightspeed_combat_adapter.cp310-win_amd64.pyd",
+    "native_module_sha256": "195678b7fc6bf69815f3d2971404afb8ce72fb666700edf4203383429caf1009",
+    "parent_checkpoint_sha256": "ce2ae34f82b3f457fb35e87d429c397204c42d0f742d3ac8952d91b69119b83b",
+    "parent_parameter_sha256": "cfe8204d06db6b43b063df98e1b713d4a40a0894a1a9330c3db87c739da88d48",
+    "real_checkpoint_sha256": "ba02c749e73caecae59469220abe30e40e826699e95ca910a8b18d7eaa1f5900"
+  },
+  "decision": {
+    "collect_fresh_gameplay": false,
+    "construct_policy_candidate": false,
+    "next_step": "Prototype a latent-gated correction head without promotion authority.",
+    "same_closed_cohort_promotion": false
+  },
+  "deltas": {
+    "holdout_parent_latent_minus_legacy_roc_auc": 0.01903418679782054,
+    "holdout_sim_pretrained_minus_latent_real_only_changed_open_share": 0.08744394779205322,
+    "holdout_sim_pretrained_minus_latent_real_only_roc_auc": 0.039731906070688106,
+    "parent_latent_minus_legacy_roc_auc": 0.04946499715424024,
+    "sim_pretrained_minus_latent_real_only_changed_open_share": 0.02788841724395752,
+    "sim_pretrained_minus_latent_real_only_roc_auc": 0.022959590210586245
+  },
+  "fit_telemetry": {
+    "combat_group_count": 113,
+    "fold_count": 5,
+    "independent_holdout_fit": {
+      "development_fitting_loss": {
+        "latent_real_only": {
+          "count": 128,
+          "maximum": 0.9174250960350037,
+          "mean": 0.5472126207314432,
+          "minimum": 0.3456290662288666
+        },
+        "latent_sim_pretrained": {
+          "count": 128,
+          "maximum": 0.6174478530883789,
+          "mean": 0.4506743939127773,
+          "minimum": 0.31374117732048035
+        },
+        "legacy_real_only": {
+          "count": 128,
+          "maximum": 0.8362597823143005,
+          "mean": 0.6140777554828674,
+          "minimum": 0.47907471656799316
+        }
+      },
+      "simulator_pretraining_loss": {
+        "count": 128,
+        "maximum": 0.7411249876022339,
+        "mean": 0.5285035527776927,
+        "minimum": 0.3579457998275757
+      }
+    },
+    "real_fitting_loss": {
+      "latent_real_only": {
+        "count": 640,
+        "maximum": 1.1059824228286743,
+        "mean": 0.552805054653436,
+        "minimum": 0.29404857754707336
+      },
+      "latent_sim_pretrained": {
+        "count": 640,
+        "maximum": 0.8499767780303955,
+        "mean": 0.4635771572589874,
+        "minimum": 0.2384588122367859
+      },
+      "legacy_real_only": {
+        "count": 640,
+        "maximum": 1.0512397289276123,
+        "mean": 0.5966846665367485,
+        "minimum": 0.4225153625011444
+      }
+    },
+    "simulator_pretraining_loss": {
+      "count": 128,
+      "maximum": 0.7411249876022339,
+      "mean": 0.5285035527776927,
+      "minimum": 0.3579457998275757
+    },
+    "simulator_validation_fit_loss": {
+      "count": 128,
+      "maximum": 0.7411249876022339,
+      "mean": 0.5285035527776927,
+      "minimum": 0.3579457998275757
+    }
+  },
+  "independent_holdout": {
+    "latent_real_only": {
+      "changed_count": 446,
+      "changed_open_share": 0.7466367483139038,
+      "changed_score": {
+        "count": 446,
+        "maximum": 0.988205075263977,
+        "mean": 0.7593108890807849,
+        "minimum": 0.008987008593976498
+      },
+      "development_calibrated_threshold": 0.6775906085968018,
+      "direct_count": 186,
+      "direct_open_share": 0.17741934955120087,
+      "direct_score": {
+        "count": 186,
+        "maximum": 0.980822741985321,
+        "mean": 0.39131302329816764,
+        "minimum": 0.003159136278554797
+      },
+      "opened_precision": 0.9098360655737705,
+      "roc_auc": 0.8470635035440475,
+      "row_count": 632,
+      "score": {
+        "count": 632,
+        "maximum": 0.988205075263977,
+        "mean": 0.6510077197207108,
+        "minimum": 0.003159136278554797
+      }
+    },
+    "latent_sim_pretrained": {
+      "changed_count": 446,
+      "changed_open_share": 0.834080696105957,
+      "changed_score": {
+        "count": 446,
+        "maximum": 0.9963464140892029,
+        "mean": 0.7296189189170207,
+        "minimum": 0.002855163998901844
+      },
+      "development_calibrated_threshold": 0.5275635123252869,
+      "direct_count": 186,
+      "direct_open_share": 0.13978494703769684,
+      "direct_score": {
+        "count": 186,
+        "maximum": 0.9905684590339661,
+        "mean": 0.28187860475830556,
+        "minimum": 0.0006875582039356232
+      },
+      "opened_precision": 0.9346733668341709,
+      "roc_auc": 0.8867954096147356,
+      "row_count": 632,
+      "score": {
+        "count": 632,
+        "maximum": 0.9963464140892029,
+        "mean": 0.5978472441804369,
+        "minimum": 0.0006875582039356232
+      }
+    },
+    "legacy_real_only": {
+      "changed_count": 446,
+      "changed_open_share": 0.6838564872741699,
+      "changed_score": {
+        "count": 446,
+        "maximum": 0.8897039294242859,
+        "mean": 0.6264914385943084,
+        "minimum": 0.003675172571092844
+      },
+      "development_calibrated_threshold": 0.5962287187576294,
+      "direct_count": 186,
+      "direct_open_share": 0.19354838132858276,
+      "direct_score": {
+        "count": 186,
+        "maximum": 0.7972103357315063,
+        "mean": 0.37830088179250576,
+        "minimum": 0.001760896178893745
+      },
+      "opened_precision": 0.8944281524926686,
+      "roc_auc": 0.8280293167462269,
+      "row_count": 632,
+      "score": {
+        "count": 632,
+        "maximum": 0.8897039294242859,
+        "mean": 0.5534480152317526,
+        "minimum": 0.001760896178893745
+      }
+    }
+  },
+  "independent_holdout_binding": {
+    "checkpoint_sha256": "9f4570eaa5c9fd5df770734a5cc038dd6ba87da7983838fed243f05ef19b1860",
+    "provenance": {
+      "changed_same_state_proposal_count": 446,
+      "direct_unchanged_proposal_count": 186,
+      "legacy_unknown_count": 0,
+      "no_proposal_takeover_count": 1002
+    },
+    "span_telemetry": {
+      "attached_no_proposal_count": 958,
+      "changed_decision_count": 446,
+      "combat_group_count": 126,
+      "decision_span_count": 632,
+      "direct_decision_count": 186,
+      "maximum_span_length": 9,
+      "mean_span_length": 2.5158227848101267,
+      "minimum_span_length": 1,
+      "settled_bootstrap_boundary_count": 29,
+      "source_row_reconciliation_count": 1634,
+      "source_transition_count": 1634,
+      "uncontrolled_prefix_count": 44
+    }
+  },
+  "real_corpus": {
+    "provenance": {
+      "changed_same_state_proposal_count": 502,
+      "direct_unchanged_proposal_count": 350,
+      "legacy_unknown_count": 0,
+      "no_proposal_takeover_count": 1064
+    },
+    "span_telemetry": {
+      "attached_no_proposal_count": 1022,
+      "changed_decision_count": 502,
+      "combat_group_count": 143,
+      "decision_span_count": 852,
+      "direct_decision_count": 350,
+      "maximum_span_length": 7,
+      "mean_span_length": 2.199530516431925,
+      "minimum_span_length": 1,
+      "settled_bootstrap_boundary_count": 53,
+      "source_row_reconciliation_count": 1916,
+      "source_transition_count": 1916,
+      "uncontrolled_prefix_count": 42
+    }
+  },
+  "real_cross_fitted": {
+    "latent_real_only": {
+      "changed_count": 502,
+      "changed_open_share": 0.7310757040977478,
+      "changed_score": {
+        "count": 502,
+        "maximum": 0.9701889753341675,
+        "mean": 0.66276238678372,
+        "minimum": 0.03509533777832985
+      },
+      "direct_count": 350,
+      "direct_open_share": 0.16285714507102966,
+      "direct_score": {
+        "count": 350,
+        "maximum": 0.941620409488678,
+        "mean": 0.36441879465909943,
+        "minimum": 0.006014854647219181
+      },
+      "opened_precision": 0.8655660377358491,
+      "roc_auc": 0.8467558338076266,
+      "row_count": 852,
+      "score": {
+        "count": 852,
+        "maximum": 0.9701889753341675,
+        "mean": 0.5402033994085824,
+        "minimum": 0.006014854647219181
+      }
+    },
+    "latent_sim_pretrained": {
+      "changed_count": 502,
+      "changed_open_share": 0.7589641213417053,
+      "changed_score": {
+        "count": 502,
+        "maximum": 0.9880383014678955,
+        "mean": 0.674980917314728,
+        "minimum": 0.019335923716425896
+      },
+      "direct_count": 350,
+      "direct_open_share": 0.14000000059604645,
+      "direct_score": {
+        "count": 350,
+        "maximum": 0.9690200686454773,
+        "mean": 0.2941120288037096,
+        "minimum": 0.0008905372233130038
+      },
+      "opened_precision": 0.8860465116279069,
+      "roc_auc": 0.8697154240182129,
+      "row_count": 852,
+      "score": {
+        "count": 852,
+        "maximum": 0.9880383014678955,
+        "mean": 0.5185206931611406,
+        "minimum": 0.0008905372233130038
+      }
+    },
+    "legacy_real_only": {
+      "changed_count": 502,
+      "changed_open_share": 0.6454183459281921,
+      "changed_score": {
+        "count": 502,
+        "maximum": 0.9256578087806702,
+        "mean": 0.5979819192116954,
+        "minimum": 0.06105395406484604
+      },
+      "direct_count": 350,
+      "direct_open_share": 0.14000000059604645,
+      "direct_score": {
+        "count": 350,
+        "maximum": 0.8434438109397888,
+        "mean": 0.3916726121492684,
+        "minimum": 0.009857499971985817
+      },
+      "opened_precision": 0.868632707774799,
+      "roc_auc": 0.7972908366533864,
+      "row_count": 852,
+      "score": {
+        "count": 852,
+        "maximum": 0.9256578087806702,
+        "mean": 0.5132304433057688,
+        "minimum": 0.009857499971985817
+      }
+    }
+  },
+  "recipe": {
+    "batch_size": 64,
+    "battle_indices": [
+      0,
+      3,
+      6,
+      9
+    ],
+    "direct_open_calibration_cap": 0.1,
+    "fold_count": 5,
+    "learning_rate": 0.001,
+    "real_updates_per_fold": 128,
+    "simulator_seeds": [
+      184000,
+      184255
+    ],
+    "simulator_updates": 128
+  },
+  "schema_version": "combat-rl-lightspeed-guard-transfer-poc-v1",
+  "simulator_corpus": {
+    "accepted_transition_count": 12417,
+    "action_family_counts": {
+      "end_turn": 2665,
+      "play_card": 9056,
+      "use_potion": 696
+    },
+    "behavior": {
+      "epsilon": 0.1,
+      "exploration_branch_count": 1251,
+      "forced_end_turn_branch_count": 22,
+      "forced_end_turn_count": 22,
+      "guard_proxy_eligible_count": 5182,
+      "guard_proxy_no_supported_replacement_count": 0,
+      "guard_proxy_replacement_count": 5182,
+      "mode": "frozen-parent-guarded-epsilon-v1",
+      "parent_anchor_label_mode": "frozen-parent-greedy-v1",
+      "parent_branch_count": 11144,
+      "parent_parameter_sha256": "cfe8204d06db6b43b063df98e1b713d4a40a0894a1a9330c3db87c739da88d48",
+      "raw_policy_end_turn_count": 7633,
+      "uniform_branch_count": 0
+    },
+    "card_select_settlement": {
+      "action_count": 330,
+      "task_counts": {
+        "ARMAMENTS": 13,
+        "CODEX": 5,
+        "DISCOVERY": 101,
+        "DUAL_WIELD": 4,
+        "EXHAUST_MANY": 27,
+        "EXHAUST_ONE": 2,
+        "GAMBLE": 27,
+        "HEADBUTT": 116,
+        "LIQUID_MEMORIES_POTION": 15,
+        "SECRET_TECHNIQUE": 2,
+        "SECRET_WEAPON": 1,
+        "WARCRY": 17
+      },
+      "transition_count": 330
+    },
+    "decision_bound_seed_count": 0,
+    "encounter_identity": {
+      "assignments": {},
+      "bucket_count": 0,
+      "encoding": null,
+      "hash_algorithm": null,
+      "occupied_bucket_count": 0,
+      "vocabulary_sha256": null
+    },
+    "encounter_state_counts": {
+      "BLUE_SLAVER": 306,
+      "BOOK_OF_STABBING": 132,
+      "CENTURION_AND_HEALER": 511,
+      "CHOSEN": 374,
+      "CHOSEN_AND_BYRDS": 99,
+      "CULTIST": 709,
+      "CULTIST_AND_CHOSEN": 102,
+      "EXORDIUM_THUGS": 272,
+      "EXORDIUM_WILDLIFE": 225,
+      "GREMLIN_GANG": 247,
+      "GREMLIN_LEADER": 171,
+      "GREMLIN_NOB": 307,
+      "HEXAGHOST": 629,
+      "JAW_WORM": 594,
+      "LAGAVULIN": 523,
+      "LAGAVULIN_EVENT": 94,
+      "LARGE_SLIME": 346,
+      "LOOTER": 227,
+      "LOTS_OF_SLIMES": 170,
+      "MASKED_BANDITS_EVENT": 78,
+      "MUSHROOMS_EVENT": 61,
+      "RED_SLAVER": 88,
+      "SENTRY_AND_SPHERE": 116,
+      "SHELLED_PARASITE_AND_FUNGI": 98,
+      "SHELL_PARASITE": 361,
+      "SLAVERS": 31,
+      "SLIME_BOSS": 991,
+      "SMALL_SLIMES": 630,
+      "SNAKE_PLANT": 102,
+      "SNECKO": 117,
+      "SPHERIC_GUARDIAN": 390,
+      "THE_GUARDIAN": 889,
+      "THREE_BYRDS": 245,
+      "THREE_CULTIST": 195,
+      "THREE_LOUSE": 156,
+      "THREE_SENTRIES": 866,
+      "TWO_FUNGI_BEASTS": 170,
+      "TWO_LOUSE": 561,
+      "TWO_THIEVES": 234
+    },
+    "initialization_failure_counts": {
+      "baseline_loss_before_requested_battle": 186,
+      "baseline_run_terminated_before_battle": 1
+    },
+    "outcome_counts": {
+      "player_loss": 75,
+      "player_victory": 762
+    },
+    "profile_count_initialized": 837,
+    "profile_count_registered": 1024,
+    "progression_coverage": {
+      "act_counts": {
+        "1": 651,
+        "2": 186
+      },
+      "battle_index_counts": {
+        "0": 256,
+        "3": 243,
+        "6": 201,
+        "9": 137
+      },
+      "encounter_counts": {
+        "BLUE_SLAVER": 32,
+        "BOOK_OF_STABBING": 8,
+        "CENTURION_AND_HEALER": 18,
+        "CHOSEN": 24,
+        "CHOSEN_AND_BYRDS": 5,
+        "CULTIST": 74,
+        "CULTIST_AND_CHOSEN": 5,
+        "EXORDIUM_THUGS": 20,
+        "EXORDIUM_WILDLIFE": 21,
+        "GREMLIN_GANG": 19,
+        "GREMLIN_LEADER": 7,
+        "GREMLIN_NOB": 22,
+        "HEXAGHOST": 20,
+        "JAW_WORM": 71,
+        "LAGAVULIN": 26,
+        "LAGAVULIN_EVENT": 4,
+        "LARGE_SLIME": 20,
+        "LOOTER": 32,
+        "LOTS_OF_SLIMES": 12,
+        "MASKED_BANDITS_EVENT": 4,
+        "MUSHROOMS_EVENT": 4,
+        "RED_SLAVER": 11,
+        "SENTRY_AND_SPHERE": 5,
+        "SHELLED_PARASITE_AND_FUNGI": 6,
+        "SHELL_PARASITE": 20,
+        "SLAVERS": 2,
+        "SLIME_BOSS": 28,
+        "SMALL_SLIMES": 65,
+        "SNAKE_PLANT": 7,
+        "SNECKO": 8,
+        "SPHERIC_GUARDIAN": 27,
+        "THE_GUARDIAN": 26,
+        "THREE_BYRDS": 11,
+        "THREE_CULTIST": 9,
+        "THREE_LOUSE": 15,
+        "THREE_SENTRIES": 35,
+        "TWO_FUNGI_BEASTS": 18,
+        "TWO_LOUSE": 76,
+        "TWO_THIEVES": 20
+      }
+    },
+    "reward": {
+      "count": 12417,
+      "maximum": 60.25,
+      "mean": 1.7497082445179823,
+      "minimum": -22.55,
+      "sum": 21726.127272179787
+    },
+    "seed_count": 256,
+    "target_policy": {
+      "action_count": 0,
+      "action_counts": {},
+      "action_identity_sha256": null,
+      "bootstrap_policy_mode": "frozen-parent-raw-greedy-v1",
+      "guard_replacement_count": 0
+    },
+    "trajectory_eligibility": {
+      "complete_profile_count": 837,
+      "complete_trajectories_only": true,
+      "excluded_incomplete_profile_count": 0,
+      "excluded_incomplete_transition_count": 0,
+      "incomplete_profile_count": 0,
+      "incomplete_profile_reason_counts": {},
+      "retained_incomplete_profile_count": 0,
+      "source_transition_identity_sha256": "79811549869b0fd296a88f2f1406668470c17032bfe7b646fd911786ceeb4305"
+    },
+    "transition_battle_index_counts": {
+      "0": 2286,
+      "3": 3414,
+      "6": 4162,
+      "9": 2555
+    },
+    "unsupported_reason_counts": {}
+  },
+  "simulator_validation": {
+    "changed_count": 974,
+    "changed_open_share": 0.7084189057350159,
+    "changed_score": {
+      "count": 974,
+      "maximum": 0.9865372180938721,
+      "mean": 0.6994856698094299,
+      "minimum": 0.02793453074991703
+    },
+    "direct_count": 1459,
+    "direct_open_share": 0.0891021266579628,
+    "direct_score": {
+      "count": 1459,
+      "maximum": 0.9744592308998108,
+      "mean": 0.2894118675405786,
+      "minimum": 0.0027114308904856443
+    },
+    "opened_precision": 0.8414634146341463,
+    "roc_auc": 0.9000855695653827,
+    "row_count": 2433,
+    "score": {
+      "count": 2433,
+      "maximum": 0.9865372180938721,
+      "mean": 0.4535762257032836,
+      "minimum": 0.0027114308904856443
+    }
+  },
+  "verdict": "lightspeed_guard_pretraining_confirmed_on_independent_replay"
+}
