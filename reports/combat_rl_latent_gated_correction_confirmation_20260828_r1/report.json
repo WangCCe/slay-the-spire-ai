@@ -1,0 +1,153 @@
+{
+  "schema_version": 1,
+  "collection_id": "combat-rl-latent-gated-correction-confirmation-20260828-r1",
+  "registration_commit": "f5da885db7f7c0055345fd6d154dcf083e4ac395",
+  "registration_sha256": "fb1f934e467316795ccf5e4ff8fbcc75246bb54621060191d38344c8f8a3a7b4",
+  "verdict": "fresh_confirmation_passed_ready_for_candidate_mechanism_change",
+  "timing": {
+    "started_at": "2026-08-28T14:39:30+08:00",
+    "completed_at": "2026-08-28T15:02:54+08:00",
+    "elapsed_seconds": 1404
+  },
+  "collection_integrity": {
+    "game_count": 10,
+    "seed_count": 10,
+    "seed_order_exact": true,
+    "all_runs_record_chose_seed": true,
+    "run_set_sha256": "34266fdaafae7276b9c988d1a93f0d35be52f254e420ac6ab9cbb404ad10d8b5",
+    "max_games_exit_count": 1,
+    "runtime_traceback_count": 0,
+    "rl_action_failure_count": 0,
+    "communication_mod_error_suffix_traceback_count": 0,
+    "communication_mod_error_suffix_rl_failure_count": 0,
+    "restored_config_sha256": "0991895790bc73d3d21a05731bf402228cf0c510a4217aa841ced026016760e7",
+    "project_python_or_game_processes_after_collection": 0
+  },
+  "seeds": [
+    "474940ED2887A",
+    "202AE9638CD88",
+    "67C64DA7ACB38",
+    "897736D46DD1F",
+    "76559AC474648",
+    "EE108B2832308",
+    "74363348F75EC",
+    "1604D8F9061EA",
+    "4E01405E13E70",
+    "CB8E315EBE103"
+  ],
+  "seed_played": [
+    -4242265375786131686,
+    6764778383715866963,
+    2538008400994104597,
+    -8970912959884173007,
+    5801302174437594257,
+    -6676679630922826040,
+    5602751604511814511,
+    3958860531991002725,
+    -3578086005191817471,
+    4742377308042842621
+  ],
+  "outcomes": {
+    "victories": 0,
+    "mean_floor": 26.2,
+    "median_floor": 29.0,
+    "floor_reached": [33, 16, 25, 33, 33, 33, 24, 16, 33, 16],
+    "killed_by": [
+      "Collector",
+      "Slime Boss",
+      "3 Cultists",
+      "Champ",
+      "Automaton",
+      "Automaton",
+      "Cultist and Chosen",
+      "Hexaghost",
+      "Collector",
+      "Hexaghost"
+    ]
+  },
+  "checkpoint": {
+    "path": "reports/combat_rl_latent_gated_correction_confirmation_20260828_r1/rl_combat_model_ep10_steps2159.pth",
+    "sha256": "0ba37f0aa793fb4b28cce9e892c9cbf2bfd25aa3826a23d5b3740af162618cc0",
+    "size_bytes": 12735866,
+    "episode": 10,
+    "transition_count": 2159,
+    "source_transition_count": 2159,
+    "total_steps": 2159,
+    "replay_schema_version": 3,
+    "epsilon": 0.0,
+    "learning_starts": 100000,
+    "optimizer_state_count": 0,
+    "online_parameter_sha256": "cfe8204d06db6b43b063df98e1b713d4a40a0894a1a9330c3db87c739da88d48",
+    "target_parameter_sha256": "cfe8204d06db6b43b063df98e1b713d4a40a0894a1a9330c3db87c739da88d48",
+    "online_target_equal_production_r16": true
+  },
+  "trace_binding": {
+    "decision_trace_row_count": 3974,
+    "sim_divergence_row_count": 8,
+    "candidate_source_transition_count": 2159,
+    "direct_eval_parent_agreement": 1.0
+  },
+  "callability_provenance": {
+    "direct_unchanged_proposal_count": 454,
+    "changed_same_state_proposal_count": 544,
+    "no_proposal_takeover_count": 1161,
+    "legacy_unknown_count": 0,
+    "class_reconciliation_count": 2159
+  },
+  "candidate_smdp": {
+    "combat_group_count": 147,
+    "decision_span_count": 998,
+    "direct_decision_count": 454,
+    "changed_decision_count": 544,
+    "attached_no_proposal_count": 1114,
+    "uncontrolled_prefix_count": 47,
+    "settled_bootstrap_boundary_count": 61,
+    "source_row_reconciliation_count": 2159,
+    "minimum_span_length": 1,
+    "maximum_span_length": 7,
+    "mean_span_length": 2.1162324649298596
+  },
+  "fixed_confirmation": {
+    "report": "reports/combat_rl_latent_gated_correction_confirmation_20260828_r1/fixed_confirmation/report.json",
+    "report_sha256": "cf77aaded48ca24e7ca1f8d20c79409e43bd39b56c1efca3ebbceca9724a163a",
+    "verdict": "latent_gated_correction_supported_on_independent_replay",
+    "holdout_row_count": 998,
+    "gate_open_share": 0.4799599051475525,
+    "parent_agreement": 0.4549098312854767,
+    "candidate_agreement": 0.594188392162323,
+    "action_disagreement_share": 0.4498997926712036,
+    "direct": {
+      "row_count": 454,
+      "gate_open_share": 0.12555065751075745,
+      "parent_agreement": 1.0,
+      "correction_agreement": 0.38325992226600647,
+      "candidate_agreement": 0.9405286312103271
+    },
+    "changed": {
+      "row_count": 544,
+      "gate_open_share": 0.7757353186607361,
+      "parent_agreement": 0.0,
+      "correction_agreement": 0.39889705181121826,
+      "candidate_agreement": 0.30514705181121826
+    },
+    "positive_energy_state_count": 914,
+    "parent_positive_energy_end_turn_count": 492,
+    "candidate_positive_energy_end_turn_count": 77,
+    "positive_energy_end_turn_count_delta": -415,
+    "all_registered_conditions_passed": true
+  },
+  "decision": {
+    "fresh_confirmation_passed": true,
+    "candidate_mechanism_change_ready": true,
+    "construct_policy_candidate_under_this_registration": false,
+    "gameplay_evaluation_authorized": false,
+    "qualification_authorized": false,
+    "promotion_authorized": false,
+    "next_step": "Create a focused mechanism change for a serializable frozen-parent latent gate and legal-action correction head. Require exact parent immutability, round-trip parity, and regression coverage before any candidate packaging or live gate."
+  },
+  "limitations": [
+    "The ten zero-victory outcomes are descriptive and are not a policy-quality gate.",
+    "The confirmation reconstructs the fixed development model deterministically and evaluates only on the fresh replay; it does not load a candidate into CommunicationMod.",
+    "No policy artifact was saved, qualified, promoted, or used for gameplay."
+  ]
+}
