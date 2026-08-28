@@ -24,17 +24,17 @@
 - [x] 3.1 Create and commit the immutable execution registration with exact
   source, native, checkpoint, replay, existing-corpus, seed, gate, and output
   bindings.
-- [ ] 3.2 Run strict OpenSpec validation, focused pytest, and a source-only
+- [x] 3.2 Run strict OpenSpec validation, focused pytest, and a source-only
   preflight that performs no native loading or output publication.
-- [ ] 3.3 Execute the registered native collection once and verify floor,
+- [x] 3.3 Execute the registered native collection once and verify floor,
   context-mass, ESS, SMD, legality, seed-isolation, and artifact-identity
   evidence without starting fitting or gameplay.
 
 ## 4. Closeout
 
-- [ ] 4.1 Record the pass/fail decision and downstream authority boundary in
+- [x] 4.1 Record the pass/fail decision and downstream authority boundary in
   the report and tasks without changing seeds, gates, profiles, or bounds.
-- [ ] 4.2 Run focused regression tests and exactly one timed commit gate for the
+- [x] 4.2 Run focused regression tests and exactly one timed commit gate for the
   completed source boundary; retain the timing report for the queued gate-speed
   work.
 - [ ] 4.3 Commit and push the cohesive change, sync the capability spec, and
