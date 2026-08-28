@@ -11,5 +11,5 @@
 ## 3. Fresh Policy Decision
 
 - [x] 3.1 Add and test a source-bound matched LightSTS evaluator for guarded control versus the constrained action-relative scorer.
-- [ ] 3.2 If every offline integrity condition passes, commit and push one immutable fresh evaluation registration and run it exactly once on the registered seed-disjoint cohort.
+- [x] 3.2 If every offline integrity condition passes, commit and push one immutable fresh evaluation registration and run it exactly once on the registered seed-disjoint cohort. All fixed conditions passed; the recipe is retained only for a separately registered real-game validation.
 - [ ] 3.3 Apply the fixed decision, run focused and adjacent tests, validate and sync OpenSpec, archive the change, and commit only scoped code and bounded reports.
