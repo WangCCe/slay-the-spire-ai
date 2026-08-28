@@ -11,15 +11,15 @@
 - [x] 2.3 Commit source and one registration binding r16, corpus bytes, baseline evidence, audit evidence, recipe, split, and output path
 - [x] 2.4 Execute r1 once and record its pre-holdout tensor/metadata alignment failure with no artifact or quality decision
 - [x] 2.5 Add a regression and minimal tensor-aligned supported-row repair, then commit one replacement source snapshot
-- [ ] 2.6 Register and execute one r2 replacement with unchanged recipe, inputs, seeds, alpha, threshold, and gates
+- [x] 2.6 Register and execute one r2 replacement with unchanged recipe, inputs, seeds, alpha, threshold, and gates
 
 ## 3. Conditional Fresh LightSTS Gate
 
-- [ ] 3.1 If offline conditions pass, implement and test one source-bound matched LightSTS runner on a new fixed seed interval
-- [ ] 3.2 If offline conditions pass, commit and execute one evaluation registration; otherwise record that native loading was not authorized
-- [ ] 3.3 Publish the decision without retry, retraining, seed replacement, alpha change, family change, threshold change, or sweep
+- [x] 3.1 Do not implement a matched LightSTS runner because the offline conditions failed
+- [x] 3.2 Record that native loading and fresh LightSTS execution were not authorized after the offline failure
+- [x] 3.3 Publish the failure decision without retry, retraining, seed replacement, alpha change, family change, threshold change, or sweep
 
 ## 4. Verification And Closure
 
-- [ ] 4.1 Run focused tests, strict OpenSpec validation, and exactly one timed commit gate for the complete source boundary
-- [ ] 4.2 Sync and archive the change, commit the coherent evidence boundary, and push master
+- [x] 4.1 Run focused tests, strict OpenSpec validation, and exactly one timed commit gate for the complete source boundary
+- [x] 4.2 Sync and archive the change, commit the coherent evidence boundary, and push master
