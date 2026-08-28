@@ -1,0 +1,84 @@
+{
+  "attempt_receipt": "D:\\PycharmProjects\\slay-the-spire-ai\\reports\\combat_rl_abstaining_residual_successor_20260828_r1_attempts\\92f8e829498a8d2f88ed80a119ea0c2711c81903\\started.json",
+  "authority": {
+    "cpu_development_fit": true,
+    "fresh_holdout": false,
+    "gameplay_evaluation": false,
+    "production_loading": false,
+    "promotion": false,
+    "qualification": false,
+    "same_corpus_retry_or_tuning": false
+  },
+  "binding_id": "combat-rl-abstaining-residual-successor-20260828-r1-runner-binding",
+  "collection_report": {
+    "path": "D:\\PycharmProjects\\slay-the-spire-ai\\reports\\combat_rl_abstaining_residual_collection_20260828_r1\\report.json",
+    "sha256": "beb0304b4c6d46a6b99f3e29663484fad8fbf5251e212d6d52d26caee4e37484"
+  },
+  "command_template": [
+    "D:\\anaconda\\envs\\stsai\\python.exe",
+    "-I",
+    "D:\\PycharmProjects\\slay-the-spire-ai\\analysis_scripts\\combat_rl_abstaining_residual_successor.py",
+    "--registration",
+    "D:\\PycharmProjects\\slay-the-spire-ai\\reports\\combat_rl_abstaining_residual_collection_20260828_r1_registration.json",
+    "--registration-sha256",
+    "404061b8838dc90dd9215ecce1ccd9a3198acfb71d75674a784700f7d9744078",
+    "--collection-report",
+    "D:\\PycharmProjects\\slay-the-spire-ai\\reports\\combat_rl_abstaining_residual_collection_20260828_r1\\report.json",
+    "--collection-report-sha256",
+    "beb0304b4c6d46a6b99f3e29663484fad8fbf5251e212d6d52d26caee4e37484",
+    "--training-checkpoint",
+    "D:\\PycharmProjects\\slay-the-spire-ai\\reports\\combat_rl_abstaining_residual_collection_20260828_r1\\rl_combat_model_ep10_steps1916.pth",
+    "--expected-checkpoint-sha256",
+    "ba02c749e73caecae59469220abe30e40e826699e95ca910a8b18d7eaa1f5900",
+    "--expected-transition-count",
+    "1916",
+    "--runner-binding-supplement",
+    "D:\\PycharmProjects\\slay-the-spire-ai\\reports\\combat_rl_abstaining_residual_successor_20260828_r1_runner_binding.json",
+    "--runner-binding-supplement-sha256",
+    "<self-sha256>",
+    "--output-dir",
+    "D:\\PycharmProjects\\slay-the-spire-ai\\reports\\combat_rl_abstaining_residual_successor_20260828_r1",
+    "--attempt-receipt",
+    "D:\\PycharmProjects\\slay-the-spire-ai\\reports\\combat_rl_abstaining_residual_successor_20260828_r1_attempts\\92f8e829498a8d2f88ed80a119ea0c2711c81903\\started.json",
+    "--experiment-id",
+    "combat-rl-abstaining-residual-successor-20260828-r1",
+    "--source-commit",
+    "92f8e829498a8d2f88ed80a119ea0c2711c81903"
+  ],
+  "experiment_id": "combat-rl-abstaining-residual-successor-20260828-r1",
+  "failure_policy": "started_attempt_is_not_retried_or_tuned",
+  "fixed_recipe_sha256": "aa8277b7afaddb920d61fb8f586a196d93cdf212b60eb4b8521a7a99324d410d",
+  "fixed_technical_gates_sha256": "7744ad08a9afcc31a571396c0b2b07f82a0b938df801b3f9203f6a7a35bff7bb",
+  "interpreter": "D:\\anaconda\\envs\\stsai\\python.exe",
+  "isolated_mode": "-I",
+  "output_dir": "D:\\PycharmProjects\\slay-the-spire-ai\\reports\\combat_rl_abstaining_residual_successor_20260828_r1",
+  "registration": {
+    "path": "D:\\PycharmProjects\\slay-the-spire-ai\\reports\\combat_rl_abstaining_residual_collection_20260828_r1_registration.json",
+    "sha256": "404061b8838dc90dd9215ecce1ccd9a3198acfb71d75674a784700f7d9744078"
+  },
+  "runner": {
+    "path": "D:\\PycharmProjects\\slay-the-spire-ai\\analysis_scripts\\combat_rl_abstaining_residual_successor.py",
+    "sha256": "74c92f895d62bc27344c7b59e17b347aae830d7b9d7bf170c14d8d1e49c7cf6d"
+  },
+  "schema_version": 1,
+  "source_commit": "92f8e829498a8d2f88ed80a119ea0c2711c81903",
+  "source_files": {
+    "analysis_scripts/combat_rl_abstaining_residual_head.py": "ba81fa236d7bba316525556a5e2c19d8dab04bf9db0e39cf4a744483bc45a2d9",
+    "analysis_scripts/combat_rl_abstaining_residual_successor.py": "74c92f895d62bc27344c7b59e17b347aae830d7b9d7bf170c14d8d1e49c7cf6d",
+    "analysis_scripts/combat_rl_candidate_callability_successor.py": "f82eed7ddeed90975312f8224d683ca4127eca32d595cd59aed05edc4982acf0",
+    "analysis_scripts/combat_rl_dropout_update_ablation.py": "1a211bcb3f8e3bd3d8b972704c424eb0a42ef8d1a38ce4b4ef5e314dbdf6f2ef",
+    "analysis_scripts/combat_rl_inventory_embedding_successor.py": "1c1c57e2591c6d00e4b32e560eb55a33b8218c47339e8796666fa50c17cdf9b0",
+    "analysis_scripts/combat_rl_provenance_aware_successor.py": "80486672a15222f552e486b319b3ef63a1160afca19683756f3ed6840bce6d89",
+    "spirecomm/ai/rl/v2/action_space.py": "1827a6ee4a846a68ea959703b456f0f4efd0436f39616ac8ec41ec34d6cd1964",
+    "spirecomm/ai/rl/v2/network.py": "6358a8ca1b068c65cb13a6100a79bdc9c116cb2c79eb24a74b658753cf24e280",
+    "spirecomm/ai/rl/v2/replay_buffer.py": "6b1aca7ce7163b39ea754410be5c960699e12ccbdd6c8648777225d1aea0b615",
+    "spirecomm/ai/rl/v2/state_encoder.py": "34b356753c379dfc834bf164b76375f19a188321fe7928f5fb38b620e4107ef4",
+    "spirecomm/ai/rl/v2/trainer.py": "fc6a0aeecc312bce3dc513e17be4be035ec223305c036f30bdc12a2a7890feae"
+  },
+  "staging_dir": "D:\\PycharmProjects\\slay-the-spire-ai\\reports\\.combat_rl_abstaining_residual_successor_20260828_r1.staging",
+  "training_checkpoint": {
+    "path": "D:\\PycharmProjects\\slay-the-spire-ai\\reports\\combat_rl_abstaining_residual_collection_20260828_r1\\rl_combat_model_ep10_steps1916.pth",
+    "sha256": "ba02c749e73caecae59469220abe30e40e826699e95ca910a8b18d7eaa1f5900",
+    "transition_count": 1916
+  }
+}

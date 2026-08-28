@@ -15,8 +15,8 @@
 
 - [x] 3.1 Run focused pytest with a scoped system-temp basetemp
 - [x] 3.2 Run strict OpenSpec validation and the optimized commit gate once at the completed runner boundary
-- [ ] 3.3 Commit and push the runner without raw replay or production-compatible weights
-- [ ] 3.4 Publish a runner-binding supplement that preserves the registered recipe and gates exactly
+- [x] 3.3 Commit and push the runner without raw replay or production-compatible weights
+- [x] 3.4 Publish a runner-binding supplement that preserves the registered recipe and gates exactly
 
 ## 4. One-Shot Development Result
 
