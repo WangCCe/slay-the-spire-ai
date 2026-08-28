@@ -1,13 +1,13 @@
 ## 1. Paired Advantage Corpus
 
-- [ ] 1.1 Add regressions for canonical duplicate-slot actions, cloned branch return accumulation, unsupported-branch exclusion, and deterministic best-action tie-breaking.
-- [ ] 1.2 Implement bounded guard-intervention state sampling from the frozen r16 guarded LightSTS policy.
-- [ ] 1.3 Implement source-bound paired branch rollouts with the fixed eight-decision horizon, 0.99 discount, and whole-state exclusion semantics.
-- [ ] 1.4 Publish corpus coverage, advantage distribution, action diversity, encounter coverage, and provenance for train and seed-disjoint evaluation partitions.
+- [x] 1.1 Add regressions for canonical duplicate-slot actions, cloned branch return accumulation, unsupported-branch exclusion, and deterministic best-action tie-breaking.
+- [x] 1.2 Implement bounded guard-intervention state sampling from the frozen r16 guarded LightSTS policy.
+- [x] 1.3 Implement source-bound paired branch rollouts with the fixed eight-decision horizon, 0.99 discount, and whole-state exclusion semantics.
+- [x] 1.4 Publish corpus coverage, advantage distribution, action diversity, encounter coverage, and provenance for train and seed-disjoint evaluation partitions.
 
 ## 2. Sufficiency Decision
 
-- [ ] 2.1 Encode and test the fixed positive margin and corpus sufficiency gate.
+- [x] 2.1 Encode and test the fixed positive margin and corpus sufficiency gate.
 - [ ] 2.2 Stop with a no-go report if the corpus lacks both classes, 100 positive training states, or three positive target identities.
 
 ## 3. Post-Guard Residual
