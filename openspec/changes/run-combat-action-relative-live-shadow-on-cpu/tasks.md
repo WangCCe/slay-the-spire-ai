@@ -1,18 +1,23 @@
 ## 1. Device Evidence And Contract
 
-- [ ] 1.1 Publish the fixed dual-device POC with checkpoint/artifact/corpus identities, 32 warmups, 256 measurements, latency distributions, cross-device parity, and diagnostic-only authority.
-- [ ] 1.2 Add schema-v2 CPU registration tests plus schema-v1 compatibility and fail-closed unsupported-device regressions.
+- [x] 1.1 Publish the fixed dual-device POC with checkpoint/artifact/corpus identities, 32 warmups, 256 measurements, latency distributions, cross-device parity, and diagnostic-only authority.
+- [x] 1.2 Add schema-v2 CPU registration tests plus schema-v1 compatibility and fail-closed unsupported-device regressions.
 
 ## 2. CPU Shadow Isolation
 
-- [ ] 2.1 Add RED initialization regressions proving the CPU mirror is distinct, state-identical, CPU-resident, and leaves the production parent device, storage, state, and action path unchanged.
-- [ ] 2.2 Implement schema-v2 CPU mirror initialization and preserve schema-v1 inherited-device behavior.
-- [ ] 2.3 Include registration schema and inference device in readiness output without changing trace schema or readiness thresholds.
+- [x] 2.1 Add RED initialization regressions proving the CPU mirror is distinct, state-identical, CPU-resident, and leaves the production parent device, storage, state, and action path unchanged.
+- [x] 2.2 Implement schema-v2 CPU mirror initialization and preserve schema-v1 inherited-device behavior.
+- [x] 2.3 Include registration schema and inference device in readiness output without changing trace schema or readiness thresholds.
 
 ## 3. Source Validation
 
-- [ ] 3.1 Run focused live-shadow, summary, agent, and batch-env tests, Python compilation, strict OpenSpec validation, and diff checks.
-- [ ] 3.2 Run one repository commit gate with a new `--timing-report`; use that single run for correctness and queued slow-gate attribution, then commit and push source.
+- [x] 3.1 Run focused live-shadow, summary, agent, and batch-env tests, Python compilation, strict OpenSpec validation, and diff checks.
+- [x] 3.2 Run one repository commit gate with a new `--timing-report`; use that single run for correctness and queued slow-gate attribution, then commit and push source.
+
+The timed gate passed `4304` tests with `26` skipped and `21` deselected in
+`158.19s`. Attributed testcase time was `142.394s`; the four slowest files were
+`8.886s`, `8.437s`, `6.311s`, and `5.633s`, so no further exclusion was made
+while the complete commit profile remains below its 300-second target.
 
 ## 4. Fresh CPU Live Shadow
 

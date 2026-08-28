@@ -1,0 +1,51 @@
+{
+  "authority": {
+    "candidate_action_authority": false,
+    "communication_mod": false,
+    "diagnostic_only": true,
+    "gameplay": false,
+    "promotion": false,
+    "qualification": false,
+    "training": false
+  },
+  "comparison": {
+    "action_mismatch_count": 0,
+    "cpu_latency": {
+      "count": 256,
+      "maximum_ms": 15.867,
+      "mean_ms": 2.427334765625,
+      "p50_ms": 2.23245,
+      "p95_ms": 3.432325
+    },
+    "cuda_latency": {
+      "count": 256,
+      "maximum_ms": 19.399,
+      "mean_ms": 13.111970703125,
+      "p50_ms": 12.95695,
+      "p95_ms": 16.31305
+    },
+    "eligible_rows": 288,
+    "gate_mismatch_count": 0,
+    "maximum_cross_device_prediction_delta": 2.1457672119140625e-06,
+    "prediction_failures_at_1e_5": 0,
+    "scheduled_rows": 288,
+    "telemetry_mismatch_count": 0
+  },
+  "inputs": {
+    "evaluation_corpus_sha256": "219392d1e1d22d98bf1156c0d432275c73645658b331b4f0e85abc47b37c15c0",
+    "items_json_sha256": "e23784ea8ed3092e3bfa9918240e162a9cbcb837badfb53c612eb0d83cc811dc",
+    "parent_state_dict_sha256": "cfe8204d06db6b43b063df98e1b713d4a40a0894a1a9330c3db87c739da88d48",
+    "production_parent_checkpoint_sha256": "75120e9e8f76393d4d82c16de5c3ea6384d2f7ef26bd530a6b552ed9791e38f5",
+    "residual_artifact_sha256": "21629b3716786c0959d5b7a0e6484314ee1cce9b57fdaa535fa48d5b73100346"
+  },
+  "method": {
+    "diagnostic_repo_commit": "496bce0b2833fa68c60a6e2a249c8abae997b512",
+    "measurement_calls": 256,
+    "row_selection_seed": 2026082825,
+    "tensor_construction_inside_timer": true,
+    "warmup_calls": 32
+  },
+  "registration_sha256": "a158868b984b36f8ce3115c62381c5b87a020a30aee72f32fb3afcc1b756f2f5",
+  "schema_version": 1,
+  "status": "supports_preregistered_cpu_live_shadow_without_live_authority"
+}

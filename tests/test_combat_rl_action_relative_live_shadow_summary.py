@@ -4,12 +4,15 @@ from pathlib import Path
 from types import SimpleNamespace
 
 from analysis_scripts.combat_rl_action_relative_live_shadow_summary import (
+    _render_summary,
     summarize_events,
 )
 
 
 def _registration():
     return SimpleNamespace(
+        schema_version=2,
+        inference_device="cpu",
         experiment_id="shadow-fixture",
         source_commit="a" * 40,
         registration_sha256="b" * 64,
@@ -57,6 +60,11 @@ def _event(**overrides):
 def test_readiness_passes_only_for_neutral_legal_supported_trace():
     report = summarize_events([_event()], _registration())
     assert report["all_readiness_conditions_passed"] is True
+    assert report["registration_schema_version"] == 2
+    assert report["inference_device"] == "cpu"
+    summary = _render_summary(report)
+    assert "Registration schema: 2" in summary
+    assert "Inference device: cpu" in summary
     assert report["eligible_count"] == 1
     assert report["decision"] == (
         "ready_for_separately_registered_matched_live_evaluation"

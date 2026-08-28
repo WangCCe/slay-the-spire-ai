@@ -177,6 +177,8 @@ def summarize_events(
     }
     passed = all(conditions.values())
     return {
+        "registration_schema_version": registration.schema_version,
+        "inference_device": registration.inference_device,
         "experiment_id": registration.experiment_id,
         "source_commit": registration.source_commit,
         "registration_sha256": registration.registration_sha256,
@@ -218,6 +220,8 @@ def _render_summary(report: Mapping[str, Any]) -> str:
         (
             "# Action-Relative Live Shadow Readiness",
             "",
+            f"- Registration schema: {report['registration_schema_version']}",
+            f"- Inference device: {report['inference_device']}",
             f"- Decisions: {report['decision_count']}",
             f"- Eligible guard replacements: {report['eligible_count']}",
             f"- Candidate intervention intents: {report['candidate_would_intervene_count']}",

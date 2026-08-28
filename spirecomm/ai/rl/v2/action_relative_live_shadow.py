@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import copy
 from dataclasses import dataclass
 from datetime import datetime, timezone
 import hashlib
@@ -38,7 +39,8 @@ from .latent_gated_live_shadow import (
 
 
 REGISTRATION_ENV = "STS_COMBAT_RL_ACTION_RELATIVE_SHADOW_REGISTRATION"
-REGISTRATION_SCHEMA_VERSION = 1
+LEGACY_REGISTRATION_SCHEMA_VERSION = 1
+REGISTRATION_SCHEMA_VERSION = 2
 TRACE_SCHEMA_VERSION = 1
 END_TURN_ACTION_INDEX = 90
 SOURCE_BOUND_PATHS = (
@@ -58,6 +60,8 @@ SOURCE_BOUND_PATHS = (
 
 @dataclass(frozen=True)
 class ActionRelativeShadowRegistration:
+    schema_version: int
+    inference_device: str
     experiment_id: str
     source_commit: str
     registration_path: Path
@@ -110,24 +114,36 @@ def load_live_shadow_registration(
         payload = json.loads(data)
     except (UnicodeDecodeError, json.JSONDecodeError) as exc:
         raise ValueError("action-relative shadow registration is not valid JSON") from exc
-    payload = _exact_keys(
-        payload,
-        {
-            "schema_version",
-            "experiment_id",
-            "mode",
-            "source_commit",
-            "candidate_artifact",
-            "production_parent_checkpoint",
-            "parent_state_dict_sha256",
-            "trace_path",
-            "maximum_decision_count",
-            "readiness_gates",
-        },
-        "registration",
-    )
-    if payload["schema_version"] != REGISTRATION_SCHEMA_VERSION:
+    if not isinstance(payload, Mapping):
+        raise ValueError("action-relative shadow registration keys differ")
+    schema_version = payload.get("schema_version")
+    if schema_version not in {
+        LEGACY_REGISTRATION_SCHEMA_VERSION,
+        REGISTRATION_SCHEMA_VERSION,
+    }:
         raise ValueError("action-relative shadow registration schema differs")
+    expected_keys = {
+        "schema_version",
+        "experiment_id",
+        "mode",
+        "source_commit",
+        "candidate_artifact",
+        "production_parent_checkpoint",
+        "parent_state_dict_sha256",
+        "trace_path",
+        "maximum_decision_count",
+        "readiness_gates",
+    }
+    if schema_version == REGISTRATION_SCHEMA_VERSION:
+        expected_keys.add("inference_device")
+    payload = _exact_keys(payload, expected_keys, "registration")
+    inference_device = (
+        "parent"
+        if schema_version == LEGACY_REGISTRATION_SCHEMA_VERSION
+        else payload["inference_device"]
+    )
+    if schema_version == REGISTRATION_SCHEMA_VERSION and inference_device != "cpu":
+        raise ValueError("action-relative shadow inference device must be cpu")
     if payload["mode"] != "shadow":
         raise ValueError("action-relative shadow registration mode differs")
     experiment_id = payload["experiment_id"]
@@ -185,6 +201,8 @@ def load_live_shadow_registration(
     if trace_path.suffix.lower() != ".jsonl":
         raise ValueError("action-relative shadow trace must be JSONL")
     return ActionRelativeShadowRegistration(
+        schema_version=int(schema_version),
+        inference_device=str(inference_device),
         experiment_id=experiment_id.strip(),
         source_commit=source_commit,
         registration_path=path,
@@ -585,18 +603,25 @@ def initialize_action_relative_live_shadow(
         registration.production_parent_checkpoint_sha256,
         "production parent checkpoint",
     )
-    if state_dict_sha256(parent.state_dict()) != registration.parent_state_dict_sha256:
+    production_parent_state = state_dict_sha256(parent.state_dict())
+    if production_parent_state != registration.parent_state_dict_sha256:
         raise ValueError("action-relative shadow parent state differs")
     _require_registered_file(
         registration.candidate_artifact_path,
         registration.candidate_artifact_sha256,
         "candidate artifact",
     )
+    if registration.inference_device == "cpu":
+        residual_parent = copy.deepcopy(parent).to("cpu")
+        residual_device = "cpu"
+    else:
+        residual_parent = parent
+        residual_device = device
     artifact = load_torch_checkpoint(
-        str(registration.candidate_artifact_path), map_location=device
+        str(registration.candidate_artifact_path), map_location=residual_device
     )
     residual = load_development_artifact(
-        parent,
+        residual_parent,
         metadata,
         artifact,
         expected_parent_checkpoint_sha256=(
@@ -608,9 +633,15 @@ def initialize_action_relative_live_shadow(
         },
         expected_recipe=FIXED_FIT_RECIPE,
     )
+    if state_dict_sha256(parent.state_dict()) != production_parent_state:
+        raise RuntimeError("action-relative shadow mutated production parent state")
+    if registration.inference_device == "cpu" and any(
+        parameter.device.type != "cpu" for parameter in residual.parameters()
+    ):
+        raise RuntimeError("action-relative shadow CPU residual device differs")
     return ActionRelativeLiveShadow(
         residual=residual,
         registration=registration,
-        device=device,
+        device=residual_device,
         initial_decision_count=initial_decision_count,
     )

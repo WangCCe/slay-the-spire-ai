@@ -156,6 +156,12 @@ def _events(paths):
     return [json.loads(line) for line in paths.trace_path.read_text().splitlines()]
 
 
+def _use_cpu_registration(paths):
+    paths.registration["schema_version"] = 2
+    paths.registration["inference_device"] = "cpu"
+    paths.registration_path.write_text(json.dumps(paths.registration), encoding="utf-8")
+
+
 def test_shadow_is_default_off(monkeypatch, tmp_path):
     monkeypatch.delenv(REGISTRATION_ENV, raising=False)
     parent = create_dqn_v2(device="cpu", **METADATA)
@@ -179,10 +185,48 @@ def test_registration_rejects_binding_or_mode_difference(tmp_path):
         require_committed=False,
     )
     assert loaded.maximum_decision_count == 3
+    assert loaded.schema_version == 1
+    assert loaded.inference_device == "parent"
 
     paths.registration["mode"] = "candidate"
     paths.registration_path.write_text(json.dumps(paths.registration))
     with pytest.raises(ValueError, match="mode"):
+        load_live_shadow_registration(
+            paths.registration_path,
+            repo_root=tmp_path,
+            require_committed=False,
+        )
+
+
+def test_schema_v2_registration_requires_cpu_inference(tmp_path):
+    paths = _fixture(tmp_path)
+    _use_cpu_registration(paths)
+
+    loaded = load_live_shadow_registration(
+        paths.registration_path,
+        repo_root=tmp_path,
+        require_committed=False,
+    )
+
+    assert loaded.schema_version == 2
+    assert loaded.inference_device == "cpu"
+
+    paths.registration["inference_device"] = "cuda"
+    paths.registration_path.write_text(json.dumps(paths.registration), encoding="utf-8")
+    with pytest.raises(ValueError, match="inference device"):
+        load_live_shadow_registration(
+            paths.registration_path,
+            repo_root=tmp_path,
+            require_committed=False,
+        )
+
+
+def test_schema_v2_registration_requires_explicit_device_key(tmp_path):
+    paths = _fixture(tmp_path)
+    paths.registration["schema_version"] = 2
+    paths.registration_path.write_text(json.dumps(paths.registration), encoding="utf-8")
+
+    with pytest.raises(ValueError, match="registration keys differ"):
         load_live_shadow_registration(
             paths.registration_path,
             repo_root=tmp_path,
@@ -196,6 +240,44 @@ def test_initialization_rejects_artifact_binding_difference(tmp_path):
     paths.registration_path.write_text(json.dumps(paths.registration))
     with pytest.raises(ValueError, match="candidate artifact SHA-256 differs"):
         _initialize(paths)
+
+
+def test_schema_v2_cpu_shadow_uses_distinct_state_identical_parent(tmp_path):
+    paths = _fixture(tmp_path)
+    _use_cpu_registration(paths)
+    original_hash = state_dict_sha256(paths.parent.state_dict())
+    original_storage = [parameter.data_ptr() for parameter in paths.parent.parameters()]
+
+    runtime = _initialize(paths)
+
+    assert runtime.device == torch.device("cpu")
+    assert runtime.residual.parent is not paths.parent
+    assert {parameter.device.type for parameter in runtime.residual.parent.parameters()} == {
+        "cpu"
+    }
+    assert state_dict_sha256(runtime.residual.parent.state_dict()) == original_hash
+    assert state_dict_sha256(paths.parent.state_dict()) == original_hash
+    assert [parameter.data_ptr() for parameter in paths.parent.parameters()] == original_storage
+
+
+@pytest.mark.skipif(not torch.cuda.is_available(), reason="CUDA unavailable")
+def test_schema_v2_cpu_shadow_leaves_production_parent_on_cuda(tmp_path):
+    paths = _fixture(tmp_path)
+    _use_cpu_registration(paths)
+    paths.parent.to("cuda")
+    original_hash = state_dict_sha256(paths.parent.state_dict())
+    original_storage = [parameter.data_ptr() for parameter in paths.parent.parameters()]
+
+    runtime = _initialize(paths, device="cuda")
+
+    assert {parameter.device.type for parameter in paths.parent.parameters()} == {"cuda"}
+    assert [parameter.data_ptr() for parameter in paths.parent.parameters()] == original_storage
+    assert state_dict_sha256(paths.parent.state_dict()) == original_hash
+    assert runtime.device == torch.device("cpu")
+    assert {parameter.device.type for parameter in runtime.residual.parent.parameters()} == {
+        "cpu"
+    }
+    assert state_dict_sha256(runtime.residual.parent.state_dict()) == original_hash
 
 
 @pytest.mark.parametrize(
