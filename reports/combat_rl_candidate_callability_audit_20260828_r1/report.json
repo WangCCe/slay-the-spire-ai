@@ -1,0 +1,100 @@
+{
+  "schema_version": 1,
+  "audit_id": "combat-rl-candidate-callability-audit-20260828-r1",
+  "source_commit": "b517899252dd50ed39393ae354fbff8f54325425",
+  "verdict": "record_candidate_callability_before_residual_architecture",
+  "bindings": {
+    "stratified_replay_report": {
+      "path": "reports/combat_rl_stratified_provenance_replay_20260828_r1/report.json",
+      "sha256": "6daf0531f43dd4a16374b72193b35098b310d8dd74eee89812e4289b46d5395e"
+    },
+    "balanced_objective_report": {
+      "path": "reports/combat_rl_provenance_balanced_objective_ablation_20260828_r1/report.json",
+      "sha256": "c2d80893598197c9ad9b50a6a30c11d0e23a76b9476f76337412524f88291620"
+    },
+    "combat_wrapper": {
+      "path": "spirecomm/ai/rl/agent.py",
+      "sha256": "5ca8c5fc2d9ee40914ce459872194bcb40ce4e1d15ace59681c7ef7296f1fbe8"
+    },
+    "rl_v2_agent": {
+      "path": "spirecomm/ai/rl/v2/agent.py",
+      "sha256": "6e7bc89dcd97897f9617e17ef0303e09216d8baa36f4b1a684f352eb0438197d"
+    },
+    "rl_v2_replay_buffer": {
+      "path": "spirecomm/ai/rl/v2/replay_buffer.py",
+      "sha256": "b90388071a378991136ad06cb3823321464ac45d4457c99d41f1026f5f883298"
+    }
+  },
+  "observed_provenance": {
+    "transition_count": 2091,
+    "rl_proposal_count": 928,
+    "direct_unchanged_proposal_count": 391,
+    "changed_same_state_proposal_count": 537,
+    "no_proposal_takeover_count": 1163,
+    "stored_override_count": 1700,
+    "no_proposal_share_of_all": 0.556193208990913,
+    "no_proposal_share_of_overrides": 0.684117647058823,
+    "direct_share_of_candidate_callable": 0.421336206896552,
+    "changed_share_of_candidate_callable": 0.578663793103448
+  },
+  "code_path_evidence": {
+    "takeover_branch_precedes_rl_call": {
+      "takeover_branch_line": 1301,
+      "rl_call_line": 1567
+    },
+    "takeover_scope_is_wrapper_state": {
+      "method": "CombatRLAgent._should_use_fallback_turn_takeover",
+      "line": 2394
+    },
+    "no_proposal_transition_is_marked_only_as_override": {
+      "method": "RLAgentV2.commit_executed_action",
+      "line": 475,
+      "no_proposal_assignment_line": 530
+    },
+    "replay_schema_has_no_proposal_identity": {
+      "schema_line": 114,
+      "override_tensor_line": 163
+    }
+  },
+  "findings": [
+    "More than half of the replay rows were emitted while the combat wrapper bypassed RL for an active fallback-turn takeover.",
+    "The current boolean merges changed RL proposals with no-proposal takeover actions even though only the former are candidate-callable states.",
+    "Balanced override loss still gives 68.4% of its override examples to states where the candidate is not invoked.",
+    "A residual or separate head trained on the same merged labels would preserve the dominant callability confound instead of isolating override learning."
+  ],
+  "decision": {
+    "next_change": "add-combat-rl-candidate-callability-provenance",
+    "required_provenance_classes": [
+      "direct_unchanged_proposal",
+      "changed_same_state_proposal",
+      "no_proposal_takeover",
+      "legacy_unknown"
+    ],
+    "candidate_fit_rows": [
+      "direct_unchanged_proposal",
+      "changed_same_state_proposal"
+    ],
+    "diagnostic_only_rows": [
+      "no_proposal_takeover",
+      "legacy_unknown"
+    ],
+    "residual_architecture_deferred": true,
+    "fresh_collection_required": true
+  },
+  "authority": {
+    "analysis": true,
+    "candidate": false,
+    "evaluation": false,
+    "gameplay": false,
+    "model_fitting": false,
+    "policy_quality": false,
+    "promotion": false,
+    "qualification": false,
+    "training": false
+  },
+  "limitations": [
+    "The committed replay stores only the merged override boolean, so candidate-callable rows cannot be reconstructed safely from checkpoint tensors alone.",
+    "Aggregate runtime counts identify the confound but do not authorize filtering or refitting the consumed corpus.",
+    "The completed balanced-objective ablation remains valid for its registered merged-provenance question; it does not answer the callability-separated question."
+  ]
+}
