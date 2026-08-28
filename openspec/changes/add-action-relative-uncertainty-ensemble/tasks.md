@@ -7,7 +7,7 @@
 ## 2. Bounded Fit And Holdout
 
 - [x] 2.1 Implement the fixed five-member bootstrap fit and untouched-holdout evaluator with member, uncertainty, value, regret, legality, and latency telemetry
-- [ ] 2.2 Create and validate a committed source/input-bound fit registration using the existing r16 parent and train/evaluation corpora
+- [x] 2.2 Create and validate a committed source/input-bound fit registration using the existing r16 parent and train/evaluation corpora
 - [ ] 2.3 Execute the registered CPU fit once and publish its development artifact, report, and offline go/no-go decision
 
 ## 3. Conditional Fresh LightSTS Gate
