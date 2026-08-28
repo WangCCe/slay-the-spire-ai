@@ -1,0 +1,84 @@
+{
+  "schema_version": 1,
+  "registration_id": "combat-rl-candidate-callability-successor-20260828-r1",
+  "experiment_id": "combat-rl-candidate-callability-successor-20260828-r1",
+  "source_commit": "ab68e1204a44b252715c077f40c3aad99eeb4b26",
+  "runner": {
+    "path": "analysis_scripts/combat_rl_candidate_callability_successor.py",
+    "sha256": "f82eed7ddeed90975312f8224d683ca4127eca32d595cd59aed05edc4982acf0"
+  },
+  "original_collection_registration": {
+    "path": "reports/combat_rl_candidate_callability_collection_20260828_r1_registration.json",
+    "sha256": "3a3f85cdf367c90515d03114fe099a4d57523160ae6402735bdb32c062375b65",
+    "registration_commit": "a95fa9b57ae2ebffd78f30c47b068cd586e8572c"
+  },
+  "training_checkpoint": {
+    "path": "reports/combat_rl_candidate_callability_collection_20260828_r1/rl_combat_model_ep10_steps1634.pth",
+    "sha256": "9f4570eaa5c9fd5df770734a5cc038dd6ba87da7983838fed243f05ef19b1860",
+    "transition_count": 1634,
+    "replay_schema_version": 3
+  },
+  "collection": {
+    "game_count": 10,
+    "epsilon": 0.0,
+    "learning_starts": 100000,
+    "optimizer_updates": 0
+  },
+  "prefit_audit": {
+    "exact_seed_order": true,
+    "zero_optimizer_updates": true,
+    "online_target_and_production_r16_equal": true,
+    "legal_executed_actions": true,
+    "legal_proposed_actions": true,
+    "legacy_unknown_count": 0,
+    "direct_decision_count": 186,
+    "changed_proposal_decision_count": 446,
+    "no_proposal_takeover_count": 1002,
+    "direct_eval_parent_agreement": 1.0,
+    "source_row_reconciliation_count": 1634,
+    "decision_span_count": 632,
+    "settled_bootstrap_boundary_count": 29,
+    "cross_floor_nonterminal_count": 0,
+    "trace_replay_action_family_mismatch_count": 0,
+    "inventory_tensor_mismatch_count": 0,
+    "train_and_validation_strata_nonempty": true
+  },
+  "fit_recipe": {
+    "batch_changed_count": 64,
+    "batch_direct_count": 64,
+    "batch_size": 128,
+    "bootstrap_action_policy": "frozen_parent_masked_greedy",
+    "decision_unit": "candidate_callable_smdp_span",
+    "device": "cpu",
+    "direct_only_top_action_margin_guard": true,
+    "gamma": 0.99,
+    "learning_rate": 0.0001,
+    "optimizer_steps": 64,
+    "parent_policy_anchor_weight": 1.0,
+    "provenance_balanced_anchor": true,
+    "split_seed": 2026082807,
+    "top_action_margin_guard_cap": 0.1,
+    "top_action_margin_guard_weight": 1.0,
+    "training_seed": 2026082808,
+    "validation_fraction": 0.2
+  },
+  "output_dir": "reports/combat_rl_candidate_callability_successor_20260828_r1",
+  "correction_boundary": {
+    "classification": "prefit implementation correction",
+    "reason": "The preregistered rule required bootstrap from the next proposal-bearing state, while the original runner incorrectly required equality with a pre-settlement immediate next snapshot.",
+    "statistical_adaptation": false,
+    "fit_started_before_correction": false,
+    "recipe_or_gate_changed": false,
+    "collection_runtime_code_changed": false
+  },
+  "authority": {
+    "single_cpu_development_fit": true,
+    "fresh_holdout_eligibility_if_all_technical_gates_pass": true,
+    "same_corpus_second_fit": false,
+    "gameplay_evaluation": false,
+    "qualification": false,
+    "promotion": false,
+    "policy_quality_claim": false,
+    "production_checkpoint_loading": false
+  }
+}

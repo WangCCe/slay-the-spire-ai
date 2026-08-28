@@ -1,0 +1,160 @@
+{
+  "schema_version": 1,
+  "collection_id": "combat-rl-candidate-callability-collection-20260828-r1",
+  "collection_source_commit": "4f9df66f6330cf35845a61ce340f8822fa316479",
+  "registration_commit": "a95fa9b57ae2ebffd78f30c47b068cd586e8572c",
+  "audit_correction_commit": "ab68e1204a44b252715c077f40c3aad99eeb4b26",
+  "verdict": "eligible_for_registered_callability_filtered_fit",
+  "timing": {
+    "started_at": "2026-08-28T11:13:03+08:00",
+    "completed_at": "2026-08-28T11:31:34+08:00",
+    "elapsed_seconds": 1111
+  },
+  "collection_integrity": {
+    "game_count": 10,
+    "seed_count": 10,
+    "seed_order_exact": true,
+    "all_runs_record_chose_seed": true,
+    "first_accepted_state_floor": 0,
+    "run_set_sha256": "8f6da33aee2376edb1a28e1c7bd195b148359b54aaace1d13d8c161717f7a2a6",
+    "run_total_size_bytes": 38759,
+    "max_games_exit_observed": true,
+    "started_game_11": false,
+    "runtime_traceback_count": 0,
+    "rl_action_failure_count": 0,
+    "communication_mod_error_suffix_is_clean": true,
+    "restored_config_sha256": "0991895790bc73d3d21a05731bf402228cf0c510a4217aa841ced026016760e7",
+    "project_python_or_game_processes_after_collection": 0
+  },
+  "seeds": [
+    "699E47080F64E",
+    "C873247CF7204",
+    "EECA62D16504C",
+    "EAD91392319EB",
+    "E12E9865712C7",
+    "C9244BE8CEE05",
+    "4780F89E2476B",
+    "0E5BE553C5850",
+    "768559B1DFDBF",
+    "6D2E1BAB5FCAF"
+  ],
+  "seed_played": [
+    "2723461194408227138",
+    "4449102261264486847",
+    "-6645552516593992821",
+    "-7029080616714195447",
+    "-7927954644418557846",
+    "4531942464288071673",
+    "-4231915250915423195",
+    "1366379769334703725",
+    "5809568742670934709",
+    "3090341512704553449"
+  ],
+  "outcomes": {
+    "victories": 0,
+    "mean_floor": 19.4,
+    "median_floor": 16.0,
+    "floor_reached": [16, 16, 20, 16, 16, 16, 16, 29, 33, 16],
+    "killed_by": [
+      "Hexaghost",
+      "The Guardian",
+      "Spheric Guardian",
+      "Hexaghost",
+      "Slime Boss",
+      "The Guardian",
+      "Slime Boss",
+      "3 Cultists",
+      "Champ",
+      "The Guardian"
+    ]
+  },
+  "checkpoint": {
+    "path": "reports/combat_rl_candidate_callability_collection_20260828_r1/rl_combat_model_ep10_steps1634.pth",
+    "sha256": "9f4570eaa5c9fd5df770734a5cc038dd6ba87da7983838fed243f05ef19b1860",
+    "episode": 10,
+    "transition_count": 1634,
+    "source_transition_count": 1634,
+    "total_steps": 1634,
+    "replay_schema_version": 3,
+    "epsilon": 0.0,
+    "learning_starts": 100000,
+    "optimizer_state_count": 0,
+    "online_equals_r16": true,
+    "target_equals_r16": true,
+    "online_equals_target": true
+  },
+  "trace_binding": {
+    "runtime_evidence": "reports/combat_rl_candidate_callability_collection_20260828_r1/runtime_evidence.zip",
+    "runtime_evidence_sha256": "83f967b9e428857d48cc9b67be5d03fd073f5d0e168ad90c6b66dd9fa00301ad",
+    "runtime_evidence_size_bytes": 1985894,
+    "decision_trace_row_count": 2995,
+    "combat_trace_row_count": 1670,
+    "joinable_combat_trace_row_count": 1634,
+    "replay_transition_count_matches_joinable_trace": true,
+    "trace_replay_action_family_mismatch_count": 0,
+    "terminal_transition_count": 126,
+    "cross_floor_nonterminal_count": 0,
+    "sim_divergence_row_count": 2
+  },
+  "inventory_identity": {
+    "items_json_sha256": "e23784ea8ed3092e3bfa9918240e162a9cbcb837badfb53c612eb0d83cc811dc",
+    "joined_transition_count": 1634,
+    "card_mismatched_transition_count": 0,
+    "potion_mismatched_transition_count": 0,
+    "relic_mismatched_transition_count": 0,
+    "potion_unresolved_occupied_occurrences": 0,
+    "relic_unresolved_occupied_occurrences": 0,
+    "known_card_oov_occurrences": 111,
+    "known_card_oov_ids": {"Ghostly": 111}
+  },
+  "callability_provenance": {
+    "direct_unchanged_proposal_count": 186,
+    "changed_same_state_proposal_count": 446,
+    "no_proposal_takeover_count": 1002,
+    "legacy_unknown_count": 0,
+    "legal_executed_action_count": 1634,
+    "illegal_executed_action_count": 0,
+    "illegal_proposed_action_count": 0,
+    "class_reconciliation_count": 1634,
+    "direct_eval_parent_agreement_count": 186,
+    "direct_eval_parent_agreement_share": 1.0
+  },
+  "candidate_smdp": {
+    "combat_group_count": 126,
+    "decision_span_count": 632,
+    "direct_decision_count": 186,
+    "changed_decision_count": 446,
+    "attached_no_proposal_count": 958,
+    "uncontrolled_prefix_count": 44,
+    "settled_bootstrap_boundary_count": 29,
+    "source_row_reconciliation_count": 1634,
+    "minimum_span_length": 1,
+    "maximum_span_length": 9,
+    "mean_span_length": 2.5158227848101267,
+    "training_span_count": 491,
+    "training_direct_count": 126,
+    "training_changed_count": 365,
+    "validation_span_count": 141,
+    "validation_direct_count": 60,
+    "validation_changed_count": 81
+  },
+  "decision": {
+    "all_prefit_conditions_passed": true,
+    "training_go": true,
+    "next_step": "Execute the separately committed fixed 64-update CPU fit exactly once, then audit technical gates without altering the recipe."
+  },
+  "authority": {
+    "single_registered_cpu_fit": true,
+    "same_corpus_second_fit": false,
+    "holdout": false,
+    "evaluation": false,
+    "promotion": false,
+    "policy_quality": false
+  },
+  "limitations": [
+    "The zero-victory outcome is descriptive and is not a policy-quality gate.",
+    "The internal card id Ghostly, displayed as Apparition, maps to the existing unknown card id in both trace reconstruction and replay; this is not a collection mismatch but remains a state-representation limitation.",
+    "Twenty-nine immediate post-action next snapshots differ from the next settled candidate-decision state; the corrected builder uses the preregistered next-decision bootstrap semantics.",
+    "This corpus is development-only and cannot serve as fresh confirmation or promotion evidence."
+  ]
+}
