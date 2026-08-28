@@ -11,9 +11,9 @@
 
 ## 3. Stratified Successor Runner
 
-- [ ] 3.1 Add RED coverage for 64-update fitting and direct-drift versus override-uplift eligibility.
-- [ ] 3.2 Reuse the existing full-network fitter with the new immutable replay and provenance-stratified report gates.
-- [ ] 3.3 Run focused tests, strict OpenSpec validation, and one qualified commit gate at the completed code boundary.
+- [x] 3.1 Add RED coverage for 64-update fitting and direct-drift versus override-uplift eligibility.
+- [x] 3.2 Reuse the existing full-network fitter with the new immutable replay and provenance-stratified report gates.
+- [x] 3.3 Run focused tests, strict OpenSpec validation, and one qualified commit gate at the completed code boundary.
 
 ## 4. Bounded Training
 
