@@ -1,0 +1,37 @@
+{
+  "authority": {
+    "candidate_action_authority": false,
+    "communication_mod": false,
+    "gameplay": false,
+    "promotion": false,
+    "qualification": false,
+    "training": false
+  },
+  "decision": "offline_latency_preflight_failed",
+  "evidence_kind": "terminal_failure_reconciliation",
+  "executed_at": "2026-08-28T23:55:07.0014297+08:00",
+  "execution": {
+    "command": "D:/anaconda/envs/stsai/python.exe -I analysis_scripts/combat_rl_action_relative_selection_latency.py --registration reports/combat_rl_action_relative_selection_latency_20260828_r1_registration.json",
+    "exception_message": "action-relative latency prediction parity failed",
+    "exception_type": "RuntimeError",
+    "exit_code": 1,
+    "failure_stage": "warmup_prediction_parity",
+    "invocation_count": 1
+  },
+  "experiment_id": "combat-rl-action-relative-selection-latency-20260828-r1",
+  "output_state": {
+    "registered_output_directory_created": false,
+    "staging_directory_created": false
+  },
+  "registration_sha256": "3bec5a8e618500aa8e117a6cc13f34aad6ac7343f3d8f02e452dcdd29f4b0815",
+  "schema_version": 1,
+  "source_commit": "d074bb1707fcd0f6cde86b89e44a4fa2088e27b2",
+  "terminal_conditions": {
+    "configuration_changed": false,
+    "gameplay_started": false,
+    "live_r2_authorized": false,
+    "model_or_corpus_modified": false,
+    "threshold_changed": false,
+    "training_started": false
+  }
+}
