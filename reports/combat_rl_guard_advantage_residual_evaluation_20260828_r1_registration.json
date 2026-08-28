@@ -1,0 +1,78 @@
+{
+  "authority": {
+    "communication_mod": false,
+    "cpu_evaluation": true,
+    "gameplay": false,
+    "model_fitting": false,
+    "native_loading": true,
+    "production_checkpoint_loading": false,
+    "production_checkpoint_writing": false,
+    "promotion": false,
+    "qualification": false
+  },
+  "experiment_id": "combat-rl-guard-advantage-residual-evaluation-20260828-r1",
+  "inputs": {
+    "evaluation_corpus": {
+      "path": "D:\\PycharmProjects\\slay-the-spire-ai\\reports\\combat_rl_guard_advantage_corpus_20260828_r1\\evaluation_corpus.pt",
+      "sha256": "219392d1e1d22d98bf1156c0d432275c73645658b331b4f0e85abc47b37c15c0"
+    },
+    "items_json": {
+      "path": "D:\\SteamLibrary\\steamapps\\common\\SlayTheSpire\\export\\items.json",
+      "sha256": "e23784ea8ed3092e3bfa9918240e162a9cbcb837badfb53c612eb0d83cc811dc"
+    },
+    "native_module": {
+      "path": "D:\\PycharmProjects\\slay-the-spire-ai\\.sts_lightspeed_combat_guard_advantage_20260828_r1_build\\sts_lightspeed_combat_adapter.cp310-win_amd64.pyd",
+      "sha256": "195678b7fc6bf69815f3d2971404afb8ce72fb666700edf4203383429caf1009"
+    },
+    "parent_checkpoint": {
+      "path": "D:\\PycharmProjects\\slay-the-spire-ai\\reports\\combat_lightspeed_production_r16_shadow_20260819_r1\\simulator_only_production_shadow.pth",
+      "sha256": "ce2ae34f82b3f457fb35e87d429c397204c42d0f742d3ac8952d91b69119b83b"
+    },
+    "residual_artifact": {
+      "path": "D:\\PycharmProjects\\slay-the-spire-ai\\reports\\combat_rl_guard_advantage_residual_fit_20260828_r1\\guard_advantage_residual_development.pth",
+      "sha256": "090cfec5e362bbb9b7ae6e663f09b02c77cd2e9986afc4ea30c4f9c652e20643"
+    },
+    "train_corpus": {
+      "path": "D:\\PycharmProjects\\slay-the-spire-ai\\reports\\combat_rl_guard_advantage_corpus_20260828_r1\\train_corpus.pt",
+      "sha256": "ca7851f6f30846e5670f828c083413c9d653629c16748feb27c7d09aeeae7144"
+    }
+  },
+  "output_dir": "D:\\PycharmProjects\\slay-the-spire-ai\\reports\\combat_rl_guard_advantage_residual_evaluation_20260828_r1",
+  "policy_gates": {
+    "candidate_only_victories_at_least_control_only": true,
+    "excluded_nonterminal_profile_count_zero": true,
+    "mean_player_hp_delta_non_negative": true,
+    "mean_reward_delta_non_negative": true,
+    "residual_intervention_count_positive": true
+  },
+  "recipe": {
+    "ascension": 0,
+    "battle_indices": [
+      0,
+      3,
+      6,
+      9
+    ],
+    "deployment_guard_proxy": "greedy-native-reward-on-wasteful-end-turn-v1",
+    "device": "cpu",
+    "max_actions_per_turn": 8,
+    "max_canonical_actions": 8,
+    "max_decisions_per_profile": 100,
+    "seed_first": 264000,
+    "seed_last": 264255
+  },
+  "runner": {
+    "path": "D:\\PycharmProjects\\slay-the-spire-ai\\analysis_scripts\\combat_rl_guard_advantage_residual_evaluation.py",
+    "sha256": "f747d081857b3cc4ed4796c0d9a5a82b53df0d89c038d10f6ed2d357719f7c68"
+  },
+  "schema_version": 1,
+  "source_commit": "62d7f88cdb530a6faacea1eab9c7264450ec0e32",
+  "source_files": {
+    "analysis_scripts/combat_lightspeed_bridge.py": "610f0d52e1c638e8f734343a13344b1e8e8f93bae9713ac06b792dbedfc4fdad",
+    "analysis_scripts/combat_lightspeed_training_smoke.py": "d8dbbb56b88a99ddfc50d7dcd09b9e35bed3fc3d7ab812b39bc2e19081ab0f05",
+    "analysis_scripts/combat_rl_guard_advantage_corpus.py": "bf8392f2dc61b02ecd5507e0fe589750a5a859cf2f5c5ccf24d9c15840ffb772",
+    "analysis_scripts/combat_rl_guard_advantage_residual_evaluation.py": "f747d081857b3cc4ed4796c0d9a5a82b53df0d89c038d10f6ed2d357719f7c68",
+    "analysis_scripts/combat_rl_guard_advantage_residual_fit.py": "8175788bafc3d14e7858c8231bb46032be68d9ae1f1e8b7222198b01fe468c7f",
+    "spirecomm/ai/rl/v2/guard_advantage_residual.py": "55cc756b4d7c1a1eb444140b476ea34e68d5d886be786e8d411260569588ed18"
+  }
+}
