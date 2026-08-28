@@ -39,6 +39,12 @@ class FullOnlyTarget:
 
 
 @dataclass(frozen=True)
+class CommitDeselectTarget:
+    node_id: str
+    reason: str
+
+
+@dataclass(frozen=True)
 class TestProfile:
     description: str
     mode: str
@@ -48,6 +54,7 @@ class TestProfile:
 @dataclass(frozen=True)
 class TestGateManifest:
     schema_version: int
+    commit_deselect: tuple[CommitDeselectTarget, ...]
     full_only: tuple[FullOnlyTarget, ...]
     profiles: dict[str, TestProfile]
 
@@ -169,6 +176,36 @@ def _parse_full_only(
     return tuple(parsed_targets)
 
 
+def _parse_commit_deselect(
+    value: object, repo_root: Path, test_paths: tuple[Path, ...]
+) -> tuple[CommitDeselectTarget, ...]:
+    if not isinstance(value, list):
+        raise ManifestError("commit_deselect must be a list")
+
+    parsed_targets: list[CommitDeselectTarget] = []
+    node_ids: set[str] = set()
+    for index, entry in enumerate(value):
+        target = _require_mapping(entry, f"commit_deselect[{index}]")
+        _require_exact_keys(
+            target, {"node_id", "reason"}, f"commit_deselect[{index}]"
+        )
+        node_id = _require_non_blank_string(
+            target["node_id"], f"commit_deselect[{index}].node_id"
+        )
+        reason = _require_non_blank_string(target["reason"], "reason")
+        _, separator, node_name = node_id.partition("::")
+        if not separator:
+            raise ManifestError("commit_deselect target must contain a node ID")
+        if not node_name.strip():
+            raise ManifestError("commit_deselect node ID must not be blank")
+        if node_id in node_ids:
+            raise ManifestError(f"duplicate target: {node_id}")
+        node_ids.add(node_id)
+        _resolve_target_file(node_id, repo_root, test_paths)
+        parsed_targets.append(CommitDeselectTarget(node_id=node_id, reason=reason))
+    return tuple(parsed_targets)
+
+
 def _parse_profile(
     name: str,
     value: object,
@@ -220,12 +257,19 @@ def load_manifest(path: Path, repo_root: Path) -> TestGateManifest:
         raise ManifestError(f"unable to read manifest: {path}") from error
 
     manifest = _require_mapping(raw_manifest, "manifest")
-    _require_exact_keys(manifest, {"schema_version", "full_only", "profiles"}, "top-level")
+    _require_exact_keys(
+        manifest,
+        {"schema_version", "commit_deselect", "full_only", "profiles"},
+        "top-level",
+    )
     schema_version = manifest["schema_version"]
-    if type(schema_version) is not int or schema_version != 1:
+    if type(schema_version) is not int or schema_version != 2:
         raise ManifestError(f"unsupported schema version: {schema_version!r}")
 
     test_paths = _configured_test_paths(repo_root)
+    commit_deselect = _parse_commit_deselect(
+        manifest["commit_deselect"], repo_root, test_paths
+    )
     full_only = _parse_full_only(manifest["full_only"], repo_root, test_paths)
     profiles = _require_mapping(manifest["profiles"], "profiles")
     unknown_profiles = set(profiles) - set(_REQUIRED_PROFILES)
@@ -237,6 +281,7 @@ def load_manifest(path: Path, repo_root: Path) -> TestGateManifest:
 
     return TestGateManifest(
         schema_version=schema_version,
+        commit_deselect=commit_deselect,
         full_only=full_only,
         profiles={
             name: _parse_profile(name, profiles[name], repo_root, test_paths)
@@ -273,6 +318,10 @@ def build_pytest_command(
         command.extend(
             f"--ignore={_repository_relative_argument(target.path, repo_root)}"
             for target in manifest.full_only
+        )
+        command.extend(
+            f"--deselect={_repository_relative_argument(target.node_id, repo_root)}"
+            for target in manifest.commit_deselect
         )
     elif profile.mode == "targets":
         command.extend(

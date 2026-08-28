@@ -1,5 +1,91 @@
 {
-  "schema_version": 1,
+  "schema_version": 2,
+  "commit_deselect": [
+    {
+      "node_id": "tests/test_noncombat_cross_validated_shop_ensemble.py::test_script_starts_in_isolated_mode_outside_repo",
+      "reason": "fresh-process import isolation measured at 5.767s on 2026-08-28"
+    },
+    {
+      "node_id": "tests/test_noncombat_card_acceptance_policy.py::test_legacy_imports_do_not_load_the_new_capability",
+      "reason": "fresh-process import isolation measured at 5.237s on 2026-08-28"
+    },
+    {
+      "node_id": "tests/test_noncombat_shop_counterfactual_corpus_expansion.py::test_script_starts_in_isolated_mode_outside_repo",
+      "reason": "fresh-process import isolation measured at 5.234s on 2026-08-28"
+    },
+    {
+      "node_id": "tests/test_noncombat_large_corpus_card_uplift_residual.py::test_isolated_direct_entry_can_load_package",
+      "reason": "fresh-process import isolation measured at 5.150s on 2026-08-28"
+    },
+    {
+      "node_id": "tests/test_combat_lightspeed_frozen_candidate_comparison.py::test_production_agent_import_does_not_load_frozen_comparator",
+      "reason": "fresh-process import isolation measured at 5.077s on 2026-08-28"
+    },
+    {
+      "node_id": "tests/test_combat_lightspeed_bridge.py::test_production_agent_import_does_not_load_combat_bridge",
+      "reason": "fresh-process import isolation measured at 5.044s on 2026-08-28"
+    },
+    {
+      "node_id": "tests/test_noncombat_card_counterfactual_corpus_expansion_runner.py::test_isolated_direct_entry_can_load_package",
+      "reason": "fresh-process import isolation measured at 5.027s on 2026-08-28"
+    },
+    {
+      "node_id": "tests/test_noncombat_large_corpus_card_uplift_residual_audit_runner.py::test_isolated_direct_entry_can_load_package",
+      "reason": "fresh-process import isolation measured at 5.026s on 2026-08-28"
+    },
+    {
+      "node_id": "tests/test_noncombat_card_acceptance_policy.py::test_fresh_import_avoids_every_prohibited_transitive_module",
+      "reason": "fresh-process import isolation measured at 5.022s on 2026-08-28"
+    },
+    {
+      "node_id": "tests/test_noncombat_state_conditioned_policy_input.py::test_fresh_process_projection_does_not_import_native_or_gameplay_modules",
+      "reason": "fresh-process import isolation measured at 5.022s on 2026-08-28"
+    },
+    {
+      "node_id": "tests/test_noncombat_action_family_distribution.py::test_import_does_not_pull_in_simulator_or_experiment_surfaces",
+      "reason": "fresh-process import isolation measured at 4.840s on 2026-08-28"
+    },
+    {
+      "node_id": "tests/test_noncombat_card_counterfactual_uplift_residual_crossfit.py::test_isolated_direct_entry_can_load_package",
+      "reason": "fresh-process import isolation measured at 4.827s on 2026-08-28"
+    },
+    {
+      "node_id": "tests/test_noncombat_card_counterfactual_uplift_residual_audit_runner.py::test_isolated_direct_entry_can_load_package",
+      "reason": "fresh-process import isolation measured at 4.792s on 2026-08-28"
+    },
+    {
+      "node_id": "tests/test_combat_lightspeed_training_smoke.py::test_production_agent_import_does_not_load_training_smoke",
+      "reason": "fresh-process import isolation measured at 4.788s on 2026-08-28"
+    },
+    {
+      "node_id": "tests/test_combat_rl_candidate_callability_successor.py::test_isolated_direct_entrypoint_bootstraps_repo_root",
+      "reason": "fresh-process import isolation measured at 4.758s on 2026-08-28"
+    },
+    {
+      "node_id": "tests/test_combat_rl_provenance_balanced_objective_ablation.py::test_isolated_direct_entrypoint_bootstraps_repo_root",
+      "reason": "fresh-process import isolation measured at 4.725s on 2026-08-28"
+    },
+    {
+      "node_id": "tests/test_combat_rl_stratified_provenance_successor.py::test_isolated_direct_entrypoint_bootstraps_repo_root",
+      "reason": "fresh-process import isolation measured at 4.709s on 2026-08-28"
+    },
+    {
+      "node_id": "tests/test_noncombat_card_uplift_fresh_simulator_evaluation.py::test_isolated_direct_entry_can_load_package",
+      "reason": "fresh-process import isolation measured at 4.707s on 2026-08-28"
+    },
+    {
+      "node_id": "tests/test_combat_lightspeed_replay_distribution_calibration.py::test_calibration_script_supports_direct_execution",
+      "reason": "fresh-process import isolation measured at 4.673s on 2026-08-28"
+    },
+    {
+      "node_id": "tests/test_combat_rl_abstaining_residual_successor.py::test_isolated_direct_entrypoint_bootstraps_repo_root",
+      "reason": "fresh-process import isolation measured at 4.625s on 2026-08-28"
+    },
+    {
+      "node_id": "tests/test_audit_card_acceptance_objective_interventions.py::test_existing_modules_do_not_load_objective_intervention_audit",
+      "reason": "fresh-process import isolation measured at 4.599s on 2026-08-28"
+    }
+  ],
   "full_only": [
     {
       "path": "tests/test_adaptive_route_opportunity_audit.py",

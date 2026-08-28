@@ -11,6 +11,7 @@ import pytest
 
 import scripts.run_test_gate as test_gate_runner
 from scripts.run_test_gate import (
+    CommitDeselectTarget,
     FullOnlyTarget,
     ManifestError,
     TestGateManifest,
@@ -21,7 +22,13 @@ from scripts.run_test_gate import (
 
 
 VALID_MANIFEST = {
-    "schema_version": 1,
+    "schema_version": 2,
+    "commit_deselect": [
+        {
+            "node_id": "tests/test_fast.py::test_fast",
+            "reason": "measured fresh-process import isolation",
+        }
+    ],
     "full_only": [
         {"path": "tests/test_slow.py", "reason": "measured subprocess replay"}
     ],
@@ -201,6 +208,29 @@ EXPECTED_REPOSITORY_FULL_ONLY = {
         "in the 320.32s measured lifecycle group"
     ),
 }
+EXPECTED_REPOSITORY_COMMIT_DESELECT = {
+    "tests/test_noncombat_cross_validated_shop_ensemble.py::test_script_starts_in_isolated_mode_outside_repo": 5.767,
+    "tests/test_noncombat_card_acceptance_policy.py::test_legacy_imports_do_not_load_the_new_capability": 5.237,
+    "tests/test_noncombat_shop_counterfactual_corpus_expansion.py::test_script_starts_in_isolated_mode_outside_repo": 5.234,
+    "tests/test_noncombat_large_corpus_card_uplift_residual.py::test_isolated_direct_entry_can_load_package": 5.150,
+    "tests/test_combat_lightspeed_frozen_candidate_comparison.py::test_production_agent_import_does_not_load_frozen_comparator": 5.077,
+    "tests/test_combat_lightspeed_bridge.py::test_production_agent_import_does_not_load_combat_bridge": 5.044,
+    "tests/test_noncombat_card_counterfactual_corpus_expansion_runner.py::test_isolated_direct_entry_can_load_package": 5.027,
+    "tests/test_noncombat_large_corpus_card_uplift_residual_audit_runner.py::test_isolated_direct_entry_can_load_package": 5.026,
+    "tests/test_noncombat_card_acceptance_policy.py::test_fresh_import_avoids_every_prohibited_transitive_module": 5.022,
+    "tests/test_noncombat_state_conditioned_policy_input.py::test_fresh_process_projection_does_not_import_native_or_gameplay_modules": 5.022,
+    "tests/test_noncombat_action_family_distribution.py::test_import_does_not_pull_in_simulator_or_experiment_surfaces": 4.840,
+    "tests/test_noncombat_card_counterfactual_uplift_residual_crossfit.py::test_isolated_direct_entry_can_load_package": 4.827,
+    "tests/test_noncombat_card_counterfactual_uplift_residual_audit_runner.py::test_isolated_direct_entry_can_load_package": 4.792,
+    "tests/test_combat_lightspeed_training_smoke.py::test_production_agent_import_does_not_load_training_smoke": 4.788,
+    "tests/test_combat_rl_candidate_callability_successor.py::test_isolated_direct_entrypoint_bootstraps_repo_root": 4.758,
+    "tests/test_combat_rl_provenance_balanced_objective_ablation.py::test_isolated_direct_entrypoint_bootstraps_repo_root": 4.725,
+    "tests/test_combat_rl_stratified_provenance_successor.py::test_isolated_direct_entrypoint_bootstraps_repo_root": 4.709,
+    "tests/test_noncombat_card_uplift_fresh_simulator_evaluation.py::test_isolated_direct_entry_can_load_package": 4.707,
+    "tests/test_combat_lightspeed_replay_distribution_calibration.py::test_calibration_script_supports_direct_execution": 4.673,
+    "tests/test_combat_rl_abstaining_residual_successor.py::test_isolated_direct_entrypoint_bootstraps_repo_root": 4.625,
+    "tests/test_audit_card_acceptance_objective_interventions.py::test_existing_modules_do_not_load_objective_intervention_audit": 4.599,
+}
 
 
 @pytest.fixture
@@ -228,7 +258,13 @@ def test_load_manifest_returns_typed_validated_contract(temporary_repo: Path) ->
     manifest = load_manifest(_write_manifest(temporary_repo, VALID_MANIFEST), temporary_repo)
 
     assert manifest == TestGateManifest(
-        schema_version=1,
+        schema_version=2,
+        commit_deselect=(
+            CommitDeselectTarget(
+                node_id="tests/test_fast.py::test_fast",
+                reason="measured fresh-process import isolation",
+            ),
+        ),
         full_only=(
             FullOnlyTarget(
                 path="tests/test_slow.py", reason="measured subprocess replay"
@@ -271,16 +307,22 @@ def test_repository_manifest_is_valid() -> None:
         REPOSITORY_ROOT / "tests" / "test_gate_manifest.json", REPOSITORY_ROOT
     )
 
-    assert manifest.schema_version == 1
+    assert manifest.schema_version == 2
     assert {target.path: target.reason for target in manifest.full_only} == (
         EXPECTED_REPOSITORY_FULL_ONLY
     )
+    measured_nodes = {
+        target.node_id: float(target.reason.split("measured at ", 1)[1].split("s", 1)[0])
+        for target in manifest.commit_deselect
+    }
+    assert measured_nodes == EXPECTED_REPOSITORY_COMMIT_DESELECT
+    assert round(sum(measured_nodes.values()), 3) == 103.649
 
 
 def test_load_manifest_rejects_duplicate_json_key(temporary_repo: Path) -> None:
     path = temporary_repo / "test_gate_manifest.json"
     path.write_text(
-        '{"schema_version": 1, "schema_version": 1, "full_only": [], "profiles": {}}',
+        '{"schema_version": 2, "schema_version": 2, "commit_deselect": [], "full_only": [], "profiles": {}}',
         encoding="utf-8",
     )
 
@@ -326,7 +368,7 @@ def test_load_manifest_rejects_invalid_utf8_pytest_ini(temporary_repo: Path) -> 
     [
         (
             "unsupported schema version",
-            lambda manifest: manifest.__setitem__("schema_version", 2),
+            lambda manifest: manifest.__setitem__("schema_version", 3),
             "unsupported schema version",
         ),
         (
@@ -352,6 +394,11 @@ def test_load_manifest_rejects_invalid_utf8_pytest_ini(temporary_repo: Path) -> 
             "must be a list",
         ),
         (
+            "malformed commit deselect list",
+            lambda manifest: manifest.__setitem__("commit_deselect", {}),
+            "commit_deselect must be a list",
+        ),
+        (
             "blank description",
             lambda manifest: manifest["profiles"]["commit"].__setitem__(
                 "description", " "
@@ -362,6 +409,55 @@ def test_load_manifest_rejects_invalid_utf8_pytest_ini(temporary_repo: Path) -> 
             "blank rationale",
             lambda manifest: manifest["full_only"][0].__setitem__("reason", " "),
             "reason must not be blank",
+        ),
+        (
+            "blank commit deselect rationale",
+            lambda manifest: manifest["commit_deselect"][0].__setitem__(
+                "reason", " "
+            ),
+            "reason must not be blank",
+        ),
+        (
+            "commit deselect without node id",
+            lambda manifest: manifest["commit_deselect"][0].__setitem__(
+                "node_id", "tests/test_fast.py"
+            ),
+            "must contain a node ID",
+        ),
+        (
+            "commit deselect with blank node id",
+            lambda manifest: manifest["commit_deselect"][0].__setitem__(
+                "node_id", "tests/test_fast.py::"
+            ),
+            "node ID must not be blank",
+        ),
+        (
+            "duplicate commit deselect node",
+            lambda manifest: manifest["commit_deselect"].append(
+                copy.deepcopy(manifest["commit_deselect"][0])
+            ),
+            "duplicate target",
+        ),
+        (
+            "commit deselect nonexistent file",
+            lambda manifest: manifest["commit_deselect"][0].__setitem__(
+                "node_id", "tests/test_missing.py::test_missing"
+            ),
+            "does not exist",
+        ),
+        (
+            "commit deselect outside configured paths",
+            lambda manifest: manifest["commit_deselect"][0].__setitem__(
+                "node_id", "outside_test.py::test_outside"
+            ),
+            "outside configured test paths",
+        ),
+        (
+            "commit deselect unknown key",
+            lambda manifest: manifest["commit_deselect"][0].__setitem__(
+                "unexpected", True
+            ),
+            r"unknown commit_deselect\[0\] key",
         ),
         (
             "duplicate target",
@@ -432,7 +528,7 @@ def test_build_pytest_command_uses_shared_pytest_options_and_resolved_basetemp(
     assert command[7] == str(basetemp)
 
 
-def test_build_pytest_command_commit_excludes_only_full_only_targets(
+def test_build_pytest_command_commit_excludes_only_registered_files_and_nodes(
     temporary_repo: Path,
 ) -> None:
     manifest = load_manifest(_write_manifest(temporary_repo, VALID_MANIFEST), temporary_repo)
@@ -444,10 +540,13 @@ def test_build_pytest_command_commit_excludes_only_full_only_targets(
         temporary_repo / ".pytest_gates" / "commit-deterministic",
     )
 
-    assert command[8:] == ["--ignore=tests/test_slow.py"]
+    assert command[8:] == [
+        "--ignore=tests/test_slow.py",
+        "--deselect=tests/test_fast.py::test_fast",
+    ]
 
 
-def test_build_pytest_command_full_has_no_ignores_or_positive_targets(
+def test_build_pytest_command_full_has_no_exclusions_or_positive_targets(
     temporary_repo: Path,
 ) -> None:
     manifest = load_manifest(_write_manifest(temporary_repo, VALID_MANIFEST), temporary_repo)
