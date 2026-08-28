@@ -1,0 +1,102 @@
+{
+  "authority": {
+    "communication_mod": false,
+    "cpu_development_fit": true,
+    "gameplay": false,
+    "native_loading": true,
+    "online_training": false,
+    "production_checkpoint_loading": false,
+    "promotion": false,
+    "qualification": false
+  },
+  "experiment_id": "combat-rl-latent-gated-candidate-fit-20260828-r1",
+  "inputs": {
+    "development_replay": {
+      "path": "D:/PycharmProjects/slay-the-spire-ai/reports/combat_rl_abstaining_residual_collection_20260828_r1/rl_combat_model_ep10_steps1916.pth",
+      "sha256": "ba02c749e73caecae59469220abe30e40e826699e95ca910a8b18d7eaa1f5900",
+      "transition_count": 1916
+    },
+    "dll_directories": [],
+    "evaluation_replays": [
+      {
+        "id": "independent_replay_1634",
+        "path": "D:/PycharmProjects/slay-the-spire-ai/reports/combat_rl_candidate_callability_collection_20260828_r1/rl_combat_model_ep10_steps1634.pth",
+        "sha256": "9f4570eaa5c9fd5df770734a5cc038dd6ba87da7983838fed243f05ef19b1860",
+        "transition_count": 1634
+      },
+      {
+        "id": "fresh_confirmation_2159",
+        "path": "D:/PycharmProjects/slay-the-spire-ai/reports/combat_rl_latent_gated_correction_confirmation_20260828_r1/rl_combat_model_ep10_steps2159.pth",
+        "sha256": "0ba37f0aa793fb4b28cce9e892c9cbf2bfd25aa3826a23d5b3740af162618cc0",
+        "transition_count": 2159
+      }
+    ],
+    "items_json": {
+      "path": "D:/SteamLibrary/steamapps/common/SlayTheSpire/export/items.json",
+      "sha256": "e23784ea8ed3092e3bfa9918240e162a9cbcb837badfb53c612eb0d83cc811dc"
+    },
+    "native_module": {
+      "path": "D:/PycharmProjects/slay-the-spire-ai/.sts_lightspeed_combat_later_battle_20260819_r3_build/sts_lightspeed_combat_adapter.cp310-win_amd64.pyd",
+      "sha256": "195678b7fc6bf69815f3d2971404afb8ce72fb666700edf4203383429caf1009"
+    },
+    "parent_checkpoint": {
+      "path": "D:/PycharmProjects/slay-the-spire-ai/reports/combat_lightspeed_production_r16_shadow_20260819_r1/simulator_only_production_shadow.pth",
+      "sha256": "ce2ae34f82b3f457fb35e87d429c397204c42d0f742d3ac8952d91b69119b83b"
+    }
+  },
+  "output_dir": "D:/PycharmProjects/slay-the-spire-ai/reports/combat_rl_latent_gated_candidate_fit_20260828_r1",
+  "recipe": {
+    "action_updates": 256,
+    "architecture": "frozen_parent_latent_gated_legal_action_correction",
+    "batch_size": 64,
+    "battle_indices": [
+      0,
+      3,
+      6,
+      9
+    ],
+    "classifier_seed": 2026082816,
+    "development_gate_updates": 128,
+    "device": "cpu",
+    "direct_open_calibration_cap": 0.1,
+    "hidden_dim": 64,
+    "learning_rate": 0.001,
+    "simulator_seed_first": 185000,
+    "simulator_seed_last": 185255,
+    "simulator_training_seed": 2026082814,
+    "simulator_updates": 128,
+    "simulator_validation_stride": 5
+  },
+  "runner": {
+    "path": "D:/PycharmProjects/slay-the-spire-ai/analysis_scripts/combat_rl_latent_gated_candidate_fit.py",
+    "sha256": "dbecd51f7366c0fae575cbf26d221ab1c71f157e06af1a55cd819056a2e3135a"
+  },
+  "schema_version": 1,
+  "source_commit": "6a3ede5690a0724291fc9b16fbdaf3745a9490fe",
+  "source_files": {
+    "analysis_scripts/combat_lightspeed_bridge.py": "610f0d52e1c638e8f734343a13344b1e8e8f93bae9713ac06b792dbedfc4fdad",
+    "analysis_scripts/combat_lightspeed_training_smoke.py": "d8dbbb56b88a99ddfc50d7dcd09b9e35bed3fc3d7ab812b39bc2e19081ab0f05",
+    "analysis_scripts/combat_rl_candidate_callability_successor.py": "f82eed7ddeed90975312f8224d683ca4127eca32d595cd59aed05edc4982acf0",
+    "analysis_scripts/combat_rl_dropout_update_ablation.py": "1a211bcb3f8e3bd3d8b972704c424eb0a42ef8d1a38ce4b4ef5e314dbdf6f2ef",
+    "analysis_scripts/combat_rl_inventory_embedding_successor.py": "1c1c57e2591c6d00e4b32e560eb55a33b8218c47339e8796666fa50c17cdf9b0",
+    "analysis_scripts/combat_rl_latent_gated_candidate_fit.py": "dbecd51f7366c0fae575cbf26d221ab1c71f157e06af1a55cd819056a2e3135a",
+    "analysis_scripts/combat_rl_lightspeed_guard_transfer_poc.py": "b40af828cd6806b3910d97ae5607ffd4bacf60d211a20a9733b4d7aa050f4d4b",
+    "analysis_scripts/combat_rl_provenance_aware_successor.py": "80486672a15222f552e486b319b3ef63a1160afca19683756f3ed6840bce6d89",
+    "spirecomm/ai/rl/v2/action_space.py": "1827a6ee4a846a68ea959703b456f0f4efd0436f39616ac8ec41ec34d6cd1964",
+    "spirecomm/ai/rl/v2/id_mapping.py": "8a1afadfbaa2a9d58229549cefdda8681b32b6dae31df02e4f694314a72ec801",
+    "spirecomm/ai/rl/v2/latent_gated_adapter.py": "4922188706fd2aa86be8f89e338a6f7e32b19a2ceed0dd1c055e77a74a6c2a6d",
+    "spirecomm/ai/rl/v2/network.py": "6358a8ca1b068c65cb13a6100a79bdc9c116cb2c79eb24a74b658753cf24e280",
+    "spirecomm/ai/rl/v2/replay_buffer.py": "6b1aca7ce7163b39ea754410be5c960699e12ccbdd6c8648777225d1aea0b615",
+    "spirecomm/ai/rl/v2/state_encoder.py": "34b356753c379dfc834bf164b76375f19a188321fe7928f5fb38b620e4107ef4",
+    "spirecomm/ai/rl/v2/trainer.py": "fc6a0aeecc312bce3dc513e17be4be035ec223305c036f30bdc12a2a7890feae"
+  },
+  "technical_gates": {
+    "changed_candidate_agreement_minimum": 0.25,
+    "changed_correction_agreement_minimum": 0.35,
+    "changed_gate_open_share_minimum": 0.75,
+    "direct_candidate_agreement_minimum": 0.85,
+    "direct_gate_open_share_maximum": 0.15,
+    "overall_candidate_agreement_uplift_minimum": 0.1,
+    "positive_energy_end_turn_increase_maximum": 0
+  }
+}

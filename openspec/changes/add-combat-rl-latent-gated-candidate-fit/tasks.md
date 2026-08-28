@@ -13,6 +13,6 @@
 ## 3. Verification And Execution
 
 - [x] 3.1 Run focused runner and adjacent adapter/POC/replay tests, strict OpenSpec validation, and the optimized commit gate once at the implementation boundary.
-- [ ] 3.2 Commit and push the runner, then create and commit a registration bound to that exact source commit and the already confirmed input identities.
+- [x] 3.2 Commit and push the runner, then create and commit a registration bound to that exact source commit and the already confirmed input identities.
 - [ ] 3.3 Run one bounded CPU development fit, publish the report and non-production artifact, and verify no game, CommunicationMod, online training, or production checkpoint mutation occurred.
 - [ ] 3.4 Decide the fresh gameplay evaluation go/no-go from the fixed report without tuning the completed cohort in place.
