@@ -84,6 +84,21 @@ on fresh seeds. The existing paired victory, reward, HP, terminality,
 intervention, and forbidden-action conditions remain unchanged. This change
 does not authorize a real-game gate.
 
+### One source-bound replacement for a pre-holdout runner defect
+
+The first registered execution fitted and calibrated the ensemble but failed
+before holdout evaluation because removing unsupported EndTurn branches did
+not also remove rows that had no remaining supported alternative. It produced
+no candidate artifact, report, or holdout metrics. The failed registration is
+immutable and is not rerun.
+
+One replacement execution is allowed after a regression test and minimal
+tensor-aligned row-filter repair. The replacement binds a new source commit,
+runner hash, experiment identity, registration, and output path while keeping
+all model, data, seed, calibration, and gate choices byte-for-byte equivalent.
+This distinguishes recovery from a code-contract defect from quality-driven
+retry or tuning.
+
 ## Risks / Trade-offs
 
 - [Global family correction may be overly conservative] -> Preserve the fixed
@@ -104,8 +119,11 @@ does not authorize a real-game gate.
 2. Commit source, then commit one registration binding the existing corpus,
    parent, baseline report, audit report, recipe, and output path.
 3. Execute one bounded CPU fit/calibration/holdout decision.
-4. Run one fresh LightSTS gate only on offline pass; otherwise publish closure.
-5. Run focused validation and one commit gate, sync the spec, and archive.
+4. If the execution fails before holdout evaluation because of a deterministic
+   runner defect, record the failure and allow one source-bound replacement
+   registration after a tested repair; never rerun the failed registration.
+5. Run one fresh LightSTS gate only on offline pass; otherwise publish closure.
+6. Run focused validation and one commit gate, sync the spec, and archive.
 
 Rollback is non-use of the development artifact. No production state changes.
 

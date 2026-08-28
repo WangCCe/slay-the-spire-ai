@@ -76,6 +76,10 @@ retry.
 - **WHEN** any support, calibration, coverage, precision, value, regret, tail-safety, legality, or provenance condition fails
 - **THEN** the recipe closes without LightSTS, retraining, seed replacement, alpha change, family change, threshold change, or sweep
 
+#### Scenario: Registered execution fails before holdout evaluation
+- **WHEN** a deterministic runner-contract defect stops the registered execution before any holdout metric is computed
+- **THEN** the system preserves the failed registration and failure evidence, SHALL NOT rerun it, and MAY execute one replacement registration bound to a tested source repair with unchanged inputs, recipe, seed partitions, alpha, threshold, and gates
+
 #### Scenario: Fresh simulator conditions pass
 - **WHEN** the separately registered fresh gate has candidate-only victories at least control-only victories, non-negative paired reward and HP deltas, zero excluded nonterminal profiles, positive interventions, and zero forbidden interventions
 - **THEN** the candidate may be retained for a later separately registered real-game gate but not production loading or promotion

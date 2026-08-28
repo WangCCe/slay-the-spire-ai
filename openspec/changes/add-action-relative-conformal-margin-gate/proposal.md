@@ -25,6 +25,11 @@ be post-hoc tuning.
   or forbidden selections.
 - Permit one new seed-disjoint matched LightSTS gate only if every offline
   condition passes; otherwise close without retry or sweep.
+- If a registered fit attempt terminates before holdout evaluation because of
+  a deterministic runner-contract defect, preserve that failure evidence and
+  permit one replacement source snapshot and registration. The replacement
+  SHALL keep the recipe, inputs, seed partitions, alpha, threshold, and gates
+  unchanged and SHALL NOT rerun the failed registration.
 - Do not start CommunicationMod gameplay, alter r16, load the candidate in
   production, or promote a checkpoint in this change.
 

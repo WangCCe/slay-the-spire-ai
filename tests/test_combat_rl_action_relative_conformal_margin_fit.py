@@ -85,6 +85,19 @@ def test_seed_split_is_exact_aligned_and_disjoint():
     assert split["calibration"]["family_support"] == {"card": 3, "potion": 3}
 
 
+def test_supported_corpus_drops_unsupported_only_rows_with_tensor_alignment():
+    tensors, metadata = _corpus_fixture()
+    metadata[0]["branch_returns"] = {"0": 0.0, "90": -1.0}
+
+    supported = fit_runner._supported_corpus(tensors, metadata)
+
+    assert supported["row_indices"].tolist() == [1, 2, 3, 4, 5]
+    assert supported["excluded_unsupported_only_row_count"] == 1
+    assert supported["tensors"]["continuous"][:, 0].tolist() == [4.0, 8.0, 12.0, 16.0, 20.0]
+    assert len(supported["metadata"]) == 5
+    assert all("90" not in row["branch_returns"] for row in supported["metadata"])
+
+
 @pytest.mark.parametrize("failure", ["overlap", "outside", "support"])
 def test_seed_split_rejects_overlap_outside_and_insufficient_support(failure):
     tensors, metadata = _corpus_fixture()

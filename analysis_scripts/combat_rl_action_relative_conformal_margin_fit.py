@@ -63,7 +63,7 @@ from spirecomm.ai.rl.v2.id_mapping import build_id_mapper  # noqa: E402
 
 
 SCHEMA_VERSION = 1
-EXPERIMENT_ID = "combat-rl-action-relative-conformal-margin-fit-20260829-r1"
+EXPERIMENT_ID = "combat-rl-action-relative-conformal-margin-fit-20260829-r2"
 EXPECTED_INTERPRETER = Path(r"D:\anaconda\envs\stsai\python.exe")
 SOURCE_SNAPSHOT_PATHS = (
     "analysis_scripts/combat_rl_action_relative_conformal_margin_fit.py",
@@ -276,11 +276,13 @@ def calibrate_action_families(
     }
 
 
-def _supported_corpus_metadata(
+def _supported_corpus(
+    tensors: Mapping[str, torch.Tensor],
     corpus_metadata: Sequence[Mapping[str, Any]],
-) -> list[dict[str, Any]]:
+) -> dict[str, Any]:
+    row_indices: list[int] = []
     supported: list[dict[str, Any]] = []
-    for row in corpus_metadata:
+    for row_index, row in enumerate(corpus_metadata):
         guard = int(row["guard_action_index"])
         if not 0 <= guard < 90:
             raise ValueError("conformal guard action is outside supported families")
@@ -291,11 +293,24 @@ def _supported_corpus_metadata(
         }
         if str(guard) not in branches:
             raise ValueError("conformal supported branches omit the guard")
+        if len(branches) < 2:
+            continue
         normalized = dict(row)
         normalized["branch_returns"] = branches
         normalized["branch_count"] = len(branches)
+        row_indices.append(row_index)
         supported.append(normalized)
-    return supported
+    if not row_indices:
+        raise ValueError("conformal corpus has no supported alternatives")
+    indices = torch.tensor(row_indices, dtype=torch.long)
+    if any(value.shape[0] != len(corpus_metadata) for value in tensors.values()):
+        raise ValueError("conformal corpus tensor and metadata alignment differs")
+    return {
+        "tensors": {name: value[indices] for name, value in tensors.items()},
+        "metadata": supported,
+        "row_indices": indices,
+        "excluded_unsupported_only_row_count": len(corpus_metadata) - len(supported),
+    }
 
 
 def _score_raw_ensemble(
@@ -331,37 +346,39 @@ def evaluate_conformal_corpus(
     forbidden_action_indices: Sequence[int],
     severe_harm_floor: float,
 ) -> dict[str, Any]:
-    supported_metadata = _supported_corpus_metadata(corpus_metadata)
+    supported = _supported_corpus(tensors, corpus_metadata)
+    supported_tensors = supported["tensors"]
+    supported_metadata = supported["metadata"]
     metrics = evaluate_corpus(
         gate,
-        tensors,
+        supported_tensors,
         supported_metadata,
         forbidden_action_indices=forbidden_action_indices,
     )
     expanded = expand_action_relative_examples(
-        tensors, supported_metadata, action_dim=gate.metadata["action_dim"]
+        supported_tensors, supported_metadata, action_dim=gate.metadata["action_dim"]
     )
-    alternatives = _alternative_masks(tensors, supported_metadata)
+    alternatives = _alternative_masks(supported_tensors, supported_metadata)
     with torch.no_grad():
         selection = gate.select_actions(
-            tensors["continuous"],
-            tensors["card_ids"],
-            tensors["potion_ids"],
-            tensors["relic_ids"],
-            tensors["action_masks"],
-            tensors["guard_actions"],
+            supported_tensors["continuous"],
+            supported_tensors["card_ids"],
+            supported_tensors["potion_ids"],
+            supported_tensors["relic_ids"],
+            supported_tensors["action_masks"],
+            supported_tensors["guard_actions"],
             alternatives,
             forbidden_action_indices=frozenset(forbidden_action_indices),
         )
     true_matrix = torch.full(
-        (len(corpus_metadata), gate.metadata["action_dim"]), float("-inf")
+        (len(supported_metadata), gate.metadata["action_dim"]), float("-inf")
     )
     true_matrix[expanded["row_indices"], expanded["candidate_actions"]] = expanded[
         "raw_advantages"
     ]
     intervention_rows = selection.gate_open.cpu()
     selected_true = true_matrix[
-        torch.arange(len(corpus_metadata))[intervention_rows],
+        torch.arange(len(supported_metadata))[intervention_rows],
         selection.actions.cpu()[intervention_rows],
     ]
     metrics["selection"]["severe_harm_floor"] = float(severe_harm_floor)
@@ -374,6 +391,9 @@ def evaluate_conformal_corpus(
     metrics["conformal"] = {
         "alpha": float(gate.config.alpha),
         "corrections": dict(gate.corrections),
+        "excluded_unsupported_only_row_count": int(
+            supported["excluded_unsupported_only_row_count"]
+        ),
     }
     return metrics
 
