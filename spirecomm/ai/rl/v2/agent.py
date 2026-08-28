@@ -12,7 +12,12 @@ from typing import Optional
 import numpy as np
 import torch
 
-from spirecomm.communication.action import EndTurnAction, StartGameAction, StateAction
+from spirecomm.communication.action import (
+    EndTurnAction,
+    StartGameAction,
+    StateAction,
+    WaitAction,
+)
 from spirecomm.spire.character import PlayerClass
 from spirecomm.spire.game import Game
 from spirecomm.spire.numeric import coerce_int
@@ -521,11 +526,16 @@ class RLAgentV2:
         shadow = getattr(self, "latent_gated_shadow", None)
         if shadow is not None and shadow.pending is not None:
             try:
-                executed_shadow_index = self.action_encoder.encode_action(action, game)
-                shadow.commit_executed_action(
-                    game=game,
-                    executed_action_index=executed_shadow_index,
-                )
+                if isinstance(action, WaitAction):
+                    shadow.discard_transient_action(reason="wait_action")
+                else:
+                    executed_shadow_index = self.action_encoder.encode_action(
+                        action, game
+                    )
+                    shadow.commit_executed_action(
+                        game=game,
+                        executed_action_index=executed_shadow_index,
+                    )
             except Exception as shadow_error:
                 logger.error(
                     "RLAgentV2 latent-gated shadow commit failed: %s",

@@ -29,8 +29,12 @@ The shadow runtime SHALL evaluate the adapter on the same encoded state and lega
 - **WHEN** the adapter's frozen parent action differs from the action selected by the active parent network
 - **THEN** the event records the parity failure, shadowing is disabled for later decisions, and the already selected parent action is preserved
 
+#### Scenario: Guard requests a transient state refresh
+- **WHEN** the final callback emits `WaitAction` to refresh stale combat state without changing gameplay state
+- **THEN** the runtime records a transient-discard event, does not treat the wait as a policy action, and does not consume the policy-decision budget
+
 ### Requirement: Bounded structured telemetry
-The runtime SHALL append schema-versioned JSONL decision events with candidate, parent and source identities, session and sequence identity, compact game context, legal action indices, action indices, gate telemetry, derived action relations, and adapter-inference latency until the registered cohort event budget is reached.
+The runtime SHALL append schema-versioned JSONL decision and transient-discard events with candidate, parent and source identities, session and sequence identity, compact game context, legal action indices, action indices, gate telemetry, derived action relations, and adapter-inference latency until the registered policy-decision budget is reached.
 
 #### Scenario: Valid shadow decision
 - **WHEN** one eligible combat decision is observed

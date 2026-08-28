@@ -126,6 +126,41 @@ def test_summary_marks_complete_healthy_trace_ready(tmp_path):
     assert report["authority"]["candidate_action_takeover"] is False
 
 
+def test_summary_audits_transient_wait_without_counting_a_policy_decision(
+    tmp_path,
+):
+    registration, trace, decision = _fixture(tmp_path)
+    transient = decision(1)
+    transient["event_type"] = "transient_discard"
+    transient["discard_reason"] = "wait_action"
+    transient.pop("decision_sequence")
+    for field in (
+        "executed_action_index",
+        "executed_action_encodable",
+        "executed_action_legal",
+        "proposal_changed",
+        "candidate_matches_executed",
+        "correction_matches_executed",
+    ):
+        transient.pop(field)
+    _write(
+        trace,
+        [
+            transient,
+            decision(2, decision_sequence=1),
+            decision(3, decision_sequence=2),
+        ],
+    )
+
+    report = _summarize(tmp_path, registration)
+
+    assert report["criteria"]["all_conditions_passed"] is True
+    assert report["metrics"]["event_count"] == 3
+    assert report["metrics"]["proposal_count"] == 3
+    assert report["metrics"]["decision_count"] == 2
+    assert report["metrics"]["transient_discard_count"] == 1
+
+
 @pytest.mark.parametrize(
     ("case", "criterion"),
     [

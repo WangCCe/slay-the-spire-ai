@@ -25,6 +25,7 @@ from spirecomm.ai.rl.v2.latent_gated_live_shadow import (
 )
 import spirecomm.ai.rl.v2.latent_gated_live_shadow as shadow_module
 from spirecomm.ai.rl.v2.network import create_dqn_v2
+from spirecomm.communication.action import WaitAction
 
 
 METADATA = {
@@ -370,6 +371,24 @@ def test_event_budget_stops_inference_without_an_error(tmp_path):
     assert len(_events(paths)) == 1
 
 
+def test_transient_wait_is_audited_without_consuming_decision_budget(tmp_path):
+    paths = _write_registration(tmp_path, maximum_decisions=1)
+    runtime = _initialize(paths)
+    game = _game()
+
+    assert _observe(runtime, paths, game)
+    assert runtime.discard_transient_action(reason="wait_action")
+
+    event = _events(paths)[0]
+    assert event["event_type"] == "transient_discard"
+    assert event["discard_reason"] == "wait_action"
+    assert "decision_sequence" not in event
+    assert "executed_action_index" not in event
+    assert runtime.decision_count == 0
+    assert runtime.enabled is True
+    assert _observe(runtime, paths, _game()) is True
+
+
 def test_restarted_shadow_resumes_the_cohort_event_budget(tmp_path):
     paths = _write_registration(tmp_path, maximum_decisions=2)
     first_runtime = _initialize(paths)
@@ -461,3 +480,31 @@ def test_rl_agent_preserves_parent_action_when_shadow_raises():
 
     assert agent.get_next_action_in_game(_game()) == ("decoded", 1)
     assert shadow.enabled is False
+
+
+def test_rl_agent_discards_transient_wait_instead_of_committing_it():
+    class RecordingShadow:
+        pending = object()
+
+        def __init__(self):
+            self.reasons = []
+            self.commits = []
+
+        def discard_transient_action(self, *, reason):
+            self.reasons.append(reason)
+
+        def commit_executed_action(self, **kwargs):
+            self.commits.append(kwargs)
+
+    shadow = RecordingShadow()
+    agent = RLAgentV2.__new__(RLAgentV2)
+    agent.latent_gated_shadow = shadow
+    agent.training_mode = False
+    agent.trainer = None
+    agent.action_encoder = SimpleNamespace(
+        encode_action=lambda *_args: pytest.fail("transient wait was encoded")
+    )
+
+    assert agent.commit_executed_action(_game(), WaitAction(timeout=1)) is False
+    assert shadow.reasons == ["wait_action"]
+    assert shadow.commits == []

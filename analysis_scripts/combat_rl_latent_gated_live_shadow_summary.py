@@ -62,7 +62,11 @@ def _identity_errors(
     errors = []
     for event in events:
         line_number = event.get("_line_number", "?")
-        if event.get("event_type") not in {"decision", "error"}:
+        if event.get("event_type") not in {
+            "decision",
+            "transient_discard",
+            "error",
+        }:
             errors.append(f"line {line_number} has an unsupported event type")
         if not isinstance(event.get("session_id"), str) or not event.get("session_id"):
             errors.append(f"line {line_number} has no session identity")
@@ -197,6 +201,124 @@ def _decision_schema_errors(
     return errors
 
 
+def _transient_schema_errors(
+    transients: Iterable[Mapping[str, Any]],
+) -> list[str]:
+    required = {
+        "state_sha256",
+        "timestamp",
+        "parent_action_index",
+        "shadow_parent_action_index",
+        "correction_action_index",
+        "candidate_action_index",
+        "legal_action_indices",
+        "gate_probability",
+        "gate_threshold",
+        "gate_open",
+        "candidate_action_legal",
+        "parent_parity",
+        "shadow_latency_ms",
+        "discard_reason",
+    }
+    errors = []
+    for event in transients:
+        line_number = event.get("_line_number", "?")
+        missing = sorted(required.difference(event))
+        if missing:
+            errors.append(
+                f"line {line_number} transient fields are missing: {missing}"
+            )
+            continue
+        state_sha = event["state_sha256"]
+        if not isinstance(state_sha, str) or len(state_sha) != 64 or any(
+            character not in "0123456789abcdef"
+            for character in state_sha.lower()
+        ):
+            errors.append(f"line {line_number} transient state identity is invalid")
+        if not isinstance(event["timestamp"], str) or not event["timestamp"]:
+            errors.append(f"line {line_number} transient timestamp is invalid")
+        legal = event["legal_action_indices"]
+        if (
+            not isinstance(legal, list)
+            or not legal
+            or any(
+                not isinstance(index, int) or isinstance(index, bool) or index < 0
+                for index in legal
+            )
+            or len(set(legal)) != len(legal)
+        ):
+            errors.append(
+                f"line {line_number} transient legal action indices are invalid"
+            )
+            continue
+        action_fields = (
+            "parent_action_index",
+            "shadow_parent_action_index",
+            "correction_action_index",
+            "candidate_action_index",
+        )
+        if any(
+            not isinstance(event[field], int) or isinstance(event[field], bool)
+            for field in action_fields
+        ):
+            errors.append(f"line {line_number} transient action index is invalid")
+            continue
+        parent = event["parent_action_index"]
+        shadow_parent = event["shadow_parent_action_index"]
+        correction = event["correction_action_index"]
+        candidate = event["candidate_action_index"]
+        if any(
+            index not in legal
+            for index in (parent, shadow_parent, correction, candidate)
+        ):
+            errors.append(
+                f"line {line_number} transient model action is outside the legal set"
+            )
+        probability = event["gate_probability"]
+        threshold = event["gate_threshold"]
+        if (
+            not isinstance(probability, (int, float))
+            or isinstance(probability, bool)
+            or not np.isfinite(float(probability))
+            or not 0.0 <= float(probability) <= 1.0
+            or not isinstance(threshold, (int, float))
+            or isinstance(threshold, bool)
+            or not np.isfinite(float(threshold))
+            or not 0.0 < float(threshold) < 1.0
+        ):
+            errors.append(f"line {line_number} transient gate telemetry is invalid")
+        elif event["gate_open"] is not (
+            float(probability) >= float(threshold)
+        ):
+            errors.append(f"line {line_number} transient gate-open relation differs")
+        for field, expected in {
+            "candidate_action_legal": candidate in legal,
+            "parent_parity": shadow_parent == parent,
+        }.items():
+            if not isinstance(event[field], bool):
+                errors.append(
+                    f"line {line_number} transient {field} is not boolean"
+                )
+            elif event[field] != expected:
+                errors.append(
+                    f"line {line_number} transient {field} relation differs"
+                )
+        latency = event["shadow_latency_ms"]
+        if (
+            not isinstance(latency, (int, float))
+            or isinstance(latency, bool)
+            or not np.isfinite(float(latency))
+            or float(latency) < 0.0
+        ):
+            errors.append(f"line {line_number} transient latency is invalid")
+        if (
+            not isinstance(event["discard_reason"], str)
+            or not event["discard_reason"]
+        ):
+            errors.append(f"line {line_number} transient reason is invalid")
+    return errors
+
+
 def _sequence_errors(events: Iterable[Mapping[str, Any]]) -> list[str]:
     sessions: dict[str, list[Mapping[str, Any]]] = defaultdict(list)
     for event in events:
@@ -315,9 +437,16 @@ def summarize_live_shadow_trace(
     identity_errors = _identity_errors(events, registration)
     sequence_errors = _sequence_errors(events)
     decisions = [event for event in events if event.get("event_type") == "decision"]
+    transients = [
+        event
+        for event in events
+        if event.get("event_type") == "transient_discard"
+    ]
+    proposals = decisions + transients
     event_schema_errors = _decision_schema_errors(decisions)
+    event_schema_errors.extend(_transient_schema_errors(transients))
     error_events = [event for event in events if event.get("event_type") == "error"]
-    latency = _latency_metrics(decisions)
+    latency = _latency_metrics(proposals)
     p95_latency = latency["p95_shadow_latency_ms"]
     criteria = {
         "identity_valid": not parse_errors and not identity_errors,
@@ -329,11 +458,11 @@ def summarize_live_shadow_trace(
         "within_decision_budget": (
             len(decisions) <= registration.maximum_decision_count
         ),
-        "all_parent_actions_match": bool(decisions)
-        and all(event.get("parent_parity") is True for event in decisions),
-        "all_candidate_actions_legal": bool(decisions)
+        "all_parent_actions_match": bool(proposals)
+        and all(event.get("parent_parity") is True for event in proposals),
+        "all_candidate_actions_legal": bool(proposals)
         and all(
-            event.get("candidate_action_legal") is True for event in decisions
+            event.get("candidate_action_legal") is True for event in proposals
         ),
         "all_executed_actions_legal": bool(decisions)
         and all(
@@ -348,6 +477,8 @@ def summarize_live_shadow_trace(
     criteria["all_conditions_passed"] = all(criteria.values())
     metrics = {
         "event_count": len(events),
+        "proposal_count": len(proposals),
+        "transient_discard_count": len(transients),
         "session_count": len(
             {
                 event.get("session_id")
@@ -358,10 +489,10 @@ def summarize_live_shadow_trace(
         "decision_count": len(decisions),
         "error_event_count": len(error_events),
         "parent_parity_share": _share(
-            event.get("parent_parity") is True for event in decisions
+            event.get("parent_parity") is True for event in proposals
         ),
         "candidate_legal_share": _share(
-            event.get("candidate_action_legal") is True for event in decisions
+            event.get("candidate_action_legal") is True for event in proposals
         ),
         "executed_legal_share": _share(
             event.get("executed_action_encodable") is True
@@ -431,6 +562,7 @@ def summarize_live_shadow_trace(
         "limitations": [
             "Shadow telemetry measures runtime callability and guard-action agreement, not policy quality.",
             "The latency gate covers adapter inference only; full CommunicationMod delay must be reconciled from live logs.",
+            "Transient WaitAction control commands are audited separately and do not consume the policy-decision budget.",
             "A hard process stop between proposal and commit can omit one pending decision; run and log reconciliation remains mandatory.",
             "A separately bounded matched gameplay evaluation is required before any promotion decision.",
         ],

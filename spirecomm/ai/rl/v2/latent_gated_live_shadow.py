@@ -332,7 +332,11 @@ def _existing_trace_decision_count(
                 raise ValueError(
                     f"live shadow existing trace line {line_number} is not an object"
                 )
-            if event.get("event_type") not in {"decision", "error"}:
+            if event.get("event_type") not in {
+                "decision",
+                "transient_discard",
+                "error",
+            }:
                 raise ValueError(
                     f"live shadow existing trace line {line_number} type differs"
                 )
@@ -548,6 +552,21 @@ class LatentGatedLiveShadow:
             error=RuntimeError("pending shadow proposal was discarded"),
             game=None,
         )
+
+    def discard_transient_action(self, *, reason: str) -> bool:
+        """Publish a non-gameplay control action without consuming decision budget."""
+        if self.pending is None:
+            return False
+        pending = self.pending
+        self.pending = None
+        event = pending.event
+        event.pop("_action_mask")
+        event["event_type"] = "transient_discard"
+        event["discard_reason"] = str(reason)
+        self._append_event(event)
+        if pending.disable_after_commit:
+            self.enabled = False
+        return True
 
     def record_runtime_error(self, *, stage: str, error: Exception, game: Any) -> None:
         pending_event = self.pending.event if self.pending is not None else {}
