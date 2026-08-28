@@ -5,16 +5,16 @@
 
 ## 2. Provenance-Balanced Trainer Objective
 
-- [ ] 2.1 Add RED unit coverage for equal-stratum anchor aggregation, per-stratum telemetry, and unchanged default global-mean behavior.
-- [ ] 2.2 Implement the optional provenance-balanced anchor objective without changing existing callers.
-- [ ] 2.3 Add RED coverage for direct-only top-action margin eligibility and override exclusion.
-- [ ] 2.4 Implement direct-only margin filtering and telemetry while preserving existing all-row behavior.
+- [x] 2.1 Add RED unit coverage for equal-stratum anchor aggregation, per-stratum telemetry, and unchanged default global-mean behavior.
+- [x] 2.2 Implement the optional provenance-balanced anchor objective without changing existing callers.
+- [x] 2.3 Add RED coverage for direct-only top-action margin eligibility and override exclusion.
+- [x] 2.4 Implement direct-only margin filtering and telemetry while preserving existing all-row behavior.
 
 ## 3. Deterministic Offline Ablation Runner
 
-- [ ] 3.1 Add RED coverage for immutable input checks, exact two-arm recipes, technical gates, and objective-only tie-break behavior.
-- [ ] 3.2 Implement atomic execution and reporting for the balanced-only and balanced-plus-direct-margin arms, with the existing R2 result as an unfitted reference.
-- [ ] 3.3 Run focused tests, strict OpenSpec validation, and one optimized commit gate; commit and push the immutable runner source.
+- [x] 3.1 Add RED coverage for immutable input checks, exact two-arm recipes, technical gates, and objective-only tie-break behavior.
+- [x] 3.2 Implement atomic execution and reporting for the balanced-only and balanced-plus-direct-margin arms, with the existing R2 result as an unfitted reference.
+- [x] 3.3 Run focused tests, strict OpenSpec validation, and one optimized commit gate; commit and push the immutable runner source.
 
 ## 4. Bounded Objective Experiment
 

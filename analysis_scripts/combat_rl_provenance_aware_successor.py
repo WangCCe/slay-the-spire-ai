@@ -153,6 +153,10 @@ def _make_trainer(
     batch_size: int,
     anchor_weight: float,
     seed: int,
+    provenance_balanced_anchor: bool = False,
+    top_action_margin_guard_weight: float = 0.0,
+    top_action_margin_guard_cap: float = 0.1,
+    direct_only_top_action_margin_guard: bool = False,
 ) -> DQNTrainerV2:
     random.seed(seed)
     np.random.seed(seed % (2**32))
@@ -179,6 +183,12 @@ def _make_trainer(
         device="cpu",
         network_type=str(metadata["network_type"]),
         parent_policy_anchor_weight=anchor_weight,
+        parent_policy_anchor_provenance_balanced=provenance_balanced_anchor,
+        parent_top_action_margin_guard_weight=top_action_margin_guard_weight,
+        parent_top_action_margin_guard_cap=top_action_margin_guard_cap,
+        parent_top_action_margin_guard_direct_only=(
+            direct_only_top_action_margin_guard
+        ),
     )
     trainer.online_network.load_state_dict(parent_state, strict=True)
     trainer.target_network.load_state_dict(target_state, strict=True)
@@ -204,6 +214,10 @@ def _fit_candidate(
     anchor_weight: float,
     optimizer_steps: int,
     seed: int,
+    provenance_balanced_anchor: bool = False,
+    top_action_margin_guard_weight: float = 0.0,
+    top_action_margin_guard_cap: float = 0.1,
+    direct_only_top_action_margin_guard: bool = False,
 ) -> tuple[dict[str, torch.Tensor], dict]:
     if learning_rate <= 0.0 or not math.isfinite(learning_rate):
         raise ValueError("learning rate must be finite and positive")
@@ -224,11 +238,23 @@ def _fit_candidate(
         batch_size=batch_size,
         anchor_weight=anchor_weight,
         seed=seed,
+        provenance_balanced_anchor=provenance_balanced_anchor,
+        top_action_margin_guard_weight=top_action_margin_guard_weight,
+        top_action_margin_guard_cap=top_action_margin_guard_cap,
+        direct_only_top_action_margin_guard=(
+            direct_only_top_action_margin_guard
+        ),
     )
     totals: list[float] = []
     td_losses: list[float] = []
     anchor_losses: list[float] = []
+    anchor_direct_losses: list[float] = []
+    anchor_direct_counts: list[float] = []
+    anchor_override_losses: list[float] = []
     override_counts: list[float] = []
+    top_margin_losses: list[float] = []
+    top_margin_eligible_counts: list[float] = []
+    top_margin_violation_counts: list[float] = []
     for _ in range(optimizer_steps):
         loss = trainer.train_step()
         values = (
@@ -244,7 +270,27 @@ def _fit_candidate(
         totals.append(float(loss))
         td_losses.append(float(trainer.last_td_loss))
         anchor_losses.append(float(trainer.last_parent_policy_anchor_loss))
+        anchor_direct_losses.append(
+            float(trainer.last_parent_policy_anchor_direct_loss)
+        )
+        anchor_direct_counts.append(
+            float(trainer.last_parent_policy_anchor_direct_count)
+        )
+        anchor_override_losses.append(
+            float(trainer.last_parent_policy_anchor_override_loss)
+        )
         override_counts.append(float(trainer.last_parent_policy_anchor_override_count))
+        top_margin_losses.append(
+            float(trainer.last_parent_top_action_margin_guard_loss)
+        )
+        top_margin_eligible_counts.append(
+            float(trainer.last_parent_top_action_margin_guard_eligible_count)
+        )
+        top_margin_violation_counts.append(
+            float(
+                trainer.last_parent_top_action_margin_guard_ranking_violation_count
+            )
+        )
 
     candidate = {
         name: value.detach().cpu().clone()
@@ -255,10 +301,32 @@ def _fit_candidate(
         "total_loss": _summary(totals),
         "td_loss": _summary(td_losses),
         "parent_policy_anchor_loss": _summary(anchor_losses),
+        "parent_policy_anchor_direct_loss": _summary(anchor_direct_losses),
+        "parent_policy_anchor_direct_count": _summary(anchor_direct_counts),
+        "parent_policy_anchor_override_loss": _summary(anchor_override_losses),
         "sampled_override_count": _summary(override_counts),
+        "parent_policy_anchor_override_count": _summary(override_counts),
+        "parent_top_action_margin_guard_loss": _summary(top_margin_losses),
+        "parent_top_action_margin_guard_eligible_count": _summary(
+            top_margin_eligible_counts
+        ),
+        "parent_top_action_margin_guard_ranking_violation_count": _summary(
+            top_margin_violation_counts
+        ),
         "all_objective_values_finite": all(
             math.isfinite(value)
-            for series in (totals, td_losses, anchor_losses, override_counts)
+            for series in (
+                totals,
+                td_losses,
+                anchor_losses,
+                anchor_direct_losses,
+                anchor_direct_counts,
+                anchor_override_losses,
+                override_counts,
+                top_margin_losses,
+                top_margin_eligible_counts,
+                top_margin_violation_counts,
+            )
             for value in series
         ),
     }

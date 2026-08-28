@@ -19,6 +19,47 @@ from .state_encoder import StateEncoderV2
 logger = logging.getLogger(__name__)
 
 
+def provenance_balanced_parent_policy_anchor_loss(
+    current_q_values: torch.Tensor,
+    anchor_targets: torch.Tensor,
+    anchor_to_executed_action: torch.Tensor,
+) -> tuple[torch.Tensor, dict[str, float | int]]:
+    if current_q_values.ndim != 2:
+        raise ValueError("anchor Q values must be a matrix")
+    row_count = current_q_values.shape[0]
+    if anchor_targets.shape != (row_count,):
+        raise ValueError("anchor targets must match anchor Q rows")
+    if anchor_to_executed_action.shape != (row_count,):
+        raise ValueError("anchor provenance must match anchor Q rows")
+    if not row_count:
+        raise ValueError("anchor batch must not be empty")
+
+    overrides = anchor_to_executed_action.bool()
+    direct = ~overrides
+    per_row = F.cross_entropy(
+        current_q_values,
+        anchor_targets.long(),
+        reduction="none",
+    )
+    zero = per_row.sum() * 0.0
+    direct_count = int(direct.sum().item())
+    override_count = int(overrides.sum().item())
+    direct_loss = per_row[direct].mean() if direct_count else zero
+    override_loss = per_row[overrides].mean() if override_count else zero
+    if direct_count and override_count:
+        loss = 0.5 * (direct_loss + override_loss)
+    elif direct_count:
+        loss = direct_loss
+    else:
+        loss = override_loss
+    return loss, {
+        "direct_count": direct_count,
+        "override_count": override_count,
+        "direct_loss": float(direct_loss.item()),
+        "override_loss": float(override_loss.item()),
+    }
+
+
 def parent_end_turn_margin_guard_loss(
     current_q_values: torch.Tensor,
     parent_q_values: torch.Tensor,
@@ -141,6 +182,7 @@ def parent_top_action_margin_guard_loss(
     action_masks: torch.Tensor,
     *,
     margin_cap: float,
+    eligible_rows: Optional[torch.Tensor] = None,
 ) -> tuple[torch.Tensor, int, int]:
     if current_q_values.shape != parent_q_values.shape:
         raise ValueError("candidate and parent Q shapes must match")
@@ -161,6 +203,10 @@ def parent_top_action_margin_guard_loss(
         & torch.isfinite(parent_margins)
         & (parent_margins > 0.0)
     )
+    if eligible_rows is not None:
+        if eligible_rows.shape != (current_q_values.shape[0],):
+            raise ValueError("top-action margin eligibility must match Q rows")
+        eligible &= eligible_rows.bool().to(device=current_q_values.device)
     eligible_count = int(eligible.sum().item())
     if not eligible_count:
         finite_q = torch.where(
@@ -218,6 +264,7 @@ class DQNTrainerV2:
         potion_embed_dim: int = 8,
         relic_embed_dim: int = 16,
         parent_policy_anchor_weight: float = 0.0,
+        parent_policy_anchor_provenance_balanced: bool = False,
         parent_end_turn_margin_guard_weight: float = 0.0,
         parent_end_turn_margin_guard_cap: float = 0.1,
         positive_energy_action_imitation_weight: float = 0.0,
@@ -226,6 +273,7 @@ class DQNTrainerV2:
         parent_card_ranking_guard_cap: float = 0.1,
         parent_top_action_margin_guard_weight: float = 0.0,
         parent_top_action_margin_guard_cap: float = 0.1,
+        parent_top_action_margin_guard_direct_only: bool = False,
     ):
         self.continuous_dim = continuous_dim
         self.action_dim = action_dim
@@ -246,6 +294,18 @@ class DQNTrainerV2:
         if not np.isfinite(parent_policy_anchor_weight) or parent_policy_anchor_weight < 0:
             raise ValueError("parent_policy_anchor_weight must be finite and non-negative")
         self.parent_policy_anchor_weight = float(parent_policy_anchor_weight)
+        if not isinstance(parent_policy_anchor_provenance_balanced, (bool, np.bool_)):
+            raise ValueError("parent policy anchor provenance balance must be boolean")
+        if (
+            parent_policy_anchor_provenance_balanced
+            and parent_policy_anchor_weight <= 0.0
+        ):
+            raise ValueError(
+                "provenance-balanced parent policy anchor requires a positive weight"
+            )
+        self.parent_policy_anchor_provenance_balanced = bool(
+            parent_policy_anchor_provenance_balanced
+        )
         if (
             not np.isfinite(parent_end_turn_margin_guard_weight)
             or parent_end_turn_margin_guard_weight < 0.0
@@ -324,6 +384,18 @@ class DQNTrainerV2:
         )
         self.parent_top_action_margin_guard_cap = float(
             parent_top_action_margin_guard_cap
+        )
+        if not isinstance(parent_top_action_margin_guard_direct_only, (bool, np.bool_)):
+            raise ValueError("direct-only top-action margin guard must be boolean")
+        if (
+            parent_top_action_margin_guard_direct_only
+            and parent_top_action_margin_guard_weight <= 0.0
+        ):
+            raise ValueError(
+                "direct-only top-action margin guard requires a positive weight"
+            )
+        self.parent_top_action_margin_guard_direct_only = bool(
+            parent_top_action_margin_guard_direct_only
         )
         if (
             not np.isfinite(positive_energy_action_imitation_weight)
@@ -413,6 +485,9 @@ class DQNTrainerV2:
         self.last_loss = None
         self.last_td_loss = None
         self.last_parent_policy_anchor_loss = 0.0
+        self.last_parent_policy_anchor_direct_loss = 0.0
+        self.last_parent_policy_anchor_direct_count = 0
+        self.last_parent_policy_anchor_override_loss = 0.0
         self.last_parent_policy_anchor_override_count = 0
         self.last_parent_end_turn_margin_guard_loss = 0.0
         self.last_parent_end_turn_margin_guard_eligible_count = 0
@@ -597,6 +672,9 @@ class DQNTrainerV2:
             anchor_to_executed_action
         ).bool().to(self.device)
 
+        self.last_parent_policy_anchor_direct_loss = 0.0
+        self.last_parent_policy_anchor_direct_count = 0
+        self.last_parent_policy_anchor_override_loss = 0.0
         self.last_parent_policy_anchor_override_count = 0
         if self.parent_policy_anchor_weight > 0.0 and bool(
             anchor_to_executed_action.any()
@@ -671,7 +749,25 @@ class DQNTrainerV2:
             self.last_parent_policy_anchor_override_count = int(
                 anchor_to_executed_action.sum().item()
             )
-            anchor_loss = F.cross_entropy(current_q_values, anchor_targets)
+            self.last_parent_policy_anchor_direct_count = (
+                int((~anchor_to_executed_action).sum().item())
+            )
+            if self.parent_policy_anchor_provenance_balanced:
+                anchor_loss, telemetry = (
+                    provenance_balanced_parent_policy_anchor_loss(
+                        current_q_values,
+                        anchor_targets,
+                        anchor_to_executed_action,
+                    )
+                )
+                self.last_parent_policy_anchor_direct_loss = float(
+                    telemetry["direct_loss"]
+                )
+                self.last_parent_policy_anchor_override_loss = float(
+                    telemetry["override_loss"]
+                )
+            else:
+                anchor_loss = F.cross_entropy(current_q_values, anchor_targets)
         parent_end_turn_margin_guard_loss_value = torch.zeros(
             (), dtype=td_loss.dtype, device=self.device
         )
@@ -725,6 +821,11 @@ class DQNTrainerV2:
                 anchor_q,
                 action_masks,
                 margin_cap=self.parent_top_action_margin_guard_cap,
+                eligible_rows=(
+                    ~anchor_to_executed_action
+                    if self.parent_top_action_margin_guard_direct_only
+                    else None
+                ),
             )
         positive_energy_action_imitation_loss = torch.zeros(
             (), dtype=td_loss.dtype, device=self.device

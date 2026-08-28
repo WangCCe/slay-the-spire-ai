@@ -15,6 +15,7 @@ from spirecomm.ai.rl.v2.trainer import (
     parent_card_ranking_guard_loss,
     parent_end_turn_margin_guard_loss,
     parent_top_action_margin_guard_loss,
+    provenance_balanced_parent_policy_anchor_loss,
 )
 from spirecomm.communication.action import EndTurnAction
 
@@ -209,6 +210,74 @@ def test_parent_top_action_margin_guard_zero_eligible_is_differentiable():
     assert loss.item() == 0.0
     loss.backward()
     assert torch.count_nonzero(candidate_q.grad).item() == 0
+
+
+def test_parent_top_action_margin_guard_can_filter_to_direct_rows():
+    parent_q = torch.tensor(
+        [[0.5, 0.2], [0.6, 0.1], [0.4, 0.3]], dtype=torch.float32
+    )
+    candidate_q = torch.tensor(
+        [[0.0, 0.3], [0.0, 0.4], [0.4, 0.3]],
+        dtype=torch.float32,
+        requires_grad=True,
+    )
+    masks = torch.ones_like(parent_q, dtype=torch.bool)
+
+    all_loss, all_count, all_violations = parent_top_action_margin_guard_loss(
+        candidate_q,
+        parent_q,
+        masks,
+        margin_cap=0.1,
+    )
+    direct_loss, direct_count, direct_violations = (
+        parent_top_action_margin_guard_loss(
+            candidate_q,
+            parent_q,
+            masks,
+            margin_cap=0.1,
+            eligible_rows=torch.tensor([True, False, True]),
+        )
+    )
+
+    assert all_count == 3
+    assert all_violations == 2
+    assert all_loss.item() == pytest.approx(0.3)
+    assert direct_count == 2
+    assert direct_violations == 1
+    assert direct_loss.item() == pytest.approx(0.2)
+
+
+def test_provenance_balanced_anchor_gives_strata_equal_aggregate_weight():
+    q_values = torch.tensor(
+        [[3.0, 0.0], [2.0, 0.0], [1.0, 0.0], [0.0, 1.0]],
+        dtype=torch.float32,
+        requires_grad=True,
+    )
+    targets = torch.tensor([0, 0, 0, 0], dtype=torch.long)
+    overrides = torch.tensor([False, False, False, True])
+
+    loss, telemetry = provenance_balanced_parent_policy_anchor_loss(
+        q_values,
+        targets,
+        overrides,
+    )
+    direct_loss = torch.nn.functional.cross_entropy(q_values[:3], targets[:3])
+    override_loss = torch.nn.functional.cross_entropy(q_values[3:], targets[3:])
+
+    assert telemetry == {
+        "direct_count": 3,
+        "override_count": 1,
+        "direct_loss": pytest.approx(direct_loss.item()),
+        "override_loss": pytest.approx(override_loss.item()),
+    }
+    assert loss.item() == pytest.approx(
+        0.5 * (direct_loss.item() + override_loss.item())
+    )
+    assert loss.item() != pytest.approx(
+        torch.nn.functional.cross_entropy(q_values, targets).item()
+    )
+    loss.backward()
+    assert torch.isfinite(q_values.grad).all()
 
 
 class _ActionEncoder:
@@ -425,6 +494,9 @@ def _real_trainer(
     parent_policy_anchor_weight=0.0,
     positive_energy_action_imitation_weight=0.0,
     positive_energy_parent_end_turn_imitation_weight=0.0,
+    parent_policy_anchor_provenance_balanced=False,
+    parent_top_action_margin_guard_weight=0.0,
+    parent_top_action_margin_guard_direct_only=False,
     action_dim=2,
 ):
     return DQNTrainerV2(
@@ -445,6 +517,15 @@ def _real_trainer(
         target_update_freq=8,
         device="cpu",
         parent_policy_anchor_weight=parent_policy_anchor_weight,
+        parent_policy_anchor_provenance_balanced=(
+            parent_policy_anchor_provenance_balanced
+        ),
+        parent_top_action_margin_guard_weight=(
+            parent_top_action_margin_guard_weight
+        ),
+        parent_top_action_margin_guard_direct_only=(
+            parent_top_action_margin_guard_direct_only
+        ),
         positive_energy_action_imitation_weight=(
             positive_energy_action_imitation_weight
         ),
@@ -701,6 +782,59 @@ def test_parent_policy_anchor_uses_mixed_executed_and_parent_targets():
         parameter.grad is None
         for parameter in trainer.parent_policy_anchor_network.parameters()
     )
+
+
+def test_provenance_balanced_anchor_reports_component_telemetry():
+    trainer = _real_trainer(
+        parent_policy_anchor_weight=1.0,
+        parent_policy_anchor_provenance_balanced=True,
+    )
+    trainer.set_parent_policy_anchor(trainer.online_network.state_dict())
+    with torch.no_grad():
+        trainer.parent_policy_anchor_network.advantage_stream[-1].bias[1] = 100.0
+    for override in (True, True, False, False):
+        assert _store_real_transition(
+            trainer,
+            action=0,
+            anchor_to_executed_action=override,
+        ) is True
+
+    loss = trainer.train_step()
+
+    assert math.isfinite(loss)
+    assert trainer.last_parent_policy_anchor_direct_count == 2
+    assert trainer.last_parent_policy_anchor_override_count == 2
+    assert trainer.last_parent_policy_anchor_direct_loss > 0.0
+    assert trainer.last_parent_policy_anchor_override_loss > 0.0
+    assert trainer.last_parent_policy_anchor_loss == pytest.approx(
+        0.5
+        * (
+            trainer.last_parent_policy_anchor_direct_loss
+            + trainer.last_parent_policy_anchor_override_loss
+        )
+    )
+
+
+def test_direct_only_top_action_guard_excludes_override_rows_in_trainer():
+    trainer = _real_trainer(
+        parent_policy_anchor_weight=1.0,
+        parent_top_action_margin_guard_weight=1.0,
+        parent_top_action_margin_guard_direct_only=True,
+    )
+    trainer.set_parent_policy_anchor(trainer.online_network.state_dict())
+    with torch.no_grad():
+        trainer.parent_policy_anchor_network.advantage_stream[-1].bias[1] = 100.0
+    for override in (True, True, False, False):
+        assert _store_real_transition(
+            trainer,
+            action=0,
+            anchor_to_executed_action=override,
+        ) is True
+
+    loss = trainer.train_step()
+
+    assert math.isfinite(loss)
+    assert trainer.last_parent_top_action_margin_guard_eligible_count == 2
 
 
 def test_parent_policy_anchor_rejects_invalid_executed_action_override_before_update():
