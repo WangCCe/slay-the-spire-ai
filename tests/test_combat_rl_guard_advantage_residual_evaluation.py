@@ -34,6 +34,17 @@ class StubResidual:
         )
 
 
+class MaskAwareStubResidual:
+    def select_actions(self, *args):
+        alternative_mask = args[-1]
+        action = int(torch.where(alternative_mask[0])[0].max().item())
+        return SimpleNamespace(
+            gate_open=torch.tensor([True]),
+            residual_actions=torch.tensor([action]),
+            gate_probabilities=torch.tensor([0.9]),
+        )
+
+
 def _mapped() -> MappedCombatState:
     continuous = np.zeros(StateEncoderV2.CONTINUOUS_DIM, dtype=np.float32)
     action_mask = np.zeros(133, dtype=bool)
@@ -103,6 +114,49 @@ def test_non_guard_state_does_not_call_residual():
     assert selected["rl_action_index"] == 90
     assert trace is None
     assert reason == "guard_not_replaced"
+
+
+def test_end_turn_constraint_is_applied_before_residual_selection():
+    unrestricted, unrestricted_trace, _ = select_post_guard_action(
+        MaskAwareStubResidual(),
+        mapped=_mapped(),
+        legal_actions=_actions(),
+        guarded_action=_actions()[0],
+        guard_replaced=True,
+        max_canonical_actions=8,
+    )
+    masked, masked_trace, reason = select_post_guard_action(
+        MaskAwareStubResidual(),
+        mapped=_mapped(),
+        legal_actions=_actions(),
+        guarded_action=_actions()[0],
+        guard_replaced=True,
+        max_canonical_actions=8,
+        forbidden_residual_action_indices=frozenset({90}),
+    )
+    assert unrestricted["rl_action_index"] == 90
+    assert unrestricted_trace["forbidden_residual_action_indices"] == []
+    assert reason == ""
+    assert masked["rl_action_index"] == 6
+    assert masked_trace["forbidden_residual_action_indices"] == [90]
+
+
+def test_constraint_abstains_to_exact_guard_when_it_removes_every_alternative():
+    mapped = _mapped()
+    mapped.action_mask[6] = False
+    actions = [_actions()[0], _actions()[2]]
+    selected, trace, reason = select_post_guard_action(
+        object(),
+        mapped=mapped,
+        legal_actions=actions,
+        guarded_action=actions[0],
+        guard_replaced=True,
+        max_canonical_actions=8,
+        forbidden_residual_action_indices=frozenset({90}),
+    )
+    assert selected == actions[0]
+    assert trace is None
+    assert reason == "forbidden_actions_removed_all_alternatives"
 
 
 def _registration() -> dict:

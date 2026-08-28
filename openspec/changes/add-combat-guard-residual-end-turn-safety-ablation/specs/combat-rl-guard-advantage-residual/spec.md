@@ -36,7 +36,7 @@ player-HP deltas, intervention count, action-constraint telemetry, support
 exclusions, latency, and all fixed gate results for both paired contrasts.
 
 #### Scenario: Candidate passes every policy condition
-- **WHEN** candidate-only victories are at least control-only victories, mean reward and mean HP deltas are non-negative, no nonterminal profiles are excluded, at least one residual intervention occurs, every registered action constraint is satisfied, and a constrained arm is non-regressive versus its unrestricted arm on matched-only wins, reward, and HP
+- **WHEN** candidate-only victories are at least control-only victories, mean reward and mean HP deltas are non-negative, no nonterminal profiles are excluded, at least one residual intervention occurs, the unrestricted arm expresses at least one constrained-action treatment opportunity, every registered action constraint is satisfied, and a constrained arm has no direct-ablation nonterminal exclusions and is non-regressive versus its unrestricted arm on matched-only wins, reward, and HP
 - **THEN** the system may retain the recipe for a separately registered offline follow-up but SHALL NOT authorize gameplay, qualification, promotion, or production loading
 
 #### Scenario: Candidate fails a policy condition

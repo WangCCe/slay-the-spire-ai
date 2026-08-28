@@ -58,11 +58,13 @@ result would not be causal.
 
 ### Require both control-relative safety and direct ablation improvement
 
-The masked arm is promising only when it independently passes the existing
-five control-relative policy conditions, executes no residual EndTurn action,
-and is non-regressive versus the unrestricted residual on matched-only wins,
-mean reward, and mean HP. Any failure closes this hypothesis without another
-mask, threshold, seed, or training run.
+The masked arm is promising only when the unrestricted arm expresses at least
+one residual EndTurn treatment opportunity, the masked arm independently passes
+the existing five control-relative policy conditions, executes no residual
+EndTurn action, has no nonterminal direct-ablation exclusions, and is
+non-regressive versus the unrestricted residual on matched-only wins, mean
+reward, and mean HP. Any failure closes this hypothesis without another mask,
+threshold, seed, or training run.
 
 Alternative considered: retain the masked arm if it merely improves over the
 failed unrestricted arm. Rejected because a less harmful policy can still be

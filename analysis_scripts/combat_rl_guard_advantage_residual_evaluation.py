@@ -264,6 +264,7 @@ def select_post_guard_action(
     guarded_action: Mapping[str, Any],
     guard_replaced: bool,
     max_canonical_actions: int,
+    forbidden_residual_action_indices: frozenset[int] = frozenset(),
 ) -> tuple[dict[str, Any], dict[str, Any] | None, str]:
     guarded = dict(guarded_action)
     if not guard_replaced:
@@ -276,12 +277,20 @@ def select_post_guard_action(
     exact_guard_index = int(guarded["rl_action_index"])
     canonical_guard_index = exact_to_representative[exact_guard_index]
     alternative_mask = torch.zeros((1, mapped.action_mask.shape[0]), dtype=torch.bool)
+    unmasked_alternative_count = 0
     for action in canonical:
         index = int(action["rl_action_index"])
         if index != canonical_guard_index:
-            alternative_mask[0, index] = True
+            unmasked_alternative_count += 1
+            if index not in forbidden_residual_action_indices:
+                alternative_mask[0, index] = True
     if not bool(alternative_mask.any()):
-        return guarded, None, "no_distinct_alternative"
+        reason = (
+            "forbidden_actions_removed_all_alternatives"
+            if unmasked_alternative_count
+            else "no_distinct_alternative"
+        )
+        return guarded, None, reason
     start = time.perf_counter()
     with torch.no_grad():
         selection = residual.select_actions(
@@ -311,6 +320,9 @@ def select_post_guard_action(
         "gate_open": gate_open,
         "final_action_index": int(selected["rl_action_index"]),
         "intervened": int(selected["rl_action_index"]) != exact_guard_index,
+        "forbidden_residual_action_indices": sorted(
+            forbidden_residual_action_indices
+        ),
         "latency_ms": latency_ms,
     }
     return selected, trace, ""
@@ -325,6 +337,7 @@ def evaluate_residual_policy(
     seeds: Sequence[int],
     config: SmokeConfig,
     max_canonical_actions: int,
+    forbidden_residual_action_indices: frozenset[int] = frozenset(),
 ) -> dict[str, Any]:
     rows: list[dict[str, Any]] = []
     decision_trace: list[dict[str, Any]] = []
@@ -355,6 +368,9 @@ def evaluate_residual_policy(
                         "residual_gate_open_count": 0,
                         "residual_intervention_count": 0,
                         "residual_abstention_count": 0,
+                        "residual_end_turn_intervention_count": 0,
+                        "residual_forbidden_action_intervention_count": 0,
+                        "residual_forbidden_action_skip_count": 0,
                         "residual_support_skip_count": 0,
                         "residual_support_skip_reason_counts": {},
                         **{field: 0 for field in DEPLOYMENT_GUARD_TELEMETRY_FIELDS},
@@ -409,15 +425,32 @@ def evaluate_residual_policy(
                     guarded_action=guarded,
                     guard_replaced=bool(step_guard["guard_proxy_replacement_count"]),
                     max_canonical_actions=max_canonical_actions,
+                    forbidden_residual_action_indices=(
+                        forbidden_residual_action_indices
+                    ),
                 )
                 if support_reason and support_reason != "guard_not_replaced":
                     residual_telemetry["residual_support_skip_count"] += 1
                     support_reasons[support_reason] += 1
+                    if support_reason == "forbidden_actions_removed_all_alternatives":
+                        residual_telemetry[
+                            "residual_forbidden_action_skip_count"
+                        ] += 1
                 if trace is not None:
                     residual_telemetry["residual_eligible_count"] += 1
                     residual_telemetry["residual_gate_open_count"] += int(trace["gate_open"])
                     residual_telemetry["residual_intervention_count"] += int(trace["intervened"])
                     residual_telemetry["residual_abstention_count"] += int(not trace["gate_open"])
+                    if trace["intervened"] and trace["final_action_index"] == 90:
+                        residual_telemetry[
+                            "residual_end_turn_intervention_count"
+                        ] += 1
+                    if trace["intervened"] and trace["final_action_index"] in (
+                        forbidden_residual_action_indices
+                    ):
+                        residual_telemetry[
+                            "residual_forbidden_action_intervention_count"
+                        ] += 1
                     decision_trace.append(
                         {
                             "seed": int(seed),
@@ -467,6 +500,21 @@ def evaluate_residual_policy(
                     "residual_gate_open_count": int(residual_telemetry["residual_gate_open_count"]),
                     "residual_intervention_count": int(residual_telemetry["residual_intervention_count"]),
                     "residual_abstention_count": int(residual_telemetry["residual_abstention_count"]),
+                    "residual_end_turn_intervention_count": int(
+                        residual_telemetry[
+                            "residual_end_turn_intervention_count"
+                        ]
+                    ),
+                    "residual_forbidden_action_intervention_count": int(
+                        residual_telemetry[
+                            "residual_forbidden_action_intervention_count"
+                        ]
+                    ),
+                    "residual_forbidden_action_skip_count": int(
+                        residual_telemetry[
+                            "residual_forbidden_action_skip_count"
+                        ]
+                    ),
                     "residual_support_skip_count": int(residual_telemetry["residual_support_skip_count"]),
                     "residual_support_skip_reason_counts": dict(sorted(support_reasons.items())),
                     **{field: int(guard_telemetry[field]) for field in DEPLOYMENT_GUARD_TELEMETRY_FIELDS},
@@ -513,6 +561,18 @@ def evaluate_residual_policy(
             "residual_gate_open_count": sum(int(row["residual_gate_open_count"]) for row in rows),
             "residual_intervention_count": sum(int(row["residual_intervention_count"]) for row in rows),
             "residual_abstention_count": sum(int(row["residual_abstention_count"]) for row in rows),
+            "residual_end_turn_intervention_count": sum(
+                int(row["residual_end_turn_intervention_count"])
+                for row in rows
+            ),
+            "residual_forbidden_action_intervention_count": sum(
+                int(row["residual_forbidden_action_intervention_count"])
+                for row in rows
+            ),
+            "residual_forbidden_action_skip_count": sum(
+                int(row["residual_forbidden_action_skip_count"])
+                for row in rows
+            ),
             "residual_support_skip_count": sum(int(row["residual_support_skip_count"]) for row in rows),
             "residual_support_skip_reason_counts": dict(sorted(support_counts.items())),
             "residual_latency_ms": {

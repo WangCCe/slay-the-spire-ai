@@ -16,16 +16,19 @@ an isolated action.
   parameters unchanged; perform no fitting or tuning.
 - Run one preregistered, fresh three-arm matched LightSTS ablation: guarded
   control, unrestricted residual, and EndTurn-masked residual.
-- Require the masked arm to produce zero residual EndTurn interventions,
-  improve over the unrestricted arm on the same cohort, and independently pass
-  every existing control-relative simulator policy condition.
+- Require the unrestricted arm to express at least one residual EndTurn
+  intervention, the masked arm to produce zero, both direct-ablation arms to
+  remain terminally comparable, the masked arm to improve over unrestricted on
+  the same cohort, and the masked arm to independently pass every existing
+  control-relative simulator policy condition.
 - Close the safety hypothesis without another action filter, threshold change,
   seed change, or training run if any fixed condition fails.
 
-The success metric is a masked arm that passes the existing candidate-only
-victory, reward, HP, nonterminal-support, and intervention conditions while
-also eliminating residual EndTurn interventions and improving reward and HP
-relative to the unrestricted residual on the same profiles.
+The success metric is a cohort with non-zero unrestricted EndTurn treatment
+opportunity and a masked arm that passes the existing candidate-only victory,
+reward, HP, nonterminal-support, and intervention conditions while eliminating
+residual EndTurn interventions and improving matched-only wins, reward, and HP
+relative to the unrestricted residual without nonterminal exclusions.
 
 Non-goals are retraining the residual, changing its threshold or architecture,
 changing the guard, starting Slay the Spire or CommunicationMod, loading a
