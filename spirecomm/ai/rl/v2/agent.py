@@ -6,6 +6,7 @@ from dataclasses import dataclass
 import logging
 import math
 import os
+from pathlib import Path
 from typing import Optional
 
 import numpy as np
@@ -283,8 +284,26 @@ class RLAgentV2:
             except Exception as exc:
                 logger.warning("Expert mix init failed: %s", exc)
 
+        self.latent_gated_shadow = None
         if model_path:
             self.load_model(model_path)
+        if os.environ.get("STS_COMBAT_RL_LATENT_SHADOW_REGISTRATION", "").strip():
+            from .latent_gated_live_shadow import (
+                initialize_latent_gated_live_shadow,
+            )
+
+            adapter_metadata = self._build_metadata().as_dict()
+            adapter_metadata.pop("rl_space_version")
+            self.latent_gated_shadow = initialize_latent_gated_live_shadow(
+                parent=self.network,
+                metadata=adapter_metadata,
+                model_path=model_path,
+                training=self.training_mode,
+                epsilon=self.epsilon,
+                expert_mix_enabled=self.expert_mix_enabled,
+                repo_root=Path(__file__).resolve().parents[4],
+                device=self.device,
+            )
 
     def get_next_action_in_game(self, game: Game):
         try:
@@ -360,6 +379,27 @@ class RLAgentV2:
                         )
 
             action = self.action_encoder.decode_action(action_index, game)
+
+            shadow = getattr(self, "latent_gated_shadow", None)
+            if shadow is not None and shadow.enabled:
+                try:
+                    shadow.observe_proposal(
+                        game=game,
+                        continuous=encoded.continuous,
+                        card_ids=encoded.card_ids,
+                        potion_ids=encoded.potion_ids,
+                        relic_ids=encoded.relic_ids,
+                        action_mask=action_mask,
+                        parent_action_index=action_index,
+                    )
+                except Exception as shadow_error:
+                    logger.error(
+                        "RLAgentV2 latent-gated shadow proposal failed: %s",
+                        shadow_error,
+                    )
+                    shadow.record_runtime_error(
+                        stage="proposal", error=shadow_error, game=game
+                    )
 
             if self.training_mode and self.trainer is not None:
                 self._process_training_step(
@@ -478,6 +518,22 @@ class RLAgentV2:
 
     def commit_executed_action(self, game: Game, action) -> bool:
         """Bind replay attribution to the action emitted after outer safety guards."""
+        shadow = getattr(self, "latent_gated_shadow", None)
+        if shadow is not None and shadow.pending is not None:
+            try:
+                executed_shadow_index = self.action_encoder.encode_action(action, game)
+                shadow.commit_executed_action(
+                    game=game,
+                    executed_action_index=executed_shadow_index,
+                )
+            except Exception as shadow_error:
+                logger.error(
+                    "RLAgentV2 latent-gated shadow commit failed: %s",
+                    shadow_error,
+                )
+                shadow.record_runtime_error(
+                    stage="commit", error=shadow_error, game=game
+                )
         if not self.training_mode or self.trainer is None:
             return False
 
@@ -676,6 +732,9 @@ class RLAgentV2:
         self.episode_reward = 0.0
         self.episode_steps = 0
         self.reward_calculator.reset()
+        shadow = getattr(self, "latent_gated_shadow", None)
+        if shadow is not None:
+            shadow.discard_pending()
         if self.expert_agent is not None and hasattr(self.expert_agent, "game_tracker"):
             try:
                 from spirecomm.ai.tracker import GameTracker
