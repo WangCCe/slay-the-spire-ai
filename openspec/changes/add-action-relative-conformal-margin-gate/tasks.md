@@ -8,7 +8,7 @@
 
 - [x] 2.1 Implement one fixed CPU runner that fits only on fit rows, calibrates only on calibration rows, then loads and evaluates the untouched holdout
 - [x] 2.2 Add fixed offline conditions for coverage, precision, value, regret, severe-harm, legality, and provenance with focused runner tests
-- [ ] 2.3 Commit source and one registration binding r16, corpus bytes, baseline evidence, audit evidence, recipe, split, and output path
+- [x] 2.3 Commit source and one registration binding r16, corpus bytes, baseline evidence, audit evidence, recipe, split, and output path
 - [ ] 2.4 Execute the registered fit/calibration/holdout decision once and publish its artifact and report
 
 ## 3. Conditional Fresh LightSTS Gate
