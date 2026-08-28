@@ -365,24 +365,7 @@ class ActionRelativeAdvantageResidual(nn.Module):
             action_masks,
             guard_actions,
         )
-        latent = self._parent_latent(continuous, card_ids, potion_ids, relic_ids)
-        return self._score_candidates_from_latent(
-            latent,
-            action_masks,
-            guard_actions,
-            candidate_actions,
-        )
-
-    def _score_candidates_from_latent(
-        self,
-        latent: torch.Tensor,
-        action_masks: torch.Tensor,
-        guard_actions: torch.Tensor,
-        candidate_actions: torch.Tensor,
-    ) -> torch.Tensor:
         batch_size = guard_actions.numel()
-        if latent.dim() != 2 or latent.shape[0] != batch_size:
-            raise ValueError("action-relative latent batch shape differs")
         candidate_actions = candidate_actions.reshape(-1).long()
         if candidate_actions.shape != (batch_size,):
             raise ValueError("action-relative candidate action shape differs")
@@ -396,6 +379,7 @@ class ActionRelativeAdvantageResidual(nn.Module):
         if bool(candidate_actions.eq(guard_actions).any()):
             raise ValueError("action-relative candidate action duplicates guard")
 
+        latent = self._parent_latent(continuous, card_ids, potion_ids, relic_ids)
         action_dim = self.metadata["action_dim"]
         features = torch.cat(
             (
@@ -471,14 +455,11 @@ class ActionRelativeAdvantageResidual(nn.Module):
         if candidate_pairs.numel():
             state_rows = candidate_pairs[:, 0]
             candidates = candidate_pairs[:, 1]
-            latent = self._parent_latent(
-                continuous,
-                card_ids,
-                potion_ids,
-                relic_ids,
-            )
-            pair_predictions = self._score_candidates_from_latent(
-                latent[state_rows],
+            pair_predictions = self.score_candidates(
+                continuous[state_rows],
+                card_ids[state_rows],
+                potion_ids[state_rows],
+                relic_ids[state_rows],
                 action_masks[state_rows],
                 guard_actions[state_rows],
                 candidates,

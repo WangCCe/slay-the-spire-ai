@@ -19,14 +19,19 @@ numeric runner and adjacent surfaces passed `55` focused tests in `9.60s`.
 
 Registration SHA-256:
 `a158868b984b36f8ce3115c62381c5b87a020a30aee72f32fb3afcc1b756f2f5`.
-- [ ] 3.2 Execute the r2 registration once and publish parity, latency, provenance, and terminal decision; do not change or retry the registration after execution.
+- [x] 3.2 Execute the r2 registration once and publish parity, latency, provenance, and terminal decision; do not change or retry the registration after execution.
+
+The immutable run passed prediction parity and the 15ms optimized p95 ceiling
+but failed the 2x p50 speedup gate: reference p50 `1.622100ms`, optimized p50
+`1.699700ms`, optimized p95 `2.330625ms`, and speedup `0.954345x`. The runtime
+optimization was rolled back and the registration was not retried.
 
 ## 4. Fresh Live Shadow
 
-- [ ] 4.1 Only if r2 offline passes, commit and push one new five-game behavior-neutral live registration with unchanged artifact, parent, 512-decision budget, 100-eligible floor, and 20ms p95 gate.
-- [ ] 4.2 Back up and temporarily update the production-r16 CommunicationMod command, complete at most one five-game live batch, and restore the exact prior config after terminalization or failure.
-- [ ] 4.3 Publish trace, run, log, sim-divergence, config, and readiness evidence; retain zero candidate action authority unless every registered condition passes.
+- [x] 4.1 Only if r2 offline passes, commit and push one new five-game behavior-neutral live registration with unchanged artifact, parent, 512-decision budget, 100-eligible floor, and 20ms p95 gate. Skipped because r2 offline failed.
+- [x] 4.2 Back up and temporarily update the production-r16 CommunicationMod command, complete at most one five-game live batch, and restore the exact prior config after terminalization or failure. Skipped before config access.
+- [x] 4.3 Publish trace, run, log, sim-divergence, config, and readiness evidence; retain zero candidate action authority unless every registered condition passes. No live evidence exists; the offline report is terminal.
 
 ## 5. Closure
 
-- [ ] 5.1 Sync the accepted float32-equivalence requirement only if the offline preflight passes, archive the change, and commit only scoped source, registrations, and compact reports.
+- [x] 5.1 Do not sync the failed float32-equivalence optimization requirement; archive the change and commit only scoped rollback, registration, and compact report artifacts.
