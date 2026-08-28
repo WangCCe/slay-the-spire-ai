@@ -1,0 +1,147 @@
+{
+  "authority": {
+    "candidate_action_authority": false,
+    "gameplay_quality_claim": false,
+    "online_training": false,
+    "promotion": false,
+    "qualification": false
+  },
+  "batch": {
+    "ai_marker_count_after": 17361,
+    "ai_marker_count_before": 17356,
+    "completed_game_count": 5,
+    "maximum_game_count": 5,
+    "terminal_message": "Max games reached (5); exiting."
+  },
+  "bindings": {
+    "candidate_artifact_sha256": "21629b3716786c0959d5b7a0e6484314ee1cce9b57fdaa535fa48d5b73100346",
+    "parent_state_dict_sha256": "cfe8204d06db6b43b063df98e1b713d4a40a0894a1a9330c3db87c739da88d48",
+    "production_parent_checkpoint_sha256": "75120e9e8f76393d4d82c16de5c3ea6384d2f7ef26bd530a6b552ed9791e38f5",
+    "registration_sha256": "1da9cf2e508ef2f3bcf3e452282b90084f135761574cbdfc1991f80cf2e09cfe",
+    "source_commit": "1d605086f144adc368f2ccd1e43a9f63252e8c43"
+  },
+  "cleanup": {
+    "ai_python_remaining": false,
+    "config_after_sha256": "0991895790bc73d3d21a05731bf402228cf0c510a4217aa841ced026016760e7",
+    "config_before_sha256": "0991895790bc73d3d21a05731bf402228cf0c510a4217aa841ced026016760e7",
+    "config_restored_exactly": true,
+    "mod_the_spire_remaining": false
+  },
+  "decision_trace": {
+    "event_count": 1587,
+    "path": "ai_decision_trace_clean.jsonl",
+    "sha256": "654984b7f21013e6254aa65c55087b6a10cea7e775a8e772c5272182b10103d2"
+  },
+  "error_log": {
+    "after_has_before_as_exact_prefix": true,
+    "new_exception_or_traceback_count": 0,
+    "new_suffix_bytes": 1879,
+    "new_suffix_kind": "normal_training_batch_startup"
+  },
+  "experiment_id": "combat-rl-action-relative-live-shadow-20260828-r1",
+  "marker_to_run_mapping": [
+    {
+      "marker": 1787930283,
+      "run_file": "1787930279.run",
+      "timestamp_delta_seconds": 4
+    },
+    {
+      "marker": 1787930357,
+      "run_file": "1787930354.run",
+      "timestamp_delta_seconds": 3
+    },
+    {
+      "marker": 1787930512,
+      "run_file": "1787930508.run",
+      "timestamp_delta_seconds": 4
+    },
+    {
+      "marker": 1787930660,
+      "run_file": "1787930657.run",
+      "timestamp_delta_seconds": 3
+    },
+    {
+      "marker": 1787930732,
+      "run_file": "1787930729.run",
+      "timestamp_delta_seconds": 3
+    }
+  ],
+  "readiness": {
+    "decision": "not_ready_for_candidate_action_authority",
+    "eligible_count": 164,
+    "intervention_intent_count": 31,
+    "latency_over_20ms_count": 97,
+    "latency_over_20ms_share": 0.5914634146341463,
+    "maximum_latency_ms": 232.33369999798015,
+    "p50_latency_ms": 22.630999999819323,
+    "p95_latency_ms": 41.089704984915436,
+    "readiness_report_sha256": "91ddd72d5d2740568adbf42cb51021a17cdce6d9029861e500d32c110eaee123",
+    "runtime_error_count": 0,
+    "sole_failed_condition": "latency_finite_and_within_ceiling"
+  },
+  "run_records": [
+    {
+      "file": "1787930279.run",
+      "floor_reached": 16,
+      "killed_by": "Slime Boss",
+      "playtime_seconds": 82,
+      "sha256": "9ce1e7866b6c7a10e2c1e298cab5f79daf8fac2b5365c085d5dc10be7bbef4d6",
+      "victory": false
+    },
+    {
+      "file": "1787930354.run",
+      "floor_reached": 16,
+      "killed_by": "Slime Boss",
+      "playtime_seconds": 69,
+      "sha256": "7e9e2030240f3cf47e035fbbb38b08522da2797ea565e8276b67c588c3cc3161",
+      "victory": false
+    },
+    {
+      "file": "1787930508.run",
+      "floor_reached": 33,
+      "killed_by": "Collector",
+      "playtime_seconds": 149,
+      "sha256": "dfb147ce71a2e3c92c0034b116e218c8073d728268ca4f6f0d9520bf1b1053a1",
+      "victory": false
+    },
+    {
+      "file": "1787930657.run",
+      "floor_reached": 31,
+      "killed_by": "3 Cultists",
+      "playtime_seconds": 142,
+      "sha256": "d55a190604ab70f525e38bcc402bf61f25b0d406879df1f51d24ca53863af625",
+      "victory": false
+    },
+    {
+      "file": "1787930729.run",
+      "floor_reached": 16,
+      "killed_by": "Hexaghost",
+      "playtime_seconds": 67,
+      "sha256": "5a5be13c4b82c52dbc3615b41e3d06ddda23f384f2ce58bed2df69e3aac1fdc7",
+      "victory": false
+    }
+  ],
+  "schema_version": 1,
+  "shadow_trace": {
+    "decision_count": 314,
+    "event_count": 315,
+    "path": "trace.jsonl",
+    "sha256": "cd5693a5935695f4f7deda6309d8a2384b895d684191ed1b2f57701137e5e13b",
+    "transient_discard_count": 1
+  },
+  "sim_divergence": {
+    "action_type_counts": {
+      "PlayCardAction": 11
+    },
+    "card_counts": {
+      "Double Tap": 3,
+      "Fiend Fire": 3,
+      "Rampage": 5
+    },
+    "event_count": 11,
+    "reason_counts": {
+      "monster_state_mismatch": 11
+    },
+    "sha256": "a4cea0f29138b8d64a5d629ce420d34305ae29f2aaec7f7dbaa80f4ca50c290d"
+  }
+}
