@@ -21,7 +21,12 @@ while the complete commit profile remains below its 300-second target.
 
 ## 4. Fresh CPU Live Shadow
 
-- [ ] 4.1 Commit and push one source-bound schema-v2 CPU five-game registration with unchanged parent, artifact, 512-decision budget, 100-eligible floor, and 20ms p95 gate.
+- [x] 4.1 Commit and push one source-bound schema-v2 CPU five-game registration with unchanged parent, artifact, 512-decision budget, 100-eligible floor, and 20ms p95 gate.
+
+Registration SHA-256:
+`b226bf564b20b2bbbd8ee26d1bd79d1b4d1ec7a2e3da99eb21f9096eee2a0538`.
+The real-artifact preflight kept the production parent on CUDA with unchanged
+state and created a state-identical CPU shadow without writing the trace.
 - [ ] 4.2 Back up and temporarily update the production-r16 CommunicationMod command, run at most one five-game cohort, and restore the exact prior config after terminalization or failure.
 - [ ] 4.3 Publish trace, run, log, sim-divergence, config, and fixed readiness evidence; retain zero candidate action authority unless every registered condition passes.
 

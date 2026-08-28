@@ -1,0 +1,25 @@
+{
+  "candidate_artifact": {
+    "evaluation_corpus_sha256": "219392d1e1d22d98bf1156c0d432275c73645658b331b4f0e85abc47b37c15c0",
+    "parent_checkpoint_sha256": "ce2ae34f82b3f457fb35e87d429c397204c42d0f742d3ac8952d91b69119b83b",
+    "path": "D:/PycharmProjects/slay-the-spire-ai/reports/combat_rl_action_relative_advantage_residual_fit_20260828_r1/action_relative_advantage_residual_development.pth",
+    "sha256": "21629b3716786c0959d5b7a0e6484314ee1cce9b57fdaa535fa48d5b73100346",
+    "train_corpus_sha256": "ca7851f6f30846e5670f828c083413c9d653629c16748feb27c7d09aeeae7144"
+  },
+  "experiment_id": "combat-rl-action-relative-live-shadow-20260829-r2",
+  "inference_device": "cpu",
+  "maximum_decision_count": 512,
+  "mode": "shadow",
+  "parent_state_dict_sha256": "cfe8204d06db6b43b063df98e1b713d4a40a0894a1a9330c3db87c739da88d48",
+  "production_parent_checkpoint": {
+    "path": "D:/PycharmProjects/slay-the-spire-ai/reports/combat_rl_promoted_r15_successor_20260818_r16/rl_combat_model_promoted_r15_successor_candidate.pth",
+    "sha256": "75120e9e8f76393d4d82c16de5c3ea6384d2f7ef26bd530a6b552ed9791e38f5"
+  },
+  "readiness_gates": {
+    "maximum_p95_latency_ms": 20.0,
+    "minimum_eligible_count": 100
+  },
+  "schema_version": 2,
+  "source_commit": "91ac6aa3127f7a5355a9d1e0c3fb381a258bf30d",
+  "trace_path": "D:/PycharmProjects/slay-the-spire-ai/reports/combat_rl_action_relative_live_shadow_20260829_r2/trace.jsonl"
+}
