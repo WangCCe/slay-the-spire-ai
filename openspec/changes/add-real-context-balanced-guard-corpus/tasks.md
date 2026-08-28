@@ -21,7 +21,7 @@
 
 ## 3. Preflight And Execution
 
-- [ ] 3.1 Create and commit the immutable execution registration with exact
+- [x] 3.1 Create and commit the immutable execution registration with exact
   source, native, checkpoint, replay, existing-corpus, seed, gate, and output
   bindings.
 - [ ] 3.2 Run strict OpenSpec validation, focused pytest, and a source-only
