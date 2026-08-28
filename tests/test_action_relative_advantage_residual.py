@@ -64,6 +64,61 @@ def _fixture() -> tuple[ActionRelativeAdvantageResidual, dict[str, torch.Tensor]
     return residual, inputs
 
 
+def _repeated_state_reference(
+    residual: ActionRelativeAdvantageResidual,
+    inputs: dict[str, torch.Tensor],
+    *,
+    forbidden_action_indices: frozenset[int],
+) -> dict[str, object]:
+    action_masks = inputs["action_masks"]
+    guard_actions = inputs["guard_actions"]
+    allowed = inputs["alternative_masks"].bool().clone()
+    for action in sorted(forbidden_action_indices):
+        allowed[:, action] = False
+    candidate_pairs = allowed.nonzero(as_tuple=False)
+    residual_actions = guard_actions.clone()
+    predicted_advantages = torch.full(
+        guard_actions.shape,
+        float("-inf"),
+        dtype=inputs["continuous"].dtype,
+    )
+    has_allowed = allowed.any(dim=1)
+    if candidate_pairs.numel():
+        state_rows = candidate_pairs[:, 0]
+        candidates = candidate_pairs[:, 1]
+        pair_predictions = residual.score_candidates(
+            inputs["continuous"][state_rows],
+            inputs["card_ids"][state_rows],
+            inputs["potion_ids"][state_rows],
+            inputs["relic_ids"][state_rows],
+            action_masks[state_rows],
+            guard_actions[state_rows],
+            candidates,
+        )
+        score_matrix = torch.full_like(action_masks.float(), float("-inf"))
+        score_matrix[state_rows, candidates] = pair_predictions
+        best_scores, best_actions = score_matrix.max(dim=1)
+        residual_actions[has_allowed] = best_actions[has_allowed]
+        predicted_advantages[has_allowed] = best_scores[has_allowed]
+    gate_open = has_allowed & predicted_advantages.ge(
+        residual.config.advantage_threshold
+    )
+    actions = torch.where(gate_open, residual_actions, guard_actions)
+    return {
+        "actions": actions,
+        "residual_actions": residual_actions,
+        "predicted_advantages": predicted_advantages,
+        "gate_open": gate_open,
+        "intervention_count": int(gate_open.sum().item()),
+        "guard_preserved_count": int((~gate_open).sum().item()),
+        "no_allowed_alternative_count": int((~has_allowed).sum().item()),
+        "forbidden_action_selection_count": sum(
+            int(actions[gate_open].eq(action).sum().item())
+            for action in forbidden_action_indices
+        ),
+    }
+
+
 def test_corpus_expansion_preserves_every_non_guard_branch_and_exact_advantage():
     tensors = _state_tensors()
     metadata = [
@@ -144,6 +199,56 @@ def test_all_alternatives_removed_preserves_exact_guard():
     assert torch.equal(selection.actions, inputs["guard_actions"])
     assert selection.telemetry["no_allowed_alternative_count"] == 2
     assert selection.telemetry["intervention_count"] == 0
+
+
+@pytest.mark.parametrize(
+    "forbidden_action_indices",
+    [frozenset(), frozenset({0, 1}), frozenset({0, 1, 2, 3})],
+)
+def test_selection_matches_repeated_state_reference(forbidden_action_indices):
+    residual, inputs = _fixture()
+    reference = _repeated_state_reference(
+        residual,
+        inputs,
+        forbidden_action_indices=forbidden_action_indices,
+    )
+
+    selection = residual.select_actions(
+        **inputs, forbidden_action_indices=forbidden_action_indices
+    )
+
+    assert torch.equal(selection.actions, reference["actions"])
+    assert torch.equal(selection.residual_actions, reference["residual_actions"])
+    assert torch.allclose(
+        selection.predicted_advantages,
+        reference["predicted_advantages"],
+        rtol=1e-6,
+        atol=1e-6,
+        equal_nan=True,
+    )
+    assert torch.equal(selection.gate_open, reference["gate_open"])
+    for key in (
+        "intervention_count",
+        "guard_preserved_count",
+        "no_allowed_alternative_count",
+        "forbidden_action_selection_count",
+    ):
+        assert selection.telemetry[key] == reference[key]
+
+
+def test_selection_computes_parent_latent_for_original_rows_once(monkeypatch):
+    residual, inputs = _fixture()
+    original = residual._parent_latent
+    observed_batch_sizes = []
+
+    def recording_parent_latent(continuous, card_ids, potion_ids, relic_ids):
+        observed_batch_sizes.append(int(continuous.shape[0]))
+        return original(continuous, card_ids, potion_ids, relic_ids)
+
+    monkeypatch.setattr(residual, "_parent_latent", recording_parent_latent)
+    residual.select_actions(**inputs)
+
+    assert observed_batch_sizes == [2]
 
 
 def test_scorer_training_leaves_parent_frozen():
