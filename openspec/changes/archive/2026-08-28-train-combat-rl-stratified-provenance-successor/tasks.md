@@ -19,4 +19,4 @@
 
 - [x] 4.1 Execute the registered 64-update recipe exactly once on the fresh corpus.
 - [x] 4.2 Audit candidate hashes and every stratified gate without same-corpus tuning or rerun.
-- [ ] 4.3 Commit and push the result, then sync and archive the change; register a fresh holdout only on an all-pass decision.
+- [x] 4.3 Commit and push the result, then sync and archive the change; register a fresh holdout only on an all-pass decision.
