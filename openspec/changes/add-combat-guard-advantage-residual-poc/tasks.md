@@ -18,6 +18,6 @@
 
 ## 4. Evaluation And Publication
 
-- [ ] 4.1 Run the registered fresh paired simulator gate and publish victories, reward, HP, intervention, support, latency, and authority metrics.
-- [ ] 4.2 Apply the fixed all-condition decision, retaining only a simulator-promising recipe or closing the POC without a sweep.
-- [ ] 4.3 Run focused and adjacent offline tests, validate the OpenSpec change strictly, and commit only the implementation, bounded reports, and development-only artifact.
+- [x] 4.1 Run the registered fresh paired simulator gate and publish victories, reward, HP, intervention, support, latency, and authority metrics.
+- [x] 4.2 Apply the fixed all-condition decision, retaining only a simulator-promising recipe or closing the POC without a sweep. The fixed recipe failed three outcome conditions and is closed.
+- [x] 4.3 Run focused and adjacent offline tests, validate the OpenSpec change strictly, and commit only the implementation, bounded reports, and development-only artifact.
