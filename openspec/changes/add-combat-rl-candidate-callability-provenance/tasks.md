@@ -17,7 +17,7 @@
 
 ## 4. Fresh Callability Collection
 
-- [ ] 4.1 Bind the implementation commit, production-r16 checkpoint, ten unused seeds, zero-update launch config, collection checks, fixed fit recipe, and output paths in an immutable registration; validate, commit, and push it before gameplay.
+- [x] 4.1 Bind the implementation commit, production-r16 checkpoint, ten unused seeds, zero-update launch config, collection checks, fixed fit recipe, and output paths in an immutable registration; validate, commit, and push it before gameplay.
 - [ ] 4.2 Execute the bounded Windows CommunicationMod collection, preserve runtime evidence, restore the previous config, and stop project Python and game processes after completion or failure.
 - [ ] 4.3 Audit `.run`, debug, error, trace, inventory, checkpoint, action legality, proposal legality, class reconciliation, direct eval-parent parity, and SMDP span integrity; commit and push the collection decision.
 
