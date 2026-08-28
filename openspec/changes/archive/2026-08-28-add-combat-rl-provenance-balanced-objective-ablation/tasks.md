@@ -20,4 +20,4 @@
 
 - [x] 4.1 Execute both registered 64-update CPU arms and publish deterministic checkpoints and telemetry.
 - [x] 4.2 Audit every hash, technical gate, tie-break, and authority field without changing the arm matrix or thresholds.
-- [ ] 4.3 Commit and push the result, sync the delta specs, and archive the completed change.
+- [x] 4.3 Commit and push the result, sync the delta specs, and archive the completed change.
