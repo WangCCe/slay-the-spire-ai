@@ -210,6 +210,20 @@ def test_corpus_validation_enforces_pair_alignment_and_terminal_encoding() -> No
         ablation.validate_successor_corpus(bad_terminal, expected_partition="fit")
 
 
+def test_corpus_validation_accepts_consistent_float32_return_rounding() -> None:
+    corpus = _corpus()
+    corpus["metadata"][0]["branch_returns"]["0"] = 1000.0
+    corpus["metadata"][0]["branch_returns"]["1"] = 1000.1
+    corpus["metadata"][0]["branch_returns"]["2"] = 1001.0
+    corpus["pairs"]["guard_returns"][:2] = 1000.0
+    corpus["pairs"]["candidate_returns"][0] = 1000.1
+    corpus["pairs"]["candidate_returns"][1] = 1001.0
+    corpus["pairs"]["advantages"][0] = 0.1
+    corpus["pairs"]["advantages"][1] = 1.0
+    validated = ablation.validate_successor_corpus(corpus, expected_partition="fit")
+    assert validated["pairs"]["advantages"][0].item() == pytest.approx(0.1)
+
+
 def test_corpus_identity_is_deterministic_and_sensitive_to_pair_bytes() -> None:
     first = ablation.successor_corpus_identity(_corpus())
     second = ablation.successor_corpus_identity(copy.deepcopy(_corpus()))
@@ -441,6 +455,11 @@ def test_registration_binds_recipe_inputs_and_development_authority() -> None:
         smoke=False,
     )
     validated = ablation.validate_corpus_registration(registration, smoke=False)
+    assert validated["experiment_id"].endswith("-r2")
+    assert validated["attempt"] == 2
+    assert validated["inputs"]["predecessor_failure"]["sha256"] == (
+        "c841ecae533f9e85caefa89867ee74399d8c08ca68210a8a264521b117abc3dd"
+    )
     assert validated["recipe"] == ablation.FIXED_CORPUS_RECIPE
     assert validated["authority"]["native_loading"] is True
     assert validated["authority"]["gameplay"] is False

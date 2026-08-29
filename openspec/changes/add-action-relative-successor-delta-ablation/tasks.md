@@ -45,6 +45,9 @@
 - [ ] 4.3 Commit the exact formal corpus and paired-fit registrations binding
   source, native bytes, parent, items, real replay target, cohorts, recipe,
   limits, outputs, and single-access boundary.
+- [ ] 4.4 Record the r1 pre-metric float32 consistency-validation failure, add
+  a scale-aware regression, and register at most one r2 corrective successor
+  with every evidence, cohort, recipe, gate, limit, and authority field fixed.
 
 ## 5. Formal Corpus And Paired Decision
 

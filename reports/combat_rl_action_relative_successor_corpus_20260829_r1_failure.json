@@ -1,0 +1,47 @@
+{
+  "attempt": 1,
+  "error": {
+    "message": "successor pair advantage differs from branch returns",
+    "phase": "partition_tensor_validation_before_context_support_or_publication",
+    "type": "ValueError"
+  },
+  "execution_commit": "f8f370e36579feec36d5e7c8256e30e2ed56d161",
+  "experiment_id": "combat-rl-action-relative-successor-corpus-20260829-r1",
+  "failure_class": "deterministic_pre_metric_float32_consistency_validation",
+  "fresh_policy_metric_accessed": false,
+  "model_fitting_started": false,
+  "native_loading_started": true,
+  "optimizer_constructed": false,
+  "output_dir_exists": false,
+  "policy_decision_published": false,
+  "root_cause": "guard return, candidate return, and their precomputed advantage were independently converted to float32 before validation; for larger branch-return magnitudes, ordinary float32 ULP rounding can make the recomputed subtraction differ by more than the fixed absolute 1e-6 tolerance even though all three values came from the same branch results",
+  "schema_version": "combat-rl-action-relative-successor-corpus-failure-v1",
+  "source_commit": "790fbab3f0e6f8dee2c88cba05c818e7ff7a41c2",
+  "staging_dir_exists": false,
+  "started_receipt": {
+    "experiment_id": "combat-rl-action-relative-successor-corpus-20260829-r1",
+    "path": "reports/.combat-rl-action-relative-successor-corpus-20260829-r1.started.json",
+    "schema_version": "combat-rl-action-relative-successor-corpus-started-v1",
+    "started_unix": 1787970429.4477398
+  },
+  "successor_eligibility": {
+    "allowed_count": 1,
+    "bound_values_that_must_remain_unchanged": [
+      "native module",
+      "parent checkpoint",
+      "items export",
+      "real replay target",
+      "fit/calibration/fresh seed ranges",
+      "battle indices",
+      "retention and continuation limits",
+      "reward and discount",
+      "context support gates",
+      "fit recipe",
+      "offline gates",
+      "resource limits",
+      "authority"
+    ],
+    "eligible": true,
+    "permitted_source_change": "replace the scale-insensitive 1e-6 absolute equality check with a float32-aware finite relative-plus-absolute consistency check and add a regression"
+  }
+}

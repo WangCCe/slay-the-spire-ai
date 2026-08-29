@@ -90,7 +90,7 @@ CORPUS_KIND = "combat_action_relative_first_successor_pairs"
 CORPUS_REGISTRATION_SCHEMA = (
     "combat-rl-action-relative-successor-corpus-registration-v1"
 )
-CORPUS_EXPERIMENT_ID = "combat-rl-action-relative-successor-corpus-20260829-r1"
+CORPUS_EXPERIMENT_ID = "combat-rl-action-relative-successor-corpus-20260829-r2"
 SMOKE_EXPERIMENT_ID = (
     "combat-rl-action-relative-successor-corpus-smoke-20260829-r1"
 )
@@ -121,6 +121,11 @@ FIT_PREFLIGHT_PATH = REPORTS_ROOT / (
 FIT_REGISTRATION_SCHEMA = (
     "combat-rl-action-relative-successor-delta-ablation-registration-v1"
 )
+PREDECESSOR_FAILURE = {
+    "path": REPORTS_ROOT
+    / "combat_rl_action_relative_successor_corpus_20260829_r1_failure.json",
+    "sha256": "c841ecae533f9e85caefa89867ee74399d8c08ca68210a8a264521b117abc3dd",
+}
 
 SUPPORTED = 0
 TERMINAL_VICTORY = 1
@@ -133,6 +138,8 @@ DISPOSITION_NAMES = (
     "terminal_defeat",
     "terminal_other",
 )
+FLOAT32_CONSISTENCY_ATOL = 1e-4
+FLOAT32_CONSISTENCY_RTOL = 1e-6
 
 SOURCE_TENSOR_NAMES = (
     "continuous",
@@ -601,8 +608,8 @@ def validate_successor_corpus(
     if not torch.allclose(
         pairs["candidate_returns"] - pairs["guard_returns"],
         pairs["advantages"],
-        atol=1e-6,
-        rtol=0.0,
+        atol=FLOAT32_CONSISTENCY_ATOL,
+        rtol=FLOAT32_CONSISTENCY_RTOL,
     ):
         raise ValueError("successor pair advantage differs from branch returns")
     valid_dispositions = set(range(DISPOSITION_COUNT))
@@ -639,13 +646,15 @@ def validate_successor_corpus(
             if str(action) not in branches or not math.isclose(
                 float(branches[str(action)]),
                 float(pairs["candidate_returns"][pair_index]),
-                abs_tol=1e-6,
+                abs_tol=FLOAT32_CONSISTENCY_ATOL,
+                rel_tol=FLOAT32_CONSISTENCY_RTOL,
             ):
                 raise ValueError("successor pair branch return differs")
             if not math.isclose(
                 float(branches[str(guard)]),
                 float(pairs["guard_returns"][pair_index]),
-                abs_tol=1e-6,
+                abs_tol=FLOAT32_CONSISTENCY_ATOL,
+                rel_tol=FLOAT32_CONSISTENCY_RTOL,
             ):
                 raise ValueError("successor guard branch return differs")
     return {
@@ -767,11 +776,17 @@ def compare_representation_signal(
     }
 
 
-def _input_registration() -> dict[str, dict[str, str]]:
-    return {
+def _input_registration(*, smoke: bool) -> dict[str, dict[str, str]]:
+    result = {
         name: {"path": str(binding["path"].resolve()), "sha256": binding["sha256"]}
         for name, binding in sorted(FIXED_INPUTS.items())
     }
+    if not smoke:
+        result["predecessor_failure"] = {
+            "path": str(PREDECESSOR_FAILURE["path"].resolve()),
+            "sha256": PREDECESSOR_FAILURE["sha256"],
+        }
+    return dict(sorted(result.items()))
 
 
 def _source_file_hashes() -> dict[str, str]:
@@ -802,10 +817,11 @@ def build_corpus_registration(
             "sha256": sha256_file(Path(__file__)),
         },
         "source_files": _source_file_hashes(),
-        "inputs": _input_registration(),
+        "inputs": _input_registration(smoke=smoke),
         "recipe": copy.deepcopy(SMOKE_CORPUS_RECIPE if smoke else FIXED_CORPUS_RECIPE),
         "output_dir": str(expected_output.resolve()),
         "smoke": smoke,
+        "attempt": 1 if smoke else 2,
         "authority": copy.deepcopy(CORPUS_AUTHORITY),
     }
 
