@@ -25,7 +25,7 @@
   source implementation before registering native execution.
 - [x] 3.2 Publish and verify one immutable source-only preflight and one
   execution registration bound to the committed source and exact inputs.
-- [ ] 3.3 Execute the fixed cohort once, verify artifact hashes and authority,
+- [x] 3.3 Execute the fixed cohort once, verify artifact hashes and authority,
   and record pass or fail-closed evidence without retry or training.
 - [ ] 3.4 Run the full commit gate once at the completed source boundary, sync
   the capability spec, archive the change, and push the cohesive commits.

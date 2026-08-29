@@ -1,0 +1,76 @@
+{
+  "artifacts": {
+    "context_weights.pt": {
+      "sha256": "4af09a5f5271d38cfac9ddf1819922ea8c474002c21560e4416d1d9420d1846d",
+      "size_bytes": 663048
+    },
+    "evaluation_corpus.pt": {
+      "sha256": "c91532a0a5eb9ce8dc5611bdf54104f24b4567a78ad03425615dec574a6de6ce",
+      "size_bytes": 19947518
+    },
+    "registration.json": {
+      "sha256": "d33d267e6e7180cf2ae1c296462695b9aaa937b0b5d19ce6b621db7cfc3a9a17",
+      "size_bytes": 6217
+    },
+    "report.json": {
+      "sha256": "885154f7a634ff1a9e22127947cfd90e555b7af77b29b990a51ff48bcd4a61eb",
+      "size_bytes": 50084
+    },
+    "source_snapshot/analysis_scripts/combat_lightspeed_bridge.py": {
+      "sha256": "610f0d52e1c638e8f734343a13344b1e8e8f93bae9713ac06b792dbedfc4fdad",
+      "size_bytes": 26888
+    },
+    "source_snapshot/analysis_scripts/combat_lightspeed_replay_distribution_calibration.py": {
+      "sha256": "8d8c12bc1308a2c0f18f5cfa9ebbe1f51c240e1c3fba28713cd13efac4482cf4",
+      "size_bytes": 41489
+    },
+    "source_snapshot/analysis_scripts/combat_lightspeed_training_smoke.py": {
+      "sha256": "d8dbbb56b88a99ddfc50d7dcd09b9e35bed3fc3d7ab812b39bc2e19081ab0f05",
+      "size_bytes": 128399
+    },
+    "source_snapshot/analysis_scripts/combat_rl_fresh_evaluation_context_support_supplement.py": {
+      "sha256": "e4bc8929956aa5eccf71fac33869b94b82e38ce1a7d830e107e0c6df753593a9",
+      "size_bytes": 36064
+    },
+    "source_snapshot/analysis_scripts/combat_rl_guard_advantage_corpus.py": {
+      "sha256": "bf8392f2dc61b02ecd5507e0fe589750a5a859cf2f5c5ccf24d9c15840ffb772",
+      "size_bytes": 32646
+    },
+    "source_snapshot/analysis_scripts/combat_rl_guard_advantage_residual_fit.py": {
+      "sha256": "8175788bafc3d14e7858c8231bb46032be68d9ae1f1e8b7222198b01fe468c7f",
+      "size_bytes": 28120
+    },
+    "source_snapshot/analysis_scripts/combat_rl_real_context_balanced_corpus.py": {
+      "sha256": "fb5efe5f137166aa1ce0cae9b3f3a2fff5ec01014ab5063ca9b79107efc44d4a",
+      "size_bytes": 46431
+    },
+    "source_snapshot/spirecomm/ai/rl/v2/action_space.py": {
+      "sha256": "1827a6ee4a846a68ea959703b456f0f4efd0436f39616ac8ec41ec34d6cd1964",
+      "size_bytes": 1633
+    },
+    "source_snapshot/spirecomm/ai/rl/v2/id_mapping.py": {
+      "sha256": "8a1afadfbaa2a9d58229549cefdda8681b32b6dae31df02e4f694314a72ec801",
+      "size_bytes": 5391
+    },
+    "source_snapshot/spirecomm/ai/rl/v2/network.py": {
+      "sha256": "6358a8ca1b068c65cb13a6100a79bdc9c116cb2c79eb24a74b658753cf24e280",
+      "size_bytes": 7544
+    },
+    "source_snapshot/spirecomm/ai/rl/v2/state_encoder.py": {
+      "sha256": "34b356753c379dfc834bf164b76375f19a188321fe7928f5fb38b620e4107ef4",
+      "size_bytes": 13481
+    },
+    "summary.md": {
+      "sha256": "d7dc71397801c0a673d0a3cece1917b0182f00cdcc685a2e4d3a9fa7b09a8e79",
+      "size_bytes": 471
+    },
+    "train_corpus.pt": {
+      "sha256": "af2c1d40f307eacee951333462ad5688e276f6006c8a6b0b5f5189b92845bbe2",
+      "size_bytes": 18339517
+    }
+  },
+  "decision": "corpus_support_insufficient_close_without_fit",
+  "experiment_id": "combat-rl-fresh-evaluation-context-support-supplement-20260829-r1",
+  "schema_version": "combat-rl-fresh-evaluation-context-support-manifest-v1",
+  "source_commit": "1c8b691abd7290be7aa7c3c0c76fa868dda88929"
+}
