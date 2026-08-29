@@ -39,7 +39,7 @@
 - [x] 4.1 Run Python compilation, focused successor-corpus and ablation tests,
   reused weighted-fit tests, and strict OpenSpec validation without running the
   full gate during iteration.
-- [ ] 4.2 Register and run one tiny deterministic source-only smoke to verify
+- [x] 4.2 Register and run one tiny deterministic source-only smoke to verify
   native loading, schema, terminal handling, pair identity, and roundtrip;
   exclude all smoke rows from formal evidence.
 - [ ] 4.3 Commit the exact formal corpus and paired-fit registrations binding

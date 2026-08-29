@@ -1,0 +1,31 @@
+{
+  "artifacts": {
+    "preflight.json": {
+      "sha256": "9cad4b9d551455205b6d19d837516a567cf77251c6ab0336d64ed377f885d1b6",
+      "size_bytes": 2131
+    },
+    "registration.json": {
+      "sha256": "4e3e08faf36c2474e22d65eacb4f5a7272fec79289a9175f76a8a4505e6b137d",
+      "size_bytes": 4344
+    },
+    "report.json": {
+      "sha256": "b8ad76153a2d80d1e3da804b8d10197588935910769fdc7dd4127be93730e690",
+      "size_bytes": 8404
+    },
+    "smoke_corpus.pt": {
+      "sha256": "8445e9b9ea66d7dc7a4ed7e3dc5ca89e6a0299a73804f2f2fc56004af6902c22",
+      "size_bytes": 32034
+    },
+    "started_receipt.json": {
+      "sha256": "6207832a7122519b9739a02b61aa530727986aefda39e3af78e7c92966f4bd05",
+      "size_bytes": 264
+    },
+    "summary.md": {
+      "sha256": "efa98c10464a47cadfbfb22bab9ef0f571c656c4f20e52b1ba2420fa0010916d",
+      "size_bytes": 306
+    }
+  },
+  "experiment_id": "combat-rl-action-relative-successor-corpus-smoke-20260829-r1",
+  "schema_version": "combat-rl-action-relative-successor-corpus-manifest-v1",
+  "source_commit": "790fbab3f0e6f8dee2c88cba05c818e7ff7a41c2"
+}

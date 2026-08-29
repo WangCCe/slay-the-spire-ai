@@ -1,0 +1,191 @@
+{
+  "authority": {
+    "communication_mod": false,
+    "cpu_corpus_collection": true,
+    "environment_construction": true,
+    "fresh_evaluation": false,
+    "gameplay": false,
+    "lightspeed_policy_gate": false,
+    "model_fitting": false,
+    "native_loading": true,
+    "production_checkpoint_loading": false,
+    "production_checkpoint_writing": false,
+    "promotion": false,
+    "qualification": false,
+    "training": false
+  },
+  "context_support": null,
+  "elapsed_seconds_before_publication": 5.48877739906311,
+  "experiment_id": "combat-rl-action-relative-successor-corpus-smoke-20260829-r1",
+  "initialization": {
+    "checkpoint_kind": "simulator_training_smoke",
+    "checkpoint_schema_version": 0,
+    "checkpoint_sha256": "ce2ae34f82b3f457fb35e87d429c397204c42d0f742d3ac8952d91b69119b83b",
+    "mode": "warm_start",
+    "parameter_sha256": "cfe8204d06db6b43b063df98e1b713d4a40a0894a1a9330c3db87c739da88d48",
+    "parent_card_ranking_guard_cap": 0.1,
+    "parent_card_ranking_guard_weight": 0.0,
+    "parent_end_turn_margin_guard_cap": 0.1,
+    "parent_end_turn_margin_guard_weight": 0.0,
+    "parent_policy_anchor_weight": 0.0,
+    "parent_top_action_margin_guard_cap": 0.1,
+    "parent_top_action_margin_guard_weight": 0.0,
+    "path": "D:\\PycharmProjects\\slay-the-spire-ai\\reports\\combat_lightspeed_production_r16_shadow_20260819_r1\\simulator_only_production_shadow.pth",
+    "production_compatible": false,
+    "size_bytes": 2272720,
+    "source_type": "combat_lightspeed_production_rl_v2_shadow"
+  },
+  "inputs": {
+    "items_json": {
+      "path": "D:\\SteamLibrary\\steamapps\\common\\SlayTheSpire\\export\\items.json",
+      "sha256": "e23784ea8ed3092e3bfa9918240e162a9cbcb837badfb53c612eb0d83cc811dc"
+    },
+    "native_module": {
+      "path": "D:\\PycharmProjects\\slay-the-spire-ai\\.sts_lightspeed_combat_guard_advantage_20260828_r1_build\\sts_lightspeed_combat_adapter.cp310-win_amd64.pyd",
+      "sha256": "195678b7fc6bf69815f3d2971404afb8ce72fb666700edf4203383429caf1009"
+    },
+    "parent_checkpoint": {
+      "path": "D:\\PycharmProjects\\slay-the-spire-ai\\reports\\combat_lightspeed_production_r16_shadow_20260819_r1\\simulator_only_production_shadow.pth",
+      "sha256": "ce2ae34f82b3f457fb35e87d429c397204c42d0f742d3ac8952d91b69119b83b"
+    },
+    "real_r14_replay": {
+      "path": "D:\\PycharmProjects\\slay-the-spire-ai\\reports\\combat_rl_parent_on_policy_replay_collection_20260818_r14\\rl_combat_model_ep20_steps3765.pth",
+      "sha256": "eed11099d1b8d35baa8ce0ccbf87efb6fb4a864e6fe6246837b0cac91c505014"
+    },
+    "real_r15_replay": {
+      "path": "D:\\PycharmProjects\\slay-the-spire-ai\\reports\\combat_rl_parent_on_policy_replay_collection_20260818_r15\\rl_combat_model_ep20_steps3920.pth",
+      "sha256": "67c3a49fbb2094d20793214c0a4a294684054eb6f4a24ac59573fab29c39a2dd"
+    }
+  },
+  "parent_parameter_sha256": "cfe8204d06db6b43b063df98e1b713d4a40a0894a1a9330c3db87c739da88d48",
+  "partitions": {
+    "smoke": {
+      "candidate_disposition_counts": {
+        "supported": 5
+      },
+      "exclusion_reason_counts": {
+        "candidate:unsupported_action_family": 2
+      },
+      "guard_disposition_counts": {
+        "supported": 5
+      },
+      "identity": {
+        "metadata_sha256": "175cb7e568d435d8f3b799482af82852450398fa92e28cb99adb0b530e223e8a",
+        "pair_tensor_sha256": "5441c14076805b04c40482fd4f3dad9c1b3f6e20b36b5d87ece9aadaa4185d5d",
+        "source_tensor_sha256": "f3d0d7b188bd777d29638b0b146fd41b87a8642f1a6bdcafe8d3128301bb1f17"
+      },
+      "initialization_failure_counts": {
+        "baseline_loss_before_requested_battle": 2
+      },
+      "initialized_profile_count": 2,
+      "mean_pairs_per_state": 2.5,
+      "pair_advantage": {
+        "maximum": -0.30000001192092896,
+        "mean": -8.87834644317627,
+        "minimum": -13.09375
+      },
+      "pair_count": 5,
+      "positive_state_count": 0,
+      "registered_profile_count": 4,
+      "retained_state_count": 2,
+      "skip_reason_counts": {
+        "guard_not_replaced": 1,
+        "parent_not_end_turn": 2
+      },
+      "source_decision_count": 5
+    }
+  },
+  "provenance": {
+    "adapter_commit": "f3d59765be7319adaa938435b03346755d863c60",
+    "adapter_dirty": false,
+    "adapter_source_sha256": "e0d277e622e12a420ff5955dff55bea6ca5d1e15213cd8e6e5c354e017c46190",
+    "build": {
+      "adapter_api_version": "sts-lightspeed-combat-adapter-v3",
+      "baseline_policy": "native_simple_agent_v1",
+      "battle_index_max": 63,
+      "card_select_settlement_max": 8,
+      "card_select_settlement_policy": "native_simple_agent_v1",
+      "compiler": "15.2.0",
+      "cpp_standard": 201703,
+      "out_of_combat_action_max": 10000,
+      "prior_battle_action_max": 5000,
+      "pybind11_version": "3.0.2a0",
+      "python": "3.10.18",
+      "rl_action_dim": 133,
+      "state_schema_version": "sts-lightspeed-combat-state-v3",
+      "supported_card_select_tasks": [
+        "ARMAMENTS",
+        "CODEX",
+        "DISCOVERY",
+        "DUAL_WIELD",
+        "EXHAUST_ONE",
+        "EXHAUST_MANY",
+        "EXHUME",
+        "FORETHOUGHT",
+        "GAMBLE",
+        "HEADBUTT",
+        "LIQUID_MEMORIES_POTION",
+        "SECRET_TECHNIQUE",
+        "SECRET_WEAPON",
+        "WARCRY"
+      ]
+    },
+    "module_path": "D:/PycharmProjects/slay-the-spire-ai/.sts_lightspeed_combat_guard_advantage_20260828_r1_build/sts_lightspeed_combat_adapter.cp310-win_amd64.pyd",
+    "module_sha256": "195678b7fc6bf69815f3d2971404afb8ce72fb666700edf4203383429caf1009",
+    "module_size_bytes": 5209600,
+    "simulator_commit": "7476a81954020087da31d41d16fddf475746ec2d",
+    "simulator_dirty": true,
+    "simulator_source_file_count": 79,
+    "simulator_source_sha256": "a3f98721ec37373b1b00aef660832a3307f0186ba0614d07a3b1e7de8ab2e46a",
+    "submodules": {
+      "json": "55f93686c01528224f448c19128836e7df245f72",
+      "pybind11": "8f68ecd32c8e18d3b064dbf0ea5fc31a6cb37e9a"
+    }
+  },
+  "recipe": {
+    "ascension": 0,
+    "battle_indices": [
+      0,
+      10
+    ],
+    "continuation_decisions": 2,
+    "max_actions_per_turn": 8,
+    "max_canonical_actions": 8,
+    "max_source_decisions": 40,
+    "max_states_per_profile": 1,
+    "max_stored_bytes": 67108864,
+    "max_wall_seconds": 900,
+    "partitions": {
+      "smoke": [
+        274990,
+        274991
+      ]
+    },
+    "positive_advantage_margin": 0.5,
+    "return_discount": 0.99
+  },
+  "schema_version": "combat-rl-action-relative-successor-corpus-report-v1",
+  "smoke": true,
+  "smoke_repeat_identity_exact": true,
+  "source_commit": "790fbab3f0e6f8dee2c88cba05c818e7ff7a41c2",
+  "source_files": {
+    "analysis_scripts/combat_lightspeed_bridge.py": "610f0d52e1c638e8f734343a13344b1e8e8f93bae9713ac06b792dbedfc4fdad",
+    "analysis_scripts/combat_lightspeed_training_smoke.py": "d8dbbb56b88a99ddfc50d7dcd09b9e35bed3fc3d7ab812b39bc2e19081ab0f05",
+    "analysis_scripts/combat_rl_action_relative_successor_delta_ablation.py": "90adb5e5cb274fcd6282c7a2a2514a993af7020ed01eaa13a2cd34ba2d3a1c07",
+    "analysis_scripts/combat_rl_guard_advantage_corpus.py": "bf8392f2dc61b02ecd5507e0fe589750a5a859cf2f5c5ccf24d9c15840ffb772",
+    "analysis_scripts/combat_rl_real_context_balanced_corpus.py": "fb5efe5f137166aa1ce0cae9b3f3a2fff5ec01014ab5063ca9b79107efc44d4a",
+    "analysis_scripts/combat_rl_real_context_weighted_action_relative_fit.py": "62af66414fe83641aedef22e60e57f511a792b9dacd3e5c702d6e7c53d06770a",
+    "spirecomm/ai/rl/v2/action_relative_advantage_residual.py": "a5a8fe939c4245f45d99de38aaa4cb394fcd2d8ffe02765ccc41a48ce9ae993a",
+    "spirecomm/ai/rl/v2/action_relative_selective_classifier.py": "64e8c930deb35627a2562b6e7524ca17b42d2c1f42a3e567d919ad84e597d2df",
+    "spirecomm/ai/rl/v2/action_space.py": "1827a6ee4a846a68ea959703b456f0f4efd0436f39616ac8ec41ec34d6cd1964",
+    "spirecomm/ai/rl/v2/id_mapping.py": "8a1afadfbaa2a9d58229549cefdda8681b32b6dae31df02e4f694314a72ec801",
+    "spirecomm/ai/rl/v2/network.py": "6358a8ca1b068c65cb13a6100a79bdc9c116cb2c79eb24a74b658753cf24e280",
+    "spirecomm/ai/rl/v2/state_encoder.py": "34b356753c379dfc834bf164b76375f19a188321fe7928f5fb38b620e4107ef4"
+  },
+  "started_receipt": {
+    "experiment_id": "combat-rl-action-relative-successor-corpus-smoke-20260829-r1",
+    "schema_version": "combat-rl-action-relative-successor-corpus-started-v1",
+    "source_commit": "790fbab3f0e6f8dee2c88cba05c818e7ff7a41c2",
+    "started_unix": 1787970322.9690757
+  }
+}
