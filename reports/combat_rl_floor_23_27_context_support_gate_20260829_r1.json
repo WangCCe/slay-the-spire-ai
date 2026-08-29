@@ -1,0 +1,113 @@
+{
+  "authority": {
+    "context_support_ready": true,
+    "gameplay": false,
+    "model_fitting": false,
+    "promotion": false,
+    "separate_weighted_fit_proposal": true,
+    "training": false
+  },
+  "bindings": {
+    "base_evaluation_corpus": {
+      "path": "reports/combat_rl_fresh_evaluation_context_support_supplement_20260829_r1/evaluation_corpus.pt",
+      "sha256": "c91532a0a5eb9ce8dc5611bdf54104f24b4567a78ad03425615dec574a6de6ce"
+    },
+    "base_manifest": {
+      "path": "reports/combat_rl_fresh_evaluation_context_support_supplement_20260829_r1/manifest.json",
+      "sha256": "41fff615d5b17d06f17b724ed1d31a2956a199659854554a2a7954529183370b"
+    },
+    "base_train_corpus": {
+      "path": "reports/combat_rl_fresh_evaluation_context_support_supplement_20260829_r1/train_corpus.pt",
+      "sha256": "af2c1d40f307eacee951333462ad5688e276f6006c8a6b0b5f5189b92845bbe2"
+    },
+    "formal_evaluation_supplement": {
+      "path": "reports/combat_rl_floor_23_27_fresh_support_20260829_r1/evaluation_corpus.pt",
+      "sha256": "e63bbc303abef4a71ad545cb55481d0bdeb74429a835edfcb612139aa8b3b1df"
+    },
+    "formal_preflight": {
+      "path": "reports/combat_rl_floor_23_27_fresh_support_20260829_r1_preflight.json",
+      "sha256": "54a2ba6ed24bd87651066554f7f7adf90604137a1607e1457ae086727e486012"
+    },
+    "formal_registration": {
+      "path": "reports/combat_rl_floor_23_27_fresh_support_20260829_r1_registration.json",
+      "sha256": "6c48ad80c734ac0de346d2e92c1ad6477f4948e3ab7f0ddbf04df51db3934773"
+    }
+  },
+  "code_bindings": {
+    "analysis_scripts/combat_lightspeed_replay_distribution_calibration.py": "8d8c12bc1308a2c0f18f5cfa9ebbe1f51c240e1c3fba28713cd13efac4482cf4",
+    "analysis_scripts/combat_rl_fresh_evaluation_context_support_supplement.py": "e4bc8929956aa5eccf71fac33869b94b82e38ce1a7d830e107e0c6df753593a9",
+    "analysis_scripts/combat_rl_real_context_balanced_corpus.py": "fb5efe5f137166aa1ce0cae9b3f3a2fff5ec01014ab5063ca9b79107efc44d4a"
+  },
+  "decision": "corpus_support_ready_for_separate_weighted_fit",
+  "experiment_id": "combat-rl-floor-23-27-context-support-gate-20260829-r1",
+  "fixed_gates": {
+    "evaluation_effective_sample_size_minimum": 400.0,
+    "evaluation_late_floor_rows_minimum": 256,
+    "floor_23_27_context_mass_covered_minimum": 0.8,
+    "floor_28_34_context_mass_covered_minimum": 0.6,
+    "floor_ratio_weighted_smd_maximum": 0.3,
+    "maximum_normalized_weight_maximum": 0.015,
+    "player_hp_ratio_weighted_smd_maximum": 0.2,
+    "potion_occupied_slots_weighted_smd_maximum": 0.2,
+    "real_context_mass_covered_minimum": 0.9,
+    "relic_occupied_slots_weighted_smd_maximum": 0.2,
+    "train_effective_sample_size_minimum": 750.0
+  },
+  "integrity": {
+    "class_complete": true,
+    "finite": true,
+    "legal": true,
+    "provenance": true,
+    "seed_isolation": true
+  },
+  "operations": {
+    "combined_corpus_persisted": false,
+    "combined_in_memory": true,
+    "context_weights_persisted": false,
+    "gameplay": false,
+    "model_fitted": false,
+    "optimizer_steps": 0,
+    "training": false
+  },
+  "partitions": {
+    "base_evaluation_rows": 8890,
+    "combined_evaluation_rows": 10688,
+    "evaluation_late_floor_rows": 2155,
+    "formal_supplement_evaluation_rows": 1798,
+    "formal_supplement_target_cell_hits": 8,
+    "train_rows": 8313
+  },
+  "schema_version": "combat-rl-floor-23-27-context-support-gate-v1",
+  "selection_boundary": {
+    "formal_seed_outcomes_accessed_before_registration": false,
+    "opportunity_poc_excluded": true,
+    "selection_basis": "context_cell_reachability_only"
+  },
+  "source_commit": "b6abba8152fe0eec55229a255d5ee7129c0b42b4",
+  "support_gate": {
+    "all_conditions_passed": true,
+    "evaluation": {
+      "effective_sample_size": 959.3905697198634,
+      "floor_23_27_context_mass_covered": 0.8521939953810623,
+      "floor_28_34_context_mass_covered": 1.0,
+      "floor_ratio_weighted_smd": 0.1627174618828408,
+      "maximum_normalized_weight": 0.012508735150244584,
+      "player_hp_ratio_weighted_smd": 0.09047711753713163,
+      "potion_occupied_slots_weighted_smd": 0.00019344735456332097,
+      "real_context_mass_covered": 0.9310344827586207,
+      "relic_occupied_slots_weighted_smd": 0.020861631302512427
+    },
+    "failed_conditions": [],
+    "train": {
+      "effective_sample_size": 812.3253871579202,
+      "floor_23_27_context_mass_covered": 0.8521939953810623,
+      "floor_28_34_context_mass_covered": 1.0,
+      "floor_ratio_weighted_smd": 0.16269263794923852,
+      "maximum_normalized_weight": 0.00748855914574955,
+      "player_hp_ratio_weighted_smd": 0.07357979465188928,
+      "potion_occupied_slots_weighted_smd": 0.0026970303925041685,
+      "real_context_mass_covered": 0.9383214053350684,
+      "relic_occupied_slots_weighted_smd": 0.009604627486962931
+    }
+  }
+}

@@ -1,0 +1,31 @@
+{
+  "artifacts": {
+    "evaluation_corpus.pt": {
+      "sha256": "e63bbc303abef4a71ad545cb55481d0bdeb74429a835edfcb612139aa8b3b1df",
+      "size_bytes": 3985278
+    },
+    "report.json": {
+      "sha256": "0396953bf9ee6d4d674259bff4f1c22f8773eed046e22648b6392b159bac24e3",
+      "size_bytes": 48328
+    },
+    "summary.md": {
+      "sha256": "44936cbd2d9022dffab5799efbf9737d6892ecdcb282249f386890f6a30e0a31",
+      "size_bytes": 318
+    },
+    "train_corpus.pt": {
+      "sha256": "ea78d8bc0588bde8b31e0c9bd7ccc7f7a5742000494392f8a7da4c5621099023",
+      "size_bytes": 7997
+    }
+  },
+  "authority": {
+    "context_support_collection": true,
+    "gameplay": false,
+    "model_fitting": false,
+    "training": false
+  },
+  "evaluation_seed_first": 272700,
+  "evaluation_seed_last": 274747,
+  "experiment_id": "combat-rl-floor-23-27-fresh-support-20260829-r1",
+  "schema_version": "combat-rl-floor-23-27-fresh-support-manifest-v1",
+  "source_commit": "b6abba8152fe0eec55229a255d5ee7129c0b42b4"
+}
