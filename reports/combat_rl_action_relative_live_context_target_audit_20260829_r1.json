@@ -1,0 +1,114 @@
+{
+  "schema_version": "combat-rl-action-relative-live-context-target-audit-v1",
+  "audit_id": "combat-rl-action-relative-live-context-target-audit-20260829-r1",
+  "source_commit": "a9c16a213a80f840c2b71d4c783e9ec6396db6dd",
+  "decision": "live_opportunity_target_supported_for_independent_confirmation_design",
+  "method": {
+    "action_relative_filter": "event_type == decision and eligible == true",
+    "latent_shadow_filter": "event_type == decision and parent_action_index == 90 and executed_action_index != 90 and parent_parity == true",
+    "join": "nearest in-combat ai_decision row with identical floor and turn within 100 ms",
+    "context_cell": "canonical floor stratum x occupied potion slots x occupied relic slots x player HP quartile",
+    "simulator_target": "merged fresh first-successor source states"
+  },
+  "inputs": {
+    "fresh_corpus": {
+      "path": "reports/combat_rl_action_relative_successor_context_supplement_20260829_r1/fresh_corpus.pt",
+      "sha256": "3b6f81ed60e797bb72f84d0efa88e42780c9db54d4d8a90ecd4c2571f785eefb"
+    },
+    "sessions": [
+      {
+        "experiment_id": "combat-rl-latent-gated-live-shadow-20260828-r2",
+        "trace_sha256": "c336d373cd69ff5453d76a267a2c8f8c0ff2d3b2b4f6a3a062f216bcfb2cf993",
+        "ai_decision_trace_sha256": "e9a68f8dfba1b7c495999c158fbccee30c392294f3ed2cb14e073d1cb47d06ec"
+      },
+      {
+        "experiment_id": "combat-rl-latent-gated-live-shadow-20260828-r3",
+        "trace_sha256": "0387da8dd45acc3b59c8f5dbc3ef7db37de46ab98513b4ca00e2ff3970fc8730",
+        "ai_decision_trace_sha256": "c2430873f66db12ad5f076120741c164e2aa52741a818a7e8241ec6386680e54"
+      },
+      {
+        "experiment_id": "combat-rl-action-relative-live-shadow-20260828-r1",
+        "trace_sha256": "cd5693a5935695f4f7deda6309d8a2384b895d684191ed1b2f57701137e5e13b",
+        "ai_decision_trace_sha256": "654984b7f21013e6254aa65c55087b6a10cea7e775a8e772c5272182b10103d2"
+      },
+      {
+        "experiment_id": "combat-rl-action-relative-live-shadow-20260829-r2",
+        "trace_sha256": "177da0e2f3f85ee4df6a53907b20c3f63bcc46cfa0a3e4a851c4ab0d5d119672",
+        "ai_decision_trace_sha256": "029296d044d8eb2e5ef547139e02390a6ca77f148ce09991b480bd65ce133310"
+      }
+    ]
+  },
+  "join_integrity": {
+    "opportunity_rows": 768,
+    "session_count": 4,
+    "duplicate_ai_decision_rows": 0,
+    "maximum_time_delta_ms": 14.0
+  },
+  "combined_metrics": {
+    "real_context_mass_covered": 0.9401041666666666,
+    "effective_sample_size": 872.9296110148895,
+    "maximum_normalized_weight": 0.009695290858725628,
+    "floor_context_mass_covered": {
+      "floor_23_27": 1.0,
+      "floor_28_34": 0.7571428571428571
+    },
+    "weighted_smd": {
+      "floor_ratio": 0.20560777880323644,
+      "player_hp_ratio": 0.1867888207537469,
+      "potion_occupied_slots": 0.02336555030772766,
+      "relic_occupied_slots": 0.03074369755446212
+    },
+    "all_existing_support_conditions_pass": true
+  },
+  "session_rows": [
+    {
+      "experiment_id": "combat-rl-latent-gated-live-shadow-20260828-r2",
+      "opportunity_rows": 208,
+      "coverage": 0.9567307692307693
+    },
+    {
+      "experiment_id": "combat-rl-latent-gated-live-shadow-20260828-r3",
+      "opportunity_rows": 155,
+      "coverage": 0.9354838709677419
+    },
+    {
+      "experiment_id": "combat-rl-action-relative-live-shadow-20260828-r1",
+      "opportunity_rows": 164,
+      "coverage": 0.9573170731707317
+    },
+    {
+      "experiment_id": "combat-rl-action-relative-live-shadow-20260829-r2",
+      "opportunity_rows": 241,
+      "coverage": 0.91701244813278
+    }
+  ],
+  "comparison": {
+    "all_r14_r15_replay_transition_target": {
+      "coverage": 0.864281067013663,
+      "effective_sample_size": 770.2143443134578,
+      "floor_23_27_coverage": 0.789838337182448,
+      "player_hp_weighted_smd": 0.21793783887174645,
+      "gate_passed": false
+    },
+    "live_guard_replacement_opportunity_target": {
+      "coverage": 0.9401041666666666,
+      "effective_sample_size": 872.9296110148895,
+      "floor_23_27_coverage": 1.0,
+      "player_hp_weighted_smd": 0.1867888207537469,
+      "gate_passed": true
+    }
+  },
+  "limitations": [
+    "The 768 rows are clustered within four gameplay sessions and are not 768 independent trajectories.",
+    "The sessions were inspected while selecting the target definition and cannot serve as a fresh confirmation cohort.",
+    "Two session types use different shadow candidates, although every candidate had no action-takeover authority and the production parent parameter hash was identical."
+  ],
+  "next_step": "Register a parent-only live-opportunity target collector and evaluate a new session-disjoint holdout before changing the support contract or fitting a successor model.",
+  "authority": {
+    "model_fitting": false,
+    "training": false,
+    "gameplay_qualification": false,
+    "promotion": false,
+    "production_loading": false
+  }
+}
