@@ -1,0 +1,45 @@
+{
+  "authority": {
+    "communication_mod": false,
+    "cpu_corpus_collection": true,
+    "environment_construction": true,
+    "fresh_evaluation": false,
+    "gameplay": false,
+    "lightspeed_policy_gate": false,
+    "model_fitting": false,
+    "native_loading": true,
+    "production_checkpoint_loading": false,
+    "production_checkpoint_writing": false,
+    "promotion": false,
+    "qualification": false,
+    "training": false
+  },
+  "experiment_id": "combat-rl-action-relative-successor-corpus-20260829-r1",
+  "output_absent": true,
+  "registration_sha256": "e2b05485d95cf3b91aff0ce9cc6c68a5f5b0346af2fecf87e08c020ba66bc884",
+  "schema_version": "combat-rl-action-relative-successor-corpus-preflight-v1",
+  "source_commit": "790fbab3f0e6f8dee2c88cba05c818e7ff7a41c2",
+  "source_only": true,
+  "validated_inputs": {
+    "items_json": {
+      "path": "D:\\SteamLibrary\\steamapps\\common\\SlayTheSpire\\export\\items.json",
+      "sha256": "e23784ea8ed3092e3bfa9918240e162a9cbcb837badfb53c612eb0d83cc811dc"
+    },
+    "native_module": {
+      "path": "D:\\PycharmProjects\\slay-the-spire-ai\\.sts_lightspeed_combat_guard_advantage_20260828_r1_build\\sts_lightspeed_combat_adapter.cp310-win_amd64.pyd",
+      "sha256": "195678b7fc6bf69815f3d2971404afb8ce72fb666700edf4203383429caf1009"
+    },
+    "parent_checkpoint": {
+      "path": "D:\\PycharmProjects\\slay-the-spire-ai\\reports\\combat_lightspeed_production_r16_shadow_20260819_r1\\simulator_only_production_shadow.pth",
+      "sha256": "ce2ae34f82b3f457fb35e87d429c397204c42d0f742d3ac8952d91b69119b83b"
+    },
+    "real_r14_replay": {
+      "path": "D:\\PycharmProjects\\slay-the-spire-ai\\reports\\combat_rl_parent_on_policy_replay_collection_20260818_r14\\rl_combat_model_ep20_steps3765.pth",
+      "sha256": "eed11099d1b8d35baa8ce0ccbf87efb6fb4a864e6fe6246837b0cac91c505014"
+    },
+    "real_r15_replay": {
+      "path": "D:\\PycharmProjects\\slay-the-spire-ai\\reports\\combat_rl_parent_on_policy_replay_collection_20260818_r15\\rl_combat_model_ep20_steps3920.pth",
+      "sha256": "67c3a49fbb2094d20793214c0a4a294684054eb6f4a24ac59573fab29c39a2dd"
+    }
+  }
+}
