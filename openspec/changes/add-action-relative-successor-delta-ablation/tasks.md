@@ -1,42 +1,42 @@
 ## 1. Contract And Regression Coverage
 
-- [ ] 1.1 Add focused regressions for paired first-successor capture, stable
+- [x] 1.1 Add focused regressions for paired first-successor capture, stable
   branch identity, immediate reward retention, terminal encoding, named
   exclusions, and corpus roundtrip determinism.
-- [ ] 1.2 Add focused regressions for fixed fit/calibration/fresh seed
+- [x] 1.2 Add focused regressions for fixed fit/calibration/fresh seed
   partitions, smoke exclusion, deferred fresh access, context-support gating,
   and source-state mass preservation across candidate and ranking pairs.
-- [ ] 1.3 Add focused regressions for control versus successor-delta feature
+- [x] 1.3 Add focused regressions for control versus successor-delta feature
   construction, frozen-parent integrity, identical paired fit recipes, hard
   offline gates, descriptive signal gates, and fail-closed authority.
 
 ## 2. Successor Corpus Implementation
 
-- [ ] 2.1 Implement a development-only collector that records each retained
+- [x] 2.1 Implement a development-only collector that records each retained
   source state and complete guard/candidate first-successor pair without
   changing the historical guard-advantage corpus schema.
-- [ ] 2.2 Implement explicit ordinary, terminal, and excluded successor
+- [x] 2.2 Implement explicit ordinary, terminal, and excluded successor
   disposition handling plus immutable tensor, metadata, row-identity, and
   partition summaries.
-- [ ] 2.3 Implement source-only registration and preflight checks for native
+- [x] 2.3 Implement source-only registration and preflight checks for native
   module identity, fixed cohort, resource limits, output paths, and bounded
   authority.
 
 ## 3. Paired Ablation Implementation
 
-- [ ] 3.1 Reuse the existing real-context support contract and derive audited
+- [x] 3.1 Reuse the existing real-context support contract and derive audited
   source, classification-pair, and ranking-pair weights before optimizer
   construction.
-- [ ] 3.2 Implement the current-state item-semantic control and the matched
+- [x] 3.2 Implement the current-state item-semantic control and the matched
   successor-delta arm with frozen successor latents, immediate-reward delta,
   disposition features, and the fixed 4,096-update weighted recipe.
-- [ ] 3.3 Implement separate weighted calibration, deferred same-row fresh
+- [x] 3.3 Implement separate weighted calibration, deferred same-row fresh
   evaluation, hard and descriptive decisions, artifact roundtrip checks, and
   atomic development-only publication.
 
 ## 4. Source-Only Verification And Registration
 
-- [ ] 4.1 Run Python compilation, focused successor-corpus and ablation tests,
+- [x] 4.1 Run Python compilation, focused successor-corpus and ablation tests,
   reused weighted-fit tests, and strict OpenSpec validation without running the
   full gate during iteration.
 - [ ] 4.2 Register and run one tiny deterministic source-only smoke to verify
