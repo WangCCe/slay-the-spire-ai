@@ -26,7 +26,7 @@
 - [x] 3.1 Run Python compilation, the focused weighted-fit tests, reused
   action-relative tests, and strict OpenSpec validation without running the
   full gate during iteration.
-- [ ] 3.2 Publish and commit one source-only registration/preflight that binds
+- [x] 3.2 Publish and commit one source-only registration/preflight that binds
   the source commit, exact evidence hashes, fixed command, CPU interpreter,
   output path, recipe, gates, and single-attempt boundary.
 

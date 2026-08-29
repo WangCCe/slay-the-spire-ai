@@ -1,0 +1,16 @@
+{
+  "fresh_evaluation_loaded": false,
+  "game_started": false,
+  "head_commit": "5e930cc2a0f41e1d201b3cb13c829dbe91c9977b",
+  "input_hashes_validated": true,
+  "model_loaded": false,
+  "native_loaded": false,
+  "optimizer_constructed": false,
+  "output_absent": true,
+  "registration_sha256": "8b49a40612e685d306134a06498a1b4887905e4c0e6a1ba4bccaebd7957def1b",
+  "schema_version": "combat-rl-real-context-weighted-action-relative-fit-preflight-v1",
+  "source_commit": "5e930cc2a0f41e1d201b3cb13c829dbe91c9977b",
+  "staging_absent": true,
+  "started_receipt_absent": true,
+  "verdict": "source_only_preflight_passed"
+}

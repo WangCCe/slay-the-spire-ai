@@ -1,0 +1,125 @@
+{
+  "attempt_limit": 1,
+  "authority": {
+    "communication_mod": false,
+    "cpu_model_fitting": true,
+    "fresh_evaluation": true,
+    "gameplay": false,
+    "lightspeed": false,
+    "native_loading": false,
+    "production_checkpoint_loading": false,
+    "production_checkpoint_writing": false,
+    "promotion": false,
+    "qualification": false
+  },
+  "command": [
+    "D:\\anaconda\\envs\\stsai\\python.exe",
+    "-I",
+    "D:\\PycharmProjects\\slay-the-spire-ai\\analysis_scripts\\combat_rl_real_context_weighted_action_relative_fit.py",
+    "--registration",
+    "D:\\PycharmProjects\\slay-the-spire-ai\\reports\\combat_rl_real_context_weighted_action_relative_fit_20260829_r1_registration.json"
+  ],
+  "cwd": "D:\\PycharmProjects\\slay-the-spire-ai",
+  "experiment_id": "combat-rl-real-context-weighted-action-relative-fit-20260829-r1",
+  "inputs": {
+    "base_evaluation_corpus": {
+      "path": "D:\\PycharmProjects\\slay-the-spire-ai\\reports\\combat_rl_fresh_evaluation_context_support_supplement_20260829_r1\\evaluation_corpus.pt",
+      "sha256": "c91532a0a5eb9ce8dc5611bdf54104f24b4567a78ad03425615dec574a6de6ce"
+    },
+    "evaluation_supplement": {
+      "path": "D:\\PycharmProjects\\slay-the-spire-ai\\reports\\combat_rl_floor_23_27_fresh_support_20260829_r1\\evaluation_corpus.pt",
+      "sha256": "e63bbc303abef4a71ad545cb55481d0bdeb74429a835edfcb612139aa8b3b1df"
+    },
+    "items_json": {
+      "path": "D:\\SteamLibrary\\steamapps\\common\\SlayTheSpire\\export\\items.json",
+      "sha256": "e23784ea8ed3092e3bfa9918240e162a9cbcb837badfb53c612eb0d83cc811dc"
+    },
+    "parent_checkpoint": {
+      "path": "D:\\PycharmProjects\\slay-the-spire-ai\\reports\\combat_lightspeed_production_r16_shadow_20260819_r1\\simulator_only_production_shadow.pth",
+      "sha256": "ce2ae34f82b3f457fb35e87d429c397204c42d0f742d3ac8952d91b69119b83b"
+    },
+    "real_r14_replay": {
+      "path": "D:\\PycharmProjects\\slay-the-spire-ai\\reports\\combat_rl_parent_on_policy_replay_collection_20260818_r14\\rl_combat_model_ep20_steps3765.pth",
+      "sha256": "eed11099d1b8d35baa8ce0ccbf87efb6fb4a864e6fe6246837b0cac91c505014"
+    },
+    "real_r15_replay": {
+      "path": "D:\\PycharmProjects\\slay-the-spire-ai\\reports\\combat_rl_parent_on_policy_replay_collection_20260818_r15\\rl_combat_model_ep20_steps3920.pth",
+      "sha256": "67c3a49fbb2094d20793214c0a4a294684054eb6f4a24ac59573fab29c39a2dd"
+    },
+    "support_gate_report": {
+      "path": "D:\\PycharmProjects\\slay-the-spire-ai\\reports\\combat_rl_floor_23_27_context_support_gate_20260829_r1.json",
+      "sha256": "e7c233b6c73421871b9be2581cbcf1d8ce3be5e3b86d3e018d3e14856bb01e66"
+    },
+    "train_corpus": {
+      "path": "D:\\PycharmProjects\\slay-the-spire-ai\\reports\\combat_rl_fresh_evaluation_context_support_supplement_20260829_r1\\train_corpus.pt",
+      "sha256": "af2c1d40f307eacee951333462ad5688e276f6006c8a6b0b5f5189b92845bbe2"
+    }
+  },
+  "interpreter": "D:\\anaconda\\envs\\stsai\\python.exe",
+  "isolated_mode": true,
+  "offline_gates": {
+    "forbidden_action_selection_count_zero": true,
+    "illegal_action_count_zero": true,
+    "maximum_mean_policy_regret_exclusive": 3.1811342239379883,
+    "maximum_severe_harm_count": 0,
+    "minimum_intervention_count": 30,
+    "minimum_intervention_precision": 0.65,
+    "minimum_mean_selected_true_advantage_exclusive": 0.18881003558635712,
+    "severe_harm_floor": -0.5
+  },
+  "output_dir": "D:\\PycharmProjects\\slay-the-spire-ai\\reports\\combat_rl_real_context_weighted_action_relative_fit_20260829_r1",
+  "recipe": {
+    "architecture": "frozen_parent_action_relative_item_semantic_three_class_classifier",
+    "beneficial_lower_inclusive": 0.5,
+    "calibration_expected_source_rows": 4213,
+    "calibration_method": "weighted_finite_sample_higher_negative_class",
+    "calibration_quantile": 0.95,
+    "card_action_first": 0,
+    "card_action_last": 59,
+    "classification_weighting": "state_context_weight_divided_by_supported_pair_count_then_class_normalized",
+    "device": "cpu",
+    "fit_expected_source_rows": 4100,
+    "forbidden_action_indices": [
+      90
+    ],
+    "fresh_evaluation_expected_source_rows": 10688,
+    "hidden_dim": 128,
+    "include_item_semantics": true,
+    "learning_rate": 0.001,
+    "model_initialization_seed": 2026082920,
+    "optimizer": "adam",
+    "potion_action_first": 60,
+    "potion_action_last": 89,
+    "ranking_loss_weight": 0.5,
+    "ranking_pairs_per_update": 128,
+    "ranking_sampling_seed": 2026082922,
+    "ranking_weighting": "state_context_weight_divided_by_ranking_pair_count",
+    "samples_per_class_per_update": 128,
+    "sampling_seed": 2026082921,
+    "severe_upper_exclusive": -0.5,
+    "split": "source_seed_parity_even_fit_odd_calibration",
+    "updates": 4096
+  },
+  "runner": {
+    "path": "D:\\PycharmProjects\\slay-the-spire-ai\\analysis_scripts\\combat_rl_real_context_weighted_action_relative_fit.py",
+    "sha256": "8635084c3f9629053699d59eff8b033e07a9fc0889d32e139c759ef082397170"
+  },
+  "schema_version": "combat-rl-real-context-weighted-action-relative-fit-registration-v1",
+  "source_commit": "5e930cc2a0f41e1d201b3cb13c829dbe91c9977b",
+  "source_files": {
+    "analysis_scripts/combat_lightspeed_replay_distribution_calibration.py": "8d8c12bc1308a2c0f18f5cfa9ebbe1f51c240e1c3fba28713cd13efac4482cf4",
+    "analysis_scripts/combat_lightspeed_training_smoke.py": "d8dbbb56b88a99ddfc50d7dcd09b9e35bed3fc3d7ab812b39bc2e19081ab0f05",
+    "analysis_scripts/combat_rl_action_relative_selective_classifier_fit.py": "40dfd771ef7921715551d9620c3094c55da00d23404c637c39f95de2fe219092",
+    "analysis_scripts/combat_rl_guard_advantage_residual_fit.py": "8175788bafc3d14e7858c8231bb46032be68d9ae1f1e8b7222198b01fe468c7f",
+    "analysis_scripts/combat_rl_real_context_balanced_corpus.py": "fb5efe5f137166aa1ce0cae9b3f3a2fff5ec01014ab5063ca9b79107efc44d4a",
+    "analysis_scripts/combat_rl_real_context_weighted_action_relative_fit.py": "8635084c3f9629053699d59eff8b033e07a9fc0889d32e139c759ef082397170",
+    "spirecomm/ai/rl/v2/action_relative_advantage_residual.py": "a5a8fe939c4245f45d99de38aaa4cb394fcd2d8ffe02765ccc41a48ce9ae993a",
+    "spirecomm/ai/rl/v2/action_relative_selective_classifier.py": "64e8c930deb35627a2562b6e7524ca17b42d2c1f42a3e567d919ad84e597d2df",
+    "spirecomm/ai/rl/v2/action_space.py": "1827a6ee4a846a68ea959703b456f0f4efd0436f39616ac8ec41ec34d6cd1964",
+    "spirecomm/ai/rl/v2/id_mapping.py": "8a1afadfbaa2a9d58229549cefdda8681b32b6dae31df02e4f694314a72ec801",
+    "spirecomm/ai/rl/v2/network.py": "6358a8ca1b068c65cb13a6100a79bdc9c116cb2c79eb24a74b658753cf24e280",
+    "spirecomm/ai/rl/v2/state_encoder.py": "34b356753c379dfc834bf164b76375f19a188321fe7928f5fb38b620e4107ef4"
+  },
+  "staging_dir": "D:\\PycharmProjects\\slay-the-spire-ai\\reports\\.combat_rl_real_context_weighted_action_relative_fit_20260829_r1.staging",
+  "started_receipt": "D:\\PycharmProjects\\slay-the-spire-ai\\reports\\.combat-rl-real-context-weighted-action-relative-fit-20260829-r1.started.json"
+}
