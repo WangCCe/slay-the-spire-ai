@@ -27,9 +27,9 @@
   system-temp pytest child.
 - [x] 3.2 Run strict OpenSpec validation and the source-only collision/input
   inventory without native loading.
-- [ ] 3.3 Run the dedicated native smoke once and verify exact repeat identity and
+- [x] 3.3 Run the dedicated native smoke once and verify exact repeat identity and
   all-false downstream authority.
-- [ ] 3.4 Run exactly one full commit gate for the cohesive source boundary with
+- [x] 3.4 Run exactly one full commit gate for the cohesive source boundary with
   timing report, then commit and push the implementation and formal
   registration.
 
