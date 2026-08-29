@@ -1,0 +1,40 @@
+{
+  "authority": {
+    "automatic_retry": false,
+    "gameplay": false,
+    "policy_quality": false,
+    "promotion": false,
+    "single_corrective_successor_registration": true
+  },
+  "error": {
+    "message": "corpus tensor inventory differs",
+    "type": "ValueError"
+  },
+  "execution_commit": "1ee9f9c7389f14661ae0b3e370b421145390efa3",
+  "experiment_id": "combat-rl-real-context-weighted-action-relative-fit-20260829-r1",
+  "failure_stage": "fresh_evaluation_append_before_policy_metrics",
+  "fresh_evaluation": {
+    "corpora_loaded": true,
+    "policy_metrics_computed": false,
+    "policy_metrics_published": false
+  },
+  "output": {
+    "output_dir_exists": false,
+    "staging_dir_exists": false,
+    "success_report_published": false
+  },
+  "recovery_boundary": {
+    "allowed_change": "project loaded corpora to the registered balanced tensor inventory before append",
+    "evidence_inputs_unchanged": true,
+    "fixed_recipe_unchanged": true,
+    "new_experiment_id_required": true,
+    "seed_split_unchanged": true,
+    "thresholds_unchanged": true
+  },
+  "schema_version": "combat-rl-real-context-weighted-action-relative-fit-failure-v1",
+  "source_commit": "5e930cc2a0f41e1d201b3cb13c829dbe91c9977b",
+  "started_receipt": {
+    "path": "reports/.combat-rl-real-context-weighted-action-relative-fit-20260829-r1.started.json",
+    "sha256": "ab8d5a94400c7e0cef025ea2172ad4e68d2e0420c65ace41d1993c25222efb3c"
+  }
+}

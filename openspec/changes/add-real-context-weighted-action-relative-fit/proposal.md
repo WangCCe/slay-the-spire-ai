@@ -24,14 +24,18 @@ architecture, threshold sweep, corpus search, or live-policy attempt.
   precision, selected-advantage, and regret thresholds to weighted metrics,
   while retaining raw minimum-intervention and zero severe, illegal, and
   forbidden-selection safety gates.
-- Execute at most one CPU fit with no sweep, retry after result access, native
-  loading, Slay the Spire, CommunicationMod, production-checkpoint mutation, or
-  promotion. A passing result may only authorize a separately registered fresh
-  matched LightSTS policy gate.
+- Execute at most one CPU fit per registered execution with no sweep, retry
+  after policy-metric access, native loading, Slay the Spire, CommunicationMod,
+  production-checkpoint mutation, or promotion. One corrective successor ID is
+  permitted only when a committed failure report proves the predecessor
+  produced no policy metric or output and the fix changes no evidence, recipe,
+  seed, weight, threshold, or gate. A passing result may only authorize a
+  separately registered fresh matched LightSTS policy gate.
 
 Success means one immutable artifact passes all raw safety and weighted fresh
-offline gates. Failure closes this exact recipe without changing seeds,
-weights, thresholds, architecture, optimizer, or update count. No current live
+offline gates. A completed policy decision closes this exact recipe without
+changing seeds, weights, thresholds, architecture, optimizer, or update count.
+No current live
 evidence is changed or superseded; production r16 remains the rollback boundary
 and the new artifact is development-only.
 

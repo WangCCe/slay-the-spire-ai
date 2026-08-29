@@ -133,14 +133,21 @@ thresholds apply to those weighted metrics. The minimum 30 interventions and
 zero severe, illegal, or forbidden selections apply to raw counts. Both raw and
 weighted metrics are published so weighting cannot hide absolute harms.
 
-### One-result fail-closed execution
+### Fail closed with one pre-metric corrective successor
 
 Source-only registration and focused tests precede execution. Exactly one CPU
-fit may start. Pre-start validation can stop without consuming the run; after
-the started receipt exists, any failure or completed offline failure closes the
-recipe. There is no automatic seed, path, threshold, or parameter substitution.
-A pass grants only authority to propose and register a fresh matched LightSTS
-gate.
+fit may start under each registered ID. Pre-start validation can stop without
+consuming the run. A completed offline decision always closes the recipe, and
+there is no automatic seed, path, threshold, or parameter substitution.
+
+If an execution fails after its started receipt but before computing or
+publishing any fresh policy metric, one corrective successor ID may be proposed
+inside this change only after committing a machine-readable failure report.
+The successor must bind that report, preserve every evidence input and fixed
+recipe field, and limit the source change to the demonstrated implementation
+defect. It is a new execution, not a retry of the consumed ID. No second
+successor is permitted. A pass grants only authority to propose and register a
+fresh matched LightSTS gate.
 
 ## Risks / Trade-offs
 
@@ -152,9 +159,10 @@ gate.
   or policy quality.
 - [Risk] Weighted averages can hide rare severe actions. -> Preserve raw zero-
   harm, legality, and forbidden-action gates.
-- [Risk] A strict one-shot result can reject a promising noisy fit. -> Seeds and
-  sampling plans are deterministic; any later uncertainty study requires a new
-  proposal rather than an informal retry.
+- [Risk] Corrective execution could become disguised tuning. -> Require no
+  policy metric from the failed predecessor, a committed failure report, an
+  unchanged recipe and evidence set, one narrow source fix, and at most one new
+  execution ID.
 
 ## Migration Plan
 

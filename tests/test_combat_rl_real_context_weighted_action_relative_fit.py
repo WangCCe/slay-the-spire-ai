@@ -14,6 +14,10 @@ REPO_ROOT = Path(__file__).resolve().parents[1]
 
 
 def test_fixed_inputs_bind_support_passing_corpora_and_real_replays() -> None:
+    assert fit.EXPERIMENT_ID.endswith("-r2")
+    assert fit.FIXED_INPUTS["predecessor_failure"]["sha256"] == (
+        "544ef6acf2d103c7c1f1bbe2aeca3f2c1355d3de63b6a2c291ea466bb14f5524"
+    )
     assert fit.FIXED_INPUTS["train_corpus"]["sha256"] == (
         "af2c1d40f307eacee951333462ad5688e276f6006c8a6b0b5f5189b92845bbe2"
     )
@@ -278,3 +282,11 @@ def test_formal_evaluation_append_preserves_base_and_marks_new_rows() -> None:
         "expanded_base",
         "floor_23_27_fresh_evaluation_supplement",
     ]
+
+
+def test_loaded_evaluation_corpora_project_to_balanced_tensor_inventory() -> None:
+    for name in ("base_evaluation_corpus", "evaluation_supplement"):
+        corpus = fit._loaded_balanced_corpus(
+            fit.FIXED_INPUTS[name]["path"], partition="evaluation"
+        )
+        assert set(corpus["tensors"]) == set(fit.balanced.TENSOR_NAMES)

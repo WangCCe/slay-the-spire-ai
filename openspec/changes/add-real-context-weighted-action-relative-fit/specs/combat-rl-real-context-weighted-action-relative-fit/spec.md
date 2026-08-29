@@ -114,6 +114,19 @@ and weighted metrics, and decision atomically with development-only authority.
 
 #### Scenario: Started execution fails
 - **WHEN** execution fails after the started receipt exists or completes with a
-  failed decision
-- **THEN** the same recipe is not retried with another seed, path, weight,
-  threshold, update count, or parameter under this change
+  failed policy decision
+- **THEN** that execution ID is never retried with another seed, path, weight,
+  threshold, update count, or parameter
+
+#### Scenario: Execution fails before fresh policy metrics
+- **WHEN** the first execution fails after its started receipt but a committed
+  failure report proves that no fresh policy metric or output was produced
+- **THEN** at most one new corrective successor ID may bind that report and a
+  source-only implementation fix while preserving every evidence input,
+  recipe, seed, weight, threshold, gate, and authority boundary
+
+#### Scenario: Corrective successor is ineligible
+- **WHEN** any fresh policy metric was computed, the predecessor failure report
+  is missing, a bound experiment value changes, or one corrective successor has
+  already started
+- **THEN** no successor execution is permitted under this change

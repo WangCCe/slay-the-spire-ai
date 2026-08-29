@@ -70,7 +70,7 @@ REGISTRATION_SCHEMA = (
     "combat-rl-real-context-weighted-action-relative-fit-registration-v1"
 )
 MANIFEST_SCHEMA = "combat-rl-real-context-weighted-action-relative-fit-manifest-v1"
-EXPERIMENT_ID = "combat-rl-real-context-weighted-action-relative-fit-20260829-r1"
+EXPERIMENT_ID = "combat-rl-real-context-weighted-action-relative-fit-20260829-r2"
 EXPECTED_INTERPRETER = Path(r"D:\anaconda\envs\stsai\python.exe")
 OUTPUT_DIR = REPORTS_ROOT / EXPERIMENT_ID.replace("-", "_")
 STAGING_DIR = REPORTS_ROOT / f".{OUTPUT_DIR.name}.staging"
@@ -94,6 +94,11 @@ SOURCE_SNAPSHOT_PATHS = (
 )
 
 FIXED_INPUTS = {
+    "predecessor_failure": {
+        "path": REPORTS_ROOT
+        / "combat_rl_real_context_weighted_action_relative_fit_20260829_r1_failure.json",
+        "sha256": "544ef6acf2d103c7c1f1bbe2aeca3f2c1355d3de63b6a2c291ea466bb14f5524",
+    },
     "items_json": {
         "path": Path(r"D:\SteamLibrary\steamapps\common\SlayTheSpire\export\items.json"),
         "sha256": "e23784ea8ed3092e3bfa9918240e162a9cbcb837badfb53c612eb0d83cc811dc",
@@ -233,6 +238,19 @@ def _selected_corpus(
         "row_count": int(indices.numel()),
     }
     return balanced.validate_corpus(selected, expected_partition=partition)
+
+
+def _loaded_balanced_corpus(path: Path, *, partition: str) -> dict[str, Any]:
+    value = load_corpus(path, expected_partition=partition)
+    projected = {
+        "partition": partition,
+        "tensors": {
+            name: value["tensors"][name] for name in balanced.TENSOR_NAMES
+        },
+        "metadata": value["metadata"],
+        "row_count": value["row_count"],
+    }
+    return balanced.validate_corpus(projected, expected_partition=partition)
 
 
 def append_formal_evaluation_corpus(
@@ -1005,13 +1023,7 @@ def run(registration_path: Path) -> dict[str, Any]:
             ),
         )
     )
-    train = load_corpus(paths["train_corpus"], expected_partition="train")
-    train = {
-        "partition": "train",
-        "tensors": {name: train["tensors"][name] for name in balanced.TENSOR_NAMES},
-        "metadata": train["metadata"],
-        "row_count": train["row_count"],
-    }
+    train = _loaded_balanced_corpus(paths["train_corpus"], partition="train")
     split_indices = seed_parity_split_indices(train["metadata"])
     partitions = {
         name: _selected_corpus(train, indices, partition="train")
@@ -1067,11 +1079,11 @@ def run(registration_path: Path) -> dict[str, Any]:
     frozen_classifier_sha256 = state_dict_sha256(classifier.classifier.state_dict())
 
     deferred_paths = _input_bindings(deferred_evaluation=False)
-    base_evaluation = load_corpus(
-        deferred_paths["base_evaluation_corpus"], expected_partition="evaluation"
+    base_evaluation = _loaded_balanced_corpus(
+        deferred_paths["base_evaluation_corpus"], partition="evaluation"
     )
-    supplement = load_corpus(
-        deferred_paths["evaluation_supplement"], expected_partition="evaluation"
+    supplement = _loaded_balanced_corpus(
+        deferred_paths["evaluation_supplement"], partition="evaluation"
     )
     evaluation = append_formal_evaluation_corpus(base_evaluation, supplement)
     if evaluation["row_count"] != FIXED_RECIPE["fresh_evaluation_expected_source_rows"]:
