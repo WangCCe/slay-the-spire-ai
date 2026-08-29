@@ -230,6 +230,12 @@ EXPECTED_REPOSITORY_COMMIT_DESELECT = {
     "tests/test_combat_lightspeed_replay_distribution_calibration.py::test_calibration_script_supports_direct_execution": 4.673,
     "tests/test_combat_rl_abstaining_residual_successor.py::test_isolated_direct_entrypoint_bootstraps_repo_root": 4.625,
     "tests/test_audit_card_acceptance_objective_interventions.py::test_existing_modules_do_not_load_objective_intervention_audit": 4.599,
+    "tests/test_combat_rl_real_context_weighted_action_relative_fit.py::test_bound_train_parity_split_has_registered_rows_and_weight_support": 8.080,
+    "tests/test_noncombat_event_ranker_paired_trajectory_shadow.py::test_bound_training_support_restores_manifest_dataset": 4.815,
+    "tests/test_combat_lightspeed_checkpoint_interpolation.py::test_publication_is_bound_deterministic_and_comparator_compatible": 4.012,
+    "tests/test_noncombat_ope_estimate_artifacts.py::test_estimate_writer_is_transactional_and_cli_uses_explicit_outputs": 3.225,
+    "tests/test_noncombat_ope_estimate_artifacts.py::test_estimate_artifact_is_deterministic_hash_bound_and_gate_separated": 2.889,
+    "tests/test_noncombat_ope_estimate_artifacts.py::test_estimate_renderers_are_byte_stable_and_make_no_downstream_claim": 1.811,
 }
 
 
@@ -316,7 +322,7 @@ def test_repository_manifest_is_valid() -> None:
         for target in manifest.commit_deselect
     }
     assert measured_nodes == EXPECTED_REPOSITORY_COMMIT_DESELECT
-    assert round(sum(measured_nodes.values()), 3) == 103.649
+    assert round(sum(measured_nodes.values()), 3) == 128.481
 
 
 def test_load_manifest_rejects_duplicate_json_key(temporary_repo: Path) -> None:

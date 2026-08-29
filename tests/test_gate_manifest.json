@@ -84,6 +84,30 @@
     {
       "node_id": "tests/test_audit_card_acceptance_objective_interventions.py::test_existing_modules_do_not_load_objective_intervention_audit",
       "reason": "fresh-process import isolation measured at 4.599s on 2026-08-28"
+    },
+    {
+      "node_id": "tests/test_combat_rl_real_context_weighted_action_relative_fit.py::test_bound_train_parity_split_has_registered_rows_and_weight_support",
+      "reason": "bound real-context parity and support replay measured at 8.080s on 2026-08-29"
+    },
+    {
+      "node_id": "tests/test_noncombat_event_ranker_paired_trajectory_shadow.py::test_bound_training_support_restores_manifest_dataset",
+      "reason": "bound event-ranker training artifact restore measured at 4.815s on 2026-08-29"
+    },
+    {
+      "node_id": "tests/test_combat_lightspeed_checkpoint_interpolation.py::test_publication_is_bound_deterministic_and_comparator_compatible",
+      "reason": "checkpoint interpolation publication roundtrip measured at 4.012s on 2026-08-29"
+    },
+    {
+      "node_id": "tests/test_noncombat_ope_estimate_artifacts.py::test_estimate_writer_is_transactional_and_cli_uses_explicit_outputs",
+      "reason": "OPE estimate writer and CLI artifact replay measured at 3.225s on 2026-08-29"
+    },
+    {
+      "node_id": "tests/test_noncombat_ope_estimate_artifacts.py::test_estimate_artifact_is_deterministic_hash_bound_and_gate_separated",
+      "reason": "OPE estimate artifact and bundle binding measured at 2.889s on 2026-08-29"
+    },
+    {
+      "node_id": "tests/test_noncombat_ope_estimate_artifacts.py::test_estimate_renderers_are_byte_stable_and_make_no_downstream_claim",
+      "reason": "OPE estimate deterministic renderer replay measured at 1.811s on 2026-08-29"
     }
   ],
   "full_only": [

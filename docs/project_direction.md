@@ -1842,6 +1842,20 @@ OpenSpec changes authorize them.
   duration audit before changing tiers, targets, or limits; the unchanged
   `full` result remains 5,481 passed, 18 skipped in 2,339.93 seconds of pytest
   and 2,343.85 seconds including orchestration.
+- Treat the 2026-08-29 successor-delta `commit` timing as the pre-optimization
+  baseline: 4,442 passed, 26 skipped, 21 deselected, and 209.529 seconds
+  including orchestration. Its six frozen artifact-replay candidates total
+  24.832 measured seconds and receive one qualification against a 190-second
+  target; a slow or failed result is preserved without retry and rolls back all
+  six entries together.
+- The new real-context support node owns its weighted-fit source and bound
+  replay/corpus inputs; the event-ranker restore node owns its paired-trajectory
+  source and training manifest; the interpolation publication node owns its
+  publication and candidate/checkpoint helpers; the three OPE artifact nodes
+  own their artifact builder, writer/CLI, renderers, estimator-bundle binding,
+  and executable helpers. Changes to an excluded node or any owned surface
+  require that exact node directly before `commit`. Direct pytest, positive
+  domain profiles, and `full` remain inclusive.
 
 Historical reports and archived changes retain the objectives and authority
 boundaries that applied when they were written. This document is the canonical
