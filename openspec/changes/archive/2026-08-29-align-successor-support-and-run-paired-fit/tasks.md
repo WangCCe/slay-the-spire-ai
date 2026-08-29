@@ -69,5 +69,5 @@ Terminal outcome: aligned support closed before fitting because train
 floor-28-34 context mass coverage was `0.593220338983051` against the fixed
 `0.60` minimum. The runner published `optimizer_constructed=false`,
 `fit_executed=false`, and no model artifact.
-- [ ] 6.3 Commit and push the target and terminal decision artifacts without a
+- [x] 6.3 Commit and push the target and terminal decision artifacts without a
   second full gate, then sync and archive the completed OpenSpec change.
