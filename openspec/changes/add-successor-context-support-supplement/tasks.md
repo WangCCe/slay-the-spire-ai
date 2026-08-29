@@ -35,12 +35,12 @@
 
 ## 4. Bounded Formal Evidence
 
-- [ ] 4.1 Execute the registered formal supplement once with the Windows
+- [x] 4.1 Execute the registered formal supplement once with the Windows
   interpreter and fixed CPU, wall-time, storage, cohort, and output bounds.
-- [ ] 4.2 Verify the published manifest, merged corpus identities, seed
+- [x] 4.2 Verify the published manifest, merged corpus identities, seed
   isolation, unchanged support conditions, and absence of gameplay/training
   authority.
-- [ ] 4.3 Publish and commit the support decision; if it passes, hand off only to
+- [x] 4.3 Publish and commit the support decision; if it passes, hand off only to
   a separate weighted-fit change, and if it fails, close without fitting or
   tuning.
-- [ ] 4.4 Sync and archive the completed OpenSpec change after evidence review.
+- [x] 4.4 Sync and archive the completed OpenSpec change after evidence review.
