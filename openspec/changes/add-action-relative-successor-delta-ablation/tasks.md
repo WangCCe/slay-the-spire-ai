@@ -68,6 +68,6 @@
   boundary, record its timing report, and do not rerun it solely for review.
 - [ ] 6.2 Commit the immutable evidence, sync the new capability to main specs,
   archive the completed change, validate OpenSpec strictly, and push master.
-- [ ] 6.3 After this change is stable, perform a separate read-only timing audit
+- [x] 6.3 After this change is stable, perform a separate read-only timing audit
   of the latest full-gate report and propose a narrow gate-performance change
   without mixing it into the successor ablation.
