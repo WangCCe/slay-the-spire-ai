@@ -127,10 +127,11 @@ scientific independence after the holdout and support gate are sealed.
 1. Implement target extraction, validation, support adaptation, and conditional
    paired-fit delegation with fixtures.
 2. Run focused tests and one full commit gate, then commit and push source plus
-   four batch registrations before gameplay.
+   four batch registrations and the target registration before gameplay.
 3. Collect exactly four five-run parent-only batches and atomically publish the
    fresh target.
-4. Evaluate aligned support once; stop on failure or execute the fixed paired
+4. Bind the sealed target hash in the exact fit registration, commit it, then
+   evaluate aligned support once; stop on failure or execute the fixed paired
    fit once on success.
 5. Commit reports and artifacts, sync specs, and archive the change.
 
@@ -140,5 +141,7 @@ unchanged.
 
 ## Open Questions
 
-None. Exact source and artifact hashes are resolved after implementation is
-committed and before the first live batch starts.
+None. Exact source and batch-registration hashes are resolved after
+implementation is committed and before the first live batch starts. The exact
+fit registration is resolved only after the immutable target exists, and is
+committed before support evaluation or optimizer construction.
