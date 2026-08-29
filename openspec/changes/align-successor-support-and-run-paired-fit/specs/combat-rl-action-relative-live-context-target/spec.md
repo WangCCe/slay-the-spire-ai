@@ -35,10 +35,15 @@ and turn within 100 ms.
 
 #### Scenario: Membership or joining is ambiguous
 - **WHEN** the parent did not end turn, the guard did not replace it, execution
-  differs, candidate takeover was possible, the join is absent or duplicated,
-  or a runtime error occurred
+  differs, or the join is absent
 - **THEN** the row is excluded with a named reason and cannot contribute target
   mass
+
+#### Scenario: Join integrity is invalid
+- **WHEN** the nearest join is ambiguous or a raw decision state would be
+  reused, candidate takeover was possible, or a runtime error occurred
+- **THEN** target publication fails and the row cannot enter the missing-join
+  exclusion budget
 
 ### Requirement: Fixed fresh holdout sufficiency
 
@@ -49,7 +54,9 @@ from the 20 development-audit runs.
 #### Scenario: Holdout is sufficient
 - **WHEN** all 20 run records and four batch manifests are complete, at least
   300 target rows join, at least 20 joined rows are on floors 23 through 34,
-  and all parent, authority, seed, trace, and join integrity checks pass
+  at most five eligible rows lack a join, the missing-join rate is at most one
+  percent, and all parent, authority, seed, trace, and join integrity checks
+  pass
 - **THEN** the target may be sealed for one aligned support evaluation
 
 #### Scenario: Holdout is insufficient
@@ -72,5 +79,6 @@ rewards, or next states.
 
 #### Scenario: Target collection fails
 - **WHEN** a batch or publication fails after gameplay starts
-- **THEN** the failure is retained under its identity and no different cohort,
-  target definition, threshold, or candidate authority replaces it
+- **THEN** the failure is retained under its identity and no same-identity
+  retry, different cohort, target definition, threshold, or candidate
+  authority replaces it

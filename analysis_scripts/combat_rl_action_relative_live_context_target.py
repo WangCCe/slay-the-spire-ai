@@ -45,6 +45,8 @@ DEFAULT_EXPECTED_RUN_COUNT = 20
 DEFAULT_MINIMUM_ROW_COUNT = 300
 DEFAULT_MINIMUM_LATE_ROW_COUNT = 20
 DEFAULT_MAXIMUM_JOIN_DELTA_SECONDS = 0.100
+DEFAULT_MAXIMUM_UNJOINED_ELIGIBLE_COUNT = 5
+DEFAULT_MAXIMUM_UNJOINED_ELIGIBLE_FRACTION = 0.01
 DEFAULT_MAXIMUM_BATCH_WALL_SECONDS = 3_600.0
 DEFAULT_MAXIMUM_OUTPUT_BYTES = 16_777_216
 EMPTY_POTION_IDS = frozenset({"", "Potion Slot"})
@@ -451,13 +453,13 @@ def extract_target_rows(
         matches = [
             (abs(decision_time - event_time), index, decision, decision_time)
             for index, decision, decision_time in validated_decisions
-            if index not in used_decision_indices
-            and int(decision["floor"]) == event_floor
+            if int(decision["floor"]) == event_floor
             and int(decision["turn"]) == event_turn
             and abs(decision_time - event_time) <= maximum_join_delta_seconds
         ]
         if not matches:
-            raise ValueError("eligible shadow decision-state join is missing")
+            exclusions["eligible_decision_state_join_missing"] += 1
+            continue
         matches.sort(key=lambda value: (value[0], value[1]))
         if len(matches) > 1 and abs(matches[0][0] - matches[1][0]) <= 1e-9:
             raise ValueError("eligible shadow decision-state join is ambiguous")
@@ -494,6 +496,11 @@ def validate_target_sufficiency(
     expected_run_count: int = DEFAULT_EXPECTED_RUN_COUNT,
     minimum_row_count: int = DEFAULT_MINIMUM_ROW_COUNT,
     minimum_late_row_count: int = DEFAULT_MINIMUM_LATE_ROW_COUNT,
+    unjoined_eligible_count: int = 0,
+    maximum_unjoined_eligible_count: int = DEFAULT_MAXIMUM_UNJOINED_ELIGIBLE_COUNT,
+    maximum_unjoined_eligible_fraction: float = (
+        DEFAULT_MAXIMUM_UNJOINED_ELIGIBLE_FRACTION
+    ),
 ) -> dict[str, Any]:
     for value, label in (
         (expected_run_count, "expected run count"),
@@ -502,6 +509,25 @@ def validate_target_sufficiency(
     ):
         if not isinstance(value, int) or isinstance(value, bool) or value <= 0:
             raise ValueError(f"{label} must be positive")
+    if (
+        not isinstance(unjoined_eligible_count, int)
+        or isinstance(unjoined_eligible_count, bool)
+        or unjoined_eligible_count < 0
+    ):
+        raise ValueError("unjoined eligible count must be nonnegative")
+    if (
+        not isinstance(maximum_unjoined_eligible_count, int)
+        or isinstance(maximum_unjoined_eligible_count, bool)
+        or maximum_unjoined_eligible_count < 0
+    ):
+        raise ValueError("maximum unjoined eligible count must be nonnegative")
+    if (
+        not isinstance(maximum_unjoined_eligible_fraction, (int, float))
+        or isinstance(maximum_unjoined_eligible_fraction, bool)
+        or not math.isfinite(float(maximum_unjoined_eligible_fraction))
+        or not 0.0 <= float(maximum_unjoined_eligible_fraction) <= 1.0
+    ):
+        raise ValueError("maximum unjoined eligible fraction is invalid")
     runs = list(completed_runs)
     run_timestamps = [int(run["timestamp"]) for run in runs]
     run_seeds = [int(run["seed_played"]) for run in runs]
@@ -554,10 +580,23 @@ def validate_target_sufficiency(
             raise ValueError("target context cell identity differs")
         if 23 <= floor <= 34:
             late_rows += 1
+    eligible_opportunity_count = len(rows) + unjoined_eligible_count
+    unjoined_eligible_fraction = (
+        unjoined_eligible_count / eligible_opportunity_count
+        if eligible_opportunity_count
+        else 0.0
+    )
     conditions = {
         "completed_run_count": len(runs) == expected_run_count,
         "minimum_target_rows": len(rows) >= minimum_row_count,
         "minimum_late_target_rows": late_rows >= minimum_late_row_count,
+        "maximum_unjoined_eligible_count": (
+            unjoined_eligible_count <= maximum_unjoined_eligible_count
+        ),
+        "maximum_unjoined_eligible_fraction": (
+            unjoined_eligible_fraction
+            <= float(maximum_unjoined_eligible_fraction)
+        ),
         "run_seed_isolation": not overlap,
         "run_identity_complete": True,
         "context_rows_valid": True,
@@ -568,6 +607,9 @@ def validate_target_sufficiency(
         "completed_run_count": len(runs),
         "target_row_count": len(rows),
         "late_target_row_count": late_rows,
+        "eligible_opportunity_count": eligible_opportunity_count,
+        "unjoined_eligible_count": unjoined_eligible_count,
+        "unjoined_eligible_fraction": unjoined_eligible_fraction,
         "target_identity_sha256": context_target_identity(rows),
     }
 
@@ -792,6 +834,12 @@ def build_target_registration(
             "minimum_row_count": DEFAULT_MINIMUM_ROW_COUNT,
             "minimum_late_row_count": DEFAULT_MINIMUM_LATE_ROW_COUNT,
             "maximum_join_delta_seconds": DEFAULT_MAXIMUM_JOIN_DELTA_SECONDS,
+            "maximum_unjoined_eligible_count": (
+                DEFAULT_MAXIMUM_UNJOINED_ELIGIBLE_COUNT
+            ),
+            "maximum_unjoined_eligible_fraction": (
+                DEFAULT_MAXIMUM_UNJOINED_ELIGIBLE_FRACTION
+            ),
             "context_schema": TARGET_SCHEMA,
         },
         "resource_limits": {
@@ -867,6 +915,10 @@ def validate_target_registration(
         "minimum_row_count": DEFAULT_MINIMUM_ROW_COUNT,
         "minimum_late_row_count": DEFAULT_MINIMUM_LATE_ROW_COUNT,
         "maximum_join_delta_seconds": DEFAULT_MAXIMUM_JOIN_DELTA_SECONDS,
+        "maximum_unjoined_eligible_count": DEFAULT_MAXIMUM_UNJOINED_ELIGIBLE_COUNT,
+        "maximum_unjoined_eligible_fraction": (
+            DEFAULT_MAXIMUM_UNJOINED_ELIGIBLE_FRACTION
+        ),
         "context_schema": TARGET_SCHEMA,
     }:
         raise ValueError("target contract differs")
@@ -1061,6 +1113,7 @@ def build_target_artifact(registration: Mapping[str, Any]) -> dict[str, Any]:
     all_rows: list[dict[str, Any]] = []
     all_runs: list[dict[str, Any]] = []
     batch_summaries: list[dict[str, Any]] = []
+    aggregate_exclusions: Counter[str] = Counter()
     for batch in validated["batches"]:
         events = load_jsonl(Path(batch["trace_path"]), label="shadow trace")
         shadow = load_live_shadow_registration(
@@ -1089,6 +1142,7 @@ def build_target_artifact(registration: Mapping[str, Any]) -> dict[str, Any]:
         )
         all_rows.extend(rows)
         all_runs.extend(runs)
+        aggregate_exclusions.update(exclusions)
         batch_summaries.append(
             {
                 "batch_id": batch["batch_id"],
@@ -1123,6 +1177,15 @@ def build_target_artifact(registration: Mapping[str, Any]) -> dict[str, Any]:
         minimum_late_row_count=int(
             validated["target_contract"]["minimum_late_row_count"]
         ),
+        unjoined_eligible_count=aggregate_exclusions[
+            "eligible_decision_state_join_missing"
+        ],
+        maximum_unjoined_eligible_count=int(
+            validated["target_contract"]["maximum_unjoined_eligible_count"]
+        ),
+        maximum_unjoined_eligible_fraction=float(
+            validated["target_contract"]["maximum_unjoined_eligible_fraction"]
+        ),
     )
     return {
         "schema_version": TARGET_SCHEMA,
@@ -1131,6 +1194,7 @@ def build_target_artifact(registration: Mapping[str, Any]) -> dict[str, Any]:
         "rows": all_rows,
         "completed_runs": all_runs,
         "batch_summaries": batch_summaries,
+        "exclusion_reason_counts": dict(sorted(aggregate_exclusions.items())),
         "sufficiency": sufficiency,
         "target_identity_sha256": context_target_identity(all_rows),
         "authority": copy.deepcopy(TARGET_AUTHORITY),

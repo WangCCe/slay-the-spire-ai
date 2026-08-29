@@ -11,7 +11,9 @@ gate blocks fitting on a deployment-irrelevant mismatch.
 
 - Add a source-bound live-opportunity context target that joins exact
   parent-policy guard-replacement telemetry to its raw decision state and
-  publishes only the context fields needed for weighting.
+  publishes only the context fields needed for weighting. Eligible telemetry
+  without a unique join inside the fixed window is excluded explicitly and
+  may not exceed the registered count or fraction budget.
 - Freeze the target definition from the existing 20-run audit, then collect a
   new run- and session-disjoint 20-run parent-only holdout with no experimental
   action authority.
@@ -23,8 +25,10 @@ gate blocks fitting on a deployment-irrelevant mismatch.
   target, run the already specified current-state control and successor-delta
   paired fit once with the unchanged optimizer, updates, labels, calibration,
   fresh evaluation, and policy gates.
-- If target construction, support, or integrity fails, close without fitting,
-  additional gameplay, seed substitution, threshold changes, or tuning.
+- If target construction, support, or integrity fails, close that registered
+  identity without fitting, seed substitution, threshold changes, or tuning.
+  A fresh cohort is allowed only under a new source-bound registration after a
+  regression-backed collection or publication defect is corrected.
 
 Success requires a complete 20-run parent-only target with exact joins and a
 passing unchanged support gate. Model success remains the existing successor

@@ -60,7 +60,10 @@ record raw parent, guard, executed action, parent parameter hash, and state
 identity while enforcing `candidate_has_authority=false`. Target extraction
 ignores every candidate output. Each telemetry row joins uniquely to the
 nearest in-combat raw decision-state row with identical floor and turn within
-100 ms.
+100 ms. An eligible telemetry row with no match inside that window is excluded
+with a named reason; publication requires both at most five such exclusions
+and an exclusion rate no greater than one percent. An ambiguous or reused join
+remains an integrity failure.
 
 Alternative: add a second gameplay action path. Rejected because it would risk
 changing production action selection merely to collect context.
@@ -112,7 +115,9 @@ scientific independence after the holdout and support gate are sealed.
   hard gate.
 - [Timestamp joining could select the wrong raw state] -> Require identical
   floor and turn, unique nearest matches within 100 ms, monotonic event order,
-  and exact executed-action consistency where the raw action is encodable.
+  exact executed-action consistency where the raw action is encodable, and a
+  registered count-plus-rate budget for missing joins. Ambiguous or reused
+  joins fail rather than entering that budget.
 - [Shadow candidate evaluation could affect latency] -> Keep takeover disabled,
   exclude candidate fields from membership, retain latency/error evidence, and
   fail any batch with candidate authority or runtime errors.
@@ -138,6 +143,11 @@ scientific independence after the holdout and support gate are sealed.
 Rollback is additive: stop using the new target and artifacts. Existing replay,
 successor corpora, production configuration, and r16 checkpoint remain
 unchanged.
+
+A publication that has written its started receipt is terminal under that
+identity. A regression-backed publication-contract correction requires a new
+source commit, registrations, experiment identity, and fresh four-batch
+cohort; it does not resume or rewrite the failed identity.
 
 ## Open Questions
 

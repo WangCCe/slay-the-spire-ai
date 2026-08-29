@@ -165,13 +165,33 @@ def test_extract_target_rows_rejects_authority_ambiguous_or_reused_join() -> Non
             batch_id="batch-1",
         )
 
-    with pytest.raises(ValueError, match="decision-state join"):
+    with pytest.raises(ValueError, match="decision-state join is reused"):
         target.extract_target_rows(
             events=[_event(100.0), _event(100.001, decision_sequence=2)],
             decision_rows=[_decision(100.0)],
             completed_runs=[_run(101, 11)],
             batch_id="batch-1",
         )
+
+    with pytest.raises(ValueError, match="decision-state join is ambiguous"):
+        target.extract_target_rows(
+            events=[_event(100.0)],
+            decision_rows=[_decision(99.99), _decision(100.01)],
+            completed_runs=[_run(101, 11)],
+            batch_id="batch-1",
+        )
+
+
+def test_extract_target_rows_excludes_missing_eligible_join() -> None:
+    rows, exclusions = target.extract_target_rows(
+        events=[_event(100.0), _event(101.0, decision_sequence=2)],
+        decision_rows=[_decision(100.0)],
+        completed_runs=[_run(102, 11)],
+        batch_id="batch-1",
+    )
+
+    assert len(rows) == 1
+    assert exclusions == {"eligible_decision_state_join_missing": 1}
 
 
 def test_target_sufficiency_binds_run_and_development_seed_isolation() -> None:
@@ -218,6 +238,75 @@ def test_target_sufficiency_binds_run_and_development_seed_isolation() -> None:
             minimum_row_count=4,
             minimum_late_row_count=4,
         )
+
+
+def test_target_sufficiency_enforces_both_missing_join_budgets() -> None:
+    rows = []
+    runs = []
+    for index in range(4):
+        timestamp = 101 + index
+        seed = 11 + index
+        runs.append(_run(timestamp, seed))
+        rows.append(
+            {
+                "batch_id": "batch-1",
+                "session_id": "session-a",
+                "decision_sequence": index + 1,
+                "state_sha256": f"{index + 1:064x}",
+                "run_timestamp": timestamp,
+                "run_seed": seed,
+                "floor": 23,
+                "context_cell_id": "floor_23_27|p0|r1|h3",
+                "floor_ratio": 23 / 50.0,
+                "player_hp_ratio": 1.0,
+                "potion_occupied_slots": 0,
+                "relic_occupied_slots": 1,
+                "player_hp_quartile": 3,
+            }
+        )
+
+    passing = target.validate_target_sufficiency(
+        rows,
+        completed_runs=runs,
+        development_run_seeds=set(),
+        expected_run_count=4,
+        minimum_row_count=4,
+        minimum_late_row_count=4,
+        unjoined_eligible_count=1,
+        maximum_unjoined_eligible_count=1,
+        maximum_unjoined_eligible_fraction=0.2,
+    )
+    assert passing["all_conditions_passed"] is True
+    assert passing["unjoined_eligible_fraction"] == pytest.approx(0.2)
+
+    count_failure = target.validate_target_sufficiency(
+        rows,
+        completed_runs=runs,
+        development_run_seeds=set(),
+        expected_run_count=4,
+        minimum_row_count=4,
+        minimum_late_row_count=4,
+        unjoined_eligible_count=2,
+        maximum_unjoined_eligible_count=1,
+        maximum_unjoined_eligible_fraction=1.0,
+    )
+    assert count_failure["conditions"]["maximum_unjoined_eligible_count"] is False
+
+    fraction_failure = target.validate_target_sufficiency(
+        rows,
+        completed_runs=runs,
+        development_run_seeds=set(),
+        expected_run_count=4,
+        minimum_row_count=4,
+        minimum_late_row_count=4,
+        unjoined_eligible_count=1,
+        maximum_unjoined_eligible_count=5,
+        maximum_unjoined_eligible_fraction=0.1,
+    )
+    assert (
+        fraction_failure["conditions"]["maximum_unjoined_eligible_fraction"]
+        is False
+    )
 
 
 def test_context_target_weights_match_cells_without_fake_replay() -> None:
@@ -338,6 +427,11 @@ def test_target_registration_cross_binds_four_shadow_batches(tmp_path: Path) -> 
     assert len(validated["batches"]) == 4
     assert validated["production_parent"]["parameter_sha256"] == "1" * 64
     assert validated["authority"]["candidate_action_takeover"] is False
+    assert validated["target_contract"]["maximum_unjoined_eligible_count"] == 5
+    assert (
+        validated["target_contract"]["maximum_unjoined_eligible_fraction"]
+        == 0.01
+    )
     command = validated["batches"][0]["communication_mod_command"]
     assert command[0] == str(target.EXPECTED_INTERPRETER)
     assert command[command.index("--max-games") + 1] == "5"
