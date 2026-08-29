@@ -1,0 +1,18 @@
+{
+  "command_matches_registration": true,
+  "formal_seed_outcomes_accessed": false,
+  "game_started": false,
+  "head_commit": "ec0df92a870d95143065ade39c7c2d6fe26e574e",
+  "input_hashes_match": true,
+  "interpreter_matches": true,
+  "model_fitted": false,
+  "model_loaded": false,
+  "native_loaded": false,
+  "opportunity_poc_excluded_from_formal_gate": true,
+  "output_absent": true,
+  "runner_committed_hash_matches": true,
+  "schema_version": "combat-rl-floor-23-27-fresh-support-preflight-v1",
+  "seed_partitions_disjoint": true,
+  "source_commit": "ec0df92a870d95143065ade39c7c2d6fe26e574e",
+  "verdict": "source_only_preflight_passed"
+}
