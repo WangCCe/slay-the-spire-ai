@@ -42,7 +42,7 @@
 - [x] 4.3 Run exactly one full commit gate for the cohesive source boundary with
   a timing report, then commit and push source plus the four batch and target
   registrations before gameplay.
-- [ ] 4.4 Retain the terminal r1 publication failure, add regression coverage
+- [x] 4.4 Retain the terminal r1 publication failure, add regression coverage
   for bounded missing joins versus ambiguous or reused joins, and commit new
   source-bound r2 registrations before collecting a fresh cohort. Do not run a
   second full gate.
