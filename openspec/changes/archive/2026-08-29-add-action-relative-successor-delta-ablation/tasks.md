@@ -66,7 +66,7 @@
 
 - [x] 6.1 Run exactly one timed full commit gate for the cohesive source
   boundary, record its timing report, and do not rerun it solely for review.
-- [ ] 6.2 Commit the immutable evidence, sync the new capability to main specs,
+- [x] 6.2 Commit the immutable evidence, sync the new capability to main specs,
   archive the completed change, validate OpenSpec strictly, and push master.
 - [x] 6.3 After this change is stable, perform a separate read-only timing audit
   of the latest full-gate report and propose a narrow gate-performance change
