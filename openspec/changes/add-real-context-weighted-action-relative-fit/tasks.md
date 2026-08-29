@@ -35,14 +35,14 @@
 
 ## 4. Single Fit And Decision
 
-- [ ] 4.1 Execute the registered CPU fit once, without native loading, game,
+- [x] 4.1 Execute the registered CPU fit once, without native loading, game,
   CommunicationMod, parameter sweep, or post-result retry.
-- [ ] 4.2 Validate artifact roundtrip, raw and weighted report metrics, source
+- [x] 4.2 Validate artifact roundtrip, raw and weighted report metrics, source
   snapshots, manifest hashes, and the fail-closed authority decision.
 
 ## 5. Closeout
 
-- [ ] 5.1 Run exactly one timed full commit gate for the completed source
+- [x] 5.1 Run exactly one timed full commit gate for the completed source
   boundary and record its timing report; do not rerun it solely for review.
 - [ ] 5.2 Commit the immutable result, sync the new capability to main specs,
   archive the completed change, validate OpenSpec strictly, and push master.

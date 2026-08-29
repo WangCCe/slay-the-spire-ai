@@ -1,0 +1,80 @@
+{
+  "artifacts": {
+    "preflight.json": {
+      "sha256": "c5993f8897472faa0cc3b6bbce32e366e46ca62a99b302296330d8609d34ee3d",
+      "size_bytes": 618
+    },
+    "real_context_weighted_selective_classifier.pth": {
+      "sha256": "7865b9641ac207c6ac2af5f02f8a37d2068331c697c05febdbea1adbb4e0fb1c",
+      "size_bytes": 418664
+    },
+    "registration.json": {
+      "sha256": "b2c1e01da989a60c009f6138cdcc76af91875e2853534a3a5230e9ad23be8d82",
+      "size_bytes": 7263
+    },
+    "report.json": {
+      "sha256": "35a9736ee816af4494d40fa0cad56d9d7748545906bb0ef39376d38418b484ac",
+      "size_bytes": 19999
+    },
+    "source_snapshot/analysis_scripts/combat_lightspeed_replay_distribution_calibration.py": {
+      "sha256": "8d8c12bc1308a2c0f18f5cfa9ebbe1f51c240e1c3fba28713cd13efac4482cf4",
+      "size_bytes": 41489
+    },
+    "source_snapshot/analysis_scripts/combat_lightspeed_training_smoke.py": {
+      "sha256": "d8dbbb56b88a99ddfc50d7dcd09b9e35bed3fc3d7ab812b39bc2e19081ab0f05",
+      "size_bytes": 128399
+    },
+    "source_snapshot/analysis_scripts/combat_rl_action_relative_selective_classifier_fit.py": {
+      "sha256": "40dfd771ef7921715551d9620c3094c55da00d23404c637c39f95de2fe219092",
+      "size_bytes": 36887
+    },
+    "source_snapshot/analysis_scripts/combat_rl_guard_advantage_residual_fit.py": {
+      "sha256": "8175788bafc3d14e7858c8231bb46032be68d9ae1f1e8b7222198b01fe468c7f",
+      "size_bytes": 28120
+    },
+    "source_snapshot/analysis_scripts/combat_rl_real_context_balanced_corpus.py": {
+      "sha256": "fb5efe5f137166aa1ce0cae9b3f3a2fff5ec01014ab5063ca9b79107efc44d4a",
+      "size_bytes": 46431
+    },
+    "source_snapshot/analysis_scripts/combat_rl_real_context_weighted_action_relative_fit.py": {
+      "sha256": "62af66414fe83641aedef22e60e57f511a792b9dacd3e5c702d6e7c53d06770a",
+      "size_bytes": 51579
+    },
+    "source_snapshot/spirecomm/ai/rl/v2/action_relative_advantage_residual.py": {
+      "sha256": "a5a8fe939c4245f45d99de38aaa4cb394fcd2d8ffe02765ccc41a48ce9ae993a",
+      "size_bytes": 27496
+    },
+    "source_snapshot/spirecomm/ai/rl/v2/action_relative_selective_classifier.py": {
+      "sha256": "64e8c930deb35627a2562b6e7524ca17b42d2c1f42a3e567d919ad84e597d2df",
+      "size_bytes": 37599
+    },
+    "source_snapshot/spirecomm/ai/rl/v2/action_space.py": {
+      "sha256": "1827a6ee4a846a68ea959703b456f0f4efd0436f39616ac8ec41ec34d6cd1964",
+      "size_bytes": 1633
+    },
+    "source_snapshot/spirecomm/ai/rl/v2/id_mapping.py": {
+      "sha256": "8a1afadfbaa2a9d58229549cefdda8681b32b6dae31df02e4f694314a72ec801",
+      "size_bytes": 5391
+    },
+    "source_snapshot/spirecomm/ai/rl/v2/network.py": {
+      "sha256": "6358a8ca1b068c65cb13a6100a79bdc9c116cb2c79eb24a74b658753cf24e280",
+      "size_bytes": 7544
+    },
+    "source_snapshot/spirecomm/ai/rl/v2/state_encoder.py": {
+      "sha256": "34b356753c379dfc834bf164b76375f19a188321fe7928f5fb38b620e4107ef4",
+      "size_bytes": 13481
+    },
+    "started_receipt.json": {
+      "sha256": "1463b44d5f4c2bcaf0339d40e849f31566381f73648e4f624fe6123ee899fe1b",
+      "size_bytes": 389
+    },
+    "summary.md": {
+      "sha256": "5d471910d21470afbd3151ca532fb663a32850f9569a2cb71689ad2855d293a4",
+      "size_bytes": 328
+    }
+  },
+  "decision": "offline_failed_close_without_fresh_gate_or_sweep",
+  "experiment_id": "combat-rl-real-context-weighted-action-relative-fit-20260829-r2",
+  "schema_version": "combat-rl-real-context-weighted-action-relative-fit-manifest-v1",
+  "source_commit": "07ebce61c82ac512cd96f2cdf444fdd0f5fbde8a"
+}

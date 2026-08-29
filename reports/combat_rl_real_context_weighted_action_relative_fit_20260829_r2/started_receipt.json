@@ -1,0 +1,8 @@
+{
+  "attempt": 1,
+  "experiment_id": "combat-rl-real-context-weighted-action-relative-fit-20260829-r2",
+  "registration_sha256": "b2c1e01da989a60c009f6138cdcc76af91875e2853534a3a5230e9ad23be8d82",
+  "schema_version": "combat-rl-real-context-weighted-action-relative-fit-started-v1",
+  "source_commit": "07ebce61c82ac512cd96f2cdf444fdd0f5fbde8a",
+  "started_unix_time": 1787967646.833732
+}
