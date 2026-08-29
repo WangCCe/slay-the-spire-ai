@@ -41,6 +41,7 @@
   "join_integrity": {
     "opportunity_rows": 768,
     "session_count": 4,
+    "run_file_count": 20,
     "duplicate_ai_decision_rows": 0,
     "maximum_time_delta_ms": 14.0
   },
@@ -99,7 +100,7 @@
     }
   },
   "limitations": [
-    "The 768 rows are clustered within four gameplay sessions and are not 768 independent trajectories.",
+    "The 768 rows come from 20 runs grouped into four continuous gameplay sessions and are not 768 independent trajectories.",
     "The sessions were inspected while selecting the target definition and cannot serve as a fresh confirmation cohort.",
     "Two session types use different shadow candidates, although every candidate had no action-takeover authority and the production parent parameter hash was identical."
   ],

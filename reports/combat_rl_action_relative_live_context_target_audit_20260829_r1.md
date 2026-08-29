@@ -8,11 +8,11 @@ independent confirmation design. It does not yet authorize fitting or training.
 
 ## Evidence
 
-Four sealed parent-policy live sessions contain 768 guard-replacement
-opportunities. Every shadow row joins uniquely to an in-combat decision-state
-row with the same floor and turn; the maximum timestamp difference is 14 ms.
-All sessions bind the same production-parent parameter hash and grant the
-candidate no action-takeover authority.
+Four sealed parent-policy live sessions spanning 20 runs contain 768
+guard-replacement opportunities. Every shadow row joins uniquely to an
+in-combat decision-state row with the same floor and turn; the maximum
+timestamp difference is 14 ms. All sessions bind the same production-parent
+parameter hash and grant the candidate no action-takeover authority.
 
 Against these opportunity states, the merged 5,000-row fresh successor corpus
 passes every existing support threshold:
@@ -30,8 +30,8 @@ coverage failure therefore does not measure deployment-opportunity support.
 
 ## Boundary
 
-Rows are clustered in four games, and these games informed the target
-definition. A new session-disjoint parent-only live holdout is required before
-changing the support contract. The holdout must retain exact guard-replacement
-telemetry and context state, and must not give any experimental candidate
-action authority.
+Rows are clustered within 20 runs across four continuous sessions, and these
+runs informed the target definition. A new run- and session-disjoint
+parent-only live holdout is required before changing the support contract. The
+holdout must retain exact guard-replacement telemetry and context state, and
+must not give any experimental candidate action authority.
