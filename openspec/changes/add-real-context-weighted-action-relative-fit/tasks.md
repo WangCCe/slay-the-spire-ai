@@ -29,7 +29,7 @@
 - [x] 3.2 Publish and commit one source-only registration/preflight that binds
   the source commit, exact evidence hashes, fixed command, CPU interpreter,
   output path, recipe, gates, and single-attempt boundary.
-- [ ] 3.3 Record the r1 pre-metric tensor-inventory failure, add a regression,
+- [x] 3.3 Record the r1 pre-metric tensor-inventory failure, add a regression,
   project loaded evaluation corpora to the registered tensor inventory, and
   publish one source-bound r2 corrective registration with unchanged recipe.
 
