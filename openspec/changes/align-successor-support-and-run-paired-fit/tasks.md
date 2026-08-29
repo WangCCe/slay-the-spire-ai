@@ -37,9 +37,9 @@
 
 - [x] 4.1 Run focused target, support, fit-wrapper, and predecessor regression
   tests with a fresh system-temp pytest child.
-- [ ] 4.2 Run strict OpenSpec validation and source-only input, run-exclusion,
+- [x] 4.2 Run strict OpenSpec validation and source-only input, run-exclusion,
   collision, configuration, and no-takeover inventories.
-- [ ] 4.3 Run exactly one full commit gate for the cohesive source boundary with
+- [x] 4.3 Run exactly one full commit gate for the cohesive source boundary with
   a timing report, then commit and push source plus the four batch and target
   registrations before gameplay.
 
