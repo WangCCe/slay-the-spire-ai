@@ -38,11 +38,11 @@
 
 - [x] 4.1 Run focused collector, merge, projection, support, fit-wrapper, and
   predecessor regressions with a fresh system-temp pytest child.
-- [ ] 4.2 Run strict OpenSpec validation and source-only registration, seed,
+- [x] 4.2 Run strict OpenSpec validation and source-only registration, seed,
   input, output-collision, native-hash, and authority preflights.
 - [x] 4.3 Run one timed commit gate for the cohesive source boundary, record its
   tier timings, and do not repeat an unchanged full gate later in the change.
-- [ ] 4.4 Commit and push source plus the exact collection registration before
+- [x] 4.4 Commit and push source plus the exact collection registration before
   native loading or environment construction.
 
 ## 5. Fixed Development Evidence
