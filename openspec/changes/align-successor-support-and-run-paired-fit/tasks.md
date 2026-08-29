@@ -58,11 +58,16 @@
 
 ## 6. Conditional Training Evidence
 
-- [ ] 6.1 Bind and commit the sealed target in the exact fit registration,
+- [x] 6.1 Bind and commit the sealed target in the exact fit registration,
   evaluate aligned support once, and stop without fitting or more gameplay if
   any unchanged gate fails.
-- [ ] 6.2 If support passes, execute the registered fixed paired fit once and
+- [x] 6.2 If support passes, execute the registered fixed paired fit once and
   verify parent immutability, equal arm samples, frozen thresholds, deferred
   fresh access, model round trips, and hard/descriptive decisions.
+
+Terminal outcome: aligned support closed before fitting because train
+floor-28-34 context mass coverage was `0.593220338983051` against the fixed
+`0.60` minimum. The runner published `optimizer_constructed=false`,
+`fit_executed=false`, and no model artifact.
 - [ ] 6.3 Commit and push the target and terminal decision artifacts without a
   second full gate, then sync and archive the completed OpenSpec change.
