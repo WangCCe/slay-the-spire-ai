@@ -21,15 +21,15 @@
   using one fresh system-temp basetemp and preserve their pass count.
 - [x] 3.2 Run the gate-runner regressions, both `commit` and `full` dry-runs, and
   strict validation for this change and the complete OpenSpec tree.
-- [ ] 3.3 Commit the exact frozen manifest, regression, documentation, and
+- [x] 3.3 Commit the exact frozen manifest, regression, documentation, and
   OpenSpec boundary before timing qualification.
 
 ## 4. One-Shot Qualification And Closeout
 
-- [ ] 4.1 Run exactly one timing-enabled `commit` qualification to a new report
+- [x] 4.1 Run exactly one timing-enabled `commit` qualification to a new report
   path. Preserve a failure or duration above 190 seconds without retrying or
   changing the candidate set.
-- [ ] 4.2 If the qualification passes at no more than 190 seconds, record the
+- [x] 4.2 If the qualification passes at no more than 190 seconds, record the
   test count, exclusions, and wall time; otherwise roll back all six new
   exclusions together without a second qualification.
 - [ ] 4.3 Sync the accepted tiered-gate delta, archive the completed change,

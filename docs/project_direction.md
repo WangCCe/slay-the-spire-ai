@@ -1845,9 +1845,12 @@ OpenSpec changes authorize them.
 - Treat the 2026-08-29 successor-delta `commit` timing as the pre-optimization
   baseline: 4,442 passed, 26 skipped, 21 deselected, and 209.529 seconds
   including orchestration. Its six frozen artifact-replay candidates total
-  24.832 measured seconds and receive one qualification against a 190-second
-  target; a slow or failed result is preserved without retry and rolls back all
-  six entries together.
+  24.832 measured seconds. The exact replacement boundary then passed its one
+  qualification with 4,436 passed, 26 skipped, 27 deselected, and 179.820
+  runner seconds, reducing wall time by 29.709 seconds while preserving direct,
+  domain-profile, and `full` inclusion. The remaining slowest node is the
+  4.605-second static event-semantics regression and remains in `commit` as
+  ordinary behavior coverage.
 - The new real-context support node owns its weighted-fit source and bound
   replay/corpus inputs; the event-ranker restore node owns its paired-trajectory
   source and training manifest; the interpolation publication node owns its
