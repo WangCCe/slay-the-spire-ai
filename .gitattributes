@@ -390,10 +390,12 @@ reports/combat_lightspeed_collision_free_encounter_identity_*/*.pth -text
 # Preserve action-relative live-target and aligned-fit source/evidence bytes.
 analysis_scripts/combat_rl_action_relative_live_context_target.py text eol=lf
 analysis_scripts/combat_rl_action_relative_aligned_successor_fit.py text eol=lf
+analysis_scripts/combat_rl_late_floor_successor_development_fit.py text eol=lf
 analysis_scripts/combat_rl_action_relative_live_shadow_summary.py text eol=lf
 analysis_scripts/combat_rl_real_context_balanced_corpus.py text eol=lf
 tests/test_combat_rl_action_relative_live_context_target.py text eol=lf
 tests/test_combat_rl_action_relative_aligned_successor_fit.py text eol=lf
+tests/test_combat_rl_late_floor_successor_development_fit.py text eol=lf
 openspec/changes/align-successor-support-and-run-paired-fit/** text eol=lf
 reports/.combat-rl-action-relative-live-context-target-* -text whitespace=cr-at-eol
 reports/combat_rl_action_relative_live_context_target_* -text whitespace=cr-at-eol
@@ -402,3 +404,7 @@ reports/.combat-rl-action-relative-aligned-successor-fit-* -text whitespace=cr-a
 reports/combat_rl_action_relative_aligned_successor_fit_* -text whitespace=cr-at-eol
 reports/combat_rl_action_relative_aligned_successor_fit_*/** -text whitespace=cr-at-eol
 reports/combat_rl_action_relative_aligned_successor_fit_*/*.pth -text
+reports/.combat-rl-late-floor-successor-development-* -text whitespace=cr-at-eol
+reports/combat_rl_late_floor_successor_development_* -text whitespace=cr-at-eol
+reports/combat_rl_late_floor_successor_development_*/** -text whitespace=cr-at-eol
+reports/combat_rl_late_floor_successor_development_*/*.pth -text
