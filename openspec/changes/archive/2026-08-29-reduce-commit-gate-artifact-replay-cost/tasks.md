@@ -32,5 +32,5 @@
 - [x] 4.2 If the qualification passes at no more than 190 seconds, record the
   test count, exclusions, and wall time; otherwise roll back all six new
   exclusions together without a second qualification.
-- [ ] 4.3 Sync the accepted tiered-gate delta, archive the completed change,
+- [x] 4.3 Sync the accepted tiered-gate delta, archive the completed change,
   validate OpenSpec strictly, commit immutable evidence, and push master.
