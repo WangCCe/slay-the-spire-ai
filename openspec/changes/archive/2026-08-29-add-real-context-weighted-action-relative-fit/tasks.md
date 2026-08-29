@@ -44,5 +44,5 @@
 
 - [x] 5.1 Run exactly one timed full commit gate for the completed source
   boundary and record its timing report; do not rerun it solely for review.
-- [ ] 5.2 Commit the immutable result, sync the new capability to main specs,
+- [x] 5.2 Commit the immutable result, sync the new capability to main specs,
   archive the completed change, validate OpenSpec strictly, and push master.
