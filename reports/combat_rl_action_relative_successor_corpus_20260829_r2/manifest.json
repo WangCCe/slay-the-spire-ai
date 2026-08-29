@@ -1,0 +1,39 @@
+{
+  "artifacts": {
+    "calibration_corpus.pt": {
+      "sha256": "c2943ba2eaf4b8f95839d4733f4b5fcc0fe26fc63061dfd7e98f4e2a4e57275f",
+      "size_bytes": 26555362
+    },
+    "fit_corpus.pt": {
+      "sha256": "026972d0385d28e47ebf23ac4190c2ab47e6de870d95c67ea7a6d93eaeeeee70",
+      "size_bytes": 77950050
+    },
+    "fresh_corpus.pt": {
+      "sha256": "bafc3e0acd68c26d8d5775026d96786558ecf17a2074132290629b4d323c6fc1",
+      "size_bytes": 26996962
+    },
+    "preflight.json": {
+      "sha256": "f8da69d991375dbcd4bc1478581d4d3a244b64750aac43154d2ef71a4d791ad8",
+      "size_bytes": 2378
+    },
+    "registration.json": {
+      "sha256": "1ede0b73582a0aba2507a6b9d9959ff1a328258543107260af2ea2e2b38af19f",
+      "size_bytes": 4752
+    },
+    "report.json": {
+      "sha256": "02803f978685d50d5024d353c8d19362737824a61ec976a1c1a1523d07d94de6",
+      "size_bytes": 16784
+    },
+    "started_receipt.json": {
+      "sha256": "4f360408fdd604c58213e6261638a0ab5364c29a9f6f6c4af3e16b0342690dff",
+      "size_bytes": 258
+    },
+    "summary.md": {
+      "sha256": "3bb44c381c33d1bad7431ee5e661465f7c558488c49d7ed1cfaa93dd76d82d98",
+      "size_bytes": 406
+    }
+  },
+  "experiment_id": "combat-rl-action-relative-successor-corpus-20260829-r2",
+  "schema_version": "combat-rl-action-relative-successor-corpus-manifest-v1",
+  "source_commit": "806a889db93581158d3ee8eb3b7471b52ccd2412"
+}

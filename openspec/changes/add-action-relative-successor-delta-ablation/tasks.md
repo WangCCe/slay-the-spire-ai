@@ -42,28 +42,29 @@
 - [x] 4.2 Register and run one tiny deterministic source-only smoke to verify
   native loading, schema, terminal handling, pair identity, and roundtrip;
   exclude all smoke rows from formal evidence.
-- [ ] 4.3 Commit the exact formal corpus and paired-fit registrations binding
-  source, native bytes, parent, items, real replay target, cohorts, recipe,
-  limits, outputs, and single-access boundary.
-- [ ] 4.4 Record the r1 pre-metric float32 consistency-validation failure, add
+- [x] 4.3 Commit the exact formal corpus registration binding source, native
+  bytes, parent, items, real replay target, cohorts, recipe, limits, outputs,
+  and single-access boundary; create a paired-fit registration only if corpus
+  support passes.
+- [x] 4.4 Record the r1 pre-metric float32 consistency-validation failure, add
   a scale-aware regression, and register at most one r2 corrective successor
   with every evidence, cohort, recipe, gate, limit, and authority field fixed.
 
 ## 5. Formal Corpus And Paired Decision
 
-- [ ] 5.1 Execute the registered formal corpus collection once and validate
+- [x] 5.1 Execute the registered formal corpus collection once and validate
   hashes, row identities, partition isolation, exclusions, determinism, and
   real-context support; stop before fitting if support fails.
-- [ ] 5.2 If support passes, execute both registered CPU fit arms once, freeze
-  both thresholds, then load the registered fresh partition once and publish
-  raw, weighted, comparative, and authority decisions.
-- [ ] 5.3 Validate every sealed artifact and report independently; do not start
+- [x] 5.2 Apply the preregistered support decision; because r2 support fails,
+  close before optimizer construction without creating a paired-fit
+  registration or loading fresh policy metrics.
+- [x] 5.3 Validate every sealed artifact and report independently; do not start
   a LightSTS policy gate or game unless a hard pass is followed by a separate
   OpenSpec registration.
 
 ## 6. Closeout And Gate Follow-Up
 
-- [ ] 6.1 Run exactly one timed full commit gate for the cohesive source
+- [x] 6.1 Run exactly one timed full commit gate for the cohesive source
   boundary, record its timing report, and do not rerun it solely for review.
 - [ ] 6.2 Commit the immutable evidence, sync the new capability to main specs,
   archive the completed change, validate OpenSpec strictly, and push master.
