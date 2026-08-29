@@ -49,10 +49,10 @@
 
 ## 5. Fresh Parent-Only Holdout
 
-- [ ] 5.1 Collect each registered five-run batch with Windows CommunicationMod,
+- [x] 5.1 Collect each registered five-run batch with Windows CommunicationMod,
   production r16 action authority, and no candidate takeover; inspect fresh
   `.run`, AI debug, CommunicationMod error, shadow, and decision-state evidence.
-- [ ] 5.2 Seal exactly 20 unique fresh runs, build the target once, and verify at
+- [x] 5.2 Seal exactly 20 unique fresh runs, build the target once, and verify at
   least 300 total and 20 late-floor joined opportunities plus all parent,
   authority, seed, trace, join, identity, and manifest conditions.
 
